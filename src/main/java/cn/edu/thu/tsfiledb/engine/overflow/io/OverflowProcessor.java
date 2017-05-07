@@ -14,16 +14,15 @@ import org.slf4j.LoggerFactory;
 import cn.edu.thu.tsfile.common.conf.TSFileConfig;
 import cn.edu.thu.tsfile.common.conf.TSFileDescriptor;
 import cn.edu.thu.tsfile.common.utils.BytesUtils;
-import cn.edu.thu.tsfile.file.metadata.converter.TSFileMetaDataConverter;
 import cn.edu.thu.tsfile.file.metadata.enums.TSDataType;
 
-import cn.edu.thu.tsfile.file.utils.ReadWriteThriftFormatUtils;
 import cn.edu.thu.tsfile.timeseries.filter.definition.SingleSeriesFilterExpression;
-import cn.edu.thu.tsfile.timeseries.write.schema.converter.TSDataTypeConverter;
 import cn.edu.thu.tsfiledb.engine.bufferwrite.Action;
 import cn.edu.thu.tsfiledb.engine.bufferwrite.FileNodeConstants;
 import cn.edu.thu.tsfiledb.engine.lru.LRUProcessor;
 import cn.edu.thu.tsfiledb.engine.overflow.metadata.OFFileMetadata;
+import cn.edu.thu.tsfiledb.engine.overflow.utils.ReadWriteThriftFormatUtils;
+import cn.edu.thu.tsfiledb.engine.overflow.utils.TSFileMetaDataConverter;
 import cn.edu.thu.tsfiledb.engine.overflow.utils.TimePair;
 import cn.edu.thu.tsfiledb.engine.utils.FlushState;
 import cn.edu.thu.tsfiledb.exception.OverflowProcessorException;
@@ -196,7 +195,7 @@ public class OverflowProcessor extends LRUProcessor {
 		}
 		int off = 0;
 		int len = buff.length - off;
-		cn.edu.thu.tsfile.format.OFFileMetadata thriftfileMetadata = null;
+		cn.edu.thu.tsfiledb.engine.overflow.thrift.OFFileMetadata thriftfileMetadata = null;
 		try {
 			do {
 				int num = fileInputStream.read(buff, off, len);
@@ -269,7 +268,7 @@ public class OverflowProcessor extends LRUProcessor {
 	 */
 	public void insert(String deltaObjectId, String measurementId, long timestamp, TSDataType type, String v)
 			throws OverflowProcessorException {
-		insert(deltaObjectId, measurementId, timestamp, type, TSDataTypeConverter.convertStringToBytes(type, v));
+		insert(deltaObjectId, measurementId, timestamp, type, convertStringToBytes(type, v));
 	}
 
 	private void insert(String deltaObjectId, String measurementId, long timestamp, TSDataType type, byte[] v)
@@ -314,7 +313,7 @@ public class OverflowProcessor extends LRUProcessor {
 	public void update(String deltaObjectId, String measurementId, long startTime, long endTime, TSDataType type,
 			String v) throws OverflowProcessorException {
 		if (ofSupport.update(deltaObjectId, measurementId, startTime, endTime, type,
-				TSDataTypeConverter.convertStringToBytes(type, v))) {
+				convertStringToBytes(type, v))) {
 			++recordCount;
 			checkMemorySize();
 		} else {
@@ -529,6 +528,31 @@ public class OverflowProcessor extends LRUProcessor {
 			isMerging = false;
 		}
 	}
+	
+    /**
+     * convert String to byte array
+     * 
+     * @return result byte array
+     */
+    private byte[] convertStringToBytes(TSDataType type, String o) {
+        switch (type) {
+            case INT32:
+                return BytesUtils.intToBytes(Integer.valueOf(o));
+            case INT64:
+                return BytesUtils.longToBytes(Long.valueOf(o));
+            case BOOLEAN:
+                return BytesUtils.boolToBytes(Boolean.valueOf(o));
+            case FLOAT:
+                return BytesUtils.floatToBytes(Float.valueOf(o));
+            case DOUBLE:
+                return BytesUtils.doubleToBytes(Double.valueOf(o));
+            case BYTE_ARRAY:
+            	return BytesUtils.StringToBytes(o);
+            default:
+                LOGGER.error("unsupport data type: {}", type);
+                throw new UnsupportedOperationException();
+        }
+    }
 
 	private class OverflowStoreStruct {
 		public final long lastOverflowFilePosition;

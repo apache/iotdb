@@ -19,13 +19,13 @@ import cn.edu.thu.tsfile.common.utils.BytesUtils;
 import cn.edu.thu.tsfile.file.metadata.TSDigest;
 import cn.edu.thu.tsfile.file.metadata.TimeSeriesChunkMetaData;
 import cn.edu.thu.tsfile.file.metadata.VInTimeSeriesChunkMetaData;
-import cn.edu.thu.tsfile.file.metadata.converter.TSFileMetaDataConverter;
 import cn.edu.thu.tsfile.file.metadata.enums.CompressionTypeName;
 import cn.edu.thu.tsfile.file.metadata.enums.TSChunkType;
 import cn.edu.thu.tsfile.file.metadata.enums.TSDataType;
 import cn.edu.thu.tsfile.file.metadata.statistics.Statistics;
 
-import cn.edu.thu.tsfile.file.utils.ReadWriteThriftFormatUtils;
+import cn.edu.thu.tsfiledb.engine.overflow.utils.ReadWriteThriftFormatUtils;
+import cn.edu.thu.tsfiledb.engine.overflow.utils.TSFileMetaDataConverter;
 import cn.edu.thu.tsfiledb.engine.bufferwrite.FileNodeConstants;
 import cn.edu.thu.tsfiledb.engine.overflow.IIntervalTreeOperator;
 import cn.edu.thu.tsfiledb.engine.overflow.metadata.OFFileMetadata;
