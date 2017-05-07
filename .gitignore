@@ -1,0 +1,30 @@
+# Eclipse IDE files
+**/.classpath
+**/.project
+**/.settings/
+
+# intellij IDE files
+**/*.iml
+**/.idea/
+
+# Apple OS X related
+**/.DS_Store
+
+# build generated
+**/target/
+**/build/
+
+# intermediately generated locally
+**/logs/
+
+tsfile-timeseries/src/main/resources/logback.out.out.xml
+tsfile-timeseries/src/main/resources/logback.out.xml
+tsfile-service/derby-tsfile-db/
+tsfile-timeseries/src/test/resources/data
+src/main/resources/metadata/mlog.txt
+tsfile-jdbc/src/main/resources/output/queryRes.csv
+
+*.jar
+*.gz
+*.tar.gz
+*.tar

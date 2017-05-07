@@ -1,0 +1,72 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+
+	<groupId>cn.edu.thu</groupId>
+	<artifactId>tsfiledb</artifactId>
+	<version>0.0.1-SNAPSHOT</version>
+	<packaging>jar</packaging>
+
+	<name>tsfiledb</name>
+	<url>http://maven.apache.org</url>
+
+	<properties>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<compiler.version>1.8</compiler.version>
+		<hadoop.version>2.6.0</hadoop.version>
+	</properties>
+
+	<dependencies>
+	
+		<dependency>
+			<groupId>cn.edu.thu</groupId>
+			<artifactId>tsfile</artifactId>
+			<version>0.1.0</version>
+		</dependency>
+		
+		<dependency>
+			<groupId>junit</groupId>
+			<artifactId>junit</artifactId>
+			<version>3.8.1</version>
+			<scope>test</scope>
+		</dependency>
+		
+		<dependency>
+			<groupId>org.apache.hadoop</groupId>
+			<artifactId>hadoop-client</artifactId>
+			<version>${hadoop.version}</version>
+		</dependency>
+		
+	</dependencies>
+	
+	<build>
+		<plugins>
+			<plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <version>3.3</version>
+                    <configuration>
+                        <source>${compiler.version}</source>
+                        <target>${compiler.version}</target>
+                        <encoding>UTF-8</encoding>
+                    </configuration>
+                	<!-- compile java files in src/it/java -->
+					<executions>
+						<execution>
+							<id>compile-integration-test</id>
+							<phase>pre-integration-test</phase>
+							<goals>
+								<goal>testCompile</goal>
+							</goals>
+							<configuration>
+								<testIncludes>
+									<testInclude>**/*.java</testInclude>
+								</testIncludes>
+								<outputDirectory>${project.build.directory}/it-classes</outputDirectory>
+							</configuration>
+						</execution>
+					</executions>                	                    
+                </plugin>
+		</plugins>
+	</build>
+</project>
