@@ -1,14 +1,12 @@
 package cn.edu.thu.tsfiledb.engine.lru;
 
-import static org.junit.Assert.*;
-
-import java.lang.management.RuntimeMXBean;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import cn.edu.thu.tsfiledb.engine.lru.LRUProcessor;
 import cn.edu.thu.tsfiledb.exception.ProcessorException;
 
 public class LRUProcessorTest {
@@ -22,7 +20,6 @@ public class LRUProcessorTest {
 
 		@Override
 		public boolean canBeClosed() {
-			// TODO Auto-generated method stub
 			return false;
 		}
 

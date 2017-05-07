@@ -207,6 +207,8 @@ public class FileNodeProcessor extends LRUProcessor {
 		}
 
 		if (isMerging == FileNodeProcessorState.MERGING_WRITE) {
+			// lock the filenode processor
+			writeLock();
 			// re-merge all file
 			// if bufferwrite processor is not null, and close
 			if (bufferWriteProcessor != null) {
@@ -518,7 +520,7 @@ public class FileNodeProcessor extends LRUProcessor {
 		// unlock this filenode
 		LOGGER.debug("Merge: the nameSpacePath {}, status from work to merge. {}", nameSpacePath, LOCK_SIGNAL);
 		writeUnlock();
-		LOGGER.debug("Merge: the nameSpacePath {}, unlock the filenode write lock", nameSpacePath);
+		LOGGER.debug("Merge: the nameSpacePath {}, unlock the filenode write lock. {}", nameSpacePath,LOCK_SIGNAL);
 
 		// query buffer data and overflow data, and merge them
 		List<Path> pathList = new ArrayList<>();
@@ -794,7 +796,7 @@ public class FileNodeProcessor extends LRUProcessor {
 		data = queryEngine.query(pathList, timeFilter, null, null, null, TsFileConf.defaultFetchSize);
 		if (!data.hasNextRecord()) {
 			// No record in this query
-			LOGGER.info("Merge query: namespace {}, time filter {}, no query data", nameSpacePath, timeFilter);
+			LOGGER.warn("Merge query: namespace {}, time filter {}, no query data", nameSpacePath, timeFilter);
 			// Set the IntervalFile
 			backupIntervalFile.startTime = -1;
 			backupIntervalFile.endTime = -1;
