@@ -21,4 +21,8 @@ public class ProcessorException extends Exception {
 	public ProcessorException() {
 		super();
 	}
+	
+	public ProcessorException(Throwable arg0) {
+		super(arg0);
+	}
 }

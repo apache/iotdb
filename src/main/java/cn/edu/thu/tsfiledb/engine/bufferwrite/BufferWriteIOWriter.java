@@ -24,6 +24,24 @@ public class BufferWriteIOWriter extends TSFileIOWriter {
 	public BufferWriteIOWriter(FileSchema schema, TSRandomAccessFileWriter output) throws IOException {
 		super(schema, output);
 	}
+	
+	/**
+	 * This is just used to restore a tsfile from the middle of the file
+	 * @param schema
+	 * @param output
+	 * @param rowGroups
+	 * @throws IOException
+	 */
+	public BufferWriteIOWriter(FileSchema schema,TSRandomAccessFileWriter output, long offset,List<RowGroupMetaData> rowGroups) throws IOException{
+		super(schema, output,offset, rowGroups);
+		addrowGroupsTobackupList(rowGroups);
+	}
+	
+	private void addrowGroupsTobackupList(List<RowGroupMetaData> rowGroups){
+		for(RowGroupMetaData rowGroupMetaData:rowGroups){
+			backUpList.add(rowGroupMetaData);
+		}
+	}
 
 	/**
 	 * <b>Note that</b>,the method is not thread safe.

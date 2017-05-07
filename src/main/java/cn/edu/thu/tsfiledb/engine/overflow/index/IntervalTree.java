@@ -38,6 +38,7 @@ public class IntervalTree {
 
     private int nodeSize = 0;       // num of tree nodes
     private int valueSize = 0;      // num of bytes of value
+    private long memoryUsage = 0;   // total memory of the IntervalTree
     private TreeNode root = null;
     private TSDataType dataType = null; // The data type of IntervalTree structure.
 
@@ -47,11 +48,11 @@ public class IntervalTree {
 
     public IntervalTree(TSDataType dataType) {
         this.dataType = dataType;
+        this.memoryUsage = 0;
         if (dataType == TSDataType.BYTE_ARRAY) {
             this.valueSize = -1; // -1 represents var length encoding.
         }
     }
-
 
 
     /**
@@ -61,6 +62,7 @@ public class IntervalTree {
      */
     private void insert(TimePair tp) {
         nodeSize++;
+        calcMemoryUsage(tp);
         if (root == null) {
             root = new TreeNode(tp.s, tp.e, tp.v, tp.opType);
         } else {
@@ -126,27 +128,32 @@ public class IntervalTree {
 
         if (parentNode == null) {
             if (currentNode.left == null && currentNode.right == null) {
-                root = null;
                 nodeSize--;
+                calcMemoryUsage(currentNode);
+                root = null;
                 return;
             } else if (currentNode.left == null) {
-                root = currentNode.right;
                 nodeSize--;
+                calcMemoryUsage(currentNode);
+                root = currentNode.right;
                 return;
             } else if (currentNode.right == null) {
-                root = currentNode.left;
                 nodeSize--;
+                calcMemoryUsage(currentNode);
+                root = currentNode.left;
                 return;
             }
         }
 
         if (left) {
             if (currentNode.left == null) {
+                nodeSize--;
+                calcMemoryUsage(currentNode);
                 parentNode.left = currentNode.right;
-                nodeSize--;
             } else if (currentNode.right == null) {
-                parentNode.left = currentNode.left;
                 nodeSize--;
+                calcMemoryUsage(currentNode);
+                parentNode.left = currentNode.left;
             } else {
                 if (currentNode.left.fix < currentNode.right.fix) {
                     TreeNode tmpNode = currentNode.left;
@@ -160,11 +167,13 @@ public class IntervalTree {
             }
         } else {
             if (currentNode.left == null) {
+                nodeSize--;
+                calcMemoryUsage(currentNode);
                 parentNode.right = currentNode.right;
-                nodeSize--;
             } else if (currentNode.right == null) {
-                parentNode.right = currentNode.left;
                 nodeSize--;
+                calcMemoryUsage(currentNode);
+                parentNode.right = currentNode.left;
             } else {
                 if (currentNode.left.fix < currentNode.right.fix) {
                     TreeNode tmpNode = currentNode.left;
@@ -577,12 +586,38 @@ public class IntervalTree {
         }
     }
 
+    private void calcMemoryUsage(TimePair tp) {
+        if (tp.opType == OverflowOpType.DELETE) {
+            memoryUsage += 16;
+        } else {
+            memoryUsage = memoryUsage + 16 + tp.v.length;
+        }
+
+    }
+
+    private void calcMemoryUsage(TreeNode node) {
+        if (node.opType == OverflowOpType.DELETE) {
+            memoryUsage -= 16;
+        } else {
+            memoryUsage = memoryUsage - 16 - node.value.length;
+        }
+
+    }
+
     public int getNodeSize() {
         return nodeSize;
     }
 
+    public long getTotalMemory() {
+        return this.memoryUsage;
+    }
+
     public int getValueSize() {
         return this.valueSize;
+    }
+    
+    public boolean isEmpty(){
+    	return root==null;
     }
 }
 
