@@ -15,17 +15,16 @@ import cn.edu.thu.tsfile.common.conf.TSFileConfig;
 import cn.edu.thu.tsfile.common.conf.TSFileDescriptor;
 import cn.edu.thu.tsfile.common.utils.BytesUtils;
 import cn.edu.thu.tsfile.file.metadata.enums.TSDataType;
-
 import cn.edu.thu.tsfile.timeseries.filter.definition.SingleSeriesFilterExpression;
 import cn.edu.thu.tsfiledb.engine.bufferwrite.Action;
 import cn.edu.thu.tsfiledb.engine.bufferwrite.FileNodeConstants;
+import cn.edu.thu.tsfiledb.engine.exception.OverflowProcessorException;
 import cn.edu.thu.tsfiledb.engine.lru.LRUProcessor;
 import cn.edu.thu.tsfiledb.engine.overflow.metadata.OFFileMetadata;
 import cn.edu.thu.tsfiledb.engine.overflow.utils.ReadWriteThriftFormatUtils;
 import cn.edu.thu.tsfiledb.engine.overflow.utils.TSFileMetaDataConverter;
 import cn.edu.thu.tsfiledb.engine.overflow.utils.TimePair;
 import cn.edu.thu.tsfiledb.engine.utils.FlushState;
-import cn.edu.thu.tsfiledb.exception.OverflowProcessorException;
 import cn.edu.thu.tsfiledb.exception.ProcessorException;
 
 public class OverflowProcessor extends LRUProcessor {
@@ -74,7 +73,7 @@ public class OverflowProcessor extends LRUProcessor {
 		// nameSpacePath.overflow
 		fileName = nameSpacePath + storeFileName;
 		overflowOutputFilePath = new File(dataDir, fileName).getAbsolutePath();
-		overflowRetoreFilePath = overflowOutputFilePath+restoreFileName;
+		overflowRetoreFilePath = overflowOutputFilePath + restoreFileName;
 
 		// read information from overflow restore file
 		OverflowStoreStruct overflowStoreStruct = ReadStoreFromDisk();
@@ -203,7 +202,7 @@ public class OverflowProcessor extends LRUProcessor {
 				len = len - num;
 			} while (len > 0);
 			long lastOverflowFilePosition = BytesUtils.bytesToLong(buff);
-			
+
 			if (lastOverflowFilePosition != -1) {
 				return new OverflowStoreStruct(lastOverflowFilePosition, -1, null);
 			}
@@ -312,8 +311,7 @@ public class OverflowProcessor extends LRUProcessor {
 	 */
 	public void update(String deltaObjectId, String measurementId, long startTime, long endTime, TSDataType type,
 			String v) throws OverflowProcessorException {
-		if (ofSupport.update(deltaObjectId, measurementId, startTime, endTime, type,
-				convertStringToBytes(type, v))) {
+		if (ofSupport.update(deltaObjectId, measurementId, startTime, endTime, type, convertStringToBytes(type, v))) {
 			++recordCount;
 			checkMemorySize();
 		} else {
@@ -513,7 +511,8 @@ public class OverflowProcessor extends LRUProcessor {
 			ofSupport.switchWorkToMerge();
 		} catch (IOException e) {
 			LOGGER.error("SwitchFileIOToMerge failed, reason:{}", e.getMessage());
-			throw new OverflowProcessorException("Switch overflow from working to merge error, reason: " + e.getMessage());
+			throw new OverflowProcessorException(
+					"Switch overflow from working to merge error, reason: " + e.getMessage());
 		}
 	}
 
@@ -528,31 +527,31 @@ public class OverflowProcessor extends LRUProcessor {
 			isMerging = false;
 		}
 	}
-	
-    /**
-     * convert String to byte array
-     * 
-     * @return result byte array
-     */
-    private byte[] convertStringToBytes(TSDataType type, String o) {
-        switch (type) {
-            case INT32:
-                return BytesUtils.intToBytes(Integer.valueOf(o));
-            case INT64:
-                return BytesUtils.longToBytes(Long.valueOf(o));
-            case BOOLEAN:
-                return BytesUtils.boolToBytes(Boolean.valueOf(o));
-            case FLOAT:
-                return BytesUtils.floatToBytes(Float.valueOf(o));
-            case DOUBLE:
-                return BytesUtils.doubleToBytes(Double.valueOf(o));
-            case BYTE_ARRAY:
-            	return BytesUtils.StringToBytes(o);
-            default:
-                LOGGER.error("unsupport data type: {}", type);
-                throw new UnsupportedOperationException();
-        }
-    }
+
+	/**
+	 * convert String to byte array
+	 * 
+	 * @return result byte array
+	 */
+	private byte[] convertStringToBytes(TSDataType type, String o) {
+		switch (type) {
+		case INT32:
+			return BytesUtils.intToBytes(Integer.valueOf(o));
+		case INT64:
+			return BytesUtils.longToBytes(Long.valueOf(o));
+		case BOOLEAN:
+			return BytesUtils.boolToBytes(Boolean.valueOf(o));
+		case FLOAT:
+			return BytesUtils.floatToBytes(Float.valueOf(o));
+		case DOUBLE:
+			return BytesUtils.doubleToBytes(Double.valueOf(o));
+		case BYTE_ARRAY:
+			return BytesUtils.StringToBytes(o);
+		default:
+			LOGGER.error("unsupport data type: {}", type);
+			throw new UnsupportedOperationException();
+		}
+	}
 
 	private class OverflowStoreStruct {
 		public final long lastOverflowFilePosition;

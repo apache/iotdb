@@ -9,8 +9,8 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import cn.edu.thu.tsfiledb.engine.exception.LRUManagerException;
 import cn.edu.thu.tsfiledb.engine.lru.LRUProcessor;
-import cn.edu.thu.tsfiledb.exception.LRUManagerException;
 import cn.edu.thu.tsfiledb.exception.PathErrorException;
 import cn.edu.thu.tsfiledb.exception.ProcessorException;
 import cn.edu.thu.tsfiledb.metadata.MManager;
@@ -110,7 +110,7 @@ public abstract class LRUManager<T extends LRUProcessor> {
 			nsPath = mManager.getFileNameByPath(path);
 		} catch (PathErrorException e) {
 			LOGGER.error("MManager get nameSpacePath error, path is {}", path);
-			
+			throw new LRUManagerException(e);
 		}
 		return getProcessorByLRU(nsPath, isWriteLock, parameters);
 	}
@@ -176,7 +176,7 @@ public abstract class LRUManager<T extends LRUProcessor> {
 					}
 				}
 				// construct a new processor
-				processor = constructNewProcessor(namespacePath, parameters);
+				processor = constructNewProcessor(namespacePath);
 				// must use lock and not try lock, because of this processor is a new processor
 				processor.lock(isWriteLock);
 				processorLRUList.addFirst(processor);
@@ -297,7 +297,7 @@ public abstract class LRUManager<T extends LRUProcessor> {
 	 * @return
 	 * @throws LRUManagerException 
 	 */
-	protected abstract T constructNewProcessor(String namespacePath, Map<String, Object> parameters) throws LRUManagerException;
+	protected abstract T constructNewProcessor(String namespacePath) throws LRUManagerException;
 
 	
 	/**

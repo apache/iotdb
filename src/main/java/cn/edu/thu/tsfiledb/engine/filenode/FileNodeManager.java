@@ -22,14 +22,14 @@ import cn.edu.thu.tsfile.timeseries.write.record.TSRecord;
 import cn.edu.thu.tsfiledb.engine.bufferwrite.Action;
 import cn.edu.thu.tsfiledb.engine.bufferwrite.BufferWriteProcessor;
 import cn.edu.thu.tsfiledb.engine.bufferwrite.FileNodeConstants;
+import cn.edu.thu.tsfiledb.engine.exception.BufferWriteProcessorException;
+import cn.edu.thu.tsfiledb.engine.exception.FileNodeManagerException;
+import cn.edu.thu.tsfiledb.engine.exception.FileNodeProcessorException;
+import cn.edu.thu.tsfiledb.engine.exception.LRUManagerException;
+import cn.edu.thu.tsfiledb.engine.exception.OverflowProcessorException;
 import cn.edu.thu.tsfiledb.engine.lru.LRUManager;
 import cn.edu.thu.tsfiledb.engine.overflow.io.OverflowProcessor;
-import cn.edu.thu.tsfiledb.exception.BufferWriteProcessorException;
 import cn.edu.thu.tsfiledb.exception.ErrorDebugException;
-import cn.edu.thu.tsfiledb.exception.FileNodeManagerException;
-import cn.edu.thu.tsfiledb.exception.FileNodeProcessorException;
-import cn.edu.thu.tsfiledb.exception.LRUManagerException;
-import cn.edu.thu.tsfiledb.exception.OverflowProcessorException;
 import cn.edu.thu.tsfiledb.exception.ProcessorException;
 import cn.edu.thu.tsfiledb.metadata.MManager;
 
@@ -69,7 +69,7 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 		}
 	};
 
-	public static FileNodeManager getInstance(){
+	public static FileNodeManager getInstance() throws FileNodeManagerException {
 		instanceLock.lock();
 		try {
 			if (instance == null) {
@@ -91,17 +91,24 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 		}
 	}
 
-	private FileNodeManager(int maxLRUNumber, MManager mManager, String normalDataDir){
+	private FileNodeManager(int maxLRUNumber, MManager mManager, String normalDataDir) throws FileNodeManagerException {
 		super(maxLRUNumber, mManager, normalDataDir);
 		this.fileNodeManagerStoreFile = this.normalDataDir + restoreFileName;
 		this.overflowNameSpaceSet = readOverflowSetFromDisk();
+		if (overflowNameSpaceSet == null) {
+			LOGGER.error("Construct the FileNodeManager failed");
+			throw new FileNodeManagerException(
+					"Construct the FileNodeManager failed, because of the error of deserialization");
+		}
 	}
 
 	@Override
-	protected FileNodeProcessor constructNewProcessor(String namespacePath, Map<String, Object> parameters)
-			throws FileNodeManagerException {
+	protected FileNodeProcessor constructNewProcessor(String namespacePath) throws FileNodeManagerException {
 		try {
-			return new FileNodeProcessor(normalDataDir, namespacePath);
+			Map<String, Object> parameters = new HashMap<>();
+			parameters.put(FileNodeConstants.OVERFLOW_BACKUP_MANAGER_ACTION, overflowBackUpAction);
+			parameters.put(FileNodeConstants.OVERFLOW_FLUSH_MANAGER_ACTION, overflowFlushAction);
+			return new FileNodeProcessor(normalDataDir, namespacePath, parameters);
 		} catch (FileNodeProcessorException e) {
 			LOGGER.error("Can't construct the FileNodeProcessor, the nameSpacePath is {}", namespacePath);
 			e.printStackTrace();
@@ -544,6 +551,9 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 				// if bufferwrite and overflow exist
 				// close buffer write
 				if (fileNodeProcessor.hasBufferwriteProcessor()) {
+					while (!fileNodeProcessor.getBufferWriteProcessor().canBeClosed()) {
+
+					}
 					fileNodeProcessor.getBufferWriteProcessor().close();
 					fileNodeProcessor.setBufferwriteProcessroToClosed();
 				}
@@ -551,11 +561,13 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 				Map<String, Object> parameters = new HashMap<>();
 				parameters.put(FileNodeConstants.OVERFLOW_BACKUP_MANAGER_ACTION, overflowBackUpAction);
 				parameters.put(FileNodeConstants.OVERFLOW_FLUSH_MANAGER_ACTION, overflowFlushAction);
+				// try to get overflow processor
 				fileNodeProcessor.getOverflowProcessor(fileNodeProcessor.getNameSpacePath(), parameters);
-				// close overflow write
-				if (fileNodeProcessor.hasOverflowProcessor()) {
-					fileNodeProcessor.getOverflowProcessor().close();
+				// must close the overflow processor
+				while (!fileNodeProcessor.getOverflowProcessor().canBeClosed()) {
+
 				}
+				fileNodeProcessor.getOverflowProcessor().close();
 				fileNodeProcessor.merge();
 				fileNodeProcessor.writeUnlock();
 			} catch (LRUManagerException | FileNodeProcessorException | BufferWriteProcessorException
