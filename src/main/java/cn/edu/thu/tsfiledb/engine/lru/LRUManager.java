@@ -110,7 +110,7 @@ public abstract class LRUManager<T extends LRUProcessor> {
 			nsPath = mManager.getFileNameByPath(path);
 		} catch (PathErrorException e) {
 			LOGGER.error("MManager get nameSpacePath error, path is {}", path);
-			throw new LRUManagerException(e);
+			
 		}
 		return getProcessorByLRU(nsPath, isWriteLock, parameters);
 	}

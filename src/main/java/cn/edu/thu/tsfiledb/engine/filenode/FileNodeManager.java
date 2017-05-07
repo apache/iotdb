@@ -69,7 +69,7 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 		}
 	};
 
-	public static FileNodeManager getInstance() throws FileNodeManagerException {
+	public static FileNodeManager getInstance(){
 		instanceLock.lock();
 		try {
 			if (instance == null) {
@@ -91,15 +91,10 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 		}
 	}
 
-	private FileNodeManager(int maxLRUNumber, MManager mManager, String normalDataDir) throws FileNodeManagerException {
+	private FileNodeManager(int maxLRUNumber, MManager mManager, String normalDataDir){
 		super(maxLRUNumber, mManager, normalDataDir);
 		this.fileNodeManagerStoreFile = this.normalDataDir + restoreFileName;
 		this.overflowNameSpaceSet = readOverflowSetFromDisk();
-		if (overflowNameSpaceSet == null) {
-			LOGGER.error("Construct the FileNodeManager failed");
-			throw new FileNodeManagerException(
-					"Construct the FileNodeManager failed, because of the error of deserialization");
-		}
 	}
 
 	@Override
