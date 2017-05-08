@@ -157,6 +157,7 @@ public class FileNodeProcessorTest {
 
 		try {
 			processor = new FileNodeProcessor(tsconfig.FileNodeDir, deltaObjectId, parameters);
+			processor.writeLock();
 			if (processor.hasBufferwriteProcessor()) {
 				processor.getBufferWriteProcessor().close();
 			}
@@ -164,6 +165,7 @@ public class FileNodeProcessorTest {
 				processor.getOverflowProcessor(deltaObjectId, parameters);
 			}
 			processor.getOverflowProcessor().close();
+			
 			processor.merge();
 			// check the result
 			QueryStructure queryRestult = processor.query(deltaObjectId, measurementId, null, null, null);
@@ -784,7 +786,6 @@ public class FileNodeProcessorTest {
 			// create overflow data
 			// insert:2,22,62; update:50-70
 			createOverflowdata();
-			
 			processor.getOverflowProcessor(deltaObjectId, parameters);
 			
 			
