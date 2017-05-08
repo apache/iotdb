@@ -1,12 +1,14 @@
 package cn.edu.thu.tsfiledb.query.management;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.corp.tsfile.read.file.LocalFileInput;
-import com.corp.tsfile.read.file.TSRandomAccessFileReader;
+import cn.edu.thu.tsfile.common.utils.TSRandomAccessFileReader;
+import cn.edu.thu.tsfile.timeseries.read.LocalFileInput;
+
 
 public class FileStreamManager {
 	private static final Logger logger = LoggerFactory.getLogger(FileStreamManager.class);
@@ -16,7 +18,7 @@ public class FileStreamManager {
 		
 	}
 	
-	public TSRandomAccessFileReader getLocalRandomAcessFileReader(String path){
+	public TSRandomAccessFileReader getLocalRandomAcessFileReader(String path) throws FileNotFoundException{
 		return new LocalFileInput(path);
 	}
 	

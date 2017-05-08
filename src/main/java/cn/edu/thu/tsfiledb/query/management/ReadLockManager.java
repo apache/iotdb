@@ -2,6 +2,7 @@ package cn.edu.thu.tsfiledb.query.management;
 
 import java.util.HashMap;
 
+import cn.edu.thu.tsfiledb.engine.exception.FileNodeManagerException;
 import cn.edu.thu.tsfiledb.engine.filenode.FileNodeManager;
 import cn.edu.thu.tsfiledb.exception.NotConsistentException;
 import cn.edu.thu.tsfiledb.exception.ProcessorException;
@@ -22,7 +23,12 @@ public class ReadLockManager {
 		String key = getKey(deltaObjectUID, measurementID);
 		int token;
 		if(!locksMap.get().containsKey(key)){
-			token = fileNodeManager.addMultiPassQueryLock(deltaObjectUID, measurementID);
+			try {
+				token = fileNodeManager.beginQuery(deltaObjectUID);
+			} catch (FileNodeManagerException e) {
+				e.printStackTrace();
+				throw new ProcessorException(e);
+			}
 			locksMap.get().put(key, token);
 		}else{
 			token = locksMap.get().get(key);
@@ -32,12 +38,17 @@ public class ReadLockManager {
 	
 	public void unlockForSubQuery(String deltaObjectUID, String measurementID
 			, int token) throws ProcessorException{
-		fileNodeManager.removeNewQueryOnePassLock(deltaObjectUID, measurementID, token);
+		
 	}
 	
 	public void unlockForQuery(String deltaObjectUID, String measurementID
 			, int token) throws ProcessorException{
-		fileNodeManager.removeMultiPassQueryLock(deltaObjectUID, measurementID, token);
+		try {
+			fileNodeManager.endQuery(deltaObjectUID, token);
+		} catch (FileNodeManagerException e) {
+			e.printStackTrace();
+			throw new ProcessorException(e);
+		}
 	}
 	
 	public void unlockForOneRequest() throws NotConsistentException, ProcessorException{

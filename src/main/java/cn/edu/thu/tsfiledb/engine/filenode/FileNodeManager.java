@@ -350,7 +350,7 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 		}
 	}
 
-	public int beginQuery(String deltaObjectId, String measurementId) throws FileNodeManagerException {
+	public int beginQuery(String deltaObjectId) throws FileNodeManagerException {
 		FileNodeProcessor fileNodeProcessor = null;
 		try {
 			do {

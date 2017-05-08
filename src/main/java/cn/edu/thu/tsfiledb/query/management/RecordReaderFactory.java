@@ -7,6 +7,9 @@ import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import cn.edu.thu.tsfile.common.utils.TSRandomAccessFileReader;
+import cn.edu.thu.tsfiledb.engine.filenode.FileNodeManager;
+
 
 /**
  * To avoid create RecordReader frequently. Add cache in later version
