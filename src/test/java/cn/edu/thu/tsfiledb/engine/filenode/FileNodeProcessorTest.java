@@ -165,7 +165,7 @@ public class FileNodeProcessorTest {
 				processor.getOverflowProcessor(deltaObjectId, parameters);
 			}
 			processor.getOverflowProcessor().close();
-			
+
 			processor.merge();
 			// check the result
 			QueryStructure queryRestult = processor.query(deltaObjectId, measurementId, null, null, null);
@@ -772,10 +772,9 @@ public class FileNodeProcessorTest {
 		// check the merge result
 		checkUnFile(unusedFilename);
 	}
-	
-	
+
 	@Test
-	public void testMergeFromEmptyIntervalFile(){
+	public void testMergeFromEmptyIntervalFile() {
 		// test merege from Empty Interval File
 		try {
 			processor = new FileNodeProcessor(tsconfig.FileNodeDir, deltaObjectId, parameters);
@@ -786,9 +785,14 @@ public class FileNodeProcessorTest {
 			// create overflow data
 			// insert:2,22,62; update:50-70
 			createOverflowdata();
+
+			processor = new FileNodeProcessor(tsconfig.FileNodeDir, deltaObjectId, parameters);
 			processor.getOverflowProcessor(deltaObjectId, parameters);
+			// check overflow data
 			
-			
+			// merge
+			processor.close();
+
 		} catch (FileNodeProcessorException e) {
 			e.printStackTrace();
 			fail(e.getMessage());
@@ -876,7 +880,7 @@ public class FileNodeProcessorTest {
 	 * Overflow range: insert:2,22,62;update:50-70
 	 */
 	private void createOverflowdata() {
-		
+
 		// insert: 2
 		createOverflowInsert(2, 222);
 		// insert: 22

@@ -83,7 +83,7 @@ public class FileNodeProcessor extends LRUProcessor {
 		@Override
 		public void act() throws Exception {
 			synchronized (fileNodeProcessorStore) {
-				WriteStoreToDisk(fileNodeProcessorStore);
+				writeStoreToDisk(fileNodeProcessorStore);
 			}
 		}
 	};
@@ -157,7 +157,7 @@ public class FileNodeProcessor extends LRUProcessor {
 		}
 		fileNodeRestoreFilePath = new File(dataDir, nameSpacePath + restoreFile).getAbsolutePath();
 		try {
-			fileNodeProcessorStore = ReadStoreToDisk();
+			fileNodeProcessorStore = readStoreToDisk();
 		} catch (FileNodeProcessorException e) {
 			e.printStackTrace();
 			LOGGER.error("Restore the FileNodeProcessor information error, the nameSpacePath is {}", nameSpacePath);
@@ -177,18 +177,17 @@ public class FileNodeProcessor extends LRUProcessor {
 	}
 
 	private void FileNodeRecovery(Map<String, Object> parameters) throws FileNodeProcessorException {
-
 		// restore bufferwrite
 		if (!newFileNodes.isEmpty() && !newFileNodes.get(newFileNodes.size() - 1).isClosed()) {
 			// this bufferwrite file is not close by normal operation
-			String damagedFileName = newFileNodes.get(newFileNodes.size() - 1).filePath;
+			String damagedFilePath = newFileNodes.get(newFileNodes.size() - 1).filePath;
 			// all information to recovery the damaged file.
 			// contains file path, action parameters and nameSpacePath
 			parameters.put(FileNodeConstants.BUFFERWRITE_FLUSH_ACTION, bufferwriteFlushAction);
 			parameters.put(FileNodeConstants.BUFFERWRITE_CLOSE_ACTION, bufferwriteCloseAction);
 			parameters.put(FileNodeConstants.FILENODE_PROCESSOR_FLUSH_ACTION, flushFileNodeProcessorAction);
 			try {
-				bufferWriteProcessor = new BufferWriteProcessor(nameSpacePath, damagedFileName, parameters);
+				bufferWriteProcessor = new BufferWriteProcessor(nameSpacePath, damagedFilePath, parameters);
 			} catch (BufferWriteProcessorException e) {
 				LOGGER.error("Restore the bufferwrite failed, the reason is {}", e.getMessage());
 				e.printStackTrace();
@@ -512,7 +511,7 @@ public class FileNodeProcessor extends LRUProcessor {
 			fileNodeProcessorStore.setEmptyIntervalFileNode(emptyIntervalFileNode);
 			// flush this filenode information
 			try {
-				WriteStoreToDisk(fileNodeProcessorStore);
+				writeStoreToDisk(fileNodeProcessorStore);
 			} catch (FileNodeProcessorException e) {
 				LOGGER.error(
 						"Merge: write filenode information to revocery file failed, the nameSpacePath is {}, the reason is {}",
@@ -674,7 +673,7 @@ public class FileNodeProcessor extends LRUProcessor {
 				fileNodeProcessorStore.setEmptyIntervalFileNode(emptyIntervalFileNode);
 				fileNodeProcessorStore.setNewFileNodes(newFileNodes);
 				try {
-					WriteStoreToDisk(fileNodeProcessorStore);
+					writeStoreToDisk(fileNodeProcessorStore);
 				} catch (FileNodeProcessorException e) {
 					LOGGER.error(
 							"Merge: write filenode information to revocery file failed, the nameSpacePath is {}, the reason is {}",
@@ -741,7 +740,7 @@ public class FileNodeProcessor extends LRUProcessor {
 					fileNodeProcessorStore.setFileNodeProcessorState(isMerging);
 					fileNodeProcessorStore.setNewFileNodes(newFileNodes);
 					fileNodeProcessorStore.setEmptyIntervalFileNode(emptyIntervalFileNode);
-					WriteStoreToDisk(fileNodeProcessorStore);
+					writeStoreToDisk(fileNodeProcessorStore);
 				}
 			} catch (ProcessorException e) {
 				LOGGER.error("Merge: switch wait to work failed. the reason is {}", e.getMessage());
@@ -946,7 +945,7 @@ public class FileNodeProcessor extends LRUProcessor {
 		}
 	}
 
-	private void WriteStoreToDisk(FileNodeProcessorStore fileNodeProcessorStore) throws FileNodeProcessorException {
+	private void writeStoreToDisk(FileNodeProcessorStore fileNodeProcessorStore) throws FileNodeProcessorException {
 
 		synchronized (fileNodeRestoreFilePath) {
 			SerializeUtil<FileNodeProcessorStore> serializeUtil = new SerializeUtil<>();
@@ -960,7 +959,7 @@ public class FileNodeProcessor extends LRUProcessor {
 		}
 	}
 
-	private FileNodeProcessorStore ReadStoreToDisk() throws FileNodeProcessorException {
+	private FileNodeProcessorStore readStoreToDisk() throws FileNodeProcessorException {
 
 		FileNodeProcessorStore fileNodeProcessorStore = null;
 		SerializeUtil<FileNodeProcessorStore> serializeUtil = new SerializeUtil<>();

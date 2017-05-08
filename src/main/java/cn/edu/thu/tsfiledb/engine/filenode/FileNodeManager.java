@@ -1,5 +1,6 @@
 package cn.edu.thu.tsfiledb.engine.filenode;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -48,8 +49,6 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 
 	private Lock mergeLock = new ReentrantLock(false);
 
-	// this should be set to overflow processor
-	// to ensure consistency
 	private Action overflowBackUpAction = new Action() {
 		@Override
 		public void act() throws Exception {
@@ -69,7 +68,7 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 		}
 	};
 
-	public static FileNodeManager getInstance(){
+	public static FileNodeManager getInstance() {
 		instanceLock.lock();
 		try {
 			if (instance == null) {
@@ -82,7 +81,7 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 		}
 	}
 
-	public static void init(int maxNodeNum, MManager mManager, String fileNodeDirPath){
+	public static void init(int maxNodeNum, MManager mManager, String fileNodeDirPath) {
 		instanceLock.lock();
 		try {
 			instance = new FileNodeManager(maxNodeNum, mManager, fileNodeDirPath);
@@ -91,12 +90,13 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 		}
 	}
 
-	private FileNodeManager(int maxLRUNumber, MManager mManager, String normalDataDir){
+	private FileNodeManager(int maxLRUNumber, MManager mManager, String normalDataDir) {
 		super(maxLRUNumber, mManager, normalDataDir);
 		this.fileNodeManagerStoreFile = this.normalDataDir + restoreFileName;
 		this.overflowNameSpaceSet = readOverflowSetFromDisk();
 		if (overflowNameSpaceSet == null) {
-			LOGGER.error("Construct the FileNodeManager failed");
+			LOGGER.error("Read the overflow nameSpacePath set from filenode manager restore file error.");
+			overflowNameSpaceSet = new HashSet<>();
 		}
 	}
 
@@ -474,10 +474,14 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 		try {
 			serializeUtil.serialize(backUpOverflowNameSpaceSet, fileNodeManagerStoreFile);
 		} catch (IOException e) {
-			LOGGER.error("Serialize the overflow nameSpaceSet error");
+			LOGGER.error(
+					"Serialize the overflow nameSpacePath Set error, and delete the overflow restore file, the file path is {}",
+					fileNodeManagerStoreFile);
+			File restoreFile = new File(fileNodeManagerStoreFile);
+			restoreFile.delete();
 			e.printStackTrace();
-			// add throw exception or exit???
-			throw new FileNodeManagerException("Serialize the overflow nameSpaceSet error");
+			throw new FileNodeManagerException(
+					"Serialize the overflow nameSpacePath Set error, and delete the overflow restore file");
 		}
 	}
 
@@ -493,7 +497,14 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 		try {
 			overflowSet = serializeUtil.deserialize(fileNodeManagerStoreFile).orElse(new HashSet<>());
 		} catch (IOException e) {
-			LOGGER.error("Deserizlize the overflow nameSpaceSet error");
+			LOGGER.error(
+					"Deserizlize the overflow nameSpaceSet error, and delete the filenode manager restore file, the restore file path is {}",
+					fileNodeManagerStoreFile);
+			// delete restore file
+			File restoreFile = new File(fileNodeManagerStoreFile);
+			if (restoreFile.exists()) {
+				restoreFile.delete();
+			}
 			e.printStackTrace();
 		}
 		return overflowSet;
