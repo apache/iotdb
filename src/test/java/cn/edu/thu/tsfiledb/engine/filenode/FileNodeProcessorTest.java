@@ -145,6 +145,78 @@ public class FileNodeProcessorTest {
 	@Test
 	public void testMerge() {
 
+		List<Pair<Long, Long>> bufferwriteRanges = new ArrayList<>();
+		bufferwriteRanges.add(new Pair<Long, Long>(5L, 20L));
+		bufferwriteRanges.add(new Pair<Long, Long>(25L, 40L));
+		bufferwriteRanges.add(new Pair<Long, Long>(45L, 60L));
+		bufferwriteRanges.add(new Pair<Long, Long>(65L, 80L));
+
+		createBufferwritedata(bufferwriteRanges);
+
+		createOverflowdata();
+
+		try {
+			processor = new FileNodeProcessor(tsconfig.FileNodeDir, deltaObjectId, parameters);
+			if (processor.hasBufferwriteProcessor()) {
+				processor.getBufferWriteProcessor().close();
+			}
+			if (!processor.hasOverflowProcessor()) {
+				processor.getOverflowProcessor(deltaObjectId, parameters);
+			}
+			processor.getOverflowProcessor().close();
+			processor.merge();
+			// check the result
+			QueryStructure queryRestult = processor.query(deltaObjectId, measurementId, null, null, null);
+			DynamicOneColumnData bufferwriteinindex = queryRestult.getBufferwriteDataInMemory();
+			List<RowGroupMetaData> bufferwriterowgroups = queryRestult.getBufferwriteDataInDisk();
+			List<IntervalFileNode> newInterFiles = queryRestult.getBufferwriteDataInFiles();
+			List<Object> overflowResult = queryRestult.getAllOverflowData();
+			assertEquals(null, bufferwriteinindex);
+			assertEquals(null, bufferwriterowgroups);
+			assertEquals(4, newInterFiles.size());
+			// check bufferwrite data
+			// 2-22 :bug
+			IntervalFileNode bufferwriteFile = newInterFiles.get(0);
+			assertEquals(0, bufferwriteFile.startTime);
+			assertEquals(24, bufferwriteFile.endTime);
+			assertEquals(OverflowChangeType.NO_CHANGE, bufferwriteFile.overflowChangeType);
+			checkFile(bufferwriteFile.filePath);
+			// 25-40 :bug
+			bufferwriteFile = newInterFiles.get(1);
+			assertEquals(25, bufferwriteFile.startTime);
+			assertEquals(44, bufferwriteFile.endTime);
+			assertEquals(OverflowChangeType.NO_CHANGE, bufferwriteFile.overflowChangeType);
+			checkFile(bufferwriteFile.filePath);
+			// 45-62 :bug
+			bufferwriteFile = newInterFiles.get(2);
+			assertEquals(45, bufferwriteFile.startTime);
+			assertEquals(64, bufferwriteFile.endTime);
+			assertEquals(OverflowChangeType.NO_CHANGE, bufferwriteFile.overflowChangeType);
+			checkFile(bufferwriteFile.filePath);
+			// 65-80 :bug
+			bufferwriteFile = newInterFiles.get(3);
+			assertEquals(65, bufferwriteFile.startTime);
+			assertEquals(80, bufferwriteFile.endTime);
+			assertEquals(OverflowChangeType.NO_CHANGE, bufferwriteFile.overflowChangeType);
+			checkFile(bufferwriteFile.filePath);
+			// check overflow data: no overflow data
+			assertEquals(null, overflowResult.get(0));
+			assertEquals(null, overflowResult.get(1));
+			assertEquals(null, overflowResult.get(2));
+			assertEquals(null, overflowResult.get(3));
+			processor.close();
+
+		} catch (FileNodeProcessorException e) {
+			e.printStackTrace();
+			fail(e.getMessage());
+		} catch (BufferWriteProcessorException e) {
+			e.printStackTrace();
+			fail(e.getMessage());
+		} catch (OverflowProcessorException e) {
+			e.printStackTrace();
+			fail(e.getMessage());
+		}
+
 	}
 
 	@Test
@@ -604,7 +676,7 @@ public class FileNodeProcessorTest {
 			assertEquals(22, insertData.getTime(1));
 			assertEquals(222, insertData.getInt(1));
 			assertEquals(62, insertData.getTime(2));
-			assertEquals(222, insertData.getInt(2));
+			assertEquals(333, insertData.getInt(2));
 			// update
 			assertEquals(true, overflowResult.get(1) != null);
 			DynamicOneColumnData updateData = (DynamicOneColumnData) overflowResult.get(1);
@@ -615,10 +687,10 @@ public class FileNodeProcessorTest {
 			assertEquals(4, updateData.timeLength);
 			assertEquals(50, updateData.getTime(0));
 			assertEquals(61, updateData.getTime(1));
-			assertEquals(222, updateData.getInt(0));
+			assertEquals(333, updateData.getInt(0));
 			assertEquals(63, updateData.getTime(2));
 			assertEquals(70, updateData.getTime(3));
-			assertEquals(222, updateData.getInt(1));
+			assertEquals(333, updateData.getInt(1));
 			processor.close();
 		} catch (FileNodeProcessorException e) {
 			e.printStackTrace();
@@ -631,7 +703,7 @@ public class FileNodeProcessorTest {
 		System.out.println(restoreNewFiles);
 		fileNodeProcessorStore = new FileNodeProcessorStore(lastUpdateTime, emptyIntervalFileNode, restoreNewFiles,
 				fileNodeProcessorState, 0);
-		
+
 		String filenodedirPath = tsconfig.FileNodeDir + deltaObjectId + File.separatorChar;
 		File file = new File(filenodedirPath);
 		if (!file.exists()) {
@@ -647,7 +719,7 @@ public class FileNodeProcessorTest {
 			fail(e.getMessage());
 		}
 		assertEquals(true, new File(filenodestorePath).exists());
-		
+
 		// restore from merge
 		try {
 			processor = new FileNodeProcessor(tsconfig.FileNodeDir, deltaObjectId, parameters);
@@ -661,25 +733,25 @@ public class FileNodeProcessorTest {
 			assertEquals(null, bufferwriterowgroups);
 			assertEquals(4, newInterFiles.size());
 			// check bufferwrite data
-			// 2-22
+			// 2-22 :bug
 			IntervalFileNode bufferwriteFile = newInterFiles.get(0);
-			assertEquals(2, bufferwriteFile.startTime);
-			assertEquals(22, bufferwriteFile.endTime);
+			assertEquals(0, bufferwriteFile.startTime);
+			assertEquals(24, bufferwriteFile.endTime);
 			assertEquals(OverflowChangeType.NO_CHANGE, bufferwriteFile.overflowChangeType);
 			checkFile(bufferwriteFile.filePath);
-			// 25-40
+			// 25-40 :bug
 			bufferwriteFile = newInterFiles.get(1);
 			assertEquals(25, bufferwriteFile.startTime);
-			assertEquals(40, bufferwriteFile.endTime);
+			assertEquals(44, bufferwriteFile.endTime);
 			assertEquals(OverflowChangeType.NO_CHANGE, bufferwriteFile.overflowChangeType);
 			checkFile(bufferwriteFile.filePath);
-			// 45-62
+			// 45-62 :bug
 			bufferwriteFile = newInterFiles.get(2);
 			assertEquals(45, bufferwriteFile.startTime);
-			assertEquals(62, bufferwriteFile.endTime);
+			assertEquals(64, bufferwriteFile.endTime);
 			assertEquals(OverflowChangeType.NO_CHANGE, bufferwriteFile.overflowChangeType);
 			checkFile(bufferwriteFile.filePath);
-			// 65-80
+			// 65-80 :bug
 			bufferwriteFile = newInterFiles.get(3);
 			assertEquals(65, bufferwriteFile.startTime);
 			assertEquals(80, bufferwriteFile.endTime);
@@ -697,6 +769,29 @@ public class FileNodeProcessorTest {
 		}
 		// check the merge result
 		checkUnFile(unusedFilename);
+	}
+	
+	
+	@Test
+	public void testMergeFromEmptyIntervalFile(){
+		// test merege from Empty Interval File
+		try {
+			processor = new FileNodeProcessor(tsconfig.FileNodeDir, deltaObjectId, parameters);
+			// set lastupdate time
+			processor.setLastUpdateTime(100);
+			processor.close();
+			// There is no buffer write files
+			// create overflow data
+			// insert:2,22,62; update:50-70
+			createOverflowdata();
+			
+			processor.getOverflowProcessor(deltaObjectId, parameters);
+			
+			
+		} catch (FileNodeProcessorException e) {
+			e.printStackTrace();
+			fail(e.getMessage());
+		}
 	}
 
 	private void createFile(String filename) {
@@ -737,6 +832,12 @@ public class FileNodeProcessorTest {
 	private void createBufferwritedata(List<Pair<Long, Long>> bufferwriteRanges) {
 		for (Pair<Long, Long> timePair : bufferwriteRanges) {
 			createBufferwriteFile(timePair.left, timePair.right);
+			try {
+				Thread.sleep(10);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+				fail(e.getMessage());
+			}
 		}
 	}
 
@@ -774,6 +875,7 @@ public class FileNodeProcessorTest {
 	 * Overflow range: insert:2,22,62;update:50-70
 	 */
 	private void createOverflowdata() {
+		
 		// insert: 2
 		createOverflowInsert(2, 222);
 		// insert: 22
@@ -781,7 +883,7 @@ public class FileNodeProcessorTest {
 		// insert: 62
 		createOverflowInsert(62, 222);
 		// update: 50-70
-		createOverflowUpdate(50, 70, 222);
+		createOverflowUpdate(50, 70, 333);
 	}
 
 	private void createOverflowInsert(long time, int value) {
@@ -791,10 +893,14 @@ public class FileNodeProcessorTest {
 			ofProcessor.insert(deltaObjectId, measurementId, time, TSDataType.INT32, String.valueOf(value));
 			processor.changeTypeToChanged(time);
 			processor.close();
+			Thread.sleep(10);
 		} catch (FileNodeProcessorException e) {
 			e.printStackTrace();
 			fail(e.getMessage());
 		} catch (OverflowProcessorException e) {
+			e.printStackTrace();
+			fail(e.getMessage());
+		} catch (InterruptedException e) {
 			e.printStackTrace();
 			fail(e.getMessage());
 		}
@@ -807,10 +913,14 @@ public class FileNodeProcessorTest {
 			ofProcessor.update(deltaObjectId, measurementId, begin, end, TSDataType.INT32, String.valueOf(value));
 			processor.changeTypeToChanged(begin, end);
 			processor.close();
+			Thread.sleep(10);
 		} catch (FileNodeProcessorException e) {
 			e.printStackTrace();
 			fail(e.getMessage());
 		} catch (OverflowProcessorException e) {
+			e.printStackTrace();
+			fail(e.getMessage());
+		} catch (InterruptedException e) {
 			e.printStackTrace();
 			fail(e.getMessage());
 		}

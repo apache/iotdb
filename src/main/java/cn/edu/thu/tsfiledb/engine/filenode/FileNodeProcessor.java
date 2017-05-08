@@ -222,7 +222,8 @@ public class FileNodeProcessor extends LRUProcessor {
 				bufferWriteProcessor = null;
 			}
 			// Get the overflow processor, and close
-			overflowProcessor = getOverflowProcessor(nameSpacePath, parameters);
+			// overflowProcessor = getOverflowProcessor(nameSpacePath,
+			// parameters);
 			try {
 				overflowProcessor.close();
 			} catch (OverflowProcessorException e) {
@@ -480,22 +481,25 @@ public class FileNodeProcessor extends LRUProcessor {
 		// change status from work to merge
 		//
 		isMerging = FileNodeProcessorState.MERGING_WRITE;
-		// change nodes status? all status which is not NONE to changed????
 		if (emptyIntervalFileNode.overflowChangeType != OverflowChangeType.NO_CHANGE) {
-			emptyIntervalFileNode.overflowChangeType = OverflowChangeType.CHANGED;
+			if (!newFileNodes.isEmpty()) {
+				newFileNodes.get(0).overflowChangeType = OverflowChangeType.CHANGED;
+				emptyIntervalFileNode.overflowChangeType = OverflowChangeType.NO_CHANGE;
+			} else {
+				emptyIntervalFileNode.overflowChangeType = OverflowChangeType.CHANGED;
+			}
 		}
 		for (IntervalFileNode intervalFileNode : newFileNodes) {
 			if (intervalFileNode.overflowChangeType != OverflowChangeType.NO_CHANGE) {
 				intervalFileNode.overflowChangeType = OverflowChangeType.CHANGED;
 			}
 		}
-
 		// add numOfMergeFile to control the number of the merge file
 		List<IntervalFileNode> backupIntervalFiles = switchFileNodeToMergev2();
 		try {
-			/*
-			 * change the overflow work to merge and merge to work
-			 */
+			//
+			// change the overflow work to merge
+			//
 			overflowProcessor.switchWorkingToMerge();
 		} catch (ProcessorException e) {
 			LOGGER.error("Merge: Can't change overflow processor status from work to merge");
@@ -538,7 +542,6 @@ public class FileNodeProcessor extends LRUProcessor {
 			throw new FileNodeProcessorException(e);
 		}
 		for (IntervalFileNode backupIntervalFile : backupIntervalFiles) {
-			// merge changed ??
 			if (backupIntervalFile.overflowChangeType == OverflowChangeType.CHANGED) {
 				// query data and merge
 				try {
@@ -561,9 +564,13 @@ public class FileNodeProcessor extends LRUProcessor {
 						backupIntervalFile.endTime);
 			}
 		}
+		//
 		// change status from merge to wait
+		//
 		switchMergeToWaitingv2(backupIntervalFiles);
+		//
 		// change status from wait to work
+		//
 		switchWaitingToWorkingv2(backupIntervalFiles);
 	}
 
@@ -617,76 +624,65 @@ public class FileNodeProcessor extends LRUProcessor {
 			LOGGER.debug(
 					"Merge: swith merge to wait, switch oldMultiPassTokenSet to newMultiPassTokenSet, switch oldMultiPassLock to newMultiPassLock");
 
-			if (emptyIntervalFileNode.overflowChangeType != OverflowChangeType.NO_CHANGE) {
-				LOGGER.info("Merge swith merge to wait, the overflowChangeType of emptyIntervalFileNode is {}",
-						emptyIntervalFileNode.overflowChangeType);
-				if (backupIntervalFiles.size() != 1) {
+			LOGGER.info("Merge switch merge to wait, the overflowChangeType of emptyIntervalFileNode is {}",
+					emptyIntervalFileNode.overflowChangeType);
+			if (emptyIntervalFileNode.overflowChangeType == OverflowChangeType.NO_CHANGE) {
+				// backup from newFilenodes
+				// no action
+			} else {
+				// backup just from emptyIntervalFileNode
+				assert (backupIntervalFiles.size() == 1);
+				newFileNodes.add(0, emptyIntervalFileNode);
+			}
 
-					LOGGER.error(
-							"The overflowChangeType of emptyIntervalFileNode is {}, but the size of backupIntervalFiles is not one",
-							emptyIntervalFileNode.overflowChangeType);
-					throw new ProcessorRuntimException(String.format(
-							"The overflowChangeType of emptyIntervalFileNode is %s, but the size of backupIntervalFiles is not one",
-							emptyIntervalFileNode.overflowChangeType));
+			List<IntervalFileNode> result = new ArrayList<>();
+			int lenOfBackUpList = backupIntervalFiles.size();
+			boolean putoff = false;
+			for (int i = 0; i < lenOfBackUpList; i++) {
+				IntervalFileNode backupIntervalFile = backupIntervalFiles.get(i);
+				if (backupIntervalFile.startTime == -1) {
+					if (putoff || newFileNodes.get(i).overflowChangeType == OverflowChangeType.MERGING_CHANGE) {
+						putoff = true;
+					}
 				} else {
-					LOGGER.debug("Merge switch merge to wait, the overflowChangeType of emptyIntervalFileNode is {}",
-							emptyIntervalFileNode.overflowChangeType);
-					if (newFileNodes.size() < 1 || backupIntervalFiles.size() < 1) {
-						throw new ProcessorRuntimException(
-								"The overflowChangeType of emptyIntervalFileNode is NO_CHANGE, but the newFileNodes size is zero");
+					if (putoff || newFileNodes.get(i).overflowChangeType == OverflowChangeType.MERGING_CHANGE) {
+						backupIntervalFile.overflowChangeType = OverflowChangeType.CHANGED;
+						putoff = false;
 					}
-					List<IntervalFileNode> result = new ArrayList<>();
-					int lenOfBackUpList = backupIntervalFiles.size();
-					boolean putoff = false;
+					result.add(backupIntervalFile);
+				}
+			}
 
-					for (int i = 0; i < lenOfBackUpList; i++) {
-						// the original overflowChangeType of backupIntervalFile
-						// must be NO_CHANGE
-						IntervalFileNode backupIntervalFile = backupIntervalFiles.get(i);
-						if (backupIntervalFile.startTime == -1) {
-							if (putoff || newFileNodes.get(i).overflowChangeType == OverflowChangeType.MERGING_CHANGE) {
-								putoff = true;
-							}
-						} else {
-							if (putoff || newFileNodes.get(i).overflowChangeType == OverflowChangeType.MERGING_CHANGE) {
-								backupIntervalFile.overflowChangeType = OverflowChangeType.CHANGED;
-								putoff = false;
-							}
-							result.add(backupIntervalFile);
-						}
-					}
+			for (int i = lenOfBackUpList; i < newFileNodes.size(); i++) {
+				IntervalFileNode newFileNode = newFileNodes.get(i);
+				if (putoff || newFileNode.overflowChangeType == OverflowChangeType.MERGING_CHANGE) {
+					newFileNode.overflowChangeType = OverflowChangeType.CHANGED;
+					putoff = false;
+				}
+				result.add(newFileNode);
+			}
 
-					for (int i = lenOfBackUpList; i < newFileNodes.size(); i++) {
-						IntervalFileNode newFileNode = newFileNodes.get(i);
-						if (newFileNode.overflowChangeType == OverflowChangeType.MERGING_CHANGE || putoff) {
-							newFileNode.overflowChangeType = OverflowChangeType.CHANGED;
-							putoff = false;
-						}
-						result.add(newFileNode);
-					}
+			if (putoff) {
+				emptyIntervalFileNode.endTime = lastUpdateTime;
+				emptyIntervalFileNode.overflowChangeType = OverflowChangeType.CHANGED;
+			}
+			isMerging = FileNodeProcessorState.WAITING;
+			newFileNodes = result;
 
-					if (putoff) {
-						emptyIntervalFileNode.endTime = lastUpdateTime;
-						emptyIntervalFileNode.overflowChangeType = OverflowChangeType.CHANGED;
-					}
-					isMerging = FileNodeProcessorState.WAITING;
-					newFileNodes = result;
-					synchronized (fileNodeProcessorStore) {
-						fileNodeProcessorStore.setFileNodeProcessorState(isMerging);
-						fileNodeProcessorStore.setEmptyIntervalFileNode(emptyIntervalFileNode);
-						fileNodeProcessorStore.setNewFileNodes(newFileNodes);
-						try {
-							WriteStoreToDisk(fileNodeProcessorStore);
-						} catch (FileNodeProcessorException e) {
-							LOGGER.error(
-									"Merge: write filenode information to revocery file failed, the nameSpacePath is {}, the reason is {}",
-									nameSpacePath, e.getMessage());
-							e.printStackTrace();
-							throw new FileNodeProcessorException(
-									"Merge: write filenode information to revocery file failed, the nameSpacePath is "
-											+ nameSpacePath);
-						}
-					}
+			synchronized (fileNodeProcessorStore) {
+				fileNodeProcessorStore.setFileNodeProcessorState(isMerging);
+				fileNodeProcessorStore.setEmptyIntervalFileNode(emptyIntervalFileNode);
+				fileNodeProcessorStore.setNewFileNodes(newFileNodes);
+				try {
+					WriteStoreToDisk(fileNodeProcessorStore);
+				} catch (FileNodeProcessorException e) {
+					LOGGER.error(
+							"Merge: write filenode information to revocery file failed, the nameSpacePath is {}, the reason is {}",
+							nameSpacePath, e.getMessage());
+					e.printStackTrace();
+					throw new FileNodeProcessorException(
+							"Merge: write filenode information to revocery file failed, the nameSpacePath is "
+									+ nameSpacePath);
 				}
 			}
 		} finally {
@@ -705,28 +701,6 @@ public class FileNodeProcessor extends LRUProcessor {
 			try {
 				// delete the all files which are in the newFileNodes
 				// notice: the last restore file of the interval file
-
-				/*
-				 * 
-				 * String bufferwriteDirPath = TsFileConf.BufferWriteDir; if
-				 * (bufferwriteDirPath.charAt(bufferwriteDirPath.length() - 1)
-				 * != File.separatorChar) { bufferwriteDirPath =
-				 * bufferwriteDirPath + File.separatorChar; } String dataDirPath
-				 * = bufferwriteDirPath + nameSpacePath; File dataDir = new
-				 * File(dataDirPath);
-				 * 
-				 * if (!dataDir.exists()) { LOGGER.
-				 * warn("The bufferwrite data dir is not exist, the nameSpacePath is {}"
-				 * , nameSpacePath); return; }
-				 * 
-				 * if (newFileNodes.isEmpty()) { for (File file :
-				 * dataDir.listFiles()) { file.delete(); } } else { for
-				 * (IntervalFileNode intervalFileNode : backupIntervalFiles) {
-				 * if (intervalFileNode.filePath != null) { File deleteFile =
-				 * new File(dataDir, intervalFileNode.filePath);
-				 * deleteFile.delete(); } } }
-				 * 
-				 */
 
 				String bufferwriteDirPath = TsFileConf.BufferWriteDir;
 				if (bufferwriteDirPath.length() > 0
@@ -785,6 +759,8 @@ public class FileNodeProcessor extends LRUProcessor {
 
 	private void queryAndWriteDataForMerge(List<Path> pathList, IntervalFileNode backupIntervalFile)
 			throws IOException, WriteProcessException {
+
+		
 		FilterExpression timeFilter = FilterUtilsForOverflow.construct(null, null, "0",
 				"(>=" + backupIntervalFile.startTime + ")&" + "(<=" + backupIntervalFile.endTime + ")");
 
@@ -805,7 +781,7 @@ public class FileNodeProcessor extends LRUProcessor {
 		} else {
 			TSRecordWriter recordWriter;
 			RowRecord firstRecord = data.getNextRecord();
-			// get the outputPath and FileSchema
+			// get the outputPate and FileSchema
 			String outputPath = constructOutputFilePath(nameSpacePath,
 					firstRecord.timestamp + FileNodeConstants.BUFFERWRITE_FILE_SEPARATOR + System.currentTimeMillis());
 			FileSchema fileSchema;
@@ -845,6 +821,7 @@ public class FileNodeProcessor extends LRUProcessor {
 			backupIntervalFile.filePath = outputPath;
 			backupIntervalFile.errFilePath = null;
 		}
+
 	}
 
 	private String constructOutputFilePath(String nameSpacePath, String fileName) {
