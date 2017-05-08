@@ -493,6 +493,9 @@ public class FileNodeProcessor extends LRUProcessor {
 		// add numOfMergeFile to control the number of the merge file
 		List<IntervalFileNode> backupIntervalFiles = switchFileNodeToMergev2();
 		try {
+			/*
+			 * change the overflow work to merge and merge to work
+			 */
 			overflowProcessor.switchWorkingToMerge();
 		} catch (ProcessorException e) {
 			LOGGER.error("Merge: Can't change overflow processor status from work to merge");
@@ -520,7 +523,7 @@ public class FileNodeProcessor extends LRUProcessor {
 		// unlock this filenode
 		LOGGER.debug("Merge: the nameSpacePath {}, status from work to merge. {}", nameSpacePath, LOCK_SIGNAL);
 		writeUnlock();
-		LOGGER.debug("Merge: the nameSpacePath {}, unlock the filenode write lock. {}", nameSpacePath,LOCK_SIGNAL);
+		LOGGER.debug("Merge: the nameSpacePath {}, unlock the filenode write lock. {}", nameSpacePath, LOCK_SIGNAL);
 
 		// query buffer data and overflow data, and merge them
 		List<Path> pathList = new ArrayList<>();
@@ -573,7 +576,6 @@ public class FileNodeProcessor extends LRUProcessor {
 						emptyIntervalFileNode.overflowChangeType));
 			}
 
-			LOGGER.debug("Merge: the empty interval file is {}", emptyIntervalFileNode);
 			IntervalFileNode intervalFileNode = new IntervalFileNode(0, emptyIntervalFileNode.endTime,
 					OverflowChangeType.CHANGED, null, null);
 			result.add(intervalFileNode);
@@ -619,6 +621,7 @@ public class FileNodeProcessor extends LRUProcessor {
 				LOGGER.info("Merge swith merge to wait, the overflowChangeType of emptyIntervalFileNode is {}",
 						emptyIntervalFileNode.overflowChangeType);
 				if (backupIntervalFiles.size() != 1) {
+
 					LOGGER.error(
 							"The overflowChangeType of emptyIntervalFileNode is {}, but the size of backupIntervalFiles is not one",
 							emptyIntervalFileNode.overflowChangeType);
@@ -638,7 +641,6 @@ public class FileNodeProcessor extends LRUProcessor {
 
 					for (int i = 0; i < lenOfBackUpList; i++) {
 						// the original overflowChangeType of backupIntervalFile
-						// is
 						// must be NO_CHANGE
 						IntervalFileNode backupIntervalFile = backupIntervalFiles.get(i);
 						if (backupIntervalFile.startTime == -1) {
