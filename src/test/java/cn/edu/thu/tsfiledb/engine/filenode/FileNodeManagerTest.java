@@ -59,11 +59,6 @@ public class FileNodeManagerTest {
 	}
 
 	@Test
-	public void test() {
-
-	}
-
-	@Test
 	public void testClose() {
 
 	}
@@ -88,6 +83,8 @@ public class FileNodeManagerTest {
 		pairList.add(new Pair<Long, Long>(700L, 800L));
 		createBufferwriteFiles(pairList);
 
+		createBufferwriteInMemory(new Pair<Long, Long>(900L, 1000L));
+
 		fManager = FileNodeManager.getInstance();
 		try {
 			int token = fManager.beginQuery(deltaObjectId);
@@ -95,10 +92,10 @@ public class FileNodeManagerTest {
 			QueryStructure queryResult = fManager.query(deltaObjectId, measurementId, null, null, null);
 			DynamicOneColumnData bufferwriteinmemory = queryResult.getBufferwriteDataInMemory();
 			List<RowGroupMetaData> bufferwriteinDisk = queryResult.getBufferwriteDataInDisk();
-			assertEquals(null, bufferwriteinmemory);
-			assertEquals(null, bufferwriteinDisk);
+			assertEquals(true, bufferwriteinmemory != null);
+			assertEquals(true, bufferwriteinDisk != null);
 			List<IntervalFileNode> newInterFiles = queryResult.getBufferwriteDataInFiles();
-			assertEquals(4, newInterFiles.size());
+			assertEquals(5, newInterFiles.size());
 			for (int i = 0; i < pairList.size(); i++) {
 				IntervalFileNode temp = newInterFiles.get(i);
 				Pair<Long, Long> time = pairList.get(i);
@@ -113,11 +110,12 @@ public class FileNodeManagerTest {
 			assertEquals(null, overflowResult.get(2));
 			assertEquals(null, overflowResult.get(3));
 			fManager.endQuery(deltaObjectId, token);
+			fManager.closeAll();
+			// waitToSleep();
 		} catch (FileNodeManagerException e) {
 			e.printStackTrace();
 			fail(e.getMessage());
 		}
-
 	}
 
 	@Test
@@ -186,6 +184,7 @@ public class FileNodeManagerTest {
 		pairList.add(new Pair<Long, Long>(500L, 600L));
 		pairList.add(new Pair<Long, Long>(700L, 800L));
 		createBufferwriteFiles(pairList);
+
 		// overflow update
 		List<Pair<Long, Long>> overflowUpdate1 = new ArrayList<>();
 		overflowUpdate1.add(new Pair<Long, Long>(150L, 170L));
@@ -205,6 +204,7 @@ public class FileNodeManagerTest {
 			fManager.closeAll();
 		} catch (FileNodeManagerException e) {
 			e.printStackTrace();
+			fail(e.getMessage());
 		}
 
 	}
@@ -220,7 +220,7 @@ public class FileNodeManagerTest {
 		createBufferwriteFiles(pairList);
 
 		long overflowDelete1 = 50;
-		
+
 		fManager = FileNodeManager.getInstance();
 		try {
 			fManager.delete(deltaObjectId, measurementId, overflowDelete1, dataType);
@@ -229,12 +229,11 @@ public class FileNodeManagerTest {
 			SingleSeriesFilterExpression timeFilter = (SingleSeriesFilterExpression) overflowResult.get(3);
 			System.out.println(timeFilter);
 			fManager.closeAll();
+
 		} catch (FileNodeManagerException e) {
 			e.printStackTrace();
 			fail(e.getMessage());
 		}
-		
-
 	}
 
 	@Test
@@ -245,6 +244,64 @@ public class FileNodeManagerTest {
 	@Test
 	public void testMergeAll() {
 
+		List<Pair<Long, Long>> pairList = new ArrayList<>();
+		pairList.add(new Pair<Long, Long>(100L, 200L));
+		pairList.add(new Pair<Long, Long>(300L, 400L));
+		pairList.add(new Pair<Long, Long>(500L, 600L));
+		pairList.add(new Pair<Long, Long>(700L, 800L));
+		createBufferwriteFiles(pairList);
+
+		long[] overflowInsert1 = { 2, 4, 6, 8 };
+		long[] overflowInsert2 = { 202, 204, 206, 208 };
+		// not close
+		createOverflowInserts(overflowInsert1);
+		// not close
+		createOverflowInserts(overflowInsert2);
+
+		fManager = FileNodeManager.getInstance();
+		try {
+			assertEquals(true, fManager.mergeAll());
+			// query: check file range
+			// check overflow file zero
+			QueryStructure queryResult = fManager.query(deltaObjectId, measurementId, null, null, null);
+			DynamicOneColumnData bufferwriteindex = queryResult.getBufferwriteDataInMemory();
+			assertEquals(null, bufferwriteindex);
+			List<RowGroupMetaData> bufferwriteindisk = queryResult.getBufferwriteDataInDisk();
+			assertEquals(null, bufferwriteindisk);
+			List<IntervalFileNode> bufferwriteFiles = queryResult.getBufferwriteDataInFiles();
+			assertEquals(pairList.size(), bufferwriteFiles.size());
+			IntervalFileNode temp = bufferwriteFiles.get(0);
+			// range 1: 2-200
+			assertEquals(2, temp.startTime);
+			assertEquals(200, temp.endTime);
+			// range 2: 202-400
+			assertEquals(202, temp.startTime);
+			assertEquals(400, temp.endTime);
+			// range 3: 500-600
+			assertEquals(500, temp.startTime);
+			assertEquals(600, temp.endTime);
+			// range 4: 700-800
+			assertEquals(700, temp.startTime);
+			assertEquals(800, temp.endTime);
+			List<Object> overflowData = queryResult.getAllOverflowData();
+			assertEquals(null, overflowData.get(0));
+			assertEquals(null, overflowData.get(1));
+			assertEquals(null, overflowData.get(2));
+			assertEquals(null, overflowData.get(3));
+		} catch (FileNodeManagerException e) {
+			e.printStackTrace();
+			fail(e.getMessage());
+		}
+	}
+
+	private void waitToSleep() {
+
+		try {
+			Thread.sleep(10);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+			fail(e.getMessage());
+		}
 	}
 
 	private void createBufferwriteFiles(List<Pair<Long, Long>> pairList) {
@@ -295,11 +352,6 @@ public class FileNodeManagerTest {
 				fail(e.getMessage());
 			}
 		}
-	}
-
-	private void createOverflowFile() {
-		
-
 	}
 
 	private void createOverflowInserts(long[] times) {

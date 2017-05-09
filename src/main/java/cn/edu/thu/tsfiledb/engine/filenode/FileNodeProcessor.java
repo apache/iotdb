@@ -968,17 +968,19 @@ public class FileNodeProcessor extends LRUProcessor {
 
 	private FileNodeProcessorStore readStoreToDisk() throws FileNodeProcessorException {
 
-		FileNodeProcessorStore fileNodeProcessorStore = null;
-		SerializeUtil<FileNodeProcessorStore> serializeUtil = new SerializeUtil<>();
-		try {
-			fileNodeProcessorStore = serializeUtil.deserialize(fileNodeRestoreFilePath)
-					.orElse(new FileNodeProcessorStore(-1,
-							new IntervalFileNode(0, OverflowChangeType.NO_CHANGE, null, null),
-							new ArrayList<IntervalFileNode>(), FileNodeProcessorState.NONE, 0));
-		} catch (IOException e) {
-			e.printStackTrace();
-			throw new FileNodeProcessorException(e);
+		synchronized (fileNodeRestoreFilePath) {
+			FileNodeProcessorStore fileNodeProcessorStore = null;
+			SerializeUtil<FileNodeProcessorStore> serializeUtil = new SerializeUtil<>();
+			try {
+				fileNodeProcessorStore = serializeUtil.deserialize(fileNodeRestoreFilePath)
+						.orElse(new FileNodeProcessorStore(-1,
+								new IntervalFileNode(0, OverflowChangeType.NO_CHANGE, null, null),
+								new ArrayList<IntervalFileNode>(), FileNodeProcessorState.NONE, 0));
+			} catch (IOException e) {
+				e.printStackTrace();
+				throw new FileNodeProcessorException(e);
+			}
+			return fileNodeProcessorStore;
 		}
-		return fileNodeProcessorStore;
 	}
 }
