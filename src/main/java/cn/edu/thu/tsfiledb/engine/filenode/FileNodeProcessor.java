@@ -759,7 +759,6 @@ public class FileNodeProcessor extends LRUProcessor {
 	private void queryAndWriteDataForMerge(List<Path> pathList, IntervalFileNode backupIntervalFile)
 			throws IOException, WriteProcessException {
 
-		
 		FilterExpression timeFilter = FilterUtilsForOverflow.construct(null, null, "0",
 				"(>=" + backupIntervalFile.startTime + ")&" + "(<=" + backupIntervalFile.endTime + ")");
 
@@ -928,7 +927,11 @@ public class FileNodeProcessor extends LRUProcessor {
 		// close bufferwrite
 		if (bufferWriteProcessor != null) {
 			try {
+				while (!bufferWriteProcessor.canBeClosed()) {
+
+				}
 				bufferWriteProcessor.close();
+				bufferWriteProcessor = null;
 			} catch (BufferWriteProcessorException e) {
 				e.printStackTrace();
 				throw new FileNodeProcessorException(e);
@@ -937,7 +940,11 @@ public class FileNodeProcessor extends LRUProcessor {
 		// close overflow
 		if (overflowProcessor != null) {
 			try {
+				while (!overflowProcessor.canBeClosed()) {
+
+				}
 				overflowProcessor.close();
+				overflowProcessor = null;
 			} catch (OverflowProcessorException e) {
 				e.printStackTrace();
 				throw new FileNodeProcessorException(e);

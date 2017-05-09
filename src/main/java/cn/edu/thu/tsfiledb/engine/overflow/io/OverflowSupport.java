@@ -94,7 +94,29 @@ public class OverflowSupport {
 			overflowMap.put(deltaObjectId, seriesImplMap);
 		}
 		// overflow data from rowgroup for metaForWriter
-		if (ofFileMetadata != null) {
+		if(ofFileMetadata!=null){
+			for(OFRowGroupListMetadata rowGroupListMeta:ofFileMetadata.getMetaDatas()){
+				String deltaObjectId = rowGroupListMeta.getDeltaObjectId();
+				if(!overflowMap.containsKey(deltaObjectId)){
+					overflowMap.put(deltaObjectId, new HashMap<>());
+				}
+				for(OFSeriesListMetadata seriesListMeta: rowGroupListMeta.getMetaDatas()){
+					String measurementId = seriesListMeta.getMeasurementId();
+					if(!overflowMap.get(deltaObjectId).containsKey(measurementId)){
+						TimeSeriesChunkMetaData first = seriesListMeta.getMetaDatas().get(0);
+						Compressor compressor = Compressor.getCompressor(first.getProperties().getCompression());
+						TSDataType type = first.getVInTimeSeriesChunkMetaData().getDataType();
+						OverflowSeriesImpl overflowSeriesImpl = new OverflowSeriesImpl(measurementId, type, fileWriter,
+								compressor, null);
+						overflowMap.get(deltaObjectId).put(measurementId, overflowSeriesImpl);
+					}
+					overflowMap.get(deltaObjectId).get(measurementId).setMetaForWriter(seriesListMeta.getMetaDatas());
+				}
+			}
+		}
+		
+/*		if (ofFileMetadata != null) {
+			
 			Map<String, Map<String, List<TimeSeriesChunkMetaData>>> overflowMetadataMap = new HashMap<String, Map<String, List<TimeSeriesChunkMetaData>>>();
 			for (OFRowGroupListMetadata rowGroupListMeta : ofFileMetadata.getMetaDatas()) {
 				String deltaObjectId = rowGroupListMeta.getDeltaObjectId();
@@ -140,7 +162,7 @@ public class OverflowSupport {
 				}
 				overflowMap.put(deltaObjectId, seriesImplMap);
 			}
-		}
+		}*/
 	}
 
 	/**

@@ -168,7 +168,7 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 			for (DataPoint dataPoint : tsRecord.dataPointList) {
 				try {
 					overflowProcessor.insert(deltaObjectId, dataPoint.getMeasurementId(), timestamp,
-							dataPoint.getType(), (String) dataPoint.getValue());
+							dataPoint.getType(), dataPoint.getValue().toString());
 				} catch (ProcessorException e) {
 					if (fileNodeProcessor != null) {
 						fileNodeProcessor.writeUnlock();
@@ -385,7 +385,7 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 				fileNodeProcessor.getOverflowProcessor(fileNodeProcessor.getNameSpacePath(), parameters);
 			}
 
-			queryStructure = fileNodeProcessor.query(measurementId, measurementId, valueFilter, valueFilter,
+			queryStructure = fileNodeProcessor.query(deltaObjectId, measurementId, valueFilter, valueFilter,
 					valueFilter);
 			// return query structure
 			return queryStructure;
@@ -449,8 +449,7 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 		if (mergeLock.tryLock()) {
 			try {
 				try {
-					super.close();
-					return true;
+					return super.close();
 				} catch (LRUManagerException e) {
 					e.printStackTrace();
 					throw new FileNodeManagerException(e);

@@ -789,7 +789,29 @@ public class FileNodeProcessorTest {
 			processor = new FileNodeProcessor(tsconfig.FileNodeDir, deltaObjectId, parameters);
 			processor.getOverflowProcessor(deltaObjectId, parameters);
 			// check overflow data
+			QueryStructure queryResult = processor.query(deltaObjectId, measurementId, null, null, null);
+			assertEquals(null, queryResult.getBufferwriteDataInMemory());
+			assertEquals(null, queryResult.getBufferwriteDataInDisk());
+			assertEquals(0, queryResult.getBufferwriteDataInFiles().size());
+			List<Object> overflowResult = queryResult.getAllOverflowData();
+			DynamicOneColumnData insertData = (DynamicOneColumnData) overflowResult.get(0);
+			assertEquals(3, insertData.length);
+			assertEquals(2, insertData.getTime(0));
+			assertEquals(222, insertData.getInt(0));
+			assertEquals(22, insertData.getTime(1));
+			assertEquals(222, insertData.getInt(1));
+			assertEquals(62, insertData.getTime(2));
+			assertEquals(333, insertData.getInt(2));
 			
+			DynamicOneColumnData updateData = (DynamicOneColumnData) overflowResult.get(1);
+			assertEquals(2, updateData.length);
+			assertEquals(4, updateData.timeLength);
+			assertEquals(50, updateData.getTime(0));
+			assertEquals(61, updateData.getTime(1));
+			assertEquals(63, updateData.getTime(2));
+			assertEquals(70, updateData.getTime(3));
+			assertEquals(333, updateData.getInt(0));
+			assertEquals(333, updateData.getInt(1));
 			// merge
 			processor.close();
 
