@@ -10,11 +10,11 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import cn.edu.thu.tsfile.common.exception.ProcessorException;
 import cn.edu.thu.tsfiledb.engine.bufferwrite.Action;
 import cn.edu.thu.tsfiledb.engine.exception.LRUManagerException;
 import cn.edu.thu.tsfiledb.engine.lru.LRUManager;
 import cn.edu.thu.tsfiledb.engine.lru.LRUProcessor;
-import cn.edu.thu.tsfiledb.exception.ProcessorException;
 import cn.edu.thu.tsfiledb.metadata.MManager;
 
 public class LRUManagerTest {

@@ -1,6 +1,6 @@
 package cn.edu.thu.tsfiledb.exception;
 
-import cn.edu.thu.tsfiledb.exception.ProcessorException;
+import cn.edu.thu.tsfile.common.exception.ProcessorException;
 
 public class BufferWriteProcessorException extends ProcessorException {
 
@@ -10,8 +10,8 @@ public class BufferWriteProcessorException extends ProcessorException {
 		super();
 	}
 
-	public BufferWriteProcessorException(PathErrorException pathExcp) {
-		super(pathExcp);
+	public BufferWriteProcessorException(Exception pathExcp) {
+		super(pathExcp.getMessage());
 	}
 
 	public BufferWriteProcessorException(String msg) {
@@ -19,7 +19,7 @@ public class BufferWriteProcessorException extends ProcessorException {
 	}
 
 	public BufferWriteProcessorException(Throwable throwable) {
-		super(throwable);
+		super(throwable.getMessage());
 	}
 	
 	

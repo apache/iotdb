@@ -5,7 +5,7 @@ import java.util.HashMap;
 import cn.edu.thu.tsfiledb.engine.exception.FileNodeManagerException;
 import cn.edu.thu.tsfiledb.engine.filenode.FileNodeManager;
 import cn.edu.thu.tsfiledb.exception.NotConsistentException;
-import cn.edu.thu.tsfiledb.exception.ProcessorException;
+import cn.edu.thu.tsfile.common.exception.ProcessorException;
 
 
 public class ReadLockManager {
@@ -27,7 +27,7 @@ public class ReadLockManager {
 				token = fileNodeManager.beginQuery(deltaObjectUID);
 			} catch (FileNodeManagerException e) {
 				e.printStackTrace();
-				throw new ProcessorException(e);
+				throw new ProcessorException(e.getMessage());
 			}
 			locksMap.get().put(key, token);
 		}else{
@@ -47,7 +47,7 @@ public class ReadLockManager {
 			fileNodeManager.endQuery(deltaObjectUID, token);
 		} catch (FileNodeManagerException e) {
 			e.printStackTrace();
-			throw new ProcessorException(e);
+			throw new ProcessorException(e.getMessage());
 		}
 	}
 	

@@ -3,7 +3,7 @@ package cn.edu.thu.tsfiledb.engine.lru;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import cn.edu.thu.tsfiledb.exception.ProcessorException;
+import cn.edu.thu.tsfile.common.exception.ProcessorException;
 
 import java.io.IOException;
 import java.util.concurrent.locks.ReadWriteLock;

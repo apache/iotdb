@@ -1,5 +1,6 @@
 package cn.edu.thu.tsfiledb.query.management;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -8,7 +9,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import cn.edu.thu.tsfile.common.utils.TSRandomAccessFileReader;
+import cn.edu.thu.tsfile.timeseries.filter.definition.SingleSeriesFilterExpression;
+import cn.edu.thu.tsfiledb.engine.exception.FileNodeManagerException;
 import cn.edu.thu.tsfiledb.engine.filenode.FileNodeManager;
+import cn.edu.thu.tsfiledb.engine.filenode.IntervalFileNode;
+import cn.edu.thu.tsfiledb.engine.filenode.QueryStructure;
+import cn.edu.thu.tsfile.common.exception.ProcessorException;
+import cn.edu.thu.tsfiledb.query.reader.RecordReader;
 
 
 /**
@@ -31,33 +38,61 @@ public class RecordReaderFactory {
 		fileStreamManager = FileStreamManager.getInstance();
 	}
 
-	public RecordReader getRecordReader(String deltaObjectUID, String measurementID) throws ProcessorException {
+	public RecordReader getRecordReader(String deltaObjectUID, String measurementID
+			, SingleSeriesFilterExpression timeFilter
+			, SingleSeriesFilterExpression freqFilter
+			, SingleSeriesFilterExpression valueFilter
+			) throws ProcessorException{
 		int token = readLockManager.lock(deltaObjectUID, measurementID);
-		QueryStruct fileStruct = fileNodeManager.query(deltaObjectUID, measurementID, token);
+		QueryStructure queryStructure;
+		try {
+			queryStructure = fileNodeManager.query(deltaObjectUID, measurementID, timeFilter, freqFilter, valueFilter);
+		} catch (FileNodeManagerException e) {
+			throw new ProcessorException(e.getMessage());
+		}
 
 		// TODO: This can be optimized in later version
-		RecordReader recordReader = createANewRecordReader(deltaObjectUID, measurementID, fileStruct, token);
+		RecordReader recordReader = createANewRecordReader(deltaObjectUID, measurementID, queryStructure, token);
 		return recordReader;
 	}
 
-	public RecordReader createANewRecordReader(String deltaObjectUID, String measurementID, QueryStruct fileStruct, int token) {
+	public RecordReader createANewRecordReader(String deltaObjectUID, String measurementID, QueryStructure queryStructure, int token) throws ProcessorException {
 		RecordReader recordReader;
-		List<FileInfoSnapshot> fileInfoSnapshotList = fileStruct.filePathList;
+		
+		List<IntervalFileNode> fileNodes = queryStructure.getBufferwriteDataInFiles();
+		boolean hasUnEnvelopedFile;
+		if(fileNodes.size() > 0 && !fileNodes.get(fileNodes.size() - 1).isClosed()){
+			hasUnEnvelopedFile = true;
+		}else{
+			hasUnEnvelopedFile = false;
+		}
+		
 		List<TSRandomAccessFileReader> rafList = new ArrayList<>();
-		for (FileInfoSnapshot fileInfoSnapshot : fileInfoSnapshotList) {
-			TSRandomAccessFileReader raf = fileStreamManager.getLocalRandomAcessFileReader(fileInfoSnapshot.filePath);
+		try{
+		for(int i = 0 ; i < fileNodes.size() - 1; i ++){
+			IntervalFileNode fileNode = fileNodes.get(i);
+			TSRandomAccessFileReader raf = fileStreamManager.getLocalRandomAcessFileReader(fileNode.filePath);
 			rafList.add(raf);
 		}
-
-		if (fileStruct.hasUnEnvelopeFile()) {
+		if(hasUnEnvelopedFile){
 			TSRandomAccessFileReader raf = fileStreamManager
-					.getLocalRandomAcessFileReader(fileStruct.unEnvelopeFileSnapshot.filePath);
-			recordReader = new RecordReader(rafList, raf, fileStruct.rowGroupMetaDataList, 
-					deltaObjectUID, measurementID, token, fileStruct.memoryData);
-		} else {
-			recordReader = new RecordReader(rafList, deltaObjectUID, measurementID, token, fileStruct.memoryData);
+					.getLocalRandomAcessFileReader(fileNodes.get(fileNodes.size() - 1).filePath);
+			recordReader = new RecordReader(rafList, raf, queryStructure.getBufferwriteDataInDisk(), 
+					deltaObjectUID, measurementID, token, 
+					queryStructure.getBufferwriteDataInMemory(), queryStructure.getAllOverflowData());
+		}else{
+			rafList.add(fileStreamManager
+					.getLocalRandomAcessFileReader(fileNodes.get(fileNodes.size() - 1).filePath));
+			recordReader = new RecordReader(rafList, deltaObjectUID, measurementID, token, 
+					queryStructure.getBufferwriteDataInMemory(), queryStructure.getAllOverflowData());
+		}
+		}catch(IOException e){
+			e.printStackTrace();
+			throw new ProcessorException(e.getMessage());
 		}
 		return recordReader;
+		
+	
 	}
 
 	public void closeOneRecordReader(RecordReader recordReader) throws ProcessorException {

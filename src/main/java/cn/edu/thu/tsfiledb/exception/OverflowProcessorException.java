@@ -1,6 +1,6 @@
 package cn.edu.thu.tsfiledb.exception;
 
-import cn.edu.thu.tsfiledb.exception.ProcessorException;
+import cn.edu.thu.tsfile.common.exception.ProcessorException;
 
 public class OverflowProcessorException extends ProcessorException {
 
@@ -11,7 +11,7 @@ public class OverflowProcessorException extends ProcessorException {
 	}
 
 	public OverflowProcessorException(PathErrorException pathExcp) {
-		super(pathExcp);
+		
 	}
 
 	public OverflowProcessorException(String msg) {
@@ -19,7 +19,7 @@ public class OverflowProcessorException extends ProcessorException {
 	}
 
 	public OverflowProcessorException(Throwable throwable) {
-		super(throwable);
+		super(throwable.getMessage());
 	}
 
 	

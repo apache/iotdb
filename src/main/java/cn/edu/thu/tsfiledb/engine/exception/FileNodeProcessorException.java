@@ -1,7 +1,7 @@
 package cn.edu.thu.tsfiledb.engine.exception;
 
+import cn.edu.thu.tsfile.common.exception.ProcessorException;
 import cn.edu.thu.tsfiledb.exception.PathErrorException;
-import cn.edu.thu.tsfiledb.exception.ProcessorException;
 
 public class FileNodeProcessorException extends ProcessorException {
 
@@ -12,7 +12,7 @@ public class FileNodeProcessorException extends ProcessorException {
 	}
 
 	public FileNodeProcessorException(PathErrorException pathExcp) {
-		super(pathExcp);
+		super(pathExcp.getMessage());
 	}
 
 	public FileNodeProcessorException(String msg) {
@@ -20,6 +20,6 @@ public class FileNodeProcessorException extends ProcessorException {
 	}
 
 	public FileNodeProcessorException(Throwable throwable) {
-		super(throwable);
+		super(throwable.getMessage());
 	}
 }

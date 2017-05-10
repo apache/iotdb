@@ -15,6 +15,7 @@ import org.slf4j.LoggerFactory;
 
 import cn.edu.thu.tsfile.common.conf.TSFileConfig;
 import cn.edu.thu.tsfile.common.conf.TSFileDescriptor;
+import cn.edu.thu.tsfile.common.exception.ProcessorException;
 import cn.edu.thu.tsfile.file.metadata.enums.TSDataType;
 import cn.edu.thu.tsfile.timeseries.filter.definition.SingleSeriesFilterExpression;
 import cn.edu.thu.tsfile.timeseries.write.record.DataPoint;
@@ -30,7 +31,6 @@ import cn.edu.thu.tsfiledb.engine.exception.OverflowProcessorException;
 import cn.edu.thu.tsfiledb.engine.lru.LRUManager;
 import cn.edu.thu.tsfiledb.engine.overflow.io.OverflowProcessor;
 import cn.edu.thu.tsfiledb.exception.ErrorDebugException;
-import cn.edu.thu.tsfiledb.exception.ProcessorException;
 import cn.edu.thu.tsfiledb.metadata.MManager;
 
 public class FileNodeManager extends LRUManager<FileNodeProcessor> {
