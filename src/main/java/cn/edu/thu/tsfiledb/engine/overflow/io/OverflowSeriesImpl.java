@@ -153,8 +153,6 @@ public class OverflowSeriesImpl {
 		return ret;
 	}
 
-	// bug for kr
-	// the list of writer: last is the newest
 	private DynamicOneColumnData queryToDynamicOneColumnData(SingleSeriesFilterExpression timeFilter,
 			SingleSeriesFilterExpression freqFilter, SingleSeriesFilterExpression valueFilter,
 			DynamicOneColumnData newerData) {
@@ -163,13 +161,32 @@ public class OverflowSeriesImpl {
 		if (isFlushing)
 			newerData = flushingOverflowIndex.queryMemory(timeFilter, valueFilter, freqFilter, newerData);
 		if (!metaForWriter.isEmpty())
-			newerData = readFileFromFileBlock(newerData, metaForWriter, timeFilter, freqFilter, valueFilter);
+			newerData = readFileFromFileBlockForWriter(newerData, metaForWriter, timeFilter, freqFilter, valueFilter);
 		if (metaForReader != null)
-			newerData = readFileFromFileBlock(newerData, metaForReader, timeFilter, freqFilter, valueFilter);
+			newerData = readFileFromFileBlockForReader(newerData, metaForReader, timeFilter, freqFilter, valueFilter);
 		return newerData;
 	}
 
-	private DynamicOneColumnData readFileFromFileBlock(DynamicOneColumnData newerData,
+	private DynamicOneColumnData readFileFromFileBlockForReader(DynamicOneColumnData newerData,
+			List<TimeSeriesChunkMetaData> TimeSeriesChunkMetaDataList, SingleSeriesFilterExpression timeFilter,
+			SingleSeriesFilterExpression freqFilter, SingleSeriesFilterExpression valueFilter) {
+		for (TimeSeriesChunkMetaData seriesMetaData : TimeSeriesChunkMetaDataList) {
+			int chunkSize = (int) seriesMetaData.getTotalByteSize();
+			long offset = seriesMetaData.getProperties().getFileOffset();
+			InputStream in = overflowFileIO.getSeriesChunkBytes(chunkSize, offset);
+			try {
+				newerData = workingOverflowIndex.queryFileBlock(timeFilter, valueFilter, freqFilter, in, newerData);
+			} catch (IOException e) {
+				LOG.error("Read overflow file block failed, reason {}", e.getMessage());
+				// should throw the reason of the exception and handled by high
+				// level function
+				return null;
+			}
+		}
+		return newerData;
+	}
+
+	private DynamicOneColumnData readFileFromFileBlockForWriter(DynamicOneColumnData newerData,
 			List<TimeSeriesChunkMetaData> TimeSeriesChunkMetaDataList, SingleSeriesFilterExpression timeFilter,
 			SingleSeriesFilterExpression freqFilter, SingleSeriesFilterExpression valueFilter) {
 		for (int i = TimeSeriesChunkMetaDataList.size() - 1; i >= 0; i--) {
@@ -265,15 +282,20 @@ public class OverflowSeriesImpl {
 		this.mergingSeriesImpl = mergingSeriesImpl;
 	}
 
+	public boolean hasMergingSeriesImpl() {
+		return mergingSeriesImpl != null;
+	}
+
 	// bug: should be deprecated
 	// add one input parameters: mergingSeriesImpl
 	public void switchWorkingToMerging() {
 
-		this.workingOverflowIndex = new IntervalTreeOperation(type);// error
-		this.metaForWriter = new ArrayList<TimeSeriesChunkMetaData>();// error
-		this.metaForReader = null;// error
-		statistics = new LongStatistics();// error
-		valueCount = 0;// error
+		// this.workingOverflowIndex = new IntervalTreeOperation(type);// error
+		// this.metaForWriter = new ArrayList<TimeSeriesChunkMetaData>();//
+		// error
+		// this.metaForReader = null;// error
+		// statistics = new LongStatistics();// error
+		// valueCount = 0;// error
 		isMerging = true;
 	}
 

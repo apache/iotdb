@@ -1,5 +1,6 @@
 package cn.edu.thu.tsfiledb.engine.filenode;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -46,10 +47,10 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 	private static final Lock instanceLock = new ReentrantLock(false);
 	private static FileNodeManager instance;
 
-	private Lock mergeLock = new ReentrantLock(false);
+	private FileNodeManagerStatus fileNodeManagerStatus = FileNodeManagerStatus.NONE;
 
-	// this should be set to overflow processor
-	// to ensure consistency
+	// private Lock mergeLock = new ReentrantLock(false);
+
 	private Action overflowBackUpAction = new Action() {
 		@Override
 		public void act() throws Exception {
@@ -69,7 +70,7 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 		}
 	};
 
-	public static FileNodeManager getInstance(){
+	public static FileNodeManager getInstance() {
 		instanceLock.lock();
 		try {
 			if (instance == null) {
@@ -82,7 +83,7 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 		}
 	}
 
-	public static void init(int maxNodeNum, MManager mManager, String fileNodeDirPath){
+	public static void init(int maxNodeNum, MManager mManager, String fileNodeDirPath) {
 		instanceLock.lock();
 		try {
 			instance = new FileNodeManager(maxNodeNum, mManager, fileNodeDirPath);
@@ -91,12 +92,13 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 		}
 	}
 
-	private FileNodeManager(int maxLRUNumber, MManager mManager, String normalDataDir){
+	private FileNodeManager(int maxLRUNumber, MManager mManager, String normalDataDir) {
 		super(maxLRUNumber, mManager, normalDataDir);
 		this.fileNodeManagerStoreFile = this.normalDataDir + restoreFileName;
 		this.overflowNameSpaceSet = readOverflowSetFromDisk();
 		if (overflowNameSpaceSet == null) {
-			LOGGER.error("Construct the FileNodeManager failed");
+			LOGGER.error("Read the overflow nameSpacePath set from filenode manager restore file error.");
+			overflowNameSpaceSet = new HashSet<>();
 		}
 	}
 
@@ -121,6 +123,7 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 	}
 
 	public void ManagerRecovery() {
+
 		// Get all nameSpacePath from MManager
 
 		// Check each nameSpacePath status
@@ -168,7 +171,7 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 			for (DataPoint dataPoint : tsRecord.dataPointList) {
 				try {
 					overflowProcessor.insert(deltaObjectId, dataPoint.getMeasurementId(), timestamp,
-							dataPoint.getType(), (String) dataPoint.getValue());
+							dataPoint.getType(), dataPoint.getValue().toString());
 				} catch (ProcessorException e) {
 					if (fileNodeProcessor != null) {
 						fileNodeProcessor.writeUnlock();
@@ -385,7 +388,7 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 				fileNodeProcessor.getOverflowProcessor(fileNodeProcessor.getNameSpacePath(), parameters);
 			}
 
-			queryStructure = fileNodeProcessor.query(measurementId, measurementId, valueFilter, valueFilter,
+			queryStructure = fileNodeProcessor.query(deltaObjectId, measurementId, valueFilter, valueFilter,
 					valueFilter);
 			// return query structure
 			return queryStructure;
@@ -419,19 +422,15 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 		}
 	}
 
-	/*
-	 * How to query multiple series
-	 */
-
-	public boolean mergeAll() throws FileNodeManagerException {
-		if (mergeLock.tryLock()) {
+	public synchronized boolean mergeAll() throws FileNodeManagerException {
+		if (fileNodeManagerStatus == FileNodeManagerStatus.NONE) {
+			fileNodeManagerStatus = FileNodeManagerStatus.MERGE;
 			// flush information first
 			Set<String> allChangedFileNodes = getOverflowNameSpaceListAndClear();
 			// set a flag to notify is merging status
 			ExecutorService singleMergingService = Executors.newSingleThreadExecutor();
 			MergeAllProcessors mergeAllProcessors = new MergeAllProcessors(allChangedFileNodes);
 			singleMergingService.execute(mergeAllProcessors);
-			mergeLock.unlock();
 			return true;
 		} else {
 			return false;
@@ -444,19 +443,16 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 	 * @return true - close successfully false - can't close because of merge
 	 * @throws FileNodeManagerException
 	 */
-	public boolean closeAll() throws FileNodeManagerException {
-
-		if (mergeLock.tryLock()) {
+	public synchronized boolean closeAll() throws FileNodeManagerException {
+		if (fileNodeManagerStatus == FileNodeManagerStatus.NONE) {
+			fileNodeManagerStatus = FileNodeManagerStatus.CLOSE;
 			try {
-				try {
-					super.close();
-					return true;
-				} catch (LRUManagerException e) {
-					e.printStackTrace();
-					throw new FileNodeManagerException(e);
-				}
+				return super.close();
+			} catch (LRUManagerException e) {
+				e.printStackTrace();
+				throw new FileNodeManagerException(e);
 			} finally {
-				mergeLock.unlock();
+				fileNodeManagerStatus = FileNodeManagerStatus.NONE;
 			}
 		} else {
 			return false;
@@ -474,10 +470,14 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 		try {
 			serializeUtil.serialize(backUpOverflowNameSpaceSet, fileNodeManagerStoreFile);
 		} catch (IOException e) {
-			LOGGER.error("Serialize the overflow nameSpaceSet error");
+			LOGGER.error(
+					"Serialize the overflow nameSpacePath Set error, and delete the overflow restore file, the file path is {}",
+					fileNodeManagerStoreFile);
+			File restoreFile = new File(fileNodeManagerStoreFile);
+			restoreFile.delete();
 			e.printStackTrace();
-			// add throw exception or exit???
-			throw new FileNodeManagerException("Serialize the overflow nameSpaceSet error");
+			throw new FileNodeManagerException(
+					"Serialize the overflow nameSpacePath Set error, and delete the overflow restore file");
 		}
 	}
 
@@ -493,7 +493,14 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 		try {
 			overflowSet = serializeUtil.deserialize(fileNodeManagerStoreFile).orElse(new HashSet<>());
 		} catch (IOException e) {
-			LOGGER.error("Deserizlize the overflow nameSpaceSet error");
+			LOGGER.error(
+					"Deserizlize the overflow nameSpaceSet error, and delete the filenode manager restore file, the restore file path is {}",
+					fileNodeManagerStoreFile);
+			// delete restore file
+			File restoreFile = new File(fileNodeManagerStoreFile);
+			if (restoreFile.exists()) {
+				restoreFile.delete();
+			}
 			e.printStackTrace();
 		}
 		return overflowSet;
@@ -509,25 +516,21 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 
 		@Override
 		public void run() {
-			mergeLock.lock();
-			try {
-				ExecutorService mergeExecutorPool = Executors.newFixedThreadPool(TsFileConf.mergeConcurrentThreadNum);
-				for (String fileNodeNamespacePath : allChangedFileNodes) {
-					MergeOneProcessor mergeOneProcessorThread = new MergeOneProcessor(fileNodeNamespacePath);
-					mergeExecutorPool.execute(mergeOneProcessorThread);
-				}
-				mergeExecutorPool.shutdown();
-				while (!mergeExecutorPool.isTerminated()) {
-					LOGGER.info("Not merge finished, wait 2000ms");
-					try {
-						Thread.sleep(2000);
-					} catch (InterruptedException e) {
-						throw new ErrorDebugException(e);
-					}
-				}
-			} finally {
-				mergeLock.unlock();
+			ExecutorService mergeExecutorPool = Executors.newFixedThreadPool(TsFileConf.mergeConcurrentThreadNum);
+			for (String fileNodeNamespacePath : allChangedFileNodes) {
+				MergeOneProcessor mergeOneProcessorThread = new MergeOneProcessor(fileNodeNamespacePath);
+				mergeExecutorPool.execute(mergeOneProcessorThread);
 			}
+			mergeExecutorPool.shutdown();
+			while (!mergeExecutorPool.isTerminated()) {
+				LOGGER.info("Not merge finished, wait 2000ms");
+				try {
+					Thread.sleep(2000);
+				} catch (InterruptedException e) {
+					LOGGER.error("Interruption error when merge, the reason is {}", e.getMessage());
+				}
+			}
+			fileNodeManagerStatus = FileNodeManagerStatus.NONE;
 		}
 	}
 
@@ -570,8 +573,14 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 				fileNodeProcessor.writeUnlock();
 			} catch (LRUManagerException | FileNodeProcessorException | BufferWriteProcessorException
 					| OverflowProcessorException e) {
+				LOGGER.error("Merge the filenode processor error, the nameSpacePath is {}", e.getMessage());
 				e.printStackTrace();
+				throw new ErrorDebugException(e);
 			}
 		}
+	}
+
+	private enum FileNodeManagerStatus {
+		NONE, MERGE, CLOSE;
 	}
 }

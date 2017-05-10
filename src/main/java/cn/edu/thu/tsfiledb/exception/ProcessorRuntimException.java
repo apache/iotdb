@@ -1,5 +1,10 @@
 package cn.edu.thu.tsfiledb.exception;
 
+
+/**
+ * @author liukun
+ *
+ */
 public class ProcessorRuntimException extends RuntimeException {
 
 	private static final long serialVersionUID = -5543549255867713835L;

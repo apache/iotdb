@@ -120,6 +120,7 @@ public class BufferWriteProcessorTest {
 		raf.write(buff);
 		raf.close();
 		// read the buffer write file from middle of the file and test the cut off function
+		assertEquals(true, restorefile.exists());
 		processor = new BufferWriteProcessor(nsp, filename, parameters);
 		Pair<DynamicOneColumnData, List<RowGroupMetaData>> pair = processor.getIndexAndRowGroupList(nsp, "s0");
 		assertEquals(0, pair.left.length);
@@ -142,5 +143,6 @@ public class BufferWriteProcessorTest {
 		assertEquals(lastRowGroupNum*2, pair.right.size());
 		processor.write(nsp, "s0", 100, TSDataType.INT32, 100 + "");
 		processor.close();
+		assertEquals(false, restorefile.exists());
 	}
 }

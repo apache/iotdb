@@ -50,11 +50,10 @@ public class SerializeUtil<T> {
 		result = (T) ois.readObject();
 		}catch (Exception e) {
 			LOGGER.error("Deserialize the object error. {}",e.getMessage());
-			return Optional.empty();
-		}finally {
-			if (ois!=null) {
+			if(ois!=null){
 				ois.close();
 			}
+			return Optional.empty();
 		}
 		return Optional.ofNullable(result);
 	}

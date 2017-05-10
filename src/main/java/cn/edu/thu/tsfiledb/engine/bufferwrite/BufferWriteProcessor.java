@@ -70,7 +70,7 @@ public class BufferWriteProcessor extends LRUProcessor {
 	// this just the bufferwrite file name
 	private String fileName;
 	private static final String restoreFile = ".restore";
-	// this is the absolute path
+	// this is the bufferwrite file absolute path
 	private String bufferwriteRestoreFilePath;
 	private String bufferwriteOutputFilePath;
 
@@ -111,16 +111,15 @@ public class BufferWriteProcessor extends LRUProcessor {
 					String.format("Get the FileSchema error, the nameSpacePath is %s, the reason is %s", nameSpacePath,
 							e.getMessage()));
 		}
-		/*
-		 * There is one damaged file, and the restoreFile exist
-		 */
+		//
+		// There is one damaged file, and the restoreFile exist
+		//
 		if (outputFile.exists() && restoreFile.exists()) {
-			// the last interval file exist
-			// the restore exist
-			// abnormal situation
+
 			bufferwriteRecovery();
 
 		} else {
+
 			TSRandomAccessFileWriter outputWriter;
 			try {
 				outputWriter = new RandomAccessOutputStream(outputFile);
@@ -277,7 +276,7 @@ public class BufferWriteProcessor extends LRUProcessor {
 	 * 
 	 * @throws BufferWriteProcessorException
 	 */
-	private void WriteStoreToDisk() throws BufferWriteProcessorException {
+	private void writeStoreToDisk() throws BufferWriteProcessorException {
 
 		long lastPosition;
 		try {
@@ -288,7 +287,7 @@ public class BufferWriteProcessor extends LRUProcessor {
 			throw new BufferWriteProcessorException(e);
 		}
 		List<RowGroupMetaData> rowGroupMetaDatas = bufferIOWriter.getRowGroups();
-		// construct the tsfilemetadate
+		// construct the tsfile metadate
 		List<TimeSeriesMetadata> timeSeriesList = fileSchema.getTimeSeriesMetadatas();
 
 		TSFileMetaData tsfileMetadata = new TSFileMetaData(rowGroupMetaDatas, timeSeriesList,
@@ -494,12 +493,10 @@ public class BufferWriteProcessor extends LRUProcessor {
 				: new DynamicOneColumnData(working.dataType, true);
 		if (flushState.isFlushing()) {
 			DynamicOneColumnData flushing = flushingBufferIndex.query(deltaObjectId, measurementId);
-			// fix bug
 			if (flushing != null) {
 				ret.mergeRecord(flushing);
 			}
 		}
-		// fix bug
 		if (working != null) {
 			ret.mergeRecord(working);
 		}
@@ -542,7 +539,7 @@ public class BufferWriteProcessor extends LRUProcessor {
 			// flush the changed information for filenode
 			filenodeFlushAction.act();
 			// delete the restore for this bufferwrite processor
-			 deleteRestoreFile();
+			deleteRestoreFile();
 		} catch (IOException e) {
 			LOGGER.error("Close the bufferwrite processor error, the nameSpacePath is {}", nameSpacePath);
 			throw new BufferWriteProcessorException(
@@ -619,16 +616,18 @@ public class BufferWriteProcessor extends LRUProcessor {
 				if (isFlushingSync) {
 					try {
 						super.flushRowGroup(false);
-						WriteStoreToDisk();
+						writeStoreToDisk();
 						filenodeFlushAction.act();
 					} catch (IOException e) {
 						LOGGER.error("Flush row group to store failed, processor:{}. Message: {}", nameSpacePath,
 								e.getMessage());
 						throw e;
 					} catch (BufferWriteProcessorException e) {
+						// write restore error
 						LOGGER.error("Write bufferwrite information to disk failed, the reason is {}", e.getMessage());
 						e.printStackTrace();
-						System.exit(0);
+						throw new IOException(
+								"Write bufferwrite information to disk failed, the reason is " + e.getMessage());
 					} catch (Exception e) {
 						// action error
 						LOGGER.error(
@@ -639,7 +638,6 @@ public class BufferWriteProcessor extends LRUProcessor {
 						throw new IOException(
 								"Flush bufferwrite row group failed, when call the action function, the reason is "
 										+ e.getMessage());
-
 					}
 				} else {
 					flushState.setFlushing();
@@ -651,7 +649,7 @@ public class BufferWriteProcessor extends LRUProcessor {
 						LOGGER.info("Asynchronous flushing start,-Thread id {}", Thread.currentThread().getId());
 						try {
 							asyncFlushRowGroupToStore();
-							WriteStoreToDisk();
+							writeStoreToDisk();
 							filenodeFlushAction.act();
 						} catch (IOException e) {
 							/*

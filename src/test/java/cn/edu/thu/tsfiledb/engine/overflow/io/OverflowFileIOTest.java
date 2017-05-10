@@ -138,12 +138,12 @@ public class OverflowFileIOTest {
 		assertEquals(lastFileOffset, mergeFile.length());
 		assertEquals(true, new File(filePath).exists());
 		assertEquals(0, new File(filePath).length());
-		assertEquals(true, overflowFileIO.gettempOverflowIOForMerge()!=null);
+		assertEquals(true, overflowFileIO.getOverflowIOForMerge()!=null);
 		// test swithc merge to work
 		overflowFileIO.switchFileIOMergeToWorking();
 		// check merge file
 		assertEquals(false, mergeFile.exists());
-		assertEquals(null, overflowFileIO.gettempOverflowIOForMerge());
+		assertEquals(null, overflowFileIO.getOverflowIOForMerge());
 	}
 
 }

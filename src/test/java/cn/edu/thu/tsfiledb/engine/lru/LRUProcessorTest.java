@@ -20,7 +20,6 @@ public class LRUProcessorTest {
 
 		@Override
 		public boolean canBeClosed() {
-			// TODO Auto-generated method stub
 			return false;
 		}
 

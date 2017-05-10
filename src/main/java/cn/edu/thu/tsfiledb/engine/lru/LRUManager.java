@@ -178,7 +178,8 @@ public abstract class LRUManager<T extends LRUProcessor> {
 				}
 				// construct a new processor
 				processor = constructNewProcessor(namespacePath);
-				// must use lock and not try lock, because of this processor is a new processor
+				// must use lock and not try lock, because of this processor is
+				// a new processor
 				processor.lock(isWriteLock);
 				processorLRUList.addFirst(processor);
 				processorMap.put(namespacePath, processor);
@@ -259,10 +260,15 @@ public abstract class LRUManager<T extends LRUProcessor> {
 						// remove from map and list
 						processorMap.remove(nsPath);
 						processorLRUList.remove(processor);
+					} else {
+						LOGGER.warn("The processor can't be closed, the nameSpace Path is {}", nsPath);
 					}
 				} finally {
 					processor.writeUnlock();
 				}
+			} else {
+				LOGGER.warn("Can't get the write lock the processor and close the processor, the nameSpacePath is {}",
+						nsPath);
 			}
 		} else {
 			LOGGER.warn("The processorMap does't contains the nameSpacePath {}", nsPath);
@@ -296,14 +302,14 @@ public abstract class LRUManager<T extends LRUProcessor> {
 	 * @param namespacePath
 	 * @param parameters
 	 * @return
-	 * @throws LRUManagerException 
+	 * @throws LRUManagerException
 	 */
 	protected abstract T constructNewProcessor(String namespacePath) throws LRUManagerException;
 
-	
 	/**
 	 * <p>
 	 * initialize the processor with the key-value object<br>
+	 * 
 	 * @param processor
 	 * @param namespacePath
 	 * @param parameters

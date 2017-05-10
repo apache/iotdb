@@ -15,6 +15,8 @@ import cn.edu.thu.tsfiledb.engine.bufferwrite.Action;
 import cn.edu.thu.tsfiledb.engine.exception.LRUManagerException;
 import cn.edu.thu.tsfiledb.engine.lru.LRUManager;
 import cn.edu.thu.tsfiledb.engine.lru.LRUProcessor;
+
+import cn.edu.thu.tsfiledb.engine.overflow.io.EngineTestHelper;
 import cn.edu.thu.tsfiledb.metadata.MManager;
 
 public class LRUManagerTest {
@@ -57,23 +59,24 @@ public class LRUManagerTest {
 
 	}
 
-	TestLRUManager manager = null;
+	private TestLRUManager manager = null;
+	private String dirPath = "managerdir";
 
 	@Before
 	public void setUp() throws Exception {
-
+		EngineTestHelper.delete(dirPath);
 		MetadataManagerHelper.initMetadata();
 	}
 
 	@After
 	public void tearDown() throws Exception {
-
+		EngineTestHelper.delete(dirPath);
 		MetadataManagerHelper.clearMetadata();
 	}
 
 	@Test
 	public void test() throws LRUManagerException, InterruptedException {
-		String dirPath = "managerdir";
+		
 		manager = new TestLRUManager(1, MManager.getInstance(), dirPath);
 		File dirFile = new File(dirPath);
 		assertEquals(true, dirFile.exists());
