@@ -18,12 +18,19 @@ import cn.edu.thu.tsfile.timeseries.read.qp.Path;
 import cn.edu.thu.tsfile.timeseries.read.query.QueryDataSet;
 import cn.edu.thu.tsfiledb.auth.dao.Authorizer;
 import cn.edu.thu.tsfiledb.auth.model.AuthException;
+import cn.edu.thu.tsfiledb.engine.exception.FileNodeManagerException;
 import cn.edu.thu.tsfiledb.engine.filenode.FileNodeManager;
 import cn.edu.thu.tsfiledb.exception.NotConsistentException;
 import cn.edu.thu.tsfiledb.exception.PathErrorException;
 import cn.edu.thu.tsfiledb.metadata.ColumnSchema;
 import cn.edu.thu.tsfiledb.metadata.MManager;
 import cn.edu.thu.tsfiledb.metadata.Metadata;
+import cn.edu.thu.tsfiledb.qp.exception.IllegalASTFormatException;
+import cn.edu.thu.tsfiledb.qp.exception.QueryProcessorException;
+import cn.edu.thu.tsfiledb.qp.exec.impl.OverflowQPExecutor;
+import cn.edu.thu.tsfiledb.qp.logical.operator.Operator.OperatorType;
+import cn.edu.thu.tsfiledb.qp.logical.operator.RootOperator;
+import cn.edu.thu.tsfiledb.qp.physical.plan.PhysicalPlan;
 import cn.edu.thu.tsfiledb.query.aggregation.AggreFuncFactory;
 import cn.edu.thu.tsfiledb.query.aggregation.AggregateFunction;
 import cn.edu.thu.tsfiledb.query.engine.OverflowQueryEngine;
@@ -52,6 +59,7 @@ import cn.edu.thu.tsfiledb.service.rpc.thrift.TSQueryDataSet;
 import cn.edu.thu.tsfiledb.service.rpc.thrift.TS_SessionHandle;
 import cn.edu.thu.tsfiledb.service.rpc.thrift.TS_Status;
 import cn.edu.thu.tsfiledb.service.rpc.thrift.TS_StatusCode;
+import cn.edu.thu.tsfiledb.sys.writeLog.WriteLogManager;
 import cn.edu.thu.tsfiledb.service.rpc.thrift.TSIService;;
 
 public class TSServiceImpl implements TSIService.Iface {
@@ -227,13 +235,23 @@ public class TSServiceImpl implements TSIService.Iface {
 		statement = statement.toLowerCase();
 		switch (statement) {
 		case "close":
-			FileNodeManager.getInstance().closeAll();
+			try {
+				FileNodeManager.getInstance().closeAll();
+			} catch (FileNodeManagerException e) {
+				e.printStackTrace();
+				throw new IOException(e);
+			}
 			writeLogManager.overflowFlush();
 			writeLogManager.bufferFlush();
 			// MManager.getInstance().flushObjectToFile();
 			return true;
 		case "merge":
-			FileNodeManager.getInstance().mergeAll();
+			try {
+				FileNodeManager.getInstance().mergeAll();
+			} catch (FileNodeManagerException e) {
+				e.printStackTrace();
+				throw new IOException(e);
+			}
 			return true;
 		}
 		return false;
