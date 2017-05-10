@@ -1,6 +1,8 @@
 package cn.edu.thu.tsfiledb.engine.exception;
 
-public class LRUManagerException extends Exception {
+import cn.edu.thu.tsfile.common.exception.ProcessorException;
+
+public class LRUManagerException extends ProcessorException {
 
 	private static final long serialVersionUID = 3426203851432238314L;
 

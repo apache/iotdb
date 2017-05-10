@@ -51,6 +51,7 @@ import cn.edu.thu.tsfiledb.engine.overflow.io.OverflowProcessor;
 import cn.edu.thu.tsfiledb.exception.PathErrorException;
 import cn.edu.thu.tsfiledb.metadata.ColumnSchema;
 import cn.edu.thu.tsfiledb.metadata.MManager;
+import cn.edu.thu.tsfiledb.query.engine.OverflowQueryEngine;
 
 public class FileNodeProcessor extends LRUProcessor {
 
@@ -791,7 +792,12 @@ public class FileNodeProcessor extends LRUProcessor {
 		long endTime = -1;
 
 		OverflowQueryEngine queryEngine = new OverflowQueryEngine();
-		data = queryEngine.query(pathList, timeFilter, null, null, null, TsFileConf.defaultFetchSize);
+		try {
+			data = queryEngine.query(pathList, timeFilter, null, null, null, TsFileConf.defaultFetchSize);
+		} catch (ProcessorException e1) {
+			e1.printStackTrace();
+			throw new IOException("Exception when merge");
+		}
 		if (!data.hasNextRecord()) {
 			// No record in this query
 			LOGGER.info("Merge query: namespace {}, time filter {}, no query data", nameSpacePath, timeFilter);
