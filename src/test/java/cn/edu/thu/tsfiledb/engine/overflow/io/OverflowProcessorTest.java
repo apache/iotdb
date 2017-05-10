@@ -199,8 +199,8 @@ public class OverflowProcessorTest {
 	public void testDelete() {
 		try {
 			ofprocessor = new OverflowProcessor(nameSpacePath, parameters);
-			// insert data 
-			for(int i = 1;i<11;i++){
+			// insert data
+			for (int i = 1; i < 11; i++) {
 				ofprocessor.insert(deltaObjectId, measurementIds[0], i, dataTypes[0], String.valueOf(i));
 			}
 			// delete data
@@ -209,9 +209,9 @@ public class OverflowProcessorTest {
 			List<Object> result = ofprocessor.query(deltaObjectId, measurementIds[0], null, null, null);
 			DynamicOneColumnData insertDate = (DynamicOneColumnData) result.get(0);
 			assertEquals(6, insertDate.length);
-			for(int i = 5;i<11;i++){
-				assertEquals(i, insertDate.getTime(i-5));
-				assertEquals(i, insertDate.getInt(i-5));
+			for (int i = 5; i < 11; i++) {
+				assertEquals(i, insertDate.getTime(i - 5));
+				assertEquals(i, insertDate.getInt(i - 5));
 			}
 			ofprocessor.insert(deltaObjectId, measurementIds[0], 1, dataTypes[0], String.valueOf(1));
 			result = ofprocessor.query(deltaObjectId, measurementIds[0], null, null, null);
@@ -306,5 +306,34 @@ public class OverflowProcessorTest {
 			e.printStackTrace();
 			fail(e.getMessage());
 		}
+	}
+
+	@Test
+	public void testRestoreFrommerge() {
+		// write some rowgroup and close file
+
+		// change the file name to merge and delete the restore file
+
+		// write data in new file and close it or damage it
+
+		// and restore file and to merge
+
+		// check query
+
+		fail("restore from merege");
+	}
+
+	@Test
+	public void testMergeQuery() {
+
+		// write oveflow data and close
+		
+		// work to merge
+		
+		// optional: write data in new file
+		
+		// query data and check data
+
+		fail("merge and query");
 	}
 }

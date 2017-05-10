@@ -64,11 +64,6 @@ public class FileNodeManagerTest {
 	}
 
 	@Test
-	public void testBufferwrite() {
-
-	}
-
-	@Test
 	public void testOverflow() {
 
 	}

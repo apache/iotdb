@@ -58,7 +58,19 @@ public class OverflowSupportTest {
 	}
 
 	@Test
-
+	public void testFlushQuery(){
+		
+		fail("test flush query");
+	}
+	
+	
+	@Test
+	public void testMergeQuery(){
+		
+		fail("test merge query");
+	}
+	
+	@Test
 	public void testNoDataClose() {
 		try {
 			ofrw = new OverflowReadWriter(filePath);
