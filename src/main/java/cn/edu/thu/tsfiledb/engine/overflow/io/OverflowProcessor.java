@@ -393,7 +393,7 @@ public class OverflowProcessor extends LRUProcessor {
 			}
 			if (synchronize) {
 				// flush overflow row group synchronously
-				// just close overlfow processor will call this function by
+				// just close overflow processor will call this function by
 				// using true parameter
 				flushState.setFlushing();
 				try {

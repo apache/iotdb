@@ -282,15 +282,20 @@ public class OverflowSeriesImpl {
 		this.mergingSeriesImpl = mergingSeriesImpl;
 	}
 
+	public boolean hasMergingSeriesImpl() {
+		return mergingSeriesImpl != null;
+	}
+
 	// bug: should be deprecated
 	// add one input parameters: mergingSeriesImpl
 	public void switchWorkingToMerging() {
 
-		this.workingOverflowIndex = new IntervalTreeOperation(type);// error
-		this.metaForWriter = new ArrayList<TimeSeriesChunkMetaData>();// error
-		this.metaForReader = null;// error
-		statistics = new LongStatistics();// error
-		valueCount = 0;// error
+		// this.workingOverflowIndex = new IntervalTreeOperation(type);// error
+		// this.metaForWriter = new ArrayList<TimeSeriesChunkMetaData>();//
+		// error
+		// this.metaForReader = null;// error
+		// statistics = new LongStatistics();// error
+		// valueCount = 0;// error
 		isMerging = true;
 	}
 

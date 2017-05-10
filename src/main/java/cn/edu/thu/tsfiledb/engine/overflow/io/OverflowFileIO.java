@@ -262,7 +262,7 @@ public class OverflowFileIO {
 
 	private OverflowFileIO tempOverflowIOForMerge = null;
 
-	public OverflowFileIO gettempOverflowIOForMerge() {
+	public OverflowFileIO getOverflowIOForMerge() {
 		return tempOverflowIOForMerge;
 	}
 
