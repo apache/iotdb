@@ -151,7 +151,7 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 		long lastUpdataTime = fileNodeProcessor.getLastUpdateTime();
 		LOGGER.info("Get the FileNodeProcessor: {}, the last update time is: {}, the record time is: {}",
 				fileNodeProcessor.getNameSpacePath(), lastUpdataTime, timestamp);
-		LOGGER.info("Insert record is {}", tsRecord);
+		LOGGER.debug("Insert record is {}", tsRecord);
 		int insertType = 0;
 		String nameSpacePath = fileNodeProcessor.getNameSpacePath();
 		if (timestamp <= lastUpdataTime) {
@@ -182,7 +182,7 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 			fileNodeProcessor.changeTypeToChanged(timestamp);
 			addNameSpaceToOverflowList(fileNodeProcessor.getNameSpacePath());
 			// overflowProcessor.writeUnlock();
-			LOGGER.info("Unlock the OverflowProcessor: {}", fileNodeProcessor.getNameSpacePath());
+			LOGGER.debug("Unlock the OverflowProcessor: {}", fileNodeProcessor.getNameSpacePath());
 			insertType = 1;
 		} else {
 			BufferWriteProcessor bufferWriteProcessor;
@@ -211,11 +211,11 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 			}
 			fileNodeProcessor.setLastUpdateTime(timestamp);
 			// bufferWriteProcessor.writeUnlock();
-			LOGGER.info("Unlock the BufferWriteProcessor: {}", fileNodeProcessor.getNameSpacePath());
+			LOGGER.debug("Unlock the BufferWriteProcessor: {}", fileNodeProcessor.getNameSpacePath());
 			insertType = 2;
 		}
 		fileNodeProcessor.writeUnlock();
-		LOGGER.info("Unlock the FileNodeProcessor: {}", fileNodeProcessor.getNameSpacePath());
+		LOGGER.debug("Unlock the FileNodeProcessor: {}", fileNodeProcessor.getNameSpacePath());
 		return insertType;
 	}
 
@@ -257,8 +257,10 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 			e.printStackTrace();
 			throw new FileNodeManagerException(e);
 		}
-		LOGGER.info("Lock the FileNodeProcessor: {}", fileNodeProcessor.getNameSpacePath());
+
 		long lastUpdateTime = fileNodeProcessor.getLastUpdateTime();
+		LOGGER.info("Get the FileNodeProcessor: {}, the last update time is: {}, the update time is from {} to {}",
+				fileNodeProcessor.getNameSpacePath(), lastUpdateTime, startTime, endTime);
 		if (startTime > lastUpdateTime) {
 			LOGGER.warn("The update range is error, startTime {} is gt lastUpdateTime {}", startTime, lastUpdateTime);
 			fileNodeProcessor.writeUnlock();
@@ -294,7 +296,7 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 		addNameSpaceToOverflowList(fileNodeProcessor.getNameSpacePath());
 		// overflowProcessor.writeUnlock();
 		fileNodeProcessor.writeUnlock();
-		LOGGER.info("Unlock the FileNodeProcessor: {}", fileNodeProcessor.getNameSpacePath());
+		LOGGER.debug("Unlock the FileNodeProcessor: {}", fileNodeProcessor.getNameSpacePath());
 	}
 
 	public void delete(String deltaObjectId, String measurementId, long timestamp, TSDataType type)
@@ -312,11 +314,13 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 			throw new FileNodeManagerException(e);
 		}
 		long lastUpdateTime = fileNodeProcessor.getLastUpdateTime();
+		LOGGER.info("Get the FileNodeProcessor: {}, the last update time is: {}, the delete time is from 0 to {}",
+				fileNodeProcessor.getNameSpacePath(), lastUpdateTime, timestamp);
 		// no bufferwrite data, the delete operation is invalid
 		if (lastUpdateTime == -1) {
-			LOGGER.info("Last update time is -1, delete overflow is invalid");
+			LOGGER.warn("The last update time is -1, delete overflow is invalid");
 			fileNodeProcessor.writeUnlock();
-			LOGGER.info("Unlock the FileNodeProcessor: {}", fileNodeProcessor.getNameSpacePath());
+			LOGGER.debug("Unlock the FileNodeProcessor: {}", fileNodeProcessor.getNameSpacePath());
 		} else {
 			if (timestamp > lastUpdateTime) {
 				timestamp = lastUpdateTime;
@@ -349,7 +353,7 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 			fileNodeProcessor.changeTypeToChangedForDelete(timestamp);
 			addNameSpaceToOverflowList(fileNodeProcessor.getNameSpacePath());
 			fileNodeProcessor.writeUnlock();
-			LOGGER.info("Unlock the FileNodeProcessor: {}", fileNodeProcessor.getNameSpacePath());
+			LOGGER.debug("Unlock the FileNodeProcessor: {}", fileNodeProcessor.getNameSpacePath());
 		}
 	}
 
@@ -359,6 +363,7 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 			do {
 				fileNodeProcessor = getProcessorWithDeltaObjectIdByLRU(deltaObjectId, true);
 			} while (fileNodeProcessor == null);
+			LOGGER.info("Get the FileNodeProcessor: {}, begin query.", fileNodeProcessor.getNameSpacePath());
 			int token = fileNodeProcessor.addMultiPassLock();
 			return token;
 		} catch (LRUManagerException e) {
@@ -379,6 +384,8 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 			do {
 				fileNodeProcessor = getProcessorWithDeltaObjectIdByLRU(deltaObjectId, false);
 			} while (fileNodeProcessor == null);
+			LOGGER.info("Get the FileNodeProcessor: {}, query.", fileNodeProcessor.getNameSpacePath());
+
 			QueryStructure queryStructure = null;
 			// query operation must have overflow processor
 			if (!fileNodeProcessor.hasOverflowProcessor()) {
@@ -387,7 +394,6 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 				parameters.put(FileNodeConstants.OVERFLOW_FLUSH_MANAGER_ACTION, overflowFlushAction);
 				fileNodeProcessor.getOverflowProcessor(fileNodeProcessor.getNameSpacePath(), parameters);
 			}
-
 			queryStructure = fileNodeProcessor.query(deltaObjectId, measurementId, valueFilter, valueFilter,
 					valueFilter);
 			// return query structure
@@ -411,6 +417,7 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 			do {
 				fileNodeProcessor = getProcessorWithDeltaObjectIdByLRU(deltaObjectId, true);
 			} while (fileNodeProcessor == null);
+			LOGGER.info("Get the FileNodeProcessor: {}, end query.", fileNodeProcessor.getNameSpacePath());
 			fileNodeProcessor.removeMultiPassLock(token);
 		} catch (LRUManagerException e) {
 			e.printStackTrace();
@@ -549,6 +556,8 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 				do {
 					fileNodeProcessor = getProcessorByLRU(fileNodeNamespacePath, true);
 				} while (fileNodeProcessor == null);
+				LOGGER.info("Get the FileNodeProcessor: {}, merge.", fileNodeProcessor.getNameSpacePath());
+
 				// if bufferwrite and overflow exist
 				// close buffer write
 				if (fileNodeProcessor.hasBufferwriteProcessor()) {
@@ -558,6 +567,7 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 					fileNodeProcessor.getBufferWriteProcessor().close();
 					fileNodeProcessor.setBufferwriteProcessroToClosed();
 				}
+				
 				// get overflow processor
 				Map<String, Object> parameters = new HashMap<>();
 				parameters.put(FileNodeConstants.OVERFLOW_BACKUP_MANAGER_ACTION, overflowBackUpAction);
