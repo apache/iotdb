@@ -130,7 +130,44 @@ public class LRUManagerTest {
 
 	@Test
 	public void testCloseMultiProcessor() {
-		fail("test multi processor");
+
+		manager = new TestLRUManager(10, MManager.getInstance(), dirPath);
+		File dirFile = new File(dirPath);
+		assertEquals(true, dirFile.exists());
+		assertEquals(true, dirFile.isDirectory());
+		assertEquals(dirPath + File.separatorChar, manager.getNormalDataDir());
+
+		Action action = new Action() {
+
+			@Override
+			public void act() throws Exception {
+
+			}
+		};
+
+		Map<String, Object> parameters = new HashMap<>();
+		parameters.put(TEST, action);
+
+		parameters.put(TEST, action);
+		String deltaObjectId = "root.vehicle.d";
+		for (int i = 0; i < 3; i++) {
+			String tempdeltaObjectId = deltaObjectId + i;
+			try {
+				TestLRUProcessor processor = manager.getProcessorWithDeltaObjectIdByLRU(tempdeltaObjectId, true,
+						parameters);
+				processor.writeUnlock();
+			} catch (LRUManagerException e) {
+				e.printStackTrace();
+				fail(e.getMessage());
+			}
+		}
+		
+		try {
+			manager.close();
+		} catch (LRUManagerException e) {
+			e.printStackTrace();
+			fail(e.getMessage());
+		}
 	}
 
 	class GetWriterProcessor implements Runnable {
