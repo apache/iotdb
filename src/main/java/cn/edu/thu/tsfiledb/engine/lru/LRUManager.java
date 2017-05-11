@@ -3,8 +3,10 @@ package cn.edu.thu.tsfiledb.engine.lru;
 import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Map;
+import java.util.Map.Entry;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -244,7 +246,7 @@ public abstract class LRUManager<T extends LRUProcessor> {
 	 * @param nsPath
 	 * @throws LRUManagerException
 	 */
-	private void close(String nsPath) throws LRUManagerException {
+	private void close(String nsPath, Iterator<Entry<String, T>> processorIterator) throws LRUManagerException {
 		if (processorMap.containsKey(nsPath)) {
 			LRUProcessor processor = processorMap.get(nsPath);
 			if (processor.tryWriteLock()) {
@@ -258,7 +260,7 @@ public abstract class LRUManager<T extends LRUProcessor> {
 							throw new LRUManagerException(e);
 						}
 						// remove from map and list
-						processorMap.remove(nsPath);
+						processorIterator.remove();
 						processorLRUList.remove(processor);
 					} else {
 						LOGGER.warn("The processor can't be closed, the nameSpace Path is {}", nsPath);
@@ -283,11 +285,14 @@ public abstract class LRUManager<T extends LRUProcessor> {
 	 */
 	public boolean close() throws LRUManagerException {
 		synchronized (processorMap) {
-			for (String nsPath : processorMap.keySet()) {
+			Iterator<Entry<String, T>> processorIterator = processorMap.entrySet().iterator();
+			while (processorIterator.hasNext()) {
+				Entry<String, T> processorEntry = processorIterator.next();
 				try {
-					close(nsPath);
+					close(processorEntry.getKey(), processorIterator);
 				} catch (LRUManagerException e) {
-					LOGGER.error("Close processor error when close all processors, the nameSpacePath is {}", nsPath);
+					LOGGER.error("Close processor error when close all processors, the nameSpacePath is {}",
+							processorEntry.getKey());
 					throw e;
 				}
 			}

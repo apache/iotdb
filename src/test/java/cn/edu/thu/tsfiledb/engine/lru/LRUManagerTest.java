@@ -76,7 +76,7 @@ public class LRUManagerTest {
 
 	@Test
 	public void test() throws LRUManagerException, InterruptedException {
-		
+
 		manager = new TestLRUManager(1, MManager.getInstance(), dirPath);
 		File dirFile = new File(dirPath);
 		assertEquals(true, dirFile.exists());
@@ -126,6 +126,11 @@ public class LRUManagerTest {
 		assertEquals(false, processor == null);
 		processor.readUnlock();
 
+	}
+
+	@Test
+	public void testCloseMultiProcessor() {
+		fail("test multi processor");
 	}
 
 	class GetWriterProcessor implements Runnable {
