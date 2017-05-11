@@ -5,12 +5,13 @@ package cn.edu.thu.tsfiledb.auth.model;
  *
  */
 public class User {
-	
+
 	private int id;
 	private String userName;
 	private String passWord;
-	private boolean locked;//true - t  false - f
+	private boolean locked;// true - t false - f
 	private String validTime;
+
 	/**
 	 * @param id
 	 * @param userName
@@ -25,11 +26,11 @@ public class User {
 		this.locked = isLock;
 		this.validTime = validTime;
 	}
-	
-	public User(){
-		
+
+	public User() {
+
 	}
-	
+
 	public User(String userName, String passWord) {
 		this.userName = userName;
 		this.passWord = passWord;
@@ -43,7 +44,8 @@ public class User {
 	}
 
 	/**
-	 * @param id the id to set
+	 * @param id
+	 *            the id to set
 	 */
 	public void setId(int id) {
 		this.id = id;
@@ -57,7 +59,8 @@ public class User {
 	}
 
 	/**
-	 * @param userName the userName to set
+	 * @param userName
+	 *            the userName to set
 	 */
 	public void setUserName(String userName) {
 		this.userName = userName;
@@ -71,7 +74,8 @@ public class User {
 	}
 
 	/**
-	 * @param passWord the passWord to set
+	 * @param passWord
+	 *            the passWord to set
 	 */
 	public void setPassWord(String passWord) {
 		this.passWord = passWord;
@@ -85,7 +89,8 @@ public class User {
 	}
 
 	/**
-	 * @param isLock the isLock to set
+	 * @param isLock
+	 *            the isLock to set
 	 */
 	public void setLock(boolean isLock) {
 		this.locked = isLock;
@@ -99,11 +104,11 @@ public class User {
 	}
 
 	/**
-	 * @param validTime the validTime to set
+	 * @param validTime
+	 *            the validTime to set
 	 */
 	public void setValidTime(String validTime) {
 		this.validTime = validTime;
 	}
-	
 
 }

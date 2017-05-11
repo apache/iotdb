@@ -9,7 +9,8 @@ public class UserPermission {
 	private int id;
 	private int userId;
 	private String nodeName;
-	private int permissionId;// 权限的值必须是permission中的，在数据库中使用check方法来指定
+	// the permissionId should be from Permission class
+	private int permissionId;
 
 	/**
 	 * @param id
@@ -33,7 +34,6 @@ public class UserPermission {
 		this.nodeName = nodeName;
 		this.permissionId = permissionId;
 	}
-
 
 	/**
 	 * @return the id

@@ -37,7 +37,7 @@ public class AuthTest {
 		dbDao = new DBdao();
 		authDao = new AuthDao();
 		dbDao.open();
-		statement = dbDao.getStatement();
+		statement = DBdao.getStatement();
 
 		// init data
 		user1 = new User("user1", "user1");

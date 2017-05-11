@@ -9,7 +9,6 @@ import java.util.List;
 import cn.edu.thu.tsfiledb.auth.model.DBContext;
 import cn.edu.thu.tsfiledb.auth.model.Role;
 
-
 /**
  * @author liukun
  *

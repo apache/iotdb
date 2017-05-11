@@ -38,7 +38,7 @@ public class RolePermissionTest {
 		permissionId = Permission.CREATE;
 
 		dbDao.open();
-		statement = dbDao.getStatement();
+		statement = DBdao.getStatement();
 
 		// if role not exist, create role
 		if (roleDao.getRole(statement, role.getRoleName()) == null) {
