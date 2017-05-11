@@ -149,7 +149,7 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 			throw new FileNodeManagerException(e);
 		}
 		long lastUpdataTime = fileNodeProcessor.getLastUpdateTime();
-		LOGGER.info("Get the FileNodeProcessor: {}, the last update time is: {}, the record time is: {}",
+		LOGGER.debug("Get the FileNodeProcessor: {}, the last update time is: {}, the record time is: {}",
 				fileNodeProcessor.getNameSpacePath(), lastUpdataTime, timestamp);
 		LOGGER.debug("Insert record is {}", tsRecord);
 		int insertType = 0;
@@ -259,7 +259,7 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 		}
 
 		long lastUpdateTime = fileNodeProcessor.getLastUpdateTime();
-		LOGGER.info("Get the FileNodeProcessor: {}, the last update time is: {}, the update time is from {} to {}",
+		LOGGER.debug("Get the FileNodeProcessor: {}, the last update time is: {}, the update time is from {} to {}",
 				fileNodeProcessor.getNameSpacePath(), lastUpdateTime, startTime, endTime);
 		if (startTime > lastUpdateTime) {
 			LOGGER.warn("The update range is error, startTime {} is gt lastUpdateTime {}", startTime, lastUpdateTime);
@@ -314,7 +314,7 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 			throw new FileNodeManagerException(e);
 		}
 		long lastUpdateTime = fileNodeProcessor.getLastUpdateTime();
-		LOGGER.info("Get the FileNodeProcessor: {}, the last update time is: {}, the delete time is from 0 to {}",
+		LOGGER.debug("Get the FileNodeProcessor: {}, the last update time is: {}, the delete time is from 0 to {}",
 				fileNodeProcessor.getNameSpacePath(), lastUpdateTime, timestamp);
 		// no bufferwrite data, the delete operation is invalid
 		if (lastUpdateTime == -1) {
@@ -363,7 +363,7 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 			do {
 				fileNodeProcessor = getProcessorWithDeltaObjectIdByLRU(deltaObjectId, true);
 			} while (fileNodeProcessor == null);
-			LOGGER.info("Get the FileNodeProcessor: {}, begin query.", fileNodeProcessor.getNameSpacePath());
+			LOGGER.debug("Get the FileNodeProcessor: {}, begin query.", fileNodeProcessor.getNameSpacePath());
 			int token = fileNodeProcessor.addMultiPassLock();
 			return token;
 		} catch (LRUManagerException e) {
@@ -384,7 +384,7 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 			do {
 				fileNodeProcessor = getProcessorWithDeltaObjectIdByLRU(deltaObjectId, false);
 			} while (fileNodeProcessor == null);
-			LOGGER.info("Get the FileNodeProcessor: {}, query.", fileNodeProcessor.getNameSpacePath());
+			LOGGER.debug("Get the FileNodeProcessor: {}, query.", fileNodeProcessor.getNameSpacePath());
 
 			QueryStructure queryStructure = null;
 			// query operation must have overflow processor
@@ -416,7 +416,7 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 			do {
 				fileNodeProcessor = getProcessorWithDeltaObjectIdByLRU(deltaObjectId, true);
 			} while (fileNodeProcessor == null);
-			LOGGER.info("Get the FileNodeProcessor: {}, end query.", fileNodeProcessor.getNameSpacePath());
+			LOGGER.debug("Get the FileNodeProcessor: {}, end query.", fileNodeProcessor.getNameSpacePath());
 			fileNodeProcessor.removeMultiPassLock(token);
 		} catch (LRUManagerException e) {
 			e.printStackTrace();

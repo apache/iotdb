@@ -6,7 +6,7 @@ package cn.edu.thu.tsfiledb.auth.dao;
  */
 public class InitTable {
 
-	public static String createTableSql = "create table userTable("
+	public static String createUserTableSql = "create table userTable("
 			+ "id INT generated always  as identity(start with 1,increment by 1) not null primary key,"
 			+ "userName VARCHAR(20) not null unique," + "password VARCHAR(20) not null,"
 			+ "locked CHAR(1) check (locked='t' or locked='f')," + "validTime VARCHAR(20))";
@@ -32,6 +32,6 @@ public class InitTable {
 			+ "nodeName VARCHAR(20) not null," + "permissionId INT not null,"
 			+ "constraint pk_rolepermission primary key (roleId,nodeName,permissionId),"
 			+ "foreign key (roleId) references roleTable(id) on delete cascade)";
-	
+
 	public static String insertIntoUserToTableSql = "insert into usertable (username,password) values('root','root')";
 }

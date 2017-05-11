@@ -8,6 +8,8 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import cn.edu.thu.tsfile.common.conf.TSFileConfig;
+import cn.edu.thu.tsfile.common.conf.TSFileDescriptor;
 import cn.edu.thu.tsfiledb.auth.dao.DBdao;
 import cn.edu.thu.tsfiledb.auth.dao.UserDao;
 import cn.edu.thu.tsfiledb.auth.dao.UserPermissionDao;
@@ -25,15 +27,17 @@ public class UserPemissionTest {
 	private String nodeName = "nodeName";
 	private String newNodeName = "newNodeName";
 	private int permission;
-
 	private User user = new User("user1", "user1");
+
+	private TSFileConfig config = TSFileDescriptor.getInstance().getConfig();
 
 	@Before
 	public void setUp() throws Exception {
+		config.derbyHome = "";
 		permission = Permission.CREATE;
 		DBdao = new DBdao();
 		DBdao.open();
-		statement = DBdao.getStatement();
+		statement = cn.edu.thu.tsfiledb.auth.dao.DBdao.getStatement();
 		userDao = new UserDao();
 		UserPermissionDao = new UserPermissionDao();
 
