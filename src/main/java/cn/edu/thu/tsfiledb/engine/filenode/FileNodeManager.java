@@ -394,8 +394,7 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 				parameters.put(FileNodeConstants.OVERFLOW_FLUSH_MANAGER_ACTION, overflowFlushAction);
 				fileNodeProcessor.getOverflowProcessor(fileNodeProcessor.getNameSpacePath(), parameters);
 			}
-			queryStructure = fileNodeProcessor.query(deltaObjectId, measurementId, valueFilter, valueFilter,
-					valueFilter);
+			queryStructure = fileNodeProcessor.query(deltaObjectId, measurementId, timeFilter, freqFilter, valueFilter);
 			// return query structure
 			return queryStructure;
 		} catch (LRUManagerException e) {
@@ -567,7 +566,7 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 					fileNodeProcessor.getBufferWriteProcessor().close();
 					fileNodeProcessor.setBufferwriteProcessroToClosed();
 				}
-				
+
 				// get overflow processor
 				Map<String, Object> parameters = new HashMap<>();
 				parameters.put(FileNodeConstants.OVERFLOW_BACKUP_MANAGER_ACTION, overflowBackUpAction);
