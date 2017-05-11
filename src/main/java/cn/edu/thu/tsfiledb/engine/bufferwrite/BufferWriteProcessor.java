@@ -433,6 +433,10 @@ public class BufferWriteProcessor extends LRUProcessor {
 	public String getFileName() {
 		return fileName;
 	}
+	
+	public String getFileAbsolutePath(){
+		return bufferwriteOutputFilePath;
+	}
 
 	public boolean isNewProcessor() {
 		return isNewProcessor;

@@ -197,8 +197,8 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 			// add the new interval file to newfilelist
 			if (bufferWriteProcessor.isNewProcessor()) {
 				bufferWriteProcessor.setNewProcessor(false);
-				String fileName = bufferWriteProcessor.getFileName();
-				fileNodeProcessor.addIntervalFileNode(timestamp, fileName);
+				String fileAbsolutePath = bufferWriteProcessor.getFileAbsolutePath();
+				fileNodeProcessor.addIntervalFileNode(timestamp, fileAbsolutePath);
 			}
 			// bufferWriteProcessor.writeLock();
 			try {
