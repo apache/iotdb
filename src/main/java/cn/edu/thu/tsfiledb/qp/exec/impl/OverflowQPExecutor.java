@@ -13,6 +13,7 @@ import cn.edu.thu.tsfile.timeseries.read.qp.Path;
 import cn.edu.thu.tsfile.timeseries.read.query.QueryDataSet;
 import cn.edu.thu.tsfile.timeseries.write.record.DataPoint;
 import cn.edu.thu.tsfile.timeseries.write.record.TSRecord;
+import cn.edu.thu.tsfiledb.engine.exception.FileNodeManagerException;
 import cn.edu.thu.tsfiledb.engine.filenode.FileNodeManager;
 import cn.edu.thu.tsfiledb.exception.PathErrorException;
 import cn.edu.thu.tsfiledb.metadata.MManager;
@@ -82,6 +83,9 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 			return true;
 		} catch (PathErrorException e) {
 			throw new ProcessorException("Error in update: " + e.getMessage());
+		} catch (FileNodeManagerException e) {
+			e.printStackTrace();
+			throw new ProcessorException(e);
 		}
 	}
 
@@ -96,6 +100,9 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 			return true;
 		} catch (PathErrorException e) {
 			throw new ProcessorException("Error in delete: " + e.getMessage());
+		} catch (FileNodeManagerException e) {
+			e.printStackTrace();
+			throw new ProcessorException(e);
 		}
 	}
 
@@ -114,6 +121,9 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 
 		} catch (PathErrorException e) {
 			throw new ProcessorException("Error in insert: " + e.getMessage());
+		} catch (FileNodeManagerException e) {
+			e.printStackTrace();
+			throw new ProcessorException(e);
 		}
 	}
 
@@ -141,6 +151,9 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 			
 		} catch (PathErrorException e) {
 			throw new ProcessorException("Path error:" + e.getMessage());
+		} catch (FileNodeManagerException e) {
+			e.printStackTrace();
+			throw new ProcessorException(e);
 		}
 	}
 

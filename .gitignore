@@ -2,11 +2,11 @@
 **/.classpath
 **/.project
 **/.settings/
-
+src/main/resources/
 # intellij IDE files
 **/*.iml
 **/.idea/
-
+**/*.log
 # Apple OS X related
 **/.DS_Store
 

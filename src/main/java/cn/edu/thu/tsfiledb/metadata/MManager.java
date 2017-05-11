@@ -133,10 +133,10 @@ public class MManager {
 				leftArgs = new String[0];
 			}
 			addAPathToMTree(args[1], args[2], args[3], leftArgs);
-		} else if (args[0].equals(MetadataOperationType.ADD_PATH_TO_MTREE)) {
-			deletePathFromMTree(args[1]);
 		} else if (args[0].equals(MetadataOperationType.DELETE_PATH_FROM_MTREE)) {
-			setStorageLevelToMTree(MetadataOperationType.SET_STORAGE_LEVEL_TO_MTREE);
+			deletePathFromMTree(args[1]);
+		} else if (args[0].equals(MetadataOperationType.SET_STORAGE_LEVEL_TO_MTREE)) {
+			setStorageLevelToMTree(args[1]);
 		} else if (args[0].equals(MetadataOperationType.ADD_A_PTREE)) {
 			addAPTree(args[1]);
 		} else if (args[0].equals(MetadataOperationType.ADD_A_PATH_TO_PTREE)) {

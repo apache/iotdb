@@ -27,10 +27,10 @@ public class WriteLogManager {
 	}
 	
 	public void write(PhysicalPlan plan) throws IOException {
-		if (writer == null) {
-			writer = new LocalFileLogWriter(logFile);
-		}
-		writer.write(transfer.operatorToLog(plan));
+//		if (writer == null) {
+//			writer = new LocalFileLogWriter(logFile);
+//		}
+//		writer.write(transfer.operatorToLog(plan));
 	}
 
 	public void overflowFlush() throws IOException {

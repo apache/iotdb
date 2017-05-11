@@ -11,6 +11,7 @@ import cn.edu.thu.tsfile.timeseries.utils.FileUtils;
 import cn.edu.thu.tsfile.timeseries.utils.RecordUtils;
 import cn.edu.thu.tsfile.timeseries.write.record.TSRecord;
 import cn.edu.thu.tsfile.timeseries.write.schema.FileSchema;
+import cn.edu.thu.tsfiledb.engine.exception.FileNodeManagerException;
 import cn.edu.thu.tsfiledb.engine.filenode.FileNodeManager;
 import cn.edu.thu.tsfiledb.exception.PathErrorException;
 import cn.edu.thu.tsfiledb.metadata.ColumnSchema;
@@ -125,9 +126,10 @@ public class LoadDataUtils {
         // appeared before, insert directly
         try {
             fileNodeManager.insert(record);
-        } catch (ProcessorException e) {
-            LOG.error("write record failed: {}", e.getMessage());
-        }
+        } catch (FileNodeManagerException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
     }
 
     private String prepareFilePathAddOne(String srcFilePath) {

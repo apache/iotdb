@@ -17,7 +17,6 @@ import cn.edu.thu.tsfiledb.engine.filenode.QueryStructure;
 import cn.edu.thu.tsfile.common.exception.ProcessorException;
 import cn.edu.thu.tsfiledb.query.reader.RecordReader;
 
-
 /**
  * To avoid create RecordReader frequently. Add cache in later version
  * 
@@ -31,18 +30,16 @@ public class RecordReaderFactory {
 	private FileNodeManager fileNodeManager;
 	private ReadLockManager readLockManager;
 	private FileStreamManager fileStreamManager;
-	
+
 	private RecordReaderFactory() {
 		fileNodeManager = FileNodeManager.getInstance();
 		readLockManager = ReadLockManager.getInstance();
 		fileStreamManager = FileStreamManager.getInstance();
 	}
 
-	public RecordReader getRecordReader(String deltaObjectUID, String measurementID
-			, SingleSeriesFilterExpression timeFilter
-			, SingleSeriesFilterExpression freqFilter
-			, SingleSeriesFilterExpression valueFilter
-			) throws ProcessorException{
+	public RecordReader getRecordReader(String deltaObjectUID, String measurementID,
+			SingleSeriesFilterExpression timeFilter, SingleSeriesFilterExpression freqFilter,
+			SingleSeriesFilterExpression valueFilter) throws ProcessorException {
 		int token = readLockManager.lock(deltaObjectUID, measurementID);
 		QueryStructure queryStructure;
 		try {
@@ -56,49 +53,51 @@ public class RecordReaderFactory {
 		return recordReader;
 	}
 
-	public RecordReader createANewRecordReader(String deltaObjectUID, String measurementID, QueryStructure queryStructure, int token) throws ProcessorException {
+	public RecordReader createANewRecordReader(String deltaObjectUID, String measurementID,
+			QueryStructure queryStructure, int token) throws ProcessorException {
 		RecordReader recordReader;
-		
+
 		List<IntervalFileNode> fileNodes = queryStructure.getBufferwriteDataInFiles();
 		boolean hasUnEnvelopedFile;
-		if(fileNodes.size() > 0 && !fileNodes.get(fileNodes.size() - 1).isClosed()){
+		if (fileNodes.size() > 0 && !fileNodes.get(fileNodes.size() - 1).isClosed()) {
 			hasUnEnvelopedFile = true;
-		}else{
+		} else {
 			hasUnEnvelopedFile = false;
 		}
-		
+
 		List<TSRandomAccessFileReader> rafList = new ArrayList<>();
-		try{
-		for(int i = 0 ; i < fileNodes.size() - 1; i ++){
-			IntervalFileNode fileNode = fileNodes.get(i);
-			TSRandomAccessFileReader raf = fileStreamManager.getLocalRandomAcessFileReader(fileNode.filePath);
-			rafList.add(raf);
-		}
-		if(hasUnEnvelopedFile){
-			TSRandomAccessFileReader raf = fileStreamManager
-					.getLocalRandomAcessFileReader(fileNodes.get(fileNodes.size() - 1).filePath);
-			recordReader = new RecordReader(rafList, raf, queryStructure.getBufferwriteDataInDisk(), 
-					deltaObjectUID, measurementID, token, 
-					queryStructure.getBufferwriteDataInMemory(), queryStructure.getAllOverflowData());
-		}else{
-			rafList.add(fileStreamManager
-					.getLocalRandomAcessFileReader(fileNodes.get(fileNodes.size() - 1).filePath));
-			recordReader = new RecordReader(rafList, deltaObjectUID, measurementID, token, 
-					queryStructure.getBufferwriteDataInMemory(), queryStructure.getAllOverflowData());
-		}
-		}catch(IOException e){
+		try {
+			for (int i = 0; i < fileNodes.size() - 1; i++) {
+				IntervalFileNode fileNode = fileNodes.get(i);
+				TSRandomAccessFileReader raf = fileStreamManager.getLocalRandomAcessFileReader(fileNode.filePath);
+				rafList.add(raf);
+			}
+			if (hasUnEnvelopedFile) {
+				TSRandomAccessFileReader raf = fileStreamManager
+						.getLocalRandomAcessFileReader(fileNodes.get(fileNodes.size() - 1).filePath);
+				recordReader = new RecordReader(rafList, raf, queryStructure.getBufferwriteDataInDisk(), deltaObjectUID,
+						measurementID, token, queryStructure.getBufferwriteDataInMemory(),
+						queryStructure.getAllOverflowData());
+			} else {
+				if (fileNodes.size() > 0) {
+					rafList.add(fileStreamManager
+							.getLocalRandomAcessFileReader(fileNodes.get(fileNodes.size() - 1).filePath));
+				}
+				recordReader = new RecordReader(rafList, deltaObjectUID, measurementID, token,
+						queryStructure.getBufferwriteDataInMemory(), queryStructure.getAllOverflowData());
+			}
+		} catch (IOException e) {
 			e.printStackTrace();
 			throw new ProcessorException(e.getMessage());
 		}
 		return recordReader;
-		
-	
+
 	}
 
 	public void closeOneRecordReader(RecordReader recordReader) throws ProcessorException {
-		try{
+		try {
 			recordReader.close();
-		}catch(IOException e){
+		} catch (IOException e) {
 			logger.error("Error in closing RecordReader : {}", e.getMessage());
 			e.printStackTrace();
 		}

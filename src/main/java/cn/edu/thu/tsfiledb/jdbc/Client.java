@@ -18,7 +18,7 @@ public class Client {
 	
 	public static void main(String[] args) throws ClassNotFoundException, SQLException {
 		// TODO Auto-generated method stub
-		Class.forName("com.corp.tsfile.jdbc.TsfileDriver");
+		Class.forName("cn.edu.thu.tsfiledb.jdbc.TsfileDriver");
 		Connection connection = null;
 		ConsoleReader reader = null;
 		String s;
