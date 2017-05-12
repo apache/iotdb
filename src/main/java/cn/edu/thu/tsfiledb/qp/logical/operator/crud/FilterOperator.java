@@ -13,6 +13,7 @@ import cn.edu.thu.tsfile.common.utils.Pair;
 import cn.edu.thu.tsfile.timeseries.filter.definition.FilterExpression;
 import cn.edu.thu.tsfile.timeseries.filter.definition.FilterFactory;
 import cn.edu.thu.tsfile.timeseries.filter.definition.SingleSeriesFilterExpression;
+import cn.edu.thu.tsfile.timeseries.filter.definition.filterseries.FilterSeriesType;
 import cn.edu.thu.tsfiledb.qp.constant.SQLConstant;
 import cn.edu.thu.tsfiledb.qp.exception.QueryProcessorException;
 import cn.edu.thu.tsfiledb.qp.exception.logical.operator.FilterOperatorException;
@@ -114,20 +115,20 @@ public class FilterOperator extends Operator implements Comparable<FilterOperato
      * @return
      * @throws QueryProcessorException
      */
-    public FilterExpression transformToFilter(QueryProcessExecutor conf)
+    public FilterExpression transformToFilter(QueryProcessExecutor conf, FilterSeriesType type)
             throws QueryProcessorException {
         if (isSingle) {
-            Pair<SingleSeriesFilterExpression, String> ret = transformToSingleFilter(conf);
+            Pair<SingleSeriesFilterExpression, String> ret = transformToSingleFilter(conf, type);
             return ret.left;
         } else {
             if (childOperators.isEmpty()) {
                 throw new FilterOperatorException("this filter is not leaf, but it's empty:"
                         + tokenIntType);
             }
-            FilterExpression retFilter = childOperators.get(0).transformToFilter(conf);
+            FilterExpression retFilter = childOperators.get(0).transformToFilter(conf, type);
             FilterExpression cross;
             for (int i = 1; i < childOperators.size(); i++) {
-                cross = childOperators.get(i).transformToFilter(conf);
+                cross = childOperators.get(i).transformToFilter(conf, type);
                 switch (tokenIntType) {
                     case KW_AND:
                         retFilter = FilterFactory.and(retFilter, cross);
@@ -153,19 +154,19 @@ public class FilterOperator extends Operator implements Comparable<FilterOperato
      *         represented by this child.
      * @throws QueryProcessorException
      */
-    protected Pair<SingleSeriesFilterExpression, String> transformToSingleFilter(QueryProcessExecutor exec)
+    protected Pair<SingleSeriesFilterExpression, String> transformToSingleFilter(QueryProcessExecutor exec, FilterSeriesType type)
             throws QueryProcessorException {
         if (childOperators.isEmpty()) {
             throw new FilterOperatorException(
                     ("transformToSingleFilter: this filter is not leaf, but it's empty:{}" + tokenIntType));
         }
         Pair<SingleSeriesFilterExpression, String> single =
-                childOperators.get(0).transformToSingleFilter(exec);
+                childOperators.get(0).transformToSingleFilter(exec, type);
         SingleSeriesFilterExpression retFilter = single.left;
         String childSeriesStr = single.right;
         //
         for (int i = 1; i < childOperators.size(); i++) {
-            single = childOperators.get(i).transformToSingleFilter(exec);
+            single = childOperators.get(i).transformToSingleFilter(exec, type);
             if (!childSeriesStr.equals(single.right))
                 throw new FilterOperatorException(
                         ("transformToSingleFilter: paths among children are not inconsistent: one is:"

@@ -227,10 +227,10 @@ public class OverflowValueReader extends ValueReader{
 									&& insertTrue.getTime(idx2) <= timeValues[timeIdx]) {
 								res.putTime(insertTrue.getTime(idx2));
 								res.putInt(insertTrue.getInt(idx2));
+								calculateFrequency(hasOverflowDataInThisPage, freqFilter, insertTrue.getInt(idx2));
 								idx2++;
 								res.insertTrueIndex++;
 								resCount++;
-								calculateFrequency(hasOverflowDataInThisPage, freqFilter, insertTrue.getInt(idx2));
 								// if equal, take value from insertTrue and skip one
 								// value from page. That is to say, insert is like
 								// update.
@@ -415,10 +415,10 @@ public class OverflowValueReader extends ValueReader{
 									&& insertTrue.getTime(idx2) <= timeValues[timeIdx]) {
 								res.putTime(insertTrue.getTime(idx2));
 								res.putLong(insertTrue.getLong(idx2));
+								calculateFrequency(hasOverflowDataInThisPage, freqFilter, insertTrue.getLong(idx2));
 								idx2++;
 								res.insertTrueIndex++;
 								resCount++;
-								calculateFrequency(hasOverflowDataInThisPage, freqFilter, insertTrue.getLong(idx2));
 								// if equal, take value from insertTrue and skip one
 								// value from page
 								if (insertTrue.getTime(idx2 - 1) == timeValues[timeIdx]) {
@@ -508,10 +508,10 @@ public class OverflowValueReader extends ValueReader{
 									&& insertTrue.getTime(idx2) <= timeValues[timeIdx]) {
 								res.putTime(insertTrue.getTime(idx2));
 								res.putFloat(insertTrue.getFloat(idx2));
+								calculateFrequency(hasOverflowDataInThisPage, freqFilter, insertTrue.getFloat(idx2));
 								idx2++;
 								res.insertTrueIndex++;
 								resCount++;
-								calculateFrequency(hasOverflowDataInThisPage, freqFilter, insertTrue.getFloat(idx2));
 								// if equal, take value from insertTrue and skip one
 								// value from page
 								if (insertTrue.getTime(idx2 - 1) == timeValues[timeIdx]) {
@@ -601,10 +601,10 @@ public class OverflowValueReader extends ValueReader{
 									&& insertTrue.getTime(idx2) <= timeValues[timeIdx]) {
 								res.putTime(insertTrue.getTime(idx2));
 								res.putDouble(insertTrue.getDouble(idx2));
+								calculateFrequency(hasOverflowDataInThisPage, freqFilter, insertTrue.getDouble(idx2));
 								idx2++;
 								res.insertTrueIndex++;
 								resCount++;
-								calculateFrequency(hasOverflowDataInThisPage, freqFilter, insertTrue.getDouble(idx2));
 								// if equal, take value from insertTrue and skip one
 								// value from page
 								if (insertTrue.getTime(idx2 - 1) == timeValues[timeIdx]) {
