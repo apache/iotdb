@@ -2,7 +2,7 @@
 **/.classpath
 **/.project
 **/.settings/
-src/main/resources/
+# src/main/resources/
 # intellij IDE files
 **/*.iml
 **/.idea/
