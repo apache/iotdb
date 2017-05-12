@@ -41,8 +41,7 @@ public class ReadLockManager {
 		
 	}
 	
-	public void unlockForQuery(String deltaObjectUID, String measurementID
-			, int token) throws ProcessorException{
+	public void unlockForQuery(String deltaObjectUID, int token) throws ProcessorException{
 		try {
 			fileNodeManager.endQuery(deltaObjectUID, token);
 		} catch (FileNodeManagerException e) {
@@ -57,19 +56,18 @@ public class ReadLockManager {
 		}
 		HashMap<String,Integer> locks = locksMap.get();
 		for(String key : locks.keySet()){
-			String[] names = splitKey(key);
-			unlockForQuery(names[0], names[1], locks.get(key));
+			unlockForQuery(key, locks.get(key));
 		}
 		locksMap.remove();
 	}
 	
 	public String getKey(String deltaObjectUID, String measurementID){
-		return deltaObjectUID + "#" + measurementID; 
+		return deltaObjectUID; 
 	}
 	
-	public String[] splitKey(String key){
-		return key.split("#");
-	}
+//	public String[] splitKey(String key){
+//		return key.split("#");
+//	}
 	
 	public static ReadLockManager getInstance(){
 		if(instance == null){

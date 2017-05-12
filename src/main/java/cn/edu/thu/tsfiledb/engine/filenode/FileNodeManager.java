@@ -579,7 +579,7 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 				}
 				fileNodeProcessor.getOverflowProcessor().close();
 				fileNodeProcessor.merge();
-				fileNodeProcessor.writeUnlock();
+//				fileNodeProcessor.writeUnlock();
 			} catch (LRUManagerException | FileNodeProcessorException | BufferWriteProcessorException
 					| OverflowProcessorException e) {
 				LOGGER.error("Merge the filenode processor error, the nameSpacePath is {}", e.getMessage());
