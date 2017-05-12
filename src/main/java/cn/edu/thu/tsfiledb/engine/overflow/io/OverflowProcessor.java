@@ -416,7 +416,7 @@ public class OverflowProcessor extends LRUProcessor {
 				} catch (Exception e) {
 					LOGGER.error("filenodeFlushAction action failed");
 					e.printStackTrace();
-					throw new OverflowProcessorException("filenodeFlushAction action failed");
+					throw new OverflowProcessorException("FilenodeFlushAction action failed");
 				} finally {
 					synchronized (flushState) {
 						flushState.setUnFlushing();
