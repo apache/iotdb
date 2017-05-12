@@ -309,7 +309,7 @@ public class OverflowProcessorTest {
 	}
 
 	@Test
-	public void testRestoreFrommerge() {
+	public void testRestoreFromMerge() {
 		// write some rowgroup and close file
 
 		// change the file name to merge and delete the restore file

@@ -148,7 +148,7 @@ public class FileNodeProcessorTest {
 		}
 	}
 
-	@Test
+	@Deprecated
 	public void testMerge() {
 
 		List<Pair<Long, Long>> bufferwriteRanges = new ArrayList<>();
@@ -543,8 +543,10 @@ public class FileNodeProcessorTest {
 			// check file
 			for (IntervalFileNode node : store.getNewFileNodes()) {
 				checkFile(node.filePath);
+				EngineTestHelper.delete(node.filePath);
 			}
 			checkUnFile(unusedFilename);
+			EngineTestHelper.delete(unusedFilename);
 		} catch (FileNodeProcessorException e) {
 			e.printStackTrace();
 			fail(e.getMessage());
@@ -603,8 +605,7 @@ public class FileNodeProcessorTest {
 			fail(e.getMessage());
 		}
 	}
-
-	@Test
+	@Deprecated
 	public void testRevoceryMerge2() {
 		// create bufferwrite files
 		List<Pair<Long, Long>> bufferwriteRanges = new ArrayList<>();
