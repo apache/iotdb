@@ -636,8 +636,6 @@ public class FileNodeProcessorTest {
 				IntervalFileNode node = (IntervalFileNode) newInterFiles.get(i);
 				assertEquals(bufferwriteRanges.get(i).left.longValue(), node.startTime);
 				assertEquals(bufferwriteRanges.get(i).right.longValue(), node.endTime);
-				// check one file
-				checkFile(node.filePath);
 			}
 			processor.close();
 		} catch (FileNodeProcessorException e) {
@@ -829,25 +827,15 @@ public class FileNodeProcessorTest {
 
 	private void createFile(String filename) {
 
-		String filePath = tsconfig.BufferWriteDir + File.separatorChar + deltaObjectId;
-		File dataDir = new File(filePath);
-		if (!dataDir.exists()) {
-			dataDir.mkdirs();
-		}
-		File file = new File(dataDir, filename);
+		File file = new File(filename);
 		if (!file.exists()) {
 			file.mkdir();
 		}
 	}
 
 	private void checkFile(String filename) {
-
-		String filePath = tsconfig.BufferWriteDir + File.separatorChar + deltaObjectId;
-		File dataDir = new File(filePath);
-		if (!dataDir.exists()) {
-			dataDir.mkdirs();
-		}
-		File file = new File(dataDir, filename);
+		
+		File file = new File(filename);
 		assertEquals(true, file.exists());
 	}
 

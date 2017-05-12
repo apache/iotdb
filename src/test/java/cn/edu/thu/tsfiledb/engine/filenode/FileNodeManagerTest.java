@@ -246,15 +246,18 @@ public class FileNodeManagerTest {
 		pairList.add(new Pair<Long, Long>(500L, 600L));
 		pairList.add(new Pair<Long, Long>(700L, 800L));
 		createBufferwriteFiles(pairList, deltaObjectId);
-
+		createBufferwriteFiles(pairList,deltaObjectId2);
 		long[] overflowInsert1 = { 2, 4, 6, 8 };
 		long[] overflowInsert2 = { 202, 204, 206, 208 };
 		// new file: 2-208 300-400 500-600 700-800
 
 		// not close
 		createOverflowInserts(overflowInsert1, deltaObjectId);
+		createOverflowInserts(overflowInsert1,deltaObjectId2);
 		// not close
 		createOverflowInserts(overflowInsert2, deltaObjectId);
+		createOverflowInserts(overflowInsert2, deltaObjectId2);
+		
 
 		fManager = FileNodeManager.getInstance();
 		try {
