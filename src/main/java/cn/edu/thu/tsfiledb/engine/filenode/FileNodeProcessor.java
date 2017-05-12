@@ -589,6 +589,8 @@ public class FileNodeProcessor extends LRUProcessor {
 					OverflowChangeType.CHANGED, null, null);
 			result.add(intervalFileNode);
 		} else if (newFileNodes.size() == 1) {
+			// has overflow data, the only newFileNode must be changed or the
+			// emptyfile must be changed
 			IntervalFileNode temp = newFileNodes.get(0);
 			IntervalFileNode intervalFileNode = new IntervalFileNode(0, temp.endTime, temp.overflowChangeType,
 					temp.filePath, null);
@@ -596,21 +598,34 @@ public class FileNodeProcessor extends LRUProcessor {
 		} else {
 			// add first
 			IntervalFileNode temp = newFileNodes.get(0);
-			IntervalFileNode intervalFileNode = new IntervalFileNode(0, newFileNodes.get(1).startTime - 1,
-					temp.overflowChangeType, temp.filePath, null);
-			result.add(intervalFileNode);
+			if (emptyIntervalFileNode.overflowChangeType == OverflowChangeType.CHANGED
+					|| temp.overflowChangeType == OverflowChangeType.CHANGED) {
+				IntervalFileNode intervalFileNode = new IntervalFileNode(0, newFileNodes.get(1).startTime - 1,
+						OverflowChangeType.CHANGED, temp.filePath, null);
+				result.add(intervalFileNode);
+			} else {
+				result.add(temp);
+			}
 			// second to the last -1
 			for (int i = 1; i < newFileNodes.size() - 1; i++) {
 				temp = newFileNodes.get(i);
-				intervalFileNode = new IntervalFileNode(temp.startTime, newFileNodes.get(i + 1).startTime - 1,
-						temp.overflowChangeType, temp.filePath, null);
-				result.add(intervalFileNode);
+				if (temp.overflowChangeType == OverflowChangeType.CHANGED) {
+					IntervalFileNode intervalFileNode = new IntervalFileNode(temp.startTime,
+							newFileNodes.get(i + 1).startTime - 1, temp.overflowChangeType, temp.filePath, null);
+					result.add(intervalFileNode);
+				} else {
+					result.add(temp);
+				}
 			}
 			// last interval
 			temp = newFileNodes.get(newFileNodes.size() - 1);
-			intervalFileNode = new IntervalFileNode(temp.startTime, temp.endTime, temp.overflowChangeType,
-					temp.filePath, null);
-			result.add(intervalFileNode);
+			if (temp.overflowChangeType == OverflowChangeType.CHANGED) {
+				IntervalFileNode intervalFileNode = new IntervalFileNode(temp.startTime, temp.endTime,
+						temp.overflowChangeType, temp.filePath, null);
+				result.add(intervalFileNode);
+			} else {
+				result.add(temp);
+			}
 		}
 		return result;
 	}
@@ -650,7 +665,7 @@ public class FileNodeProcessor extends LRUProcessor {
 					if (putoff || newFileNodes.get(i).overflowChangeType == OverflowChangeType.MERGING_CHANGE) {
 						backupIntervalFile.overflowChangeType = OverflowChangeType.CHANGED;
 						putoff = false;
-					} else{
+					} else {
 						backupIntervalFile.overflowChangeType = OverflowChangeType.NO_CHANGE;
 					}
 					result.add(backupIntervalFile);
@@ -669,6 +684,8 @@ public class FileNodeProcessor extends LRUProcessor {
 			if (putoff) {
 				emptyIntervalFileNode.endTime = lastUpdateTime;
 				emptyIntervalFileNode.overflowChangeType = OverflowChangeType.CHANGED;
+			} else {
+				emptyIntervalFileNode.overflowChangeType = OverflowChangeType.NO_CHANGE;
 			}
 			isMerging = FileNodeProcessorState.WAITING;
 			newFileNodes = result;
@@ -819,7 +836,7 @@ public class FileNodeProcessor extends LRUProcessor {
 					e.printStackTrace();
 				}
 			}
-			//TODO: These code are ugly
+			// TODO: These code are ugly
 			try {
 				ReadLockManager.getInstance().unlockForOneRequest();
 			} catch (NotConsistentException e) {
@@ -828,7 +845,7 @@ public class FileNodeProcessor extends LRUProcessor {
 				e.printStackTrace();
 			}
 			recordWriter.close();
-			
+
 			LOGGER.debug("Merge query: namespace {}, time filter {}, filepath {} successfully", nameSpacePath,
 					timeFilter, outputPath);
 			backupIntervalFile.startTime = startTime;
