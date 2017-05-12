@@ -49,8 +49,6 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 
 	private FileNodeManagerStatus fileNodeManagerStatus = FileNodeManagerStatus.NONE;
 
-	// private Lock mergeLock = new ReentrantLock(false);
-
 	private Action overflowBackUpAction = new Action() {
 		@Override
 		public void act() throws Exception {

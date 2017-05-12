@@ -26,6 +26,7 @@ import cn.edu.thu.tsfiledb.engine.bufferwrite.FileNodeConstants;
 import cn.edu.thu.tsfiledb.engine.exception.BufferWriteProcessorException;
 import cn.edu.thu.tsfiledb.engine.exception.FileNodeProcessorException;
 import cn.edu.thu.tsfiledb.engine.exception.OverflowProcessorException;
+import cn.edu.thu.tsfiledb.engine.lru.MetadataManagerHelper;
 import cn.edu.thu.tsfiledb.engine.overflow.io.EngineTestHelper;
 import cn.edu.thu.tsfiledb.engine.overflow.io.OverflowProcessor;
 
@@ -64,6 +65,7 @@ public class FileNodeProcessorTest {
 		tsconfig.FileNodeDir = "filenode" + File.separatorChar;
 		tsconfig.BufferWriteDir = "bufferwrite";
 		tsconfig.overflowDataDir = "overflow";
+		tsconfig.metadataDir = "metadata";
 		// set rowgroupsize
 		tsconfig.rowGroupSize = 2000;
 		tsconfig.pageCheckSizeThreshold = 3;
@@ -76,6 +78,8 @@ public class FileNodeProcessorTest {
 		EngineTestHelper.delete(tsconfig.FileNodeDir);
 		EngineTestHelper.delete(tsconfig.BufferWriteDir);
 		EngineTestHelper.delete(tsconfig.overflowDataDir);
+		EngineTestHelper.delete(tsconfig.metadataDir);
+		MetadataManagerHelper.initMetadata();
 	}
 
 	@After
@@ -83,6 +87,8 @@ public class FileNodeProcessorTest {
 		EngineTestHelper.delete(tsconfig.FileNodeDir);
 		EngineTestHelper.delete(tsconfig.BufferWriteDir);
 		EngineTestHelper.delete(tsconfig.overflowDataDir);
+		EngineTestHelper.delete(tsconfig.metadataDir);
+		MetadataManagerHelper.clearMetadata();
 	}
 
 	@Test
