@@ -58,7 +58,7 @@ public class TSFileDBDescriptor {
 		try {
 			properties.load(inputStream);
 
-			conf.writeInstanceThreshold = Integer.parseInt(properties.getProperty("rowGroupSize", conf.writeInstanceThreshold + ""));
+			conf.writeInstanceThreshold = Integer.parseInt(properties.getProperty("writeInstanceThreshold", conf.writeInstanceThreshold + ""));
 			conf.overflowDataDir = properties.getProperty("overflowDataDir", url+"/data/overflow");
 			conf.FileNodeDir = properties.getProperty("FileNodeDir", url+"/data/digest");
 			conf.BufferWriteDir = properties.getProperty("BufferWriteDir", url+"/data/delta");
