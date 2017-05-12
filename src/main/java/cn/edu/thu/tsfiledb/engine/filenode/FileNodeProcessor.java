@@ -650,6 +650,8 @@ public class FileNodeProcessor extends LRUProcessor {
 					if (putoff || newFileNodes.get(i).overflowChangeType == OverflowChangeType.MERGING_CHANGE) {
 						backupIntervalFile.overflowChangeType = OverflowChangeType.CHANGED;
 						putoff = false;
+					} else{
+						backupIntervalFile.overflowChangeType = OverflowChangeType.NO_CHANGE;
 					}
 					result.add(backupIntervalFile);
 				}
@@ -719,8 +721,7 @@ public class FileNodeProcessor extends LRUProcessor {
 				for (IntervalFileNode bufferFileNode : newFileNodes) {
 					String bufferFilePath = bufferFileNode.filePath;
 					if (bufferFilePath != null) {
-						File bufferFile = new File(bufferwriteDir, bufferFilePath);
-						bufferFiles.add(bufferFile.getAbsolutePath());
+						bufferFiles.add(bufferFilePath);
 					}
 				}
 				// add the restore file, if the last file is not closed
