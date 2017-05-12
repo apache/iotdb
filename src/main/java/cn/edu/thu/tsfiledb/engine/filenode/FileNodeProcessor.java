@@ -39,6 +39,8 @@ import cn.edu.thu.tsfile.timeseries.write.io.TSFileIOWriter;
 import cn.edu.thu.tsfile.timeseries.write.record.DataPoint;
 import cn.edu.thu.tsfile.timeseries.write.record.TSRecord;
 import cn.edu.thu.tsfile.timeseries.write.schema.FileSchema;
+import cn.edu.thu.tsfiledb.conf.TSFileDBConfig;
+import cn.edu.thu.tsfiledb.conf.TSFileDBDescriptor;
 import cn.edu.thu.tsfiledb.engine.bufferwrite.Action;
 import cn.edu.thu.tsfiledb.engine.bufferwrite.BufferWriteProcessor;
 import cn.edu.thu.tsfiledb.engine.bufferwrite.FileNodeConstants;
@@ -59,6 +61,7 @@ public class FileNodeProcessor extends LRUProcessor {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(FileNodeProcessor.class);
 	private static final TSFileConfig TsFileConf = TSFileDescriptor.getInstance().getConfig();
+	private static final TSFileDBConfig TsFileDBConf = TSFileDBDescriptor.getInstance().getConfig();
 	private static final MManager mManager = MManager.getInstance();
 	private static final String LOCK_SIGNAL = "lock___signal";
 
@@ -76,9 +79,9 @@ public class FileNodeProcessor extends LRUProcessor {
 	private BufferWriteProcessor bufferWriteProcessor = null;
 	private OverflowProcessor overflowProcessor = null;
 
-	private Set<Integer> oldMultiPassTokenSet = new HashSet<>();
+	private Set<Integer> oldMultiPassTokenSet = null;
 	private Set<Integer> newMultiPassTokenSet = new HashSet<>();
-	private ReadWriteLock oldMultiPassLock = new ReentrantReadWriteLock(false);
+	private ReadWriteLock oldMultiPassLock = null;
 	private ReadWriteLock newMultiPassLock = new ReentrantReadWriteLock(false);
 
 	private Action flushFileNodeProcessorAction = new Action() {
@@ -718,12 +721,14 @@ public class FileNodeProcessor extends LRUProcessor {
 
 		writeLock();
 		try {
-			oldMultiPassLock.writeLock().lock();
+			if (oldMultiPassLock != null) {
+				oldMultiPassLock.writeLock().lock();
+			}
 			try {
 				// delete the all files which are in the newFileNodes
 				// notice: the last restore file of the interval file
 
-				String bufferwriteDirPath = TsFileConf.BufferWriteDir;
+				String bufferwriteDirPath = TsFileDBConf.BufferWriteDir;
 				if (bufferwriteDirPath.length() > 0
 						&& bufferwriteDirPath.charAt(bufferwriteDirPath.length() - 1) != File.separatorChar) {
 					bufferwriteDirPath = bufferwriteDirPath + File.separatorChar;
@@ -769,7 +774,9 @@ public class FileNodeProcessor extends LRUProcessor {
 				throw new FileNodeProcessorException(e);
 			} finally {
 				oldMultiPassTokenSet = null;
-				oldMultiPassLock.writeLock().unlock();
+				if (oldMultiPassLock != null) {
+					oldMultiPassLock.writeLock().unlock();
+				}
 				oldMultiPassLock = null;
 			}
 		} finally {
@@ -791,7 +798,7 @@ public class FileNodeProcessor extends LRUProcessor {
 
 		OverflowQueryEngine queryEngine = new OverflowQueryEngine();
 		try {
-			data = queryEngine.query(pathList, timeFilter, null, null, null, TsFileConf.defaultFetchSize);
+			data = queryEngine.query(pathList, timeFilter, null, null, null, TsFileDBConf.defaultFetchSize);
 		} catch (ProcessorException e1) {
 			e1.printStackTrace();
 			throw new IOException("Exception when merge");
@@ -858,7 +865,7 @@ public class FileNodeProcessor extends LRUProcessor {
 
 	private String constructOutputFilePath(String nameSpacePath, String fileName) {
 
-		String dataDirPath = TsFileConf.BufferWriteDir;
+		String dataDirPath = TsFileDBConf.BufferWriteDir;
 		if (dataDirPath.charAt(dataDirPath.length() - 1) != File.separatorChar) {
 			dataDirPath = dataDirPath + File.separatorChar + nameSpacePath;
 		}
@@ -941,16 +948,20 @@ public class FileNodeProcessor extends LRUProcessor {
 	@Override
 	public boolean canBeClosed() {
 		if (isMerging == FileNodeProcessorState.NONE && newMultiPassLock.writeLock().tryLock()) {
-			try {
-				if (oldMultiPassLock.writeLock().tryLock()) {
-					try {
-						return true;
-					} finally {
-						oldMultiPassLock.writeLock().unlock();
+			if (oldMultiPassLock != null) {
+				try {
+					if (oldMultiPassLock.writeLock().tryLock()) {
+						try {
+							return true;
+						} finally {
+							oldMultiPassLock.writeLock().unlock();
+						}
 					}
+				} finally {
+					newMultiPassLock.writeLock().unlock();
 				}
-			} finally {
-				newMultiPassLock.writeLock().unlock();
+			} else {
+				return true;
 			}
 		}
 		return false;

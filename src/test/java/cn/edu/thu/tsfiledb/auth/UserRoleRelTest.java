@@ -1,6 +1,6 @@
 package cn.edu.thu.tsfiledb.auth;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
 
 import java.sql.Statement;
 import java.util.ArrayList;
@@ -9,8 +9,6 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import cn.edu.thu.tsfile.common.conf.TSFileConfig;
-import cn.edu.thu.tsfile.common.conf.TSFileDescriptor;
 import cn.edu.thu.tsfiledb.auth.dao.DBdao;
 import cn.edu.thu.tsfiledb.auth.dao.RoleDao;
 import cn.edu.thu.tsfiledb.auth.dao.UserDao;
@@ -18,6 +16,8 @@ import cn.edu.thu.tsfiledb.auth.dao.UserRoleRelDao;
 import cn.edu.thu.tsfiledb.auth.model.Role;
 import cn.edu.thu.tsfiledb.auth.model.User;
 import cn.edu.thu.tsfiledb.auth.model.UserRoleRel;
+import cn.edu.thu.tsfiledb.conf.TSFileDBConfig;
+import cn.edu.thu.tsfiledb.conf.TSFileDBDescriptor;
 
 public class UserRoleRelTest {
 
@@ -31,8 +31,8 @@ public class UserRoleRelTest {
 	Role role1 = new Role("role1");
 	Role role2 = new Role("role2");
 
-	private TSFileConfig config = TSFileDescriptor.getInstance().getConfig();
-
+	private TSFileDBConfig config = TSFileDBDescriptor.getInstance().getConfig();
+	
 	@Before
 	public void setUp() throws Exception {
 

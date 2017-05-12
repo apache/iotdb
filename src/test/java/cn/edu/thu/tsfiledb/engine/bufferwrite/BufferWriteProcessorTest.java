@@ -22,6 +22,8 @@ import cn.edu.thu.tsfile.common.utils.TSRandomAccessFileWriter;
 import cn.edu.thu.tsfile.file.metadata.RowGroupMetaData;
 import cn.edu.thu.tsfile.file.metadata.enums.TSDataType;
 import cn.edu.thu.tsfile.timeseries.read.query.DynamicOneColumnData;
+import cn.edu.thu.tsfiledb.conf.TSFileDBConfig;
+import cn.edu.thu.tsfiledb.conf.TSFileDBDescriptor;
 import cn.edu.thu.tsfiledb.engine.bufferwrite.Action;
 import cn.edu.thu.tsfiledb.engine.bufferwrite.BufferWriteProcessor;
 import cn.edu.thu.tsfiledb.engine.bufferwrite.FileNodeConstants;
@@ -76,7 +78,8 @@ public class BufferWriteProcessorTest {
 		parameters.put(FileNodeConstants.BUFFERWRITE_CLOSE_ACTION, bfcloseaction);
 		parameters.put(FileNodeConstants.FILENODE_PROCESSOR_FLUSH_ACTION, fnflushaction);
 		TSFileConfig tsconfig = TSFileDescriptor.getInstance().getConfig();
-		tsconfig.BufferWriteDir = "";
+		TSFileDBConfig tsdbconfig = TSFileDBDescriptor.getInstance().getConfig();
+		tsdbconfig.BufferWriteDir = "";
 		tsconfig.rowGroupSize = 2000;
 		tsconfig.pageCheckSizeThreshold = 3;
 		tsconfig.pageSize = 100;

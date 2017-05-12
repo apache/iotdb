@@ -17,6 +17,8 @@ import cn.edu.thu.tsfile.common.conf.TSFileDescriptor;
 import cn.edu.thu.tsfile.common.utils.RandomAccessOutputStream;
 import cn.edu.thu.tsfile.file.metadata.enums.TSDataType;
 import cn.edu.thu.tsfile.timeseries.read.query.DynamicOneColumnData;
+import cn.edu.thu.tsfiledb.conf.TSFileDBConfig;
+import cn.edu.thu.tsfiledb.conf.TSFileDBDescriptor;
 import cn.edu.thu.tsfiledb.engine.bufferwrite.Action;
 import cn.edu.thu.tsfiledb.engine.bufferwrite.FileNodeConstants;
 import cn.edu.thu.tsfiledb.engine.exception.OverflowProcessorException;
@@ -30,7 +32,8 @@ public class OverflowProcessorTest {
 	private String overflowmergefilePath = null;
 	private Map<String, Object> parameters = null;
 	private OverflowProcessor ofprocessor = null;
-	private TSFileConfig config = TSFileDescriptor.getInstance().getConfig();
+	private TSFileDBConfig tsdbconfig = TSFileDBDescriptor.getInstance().getConfig();
+	private TSFileConfig tsconfig = TSFileDescriptor.getInstance().getConfig();
 	private String deltaObjectId = "root.vehicle.d0";
 	private String[] measurementIds = { "s0", "s1", "s2", "s3", "s4", "s5" };
 	private TSDataType[] dataTypes = { TSDataType.INT32, TSDataType.INT64, TSDataType.FLOAT, TSDataType.DOUBLE,
@@ -78,8 +81,9 @@ public class OverflowProcessorTest {
 		parameters.put(FileNodeConstants.OVERFLOW_FLUSH_MANAGER_ACTION, filenodemanagerflushaction);
 
 		// set overflow data dir is ""
-		config.overflowDataDir = "";
-		overflowfilePath = config.overflowDataDir + nameSpacePath + File.separatorChar + nameSpacePath + ".overflow";
+		tsdbconfig.overflowDataDir = "";
+		overflowfilePath = tsdbconfig.overflowDataDir + nameSpacePath + File.separatorChar + nameSpacePath
+				+ ".overflow";
 		overflowrestorefilePath = overflowfilePath + ".restore";
 		overflowmergefilePath = overflowfilePath + ".merge";
 	}
@@ -228,8 +232,8 @@ public class OverflowProcessorTest {
 
 	@Test
 	public void testFlush() {
-		// set the tsfile config
-		config.rowGroupSize = 500;
+		// set the tsfile tsdbconfig
+		tsconfig.rowGroupSize = 500;
 		try {
 			ofprocessor = new OverflowProcessor(nameSpacePath, parameters);
 			for (int i = 1; i < 1001; i++) {
@@ -257,7 +261,7 @@ public class OverflowProcessorTest {
 	@Test
 	public void testMerge() {
 		// insert data
-		config.rowGroupSize = 500;
+		tsconfig.rowGroupSize = 500;
 		try {
 			ofprocessor = new OverflowProcessor(nameSpacePath, parameters);
 			for (int i = 1; i < 1001; i++) {
@@ -327,11 +331,11 @@ public class OverflowProcessorTest {
 	public void testMergeQuery() {
 
 		// write oveflow data and close
-		
+
 		// work to merge
-		
+
 		// optional: write data in new file
-		
+
 		// query data and check data
 
 		fail("merge and query");

@@ -19,6 +19,8 @@ import cn.edu.thu.tsfile.timeseries.filter.definition.SingleSeriesFilterExpressi
 import cn.edu.thu.tsfile.timeseries.read.query.DynamicOneColumnData;
 import cn.edu.thu.tsfile.timeseries.write.record.DataPoint;
 import cn.edu.thu.tsfile.timeseries.write.record.TSRecord;
+import cn.edu.thu.tsfiledb.conf.TSFileDBConfig;
+import cn.edu.thu.tsfiledb.conf.TSFileDBDescriptor;
 import cn.edu.thu.tsfiledb.engine.exception.FileNodeManagerException;
 import cn.edu.thu.tsfiledb.engine.lru.MetadataManagerHelper;
 import cn.edu.thu.tsfiledb.engine.overflow.io.EngineTestHelper;
@@ -26,6 +28,8 @@ import cn.edu.thu.tsfiledb.engine.overflow.io.EngineTestHelper;
 public class FileNodeManagerTest {
 
 	private TSFileConfig tsconfig = TSFileDescriptor.getInstance().getConfig();
+	private TSFileDBConfig tsdbconfig = TSFileDBDescriptor.getInstance().getConfig();
+	
 
 	private FileNodeManager fManager = null;
 
@@ -36,26 +40,26 @@ public class FileNodeManagerTest {
 
 	@Before
 	public void setUp() throws Exception {
-		tsconfig.FileNodeDir = "filenode" + File.separatorChar;
-		tsconfig.BufferWriteDir = "bufferwrite";
-		tsconfig.overflowDataDir = "overflow";
+		tsdbconfig.FileNodeDir = "filenode" + File.separatorChar;
+		tsdbconfig.BufferWriteDir = "bufferwrite";
+		tsdbconfig.overflowDataDir = "overflow";
 
 		// set rowgroupsize
 		tsconfig.rowGroupSize = 2000;
 		tsconfig.pageCheckSizeThreshold = 3;
 		tsconfig.pageSize = 100;
 		tsconfig.defaultMaxStringLength = 2;
-		EngineTestHelper.delete(tsconfig.FileNodeDir);
-		EngineTestHelper.delete(tsconfig.BufferWriteDir);
-		EngineTestHelper.delete(tsconfig.overflowDataDir);
+		EngineTestHelper.delete(tsdbconfig.FileNodeDir);
+		EngineTestHelper.delete(tsdbconfig.BufferWriteDir);
+		EngineTestHelper.delete(tsdbconfig.overflowDataDir);
 		MetadataManagerHelper.initMetadata();
 	}
 
 	@After
 	public void tearDown() throws Exception {
-		EngineTestHelper.delete(tsconfig.FileNodeDir);
-		EngineTestHelper.delete(tsconfig.BufferWriteDir);
-		EngineTestHelper.delete(tsconfig.overflowDataDir);
+		EngineTestHelper.delete(tsdbconfig.FileNodeDir);
+		EngineTestHelper.delete(tsdbconfig.BufferWriteDir);
+		EngineTestHelper.delete(tsdbconfig.overflowDataDir);
 		MetadataManagerHelper.clearMetadata();
 	}
 

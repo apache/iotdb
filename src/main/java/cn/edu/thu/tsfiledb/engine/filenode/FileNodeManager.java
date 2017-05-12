@@ -21,6 +21,8 @@ import cn.edu.thu.tsfile.file.metadata.enums.TSDataType;
 import cn.edu.thu.tsfile.timeseries.filter.definition.SingleSeriesFilterExpression;
 import cn.edu.thu.tsfile.timeseries.write.record.DataPoint;
 import cn.edu.thu.tsfile.timeseries.write.record.TSRecord;
+import cn.edu.thu.tsfiledb.conf.TSFileDBConfig;
+import cn.edu.thu.tsfiledb.conf.TSFileDBDescriptor;
 import cn.edu.thu.tsfiledb.engine.bufferwrite.Action;
 import cn.edu.thu.tsfiledb.engine.bufferwrite.BufferWriteProcessor;
 import cn.edu.thu.tsfiledb.engine.bufferwrite.FileNodeConstants;
@@ -38,6 +40,7 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(FileNodeManager.class);
 	private static final TSFileConfig TsFileConf = TSFileDescriptor.getInstance().getConfig();
+	private static final TSFileDBConfig TsFileDBConf = TSFileDBDescriptor.getInstance().getConfig();
 	private static final String restoreFileName = "fileNodeManager.restore";
 	private final String fileNodeManagerStoreFile;
 
@@ -72,8 +75,8 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 		instanceLock.lock();
 		try {
 			if (instance == null) {
-				instance = new FileNodeManager(TsFileConf.maxFileNodeNum, MManager.getInstance(),
-						TsFileConf.FileNodeDir);
+				instance = new FileNodeManager(TsFileDBConf.maxFileNodeNum, MManager.getInstance(),
+						TsFileDBConf.FileNodeDir);
 			}
 			return instance;
 		} finally {
@@ -321,7 +324,7 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 			LOGGER.debug("Unlock the FileNodeProcessor: {}", fileNodeProcessor.getNameSpacePath());
 		} else {
 			if (timestamp > lastUpdateTime) {
-				timestamp = lastUpdateTime;
+				timestamp = lastUpdateTime + 1;
 			}
 			Map<String, Object> parameters = new HashMap<>();
 			parameters.put(FileNodeConstants.OVERFLOW_BACKUP_MANAGER_ACTION, overflowBackUpAction);
@@ -520,7 +523,7 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 
 		@Override
 		public void run() {
-			ExecutorService mergeExecutorPool = Executors.newFixedThreadPool(TsFileConf.mergeConcurrentThreadNum);
+			ExecutorService mergeExecutorPool = Executors.newFixedThreadPool(TsFileDBConf.mergeConcurrentThreadNum);
 			for (String fileNodeNamespacePath : allChangedFileNodes) {
 				MergeOneProcessor mergeOneProcessorThread = new MergeOneProcessor(fileNodeNamespacePath);
 				mergeExecutorPool.execute(mergeOneProcessorThread);

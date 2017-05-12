@@ -1,6 +1,6 @@
 package cn.edu.thu.tsfiledb.auth;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
 
 import java.sql.Statement;
 
@@ -8,14 +8,14 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import cn.edu.thu.tsfile.common.conf.TSFileConfig;
-import cn.edu.thu.tsfile.common.conf.TSFileDescriptor;
 import cn.edu.thu.tsfiledb.auth.dao.DBdao;
 import cn.edu.thu.tsfiledb.auth.dao.UserDao;
 import cn.edu.thu.tsfiledb.auth.dao.UserPermissionDao;
 import cn.edu.thu.tsfiledb.auth.model.Permission;
 import cn.edu.thu.tsfiledb.auth.model.User;
 import cn.edu.thu.tsfiledb.auth.model.UserPermission;
+import cn.edu.thu.tsfiledb.conf.TSFileDBConfig;
+import cn.edu.thu.tsfiledb.conf.TSFileDBDescriptor;
 
 public class UserPemissionTest {
 
@@ -29,8 +29,8 @@ public class UserPemissionTest {
 	private int permission;
 	private User user = new User("user1", "user1");
 
-	private TSFileConfig config = TSFileDescriptor.getInstance().getConfig();
-
+	private TSFileDBConfig config = TSFileDBDescriptor.getInstance().getConfig();
+	
 	@Before
 	public void setUp() throws Exception {
 		config.derbyHome = "";

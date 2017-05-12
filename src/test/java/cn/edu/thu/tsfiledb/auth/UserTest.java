@@ -1,18 +1,19 @@
 package cn.edu.thu.tsfiledb.auth;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
 
 import java.sql.Statement;
 import java.util.ArrayList;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import cn.edu.thu.tsfile.common.conf.TSFileConfig;
-import cn.edu.thu.tsfile.common.conf.TSFileDescriptor;
 import cn.edu.thu.tsfiledb.auth.dao.DBdao;
 import cn.edu.thu.tsfiledb.auth.dao.UserDao;
 import cn.edu.thu.tsfiledb.auth.model.User;
+import cn.edu.thu.tsfiledb.conf.TSFileDBConfig;
+import cn.edu.thu.tsfiledb.conf.TSFileDBDescriptor;
 import cn.edu.thu.tsfiledb.engine.overflow.io.EngineTestHelper;
 
 public class UserTest {
@@ -24,8 +25,8 @@ public class UserTest {
 	private String userName = "testuser";
 	private String passWord = "password";
 	private User user = new User(userName, passWord);
-	private TSFileConfig config = TSFileDescriptor.getInstance().getConfig();
-
+	private TSFileDBConfig config = TSFileDBDescriptor.getInstance().getConfig();
+	
 	/**
 	 * @throws Exception
 	 *             prepare to connect the derby DB
