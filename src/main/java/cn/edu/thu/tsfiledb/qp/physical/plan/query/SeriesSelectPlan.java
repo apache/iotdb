@@ -12,6 +12,7 @@ import cn.edu.thu.tsfile.timeseries.filter.definition.FilterExpression;
 import cn.edu.thu.tsfile.timeseries.filter.definition.FilterFactory;
 import cn.edu.thu.tsfile.timeseries.filter.definition.SingleSeriesFilterExpression;
 import cn.edu.thu.tsfile.timeseries.filter.definition.filterseries.FilterSeries;
+import cn.edu.thu.tsfile.timeseries.filter.definition.filterseries.FilterSeriesType;
 import cn.edu.thu.tsfile.timeseries.read.query.QueryDataSet;
 import cn.edu.thu.tsfile.timeseries.read.readSupport.RowRecord;
 import cn.edu.thu.tsfile.timeseries.utils.StringContainer;
@@ -143,11 +144,11 @@ public class SeriesSelectPlan extends PhysicalPlan {
     private FilterExpression[] transformFilterOpToExpression(QueryProcessExecutor conf)
             throws QueryProcessorException {
         FilterExpression timeFilter =
-                timeFilterOperator == null ? null : timeFilterOperator.transformToFilter(conf);
+                timeFilterOperator == null ? null : timeFilterOperator.transformToFilter(conf, FilterSeriesType.TIME_FILTER);
         FilterExpression freqFilter =
-                freqFilterOperator == null ? null : freqFilterOperator.transformToFilter(conf);
+                freqFilterOperator == null ? null : freqFilterOperator.transformToFilter(conf, FilterSeriesType.FREQUENCY_FILTER);
         FilterExpression valueFilter =
-                valueFilterOperator == null ? null : valueFilterOperator.transformToFilter(conf);
+                valueFilterOperator == null ? null : valueFilterOperator.transformToFilter(conf, FilterSeriesType.VALUE_FILTER);
         // TODO maybe it's a temporary solution. Up to now, if a crossSensorFilter is needed, just
         // construct it with two same children via CSAnd(valueFilter, valueFilter)
         if (valueFilter instanceof SingleSeriesFilterExpression) {
@@ -156,10 +157,10 @@ public class SeriesSelectPlan extends PhysicalPlan {
                 Path path = paths.get(0);
                 if (!series.getDeltaObjectUID().equals(path.getDeltaObjectToString())
                         || !series.getMeasurementUID().equals(path.getMeasurementToString())) {
-                    valueFilter = FilterFactory.and(valueFilter, valueFilter);
+                    valueFilter = FilterFactory.csAnd(valueFilter, valueFilter);
                 }
             } else
-                valueFilter = FilterFactory.and(valueFilter, valueFilter);
+                valueFilter = FilterFactory.csAnd(valueFilter, valueFilter);
         }
         return new FilterExpression[] {timeFilter, freqFilter, valueFilter};
     }

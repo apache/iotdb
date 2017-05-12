@@ -48,10 +48,12 @@ import cn.edu.thu.tsfiledb.engine.exception.OverflowProcessorException;
 import cn.edu.thu.tsfiledb.engine.exception.ProcessorRuntimException;
 import cn.edu.thu.tsfiledb.engine.lru.LRUProcessor;
 import cn.edu.thu.tsfiledb.engine.overflow.io.OverflowProcessor;
+import cn.edu.thu.tsfiledb.exception.NotConsistentException;
 import cn.edu.thu.tsfiledb.exception.PathErrorException;
 import cn.edu.thu.tsfiledb.metadata.ColumnSchema;
 import cn.edu.thu.tsfiledb.metadata.MManager;
 import cn.edu.thu.tsfiledb.query.engine.OverflowQueryEngine;
+import cn.edu.thu.tsfiledb.query.management.ReadLockManager;
 
 public class FileNodeProcessor extends LRUProcessor {
 
@@ -816,8 +818,16 @@ public class FileNodeProcessor extends LRUProcessor {
 					e.printStackTrace();
 				}
 			}
+			//TODO: These code are ugly
+			try {
+				ReadLockManager.getInstance().unlockForOneRequest();
+			} catch (NotConsistentException e) {
+				e.printStackTrace();
+			} catch (ProcessorException e) {
+				e.printStackTrace();
+			}
 			recordWriter.close();
-
+			
 			LOGGER.debug("Merge query: namespace {}, time filter {}, filepath {} successfully", nameSpacePath,
 					timeFilter, outputPath);
 			backupIntervalFile.startTime = startTime;
