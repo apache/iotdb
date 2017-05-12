@@ -6,15 +6,19 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import cn.edu.thu.tsfiledb.auth.model.DBContext;
 import cn.edu.thu.tsfiledb.auth.model.User;
-
 
 /**
  * @author liukun
  *
  */
 public class UserDao {
+
+	private static final Logger LOGGER = LoggerFactory.getLogger(UserDao.class);
 
 	public int createUser(Statement statement, User user) {
 
@@ -25,6 +29,7 @@ public class UserDao {
 			state = statement.executeUpdate(sql);
 		} catch (SQLException e) {
 			e.printStackTrace();
+			LOGGER.error("Execute statement error, the statement is {}", sql);
 		}
 		return state;
 	}
@@ -36,6 +41,7 @@ public class UserDao {
 			state = statement.executeUpdate(sql);
 		} catch (SQLException e) {
 			e.printStackTrace();
+			LOGGER.error("Execute statement error, the statement is {}", sql);
 		}
 		return state;
 	}
@@ -89,7 +95,9 @@ public class UserDao {
 			}
 		} catch (SQLException e) {
 			e.printStackTrace();
+			LOGGER.error("Execute query statement error, the statement is {}", sql);
 		}
+		
 		return user;
 
 	}

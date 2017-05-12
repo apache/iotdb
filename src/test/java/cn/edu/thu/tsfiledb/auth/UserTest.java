@@ -8,9 +8,12 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import cn.edu.thu.tsfile.common.conf.TSFileConfig;
+import cn.edu.thu.tsfile.common.conf.TSFileDescriptor;
 import cn.edu.thu.tsfiledb.auth.dao.DBdao;
 import cn.edu.thu.tsfiledb.auth.dao.UserDao;
 import cn.edu.thu.tsfiledb.auth.model.User;
+import cn.edu.thu.tsfiledb.engine.overflow.io.EngineTestHelper;
 
 public class UserTest {
 
@@ -21,6 +24,7 @@ public class UserTest {
 	private String userName = "testuser";
 	private String passWord = "password";
 	private User user = new User(userName, passWord);
+	private TSFileConfig config = TSFileDescriptor.getInstance().getConfig();
 
 	/**
 	 * @throws Exception
@@ -28,9 +32,11 @@ public class UserTest {
 	 */
 	@Before
 	public void setUp() throws Exception {
+		config.derbyHome = "";
+		EngineTestHelper.delete(config.derbyHome);
 		dBdao = new DBdao();
 		dBdao.open();
-		statement = dBdao.getStatement();
+		statement = DBdao.getStatement();
 		userDao = new UserDao();
 
 	}
@@ -38,13 +44,11 @@ public class UserTest {
 	@After
 	public void tearDown() throws Exception {
 		dBdao.close();
+		EngineTestHelper.delete(config.derbyHome);
 	}
 
-	/**
-	 * Create user first and delete the user
-	 */
 	@Test
-	public void test() {
+	public void createUserandDeleteUserTest() {
 		User getUser = userDao.getUser(statement, userName);
 		if (getUser != null) {
 			int deleteCount = userDao.deleteUser(statement, userName);
@@ -60,7 +64,7 @@ public class UserTest {
 		// delete user
 		userDao.deleteUser(statement, userName);
 		getUser = userDao.getUser(statement, userName);
-		assertEquals(getUser, null);
+		assertEquals(null, getUser);
 	}
 
 	@Test
@@ -77,40 +81,35 @@ public class UserTest {
 			userDao.createUser(statement, user2);
 		}
 		ArrayList<User> list = (ArrayList<User>) userDao.getUsers(statement);
-		// add the root user
+		// root user
 		assertEquals(3, list.size());
-		// int count = 0;
-		// // Some problems
-		// for (User user : list) {
-		// User testUser = arrayList.get(count);
-		// count++;
-		// if (user.getUserName().equals("root")) {
-		// continue;
-		// }
-		// assertEquals(testUser.getUserName(), user.getUserName());
-		// assertEquals(testUser.getPassWord(), user.getPassWord());
-		// }
 		userDao.deleteUser(statement, user1.getUserName());
 		userDao.deleteUser(statement, user2.getUserName());
+		assertEquals(null, userDao.getUser(statement, user1.getUserName()));
+		assertEquals(null, userDao.getUser(statement, user2.getUserName()));
 	}
 
-	 @Test
-	 public void updateUserTest(){
-	 User user = new User("user", "user");
-	 if ((userDao.getUser(statement, user.getUserName()))==null) {
-	 userDao.createUser(statement, user);
-	 }
-	 user = userDao.getUser(statement, user.getUserName());
-	 assertEquals("user", user.getUserName());
-	 assertEquals("user", user.getPassWord());
-	 // update password
-	 String updatePassword = "password";
-	 userDao.updateUserPassword(statement,
-	 user.getUserName(), updatePassword);
-	 user = userDao.getUser(statement, user.getUserName());
-	 assertEquals("user", user.getUserName());
-	 assertEquals(updatePassword, user.getPassWord());
-	 userDao.deleteUser(statement, user.getUserName());
-	 }
+	@Test
+	public void updateUserTest() {
+
+		String username = "user";
+		String oldPassword = username;
+		User user = new User(username, oldPassword);
+
+		if ((userDao.getUser(statement, user.getUserName())) == null) {
+			userDao.createUser(statement, user);
+		}
+		user = userDao.getUser(statement, user.getUserName());
+		assertEquals(username, user.getUserName());
+		assertEquals(oldPassword, user.getPassWord());
+		// update password
+
+		String updatePassword = "password";
+		userDao.updateUserPassword(statement, user.getUserName(), updatePassword);
+		user = userDao.getUser(statement, user.getUserName());
+		assertEquals(username, user.getUserName());
+		assertEquals(updatePassword, user.getPassWord());
+		userDao.deleteUser(statement, user.getUserName());
+	}
 
 }

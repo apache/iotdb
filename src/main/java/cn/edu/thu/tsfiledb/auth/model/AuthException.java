@@ -2,10 +2,13 @@ package cn.edu.thu.tsfiledb.auth.model;
 
 /**
  * The exception for authority model
- * Created by liukun on 17/1/4.
+ * @author liukun
+ * 
  */
 public class AuthException extends Exception {
-    public AuthException(String format, String userName, String roleName) {
+	private static final long serialVersionUID = 5091102941209301301L;
+
+	public AuthException(String format, String userName, String roleName) {
         super();
     }
 
