@@ -51,7 +51,8 @@ public class QueryStructure {
 	}
 	
 	public String toString(){
-		return "FilesList: " + String.valueOf(bufferwriteDataInFiles);
+		return "FilesList: " + String.valueOf(bufferwriteDataInFiles) + "\n"
+				+ "InsertData: " + (allOverflowData.get(0) != null ? ((DynamicOneColumnData)allOverflowData.get(0)).length : 0);
 	}
 	
 	

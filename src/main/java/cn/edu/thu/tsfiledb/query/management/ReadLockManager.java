@@ -5,6 +5,7 @@ import java.util.HashMap;
 import cn.edu.thu.tsfiledb.engine.exception.FileNodeManagerException;
 import cn.edu.thu.tsfiledb.engine.filenode.FileNodeManager;
 import cn.edu.thu.tsfiledb.exception.NotConsistentException;
+import cn.edu.thu.tsfiledb.query.reader.RecordReader;
 import cn.edu.thu.tsfile.common.exception.ProcessorException;
 
 
@@ -13,6 +14,7 @@ public class ReadLockManager {
 	private static ReadLockManager instance = new ReadLockManager();
 	FileNodeManager fileNodeManager = FileNodeManager.getInstance(); 
 	ThreadLocal<HashMap<String,Integer>> locksMap = new ThreadLocal<>();
+	public RecordReaderCache recordReaderCache = new RecordReaderCache();
 	
 	private ReadLockManager(){
 		
@@ -59,6 +61,8 @@ public class ReadLockManager {
 			unlockForQuery(key, locks.get(key));
 		}
 		locksMap.remove();
+		//remove recordReaders cached
+		recordReaderCache.clear();
 	}
 	
 	public String getKey(String deltaObjectUID, String measurementID){

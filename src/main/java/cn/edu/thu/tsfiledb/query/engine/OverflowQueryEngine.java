@@ -127,7 +127,7 @@ public class OverflowQueryEngine {
 		// Get 4 params
 		List<Object> params = getOverflowInfoAndFilterDataInMem(deltaObjectUID, measuremetnUID, null, null, null, res, recordReader.insertDataInMemory, recordReader.overflowInfo);
 		DynamicOneColumnData insertTrue = (DynamicOneColumnData) params.get(0);
-		System.out.println("|||==== "+ deltaObjectUID + "#" + measuremetnUID + ". Insert:" + insertTrue.length);
+		
 		DynamicOneColumnData updateTrue = (DynamicOneColumnData) params.get(1);
 		DynamicOneColumnData updateFalse = (DynamicOneColumnData) params.get(2);
 		SingleSeriesFilterExpression delteFilter = (SingleSeriesFilterExpression) params.get(3);
@@ -182,7 +182,7 @@ public class OverflowQueryEngine {
 		// Get 4 params
 		List<Object> params = getOverflowInfoAndFilterDataInMem(device, sensor, timeFilter, freqFilter, valueFilter, res, recordReader.insertDataInMemory, recordReader.overflowInfo);
 		DynamicOneColumnData insertTrue = (DynamicOneColumnData) params.get(0);
-		System.out.println("==== "+ device + "#" + sensor + ". Insert:" + insertTrue.length);
+		
 		
 		DynamicOneColumnData updateTrue = (DynamicOneColumnData) params.get(1);
 		DynamicOneColumnData updateFalse = (DynamicOneColumnData) params.get(2);
