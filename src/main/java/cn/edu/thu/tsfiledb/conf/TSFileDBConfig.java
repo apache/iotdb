@@ -39,7 +39,7 @@ public class TSFileDBConfig {
 	 * the maximum number of concurrent buffer write instances
 	 */
 	public int maxBufferWriteNodeNum = 50;
-	public int defaultFetchSize = 5000;
+	public int defaultFetchSize = 1000000;
 	public String writeLogPath = "src/main/resources/writeLog.log";
 
 	public TSFileDBConfig() {

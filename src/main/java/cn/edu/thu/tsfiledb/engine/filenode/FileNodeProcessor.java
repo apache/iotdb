@@ -55,6 +55,7 @@ import cn.edu.thu.tsfiledb.exception.PathErrorException;
 import cn.edu.thu.tsfiledb.metadata.ColumnSchema;
 import cn.edu.thu.tsfiledb.metadata.MManager;
 import cn.edu.thu.tsfiledb.query.engine.OverflowQueryEngine;
+import cn.edu.thu.tsfiledb.query.engine.QueryerForMerge;
 import cn.edu.thu.tsfiledb.query.management.ReadLockManager;
 
 public class FileNodeProcessor extends LRUProcessor {
@@ -798,35 +799,22 @@ public class FileNodeProcessor extends LRUProcessor {
 
 		LOGGER.info("Merge query and merge: namespace {}, time filter {}", nameSpacePath, timeFilter);
 
-		QueryDataSet data = null;
 		long startTime = -1;
 		long endTime = -1;
 
-		OverflowQueryEngine queryEngine = new OverflowQueryEngine();
-		try {
-			data = queryEngine.query(pathList, timeFilter, null, null, null, TsFileDBConf.defaultFetchSize);
-		} catch (ProcessorException e1) {
-			e1.printStackTrace();
-			throw new IOException("Exception when merge");
-		}
-		if (!data.hasNextRecord()) {
+		QueryerForMerge queryer = new QueryerForMerge(pathList, (SingleSeriesFilterExpression) timeFilter);
+		int queryCount = 0;
+		if (!queryer.hasNextRecord()) {
 			// No record in this query
 			LOGGER.warn("Merge query: namespace {}, time filter {}, no query data", nameSpacePath, timeFilter);
 			// Set the IntervalFile
 			backupIntervalFile.startTime = -1;
 			backupIntervalFile.endTime = -1;
 
-			// TODO: These code are ugly
-			try {
-				ReadLockManager.getInstance().unlockForOneRequest();
-			} catch (NotConsistentException e) {
-				e.printStackTrace();
-			} catch (ProcessorException e) {
-				e.printStackTrace();
-			}
 		} else {
+			queryCount ++;
 			TSRecordWriter recordWriter;
-			RowRecord firstRecord = data.getNextRecord();
+			RowRecord firstRecord = queryer.getNextRecord();
 			// get the outputPate and FileSchema
 			String outputPath = constructOutputFilePath(nameSpacePath,
 					firstRecord.timestamp + FileNodeConstants.BUFFERWRITE_FILE_SEPARATOR + System.currentTimeMillis());
@@ -847,8 +835,9 @@ public class FileNodeProcessor extends LRUProcessor {
 			recordWriter.write(filledRecord);
 			startTime = endTime = firstRecord.getTime();
 
-			while (data.hasNextRecord()) {
-				RowRecord row = data.getNextRecord();
+			while (queryer.hasNextRecord()) {
+				queryCount ++;
+				RowRecord row = queryer.getNextRecord();
 				filledRecord = removeNullTSRecord(row);
 				endTime = filledRecord.time;
 				try {
@@ -858,16 +847,8 @@ public class FileNodeProcessor extends LRUProcessor {
 					e.printStackTrace();
 				}
 			}
-			// TODO: These code are ugly
-			try {
-				ReadLockManager.getInstance().unlockForOneRequest();
-			} catch (NotConsistentException e) {
-				e.printStackTrace();
-			} catch (ProcessorException e) {
-				e.printStackTrace();
-			}
 			recordWriter.close();
-
+			LOGGER.error("   ============   Merge Record Count: " + queryCount);
 			LOGGER.debug("Merge query: namespace {}, time filter {}, filepath {} successfully", nameSpacePath,
 					timeFilter, outputPath);
 			backupIntervalFile.startTime = startTime;

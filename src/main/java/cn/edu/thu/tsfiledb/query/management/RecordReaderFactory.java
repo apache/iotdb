@@ -44,6 +44,7 @@ public class RecordReaderFactory {
 		QueryStructure queryStructure;
 		try {
 			queryStructure = fileNodeManager.query(deltaObjectUID, measurementID, timeFilter, freqFilter, valueFilter);
+			System.out.println(queryStructure);
 		} catch (FileNodeManagerException e) {
 			throw new ProcessorException(e.getMessage());
 		}

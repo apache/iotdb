@@ -284,7 +284,7 @@ public class TSServiceImpl implements TSIService.Iface {
 	@Override
 	public TSExecuteBatchStatementResp ExecuteBatchStatement(TSExecuteBatchStatementReq req) throws TException {
 		try {
-			LOGGER.info("tsfile-server ExecuteBatchStatement: Receive execute batch sql operation");
+			LOGGER.debug("tsfile-server ExecuteBatchStatement: Receive execute batch sql operation");
 			if (!checkLogin()) {
 				LOGGER.info("tsfile-server ExecuteBatchStatement: Not login.");
 				return getTSBathcExecuteStatementResp(TS_StatusCode.ERROR_STATUS, "Not login", null);

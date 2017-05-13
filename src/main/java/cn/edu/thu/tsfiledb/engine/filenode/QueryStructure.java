@@ -50,7 +50,9 @@ public class QueryStructure {
 		return allOverflowData;
 	}
 	
-	
+	public String toString(){
+		return "FilesList: " + String.valueOf(bufferwriteDataInFiles);
+	}
 	
 	
 }
