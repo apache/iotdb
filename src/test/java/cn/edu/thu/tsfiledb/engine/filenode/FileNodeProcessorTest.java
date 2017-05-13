@@ -175,7 +175,6 @@ public class FileNodeProcessorTest {
 				processor.getOverflowProcessor(deltaObjectId, parameters);
 			}
 			processor.getOverflowProcessor().close();
-
 			processor.merge();
 			// check the result
 			QueryStructure queryRestult = processor.query(deltaObjectId, measurementId, null, null, null);
