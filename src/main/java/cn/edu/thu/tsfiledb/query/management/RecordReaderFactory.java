@@ -1,6 +1,5 @@
 package cn.edu.thu.tsfiledb.query.management;
 
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -8,13 +7,13 @@ import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import cn.edu.thu.tsfile.common.exception.ProcessorException;
 import cn.edu.thu.tsfile.common.utils.TSRandomAccessFileReader;
 import cn.edu.thu.tsfile.timeseries.filter.definition.SingleSeriesFilterExpression;
 import cn.edu.thu.tsfiledb.engine.exception.FileNodeManagerException;
 import cn.edu.thu.tsfiledb.engine.filenode.FileNodeManager;
 import cn.edu.thu.tsfiledb.engine.filenode.IntervalFileNode;
 import cn.edu.thu.tsfiledb.engine.filenode.QueryStructure;
-import cn.edu.thu.tsfile.common.exception.ProcessorException;
 import cn.edu.thu.tsfiledb.query.reader.RecordReader;
 
 /**
@@ -41,17 +40,24 @@ public class RecordReaderFactory {
 			SingleSeriesFilterExpression timeFilter, SingleSeriesFilterExpression freqFilter,
 			SingleSeriesFilterExpression valueFilter) throws ProcessorException {
 		int token = readLockManager.lock(deltaObjectUID, measurementID);
-		QueryStructure queryStructure;
-		try {
-			queryStructure = fileNodeManager.query(deltaObjectUID, measurementID, timeFilter, freqFilter, valueFilter);
-			System.out.println(queryStructure);
-		} catch (FileNodeManagerException e) {
-			throw new ProcessorException(e.getMessage());
+		if (readLockManager.recordReaderCache.containsRecordReader(deltaObjectUID, measurementID)) {
+			return readLockManager.recordReaderCache.get(deltaObjectUID, measurementID);
+		} else {
+			QueryStructure queryStructure;
+			try {
+				queryStructure = fileNodeManager.query(deltaObjectUID, measurementID, timeFilter, freqFilter,
+						valueFilter);
+				System.out.println("====== Device:" + deltaObjectUID + ". Sensor:" + measurementID);
+				System.out.println(queryStructure);
+				System.out.println("======");
+			} catch (FileNodeManagerException e) {
+				throw new ProcessorException(e.getMessage());
+			}
+			// TODO: This can be optimized in later version
+			RecordReader recordReader = createANewRecordReader(deltaObjectUID, measurementID, queryStructure, token);
+			readLockManager.recordReaderCache.put(deltaObjectUID, measurementID, recordReader);
+			return recordReader;
 		}
-
-		// TODO: This can be optimized in later version
-		RecordReader recordReader = createANewRecordReader(deltaObjectUID, measurementID, queryStructure, token);
-		return recordReader;
 	}
 
 	public RecordReader createANewRecordReader(String deltaObjectUID, String measurementID,
