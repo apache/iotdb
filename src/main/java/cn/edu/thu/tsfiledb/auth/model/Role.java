@@ -5,9 +5,10 @@ package cn.edu.thu.tsfiledb.auth.model;
  *
  */
 public class Role {
-	
+
 	private int id;
 	private String roleName;
+
 	/**
 	 * @param id
 	 * @param roleName
@@ -16,13 +17,13 @@ public class Role {
 		this.id = id;
 		this.roleName = roleName;
 	}
-	
+
 	public Role(String roleName) {
 		this.roleName = roleName;
 	}
-	
-	public Role(){
-		
+
+	public Role() {
+
 	}
 
 	/**
@@ -33,7 +34,8 @@ public class Role {
 	}
 
 	/**
-	 * @param id the id to set
+	 * @param id
+	 *            the id to set
 	 */
 	public void setId(int id) {
 		this.id = id;
@@ -47,11 +49,11 @@ public class Role {
 	}
 
 	/**
-	 * @param roleName the roleName to set
+	 * @param roleName
+	 *            the roleName to set
 	 */
 	public void setRoleName(String roleName) {
 		this.roleName = roleName;
 	}
-	
 
 }

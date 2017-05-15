@@ -1,6 +1,6 @@
 package cn.edu.thu.tsfiledb.auth;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
 
 import java.sql.Statement;
 import java.util.ArrayList;
@@ -16,6 +16,8 @@ import cn.edu.thu.tsfiledb.auth.dao.UserRoleRelDao;
 import cn.edu.thu.tsfiledb.auth.model.Role;
 import cn.edu.thu.tsfiledb.auth.model.User;
 import cn.edu.thu.tsfiledb.auth.model.UserRoleRel;
+import cn.edu.thu.tsfiledb.conf.TSFileDBConfig;
+import cn.edu.thu.tsfiledb.conf.TSFileDBDescriptor;
 
 public class UserRoleRelTest {
 
@@ -29,17 +31,20 @@ public class UserRoleRelTest {
 	Role role1 = new Role("role1");
 	Role role2 = new Role("role2");
 
+	private TSFileDBConfig config = TSFileDBDescriptor.getInstance().getConfig();
+	
 	@Before
 	public void setUp() throws Exception {
+
+		config.derbyHome = "";
 		dbdao = new DBdao();
 		dbdao.open();
-		statement = dbdao.getStatement();
+		statement = DBdao.getStatement();
 		userDao = new UserDao();
 		roleDao = new RoleDao();
 		userRoleRelDao = new UserRoleRelDao();
 
-		// create user and role
-
+		// create user
 		if (userDao.getUser(statement, user1.getUserName()) == null) {
 			userDao.createUser(statement, user1);
 		}
@@ -47,6 +52,7 @@ public class UserRoleRelTest {
 			userDao.createUser(statement, user2);
 		}
 
+		// create role
 		if (roleDao.getRole(statement, role1.getRoleName()) == null) {
 			roleDao.createRole(statement, role1);
 		}
@@ -67,7 +73,7 @@ public class UserRoleRelTest {
 	}
 
 	@Test
-	public void test() {
+	public void createUserRoleRelTest() {
 		// create relation between user and role
 		String userName = "user1";
 		String roleName = "role1";
@@ -119,7 +125,7 @@ public class UserRoleRelTest {
 		ArrayList<Integer> list = new ArrayList<>();
 		list.add(role1Id);
 		list.add(role2Id);
-		
+
 		roleIds.removeAll(list);
 		assertEquals(0, roleIds.size());
 		// delete the relations
@@ -136,19 +142,20 @@ public class UserRoleRelTest {
 		int role1Id = roleDao.getRole(statement, role1name).getId();
 		int user1Id = userDao.getUser(statement, user1name).getId();
 		int user2Id = userDao.getUser(statement, user2name).getId();
-		
+
 		UserRoleRel userRoleRel1 = new UserRoleRel(user1Id, role1Id);
 		UserRoleRel userRoleRel2 = new UserRoleRel(user2Id, role1Id);
-		
-		//if not exist, create the relations
-		if (userRoleRelDao.getUserRoleRel(statement, userRoleRel1)==null) {
+
+		// if not exist, create the relations
+		if (userRoleRelDao.getUserRoleRel(statement, userRoleRel1) == null) {
 			userRoleRelDao.createUserRoleRel(statement, userRoleRel1);
 		}
-		if (userRoleRelDao.getUserRoleRel(statement, userRoleRel2)==null) {
+		if (userRoleRelDao.getUserRoleRel(statement, userRoleRel2) == null) {
 			userRoleRelDao.createUserRoleRel(statement, userRoleRel2);
 		}
-		//get the relation and assert them
-		ArrayList<UserRoleRel> arrayList = (ArrayList<UserRoleRel>)userRoleRelDao.getUserRoleRelByRole(statement, role1Id);
+		// get the relation and assert them
+		ArrayList<UserRoleRel> arrayList = (ArrayList<UserRoleRel>) userRoleRelDao.getUserRoleRelByRole(statement,
+				role1Id);
 		ArrayList<Integer> userIds = new ArrayList<>();
 		for (UserRoleRel userRoleRel : arrayList) {
 			userIds.add(userRoleRel.getUserId());
@@ -156,10 +163,10 @@ public class UserRoleRelTest {
 		ArrayList<Integer> list = new ArrayList<>();
 		list.add(user1Id);
 		list.add(user2Id);
-		
+
 		userIds.removeAll(list);
 		assertEquals(0, userIds.size());
-		//delete the relations
+		// delete the relations
 		userRoleRelDao.deleteUserRoleRel(statement, userRoleRel1);
 		userRoleRelDao.deleteUserRoleRel(statement, userRoleRel2);
 	}

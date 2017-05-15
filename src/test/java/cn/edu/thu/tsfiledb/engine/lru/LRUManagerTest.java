@@ -104,22 +104,28 @@ public class LRUManagerTest {
 		processor.writeUnlock();
 
 		// multiple thread write test
-		Thread thread = new Thread(new GetWriterProcessor());
+		Thread thread = new Thread(new GetWriterProcessor(deltaObjectId));
 		thread.start();
 		Thread.sleep(100);
+		// the other thread get the write lock for the processor of
+		// deltaObjectId1
 		processor = manager.getProcessorByLRU(deltaObjectId, true);
 		assertEquals(null, processor);
+		// the max of the manager is 1, and the processor of deltaObjectId2
+		// can't construct
 		processor = manager.getProcessorByLRU(deltaObjectId2, true);
 		assertEquals(null, processor);
+		// the processor of deltaObjectId1 is used, the manager closed completly
 		assertEquals(false, manager.close());
 		Thread.sleep(1000);
+
 		processor = manager.getProcessorByLRU(deltaObjectId, true);
 		assertEquals(false, processor == null);
 		processor.writeUnlock();
 		assertEquals(true, manager.close());
 
 		// multiple thread read test
-		Thread thread2 = new Thread(new GetReaderProcessor());
+		Thread thread2 = new Thread(new GetReaderProcessor(deltaObjectId));
 		thread2.start();
 		Thread.sleep(100);
 		processor = manager.getProcessorByLRU(deltaObjectId, false);
@@ -161,7 +167,7 @@ public class LRUManagerTest {
 				fail(e.getMessage());
 			}
 		}
-		
+
 		try {
 			manager.close();
 		} catch (LRUManagerException e) {
@@ -170,13 +176,22 @@ public class LRUManagerTest {
 		}
 	}
 
+	/**
+	 * Get the write
+	 */
 	class GetWriterProcessor implements Runnable {
+
+		private String deltaObjectId;
+
+		public GetWriterProcessor(String deltaObjectId) {
+			this.deltaObjectId = deltaObjectId;
+		}
 
 		@Override
 		public void run() {
 			LRUProcessor lruProcessor = null;
 			try {
-				lruProcessor = manager.getProcessorByLRU("root.vehicle.d0", true);
+				lruProcessor = manager.getProcessorByLRU(deltaObjectId, true);
 			} catch (LRUManagerException e) {
 				e.printStackTrace();
 			}
@@ -193,12 +208,18 @@ public class LRUManagerTest {
 
 	class GetReaderProcessor implements Runnable {
 
+		private String deltaObjectId;
+
+		public GetReaderProcessor(String deltaObjectId) {
+			this.deltaObjectId = deltaObjectId;
+		}
+
 		@Override
 		public void run() {
 			LRUProcessor lruProcessor = null;
 
 			try {
-				lruProcessor = manager.getProcessorByLRU("root.vehicle.d0", false);
+				lruProcessor = manager.getProcessorByLRU(deltaObjectId, false);
 			} catch (LRUManagerException e) {
 				e.printStackTrace();
 			}

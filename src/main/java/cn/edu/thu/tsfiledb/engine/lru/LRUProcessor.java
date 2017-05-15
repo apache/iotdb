@@ -67,7 +67,7 @@ public abstract class LRUProcessor {
 	 * Release the write lock
 	 */
 	public void writeUnlock() {
-		LOGGER.debug("{}: lru write lock-Thread id {}", this.getClass().getSimpleName(),
+		LOGGER.debug("{}: lru write unlock-Thread id {}", this.getClass().getSimpleName(),
 				Thread.currentThread().getId());
 		lock.writeLock().unlock();
 	}

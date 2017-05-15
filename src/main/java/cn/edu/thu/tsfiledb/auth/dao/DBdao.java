@@ -9,8 +9,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 
-import cn.edu.thu.tsfile.common.conf.TSFileDescriptor;
-
+import cn.edu.thu.tsfiledb.conf.TSFileDBDescriptor;
 
 /**
  * @author liukun
@@ -32,7 +31,11 @@ public class DBdao {
 	 * @param dBName
 	 */
 	public DBdao(String dBName) {
-		String path = TSFileDescriptor.getInstance().getConfig().derbyHome + File.separator + dBName;
+		String derbyDirPath = TSFileDBDescriptor.getInstance().getConfig().derbyHome;
+		if (derbyDirPath.length() > 0 && derbyDirPath.charAt(derbyDirPath.length() - 1) != File.separatorChar) {
+			derbyDirPath = derbyDirPath + File.separatorChar;
+		}
+		String path = derbyDirPath + dBName;
 		DBName = path;
 	}
 
@@ -121,7 +124,7 @@ public class DBdao {
 	public boolean createOriTable() {
 		boolean state = false;
 		try {
-			statement.executeUpdate(InitTable.createTableSql);
+			statement.executeUpdate(InitTable.createUserTableSql);
 			statement.executeUpdate(InitTable.createRoleTableSql);
 			statement.executeUpdate(InitTable.createUserRoleRelTableSql);
 			statement.executeUpdate(InitTable.creteUserPermissionTableSql);
@@ -160,11 +163,11 @@ public class DBdao {
 	public void close() {
 		closeStatement();
 		closeConnection();
-//		try {
-//			DriverManager.getConnection(protocal + shutdown);
-//		} catch (SQLException e) {
-//			e.printStackTrace();
-//		}
+		// try {
+		// DriverManager.getConnection(protocal + shutdown);
+		// } catch (SQLException e) {
+		// e.printStackTrace();
+		// }
 	}
 
 	public static Statement getStatement() {

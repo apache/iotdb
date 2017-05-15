@@ -2,7 +2,7 @@
 **/.classpath
 **/.project
 **/.settings/
-src/main/resources/
+# src/main/resources/
 # intellij IDE files
 **/*.iml
 **/.idea/
@@ -16,6 +16,7 @@ src/main/resources/
 
 # intermediately generated locally
 **/logs/
+src/main/resources/*
 
 tsfile-timeseries/src/main/resources/logback.out.out.xml
 tsfile-timeseries/src/main/resources/logback.out.xml

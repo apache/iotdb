@@ -97,9 +97,7 @@ public class OverflowQueryEngine {
 		queryDataSet.mapRet.put(func.name + "(" + path.getFullPath() + ")", aggrRet.data);
 		//close current recordReader
 		recordReader.closeFromFactory();
-		
 		return queryDataSet;
-		
 	}
 	
 	public QueryDataSet readWithoutFilter(List<Path> paths, QueryDataSet queryDataSet, int fetchSize) throws ProcessorException, IOException {
@@ -110,7 +108,6 @@ public class OverflowQueryEngine {
 				public DynamicOneColumnData getMoreRecordsForOneColumn(Path p, DynamicOneColumnData res) throws ProcessorException, IOException {
 					return OverflowQueryEngine.readOneColumnWithoutFilter(p, res, fetchSize);
 				}
-			
 			};
 			queryDataSet.setBatchReaderRetGenerator(batchReaderRetGenerator);
 		}
@@ -130,6 +127,7 @@ public class OverflowQueryEngine {
 		// Get 4 params
 		List<Object> params = getOverflowInfoAndFilterDataInMem(deltaObjectUID, measuremetnUID, null, null, null, res, recordReader.insertDataInMemory, recordReader.overflowInfo);
 		DynamicOneColumnData insertTrue = (DynamicOneColumnData) params.get(0);
+		
 		DynamicOneColumnData updateTrue = (DynamicOneColumnData) params.get(1);
 		DynamicOneColumnData updateFalse = (DynamicOneColumnData) params.get(2);
 		SingleSeriesFilterExpression delteFilter = (SingleSeriesFilterExpression) params.get(3);
@@ -180,9 +178,12 @@ public class OverflowQueryEngine {
 		String sensor = p.getMeasurementToString();
 		
 		RecordReader recordReader = RecordReaderFactory.getInstance().getRecordReader(device, sensor, timeFilter, freqFilter, valueFilter);
+		
 		// Get 4 params
 		List<Object> params = getOverflowInfoAndFilterDataInMem(device, sensor, timeFilter, freqFilter, valueFilter, res, recordReader.insertDataInMemory, recordReader.overflowInfo);
 		DynamicOneColumnData insertTrue = (DynamicOneColumnData) params.get(0);
+		
+		
 		DynamicOneColumnData updateTrue = (DynamicOneColumnData) params.get(1);
 		DynamicOneColumnData updateFalse = (DynamicOneColumnData) params.get(2);
 		SingleSeriesFilterExpression deleteFilter = (SingleSeriesFilterExpression) params.get(3);

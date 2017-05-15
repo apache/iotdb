@@ -4,7 +4,7 @@
 
 	<groupId>cn.edu.thu</groupId>
 	<artifactId>tsfiledb</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
+	<version>0.0.1</version>
 	<packaging>jar</packaging>
 
 	<name>tsfiledb</name>
@@ -34,12 +34,6 @@
 		</dependency>
 
 		<dependency>
-			<groupId>org.apache.hadoop</groupId>
-			<artifactId>hadoop-client</artifactId>
-			<version>${hadoop.version}</version>
-		</dependency>
-
-		<dependency>
 			<groupId>jline</groupId>
 			<artifactId>jline</artifactId>
 			<version>${jline.version}</version>
@@ -50,17 +44,11 @@
 			<artifactId>derby</artifactId>
 			<version>${derby.version}</version>
 		</dependency>
-	<dependency>
+		<dependency>
 			<groupId>org.antlr</groupId>
 			<artifactId>antlr3-maven-plugin</artifactId>
 			<version>3.4</version>
-		</dependency> 
-		
-	<!-- 	 <dependency>
-            <groupId>org.antlr</groupId>
-            <artifactId>antlr4-runtime</artifactId>
-            <version>4.5.3</version>
-        </dependency> -->
+		</dependency>
 	</dependencies>
 
 	<build>
@@ -155,6 +143,7 @@
                     <treatWarningsAsErrors>true</treatWarningsAsErrors>
                 </configuration>
             </plugin> -->
+
 		</plugins>
 	</build>
 </project>

@@ -84,7 +84,7 @@ public class BasicFunctionOperator extends FunctionOperator {
     // }
 
     @Override
-    protected Pair<SingleSeriesFilterExpression, String> transformToSingleFilter(QueryProcessExecutor exec)
+    protected Pair<SingleSeriesFilterExpression, String> transformToSingleFilter(QueryProcessExecutor exec, FilterSeriesType filterType)
             throws QpSelectFromException, QpWhereException {
         TSDataType type = exec.getSeriesType(seriesPath);
         if (type == null) {
@@ -97,35 +97,35 @@ public class BasicFunctionOperator extends FunctionOperator {
                 ret =
                         funcToken.getSingleSeriesFilterExpression(
                                 FilterFactory.intFilterSeries(seriesPath.getDeltaObjectToString(),
-                                        seriesPath.getMeasurementToString(), FilterSeriesType.VALUE_FILTER),
+                                        seriesPath.getMeasurementToString(), filterType),
                                 Integer.valueOf(seriesValue));
                 break;
             case INT64:
                 ret =
                         funcToken.getSingleSeriesFilterExpression(
                                 FilterFactory.longFilterSeries(seriesPath.getDeltaObjectToString(),
-                                        seriesPath.getMeasurementToString(), FilterSeriesType.VALUE_FILTER),
+                                        seriesPath.getMeasurementToString(), filterType),
                                 Long.valueOf(seriesValue));
                 break;
             case BOOLEAN:
                 ret =
                         funcToken.getSingleSeriesFilterExpression(
                                 FilterFactory.booleanFilterSeries(seriesPath.getDeltaObjectToString(),
-                                        seriesPath.getMeasurementToString(), FilterSeriesType.VALUE_FILTER),
+                                        seriesPath.getMeasurementToString(), filterType),
                                 Boolean.valueOf(seriesValue));
                 break;
             case FLOAT:
                 ret =
                         funcToken.getSingleSeriesFilterExpression(
                                 FilterFactory.floatFilterSeries(seriesPath.getDeltaObjectToString(),
-                                        seriesPath.getMeasurementToString(), FilterSeriesType.VALUE_FILTER),
+                                        seriesPath.getMeasurementToString(), filterType),
                                 Float.valueOf(seriesValue));
                 break;
             case DOUBLE:
                 ret =
                         funcToken.getSingleSeriesFilterExpression(
                                 FilterFactory.doubleFilterSeries(seriesPath.getDeltaObjectToString(),
-                                        seriesPath.getMeasurementToString(), FilterSeriesType.VALUE_FILTER),
+                                        seriesPath.getMeasurementToString(), filterType),
                                 Double.valueOf(seriesValue));
                 break;
             default:

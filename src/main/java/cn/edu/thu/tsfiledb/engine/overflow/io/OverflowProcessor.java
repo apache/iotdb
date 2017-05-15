@@ -16,6 +16,8 @@ import cn.edu.thu.tsfile.common.conf.TSFileDescriptor;
 import cn.edu.thu.tsfile.common.utils.BytesUtils;
 import cn.edu.thu.tsfile.file.metadata.enums.TSDataType;
 import cn.edu.thu.tsfile.timeseries.filter.definition.SingleSeriesFilterExpression;
+import cn.edu.thu.tsfiledb.conf.TSFileDBConfig;
+import cn.edu.thu.tsfiledb.conf.TSFileDBDescriptor;
 import cn.edu.thu.tsfiledb.engine.bufferwrite.Action;
 import cn.edu.thu.tsfiledb.engine.bufferwrite.FileNodeConstants;
 import cn.edu.thu.tsfiledb.engine.exception.OverflowProcessorException;
@@ -31,6 +33,7 @@ public class OverflowProcessor extends LRUProcessor {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(OverflowProcessor.class);
 	private static final TSFileConfig TsFileConf = TSFileDescriptor.getInstance().getConfig();
+	private static final TSFileDBConfig TsFileDBConf = TSFileDBDescriptor.getInstance().getConfig();
 
 	private static final int MINIMUM_RECORD_COUNT_FOR_CHECK = 100;
 	private static final int MAXIMUM_RECORD_COUNT_FOR_CHECK = 10000;
@@ -56,7 +59,7 @@ public class OverflowProcessor extends LRUProcessor {
 
 	public OverflowProcessor(String nameSpacePath, Map<String, Object> parameters) throws OverflowProcessorException {
 		super(nameSpacePath);
-		String overflowDirPath = TsFileConf.overflowDataDir;
+		String overflowDirPath = TsFileDBConf.overflowDataDir;
 		if (overflowDirPath.length() > 0
 				&& overflowDirPath.charAt(overflowDirPath.length() - 1) != File.separatorChar) {
 			overflowDirPath = overflowDirPath + File.separatorChar;
@@ -416,7 +419,7 @@ public class OverflowProcessor extends LRUProcessor {
 				} catch (Exception e) {
 					LOGGER.error("filenodeFlushAction action failed");
 					e.printStackTrace();
-					throw new OverflowProcessorException("filenodeFlushAction action failed");
+					throw new OverflowProcessorException("FilenodeFlushAction action failed");
 				} finally {
 					synchronized (flushState) {
 						flushState.setUnFlushing();

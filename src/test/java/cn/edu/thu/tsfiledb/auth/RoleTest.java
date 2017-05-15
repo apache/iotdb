@@ -1,6 +1,6 @@
 package cn.edu.thu.tsfiledb.auth;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
 
 import java.sql.Statement;
 import java.util.ArrayList;
@@ -12,6 +12,8 @@ import org.junit.Test;
 import cn.edu.thu.tsfiledb.auth.dao.DBdao;
 import cn.edu.thu.tsfiledb.auth.dao.RoleDao;
 import cn.edu.thu.tsfiledb.auth.model.Role;
+import cn.edu.thu.tsfiledb.conf.TSFileDBConfig;
+import cn.edu.thu.tsfiledb.conf.TSFileDBDescriptor;
 
 public class RoleTest {
 
@@ -19,14 +21,15 @@ public class RoleTest {
 	private DBdao dbdao = null;
 	private RoleDao roleDao = null;
 	private Role role = null;
-
 	private String roleName = "role";
+	private TSFileDBConfig config = TSFileDBDescriptor.getInstance().getConfig();
 
 	@Before
 	public void setUp() throws Exception {
+		config.derbyHome = "";
 		dbdao = new DBdao();
 		dbdao.open();
-		statement = dbdao.getStatement();
+		statement = DBdao.getStatement();
 		roleDao = new RoleDao();
 	}
 
@@ -36,12 +39,13 @@ public class RoleTest {
 	}
 
 	@Test
-	public void test() {
+	public void createAndDeleteTest() {
 		role = roleDao.getRole(statement, roleName);
 		if (role != null) {
 			System.out.println("Delete the original role");
 			roleDao.deleteRole(statement, roleName);
 		}
+		assertEquals(null, roleDao.getRole(statement, roleName));
 		// create role
 		role = new Role(roleName);
 		roleDao.createRole(statement, role);
@@ -78,7 +82,5 @@ public class RoleTest {
 		assertEquals(0, getRoleNames.size());
 		roleDao.deleteRole(statement, role1.getRoleName());
 		roleDao.deleteRole(statement, role2.getRoleName());
-
 	}
-
 }

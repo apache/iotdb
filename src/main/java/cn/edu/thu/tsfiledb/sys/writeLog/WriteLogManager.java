@@ -8,6 +8,8 @@ import org.slf4j.LoggerFactory;
 
 import cn.edu.thu.tsfile.common.conf.TSFileConfig;
 import cn.edu.thu.tsfile.common.conf.TSFileDescriptor;
+import cn.edu.thu.tsfiledb.conf.TSFileDBConfig;
+import cn.edu.thu.tsfiledb.conf.TSFileDBDescriptor;
 import cn.edu.thu.tsfiledb.qp.logical.operator.Operator.OperatorType;
 import cn.edu.thu.tsfiledb.qp.physical.plan.PhysicalPlan;
 import cn.edu.thu.tsfiledb.sys.writeLog.impl.LocalFileLogReader;
@@ -19,7 +21,7 @@ public class WriteLogManager {
 	private PhysicalPlanLogTransfer transfer = new PhysicalPlanLogTransfer();
 	private WriteLogReadable reader; 
 	private WriteLogPersistable writer = null;
-	private TSFileConfig config = TSFileDescriptor.getInstance().getConfig();	
+	private TSFileDBConfig config = TSFileDBDescriptor.getInstance().getConfig();	
 	private String logFile;
 	
 	private WriteLogManager() {

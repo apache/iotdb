@@ -230,7 +230,6 @@ public class OverflowValueReader extends ValueReader{
 								idx2++;
 								res.insertTrueIndex++;
 								resCount++;
-								calculateFrequency(hasOverflowDataInThisPage, freqFilter, insertTrue.getInt(idx2));
 								// if equal, take value from insertTrue and skip one
 								// value from page. That is to say, insert is like
 								// update.
@@ -246,7 +245,6 @@ public class OverflowValueReader extends ValueReader{
 								break;
 							}
 							int v = decoder.readInt(page);
-							calculateFrequency(hasOverflowDataInThisPage, freqFilter, v);
 							if (mode == -1) {
 
 								if ((valueFilter == null && timeFilter == null)
@@ -418,7 +416,6 @@ public class OverflowValueReader extends ValueReader{
 								idx2++;
 								res.insertTrueIndex++;
 								resCount++;
-								calculateFrequency(hasOverflowDataInThisPage, freqFilter, insertTrue.getLong(idx2));
 								// if equal, take value from insertTrue and skip one
 								// value from page
 								if (insertTrue.getTime(idx2 - 1) == timeValues[timeIdx]) {
@@ -433,7 +430,6 @@ public class OverflowValueReader extends ValueReader{
 								break;
 							}
 							long v = decoder.readLong(page);
-							calculateFrequency(hasOverflowDataInThisPage, freqFilter, v);
 							if (mode == -1) {
 								if ((valueFilter == null && timeFilter == null)
 										|| (valueFilter != null && timeFilter == null
@@ -511,7 +507,6 @@ public class OverflowValueReader extends ValueReader{
 								idx2++;
 								res.insertTrueIndex++;
 								resCount++;
-								calculateFrequency(hasOverflowDataInThisPage, freqFilter, insertTrue.getFloat(idx2));
 								// if equal, take value from insertTrue and skip one
 								// value from page
 								if (insertTrue.getTime(idx2 - 1) == timeValues[timeIdx]) {
@@ -526,7 +521,6 @@ public class OverflowValueReader extends ValueReader{
 								break;
 							}
 							float v = decoder.readFloat(page);
-							calculateFrequency(hasOverflowDataInThisPage, freqFilter, v);
 							if (mode == -1) {
 								if ((valueFilter == null && timeFilter == null)
 										|| (valueFilter != null && timeFilter == null
@@ -604,7 +598,6 @@ public class OverflowValueReader extends ValueReader{
 								idx2++;
 								res.insertTrueIndex++;
 								resCount++;
-								calculateFrequency(hasOverflowDataInThisPage, freqFilter, insertTrue.getDouble(idx2));
 								// if equal, take value from insertTrue and skip one
 								// value from page
 								if (insertTrue.getTime(idx2 - 1) == timeValues[timeIdx]) {
@@ -619,7 +612,6 @@ public class OverflowValueReader extends ValueReader{
 								break;
 							}
 							double v = decoder.readDouble(page);
-							calculateFrequency(hasOverflowDataInThisPage, freqFilter, v);
 							if (mode == -1) {
 								if ((valueFilter == null && timeFilter == null)
 										|| (valueFilter != null && timeFilter == null
@@ -827,7 +819,7 @@ public class OverflowValueReader extends ValueReader{
 			}
 			
 			//Record the current index for overflow info
-			insertTrue.curIdx = idx2;
+//			insertTrue.curIdx = idx2;
 			updateTrue.curIdx = idx[0];
 			updateFalse.curIdx = idx[1];
 			
@@ -864,7 +856,6 @@ public class OverflowValueReader extends ValueReader{
 							res.putInt(insertTrue.getInt(insertTrue.curIdx));
 							insertTrue.curIdx++;
 							res.insertTrueIndex++;
-							calculateFrequency(hasOverflowDataInThisPage, freqFilter, insertTrue.getInt(insertTrue.curIdx));
 							// if equal, take value from insertTrue and skip one
 							// value from page. That is to say, insert is like
 							// update.
@@ -880,7 +871,6 @@ public class OverflowValueReader extends ValueReader{
 							break;
 						}
 						int v = decoder.readInt(page);
-						calculateFrequency(hasOverflowDataInThisPage, freqFilter, v);
 						if (mode == -1) {
 
 							if ((valueFilter == null && timeFilter == null)
@@ -1036,14 +1026,15 @@ public class OverflowValueReader extends ValueReader{
 				case INT64:
 					while (decoder.hasNext(page)) {
 						// put insert points
+//						if(timeIdx == timeValues.length - 1){
+						System.out.println(timeIdx);
+//						}
 						while (insertTrue.curIdx < insertTrue.length && timeIdx < timeValues.length
 								&& insertTrue.getTime(insertTrue.curIdx) <= timeValues[timeIdx]) {
 							res.putTime(insertTrue.getTime(insertTrue.curIdx));
 							res.putLong(insertTrue.getLong(insertTrue.curIdx));
 							insertTrue.curIdx++;
 							res.insertTrueIndex++;
-							calculateFrequency(hasOverflowDataInThisPage, freqFilter,
-									insertTrue.getLong(insertTrue.curIdx));
 							// if equal, take value from insertTrue and skip one
 							// value from page
 							if (insertTrue.getTime(insertTrue.curIdx - 1) == timeValues[timeIdx]) {
@@ -1058,7 +1049,6 @@ public class OverflowValueReader extends ValueReader{
 							break;
 						}
 						long v = decoder.readLong(page);
-						calculateFrequency(hasOverflowDataInThisPage, freqFilter, v);
 						if (mode == -1) {
 							if ((valueFilter == null && timeFilter == null)
 									|| (valueFilter != null && timeFilter == null
@@ -1131,8 +1121,6 @@ public class OverflowValueReader extends ValueReader{
 							res.putFloat(insertTrue.getFloat(insertTrue.curIdx));
 							insertTrue.curIdx++;
 							res.insertTrueIndex++;
-							calculateFrequency(hasOverflowDataInThisPage, freqFilter,
-									insertTrue.getFloat(insertTrue.curIdx));
 							// if equal, take value from insertTrue and skip one
 							// value from page
 							if (insertTrue.getTime(insertTrue.curIdx - 1) == timeValues[timeIdx]) {
@@ -1147,7 +1135,6 @@ public class OverflowValueReader extends ValueReader{
 							break;
 						}
 						float v = decoder.readFloat(page);
-						calculateFrequency(hasOverflowDataInThisPage, freqFilter, v);
 						if (mode == -1) {
 							if ((valueFilter == null && timeFilter == null)
 									|| (valueFilter != null && timeFilter == null
@@ -1220,8 +1207,6 @@ public class OverflowValueReader extends ValueReader{
 							res.putDouble(insertTrue.getDouble(insertTrue.curIdx));
 							insertTrue.curIdx++;
 							res.insertTrueIndex++;
-							calculateFrequency(hasOverflowDataInThisPage, freqFilter,
-									insertTrue.getDouble(insertTrue.curIdx));
 							// if equal, take value from insertTrue and skip one
 							// value from page
 							if (insertTrue.getTime(insertTrue.curIdx - 1) == timeValues[timeIdx]) {
@@ -1236,7 +1221,6 @@ public class OverflowValueReader extends ValueReader{
 							break;
 						}
 						double v = decoder.readDouble(page);
-						calculateFrequency(hasOverflowDataInThisPage, freqFilter, v);
 						if (mode == -1) {
 							if ((valueFilter == null && timeFilter == null)
 									|| (valueFilter != null && timeFilter == null
@@ -1364,22 +1348,4 @@ public class OverflowValueReader extends ValueReader{
 			}
 			return false;
 		}
-
-		public void calculateFrequency(boolean hasOverflowDataInThisPage, SingleSeriesFilterExpression freqFilter, int v) {
-			
-		}
-
-		public void calculateFrequency(boolean hasOverflowDataInThisPage, SingleSeriesFilterExpression freqFilter, long v) {
-			
-		}
-
-		public void calculateFrequency(boolean hasOverflowDataInThisPage, SingleSeriesFilterExpression freqFilter, float v) {
-			
-		}
-
-		public void calculateFrequency(boolean hasOverflowDataInThisPage, SingleSeriesFilterExpression freqFilter, double v) {
-			
-		}
-
-	
 }

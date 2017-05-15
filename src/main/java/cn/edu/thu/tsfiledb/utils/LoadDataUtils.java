@@ -11,6 +11,8 @@ import cn.edu.thu.tsfile.timeseries.utils.FileUtils;
 import cn.edu.thu.tsfile.timeseries.utils.RecordUtils;
 import cn.edu.thu.tsfile.timeseries.write.record.TSRecord;
 import cn.edu.thu.tsfile.timeseries.write.schema.FileSchema;
+import cn.edu.thu.tsfiledb.conf.TSFileDBConfig;
+import cn.edu.thu.tsfiledb.conf.TSFileDBDescriptor;
 import cn.edu.thu.tsfiledb.engine.exception.FileNodeManagerException;
 import cn.edu.thu.tsfiledb.engine.filenode.FileNodeManager;
 import cn.edu.thu.tsfiledb.exception.PathErrorException;
@@ -38,7 +40,7 @@ public class LoadDataUtils {
     private String measureType;
     private long totalPointCount = 0;
     private FileNodeManager fileNodeManager;
-    private TSFileConfig conf = TSFileDescriptor.getInstance().getConfig();
+    private TSFileDBConfig conf = TSFileDBDescriptor.getInstance().getConfig();
 
     public LoadDataUtils() {
         writeInstanceMap = new HashSet<>();

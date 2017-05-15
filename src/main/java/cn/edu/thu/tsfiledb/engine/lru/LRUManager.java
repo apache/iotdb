@@ -151,12 +151,12 @@ public abstract class LRUManager<T extends LRUProcessor> {
 			throws LRUManagerException {
 
 		T processor = null;
-		LOGGER.info("Try to get LRUProcessor {}, the nameSpacePath is {}, Thread is {}", this.getClass().getName(),
+		LOGGER.debug("Try to get LRUProcessor, the nameSpacePath is {}, Thread is {}",
 				namespacePath, Thread.currentThread().getName());
 		// change the processorMap position and improve concurrent performance
 		synchronized (processorMap) {
 			LOGGER.debug("The Thread {} will get the LRUProcessor, the nameSpacePath is {}",
-					Thread.currentThread().getContextClassLoader(), namespacePath);
+					Thread.currentThread().getName(), namespacePath);
 			if (processorMap.containsKey(namespacePath)) {
 				processor = processorMap.get(namespacePath);
 				// should use the try lock

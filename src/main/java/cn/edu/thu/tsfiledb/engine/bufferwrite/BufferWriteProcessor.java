@@ -43,6 +43,8 @@ import cn.edu.thu.tsfile.timeseries.write.record.DataPoint;
 import cn.edu.thu.tsfile.timeseries.write.record.TSRecord;
 import cn.edu.thu.tsfile.timeseries.write.schema.FileSchema;
 import cn.edu.thu.tsfile.timeseries.write.series.IRowGroupWriter;
+import cn.edu.thu.tsfiledb.conf.TSFileDBConfig;
+import cn.edu.thu.tsfiledb.conf.TSFileDBDescriptor;
 import cn.edu.thu.tsfiledb.engine.exception.BufferWriteProcessorException;
 import cn.edu.thu.tsfiledb.engine.lru.LRUProcessor;
 import cn.edu.thu.tsfiledb.engine.utils.FlushState;
@@ -54,6 +56,7 @@ public class BufferWriteProcessor extends LRUProcessor {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(BufferWriteProcessor.class);
 	private static final TSFileConfig TsFileConf = TSFileDescriptor.getInstance().getConfig();
+	private static final TSFileDBConfig TsFileDBConf = TSFileDBDescriptor.getInstance().getConfig();
 	private static final MManager mManager = MManager.getInstance();
 
 	private BufferWriteIndex workingBufferIndex;
@@ -87,7 +90,7 @@ public class BufferWriteProcessor extends LRUProcessor {
 		this.fileName = fileName;
 		String restoreFileName = fileName + restoreFile;
 
-		String bufferwriteDirPath = TsFileConf.BufferWriteDir;
+		String bufferwriteDirPath = TsFileDBConf.BufferWriteDir;
 		if (bufferwriteDirPath.length() > 0
 				&& bufferwriteDirPath.charAt(bufferwriteDirPath.length() - 1) != File.separatorChar) {
 			bufferwriteDirPath = bufferwriteDirPath + File.separatorChar;

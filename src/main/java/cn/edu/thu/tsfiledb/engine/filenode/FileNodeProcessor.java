@@ -39,6 +39,8 @@ import cn.edu.thu.tsfile.timeseries.write.io.TSFileIOWriter;
 import cn.edu.thu.tsfile.timeseries.write.record.DataPoint;
 import cn.edu.thu.tsfile.timeseries.write.record.TSRecord;
 import cn.edu.thu.tsfile.timeseries.write.schema.FileSchema;
+import cn.edu.thu.tsfiledb.conf.TSFileDBConfig;
+import cn.edu.thu.tsfiledb.conf.TSFileDBDescriptor;
 import cn.edu.thu.tsfiledb.engine.bufferwrite.Action;
 import cn.edu.thu.tsfiledb.engine.bufferwrite.BufferWriteProcessor;
 import cn.edu.thu.tsfiledb.engine.bufferwrite.FileNodeConstants;
@@ -48,15 +50,19 @@ import cn.edu.thu.tsfiledb.engine.exception.OverflowProcessorException;
 import cn.edu.thu.tsfiledb.engine.exception.ProcessorRuntimException;
 import cn.edu.thu.tsfiledb.engine.lru.LRUProcessor;
 import cn.edu.thu.tsfiledb.engine.overflow.io.OverflowProcessor;
+import cn.edu.thu.tsfiledb.exception.NotConsistentException;
 import cn.edu.thu.tsfiledb.exception.PathErrorException;
 import cn.edu.thu.tsfiledb.metadata.ColumnSchema;
 import cn.edu.thu.tsfiledb.metadata.MManager;
 import cn.edu.thu.tsfiledb.query.engine.OverflowQueryEngine;
+import cn.edu.thu.tsfiledb.query.engine.QueryerForMerge;
+import cn.edu.thu.tsfiledb.query.management.ReadLockManager;
 
 public class FileNodeProcessor extends LRUProcessor {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(FileNodeProcessor.class);
 	private static final TSFileConfig TsFileConf = TSFileDescriptor.getInstance().getConfig();
+	private static final TSFileDBConfig TsFileDBConf = TSFileDBDescriptor.getInstance().getConfig();
 	private static final MManager mManager = MManager.getInstance();
 	private static final String LOCK_SIGNAL = "lock___signal";
 
@@ -74,9 +80,9 @@ public class FileNodeProcessor extends LRUProcessor {
 	private BufferWriteProcessor bufferWriteProcessor = null;
 	private OverflowProcessor overflowProcessor = null;
 
-	private Set<Integer> oldMultiPassTokenSet = new HashSet<>();
+	private Set<Integer> oldMultiPassTokenSet = null;
 	private Set<Integer> newMultiPassTokenSet = new HashSet<>();
-	private ReadWriteLock oldMultiPassLock = new ReentrantReadWriteLock(false);
+	private ReadWriteLock oldMultiPassLock = null;
 	private ReadWriteLock newMultiPassLock = new ReentrantReadWriteLock(false);
 
 	private Action flushFileNodeProcessorAction = new Action() {
@@ -214,22 +220,19 @@ public class FileNodeProcessor extends LRUProcessor {
 			if (bufferWriteProcessor != null) {
 				try {
 					bufferWriteProcessor.close();
+					overflowProcessor.close();
 				} catch (BufferWriteProcessorException e) {
 					e.printStackTrace();
+					writeUnlock();
 					throw new FileNodeProcessorException(
 							"Close the bufferwrite processor failed, the reason is " + e.getMessage());
+				} catch (OverflowProcessorException e) {
+					e.printStackTrace();
+					writeUnlock();
+					throw new FileNodeProcessorException(
+							"Close the overflow processor failed, the reason is " + e.getMessage());
 				}
 				bufferWriteProcessor = null;
-			}
-			// Get the overflow processor, and close
-			// overflowProcessor = getOverflowProcessor(nameSpacePath,
-			// parameters);
-			try {
-				overflowProcessor.close();
-			} catch (OverflowProcessorException e) {
-				e.printStackTrace();
-				throw new FileNodeProcessorException(
-						"Close the overflow processor failed, the reason is " + e.getMessage());
 			}
 			merge();
 		}
@@ -406,14 +409,13 @@ public class FileNodeProcessor extends LRUProcessor {
 	private int multiPassLockToken = 0;
 
 	public int addMultiPassLock() {
-		LOGGER.debug("{} addMultiPassLock: read lock newMultiPassLock", LOCK_SIGNAL);
+		LOGGER.debug("AddMultiPassLock: read lock newMultiPassLock. {}", LOCK_SIGNAL);
 		newMultiPassLock.readLock().lock();
 		while (newMultiPassTokenSet.contains(multiPassLockToken)) {
 			multiPassLockToken++;
 		}
 		newMultiPassTokenSet.add(multiPassLockToken);
-		LOGGER.debug("{} add multi token:{}, nsPath:{}, new set:{}, lock:{}", LOCK_SIGNAL, multiPassLockToken,
-				nameSpacePath, newMultiPassTokenSet, newMultiPassLock);
+		LOGGER.debug("Add multi token:{}, nsPath:{}. {}", multiPassLockToken, nameSpacePath, LOCK_SIGNAL);
 		return multiPassLockToken;
 	}
 
@@ -495,7 +497,9 @@ public class FileNodeProcessor extends LRUProcessor {
 			}
 		}
 		// add numOfMergeFile to control the number of the merge file
-		List<IntervalFileNode> backupIntervalFiles = switchFileNodeToMergev2();
+		List<IntervalFileNode> backupIntervalFiles = new ArrayList<>();
+
+		backupIntervalFiles = switchFileNodeToMergev2();
 		try {
 			//
 			// change the overflow work to merge
@@ -504,6 +508,7 @@ public class FileNodeProcessor extends LRUProcessor {
 		} catch (ProcessorException e) {
 			LOGGER.error("Merge: Can't change overflow processor status from work to merge");
 			e.printStackTrace();
+			writeUnlock();
 			throw new FileNodeProcessorException(e);
 		}
 		synchronized (fileNodeProcessorStore) {
@@ -518,6 +523,7 @@ public class FileNodeProcessor extends LRUProcessor {
 						"Merge: write filenode information to revocery file failed, the nameSpacePath is {}, the reason is {}",
 						nameSpacePath, e.getMessage());
 				e.printStackTrace();
+				writeUnlock();
 				throw new FileNodeProcessorException(
 						"Merge: write filenode information to revocery file failed, the nameSpacePath is "
 								+ nameSpacePath);
@@ -574,11 +580,15 @@ public class FileNodeProcessor extends LRUProcessor {
 		switchWaitingToWorkingv2(backupIntervalFiles);
 	}
 
-	private List<IntervalFileNode> switchFileNodeToMergev2() {
+	private List<IntervalFileNode> switchFileNodeToMergev2() throws FileNodeProcessorException {
 		List<IntervalFileNode> result = new ArrayList<>();
 		if (newFileNodes.isEmpty()) {
 			if (emptyIntervalFileNode.overflowChangeType == OverflowChangeType.NO_CHANGE) {
-				throw new ProcessorRuntimException(String.format(
+				LOGGER.error("The newFileNodes is empty, but the emptyIntervalFileNode OverflowChangeType is {}",
+						emptyIntervalFileNode.overflowChangeType);
+				// no data should be merge
+				writeUnlock();
+				throw new FileNodeProcessorException(String.format(
 						"The newFileNodes is empty, but the emptyIntervalFileNode OverflowChangeType is %s",
 						emptyIntervalFileNode.overflowChangeType));
 			}
@@ -587,6 +597,8 @@ public class FileNodeProcessor extends LRUProcessor {
 					OverflowChangeType.CHANGED, null, null);
 			result.add(intervalFileNode);
 		} else if (newFileNodes.size() == 1) {
+			// has overflow data, the only newFileNode must be changed or the
+			// emptyfile must be changed
 			IntervalFileNode temp = newFileNodes.get(0);
 			IntervalFileNode intervalFileNode = new IntervalFileNode(0, temp.endTime, temp.overflowChangeType,
 					temp.filePath, null);
@@ -594,21 +606,34 @@ public class FileNodeProcessor extends LRUProcessor {
 		} else {
 			// add first
 			IntervalFileNode temp = newFileNodes.get(0);
-			IntervalFileNode intervalFileNode = new IntervalFileNode(0, newFileNodes.get(1).startTime - 1,
-					temp.overflowChangeType, temp.filePath, null);
-			result.add(intervalFileNode);
+			if (emptyIntervalFileNode.overflowChangeType == OverflowChangeType.CHANGED
+					|| temp.overflowChangeType == OverflowChangeType.CHANGED) {
+				IntervalFileNode intervalFileNode = new IntervalFileNode(0, newFileNodes.get(1).startTime - 1,
+						OverflowChangeType.CHANGED, temp.filePath, null);
+				result.add(intervalFileNode);
+			} else {
+				result.add(temp);
+			}
 			// second to the last -1
 			for (int i = 1; i < newFileNodes.size() - 1; i++) {
 				temp = newFileNodes.get(i);
-				intervalFileNode = new IntervalFileNode(temp.startTime, newFileNodes.get(i + 1).startTime - 1,
-						temp.overflowChangeType, temp.filePath, null);
-				result.add(intervalFileNode);
+				if (temp.overflowChangeType == OverflowChangeType.CHANGED) {
+					IntervalFileNode intervalFileNode = new IntervalFileNode(temp.startTime,
+							newFileNodes.get(i + 1).startTime - 1, temp.overflowChangeType, temp.filePath, null);
+					result.add(intervalFileNode);
+				} else {
+					result.add(temp);
+				}
 			}
 			// last interval
 			temp = newFileNodes.get(newFileNodes.size() - 1);
-			intervalFileNode = new IntervalFileNode(temp.startTime, temp.endTime, temp.overflowChangeType,
-					temp.filePath, null);
-			result.add(intervalFileNode);
+			if (temp.overflowChangeType == OverflowChangeType.CHANGED) {
+				IntervalFileNode intervalFileNode = new IntervalFileNode(temp.startTime, temp.endTime,
+						temp.overflowChangeType, temp.filePath, null);
+				result.add(intervalFileNode);
+			} else {
+				result.add(temp);
+			}
 		}
 		return result;
 	}
@@ -621,11 +646,11 @@ public class FileNodeProcessor extends LRUProcessor {
 			oldMultiPassLock = newMultiPassLock;
 			newMultiPassTokenSet = new HashSet<>();
 			newMultiPassLock = new ReentrantReadWriteLock(false);
-			LOGGER.debug(
-					"Merge: swith merge to wait, switch oldMultiPassTokenSet to newMultiPassTokenSet, switch oldMultiPassLock to newMultiPassLock");
+			LOGGER.debug("Merge: swith merge to wait");
 
-			LOGGER.info("Merge switch merge to wait, the overflowChangeType of emptyIntervalFileNode is {}",
-					emptyIntervalFileNode.overflowChangeType);
+			LOGGER.info(
+					"Merge: switch merge to wait, the overflowChangeType of emptyIntervalFileNode is {}, the newFileNodes is {}",
+					emptyIntervalFileNode.overflowChangeType, newFileNodes);
 			if (emptyIntervalFileNode.overflowChangeType == OverflowChangeType.NO_CHANGE) {
 				// backup from newFilenodes
 				// no action
@@ -648,6 +673,8 @@ public class FileNodeProcessor extends LRUProcessor {
 					if (putoff || newFileNodes.get(i).overflowChangeType == OverflowChangeType.MERGING_CHANGE) {
 						backupIntervalFile.overflowChangeType = OverflowChangeType.CHANGED;
 						putoff = false;
+					} else {
+						backupIntervalFile.overflowChangeType = OverflowChangeType.NO_CHANGE;
 					}
 					result.add(backupIntervalFile);
 				}
@@ -665,6 +692,8 @@ public class FileNodeProcessor extends LRUProcessor {
 			if (putoff) {
 				emptyIntervalFileNode.endTime = lastUpdateTime;
 				emptyIntervalFileNode.overflowChangeType = OverflowChangeType.CHANGED;
+			} else {
+				emptyIntervalFileNode.overflowChangeType = OverflowChangeType.NO_CHANGE;
 			}
 			isMerging = FileNodeProcessorState.WAITING;
 			newFileNodes = result;
@@ -697,12 +726,16 @@ public class FileNodeProcessor extends LRUProcessor {
 
 		writeLock();
 		try {
-			oldMultiPassLock.writeLock().lock();
+			if (oldMultiPassLock != null) {
+				LOGGER.info("The old Multiple Pass Token set is {}, the old Multiple Pass Lock is {}",
+						oldMultiPassTokenSet, oldMultiPassLock);
+				oldMultiPassLock.writeLock().lock();
+			}
 			try {
 				// delete the all files which are in the newFileNodes
 				// notice: the last restore file of the interval file
 
-				String bufferwriteDirPath = TsFileConf.BufferWriteDir;
+				String bufferwriteDirPath = TsFileDBConf.BufferWriteDir;
 				if (bufferwriteDirPath.length() > 0
 						&& bufferwriteDirPath.charAt(bufferwriteDirPath.length() - 1) != File.separatorChar) {
 					bufferwriteDirPath = bufferwriteDirPath + File.separatorChar;
@@ -717,8 +750,7 @@ public class FileNodeProcessor extends LRUProcessor {
 				for (IntervalFileNode bufferFileNode : newFileNodes) {
 					String bufferFilePath = bufferFileNode.filePath;
 					if (bufferFilePath != null) {
-						File bufferFile = new File(bufferwriteDir, bufferFilePath);
-						bufferFiles.add(bufferFile.getAbsolutePath());
+						bufferFiles.add(bufferFilePath);
 					}
 				}
 				// add the restore file, if the last file is not closed
@@ -749,7 +781,9 @@ public class FileNodeProcessor extends LRUProcessor {
 				throw new FileNodeProcessorException(e);
 			} finally {
 				oldMultiPassTokenSet = null;
-				oldMultiPassLock.writeLock().unlock();
+				if (oldMultiPassLock != null) {
+					oldMultiPassLock.writeLock().unlock();
+				}
 				oldMultiPassLock = null;
 			}
 		} finally {
@@ -765,26 +799,22 @@ public class FileNodeProcessor extends LRUProcessor {
 
 		LOGGER.info("Merge query and merge: namespace {}, time filter {}", nameSpacePath, timeFilter);
 
-		QueryDataSet data = null;
 		long startTime = -1;
 		long endTime = -1;
 
-		OverflowQueryEngine queryEngine = new OverflowQueryEngine();
-		try {
-			data = queryEngine.query(pathList, timeFilter, null, null, null, TsFileConf.defaultFetchSize);
-		} catch (ProcessorException e1) {
-			e1.printStackTrace();
-			throw new IOException("Exception when merge");
-		}
-		if (!data.hasNextRecord()) {
+		QueryerForMerge queryer = new QueryerForMerge(pathList, (SingleSeriesFilterExpression) timeFilter);
+		int queryCount = 0;
+		if (!queryer.hasNextRecord()) {
 			// No record in this query
 			LOGGER.warn("Merge query: namespace {}, time filter {}, no query data", nameSpacePath, timeFilter);
 			// Set the IntervalFile
 			backupIntervalFile.startTime = -1;
 			backupIntervalFile.endTime = -1;
+
 		} else {
+			queryCount ++;
 			TSRecordWriter recordWriter;
-			RowRecord firstRecord = data.getNextRecord();
+			RowRecord firstRecord = queryer.getNextRecord();
 			// get the outputPate and FileSchema
 			String outputPath = constructOutputFilePath(nameSpacePath,
 					firstRecord.timestamp + FileNodeConstants.BUFFERWRITE_FILE_SEPARATOR + System.currentTimeMillis());
@@ -805,8 +835,9 @@ public class FileNodeProcessor extends LRUProcessor {
 			recordWriter.write(filledRecord);
 			startTime = endTime = firstRecord.getTime();
 
-			while (data.hasNextRecord()) {
-				RowRecord row = data.getNextRecord();
+			while (queryer.hasNextRecord()) {
+				queryCount ++;
+				RowRecord row = queryer.getNextRecord();
 				filledRecord = removeNullTSRecord(row);
 				endTime = filledRecord.time;
 				try {
@@ -817,7 +848,7 @@ public class FileNodeProcessor extends LRUProcessor {
 				}
 			}
 			recordWriter.close();
-
+			System.out.println("   ============   Merge Record Count: " + queryCount);
 			LOGGER.debug("Merge query: namespace {}, time filter {}, filepath {} successfully", nameSpacePath,
 					timeFilter, outputPath);
 			backupIntervalFile.startTime = startTime;
@@ -830,7 +861,7 @@ public class FileNodeProcessor extends LRUProcessor {
 
 	private String constructOutputFilePath(String nameSpacePath, String fileName) {
 
-		String dataDirPath = TsFileConf.BufferWriteDir;
+		String dataDirPath = TsFileDBConf.BufferWriteDir;
 		if (dataDirPath.charAt(dataDirPath.length() - 1) != File.separatorChar) {
 			dataDirPath = dataDirPath + File.separatorChar + nameSpacePath;
 		}
@@ -913,16 +944,20 @@ public class FileNodeProcessor extends LRUProcessor {
 	@Override
 	public boolean canBeClosed() {
 		if (isMerging == FileNodeProcessorState.NONE && newMultiPassLock.writeLock().tryLock()) {
-			try {
-				if (oldMultiPassLock.writeLock().tryLock()) {
-					try {
-						return true;
-					} finally {
-						oldMultiPassLock.writeLock().unlock();
+			if (oldMultiPassLock != null) {
+				try {
+					if (oldMultiPassLock.writeLock().tryLock()) {
+						try {
+							return true;
+						} finally {
+							oldMultiPassLock.writeLock().unlock();
+						}
 					}
+				} finally {
+					newMultiPassLock.writeLock().unlock();
 				}
-			} finally {
-				newMultiPassLock.writeLock().unlock();
+			} else {
+				return true;
 			}
 		}
 		return false;
