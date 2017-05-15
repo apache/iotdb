@@ -819,7 +819,7 @@ public class OverflowValueReader extends ValueReader{
 			}
 			
 			//Record the current index for overflow info
-			insertTrue.curIdx = idx2;
+//			insertTrue.curIdx = idx2;
 			updateTrue.curIdx = idx[0];
 			updateFalse.curIdx = idx[1];
 			
@@ -1026,6 +1026,9 @@ public class OverflowValueReader extends ValueReader{
 				case INT64:
 					while (decoder.hasNext(page)) {
 						// put insert points
+//						if(timeIdx == timeValues.length - 1){
+						System.out.println(timeIdx);
+//						}
 						while (insertTrue.curIdx < insertTrue.length && timeIdx < timeValues.length
 								&& insertTrue.getTime(insertTrue.curIdx) <= timeValues[timeIdx]) {
 							res.putTime(insertTrue.getTime(insertTrue.curIdx));

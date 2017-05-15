@@ -1,7 +1,9 @@
 package cn.edu.thu.tsfiledb.query.management;
 
+import java.io.IOException;
 import java.util.HashMap;
 
+import cn.edu.thu.tsfile.common.exception.ProcessorException;
 import cn.edu.thu.tsfiledb.query.reader.RecordReader;
 
 public class RecordReaderCache {
@@ -24,7 +26,15 @@ public class RecordReaderCache {
 		cache.get().put(getKey(deltaObjectUID, measurementID), recordReader);
 	}
 	
-	public void clear(){
+	public void clear() throws ProcessorException{
+		for(RecordReader rr : cache.get().values()){
+			try {
+				rr.close();
+			} catch (IOException | ProcessorException e) {
+				e.printStackTrace();
+				throw new ProcessorException(e);
+			}
+		}
 		cache.remove();
 	}
 	

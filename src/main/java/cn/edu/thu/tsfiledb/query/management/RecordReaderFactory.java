@@ -102,12 +102,12 @@ public class RecordReaderFactory {
 	}
 
 	public void closeOneRecordReader(RecordReader recordReader) throws ProcessorException {
-		try {
-			recordReader.close();
-		} catch (IOException e) {
-			logger.error("Error in closing RecordReader : {}", e.getMessage());
-			e.printStackTrace();
-		}
+//		try {
+//			recordReader.close();
+//		} catch (IOException e) {
+//			logger.error("Error in closing RecordReader : {}", e.getMessage());
+//			e.printStackTrace();
+//		}
 	}
 
 	public static RecordReaderFactory getInstance() {

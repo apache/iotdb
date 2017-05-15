@@ -852,7 +852,7 @@ public class FileNodeProcessor extends LRUProcessor {
 				}
 			}
 			recordWriter.close();
-			LOGGER.error("   ============   Merge Record Count: " + queryCount);
+			System.out.println("   ============   Merge Record Count: " + queryCount);
 			LOGGER.debug("Merge query: namespace {}, time filter {}, filepath {} successfully", nameSpacePath,
 					timeFilter, outputPath);
 			backupIntervalFile.startTime = startTime;

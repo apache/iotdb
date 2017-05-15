@@ -38,7 +38,7 @@ public class MinTimeAggrFunc extends AggregateFunction{
 			hasSetValue = true;
 		}else{
 			long maxv = result.data.getLong(0);
-			maxv = maxv > timestamp ? maxv : timestamp;
+			maxv = maxv < timestamp ? maxv : timestamp;
 			result.data.setLong(0, maxv);
 		}
 	}
