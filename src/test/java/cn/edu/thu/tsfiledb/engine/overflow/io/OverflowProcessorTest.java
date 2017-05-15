@@ -328,7 +328,7 @@ public class OverflowProcessorTest {
 	}
 
 	@Test
-	public void testMergeQuery() {
+	public void testFlushCloseAndMergeQuery() {
 
 		// write oveflow data and close
 

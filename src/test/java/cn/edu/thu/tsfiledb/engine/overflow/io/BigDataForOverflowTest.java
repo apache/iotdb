@@ -1,6 +1,7 @@
 package cn.edu.thu.tsfiledb.engine.overflow.io;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 import java.io.File;
 import java.util.HashMap;
@@ -14,8 +15,6 @@ import org.junit.Test;
 import cn.edu.thu.tsfile.common.conf.TSFileConfig;
 import cn.edu.thu.tsfile.common.conf.TSFileDescriptor;
 import cn.edu.thu.tsfile.file.metadata.enums.TSDataType;
-import cn.edu.thu.tsfile.format.DataType;
-import cn.edu.thu.tsfile.timeseries.filter.definition.FilterExpression;
 import cn.edu.thu.tsfile.timeseries.filter.definition.SingleSeriesFilterExpression;
 import cn.edu.thu.tsfile.timeseries.read.query.DynamicOneColumnData;
 import cn.edu.thu.tsfiledb.conf.TSFileDBConfig;
@@ -97,7 +96,7 @@ public class BigDataForOverflowTest {
 		EngineTestHelper.delete(nameSpacePath);
 	}
 
-	@Test
+//	@Test
 	public void testBigData() {
 
 		long step = 10000;

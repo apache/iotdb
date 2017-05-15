@@ -171,7 +171,7 @@ public class OverflowFileIO {
 				off = off + num;
 				len = len - num;
 			}
-			LOGGER.info("Read series chunk: size {}", chunkSize);
+			LOGGER.info("Read series chunk: offset:{}, chunkSize {}", offset, chunkSize);
 			return new ByteArrayInputStream(chunk);
 		} catch (IOException e) {
 			LOGGER.error("Read series chunk failed, offset:{}, chunkSize:{}", offset, chunkSize);
@@ -288,7 +288,7 @@ public class OverflowFileIO {
 			}
 			preFile.renameTo(mergeFile);
 			// try to delete the overflow restore file
-			String restoreFilePath = preFilePath+".restore";
+			String restoreFilePath = preFilePath + ".restore";
 			File restoreFile = new File(restoreFilePath);
 			restoreFile.delete();
 			raf = new OverflowReadWriter(preFile);

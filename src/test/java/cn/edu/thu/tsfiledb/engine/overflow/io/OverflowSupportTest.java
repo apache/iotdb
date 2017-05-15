@@ -58,7 +58,7 @@ public class OverflowSupportTest {
 	}
 
 	@Test
-	public void testFlushQuery(){
+	public void testFlushCloseAndMergeQuery(){
 		
 		fail("test flush query");
 	}

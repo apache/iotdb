@@ -457,6 +457,10 @@ public class FileNodeProcessor extends LRUProcessor {
 		}
 		// query overflow data from overflow processor
 		overflowData = overflowProcessor.query(deltaObjectId, measurementId, timeFilter, freqFilter, valueFilter);
+		if (overflowData.get(0) != null) {
+			LOGGER.error("======= query overflow insert data length is {}",
+					((DynamicOneColumnData) overflowData.get(0)).length);
+		}
 		// query bufferwrite data in memory and disk
 		Pair<DynamicOneColumnData, List<RowGroupMetaData>> bufferwriteDataInMemory = new Pair<DynamicOneColumnData, List<RowGroupMetaData>>(
 				null, null);
@@ -812,7 +816,7 @@ public class FileNodeProcessor extends LRUProcessor {
 			backupIntervalFile.endTime = -1;
 
 		} else {
-			queryCount ++;
+			queryCount++;
 			TSRecordWriter recordWriter;
 			RowRecord firstRecord = queryer.getNextRecord();
 			// get the outputPate and FileSchema
@@ -836,7 +840,7 @@ public class FileNodeProcessor extends LRUProcessor {
 			startTime = endTime = firstRecord.getTime();
 
 			while (queryer.hasNextRecord()) {
-				queryCount ++;
+				queryCount++;
 				RowRecord row = queryer.getNextRecord();
 				filledRecord = removeNullTSRecord(row);
 				endTime = filledRecord.time;
