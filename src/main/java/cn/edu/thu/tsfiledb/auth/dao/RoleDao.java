@@ -93,9 +93,16 @@ public class RoleDao {
 		return state;
 	}
 
-	public int updateRole(Statement statement) {
-		String sql = "update " + DBContext.roleTable + " set ";
+	public int updateRole(Statement statement, String roleName, String newRoleName) {
+		String sql = "update " + DBContext.roleTable + " set roleName='" + newRoleName + "'" + " where roleName='"
+				+ roleName + "'";
 		int state = 0;
+		
+		try {
+			state = statement.executeUpdate(sql);
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
 
 		return state;
 	}

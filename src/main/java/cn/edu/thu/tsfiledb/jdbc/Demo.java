@@ -10,7 +10,7 @@ import java.sql.Statement;
 public class Demo {
 
 	public static void main(String[] args) throws SQLException, ClassNotFoundException {
-		Class.forName("com.corp.tsfile.jdbc.TsfileDriver");
+		Class.forName("cn.edu.thu.tsfiledb.jdbc.TsfileDriver");
 		Connection connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
 //		Statement statement = connection.createStatement();
 //		statement.addBatch("123");

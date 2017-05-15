@@ -511,7 +511,7 @@ public class OverflowQueryEngine {
 		case DOUBLE:
 			return new SingleValueVisitor<Double>(filter);
 		default:
-			return SingleValueVisitorFactory.getSingleValueVistor(type);
+			return SingleValueVisitorFactory.getSingleValueVisitor(type);
 		}
 	}
 }

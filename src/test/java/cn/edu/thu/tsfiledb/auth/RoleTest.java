@@ -83,4 +83,21 @@ public class RoleTest {
 		roleDao.deleteRole(statement, role1.getRoleName());
 		roleDao.deleteRole(statement, role2.getRoleName());
 	}
+	
+	@Test
+	public void updateRoleTest(){
+		// insert one role
+		Role role1 = new Role("role1");
+		Role role2 = new Role("role2");
+		if (roleDao.getRole(statement, role1.getRoleName()) == null) {
+			roleDao.createRole(statement, role1);
+		}
+		// update the role
+		int state = roleDao.updateRole(statement, role1.getRoleName(), role2.getRoleName());
+		assertEquals(1, state);
+		// check the role
+		Role role = roleDao.getRole(statement, role2.getRoleName());
+		assertEquals(true, role!=null);
+		assertEquals(role2.getRoleName(), role.getRoleName());
+	}
 }

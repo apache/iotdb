@@ -837,9 +837,9 @@ public class IntervalTreeOperation implements IIntervalTreeOperator {
             case DOUBLE:
                 return visitor.verify(data.getDouble(i));
             case BOOLEAN:
-                return SingleValueVisitorFactory.getSingleValueVistor(TSDataType.BOOLEAN).satisfyObject(data.getBoolean(i), valueFilter);
+                return SingleValueVisitorFactory.getSingleValueVisitor(TSDataType.BOOLEAN).satisfyObject(data.getBoolean(i), valueFilter);
             case BYTE_ARRAY:
-                return SingleValueVisitorFactory.getSingleValueVistor(TSDataType.BYTE_ARRAY).satisfyObject(data.getBinary(i).getStringValue(), valueFilter);
+                return SingleValueVisitorFactory.getSingleValueVisitor(TSDataType.BYTE_ARRAY).satisfyObject(data.getBinary(i).getStringValue(), valueFilter);
             default:
                 LOG.error("Unsupported TSFile data type.");
                 throw new UnSupportedDataTypeException("Unsupported TSFile data type.");
