@@ -750,8 +750,9 @@ public class OverflowValueReader extends ValueReader{
 				int lastAvailable = bis.available();
 				pageCount++;
 				log.debug("read page {}, offset : {}", pageCount, res.pageOffset);
+				
 				PageHeader pageHeader = pageReader.getNextPageHeader();
-
+//				System.out.println("===== Page: " + pageCount + ". Count: " + pageHeader.data_page_header.num_rows);
 				// construct value and time digest for this page
 				Digest pageDigest = pageHeader.data_page_header.getDigest();
 				DigestForFilter valueDigestFF = new DigestForFilter(pageDigest.min, pageDigest.max, getDataType());
@@ -815,6 +816,7 @@ public class OverflowValueReader extends ValueReader{
 					res = readOnePageWithOverflow(hasOverflowDataInThisPage, idx, timeValues, page, 
 							pageHeader, res, timeFilter, freqFilter, valueFilter, insertTrue, update);
 					func.calculateFromDataInThisPage(res);
+					res.clearData();
 				}
 			}
 			
@@ -1026,9 +1028,6 @@ public class OverflowValueReader extends ValueReader{
 				case INT64:
 					while (decoder.hasNext(page)) {
 						// put insert points
-//						if(timeIdx == timeValues.length - 1){
-						System.out.println(timeIdx);
-//						}
 						while (insertTrue.curIdx < insertTrue.length && timeIdx < timeValues.length
 								&& insertTrue.getTime(insertTrue.curIdx) <= timeValues[timeIdx]) {
 							res.putTime(insertTrue.getTime(insertTrue.curIdx));
