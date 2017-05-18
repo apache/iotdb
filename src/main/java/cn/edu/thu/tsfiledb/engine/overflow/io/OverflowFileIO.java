@@ -106,7 +106,10 @@ public class OverflowFileIO {
 						ofRowGroup.put(measurementId, new ArrayList<TimeSeriesChunkMetaData>());
 					List<TimeSeriesChunkMetaData> seriesList = ofRowGroup.get(measurementId);
 					List<TimeSeriesChunkMetaData> seriesListInFile = seriesListMeta.getMetaDatas();
-					seriesList.addAll(seriesListInFile);
+					int index = seriesList.size();
+					for (TimeSeriesChunkMetaData oneTimeSeriesChunkMetaData : seriesListInFile) {
+						seriesList.add(index,oneTimeSeriesChunkMetaData);
+					}
 					LOGGER.debug("Init the old overflow deltaObjectId:{},measurementId:{},serieslist:{}", deltaObjectId,
 							measurementId, seriesListInFile);
 				}

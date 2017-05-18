@@ -58,18 +58,83 @@ public class OverflowSupportTest {
 	}
 
 	@Test
-	public void testFlushCloseAndMergeQuery(){
-		
-		fail("test flush query");
+	public void testFlushCloseAndMergeQuery() {
+
+		try {
+			ofrw = new OverflowReadWriter(filePath);
+		} catch (IOException e) {
+			e.printStackTrace();
+			fail("Construct the overflowreadwriter failed, the reason is " + e.getMessage());
+		}
+
+		try {
+			ofio = new OverflowFileIO(ofrw, filePath, 0);
+		} catch (IOException e) {
+			e.printStackTrace();
+			fail("Construct the overflowfileio failed, the reason is " + e.getMessage());
+		}
+
+		try {
+			ofsupport = new OverflowSupport(ofio, null);
+		} catch (IOException e) {
+			e.printStackTrace();
+			fail("Construct the overflowsupport failed, the reason is " + e.getMessage());
+		}
+
+		// insert data 1,2,3
+		insertData(ofsupport, deltaObjectId, measurementIds[0], 1, 1);
+		insertData(ofsupport, deltaObjectId, measurementIds[0], 2, 2);
+		insertData(ofsupport, deltaObjectId, measurementIds[0], 5, 5);
+		// update data
+		updateData(ofsupport, deltaObjectId, measurementIds[0], 100, 4, 6);
+		// query
+		List<Object> result = ofsupport.query(deltaObjectId, measurementIds[0], null, null, null);
+		DynamicOneColumnData insertData = (DynamicOneColumnData) result.get(0);
+		assertEquals(3, insertData.length);
+		// check time check value
+		assertEquals(1, insertData.getTime(0));
+		assertEquals(1, insertData.getInt(0));
+
+		assertEquals(2, insertData.getTime(1));
+		assertEquals(2, insertData.getInt(1));
+
+		assertEquals(5, insertData.getTime(2));
+		assertEquals(100, insertData.getInt(2));
+
+		try {
+			ofio.close();
+		} catch (IOException e) {
+			e.printStackTrace();
+			fail(e.getMessage());
+		}
 	}
-	
-	
-	@Test
-	public void testMergeQuery(){
-		
-		fail("test merge query");
+
+	private void insertData(OverflowSupport ofSupport, String deltaObjectId, String measurementId, int value,
+			long timestamp) {
+		ofSupport.insert(deltaObjectId, measurementId, timestamp, TSDataType.INT32, BytesUtils.intToBytes(value));
+		ofSupport.switchWorkToFlush();
+		try {
+			ofSupport.flushRowGroupToStore();
+		} catch (IOException e) {
+			e.printStackTrace();
+			fail(e.getMessage());
+		}
 	}
-	
+
+	public void updateData(OverflowSupport ofSupport, String deltaObjectId, String measurementId, int value,
+			long startTime, long endTime) {
+		ofSupport.update(deltaObjectId, measurementId, startTime, endTime, TSDataType.INT32,
+				BytesUtils.intToBytes(value));
+		ofSupport.switchWorkToFlush();
+		try {
+			ofSupport.flushRowGroupToStore();
+		} catch (IOException e) {
+			e.printStackTrace();
+			fail(e.getMessage());
+		}
+	}
+
+
 	@Test
 	public void testNoDataClose() {
 		try {
