@@ -85,6 +85,10 @@ public class FileNodeProcessor extends LRUProcessor {
 	private ReadWriteLock oldMultiPassLock = null;
 	private ReadWriteLock newMultiPassLock = new ReentrantReadWriteLock(false);
 
+	private boolean shouldRecovery = false;
+
+	private Map<String, Object> parameters = null;
+
 	private Action flushFileNodeProcessorAction = new Action() {
 
 		@Override
@@ -156,6 +160,7 @@ public class FileNodeProcessor extends LRUProcessor {
 	public FileNodeProcessor(String fileNodeDirPath, String nameSpacePath, Map<String, Object> parameters)
 			throws FileNodeProcessorException {
 		super(nameSpacePath);
+		this.parameters = parameters;
 		String dataDirPath = fileNodeDirPath + nameSpacePath;
 		File dataDir = new File(dataDirPath);
 		if (!dataDir.exists()) {
@@ -179,11 +184,16 @@ public class FileNodeProcessor extends LRUProcessor {
 		// status is not NONE, or the last intervalFile is not closed
 		if (isMerging != FileNodeProcessorState.NONE
 				|| (!newFileNodes.isEmpty() && !newFileNodes.get(newFileNodes.size() - 1).isClosed())) {
-			FileNodeRecovery(parameters);
+			shouldRecovery = true;
+			// FileNodeRecovery();
 		}
 	}
 
-	private void FileNodeRecovery(Map<String, Object> parameters) throws FileNodeProcessorException {
+	public boolean shouldRecovery() {
+		return shouldRecovery;
+	}
+
+	public void FileNodeRecovery() throws FileNodeProcessorException {
 		// restore bufferwrite
 		if (!newFileNodes.isEmpty() && !newFileNodes.get(newFileNodes.size() - 1).isClosed()) {
 			// this bufferwrite file is not close by normal operation
@@ -196,6 +206,8 @@ public class FileNodeProcessor extends LRUProcessor {
 			try {
 				bufferWriteProcessor = new BufferWriteProcessor(nameSpacePath, damagedFilePath, parameters);
 			} catch (BufferWriteProcessorException e) {
+				// unlock
+				writeUnlock();
 				LOGGER.error("Restore the bufferwrite failed, the reason is {}", e.getMessage());
 				e.printStackTrace();
 				throw new FileNodeProcessorException("Restore the bufferwrte failed, the reason is " + e.getMessage());
@@ -207,6 +219,8 @@ public class FileNodeProcessor extends LRUProcessor {
 		try {
 			overflowProcessor = new OverflowProcessor(nameSpacePath, parameters);
 		} catch (OverflowProcessorException e) {
+			// unlock
+			writeUnlock();
 			LOGGER.error("Restore the overflow failed, the reason is {}", e.getMessage());
 			e.printStackTrace();
 			throw new FileNodeProcessorException("Restore the overflow failed, the reason is " + e.getMessage());
@@ -214,7 +228,10 @@ public class FileNodeProcessor extends LRUProcessor {
 
 		if (isMerging == FileNodeProcessorState.MERGING_WRITE) {
 			// lock the filenode processor
-			writeLock();
+			/*
+			 * attention
+			 */
+			// writeLock();
 			// re-merge all file
 			// if bufferwrite processor is not null, and close
 			if (bufferWriteProcessor != null) {
@@ -223,12 +240,12 @@ public class FileNodeProcessor extends LRUProcessor {
 					overflowProcessor.close();
 				} catch (BufferWriteProcessorException e) {
 					e.printStackTrace();
-					writeUnlock();
+					 writeUnlock();
 					throw new FileNodeProcessorException(
 							"Close the bufferwrite processor failed, the reason is " + e.getMessage());
 				} catch (OverflowProcessorException e) {
 					e.printStackTrace();
-					writeUnlock();
+					 writeUnlock();
 					throw new FileNodeProcessorException(
 							"Close the overflow processor failed, the reason is " + e.getMessage());
 				}
@@ -237,8 +254,11 @@ public class FileNodeProcessor extends LRUProcessor {
 			merge();
 		}
 		if (isMerging == FileNodeProcessorState.WAITING) {
+			// unlock
+			writeUnlock();
 			switchWaitingToWorkingv2(newFileNodes);
 		}
+		shouldRecovery = false;
 	}
 
 	public BufferWriteProcessor getBufferWriteProcessor(String namespacePath, long insertTime)

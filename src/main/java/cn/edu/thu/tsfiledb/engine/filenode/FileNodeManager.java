@@ -142,11 +142,18 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 			do {
 				fileNodeProcessor = getProcessorWithDeltaObjectIdByLRU(deltaObjectId, true);
 			} while (fileNodeProcessor == null);
+			if (fileNodeProcessor.shouldRecovery()) {
+				fileNodeProcessor.FileNodeRecovery();
+			}
 		} catch (LRUManagerException e) {
 			if (fileNodeProcessor != null) {
 				// if get processor successfully, the processor must be not null
 				fileNodeProcessor.writeUnlock();
 			}
+			throw new FileNodeManagerException(e); 
+		} catch (FileNodeProcessorException e) {
+			// recovery
+			e.printStackTrace();
 			throw new FileNodeManagerException(e);
 		}
 		long lastUpdataTime = fileNodeProcessor.getLastUpdateTime();
@@ -251,10 +258,16 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 			do {
 				fileNodeProcessor = getProcessorWithDeltaObjectIdByLRU(deltaObjectId, true);
 			} while (fileNodeProcessor == null);
+			if (fileNodeProcessor.shouldRecovery()) {
+				fileNodeProcessor.FileNodeRecovery();
+			}
 		} catch (LRUManagerException e) {
 			if (fileNodeProcessor != null) {
 				fileNodeProcessor.writeUnlock();
 			}
+			e.printStackTrace();
+			throw new FileNodeManagerException(e);
+		} catch (FileNodeProcessorException e) {
 			e.printStackTrace();
 			throw new FileNodeManagerException(e);
 		}
@@ -307,10 +320,16 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 			do {
 				fileNodeProcessor = getProcessorWithDeltaObjectIdByLRU(deltaObjectId, true);
 			} while (fileNodeProcessor == null);
+			if (fileNodeProcessor.shouldRecovery()) {
+				fileNodeProcessor.FileNodeRecovery();
+			}
 		} catch (LRUManagerException e) {
 			if (fileNodeProcessor != null) {
 				fileNodeProcessor.writeUnlock();
 			}
+			e.printStackTrace();
+			throw new FileNodeManagerException(e);
+		} catch (FileNodeProcessorException e) {
 			e.printStackTrace();
 			throw new FileNodeManagerException(e);
 		}
@@ -364,10 +383,16 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 			do {
 				fileNodeProcessor = getProcessorWithDeltaObjectIdByLRU(deltaObjectId, true);
 			} while (fileNodeProcessor == null);
+			if (fileNodeProcessor.shouldRecovery()) {
+				fileNodeProcessor.FileNodeRecovery();
+			}
 			LOGGER.debug("Get the FileNodeProcessor: {}, begin query.", fileNodeProcessor.getNameSpacePath());
 			int token = fileNodeProcessor.addMultiPassLock();
 			return token;
 		} catch (LRUManagerException e) {
+			e.printStackTrace();
+			throw new FileNodeManagerException(e);
+		} catch (FileNodeProcessorException e) {
 			e.printStackTrace();
 			throw new FileNodeManagerException(e);
 		} finally {
@@ -385,6 +410,9 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 			do {
 				fileNodeProcessor = getProcessorWithDeltaObjectIdByLRU(deltaObjectId, false);
 			} while (fileNodeProcessor == null);
+			if (fileNodeProcessor.shouldRecovery()) {
+				fileNodeProcessor.FileNodeRecovery();
+			}
 			LOGGER.debug("Get the FileNodeProcessor: {}, query.", fileNodeProcessor.getNameSpacePath());
 
 			QueryStructure queryStructure = null;
@@ -417,9 +445,15 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 			do {
 				fileNodeProcessor = getProcessorWithDeltaObjectIdByLRU(deltaObjectId, true);
 			} while (fileNodeProcessor == null);
+			if (fileNodeProcessor.shouldRecovery()) {
+				fileNodeProcessor.FileNodeRecovery();
+			}
 			LOGGER.debug("Get the FileNodeProcessor: {}, end query.", fileNodeProcessor.getNameSpacePath());
 			fileNodeProcessor.removeMultiPassLock(token);
 		} catch (LRUManagerException e) {
+			e.printStackTrace();
+			throw new FileNodeManagerException(e);
+		} catch (FileNodeProcessorException e) {
 			e.printStackTrace();
 			throw new FileNodeManagerException(e);
 		} finally {
@@ -556,6 +590,9 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 				do {
 					fileNodeProcessor = getProcessorByLRU(fileNodeNamespacePath, true);
 				} while (fileNodeProcessor == null);
+				if (fileNodeProcessor.shouldRecovery()) {
+					fileNodeProcessor.FileNodeRecovery();
+				}
 				LOGGER.info("Get the FileNodeProcessor: {}, merge.", fileNodeProcessor.getNameSpacePath());
 
 				// if bufferwrite and overflow exist
