@@ -120,7 +120,7 @@ ArrayList<ParseError> errors = new ArrayList<ParseError>();
 
         xlateMap.put("KW_DATETIME", "DATETIME");
         xlateMap.put("KW_TIMESTAMP", "TIMESTAMP");
-        
+
         xlateMap.put("KW_CLUSTERED", "CLUSTERED");
 
         xlateMap.put("KW_INTO", "INTO");
@@ -237,7 +237,7 @@ ArrayList<ParseError> errors = new ArrayList<ParseError>();
     }
 
     // counter to generate unique union aliases
-   
+
 
 }
 
@@ -252,6 +252,7 @@ catch (RecognitionException e) {
 // starting rule
 statement
 	: execStatement EOF
+	| testStatement EOF
 	;
 
 number
@@ -262,13 +263,20 @@ numberOrString // identifier is string or integer
     : identifier | Float
     ;
 
+testStatement
+	: StringLiteral
+	-> ^(TOK_PATH StringLiteral)
+	| out = number
+	-> $out
+	;
+
 execStatement
     : authorStatement
     | deleteStatement
     | updateStatement
     | insertStatement
     | queryStatement
-    | metadataStatement 
+    | metadataStatement
     | mergeStatement
     | quitStatement
     ;
@@ -313,12 +321,12 @@ metadataStatement
 
 describePath
     : KW_DESCRIBE path
-    -> ^(TOK_DESCRIBE path) 
+    -> ^(TOK_DESCRIBE path)
     ;
 
 showMetadata
   : KW_SHOW KW_METADATA
-  -> ^(TOK_SHOW_METADATA) 
+  -> ^(TOK_SHOW_METADATA)
   ;
 
 createTimeseries
@@ -377,7 +385,7 @@ timeseriesPath
 
 propertyPath
   : property=identifier DOT label=identifier
-  -> ^(TOK_LABEL $label) ^(TOK_PROPERTY $property) 
+  -> ^(TOK_LABEL $label) ^(TOK_PROPERTY $property)
   ;
 
 unlinkMetadataNodeFromPropertyTree
@@ -423,11 +431,11 @@ authorStatement
     | createUser
     | dropUser
     | createRole
-    | dropRole 
+    | dropRole
     | grantUser
     | grantRole
-    | revokeUser 
-    | revokeRole 
+    | revokeUser
+    | revokeRole
     | grantRoleToUser
     | revokeRoleFromUser
     ;
@@ -503,9 +511,11 @@ nodeName
     : identifier
     | STAR
     ;
-    
+
 insertStatement
-   : KW_INSERT KW_INTO path multidentifier KW_VALUES multiValue
+   : KW_INSERT KW_INTO path KW_VALUES LPAREN time=dateFormatWithNumber COMMA value=number RPAREN
+   -> ^(TOK_INSERT path $time $value )
+   | KW_MULTINSERT KW_INTO path multidentifier KW_VALUES multiValue
    -> ^(TOK_MULTINSERT path multidentifier multiValue)
    ;
 
@@ -527,7 +537,7 @@ multiValue
 
 deleteStatement
    :
-   KW_DELETE KW_FROM path (whereClause)? 
+   KW_DELETE KW_FROM path (whereClause)?
    -> ^(TOK_DELETE path whereClause?)
    ;
 

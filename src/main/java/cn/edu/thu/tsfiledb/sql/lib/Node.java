@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package com.corp.delta.sql.src.ql.lib;
+package cn.edu.thu.tsfiledb.sql.lib;
 
 import java.util.List;
 
