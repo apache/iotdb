@@ -121,7 +121,7 @@ Integer
 	;
 
 
-Float
+Float 
 	:
 	Digit+ DOT Digit+
 	;
@@ -129,8 +129,9 @@ Float
 Identifier
     :
     (Letter | Digit | '_') (Letter | Digit | '_')*
-    ;
+    ; 
 
 WS
     :  (' '|'\r'|'\t'|'\n') { $channel=HIDDEN; }
     ;
+

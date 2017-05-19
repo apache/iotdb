@@ -1,8 +1,8 @@
-
-package cn.edu.thu.tsfiledb.sql.parse;
+package com.corp.delta.sql.src.ql.parse;
 
 import org.antlr.runtime.BaseRecognizer;
 import org.antlr.runtime.RecognitionException;
+
 
 public class ParseError {
   private final BaseRecognizer br;
