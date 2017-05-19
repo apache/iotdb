@@ -28,4 +28,7 @@ public class TsfileConfig {
 	
 	public static final String AUTH_PASSWORD = "password";
 	public static final String DEFALUT_PASSWORD = "password";
+	
+	public static final int RETRY_NUM = 3;
+	public static final long RETRY_INTERVAL = 1000;
 }
