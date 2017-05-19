@@ -36,6 +36,7 @@ import cn.edu.thu.tsfiledb.engine.exception.OverflowProcessorException;
 import cn.edu.thu.tsfiledb.engine.lru.LRUManager;
 import cn.edu.thu.tsfiledb.engine.overflow.io.OverflowProcessor;
 import cn.edu.thu.tsfiledb.exception.ErrorDebugException;
+import cn.edu.thu.tsfiledb.exception.PathErrorException;
 import cn.edu.thu.tsfiledb.metadata.MManager;
 
 public class FileNodeManager extends LRUManager<FileNodeProcessor> {
@@ -127,13 +128,27 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 
 	public void ManagerRecovery() {
 
-		// Get all nameSpacePath from MManager
-		List<String> nsPath = new ArrayList<>();
-		
-
-		// Check each nameSpacePath status
-
-		// get all nsp from mmanager and restore all nsp
+		try {
+			List<String> nsPaths = mManager.getAllFileNames();
+			for (String nsPath : nsPaths) {
+				FileNodeProcessor fileNodeProcessor = null;
+				fileNodeProcessor = getProcessorByLRU(nsPath, true);
+				if (fileNodeProcessor.shouldRecovery()) {
+					LOGGER.info("Recovery the filenode processor, the nameSpacePath is {}, the status is {}", nsPath,
+							fileNodeProcessor.getFileNodeProcessorStatus());
+					fileNodeProcessor.FileNodeRecovery();
+				}
+			}
+		} catch (PathErrorException e) {
+			LOGGER.error("Restore all FileNodeManager failed, the reason is {}", e.getMessage());
+			e.printStackTrace();
+		} catch (LRUManagerException e) {
+			LOGGER.error("Construt the filenode processor failed, the reason is {}", e.getMessage());
+			e.printStackTrace();
+		} catch (FileNodeProcessorException e) {
+			LOGGER.error("Recovery the filenode processor failed, the reason is {}", e.getMessage());
+			e.printStackTrace();
+		}
 	}
 
 	public int insert(TSRecord tsRecord) throws FileNodeManagerException {

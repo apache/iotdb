@@ -13,7 +13,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import cn.edu.thu.tsfiledb.engine.filenode.FileNodeProcessorState;
+import cn.edu.thu.tsfiledb.engine.filenode.FileNodeProcessorStatus;
 import cn.edu.thu.tsfiledb.engine.filenode.FileNodeProcessorStore;
 import cn.edu.thu.tsfiledb.engine.filenode.IntervalFileNode;
 import cn.edu.thu.tsfiledb.engine.filenode.OverflowChangeType;
@@ -71,7 +71,7 @@ public class SerializeUtilTest {
 					"bufferfiletest" + i, null);
 			newFilenodes.add(node);
 		}
-		FileNodeProcessorState fileNodeProcessorState = FileNodeProcessorState.WAITING;
+		FileNodeProcessorStatus fileNodeProcessorState = FileNodeProcessorStatus.WAITING;
 
 		FileNodeProcessorStore fileNodeProcessorStore = new FileNodeProcessorStore(500, emptyIntervalFileNode,
 				newFilenodes, fileNodeProcessorState, 0);
@@ -89,7 +89,7 @@ public class SerializeUtilTest {
 			FileNodeProcessorStore fileNodeProcessorStore2 = serializeUtil.deserialize(filePath)
 					.orElse(new FileNodeProcessorStore(-1,
 							new IntervalFileNode(0, OverflowChangeType.NO_CHANGE, null, null), new ArrayList<>(),
-							FileNodeProcessorState.NONE, 0));
+							FileNodeProcessorStatus.NONE, 0));
 			assertEquals(fileNodeProcessorStore.getLastUpdateTime(), fileNodeProcessorStore2.getLastUpdateTime());
 			assertEquals(fileNodeProcessorStore.getEmptyIntervalFileNode(), fileNodeProcessorStore2.getEmptyIntervalFileNode());
 			assertEquals(fileNodeProcessorStore.getNewFileNodes(), fileNodeProcessorStore2.getNewFileNodes());
