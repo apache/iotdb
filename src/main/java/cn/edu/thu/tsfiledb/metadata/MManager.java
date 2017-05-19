@@ -35,7 +35,7 @@ import cn.edu.thu.tsfiledb.exception.PathErrorException;
  */
 public class MManager {
 	private static MManager manager = new MManager();
-
+	private static final String ROOT_NAME = "root";
 	// The file storing the serialize info for metadata
 	private String datafilePath;
 	// log file path
@@ -66,7 +66,7 @@ public class MManager {
 				fis.close();
 
 			} else {
-				mGraph = new MGraph("root");
+				mGraph = new MGraph(ROOT_NAME);
 			}
 
 			// recover operation from log file
@@ -108,7 +108,7 @@ public class MManager {
 	 * Clear all metadata info
 	 */
 	public void clear() {
-		this.mGraph = new MGraph("root");
+		this.mGraph = new MGraph(ROOT_NAME);
 	}
 
 	public void deleteLogAndDataFiles() {
@@ -308,7 +308,16 @@ public class MManager {
 	public String getFileNameByPath(String path) throws PathErrorException {
 		return mGraph.getFileNameByPath(path);
 	}
-
+	
+	public List<String> getAllFileNames() throws PathErrorException{
+		HashMap<String, ArrayList<String>> res = getAllPathGroupByFileName(ROOT_NAME);
+		List<String> fileNameList = new ArrayList<String>();
+		for(String fileName : res.keySet()){
+			fileNameList.add(fileName);
+		}
+		return fileNameList;
+	}
+	
 	/**
 	 * return a HashMap contains all the paths separated by File Name
 	 */

@@ -57,7 +57,7 @@ public class QueryStructure {
 				+ "updateTrue: " + (allOverflowData.get(1) != null ? ((DynamicOneColumnData)allOverflowData.get(1)).length : 0) + "\n"
 				+ "updateFalse: " + (allOverflowData.get(2) != null ? ((DynamicOneColumnData)allOverflowData.get(2)).length : 0) + "\n"
 				+ "timeFilter: " + (allOverflowData.get(3) != null ? (SingleSeriesFilterExpression)allOverflowData.get(3) : null) + "\n"  
-				+ "BufferWrite: " + bufferwriteDataInMemory.length + "\n";
+				+ "BufferWrite: " + (bufferwriteDataInMemory != null ? bufferwriteDataInMemory.length : null) + "\n";
 	}
 	
 	
