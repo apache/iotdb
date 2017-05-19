@@ -2,8 +2,10 @@ package cn.edu.thu.tsfiledb.engine.filenode;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
@@ -126,6 +128,8 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 	public void ManagerRecovery() {
 
 		// Get all nameSpacePath from MManager
+		List<String> nsPath = new ArrayList<>();
+		
 
 		// Check each nameSpacePath status
 
@@ -142,18 +146,11 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 			do {
 				fileNodeProcessor = getProcessorWithDeltaObjectIdByLRU(deltaObjectId, true);
 			} while (fileNodeProcessor == null);
-			if (fileNodeProcessor.shouldRecovery()) {
-				fileNodeProcessor.FileNodeRecovery();
-			}
 		} catch (LRUManagerException e) {
 			if (fileNodeProcessor != null) {
 				// if get processor successfully, the processor must be not null
 				fileNodeProcessor.writeUnlock();
 			}
-			throw new FileNodeManagerException(e); 
-		} catch (FileNodeProcessorException e) {
-			// recovery
-			e.printStackTrace();
 			throw new FileNodeManagerException(e);
 		}
 		long lastUpdataTime = fileNodeProcessor.getLastUpdateTime();
@@ -258,20 +255,13 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 			do {
 				fileNodeProcessor = getProcessorWithDeltaObjectIdByLRU(deltaObjectId, true);
 			} while (fileNodeProcessor == null);
-			if (fileNodeProcessor.shouldRecovery()) {
-				fileNodeProcessor.FileNodeRecovery();
-			}
 		} catch (LRUManagerException e) {
 			if (fileNodeProcessor != null) {
 				fileNodeProcessor.writeUnlock();
 			}
 			e.printStackTrace();
 			throw new FileNodeManagerException(e);
-		} catch (FileNodeProcessorException e) {
-			e.printStackTrace();
-			throw new FileNodeManagerException(e);
 		}
-
 		long lastUpdateTime = fileNodeProcessor.getLastUpdateTime();
 		LOGGER.debug("Get the FileNodeProcessor: {}, the last update time is: {}, the update time is from {} to {}",
 				fileNodeProcessor.getNameSpacePath(), lastUpdateTime, startTime, endTime);
@@ -320,16 +310,10 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 			do {
 				fileNodeProcessor = getProcessorWithDeltaObjectIdByLRU(deltaObjectId, true);
 			} while (fileNodeProcessor == null);
-			if (fileNodeProcessor.shouldRecovery()) {
-				fileNodeProcessor.FileNodeRecovery();
-			}
 		} catch (LRUManagerException e) {
 			if (fileNodeProcessor != null) {
 				fileNodeProcessor.writeUnlock();
 			}
-			e.printStackTrace();
-			throw new FileNodeManagerException(e);
-		} catch (FileNodeProcessorException e) {
 			e.printStackTrace();
 			throw new FileNodeManagerException(e);
 		}
@@ -383,16 +367,10 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 			do {
 				fileNodeProcessor = getProcessorWithDeltaObjectIdByLRU(deltaObjectId, true);
 			} while (fileNodeProcessor == null);
-			if (fileNodeProcessor.shouldRecovery()) {
-				fileNodeProcessor.FileNodeRecovery();
-			}
 			LOGGER.debug("Get the FileNodeProcessor: {}, begin query.", fileNodeProcessor.getNameSpacePath());
 			int token = fileNodeProcessor.addMultiPassLock();
 			return token;
 		} catch (LRUManagerException e) {
-			e.printStackTrace();
-			throw new FileNodeManagerException(e);
-		} catch (FileNodeProcessorException e) {
 			e.printStackTrace();
 			throw new FileNodeManagerException(e);
 		} finally {

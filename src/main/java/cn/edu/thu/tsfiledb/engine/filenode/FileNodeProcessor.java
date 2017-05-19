@@ -198,13 +198,15 @@ public class FileNodeProcessor extends LRUProcessor {
 		if (!newFileNodes.isEmpty() && !newFileNodes.get(newFileNodes.size() - 1).isClosed()) {
 			// this bufferwrite file is not close by normal operation
 			String damagedFilePath = newFileNodes.get(newFileNodes.size() - 1).filePath;
+			String[] fileNames = damagedFilePath.split(File.separator);
+			System.out.println(fileNames[fileNames.length-1]);
 			// all information to recovery the damaged file.
 			// contains file path, action parameters and nameSpacePath
 			parameters.put(FileNodeConstants.BUFFERWRITE_FLUSH_ACTION, bufferwriteFlushAction);
 			parameters.put(FileNodeConstants.BUFFERWRITE_CLOSE_ACTION, bufferwriteCloseAction);
 			parameters.put(FileNodeConstants.FILENODE_PROCESSOR_FLUSH_ACTION, flushFileNodeProcessorAction);
 			try {
-				bufferWriteProcessor = new BufferWriteProcessor(nameSpacePath, damagedFilePath, parameters);
+				bufferWriteProcessor = new BufferWriteProcessor(nameSpacePath, fileNames[fileNames.length-1], parameters);
 			} catch (BufferWriteProcessorException e) {
 				// unlock
 				writeUnlock();
@@ -226,6 +228,8 @@ public class FileNodeProcessor extends LRUProcessor {
 			throw new FileNodeProcessorException("Restore the overflow failed, the reason is " + e.getMessage());
 		}
 
+		shouldRecovery = false;
+		
 		if (isMerging == FileNodeProcessorState.MERGING_WRITE) {
 			// lock the filenode processor
 			/*
@@ -258,7 +262,7 @@ public class FileNodeProcessor extends LRUProcessor {
 			writeUnlock();
 			switchWaitingToWorkingv2(newFileNodes);
 		}
-		shouldRecovery = false;
+//		shouldRecovery = false;
 	}
 
 	public BufferWriteProcessor getBufferWriteProcessor(String namespacePath, long insertTime)

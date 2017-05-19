@@ -170,8 +170,7 @@ public class OverflowSeriesImpl {
 	private DynamicOneColumnData readFileFromFileBlockForReader(DynamicOneColumnData newerData,
 			List<TimeSeriesChunkMetaData> TimeSeriesChunkMetaDataList, SingleSeriesFilterExpression timeFilter,
 			SingleSeriesFilterExpression freqFilter, SingleSeriesFilterExpression valueFilter) {
-		 for (TimeSeriesChunkMetaData seriesMetaData :
-		 TimeSeriesChunkMetaDataList) {
+		for (TimeSeriesChunkMetaData seriesMetaData : TimeSeriesChunkMetaDataList) {
 			// for (int i = TimeSeriesChunkMetaDataList.size() - 1; i >= 0; i--)
 			// {
 			// TimeSeriesChunkMetaData seriesMetaData =
