@@ -1,12 +1,12 @@
 
-package cn.edu.thu.tsfiledb.sql.parse;
+package com.corp.delta.sql.src.ql.parse;
 
 import java.util.ArrayList;
 
 public class ParseException extends Exception {
 
   private static final long serialVersionUID = 1L;
-  ArrayList<ParseError> errors;
+  private ArrayList<ParseError> errors;
 
   public ParseException(ArrayList<ParseError> errors) {
     super();
