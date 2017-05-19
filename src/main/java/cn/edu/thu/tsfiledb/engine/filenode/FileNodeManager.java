@@ -137,6 +137,8 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 					LOGGER.info("Recovery the filenode processor, the nameSpacePath is {}, the status is {}", nsPath,
 							fileNodeProcessor.getFileNodeProcessorStatus());
 					fileNodeProcessor.FileNodeRecovery();
+				} else {
+					fileNodeProcessor.writeUnlock();
 				}
 			}
 		} catch (PathErrorException e) {

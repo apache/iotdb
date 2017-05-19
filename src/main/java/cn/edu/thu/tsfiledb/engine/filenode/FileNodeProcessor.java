@@ -29,7 +29,6 @@ import cn.edu.thu.tsfile.timeseries.filter.definition.FilterExpression;
 import cn.edu.thu.tsfile.timeseries.filter.definition.SingleSeriesFilterExpression;
 import cn.edu.thu.tsfile.timeseries.read.qp.Path;
 import cn.edu.thu.tsfile.timeseries.read.query.DynamicOneColumnData;
-import cn.edu.thu.tsfile.timeseries.read.query.QueryDataSet;
 import cn.edu.thu.tsfile.timeseries.read.readSupport.RowRecord;
 import cn.edu.thu.tsfile.timeseries.write.TSRecordWriteSupport;
 import cn.edu.thu.tsfile.timeseries.write.TSRecordWriter;
@@ -50,13 +49,10 @@ import cn.edu.thu.tsfiledb.engine.exception.OverflowProcessorException;
 import cn.edu.thu.tsfiledb.engine.exception.ProcessorRuntimException;
 import cn.edu.thu.tsfiledb.engine.lru.LRUProcessor;
 import cn.edu.thu.tsfiledb.engine.overflow.io.OverflowProcessor;
-import cn.edu.thu.tsfiledb.exception.NotConsistentException;
 import cn.edu.thu.tsfiledb.exception.PathErrorException;
 import cn.edu.thu.tsfiledb.metadata.ColumnSchema;
 import cn.edu.thu.tsfiledb.metadata.MManager;
-import cn.edu.thu.tsfiledb.query.engine.OverflowQueryEngine;
 import cn.edu.thu.tsfiledb.query.engine.QueryerForMerge;
-import cn.edu.thu.tsfiledb.query.management.ReadLockManager;
 
 public class FileNodeProcessor extends LRUProcessor {
 
@@ -193,7 +189,7 @@ public class FileNodeProcessor extends LRUProcessor {
 		return shouldRecovery;
 	}
 
-	public FileNodeProcessorStatus getFileNodeProcessorStatus(){
+	public FileNodeProcessorStatus getFileNodeProcessorStatus() {
 		return isMerging;
 	}
 
@@ -236,11 +232,6 @@ public class FileNodeProcessor extends LRUProcessor {
 		shouldRecovery = false;
 
 		if (isMerging == FileNodeProcessorStatus.MERGING_WRITE) {
-			// lock the filenode processor
-			/*
-			 * attention
-			 */
-			// writeLock();
 			// re-merge all file
 			// if bufferwrite processor is not null, and close
 			if (bufferWriteProcessor != null) {
@@ -261,13 +252,13 @@ public class FileNodeProcessor extends LRUProcessor {
 				bufferWriteProcessor = null;
 			}
 			merge();
-		}
-		if (isMerging == FileNodeProcessorStatus.WAITING) {
+		} else if (isMerging == FileNodeProcessorStatus.WAITING) {
 			// unlock
 			writeUnlock();
 			switchWaitingToWorkingv2(newFileNodes);
+		} else {
+			writeUnlock();
 		}
-		// shouldRecovery = false;
 	}
 
 	public BufferWriteProcessor getBufferWriteProcessor(String namespacePath, long insertTime)
@@ -529,21 +520,6 @@ public class FileNodeProcessor extends LRUProcessor {
 				intervalFileNode.overflowChangeType = OverflowChangeType.CHANGED;
 			}
 		}
-		// add numOfMergeFile to control the number of the merge file
-		List<IntervalFileNode> backupIntervalFiles = new ArrayList<>();
-
-		backupIntervalFiles = switchFileNodeToMergev2();
-		try {
-			//
-			// change the overflow work to merge
-			//
-			overflowProcessor.switchWorkingToMerge();
-		} catch (ProcessorException e) {
-			LOGGER.error("Merge: Can't change overflow processor status from work to merge");
-			e.printStackTrace();
-			writeUnlock();
-			throw new FileNodeProcessorException(e);
-		}
 		synchronized (fileNodeProcessorStore) {
 			fileNodeProcessorStore.setFileNodeProcessorState(isMerging);
 			fileNodeProcessorStore.setNewFileNodes(newFileNodes);
@@ -562,7 +538,20 @@ public class FileNodeProcessor extends LRUProcessor {
 								+ nameSpacePath);
 			}
 		}
-
+		// add numOfMergeFile to control the number of the merge file
+		List<IntervalFileNode> backupIntervalFiles = new ArrayList<>();
+		backupIntervalFiles = switchFileNodeToMergev2();
+		try {
+			//
+			// change the overflow work to merge
+			//
+			overflowProcessor.switchWorkingToMerge();
+		} catch (ProcessorException e) {
+			LOGGER.error("Merge: Can't change overflow processor status from work to merge");
+			e.printStackTrace();
+			writeUnlock();
+			throw new FileNodeProcessorException(e);
+		}
 		// unlock this filenode
 		LOGGER.debug("Merge: the nameSpacePath {}, status from work to merge. {}", nameSpacePath, LOCK_SIGNAL);
 		writeUnlock();
