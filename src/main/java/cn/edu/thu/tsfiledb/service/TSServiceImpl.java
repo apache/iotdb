@@ -242,8 +242,8 @@ public class TSServiceImpl implements TSIService.Iface {
 				e.printStackTrace();
 				throw new IOException(e);
 			}
-			writeLogManager.overflowFlush();
-			writeLogManager.bufferFlush();
+			//writeLogManager.overflowFlush();
+			//writeLogManager.bufferFlush();
 			// MManager.getInstance().flushObjectToFile();
 			return true;
 		case "merge":

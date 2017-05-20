@@ -18,7 +18,7 @@ public class InsertPlan extends PhysicalPlan {
     private long insertTime;
     private String value;
     private Path path;
-    //insertType : 1表示插入到Bufferwrite,2表示插入到Overflow
+    //insertType : 1 means bufferwrite insert, 2 means overflow insert
     private int insertType;
     
     public InsertPlan() {
