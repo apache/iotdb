@@ -17,7 +17,7 @@ public class TSFileDBDescriptor {
 
 	private static TSFileDBDescriptor descriptor = new TSFileDBDescriptor();
 
-	private final String CONFIG_DEFAULT_PATH = "src/main/resources/";
+	private final String CONFIG_DEFAULT_PATH = "/tsfiledb.properties";
 
 	private TSFileDBDescriptor() {
 		loadYaml();
@@ -42,7 +42,7 @@ public class TSFileDBDescriptor {
 		String url;
 		InputStream inputStream = null;
 		if (tsfileHome.equals(CONFIG_DEFAULT_PATH)) {
-			url = tsfileHome + "tsfiledb.properties";
+			url = tsfileHome;
 			inputStream = this.getClass().getResourceAsStream(url);
 			return;
 		} else {
