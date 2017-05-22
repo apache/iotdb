@@ -21,14 +21,14 @@ public class FileNodeProcessorStore implements Serializable {
 	private  IntervalFileNode emptyIntervalFileNode;
 	private  List<IntervalFileNode> newFileNodes;
 	private  int numOfMergeFile;
-	private  FileNodeProcessorState fileNodeProcessorState;
+	private  FileNodeProcessorStatus fileNodeProcessorStatus;
 
 	public FileNodeProcessorStore(long lastUpdateTime, IntervalFileNode emptyIntervalFileNode,
-			List<IntervalFileNode> newFileNodes, FileNodeProcessorState fileNodeProcessorState,int numOfMergeFile) {
+			List<IntervalFileNode> newFileNodes, FileNodeProcessorStatus fileNodeProcessorStatus,int numOfMergeFile) {
 		this.lastUpdateTime = lastUpdateTime;
 		this.emptyIntervalFileNode = emptyIntervalFileNode;
 		this.newFileNodes = newFileNodes;
-		this.fileNodeProcessorState = fileNodeProcessorState;
+		this.fileNodeProcessorStatus = fileNodeProcessorStatus;
 		this.numOfMergeFile = numOfMergeFile;
 	}
 	
@@ -41,8 +41,8 @@ public class FileNodeProcessorStore implements Serializable {
 	public List<IntervalFileNode> getNewFileNodes() {
 		return newFileNodes;
 	}
-	public FileNodeProcessorState getFileNodeProcessorState() {
-		return fileNodeProcessorState;
+	public FileNodeProcessorStatus getFileNodeProcessorState() {
+		return fileNodeProcessorStatus;
 	}
 
 	public int getNumOfMergeFile() {
@@ -65,7 +65,7 @@ public class FileNodeProcessorStore implements Serializable {
 		this.numOfMergeFile = numOfMergeFile;
 	}
 
-	public void setFileNodeProcessorState(FileNodeProcessorState fileNodeProcessorState) {
-		this.fileNodeProcessorState = fileNodeProcessorState;
+	public void setFileNodeProcessorState(FileNodeProcessorStatus fileNodeProcessorState) {
+		this.fileNodeProcessorStatus = fileNodeProcessorState;
 	}
 }

@@ -29,7 +29,6 @@ import cn.edu.thu.tsfile.timeseries.filter.definition.FilterExpression;
 import cn.edu.thu.tsfile.timeseries.filter.definition.SingleSeriesFilterExpression;
 import cn.edu.thu.tsfile.timeseries.read.qp.Path;
 import cn.edu.thu.tsfile.timeseries.read.query.DynamicOneColumnData;
-import cn.edu.thu.tsfile.timeseries.read.query.QueryDataSet;
 import cn.edu.thu.tsfile.timeseries.read.readSupport.RowRecord;
 import cn.edu.thu.tsfile.timeseries.write.TSRecordWriteSupport;
 import cn.edu.thu.tsfile.timeseries.write.TSRecordWriter;
@@ -50,13 +49,10 @@ import cn.edu.thu.tsfiledb.engine.exception.OverflowProcessorException;
 import cn.edu.thu.tsfiledb.engine.exception.ProcessorRuntimException;
 import cn.edu.thu.tsfiledb.engine.lru.LRUProcessor;
 import cn.edu.thu.tsfiledb.engine.overflow.io.OverflowProcessor;
-import cn.edu.thu.tsfiledb.exception.NotConsistentException;
 import cn.edu.thu.tsfiledb.exception.PathErrorException;
 import cn.edu.thu.tsfiledb.metadata.ColumnSchema;
 import cn.edu.thu.tsfiledb.metadata.MManager;
-import cn.edu.thu.tsfiledb.query.engine.OverflowQueryEngine;
 import cn.edu.thu.tsfiledb.query.engine.QueryerForMerge;
-import cn.edu.thu.tsfiledb.query.management.ReadLockManager;
 
 public class FileNodeProcessor extends LRUProcessor {
 
@@ -69,7 +65,7 @@ public class FileNodeProcessor extends LRUProcessor {
 	private long lastUpdateTime = -1;
 	private IntervalFileNode emptyIntervalFileNode;
 	private List<IntervalFileNode> newFileNodes;
-	private FileNodeProcessorState isMerging;
+	private FileNodeProcessorStatus isMerging;
 	// this is used when work ->merge operation
 	private int numOfMergeFile = 0;
 	private FileNodeProcessorStore fileNodeProcessorStore = null;
@@ -84,6 +80,10 @@ public class FileNodeProcessor extends LRUProcessor {
 	private Set<Integer> newMultiPassTokenSet = new HashSet<>();
 	private ReadWriteLock oldMultiPassLock = null;
 	private ReadWriteLock newMultiPassLock = new ReentrantReadWriteLock(false);
+
+	private boolean shouldRecovery = false;
+
+	private Map<String, Object> parameters = null;
 
 	private Action flushFileNodeProcessorAction = new Action() {
 
@@ -156,6 +156,7 @@ public class FileNodeProcessor extends LRUProcessor {
 	public FileNodeProcessor(String fileNodeDirPath, String nameSpacePath, Map<String, Object> parameters)
 			throws FileNodeProcessorException {
 		super(nameSpacePath);
+		this.parameters = parameters;
 		String dataDirPath = fileNodeDirPath + nameSpacePath;
 		File dataDir = new File(dataDirPath);
 		if (!dataDir.exists()) {
@@ -177,25 +178,39 @@ public class FileNodeProcessor extends LRUProcessor {
 		isMerging = fileNodeProcessorStore.getFileNodeProcessorState();
 		numOfMergeFile = fileNodeProcessorStore.getNumOfMergeFile();
 		// status is not NONE, or the last intervalFile is not closed
-		if (isMerging != FileNodeProcessorState.NONE
+		if (isMerging != FileNodeProcessorStatus.NONE
 				|| (!newFileNodes.isEmpty() && !newFileNodes.get(newFileNodes.size() - 1).isClosed())) {
-			FileNodeRecovery(parameters);
+			shouldRecovery = true;
+			// FileNodeRecovery();
 		}
 	}
 
-	private void FileNodeRecovery(Map<String, Object> parameters) throws FileNodeProcessorException {
+	public boolean shouldRecovery() {
+		return shouldRecovery;
+	}
+
+	public FileNodeProcessorStatus getFileNodeProcessorStatus() {
+		return isMerging;
+	}
+
+	public void FileNodeRecovery() throws FileNodeProcessorException {
 		// restore bufferwrite
 		if (!newFileNodes.isEmpty() && !newFileNodes.get(newFileNodes.size() - 1).isClosed()) {
 			// this bufferwrite file is not close by normal operation
 			String damagedFilePath = newFileNodes.get(newFileNodes.size() - 1).filePath;
+			String[] fileNames = damagedFilePath.split(File.separator);
+			System.out.println(fileNames[fileNames.length - 1]);
 			// all information to recovery the damaged file.
 			// contains file path, action parameters and nameSpacePath
 			parameters.put(FileNodeConstants.BUFFERWRITE_FLUSH_ACTION, bufferwriteFlushAction);
 			parameters.put(FileNodeConstants.BUFFERWRITE_CLOSE_ACTION, bufferwriteCloseAction);
 			parameters.put(FileNodeConstants.FILENODE_PROCESSOR_FLUSH_ACTION, flushFileNodeProcessorAction);
 			try {
-				bufferWriteProcessor = new BufferWriteProcessor(nameSpacePath, damagedFilePath, parameters);
+				bufferWriteProcessor = new BufferWriteProcessor(nameSpacePath, fileNames[fileNames.length - 1],
+						parameters);
 			} catch (BufferWriteProcessorException e) {
+				// unlock
+				writeUnlock();
 				LOGGER.error("Restore the bufferwrite failed, the reason is {}", e.getMessage());
 				e.printStackTrace();
 				throw new FileNodeProcessorException("Restore the bufferwrte failed, the reason is " + e.getMessage());
@@ -207,14 +222,16 @@ public class FileNodeProcessor extends LRUProcessor {
 		try {
 			overflowProcessor = new OverflowProcessor(nameSpacePath, parameters);
 		} catch (OverflowProcessorException e) {
+			// unlock
+			writeUnlock();
 			LOGGER.error("Restore the overflow failed, the reason is {}", e.getMessage());
 			e.printStackTrace();
 			throw new FileNodeProcessorException("Restore the overflow failed, the reason is " + e.getMessage());
 		}
 
-		if (isMerging == FileNodeProcessorState.MERGING_WRITE) {
-			// lock the filenode processor
-			writeLock();
+		shouldRecovery = false;
+
+		if (isMerging == FileNodeProcessorStatus.MERGING_WRITE) {
 			// re-merge all file
 			// if bufferwrite processor is not null, and close
 			if (bufferWriteProcessor != null) {
@@ -235,9 +252,12 @@ public class FileNodeProcessor extends LRUProcessor {
 				bufferWriteProcessor = null;
 			}
 			merge();
-		}
-		if (isMerging == FileNodeProcessorState.WAITING) {
+		} else if (isMerging == FileNodeProcessorStatus.WAITING) {
+			// unlock
+			writeUnlock();
 			switchWaitingToWorkingv2(newFileNodes);
+		} else {
+			writeUnlock();
 		}
 	}
 
@@ -486,7 +506,7 @@ public class FileNodeProcessor extends LRUProcessor {
 		//
 		// change status from work to merge
 		//
-		isMerging = FileNodeProcessorState.MERGING_WRITE;
+		isMerging = FileNodeProcessorStatus.MERGING_WRITE;
 		if (emptyIntervalFileNode.overflowChangeType != OverflowChangeType.NO_CHANGE) {
 			if (!newFileNodes.isEmpty()) {
 				newFileNodes.get(0).overflowChangeType = OverflowChangeType.CHANGED;
@@ -499,21 +519,6 @@ public class FileNodeProcessor extends LRUProcessor {
 			if (intervalFileNode.overflowChangeType != OverflowChangeType.NO_CHANGE) {
 				intervalFileNode.overflowChangeType = OverflowChangeType.CHANGED;
 			}
-		}
-		// add numOfMergeFile to control the number of the merge file
-		List<IntervalFileNode> backupIntervalFiles = new ArrayList<>();
-
-		backupIntervalFiles = switchFileNodeToMergev2();
-		try {
-			//
-			// change the overflow work to merge
-			//
-			overflowProcessor.switchWorkingToMerge();
-		} catch (ProcessorException e) {
-			LOGGER.error("Merge: Can't change overflow processor status from work to merge");
-			e.printStackTrace();
-			writeUnlock();
-			throw new FileNodeProcessorException(e);
 		}
 		synchronized (fileNodeProcessorStore) {
 			fileNodeProcessorStore.setFileNodeProcessorState(isMerging);
@@ -533,7 +538,20 @@ public class FileNodeProcessor extends LRUProcessor {
 								+ nameSpacePath);
 			}
 		}
-
+		// add numOfMergeFile to control the number of the merge file
+		List<IntervalFileNode> backupIntervalFiles = new ArrayList<>();
+		backupIntervalFiles = switchFileNodeToMergev2();
+		try {
+			//
+			// change the overflow work to merge
+			//
+			overflowProcessor.switchWorkingToMerge();
+		} catch (ProcessorException e) {
+			LOGGER.error("Merge: Can't change overflow processor status from work to merge");
+			e.printStackTrace();
+			writeUnlock();
+			throw new FileNodeProcessorException(e);
+		}
 		// unlock this filenode
 		LOGGER.debug("Merge: the nameSpacePath {}, status from work to merge. {}", nameSpacePath, LOCK_SIGNAL);
 		writeUnlock();
@@ -699,7 +717,7 @@ public class FileNodeProcessor extends LRUProcessor {
 			} else {
 				emptyIntervalFileNode.overflowChangeType = OverflowChangeType.NO_CHANGE;
 			}
-			isMerging = FileNodeProcessorState.WAITING;
+			isMerging = FileNodeProcessorStatus.WAITING;
 			newFileNodes = result;
 
 			synchronized (fileNodeProcessorStore) {
@@ -772,7 +790,7 @@ public class FileNodeProcessor extends LRUProcessor {
 				// overflow switch
 				overflowProcessor.switchMergeToWorking();
 				// write status to file
-				isMerging = FileNodeProcessorState.NONE;
+				isMerging = FileNodeProcessorStatus.NONE;
 				synchronized (fileNodeProcessorStore) {
 					fileNodeProcessorStore.setFileNodeProcessorState(isMerging);
 					fileNodeProcessorStore.setNewFileNodes(newFileNodes);
@@ -947,7 +965,7 @@ public class FileNodeProcessor extends LRUProcessor {
 
 	@Override
 	public boolean canBeClosed() {
-		if (isMerging == FileNodeProcessorState.NONE && newMultiPassLock.writeLock().tryLock()) {
+		if (isMerging == FileNodeProcessorStatus.NONE && newMultiPassLock.writeLock().tryLock()) {
 			if (oldMultiPassLock != null) {
 				try {
 					if (oldMultiPassLock.writeLock().tryLock()) {
@@ -1020,7 +1038,7 @@ public class FileNodeProcessor extends LRUProcessor {
 				fileNodeProcessorStore = serializeUtil.deserialize(fileNodeRestoreFilePath)
 						.orElse(new FileNodeProcessorStore(-1,
 								new IntervalFileNode(0, OverflowChangeType.NO_CHANGE, null, null),
-								new ArrayList<IntervalFileNode>(), FileNodeProcessorState.NONE, 0));
+								new ArrayList<IntervalFileNode>(), FileNodeProcessorStatus.NONE, 0));
 			} catch (IOException e) {
 				e.printStackTrace();
 				throw new FileNodeProcessorException(e);

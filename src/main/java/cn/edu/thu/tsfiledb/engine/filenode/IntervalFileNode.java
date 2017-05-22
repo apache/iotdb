@@ -54,9 +54,9 @@ public class IntervalFileNode implements Serializable {
 	}
 
 
-	public void changeTypeToChanged(FileNodeProcessorState fileNodeProcessorState) {
+	public void changeTypeToChanged(FileNodeProcessorStatus fileNodeProcessorState) {
 
-		if (fileNodeProcessorState == FileNodeProcessorState.MERGING_WRITE) {
+		if (fileNodeProcessorState == FileNodeProcessorStatus.MERGING_WRITE) {
 			overflowChangeType = OverflowChangeType.MERGING_CHANGE;
 		} else {
 			overflowChangeType = OverflowChangeType.CHANGED;

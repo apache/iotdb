@@ -511,7 +511,7 @@ public class FileNodeProcessorTest {
 		String unusedFilename = "bufferfileunsed";
 		createFile(unusedFilename);
 		checkFile(unusedFilename);
-		FileNodeProcessorState fileNodeProcessorState = FileNodeProcessorState.WAITING;
+		FileNodeProcessorStatus fileNodeProcessorState = FileNodeProcessorStatus.WAITING;
 		fileNodeProcessorStore = new FileNodeProcessorStore(500, emptyIntervalFileNode, newFilenodes,
 				fileNodeProcessorState, 0);
 
@@ -540,7 +540,7 @@ public class FileNodeProcessorTest {
 			assertEquals(fileNodeProcessorStore.getLastUpdateTime(), store.getLastUpdateTime());
 			assertEquals(fileNodeProcessorStore.getEmptyIntervalFileNode(), store.getEmptyIntervalFileNode());
 			assertEquals(fileNodeProcessorStore.getNewFileNodes(), store.getNewFileNodes());
-			assertEquals(FileNodeProcessorState.NONE, store.getFileNodeProcessorState());
+			assertEquals(FileNodeProcessorStatus.NONE, store.getFileNodeProcessorState());
 			assertEquals(0, store.getNumOfMergeFile());
 
 			// check file
@@ -579,7 +579,7 @@ public class FileNodeProcessorTest {
 		String unusedFilename = "bufferfileunsed";
 		createFile(unusedFilename);
 		checkFile(unusedFilename);
-		FileNodeProcessorState fileNodeProcessorState = FileNodeProcessorState.MERGING_WRITE;
+		FileNodeProcessorStatus fileNodeProcessorState = FileNodeProcessorStatus.MERGING_WRITE;
 		fileNodeProcessorStore = new FileNodeProcessorStore(500, emptyIntervalFileNode, newFilenodes,
 				fileNodeProcessorState, 0);
 
@@ -709,7 +709,7 @@ public class FileNodeProcessorTest {
 		}
 		// construct the status is merge in the restore file
 		IntervalFileNode emptyIntervalFileNode = new IntervalFileNode(0, OverflowChangeType.NO_CHANGE, null, null);
-		FileNodeProcessorState fileNodeProcessorState = FileNodeProcessorState.MERGING_WRITE;
+		FileNodeProcessorStatus fileNodeProcessorState = FileNodeProcessorStatus.MERGING_WRITE;
 		System.out.println(lastUpdateTime);
 		System.out.println(restoreNewFiles);
 		fileNodeProcessorStore = new FileNodeProcessorStore(lastUpdateTime, emptyIntervalFileNode, restoreNewFiles,

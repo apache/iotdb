@@ -3,6 +3,7 @@ package cn.edu.thu.tsfiledb.engine.filenode;
 import java.util.List;
 
 import cn.edu.thu.tsfile.file.metadata.RowGroupMetaData;
+import cn.edu.thu.tsfile.timeseries.filter.definition.SingleSeriesFilterExpression;
 import cn.edu.thu.tsfile.timeseries.read.query.DynamicOneColumnData;
 
 /**
@@ -52,7 +53,11 @@ public class QueryStructure {
 	
 	public String toString(){
 		return "FilesList: " + String.valueOf(bufferwriteDataInFiles) + "\n"
-				+ "InsertData: " + (allOverflowData.get(0) != null ? ((DynamicOneColumnData)allOverflowData.get(0)).length : 0);
+				+ "InsertData: " + (allOverflowData.get(0) != null ? ((DynamicOneColumnData)allOverflowData.get(0)).length : 0) + "\n"
+				+ "updateTrue: " + (allOverflowData.get(1) != null ? ((DynamicOneColumnData)allOverflowData.get(1)).length : 0) + "\n"
+				+ "updateFalse: " + (allOverflowData.get(2) != null ? ((DynamicOneColumnData)allOverflowData.get(2)).length : 0) + "\n"
+				+ "timeFilter: " + (allOverflowData.get(3) != null ? (SingleSeriesFilterExpression)allOverflowData.get(3) : null) + "\n"  
+				+ "BufferWrite: " + (bufferwriteDataInMemory != null ? bufferwriteDataInMemory.length : null) + "\n";
 	}
 	
 	

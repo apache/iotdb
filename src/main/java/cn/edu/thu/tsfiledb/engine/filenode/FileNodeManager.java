@@ -2,8 +2,10 @@ package cn.edu.thu.tsfiledb.engine.filenode;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
@@ -34,6 +36,7 @@ import cn.edu.thu.tsfiledb.engine.exception.OverflowProcessorException;
 import cn.edu.thu.tsfiledb.engine.lru.LRUManager;
 import cn.edu.thu.tsfiledb.engine.overflow.io.OverflowProcessor;
 import cn.edu.thu.tsfiledb.exception.ErrorDebugException;
+import cn.edu.thu.tsfiledb.exception.PathErrorException;
 import cn.edu.thu.tsfiledb.metadata.MManager;
 
 public class FileNodeManager extends LRUManager<FileNodeProcessor> {
@@ -125,11 +128,29 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 
 	public void ManagerRecovery() {
 
-		// Get all nameSpacePath from MManager
-
-		// Check each nameSpacePath status
-
-		// get all nsp from mmanager and restore all nsp
+		try {
+			List<String> nsPaths = mManager.getAllFileNames();
+			for (String nsPath : nsPaths) {
+				FileNodeProcessor fileNodeProcessor = null;
+				fileNodeProcessor = getProcessorByLRU(nsPath, true);
+				if (fileNodeProcessor.shouldRecovery()) {
+					LOGGER.info("Recovery the filenode processor, the nameSpacePath is {}, the status is {}", nsPath,
+							fileNodeProcessor.getFileNodeProcessorStatus());
+					fileNodeProcessor.FileNodeRecovery();
+				} else {
+					fileNodeProcessor.writeUnlock();
+				}
+			}
+		} catch (PathErrorException e) {
+			LOGGER.error("Restore all FileNodeManager failed, the reason is {}", e.getMessage());
+			e.printStackTrace();
+		} catch (LRUManagerException e) {
+			LOGGER.error("Construt the filenode processor failed, the reason is {}", e.getMessage());
+			e.printStackTrace();
+		} catch (FileNodeProcessorException e) {
+			LOGGER.error("Recovery the filenode processor failed, the reason is {}", e.getMessage());
+			e.printStackTrace();
+		}
 	}
 
 	public int insert(TSRecord tsRecord) throws FileNodeManagerException {
@@ -258,7 +279,6 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 			e.printStackTrace();
 			throw new FileNodeManagerException(e);
 		}
-
 		long lastUpdateTime = fileNodeProcessor.getLastUpdateTime();
 		LOGGER.debug("Get the FileNodeProcessor: {}, the last update time is: {}, the update time is from {} to {}",
 				fileNodeProcessor.getNameSpacePath(), lastUpdateTime, startTime, endTime);
@@ -385,6 +405,9 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 			do {
 				fileNodeProcessor = getProcessorWithDeltaObjectIdByLRU(deltaObjectId, false);
 			} while (fileNodeProcessor == null);
+			if (fileNodeProcessor.shouldRecovery()) {
+				fileNodeProcessor.FileNodeRecovery();
+			}
 			LOGGER.debug("Get the FileNodeProcessor: {}, query.", fileNodeProcessor.getNameSpacePath());
 
 			QueryStructure queryStructure = null;
@@ -417,9 +440,15 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 			do {
 				fileNodeProcessor = getProcessorWithDeltaObjectIdByLRU(deltaObjectId, true);
 			} while (fileNodeProcessor == null);
+			if (fileNodeProcessor.shouldRecovery()) {
+				fileNodeProcessor.FileNodeRecovery();
+			}
 			LOGGER.debug("Get the FileNodeProcessor: {}, end query.", fileNodeProcessor.getNameSpacePath());
 			fileNodeProcessor.removeMultiPassLock(token);
 		} catch (LRUManagerException e) {
+			e.printStackTrace();
+			throw new FileNodeManagerException(e);
+		} catch (FileNodeProcessorException e) {
 			e.printStackTrace();
 			throw new FileNodeManagerException(e);
 		} finally {
@@ -556,6 +585,9 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 				do {
 					fileNodeProcessor = getProcessorByLRU(fileNodeNamespacePath, true);
 				} while (fileNodeProcessor == null);
+				if (fileNodeProcessor.shouldRecovery()) {
+					fileNodeProcessor.FileNodeRecovery();
+				}
 				LOGGER.info("Get the FileNodeProcessor: {}, merge.", fileNodeProcessor.getNameSpacePath());
 
 				// if bufferwrite and overflow exist

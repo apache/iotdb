@@ -142,6 +142,18 @@ public class MManagerTest {
 	}
 	
 	@Test
+	public void testQueryInMTree3(){
+		List<String> fileNames;
+		try {
+			fileNames = mManager.getAllFileNames();
+			Assert.assertEquals(fileNames.size(), 3);
+		} catch (PathErrorException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+	
+	@Test
 	public void testPTree(){
 		try {
 			mManager.addAPTree("region");
