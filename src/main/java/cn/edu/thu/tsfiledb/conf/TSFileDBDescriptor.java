@@ -17,7 +17,7 @@ public class TSFileDBDescriptor {
 
 	private static TSFileDBDescriptor descriptor = new TSFileDBDescriptor();
 
-	private final String CONFIG_DEFAULT_PATH = "/tsfiledb.properties";
+	private final String CONFIG_DEFAULT_PATH = "src/main/resources/";
 
 	private TSFileDBDescriptor() {
 		loadYaml();
@@ -38,13 +38,15 @@ public class TSFileDBDescriptor {
 	 *
 	 */
 	private void loadYaml() {
-		String url = System.getProperty(SystemConstant.TSFILE_HOME, CONFIG_DEFAULT_PATH);
+		String tsfileHome = System.getProperty(SystemConstant.TSFILE_HOME, CONFIG_DEFAULT_PATH);
+		String url;
 		InputStream inputStream = null;
-		if (url.equals(CONFIG_DEFAULT_PATH)) {
+		if (tsfileHome.equals(CONFIG_DEFAULT_PATH)) {
+			url = tsfileHome + "tsfiledb.properties";
 			inputStream = this.getClass().getResourceAsStream(url);
 			return;
 		} else {
-			url = url + "/conf/tsfiledb.properties";
+			url = tsfileHome + "/conf/tsfiledb.properties";
 			try {
 				File file = new File(url);
 				inputStream = new FileInputStream(file);
@@ -59,17 +61,17 @@ public class TSFileDBDescriptor {
 			properties.load(inputStream);
 
 			conf.writeInstanceThreshold = Integer.parseInt(properties.getProperty("writeInstanceThreshold", conf.writeInstanceThreshold + ""));
-			conf.overflowDataDir = properties.getProperty("overflowDataDir", url+"/data/overflow");
-			conf.FileNodeDir = properties.getProperty("FileNodeDir", url+"/data/digest");
-			conf.BufferWriteDir = properties.getProperty("BufferWriteDir", url+"/data/delta");
-			conf.metadataDir = properties.getProperty("metadataDir", url+"/data/metadata");
-			conf.derbyHome = properties.getProperty("derbyHome", url+"/data/derby");
+			conf.overflowDataDir = properties.getProperty("overflowDataDir", tsfileHome+"/data/overflow");
+			conf.FileNodeDir = properties.getProperty("FileNodeDir", tsfileHome+"/data/digest");
+			conf.BufferWriteDir = properties.getProperty("BufferWriteDir", tsfileHome+"/data/delta");
+			conf.metadataDir = properties.getProperty("metadataDir", tsfileHome+"/data/metadata");
+			conf.derbyHome = properties.getProperty("derbyHome", tsfileHome+"/data/derby");
 			conf.mergeConcurrentThreadNum = Integer.parseInt(properties.getProperty("mergeConcurrentThreadNum", conf.mergeConcurrentThreadNum + ""));
 			conf.maxFileNodeNum = Integer.parseInt(properties.getProperty("maxFileNodeNum", conf.maxFileNodeNum + ""));
 			conf.maxOverflowNodeNum = Integer.parseInt(properties.getProperty("maxOverflowNodeNum", conf.maxOverflowNodeNum + ""));
 			conf.maxBufferWriteNodeNum = Integer.parseInt(properties.getProperty("maxBufferWriteNodeNum", conf.maxBufferWriteNodeNum + ""));
 			conf.defaultFetchSize = Integer.parseInt(properties.getProperty("defaultFetchSize", conf.defaultFetchSize + ""));
-			conf.writeLogPath = properties.getProperty("writeLogPath", url+"/data/writeLog.log");
+			conf.writeLogPath = properties.getProperty("writeLogPath", tsfileHome+"/data/writeLog.log");
 
 		} catch (IOException e) {
 			LOGGER.warn("Cannot load config file, use default configuration", e);
