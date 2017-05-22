@@ -2,6 +2,7 @@ package cn.edu.thu.tsfiledb.sys.writeLog;
 
 import cn.edu.thu.tsfile.common.utils.BytesUtils;
 import cn.edu.thu.tsfile.timeseries.read.qp.Path;
+import cn.edu.thu.tsfiledb.conf.TSFileDBDescriptor;
 import cn.edu.thu.tsfiledb.qp.logical.operator.Operator;
 import cn.edu.thu.tsfiledb.qp.physical.plan.PhysicalPlan;
 import cn.edu.thu.tsfiledb.sys.writeLog.impl.LocalFileLogReader;
@@ -29,26 +30,38 @@ public class WriteLogNode {
     private WriteLogPersistable writer = null;
     // private TSFileDBConfig config = TSFileDBDescriptor.getInstance().getConfig();
     private boolean hasBufferWriteFlush = false, hasOverflowFlush = false;
-    private String filePath;
-    private String backFilePath;
+    private String filePath, backFilePath;
+    private static int LogCompactSize, LogMemorySize;
     private int logSize;
-    private Path path;
+    private String path;
     private List<PhysicalPlan> plansInMemory;
 
-    public WriteLogNode(Path path) {
+    public WriteLogNode(String path) {
         this.path = path;
+        this.LogCompactSize = TSFileDBDescriptor.getInstance().getConfig().LogCompactSize;
+        this.LogMemorySize = TSFileDBDescriptor.getInstance().getConfig().LogMemorySize;
         filePath = "src/main/resources/log/" + path + ".log";
+        backFilePath = filePath + ".backup";
         plansInMemory = new ArrayList<>();
         hasBufferWriteFlush = false;
         hasOverflowFlush = false;
         logSize = 0;
     }
 
+    public void setLogCompactSize(int size) {
+        this.LogCompactSize = size;
+    }
+
+    public void setLogMemorySize(int size) {
+        this.LogMemorySize = size;
+    }
+
     synchronized public void write(PhysicalPlan plan) throws IOException {
         plansInMemory.add(plan);
-        if (plansInMemory.size() >= SystemLogConfig.LogMemorySize) {
-            logSize += plansInMemory.size();
+        if (plansInMemory.size() >= LogMemorySize) {
             serializeMemoryToFile();
+            logSize += plansInMemory.size();
+            checkLogsCompactFileSize(false);
         }
     }
 
@@ -77,6 +90,7 @@ public class WriteLogNode {
         writer.write(BytesUtils.intToTwoBytes(flushEnd.length));
         hasOverflowFlush = true;
         LOG.info("Write overflow log end.");
+        checkLogsCompactFileSize(false);
     }
 
     synchronized public void bufferFlushStart() throws IOException {
@@ -104,18 +118,27 @@ public class WriteLogNode {
         writer.write(BytesUtils.intToTwoBytes(flushEnd.length));
         LOG.info("Write bufferwrite log end.");
         hasBufferWriteFlush = true;
+        checkLogsCompactFileSize(false);
 //		writer.close();
 //		writer = null;
     }
 
-    synchronized public void checkFileSize() throws IOException {
-        if (logSize >= SystemLogConfig.LogMergeSize && hasBufferWriteFlush || hasOverflowFlush) {
-            LocalFileLogWriter writerV2 = new LocalFileLogWriter(filePath + ".backup");
+    /**
+     *  Compact logs in path.log.
+     *
+     * @throws IOException
+     */
+    synchronized public void checkLogsCompactFileSize(boolean forceCompact) throws IOException {
+        if (logSize >= LogCompactSize && hasBufferWriteFlush ||
+                (logSize >= LogCompactSize && hasOverflowFlush) || forceCompact) {
+            LOG.info("Log Compact Process Begin.");
+            LocalFileLogWriter writerV2 = new LocalFileLogWriter(backFilePath);
             LocalFileLogReader oldReader = new LocalFileLogReader(filePath);
             writerV2.write(oldReader.getFileCompactData());
             new File(filePath).delete();
             new File(filePath + ".backup").renameTo(new File(filePath));
             logSize = 0;
+            LOG.info("Log Compact Process End.");
         }
     }
 
@@ -144,11 +167,18 @@ public class WriteLogNode {
             writer = new LocalFileLogWriter(filePath);
         }
         writer.write(bytesToSerialize);
+        logSize += plansInMemory.size();
         plansInMemory.clear();
     }
 
-    synchronized public void recovery() {
-
+    synchronized public void recovery() throws IOException {
+        File f = new File(backFilePath);
+        if (f.exists()) {
+            LOG.error("compact error!!!");
+            // need delete origin file
+            f.delete();
+            checkLogsCompactFileSize(true);
+        }
     }
 
     /**
@@ -161,7 +191,8 @@ public class WriteLogNode {
             reader = new LocalFileLogReader(filePath);
         }
 
-        return reader.getPhysicalPlan();
+        PhysicalPlan plan = reader.getPhysicalPlan();
+        return plan;
     }
 
 

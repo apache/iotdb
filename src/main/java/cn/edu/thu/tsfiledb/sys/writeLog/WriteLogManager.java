@@ -27,12 +27,12 @@ public class WriteLogManager {
         return instance;
     }
 
-    public static WriteLogNode getWriteLogNode(Path path) {
-        if (logNodeMaps.containsKey(path.toString())) {
-            return logNodeMaps.get(path.toString());
+    public static WriteLogNode getWriteLogNode(String fileNode) {
+        if (logNodeMaps.containsKey(fileNode)) {
+            return logNodeMaps.get(fileNode);
         }
-        logNodeMaps.put(path.toString(), new WriteLogNode(path));
-        return logNodeMaps.get(path.toString());
+        logNodeMaps.put(fileNode, new WriteLogNode(fileNode));
+        return logNodeMaps.get(fileNode);
     }
 
     public void write(PhysicalPlan plan) throws IOException {

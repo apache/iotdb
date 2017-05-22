@@ -8,6 +8,7 @@ import java.util.List;
 
 import cn.edu.thu.tsfile.common.utils.BytesUtils;
 import cn.edu.thu.tsfile.common.utils.ReadWriteStreamUtils;
+import cn.edu.thu.tsfile.timeseries.read.qp.Path;
 import cn.edu.thu.tsfiledb.qp.logical.operator.Operator.OperatorType;
 import cn.edu.thu.tsfiledb.qp.physical.plan.DeletePlan;
 import cn.edu.thu.tsfiledb.qp.physical.plan.InsertPlan;
@@ -60,8 +61,11 @@ public enum PhysicalPlanCodec {
 
                 byte[] valueBytes = BytesUtils.StringToBytes(t.getValue());
                 byte[] valueBytesLength = ReadWriteStreamUtils.getUnsignedVarInt(valueBytes.length);
+                byte[] pathBytes = BytesUtils.StringToBytes(t.getPath().getFullPath());
+                byte[] pathBytesLength = ReadWriteStreamUtils.getUnsignedVarInt(pathBytes.length);
 
-                int totalLength = 1 + 1 + timeBytes.length + valueBytesLength.length + valueBytes.length;
+                int totalLength = 1 + 1 + timeBytes.length + valueBytesLength.length + valueBytes.length
+                        + pathBytes.length + pathBytesLength.length;
 
                 byte[] res = new byte[totalLength];
                 int pos = 0;
@@ -75,6 +79,11 @@ public enum PhysicalPlanCodec {
                 pos += valueBytesLength.length;
                 System.arraycopy(valueBytes, 0, res, pos, valueBytes.length);
                 pos += valueBytes.length;
+
+                System.arraycopy(pathBytesLength, 0, res, pos, pathBytesLength.length);
+                pos += pathBytesLength.length;
+                System.arraycopy(pathBytes, 0, res, pos, pathBytes.length);
+                pos += pathBytes.length;
 
                 return res;
             }
@@ -95,10 +104,12 @@ public enum PhysicalPlanCodec {
                 bais.read(valueBytes, 0, valueLength);
                 String value = BytesUtils.bytesToString(valueBytes);
 
-                InsertPlan ans = new InsertPlan();
-                ans.setInsertType(insertType);
-                ans.setTime(time);
-                ans.setValue(value);
+                int pathLength = ReadWriteStreamUtils.readUnsignedVarInt(bais);
+                byte[] pathBytes = new byte[pathLength];
+                bais.read(pathBytes, 0, pathLength);
+                String path = BytesUtils.bytesToString(pathBytes);
+
+                InsertPlan ans = new InsertPlan(insertType, time, value, new Path(path));
                 return ans;
             }
         };
@@ -110,7 +121,10 @@ public enum PhysicalPlanCodec {
                 int type = OperatorType.DELETE.ordinal();
                 byte[] timeBytes = BytesUtils.longToBytes(t.getDeleteTime());
 
-                int totalLength = 1 + timeBytes.length;
+                byte[] pathBytes = BytesUtils.StringToBytes(t.getPath().getFullPath());
+                byte[] pathBytesLength = ReadWriteStreamUtils.getUnsignedVarInt(pathBytes.length);
+
+                int totalLength = 1 + timeBytes.length + pathBytes.length + pathBytesLength.length;
 
                 byte[] res = new byte[totalLength];
                 int pos = 0;
@@ -118,6 +132,11 @@ public enum PhysicalPlanCodec {
                 pos += 1;
                 System.arraycopy(timeBytes, 0, res, pos, timeBytes.length);
                 pos += timeBytes.length;
+
+                System.arraycopy(pathBytesLength, 0, res, pos, pathBytesLength.length);
+                pos += pathBytesLength.length;
+                System.arraycopy(pathBytes, 0, res, pos, pathBytes.length);
+                pos += pathBytes.length;
 
                 return res;
             }
@@ -131,7 +150,12 @@ public enum PhysicalPlanCodec {
                 bais.read(timeBytes, 0, 8);
                 long time = BytesUtils.bytesToLong(timeBytes);
 
-                return new DeletePlan(time, null);
+                int pathLength = ReadWriteStreamUtils.readUnsignedVarInt(bais);
+                byte[] pathBytes = new byte[pathLength];
+                bais.read(pathBytes, 0, pathLength);
+                String path = BytesUtils.bytesToString(pathBytes);
+
+                return new DeletePlan(time, new Path(path));
             }
         };
 
@@ -146,8 +170,11 @@ public enum PhysicalPlanCodec {
                 byte[] valueBytes = BytesUtils.StringToBytes(updatePlan.getValue());
                 byte[] valueBytesLength = ReadWriteStreamUtils.getUnsignedVarInt(valueBytes.length);
 
+                byte[] pathBytes = BytesUtils.StringToBytes(updatePlan.getPath().getFullPath());
+                byte[] pathBytesLength = ReadWriteStreamUtils.getUnsignedVarInt(pathBytes.length);
+
                 int totalLength = 1 + startTimeBytes.length + endTimeBytes.length +
-                        valueBytesLength.length + valueBytes.length;
+                        valueBytesLength.length + valueBytes.length + pathBytes.length + pathBytesLength.length;;
 
                 byte[] res = new byte[totalLength];
                 int pos = 0;
@@ -162,6 +189,11 @@ public enum PhysicalPlanCodec {
                 pos += valueBytesLength.length;
                 System.arraycopy(valueBytes, 0, res, pos, valueBytes.length);
                 pos += valueBytes.length;
+
+                System.arraycopy(pathBytesLength, 0, res, pos, pathBytesLength.length);
+                pos += pathBytesLength.length;
+                System.arraycopy(pathBytes, 0, res, pos, pathBytes.length);
+                pos += pathBytes.length;
 
                 return res;
             }
@@ -183,7 +215,12 @@ public enum PhysicalPlanCodec {
                 bais.read(valueBytes, 0, valueLength);
                 String value = BytesUtils.bytesToString(valueBytes);
 
-                return new UpdatePlan(startTime, endTime, value, null);
+                int pathLength = ReadWriteStreamUtils.readUnsignedVarInt(bais);
+                byte[] pathBytes = new byte[pathLength];
+                bais.read(pathBytes, 0, pathLength);
+                String path = BytesUtils.bytesToString(pathBytes);
+
+                return new UpdatePlan(startTime, endTime, value, new Path(path));
             }
         };
 

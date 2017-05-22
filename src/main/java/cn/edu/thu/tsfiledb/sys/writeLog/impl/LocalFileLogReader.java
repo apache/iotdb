@@ -185,7 +185,7 @@ public class LocalFileLogReader implements WriteLogReadable {
             overflowLength = overflowLengthList.get(overflowTailCount - 1);
         }
 
-        LOG.info(fileLength + ", " + overflowStart + ":" + overflowLength + ", " + bufferStart + ":" + bufferLength);
+        // LOG.info(fileLength + ", " + overflowStart + ":" + overflowLength + ", " + bufferStart + ":" + bufferLength);
 
         if (overflowStart == -1 || (bufferStart < overflowStart) && bufferTailCount > 0) { // overflow operator is empty OR buffer operator is in front of overflow
             lraf.seek(bufferStart);
@@ -203,52 +203,121 @@ public class LocalFileLogReader implements WriteLogReadable {
     }
 
     public byte[] getFileCompactData() throws IOException {
-        List<byte[]> bytesList = new ArrayList<>();
-        int totalLength = 0;
+        tailPos = 0;
+        lraf = new RandomAccessFile(fileName, "rw");
+        int i = (int) lraf.length();
+        // -1 : no end, no start
+        // 1 : has end
+        // 2 : has start and end
+        // 3 : only has start
+        int overflowVis = -1;
+        int bufferVis = -1;
+        List<byte[]> backUpBytesList = new ArrayList<>();
+        int backUpTotalLength = 0;
 
-        getStartPos();
+        while (i > 0) {
+            lraf.seek(i - 2);
+            byte[] opeContentLengthBytes = new byte[2];
+            lraf.read(opeContentLengthBytes);
+            int opeContentLength = BytesUtils.twoBytesToInt(opeContentLengthBytes);
 
-        if (bufferTailCount == 0 && overflowTailCount == 0) {
-            tailPos = -1;
-            return null;
+            byte[] opeTypeBytes = new byte[1];
+            int backUpPos = i - 2 - opeContentLength;
+            lraf.seek(backUpPos);
+            lraf.read(opeTypeBytes);
+            int opeType = (int) opeTypeBytes[0];
+
+            if (opeType == OperatorType.OVERFLOWFLUSHEND.ordinal()) {
+                overflowVis = 1;
+                i -= (2 + opeContentLength);
+                continue;
+            } else if (opeType == OperatorType.OVERFLOWFLUSHSTART.ordinal()) {
+                if (overflowVis == 1)
+                    overflowVis = 2;
+                else
+                    overflowVis = 3;
+                i -= (2 + opeContentLength);
+                continue;
+            } else if (opeType == OperatorType.BUFFERFLUSHEND.ordinal()) {
+                bufferVis = 1;
+                i -= (2 + opeContentLength);
+                continue;
+            } else if (opeType == OperatorType.BUFFERFLUSHSTART.ordinal()) {
+                if (bufferVis == 1)
+                    bufferVis = 2;
+                else
+                    bufferVis = 3;
+                i -= (2 + opeContentLength);
+                continue;
+            }
+
+            if (bufferVis == 2 && overflowVis == 2) {
+                break;
+            }
+
+            byte[] dataBackUp = new byte[opeContentLength + 2];
+            lraf.seek(backUpPos);
+            lraf.read(dataBackUp);
+            backUpBytesList.add(dataBackUp);
+            backUpTotalLength += dataBackUp.length;
+            i -= (2 + opeContentLength);
         }
 
-        int overflowStart = -1, overflowLength = -1;
-        int bufferStart = -1, bufferLength = -1;
-
-        if (bufferTailCount > 0) {
-            bufferStart = bufferStartList.get(bufferTailCount - 1);
-            bufferLength = bufferLengthList.get(bufferTailCount - 1);
-        }
-        if (overflowTailCount > 0) {
-            overflowStart = overflowStartList.get(overflowTailCount - 1);
-            overflowLength = overflowLengthList.get(overflowTailCount - 1);
-        }
-
-        LOG.info(fileLength + ", " + overflowStart + ":" + overflowLength + ", " + bufferStart + ":" + bufferLength);
-
-        if (overflowStart == -1 || (bufferStart < overflowStart) && bufferTailCount > 0) { // overflow operator is empty OR buffer operator is in front of overflow
-            lraf.seek(bufferStart);
-            byte[] planBytes = new byte[bufferLength];
-            lraf.read(planBytes);
-            bufferTailCount--;
-            bytesList.add(planBytes);
-            totalLength += planBytes.length;
-        } else {
-            lraf.seek(overflowStart);
-            byte[] planBytes = new byte[overflowLength];
-            lraf.read(planBytes);
-            overflowTailCount--;
-            bytesList.add(planBytes);
-            totalLength += planBytes.length;
-        }
-
-        byte[] ans = new byte[totalLength];
+        byte[] ans = new byte[backUpTotalLength];
         int pos = 0;
-        for (byte[] bs : bytesList) {
-            System.arraycopy(bs, 0, ans, pos, bs.length);
-            pos += bs.length;
+        for (i = backUpBytesList.size() - 1; i >= 0; i--) {
+            byte[] dataBackUp = backUpBytesList.get(i);
+            System.arraycopy(dataBackUp, 0, ans, pos, dataBackUp.length);
+            pos += dataBackUp.length;
         }
+
         return ans;
+//        List<byte[]> bytesList = new ArrayList<>();
+//        int totalLength = 0;
+//git
+//        getStartPos();
+//
+//        if (bufferTailCount == 0 && overflowTailCount == 0) {
+//            tailPos = -1;
+//            return null;
+//        }
+//
+//        int overflowStart = -1, overflowLength = -1;
+//        int bufferStart = -1, bufferLength = -1;
+//
+//        if (bufferTailCount > 0) {
+//            bufferStart = bufferStartList.get(bufferTailCount - 1);
+//            bufferLength = bufferLengthList.get(bufferTailCount - 1);
+//        }
+//        if (overflowTailCount > 0) {
+//            overflowStart = overflowStartList.get(overflowTailCount - 1);
+//            overflowLength = overflowLengthList.get(overflowTailCount - 1);
+//        }
+//
+//        // LOG.info(fileLength + ", " + overflowStart + ":" + overflowLength + ", " + bufferStart + ":" + bufferLength);
+//
+//        if (overflowStart == -1 || (bufferStart < overflowStart) && bufferTailCount > 0) { // overflow operator is empty OR buffer operator is in front of overflow
+//            lraf.seek(bufferStart);
+//            byte[] planBytes = new byte[bufferLength];
+//            lraf.read(planBytes);
+//            bufferTailCount--;
+//            bytesList.add(planBytes);
+//            totalLength += planBytes.length;
+//        } else {
+//            lraf.seek(overflowStart);
+//            byte[] planBytes = new byte[overflowLength];
+//            lraf.read(planBytes);
+//            overflowTailCount--;
+//            bytesList.add(planBytes);
+//            totalLength += planBytes.length;
+//        }
+//
+//        byte[] ans = new byte[totalLength];
+//        int pos = 0;
+//        for (byte[] bs : bytesList) {
+//            System.arraycopy(bs, 0, ans, pos, bs.length);
+//            pos += bs.length;
+//        }
+//        return ans;
     }
 }

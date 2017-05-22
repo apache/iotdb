@@ -42,6 +42,9 @@ public class TSFileDBConfig {
 	public int defaultFetchSize = 1000000;
 	public String writeLogPath = "src/main/resources/writeLog.log";
 
+	public int LogCompactSize = 100000;
+	public int LogMemorySize = 10000;
+
 	public TSFileDBConfig() {
 	}
 
