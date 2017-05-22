@@ -2,6 +2,7 @@ package cn.edu.thu.tsfiledb.sys.writeLog;
 
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.List;
 
 import cn.edu.thu.tsfile.timeseries.read.qp.Path;
 import cn.edu.thu.tsfile.timeseries.write.record.TSRecord;
@@ -17,7 +18,7 @@ public class WriteLogManager {
     private static WriteLogManager instance;
     private static HashMap<String, WriteLogNode> logNodeMaps;
     public static final int BUFFERWRITER = 0, OVERFLOW = 1;
-
+    
     private WriteLogManager() {
         logNodeMaps = new HashMap<>();
     }
@@ -63,9 +64,21 @@ public class WriteLogManager {
     	getWriteLogNode(nsPath).bufferFlushEnd();
     }
     
-    
-
     public PhysicalPlan getPhysicalPlan() throws IOException {
-        return null;
+    	List<String> nsPathList = null;
+		try {
+			nsPathList = MManager.getInstance().getAllFileNames();
+		} catch (PathErrorException e) {
+			throw new IOException(e);
+		}
+		PhysicalPlan plan = null;
+    	for(String nsPath : nsPathList){
+    		WriteLogNode node = getWriteLogNode(nsPath);
+    		plan = node.getPhysicalPlan();
+    		if(plan != null){
+    			return plan;
+    		}
+    	}
+        return plan;
     }
 }
