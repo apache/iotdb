@@ -1,14 +1,13 @@
 package cn.edu.thu.tsfiledb.sys.writeLog;
 
 import cn.edu.thu.tsfile.timeseries.read.qp.Path;
-import cn.edu.thu.tsfiledb.qp.physical.plan.DeletePlan;
-import cn.edu.thu.tsfiledb.qp.physical.plan.InsertPlan;
-import cn.edu.thu.tsfiledb.qp.physical.plan.PhysicalPlan;
-import cn.edu.thu.tsfiledb.qp.physical.plan.UpdatePlan;
+import cn.edu.thu.tsfiledb.qp.physical.plan.*;
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * @author CGF.
@@ -21,11 +20,12 @@ public class WriteLogNodeTest {
 
     @Test
     public void bufferWriteOverflowFlushTest() throws IOException {
+        System.out.println("============bufferWriteOverflowFlushTest");
         WriteLogNode node = new WriteLogNode(fileNode);
         node.resetFileStatus();
         node.write(new InsertPlan(1, 100L, "1.0", path));
         node.write(new UpdatePlan(200L, 300L, "2.0", path));
-        node.write(new DeletePlan(200L, new Path("root.vehicle")));
+        node.write(new DeletePlan(200L, path));
         node.write(new UpdatePlan(400L, 500L, "3.0", path));
         node.write(new UpdatePlan(500L, 600L, "4.0", path));
         node.bufferFlushStart();
@@ -59,6 +59,7 @@ public class WriteLogNodeTest {
 
     @Test
     public void logMemorySizeTest() throws IOException {
+        System.out.println("============logMemorySizeTest");
         WriteLogNode node = new WriteLogNode(fileNode);
         node.resetFileStatus();
         node.setLogMemorySize(100);
@@ -102,6 +103,7 @@ public class WriteLogNodeTest {
 
     @Test
     public void logCompactTest() throws IOException {
+        System.out.println("============logCompactTest");
         WriteLogNode node = new WriteLogNode(fileNode);
         node.resetFileStatus();
         node.setLogMemorySize(10);
@@ -123,6 +125,27 @@ public class WriteLogNodeTest {
     }
 
     @Test
+    public void multiInsertTest() throws IOException {
+        System.out.println("============multiInsertTest");
+        WriteLogNode node = new WriteLogNode(fileNode);
+        node.resetFileStatus();
+        List<String> measurementList = new ArrayList<>();
+        List<String> valueList = new ArrayList<>();
+        int cnt = 1;
+        for (int i = 0;i <= 10;i++) {
+            measurementList.add("s0");
+            valueList.add(String.valueOf(i));
+        }
+        MultiInsertPlan multiInsertPlan = new MultiInsertPlan(1, fileNode, 1, measurementList, valueList);
+        node.write(multiInsertPlan);
+
+        PhysicalPlan plan;
+        while ((plan = node.getPhysicalPlan()) != null) {
+            output(plan);
+        }
+    }
+
+    @Test
     public void recoveryTest() {
 
     }
@@ -136,7 +159,13 @@ public class WriteLogNodeTest {
             System.out.println("Update: " + p.getPath() + " " + p.getStartTime() + " " + p.getEndTime() + " " + p.getValue());
         } else if (plan instanceof DeletePlan) {
             DeletePlan p = (DeletePlan) plan;
-            System.out.println("Delete:" + p.getPath() + " " + p.getDeleteTime());
+            System.out.println("Delete: " + p.getPath() + " " + p.getDeleteTime());
+        } else if (plan instanceof MultiInsertPlan) {
+            MultiInsertPlan multiInsertPlan = (MultiInsertPlan) plan;
+            System.out.println("MultiInsert: " + multiInsertPlan.getPath() + multiInsertPlan.getTime());
+            for (int i = 0;i < multiInsertPlan.getMeasurementList().size();i++) {
+                System.out.println(multiInsertPlan.getMeasurementList().get(i) + " " + multiInsertPlan.getInsertValues().get(i));
+            }
         }
     }
 }

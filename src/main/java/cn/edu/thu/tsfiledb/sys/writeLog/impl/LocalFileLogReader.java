@@ -140,7 +140,7 @@ public class LocalFileLogReader implements WriteLogReadable {
                 break;
             }
 
-            if (opeType == OperatorType.INSERT.ordinal()) {
+            if (opeType == OperatorType.MULTIINSERT.ordinal() || opeType == OperatorType.INSERT.ordinal()) {
                 byte[] insertTypeBytes = new byte[1];
                 lraf.read(insertTypeBytes);
                 int insertType = (int) insertTypeBytes[0];
@@ -185,7 +185,7 @@ public class LocalFileLogReader implements WriteLogReadable {
             overflowLength = overflowLengthList.get(overflowTailCount - 1);
         }
 
-        // LOG.info(fileLength + ", " + overflowStart + ":" + overflowLength + ", " + bufferStart + ":" + bufferLength);
+        LOG.info(fileLength + ", " + overflowStart + ":" + overflowLength + ", " + bufferStart + ":" + bufferLength);
 
         if (overflowStart == -1 || (bufferStart < overflowStart) && bufferTailCount > 0) { // overflow operator is empty OR buffer operator is in front of overflow
             lraf.seek(bufferStart);
