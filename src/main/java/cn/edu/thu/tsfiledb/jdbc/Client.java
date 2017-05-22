@@ -126,15 +126,6 @@ public class Client {
 
 	public static void output(ResultSet res, boolean printToConsole) {
 		try {
-			File file = new File("src/main/resources/output/queryRes.csv");
-			if (!file.exists()) {
-				if (!file.getParentFile().exists()) {
-					file.getParentFile().mkdirs();
-				}
-				file.createNewFile();
-			}
-			FileWriter fw = new FileWriter(file);
-//			BufferedWriter bw = new BufferedWriter(fw);
 			int cnt = 0;
 			int colCount = res.getMetaData().getColumnCount();
 			// //Output Labels
