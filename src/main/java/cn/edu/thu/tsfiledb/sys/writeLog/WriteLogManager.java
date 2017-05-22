@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.lang.management.PlatformLoggingMXBean;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 
 import cn.edu.thu.tsfile.timeseries.read.qp.Path;
@@ -79,13 +80,15 @@ public class WriteLogManager {
     public PhysicalPlan getPhysicalPlan() throws IOException {
         if (recoveryPathList.size() == 0)
             return null;
-        for (String nsPath : recoveryPathList) {
-            WriteLogNode node = getWriteLogNode(nsPath);
+
+        Iterator<String> iterator = recoveryPathList.iterator();
+        while (iterator.hasNext()) {
+            WriteLogNode node = getWriteLogNode(iterator.next());
             PhysicalPlan plan = node.getPhysicalPlan();
             if (plan != null) {
                 return plan;
             } else {
-                recoveryPathList.remove(nsPath);
+                iterator.remove();
             }
         }
         return null;

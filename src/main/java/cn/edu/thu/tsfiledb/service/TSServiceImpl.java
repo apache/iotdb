@@ -78,6 +78,7 @@ public class TSServiceImpl implements TSIService.Iface {
 	public TSServiceImpl() throws IOException {
 		LOGGER.info("start check write log...");
 		writeLogManager = WriteLogManager.getInstance();
+		writeLogManager.recovery();
 		long cnt = 0l;
 		PhysicalPlan plan;
 		while ((plan = writeLogManager.getPhysicalPlan()) != null) {
