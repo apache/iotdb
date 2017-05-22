@@ -36,6 +36,15 @@ public class MultiInsertPlan extends PhysicalPlan {
         this.insertValues = insertValues;
     }
 
+    public MultiInsertPlan(int insertType, String deltaObject, long insertTime, List<String> measurementList, List<String> insertValues) {
+        super(false, OperatorType.MULTIINSERT);
+        this.insertType = insertType;
+        this.insertTime = insertTime;
+        this.deltaObject = deltaObject;
+        this.measurementList = measurementList;
+        this.insertValues = insertValues;
+    }
+
     @Override
     public boolean processNonQuery(QueryProcessExecutor exec) throws ProcessorException{
 		insertType = exec.multiInsert(deltaObject, insertTime, measurementList, insertValues);
