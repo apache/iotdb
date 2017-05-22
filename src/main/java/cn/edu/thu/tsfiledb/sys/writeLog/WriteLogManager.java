@@ -1,7 +1,10 @@
 package cn.edu.thu.tsfiledb.sys.writeLog;
 
 import java.io.IOException;
+import java.lang.management.PlatformLoggingMXBean;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 
 import cn.edu.thu.tsfile.timeseries.read.qp.Path;
 import cn.edu.thu.tsfile.timeseries.write.record.TSRecord;
@@ -17,6 +20,7 @@ public class WriteLogManager {
     private static WriteLogManager instance;
     private static HashMap<String, WriteLogNode> logNodeMaps;
     public static final int BUFFERWRITER = 0, OVERFLOW = 1;
+    private static List<String> recoveryPathList = new ArrayList<>();
 
     private WriteLogManager() {
         logNodeMaps = new HashMap<>();
@@ -44,28 +48,46 @@ public class WriteLogManager {
     }
 
     public void write(TSRecord record, int type) throws IOException, PathErrorException {
-    	getWriteLogNode(MManager.getInstance().getFileNameByPath(record.deltaObjectId)).write(record, type);
+        getWriteLogNode(MManager.getInstance().getFileNameByPath(record.deltaObjectId)).write(record, type);
     }
-    
+
     public void startOverflowFlush(String nsPath) throws IOException {
-    	getWriteLogNode(nsPath).overflowFlushStart();
+        getWriteLogNode(nsPath).overflowFlushStart();
     }
-    
+
     public void endOverflowFlush(String nsPath) throws IOException {
-    	getWriteLogNode(nsPath).overflowFlushEnd();
+        getWriteLogNode(nsPath).overflowFlushEnd();
     }
-    
+
     public void startBufferWriteFlush(String nsPath) throws IOException {
-    	getWriteLogNode(nsPath).bufferFlushStart();
+        getWriteLogNode(nsPath).bufferFlushStart();
     }
-    
+
     public void endBufferWriteFlush(String nsPath) throws IOException {
-    	getWriteLogNode(nsPath).bufferFlushEnd();
+        getWriteLogNode(nsPath).bufferFlushEnd();
     }
-    
-    
+
+    public void recovery() throws IOException {
+        try {
+            //TODO need optimize
+            recoveryPathList = MManager.getInstance().getAllFileNames();
+        } catch (PathErrorException e) {
+            throw new IOException(e);
+        }
+    }
 
     public PhysicalPlan getPhysicalPlan() throws IOException {
+        if (recoveryPathList.size() == 0)
+            return null;
+        for (String nsPath : recoveryPathList) {
+            WriteLogNode node = getWriteLogNode(nsPath);
+            PhysicalPlan plan = node.getPhysicalPlan();
+            if (plan != null) {
+                return plan;
+            } else {
+                recoveryPathList.remove(nsPath);
+            }
+        }
         return null;
     }
 }
