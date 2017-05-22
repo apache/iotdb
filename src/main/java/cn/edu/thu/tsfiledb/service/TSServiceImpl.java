@@ -556,7 +556,7 @@ public class TSServiceImpl implements TSIService.Iface {
 			operationHandle = new TSOperationHandle(operationId, false);
 			resp.setOperationHandle(operationHandle);
 			return resp;
-		} catch (QueryProcessorException e) {
+		} catch (QueryProcessorException | PathErrorException e) {
 			LOGGER.error(e.getMessage());
 			return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
 		} catch (IOException e) {
@@ -598,7 +598,11 @@ public class TSServiceImpl implements TSIService.Iface {
 			return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
 		}
 		if (execRet && needToBeWritenToLog(plan)) {
-			writeLogManager.write(plan);
+			try {
+				writeLogManager.write(plan);
+			} catch (PathErrorException e) {
+				throw new ProcessorException(e);
+			}
 		}
 		TS_StatusCode statusCode = execRet ? TS_StatusCode.SUCCESS_STATUS : TS_StatusCode.ERROR_STATUS;
 		String msg = execRet ? "Execute successfully" : "Execute statement error.";
@@ -613,7 +617,7 @@ public class TSServiceImpl implements TSIService.Iface {
 
 	private boolean needToBeWritenToLog(PhysicalPlan plan) {
 		if (plan.getOperatorType() == OperatorType.INSERT) {
-			return true;
+			return false;
 		}
 		if (plan.getOperatorType() == OperatorType.UPDATE) {
 			return true;

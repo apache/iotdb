@@ -43,7 +43,7 @@ public class TSFileDBConfig {
 	public String writeLogPath = "src/main/resources/writeLog.log";
 
 	public int LogCompactSize = 100000;
-	public int LogMemorySize = 10000;
+	public int LogMemorySize = 1;
 
 	public TSFileDBConfig() {
 	}

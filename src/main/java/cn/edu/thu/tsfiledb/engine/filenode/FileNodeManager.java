@@ -38,6 +38,7 @@ import cn.edu.thu.tsfiledb.engine.overflow.io.OverflowProcessor;
 import cn.edu.thu.tsfiledb.exception.ErrorDebugException;
 import cn.edu.thu.tsfiledb.exception.PathErrorException;
 import cn.edu.thu.tsfiledb.metadata.MManager;
+import cn.edu.thu.tsfiledb.sys.writeLog.WriteLogManager;
 
 public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 
@@ -189,7 +190,14 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 				e.printStackTrace();
 				throw new FileNodeManagerException(e);
 			}
-			// overflowProcessor.writeLock();
+			//For WAL 
+			try {
+				WriteLogManager.getInstance().write(tsRecord, WriteLogManager.OVERFLOW);
+			} catch (IOException | PathErrorException e) {
+				LOGGER.error("Error in write WAL: {}", e.getMessage());
+				throw new FileNodeManagerException(e);
+			}
+			
 			for (DataPoint dataPoint : tsRecord.dataPointList) {
 				try {
 					overflowProcessor.insert(deltaObjectId, dataPoint.getMeasurementId(), timestamp,
@@ -222,7 +230,15 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 				String fileAbsolutePath = bufferWriteProcessor.getFileAbsolutePath();
 				fileNodeProcessor.addIntervalFileNode(timestamp, fileAbsolutePath);
 			}
-			// bufferWriteProcessor.writeLock();
+			
+			//For WAL 
+			try {
+				WriteLogManager.getInstance().write(tsRecord, WriteLogManager.BUFFERWRITER);
+			} catch (IOException | PathErrorException e) {
+				LOGGER.error("Error in write WAL: {}", e.getMessage());
+				throw new FileNodeManagerException(e);
+			}
+			
 			try {
 				bufferWriteProcessor.write(tsRecord);
 			} catch (BufferWriteProcessorException e) {

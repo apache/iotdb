@@ -83,7 +83,7 @@ public class WriteLogNode {
             List<String> insertValues = new ArrayList<>();
             for (DataPoint dp : record.dataPointList) {
                 measurementList.add(dp.getMeasurementId());
-                insertValues.add((String)dp.getValue());
+                insertValues.add(dp.getValue().toString());
             }
             plansInMemory.add(new MultiInsertPlan(1, record.deltaObjectId, record.time, measurementList, insertValues));
         }

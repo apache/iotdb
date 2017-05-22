@@ -46,11 +46,13 @@ import cn.edu.thu.tsfile.timeseries.write.series.IRowGroupWriter;
 import cn.edu.thu.tsfiledb.conf.TSFileDBConfig;
 import cn.edu.thu.tsfiledb.conf.TSFileDBDescriptor;
 import cn.edu.thu.tsfiledb.engine.exception.BufferWriteProcessorException;
+import cn.edu.thu.tsfiledb.engine.exception.FileNodeManagerException;
 import cn.edu.thu.tsfiledb.engine.lru.LRUProcessor;
 import cn.edu.thu.tsfiledb.engine.utils.FlushState;
 import cn.edu.thu.tsfiledb.exception.PathErrorException;
 import cn.edu.thu.tsfiledb.metadata.ColumnSchema;
 import cn.edu.thu.tsfiledb.metadata.MManager;
+import cn.edu.thu.tsfiledb.sys.writeLog.WriteLogManager;
 
 public class BufferWriteProcessor extends LRUProcessor {
 
@@ -618,13 +620,16 @@ public class BufferWriteProcessor extends LRUProcessor {
 					e.printStackTrace();
 					throw new IOException(e);
 				}
-
+				
+				//For WAL 
+				WriteLogManager.getInstance().startBufferWriteFlush(nameSpacePath);
 				// flush bufferwrite data
 				if (isFlushingSync) {
 					try {
 						super.flushRowGroup(false);
 						writeStoreToDisk();
 						filenodeFlushAction.act();
+						WriteLogManager.getInstance().endBufferWriteFlush(nameSpacePath);
 					} catch (IOException e) {
 						LOGGER.error("Flush row group to store failed, processor:{}. Message: {}", nameSpacePath,
 								e.getMessage());
@@ -658,6 +663,7 @@ public class BufferWriteProcessor extends LRUProcessor {
 							asyncFlushRowGroupToStore();
 							writeStoreToDisk();
 							filenodeFlushAction.act();
+							WriteLogManager.getInstance().endBufferWriteFlush(nameSpacePath);
 						} catch (IOException e) {
 							/*
 							 * There should be added system log by CGF and throw

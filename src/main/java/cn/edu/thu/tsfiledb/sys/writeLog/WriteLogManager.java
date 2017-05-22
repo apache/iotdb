@@ -43,13 +43,27 @@ public class WriteLogManager {
         getWriteLogNode(MManager.getInstance().getFileNameByPath(plan.getPath().getFullPath())).write(plan);
     }
 
-    public void write(TSRecord record, int isOverflow) throws IOException {
-
+    public void write(TSRecord record, int type) throws IOException, PathErrorException {
+    	getWriteLogNode(MManager.getInstance().getFileNameByPath(record.deltaObjectId)).write(record, type);
     }
-
-    public void flush() {
-
+    
+    public void startOverflowFlush(String nsPath) throws IOException {
+    	getWriteLogNode(nsPath).overflowFlushStart();
     }
+    
+    public void endOverflowFlush(String nsPath) throws IOException {
+    	getWriteLogNode(nsPath).overflowFlushEnd();
+    }
+    
+    public void startBufferWriteFlush(String nsPath) throws IOException {
+    	getWriteLogNode(nsPath).bufferFlushStart();
+    }
+    
+    public void endBufferWriteFlush(String nsPath) throws IOException {
+    	getWriteLogNode(nsPath).bufferFlushEnd();
+    }
+    
+    
 
     public PhysicalPlan getPhysicalPlan() throws IOException {
         return null;
