@@ -22,7 +22,8 @@ public class WriteLogManager {
     private static HashMap<String, WriteLogNode> logNodeMaps;
     public static final int BUFFERWRITER = 0, OVERFLOW = 1;
     private static List<String> recoveryPathList = new ArrayList<>();
-
+    public static boolean isRecovering;
+    
     private WriteLogManager() {
         logNodeMaps = new HashMap<>();
     }

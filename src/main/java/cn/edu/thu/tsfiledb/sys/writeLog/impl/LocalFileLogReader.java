@@ -18,7 +18,7 @@ import org.slf4j.LoggerFactory;
  */
 public class LocalFileLogReader implements WriteLogReadable {
     private static final Logger LOG = LoggerFactory.getLogger(LocalFileLogReader.class);
-    private static String fileName = "";
+    private String fileName = "";
     private RandomAccessFile raf = null;
     private long pos = 0;
     private long fileLength = 0;
@@ -30,6 +30,7 @@ public class LocalFileLogReader implements WriteLogReadable {
         try {
             raf = new RandomAccessFile(file, "rw");
         } catch (FileNotFoundException e) {
+        	e.printStackTrace();
             fileExist = false;
         }
         fileLength = raf.length();
@@ -84,10 +85,10 @@ public class LocalFileLogReader implements WriteLogReadable {
     private int tailPos = -1;
     private int overflowTailCount = 0;
     private int bufferTailCount = 0;
-    private static List<Integer> overflowLengthList = new ArrayList<>();
-    private static List<Integer> bufferLengthList = new ArrayList<>();
-    private static List<Integer> overflowStartList = new ArrayList<>();
-    private static List<Integer> bufferStartList = new ArrayList<>();
+    private List<Integer> overflowLengthList = new ArrayList<>();
+    private List<Integer> bufferLengthList = new ArrayList<>();
+    private List<Integer> overflowStartList = new ArrayList<>();
+    private List<Integer> bufferStartList = new ArrayList<>();
     private RandomAccessFile lraf = null;
 
     private void getStartPos() throws IOException {
@@ -185,7 +186,7 @@ public class LocalFileLogReader implements WriteLogReadable {
             overflowLength = overflowLengthList.get(overflowTailCount - 1);
         }
 
-        LOG.info(fileLength + ", " + overflowStart + ":" + overflowLength + ", " + bufferStart + ":" + bufferLength);
+        LOG.debug(fileLength + ", " + overflowStart + ":" + overflowLength + ", " + bufferStart + ":" + bufferLength);
 
         if (overflowStart == -1 || (bufferStart < overflowStart) && bufferTailCount > 0) { // overflow operator is empty OR buffer operator is in front of overflow
             lraf.seek(bufferStart);

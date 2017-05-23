@@ -192,7 +192,9 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 			}
 			//For WAL 
 			try {
-				WriteLogManager.getInstance().write(tsRecord, WriteLogManager.OVERFLOW);
+				if(!WriteLogManager.isRecovering){
+					WriteLogManager.getInstance().write(tsRecord, WriteLogManager.OVERFLOW);
+				}
 			} catch (IOException | PathErrorException e) {
 				LOGGER.error("Error in write WAL: {}", e.getMessage());
 				throw new FileNodeManagerException(e);
@@ -233,7 +235,9 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 			
 			//For WAL 
 			try {
-				WriteLogManager.getInstance().write(tsRecord, WriteLogManager.BUFFERWRITER);
+				if(!WriteLogManager.isRecovering){
+					WriteLogManager.getInstance().write(tsRecord, WriteLogManager.BUFFERWRITER);
+				}
 			} catch (IOException | PathErrorException e) {
 				LOGGER.error("Error in write WAL: {}", e.getMessage());
 				throw new FileNodeManagerException(e);

@@ -54,7 +54,7 @@ public class JDBCServer implements JDBCServerMBean {
 		} catch (IOException e) {
 			LOGGER.error("Server start Error. {}", e.getMessage());
 			e.printStackTrace();
-			return;
+//			return;
 		}
 		jdbcServerThread.start();
 		

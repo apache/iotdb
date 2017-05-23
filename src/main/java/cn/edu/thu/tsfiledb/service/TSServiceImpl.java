@@ -8,6 +8,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.derby.tools.sysinfo;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,6 +31,7 @@ import cn.edu.thu.tsfiledb.qp.exception.QueryProcessorException;
 import cn.edu.thu.tsfiledb.qp.exec.impl.OverflowQPExecutor;
 import cn.edu.thu.tsfiledb.qp.logical.operator.Operator.OperatorType;
 import cn.edu.thu.tsfiledb.qp.logical.operator.RootOperator;
+import cn.edu.thu.tsfiledb.qp.physical.plan.MultiInsertPlan;
 import cn.edu.thu.tsfiledb.qp.physical.plan.PhysicalPlan;
 import cn.edu.thu.tsfiledb.query.aggregation.AggreFuncFactory;
 import cn.edu.thu.tsfiledb.query.aggregation.AggregateFunction;
@@ -81,7 +83,9 @@ public class TSServiceImpl implements TSIService.Iface {
 		writeLogManager.recovery();
 		long cnt = 0l;
 		PhysicalPlan plan;
+		WriteLogManager.isRecovering = true;
 		while ((plan = writeLogManager.getPhysicalPlan()) != null) {
+//			System.out.println(cnt + " : " + ((MultiInsertPlan)plan).getDeltaObject() + "| " + ((MultiInsertPlan)plan).getTime());
 			try {
 				plan.processNonQuery(exec);
 				cnt++;
@@ -90,6 +94,7 @@ public class TSServiceImpl implements TSIService.Iface {
 				throw new IOException("Error in recovery from write log");
 			}
 		}
+		WriteLogManager.isRecovering = false;
 		LOGGER.info("Done. Recover operation count {}", cnt);
 	}
 
