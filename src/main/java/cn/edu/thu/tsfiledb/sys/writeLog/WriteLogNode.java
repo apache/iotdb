@@ -166,6 +166,8 @@ public class WriteLogNode {
             writerV2.write(oldReader.getFileCompactData());
             new File(filePath).delete();
             new File(filePath + ".backup").renameTo(new File(filePath));
+            //writer = new LocalFileLogWriter(filePath);
+            writer = null;
             logSize = 0;
             hasBufferWriteFlush = false;
             hasOverflowFlush = false;
