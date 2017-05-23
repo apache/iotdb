@@ -35,7 +35,7 @@ public class WriteLogNode {
     // private TSFileDBConfig config = TSFileDBDescriptor.getInstance().getConfig();
     private boolean hasBufferWriteFlush = false, hasOverflowFlush = false;
     private String filePath, backFilePath;
-    private static int LogCompactSize, LogMemorySize;
+    private int LogCompactSize, LogMemorySize;
     private int logSize;
     private String path;
     private List<PhysicalPlan> plansInMemory;
@@ -167,6 +167,8 @@ public class WriteLogNode {
             new File(filePath).delete();
             new File(filePath + ".backup").renameTo(new File(filePath));
             logSize = 0;
+            hasBufferWriteFlush = false;
+            hasOverflowFlush = false;
             LOG.info("Log Compact Process End.");
         }
     }

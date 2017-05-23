@@ -21,7 +21,8 @@ public class MultiInsertPlan extends PhysicalPlan {
     private long insertTime;
     
     
-    //insertType : 1表示插入到Bufferwrite,2表示插入到Overflow
+    // insertType
+    // 1 : BufferWrite Insert  2 : Overflow Insert
     private int insertType;
     
     public MultiInsertPlan() {

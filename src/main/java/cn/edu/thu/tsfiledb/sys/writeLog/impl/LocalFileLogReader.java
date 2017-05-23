@@ -186,7 +186,7 @@ public class LocalFileLogReader implements WriteLogReadable {
             overflowLength = overflowLengthList.get(overflowTailCount - 1);
         }
 
-        LOG.debug(fileLength + ", " + overflowStart + ":" + overflowLength + ", " + bufferStart + ":" + bufferLength);
+        // LOG.debug(fileLength + ", " + overflowStart + ":" + overflowLength + ", " + bufferStart + ":" + bufferLength);
 
         if (overflowStart == -1 || (bufferStart < overflowStart) && bufferTailCount > 0) { // overflow operator is empty OR buffer operator is in front of overflow
             lraf.seek(bufferStart);
@@ -256,11 +256,30 @@ public class LocalFileLogReader implements WriteLogReadable {
                 break;
             }
 
-            byte[] dataBackUp = new byte[opeContentLength + 2];
-            lraf.seek(backUpPos);
-            lraf.read(dataBackUp);
-            backUpBytesList.add(dataBackUp);
-            backUpTotalLength += dataBackUp.length;
+            if (opeType == OperatorType.MULTIINSERT.ordinal() || opeType == OperatorType.INSERT.ordinal()) {
+                byte[] insertTypeBytes = new byte[1];
+                lraf.read(insertTypeBytes);
+                int insertType = (int) insertTypeBytes[0];
+                if (insertType == 1 && bufferVis != 2) {  // bufferwrite insert
+                    byte[] dataBackUp = new byte[opeContentLength + 2];
+                    lraf.seek(backUpPos);
+                    lraf.read(dataBackUp);
+                    backUpBytesList.add(dataBackUp);
+                    backUpTotalLength += dataBackUp.length;
+                } else if (insertType == 2 && overflowVis != 2) {     // overflow insert
+                    byte[] dataBackUp = new byte[opeContentLength + 2];
+                    lraf.seek(backUpPos);
+                    lraf.read(dataBackUp);
+                    backUpBytesList.add(dataBackUp);
+                    backUpTotalLength += dataBackUp.length;
+                }
+            } else if (overflowVis != 2) { // overflow update/delete
+                byte[] dataBackUp = new byte[opeContentLength + 2];
+                lraf.seek(backUpPos);
+                lraf.read(dataBackUp);
+                backUpBytesList.add(dataBackUp);
+                backUpTotalLength += dataBackUp.length;
+            }
             i -= (2 + opeContentLength);
         }
 
