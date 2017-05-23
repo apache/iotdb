@@ -35,7 +35,7 @@ public class WriteLogNode {
     // private TSFileDBConfig config = TSFileDBDescriptor.getInstance().getConfig();
     private boolean hasBufferWriteFlush = false, hasOverflowFlush = false;
     private String filePath, backFilePath;
-    private static int LogCompactSize, LogMemorySize;
+    private int LogCompactSize, LogMemorySize;
     private int logSize;
     private String path;
     private List<PhysicalPlan> plansInMemory;
