@@ -134,8 +134,7 @@ public class FileNodeProcessor extends LRUProcessor {
 	}
 
 	public void addIntervalFileNode(long startTime, String fileName) {
-		IntervalFileNode intervalFileNode = new IntervalFileNode(startTime, OverflowChangeType.NO_CHANGE, fileName,
-				null);
+		IntervalFileNode intervalFileNode = new IntervalFileNode(startTime, OverflowChangeType.NO_CHANGE, fileName);
 		newFileNodes.add(intervalFileNode);
 	}
 
@@ -198,8 +197,7 @@ public class FileNodeProcessor extends LRUProcessor {
 		if (!newFileNodes.isEmpty() && !newFileNodes.get(newFileNodes.size() - 1).isClosed()) {
 			// this bufferwrite file is not close by normal operation
 			String damagedFilePath = newFileNodes.get(newFileNodes.size() - 1).filePath;
-			String[] fileNames = damagedFilePath.split(File.separator);
-			System.out.println(fileNames[fileNames.length - 1]);
+			String[] fileNames = damagedFilePath.split("\\" + File.separator);
 			// all information to recovery the damaged file.
 			// contains file path, action parameters and nameSpacePath
 			parameters.put(FileNodeConstants.BUFFERWRITE_FLUSH_ACTION, bufferwriteFlushAction);
@@ -616,14 +614,14 @@ public class FileNodeProcessor extends LRUProcessor {
 			}
 
 			IntervalFileNode intervalFileNode = new IntervalFileNode(0, emptyIntervalFileNode.endTime,
-					OverflowChangeType.CHANGED, null, null);
+					OverflowChangeType.CHANGED, null);
 			result.add(intervalFileNode);
 		} else if (newFileNodes.size() == 1) {
 			// has overflow data, the only newFileNode must be changed or the
 			// emptyfile must be changed
 			IntervalFileNode temp = newFileNodes.get(0);
 			IntervalFileNode intervalFileNode = new IntervalFileNode(0, temp.endTime, temp.overflowChangeType,
-					temp.filePath, null);
+					temp.filePath);
 			result.add(intervalFileNode);
 		} else {
 			// add first
@@ -631,7 +629,7 @@ public class FileNodeProcessor extends LRUProcessor {
 			if (emptyIntervalFileNode.overflowChangeType == OverflowChangeType.CHANGED
 					|| temp.overflowChangeType == OverflowChangeType.CHANGED) {
 				IntervalFileNode intervalFileNode = new IntervalFileNode(0, newFileNodes.get(1).startTime - 1,
-						OverflowChangeType.CHANGED, temp.filePath, null);
+						OverflowChangeType.CHANGED, temp.filePath);
 				result.add(intervalFileNode);
 			} else {
 				result.add(temp);
@@ -641,7 +639,7 @@ public class FileNodeProcessor extends LRUProcessor {
 				temp = newFileNodes.get(i);
 				if (temp.overflowChangeType == OverflowChangeType.CHANGED) {
 					IntervalFileNode intervalFileNode = new IntervalFileNode(temp.startTime,
-							newFileNodes.get(i + 1).startTime - 1, temp.overflowChangeType, temp.filePath, null);
+							newFileNodes.get(i + 1).startTime - 1, temp.overflowChangeType, temp.filePath);
 					result.add(intervalFileNode);
 				} else {
 					result.add(temp);
@@ -651,7 +649,7 @@ public class FileNodeProcessor extends LRUProcessor {
 			temp = newFileNodes.get(newFileNodes.size() - 1);
 			if (temp.overflowChangeType == OverflowChangeType.CHANGED) {
 				IntervalFileNode intervalFileNode = new IntervalFileNode(temp.startTime, temp.endTime,
-						temp.overflowChangeType, temp.filePath, null);
+						temp.overflowChangeType, temp.filePath);
 				result.add(intervalFileNode);
 			} else {
 				result.add(temp);
@@ -876,7 +874,6 @@ public class FileNodeProcessor extends LRUProcessor {
 			backupIntervalFile.startTime = startTime;
 			backupIntervalFile.endTime = endTime;
 			backupIntervalFile.filePath = outputPath;
-			backupIntervalFile.errFilePath = null;
 		}
 
 	}
@@ -1037,7 +1034,7 @@ public class FileNodeProcessor extends LRUProcessor {
 			try {
 				fileNodeProcessorStore = serializeUtil.deserialize(fileNodeRestoreFilePath)
 						.orElse(new FileNodeProcessorStore(-1,
-								new IntervalFileNode(0, OverflowChangeType.NO_CHANGE, null, null),
+								new IntervalFileNode(0, OverflowChangeType.NO_CHANGE, null),
 								new ArrayList<IntervalFileNode>(), FileNodeProcessorStatus.NONE, 0));
 			} catch (IOException e) {
 				e.printStackTrace();

@@ -508,7 +508,7 @@ public class OverflowProcessor extends LRUProcessor {
 		if (lastUpdateOffset != -1) {
 			writeStoreToDisk(lastUpdateOffset, true);
 		} else {
-			LOGGER.warn("Close the overflow processor, but no overflow meta was flush");
+			LOGGER.warn("Close the overflow processor, but no overflow metadata was flush");
 		}
 	}
 

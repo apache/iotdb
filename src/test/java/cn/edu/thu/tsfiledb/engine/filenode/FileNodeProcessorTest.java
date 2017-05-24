@@ -461,9 +461,10 @@ public class FileNodeProcessorTest {
 			assertEquals(null, overflowResult.get(1));
 			assertEquals(null, overflowResult.get(2));
 			assertEquals(null, overflowResult.get(3));
-			
+
 			// not close and restore the bufferwrite file
 			processor = new FileNodeProcessor(tsdbconfig.FileNodeDir, deltaObjectId, parameters);
+			processor.writeLock();
 			assertEquals(true, processor.shouldRecovery());
 			processor.FileNodeRecovery();
 			assertEquals(true, processor.hasBufferwriteProcessor());
@@ -479,8 +480,8 @@ public class FileNodeProcessorTest {
 			assertEquals(null, overflowResult.get(1));
 			assertEquals(null, overflowResult.get(2));
 			assertEquals(null, overflowResult.get(3));
-			
 
+			processor.close();
 		} catch (FileNodeProcessorException e) {
 			e.printStackTrace();
 			fail(e.getMessage());
@@ -490,13 +491,6 @@ public class FileNodeProcessorTest {
 		} catch (InterruptedException e) {
 			e.printStackTrace();
 			fail(e.getMessage());
-		}finally {
-			try {
-				processor.close();
-			} catch (FileNodeProcessorException e) {
-				e.printStackTrace();
-				fail(e.getMessage());
-			}
 		}
 	}
 
@@ -506,11 +500,11 @@ public class FileNodeProcessorTest {
 		// construct one FileNodeProcessorStore
 		// the status of FileNodeProcessorStore is waiting
 		// construct the bufferwrite data file
-		IntervalFileNode emptyIntervalFileNode = new IntervalFileNode(0, OverflowChangeType.NO_CHANGE, null, null);
+		IntervalFileNode emptyIntervalFileNode = new IntervalFileNode(0, OverflowChangeType.NO_CHANGE, null);
 		List<IntervalFileNode> newFilenodes = new ArrayList<>();
 		for (int i = 1; i <= 3; i++) {
 			IntervalFileNode node = new IntervalFileNode(i * 100, i * 100 + 99, OverflowChangeType.NO_CHANGE,
-					"bufferfiletest" + i, null);
+					"bufferfiletest" + i);
 			// create file
 			createFile(node.filePath);
 			checkFile(node.filePath);
@@ -543,6 +537,9 @@ public class FileNodeProcessorTest {
 		// test recovery from waiting
 		try {
 			processor = new FileNodeProcessor(tsdbconfig.FileNodeDir, deltaObjectId, parameters);
+			processor.writeLock();
+			assertEquals(true, processor.shouldRecovery());
+			processor.FileNodeRecovery();
 			assertEquals(fileNodeProcessorStore.getLastUpdateTime(), processor.getLastUpdateTime());
 			processor.close();
 			FileNodeProcessorStore store = serializeUtil.deserialize(filenodestorePath).orElse(null);
@@ -574,11 +571,11 @@ public class FileNodeProcessorTest {
 		// construct one FileNodeProcessorStore
 		// the status of FileNodeProcessorStore is merging
 		// construct the bufferwrite data file
-		IntervalFileNode emptyIntervalFileNode = new IntervalFileNode(0, OverflowChangeType.NO_CHANGE, null, null);
+		IntervalFileNode emptyIntervalFileNode = new IntervalFileNode(0, OverflowChangeType.NO_CHANGE, null);
 		List<IntervalFileNode> newFilenodes = new ArrayList<>();
 		for (int i = 1; i <= 3; i++) {
 			IntervalFileNode node = new IntervalFileNode(i * 100, i * 100 + 99, OverflowChangeType.NO_CHANGE,
-					"bufferfiletest" + i, null);
+					"bufferfiletest" + i);
 			// create file
 			createFile(node.filePath);
 			checkFile(node.filePath);
@@ -615,7 +612,20 @@ public class FileNodeProcessorTest {
 		} catch (FileNodeProcessorException e) {
 			e.printStackTrace();
 			fail(e.getMessage());
+		} finally {
+			try {
+				processor.close();
+			} catch (FileNodeProcessorException e) {
+				e.printStackTrace();
+				fail(e.getMessage());
+			}
 		}
+
+		EngineTestHelper.delete(unusedFilename);
+		for (IntervalFileNode node : newFilenodes) {
+			EngineTestHelper.delete(node.filePath);
+		}
+
 	}
 
 	@Deprecated
@@ -717,7 +727,7 @@ public class FileNodeProcessorTest {
 			fail(e.getMessage());
 		}
 		// construct the status is merge in the restore file
-		IntervalFileNode emptyIntervalFileNode = new IntervalFileNode(0, OverflowChangeType.NO_CHANGE, null, null);
+		IntervalFileNode emptyIntervalFileNode = new IntervalFileNode(0, OverflowChangeType.NO_CHANGE, null);
 		FileNodeProcessorStatus fileNodeProcessorState = FileNodeProcessorStatus.MERGING_WRITE;
 		System.out.println(lastUpdateTime);
 		System.out.println(restoreNewFiles);

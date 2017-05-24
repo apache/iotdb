@@ -29,7 +29,6 @@ public class FileNodeManagerTest {
 
 	private TSFileConfig tsconfig = TSFileDescriptor.getInstance().getConfig();
 	private TSFileDBConfig tsdbconfig = TSFileDBDescriptor.getInstance().getConfig();
-	
 
 	private FileNodeManager fManager = null;
 
@@ -62,12 +61,12 @@ public class FileNodeManagerTest {
 		EngineTestHelper.delete(tsdbconfig.overflowDataDir);
 		MetadataManagerHelper.clearMetadata();
 	}
-
+	@Deprecated
 	@Test
 	public void testClose() {
 
 	}
-
+	@Deprecated
 	@Test
 	public void testOverflow() {
 
@@ -88,7 +87,6 @@ public class FileNodeManagerTest {
 		fManager = FileNodeManager.getInstance();
 		try {
 			int token = fManager.beginQuery(deltaObjectId);
-
 			QueryStructure queryResult = fManager.query(deltaObjectId, measurementId, null, null, null);
 			DynamicOneColumnData bufferwriteinmemory = queryResult.getBufferwriteDataInMemory();
 			List<RowGroupMetaData> bufferwriteinDisk = queryResult.getBufferwriteDataInDisk();
@@ -236,6 +234,7 @@ public class FileNodeManagerTest {
 		}
 	}
 
+	@Deprecated
 	@Test
 	public void testQuery() {
 
@@ -250,23 +249,23 @@ public class FileNodeManagerTest {
 		pairList.add(new Pair<Long, Long>(500L, 600L));
 		pairList.add(new Pair<Long, Long>(700L, 800L));
 		createBufferwriteFiles(pairList, deltaObjectId);
-		createBufferwriteFiles(pairList,deltaObjectId2);
+		createBufferwriteFiles(pairList, deltaObjectId2);
 		long[] overflowInsert1 = { 2, 4, 6, 8 };
 		long[] overflowInsert2 = { 202, 204, 206, 208 };
 		// new file: 2-208 300-400 500-600 700-800
 
 		// not close
 		createOverflowInserts(overflowInsert1, deltaObjectId);
-		createOverflowInserts(overflowInsert1,deltaObjectId2);
+		createOverflowInserts(overflowInsert1, deltaObjectId2);
 		// not close
 		createOverflowInserts(overflowInsert2, deltaObjectId);
 		createOverflowInserts(overflowInsert2, deltaObjectId2);
-		
 
 		fManager = FileNodeManager.getInstance();
 		try {
 			fManager.mergeAll();
 			int token = fManager.beginQuery(deltaObjectId);
+			// query old file and overflow data
 			QueryStructure queryResult = fManager.query(deltaObjectId, measurementId, null, null, null);
 			fManager.endQuery(deltaObjectId, token);
 			DynamicOneColumnData bufferwriteindex = queryResult.getBufferwriteDataInMemory();
@@ -299,6 +298,7 @@ public class FileNodeManagerTest {
 
 			// wait to merge over
 			waitToSleep(1000);
+			// query new file and overflow data
 			token = fManager.beginQuery(deltaObjectId);
 			queryResult = fManager.query(deltaObjectId, measurementId, null, null, null);
 			fManager.endQuery(deltaObjectId, token);
@@ -331,11 +331,11 @@ public class FileNodeManagerTest {
 			assertEquals(null, overflowData.get(3));
 
 			fManager.closeAll();
-
+			waitToSleep(1000);
 		} catch (FileNodeManagerException e) {
 			e.printStackTrace();
 			fail(e.getMessage());
-		} 
+		}
 	}
 
 	private void waitToSleep(long waitTime) {

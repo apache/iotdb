@@ -151,8 +151,8 @@ public abstract class LRUManager<T extends LRUProcessor> {
 			throws LRUManagerException {
 
 		T processor = null;
-		LOGGER.debug("Try to get LRUProcessor, the nameSpacePath is {}, Thread is {}",
-				namespacePath, Thread.currentThread().getName());
+		LOGGER.debug("Try to get LRUProcessor, the nameSpacePath is {}, Thread is {}", namespacePath,
+				Thread.currentThread().getName());
 		// change the processorMap position and improve concurrent performance
 		synchronized (processorMap) {
 			LOGGER.debug("The Thread {} will get the LRUProcessor, the nameSpacePath is {}",
@@ -198,7 +198,7 @@ public abstract class LRUManager<T extends LRUProcessor> {
 			T processor = processorLRUList.get(i);
 			if (processor.tryWriteLock()) {
 				try {
-					LOGGER.debug("Get the write lock for processor in memory, the nameSpacePaht is {}",
+					LOGGER.debug("Get the write lock for processor in memory, the nameSpacePath is {}",
 							processor.getNameSpacePath());
 					if (processor.canBeClosed()) {
 						try {
@@ -211,7 +211,7 @@ public abstract class LRUManager<T extends LRUProcessor> {
 						processorLRUList.remove(processor);
 						processorMap.remove(processor.getNameSpacePath());
 						LOGGER.debug(
-								"Get the write lock for processor in memory, and close it, the nameSpacePaht is {}",
+								"Get the write lock for processor in memory, and close it, the nameSpacePath is {}",
 								processor.getNameSpacePath());
 						return true;
 					} else {
@@ -253,6 +253,7 @@ public abstract class LRUManager<T extends LRUProcessor> {
 				try {
 					if (processor.canBeClosed()) {
 						try {
+							LOGGER.info("Close the processor, the nameSpacePath is {}", nsPath);
 							processor.close();
 						} catch (ProcessorException e) {
 							LOGGER.error("Close processor error when close one processor, the nameSpacePath is {}",
@@ -263,7 +264,7 @@ public abstract class LRUManager<T extends LRUProcessor> {
 						processorIterator.remove();
 						processorLRUList.remove(processor);
 					} else {
-						LOGGER.warn("The processor can't be closed, the nameSpace Path is {}", nsPath);
+						LOGGER.warn("The processor can't be closed, the nameSpacePath is {}", nsPath);
 					}
 				} finally {
 					processor.writeUnlock();

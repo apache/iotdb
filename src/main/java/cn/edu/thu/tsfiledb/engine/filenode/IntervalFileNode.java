@@ -17,15 +17,12 @@ public class IntervalFileNode implements Serializable {
 	public long endTime;
 	public OverflowChangeType overflowChangeType;
 	public String filePath;
-	public String errFilePath;
 
-	public IntervalFileNode(long startTime, long endTime, OverflowChangeType type, String filePath,
-			String mergingErrFilePath) {
+	public IntervalFileNode(long startTime, long endTime, OverflowChangeType type, String filePath) {
 		this.startTime = startTime;
 		this.endTime = endTime;
 		this.overflowChangeType = type;
 		this.filePath = filePath;
-		this.errFilePath = mergingErrFilePath;
 	}
 
 	/**
@@ -36,11 +33,10 @@ public class IntervalFileNode implements Serializable {
 	 * @param filePath
 	 * @param errFilePath
 	 */
-	public IntervalFileNode(long startTime, OverflowChangeType type, String filePath, String errFilePath) {
+	public IntervalFileNode(long startTime, OverflowChangeType type, String filePath) {
 		this.startTime = startTime;
 		this.overflowChangeType = type;
 		this.filePath = filePath;
-		this.errFilePath = errFilePath;
 		this.endTime = -1;
 	}
 
@@ -48,11 +44,9 @@ public class IntervalFileNode implements Serializable {
 		this.startTime = startTime;
 	}
 
-
 	public void setEndTime(long endTime) {
 		this.endTime = endTime;
 	}
-
 
 	public void changeTypeToChanged(FileNodeProcessorStatus fileNodeProcessorState) {
 
@@ -114,7 +108,6 @@ public class IntervalFileNode implements Serializable {
 		final int prime = 31;
 		int result = 1;
 		result = prime * result + (int) (endTime ^ (endTime >>> 32));
-		result = prime * result + ((errFilePath == null) ? 0 : errFilePath.hashCode());
 		result = prime * result + ((filePath == null) ? 0 : filePath.hashCode());
 		result = prime * result + ((overflowChangeType == null) ? 0 : overflowChangeType.hashCode());
 		result = prime * result + (int) (startTime ^ (startTime >>> 32));
@@ -132,11 +125,6 @@ public class IntervalFileNode implements Serializable {
 		IntervalFileNode other = (IntervalFileNode) obj;
 		if (endTime != other.endTime)
 			return false;
-		if (errFilePath == null) {
-			if (other.errFilePath != null)
-				return false;
-		} else if (!errFilePath.equals(other.errFilePath))
-			return false;
 		if (filePath == null) {
 			if (other.filePath != null)
 				return false;
@@ -150,6 +138,6 @@ public class IntervalFileNode implements Serializable {
 	}
 
 	public IntervalFileNode backUp() {
-		return new IntervalFileNode(startTime, endTime, overflowChangeType, filePath, errFilePath);
+		return new IntervalFileNode(startTime, endTime, overflowChangeType, filePath);
 	}
 }
