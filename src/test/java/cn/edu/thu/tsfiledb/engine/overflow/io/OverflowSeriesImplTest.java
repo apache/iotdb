@@ -88,11 +88,12 @@ public class OverflowSeriesImplTest {
 		List<TimeSeriesChunkMetaData> metaForRead = seriesimpl.getOFSeriesListMetadata().getMetaDatas();
 		// close file
 		try {
-			ofio.close();
+			seriesimpl.close();
 		} catch (IOException e) {
 			e.printStackTrace();
 			fail(e.getMessage());
 		}
+		
 		// change file name
 		File overflowFile = new File(filePath);
 		File overflowMergeFile = new File(mergeFilePath);
@@ -160,6 +161,13 @@ public class OverflowSeriesImplTest {
 		seriesimpl.setMergingSeriesImpl(mergeseriesimpl);
 
 		queryResult = seriesimpl.query(null, null, null);
+		try {
+			seriesimpl.switchMergeToWorking();
+		} catch (IOException e) {
+			e.printStackTrace();
+			fail(e.getMessage());
+		}
+		
 		insertData = (DynamicOneColumnData) queryResult.get(0);
 		assertEquals(40, insertData.length);
 		for (int i = 0; i < 40; i++) {
@@ -168,12 +176,11 @@ public class OverflowSeriesImplTest {
 		}
 
 		try {
-			ofio.close();
+			seriesimpl.close();
 		} catch (IOException e) {
 			e.printStackTrace();
 			fail(e.getMessage());
 		}
-
 	}
 
 	@Test
@@ -278,6 +285,13 @@ public class OverflowSeriesImplTest {
 			fail("Flush overflowfileio failed");
 		}
 		assertEquals(4, seriesimpl.getOFSeriesListMetadata().getMetaDatas().size());
+		
+		try {
+			seriesimpl.close();
+		} catch (IOException e) {
+			e.printStackTrace();
+			fail(e.getMessage());
+		}
 	}
 
 	private OverflowSeriesImpl createSeriesImpl(TSDataType dataType) {
@@ -327,6 +341,12 @@ public class OverflowSeriesImplTest {
 			assertEquals(i, insertresult.getTime(i - 1));
 			assertEquals(i, insertresult.getLong(i - 1));
 		}
+		try {
+			seriesimpl.close();
+		} catch (IOException e) {
+			e.printStackTrace();
+			fail(e.getMessage());
+		}
 	}
 
 	@Test
@@ -357,7 +377,7 @@ public class OverflowSeriesImplTest {
 			assertEquals(String.valueOf(i + 1.1), String.valueOf(insertresult.getFloat(i - 1)));
 		}
 		try {
-			ofio.close();
+			seriesimpl.close();
 		} catch (IOException e) {
 			e.printStackTrace();
 			fail(e.getMessage());
@@ -393,7 +413,7 @@ public class OverflowSeriesImplTest {
 			assertEquals(String.valueOf(i + 1.1), String.valueOf(insertresult.getDouble(i - 1)));
 		}
 		try {
-			ofio.close();
+			seriesimpl.close();
 		} catch (IOException e) {
 			e.printStackTrace();
 			fail(e.getMessage());
@@ -428,7 +448,7 @@ public class OverflowSeriesImplTest {
 			assertEquals(i / 2 == 0 ? true : false, insertresult.getBoolean(i - 1));
 		}
 		try {
-			ofio.close();
+			seriesimpl.close();
 		} catch (IOException e) {
 			e.printStackTrace();
 			fail(e.getMessage());
@@ -463,7 +483,7 @@ public class OverflowSeriesImplTest {
 			assertEquals(String.valueOf(i), insertresult.getStringValue(i - 1));
 		}
 		try {
-			ofio.close();
+			seriesimpl.close();
 		} catch (IOException e) {
 			e.printStackTrace();
 			fail(e.getMessage());
@@ -474,6 +494,13 @@ public class OverflowSeriesImplTest {
 	public void testEnum() {
 
 		seriesimpl = createSeriesImpl(TSDataType.ENUMS);
+		
+		try {
+			seriesimpl.close();
+		} catch (IOException e) {
+			e.printStackTrace();
+			fail(e.getMessage());
+		}
 		fail("Not support Type");
 	}
 }

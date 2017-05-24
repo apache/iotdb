@@ -304,10 +304,17 @@ public class OverflowSeriesImpl {
 	}
 
 	// bug: should be deprecated
-	public void switchMergeToWorking() {
+	public void switchMergeToWorking() throws IOException {
 		overflowConvertLock.writeLock().lock();
+		if(mergingSeriesImpl!=null){
+			mergingSeriesImpl.close();
+		}
 		mergingSeriesImpl = null;
 		isMerging = false;
 		overflowConvertLock.writeLock().unlock();
+	}
+	
+	public void close() throws IOException{
+		overflowFileIO.close();
 	}
 }

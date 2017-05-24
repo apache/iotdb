@@ -48,6 +48,7 @@ public class SerializeUtil<T> {
 		try{
 		ois = new ObjectInputStream(new FileInputStream(file));
 		result = (T) ois.readObject();
+		ois.close();
 		}catch (Exception e) {
 			LOGGER.error("Deserialize the object error. {}",e.getMessage());
 			if(ois!=null){

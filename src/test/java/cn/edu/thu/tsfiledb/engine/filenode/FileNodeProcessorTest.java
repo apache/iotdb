@@ -454,7 +454,6 @@ public class FileNodeProcessorTest {
 			List<RowGroupMetaData> bufferwritedataindisk = queryResult.getBufferwriteDataInDisk();
 			List<IntervalFileNode> bufferwritedatainfiles = queryResult.getBufferwriteDataInFiles();
 			List<Object> overflowResult = queryResult.getAllOverflowData();
-
 			assertEquals(4, bufferwritedataindisk.size());
 			assertEquals(1, bufferwritedatainfiles.size());
 			assertEquals(false, bufferwritedatainfiles.get(0).isClosed());
@@ -462,8 +461,11 @@ public class FileNodeProcessorTest {
 			assertEquals(null, overflowResult.get(1));
 			assertEquals(null, overflowResult.get(2));
 			assertEquals(null, overflowResult.get(3));
+			
 			// not close and restore the bufferwrite file
 			processor = new FileNodeProcessor(tsdbconfig.FileNodeDir, deltaObjectId, parameters);
+			assertEquals(true, processor.shouldRecovery());
+			processor.FileNodeRecovery();
 			assertEquals(true, processor.hasBufferwriteProcessor());
 			assertEquals(true, processor.hasOverflowProcessor());
 			queryResult = processor.query(deltaObjectId, measurementId, null, null, null);
@@ -477,7 +479,7 @@ public class FileNodeProcessorTest {
 			assertEquals(null, overflowResult.get(1));
 			assertEquals(null, overflowResult.get(2));
 			assertEquals(null, overflowResult.get(3));
-			processor.close();
+			
 
 		} catch (FileNodeProcessorException e) {
 			e.printStackTrace();
@@ -488,6 +490,13 @@ public class FileNodeProcessorTest {
 		} catch (InterruptedException e) {
 			e.printStackTrace();
 			fail(e.getMessage());
+		}finally {
+			try {
+				processor.close();
+			} catch (FileNodeProcessorException e) {
+				e.printStackTrace();
+				fail(e.getMessage());
+			}
 		}
 	}
 
