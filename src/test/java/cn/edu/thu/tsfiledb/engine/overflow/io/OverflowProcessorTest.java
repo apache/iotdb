@@ -129,6 +129,7 @@ public class OverflowProcessorTest {
 			assertEquals(1, insertDate.length);
 			assertEquals(1, insertDate.getTime(0));
 			assertEquals(10, insertDate.getInt(0));
+			ofprocessor.close();
 		} catch (OverflowProcessorException e) {
 			e.printStackTrace();
 			fail(e.getMessage());

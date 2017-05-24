@@ -77,6 +77,12 @@ public class OverflowReadWriterTest {
 			fail("cut off file failed, the reason is "+e.getMessage());
 		}
 		checkFile(filePath, 5);
+		try {
+			ofIO.close();
+		} catch (IOException e) {
+			e.printStackTrace();
+			fail(e.getMessage());
+		}
 	}
 	
 	

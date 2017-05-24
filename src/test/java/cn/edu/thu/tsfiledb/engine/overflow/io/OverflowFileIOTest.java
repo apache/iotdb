@@ -144,6 +144,7 @@ public class OverflowFileIOTest {
 		// check merge file
 		assertEquals(false, mergeFile.exists());
 		assertEquals(null, overflowFileIO.getOverflowIOForMerge());
+		overflowFileIO.close();
 	}
 
 }
