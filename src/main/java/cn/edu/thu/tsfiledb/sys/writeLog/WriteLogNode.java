@@ -21,7 +21,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- *
  * System log persist interface.
  *
  * @author CGF
@@ -103,7 +102,7 @@ public class WriteLogNode {
         byte[] flushStart = new byte[1];
         flushStart[0] = (byte) Operator.OperatorType.OVERFLOWFLUSHSTART.ordinal();
         writer.write(flushStart);
-        writer.write(BytesUtils.intToTwoBytes(flushStart.length)); // 2 bytes to represent the content size
+        writer.write(BytesUtils.intToBytes(flushStart.length)); // 2 bytes to represent the content size
         LOG.info("Write overflow log start.");
     }
 
@@ -116,7 +115,7 @@ public class WriteLogNode {
         byte[] flushEnd = new byte[1];
         flushEnd[0] = (byte) Operator.OperatorType.OVERFLOWFLUSHEND.ordinal();
         writer.write(flushEnd);
-        writer.write(BytesUtils.intToTwoBytes(flushEnd.length));
+        writer.write(BytesUtils.intToBytes(flushEnd.length));
         hasOverflowFlush = true;
         LOG.info("Write overflow log end.");
         checkLogsCompactFileSize(false);
@@ -131,7 +130,7 @@ public class WriteLogNode {
         byte[] flushStart = new byte[1];
         flushStart[0] = (byte) Operator.OperatorType.BUFFERFLUSHSTART.ordinal();
         writer.write(flushStart);
-        writer.write(BytesUtils.intToTwoBytes(flushStart.length));
+        writer.write(BytesUtils.intToBytes(flushStart.length));
         LOG.info("Write bufferwrite log start.");
     }
 
@@ -144,7 +143,7 @@ public class WriteLogNode {
         byte[] flushEnd = new byte[1];
         flushEnd[0] = (byte) Operator.OperatorType.BUFFERFLUSHEND.ordinal();
         writer.write(flushEnd);
-        writer.write(BytesUtils.intToTwoBytes(flushEnd.length));
+        writer.write(BytesUtils.intToBytes(flushEnd.length));
         LOG.info("Write bufferwrite log end.");
         hasBufferWriteFlush = true;
         checkLogsCompactFileSize(false);
@@ -153,7 +152,7 @@ public class WriteLogNode {
     }
 
     /**
-     *  Compact logs in path.log.
+     * Compact logs in path.log.
      *
      * @throws IOException
      */
@@ -186,14 +185,14 @@ public class WriteLogNode {
             bytesInMemory.add(planBytes);
             totalBytes += planBytes.length;
         }
-        byte[] bytesToSerialize = new byte[totalBytes + 2*plansInMemory.size()];
+        byte[] bytesToSerialize = new byte[totalBytes + 4 * plansInMemory.size()];
         int pos = 0;
         for (byte[] bs : bytesInMemory) {
             System.arraycopy(bs, 0, bytesToSerialize, pos, bs.length);
             pos += bs.length;
-            byte[] len = BytesUtils.intToTwoBytes(bs.length);
+            byte[] len = BytesUtils.intToBytes(bs.length);
             System.arraycopy(len, 0, bytesToSerialize, pos, len.length);
-            pos += 2;
+            pos += 4;
         }
 
         if (writer == null) {
@@ -225,6 +224,9 @@ public class WriteLogNode {
         }
 
         PhysicalPlan plan = reader.getPhysicalPlan();
+        if (plan != null) {
+            logSize++;
+        }
         return plan;
     }
 

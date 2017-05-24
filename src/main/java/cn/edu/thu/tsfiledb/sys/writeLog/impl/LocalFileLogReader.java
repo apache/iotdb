@@ -46,9 +46,9 @@ public class LocalFileLogReader implements WriteLogReadable {
             return false;
         }
         raf.seek(pos - 2);
-        byte[] opeContentLengthBytes = new byte[2];
+        byte[] opeContentLengthBytes = new byte[4];
         raf.read(opeContentLengthBytes);
-        int opeContentLength = BytesUtils.twoBytesToInt(opeContentLengthBytes);
+        int opeContentLength = BytesUtils.bytesToInt(opeContentLengthBytes);
 
         byte[] opeTypeBytes = new byte[1];
         raf.seek(pos - 2 - opeContentLength);
@@ -70,9 +70,9 @@ public class LocalFileLogReader implements WriteLogReadable {
     public byte[] nextOperator() throws IOException {
 
         raf.seek(pos - 2);
-        byte[] opeContentLengthBytes = new byte[2];
+        byte[] opeContentLengthBytes = new byte[4];
         raf.read(opeContentLengthBytes);
-        int opeContentLength = BytesUtils.twoBytesToInt(opeContentLengthBytes);
+        int opeContentLength = BytesUtils.bytesToInt(opeContentLengthBytes);
 
         byte[] opeContent = new byte[opeContentLength];
         raf.seek(pos - 2 - opeContentLength);
@@ -103,37 +103,37 @@ public class LocalFileLogReader implements WriteLogReadable {
         int bufferVis = -1;
 
         while (i > 0) {
-            lraf.seek(i - 2);
-            byte[] opeContentLengthBytes = new byte[2];
+            lraf.seek(i - 4);
+            byte[] opeContentLengthBytes = new byte[4];
             lraf.read(opeContentLengthBytes);
-            int opeContentLength = BytesUtils.twoBytesToInt(opeContentLengthBytes);
+            int opeContentLength = BytesUtils.bytesToInt(opeContentLengthBytes);
 
             byte[] opeTypeBytes = new byte[1];
-            lraf.seek(i - 2 - opeContentLength);
+            lraf.seek(i - 4 - opeContentLength);
             lraf.read(opeTypeBytes);
             int opeType = (int) opeTypeBytes[0];
 
             if (opeType == OperatorType.OVERFLOWFLUSHEND.ordinal()) {
                 overflowVis = 1;
-                i -= (2 + opeContentLength);
+                i -= (4 + opeContentLength);
                 continue;
             } else if (opeType == OperatorType.OVERFLOWFLUSHSTART.ordinal()) {
                 if (overflowVis == 1)
                     overflowVis = 2;
                 else
                     overflowVis = 3;
-                i -= (2 + opeContentLength);
+                i -= (4 + opeContentLength);
                 continue;
             } else if (opeType == OperatorType.BUFFERFLUSHEND.ordinal()) {
                 bufferVis = 1;
-                i -= (2 + opeContentLength);
+                i -= (4 + opeContentLength);
                 continue;
             } else if (opeType == OperatorType.BUFFERFLUSHSTART.ordinal()) {
                 if (bufferVis == 1)
                     bufferVis = 2;
                 else
                     bufferVis = 3;
-                i -= (2 + opeContentLength);
+                i -= (4 + opeContentLength);
                 continue;
             }
 
@@ -146,20 +146,20 @@ public class LocalFileLogReader implements WriteLogReadable {
                 lraf.read(insertTypeBytes);
                 int insertType = (int) insertTypeBytes[0];
                 if (insertType == 1 && bufferVis != 2) {  // bufferwrite insert
-                    bufferStartList.add(i - 2 - opeContentLength);
+                    bufferStartList.add(i - 4 - opeContentLength);
                     bufferLengthList.add(opeContentLength);
                     bufferTailCount++;
                 } else if (insertType == 2 && overflowVis != 2) {     // overflow insert
-                    overflowStartList.add(i - 2 - opeContentLength);
+                    overflowStartList.add(i - 4 - opeContentLength);
                     overflowLengthList.add(opeContentLength);
                     overflowTailCount++;
                 }
             } else if (overflowVis != 2) { // overflow update/delete
-                overflowStartList.add(i - 2 - opeContentLength);
+                overflowStartList.add(i - 4 - opeContentLength);
                 overflowLengthList.add(opeContentLength);
                 overflowTailCount++;
             }
-            i -= (2 + opeContentLength);
+            i -= (4 + opeContentLength);
         }
     }
 
@@ -217,38 +217,38 @@ public class LocalFileLogReader implements WriteLogReadable {
         int backUpTotalLength = 0;
 
         while (i > 0) {
-            lraf.seek(i - 2);
-            byte[] opeContentLengthBytes = new byte[2];
+            lraf.seek(i - 4);
+            byte[] opeContentLengthBytes = new byte[4];
             lraf.read(opeContentLengthBytes);
-            int opeContentLength = BytesUtils.twoBytesToInt(opeContentLengthBytes);
+            int opeContentLength = BytesUtils.bytesToInt(opeContentLengthBytes);
 
             byte[] opeTypeBytes = new byte[1];
-            int backUpPos = i - 2 - opeContentLength;
+            int backUpPos = i - 4 - opeContentLength;
             lraf.seek(backUpPos);
             lraf.read(opeTypeBytes);
             int opeType = (int) opeTypeBytes[0];
 
             if (opeType == OperatorType.OVERFLOWFLUSHEND.ordinal()) {
                 overflowVis = 1;
-                i -= (2 + opeContentLength);
+                i -= (4 + opeContentLength);
                 continue;
             } else if (opeType == OperatorType.OVERFLOWFLUSHSTART.ordinal()) {
                 if (overflowVis == 1)
                     overflowVis = 2;
                 else
                     overflowVis = 3;
-                i -= (2 + opeContentLength);
+                i -= (4 + opeContentLength);
                 continue;
             } else if (opeType == OperatorType.BUFFERFLUSHEND.ordinal()) {
                 bufferVis = 1;
-                i -= (2 + opeContentLength);
+                i -= (4 + opeContentLength);
                 continue;
             } else if (opeType == OperatorType.BUFFERFLUSHSTART.ordinal()) {
                 if (bufferVis == 1)
                     bufferVis = 2;
                 else
                     bufferVis = 3;
-                i -= (2 + opeContentLength);
+                i -= (4 + opeContentLength);
                 continue;
             }
 
@@ -261,26 +261,26 @@ public class LocalFileLogReader implements WriteLogReadable {
                 lraf.read(insertTypeBytes);
                 int insertType = (int) insertTypeBytes[0];
                 if (insertType == 1 && bufferVis != 2) {  // bufferwrite insert
-                    byte[] dataBackUp = new byte[opeContentLength + 2];
+                    byte[] dataBackUp = new byte[opeContentLength + 4];
                     lraf.seek(backUpPos);
                     lraf.read(dataBackUp);
                     backUpBytesList.add(dataBackUp);
                     backUpTotalLength += dataBackUp.length;
                 } else if (insertType == 2 && overflowVis != 2) {     // overflow insert
-                    byte[] dataBackUp = new byte[opeContentLength + 2];
+                    byte[] dataBackUp = new byte[opeContentLength + 4];
                     lraf.seek(backUpPos);
                     lraf.read(dataBackUp);
                     backUpBytesList.add(dataBackUp);
                     backUpTotalLength += dataBackUp.length;
                 }
             } else if (overflowVis != 2) { // overflow update/delete
-                byte[] dataBackUp = new byte[opeContentLength + 2];
+                byte[] dataBackUp = new byte[opeContentLength + 4];
                 lraf.seek(backUpPos);
                 lraf.read(dataBackUp);
                 backUpBytesList.add(dataBackUp);
                 backUpTotalLength += dataBackUp.length;
             }
-            i -= (2 + opeContentLength);
+            i -= (4 + opeContentLength);
         }
 
         byte[] ans = new byte[backUpTotalLength];

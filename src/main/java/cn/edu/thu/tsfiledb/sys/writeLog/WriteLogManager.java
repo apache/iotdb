@@ -22,7 +22,7 @@ public class WriteLogManager {
     private static HashMap<String, WriteLogNode> logNodeMaps;
     public static final int BUFFERWRITER = 0, OVERFLOW = 1;
     private static List<String> recoveryPathList = new ArrayList<>();
-    public static boolean isRecovering;
+    public static boolean isRecovering = false;
     
     private WriteLogManager() {
         logNodeMaps = new HashMap<>();
@@ -85,6 +85,7 @@ public class WriteLogManager {
         Iterator<String> iterator = recoveryPathList.iterator();
         while (iterator.hasNext()) {
             WriteLogNode node = getWriteLogNode(iterator.next());
+            node.recovery();
             PhysicalPlan plan = node.getPhysicalPlan();
             if (plan != null) {
                 return plan;

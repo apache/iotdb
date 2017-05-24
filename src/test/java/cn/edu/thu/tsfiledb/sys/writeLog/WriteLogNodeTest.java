@@ -14,13 +14,11 @@ import java.util.List;
  */
 public class WriteLogNodeTest {
 
-    private static String device, sensor;
     private static Path path = new Path("d1.s1");
     private static String fileNode = "root.vehicle.d1";
 
     @Test
     public void bufferWriteOverflowFlushTest() throws IOException {
-        System.out.println("============bufferWriteOverflowFlushTest");
         WriteLogNode node = new WriteLogNode(fileNode);
         node.resetFileStatus();
         node.write(new InsertPlan(1, 100L, "1.0", path));
@@ -54,12 +52,13 @@ public class WriteLogNodeTest {
                 Assert.assertEquals(updatePlan.getValue(), "4.0");
             }
             cnt++;
+            output(plan);
         }
+        node.resetFileStatus();
     }
 
     @Test
     public void logMemorySizeTest() throws IOException {
-        System.out.println("============logMemorySizeTest");
         WriteLogNode node = new WriteLogNode(fileNode);
         node.resetFileStatus();
         node.setLogMemorySize(100);
@@ -99,11 +98,12 @@ public class WriteLogNodeTest {
             // output(plan);
         }
         Assert.assertEquals(cnt, 201);
+        node.resetFileStatus();
     }
 
     @Test
     public void logCompactTest() throws IOException {
-        System.out.println("============logCompactTest");
+        // need test bufferwrite, overflow flush
         WriteLogNode node = new WriteLogNode(fileNode);
         node.resetFileStatus();
         node.setLogMemorySize(10);
@@ -115,34 +115,95 @@ public class WriteLogNodeTest {
             node.write(new UpdatePlan(i, i * 2, "2.0", path));
         }
         //node.write(new InsertPlan(1, 300L, "3.0", path));
+        node.overflowFlushStart();
+        node.overflowFlushEnd();
+        PhysicalPlan plan;
+        Assert.assertEquals(node.getPhysicalPlan(), null);
+
+        node.resetFileStatus();
+        List<String> measurementList = new ArrayList<>();
+        List<String> valueList = new ArrayList<>();
+        for (int i = 0; i <= 100; i++) {
+            measurementList.add("s0");
+            valueList.add(String.valueOf(i));
+        }
+        MultiInsertPlan multiInsertPlan = new MultiInsertPlan(1, fileNode, 1L, measurementList, valueList);
+        node.write(multiInsertPlan);
         node.bufferFlushStart();
         node.bufferFlushEnd();
-        PhysicalPlan plan = null;
-        while ((plan = node.getPhysicalPlan()) != null) {
-            // cnt++;
-            output(plan);
+        for (int i = 300; i <= 500; i++) {
+            if (i == 409) {
+                node.overflowFlushStart();
+            }
+            if (i == 470) {
+                node.overflowFlushEnd();
+            }
+            node.write(new UpdatePlan(i, i * 2, "8.0", path));
         }
+        int cnt = 1;
+        while ((plan = node.getPhysicalPlan()) != null) {
+            cnt ++;
+            // output(plan);
+        }
+        Assert.assertEquals(cnt, 92);
+
+        node = new WriteLogNode(fileNode);
+        // test bufferwrite
+        node.setLogMemorySize(1);
+        node.setLogCompactSize(10);
+        node.resetFileStatus();
+        for (int i = 1;i <= 10;i++) {
+            measurementList = new ArrayList<>();
+            valueList = new ArrayList<>();
+            for (int j = 1; j <= 10; j++) {
+                measurementList.add("s"+i+"-"+j);
+                valueList.add(String.valueOf(i));
+            }
+            multiInsertPlan = new MultiInsertPlan(1, fileNode, 1L, measurementList, valueList);
+            node.write(multiInsertPlan);
+        }
+        node.bufferFlushStart();
+        node.bufferFlushEnd();
+        for (int i = 1;i <= 1;i++) {
+            measurementList = new ArrayList<>();
+            valueList = new ArrayList<>();
+            for (int j = 1; j <= 10; j++) {
+                measurementList.add("s"+i+"-"+j);
+                valueList.add(String.valueOf(i));
+            }
+            multiInsertPlan = new MultiInsertPlan(1, fileNode, 1L, measurementList, valueList);
+            node.write(multiInsertPlan);
+        }
+        while ((plan = node.getPhysicalPlan()) != null) {
+            cnt ++;
+            // output(plan);
+        }
+        node.resetFileStatus();
     }
 
     @Test
     public void multiInsertTest() throws IOException {
-        System.out.println("============multiInsertTest");
         WriteLogNode node = new WriteLogNode(fileNode);
         node.resetFileStatus();
+        node.setLogMemorySize(1);
+        node.setLogCompactSize(100);
         List<String> measurementList = new ArrayList<>();
         List<String> valueList = new ArrayList<>();
-        int cnt = 1;
-        for (int i = 0;i <= 10;i++) {
+
+        for (int i = 0; i <= 10000; i++) {
             measurementList.add("s0");
             valueList.add(String.valueOf(i));
         }
-        MultiInsertPlan multiInsertPlan = new MultiInsertPlan(1, fileNode, 1, measurementList, valueList);
+        MultiInsertPlan multiInsertPlan = new MultiInsertPlan(1, fileNode, 1L, measurementList, valueList);
         node.write(multiInsertPlan);
 
         PhysicalPlan plan;
         while ((plan = node.getPhysicalPlan()) != null) {
+            //multiInsertPlan = (MultiInsertPlan) plan;
+            //Assert.assertEquals(multiInsertPlan.getMeasurementList().size(), 11);
             output(plan);
         }
+        node.resetFileStatus();
     }
 
     @Test
@@ -162,8 +223,8 @@ public class WriteLogNodeTest {
             System.out.println("Delete: " + p.getPath() + " " + p.getDeleteTime());
         } else if (plan instanceof MultiInsertPlan) {
             MultiInsertPlan multiInsertPlan = (MultiInsertPlan) plan;
-            System.out.println("MultiInsert: " + multiInsertPlan.getPath() + multiInsertPlan.getTime());
-            for (int i = 0;i < multiInsertPlan.getMeasurementList().size();i++) {
+            System.out.println("MultiInsert: " + multiInsertPlan.getDeltaObject() + multiInsertPlan.getTime());
+            for (int i = 0; i < multiInsertPlan.getMeasurementList().size(); i++) {
                 System.out.println(multiInsertPlan.getMeasurementList().get(i) + " " + multiInsertPlan.getInsertValues().get(i));
             }
         }
