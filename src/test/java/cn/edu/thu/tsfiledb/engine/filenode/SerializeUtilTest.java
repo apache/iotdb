@@ -64,11 +64,11 @@ public class SerializeUtilTest {
 
 	@Test
 	public void testFileStore() {
-		IntervalFileNode emptyIntervalFileNode = new IntervalFileNode(0, OverflowChangeType.NO_CHANGE, null, null);
+		IntervalFileNode emptyIntervalFileNode = new IntervalFileNode(0, OverflowChangeType.NO_CHANGE, null);
 		List<IntervalFileNode> newFilenodes = new ArrayList<>();
 		for (int i = 1; i <= 3; i++) {
 			IntervalFileNode node = new IntervalFileNode(i * 100, i * 100 + 99, OverflowChangeType.NO_CHANGE,
-					"bufferfiletest" + i, null);
+					"bufferfiletest" + i);
 			newFilenodes.add(node);
 		}
 		FileNodeProcessorStatus fileNodeProcessorState = FileNodeProcessorStatus.WAITING;
@@ -87,14 +87,15 @@ public class SerializeUtilTest {
 		assertEquals(true, new File(filePath).exists());
 		try {
 			FileNodeProcessorStore fileNodeProcessorStore2 = serializeUtil.deserialize(filePath)
-					.orElse(new FileNodeProcessorStore(-1,
-							new IntervalFileNode(0, OverflowChangeType.NO_CHANGE, null, null), new ArrayList<>(),
-							FileNodeProcessorStatus.NONE, 0));
+					.orElse(new FileNodeProcessorStore(-1, new IntervalFileNode(0, OverflowChangeType.NO_CHANGE, null),
+							new ArrayList<>(), FileNodeProcessorStatus.NONE, 0));
 			assertEquals(fileNodeProcessorStore.getLastUpdateTime(), fileNodeProcessorStore2.getLastUpdateTime());
-			assertEquals(fileNodeProcessorStore.getEmptyIntervalFileNode(), fileNodeProcessorStore2.getEmptyIntervalFileNode());
+			assertEquals(fileNodeProcessorStore.getEmptyIntervalFileNode(),
+					fileNodeProcessorStore2.getEmptyIntervalFileNode());
 			assertEquals(fileNodeProcessorStore.getNewFileNodes(), fileNodeProcessorStore2.getNewFileNodes());
 			assertEquals(fileNodeProcessorStore.getNumOfMergeFile(), fileNodeProcessorStore2.getNumOfMergeFile());
-			assertEquals(fileNodeProcessorStore.getFileNodeProcessorState(), fileNodeProcessorStore2.getFileNodeProcessorState());
+			assertEquals(fileNodeProcessorStore.getFileNodeProcessorState(),
+					fileNodeProcessorStore2.getFileNodeProcessorState());
 		} catch (IOException e) {
 			e.printStackTrace();
 			fail(e.getMessage());

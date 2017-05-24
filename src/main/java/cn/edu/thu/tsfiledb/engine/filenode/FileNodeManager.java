@@ -190,16 +190,16 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 				e.printStackTrace();
 				throw new FileNodeManagerException(e);
 			}
-			//For WAL 
+			// For WAL
 			try {
-				if(!WriteLogManager.isRecovering){
+				if (!WriteLogManager.isRecovering) {
 					WriteLogManager.getInstance().write(tsRecord, WriteLogManager.OVERFLOW);
 				}
 			} catch (IOException | PathErrorException e) {
 				LOGGER.error("Error in write WAL: {}", e.getMessage());
 				throw new FileNodeManagerException(e);
 			}
-			
+
 			for (DataPoint dataPoint : tsRecord.dataPointList) {
 				try {
 					overflowProcessor.insert(deltaObjectId, dataPoint.getMeasurementId(), timestamp,
@@ -232,17 +232,17 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 				String fileAbsolutePath = bufferWriteProcessor.getFileAbsolutePath();
 				fileNodeProcessor.addIntervalFileNode(timestamp, fileAbsolutePath);
 			}
-			
-			//For WAL 
+
+			// For WAL
 			try {
-				if(!WriteLogManager.isRecovering){
+				if (!WriteLogManager.isRecovering) {
 					WriteLogManager.getInstance().write(tsRecord, WriteLogManager.BUFFERWRITER);
 				}
 			} catch (IOException | PathErrorException e) {
 				LOGGER.error("Error in write WAL: {}", e.getMessage());
 				throw new FileNodeManagerException(e);
 			}
-			
+
 			try {
 				bufferWriteProcessor.write(tsRecord);
 			} catch (BufferWriteProcessorException e) {
@@ -425,11 +425,7 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 			do {
 				fileNodeProcessor = getProcessorWithDeltaObjectIdByLRU(deltaObjectId, false);
 			} while (fileNodeProcessor == null);
-			if (fileNodeProcessor.shouldRecovery()) {
-				fileNodeProcessor.FileNodeRecovery();
-			}
 			LOGGER.debug("Get the FileNodeProcessor: {}, query.", fileNodeProcessor.getNameSpacePath());
-
 			QueryStructure queryStructure = null;
 			// query operation must have overflow processor
 			if (!fileNodeProcessor.hasOverflowProcessor()) {
@@ -460,15 +456,9 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 			do {
 				fileNodeProcessor = getProcessorWithDeltaObjectIdByLRU(deltaObjectId, true);
 			} while (fileNodeProcessor == null);
-			if (fileNodeProcessor.shouldRecovery()) {
-				fileNodeProcessor.FileNodeRecovery();
-			}
 			LOGGER.debug("Get the FileNodeProcessor: {}, end query.", fileNodeProcessor.getNameSpacePath());
 			fileNodeProcessor.removeMultiPassLock(token);
 		} catch (LRUManagerException e) {
-			e.printStackTrace();
-			throw new FileNodeManagerException(e);
-		} catch (FileNodeProcessorException e) {
 			e.printStackTrace();
 			throw new FileNodeManagerException(e);
 		} finally {
@@ -605,9 +595,6 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 				do {
 					fileNodeProcessor = getProcessorByLRU(fileNodeNamespacePath, true);
 				} while (fileNodeProcessor == null);
-				if (fileNodeProcessor.shouldRecovery()) {
-					fileNodeProcessor.FileNodeRecovery();
-				}
 				LOGGER.info("Get the FileNodeProcessor: {}, merge.", fileNodeProcessor.getNameSpacePath());
 
 				// if bufferwrite and overflow exist
