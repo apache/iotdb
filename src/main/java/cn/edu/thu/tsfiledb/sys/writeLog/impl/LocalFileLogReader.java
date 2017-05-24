@@ -27,10 +27,14 @@ public class LocalFileLogReader implements WriteLogReadable {
     public LocalFileLogReader(String file) throws IOException {
         fileExist = true;
         fileName = file;
+        File f = new File(file);
+        if (!f.getParentFile().exists()) {
+            f.getParentFile().mkdirs();
+        }
         try {
             raf = new RandomAccessFile(file, "rw");
         } catch (FileNotFoundException e) {
-        	e.printStackTrace();
+        	// e.printStackTrace();
             fileExist = false;
         }
         fileLength = raf.length();

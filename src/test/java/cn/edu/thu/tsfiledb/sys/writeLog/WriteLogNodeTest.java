@@ -54,7 +54,7 @@ public class WriteLogNodeTest {
             cnt++;
             output(plan);
         }
-        node.resetFileStatus();
+        //node.resetFileStatus();
     }
 
     @Test
@@ -199,9 +199,9 @@ public class WriteLogNodeTest {
 
         PhysicalPlan plan;
         while ((plan = node.getPhysicalPlan()) != null) {
-            //multiInsertPlan = (MultiInsertPlan) plan;
-            //Assert.assertEquals(multiInsertPlan.getMeasurementList().size(), 11);
-            output(plan);
+            multiInsertPlan = (MultiInsertPlan) plan;
+            Assert.assertEquals(multiInsertPlan.getMeasurementList().size(), 10001);
+            //output(plan);
         }
         node.resetFileStatus();
     }

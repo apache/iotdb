@@ -1,5 +1,6 @@
 package cn.edu.thu.tsfiledb.sys.writeLog;
 
+import java.io.File;
 import java.io.IOException;
 import java.lang.management.PlatformLoggingMXBean;
 import java.util.ArrayList;
@@ -9,6 +10,7 @@ import java.util.List;
 
 import cn.edu.thu.tsfile.timeseries.read.qp.Path;
 import cn.edu.thu.tsfile.timeseries.write.record.TSRecord;
+import cn.edu.thu.tsfiledb.conf.TSFileDBDescriptor;
 import cn.edu.thu.tsfiledb.exception.PathErrorException;
 import cn.edu.thu.tsfiledb.metadata.MManager;
 import org.slf4j.Logger;
@@ -73,6 +75,13 @@ public class WriteLogManager {
         try {
             //TODO need optimize
             recoveryPathList = MManager.getInstance().getAllFileNames();
+            Iterator<String> iterator = recoveryPathList.iterator();
+            while (iterator.hasNext()) {
+                String filePath = TSFileDBDescriptor.getInstance().getConfig().walFolder + iterator.next() + ".log";
+                if (!new File(filePath).exists()) {
+                    iterator.remove();
+                }
+            }
         } catch (PathErrorException e) {
             throw new IOException(e);
         }
