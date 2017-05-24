@@ -48,13 +48,13 @@ public class JDBCServer implements JDBCServerMBean {
 		LOGGER.info("tsfile-service JDBCServer: starting jdbc server...");
 		dBdao = new DBdao();
 		dBdao.open();
-		
+		FileNodeManager.getInstance().ManagerRecovery();
 		try {
 			jdbcServerThread = new Thread(new JDBCServerThread());
 		} catch (IOException e) {
 			LOGGER.error("Server start Error. {}", e.getMessage());
 			e.printStackTrace();
-			return;
+//			return;
 		}
 		jdbcServerThread.start();
 		

@@ -40,7 +40,11 @@ public class TSFileDBConfig {
 	 */
 	public int maxBufferWriteNodeNum = 50;
 	public int defaultFetchSize = 1000000;
-	public String writeLogPath = "src/main/resources/writeLog.log";
+	
+	public String walFolder = "src/main/resources/wals/";
+
+	public int LogCompactSize = 500000;
+	public int LogMemorySize = 10000;
 
 	public TSFileDBConfig() {
 	}

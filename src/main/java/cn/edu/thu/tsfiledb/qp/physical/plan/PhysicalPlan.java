@@ -20,6 +20,7 @@ import cn.edu.thu.tsfiledb.qp.logical.operator.Operator.OperatorType;
 public abstract class PhysicalPlan {
     private boolean isQuery;
     private OperatorType operatorType;
+    private Path path;
 
     protected PhysicalPlan(boolean isQuery, OperatorType operatorType) {
         this.isQuery = isQuery;
@@ -59,5 +60,13 @@ public abstract class PhysicalPlan {
 
     public OperatorType getOperatorType() {
         return operatorType;
+    }
+
+    public Path getPath() {
+        return path;
+    }
+
+    public void setPath(Path path) {
+        this.path = path;
     }
 }

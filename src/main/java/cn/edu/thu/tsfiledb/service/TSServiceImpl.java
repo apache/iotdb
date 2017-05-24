@@ -8,6 +8,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.derby.tools.sysinfo;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,6 +31,7 @@ import cn.edu.thu.tsfiledb.qp.exception.QueryProcessorException;
 import cn.edu.thu.tsfiledb.qp.exec.impl.OverflowQPExecutor;
 import cn.edu.thu.tsfiledb.qp.logical.operator.Operator.OperatorType;
 import cn.edu.thu.tsfiledb.qp.logical.operator.RootOperator;
+import cn.edu.thu.tsfiledb.qp.physical.plan.MultiInsertPlan;
 import cn.edu.thu.tsfiledb.qp.physical.plan.PhysicalPlan;
 import cn.edu.thu.tsfiledb.query.aggregation.AggreFuncFactory;
 import cn.edu.thu.tsfiledb.query.aggregation.AggregateFunction;
@@ -78,9 +80,12 @@ public class TSServiceImpl implements TSIService.Iface {
 	public TSServiceImpl() throws IOException {
 		LOGGER.info("start check write log...");
 		writeLogManager = WriteLogManager.getInstance();
+		writeLogManager.recovery();
 		long cnt = 0l;
 		PhysicalPlan plan;
+		WriteLogManager.isRecovering = true;
 		while ((plan = writeLogManager.getPhysicalPlan()) != null) {
+//			System.out.println(cnt + " : " + ((MultiInsertPlan)plan).getDeltaObject() + "| " + ((MultiInsertPlan)plan).getTime());
 			try {
 				plan.processNonQuery(exec);
 				cnt++;
@@ -89,6 +94,7 @@ public class TSServiceImpl implements TSIService.Iface {
 				throw new IOException("Error in recovery from write log");
 			}
 		}
+		WriteLogManager.isRecovering = false;
 		LOGGER.info("Done. Recover operation count {}", cnt);
 	}
 
@@ -242,8 +248,8 @@ public class TSServiceImpl implements TSIService.Iface {
 				e.printStackTrace();
 				throw new IOException(e);
 			}
-			writeLogManager.overflowFlush();
-			writeLogManager.bufferFlush();
+			//writeLogManager.overflowFlush();
+			//writeLogManager.bufferFlush();
 			// MManager.getInstance().flushObjectToFile();
 			return true;
 		case "merge":
@@ -556,7 +562,7 @@ public class TSServiceImpl implements TSIService.Iface {
 			operationHandle = new TSOperationHandle(operationId, false);
 			resp.setOperationHandle(operationHandle);
 			return resp;
-		} catch (QueryProcessorException e) {
+		} catch (QueryProcessorException | PathErrorException e) {
 			LOGGER.error(e.getMessage());
 			return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
 		} catch (IOException e) {
@@ -598,7 +604,11 @@ public class TSServiceImpl implements TSIService.Iface {
 			return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
 		}
 		if (execRet && needToBeWritenToLog(plan)) {
-			writeLogManager.write(plan);
+			try {
+				writeLogManager.write(plan);
+			} catch (PathErrorException e) {
+				throw new ProcessorException(e);
+			}
 		}
 		TS_StatusCode statusCode = execRet ? TS_StatusCode.SUCCESS_STATUS : TS_StatusCode.ERROR_STATUS;
 		String msg = execRet ? "Execute successfully" : "Execute statement error.";
@@ -613,7 +623,7 @@ public class TSServiceImpl implements TSIService.Iface {
 
 	private boolean needToBeWritenToLog(PhysicalPlan plan) {
 		if (plan.getOperatorType() == OperatorType.INSERT) {
-			return true;
+			return false;
 		}
 		if (plan.getOperatorType() == OperatorType.UPDATE) {
 			return true;

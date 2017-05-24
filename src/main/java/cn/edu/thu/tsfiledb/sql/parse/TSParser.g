@@ -513,9 +513,7 @@ nodeName
     ;
 
 insertStatement
-   : KW_INSERT KW_INTO path KW_VALUES LPAREN time=dateFormatWithNumber COMMA value=number RPAREN
-   -> ^(TOK_INSERT path $time $value )
-   | KW_MULTINSERT KW_INTO path multidentifier KW_VALUES multiValue
+   : KW_INSERT KW_INTO path multidentifier KW_VALUES multiValue
    -> ^(TOK_MULTINSERT path multidentifier multiValue)
    ;
 

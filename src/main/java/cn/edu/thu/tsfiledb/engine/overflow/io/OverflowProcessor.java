@@ -27,6 +27,7 @@ import cn.edu.thu.tsfiledb.engine.overflow.utils.ReadWriteThriftFormatUtils;
 import cn.edu.thu.tsfiledb.engine.overflow.utils.TSFileMetaDataConverter;
 import cn.edu.thu.tsfiledb.engine.overflow.utils.TimePair;
 import cn.edu.thu.tsfiledb.engine.utils.FlushState;
+import cn.edu.thu.tsfiledb.sys.writeLog.WriteLogManager;
 import cn.edu.thu.tsfile.common.exception.ProcessorException;
 
 public class OverflowProcessor extends LRUProcessor {
@@ -380,6 +381,13 @@ public class OverflowProcessor extends LRUProcessor {
 					}
 				}
 			}
+			
+			try {
+				WriteLogManager.getInstance().startOverflowFlush(nameSpacePath);
+			} catch (IOException e1) {
+				throw new OverflowProcessorException(e1);
+			}
+			
 			ofSupport.switchWorkToFlush();
 			recordCount = 0;
 			// update the status of the newIntervalFiles
@@ -409,6 +417,7 @@ public class OverflowProcessor extends LRUProcessor {
 					// call filenode manager function to flush overflow
 					// nameSpacePath set
 					filenodeManagerFlushAction.act();
+					WriteLogManager.getInstance().endOverflowFlush(nameSpacePath);
 				} catch (IOException e) {
 					LOGGER.error("Flush overflow rowGroup to file failed synchronously");
 					throw new OverflowProcessorException(
@@ -443,6 +452,7 @@ public class OverflowProcessor extends LRUProcessor {
 							// call filenode manager function to flush overflow
 							// nameSpacePath set
 							filenodeManagerFlushAction.act();
+							WriteLogManager.getInstance().endOverflowFlush(nameSpacePath);
 						} catch (IOException e) {
 							LOGGER.error("Flush overflow rowgroup to file error in asynchronously. The reason is {}",
 									e.getMessage());

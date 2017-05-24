@@ -21,7 +21,8 @@ public class MultiInsertPlan extends PhysicalPlan {
     private long insertTime;
     
     
-    //insertType : 1表示插入到Bufferwrite,2表示插入到Overflow
+    // insertType
+    // 1 : BufferWrite Insert  2 : Overflow Insert
     private int insertType;
     
     public MultiInsertPlan() {
@@ -30,6 +31,15 @@ public class MultiInsertPlan extends PhysicalPlan {
 
     public MultiInsertPlan(String deltaObject, long insertTime, List<String> measurementList, List<String> insertValues) {
         super(false, OperatorType.MULTIINSERT);
+        this.insertTime = insertTime;
+        this.deltaObject = deltaObject;
+        this.measurementList = measurementList;
+        this.insertValues = insertValues;
+    }
+
+    public MultiInsertPlan(int insertType, String deltaObject, long insertTime, List<String> measurementList, List<String> insertValues) {
+        super(false, OperatorType.MULTIINSERT);
+        this.insertType = insertType;
         this.insertTime = insertTime;
         this.deltaObject = deltaObject;
         this.measurementList = measurementList;
