@@ -71,7 +71,7 @@ public class TSFileDBDescriptor {
 			conf.maxOverflowNodeNum = Integer.parseInt(properties.getProperty("maxOverflowNodeNum", conf.maxOverflowNodeNum + ""));
 			conf.maxBufferWriteNodeNum = Integer.parseInt(properties.getProperty("maxBufferWriteNodeNum", conf.maxBufferWriteNodeNum + ""));
 			conf.defaultFetchSize = Integer.parseInt(properties.getProperty("defaultFetchSize", conf.defaultFetchSize + ""));
-			conf.writeLogPath = properties.getProperty("writeLogPath", tsfileHome+"/data/writeLog.log");
+			conf.walFolder = properties.getProperty("walFolder", tsfileHome+"/data/wals/");
 
 		} catch (IOException e) {
 			LOGGER.warn("Cannot load config file, use default configuration", e);
@@ -102,6 +102,6 @@ public class TSFileDBDescriptor {
 		System.out.println(config.maxOverflowNodeNum);
 		System.out.println(config.maxBufferWriteNodeNum);
 		System.out.println(config.defaultFetchSize);
-		System.out.println(config.writeLogPath);
+		System.out.println(config.walFolder);
 	}
 }

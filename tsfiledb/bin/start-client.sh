@@ -8,6 +8,8 @@ if [ -z "${TSFILE_HOME}" ]; then
   export TSFILE_HOME="$(cd "`dirname "$0"`"/..; pwd)"
 fi
 
+TSFILE_CONF=${TSFILE_HOME}/conf
+TSFILE_LOGS=${TSFILE_HOME}/logs
 
 MAIN_CLASS=cn.edu.thu.tsfiledb.jdbc.Client
 
@@ -30,6 +32,6 @@ else
 fi
 
 
-exec "$JAVA" -cp "$CLASSPATH" "$MAIN_CLASS" "$1" "$2" "$3"
+exec "$JAVA" -DTSFILE_HOME=${TSFILE_HOME} -Dlogback.configurationFile=${TSFILE_CONF}/logback.xml -cp "$CLASSPATH" "$MAIN_CLASS" "$1" "$2" "$3"
 
 exit $?
