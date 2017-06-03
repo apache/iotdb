@@ -501,6 +501,6 @@ public class OverflowSeriesImplTest {
 			e.printStackTrace();
 			fail(e.getMessage());
 		}
-		fail("Not support Type");
+		//fail("Not support Type");
 	}
 }
