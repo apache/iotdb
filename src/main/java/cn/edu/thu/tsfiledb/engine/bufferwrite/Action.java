@@ -6,5 +6,5 @@ package cn.edu.thu.tsfiledb.engine.bufferwrite;
  */
 @FunctionalInterface
 public interface Action {
-	void act();
+	void act() throws Exception;
 }

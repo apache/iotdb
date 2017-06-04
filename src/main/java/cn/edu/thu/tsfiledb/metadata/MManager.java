@@ -20,6 +20,7 @@ import java.util.Map;
 import cn.edu.thu.tsfile.common.conf.TSFileDescriptor;
 import cn.edu.thu.tsfile.file.metadata.enums.TSDataType;
 import cn.edu.thu.tsfile.timeseries.read.qp.Path;
+import cn.edu.thu.tsfiledb.conf.TSFileDBDescriptor;
 import cn.edu.thu.tsfiledb.exception.MetadataArgsErrorException;
 import cn.edu.thu.tsfiledb.exception.PathErrorException;
 
@@ -34,7 +35,7 @@ import cn.edu.thu.tsfiledb.exception.PathErrorException;
  */
 public class MManager {
 	private static MManager manager = new MManager();
-
+	private static final String ROOT_NAME = "root";
 	// The file storing the serialize info for metadata
 	private String datafilePath;
 	// log file path
@@ -46,7 +47,8 @@ public class MManager {
 
 	private MManager() {
 		writeToLog = false;
-		String folderPath = TSFileDescriptor.getInstance().getConfig().metadataDir;
+		
+		String folderPath = TSFileDBDescriptor.getInstance().getConfig().metadataDir;
 		datafilePath = folderPath + "/mdata.obj";
 		logFilePath = folderPath + "/mlog.txt";
 		init();
@@ -64,7 +66,7 @@ public class MManager {
 				fis.close();
 
 			} else {
-				mGraph = new MGraph("root");
+				mGraph = new MGraph(ROOT_NAME);
 			}
 
 			// recover operation from log file
@@ -106,7 +108,7 @@ public class MManager {
 	 * Clear all metadata info
 	 */
 	public void clear() {
-		this.mGraph = new MGraph("root");
+		this.mGraph = new MGraph(ROOT_NAME);
 	}
 
 	public void deleteLogAndDataFiles() {
@@ -133,10 +135,10 @@ public class MManager {
 				leftArgs = new String[0];
 			}
 			addAPathToMTree(args[1], args[2], args[3], leftArgs);
-		} else if (args[0].equals(MetadataOperationType.ADD_PATH_TO_MTREE)) {
-			deletePathFromMTree(args[1]);
 		} else if (args[0].equals(MetadataOperationType.DELETE_PATH_FROM_MTREE)) {
-			setStorageLevelToMTree(MetadataOperationType.SET_STORAGE_LEVEL_TO_MTREE);
+			deletePathFromMTree(args[1]);
+		} else if (args[0].equals(MetadataOperationType.SET_STORAGE_LEVEL_TO_MTREE)) {
+			setStorageLevelToMTree(args[1]);
 		} else if (args[0].equals(MetadataOperationType.ADD_A_PTREE)) {
 			addAPTree(args[1]);
 		} else if (args[0].equals(MetadataOperationType.ADD_A_PATH_TO_PTREE)) {
@@ -306,7 +308,16 @@ public class MManager {
 	public String getFileNameByPath(String path) throws PathErrorException {
 		return mGraph.getFileNameByPath(path);
 	}
-
+	
+	public List<String> getAllFileNames() throws PathErrorException{
+		HashMap<String, ArrayList<String>> res = getAllPathGroupByFileName(ROOT_NAME);
+		List<String> fileNameList = new ArrayList<String>();
+		for(String fileName : res.keySet()){
+			fileNameList.add(fileName);
+		}
+		return fileNameList;
+	}
+	
 	/**
 	 * return a HashMap contains all the paths separated by File Name
 	 */

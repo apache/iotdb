@@ -4,7 +4,7 @@
 
 	<groupId>cn.edu.thu</groupId>
 	<artifactId>tsfiledb</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
+	<version>0.0.1</version>
 	<packaging>jar</packaging>
 
 	<name>tsfiledb</name>
@@ -14,59 +14,112 @@
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<compiler.version>1.8</compiler.version>
 		<hadoop.version>2.6.0</hadoop.version>
+		<jline.version>2.14.1</jline.version>
+		<derby.version>10.12.1.1</derby.version>
 	</properties>
 
 	<dependencies>
-	
+
 		<dependency>
 			<groupId>cn.edu.thu</groupId>
 			<artifactId>tsfile</artifactId>
 			<version>0.1.0</version>
 		</dependency>
-		
+
 		<dependency>
 			<groupId>junit</groupId>
 			<artifactId>junit</artifactId>
-			<version>3.8.1</version>
+			<version>4.12</version>
 			<scope>test</scope>
 		</dependency>
-		
+
 		<dependency>
-			<groupId>org.apache.hadoop</groupId>
-			<artifactId>hadoop-client</artifactId>
-			<version>${hadoop.version}</version>
+			<groupId>jline</groupId>
+			<artifactId>jline</artifactId>
+			<version>${jline.version}</version>
 		</dependency>
-		
+
+		<dependency>
+			<groupId>org.apache.derby</groupId>
+			<artifactId>derby</artifactId>
+			<version>${derby.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.antlr</groupId>
+			<artifactId>antlr3-maven-plugin</artifactId>
+			<version>3.4</version>
+		</dependency>
 	</dependencies>
-	
+
 	<build>
 		<plugins>
 			<plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-compiler-plugin</artifactId>
-                    <version>3.3</version>
-                    <configuration>
-                        <source>${compiler.version}</source>
-                        <target>${compiler.version}</target>
-                        <encoding>UTF-8</encoding>
-                    </configuration>
-                	<!-- compile java files in src/it/java -->
-					<executions>
-						<execution>
-							<id>compile-integration-test</id>
-							<phase>pre-integration-test</phase>
-							<goals>
-								<goal>testCompile</goal>
-							</goals>
-							<configuration>
-								<testIncludes>
-									<testInclude>**/*.java</testInclude>
-								</testIncludes>
-								<outputDirectory>${project.build.directory}/it-classes</outputDirectory>
-							</configuration>
-						</execution>
-					</executions>                	                    
-                </plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<version>3.3</version>
+				<configuration>
+					<source>${compiler.version}</source>
+					<target>${compiler.version}</target>
+					<encoding>UTF-8</encoding>
+				</configuration>
+				<!-- compile java files in src/it/java -->
+				<executions>
+					<execution>
+						<id>compile-integration-test</id>
+						<phase>pre-integration-test</phase>
+						<goals>
+							<goal>testCompile</goal>
+						</goals>
+						<configuration>
+							<testIncludes>
+								<testInclude>**/*.java</testInclude>
+							</testIncludes>
+							<outputDirectory>${project.build.directory}/it-classes</outputDirectory>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+			
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-dependency-plugin</artifactId>
+				<version>2.10</version>
+				<executions>
+					<execution>
+						<id>copy-dependencies</id>
+						<phase>package</phase>
+						<goals>
+							<goal>copy-dependencies</goal>
+						</goals>
+						<configuration>
+							<outputDirectory>${project.basedir}/tsfiledb/lib</outputDirectory>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-antrun-plugin</artifactId>
+				<version>1.7</version>
+				<executions>
+					<execution>
+						<id>copy-native-libraries</id>
+						<phase>package</phase>
+						<goals>
+							<goal>run</goal>
+						</goals>
+						<configuration>
+							<target>
+								<copy todir="${project.basedir}/tsfiledb/lib">
+									<fileset dir="${project.basedir}/target/">
+										<include name="*.jar" />
+									</fileset>
+								</copy>
+							</target>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
 		</plugins>
 	</build>
 </project>

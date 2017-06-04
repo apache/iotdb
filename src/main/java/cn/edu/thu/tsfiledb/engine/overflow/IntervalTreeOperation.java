@@ -45,9 +45,30 @@ public class IntervalTreeOperation implements IIntervalTreeOperator {
 
     private TSDataType dataType; // All operations data type in IntervalTreeOperation.
 
+    private int valueSize; // byte occupation of data type.
+
     public IntervalTreeOperation(TSDataType dataType) {
         index = new IntervalTree(dataType);
         this.dataType = dataType;
+        switch (dataType) {
+            case INT32:
+                this.valueSize = 4;
+                break;
+            case INT64:
+                this.valueSize = 8;
+                break;
+            case FLOAT:
+                this.valueSize = 4;
+                break;
+            case DOUBLE:
+                this.valueSize = 8;
+                break;
+            case BOOLEAN:
+                this.valueSize = 1;
+                break;
+            default:
+                this.valueSize = -1;
+        }
     }
 
     @Override
@@ -135,6 +156,12 @@ public class IntervalTreeOperation implements IIntervalTreeOperator {
                     doc.putDouble(BytesUtils.bytesToDouble(value));
                 else
                     doc.putDouble(0);
+                break;  
+            case BOOLEAN:
+                if (overflowOpType != OverflowOpType.DELETE)
+                    doc.putBoolean(BytesUtils.bytesToBool(value));
+                else
+                    doc.putBoolean(false);
                 break;
             case BYTE_ARRAY:
                 if (overflowOpType != OverflowOpType.DELETE)
@@ -189,6 +216,9 @@ public class IntervalTreeOperation implements IIntervalTreeOperator {
                 break;
             case DOUBLE:
                 ansData.putDouble(doc.getDouble(i));
+                break;
+            case BOOLEAN:
+            	ansData.putBoolean(doc.getBoolean(i));
                 break;
             case BYTE_ARRAY:
                 ansData.putBinary(doc.getBinary(i));
@@ -266,7 +296,7 @@ public class IntervalTreeOperation implements IIntervalTreeOperator {
     @Override
     public DynamicOneColumnData queryFileBlock(SingleSeriesFilterExpression timeFilter,
                                                SingleSeriesFilterExpression valueFilter, SingleSeriesFilterExpression freqFilter, InputStream inputStream,
-                                               DynamicOneColumnData newData, int valueSize, TSDataType dataType) throws IOException {
+                                               DynamicOneColumnData newData) throws IOException {
 
         DynamicOneColumnData ans = new DynamicOneColumnData(dataType, true); // merge answer
         int i = 0;
@@ -513,7 +543,7 @@ public class IntervalTreeOperation implements IIntervalTreeOperator {
 
     @Override
     public DynamicOneColumnData queryMemory(SingleSeriesFilterExpression timeFilter,
-                                            SingleSeriesFilterExpression valueFilter, SingleSeriesFilterExpression freqFilter, int valueSize, TSDataType dataType
+                                            SingleSeriesFilterExpression valueFilter, SingleSeriesFilterExpression freqFilter
             , DynamicOneColumnData newerMemoryData) {
         if (newerMemoryData == null) {
             return index.dynamicQuery(timeFilter, dataType);
@@ -806,8 +836,10 @@ public class IntervalTreeOperation implements IIntervalTreeOperator {
                 return visitor.verify(data.getFloat(i));
             case DOUBLE:
                 return visitor.verify(data.getDouble(i));
+            case BOOLEAN:
+                return SingleValueVisitorFactory.getSingleValueVisitor(TSDataType.BOOLEAN).satisfyObject(data.getBoolean(i), valueFilter);
             case BYTE_ARRAY:
-                return SingleValueVisitorFactory.getSingleValueVistor(TSDataType.BYTE_ARRAY).satisfyObject(data.getBinary(i).getStringValue(), valueFilter);
+                return SingleValueVisitorFactory.getSingleValueVisitor(TSDataType.BYTE_ARRAY).satisfyObject(data.getBinary(i).getStringValue(), valueFilter);
             default:
                 LOG.error("Unsupported TSFile data type.");
                 throw new UnSupportedDataTypeException("Unsupported TSFile data type.");
@@ -843,6 +875,9 @@ public class IntervalTreeOperation implements IIntervalTreeOperator {
             case DOUBLE:
                 ope.putDouble(data.getDouble(i));
                 break;
+            case BOOLEAN:
+                ope.putBoolean(data.getBoolean(i));
+                break;
             case BYTE_ARRAY:
                 ope.putBinary(data.getBinary(i));
                 break;
@@ -863,12 +898,11 @@ public class IntervalTreeOperation implements IIntervalTreeOperator {
      * @param valueFilter  - value filter specified by user
      * @param freqFilter   - frequency filter specified by user
      * @param overflowData - overflow data
-     * @param dataType     - TSDataType
      * @return - List<Object>
      */
     @Override
     public List<Object> getDynamicList(SingleSeriesFilterExpression timeFilter,
-                                       SingleSeriesFilterExpression valueFilter, SingleSeriesFilterExpression freqFilter, DynamicOneColumnData overflowData, TSDataType dataType) {
+                                       SingleSeriesFilterExpression valueFilter, SingleSeriesFilterExpression freqFilter, DynamicOneColumnData overflowData) {
 
         long deleteMaxLength = -1;
 
@@ -975,11 +1009,7 @@ public class IntervalTreeOperation implements IIntervalTreeOperator {
      */
     @Override
     public long calcMemSize() {
-        if (index.getValueSize() == 0) {
-            return 16;
-        } else {
-            return index.getNodeSize() * (16 + index.getValueSize());
-        }
+        return index.getTotalMemory();
     }
 
     /**
@@ -988,4 +1018,9 @@ public class IntervalTreeOperation implements IIntervalTreeOperator {
     public void reset() {
         index = new IntervalTree();
     }
+
+    public boolean isEmpty() {
+        return index.isEmpty();
+    }
+
 }

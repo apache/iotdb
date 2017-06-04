@@ -1,12 +1,13 @@
+tsfiledb/*
 # Eclipse IDE files
 **/.classpath
 **/.project
 **/.settings/
-
+# src/main/resources/
 # intellij IDE files
 **/*.iml
 **/.idea/
-
+**/*.log
 # Apple OS X related
 **/.DS_Store
 
@@ -16,6 +17,7 @@
 
 # intermediately generated locally
 **/logs/
+src/main/resources/*
 
 tsfile-timeseries/src/main/resources/logback.out.out.xml
 tsfile-timeseries/src/main/resources/logback.out.xml
