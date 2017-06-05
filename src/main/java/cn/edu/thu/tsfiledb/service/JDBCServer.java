@@ -42,10 +42,10 @@ public class JDBCServer implements JDBCServerMBean {
 	@Override
 	public synchronized void startServer() {
 		if(isStart){
-			LOGGER.info("tsfile-service JDBCServer: jdbc server has been already running now");
+			LOGGER.info("TsfileDB Server: server has been already running now");
 			return;
 		}
-		LOGGER.info("tsfile-service JDBCServer: starting jdbc server...");
+		LOGGER.info("TsfileDB Server: start server...");
 		dBdao = new DBdao();
 		dBdao.open();
 		FileNodeManager.getInstance().ManagerRecovery();
@@ -58,7 +58,7 @@ public class JDBCServer implements JDBCServerMBean {
 		}
 		jdbcServerThread.start();
 		
-		LOGGER.info("tsfile-service JDBCServer: start jdbc server successfully");
+		LOGGER.info("TsfileDB Server: start server successfully");
 		isStart = true;
 		
 	}
@@ -72,18 +72,17 @@ public class JDBCServer implements JDBCServerMBean {
 	@Override
 	public synchronized void stopServer() {
 		if(!isStart){
-			LOGGER.info("tsfile-service JDBCServer: jdbc server isn't running now");
+			LOGGER.info("TsfileDB Server: server isn't running now");
 			return;
 		}
 		
-		LOGGER.info("tsfile-service JDBCServer: closing jdbc server...");
+		LOGGER.info("TsfileDB Server: closing jdbc server...");
 
 		if(dBdao != null){
 			dBdao.close();
 			dBdao = null;
 		}
 		
-		LOGGER.info("tsfile-service JDBCServer: flush data in memory to disk");
 		try {
 			FileNodeManager.getInstance().close();
 		} catch (LRUManagerException e) {
@@ -92,7 +91,7 @@ public class JDBCServer implements JDBCServerMBean {
 		}
 		
 		close();
-		LOGGER.info("tsfile-service JDBCServer: close jdbc server successfully");
+		LOGGER.info("TsfileDB Server: close server successfully");
 	}
 	
 	private void close(){
@@ -123,15 +122,14 @@ public class JDBCServer implements JDBCServerMBean {
 		        poolArgs.processor(processor);
 		        poolArgs.protocolFactory(protocolFactory);
 		        poolServer = new TThreadPoolServer(poolArgs);
-		        // poolServer.serve(); will block next statement to execute
 		        poolServer.serve();
 			} catch (TTransportException e) {
-				LOGGER.error("tsfile-service JDBCServer: failed to start jdbc server, because ", e);
+				LOGGER.error("TsfileDB Server: failed to start server, because ", e);
 			} catch (Exception e) {
-				LOGGER.error("tsfile-service JDBCServer: jdbc server exit, because ", e);
+				LOGGER.error("TsfileDB Server: server exit, because ", e);
 			}  finally {
 				close();
-				LOGGER.info("tsfile-service JDBCServer: close TThreadPoolServer and TServerSocket");
+				LOGGER.info("TsfileDB Server: close TThreadPoolServer and TServerSocket");
 			}
 		}
 	}
@@ -143,13 +141,13 @@ public class JDBCServer implements JDBCServerMBean {
 
 	@Override
 	public synchronized void mergeAll() {
-		LOGGER.info("tsfile-service JDBCServer : start merging..");
+		LOGGER.info("TsfileDB Server: start merging...");
 		try {
 			FileNodeManager.getInstance().mergeAll();
 		} catch (FileNodeManagerException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		LOGGER.info("tsfile-service JDBCServer : Done.");
+		LOGGER.info("TsfileDB Server: finish merge operation.");
 	}
 }

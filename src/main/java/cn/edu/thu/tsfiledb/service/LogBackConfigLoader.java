@@ -16,7 +16,6 @@ import ch.qos.logback.core.util.StatusPrinter;
    
 /** 
  * Simple Utility class for loading an external config file for logback 
- * @author daniel 
  */  
 public class LogBackConfigLoader {  
    

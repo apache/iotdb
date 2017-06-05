@@ -8,7 +8,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.derby.tools.sysinfo;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,7 +30,6 @@ import cn.edu.thu.tsfiledb.qp.exception.QueryProcessorException;
 import cn.edu.thu.tsfiledb.qp.exec.impl.OverflowQPExecutor;
 import cn.edu.thu.tsfiledb.qp.logical.operator.Operator.OperatorType;
 import cn.edu.thu.tsfiledb.qp.logical.operator.RootOperator;
-import cn.edu.thu.tsfiledb.qp.physical.plan.MultiInsertPlan;
 import cn.edu.thu.tsfiledb.qp.physical.plan.PhysicalPlan;
 import cn.edu.thu.tsfiledb.query.aggregation.AggreFuncFactory;
 import cn.edu.thu.tsfiledb.query.aggregation.AggregateFunction;
@@ -152,7 +150,6 @@ public class TSServiceImpl implements TSIService.Iface {
 	}
 
 	@Override
-	// TODO: 这个方法啥意思？
 	public TSCancelOperationResp CancelOperation(TSCancelOperationReq req) throws TException {
 		if (LOGGER.isInfoEnabled())
 			LOGGER.info("tsfile-server TSServiceImpl: receive cancle operation");
@@ -168,11 +165,8 @@ public class TSServiceImpl implements TSIService.Iface {
 			clearAllStatusForCurrentRequest();
 		} catch (NotConsistentException e) {
 			LOGGER.warn("Warning in closeOperation : {}", e.getMessage());
-			// e.printStackTrace();
 		} catch (ProcessorException e) {
-			// TODO Auto-generated catch block
 			LOGGER.error("Error in closeOperation : {}", e.getMessage());
-			e.printStackTrace();
 		}
 		return new TSCloseOperationResp(new TS_Status(TS_StatusCode.SUCCESS_STATUS));
 	}
@@ -311,7 +305,6 @@ public class TSServiceImpl implements TSIService.Iface {
 			for (RootOperator op: opList) {
 				ExecuteUpdateStatement(op);
 			}
-			// TODO Auto-generated method stub
 
 			return getTSBathcExecuteStatementResp(TS_StatusCode.SUCCESS_STATUS, "Execute statements successfully",
 					result);
@@ -325,12 +318,12 @@ public class TSServiceImpl implements TSIService.Iface {
 	@Override
 	public TSExecuteStatementResp ExecuteStatement(TSExecuteStatementReq req) throws TException {
 		try {
-			// 测试代码
-			String sql = req.getStatement();
-			if (sql != null && sql.startsWith("test:")) {
-				return testExecute(req);
-			}
-			// 测试代码（结束）
+//			// only for test
+//			String sql = req.getStatement();
+//			if (sql != null && sql.startsWith("test:")) {
+//				return testExecute(req);
+//			}
+//			// test codes end
 
 			LOGGER.info("tsfile-server ExecuteStatement: Receive execute sql operation,statement {}", req.statement);
 			if (!checkLogin()) {
@@ -464,11 +457,11 @@ public class TSServiceImpl implements TSIService.Iface {
 
 	@Override
 	public TSFetchResultsResp FetchResults(TSFetchResultsReq req) throws TException {
-		// 测试代码
-		if (req.statement.startsWith("test:")) {
-			return testFetchResults(req);
-		}
-		// 测试代码（结束）
+//		// only for test
+//		if (req.statement.startsWith("test:")) {
+//			return testFetchResults(req);
+//		}
+//		// test codes end
 		try {
 			if (!checkLogin()) {
 				return getTSFetchResultsResp(TS_StatusCode.ERROR_STATUS, "Not login.");
@@ -493,7 +486,6 @@ public class TSServiceImpl implements TSIService.Iface {
 			}
 
 			boolean hasResultSet = false;
-			// TODO: 需要和徐毅确认res是否可以这么用
 			QueryDataSet res = new QueryDataSet();
 			if (queryDataSetIterator.hasNext()) {
 				res = queryDataSetIterator.next();
@@ -543,7 +535,9 @@ public class TSServiceImpl implements TSIService.Iface {
 			if (!checkAuthorization(paths, root.getType())) {
 				return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, "No permissions for this operation");
 			}
-			// TODO 是否要添加执行的信息而不是仅仅返回正确或者错误
+			// TODO
+			// In current version, we only return OK/ERROR
+			// Do we need to add extra information of executive condition  
 			boolean execRet;
 			try {
 				execRet = plan.processNonQuery(exec);
@@ -588,7 +582,7 @@ public class TSServiceImpl implements TSIService.Iface {
 			return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, "Statement is a query statement.");
 		}
 
-		// 如果操作是增删改
+		// if operation belongs to add/delete/update
 		PhysicalPlan plan = parser.parseSQLToPhysicalPlan(statement, exec);
 		List<Path> paths = plan.getInvolvedSeriesPaths();
 
@@ -596,7 +590,9 @@ public class TSServiceImpl implements TSIService.Iface {
 			return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, "No permissions for this operation");
 		}
 
-		// TODO 是否要添加执行的信息而不是仅仅返回正确或者错误
+		// TODO 
+		// In current version, we only return OK/ERROR
+		// Do we need to add extra information of executive condition  
 		boolean execRet;
 		try {
 			execRet = parser.nonQuery(root, exec);

@@ -108,22 +108,5 @@ public class Utils {
 		}
 		
 		return tsDynamicOneColumnData;
-	}
-
-//	public static TSJDBCRecord convertRecord(TSRecord record){
-//		TSJDBCRecord tsJDBCRecord = new TSJDBCRecord();
-//		tsJDBCRecord.setDeviceId(record.getRowKey());
-//		tsJDBCRecord.setTimeValue(new TSTimeValue(record.getTime().getTime()));
-//		tsJDBCRecord.setDeviceType(record.getDeviceType());
-//		List<TSDataPoint> dataPoints = new ArrayList<>();
-//		for(DataPoint point : record.getTuple()){
-//			String valueStr = point.getValue() == null ? "null" : point.getValue();
-//			TSDataPoint tsDataPoint = new TSDataPoint(point.getType().toString(),point.getSeriesName(),point.getDeviceId(),valueStr);
-//			tsDataPoint.setGroupId(point.getGroupId());
-//			dataPoints.add(tsDataPoint);
-//		}
-//		tsJDBCRecord.setDataList(dataPoints);
-//		return tsJDBCRecord;
-//	}
-	
+	}	
 }

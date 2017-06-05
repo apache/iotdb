@@ -21,18 +21,11 @@ import cn.edu.thu.tsfiledb.service.rpc.thrift.TSQueryDataSet;
 import cn.edu.thu.tsfiledb.service.rpc.thrift.TS_Status;
 import cn.edu.thu.tsfiledb.service.rpc.thrift.TS_StatusCode;
 
-
-
-
 public class Utils {
 
 	/**
 	 * Parse JDBC connection URL The only supported format of the URL is:
-	 * jdbc:tsfile://localhost:8888/seriesName
-	 *
-	 * @param url
-	 * @return
-	 * @throws TsfileURLException 
+	 * jdbc:tsfile://localhost:8888/seriesNames
 	 */
 	public static TsfileConnectionParams parseURL(String url, Properties info) throws TsfileURLException {
 		TsfileConnectionParams params = new TsfileConnectionParams(url);

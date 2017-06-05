@@ -2,9 +2,7 @@ package cn.edu.thu.tsfiledb.service;
 
 public class JDBCServerConfig {
 	public static final int PORT = 6667;
-	
-//	public static final String TSFILE_DATA_PATH = "writeV2Huge.out";
-	
+		
 	public static final String overflowErrOutput = "overflowErrOutput";
 	public static final String overflowOutput = "overflowOutput";
 	

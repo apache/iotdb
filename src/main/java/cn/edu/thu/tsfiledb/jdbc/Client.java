@@ -1,7 +1,5 @@
 package cn.edu.thu.tsfiledb.jdbc;
 
-import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -17,7 +15,6 @@ public class Client {
 	private static final int MAX_PRINT_ROW_COUNT = 1000;
 	
 	public static void main(String[] args) throws ClassNotFoundException, SQLException {
-		// TODO Auto-generated method stub
 		Class.forName("cn.edu.thu.tsfiledb.jdbc.TsfileDriver");
 		Connection connection = null;
 		ConsoleReader reader = null;

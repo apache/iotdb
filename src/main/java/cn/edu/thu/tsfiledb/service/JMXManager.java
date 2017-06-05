@@ -78,12 +78,12 @@ public class JMXManager {
 		ObjectName mBeanName = new ObjectName("JDBCServerDomain", "type", "JDBCServer");
 		mbs.registerMBean(mbean, mBeanName);
 		connector.start();
-		LOGGER.info("tsfile-service JMXManager: start JMX manager...");
+		LOGGER.info("JMXManager: start JMX manager...");
 	}
 
 	public void close() throws IOException {
 		connector.stop();
-		LOGGER.info("tsfile-service JMXManager: close JMX manager...");
+		LOGGER.info("JMXManager: close JMX manager...");
 	}
 
 	private JMXAuthenticator createJMXAuthenticator() {
@@ -91,7 +91,7 @@ public class JMXManager {
 			public Subject authenticate(Object credentials) {
 				String[] sCredentials = (String[]) credentials;
 				if (null == sCredentials || sCredentials.length != 2) {
-					LOGGER.error("tsfile-service JMXManager: auth info in wrong format!");
+					LOGGER.error("JMXManager: auth info in wrong format!");
 					throw new SecurityException("Authentication failed!");
 				}
 				String userName = sCredentials[0];
@@ -101,7 +101,7 @@ public class JMXManager {
 					principals.add(new JMXPrincipal(userName));
 					return new Subject(true, principals, Collections.EMPTY_SET, Collections.EMPTY_SET);
 				}
-				LOGGER.error("tsfile-service JMXManager: Authentication failed!");
+				LOGGER.error("JMXManager: Authentication failed!");
 				throw new SecurityException("Authentication failed!");
 			}
 		};

@@ -130,7 +130,10 @@ public class TsfileDatabaseMetadata implements DatabaseMetaData {
 
 	@Override
 	public ResultSet getColumns(String catalog, String schemaPattern, String columnPattern, String deltaObjectPattern) throws SQLException {
-		if(deltaObjectPattern != null){
+		// if deltaObjectPattern != null, return all delta object
+	    	// if deltaObjectPattern == null and columnPattern != null, return column schema
+	    	// otherwise return null
+	    	if(deltaObjectPattern != null){
 			if(deltaObjectMap == null){
 				throw new SQLException("No delta object metadata");
 			}
@@ -143,7 +146,7 @@ public class TsfileDatabaseMetadata implements DatabaseMetaData {
 		
 		if(columnPattern != null){
 			if(seriesMap == null){
-				throw new SQLException("No schema  for TsfileDatabaseMetadata");
+				throw new SQLException("No schema for TsfileDatabaseMetadata");
 			}
 			List<ColumnSchema> columnSchemas = seriesMap.get(columnPattern);
 			

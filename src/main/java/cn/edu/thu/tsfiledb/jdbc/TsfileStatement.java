@@ -135,12 +135,7 @@ public class TsfileStatement implements Statement {
 	if (isClosed)
 	    return;
 
-	// if(resultSet != null){
-	// resultSet.close();
-	// resultSet = null;
-	// }else{
 	closeClientOperation();
-	// }
 	client = null;
 	isClosed = true;
     }
