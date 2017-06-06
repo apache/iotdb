@@ -19,7 +19,7 @@ public class TsfileDriver implements Driver {
 		try {
 			java.sql.DriverManager.registerDriver(new TsfileDriver());
 		} catch (SQLException e) {
-			LOGGER.error("Error occurs when resgistering tsfile driver",e);
+			LOGGER.error("Error occurs when resgistering TsFile driver",e);
 		}
 	}
 	

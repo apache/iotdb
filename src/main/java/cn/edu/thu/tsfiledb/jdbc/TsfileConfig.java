@@ -16,10 +16,6 @@ public class TsfileConfig {
 	 * tsfile's default series name
 	 */
 	public static final String DEFAULT_SERIES_NAME = "default";
-
-	public static final String URI_JDBC_PREFIX = "jdbc:";
-
-	public static final String URI_TSFILE_PREFIX = "tsfile:";
 	
 	public static final int DEFAULT_FETCH_SIZE = 1000;
 	

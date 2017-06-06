@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import cn.edu.thu.tsfile.common.exception.UnSupportedDataTypeException;
 import cn.edu.thu.tsfile.timeseries.read.query.DynamicOneColumnData;
 import cn.edu.thu.tsfile.timeseries.read.query.QueryDataSet;
 import cn.edu.thu.tsfiledb.metadata.ColumnSchema;
@@ -53,7 +54,7 @@ public class Utils {
 	}
 	
 	
-	public static TSDynamicOneColumnData convertDynamicOneColumnData(DynamicOneColumnData dynamicOneColumnData){
+	private static TSDynamicOneColumnData convertDynamicOneColumnData(DynamicOneColumnData dynamicOneColumnData){
 		List<Long> timeRetList = new ArrayList<Long>();
 		for(int i = 0 ; i < dynamicOneColumnData.timeLength; i ++){
 				timeRetList.add(dynamicOneColumnData.getTime(i));
@@ -104,7 +105,7 @@ public class Utils {
 			tsDynamicOneColumnData.setBinaryList(byteList);
 			break;
 		default:
-			break;
+		    	throw new UnSupportedDataTypeException(String.format("data type %s is not supported when convert data at server", dynamicOneColumnData.dataType));
 		}
 		
 		return tsDynamicOneColumnData;

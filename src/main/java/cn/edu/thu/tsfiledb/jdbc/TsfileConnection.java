@@ -41,11 +41,8 @@ import cn.edu.thu.tsfiledb.service.rpc.thrift.TSOpenSessionReq;
 import cn.edu.thu.tsfiledb.service.rpc.thrift.TSOpenSessionResp;
 import cn.edu.thu.tsfiledb.service.rpc.thrift.TSProtocolVersion;
 import cn.edu.thu.tsfiledb.service.rpc.thrift.TS_SessionHandle;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class TsfileConnection implements Connection {
-    private static final Logger LOGGER = LoggerFactory.getLogger(TsfileConnection.class);
     private TsfileConnectionParams params;
     private boolean isClosed = true;
     private SQLWarning warningChain = null;
@@ -53,7 +50,6 @@ public class TsfileConnection implements Connection {
     private TSIService.Iface client = null;
     private TS_SessionHandle sessionHandle = null;
     private final List<TSProtocolVersion> supportedProtocols = new LinkedList<TSProtocolVersion>();
-    // private int loginTimeout = 0;
     private TSProtocolVersion protocol;
 
     public TsfileConnection(String url, Properties info) throws SQLException, TTransportException {
@@ -397,7 +393,6 @@ public class TsfileConnection implements Connection {
 	transport = new TSocket(params.getHost(), params.getPort());
 	if (!transport.isOpen()) {
 	    transport.open();
-	    LOGGER.debug("Connect to host {} port {}", params.getHost(), params.getPort());
 	}
     }
 
@@ -428,7 +423,6 @@ public class TsfileConnection implements Connection {
     public boolean reconnect() {
 	boolean flag = false;
 	for (int i = 1; i <= TsfileConfig.RETRY_NUM; i++) {
-	    LOGGER.debug("Try to connect to server for %d times", i);
 	    try {
 		if (transport != null) {
 		    openTransport();

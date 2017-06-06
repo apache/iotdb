@@ -601,7 +601,7 @@ public class TsfileQueryResultSet implements ResultSet {
 	@Override
 	public boolean next() throws SQLException {
 		if(maxRows > 0 && rowsFetched >= maxRows){
-			if(LOGGER.isInfoEnabled()) LOGGER.info("Reach max rows {}", maxRows);
+			LOGGER.info("Reach max rows {}", maxRows);
 			return false;
 		}
 		

@@ -9,6 +9,7 @@ import java.util.Properties;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import cn.edu.thu.tsfile.common.exception.UnSupportedDataTypeException;
 import cn.edu.thu.tsfile.common.utils.Binary;
 import cn.edu.thu.tsfile.file.metadata.enums.TSDataType;
 import cn.edu.thu.tsfile.file.metadata.enums.TSEncoding;
@@ -101,7 +102,7 @@ public class Utils {
 		return queryDataSet;
 	}
 	
-	public static DynamicOneColumnData convertDynamicOneColumnData(TSDynamicOneColumnData tsDynamicOneColumnData){
+	private static DynamicOneColumnData convertDynamicOneColumnData(TSDynamicOneColumnData tsDynamicOneColumnData){
 		TSDataType dataType = TSDataType.valueOf(tsDynamicOneColumnData.getDataType());
 		DynamicOneColumnData dynamicOneColumnData = new DynamicOneColumnData(dataType,true);
 		dynamicOneColumnData.setDeltaObjectType(tsDynamicOneColumnData.getDeviceType());
@@ -148,7 +149,7 @@ public class Utils {
 			}
 			break;			
 		default:
-			break;
+		    	throw new UnSupportedDataTypeException(String.format("data type %s is not supported when convert data at client", dataType));
 		}
 		return dynamicOneColumnData;
 	}
