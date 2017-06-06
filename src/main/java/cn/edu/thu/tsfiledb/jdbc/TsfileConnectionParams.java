@@ -7,7 +7,6 @@ public class TsfileConnectionParams {
     private String seriesName = TsfileConfig.DEFAULT_SERIES_NAME;
     private String username = TsfileConfig.DEFAULT_USER;
     private String password = TsfileConfig.DEFALUT_PASSWORD;
-    private String dbName;
     
     public TsfileConnectionParams(String url){
     	this.jdbcUriString = url;
@@ -49,11 +48,6 @@ public class TsfileConnectionParams {
 	public void setPassword(String password) {
 		this.password = password;
 	}
-	public String getDbName() {
-		return dbName;
-	}
-	public void setDbName(String dbName) {
-		this.dbName = dbName;
-	}
+
 
 }

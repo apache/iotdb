@@ -408,14 +408,13 @@ public class TsfileConnection implements Connection {
 	    // validate connection
 	    Utils.verifySuccess(openResp.getStatus());
 	    if (!supportedProtocols.contains(openResp.getServerProtocolVersion())) {
-		throw new TException("Unsupported tsfile protocol");
+		throw new TException("Unsupported TsFile protocol");
 	    }
 	    setProtocol(openResp.getServerProtocolVersion());
 	    sessionHandle = openResp.getSessionHandle();
 	} catch (TException e) {
 	    throw new SQLException(
-		    String.format("Can not establish connection with %s. because %s", params.getJdbcUriString()),
-		    e.getMessage());
+		    String.format("Can not establish connection with %s. because %s", params.getJdbcUriString()), e.getMessage());
 	}
 	isClosed = false;
     }
@@ -436,6 +435,7 @@ public class TsfileConnection implements Connection {
 		try {
 		    Thread.sleep(TsfileConfig.RETRY_INTERVAL);
 		} catch (InterruptedException e1) {
+		    e.printStackTrace();
 		}
 	    }
 	}
@@ -471,7 +471,7 @@ public class TsfileConnection implements Connection {
 	    } catch (InvocationTargetException e) {
 		// all IFace APIs throw TException
 		if (e.getTargetException() instanceof TException) {
-		    throw (TException) e.getTargetException();
+		    throw e.getTargetException();
 		} else {
 		    // should not happen
 		    throw new TException("Error in calling method " + method.getName(), e.getTargetException());

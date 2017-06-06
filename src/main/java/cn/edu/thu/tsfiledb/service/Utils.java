@@ -13,6 +13,10 @@ import cn.edu.thu.tsfiledb.service.rpc.thrift.TSColumnSchema;
 import cn.edu.thu.tsfiledb.service.rpc.thrift.TSDynamicOneColumnData;
 import cn.edu.thu.tsfiledb.service.rpc.thrift.TSQueryDataSet;
 
+/**
+ * Utils to convert between thrift format and TsFile format
+ *
+ */
 public class Utils {
 	public static Map<String, List<TSColumnSchema>> convertAllSchema(Map<String, List<ColumnSchema>> allSchema){
 		if(allSchema == null){
@@ -29,7 +33,7 @@ public class Utils {
 		return tsAllSchema;
 	}
 	
-	public static TSColumnSchema convertColumnSchema(ColumnSchema schema){
+	private static TSColumnSchema convertColumnSchema(ColumnSchema schema){
 		if(schema == null){
 			return null;
 		}

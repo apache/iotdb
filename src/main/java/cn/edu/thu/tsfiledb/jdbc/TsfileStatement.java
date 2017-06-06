@@ -90,7 +90,7 @@ public class TsfileStatement implements Statement {
 
     @Override
     public void cancel() throws SQLException {
-	checkConnection("cancle");
+	checkConnection("cancel");
 	if (isCancelled)
 	    return;
 	try {
@@ -100,7 +100,7 @@ public class TsfileStatement implements Statement {
 		Utils.verifySuccess(closeResp.getStatus());
 	    }
 	} catch (Exception e) {
-	    throw new SQLException("Error occurs when cancling statement because " + e.getMessage());
+	    throw new SQLException("Error occurs when canceling statement because " + e.getMessage());
 	}
 	isCancelled = true;
     }
@@ -156,10 +156,13 @@ public class TsfileStatement implements Statement {
 		try {
 		    return executeSQL(sql);
 		} catch (TException e2) {
-		    throw new SQLException(String.format("Fail to execute %s after reconnecting. please check server status", sql));
+		    throw new SQLException(
+			    String.format("Fail to execute %s after reconnecting. please check server status", sql));
 		}
 	    } else {
-		throw new SQLException(String.format("Fail to reconnect to server when executing %s. please check server status"), sql);
+		throw new SQLException(
+			String.format("Fail to reconnect to server when executing %s. please check server status"),
+			sql);
 	    }
 	}
     }
@@ -207,7 +210,8 @@ public class TsfileStatement implements Statement {
 		    throw new SQLException("Fail to execute batch sqls after reconnecting. please check server status");
 		}
 	    } else {
-		throw new SQLException("Fail to reconnect to server when executing batch sqls. please check server status");
+		throw new SQLException(
+			"Fail to reconnect to server when executing batch sqls. please check server status");
 	    }
 	}
     }
@@ -241,10 +245,12 @@ public class TsfileStatement implements Statement {
 		try {
 		    return executeQuerySQL(sql);
 		} catch (TException e2) {
-		    throw new SQLException("Fail to executeQuery " + sql + "after reconnecting. please check server status");
+		    throw new SQLException(
+			    "Fail to executeQuery " + sql + "after reconnecting. please check server status");
 		}
 	    } else {
-		throw new SQLException("Fail to reconnect to server when execute query " + sql + ". please check server status");
+		throw new SQLException(
+			"Fail to reconnect to server when execute query " + sql + ". please check server status");
 	    }
 	}
     }
@@ -269,10 +275,12 @@ public class TsfileStatement implements Statement {
 		try {
 		    return executeUpdateSQL(sql);
 		} catch (TException e2) {
-		    throw new SQLException("Fail to execute update " + sql + "after reconnecting. please check server status");
+		    throw new SQLException(
+			    "Fail to execute update " + sql + "after reconnecting. please check server status");
 		}
 	    } else {
-		throw new SQLException("Fail to reconnect to server when execute update " + sql + ". please check server status");
+		throw new SQLException(
+			"Fail to reconnect to server when execute update " + sql + ". please check server status");
 	    }
 	}
     }

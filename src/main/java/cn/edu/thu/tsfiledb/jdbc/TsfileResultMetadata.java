@@ -65,15 +65,7 @@ public class TsfileResultMetadata implements ResultSetMetaData {
 
 	@Override
 	public String getColumnName(int column) throws SQLException {
-		if (columnInfo == null || columnInfo.keySet().size() == 0) {
-			throw new SQLException("No column exists");
-		}
-		for (Map.Entry<String, Integer> entry : columnInfo.entrySet()) {
-			if (entry.getValue().equals(column)) {
-				return entry.getKey();
-			}
-		}
-		throw new SQLException(String.format("column %d does not exist", column));
+		return getColumnLabel(column);
 	}
 
 	@Override

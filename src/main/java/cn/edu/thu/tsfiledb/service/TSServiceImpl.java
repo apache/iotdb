@@ -60,6 +60,9 @@ import cn.edu.thu.tsfiledb.sql.exec.TSqlParserV2;
 import cn.edu.thu.tsfiledb.sys.writeLog.WriteLogManager;
 import cn.edu.thu.tsfiledb.service.rpc.thrift.TSIService;
 
+/**
+ * Thrift RPC implementation at server side
+ */
 public class TSServiceImpl implements TSIService.Iface {
 
 	private WriteLogManager writeLogManager;
@@ -160,7 +163,7 @@ public class TSServiceImpl implements TSIService.Iface {
 		return new TSCloseOperationResp(new TS_Status(TS_StatusCode.SUCCESS_STATUS));
 	}
 
-	public void clearAllStatusForCurrentRequest() {
+	private void clearAllStatusForCurrentRequest() {
 		this.queryRet.get().clear();
 		this.queryStatus.get().clear();
 		// Clear all parameters in last request.
@@ -214,7 +217,7 @@ public class TSServiceImpl implements TSIService.Iface {
 	 * @return true if the statement is ADMIN COMMAND
 	 * @throws IOException
 	 */
-	public boolean execAdminCommand(String statement) throws IOException {
+	private boolean execAdminCommand(String statement) throws IOException {
 		if (!username.get().equals("root")) {
 			return false;
 		}
@@ -459,7 +462,7 @@ public class TSServiceImpl implements TSIService.Iface {
 			} catch (ProcessorException e) {
 				return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
 			}
-			if (execRet && needToBeWritenToLog(plan)) {
+			if (execRet && needToBeWrittenToLog(plan)) {
 				writeLogManager.write(plan);
 			}
 			TS_StatusCode statusCode = execRet ? TS_StatusCode.SUCCESS_STATUS : TS_StatusCode.ERROR_STATUS;
@@ -513,7 +516,7 @@ public class TSServiceImpl implements TSIService.Iface {
 		} catch (ProcessorException e) {
 			return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
 		}
-		if (execRet && needToBeWritenToLog(plan)) {
+		if (execRet && needToBeWrittenToLog(plan)) {
 			try {
 				writeLogManager.write(plan);
 			} catch (PathErrorException e) {
@@ -531,7 +534,7 @@ public class TSServiceImpl implements TSIService.Iface {
 		return resp;
 	}
 
-	private boolean needToBeWritenToLog(PhysicalPlan plan) {
+	private boolean needToBeWrittenToLog(PhysicalPlan plan) {
 		if (plan.getOperatorType() == OperatorType.INSERT) {
 			return false;
 		}

@@ -22,11 +22,15 @@ import cn.edu.thu.tsfiledb.service.rpc.thrift.TSQueryDataSet;
 import cn.edu.thu.tsfiledb.service.rpc.thrift.TS_Status;
 import cn.edu.thu.tsfiledb.service.rpc.thrift.TS_StatusCode;
 
+/**
+ * Utils to convert between thrift format and TsFile format
+ *
+ */
 public class Utils {
 
 	/**
 	 * Parse JDBC connection URL The only supported format of the URL is:
-	 * jdbc:tsfile://localhost:8888/seriesNames
+	 * jdbc:tsfile://localhost:6667/
 	 */
 	public static TsfileConnectionParams parseURL(String url, Properties info) throws TsfileURLException {
 		TsfileConnectionParams params = new TsfileConnectionParams(url);
@@ -77,7 +81,7 @@ public class Utils {
 		return allSchema;
 	}
 	
-	public static ColumnSchema convertColumnSchema(TSColumnSchema tsSchema){
+	private static ColumnSchema convertColumnSchema(TSColumnSchema tsSchema){
 		if(tsSchema == null){
 			return null;
 		}

@@ -11,7 +11,7 @@ import ch.qos.logback.core.joran.spi.JoranException;
 import ch.qos.logback.core.util.StatusPrinter;  
    
 /** 
- * Simple Utility class for loading an external config file for logback 
+ * Simple utility class for loading an external config file for logback 
  */  
 public class LogBackConfigLoader {  
    

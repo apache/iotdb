@@ -18,6 +18,10 @@ import cn.edu.thu.tsfiledb.engine.filenode.FileNodeManager;
 import cn.edu.thu.tsfiledb.service.rpc.thrift.TSIService;
 import cn.edu.thu.tsfiledb.service.rpc.thrift.TSIService.Processor;
 
+/**
+ * A server to handle jdbc request from client.
+ *
+ */
 public class JDBCServer implements JDBCServerMBean {
     private static final Logger LOGGER = LoggerFactory.getLogger(JDBCServer.class);
     private DBdao dBdao;
@@ -30,11 +34,8 @@ public class JDBCServer implements JDBCServerMBean {
     private TThreadPoolServer.Args poolArgs;
     private TServer poolServer;
 
-    // private boolean isMerging;
-
     public JDBCServer() throws TTransportException {
 	isStart = false;
-	// isMerging = false;
     }
 
     @Override
@@ -85,7 +86,6 @@ public class JDBCServer implements JDBCServerMBean {
 	try {
 	    FileNodeManager.getInstance().close();
 	} catch (LRUManagerException e) {
-	    // TODO Auto-generated catch block
 	    e.printStackTrace();
 	}
 
@@ -106,7 +106,7 @@ public class JDBCServer implements JDBCServerMBean {
 	isStart = false;
     }
 
-    class JDBCServerThread implements Runnable {
+    private class JDBCServerThread implements Runnable {
 
 	public JDBCServerThread() throws IOException {
 	    protocolFactory = new TBinaryProtocol.Factory();
@@ -144,7 +144,6 @@ public class JDBCServer implements JDBCServerMBean {
 	try {
 	    FileNodeManager.getInstance().mergeAll();
 	} catch (FileNodeManagerException e) {
-	    // TODO Auto-generated catch block
 	    e.printStackTrace();
 	}
 	LOGGER.info("TsFileDB Server: finish merge operation.");
