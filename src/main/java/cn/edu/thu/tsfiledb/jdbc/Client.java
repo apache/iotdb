@@ -27,7 +27,7 @@ public class Client {
 			String[] argv = new String[argsName.length];
 
 			if (args.length < 3) {
-				System.out.println("Useage : login -host<host> -port<port> -u<username>");
+				System.out.println("Usage : login -host<host> -port<port> -u<username>");
 				System.out.println("e.g. : login -host127.0.0.1 -port6667 -u<UserA>");
 				return;
 			}
@@ -96,7 +96,6 @@ public class Client {
 					String cmd = cmds[i];
 					if (cmd != null && !cmd.trim().equals("")) {
 						Statement statement = connection.createStatement();
-						statement.setFetchSize(500000);
 						try {
 							boolean hasResultSet = statement.execute(cmd.trim());
 							if (hasResultSet) {

@@ -34,12 +34,12 @@ public class Utils {
      */
     public static TsfileConnectionParams parseURL(String url, Properties info) throws TsfileURLException {
 	TsfileConnectionParams params = new TsfileConnectionParams(url);
-	if (url.trim().equalsIgnoreCase(TsfileConfig.TSFILE_URL_PREFIX)) {
+	if (url.trim().equalsIgnoreCase(TsfileJDBCConfig.TSFILE_URL_PREFIX)) {
 	    return params;
 	}
 
 	Pattern pattern = Pattern.compile("([^;]*):([^;]*)/");
-	Matcher matcher = pattern.matcher(url.substring(TsfileConfig.TSFILE_URL_PREFIX.length()));
+	Matcher matcher = pattern.matcher(url.substring(TsfileJDBCConfig.TSFILE_URL_PREFIX.length()));
 	boolean isUrlLegal = false;
 	while (matcher.find()) {
 	    params.setHost(matcher.group(1));
@@ -50,11 +50,11 @@ public class Utils {
 	    throw new TsfileURLException("Error url format, url should be jdbc:tsfile://ip:port/");
 	}
 
-	if (info.containsKey(TsfileConfig.AUTH_USER)) {
-	    params.setUsername(info.getProperty(TsfileConfig.AUTH_USER));
+	if (info.containsKey(TsfileJDBCConfig.AUTH_USER)) {
+	    params.setUsername(info.getProperty(TsfileJDBCConfig.AUTH_USER));
 	}
-	if (info.containsKey(TsfileConfig.AUTH_PASSWORD)) {
-	    params.setPassword(info.getProperty(TsfileConfig.AUTH_PASSWORD));
+	if (info.containsKey(TsfileJDBCConfig.AUTH_PASSWORD)) {
+	    params.setPassword(info.getProperty(TsfileJDBCConfig.AUTH_PASSWORD));
 	}
 
 	return params;

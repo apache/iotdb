@@ -421,7 +421,7 @@ public class TsfileConnection implements Connection {
 
     public boolean reconnect() {
 	boolean flag = false;
-	for (int i = 1; i <= TsfileConfig.RETRY_NUM; i++) {
+	for (int i = 1; i <= TsfileJDBCConfig.RETRY_NUM; i++) {
 	    try {
 		if (transport != null) {
 		    openTransport();
@@ -433,7 +433,7 @@ public class TsfileConnection implements Connection {
 		}
 	    } catch (Exception e) {
 		try {
-		    Thread.sleep(TsfileConfig.RETRY_INTERVAL);
+		    Thread.sleep(TsfileJDBCConfig.RETRY_INTERVAL);
 		} catch (InterruptedException e1) {
 		    e.printStackTrace();
 		}

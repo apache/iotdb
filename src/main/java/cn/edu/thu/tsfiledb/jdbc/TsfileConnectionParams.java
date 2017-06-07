@@ -1,12 +1,12 @@
 package cn.edu.thu.tsfiledb.jdbc;
 
 public class TsfileConnectionParams {
-    private String host = TsfileConfig.TSFILE_DEFAULT_HOST;
-    private int port = TsfileConfig.TSFILE_DEFAULT_PORT;
+    private String host = TsfileJDBCConfig.TSFILE_DEFAULT_HOST;
+    private int port = TsfileJDBCConfig.TSFILE_DEFAULT_PORT;
     private String jdbcUriString;
-    private String seriesName = TsfileConfig.DEFAULT_SERIES_NAME;
-    private String username = TsfileConfig.DEFAULT_USER;
-    private String password = TsfileConfig.DEFALUT_PASSWORD;
+    private String seriesName = TsfileJDBCConfig.DEFAULT_SERIES_NAME;
+    private String username = TsfileJDBCConfig.DEFAULT_USER;
+    private String password = TsfileJDBCConfig.DEFALUT_PASSWORD;
     
     public TsfileConnectionParams(String url){
     	this.jdbcUriString = url;

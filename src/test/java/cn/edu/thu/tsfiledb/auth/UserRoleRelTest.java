@@ -16,8 +16,8 @@ import cn.edu.thu.tsfiledb.auth.dao.UserRoleRelDao;
 import cn.edu.thu.tsfiledb.auth.model.Role;
 import cn.edu.thu.tsfiledb.auth.model.User;
 import cn.edu.thu.tsfiledb.auth.model.UserRoleRel;
-import cn.edu.thu.tsfiledb.conf.TSFileDBConfig;
-import cn.edu.thu.tsfiledb.conf.TSFileDBDescriptor;
+import cn.edu.thu.tsfiledb.conf.TsfileDBConfig;
+import cn.edu.thu.tsfiledb.conf.TsfileDBDescriptor;
 
 public class UserRoleRelTest {
 
@@ -31,7 +31,7 @@ public class UserRoleRelTest {
 	Role role1 = new Role("role1");
 	Role role2 = new Role("role2");
 
-	private TSFileDBConfig config = TSFileDBDescriptor.getInstance().getConfig();
+	private TsfileDBConfig config = TsfileDBDescriptor.getInstance().getConfig();
 	
 	@Before
 	public void setUp() throws Exception {

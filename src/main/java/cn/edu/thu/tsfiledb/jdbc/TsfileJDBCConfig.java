@@ -1,6 +1,6 @@
 package cn.edu.thu.tsfiledb.jdbc;
 
-public class TsfileConfig {
+public class TsfileJDBCConfig {
 	/**
 	 * The required prefix for the connection URL.
 	 */
@@ -16,9 +16,7 @@ public class TsfileConfig {
 	 * tsfile's default series name
 	 */
 	public static final String DEFAULT_SERIES_NAME = "default";
-	
-	public static final int DEFAULT_FETCH_SIZE = 1000;
-	
+		
 	public static final String AUTH_USER = "user";
 	public static final String DEFAULT_USER = "user";
 	

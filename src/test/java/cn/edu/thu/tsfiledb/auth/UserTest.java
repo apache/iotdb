@@ -12,8 +12,8 @@ import org.junit.Test;
 import cn.edu.thu.tsfiledb.auth.dao.DBdao;
 import cn.edu.thu.tsfiledb.auth.dao.UserDao;
 import cn.edu.thu.tsfiledb.auth.model.User;
-import cn.edu.thu.tsfiledb.conf.TSFileDBConfig;
-import cn.edu.thu.tsfiledb.conf.TSFileDBDescriptor;
+import cn.edu.thu.tsfiledb.conf.TsfileDBConfig;
+import cn.edu.thu.tsfiledb.conf.TsfileDBDescriptor;
 import cn.edu.thu.tsfiledb.engine.overflow.io.EngineTestHelper;
 
 public class UserTest {
@@ -25,7 +25,7 @@ public class UserTest {
 	private String userName = "testuser";
 	private String passWord = "password";
 	private User user = new User(userName, passWord);
-	private TSFileDBConfig config = TSFileDBDescriptor.getInstance().getConfig();
+	private TsfileDBConfig config = TsfileDBDescriptor.getInstance().getConfig();
 	
 	/**
 	 * @throws Exception
