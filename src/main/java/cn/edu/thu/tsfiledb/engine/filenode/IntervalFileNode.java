@@ -55,26 +55,6 @@ public class IntervalFileNode implements Serializable {
 		} else {
 			overflowChangeType = OverflowChangeType.CHANGED;
 		}
-
-		// switch (overflowChangeType) {
-		// case NO_CHANGE:
-		// if (fileNodeProcessorState == MERGING_WRITE)
-		// overflowChangeType = OverflowChangeType.MERGING_CHANGE;
-		// else
-		// overflowChangeType = OverflowChangeType.CHANGED;
-		// return true;
-		// case CHANGED:
-		// if (fileNodeProcessorState == MERGING_WRITE) {
-		// overflowChangeType = OverflowChangeType.MERGING_CHANGE;
-		// return true;
-		// }
-		// return false;
-		// case MERGING_CHANGE:
-		// return false;
-		// default:
-		// throw new
-		// UnsupportedOperationException(overflowChangeType.toString());
-		// }
 	}
 
 	public boolean changeTypeToUnChanged() {
