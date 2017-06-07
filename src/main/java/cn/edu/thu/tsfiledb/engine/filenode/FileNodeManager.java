@@ -2,7 +2,6 @@ package cn.edu.thu.tsfiledb.engine.filenode;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -127,7 +126,7 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 			throws LRUManagerException {
 	}
 
-	public void ManagerRecovery() {
+	public void managerRecovery() {
 
 		try {
 			List<String> nsPaths = mManager.getAllFileNames();
@@ -171,13 +170,13 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 			}
 			throw new FileNodeManagerException(e);
 		}
-		long lastUpdataTime = fileNodeProcessor.getLastUpdateTime();
+		long lastUpdateTime = fileNodeProcessor.getLastUpdateTime();
 		LOGGER.debug("Get the FileNodeProcessor: {}, the last update time is: {}, the record time is: {}",
-				fileNodeProcessor.getNameSpacePath(), lastUpdataTime, timestamp);
+				fileNodeProcessor.getNameSpacePath(), lastUpdateTime, timestamp);
 		LOGGER.debug("Insert record is {}", tsRecord);
 		int insertType = 0;
 		String nameSpacePath = fileNodeProcessor.getNameSpacePath();
-		if (timestamp <= lastUpdataTime) {
+		if (timestamp <= lastUpdateTime) {
 			Map<String, Object> parameters = new HashMap<>();
 			parameters.put(FileNodeConstants.OVERFLOW_BACKUP_MANAGER_ACTION, overflowBackUpAction);
 			parameters.put(FileNodeConstants.OVERFLOW_FLUSH_MANAGER_ACTION, overflowFlushAction);

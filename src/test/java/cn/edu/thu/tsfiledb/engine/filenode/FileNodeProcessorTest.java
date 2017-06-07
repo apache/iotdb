@@ -428,6 +428,32 @@ public class FileNodeProcessorTest {
 	}
 
 	@Test
+	public void testQueryToken() {
+		try {
+			processor = new FileNodeProcessor(tsdbconfig.FileNodeDir, deltaObjectId, parameters);
+			processor.writeLock();
+			int token = processor.addMultiPassLock();
+			assertEquals(0, token);
+			assertEquals(false, processor.canBeClosed());
+			processor.removeMultiPassLock(token);
+			assertEquals(true, processor.canBeClosed());
+
+			token = processor.addMultiPassLock();
+			assertEquals(0, token);
+			int token2 = processor.addMultiPassLock();
+			assertEquals(1, token2);
+			processor.removeMultiPassLock(token2);
+			assertEquals(false, processor.canBeClosed());
+			processor.removeMultiPassLock(token);
+			processor.close();
+		} catch (FileNodeProcessorException e) {
+			e.printStackTrace();
+			fail(e.getMessage());
+		}
+
+	}
+
+	@Test
 	public void testRecoveryBufferFile() {
 
 		try {

@@ -9,9 +9,9 @@ import cn.edu.thu.tsfile.timeseries.read.query.DynamicOneColumnData;
 /**
  * This is a structure for a query result.<br>
  * The result of query contains four parts.<br>
- * The first part is data in bufferwrite in index<br>
- * The second part is data in bufferwrite in rowgroups<br>
- * The third part is data in all file closed<br>
+ * The first part is data in memory of bufferwrite<br>
+ * The second part is data in file which is not closed<br>
+ * The third part is data in file which is not closed<br>
  * The fourth part is data in overflow<br>
  * 
  * @author liukun

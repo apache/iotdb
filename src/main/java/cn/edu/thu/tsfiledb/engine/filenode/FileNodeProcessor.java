@@ -962,21 +962,23 @@ public class FileNodeProcessor extends LRUProcessor {
 
 	@Override
 	public boolean canBeClosed() {
-		if (isMerging == FileNodeProcessorStatus.NONE && newMultiPassLock.writeLock().tryLock()) {
-			if (oldMultiPassLock != null) {
+		if (isMerging == FileNodeProcessorStatus.NONE) {
+			if (newMultiPassLock.writeLock().tryLock()) {
 				try {
-					if (oldMultiPassLock.writeLock().tryLock()) {
-						try {
-							return true;
-						} finally {
-							oldMultiPassLock.writeLock().unlock();
+					if (oldMultiPassLock != null) {
+						if (oldMultiPassLock.writeLock().tryLock()) {
+							try {
+								return true;
+							} finally {
+								oldMultiPassLock.writeLock().unlock();
+							}
 						}
+					} else {
+						return true;
 					}
 				} finally {
 					newMultiPassLock.writeLock().unlock();
 				}
-			} else {
-				return true;
 			}
 		}
 		return false;
