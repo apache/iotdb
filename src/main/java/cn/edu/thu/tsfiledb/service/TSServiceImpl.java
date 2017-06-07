@@ -83,7 +83,6 @@ public class TSServiceImpl implements TSIService.Iface {
 		PhysicalPlan plan;
 		WriteLogManager.isRecovering = true;
 		while ((plan = writeLogManager.getPhysicalPlan()) != null) {
-//			System.out.println(cnt + " : " + ((MultiInsertPlan)plan).getDeltaObject() + "| " + ((MultiInsertPlan)plan).getTime());
 			try {
 				plan.processNonQuery(exec);
 				cnt++;
@@ -107,7 +106,6 @@ public class TSServiceImpl implements TSIService.Iface {
 		} catch (AuthException e) {
 			status = false;
 		}
-		// boolean status = true;
 		TS_Status ts_status;
 		if (status) {
 			ts_status = new TS_Status(TS_StatusCode.SUCCESS_STATUS);
@@ -335,7 +333,6 @@ public class TSServiceImpl implements TSIService.Iface {
 			RootOperator root = parser.parseSQLToOperator(statement);
 
 			List<Path> paths = null;
-			// paths = ((SFWOperator) root).getSelSeriesPaths(exec);
 			PhysicalPlan plan = parser.parseSQLToPhysicalPlan(statement, exec);
 			paths = plan.getInvolvedSeriesPaths();
 

@@ -10,7 +10,7 @@ public class TsfileJDBCConfig {
 	/**
 	 * If host is provided, without a port.
 	 */
-	public static final int TSFILE_DEFAULT_PORT = 8888;
+	public static final int TSFILE_DEFAULT_PORT = 6667;
 
 	/**
 	 * tsfile's default series name

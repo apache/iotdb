@@ -253,6 +253,6 @@ public class TsfileMetadataResultSet extends TsfileQueryResultSet {
 	}
 
 	private enum MetadataType{
-		DELTA_OBJECT, COLUMN;
+		DELTA_OBJECT, COLUMN
 	}
 }
