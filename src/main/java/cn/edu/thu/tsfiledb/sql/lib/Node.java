@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package cn.edu.thu.tsfiledb.sql.lib;
+package cn.edu.thu.tsfiledb.sql.parse;
 
 import java.util.List;
 
