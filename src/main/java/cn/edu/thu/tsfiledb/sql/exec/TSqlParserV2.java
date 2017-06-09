@@ -24,7 +24,6 @@ import cn.edu.thu.tsfiledb.qp.logical.optimizer.filter.MergeSingleFilterOptimize
 import cn.edu.thu.tsfiledb.qp.logical.optimizer.filter.RemoveNotOptimizer;
 import cn.edu.thu.tsfiledb.qp.physical.optimizer.IPhysicalOptimizer;
 import cn.edu.thu.tsfiledb.qp.physical.optimizer.NonePhycicalOptimizer;
-import cn.edu.thu.tsfiledb.qp.physical.optimizer.UnionTableOptimizer;
 import cn.edu.thu.tsfiledb.qp.physical.plan.PhysicalPlan;
 import cn.edu.thu.tsfiledb.sql.parse.ASTNode;
 import cn.edu.thu.tsfiledb.sql.parse.ParseException;
@@ -169,20 +168,10 @@ public class TSqlParserV2 {
      * @return
      */
     private PhysicalPlan physicalOptimize(PhysicalPlan origin, QueryProcessExecutor conf) {
-        String tableSchema = (String) conf.getParameter(QueryConstant.TABLE_SCHEMA);
-        if (tableSchema != null) {
-            IPhysicalOptimizer physics;
-            switch (tableSchema) {
-                case QueryConstant.UNION_TABLE:
-                    physics = new UnionTableOptimizer();
-                    break;
-                default:
-                    physics = new NonePhycicalOptimizer();
-            }
-            return physics.transform(origin, conf);
-        } else
-            return origin;
 
+            IPhysicalOptimizer physics = new NonePhycicalOptimizer();
+
+            return physics.transform(origin, conf);
     }
 
     /**

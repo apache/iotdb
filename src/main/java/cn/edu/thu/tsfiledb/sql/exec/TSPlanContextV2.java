@@ -18,8 +18,8 @@ import cn.edu.thu.tsfiledb.qp.logical.operator.metadata.MetadataOperator;
 import cn.edu.thu.tsfiledb.qp.logical.operator.metadata.PropertyOperator;
 import cn.edu.thu.tsfiledb.qp.logical.operator.metadata.MetadataOperator.NamespaceType;
 import cn.edu.thu.tsfiledb.qp.logical.operator.metadata.PropertyOperator.PropertyType;
-import cn.edu.thu.tsfiledb.sql.lib.Node;
 import cn.edu.thu.tsfiledb.sql.parse.ASTNode;
+import cn.edu.thu.tsfiledb.sql.parse.Node;
 import cn.edu.thu.tsfiledb.sql.parse.TSParser;
 
 import org.antlr.runtime.Token;

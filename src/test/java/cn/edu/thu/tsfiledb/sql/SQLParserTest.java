@@ -1,7 +1,7 @@
 package cn.edu.thu.tsfiledb.sql;
 
-import cn.edu.thu.tsfiledb.sql.lib.Node;
 import cn.edu.thu.tsfiledb.sql.parse.ASTNode;
+import cn.edu.thu.tsfiledb.sql.parse.Node;
 import cn.edu.thu.tsfiledb.sql.parse.ParseException;
 import cn.edu.thu.tsfiledb.sql.parse.ParseUtils;
 import org.antlr.runtime.RecognitionException;
