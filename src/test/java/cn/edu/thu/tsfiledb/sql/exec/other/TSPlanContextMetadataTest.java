@@ -2,8 +2,8 @@ package cn.edu.thu.tsfiledb.sql.exec.other;
 
 import cn.edu.thu.tsfile.timeseries.read.qp.Path;
 import cn.edu.thu.tsfiledb.qp.exception.QueryProcessorException;
-import cn.edu.thu.tsfiledb.qp.logical.operator.metadata.MetadataOperator;
-import cn.edu.thu.tsfiledb.qp.logical.operator.metadata.MetadataOperator.NamespaceType;
+import cn.edu.thu.tsfiledb.qp.logical.operator.root.metadata.MetadataOperator;
+import cn.edu.thu.tsfiledb.qp.logical.operator.root.metadata.MetadataOperator.NamespaceType;
 import cn.edu.thu.tsfiledb.qp.physical.plan.metadata.MetadataPlan;
 import cn.edu.thu.tsfiledb.sql.exec.TSqlParserV2;
 import org.antlr.runtime.RecognitionException;
@@ -74,7 +74,7 @@ public class TSPlanContextMetadataTest extends TSqlParserV2 {
         assertEquals(dataType, plan.getDataType());
         assertEquals(encoding, plan.getEncoding());
         assertArrayEquals(encodingArgs, plan.getEncodingArgs());
-        assertArrayEquals(paths, plan.getInvolvedSeriesPaths().toArray());
+        assertArrayEquals(paths, plan.getPaths().toArray());
 
     }
 

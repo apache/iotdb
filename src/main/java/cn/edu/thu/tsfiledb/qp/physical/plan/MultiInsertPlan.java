@@ -5,15 +5,10 @@ import java.util.List;
 
 import cn.edu.thu.tsfile.common.exception.ProcessorException;
 import cn.edu.thu.tsfile.timeseries.read.qp.Path;
-import cn.edu.thu.tsfiledb.qp.exec.QueryProcessExecutor;
+import cn.edu.thu.tsfiledb.qp.executor.QueryProcessExecutor;
 import cn.edu.thu.tsfiledb.qp.logical.operator.Operator.OperatorType;
 
-/**
- * given a insert plan and construct a {@code InsertPlan}
- * 
- * @author kangrong
- *
- */
+
 public class MultiInsertPlan extends PhysicalPlan {
 	private String deltaObject;
 	private List<String> measurementList;
@@ -61,16 +56,11 @@ public class MultiInsertPlan extends PhysicalPlan {
     }
 
     @Override
-    public List<Path> getInvolvedSeriesPaths() {
+    public List<Path> getPaths() {
         List<Path> ret = new ArrayList<>();
         
         for(String m : measurementList){
-        	StringBuilder sb = new StringBuilder();
-        	sb.append(deltaObject);
-        	sb.append(".");
-        	sb.append(m);
-        	Path p = new Path(sb.toString());
-        	ret.add(p);
+        	ret.add(new Path(deltaObject + "." + m));
         }
         return ret;
     }

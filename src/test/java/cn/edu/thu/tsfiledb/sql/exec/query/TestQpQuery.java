@@ -5,7 +5,7 @@ import cn.edu.thu.tsfile.timeseries.read.qp.Path;
 import cn.edu.thu.tsfile.timeseries.read.query.QueryDataSet;
 import cn.edu.thu.tsfile.timeseries.utils.StringContainer;
 import cn.edu.thu.tsfiledb.qp.exception.QueryProcessorException;
-import cn.edu.thu.tsfiledb.qp.logical.operator.RootOperator;
+import cn.edu.thu.tsfiledb.qp.logical.operator.root.RootOperator;
 import cn.edu.thu.tsfiledb.sql.exec.TSqlParserV2;
 import cn.edu.thu.tsfiledb.sql.exec.utils.MemIntQpExecutor;
 import org.antlr.runtime.RecognitionException;
@@ -35,19 +35,15 @@ import static org.junit.Assert.fail;
 public class TestQpQuery {
     private static final Logger LOG = LoggerFactory.getLogger(TestQpQuery.class);
     private MemIntQpExecutor exec = new MemIntQpExecutor();
-    private Path path1;
-    private Path path2;
 
     @Before
     public void before() {
-        path1 =
-                new Path(new StringContainer(
-                        new String[] {"root", "laptop", "device_1", "sensor_1"},
-                        SystemConstant.PATH_SEPARATOR));
-        path2 =
-                new Path(new StringContainer(
-                        new String[] {"root", "laptop", "device_1", "sensor_2"},
-                        SystemConstant.PATH_SEPARATOR));
+        Path path1 = new Path(new StringContainer(
+                new String[]{"root", "laptop", "device_1", "sensor_1"},
+                SystemConstant.PATH_SEPARATOR));
+        Path path2 = new Path(new StringContainer(
+                new String[]{"root", "laptop", "device_1", "sensor_2"},
+                SystemConstant.PATH_SEPARATOR));
         for (int i = 1; i <= 10; i++) {
             exec.insert(path1, i * 20, Integer.toString(i * 20 + 1));
             exec.insert(path2, i * 50, Integer.toString(i * 50 + 2));
@@ -58,16 +54,6 @@ public class TestQpQuery {
     public static Collection<Object[]> data() {
         return Arrays
                 .asList(new Object[][] {
-                        // test basic
-//                        {
-//                                "select device_1.sensor_1,root.laptop.device_1.sensor_2 from root.laptop where (root.laptop.device_1.sensor_2 >= 40 and "
-//                                        + "device_1.sensor_2 < 120) or (device_1.sensor_1 >= 20 and device_1.sensor_1 <= 40)",
-//                                new String[] {
-//                                        "20, <root.laptop.device_1.sensor_1,21> <root.laptop.device_1.sensor_2,null> ",
-//                                        "50, <root.laptop.device_1.sensor_1,null> <root.laptop.device_1.sensor_2,52> ",
-//                                        "100, <root.laptop.device_1.sensor_1,101> <root.laptop.device_1.sensor_2,102> "},
-//                                null},
-
                         // test time,
                         {
                                 "select sensor_1,sensor_2 from root.laptop.device_1 where time <= 51",
@@ -104,7 +90,7 @@ public class TestQpQuery {
 //                                        + "where time <= 20 and (sensor_1 >= 60 or sensor_1 <= 110)",
 //                                new String[] {"20, <root.laptop.device_1.sensor_1,21> <root.laptop.device_1.sensor_2,null> "},
 //                                null},
-//                        // test DNF2
+                        // test DNF2
 //                        {
 //
 //                                "select sensor_1,sensor_2 "

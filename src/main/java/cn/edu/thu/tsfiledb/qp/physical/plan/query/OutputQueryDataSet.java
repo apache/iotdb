@@ -4,7 +4,6 @@ import cn.edu.thu.tsfile.timeseries.read.query.QueryDataSet;
 import cn.edu.thu.tsfile.timeseries.read.readSupport.RowRecord;
 
 /**
- * This class extends {@link cn.edu.thu.tsfiledb.read.query.QueryDataSet}.<br>
  * This getIndex data set is used for getIndex processing. getIndex processing merges a list of QueryDataSet
  * and construct a new OutputQueryDataSet by adding {@code RowRecord}. This class provides two
  * methods for caller {@code getNextRecord} and {@code hasNextRecord} just same as

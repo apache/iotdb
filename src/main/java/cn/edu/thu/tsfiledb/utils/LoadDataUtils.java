@@ -1,12 +1,8 @@
 package cn.edu.thu.tsfiledb.utils;
 
-import org.apache.derby.tools.sysinfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import cn.edu.thu.tsfile.common.conf.TSFileConfig;
-import cn.edu.thu.tsfile.common.conf.TSFileDescriptor;
-import cn.edu.thu.tsfile.common.exception.ProcessorException;
 import cn.edu.thu.tsfile.timeseries.utils.FileUtils;
 import cn.edu.thu.tsfile.timeseries.utils.RecordUtils;
 import cn.edu.thu.tsfile.timeseries.write.record.TSRecord;

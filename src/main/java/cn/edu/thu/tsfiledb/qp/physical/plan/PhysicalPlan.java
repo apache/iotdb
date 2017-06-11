@@ -5,9 +5,9 @@ import java.util.List;
 
 import cn.edu.thu.tsfile.common.exception.ProcessorException;
 import cn.edu.thu.tsfile.timeseries.read.query.QueryDataSet;
-import cn.edu.thu.tsfiledb.qp.exception.physical.plan.PhysicalPlanException;
 import cn.edu.thu.tsfile.timeseries.read.qp.Path;
-import cn.edu.thu.tsfiledb.qp.exec.QueryProcessExecutor;
+import cn.edu.thu.tsfiledb.qp.exception.QueryProcessorException;
+import cn.edu.thu.tsfiledb.qp.executor.QueryProcessExecutor;
 import cn.edu.thu.tsfiledb.qp.logical.operator.Operator.OperatorType;
 
 /**
@@ -27,32 +27,19 @@ public abstract class PhysicalPlan {
         this.operatorType = operatorType;
     }
 
-    /**
-     * input a getIndex processing config and process the getIndex
-     * 
-     * @param config
-     * @return
-     */
-    public Iterator<QueryDataSet> processQuery(QueryProcessExecutor config) {
+    public Iterator<QueryDataSet> processQuery(QueryProcessExecutor executor) throws QueryProcessorException {
         throw new UnsupportedOperationException();
     }
 
-    /**
-     * input a getIndex processing config and process insert/update/delete
-     * 
-     * @param config
-     * @return
-     * @throws PhysicalPlanException
-     */
     public boolean processNonQuery(QueryProcessExecutor config) throws ProcessorException {
         throw new UnsupportedOperationException();
     }
 
     public String printQueryPlan() {
-        return "";
+        return "abstract plan";
     }
 
-    public abstract List<Path> getInvolvedSeriesPaths();
+    public abstract List<Path> getPaths();
 
     public boolean isQuery(){
         return isQuery;

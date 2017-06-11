@@ -1,27 +1,26 @@
 package cn.edu.thu.tsfiledb.qp.physical.plan.query;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Set;
 
+import cn.edu.thu.tsfiledb.qp.exception.QueryProcessorException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import cn.edu.thu.tsfile.timeseries.read.query.QueryDataSet;
 import cn.edu.thu.tsfile.timeseries.utils.StringContainer;
 import cn.edu.thu.tsfile.timeseries.read.qp.Path;
-import cn.edu.thu.tsfiledb.qp.exec.QueryProcessExecutor;
+import cn.edu.thu.tsfiledb.qp.executor.QueryProcessExecutor;
 import cn.edu.thu.tsfiledb.qp.logical.operator.Operator.OperatorType;
 import cn.edu.thu.tsfiledb.qp.physical.plan.PhysicalPlan;
 
 /**
- * {@code MergeQuerySetPlan} is used in multi-pass getIndex plan. Multi-pass means it's a disjunction
- * among a list of single getIndex. {@code MergeQuerySetPlan} return a {@code Iterator<QueryDataSet>}
- * provided by {@code SeriesSelectPlan} for one-pass getIndex, or a {@code MergeQuerySetIterator} for
- * multi-pass getIndex.
+ * {@code MergeQuerySetPlan} is used in multi-pass SeriesSelectPlan. Multi-pass means it's a disjunction
+ * among a list of SeriesSelectPlans. {@code MergeQuerySetPlan} return a {@code Iterator<QueryDataSet>}
+ * provided by {@code SeriesSelectPlan} for one-pass SeriesSelectPlan, or a {@code MergeQuerySetIterator} for
+ * multi-pass SeriesSelectPlans.
  * 
  * @see cn.edu.thu.tsfiledb.qp.physical.plan.query.SeriesSelectPlan
  * @author kangrong
@@ -29,10 +28,10 @@ import cn.edu.thu.tsfiledb.qp.physical.plan.PhysicalPlan;
  */
 public class MergeQuerySetPlan extends PhysicalPlan {
     private static Logger LOG = LoggerFactory.getLogger(MergeQuerySetPlan.class);
-    protected List<SeriesSelectPlan> selectPlans;
+    private List<SeriesSelectPlan> seriesSelectPlans;
     
-    public List<SeriesSelectPlan> getSelectPlans() {
-        return selectPlans;
+    public List<SeriesSelectPlan> getSeriesSelectPlans() {
+        return seriesSelectPlans;
     }
 
     public MergeQuerySetPlan(ArrayList<SeriesSelectPlan> selectPlans) {
@@ -40,42 +39,41 @@ public class MergeQuerySetPlan extends PhysicalPlan {
         if (selectPlans == null || selectPlans.isEmpty()) {
             LOG.error("cannot input an null or empty plan list into QuerySetMergePlan! ");
         }
-        this.selectPlans = selectPlans;
+        this.seriesSelectPlans = selectPlans;
     }
 
-    public void setSelectPlans(List<SeriesSelectPlan> selectPlans) {
-        this.selectPlans = selectPlans;
+    public void setSeriesSelectPlans(List<SeriesSelectPlan> seriesSelectPlans) {
+        this.seriesSelectPlans = seriesSelectPlans;
     }
 
     @Override
-    public Iterator<QueryDataSet> processQuery(QueryProcessExecutor conf) {
-        if (selectPlans.size() == 1)
-            // return new SingleQuerySetIterator(conf, selectPlans[0]);
-            return selectPlans.get(0).processQuery(conf);
+    public Iterator<QueryDataSet> processQuery(QueryProcessExecutor executor) throws QueryProcessorException {
+        if (seriesSelectPlans.size() == 1)
+            // return new SingleQuerySetIterator(conf, seriesSelectPlans[0]);
+            return seriesSelectPlans.get(0).processQuery(executor);
         else
-            return new MergeQuerySetIterator(selectPlans, conf.getFetchSize(), conf);
+            return new MergeQuerySetIterator(seriesSelectPlans, executor.getFetchSize(), executor);
     }
 
     @Override
     public String printQueryPlan() {
-        // LOG.info("show getIndex plan:");
         StringContainer sc = new StringContainer("\n");
-        for (int i = 0; i < selectPlans.size(); i++) {
+        for (int i = 0; i < seriesSelectPlans.size(); i++) {
             sc.addTail("showing series plan:" + i);
-            sc.addTail(selectPlans.get(i).printQueryPlan());
+            sc.addTail(seriesSelectPlans.get(i).printQueryPlan());
         }
         return sc.toString();
     }
     
     @Override
-    public List<Path> getInvolvedSeriesPaths() {
-        if(selectPlans == null || selectPlans.size() == 0)
-            return new ArrayList<Path>();
+    public List<Path> getPaths() {
+        if(seriesSelectPlans == null || seriesSelectPlans.size() == 0)
+            return new ArrayList<>();
         else{
         	List<Path> ret = new ArrayList<>();
          	LinkedHashMap<Path,Integer> pathMap = new LinkedHashMap<>();
-            for (SeriesSelectPlan series : selectPlans) {
-            	for(Path p : series.getInvolvedSeriesPaths()){
+            for (SeriesSelectPlan series : seriesSelectPlans) {
+            	for(Path p : series.getPaths()){
             		if(!pathMap.containsKey(p)){
             			pathMap.put(p, 1);
             			ret.add(p);

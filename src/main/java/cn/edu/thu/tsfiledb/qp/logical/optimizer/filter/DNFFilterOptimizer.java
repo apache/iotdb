@@ -11,18 +11,17 @@ import org.slf4j.LoggerFactory;
 
 import cn.edu.thu.tsfiledb.qp.exception.logical.optimize.DNFOptimizeException;
 import cn.edu.thu.tsfiledb.qp.exception.logical.optimize.LogicalOptimizeException;
-import cn.edu.thu.tsfiledb.qp.logical.operator.crud.FilterOperator;
+import cn.edu.thu.tsfiledb.qp.logical.operator.clause.filter.FilterOperator;
 
 public class DNFFilterOptimizer implements IFilterOptimizer {
     private static final Logger LOG = LoggerFactory.getLogger(DNFFilterOptimizer.class);
-
 
     /**
      * get DNF(disjunctive normal form) for this filter operator tree. Before getDNF, this op tree
      * must be binary, in another word, each non-leaf node has exactly two children.
      * 
-     * @return
-     * @throws LogicalOptimizeException
+     * @return FilterOperator optimized operator
+     * @throws LogicalOptimizeException exception in DNF optimize
      */
     @Override
     public FilterOperator optimize(FilterOperator filter) throws LogicalOptimizeException {
@@ -66,7 +65,7 @@ public class DNFFilterOptimizer implements IFilterOptimizer {
                 throw new DNFOptimizeException("get DNF failed, this tokenType is:"
                         + filter.getTokenIntType());
         }
-        filter.setChildrenList(newChildrenList);
+        filter.setChildren(newChildrenList);
         return filter;
     }
 
@@ -82,11 +81,11 @@ public class DNFFilterOptimizer implements IFilterOptimizer {
      */
     private FilterOperator mergeToConjunction(FilterOperator a, FilterOperator b)
             throws DNFOptimizeException {
-        List<FilterOperator> retChildrenList = new ArrayList<FilterOperator>();
+        List<FilterOperator> retChildrenList = new ArrayList<>();
         addChildOpInAnd(a, retChildrenList);
         addChildOpInAnd(b, retChildrenList);
         FilterOperator ret = new FilterOperator(KW_AND, false);
-        ret.setChildrenList(retChildrenList);
+        ret.setChildren(retChildrenList);
         return ret;
     }
 
@@ -104,7 +103,7 @@ public class DNFFilterOptimizer implements IFilterOptimizer {
                 return child.getChildren();
             default:
                 // other token type means leaf node or and
-                List<FilterOperator> ret = new ArrayList<FilterOperator>();
+                List<FilterOperator> ret = new ArrayList<>();
                 ret.add(child);
                 return ret;
         }

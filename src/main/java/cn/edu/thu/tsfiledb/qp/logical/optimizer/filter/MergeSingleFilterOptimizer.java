@@ -9,7 +9,7 @@ import org.slf4j.LoggerFactory;
 
 import cn.edu.thu.tsfiledb.qp.exception.logical.optimize.MergeFilterException;
 import cn.edu.thu.tsfile.timeseries.read.qp.Path;
-import cn.edu.thu.tsfiledb.qp.logical.operator.crud.FilterOperator;
+import cn.edu.thu.tsfiledb.qp.logical.operator.clause.filter.FilterOperator;
 
 public class MergeSingleFilterOptimizer implements IFilterOptimizer {
     Logger LOG = LoggerFactory.getLogger(MergeSingleFilterOptimizer.class);
@@ -33,15 +33,15 @@ public class MergeSingleFilterOptimizer implements IFilterOptimizer {
      * if all recursive children of this node have same path, set this node to single node, and
      * return the same path, otherwise, throw exception;
      * 
-     * @param children - children is not empty.
+     * @param filter - children is not empty.
      * 
      * @return - if all recursive children of this node have same path, set this node to single
      *         node, and return the same path, otherwise, throw exception;
      */
-    public Path mergeSamePathFilter(FilterOperator src) throws MergeFilterException {
-        if (src.isLeaf())
-            return src.getSinglePath();
-        List<FilterOperator> children = src.getChildren();
+    private Path mergeSamePathFilter(FilterOperator filter) throws MergeFilterException {
+        if (filter.isLeaf())
+            return filter.getSinglePath();
+        List<FilterOperator> children = filter.getChildren();
         if (children.isEmpty()) {
             throw new MergeFilterException("this inner filter has no children!");
         }
@@ -52,33 +52,33 @@ public class MergeSingleFilterOptimizer implements IFilterOptimizer {
         Path tempPath;
         for (int i = 1; i < children.size(); i++) {
             tempPath = mergeSamePathFilter(children.get(i));
-            // if one of children differs with others or is not single node(path = null), src's path
+            // if one of children differs from others or is not single node(path = null), filter's path
             // is null
-            if (tempPath != null && !tempPath.equals(childPath))
+            if (tempPath == null || !tempPath.equals(childPath))
                 childPath = null;
         }
         if (childPath != null) {
-            src.setIsSingle(true);
-            src.setSinglePath(childPath.clone());
+            filter.setIsSingle(true);
+            filter.setSinglePath(childPath);
             return childPath;
         }
-        // extract same node
+
+        // make same paths close
         Collections.sort(children);
-        List<FilterOperator> ret = new ArrayList<FilterOperator>();
+        List<FilterOperator> ret = new ArrayList<>();
 
         List<FilterOperator> tempExtrNode = null;
         int i;
         for (i = 0; i < children.size(); i++) {
             tempPath = children.get(i).getSinglePath();
-            // sorted by path, all "null" paths are at last
+            // sorted by path, all "null" paths are in the end
             if (tempPath == null) {
-                // childPath = null;
                 break;
             }
             if (childPath == null) {
-                // first child to be add
+                // first child to be added
                 childPath = tempPath;
-                tempExtrNode = new ArrayList<FilterOperator>();
+                tempExtrNode = new ArrayList<>();
                 tempExtrNode.add(children.get(i));
             } else if (childPath.equals(tempPath)) {
                 // successive next single child with same path,merge it with previous children
@@ -93,25 +93,25 @@ public class MergeSingleFilterOptimizer implements IFilterOptimizer {
                     childPath = tempPath;
                 } else {
                     // add a new inner node
-                    FilterOperator newFil = new FilterOperator(src.getTokenIntType(), true);
-                    newFil.setSinglePath(childPath.clone());
-                    newFil.setChildrenList(tempExtrNode);
-                    ret.add(newFil);
-                    tempExtrNode = new ArrayList<FilterOperator>();
+                    FilterOperator newFilter = new FilterOperator(filter.getTokenIntType(), true);
+                    newFilter.setSinglePath(childPath);
+                    newFilter.setChildren(tempExtrNode);
+                    ret.add(newFilter);
+                    tempExtrNode = new ArrayList<>();
                     tempExtrNode.add(children.get(i));
                     childPath = tempPath;
                 }
             }
         }
-        // the last several children before null has not been added to ret list.
+        // the last several children before "not single paths" has not been added to ret list.
         if (childPath != null) {
             if (tempExtrNode.size() == 1) {
                 ret.add(tempExtrNode.get(0));
             } else {
                 // add a new inner node
-                FilterOperator newFil = new FilterOperator(src.getTokenIntType(), true);
-                newFil.setSinglePath(childPath.clone());
-                newFil.setChildrenList(tempExtrNode);
+                FilterOperator newFil = new FilterOperator(filter.getTokenIntType(), true);
+                newFil.setSinglePath(childPath);
+                newFil.setChildren(tempExtrNode);
                 ret.add(newFil);
             }
         }
@@ -120,14 +120,14 @@ public class MergeSingleFilterOptimizer implements IFilterOptimizer {
             ret.add(children.get(i));
         }
         if (ret.size() == 1) {
-            // all children have same path, which means this src node is a single node
-            src.setIsSingle(true);
-            src.setSinglePath(childPath.clone());
-            src.setChildrenList(ret.get(0).getChildren());
+            // all children have same path, which means this filter node is a single node
+            filter.setIsSingle(true);
+            filter.setSinglePath(childPath);
+            filter.setChildren(ret.get(0).getChildren());
             return childPath;
         } else {
-            src.setIsSingle(false);
-            src.setChildrenList(ret);
+            filter.setIsSingle(false);
+            filter.setChildren(ret);
             return null;
         }
     }

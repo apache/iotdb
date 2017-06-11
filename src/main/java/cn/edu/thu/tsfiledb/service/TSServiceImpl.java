@@ -8,7 +8,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.derby.tools.sysinfo;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,10 +27,9 @@ import cn.edu.thu.tsfiledb.metadata.MManager;
 import cn.edu.thu.tsfiledb.metadata.Metadata;
 import cn.edu.thu.tsfiledb.qp.exception.IllegalASTFormatException;
 import cn.edu.thu.tsfiledb.qp.exception.QueryProcessorException;
-import cn.edu.thu.tsfiledb.qp.exec.impl.OverflowQPExecutor;
+import cn.edu.thu.tsfiledb.qp.executor.OverflowQPExecutor;
 import cn.edu.thu.tsfiledb.qp.logical.operator.Operator.OperatorType;
-import cn.edu.thu.tsfiledb.qp.logical.operator.RootOperator;
-import cn.edu.thu.tsfiledb.qp.physical.plan.MultiInsertPlan;
+import cn.edu.thu.tsfiledb.qp.logical.operator.root.RootOperator;
 import cn.edu.thu.tsfiledb.qp.physical.plan.PhysicalPlan;
 import cn.edu.thu.tsfiledb.query.aggregation.AggreFuncFactory;
 import cn.edu.thu.tsfiledb.query.aggregation.AggregateFunction;
@@ -181,7 +179,7 @@ public class TSServiceImpl implements TSIService.Iface {
 		this.queryRet.get().clear();
 		this.queryStatus.get().clear();
 		// Clear all parameters in last request.
-		exec.clearParamter();
+		exec.clearParameters();
 	}
 
 	@Override
@@ -386,7 +384,7 @@ public class TSServiceImpl implements TSIService.Iface {
 			List<Path> paths = null;
 			// paths = ((SFWOperator) root).getSelSeriesPaths(exec);
 			PhysicalPlan plan = parser.parseSQLToPhysicalPlan(statement, exec);
-			paths = plan.getInvolvedSeriesPaths();
+			paths = plan.getPaths();
 
 			// check whether current statement is a query statement
 			if (!root.isQuery()) {
@@ -538,7 +536,7 @@ public class TSServiceImpl implements TSIService.Iface {
 		try {
 			LOGGER.debug("ExecuteUpdateStatement: receive statement {}", root);
 			PhysicalPlan plan = root.transformToPhysicalPlan(exec);
-			List<Path> paths = plan.getInvolvedSeriesPaths();
+			List<Path> paths = plan.getPaths();
 
 			if (!checkAuthorization(paths, root.getType())) {
 				return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, "No permissions for this operation");
@@ -562,7 +560,7 @@ public class TSServiceImpl implements TSIService.Iface {
 			operationHandle = new TSOperationHandle(operationId, false);
 			resp.setOperationHandle(operationHandle);
 			return resp;
-		} catch (QueryProcessorException | PathErrorException e) {
+		} catch (QueryProcessorException e) {
 			LOGGER.error(e.getMessage());
 			return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
 		} catch (IOException e) {
@@ -590,7 +588,7 @@ public class TSServiceImpl implements TSIService.Iface {
 
 		// 如果操作是增删改
 		PhysicalPlan plan = parser.parseSQLToPhysicalPlan(statement, exec);
-		List<Path> paths = plan.getInvolvedSeriesPaths();
+		List<Path> paths = plan.getPaths();
 
 		if (!checkAuthorization(paths, root.getType())) {
 			return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, "No permissions for this operation");

@@ -5,16 +5,10 @@ import java.util.List;
 
 import cn.edu.thu.tsfile.common.exception.ProcessorException;
 import cn.edu.thu.tsfile.timeseries.read.qp.Path;
-import cn.edu.thu.tsfiledb.qp.exec.QueryProcessExecutor;
+import cn.edu.thu.tsfiledb.qp.executor.QueryProcessExecutor;
 import cn.edu.thu.tsfiledb.qp.logical.operator.Operator.OperatorType;
 
 
-/**
- * given a update plan and construct a {@code UpdatePlan}
- * 
- * @author kangrong
- *
- */
 public class UpdatePlan extends PhysicalPlan {
     private long startTime;
     private long endTime;
@@ -71,8 +65,8 @@ public class UpdatePlan extends PhysicalPlan {
     }
     
     @Override
-    public List<Path> getInvolvedSeriesPaths() {
-        List<Path> ret = new ArrayList<Path>();
+    public List<Path> getPaths() {
+        List<Path> ret = new ArrayList<>();
         if (path != null)
             ret.add(path);
         return ret;

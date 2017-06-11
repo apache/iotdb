@@ -11,7 +11,7 @@ import cn.edu.thu.tsfile.timeseries.read.qp.Path;
 import cn.edu.thu.tsfile.timeseries.read.query.QueryDataSet;
 import cn.edu.thu.tsfile.timeseries.read.readSupport.RowRecord;
 import cn.edu.thu.tsfile.timeseries.utils.StringContainer;
-import cn.edu.thu.tsfiledb.qp.exec.QueryProcessExecutor;
+import cn.edu.thu.tsfiledb.qp.executor.QueryProcessExecutor;
 import cn.edu.thu.tsfiledb.qp.physical.plan.query.OutputQueryDataSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,12 +28,13 @@ import java.util.Map.Entry;
 public class MemIntQpExecutor extends QueryProcessExecutor {
     private static Logger LOG = LoggerFactory.getLogger(MemIntQpExecutor.class);
 
-    private SingleValueVisitor<Long> timeVistor = new SingleValueVisitor<>();
-    private SingleValueVisitor<Integer> valueVistor = new SingleValueVisitor<>();
+    private SingleValueVisitor<Long> timeVisitor = new SingleValueVisitor<>();
+    private SingleValueVisitor<Integer> valueVisitor = new SingleValueVisitor<>();
 
-    private Map<String, TestSeries> demoMemDataBase = new HashMap<String, TestSeries>();
+    //pathStr, TreeMap<time, value>
+    private Map<String, TestSeries> demoMemDataBase = new HashMap<>();
 
-    private TreeSet<Long> timeStampUnion = new TreeSet<Long>();
+    private TreeSet<Long> timeStampUnion = new TreeSet<>();
 
     public MemIntQpExecutor() {
         super(false);
@@ -41,11 +42,7 @@ public class MemIntQpExecutor extends QueryProcessExecutor {
     }
 
     @Override
-    public TSDataType getNonReseveredSeriesType(Path fullPath) {
-        // if (fullPath.equals(SQLConstant.RESERVED_TIME))
-        // return TSDataType.INT64;
-        // if (fullPath.equals(SQLConstant.RESERVED_FREQ))
-        // return TSDataType.FLOAT;
+    public TSDataType getNonReservedSeriesType(Path fullPath) {
         if (demoMemDataBase.containsKey(fullPath.toString()))
             return TSDataType.INT32;
         return null;
@@ -77,18 +74,14 @@ public class MemIntQpExecutor extends QueryProcessExecutor {
         if (!demoMemDataBase.containsKey(path.toString()))
             return true;
         TestSeries series = demoMemDataBase.get(path.toString());
-        TreeMap<Long, Integer> delResult = new TreeMap<Long, Integer>();
-        // List<Long> timeResult = new ArrayList<Long>();
+        TreeMap<Long, Integer> delResult = new TreeMap<>();
         for (Entry<Long, Integer> entry : series.data.entrySet()) {
             long timestamp = entry.getKey();
             if (timestamp >= deleteTime) {
-                delResult.put(timestamp, Integer.valueOf(entry.getValue()));
-                // timeResult.add(timestamp);
+                delResult.put(timestamp, entry.getValue());
             }
         }
         series.data = delResult;
-        // Here don't justify whether these deleted point's time stamps are still in time stamp
-        // union, it's inefficient
         LOG.info("delete series:{}, timestamp:{}", path, deleteTime);
         return true;
     }
@@ -101,7 +94,7 @@ public class MemIntQpExecutor extends QueryProcessExecutor {
         }
         demoMemDataBase.get(strPath).data.put(insertTime, Integer.valueOf(value));
         timeStampUnion.add(insertTime);
-        // LOG.info("insert into {}:<{},{}>", path, insertTime, value);
+        LOG.info("insert into {}:<{},{}>", path, insertTime, value);
         return 0;
     }
 
@@ -121,10 +114,8 @@ public class MemIntQpExecutor extends QueryProcessExecutor {
             Boolean left = satisfyValue(v, ((CrossSeriesFilterExpression) expr).getLeft(), path, value);
             if (left != null)
                 return left;
-            Boolean right = satisfyValue(v, ((CrossSeriesFilterExpression) expr).getLeft(), path, value);
-            return right;
+            return satisfyValue(v, ((CrossSeriesFilterExpression) expr).getLeft(), path, value);
         }
-
     }
 
     /**
@@ -139,10 +130,6 @@ public class MemIntQpExecutor extends QueryProcessExecutor {
             LOG.error("cannot specify fetchSize to zero,exit");
             System.exit(0);
         }
-        // LOG.info("query paths:{}", paths);
-        // LOG.info("query time filter:{}", timeFilter);
-        // LOG.info("query freq filter:{}", freqFilter);
-        // LOG.info("query value filter:{}", valueFilter);
         TestOutputQueryDataSet ret = new TestOutputQueryDataSet(fetchSize);
         long lastGetTimeStamp =
                 (lastData == null) ? -1 : ((TestOutputQueryDataSet) lastData)
@@ -150,15 +137,11 @@ public class MemIntQpExecutor extends QueryProcessExecutor {
         int haveSize = 0;
 
         SingleSeriesFilterExpression timeSingleFilter = (SingleSeriesFilterExpression) timeFilter;
-        // if (valueFilter != null && !(valueFilter instanceof SingleSensorFilter)) {
-        // LOG.error("MemIntQpExecutor is just for test, don't support CrossFilter,exit");
-        // System.exit(0);
-        // }
 
         for (long time : timeStampUnion) {
             if (time <= lastGetTimeStamp)
                 continue;
-            if (timeFilter == null || timeVistor.satisfy(time, timeSingleFilter)) {
+            if (timeFilter == null || timeVisitor.satisfy(time, timeSingleFilter)) {
                 TestIntegerRowRecord rowRecord = new TestIntegerRowRecord(time);
                 boolean isSatisfy = true;
                 boolean isInputed = false;
@@ -178,11 +161,11 @@ public class MemIntQpExecutor extends QueryProcessExecutor {
                                 isInputed = true;
                             } else {
                                 Boolean satisfyResult =
-                                        satisfyValue(valueVistor, valueFilter, fullPath, v);
+                                        satisfyValue(valueVisitor, valueFilter, fullPath, v);
                                 if (satisfyResult == null) {
                                     // not my filter, I add it but don't set inputed
                                     rowRecord.addSensor(fullPath, v.toString());
-                                } else if (satisfyResult == true) {
+                                } else if (satisfyResult) {
                                     // have filter and it's my filter,and satisfy, inputed
                                     rowRecord.addSensor(fullPath, v.toString());
                                     isInputed = true;
@@ -209,6 +192,18 @@ public class MemIntQpExecutor extends QueryProcessExecutor {
         }
         return ret;
     }
+
+    @Override
+    public List<String> getAllPaths(String fullPath) {
+        List<String> ret = new ArrayList<>();
+        ret.add(fullPath);
+        return ret;
+    }
+
+	@Override
+	public int multiInsert(String deltaObject, long insertTime, List<String> measurementList, List<String> insertValues) {
+		return 0;
+	}
 
     private class TestOutputQueryDataSet extends OutputQueryDataSet {
 
@@ -237,14 +232,15 @@ public class MemIntQpExecutor extends QueryProcessExecutor {
      *
      */
     private class TestIntegerRowRecord extends RowRecord {
-        public List<Pair<String, String>> measurementData = new ArrayList<Pair<String, String>>();
+        //pair<path, value>
+        public List<Pair<String, String>> measurementData = new ArrayList<>();
 
         public TestIntegerRowRecord(long timestamp) {
             super(timestamp, "", "");
         }
 
         public void addSensor(String path, String value) {
-            measurementData.add(new Pair<String, String>(path, value));
+            measurementData.add(new Pair<>(path, value));
         }
 
         @Override
@@ -261,19 +257,4 @@ public class MemIntQpExecutor extends QueryProcessExecutor {
     private class TestSeries {
         public TreeMap<Long, Integer> data = new TreeMap<>();
     }
-
-    @Override
-    public List<String> getAllPaths(String fullPath) {
-        List<String> ret = new ArrayList<>();
-        ret.add(fullPath);
-        return ret;
-    }
-
-	@Override
-	public int multiInsert(String deltaObject, long insertTime, List<String> measurementList, List<String> insertValues) {
-		// TODO Auto-generated method stub
-		return 0;
-	}
-
-
 }

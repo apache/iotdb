@@ -5,7 +5,8 @@ import java.util.List;
 
 import cn.edu.thu.tsfile.timeseries.read.query.QueryDataSet;
 import cn.edu.thu.tsfile.timeseries.read.readSupport.RowRecord;
-import cn.edu.thu.tsfiledb.qp.exec.QueryProcessExecutor;
+import cn.edu.thu.tsfiledb.qp.exception.QueryProcessorException;
+import cn.edu.thu.tsfiledb.qp.executor.QueryProcessExecutor;
 
 /**
  * This class implements the interface {@code Iterator<QueryDataSet>}. It is the result of
@@ -19,7 +20,6 @@ import cn.edu.thu.tsfiledb.qp.exec.QueryProcessExecutor;
  */
 public class MergeQuerySetIterator implements Iterator<QueryDataSet> {
     private final int mergeFetchSize;
-    // private RowRecord[] records;
     private Iterator<RowRecord>[] recordIters;
     private Node[] records;
     // it's actually number of series iterators which has next record;
@@ -27,7 +27,7 @@ public class MergeQuerySetIterator implements Iterator<QueryDataSet> {
     private long lastRowTime = -1;
 
     public MergeQuerySetIterator(List<SeriesSelectPlan> selectPlans, int mergeFetchSize,
-                                 QueryProcessExecutor conf) {
+                                 QueryProcessExecutor conf) throws QueryProcessorException {
         this.mergeFetchSize = mergeFetchSize;
         heapSize = selectPlans.size();
         records = new Node[heapSize + 1];
@@ -106,9 +106,7 @@ public class MergeQuerySetIterator implements Iterator<QueryDataSet> {
         }
 
         public boolean lessThan(Node o) {
-            if (r == null || o.r == null)
-                System.err.println("asdasdas");
-            return r.timestamp < o.r.timestamp;
+            return r.timestamp <= o.r.timestamp;
         }
 
         @Override

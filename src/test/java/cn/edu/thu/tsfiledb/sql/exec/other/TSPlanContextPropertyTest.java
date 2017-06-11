@@ -2,8 +2,8 @@ package cn.edu.thu.tsfiledb.sql.exec.other;
 
 import cn.edu.thu.tsfile.timeseries.read.qp.Path;
 import cn.edu.thu.tsfiledb.qp.exception.QueryProcessorException;
-import cn.edu.thu.tsfiledb.qp.logical.operator.metadata.PropertyOperator;
-import cn.edu.thu.tsfiledb.qp.logical.operator.metadata.PropertyOperator.PropertyType;
+import cn.edu.thu.tsfiledb.qp.logical.operator.root.metadata.PropertyOperator;
+import cn.edu.thu.tsfiledb.qp.logical.operator.root.metadata.PropertyOperator.PropertyType;
 import cn.edu.thu.tsfiledb.qp.physical.plan.metadata.PropertyPlan;
 import cn.edu.thu.tsfiledb.sql.exec.TSqlParserV2;
 import org.junit.Test;
@@ -75,6 +75,6 @@ public class TSPlanContextPropertyTest extends TSqlParserV2 {
         assertEquals(propertyType, plan.getPropertyType());
         assertEquals(propertyPath, plan.getPropertyPath());
         assertEquals(metadataPath, plan.getMetadataPath());
-        assertArrayEquals(paths, plan.getInvolvedSeriesPaths().toArray());
+        assertArrayEquals(paths, plan.getPaths().toArray());
     }
 }

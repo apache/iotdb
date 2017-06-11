@@ -14,12 +14,11 @@ import cn.edu.thu.tsfiledb.qp.exception.QueryProcessorException;
 import cn.edu.thu.tsfiledb.qp.exception.logical.operator.BasicOperatorException;
 import cn.edu.thu.tsfiledb.qp.exception.logical.optimize.LogicalOptimizeException;
 import cn.edu.thu.tsfiledb.qp.exception.logical.optimize.RemoveNotException;
-import cn.edu.thu.tsfiledb.qp.logical.operator.crud.BasicFunctionOperator;
-import cn.edu.thu.tsfiledb.qp.logical.operator.crud.FilterOperator;
+import cn.edu.thu.tsfiledb.qp.logical.operator.clause.filter.BasicFunctionOperator;
+import cn.edu.thu.tsfiledb.qp.logical.operator.clause.filter.FilterOperator;
 
 public class RemoveNotOptimizer implements IFilterOptimizer {
     private static final Logger LOG = LoggerFactory.getLogger(RemoveNotOptimizer.class);
-
 
     /**
      * get DNF(disjunctive normal form) for this filter operator tree. Before getDNF, this op tree
@@ -56,8 +55,8 @@ public class RemoveNotOptimizer implements IFilterOptimizer {
     /**
      * reverse given filter to reversed expression
      * 
-     * @param filter
-     * @return
+     * @param filter BasicFunctionOperator
+     * @return FilterOperator reversed BasicFunctionOperator
      * @throws QueryProcessorException
      */
     private FilterOperator reverseFilter(FilterOperator filter) throws RemoveNotException {

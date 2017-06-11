@@ -4,7 +4,7 @@ import cn.edu.thu.tsfiledb.qp.exception.QueryProcessorException;
 
 /**
  * This exception is threw whiling meeting error in
- * {@linkplain cn.edu.thu.tsfiledb.qp.logical.operator.crud.DeleteOperator DeleteOperator}
+ * {@linkplain cn.edu.thu.tsfiledb.qp.logical.operator.root.sfw.DeleteOperator DeleteOperator}
  * 
  * @author kangrong
  *

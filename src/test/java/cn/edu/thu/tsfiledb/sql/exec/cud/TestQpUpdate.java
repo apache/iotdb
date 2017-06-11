@@ -6,7 +6,7 @@ import cn.edu.thu.tsfile.timeseries.read.qp.Path;
 import cn.edu.thu.tsfile.timeseries.read.query.QueryDataSet;
 import cn.edu.thu.tsfile.timeseries.utils.StringContainer;
 import cn.edu.thu.tsfiledb.qp.exception.QueryProcessorException;
-import cn.edu.thu.tsfiledb.qp.logical.operator.RootOperator;
+import cn.edu.thu.tsfiledb.qp.logical.operator.root.RootOperator;
 import cn.edu.thu.tsfiledb.sql.exec.TSqlParserV2;
 import cn.edu.thu.tsfiledb.sql.exec.utils.MemIntQpExecutor;
 import org.antlr.runtime.RecognitionException;
@@ -119,7 +119,6 @@ public class TestQpUpdate {
             QueryDataSet set = iter.next();
             while (set.hasNextRecord()) {
                 String result = set.getNextRecord().toString();
-                // System.out.println(result);
                 assertEquals(expect[i++], result);
             }
         }

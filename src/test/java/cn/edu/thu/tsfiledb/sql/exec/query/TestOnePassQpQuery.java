@@ -5,7 +5,7 @@ import cn.edu.thu.tsfile.timeseries.read.qp.Path;
 import cn.edu.thu.tsfile.timeseries.read.query.QueryDataSet;
 import cn.edu.thu.tsfile.timeseries.utils.StringContainer;
 import cn.edu.thu.tsfiledb.qp.exception.QueryProcessorException;
-import cn.edu.thu.tsfiledb.qp.logical.operator.RootOperator;
+import cn.edu.thu.tsfiledb.qp.logical.operator.root.RootOperator;
 import cn.edu.thu.tsfiledb.sql.exec.TSqlParserV2;
 import cn.edu.thu.tsfiledb.sql.exec.utils.MemIntQpExecutor;
 import org.junit.Before;
@@ -23,7 +23,6 @@ import java.util.Iterator;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
-
 /**
  * test query operation
  * 
@@ -34,8 +33,6 @@ import static org.junit.Assert.fail;
 public class TestOnePassQpQuery {
     private static final Logger LOG = LoggerFactory.getLogger(TestOnePassQpQuery.class);
     private MemIntQpExecutor exec = new MemIntQpExecutor();
-    private Path path1;
-    private Path path2;
 
     private final String inputSQL;
     private final String[] expectRet;
@@ -51,6 +48,24 @@ public class TestOnePassQpQuery {
                                         "60, <root.laptop.d1.s1,61> ",
                                         "80, <root.laptop.d1.s1,81> "}},
                         {
+                                "select d1.s1, d1.s2 from root.laptop where root.laptop.d1.s1 < 100",
+                                new String[] {"20, <root.laptop.d1.s1,21> <root.laptop.d1.s2,null> ",
+                                        "40, <root.laptop.d1.s1,41> <root.laptop.d1.s2,null> ",
+                                        "60, <root.laptop.d1.s1,61> <root.laptop.d1.s2,null> ",
+                                        "80, <root.laptop.d1.s1,81> <root.laptop.d1.s2,null> "}},
+                        {
+                                "select d1.s1 from root.laptop where d1.s1 < 100",
+                                new String[] {"20, <root.laptop.d1.s1,21> ",
+                                        "40, <root.laptop.d1.s1,41> ",
+                                        "60, <root.laptop.d1.s1,61> ",
+                                        "80, <root.laptop.d1.s1,81> "}},
+                        {
+                                "select s1 from root.laptop.d1,root.laptop.d2 where root.laptop.d1.s1 < 100",
+                                new String[] {"20, <root.laptop.d1.s1,21> <root.laptop.d2.s1,52> ",
+                                        "40, <root.laptop.d1.s1,41> <root.laptop.d2.s1,102> ",
+                                        "60, <root.laptop.d1.s1,61> <root.laptop.d2.s1,152> ",
+                                        "80, <root.laptop.d1.s1,81> <root.laptop.d2.s1,202> "}},
+                        {
                                 "select root.laptop.d1.s2 where root.laptop.d1.s2 < 200",
                                 new String[] {"50, <root.laptop.d1.s2,52> ",
                                         "100, <root.laptop.d1.s2,102> ",
@@ -64,15 +79,16 @@ public class TestOnePassQpQuery {
 
     @Before
     public void before() {
-        path1 =
-                new Path(new StringContainer(new String[] {"root", "laptop", "d1", "s1"},
-                        SystemConstant.PATH_SEPARATOR));
-        path2 =
-                new Path(new StringContainer(new String[] {"root", "laptop", "d1", "s2"},
-                        SystemConstant.PATH_SEPARATOR));
+        Path path1 = new Path(new StringContainer(new String[]{"root", "laptop", "d1", "s1"},
+                SystemConstant.PATH_SEPARATOR));
+        Path path2 = new Path(new StringContainer(new String[]{"root", "laptop", "d1", "s2"},
+                SystemConstant.PATH_SEPARATOR));
+        Path path3 = new Path(new StringContainer(new String[]{"root", "laptop", "d2", "s1"},
+                SystemConstant.PATH_SEPARATOR));
         for (int i = 1; i <= 10; i++) {
             exec.insert(path1, i * 20, Integer.toString(i * 20 + 1));
             exec.insert(path2, i * 50, Integer.toString(i * 50 + 2));
+            exec.insert(path3, i * 20, Integer.toString(i * 50 + 2));
         }
     }
 
@@ -98,9 +114,4 @@ public class TestOnePassQpQuery {
         assertEquals(expectRet.length, i);
     }
 
-    /**
-     * 20, <device_1.sensor_1,21> <device_1.sensor_2,null> <br>
-     * 50, <device_1.sensor_1,null> <device_1.sensor_2,52> <br>
-     * 100, <device_1.sensor_1,101> <device_1.sensor_2,102>
-     */
 }

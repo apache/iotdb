@@ -1,12 +1,11 @@
 package cn.edu.thu.tsfiledb.sql.exec.query;
 
-
 import cn.edu.thu.tsfile.timeseries.read.LocalFileInput;
 import cn.edu.thu.tsfile.timeseries.read.query.QueryDataSet;
 import cn.edu.thu.tsfiledb.qp.exception.QueryProcessorException;
-import cn.edu.thu.tsfiledb.qp.exec.QueryProcessExecutor;
-import cn.edu.thu.tsfiledb.qp.exec.impl.SingleFileQPExecutor;
-import cn.edu.thu.tsfiledb.qp.logical.operator.RootOperator;
+import cn.edu.thu.tsfiledb.qp.executor.QueryProcessExecutor;
+import cn.edu.thu.tsfiledb.qp.executor.SingleFileQPExecutor;
+import cn.edu.thu.tsfiledb.qp.logical.operator.root.RootOperator;
 import cn.edu.thu.tsfiledb.sql.exec.TSqlParserV2;
 import org.junit.Before;
 import org.junit.Test;
@@ -22,8 +21,8 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Iterator;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
-
 
 /**
  * test query operation
@@ -72,13 +71,11 @@ public class TestSingleFileQpQuery {
     public void testQueryBasic() throws QueryProcessorException {
         if(exec == null)
             return;
-        LOG.info("input SQL String:{}", inputSQL);
         TSqlParserV2 parser = new TSqlParserV2();
         RootOperator root = parser.parseSQLToOperator(inputSQL);
         if (!root.isQuery())
             fail();
         Iterator<QueryDataSet> iter = parser.query(root, exec);
-        LOG.info("query result:");
         int i = 0;
         while (iter.hasNext()) {
             QueryDataSet set = iter.next();
@@ -86,11 +83,8 @@ public class TestSingleFileQpQuery {
                 if (i == result.length)
                     fail();
                 String actual = set.getNextRecord().toString();
-                // System.out.println(actual);
-                LOG.info("freq data:{}", actual);
-//                 assertEquals(result[i++], actual);
+                assertEquals(result[i++], actual);
             }
         }
-        LOG.info("Query processing complete\n");
     }
 }

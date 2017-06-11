@@ -91,7 +91,7 @@ public class AuthorityChecker {
 		case NULL:
 		case ORDERBY:
 		case PROPERTY:
-		case ROOT:
+		case SFW:
 		case UNION:
 			
 			return -1;

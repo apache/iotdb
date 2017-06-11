@@ -2,7 +2,7 @@ package cn.edu.thu.tsfiledb.sql.exec.other;
 
 import cn.edu.thu.tsfile.timeseries.read.qp.Path;
 import cn.edu.thu.tsfiledb.qp.exception.QueryProcessorException;
-import cn.edu.thu.tsfiledb.qp.logical.operator.author.AuthorOperator;
+import cn.edu.thu.tsfiledb.qp.logical.operator.root.author.AuthorOperator;
 import cn.edu.thu.tsfiledb.qp.physical.plan.AuthorPlan;
 import cn.edu.thu.tsfiledb.sql.exec.TSqlParserV2;
 import org.junit.Test;
@@ -94,7 +94,7 @@ public class TSPlanContextAuthorTest {
         assertEquals(password, author.getPassWord());
         assertArrayEquals(privilegeList, author.getPrivilegeList());
         assertEquals(nameNode, author.getNodeName());
-        assertArrayEquals(paths, plan.getInvolvedSeriesPaths().toArray());
+        assertArrayEquals(paths, plan.getPaths().toArray());
     }
 
 }

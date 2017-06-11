@@ -8,24 +8,16 @@ import java.util.Set;
 import cn.edu.thu.tsfile.common.exception.ProcessorException;
 import cn.edu.thu.tsfiledb.auth.model.AuthException;
 import cn.edu.thu.tsfile.timeseries.read.qp.Path;
-import cn.edu.thu.tsfiledb.qp.exec.QueryProcessExecutor;
+import cn.edu.thu.tsfiledb.qp.executor.QueryProcessExecutor;
 import cn.edu.thu.tsfiledb.qp.logical.operator.Operator.OperatorType;
-import cn.edu.thu.tsfiledb.qp.logical.operator.author.AuthorOperator.AuthorType;
+import cn.edu.thu.tsfiledb.qp.logical.operator.root.author.AuthorOperator.AuthorType;
 
-/**
- * given a author related plan and construct a {@code AuthorPlan}
- * 
- * @author kangrong、whw
- *
- */
+
 public class AuthorPlan extends PhysicalPlan {
 	private final AuthorType authorType;
 	private String userName;
 	private String roleName;
 	private String password;
-	/*
-	 * 刘昆修改的添加new password
-	 */
 	private String newPassword;
 	private String[] authorizationList;
 	private Path nodeName;
@@ -42,57 +34,53 @@ public class AuthorPlan extends PhysicalPlan {
 		this.nodeName = nodeName;
 	}
 
-	public boolean processNonQuery(QueryProcessExecutor config) throws ProcessorException{
+	public boolean processNonQuery(QueryProcessExecutor executor) throws ProcessorException{
 		try {
 			boolean flag = true;
 			Set<Integer> permissions;
 			switch (authorType) {
-			/*
-			 * 刘昆修改添加一个物理修改密码的操作
-			 * 
-			 */
 			case UPDATE_USER:
-				return config.updateUser(userName, newPassword);
+				return executor.updateUser(userName, newPassword);
 			case CREATE_USER:
-				return config.createUser(userName, password);
+				return executor.createUser(userName, password);
 			case CREATE_ROLE:
-				return config.createRole(roleName);
+				return executor.createRole(roleName);
 			case DROP_USER:
-				return config.deleteUser(userName);
+				return executor.deleteUser(userName);
 			case DROP_ROLE:
-				return config.deleteRole(roleName);
+				return executor.deleteRole(roleName);
 			case GRANT_ROLE:
-				permissions = pmsToInt(authorizationList);
+				permissions = strToInt(authorizationList);
 				for (int i : permissions) {
-					if (!config.addPmsToRole(roleName, nodeName.getFullPath(), i))
+					if (!executor.addPermissionToRole(roleName, nodeName.getFullPath(), i))
 						flag = false;
 				}
 				return flag;
 			case GRANT_USER:
-				permissions = pmsToInt(authorizationList);
+				permissions = strToInt(authorizationList);
 				for (int i : permissions) {
-					if (!config.addPmsToUser(userName, nodeName.getFullPath(), i))
+					if (!executor.addPermissionToUser(userName, nodeName.getFullPath(), i))
 						flag = false;
 				}
 				return flag;
 			case GRANT_ROLE_TO_USER:
-				return config.grantRoleToUser(roleName, userName);
+				return executor.grantRoleToUser(roleName, userName);
 			case REVOKE_USER:
-				permissions = pmsToInt(authorizationList);
+				permissions = strToInt(authorizationList);
 				for (int i : permissions) {
-					if (!config.removePmsFromUser(userName, nodeName.getFullPath(), i))
+					if (!executor.removePermissionFromUser(userName, nodeName.getFullPath(), i))
 						flag = false;
 				}
 				return flag;
 			case REVOKE_ROLE:
-				permissions = pmsToInt(authorizationList);
+				permissions = strToInt(authorizationList);
 				for (int i : permissions) {
-					if (!config.removePmsFromRole(roleName, nodeName.getFullPath(), i))
+					if (!executor.removePermissionFromRole(roleName, nodeName.getFullPath(), i))
 						flag = false;
 				}
 				return flag;
 			case REVOKE_ROLE_FROM_USER:
-				return config.revokeRoleFromUser(roleName, userName);
+				return executor.revokeRoleFromUser(roleName, userName);
 			default:
 				break;
 
@@ -103,8 +91,8 @@ public class AuthorPlan extends PhysicalPlan {
 		return false;
 	}
 
-	Set<Integer> pmsToInt(String[] authorizationList) {
-		Set<Integer> result = new HashSet<Integer>();
+	private Set<Integer> strToInt(String[] authorizationList) {
+		Set<Integer> result = new HashSet<>();
 		for (String s : authorizationList) {
 			s = s.toUpperCase();
 			switch (s) {
@@ -131,8 +119,8 @@ public class AuthorPlan extends PhysicalPlan {
 	}
 
 	@Override
-	public List<Path> getInvolvedSeriesPaths() {
-		List<Path> ret = new ArrayList<Path>();
+	public List<Path> getPaths() {
+		List<Path> ret = new ArrayList<>();
 		if (nodeName != null)
 			ret.add(nodeName);
 		return ret;

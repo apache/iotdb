@@ -1,29 +1,26 @@
 package cn.edu.thu.tsfiledb.sql.exec;
 
 import java.util.Iterator;
-
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import cn.edu.thu.tsfile.common.constant.QueryConstant;
 import cn.edu.thu.tsfile.common.exception.ProcessorException;
 import cn.edu.thu.tsfile.timeseries.read.query.QueryDataSet;
 import cn.edu.thu.tsfiledb.qp.exception.ErrorQueryOpException;
 import cn.edu.thu.tsfiledb.qp.exception.IllegalASTFormatException;
 import cn.edu.thu.tsfiledb.qp.exception.QueryProcessorException;
 import cn.edu.thu.tsfiledb.qp.exception.logical.optimize.LogicalOptimizeException;
-import cn.edu.thu.tsfiledb.qp.exec.QueryProcessExecutor;
+import cn.edu.thu.tsfiledb.qp.executor.QueryProcessExecutor;
 import cn.edu.thu.tsfiledb.qp.logical.operator.Operator;
-import cn.edu.thu.tsfiledb.qp.logical.operator.RootOperator;
-import cn.edu.thu.tsfiledb.qp.logical.operator.crud.FilterOperator;
-import cn.edu.thu.tsfiledb.qp.logical.operator.crud.SFWOperator;
+import cn.edu.thu.tsfiledb.qp.logical.operator.root.RootOperator;
+import cn.edu.thu.tsfiledb.qp.logical.operator.clause.filter.FilterOperator;
+import cn.edu.thu.tsfiledb.qp.logical.operator.root.sfw.SFWOperator;
 import cn.edu.thu.tsfiledb.qp.logical.optimizer.ConcatPathOptimizer;
 import cn.edu.thu.tsfiledb.qp.logical.optimizer.filter.DNFFilterOptimizer;
 import cn.edu.thu.tsfiledb.qp.logical.optimizer.filter.MergeSingleFilterOptimizer;
 import cn.edu.thu.tsfiledb.qp.logical.optimizer.filter.RemoveNotOptimizer;
 import cn.edu.thu.tsfiledb.qp.physical.optimizer.IPhysicalOptimizer;
-import cn.edu.thu.tsfiledb.qp.physical.optimizer.NonePhycicalOptimizer;
+import cn.edu.thu.tsfiledb.qp.physical.optimizer.NonePhysicalOptimizer;
 import cn.edu.thu.tsfiledb.qp.physical.plan.PhysicalPlan;
 import cn.edu.thu.tsfiledb.sql.parse.ASTNode;
 import cn.edu.thu.tsfiledb.sql.parse.ParseException;
@@ -38,16 +35,15 @@ import cn.edu.thu.tsfiledb.sql.parse.ParseUtils;
 public class TSqlParserV2 {
     Logger LOG = LoggerFactory.getLogger(TSqlParserV2.class);
 
-    public PhysicalPlan parseSQLToPhysicalPlan(String sqlStr, QueryProcessExecutor conf)
+    public PhysicalPlan parseSQLToPhysicalPlan(String sqlStr, QueryProcessExecutor executor)
             throws QueryProcessorException {
-        ASTNode astTree = null;
+        ASTNode astTree;
         // parse string to ASTTree
         try {
             astTree = ParseGenerator.generateAST(sqlStr);
         } catch (ParseException e) {
             throw new IllegalASTFormatException("parsing error,message:" + e.getMessage());
         }
-//        System.out.println(astTree.dump());
         astTree = ParseUtils.findRootNonNullToken(astTree);
         TSPlanContextV2 tsPlan = new TSPlanContextV2();
         tsPlan.analyze(astTree);
@@ -55,9 +51,8 @@ public class TSqlParserV2 {
         if (operator.isQuery()) {
             SFWOperator root = (SFWOperator) operator;
             root = logicalOptimize(root);
-            PhysicalPlan plan = transformToPhysicalPlan(root, conf);
-//            System.out.println("com.corp.tsfile.sql.exec.TSqlParserV2:\n" + plan.printQueryPlan());
-            plan = conf.queryPhysicalOptimize(plan);
+            PhysicalPlan plan = transformToPhysicalPlan(root, executor);
+            plan = executor.queryPhysicalOptimize(plan);
             return plan;
         } else {
             PhysicalPlan plan;
@@ -69,24 +64,24 @@ public class TSqlParserV2 {
                     // for INSERT/UPDATE/DELETE, it needn't logical optimization and physical
                     // optimization
                     RootOperator author = (RootOperator) operator;
-                    plan = transformToPhysicalPlan(author, conf);
+                    plan = transformToPhysicalPlan(author, executor);
 //                    System.out.println("com.corp.tsfile.sql.exec.TSqlParserV2:\n"
 //                            + plan.printQueryPlan());
                     return plan;
                 case MULTIINSERT:
                 	SFWOperator multInsertOp = (SFWOperator) operator;
-                    plan = transformToPhysicalPlan(multInsertOp, conf);
-                    plan = conf.nonQueryPhysicalOptimize(plan);
+                    plan = transformToPhysicalPlan(multInsertOp, executor);
+                    plan = executor.nonQueryPhysicalOptimize(plan);
                     return plan;
                 case UPDATE:
                 case INSERT:
                 case DELETE:
                     SFWOperator root = (SFWOperator) operator;
                     root = logicalOptimize(root);
-                    plan = transformToPhysicalPlan(root, conf);
+                    plan = transformToPhysicalPlan(root, executor);
 //                    System.out.println("com.corp.tsfile.sql.exec.TSqlParserV2:\n"
 //                            + plan.printQueryPlan());
-                    plan = conf.nonQueryPhysicalOptimize(plan);
+                    plan = executor.nonQueryPhysicalOptimize(plan);
                     return plan;
 
                 default:
@@ -105,14 +100,13 @@ public class TSqlParserV2 {
      * @throws ParseException
      */
     public RootOperator parseSQLToOperator(String sqlStr) throws QueryProcessorException {
-        ASTNode astTree = null;
+        ASTNode astTree;
         // parse string to ASTTree
         try {
             astTree = ParseGenerator.generateAST(sqlStr);
         } catch (ParseException e) {
             throw new IllegalASTFormatException("parsing error,statement: " + sqlStr+ " .message:" + e.getMessage());
         }
-//        System.out.println(astTree.dump());
         astTree = ParseUtils.findRootNonNullToken(astTree);
         TSPlanContextV2 tsPlan = new TSPlanContextV2();
         tsPlan.analyze(astTree);
@@ -128,8 +122,8 @@ public class TSqlParserV2 {
      */
     public SFWOperator logicalOptimize(SFWOperator root) throws LogicalOptimizeException {
         ConcatPathOptimizer concatPathOptimizer = new ConcatPathOptimizer();
-        root = (SFWOperator) concatPathOptimizer.transform((Operator) root);
-        FilterOperator filter = root.getFilter();
+        root = (SFWOperator) concatPathOptimizer.transform(root);
+        FilterOperator filter = root.getFilterOperator();
         // this means no filter, in insert or query
         if (filter == null)
             return root;
@@ -164,14 +158,14 @@ public class TSqlParserV2 {
      * optimizer do nothing.
      * 
      * @since 2016-10-11
-     * @param origin
+     * @param physicalPlan
      * @return
      */
-    private PhysicalPlan physicalOptimize(PhysicalPlan origin, QueryProcessExecutor conf) {
+    public PhysicalPlan physicalOptimize(PhysicalPlan physicalPlan, QueryProcessExecutor conf) {
 
-            IPhysicalOptimizer physics = new NonePhycicalOptimizer();
+            IPhysicalOptimizer physicalOptimizer = new NonePhysicalOptimizer();
 
-            return physics.transform(origin, conf);
+            return physicalOptimizer.transform(physicalPlan, conf);
     }
 
     /**

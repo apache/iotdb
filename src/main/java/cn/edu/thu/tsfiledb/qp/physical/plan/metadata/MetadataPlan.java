@@ -11,18 +11,15 @@ import cn.edu.thu.tsfile.common.exception.ProcessorException;
 import cn.edu.thu.tsfiledb.exception.ArgsErrorException;
 import cn.edu.thu.tsfiledb.exception.PathErrorException;
 import cn.edu.thu.tsfiledb.metadata.MManager;
-import cn.edu.thu.tsfiledb.qp.exception.physical.plan.NamespacePlanException;
-import cn.edu.thu.tsfiledb.qp.exception.physical.plan.PhysicalPlanException;
 import cn.edu.thu.tsfile.timeseries.read.qp.Path;
-import cn.edu.thu.tsfiledb.qp.exec.QueryProcessExecutor;
+import cn.edu.thu.tsfiledb.qp.executor.QueryProcessExecutor;
 import cn.edu.thu.tsfiledb.qp.logical.operator.Operator.OperatorType;
-import cn.edu.thu.tsfiledb.qp.logical.operator.metadata.MetadataOperator.NamespaceType;
+import cn.edu.thu.tsfiledb.qp.logical.operator.root.metadata.MetadataOperator.NamespaceType;
 import cn.edu.thu.tsfiledb.qp.physical.plan.DeletePlan;
 import cn.edu.thu.tsfiledb.qp.physical.plan.PhysicalPlan;
 
 /**
- * given a author related plan and construct a {@code AuthorPlan}
- * 
+ *
  * @author kangrong
  *
  */
@@ -80,8 +77,8 @@ public class MetadataPlan extends PhysicalPlan {
 		this.encodingArgs = encodingArgs;
 	}
 
-	public boolean processNonQuery(QueryProcessExecutor config) throws ProcessorException {
-		MManager mManager = config.getMManager();
+	public boolean processNonQuery(QueryProcessExecutor executor) throws ProcessorException {
+		MManager mManager = executor.getMManager();
 		try {
 			switch (namespaceType) {
 			case ADD_PATH:
@@ -90,7 +87,7 @@ public class MetadataPlan extends PhysicalPlan {
 			case DELETE_PATH:
 				try {
 					// First delete all data interactive
-					deleteAllData(config);
+					deleteAllData(executor);
 					// Then delete the metadata
 					mManager.deletePathFromMTree(path.getFullPath());
 				} catch (Exception e) {
@@ -101,10 +98,10 @@ public class MetadataPlan extends PhysicalPlan {
 				mManager.setStorageLevelToMTree(path.getFullPath());
 				break;
 			default:
-				throw new ProcessorException("unkown namespace type:" + namespaceType);
+				throw new ProcessorException("unknown namespace type:" + namespaceType);
 			}
 		} catch (PathErrorException | IOException | ArgsErrorException e) {
-			throw new ProcessorException("meet err in " + namespaceType + " . " + e.getMessage());
+			throw new ProcessorException("meet error in " + namespaceType + " . " + e.getMessage());
 		}
 		return true;
 	}
@@ -123,8 +120,8 @@ public class MetadataPlan extends PhysicalPlan {
 	}
 
 	@Override
-	public List<Path> getInvolvedSeriesPaths() {
-		List<Path> ret = new ArrayList<Path>();
+	public List<Path> getPaths() {
+		List<Path> ret = new ArrayList<>();
 		if (path != null)
 			ret.add(path);
 		return ret;

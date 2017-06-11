@@ -16,8 +16,6 @@ import cn.edu.thu.tsfile.timeseries.read.qp.Path;
 public class SQLConstant {
     public static final String MREGE_EXTENSION = "merge";
     public static final String ERR_EXTENSION = "err";
-    public static final String PATH_SEPARATOR = ".";
-    public static final String PATH_SEPARATER_NO_REGEX = "\\.";
 
     public static final String DEFAULT_DELTA_OBJECT_TYPE = "defalut_delta_object_type";
 

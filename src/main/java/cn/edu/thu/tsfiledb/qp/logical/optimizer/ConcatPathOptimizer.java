@@ -1,5 +1,6 @@
 package cn.edu.thu.tsfiledb.qp.logical.optimizer;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.slf4j.Logger;
@@ -10,129 +11,103 @@ import cn.edu.thu.tsfiledb.qp.constant.SQLConstant;
 import cn.edu.thu.tsfiledb.qp.exception.logical.optimize.PathConcatException;
 import cn.edu.thu.tsfile.timeseries.read.qp.Path;
 import cn.edu.thu.tsfiledb.qp.logical.operator.Operator;
-import cn.edu.thu.tsfiledb.qp.logical.operator.crud.BasicFunctionOperator;
-import cn.edu.thu.tsfiledb.qp.logical.operator.crud.FilterOperator;
-import cn.edu.thu.tsfiledb.qp.logical.operator.crud.FromOperator;
-import cn.edu.thu.tsfiledb.qp.logical.operator.crud.SFWOperator;
-import cn.edu.thu.tsfiledb.qp.logical.operator.crud.SelectOperator;
-
-
+import cn.edu.thu.tsfiledb.qp.logical.operator.clause.filter.BasicFunctionOperator;
+import cn.edu.thu.tsfiledb.qp.logical.operator.clause.filter.FilterOperator;
+import cn.edu.thu.tsfiledb.qp.logical.operator.clause.FromOperator;
+import cn.edu.thu.tsfiledb.qp.logical.operator.root.sfw.SFWOperator;
+import cn.edu.thu.tsfiledb.qp.logical.operator.clause.SelectOperator;
 
 /**
- * This class deals with delta object in union table
- * 
- * @author kangrong
+ * concat paths in select and from clause
  *
+ * @author kangrong
  */
 public class ConcatPathOptimizer implements ILogicalOptimizer {
     private static final Logger LOG = LoggerFactory.getLogger(ConcatPathOptimizer.class);
 
     @Override
-    public Operator transform(Operator context) throws PathConcatException {
-        if (!(context instanceof SFWOperator)) {
+    public Operator transform(Operator operator) throws PathConcatException {
+        if (!(operator instanceof SFWOperator)) {
             LOG.warn("given operator isn't SFWOperator, cannot concat path");
-            return context;
+            return operator;
         }
-        SFWOperator sfwOperator = (SFWOperator) context;
-        FromOperator from = sfwOperator.getFrom();
-        List<Pair<Path, String>> prefixPathPairs;
-        if (from == null || (prefixPathPairs = from.getPathsAndAlias()).isEmpty()) {
+        SFWOperator sfwOperator = (SFWOperator) operator;
+        FromOperator from = sfwOperator.getFromOperator();
+        List<Path> prefixPaths;
+        if (from == null || (prefixPaths = from.getPrefixPaths()).isEmpty()) {
             LOG.warn("given SFWOperator doesn't have prefix paths, cannot concat path");
-            return context;
+            return operator;
         }
-        SelectOperator select = sfwOperator.getSelect();
+        SelectOperator select = sfwOperator.getSelectOperator();
         List<Path> suffixPaths;
         if (select == null || (suffixPaths = select.getSuffixPaths()).isEmpty()) {
             LOG.warn("given SFWOperator doesn't have suffix paths, cannot concat path");
-            return context;
+            return operator;
         }
         // concat select paths
-        suffixPaths = concatSelect(prefixPathPairs, suffixPaths);
+        suffixPaths = concatSelect(prefixPaths, suffixPaths);
         select.setSuffixPathList(suffixPaths);
         // concat filter
-        FilterOperator filter = sfwOperator.getFilter();
+        FilterOperator filter = sfwOperator.getFilterOperator();
         if (filter == null)
-            return context;
-        concatFilter(prefixPathPairs, filter);
-        // sfwOperator.setFilterOperator(filter);
+            return operator;
+        concatFilter(prefixPaths, filter);
+        sfwOperator.setFilterOperator(filter);
         return sfwOperator;
     }
 
 
-    private List<Path> concatSelect(List<Pair<Path, String>> fromPaths, List<Path> selectPaths)
+    private List<Path> concatSelect(List<Path> fromPaths, List<Path> selectPaths)
             throws PathConcatException {
         if (fromPaths.size() == 1) {
-            Pair<Path, String> fromPair = fromPaths.get(0);
-            for (Path path : selectPaths) {
-                if (path.startWith(fromPair.right)) {
-                    // replace alias to namespace path starting with ROOT
-                    path.replace(fromPair.right, fromPair.left);
-                } else if (!path.startWith(fromPair.left)) {
-                    // add prefix root path
-                    path.addHeadPath(fromPair.left);
-                }
-            }
-        } else {
+            Path fromPath = fromPaths.get(0);
+            if (!fromPath.startWith(SQLConstant.ROOT))
+                throw new PathConcatException("illegal from clause : " + fromPath.getFullPath());
             for (Path selectPath : selectPaths) {
-                boolean legal = false;
-                for (Pair<Path, String> fromPair : fromPaths) {
-                    if (selectPath.startWith(fromPair.right)) {
-                        // replace alias to namespace path starting with ROOT
-                        selectPath.replace(fromPair.right, fromPair.left);
-                        legal = true;
-                        break;
-                    } else if (selectPath.startWith(fromPair.left)) {
-                        // do nothing, mark legal
-                        legal = true;
-                        break;
-                    }
-                }
-                if (!legal) {
-                    throw new PathConcatException("select path is illegal:" + selectPath);
+                if (!selectPath.startWith(SQLConstant.ROOT)) {
+                    // add prefix root path
+                    selectPath.addHeadPath(fromPath);
                 }
             }
+            return selectPaths;
+        } else {
+            List<Path> allPaths = new ArrayList<>();
+            for (Path selectPath : selectPaths) {
+                if(selectPath.startWith(SQLConstant.ROOT))
+                    continue;
+                for (Path fromPath : fromPaths) {
+                    if (!fromPath.startWith(SQLConstant.ROOT))
+                        throw new PathConcatException("illegal from clause : " + fromPath.getFullPath());
+                    Path newPath = selectPath.clone();
+                    newPath.addHeadPath(fromPath);
+                    allPaths.add(newPath);
+                }
+            }
+            return allPaths;
         }
-        return selectPaths;
     }
 
-    private void concatFilter(List<Pair<Path, String>> fromPaths, FilterOperator filter)
+    private void concatFilter(List<Path> fromPaths, FilterOperator operator)
             throws PathConcatException {
-        if (!filter.isLeaf()) {
-            for (FilterOperator child : filter.getChildren())
+        if (!operator.isLeaf()) {
+            for (FilterOperator child : operator.getChildren())
                 concatFilter(fromPaths, child);
             return;
         }
-        BasicFunctionOperator basic = (BasicFunctionOperator) filter;
-        Path selectPath = basic.getSinglePath();
-        if (SQLConstant.isReservedPath(selectPath))
+        BasicFunctionOperator basicOperator = (BasicFunctionOperator) operator;
+        Path filterPath = basicOperator.getSinglePath();
+        if (SQLConstant.isReservedPath(filterPath))
             return;
         if (fromPaths.size() == 1) {
-            Pair<Path, String> fromPair = fromPaths.get(0);
-            if (selectPath.startWith(fromPair.right)) {
-                // replace alias to namespace path starting with ROOT
-                selectPath.replace(fromPair.right, fromPair.left);
-            } else if (!selectPath.startWith(fromPair.left)) {
-                // add prefix root path
-                selectPath.addHeadPath(fromPair.left);
+            Path fromPath = fromPaths.get(0);
+            if (!fromPath.startWith(SQLConstant.ROOT))
+                throw new PathConcatException("illegal from clause : " + fromPath.getFullPath());
+            if (!filterPath.startWith(fromPath)) {
+                filterPath.addHeadPath(fromPath);
             }
-
-        } else {
-            boolean legal = false;
-            for (Pair<Path, String> fromPair : fromPaths) {
-                if (selectPath.startWith(fromPair.right)) {
-                    // replace alias to namespace path starting with ROOT
-                    selectPath.replace(fromPair.right, fromPair.left);
-                    legal = true;
-                    break;
-                } else if (selectPath.startWith(fromPair.left)) {
-                    // do nothing, mark legal
-                    legal = true;
-                    break;
-                }
-            }
-            if (!legal) {
-                throw new PathConcatException("select path is illegal:" + selectPath);
-            }
+            //don't support select s1 from root.car.d1,root.car.d2 where s1 > 10
+        } else if (!filterPath.startWith(SQLConstant.ROOT)){
+            throw new PathConcatException("illegal filter path : " + filterPath.getFullPath());
         }
     }
 }

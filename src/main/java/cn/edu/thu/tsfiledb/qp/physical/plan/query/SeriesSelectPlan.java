@@ -19,44 +19,30 @@ import cn.edu.thu.tsfile.timeseries.utils.StringContainer;
 import cn.edu.thu.tsfiledb.exception.PathErrorException;
 import cn.edu.thu.tsfiledb.qp.exception.QueryProcessorException;
 import cn.edu.thu.tsfile.timeseries.read.qp.Path;
-import cn.edu.thu.tsfiledb.qp.exec.QueryProcessExecutor;
+import cn.edu.thu.tsfiledb.qp.executor.QueryProcessExecutor;
 import cn.edu.thu.tsfiledb.qp.logical.operator.Operator.OperatorType;
-import cn.edu.thu.tsfiledb.qp.logical.operator.crud.FilterOperator;
+import cn.edu.thu.tsfiledb.qp.logical.operator.clause.filter.FilterOperator;
 import cn.edu.thu.tsfiledb.qp.physical.plan.PhysicalPlan;
 
 /**
- * This class is constructed with a single getIndex plan. Single getIndex means it could be processed by
- * reading API by one pass directly.<br>
- * Up to now, Single Query what {@code reading API} supports means it's a conjunction among time
+ * This class is constructed with a single query plan. Single query means it could be processed by
+ * TsFile reading API by one pass directly.<br>
+ * Up to now, Single Query that {@code TsFile reading API} supports is a conjunction among time
  * filter, frequency filter and value filter. <br>
- * This class provide two public function. If the whole getIndex plan has exactly one single getIndex,
+ * This class provide two public function. If the whole SeriesSelectPlan has exactly one single path,
  * {@code SeriesSelectPlan} return a {@code Iterator<QueryDataSet>} directly. Otherwise
  * {@code SeriesSelectPlan} is regard as a portion of {@code MergeQuerySetPlan}. This class provide
  * a {@code Iterator<RowRecord>}in the latter case.
- * 
- * @author kangrong
  *
+ * @author kangrong
  */
 public class SeriesSelectPlan extends PhysicalPlan {
+
     private static final Logger LOG = LoggerFactory.getLogger(SeriesSelectPlan.class);
-    private List<Path> paths;
-    private FilterOperator deltaObjectFilterOperator;
-
-    public FilterOperator getDeltaObjectFilterOperator() {
-        return deltaObjectFilterOperator;
-    }
-
-    public void setDeltaObjectFilterOperator(FilterOperator deltaObjectFilterOperator) {
-        this.deltaObjectFilterOperator = deltaObjectFilterOperator;
-    }
-
+    private List<Path> paths = new ArrayList<>();
     private FilterOperator timeFilterOperator;
     private FilterOperator freqFilterOperator;
     private FilterOperator valueFilterOperator;
-
-    public List<Path> getPaths() {
-        return paths;
-    }
 
     public FilterOperator getTimeFilterOperator() {
         return timeFilterOperator;
@@ -70,66 +56,48 @@ public class SeriesSelectPlan extends PhysicalPlan {
         return valueFilterOperator;
     }
 
-    public SeriesSelectPlan(List<Path> paths, FilterOperator timeFilter, FilterOperator freqFilter,
-            FilterOperator valueFilter, QueryProcessExecutor conf) {
-        this(paths, null, timeFilter, freqFilter, valueFilter, conf);
-    }
-
-    public SeriesSelectPlan(List<Path> paths, FilterOperator deltaObjectFilterOperator,
-            FilterOperator timeFilter, FilterOperator freqFilter, FilterOperator valueFilter, QueryProcessExecutor conf) {
+    public SeriesSelectPlan(List<Path> paths,
+                            FilterOperator timeFilter, FilterOperator freqFilter, FilterOperator valueFilter, QueryProcessExecutor conf) throws PathErrorException {
         super(true, OperatorType.QUERY);
         this.paths = paths;
-        this.deltaObjectFilterOperator = deltaObjectFilterOperator;
         this.timeFilterOperator = timeFilter;
         this.freqFilterOperator = freqFilter;
         this.valueFilterOperator = valueFilter;
         removeStarsInPath(conf);
-        LOG.info(Arrays.toString(paths.toArray()));
+        LOG.debug(Arrays.toString(paths.toArray()));
         removeNotExistsPaths(conf);
-        LOG.info(Arrays.toString(paths.toArray()));
-    }
-    
-    @Override
-    public Iterator<QueryDataSet> processQuery(QueryProcessExecutor conf) {
-        FilterExpression[] exprs;
-        try {
-            exprs = transformFilterOpToExpression(conf);
-        } catch (QueryProcessorException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-            return null;
-        }
-        return new QueryDataSetIterator(paths, conf.getFetchSize(), conf, exprs[0], exprs[1],
-                exprs[2]);
+        LOG.debug(Arrays.toString(paths.toArray()));
     }
 
-    private void removeStarsInPath(QueryProcessExecutor conf) {
-    	LinkedHashMap<String, Integer> pathMap = new LinkedHashMap<>();
+    @Override
+    public Iterator<QueryDataSet> processQuery(QueryProcessExecutor executor) throws QueryProcessorException {
+        FilterExpression[] expressions = transformToFilterExpressions(executor);
+
+        return new QueryDataSetIterator(paths, executor.getFetchSize(), executor, expressions[0], expressions[1],
+                expressions[2]);
+    }
+
+    private void removeStarsInPath(QueryProcessExecutor executor) throws PathErrorException {
+        LinkedHashMap<String, Integer> pathMap = new LinkedHashMap<>();
         for (Path path : paths) {
-            List<String> all = null;
-            try {
-                all = conf.getAllPaths(path.getFullPath());
-                for(String subp : all){
-                 	if(!pathMap.containsKey(subp)){
-                 		pathMap.put(subp, 1);
-                 	}
+            List<String> all = executor.getAllPaths(path.getFullPath());
+            for (String subPath : all) {
+                if (!pathMap.containsKey(subPath)) {
+                    pathMap.put(subPath, 1);
                 }
-            } catch (PathErrorException e) {
-                LOG.error("path error:" + e.getMessage());
-                continue;
             }
         }
-        paths = new ArrayList<Path>();
+        paths = new ArrayList<>();
         for (String pathStr : pathMap.keySet()) {
             paths.add(new Path(pathStr));
         }
     }
 
-    private void removeNotExistsPaths(QueryProcessExecutor conf) {
-        List<Path> existsPaths = new ArrayList<Path>();
-        List<Path> notExistsPaths = new ArrayList<Path>();
+    private void removeNotExistsPaths(QueryProcessExecutor executor) {
+        List<Path> existsPaths = new ArrayList<>();
+        List<Path> notExistsPaths = new ArrayList<>();
         for (Path path : paths) {
-            if (conf.judgePathExists(path))
+            if (executor.judgePathExists(path))
                 existsPaths.add(path);
             else
                 notExistsPaths.add(path);
@@ -141,14 +109,14 @@ public class SeriesSelectPlan extends PhysicalPlan {
 
     }
 
-    private FilterExpression[] transformFilterOpToExpression(QueryProcessExecutor conf)
+    private FilterExpression[] transformToFilterExpressions(QueryProcessExecutor conf)
             throws QueryProcessorException {
         FilterExpression timeFilter =
-                timeFilterOperator == null ? null : timeFilterOperator.transformToFilter(conf, FilterSeriesType.TIME_FILTER);
+                timeFilterOperator == null ? null : timeFilterOperator.transformToFilterExpression(conf, FilterSeriesType.TIME_FILTER);
         FilterExpression freqFilter =
-                freqFilterOperator == null ? null : freqFilterOperator.transformToFilter(conf, FilterSeriesType.FREQUENCY_FILTER);
+                freqFilterOperator == null ? null : freqFilterOperator.transformToFilterExpression(conf, FilterSeriesType.FREQUENCY_FILTER);
         FilterExpression valueFilter =
-                valueFilterOperator == null ? null : valueFilterOperator.transformToFilter(conf, FilterSeriesType.VALUE_FILTER);
+                valueFilterOperator == null ? null : valueFilterOperator.transformToFilterExpression(conf, FilterSeriesType.VALUE_FILTER);
         // TODO maybe it's a temporary solution. Up to now, if a crossSensorFilter is needed, just
         // construct it with two same children via CSAnd(valueFilter, valueFilter)
         if (valueFilter instanceof SingleSeriesFilterExpression) {
@@ -162,51 +130,26 @@ public class SeriesSelectPlan extends PhysicalPlan {
             } else
                 valueFilter = FilterFactory.csAnd(valueFilter, valueFilter);
         }
-        return new FilterExpression[] {timeFilter, freqFilter, valueFilter};
+        return new FilterExpression[]{timeFilter, freqFilter, valueFilter};
     }
-
 
     /**
      * provide {@code Iterator<RowRecord>} for
      * {@link cn.edu.thu.tsfiledb.qp.physical.plan.query.MergeQuerySetIterator} which has more than one
      * {@code SeriesSelectPlan} to merge
-     * 
-     * @param conf
-     * @return
+     *
+     * @param executor
+     * @return Iterator<RowRecord>
      */
-    private Iterator<RowRecord> getRecordIterator(QueryProcessExecutor conf) {
-        FilterExpression[] exprs = null;
-        try {
-            exprs = transformFilterOpToExpression(conf);
-        } catch (QueryProcessorException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-            return null;
-        }
-        return new RowRecordIterator(conf.getFetchSize(), conf, exprs[0], exprs[1], exprs[2]);
+    private Iterator<RowRecord> getRecordIterator(QueryProcessExecutor executor) throws QueryProcessorException {
+        FilterExpression[] filterExpressions = transformToFilterExpressions(executor);
+
+        return new RowRecordIterator(executor.getFetchSize(), executor, filterExpressions[0], filterExpressions[1], filterExpressions[2]);
     }
 
-    /**
-     * provide {@code Iterator<QueryDataSet>} for
-     * {@link com.corp.tsfile.qp.physical.plan.MergeQuerySetIterator} which has exactly one
-     * {@code SeriesSelectPlan}.
-     * 
-     * @param conf
-     * @return
-     */
-    // public Iterator<QueryDataSet> getQueryDataSetIterator(QueryProcessExecutor conf) {
-    // return new QueryDataSetIterator(conf.getFetchSize(), conf);
-    // }
 
-    /**
-     * only used by
-     * 
-     * @param plans
-     * @param conf
-     * @return
-     */
     public static Iterator<RowRecord>[] getRecordIteratorArray(List<SeriesSelectPlan> plans,
-            QueryProcessExecutor conf) {
+                                                               QueryProcessExecutor conf) throws QueryProcessorException {
         Iterator<RowRecord>[] ret = new RowRecordIterator[plans.size()];
         for (int i = 0; i < plans.size(); i++) {
             ret[i] = plans.get(i).getRecordIterator(conf);
@@ -224,8 +167,8 @@ public class SeriesSelectPlan extends PhysicalPlan {
         private FilterExpression valueFilter;
 
         public RowRecordIterator(int fetchSize, QueryProcessExecutor conf,
-                FilterExpression timeFilter, FilterExpression freqFilter,
-                FilterExpression valueFilter) {
+                                 FilterExpression timeFilter, FilterExpression freqFilter,
+                                 FilterExpression valueFilter) {
             this.fetchSize = fetchSize;
             this.conf = conf;
             this.timeFilter = timeFilter;
@@ -234,15 +177,15 @@ public class SeriesSelectPlan extends PhysicalPlan {
         }
 
         @Override
-        public boolean hasNext(){
+        public boolean hasNext() {
             if (noNext)
                 return false;
             if (data == null || !data.hasNextRecord())
-				try {
-					data = conf.query(paths, timeFilter, freqFilter, valueFilter, fetchSize, data);
-				} catch (ProcessorException e) {
-					throw new RuntimeException(e.getMessage());
-				}
+                try {
+                    data = conf.query(paths, timeFilter, freqFilter, valueFilter, fetchSize, data);
+                } catch (ProcessorException e) {
+                    throw new RuntimeException(e.getMessage());
+                }
             if (data.hasNextRecord())
                 return true;
             else {
@@ -270,8 +213,8 @@ public class SeriesSelectPlan extends PhysicalPlan {
         private List<Path> paths;
 
         public QueryDataSetIterator(List<Path> paths, int fetchSize, QueryProcessExecutor conf,
-                FilterExpression timeFilter, FilterExpression freqFilter,
-                FilterExpression valueFilter) {
+                                    FilterExpression timeFilter, FilterExpression freqFilter,
+                                    FilterExpression valueFilter) {
             this.paths = paths;
             this.fetchSize = fetchSize;
             this.conf = conf;
@@ -289,11 +232,11 @@ public class SeriesSelectPlan extends PhysicalPlan {
             if (noNext)
                 return false;
             if (data == null || !data.hasNextRecord())
-				try {
-					data = conf.query(paths, timeFilter, freqFilter, valueFilter, fetchSize, usedData);
-				} catch (ProcessorException e) {
-					throw new RuntimeException(e.getMessage());
-				}
+                try {
+                    data = conf.query(paths, timeFilter, freqFilter, valueFilter, fetchSize, usedData);
+                } catch (ProcessorException e) {
+                    throw new RuntimeException(e.getMessage());
+                }
             if (data == null) {
                 LOG.error(
                         "data is null! parameters: paths:{},timeFilter:{}, freqFilter:{}, valueFilter:{}, fetchSize:{}, usedData:{}",
@@ -333,10 +276,7 @@ public class SeriesSelectPlan extends PhysicalPlan {
     }
 
     @Override
-    public List<Path> getInvolvedSeriesPaths() {
-        if (paths == null)
-            return new ArrayList<Path>();
-        else
-            return paths;
+    public List<Path> getPaths() {
+        return paths;
     }
 }

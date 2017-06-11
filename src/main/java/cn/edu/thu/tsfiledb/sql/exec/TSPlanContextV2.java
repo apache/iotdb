@@ -2,6 +2,7 @@ package cn.edu.thu.tsfiledb.sql.exec;
 
 
 
+import cn.edu.thu.tsfile.common.constant.SystemConstant;
 import cn.edu.thu.tsfile.common.utils.Pair;
 import cn.edu.thu.tsfile.timeseries.read.qp.Path;
 import cn.edu.thu.tsfile.timeseries.utils.StringContainer;
@@ -9,15 +10,19 @@ import cn.edu.thu.tsfiledb.qp.constant.SQLConstant;
 import cn.edu.thu.tsfiledb.qp.exception.IllegalASTFormatException;
 import cn.edu.thu.tsfiledb.qp.exception.QueryProcessorException;
 import cn.edu.thu.tsfiledb.qp.exception.logical.operator.*;
-import cn.edu.thu.tsfiledb.qp.logical.operator.RootOperator;
-import cn.edu.thu.tsfiledb.qp.logical.operator.author.AuthorOperator;
-import cn.edu.thu.tsfiledb.qp.logical.operator.author.AuthorOperator.AuthorType;
-import cn.edu.thu.tsfiledb.qp.logical.operator.crud.*;
-import cn.edu.thu.tsfiledb.qp.logical.operator.load.LoadDataOperator;
-import cn.edu.thu.tsfiledb.qp.logical.operator.metadata.MetadataOperator;
-import cn.edu.thu.tsfiledb.qp.logical.operator.metadata.PropertyOperator;
-import cn.edu.thu.tsfiledb.qp.logical.operator.metadata.MetadataOperator.NamespaceType;
-import cn.edu.thu.tsfiledb.qp.logical.operator.metadata.PropertyOperator.PropertyType;
+import cn.edu.thu.tsfiledb.qp.logical.operator.clause.SelectOperator;
+import cn.edu.thu.tsfiledb.qp.logical.operator.clause.filter.BasicFunctionOperator;
+import cn.edu.thu.tsfiledb.qp.logical.operator.clause.filter.FilterOperator;
+import cn.edu.thu.tsfiledb.qp.logical.operator.clause.FromOperator;
+import cn.edu.thu.tsfiledb.qp.logical.operator.root.RootOperator;
+import cn.edu.thu.tsfiledb.qp.logical.operator.root.author.AuthorOperator;
+import cn.edu.thu.tsfiledb.qp.logical.operator.root.author.AuthorOperator.AuthorType;
+import cn.edu.thu.tsfiledb.qp.logical.operator.root.sfw.*;
+import cn.edu.thu.tsfiledb.qp.logical.operator.root.load.LoadDataOperator;
+import cn.edu.thu.tsfiledb.qp.logical.operator.root.metadata.MetadataOperator;
+import cn.edu.thu.tsfiledb.qp.logical.operator.root.metadata.PropertyOperator;
+import cn.edu.thu.tsfiledb.qp.logical.operator.root.metadata.MetadataOperator.NamespaceType;
+import cn.edu.thu.tsfiledb.qp.logical.operator.root.metadata.PropertyOperator.PropertyType;
 import cn.edu.thu.tsfiledb.sql.parse.ASTNode;
 import cn.edu.thu.tsfiledb.sql.parse.Node;
 import cn.edu.thu.tsfiledb.sql.parse.TSParser;
@@ -42,7 +47,7 @@ import java.util.List;
 public class TSPlanContextV2 {
 	Logger LOG = LoggerFactory.getLogger(TSPlanContextV2.class);
 	private SFWOperator rootTree = null;
-	private RootOperator initialiedOperator;
+	private RootOperator initializedOperator;
 	private SQLQueryType queryType;
 
 	public SQLQueryType getQueryType() {
@@ -50,7 +55,7 @@ public class TSPlanContextV2 {
 	}
 
 	public RootOperator getOperator() {
-		return initialiedOperator;
+		return initializedOperator;
 	}
 
 	/**
@@ -67,14 +72,11 @@ public class TSPlanContextV2 {
 		LOG.debug("analyze token: {}", token.getText());
 		switch (tokenIntType) {
 		case TSParser.TOK_MULTINSERT:
-			analyzeMultiInsert(astNode, tokenIntType);
+			analyzeMultiInsert(astNode);
 			return;
 		case TSParser.TOK_INSERT:
-			analyzeInsert(astNode, tokenIntType);
+			analyzeInsert(astNode);
 			return;
-		case TSParser.TOK_QUERY:
-			analyzeQuery(astNode, tokenIntType);
-			break;
 		case TSParser.TOK_SELECT:
 			analyzeSelect(astNode);
 			return;
@@ -87,64 +89,67 @@ public class TSPlanContextV2 {
 		case TSParser.TOK_UPDATE:
 			// 这是需要修改的，因为这个update是user的 update是需要和数据的update共同使用吗？
 			if (astNode.getChild(0).getType() == TSParser.TOK_UPDATE_PSWD) {
-				analyzeAuthorUpdate(astNode, tokenIntType);
+				analyzeAuthorUpdate(astNode);
 				return;
 			}
-			analyzeUpdate(astNode, tokenIntType);
+			analyzeUpdate(astNode);
 			return;
 		case TSParser.TOK_DELETE:
 			switch (astNode.getChild(0).getType()) {
 			case TSParser.TOK_TIMESERIES:
-				analyzeMetadataDelete(astNode, tokenIntType);
+				analyzeMetadataDelete(astNode);
 				break;
 			case TSParser.TOK_LABEL:
-				analyzePropertyDeleteLabel(astNode, tokenIntType);
+				analyzePropertyDeleteLabel(astNode);
 				break;
 			default:
-				analyzeDelete(astNode, tokenIntType);
+				analyzeDelete(astNode);
 				break;
 			}
 			return;
 		case TSParser.TOK_SET:
-			analyzeMetadataSetFileLevel(astNode, tokenIntType);
+			analyzeMetadataSetFileLevel(astNode);
 			return;
 		case TSParser.TOK_ADD:
-			analyzePropertyAddLabel(astNode, tokenIntType);
+			analyzePropertyAddLabel(astNode);
 			return;
 		case TSParser.TOK_LINK:
-			analyzePropertyLink(astNode, tokenIntType);
+			analyzePropertyLink(astNode);
 			return;
 		case TSParser.TOK_UNLINK:
-			analyzePropertyUnLink(astNode, tokenIntType);
+			analyzePropertyUnLink(astNode);
 			return;
 		case TSParser.TOK_CREATE:
 			switch (astNode.getChild(0).getType()) {
 			case TSParser.TOK_USER:
 			case TSParser.TOK_ROLE:
-				analyzeAuthorCreate(astNode, tokenIntType);
+				analyzeAuthorCreate(astNode);
 				break;
 			case TSParser.TOK_TIMESERIES:
-				analyzeMetadataCreate(astNode, tokenIntType);
+				analyzeMetadataCreate(astNode);
 				break;
 			case TSParser.TOK_PROPERTY:
-				analyzePropertyCreate(astNode, tokenIntType);
+				analyzePropertyCreate(astNode);
 				break;
 			default:
 				break;
 			}
 			return;
 		case TSParser.TOK_DROP:
-			analyzeAuthorDrop(astNode, tokenIntType);
+			analyzeAuthorDrop(astNode);
 			return;
 		case TSParser.TOK_GRANT:
-			analyzeAuthorGrant(astNode, tokenIntType);
+			analyzeAuthorGrant(astNode);
 			return;
 		case TSParser.TOK_REVOKE:
-			analyzeAuthorRevoke(astNode, tokenIntType);
+			analyzeAuthorRevoke(astNode);
 			return;
 		case TSParser.TOK_LOAD:
-			analyzeDataLoad(astNode, tokenIntType);
+			analyzeDataLoad(astNode);
 			return;
+		case TSParser.TOK_QUERY:
+			analyzeQuery(astNode);
+			break;
 		default:
 			// for TOK_QUERY.TOK_QUERY might appear in both query and insert
 			// command. Thus, do
@@ -155,27 +160,27 @@ public class TSPlanContextV2 {
 			analyze((ASTNode) node);
 	}
 
-	private void analyzePropertyCreate(ASTNode astNode, int tokenIntType) {
+	private void analyzePropertyCreate(ASTNode astNode) {
 		PropertyOperator propertyOperator = new PropertyOperator(SQLConstant.TOK_PORPERTY_CREATE,
 				PropertyType.ADD_TREE);
 		propertyOperator.setPropertyPath(new Path(astNode.getChild(0).getChild(0).getText()));
-		initialiedOperator = propertyOperator;
+		initializedOperator = propertyOperator;
 	}
 
-	private void analyzePropertyAddLabel(ASTNode astNode, int tokenIntType) {
+	private void analyzePropertyAddLabel(ASTNode astNode) {
 		PropertyOperator propertyOperator = new PropertyOperator(SQLConstant.TOK_PORPERTY_ADD_LABEL,
 				PropertyType.ADD_PROPERTY_LABEL);
 		Path propertyLabel = parsePropertyAndLabel(astNode, 0);
 		propertyOperator.setPropertyPath(propertyLabel);
-		initialiedOperator = propertyOperator;
+		initializedOperator = propertyOperator;
 	}
 
-	private void analyzePropertyDeleteLabel(ASTNode astNode, int tokenIntType) {
+	private void analyzePropertyDeleteLabel(ASTNode astNode) {
 		PropertyOperator propertyOperator = new PropertyOperator(SQLConstant.TOK_PORPERTY_DELETE_LABEL,
 				PropertyType.DELETE_PROPERTY_LABEL);
 		Path propertyLabel = parsePropertyAndLabel(astNode, 0);
 		propertyOperator.setPropertyPath(propertyLabel);
-		initialiedOperator = propertyOperator;
+		initializedOperator = propertyOperator;
 	}
 
 	private Path parsePropertyAndLabel(ASTNode astNode, int startIndex) {
@@ -184,27 +189,27 @@ public class TSPlanContextV2 {
 		return new Path(new String[] { property, label });
 	}
 
-	private void analyzePropertyLink(ASTNode astNode, int tokenIntType) {
+	private void analyzePropertyLink(ASTNode astNode) {
 		PropertyOperator propertyOperator = new PropertyOperator(SQLConstant.TOK_PORPERTY_LINK,
 				PropertyType.ADD_PROPERTY_TO_METADATA);
 		Path metaPath = parseRootPath(astNode.getChild(0));
 		propertyOperator.setMetadataPath(metaPath);
 		Path propertyLabel = parsePropertyAndLabel(astNode, 1);
 		propertyOperator.setPropertyPath(propertyLabel);
-		initialiedOperator = propertyOperator;
+		initializedOperator = propertyOperator;
 	}
 
-	private void analyzePropertyUnLink(ASTNode astNode, int tokenIntType) {
+	private void analyzePropertyUnLink(ASTNode astNode) {
 		PropertyOperator propertyOperator = new PropertyOperator(SQLConstant.TOK_PORPERTY_UNLINK,
 				PropertyType.DEL_PROPERTY_FROM_METADATA);
 		Path metaPath = parseRootPath(astNode.getChild(0));
 		propertyOperator.setMetadataPath(metaPath);
 		Path propertyLabel = parsePropertyAndLabel(astNode, 1);
 		propertyOperator.setPropertyPath(propertyLabel);
-		initialiedOperator = propertyOperator;
+		initializedOperator = propertyOperator;
 	}
 
-	private void analyzeMetadataCreate(ASTNode astNode, int tokenIntType) {
+	private void analyzeMetadataCreate(ASTNode astNode) {
 		Path series = parseRootPath(astNode.getChild(0).getChild(0));
 		ASTNode paramNode = astNode.getChild(1);
 		String dataType = paramNode.getChild(0).getChild(0).getText();
@@ -220,66 +225,62 @@ public class TSPlanContextV2 {
 		metadataOperator.setDataType(dataType);
 		metadataOperator.setEncoding(encodingType);
 		metadataOperator.setEncodingArgs(paramStrings);
-		initialiedOperator = metadataOperator;
+		initializedOperator = metadataOperator;
 	}
 
-	private void analyzeMetadataDelete(ASTNode astNode, int tokenIntType) {
+	private void analyzeMetadataDelete(ASTNode astNode) {
 		Path series = parseRootPath(astNode.getChild(0).getChild(0));
 		MetadataOperator metadataOperator = new MetadataOperator(SQLConstant.TOK_METADATA_DELETE,
 				NamespaceType.DELETE_PATH);
 		metadataOperator.setPath(series);
-		initialiedOperator = metadataOperator;
+		initializedOperator = metadataOperator;
 	}
 
-	private void analyzeMetadataSetFileLevel(ASTNode astNode, int tokenIntType) {
+	private void analyzeMetadataSetFileLevel(ASTNode astNode) {
 		MetadataOperator metadataOperator = new MetadataOperator(SQLConstant.TOK_METADATA_SET_FILE_LEVEL,
 				NamespaceType.SET_FILE_LEVEL);
 		Path path = parsePath(astNode.getChild(0).getChild(0));
 		metadataOperator.setPath(path);
-		initialiedOperator = metadataOperator;
+		initializedOperator = metadataOperator;
 	}
 
-	public void analyzeMultiInsert(ASTNode astNode, int tokenIntType) throws QueryProcessorException{
+	public void analyzeMultiInsert(ASTNode astNode) throws QueryProcessorException{
 		queryType = SQLQueryType.MULTIINSERT;
 		MultiInsertOperator multiInsertOp = new MultiInsertOperator(SQLConstant.TOK_MULTIINSERT);
-		initialiedOperator = rootTree = multiInsertOp;
+		initializedOperator = rootTree = multiInsertOp;
 		analyzeSelect(astNode.getChild(0));
 		long timestamp;
-		ASTNode timeChild = null;
+		ASTNode timeChild;
 		try {
 			timeChild = astNode.getChild(1).getChild(0);
 			if(timeChild.getToken().getType() != TSParser.TOK_TIME){
-				throw new ValueParseException("need keyword 'time'");
+				throw new ValueParseException("need keyword 'timestamp'");
 			}
 			timestamp = Long.valueOf(astNode.getChild(2).getChild(0).getText());
 		} catch (NumberFormatException e) {
-			throw new ValueParseException("need a long value in insert clause, but given:" + timeChild.getText());
+			throw new ValueParseException("need a long value in insert clause, but given:" + astNode.getChild(2).getChild(0).getText());
 		}
 		if(astNode.getChild(1).getChildCount() != astNode.getChild(2).getChildCount()){
 			throw new QueryProcessorException("length of measurement is NOT EQUAL TO the length of values");
 		}
 		multiInsertOp.setInsertTime(timestamp);
-		List<String> measurementList = new ArrayList<String>();
+		List<String> measurementList = new ArrayList<>();
 		for(int i = 1; i < astNode.getChild(1).getChildCount(); i ++){
 			measurementList.add(astNode.getChild(1).getChild(i).getText());
 		}
 		multiInsertOp.setMeasurementList(measurementList);
 		
-		List<String> insertValue = new ArrayList<String>();
+		List<String> valueList = new ArrayList<>();
 		for(int i = 1; i < astNode.getChild(2).getChildCount(); i ++){
-			insertValue.add(astNode.getChild(2).getChild(i).getText());
+			valueList.add(astNode.getChild(2).getChild(i).getText());
 		}
-		multiInsertOp.setInsertValue(insertValue);
+		multiInsertOp.setValueList(valueList);
 	}
-	
-	/**
-	 * @param astNode
-	 * @param tokenIntType
-	 */
-	private void analyzeInsert(ASTNode astNode, int tokenIntType) throws QueryProcessorException {
+
+	private void analyzeInsert(ASTNode astNode) throws QueryProcessorException {
 		queryType = SQLQueryType.INSERT;
 		InsertOperator insertOp = new InsertOperator(SQLConstant.TOK_INSERT);
-		initialiedOperator = rootTree = insertOp;
+		initializedOperator = rootTree = insertOp;
 		analyzeSelect(astNode.getChild(0));
 		long timestamp;
 		ASTNode timeChild = null;
@@ -289,56 +290,40 @@ public class TSPlanContextV2 {
 		} catch (NumberFormatException e) {
 			throw new ValueParseException("need a long value in insert clause, but given:" + timeChild.getText());
 		}
-		insertOp.setInsertTime(timestamp);
-		insertOp.setInsertValue(astNode.getChild(2).getText());
+		insertOp.setTime(timestamp);
+		insertOp.setValue(astNode.getChild(2).getText());
 	}
 
 	/**
 	 * @param astNode
-	 * @param tokenIntType
 	 */
-	private void analyzeUpdate(ASTNode astNode, int tokenIntType) throws QueryProcessorException {
-
-		System.out.println("you are reaaly here");
-		ASTNode next = astNode.getChild(0);
-		System.out.println(next.toString());
-
-		// code above is editted by zhaoxin ,2017-1-4
-
+	private void analyzeUpdate(ASTNode astNode) throws QueryProcessorException {
 		if (astNode.getChildCount() != 3)
 			throw new UpdateOperatorException("error format in UPDATE statement:" + astNode.dump());
 		queryType = SQLQueryType.UPDATE;
 		UpdateOperator updateOp = new UpdateOperator(SQLConstant.TOK_UPDATE);
-		initialiedOperator = rootTree = updateOp;
+		initializedOperator = rootTree = updateOp;
 		analyzeSelect(astNode.getChild(0));
 		if (astNode.getChild(1).getType() != TSParser.TOK_VALUE)
 			throw new UpdateOperatorException("error format in UPDATE statement:" + astNode.dump());
-		updateOp.setUpdateValue(astNode.getChild(1).getChild(0).getText());
+		updateOp.setValue(astNode.getChild(1).getChild(0).getText());
 		analyzeWhere(astNode.getChild(2));
 	}
 
-	/**
-	 * @param astNode
-	 * @param tokenIntType
-	 */
-	private void analyzeDelete(ASTNode astNode, int tokenIntType) throws QueryProcessorException {
+	private void analyzeDelete(ASTNode astNode) throws QueryProcessorException {
 		if (astNode.getChildCount() != 2)
 			throw new UpdateOperatorException("error format in DELETE statement:" + astNode.dump());
 		queryType = SQLQueryType.DELETE;
 		DeleteOperator deleteOp = new DeleteOperator(SQLConstant.TOK_DELETE);
-		initialiedOperator = rootTree = deleteOp;
+		initializedOperator = rootTree = deleteOp;
 		analyzeSelect(astNode.getChild(0));
 		analyzeWhere(astNode.getChild(1));
 	}
 
-	/**
-	 * @param astNode
-	 * @param tokenIntType
-	 */
-	private void analyzeQuery(ASTNode astNode, int tokenIntType) throws QueryProcessorException {
+	private void analyzeQuery(ASTNode astNode) throws QueryProcessorException {
 		queryType = SQLQueryType.QUERY;
 		QueryOperator queryOp = new QueryOperator(SQLConstant.TOK_QUERY);
-		initialiedOperator = rootTree = queryOp;
+		initializedOperator = rootTree = queryOp;
 	}
 
 	/**
@@ -346,9 +331,7 @@ public class TSPlanContextV2 {
 	 * up to now(2016-09-23), Antlr, TOK_TABNAME meaning FROM in Query command
 	 * only appear below TOK_TABREF, other TOK_TABNAME in update/insert/delete
 	 * means select series path and don't pass this route
-	 * 
-	 * @param node
-	 * @return
+	 *
 	 */
 	private void analyzeFrom(ASTNode node) throws QpSelectFromException {
 		if (node.getType() != TSParser.TOK_FROM)
@@ -463,7 +446,7 @@ public class TSPlanContextV2 {
 		if (col.getType() != TSParser.TOK_PATH)
 			throw new ParseLeafException("left node of leaf isn't PATH");
 		Path seriesPath = parsePath(col);
-		// String seriesValue = node.getChild(1).getChild(0).getText();
+		// String value = node.getChild(1).getChild(0).getText();
 		ASTNode rightKey = node.getChild(1);
 		String seriesValue;
 		if (rightKey.getType() == TSParser.TOK_PATH)
@@ -472,7 +455,7 @@ public class TSPlanContextV2 {
 			seriesValue = parseTokenTime(rightKey);
 		} else
 			seriesValue = rightKey.getText();
-		return new Pair<Path, String>(seriesPath, seriesValue);
+		return new Pair<>(seriesPath, seriesValue);
 	}
 
 	protected String parseTokenTime(ASTNode astNode) throws ParseLeafException {
@@ -483,7 +466,7 @@ public class TSPlanContextV2 {
 		for (int i = 0; i < astNode.getChildCount(); i++) {
 			sc.addTail(astNode.getChild(i).getText());
 		}
-		Date date = new Date();
+		Date date;
 		try {
 			date = sdf.parse(sc.toString());
 		} catch (ParseException e) {
@@ -498,11 +481,11 @@ public class TSPlanContextV2 {
 		for (int i = 0; i < childCount; i++) {
 			path[i] = node.getChild(i).getText().toLowerCase();
 		}
-		return new Path(new StringContainer(path, SQLConstant.PATH_SEPARATOR));
+		return new Path(new StringContainer(path, SystemConstant.PATH_SEPARATOR));
 	}
 
 	private Path parseRootPath(ASTNode node) {
-		StringContainer sc = new StringContainer(SQLConstant.PATH_SEPARATOR);
+		StringContainer sc = new StringContainer(SystemConstant.PATH_SEPARATOR);
 		sc.addTail(SQLConstant.ROOT);
 		int childCount = node.getChildCount();
 		for (int i = 0; i < childCount; i++) {
@@ -519,14 +502,13 @@ public class TSPlanContextV2 {
 
 	/**
 	 * return a parameter string separated by space acquiescently.
-	 * 
-	 * @return
+	 *
 	 */
 	// public PhysicalPlan thansformToPhysicalPlan(QueryProcessExecutor conf) {
 	// return this.rootTree.transformToPhysicalPlan(conf);
 	// }
 
-	private void analyzeDataLoad(ASTNode astNode, int tokenIntType) throws IllegalASTFormatException {
+	private void analyzeDataLoad(ASTNode astNode) throws IllegalASTFormatException {
 		int childCount = astNode.getChildCount();
 		// node path should have more than one level and first node level must
 		// be root
@@ -535,19 +517,19 @@ public class TSPlanContextV2 {
 		String csvPath = astNode.getChild(0).getText();
 		if (csvPath.length() < 3 || csvPath.charAt(0) != '\'' || csvPath.charAt(csvPath.length() - 1) != '\'')
 			throw new IllegalASTFormatException("data load: error format csvPath:" + csvPath);
-		StringContainer sc = new StringContainer(SQLConstant.PATH_SEPARATOR);
+		StringContainer sc = new StringContainer(SystemConstant.PATH_SEPARATOR);
 		sc.addTail(SQLConstant.ROOT);
 		for (int i = 2; i < childCount; i++) {
 			String pathNode = astNode.getChild(i).getText().toLowerCase();
 			sc.addTail(pathNode);
 		}
-		initialiedOperator = new LoadDataOperator(SQLConstant.TOK_DATALOAD, csvPath.substring(1, csvPath.length() - 1),
+		initializedOperator = new LoadDataOperator(SQLConstant.TOK_DATALOAD, csvPath.substring(1, csvPath.length() - 1),
 				sc.toString());
 	}
 
-	private void analyzeAuthorCreate(ASTNode astNode, int tokenIntType) throws IllegalASTFormatException {
+	private void analyzeAuthorCreate(ASTNode astNode) throws IllegalASTFormatException {
 		int childCount = astNode.getChildCount();
-		AuthorOperator authorOperator = null;
+		AuthorOperator authorOperator;
 		if (childCount == 2) {
 			// create user
 			authorOperator = new AuthorOperator(SQLConstant.TOK_AUTHOR_CREATE, AuthorType.CREATE_USER);
@@ -560,12 +542,12 @@ public class TSPlanContextV2 {
 		} else {
 			throw new IllegalASTFormatException("illegal ast tree in create author command:\n" + astNode.dump());
 		}
-		initialiedOperator = authorOperator;
+		initializedOperator = authorOperator;
 	}
 
-	private void analyzeAuthorUpdate(ASTNode astNode, int tokenIntType) throws IllegalASTFormatException {
+	private void analyzeAuthorUpdate(ASTNode astNode) throws IllegalASTFormatException {
 		int childCount = astNode.getChildCount();
-		AuthorOperator authorOperator = null;
+		AuthorOperator authorOperator;
 		if (childCount == 1) {
 			// 构造对应的 update user的 operator
 			authorOperator = new AuthorOperator(SQLConstant.TOK_AUTHOR_UPDATE_USER, AuthorType.UPDATE_USER);
@@ -579,15 +561,14 @@ public class TSPlanContextV2 {
 			}
 			System.out.println(user.dump());
 			authorOperator.setUserName(parseStringWithQuoto(user.getChild(0).getText()));
-			// authorOperator.setPassWord(parseStringWithQuoto(user.getChild(1).getText()));
 			authorOperator.setNewPassword(parseStringWithQuoto(user.getChild(1).getText()));
 		} else {
 			throw new IllegalASTFormatException("illegal ast tree in create author command:\n" + astNode.dump());
 		}
-		initialiedOperator = authorOperator;
+		initializedOperator = authorOperator;
 	}
 
-	private void analyzeAuthorDrop(ASTNode astNode, int tokenIntType) throws IllegalASTFormatException {
+	private void analyzeAuthorDrop(ASTNode astNode) throws IllegalASTFormatException {
 		int childCount = astNode.getChildCount();
 		AuthorOperator authorOperator = null;
 		if (childCount == 1) {
@@ -608,12 +589,12 @@ public class TSPlanContextV2 {
 		} else {
 			throw new IllegalASTFormatException("illegal ast tree in drop author command:\n" + astNode.dump());
 		}
-		initialiedOperator = authorOperator;
+		initializedOperator = authorOperator;
 	}
 
-	private void analyzeAuthorGrant(ASTNode astNode, int tokenIntType) throws IllegalASTFormatException {
+	private void analyzeAuthorGrant(ASTNode astNode) throws IllegalASTFormatException {
 		int childCount = astNode.getChildCount();
-		AuthorOperator authorOperator = null;
+		AuthorOperator authorOperator;
 		if (childCount == 2) {
 			// grant role to user
 			authorOperator = new AuthorOperator(SQLConstant.TOK_AUTHOR_GRANT, AuthorType.GRANT_ROLE_TO_USER);
@@ -648,12 +629,12 @@ public class TSPlanContextV2 {
 		} else {
 			throw new IllegalASTFormatException("illegal ast tree in grant author command:\n" + astNode.dump());
 		}
-		initialiedOperator = authorOperator;
+		initializedOperator = authorOperator;
 	}
 
-	private void analyzeAuthorRevoke(ASTNode astNode, int tokenIntType) throws IllegalASTFormatException {
+	private void analyzeAuthorRevoke(ASTNode astNode) throws IllegalASTFormatException {
 		int childCount = astNode.getChildCount();
-		AuthorOperator authorOperator = null;
+		AuthorOperator authorOperator;
 		if (childCount == 2) {
 			// revoke role to user
 			authorOperator = new AuthorOperator(SQLConstant.TOK_AUTHOR_REVOKE, AuthorType.REVOKE_ROLE_FROM_USER);
@@ -688,7 +669,7 @@ public class TSPlanContextV2 {
 		} else {
 			throw new IllegalASTFormatException("illegal ast tree in revoke author command:\n" + astNode.dump());
 		}
-		initialiedOperator = authorOperator;
+		initializedOperator = authorOperator;
 	}
 
 	public enum SQLQueryType {

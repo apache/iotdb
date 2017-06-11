@@ -8,16 +8,13 @@ import cn.edu.thu.tsfile.common.exception.ProcessorException;
 import cn.edu.thu.tsfiledb.exception.ArgsErrorException;
 import cn.edu.thu.tsfiledb.exception.PathErrorException;
 import cn.edu.thu.tsfiledb.metadata.MManager;
-import cn.edu.thu.tsfiledb.qp.exception.physical.plan.NamespacePlanException;
-import cn.edu.thu.tsfiledb.qp.exception.physical.plan.PhysicalPlanException;
 import cn.edu.thu.tsfile.timeseries.read.qp.Path;
-import cn.edu.thu.tsfiledb.qp.exec.QueryProcessExecutor;
+import cn.edu.thu.tsfiledb.qp.executor.QueryProcessExecutor;
 import cn.edu.thu.tsfiledb.qp.logical.operator.Operator.OperatorType;
-import cn.edu.thu.tsfiledb.qp.logical.operator.metadata.PropertyOperator.PropertyType;
+import cn.edu.thu.tsfiledb.qp.logical.operator.root.metadata.PropertyOperator.PropertyType;
 import cn.edu.thu.tsfiledb.qp.physical.plan.PhysicalPlan;
 
 /**
- * given a author related plan and construct a {@code AuthorPlan}
  * 
  * @author kangrong
  *
@@ -75,16 +72,16 @@ public class PropertyPlan extends PhysicalPlan {
                     mManager.unlinkMNodeFromPTree(propertyPath.getFullPath(), metadataPath.getFullPath());
                     break;
                 default:
-                    throw new ProcessorException("unkown namespace type:" + propertyType);
+                    throw new ProcessorException("unknown namespace type:" + propertyType);
             }
         } catch (PathErrorException | IOException | ArgsErrorException e) {
-            throw new ProcessorException("meet err in " + propertyType +" . "+ e.getMessage());
+            throw new ProcessorException("meet error in " + propertyType +" . "+ e.getMessage());
         }
         return true;
     }
     @Override
-    public List<Path> getInvolvedSeriesPaths() {
-        List<Path> ret = new ArrayList<Path>();
+    public List<Path> getPaths() {
+        List<Path> ret = new ArrayList<>();
         if (metadataPath != null)
             ret.add(metadataPath);
         if (propertyPath != null)

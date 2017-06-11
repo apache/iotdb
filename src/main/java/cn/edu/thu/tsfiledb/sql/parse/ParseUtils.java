@@ -18,7 +18,7 @@ public final class ParseUtils {
 	 */
 	public static ASTNode findRootNonNullToken(ASTNode tree) {
 		while ((tree.getToken() == null) && (tree.getChildCount() > 0)) {
-			tree = (ASTNode) tree.getChild(0);
+			tree = tree.getChild(0);
 		}
 		return tree;
 	}

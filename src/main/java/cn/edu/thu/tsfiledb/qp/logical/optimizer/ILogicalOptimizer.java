@@ -11,11 +11,6 @@ import cn.edu.thu.tsfiledb.qp.logical.operator.Operator;
  *
  */
 public interface ILogicalOptimizer {
-    /**
-     * input a TSPlanContext and
-     * 
-     * @param context
-     * @return
-     */
-    public Operator transform(Operator context) throws LogicalOptimizeException;
+
+    Operator transform(Operator operator) throws LogicalOptimizeException;
 }
