@@ -11,8 +11,7 @@ import cn.edu.thu.tsfiledb.qp.executor.QueryProcessExecutor;
 import cn.edu.thu.tsfiledb.qp.logical.operator.Operator.OperatorType;
 
 /**
- * This class is a abstract class for all type of PhysicalPlan. PhysicalPlan is a binary tree and is
- * processed along preorder traversal.
+ * This class is a abstract class for all type of PhysicalPlan.
  * 
  * @author kangrong
  *
@@ -20,7 +19,6 @@ import cn.edu.thu.tsfiledb.qp.logical.operator.Operator.OperatorType;
 public abstract class PhysicalPlan {
     private boolean isQuery;
     private OperatorType operatorType;
-    private Path path;
 
     protected PhysicalPlan(boolean isQuery, OperatorType operatorType) {
         this.isQuery = isQuery;
@@ -49,11 +47,4 @@ public abstract class PhysicalPlan {
         return operatorType;
     }
 
-    public Path getPath() {
-        return path;
-    }
-
-    public void setPath(Path path) {
-        this.path = path;
-    }
 }

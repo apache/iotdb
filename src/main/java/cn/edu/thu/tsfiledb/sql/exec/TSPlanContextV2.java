@@ -504,7 +504,7 @@ public class TSPlanContextV2 {
 	 * return a parameter string separated by space acquiescently.
 	 *
 	 */
-	// public PhysicalPlan thansformToPhysicalPlan(QueryProcessExecutor conf) {
+	// public PhysicalPlan transformToPhysicalPlan(QueryProcessExecutor conf) {
 	// return this.rootTree.transformToPhysicalPlan(conf);
 	// }
 

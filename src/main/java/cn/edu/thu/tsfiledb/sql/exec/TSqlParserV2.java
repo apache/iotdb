@@ -65,8 +65,6 @@ public class TSqlParserV2 {
                     // optimization
                     RootOperator author = (RootOperator) operator;
                     plan = transformToPhysicalPlan(author, executor);
-//                    System.out.println("com.corp.tsfile.sql.exec.TSqlParserV2:\n"
-//                            + plan.printQueryPlan());
                     return plan;
                 case MULTIINSERT:
                 	SFWOperator multInsertOp = (SFWOperator) operator;
@@ -79,8 +77,6 @@ public class TSqlParserV2 {
                     SFWOperator root = (SFWOperator) operator;
                     root = logicalOptimize(root);
                     plan = transformToPhysicalPlan(root, executor);
-//                    System.out.println("com.corp.tsfile.sql.exec.TSqlParserV2:\n"
-//                            + plan.printQueryPlan());
                     plan = executor.nonQueryPhysicalOptimize(plan);
                     return plan;
 
@@ -209,26 +205,15 @@ public class TSqlParserV2 {
             case METADATA:
             case PROPERTY:
             case LOADDATA:
-                // for INSERT/UPDATE/DELETE, it needn't logical optimization and physical
-                // optimization
-                RootOperator author = (RootOperator) op;
-                plan = transformToPhysicalPlan(author, conf);
-//                System.out.println("com.corp.tsfile.sql.exec.TSqlParserV2:\n"
-//                        + plan.printQueryPlan());
-                return plan.processNonQuery(conf);
             case MULTIINSERT:
-            	 SFWOperator multInsertOp = (SFWOperator) op;
-                 plan = transformToPhysicalPlan(multInsertOp, conf);
-                 plan = conf.nonQueryPhysicalOptimize(plan);
-                 return plan.processNonQuery(conf);
+                plan = transformToPhysicalPlan(op, conf);
+                return plan.processNonQuery(conf);
             case UPDATE:
             case INSERT:
             case DELETE:
                 SFWOperator root = (SFWOperator) op;
                 root = logicalOptimize(root);
                 plan = transformToPhysicalPlan(root, conf);
-//                System.out.println("com.corp.tsfile.sql.exec.TSqlParserV2:\n"
-//                        + plan.printQueryPlan());
                 plan = conf.nonQueryPhysicalOptimize(plan);
                 return plan.processNonQuery(conf);
 

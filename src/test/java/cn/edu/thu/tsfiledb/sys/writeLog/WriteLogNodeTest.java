@@ -38,13 +38,13 @@ public class WriteLogNodeTest {
         PhysicalPlan plan;
         while ((plan = node.getPhysicalPlan()) != null) {
             if (cnt == 1) {
-                Assert.assertEquals(plan.getPath(), path);
+                Assert.assertEquals(plan.getPaths().get(0), path);
                 Assert.assertTrue(plan instanceof InsertPlan);
                 InsertPlan insertPlan = (InsertPlan) plan;
                 Assert.assertEquals(insertPlan.getTime(), 101L);
                 Assert.assertEquals(insertPlan.getValue(), "4.0");
             } else if (cnt == 2) {
-                Assert.assertEquals(plan.getPath(), path);
+                Assert.assertEquals(plan.getPaths().get(0), path);
                 Assert.assertTrue(plan instanceof UpdatePlan);
                 UpdatePlan updatePlan = (UpdatePlan) plan;
                 Assert.assertEquals(updatePlan.getStartTime(), 500L);
@@ -74,20 +74,20 @@ public class WriteLogNodeTest {
         int cnt = 1;
         while ((plan = node.getPhysicalPlan()) != null) {
             if (cnt == 1) {
-                Assert.assertEquals(plan.getPath(), path);
+                Assert.assertEquals(plan.getPaths().get(0), path);
                 Assert.assertTrue(plan instanceof UpdatePlan);
                 UpdatePlan updatePlan = (UpdatePlan) plan;
                 Assert.assertEquals(updatePlan.getStartTime(), 1L);
                 Assert.assertEquals(updatePlan.getEndTime(), 2L);
                 Assert.assertEquals(updatePlan.getValue(), "1.0");
             } else if (cnt == 100) {
-                Assert.assertEquals(plan.getPath(), path);
+                Assert.assertEquals(plan.getPaths().get(0), path);
                 Assert.assertTrue(plan instanceof InsertPlan);
                 InsertPlan insertPlan = (InsertPlan) plan;
                 Assert.assertEquals(insertPlan.getTime(), 100L);
                 Assert.assertEquals(insertPlan.getValue(), "1.0");
             } else if (cnt == 200) {
-                Assert.assertEquals(plan.getPath(), path);
+                Assert.assertEquals(plan.getPaths().get(0), path);
                 Assert.assertTrue(plan instanceof UpdatePlan);
                 UpdatePlan updatePlan = (UpdatePlan) plan;
                 Assert.assertEquals(updatePlan.getStartTime(), 200L);
@@ -95,7 +95,6 @@ public class WriteLogNodeTest {
                 Assert.assertEquals(updatePlan.getValue(), "2.0");
             }
             cnt++;
-            // output(plan);
         }
         Assert.assertEquals(cnt, 201);
         node.resetFileStatus();
@@ -114,7 +113,6 @@ public class WriteLogNodeTest {
         for (int i = 101; i <= 200; i++) {
             node.write(new UpdatePlan(i, i * 2, "2.0", path));
         }
-        //node.write(new InsertPlan(1, 300L, "3.0", path));
         node.overflowFlushStart();
         node.overflowFlushEnd();
         PhysicalPlan plan;

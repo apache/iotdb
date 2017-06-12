@@ -31,6 +31,10 @@ public class AuthorOperator extends RootOperator {
     private String[] privilegeList;
     private Path nodeName;
 
+    public AuthorType getAuthorType() {
+        return authorType;
+    }
+
     public String getUserName() {
         return userName;
     }

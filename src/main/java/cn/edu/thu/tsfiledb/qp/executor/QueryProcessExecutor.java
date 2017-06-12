@@ -10,13 +10,17 @@ import cn.edu.thu.tsfile.file.metadata.enums.TSDataType;
 import cn.edu.thu.tsfile.timeseries.filter.definition.FilterExpression;
 import cn.edu.thu.tsfile.timeseries.read.qp.Path;
 import cn.edu.thu.tsfile.timeseries.read.query.QueryDataSet;
+
 import cn.edu.thu.tsfiledb.auth.dao.Authorizer;
 import cn.edu.thu.tsfiledb.auth.model.AuthException;
 import cn.edu.thu.tsfiledb.exception.PathErrorException;
 import cn.edu.thu.tsfiledb.metadata.MManager;
 import cn.edu.thu.tsfiledb.qp.constant.SQLConstant;
+import cn.edu.thu.tsfiledb.qp.logical.operator.Operator;
+import cn.edu.thu.tsfiledb.qp.logical.operator.root.author.AuthorOperator;
+import cn.edu.thu.tsfiledb.qp.logical.operator.root.load.LoadDataOperator;
+import cn.edu.thu.tsfiledb.qp.physical.plan.AuthorPlan;
 import cn.edu.thu.tsfiledb.qp.physical.plan.PhysicalPlan;
-
 
 public abstract class QueryProcessExecutor {
     protected final boolean isSingleFile;
@@ -32,6 +36,19 @@ public abstract class QueryProcessExecutor {
 
     protected abstract boolean judgeNonReservedPathExists(Path fullPath);
 
+    public PhysicalPlan transformToPhysicalPlan(Operator operator) {
+        switch (operator.getType()) {
+            case AUTHOR:
+                AuthorOperator authorOperator = (AuthorOperator) operator;
+                return new AuthorPlan(authorOperator.getAuthorType(), authorOperator.getUserName(), 
+                        authorOperator.getRoleName(), authorOperator.getPassWord(), authorOperator.getNewPassword(), 
+                        authorOperator.getPrivilegeList(), authorOperator.getNodeName());
+            case LOADDATA:
+                LoadDataOperator loadDataOperator = (LoadDataOperator) operator;
+        }
+        return null;
+    }
+
     public boolean isSingleFile() {
         return isSingleFile;
     }
@@ -41,8 +58,6 @@ public abstract class QueryProcessExecutor {
             return TSDataType.INT64;
         if (fullPath.equals(SQLConstant.RESERVED_FREQ))
             return TSDataType.FLOAT;
-        if (fullPath.equals(SQLConstant.RESERVED_DELTA_OBJECT))
-            return TSDataType.BYTE_ARRAY;
         return getNonReservedSeriesType(fullPath);
     }
 

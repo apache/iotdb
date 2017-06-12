@@ -3,6 +3,8 @@ package cn.edu.thu.tsfiledb.qp.executor;
 
 import java.util.List;
 
+import cn.edu.thu.tsfiledb.qp.logical.operator.Operator;
+import cn.edu.thu.tsfiledb.qp.physical.plan.PhysicalPlan;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -22,7 +24,7 @@ import cn.edu.thu.tsfiledb.query.engine.OverflowQueryEngine;
 
 public class OverflowQPExecutor extends QueryProcessExecutor {
 
-	static final Logger logger = LoggerFactory.getLogger(OverflowQPExecutor.class);
+	private static final Logger logger = LoggerFactory.getLogger(OverflowQPExecutor.class);
 	private OverflowQueryEngine queryEngine;
 	private FileNodeManager fileNodeManager;
 
