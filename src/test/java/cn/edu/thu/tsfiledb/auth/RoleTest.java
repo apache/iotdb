@@ -12,8 +12,8 @@ import org.junit.Test;
 import cn.edu.thu.tsfiledb.auth.dao.DBdao;
 import cn.edu.thu.tsfiledb.auth.dao.RoleDao;
 import cn.edu.thu.tsfiledb.auth.model.Role;
-import cn.edu.thu.tsfiledb.conf.TSFileDBConfig;
-import cn.edu.thu.tsfiledb.conf.TSFileDBDescriptor;
+import cn.edu.thu.tsfiledb.conf.TsfileDBConfig;
+import cn.edu.thu.tsfiledb.conf.TsfileDBDescriptor;
 
 public class RoleTest {
 
@@ -22,7 +22,7 @@ public class RoleTest {
 	private RoleDao roleDao = null;
 	private Role role = null;
 	private String roleName = "role";
-	private TSFileDBConfig config = TSFileDBDescriptor.getInstance().getConfig();
+	private TsfileDBConfig config = TsfileDBDescriptor.getInstance().getConfig();
 
 	@Before
 	public void setUp() throws Exception {

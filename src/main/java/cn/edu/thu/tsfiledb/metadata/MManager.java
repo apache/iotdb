@@ -20,7 +20,7 @@ import java.util.Map;
 import cn.edu.thu.tsfile.common.conf.TSFileDescriptor;
 import cn.edu.thu.tsfile.file.metadata.enums.TSDataType;
 import cn.edu.thu.tsfile.timeseries.read.qp.Path;
-import cn.edu.thu.tsfiledb.conf.TSFileDBDescriptor;
+import cn.edu.thu.tsfiledb.conf.TsfileDBDescriptor;
 import cn.edu.thu.tsfiledb.exception.MetadataArgsErrorException;
 import cn.edu.thu.tsfiledb.exception.PathErrorException;
 
@@ -48,7 +48,7 @@ public class MManager {
 	private MManager() {
 		writeToLog = false;
 		
-		String folderPath = TSFileDBDescriptor.getInstance().getConfig().metadataDir;
+		String folderPath = TsfileDBDescriptor.getInstance().getConfig().metadataDir;
 		datafilePath = folderPath + "/mdata.obj";
 		logFilePath = folderPath + "/mlog.txt";
 		init();

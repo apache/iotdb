@@ -9,7 +9,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 
-import cn.edu.thu.tsfiledb.conf.TSFileDBDescriptor;
+import cn.edu.thu.tsfiledb.conf.TsfileDBDescriptor;
 
 /**
  * @author liukun
@@ -31,7 +31,7 @@ public class DBdao {
 	 * @param dBName
 	 */
 	public DBdao(String dBName) {
-		String derbyDirPath = TSFileDBDescriptor.getInstance().getConfig().derbyHome;
+		String derbyDirPath = TsfileDBDescriptor.getInstance().getConfig().derbyHome;
 		if (derbyDirPath.length() > 0 && derbyDirPath.charAt(derbyDirPath.length() - 1) != File.separatorChar) {
 			derbyDirPath = derbyDirPath + File.separatorChar;
 		}

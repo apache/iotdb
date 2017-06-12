@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import cn.edu.thu.tsfile.common.exception.UnSupportedDataTypeException;
 import cn.edu.thu.tsfile.timeseries.read.query.DynamicOneColumnData;
 import cn.edu.thu.tsfile.timeseries.read.query.QueryDataSet;
 import cn.edu.thu.tsfiledb.metadata.ColumnSchema;
@@ -12,6 +13,10 @@ import cn.edu.thu.tsfiledb.service.rpc.thrift.TSColumnSchema;
 import cn.edu.thu.tsfiledb.service.rpc.thrift.TSDynamicOneColumnData;
 import cn.edu.thu.tsfiledb.service.rpc.thrift.TSQueryDataSet;
 
+/**
+ * Utils to convert between thrift format and TsFile format
+ *
+ */
 public class Utils {
 	public static Map<String, List<TSColumnSchema>> convertAllSchema(Map<String, List<ColumnSchema>> allSchema){
 		if(allSchema == null){
@@ -28,7 +33,7 @@ public class Utils {
 		return tsAllSchema;
 	}
 	
-	public static TSColumnSchema convertColumnSchema(ColumnSchema schema){
+	private static TSColumnSchema convertColumnSchema(ColumnSchema schema){
 		if(schema == null){
 			return null;
 		}
@@ -53,7 +58,7 @@ public class Utils {
 	}
 	
 	
-	public static TSDynamicOneColumnData convertDynamicOneColumnData(DynamicOneColumnData dynamicOneColumnData){
+	private static TSDynamicOneColumnData convertDynamicOneColumnData(DynamicOneColumnData dynamicOneColumnData){
 		List<Long> timeRetList = new ArrayList<Long>();
 		for(int i = 0 ; i < dynamicOneColumnData.timeLength; i ++){
 				timeRetList.add(dynamicOneColumnData.getTime(i));
@@ -104,26 +109,9 @@ public class Utils {
 			tsDynamicOneColumnData.setBinaryList(byteList);
 			break;
 		default:
-			break;
+		    	throw new UnSupportedDataTypeException(String.format("data type %s is not supported when convert data at server", dynamicOneColumnData.dataType));
 		}
 		
 		return tsDynamicOneColumnData;
-	}
-
-//	public static TSJDBCRecord convertRecord(TSRecord record){
-//		TSJDBCRecord tsJDBCRecord = new TSJDBCRecord();
-//		tsJDBCRecord.setDeviceId(record.getRowKey());
-//		tsJDBCRecord.setTimeValue(new TSTimeValue(record.getTime().getTime()));
-//		tsJDBCRecord.setDeviceType(record.getDeviceType());
-//		List<TSDataPoint> dataPoints = new ArrayList<>();
-//		for(DataPoint point : record.getTuple()){
-//			String valueStr = point.getValue() == null ? "null" : point.getValue();
-//			TSDataPoint tsDataPoint = new TSDataPoint(point.getType().toString(),point.getSeriesName(),point.getDeviceId(),valueStr);
-//			tsDataPoint.setGroupId(point.getGroupId());
-//			dataPoints.add(tsDataPoint);
-//		}
-//		tsJDBCRecord.setDataList(dataPoints);
-//		return tsJDBCRecord;
-//	}
-	
+	}	
 }

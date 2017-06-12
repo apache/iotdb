@@ -8,8 +8,8 @@ import cn.edu.thu.tsfile.timeseries.filter.definition.SingleSeriesFilterExpressi
 import cn.edu.thu.tsfile.timeseries.read.qp.Path;
 import cn.edu.thu.tsfile.timeseries.read.query.QueryDataSet;
 import cn.edu.thu.tsfile.timeseries.read.readSupport.RowRecord;
-import cn.edu.thu.tsfiledb.conf.TSFileDBConfig;
-import cn.edu.thu.tsfiledb.conf.TSFileDBDescriptor;
+import cn.edu.thu.tsfiledb.conf.TsfileDBConfig;
+import cn.edu.thu.tsfiledb.conf.TsfileDBDescriptor;
 import cn.edu.thu.tsfiledb.exception.NotConsistentException;
 import cn.edu.thu.tsfiledb.query.management.ReadLockManager;
 
@@ -19,7 +19,7 @@ public class QueryerForMerge {
 	private SingleSeriesFilterExpression timeFilter;
 	private OverflowQueryEngine queryEngine;
 	private QueryDataSet queryDataSet;
-	private static final TSFileDBConfig TsFileDBConf = TSFileDBDescriptor.getInstance().getConfig();
+	private static final TsfileDBConfig TsFileDBConf = TsfileDBDescriptor.getInstance().getConfig();
 
 	public QueryerForMerge(List<Path> pathList, SingleSeriesFilterExpression timeFilter) {
 		this.pathList = pathList;

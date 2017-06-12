@@ -1,7 +1,5 @@
 package cn.edu.thu.tsfiledb.jdbc;
 
-import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -17,7 +15,6 @@ public class Client {
 	private static final int MAX_PRINT_ROW_COUNT = 1000;
 	
 	public static void main(String[] args) throws ClassNotFoundException, SQLException {
-		// TODO Auto-generated method stub
 		Class.forName("cn.edu.thu.tsfiledb.jdbc.TsfileDriver");
 		Connection connection = null;
 		ConsoleReader reader = null;
@@ -30,7 +27,7 @@ public class Client {
 			String[] argv = new String[argsName.length];
 
 			if (args.length < 3) {
-				System.out.println("Useage : login -host<host> -port<port> -u<username>");
+				System.out.println("Usage : login -host<host> -port<port> -u<username>");
 				System.out.println("e.g. : login -host127.0.0.1 -port6667 -u<UserA>");
 				return;
 			}
@@ -53,6 +50,7 @@ public class Client {
 				}
 			}
 			String password = reader.readLine("Password: ", ' ');
+			// Login in and create connection first
 			try {
 				connection = DriverManager.getConnection("jdbc:tsfile://" + argv[0] + ":" + argv[1] + "/x", argv[2],
 						password);
@@ -76,12 +74,9 @@ public class Client {
 				+ "   |    |  /        \\ |     \\   |   |  |_\\  ___/ \n"
 				+ "   |____| /_______  / \\___  /   |___|____/\\___  >   version 0.0.1\n"
 				+ "                  \\/      \\/                  \\/ \n");
-		// Login in and create connection first
+		
 
 		System.out.println("login successfully");
-		// connection =
-		// DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/x",
-		// "User", "HAHAH");
 
 		try {
 			while (true) {
@@ -99,7 +94,6 @@ public class Client {
 					String cmd = cmds[i];
 					if (cmd != null && !cmd.trim().equals("")) {
 						Statement statement = connection.createStatement();
-						statement.setFetchSize(500000);
 						try {
 							boolean hasResultSet = statement.execute(cmd.trim());
 							if (hasResultSet) {
@@ -132,19 +126,6 @@ public class Client {
 			String format = "|%15s|";
 			String blockLine = "";
 			if (printToConsole) {
-				// System.out.printf("+---------------+");
-				// for(int i = 0 ; i < res.mapRet.keySet().size(); i++){
-				// System.out.printf("---------------+");
-				// }
-				// System.out.printf("\n");
-				//
-				// System.out.printf("|%15s|","Timestamp");
-				// for(String name : res.mapRet.keySet()){
-				// System.out.printf("%15s|", name.split(",")[1]);
-				// }
-				// System.out.printf("\n");
-				//
-
 				int maxv = 15;
 				for (int i = 0; i < colCount; i++) {
 					int len = res.getMetaData().getColumnLabel(i).length();
@@ -194,9 +175,6 @@ public class Client {
 				if (printToConsole && cnt < MAX_PRINT_ROW_COUNT) {
 					System.out.printf("\n");
 				}
-
-//				bw.write(line.toString());
-//				bw.newLine();
 				cnt++;
 
 				if (!printToConsole && cnt % 10000 == 0) {
@@ -212,7 +190,6 @@ public class Client {
 				System.out.printf("\n");
 			}
 
-//			bw.close();
 			System.out.println("Result size : " + cnt);
 		} catch (Exception e) {
 			System.out.println(e.getMessage());

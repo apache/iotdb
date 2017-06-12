@@ -208,6 +208,7 @@ public class TsfileMetadataResultSet extends TsfileQueryResultSet {
 
 	@Override
 	public String getString(String columnName) throws SQLException {
+	    	// use special key word to judge return content
 		switch (columnName) {
 		case "COLUMN_NAME":
 			return currentColumn.name;
@@ -252,6 +253,6 @@ public class TsfileMetadataResultSet extends TsfileQueryResultSet {
 	}
 
 	private enum MetadataType{
-		DELTA_OBJECT, COLUMN;
+		DELTA_OBJECT, COLUMN
 	}
 }
