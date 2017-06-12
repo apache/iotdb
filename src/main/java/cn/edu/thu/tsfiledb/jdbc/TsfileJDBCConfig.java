@@ -1,6 +1,6 @@
 package cn.edu.thu.tsfiledb.jdbc;
 
-public class TsfileConfig {
+public class TsfileJDBCConfig {
 	/**
 	 * The required prefix for the connection URL.
 	 */
@@ -10,19 +10,13 @@ public class TsfileConfig {
 	/**
 	 * If host is provided, without a port.
 	 */
-	public static final int TSFILE_DEFAULT_PORT = 8888;
+	public static final int TSFILE_DEFAULT_PORT = 6667;
 
 	/**
 	 * tsfile's default series name
 	 */
 	public static final String DEFAULT_SERIES_NAME = "default";
-
-	public static final String URI_JDBC_PREFIX = "jdbc:";
-
-	public static final String URI_TSFILE_PREFIX = "tsfile:";
-	
-	public static final int DEFAULT_FETCH_SIZE = 1000;
-	
+		
 	public static final String AUTH_USER = "user";
 	public static final String DEFAULT_USER = "user";
 	

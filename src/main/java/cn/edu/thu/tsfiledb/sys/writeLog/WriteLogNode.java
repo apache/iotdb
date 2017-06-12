@@ -5,8 +5,8 @@ import cn.edu.thu.tsfile.common.utils.BytesUtils;
 import cn.edu.thu.tsfile.timeseries.read.qp.Path;
 import cn.edu.thu.tsfile.timeseries.write.record.DataPoint;
 import cn.edu.thu.tsfile.timeseries.write.record.TSRecord;
-import cn.edu.thu.tsfiledb.conf.TSFileDBDescriptor;
-import cn.edu.thu.tsfiledb.jdbc.TsfileConfig;
+import cn.edu.thu.tsfiledb.conf.TsfileDBDescriptor;
+import cn.edu.thu.tsfiledb.jdbc.TsfileJDBCConfig;
 import cn.edu.thu.tsfiledb.qp.logical.operator.Operator;
 import cn.edu.thu.tsfiledb.qp.physical.plan.InsertPlan;
 import cn.edu.thu.tsfiledb.qp.physical.plan.MultiInsertPlan;
@@ -43,9 +43,9 @@ public class WriteLogNode {
 
     public WriteLogNode(String path) {
         this.path = path;
-        this.LogCompactSize = TSFileDBDescriptor.getInstance().getConfig().LogCompactSize;
-        this.LogMemorySize = TSFileDBDescriptor.getInstance().getConfig().LogMemorySize;
-        filePath = TSFileDBDescriptor.getInstance().getConfig().walFolder + path + ".log";
+        this.LogCompactSize = TsfileDBDescriptor.getInstance().getConfig().LogCompactSize;
+        this.LogMemorySize = TsfileDBDescriptor.getInstance().getConfig().LogMemorySize;
+        filePath = TsfileDBDescriptor.getInstance().getConfig().walFolder + path + ".log";
         backFilePath = filePath + ".backup";
         plansInMemory = new ArrayList<>();
         hasBufferWriteFlush = false;

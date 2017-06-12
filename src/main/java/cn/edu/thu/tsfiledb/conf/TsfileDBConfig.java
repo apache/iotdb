@@ -1,6 +1,6 @@
 package cn.edu.thu.tsfiledb.conf;
 
-public class TSFileDBConfig {
+public class TsfileDBConfig {
 	/**
 	 * the maximum number of writing instances existing in same time.
 	 */
@@ -39,14 +39,14 @@ public class TSFileDBConfig {
 	 * the maximum number of concurrent buffer write instances
 	 */
 	public int maxBufferWriteNodeNum = 50;
-	public int defaultFetchSize = 1000000;
+	public int defaultFetchSize = 10000;
 	
 	public String walFolder = "src/main/resources/wals/";
 
 	public int LogCompactSize = 500000;
 	public int LogMemorySize = 10000;
 
-	public TSFileDBConfig() {
+	public TsfileDBConfig() {
 	}
 
 }

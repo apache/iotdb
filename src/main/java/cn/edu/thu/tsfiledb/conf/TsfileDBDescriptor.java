@@ -12,26 +12,26 @@ import org.slf4j.LoggerFactory;
 
 import cn.edu.thu.tsfile.common.constant.SystemConstant;
 
-public class TSFileDBDescriptor {
-	private static final Logger LOGGER = LoggerFactory.getLogger(TSFileDBDescriptor.class);
+public class TsfileDBDescriptor {
+	private static final Logger LOGGER = LoggerFactory.getLogger(TsfileDBDescriptor.class);
 
-	private static TSFileDBDescriptor descriptor = new TSFileDBDescriptor();
+	private static TsfileDBDescriptor descriptor = new TsfileDBDescriptor();
 
 	private final String CONFIG_DEFAULT_PATH = "/tsfiledb.properties";
 
-	private TSFileDBDescriptor() {
+	private TsfileDBDescriptor() {
 		loadYaml();
 	}
 
-	public static TSFileDBDescriptor getInstance() {
+	public static TsfileDBDescriptor getInstance() {
 		return descriptor;
 	}
 
-	public TSFileDBConfig getConfig() {
+	public TsfileDBConfig getConfig() {
 		return conf;
 	}
 
-	private TSFileDBConfig conf = new TSFileDBConfig();
+	private TsfileDBConfig conf = new TsfileDBConfig();
 
 	/**
 	 * load an properties file and set TsfileDBConfig variables
@@ -88,8 +88,8 @@ public class TSFileDBDescriptor {
 	}
 
 	public static void main(String[] args) {
-		TSFileDBDescriptor descriptor = TSFileDBDescriptor.getInstance();
-		TSFileDBConfig config = descriptor.getConfig();
+		TsfileDBDescriptor descriptor = TsfileDBDescriptor.getInstance();
+		TsfileDBConfig config = descriptor.getConfig();
 
 		System.out.println(config.writeInstanceThreshold);
 		System.out.println(config.overflowDataDir);
