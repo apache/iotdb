@@ -52,7 +52,6 @@ public class TsfileQueryResultSet implements ResultSet {
 	private boolean wasNull = false;
 	private boolean isClosed = false;
 	private TSIService.Iface client = null;
-//	private TS_SessionHandle sessionHandle = null;
 	private TSOperationHandle operationHandle = null;	
 	private Map<String, Integer> columnInfo;
 	private RowRecord record;
@@ -74,7 +73,6 @@ public class TsfileQueryResultSet implements ResultSet {
 		this.columnInfo = new HashMap<>();
 		this.client = client;
 		this.operationHandle = operationHandle;
-//		this.sessionHandle = sessionHandle;
 		columnInfo.put("Timestamp", 0);
 		int index = 1;
 		for(String name : columnName){
@@ -122,14 +120,9 @@ public class TsfileQueryResultSet implements ResultSet {
 	@Override
 	public void close() throws SQLException {
 		if(isClosed) return;
-//	    if (this.statement != null && (this.statement instanceof TsfileStatement)) {
-//	    	TsfileStatement s = (TsfileStatement) this.statement;
-//	        s.closeClientOperation();
-//	    } else{
+
 	    	closeOperationHandle();
-//	    }
-	    client = null;
-//	    sessionHandle = null;
+	    	client = null;
 		isClosed = true;
 	}
 	
@@ -608,7 +601,7 @@ public class TsfileQueryResultSet implements ResultSet {
 	@Override
 	public boolean next() throws SQLException {
 		if(maxRows > 0 && rowsFetched >= maxRows){
-			if(LOGGER.isInfoEnabled()) LOGGER.info("tsfile-jdbc TsfileResultSet: reach max rows {}", maxRows);
+			LOGGER.info("Reach max rows {}", maxRows);
 			return false;
 		}
 		
@@ -629,7 +622,7 @@ public class TsfileQueryResultSet implements ResultSet {
 					recordItr = records.iterator();
 				}
 			} catch (TException e) {
-			    	throw new SQLException("Cannot fetch result from server, because "+e.getMessage());
+			    	throw new SQLException("Cannot fetch result from server, because of network connection");
 			}
 		}
 		

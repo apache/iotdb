@@ -11,6 +11,7 @@ import java.util.List;
 
 import org.apache.thrift.TException;
 
+import cn.edu.thu.tsfiledb.conf.TsfileDBDescriptor;
 import cn.edu.thu.tsfiledb.service.rpc.thrift.TSCancelOperationReq;
 import cn.edu.thu.tsfiledb.service.rpc.thrift.TSCancelOperationResp;
 import cn.edu.thu.tsfiledb.service.rpc.thrift.TSCloseOperationReq;
@@ -27,7 +28,7 @@ public class TsfileStatement implements Statement {
 
     private ResultSet resultSet = null;
     private final TsfileConnection connection;
-    private int fetchSize = TsfileConfig.DEFAULT_FETCH_SIZE;
+    private int fetchSize = TsfileDBDescriptor.getInstance().getConfig().defaultFetchSize;
     private int queryTimeout = 10;
     private TSIService.Iface client = null;
     private TS_SessionHandle sessionHandle = null;
@@ -67,7 +68,7 @@ public class TsfileStatement implements Statement {
     }
 
     public TsfileStatement(TsfileConnection connection, TSIService.Iface client, TS_SessionHandle sessionHandle) {
-	this(connection, client, sessionHandle, TsfileConfig.DEFAULT_FETCH_SIZE);
+	this(connection, client, sessionHandle, TsfileDBDescriptor.getInstance().getConfig().defaultFetchSize);
     }
 
     @Override
@@ -90,7 +91,7 @@ public class TsfileStatement implements Statement {
 
     @Override
     public void cancel() throws SQLException {
-	checkConnection("cancle");
+	checkConnection("cancel");
 	if (isCancelled)
 	    return;
 	try {
@@ -100,7 +101,7 @@ public class TsfileStatement implements Statement {
 		Utils.verifySuccess(closeResp.getStatus());
 	    }
 	} catch (Exception e) {
-	    throw new SQLException("Error occurs when cancling statement because " + e.getMessage());
+	    throw new SQLException("Error occurs when canceling statement because " + e.getMessage());
 	}
 	isCancelled = true;
     }
@@ -135,12 +136,7 @@ public class TsfileStatement implements Statement {
 	if (isClosed)
 	    return;
 
-	// if(resultSet != null){
-	// resultSet.close();
-	// resultSet = null;
-	// }else{
 	closeClientOperation();
-	// }
 	client = null;
 	isClosed = true;
     }
@@ -161,10 +157,13 @@ public class TsfileStatement implements Statement {
 		try {
 		    return executeSQL(sql);
 		} catch (TException e2) {
-		    throw new SQLException(String.format("Fail to execute %s after reconnecting. please check server status", sql));
+		    throw new SQLException(
+			    String.format("Fail to execute %s after reconnecting. please check server status", sql));
 		}
 	    } else {
-		throw new SQLException(String.format("Fail to reconnect to server when executing %s. please check server status"), sql);
+		throw new SQLException(
+			String.format("Fail to reconnect to server when executing %s. please check server status"),
+			sql);
 	    }
 	}
     }
@@ -212,7 +211,8 @@ public class TsfileStatement implements Statement {
 		    throw new SQLException("Fail to execute batch sqls after reconnecting. please check server status");
 		}
 	    } else {
-		throw new SQLException("Fail to reconnect to server when executing batch sqls. please check server status");
+		throw new SQLException(
+			"Fail to reconnect to server when executing batch sqls. please check server status");
 	    }
 	}
     }
@@ -246,10 +246,12 @@ public class TsfileStatement implements Statement {
 		try {
 		    return executeQuerySQL(sql);
 		} catch (TException e2) {
-		    throw new SQLException("Fail to executeQuery " + sql + "after reconnecting. please check server status");
+		    throw new SQLException(
+			    "Fail to executeQuery " + sql + "after reconnecting. please check server status");
 		}
 	    } else {
-		throw new SQLException("Fail to reconnect to server when execute query " + sql + ". please check server status");
+		throw new SQLException(
+			"Fail to reconnect to server when execute query " + sql + ". please check server status");
 	    }
 	}
     }
@@ -274,10 +276,12 @@ public class TsfileStatement implements Statement {
 		try {
 		    return executeUpdateSQL(sql);
 		} catch (TException e2) {
-		    throw new SQLException("Fail to execute update " + sql + "after reconnecting. please check server status");
+		    throw new SQLException(
+			    "Fail to execute update " + sql + "after reconnecting. please check server status");
 		}
 	    } else {
-		throw new SQLException("Fail to reconnect to server when execute update " + sql + ". please check server status");
+		throw new SQLException(
+			"Fail to reconnect to server when execute update " + sql + ". please check server status");
 	    }
 	}
     }
@@ -424,7 +428,7 @@ public class TsfileStatement implements Statement {
 	if (fetchSize < 0) {
 	    throw new SQLException(String.format("fetchSize %d must be >= 0!", fetchSize));
 	}
-	this.fetchSize = fetchSize == 0 ? TsfileConfig.DEFAULT_FETCH_SIZE : fetchSize;
+	this.fetchSize = fetchSize == 0 ? TsfileDBDescriptor.getInstance().getConfig().defaultFetchSize : fetchSize;
     }
 
     @Override

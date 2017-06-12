@@ -1,4 +1,4 @@
-package cn.edu.thu.tsfiledb.service;
+package cn.edu.thu.tsfiledb.auth;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -13,7 +13,7 @@ import cn.edu.thu.tsfiledb.qp.logical.operator.Operator.OperatorType;
 
 public class AuthorityChecker {
 	
-	public static final String SUPER_USER = "root";
+	private static final String SUPER_USER = "root";
 	private static final Logger logger = LoggerFactory.getLogger(AuthorityChecker.class);
 	
 	public static boolean check(String username, List<Path> paths, OperatorType type){
@@ -33,7 +33,7 @@ public class AuthorityChecker {
 		return true;
 	}
 	
-	public static List<String> getAllParentPath(Path path){
+	private static List<String> getAllParentPath(Path path){
 		List<String> parentPaths = new ArrayList<String>();
 		String fullPath = path.getFullPath();
 		String[] nodes = fullPath.split("\\.");
@@ -51,7 +51,7 @@ public class AuthorityChecker {
 		return parentPaths;
 	}
 	
-	public static boolean checkOnePath(String username, Path path, int permission){
+	private static boolean checkOnePath(String username, Path path, int permission){
 		List<String> parentPaths = getAllParentPath(path);
 		for(int i = 0 ; i < parentPaths.size(); i ++){
 			if(Authorizer.checkUserPermission(username, parentPaths.get(i), permission)){
@@ -61,7 +61,7 @@ public class AuthorityChecker {
 		return false;
 	}
 	
-	public static int translateToPermissionId(OperatorType type){
+	private static int translateToPermissionId(OperatorType type){
 		switch(type){
 		case METADATA:
 			return Permission.CREATE;

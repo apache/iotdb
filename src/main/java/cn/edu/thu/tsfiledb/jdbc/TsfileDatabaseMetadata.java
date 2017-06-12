@@ -25,6 +25,41 @@ public class TsfileDatabaseMetadata implements DatabaseMetaData {
 		this.metadataInJson = metadataInJson;
 	}
 
+	/** 
+	 * if deltaObjectPattern != null, return all delta object
+	 * if deltaObjectPattern == null and columnPattern != null, return column schema
+    	 * otherwise return null
+    	 */ 
+	@Override
+	public ResultSet getColumns(String catalog, String schemaPattern, String columnPattern, String deltaObjectPattern) throws SQLException {
+
+	    	if(deltaObjectPattern != null){
+			if(deltaObjectMap == null){
+				throw new SQLException("No delta object metadata");
+			}
+			List<String> deltaObjectList = deltaObjectMap.get(deltaObjectPattern);
+			if(deltaObjectList == null){
+				throw new SQLException(String.format("Cannot find delta object %s", deltaObjectPattern));
+			}
+			return new TsfileMetadataResultSet(null, deltaObjectList); 
+		}
+		
+		if(columnPattern != null){
+			if(seriesMap == null){
+				throw new SQLException("No schema for TsfileDatabaseMetadata");
+			}
+			List<ColumnSchema> columnSchemas = seriesMap.get(columnPattern);
+			
+			if(columnSchemas == null){
+				throw new SQLException(String.format("Cannot find table %s",columnPattern));
+			}
+
+			return new TsfileMetadataResultSet(columnSchemas, null);
+		}
+		
+		return null;
+	}
+	
 	@Override
 	public boolean isWrapperFor(Class<?> arg0) throws SQLException {
 		// TODO Auto-generated method stub
@@ -126,35 +161,6 @@ public class TsfileDatabaseMetadata implements DatabaseMetaData {
 	public ResultSet getColumnPrivileges(String arg0, String arg1, String arg2, String arg3) throws SQLException {
 		// TODO Auto-generated method stub
 		throw new SQLException("Method not supported");
-	}
-
-	@Override
-	public ResultSet getColumns(String catalog, String schemaPattern, String columnPattern, String deltaObjectPattern) throws SQLException {
-		if(deltaObjectPattern != null){
-			if(deltaObjectMap == null){
-				throw new SQLException("No delta object metadata");
-			}
-			List<String> deltaObjectList = deltaObjectMap.get(deltaObjectPattern);
-			if(deltaObjectList == null){
-				throw new SQLException(String.format("Cannot find delta object %s", deltaObjectPattern));
-			}
-			return new TsfileMetadataResultSet(null, deltaObjectList); 
-		}
-		
-		if(columnPattern != null){
-			if(seriesMap == null){
-				throw new SQLException("No schema  for TsfileDatabaseMetadata");
-			}
-			List<ColumnSchema> columnSchemas = seriesMap.get(columnPattern);
-			
-			if(columnSchemas == null){
-				throw new SQLException(String.format("Cannot find table %s",columnPattern));
-			}
-
-			return new TsfileMetadataResultSet(columnSchemas, null);
-		}
-		
-		return null;
 	}
 
 	@Override

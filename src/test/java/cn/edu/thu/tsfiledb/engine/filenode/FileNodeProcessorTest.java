@@ -20,8 +20,8 @@ import cn.edu.thu.tsfile.common.utils.Pair;
 import cn.edu.thu.tsfile.file.metadata.RowGroupMetaData;
 import cn.edu.thu.tsfile.file.metadata.enums.TSDataType;
 import cn.edu.thu.tsfile.timeseries.read.query.DynamicOneColumnData;
-import cn.edu.thu.tsfiledb.conf.TSFileDBConfig;
-import cn.edu.thu.tsfiledb.conf.TSFileDBDescriptor;
+import cn.edu.thu.tsfiledb.conf.TsfileDBConfig;
+import cn.edu.thu.tsfiledb.conf.TsfileDBDescriptor;
 import cn.edu.thu.tsfiledb.engine.bufferwrite.Action;
 import cn.edu.thu.tsfiledb.engine.bufferwrite.BufferWriteProcessor;
 import cn.edu.thu.tsfiledb.engine.bufferwrite.FileNodeConstants;
@@ -34,7 +34,7 @@ import cn.edu.thu.tsfiledb.engine.overflow.io.OverflowProcessor;
 
 public class FileNodeProcessorTest {
 
-	private TSFileDBConfig tsdbconfig = TSFileDBDescriptor.getInstance().getConfig();
+	private TsfileDBConfig tsdbconfig = TsfileDBDescriptor.getInstance().getConfig();
 
 	private TSFileConfig tsconfig = TSFileDescriptor.getInstance().getConfig();
 

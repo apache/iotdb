@@ -1,9 +1,5 @@
 package cn.edu.thu.tsfiledb.service;
 
-/* 
- * To change this template, choose Tools | Templates 
- * and open the template in the editor. 
- */  
 import java.io.File;
 import java.io.IOException;
 
@@ -15,8 +11,7 @@ import ch.qos.logback.core.joran.spi.JoranException;
 import ch.qos.logback.core.util.StatusPrinter;  
    
 /** 
- * Simple Utility class for loading an external config file for logback 
- * @author daniel 
+ * Simple utility class for loading an external config file for logback 
  */  
 public class LogBackConfigLoader {  
    

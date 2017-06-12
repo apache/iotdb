@@ -14,8 +14,8 @@ import cn.edu.thu.tsfiledb.auth.dao.UserPermissionDao;
 import cn.edu.thu.tsfiledb.auth.model.Permission;
 import cn.edu.thu.tsfiledb.auth.model.User;
 import cn.edu.thu.tsfiledb.auth.model.UserPermission;
-import cn.edu.thu.tsfiledb.conf.TSFileDBConfig;
-import cn.edu.thu.tsfiledb.conf.TSFileDBDescriptor;
+import cn.edu.thu.tsfiledb.conf.TsfileDBConfig;
+import cn.edu.thu.tsfiledb.conf.TsfileDBDescriptor;
 
 public class UserPemissionTest {
 
@@ -29,7 +29,7 @@ public class UserPemissionTest {
 	private int permission;
 	private User user = new User("user1", "user1");
 
-	private TSFileDBConfig config = TSFileDBDescriptor.getInstance().getConfig();
+	private TsfileDBConfig config = TsfileDBDescriptor.getInstance().getConfig();
 	
 	@Before
 	public void setUp() throws Exception {

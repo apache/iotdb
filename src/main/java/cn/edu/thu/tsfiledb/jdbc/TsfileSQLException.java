@@ -5,9 +5,6 @@ import java.sql.SQLException;
 public class TsfileSQLException extends SQLException{
 	private String errorMessage;
 	
-	/**
-	 * 
-	 */
 	private static final long serialVersionUID = -3306001287342258977L;
 
 	public TsfileSQLException(String reason){

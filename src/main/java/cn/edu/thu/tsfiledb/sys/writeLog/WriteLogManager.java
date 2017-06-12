@@ -10,7 +10,7 @@ import java.util.List;
 
 import cn.edu.thu.tsfile.timeseries.read.qp.Path;
 import cn.edu.thu.tsfile.timeseries.write.record.TSRecord;
-import cn.edu.thu.tsfiledb.conf.TSFileDBDescriptor;
+import cn.edu.thu.tsfiledb.conf.TsfileDBDescriptor;
 import cn.edu.thu.tsfiledb.exception.PathErrorException;
 import cn.edu.thu.tsfiledb.metadata.MManager;
 import org.slf4j.Logger;
@@ -77,7 +77,7 @@ public class WriteLogManager {
             recoveryPathList = MManager.getInstance().getAllFileNames();
             Iterator<String> iterator = recoveryPathList.iterator();
             while (iterator.hasNext()) {
-                String filePath = TSFileDBDescriptor.getInstance().getConfig().walFolder + iterator.next() + ".log";
+                String filePath = TsfileDBDescriptor.getInstance().getConfig().walFolder + iterator.next() + ".log";
                 if (!new File(filePath).exists()) {
                     iterator.remove();
                 }

@@ -13,9 +13,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import cn.edu.thu.tsfile.common.exception.ProcessorException;
-import cn.edu.thu.tsfile.file.metadata.enums.TSDataType;
 import cn.edu.thu.tsfile.timeseries.read.qp.Path;
 import cn.edu.thu.tsfile.timeseries.read.query.QueryDataSet;
+import cn.edu.thu.tsfiledb.auth.AuthorityChecker;
 import cn.edu.thu.tsfiledb.auth.dao.Authorizer;
 import cn.edu.thu.tsfiledb.auth.model.AuthException;
 import cn.edu.thu.tsfiledb.engine.exception.FileNodeManagerException;
@@ -31,9 +31,6 @@ import cn.edu.thu.tsfiledb.qp.executor.OverflowQPExecutor;
 import cn.edu.thu.tsfiledb.qp.logical.operator.Operator.OperatorType;
 import cn.edu.thu.tsfiledb.qp.logical.operator.root.RootOperator;
 import cn.edu.thu.tsfiledb.qp.physical.plan.PhysicalPlan;
-import cn.edu.thu.tsfiledb.query.aggregation.AggreFuncFactory;
-import cn.edu.thu.tsfiledb.query.aggregation.AggregateFunction;
-import cn.edu.thu.tsfiledb.query.engine.OverflowQueryEngine;
 import cn.edu.thu.tsfiledb.query.management.ReadLockManager;
 import cn.edu.thu.tsfiledb.service.rpc.thrift.TSCancelOperationReq;
 import cn.edu.thu.tsfiledb.service.rpc.thrift.TSCancelOperationResp;
@@ -61,8 +58,11 @@ import cn.edu.thu.tsfiledb.service.rpc.thrift.TS_Status;
 import cn.edu.thu.tsfiledb.service.rpc.thrift.TS_StatusCode;
 import cn.edu.thu.tsfiledb.sql.exec.TSqlParserV2;
 import cn.edu.thu.tsfiledb.sys.writeLog.WriteLogManager;
-import cn.edu.thu.tsfiledb.service.rpc.thrift.TSIService;;
+import cn.edu.thu.tsfiledb.service.rpc.thrift.TSIService;
 
+/**
+ * Thrift RPC implementation at server side
+ */
 public class TSServiceImpl implements TSIService.Iface {
 
 	private WriteLogManager writeLogManager;
@@ -76,14 +76,13 @@ public class TSServiceImpl implements TSIService.Iface {
 	private static final Logger LOGGER = LoggerFactory.getLogger(TSServiceImpl.class);
 
 	public TSServiceImpl() throws IOException {
-		LOGGER.info("start check write log...");
+		LOGGER.info("TsFileDB Server: start checking write log...");
 		writeLogManager = WriteLogManager.getInstance();
 		writeLogManager.recovery();
 		long cnt = 0l;
 		PhysicalPlan plan;
 		WriteLogManager.isRecovering = true;
 		while ((plan = writeLogManager.getPhysicalPlan()) != null) {
-//			System.out.println(cnt + " : " + ((MultiInsertPlan)plan).getDeltaObject() + "| " + ((MultiInsertPlan)plan).getTime());
 			try {
 				plan.processNonQuery(exec);
 				cnt++;
@@ -93,14 +92,13 @@ public class TSServiceImpl implements TSIService.Iface {
 			}
 		}
 		WriteLogManager.isRecovering = false;
-		LOGGER.info("Done. Recover operation count {}", cnt);
+		LOGGER.info("TsFileDB Server: Done. Recover operation count {}", cnt);
 	}
 
 	@Override
 	public TSOpenSessionResp OpenSession(TSOpenSessionReq req) throws TException {
 
-		if (LOGGER.isInfoEnabled())
-			LOGGER.info("tsfile-server TSServiceImpl: receive open session from username {}", req.getUsername());
+		LOGGER.info("TsFileDB Server: receive open session request from username {}", req.getUsername());
 
 		boolean status = false;
 		try {
@@ -108,7 +106,6 @@ public class TSServiceImpl implements TSIService.Iface {
 		} catch (AuthException e) {
 			status = false;
 		}
-		// boolean status = true;
 		TS_Status ts_status;
 		if (status) {
 			ts_status = new TS_Status(TS_StatusCode.SUCCESS_STATUS);
@@ -122,9 +119,7 @@ public class TSServiceImpl implements TSIService.Iface {
 		TSOpenSessionResp resp = new TSOpenSessionResp(ts_status, TSProtocolVersion.TSFILE_SERVICE_PROTOCOL_V1);
 		resp.setSessionHandle(new TS_SessionHandle(new TSHandleIdentifier(ByteBuffer.wrap(req.getUsername().getBytes()),
 				ByteBuffer.wrap((req.getPassword().getBytes())))));
-		if (LOGGER.isInfoEnabled())
-			LOGGER.info("tsfile-server TSServiceImpl: Login status: {}. User : {}", ts_status.getErrorMessage(),
-					req.getUsername());
+		LOGGER.info("TsFileDB Server: Login status: {}. User : {}", ts_status.getErrorMessage(), req.getUsername());
 
 		return resp;
 	}
@@ -136,8 +131,7 @@ public class TSServiceImpl implements TSIService.Iface {
 
 	@Override
 	public TSCloseSessionResp CloseSession(TSCloseSessionReq req) throws TException {
-		if (LOGGER.isInfoEnabled())
-			LOGGER.info("tsfile-server TSServiceImpl: receive close session");
+		LOGGER.info("TsFileDB Server: receive close session");
 		TS_Status ts_status;
 		if (username.get() == null) {
 			ts_status = new TS_Status(TS_StatusCode.ERROR_STATUS);
@@ -150,32 +144,24 @@ public class TSServiceImpl implements TSIService.Iface {
 	}
 
 	@Override
-	// TODO: 这个方法啥意思？
 	public TSCancelOperationResp CancelOperation(TSCancelOperationReq req) throws TException {
-		if (LOGGER.isInfoEnabled())
-			LOGGER.info("tsfile-server TSServiceImpl: receive cancle operation");
 		return new TSCancelOperationResp(new TS_Status(TS_StatusCode.SUCCESS_STATUS));
 	}
 
 	@Override
 	public TSCloseOperationResp CloseOperation(TSCloseOperationReq req) throws TException {
-		if (LOGGER.isInfoEnabled())
-			LOGGER.info("tsfile-server TSServiceImpl: receive statement close operation");
 		try {
 			ReadLockManager.getInstance().unlockForOneRequest();
 			clearAllStatusForCurrentRequest();
 		} catch (NotConsistentException e) {
 			LOGGER.warn("Warning in closeOperation : {}", e.getMessage());
-			// e.printStackTrace();
 		} catch (ProcessorException e) {
-			// TODO Auto-generated catch block
 			LOGGER.error("Error in closeOperation : {}", e.getMessage());
-			e.printStackTrace();
 		}
 		return new TSCloseOperationResp(new TS_Status(TS_StatusCode.SUCCESS_STATUS));
 	}
 
-	public void clearAllStatusForCurrentRequest() {
+	private void clearAllStatusForCurrentRequest() {
 		this.queryRet.get().clear();
 		this.queryStatus.get().clear();
 		// Clear all parameters in last request.
@@ -184,10 +170,9 @@ public class TSServiceImpl implements TSIService.Iface {
 
 	@Override
 	public TSFetchMetadataResp FetchMetadata(TSFetchMetadataReq req) throws TException {
-		LOGGER.info("tsfile-server FetchMetadata: Receive fetch metadata operation");
 		TS_Status status;
 		if (!checkLogin()) {
-			LOGGER.info("tsfile-server ExecuteStatement: Not login.");
+			LOGGER.info("TsFileDB Server: Not login.");
 			status = new TS_Status(TS_StatusCode.ERROR_STATUS);
 			status.setErrorMessage("Not login");
 			return new TSFetchMetadataResp(status);
@@ -204,7 +189,7 @@ public class TSServiceImpl implements TSIService.Iface {
 			status = new TS_Status(TS_StatusCode.SUCCESS_STATUS);
 			resp.setStatus(status);
 		} catch (PathErrorException e) {
-			LOGGER.error("tsfile-server FetchMetadata: failed to get all schema", e);
+			LOGGER.error("TsFileDB Server: failed to get all schema", e);
 			status = new TS_Status(TS_StatusCode.ERROR_STATUS);
 			status.setErrorMessage(e.getMessage());
 			resp.setStatus(status);
@@ -212,7 +197,7 @@ public class TSServiceImpl implements TSIService.Iface {
 			resp.setDeltaObjectMap(null);
 			resp.setMetadataInJson(null);
 		} catch (Exception e) {
-			LOGGER.error("tsfile-server FetchMetadata: failed to get all schema with unknown reason", e);
+			LOGGER.error("TsFileDB Server: failed to get all schema for unknown reason", e);
 			status = new TS_Status(TS_StatusCode.ERROR_STATUS);
 			status.setErrorMessage(e.getMessage());
 			resp.setStatus(status);
@@ -224,13 +209,13 @@ public class TSServiceImpl implements TSIService.Iface {
 	}
 
 	/**
-	 * Judge whether the statement is ADMIN COMMOND and if true, execute it.
+	 * Judge whether the statement is ADMIN COMMAND and if true, execute it.
 	 * 
 	 * @param statement
-	 * @return true if the statement is ADMIN COMMOND
+	 * @return true if the statement is ADMIN COMMAND
 	 * @throws IOException
 	 */
-	public boolean execAdminCommond(String statement) throws IOException {
+	private boolean execAdminCommand(String statement) throws IOException {
 		if (!username.get().equals("root")) {
 			return false;
 		}
@@ -262,36 +247,12 @@ public class TSServiceImpl implements TSIService.Iface {
 		return false;
 	}
 
-	/**
-	 * 用来测试的函数,仅供测试，后面要删除
-	 * 
-	 * @param req
-	 * @return
-	 * @throws TException
-	 */
-	public TSExecuteStatementResp testExecute(TSExecuteStatementReq req) {
-		TSExecuteStatementResp resp = getTSExecuteStatementResp(TS_StatusCode.SUCCESS_STATUS, "");
-		String sql = req.statement;
-		String[] params = sql.substring(5).split(" ");
-		List<String> columns = new ArrayList<>();
-		columns.add(params[0] + "(" + params[1] + ")");
-		TSHandleIdentifier operationId = new TSHandleIdentifier(ByteBuffer.wrap(username.get().getBytes()),
-				ByteBuffer.wrap(("PASS".getBytes())));
-		TSOperationHandle operationHandle = null;
-		resp.setColumns(columns);
-		operationHandle = new TSOperationHandle(operationId, true);
-		resp.setOperationHandle(operationHandle);
-		recordANewQuery(sql, null);
-		return resp;
-	}
-
 	@Override
 	public TSExecuteBatchStatementResp ExecuteBatchStatement(TSExecuteBatchStatementReq req) throws TException {
 		try {
-			LOGGER.debug("tsfile-server ExecuteBatchStatement: Receive execute batch sql operation");
 			if (!checkLogin()) {
-				LOGGER.info("tsfile-server ExecuteBatchStatement: Not login.");
-				return getTSBathcExecuteStatementResp(TS_StatusCode.ERROR_STATUS, "Not login", null);
+				LOGGER.info("TsFileDB Server: Not login.");
+				return getTSBathExecuteStatementResp(TS_StatusCode.ERROR_STATUS, "Not login", null);
 			}
 			List<String> statements = req.getStatements();
 			List<Integer> result = new ArrayList<>();
@@ -301,7 +262,7 @@ public class TSServiceImpl implements TSIService.Iface {
 			for (String statement : statements) {
 				RootOperator root = parser.parseSQLToOperator(statement);
 				if (root.isQuery()) {
-					return getTSBathcExecuteStatementResp(TS_StatusCode.ERROR_STATUS,
+					return getTSBathExecuteStatementResp(TS_StatusCode.ERROR_STATUS,
 							"statement is query :" + statement, result);
 				}
 				opList.add(root);
@@ -309,13 +270,12 @@ public class TSServiceImpl implements TSIService.Iface {
 			for (RootOperator op: opList) {
 				ExecuteUpdateStatement(op);
 			}
-			// TODO Auto-generated method stub
 
-			return getTSBathcExecuteStatementResp(TS_StatusCode.SUCCESS_STATUS, "Execute statements successfully",
+			return getTSBathExecuteStatementResp(TS_StatusCode.SUCCESS_STATUS, "Execute statements successfully",
 					result);
 		} catch (Exception e) {
-			LOGGER.error("tsfile-server ExecuteBatchStatement: error occurs when executing statements", e);
-			return getTSBathcExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage(), null);
+			LOGGER.error("TsFileDB Server: error occurs when executing statements", e);
+			return getTSBathExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage(), null);
 		}
 
 	}
@@ -323,23 +283,15 @@ public class TSServiceImpl implements TSIService.Iface {
 	@Override
 	public TSExecuteStatementResp ExecuteStatement(TSExecuteStatementReq req) throws TException {
 		try {
-			// 测试代码
-			String sql = req.getStatement();
-			if (sql != null && sql.startsWith("test:")) {
-				return testExecute(req);
-			}
-			// 测试代码（结束）
-
-			LOGGER.info("tsfile-server ExecuteStatement: Receive execute sql operation,statement {}", req.statement);
 			if (!checkLogin()) {
-				LOGGER.info("tsfile-server ExecuteStatement: Not login.");
+				LOGGER.info("TsFileDB Server: Not login.");
 				return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, "Not login");
 			}
 			String statement = req.getStatement();
 
 			try {
-				if (execAdminCommond(statement)) {
-					return getTSExecuteStatementResp(TS_StatusCode.SUCCESS_STATUS, "ADMIN_COMMOND_SUCCESS");
+				if (execAdminCommand(statement)) {
+					return getTSExecuteStatementResp(TS_StatusCode.SUCCESS_STATUS, "ADMIN_COMMAND_SUCCESS");
 				}
 			} catch (Exception e) {
 				e.printStackTrace();
@@ -371,9 +323,8 @@ public class TSServiceImpl implements TSIService.Iface {
 	public TSExecuteStatementResp ExecuteQueryStatement(TSExecuteStatementReq req) throws TException {
 
 		try {
-			LOGGER.info("tsfile-server ExecuteQueryStatement: receive query sql operation,statement {}", req.statement);
 			if (!checkLogin()) {
-				LOGGER.info("tsfile-server ExecuteQueryStatement: Not login.");
+				LOGGER.info("TsFileDB Server: Not login.");
 				return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, "Not login");
 			}
 
@@ -382,7 +333,6 @@ public class TSServiceImpl implements TSIService.Iface {
 			RootOperator root = parser.parseSQLToOperator(statement);
 
 			List<Path> paths = null;
-			// paths = ((SFWOperator) root).getSelSeriesPaths(exec);
 			PhysicalPlan plan = parser.parseSQLToPhysicalPlan(statement, exec);
 			paths = plan.getPaths();
 
@@ -422,57 +372,20 @@ public class TSServiceImpl implements TSIService.Iface {
 
 			recordANewQuery(statement, root);
 
-			LOGGER.info("ExecuteQueryStatement: finish query statement {}", statement);
 			return resp;
 		} catch (Exception e) {
-			LOGGER.error("Server internal error: {}", e.getMessage());
+			LOGGER.error("TsFileDB Server: server internal error: {}", e.getMessage());
 			return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
 		}
 	}
 
-	public TSFetchResultsResp testFetchResults(TSFetchResultsReq req) {
-		String sql = req.statement;
-		if (!queryStatus.get().containsKey(sql)) {
-			TSFetchResultsResp resp = getTSFetchResultsResp(TS_StatusCode.SUCCESS_STATUS,
-					"FetchResult successfully. Has more result: " + false);
-			resp.setHasResultSet(false);
-			return resp;
-		}
-		String[] params = sql.substring(5).split(" ");
-		TSDataType dataType;
-		try {
-			dataType = MManager.getInstance().getSeriesType(params[1]);
-			AggregateFunction aggrFunc = AggreFuncFactory.getAggrFuncByName(params[0], dataType);
-			Path p = new Path(params[1]);
-			QueryDataSet queryDataSet = new OverflowQueryEngine().aggregate(p, aggrFunc, null, null, null);
-			TSQueryDataSet tsQueryDataSet = Utils.convertQueryDataSet(queryDataSet);
-
-			TSFetchResultsResp resp = getTSFetchResultsResp(TS_StatusCode.SUCCESS_STATUS,
-					"FetchResult successfully. Has more result: " + false);
-			resp.setHasResultSet(true);
-			resp.setQueryDataSet(tsQueryDataSet);
-			queryStatus.get().remove(sql);
-			return resp;
-		} catch (Exception e) {
-			e.printStackTrace();
-			return null;
-		}
-
-	}
-
 	@Override
 	public TSFetchResultsResp FetchResults(TSFetchResultsReq req) throws TException {
-		// 测试代码
-		if (req.statement.startsWith("test:")) {
-			return testFetchResults(req);
-		}
-		// 测试代码（结束）
 		try {
 			if (!checkLogin()) {
 				return getTSFetchResultsResp(TS_StatusCode.ERROR_STATUS, "Not login.");
 			}
 			String statement = req.getStatement();
-			LOGGER.info("tsfile-server TSServiceImpl: receive fetch result sql operation,statement {}", statement);
 
 			if (!queryStatus.get().containsKey(statement)) {
 				return getTSFetchResultsResp(TS_StatusCode.ERROR_STATUS, "Has not executed statement");
@@ -491,7 +404,6 @@ public class TSServiceImpl implements TSIService.Iface {
 			}
 
 			boolean hasResultSet = false;
-			// TODO: 需要和徐毅确认res是否可以这么用
 			QueryDataSet res = new QueryDataSet();
 			if (queryDataSetIterator.hasNext()) {
 				res = queryDataSetIterator.next();
@@ -508,8 +420,7 @@ public class TSServiceImpl implements TSIService.Iface {
 			resp.setQueryDataSet(tsQueryDataSet);
 			return resp;
 		} catch (Exception e) {
-			LOGGER.error("Server Internal Error: {}", e.getMessage());
-			e.printStackTrace();
+			LOGGER.error("TsFileDB Server: server Internal Error: {}", e.getMessage());
 			return getTSFetchResultsResp(TS_StatusCode.ERROR_STATUS, "Server Internal Error");
 		}
 
@@ -526,29 +437,29 @@ public class TSServiceImpl implements TSIService.Iface {
 		} catch (ProcessorException e) {
 			return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
 		} catch (Exception e) {
-			e.printStackTrace();
-			LOGGER.error(e.getMessage());
+			LOGGER.error("TsFileDB Server: server Internal Error: {}", e.getMessage());
 			return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
 		}
 	}
 
 	private TSExecuteStatementResp ExecuteUpdateStatement(RootOperator root) throws TException {
 		try {
-			LOGGER.debug("ExecuteUpdateStatement: receive statement {}", root);
 			PhysicalPlan plan = root.transformToPhysicalPlan(exec);
 			List<Path> paths = plan.getPaths();
 
 			if (!checkAuthorization(paths, root.getType())) {
 				return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, "No permissions for this operation");
 			}
-			// TODO 是否要添加执行的信息而不是仅仅返回正确或者错误
+			// TODO
+			// In current version, we only return OK/ERROR
+			// Do we need to add extra information of executive condition  
 			boolean execRet;
 			try {
 				execRet = plan.processNonQuery(exec);
 			} catch (ProcessorException e) {
 				return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
 			}
-			if (execRet && needToBeWritenToLog(plan)) {
+			if (execRet && needToBeWrittenToLog(plan)) {
 				writeLogManager.write(plan);
 			}
 			TS_StatusCode statusCode = execRet ? TS_StatusCode.SUCCESS_STATUS : TS_StatusCode.ERROR_STATUS;
@@ -564,7 +475,7 @@ public class TSServiceImpl implements TSIService.Iface {
 			LOGGER.error(e.getMessage());
 			return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
 		} catch (IOException e) {
-			LOGGER.error("Write preLog error", e);
+			LOGGER.error("TsFileDB Server: write preLog error", e);
 			return getTSExecuteStatementResp(TS_StatusCode.SUCCESS_STATUS, "Write log error");
 		}
 	}
@@ -572,7 +483,6 @@ public class TSServiceImpl implements TSIService.Iface {
 	private TSExecuteStatementResp ExecuteUpdateStatement(String statement)
 			throws TException, QueryProcessorException, IOException, ProcessorException {
 
-		LOGGER.info("ExecuteUpdateStatement: receive statement {}", statement);
 		TSqlParserV2 parser = new TSqlParserV2();
 		RootOperator root;
 
@@ -586,7 +496,7 @@ public class TSServiceImpl implements TSIService.Iface {
 			return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, "Statement is a query statement.");
 		}
 
-		// 如果操作是增删改
+		// if operation belongs to add/delete/update
 		PhysicalPlan plan = parser.parseSQLToPhysicalPlan(statement, exec);
 		List<Path> paths = plan.getPaths();
 
@@ -594,14 +504,16 @@ public class TSServiceImpl implements TSIService.Iface {
 			return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, "No permissions for this operation");
 		}
 
-		// TODO 是否要添加执行的信息而不是仅仅返回正确或者错误
+		// TODO 
+		// In current version, we only return OK/ERROR
+		// Do we need to add extra information of executive condition  
 		boolean execRet;
 		try {
 			execRet = parser.nonQuery(root, exec);
 		} catch (ProcessorException e) {
 			return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
 		}
-		if (execRet && needToBeWritenToLog(plan)) {
+		if (execRet && needToBeWrittenToLog(plan)) {
 			try {
 				writeLogManager.write(plan);
 			} catch (PathErrorException e) {
@@ -619,7 +531,7 @@ public class TSServiceImpl implements TSIService.Iface {
 		return resp;
 	}
 
-	private boolean needToBeWritenToLog(PhysicalPlan plan) {
+	private boolean needToBeWrittenToLog(PhysicalPlan plan) {
 		if (plan.getOperatorType() == OperatorType.INSERT) {
 			return false;
 		}
@@ -668,7 +580,7 @@ public class TSServiceImpl implements TSIService.Iface {
 		return resp;
 	}
 
-	private TSExecuteBatchStatementResp getTSBathcExecuteStatementResp(TS_StatusCode code, String msg,
+	private TSExecuteBatchStatementResp getTSBathExecuteStatementResp(TS_StatusCode code, String msg,
 			List<Integer> result) {
 		TSExecuteBatchStatementResp resp = new TSExecuteBatchStatementResp();
 		TS_Status ts_status = new TS_Status(code);

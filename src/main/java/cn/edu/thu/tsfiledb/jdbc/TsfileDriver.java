@@ -2,6 +2,7 @@ package cn.edu.thu.tsfiledb.jdbc;
 
 import java.sql.Connection;
 import java.sql.Driver;
+import java.sql.DriverManager;
 import java.sql.DriverPropertyInfo;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
@@ -13,13 +14,15 @@ import org.apache.thrift.transport.TTransportException;
 
 
 public class TsfileDriver implements Driver {
+    	private final String TSFILE_URL_PREFIX = TsfileJDBCConfig.TSFILE_URL_PREFIX+".*";
+    
 	private static final org.slf4j.Logger LOGGER = org.slf4j.LoggerFactory.getLogger(TsfileDriver.class);
 	
 	static {
 		try {
-			java.sql.DriverManager.registerDriver(new TsfileDriver());
+			DriverManager.registerDriver(new TsfileDriver());
 		} catch (SQLException e) {
-			LOGGER.error("Error occurs when resgistering tsfile driver",e);
+			LOGGER.error("Error occurs when registering TsFile driver",e);
 		}
 	}
 	
@@ -34,7 +37,7 @@ public class TsfileDriver implements Driver {
 	
 	@Override
 	public boolean acceptsURL(String url) throws SQLException {
-		return Pattern.matches(TsfileConfig.TSFILE_URL_PREFIX+".*", url);
+		return Pattern.matches(TSFILE_URL_PREFIX, url);
 	}
 
 	@Override
@@ -42,7 +45,7 @@ public class TsfileDriver implements Driver {
 		try {
 			return acceptsURL(url) ? new TsfileConnection(url, info) : null;
 		} catch (TTransportException e) {
-			throw new SQLException("Connection Error, Please check whether the network is avalible or the server has started. " + e.getMessage());
+			throw new SQLException("Connection Error, Please check whether the network is avaliable or the server has started. " + e.getMessage());
 		}
 	}
 

@@ -37,7 +37,7 @@ public class TsfileResultMetadata implements ResultSetMetaData {
 
 	@Override
 	public int getColumnCount() throws SQLException {
-		if (columnInfo == null || columnInfo.keySet() == null || columnInfo.keySet().size() == 0) {
+		if (columnInfo == null || columnInfo.keySet().size() == 0) {
 			throw new SQLException("No column exists");
 		}
 		return columnInfo.keySet().size();
@@ -51,13 +51,13 @@ public class TsfileResultMetadata implements ResultSetMetaData {
 
 	@Override
 	public String getColumnLabel(int column) throws SQLException {
-		if (columnInfo == null || columnInfo.keySet() == null || columnInfo.keySet().size() == 0) {
+		if (columnInfo == null || columnInfo.keySet().size() == 0) {
 			throw new SQLException("No column exists");
 		}
 
 		for (Map.Entry<String, Integer> entry : columnInfo.entrySet()) {
 			if (entry.getValue().equals(column)) {
-				return String.format(entry.getKey());
+				return entry.getKey();
 			}
 		}
 		throw new SQLException(String.format("column %d does not exist", column));
@@ -65,15 +65,7 @@ public class TsfileResultMetadata implements ResultSetMetaData {
 
 	@Override
 	public String getColumnName(int column) throws SQLException {
-		if (columnInfo == null || columnInfo.keySet() == null || columnInfo.keySet().size() == 0) {
-			throw new SQLException("tNo column exists");
-		}
-		for (Map.Entry<String, Integer> entry : columnInfo.entrySet()) {
-			if (entry.getValue().equals(column)) {
-				return entry.getKey();
-			}
-		}
-		throw new SQLException(String.format("column %d does not exist", column));
+		return getColumnLabel(column);
 	}
 
 	@Override
