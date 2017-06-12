@@ -445,8 +445,7 @@ public class TSServiceImpl implements TSIService.Iface {
 
 	private TSExecuteStatementResp ExecuteUpdateStatement(RootOperator root) throws TException {
 		try {
-			Transformer transformer = new Transformer(exec);
-			PhysicalPlan plan = transformer.transformToPhysicalPlan(root);
+			PhysicalPlan plan = exec.transformToPhysicalPlan(root);
 			List<Path> paths = plan.getPaths();
 
 			if (!checkAuthorization(paths, root.getType())) {

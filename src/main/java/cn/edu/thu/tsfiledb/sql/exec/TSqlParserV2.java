@@ -142,14 +142,13 @@ public class TSqlParserV2 {
      * transform a root operator to a physical plan
      * 
      * @param root
-     * @param conf
+     * @param executor
      * @return
      * @throws QueryProcessorException
      */
-    public PhysicalPlan transformToPhysicalPlan(RootOperator root, QueryProcessExecutor conf)
+    public PhysicalPlan transformToPhysicalPlan(RootOperator root, QueryProcessExecutor executor)
             throws QueryProcessorException {
-        Transformer transformer = new Transformer(conf);
-        return transformer.transformToPhysicalPlan(root);
+        return executor.transformToPhysicalPlan(root);
     }
 
     /**
