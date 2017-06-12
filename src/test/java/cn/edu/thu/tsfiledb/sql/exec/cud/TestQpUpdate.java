@@ -6,8 +6,8 @@ import cn.edu.thu.tsfile.timeseries.read.qp.Path;
 import cn.edu.thu.tsfile.timeseries.read.query.QueryDataSet;
 import cn.edu.thu.tsfile.timeseries.utils.StringContainer;
 import cn.edu.thu.tsfiledb.qp.exception.QueryProcessorException;
-import cn.edu.thu.tsfiledb.qp.logical.operator.root.RootOperator;
-import cn.edu.thu.tsfiledb.sql.exec.TSqlParserV2;
+import cn.edu.thu.tsfiledb.qp.physical.PhysicalPlan;
+import cn.edu.thu.tsfiledb.qp.QueryProcessor;
 import cn.edu.thu.tsfiledb.sql.exec.utils.MemIntQpExecutor;
 import org.antlr.runtime.RecognitionException;
 import org.junit.Before;
@@ -47,15 +47,15 @@ public class TestQpUpdate {
     public void testUpdate() throws QueryProcessorException, ProcessorException, RecognitionException {
         String sqlStr =
                 "update root.laptop.device_1.sensor_1 set value = 33000 where time >= 10 and time <= 10";
-        TSqlParserV2 parser = new TSqlParserV2();
-        RootOperator update = parser.parseSQLToOperator(sqlStr);
-        boolean upRet = parser.nonQuery(update, exec);
+        QueryProcessor parser = new QueryProcessor();
+        PhysicalPlan plan1 = parser.parseSQLToPhysicalPlan(sqlStr,exec);
+        boolean upRet = parser.nonQuery(plan1, exec);
 
         assertTrue(upRet);
         // query to assert
         sqlStr = "select sensor_1,sensor_2 " + "from root.laptop.device_1";
-        RootOperator root = parser.parseSQLToOperator(sqlStr);
-        Iterator<QueryDataSet> iter = parser.query(root, exec);
+        PhysicalPlan plan2 = parser.parseSQLToPhysicalPlan(sqlStr, exec);
+        Iterator<QueryDataSet> iter = parser.query(plan2, exec);
         String[] expect =
                 {"10, <root.laptop.device_1.sensor_1,33000> <root.laptop.device_1.sensor_2,null> ",
                         "20, <root.laptop.device_1.sensor_1,null> <root.laptop.device_1.sensor_2,20> "};
@@ -72,15 +72,15 @@ public class TestQpUpdate {
     @Test
     public void testDelete() throws QueryProcessorException, ProcessorException, RecognitionException {
         String sqlStr = "delete from root.laptop.device_1.sensor_1 where time < 15";
-        TSqlParserV2 parser = new TSqlParserV2();
-        RootOperator update = parser.parseSQLToOperator(sqlStr);
-        boolean upRet = parser.nonQuery(update, exec);
+        QueryProcessor parser = new QueryProcessor();
+        PhysicalPlan plan1 = parser.parseSQLToPhysicalPlan(sqlStr, exec);
+        boolean upRet = parser.nonQuery(plan1, exec);
 
         assertTrue(upRet);
         // query to assert
         sqlStr = "select sensor_1,sensor_2 " + "from root.laptop.device_1";
-        RootOperator root = parser.parseSQLToOperator(sqlStr);
-        Iterator<QueryDataSet> iter = parser.query(root, exec);
+        PhysicalPlan plan2 = parser.parseSQLToPhysicalPlan(sqlStr, exec);
+        Iterator<QueryDataSet> iter = parser.query(plan2, exec);
 
         String[] expect =
                 {"20, <root.laptop.device_1.sensor_1,null> <root.laptop.device_1.sensor_2,20> "};
@@ -97,17 +97,17 @@ public class TestQpUpdate {
     @Test
     public void testInsert() throws QueryProcessorException, ProcessorException, RecognitionException {
         String sqlStr = "insert into root.laptop.device_1 (timestamp, sensor_1) values (30,30)";
-        TSqlParserV2 parser = new TSqlParserV2();
-        RootOperator update = parser.parseSQLToOperator(sqlStr);
+        QueryProcessor parser = new QueryProcessor();
+        PhysicalPlan plan1 = parser.parseSQLToPhysicalPlan(sqlStr, exec);
 
         //execute insert
-        boolean upRet = parser.nonQuery(update, exec);
+        boolean upRet = parser.nonQuery(plan1, exec);
         assertTrue(upRet);
 
         // query to assert
         sqlStr = "select sensor_1,sensor_2 " + "from root.laptop.device_1";
-        RootOperator root = parser.parseSQLToOperator(sqlStr);
-        Iterator<QueryDataSet> iter = parser.query(root, exec);
+        PhysicalPlan plan2 = parser.parseSQLToPhysicalPlan(sqlStr, exec);
+        Iterator<QueryDataSet> iter = parser.query(plan2, exec);
 
         String[] expect =
                 {

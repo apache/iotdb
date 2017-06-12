@@ -2,10 +2,10 @@ package cn.edu.thu.tsfiledb.sql.exec.other;
 
 import cn.edu.thu.tsfile.timeseries.read.qp.Path;
 import cn.edu.thu.tsfiledb.qp.exception.QueryProcessorException;
-import cn.edu.thu.tsfiledb.qp.logical.operator.root.metadata.PropertyOperator;
-import cn.edu.thu.tsfiledb.qp.logical.operator.root.metadata.PropertyOperator.PropertyType;
-import cn.edu.thu.tsfiledb.qp.physical.plan.metadata.PropertyPlan;
-import cn.edu.thu.tsfiledb.sql.exec.TSqlParserV2;
+import cn.edu.thu.tsfiledb.qp.logical.root.sys.PropertyOperator.PropertyType;
+import cn.edu.thu.tsfiledb.qp.physical.sys.PropertyPlan;
+import cn.edu.thu.tsfiledb.qp.QueryProcessor;
+import cn.edu.thu.tsfiledb.sql.exec.utils.MemIntQpExecutor;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -16,7 +16,6 @@ import java.util.Collection;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
 
 /**
  * test ast node parsing on authorization
@@ -25,8 +24,7 @@ import static org.junit.Assert.fail;
  *
  */
 @RunWith(Parameterized.class)
-public class TSPlanContextPropertyTest extends TSqlParserV2 {
-    private static Path[] testPaths = new Path[] {new Path("root.laptop.d1.s1")};
+public class TSPlanContextPropertyTest extends QueryProcessor {
     private static Path defaultMetadataPath = new Path("root.m1.m2");
     private static Path defaultPropertyPath = new Path("property1");
     private static Path defaultPropertyLabelPath = new Path("property1.label1");
@@ -67,11 +65,8 @@ public class TSPlanContextPropertyTest extends TSqlParserV2 {
 
     @Test
     public void testanalyzeMetadata() throws QueryProcessorException {
-        TSqlParserV2 parser = new TSqlParserV2();
-        PropertyOperator property = (PropertyOperator) parser.parseSQLToOperator(this.inputSQL);
-        if (property == null)
-            fail();
-        PropertyPlan plan = (PropertyPlan) parser.transformToPhysicalPlan(property, null);
+        QueryProcessor parser = new QueryProcessor();
+        PropertyPlan plan = (PropertyPlan) parser.parseSQLToPhysicalPlan(inputSQL, new MemIntQpExecutor());
         assertEquals(propertyType, plan.getPropertyType());
         assertEquals(propertyPath, plan.getPropertyPath());
         assertEquals(metadataPath, plan.getMetadataPath());

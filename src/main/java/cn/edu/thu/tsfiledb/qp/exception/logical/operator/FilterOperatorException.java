@@ -1,7 +1,7 @@
 package cn.edu.thu.tsfiledb.qp.exception.logical.operator;
 
 import cn.edu.thu.tsfiledb.qp.exception.QueryProcessorException;
-import cn.edu.thu.tsfiledb.qp.logical.operator.clause.filter.FilterOperator;
+import cn.edu.thu.tsfiledb.qp.logical.common.filter.FilterOperator;
 
 /**
  * This exception is threw whiling meeting error in

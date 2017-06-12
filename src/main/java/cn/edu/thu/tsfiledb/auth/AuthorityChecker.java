@@ -9,7 +9,7 @@ import org.slf4j.LoggerFactory;
 import cn.edu.thu.tsfile.timeseries.read.qp.Path;
 import cn.edu.thu.tsfiledb.auth.dao.Authorizer;
 import cn.edu.thu.tsfiledb.auth.model.Permission;
-import cn.edu.thu.tsfiledb.qp.logical.operator.Operator.OperatorType;
+import cn.edu.thu.tsfiledb.qp.logical.Operator.OperatorType;
 
 public class AuthorityChecker {
 	

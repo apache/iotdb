@@ -2,7 +2,7 @@ package cn.edu.thu.tsfiledb.qp.exception;
 
 /**
  * This exception is for calling error method in {@linkplain com.corp.tsfile.sql.exec.TSqlParserV2
- * TSqlParserV2}.<br>
+ * QueryProcessor}.<br>
  * Throw this exception if user call {@code nonQuery} method from a {@code QUERY operator}, or call
  * {@code getIndex getIndex} method from a {@code NonQUERY operator}, like AUTHOR, LOADDATA,
  * UPDATE,INSERT, DELETE

@@ -5,8 +5,8 @@ import cn.edu.thu.tsfile.timeseries.read.qp.Path;
 import cn.edu.thu.tsfile.timeseries.read.query.QueryDataSet;
 import cn.edu.thu.tsfile.timeseries.utils.StringContainer;
 import cn.edu.thu.tsfiledb.qp.exception.QueryProcessorException;
-import cn.edu.thu.tsfiledb.qp.logical.operator.root.RootOperator;
-import cn.edu.thu.tsfiledb.sql.exec.TSqlParserV2;
+import cn.edu.thu.tsfiledb.qp.physical.PhysicalPlan;
+import cn.edu.thu.tsfiledb.qp.QueryProcessor;
 import cn.edu.thu.tsfiledb.sql.exec.utils.MemIntQpExecutor;
 import org.antlr.runtime.RecognitionException;
 import org.junit.Before;
@@ -60,8 +60,7 @@ public class TestQpQuery {
                                 new String[] {
                                         "20, <root.laptop.device_1.sensor_1,21> <root.laptop.device_1.sensor_2,null> ",
                                         "40, <root.laptop.device_1.sensor_1,41> <root.laptop.device_1.sensor_2,null> ",
-                                        "50, <root.laptop.device_1.sensor_1,null> <root.laptop.device_1.sensor_2,52> "},
-                                null},
+                                        "50, <root.laptop.device_1.sensor_1,null> <root.laptop.device_1.sensor_2,52> "}},
                         // test complex time,
                         {
                                 "select sensor_1,sensor_2 " + "from root.laptop.device_1 "
@@ -70,8 +69,7 @@ public class TestQpQuery {
                                         "20, <root.laptop.device_1.sensor_1,21> <root.laptop.device_1.sensor_2,null> ",
                                         "40, <root.laptop.device_1.sensor_1,41> <root.laptop.device_1.sensor_2,null> ",
                                         "50, <root.laptop.device_1.sensor_1,null> <root.laptop.device_1.sensor_2,52> ",
-                                        "500, <root.laptop.device_1.sensor_1,null> <root.laptop.device_1.sensor_2,502> "},
-                                null},
+                                        "500, <root.laptop.device_1.sensor_1,null> <root.laptop.device_1.sensor_2,502> "}},
                         // test not
                         {
                                 "select sensor_1,sensor_2 " + "from root.laptop.device_1 "
@@ -81,8 +79,7 @@ public class TestQpQuery {
                                         "40, <root.laptop.device_1.sensor_1,41> <root.laptop.device_1.sensor_2,null> ",
                                         "50, <root.laptop.device_1.sensor_1,null> <root.laptop.device_1.sensor_2,52> ",
                                         "100, <root.laptop.device_1.sensor_1,101> <root.laptop.device_1.sensor_2,102> ",
-                                        "500, <root.laptop.device_1.sensor_1,null> <root.laptop.device_1.sensor_2,502> "},
-                                null},
+                                        "500, <root.laptop.device_1.sensor_1,null> <root.laptop.device_1.sensor_2,502> "}},
                         // test DNF, just test DNF transform original expression to a conjunction
 //                        {
 //                                "select sensor_1,sensor_2 "
@@ -108,29 +105,26 @@ public class TestQpQuery {
                         {
                                 "select sensor_1,sensor_2 " + "from root.laptop.device_1 "
                                         + "where time < 150 and sensor_1 >= 20 and time = 60",
-                                new String[] {"60, <root.laptop.device_1.sensor_1,61> <root.laptop.device_1.sensor_2,null> "},
-                                null}
+                                new String[] {"60, <root.laptop.device_1.sensor_1,61> <root.laptop.device_1.sensor_2,null> "}}
                                 });
     }
 
     private final String inputSQL;
     private final String[] result;
-    private final Exception expectException;
 
-    public TestQpQuery(String inputSQL, String[] result, Exception expectException) {
+    public TestQpQuery(String inputSQL, String[] result) {
         this.inputSQL = inputSQL;
         this.result = result;
-        this.expectException = expectException;
     }
 
     @Test
     public void testQueryBasic() throws QueryProcessorException, RecognitionException {
         LOG.info("input SQL String:{}", inputSQL);
-        TSqlParserV2 parser = new TSqlParserV2();
-        RootOperator root = parser.parseSQLToOperator(inputSQL);
-        if (!root.isQuery())
+        QueryProcessor parser = new QueryProcessor();
+        PhysicalPlan plan = parser.parseSQLToPhysicalPlan(inputSQL, exec);
+        if (!plan.isQuery())
             fail();
-        Iterator<QueryDataSet> iter = parser.query(root, exec);
+        Iterator<QueryDataSet> iter = parser.query(plan, exec);
         LOG.info("query result:");
         int i = 0;
         while (iter.hasNext()) {

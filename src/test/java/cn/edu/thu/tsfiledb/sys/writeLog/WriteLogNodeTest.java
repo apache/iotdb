@@ -1,8 +1,11 @@
 package cn.edu.thu.tsfiledb.sys.writeLog;
 
 import cn.edu.thu.tsfile.timeseries.read.qp.Path;
-import cn.edu.thu.tsfiledb.qp.physical.plan.*;
-import cn.edu.thu.tsfiledb.qp.physical.plan.InsertPlan;
+import cn.edu.thu.tsfiledb.qp.physical.PhysicalPlan;
+import cn.edu.thu.tsfiledb.qp.physical.crud.DeletePlan;
+import cn.edu.thu.tsfiledb.qp.physical.crud.InsertPlan;
+import cn.edu.thu.tsfiledb.qp.physical.crud.MultiInsertPlan;
+import cn.edu.thu.tsfiledb.qp.physical.crud.UpdatePlan;
 import org.junit.Assert;
 import org.junit.Test;
 

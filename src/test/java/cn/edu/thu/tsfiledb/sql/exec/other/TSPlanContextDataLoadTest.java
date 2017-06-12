@@ -1,9 +1,9 @@
 package cn.edu.thu.tsfiledb.sql.exec.other;
 
 import cn.edu.thu.tsfiledb.qp.exception.QueryProcessorException;
-import cn.edu.thu.tsfiledb.qp.logical.operator.root.load.LoadDataOperator;
-import cn.edu.thu.tsfiledb.sql.exec.ParseGenerator;
-import cn.edu.thu.tsfiledb.sql.exec.TSPlanContextV2;
+import cn.edu.thu.tsfiledb.qp.logical.root.sys.LoadDataOperator;
+import cn.edu.thu.tsfiledb.sql.ParseGenerator;
+import cn.edu.thu.tsfiledb.qp.strategy.LogicalGenerator;
 import cn.edu.thu.tsfiledb.sql.parse.ASTNode;
 import cn.edu.thu.tsfiledb.sql.parse.ParseUtils;
 import org.junit.Test;
@@ -22,9 +22,8 @@ public class TSPlanContextDataLoadTest {
         ASTNode astTree;
         astTree = ParseGenerator.generateAST(input);
         astTree = ParseUtils.findRootNonNullToken(astTree);
-        TSPlanContextV2 tsPlan = new TSPlanContextV2();
-        tsPlan.analyze(astTree);
-        LoadDataOperator loadDataOp = (LoadDataOperator) tsPlan.getOperator();
+        LogicalGenerator generator = new LogicalGenerator();
+        LoadDataOperator loadDataOp = (LoadDataOperator) generator.getLogicalPlan(astTree);
         if (loadDataOp == null)
             fail();
         return loadDataOp;

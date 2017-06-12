@@ -12,7 +12,7 @@ import cn.edu.thu.tsfile.timeseries.read.query.QueryDataSet;
 import cn.edu.thu.tsfile.timeseries.read.readSupport.RowRecord;
 import cn.edu.thu.tsfile.timeseries.utils.StringContainer;
 import cn.edu.thu.tsfiledb.qp.executor.QueryProcessExecutor;
-import cn.edu.thu.tsfiledb.qp.physical.plan.query.OutputQueryDataSet;
+import cn.edu.thu.tsfiledb.qp.physical.crud.query.OutputQueryDataSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

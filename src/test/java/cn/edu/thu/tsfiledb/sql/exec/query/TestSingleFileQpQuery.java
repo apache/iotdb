@@ -5,8 +5,8 @@ import cn.edu.thu.tsfile.timeseries.read.query.QueryDataSet;
 import cn.edu.thu.tsfiledb.qp.exception.QueryProcessorException;
 import cn.edu.thu.tsfiledb.qp.executor.QueryProcessExecutor;
 import cn.edu.thu.tsfiledb.qp.executor.SingleFileQPExecutor;
-import cn.edu.thu.tsfiledb.qp.logical.operator.root.RootOperator;
-import cn.edu.thu.tsfiledb.sql.exec.TSqlParserV2;
+import cn.edu.thu.tsfiledb.qp.physical.PhysicalPlan;
+import cn.edu.thu.tsfiledb.qp.QueryProcessor;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -71,11 +71,11 @@ public class TestSingleFileQpQuery {
     public void testQueryBasic() throws QueryProcessorException {
         if(exec == null)
             return;
-        TSqlParserV2 parser = new TSqlParserV2();
-        RootOperator root = parser.parseSQLToOperator(inputSQL);
-        if (!root.isQuery())
+        QueryProcessor parser = new QueryProcessor();
+        PhysicalPlan physicalPlan = parser.parseSQLToPhysicalPlan(inputSQL, exec);
+        if (!physicalPlan.isQuery())
             fail();
-        Iterator<QueryDataSet> iter = parser.query(root, exec);
+        Iterator<QueryDataSet> iter = parser.query(physicalPlan, exec);
         int i = 0;
         while (iter.hasNext()) {
             QueryDataSet set = iter.next();

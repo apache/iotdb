@@ -5,8 +5,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import cn.edu.thu.tsfile.common.utils.BytesUtils;
-import cn.edu.thu.tsfiledb.qp.logical.operator.Operator.OperatorType;
-import cn.edu.thu.tsfiledb.qp.physical.plan.PhysicalPlan;
+import cn.edu.thu.tsfiledb.qp.logical.Operator.OperatorType;
+import cn.edu.thu.tsfiledb.qp.physical.PhysicalPlan;
 import cn.edu.thu.tsfiledb.sys.writeLog.transfer.PhysicalPlanLogTransfer;
 import cn.edu.thu.tsfiledb.sys.writeLog.WriteLogReadable;
 

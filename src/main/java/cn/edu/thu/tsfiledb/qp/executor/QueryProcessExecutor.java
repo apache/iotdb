@@ -17,9 +17,9 @@ import cn.edu.thu.tsfiledb.exception.PathErrorException;
 import cn.edu.thu.tsfiledb.metadata.MManager;
 import cn.edu.thu.tsfiledb.qp.constant.SQLConstant;
 import cn.edu.thu.tsfiledb.qp.exception.QueryProcessorException;
-import cn.edu.thu.tsfiledb.qp.logical.operator.Operator;
-import cn.edu.thu.tsfiledb.qp.physical.plan.PhysicalPlan;
-import cn.edu.thu.tsfiledb.qp.strategy.Transformer;
+import cn.edu.thu.tsfiledb.qp.logical.Operator;
+import cn.edu.thu.tsfiledb.qp.physical.PhysicalPlan;
+import cn.edu.thu.tsfiledb.qp.strategy.PhysicalGenerator;
 
 public abstract class QueryProcessExecutor {
     protected final boolean isSingleFile;
@@ -36,7 +36,7 @@ public abstract class QueryProcessExecutor {
     protected abstract boolean judgeNonReservedPathExists(Path fullPath);
 
     public PhysicalPlan transformToPhysicalPlan(Operator operator) throws QueryProcessorException {
-        Transformer transformer = new Transformer(this);
+        PhysicalGenerator transformer = new PhysicalGenerator(this);
         return transformer.transformToPhysicalPlan(operator);
     }
 

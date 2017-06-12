@@ -3,8 +3,6 @@ package cn.edu.thu.tsfiledb.qp.executor;
 
 import java.util.List;
 
-import cn.edu.thu.tsfiledb.qp.logical.operator.Operator;
-import cn.edu.thu.tsfiledb.qp.physical.plan.PhysicalPlan;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

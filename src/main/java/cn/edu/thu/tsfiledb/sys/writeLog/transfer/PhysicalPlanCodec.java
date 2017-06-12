@@ -9,11 +9,11 @@ import java.util.List;
 import cn.edu.thu.tsfile.common.utils.BytesUtils;
 import cn.edu.thu.tsfile.common.utils.ReadWriteStreamUtils;
 import cn.edu.thu.tsfile.timeseries.read.qp.Path;
-import cn.edu.thu.tsfiledb.qp.logical.operator.Operator.OperatorType;
-import cn.edu.thu.tsfiledb.qp.physical.plan.DeletePlan;
-import cn.edu.thu.tsfiledb.qp.physical.plan.InsertPlan;
-import cn.edu.thu.tsfiledb.qp.physical.plan.MultiInsertPlan;
-import cn.edu.thu.tsfiledb.qp.physical.plan.UpdatePlan;
+import cn.edu.thu.tsfiledb.qp.logical.Operator.OperatorType;
+import cn.edu.thu.tsfiledb.qp.physical.crud.DeletePlan;
+import cn.edu.thu.tsfiledb.qp.physical.crud.InsertPlan;
+import cn.edu.thu.tsfiledb.qp.physical.crud.MultiInsertPlan;
+import cn.edu.thu.tsfiledb.qp.physical.crud.UpdatePlan;
 
 /**
  * @author CGF

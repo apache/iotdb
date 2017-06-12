@@ -6,9 +6,8 @@ import cn.edu.thu.tsfile.timeseries.read.query.QueryDataSet;
 import cn.edu.thu.tsfile.timeseries.utils.StringContainer;
 import cn.edu.thu.tsfiledb.qp.constant.SQLConstant;
 import cn.edu.thu.tsfiledb.qp.exception.QueryProcessorException;
-import cn.edu.thu.tsfiledb.qp.logical.operator.root.RootOperator;
-import cn.edu.thu.tsfiledb.qp.logical.operator.root.sfw.SFWOperator;
-import cn.edu.thu.tsfiledb.sql.exec.TSqlParserV2;
+import cn.edu.thu.tsfiledb.qp.physical.PhysicalPlan;
+import cn.edu.thu.tsfiledb.qp.QueryProcessor;
 import cn.edu.thu.tsfiledb.sql.exec.utils.MemIntQpExecutor;
 import org.junit.Before;
 import org.junit.Test;
@@ -53,11 +52,11 @@ public class TestQpQueryOld {
                 "50, <root.laptop.device_1.sensor_1,null> <root.laptop.device_1.sensor_2,52> ",
                 "100, <root.laptop.device_1.sensor_1,101> <root.laptop.device_1.sensor_2,102> ",
                 "500, <root.laptop.device_1.sensor_1,null> <root.laptop.device_1.sensor_2,502> "};
-        TSqlParserV2 parser = new TSqlParserV2();
-        RootOperator root = parser.parseSQLToOperator(sqlStr);
-        if (!root.isQuery())
+        QueryProcessor parser = new QueryProcessor();
+        PhysicalPlan physicalPlan = parser.parseSQLToPhysicalPlan(sqlStr, exec);
+        if (!physicalPlan.isQuery())
             fail();
-        Iterator<QueryDataSet> iter = parser.query(root, exec);
+        Iterator<QueryDataSet> iter = parser.query(physicalPlan, exec);
         int i = 0;
         while (iter.hasNext()) {
             QueryDataSet set = iter.next();
@@ -72,13 +71,10 @@ public class TestQpQueryOld {
         String sqlStr =
                 "select sum(device_1.sensor_1) " + "from root.laptop "
                         + "where time <= 51 or !(time != 100 and time < 460)";
-        TSqlParserV2 parser = new TSqlParserV2();
-        RootOperator root = parser.parseSQLToOperator(sqlStr);
-        if (!root.isQuery())
+        QueryProcessor parser = new QueryProcessor();
+        PhysicalPlan plan = parser.parseSQLToPhysicalPlan(sqlStr, exec);
+        if (!plan.isQuery())
             fail();
-        SFWOperator sfw = (SFWOperator) root;
-        sfw = parser.logicalOptimize(sfw);
-        parser.transformToPhysicalPlan(sfw, exec);
         assertEquals("sum", exec.getParameter(SQLConstant.IS_AGGREGATION));
     }
 }
