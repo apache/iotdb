@@ -8,10 +8,8 @@ import cn.edu.thu.tsfiledb.qp.logical.operator.clause.FromOperator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import cn.edu.thu.tsfiledb.qp.constant.SQLConstant;
 import cn.edu.thu.tsfiledb.qp.exception.logical.operator.QpSelectFromException;
 import cn.edu.thu.tsfile.timeseries.read.qp.Path;
-import cn.edu.thu.tsfiledb.qp.executor.QueryProcessExecutor;
 import cn.edu.thu.tsfiledb.qp.logical.operator.root.RootOperator;
 
 /**
@@ -58,29 +56,12 @@ public abstract class SFWOperator extends RootOperator {
     }
 
     /**
-     * get information from SelectOperator and FromOperator and generate all table paths. <b>Note
-     * that</b>, if there are some path doesn't exist in metadata tree or file metadata, this method
-     * just log error records and <b>omit</b> them. Nevertheless, if all of paths doesn't exist, it
-     * will throw <b>Exception</b>.
+     * get information from SelectOperator and FromOperator and generate all table paths.
      * 
      * @return - a list of path
      * @throws QpSelectFromException
      */
-    public List<Path> getSelSeriesPaths(QueryProcessExecutor executor) throws QpSelectFromException {
-        List<Path> prefixPaths;
-        if (fromOperator != null) {
-            prefixPaths = fromOperator.getPrefixPaths();
-            // check legality of from clauses
-            if (!executor.isSingleFile()) {
-                for (Path path : prefixPaths) {
-                    if (!path.startWith(SQLConstant.ROOT))
-                        throw new QpSelectFromException(
-                                "given select clause path doesn't start with SFW!" + path);
-                }
-            }
-        }
-        // after ConcatPathOptimizer, paths in FROM clause are just used to check legality for delta
-        // system
+    public List<Path> getSelectedPaths() throws QpSelectFromException {
         List<Path> suffixPaths = null;
         if (selectOperator != null)
             suffixPaths = selectOperator.getSuffixPaths();

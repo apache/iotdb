@@ -8,17 +8,15 @@ import cn.edu.thu.tsfile.timeseries.read.qp.Path;
 import cn.edu.thu.tsfiledb.qp.executor.QueryProcessExecutor;
 import cn.edu.thu.tsfiledb.qp.logical.operator.Operator.OperatorType;
 
-
+/**
+ * for test
+ */
 public class InsertPlan extends PhysicalPlan {
     private long insertTime;
     private String value;
     private Path path;
     //insertType : 1 is bufferwrite insert, 2 is overflow insert
     private int insertType;
-    
-    public InsertPlan() {
-        super(false, OperatorType.INSERT);
-    }
 
     public InsertPlan(int insertType, long insertTime, String value, Path path) {
         super(false, OperatorType.INSERT);

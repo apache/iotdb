@@ -10,6 +10,7 @@ import cn.edu.thu.tsfiledb.qp.constant.SQLConstant;
 import cn.edu.thu.tsfiledb.qp.exception.IllegalASTFormatException;
 import cn.edu.thu.tsfiledb.qp.exception.QueryProcessorException;
 import cn.edu.thu.tsfiledb.qp.exception.logical.operator.*;
+import cn.edu.thu.tsfiledb.qp.exception.strategy.QpWhereException;
 import cn.edu.thu.tsfiledb.qp.logical.operator.clause.SelectOperator;
 import cn.edu.thu.tsfiledb.qp.logical.operator.clause.filter.BasicFunctionOperator;
 import cn.edu.thu.tsfiledb.qp.logical.operator.clause.filter.FilterOperator;
@@ -73,9 +74,6 @@ public class TSPlanContextV2 {
 		switch (tokenIntType) {
 		case TSParser.TOK_MULTINSERT:
 			analyzeMultiInsert(astNode);
-			return;
-		case TSParser.TOK_INSERT:
-			analyzeInsert(astNode);
 			return;
 		case TSParser.TOK_SELECT:
 			analyzeSelect(astNode);
@@ -263,7 +261,7 @@ public class TSPlanContextV2 {
 		if(astNode.getChild(1).getChildCount() != astNode.getChild(2).getChildCount()){
 			throw new QueryProcessorException("length of measurement is NOT EQUAL TO the length of values");
 		}
-		multiInsertOp.setInsertTime(timestamp);
+		multiInsertOp.setTime(timestamp);
 		List<String> measurementList = new ArrayList<>();
 		for(int i = 1; i < astNode.getChild(1).getChildCount(); i ++){
 			measurementList.add(astNode.getChild(1).getChild(i).getText());
@@ -275,23 +273,6 @@ public class TSPlanContextV2 {
 			valueList.add(astNode.getChild(2).getChild(i).getText());
 		}
 		multiInsertOp.setValueList(valueList);
-	}
-
-	private void analyzeInsert(ASTNode astNode) throws QueryProcessorException {
-		queryType = SQLQueryType.INSERT;
-		InsertOperator insertOp = new InsertOperator(SQLConstant.TOK_INSERT);
-		initializedOperator = rootTree = insertOp;
-		analyzeSelect(astNode.getChild(0));
-		long timestamp;
-		ASTNode timeChild = null;
-		try {
-			timeChild = astNode.getChild(1);
-			timestamp = Long.valueOf(timeChild.getText());
-		} catch (NumberFormatException e) {
-			throw new ValueParseException("need a long value in insert clause, but given:" + timeChild.getText());
-		}
-		insertOp.setTime(timestamp);
-		insertOp.setValue(astNode.getChild(2).getText());
 	}
 
 	/**

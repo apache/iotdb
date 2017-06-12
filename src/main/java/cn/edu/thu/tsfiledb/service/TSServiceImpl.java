@@ -8,6 +8,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
+import cn.edu.thu.tsfiledb.qp.strategy.Transformer;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -444,7 +445,8 @@ public class TSServiceImpl implements TSIService.Iface {
 
 	private TSExecuteStatementResp ExecuteUpdateStatement(RootOperator root) throws TException {
 		try {
-			PhysicalPlan plan = root.transformToPhysicalPlan(exec);
+			Transformer transformer = new Transformer(exec);
+			PhysicalPlan plan = transformer.transformToPhysicalPlan(root);
 			List<Path> paths = plan.getPaths();
 
 			if (!checkAuthorization(paths, root.getType())) {

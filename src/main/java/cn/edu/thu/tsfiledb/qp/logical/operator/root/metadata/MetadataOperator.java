@@ -1,11 +1,7 @@
 package cn.edu.thu.tsfiledb.qp.logical.operator.root.metadata;
 
 import cn.edu.thu.tsfile.timeseries.read.qp.Path;
-import cn.edu.thu.tsfiledb.qp.exception.QueryProcessorException;
-import cn.edu.thu.tsfiledb.qp.executor.QueryProcessExecutor;
 import cn.edu.thu.tsfiledb.qp.logical.operator.root.RootOperator;
-import cn.edu.thu.tsfiledb.qp.physical.plan.PhysicalPlan;
-import cn.edu.thu.tsfiledb.qp.physical.plan.metadata.MetadataPlan;
 
 /**
  * this class maintains information in Metadata.namespace statement
@@ -62,12 +58,6 @@ public class MetadataOperator extends RootOperator {
 
     public NamespaceType getNamespaceType() {
         return namespaceType;
-    }
-
-    @Override
-    public PhysicalPlan transformToPhysicalPlan(QueryProcessExecutor conf)
-            throws QueryProcessorException {
-        return new MetadataPlan(namespaceType, path, dataType, encoding, encodingArgs);
     }
 
     public enum NamespaceType {

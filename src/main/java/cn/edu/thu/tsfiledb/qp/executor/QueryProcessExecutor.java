@@ -16,11 +16,10 @@ import cn.edu.thu.tsfiledb.auth.model.AuthException;
 import cn.edu.thu.tsfiledb.exception.PathErrorException;
 import cn.edu.thu.tsfiledb.metadata.MManager;
 import cn.edu.thu.tsfiledb.qp.constant.SQLConstant;
+import cn.edu.thu.tsfiledb.qp.exception.QueryProcessorException;
 import cn.edu.thu.tsfiledb.qp.logical.operator.Operator;
-import cn.edu.thu.tsfiledb.qp.logical.operator.root.author.AuthorOperator;
-import cn.edu.thu.tsfiledb.qp.logical.operator.root.load.LoadDataOperator;
-import cn.edu.thu.tsfiledb.qp.physical.plan.AuthorPlan;
 import cn.edu.thu.tsfiledb.qp.physical.plan.PhysicalPlan;
+import cn.edu.thu.tsfiledb.qp.strategy.Transformer;
 
 public abstract class QueryProcessExecutor {
     protected final boolean isSingleFile;
@@ -36,17 +35,9 @@ public abstract class QueryProcessExecutor {
 
     protected abstract boolean judgeNonReservedPathExists(Path fullPath);
 
-    public PhysicalPlan transformToPhysicalPlan(Operator operator) {
-        switch (operator.getType()) {
-            case AUTHOR:
-                AuthorOperator authorOperator = (AuthorOperator) operator;
-                return new AuthorPlan(authorOperator.getAuthorType(), authorOperator.getUserName(), 
-                        authorOperator.getRoleName(), authorOperator.getPassWord(), authorOperator.getNewPassword(), 
-                        authorOperator.getPrivilegeList(), authorOperator.getNodeName());
-            case LOADDATA:
-                LoadDataOperator loadDataOperator = (LoadDataOperator) operator;
-        }
-        return null;
+    public PhysicalPlan transformToPhysicalPlan(Operator operator) throws QueryProcessorException {
+        Transformer transformer = new Transformer(this);
+        return transformer.transformToPhysicalPlan(operator);
     }
 
     public boolean isSingleFile() {

@@ -88,10 +88,4 @@ public class AuthorOperator extends RootOperator {
     public enum AuthorType {
         CREATE_USER, CREATE_ROLE, DROP_USER, DROP_ROLE, GRANT_ROLE, GRANT_USER, GRANT_ROLE_TO_USER, REVOKE_USER, REVOKE_ROLE, REVOKE_ROLE_FROM_USER,UPDATE_USER
     }
-
-    @Override
-    public PhysicalPlan transformToPhysicalPlan(QueryProcessExecutor conf)
-            throws QueryProcessorException {
-        return new AuthorPlan(authorType, userName, roleName, password, newPassword, privilegeList, nodeName);
-    }
 }

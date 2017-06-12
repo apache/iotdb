@@ -1,11 +1,7 @@
 package cn.edu.thu.tsfiledb.qp.logical.operator.root.metadata;
 
 import cn.edu.thu.tsfile.timeseries.read.qp.Path;
-import cn.edu.thu.tsfiledb.qp.exception.QueryProcessorException;
-import cn.edu.thu.tsfiledb.qp.executor.QueryProcessExecutor;
 import cn.edu.thu.tsfiledb.qp.logical.operator.root.RootOperator;
-import cn.edu.thu.tsfiledb.qp.physical.plan.PhysicalPlan;
-import cn.edu.thu.tsfiledb.qp.physical.plan.metadata.PropertyPlan;
 
 /**
  * this class maintains information in Metadata.namespace statement
@@ -43,12 +39,6 @@ public class PropertyOperator extends RootOperator {
 
     public PropertyType getPropertyType() {
         return propertyType;
-    }
-
-    @Override
-    public PhysicalPlan transformToPhysicalPlan(QueryProcessExecutor conf)
-            throws QueryProcessorException {
-        return new PropertyPlan(propertyType, propertyPath, metadataPath);
     }
 
     public enum PropertyType {

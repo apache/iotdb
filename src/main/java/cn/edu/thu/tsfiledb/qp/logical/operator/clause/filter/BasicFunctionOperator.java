@@ -14,7 +14,7 @@ import cn.edu.thu.tsfile.timeseries.utils.StringContainer;
 import cn.edu.thu.tsfiledb.qp.constant.SQLConstant;
 import cn.edu.thu.tsfiledb.qp.exception.logical.operator.BasicOperatorException;
 import cn.edu.thu.tsfiledb.qp.exception.logical.operator.QpSelectFromException;
-import cn.edu.thu.tsfiledb.qp.exception.logical.operator.QpWhereException;
+import cn.edu.thu.tsfiledb.qp.exception.strategy.QpWhereException;
 import cn.edu.thu.tsfiledb.qp.exception.logical.operator.SeriesNotExistException;
 import cn.edu.thu.tsfiledb.qp.executor.QueryProcessExecutor;
 

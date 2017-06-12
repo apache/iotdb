@@ -1,4 +1,4 @@
-package cn.edu.thu.tsfiledb.qp.exception.physical.plan;
+package cn.edu.thu.tsfiledb.qp.exception.physical;
 
 import cn.edu.thu.tsfile.timeseries.utils.StringContainer;
 

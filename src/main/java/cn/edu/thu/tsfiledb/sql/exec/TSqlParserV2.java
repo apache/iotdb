@@ -1,6 +1,8 @@
 package cn.edu.thu.tsfiledb.sql.exec;
 
 import java.util.Iterator;
+
+import cn.edu.thu.tsfiledb.qp.strategy.Transformer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -146,7 +148,8 @@ public class TSqlParserV2 {
      */
     public PhysicalPlan transformToPhysicalPlan(RootOperator root, QueryProcessExecutor conf)
             throws QueryProcessorException {
-        return root.transformToPhysicalPlan(conf);
+        Transformer transformer = new Transformer(conf);
+        return transformer.transformToPhysicalPlan(root);
     }
 
     /**

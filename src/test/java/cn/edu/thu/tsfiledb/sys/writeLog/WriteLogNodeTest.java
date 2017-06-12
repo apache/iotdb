@@ -2,6 +2,7 @@ package cn.edu.thu.tsfiledb.sys.writeLog;
 
 import cn.edu.thu.tsfile.timeseries.read.qp.Path;
 import cn.edu.thu.tsfiledb.qp.physical.plan.*;
+import cn.edu.thu.tsfiledb.qp.physical.plan.InsertPlan;
 import org.junit.Assert;
 import org.junit.Test;
 
