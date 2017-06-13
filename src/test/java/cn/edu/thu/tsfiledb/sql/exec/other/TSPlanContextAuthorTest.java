@@ -53,9 +53,8 @@ public class TSPlanContextAuthorTest {
 
     @Test
     public void testanalyzeAuthor() throws QueryProcessorException {
-        QueryProcessor parser = new QueryProcessor();
-        MemIntQpExecutor executor = new MemIntQpExecutor();
-        AuthorPlan author = (AuthorPlan) parser.parseSQLToPhysicalPlan(inputSQL, executor);
+        QueryProcessor processor = new QueryProcessor(new MemIntQpExecutor());
+        AuthorPlan author = (AuthorPlan) processor.parseSQLToPhysicalPlan(inputSQL);
         if (author == null)
             fail();
         assertArrayEquals(paths, author.getPaths().toArray());

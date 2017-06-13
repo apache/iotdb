@@ -26,7 +26,7 @@ import static org.junit.Assert.assertTrue;
  *
  */
 public class TestQpUpdate {
-    private MemIntQpExecutor exec = new MemIntQpExecutor();
+    QueryProcessor processor = new QueryProcessor(new MemIntQpExecutor());
 
     @Before
     public void before() throws ProcessorException {
@@ -38,8 +38,8 @@ public class TestQpUpdate {
                 new Path(new StringContainer(
                         new String[] {"root", "laptop", "device_1", "sensor_2"},
                         SystemConstant.PATH_SEPARATOR));
-        exec.insert(path1, 10, "10");
-        exec.insert(path2, 20, "20");
+        processor.getExecutor().insert(path1, 10, "10");
+        processor.getExecutor().insert(path2, 20, "20");
     }
 
 
@@ -47,15 +47,14 @@ public class TestQpUpdate {
     public void testUpdate() throws QueryProcessorException, ProcessorException, RecognitionException {
         String sqlStr =
                 "update root.laptop.device_1.sensor_1 set value = 33000 where time >= 10 and time <= 10";
-        QueryProcessor parser = new QueryProcessor();
-        PhysicalPlan plan1 = parser.parseSQLToPhysicalPlan(sqlStr,exec);
-        boolean upRet = parser.nonQuery(plan1, exec);
+        PhysicalPlan plan1 = processor.parseSQLToPhysicalPlan(sqlStr);
+        boolean upRet = processor.nonQuery(plan1);
 
         assertTrue(upRet);
         // query to assert
         sqlStr = "select sensor_1,sensor_2 " + "from root.laptop.device_1";
-        PhysicalPlan plan2 = parser.parseSQLToPhysicalPlan(sqlStr, exec);
-        Iterator<QueryDataSet> iter = parser.query(plan2, exec);
+        PhysicalPlan plan2 = processor.parseSQLToPhysicalPlan(sqlStr);
+        Iterator<QueryDataSet> iter = processor.query(plan2);
         String[] expect =
                 {"10, <root.laptop.device_1.sensor_1,33000> <root.laptop.device_1.sensor_2,null> ",
                         "20, <root.laptop.device_1.sensor_1,null> <root.laptop.device_1.sensor_2,20> "};
@@ -72,15 +71,14 @@ public class TestQpUpdate {
     @Test
     public void testDelete() throws QueryProcessorException, ProcessorException, RecognitionException {
         String sqlStr = "delete from root.laptop.device_1.sensor_1 where time < 15";
-        QueryProcessor parser = new QueryProcessor();
-        PhysicalPlan plan1 = parser.parseSQLToPhysicalPlan(sqlStr, exec);
-        boolean upRet = parser.nonQuery(plan1, exec);
+        PhysicalPlan plan1 = processor.parseSQLToPhysicalPlan(sqlStr);
+        boolean upRet = processor.nonQuery(plan1);
 
         assertTrue(upRet);
         // query to assert
         sqlStr = "select sensor_1,sensor_2 " + "from root.laptop.device_1";
-        PhysicalPlan plan2 = parser.parseSQLToPhysicalPlan(sqlStr, exec);
-        Iterator<QueryDataSet> iter = parser.query(plan2, exec);
+        PhysicalPlan plan2 = processor.parseSQLToPhysicalPlan(sqlStr);
+        Iterator<QueryDataSet> iter = processor.query(plan2);
 
         String[] expect =
                 {"20, <root.laptop.device_1.sensor_1,null> <root.laptop.device_1.sensor_2,20> "};
@@ -97,17 +95,16 @@ public class TestQpUpdate {
     @Test
     public void testInsert() throws QueryProcessorException, ProcessorException, RecognitionException {
         String sqlStr = "insert into root.laptop.device_1 (timestamp, sensor_1) values (30,30)";
-        QueryProcessor parser = new QueryProcessor();
-        PhysicalPlan plan1 = parser.parseSQLToPhysicalPlan(sqlStr, exec);
+        PhysicalPlan plan1 = processor.parseSQLToPhysicalPlan(sqlStr);
 
         //execute insert
-        boolean upRet = parser.nonQuery(plan1, exec);
+        boolean upRet = processor.nonQuery(plan1);
         assertTrue(upRet);
 
         // query to assert
         sqlStr = "select sensor_1,sensor_2 " + "from root.laptop.device_1";
-        PhysicalPlan plan2 = parser.parseSQLToPhysicalPlan(sqlStr, exec);
-        Iterator<QueryDataSet> iter = parser.query(plan2, exec);
+        PhysicalPlan plan2 = processor.parseSQLToPhysicalPlan(sqlStr);
+        Iterator<QueryDataSet> iter = processor.query(plan2);
 
         String[] expect =
                 {

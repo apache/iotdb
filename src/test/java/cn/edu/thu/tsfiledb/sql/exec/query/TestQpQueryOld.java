@@ -1,6 +1,7 @@
 package cn.edu.thu.tsfiledb.sql.exec.query;
 
 import cn.edu.thu.tsfile.common.constant.SystemConstant;
+import cn.edu.thu.tsfile.common.exception.ProcessorException;
 import cn.edu.thu.tsfile.timeseries.read.qp.Path;
 import cn.edu.thu.tsfile.timeseries.read.query.QueryDataSet;
 import cn.edu.thu.tsfile.timeseries.utils.StringContainer;
@@ -25,10 +26,10 @@ import static org.junit.Assert.fail;
  */
 public class TestQpQueryOld {
 
-    private MemIntQpExecutor exec = new MemIntQpExecutor();
+    private QueryProcessor processor = new QueryProcessor(new MemIntQpExecutor());
 
     @Before
-    public void before() {
+    public void before() throws ProcessorException {
         Path path1 = new Path(new StringContainer(
                 new String[]{"root", "laptop", "device_1", "sensor_1"},
                 SystemConstant.PATH_SEPARATOR));
@@ -36,8 +37,8 @@ public class TestQpQueryOld {
                 new String[]{"root", "laptop", "device_1", "sensor_2"},
                 SystemConstant.PATH_SEPARATOR));
         for (int i = 1; i <= 10; i++) {
-            exec.insert(path1, i * 20, Integer.toString(i * 20 + 1));
-            exec.insert(path2, i * 50, Integer.toString(i * 50 + 2));
+            processor.getExecutor().insert(path1, i * 20, Integer.toString(i * 20 + 1));
+            processor.getExecutor().insert(path2, i * 50, Integer.toString(i * 50 + 2));
         }
     }
 
@@ -52,11 +53,10 @@ public class TestQpQueryOld {
                 "50, <root.laptop.device_1.sensor_1,null> <root.laptop.device_1.sensor_2,52> ",
                 "100, <root.laptop.device_1.sensor_1,101> <root.laptop.device_1.sensor_2,102> ",
                 "500, <root.laptop.device_1.sensor_1,null> <root.laptop.device_1.sensor_2,502> "};
-        QueryProcessor parser = new QueryProcessor();
-        PhysicalPlan physicalPlan = parser.parseSQLToPhysicalPlan(sqlStr, exec);
+        PhysicalPlan physicalPlan = processor.parseSQLToPhysicalPlan(sqlStr);
         if (!physicalPlan.isQuery())
             fail();
-        Iterator<QueryDataSet> iter = parser.query(physicalPlan, exec);
+        Iterator<QueryDataSet> iter = processor.query(physicalPlan);
         int i = 0;
         while (iter.hasNext()) {
             QueryDataSet set = iter.next();
@@ -71,10 +71,9 @@ public class TestQpQueryOld {
         String sqlStr =
                 "select sum(device_1.sensor_1) " + "from root.laptop "
                         + "where time <= 51 or !(time != 100 and time < 460)";
-        QueryProcessor parser = new QueryProcessor();
-        PhysicalPlan plan = parser.parseSQLToPhysicalPlan(sqlStr, exec);
+        PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
         if (!plan.isQuery())
             fail();
-        assertEquals("sum", exec.getParameter(SQLConstant.IS_AGGREGATION));
+        assertEquals("sum", processor.getExecutor().getParameter(SQLConstant.IS_AGGREGATION));
     }
 }

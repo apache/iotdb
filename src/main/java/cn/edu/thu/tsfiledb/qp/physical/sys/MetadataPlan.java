@@ -106,15 +106,15 @@ public class MetadataPlan extends PhysicalPlan {
 		return true;
 	}
 
-	private void deleteAllData(QueryProcessExecutor config) throws PathErrorException, ProcessorException {
-		MManager mManager = config.getMManager();
+	private void deleteAllData(QueryProcessExecutor executor) throws PathErrorException, ProcessorException {
+		MManager mManager = executor.getMManager();
 		ArrayList<String> pathList = mManager.getPaths(path.getFullPath());
 		for (String p : pathList) {
 			if(mManager.pathExist(p)){
 				DeletePlan deletePlan = new DeletePlan();
 				deletePlan.setPath(new Path(p));
 				deletePlan.setDeleteTime(Long.MAX_VALUE);
-				deletePlan.processNonQuery(config);
+				executor.processNonQuery(deletePlan);
 			}
 		}
 	}

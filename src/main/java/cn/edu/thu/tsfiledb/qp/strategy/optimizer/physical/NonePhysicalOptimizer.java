@@ -10,9 +10,15 @@ import cn.edu.thu.tsfiledb.qp.physical.PhysicalPlan;
  *
  */
 public class NonePhysicalOptimizer implements IPhysicalOptimizer {
+
+    private QueryProcessExecutor executor;
+
+    public NonePhysicalOptimizer(QueryProcessExecutor executor) {
+        this.executor = executor;
+    }
     
     @Override
-    public PhysicalPlan transform(PhysicalPlan physicalPlan, QueryProcessExecutor executor) {
+    public PhysicalPlan transform(PhysicalPlan physicalPlan) {
         return physicalPlan;
     }
 }

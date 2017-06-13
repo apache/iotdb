@@ -1,6 +1,7 @@
 package cn.edu.thu.tsfiledb.sql.exec.query;
 
 import cn.edu.thu.tsfile.common.constant.SystemConstant;
+import cn.edu.thu.tsfile.common.exception.ProcessorException;
 import cn.edu.thu.tsfile.timeseries.read.qp.Path;
 import cn.edu.thu.tsfile.timeseries.read.query.QueryDataSet;
 import cn.edu.thu.tsfile.timeseries.utils.StringContainer;
@@ -32,7 +33,7 @@ import static org.junit.Assert.fail;
 @RunWith(Parameterized.class)
 public class TestOnePassQpQuery {
     private static final Logger LOG = LoggerFactory.getLogger(TestOnePassQpQuery.class);
-    private MemIntQpExecutor exec = new MemIntQpExecutor();
+    private QueryProcessor processor = new QueryProcessor(new MemIntQpExecutor());
 
     private final String inputSQL;
     private final String[] expectRet;
@@ -78,7 +79,7 @@ public class TestOnePassQpQuery {
     }
 
     @Before
-    public void before() {
+    public void before() throws ProcessorException {
         Path path1 = new Path(new StringContainer(new String[]{"root", "laptop", "d1", "s1"},
                 SystemConstant.PATH_SEPARATOR));
         Path path2 = new Path(new StringContainer(new String[]{"root", "laptop", "d1", "s2"},
@@ -86,19 +87,18 @@ public class TestOnePassQpQuery {
         Path path3 = new Path(new StringContainer(new String[]{"root", "laptop", "d2", "s1"},
                 SystemConstant.PATH_SEPARATOR));
         for (int i = 1; i <= 10; i++) {
-            exec.insert(path1, i * 20, Integer.toString(i * 20 + 1));
-            exec.insert(path2, i * 50, Integer.toString(i * 50 + 2));
-            exec.insert(path3, i * 20, Integer.toString(i * 50 + 2));
+            processor.getExecutor().insert(path1, i * 20, Integer.toString(i * 20 + 1));
+            processor.getExecutor().insert(path2, i * 50, Integer.toString(i * 50 + 2));
+            processor.getExecutor().insert(path3, i * 20, Integer.toString(i * 50 + 2));
         }
     }
 
     @Test
     public void testQueryBasic() throws QueryProcessorException {
-        QueryProcessor parser = new QueryProcessor();
-        PhysicalPlan plan = parser.parseSQLToPhysicalPlan(inputSQL, exec);
+        PhysicalPlan plan = processor.parseSQLToPhysicalPlan(inputSQL);
         if (!plan.isQuery())
             fail();
-        Iterator<QueryDataSet> iter = parser.query(plan, exec);
+        Iterator<QueryDataSet> iter = processor.query(plan);
         System.out.println("query result:\n");
         int i = 0;
         while (iter.hasNext()) {

@@ -1,6 +1,5 @@
 package cn.edu.thu.tsfiledb.qp.strategy.optimizer.physical;
 
-import cn.edu.thu.tsfiledb.qp.executor.QueryProcessExecutor;
 import cn.edu.thu.tsfiledb.qp.physical.PhysicalPlan;
 
 /**
@@ -10,5 +9,5 @@ import cn.edu.thu.tsfiledb.qp.physical.PhysicalPlan;
  *
  */
 public interface IPhysicalOptimizer {
-    PhysicalPlan transform(PhysicalPlan physicalPlan, QueryProcessExecutor executor);
+    PhysicalPlan transform(PhysicalPlan physicalPlan);
 }

@@ -1,7 +1,11 @@
 package cn.edu.thu.tsfiledb.qp;
 
 import java.util.Iterator;
+import java.util.List;
 
+import cn.edu.thu.tsfile.timeseries.filter.definition.FilterExpression;
+import cn.edu.thu.tsfile.timeseries.read.qp.Path;
+import cn.edu.thu.tsfiledb.metadata.MManager;
 import cn.edu.thu.tsfiledb.qp.strategy.LogicalGenerator;
 import cn.edu.thu.tsfiledb.sql.ParseGenerator;
 import org.slf4j.Logger;
@@ -39,19 +43,43 @@ import cn.edu.thu.tsfiledb.sql.parse.ParseUtils;
 public class QueryProcessor {
     Logger LOG = LoggerFactory.getLogger(QueryProcessor.class);
 
+    private QueryProcessExecutor executor;
+
+
+    public QueryProcessor(QueryProcessExecutor executor) {
+        this.executor = executor;
+    }
+
+    public QueryProcessExecutor getExecutor() {
+        return executor;
+    }
+
+    public PhysicalPlan parseSQLToPhysicalPlan(String sqlStr)
+            throws QueryProcessorException {
+
+        Operator operator = parseSQLToOperator(sqlStr);
+
+        operator = logicalOptimize(operator);
+
+        PhysicalPlan physicalPlan = executor.transformToPhysicalPlan(operator);
+
+        physicalPlan = physicalOptimize(physicalPlan);
+
+        return physicalPlan;
+    }
+
     /**
      * for a query statement, input an SQL statement and return a iterator of {@code QueryDataSet}.
      *
      * @param plan physical plan
-     * @param executor physical executor
      * @return - if parameter op is not in type of QUERY, throw exception. Otherwise, return an
      *         {@linkplain java.util.Iterator Iterator}
      * @throws QueryProcessorException
      */
-    public Iterator<QueryDataSet> query(PhysicalPlan plan, QueryProcessExecutor executor)
+    public Iterator<QueryDataSet> query(PhysicalPlan plan)
             throws QueryProcessorException {
         if (plan.isQuery()) {
-            return plan.processQuery(executor);
+            return executor.processQuery(plan);
         } else {
             throw new ErrorQueryOpException("cannot execute query for a non-query operator:{}"
                     + plan.getOperatorType());
@@ -63,42 +91,26 @@ public class QueryProcessor {
      * this operator has been successfully.
      *
      * @param plan physical plan
-     * @param executor physical executor
      * @return result
-     * @throws QueryProcessorException
      * @throws ProcessorException
      */
-    public boolean nonQuery(PhysicalPlan plan, QueryProcessExecutor executor)
-            throws QueryProcessorException, ProcessorException {
+    public boolean nonQuery(PhysicalPlan plan) throws ProcessorException {
         switch (plan.getOperatorType()) {
             case AUTHOR:
             case METADATA:
             case PROPERTY:
             case LOADDATA:
             case MULTIINSERT:
-                return plan.processNonQuery(executor);
             case UPDATE:
             case DELETE:
-                return plan.processNonQuery(executor);
+                return executor.processNonQuery(plan);
             default:
-                throw new ErrorQueryOpException("unknown operator type:{}" + plan.getOperatorType());
+                throw new ProcessorException("unknown operator type:{}" + plan.getOperatorType());
         }
     }
 
 
-    public PhysicalPlan parseSQLToPhysicalPlan(String sqlStr, QueryProcessExecutor executor)
-            throws QueryProcessorException {
 
-        Operator operator = parseSQLToOperator(sqlStr);
-
-        operator = logicalOptimize(operator);
-
-        PhysicalPlan physicalPlan = executor.transformToPhysicalPlan(operator);
-
-        physicalPlan = physicalOptimize(physicalPlan, executor);
-
-        return physicalPlan;
-    }
 
     /**
      * given a SQL statement and generate a Operator which type maybe {@code SFWOperator} or
@@ -177,14 +189,13 @@ public class QueryProcessor {
      * 
      * @since 2016-10-11
      * @param physicalPlan physical plan
-     * @param executor physical executor
      * @return
      */
-    private PhysicalPlan physicalOptimize(PhysicalPlan physicalPlan, QueryProcessExecutor executor) {
+    private PhysicalPlan physicalOptimize(PhysicalPlan physicalPlan) {
 
-            IPhysicalOptimizer physicalOptimizer = new NonePhysicalOptimizer();
+            IPhysicalOptimizer physicalOptimizer = new NonePhysicalOptimizer(executor);
 
-            return physicalOptimizer.transform(physicalPlan, executor);
+            return physicalOptimizer.transform(physicalPlan);
     }
 
 }

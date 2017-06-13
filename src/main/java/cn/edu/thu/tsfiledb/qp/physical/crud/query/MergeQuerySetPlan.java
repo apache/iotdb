@@ -35,7 +35,7 @@ public class MergeQuerySetPlan extends PhysicalPlan {
     }
 
     public MergeQuerySetPlan(ArrayList<SeriesSelectPlan> selectPlans) {
-        super(true, OperatorType.QUERY);
+        super(true, OperatorType.MERGEQUERY);
         if (selectPlans == null || selectPlans.isEmpty()) {
             LOG.error("cannot input an null or empty plan list into QuerySetMergePlan! ");
         }
@@ -49,8 +49,7 @@ public class MergeQuerySetPlan extends PhysicalPlan {
     @Override
     public Iterator<QueryDataSet> processQuery(QueryProcessExecutor executor) throws QueryProcessorException {
         if (seriesSelectPlans.size() == 1)
-            // return new SingleQuerySetIterator(conf, seriesSelectPlans[0]);
-            return seriesSelectPlans.get(0).processQuery(executor);
+            return executor.processQuery(seriesSelectPlans.get(0));
         else
             return new MergeQuerySetIterator(seriesSelectPlans, executor.getFetchSize(), executor);
     }

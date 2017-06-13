@@ -7,6 +7,7 @@ import cn.edu.thu.tsfiledb.qp.executor.QueryProcessExecutor;
 import cn.edu.thu.tsfiledb.qp.executor.SingleFileQPExecutor;
 import cn.edu.thu.tsfiledb.qp.physical.PhysicalPlan;
 import cn.edu.thu.tsfiledb.qp.QueryProcessor;
+import cn.edu.thu.tsfiledb.sql.exec.utils.MemIntQpExecutor;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -34,17 +35,17 @@ import static org.junit.Assert.fail;
 public class TestSingleFileQpQuery {
     private static final Logger LOG = LoggerFactory.getLogger(TestSingleFileQpQuery.class);
     private QueryProcessExecutor exec;
+    private QueryProcessor processor;
 
     @Before
     public void before() throws IOException {
         File file = new File("src/test/resources/testMultiDeviceMerge.tsfile");
         if(!file.exists())
             exec = null;
-        else
-            exec =
-                new SingleFileQPExecutor(new LocalFileInput(
-                        "src/test/resources/testMultiDeviceMerge.tsfile"));
-
+        else {
+            exec = new SingleFileQPExecutor(new LocalFileInput("src/test/resources/testMultiDeviceMerge.tsfile"));
+            processor = new QueryProcessor(exec);
+        }
     }
 
     @Parameters
@@ -71,11 +72,10 @@ public class TestSingleFileQpQuery {
     public void testQueryBasic() throws QueryProcessorException {
         if(exec == null)
             return;
-        QueryProcessor parser = new QueryProcessor();
-        PhysicalPlan physicalPlan = parser.parseSQLToPhysicalPlan(inputSQL, exec);
+        PhysicalPlan physicalPlan = processor.parseSQLToPhysicalPlan(inputSQL);
         if (!physicalPlan.isQuery())
             fail();
-        Iterator<QueryDataSet> iter = parser.query(physicalPlan, exec);
+        Iterator<QueryDataSet> iter = processor.query(physicalPlan);
         int i = 0;
         while (iter.hasNext()) {
             QueryDataSet set = iter.next();

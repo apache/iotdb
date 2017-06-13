@@ -24,7 +24,7 @@ import static org.junit.Assert.assertEquals;
  *
  */
 @RunWith(Parameterized.class)
-public class TSPlanContextPropertyTest extends QueryProcessor {
+public class TSPlanContextPropertyTest {
     private static Path defaultMetadataPath = new Path("root.m1.m2");
     private static Path defaultPropertyPath = new Path("property1");
     private static Path defaultPropertyLabelPath = new Path("property1.label1");
@@ -65,8 +65,8 @@ public class TSPlanContextPropertyTest extends QueryProcessor {
 
     @Test
     public void testanalyzeMetadata() throws QueryProcessorException {
-        QueryProcessor parser = new QueryProcessor();
-        PropertyPlan plan = (PropertyPlan) parser.parseSQLToPhysicalPlan(inputSQL, new MemIntQpExecutor());
+        QueryProcessor processor = new QueryProcessor(new MemIntQpExecutor());
+        PropertyPlan plan = (PropertyPlan) processor.parseSQLToPhysicalPlan(inputSQL);
         assertEquals(propertyType, plan.getPropertyType());
         assertEquals(propertyPath, plan.getPropertyPath());
         assertEquals(metadataPath, plan.getMetadataPath());

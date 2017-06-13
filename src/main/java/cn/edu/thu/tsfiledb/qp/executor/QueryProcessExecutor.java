@@ -1,9 +1,6 @@
 package cn.edu.thu.tsfiledb.qp.executor;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 import cn.edu.thu.tsfile.common.exception.ProcessorException;
 import cn.edu.thu.tsfile.file.metadata.enums.TSDataType;
@@ -38,6 +35,14 @@ public abstract class QueryProcessExecutor {
     public PhysicalPlan transformToPhysicalPlan(Operator operator) throws QueryProcessorException {
         PhysicalGenerator transformer = new PhysicalGenerator(this);
         return transformer.transformToPhysicalPlan(operator);
+    }
+
+    public Iterator<QueryDataSet> processQuery(PhysicalPlan plan) throws QueryProcessorException {
+        return plan.processQuery(this);
+    }
+
+    public boolean processNonQuery(PhysicalPlan plan) throws ProcessorException {
+        return plan.processNonQuery(this);
     }
 
     public boolean isSingleFile() {
@@ -91,9 +96,9 @@ public abstract class QueryProcessExecutor {
     /**
      * execute insert command and return whether the operator is successful.
      * 
-     * @param path
+     * @param path path to be inserted
      * @param insertTime - it's time point but not a range
-     * @param value
+     * @param value value to be inserted
      * @return - Operate Type.
      */
     public abstract int insert(Path path, long insertTime, String value) throws ProcessorException;
@@ -106,9 +111,9 @@ public abstract class QueryProcessExecutor {
     }
 
     public void addParameter(String key, Object value) {
-    	if(parameters.get() == null){
-    		parameters.set(new HashMap<>());
-    	}
+        if(parameters.get() == null){
+            parameters.set(new HashMap<>());
+        }
         parameters.get().put(key, value);
     }
 
@@ -117,9 +122,9 @@ public abstract class QueryProcessExecutor {
     }
 
     public void clearParameters(){
-    	if(parameters.get() != null){
-    		parameters.get().clear();
-    	}
+        if(parameters.get() != null){
+            parameters.get().clear();
+        }
     }
 
     /**

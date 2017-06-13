@@ -47,7 +47,7 @@ public class DeletePlan extends PhysicalPlan {
 
     @Override
     public List<Path> getPaths() {
-        List<Path> ret = new ArrayList<Path>();
+        List<Path> ret = new ArrayList<>();
         if (path != null)
             ret.add(path);
         return ret;

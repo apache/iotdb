@@ -65,7 +65,7 @@ import cn.edu.thu.tsfiledb.service.rpc.thrift.TSIService;
 public class TSServiceImpl implements TSIService.Iface {
 
     private WriteLogManager writeLogManager;
-    private OverflowQPExecutor exec = new OverflowQPExecutor();
+    private QueryProcessor processor = new QueryProcessor(new OverflowQPExecutor());
     // Record the username for every rpc connection. Username.get() is null if
     // login is failed.
     private ThreadLocal<String> username = new ThreadLocal<>();
@@ -78,12 +78,12 @@ public class TSServiceImpl implements TSIService.Iface {
         LOGGER.info("TsFileDB Server: start checking write log...");
         writeLogManager = WriteLogManager.getInstance();
         writeLogManager.recovery();
-        long cnt = 0l;
+        long cnt = 0L;
         PhysicalPlan plan;
         WriteLogManager.isRecovering = true;
         while ((plan = writeLogManager.getPhysicalPlan()) != null) {
             try {
-                plan.processNonQuery(exec);
+                processor.nonQuery(plan);
                 cnt++;
             } catch (ProcessorException e) {
                 e.printStackTrace();
@@ -164,7 +164,7 @@ public class TSServiceImpl implements TSIService.Iface {
         this.queryRet.get().clear();
         this.queryStatus.get().clear();
         // Clear all parameters in last request.
-        exec.clearParameters();
+        processor.getExecutor().clearParameters();
     }
 
     @Override
@@ -210,9 +210,9 @@ public class TSServiceImpl implements TSIService.Iface {
     /**
      * Judge whether the statement is ADMIN COMMAND and if true, execute it.
      *
-     * @param statement
+     * @param statement command
      * @return true if the statement is ADMIN COMMAND
-     * @throws IOException
+     * @throws IOException exception
      */
     private boolean execAdminCommand(String statement) throws IOException {
         if (!username.get().equals("root")) {
@@ -256,9 +256,8 @@ public class TSServiceImpl implements TSIService.Iface {
             List<String> statements = req.getStatements();
             List<Integer> result = new ArrayList<>();
 
-            QueryProcessor parser = new QueryProcessor();
             for (String statement : statements) {
-                PhysicalPlan physicalPlan = parser.parseSQLToPhysicalPlan(statement, exec);
+                PhysicalPlan physicalPlan = processor.parseSQLToPhysicalPlan(statement);
                 if (physicalPlan.isQuery()) {
                     return getTSBathExecuteStatementResp(TS_StatusCode.ERROR_STATUS,
                             "statement is query :" + statement, result);
@@ -293,10 +292,9 @@ public class TSServiceImpl implements TSIService.Iface {
                 return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, "Server Internal Error");
             }
 
-            QueryProcessor parser = new QueryProcessor();
             PhysicalPlan physicalPlan;
             try {
-                physicalPlan = parser.parseSQLToPhysicalPlan(statement, exec);
+                physicalPlan = processor.parseSQLToPhysicalPlan(statement);
             } catch (IllegalASTFormatException e) {
                 return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS,
                         "Statement is not right:" + e.getMessage());
@@ -324,11 +322,9 @@ public class TSServiceImpl implements TSIService.Iface {
             }
 
             String statement = req.getStatement();
-            QueryProcessor parser = new QueryProcessor();
-            PhysicalPlan physicalPlan = parser.parseSQLToPhysicalPlan(statement, exec);
+            PhysicalPlan plan = processor.parseSQLToPhysicalPlan(statement);
 
             List<Path> paths;
-            PhysicalPlan plan = parser.parseSQLToPhysicalPlan(statement, exec);
             paths = plan.getPaths();
 
             // check path exists
@@ -344,7 +340,7 @@ public class TSServiceImpl implements TSIService.Iface {
             }
 
             // check permissions
-            if (!checkAuthorization(paths, physicalPlan.getOperatorType())) {
+            if (!checkAuthorization(paths, plan.getOperatorType())) {
                 return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, "No permissions for this query.");
             }
 
@@ -360,7 +356,7 @@ public class TSServiceImpl implements TSIService.Iface {
             operationHandle = new TSOperationHandle(operationId, true);
             resp.setOperationHandle(operationHandle);
 
-            recordANewQuery(statement, physicalPlan);
+            recordANewQuery(statement, plan);
 
             return resp;
         } catch (Exception e) {
@@ -384,10 +380,9 @@ public class TSServiceImpl implements TSIService.Iface {
             int fetchSize = req.getFetch_size();
             Iterator<QueryDataSet> queryDataSetIterator;
             if (!queryRet.get().containsKey(statement)) {
-                QueryProcessor parser = new QueryProcessor();
                 PhysicalPlan physicalPlan = queryStatus.get().get(statement);
-                exec.setFetchSize(fetchSize);
-                queryDataSetIterator = parser.query(physicalPlan, exec);
+                processor.getExecutor().setFetchSize(fetchSize);
+                queryDataSetIterator = processor.query(physicalPlan);
                 queryRet.get().put(statement, queryDataSetIterator);
             } else {
                 queryDataSetIterator = queryRet.get().get(statement);
@@ -445,7 +440,7 @@ public class TSServiceImpl implements TSIService.Iface {
             // Do we need to add extra information of executive condition
             boolean execRet;
             try {
-                execRet = plan.processNonQuery(exec);
+                execRet = processor.nonQuery(plan);
             } catch (ProcessorException e) {
                 return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
             }
@@ -473,11 +468,9 @@ public class TSServiceImpl implements TSIService.Iface {
     private TSExecuteStatementResp ExecuteUpdateStatement(String statement)
             throws TException, QueryProcessorException, IOException, ProcessorException {
 
-        QueryProcessor parser = new QueryProcessor();
         PhysicalPlan physicalPlan;
-
         try {
-            physicalPlan = parser.parseSQLToPhysicalPlan(statement, exec);
+            physicalPlan = processor.parseSQLToPhysicalPlan(statement);
         } catch (QueryProcessorException e) {
             e.printStackTrace();
             return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
@@ -499,7 +492,7 @@ public class TSServiceImpl implements TSIService.Iface {
         // Do we need to add extra information of executive condition
         boolean execRet;
         try {
-            execRet = parser.nonQuery(physicalPlan, exec);
+            execRet = processor.nonQuery(physicalPlan);
         } catch (ProcessorException e) {
             return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
         }

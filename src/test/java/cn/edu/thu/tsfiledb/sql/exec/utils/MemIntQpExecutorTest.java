@@ -2,12 +2,14 @@ package cn.edu.thu.tsfiledb.sql.exec.utils;
 
 
 import cn.edu.thu.tsfile.common.constant.SystemConstant;
+import cn.edu.thu.tsfile.common.exception.ProcessorException;
 import cn.edu.thu.tsfile.timeseries.filter.definition.SingleSeriesFilterExpression;
 import cn.edu.thu.tsfile.timeseries.filter.utils.FilterUtils;
 import cn.edu.thu.tsfile.timeseries.read.qp.Path;
 import cn.edu.thu.tsfile.timeseries.read.query.QueryDataSet;
 import cn.edu.thu.tsfile.timeseries.read.readSupport.RowRecord;
 import cn.edu.thu.tsfile.timeseries.utils.StringContainer;
+import cn.edu.thu.tsfiledb.qp.QueryProcessor;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -20,27 +22,26 @@ import java.util.List;
  *
  */
 public class MemIntQpExecutorTest {
-    private MemIntQpExecutor exec;
+    private QueryProcessor processor = new QueryProcessor(new MemIntQpExecutor());
     private Path path1;
     private Path path2;
 
     @Before
-    public void before() {
+    public void before() throws ProcessorException {
         path1 =
                 new Path(new StringContainer(new String[] {"device_1", "sensor_1"},
                         SystemConstant.PATH_SEPARATOR));
         path2 =
                 new Path(new StringContainer(new String[] {"device_1", "sensor_2"},
                         SystemConstant.PATH_SEPARATOR));
-        exec = new MemIntQpExecutor();
         for (int i = 1; i <= 10; i++) {
-            exec.insert(path1, i * 20, Integer.toString(i * 20 + 1));
-            exec.insert(path2, i * 50, Integer.toString(i * 50 + 2));
+            processor.getExecutor().insert(path1, i * 20, Integer.toString(i * 20 + 1));
+            processor.getExecutor().insert(path2, i * 50, Integer.toString(i * 50 + 2));
         }
     }
 
     @Test
-    public void testQueryWithoutFilter() {
+    public void testQueryWithoutFilter() throws ProcessorException {
 
         List<Path> pathList = new ArrayList<Path>();
         pathList.add(path1);
@@ -48,7 +49,7 @@ public class MemIntQpExecutorTest {
         QueryDataSet ret = null;
 
         while (true) {
-            ret = exec.query(pathList, null, null, null, 1, ret);
+            ret = processor.getExecutor().query(pathList, null, null, null, 1, ret);
             if (!ret.hasNextRecord())
                 break;
             while (ret.hasNextRecord()) {
@@ -60,7 +61,7 @@ public class MemIntQpExecutorTest {
     }
 
     @Test
-    public void testQueryWithFilter1() {
+    public void testQueryWithFilter1() throws ProcessorException {
 
         List<Path> pathList = new ArrayList<Path>();
         pathList.add(path2);
@@ -71,7 +72,7 @@ public class MemIntQpExecutorTest {
         // default filter type is integer
         SingleSeriesFilterExpression valueFilter = FilterUtils.construct(filterString, null);
         while (true) {
-            ret = exec.query(pathList, null, null, valueFilter, 1, ret);
+            ret = processor.getExecutor().query(pathList, null, null, valueFilter, 1, ret);
             if (!ret.hasNextRecord())
                 break;
             while (ret.hasNextRecord()) {
@@ -83,7 +84,7 @@ public class MemIntQpExecutorTest {
     }
 
     @Test
-    public void testQueryWithFilter2() {
+    public void testQueryWithFilter2() throws ProcessorException {
         List<Path> pathList = new ArrayList<Path>();
         // pathList.add(path1);
         pathList.add(path2);
@@ -92,7 +93,7 @@ public class MemIntQpExecutorTest {
         // default filter type is integer
         SingleSeriesFilterExpression valueFilter = FilterUtils.construct(filterString, null);
         while (true) {
-            ret = exec.query(pathList, null, null, valueFilter, 1, ret);
+            ret = processor.getExecutor().query(pathList, null, null, valueFilter, 1, ret);
             if (!ret.hasNextRecord())
                 break;
             while (ret.hasNextRecord()) {
@@ -100,7 +101,6 @@ public class MemIntQpExecutorTest {
                 System.out.println(r);
             }
         }
-        System.out.println();
     }
 
 }
