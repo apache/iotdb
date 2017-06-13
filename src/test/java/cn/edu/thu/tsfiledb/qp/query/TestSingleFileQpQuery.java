@@ -1,4 +1,4 @@
-package cn.edu.thu.tsfiledb.sql.exec.query;
+package cn.edu.thu.tsfiledb.qp.query;
 
 import cn.edu.thu.tsfile.timeseries.read.LocalFileInput;
 import cn.edu.thu.tsfile.timeseries.read.query.QueryDataSet;
@@ -7,7 +7,6 @@ import cn.edu.thu.tsfiledb.qp.executor.QueryProcessExecutor;
 import cn.edu.thu.tsfiledb.qp.executor.SingleFileQPExecutor;
 import cn.edu.thu.tsfiledb.qp.physical.PhysicalPlan;
 import cn.edu.thu.tsfiledb.qp.QueryProcessor;
-import cn.edu.thu.tsfiledb.sql.exec.utils.MemIntQpExecutor;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;

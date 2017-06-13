@@ -1,4 +1,4 @@
-package cn.edu.thu.tsfiledb.sql.exec.other;
+package cn.edu.thu.tsfiledb.qp.other;
 
 import cn.edu.thu.tsfiledb.qp.exception.QueryProcessorException;
 import cn.edu.thu.tsfiledb.qp.logical.root.sys.LoadDataOperator;

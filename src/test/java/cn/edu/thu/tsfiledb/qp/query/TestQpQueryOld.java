@@ -1,4 +1,4 @@
-package cn.edu.thu.tsfiledb.sql.exec.query;
+package cn.edu.thu.tsfiledb.qp.query;
 
 import cn.edu.thu.tsfile.common.constant.SystemConstant;
 import cn.edu.thu.tsfile.common.exception.ProcessorException;
@@ -9,7 +9,7 @@ import cn.edu.thu.tsfiledb.qp.constant.SQLConstant;
 import cn.edu.thu.tsfiledb.qp.exception.QueryProcessorException;
 import cn.edu.thu.tsfiledb.qp.physical.PhysicalPlan;
 import cn.edu.thu.tsfiledb.qp.QueryProcessor;
-import cn.edu.thu.tsfiledb.sql.exec.utils.MemIntQpExecutor;
+import cn.edu.thu.tsfiledb.qp.utils.MemIntQpExecutor;
 import org.junit.Before;
 import org.junit.Test;
 

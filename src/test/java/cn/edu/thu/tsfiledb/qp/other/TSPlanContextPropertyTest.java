@@ -1,11 +1,11 @@
-package cn.edu.thu.tsfiledb.sql.exec.other;
+package cn.edu.thu.tsfiledb.qp.other;
 
 import cn.edu.thu.tsfile.timeseries.read.qp.Path;
 import cn.edu.thu.tsfiledb.qp.exception.QueryProcessorException;
 import cn.edu.thu.tsfiledb.qp.logical.root.sys.PropertyOperator.PropertyType;
 import cn.edu.thu.tsfiledb.qp.physical.sys.PropertyPlan;
 import cn.edu.thu.tsfiledb.qp.QueryProcessor;
-import cn.edu.thu.tsfiledb.sql.exec.utils.MemIntQpExecutor;
+import cn.edu.thu.tsfiledb.qp.utils.MemIntQpExecutor;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;

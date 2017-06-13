@@ -1,4 +1,4 @@
-package cn.edu.thu.tsfiledb.sql.exec.utils;
+package cn.edu.thu.tsfiledb.qp.utils;
 
 import cn.edu.thu.tsfile.common.constant.SystemConstant;
 import cn.edu.thu.tsfile.common.utils.Pair;
