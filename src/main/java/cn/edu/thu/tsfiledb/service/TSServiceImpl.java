@@ -522,9 +522,6 @@ public class TSServiceImpl implements TSIService.Iface {
     }
 
     private boolean needToBeWrittenToLog(PhysicalPlan plan) {
-        if (plan.getOperatorType() == OperatorType.INSERT) {
-            return false;
-        }
         if (plan.getOperatorType() == OperatorType.UPDATE) {
             return true;
         }

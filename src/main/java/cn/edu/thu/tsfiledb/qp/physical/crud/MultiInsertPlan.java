@@ -12,9 +12,9 @@ import cn.edu.thu.tsfiledb.qp.physical.PhysicalPlan;
 
 public class MultiInsertPlan extends PhysicalPlan {
 	private String deltaObject;
-	private List<String> measurementList;
-	private List<String> insertValues;
-    private long insertTime;
+	private List<String> measurements;
+	private List<String> values;
+    private long time;
     
     
     // insertType
@@ -27,40 +27,40 @@ public class MultiInsertPlan extends PhysicalPlan {
 
     public MultiInsertPlan(String deltaObject, long insertTime, List<String> measurementList, List<String> insertValues) {
         super(false, OperatorType.MULTIINSERT);
-        this.insertTime = insertTime;
+        this.time = insertTime;
         this.deltaObject = deltaObject;
-        this.measurementList = measurementList;
-        this.insertValues = insertValues;
+        this.measurements = measurementList;
+        this.values = insertValues;
     }
 
     public MultiInsertPlan(int insertType, String deltaObject, long insertTime, List<String> measurementList, List<String> insertValues) {
         super(false, OperatorType.MULTIINSERT);
         this.insertType = insertType;
-        this.insertTime = insertTime;
+        this.time = insertTime;
         this.deltaObject = deltaObject;
-        this.measurementList = measurementList;
-        this.insertValues = insertValues;
+        this.measurements = measurementList;
+        this.values = insertValues;
     }
 
     @Override
     public boolean processNonQuery(QueryProcessExecutor exec) throws ProcessorException{
-		insertType = exec.multiInsert(deltaObject, insertTime, measurementList, insertValues);
+		insertType = exec.multiInsert(deltaObject, time, measurements, values);
         return true;
     }
 
     public long getTime() {
-        return insertTime;
+        return time;
     }
 
     public void setTime(long time) {
-        this.insertTime = time;
+        this.time = time;
     }
 
     @Override
     public List<Path> getPaths() {
         List<Path> ret = new ArrayList<>();
         
-        for(String m : measurementList){
+        for(String m : measurements){
         	ret.add(new Path(deltaObject + "." + m));
         }
         return ret;
@@ -82,19 +82,19 @@ public class MultiInsertPlan extends PhysicalPlan {
         this.deltaObject = deltaObject;
     }
 
-	public List<String> getMeasurementList() {
-        return this.measurementList;
+	public List<String> getMeasurements() {
+        return this.measurements;
     }
 
-    public void setMeasurementList(List<String> measurementList) {
-        this.measurementList = measurementList;
+    public void setMeasurements(List<String> measurements) {
+        this.measurements = measurements;
     }
 
-    public List<String> getInsertValues() {
-        return this.insertValues;
+    public List<String> getValues() {
+        return this.values;
     }
 
-    public void setInsertValues(List<String> insertValues) {
-        this.insertValues = insertValues;
+    public void setValues(List<String> values) {
+        this.values = values;
     }
 }

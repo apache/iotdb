@@ -78,7 +78,6 @@ public class QueryProcessor {
             case MULTIINSERT:
                 return plan.processNonQuery(executor);
             case UPDATE:
-            case INSERT:
             case DELETE:
                 return plan.processNonQuery(executor);
             default:
@@ -140,7 +139,6 @@ public class QueryProcessor {
                 return operator;
             case QUERY:
             case UPDATE:
-            case INSERT:
             case DELETE:
                 SFWOperator root = (SFWOperator) operator;
                 return optimizeSFWOperator(root);

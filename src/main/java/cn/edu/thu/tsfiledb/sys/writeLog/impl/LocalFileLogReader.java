@@ -34,7 +34,7 @@ public class LocalFileLogReader implements WriteLogReadable {
         try {
             raf = new RandomAccessFile(file, "rw");
         } catch (FileNotFoundException e) {
-        	// e.printStackTrace();
+            // e.printStackTrace();
             fileExist = false;
         }
         fileLength = raf.length();
@@ -59,7 +59,7 @@ public class LocalFileLogReader implements WriteLogReadable {
         raf.read(opeTypeBytes);
         int opeType = (int) opeTypeBytes[0];
 
-        if (opeType == OperatorType.INSERT.ordinal() || opeType == OperatorType.UPDATE.ordinal() ||
+        if (opeType == OperatorType.UPDATE.ordinal() ||
                 opeType == OperatorType.MULTIINSERT.ordinal() || opeType == OperatorType.DELETE.ordinal()) { // INSERT UPDATE DELETE OPERATOR
             return true;
         } else if (opeType == 25) { // FLUSHSTART
@@ -145,7 +145,7 @@ public class LocalFileLogReader implements WriteLogReadable {
                 break;
             }
 
-            if (opeType == OperatorType.MULTIINSERT.ordinal() || opeType == OperatorType.INSERT.ordinal()) {
+            if (opeType == OperatorType.MULTIINSERT.ordinal()) {
                 byte[] insertTypeBytes = new byte[1];
                 lraf.read(insertTypeBytes);
                 int insertType = (int) insertTypeBytes[0];
@@ -260,7 +260,7 @@ public class LocalFileLogReader implements WriteLogReadable {
                 break;
             }
 
-            if (opeType == OperatorType.MULTIINSERT.ordinal() || opeType == OperatorType.INSERT.ordinal()) {
+            if (opeType == OperatorType.MULTIINSERT.ordinal()) {
                 byte[] insertTypeBytes = new byte[1];
                 lraf.read(insertTypeBytes);
                 int insertType = (int) insertTypeBytes[0];
