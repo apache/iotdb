@@ -22,7 +22,7 @@ public class WriteLogNodeTest {
     private List<String> measurements = new ArrayList<>();
     private List<String> values = new ArrayList<>();
 
-//    @Test
+    @Test
     public void bufferWriteOverflowFlushTest() throws IOException {
         WriteLogNode node = new WriteLogNode(fileNode);
         node.resetFileStatus();
@@ -37,12 +37,12 @@ public class WriteLogNodeTest {
         node.bufferFlushStart();
         node.write(new UpdatePlan(900L, 901L, "3.0", path));
         node.bufferFlushEnd();
-//        values.clear();
-//        values.add("4.0");
-//        node.write(new MultiInsertPlan("d1", 101L, measurements, values));
         values.clear();
-        values.add("8.0");
-        node.write(new MultiInsertPlan("d1", 105L, measurements, values));
+        values.add("4.0");
+        node.write(new MultiInsertPlan(1,"d1", 101L, measurements, values));
+//        values.clear();
+//        values.add("8.0");
+//        node.write(new MultiInsertPlan(1, fileNode, 105L, measurements, values));
         node.overflowFlushStart();
         node.write(new UpdatePlan(500L, 600L, "4.0", path));
         node.overflowFlushEnd();
@@ -64,12 +64,12 @@ public class WriteLogNodeTest {
                 Assert.assertEquals(updatePlan.getValue(), "4.0");
             }
             cnt++;
-            output(plan);
+            //output(plan);
         }
         //node.resetFileStatus();
     }
 
-//    @Test
+    @Test
     public void logMemorySizeTest() throws IOException {
         measurements.clear();
         measurements.add("s1");
@@ -83,7 +83,7 @@ public class WriteLogNodeTest {
         Assert.assertTrue(plan == null);
         values.clear();
         values.add("1.0");
-        node.write(new MultiInsertPlan("d1", 100L, measurements, values));
+        node.write(new MultiInsertPlan(1, fileNode,100L, measurements, values));
         for (int i = 101; i <= 201; i++) {
             node.write(new UpdatePlan(i, i * 2, "2.0", path));
         }
@@ -97,7 +97,7 @@ public class WriteLogNodeTest {
                 Assert.assertEquals(updatePlan.getEndTime(), 2L);
                 Assert.assertEquals(updatePlan.getValue(), "1.0");
             } else if (cnt == 100) {
-                Assert.assertEquals(plan.getPaths().get(0), path);
+                Assert.assertEquals(plan.getPaths().get(0), new Path("root.vehicle.d1.s1"));
                 Assert.assertTrue(plan instanceof MultiInsertPlan);
                 MultiInsertPlan insertPlan = (MultiInsertPlan) plan;
                 Assert.assertEquals(insertPlan.getTime(), 100L);

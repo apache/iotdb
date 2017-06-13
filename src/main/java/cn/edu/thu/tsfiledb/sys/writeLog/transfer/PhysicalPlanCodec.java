@@ -251,7 +251,6 @@ public enum PhysicalPlanCodec {
 
                 int type = bais.read();
                 int insertType = bais.read();
-
                 byte[] timeBytes = new byte[8];
                 bais.read(timeBytes, 0, 8);
                 long time = BytesUtils.bytesToLong(timeBytes);
@@ -291,7 +290,4 @@ public enum PhysicalPlanCodec {
         };
 
     }
-
-    ;
-
 }
