@@ -48,13 +48,13 @@ public class TestQpUpdate {
         String sqlStr =
                 "update root.laptop.device_1.sensor_1 set value = 33000 where time >= 10 and time <= 10";
         PhysicalPlan plan1 = processor.parseSQLToPhysicalPlan(sqlStr);
-        boolean upRet = processor.nonQuery(plan1);
+        boolean upRet = processor.getExecutor().processNonQuery(plan1);
 
         assertTrue(upRet);
         // query to assert
         sqlStr = "select sensor_1,sensor_2 " + "from root.laptop.device_1";
         PhysicalPlan plan2 = processor.parseSQLToPhysicalPlan(sqlStr);
-        Iterator<QueryDataSet> iter = processor.query(plan2);
+        Iterator<QueryDataSet> iter = processor.getExecutor().processQuery(plan2);
         String[] expect =
                 {"10, <root.laptop.device_1.sensor_1,33000> <root.laptop.device_1.sensor_2,null> ",
                         "20, <root.laptop.device_1.sensor_1,null> <root.laptop.device_1.sensor_2,20> "};
@@ -72,13 +72,13 @@ public class TestQpUpdate {
     public void testDelete() throws QueryProcessorException, ProcessorException, RecognitionException {
         String sqlStr = "delete from root.laptop.device_1.sensor_1 where time < 15";
         PhysicalPlan plan1 = processor.parseSQLToPhysicalPlan(sqlStr);
-        boolean upRet = processor.nonQuery(plan1);
+        boolean upRet = processor.getExecutor().processNonQuery(plan1);
 
         assertTrue(upRet);
         // query to assert
         sqlStr = "select sensor_1,sensor_2 " + "from root.laptop.device_1";
         PhysicalPlan plan2 = processor.parseSQLToPhysicalPlan(sqlStr);
-        Iterator<QueryDataSet> iter = processor.query(plan2);
+        Iterator<QueryDataSet> iter = processor.getExecutor().processQuery(plan2);
 
         String[] expect =
                 {"20, <root.laptop.device_1.sensor_1,null> <root.laptop.device_1.sensor_2,20> "};
@@ -98,13 +98,13 @@ public class TestQpUpdate {
         PhysicalPlan plan1 = processor.parseSQLToPhysicalPlan(sqlStr);
 
         //execute insert
-        boolean upRet = processor.nonQuery(plan1);
+        boolean upRet = processor.getExecutor().processNonQuery(plan1);
         assertTrue(upRet);
 
         // query to assert
         sqlStr = "select sensor_1,sensor_2 " + "from root.laptop.device_1";
         PhysicalPlan plan2 = processor.parseSQLToPhysicalPlan(sqlStr);
-        Iterator<QueryDataSet> iter = processor.query(plan2);
+        Iterator<QueryDataSet> iter = processor.getExecutor().processQuery(plan2);
 
         String[] expect =
                 {

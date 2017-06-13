@@ -56,7 +56,7 @@ public class TestQpQueryOld {
         PhysicalPlan physicalPlan = processor.parseSQLToPhysicalPlan(sqlStr);
         if (!physicalPlan.isQuery())
             fail();
-        Iterator<QueryDataSet> iter = processor.query(physicalPlan);
+        Iterator<QueryDataSet> iter = processor.getExecutor().processQuery(physicalPlan);
         int i = 0;
         while (iter.hasNext()) {
             QueryDataSet set = iter.next();

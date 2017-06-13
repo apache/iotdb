@@ -98,7 +98,7 @@ public class TestOnePassQpQuery {
         PhysicalPlan plan = processor.parseSQLToPhysicalPlan(inputSQL);
         if (!plan.isQuery())
             fail();
-        Iterator<QueryDataSet> iter = processor.query(plan);
+        Iterator<QueryDataSet> iter = processor.getExecutor().processQuery(plan);
         System.out.println("query result:\n");
         int i = 0;
         while (iter.hasNext()) {

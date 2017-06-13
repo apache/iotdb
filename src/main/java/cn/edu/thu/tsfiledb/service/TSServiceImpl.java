@@ -83,7 +83,7 @@ public class TSServiceImpl implements TSIService.Iface {
         WriteLogManager.isRecovering = true;
         while ((plan = writeLogManager.getPhysicalPlan()) != null) {
             try {
-                processor.nonQuery(plan);
+                processor.getExecutor().processNonQuery(plan);
                 cnt++;
             } catch (ProcessorException e) {
                 e.printStackTrace();
@@ -382,7 +382,7 @@ public class TSServiceImpl implements TSIService.Iface {
             if (!queryRet.get().containsKey(statement)) {
                 PhysicalPlan physicalPlan = queryStatus.get().get(statement);
                 processor.getExecutor().setFetchSize(fetchSize);
-                queryDataSetIterator = processor.query(physicalPlan);
+                queryDataSetIterator = processor.getExecutor().processQuery(physicalPlan);
                 queryRet.get().put(statement, queryDataSetIterator);
             } else {
                 queryDataSetIterator = queryRet.get().get(statement);
@@ -440,7 +440,7 @@ public class TSServiceImpl implements TSIService.Iface {
             // Do we need to add extra information of executive condition
             boolean execRet;
             try {
-                execRet = processor.nonQuery(plan);
+                execRet = processor.getExecutor().processNonQuery(plan);
             } catch (ProcessorException e) {
                 return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
             }
@@ -492,7 +492,7 @@ public class TSServiceImpl implements TSIService.Iface {
         // Do we need to add extra information of executive condition
         boolean execRet;
         try {
-            execRet = processor.nonQuery(physicalPlan);
+            execRet = processor.getExecutor().processNonQuery(physicalPlan);
         } catch (ProcessorException e) {
             return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
         }
