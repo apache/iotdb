@@ -57,15 +57,15 @@ public class SeriesSelectPlan extends PhysicalPlan {
     }
 
     public SeriesSelectPlan(List<Path> paths,
-                            FilterOperator timeFilter, FilterOperator freqFilter, FilterOperator valueFilter, QueryProcessExecutor conf) throws PathErrorException {
+                            FilterOperator timeFilter, FilterOperator freqFilter, FilterOperator valueFilter, QueryProcessExecutor executor) {
         super(true, OperatorType.QUERY);
         this.paths = paths;
         this.timeFilterOperator = timeFilter;
         this.freqFilterOperator = freqFilter;
         this.valueFilterOperator = valueFilter;
-        removeStarsInPath(conf);
+        removeStarsInPath(executor);
         LOG.debug(Arrays.toString(paths.toArray()));
-        removeNotExistsPaths(conf);
+        removeNotExistsPaths(executor);
         LOG.debug(Arrays.toString(paths.toArray()));
     }
 
@@ -77,14 +77,19 @@ public class SeriesSelectPlan extends PhysicalPlan {
                 expressions[2]);
     }
 
-    private void removeStarsInPath(QueryProcessExecutor executor) throws PathErrorException {
+    private void removeStarsInPath(QueryProcessExecutor executor) {
         LinkedHashMap<String, Integer> pathMap = new LinkedHashMap<>();
         for (Path path : paths) {
-            List<String> all = executor.getAllPaths(path.getFullPath());
-            for (String subPath : all) {
-                if (!pathMap.containsKey(subPath)) {
-                    pathMap.put(subPath, 1);
+            List<String> all;
+            try {
+                all = executor.getAllPaths(path.getFullPath());
+                for(String subp : all){
+                    if(!pathMap.containsKey(subp)){
+                        pathMap.put(subp, 1);
+                    }
                 }
+            } catch (PathErrorException e) {
+                LOG.error("path error:" + e.getMessage());
             }
         }
         paths = new ArrayList<>();

@@ -58,7 +58,10 @@ public abstract class QueryProcessExecutor {
     }
 
     public boolean judgePathExists(Path pathStr) {
-        return SQLConstant.isReservedPath(pathStr) || judgeNonReservedPathExists(pathStr);
+        if (SQLConstant.isReservedPath(pathStr))
+            return true;
+        else
+            return judgeNonReservedPathExists(pathStr);
     }
 
     public void setFetchSize(int fetchSize) {

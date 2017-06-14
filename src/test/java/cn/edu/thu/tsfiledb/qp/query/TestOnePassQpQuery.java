@@ -26,9 +26,8 @@ import static org.junit.Assert.fail;
 
 /**
  * test query operation
- * 
- * @author kangrong
  *
+ * @author kangrong
  */
 @RunWith(Parameterized.class)
 public class TestOnePassQpQuery {
@@ -41,36 +40,50 @@ public class TestOnePassQpQuery {
     @Parameters
     public static Collection<Object[]> data() {
         return Arrays
-                .asList(new Object[][] {
-                        {
-                                "select d1.s1 from root.laptop where root.laptop.d1.s1 < 100",
-                                new String[] {"20, <root.laptop.d1.s1,21> ",
-                                        "40, <root.laptop.d1.s1,41> ",
-                                        "60, <root.laptop.d1.s1,61> ",
-                                        "80, <root.laptop.d1.s1,81> "}},
-                        {
-                                "select d1.s1, d1.s2 from root.laptop where root.laptop.d1.s1 < 100",
-                                new String[] {"20, <root.laptop.d1.s1,21> <root.laptop.d1.s2,null> ",
-                                        "40, <root.laptop.d1.s1,41> <root.laptop.d1.s2,null> ",
-                                        "60, <root.laptop.d1.s1,61> <root.laptop.d1.s2,null> ",
-                                        "80, <root.laptop.d1.s1,81> <root.laptop.d1.s2,null> "}},
-                        {
-                                "select d1.s1 from root.laptop where d1.s1 < 100",
-                                new String[] {"20, <root.laptop.d1.s1,21> ",
-                                        "40, <root.laptop.d1.s1,41> ",
-                                        "60, <root.laptop.d1.s1,61> ",
-                                        "80, <root.laptop.d1.s1,81> "}},
-                        {
-                                "select s1 from root.laptop.d1,root.laptop.d2 where root.laptop.d1.s1 < 100",
-                                new String[] {"20, <root.laptop.d1.s1,21> <root.laptop.d2.s1,52> ",
-                                        "40, <root.laptop.d1.s1,41> <root.laptop.d2.s1,102> ",
-                                        "60, <root.laptop.d1.s1,61> <root.laptop.d2.s1,152> ",
-                                        "80, <root.laptop.d1.s1,81> <root.laptop.d2.s1,202> "}},
-                        {
-                                "select root.laptop.d1.s2 where root.laptop.d1.s2 < 200",
-                                new String[] {"50, <root.laptop.d1.s2,52> ",
-                                        "100, <root.laptop.d1.s2,102> ",
-                                        "150, <root.laptop.d1.s2,152> "}}});
+                .asList(new Object[][]{
+                                {
+                                        "select d1.s1 from root.laptop where root.laptop.d1.s1 < 100",
+                                        new String[]{"20, <root.laptop.d1.s1,21> ",
+                                                "40, <root.laptop.d1.s1,41> ",
+                                                "60, <root.laptop.d1.s1,61> ",
+                                                "80, <root.laptop.d1.s1,81> "}},
+                                {
+                                        "select d1.s1, d1.s2 from root.laptop where root.laptop.d1.s1 < 100",
+                                        new String[]{"20, <root.laptop.d1.s1,21> <root.laptop.d1.s2,null> ",
+                                                "40, <root.laptop.d1.s1,41> <root.laptop.d1.s2,null> ",
+                                                "60, <root.laptop.d1.s1,61> <root.laptop.d1.s2,null> ",
+                                                "80, <root.laptop.d1.s1,81> <root.laptop.d1.s2,null> "}},
+                                {
+                                        "select d1.s1 from root.laptop where d1.s1 < 100",
+                                        new String[]{"20, <root.laptop.d1.s1,21> ",
+                                                "40, <root.laptop.d1.s1,41> ",
+                                                "60, <root.laptop.d1.s1,61> ",
+                                                "80, <root.laptop.d1.s1,81> "}},
+                                {
+                                        "select s1 from root.laptop.d1,root.laptop.d2 where root.laptop.d1.s1 < 100",
+                                        new String[]{"20, <root.laptop.d1.s1,21> <root.laptop.d2.s1,52> ",
+                                                "40, <root.laptop.d1.s1,41> <root.laptop.d2.s1,102> ",
+                                                "60, <root.laptop.d1.s1,61> <root.laptop.d2.s1,152> ",
+                                                "80, <root.laptop.d1.s1,81> <root.laptop.d2.s1,202> "}},
+                                {
+                                        "select root.laptop.d1.s2 where root.laptop.d1.s2 < 200",
+                                        new String[]{"50, <root.laptop.d1.s2,52> ",
+                                                "100, <root.laptop.d1.s2,102> ",
+                                                "150, <root.laptop.d1.s2,152> "}},
+                                {
+                                        "select count(s1) from root.laptop.d1",
+                                        new String[]{"20, <root.laptop.d1.s1,21> ",
+                                                "40, <root.laptop.d1.s1,41> ",
+                                                "60, <root.laptop.d1.s1,61> ",
+                                                "80, <root.laptop.d1.s1,81> ",
+                                                "100, <root.laptop.d1.s1,101> ",
+                                                "120, <root.laptop.d1.s1,121> ",
+                                                "140, <root.laptop.d1.s1,141> ",
+                                                "160, <root.laptop.d1.s1,161> ",
+                                                "180, <root.laptop.d1.s1,181> ",
+                                                "200, <root.laptop.d1.s1,201> "}}
+                        }
+                );
     }
 
     public TestOnePassQpQuery(String sql, String[] ret) {
