@@ -4,9 +4,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import cn.edu.thu.tsfile.common.exception.ProcessorException;
 import cn.edu.thu.tsfiledb.exception.ArgsErrorException;
 import cn.edu.thu.tsfiledb.exception.PathErrorException;
@@ -14,7 +11,7 @@ import cn.edu.thu.tsfiledb.metadata.MManager;
 import cn.edu.thu.tsfile.timeseries.read.qp.Path;
 import cn.edu.thu.tsfiledb.qp.executor.QueryProcessExecutor;
 import cn.edu.thu.tsfiledb.qp.logical.Operator.OperatorType;
-import cn.edu.thu.tsfiledb.qp.logical.root.sys.MetadataOperator.NamespaceType;
+import cn.edu.thu.tsfiledb.qp.logical.root.MetadataOperator.NamespaceType;
 import cn.edu.thu.tsfiledb.qp.physical.crud.DeletePlan;
 import cn.edu.thu.tsfiledb.qp.physical.PhysicalPlan;
 
@@ -24,7 +21,6 @@ import cn.edu.thu.tsfiledb.qp.physical.PhysicalPlan;
  *
  */
 public class MetadataPlan extends PhysicalPlan {
-	private static final Logger logger = LoggerFactory.getLogger(MetadataPlan.class);
 	private final NamespaceType namespaceType;
 	private Path path;
 	private String dataType;

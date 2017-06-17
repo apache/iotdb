@@ -15,15 +15,10 @@ public class MultiInsertPlan extends PhysicalPlan {
 	private List<String> measurements;
 	private List<String> values;
     private long time;
-    
-    
+
     // insertType
     // 1 : BufferWrite Insert  2 : Overflow Insert
     private int insertType;
-    
-    public MultiInsertPlan() {
-        super(false, OperatorType.MULTIINSERT);
-    }
 
     public MultiInsertPlan(String deltaObject, long insertTime, List<String> measurementList, List<String> insertValues) {
         super(false, OperatorType.MULTIINSERT);

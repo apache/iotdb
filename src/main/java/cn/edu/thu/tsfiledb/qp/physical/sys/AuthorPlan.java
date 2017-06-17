@@ -10,7 +10,7 @@ import cn.edu.thu.tsfiledb.auth.model.AuthException;
 import cn.edu.thu.tsfile.timeseries.read.qp.Path;
 import cn.edu.thu.tsfiledb.qp.executor.QueryProcessExecutor;
 import cn.edu.thu.tsfiledb.qp.logical.Operator.OperatorType;
-import cn.edu.thu.tsfiledb.qp.logical.root.sys.AuthorOperator.AuthorType;
+import cn.edu.thu.tsfiledb.qp.logical.root.AuthorOperator.AuthorType;
 import cn.edu.thu.tsfiledb.qp.physical.PhysicalPlan;
 
 

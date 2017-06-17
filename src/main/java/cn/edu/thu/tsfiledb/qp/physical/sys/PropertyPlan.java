@@ -11,11 +11,11 @@ import cn.edu.thu.tsfiledb.metadata.MManager;
 import cn.edu.thu.tsfile.timeseries.read.qp.Path;
 import cn.edu.thu.tsfiledb.qp.executor.QueryProcessExecutor;
 import cn.edu.thu.tsfiledb.qp.logical.Operator.OperatorType;
-import cn.edu.thu.tsfiledb.qp.logical.root.sys.PropertyOperator.PropertyType;
+import cn.edu.thu.tsfiledb.qp.logical.root.PropertyOperator.PropertyType;
 import cn.edu.thu.tsfiledb.qp.physical.PhysicalPlan;
 
 /**
- * 
+ * Manipulate property plan
  * @author kangrong
  *
  */

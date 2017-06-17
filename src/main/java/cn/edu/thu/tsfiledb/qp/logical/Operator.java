@@ -10,7 +10,10 @@ import cn.edu.thu.tsfiledb.qp.constant.SQLConstant;
  *
  */
 public abstract class Operator {
+
+	//operator type in int format
 	protected int tokenIntType;
+	//operator type in String format
 	protected String tokenName;
 
 	protected OperatorType operatorType = OperatorType.NULL;
@@ -43,7 +46,7 @@ public abstract class Operator {
 
 	public enum OperatorType {
 		SFW, JOIN, UNION, FILTER, GROUPBY, ORDERBY, LIMIT, SELECT, SEQTABLESCAN, HASHTABLESCAN, MERGEJOIN, FILEREAD, NULL, TABLESCAN,
-		UPDATE, MULTIINSERT, DELETE, BASIC_FUNC, QUERY, MERGEQUERY, AUTHOR, FROM, FUNC, LOADDATA, METADATA, PROPERTY, FlUSH, MERGE
+		UPDATE, MULTIINSERT, DELETE, BASIC_FUNC, QUERY, MERGEQUERY, AUTHOR, FROM, FUNC, LOADDATA, METADATA, PROPERTY
 		,
 		OVERFLOWFLUSHSTART, // 25 // ordinal()
 		OVERFLOWFLUSHEND, // 26

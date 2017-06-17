@@ -6,23 +6,16 @@ import cn.edu.thu.tsfile.timeseries.read.qp.Path;
 import cn.edu.thu.tsfile.timeseries.utils.StringContainer;
 import cn.edu.thu.tsfiledb.qp.constant.SQLConstant;
 import cn.edu.thu.tsfiledb.qp.constant.TSParserConstant;
-import cn.edu.thu.tsfiledb.qp.exception.IllegalASTFormatException;
-import cn.edu.thu.tsfiledb.qp.exception.QueryProcessorException;
-import cn.edu.thu.tsfiledb.qp.exception.logical.operator.*;
-import cn.edu.thu.tsfiledb.qp.exception.strategy.QpWhereException;
-import cn.edu.thu.tsfiledb.qp.logical.common.SelectOperator;
-import cn.edu.thu.tsfiledb.qp.logical.common.filter.BasicFunctionOperator;
-import cn.edu.thu.tsfiledb.qp.logical.common.filter.FilterOperator;
-import cn.edu.thu.tsfiledb.qp.logical.common.FromOperator;
-import cn.edu.thu.tsfiledb.qp.logical.root.RootOperator;
-import cn.edu.thu.tsfiledb.qp.logical.root.crud.*;
-import cn.edu.thu.tsfiledb.qp.logical.root.sys.AuthorOperator;
-import cn.edu.thu.tsfiledb.qp.logical.root.sys.AuthorOperator.AuthorType;
-import cn.edu.thu.tsfiledb.qp.logical.root.sys.LoadDataOperator;
-import cn.edu.thu.tsfiledb.qp.logical.root.sys.MetadataOperator;
-import cn.edu.thu.tsfiledb.qp.logical.root.sys.PropertyOperator;
-import cn.edu.thu.tsfiledb.qp.logical.root.sys.MetadataOperator.NamespaceType;
-import cn.edu.thu.tsfiledb.qp.logical.root.sys.PropertyOperator.PropertyType;
+import cn.edu.thu.tsfiledb.qp.exception.*;
+import cn.edu.thu.tsfiledb.qp.logical.RootOperator;
+import cn.edu.thu.tsfiledb.qp.logical.crud.*;
+import cn.edu.thu.tsfiledb.qp.logical.root.AuthorOperator;
+import cn.edu.thu.tsfiledb.qp.logical.root.AuthorOperator.AuthorType;
+import cn.edu.thu.tsfiledb.qp.logical.root.LoadDataOperator;
+import cn.edu.thu.tsfiledb.qp.logical.root.MetadataOperator;
+import cn.edu.thu.tsfiledb.qp.logical.root.PropertyOperator;
+import cn.edu.thu.tsfiledb.qp.logical.root.MetadataOperator.NamespaceType;
+import cn.edu.thu.tsfiledb.qp.logical.root.PropertyOperator.PropertyType;
 import cn.edu.thu.tsfiledb.sql.parse.ASTNode;
 import cn.edu.thu.tsfiledb.sql.parse.Node;
 import cn.edu.thu.tsfiledb.sql.parse.TSParser;
@@ -37,9 +30,10 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
+import static cn.edu.thu.tsfiledb.qp.constant.SQLConstant.*;
+
 /**
- * Differ from TSPlanContextV1, V2 receive a AST tree and transform it to a
- * initializedOperator, like RooTOperator and AuthorOperator
+ * This class receives an ASTNode and transform it to an operator which is a logical plan
  *
  * @author kangrong
  * @author qiaojialin
@@ -54,15 +48,11 @@ public class LogicalGenerator {
         return initializedOperator;
     }
 
-    public RootOperator getInitializedOperator() {
-        return initializedOperator;
-    }
-
     /**
-     * input a astNode parsing by {@code antlr} and analyze it.
+     * input an astNode parsing by {@code antlr} and analyze it.
      *
      */
-    public void analyze(ASTNode astNode) throws QueryProcessorException {
+    private void analyze(ASTNode astNode) throws QueryProcessorException {
         Token token = astNode.getToken();
         if (token == null)
             throw new QueryProcessorException("given token is null");
@@ -142,27 +132,27 @@ public class LogicalGenerator {
                 analyzeDataLoad(astNode);
                 return;
             case TSParser.TOK_QUERY:
+                // for TSParser.TOK_QUERY might appear in both query and insert
+                // command. Thus, do
+                // nothing and call analyze() with children nodes recursively.
                 initializedOperator = new QueryOperator(SQLConstant.TOK_QUERY);
                 break;
             default:
-                // for TOK_QUERY.TOK_QUERY might appear in both query and insert
-                // command. Thus, do
-                // nothing and call analyze() with children nodes recursively.
-                break;
+                throw new QueryProcessorException("Not supported TSParser type" + tokenIntType);
         }
         for (Node node : astNode.getChildren())
             analyze((ASTNode) node);
     }
 
     private void analyzePropertyCreate(ASTNode astNode) {
-        PropertyOperator propertyOperator = new PropertyOperator(SQLConstant.TOK_PORPERTY_CREATE,
+        PropertyOperator propertyOperator = new PropertyOperator(SQLConstant.TOK_PROPERTY_CREATE,
                 PropertyType.ADD_TREE);
         propertyOperator.setPropertyPath(new Path(astNode.getChild(0).getChild(0).getText()));
         initializedOperator = propertyOperator;
     }
 
     private void analyzePropertyAddLabel(ASTNode astNode) {
-        PropertyOperator propertyOperator = new PropertyOperator(SQLConstant.TOK_PORPERTY_ADD_LABEL,
+        PropertyOperator propertyOperator = new PropertyOperator(SQLConstant.TOK_PROPERTY_ADD_LABEL,
                 PropertyType.ADD_PROPERTY_LABEL);
         Path propertyLabel = parsePropertyAndLabel(astNode, 0);
         propertyOperator.setPropertyPath(propertyLabel);
@@ -170,7 +160,7 @@ public class LogicalGenerator {
     }
 
     private void analyzePropertyDeleteLabel(ASTNode astNode) {
-        PropertyOperator propertyOperator = new PropertyOperator(SQLConstant.TOK_PORPERTY_DELETE_LABEL,
+        PropertyOperator propertyOperator = new PropertyOperator(SQLConstant.TOK_PROPERTY_DELETE_LABEL,
                 PropertyType.DELETE_PROPERTY_LABEL);
         Path propertyLabel = parsePropertyAndLabel(astNode, 0);
         propertyOperator.setPropertyPath(propertyLabel);
@@ -184,7 +174,7 @@ public class LogicalGenerator {
     }
 
     private void analyzePropertyLink(ASTNode astNode) {
-        PropertyOperator propertyOperator = new PropertyOperator(SQLConstant.TOK_PORPERTY_LINK,
+        PropertyOperator propertyOperator = new PropertyOperator(SQLConstant.TOK_PROPERTY_LINK,
                 PropertyType.ADD_PROPERTY_TO_METADATA);
         Path metaPath = parseRootPath(astNode.getChild(0));
         propertyOperator.setMetadataPath(metaPath);
@@ -194,7 +184,7 @@ public class LogicalGenerator {
     }
 
     private void analyzePropertyUnLink(ASTNode astNode) {
-        PropertyOperator propertyOperator = new PropertyOperator(SQLConstant.TOK_PORPERTY_UNLINK,
+        PropertyOperator propertyOperator = new PropertyOperator(SQLConstant.TOK_PROPERTY_UNLINK,
                 PropertyType.DEL_PROPERTY_FROM_METADATA);
         Path metaPath = parseRootPath(astNode.getChild(0));
         propertyOperator.setMetadataPath(metaPath);
@@ -247,11 +237,11 @@ public class LogicalGenerator {
         try {
             timeChild = astNode.getChild(1).getChild(0);
             if (timeChild.getToken().getType() != TSParser.TOK_TIME) {
-                throw new ValueParseException("need keyword 'timestamp'");
+                throw new LogicalOperatorException("need keyword 'timestamp'");
             }
             timestamp = Long.valueOf(astNode.getChild(2).getChild(0).getText());
         } catch (NumberFormatException e) {
-            throw new ValueParseException("need a long value in insert clause, but given:" + astNode.getChild(2).getChild(0).getText());
+            throw new LogicalOperatorException("need a long value in insert clause, but given:" + astNode.getChild(2).getChild(0).getText());
         }
         if (astNode.getChild(1).getChildCount() != astNode.getChild(2).getChildCount()) {
             throw new QueryProcessorException("length of measurement is NOT EQUAL TO the length of values");
@@ -273,38 +263,61 @@ public class LogicalGenerator {
 
     private void analyzeUpdate(ASTNode astNode) throws QueryProcessorException {
         if (astNode.getChildCount() != 3)
-            throw new UpdateOperatorException("error format in UPDATE statement:" + astNode.dump());
+            throw new LogicalOperatorException("error format in UPDATE statement:" + astNode.dump());
         UpdateOperator updateOp = new UpdateOperator(SQLConstant.TOK_UPDATE);
         initializedOperator = updateOp;
         analyzeSelect(astNode.getChild(0));
         if (astNode.getChild(1).getType() != TSParser.TOK_VALUE)
-            throw new UpdateOperatorException("error format in UPDATE statement:" + astNode.dump());
+            throw new LogicalOperatorException("error format in UPDATE statement:" + astNode.dump());
         updateOp.setValue(astNode.getChild(1).getChild(0).getText());
         analyzeWhere(astNode.getChild(2));
     }
 
-    private void analyzeDelete(ASTNode astNode) throws QueryProcessorException {
+
+    private void analyzeDelete(ASTNode astNode) throws LogicalOperatorException {
         if (astNode.getChildCount() != 2)
-            throw new UpdateOperatorException("error format in DELETE statement:" + astNode.dump());
+            throw new LogicalOperatorException("error format in DELETE statement:" + astNode.dump());
         initializedOperator = new DeleteOperator(SQLConstant.TOK_DELETE);
         analyzeSelect(astNode.getChild(0));
         analyzeWhere(astNode.getChild(1));
+        long deleteTime = parseDeleteTimeFilter((DeleteOperator) initializedOperator);
+        ((DeleteOperator) initializedOperator).setTime(deleteTime);
     }
 
     /**
-     * up to now(2016-09-23), Antlr, TOK_TABNAME meaning FROM in Query command
-     * only appear below TOK_TABREF, other TOK_TABNAME in update/insert/delete
-     * means select series path and don't pass this route
+     * for delete command, time should only have an end time.
+     *
+     * @param operator delete logical plan
      */
-    private void analyzeFrom(ASTNode node) throws QpSelectFromException {
-        if (node.getType() != TSParser.TOK_FROM)
-            throw new QpSelectFromException("parse from filter in query failed,meet token:" + node.getText());
+    private long parseDeleteTimeFilter(DeleteOperator operator) throws LogicalOperatorException {
+        FilterOperator filterOperator= operator.getFilterOperator();
+        if (!(filterOperator.isLeaf())) {
+            throw new LogicalOperatorException(
+                    "for delete command, where clause must be like : time < XXX or time <= XXX");
+        }
+
+        if (filterOperator.getTokenIntType() != LESSTHAN
+                && filterOperator.getTokenIntType() != LESSTHANOREQUALTO) {
+            throw new LogicalOperatorException(
+                    "for delete command, time filter must be less than or less than or equal to, this:"
+                            + filterOperator.getTokenIntType());
+        }
+        long time = Long.valueOf(((BasicFunctionOperator) filterOperator).getValue());
+
+        if (time < 0) {
+            throw new LogicalOperatorException("delete Time:" + time + ", time must >= 0");
+        }
+        return time;
+    }
+
+
+    private void analyzeFrom(ASTNode node) throws LogicalOperatorException {
         int selChildCount = node.getChildCount();
         FromOperator from = new FromOperator(SQLConstant.TOK_FROM);
         for (int i = 0; i < selChildCount; i++) {
             ASTNode child = node.getChild(i);
             if (child.getType() != TSParser.TOK_PATH) {
-                throw new QpSelectFromException("children FROM clause must all be TOK_PATH, actual:" + child.getText());
+                throw new LogicalOperatorException("children FROM clause must all be TOK_PATH, actual:" + child.getText());
             }
             Path tablePath = parsePath(child);
             from.addPrefixTablePath(tablePath);
@@ -312,7 +325,7 @@ public class LogicalGenerator {
         ((SFWOperator) initializedOperator).setFromOperator(from);
     }
 
-    private void analyzeSelect(ASTNode astNode) throws QpSelectFromException {
+    private void analyzeSelect(ASTNode astNode) throws LogicalOperatorException {
         int tokenIntType = astNode.getType();
         SelectOperator selectOp = new SelectOperator(TSParser.TOK_SELECT);
         if (tokenIntType == TSParser.TOK_SELECT) {
@@ -331,7 +344,7 @@ public class LogicalGenerator {
                         break;
 
                     default:
-                        throw new QpSelectFromException(
+                        throw new LogicalOperatorException(
                                 "children SELECT clause must all be TOK_PATH, actual:" + tokenIntType);
                 }
             }
@@ -339,15 +352,15 @@ public class LogicalGenerator {
             Path selectPath = parsePath(astNode);
             selectOp.addSuffixTablePath(selectPath);
         } else
-            throw new QpSelectFromException("children SELECT clause must all be TOK_PATH, actual:" + astNode.dump());
+            throw new LogicalOperatorException("children SELECT clause must all be TOK_PATH, actual:" + astNode.dump());
         ((SFWOperator) initializedOperator).setSelectOperator(selectOp);
     }
 
-    private void analyzeWhere(ASTNode astNode) throws QpWhereException, BasicOperatorException {
+    private void analyzeWhere(ASTNode astNode) throws LogicalOperatorException {
         if (astNode.getType() != TSParser.TOK_WHERE)
-            throw new QpWhereException("given node is not WHERE! " + astNode.dump());
+            throw new LogicalOperatorException("given node is not WHERE! " + astNode.dump());
         if (astNode.getChildCount() != 1)
-            throw new QpWhereException("where clause has {} child, return" + astNode.getChildCount());
+            throw new LogicalOperatorException("where clause has {} child, return" + astNode.getChildCount());
         FilterOperator whereOp = new FilterOperator(SQLConstant.TOK_WHERE);
         ASTNode child = astNode.getChild(0);
         analyzeWhere(child, child.getType(), whereOp);
@@ -355,15 +368,15 @@ public class LogicalGenerator {
     }
 
     private void analyzeWhere(ASTNode ast, int tokenIntType, FilterOperator filterOp)
-            throws QpWhereException, BasicOperatorException {
+            throws LogicalOperatorException {
         int childCount = ast.getChildCount();
         switch (tokenIntType) {
             case TSParser.KW_NOT:
                 if (childCount != 1) {
-                    throw new QpWhereException("parsing where clause failed: children count != 1");
+                    throw new LogicalOperatorException("parsing where clause failed: children count != 1");
                 }
                 FilterOperator notOp = new FilterOperator(SQLConstant.KW_NOT);
-                filterOp.addChildOPerator(notOp);
+                filterOp.addChildOperator(notOp);
                 ASTNode childAstNode = ast.getChild(0);
                 int childNodeTokenType = childAstNode.getToken().getType();
                 analyzeWhere(childAstNode, childNodeTokenType, notOp);
@@ -371,10 +384,10 @@ public class LogicalGenerator {
             case TSParser.KW_AND:
             case TSParser.KW_OR:
                 if (childCount != 2) {
-                    throw new QpWhereException("parsing where clause failed! node has " + childCount + " paramter.");
+                    throw new LogicalOperatorException("parsing where clause failed! node has " + childCount + " paramter.");
                 }
                 FilterOperator binaryOp = new FilterOperator(TSParserConstant.getTSTokenIntType(tokenIntType));
-                filterOp.addChildOPerator(binaryOp);
+                filterOp.addChildOperator(binaryOp);
                 for (int i = 0; i < childCount; i++) {
                     childAstNode = ast.getChild(i);
                     childNodeTokenType = childAstNode.getToken().getType();
@@ -391,21 +404,20 @@ public class LogicalGenerator {
                 Pair<Path, String> pair = parseLeafNode(ast);
                 BasicFunctionOperator basic = new BasicFunctionOperator(TSParserConstant.getTSTokenIntType(tokenIntType),
                         pair.left, pair.right);
-                filterOp.addChildOPerator(basic);
+                filterOp.addChildOperator(basic);
                 break;
             default:
-                throw new QpWhereException("unsupported token:" + tokenIntType);
+                throw new LogicalOperatorException("unsupported token:" + tokenIntType);
         }
     }
 
-    private Pair<Path, String> parseLeafNode(ASTNode node) throws ParseLeafException {
+    private Pair<Path, String> parseLeafNode(ASTNode node) throws LogicalOperatorException {
         if (node.getChildCount() != 2)
-            throw new ParseLeafException("leaf node children count != 2");
+            throw new LogicalOperatorException("leaf node children count != 2");
         ASTNode col = node.getChild(0);
         if (col.getType() != TSParser.TOK_PATH)
-            throw new ParseLeafException("left node of leaf isn't PATH");
+            throw new LogicalOperatorException("left node of leaf isn't PATH");
         Path seriesPath = parsePath(col);
-        // String value = node.getChild(1).getChild(0).getText();
         ASTNode rightKey = node.getChild(1);
         String seriesValue;
         if (rightKey.getType() == TSParser.TOK_PATH)
@@ -417,7 +429,7 @@ public class LogicalGenerator {
         return new Pair<>(seriesPath, seriesValue);
     }
 
-    private String parseTokenTime(ASTNode astNode) throws ParseLeafException {
+    private String parseTokenTime(ASTNode astNode) throws LogicalOperatorException {
         SimpleDateFormat sdf;
         sdf = new SimpleDateFormat("yyyyMMddHHmmssSSS");
 
@@ -429,7 +441,7 @@ public class LogicalGenerator {
         try {
             date = sdf.parse(sc.toString());
         } catch (ParseException e) {
-            throw new ParseLeafException("parse time error,String:" + sc.toString() + "message:" + e.getMessage());
+            throw new LogicalOperatorException("parse time error,String:" + sc.toString() + "message:" + e.getMessage());
         }
         return String.valueOf(date.getTime());
     }
@@ -461,8 +473,7 @@ public class LogicalGenerator {
 
     private void analyzeDataLoad(ASTNode astNode) throws IllegalASTFormatException {
         int childCount = astNode.getChildCount();
-        // node path should have more than one level and first node level must
-        // be root
+        // node path should have more than one level and first node level must be root
         if (childCount < 3 || !SQLConstant.ROOT.equals(astNode.getChild(1).getText().toLowerCase()))
             throw new IllegalASTFormatException("data load command: child count < 3\n" + astNode.dump());
         String csvPath = astNode.getChild(0).getText();

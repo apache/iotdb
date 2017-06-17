@@ -7,6 +7,8 @@ import cn.edu.thu.tsfiledb.sql.parse.TSParser;
 
 public class TSParserConstant {
     private static Map<Integer, Integer> antlrQpMap = new HashMap<>();
+
+    //used to get operator type when construct operator from AST Tree
     static{
         antlrQpMap.put(TSParser.KW_AND, SQLConstant.KW_AND);
         antlrQpMap.put(TSParser.KW_OR, SQLConstant.KW_OR);

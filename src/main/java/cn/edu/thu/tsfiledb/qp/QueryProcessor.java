@@ -1,24 +1,21 @@
 package cn.edu.thu.tsfiledb.qp;
 
+import cn.edu.thu.tsfiledb.qp.exception.LogicalOperatorException;
 import cn.edu.thu.tsfiledb.qp.strategy.LogicalGenerator;
 import cn.edu.thu.tsfiledb.sql.ParseGenerator;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import cn.edu.thu.tsfiledb.qp.exception.IllegalASTFormatException;
 import cn.edu.thu.tsfiledb.qp.exception.QueryProcessorException;
-import cn.edu.thu.tsfiledb.qp.exception.logical.optimize.LogicalOptimizeException;
+import cn.edu.thu.tsfiledb.qp.exception.LogicalOptimizeException;
 import cn.edu.thu.tsfiledb.qp.executor.QueryProcessExecutor;
 import cn.edu.thu.tsfiledb.qp.logical.Operator;
-import cn.edu.thu.tsfiledb.qp.logical.root.RootOperator;
-import cn.edu.thu.tsfiledb.qp.logical.common.filter.FilterOperator;
-import cn.edu.thu.tsfiledb.qp.logical.root.crud.SFWOperator;
-import cn.edu.thu.tsfiledb.qp.strategy.optimizer.logical.ConcatPathOptimizer;
-import cn.edu.thu.tsfiledb.qp.strategy.optimizer.logical.filter.DNFFilterOptimizer;
-import cn.edu.thu.tsfiledb.qp.strategy.optimizer.logical.filter.MergeSingleFilterOptimizer;
-import cn.edu.thu.tsfiledb.qp.strategy.optimizer.logical.filter.RemoveNotOptimizer;
-import cn.edu.thu.tsfiledb.qp.strategy.optimizer.physical.IPhysicalOptimizer;
-import cn.edu.thu.tsfiledb.qp.strategy.optimizer.physical.NonePhysicalOptimizer;
+import cn.edu.thu.tsfiledb.qp.logical.RootOperator;
+import cn.edu.thu.tsfiledb.qp.logical.crud.FilterOperator;
+import cn.edu.thu.tsfiledb.qp.logical.crud.SFWOperator;
+import cn.edu.thu.tsfiledb.qp.strategy.optimizer.ConcatPathOptimizer;
+import cn.edu.thu.tsfiledb.qp.strategy.optimizer.DNFFilterOptimizer;
+import cn.edu.thu.tsfiledb.qp.strategy.optimizer.MergeSingleFilterOptimizer;
+import cn.edu.thu.tsfiledb.qp.strategy.optimizer.RemoveNotOptimizer;
 import cn.edu.thu.tsfiledb.qp.physical.PhysicalPlan;
 import cn.edu.thu.tsfiledb.sql.parse.ASTNode;
 import cn.edu.thu.tsfiledb.sql.parse.ParseException;
@@ -26,13 +23,11 @@ import cn.edu.thu.tsfiledb.sql.parse.ParseUtils;
 
 /**
  * provide a integration method for other user.
- * 
+ *
  * @author kangrong
  * @author qiaojialin
- *
  */
 public class QueryProcessor {
-    Logger LOG = LoggerFactory.getLogger(QueryProcessor.class);
 
     private QueryProcessExecutor executor;
 
@@ -47,48 +42,51 @@ public class QueryProcessor {
 
     public PhysicalPlan parseSQLToPhysicalPlan(String sqlStr)
             throws QueryProcessorException {
-
-        Operator operator = parseSQLToOperator(sqlStr);
-
+        ASTNode astNode = parseSQLToAST(sqlStr);
+        Operator operator = parseASTToOperator(astNode);
         operator = logicalOptimize(operator);
-
-        PhysicalPlan physicalPlan = executor.transformToPhysicalPlan(operator);
-
-        physicalPlan = physicalOptimize(physicalPlan);
-
-        return physicalPlan;
+        return executor.transformToPhysicalPlan(operator);
     }
 
     /**
-     * given a SQL statement and generate a Operator which type maybe {@code SFWOperator} or
+     * Convert ast tree to Operator which type maybe {@code SFWOperator} or
      * {@code AuthorOperator}
-     * 
-     * @param sqlStr - an input SQL statement
+     *
+     * @param astNode - input ast tree
      * @return - RootOperator has four subclass:Query/Insert/Delete/Update/Author
-     * @throws QueryProcessorException
-     * @throws ParseException
+     * @throws QueryProcessorException exception in converting sql to operator
      */
-    private RootOperator parseSQLToOperator(String sqlStr) throws QueryProcessorException {
+    private RootOperator parseASTToOperator(ASTNode astNode) throws QueryProcessorException {
+        LogicalGenerator generator = new LogicalGenerator();
+        return generator.getLogicalPlan(astNode);
+    }
+
+    /**
+     * Given a SQL statement and generate an ast tree
+     *
+     * @param sqlStr input sql command
+     * @return ast tree
+     * @throws IllegalASTFormatException exception in sql parsing
+     */
+    private ASTNode parseSQLToAST(String sqlStr) throws IllegalASTFormatException {
         ASTNode astTree;
         // parse string to ASTTree
         try {
             astTree = ParseGenerator.generateAST(sqlStr);
         } catch (ParseException e) {
-            throw new IllegalASTFormatException("parsing error,statement: " + sqlStr+ " .message:" + e.getMessage());
+            throw new IllegalASTFormatException("parsing error,statement: " + sqlStr + " .message:" + e.getMessage());
         }
-        astTree = ParseUtils.findRootNonNullToken(astTree);
-        LogicalGenerator generator = new LogicalGenerator();
-        return generator.getLogicalPlan(astTree);
+        return ParseUtils.findRootNonNullToken(astTree);
     }
 
     /**
      * given an unoptimized logical operator tree and return a optimized result.
-     * 
+     *
      * @param operator unoptimized logical operator
      * @return optimized logical operator
-     * @throws LogicalOptimizeException
+     * @throws LogicalOptimizeException exception in logical optimizing
      */
-    private Operator logicalOptimize(Operator operator) throws LogicalOptimizeException {
+    private Operator logicalOptimize(Operator operator) throws LogicalOperatorException {
         switch (operator.getType()) {
             case AUTHOR:
             case METADATA:
@@ -102,7 +100,7 @@ public class QueryProcessor {
                 SFWOperator root = (SFWOperator) operator;
                 return optimizeSFWOperator(root);
             default:
-                throw new LogicalOptimizeException("unknown operator type:{}" + operator.getType());
+                throw new LogicalOperatorException("unknown operator type:{}" + operator.getType());
         }
     }
 
@@ -111,9 +109,9 @@ public class QueryProcessor {
      *
      * @param root unoptimized
      * @return optimized select-from-where operator
-     * @throws LogicalOptimizeException
+     * @throws LogicalOptimizeException exception in SFW optimizing
      */
-    private SFWOperator optimizeSFWOperator(SFWOperator root) throws LogicalOptimizeException {
+    private SFWOperator optimizeSFWOperator(SFWOperator root) throws LogicalOperatorException {
         ConcatPathOptimizer concatPathOptimizer = new ConcatPathOptimizer();
         root = (SFWOperator) concatPathOptimizer.transform(root);
         FilterOperator filter = root.getFilterOperator();
@@ -127,22 +125,6 @@ public class QueryProcessor {
         filter = merge.optimize(filter);
         root.setFilterOperator(filter);
         return root;
-    }
-
-
-    /**
-     * given an unoptimized physical plan and return a optimized result.Up to now, physical
-     * optimizer do nothing.
-     * 
-     * @since 2016-10-11
-     * @param physicalPlan physical plan
-     * @return
-     */
-    private PhysicalPlan physicalOptimize(PhysicalPlan physicalPlan) {
-
-            IPhysicalOptimizer physicalOptimizer = new NonePhysicalOptimizer(executor);
-
-            return physicalOptimizer.transform(physicalPlan);
     }
 
 }

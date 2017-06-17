@@ -16,7 +16,6 @@ public class SingleFileQPExecutor extends QueryProcessExecutor {
 	private QueryEngine queryEngine;
 
 	public SingleFileQPExecutor(TSRandomAccessFileReader raf) throws IOException {
-		super(true);
 		queryEngine = new QueryEngine(raf);
 	}
 

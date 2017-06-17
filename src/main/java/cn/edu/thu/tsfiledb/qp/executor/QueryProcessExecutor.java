@@ -19,13 +19,11 @@ import cn.edu.thu.tsfiledb.qp.physical.PhysicalPlan;
 import cn.edu.thu.tsfiledb.qp.strategy.PhysicalGenerator;
 
 public abstract class QueryProcessExecutor {
-    protected final boolean isSingleFile;
 
     protected ThreadLocal<Map<String, Object>> parameters = new ThreadLocal<>();
     protected int fetchSize = 100;
 
-    public QueryProcessExecutor(boolean isSingleFile) {
-        this.isSingleFile = isSingleFile;
+    public QueryProcessExecutor() {
     }
 
     protected abstract TSDataType getNonReservedSeriesType(Path fullPath) throws PathErrorException;
@@ -43,10 +41,6 @@ public abstract class QueryProcessExecutor {
 
     public boolean processNonQuery(PhysicalPlan plan) throws ProcessorException {
         return plan.processNonQuery(this);
-    }
-
-    public boolean isSingleFile() {
-        return isSingleFile;
     }
 
     public TSDataType getSeriesType(Path fullPath) throws PathErrorException {
@@ -80,8 +74,8 @@ public abstract class QueryProcessExecutor {
      * execute update command and return whether the operator is successful.
      * 
      * @param path : update series path
-     * @param startTime
-     * @param endTime
+     * @param startTime start time in update command
+     * @param endTime end time in update command
      * @param value - in type of string
      * @return - whether the operator is successful.
      */
@@ -91,7 +85,7 @@ public abstract class QueryProcessExecutor {
      * execute delete command and return whether the operator is successful.
      * 
      * @param path : delete series path
-     * @param deleteTime
+     * @param deleteTime end time in delete command
      * @return - whether the operator is successful.
      */
     public abstract boolean delete(Path path, long deleteTime) throws ProcessorException;
@@ -135,7 +129,7 @@ public abstract class QueryProcessExecutor {
      * @param username updated user's name
      * @param newPassword new password
      * @return boolean
-     * @throws AuthException
+     * @throws AuthException exception in update user
      */
     public boolean updateUser(String username,String newPassword) throws AuthException{
     	return Authorizer.updateUserPassword(username, newPassword);

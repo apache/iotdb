@@ -1,8 +1,6 @@
 package cn.edu.thu.tsfiledb.qp.executor;
 
-
 import java.util.List;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,7 +25,6 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 	private FileNodeManager fileNodeManager;
 
 	public OverflowQPExecutor() {
-		super(false);
 		queryEngine = new OverflowQueryEngine();
 		fileNodeManager = FileNodeManager.getInstance();
 	}
@@ -128,11 +125,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 			TSRecord tsRecord = new TSRecord(insertTime, deltaObject);
 			
 			for (int i = 0 ; i < measurementList.size() ; i ++) {
-				StringBuilder sb = new StringBuilder();
-				sb.append(deltaObject);
-				sb.append(".");
-				sb.append(measurementList.get(i));
-				String p = sb.toString();
+				String p = deltaObject + "." + measurementList.get(i);
 				if(!mManager.pathExist(p)){
 					throw new ProcessorException("Path not exists:" + p);
 				}
