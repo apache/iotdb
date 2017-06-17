@@ -107,7 +107,7 @@ public class QueryProcessor {
     /**
      * given an unoptimized select-from-where operator and return an optimized result.
      *
-     * @param root unoptimized
+     * @param root unoptimized select-from-where operator
      * @return optimized select-from-where operator
      * @throws LogicalOptimizeException exception in SFW optimizing
      */
