@@ -11,7 +11,7 @@ import cn.edu.thu.tsfiledb.metadata.MManager;
 import cn.edu.thu.tsfile.timeseries.read.qp.Path;
 import cn.edu.thu.tsfiledb.qp.executor.QueryProcessExecutor;
 import cn.edu.thu.tsfiledb.qp.logical.Operator.OperatorType;
-import cn.edu.thu.tsfiledb.qp.logical.root.MetadataOperator.NamespaceType;
+import cn.edu.thu.tsfiledb.qp.logical.sys.MetadataOperator.NamespaceType;
 import cn.edu.thu.tsfiledb.qp.physical.crud.DeletePlan;
 import cn.edu.thu.tsfiledb.qp.physical.PhysicalPlan;
 

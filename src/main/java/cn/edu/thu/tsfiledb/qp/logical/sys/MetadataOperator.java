@@ -1,4 +1,4 @@
-package cn.edu.thu.tsfiledb.qp.logical.root;
+package cn.edu.thu.tsfiledb.qp.logical.sys;
 
 import cn.edu.thu.tsfile.timeseries.read.qp.Path;
 import cn.edu.thu.tsfiledb.qp.logical.RootOperator;

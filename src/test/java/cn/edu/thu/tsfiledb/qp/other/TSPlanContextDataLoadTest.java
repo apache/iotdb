@@ -1,7 +1,7 @@
 package cn.edu.thu.tsfiledb.qp.other;
 
 import cn.edu.thu.tsfiledb.qp.exception.QueryProcessorException;
-import cn.edu.thu.tsfiledb.qp.logical.root.LoadDataOperator;
+import cn.edu.thu.tsfiledb.qp.logical.sys.LoadDataOperator;
 import cn.edu.thu.tsfiledb.sql.ParseGenerator;
 import cn.edu.thu.tsfiledb.qp.strategy.LogicalGenerator;
 import cn.edu.thu.tsfiledb.sql.parse.ASTNode;
