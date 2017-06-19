@@ -5,23 +5,15 @@ import java.util.Collections;
 import java.util.List;
 
 import cn.edu.thu.tsfiledb.qp.exception.LogicalOptimizeException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import cn.edu.thu.tsfile.timeseries.read.qp.Path;
 import cn.edu.thu.tsfiledb.qp.logical.crud.FilterOperator;
 
 public class MergeSingleFilterOptimizer implements IFilterOptimizer {
-    private Logger LOG = LoggerFactory.getLogger(MergeSingleFilterOptimizer.class);
 
     @Override
-    public FilterOperator optimize(FilterOperator filter) {
-        try {
-            mergeSamePathFilter(filter);
-        } catch (LogicalOptimizeException e) {
-            LOG.error(e.getMessage());
-            e.printStackTrace();
-        }
+    public FilterOperator optimize(FilterOperator filter) throws LogicalOptimizeException {
+        mergeSamePathFilter(filter);
         return filter;
     }
 

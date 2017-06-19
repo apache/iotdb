@@ -516,7 +516,6 @@ public class LogicalGenerator {
             if (user.getChildCount() != 3) {
                 throw new IllegalASTFormatException("illegal ast tree in create author command:\n" + astNode.dump());
             }
-            System.out.println(user.dump());
             authorOperator.setUserName(parseStringWithQuoto(user.getChild(0).getText()));
             authorOperator.setNewPassword(parseStringWithQuoto(user.getChild(1).getText()));
         } else {
@@ -608,13 +607,13 @@ public class LogicalGenerator {
                 nodeNameList[i] = pathNode.getChild(i).getText();
             }
             if (astNode.getChild(0).getType() == TSParser.TOK_USER) {
-                // grant user
+                // revoke user
                 authorOperator = new AuthorOperator(SQLConstant.TOK_AUTHOR_REVOKE, AuthorType.REVOKE_USER);
                 authorOperator.setUserName(astNode.getChild(0).getChild(0).getText());
                 authorOperator.setPrivilegeList(privileges);
                 authorOperator.setNodeNameList(nodeNameList);
             } else if (astNode.getChild(0).getType() == TSParser.TOK_ROLE) {
-                // grant role
+                // revoke role
                 authorOperator = new AuthorOperator(SQLConstant.TOK_AUTHOR_REVOKE, AuthorType.REVOKE_ROLE);
                 authorOperator.setRoleName(astNode.getChild(0).getChild(0).getText());
                 authorOperator.setPrivilegeList(privileges);
