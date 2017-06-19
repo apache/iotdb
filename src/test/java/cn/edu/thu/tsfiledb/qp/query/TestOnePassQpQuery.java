@@ -14,8 +14,6 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
 import java.util.Collection;
@@ -31,7 +29,6 @@ import static org.junit.Assert.fail;
  */
 @RunWith(Parameterized.class)
 public class TestOnePassQpQuery {
-    private static final Logger LOG = LoggerFactory.getLogger(TestOnePassQpQuery.class);
     private QueryProcessor processor = new QueryProcessor(new MemIntQpExecutor());
 
     private final String inputSQL;

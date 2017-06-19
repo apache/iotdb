@@ -338,11 +338,11 @@ public class LogicalGenerator {
                         Path selectPath = parsePath(pathChild);
                         String aggregation = child.getChild(1).getText();
                         selectOp.addSuffixTablePath(selectPath, aggregation);
+                        break;
                     case TSParser.TOK_PATH:
                         selectPath = parsePath(child);
                         selectOp.addSuffixTablePath(selectPath);
                         break;
-
                     default:
                         throw new LogicalOperatorException(
                                 "children SELECT clause must all be TOK_PATH, actual:" + tokenIntType);

@@ -30,8 +30,7 @@ import cn.edu.thu.tsfiledb.sql.parse.ParseUtils;
 public class QueryProcessor {
 
     private QueryProcessExecutor executor;
-
-
+    
     public QueryProcessor(QueryProcessExecutor executor) {
         this.executor = executor;
     }
