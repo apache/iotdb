@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import cn.edu.thu.tsfiledb.qp.exception.LogicalOperatorException;
+import cn.edu.thu.tsfiledb.qp.executor.QueryProcessExecutor;
 import cn.edu.thu.tsfiledb.qp.logical.Operator;
 
 import cn.edu.thu.tsfile.common.utils.Pair;
@@ -18,7 +19,6 @@ import cn.edu.thu.tsfiledb.qp.constant.SQLConstant;
 import cn.edu.thu.tsfiledb.qp.exception.QueryProcessorException;
 import cn.edu.thu.tsfile.timeseries.read.qp.Path;
 import cn.edu.thu.tsfile.timeseries.utils.StringContainer;
-import cn.edu.thu.tsfiledb.qp.executor.QueryProcessExecutor;
 
 /**
  * This class is for filter operator and implements
@@ -139,8 +139,6 @@ public class FilterOperator extends Operator implements Comparable<FilterOperato
     /**
      * it will be used in BasicFunction Operator
      *
-     * @param executor physical plan executor
-     * @param type series type
      * @return - pair.left:SingleSeriesFilterExpression constructed by its one child; - pair.right: Path
      *         represented by this child.
      * @throws QueryProcessorException exception in filter transforming

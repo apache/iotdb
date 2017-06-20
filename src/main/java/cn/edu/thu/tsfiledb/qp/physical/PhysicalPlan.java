@@ -1,20 +1,14 @@
 package cn.edu.thu.tsfiledb.qp.physical;
 
-import java.util.Iterator;
 import java.util.List;
-
-import cn.edu.thu.tsfile.common.exception.ProcessorException;
-import cn.edu.thu.tsfile.timeseries.read.query.QueryDataSet;
 import cn.edu.thu.tsfile.timeseries.read.qp.Path;
-import cn.edu.thu.tsfiledb.qp.exception.QueryProcessorException;
-import cn.edu.thu.tsfiledb.qp.executor.QueryProcessExecutor;
 import cn.edu.thu.tsfiledb.qp.logical.Operator.OperatorType;
 
 /**
  * This class is a abstract class for all type of PhysicalPlan.
  * 
  * @author kangrong
- *
+ * @author qiaojialin
  */
 public abstract class PhysicalPlan {
     private boolean isQuery;
@@ -23,14 +17,6 @@ public abstract class PhysicalPlan {
     protected PhysicalPlan(boolean isQuery, OperatorType operatorType) {
         this.isQuery = isQuery;
         this.operatorType = operatorType;
-    }
-
-    public Iterator<QueryDataSet> processQuery(QueryProcessExecutor executor) throws QueryProcessorException {
-        throw new UnsupportedOperationException();
-    }
-
-    public boolean processNonQuery(QueryProcessExecutor config) throws ProcessorException {
-        throw new UnsupportedOperationException();
     }
 
     public String printQueryPlan() {

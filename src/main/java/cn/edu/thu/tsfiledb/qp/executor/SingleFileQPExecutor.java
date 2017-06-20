@@ -7,6 +7,7 @@ import cn.edu.thu.tsfile.timeseries.filter.definition.FilterExpression;
 import cn.edu.thu.tsfile.timeseries.read.qp.Path;
 import cn.edu.thu.tsfile.timeseries.read.query.QueryDataSet;
 import cn.edu.thu.tsfile.timeseries.read.query.QueryEngine;
+import cn.edu.thu.tsfiledb.qp.physical.PhysicalPlan;
 
 import java.io.IOException;
 import java.util.List;
@@ -17,6 +18,11 @@ public class SingleFileQPExecutor extends QueryProcessExecutor {
 
 	public SingleFileQPExecutor(TSRandomAccessFileReader raf) throws IOException {
 		queryEngine = new QueryEngine(raf);
+	}
+
+	@Override
+	public boolean processNonQuery(PhysicalPlan plan) {
+		return false;
 	}
 
 	@Override

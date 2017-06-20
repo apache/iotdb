@@ -1,19 +1,15 @@
 package cn.edu.thu.tsfiledb.qp.physical.crud;
 
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 
-import cn.edu.thu.tsfiledb.qp.exception.QueryProcessorException;
 import cn.edu.thu.tsfiledb.qp.physical.PhysicalPlan;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import cn.edu.thu.tsfile.timeseries.read.query.QueryDataSet;
 import cn.edu.thu.tsfile.timeseries.utils.StringContainer;
 import cn.edu.thu.tsfile.timeseries.read.qp.Path;
-import cn.edu.thu.tsfiledb.qp.executor.QueryProcessExecutor;
 import cn.edu.thu.tsfiledb.qp.logical.Operator.OperatorType;
 
 /**
@@ -24,7 +20,7 @@ import cn.edu.thu.tsfiledb.qp.logical.Operator.OperatorType;
  * 
  * @see SeriesSelectPlan
  * @author kangrong
- *
+ * @author qiaojialin
  */
 public class MergeQuerySetPlan extends PhysicalPlan {
     private static Logger LOG = LoggerFactory.getLogger(MergeQuerySetPlan.class);
@@ -40,18 +36,6 @@ public class MergeQuerySetPlan extends PhysicalPlan {
             LOG.error("cannot input an null or empty plan list into QuerySetMergePlan! ");
         }
         this.seriesSelectPlans = selectPlans;
-    }
-
-    public void setSeriesSelectPlans(List<SeriesSelectPlan> seriesSelectPlans) {
-        this.seriesSelectPlans = seriesSelectPlans;
-    }
-
-    @Override
-    public Iterator<QueryDataSet> processQuery(QueryProcessExecutor executor) throws QueryProcessorException {
-        if (seriesSelectPlans.size() == 1)
-            return executor.processQuery(seriesSelectPlans.get(0));
-        else
-            return new MergeQuerySetIterator(seriesSelectPlans, executor.getFetchSize(), executor);
     }
 
     @Override

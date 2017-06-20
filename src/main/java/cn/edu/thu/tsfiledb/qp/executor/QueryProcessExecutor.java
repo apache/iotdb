@@ -13,9 +13,13 @@ import cn.edu.thu.tsfiledb.auth.model.AuthException;
 import cn.edu.thu.tsfiledb.exception.PathErrorException;
 import cn.edu.thu.tsfiledb.metadata.MManager;
 import cn.edu.thu.tsfiledb.qp.constant.SQLConstant;
+import cn.edu.thu.tsfiledb.qp.dataset.MergeQuerySetIterator;
+import cn.edu.thu.tsfiledb.qp.dataset.QueryDataSetIterator;
 import cn.edu.thu.tsfiledb.qp.exception.QueryProcessorException;
 import cn.edu.thu.tsfiledb.qp.logical.Operator;
 import cn.edu.thu.tsfiledb.qp.physical.PhysicalPlan;
+import cn.edu.thu.tsfiledb.qp.physical.crud.MergeQuerySetPlan;
+import cn.edu.thu.tsfiledb.qp.physical.crud.SeriesSelectPlan;
 import cn.edu.thu.tsfiledb.qp.strategy.PhysicalGenerator;
 
 public abstract class QueryProcessExecutor {
@@ -36,11 +40,27 @@ public abstract class QueryProcessExecutor {
     }
 
     public Iterator<QueryDataSet> processQuery(PhysicalPlan plan) throws QueryProcessorException {
-        return plan.processQuery(this);
+        switch (plan.getOperatorType()) {
+            case QUERY:
+                SeriesSelectPlan query = (SeriesSelectPlan) plan;
+                FilterExpression[] filterExpressions = query.getFilterExpressions();
+                return new QueryDataSetIterator(query.getPaths(), getFetchSize(), this,
+                        filterExpressions[0], filterExpressions[1], filterExpressions[2]);
+            case MERGEQUERY:
+                MergeQuerySetPlan mergeQuery = (MergeQuerySetPlan) plan;
+                List<SeriesSelectPlan> selectPlans = mergeQuery.getSeriesSelectPlans();
+                if (selectPlans.size() == 1) {
+                    return processQuery(selectPlans.get(0));
+                } else {
+                    return new MergeQuerySetIterator(selectPlans, getFetchSize(), this);
+                }
+            default:
+                throw new UnsupportedOperationException();
+        }
     }
 
     public boolean processNonQuery(PhysicalPlan plan) throws ProcessorException {
-        return plan.processNonQuery(this);
+        throw new UnsupportedOperationException();
     }
 
     public TSDataType getSeriesType(Path fullPath) throws PathErrorException {

@@ -1,6 +1,7 @@
 package cn.edu.thu.tsfiledb.qp.utils;
 
 import cn.edu.thu.tsfile.common.constant.SystemConstant;
+import cn.edu.thu.tsfile.common.exception.ProcessorException;
 import cn.edu.thu.tsfile.common.utils.Pair;
 import cn.edu.thu.tsfile.file.metadata.enums.TSDataType;
 import cn.edu.thu.tsfile.timeseries.filter.definition.CrossSeriesFilterExpression;
@@ -12,7 +13,10 @@ import cn.edu.thu.tsfile.timeseries.read.query.QueryDataSet;
 import cn.edu.thu.tsfile.timeseries.read.readSupport.RowRecord;
 import cn.edu.thu.tsfile.timeseries.utils.StringContainer;
 import cn.edu.thu.tsfiledb.qp.executor.QueryProcessExecutor;
-import cn.edu.thu.tsfiledb.qp.physical.crud.OutputQueryDataSet;
+import cn.edu.thu.tsfiledb.qp.physical.PhysicalPlan;
+import cn.edu.thu.tsfiledb.qp.physical.crud.DeletePlan;
+import cn.edu.thu.tsfiledb.qp.physical.crud.MultiInsertPlan;
+import cn.edu.thu.tsfiledb.qp.physical.crud.UpdatePlan;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,6 +49,24 @@ public class MemIntQpExecutor extends QueryProcessExecutor {
         if (demoMemDataBase.containsKey(fullPath.toString()))
             return TSDataType.INT32;
         return null;
+    }
+
+    @Override
+    public boolean processNonQuery(PhysicalPlan plan) throws ProcessorException {
+        switch (plan.getOperatorType()) {
+            case DELETE:
+                DeletePlan delete = (DeletePlan) plan;
+                return delete(delete.getPath(), delete.getDeleteTime());
+            case UPDATE:
+                UpdatePlan update = (UpdatePlan) plan;
+                return update(update.getPath(), update.getStartTime(), update.getEndTime(), update.getValue());
+            case MULTIINSERT:
+                MultiInsertPlan insert = (MultiInsertPlan) plan;
+                int result = multiInsert(insert.getDeltaObject(), insert.getTime(), insert.getMeasurements(), insert.getValues());
+                return result == 0;
+            default:
+                throw new UnsupportedOperationException();
+        }
     }
 
     @Override

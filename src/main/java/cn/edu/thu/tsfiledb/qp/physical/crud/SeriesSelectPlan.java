@@ -3,17 +3,15 @@ package cn.edu.thu.tsfiledb.qp.physical.crud;
 import static cn.edu.thu.tsfiledb.qp.constant.SQLConstant.lineFeedSignal;
 
 import java.util.*;
-
+import cn.edu.thu.tsfile.timeseries.filter.definition.filterseries.FilterSeriesType;
+import cn.edu.thu.tsfiledb.qp.dataset.RowRecordIterator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import cn.edu.thu.tsfile.common.exception.ProcessorException;
 import cn.edu.thu.tsfile.timeseries.filter.definition.FilterExpression;
 import cn.edu.thu.tsfile.timeseries.filter.definition.FilterFactory;
 import cn.edu.thu.tsfile.timeseries.filter.definition.SingleSeriesFilterExpression;
 import cn.edu.thu.tsfile.timeseries.filter.definition.filterseries.FilterSeries;
-import cn.edu.thu.tsfile.timeseries.filter.definition.filterseries.FilterSeriesType;
-import cn.edu.thu.tsfile.timeseries.read.query.QueryDataSet;
 import cn.edu.thu.tsfile.timeseries.read.readSupport.RowRecord;
 import cn.edu.thu.tsfile.timeseries.utils.StringContainer;
 import cn.edu.thu.tsfiledb.exception.PathErrorException;
@@ -43,21 +41,10 @@ public class SeriesSelectPlan extends PhysicalPlan {
     private FilterOperator timeFilterOperator;
     private FilterOperator freqFilterOperator;
     private FilterOperator valueFilterOperator;
-
-    public FilterOperator getTimeFilterOperator() {
-        return timeFilterOperator;
-    }
-
-    public FilterOperator getFreqFilterOperator() {
-        return freqFilterOperator;
-    }
-
-    public FilterOperator getValueFilterOperator() {
-        return valueFilterOperator;
-    }
+    private FilterExpression[] filterExpressions;
 
     public SeriesSelectPlan(List<Path> paths,
-                            FilterOperator timeFilter, FilterOperator freqFilter, FilterOperator valueFilter, QueryProcessExecutor executor) {
+                            FilterOperator timeFilter, FilterOperator freqFilter, FilterOperator valueFilter, QueryProcessExecutor executor) throws QueryProcessorException {
         super(true, OperatorType.QUERY);
         this.paths = paths;
         this.timeFilterOperator = timeFilter;
@@ -67,14 +54,11 @@ public class SeriesSelectPlan extends PhysicalPlan {
         LOG.debug(Arrays.toString(paths.toArray()));
         removeNotExistsPaths(executor);
         LOG.debug(Arrays.toString(paths.toArray()));
+        filterExpressions = transformToFilterExpressions(executor);
     }
 
-    @Override
-    public Iterator<QueryDataSet> processQuery(QueryProcessExecutor executor) throws QueryProcessorException {
-        FilterExpression[] expressions = transformToFilterExpressions(executor);
-
-        return new QueryDataSetIterator(paths, executor.getFetchSize(), executor, expressions[0], expressions[1],
-                expressions[2]);
+    public FilterExpression[] getFilterExpressions() {
+        return filterExpressions;
     }
 
     private void removeStarsInPath(QueryProcessExecutor executor) {
@@ -114,14 +98,14 @@ public class SeriesSelectPlan extends PhysicalPlan {
 
     }
 
-    private FilterExpression[] transformToFilterExpressions(QueryProcessExecutor conf)
+    private FilterExpression[] transformToFilterExpressions(QueryProcessExecutor executor)
             throws QueryProcessorException {
         FilterExpression timeFilter =
-                timeFilterOperator == null ? null : timeFilterOperator.transformToFilterExpression(conf, FilterSeriesType.TIME_FILTER);
+                timeFilterOperator == null ? null : timeFilterOperator.transformToFilterExpression(executor, FilterSeriesType.TIME_FILTER);
         FilterExpression freqFilter =
-                freqFilterOperator == null ? null : freqFilterOperator.transformToFilterExpression(conf, FilterSeriesType.FREQUENCY_FILTER);
+                freqFilterOperator == null ? null : freqFilterOperator.transformToFilterExpression(executor, FilterSeriesType.FREQUENCY_FILTER);
         FilterExpression valueFilter =
-                valueFilterOperator == null ? null : valueFilterOperator.transformToFilterExpression(conf, FilterSeriesType.VALUE_FILTER);
+                valueFilterOperator == null ? null : valueFilterOperator.transformToFilterExpression(executor, FilterSeriesType.VALUE_FILTER);
 
         if (valueFilter instanceof SingleSeriesFilterExpression) {
             if (paths.size() == 1) {
@@ -138,17 +122,13 @@ public class SeriesSelectPlan extends PhysicalPlan {
     }
 
     /**
-     * provide {@code Iterator<RowRecord>} for
-     * {@link MergeQuerySetIterator} which has more than one
-     * {@code SeriesSelectPlan} to merge
      *
      * @param executor
      * @return Iterator<RowRecord>
      */
     private Iterator<RowRecord> getRecordIterator(QueryProcessExecutor executor) throws QueryProcessorException {
-        FilterExpression[] filterExpressions = transformToFilterExpressions(executor);
 
-        return new RowRecordIterator(executor.getFetchSize(), executor, filterExpressions[0], filterExpressions[1], filterExpressions[2]);
+        return new RowRecordIterator(paths, executor.getFetchSize(), executor, filterExpressions[0], filterExpressions[1], filterExpressions[2]);
     }
 
 
@@ -160,109 +140,6 @@ public class SeriesSelectPlan extends PhysicalPlan {
         }
         return ret;
     }
-
-    public class RowRecordIterator implements Iterator<RowRecord> {
-        private boolean noNext = false;
-        private final int fetchSize;
-        private final QueryProcessExecutor conf;
-        private QueryDataSet data = null;
-        private FilterExpression timeFilter;
-        private FilterExpression freqFilter;
-        private FilterExpression valueFilter;
-
-        public RowRecordIterator(int fetchSize, QueryProcessExecutor conf,
-                                 FilterExpression timeFilter, FilterExpression freqFilter,
-                                 FilterExpression valueFilter) {
-            this.fetchSize = fetchSize;
-            this.conf = conf;
-            this.timeFilter = timeFilter;
-            this.freqFilter = freqFilter;
-            this.valueFilter = valueFilter;
-        }
-
-        @Override
-        public boolean hasNext() {
-            if (noNext)
-                return false;
-            if (data == null || !data.hasNextRecord())
-                try {
-                    data = conf.query(paths, timeFilter, freqFilter, valueFilter, fetchSize, data);
-                } catch (ProcessorException e) {
-                    throw new RuntimeException(e.getMessage());
-                }
-            if (data.hasNextRecord())
-                return true;
-            else {
-                noNext = true;
-                return false;
-            }
-        }
-
-        @Override
-        public RowRecord next() {
-            return data.getNextRecord();
-        }
-
-    }
-
-    private class QueryDataSetIterator implements Iterator<QueryDataSet> {
-        private boolean noNext = false;
-        private final int fetchSize;
-        private final QueryProcessExecutor conf;
-        private QueryDataSet data = null;
-        private QueryDataSet usedData = null;
-        private FilterExpression timeFilter;
-        private FilterExpression freqFilter;
-        private FilterExpression valueFilter;
-        private List<Path> paths;
-
-        public QueryDataSetIterator(List<Path> paths, int fetchSize, QueryProcessExecutor conf,
-                                    FilterExpression timeFilter, FilterExpression freqFilter,
-                                    FilterExpression valueFilter) {
-            this.paths = paths;
-            this.fetchSize = fetchSize;
-            this.conf = conf;
-            this.timeFilter = timeFilter;
-            this.freqFilter = freqFilter;
-            this.valueFilter = valueFilter;
-
-        }
-
-        @Override
-        public boolean hasNext() {
-            if (usedData != null) {
-                usedData.clear();
-            }
-            if (noNext)
-                return false;
-            if (data == null || !data.hasNextRecord())
-                try {
-                    data = conf.query(paths, timeFilter, freqFilter, valueFilter, fetchSize, usedData);
-                } catch (ProcessorException e) {
-                    throw new RuntimeException(e.getMessage());
-                }
-            if (data == null) {
-                LOG.error(
-                        "data is null! parameters: paths:{},timeFilter:{}, freqFilter:{}, valueFilter:{}, fetchSize:{}, usedData:{}",
-                        paths, timeFilter, freqFilter, valueFilter, fetchSize, usedData);
-                throw new RuntimeException("data is null! parameters: paths:");
-            }
-            if (data.hasNextRecord())
-                return true;
-            else {
-                noNext = true;
-                return false;
-            }
-        }
-
-        @Override
-        public QueryDataSet next() {
-            usedData = data;
-            data = null;
-            return usedData;
-        }
-    }
-
 
     @Override
     public String printQueryPlan() {

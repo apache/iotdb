@@ -3,13 +3,14 @@ package cn.edu.thu.tsfiledb.qp.physical.crud;
 import java.util.ArrayList;
 import java.util.List;
 
-import cn.edu.thu.tsfile.common.exception.ProcessorException;
 import cn.edu.thu.tsfile.timeseries.read.qp.Path;
-import cn.edu.thu.tsfiledb.qp.executor.QueryProcessExecutor;
 import cn.edu.thu.tsfiledb.qp.logical.Operator.OperatorType;
 import cn.edu.thu.tsfiledb.qp.physical.PhysicalPlan;
 
-
+/**
+ * @author kangrong
+ * @author qiaojialin
+ */
 public class MultiInsertPlan extends PhysicalPlan {
 	private String deltaObject;
 	private List<String> measurements;
@@ -35,12 +36,6 @@ public class MultiInsertPlan extends PhysicalPlan {
         this.deltaObject = deltaObject;
         this.measurements = measurementList;
         this.values = insertValues;
-    }
-
-    @Override
-    public boolean processNonQuery(QueryProcessExecutor exec) throws ProcessorException{
-		insertType = exec.multiInsert(deltaObject, time, measurements, values);
-        return true;
     }
 
     public long getTime() {

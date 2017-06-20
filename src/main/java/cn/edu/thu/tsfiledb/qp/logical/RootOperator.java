@@ -5,6 +5,7 @@ package cn.edu.thu.tsfiledb.qp.logical;
  * consists of SFWOperator, like INSERT/UPDATE/DELETE, and other Operators.
  *
  * @author kangrong
+ * @author qiaojialin
  */
 public abstract class RootOperator extends Operator {
 

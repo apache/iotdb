@@ -3,13 +3,14 @@ package cn.edu.thu.tsfiledb.qp.physical.crud;
 import java.util.ArrayList;
 import java.util.List;
 
-import cn.edu.thu.tsfile.common.exception.ProcessorException;
 import cn.edu.thu.tsfile.timeseries.read.qp.Path;
-import cn.edu.thu.tsfiledb.qp.executor.QueryProcessExecutor;
 import cn.edu.thu.tsfiledb.qp.logical.Operator.OperatorType;
 import cn.edu.thu.tsfiledb.qp.physical.PhysicalPlan;
 
-
+/**
+ * @author kangrong
+ * @author qiaojialin
+ */
 public class UpdatePlan extends PhysicalPlan {
     private long startTime;
     private long endTime;
@@ -26,11 +27,6 @@ public class UpdatePlan extends PhysicalPlan {
         this.setEndTime(endTime);
         this.setValue(value);
         this.setPath(path);
-    }
-
-    @Override
-    public boolean processNonQuery(QueryProcessExecutor exec) throws ProcessorException {
-        return exec.update(path, startTime, endTime, value);
     }
 
     public long getStartTime() {
