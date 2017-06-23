@@ -2,8 +2,8 @@ package cn.edu.thu.tsfiledb.auth.model;
 
 /**
  * The exception for authority model
+ *
  * @author liukun
- * 
  */
 public class AuthException extends Exception {
 	private static final long serialVersionUID = 5091102941209301301L;

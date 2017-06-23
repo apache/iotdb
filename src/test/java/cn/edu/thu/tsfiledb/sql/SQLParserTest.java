@@ -1,7 +1,7 @@
 package cn.edu.thu.tsfiledb.sql;
 
-import cn.edu.thu.tsfiledb.sql.lib.Node;
 import cn.edu.thu.tsfiledb.sql.parse.ASTNode;
+import cn.edu.thu.tsfiledb.sql.parse.Node;
 import cn.edu.thu.tsfiledb.sql.parse.ParseException;
 import cn.edu.thu.tsfiledb.sql.parse.ParseUtils;
 import org.antlr.runtime.RecognitionException;
@@ -27,7 +27,7 @@ public class SQLParserTest {
                     " and time < 3 and time <4",
             // CRUD
             "describe root",
-            "insert into root.vehicle.d0 (timestamp,  s0 )  values((2016-11-16 16:22:33:75) , 1011)",
+            "insert into root.vehicle.d0 (timestamp, s0)  values((12345678) , 1011)",
             "delete from d1.s1 where time < (2016-11-16 16:22:33:75)", //10
             "update d1.s1 set value = 33000 where time <= 10 and time >= 10",
             "select summ(sensor_1), total(sensor_2) from device_1 where time < 0.1 and freq > 10",
@@ -349,9 +349,9 @@ public class SQLParserTest {
     public void multiInsert() throws ParseException, RecognitionException {
         // template for test case
         ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_MULTINSERT", "TOK_PATH", "root", "vehicle", "d0",
-                "TOK_MULT_IDENTIFIER", "TOK_TIME", "s0", "TOK_MULT_VALUE", "TOK_DATETIME", "2016", "11", "16", "16", "22", "33", "75", "1011"));
+                "TOK_MULT_IDENTIFIER", "TOK_TIME", "s0", "TOK_MULT_VALUE", "12345678", "1011"));
         ArrayList<String> rec = new ArrayList<>();
-        ASTNode astTree = ParseGenerator.generateAST("insert into root.vehicle.d0 (timestamp,  s0 )  values((2016-11-16 16:22:33:75) , 1011)");
+        ASTNode astTree = ParseGenerator.generateAST("insert into root.vehicle.d0 (timestamp, s0)  values(12345678 , 1011)");
         astTree = ParseUtils.findRootNonNullToken(astTree);
         recursivePrintSon(astTree, rec);
 

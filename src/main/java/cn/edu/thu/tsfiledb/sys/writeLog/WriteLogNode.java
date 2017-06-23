@@ -1,16 +1,12 @@
 package cn.edu.thu.tsfiledb.sys.writeLog;
 
-import cn.edu.thu.tsfile.common.conf.TSFileDescriptor;
 import cn.edu.thu.tsfile.common.utils.BytesUtils;
-import cn.edu.thu.tsfile.timeseries.read.qp.Path;
 import cn.edu.thu.tsfile.timeseries.write.record.DataPoint;
 import cn.edu.thu.tsfile.timeseries.write.record.TSRecord;
 import cn.edu.thu.tsfiledb.conf.TsfileDBDescriptor;
-import cn.edu.thu.tsfiledb.jdbc.TsfileJDBCConfig;
-import cn.edu.thu.tsfiledb.qp.logical.operator.Operator;
-import cn.edu.thu.tsfiledb.qp.physical.plan.InsertPlan;
-import cn.edu.thu.tsfiledb.qp.physical.plan.MultiInsertPlan;
-import cn.edu.thu.tsfiledb.qp.physical.plan.PhysicalPlan;
+import cn.edu.thu.tsfiledb.qp.logical.Operator;
+import cn.edu.thu.tsfiledb.qp.physical.crud.MultiInsertPlan;
+import cn.edu.thu.tsfiledb.qp.physical.PhysicalPlan;
 import cn.edu.thu.tsfiledb.sys.writeLog.impl.LocalFileLogReader;
 import cn.edu.thu.tsfiledb.sys.writeLog.impl.LocalFileLogWriter;
 import cn.edu.thu.tsfiledb.sys.writeLog.transfer.PhysicalPlanLogTransfer;

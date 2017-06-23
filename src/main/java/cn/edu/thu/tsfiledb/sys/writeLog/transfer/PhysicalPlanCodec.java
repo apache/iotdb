@@ -9,19 +9,16 @@ import java.util.List;
 import cn.edu.thu.tsfile.common.utils.BytesUtils;
 import cn.edu.thu.tsfile.common.utils.ReadWriteStreamUtils;
 import cn.edu.thu.tsfile.timeseries.read.qp.Path;
-import cn.edu.thu.tsfiledb.qp.logical.operator.Operator.OperatorType;
-import cn.edu.thu.tsfiledb.qp.physical.plan.DeletePlan;
-import cn.edu.thu.tsfiledb.qp.physical.plan.InsertPlan;
-import cn.edu.thu.tsfiledb.qp.physical.plan.MultiInsertPlan;
-import cn.edu.thu.tsfiledb.qp.physical.plan.UpdatePlan;
+import cn.edu.thu.tsfiledb.qp.logical.Operator.OperatorType;
+import cn.edu.thu.tsfiledb.qp.physical.crud.DeletePlan;
+import cn.edu.thu.tsfiledb.qp.physical.crud.MultiInsertPlan;
+import cn.edu.thu.tsfiledb.qp.physical.crud.UpdatePlan;
 
 /**
  * @author CGF
  */
 public enum PhysicalPlanCodec {
 
-    // ordinal : 14, 15, 16
-    INSERTPLAN(OperatorType.INSERT.ordinal(), codecInstances.insertPlanCodec),
     MULTIINSERTPLAN(OperatorType.MULTIINSERT.ordinal(), codecInstances.multiInsertPlanCodec),
     UPDATEPLAN(OperatorType.UPDATE.ordinal(), codecInstances.updatePlanCodec),
     DELETEPLAN(OperatorType.DELETE.ordinal(), codecInstances.deletePlanCodec);
@@ -50,69 +47,6 @@ public enum PhysicalPlanCodec {
     }
 
     static class codecInstances {
-
-        static final Codec<InsertPlan> insertPlanCodec = new Codec<InsertPlan>() {
-            @Override
-            public byte[] encode(InsertPlan t) {
-                int operatorType = OperatorType.INSERT.ordinal();
-                int insertType = t.getInsertType();
-
-                byte[] timeBytes = BytesUtils.longToBytes(t.getTime());
-
-                byte[] valueBytes = BytesUtils.StringToBytes(t.getValue());
-                byte[] valueBytesLength = ReadWriteStreamUtils.getUnsignedVarInt(valueBytes.length);
-                byte[] pathBytes = BytesUtils.StringToBytes(t.getPath().getFullPath());
-                byte[] pathBytesLength = ReadWriteStreamUtils.getUnsignedVarInt(pathBytes.length);
-
-                int totalLength = 1 + 1 + timeBytes.length + valueBytesLength.length + valueBytes.length
-                        + pathBytes.length + pathBytesLength.length;
-
-                byte[] res = new byte[totalLength];
-                int pos = 0;
-                res[0] = (byte) operatorType;
-                res[1] = (byte) insertType;
-                pos += 2;
-                System.arraycopy(timeBytes, 0, res, pos, timeBytes.length);
-                pos += timeBytes.length;
-
-                System.arraycopy(valueBytesLength, 0, res, pos, valueBytesLength.length);
-                pos += valueBytesLength.length;
-                System.arraycopy(valueBytes, 0, res, pos, valueBytes.length);
-                pos += valueBytes.length;
-
-                System.arraycopy(pathBytesLength, 0, res, pos, pathBytesLength.length);
-                pos += pathBytesLength.length;
-                System.arraycopy(pathBytes, 0, res, pos, pathBytes.length);
-                pos += pathBytes.length;
-
-                return res;
-            }
-
-            @Override
-            public InsertPlan decode(byte[] bytes) throws IOException {
-                ByteArrayInputStream bais = new ByteArrayInputStream(bytes);
-
-                int type = bais.read();
-                int insertType = bais.read();
-
-                byte[] timeBytes = new byte[8];
-                bais.read(timeBytes, 0, 8);
-                long time = BytesUtils.bytesToLong(timeBytes);
-
-                int valueLength = ReadWriteStreamUtils.readUnsignedVarInt(bais);
-                byte[] valueBytes = new byte[valueLength];
-                bais.read(valueBytes, 0, valueLength);
-                String value = BytesUtils.bytesToString(valueBytes);
-
-                int pathLength = ReadWriteStreamUtils.readUnsignedVarInt(bais);
-                byte[] pathBytes = new byte[pathLength];
-                bais.read(pathBytes, 0, pathLength);
-                String path = BytesUtils.bytesToString(pathBytes);
-
-                InsertPlan ans = new InsertPlan(insertType, time, value, new Path(path));
-                return ans;
-            }
-        };
 
         static final Codec<DeletePlan> deletePlanCodec = new Codec<DeletePlan>() {
 
@@ -235,7 +169,7 @@ public enum PhysicalPlanCodec {
 
                 int allLen = 0, mLen = 0, pos = 0;
                 List<byte[]> measurementBytesList = new ArrayList<>();
-                List<String> measurementList = t.getMeasurementList();
+                List<String> measurementList = t.getMeasurements();
                 for (String m : measurementList) {
                     byte[] mBytes = BytesUtils.StringToBytes(m);
                     byte[] lenBytes = ReadWriteStreamUtils.getUnsignedVarInt(mBytes.length);
@@ -259,7 +193,7 @@ public enum PhysicalPlanCodec {
 
                 allLen = 0;
                 List<byte[]> valueBytesList = new ArrayList<>();
-                List<String> valueList = t.getInsertValues();
+                List<String> valueList = t.getValues();
                 for (String m : valueList) {
                     byte[] vBytes = BytesUtils.StringToBytes(m);
                     byte[] lenBytes = ReadWriteStreamUtils.getUnsignedVarInt(vBytes.length);
@@ -317,7 +251,6 @@ public enum PhysicalPlanCodec {
 
                 int type = bais.read();
                 int insertType = bais.read();
-
                 byte[] timeBytes = new byte[8];
                 bais.read(timeBytes, 0, 8);
                 long time = BytesUtils.bytesToLong(timeBytes);
@@ -357,7 +290,4 @@ public enum PhysicalPlanCodec {
         };
 
     }
-
-    ;
-
 }

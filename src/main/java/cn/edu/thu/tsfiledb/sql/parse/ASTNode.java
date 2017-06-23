@@ -13,9 +13,8 @@ import org.antlr.runtime.tree.Tree;
 
 import org.codehaus.plexus.util.StringUtils;
 
-import cn.edu.thu.tsfiledb.sql.lib.Node;
 
-public class ASTNode extends CommonTree implements Node, Serializable {
+public class ASTNode extends CommonTree implements cn.edu.thu.tsfiledb.sql.parse.Node, Serializable {
 	private static final long serialVersionUID = 1L;
 	private transient StringBuilder astStr;
 	private transient ASTNodeOrigin origin;
@@ -54,7 +53,7 @@ public class ASTNode extends CommonTree implements Node, Serializable {
 	 * @see org.apache.hadoop.hive.ql.lib.Node#getChildren()
 	 */
 	@Override
-	public ArrayList<Node> getChildren() {
+	public ArrayList<cn.edu.thu.tsfiledb.sql.parse.Node> getChildren() {
 		if (super.getChildCount() == 0) {
 			return null;
 		}

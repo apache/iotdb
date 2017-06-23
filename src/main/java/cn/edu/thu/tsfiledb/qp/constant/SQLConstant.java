@@ -5,8 +5,6 @@ import java.util.Map;
 
 import cn.edu.thu.tsfile.timeseries.read.qp.Path;
 
-
-
 /**
  * this class contains several constants used in SQL.
  * 
@@ -14,13 +12,6 @@ import cn.edu.thu.tsfile.timeseries.read.qp.Path;
  *
  */
 public class SQLConstant {
-    public static final String MREGE_EXTENSION = "merge";
-    public static final String ERR_EXTENSION = "err";
-    public static final String PATH_SEPARATOR = ".";
-    public static final String PATH_SEPARATER_NO_REGEX = "\\.";
-
-    public static final String DEFAULT_DELTA_OBJECT_TYPE = "defalut_delta_object_type";
-
     public static final String RESERVED_TIME = "time";
     public static final String RESERVED_FREQ = "freq";
     public static final String RESERVED_DELTA_OBJECT = "delta_object";
@@ -50,17 +41,11 @@ public class SQLConstant {
     public static final int TOK_UPDATE = 26;
     public static final int TOK_QUERY = 27;
     public static final int TOK_MULTIINSERT = 28;
-    // public static final int TOK_VIRTUAL_TABLE = 30;
-    // public static final int TOK_TABNAME = 31;
-    // public static final int TOK_TABREF = 32;
 
     public static final int TOK_AUTHOR_CREATE = 41;
     public static final int TOK_AUTHOR_DROP = 42;
     public static final int TOK_AUTHOR_GRANT = 43;
     public static final int TOK_AUTHOR_REVOKE = 44;
-    /**
-     * 这是是刘昆修改的，为了update user的密码
-     */
     public static final int TOK_AUTHOR_UPDATE_USER = 46;
 
     public static final int TOK_DATALOAD = 45;
@@ -68,17 +53,16 @@ public class SQLConstant {
     public static final int TOK_METADATA_CREATE = 51;
     public static final int TOK_METADATA_DELETE = 52;
     public static final int TOK_METADATA_SET_FILE_LEVEL = 53;
-    public static final int TOK_PORPERTY_CREATE = 54;
-    public static final int TOK_PORPERTY_ADD_LABEL = 55;
-    public static final int TOK_PORPERTY_DELETE_LABEL = 56;
-    public static final int TOK_PORPERTY_LINK = 57;
-    public static final int TOK_PORPERTY_UNLINK = 58;
+    public static final int TOK_PROPERTY_CREATE = 54;
+    public static final int TOK_PROPERTY_ADD_LABEL = 55;
+    public static final int TOK_PROPERTY_DELETE_LABEL = 56;
+    public static final int TOK_PROPERTY_LINK = 57;
+    public static final int TOK_PROPERTY_UNLINK = 58;
 
 
-
-    public static Map<Integer, String> tokenSymbol = new HashMap<Integer, String>();
-    public static Map<Integer, String> tokenNames = new HashMap<Integer, String>();
-    public static Map<Integer, Integer> reverseWords = new HashMap<Integer, Integer>();
+    public static Map<Integer, String> tokenSymbol = new HashMap<>();
+    public static Map<Integer, String> tokenNames = new HashMap<>();
+    public static Map<Integer, Integer> reverseWords = new HashMap<>();
 
     static {
         tokenSymbol.put(KW_AND, "&");
@@ -118,20 +102,17 @@ public class SQLConstant {
         tokenNames.put(TOK_AUTHOR_DROP, "TOK_AUTHOR_DROP");
         tokenNames.put(TOK_AUTHOR_GRANT, "TOK_AUTHOR_GRANT");
         tokenNames.put(TOK_AUTHOR_REVOKE, "TOK_AUTHOR_REVOKE");
-        /**
-         * 这是是刘昆修改的，为了update user的密码
-         */
         tokenNames.put(TOK_AUTHOR_UPDATE_USER, "TOK_AUTHOR_UPDATE_USER");
         tokenNames.put(TOK_DATALOAD, "TOK_DATALOAD");
 
         tokenNames.put(TOK_METADATA_CREATE, "TOK_METADATA_CREATE");
         tokenNames.put(TOK_METADATA_DELETE, "TOK_METADATA_DELETE");
         tokenNames.put(TOK_METADATA_SET_FILE_LEVEL, "TOK_METADATA_SET_FILE_LEVEL");
-        tokenNames.put(TOK_PORPERTY_CREATE, "TOK_PORPERTY_CREATE");
-        tokenNames.put(TOK_PORPERTY_ADD_LABEL, "TOK_PORPERTY_ADD_LABEL");
-        tokenNames.put(TOK_PORPERTY_DELETE_LABEL, "TOK_PORPERTY_DELETE_LABEL");
-        tokenNames.put(TOK_PORPERTY_LINK, "TOK_PORPERTY_LINK");
-        tokenNames.put(TOK_PORPERTY_UNLINK, "TOK_PORPERTY_UNLINK");
+        tokenNames.put(TOK_PROPERTY_CREATE, "TOK_PROPERTY_CREATE");
+        tokenNames.put(TOK_PROPERTY_ADD_LABEL, "TOK_PROPERTY_ADD_LABEL");
+        tokenNames.put(TOK_PROPERTY_DELETE_LABEL, "TOK_PROPERTY_DELETE_LABEL");
+        tokenNames.put(TOK_PROPERTY_LINK, "TOK_PROPERTY_LINK");
+        tokenNames.put(TOK_PROPERTY_UNLINK, "TOK_PROPERTY_UNLINK");
 
     }
 

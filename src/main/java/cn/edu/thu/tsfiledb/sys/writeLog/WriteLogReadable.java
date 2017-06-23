@@ -2,7 +2,7 @@ package cn.edu.thu.tsfiledb.sys.writeLog;
 
 import java.io.IOException;
 
-import cn.edu.thu.tsfiledb.qp.physical.plan.PhysicalPlan;
+import cn.edu.thu.tsfiledb.qp.physical.PhysicalPlan;
 
 public interface WriteLogReadable {
 
