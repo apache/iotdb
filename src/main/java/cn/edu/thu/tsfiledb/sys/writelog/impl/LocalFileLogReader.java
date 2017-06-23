@@ -1,4 +1,4 @@
-package cn.edu.thu.tsfiledb.sys.writeLog.impl;
+package cn.edu.thu.tsfiledb.sys.writelog.impl;
 
 import java.io.*;
 import java.util.ArrayList;
@@ -7,8 +7,8 @@ import java.util.List;
 import cn.edu.thu.tsfile.common.utils.BytesUtils;
 import cn.edu.thu.tsfiledb.qp.logical.Operator.OperatorType;
 import cn.edu.thu.tsfiledb.qp.physical.PhysicalPlan;
-import cn.edu.thu.tsfiledb.sys.writeLog.transfer.PhysicalPlanLogTransfer;
-import cn.edu.thu.tsfiledb.sys.writeLog.WriteLogReadable;
+import cn.edu.thu.tsfiledb.sys.writelog.transfer.PhysicalPlanLogTransfer;
+import cn.edu.thu.tsfiledb.sys.writelog.WriteLogReadable;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,51 +39,6 @@ public class LocalFileLogReader implements WriteLogReadable {
         }
         fileLength = raf.length();
         pos = fileLength;
-    }
-
-    @Override
-    public boolean hasNextOperator() throws IOException {
-        if (!fileExist) {
-            return false;
-        }
-        if (pos <= 0) {
-            return false;
-        }
-        raf.seek(pos - 2);
-        byte[] opeContentLengthBytes = new byte[4];
-        raf.read(opeContentLengthBytes);
-        int opeContentLength = BytesUtils.bytesToInt(opeContentLengthBytes);
-
-        byte[] opeTypeBytes = new byte[1];
-        raf.seek(pos - 2 - opeContentLength);
-        raf.read(opeTypeBytes);
-        int opeType = (int) opeTypeBytes[0];
-
-        if (opeType == OperatorType.UPDATE.ordinal() ||
-                opeType == OperatorType.MULTIINSERT.ordinal() || opeType == OperatorType.DELETE.ordinal()) { // INSERT UPDATE DELETE OPERATOR
-            return true;
-        } else if (opeType == 25) { // FLUSHSTART
-            return false;
-        } else if (opeType == 26) { // FLUSHEND
-            return false;
-        }
-        return false;
-    }
-
-    @Override
-    public byte[] nextOperator() throws IOException {
-
-        raf.seek(pos - 2);
-        byte[] opeContentLengthBytes = new byte[4];
-        raf.read(opeContentLengthBytes);
-        int opeContentLength = BytesUtils.bytesToInt(opeContentLengthBytes);
-
-        byte[] opeContent = new byte[opeContentLength];
-        raf.seek(pos - 2 - opeContentLength);
-        raf.read(opeContent);
-
-        pos = pos - 2 - opeContentLength;
-        return opeContent;
     }
 
     private int tailPos = -1;
@@ -296,52 +251,5 @@ public class LocalFileLogReader implements WriteLogReadable {
         }
 
         return ans;
-//        List<byte[]> bytesList = new ArrayList<>();
-//        int totalLength = 0;
-//git
-//        getStartPos();
-//
-//        if (bufferTailCount == 0 && overflowTailCount == 0) {
-//            tailPos = -1;
-//            return null;
-//        }
-//
-//        int overflowStart = -1, overflowLength = -1;
-//        int bufferStart = -1, bufferLength = -1;
-//
-//        if (bufferTailCount > 0) {
-//            bufferStart = bufferStartList.get(bufferTailCount - 1);
-//            bufferLength = bufferLengthList.get(bufferTailCount - 1);
-//        }
-//        if (overflowTailCount > 0) {
-//            overflowStart = overflowStartList.get(overflowTailCount - 1);
-//            overflowLength = overflowLengthList.get(overflowTailCount - 1);
-//        }
-//
-//        // LOG.info(fileLength + ", " + overflowStart + ":" + overflowLength + ", " + bufferStart + ":" + bufferLength);
-//
-//        if (overflowStart == -1 || (bufferStart < overflowStart) && bufferTailCount > 0) { // overflow operator is empty OR buffer operator is in front of overflow
-//            lraf.seek(bufferStart);
-//            byte[] planBytes = new byte[bufferLength];
-//            lraf.read(planBytes);
-//            bufferTailCount--;
-//            bytesList.add(planBytes);
-//            totalLength += planBytes.length;
-//        } else {
-//            lraf.seek(overflowStart);
-//            byte[] planBytes = new byte[overflowLength];
-//            lraf.read(planBytes);
-//            overflowTailCount--;
-//            bytesList.add(planBytes);
-//            totalLength += planBytes.length;
-//        }
-//
-//        byte[] ans = new byte[totalLength];
-//        int pos = 0;
-//        for (byte[] bs : bytesList) {
-//            System.arraycopy(bs, 0, ans, pos, bs.length);
-//            pos += bs.length;
-//        }
-//        return ans;
     }
 }

@@ -1,9 +1,8 @@
-package cn.edu.thu.tsfiledb.sys.writeLog.impl;
+package cn.edu.thu.tsfiledb.sys.writelog.impl;
 
 import java.io.*;
 
-import cn.edu.thu.tsfile.common.utils.BytesUtils;
-import cn.edu.thu.tsfiledb.sys.writeLog.WriteLogPersistable;
+import cn.edu.thu.tsfiledb.sys.writelog.WriteLogPersistable;
 
 /**
  * @author CGF

@@ -1,4 +1,4 @@
-package cn.edu.thu.tsfiledb.sys.writeLog;
+package cn.edu.thu.tsfiledb.sys.writelog;
 
 import cn.edu.thu.tsfile.common.utils.BytesUtils;
 import cn.edu.thu.tsfile.timeseries.write.record.DataPoint;
@@ -7,9 +7,9 @@ import cn.edu.thu.tsfiledb.conf.TsfileDBDescriptor;
 import cn.edu.thu.tsfiledb.qp.logical.Operator;
 import cn.edu.thu.tsfiledb.qp.physical.crud.MultiInsertPlan;
 import cn.edu.thu.tsfiledb.qp.physical.PhysicalPlan;
-import cn.edu.thu.tsfiledb.sys.writeLog.impl.LocalFileLogReader;
-import cn.edu.thu.tsfiledb.sys.writeLog.impl.LocalFileLogWriter;
-import cn.edu.thu.tsfiledb.sys.writeLog.transfer.PhysicalPlanLogTransfer;
+import cn.edu.thu.tsfiledb.sys.writelog.impl.LocalFileLogReader;
+import cn.edu.thu.tsfiledb.sys.writelog.impl.LocalFileLogWriter;
+import cn.edu.thu.tsfiledb.sys.writelog.transfer.PhysicalPlanLogTransfer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,7 +37,7 @@ public class WriteLogNode {
     private String path;
     private List<PhysicalPlan> plansInMemory;
 
-    public WriteLogNode(String path) {
+    WriteLogNode(String path) {
         this.path = path;
         this.LogCompactSize = TsfileDBDescriptor.getInstance().getConfig().LogCompactSize;
         this.LogMemorySize = TsfileDBDescriptor.getInstance().getConfig().LogMemorySize;
@@ -49,11 +49,11 @@ public class WriteLogNode {
         logSize = 0;
     }
 
-    public void setLogCompactSize(int size) {
+    void setLogCompactSize(int size) {
         this.LogCompactSize = size;
     }
 
-    public void setLogMemorySize(int size) {
+    void setLogMemorySize(int size) {
         this.LogMemorySize = size;
     }
 
@@ -91,7 +91,7 @@ public class WriteLogNode {
         }
     }
 
-    synchronized public void overflowFlushStart() throws IOException {
+    synchronized void overflowFlushStart() throws IOException {
         serializeMemoryToFile();
 
         if (writer == null) {
@@ -104,7 +104,7 @@ public class WriteLogNode {
         LOG.info("Write overflow log start.");
     }
 
-    synchronized public void overflowFlushEnd() throws IOException {
+    synchronized void overflowFlushEnd() throws IOException {
         serializeMemoryToFile();
 
         if (writer == null) {
@@ -119,7 +119,7 @@ public class WriteLogNode {
         checkLogsCompactFileSize(false);
     }
 
-    synchronized public void bufferFlushStart() throws IOException {
+    synchronized void bufferFlushStart() throws IOException {
         serializeMemoryToFile();
 
         if (writer == null) {
@@ -132,7 +132,7 @@ public class WriteLogNode {
         LOG.info("Write bufferwrite log start.");
     }
 
-    synchronized public void bufferFlushEnd() throws IOException {
+    synchronized void bufferFlushEnd() throws IOException {
         serializeMemoryToFile();
 
         if (writer == null) {

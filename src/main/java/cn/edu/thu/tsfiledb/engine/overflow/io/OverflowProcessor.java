@@ -27,7 +27,7 @@ import cn.edu.thu.tsfiledb.engine.overflow.utils.ReadWriteThriftFormatUtils;
 import cn.edu.thu.tsfiledb.engine.overflow.utils.TSFileMetaDataConverter;
 import cn.edu.thu.tsfiledb.engine.overflow.utils.TimePair;
 import cn.edu.thu.tsfiledb.engine.utils.FlushState;
-import cn.edu.thu.tsfiledb.sys.writeLog.WriteLogManager;
+import cn.edu.thu.tsfiledb.sys.writelog.WriteLogManager;
 import cn.edu.thu.tsfile.common.exception.ProcessorException;
 
 public class OverflowProcessor extends LRUProcessor {
