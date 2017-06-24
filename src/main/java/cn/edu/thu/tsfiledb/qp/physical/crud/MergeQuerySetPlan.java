@@ -1,7 +1,7 @@
 package cn.edu.thu.tsfiledb.qp.physical.crud;
 
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
+import java.util.HashSet;
 import java.util.List;
 
 import cn.edu.thu.tsfiledb.qp.physical.PhysicalPlan;
@@ -54,11 +54,11 @@ public class MergeQuerySetPlan extends PhysicalPlan {
             return new ArrayList<>();
         else{
         	List<Path> ret = new ArrayList<>();
-         	LinkedHashMap<Path,Integer> pathMap = new LinkedHashMap<>();
+         	HashSet<Path> pathMap = new HashSet<>();
             for (SeriesSelectPlan series : seriesSelectPlans) {
             	for(Path p : series.getPaths()){
-            		if(!pathMap.containsKey(p)){
-            			pathMap.put(p, 1);
+            		if(!pathMap.contains(p)){
+            			pathMap.add(p);
             			ret.add(p);
             		}
             	}

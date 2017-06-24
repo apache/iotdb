@@ -1,4 +1,4 @@
-package cn.edu.thu.tsfiledb.qp.dataset;
+package cn.edu.thu.tsfiledb.qp.executor.iterator;
 
 import cn.edu.thu.tsfile.common.exception.ProcessorException;
 import cn.edu.thu.tsfile.timeseries.filter.definition.FilterExpression;
@@ -8,6 +8,7 @@ import cn.edu.thu.tsfiledb.qp.executor.QueryProcessExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 
@@ -48,13 +49,13 @@ public class QueryDataSetIterator implements Iterator<QueryDataSet> {
             try {
                 data = conf.query(paths, timeFilter, freqFilter, valueFilter, fetchSize, usedData);
             } catch (ProcessorException e) {
-                throw new RuntimeException(e.getMessage());
+                throw new RuntimeException("meet error in hasNext" + Arrays.toString(e.getStackTrace()));
             }
         if (data == null) {
             logger.error(
                     "data is null! parameters: paths:{},timeFilter:{}, freqFilter:{}, valueFilter:{}, fetchSize:{}, usedData:{}",
                     paths, timeFilter, freqFilter, valueFilter, fetchSize, usedData);
-            throw new RuntimeException("data is null! parameters: paths:");
+            throw new RuntimeException("data is null! parameters: paths:" + paths);
         }
         if (data.hasNextRecord())
             return true;

@@ -17,10 +17,9 @@ import cn.edu.thu.tsfiledb.qp.constant.SQLConstant;
 import cn.edu.thu.tsfiledb.qp.executor.QueryProcessExecutor;
 
 /**
- * basic operator include < > >= <= !=.
- * 
- * @author kangrong
+ * basic operator includes < > >= <= !=.
  *
+ * @author kangrong
  */
 public class BasicFunctionOperator extends FunctionOperator {
     private Logger LOG = LoggerFactory.getLogger(BasicFunctionOperator.class);
@@ -71,39 +70,44 @@ public class BasicFunctionOperator extends FunctionOperator {
         SingleSeriesFilterExpression ret;
         switch (type) {
             case INT32:
-                ret =
-                        funcToken.getSingleSeriesFilterExpression(
-                                FilterFactory.intFilterSeries(path.getDeltaObjectToString(),
-                                        path.getMeasurementToString(), filterType),
-                                Integer.valueOf(value));
+                ret = funcToken.getSingleSeriesFilterExpression(
+                        FilterFactory.intFilterSeries(
+                                path.getDeltaObjectToString(),
+                                path.getMeasurementToString(),
+                                filterType),
+                        Integer.valueOf(value));
                 break;
             case INT64:
-                ret =
-                        funcToken.getSingleSeriesFilterExpression(
-                                FilterFactory.longFilterSeries(path.getDeltaObjectToString(),
-                                        path.getMeasurementToString(), filterType),
-                                Long.valueOf(value));
+                ret = funcToken.getSingleSeriesFilterExpression(
+                        FilterFactory.longFilterSeries(
+                                path.getDeltaObjectToString(),
+                                path.getMeasurementToString(),
+                                filterType),
+                        Long.valueOf(value));
                 break;
             case BOOLEAN:
-                ret =
-                        funcToken.getSingleSeriesFilterExpression(
-                                FilterFactory.booleanFilterSeries(path.getDeltaObjectToString(),
-                                        path.getMeasurementToString(), filterType),
-                                Boolean.valueOf(value));
+                ret = funcToken.getSingleSeriesFilterExpression(
+                        FilterFactory.booleanFilterSeries(
+                                path.getDeltaObjectToString(),
+                                path.getMeasurementToString(),
+                                filterType),
+                        Boolean.valueOf(value));
                 break;
             case FLOAT:
-                ret =
-                        funcToken.getSingleSeriesFilterExpression(
-                                FilterFactory.floatFilterSeries(path.getDeltaObjectToString(),
-                                        path.getMeasurementToString(), filterType),
-                                Float.valueOf(value));
+                ret = funcToken.getSingleSeriesFilterExpression(
+                        FilterFactory.floatFilterSeries(
+                                path.getDeltaObjectToString(),
+                                path.getMeasurementToString(),
+                                filterType),
+                        Float.valueOf(value));
                 break;
             case DOUBLE:
-                ret =
-                        funcToken.getSingleSeriesFilterExpression(
-                                FilterFactory.doubleFilterSeries(path.getDeltaObjectToString(),
-                                        path.getMeasurementToString(), filterType),
-                                Double.valueOf(value));
+                ret = funcToken.getSingleSeriesFilterExpression(
+                        FilterFactory.doubleFilterSeries(
+                                path.getDeltaObjectToString(),
+                                path.getMeasurementToString(),
+                                filterType),
+                        Double.valueOf(value));
                 break;
             default:
                 throw new LogicalOperatorException("unsupported data type:" + type);
@@ -127,17 +131,17 @@ public class BasicFunctionOperator extends FunctionOperator {
         try {
             ret = new BasicFunctionOperator(this.tokenIntType, path.clone(), value);
         } catch (LogicalOperatorException e) {
-            LOG.error("error clone:{}",e.getMessage());
+            LOG.error("error clone:{}", e.getMessage());
             return null;
         }
-        ret.tokenSymbol=tokenSymbol;
+        ret.tokenSymbol = tokenSymbol;
         ret.isLeaf = isLeaf;
         ret.isSingle = isSingle;
         return ret;
     }
-    
+
     @Override
     public String toString() {
-        return "["+ path.getFullPath()+tokenSymbol+ value +"]";
+        return "[" + path.getFullPath() + tokenSymbol + value + "]";
     }
 }

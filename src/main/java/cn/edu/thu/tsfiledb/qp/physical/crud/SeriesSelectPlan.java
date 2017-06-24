@@ -3,8 +3,10 @@ package cn.edu.thu.tsfiledb.qp.physical.crud;
 import static cn.edu.thu.tsfiledb.qp.constant.SQLConstant.lineFeedSignal;
 
 import java.util.*;
+
+import cn.edu.thu.tsfile.common.exception.ProcessorException;
 import cn.edu.thu.tsfile.timeseries.filter.definition.filterseries.FilterSeriesType;
-import cn.edu.thu.tsfiledb.qp.dataset.RowRecordIterator;
+import cn.edu.thu.tsfile.timeseries.read.query.QueryDataSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -57,19 +59,30 @@ public class SeriesSelectPlan extends PhysicalPlan {
         filterExpressions = transformToFilterExpressions(executor);
     }
 
+    /**
+     * filterExpressions include three FilterExpression: TIME_FILTER, FREQUENCY_FILTER, VALUE_FILTER
+     * These filters is for querying data in TsFile
+     *
+     * @return three filter expressions
+     */
     public FilterExpression[] getFilterExpressions() {
         return filterExpressions;
     }
 
+    /**
+     * replace "*" by actual paths
+     *
+     * @param executor query process executor
+     */
     private void removeStarsInPath(QueryProcessExecutor executor) {
         LinkedHashMap<String, Integer> pathMap = new LinkedHashMap<>();
         for (Path path : paths) {
             List<String> all;
             try {
                 all = executor.getAllPaths(path.getFullPath());
-                for(String subp : all){
-                    if(!pathMap.containsKey(subp)){
-                        pathMap.put(subp, 1);
+                for (String subPath : all) {
+                    if (!pathMap.containsKey(subPath)) {
+                        pathMap.put(subPath, 1);
                     }
                 }
             } catch (PathErrorException e) {
@@ -82,6 +95,9 @@ public class SeriesSelectPlan extends PhysicalPlan {
         }
     }
 
+    /**
+     * remove paths that do not exit
+     */
     private void removeNotExistsPaths(QueryProcessExecutor executor) {
         List<Path> existsPaths = new ArrayList<>();
         List<Path> notExistsPaths = new ArrayList<>();
@@ -98,6 +114,13 @@ public class SeriesSelectPlan extends PhysicalPlan {
 
     }
 
+    /**
+     * convert filter operators to filter expressions
+     *
+     * @param executor query process executor
+     * @return three filter expressions
+     * @throws QueryProcessorException exceptions in transforming filter operators
+     */
     private FilterExpression[] transformToFilterExpressions(QueryProcessExecutor executor)
             throws QueryProcessorException {
         FilterExpression timeFilter =
@@ -121,9 +144,9 @@ public class SeriesSelectPlan extends PhysicalPlan {
         return new FilterExpression[]{timeFilter, freqFilter, valueFilter};
     }
 
+
     /**
-     *
-     * @param executor
+     * @param executor query process executor
      * @return Iterator<RowRecord>
      */
     private Iterator<RowRecord> getRecordIterator(QueryProcessExecutor executor) throws QueryProcessorException {
@@ -159,5 +182,51 @@ public class SeriesSelectPlan extends PhysicalPlan {
     @Override
     public List<Path> getPaths() {
         return paths;
+    }
+
+    private class RowRecordIterator implements Iterator<RowRecord> {
+        private boolean noNext = false;
+        private List<Path> paths;
+        private final int fetchSize;
+        private final QueryProcessExecutor executor;
+        private QueryDataSet data = null;
+        private FilterExpression timeFilter;
+        private FilterExpression freqFilter;
+        private FilterExpression valueFilter;
+
+        public RowRecordIterator(List<Path> paths, int fetchSize, QueryProcessExecutor executor,
+                                 FilterExpression timeFilter, FilterExpression freqFilter,
+                                 FilterExpression valueFilter) {
+            this.paths = paths;
+            this.fetchSize = fetchSize;
+            this.executor = executor;
+            this.timeFilter = timeFilter;
+            this.freqFilter = freqFilter;
+            this.valueFilter = valueFilter;
+        }
+
+        @Override
+        public boolean hasNext() {
+            if (noNext)
+                return false;
+            if (data == null || !data.hasNextRecord())
+                try {
+                    data = executor.query(paths, timeFilter, freqFilter, valueFilter, fetchSize, data);
+                } catch (ProcessorException e) {
+                    throw new RuntimeException(e.getMessage());
+                }
+            if (data.hasNextRecord())
+                return true;
+            else {
+                noNext = true;
+                return false;
+            }
+        }
+
+        @Override
+        public RowRecord next() {
+            return data.getNextRecord();
+        }
+
     }
 }

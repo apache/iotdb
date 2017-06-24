@@ -12,8 +12,6 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -32,7 +30,6 @@ import static org.junit.Assert.fail;
  */
 @RunWith(Parameterized.class)
 public class TestSingleFileQpQuery {
-    private static final Logger LOG = LoggerFactory.getLogger(TestSingleFileQpQuery.class);
     private QueryProcessExecutor exec;
     private QueryProcessor processor;
 

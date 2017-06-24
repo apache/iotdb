@@ -94,6 +94,17 @@ public class AuthorPlan extends PhysicalPlan {
 	}
 
 	@Override
+	public String toString() {
+		return "userName: "+ userName +
+				"\nroleName: " + roleName +
+				"\npassword: " + password +
+				"\nnewPassword: " + newPassword +
+				"\npermissions: " + permissions +
+				"\nnodeName: " + nodeName +
+				"\nauthorType: " + authorType;
+	}
+
+	@Override
 	public List<Path> getPaths() {
 		List<Path> ret = new ArrayList<>();
 		if (nodeName != null)

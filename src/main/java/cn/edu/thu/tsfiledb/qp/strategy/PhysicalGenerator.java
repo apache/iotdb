@@ -87,9 +87,9 @@ public class PhysicalGenerator {
             case QUERY:
                 QueryOperator query = (QueryOperator) operator;
                 return transformQuery(query);
-
+            default:
+                    throw new LogicalOperatorException("not supported operator type: " + operator.getType());
         }
-        return null;
     }
 
 

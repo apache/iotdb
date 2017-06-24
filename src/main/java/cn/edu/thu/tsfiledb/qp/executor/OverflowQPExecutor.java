@@ -2,20 +2,16 @@ package cn.edu.thu.tsfiledb.qp.executor;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
 import cn.edu.thu.tsfiledb.auth.model.AuthException;
 import cn.edu.thu.tsfiledb.exception.ArgsErrorException;
-import cn.edu.thu.tsfiledb.qp.exception.QueryProcessorException;
 import cn.edu.thu.tsfiledb.qp.logical.sys.AuthorOperator;
 import cn.edu.thu.tsfiledb.qp.logical.sys.MetadataOperator;
 import cn.edu.thu.tsfiledb.qp.logical.sys.PropertyOperator;
 import cn.edu.thu.tsfiledb.qp.physical.PhysicalPlan;
 import cn.edu.thu.tsfiledb.qp.physical.crud.*;
-import cn.edu.thu.tsfiledb.qp.dataset.MergeQuerySetIterator;
-import cn.edu.thu.tsfiledb.qp.dataset.QueryDataSetIterator;
 import cn.edu.thu.tsfiledb.qp.physical.sys.AuthorPlan;
 import cn.edu.thu.tsfiledb.qp.physical.sys.LoadDataPlan;
 import cn.edu.thu.tsfiledb.qp.physical.sys.MetadataPlan;
@@ -65,7 +61,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
                 return result > 0;
             case AUTHOR:
                 AuthorPlan author = (AuthorPlan) plan;
-                return crudAuthor(author);
+                return operateAuthor(author);
             case LOADDATA:
                 LoadDataPlan loadData = (LoadDataPlan) plan;
                 LoadDataUtils load = new LoadDataUtils();
@@ -73,10 +69,10 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
                 return true;
             case METADATA:
                 MetadataPlan metadata = (MetadataPlan) plan;
-                return crudMetadata(metadata);
+                return operateMetadata(metadata);
             case PROPERTY:
                 PropertyPlan property = (PropertyPlan) plan;
-                return crudProperty(property);
+                return operateProperty(property);
             default:
                 throw new UnsupportedOperationException();
         }
@@ -197,7 +193,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
         }
     }
 
-    private boolean crudAuthor(AuthorPlan author) throws ProcessorException{
+    private boolean operateAuthor(AuthorPlan author) throws ProcessorException{
         AuthorOperator.AuthorType authorType = author.getAuthorType();
         String userName = author.getUserName();
         String roleName = author.getRoleName();
@@ -257,7 +253,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
     }
 
 
-    private boolean crudMetadata(MetadataPlan metadataPlan) throws ProcessorException {
+    private boolean operateMetadata(MetadataPlan metadataPlan) throws ProcessorException {
         MetadataOperator.NamespaceType namespaceType = metadataPlan.getNamespaceType();
         Path path = metadataPlan.getPath();
         String dataType = metadataPlan.getDataType();
@@ -304,7 +300,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
         }
     }
 
-    private boolean crudProperty(PropertyPlan propertyPlan) throws ProcessorException {
+    private boolean operateProperty(PropertyPlan propertyPlan) throws ProcessorException {
         PropertyOperator.PropertyType propertyType = propertyPlan.getPropertyType();
         Path propertyPath = propertyPlan.getPropertyPath();
         Path metadataPath = propertyPlan.getMetadataPath();

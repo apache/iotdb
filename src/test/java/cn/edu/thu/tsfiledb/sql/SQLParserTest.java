@@ -9,6 +9,7 @@ import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 
 import static org.junit.Assert.assertEquals;
 
@@ -83,7 +84,7 @@ public class SQLParserTest {
     @Test
     public void quit() throws ParseException, RecognitionException {
         // template for test case
-        ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_QUIT"));
+        ArrayList<String> ans = new ArrayList<>(Collections.singletonList("TOK_QUIT"));
         ArrayList<String> rec = new ArrayList<>();
         ASTNode astTree = ParseGenerator.generateAST("quit");
         astTree = ParseUtils.findRootNonNullToken(astTree);
