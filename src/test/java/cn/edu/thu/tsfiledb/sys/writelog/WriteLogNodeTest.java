@@ -1,4 +1,4 @@
-package cn.edu.thu.tsfiledb.sys.writeLog;
+package cn.edu.thu.tsfiledb.sys.writelog;
 
 import cn.edu.thu.tsfile.timeseries.read.qp.Path;
 import cn.edu.thu.tsfiledb.qp.physical.PhysicalPlan;
@@ -39,10 +39,7 @@ public class WriteLogNodeTest {
         node.bufferFlushEnd();
         values.clear();
         values.add("4.0");
-        node.write(new MultiInsertPlan(1,"d1", 101L, measurements, values));
-//        values.clear();
-//        values.add("8.0");
-//        node.write(new MultiInsertPlan(1, fileNode, 105L, measurements, values));
+        node.write(new MultiInsertPlan(1, "d1", 101L, measurements, values));
         node.overflowFlushStart();
         node.write(new UpdatePlan(500L, 600L, "4.0", path));
         node.overflowFlushEnd();
@@ -83,7 +80,7 @@ public class WriteLogNodeTest {
         Assert.assertTrue(plan == null);
         values.clear();
         values.add("1.0");
-        node.write(new MultiInsertPlan(1, fileNode,100L, measurements, values));
+        node.write(new MultiInsertPlan(1, fileNode, 100L, measurements, values));
         for (int i = 101; i <= 201; i++) {
             node.write(new UpdatePlan(i, i * 2, "2.0", path));
         }
@@ -156,7 +153,7 @@ public class WriteLogNodeTest {
         }
         int cnt = 1;
         while ((plan = node.getPhysicalPlan()) != null) {
-            cnt ++;
+            cnt++;
             // output(plan);
         }
         Assert.assertEquals(cnt, 92);
@@ -166,11 +163,11 @@ public class WriteLogNodeTest {
         node.setLogMemorySize(1);
         node.setLogCompactSize(10);
         node.resetFileStatus();
-        for (int i = 1;i <= 10;i++) {
+        for (int i = 1; i <= 10; i++) {
             measurementList = new ArrayList<>();
             valueList = new ArrayList<>();
             for (int j = 1; j <= 10; j++) {
-                measurementList.add("s"+i+"-"+j);
+                measurementList.add("s" + i + "-" + j);
                 valueList.add(String.valueOf(i));
             }
             multiInsertPlan = new MultiInsertPlan(1, fileNode, 1L, measurementList, valueList);
@@ -178,18 +175,18 @@ public class WriteLogNodeTest {
         }
         node.bufferFlushStart();
         node.bufferFlushEnd();
-        for (int i = 1;i <= 1;i++) {
+        for (int i = 1; i <= 1; i++) {
             measurementList = new ArrayList<>();
             valueList = new ArrayList<>();
             for (int j = 1; j <= 10; j++) {
-                measurementList.add("s"+i+"-"+j);
+                measurementList.add("s" + i + "-" + j);
                 valueList.add(String.valueOf(i));
             }
             multiInsertPlan = new MultiInsertPlan(1, fileNode, 1L, measurementList, valueList);
             node.write(multiInsertPlan);
         }
         while ((plan = node.getPhysicalPlan()) != null) {
-            cnt ++;
+            cnt++;
             // output(plan);
         }
         node.resetFileStatus();
