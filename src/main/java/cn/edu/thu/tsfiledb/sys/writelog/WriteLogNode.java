@@ -18,6 +18,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+
 /**
  * System log persist interface.
  *
@@ -145,8 +146,6 @@ public class WriteLogNode {
         LOG.info("Write bufferwrite log end.");
         hasBufferWriteFlush = true;
         checkLogsCompactFileSize(false);
-//		writer.close();
-//		writer = null;
     }
 
     /**
@@ -161,8 +160,13 @@ public class WriteLogNode {
             LocalFileLogWriter writerV2 = new LocalFileLogWriter(backFilePath);
             LocalFileLogReader oldReader = new LocalFileLogReader(filePath);
             writerV2.write(oldReader.getFileCompactData());
+            // Don't forget to close the stream.
+            writerV2.close();
+            oldReader.close();
             new File(filePath).delete();
             new File(filePath + ".backup").renameTo(new File(filePath));
+            writer.close();
+            writer = null;
             //writer = new LocalFileLogWriter(filePath);
             writer = null;
             logSize = 0;
@@ -229,9 +233,46 @@ public class WriteLogNode {
     }
 
 
-    public void resetFileStatus() throws IOException {
-        File f = new File(filePath);
-        if (f.exists())
-            f.delete();
+    public void closeStreams() throws IOException {
+        closeReadStream();
+        closeWriteStream();
+    }
+
+    public void closeWriteStream() {
+        if (writer != null) {
+            writer.close();
+            writer = null;
+        }
+    }
+
+    public void closeReadStream() throws IOException {
+        if (reader != null) {
+            reader.close();
+            reader = null;
+        }
+    }
+
+    public void readerReset() throws IOException {
+        if (this.reader != null) {
+            this.reader.close();
+        }
+        this.reader = null;
+    }
+
+    public void removeFiles() {
+        File currentFile = new File(filePath);
+        //currentFile.
+        if (currentFile.exists()) {
+            if (!currentFile.delete() ) {
+                LOG.error("current file not delete");
+            }
+        }
+
+        File backFile = new File(backFilePath);
+        if (backFile.exists()) {
+            if (!backFile.delete() ) {
+                LOG.error("backup file not delete");
+            }
+        }
     }
 }

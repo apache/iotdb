@@ -19,28 +19,6 @@ import org.slf4j.LoggerFactory;
 public class LocalFileLogReader implements WriteLogReadable {
     private static final Logger LOG = LoggerFactory.getLogger(LocalFileLogReader.class);
     private String fileName = "";
-    private RandomAccessFile raf = null;
-    private long pos = 0;
-    private long fileLength = 0;
-    private boolean fileExist;
-
-    public LocalFileLogReader(String file) throws IOException {
-        fileExist = true;
-        fileName = file;
-        File f = new File(file);
-        if (!f.getParentFile().exists()) {
-            f.getParentFile().mkdirs();
-        }
-        try {
-            raf = new RandomAccessFile(file, "rw");
-        } catch (FileNotFoundException e) {
-            // e.printStackTrace();
-            fileExist = false;
-        }
-        fileLength = raf.length();
-        pos = fileLength;
-    }
-
     private int tailPos = -1;
     private int overflowTailCount = 0;
     private int bufferTailCount = 0;
@@ -49,6 +27,14 @@ public class LocalFileLogReader implements WriteLogReadable {
     private List<Integer> overflowStartList = new ArrayList<>();
     private List<Integer> bufferStartList = new ArrayList<>();
     private RandomAccessFile lraf = null;
+
+    public LocalFileLogReader(String fileName) throws IOException {
+        this.fileName = fileName;
+        File f = new File(fileName);
+        if (!f.getParentFile().exists()) {
+            f.getParentFile().mkdirs();
+        }
+    }
 
     private void getStartPos() throws IOException {
         tailPos = 0;
@@ -251,5 +237,13 @@ public class LocalFileLogReader implements WriteLogReadable {
         }
 
         return ans;
+    }
+
+    @Override
+    public void close() throws IOException {
+        if (lraf != null) {
+            lraf.close();
+            lraf = null;
+        }
     }
 }
