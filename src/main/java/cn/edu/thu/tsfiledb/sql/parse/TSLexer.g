@@ -66,10 +66,13 @@ KW_UNLINK: 'UNLINK';
 
 QUOTE : '\'' ;
 
+DATETIME_T : 'T';
 DOT : '.'; // generated as a part of Number rule
 COLON : ':' ;
 COMMA : ',' ;
 SEMICOLON : ';' ;
+
+
 
 LPAREN : '(' ;
 RPAREN : ')' ;
@@ -86,7 +89,6 @@ DIVIDE : '/';
 PLUS : '+';
 MINUS : '-';
 STAR : '*';
-
 
 // LITERALS
 fragment
@@ -117,13 +119,13 @@ StringLiteral
 
 Integer
 	:
-	Digit+
+	('-' | '+')? Digit+
 	;
 
 
 Float
 	:
-	Digit+ DOT Digit+
+	('-' | '+')? Digit+ DOT Digit+
 	;
 
 Identifier

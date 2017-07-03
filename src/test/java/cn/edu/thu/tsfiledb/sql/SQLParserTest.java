@@ -333,9 +333,9 @@ public class SQLParserTest {
     public void delete() throws ParseException, RecognitionException {
         // template for test case
         ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_DELETE", "TOK_PATH", "d1", "s1", "TOK_WHERE", "<",
-                "TOK_PATH", "time", "TOK_DATETIME", "2016", "11", "16", "16", "22", "33", "75"));
+                "TOK_PATH", "time", "TOK_DATETIME", "2016", "-11", "-16", "16", "22", "33", "+75"));
         ArrayList<String> rec = new ArrayList<>();
-        ASTNode astTree = ParseGenerator.generateAST("delete from d1.s1 where time < (2016-11-16 16:22:33:75)");
+        ASTNode astTree = ParseGenerator.generateAST("delete from d1.s1 where time < 2016-11-16T16:22:33+75");
         astTree = ParseUtils.findRootNonNullToken(astTree);
         recursivePrintSon(astTree, rec);
 
@@ -350,9 +350,9 @@ public class SQLParserTest {
     public void multiInsert() throws ParseException, RecognitionException {
         // template for test case
         ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_MULTINSERT", "TOK_PATH", "root", "vehicle", "d0",
-                "TOK_MULT_IDENTIFIER", "TOK_TIME", "s0", "TOK_MULT_VALUE", "12345678", "1011"));
+                "TOK_MULT_IDENTIFIER", "TOK_TIME", "s0", "TOK_MULT_VALUE", "-12345678", "-1011.666"));
         ArrayList<String> rec = new ArrayList<>();
-        ASTNode astTree = ParseGenerator.generateAST("insert into root.vehicle.d0 (timestamp, s0)  values(12345678 , 1011)");
+        ASTNode astTree = ParseGenerator.generateAST("insert into root.vehicle.d0 (timestamp, s0)  values(-12345678 , -1011.666)");
         astTree = ParseUtils.findRootNonNullToken(astTree);
         recursivePrintSon(astTree, rec);
 
@@ -465,9 +465,9 @@ public class SQLParserTest {
     public void updateValueWithFormatedTime() throws ParseException, RecognitionException {
         ArrayList<String> ans = new ArrayList<String>(Arrays.asList("TOK_UPDATE", "TOK_PATH", "d1", "s1", "TOK_VALUE",
                 "33000", "TOK_WHERE", "or", "<=", "TOK_PATH", "time", "10", ">=", "TOK_PATH", "time", "TOK_DATETIME",
-                "2016", "11", "16", "16", "22", "33", "75"));
+                "now"));
         ArrayList<String> rec = new ArrayList<>();
-        ASTNode astTree = ParseGenerator.generateAST("update d1.s1 set value = 33000 where time <= 10 or time >= (2016-11-16 16:22:33:75)");
+        ASTNode astTree = ParseGenerator.generateAST("update d1.s1 set value = 33000 where time <= 10 or time >= now()");
         astTree = ParseUtils.findRootNonNullToken(astTree);
         recursivePrintSon(astTree, rec);
 

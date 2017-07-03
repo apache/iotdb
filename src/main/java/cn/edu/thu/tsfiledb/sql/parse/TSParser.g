@@ -137,13 +137,14 @@ ArrayList<ParseError> errors = new ArrayList<ParseError>();
         xlateMap.put("KW_KEY", "KEY");
         xlateMap.put("KW_ENABLE", "ENABLE");
         xlateMap.put("KW_DISABLE", "DISABLE");
+		xlateMap.put("DATETIME_T", "T");
 
         // Operators
         xlateMap.put("DOT", ".");
         xlateMap.put("COLON", ":");
         xlateMap.put("COMMA", ",");
         xlateMap.put("SEMICOLON", ");");
-
+		
         xlateMap.put("LPAREN", "(");
         xlateMap.put("RPAREN", ")");
         xlateMap.put("LSQUARE", "[");
@@ -284,15 +285,14 @@ execStatement
 
 
 dateFormat
-    : LPAREN year = Integer MINUS month = Integer MINUS day = Integer hour = Integer COLON minute = Integer COLON second = Integer COLON mil_second = Integer RPAREN
+    : year=Integer month=Integer day=Integer DATETIME_T hour=Integer COLON minute=Integer COLON second=Integer mil_second=Integer
     -> ^(TOK_DATETIME $year $month $day $hour $minute $second $mil_second)
+    | func=Identifier LPAREN RPAREN -> ^(TOK_DATETIME $func)
     ;
 
 dateFormatWithNumber
-    : LPAREN year = Integer MINUS month = Integer MINUS day = Integer hour = Integer COLON minute = Integer COLON second = Integer COLON mil_second = Integer RPAREN
-    -> ^(TOK_DATETIME $year $month $day $hour $minute $second $mil_second)
-    | Integer
-    -> Integer
+    : dateFormat -> dateFormat
+    | Integer -> Integer
     ;
 
 
