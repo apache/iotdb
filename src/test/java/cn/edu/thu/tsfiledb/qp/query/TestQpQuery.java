@@ -5,6 +5,7 @@ import cn.edu.thu.tsfile.common.exception.ProcessorException;
 import cn.edu.thu.tsfile.timeseries.read.qp.Path;
 import cn.edu.thu.tsfile.timeseries.read.query.QueryDataSet;
 import cn.edu.thu.tsfile.timeseries.utils.StringContainer;
+import cn.edu.thu.tsfiledb.qp.constant.SQLConstant;
 import cn.edu.thu.tsfiledb.qp.exception.QueryProcessorException;
 import cn.edu.thu.tsfiledb.qp.physical.PhysicalPlan;
 import cn.edu.thu.tsfiledb.qp.QueryProcessor;
@@ -86,8 +87,7 @@ public class TestQpQuery {
 //                                "select sensor_1,sensor_2 "
 //                                        + "from root.laptop.device_1 "
 //                                        + "where time <= 20 and (sensor_1 >= 60 or sensor_1 <= 110)",
-//                                new String[] {"20, <root.laptop.device_1.sensor_1,21> <root.laptop.device_1.sensor_2,null> "},
-//                                null},
+//                                new String[] {"20, <root.laptop.device_1.sensor_1,21> <root.laptop.device_1.sensor_2,null> "}},
                         // test DNF2
 //                        {
 //
@@ -140,4 +140,16 @@ public class TestQpQuery {
         assertEquals(result.length, i);
         LOG.info("Query processing complete\n");
     }
+
+    @Test
+    public void testAggregation() throws QueryProcessorException {
+        String sqlStr =
+                "select sum(device_1.sensor_1) " + "from root.laptop "
+                        + "where time <= 51 or !(time != 100 and time < 460)";
+        PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
+        if (!plan.isQuery())
+            fail();
+        assertEquals("sum", processor.getExecutor().getParameter(SQLConstant.IS_AGGREGATION));
+    }
+
 }

@@ -52,7 +52,7 @@ public class TSPlanContextAuthorTest {
     }
 
     @Test
-    public void testanalyzeAuthor() throws QueryProcessorException {
+    public void testAnalyzeAuthor() throws QueryProcessorException {
         QueryProcessor processor = new QueryProcessor(new MemIntQpExecutor());
         AuthorPlan author = (AuthorPlan) processor.parseSQLToPhysicalPlan(inputSQL);
         if (author == null)

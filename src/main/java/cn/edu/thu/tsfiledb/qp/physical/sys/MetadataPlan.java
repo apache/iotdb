@@ -67,6 +67,19 @@ public class MetadataPlan extends PhysicalPlan {
 	}
 
 	@Override
+	public String toString() {
+		String ret =  "path: " + path +
+				"\ndataType: " + dataType +
+				"\nencoding: " + encoding +
+				"\nnamespace type: " + namespaceType +
+				"\nargs: ";
+		for (String arg: encodingArgs) {
+			ret = ret + arg + ",";
+		}
+		return ret;
+	}
+
+	@Override
 	public List<Path> getPaths() {
 		List<Path> ret = new ArrayList<>();
 		if (path != null)

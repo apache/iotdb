@@ -14,7 +14,6 @@ import cn.edu.thu.tsfile.timeseries.read.qp.Path;
 public class SQLConstant {
     public static final String RESERVED_TIME = "time";
     public static final String RESERVED_FREQ = "freq";
-    public static final String RESERVED_DELTA_OBJECT = "delta_object";
     public static final String IS_AGGREGATION = "IS_AGGREGATION";
 
     public static final String lineFeedSignal = "\n";
@@ -129,8 +128,7 @@ public class SQLConstant {
 
     public static boolean isReservedPath(Path pathStr) {
         return pathStr.equals(SQLConstant.RESERVED_TIME)
-                || pathStr.equals(SQLConstant.RESERVED_FREQ)
-                || pathStr.equals(SQLConstant.RESERVED_DELTA_OBJECT);
+                || pathStr.equals(SQLConstant.RESERVED_FREQ);
 
     }
 }

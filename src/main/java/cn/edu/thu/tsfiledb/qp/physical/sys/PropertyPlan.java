@@ -39,6 +39,13 @@ public class PropertyPlan extends PhysicalPlan {
     }
 
     @Override
+    public String toString() {
+        return "propertyPath: "+ propertyPath.toString() +
+                "\nmetadataPath: " + metadataPath +
+                "\npropertyType: " + propertyType;
+    }
+
+    @Override
     public List<Path> getPaths() {
         List<Path> ret = new ArrayList<>();
         if (metadataPath != null)
