@@ -15,6 +15,7 @@ public class SQLConstant {
     public static final String RESERVED_TIME = "time";
     public static final String RESERVED_FREQ = "freq";
     public static final String IS_AGGREGATION = "IS_AGGREGATION";
+    public static final String NOW_FUNC = "now";
 
     public static final String lineFeedSignal = "\n";
     public static final String ROOT = "root";

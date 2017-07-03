@@ -21,6 +21,7 @@ import cn.edu.thu.tsfiledb.sql.parse.Node;
 import cn.edu.thu.tsfiledb.sql.parse.TSParser;
 
 import org.antlr.runtime.Token;
+import org.joda.time.DateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -430,20 +431,19 @@ public class LogicalGenerator {
     }
 
     private String parseTokenTime(ASTNode astNode) throws LogicalOperatorException {
-        SimpleDateFormat sdf;
-        sdf = new SimpleDateFormat("yyyyMMddHHmmssSSS");
-
         StringContainer sc = new StringContainer();
         for (int i = 0; i < astNode.getChildCount(); i++) {
             sc.addTail(astNode.getChild(i).getText());
         }
-        Date date;
-        try {
-            date = sdf.parse(sc.toString());
-        } catch (ParseException e) {
-            throw new LogicalOperatorException("parse time error,String:" + sc.toString() + "message:" + e.getMessage());
+        return parseTimeFormat(sc.toString()) + "";
+    }
+    
+    private long parseTimeFormat(String format){
+        if(format.equals(SQLConstant.NOW_FUNC)){
+            return System.currentTimeMillis();
         }
-        return String.valueOf(date.getTime());
+        DateTime datetime = new DateTime(format);
+        return datetime.getMillis();
     }
 
     private Path parsePath(ASTNode node) {
