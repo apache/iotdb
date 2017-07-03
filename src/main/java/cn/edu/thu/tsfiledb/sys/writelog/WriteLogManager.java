@@ -27,7 +27,7 @@ public class WriteLogManager {
     private WriteLogManager() {
         logNodeMaps = new HashMap<>();
     }
-    
+
     public static WriteLogManager getInstance() {
         return instance;
     }
