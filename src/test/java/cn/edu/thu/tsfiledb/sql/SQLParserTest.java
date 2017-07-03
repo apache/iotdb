@@ -333,7 +333,7 @@ public class SQLParserTest {
     public void delete() throws ParseException, RecognitionException {
         // template for test case
         ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_DELETE", "TOK_PATH", "d1", "s1", "TOK_WHERE", "<",
-                "TOK_PATH", "time", "TOK_DATETIME", "2016", "-11", "-16", "16", "22", "33", "+75"));
+                "TOK_PATH", "time", "TOK_DATETIME", "2016-11-16T16:22:33+75"));
         ArrayList<String> rec = new ArrayList<>();
         ASTNode astTree = ParseGenerator.generateAST("delete from d1.s1 where time < 2016-11-16T16:22:33+75");
         astTree = ParseUtils.findRootNonNullToken(astTree);

@@ -1,4 +1,4 @@
-// $ANTLR 3.5.2 TSLexer.g 2017-07-03 22:27:52
+// $ANTLR 3.5.2 TSLexer.g 2017-07-03 23:47:17
 
 package cn.edu.thu.tsfiledb.sql.parse;
 
@@ -14,7 +14,7 @@ public class TSLexer extends Lexer {
 	public static final int EOF=-1;
 	public static final int COLON=4;
 	public static final int COMMA=5;
-	public static final int DATETIME_T=6;
+	public static final int DATETIME=6;
 	public static final int DIVIDE=7;
 	public static final int DOT=8;
 	public static final int Digit=9;
@@ -1090,33 +1090,13 @@ public class TSLexer extends Lexer {
 	}
 	// $ANTLR end "QUOTE"
 
-	// $ANTLR start "DATETIME_T"
-	public final void mDATETIME_T() throws RecognitionException {
-		try {
-			int _type = DATETIME_T;
-			int _channel = DEFAULT_TOKEN_CHANNEL;
-			// TSLexer.g:69:12: ( 'T' )
-			// TSLexer.g:69:14: 'T'
-			{
-			match('T'); 
-			}
-
-			state.type = _type;
-			state.channel = _channel;
-		}
-		finally {
-			// do for sure before leaving
-		}
-	}
-	// $ANTLR end "DATETIME_T"
-
 	// $ANTLR start "DOT"
 	public final void mDOT() throws RecognitionException {
 		try {
 			int _type = DOT;
 			int _channel = DEFAULT_TOKEN_CHANNEL;
-			// TSLexer.g:70:5: ( '.' )
-			// TSLexer.g:70:7: '.'
+			// TSLexer.g:69:5: ( '.' )
+			// TSLexer.g:69:7: '.'
 			{
 			match('.'); 
 			}
@@ -1135,8 +1115,8 @@ public class TSLexer extends Lexer {
 		try {
 			int _type = COLON;
 			int _channel = DEFAULT_TOKEN_CHANNEL;
-			// TSLexer.g:71:7: ( ':' )
-			// TSLexer.g:71:9: ':'
+			// TSLexer.g:70:7: ( ':' )
+			// TSLexer.g:70:9: ':'
 			{
 			match(':'); 
 			}
@@ -1155,8 +1135,8 @@ public class TSLexer extends Lexer {
 		try {
 			int _type = COMMA;
 			int _channel = DEFAULT_TOKEN_CHANNEL;
-			// TSLexer.g:72:7: ( ',' )
-			// TSLexer.g:72:9: ','
+			// TSLexer.g:71:7: ( ',' )
+			// TSLexer.g:71:9: ','
 			{
 			match(','); 
 			}
@@ -1175,8 +1155,8 @@ public class TSLexer extends Lexer {
 		try {
 			int _type = SEMICOLON;
 			int _channel = DEFAULT_TOKEN_CHANNEL;
-			// TSLexer.g:73:11: ( ';' )
-			// TSLexer.g:73:13: ';'
+			// TSLexer.g:72:11: ( ';' )
+			// TSLexer.g:72:13: ';'
 			{
 			match(';'); 
 			}
@@ -1195,8 +1175,8 @@ public class TSLexer extends Lexer {
 		try {
 			int _type = LPAREN;
 			int _channel = DEFAULT_TOKEN_CHANNEL;
-			// TSLexer.g:77:8: ( '(' )
-			// TSLexer.g:77:10: '('
+			// TSLexer.g:74:8: ( '(' )
+			// TSLexer.g:74:10: '('
 			{
 			match('('); 
 			}
@@ -1215,8 +1195,8 @@ public class TSLexer extends Lexer {
 		try {
 			int _type = RPAREN;
 			int _channel = DEFAULT_TOKEN_CHANNEL;
-			// TSLexer.g:78:8: ( ')' )
-			// TSLexer.g:78:10: ')'
+			// TSLexer.g:75:8: ( ')' )
+			// TSLexer.g:75:10: ')'
 			{
 			match(')'); 
 			}
@@ -1235,7 +1215,7 @@ public class TSLexer extends Lexer {
 		try {
 			int _type = EQUAL;
 			int _channel = DEFAULT_TOKEN_CHANNEL;
-			// TSLexer.g:80:7: ( '=' | '==' )
+			// TSLexer.g:77:7: ( '=' | '==' )
 			int alt2=2;
 			int LA2_0 = input.LA(1);
 			if ( (LA2_0=='=') ) {
@@ -1258,13 +1238,13 @@ public class TSLexer extends Lexer {
 
 			switch (alt2) {
 				case 1 :
-					// TSLexer.g:80:9: '='
+					// TSLexer.g:77:9: '='
 					{
 					match('='); 
 					}
 					break;
 				case 2 :
-					// TSLexer.g:80:15: '=='
+					// TSLexer.g:77:15: '=='
 					{
 					match("=="); 
 
@@ -1286,8 +1266,8 @@ public class TSLexer extends Lexer {
 		try {
 			int _type = EQUAL_NS;
 			int _channel = DEFAULT_TOKEN_CHANNEL;
-			// TSLexer.g:81:10: ( '<=>' )
-			// TSLexer.g:81:12: '<=>'
+			// TSLexer.g:78:10: ( '<=>' )
+			// TSLexer.g:78:12: '<=>'
 			{
 			match("<=>"); 
 
@@ -1307,7 +1287,7 @@ public class TSLexer extends Lexer {
 		try {
 			int _type = NOTEQUAL;
 			int _channel = DEFAULT_TOKEN_CHANNEL;
-			// TSLexer.g:82:10: ( '<>' | '!=' )
+			// TSLexer.g:79:10: ( '<>' | '!=' )
 			int alt3=2;
 			int LA3_0 = input.LA(1);
 			if ( (LA3_0=='<') ) {
@@ -1325,14 +1305,14 @@ public class TSLexer extends Lexer {
 
 			switch (alt3) {
 				case 1 :
-					// TSLexer.g:82:12: '<>'
+					// TSLexer.g:79:12: '<>'
 					{
 					match("<>"); 
 
 					}
 					break;
 				case 2 :
-					// TSLexer.g:82:19: '!='
+					// TSLexer.g:79:19: '!='
 					{
 					match("!="); 
 
@@ -1354,8 +1334,8 @@ public class TSLexer extends Lexer {
 		try {
 			int _type = LESSTHANOREQUALTO;
 			int _channel = DEFAULT_TOKEN_CHANNEL;
-			// TSLexer.g:83:19: ( '<=' )
-			// TSLexer.g:83:21: '<='
+			// TSLexer.g:80:19: ( '<=' )
+			// TSLexer.g:80:21: '<='
 			{
 			match("<="); 
 
@@ -1375,8 +1355,8 @@ public class TSLexer extends Lexer {
 		try {
 			int _type = LESSTHAN;
 			int _channel = DEFAULT_TOKEN_CHANNEL;
-			// TSLexer.g:84:10: ( '<' )
-			// TSLexer.g:84:12: '<'
+			// TSLexer.g:81:10: ( '<' )
+			// TSLexer.g:81:12: '<'
 			{
 			match('<'); 
 			}
@@ -1395,8 +1375,8 @@ public class TSLexer extends Lexer {
 		try {
 			int _type = GREATERTHANOREQUALTO;
 			int _channel = DEFAULT_TOKEN_CHANNEL;
-			// TSLexer.g:85:22: ( '>=' )
-			// TSLexer.g:85:24: '>='
+			// TSLexer.g:82:22: ( '>=' )
+			// TSLexer.g:82:24: '>='
 			{
 			match(">="); 
 
@@ -1416,8 +1396,8 @@ public class TSLexer extends Lexer {
 		try {
 			int _type = GREATERTHAN;
 			int _channel = DEFAULT_TOKEN_CHANNEL;
-			// TSLexer.g:86:13: ( '>' )
-			// TSLexer.g:86:15: '>'
+			// TSLexer.g:83:13: ( '>' )
+			// TSLexer.g:83:15: '>'
 			{
 			match('>'); 
 			}
@@ -1436,8 +1416,8 @@ public class TSLexer extends Lexer {
 		try {
 			int _type = DIVIDE;
 			int _channel = DEFAULT_TOKEN_CHANNEL;
-			// TSLexer.g:88:8: ( '/' )
-			// TSLexer.g:88:10: '/'
+			// TSLexer.g:85:8: ( '/' )
+			// TSLexer.g:85:10: '/'
 			{
 			match('/'); 
 			}
@@ -1456,8 +1436,8 @@ public class TSLexer extends Lexer {
 		try {
 			int _type = PLUS;
 			int _channel = DEFAULT_TOKEN_CHANNEL;
-			// TSLexer.g:89:6: ( '+' )
-			// TSLexer.g:89:8: '+'
+			// TSLexer.g:86:6: ( '+' )
+			// TSLexer.g:86:8: '+'
 			{
 			match('+'); 
 			}
@@ -1476,8 +1456,8 @@ public class TSLexer extends Lexer {
 		try {
 			int _type = MINUS;
 			int _channel = DEFAULT_TOKEN_CHANNEL;
-			// TSLexer.g:90:7: ( '-' )
-			// TSLexer.g:90:9: '-'
+			// TSLexer.g:87:7: ( '-' )
+			// TSLexer.g:87:9: '-'
 			{
 			match('-'); 
 			}
@@ -1496,8 +1476,8 @@ public class TSLexer extends Lexer {
 		try {
 			int _type = STAR;
 			int _channel = DEFAULT_TOKEN_CHANNEL;
-			// TSLexer.g:91:6: ( '*' )
-			// TSLexer.g:91:8: '*'
+			// TSLexer.g:88:6: ( '*' )
+			// TSLexer.g:88:8: '*'
 			{
 			match('*'); 
 			}
@@ -1514,7 +1494,7 @@ public class TSLexer extends Lexer {
 	// $ANTLR start "Letter"
 	public final void mLetter() throws RecognitionException {
 		try {
-			// TSLexer.g:96:5: ( 'a' .. 'z' | 'A' .. 'Z' )
+			// TSLexer.g:93:5: ( 'a' .. 'z' | 'A' .. 'Z' )
 			// TSLexer.g:
 			{
 			if ( (input.LA(1) >= 'A' && input.LA(1) <= 'Z')||(input.LA(1) >= 'a' && input.LA(1) <= 'z') ) {
@@ -1537,7 +1517,7 @@ public class TSLexer extends Lexer {
 	// $ANTLR start "HexDigit"
 	public final void mHexDigit() throws RecognitionException {
 		try {
-			// TSLexer.g:101:5: ( 'a' .. 'f' | 'A' .. 'F' )
+			// TSLexer.g:98:5: ( 'a' .. 'f' | 'A' .. 'F' )
 			// TSLexer.g:
 			{
 			if ( (input.LA(1) >= 'A' && input.LA(1) <= 'F')||(input.LA(1) >= 'a' && input.LA(1) <= 'f') ) {
@@ -1560,7 +1540,7 @@ public class TSLexer extends Lexer {
 	// $ANTLR start "Digit"
 	public final void mDigit() throws RecognitionException {
 		try {
-			// TSLexer.g:106:5: ( '0' .. '9' )
+			// TSLexer.g:103:5: ( '0' .. '9' )
 			// TSLexer.g:
 			{
 			if ( (input.LA(1) >= '0' && input.LA(1) <= '9') ) {
@@ -1585,10 +1565,10 @@ public class TSLexer extends Lexer {
 		try {
 			int _type = StringLiteral;
 			int _channel = DEFAULT_TOKEN_CHANNEL;
-			// TSLexer.g:111:5: ( ( '\\'' (~ ( '\\'' ) )* '\\'' | '\\\"' (~ ( '\\\"' ) )* '\\\"' ) )
-			// TSLexer.g:112:5: ( '\\'' (~ ( '\\'' ) )* '\\'' | '\\\"' (~ ( '\\\"' ) )* '\\\"' )
+			// TSLexer.g:108:5: ( ( '\\'' (~ ( '\\'' ) )* '\\'' | '\\\"' (~ ( '\\\"' ) )* '\\\"' ) )
+			// TSLexer.g:109:5: ( '\\'' (~ ( '\\'' ) )* '\\'' | '\\\"' (~ ( '\\\"' ) )* '\\\"' )
 			{
-			// TSLexer.g:112:5: ( '\\'' (~ ( '\\'' ) )* '\\'' | '\\\"' (~ ( '\\\"' ) )* '\\\"' )
+			// TSLexer.g:109:5: ( '\\'' (~ ( '\\'' ) )* '\\'' | '\\\"' (~ ( '\\\"' ) )* '\\\"' )
 			int alt6=2;
 			int LA6_0 = input.LA(1);
 			if ( (LA6_0=='\'') ) {
@@ -1606,10 +1586,10 @@ public class TSLexer extends Lexer {
 
 			switch (alt6) {
 				case 1 :
-					// TSLexer.g:112:7: '\\'' (~ ( '\\'' ) )* '\\''
+					// TSLexer.g:109:7: '\\'' (~ ( '\\'' ) )* '\\''
 					{
 					match('\''); 
-					// TSLexer.g:112:12: (~ ( '\\'' ) )*
+					// TSLexer.g:109:12: (~ ( '\\'' ) )*
 					loop4:
 					while (true) {
 						int alt4=2;
@@ -1642,10 +1622,10 @@ public class TSLexer extends Lexer {
 					}
 					break;
 				case 2 :
-					// TSLexer.g:113:7: '\\\"' (~ ( '\\\"' ) )* '\\\"'
+					// TSLexer.g:110:7: '\\\"' (~ ( '\\\"' ) )* '\\\"'
 					{
 					match('\"'); 
-					// TSLexer.g:113:12: (~ ( '\\\"' ) )*
+					// TSLexer.g:110:12: (~ ( '\\\"' ) )*
 					loop5:
 					while (true) {
 						int alt5=2;
@@ -1691,25 +1671,29 @@ public class TSLexer extends Lexer {
 	}
 	// $ANTLR end "StringLiteral"
 
-	// $ANTLR start "Integer"
-	public final void mInteger() throws RecognitionException {
+	// $ANTLR start "DATETIME"
+	public final void mDATETIME() throws RecognitionException {
 		try {
-			int _type = Integer;
+			int _type = DATETIME;
 			int _channel = DEFAULT_TOKEN_CHANNEL;
-			// TSLexer.g:121:2: ( ( '-' | '+' )? ( Digit )+ )
-			// TSLexer.g:122:2: ( '-' | '+' )? ( Digit )+
+			// TSLexer.g:116:5: ( ( Digit )+ MINUS ( Digit )+ MINUS ( Digit )+ 'T' ( Digit )+ COLON ( Digit )+ COLON ( Digit )+ PLUS ( Digit )+ )
+			// TSLexer.g:116:7: ( Digit )+ MINUS ( Digit )+ MINUS ( Digit )+ 'T' ( Digit )+ COLON ( Digit )+ COLON ( Digit )+ PLUS ( Digit )+
 			{
-			// TSLexer.g:122:2: ( '-' | '+' )?
-			int alt7=2;
-			int LA7_0 = input.LA(1);
-			if ( (LA7_0=='+'||LA7_0=='-') ) {
-				alt7=1;
-			}
-			switch (alt7) {
+			// TSLexer.g:116:7: ( Digit )+
+			int cnt7=0;
+			loop7:
+			while (true) {
+				int alt7=2;
+				int LA7_0 = input.LA(1);
+				if ( ((LA7_0 >= '0' && LA7_0 <= '9')) ) {
+					alt7=1;
+				}
+
+				switch (alt7) {
 				case 1 :
 					// TSLexer.g:
 					{
-					if ( input.LA(1)=='+'||input.LA(1)=='-' ) {
+					if ( (input.LA(1) >= '0' && input.LA(1) <= '9') ) {
 						input.consume();
 					}
 					else {
@@ -1720,9 +1704,17 @@ public class TSLexer extends Lexer {
 					}
 					break;
 
+				default :
+					if ( cnt7 >= 1 ) break loop7;
+					EarlyExitException eee = new EarlyExitException(7, input);
+					throw eee;
+				}
+				cnt7++;
 			}
 
-			// TSLexer.g:122:15: ( Digit )+
+			mMINUS(); 
+
+			// TSLexer.g:116:20: ( Digit )+
 			int cnt8=0;
 			loop8:
 			while (true) {
@@ -1755,36 +1747,23 @@ public class TSLexer extends Lexer {
 				cnt8++;
 			}
 
-			}
+			mMINUS(); 
 
-			state.type = _type;
-			state.channel = _channel;
-		}
-		finally {
-			// do for sure before leaving
-		}
-	}
-	// $ANTLR end "Integer"
+			// TSLexer.g:116:33: ( Digit )+
+			int cnt9=0;
+			loop9:
+			while (true) {
+				int alt9=2;
+				int LA9_0 = input.LA(1);
+				if ( ((LA9_0 >= '0' && LA9_0 <= '9')) ) {
+					alt9=1;
+				}
 
-	// $ANTLR start "Float"
-	public final void mFloat() throws RecognitionException {
-		try {
-			int _type = Float;
-			int _channel = DEFAULT_TOKEN_CHANNEL;
-			// TSLexer.g:127:2: ( ( '-' | '+' )? ( Digit )+ DOT ( Digit )+ )
-			// TSLexer.g:128:2: ( '-' | '+' )? ( Digit )+ DOT ( Digit )+
-			{
-			// TSLexer.g:128:2: ( '-' | '+' )?
-			int alt9=2;
-			int LA9_0 = input.LA(1);
-			if ( (LA9_0=='+'||LA9_0=='-') ) {
-				alt9=1;
-			}
-			switch (alt9) {
+				switch (alt9) {
 				case 1 :
 					// TSLexer.g:
 					{
-					if ( input.LA(1)=='+'||input.LA(1)=='-' ) {
+					if ( (input.LA(1) >= '0' && input.LA(1) <= '9') ) {
 						input.consume();
 					}
 					else {
@@ -1795,9 +1774,16 @@ public class TSLexer extends Lexer {
 					}
 					break;
 
+				default :
+					if ( cnt9 >= 1 ) break loop9;
+					EarlyExitException eee = new EarlyExitException(9, input);
+					throw eee;
+				}
+				cnt9++;
 			}
 
-			// TSLexer.g:128:15: ( Digit )+
+			match('T'); 
+			// TSLexer.g:116:44: ( Digit )+
 			int cnt10=0;
 			loop10:
 			while (true) {
@@ -1830,9 +1816,9 @@ public class TSLexer extends Lexer {
 				cnt10++;
 			}
 
-			mDOT(); 
+			mCOLON(); 
 
-			// TSLexer.g:128:26: ( Digit )+
+			// TSLexer.g:116:57: ( Digit )+
 			int cnt11=0;
 			loop11:
 			while (true) {
@@ -1865,6 +1851,261 @@ public class TSLexer extends Lexer {
 				cnt11++;
 			}
 
+			mCOLON(); 
+
+			// TSLexer.g:116:70: ( Digit )+
+			int cnt12=0;
+			loop12:
+			while (true) {
+				int alt12=2;
+				int LA12_0 = input.LA(1);
+				if ( ((LA12_0 >= '0' && LA12_0 <= '9')) ) {
+					alt12=1;
+				}
+
+				switch (alt12) {
+				case 1 :
+					// TSLexer.g:
+					{
+					if ( (input.LA(1) >= '0' && input.LA(1) <= '9') ) {
+						input.consume();
+					}
+					else {
+						MismatchedSetException mse = new MismatchedSetException(null,input);
+						recover(mse);
+						throw mse;
+					}
+					}
+					break;
+
+				default :
+					if ( cnt12 >= 1 ) break loop12;
+					EarlyExitException eee = new EarlyExitException(12, input);
+					throw eee;
+				}
+				cnt12++;
+			}
+
+			mPLUS(); 
+
+			// TSLexer.g:116:82: ( Digit )+
+			int cnt13=0;
+			loop13:
+			while (true) {
+				int alt13=2;
+				int LA13_0 = input.LA(1);
+				if ( ((LA13_0 >= '0' && LA13_0 <= '9')) ) {
+					alt13=1;
+				}
+
+				switch (alt13) {
+				case 1 :
+					// TSLexer.g:
+					{
+					if ( (input.LA(1) >= '0' && input.LA(1) <= '9') ) {
+						input.consume();
+					}
+					else {
+						MismatchedSetException mse = new MismatchedSetException(null,input);
+						recover(mse);
+						throw mse;
+					}
+					}
+					break;
+
+				default :
+					if ( cnt13 >= 1 ) break loop13;
+					EarlyExitException eee = new EarlyExitException(13, input);
+					throw eee;
+				}
+				cnt13++;
+			}
+
+			}
+
+			state.type = _type;
+			state.channel = _channel;
+		}
+		finally {
+			// do for sure before leaving
+		}
+	}
+	// $ANTLR end "DATETIME"
+
+	// $ANTLR start "Integer"
+	public final void mInteger() throws RecognitionException {
+		try {
+			int _type = Integer;
+			int _channel = DEFAULT_TOKEN_CHANNEL;
+			// TSLexer.g:120:2: ( ( '-' | '+' )? ( Digit )+ )
+			// TSLexer.g:121:2: ( '-' | '+' )? ( Digit )+
+			{
+			// TSLexer.g:121:2: ( '-' | '+' )?
+			int alt14=2;
+			int LA14_0 = input.LA(1);
+			if ( (LA14_0=='+'||LA14_0=='-') ) {
+				alt14=1;
+			}
+			switch (alt14) {
+				case 1 :
+					// TSLexer.g:
+					{
+					if ( input.LA(1)=='+'||input.LA(1)=='-' ) {
+						input.consume();
+					}
+					else {
+						MismatchedSetException mse = new MismatchedSetException(null,input);
+						recover(mse);
+						throw mse;
+					}
+					}
+					break;
+
+			}
+
+			// TSLexer.g:121:15: ( Digit )+
+			int cnt15=0;
+			loop15:
+			while (true) {
+				int alt15=2;
+				int LA15_0 = input.LA(1);
+				if ( ((LA15_0 >= '0' && LA15_0 <= '9')) ) {
+					alt15=1;
+				}
+
+				switch (alt15) {
+				case 1 :
+					// TSLexer.g:
+					{
+					if ( (input.LA(1) >= '0' && input.LA(1) <= '9') ) {
+						input.consume();
+					}
+					else {
+						MismatchedSetException mse = new MismatchedSetException(null,input);
+						recover(mse);
+						throw mse;
+					}
+					}
+					break;
+
+				default :
+					if ( cnt15 >= 1 ) break loop15;
+					EarlyExitException eee = new EarlyExitException(15, input);
+					throw eee;
+				}
+				cnt15++;
+			}
+
+			}
+
+			state.type = _type;
+			state.channel = _channel;
+		}
+		finally {
+			// do for sure before leaving
+		}
+	}
+	// $ANTLR end "Integer"
+
+	// $ANTLR start "Float"
+	public final void mFloat() throws RecognitionException {
+		try {
+			int _type = Float;
+			int _channel = DEFAULT_TOKEN_CHANNEL;
+			// TSLexer.g:126:2: ( ( '-' | '+' )? ( Digit )+ DOT ( Digit )+ )
+			// TSLexer.g:127:2: ( '-' | '+' )? ( Digit )+ DOT ( Digit )+
+			{
+			// TSLexer.g:127:2: ( '-' | '+' )?
+			int alt16=2;
+			int LA16_0 = input.LA(1);
+			if ( (LA16_0=='+'||LA16_0=='-') ) {
+				alt16=1;
+			}
+			switch (alt16) {
+				case 1 :
+					// TSLexer.g:
+					{
+					if ( input.LA(1)=='+'||input.LA(1)=='-' ) {
+						input.consume();
+					}
+					else {
+						MismatchedSetException mse = new MismatchedSetException(null,input);
+						recover(mse);
+						throw mse;
+					}
+					}
+					break;
+
+			}
+
+			// TSLexer.g:127:15: ( Digit )+
+			int cnt17=0;
+			loop17:
+			while (true) {
+				int alt17=2;
+				int LA17_0 = input.LA(1);
+				if ( ((LA17_0 >= '0' && LA17_0 <= '9')) ) {
+					alt17=1;
+				}
+
+				switch (alt17) {
+				case 1 :
+					// TSLexer.g:
+					{
+					if ( (input.LA(1) >= '0' && input.LA(1) <= '9') ) {
+						input.consume();
+					}
+					else {
+						MismatchedSetException mse = new MismatchedSetException(null,input);
+						recover(mse);
+						throw mse;
+					}
+					}
+					break;
+
+				default :
+					if ( cnt17 >= 1 ) break loop17;
+					EarlyExitException eee = new EarlyExitException(17, input);
+					throw eee;
+				}
+				cnt17++;
+			}
+
+			mDOT(); 
+
+			// TSLexer.g:127:26: ( Digit )+
+			int cnt18=0;
+			loop18:
+			while (true) {
+				int alt18=2;
+				int LA18_0 = input.LA(1);
+				if ( ((LA18_0 >= '0' && LA18_0 <= '9')) ) {
+					alt18=1;
+				}
+
+				switch (alt18) {
+				case 1 :
+					// TSLexer.g:
+					{
+					if ( (input.LA(1) >= '0' && input.LA(1) <= '9') ) {
+						input.consume();
+					}
+					else {
+						MismatchedSetException mse = new MismatchedSetException(null,input);
+						recover(mse);
+						throw mse;
+					}
+					}
+					break;
+
+				default :
+					if ( cnt18 >= 1 ) break loop18;
+					EarlyExitException eee = new EarlyExitException(18, input);
+					throw eee;
+				}
+				cnt18++;
+			}
+
 			}
 
 			state.type = _type;
@@ -1881,8 +2122,8 @@ public class TSLexer extends Lexer {
 		try {
 			int _type = Identifier;
 			int _channel = DEFAULT_TOKEN_CHANNEL;
-			// TSLexer.g:132:5: ( ( Letter | Digit | '_' ) ( Letter | Digit | '_' )* )
-			// TSLexer.g:133:5: ( Letter | Digit | '_' ) ( Letter | Digit | '_' )*
+			// TSLexer.g:131:5: ( ( Letter | Digit | '_' ) ( Letter | Digit | '_' )* )
+			// TSLexer.g:132:5: ( Letter | Digit | '_' ) ( Letter | Digit | '_' )*
 			{
 			if ( (input.LA(1) >= '0' && input.LA(1) <= '9')||(input.LA(1) >= 'A' && input.LA(1) <= 'Z')||input.LA(1)=='_'||(input.LA(1) >= 'a' && input.LA(1) <= 'z') ) {
 				input.consume();
@@ -1892,16 +2133,16 @@ public class TSLexer extends Lexer {
 				recover(mse);
 				throw mse;
 			}
-			// TSLexer.g:133:28: ( Letter | Digit | '_' )*
-			loop12:
+			// TSLexer.g:132:28: ( Letter | Digit | '_' )*
+			loop19:
 			while (true) {
-				int alt12=2;
-				int LA12_0 = input.LA(1);
-				if ( ((LA12_0 >= '0' && LA12_0 <= '9')||(LA12_0 >= 'A' && LA12_0 <= 'Z')||LA12_0=='_'||(LA12_0 >= 'a' && LA12_0 <= 'z')) ) {
-					alt12=1;
+				int alt19=2;
+				int LA19_0 = input.LA(1);
+				if ( ((LA19_0 >= '0' && LA19_0 <= '9')||(LA19_0 >= 'A' && LA19_0 <= 'Z')||LA19_0=='_'||(LA19_0 >= 'a' && LA19_0 <= 'z')) ) {
+					alt19=1;
 				}
 
-				switch (alt12) {
+				switch (alt19) {
 				case 1 :
 					// TSLexer.g:
 					{
@@ -1917,7 +2158,7 @@ public class TSLexer extends Lexer {
 					break;
 
 				default :
-					break loop12;
+					break loop19;
 				}
 			}
 
@@ -1937,8 +2178,8 @@ public class TSLexer extends Lexer {
 		try {
 			int _type = WS;
 			int _channel = DEFAULT_TOKEN_CHANNEL;
-			// TSLexer.g:137:5: ( ( ' ' | '\\r' | '\\t' | '\\n' ) )
-			// TSLexer.g:137:8: ( ' ' | '\\r' | '\\t' | '\\n' )
+			// TSLexer.g:136:5: ( ( ' ' | '\\r' | '\\t' | '\\n' ) )
+			// TSLexer.g:136:8: ( ' ' | '\\r' | '\\t' | '\\n' )
 			{
 			if ( (input.LA(1) >= '\t' && input.LA(1) <= '\n')||input.LA(1)=='\r'||input.LA(1)==' ' ) {
 				input.consume();
@@ -1962,10 +2203,10 @@ public class TSLexer extends Lexer {
 
 	@Override
 	public void mTokens() throws RecognitionException {
-		// TSLexer.g:1:8: ( KW_PRIVILEGES | KW_TIMESERIES | KW_ROLE | KW_GRANT | KW_REVOKE | KW_MERGE | KW_QUIT | KW_METADATA | KW_DATATYPE | KW_ENCODING | KW_STORAGE | KW_AND | KW_OR | KW_NOT | KW_ORDER | KW_GROUP | KW_BY | KW_WHERE | KW_FROM | KW_SELECT | KW_INSERT | KW_MULTINSERT | KW_ON | KW_SHOW | KW_LOAD | KW_NULL | KW_CREATE | KW_DROP | KW_TO | KW_TIMESTAMP | KW_USER | KW_INTO | KW_WITH | KW_SET | KW_DELETE | KW_UPDATE | KW_VALUES | KW_VALUE | KW_PASSWORD | KW_DESCRIBE | KW_PROPERTY | KW_ADD | KW_LABEL | KW_LINK | KW_UNLINK | QUOTE | DATETIME_T | DOT | COLON | COMMA | SEMICOLON | LPAREN | RPAREN | EQUAL | EQUAL_NS | NOTEQUAL | LESSTHANOREQUALTO | LESSTHAN | GREATERTHANOREQUALTO | GREATERTHAN | DIVIDE | PLUS | MINUS | STAR | StringLiteral | Integer | Float | Identifier | WS )
-		int alt13=69;
-		alt13 = dfa13.predict(input);
-		switch (alt13) {
+		// TSLexer.g:1:8: ( KW_PRIVILEGES | KW_TIMESERIES | KW_ROLE | KW_GRANT | KW_REVOKE | KW_MERGE | KW_QUIT | KW_METADATA | KW_DATATYPE | KW_ENCODING | KW_STORAGE | KW_AND | KW_OR | KW_NOT | KW_ORDER | KW_GROUP | KW_BY | KW_WHERE | KW_FROM | KW_SELECT | KW_INSERT | KW_MULTINSERT | KW_ON | KW_SHOW | KW_LOAD | KW_NULL | KW_CREATE | KW_DROP | KW_TO | KW_TIMESTAMP | KW_USER | KW_INTO | KW_WITH | KW_SET | KW_DELETE | KW_UPDATE | KW_VALUES | KW_VALUE | KW_PASSWORD | KW_DESCRIBE | KW_PROPERTY | KW_ADD | KW_LABEL | KW_LINK | KW_UNLINK | QUOTE | DOT | COLON | COMMA | SEMICOLON | LPAREN | RPAREN | EQUAL | EQUAL_NS | NOTEQUAL | LESSTHANOREQUALTO | LESSTHAN | GREATERTHANOREQUALTO | GREATERTHAN | DIVIDE | PLUS | MINUS | STAR | StringLiteral | DATETIME | Integer | Float | Identifier | WS )
+		int alt20=69;
+		alt20 = dfa20.predict(input);
+		switch (alt20) {
 			case 1 :
 				// TSLexer.g:1:10: KW_PRIVILEGES
 				{
@@ -2289,161 +2530,161 @@ public class TSLexer extends Lexer {
 				}
 				break;
 			case 47 :
-				// TSLexer.g:1:437: DATETIME_T
-				{
-				mDATETIME_T(); 
-
-				}
-				break;
-			case 48 :
-				// TSLexer.g:1:448: DOT
+				// TSLexer.g:1:437: DOT
 				{
 				mDOT(); 
 
 				}
 				break;
-			case 49 :
-				// TSLexer.g:1:452: COLON
+			case 48 :
+				// TSLexer.g:1:441: COLON
 				{
 				mCOLON(); 
 
 				}
 				break;
-			case 50 :
-				// TSLexer.g:1:458: COMMA
+			case 49 :
+				// TSLexer.g:1:447: COMMA
 				{
 				mCOMMA(); 
 
 				}
 				break;
-			case 51 :
-				// TSLexer.g:1:464: SEMICOLON
+			case 50 :
+				// TSLexer.g:1:453: SEMICOLON
 				{
 				mSEMICOLON(); 
 
 				}
 				break;
-			case 52 :
-				// TSLexer.g:1:474: LPAREN
+			case 51 :
+				// TSLexer.g:1:463: LPAREN
 				{
 				mLPAREN(); 
 
 				}
 				break;
-			case 53 :
-				// TSLexer.g:1:481: RPAREN
+			case 52 :
+				// TSLexer.g:1:470: RPAREN
 				{
 				mRPAREN(); 
 
 				}
 				break;
-			case 54 :
-				// TSLexer.g:1:488: EQUAL
+			case 53 :
+				// TSLexer.g:1:477: EQUAL
 				{
 				mEQUAL(); 
 
 				}
 				break;
-			case 55 :
-				// TSLexer.g:1:494: EQUAL_NS
+			case 54 :
+				// TSLexer.g:1:483: EQUAL_NS
 				{
 				mEQUAL_NS(); 
 
 				}
 				break;
-			case 56 :
-				// TSLexer.g:1:503: NOTEQUAL
+			case 55 :
+				// TSLexer.g:1:492: NOTEQUAL
 				{
 				mNOTEQUAL(); 
 
 				}
 				break;
-			case 57 :
-				// TSLexer.g:1:512: LESSTHANOREQUALTO
+			case 56 :
+				// TSLexer.g:1:501: LESSTHANOREQUALTO
 				{
 				mLESSTHANOREQUALTO(); 
 
 				}
 				break;
-			case 58 :
-				// TSLexer.g:1:530: LESSTHAN
+			case 57 :
+				// TSLexer.g:1:519: LESSTHAN
 				{
 				mLESSTHAN(); 
 
 				}
 				break;
-			case 59 :
-				// TSLexer.g:1:539: GREATERTHANOREQUALTO
+			case 58 :
+				// TSLexer.g:1:528: GREATERTHANOREQUALTO
 				{
 				mGREATERTHANOREQUALTO(); 
 
 				}
 				break;
-			case 60 :
-				// TSLexer.g:1:560: GREATERTHAN
+			case 59 :
+				// TSLexer.g:1:549: GREATERTHAN
 				{
 				mGREATERTHAN(); 
 
 				}
 				break;
-			case 61 :
-				// TSLexer.g:1:572: DIVIDE
+			case 60 :
+				// TSLexer.g:1:561: DIVIDE
 				{
 				mDIVIDE(); 
 
 				}
 				break;
-			case 62 :
-				// TSLexer.g:1:579: PLUS
+			case 61 :
+				// TSLexer.g:1:568: PLUS
 				{
 				mPLUS(); 
 
 				}
 				break;
-			case 63 :
-				// TSLexer.g:1:584: MINUS
+			case 62 :
+				// TSLexer.g:1:573: MINUS
 				{
 				mMINUS(); 
 
 				}
 				break;
-			case 64 :
-				// TSLexer.g:1:590: STAR
+			case 63 :
+				// TSLexer.g:1:579: STAR
 				{
 				mSTAR(); 
 
 				}
 				break;
-			case 65 :
-				// TSLexer.g:1:595: StringLiteral
+			case 64 :
+				// TSLexer.g:1:584: StringLiteral
 				{
 				mStringLiteral(); 
 
 				}
 				break;
+			case 65 :
+				// TSLexer.g:1:598: DATETIME
+				{
+				mDATETIME(); 
+
+				}
+				break;
 			case 66 :
-				// TSLexer.g:1:609: Integer
+				// TSLexer.g:1:607: Integer
 				{
 				mInteger(); 
 
 				}
 				break;
 			case 67 :
-				// TSLexer.g:1:617: Float
+				// TSLexer.g:1:615: Float
 				{
 				mFloat(); 
 
 				}
 				break;
 			case 68 :
-				// TSLexer.g:1:623: Identifier
+				// TSLexer.g:1:621: Identifier
 				{
 				mIdentifier(); 
 
 				}
 				break;
 			case 69 :
-				// TSLexer.g:1:634: WS
+				// TSLexer.g:1:632: WS
 				{
 				mWS(); 
 
@@ -2454,106 +2695,105 @@ public class TSLexer extends Lexer {
 	}
 
 
-	protected DFA13 dfa13 = new DFA13(this);
-	static final String DFA13_eotS =
-		"\1\uffff\1\46\1\54\12\46\1\101\10\46\1\117\7\uffff\1\121\1\123\1\uffff"+
-		"\1\124\1\126\2\uffff\1\127\2\uffff\3\46\1\136\1\uffff\17\46\1\163\1\164"+
-		"\2\46\2\uffff\1\167\14\46\1\uffff\1\u0086\4\uffff\1\127\2\uffff\1\127"+
-		"\1\uffff\4\46\1\uffff\17\46\1\u009a\1\46\1\u009c\1\u009d\1\46\2\uffff"+
-		"\1\101\1\46\1\uffff\15\46\2\uffff\4\46\1\u00b1\6\46\1\u00b8\1\46\1\u00ba"+
-		"\5\46\1\uffff\1\u00c0\2\uffff\1\46\1\u00c2\1\46\1\u00c4\1\u00c5\1\46\1"+
-		"\u00c7\1\u00c8\1\46\1\u00ca\1\46\1\u00cc\7\46\1\uffff\1\46\1\u00d6\1\u00d7"+
-		"\1\u00d8\2\46\1\uffff\1\46\1\uffff\5\46\1\uffff\1\u00e1\1\uffff\1\u00e2"+
-		"\2\uffff\1\46\2\uffff\1\u00e4\1\uffff\1\46\1\uffff\2\46\1\u00e9\5\46\1"+
-		"\u00ef\3\uffff\3\46\1\u00f3\3\46\1\u00f7\2\uffff\1\u00f8\1\uffff\1\u00f9"+
-		"\1\u00fa\1\u00fb\1\u00fc\1\uffff\5\46\1\uffff\3\46\1\uffff\2\46\1\u0107"+
-		"\6\uffff\1\46\1\u0109\1\u010a\2\46\1\u010d\1\46\1\u010f\1\u0110\1\u0111"+
-		"\1\uffff\1\46\2\uffff\1\46\1\u0114\1\uffff\1\46\3\uffff\1\u0116\1\u0117"+
-		"\1\uffff\1\u0118\3\uffff";
-	static final String DFA13_eofS =
+	protected DFA20 dfa20 = new DFA20(this);
+	static final String DFA20_eotS =
+		"\1\uffff\14\46\1\100\10\46\1\116\7\uffff\1\120\1\122\1\uffff\1\123\1\125"+
+		"\2\uffff\1\130\2\uffff\3\46\1\136\17\46\1\163\1\164\2\46\2\uffff\1\167"+
+		"\14\46\1\uffff\1\u0086\4\uffff\1\130\2\uffff\1\130\2\uffff\4\46\1\uffff"+
+		"\17\46\1\u009a\1\46\1\u009c\1\u009d\1\46\2\uffff\1\100\1\46\1\uffff\15"+
+		"\46\2\uffff\4\46\1\u00b1\6\46\1\u00b8\1\46\1\u00ba\5\46\1\uffff\1\u00c0"+
+		"\2\uffff\1\46\1\u00c2\1\46\1\u00c4\1\u00c5\1\46\1\u00c7\1\u00c8\1\46\1"+
+		"\u00ca\1\46\1\u00cc\7\46\1\uffff\1\46\1\u00d6\1\u00d7\1\u00d8\2\46\1\uffff"+
+		"\1\46\1\uffff\5\46\1\uffff\1\u00e1\1\uffff\1\u00e2\2\uffff\1\46\2\uffff"+
+		"\1\u00e4\1\uffff\1\46\1\uffff\2\46\1\u00e9\5\46\1\u00ef\3\uffff\3\46\1"+
+		"\u00f3\3\46\1\u00f7\2\uffff\1\u00f8\1\uffff\1\u00f9\1\u00fa\1\u00fb\1"+
+		"\u00fc\1\uffff\5\46\1\uffff\3\46\1\uffff\2\46\1\u0107\6\uffff\1\46\1\u0109"+
+		"\1\u010a\2\46\1\u010d\1\46\1\u010f\1\u0110\1\u0111\1\uffff\1\46\2\uffff"+
+		"\1\46\1\u0114\1\uffff\1\46\3\uffff\1\u0116\1\u0117\1\uffff\1\u0118\3\uffff";
+	static final String DFA20_eofS =
 		"\u0119\uffff";
-	static final String DFA13_minS =
-		"\1\11\1\101\1\60\1\105\1\122\1\105\1\125\1\101\1\116\1\105\1\104\1\116"+
+	static final String DFA20_minS =
+		"\1\11\1\101\1\111\1\105\1\122\1\105\1\125\1\101\1\116\1\105\1\104\1\116"+
 		"\1\117\1\75\1\131\1\110\1\122\1\116\1\101\1\122\1\116\1\101\1\0\7\uffff"+
-		"\2\75\1\uffff\2\60\2\uffff\1\56\2\uffff\1\111\1\123\1\115\1\60\1\uffff"+
-		"\1\114\1\126\1\101\1\122\1\114\1\111\1\124\1\117\1\114\1\103\1\117\1\114"+
-		"\1\117\2\104\2\60\1\124\1\114\2\uffff\1\60\1\105\1\124\1\117\1\123\1\101"+
-		"\1\102\1\116\2\105\1\104\2\114\1\uffff\1\76\4\uffff\1\56\2\uffff\1\56"+
-		"\1\uffff\1\126\1\120\1\123\1\105\1\uffff\1\105\1\117\1\116\1\125\1\107"+
-		"\1\101\2\124\1\101\1\120\1\105\1\103\1\117\1\122\1\105\1\60\1\127\2\60"+
-		"\1\105\2\uffff\1\60\1\114\1\uffff\1\122\1\110\1\115\1\105\1\117\1\104"+
+		"\2\75\1\uffff\2\60\2\uffff\1\55\2\uffff\1\111\1\123\1\115\1\60\1\114\1"+
+		"\126\1\101\1\122\1\114\1\111\1\124\1\117\1\114\1\103\1\117\1\114\1\117"+
+		"\2\104\2\60\1\124\1\114\2\uffff\1\60\1\105\1\124\1\117\1\123\1\101\1\102"+
+		"\1\116\2\105\1\104\2\114\1\uffff\1\76\4\uffff\1\56\2\uffff\1\55\2\uffff"+
+		"\1\126\1\120\1\123\1\105\1\uffff\1\105\1\117\1\116\1\125\1\107\1\101\2"+
+		"\124\1\101\1\120\1\105\1\103\1\117\1\122\1\105\1\60\1\127\2\60\1\105\2"+
+		"\uffff\1\60\1\114\1\uffff\1\122\1\110\1\115\1\105\1\117\1\104\1\105\1"+
+		"\113\1\101\1\122\1\101\1\111\1\125\2\uffff\1\111\1\105\1\127\1\123\1\60"+
+		"\1\113\1\124\1\120\1\105\1\104\1\111\1\60\1\124\1\60\1\124\1\122\1\104"+
+		"\1\101\1\103\1\uffff\1\60\2\uffff\1\122\1\60\1\105\2\60\1\122\2\60\1\114"+
+		"\1\60\1\124\1\60\1\124\1\116\1\105\1\114\1\122\1\117\1\105\1\uffff\1\105"+
+		"\3\60\1\101\1\116\1\uffff\1\131\1\uffff\1\105\2\111\1\107\1\124\1\uffff"+
+		"\1\60\1\uffff\1\60\2\uffff\1\124\2\uffff\1\60\1\uffff\1\105\1\uffff\1"+
+		"\105\1\113\1\60\1\105\1\124\2\122\1\101\1\60\3\uffff\1\124\1\123\1\120"+
+		"\1\60\1\102\1\116\1\105\1\60\2\uffff\1\60\1\uffff\4\60\1\uffff\1\107\1"+
+		"\131\1\104\1\111\1\115\1\uffff\1\101\2\105\1\uffff\1\105\1\107\1\60\6"+
+		"\uffff\1\105\2\60\1\105\1\120\1\60\1\122\3\60\1\uffff\1\123\2\uffff\1"+
+		"\123\1\60\1\uffff\1\124\3\uffff\2\60\1\uffff\1\60\3\uffff";
+	static final String DFA20_maxS =
+		"\1\172\1\122\2\117\1\122\2\125\1\122\1\116\1\124\1\116\1\122\1\125\1\75"+
+		"\1\131\1\111\1\122\1\116\1\117\1\122\1\123\1\101\1\uffff\7\uffff\1\76"+
+		"\1\75\1\uffff\2\71\2\uffff\1\172\2\uffff\1\117\1\123\1\115\1\172\1\114"+
+		"\1\126\1\117\1\124\1\114\1\111\1\124\1\117\1\123\1\103\1\117\1\124\1\117"+
+		"\2\104\2\172\1\124\1\114\2\uffff\1\172\1\105\1\124\1\117\1\124\1\101\1"+
+		"\102\1\116\2\105\1\104\2\114\1\uffff\1\76\4\uffff\1\71\2\uffff\1\172\2"+
+		"\uffff\1\126\1\120\1\123\1\105\1\uffff\1\105\1\117\1\116\1\125\1\107\1"+
+		"\101\2\124\1\101\1\120\1\105\1\103\1\117\1\122\1\105\1\172\1\127\2\172"+
+		"\1\105\2\uffff\1\172\1\114\1\uffff\1\122\1\110\1\115\1\105\1\117\1\104"+
 		"\1\105\1\113\1\101\1\122\1\101\1\111\1\125\2\uffff\1\111\1\105\1\127\1"+
-		"\123\1\60\1\113\1\124\1\120\1\105\1\104\1\111\1\60\1\124\1\60\1\124\1"+
-		"\122\1\104\1\101\1\103\1\uffff\1\60\2\uffff\1\122\1\60\1\105\2\60\1\122"+
-		"\2\60\1\114\1\60\1\124\1\60\1\124\1\116\1\105\1\114\1\122\1\117\1\105"+
-		"\1\uffff\1\105\3\60\1\101\1\116\1\uffff\1\131\1\uffff\1\105\2\111\1\107"+
-		"\1\124\1\uffff\1\60\1\uffff\1\60\2\uffff\1\124\2\uffff\1\60\1\uffff\1"+
-		"\105\1\uffff\1\105\1\113\1\60\1\105\1\124\2\122\1\101\1\60\3\uffff\1\124"+
-		"\1\123\1\120\1\60\1\102\1\116\1\105\1\60\2\uffff\1\60\1\uffff\4\60\1\uffff"+
-		"\1\107\1\131\1\104\1\111\1\115\1\uffff\1\101\2\105\1\uffff\1\105\1\107"+
-		"\1\60\6\uffff\1\105\2\60\1\105\1\120\1\60\1\122\3\60\1\uffff\1\123\2\uffff"+
-		"\1\123\1\60\1\uffff\1\124\3\uffff\2\60\1\uffff\1\60\3\uffff";
-	static final String DFA13_maxS =
-		"\1\172\1\122\1\172\1\117\1\122\2\125\1\122\1\116\1\124\1\116\1\122\1\125"+
-		"\1\75\1\131\1\111\1\122\1\116\1\117\1\122\1\123\1\101\1\uffff\7\uffff"+
-		"\1\76\1\75\1\uffff\2\71\2\uffff\1\172\2\uffff\1\117\1\123\1\115\1\172"+
-		"\1\uffff\1\114\1\126\1\117\1\124\1\114\1\111\1\124\1\117\1\123\1\103\1"+
-		"\117\1\124\1\117\2\104\2\172\1\124\1\114\2\uffff\1\172\1\105\1\124\1\117"+
-		"\1\124\1\101\1\102\1\116\2\105\1\104\2\114\1\uffff\1\76\4\uffff\1\71\2"+
-		"\uffff\1\172\1\uffff\1\126\1\120\1\123\1\105\1\uffff\1\105\1\117\1\116"+
-		"\1\125\1\107\1\101\2\124\1\101\1\120\1\105\1\103\1\117\1\122\1\105\1\172"+
-		"\1\127\2\172\1\105\2\uffff\1\172\1\114\1\uffff\1\122\1\110\1\115\1\105"+
-		"\1\117\1\104\1\105\1\113\1\101\1\122\1\101\1\111\1\125\2\uffff\1\111\1"+
-		"\105\1\127\1\123\1\172\1\113\1\124\1\120\1\105\1\104\1\111\1\172\1\124"+
-		"\1\172\1\124\1\122\1\104\1\101\1\103\1\uffff\1\172\2\uffff\1\122\1\172"+
-		"\1\105\2\172\1\122\2\172\1\114\1\172\1\124\1\172\1\124\1\116\1\105\1\114"+
-		"\1\122\1\117\1\124\1\uffff\1\105\3\172\1\101\1\116\1\uffff\1\131\1\uffff"+
-		"\1\105\2\111\1\107\1\124\1\uffff\1\172\1\uffff\1\172\2\uffff\1\124\2\uffff"+
-		"\1\172\1\uffff\1\105\1\uffff\1\105\1\113\1\172\1\105\1\124\2\122\1\101"+
-		"\1\172\3\uffff\1\124\1\123\1\120\1\172\1\102\1\116\1\105\1\172\2\uffff"+
-		"\1\172\1\uffff\4\172\1\uffff\1\107\1\131\1\104\1\111\1\115\1\uffff\1\101"+
-		"\2\105\1\uffff\1\105\1\107\1\172\6\uffff\1\105\2\172\1\105\1\120\1\172"+
-		"\1\122\3\172\1\uffff\1\123\2\uffff\1\123\1\172\1\uffff\1\124\3\uffff\2"+
-		"\172\1\uffff\1\172\3\uffff";
-	static final String DFA13_acceptS =
-		"\27\uffff\1\60\1\61\1\62\1\63\1\64\1\65\1\66\2\uffff\1\75\2\uffff\1\100"+
-		"\1\101\1\uffff\1\104\1\105\4\uffff\1\57\23\uffff\1\70\1\16\15\uffff\1"+
-		"\56\1\uffff\1\72\1\73\1\74\1\76\1\uffff\1\77\1\102\1\uffff\1\103\4\uffff"+
-		"\1\35\24\uffff\1\15\1\27\2\uffff\1\21\15\uffff\1\67\1\71\23\uffff\1\42"+
-		"\1\uffff\1\14\1\52\23\uffff\1\3\6\uffff\1\7\1\uffff\1\34\5\uffff\1\30"+
-		"\1\uffff\1\32\1\uffff\1\41\1\23\1\uffff\1\40\1\31\1\uffff\1\54\1\uffff"+
-		"\1\37\11\uffff\1\4\1\20\1\6\10\uffff\1\17\1\22\1\uffff\1\53\4\uffff\1"+
-		"\46\5\uffff\1\5\3\uffff\1\43\3\uffff\1\24\1\25\1\33\1\44\1\55\1\45\12"+
-		"\uffff\1\13\1\uffff\1\51\1\47\2\uffff\1\10\1\uffff\1\11\1\50\1\12\2\uffff"+
-		"\1\36\1\uffff\1\1\1\2\1\26";
-	static final String DFA13_specialS =
+		"\123\1\172\1\113\1\124\1\120\1\105\1\104\1\111\1\172\1\124\1\172\1\124"+
+		"\1\122\1\104\1\101\1\103\1\uffff\1\172\2\uffff\1\122\1\172\1\105\2\172"+
+		"\1\122\2\172\1\114\1\172\1\124\1\172\1\124\1\116\1\105\1\114\1\122\1\117"+
+		"\1\124\1\uffff\1\105\3\172\1\101\1\116\1\uffff\1\131\1\uffff\1\105\2\111"+
+		"\1\107\1\124\1\uffff\1\172\1\uffff\1\172\2\uffff\1\124\2\uffff\1\172\1"+
+		"\uffff\1\105\1\uffff\1\105\1\113\1\172\1\105\1\124\2\122\1\101\1\172\3"+
+		"\uffff\1\124\1\123\1\120\1\172\1\102\1\116\1\105\1\172\2\uffff\1\172\1"+
+		"\uffff\4\172\1\uffff\1\107\1\131\1\104\1\111\1\115\1\uffff\1\101\2\105"+
+		"\1\uffff\1\105\1\107\1\172\6\uffff\1\105\2\172\1\105\1\120\1\172\1\122"+
+		"\3\172\1\uffff\1\123\2\uffff\1\123\1\172\1\uffff\1\124\3\uffff\2\172\1"+
+		"\uffff\1\172\3\uffff";
+	static final String DFA20_acceptS =
+		"\27\uffff\1\57\1\60\1\61\1\62\1\63\1\64\1\65\2\uffff\1\74\2\uffff\1\77"+
+		"\1\100\1\uffff\1\104\1\105\27\uffff\1\67\1\16\15\uffff\1\56\1\uffff\1"+
+		"\71\1\72\1\73\1\75\1\uffff\1\76\1\101\1\uffff\1\102\1\103\4\uffff\1\35"+
+		"\24\uffff\1\15\1\27\2\uffff\1\21\15\uffff\1\66\1\70\23\uffff\1\42\1\uffff"+
+		"\1\14\1\52\23\uffff\1\3\6\uffff\1\7\1\uffff\1\34\5\uffff\1\30\1\uffff"+
+		"\1\32\1\uffff\1\41\1\23\1\uffff\1\40\1\31\1\uffff\1\54\1\uffff\1\37\11"+
+		"\uffff\1\4\1\20\1\6\10\uffff\1\17\1\22\1\uffff\1\53\4\uffff\1\46\5\uffff"+
+		"\1\5\3\uffff\1\43\3\uffff\1\24\1\25\1\33\1\44\1\55\1\45\12\uffff\1\13"+
+		"\1\uffff\1\51\1\47\2\uffff\1\10\1\uffff\1\11\1\50\1\12\2\uffff\1\36\1"+
+		"\uffff\1\1\1\2\1\26";
+	static final String DFA20_specialS =
 		"\26\uffff\1\0\u0102\uffff}>";
-	static final String[] DFA13_transitionS = {
+	static final String[] DFA20_transitionS = {
 			"\2\47\2\uffff\1\47\22\uffff\1\47\1\15\1\44\4\uffff\1\26\1\33\1\34\1\43"+
 			"\1\41\1\31\1\42\1\27\1\40\12\45\1\30\1\32\1\36\1\35\1\37\2\uffff\1\12"+
 			"\1\16\1\23\1\7\1\10\1\20\1\4\1\46\1\21\2\46\1\22\1\5\1\14\1\13\1\1\1"+
 			"\6\1\3\1\11\1\2\1\24\1\25\1\17\3\46\4\uffff\1\46\1\uffff\32\46",
 			"\1\51\20\uffff\1\50",
-			"\12\46\7\uffff\10\46\1\52\5\46\1\53\13\46\4\uffff\1\46\1\uffff\32\46",
-			"\1\56\11\uffff\1\55",
-			"\1\57",
-			"\1\60\17\uffff\1\61",
-			"\1\62",
-			"\1\63\3\uffff\1\65\14\uffff\1\64",
-			"\1\66",
-			"\1\70\2\uffff\1\71\13\uffff\1\67",
-			"\1\73\11\uffff\1\72",
-			"\1\75\3\uffff\1\74",
-			"\1\76\5\uffff\1\77",
-			"\1\100",
-			"\1\102",
-			"\1\103\1\104",
+			"\1\52\5\uffff\1\53",
+			"\1\55\11\uffff\1\54",
+			"\1\56",
+			"\1\57\17\uffff\1\60",
+			"\1\61",
+			"\1\62\3\uffff\1\64\14\uffff\1\63",
+			"\1\65",
+			"\1\67\2\uffff\1\70\13\uffff\1\66",
+			"\1\72\11\uffff\1\71",
+			"\1\74\3\uffff\1\73",
+			"\1\75\5\uffff\1\76",
+			"\1\77",
+			"\1\101",
+			"\1\102\1\103",
+			"\1\104",
 			"\1\105",
-			"\1\106",
-			"\1\110\7\uffff\1\111\5\uffff\1\107",
-			"\1\112",
-			"\1\115\1\uffff\1\114\2\uffff\1\113",
-			"\1\116",
+			"\1\107\7\uffff\1\110\5\uffff\1\106",
+			"\1\111",
+			"\1\114\1\uffff\1\113\2\uffff\1\112",
+			"\1\115",
 			"\0\44",
 			"",
 			"",
@@ -2562,21 +2802,20 @@ public class TSLexer extends Lexer {
 			"",
 			"",
 			"",
-			"\1\120\1\100",
-			"\1\122",
+			"\1\117\1\77",
+			"\1\121",
 			"",
-			"\12\125",
-			"\12\125",
+			"\12\124",
+			"\12\124",
 			"",
 			"",
-			"\1\131\1\uffff\12\130\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
+			"\1\126\1\131\1\uffff\12\127\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
 			"",
 			"",
 			"\1\132\5\uffff\1\133",
 			"\1\134",
 			"\1\135",
 			"\12\46\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
-			"",
 			"\1\137",
 			"\1\140",
 			"\1\141\15\uffff\1\142",
@@ -2617,10 +2856,11 @@ public class TSLexer extends Lexer {
 			"",
 			"",
 			"",
-			"\1\131\1\uffff\12\125",
+			"\1\131\1\uffff\12\124",
 			"",
 			"",
-			"\1\131\1\uffff\12\130\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
+			"\1\126\1\131\1\uffff\12\127\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
+			"",
 			"",
 			"\1\u0087",
 			"\1\u0088",
@@ -2815,38 +3055,38 @@ public class TSLexer extends Lexer {
 			""
 	};
 
-	static final short[] DFA13_eot = DFA.unpackEncodedString(DFA13_eotS);
-	static final short[] DFA13_eof = DFA.unpackEncodedString(DFA13_eofS);
-	static final char[] DFA13_min = DFA.unpackEncodedStringToUnsignedChars(DFA13_minS);
-	static final char[] DFA13_max = DFA.unpackEncodedStringToUnsignedChars(DFA13_maxS);
-	static final short[] DFA13_accept = DFA.unpackEncodedString(DFA13_acceptS);
-	static final short[] DFA13_special = DFA.unpackEncodedString(DFA13_specialS);
-	static final short[][] DFA13_transition;
+	static final short[] DFA20_eot = DFA.unpackEncodedString(DFA20_eotS);
+	static final short[] DFA20_eof = DFA.unpackEncodedString(DFA20_eofS);
+	static final char[] DFA20_min = DFA.unpackEncodedStringToUnsignedChars(DFA20_minS);
+	static final char[] DFA20_max = DFA.unpackEncodedStringToUnsignedChars(DFA20_maxS);
+	static final short[] DFA20_accept = DFA.unpackEncodedString(DFA20_acceptS);
+	static final short[] DFA20_special = DFA.unpackEncodedString(DFA20_specialS);
+	static final short[][] DFA20_transition;
 
 	static {
-		int numStates = DFA13_transitionS.length;
-		DFA13_transition = new short[numStates][];
+		int numStates = DFA20_transitionS.length;
+		DFA20_transition = new short[numStates][];
 		for (int i=0; i<numStates; i++) {
-			DFA13_transition[i] = DFA.unpackEncodedString(DFA13_transitionS[i]);
+			DFA20_transition[i] = DFA.unpackEncodedString(DFA20_transitionS[i]);
 		}
 	}
 
-	protected class DFA13 extends DFA {
+	protected class DFA20 extends DFA {
 
-		public DFA13(BaseRecognizer recognizer) {
+		public DFA20(BaseRecognizer recognizer) {
 			this.recognizer = recognizer;
-			this.decisionNumber = 13;
-			this.eot = DFA13_eot;
-			this.eof = DFA13_eof;
-			this.min = DFA13_min;
-			this.max = DFA13_max;
-			this.accept = DFA13_accept;
-			this.special = DFA13_special;
-			this.transition = DFA13_transition;
+			this.decisionNumber = 20;
+			this.eot = DFA20_eot;
+			this.eof = DFA20_eof;
+			this.min = DFA20_min;
+			this.max = DFA20_max;
+			this.accept = DFA20_accept;
+			this.special = DFA20_special;
+			this.transition = DFA20_transition;
 		}
 		@Override
 		public String getDescription() {
-			return "1:1: Tokens : ( KW_PRIVILEGES | KW_TIMESERIES | KW_ROLE | KW_GRANT | KW_REVOKE | KW_MERGE | KW_QUIT | KW_METADATA | KW_DATATYPE | KW_ENCODING | KW_STORAGE | KW_AND | KW_OR | KW_NOT | KW_ORDER | KW_GROUP | KW_BY | KW_WHERE | KW_FROM | KW_SELECT | KW_INSERT | KW_MULTINSERT | KW_ON | KW_SHOW | KW_LOAD | KW_NULL | KW_CREATE | KW_DROP | KW_TO | KW_TIMESTAMP | KW_USER | KW_INTO | KW_WITH | KW_SET | KW_DELETE | KW_UPDATE | KW_VALUES | KW_VALUE | KW_PASSWORD | KW_DESCRIBE | KW_PROPERTY | KW_ADD | KW_LABEL | KW_LINK | KW_UNLINK | QUOTE | DATETIME_T | DOT | COLON | COMMA | SEMICOLON | LPAREN | RPAREN | EQUAL | EQUAL_NS | NOTEQUAL | LESSTHANOREQUALTO | LESSTHAN | GREATERTHANOREQUALTO | GREATERTHAN | DIVIDE | PLUS | MINUS | STAR | StringLiteral | Integer | Float | Identifier | WS );";
+			return "1:1: Tokens : ( KW_PRIVILEGES | KW_TIMESERIES | KW_ROLE | KW_GRANT | KW_REVOKE | KW_MERGE | KW_QUIT | KW_METADATA | KW_DATATYPE | KW_ENCODING | KW_STORAGE | KW_AND | KW_OR | KW_NOT | KW_ORDER | KW_GROUP | KW_BY | KW_WHERE | KW_FROM | KW_SELECT | KW_INSERT | KW_MULTINSERT | KW_ON | KW_SHOW | KW_LOAD | KW_NULL | KW_CREATE | KW_DROP | KW_TO | KW_TIMESTAMP | KW_USER | KW_INTO | KW_WITH | KW_SET | KW_DELETE | KW_UPDATE | KW_VALUES | KW_VALUE | KW_PASSWORD | KW_DESCRIBE | KW_PROPERTY | KW_ADD | KW_LABEL | KW_LINK | KW_UNLINK | QUOTE | DOT | COLON | COMMA | SEMICOLON | LPAREN | RPAREN | EQUAL | EQUAL_NS | NOTEQUAL | LESSTHANOREQUALTO | LESSTHAN | GREATERTHANOREQUALTO | GREATERTHAN | DIVIDE | PLUS | MINUS | STAR | StringLiteral | DATETIME | Integer | Float | Identifier | WS );";
 		}
 		@Override
 		public int specialStateTransition(int s, IntStream _input) throws NoViableAltException {
@@ -2854,15 +3094,15 @@ public class TSLexer extends Lexer {
 			int _s = s;
 			switch ( s ) {
 					case 0 : 
-						int LA13_22 = input.LA(1);
+						int LA20_22 = input.LA(1);
 						s = -1;
-						if ( ((LA13_22 >= '\u0000' && LA13_22 <= '\uFFFF')) ) {s = 36;}
-						else s = 79;
+						if ( ((LA20_22 >= '\u0000' && LA20_22 <= '\uFFFF')) ) {s = 36;}
+						else s = 78;
 						if ( s>=0 ) return s;
 						break;
 			}
 			NoViableAltException nvae =
-				new NoViableAltException(getDescription(), 13, _s, input);
+				new NoViableAltException(getDescription(), 20, _s, input);
 			error(nvae);
 			throw nvae;
 		}

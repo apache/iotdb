@@ -137,7 +137,6 @@ ArrayList<ParseError> errors = new ArrayList<ParseError>();
         xlateMap.put("KW_KEY", "KEY");
         xlateMap.put("KW_ENABLE", "ENABLE");
         xlateMap.put("KW_DISABLE", "DISABLE");
-		xlateMap.put("DATETIME_T", "T");
 
         // Operators
         xlateMap.put("DOT", ".");
@@ -253,7 +252,6 @@ catch (RecognitionException e) {
 // starting rule
 statement
 	: execStatement EOF
-	| testStatement EOF
 	;
 
 number
@@ -264,12 +262,6 @@ numberOrString // identifier is string or integer
     : identifier | Float
     ;
 
-testStatement
-	: StringLiteral
-	-> ^(TOK_PATH StringLiteral)
-	| out = number
-	-> $out
-	;
 
 execStatement
     : authorStatement
@@ -285,8 +277,7 @@ execStatement
 
 
 dateFormat
-    : year=Integer month=Integer day=Integer DATETIME_T hour=Integer COLON minute=Integer COLON second=Integer mil_second=Integer
-    -> ^(TOK_DATETIME $year $month $day $hour $minute $second $mil_second)
+    : datetime=DATETIME -> ^(TOK_DATETIME $datetime)
     | func=Identifier LPAREN RPAREN -> ^(TOK_DATETIME $func)
     ;
 

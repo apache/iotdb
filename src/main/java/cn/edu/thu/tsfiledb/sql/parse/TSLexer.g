@@ -66,13 +66,10 @@ KW_UNLINK: 'UNLINK';
 
 QUOTE : '\'' ;
 
-DATETIME_T : 'T';
 DOT : '.'; // generated as a part of Number rule
 COLON : ':' ;
 COMMA : ',' ;
 SEMICOLON : ';' ;
-
-
 
 LPAREN : '(' ;
 RPAREN : ')' ;
@@ -114,8 +111,10 @@ StringLiteral
     )
     ;
 
-
-
+//2016-11-16T16:22:33+0800
+DATETIME
+    : Digit+ MINUS Digit+ MINUS Digit+ 'T' Digit+ COLON Digit+ COLON Digit+ PLUS Digit+
+    ;
 
 Integer
 	:
