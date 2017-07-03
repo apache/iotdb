@@ -18,7 +18,7 @@ import cn.edu.thu.tsfiledb.qp.physical.PhysicalPlan;
 
 public class WriteLogManager {
     private static final Logger LOG = LoggerFactory.getLogger(WriteLogManager.class);
-    private static WriteLogManager instance;
+    private static WriteLogManager instance = new WriteLogManager();
     private static HashMap<String, WriteLogNode> logNodeMaps;
     public static final int BUFFERWRITER = 0, OVERFLOW = 1;
     private static List<String> recoveryPathList = new ArrayList<>();
@@ -27,13 +27,8 @@ public class WriteLogManager {
     private WriteLogManager() {
         logNodeMaps = new HashMap<>();
     }
-
+    
     public static WriteLogManager getInstance() {
-        if (instance == null) {
-            synchronized (WriteLogManager.class) {
-                instance = new WriteLogManager();
-            }
-        }
         return instance;
     }
 

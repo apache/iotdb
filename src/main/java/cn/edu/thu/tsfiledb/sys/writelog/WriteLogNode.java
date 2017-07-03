@@ -42,7 +42,7 @@ public class WriteLogNode {
         this.path = path;
         this.LogCompactSize = TsfileDBDescriptor.getInstance().getConfig().LogCompactSize;
         this.LogMemorySize = TsfileDBDescriptor.getInstance().getConfig().LogMemorySize;
-        filePath = TsfileDBDescriptor.getInstance().getConfig().walFolder + path + ".log";
+        filePath = TsfileDBDescriptor.getInstance().getConfig().walFolder + "/" + path + ".log";
         backFilePath = filePath + ".backup";
         plansInMemory = new ArrayList<>();
         hasBufferWriteFlush = false;

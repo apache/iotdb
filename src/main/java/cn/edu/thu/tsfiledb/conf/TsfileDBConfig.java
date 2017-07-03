@@ -41,7 +41,7 @@ public class TsfileDBConfig {
 	public int maxBufferWriteNodeNum = 50;
 	public int defaultFetchSize = 10000;
 	
-	public String walFolder = "src/main/resources/wals/";
+	public String walFolder = "src/main/resources/wals";
 
 	public int LogCompactSize = 500000;
 	public int LogMemorySize = 10000;
