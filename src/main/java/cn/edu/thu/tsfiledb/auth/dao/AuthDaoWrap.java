@@ -6,7 +6,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import cn.edu.thu.tsfiledb.auth.model.AuthException;
+import cn.edu.thu.tsfiledb.auth.AuthException;
 import cn.edu.thu.tsfiledb.auth.model.Role;
 import cn.edu.thu.tsfiledb.auth.model.RolePermission;
 import cn.edu.thu.tsfiledb.auth.model.User;
@@ -19,7 +19,7 @@ import cn.edu.thu.tsfiledb.auth.model.UserRoleRel;
 public class AuthDaoWrap {
 
     // Must init the DBdao before use this class
-    private Statement statement = DBdao.getStatement();
+    private Statement statement = DBDao.getStatement();
 
 
     public boolean addUser(User user) {
@@ -33,7 +33,6 @@ public class AuthDaoWrap {
         return state;
     }
 
-
     public boolean addRole(Role role) {
         RoleDao dao = new RoleDao();
         boolean state = false;
@@ -44,7 +43,6 @@ public class AuthDaoWrap {
         }
         return state;
     }
-
 
     public boolean addUserRoleRel(String userName, String roleName) throws AuthException {
         UserDao userDao = new UserDao();
@@ -203,13 +201,6 @@ public class AuthDaoWrap {
         return state;
     }
 
-    public User getUser(String userName, String password) {
-        UserDao userDao = new UserDao();
-        User user = null;
-        user = userDao.getUser(statement, userName, password);
-        return user;
-    }
-
     public User getUser(String userName) {
         UserDao userDao = new UserDao();
         User user = null;
@@ -217,7 +208,6 @@ public class AuthDaoWrap {
         return user;
     }
 
-    // 如果username或者nodename不存在怎么办？
     public List<User> getUsers() {
         UserDao userDao = new UserDao();
         List<User> users = userDao.getUsers(statement);
@@ -236,14 +226,10 @@ public class AuthDaoWrap {
         return userRoleRels;
     }
 
-    /*
-     * 返回值的问题
-     */
-    public List<Role> getRolesByUser(String userName) {
+    private List<Role> getRolesByUser(String userName) {
         UserDao userDao = new UserDao();
         UserRoleRelDao userRoleRelDao = new UserRoleRelDao();
         RoleDao roleDao = new RoleDao();
-        // 当 user不存在的情况下是返回 size = 0，还是 null
         ArrayList<Role> roles = new ArrayList<>();
         User user = userDao.getUser(statement, userName);
         if (user != null) {
@@ -258,7 +244,7 @@ public class AuthDaoWrap {
         return roles;
     }
 
-    public UserPermission getUserPermission(String userName, String nodeName, int permissionId) {
+    private UserPermission getUserPermission(String userName, String nodeName, int permissionId) {
         UserPermission userPermission = null;
         UserDao userDao = new UserDao();
         User user = userDao.getUser(statement, userName);
@@ -266,31 +252,25 @@ public class AuthDaoWrap {
             int userId = user.getId();
             userPermission = new UserPermission(userId, nodeName, permissionId);
             UserPermissionDao userPermissionDao = new UserPermissionDao();
-            // userPermission will be null
             userPermission = userPermissionDao.getUserPermission(statement, userPermission);
         }
         return userPermission;
     }
 
-    /*
-     * 返回值的问题
-     */
-    public List<UserPermission> getUserPermissions(String userName, String nodeName) throws AuthException {
+    private List<UserPermission> getUserPermissions(String userName, String nodeName) throws AuthException {
         UserDao userDao = new UserDao();
         UserPermissionDao userPermissionDao = new UserPermissionDao();
         List<UserPermission> userPermissions = new ArrayList<>();
-        // 当user 不存在的时候 是返回size = 0，还是null
         User user = userDao.getUser(statement, userName);
         if (user != null) {
             userPermissions = userPermissionDao.getUserPermissionByUserAndNodeName(statement, user.getId(), nodeName);
         } else {
             throw new AuthException("The user is not exist");
         }
-        // 返回值可能是null还是 没有结果 size = 0；
         return userPermissions;
     }
 
-    public List<RolePermission> getRolePermissions(String roleName, String nodeName) {
+    private List<RolePermission> getRolePermissions(String roleName, String nodeName) {
         RoleDao roleDao = new RoleDao();
         RolePermissionDao rolePermissionDao = new RolePermissionDao();
         List<RolePermission> rolePermissions = new ArrayList<>();
@@ -301,9 +281,6 @@ public class AuthDaoWrap {
         return rolePermissions;
     }
 
-    /*
-     * All user's permission: userPermission and rolePermission
-     */
     public Set<Integer> getAllUserPermissions(String userName, String nodeName) throws AuthException {
         // permission set
         Set<Integer> permissionSet = new HashSet<>();
@@ -336,20 +313,26 @@ public class AuthDaoWrap {
 
     public boolean checkUserPermission(String userName, String nodeName, int permissionId) {
         boolean state = false;
-        UserPermission userPermission = this.getUserPermission(userName, nodeName, permissionId);
+        UserPermission userPermission = getUserPermission(userName, nodeName, permissionId);
         if (userPermission != null) {
             state = true;
         }
         return state;
     }
 
-    // add the method without the authdao
     public boolean checkUser(String userName, String password) {
-        boolean state = false;
-        User user = this.getUser(userName, password);
+        
+    	boolean state = false;
+        User user = getUser(userName, password);
         if (user != null) {
             state = true;
         }
         return state;
+    }
+    private User getUser(String userName, String password) {
+        
+    	UserDao userDao = new UserDao();
+        
+        return userDao.getUser(statement, userName, password);
     }
 }

@@ -9,6 +9,7 @@ import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import cn.edu.thu.tsfiledb.auth.AuthRuntimeException;
 import cn.edu.thu.tsfiledb.auth.model.DBContext;
 import cn.edu.thu.tsfiledb.auth.model.User;
 
@@ -28,8 +29,8 @@ public class UserDao {
 		try {
 			state = statement.executeUpdate(sql);
 		} catch (SQLException e) {
-			e.printStackTrace();
 			LOGGER.error("Execute statement error, the statement is {}", sql);
+			throw new AuthRuntimeException(e);
 		}
 		return state;
 	}
@@ -40,8 +41,8 @@ public class UserDao {
 		try {
 			state = statement.executeUpdate(sql);
 		} catch (SQLException e) {
-			e.printStackTrace();
 			LOGGER.error("Execute statement error, the statement is {}", sql);
+			throw new AuthRuntimeException(e);
 		}
 		return state;
 	}
@@ -53,7 +54,8 @@ public class UserDao {
 		try {
 			state = statement.executeUpdate(sql);
 		} catch (SQLException e) {
-			e.printStackTrace();
+			LOGGER.error("Execute statement error, the statement is {}", sql);
+			throw new AuthRuntimeException(e);
 		}
 		return state;
 	}
@@ -74,7 +76,8 @@ public class UserDao {
 				arrayList.add(user);
 			}
 		} catch (SQLException e) {
-			e.printStackTrace();
+			LOGGER.error("Execute statement error, the statement is {}", sql);
+			throw new AuthRuntimeException(e);
 		}
 		return arrayList;
 	}
@@ -94,12 +97,10 @@ public class UserDao {
 				user = new User(id, name, passWord, isLock, validTime);
 			}
 		} catch (SQLException e) {
-			e.printStackTrace();
 			LOGGER.error("Execute query statement error, the statement is {}", sql);
+			throw new AuthRuntimeException(e);
 		}
-		
 		return user;
-
 	}
 
 	public User getUser(Statement statement, String userName, String password) {
@@ -116,7 +117,8 @@ public class UserDao {
 				user.setPassWord(resultSet.getString(3));
 			}
 		} catch (SQLException e) {
-			e.printStackTrace();
+			LOGGER.error("Execute statement error, the statement is {}", sql);
+			throw new AuthRuntimeException(e);
 		}
 		return user;
 	}

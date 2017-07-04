@@ -10,7 +10,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import cn.edu.thu.tsfiledb.auth.dao.DBdao;
+import cn.edu.thu.tsfiledb.auth.dao.DBDao;
 import cn.edu.thu.tsfiledb.auth.dao.RoleDao;
 import cn.edu.thu.tsfiledb.auth.dao.RolePermissionDao;
 import cn.edu.thu.tsfiledb.auth.model.Permission;
@@ -19,7 +19,7 @@ import cn.edu.thu.tsfiledb.auth.model.RolePermission;
 
 public class RolePermissionTest {
 
-	private DBdao dbDao = null;
+	private DBDao dbDao = null;
 	private RoleDao roleDao = null;
 	private RolePermissionDao rolePermissionDao = null;
 	private Statement statement;
@@ -32,13 +32,13 @@ public class RolePermissionTest {
 
 	@Before
 	public void setUp() throws Exception {
-		dbDao = new DBdao();
+		dbDao = new DBDao();
 		roleDao = new RoleDao();
 		rolePermissionDao = new RolePermissionDao();
 		permissionId = Permission.CREATE;
 
 		dbDao.open();
-		statement = DBdao.getStatement();
+		statement = DBDao.getStatement();
 
 		// if role not exist, create role
 		if (roleDao.getRole(statement, role.getRoleName()) == null) {

@@ -34,7 +34,6 @@ KW_FROM : 'FROM';
 KW_SELECT : 'SELECT';
 
 KW_INSERT : 'INSERT';
-KW_MULTINSERT: 'MULTINSERT';
 KW_ON : 'ON';
 KW_SHOW: 'SHOW';
 
@@ -87,7 +86,6 @@ PLUS : '+';
 MINUS : '-';
 STAR : '*';
 
-
 // LITERALS
 fragment
 Letter
@@ -112,18 +110,20 @@ StringLiteral
     )
     ;
 
-
-
+//2016-11-16T16:22:33+0800
+DATETIME
+    : Digit+ MINUS Digit+ MINUS Digit+ 'T' Digit+ COLON Digit+ COLON Digit+ PLUS Digit+ COLON Digit+
+    ;
 
 Integer
 	:
-	Digit+
+	('-' | '+')? Digit+
 	;
 
 
 Float
 	:
-	Digit+ DOT Digit+
+	('-' | '+')? Digit+ DOT Digit+
 	;
 
 Identifier

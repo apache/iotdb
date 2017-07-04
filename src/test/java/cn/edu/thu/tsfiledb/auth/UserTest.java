@@ -9,7 +9,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import cn.edu.thu.tsfiledb.auth.dao.DBdao;
+import cn.edu.thu.tsfiledb.auth.dao.DBDao;
 import cn.edu.thu.tsfiledb.auth.dao.UserDao;
 import cn.edu.thu.tsfiledb.auth.model.User;
 import cn.edu.thu.tsfiledb.conf.TsfileDBConfig;
@@ -20,7 +20,7 @@ public class UserTest {
 
 	private Statement statement = null;
 	private UserDao userDao = null;
-	private DBdao dBdao = null;
+	private DBDao dBdao = null;
 
 	private String userName = "testuser";
 	private String passWord = "password";
@@ -35,9 +35,9 @@ public class UserTest {
 	public void setUp() throws Exception {
 		config.derbyHome = "";
 		EngineTestHelper.delete(config.derbyHome);
-		dBdao = new DBdao();
+		dBdao = new DBDao();
 		dBdao.open();
-		statement = DBdao.getStatement();
+		statement = DBDao.getStatement();
 		userDao = new UserDao();
 
 	}

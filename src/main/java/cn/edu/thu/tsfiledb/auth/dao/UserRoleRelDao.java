@@ -6,6 +6,9 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import cn.edu.thu.tsfiledb.auth.model.DBContext;
 import cn.edu.thu.tsfiledb.auth.model.UserRoleRel;
 
@@ -16,6 +19,8 @@ import cn.edu.thu.tsfiledb.auth.model.UserRoleRel;
  */
 public class UserRoleRelDao {
 
+	private static final Logger LOGGER = LoggerFactory.getLogger(UserRoleRelDao.class);
+	
 	public List<UserRoleRel> getUserRoleRels(Statement statement) {
 		String sql = "select * from " + DBContext.userRoleRel;
 		ArrayList<UserRoleRel> arrayList = new ArrayList<>();
@@ -32,6 +37,7 @@ public class UserRoleRelDao {
 			}
 		} catch (SQLException e) {
 			e.printStackTrace();
+			LOGGER.error("Execute statement error, the statement is {}", sql);
 		}
 
 		return arrayList;
@@ -49,6 +55,7 @@ public class UserRoleRelDao {
 			}
 		} catch (SQLException e) {
 			e.printStackTrace();
+			LOGGER.error("Execute statement error, the statement is {}", sql);
 		}
 		return userRoleRel;
 
@@ -67,6 +74,7 @@ public class UserRoleRelDao {
 			}
 		} catch (SQLException e) {
 			e.printStackTrace();
+			LOGGER.error("Execute statement error, the statement is {}", sql);
 		}
 		return arrayList;
 	}
@@ -84,6 +92,7 @@ public class UserRoleRelDao {
 			}
 		} catch (SQLException e) {
 			e.printStackTrace();
+			LOGGER.error("Execute statement error, the statement is {}", sql);
 		}
 		return arrayList;
 	}
@@ -96,6 +105,7 @@ public class UserRoleRelDao {
 			state = statement.executeUpdate(sql);
 		} catch (SQLException e) {
 			e.printStackTrace();
+			LOGGER.error("Execute statement error, the statement is {}", sql);
 		}
 		return state;
 	}
@@ -109,8 +119,8 @@ public class UserRoleRelDao {
 			state = statement.executeUpdate(sql);
 		} catch (SQLException e) {
 			e.printStackTrace();
+			LOGGER.error("Execute statement error, the statement is {}", sql);
 		}
-
 		return state;
 	}
 
