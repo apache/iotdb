@@ -62,7 +62,7 @@ public class LogicalGenerator {
 		LOG.debug("analyze token: {}", token.getText());
 		switch (tokenIntType) {
 		case TSParser.TOK_INSERT:
-			analyzeMultiInsert(astNode);
+			analyzeInsert(astNode);
 			return;
 		case TSParser.TOK_SELECT:
 			analyzeSelect(astNode);
@@ -230,9 +230,9 @@ public class LogicalGenerator {
 		initializedOperator = metadataOperator;
 	}
 
-	private void analyzeMultiInsert(ASTNode astNode) throws QueryProcessorException {
-		InsertOperator multiInsertOp = new InsertOperator(SQLConstant.TOK_INSERT);
-        initializedOperator = multiInsertOp;
+	private void analyzeInsert(ASTNode astNode) throws QueryProcessorException {
+		InsertOperator InsertOp = new InsertOperator(SQLConstant.TOK_INSERT);
+        initializedOperator = InsertOp;
         analyzeSelect(astNode.getChild(0));
         long timestamp;
         ASTNode timeChild;
@@ -253,18 +253,18 @@ public class LogicalGenerator {
         if (astNode.getChild(1).getChildCount() != astNode.getChild(2).getChildCount()) {
             throw new QueryProcessorException("length of measurement is NOT EQUAL TO the length of values");
         }
-        multiInsertOp.setTime(timestamp);
+        InsertOp.setTime(timestamp);
         List<String> measurementList = new ArrayList<>();
         for (int i = 1; i < astNode.getChild(1).getChildCount(); i++) {
             measurementList.add(astNode.getChild(1).getChild(i).getText());
         }
-        multiInsertOp.setMeasurementList(measurementList);
+        InsertOp.setMeasurementList(measurementList);
 
         List<String> valueList = new ArrayList<>();
         for (int i = 1; i < astNode.getChild(2).getChildCount(); i++) {
             valueList.add(astNode.getChild(2).getChild(i).getText());
         }
-        multiInsertOp.setValueList(valueList);
+        InsertOp.setValueList(valueList);
     }
 
 	private void analyzeUpdate(ASTNode astNode) throws QueryProcessorException {

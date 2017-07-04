@@ -66,13 +66,13 @@ public class PhysicalGenerator {
                 }
                 return new DeletePlan(delete.getTime(), paths.get(0));
             case INSERT:
-            	InsertOperator multiInsert = (InsertOperator) operator;
-                paths = multiInsert.getSelectedPaths();
+            	InsertOperator Insert = (InsertOperator) operator;
+                paths = Insert.getSelectedPaths();
                 if(paths.size() != 1){
-                    throw new LogicalOperatorException("for MultiInsert command, cannot specified more than one path:{}"+ paths);
+                    throw new LogicalOperatorException("for Insert command, cannot specified more than one path:{}"+ paths);
                 }
-                return new InsertPlan(paths.get(0).getFullPath(), multiInsert.getTime(),
-                        multiInsert.getMeasurementList(), multiInsert.getValueList());
+                return new InsertPlan(paths.get(0).getFullPath(), Insert.getTime(),
+                        Insert.getMeasurementList(), Insert.getValueList());
             case UPDATE:
                 UpdateOperator update = (UpdateOperator) operator;
                 UpdatePlan updatePlan = new UpdatePlan();
