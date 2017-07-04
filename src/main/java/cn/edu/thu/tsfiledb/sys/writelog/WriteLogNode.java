@@ -27,7 +27,6 @@ import java.util.List;
 public class WriteLogNode {
 
     private static final Logger LOG = LoggerFactory.getLogger(WriteLogNode.class);
-    private PhysicalPlanLogTransfer transfer = new PhysicalPlanLogTransfer();
     private WriteLogReadable reader;
     private WriteLogPersistable writer = null;
     // private TSFileDBConfig config = TSFileDBDescriptor.getInstance().getConfig();
@@ -157,7 +156,7 @@ public class WriteLogNode {
      *
      * @throws IOException
      */
-    synchronized public void checkLogsCompactFileSize(boolean forceCompact) throws IOException {
+    synchronized private void checkLogsCompactFileSize(boolean forceCompact) throws IOException {
         if (logSize >= LogCompactSize && hasBufferWriteFlush ||
                 (logSize >= LogCompactSize && hasOverflowFlush) || forceCompact) {
             LOG.info("Log Compact Process Begin.");
@@ -167,8 +166,12 @@ public class WriteLogNode {
             // Don't forget to close the stream.
             writerV2.close();
             oldReader.close();
-            new File(filePath).delete();
-            new File(filePath + ".backup").renameTo(new File(filePath));
+            if (!new File(filePath).delete()) {
+                LOG.error("Error in compact log : old log file delete");
+            }
+            if (!new File(filePath + ".backup").renameTo(new File(filePath))) {
+                LOG.error("Error in compact log : create new log file");
+            }
             writer.close();
             writer = null;
             //writer = new LocalFileLogWriter(filePath);
@@ -212,9 +215,11 @@ public class WriteLogNode {
     synchronized public void recovery() throws IOException {
         File f = new File(backFilePath);
         if (f.exists()) {
-            LOG.error("compact error!!!");
+            LOG.error("system log compact error occured last time!");
             // need delete origin file
-            f.delete();
+            if (!f.delete()) {
+                LOG.error("Error in system log recovery. old .backup file could not be deleted!");
+            }
             checkLogsCompactFileSize(true);
         }
     }
