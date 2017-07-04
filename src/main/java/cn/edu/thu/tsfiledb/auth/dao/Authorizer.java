@@ -2,7 +2,7 @@ package cn.edu.thu.tsfiledb.auth.dao;
 
 import java.util.Set;
 
-import cn.edu.thu.tsfiledb.auth.model.AuthException;
+import cn.edu.thu.tsfiledb.auth.AuthException;
 import cn.edu.thu.tsfiledb.auth.model.Role;
 import cn.edu.thu.tsfiledb.auth.model.User;
 
@@ -23,12 +23,12 @@ public class Authorizer {
      */
     public static synchronized boolean login(String username, String password) throws AuthException {
 
-        boolean state = false;
-        state = authDaoWrap.checkUser(username, password);
-        if (state == false) {
+        boolean status = false;
+        status = authDaoWrap.checkUser(username, password);
+        if (status == false) {
             throw new AuthException("The username or the password is not correct");
         }
-        return state;
+        return status;
     }
 
     /**
@@ -40,16 +40,19 @@ public class Authorizer {
      * @throws AuthException
      */
     public static boolean createUser(String username, String password) throws AuthException {
-        boolean state = false;
-        User user = new User(username, password);
+        boolean status = false;
+        
         if (username == null || password == null || "".equals(username) || "".equals(password)) {
             throw new AuthException("Username or password can't be empty");
         }
-        state = authDaoWrap.addUser(user);
-        if (state == false) {
+        
+        User user = new User(username, password);
+
+        status = authDaoWrap.addUser(user);
+        if (status == false) {
             throw new AuthException("The user is exist");
         }
-        return state;
+        return status;
     }
 
     /**
@@ -60,12 +63,12 @@ public class Authorizer {
      * @throws AuthException
      */
     public static boolean deleteUser(String username) throws AuthException {
-        boolean state = false;
-        state = authDaoWrap.deleteUser(username);
-        if (state == false) {
+        boolean status = false;
+        status = authDaoWrap.deleteUser(username);
+        if (status == false) {
             throw new AuthException("The user is not exist");
         }
-        return state;
+        return status;
     }
 
     /**
@@ -78,9 +81,9 @@ public class Authorizer {
      * @throws AuthException
      */
     public static boolean addPmsToUser(String username, String nodeName, int permissionId) throws AuthException {
-        boolean state = false;
-        state = authDaoWrap.addUserPermission(username, nodeName, permissionId);
-        return state;
+        boolean status = false;
+        status = authDaoWrap.addUserPermission(username, nodeName, permissionId);
+        return status;
     }
 
     /**
@@ -93,9 +96,9 @@ public class Authorizer {
      * @throws AuthException
      */
     public static boolean removePmsFromUser(String userName, String nodeName, int permissionId) throws AuthException {
-        boolean state = false;
-        state = authDaoWrap.deleteUserPermission(userName, nodeName, permissionId);
-        return state;
+        boolean status = false;
+        status = authDaoWrap.deleteUserPermission(userName, nodeName, permissionId);
+        return status;
     }
 
     /**
@@ -106,13 +109,13 @@ public class Authorizer {
      * @throws Exception
      */
     public static boolean createRole(String roleName) throws AuthException {
-        boolean state = false;
+        boolean status = false;
         Role role = new Role(roleName);
-        state = authDaoWrap.addRole(role);
-        if (state == false) {
+        status = authDaoWrap.addRole(role);
+        if (status == false) {
             throw new AuthException("The role is exist");
         }
-        return state;
+        return status;
     }
 
     /**
@@ -123,12 +126,12 @@ public class Authorizer {
      * @throws Exception
      */
     public static boolean deleteRole(String roleName) throws AuthException {
-        boolean state = false;
-        state = authDaoWrap.deleteRole(roleName);
-        if (state == false) {
+        boolean status = false;
+        status = authDaoWrap.deleteRole(roleName);
+        if (status == false) {
             throw new AuthException("The role is not exist");
         }
-        return state;
+        return status;
     }
 
     /**
@@ -141,9 +144,9 @@ public class Authorizer {
      * @throws AuthException
      */
     public static boolean addPmsToRole(String roleName, String nodeName, int permissionId) throws AuthException {
-        boolean state = false;
-        state = authDaoWrap.addRolePermission(roleName, nodeName, permissionId);
-        return state;
+        boolean status = false;
+        status = authDaoWrap.addRolePermission(roleName, nodeName, permissionId);
+        return status;
     }
 
     /**
@@ -156,9 +159,9 @@ public class Authorizer {
      * @throws AuthException
      */
     public static boolean removePmsFromRole(String roleName, String nodeName, int permissionId) throws AuthException {
-        boolean state = false;
-        state = authDaoWrap.deleteRolePermission(roleName, nodeName, permissionId);
-        return state;
+        boolean status = false;
+        status = authDaoWrap.deleteRolePermission(roleName, nodeName, permissionId);
+        return status;
     }
 
     /**
@@ -170,9 +173,9 @@ public class Authorizer {
      * @throws AuthException
      */
     public static boolean grantRoleToUser(String roleName, String username) throws AuthException {
-        boolean state = false;
-        state = authDaoWrap.addUserRoleRel(username, roleName);
-        return state;
+        boolean status = false;
+        status = authDaoWrap.addUserRoleRel(username, roleName);
+        return status;
     }
 
     /**
@@ -184,9 +187,9 @@ public class Authorizer {
      * @throws AuthException
      */
     public static boolean revokeRoleFromUser(String roleName, String username) throws AuthException {
-        boolean state = false;
-        state = authDaoWrap.deleteUserRoleRel(username, roleName);
-        return state;
+        boolean status = false;
+        status = authDaoWrap.deleteUserRoleRel(username, roleName);
+        return status;
     }
 
     /**
@@ -207,18 +210,17 @@ public class Authorizer {
      * Modify the password
      *
      * @param username
-     * @param oldPassword
      * @param newPassword
      * @return true: update the password successfully, false: update the password unsuccessfully
      * @throws AuthException
      */
     public static boolean updateUserPassword(String username, String newPassword) throws AuthException {
-        boolean state = false;
-        state = authDaoWrap.updateUserPassword(username, newPassword);
-        if (state == false) {
+        boolean status = false;
+        status = authDaoWrap.updateUserPassword(username, newPassword);
+        if (status == false) {
             throw new AuthException("The username or the password is not correct");
         }
-        return state;
+        return status;
     }
 
     /**
@@ -230,9 +232,9 @@ public class Authorizer {
      * @return true: the user has this permission, false: the user does not have the permission
      */
     public static boolean checkUserPermission(String username, String nodeName, int permissionId) {
-        boolean state = false;
-        state = authDaoWrap.checkUserPermission(username, nodeName, permissionId);
-        return state;
+        boolean status = false;
+        status = authDaoWrap.checkUserPermission(username, nodeName, permissionId);
+        return status;
     }
 
 }

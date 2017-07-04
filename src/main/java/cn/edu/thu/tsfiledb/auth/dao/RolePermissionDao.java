@@ -6,6 +6,10 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import cn.edu.thu.tsfiledb.auth.AuthRuntimeException;
 import cn.edu.thu.tsfiledb.auth.model.DBContext;
 import cn.edu.thu.tsfiledb.auth.model.RolePermission;
 
@@ -16,6 +20,8 @@ import cn.edu.thu.tsfiledb.auth.model.RolePermission;
  */
 public class RolePermissionDao {
 
+	private static final Logger LOGGER = LoggerFactory.getLogger(RolePermissionDao.class);
+	
 	public int createRolePermission(Statement statement, RolePermission rolePermission) {
 		String sql = "insert into " + DBContext.rolePermission + " (roleId,nodeName,permissionId) values" + "("
 				+ rolePermission.getRoleId() + ",'" + rolePermission.getNodeName() + "',"
@@ -24,7 +30,8 @@ public class RolePermissionDao {
 		try {
 			state = statement.executeUpdate(sql);
 		} catch (SQLException e) {
-			e.printStackTrace();
+			LOGGER.error("Execute statement error, the statement is {}", sql);
+			throw new AuthRuntimeException(e);
 		}
 		return state;
 	}
@@ -37,7 +44,8 @@ public class RolePermissionDao {
 		try {
 			state = statement.executeUpdate(sql);
 		} catch (SQLException e) {
-			e.printStackTrace();
+			LOGGER.error("Execute statement error, the statement is {}", sql);
+			throw new AuthRuntimeException(e);
 		}
 		return state;
 	}
@@ -55,7 +63,8 @@ public class RolePermissionDao {
 						resultSet.getInt(4));
 			}
 		} catch (SQLException e) {
-			e.printStackTrace();
+			LOGGER.error("Execute statement error, the statement is {}", sql);
+			throw new AuthRuntimeException(e);
 		}
 
 		return permission;
@@ -73,7 +82,8 @@ public class RolePermissionDao {
 				rolePermissions.add(rolePermission);
 			}
 		} catch (SQLException e) {
-			e.printStackTrace();
+			LOGGER.error("Execute statement error, the statement is {}", sql);
+			throw new AuthRuntimeException(e);
 		}
 		return rolePermissions;
 	}
@@ -91,7 +101,8 @@ public class RolePermissionDao {
 				rolePermissions.add(rolePermission);
 			}
 		} catch (SQLException e) {
-			e.printStackTrace();
+			LOGGER.error("Execute statement error, the statement is {}", sql);
+			throw new AuthRuntimeException(e);
 		}
 		return rolePermissions;
 	}

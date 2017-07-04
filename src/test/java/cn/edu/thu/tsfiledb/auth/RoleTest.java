@@ -9,7 +9,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import cn.edu.thu.tsfiledb.auth.dao.DBdao;
+import cn.edu.thu.tsfiledb.auth.dao.DBDao;
 import cn.edu.thu.tsfiledb.auth.dao.RoleDao;
 import cn.edu.thu.tsfiledb.auth.model.Role;
 import cn.edu.thu.tsfiledb.conf.TsfileDBConfig;
@@ -18,7 +18,7 @@ import cn.edu.thu.tsfiledb.conf.TsfileDBDescriptor;
 public class RoleTest {
 
 	private Statement statement = null;
-	private DBdao dbdao = null;
+	private DBDao dbdao = null;
 	private RoleDao roleDao = null;
 	private Role role = null;
 	private String roleName = "role";
@@ -27,9 +27,9 @@ public class RoleTest {
 	@Before
 	public void setUp() throws Exception {
 		config.derbyHome = "";
-		dbdao = new DBdao();
+		dbdao = new DBDao();
 		dbdao.open();
-		statement = DBdao.getStatement();
+		statement = DBDao.getStatement();
 		roleDao = new RoleDao();
 	}
 

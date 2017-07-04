@@ -1,4 +1,4 @@
-package cn.edu.thu.tsfiledb.auth.model;
+package cn.edu.thu.tsfiledb.auth;
 
 /**
  * The exception for authority model

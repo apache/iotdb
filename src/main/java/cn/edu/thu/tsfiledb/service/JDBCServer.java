@@ -11,7 +11,7 @@ import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import cn.edu.thu.tsfiledb.auth.dao.DBdao;
+import cn.edu.thu.tsfiledb.auth.dao.DBDao;
 import cn.edu.thu.tsfiledb.engine.exception.FileNodeManagerException;
 import cn.edu.thu.tsfiledb.engine.exception.LRUManagerException;
 import cn.edu.thu.tsfiledb.engine.filenode.FileNodeManager;
@@ -23,7 +23,7 @@ import cn.edu.thu.tsfiledb.service.rpc.thrift.TSIService.Processor;
  */
 public class JDBCServer implements JDBCServerMBean {
     private static final Logger LOGGER = LoggerFactory.getLogger(JDBCServer.class);
-    private DBdao dBdao;
+    private DBDao dBdao;
     private Thread jdbcServerThread;
     private boolean isStart;
 
@@ -44,7 +44,7 @@ public class JDBCServer implements JDBCServerMBean {
             return;
         }
         LOGGER.info("TsFileDB Server: start server...");
-        dBdao = new DBdao();
+        dBdao = new DBDao();
         dBdao.open();
         FileNodeManager.getInstance().managerRecovery();
         try {

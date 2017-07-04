@@ -11,7 +11,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import cn.edu.thu.tsfiledb.auth.dao.AuthDao;
-import cn.edu.thu.tsfiledb.auth.dao.DBdao;
+import cn.edu.thu.tsfiledb.auth.dao.DBDao;
 import cn.edu.thu.tsfiledb.auth.dao.RoleDao;
 import cn.edu.thu.tsfiledb.auth.dao.UserDao;
 import cn.edu.thu.tsfiledb.auth.model.Permission;
@@ -22,7 +22,7 @@ import cn.edu.thu.tsfiledb.auth.model.UserPermission;
 
 public class AuthTest {
 
-	private DBdao dbDao = null;
+	private DBDao dbDao = null;
 	private Statement statement = null;
 	private AuthDao authDao = null;
 	// prepare the data
@@ -34,10 +34,10 @@ public class AuthTest {
 	@Before
 	public void setUp() throws Exception {
 
-		dbDao = new DBdao();
+		dbDao = new DBDao();
 		authDao = new AuthDao();
 		dbDao.open();
-		statement = DBdao.getStatement();
+		statement = DBDao.getStatement();
 
 		// init data
 		user1 = new User("user1", "user1");

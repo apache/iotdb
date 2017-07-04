@@ -12,7 +12,6 @@ import cn.edu.thu.tsfiledb.auth.model.User;
 import cn.edu.thu.tsfiledb.auth.model.UserPermission;
 import cn.edu.thu.tsfiledb.auth.model.UserRoleRel;
 
-
 /**
  * @author liukun
  *
@@ -192,7 +191,6 @@ public class AuthDao {
 		return state;
 	}
 
-	// 如果username或者nodename不存在怎么办？
 	public List<User> getUsers(Statement statement) {
 		UserDao userDao = new UserDao();
 		List<User> users = userDao.getUsers(statement);
@@ -211,14 +209,10 @@ public class AuthDao {
 		return userRoleRels;
 	}
 
-	/*
-	 * 返回值的问题
-	 */
 	public List<Role> getRolesByUser(Statement statement, String userName) {
 		UserDao userDao = new UserDao();
 		UserRoleRelDao userRoleRelDao = new UserRoleRelDao();
 		RoleDao roleDao = new RoleDao();
-		// 当 user不存在的情况下是返回 size = 0，还是 null
 		ArrayList<Role> roles = new ArrayList<>();
 		User user = userDao.getUser(statement, userName);
 		if (user != null) {
@@ -233,19 +227,14 @@ public class AuthDao {
 		return roles;
 	}
 
-	/*
-	 * 返回值的问题
-	 */
 	public List<UserPermission> getUserPermission(Statement statement, String userName, String nodeName) {
 		UserDao userDao = new UserDao();
 		UserPermissionDao userPermissionDao = new UserPermissionDao();
 		List<UserPermission> userPermissions = new ArrayList<>();
-		// 当user 不存在的时候 是返回size = 0，还是null
 		User user = userDao.getUser(statement, userName);
 		if (user != null) {
 			userPermissions = userPermissionDao.getUserPermissionByUserAndNodeName(statement, user.getId(), nodeName);
 		}
-		// 返回值可能是null还是 没有结果 size = 0；
 		return userPermissions;
 	}
 
@@ -260,9 +249,6 @@ public class AuthDao {
 		return rolePermissions;
 	}
 
-	/*
-	 * All user's permission: userPermission and rolePermission
-	 */
 	public Set<Integer> getAllUserPermission(Statement statement, String userName, String nodeName) {
 		// permission set
 		Set<Integer> permissionSet = new HashSet<>();
