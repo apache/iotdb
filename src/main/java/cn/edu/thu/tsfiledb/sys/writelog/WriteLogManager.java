@@ -6,6 +6,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 import cn.edu.thu.tsfile.timeseries.write.record.TSRecord;
 import cn.edu.thu.tsfiledb.conf.TsfileDBDescriptor;
@@ -26,6 +29,26 @@ public class WriteLogManager {
 
     private WriteLogManager() {
         logNodeMaps = new HashMap<>();
+
+        // system log timing merge task
+        ScheduledExecutorService service = Executors.newScheduledThreadPool(10);
+        long delay = 0;
+        // long interval = TsfileDBDescriptor.getInstance().getConfig().LogMergeTime;
+        long interval = 2;
+        // examine every 10 seconds
+        service.scheduleAtFixedRate(new LogMergeTimingTask(), delay, interval, TimeUnit.SECONDS);
+    }
+
+    class LogMergeTimingTask implements Runnable {
+        public void run() {
+            try {
+                for (String path : recoveryPathList) {
+                    getWriteLogNode(path).serializeMemoryToFile();
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
     }
 
     public static WriteLogManager getInstance() {

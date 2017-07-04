@@ -47,7 +47,7 @@ public class TsfileDBConfig {
 	public String walFolder = "src/main/resources/wals";
 	public int LogCompactSize = 500000;
 	public int LogMemorySize = 10000;
-	public int LogMergeTime = 10;
+	public long LogMergeTime = 10;
 
 	public TsfileDBConfig() {
 	}
