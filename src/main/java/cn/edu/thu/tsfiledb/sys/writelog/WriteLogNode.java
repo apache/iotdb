@@ -46,7 +46,7 @@ public class WriteLogNode {
         if (walPath.length() > 0 && walPath.charAt(walPath.length() - 1) != File.separatorChar) {
            walPath += File.separatorChar;
         }
-        filePath = walPath + "/" + path + ".log";
+        filePath = walPath + path + ".log";
         backFilePath = filePath + ".backup";
         plansInMemory = new ArrayList<>();
         hasBufferWriteFlush = false;
