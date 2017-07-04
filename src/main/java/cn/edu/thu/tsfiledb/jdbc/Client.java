@@ -85,7 +85,7 @@ public class Client {
 			while (true) {
 				System.out.print("[TsFileDB Client-Cli: ] > ");
 				s = scanner.nextLine();
-				String[] cmds = s.toLowerCase().trim().split(";");
+				String[] cmds = s.trim().split(";");
 				for (int i = 0; i < cmds.length; i++) {
 					String cmd = cmds[i];
 					if (cmd != null && !cmd.trim().equals("")) {
