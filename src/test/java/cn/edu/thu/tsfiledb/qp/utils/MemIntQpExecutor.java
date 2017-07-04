@@ -15,7 +15,7 @@ import cn.edu.thu.tsfile.timeseries.utils.StringContainer;
 import cn.edu.thu.tsfiledb.qp.executor.QueryProcessExecutor;
 import cn.edu.thu.tsfiledb.qp.physical.PhysicalPlan;
 import cn.edu.thu.tsfiledb.qp.physical.crud.DeletePlan;
-import cn.edu.thu.tsfiledb.qp.physical.crud.MultiInsertPlan;
+import cn.edu.thu.tsfiledb.qp.physical.crud.InsertPlan;
 import cn.edu.thu.tsfiledb.qp.physical.crud.UpdatePlan;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -60,8 +60,8 @@ public class MemIntQpExecutor extends QueryProcessExecutor {
             case UPDATE:
                 UpdatePlan update = (UpdatePlan) plan;
                 return update(update.getPath(), update.getStartTime(), update.getEndTime(), update.getValue());
-            case MULTIINSERT:
-                MultiInsertPlan insert = (MultiInsertPlan) plan;
+            case INSERT:
+            	InsertPlan insert = (InsertPlan) plan;
                 int result = multiInsert(insert.getDeltaObject(), insert.getTime(), insert.getMeasurements(), insert.getValues());
                 return result == 0;
             default:

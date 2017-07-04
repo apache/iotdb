@@ -5,8 +5,8 @@ import cn.edu.thu.tsfile.timeseries.write.record.DataPoint;
 import cn.edu.thu.tsfile.timeseries.write.record.TSRecord;
 import cn.edu.thu.tsfiledb.conf.TsfileDBDescriptor;
 import cn.edu.thu.tsfiledb.qp.logical.Operator;
-import cn.edu.thu.tsfiledb.qp.physical.crud.MultiInsertPlan;
 import cn.edu.thu.tsfiledb.qp.physical.PhysicalPlan;
+import cn.edu.thu.tsfiledb.qp.physical.crud.InsertPlan;
 import cn.edu.thu.tsfiledb.sys.writelog.impl.LocalFileLogReader;
 import cn.edu.thu.tsfiledb.sys.writelog.impl.LocalFileLogWriter;
 import cn.edu.thu.tsfiledb.sys.writelog.transfer.PhysicalPlanLogTransfer;
@@ -79,7 +79,7 @@ public class WriteLogNode {
                 measurementList.add(dp.getMeasurementId());
                 insertValues.add(dp.getValue().toString());
             }
-            plansInMemory.add(new MultiInsertPlan(2, record.deltaObjectId, record.time, measurementList, insertValues));
+            plansInMemory.add(new InsertPlan(2, record.deltaObjectId, record.time, measurementList, insertValues));
         } else if (flag == WriteLogManager.BUFFERWRITER) {
             List<String> measurementList = new ArrayList<>();
             List<String> insertValues = new ArrayList<>();
@@ -87,7 +87,7 @@ public class WriteLogNode {
                 measurementList.add(dp.getMeasurementId());
                 insertValues.add(dp.getValue().toString());
             }
-            plansInMemory.add(new MultiInsertPlan(1, record.deltaObjectId, record.time, measurementList, insertValues));
+            plansInMemory.add(new InsertPlan(1, record.deltaObjectId, record.time, measurementList, insertValues));
         }
         if (plansInMemory.size() >= LogMemorySize) {
             serializeMemoryToFile();

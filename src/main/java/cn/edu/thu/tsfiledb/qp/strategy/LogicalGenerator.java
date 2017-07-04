@@ -231,7 +231,7 @@ public class LogicalGenerator {
 	}
 
 	private void analyzeMultiInsert(ASTNode astNode) throws QueryProcessorException {
-        MultiInsertOperator multiInsertOp = new MultiInsertOperator(SQLConstant.TOK_INSERT);
+		InsertOperator multiInsertOp = new InsertOperator(SQLConstant.TOK_INSERT);
         initializedOperator = multiInsertOp;
         analyzeSelect(astNode.getChild(0));
         long timestamp;

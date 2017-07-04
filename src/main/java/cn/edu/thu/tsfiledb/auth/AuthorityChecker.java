@@ -74,7 +74,7 @@ public class AuthorityChecker {
                 return Permission.READ;
             case DELETE:
                 return Permission.DELETE;
-            case MULTIINSERT:
+            case INSERT:
             case LOADDATA:
                 return Permission.INSERT;
             case UPDATE:

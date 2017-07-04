@@ -11,7 +11,7 @@ import cn.edu.thu.tsfiledb.qp.physical.PhysicalPlan;
  * @author kangrong
  * @author qiaojialin
  */
-public class MultiInsertPlan extends PhysicalPlan {
+public class InsertPlan extends PhysicalPlan {
 	private String deltaObject;
 	private List<String> measurements;
 	private List<String> values;
@@ -21,16 +21,16 @@ public class MultiInsertPlan extends PhysicalPlan {
     // 1 : BufferWrite Insert  2 : Overflow Insert
     private int insertType;
 
-    public MultiInsertPlan(String deltaObject, long insertTime, List<String> measurementList, List<String> insertValues) {
-        super(false, OperatorType.MULTIINSERT);
+    public InsertPlan(String deltaObject, long insertTime, List<String> measurementList, List<String> insertValues) {
+        super(false, OperatorType.INSERT);
         this.time = insertTime;
         this.deltaObject = deltaObject;
         this.measurements = measurementList;
         this.values = insertValues;
     }
 
-    public MultiInsertPlan(int insertType, String deltaObject, long insertTime, List<String> measurementList, List<String> insertValues) {
-        super(false, OperatorType.MULTIINSERT);
+    public InsertPlan(int insertType, String deltaObject, long insertTime, List<String> measurementList, List<String> insertValues) {
+        super(false, OperatorType.INSERT);
         this.insertType = insertType;
         this.time = insertTime;
         this.deltaObject = deltaObject;

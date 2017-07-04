@@ -91,7 +91,7 @@ public class QueryProcessor {
             case METADATA:
             case PROPERTY:
             case LOADDATA:
-            case MULTIINSERT:
+            case INSERT:
                 return operator;
             case QUERY:
             case UPDATE:

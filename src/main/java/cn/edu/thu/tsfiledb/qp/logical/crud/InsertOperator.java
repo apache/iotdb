@@ -8,15 +8,15 @@ import java.util.List;
  * @author kangrong
  *
  */
-public class MultiInsertOperator extends SFWOperator {
+public class InsertOperator extends SFWOperator {
     private long time;
     private List<String> measurementList;
     private List<String> valueList;
     
     
-    public MultiInsertOperator(int tokenIntType) {
+    public InsertOperator(int tokenIntType) {
         super(tokenIntType);
-        operatorType = OperatorType.MULTIINSERT;
+        operatorType = OperatorType.INSERT;
     }
 
     public void setTime(long time) {

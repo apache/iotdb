@@ -86,7 +86,7 @@ public class LocalFileLogReader implements WriteLogReadable {
                 break;
             }
 
-            if (opeType == OperatorType.MULTIINSERT.ordinal()) {
+            if (opeType == OperatorType.INSERT.ordinal()) {
                 byte[] insertTypeBytes = new byte[1];
                 lraf.read(insertTypeBytes);
                 int insertType = (int) insertTypeBytes[0];
@@ -201,7 +201,7 @@ public class LocalFileLogReader implements WriteLogReadable {
                 break;
             }
 
-            if (opeType == OperatorType.MULTIINSERT.ordinal()) {
+            if (opeType == OperatorType.INSERT.ordinal()) {
                 byte[] insertTypeBytes = new byte[1];
                 lraf.read(insertTypeBytes);
                 int insertType = (int) insertTypeBytes[0];
