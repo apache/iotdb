@@ -6,6 +6,10 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import cn.edu.thu.tsfiledb.auth.AuthRuntimeException;
 import cn.edu.thu.tsfiledb.auth.model.DBContext;
 import cn.edu.thu.tsfiledb.auth.model.Role;
 
@@ -15,6 +19,7 @@ import cn.edu.thu.tsfiledb.auth.model.Role;
  */
 public class RoleDao {
 
+	private static final Logger LOGGER = LoggerFactory.getLogger(RoleDao.class);
 	public List<Role> getRoles(Statement statement) {
 		ArrayList<Role> arrayList = new ArrayList<>();
 		String sql = "select * from " + DBContext.roleTable;
@@ -30,7 +35,8 @@ public class RoleDao {
 				arrayList.add(role);
 			}
 		} catch (SQLException e) {
-			e.printStackTrace();
+			LOGGER.error("Execute statement error, the statement is {}", sql);
+			throw new AuthRuntimeException(e);
 		}
 		return arrayList;
 	}
@@ -39,6 +45,7 @@ public class RoleDao {
 		String sql = "select * from " + DBContext.roleTable + " where roleName=" + "'" + roleName + "'";
 		Role role = null;
 		ResultSet resultSet;
+		
 		try {
 			resultSet = statement.executeQuery(sql);
 			while (resultSet.next()) {
@@ -47,7 +54,8 @@ public class RoleDao {
 				role = new Role(id, name);
 			}
 		} catch (SQLException e) {
-			e.printStackTrace();
+			LOGGER.error("Execute statement error, the statement is {}", sql);
+			throw new AuthRuntimeException(e);
 		}
 
 		return role;
@@ -57,13 +65,15 @@ public class RoleDao {
 		String sql = "select * from " + DBContext.roleTable + " where id=" + roleId;
 		Role role = null;
 		ResultSet resultSet;
+		
 		try {
 			resultSet = statement.executeQuery(sql);
 			if (resultSet.next()) {
 				role = new Role(roleId, resultSet.getString(2));
 			}
 		} catch (SQLException e) {
-			e.printStackTrace();
+			LOGGER.error("Execute statement error, the statement is {}", sql);
+			throw new AuthRuntimeException(e);
 		}
 
 		return role;
@@ -71,11 +81,13 @@ public class RoleDao {
 
 	public int deleteRole(Statement statement, String roleName) {
 		String sql = "delete from " + DBContext.roleTable + " where roleName=" + "'" + roleName + "'";
+		
 		int state = 0;
 		try {
 			state = statement.executeUpdate(sql);
 		} catch (SQLException e) {
-			e.printStackTrace();
+			LOGGER.error("Execute statement error, the statement is {}", sql);
+			throw new AuthRuntimeException(e);
 		}
 		return state;
 	}
@@ -88,7 +100,8 @@ public class RoleDao {
 		try {
 			state = statement.executeUpdate(sql);
 		} catch (SQLException e) {
-			e.printStackTrace();
+			LOGGER.error("Execute statement error, the statement is {}", sql);
+			throw new AuthRuntimeException(e);
 		}
 		return state;
 	}
@@ -96,12 +109,13 @@ public class RoleDao {
 	public int updateRole(Statement statement, String roleName, String newRoleName) {
 		String sql = "update " + DBContext.roleTable + " set roleName='" + newRoleName + "'" + " where roleName='"
 				+ roleName + "'";
-		int state = 0;
 		
+		int state = 0;
 		try {
 			state = statement.executeUpdate(sql);
 		} catch (SQLException e) {
-			e.printStackTrace();
+			LOGGER.error("Execute statement error, the statement is {}", sql);
+			throw new AuthRuntimeException(e);
 		}
 
 		return state;

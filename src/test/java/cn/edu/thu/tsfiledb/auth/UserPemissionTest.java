@@ -8,7 +8,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import cn.edu.thu.tsfiledb.auth.dao.DBdao;
+import cn.edu.thu.tsfiledb.auth.dao.DBDao;
 import cn.edu.thu.tsfiledb.auth.dao.UserDao;
 import cn.edu.thu.tsfiledb.auth.dao.UserPermissionDao;
 import cn.edu.thu.tsfiledb.auth.model.Permission;
@@ -19,7 +19,7 @@ import cn.edu.thu.tsfiledb.conf.TsfileDBDescriptor;
 
 public class UserPemissionTest {
 
-	private DBdao DBdao = null;
+	private DBDao DBdao = null;
 	private UserDao userDao = null;
 	private UserPermissionDao UserPermissionDao = null;
 	private Statement statement = null;
@@ -35,9 +35,9 @@ public class UserPemissionTest {
 	public void setUp() throws Exception {
 		config.derbyHome = "";
 		permission = Permission.CREATE;
-		DBdao = new DBdao();
+		DBdao = new DBDao();
 		DBdao.open();
-		statement = cn.edu.thu.tsfiledb.auth.dao.DBdao.getStatement();
+		statement = DBDao.getStatement();
 		userDao = new UserDao();
 		UserPermissionDao = new UserPermissionDao();
 

@@ -6,6 +6,10 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import cn.edu.thu.tsfiledb.auth.AuthRuntimeException;
 import cn.edu.thu.tsfiledb.auth.model.DBContext;
 import cn.edu.thu.tsfiledb.auth.model.UserPermission;
 
@@ -16,6 +20,8 @@ import cn.edu.thu.tsfiledb.auth.model.UserPermission;
  */
 public class UserPermissionDao {
 
+	private static final Logger LOGGER = LoggerFactory.getLogger(UserPermissionDao.class);
+	
 	public int createUserPermission(Statement statement, UserPermission userPermission) {
 		String sql = "insert into " + DBContext.userPermission + " (userId,nodeName,permissionId)" + " values("
 				+ userPermission.getUserId() + ",'" + userPermission.getNodeName() + "',"
@@ -24,7 +30,8 @@ public class UserPermissionDao {
 		try {
 			state = statement.executeUpdate(sql);
 		} catch (SQLException e) {
-			e.printStackTrace();
+			LOGGER.error("Execute statement error, the statement is {}", sql);
+			throw new AuthRuntimeException(e);
 		}
 		return state;
 	}
@@ -37,7 +44,8 @@ public class UserPermissionDao {
 		try {
 			state = statement.executeUpdate(sql);
 		} catch (SQLException e) {
-			e.printStackTrace();
+			LOGGER.error("Execute statement error, the statement is {}", sql);
+			throw new AuthRuntimeException(e);
 		}
 		return state;
 	}
@@ -55,12 +63,12 @@ public class UserPermissionDao {
 						resultSet.getInt(4));
 			}
 		} catch (SQLException e) {
-			e.printStackTrace();
+			LOGGER.error("Execute statement error, the statement is {}", sql);
+			throw new AuthRuntimeException(e);
 		}
 		return permission;
 	}
 
-	//
 	public ArrayList<UserPermission> getUserPermissionByUserAndNodeName(Statement statement, int userId,
 			String nodeName) {
 		ArrayList<UserPermission> userPermissions = new ArrayList<>();
@@ -75,7 +83,8 @@ public class UserPermissionDao {
 				userPermissions.add(userPermission);
 			}
 		} catch (SQLException e) {
-			e.printStackTrace();
+			LOGGER.error("Execute statement error, the statement is {}", sql);
+			throw new AuthRuntimeException(e);
 		}
 		return userPermissions;
 	}
@@ -92,7 +101,8 @@ public class UserPermissionDao {
 				userPermissions.add(userPermission);
 			}
 		} catch (SQLException e) {
-			e.printStackTrace();
+			LOGGER.error("Execute statement error, the statement is {}", sql);
+			throw new AuthRuntimeException(e);
 		}
 		return userPermissions;
 	}
