@@ -17,6 +17,9 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 
 /**
@@ -51,6 +54,23 @@ public class WriteLogNode {
         hasBufferWriteFlush = false;
         hasOverflowFlush = false;
         logSize = 0;
+
+        // system log timing merge task
+        ScheduledExecutorService service = Executors.newScheduledThreadPool(10);
+        long delay = 0;
+        long interval = 10;
+        // examine every 10 seconds
+        service.scheduleAtFixedRate(new LogMergeTimingTask(), delay, interval, TimeUnit.SECONDS);
+    }
+
+    class LogMergeTimingTask implements Runnable {
+        public void run() {
+            try {
+                checkLogsCompactFileSize(true);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
     }
 
     void setLogCompactSize(int size) {
