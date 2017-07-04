@@ -25,7 +25,7 @@ TOK_REVOKE;
 TOK_UPDATE;
 TOK_VALUE;
 TOK_INSERT;
-TOK_MULTINSERT;
+//TOK_MULTINSERT;
 TOK_QUERY;
 TOK_SELECT;
 TOK_PASSWORD;
@@ -505,11 +505,11 @@ nodeName
 
 insertStatement
    : KW_INSERT KW_INTO path multidentifier KW_VALUES multiValue
-   -> ^(TOK_MULTINSERT path multidentifier multiValue)
+   -> ^(TOK_INSERT path multidentifier multiValue)
    ;
 
 /*
-Assit to multinsert, target grammar:  insert into root.<deviceType>.<deviceName>(time, s1 ,s2) values(timeV, s1V, s2V)
+Assit to multi insert, target grammar:  insert into root.<deviceType>.<deviceName>(time, s1 ,s2) values(timeV, s1V, s2V)
 */
 
 multidentifier
