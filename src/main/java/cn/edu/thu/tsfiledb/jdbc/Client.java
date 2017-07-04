@@ -15,6 +15,7 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.OptionBuilder;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
+import org.apache.commons.lang3.StringUtils;
 import org.joda.time.DateTime;
 
 import cn.edu.thu.tsfiledb.exception.ArgsErrorException;
@@ -134,48 +135,44 @@ public class Client {
 			int cnt = 0;
 			int colCount = res.getMetaData().getColumnCount();
 			// //Output Labels
-			String format = "|%30s|";
-			String blockLine = "";
+
+			StringBuilder blockLine = new StringBuilder();
+			int maxTimeLength = 30;
+			int maxValueLength = 15;
+			String formatTime = "|%"+maxTimeLength+"s|";
+			String formatValue = "|%"+maxValueLength+"s|";
 			if (printToConsole) {
-				int maxv = 30;
+				
 				for (int i = 0; i < colCount; i++) {
 					int len = res.getMetaData().getColumnLabel(i).length();
-					maxv = maxv < len ? len : maxv;
+					maxValueLength = maxValueLength < len ? len : maxValueLength;
 				}
-
-				for (int i = 0; i < maxv; i++) {
-					blockLine += "-";
-				}
-				System.out.printf("+" + blockLine + "+");
+				blockLine.append("+").append(StringUtils.repeat('-', maxTimeLength)).append("+");
 				for (int i = 0; i < colCount - 1; i++) {
-					System.out.printf(blockLine + "+");
+				    blockLine.append(StringUtils.repeat('-', maxValueLength)).append("+");
+				}
+				System.out.println(blockLine);
+
+				formatValue = "%" + maxValueLength + "s|";
+				System.out.printf(formatTime, "Timestamp");
+				for (int i = 0; i < colCount - 1; i++) {
+					System.out.printf(formatValue, res.getMetaData().getColumnLabel(i + 1));
 				}
 				System.out.printf("\n");
 
-				format = "%" + maxv + "s|";
-				System.out.printf("|" + format, "Timestamp");
-				for (int i = 0; i < colCount - 1; i++) {
-					System.out.printf(format, res.getMetaData().getColumnLabel(i + 1));
-				}
-				System.out.printf("\n");
-
-				System.out.printf("+" + blockLine + "+");
-				for (int i = 0; i < colCount - 1; i++) {
-					System.out.printf(blockLine + "+");
-				}
-				System.out.printf("\n");
+				System.out.println(blockLine);
 			}
 
 			// Output values
 			while (res.next()) {
 
 				if (printToConsole && cnt < MAX_PRINT_ROW_COUNT) {
-					System.out.printf("|" + format, formatDatetime(res.getLong(0)));
+					System.out.printf(formatTime, formatDatetime(res.getLong(0)));
 				}
 
 				for (int i = 1; i < colCount; i++) {
 					if (printToConsole && cnt < MAX_PRINT_ROW_COUNT) {
-						System.out.printf(format, String.valueOf(res.getString(i)));
+						System.out.printf(formatValue, String.valueOf(res.getString(i)));
 					}
 				}
 
@@ -190,11 +187,7 @@ public class Client {
 			}
 
 			if (printToConsole) {
-				System.out.printf("+" + blockLine + "+");
-				for (int i = 0; i < colCount - 1; i++) {
-					System.out.printf(blockLine + "+");
-				}
-				System.out.printf("\n");
+			    System.out.println(blockLine);
 			}
 
 			System.out.println("Result size : " + cnt);
