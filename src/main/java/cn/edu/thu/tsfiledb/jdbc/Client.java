@@ -1,70 +1,69 @@
 package cn.edu.thu.tsfiledb.jdbc;
 
-import java.io.IOException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLTimeoutException;
 import java.sql.Statement;
+import java.util.Scanner;
 
-import jline.console.ConsoleReader;
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.CommandLineParser;
+import org.apache.commons.cli.DefaultParser;
+import org.apache.commons.cli.HelpFormatter;
+import org.apache.commons.cli.Option;
+import org.apache.commons.cli.OptionBuilder;
+import org.apache.commons.cli.Options;
+import org.apache.commons.cli.ParseException;
 
 public class Client {
-	
+
 	private static final int MAX_PRINT_ROW_COUNT = 1000;
-	
+	private static final int MAX_HELP_CONSOLE_WIDTH = 66;
+
 	public static void main(String[] args) throws ClassNotFoundException, SQLException {
 		Class.forName("cn.edu.thu.tsfiledb.jdbc.TsfileDriver");
 		Connection connection = null;
-		ConsoleReader reader = null;
-		String s;
 		boolean printToConsole = true;
 
 		try {
-			reader = new ConsoleReader();
-			String[] argsName = new String[] { "-host", "-port", "-u", "-print" };
-			String[] argv = new String[argsName.length];
-
-			if (args.length < 3) {
-				System.out.println("Usage : login -host<host> -port<port> -u<username>");
-				System.out.println("e.g. : login -host127.0.0.1 -port6667 -u<UserA>");
-				return;
-			}
-
-			for (int i = 0; i < args.length; i++) {
-				String v = args[i].trim();
-				for (int j = 0; j < argsName.length; j++) {
-					if (v.startsWith(argsName[j])) {
-						argv[j] = v.substring(argsName[j].length()).trim();
-					}
-				}
-			}
-
-			if (argv[3] != null && !argv[3].equals("")) {
-				if (argv[3].toLowerCase().equals("true") || argv[3].toLowerCase().equals("false")) {
-					printToConsole = Boolean.valueOf(argv[3]);
-				} else {
-					System.out.println("-print args error.");
+			Options options = createOptions();
+			HelpFormatter hf = new HelpFormatter();
+			hf.setWidth(MAX_HELP_CONSOLE_WIDTH);
+			CommandLine commandLine = null;
+			CommandLineParser parser = new DefaultParser();
+			try {
+				commandLine = parser.parse(options, args);
+				if (commandLine.hasOption("help")) {
+					hf.printHelp("TsFileDB Client-Cli", options, true);
 					return;
 				}
+			} catch (ParseException e) {
+				hf.printHelp("TsFileDB Client-Cli", options, true);
+				return;
+			}	
+			String host = commandLine.getOptionValue("h");
+			String port = commandLine.getOptionValue("p");
+			String username = commandLine.getOptionValue("u");
+			String password = commandLine.getOptionValue("pw");
+			
+			if(host == null || port == null || username == null || password == null){
+				System.out.println("Error input args, input like -h 127.0.0.1 -p 6667 -u myusername -pw mypassword");
+				return;
 			}
-			String password = reader.readLine("Password: ", ' ');
+			
 			// Login in and create connection first
 			try {
-				connection = DriverManager.getConnection("jdbc:tsfile://" + argv[0] + ":" + argv[1] + "/x", argv[2],
-						password);
-			} catch (SQLTimeoutException e){
+				connection = DriverManager.getConnection("jdbc:tsfile://" + host + ":" + port + "/", username, password);
+			} catch (SQLTimeoutException e) {
 				System.out.println("Connect Timeout: " + e.getMessage());
 				return;
-			} catch (SQLException e) {				
+			} catch (SQLException e) {
 				System.out.println(e.getMessage());
 				return;
 			}
-
-		} catch (IOException e) {
-			System.out.println("Console Input Error:" + e.getMessage());
-		} catch (Exception e){
+		} catch (Exception e) {
 			System.out.println("Unknown Error: " + e.getMessage());
 		}
 
@@ -74,25 +73,29 @@ public class Client {
 				+ "   |    |  /        \\ |     \\   |   |  |_\\  ___/ \n"
 				+ "   |____| /_______  / \\___  /   |___|____/\\___  >   version 0.0.1\n"
 				+ "                  \\/      \\/                  \\/ \n");
-		
 
 		System.out.println("login successfully");
-
+		Scanner scanner = null;
 		try {
+			String s;
+			scanner = new Scanner(System.in);
 			while (true) {
-				s = reader.readLine("[TSFile: ] > ");
-				if (s.toLowerCase().trim().equals("quit")) {
-					System.out.println(">> TSFile Quit");
-					break;
-				}
-				if (s.toLowerCase().trim().equals("show metadata")){
-					System.out.println(connection.getMetaData());
-					continue;
-				}
-				String[] cmds = s.split(";");
+				System.out.print("[TSFile: ] > ");
+				s = scanner.nextLine();
+				String[] cmds = s.toLowerCase().trim().split(";");
 				for (int i = 0; i < cmds.length; i++) {
 					String cmd = cmds[i];
 					if (cmd != null && !cmd.trim().equals("")) {
+						if(cmd.equals("quit")){
+							System.out.println(">> TSFile Quit");
+							return;
+						}
+						
+						if(cmd.equals("show metadata")){
+							System.out.println(connection.getMetaData());
+							continue;
+						}
+						
 						Statement statement = connection.createStatement();
 						try {
 							boolean hasResultSet = statement.execute(cmd.trim());
@@ -104,17 +107,24 @@ public class Client {
 							System.out.println("Execute successfully.");
 						} catch (TsfileSQLException e) {
 							System.out.println("statement error: " + e.getMessage());
-						} catch (Exception e){
+						} catch (Exception e) {
 							System.out.println("Connection error. " + e.getMessage());
 						}
-						
 					}
 				}
 			}
-			connection.close();
+			
 		} catch (Exception e) {
 			System.out.println(e.getMessage());
 			System.out.println("Exit client with error");
+		} finally {
+			if(scanner != null){
+				scanner.close();
+			}
+			if(connection != null){
+				connection.close();
+			}
+			
 		}
 	}
 
@@ -195,4 +205,26 @@ public class Client {
 			System.out.println(e.getMessage());
 		}
 	}
+
+	private static Options createOptions() {
+		Options options = new Options();
+		Option help = new Option("help", false, "Display help information");
+		help.setRequired(false);
+		options.addOption(help);
+
+		Option host = OptionBuilder.withArgName("host").hasArg().withDescription("Host Name").create("h");
+		options.addOption(host);
+
+		Option port = OptionBuilder.withArgName("port").hasArg().withDescription("Port").create("p");
+		options.addOption(port);
+
+		Option username = OptionBuilder.withArgName("username").hasArg().withDescription("User name").create("u");
+		options.addOption(username);
+
+		Option password = OptionBuilder.withArgName("password").hasArg().withDescription("Password").create("pw");
+		options.addOption(password);
+
+		return options;
+	}
+
 }
