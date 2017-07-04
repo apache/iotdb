@@ -25,7 +25,6 @@ TOK_REVOKE;
 TOK_UPDATE;
 TOK_VALUE;
 TOK_INSERT;
-TOK_MULTINSERT;
 TOK_QUERY;
 TOK_SELECT;
 TOK_PASSWORD;
@@ -143,7 +142,7 @@ ArrayList<ParseError> errors = new ArrayList<ParseError>();
         xlateMap.put("COLON", ":");
         xlateMap.put("COMMA", ",");
         xlateMap.put("SEMICOLON", ");");
-
+		
         xlateMap.put("LPAREN", "(");
         xlateMap.put("RPAREN", ")");
         xlateMap.put("LSQUARE", "[");
@@ -252,7 +251,6 @@ catch (RecognitionException e) {
 // starting rule
 statement
 	: execStatement EOF
-	| testStatement EOF
 	;
 
 number
@@ -263,12 +261,6 @@ numberOrString // identifier is string or integer
     : identifier | Float
     ;
 
-testStatement
-	: StringLiteral
-	-> ^(TOK_PATH StringLiteral)
-	| out = number
-	-> $out
-	;
 
 execStatement
     : authorStatement
@@ -284,15 +276,13 @@ execStatement
 
 
 dateFormat
-    : LPAREN year = Integer MINUS month = Integer MINUS day = Integer hour = Integer COLON minute = Integer COLON second = Integer COLON mil_second = Integer RPAREN
-    -> ^(TOK_DATETIME $year $month $day $hour $minute $second $mil_second)
+    : datetime=DATETIME -> ^(TOK_DATETIME $datetime)
+    | func=Identifier LPAREN RPAREN -> ^(TOK_DATETIME $func)
     ;
 
 dateFormatWithNumber
-    : LPAREN year = Integer MINUS month = Integer MINUS day = Integer hour = Integer COLON minute = Integer COLON second = Integer COLON mil_second = Integer RPAREN
-    -> ^(TOK_DATETIME $year $month $day $hour $minute $second $mil_second)
-    | Integer
-    -> Integer
+    : dateFormat -> dateFormat
+    | Integer -> Integer
     ;
 
 
@@ -514,11 +504,11 @@ nodeName
 
 insertStatement
    : KW_INSERT KW_INTO path multidentifier KW_VALUES multiValue
-   -> ^(TOK_MULTINSERT path multidentifier multiValue)
+   -> ^(TOK_INSERT path multidentifier multiValue)
    ;
 
 /*
-Assit to multinsert, target grammar:  insert into root.<deviceType>.<deviceName>(time, s1 ,s2) values(timeV, s1V, s2V)
+Assit to multi insert, target grammar:  insert into root.<deviceType>.<deviceName>(time, s1 ,s2) values(timeV, s1V, s2V)
 */
 
 multidentifier

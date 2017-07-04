@@ -16,6 +16,8 @@
 		<hadoop.version>2.6.0</hadoop.version>
 		<jline.version>2.14.1</jline.version>
 		<derby.version>10.12.1.1</derby.version>
+		<antlr3.version>3.4</antlr3.version>
+		<joda.version>2.9.9</joda.version>
 	</properties>
 
 	<dependencies>
@@ -47,8 +49,17 @@
 		<dependency>
 			<groupId>org.antlr</groupId>
 			<artifactId>antlr3-maven-plugin</artifactId>
-			<version>3.4</version>
+			<version>${antlr3.version}</version>
 		</dependency>
+		
+		<!-- https://mvnrepository.com/artifact/joda-time/joda-time -->
+		<dependency>
+			<groupId>joda-time</groupId>
+			<artifactId>joda-time</artifactId>
+			<version>${joda.version}</version>
+		</dependency>
+
+
 	</dependencies>
 
 	<build>
@@ -79,7 +90,7 @@
 					</execution>
 				</executions>
 			</plugin>
-			
+
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-dependency-plugin</artifactId>
