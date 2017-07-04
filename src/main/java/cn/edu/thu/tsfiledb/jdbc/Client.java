@@ -16,6 +16,7 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.OptionBuilder;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
+import org.joda.time.DateTime;
 
 public class Client {
 
@@ -133,10 +134,10 @@ public class Client {
 			int cnt = 0;
 			int colCount = res.getMetaData().getColumnCount();
 			// //Output Labels
-			String format = "|%15s|";
+			String format = "|%30s|";
 			String blockLine = "";
 			if (printToConsole) {
-				int maxv = 15;
+				int maxv = 30;
 				for (int i = 0; i < colCount; i++) {
 					int len = res.getMetaData().getColumnLabel(i).length();
 					maxv = maxv < len ? len : maxv;
@@ -167,16 +168,12 @@ public class Client {
 
 			// Output values
 			while (res.next()) {
-				StringBuilder line = new StringBuilder();
-				line.append(String.valueOf(res.getString(0)));
 
 				if (printToConsole && cnt < MAX_PRINT_ROW_COUNT) {
-					System.out.printf("|" + format, String.valueOf(res.getString(0)));
+					System.out.printf("|" + format, formatDatetime(res.getLong(0)));
 				}
 
 				for (int i = 1; i < colCount; i++) {
-					line.append(",");
-					line.append(res.getString(i));
 					if (printToConsole && cnt < MAX_PRINT_ROW_COUNT) {
 						System.out.printf(format, String.valueOf(res.getString(i)));
 					}
@@ -227,4 +224,9 @@ public class Client {
 		return options;
 	}
 
+	
+	private static String formatDatetime(long timestamp){
+	    DateTime dateTime = new DateTime(timestamp);
+	    return dateTime.toString();
+	}
 }
