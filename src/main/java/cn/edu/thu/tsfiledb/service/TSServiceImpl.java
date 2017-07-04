@@ -56,7 +56,7 @@ import cn.edu.thu.tsfiledb.service.rpc.thrift.TSQueryDataSet;
 import cn.edu.thu.tsfiledb.service.rpc.thrift.TS_SessionHandle;
 import cn.edu.thu.tsfiledb.service.rpc.thrift.TS_Status;
 import cn.edu.thu.tsfiledb.service.rpc.thrift.TS_StatusCode;
-import cn.edu.thu.tsfiledb.sys.writeLog.WriteLogManager;
+import cn.edu.thu.tsfiledb.sys.writelog.WriteLogManager;
 import cn.edu.thu.tsfiledb.service.rpc.thrift.TSIService;
 
 /**

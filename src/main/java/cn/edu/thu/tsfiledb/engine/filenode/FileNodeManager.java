@@ -37,7 +37,7 @@ import cn.edu.thu.tsfiledb.engine.overflow.io.OverflowProcessor;
 import cn.edu.thu.tsfiledb.exception.ErrorDebugException;
 import cn.edu.thu.tsfiledb.exception.PathErrorException;
 import cn.edu.thu.tsfiledb.metadata.MManager;
-import cn.edu.thu.tsfiledb.sys.writeLog.WriteLogManager;
+import cn.edu.thu.tsfiledb.sys.writelog.WriteLogManager;
 
 public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 

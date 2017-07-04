@@ -1,4 +1,4 @@
-package cn.edu.thu.tsfiledb.sys.writeLog;
+package cn.edu.thu.tsfiledb.sys.writelog;
 
 import cn.edu.thu.tsfile.common.utils.BytesUtils;
 import cn.edu.thu.tsfile.timeseries.write.record.DataPoint;
@@ -7,9 +7,9 @@ import cn.edu.thu.tsfiledb.conf.TsfileDBDescriptor;
 import cn.edu.thu.tsfiledb.qp.logical.Operator;
 import cn.edu.thu.tsfiledb.qp.physical.crud.MultiInsertPlan;
 import cn.edu.thu.tsfiledb.qp.physical.PhysicalPlan;
-import cn.edu.thu.tsfiledb.sys.writeLog.impl.LocalFileLogReader;
-import cn.edu.thu.tsfiledb.sys.writeLog.impl.LocalFileLogWriter;
-import cn.edu.thu.tsfiledb.sys.writeLog.transfer.PhysicalPlanLogTransfer;
+import cn.edu.thu.tsfiledb.sys.writelog.impl.LocalFileLogReader;
+import cn.edu.thu.tsfiledb.sys.writelog.impl.LocalFileLogWriter;
+import cn.edu.thu.tsfiledb.sys.writelog.transfer.PhysicalPlanLogTransfer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -17,6 +17,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+
 
 /**
  * System log persist interface.
@@ -37,11 +38,15 @@ public class WriteLogNode {
     private String path;
     private List<PhysicalPlan> plansInMemory;
 
-    public WriteLogNode(String path) {
+    WriteLogNode(String path) {
         this.path = path;
         this.LogCompactSize = TsfileDBDescriptor.getInstance().getConfig().LogCompactSize;
         this.LogMemorySize = TsfileDBDescriptor.getInstance().getConfig().LogMemorySize;
-        filePath = TsfileDBDescriptor.getInstance().getConfig().walFolder + path + ".log";
+        String walPath = TsfileDBDescriptor.getInstance().getConfig().walFolder;
+        if (walPath.length() > 0 && walPath.charAt(walPath.length() - 1) != File.separatorChar) {
+           walPath += File.separatorChar;
+        }
+        filePath = walPath + path + ".log";
         backFilePath = filePath + ".backup";
         plansInMemory = new ArrayList<>();
         hasBufferWriteFlush = false;
@@ -49,11 +54,11 @@ public class WriteLogNode {
         logSize = 0;
     }
 
-    public void setLogCompactSize(int size) {
+    void setLogCompactSize(int size) {
         this.LogCompactSize = size;
     }
 
-    public void setLogMemorySize(int size) {
+    void setLogMemorySize(int size) {
         this.LogMemorySize = size;
     }
 
@@ -91,7 +96,7 @@ public class WriteLogNode {
         }
     }
 
-    synchronized public void overflowFlushStart() throws IOException {
+    synchronized void overflowFlushStart() throws IOException {
         serializeMemoryToFile();
 
         if (writer == null) {
@@ -104,7 +109,7 @@ public class WriteLogNode {
         LOG.info("Write overflow log start.");
     }
 
-    synchronized public void overflowFlushEnd() throws IOException {
+    synchronized void overflowFlushEnd() throws IOException {
         serializeMemoryToFile();
 
         if (writer == null) {
@@ -119,7 +124,7 @@ public class WriteLogNode {
         checkLogsCompactFileSize(false);
     }
 
-    synchronized public void bufferFlushStart() throws IOException {
+    synchronized void bufferFlushStart() throws IOException {
         serializeMemoryToFile();
 
         if (writer == null) {
@@ -132,7 +137,7 @@ public class WriteLogNode {
         LOG.info("Write bufferwrite log start.");
     }
 
-    synchronized public void bufferFlushEnd() throws IOException {
+    synchronized void bufferFlushEnd() throws IOException {
         serializeMemoryToFile();
 
         if (writer == null) {
@@ -145,8 +150,6 @@ public class WriteLogNode {
         LOG.info("Write bufferwrite log end.");
         hasBufferWriteFlush = true;
         checkLogsCompactFileSize(false);
-//		writer.close();
-//		writer = null;
     }
 
     /**
@@ -161,8 +164,13 @@ public class WriteLogNode {
             LocalFileLogWriter writerV2 = new LocalFileLogWriter(backFilePath);
             LocalFileLogReader oldReader = new LocalFileLogReader(filePath);
             writerV2.write(oldReader.getFileCompactData());
+            // Don't forget to close the stream.
+            writerV2.close();
+            oldReader.close();
             new File(filePath).delete();
             new File(filePath + ".backup").renameTo(new File(filePath));
+            writer.close();
+            writer = null;
             //writer = new LocalFileLogWriter(filePath);
             writer = null;
             logSize = 0;
@@ -229,9 +237,46 @@ public class WriteLogNode {
     }
 
 
-    public void resetFileStatus() throws IOException {
-        File f = new File(filePath);
-        if (f.exists())
-            f.delete();
+    public void closeStreams() throws IOException {
+        closeReadStream();
+        closeWriteStream();
+    }
+
+    public void closeWriteStream() {
+        if (writer != null) {
+            writer.close();
+            writer = null;
+        }
+    }
+
+    public void closeReadStream() throws IOException {
+        if (reader != null) {
+            reader.close();
+            reader = null;
+        }
+    }
+
+    public void readerReset() throws IOException {
+        if (this.reader != null) {
+            this.reader.close();
+        }
+        this.reader = null;
+    }
+
+    public void removeFiles() {
+        File currentFile = new File(filePath);
+        //currentFile.
+        if (currentFile.exists()) {
+            if (!currentFile.delete() ) {
+                LOG.error("current file not delete");
+            }
+        }
+
+        File backFile = new File(backFilePath);
+        if (backFile.exists()) {
+            if (!backFile.delete() ) {
+                LOG.error("backup file not delete");
+            }
+        }
     }
 }

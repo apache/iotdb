@@ -1,4 +1,4 @@
-package cn.edu.thu.tsfiledb.sys.writeLog.transfer;
+package cn.edu.thu.tsfiledb.sys.writelog.transfer;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -26,7 +26,7 @@ public enum PhysicalPlanCodec {
     public final int planCode;
     public final Codec<?> codec;
 
-    private PhysicalPlanCodec(int planCode, Codec<?> codec) {
+    PhysicalPlanCodec(int planCode, Codec<?> codec) {
         this.planCode = planCode;
         this.codec = codec;
     }

@@ -1,4 +1,4 @@
-package cn.edu.thu.tsfiledb.sys.writeLog.transfer;
+package cn.edu.thu.tsfiledb.sys.writelog.transfer;
 
 import java.io.IOException;
 

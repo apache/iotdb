@@ -1,4 +1,4 @@
-package cn.edu.thu.tsfiledb.sys.writeLog;
+package cn.edu.thu.tsfiledb.sys.writelog;
 
 import java.io.File;
 import java.io.IOException;
@@ -18,26 +18,21 @@ import cn.edu.thu.tsfiledb.qp.physical.PhysicalPlan;
 
 public class WriteLogManager {
     private static final Logger LOG = LoggerFactory.getLogger(WriteLogManager.class);
-    private static WriteLogManager instance;
+    private static WriteLogManager instance = new WriteLogManager();
     private static HashMap<String, WriteLogNode> logNodeMaps;
     public static final int BUFFERWRITER = 0, OVERFLOW = 1;
     private static List<String> recoveryPathList = new ArrayList<>();
     public static boolean isRecovering = false;
-    
+
     private WriteLogManager() {
         logNodeMaps = new HashMap<>();
     }
 
     public static WriteLogManager getInstance() {
-        if (instance == null) {
-            synchronized (WriteLogManager.class) {
-                instance = new WriteLogManager();
-            }
-        }
         return instance;
     }
 
-    public static WriteLogNode getWriteLogNode(String fileNode) {
+    private static WriteLogNode getWriteLogNode(String fileNode) {
         if (logNodeMaps.containsKey(fileNode)) {
             return logNodeMaps.get(fileNode);
         }
