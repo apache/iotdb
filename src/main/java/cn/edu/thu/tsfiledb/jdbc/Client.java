@@ -4,7 +4,6 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.SQLTimeoutException;
 import java.sql.Statement;
 import java.util.Scanner;
 
@@ -18,54 +17,56 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.joda.time.DateTime;
 
+import cn.edu.thu.tsfiledb.exception.ArgsErrorException;
+
 public class Client {
 
 	private static final int MAX_PRINT_ROW_COUNT = 1000;
 	private static final int MAX_HELP_CONSOLE_WIDTH = 66;
+	
+	private static final String QUIT_COMMAND = "quit";
+	private static final String SHOW_METADATA_COMMAND = "show metadata";
 
 	public static void main(String[] args) throws ClassNotFoundException, SQLException {
 		Class.forName("cn.edu.thu.tsfiledb.jdbc.TsfileDriver");
 		Connection connection = null;
 		boolean printToConsole = true;
 
+		Options options = createOptions();
+		HelpFormatter hf = new HelpFormatter();
+		hf.setWidth(MAX_HELP_CONSOLE_WIDTH);
+		CommandLine commandLine = null;
+		CommandLineParser parser = new DefaultParser();
+		
+		if(args == null || args.length == 0){
+			hf.printHelp("TsFileDB Client-Cli", options, true);
+			return;
+		}
+		
 		try {
-			Options options = createOptions();
-			HelpFormatter hf = new HelpFormatter();
-			hf.setWidth(MAX_HELP_CONSOLE_WIDTH);
-			CommandLine commandLine = null;
-			CommandLineParser parser = new DefaultParser();
-			try {
-				commandLine = parser.parse(options, args);
-				if (commandLine.hasOption("help")) {
-					hf.printHelp("TsFileDB Client-Cli", options, true);
-					return;
-				}
-			} catch (ParseException e) {
+			commandLine = parser.parse(options, args);
+			if (commandLine.hasOption("help")) {
 				hf.printHelp("TsFileDB Client-Cli", options, true);
 				return;
-			}	
-			String host = commandLine.getOptionValue("h");
-			String port = commandLine.getOptionValue("p");
-			String username = commandLine.getOptionValue("u");
-			String password = commandLine.getOptionValue("pw");
-			
-			if(host == null || port == null || username == null || password == null){
-				System.out.println("Error input args, input like -h 127.0.0.1 -p 6667 -u myusername -pw mypassword");
-				return;
 			}
-			
-			// Login in and create connection first
-			try {
+		} catch (ParseException e) {
+			hf.printHelp("TsFileDB Client-Cli", options, true);
+			return;
+		}	
+
+		try {
+			String host = checkRequiredArg("h", "host", commandLine);
+			String port = checkRequiredArg("p", "port", commandLine);
+			String username = checkRequiredArg("u", "username", commandLine);
+			String password = checkRequiredArg("pw", "password", commandLine);
+			try{
 				connection = DriverManager.getConnection("jdbc:tsfile://" + host + ":" + port + "/", username, password);
-			} catch (SQLTimeoutException e) {
-				System.out.println("Connect Timeout: " + e.getMessage());
-				return;
 			} catch (SQLException e) {
-				System.out.println(e.getMessage());
+				System.out.println("TsFileDB Client-Cli: "+e.getMessage());
 				return;
 			}
-		} catch (Exception e) {
-			System.out.println("Unknown Error: " + e.getMessage());
+		} catch (ArgsErrorException e1) {
+			return;
 		}
 
 		System.out.println(" _______________________________.___.__          \n"
@@ -75,24 +76,24 @@ public class Client {
 				+ "   |____| /_______  / \\___  /   |___|____/\\___  >   version 0.0.1\n"
 				+ "                  \\/      \\/                  \\/ \n");
 
-		System.out.println("login successfully");
+		System.out.println("TsFileDB Client-Cli: login successfully");
 		Scanner scanner = null;
 		try {
 			String s;
 			scanner = new Scanner(System.in);
 			while (true) {
-				System.out.print("[TSFile: ] > ");
+				System.out.print("[TsFileDB Client-Cli: ] > ");
 				s = scanner.nextLine();
 				String[] cmds = s.toLowerCase().trim().split(";");
 				for (int i = 0; i < cmds.length; i++) {
 					String cmd = cmds[i];
 					if (cmd != null && !cmd.trim().equals("")) {
-						if(cmd.equals("quit")){
-							System.out.println(">> TSFile Quit");
+						if(cmd.equals(QUIT_COMMAND)){
+							System.out.println(">> TsFileDB Client-Cli Quit");
 							return;
 						}
 						
-						if(cmd.equals("show metadata")){
+						if(cmd.equals(SHOW_METADATA_COMMAND)){
 							System.out.println(connection.getMetaData());
 							continue;
 						}
@@ -105,19 +106,18 @@ public class Client {
 								output(resultSet, printToConsole);
 							}
 							statement.close();
-							System.out.println("Execute successfully.");
+							System.out.println("TsFileDB Client-Cli: execute successfully.");
 						} catch (TsfileSQLException e) {
-							System.out.println("statement error: " + e.getMessage());
+							System.out.println("TsFileDB Client-Cli: statement error: " + e.getMessage());
 						} catch (Exception e) {
-							System.out.println("Connection error. " + e.getMessage());
+							System.out.println("TsFileDB Client-Cli: connection error. " + e.getMessage());
 						}
 					}
 				}
 			}
 			
 		} catch (Exception e) {
-			System.out.println(e.getMessage());
-			System.out.println("Exit client with error");
+			System.out.println("TsFileDB Client-Cli: exit client with error "+e.getMessage());
 		} finally {
 			if(scanner != null){
 				scanner.close();
@@ -209,24 +209,34 @@ public class Client {
 		help.setRequired(false);
 		options.addOption(help);
 
-		Option host = OptionBuilder.withArgName("host").hasArg().withDescription("Host Name").create("h");
+		Option host = OptionBuilder.withArgName("host").hasArg().withDescription("Host Name (required)").create("h");
 		options.addOption(host);
 
-		Option port = OptionBuilder.withArgName("port").hasArg().withDescription("Port").create("p");
+		Option port = OptionBuilder.withArgName("port").hasArg().withDescription("Port (required)").create("p");
 		options.addOption(port);
 
-		Option username = OptionBuilder.withArgName("username").hasArg().withDescription("User name").create("u");
+		Option username = OptionBuilder.withArgName("username").hasArg().withDescription("User name (required)").create("u");
 		options.addOption(username);
 
-		Option password = OptionBuilder.withArgName("password").hasArg().withDescription("Password").create("pw");
+		Option password = OptionBuilder.withArgName("password").hasArg().withDescription("Password (required)").create("pw");
 		options.addOption(password);
 
 		return options;
 	}
-
 	
 	private static String formatDatetime(long timestamp){
 	    DateTime dateTime = new DateTime(timestamp);
 	    return dateTime.toString();
+	}
+	
+	private static String checkRequiredArg(String arg,String name, CommandLine commandLine) throws ArgsErrorException{
+		String str = commandLine.getOptionValue(arg);
+		if(str == null){
+			String msg = String.format("TsFileDB Client-Cli: Required values for option '%s' not provided",name);
+			System.out.println(msg);
+			System.out.println("Use -help for more information");
+			throw new ArgsErrorException(msg);
+		}
+		return str;
 	}
 }
