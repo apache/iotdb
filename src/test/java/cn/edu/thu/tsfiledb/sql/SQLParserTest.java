@@ -1,6 +1,5 @@
 package cn.edu.thu.tsfiledb.sql;
 
-import cn.edu.thu.tsfiledb.qp.logical.sys.LoadDataOperator;
 import cn.edu.thu.tsfiledb.sql.parse.ASTNode;
 import cn.edu.thu.tsfiledb.sql.parse.Node;
 import cn.edu.thu.tsfiledb.sql.parse.ParseException;
@@ -238,18 +237,106 @@ public class SQLParserTest {
             i++;
         }
     }
-    
-    
-    
-    
+  
+    @Test
+    public void query1() throws ParseException, RecognitionException {
+        // template for test case
+        ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_QUERY", "TOK_SELECT", 
+        		"TOK_PATH", "device_1", "sensor_1", 
+        		"TOK_PATH", "device_2", "sensor_2",
+                "TOK_FROM", "TOK_PATH", "root", "vehicle", 
+                "TOK_WHERE", "and", 
+                "<", "TOK_PATH", "root", "laptop", "device_1", "sensor_1", "2000",
+                ">", "TOK_PATH", "root", "laptop", "device_2", "sensor_2", "1000"));
+        ArrayList<String> rec = new ArrayList<>();
+        ASTNode astTree = ParseGenerator.generateAST("SELECT device_1.sensor_1,device_2.sensor_2 FROM root.vehicle WHERE root.laptop.device_1.sensor_1 < 2000 and root.laptop.device_2.sensor_2 > 1000");
+        astTree = ParseUtils.findRootNonNullToken(astTree);
+        recursivePrintSon(astTree, rec);
+
+        int i = 0;
+        while (i <= rec.size() - 1) {
+            assertEquals(rec.get(i), ans.get(i));
+            i++;
+        }
+    }    
     
     @Test
-    public void selectCount() throws ParseException, RecognitionException {
+    public void query2() throws ParseException, RecognitionException {
         // template for test case
-        ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_QUERY", "TOK_SELECT", "TOK_CLUSTER", "TOK_PATH",
-                "s1", "count", "TOK_FROM", "TOK_PATH", "root", "vehicle", "d1"));
+        ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_QUERY", "TOK_SELECT", 
+        		"TOK_PATH", "device_1", "sensor_1", 
+        		"TOK_PATH", "device_2", "sensor_2",
+                "TOK_FROM", "TOK_PATH", "root", "vehicle", 
+                "TOK_WHERE", "or", 
+                "<", "TOK_PATH", "root", "laptop", "device_1", "sensor_1", "-2000",
+                ">", "TOK_PATH", "time", "TOK_DATETIME" ,"now"));
         ArrayList<String> rec = new ArrayList<>();
-        ASTNode astTree = ParseGenerator.generateAST("select count(s1) from root.vehicle.d1");
+        ASTNode astTree = ParseGenerator.generateAST("SELECT device_1.sensor_1,device_2.sensor_2 FROM root.vehicle WHERE root.laptop.device_1.sensor_1 < -2000 or time > now()");
+        astTree = ParseUtils.findRootNonNullToken(astTree);
+        recursivePrintSon(astTree, rec);
+
+        int i = 0;
+        while (i <= rec.size() - 1) {
+            assertEquals(rec.get(i), ans.get(i));
+            i++;
+        }
+    }  
+    
+    @Test
+    public void query3() throws ParseException, RecognitionException {
+        // template for test case
+        ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_QUERY", "TOK_SELECT", 
+        		"TOK_PATH", "device_1", "sensor_1", 
+        		"TOK_PATH", "device_2", "sensor_2",
+                "TOK_FROM", "TOK_PATH", "root", "vehicle", 
+                "TOK_WHERE", "or", 
+                "<", "TOK_PATH", "time", "1234567",
+                ">", "TOK_PATH", "time", "TOK_DATETIME" ,"2017-6-2T12:00:12+07:00"));
+        ArrayList<String> rec = new ArrayList<>();
+        ASTNode astTree = ParseGenerator.generateAST("SELECT device_1.sensor_1,device_2.sensor_2 FROM root.vehicle WHERE time < 1234567 or time > 2017-6-2T12:00:12+07:00");
+        astTree = ParseUtils.findRootNonNullToken(astTree);
+        recursivePrintSon(astTree, rec);
+
+        int i = 0;
+        while (i <= rec.size() - 1) {
+            assertEquals(rec.get(i), ans.get(i));
+            i++;
+        }
+    }  
+    
+    @Test
+    public void query4() throws ParseException {
+        // template for test case
+        ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_QUERY", "TOK_SELECT", 
+        		"TOK_PATH", "*", 
+                "TOK_FROM", "TOK_PATH", "root", "vehicle", 
+                "TOK_WHERE", "or", 
+                "<", "TOK_PATH", "time", "1234567",
+                ">", "TOK_PATH", "time", "TOK_DATETIME" ,"2017-6-2T12:00:12+07:00"));
+        ArrayList<String> rec = new ArrayList<>();
+        ASTNode astTree = ParseGenerator.generateAST("SELECT * FROM root.vehicle WHERE time < 1234567 or time > 2017-6-2T12:00:12+07:00");
+        astTree = ParseUtils.findRootNonNullToken(astTree);
+        recursivePrintSon(astTree, rec);
+
+        int i = 0;
+        while (i <= rec.size() - 1) {
+            assertEquals(rec.get(i), ans.get(i));
+            i++;
+        }
+    }  
+    
+    @Test
+    public void aggregation1() throws ParseException, RecognitionException {
+        // template for test case
+        ArrayList<String> ans = new ArrayList<>(Arrays.asList(
+        		"TOK_QUERY", "TOK_SELECT", "TOK_CLUSTER", 
+        		"TOK_PATH", "s1", "count", 
+        		"TOK_FROM", "TOK_PATH", "root", "vehicle", "d1",
+        		"TOK_WHERE", "and", 
+        		"<", "TOK_PATH", "root", "vehicle", "d1", "s1", "2000",
+        		"<=", "TOK_PATH", "time", "TOK_DATETIME", "now"));
+        ArrayList<String> rec = new ArrayList<>();
+        ASTNode astTree = ParseGenerator.generateAST("select count(s1) from root.vehicle.d1 where root.vehicle.d1.s1 < 2000 and time <= now()");
         astTree = ParseUtils.findRootNonNullToken(astTree);
         recursivePrintSon(astTree, rec);
 
@@ -261,7 +348,206 @@ public class SQLParserTest {
     }
 
     @Test
-    public void quit() throws ParseException, RecognitionException {
+    public void aggregation2() throws ParseException, RecognitionException {
+        // template for test case
+        ArrayList<String> ans = new ArrayList<>(Arrays.asList(
+        		"TOK_QUERY", "TOK_SELECT", "TOK_CLUSTER", 
+        		"TOK_PATH", "s1", "min_time", 
+        		"TOK_FROM", "TOK_PATH", "root", "vehicle", "d1",
+        		"TOK_WHERE", "or", 
+        		"<", "TOK_PATH", "root", "vehicle", "d1", "s1", "2000",
+        		">=", "TOK_PATH", "time", "1234567"));
+        ArrayList<String> rec = new ArrayList<>();
+        ASTNode astTree = ParseGenerator.generateAST("select min_time(s1) FROM root.vehicle.d1 WHERE root.vehicle.d1.s1 < 2000 or time >= 1234567");
+        astTree = ParseUtils.findRootNonNullToken(astTree);
+        recursivePrintSon(astTree, rec);
+
+        int i = 0;
+        while (i <= rec.size() - 1) {
+            assertEquals(rec.get(i), ans.get(i));
+            i++;
+        }
+    }
+    
+    // Authority Operation
+    @Test
+    public void createUser() throws ParseException {
+        // template for test case
+        ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_CREATE", "TOK_USER", "myname", "TOK_PASSWORD", "mypwd"));
+        ArrayList<String> rec = new ArrayList<>();
+        ASTNode astTree = ParseGenerator.generateAST("create user myname mypwd");
+        astTree = ParseUtils.findRootNonNullToken(astTree);
+        recursivePrintSon(astTree, rec);
+
+        int i = 0;
+        while (i <= rec.size() - 1) {
+            assertEquals(rec.get(i), ans.get(i));
+            i++;
+        }
+    }
+
+    @Test
+    public void dropUser() throws ParseException {
+        // template for test case
+        ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_DROP", "TOK_USER", "myname"));
+        ArrayList<String> rec = new ArrayList<>();
+        ASTNode astTree = ParseGenerator.generateAST("drop user myname");
+        astTree = ParseUtils.findRootNonNullToken(astTree);
+        recursivePrintSon(astTree, rec);
+
+        int i = 0;
+        while (i <= rec.size() - 1) {
+            assertEquals(rec.get(i), ans.get(i));
+            i++;
+        }
+    }
+
+    @Test
+    public void updatePassword() throws ParseException {
+        // template for test case
+        ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_UPDATE", "TOK_UPDATE_PSWD", "'myname'", "'newpassword'"));
+        ArrayList<String> rec = new ArrayList<>();
+        ASTNode astTree = ParseGenerator.generateAST("update user 'myname' set password 'newpassword'");
+        astTree = ParseUtils.findRootNonNullToken(astTree);
+        recursivePrintSon(astTree, rec);
+
+        int i = 0;
+        while (i <= rec.size() - 1) {
+            assertEquals(rec.get(i), ans.get(i));
+            i++;
+        }
+    }
+    
+    @Test
+    public void createRole() throws ParseException {
+        // template for test case
+        ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_CREATE", "TOK_ROLE", "admin"));
+        ArrayList<String> rec = new ArrayList<>();
+        ASTNode astTree = ParseGenerator.generateAST("create role admin");
+        astTree = ParseUtils.findRootNonNullToken(astTree);
+        recursivePrintSon(astTree, rec);
+
+        int i = 0;
+        while (i <= rec.size() - 1) {
+            assertEquals(rec.get(i), ans.get(i));
+            i++;
+        }
+    }
+
+    @Test
+    public void dropRole() throws ParseException {
+        // template for test case
+        ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_DROP", "TOK_ROLE", "admin"));
+        ArrayList<String> rec = new ArrayList<>();
+        ASTNode astTree = ParseGenerator.generateAST("drop role admin");
+        astTree = ParseUtils.findRootNonNullToken(astTree);
+        recursivePrintSon(astTree, rec);
+
+        int i = 0;
+        while (i <= rec.size() - 1) {
+            assertEquals(rec.get(i), ans.get(i));
+            i++;
+        }
+    }
+    
+    @Test
+    public void grantUser() throws ParseException {
+        // template for test case
+        ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_GRANT", "TOK_USER", "myusername", "TOK_PRIVILEGES", "'create'", "'delete'","TOK_PATH", "root", "laptop", "d1", "s1"));
+        ArrayList<String> rec = new ArrayList<>();
+        ASTNode astTree = ParseGenerator.generateAST("grant user myusername privileges 'create','delete' on root.laptop.d1.s1");
+        astTree = ParseUtils.findRootNonNullToken(astTree);
+        recursivePrintSon(astTree, rec);
+
+        int i = 0;
+        while (i <= rec.size() - 1) {
+            assertEquals(rec.get(i), ans.get(i));
+            i++;
+        }
+    }
+    
+    @Test
+    public void grantRole() throws ParseException {
+        // template for test case
+        ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_GRANT", "TOK_ROLE", "admin", "TOK_PRIVILEGES", "'create'", "'delete'","TOK_PATH", "root", "laptop", "d1", "s1"));
+        ArrayList<String> rec = new ArrayList<>();
+        ASTNode astTree = ParseGenerator.generateAST("grant role admin privileges 'create','delete' on root.laptop.d1.s1");
+        astTree = ParseUtils.findRootNonNullToken(astTree);
+        recursivePrintSon(astTree, rec);
+
+        int i = 0;
+        while (i <= rec.size() - 1) {
+            assertEquals(rec.get(i), ans.get(i));
+            i++;
+        }
+    }
+    
+    @Test
+    public void revokeUser() throws ParseException {
+        // template for test case
+        ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_REVOKE", "TOK_USER", "myusername", "TOK_PRIVILEGES", "'create'", "'delete'","TOK_PATH", "root", "laptop", "d1", "s1"));
+        ArrayList<String> rec = new ArrayList<>();
+        ASTNode astTree = ParseGenerator.generateAST("revoke user myusername privileges 'create','delete' on root.laptop.d1.s1");
+        astTree = ParseUtils.findRootNonNullToken(astTree);
+        recursivePrintSon(astTree, rec);
+
+        int i = 0;
+        while (i <= rec.size() - 1) {
+            assertEquals(rec.get(i), ans.get(i));
+            i++;
+        }
+    }
+    
+    @Test
+    public void revokeRole() throws ParseException {
+        // template for test case
+        ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_REVOKE", "TOK_ROLE", "admin", "TOK_PRIVILEGES", "'create'", "'delete'","TOK_PATH", "root", "laptop", "d1", "s1"));
+        ArrayList<String> rec = new ArrayList<>();
+        ASTNode astTree = ParseGenerator.generateAST("revoke role admin privileges 'create','delete' on root.laptop.d1.s1");
+        astTree = ParseUtils.findRootNonNullToken(astTree);
+        recursivePrintSon(astTree, rec);
+
+        int i = 0;
+        while (i <= rec.size() - 1) {
+            assertEquals(rec.get(i), ans.get(i));
+            i++;
+        }
+    }    
+    
+    @Test
+    public void grantRoleToUser() throws ParseException {
+        // template for test case
+        ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_GRANT", "TOK_ROLE", "admin", "TOK_USER", "Tom"));
+        ArrayList<String> rec = new ArrayList<>();
+        ASTNode astTree = ParseGenerator.generateAST("grant admin to Tom");
+        astTree = ParseUtils.findRootNonNullToken(astTree);
+        recursivePrintSon(astTree, rec);
+
+        int i = 0;
+        while (i <= rec.size() - 1) {
+            assertEquals(rec.get(i), ans.get(i));
+            i++;
+        }
+    }   
+    
+    @Test
+    public void revokeRoleFromUser() throws ParseException {
+        // template for test case
+        ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_REVOKE", "TOK_ROLE", "admin", "TOK_USER", "Tom"));
+        ArrayList<String> rec = new ArrayList<>();
+        ASTNode astTree = ParseGenerator.generateAST("revoke admin from Tom");
+        astTree = ParseUtils.findRootNonNullToken(astTree);
+        recursivePrintSon(astTree, rec);
+
+        int i = 0;
+        while (i <= rec.size() - 1) {
+            assertEquals(rec.get(i), ans.get(i));
+            i++;
+        }
+    }
+    
+    @Test
+    public void quit() throws ParseException {
         // template for test case
         ArrayList<String> ans = new ArrayList<>(Collections.singletonList("TOK_QUIT"));
         ArrayList<String> rec = new ArrayList<>();
@@ -276,12 +562,13 @@ public class SQLParserTest {
         }
     }
 
+    // Property Tree Operation
     @Test
-    public void unlinkLabel() throws ParseException, RecognitionException {
+    public void createProp() throws ParseException {
         // template for test case
-        ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_UNLINK", "TOK_ROOT", "m1", "m2", "TOK_LABEL", "p2", "TOK_PROPERTY", "p1"));
+        ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_CREATE", "TOK_PROPERTY", "myprop"));
         ArrayList<String> rec = new ArrayList<>();
-        ASTNode astTree = ParseGenerator.generateAST("unlink root.m1.m2 from p1.p2");
+        ASTNode astTree = ParseGenerator.generateAST("create property myprop");
         astTree = ParseUtils.findRootNonNullToken(astTree);
         recursivePrintSon(astTree, rec);
 
@@ -291,13 +578,45 @@ public class SQLParserTest {
             i++;
         }
     }
-
+    
     @Test
-    public void linkLabel() throws ParseException, RecognitionException {
+    public void addLabelToProp() throws ParseException {
         // template for test case
-        ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_LINK", "TOK_ROOT", "a", "b", "c", "TOK_LABEL", "labelhere", "TOK_PROPERTY", "propropro"));
+        ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_ADD", "TOK_LABEL", "myLabel", "TOK_PROPERTY", "myProp"));
         ArrayList<String> rec = new ArrayList<>();
-        ASTNode astTree = ParseGenerator.generateAST("link root.a.b.c to propropro.labelhere");
+        ASTNode astTree = ParseGenerator.generateAST("ADD LABEL myLabel TO PROPERTY myProp");
+        astTree = ParseUtils.findRootNonNullToken(astTree);
+        recursivePrintSon(astTree, rec);
+
+        int i = 0;
+        while (i <= rec.size() - 1) {
+            assertEquals(rec.get(i), ans.get(i));
+            i++;
+        }
+    }    
+    
+    @Test
+    public void delelteLabelFromProp() throws ParseException {
+        // template for test case
+        ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_DELETE", "TOK_LABEL", "myLable", "TOK_PROPERTY", "myProp"));
+        ArrayList<String> rec = new ArrayList<>();
+        ASTNode astTree = ParseGenerator.generateAST("DELETE LABEL myLable FROM PROPERTY myProp");
+        astTree = ParseUtils.findRootNonNullToken(astTree);
+        recursivePrintSon(astTree, rec);
+
+        int i = 0;
+        while (i <= rec.size() - 1) {
+            assertEquals(rec.get(i), ans.get(i));
+            i++;
+        }
+    }   
+   
+    @Test
+    public void linkLabel() throws ParseException {
+        // template for test case
+        ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_LINK", "TOK_ROOT", "a", "b", "c", "TOK_LABEL", "myLabel", "TOK_PROPERTY", "myProp"));
+        ArrayList<String> rec = new ArrayList<>();
+        ASTNode astTree = ParseGenerator.generateAST("link root.a.b.c to myProp.myLabel");
         astTree = ParseUtils.findRootNonNullToken(astTree);
         recursivePrintSon(astTree, rec);
 
@@ -307,13 +626,13 @@ public class SQLParserTest {
             i++;
         }
     }
-
+    
     @Test
-    public void deleteLabelProp() throws ParseException, RecognitionException {
+    public void unlinkLabel() throws ParseException {
         // template for test case
-        ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_DELETE", "TOK_LABEL", "label1021", "TOK_PROPERTY", "propropro"));
+        ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_UNLINK", "TOK_ROOT", "m1", "m2", "TOK_LABEL", "myLabel", "TOK_PROPERTY", "myProp"));
         ArrayList<String> rec = new ArrayList<>();
-        ASTNode astTree = ParseGenerator.generateAST("delete label label1021 from property propropro");
+        ASTNode astTree = ParseGenerator.generateAST("unlink root.m1.m2 from myProp.myLabel");
         astTree = ParseUtils.findRootNonNullToken(astTree);
         recursivePrintSon(astTree, rec);
 
@@ -323,13 +642,14 @@ public class SQLParserTest {
             i++;
         }
     }
-
+    
+    // Metadata
     @Test
-    public void addLabelProp() throws ParseException, RecognitionException {
+    public void showMetadata() throws ParseException {
         // template for test case
-        ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_ADD", "TOK_LABEL", "label1021", "TOK_PROPERTY", "propropro"));
+        ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_SHOW_METADATA"));
         ArrayList<String> rec = new ArrayList<>();
-        ASTNode astTree = ParseGenerator.generateAST("add label label1021 to property propropro");
+        ASTNode astTree = ParseGenerator.generateAST("show metadata");
         astTree = ParseUtils.findRootNonNullToken(astTree);
         recursivePrintSon(astTree, rec);
 
@@ -339,87 +659,8 @@ public class SQLParserTest {
             i++;
         }
     }
-
-
-
-
-
-
-
-
-
-    @Test
-    public void grant() throws ParseException, RecognitionException {
-        // template for test case
-        ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_GRANT", "TOK_ROLE", "xm", "TOK_PRIVILEGES", "'create'", "'delete'","TOK_PATH", "root", "laptop", "d1", "s1sa"));
-        ArrayList<String> rec = new ArrayList<>();
-        ASTNode astTree = ParseGenerator.generateAST("grant role xm privileges 'create','delete' on root.laptop.d1.s1sa");
-        astTree = ParseUtils.findRootNonNullToken(astTree);
-        recursivePrintSon(astTree, rec);
-
-        int i = 0;
-        while (i <= rec.size() - 1) {
-            assertEquals(rec.get(i), ans.get(i));
-            i++;
-        }
-    }
-
-    @Test
-    public void revoke() throws ParseException, RecognitionException {
-        // template for test case
-        ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_REVOKE", "TOK_ROLE", "admin", "TOK_USER", "xm"));
-        ArrayList<String> rec = new ArrayList<>();
-        ASTNode astTree = ParseGenerator.generateAST("revoke admin from xm");
-        astTree = ParseUtils.findRootNonNullToken(astTree);
-        recursivePrintSon(astTree, rec);
-
-        int i = 0;
-        while (i <= rec.size() - 1) {
-            assertEquals(rec.get(i), ans.get(i));
-            i++;
-        }
-    }
-
-    @Test
-    public void createUser2() throws ParseException, RecognitionException {
-        // template for test case
-        ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_CREATE", "TOK_USER", "xm", "TOK_PASSWORD", "w123"));
-        ArrayList<String> rec = new ArrayList<>();
-        ASTNode astTree = ParseGenerator.generateAST("create user xm w123");
-        astTree = ParseUtils.findRootNonNullToken(astTree);
-        recursivePrintSon(astTree, rec);
-
-        int i = 0;
-        while (i <= rec.size() - 1) {
-            assertEquals(rec.get(i), ans.get(i));
-            i++;
-        }
-    }
-
-    @Test
-    public void selectSum() throws ParseException, RecognitionException {
-        // template for test case
-        ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_QUERY", "TOK_SELECT", "TOK_CLUSTER", "TOK_PATH",
-                "sensor_1", "total", "TOK_CLUSTER", "TOK_PATH", "sensor_2", "total", "TOK_FROM", "TOK_PATH", "device_1",
-                "TOK_WHERE", "and", "<", "TOK_PATH", "time", "0.1", ">", "TOK_PATH", "freq", "10"));
-        ArrayList<String> rec = new ArrayList<>();
-        ASTNode astTree = ParseGenerator.generateAST("select summ(sensor_1), total(sensor_2) from device_1 where time < 0.1 and freq > 10");
-        astTree = ParseUtils.findRootNonNullToken(astTree);
-        recursivePrintSon(astTree, rec);
-
-        int i = 0;
-        while (i <= rec.size() - 1) {
-            assertEquals(rec.get(i), ans.get(i));
-            i++;
-        }
-    }
-
-
-
-
-
-
-
+    
+    // others
     @Test
     public void describePath() throws ParseException, RecognitionException {
         // template for test case
@@ -436,79 +677,6 @@ public class SQLParserTest {
         }
     }
 
-
-
-
-
-
-    @Test
-    public void createUser1() throws ParseException, RecognitionException {
-        // template for test case
-        ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_CREATE", "TOK_USER", "xm", "TOK_PASSWORD", "192921"));
-        ArrayList<String> rec = new ArrayList<>();
-        ASTNode astTree = ParseGenerator.generateAST("create user xm 192921");
-        astTree = ParseUtils.findRootNonNullToken(astTree);
-        recursivePrintSon(astTree, rec);
-
-        int i = 0;
-        while (i <= rec.size() - 1) {
-            assertEquals(rec.get(i), ans.get(i));
-            i++;
-        }
-    }
-
-
-
-    @Test
-    public void updatePassword() throws ParseException, RecognitionException {
-        // template for test case
-        ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_UPDATE", "TOK_UPDATE_PSWD", "'usezr++name'", "'newpassword'"));
-        ArrayList<String> rec = new ArrayList<>();
-        ASTNode astTree = ParseGenerator.generateAST("update user 'usezr++name' set password 'newpassword'");
-        astTree = ParseUtils.findRootNonNullToken(astTree);
-        recursivePrintSon(astTree, rec);
-
-        int i = 0;
-        while (i <= rec.size() - 1) {
-            assertEquals(rec.get(i), ans.get(i));
-            i++;
-        }
-    }
-
-    // Property Tree Operation
-    @Test
-    public void createProp() throws ParseException, RecognitionException {
-        // template for test case
-        ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_CREATE", "TOK_PROPERTY", "myprop"));
-        ArrayList<String> rec = new ArrayList<>();
-        ASTNode astTree = ParseGenerator.generateAST("create property myprop");
-        astTree = ParseUtils.findRootNonNullToken(astTree);
-        recursivePrintSon(astTree, rec);
-
-        int i = 0;
-        while (i <= rec.size() - 1) {
-            assertEquals(rec.get(i), ans.get(i));
-            i++;
-        }
-    }
-
-    // Metadata
-    @Test
-    public void showMetadata() throws ParseException, RecognitionException {
-        // template for test case
-        ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_SHOW_METADATA"));
-        ArrayList<String> rec = new ArrayList<>();
-        ASTNode astTree = ParseGenerator.generateAST("show metadata");
-        astTree = ParseUtils.findRootNonNullToken(astTree);
-        recursivePrintSon(astTree, rec);
-
-        int i = 0;
-        while (i <= rec.size() - 1) {
-            assertEquals(rec.get(i), ans.get(i));
-            i++;
-        }
-    }
-    
     public void recursivePrintSon(Node ns, ArrayList<String> rec) {
         rec.add(ns.toString());
         if (ns.getChildren() != null) {
