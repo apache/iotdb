@@ -61,7 +61,7 @@ public class LogicalGenerator {
 		int tokenIntType = token.getType();
 		LOG.debug("analyze token: {}", token.getText());
 		switch (tokenIntType) {
-		case TSParser.TOK_MULTINSERT:
+		case TSParser.TOK_INSERT:
 			analyzeMultiInsert(astNode);
 			return;
 		case TSParser.TOK_SELECT:
@@ -231,7 +231,7 @@ public class LogicalGenerator {
 	}
 
 	private void analyzeMultiInsert(ASTNode astNode) throws QueryProcessorException {
-        MultiInsertOperator multiInsertOp = new MultiInsertOperator(SQLConstant.TOK_MULTIINSERT);
+        MultiInsertOperator multiInsertOp = new MultiInsertOperator(SQLConstant.TOK_INSERT);
         initializedOperator = multiInsertOp;
         analyzeSelect(astNode.getChild(0));
         long timestamp;

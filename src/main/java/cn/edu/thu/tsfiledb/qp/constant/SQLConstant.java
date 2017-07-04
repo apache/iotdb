@@ -40,7 +40,6 @@ public class SQLConstant {
     public static final int TOK_DELETE = 25;
     public static final int TOK_UPDATE = 26;
     public static final int TOK_QUERY = 27;
-    public static final int TOK_MULTIINSERT = 28;
 
     public static final int TOK_AUTHOR_CREATE = 41;
     public static final int TOK_AUTHOR_DROP = 42;
@@ -96,7 +95,6 @@ public class SQLConstant {
         tokenNames.put(TOK_DELETE, "TOK_DELETE");
         tokenNames.put(TOK_UPDATE, "TOK_UPDATE");
         tokenNames.put(TOK_QUERY, "TOK_QUERY");
-        tokenNames.put(TOK_MULTIINSERT, "TOK_MULTIINSERT");
 
         tokenNames.put(TOK_AUTHOR_CREATE, "TOK_AUTHOR_CREATE");
         tokenNames.put(TOK_AUTHOR_DROP, "TOK_AUTHOR_DROP");
