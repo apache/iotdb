@@ -16,10 +16,17 @@ import cn.edu.thu.tsfile.file.metadata.statistics.LongStatistics;
 import cn.edu.thu.tsfiledb.engine.overflow.metadata.OFFileMetadata;
 import cn.edu.thu.tsfiledb.engine.overflow.metadata.OFRowGroupListMetadata;
 import cn.edu.thu.tsfiledb.engine.overflow.metadata.OFSeriesListMetadata;
+import cn.edu.thu.tsfiledb.sys.writelog.WriteLogManager;
+import cn.edu.thu.tsfiledb.conf.TsfileDBConfig;
+import cn.edu.thu.tsfiledb.conf.TsfileDBDescriptor;
 import cn.edu.thu.tsfiledb.engine.bufferwrite.FileNodeConstants;
 import cn.edu.thu.tsfiledb.engine.overflow.io.OverflowFileIO;
 import cn.edu.thu.tsfiledb.engine.overflow.io.OverflowReadWriter;
 
+/**
+ * @author liukun
+ *
+ */
 public class OverflowFileIOTest {
 
 	// construct the overflowreadwriteio
@@ -50,20 +57,27 @@ public class OverflowFileIOTest {
 	private int numofserieschunk = 4;
 	private int numoffile = 3;
 	private long lastFileOffset = 0;
+	private TsfileDBConfig tsfileDBConfig = TsfileDBDescriptor.getInstance().getConfig();
 
 	@Before
 	public void setUp() throws Exception {
 		EngineTestHelper.delete(filePath);
 		EngineTestHelper.delete(mergeFilePath);
+		EngineTestHelper.delete(tsfileDBConfig.walFolder);
+		EngineTestHelper.delete(tsfileDBConfig.metadataDir);
 		ofSeriesMetadata = new OFSeriesListMetadata();
 		ofRowGroupMetadata = new OFRowGroupListMetadata();
 		ofFileMetadata = new OFFileMetadata();
+		WriteLogManager.getInstance().close();
 	}
 
 	@After
 	public void tearDown() throws Exception {
+		WriteLogManager.getInstance().close();
 		EngineTestHelper.delete(filePath);
 		EngineTestHelper.delete(mergeFilePath);
+		EngineTestHelper.delete(tsfileDBConfig.walFolder);
+		EngineTestHelper.delete(tsfileDBConfig.metadataDir);
 	}
 
 	@Test

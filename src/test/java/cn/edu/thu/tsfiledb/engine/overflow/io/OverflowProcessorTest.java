@@ -23,7 +23,12 @@ import cn.edu.thu.tsfiledb.engine.bufferwrite.Action;
 import cn.edu.thu.tsfiledb.engine.bufferwrite.FileNodeConstants;
 import cn.edu.thu.tsfiledb.engine.exception.OverflowProcessorException;
 import cn.edu.thu.tsfiledb.engine.overflow.io.OverflowProcessor;
+import cn.edu.thu.tsfiledb.sys.writelog.WriteLogManager;
 
+/**
+ * @author liukun
+ *
+ */
 public class OverflowProcessorTest {
 
 	private String nameSpacePath = "nsp";
@@ -70,10 +75,14 @@ public class OverflowProcessorTest {
 			System.out.println("filenode manager flush action");
 		}
 	};
+	
+	private String overflowDataDir;
 
 	@Before
 	public void setUp() throws Exception {
 		EngineTestHelper.delete(nameSpacePath);
+		EngineTestHelper.delete(tsdbconfig.metadataDir);
+		EngineTestHelper.delete(tsdbconfig.walFolder);
 		parameters = new HashMap<String, Object>();
 		parameters.put(FileNodeConstants.OVERFLOW_FLUSH_ACTION, overflowflushaction);
 		parameters.put(FileNodeConstants.FILENODE_PROCESSOR_FLUSH_ACTION, filenodeflushaction);
@@ -81,16 +90,23 @@ public class OverflowProcessorTest {
 		parameters.put(FileNodeConstants.OVERFLOW_FLUSH_MANAGER_ACTION, filenodemanagerflushaction);
 
 		// set overflow data dir is ""
+		overflowDataDir = tsdbconfig.overflowDataDir;
 		tsdbconfig.overflowDataDir = "";
 		overflowfilePath = tsdbconfig.overflowDataDir + nameSpacePath + File.separatorChar + nameSpacePath
 				+ ".overflow";
 		overflowrestorefilePath = overflowfilePath + ".restore";
 		overflowmergefilePath = overflowfilePath + ".merge";
+		WriteLogManager.getInstance().close();
 	}
 
 	@After
 	public void tearDown() throws Exception {
+		WriteLogManager.getInstance().close();
 		EngineTestHelper.delete(nameSpacePath);
+		EngineTestHelper.delete(tsdbconfig.metadataDir);
+		EngineTestHelper.delete(tsdbconfig.walFolder);
+		tsdbconfig.overflowDataDir = overflowDataDir;
+		
 	}
 
 	@Test

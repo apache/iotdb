@@ -3,6 +3,7 @@ package cn.edu.thu.tsfiledb.engine.filenode;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -18,6 +19,7 @@ import cn.edu.thu.tsfile.common.conf.TSFileConfig;
 import cn.edu.thu.tsfile.common.conf.TSFileDescriptor;
 import cn.edu.thu.tsfile.common.utils.Pair;
 import cn.edu.thu.tsfile.file.metadata.RowGroupMetaData;
+import cn.edu.thu.tsfile.file.metadata.enums.CompressionTypeName;
 import cn.edu.thu.tsfile.file.metadata.enums.TSDataType;
 import cn.edu.thu.tsfile.timeseries.read.query.DynamicOneColumnData;
 import cn.edu.thu.tsfiledb.conf.TsfileDBConfig;
@@ -31,7 +33,14 @@ import cn.edu.thu.tsfiledb.engine.exception.OverflowProcessorException;
 import cn.edu.thu.tsfiledb.engine.lru.MetadataManagerHelper;
 import cn.edu.thu.tsfiledb.engine.overflow.io.EngineTestHelper;
 import cn.edu.thu.tsfiledb.engine.overflow.io.OverflowProcessor;
+import cn.edu.thu.tsfiledb.exception.PathErrorException;
+import cn.edu.thu.tsfiledb.metadata.MManager;
+import cn.edu.thu.tsfiledb.sys.writelog.WriteLogManager;
 
+/**
+ * @author liukun
+ *
+ */
 public class FileNodeProcessorTest {
 
 	private TsfileDBConfig tsdbconfig = TsfileDBDescriptor.getInstance().getConfig();
@@ -42,11 +51,15 @@ public class FileNodeProcessorTest {
 
 	private String deltaObjectId = "root.vehicle.d0";
 
+	private String deltaObjectId2 = "root.vehicle.d2";
+
 	private String measurementId = "s0";
 
 	private Map<String, Object> parameters = null;
 
 	private FileNodeProcessorStore fileNodeProcessorStore;
+
+	private String nameSpacePath = null;
 
 	private Action overflowBackUpAction = new Action() {
 
@@ -64,17 +77,35 @@ public class FileNodeProcessorTest {
 		}
 	};
 
+	private String FileNodeDir;
+	private String BufferWriteDir;
+	private String overflowDataDir;
+	private String metadataDir;
+	private int rowGroupSize;
+	private int pageCheckSizeThreshold = tsconfig.pageCheckSizeThreshold;
+	private int defaultMaxStringLength = tsconfig.defaultMaxStringLength;
+	private boolean cachePageData = tsconfig.cachePageData;
+	private int pageSize = tsconfig.pageSize;
 	@Before
 	public void setUp() throws Exception {
+		FileNodeDir = tsdbconfig.FileNodeDir;
+		BufferWriteDir = tsdbconfig.BufferWriteDir;
+		overflowDataDir = tsdbconfig.overflowDataDir;
+		metadataDir = tsdbconfig.metadataDir;
+		
 		tsdbconfig.FileNodeDir = "filenode" + File.separatorChar;
 		tsdbconfig.BufferWriteDir = "bufferwrite";
 		tsdbconfig.overflowDataDir = "overflow";
 		tsdbconfig.metadataDir = "metadata";
 		// set rowgroupsize
+		rowGroupSize = tsconfig.rowGroupSize;
+		
+		
 		tsconfig.rowGroupSize = 2000;
 		tsconfig.pageCheckSizeThreshold = 3;
 		tsconfig.pageSize = 100;
 		tsconfig.defaultMaxStringLength = 2;
+		tsconfig.cachePageData = true;
 
 		parameters = new HashMap<>();
 		parameters.put(FileNodeConstants.OVERFLOW_BACKUP_MANAGER_ACTION, overflowBackUpAction);
@@ -83,35 +114,61 @@ public class FileNodeProcessorTest {
 		EngineTestHelper.delete(tsdbconfig.BufferWriteDir);
 		EngineTestHelper.delete(tsdbconfig.overflowDataDir);
 		EngineTestHelper.delete(tsdbconfig.metadataDir);
+		EngineTestHelper.delete(tsdbconfig.walFolder);
 		MetadataManagerHelper.initMetadata();
+
+		nameSpacePath = MManager.getInstance().getFileNameByPath(deltaObjectId);
+		WriteLogManager.getInstance().close();
 	}
 
 	@After
 	public void tearDown() throws Exception {
+		
+		WriteLogManager.getInstance().close();
 		EngineTestHelper.delete(tsdbconfig.FileNodeDir);
 		EngineTestHelper.delete(tsdbconfig.BufferWriteDir);
 		EngineTestHelper.delete(tsdbconfig.overflowDataDir);
 		EngineTestHelper.delete(tsdbconfig.metadataDir);
+		EngineTestHelper.delete(tsdbconfig.walFolder);
 		MetadataManagerHelper.clearMetadata();
+		
+		tsdbconfig.FileNodeDir = FileNodeDir;
+		tsdbconfig.overflowDataDir = overflowDataDir;
+		tsdbconfig.BufferWriteDir = BufferWriteDir;
+		tsdbconfig.metadataDir = metadataDir;
+		
+		tsconfig.rowGroupSize = rowGroupSize;
+		tsconfig.pageCheckSizeThreshold = pageCheckSizeThreshold;
+		tsconfig.pageSize = pageSize;
+		tsconfig.defaultMaxStringLength = defaultMaxStringLength;
+		tsconfig.cachePageData = cachePageData;
+		
+
 	}
 
 	@Test
 	public void testGetAndCloseProcessor() {
 
 		try {
-			processor = new FileNodeProcessor(tsdbconfig.FileNodeDir, deltaObjectId, parameters);
-			assertEquals(-1, processor.getLastUpdateTime());
-			processor.setLastUpdateTime(20);
-			assertEquals(20, processor.getLastUpdateTime());
-			processor.setLastUpdateTime(-1);
+			// nameSpacePath
+			processor = new FileNodeProcessor(tsdbconfig.FileNodeDir, nameSpacePath, parameters);
+			assertEquals(-1, processor.getLastUpdateTime(deltaObjectId));
+			assertEquals(-1, processor.getLastUpdateTime(deltaObjectId2));
+			processor.setLastUpdateTime(deltaObjectId, 20);
+			processor.setLastUpdateTime(deltaObjectId2, 21);
+			assertEquals(20, processor.getLastUpdateTime(deltaObjectId));
+			assertEquals(21, processor.getLastUpdateTime(deltaObjectId2));
+			processor.setLastUpdateTime(deltaObjectId, -1);
+			processor.setLastUpdateTime(deltaObjectId2, -1);
 			assertEquals(false, processor.hasBufferwriteProcessor());
 			assertEquals(false, processor.hasOverflowProcessor());
 
 			// get bufferwrite processor
 			long lastUpdateTime = 10;
-			BufferWriteProcessor bfprocessor = processor.getBufferWriteProcessor(deltaObjectId, lastUpdateTime);
+			BufferWriteProcessor bfprocessor = processor.getBufferWriteProcessor(nameSpacePath, lastUpdateTime);
 
 			String filename = bfprocessor.getFileName();
+			System.out.println(bfprocessor.getFileAbsolutePath());
 			String bufferwritefilePath = tsdbconfig.BufferWriteDir + File.separatorChar + deltaObjectId
 					+ File.separatorChar + filename;
 			assertEquals(true, new File(bufferwritefilePath).exists());
@@ -120,7 +177,8 @@ public class FileNodeProcessorTest {
 			bfprocessor.write(deltaObjectId, measurementId, lastUpdateTime, TSDataType.INT32, String.valueOf(10));
 			assertEquals(true, bfprocessor.isNewProcessor());
 			bfprocessor.setNewProcessor(false);
-			processor.setLastUpdateTime(lastUpdateTime);
+			processor.setIntervalFileNodeStartTime(deltaObjectId, lastUpdateTime);
+			processor.setLastUpdateTime(deltaObjectId, lastUpdateTime);
 			assertEquals(true, filename.startsWith(String.valueOf(lastUpdateTime)));
 			assertEquals(true, bfprocessor.canBeClosed());
 			assertEquals(bfprocessor, processor.getBufferWriteProcessor());
@@ -152,100 +210,24 @@ public class FileNodeProcessorTest {
 		}
 	}
 
-	@Deprecated
-	public void testMerge() {
-
-		List<Pair<Long, Long>> bufferwriteRanges = new ArrayList<>();
-		bufferwriteRanges.add(new Pair<Long, Long>(5L, 20L));
-		bufferwriteRanges.add(new Pair<Long, Long>(25L, 40L));
-		bufferwriteRanges.add(new Pair<Long, Long>(45L, 60L));
-		bufferwriteRanges.add(new Pair<Long, Long>(65L, 80L));
-
-		createBufferwritedata(bufferwriteRanges);
-
-		createOverflowdata();
-
-		try {
-			processor = new FileNodeProcessor(tsdbconfig.FileNodeDir, deltaObjectId, parameters);
-			processor.writeLock();
-			if (processor.hasBufferwriteProcessor()) {
-				processor.getBufferWriteProcessor().close();
-			}
-			if (!processor.hasOverflowProcessor()) {
-				processor.getOverflowProcessor(deltaObjectId, parameters);
-			}
-			processor.getOverflowProcessor().close();
-			processor.merge();
-			// check the result
-			QueryStructure queryRestult = processor.query(deltaObjectId, measurementId, null, null, null);
-			DynamicOneColumnData bufferwriteinindex = queryRestult.getBufferwriteDataInMemory();
-			List<RowGroupMetaData> bufferwriterowgroups = queryRestult.getBufferwriteDataInDisk();
-			List<IntervalFileNode> newInterFiles = queryRestult.getBufferwriteDataInFiles();
-			List<Object> overflowResult = queryRestult.getAllOverflowData();
-			assertEquals(null, bufferwriteinindex);
-			assertEquals(null, bufferwriterowgroups);
-			assertEquals(4, newInterFiles.size());
-			// check bufferwrite data
-			// 2-22 :bug
-			IntervalFileNode bufferwriteFile = newInterFiles.get(0);
-			assertEquals(0, bufferwriteFile.startTime);
-			assertEquals(24, bufferwriteFile.endTime);
-			assertEquals(OverflowChangeType.NO_CHANGE, bufferwriteFile.overflowChangeType);
-			checkFile(bufferwriteFile.filePath);
-			// 25-40 :bug
-			bufferwriteFile = newInterFiles.get(1);
-			assertEquals(25, bufferwriteFile.startTime);
-			assertEquals(44, bufferwriteFile.endTime);
-			assertEquals(OverflowChangeType.NO_CHANGE, bufferwriteFile.overflowChangeType);
-			checkFile(bufferwriteFile.filePath);
-			// 45-62 :bug
-			bufferwriteFile = newInterFiles.get(2);
-			assertEquals(45, bufferwriteFile.startTime);
-			assertEquals(64, bufferwriteFile.endTime);
-			assertEquals(OverflowChangeType.NO_CHANGE, bufferwriteFile.overflowChangeType);
-			checkFile(bufferwriteFile.filePath);
-			// 65-80 :bug
-			bufferwriteFile = newInterFiles.get(3);
-			assertEquals(65, bufferwriteFile.startTime);
-			assertEquals(80, bufferwriteFile.endTime);
-			assertEquals(OverflowChangeType.NO_CHANGE, bufferwriteFile.overflowChangeType);
-			checkFile(bufferwriteFile.filePath);
-			// check overflow data: no overflow data
-			assertEquals(null, overflowResult.get(0));
-			assertEquals(null, overflowResult.get(1));
-			assertEquals(null, overflowResult.get(2));
-			assertEquals(null, overflowResult.get(3));
-			processor.close();
-
-		} catch (FileNodeProcessorException e) {
-			e.printStackTrace();
-			fail(e.getMessage());
-		} catch (BufferWriteProcessorException e) {
-			e.printStackTrace();
-			fail(e.getMessage());
-		} catch (OverflowProcessorException e) {
-			e.printStackTrace();
-			fail(e.getMessage());
-		}
-
-	}
-
 	@Test
 	public void testQuery() {
 
 		try {
 			// test memory data in index
-			processor = new FileNodeProcessor(tsdbconfig.FileNodeDir, deltaObjectId, parameters);
+			processor = new FileNodeProcessor(tsdbconfig.FileNodeDir, nameSpacePath, parameters);
 			BufferWriteProcessor bfprocessor = processor.getBufferWriteProcessor(deltaObjectId, 1);
 			bfprocessor.setNewProcessor(false);
-			processor.addIntervalFileNode(1, bfprocessor.getFileName());
+			processor.addIntervalFileNode(1, bfprocessor.getFileAbsolutePath());
 			// write data into buffer write processor
 			bfprocessor.write(deltaObjectId, measurementId, 1, TSDataType.INT32, String.valueOf(1));
-			processor.setLastUpdateTime(1);
+			processor.setIntervalFileNodeStartTime(deltaObjectId, 1);
+			processor.setLastUpdateTime(deltaObjectId, 1);
 			for (int i = 2; i < 11; i++) {
 				bfprocessor = processor.getBufferWriteProcessor(deltaObjectId, i);
 				bfprocessor.write(deltaObjectId, measurementId, i, TSDataType.INT32, String.valueOf(i));
-				processor.setLastUpdateTime(i);
+				processor.setIntervalFileNodeStartTime(deltaObjectId, i);
+				processor.setLastUpdateTime(deltaObjectId, i);
 			}
 			if (!processor.hasOverflowProcessor()) {
 				processor.getOverflowProcessor(deltaObjectId, parameters);
@@ -253,17 +235,30 @@ public class FileNodeProcessorTest {
 			int token = processor.addMultiPassLock();
 			QueryStructure queryResult = processor.query(deltaObjectId, measurementId, null, null, null);
 			processor.removeMultiPassLock(token);
-			DynamicOneColumnData bufferwritedataindex = queryResult.getBufferwriteDataInMemory();
+			DynamicOneColumnData bufferwritedataindex = queryResult.getCurrentPage();
+			Pair<List<ByteArrayInputStream>, CompressionTypeName> right = queryResult.getPageList();
 			List<RowGroupMetaData> bufferwritedataindisk = queryResult.getBufferwriteDataInDisk();
 			List<IntervalFileNode> bufferwritedatainfiles = queryResult.getBufferwriteDataInFiles();
 			List<Object> overflowResult = queryResult.getAllOverflowData();
-			assertEquals(10, bufferwritedataindex.length);
+			assertEquals(true, bufferwritedataindex != null);
+			assertEquals(true, right != null);
+			assertEquals(1, right.left.size());
+			for (ByteArrayInputStream stream : right.left) {
+				DynamicOneColumnData columnData = PageTestUtils.pageToDynamic(stream, right.right, deltaObjectId,
+						measurementId);
+				columnData.mergeRecord(bufferwritedataindex);
+				bufferwritedataindex = columnData;
+			}
+
 			for (int i = 1; i < 11; i++) {
 				assertEquals(i, bufferwritedataindex.getTime(i - 1));
 				assertEquals(i, bufferwritedataindex.getInt(i - 1));
 			}
 			assertEquals(0, bufferwritedataindisk.size());
 			assertEquals(1, bufferwritedatainfiles.size());
+			IntervalFileNode temp = bufferwritedatainfiles.get(0);
+			assertEquals(1, temp.getStartTime(deltaObjectId));
+			assertEquals(-1, temp.getEndTime(deltaObjectId));
 			assertEquals(false, bufferwritedatainfiles.get(0).isClosed());
 			assertEquals(null, overflowResult.get(0));
 			assertEquals(null, overflowResult.get(1));
@@ -274,7 +269,8 @@ public class FileNodeProcessorTest {
 			for (int i = 11; i < 1000; i++) {
 				bfprocessor = processor.getBufferWriteProcessor(deltaObjectId, i);
 				bfprocessor.write(deltaObjectId, measurementId, i, TSDataType.INT32, String.valueOf(i));
-				processor.setLastUpdateTime(i);
+				processor.setIntervalFileNodeStartTime(deltaObjectId, i);
+				processor.setLastUpdateTime(deltaObjectId, i);
 				if (i == 400) {
 					break;
 				}
@@ -284,6 +280,7 @@ public class FileNodeProcessorTest {
 				processor.getOverflowProcessor(deltaObjectId, parameters);
 			}
 			Thread.sleep(100);// wait to flush end
+			assertEquals(400, processor.getLastUpdateTime(deltaObjectId));
 			token = processor.addMultiPassLock();
 			queryResult = processor.query(deltaObjectId, measurementId, null, null, null);
 			processor.removeMultiPassLock(token);
@@ -303,14 +300,16 @@ public class FileNodeProcessorTest {
 			processor = new FileNodeProcessor(tsdbconfig.FileNodeDir, deltaObjectId, parameters);
 			bfprocessor = processor.getBufferWriteProcessor(deltaObjectId, 401);
 			bfprocessor.setNewProcessor(false);
-			processor.addIntervalFileNode(401, bfprocessor.getFileName());
+			processor.addIntervalFileNode(401, bfprocessor.getFileAbsolutePath());
 			// write data into buffer write processor
 			bfprocessor.write(deltaObjectId, measurementId, 401, TSDataType.INT32, String.valueOf(401));
-			processor.setLastUpdateTime(401);
+			processor.setIntervalFileNodeStartTime(deltaObjectId, 401);
+			processor.setLastUpdateTime(deltaObjectId, 401);
 			for (int i = 402; i < 1000; i++) {
 				bfprocessor = processor.getBufferWriteProcessor(deltaObjectId, i);
 				bfprocessor.write(deltaObjectId, measurementId, i, TSDataType.INT32, String.valueOf(i));
-				processor.setLastUpdateTime(i);
+				processor.setIntervalFileNodeStartTime(deltaObjectId, i);
+				processor.setLastUpdateTime(deltaObjectId, i);
 				if (i == 800) {
 					break;
 				}
@@ -329,12 +328,12 @@ public class FileNodeProcessorTest {
 			assertEquals(2, bufferwritedatainfiles.size());
 			IntervalFileNode intervalFileNode = bufferwritedatainfiles.get(0);
 			assertEquals(true, intervalFileNode.isClosed());
-			assertEquals(1, intervalFileNode.startTime);
-			assertEquals(400, intervalFileNode.endTime);
+			assertEquals(1, intervalFileNode.getStartTime(deltaObjectId));
+			assertEquals(400, intervalFileNode.getEndTime(deltaObjectId));
 			assertEquals(OverflowChangeType.NO_CHANGE, intervalFileNode.overflowChangeType);
 			assertEquals(false, bufferwritedatainfiles.get(1).isClosed());
-			assertEquals(401, bufferwritedatainfiles.get(1).startTime);
-			assertEquals(-1, bufferwritedatainfiles.get(1).endTime);
+			assertEquals(401, bufferwritedatainfiles.get(1).getStartTime(deltaObjectId));
+			assertEquals(-1, bufferwritedatainfiles.get(1).getEndTime(deltaObjectId));
 			assertEquals(null, overflowResult.get(0));
 			assertEquals(null, overflowResult.get(1));
 			assertEquals(null, overflowResult.get(2));
@@ -344,36 +343,30 @@ public class FileNodeProcessorTest {
 			processor = new FileNodeProcessor(tsdbconfig.FileNodeDir, deltaObjectId, parameters);
 			bfprocessor = processor.getBufferWriteProcessor(deltaObjectId, 801);
 			bfprocessor.setNewProcessor(false);
-			processor.addIntervalFileNode(801, bfprocessor.getFileName());
+			processor.addIntervalFileNode(801, bfprocessor.getFileAbsolutePath());
 			bfprocessor.write(deltaObjectId, measurementId, 801, TSDataType.INT32, String.valueOf(801));
-			processor.setLastUpdateTime(801);
+			processor.setLastUpdateTime(deltaObjectId, 801);
 			for (int i = 802; i < 820; i++) {
 				bfprocessor = processor.getBufferWriteProcessor(deltaObjectId, i);
 				bfprocessor.write(deltaObjectId, measurementId, i, TSDataType.INT32, String.valueOf(i));
-				processor.setLastUpdateTime(i);
+				processor.setIntervalFileNodeStartTime(deltaObjectId, i);
+				processor.setLastUpdateTime(deltaObjectId, i);
 			}
 			processor.close();
 
 			processor = new FileNodeProcessor(tsdbconfig.FileNodeDir, deltaObjectId, parameters);
 			bfprocessor = processor.getBufferWriteProcessor(deltaObjectId, 820);
 			bfprocessor.setNewProcessor(false);
-			processor.addIntervalFileNode(820, bfprocessor.getFileName());
+			processor.addIntervalFileNode(820, bfprocessor.getFileAbsolutePath());
 			bfprocessor.write(deltaObjectId, measurementId, 820, TSDataType.INT32, String.valueOf(820));
-			processor.setLastUpdateTime(820);
+			processor.setLastUpdateTime(deltaObjectId, 820);
 			for (int i = 821; i < 840; i++) {
 				bfprocessor = processor.getBufferWriteProcessor(deltaObjectId, i);
 				bfprocessor.write(deltaObjectId, measurementId, i, TSDataType.INT32, String.valueOf(i));
-				processor.setLastUpdateTime(i);
+				processor.setIntervalFileNodeStartTime(deltaObjectId, i);
+				processor.setLastUpdateTime(deltaObjectId, i);
 			}
 			processor.close();
-			// mkdir: test delete unused file in construct the filenode
-			// processor
-			// String tempFilePath = tsdbconfig.BufferWriteDir +
-			// File.separatorChar + deltaObjectId + File.separatorChar
-			// + "temp";
-			// File tempFile = new File(tempFilePath);
-			// assertEquals(true, tempFile.mkdir());
-			// assertEquals(true, tempFile.exists());
 
 			// file range: 1-400 401-800 801-819 820-839
 			processor = new FileNodeProcessor(tsdbconfig.FileNodeDir, deltaObjectId, parameters);
@@ -382,14 +375,14 @@ public class FileNodeProcessorTest {
 			// overflow data
 			OverflowProcessor ofprocessor = processor.getOverflowProcessor(deltaObjectId, parameters);
 			ofprocessor.update(deltaObjectId, measurementId, 2, 10, TSDataType.INT32, String.valueOf(1001));
-			processor.changeTypeToChanged(2, 10);
+			processor.changeTypeToChanged(deltaObjectId, 2, 10);
 			ofprocessor.update(deltaObjectId, measurementId, 802, 810, TSDataType.INT32, String.valueOf(2000));
-			processor.changeTypeToChanged(802, 810);
+			processor.changeTypeToChanged(deltaObjectId, 802, 810);
 
 			token = processor.addMultiPassLock();
 			assertEquals(false, processor.canBeClosed());
 			queryResult = processor.query(deltaObjectId, measurementId, null, null, null);
-			bufferwritedataindex = queryResult.getBufferwriteDataInMemory();
+			bufferwritedataindex = queryResult.getCurrentPage();
 			bufferwritedataindisk = queryResult.getBufferwriteDataInDisk();
 			bufferwritedatainfiles = queryResult.getBufferwriteDataInFiles();
 			overflowResult = queryResult.getAllOverflowData();
@@ -424,6 +417,12 @@ public class FileNodeProcessorTest {
 		} catch (OverflowProcessorException e) {
 			e.printStackTrace();
 			fail(e.getMessage());
+		} catch (PathErrorException e) {
+			e.printStackTrace();
+			fail(e.getMessage());
+		} catch (IOException e) {
+			e.printStackTrace();
+			fail(e.getMessage());
 		}
 	}
 
@@ -456,27 +455,30 @@ public class FileNodeProcessorTest {
 	@Test
 	public void testRecoveryBufferFile() {
 
+		FileNodeProcessor fileNodeProcessor = null;
 		try {
-			processor = new FileNodeProcessor(tsdbconfig.FileNodeDir, deltaObjectId, parameters);
-			BufferWriteProcessor bfprocessor = processor.getBufferWriteProcessor(deltaObjectId, 1);
+			fileNodeProcessor = new FileNodeProcessor(tsdbconfig.FileNodeDir, deltaObjectId, parameters);
+			BufferWriteProcessor bfprocessor = fileNodeProcessor.getBufferWriteProcessor(deltaObjectId, 1);
 			bfprocessor.setNewProcessor(false);
-			processor.addIntervalFileNode(1, bfprocessor.getFileName());
+			fileNodeProcessor.addIntervalFileNode(1, bfprocessor.getFileAbsolutePath());
 			// write data into buffer write processor
 			bfprocessor.write(deltaObjectId, measurementId, 1, TSDataType.INT32, String.valueOf(1));
-
+			fileNodeProcessor.setIntervalFileNodeStartTime(deltaObjectId, 1);
+			fileNodeProcessor.setLastUpdateTime(deltaObjectId, 1);
 			for (int i = 2; i < 1000; i++) {
-				bfprocessor = processor.getBufferWriteProcessor(deltaObjectId, i);
+				bfprocessor = fileNodeProcessor.getBufferWriteProcessor(deltaObjectId, i);
 				bfprocessor.write(deltaObjectId, measurementId, i, TSDataType.INT32, String.valueOf(i));
-				processor.setLastUpdateTime(i);
+				fileNodeProcessor.setIntervalFileNodeStartTime(deltaObjectId, i);
+				fileNodeProcessor.setLastUpdateTime(deltaObjectId, i);
 				if (i == 400) {
 					break;
 				}
 			}
 			Thread.sleep(100);
-			if (!processor.hasOverflowProcessor()) {
-				processor.getOverflowProcessor(deltaObjectId, parameters);
+			if (!fileNodeProcessor.hasOverflowProcessor()) {
+				fileNodeProcessor.getOverflowProcessor(deltaObjectId, parameters);
 			}
-			QueryStructure queryResult = processor.query(deltaObjectId, measurementId, null, null, null);
+			QueryStructure queryResult = fileNodeProcessor.query(deltaObjectId, measurementId, null, null, null);
 			List<RowGroupMetaData> bufferwritedataindisk = queryResult.getBufferwriteDataInDisk();
 			List<IntervalFileNode> bufferwritedatainfiles = queryResult.getBufferwriteDataInFiles();
 			List<Object> overflowResult = queryResult.getAllOverflowData();
@@ -492,7 +494,7 @@ public class FileNodeProcessorTest {
 			processor = new FileNodeProcessor(tsdbconfig.FileNodeDir, deltaObjectId, parameters);
 			processor.writeLock();
 			assertEquals(true, processor.shouldRecovery());
-			processor.FileNodeRecovery();
+			processor.fileNodeRecovery();
 			assertEquals(true, processor.hasBufferwriteProcessor());
 			assertEquals(true, processor.hasOverflowProcessor());
 			queryResult = processor.query(deltaObjectId, measurementId, null, null, null);
@@ -508,6 +510,7 @@ public class FileNodeProcessorTest {
 			assertEquals(null, overflowResult.get(3));
 
 			processor.close();
+			fileNodeProcessor.close();
 		} catch (FileNodeProcessorException e) {
 			e.printStackTrace();
 			fail(e.getMessage());
@@ -526,11 +529,13 @@ public class FileNodeProcessorTest {
 		// construct one FileNodeProcessorStore
 		// the status of FileNodeProcessorStore is waiting
 		// construct the bufferwrite data file
-		IntervalFileNode emptyIntervalFileNode = new IntervalFileNode(0, OverflowChangeType.NO_CHANGE, null);
+		IntervalFileNode emptyIntervalFileNode = new IntervalFileNode(OverflowChangeType.NO_CHANGE, null);
 		List<IntervalFileNode> newFilenodes = new ArrayList<>();
 		for (int i = 1; i <= 3; i++) {
-			IntervalFileNode node = new IntervalFileNode(i * 100, i * 100 + 99, OverflowChangeType.NO_CHANGE,
-					"bufferfiletest" + i);
+			// i * 100, i * 100 + 99
+			IntervalFileNode node = new IntervalFileNode(OverflowChangeType.NO_CHANGE, "bufferfiletest" + i);
+			node.setStartTime(deltaObjectId, i * 100);
+			node.setEndTime(deltaObjectId, i * 100 + 99);
 			// create file
 			createFile(node.filePath);
 			checkFile(node.filePath);
@@ -541,7 +546,9 @@ public class FileNodeProcessorTest {
 		createFile(unusedFilename);
 		checkFile(unusedFilename);
 		FileNodeProcessorStatus fileNodeProcessorState = FileNodeProcessorStatus.WAITING;
-		fileNodeProcessorStore = new FileNodeProcessorStore(500, emptyIntervalFileNode, newFilenodes,
+		Map<String, Long> lastUpdateTimeMap = new HashMap<>();
+		lastUpdateTimeMap.put(deltaObjectId, (long) 500);
+		fileNodeProcessorStore = new FileNodeProcessorStore(lastUpdateTimeMap, emptyIntervalFileNode, newFilenodes,
 				fileNodeProcessorState, 0);
 
 		String filenodedirPath = tsdbconfig.FileNodeDir + deltaObjectId + File.separatorChar;
@@ -558,18 +565,18 @@ public class FileNodeProcessorTest {
 			fail(e.getMessage());
 		}
 		assertEquals(true, new File(filenodestorePath).exists());
-		// construct overflow data files
 
 		// test recovery from waiting
 		try {
 			processor = new FileNodeProcessor(tsdbconfig.FileNodeDir, deltaObjectId, parameters);
 			processor.writeLock();
 			assertEquals(true, processor.shouldRecovery());
-			processor.FileNodeRecovery();
-			assertEquals(fileNodeProcessorStore.getLastUpdateTime(), processor.getLastUpdateTime());
+			// recovery
+			processor.fileNodeRecovery();
+			assertEquals(fileNodeProcessorStore.getLastUpdateTimeMap(), processor.getLastUpdateTimeMap());
 			processor.close();
 			FileNodeProcessorStore store = serializeUtil.deserialize(filenodestorePath).orElse(null);
-			assertEquals(fileNodeProcessorStore.getLastUpdateTime(), store.getLastUpdateTime());
+			assertEquals(fileNodeProcessorStore.getLastUpdateTimeMap(), store.getLastUpdateTimeMap());
 			assertEquals(fileNodeProcessorStore.getEmptyIntervalFileNode(), store.getEmptyIntervalFileNode());
 			assertEquals(fileNodeProcessorStore.getNewFileNodes(), store.getNewFileNodes());
 			assertEquals(FileNodeProcessorStatus.NONE, store.getFileNodeProcessorState());
@@ -586,290 +593,6 @@ public class FileNodeProcessorTest {
 			e.printStackTrace();
 			fail(e.getMessage());
 		} catch (IOException e) {
-			e.printStackTrace();
-			fail(e.getMessage());
-		}
-	}
-
-	@Test
-	public void testRevoceryMerge() {
-
-		// construct one FileNodeProcessorStore
-		// the status of FileNodeProcessorStore is merging
-		// construct the bufferwrite data file
-		IntervalFileNode emptyIntervalFileNode = new IntervalFileNode(0, OverflowChangeType.NO_CHANGE, null);
-		List<IntervalFileNode> newFilenodes = new ArrayList<>();
-		for (int i = 1; i <= 3; i++) {
-			IntervalFileNode node = new IntervalFileNode(i * 100, i * 100 + 99, OverflowChangeType.NO_CHANGE,
-					"bufferfiletest" + i);
-			// create file
-			createFile(node.filePath);
-			checkFile(node.filePath);
-			newFilenodes.add(node);
-		}
-		// create unused bufferfiles
-		String unusedFilename = "bufferfileunsed";
-		createFile(unusedFilename);
-		checkFile(unusedFilename);
-		FileNodeProcessorStatus fileNodeProcessorState = FileNodeProcessorStatus.MERGING_WRITE;
-		fileNodeProcessorStore = new FileNodeProcessorStore(500, emptyIntervalFileNode, newFilenodes,
-				fileNodeProcessorState, 0);
-
-		String filenodedirPath = tsdbconfig.FileNodeDir + deltaObjectId + File.separatorChar;
-		File file = new File(filenodedirPath);
-		if (!file.exists()) {
-			file.mkdirs();
-		}
-		String filenodestorePath = filenodedirPath + deltaObjectId + ".restore";
-		SerializeUtil<FileNodeProcessorStore> serializeUtil = new SerializeUtil<>();
-		try {
-			serializeUtil.serialize(fileNodeProcessorStore, filenodestorePath);
-		} catch (IOException e) {
-			e.printStackTrace();
-			fail(e.getMessage());
-		}
-		assertEquals(true, new File(filenodestorePath).exists());
-		// construct overflow data files
-
-		// test recovery from waiting
-		try {
-			processor = new FileNodeProcessor(tsdbconfig.FileNodeDir, deltaObjectId, parameters);
-			assertEquals(fileNodeProcessorStore.getLastUpdateTime(), processor.getLastUpdateTime());
-		} catch (FileNodeProcessorException e) {
-			e.printStackTrace();
-			fail(e.getMessage());
-		} finally {
-			try {
-				processor.close();
-			} catch (FileNodeProcessorException e) {
-				e.printStackTrace();
-				fail(e.getMessage());
-			}
-		}
-
-		EngineTestHelper.delete(unusedFilename);
-		for (IntervalFileNode node : newFilenodes) {
-			EngineTestHelper.delete(node.filePath);
-		}
-
-	}
-
-	@Deprecated
-	public void testRevoceryMerge2() {
-		// create bufferwrite files
-		List<Pair<Long, Long>> bufferwriteRanges = new ArrayList<>();
-		bufferwriteRanges.add(new Pair<Long, Long>(5L, 20L));
-		bufferwriteRanges.add(new Pair<Long, Long>(25L, 40L));
-		bufferwriteRanges.add(new Pair<Long, Long>(45L, 60L));
-		bufferwriteRanges.add(new Pair<Long, Long>(65L, 80L));
-
-		createBufferwritedata(bufferwriteRanges);
-		String unusedFilename = "bufferfileunsed";
-		createFile(unusedFilename);
-		checkFile(unusedFilename);
-		try {
-			// check the bufferwrite files
-			processor = new FileNodeProcessor(tsdbconfig.FileNodeDir, deltaObjectId, parameters);
-			processor.getOverflowProcessor(deltaObjectId, parameters);
-			int token = processor.addMultiPassLock();
-			QueryStructure queryResult = processor.query(deltaObjectId, measurementId, null, null, null);
-			assertEquals(false, processor.canBeClosed());
-			processor.removeMultiPassLock(token);
-			List<IntervalFileNode> newInterFiles = queryResult.getBufferwriteDataInFiles();
-			List<Object> overflowResult = queryResult.getAllOverflowData();
-			assertEquals(null, overflowResult.get(0));
-			assertEquals(null, overflowResult.get(1));
-			assertEquals(null, overflowResult.get(2));
-			assertEquals(null, overflowResult.get(3));
-			int size = newInterFiles.size();
-			for (int i = 0; i < size; i++) {
-				IntervalFileNode node = (IntervalFileNode) newInterFiles.get(i);
-				assertEquals(bufferwriteRanges.get(i).left.longValue(), node.startTime);
-				assertEquals(bufferwriteRanges.get(i).right.longValue(), node.endTime);
-			}
-			processor.close();
-		} catch (FileNodeProcessorException e) {
-			e.printStackTrace();
-			fail(e.getMessage());
-		}
-		// create overflow file
-		// Overflow range: insert:2,22,62(222) update:50-70 (222)
-		createOverflowdata();
-		// check the overflow
-		List<IntervalFileNode> restoreNewFiles = new ArrayList<>();
-		long lastUpdateTime = -1;
-		try {
-			processor = new FileNodeProcessor(tsdbconfig.FileNodeDir, deltaObjectId, parameters);
-			lastUpdateTime = processor.getLastUpdateTime();
-			processor.getOverflowProcessor(deltaObjectId, parameters);
-			int token = processor.addMultiPassLock();
-			QueryStructure queryResult = processor.query(deltaObjectId, measurementId, null, null, null);
-			assertEquals(false, processor.canBeClosed());
-			processor.removeMultiPassLock(token);
-			DynamicOneColumnData bufferwriteindex = queryResult.getBufferwriteDataInMemory();
-			List<RowGroupMetaData> bufferwriterowgroups = queryResult.getBufferwriteDataInDisk();
-			List<IntervalFileNode> newInterFiles = queryResult.getBufferwriteDataInFiles();
-			restoreNewFiles = newInterFiles;
-			List<Object> overflowResult = queryResult.getAllOverflowData();
-			// check bufferwrite data
-			assertEquals(null, bufferwriteindex);
-			assertEquals(null, bufferwriterowgroups);
-			assertEquals(bufferwriteRanges.size(), newInterFiles.size());
-			IntervalFileNode bufferwriteFile = newInterFiles.get(0);
-			// check the intervalFile status
-			assertEquals(OverflowChangeType.CHANGED, bufferwriteFile.overflowChangeType);
-			bufferwriteFile = newInterFiles.get(2);
-			assertEquals(OverflowChangeType.CHANGED, bufferwriteFile.overflowChangeType);
-			bufferwriteFile = newInterFiles.get(3);
-			assertEquals(OverflowChangeType.CHANGED, bufferwriteFile.overflowChangeType);
-			// check overflow data
-			// insert
-			assertEquals(true, overflowResult.get(0) != null);
-			DynamicOneColumnData insertData = (DynamicOneColumnData) overflowResult.get(0);
-			assertEquals(3, insertData.length);
-			assertEquals(2, insertData.getTime(0));
-			assertEquals(222, insertData.getInt(0));
-			assertEquals(22, insertData.getTime(1));
-			assertEquals(222, insertData.getInt(1));
-			assertEquals(62, insertData.getTime(2));
-			assertEquals(333, insertData.getInt(2));
-			// update
-			assertEquals(true, overflowResult.get(1) != null);
-			DynamicOneColumnData updateData = (DynamicOneColumnData) overflowResult.get(1);
-			/*
-			 * CGF?? The check range is right??
-			 */
-			assertEquals(2, updateData.length);
-			assertEquals(4, updateData.timeLength);
-			assertEquals(50, updateData.getTime(0));
-			assertEquals(61, updateData.getTime(1));
-			assertEquals(333, updateData.getInt(0));
-			assertEquals(63, updateData.getTime(2));
-			assertEquals(70, updateData.getTime(3));
-			assertEquals(333, updateData.getInt(1));
-			processor.close();
-		} catch (FileNodeProcessorException e) {
-			e.printStackTrace();
-			fail(e.getMessage());
-		}
-		// construct the status is merge in the restore file
-		IntervalFileNode emptyIntervalFileNode = new IntervalFileNode(0, OverflowChangeType.NO_CHANGE, null);
-		FileNodeProcessorStatus fileNodeProcessorState = FileNodeProcessorStatus.MERGING_WRITE;
-		System.out.println(lastUpdateTime);
-		System.out.println(restoreNewFiles);
-		fileNodeProcessorStore = new FileNodeProcessorStore(lastUpdateTime, emptyIntervalFileNode, restoreNewFiles,
-				fileNodeProcessorState, 0);
-
-		String filenodedirPath = tsdbconfig.FileNodeDir + deltaObjectId + File.separatorChar;
-		File file = new File(filenodedirPath);
-		if (!file.exists()) {
-			file.mkdirs();
-		}
-		String filenodestorePath = filenodedirPath + deltaObjectId + ".restore";
-		assertEquals(true, new File(filenodestorePath).exists());
-		SerializeUtil<FileNodeProcessorStore> serializeUtil = new SerializeUtil<>();
-		try {
-			serializeUtil.serialize(fileNodeProcessorStore, filenodestorePath);
-		} catch (IOException e) {
-			e.printStackTrace();
-			fail(e.getMessage());
-		}
-		assertEquals(true, new File(filenodestorePath).exists());
-
-		// restore from merge
-		try {
-			processor = new FileNodeProcessor(tsdbconfig.FileNodeDir, deltaObjectId, parameters);
-			// it will merge automatically
-			QueryStructure queryRestult = processor.query(deltaObjectId, measurementId, null, null, null);
-			DynamicOneColumnData bufferwriteinindex = queryRestult.getBufferwriteDataInMemory();
-			List<RowGroupMetaData> bufferwriterowgroups = queryRestult.getBufferwriteDataInDisk();
-			List<IntervalFileNode> newInterFiles = queryRestult.getBufferwriteDataInFiles();
-			List<Object> overflowResult = queryRestult.getAllOverflowData();
-			assertEquals(null, bufferwriteinindex);
-			assertEquals(null, bufferwriterowgroups);
-			assertEquals(4, newInterFiles.size());
-			// check bufferwrite data
-			// 2-22 :bug
-			IntervalFileNode bufferwriteFile = newInterFiles.get(0);
-			assertEquals(0, bufferwriteFile.startTime);
-			assertEquals(24, bufferwriteFile.endTime);
-			assertEquals(OverflowChangeType.NO_CHANGE, bufferwriteFile.overflowChangeType);
-			checkFile(bufferwriteFile.filePath);
-			// 25-40 :bug
-			bufferwriteFile = newInterFiles.get(1);
-			assertEquals(25, bufferwriteFile.startTime);
-			assertEquals(44, bufferwriteFile.endTime);
-			assertEquals(OverflowChangeType.NO_CHANGE, bufferwriteFile.overflowChangeType);
-			checkFile(bufferwriteFile.filePath);
-			// 45-62 :bug
-			bufferwriteFile = newInterFiles.get(2);
-			assertEquals(45, bufferwriteFile.startTime);
-			assertEquals(64, bufferwriteFile.endTime);
-			assertEquals(OverflowChangeType.NO_CHANGE, bufferwriteFile.overflowChangeType);
-			checkFile(bufferwriteFile.filePath);
-			// 65-80 :bug
-			bufferwriteFile = newInterFiles.get(3);
-			assertEquals(65, bufferwriteFile.startTime);
-			assertEquals(80, bufferwriteFile.endTime);
-			assertEquals(OverflowChangeType.NO_CHANGE, bufferwriteFile.overflowChangeType);
-			checkFile(bufferwriteFile.filePath);
-			// check overflow data: no overflow data
-			assertEquals(null, overflowResult.get(0));
-			assertEquals(null, overflowResult.get(1));
-			assertEquals(null, overflowResult.get(2));
-			assertEquals(null, overflowResult.get(3));
-			processor.close();
-		} catch (FileNodeProcessorException e) {
-			e.printStackTrace();
-			fail(e.getMessage());
-		}
-		// check the merge result
-		checkUnFile(unusedFilename);
-	}
-
-	@Test
-	public void testMergeFromEmptyIntervalFile() {
-		// test merege from Empty Interval File
-		try {
-			processor = new FileNodeProcessor(tsdbconfig.FileNodeDir, deltaObjectId, parameters);
-			// set lastupdate time
-			processor.setLastUpdateTime(100);
-			processor.close();
-			// There is no buffer write files
-			// create overflow data
-			// insert:2,22,62; update:50-70
-			createOverflowdata();
-
-			processor = new FileNodeProcessor(tsdbconfig.FileNodeDir, deltaObjectId, parameters);
-			processor.getOverflowProcessor(deltaObjectId, parameters);
-			// check overflow data
-			QueryStructure queryResult = processor.query(deltaObjectId, measurementId, null, null, null);
-			assertEquals(null, queryResult.getBufferwriteDataInMemory());
-			assertEquals(null, queryResult.getBufferwriteDataInDisk());
-			assertEquals(0, queryResult.getBufferwriteDataInFiles().size());
-			List<Object> overflowResult = queryResult.getAllOverflowData();
-			DynamicOneColumnData insertData = (DynamicOneColumnData) overflowResult.get(0);
-			assertEquals(3, insertData.length);
-			assertEquals(2, insertData.getTime(0));
-			assertEquals(222, insertData.getInt(0));
-			assertEquals(22, insertData.getTime(1));
-			assertEquals(222, insertData.getInt(1));
-			assertEquals(62, insertData.getTime(2));
-			assertEquals(333, insertData.getInt(2));
-
-			DynamicOneColumnData updateData = (DynamicOneColumnData) overflowResult.get(1);
-			assertEquals(2, updateData.length);
-			assertEquals(4, updateData.timeLength);
-			assertEquals(50, updateData.getTime(0));
-			assertEquals(61, updateData.getTime(1));
-			assertEquals(63, updateData.getTime(2));
-			assertEquals(70, updateData.getTime(3));
-			assertEquals(333, updateData.getInt(0));
-			assertEquals(333, updateData.getInt(1));
-			// merge
-			processor.close();
-
-		} catch (FileNodeProcessorException e) {
 			e.printStackTrace();
 			fail(e.getMessage());
 		}
@@ -924,13 +647,14 @@ public class FileNodeProcessorTest {
 			BufferWriteProcessor bfProcessor = processor.getBufferWriteProcessor(deltaObjectId, begin);
 			assertEquals(true, bfProcessor.isNewProcessor());
 			bfProcessor.write(measurementId, measurementId, begin, TSDataType.INT32, String.valueOf(begin));
-			processor.setLastUpdateTime(begin);
+			processor.setLastUpdateTime(deltaObjectId, begin);
 			bfProcessor.setNewProcessor(false);
-			processor.addIntervalFileNode(begin, bfProcessor.getFileName());
-			for (long i = begin + 1; i <= end; i++) {
+			processor.addIntervalFileNode(begin, bfProcessor.getFileAbsolutePath());
+			for (long i = begin; i <= end; i++) {
 				bfProcessor = processor.getBufferWriteProcessor(deltaObjectId, i);
 				bfProcessor.write(deltaObjectId, measurementId, i, TSDataType.INT32, String.valueOf(i));
-				processor.setLastUpdateTime(i);
+				processor.setIntervalFileNodeStartTime(deltaObjectId, i);
+				processor.setLastUpdateTime(deltaObjectId, i);
 			}
 			processor.close();
 		} catch (FileNodeProcessorException e) {
@@ -962,7 +686,7 @@ public class FileNodeProcessorTest {
 			processor = new FileNodeProcessor(tsdbconfig.FileNodeDir, deltaObjectId, parameters);
 			OverflowProcessor ofProcessor = processor.getOverflowProcessor(deltaObjectId, parameters);
 			ofProcessor.insert(deltaObjectId, measurementId, time, TSDataType.INT32, String.valueOf(value));
-			processor.changeTypeToChanged(time);
+			processor.changeTypeToChanged(deltaObjectId, time);
 			processor.close();
 			Thread.sleep(10);
 		} catch (FileNodeProcessorException e) {
@@ -982,7 +706,7 @@ public class FileNodeProcessorTest {
 			processor = new FileNodeProcessor(tsdbconfig.FileNodeDir, deltaObjectId, parameters);
 			OverflowProcessor ofProcessor = processor.getOverflowProcessor(deltaObjectId, parameters);
 			ofProcessor.update(deltaObjectId, measurementId, begin, end, TSDataType.INT32, String.valueOf(value));
-			processor.changeTypeToChanged(begin, end);
+			processor.changeTypeToChanged(deltaObjectId, begin, end);
 			processor.close();
 			Thread.sleep(10);
 		} catch (FileNodeProcessorException e) {

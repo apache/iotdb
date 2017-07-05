@@ -120,4 +120,10 @@ public class WriteLogManager {
         }
         return null;
     }
+
+    public void close() throws IOException {
+        for (Map.Entry<String, WriteLogNode> entry : logNodeMaps.entrySet()) {
+            entry.getValue().closeStreams();
+        }
+    }
 }

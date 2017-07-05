@@ -11,26 +11,40 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import cn.edu.thu.tsfiledb.conf.TsfileDBConfig;
+import cn.edu.thu.tsfiledb.conf.TsfileDBDescriptor;
 import cn.edu.thu.tsfiledb.engine.overflow.io.OverflowReadWriter;
+import cn.edu.thu.tsfiledb.sys.writelog.WriteLogManager;
 
+/**
+ * @author liukun
+ *
+ */
 public class OverflowReadWriterTest {
 	
 	private String filePath  = "overflowreadwritertest";
 	private String backupFilePath = filePath+".backup";
 	private OverflowReadWriter ofIO = null;
 	
+	private TsfileDBConfig tsdbconfig = TsfileDBDescriptor.getInstance().getConfig();
 	
 
 	@Before
 	public void setUp() throws Exception {
 		EngineTestHelper.delete(filePath);
 		EngineTestHelper.delete(backupFilePath);
+		EngineTestHelper.delete(tsdbconfig.walFolder);
+		EngineTestHelper.delete(tsdbconfig.metadataDir);
+		WriteLogManager.getInstance().close();
 	}
 
 	@After
 	public void tearDown() throws Exception {
+		WriteLogManager.getInstance().close();
 		EngineTestHelper.delete(filePath);
 		EngineTestHelper.delete(backupFilePath);
+		EngineTestHelper.delete(tsdbconfig.walFolder);
+		EngineTestHelper.delete(tsdbconfig.metadataDir);
 	}
 
 	@Test

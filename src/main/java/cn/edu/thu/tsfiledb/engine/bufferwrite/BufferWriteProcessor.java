@@ -34,7 +34,6 @@ import cn.edu.thu.tsfile.file.metadata.converter.TSFileMetaDataConverter;
 import cn.edu.thu.tsfile.file.metadata.enums.TSDataType;
 import cn.edu.thu.tsfile.file.utils.ReadWriteThriftFormatUtils;
 import cn.edu.thu.tsfile.format.FileMetaData;
-import cn.edu.thu.tsfile.timeseries.read.query.DynamicOneColumnData;
 import cn.edu.thu.tsfile.timeseries.write.TSRecordWriteSupport;
 import cn.edu.thu.tsfile.timeseries.write.TSRecordWriter;
 import cn.edu.thu.tsfile.timeseries.write.WriteSupport;
@@ -59,9 +58,6 @@ public class BufferWriteProcessor extends LRUProcessor {
 	private static final TSFileConfig TsFileConf = TSFileDescriptor.getInstance().getConfig();
 	private static final TsfileDBConfig TsFileDBConf = TsfileDBDescriptor.getInstance().getConfig();
 	private static final MManager mManager = MManager.getInstance();
-
-	private BufferWriteIndex workingBufferIndex;
-	private BufferWriteIndex flushingBufferIndex;
 
 	private boolean isFlushingSync = false;
 	private final FlushState flushState = new FlushState();
@@ -153,10 +149,6 @@ public class BufferWriteProcessor extends LRUProcessor {
 		bufferwriteFlushAction = (Action) parameters.get(FileNodeConstants.BUFFERWRITE_FLUSH_ACTION);
 		bufferwriteCloseAction = (Action) parameters.get(FileNodeConstants.BUFFERWRITE_CLOSE_ACTION);
 		filenodeFlushAction = (Action) parameters.get(FileNodeConstants.FILENODE_PROCESSOR_FLUSH_ACTION);
-		// memory index init
-		workingBufferIndex = new MemoryBufferWriteIndexImpl();
-		flushingBufferIndex = new MemoryBufferWriteIndexImpl();
-
 	}
 
 	/**
@@ -437,8 +429,8 @@ public class BufferWriteProcessor extends LRUProcessor {
 	public String getFileName() {
 		return fileName;
 	}
-	
-	public String getFileAbsolutePath(){
+
+	public String getFileAbsolutePath() {
 		return bufferwriteOutputFilePath;
 	}
 
@@ -485,44 +477,31 @@ public class BufferWriteProcessor extends LRUProcessor {
 					String.format("Write TSRecord error, the TSRecord is %s, the nameSpacePath is %s, the reason is %s",
 							tsRecord, nameSpacePath, e.getMessage()));
 		}
-		workingBufferIndex.insert(tsRecord);
 	}
 
-	/**
-	 * Get the result of DynamicOneColumnData from work index and flush index
-	 * 
-	 * @param deltaObjectId
-	 * @param measurementId
-	 * @return
-	 */
-	private DynamicOneColumnData mergeTwoDynamicColumnData(String deltaObjectId, String measurementId) {
-		DynamicOneColumnData working = workingBufferIndex.query(deltaObjectId, measurementId);
-		DynamicOneColumnData ret = (working == null || working.length == 0) ? new DynamicOneColumnData()
-				: new DynamicOneColumnData(working.dataType, true);
-		if (flushState.isFlushing()) {
-			DynamicOneColumnData flushing = flushingBufferIndex.query(deltaObjectId, measurementId);
-			if (flushing != null) {
-				ret.mergeRecord(flushing);
+	public Pair<List<Object>, List<RowGroupMetaData>> getIndexAndRowGroupList(String deltaObjectId,
+			String measurementId) {
+		List<Object> memData = null;
+		List<RowGroupMetaData> list = null;
+		// wait until flush over
+		synchronized (flushState) {
+			while (flushState.isFlushing()) {
+				try {
+					flushState.wait();
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+					LOGGER.error(e.getMessage());
+				}
 			}
 		}
-		if (working != null) {
-			ret.mergeRecord(working);
-		}
-		return ret;
-	}
-
-	public Pair<DynamicOneColumnData, List<RowGroupMetaData>> getIndexAndRowGroupList(String deltaObjectId,
-			String measurementId) {
-		DynamicOneColumnData index = null;
-		List<RowGroupMetaData> list = null;
 		convertBufferLock.readLock().lock();
 		try {
-			index = mergeTwoDynamicColumnData(deltaObjectId, measurementId);
+			memData = recordWriter.query(deltaObjectId, measurementId);
 			list = bufferIOWriter.getCurrentRowGroupMetaList();
 		} finally {
 			convertBufferLock.readLock().unlock();
 		}
-		return new Pair<>(index, list);
+		return new Pair<>(memData, list);
 	}
 
 	@Override
@@ -619,8 +598,8 @@ public class BufferWriteProcessor extends LRUProcessor {
 					e.printStackTrace();
 					throw new IOException(e);
 				}
-				
-				//For WAL 
+
+				// For WAL
 				WriteLogManager.getInstance().startBufferWriteFlush(nameSpacePath);
 				// flush bufferwrite data
 				if (isFlushingSync) {
@@ -746,14 +725,10 @@ public class BufferWriteProcessor extends LRUProcessor {
 	}
 
 	private void switchIndexFromWorkToFlush() {
-		BufferWriteIndex temp = workingBufferIndex;
-		workingBufferIndex = flushingBufferIndex;
-		flushingBufferIndex = temp;
 
 	}
 
 	private void switchIndexFromFlushToWork() {
-		flushingBufferIndex.clear();
 		bufferIOWriter.addNewRowGroupMetaDataToBackUp();
 	}
 }

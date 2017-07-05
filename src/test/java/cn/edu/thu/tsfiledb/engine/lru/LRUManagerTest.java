@@ -19,6 +19,10 @@ import cn.edu.thu.tsfiledb.engine.lru.LRUProcessor;
 import cn.edu.thu.tsfiledb.engine.overflow.io.EngineTestHelper;
 import cn.edu.thu.tsfiledb.metadata.MManager;
 
+/**
+ * @author liukun
+ *
+ */
 public class LRUManagerTest {
 
 	private static final String TEST = "TEST";

@@ -9,6 +9,10 @@ import org.junit.Test;
 
 import cn.edu.thu.tsfile.common.exception.ProcessorException;
 
+/**
+ * @author liukun
+ *
+ */
 public class LRUProcessorTest {
 	
 	

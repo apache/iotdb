@@ -5,8 +5,10 @@ import static org.junit.Assert.*;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.junit.After;
@@ -20,6 +22,10 @@ import cn.edu.thu.tsfiledb.engine.filenode.OverflowChangeType;
 import cn.edu.thu.tsfiledb.engine.filenode.SerializeUtil;
 import cn.edu.thu.tsfiledb.engine.overflow.io.EngineTestHelper;
 
+/**
+ * @author liukun
+ *
+ */
 public class SerializeUtilTest {
 
 	private String filePath = "serializeUtilTest";
@@ -64,16 +70,21 @@ public class SerializeUtilTest {
 
 	@Test
 	public void testFileStore() {
-		IntervalFileNode emptyIntervalFileNode = new IntervalFileNode(0, OverflowChangeType.NO_CHANGE, null);
+		// 空在使用的时候starttime如何计算？？Map？？
+		IntervalFileNode emptyIntervalFileNode = new IntervalFileNode(OverflowChangeType.NO_CHANGE, null);
 		List<IntervalFileNode> newFilenodes = new ArrayList<>();
+		String deltaObjectId = "d0.s0";
 		for (int i = 1; i <= 3; i++) {
-			IntervalFileNode node = new IntervalFileNode(i * 100, i * 100 + 99, OverflowChangeType.NO_CHANGE,
-					"bufferfiletest" + i);
+			// i * 100, i * 100 + 99
+			IntervalFileNode node = new IntervalFileNode(OverflowChangeType.NO_CHANGE, "bufferfiletest" + i);
+			node.setStartTime(deltaObjectId, i * 100);
+			node.setEndTime(deltaObjectId, i * 100 + 99);
 			newFilenodes.add(node);
 		}
 		FileNodeProcessorStatus fileNodeProcessorState = FileNodeProcessorStatus.WAITING;
-
-		FileNodeProcessorStore fileNodeProcessorStore = new FileNodeProcessorStore(500, emptyIntervalFileNode,
+		Map<String,Long> lastUpdateTimeMap = new HashMap<>();
+		lastUpdateTimeMap.put(deltaObjectId, (long) 500);
+		FileNodeProcessorStore fileNodeProcessorStore = new FileNodeProcessorStore(lastUpdateTimeMap, emptyIntervalFileNode,
 				newFilenodes, fileNodeProcessorState, 0);
 
 		SerializeUtil<FileNodeProcessorStore> serializeUtil = new SerializeUtil<>();
@@ -87,9 +98,10 @@ public class SerializeUtilTest {
 		assertEquals(true, new File(filePath).exists());
 		try {
 			FileNodeProcessorStore fileNodeProcessorStore2 = serializeUtil.deserialize(filePath)
-					.orElse(new FileNodeProcessorStore(-1, new IntervalFileNode(0, OverflowChangeType.NO_CHANGE, null),
-							new ArrayList<>(), FileNodeProcessorStatus.NONE, 0));
-			assertEquals(fileNodeProcessorStore.getLastUpdateTime(), fileNodeProcessorStore2.getLastUpdateTime());
+					.orElse(new FileNodeProcessorStore(new HashMap<>(),
+							new IntervalFileNode(OverflowChangeType.NO_CHANGE, null),
+							new ArrayList<IntervalFileNode>(), FileNodeProcessorStatus.NONE, 0));
+			assertEquals(fileNodeProcessorStore.getLastUpdateTimeMap(), fileNodeProcessorStore2.getLastUpdateTimeMap());
 			assertEquals(fileNodeProcessorStore.getEmptyIntervalFileNode(),
 					fileNodeProcessorStore2.getEmptyIntervalFileNode());
 			assertEquals(fileNodeProcessorStore.getNewFileNodes(), fileNodeProcessorStore2.getNewFileNodes());

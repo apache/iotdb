@@ -23,7 +23,7 @@ import cn.edu.thu.tsfiledb.query.reader.RecordReader;
  *
  */
 public class RecordReaderFactory {
-	private static final Logger logger = LoggerFactory.getLogger(RecordReaderFactory.class);
+	private static final Logger LOGGER = LoggerFactory.getLogger(RecordReaderFactory.class);
 	private static RecordReaderFactory instance = new RecordReaderFactory();
 
 	private FileNodeManager fileNodeManager;
@@ -37,8 +37,8 @@ public class RecordReaderFactory {
 	}
 
 	public RecordReader getRecordReader(String deltaObjectUID, String measurementID,
-			SingleSeriesFilterExpression timeFilter, SingleSeriesFilterExpression freqFilter,
-			SingleSeriesFilterExpression valueFilter) throws ProcessorException {
+			SingleSeriesFilterExpression timeFilter, SingleSeriesFilterExpression freqFilter, SingleSeriesFilterExpression valueFilter)
+			throws ProcessorException {
 		int token = readLockManager.lock(deltaObjectUID, measurementID);
 		if (readLockManager.recordReaderCache.containsRecordReader(deltaObjectUID, measurementID)) {
 			return readLockManager.recordReaderCache.get(deltaObjectUID, measurementID);
@@ -47,9 +47,8 @@ public class RecordReaderFactory {
 			try {
 				queryStructure = fileNodeManager.query(deltaObjectUID, measurementID, timeFilter, freqFilter,
 						valueFilter);
-				System.out.println("====== Device:" + deltaObjectUID + ". Sensor:" + measurementID);
-				System.out.println(queryStructure);
-				System.out.println("======");
+				// LOGGER.info("====== Device:" + deltaObjectUID + ". Sensor:" + measurementID);
+				LOGGER.info(queryStructure.toString());
 			} catch (FileNodeManagerException e) {
 				throw new ProcessorException(e.getMessage());
 			}
@@ -60,7 +59,7 @@ public class RecordReaderFactory {
 		}
 	}
 
-	public RecordReader createANewRecordReader(String deltaObjectUID, String measurementID,
+	private RecordReader createANewRecordReader(String deltaObjectUID, String measurementID,
 			QueryStructure queryStructure, int token) throws ProcessorException {
 		RecordReader recordReader;
 
@@ -71,27 +70,39 @@ public class RecordReaderFactory {
 		} else {
 			hasUnEnvelopedFile = false;
 		}
-
 		List<TSRandomAccessFileReader> rafList = new ArrayList<>();
 		try {
 			for (int i = 0; i < fileNodes.size() - 1; i++) {
 				IntervalFileNode fileNode = fileNodes.get(i);
-				TSRandomAccessFileReader raf = fileStreamManager.getLocalRandomAcessFileReader(fileNode.filePath);
+				TSRandomAccessFileReader raf = fileStreamManager.getLocalRandomAccessFileReader(fileNode.filePath);
 				rafList.add(raf);
 			}
 			if (hasUnEnvelopedFile) {
-				TSRandomAccessFileReader raf = fileStreamManager
-						.getLocalRandomAcessFileReader(fileNodes.get(fileNodes.size() - 1).filePath);
-				recordReader = new RecordReader(rafList, raf, queryStructure.getBufferwriteDataInDisk(), deltaObjectUID,
-						measurementID, token, queryStructure.getBufferwriteDataInMemory(),
-						queryStructure.getAllOverflowData());
+				TSRandomAccessFileReader unsealedRaf = fileStreamManager
+						.getLocalRandomAccessFileReader(fileNodes.get(fileNodes.size() - 1).filePath);
+
+				// if currentPage is null, both currentPage and pageList must both are null
+				if (queryStructure.getCurrentPage() == null) {
+					recordReader = new RecordReader(rafList, unsealedRaf, queryStructure.getBufferwriteDataInDisk(), deltaObjectUID, measurementID, token,
+							null, null, null,
+							queryStructure.getAllOverflowData());
+				} else {
+					recordReader = new RecordReader(rafList, unsealedRaf, queryStructure.getBufferwriteDataInDisk(), deltaObjectUID, measurementID, token,
+							queryStructure.getCurrentPage(), queryStructure.getPageList().left, queryStructure.getPageList().right,
+							queryStructure.getAllOverflowData());
+				}
 			} else {
 				if (fileNodes.size() > 0) {
 					rafList.add(fileStreamManager
-							.getLocalRandomAcessFileReader(fileNodes.get(fileNodes.size() - 1).filePath));
+							.getLocalRandomAccessFileReader(fileNodes.get(fileNodes.size() - 1).filePath));
 				}
-				recordReader = new RecordReader(rafList, deltaObjectUID, measurementID, token,
-						queryStructure.getBufferwriteDataInMemory(), queryStructure.getAllOverflowData());
+				if (queryStructure.getCurrentPage() == null) {
+					recordReader = new RecordReader(rafList, deltaObjectUID, measurementID, token,
+							queryStructure.getCurrentPage(), null, null, queryStructure.getAllOverflowData());
+				} else {
+					recordReader = new RecordReader(rafList, deltaObjectUID, measurementID, token,
+							queryStructure.getCurrentPage(), queryStructure.getPageList().left, queryStructure.getPageList().right, queryStructure.getAllOverflowData());
+				}
 			}
 		} catch (IOException e) {
 			e.printStackTrace();
