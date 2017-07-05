@@ -3,6 +3,7 @@ package cn.edu.thu.tsfiledb.sys.writelog;
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -19,19 +20,18 @@ import cn.edu.thu.tsfiledb.qp.physical.PhysicalPlan;
 public class WriteLogManager {
     private static final Logger LOG = LoggerFactory.getLogger(WriteLogManager.class);
     private static WriteLogManager instance = new WriteLogManager();
-    private static HashMap<String, WriteLogNode> logNodeMaps;
+    private static ConcurrentHashMap<String, WriteLogNode> logNodeMaps;
     public static final int BUFFERWRITER = 0, OVERFLOW = 1;
     private static List<String> recoveryPathList = new ArrayList<>();
     public static boolean isRecovering = false;
 
     private WriteLogManager() {
-        logNodeMaps = new HashMap<>();
+        logNodeMaps = new ConcurrentHashMap<>();
 
         // system log timing merge task
         ScheduledExecutorService service = Executors.newScheduledThreadPool(1);
         long delay = 0;
         long interval = TsfileDBDescriptor.getInstance().getConfig().LogMergeTime;
-        // examine every 10 seconds
         service.scheduleAtFixedRate(new LogMergeTimingTask(), delay, interval, TimeUnit.SECONDS);
     }
 

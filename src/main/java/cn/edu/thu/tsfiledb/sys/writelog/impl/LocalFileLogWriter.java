@@ -14,12 +14,13 @@ public class LocalFileLogWriter implements WriteLogPersistable {
     private String logFile;
     private FileOutputStream os = null;
 
-    public LocalFileLogWriter(String path) throws FileNotFoundException {
+    public LocalFileLogWriter(String path) throws IOException {
         logFile = path;
         File f = new File(path);
         if (!f.getParentFile().exists()) {
             if(!f.getParentFile().mkdirs()) {
                 LOG.error("System log directory create failed!");
+                throw new IOException("System log directory create failed!");
             }
         }
         os = new FileOutputStream(path, true);
