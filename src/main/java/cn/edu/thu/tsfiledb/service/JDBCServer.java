@@ -118,7 +118,7 @@ public class JDBCServer implements JDBCServerMBean {
         @Override
         public void run() {
             try {
-                serverTransport = new TServerSocket(TsfileDBDescriptor.getInstance().getConfig().PORT);
+                serverTransport = new TServerSocket(TsfileDBDescriptor.getInstance().getConfig().JDBCServerPort);
                 poolArgs = new TThreadPoolServer.Args(serverTransport);
                 poolArgs.processor(processor);
                 poolArgs.protocolFactory(protocolFactory);

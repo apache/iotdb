@@ -57,14 +57,14 @@ public class JMXManager {
 			InstanceAlreadyExistsException, MBeanRegistrationException, NotCompliantMBeanException {
 		MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
 		String addr = String.format("service:jmx:rmi://%s:%d/jndi/rmi://%s:%d/jmxrmi", 
-			TsfileDBDescriptor.getInstance().getConfig().JMX_IP,
-			TsfileDBDescriptor.getInstance().getConfig().JMX_PORT,
-			TsfileDBDescriptor.getInstance().getConfig().JMX_IP, 
-			TsfileDBDescriptor.getInstance().getConfig().JMX_PORT);
+			TsfileDBDescriptor.getInstance().getConfig().JMXIP,
+			TsfileDBDescriptor.getInstance().getConfig().JMXPort,
+			TsfileDBDescriptor.getInstance().getConfig().JMXIP, 
+			TsfileDBDescriptor.getInstance().getConfig().JMXPort);
 		JMXServiceURL address = new JMXServiceURL(addr);
 
 		RMISocketFactory rmiFactory = RMISocketFactory.getDefaultSocketFactory();
-		LocateRegistry.createRegistry(TsfileDBDescriptor.getInstance().getConfig().JMX_PORT, null, rmiFactory);
+		LocateRegistry.createRegistry(TsfileDBDescriptor.getInstance().getConfig().JMXPort, null, rmiFactory);
 
 		jmxEnvironment.put(RMIConnectorServer.RMI_SERVER_SOCKET_FACTORY_ATTRIBUTE, rmiFactory);
 
