@@ -168,9 +168,11 @@ public class WriteLogNode {
             oldReader.close();
             if (!new File(filePath).delete()) {
                 LOG.error("Error in compact log : old log file delete");
+                throw new IOException("Error in compact log : old log file delete");
             }
             if (!new File(filePath + ".backup").renameTo(new File(filePath))) {
                 LOG.error("Error in compact log : create new log file");
+                throw new IOException("Error in compact log : create new log file");
             }
             writer.close();
             writer = null;
@@ -215,10 +217,11 @@ public class WriteLogNode {
     synchronized public void recovery() throws IOException {
         File f = new File(backFilePath);
         if (f.exists()) {
-            LOG.error("system log compact error occured last time!");
+            LOG.info("system log compact error occured last time!");
             // need delete origin file
             if (!f.delete()) {
                 LOG.error("Error in system log recovery. old .backup file could not be deleted!");
+                throw new IOException("Error in system log recovery. old .backup file could not be deleted!");
             }
             checkLogsCompactFileSize(true);
         }
@@ -268,19 +271,21 @@ public class WriteLogNode {
         this.reader = null;
     }
 
-    public void removeFiles() {
+    public void removeFiles() throws IOException {
         File currentFile = new File(filePath);
         //currentFile.
         if (currentFile.exists()) {
             if (!currentFile.delete() ) {
-                LOG.error("current file not delete");
+                LOG.error("current file can not delete");
+                throw new IOException("current file can not delete");
             }
         }
 
         File backFile = new File(backFilePath);
         if (backFile.exists()) {
             if (!backFile.delete() ) {
-                LOG.error("backup file not delete");
+                LOG.error("backup file can not delete");
+                throw new IOException("backup file can not delete");
             }
         }
     }
