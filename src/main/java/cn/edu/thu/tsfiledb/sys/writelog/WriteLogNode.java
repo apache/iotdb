@@ -46,7 +46,6 @@ public class WriteLogNode {
            walPath += File.separatorChar;
         }
         filePath = walPath + path + ".log";
-        System.out.println("=======!!" + filePath);
         backFilePath = filePath + ".backup";
         plansInMemory = new ArrayList<>();
         hasBufferWriteFlush = false;
