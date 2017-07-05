@@ -93,7 +93,11 @@ public class WriteLogManager {
             recoveryPathList = MManager.getInstance().getAllFileNames();
             Iterator<String> iterator = recoveryPathList.iterator();
             while (iterator.hasNext()) {
-                String filePath = TsfileDBDescriptor.getInstance().getConfig().walFolder + iterator.next() + ".log";
+                String walPath = TsfileDBDescriptor.getInstance().getConfig().walFolder;
+                if (walPath.length() > 0 && walPath.charAt(walPath.length() - 1) != File.separatorChar) {
+                    walPath += File.separatorChar;
+                }
+                String filePath = walPath + iterator.next() + ".log";
                 if (!new File(filePath).exists()) {
                     iterator.remove();
                 }
