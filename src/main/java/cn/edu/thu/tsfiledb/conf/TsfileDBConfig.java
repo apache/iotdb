@@ -49,6 +49,13 @@ public class TsfileDBConfig {
 	public int LogMemorySize = 10000;
 	public long LogMergeTime = 10;
 
+	public int JDBCServerPort = 6667;
+	
+	public String JMXIP = "0.0.0.0";
+	
+	// port registered to jmx
+	public int JMXPort = 31999;
+	
 	public TsfileDBConfig() {
 	}
 

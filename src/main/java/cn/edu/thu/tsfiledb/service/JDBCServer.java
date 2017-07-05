@@ -12,6 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import cn.edu.thu.tsfiledb.auth.dao.DBDao;
+import cn.edu.thu.tsfiledb.conf.TsfileDBDescriptor;
 import cn.edu.thu.tsfiledb.engine.exception.FileNodeManagerException;
 import cn.edu.thu.tsfiledb.engine.exception.LRUManagerException;
 import cn.edu.thu.tsfiledb.engine.filenode.FileNodeManager;
@@ -117,7 +118,7 @@ public class JDBCServer implements JDBCServerMBean {
         @Override
         public void run() {
             try {
-                serverTransport = new TServerSocket(JDBCServerConfig.PORT);
+                serverTransport = new TServerSocket(TsfileDBDescriptor.getInstance().getConfig().JDBCServerPort);
                 poolArgs = new TThreadPoolServer.Args(serverTransport);
                 poolArgs.processor(processor);
                 poolArgs.protocolFactory(protocolFactory);
