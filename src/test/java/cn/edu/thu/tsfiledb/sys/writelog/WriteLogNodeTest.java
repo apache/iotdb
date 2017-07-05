@@ -237,13 +237,13 @@ public class WriteLogNodeTest {
         node.removeFiles();
     }
 
-    @Test
+//    @Test
     public void systemLogTimingMergingTest() throws IOException, InterruptedException {
         WriteLogNode node = new WriteLogNode(fileNode);
         measurements.clear();
         measurements.add("s1");
         values.add("1.0");
-        node.write(new MultiInsertPlan("d1", 100L, measurements, values));
+        node.write(new InsertPlan("d1", 100L, measurements, values));
         node.write(new UpdatePlan(200L, 300L, "2.0", path));
         node.write(new DeletePlan(200L, path));
         node.write(new UpdatePlan(400L, 500L, "3.0", path));
@@ -251,7 +251,7 @@ public class WriteLogNodeTest {
         node.write(new UpdatePlan(900L, 901L, "3.0", path));
         values.clear();
         values.add("4.0");
-        node.write(new MultiInsertPlan(1, "d1", 101L, measurements, values));
+        node.write(new InsertPlan(1, "d1", 101L, measurements, values));
         node.write(new UpdatePlan(500L, 600L, "4.0", path));
         Thread.sleep(3000);
         int cnt = 0;

@@ -11,6 +11,8 @@ import org.junit.Before;
 import org.junit.Test;
 
 import cn.edu.thu.tsfile.common.exception.ProcessorException;
+import cn.edu.thu.tsfiledb.conf.TsfileDBConfig;
+import cn.edu.thu.tsfiledb.conf.TsfileDBDescriptor;
 import cn.edu.thu.tsfiledb.engine.bufferwrite.Action;
 import cn.edu.thu.tsfiledb.engine.exception.LRUManagerException;
 import cn.edu.thu.tsfiledb.engine.lru.LRUManager;
@@ -65,16 +67,24 @@ public class LRUManagerTest {
 
 	private TestLRUManager manager = null;
 	private String dirPath = "managerdir";
+	
+	private TsfileDBConfig dbconfig = TsfileDBDescriptor.getInstance().getConfig();
+	private String metadataPath;
 
 	@Before
 	public void setUp() throws Exception {
+		metadataPath = dbconfig.metadataDir;
+		dbconfig.metadataDir = "metadata";
+		EngineTestHelper.delete(dbconfig.metadataDir);
 		EngineTestHelper.delete(dirPath);
 		MetadataManagerHelper.initMetadata();
 	}
 
 	@After
 	public void tearDown() throws Exception {
+		EngineTestHelper.delete(dbconfig.metadataDir);
 		EngineTestHelper.delete(dirPath);
+		dbconfig.metadataDir = metadataPath;
 		MetadataManagerHelper.clearMetadata();
 	}
 

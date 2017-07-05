@@ -1,7 +1,5 @@
 package cn.edu.thu.tsfiledb.engine.lru;
 
-import java.io.IOException;
-
 import cn.edu.thu.tsfiledb.metadata.MManager;
 
 /**

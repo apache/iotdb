@@ -2,7 +2,6 @@ package cn.edu.thu.tsfiledb.metadata;
 
 import static org.junit.Assert.fail;
 
-import java.awt.geom.Path2D;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -16,18 +15,24 @@ import org.junit.Test;
 
 import cn.edu.thu.tsfile.file.metadata.enums.TSDataType;
 import cn.edu.thu.tsfile.timeseries.read.qp.Path;
+import cn.edu.thu.tsfiledb.conf.TsfileDBConfig;
+import cn.edu.thu.tsfiledb.conf.TsfileDBDescriptor;
+import cn.edu.thu.tsfiledb.engine.overflow.io.EngineTestHelper;
 import cn.edu.thu.tsfiledb.exception.MetadataArgsErrorException;
 import cn.edu.thu.tsfiledb.exception.PathErrorException;
 
-
-
-
 public class MManagerTest {
 	
-	private MManager mManager = MManager.getInstance();
+	private MManager mManager;
+	private TsfileDBConfig dbconfig = TsfileDBDescriptor.getInstance().getConfig();
+	private String path;
 	
 	@Before
 	public void before(){
+		path = dbconfig.metadataDir;
+		dbconfig.metadataDir = "metadata";
+		EngineTestHelper.delete(dbconfig.metadataDir);
+		mManager = MManager.getInstance();
 		mManager.clear();
 		try {
 			mManager.addAPathToMTree("root.vehicle.d1.s1", "INT32", "RLE", new String[0]);
@@ -56,6 +61,8 @@ public class MManagerTest {
 	
 	@After
 	public void after(){
+		EngineTestHelper.delete(dbconfig.metadataDir);
+		dbconfig.metadataDir = path;
 		mManager.deleteLogAndDataFiles();
 	}
 	

@@ -8,6 +8,9 @@ import org.junit.Before;
 import org.junit.Test;
 
 import cn.edu.thu.tsfile.common.exception.ProcessorException;
+import cn.edu.thu.tsfiledb.conf.TsfileDBConfig;
+import cn.edu.thu.tsfiledb.conf.TsfileDBDescriptor;
+import cn.edu.thu.tsfiledb.engine.overflow.io.EngineTestHelper;
 
 /**
  * @author liukun
@@ -38,8 +41,14 @@ public class LRUProcessorTest {
 	TestLRUProcessor processor2;
 	TestLRUProcessor processor3;
 	
+	private TsfileDBConfig dbconfig = TsfileDBDescriptor.getInstance().getConfig();
+	private String metadataPath;
+	
 	@Before
 	public void setUp() throws Exception {
+		metadataPath = dbconfig.metadataDir;
+		dbconfig.metadataDir = "metadata";
+		EngineTestHelper.delete(dbconfig.metadataDir);
 		processor1 = new TestLRUProcessor("ns1");
 		processor2 = new TestLRUProcessor("ns2");
 		processor3 = new TestLRUProcessor("ns1");
@@ -47,6 +56,8 @@ public class LRUProcessorTest {
 
 	@After
 	public void tearDown() throws Exception {
+		EngineTestHelper.delete(dbconfig.metadataDir);
+		dbconfig.metadataDir = metadataPath;
 	}
 
 	@Test
