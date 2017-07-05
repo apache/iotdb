@@ -2,10 +2,7 @@ package cn.edu.thu.tsfiledb.sys.writelog;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -31,10 +28,9 @@ public class WriteLogManager {
         logNodeMaps = new HashMap<>();
 
         // system log timing merge task
-        ScheduledExecutorService service = Executors.newScheduledThreadPool(10);
+        ScheduledExecutorService service = Executors.newScheduledThreadPool(1);
         long delay = 0;
-        // long interval = TsfileDBDescriptor.getInstance().getConfig().LogMergeTime;
-        long interval = 2;
+        long interval = TsfileDBDescriptor.getInstance().getConfig().LogMergeTime;
         // examine every 10 seconds
         service.scheduleAtFixedRate(new LogMergeTimingTask(), delay, interval, TimeUnit.SECONDS);
     }
@@ -42,8 +38,8 @@ public class WriteLogManager {
     class LogMergeTimingTask implements Runnable {
         public void run() {
             try {
-                for (String path : recoveryPathList) {
-                    getWriteLogNode(path).serializeMemoryToFile();
+                for (Map.Entry<String, WriteLogNode> entry : logNodeMaps.entrySet()) {
+                    entry.getValue().serializeMemoryToFile();
                 }
             } catch (IOException e) {
                 e.printStackTrace();

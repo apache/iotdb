@@ -3,12 +3,14 @@ package cn.edu.thu.tsfiledb.sys.writelog.impl;
 import java.io.*;
 
 import cn.edu.thu.tsfiledb.sys.writelog.WriteLogPersistable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * @author CGF
  */
 public class LocalFileLogWriter implements WriteLogPersistable {
-
+    private static final Logger LOG = LoggerFactory.getLogger(LocalFileLogWriter.class);
     private String logFile;
     private FileOutputStream os = null;
 
@@ -16,7 +18,9 @@ public class LocalFileLogWriter implements WriteLogPersistable {
         logFile = path;
         File f = new File(path);
         if (!f.getParentFile().exists()) {
-            f.getParentFile().mkdirs();
+            if(!f.getParentFile().mkdirs()) {
+                LOG.error("System log directory create failed!");
+            }
         }
         os = new FileOutputStream(path, true);
     }
