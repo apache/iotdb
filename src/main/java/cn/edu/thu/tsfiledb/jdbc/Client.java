@@ -89,12 +89,12 @@ public class Client {
 				for (int i = 0; i < cmds.length; i++) {
 					String cmd = cmds[i];
 					if (cmd != null && !cmd.trim().equals("")) {
-						if(cmd.equals(QUIT_COMMAND)){
+						if(cmd.toLowerCase().equals(QUIT_COMMAND)){
 							System.out.println(">> TsFileDB Client-Cli Quit");
 							return;
 						}
 						
-						if(cmd.equals(SHOW_METADATA_COMMAND)){
+						if(cmd.toLowerCase().equals(SHOW_METADATA_COMMAND)){
 							System.out.println(connection.getMetaData());
 							continue;
 						}
