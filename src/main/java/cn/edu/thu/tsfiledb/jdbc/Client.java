@@ -21,12 +21,37 @@ import org.joda.time.DateTime;
 import cn.edu.thu.tsfiledb.exception.ArgsErrorException;
 
 public class Client {
-
-	private static final int MAX_PRINT_ROW_COUNT = 1000;
-	private static final int MAX_HELP_CONSOLE_WIDTH = 66;
+	private static final String HOST_ARGS = "h";
+	private static final String HOST_NAME = "host";
 	
+	private static final String HELP_ARGS = "help";
+	
+	private static final String PORT_ARGS = "p";
+	private static final String PORT_NAME = "port";
+	
+	private static final String PASSWORD_ARGS = "pw";
+	private static final String PASSWORD_NAME = "password";
+	
+	private static final String USERNAME_ARGS = "u";
+	private static final String USERNAME_NAME = "username";
+	
+	private static final String ISO8601_ARGS = "disableISO8601";
+	private static boolean timeFormatInISO8601 = true;
+	
+	private static final String MAX_PRINT_ROW_COUNT_ARGS = "maxPRC";
+	private static final String MAX_PRINT_ROW_COUNT_NAME = "maxPrintRowCount";
+	private static int maxPrintRowCount = 1000;
+	
+	private static final String TSFILEDB_CLI_PREFIX = "TsFileDB Client-Cli";
 	private static final String QUIT_COMMAND = "quit";
+	private static final String EXIT_COMMAND = "exit";
 	private static final String SHOW_METADATA_COMMAND = "show metadata";
+	private static final int MAX_HELP_CONSOLE_WIDTH = 88;
+
+	private static int maxTimeLength = 30;
+	private static int maxValueLength = 15;
+	private static String formatTime = "|%"+maxTimeLength+"s|";
+	private static String formatValue = "|%"+maxValueLength+"s|";
 
 	public static void main(String[] args) throws ClassNotFoundException, SQLException {
 		Class.forName("cn.edu.thu.tsfiledb.jdbc.TsfileDriver");
@@ -40,30 +65,42 @@ public class Client {
 		CommandLineParser parser = new DefaultParser();
 		
 		if(args == null || args.length == 0){
-			hf.printHelp("TsFileDB Client-Cli", options, true);
+			hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
 			return;
 		}
 		
 		try {
 			commandLine = parser.parse(options, args);
-			if (commandLine.hasOption("help")) {
-				hf.printHelp("TsFileDB Client-Cli", options, true);
+			if (commandLine.hasOption(HELP_ARGS)) {
+				hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
 				return;
 			}
+			if(commandLine.hasOption(ISO8601_ARGS)){
+			    setTimeFormatForNumber();
+			}
+			if(commandLine.hasOption(MAX_PRINT_ROW_COUNT_ARGS)){
+			    try {
+				maxPrintRowCount = Integer.valueOf(commandLine.getOptionValue(MAX_PRINT_ROW_COUNT_ARGS));
+			    } catch (NumberFormatException e) {
+				System.out.println(TSFILEDB_CLI_PREFIX+": error format of max print row count, it should be number");
+				return;
+			    }
+			    
+			}
 		} catch (ParseException e) {
-			hf.printHelp("TsFileDB Client-Cli", options, true);
+			hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
 			return;
 		}	
 
 		try {
-			String host = checkRequiredArg("h", "host", commandLine);
-			String port = checkRequiredArg("p", "port", commandLine);
-			String username = checkRequiredArg("u", "username", commandLine);
-			String password = checkRequiredArg("pw", "password", commandLine);
+			String host = checkRequiredArg(HOST_ARGS, HOST_NAME, commandLine);
+			String port = checkRequiredArg(PORT_ARGS, PORT_NAME, commandLine);
+			String username = checkRequiredArg(USERNAME_ARGS, USERNAME_NAME, commandLine);
+			String password = checkRequiredArg(PASSWORD_ARGS, PASSWORD_NAME, commandLine);
 			try{
 				connection = DriverManager.getConnection("jdbc:tsfile://" + host + ":" + port + "/", username, password);
 			} catch (SQLException e) {
-				System.out.println("TsFileDB Client-Cli: "+e.getMessage());
+				System.out.println(TSFILEDB_CLI_PREFIX+": "+e.getMessage());
 				return;
 			}
 		} catch (ArgsErrorException e1) {
@@ -77,48 +114,56 @@ public class Client {
 				+ "   |____| /_______  / \\___  /   |___|____/\\___  >   version 0.0.1\n"
 				+ "                  \\/      \\/                  \\/ \n");
 
-		System.out.println("TsFileDB Client-Cli: login successfully");
+		System.out.println(TSFILEDB_CLI_PREFIX+": login successfully");
 		Scanner scanner = null;
 		try {
 			String s;
 			scanner = new Scanner(System.in);
+			System.out.print(TSFILEDB_CLI_PREFIX+"> ");
 			while (true) {
-				System.out.print("[TsFileDB Client-Cli: ] > ");
 				s = scanner.nextLine();
-				String[] cmds = s.trim().split(";");
-				for (int i = 0; i < cmds.length; i++) {
-					String cmd = cmds[i];
-					if (cmd != null && !cmd.trim().equals("")) {
-						if(cmd.toLowerCase().equals(QUIT_COMMAND)){
-							System.out.println(">> TsFileDB Client-Cli Quit");
-							return;
-						}
-						
-						if(cmd.toLowerCase().equals(SHOW_METADATA_COMMAND)){
-							System.out.println(connection.getMetaData());
-							continue;
-						}
-						
-						Statement statement = connection.createStatement();
-						try {
-							boolean hasResultSet = statement.execute(cmd.trim());
-							if (hasResultSet) {
-								ResultSet resultSet = statement.getResultSet();
-								output(resultSet, printToConsole);
+				if(s == null || s.trim().equals("")){
+				    System.out.print(TSFILEDB_CLI_PREFIX+"> ");
+				    continue;
+				} else{
+					String[] cmds = s.trim().split(";");
+					for (int i = 0; i < cmds.length; i++) {
+						String cmd = cmds[i];
+						if (cmd != null && !cmd.trim().equals("")) {
+							if(cmd.toLowerCase().equals(QUIT_COMMAND) || cmd.toLowerCase().equals(EXIT_COMMAND)){
+								System.out.println(TSFILEDB_CLI_PREFIX+": quit");
+								return;
 							}
-							statement.close();
-							System.out.println("TsFileDB Client-Cli: execute successfully.");
-						} catch (TsfileSQLException e) {
-							System.out.println("TsFileDB Client-Cli: statement error: " + e.getMessage());
-						} catch (Exception e) {
-							System.out.println("TsFileDB Client-Cli: connection error. " + e.getMessage());
+							
+							if(cmd.toLowerCase().equals(SHOW_METADATA_COMMAND)){
+								System.out.println(connection.getMetaData());
+								continue;
+							}
+							
+							Statement statement = connection.createStatement();
+							try {
+								boolean hasResultSet = statement.execute(cmd.trim());
+								if (hasResultSet) {
+									ResultSet resultSet = statement.getResultSet();
+									output(resultSet, printToConsole);
+								}
+								statement.close();
+								System.out.println(TSFILEDB_CLI_PREFIX+": execute successfully.");
+							} catch (TsfileSQLException e) {
+								System.out.println(TSFILEDB_CLI_PREFIX+": statement error: " + e.getMessage());
+							} catch (Exception e) {
+								System.out.println(TSFILEDB_CLI_PREFIX+": connection error. " + e.getMessage());
+							}
 						}
 					}
+					System.out.println();
 				}
+
+				System.out.print(TSFILEDB_CLI_PREFIX+"> ");
 			}
 			
 		} catch (Exception e) {
-			System.out.println("TsFileDB Client-Cli: exit client with error "+e.getMessage());
+			System.out.println(TSFILEDB_CLI_PREFIX+": exit client with error "+e.getMessage());
 		} finally {
 			if(scanner != null){
 				scanner.close();
@@ -131,16 +176,14 @@ public class Client {
 	}
 
 	public static void output(ResultSet res, boolean printToConsole) {
+	    	System.out.println();
 		try {
 			int cnt = 0;
 			int colCount = res.getMetaData().getColumnCount();
 			// //Output Labels
 
 			StringBuilder blockLine = new StringBuilder();
-			int maxTimeLength = 30;
-			int maxValueLength = 15;
-			String formatTime = "|%"+maxTimeLength+"s|";
-			String formatValue = "|%"+maxValueLength+"s|";
+
 			if (printToConsole) {
 				
 				for (int i = 0; i < colCount; i++) {
@@ -166,17 +209,17 @@ public class Client {
 			// Output values
 			while (res.next()) {
 
-				if (printToConsole && cnt < MAX_PRINT_ROW_COUNT) {
+				if (printToConsole && cnt < maxPrintRowCount) {
 					System.out.printf(formatTime, formatDatetime(res.getLong(0)));
 				}
 
 				for (int i = 1; i < colCount; i++) {
-					if (printToConsole && cnt < MAX_PRINT_ROW_COUNT) {
+					if (printToConsole && cnt < maxPrintRowCount) {
 						System.out.printf(formatValue, String.valueOf(res.getString(i)));
 					}
 				}
 
-				if (printToConsole && cnt < MAX_PRINT_ROW_COUNT) {
+				if (printToConsole && cnt < maxPrintRowCount) {
 					System.out.printf("\n");
 				}
 				cnt++;
@@ -198,38 +241,53 @@ public class Client {
 
 	private static Options createOptions() {
 		Options options = new Options();
-		Option help = new Option("help", false, "Display help information");
+		Option help = new Option(HELP_ARGS, false, "Display help information");
 		help.setRequired(false);
 		options.addOption(help);
+		
+		Option timeFormat = new Option(ISO8601_ARGS, false, "Display timestamp in number");
+		timeFormat.setRequired(false);
+		options.addOption(timeFormat);
 
-		Option host = OptionBuilder.withArgName("host").hasArg().withDescription("Host Name (required)").create("h");
+		Option host = OptionBuilder.withArgName(HOST_NAME).hasArg().withDescription("Host Name (required)").create(HOST_ARGS);
 		options.addOption(host);
 
-		Option port = OptionBuilder.withArgName("port").hasArg().withDescription("Port (required)").create("p");
+		Option port = OptionBuilder.withArgName(PORT_NAME).hasArg().withDescription("Port (required)").create(PORT_ARGS);
 		options.addOption(port);
 
-		Option username = OptionBuilder.withArgName("username").hasArg().withDescription("User name (required)").create("u");
+		Option username = OptionBuilder.withArgName(USERNAME_NAME).hasArg().withDescription("User name (required)").create(USERNAME_ARGS);
 		options.addOption(username);
 
-		Option password = OptionBuilder.withArgName("password").hasArg().withDescription("Password (required)").create("pw");
+		Option password = OptionBuilder.withArgName(PASSWORD_NAME).hasArg().withDescription("Password (required)").create(PASSWORD_ARGS);
 		options.addOption(password);
 
+		Option maxPrintCount = OptionBuilder.withArgName(MAX_PRINT_ROW_COUNT_NAME).hasArg().withDescription("Maximum number of rows displayed (optional)").create(MAX_PRINT_ROW_COUNT_ARGS);
+		options.addOption(maxPrintCount);
 		return options;
 	}
 	
 	private static String formatDatetime(long timestamp){
-	    DateTime dateTime = new DateTime(timestamp);
-	    return dateTime.toString();
+	    if(timeFormatInISO8601){
+		    DateTime dateTime = new DateTime(timestamp);
+		    return dateTime.toString();
+	    }
+	    return timestamp+"";
 	}
 	
 	private static String checkRequiredArg(String arg,String name, CommandLine commandLine) throws ArgsErrorException{
 		String str = commandLine.getOptionValue(arg);
 		if(str == null){
-			String msg = String.format("TsFileDB Client-Cli: Required values for option '%s' not provided",name);
+			String msg = String.format("%s: Required values for option '%s' not provided", TSFILEDB_CLI_PREFIX, name);
 			System.out.println(msg);
 			System.out.println("Use -help for more information");
 			throw new ArgsErrorException(msg);
 		}
 		return str;
+	}
+	
+	private static void setTimeFormatForNumber(){
+	    timeFormatInISO8601 = false;
+	    maxTimeLength = maxValueLength;
+	    formatTime = "|%"+maxTimeLength+"s|";
 	}
 }
