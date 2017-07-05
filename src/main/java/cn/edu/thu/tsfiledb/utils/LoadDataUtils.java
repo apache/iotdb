@@ -33,7 +33,6 @@ public class LoadDataUtils {
     private MManager mManager;
     private int writeInstanceThreshold;
     private boolean hasExtra = false;
-    private String measureType;
     private long totalPointCount = 0;
     private FileNodeManager fileNodeManager;
     private TsfileDBConfig conf = TsfileDBDescriptor.getInstance().getConfig();
@@ -98,7 +97,6 @@ public class LoadDataUtils {
         return extraDataFilePath;
     }
 
-    @SuppressWarnings("finally")
     private void loadOneRecordLine(String line) {
         TSRecord record = RecordUtils.parseSimpleTupleRecord(line, this.fileSchema);
         totalPointCount += record.dataPointList.size();
@@ -173,21 +171,14 @@ public class LoadDataUtils {
     public void loadLocalDataMultiPass(String inputCsvDataPath, String measureType,
                                        MManager mManager) {
         LOG.info("start loading data...");
-        long start = System.currentTimeMillis();
-        System.out.println("asdaasd");
-        System.out.println("asdaasd");
-        System.out.println("asdaasd");
-        System.out.println("asdaasd");
         long startTime = System.currentTimeMillis();
         this.mManager = mManager;
         // get measurement schema
         try {
             ArrayList<ColumnSchema> meaSchema = mManager.getSchemaForOneType(measureType);
-            this.measureType = measureType;
             fileSchema = FileSchemaUtil.getFileSchemaFromColumnSchema(meaSchema, measureType);
         } catch (PathErrorException e) {
-            LOG.error("the path of input measurement schema meet error!");
-            e.printStackTrace();
+            LOG.error("the path of input measurement schema meet error!", e);
             close();
             return;
         }
