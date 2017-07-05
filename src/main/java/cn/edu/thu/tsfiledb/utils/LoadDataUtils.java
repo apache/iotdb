@@ -117,14 +117,14 @@ public class LoadDataUtils {
                 } catch (IOException e) {
                     LOG.error("record the extra data into extraFile failed, record:{}", line);
                 }
+                return;
             }
         }
         // appeared before, insert directly
         try {
             fileNodeManager.insert(record);
         } catch (FileNodeManagerException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+            LOG.error("failed when insert into fileNodeManager, record:{}, reason:{}", line, e.getMessage());
 		}
     }
 
@@ -159,11 +159,6 @@ public class LoadDataUtils {
     }
 
     private void closeWriteInstance() {
-        //TODO for data load, don't close the write processor
-//        for (Entry<String, WriteInstance> entry : writeInstanceMap.entrySet()) {
-//            entry.getValue().close();
-//            LOG.info("closed write instance:{}", entry.getKey());
-//        }
         writeInstanceMap.clear();
     }
 
