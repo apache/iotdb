@@ -14,7 +14,7 @@ import cn.edu.thu.tsfiledb.qp.logical.sys.MetadataOperator;
 import cn.edu.thu.tsfiledb.qp.logical.sys.PropertyOperator;
 import cn.edu.thu.tsfiledb.qp.physical.PhysicalPlan;
 import cn.edu.thu.tsfiledb.qp.physical.crud.DeletePlan;
-import cn.edu.thu.tsfiledb.qp.physical.crud.MultiInsertPlan;
+import cn.edu.thu.tsfiledb.qp.physical.crud.InsertPlan;
 import cn.edu.thu.tsfiledb.qp.physical.crud.UpdatePlan;
 import cn.edu.thu.tsfiledb.qp.physical.sys.MetadataPlan;
 import cn.edu.thu.tsfiledb.qp.physical.sys.PropertyPlan;
@@ -65,14 +65,14 @@ public class PhysicalGenerator {
                             "for delete command, cannot specified more than one path:" + paths);
                 }
                 return new DeletePlan(delete.getTime(), paths.get(0));
-            case MULTIINSERT:
-                MultiInsertOperator multiInsert = (MultiInsertOperator) operator;
-                paths = multiInsert.getSelectedPaths();
+            case INSERT:
+            	InsertOperator Insert = (InsertOperator) operator;
+                paths = Insert.getSelectedPaths();
                 if(paths.size() != 1){
-                    throw new LogicalOperatorException("for MultiInsert command, cannot specified more than one path:{}"+ paths);
+                    throw new LogicalOperatorException("for Insert command, cannot specified more than one path:{}"+ paths);
                 }
-                return new MultiInsertPlan(paths.get(0).getFullPath(), multiInsert.getTime(),
-                        multiInsert.getMeasurementList(), multiInsert.getValueList());
+                return new InsertPlan(paths.get(0).getFullPath(), Insert.getTime(),
+                        Insert.getMeasurementList(), Insert.getValueList());
             case UPDATE:
                 UpdateOperator update = (UpdateOperator) operator;
                 UpdatePlan updatePlan = new UpdatePlan();

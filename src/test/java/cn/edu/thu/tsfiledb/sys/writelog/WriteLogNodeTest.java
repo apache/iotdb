@@ -1,10 +1,15 @@
 package cn.edu.thu.tsfiledb.sys.writelog;
 
 import cn.edu.thu.tsfile.timeseries.read.qp.Path;
+import cn.edu.thu.tsfiledb.conf.TsfileDBConfig;
+import cn.edu.thu.tsfiledb.conf.TsfileDBDescriptor;
+import cn.edu.thu.tsfiledb.engine.overflow.io.EngineTestHelper;
 import cn.edu.thu.tsfiledb.qp.physical.PhysicalPlan;
 import cn.edu.thu.tsfiledb.qp.physical.crud.DeletePlan;
-import cn.edu.thu.tsfiledb.qp.physical.crud.MultiInsertPlan;
+import cn.edu.thu.tsfiledb.qp.physical.crud.InsertPlan;
 import cn.edu.thu.tsfiledb.qp.physical.crud.UpdatePlan;
+
+import org.junit.After;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -21,6 +26,13 @@ public class WriteLogNodeTest {
     private static String fileNode = "root.vehicle.d1";
     private List<String> measurements = new ArrayList<>();
     private List<String> values = new ArrayList<>();
+    
+    
+    @After
+    public void tearDown(){
+    	TsfileDBConfig dbConfig = TsfileDBDescriptor.getInstance().getConfig();
+    	EngineTestHelper.delete(dbConfig.walFolder);
+    }
 
     @Test
     public void bufferWriteOverflowFlushTest() throws IOException {
@@ -28,7 +40,7 @@ public class WriteLogNodeTest {
         measurements.clear();
         measurements.add("s1");
         values.add("1.0");
-        node.write(new MultiInsertPlan("d1", 100L, measurements, values));
+        node.write(new InsertPlan("d1", 100L, measurements, values));
         node.write(new UpdatePlan(200L, 300L, "2.0", path));
         node.write(new DeletePlan(200L, path));
         node.write(new UpdatePlan(400L, 500L, "3.0", path));
@@ -38,7 +50,7 @@ public class WriteLogNodeTest {
         node.bufferFlushEnd();
         values.clear();
         values.add("4.0");
-        node.write(new MultiInsertPlan(1, "d1", 101L, measurements, values));
+        node.write(new InsertPlan(1, "d1", 101L, measurements, values));
         node.overflowFlushStart();
         node.write(new UpdatePlan(500L, 600L, "4.0", path));
         node.overflowFlushEnd();
@@ -47,8 +59,8 @@ public class WriteLogNodeTest {
         while ((plan = node.getPhysicalPlan()) != null) {
             if (cnt == 1) {
                 Assert.assertEquals(plan.getPaths().get(0), path);
-                Assert.assertTrue(plan instanceof MultiInsertPlan);
-                MultiInsertPlan insertPlan = (MultiInsertPlan) plan;
+                Assert.assertTrue(plan instanceof InsertPlan);
+                InsertPlan insertPlan = (InsertPlan) plan;
                 Assert.assertEquals(insertPlan.getTime(), 101L);
                 Assert.assertEquals(insertPlan.getValues().get(0), "4.0");
             } else if (cnt == 2) {
@@ -81,7 +93,7 @@ public class WriteLogNodeTest {
 
         values.clear();
         values.add("1.0");
-        node.write(new MultiInsertPlan(1, fileNode, 100L, measurements, values));
+        node.write(new InsertPlan(1, fileNode, 100L, measurements, values));
         for (int i = 101; i <= 201; i++) {
             node.write(new UpdatePlan(i, i * 2, "2.0", path));
         }
@@ -96,8 +108,8 @@ public class WriteLogNodeTest {
                 Assert.assertEquals(updatePlan.getValue(), "1.0");
             } else if (cnt == 100) {
                 Assert.assertEquals(plan.getPaths().get(0), new Path("root.vehicle.d1.s1"));
-                Assert.assertTrue(plan instanceof MultiInsertPlan);
-                MultiInsertPlan insertPlan = (MultiInsertPlan) plan;
+                Assert.assertTrue(plan instanceof InsertPlan);
+                InsertPlan insertPlan = (InsertPlan) plan;
                 Assert.assertEquals(insertPlan.getTime(), 100L);
                 Assert.assertEquals(insertPlan.getValues().get(0), "1.0");
             } else if (cnt == 200) {
@@ -145,8 +157,8 @@ public class WriteLogNodeTest {
             measurementList.add("s0");
             valueList.add(String.valueOf(i));
         }
-        MultiInsertPlan multiInsertPlan = new MultiInsertPlan(1, fileNode, 1L, measurementList, valueList);
-        node.write(multiInsertPlan);
+        InsertPlan InsertPlan = new InsertPlan(1, fileNode, 1L, measurementList, valueList);
+        node.write(InsertPlan);
         node.bufferFlushStart();
         node.bufferFlushEnd();
         for (int i = 300; i <= 500; i++) {
@@ -176,8 +188,8 @@ public class WriteLogNodeTest {
                 measurementList.add("s" + i + "-" + j);
                 valueList.add(String.valueOf(i));
             }
-            multiInsertPlan = new MultiInsertPlan(1, fileNode, 1L, measurementList, valueList);
-            node.write(multiInsertPlan);
+            InsertPlan = new InsertPlan(1, fileNode, 1L, measurementList, valueList);
+            node.write(InsertPlan);
         }
         node.bufferFlushStart();
         node.bufferFlushEnd();
@@ -188,8 +200,8 @@ public class WriteLogNodeTest {
                 measurementList.add("s" + i + "-" + j);
                 valueList.add(String.valueOf(i));
             }
-            multiInsertPlan = new MultiInsertPlan(1, fileNode, 1L, measurementList, valueList);
-            node.write(multiInsertPlan);
+            InsertPlan = new InsertPlan(1, fileNode, 1L, measurementList, valueList);
+            node.write(InsertPlan);
         }
         while ((plan = node.getPhysicalPlan()) != null) {
             cnt++;
@@ -212,13 +224,13 @@ public class WriteLogNodeTest {
             measurementList.add("s0");
             valueList.add(String.valueOf(i));
         }
-        MultiInsertPlan multiInsertPlan = new MultiInsertPlan(1, fileNode, 1L, measurementList, valueList);
-        node.write(multiInsertPlan);
+        InsertPlan InsertPlan = new InsertPlan(1, fileNode, 1L, measurementList, valueList);
+        node.write(InsertPlan);
 
         PhysicalPlan plan;
         while ((plan = node.getPhysicalPlan()) != null) {
-            //multiInsertPlan = (MultiInsertPlan) plan;
-            Assert.assertEquals(multiInsertPlan.getMeasurements().size(), 10001);
+            //InsertPlan = (InsertPlan) plan;
+            Assert.assertEquals(InsertPlan.getMeasurements().size(), 10001);
             //output(plan);
         }
         node.closeStreams();
@@ -237,11 +249,11 @@ public class WriteLogNodeTest {
         } else if (plan instanceof DeletePlan) {
             DeletePlan p = (DeletePlan) plan;
             System.out.println("Delete: " + p.getPath() + " " + p.getDeleteTime());
-        } else if (plan instanceof MultiInsertPlan) {
-            MultiInsertPlan multiInsertPlan = (MultiInsertPlan) plan;
-            System.out.println("MultiInsert: " + multiInsertPlan.getDeltaObject() + " " + multiInsertPlan.getTime());
-            for (int i = 0; i < multiInsertPlan.getMeasurements().size(); i++) {
-                System.out.println(multiInsertPlan.getMeasurements().get(i) + " " + multiInsertPlan.getValues().get(i));
+        } else if (plan instanceof InsertPlan) {
+            InsertPlan InsertPlan = (InsertPlan) plan;
+            System.out.println("MultiInsert: " + InsertPlan.getDeltaObject() + " " + InsertPlan.getTime());
+            for (int i = 0; i < InsertPlan.getMeasurements().size(); i++) {
+                System.out.println(InsertPlan.getMeasurements().get(i) + " " + InsertPlan.getValues().get(i));
             }
         }
     }

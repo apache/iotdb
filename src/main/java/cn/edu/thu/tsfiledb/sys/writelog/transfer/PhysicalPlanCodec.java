@@ -11,7 +11,7 @@ import cn.edu.thu.tsfile.common.utils.ReadWriteStreamUtils;
 import cn.edu.thu.tsfile.timeseries.read.qp.Path;
 import cn.edu.thu.tsfiledb.qp.logical.Operator.OperatorType;
 import cn.edu.thu.tsfiledb.qp.physical.crud.DeletePlan;
-import cn.edu.thu.tsfiledb.qp.physical.crud.MultiInsertPlan;
+import cn.edu.thu.tsfiledb.qp.physical.crud.InsertPlan;
 import cn.edu.thu.tsfiledb.qp.physical.crud.UpdatePlan;
 
 /**
@@ -19,7 +19,7 @@ import cn.edu.thu.tsfiledb.qp.physical.crud.UpdatePlan;
  */
 public enum PhysicalPlanCodec {
 
-    MULTIINSERTPLAN(OperatorType.MULTIINSERT.ordinal(), codecInstances.multiInsertPlanCodec),
+    MULTIINSERTPLAN(OperatorType.INSERT.ordinal(), codecInstances.multiInsertPlanCodec),
     UPDATEPLAN(OperatorType.UPDATE.ordinal(), codecInstances.updatePlanCodec),
     DELETEPLAN(OperatorType.DELETE.ordinal(), codecInstances.deletePlanCodec);
 
@@ -158,10 +158,10 @@ public enum PhysicalPlanCodec {
             }
         };
 
-        static final Codec<MultiInsertPlan> multiInsertPlanCodec = new Codec<MultiInsertPlan>() {
+        static final Codec<InsertPlan> multiInsertPlanCodec = new Codec<InsertPlan>() {
             @Override
-            public byte[] encode(MultiInsertPlan t) {
-                int type = OperatorType.MULTIINSERT.ordinal();
+            public byte[] encode(InsertPlan t) {
+                int type = OperatorType.INSERT.ordinal();
                 int insertType = t.getInsertType();
                 byte[] timeBytes = BytesUtils.longToBytes(t.getTime());
                 byte[] deltaObjectBytes = BytesUtils.StringToBytes(t.getDeltaObject());
@@ -246,7 +246,7 @@ public enum PhysicalPlanCodec {
             }
 
             @Override
-            public MultiInsertPlan decode(byte[] bytes) throws IOException {
+            public InsertPlan decode(byte[] bytes) throws IOException {
                 ByteArrayInputStream bais = new ByteArrayInputStream(bytes);
 
                 int type = bais.read();
@@ -284,7 +284,7 @@ public enum PhysicalPlanCodec {
                     valuesList.add(BytesUtils.bytesToString(valueBytes));
                 }
 
-                MultiInsertPlan ans = new MultiInsertPlan(deltaObject, time, measurementsList, valuesList);
+                InsertPlan ans = new InsertPlan(deltaObject, time, measurementsList, valuesList);
                 return ans;
             }
         };
