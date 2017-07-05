@@ -444,7 +444,7 @@ public class TSServiceImpl implements TSIService.Iface {
             } catch (ProcessorException e) {
                 return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
             }
-            if (execRet && needToBeWrittenToLog(plan)) {
+            if (WriteLogManager.getInstance().isRecovering==false && execRet && needToBeWrittenToLog(plan)) {
                 writeLogManager.write(plan);
             }
             TS_StatusCode statusCode = execRet ? TS_StatusCode.SUCCESS_STATUS : TS_StatusCode.ERROR_STATUS;
@@ -496,7 +496,7 @@ public class TSServiceImpl implements TSIService.Iface {
         } catch (ProcessorException e) {
             return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
         }
-        if (execRet && needToBeWrittenToLog(physicalPlan)) {
+        if (WriteLogManager.isRecovering==false && execRet && needToBeWrittenToLog(physicalPlan)) {
             try {
                 writeLogManager.write(physicalPlan);
             } catch (PathErrorException e) {

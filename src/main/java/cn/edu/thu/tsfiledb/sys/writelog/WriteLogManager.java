@@ -2,10 +2,11 @@ package cn.edu.thu.tsfiledb.sys.writelog;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 import cn.edu.thu.tsfile.timeseries.write.record.TSRecord;
 import cn.edu.thu.tsfiledb.conf.TsfileDBDescriptor;
@@ -19,13 +20,31 @@ import cn.edu.thu.tsfiledb.qp.physical.PhysicalPlan;
 public class WriteLogManager {
     private static final Logger LOG = LoggerFactory.getLogger(WriteLogManager.class);
     private static WriteLogManager instance = new WriteLogManager();
-    private static HashMap<String, WriteLogNode> logNodeMaps;
+    private static ConcurrentHashMap<String, WriteLogNode> logNodeMaps;
     public static final int BUFFERWRITER = 0, OVERFLOW = 1;
     private static List<String> recoveryPathList = new ArrayList<>();
     public static boolean isRecovering = false;
 
     private WriteLogManager() {
-        logNodeMaps = new HashMap<>();
+        logNodeMaps = new ConcurrentHashMap<>();
+
+        // system log timing merge task
+        ScheduledExecutorService service = Executors.newScheduledThreadPool(1);
+        long delay = 0;
+        long interval = TsfileDBDescriptor.getInstance().getConfig().LogMergeTime;
+        service.scheduleAtFixedRate(new LogMergeTimingTask(), delay, interval, TimeUnit.SECONDS);
+    }
+
+    class LogMergeTimingTask implements Runnable {
+        public void run() {
+            try {
+                for (Map.Entry<String, WriteLogNode> entry : logNodeMaps.entrySet()) {
+                    entry.getValue().serializeMemoryToFile();
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
     }
 
     public static WriteLogManager getInstance() {
@@ -70,7 +89,11 @@ public class WriteLogManager {
             recoveryPathList = MManager.getInstance().getAllFileNames();
             Iterator<String> iterator = recoveryPathList.iterator();
             while (iterator.hasNext()) {
-                String filePath = TsfileDBDescriptor.getInstance().getConfig().walFolder + iterator.next() + ".log";
+                String walPath = TsfileDBDescriptor.getInstance().getConfig().walFolder;
+                if (walPath.length() > 0 && walPath.charAt(walPath.length() - 1) != File.separatorChar) {
+                    walPath += File.separatorChar;
+                }
+                String filePath = walPath + iterator.next() + ".log";
                 if (!new File(filePath).exists()) {
                     iterator.remove();
                 }
