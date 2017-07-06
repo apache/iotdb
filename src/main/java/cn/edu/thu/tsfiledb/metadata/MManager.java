@@ -155,7 +155,7 @@ public class MManager {
 	/**
 	 * operation: Add a path to Metadata Tree
 	 */
-	public int addAPathToMTree(String path, String dataType, String encoding, String[] args)
+	public synchronized int addAPathToMTree(String path, String dataType, String encoding, String[] args)
 			throws PathErrorException, IOException, MetadataArgsErrorException {
 		int addCount = mGraph.addPathToMTree(path, dataType, encoding, args);
 		if (writeToLog) {
@@ -169,7 +169,7 @@ public class MManager {
 		return addCount;
 	}
 
-	public void deletePathFromMTree(String path) throws PathErrorException, IOException {
+	public synchronized void deletePathFromMTree(String path) throws PathErrorException, IOException {
 		mGraph.deletePath(path);
 		if (writeToLog) {
 			bw.write(MetadataOperationType.DELETE_PATH_FROM_MTREE + "," + path);
@@ -178,7 +178,7 @@ public class MManager {
 		}
 	}
 
-	public void setStorageLevelToMTree(String path) throws PathErrorException, IOException {
+	public synchronized void setStorageLevelToMTree(String path) throws PathErrorException, IOException {
 		mGraph.setStorageLevel(path);
 		if (writeToLog) {
 			bw.write(MetadataOperationType.SET_STORAGE_LEVEL_TO_MTREE + "," + path);
@@ -188,7 +188,7 @@ public class MManager {
 	}
 
 
-	public void addAPTree(String pTreeRootName) throws IOException, MetadataArgsErrorException {
+	public synchronized void addAPTree(String pTreeRootName) throws IOException, MetadataArgsErrorException {
 		mGraph.addAPTree(pTreeRootName);
 		if (writeToLog) {
 			bw.write(MetadataOperationType.ADD_A_PTREE + "," + pTreeRootName);
@@ -197,7 +197,7 @@ public class MManager {
 		}
 	}
 
-	public void addAPathToPTree(String path) throws PathErrorException, IOException, MetadataArgsErrorException {
+	public synchronized void addAPathToPTree(String path) throws PathErrorException, IOException, MetadataArgsErrorException {
 		mGraph.addPathToPTree(path);
 		if (writeToLog) {
 			bw.write(MetadataOperationType.ADD_A_PATH_TO_PTREE + "," + path);
@@ -207,7 +207,7 @@ public class MManager {
 	}
 
 
-	public void deletePathFromPTree(String path) throws PathErrorException, IOException {
+	public synchronized void deletePathFromPTree(String path) throws PathErrorException, IOException {
 		mGraph.deletePath(path);
 		if (writeToLog) {
 			bw.write(MetadataOperationType.DELETE_PATH_FROM_PTREE + "," + path);
@@ -216,7 +216,7 @@ public class MManager {
 		}
 	}
 
-	public void linkMNodeToPTree(String path, String mPath) throws PathErrorException, IOException {
+	public synchronized void linkMNodeToPTree(String path, String mPath) throws PathErrorException, IOException {
 		mGraph.linkMNodeToPTree(path, mPath);
 		if (writeToLog) {
 			bw.write(MetadataOperationType.LINK_MNODE_TO_PTREE + "," + path + "," + mPath);
@@ -225,7 +225,7 @@ public class MManager {
 		}
 	}
 
-	public void unlinkMNodeFromPTree(String path, String mPath) throws PathErrorException, IOException {
+	public synchronized void unlinkMNodeFromPTree(String path, String mPath) throws PathErrorException, IOException {
 		mGraph.unlinkMNodeFromPTree(path, mPath);
 		if (writeToLog) {
 			bw.write(MetadataOperationType.UNLINK_MNODE_FROM_PTREE + "," + path + "," + mPath);
@@ -367,7 +367,7 @@ public class MManager {
 	/**
 	 * Persistent the MGraph instance into file
 	 */
-	public void flushObjectToFile() throws IOException {
+	public synchronized void flushObjectToFile() throws IOException {
 		File newDataFile = new File(datafilePath + ".backup");
 		FileOutputStream fos = new FileOutputStream(newDataFile);
 		ObjectOutputStream oos = new ObjectOutputStream(fos);
