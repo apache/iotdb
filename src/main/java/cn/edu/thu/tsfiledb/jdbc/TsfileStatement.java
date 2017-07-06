@@ -11,7 +11,6 @@ import java.util.List;
 
 import org.apache.thrift.TException;
 
-import cn.edu.thu.tsfiledb.conf.TsfileDBDescriptor;
 import cn.edu.thu.tsfiledb.service.rpc.thrift.TSCancelOperationReq;
 import cn.edu.thu.tsfiledb.service.rpc.thrift.TSCancelOperationResp;
 import cn.edu.thu.tsfiledb.service.rpc.thrift.TSCloseOperationReq;
@@ -28,7 +27,7 @@ public class TsfileStatement implements Statement {
 
     private ResultSet resultSet = null;
     private final TsfileConnection connection;
-    private int fetchSize = TsfileDBDescriptor.getInstance().getConfig().defaultFetchSize;
+    private int fetchSize = TsfileJDBCConfig.fetchSize;
     private int queryTimeout = 10;
     private TSIService.Iface client = null;
     private TS_SessionHandle sessionHandle = null;
@@ -68,7 +67,7 @@ public class TsfileStatement implements Statement {
     }
 
     public TsfileStatement(TsfileConnection connection, TSIService.Iface client, TS_SessionHandle sessionHandle) {
-	this(connection, client, sessionHandle, TsfileDBDescriptor.getInstance().getConfig().defaultFetchSize);
+	this(connection, client, sessionHandle, TsfileJDBCConfig.fetchSize);
     }
 
     @Override
@@ -428,7 +427,7 @@ public class TsfileStatement implements Statement {
 	if (fetchSize < 0) {
 	    throw new SQLException(String.format("fetchSize %d must be >= 0!", fetchSize));
 	}
-	this.fetchSize = fetchSize == 0 ? TsfileDBDescriptor.getInstance().getConfig().defaultFetchSize : fetchSize;
+	this.fetchSize = fetchSize == 0 ? TsfileJDBCConfig.fetchSize : fetchSize;
     }
 
     @Override

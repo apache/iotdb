@@ -205,8 +205,9 @@ public class Client {
 					printHeader = true;
 				}
 				
-			    	System.out.print("|");
-				if(printTimestamp){
+			    	
+				if(printTimestamp && cnt < maxPrintRowCount){
+				    	System.out.print("|");
 					System.out.printf(formatTime, formatDatetime(res.getLong(TIMESTAMP_STR)));
 				}
 
