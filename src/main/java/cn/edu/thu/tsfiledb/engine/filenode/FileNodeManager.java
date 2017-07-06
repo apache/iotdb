@@ -214,7 +214,6 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 			fileNodeProcessor.changeTypeToChanged(deltaObjectId, timestamp);
 			addNameSpaceToOverflowList(nameSpacePath);
 			// overflowProcessor.writeUnlock();
-			LOGGER.debug("Unlock the OverflowProcessor: {}", fileNodeProcessor.getNameSpacePath());
 			insertType = 1;
 		} else {
 			BufferWriteProcessor bufferWriteProcessor;
@@ -255,7 +254,6 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 			fileNodeProcessor.setIntervalFileNodeStartTime(deltaObjectId, timestamp);
 			fileNodeProcessor.setLastUpdateTime(deltaObjectId, timestamp);
 			// bufferWriteProcessor.writeUnlock();
-			LOGGER.debug("Unlock the BufferWriteProcessor: {}", fileNodeProcessor.getNameSpacePath());
 			insertType = 2;
 		}
 		fileNodeProcessor.writeUnlock();
