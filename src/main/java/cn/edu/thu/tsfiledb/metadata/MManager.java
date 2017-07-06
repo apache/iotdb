@@ -40,67 +40,71 @@ public class MManager {
 	private String datafilePath;
 	// log file path
 	private String logFilePath;
-
 	private MGraph mGraph;
 	private BufferedWriter bw;
 	private boolean writeToLog;
+	private boolean initialized;
 
 	private MManager() {
 		writeToLog = false;
-		
+
 		String folderPath = TsfileDBDescriptor.getInstance().getConfig().metadataDir;
 		datafilePath = folderPath + "/mdata.obj";
 		logFilePath = folderPath + "/mlog.txt";
+		initialized = false;
 		init();
 	}
 
-	private void init() {
-		try {
-			File file = new File(datafilePath);
-			// inital MGraph from file
-			if (file.exists()) {
-				FileInputStream fis = new FileInputStream(file);
-				ObjectInputStream ois = new ObjectInputStream(fis);
-				mGraph = (MGraph) ois.readObject();
-				ois.close();
-				fis.close();
+	public void init() {
+		if (!this.initialized) {
+			try {
+				File file = new File(datafilePath);
+				// inital MGraph from file
+				if (file.exists()) {
+					FileInputStream fis = new FileInputStream(file);
+					ObjectInputStream ois = new ObjectInputStream(fis);
+					mGraph = (MGraph) ois.readObject();
+					ois.close();
+					fis.close();
 
-			} else {
-				mGraph = new MGraph(ROOT_NAME);
-			}
-
-			// recover operation from log file
-			File logFile = new File(logFilePath);
-			if (logFile.exists()) {
-				FileReader fr;
-				fr = new FileReader(logFile);
-				BufferedReader br = new BufferedReader(fr);
-				String cmd;
-				while ((cmd = br.readLine()) != null) {
-					operation(cmd);
+				} else {
+					mGraph = new MGraph(ROOT_NAME);
 				}
-				br.close();
-			} else {
-				if (!logFile.getParentFile().exists()) {
-					logFile.getParentFile().mkdirs();
+
+				// recover operation from log file
+				File logFile = new File(logFilePath);
+				if (logFile.exists()) {
+					FileReader fr;
+					fr = new FileReader(logFile);
+					BufferedReader br = new BufferedReader(fr);
+					String cmd;
+					while ((cmd = br.readLine()) != null) {
+						operation(cmd);
+					}
+					br.close();
+				} else {
+					if (!logFile.getParentFile().exists()) {
+						logFile.getParentFile().mkdirs();
+					}
+					logFile.createNewFile();
 				}
-				logFile.createNewFile();
+
+				FileWriter fw = new FileWriter(logFile, true);
+				bw = new BufferedWriter(fw);
+				writeToLog = true;
+
+			} catch (FileNotFoundException e) {
+				e.printStackTrace();
+			} catch (IOException e) {
+				e.printStackTrace();
+			} catch (ClassNotFoundException e) {
+				e.printStackTrace();
+			} catch (PathErrorException e) {
+				e.printStackTrace();
+			} catch (MetadataArgsErrorException e) {
+				e.printStackTrace();
 			}
-
-			FileWriter fw = new FileWriter(logFile, true);
-			bw = new BufferedWriter(fw);
-			writeToLog = true;
-
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
-		} catch (IOException e) {
-			e.printStackTrace();
-		} catch (ClassNotFoundException e) {
-			e.printStackTrace();
-		} catch (PathErrorException e) {
-			e.printStackTrace();
-		} catch (MetadataArgsErrorException e) {
-			e.printStackTrace();
+			this.initialized = true;
 		}
 	}
 
@@ -187,7 +191,6 @@ public class MManager {
 		}
 	}
 
-
 	public synchronized void addAPTree(String pTreeRootName) throws IOException, MetadataArgsErrorException {
 		mGraph.addAPTree(pTreeRootName);
 		if (writeToLog) {
@@ -197,7 +200,8 @@ public class MManager {
 		}
 	}
 
-	public synchronized void addAPathToPTree(String path) throws PathErrorException, IOException, MetadataArgsErrorException {
+	public synchronized void addAPathToPTree(String path)
+			throws PathErrorException, IOException, MetadataArgsErrorException {
 		mGraph.addPathToPTree(path);
 		if (writeToLog) {
 			bw.write(MetadataOperationType.ADD_A_PATH_TO_PTREE + "," + path);
@@ -205,7 +209,6 @@ public class MManager {
 			bw.flush();
 		}
 	}
-
 
 	public synchronized void deletePathFromPTree(String path) throws PathErrorException, IOException {
 		mGraph.deletePath(path);
@@ -236,6 +239,7 @@ public class MManager {
 
 	/**
 	 * Extract the DeltaObjectId from given path
+	 * 
 	 * @param path
 	 * @return String represents the DeltaObjectId
 	 */
@@ -278,7 +282,8 @@ public class MManager {
 	/**
 	 * Get all ColumnSchemas for given delta object type
 	 * 
-	 * @param path A path represented one Delta object
+	 * @param path
+	 *            A path represented one Delta object
 	 * @return a list contains all column schema
 	 * @throws PathErrorException
 	 */
@@ -288,6 +293,7 @@ public class MManager {
 
 	/**
 	 * Calculate the count of storage-level nodes included in given path
+	 * 
 	 * @param path
 	 * @return The total count of storage-level nodes.
 	 * @throws PathErrorException
@@ -308,16 +314,16 @@ public class MManager {
 	public String getFileNameByPath(String path) throws PathErrorException {
 		return mGraph.getFileNameByPath(path);
 	}
-	
-	public List<String> getAllFileNames() throws PathErrorException{
+
+	public List<String> getAllFileNames() throws PathErrorException {
 		HashMap<String, ArrayList<String>> res = getAllPathGroupByFileName(ROOT_NAME);
 		List<String> fileNameList = new ArrayList<String>();
-		for(String fileName : res.keySet()){
+		for (String fileName : res.keySet()) {
 			fileNameList.add(fileName);
 		}
 		return fileNameList;
 	}
-	
+
 	/**
 	 * return a HashMap contains all the paths separated by File Name
 	 */
@@ -374,8 +380,8 @@ public class MManager {
 		oos.writeObject(mGraph);
 		oos.close();
 
-		//close the logFile stream
-		if(bw != null){
+		// close the logFile stream
+		if (bw != null) {
 			bw.close();
 		}
 		// delete log file
@@ -395,6 +401,7 @@ public class MManager {
 
 		// delete DataFileBackUp
 		newDataFile.delete();
+		this.initialized = false;
 	}
 
 	public String getMetadataInString() {
@@ -402,6 +409,9 @@ public class MManager {
 	}
 
 	public static MManager getInstance() {
+		if(!manager.initialized){
+			manager.init();
+		}
 		return manager;
 	}
 }
