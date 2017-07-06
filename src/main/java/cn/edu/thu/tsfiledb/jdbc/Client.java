@@ -83,6 +83,9 @@ public class Client {
 			if(commandLine.hasOption(MAX_PRINT_ROW_COUNT_ARGS)){
 			    try {
 				maxPrintRowCount = Integer.valueOf(commandLine.getOptionValue(MAX_PRINT_ROW_COUNT_ARGS));
+				if(maxPrintRowCount < 0){
+				    maxPrintRowCount = Integer.MAX_VALUE;
+				}
 			    } catch (NumberFormatException e) {
 				System.out.println(TSFILEDB_CLI_PREFIX+": error format of max print row count, it should be number");
 				return;
@@ -150,7 +153,7 @@ public class Client {
 									output(resultSet, printToConsole);
 								}
 								statement.close();
-								System.out.println(TSFILEDB_CLI_PREFIX+": execute successfully.");
+								
 							} catch (TsfileSQLException e) {
 								System.out.println(TSFILEDB_CLI_PREFIX+": statement error: " + e.getMessage());
 							} catch (Exception e) {
@@ -184,7 +187,6 @@ public class Client {
 			int colCount = res.getMetaData().getColumnCount();
 			// //Output Labels
 
-			StringBuilder blockLine = new StringBuilder();
 			boolean printTimestamp = true;
 			boolean printHeader = false;
 
@@ -205,11 +207,12 @@ public class Client {
 					printHeader = true;
 				}
 				
-			    	
-				if(printTimestamp && cnt < maxPrintRowCount){
-				    	System.out.print("|");
-					System.out.printf(formatTime, formatDatetime(res.getLong(TIMESTAMP_STR)));
-				}
+			    	if(cnt < maxPrintRowCount){
+			    	    	System.out.print("|");
+			    	    	if(printTimestamp){
+						System.out.printf(formatTime, formatDatetime(res.getLong(TIMESTAMP_STR)));
+			    	    	}
+			    	}
 
 				for (int i = 1; i < colCount; i++) {
 					if (printToConsole && cnt < maxPrintRowCount) {
@@ -227,11 +230,8 @@ public class Client {
 				}
 			}
 
-			if (printToConsole) {
-			    System.out.println(blockLine);
-			}
-
-			System.out.println("Result size : " + cnt);
+			System.out.println(TSFILEDB_CLI_PREFIX+": result size= " + cnt);
+			System.out.println(TSFILEDB_CLI_PREFIX+": execute successfully.");
 		} catch (Exception e) {
 			System.out.println(e.getMessage());
 		}
