@@ -59,7 +59,10 @@ public class TsfileQueryResultSet implements ResultSet {
 	private int rowsFetched = 0;
 	private int maxRows;
 	private int fetchSize;
-	boolean emptyResultSet = false;
+	private boolean emptyResultSet = false;
+	
+	private final String TIMESTAMP_STR = "Timestamp";
+	private final String AGGREGATION_STR = "Aggregation";
 
 	public TsfileQueryResultSet(){
 		
@@ -73,7 +76,7 @@ public class TsfileQueryResultSet implements ResultSet {
 		this.columnInfo = new HashMap<>();
 		this.client = client;
 		this.operationHandle = operationHandle;
-		columnInfo.put("Timestamp", 0);
+		columnInfo.put(TIMESTAMP_STR, 0);
 		int index = 1;
 		for(String name : columnName){
 			columnInfo.put(name, index++);
@@ -630,6 +633,11 @@ public class TsfileQueryResultSet implements ResultSet {
 			return false;
 		}
 		record = recordItr.next();
+		if(record.getDeltaObjectType() != null && record.getDeltaObjectType().equals(AGGREGATION_STR)){
+		    if(columnInfo.containsKey(TIMESTAMP_STR)){
+    			columnInfo.remove(TIMESTAMP_STR);
+    		    }
+		}
 		rowsFetched++;
 		return true;
 	}
@@ -1108,5 +1116,4 @@ public class TsfileQueryResultSet implements ResultSet {
 		}
 		return record.fields.get(columnIndex-1).getStringValue();
 	}
-	
 }
