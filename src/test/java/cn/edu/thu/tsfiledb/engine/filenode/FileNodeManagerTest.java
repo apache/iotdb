@@ -28,6 +28,7 @@ import cn.edu.thu.tsfiledb.conf.TsfileDBDescriptor;
 import cn.edu.thu.tsfiledb.engine.exception.FileNodeManagerException;
 import cn.edu.thu.tsfiledb.engine.lru.MetadataManagerHelper;
 import cn.edu.thu.tsfiledb.engine.overflow.io.EngineTestHelper;
+import cn.edu.thu.tsfiledb.metadata.MManager;
 import cn.edu.thu.tsfiledb.sys.writelog.WriteLogManager;
 
 /**
@@ -58,7 +59,6 @@ public class FileNodeManagerTest {
 
 	@Before
 	public void setUp() throws Exception {
-		
 		FileNodeDir = tsdbconfig.FileNodeDir;
 		BufferWriteDir = tsdbconfig.BufferWriteDir;
 		overflowDataDir = tsdbconfig.overflowDataDir;
@@ -87,12 +87,12 @@ public class FileNodeManagerTest {
 	@After
 	public void tearDown() throws Exception {
 		WriteLogManager.getInstance().close();
+		MManager.getInstance().flushObjectToFile();
 		EngineTestHelper.delete(tsdbconfig.FileNodeDir);
 		EngineTestHelper.delete(tsdbconfig.BufferWriteDir);
 		EngineTestHelper.delete(tsdbconfig.overflowDataDir);
 		EngineTestHelper.delete(tsdbconfig.walFolder);
 		EngineTestHelper.delete(tsdbconfig.metadataDir);
-		MetadataManagerHelper.clearMetadata();
 		
 		tsdbconfig.FileNodeDir = FileNodeDir;
 		tsdbconfig.overflowDataDir = overflowDataDir;

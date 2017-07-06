@@ -23,6 +23,7 @@ import cn.edu.thu.tsfiledb.engine.bufferwrite.Action;
 import cn.edu.thu.tsfiledb.engine.bufferwrite.FileNodeConstants;
 import cn.edu.thu.tsfiledb.engine.exception.OverflowProcessorException;
 import cn.edu.thu.tsfiledb.engine.filenode.FilterUtilsForOverflow;
+import cn.edu.thu.tsfiledb.metadata.MManager;
 import cn.edu.thu.tsfiledb.sys.writelog.WriteLogManager;
 
 /**
@@ -102,6 +103,7 @@ public class BigDataForOverflowTest {
 	@After
 	public void tearDown() throws Exception {
 		WriteLogManager.getInstance().close();
+		MManager.getInstance().flushObjectToFile();
 		EngineTestHelper.delete(nameSpacePath);
 		EngineTestHelper.delete(tsdbconfig.walFolder);
 		tsdbconfig.overflowDataDir = overflowDataDir;

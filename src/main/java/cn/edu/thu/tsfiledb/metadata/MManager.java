@@ -386,7 +386,8 @@ public class MManager {
 		}
 		// delete log file
 		File logFile = new File(logFilePath);
-		logFile.delete();
+		boolean deleteRet = logFile.delete();
+		System.out.println("Delete Ret: " + deleteRet);
 
 		// Copy New DataFile to OldDataFile
 		FileOutputStream oldFileFos = new FileOutputStream(datafilePath);

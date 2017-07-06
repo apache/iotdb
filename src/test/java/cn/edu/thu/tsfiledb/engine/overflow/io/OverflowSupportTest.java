@@ -20,6 +20,7 @@ import cn.edu.thu.tsfile.timeseries.read.query.DynamicOneColumnData;
 import cn.edu.thu.tsfiledb.conf.TsfileDBConfig;
 import cn.edu.thu.tsfiledb.conf.TsfileDBDescriptor;
 import cn.edu.thu.tsfiledb.engine.overflow.metadata.OFFileMetadata;
+import cn.edu.thu.tsfiledb.metadata.MManager;
 import cn.edu.thu.tsfiledb.sys.writelog.WriteLogManager;
 
 /**
@@ -61,6 +62,7 @@ public class OverflowSupportTest {
 
 	@After
 	public void tearDown() throws Exception {
+		MManager.getInstance().flushObjectToFile();
 		WriteLogManager.getInstance().close();
 		EngineTestHelper.delete(filePath);
 		EngineTestHelper.delete(fileBackupPath);

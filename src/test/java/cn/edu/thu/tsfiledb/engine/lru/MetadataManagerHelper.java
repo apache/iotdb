@@ -8,9 +8,10 @@ import cn.edu.thu.tsfiledb.metadata.MManager;
  */
 public class MetadataManagerHelper {
 
-	private static MManager mmanager = MManager.getInstance();
-
+	private static MManager mmanager = null;
+	
 	public static void initMetadata() {
+		mmanager = MManager.getInstance();
 		mmanager.clear();
 		try {
 			mmanager.addAPathToMTree("root.vehicle.d0.s0", "INT32", "RLE", new String[0]);
@@ -42,6 +43,7 @@ public class MetadataManagerHelper {
 
 	public static void initMetadata2() {
 
+		mmanager = MManager.getInstance();
 		mmanager.clear();
 		try {
 			mmanager.addAPathToMTree("root.vehicle.d0.s0", "INT32", "RLE", new String[0]);
@@ -67,11 +69,9 @@ public class MetadataManagerHelper {
 
 			mmanager.setStorageLevelToMTree("root.vehicle");
 		} catch (Exception e) {
-			throw new RuntimeException("Initialize the metadata manager failed");
+			
+			throw new RuntimeException("Initialize the metadata manager failed",e);
 		}
 	}
 
-	public static void clearMetadata() {
-		mmanager.clear();
-	}
 }

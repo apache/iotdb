@@ -82,10 +82,10 @@ public class LRUManagerTest {
 
 	@After
 	public void tearDown() throws Exception {
+		MManager.getInstance().flushObjectToFile();
 		EngineTestHelper.delete(dbconfig.metadataDir);
 		EngineTestHelper.delete(dirPath);
 		dbconfig.metadataDir = metadataPath;
-		MetadataManagerHelper.clearMetadata();
 	}
 
 	@Test

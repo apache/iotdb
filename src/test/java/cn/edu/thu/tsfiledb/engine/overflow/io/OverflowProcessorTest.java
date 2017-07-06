@@ -23,6 +23,7 @@ import cn.edu.thu.tsfiledb.engine.bufferwrite.Action;
 import cn.edu.thu.tsfiledb.engine.bufferwrite.FileNodeConstants;
 import cn.edu.thu.tsfiledb.engine.exception.OverflowProcessorException;
 import cn.edu.thu.tsfiledb.engine.overflow.io.OverflowProcessor;
+import cn.edu.thu.tsfiledb.metadata.MManager;
 import cn.edu.thu.tsfiledb.sys.writelog.WriteLogManager;
 
 /**
@@ -101,6 +102,7 @@ public class OverflowProcessorTest {
 
 	@After
 	public void tearDown() throws Exception {
+		MManager.getInstance().flushObjectToFile();
 		WriteLogManager.getInstance().close();
 		EngineTestHelper.delete(nameSpacePath);
 		EngineTestHelper.delete(tsdbconfig.metadataDir);

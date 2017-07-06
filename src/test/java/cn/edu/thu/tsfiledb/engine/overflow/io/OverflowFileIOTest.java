@@ -16,6 +16,7 @@ import cn.edu.thu.tsfile.file.metadata.statistics.LongStatistics;
 import cn.edu.thu.tsfiledb.engine.overflow.metadata.OFFileMetadata;
 import cn.edu.thu.tsfiledb.engine.overflow.metadata.OFRowGroupListMetadata;
 import cn.edu.thu.tsfiledb.engine.overflow.metadata.OFSeriesListMetadata;
+import cn.edu.thu.tsfiledb.metadata.MManager;
 import cn.edu.thu.tsfiledb.sys.writelog.WriteLogManager;
 import cn.edu.thu.tsfiledb.conf.TsfileDBConfig;
 import cn.edu.thu.tsfiledb.conf.TsfileDBDescriptor;
@@ -73,6 +74,7 @@ public class OverflowFileIOTest {
 
 	@After
 	public void tearDown() throws Exception {
+		MManager.getInstance().flushObjectToFile();
 		WriteLogManager.getInstance().close();
 		EngineTestHelper.delete(filePath);
 		EngineTestHelper.delete(mergeFilePath);

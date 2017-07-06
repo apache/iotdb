@@ -60,10 +60,10 @@ public class MManagerTest {
 	}
 	
 	@After
-	public void after(){
+	public void after() throws IOException{
+		mManager.flushObjectToFile();
 		EngineTestHelper.delete(dbconfig.metadataDir);
 		dbconfig.metadataDir = path;
-		mManager.deleteLogAndDataFiles();
 	}
 	
 	@Test

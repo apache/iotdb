@@ -88,11 +88,9 @@ public class FileNodeLastUpdateMulTest {
 
 	@Before
 	public void setUp() throws Exception {
-		
 		FileNodeDir = tsdbconfig.FileNodeDir;
 		BufferWriteDir = tsdbconfig.BufferWriteDir;
 		overflowDataDir = tsdbconfig.overflowDataDir;
-		metadataDir = tsdbconfig.metadataDir;
 
 		tsdbconfig.FileNodeDir = "filenode" + File.separatorChar;
 		tsdbconfig.BufferWriteDir = "bufferwrite";
@@ -122,6 +120,8 @@ public class FileNodeLastUpdateMulTest {
 	public void tearDown() throws Exception {
 
 		WriteLogManager.getInstance().close();
+		MManager.getInstance().flushObjectToFile();
+		
 		EngineTestHelper.delete(tsdbconfig.FileNodeDir);
 		EngineTestHelper.delete(tsdbconfig.BufferWriteDir);
 		EngineTestHelper.delete(tsdbconfig.overflowDataDir);

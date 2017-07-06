@@ -123,14 +123,13 @@ public class FileNodeProcessorTest {
 
 	@After
 	public void tearDown() throws Exception {
-		
 		WriteLogManager.getInstance().close();
+		MManager.getInstance().flushObjectToFile();
 		EngineTestHelper.delete(tsdbconfig.FileNodeDir);
 		EngineTestHelper.delete(tsdbconfig.BufferWriteDir);
 		EngineTestHelper.delete(tsdbconfig.overflowDataDir);
 		EngineTestHelper.delete(tsdbconfig.metadataDir);
 		EngineTestHelper.delete(tsdbconfig.walFolder);
-		MetadataManagerHelper.clearMetadata();
 		
 		tsdbconfig.FileNodeDir = FileNodeDir;
 		tsdbconfig.overflowDataDir = overflowDataDir;

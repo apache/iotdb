@@ -24,12 +24,12 @@ import cn.edu.thu.tsfile.file.metadata.RowGroupMetaData;
 import cn.edu.thu.tsfile.file.metadata.enums.CompressionTypeName;
 import cn.edu.thu.tsfile.file.metadata.enums.TSDataType;
 import cn.edu.thu.tsfile.timeseries.read.query.DynamicOneColumnData;
-import cn.edu.thu.tsfiledb.auth.model.DBContext;
 import cn.edu.thu.tsfiledb.conf.TsfileDBConfig;
 import cn.edu.thu.tsfiledb.conf.TsfileDBDescriptor;
 import cn.edu.thu.tsfiledb.engine.exception.BufferWriteProcessorException;
 import cn.edu.thu.tsfiledb.engine.lru.MetadataManagerHelper;
 import cn.edu.thu.tsfiledb.engine.overflow.io.EngineTestHelper;
+import cn.edu.thu.tsfiledb.metadata.MManager;
 import cn.edu.thu.tsfiledb.sys.writelog.WriteLogManager;
 
 public class BufferWriteProcessorTest {
@@ -68,7 +68,6 @@ public class BufferWriteProcessorTest {
 	
 	@Before
 	public void setUp() throws Exception {
-		
 		cachePageData = TsFileConf.cachePageData;
 		TsFileConf.cachePageData = true;
 		EngineTestHelper.delete(nsp);
@@ -82,12 +81,13 @@ public class BufferWriteProcessorTest {
 	@After
 	public void tearDown() throws Exception {
 		WriteLogManager.getInstance().close();
-		MetadataManagerHelper.clearMetadata();
+		MManager.getInstance().flushObjectToFile();
 		EngineTestHelper.delete(nsp);
 		EngineTestHelper.delete(dbConfig.walFolder);
 		EngineTestHelper.delete(dbConfig.metadataDir);
 		TsFileConf.cachePageData = cachePageData;
 		dbConfig.metadataDir = metadataDir;
+		
 	}
 
 	@Test

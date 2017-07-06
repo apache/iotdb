@@ -24,6 +24,7 @@ import cn.edu.thu.tsfiledb.engine.exception.FileNodeManagerException;
 import cn.edu.thu.tsfiledb.engine.lru.MetadataManagerHelper;
 import cn.edu.thu.tsfiledb.engine.overflow.io.EngineTestHelper;
 import cn.edu.thu.tsfiledb.exception.PathErrorException;
+import cn.edu.thu.tsfiledb.metadata.MManager;
 import cn.edu.thu.tsfiledb.sys.writelog.WriteLogManager;
 
 /**
@@ -58,11 +59,9 @@ public class FileNodeManagerMulTest {
 
 	@Before
 	public void setUp() throws Exception {
-
 		FileNodeDir = tsdbconfig.FileNodeDir;
 		BufferWriteDir = tsdbconfig.BufferWriteDir;
 		overflowDataDir = tsdbconfig.overflowDataDir;
-		metadataDir = tsdbconfig.metadataDir;
 
 		tsdbconfig.FileNodeDir = "filenode" + File.separatorChar;
 		tsdbconfig.BufferWriteDir = "bufferwrite";
@@ -86,12 +85,12 @@ public class FileNodeManagerMulTest {
 	@After
 	public void tearDown() throws Exception {
 		WriteLogManager.getInstance().close();
+		MManager.getInstance().flushObjectToFile();
 		EngineTestHelper.delete(tsdbconfig.FileNodeDir);
 		EngineTestHelper.delete(tsdbconfig.BufferWriteDir);
 		EngineTestHelper.delete(tsdbconfig.overflowDataDir);
 		EngineTestHelper.delete(tsdbconfig.walFolder);
 		EngineTestHelper.delete(tsdbconfig.metadataDir);
-		MetadataManagerHelper.clearMetadata();
 
 		tsdbconfig.FileNodeDir = FileNodeDir;
 		tsdbconfig.overflowDataDir = overflowDataDir;
@@ -521,7 +520,7 @@ public class FileNodeManagerMulTest {
 		// merge
 		try {
 			fileNodeManager.mergeAll();
-			Thread.sleep(2000);
+			Thread.sleep(4000);
 			QueryStructure queryStructure = fileNodeManager.query(deltaObjectId0, measurementId, null, null, null);
 			assertEquals(1, queryStructure.getBufferwriteDataInFiles().size());
 			IntervalFileNode temp = queryStructure.getBufferwriteDataInFiles().get(0);
