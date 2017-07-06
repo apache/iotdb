@@ -374,6 +374,10 @@ public class MManager {
 		oos.writeObject(mGraph);
 		oos.close();
 
+		//close the logFile stream
+		if(bw != null){
+			bw.close();
+		}
 		// delete log file
 		File logFile = new File(logFilePath);
 		logFile.delete();
