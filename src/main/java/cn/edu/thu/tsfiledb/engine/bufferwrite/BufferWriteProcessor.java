@@ -65,7 +65,7 @@ public class BufferWriteProcessor extends LRUProcessor {
 
 	private FileSchema fileSchema;
 	private BufferWriteIOWriter bufferIOWriter;
-	private BufferWriteRecordWriter recordWriter = null;
+	private BufferWriteRecordWriter recordWriter;
 
 	// this just the bufferwrite file name
 	private String fileName;

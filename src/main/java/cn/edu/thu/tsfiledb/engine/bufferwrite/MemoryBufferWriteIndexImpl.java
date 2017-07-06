@@ -17,6 +17,7 @@ import cn.edu.thu.tsfile.timeseries.write.record.TSRecord;
  * @author liukun
  *
  */
+@Deprecated
 public class MemoryBufferWriteIndexImpl implements BufferWriteIndex {
 	private Map<String, DynamicOneColumnData> indexMap;
 

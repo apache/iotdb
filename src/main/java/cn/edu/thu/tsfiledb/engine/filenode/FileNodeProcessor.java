@@ -245,9 +245,6 @@ public class FileNodeProcessor extends LRUProcessor {
 			//
 			// add the current file
 			//
-			//
-			// attention
-			//
 			currentIntervalFileNode = newFileNodes.get(newFileNodes.size() - 1);
 
 			// this bufferwrite file is not close by normal operation
@@ -354,8 +351,6 @@ public class FileNodeProcessor extends LRUProcessor {
 			throws FileNodeProcessorException {
 		if (overflowProcessor == null) {
 			// construct processor or restore
-			// add the parameters
-			// parameters contains the OVERFLOW_FLUSH_MANAGER_ACTION
 			parameters.put(FileNodeConstants.OVERFLOW_FLUSH_ACTION, overflowFlushAction);
 			parameters.put(FileNodeConstants.FILENODE_PROCESSOR_FLUSH_ACTION, flushFileNodeProcessorAction);
 			try {
@@ -420,10 +415,7 @@ public class FileNodeProcessor extends LRUProcessor {
 	 * @param timestamp
 	 */
 	public void changeTypeToChanged(String deltaObjectId, long timestamp) {
-		// 插入overflow操作
-		// 先检查对应的index有没有对这个设备的索引
 		if (!indexOfFiles.containsKey(deltaObjectId)) {
-			// 没有这个设备的索引
 			LOGGER.warn("No any interval node to be changed overflow type");
 			emptyIntervalFileNode.setStartTime(deltaObjectId, 0L);
 			emptyIntervalFileNode.setEndTime(deltaObjectId, getLastUpdateTime(deltaObjectId));
@@ -445,10 +437,7 @@ public class FileNodeProcessor extends LRUProcessor {
 	 * @param endTime
 	 */
 	public void changeTypeToChanged(String deltaObjectId, long startTime, long endTime) {
-		// 更新overflow
-		// 检查索引
 		if (!indexOfFiles.containsKey(deltaObjectId)) {
-			// 没有这个设备的索引
 			LOGGER.warn("No any interval node to be changed overflow type");
 			emptyIntervalFileNode.setStartTime(deltaObjectId, 0L);
 			emptyIntervalFileNode.setEndTime(deltaObjectId, getLastUpdateTime(deltaObjectId));
@@ -472,8 +461,6 @@ public class FileNodeProcessor extends LRUProcessor {
 	 * @param timestamp
 	 */
 	public void changeTypeToChangedForDelete(String deltaObjectId, long timestamp) {
-		// 删除overflow
-		// 检查索引
 		if (!indexOfFiles.containsKey(deltaObjectId)) {
 			LOGGER.warn("No any interval node to be changed overflow type");
 			emptyIntervalFileNode.setStartTime(deltaObjectId, 0L);
@@ -563,10 +550,6 @@ public class FileNodeProcessor extends LRUProcessor {
 		}
 		// query overflow data from overflow processor
 		overflowData = overflowProcessor.query(deltaObjectId, measurementId, timeFilter, freqFilter, valueFilter);
-		if (overflowData.get(0) != null) {
-			LOGGER.error("======= query overflow insert data length is {}",
-					((DynamicOneColumnData) overflowData.get(0)).length);
-		}
 		// query bufferwrite data in memory and disk
 		Pair<List<Object>, List<RowGroupMetaData>> bufferwriteDataInMemory = new Pair<List<Object>, List<RowGroupMetaData>>(
 				null, null);
@@ -600,23 +583,19 @@ public class FileNodeProcessor extends LRUProcessor {
 		//
 		isMerging = FileNodeProcessorStatus.MERGING_WRITE;
 		//
-		// 针对一个文件多个设备的修改内容
+		// check the empty file
 		//
 		if (emptyIntervalFileNode.overflowChangeType != OverflowChangeType.NO_CHANGE) {
-			// 如果empty是修改过的内容，遍历empty中所有的设备的名字去修改index file
 			for (Entry<String, Long> entry : emptyIntervalFileNode.getEndTimeMap().entrySet()) {
 				String deltaObjectId = entry.getKey();
 				if (indexOfFiles.containsKey(deltaObjectId)) {
-					// 如果index包含对应的设备
 					indexOfFiles.get(deltaObjectId).get(0).overflowChangeType = OverflowChangeType.CHANGED;
 					emptyIntervalFileNode.removeTime(deltaObjectId);
 				}
 			}
-			// 检查empty中对应的内容，如果还有区间那么表示empty需要单独成一个区间，如果不需要，那么empty不需要成一个单独的区间
 			if (emptyIntervalFileNode.checkEmpty()) {
 				emptyIntervalFileNode.clear();
 			} else {
-				// 如果有文件就把empty没有remove的区间都给第一个文件就可以了。
 				if (!newFileNodes.isEmpty()) {
 					IntervalFileNode first = newFileNodes.get(0);
 					for (String deltaObjectId : emptyIntervalFileNode.getStartTimeMap().keySet()) {
@@ -657,18 +636,15 @@ public class FileNodeProcessor extends LRUProcessor {
 		}
 		// add numOfMergeFile to control the number of the merge file
 		List<IntervalFileNode> backupIntervalFiles = new ArrayList<>();
-		//
-		// 这里要查看是否有empty对应的文件区间生成，如果生成，那么就把emtpy给清空了
-		//
+
 		backupIntervalFiles = switchFileNodeToMergev2();
 		//
-		// clear empty
+		// clear empty file
 		//
 		boolean needEmtpy = false;
 		if (emptyIntervalFileNode.overflowChangeType != OverflowChangeType.NO_CHANGE) {
 			needEmtpy = true;
 		}
-		// clear empty
 		emptyIntervalFileNode.clear();
 		try {
 			//
@@ -727,7 +703,6 @@ public class FileNodeProcessor extends LRUProcessor {
 
 	private List<IntervalFileNode> switchFileNodeToMergev2() throws FileNodeProcessorException {
 		List<IntervalFileNode> result = new ArrayList<>();
-		// 一定是empty或者newFilenodes需要backup就可以了
 		if (emptyIntervalFileNode.overflowChangeType != OverflowChangeType.NO_CHANGE) {
 			// add empty
 			result.add(emptyIntervalFileNode.backUp());
@@ -740,13 +715,11 @@ public class FileNodeProcessor extends LRUProcessor {
 		}
 		if (!newFileNodes.isEmpty()) {
 			for (IntervalFileNode intervalFileNode : newFileNodes) {
-				// 从头到尾检查所有的intervalFileNode文件
 				if (intervalFileNode.overflowChangeType == OverflowChangeType.NO_CHANGE) {
 					result.add(intervalFileNode.backUp());
 				} else {
 					Map<String, Long> startTimeMap = new HashMap<>();
 					Map<String, Long> endTimeMap = new HashMap<>();
-					// 先找到文件所保存的设备名字，然后查找indexfile 索引别然后确定对应的查询区间
 					for (String deltaObjectId : intervalFileNode.getEndTimeMap().keySet()) {
 						List<IntervalFileNode> temp = indexOfFiles.get(deltaObjectId);
 						int index = temp.indexOf(intervalFileNode);
@@ -791,12 +764,9 @@ public class FileNodeProcessor extends LRUProcessor {
 			List<IntervalFileNode> result = new ArrayList<>();
 			int beginIndex = 0;
 			if (needEmpty) {
-				// 看empyt中有的设备，是否在merge的过程中生成了新的文件区间，并且这个文件区间还是被merge changed过的
 				IntervalFileNode empty = backupIntervalFiles.get(0);
 				if (!empty.checkEmpty()) {
-					// 如果empty有区间不是空
 					for (String deltaObjectId : empty.getStartTimeMap().keySet()) {
-						// 检查是否有在merge的过程中有bufferwrite插入并且还有对这个新文件对应的overflow操作
 						if (indexOfFiles.containsKey(deltaObjectId)) {
 							IntervalFileNode temp = indexOfFiles.get(deltaObjectId).get(0);
 							if (temp.getMergeChanged().contains(deltaObjectId)) {
@@ -810,22 +780,14 @@ public class FileNodeProcessor extends LRUProcessor {
 					beginIndex++;
 				}
 			}
-			//
-			// 按照新生成的文件区间生成新的倒排索引内容，不过这个文件区间仅仅是backup出来的，可能少了一些对应的newFilelist中新添加的文件区间
-			//
+			// reconstruct the file index
 			addALLFileIntoIndex(backupIntervalFiles);
-
-			// 首先按照新生成的文件区间（缺少merge过程中创建的bufferwrite文件，不过没有影响）的倒排索引
-			// 然后查找新生成的backup文件对应的newFile文件是否有merge chagned的状态，如果有就按照策略改变区间的内容
-
-			// 从backupfile的第一个文件开始与newfilelist的第一个文件进行对比标记对应的文件状态。
+			// check the merge changed file
 			for (int i = beginIndex; i < backupIntervalFiles.size(); i++) {
 				IntervalFileNode newFile = newFileNodes.get(i - beginIndex);
 				IntervalFileNode temp = backupIntervalFiles.get(i);
 				if (newFile.overflowChangeType == OverflowChangeType.MERGING_CHANGE) {
-					// 找在megechange状态下 被修改的设备名称
 					for (String deltaObjectId : newFile.getMergeChanged()) {
-						// 判断这个设备是否在temp中，如果不在在从index中再进行处理
 						if (temp.getStartTimeMap().containsKey(deltaObjectId)) {
 							temp.overflowChangeType = OverflowChangeType.CHANGED;
 						} else {
@@ -834,7 +796,6 @@ public class FileNodeProcessor extends LRUProcessor {
 						}
 					}
 				}
-
 				if (!temp.checkEmpty()) {
 					result.add(temp);
 				}
@@ -848,7 +809,6 @@ public class FileNodeProcessor extends LRUProcessor {
 			newFileNodes = result;
 			// reconstruct the index
 			addALLFileIntoIndex(newFileNodes);
-
 			// clear merge changed
 			for (IntervalFileNode fileNode : newFileNodes) {
 				fileNode.clearMergeChanged();
@@ -922,7 +882,7 @@ public class FileNodeProcessor extends LRUProcessor {
 					}
 				}
 				for (IntervalFileNode fileNode : newFileNodes) {
-					if(fileNode.overflowChangeType!=OverflowChangeType.NO_CHANGE){
+					if (fileNode.overflowChangeType != OverflowChangeType.NO_CHANGE) {
 						fileNode.overflowChangeType = OverflowChangeType.CHANGED;
 					}
 				}

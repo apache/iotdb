@@ -10,6 +10,7 @@ import cn.edu.thu.tsfile.timeseries.write.record.TSRecord;
  * @author kangrong
  *
  */
+@Deprecated
 public interface BufferWriteIndex {
 	/**
 	 * insert a tsRecord
