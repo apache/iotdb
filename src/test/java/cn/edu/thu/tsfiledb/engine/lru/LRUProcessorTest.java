@@ -43,11 +43,9 @@ public class LRUProcessorTest {
 	TestLRUProcessor processor3;
 	
 	private TsfileDBConfig dbconfig = TsfileDBDescriptor.getInstance().getConfig();
-	private String metadataPath;
 	
 	@Before
 	public void setUp() throws Exception {
-		metadataPath = dbconfig.metadataDir;
 		dbconfig.metadataDir = "metadata";
 		EngineTestHelper.delete(dbconfig.metadataDir);
 		processor1 = new TestLRUProcessor("ns1");
@@ -59,7 +57,6 @@ public class LRUProcessorTest {
 	public void tearDown() throws Exception {
 		MManager.getInstance().flushObjectToFile();
 		EngineTestHelper.delete(dbconfig.metadataDir);
-		dbconfig.metadataDir = metadataPath;
 	}
 
 	@Test

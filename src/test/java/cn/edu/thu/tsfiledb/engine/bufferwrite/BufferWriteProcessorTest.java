@@ -63,8 +63,6 @@ public class BufferWriteProcessorTest {
 	private boolean cachePageData = false;
 	private TSFileConfig TsFileConf = TSFileDescriptor.getInstance().getConfig();
 	private TsfileDBConfig dbConfig = TsfileDBDescriptor.getInstance().getConfig();
-	private String metadataDir = dbConfig.metadataDir;
-	
 	
 	@Before
 	public void setUp() throws Exception {
@@ -86,8 +84,6 @@ public class BufferWriteProcessorTest {
 		EngineTestHelper.delete(dbConfig.walFolder);
 		EngineTestHelper.delete(dbConfig.metadataDir);
 		TsFileConf.cachePageData = cachePageData;
-		dbConfig.metadataDir = metadataDir;
-		
 	}
 
 	@Test

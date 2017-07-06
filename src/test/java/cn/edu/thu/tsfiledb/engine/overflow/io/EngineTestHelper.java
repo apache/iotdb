@@ -9,6 +9,7 @@ import java.io.File;
 public class EngineTestHelper {
 
 	public static void delete(String filePath) {
+		System.out.println(filePath);
 		File file = new File(filePath);
 		if (file.isDirectory()) {
 			for (File subFile : file.listFiles()) {

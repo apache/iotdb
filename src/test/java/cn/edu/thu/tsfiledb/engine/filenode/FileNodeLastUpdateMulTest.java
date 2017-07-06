@@ -79,7 +79,6 @@ public class FileNodeLastUpdateMulTest {
 	private String FileNodeDir;
 	private String BufferWriteDir;
 	private String overflowDataDir;
-	private String metadataDir;
 	private int rowGroupSize;
 	private int pageCheckSizeThreshold = tsconfig.pageCheckSizeThreshold;
 	private int defaultMaxStringLength = tsconfig.defaultMaxStringLength;
@@ -131,7 +130,6 @@ public class FileNodeLastUpdateMulTest {
 		tsdbconfig.FileNodeDir = FileNodeDir;
 		tsdbconfig.overflowDataDir = overflowDataDir;
 		tsdbconfig.BufferWriteDir = BufferWriteDir;
-		tsdbconfig.metadataDir = metadataDir;
 		
 		tsconfig.rowGroupSize = rowGroupSize;
 		tsconfig.pageCheckSizeThreshold = pageCheckSizeThreshold;
