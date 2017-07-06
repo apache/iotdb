@@ -39,7 +39,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import cn.edu.thu.tsfile.timeseries.read.query.QueryDataSet;
-import cn.edu.thu.tsfile.timeseries.read.readSupport.RowRecord;
+import cn.edu.thu.tsfile.timeseries.read.support.RowRecord;
 
 
 

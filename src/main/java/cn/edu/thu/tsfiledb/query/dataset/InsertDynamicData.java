@@ -507,7 +507,7 @@ public class InsertDynamicData extends DynamicOneColumnData {
             } else if (updateFalse != null && updateFalse.curIdx < updateFalse.length && updateFalse.getTime(updateFalse.curIdx*2) <= insertTrue.getTime(insertTrue.insertTrueIndex)) {
                 insertTrue.insertTrueIndex ++;
             } else {
-                if (valueFilter == null || singleValueVisitor.satisfyObject(insertTrue.getTime(insertTrue.insertTrueIndex), valueFilter)) {
+                if (valueFilter == null || valueSatisfied()) {
                     currentSatisfiedTime = insertTrue.getTime(insertTrue.insertTrueIndex);
                     return true;
                 } else {
@@ -517,6 +517,21 @@ public class InsertDynamicData extends DynamicOneColumnData {
         }
 
         return pageFindFlag;
+    }
+
+    private boolean valueSatisfied() {
+        switch (dataType) {
+            case INT32:
+                return singleValueVisitor.satisfyObject(insertTrue.getInt(insertTrue.insertTrueIndex), valueFilter);
+            case INT64:
+                return singleValueVisitor.satisfyObject(insertTrue.getLong(insertTrue.insertTrueIndex), valueFilter);
+            case FLOAT:
+                return singleValueVisitor.satisfyObject(insertTrue.getFloat(insertTrue.insertTrueIndex), valueFilter);
+            case DOUBLE:
+                return singleValueVisitor.satisfyObject(insertTrue.getDouble(insertTrue.insertTrueIndex), valueFilter);
+            default:
+                throw new UnSupportedDataTypeException("UnSupport Aggregation DataType:" + dataType);
+        }
     }
 
     public void pageReaderReset() {
@@ -557,16 +572,20 @@ public class InsertDynamicData extends DynamicOneColumnData {
     private void updateNewValue() {
         switch (dataType) {
             case INT32:
-                insertTrue.setInt(insertTrue.insertTrueIndex, updateTrue.getInt(updateTrue.curIdx));
+                curSatisfiedIntValue = updateTrue.getInt(updateTrue.curIdx);
+                insertTrue.setInt(insertTrue.insertTrueIndex, curSatisfiedIntValue);
                 break;
             case INT64:
-                insertTrue.setLong(insertTrue.insertTrueIndex, updateTrue.getLong(updateTrue.curIdx));
+                curSatisfiedLongValue = updateTrue.getLong(updateTrue.curIdx);
+                insertTrue.setLong(insertTrue.insertTrueIndex, curSatisfiedLongValue);
                 break;
             case FLOAT:
-                insertTrue.setFloat(insertTrue.insertTrueIndex, updateTrue.getFloat(updateTrue.curIdx));
+                curSatisfiedFloatValue = updateTrue.getFloat(updateTrue.curIdx);
+                insertTrue.setFloat(insertTrue.insertTrueIndex, curSatisfiedFloatValue);
                 break;
             case DOUBLE:
-                insertTrue.setDouble(insertTrue.insertTrueIndex, updateTrue.getDouble(updateTrue.curIdx));
+                curSatisfiedDoubleValue = updateTrue.getDouble(updateTrue.curIdx);
+                insertTrue.setDouble(insertTrue.insertTrueIndex, curSatisfiedDoubleValue);
                 break;
             default:
                 throw new UnSupportedDataTypeException("UnSupport Aggregation DataType:" + dataType);
@@ -626,29 +645,29 @@ public class InsertDynamicData extends DynamicOneColumnData {
     private void calcIntAggregation() {
         minTime = Math.min(minTime, getCurrentMinTime());
         maxTime = Math.max(maxTime, getCurrentMinTime());
-        minIntValue = Math.min(minIntValue, curSatisfiedIntValue);
-        maxIntValue = Math.max(maxIntValue, curSatisfiedIntValue);
+        minIntValue = Math.min(minIntValue, getCurrentIntValue());
+        maxIntValue = Math.max(maxIntValue, getCurrentIntValue());
     }
 
     private void calcLongAggregation() {
         minTime = Math.min(minTime, getCurrentMinTime());
         maxTime = Math.max(maxTime, getCurrentMinTime());
-        minLongValue = Math.min(minLongValue, curSatisfiedLongValue);
-        maxLongValue = Math.max(maxLongValue, curSatisfiedLongValue);
+        minLongValue = Math.min(minLongValue, getCurrentLongValue());
+        maxLongValue = Math.max(maxLongValue, getCurrentLongValue());
     }
 
     private void calcFloatAggregation() {
         minTime = Math.min(minTime, getCurrentMinTime());
         maxTime = Math.max(maxTime, getCurrentMinTime());
-        minFloatValue = Math.min(minFloatValue, curSatisfiedFloatValue);
-        maxFloatValue = Math.max(maxFloatValue, curSatisfiedFloatValue);
+        minFloatValue = Math.min(minFloatValue, getCurrentFloatValue());
+        maxFloatValue = Math.max(maxFloatValue, getCurrentFloatValue());
     }
 
     private void calcDoubleAggregation() {
         minTime = Math.min(minTime, getCurrentMinTime());
         maxTime = Math.max(maxTime, getCurrentMinTime());
-        minDoubleValue = Math.min(minDoubleValue, curSatisfiedDoubleValue);
-        maxDoubleValue = Math.max(maxDoubleValue, curSatisfiedDoubleValue);
+        minDoubleValue = Math.min(minDoubleValue, getCurrentDoubleValue());
+        maxDoubleValue = Math.max(maxDoubleValue, getCurrentDoubleValue());
     }
 
     public Pair<Long, Object> calcAggregation(String aggType) throws IOException {
@@ -716,6 +735,7 @@ public class InsertDynamicData extends DynamicOneColumnData {
 
                 }
             case "MAX_VALUE":
+                // System.out.println(maxIntValue + ">>>" + maxLongValue + ">>>" + maxFloatValue + ">>>" + maxDoubleValue);
                 switch (dataType) {
                     case INT32:
                         return new Pair<>(rowNum, maxIntValue);
