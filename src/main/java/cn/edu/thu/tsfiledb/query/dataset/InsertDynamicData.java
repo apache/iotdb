@@ -195,11 +195,11 @@ public class InsertDynamicData extends DynamicOneColumnData {
                 LOG.debug("Page min time:{}, max time:{}, min value:{}, max value:{}", String.valueOf(mint),
                         String.valueOf(maxt), String.valueOf(pageDigest.bufferForMax()), pageDigest.bufferForMax().toString());
 
-                while (updateTrue.curIdx < updateTrue.length && updateTrue.getTime(updateTrue.curIdx*2+1) < mint) {
+                while (updateTrue != null && updateTrue.curIdx < updateTrue.length && updateTrue.getTime(updateTrue.curIdx*2+1) < mint) {
                     updateTrue.curIdx ++;
                 }
 
-                while (updateFalse.curIdx < updateFalse.length && updateFalse.getTime(updateFalse.curIdx*2+1) < mint) {
+                while (updateFalse != null && updateFalse.curIdx < updateFalse.length && updateFalse.getTime(updateFalse.curIdx*2+1) < mint) {
                     updateFalse.curIdx ++;
                 }
 
@@ -209,19 +209,19 @@ public class InsertDynamicData extends DynamicOneColumnData {
                     continue;
                 } else {
                     // no updateTrue and updateFalse, not satisfied with valueFilter
-                    if (updateTrue.curIdx >= updateTrue.length && updateFalse.curIdx >= updateFalse.length
+                    if (updateTrue != null && updateTrue.curIdx >= updateTrue.length && updateFalse != null && updateFalse.curIdx >= updateFalse.length
                                     && valueFilter != null && !digestVisitor.satisfy(valueDigest, valueFilter)) {
                         pageReaderReset();
                         continue;
                     }
                     // has updateTrue, updateTrue not update this page and not satisfied with valueFilter
-                    else if (updateTrue.curIdx < updateTrue.length && updateTrue.getTime(updateTrue.curIdx*2) >= maxt &&
+                    else if (updateTrue != null && updateTrue.curIdx < updateTrue.length && updateTrue.getTime(updateTrue.curIdx*2) >= maxt &&
                             valueFilter != null && !digestVisitor.satisfy(valueDigest, valueFilter)) {
                         pageReaderReset();
                         continue;
                     }
                     // has updateFalse and updateFalse update this page all
-                    else if (updateFalse.curIdx < updateFalse.length &&
+                    else if (updateTrue != null && updateFalse != null && updateFalse.curIdx < updateFalse.length &&
                             updateFalse.getTime(updateFalse.curIdx*2) >= mint && updateFalse.getTime(updateFalse.curIdx*2+1) <= maxt) {
                         pageReaderReset();
                         continue;
@@ -264,18 +264,18 @@ public class InsertDynamicData extends DynamicOneColumnData {
                             curSatisfiedIntValue = valueDecoder.readInt(page);
 
                             if (timeFilter == null || singleTimeVisitor.verify(timeValues[curTimeIndex])) {
-                                while (updateTrue.curIdx < updateTrue.length && updateTrue.getTime(updateTrue.curIdx*2+1) < timeValues[curTimeIndex])
+                                while (updateTrue != null && updateTrue.curIdx < updateTrue.length && updateTrue.getTime(updateTrue.curIdx*2+1) < timeValues[curTimeIndex])
                                     updateTrue.curIdx ++;
-                                while (updateFalse.curIdx < updateFalse.length && updateFalse.getTime(updateFalse.curIdx*2+1) < timeValues[curTimeIndex])
+                                while (updateFalse != null && updateFalse.curIdx < updateFalse.length && updateFalse.getTime(updateFalse.curIdx*2+1) < timeValues[curTimeIndex])
                                     updateFalse.curIdx ++;
 
                                 // updateTrue.length*2 - 1
-                                if (updateTrue.curIdx < updateTrue.length && updateTrue.getTime(updateTrue.curIdx*2) <= timeValues[curTimeIndex]) {
+                                if (updateTrue != null && updateTrue.curIdx < updateTrue.length && updateTrue.getTime(updateTrue.curIdx*2) <= timeValues[curTimeIndex]) {
                                     currentSatisfiedTime = timeValues[curTimeIndex];
                                     curSatisfiedIntValue = updateTrue.getInt(updateTrue.curIdx);
                                     pageFindFlag = true;
                                     break;
-                                } else if (updateFalse.curIdx < updateFalse.length && updateFalse.getTime(updateFalse.curIdx*2) <= timeValues[curTimeIndex]) {
+                                } else if (updateFalse != null && updateFalse.curIdx < updateFalse.length && updateFalse.getTime(updateFalse.curIdx*2) <= timeValues[curTimeIndex]) {
                                     currentSatisfiedTime = -1;
                                     curTimeIndex++;
                                 } else {
@@ -311,18 +311,18 @@ public class InsertDynamicData extends DynamicOneColumnData {
                             curSatisfiedLongValue = valueDecoder.readLong(page);
 
                             if (timeFilter == null || singleTimeVisitor.verify(timeValues[curTimeIndex])) {
-                                while (updateTrue.curIdx < updateTrue.length && updateTrue.getTime(updateTrue.curIdx*2+1) < timeValues[curTimeIndex])
+                                while (updateTrue != null && updateTrue.curIdx < updateTrue.length && updateTrue.getTime(updateTrue.curIdx*2+1) < timeValues[curTimeIndex])
                                     updateTrue.curIdx ++;
-                                while (updateFalse.curIdx < updateFalse.length && updateFalse.getTime(updateFalse.curIdx*2+1) < timeValues[curTimeIndex])
+                                while (updateFalse != null && updateFalse.curIdx < updateFalse.length && updateFalse.getTime(updateFalse.curIdx*2+1) < timeValues[curTimeIndex])
                                     updateFalse.curIdx ++;
 
                                 // updateTrue.length*2 - 1
-                                if (updateTrue.curIdx < updateTrue.length && updateTrue.getTime(updateTrue.curIdx*2) <= timeValues[curTimeIndex]) {
+                                if (updateTrue != null && updateTrue.curIdx < updateTrue.length && updateTrue.getTime(updateTrue.curIdx*2) <= timeValues[curTimeIndex]) {
                                     currentSatisfiedTime = timeValues[curTimeIndex];
                                     curSatisfiedLongValue = updateTrue.getLong(updateTrue.curIdx);
                                     pageFindFlag = true;
                                     break;
-                                } else if (updateFalse.curIdx < updateFalse.length && updateFalse.getTime(updateFalse.curIdx*2) <= timeValues[curTimeIndex]) {
+                                } else if (updateFalse != null && updateFalse.curIdx < updateFalse.length && updateFalse.getTime(updateFalse.curIdx*2) <= timeValues[curTimeIndex]) {
                                     currentSatisfiedTime = -1;
                                     curTimeIndex++;
                                 } else {
@@ -358,18 +358,18 @@ public class InsertDynamicData extends DynamicOneColumnData {
                             curSatisfiedFloatValue = valueDecoder.readFloat(page);
 
                             if (timeFilter == null || singleTimeVisitor.verify(timeValues[curTimeIndex])) {
-                                while (updateTrue.curIdx < updateTrue.length && updateTrue.getTime(updateTrue.curIdx*2+1) < timeValues[curTimeIndex])
+                                while (updateTrue != null && updateTrue.curIdx < updateTrue.length && updateTrue.getTime(updateTrue.curIdx*2+1) < timeValues[curTimeIndex])
                                     updateTrue.curIdx ++;
-                                while (updateFalse.curIdx < updateFalse.length && updateFalse.getTime(updateFalse.curIdx*2+1) < timeValues[curTimeIndex])
+                                while (updateFalse != null && updateFalse.curIdx < updateFalse.length && updateFalse.getTime(updateFalse.curIdx*2+1) < timeValues[curTimeIndex])
                                     updateFalse.curIdx ++;
 
                                 // updateTrue.length*2 - 1
-                                if (updateTrue.curIdx < updateTrue.length && updateTrue.getTime(updateTrue.curIdx*2) <= timeValues[curTimeIndex]) {
+                                if (updateTrue != null && updateTrue.curIdx < updateTrue.length && updateTrue.getTime(updateTrue.curIdx*2) <= timeValues[curTimeIndex]) {
                                     currentSatisfiedTime = timeValues[curTimeIndex];
                                     curSatisfiedFloatValue = updateTrue.getFloat(updateTrue.curIdx);
                                     pageFindFlag = true;
                                     break;
-                                } else if (updateFalse.curIdx < updateFalse.length && updateFalse.getTime(updateFalse.curIdx*2) <= timeValues[curTimeIndex]) {
+                                } else if (updateFalse != null && updateFalse.curIdx < updateFalse.length && updateFalse.getTime(updateFalse.curIdx*2) <= timeValues[curTimeIndex]) {
                                     currentSatisfiedTime = -1;
                                     curTimeIndex++;
                                 } else {
@@ -405,18 +405,18 @@ public class InsertDynamicData extends DynamicOneColumnData {
                             curSatisfiedDoubleValue = valueDecoder.readDouble(page);
 
                             if (timeFilter == null || singleTimeVisitor.verify(timeValues[curTimeIndex])) {
-                                while (updateTrue.curIdx < updateTrue.length && updateTrue.getTime(updateTrue.curIdx*2+1) < timeValues[curTimeIndex])
+                                while (updateTrue != null && updateTrue.curIdx < updateTrue.length && updateTrue.getTime(updateTrue.curIdx*2+1) < timeValues[curTimeIndex])
                                     updateTrue.curIdx ++;
-                                while (updateFalse.curIdx < updateFalse.length && updateFalse.getTime(updateFalse.curIdx*2+1) < timeValues[curTimeIndex])
+                                while (updateFalse != null && updateFalse.curIdx < updateFalse.length && updateFalse.getTime(updateFalse.curIdx*2+1) < timeValues[curTimeIndex])
                                     updateFalse.curIdx ++;
 
                                 // updateTrue.length*2 - 1
-                                if (updateTrue.curIdx < updateTrue.length && updateTrue.getTime(updateTrue.curIdx*2) <= timeValues[curTimeIndex]) {
+                                if (updateTrue != null && updateTrue.curIdx < updateTrue.length && updateTrue.getTime(updateTrue.curIdx*2) <= timeValues[curTimeIndex]) {
                                     currentSatisfiedTime = timeValues[curTimeIndex];
                                     curSatisfiedDoubleValue = updateTrue.getDouble(updateTrue.curIdx);
                                     pageFindFlag = true;
                                     break;
-                                } else if (updateFalse.curIdx < updateFalse.length && updateFalse.getTime(updateFalse.curIdx*2) <= timeValues[curTimeIndex]) {
+                                } else if (updateFalse != null && updateFalse.curIdx < updateFalse.length && updateFalse.getTime(updateFalse.curIdx*2) <= timeValues[curTimeIndex]) {
                                     currentSatisfiedTime = -1;
                                     curTimeIndex++;
                                 } else {
@@ -452,18 +452,18 @@ public class InsertDynamicData extends DynamicOneColumnData {
                             curSatisfiedBooleanValue = valueDecoder.readBoolean(page);
 
                             if (timeFilter == null || singleTimeVisitor.verify(timeValues[curTimeIndex])) {
-                                while (updateTrue.curIdx < updateTrue.length && updateTrue.getTime(updateTrue.curIdx*2+1) < timeValues[curTimeIndex])
+                                while (updateTrue != null && updateTrue.curIdx < updateTrue.length && updateTrue.getTime(updateTrue.curIdx*2+1) < timeValues[curTimeIndex])
                                     updateTrue.curIdx ++;
-                                while (updateFalse.curIdx < updateFalse.length && updateFalse.getTime(updateFalse.curIdx*2+1) < timeValues[curTimeIndex])
+                                while (updateFalse != null && updateFalse.curIdx < updateFalse.length && updateFalse.getTime(updateFalse.curIdx*2+1) < timeValues[curTimeIndex])
                                     updateFalse.curIdx ++;
 
                                 // updateTrue.length*2 - 1
-                                if (updateTrue.curIdx < updateTrue.length && updateTrue.getTime(updateTrue.curIdx*2) <= timeValues[curTimeIndex]) {
+                                if (updateTrue != null && updateTrue.curIdx < updateTrue.length && updateTrue.getTime(updateTrue.curIdx*2) <= timeValues[curTimeIndex]) {
                                     currentSatisfiedTime = timeValues[curTimeIndex];
                                     curSatisfiedBooleanValue = updateTrue.getBoolean(updateTrue.curIdx);
                                     pageFindFlag = true;
                                     break;
-                                } else if (updateFalse.curIdx < updateFalse.length && updateFalse.getTime(updateFalse.curIdx*2) <= timeValues[curTimeIndex]) {
+                                } else if (updateFalse != null && updateFalse.curIdx < updateFalse.length && updateFalse.getTime(updateFalse.curIdx*2) <= timeValues[curTimeIndex]) {
                                     currentSatisfiedTime = -1;
                                     curTimeIndex++;
                                 } else {
@@ -495,16 +495,16 @@ public class InsertDynamicData extends DynamicOneColumnData {
         }
 
         while (insertTrue != null && insertTrue.insertTrueIndex < insertTrue.length) {
-            while (updateTrue.curIdx < updateTrue.length && updateTrue.getTime(updateTrue.curIdx*2+1) < insertTrue.getTime(insertTrue.insertTrueIndex))
+            while (updateTrue != null && updateTrue.curIdx < updateTrue.length && updateTrue.getTime(updateTrue.curIdx*2+1) < insertTrue.getTime(insertTrue.insertTrueIndex))
                 updateTrue.curIdx += 1;
-            while (updateFalse.curIdx < updateFalse.length && updateFalse.getTime(updateFalse.curIdx*2+1) < insertTrue.getTime(insertTrue.insertTrueIndex))
+            while (updateFalse != null && updateFalse.curIdx < updateFalse.length && updateFalse.getTime(updateFalse.curIdx*2+1) < insertTrue.getTime(insertTrue.insertTrueIndex))
                 updateFalse.curIdx += 1;
 
-            if (updateTrue.curIdx < updateTrue.length && updateTrue.getTime(updateTrue.curIdx*2) <= insertTrue.getTime(insertTrue.insertTrueIndex)) {
+            if (updateTrue != null && updateTrue.curIdx < updateTrue.length && updateTrue.getTime(updateTrue.curIdx*2) <= insertTrue.getTime(insertTrue.insertTrueIndex)) {
                 currentSatisfiedTime = insertTrue.getTime(insertTrue.insertTrueIndex);
                 updateNewValue();
                 return true;
-            } else if (updateFalse.curIdx < updateFalse.length && updateFalse.getTime(updateFalse.curIdx*2) <= insertTrue.getTime(insertTrue.insertTrueIndex)) {
+            } else if (updateFalse != null && updateFalse.curIdx < updateFalse.length && updateFalse.getTime(updateFalse.curIdx*2) <= insertTrue.getTime(insertTrue.insertTrueIndex)) {
                 insertTrue.insertTrueIndex ++;
             } else {
                 if (valueFilter == null || singleValueVisitor.satisfyObject(insertTrue.getTime(insertTrue.insertTrueIndex), valueFilter)) {
@@ -759,11 +759,11 @@ public class InsertDynamicData extends DynamicOneColumnData {
                 LOG.debug("Page min time:{}, max time:{}, min value:{}, max value:{}", String.valueOf(mint),
                         String.valueOf(maxt), String.valueOf(pageDigest.bufferForMax()), pageDigest.bufferForMax().toString());
 
-                while (updateTrue.curIdx < updateTrue.length && updateTrue.getTime(updateTrue.curIdx*2+1) < mint) {
+                while (updateTrue != null && updateTrue.curIdx < updateTrue.length && updateTrue.getTime(updateTrue.curIdx*2+1) < mint) {
                     updateTrue.curIdx ++;
                 }
 
-                while (updateFalse.curIdx < updateFalse.length && updateFalse.getTime(updateFalse.curIdx*2+1) < mint) {
+                while (updateFalse != null && updateFalse.curIdx < updateFalse.length && updateFalse.getTime(updateFalse.curIdx*2+1) < mint) {
                     updateFalse.curIdx ++;
                 }
 
@@ -773,19 +773,19 @@ public class InsertDynamicData extends DynamicOneColumnData {
                     continue;
                 } else {
                     // no updateTrue and updateFalse, not satisfied with valueFilter
-                    if (updateTrue.curIdx >= updateTrue.length && updateFalse.curIdx >= updateFalse.length
+                    if (updateTrue != null && updateTrue.curIdx >= updateTrue.length && updateFalse != null && updateFalse.curIdx >= updateFalse.length
                             && valueFilter != null && !digestVisitor.satisfy(valueDigest, valueFilter)) {
                         pageReaderReset();
                         continue;
                     }
                     // has updateTrue, updateTrue not update this page and not satisfied with valueFilter
-                    else if (updateTrue.curIdx < updateTrue.length && updateTrue.getTime(updateTrue.curIdx*2) >= maxt &&
+                    else if (updateTrue != null && updateTrue.curIdx < updateTrue.length && updateTrue.getTime(updateTrue.curIdx*2) >= maxt &&
                             valueFilter != null && !digestVisitor.satisfy(valueDigest, valueFilter)) {
                         pageReaderReset();
                         continue;
                     }
                     // has updateFalse and updateFalse update this page all
-                    else if (updateFalse.curIdx < updateFalse.length &&
+                    else if (updateFalse != null && updateFalse.curIdx < updateFalse.length &&
                             updateFalse.getTime(updateFalse.curIdx*2) >= mint && updateFalse.getTime(updateFalse.curIdx*2+1) <= maxt) {
                         pageReaderReset();
                         continue;
@@ -832,9 +832,9 @@ public class InsertDynamicData extends DynamicOneColumnData {
                             }
 
                             if (timeFilter == null || singleTimeVisitor.verify(timeValues[curTimeIndex])) {
-                                while (updateTrue.curIdx < updateTrue.length && updateTrue.getTime(updateTrue.curIdx*2+1) < timeValues[curTimeIndex])
+                                while (updateTrue != null && updateTrue.curIdx < updateTrue.length && updateTrue.getTime(updateTrue.curIdx*2+1) < timeValues[curTimeIndex])
                                     updateTrue.curIdx ++;
-                                while (updateFalse.curIdx < updateFalse.length && updateFalse.getTime(updateFalse.curIdx*2+1) < timeValues[curTimeIndex])
+                                while (updateFalse != null && updateFalse.curIdx < updateFalse.length && updateFalse.getTime(updateFalse.curIdx*2+1) < timeValues[curTimeIndex])
                                     updateFalse.curIdx ++;
 
                                 currentSatisfiedTime = timeValues[curTimeIndex];

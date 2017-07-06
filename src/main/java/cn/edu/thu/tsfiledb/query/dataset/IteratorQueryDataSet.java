@@ -10,8 +10,8 @@ import cn.edu.thu.tsfile.timeseries.read.qp.Path;
 import cn.edu.thu.tsfile.timeseries.read.query.CrossQueryTimeGenerator;
 import cn.edu.thu.tsfile.timeseries.read.query.DynamicOneColumnData;
 import cn.edu.thu.tsfile.timeseries.read.query.QueryDataSet;
-import cn.edu.thu.tsfile.timeseries.read.readSupport.Field;
-import cn.edu.thu.tsfile.timeseries.read.readSupport.RowRecord;
+import cn.edu.thu.tsfile.timeseries.read.support.Field;
+import cn.edu.thu.tsfile.timeseries.read.support.RowRecord;
 
 
 public abstract class IteratorQueryDataSet extends QueryDataSet {
