@@ -16,6 +16,8 @@ import cn.edu.thu.tsfiledb.auth.dao.RolePermissionDao;
 import cn.edu.thu.tsfiledb.auth.model.Permission;
 import cn.edu.thu.tsfiledb.auth.model.Role;
 import cn.edu.thu.tsfiledb.auth.model.RolePermission;
+import cn.edu.thu.tsfiledb.conf.TsfileDBConfig;
+import cn.edu.thu.tsfiledb.conf.TsfileDBDescriptor;
 
 public class RolePermissionTest {
 
@@ -29,9 +31,11 @@ public class RolePermissionTest {
 	private String newNodeName = "newNodeName";
 	private int permissionId;
 	private RolePermission rolePermission = null;
+	private TsfileDBConfig dbconfig = TsfileDBDescriptor.getInstance().getConfig();
 
 	@Before
 	public void setUp() throws Exception {
+		dbconfig.derbyHome = "";
 		dbDao = new DBDao();
 		roleDao = new RoleDao();
 		rolePermissionDao = new RolePermissionDao();
