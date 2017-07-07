@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
 
+import cn.edu.thu.tsfile.common.utils.Binary;
 import cn.edu.thu.tsfile.common.utils.TSRandomAccessFileReader;
 import cn.edu.thu.tsfile.encoding.decoder.Decoder;
 import cn.edu.thu.tsfile.file.metadata.TSDigest;
@@ -682,6 +683,99 @@ public class OverflowValueReader extends ValueReader {
                             }
                         }
                         break;
+                    case BYTE_ARRAY:
+                        while (decoder.hasNext(page)) {
+                            // put insert points
+                            while (insertMemoryData.hasInsertData() && timeIdx < timeValues.length
+                                    && insertMemoryData.getCurrentMinTime() <= timeValues[timeIdx]) {
+                                res.putTime(insertMemoryData.getCurrentMinTime());
+                                res.putBinary(insertMemoryData.getCurrentBinaryValue());
+                                res.insertTrueIndex++;
+                                resCount++;
+
+                                if (insertMemoryData.getCurrentMinTime() == timeValues[timeIdx]) {
+                                    insertMemoryData.removeCurrentValue();
+                                    timeIdx++;
+                                    decoder.readBinary(page);
+                                    if (!decoder.hasNext(page)) {
+                                        break;
+                                    }
+                                } else {
+                                    insertMemoryData.removeCurrentValue();
+                                }
+                            }
+
+                            if (!decoder.hasNext(page)) {
+                                break;
+                            }
+                            Binary v = decoder.readBinary(page);
+                            if (mode == -1) {
+                                if ((valueFilter == null && timeFilter == null)
+                                        || (valueFilter != null && timeFilter == null
+                                        && valueVisitor.satisfyObject(v, valueFilter))
+                                        || (valueFilter == null && timeFilter != null
+                                        && timeVisitor.verify(timeValues[timeIdx]))
+                                        || (valueFilter != null && timeFilter != null
+                                        && valueVisitor.satisfyObject(v, valueFilter)
+                                        && timeVisitor.verify(timeValues[timeIdx]))) {
+                                    res.putBinary(v);
+                                    res.putTime(timeValues[timeIdx]);
+                                    resCount++;
+                                }
+                                timeIdx++;
+                            }
+
+                            if (mode == 0) {
+                                if (updateData[0].getTime(updateIdx[0]) <= timeValues[timeIdx]
+                                        && timeValues[timeIdx] <= updateData[0].getTime(updateIdx[0] + 1)) {
+                                    // update the value
+                                    if (timeFilter == null
+                                            || timeVisitor.verify(timeValues[timeIdx])) {
+                                        res.putBinary(updateData[0].getBinary(updateIdx[0] / 2));
+                                        res.putTime(timeValues[timeIdx]);
+                                        resCount++;
+                                    }
+                                } else if ((valueFilter == null && timeFilter == null)
+                                        || (valueFilter != null && timeFilter == null
+                                        && valueVisitor.satisfyObject(v, valueFilter))
+                                        || (valueFilter == null && timeFilter != null
+                                        && timeVisitor.verify(timeValues[timeIdx]))
+                                        || (valueFilter != null && timeFilter != null
+                                        && valueVisitor.satisfyObject(v, valueFilter)
+                                        && timeVisitor.verify(timeValues[timeIdx]))) {
+                                    res.putBinary(v);
+                                    res.putTime(timeValues[timeIdx]);
+                                    resCount++;
+                                }
+                                timeIdx++;
+                            }
+
+                            if (mode == 1) {
+                                if (updateData[1].getTime(updateIdx[1]) <= timeValues[timeIdx]
+                                        && timeValues[timeIdx] <= updateData[1].getTime(updateIdx[1] + 1)) {
+                                    // do nothing
+                                } else if ((valueFilter == null && timeFilter == null)
+                                        || (valueFilter != null && timeFilter == null
+                                        && valueVisitor.satisfyObject(v, valueFilter))
+                                        || (valueFilter == null && timeFilter != null
+                                        && timeVisitor.verify(timeValues[timeIdx]))
+                                        || (valueFilter != null && timeFilter != null
+                                        && valueVisitor.satisfyObject(v, valueFilter)
+                                        && timeVisitor.verify(timeValues[timeIdx]))) {
+                                    res.putBinary(v);
+                                    res.putTime(timeValues[timeIdx]);
+                                    resCount++;
+                                }
+                                timeIdx++;
+                            }
+
+                            while (mode != -1 && timeIdx < timeValues.length
+                                    && timeValues[timeIdx] > updateData[mode].getTime(updateIdx[mode] + 1)) {
+                                updateIdx[mode] += 2;
+                                mode = getNextMode(updateIdx[0], updateIdx[1], updateData[0], updateData[1]);
+                            }
+                        }
+                        break;
                     default:
                         throw new IOException("Data type not support. " + dataType);
                 }
@@ -1278,6 +1372,92 @@ public class OverflowValueReader extends ValueReader {
                                     && valueVisitor.verify(v)
                                     && timeVisitor.verify(timeValues[timeIdx]))) {
                                 res.putDouble(v);
+                                res.putTime(timeValues[timeIdx]);
+                            }
+                            timeIdx++;
+                        }
+
+                        while (mode != -1 && timeIdx < timeValues.length
+                                && timeValues[timeIdx] > update[mode].getTime(idx[mode] + 1)) {
+                            idx[mode] += 2;
+                            mode = getNextMode(idx[0], idx[1], update[0], update[1]);
+                        }
+                    }
+                    break;
+                case BYTE_ARRAY:
+                    while (decoder.hasNext(page)) {
+                        // put insert points
+                        while (insertMemoryData.curIdx < insertMemoryData.length && timeIdx < timeValues.length
+                                && insertMemoryData.getTime(insertMemoryData.curIdx) <= timeValues[timeIdx]) {
+                            res.putTime(insertMemoryData.getTime(insertMemoryData.curIdx));
+                            res.putBinary(insertMemoryData.getBinary(insertMemoryData.curIdx));
+                            insertMemoryData.curIdx++;
+                            res.insertTrueIndex++;
+                            // if equal, take value from insertTrue and skip one
+                            // value from page
+                            if (insertMemoryData.getTime(insertMemoryData.curIdx - 1) == timeValues[timeIdx]) {
+                                timeIdx++;
+                                decoder.readBinary(page);
+                                if (!decoder.hasNext(page)) {
+                                    break;
+                                }
+                            }
+                        }
+                        if (!decoder.hasNext(page)) {
+                            break;
+                        }
+                        Binary v = decoder.readBinary(page);
+                        if (mode == -1) {
+                            if ((valueFilter == null && timeFilter == null)
+                                    || (valueFilter != null && timeFilter == null
+                                    && valueVisitor.satisfyObject(v, valueFilter))
+                                    || (valueFilter == null && timeFilter != null
+                                    && timeVisitor.verify(timeValues[timeIdx]))
+                                    || (valueFilter != null && timeFilter != null
+                                    && valueVisitor.satisfyObject(v, valueFilter)
+                                    && timeVisitor.verify(timeValues[timeIdx]))) {
+                                res.putBinary(v);
+                                res.putTime(timeValues[timeIdx]);
+                            }
+                            timeIdx++;
+                        }
+
+                        if (mode == 0) {
+                            if (update[0].getTime(idx[0]) <= timeValues[timeIdx]
+                                    && timeValues[timeIdx] <= update[0].getTime(idx[0] + 1)) {
+                                // update the value
+                                if (timeFilter == null
+                                        || timeVisitor.verify(timeValues[timeIdx])) {
+                                    res.putBinary(update[0].getBinary(idx[0] / 2));
+                                    res.putTime(timeValues[timeIdx]);
+                                }
+                            } else if ((valueFilter == null && timeFilter == null)
+                                    || (valueFilter != null && timeFilter == null
+                                    && valueVisitor.satisfyObject(v, valueFilter))
+                                    || (valueFilter == null && timeFilter != null
+                                    && timeVisitor.verify(timeValues[timeIdx]))
+                                    || (valueFilter != null && timeFilter != null
+                                    && valueVisitor.satisfyObject(v, valueFilter)
+                                    && timeVisitor.verify(timeValues[timeIdx]))) {
+                                res.putBinary(v);
+                                res.putTime(timeValues[timeIdx]);
+                            }
+                            timeIdx++;
+                        }
+
+                        if (mode == 1) {
+                            if (update[1].getTime(idx[1]) <= timeValues[timeIdx]
+                                    && timeValues[timeIdx] <= update[1].getTime(idx[1] + 1)) {
+                                // do nothing
+                            } else if ((valueFilter == null && timeFilter == null)
+                                    || (valueFilter != null && timeFilter == null
+                                    && valueVisitor.satisfyObject(v, valueFilter))
+                                    || (valueFilter == null && timeFilter != null
+                                    && timeVisitor.verify(timeValues[timeIdx]))
+                                    || (valueFilter != null && timeFilter != null
+                                    && valueVisitor.satisfyObject(v, valueFilter)
+                                    && timeVisitor.verify(timeValues[timeIdx]))) {
+                                res.putBinary(v);
                                 res.putTime(timeValues[timeIdx]);
                             }
                             timeIdx++;

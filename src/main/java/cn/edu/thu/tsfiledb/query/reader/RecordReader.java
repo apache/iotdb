@@ -415,6 +415,9 @@ public class RecordReader {
             case DOUBLE:
                 res.putDouble(insertMemoryData.getCurrentDoubleValue());
                 break;
+            case BYTE_ARRAY:
+                res.putBinary(insertMemoryData.getCurrentBinaryValue());
+                break;
             default:
                 throw new UnSupportedDataTypeException("UnuSupported DataType!");
         }
@@ -436,6 +439,9 @@ public class RecordReader {
                 break;
             case DOUBLE:
                 res.putDouble(updateData.getDouble(updateData.curIdx/2));
+                break;
+            case BYTE_ARRAY:
+                res.putBinary(updateData.getBinary(updateData.curIdx/2));
                 break;
             default:
                 throw new UnSupportedDataTypeException("UnuSupported DataType!");
