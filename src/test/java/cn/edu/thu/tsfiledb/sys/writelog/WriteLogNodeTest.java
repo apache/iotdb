@@ -237,7 +237,7 @@ public class WriteLogNodeTest {
         node.removeFiles();
     }
 
-    @Test
+//    @Test
     public void systemLogTimingMergingTest() throws IOException, InterruptedException {
         WriteLogNode node = new WriteLogNode(fileNode);
         measurements.clear();

@@ -8,7 +8,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
-import cn.edu.thu.tsfiledb.qp.QueryProcessor;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,6 +25,7 @@ import cn.edu.thu.tsfiledb.exception.PathErrorException;
 import cn.edu.thu.tsfiledb.metadata.ColumnSchema;
 import cn.edu.thu.tsfiledb.metadata.MManager;
 import cn.edu.thu.tsfiledb.metadata.Metadata;
+import cn.edu.thu.tsfiledb.qp.QueryProcessor;
 import cn.edu.thu.tsfiledb.qp.exception.IllegalASTFormatException;
 import cn.edu.thu.tsfiledb.qp.exception.QueryProcessorException;
 import cn.edu.thu.tsfiledb.qp.executor.OverflowQPExecutor;
@@ -48,6 +48,7 @@ import cn.edu.thu.tsfiledb.service.rpc.thrift.TSFetchMetadataResp;
 import cn.edu.thu.tsfiledb.service.rpc.thrift.TSFetchResultsReq;
 import cn.edu.thu.tsfiledb.service.rpc.thrift.TSFetchResultsResp;
 import cn.edu.thu.tsfiledb.service.rpc.thrift.TSHandleIdentifier;
+import cn.edu.thu.tsfiledb.service.rpc.thrift.TSIService;
 import cn.edu.thu.tsfiledb.service.rpc.thrift.TSOpenSessionReq;
 import cn.edu.thu.tsfiledb.service.rpc.thrift.TSOpenSessionResp;
 import cn.edu.thu.tsfiledb.service.rpc.thrift.TSOperationHandle;
@@ -57,7 +58,6 @@ import cn.edu.thu.tsfiledb.service.rpc.thrift.TS_SessionHandle;
 import cn.edu.thu.tsfiledb.service.rpc.thrift.TS_Status;
 import cn.edu.thu.tsfiledb.service.rpc.thrift.TS_StatusCode;
 import cn.edu.thu.tsfiledb.sys.writelog.WriteLogManager;
-import cn.edu.thu.tsfiledb.service.rpc.thrift.TSIService;
 
 /**
  * Thrift RPC implementation at server side

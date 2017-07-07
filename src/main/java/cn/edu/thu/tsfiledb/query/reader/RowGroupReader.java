@@ -16,116 +16,113 @@ import cn.edu.thu.tsfile.timeseries.filter.definition.SingleSeriesFilterExpressi
 import cn.edu.thu.tsfile.timeseries.read.ValueReader;
 import cn.edu.thu.tsfile.timeseries.read.query.DynamicOneColumnData;
 
-public class RowGroupReader{
+public class RowGroupReader {
 
-	protected static final Logger logger = LoggerFactory.getLogger(RowGroupReader.class);
-	public HashMap<String, TSDataType> seriesTypeMap;
-	protected HashMap<String, OverflowValueReader> valueReaders = new HashMap<>();
-	protected String deltaObjectUID;
+    protected static final Logger Logger = LoggerFactory.getLogger(RowGroupReader.class);
+    public HashMap<String, TSDataType> seriesTypeMap;
+    protected HashMap<String, OverflowValueReader> valueReaders = new HashMap<>();
+    protected String deltaObjectUID, deltaObjectType;
 
-	int lastRetIndex = -1;
-	protected ArrayList<String> sids;
-	protected String deltaObjectType;
-	protected long totalByteSize;
+    protected ArrayList<String> sids;
+    protected long totalByteSize;
 
-	protected TSRandomAccessFileReader raf;
-	
-	public RowGroupReader(RowGroupMetaData rowGroupMetaData, TSRandomAccessFileReader raf) {
-		logger.debug("init a new RowGroupReader..");
-		seriesTypeMap = new HashMap<>();
-		deltaObjectUID = rowGroupMetaData.getDeltaObjectUID();
-		sids = new ArrayList<String>();
-		deltaObjectType = rowGroupMetaData.getDeltaObjectType();
-		this.totalByteSize = rowGroupMetaData.getTotalByteSize();
-		this.raf = raf;
-		
-		for (TimeSeriesChunkMetaData tscMetaData : rowGroupMetaData.getTimeSeriesChunkMetaDataList()) {
-			if (tscMetaData.getVInTimeSeriesChunkMetaData() != null) {
-				sids.add(tscMetaData.getProperties().getMeasurementUID());
-				seriesTypeMap.put(tscMetaData.getProperties().getMeasurementUID(),
-						tscMetaData.getVInTimeSeriesChunkMetaData().getDataType());
-				
-				OverflowValueReader si = new OverflowValueReader(tscMetaData.getProperties().getFileOffset(),
+    protected TSRandomAccessFileReader raf;
+
+    public RowGroupReader(RowGroupMetaData rowGroupMetaData, TSRandomAccessFileReader raf) {
+        Logger.debug("init a new RowGroupReader..");
+        seriesTypeMap = new HashMap<>();
+        deltaObjectUID = rowGroupMetaData.getDeltaObjectUID();
+        sids = new ArrayList<>();
+        deltaObjectType = rowGroupMetaData.getDeltaObjectType();
+        this.totalByteSize = rowGroupMetaData.getTotalByteSize();
+        this.raf = raf;
+
+        for (TimeSeriesChunkMetaData tscMetaData : rowGroupMetaData.getTimeSeriesChunkMetaDataList()) {
+            if (tscMetaData.getVInTimeSeriesChunkMetaData() != null) {
+                sids.add(tscMetaData.getProperties().getMeasurementUID());
+                seriesTypeMap.put(tscMetaData.getProperties().getMeasurementUID(),
+                        tscMetaData.getVInTimeSeriesChunkMetaData().getDataType());
+
+                OverflowValueReader si = new OverflowValueReader(tscMetaData.getProperties().getFileOffset(),
                         tscMetaData.getTotalByteSize(),
                         tscMetaData.getVInTimeSeriesChunkMetaData().getDataType(),
                         tscMetaData.getVInTimeSeriesChunkMetaData().getDigest(), this.raf,
                         tscMetaData.getVInTimeSeriesChunkMetaData().getEnumValues(),
                         tscMetaData.getProperties().getCompression(), tscMetaData.getNumRows());
-				valueReaders.put(tscMetaData.getProperties().getMeasurementUID(), si);
-			}
-		}
-	}
-
-	public List<Object> getTimeByRet(List<Object> timeRet, HashMap<Integer, Object> retMap) {
-		List<Object> timeRes = new ArrayList<Object>();
-		for (Integer i : retMap.keySet()) {
-			timeRes.add(timeRet.get(i));
-		}
-		return timeRes;
-	}
-
-	public String getDeltaObjectType() {
-		return this.deltaObjectType;
-	}
-
-	public TSDataType getDataTypeBySeriesName(String name) {
-		return this.seriesTypeMap.get(name);
-	}
-
-	public String getDeltaObjectUID() {
-		return this.deltaObjectUID;
-	}
-	
-	/**
-	 * Read time-value pairs whose time is be included in timeRet. WARNING: this
-	 * function is only for "time" Series
-	 * 
-	 * @param sid measurement's id
-	 * @param timeRet Array of the time.
-	 * @throws IOException
-	 */
-    public DynamicOneColumnData readValueUseTimeValue(String measurementId, long[] timeRet) throws IOException{
-    	DynamicOneColumnData v = valueReaders.get(measurementId).getValuesForGivenValues(timeRet);
-    	return v;
+                valueReaders.put(tscMetaData.getProperties().getMeasurementUID(), si);
+            }
+        }
     }
 
-    public DynamicOneColumnData readOneColumnUseFilter(String sid, DynamicOneColumnData res, int fetchSize 
-    		, SingleSeriesFilterExpression timeFilter, SingleSeriesFilterExpression freqFilter, SingleSeriesFilterExpression valueFilter) throws IOException {
+    public List<Object> getTimeByRet(List<Object> timeRet, HashMap<Integer, Object> retMap) {
+        List<Object> timeRes = new ArrayList<>();
+        for (Integer i : retMap.keySet()) {
+            timeRes.add(timeRet.get(i));
+        }
+        return timeRes;
+    }
+
+    public String getDeltaObjectType() {
+        return this.deltaObjectType;
+    }
+
+    public TSDataType getDataTypeBySeriesName(String name) {
+        return this.seriesTypeMap.get(name);
+    }
+
+    public String getDeltaObjectUID() {
+        return this.deltaObjectUID;
+    }
+
+    /**
+     * Read time-value pairs whose time is included in timeRet.
+     * WARNING: this function is only for "time" Series
+     *
+     * @param measurementId measurement's id
+     * @param timeRet       Array of the time.
+     * @throws IOException
+     */
+    public DynamicOneColumnData readValueUseTimeValue(String measurementId, long[] timeRet) throws IOException {
+        return valueReaders.get(measurementId).getValuesForGivenValues(timeRet);
+    }
+
+    public DynamicOneColumnData readOneColumnUseFilter(String sid, DynamicOneColumnData res, int fetchSize
+            , SingleSeriesFilterExpression timeFilter, SingleSeriesFilterExpression freqFilter, SingleSeriesFilterExpression valueFilter) throws IOException {
         ValueReader valueReader = valueReaders.get(sid);
-        return valueReader.readOneColumnUseFilter(res, fetchSize, timeFilter,freqFilter, valueFilter);
+        return valueReader.readOneColumnUseFilter(res, fetchSize, timeFilter, freqFilter, valueFilter);
     }
-    
+
     public DynamicOneColumnData readOneColumn(String sid, DynamicOneColumnData res, int fetchSize) throws IOException {
         ValueReader valueReader = valueReaders.get(sid);
         return valueReader.readOneColumn(res, fetchSize);
     }
-    
+
     public ValueReader getValueReaderForSpecificMeasurement(String sid) {
         return getValueReaders().get(sid);
     }
 
-	public long getTotalByteSize() {
-		return totalByteSize;
-	}
+    public long getTotalByteSize() {
+        return totalByteSize;
+    }
 
-	public void setTotalByteSize(long totalByteSize) {
-		this.totalByteSize = totalByteSize;
-	}
+    public void setTotalByteSize(long totalByteSize) {
+        this.totalByteSize = totalByteSize;
+    }
 
-	public HashMap<String, OverflowValueReader> getValueReaders() {
-		return valueReaders;
-	}
+    public HashMap<String, OverflowValueReader> getValueReaders() {
+        return valueReaders;
+    }
 
-	public void setValueReaders(HashMap<String, OverflowValueReader> valueReaders) {
-		this.valueReaders = valueReaders;
-	}
+    public void setValueReaders(HashMap<String, OverflowValueReader> valueReaders) {
+        this.valueReaders = valueReaders;
+    }
 
-	public TSRandomAccessFileReader getRaf() {
-		return raf;
-	}
+    public TSRandomAccessFileReader getRaf() {
+        return raf;
+    }
 
-	public void setRaf(TSRandomAccessFileReader raf) {
-		this.raf = raf;
-	}
-	
+    public void setRaf(TSRandomAccessFileReader raf) {
+        this.raf = raf;
+    }
+
 }

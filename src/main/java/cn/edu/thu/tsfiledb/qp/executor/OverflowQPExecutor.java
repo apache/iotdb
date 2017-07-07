@@ -119,6 +119,12 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 
         try {
             TSDataType type = queryEngine.getDataTypeByDeviceAndSensor(device, sensor);
+            /*
+             * modify by liukun
+             */
+            if(type==TSDataType.BYTE_ARRAY){
+            	value = value.substring(1, value.length()-1);
+            }
             fileNodeManager.update(device, sensor, startTime, endTime, type, value);
             return true;
         } catch (PathErrorException e) {
@@ -180,7 +186,14 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
                     throw new ProcessorException("Path not exists:" + p);
                 }
                 TSDataType dataType = mManager.getSeriesType(p);
-                DataPoint dataPoint = DataPoint.getDataPoint(dataType, measurementList.get(i), insertValues.get(i));
+                /*
+                 * modify by liukun
+                 */
+                String value = insertValues.get(i);
+                if(dataType==TSDataType.BYTE_ARRAY){
+                	value = value.substring(1, value.length()-1);
+                }
+                DataPoint dataPoint = DataPoint.getDataPoint(dataType, measurementList.get(i), value);
                 tsRecord.addTuple(dataPoint);
             }
             return fileNodeManager.insert(tsRecord);

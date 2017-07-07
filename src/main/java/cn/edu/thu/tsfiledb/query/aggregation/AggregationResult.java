@@ -10,12 +10,12 @@ public class AggregationResult {
 	 * And in general, only one data point can be used whose index is 0 in this DynamicOneColumnData
 	 * to store the aggregation value.
 	 * 
-	 * And we make following rules: We use the time whose index is 0 to represents the count of
-	 * the records calculated; and we use the value whose index is 0 to represents the aggregation value.
+	 * And we make following rules: using the time whose index is 0 to represents the count of
+	 * the records calculated; using the value whose index is 0 to represents the aggregation value.
 	 */
 	public DynamicOneColumnData data;
 	
-	public AggregationResult(TSDataType dataType){
+	AggregationResult(TSDataType dataType){
 		data = new DynamicOneColumnData(dataType, true);
 		data.setDeltaObjectType("Aggregation");
 	}

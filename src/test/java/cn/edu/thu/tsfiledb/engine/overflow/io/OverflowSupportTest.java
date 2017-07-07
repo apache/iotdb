@@ -17,11 +17,19 @@ import cn.edu.thu.tsfile.timeseries.filter.definition.SingleSeriesFilterExpressi
 import cn.edu.thu.tsfile.timeseries.filter.definition.filterseries.FilterSeries;
 import cn.edu.thu.tsfile.timeseries.filter.visitorImpl.FilterVisitor;
 import cn.edu.thu.tsfile.timeseries.read.query.DynamicOneColumnData;
+import cn.edu.thu.tsfiledb.conf.TsfileDBConfig;
+import cn.edu.thu.tsfiledb.conf.TsfileDBDescriptor;
 import cn.edu.thu.tsfiledb.engine.overflow.metadata.OFFileMetadata;
+import cn.edu.thu.tsfiledb.metadata.MManager;
+import cn.edu.thu.tsfiledb.sys.writelog.WriteLogManager;
 
 /**
  * This is the test class for {@link OverflowSupport}
  * 
+ * @author liukun
+ *
+ */
+/**
  * @author liukun
  *
  */
@@ -38,20 +46,28 @@ public class OverflowSupportTest {
 	private OverflowFileIO ofio = null;
 	private OverflowReadWriter ofrw = null;
 	private OverflowSupport ofsupport = null;
+	private TsfileDBConfig tsFileDBConfig = TsfileDBDescriptor.getInstance().getConfig();
 
 	@Before
 	public void setUp() throws Exception {
 		EngineTestHelper.delete(filePath);
 		EngineTestHelper.delete(fileBackupPath);
+		EngineTestHelper.delete(tsFileDBConfig.walFolder);
+		EngineTestHelper.delete(tsFileDBConfig.metadataDir);
 		ofsupport = null;
 		ofrw = null;
 		ofio = null;
+		WriteLogManager.getInstance().close();
 	}
 
 	@After
 	public void tearDown() throws Exception {
+		MManager.getInstance().flushObjectToFile();
+		WriteLogManager.getInstance().close();
 		EngineTestHelper.delete(filePath);
 		EngineTestHelper.delete(fileBackupPath);
+		EngineTestHelper.delete(tsFileDBConfig.walFolder);
+		EngineTestHelper.delete(tsFileDBConfig.metadataDir);
 		ofsupport = null;
 		ofrw = null;
 		ofio = null;

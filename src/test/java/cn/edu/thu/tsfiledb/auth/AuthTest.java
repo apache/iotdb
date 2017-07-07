@@ -19,6 +19,8 @@ import cn.edu.thu.tsfiledb.auth.model.Role;
 import cn.edu.thu.tsfiledb.auth.model.RolePermission;
 import cn.edu.thu.tsfiledb.auth.model.User;
 import cn.edu.thu.tsfiledb.auth.model.UserPermission;
+import cn.edu.thu.tsfiledb.conf.TsfileDBConfig;
+import cn.edu.thu.tsfiledb.conf.TsfileDBDescriptor;
 
 public class AuthTest {
 
@@ -30,10 +32,11 @@ public class AuthTest {
 	private User user2;
 	private Role role1;
 	private Role role2;
+	private TsfileDBConfig dbconfig = TsfileDBDescriptor.getInstance().getConfig();
 
 	@Before
 	public void setUp() throws Exception {
-
+		dbconfig.derbyHome =  "";
 		dbDao = new DBDao();
 		authDao = new AuthDao();
 		dbDao.open();

@@ -1,11 +1,13 @@
 package cn.edu.thu.tsfiledb.service;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import cn.edu.thu.tsfile.common.exception.UnSupportedDataTypeException;
+import cn.edu.thu.tsfile.common.utils.BytesUtils;
 import cn.edu.thu.tsfile.timeseries.read.query.DynamicOneColumnData;
 import cn.edu.thu.tsfile.timeseries.read.query.QueryDataSet;
 import cn.edu.thu.tsfiledb.metadata.ColumnSchema;
@@ -102,11 +104,11 @@ public class Utils {
 			tsDynamicOneColumnData.setDoubleList(doubleList);
 			break;
 		case BYTE_ARRAY:
-			List<Byte> byteList = new ArrayList<>();
+			List<ByteBuffer> binaryList = new ArrayList<>();
 			for(int i = 0 ; i < dynamicOneColumnData.length; i ++){
-					byteList.add(Byte.valueOf(dynamicOneColumnData.getStringValue(i)));
+			    		binaryList.add(ByteBuffer.wrap(dynamicOneColumnData.getBinary(i).values));
 			}
-			tsDynamicOneColumnData.setBinaryList(byteList);
+			tsDynamicOneColumnData.setBinaryList(binaryList);
 			break;
 		default:
 		    	throw new UnSupportedDataTypeException(String.format("data type %s is not supported when convert data at server", dynamicOneColumnData.dataType));

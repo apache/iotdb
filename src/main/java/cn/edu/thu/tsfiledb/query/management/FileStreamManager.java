@@ -18,7 +18,7 @@ public class FileStreamManager {
 		
 	}
 	
-	public TSRandomAccessFileReader getLocalRandomAcessFileReader(String path) throws FileNotFoundException{
+	public TSRandomAccessFileReader getLocalRandomAccessFileReader(String path) throws FileNotFoundException{
 		return new LocalFileInput(path);
 	}
 	

@@ -47,11 +47,13 @@ public class Client {
 	private static final String EXIT_COMMAND = "exit";
 	private static final String SHOW_METADATA_COMMAND = "show metadata";
 	private static final int MAX_HELP_CONSOLE_WIDTH = 88;
+	
+	private static final String TIMESTAMP_STR = "Timestamp";
 
 	private static int maxTimeLength = 30;
 	private static int maxValueLength = 15;
-	private static String formatTime = "|%"+maxTimeLength+"s|";
-	private static String formatValue = "|%"+maxValueLength+"s|";
+	private static String formatTime = "%"+maxTimeLength+"s|";
+	private static String formatValue = "%"+maxValueLength+"s|";
 
 	public static void main(String[] args) throws ClassNotFoundException, SQLException {
 		Class.forName("cn.edu.thu.tsfiledb.jdbc.TsfileDriver");
@@ -81,6 +83,9 @@ public class Client {
 			if(commandLine.hasOption(MAX_PRINT_ROW_COUNT_ARGS)){
 			    try {
 				maxPrintRowCount = Integer.valueOf(commandLine.getOptionValue(MAX_PRINT_ROW_COUNT_ARGS));
+				if(maxPrintRowCount < 0){
+				    maxPrintRowCount = Integer.MAX_VALUE;
+				}
 			    } catch (NumberFormatException e) {
 				System.out.println(TSFILEDB_CLI_PREFIX+": error format of max print row count, it should be number");
 				return;
@@ -182,36 +187,32 @@ public class Client {
 			int colCount = res.getMetaData().getColumnCount();
 			// //Output Labels
 
-			StringBuilder blockLine = new StringBuilder();
-
-			if (printToConsole) {
-				
-				for (int i = 0; i < colCount; i++) {
-					int len = res.getMetaData().getColumnLabel(i).length();
-					maxValueLength = maxValueLength < len ? len : maxValueLength;
-				}
-				blockLine.append("+").append(StringUtils.repeat('-', maxTimeLength)).append("+");
-				for (int i = 0; i < colCount - 1; i++) {
-				    blockLine.append(StringUtils.repeat('-', maxValueLength)).append("+");
-				}
-				System.out.println(blockLine);
-
-				formatValue = "%" + maxValueLength + "s|";
-				System.out.printf(formatTime, "Timestamp");
-				for (int i = 0; i < colCount - 1; i++) {
-					System.out.printf(formatValue, res.getMetaData().getColumnLabel(i + 1));
-				}
-				System.out.printf("\n");
-
-				System.out.println(blockLine);
-			}
+			boolean printTimestamp = true;
+			boolean printHeader = false;
 
 			// Output values
 			while (res.next()) {
 
-				if (printToConsole && cnt < maxPrintRowCount) {
-					System.out.printf(formatTime, formatDatetime(res.getLong(0)));
+				if (printToConsole && cnt < maxPrintRowCount && printTimestamp) {
+				    	try {
+				    	    	res.getLong(TIMESTAMP_STR);
+					} catch (SQLException e) {
+					    printTimestamp = false;
+					}
 				}
+				if(!printHeader){
+					printBlockLine(printTimestamp, colCount, res);
+					printName(printTimestamp, colCount, res);
+					printBlockLine(printTimestamp, colCount, res);
+					printHeader = true;
+				}
+				
+			    	if(cnt < maxPrintRowCount){
+			    	    	System.out.print("|");
+			    	    	if(printTimestamp){
+						System.out.printf(formatTime, formatDatetime(res.getLong(TIMESTAMP_STR)));
+			    	    	}
+			    	}
 
 				for (int i = 1; i < colCount; i++) {
 					if (printToConsole && cnt < maxPrintRowCount) {
@@ -228,12 +229,8 @@ public class Client {
 					System.out.println(cnt);
 				}
 			}
-
-			if (printToConsole) {
-			    System.out.println(blockLine);
-			}
-
-			System.out.println("Result size : " + cnt);
+			printBlockLine(printTimestamp, colCount, res);
+			System.out.println(TSFILEDB_CLI_PREFIX+": result size=" + cnt);
 		} catch (Exception e) {
 			System.out.println(e.getMessage());
 		}
@@ -288,6 +285,35 @@ public class Client {
 	private static void setTimeFormatForNumber(){
 	    timeFormatInISO8601 = false;
 	    maxTimeLength = maxValueLength;
-	    formatTime = "|%"+maxTimeLength+"s|";
+	    formatTime = "%"+maxTimeLength+"s|";
+	}
+	
+	private static void printBlockLine(boolean printTimestamp, int colCount, ResultSet res) throws SQLException{
+                StringBuilder blockLine = new StringBuilder();
+                for (int i = 0; i < colCount - 1; i++) {
+			int len = res.getMetaData().getColumnLabel(i+1).length();
+			maxValueLength = maxValueLength < len ? len : maxValueLength;
+		}
+		if(printTimestamp){
+		    	blockLine.append("+").append(StringUtils.repeat('-', maxTimeLength)).append("+");
+		} else{
+		    blockLine.append("+");
+		}
+		for (int i = 0; i < colCount - 1; i++) {
+		    blockLine.append(StringUtils.repeat('-', maxValueLength)).append("+");
+		}
+		System.out.println(blockLine);
+	}
+	
+	private static void printName(boolean printTimestamp, int colCount, ResultSet res) throws SQLException{
+	    	System.out.print("|");
+		formatValue = "%" + maxValueLength + "s|";
+		if(printTimestamp){
+			System.out.printf(formatTime, TIMESTAMP_STR);
+		}
+		for (int i = 0; i < colCount - 1; i++) {
+			System.out.printf(formatValue, res.getMetaData().getColumnLabel(i + 1));
+		}
+		System.out.printf("\n");
 	}
 }

@@ -166,18 +166,16 @@ public class WriteLogNode {
             // Don't forget to close the stream.
             writerV2.close();
             oldReader.close();
-            if (!new File(filePath).delete()) {
-                LOG.error("Error in compact log : old log file delete");
-                throw new IOException("Error in compact log : old log file delete");
-            }
-            if (!new File(filePath + ".backup").renameTo(new File(filePath))) {
-                LOG.error("Error in compact log : create new log file");
-                throw new IOException("Error in compact log : create new log file");
-            }
             writer.close();
             writer = null;
-            //writer = new LocalFileLogWriter(filePath);
-            writer = null;
+            if (!new File(filePath).delete()) {
+                LOG.error("Error in compact log : old log file can not delete");
+                throw new IOException("Error in compact log : old log file can not delete");
+            }
+            if (!new File(filePath + ".backup").renameTo(new File(filePath))) {
+                LOG.error("Error in compact log : can not rename to new log file");
+                throw new IOException("Error in compact log : can not rename to new log file");
+            }
             logSize = 0;
             hasBufferWriteFlush = false;
             hasOverflowFlush = false;

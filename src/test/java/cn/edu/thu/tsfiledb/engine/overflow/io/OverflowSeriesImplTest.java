@@ -17,7 +17,15 @@ import cn.edu.thu.tsfile.file.metadata.TimeSeriesChunkMetaData;
 import cn.edu.thu.tsfile.file.metadata.enums.CompressionTypeName;
 import cn.edu.thu.tsfile.file.metadata.enums.TSDataType;
 import cn.edu.thu.tsfile.timeseries.read.query.DynamicOneColumnData;
+import cn.edu.thu.tsfiledb.conf.TsfileDBConfig;
+import cn.edu.thu.tsfiledb.conf.TsfileDBDescriptor;
+import cn.edu.thu.tsfiledb.metadata.MManager;
+import cn.edu.thu.tsfiledb.sys.writelog.WriteLogManager;
 
+/**
+ * @author liukun
+ *
+ */
 public class OverflowSeriesImplTest {
 
 	private String filePath = "overflowseriesimpltest";
@@ -29,17 +37,25 @@ public class OverflowSeriesImplTest {
 	private OverflowSeriesImpl seriesimpl = null;
 	private OverflowSeriesImpl mergeseriesimpl = null;
 	private String measurementId = "s0";
+	private TsfileDBConfig tsFileDBConfig = TsfileDBDescriptor.getInstance().getConfig();
 
 	@Before
 	public void setUp() throws Exception {
 		EngineTestHelper.delete(mergeFilePath);
 		EngineTestHelper.delete(filePath);
+		EngineTestHelper.delete(tsFileDBConfig.walFolder);
+		EngineTestHelper.delete(tsFileDBConfig.metadataDir);
+		WriteLogManager.getInstance().close();
 	}
 
 	@After
 	public void tearDown() throws Exception {
+		MManager.getInstance().flushObjectToFile();
+		WriteLogManager.getInstance().close();
 		EngineTestHelper.delete(filePath);
 		EngineTestHelper.delete(mergeFilePath);
+		EngineTestHelper.delete(tsFileDBConfig.walFolder);
+		EngineTestHelper.delete(tsFileDBConfig.metadataDir);
 	}
 
 	@Test

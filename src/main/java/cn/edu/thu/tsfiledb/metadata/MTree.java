@@ -437,36 +437,37 @@ public class MTree implements Serializable {
 	}
 
 	private String MNodeToString(MNode node, int tab) {
-		String s = "";
+	    StringBuilder builder = new StringBuilder();
 		for (int i = 0; i < tab; i++) {
-			s += space;
+		    	builder.append(space);
 		}
-		s += node.getName();
+		builder.append(node.getName());
 		if (!node.isLeaf() && node.getChildren().size() > 0) {
-			s += ":{\n";
+		    	builder.append(":{\n");
 			int first = 0;
 			for (MNode child : node.getChildren().values()) {
 				if (first == 0) {
 					first = 1;
 				} else {
-					s += ",\n";
+				    builder.append(",\n");
 				}
-				s += MNodeToString(child, tab + 1);
+				builder.append(MNodeToString(child, tab + 1));
 			}
-			s += "\n";
+			builder.append("\n");
 			for (int i = 0; i < tab; i++) {
-				s += space;
+			    	builder.append(space);
 			}
-			s += "}";
+			builder.append("}");
 		} else if (node.isLeaf()) {
-			s += ":{\n";
-			s += getTabs(tab + 1) + "DataType :" + node.getSchema().dataType + ",\n";
-			s += getTabs(tab + 1) + "Encoding :" + node.getSchema().encoding + ",\n";
-			s += getTabs(tab + 1) + "args :" + node.getSchema().getArgsMap() + ",\n";
-			s += getTabs(tab + 1) + "FileName :" + node.getDataFileName() + "\n";
-			s += getTabs(tab) + "}";
+		    	builder.append(":{\n");
+		    	builder.append(String.format("%s DataType :%s ,\n", getTabs(tab + 1), node.getSchema().dataType));
+		    	builder.append(String.format("%s Encoding :%s ,\n", getTabs(tab + 1), node.getSchema().encoding));
+		    	builder.append(String.format("%s args :%s ,\n", getTabs(tab + 1), node.getSchema().getArgsMap()));
+		    	builder.append(String.format("%s FileName :%s \n", getTabs(tab + 1), node.getDataFileName()));
+		    	builder.append(getTabs(tab));
+		    	builder.append("}");
 		}
-		return s;
+		return builder.toString();
 	}
 
 	private String getTabs(int count) {

@@ -11,9 +11,10 @@ import cn.edu.thu.tsfile.timeseries.read.support.RowRecord;
 import cn.edu.thu.tsfiledb.conf.TsfileDBConfig;
 import cn.edu.thu.tsfiledb.conf.TsfileDBDescriptor;
 import cn.edu.thu.tsfiledb.exception.NotConsistentException;
+import cn.edu.thu.tsfiledb.exception.PathErrorException;
 import cn.edu.thu.tsfiledb.query.management.ReadLockManager;
 
-public class QueryerForMerge {
+public class QueryForMerge {
 
 	private List<Path> pathList;
 	private SingleSeriesFilterExpression timeFilter;
@@ -21,7 +22,7 @@ public class QueryerForMerge {
 	private QueryDataSet queryDataSet;
 	private static final TsfileDBConfig TsFileDBConf = TsfileDBDescriptor.getInstance().getConfig();
 
-	public QueryerForMerge(List<Path> pathList, SingleSeriesFilterExpression timeFilter) {
+	public QueryForMerge(List<Path> pathList, SingleSeriesFilterExpression timeFilter) {
 		this.pathList = pathList;
 		this.timeFilter = timeFilter;
 		queryEngine = new OverflowQueryEngine();
@@ -30,11 +31,12 @@ public class QueryerForMerge {
 
 	public boolean hasNextRecord() {
 		boolean ret = false;
+
 		if (queryDataSet == null || !queryDataSet.hasNextRecord()) {
 			try {
 				queryDataSet = queryEngine.query(pathList, timeFilter, null, null, queryDataSet,
 						TsFileDBConf.defaultFetchSize);
-			} catch (ProcessorException | IOException e) {
+			} catch (ProcessorException | IOException | PathErrorException e) {
 				e.printStackTrace();
 			}
 		}

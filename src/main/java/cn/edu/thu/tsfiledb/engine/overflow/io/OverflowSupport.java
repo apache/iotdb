@@ -366,7 +366,6 @@ public class OverflowSupport {
 		if (!fileWriter.switchFileIOWorkingToMerge()) {
 			lastFileOffset = 0;
 			// should clear overflow map
-			// bug: if restore from other situation
 			overflowMap.clear();
 		}
 
@@ -397,9 +396,7 @@ public class OverflowSupport {
 				}
 			}
 		}
-		// one bug for query: is merge query or other type of query????
-		// should clear the overflow map and init it
-		// if the file is broken, the init operation is useful
+		
 		for (Entry<String, Map<String, OverflowSeriesImpl>> rowGroupWriterEntry : overflowMap.entrySet()) {
 			for (Entry<String, OverflowSeriesImpl> seriesWriterEntry : rowGroupWriterEntry.getValue().entrySet()) {
 				//

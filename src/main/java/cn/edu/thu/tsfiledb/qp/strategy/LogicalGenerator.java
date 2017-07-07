@@ -454,7 +454,8 @@ public class LogicalGenerator {
 		int childCount = node.getChildCount();
 		String[] path = new String[node.getChildCount()];
 		for (int i = 0; i < childCount; i++) {
-			path[i] = node.getChild(i).getText().toLowerCase();
+//			path[i] = node.getChild(i).getText().toLowerCase();
+			path[i] = node.getChild(i).getText();
 		}
 		return new Path(new StringContainer(path, SystemConstant.PATH_SEPARATOR));
 	}
@@ -464,7 +465,8 @@ public class LogicalGenerator {
 		sc.addTail(SQLConstant.ROOT);
 		int childCount = node.getChildCount();
 		for (int i = 0; i < childCount; i++) {
-			sc.addTail(node.getChild(i).getText().toLowerCase());
+//			sc.addTail(node.getChild(i).getText().toLowerCase());
+			sc.addTail(node.getChild(i).getText());
 		}
 		return new Path(sc);
 	}
@@ -479,7 +481,8 @@ public class LogicalGenerator {
 		int childCount = astNode.getChildCount();
 		// node path should have more than one level and first node level must
 		// be root
-		if (childCount < 3 || !SQLConstant.ROOT.equals(astNode.getChild(1).getText().toLowerCase()))
+//		if (childCount < 3 || !SQLConstant.ROOT.equals(astNode.getChild(1).getText().toLowerCase()))
+		if (childCount < 3 || !SQLConstant.ROOT.equals(astNode.getChild(1).getText()))
 			throw new IllegalASTFormatException("data load command: child count < 3\n" + astNode.dump());
 		String csvPath = astNode.getChild(0).getText();
 		if (csvPath.length() < 3 || csvPath.charAt(0) != '\'' || csvPath.charAt(csvPath.length() - 1) != '\'')
@@ -487,7 +490,8 @@ public class LogicalGenerator {
 		StringContainer sc = new StringContainer(SystemConstant.PATH_SEPARATOR);
 		sc.addTail(SQLConstant.ROOT);
 		for (int i = 2; i < childCount; i++) {
-			String pathNode = astNode.getChild(i).getText().toLowerCase();
+//			String pathNode = astNode.getChild(i).getText().toLowerCase();
+			String pathNode = astNode.getChild(i).getText();
 			sc.addTail(pathNode);
 		}
 		initializedOperator = new LoadDataOperator(SQLConstant.TOK_DATALOAD, csvPath.substring(1, csvPath.length() - 1),
