@@ -261,6 +261,9 @@ numberOrString // identifier is string or integer
     : identifier | Float 
     ;
 
+numberOrStringWidely
+    : number | StringLiteral 
+    ;
 
 execStatement
     : authorStatement
@@ -518,8 +521,8 @@ multidentifier
 	;
 multiValue
 	:
-	LPAREN time=dateFormatWithNumber (COMMA numberOrString)* RPAREN
-	-> ^(TOK_MULT_VALUE $time numberOrString*)
+	LPAREN time=dateFormatWithNumber (COMMA numberOrStringWidely)* RPAREN
+	-> ^(TOK_MULT_VALUE $time numberOrStringWidely*)
 	;
 
 
