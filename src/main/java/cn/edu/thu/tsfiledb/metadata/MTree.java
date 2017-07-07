@@ -437,8 +437,7 @@ public class MTree implements Serializable {
 	}
 
 	private String MNodeToString(MNode node, int tab) {
-	    	StringBuilder builder = new StringBuilder();
-//		String s = "";
+	    StringBuilder builder = new StringBuilder();
 		for (int i = 0; i < tab; i++) {
 		    	builder.append(space);
 		}
