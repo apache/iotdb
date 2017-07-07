@@ -30,12 +30,8 @@ public class JDBCExample {
 
 		Class.forName("cn.edu.thu.tsfiledb.jdbc.TsfileDriver");
 		Connection connection = null;
-		String host = "127.0.0.1";
-		String port = "6667";
-		String username = "root";
-		String password = "root";
-//		connection = DriverManager.getConnection("jdbc:tsfile://" + host + ":" + port + "/", username, password);
-//		createSchema(schemaFilePath, connection);
+		connection = DriverManager.getConnection("jdbc:tsfile://" + host + ":" + port + "/", username, password);
+		createSchema(schemaFilePath, connection);
 		insertData(sourceFilePath);
 		mergeData(connection);
 		connection.close();
@@ -221,7 +217,7 @@ public class JDBCExample {
 					words[10], words[11], words[12], words[13], words[14], words[15], words[16], words[17]);
 			try {
 				
-				statement.executeUpdate(insertSql.toLowerCase());
+				statement.executeUpdate(insertSql);
 			} catch (SQLException e) {
 				System.out.println(e);
 				LOGGER.error(insertSql);
