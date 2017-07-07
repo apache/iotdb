@@ -1,7 +1,7 @@
 package cn.edu.thu.tsfiledb.qp.utils;
 
 import cn.edu.thu.tsfile.timeseries.read.query.QueryDataSet;
-import cn.edu.thu.tsfile.timeseries.read.readSupport.RowRecord;
+import cn.edu.thu.tsfile.timeseries.read.support.RowRecord;
 
 /**
  * This getIndex data set is used for getIndex processing. getIndex processing merges a list of QueryDataSet

@@ -29,7 +29,7 @@ import cn.edu.thu.tsfile.timeseries.filter.definition.FilterExpression;
 import cn.edu.thu.tsfile.timeseries.filter.definition.SingleSeriesFilterExpression;
 import cn.edu.thu.tsfile.timeseries.read.qp.Path;
 import cn.edu.thu.tsfile.timeseries.read.query.DynamicOneColumnData;
-import cn.edu.thu.tsfile.timeseries.read.readSupport.RowRecord;
+import cn.edu.thu.tsfile.timeseries.read.support.RowRecord;
 import cn.edu.thu.tsfile.timeseries.write.TSRecordWriteSupport;
 import cn.edu.thu.tsfile.timeseries.write.TSRecordWriter;
 import cn.edu.thu.tsfile.timeseries.write.WriteSupport;

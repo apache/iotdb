@@ -24,7 +24,7 @@ import cn.edu.thu.tsfile.timeseries.filter.definition.filterseries.FilterSeries;
 import cn.edu.thu.tsfile.timeseries.filter.definition.filterseries.FilterSeriesType;
 import cn.edu.thu.tsfile.timeseries.read.LocalFileInput;
 import cn.edu.thu.tsfile.timeseries.read.query.DynamicOneColumnData;
-import cn.edu.thu.tsfile.timeseries.read.readSupport.ColumnInfo;
+import cn.edu.thu.tsfile.timeseries.read.support.ColumnInfo;
 import cn.edu.thu.tsfiledb.engine.filenode.QueryStructure;
 import cn.edu.thu.tsfiledb.exception.PathErrorException;
 import cn.edu.thu.tsfile.common.exception.ProcessorException;
