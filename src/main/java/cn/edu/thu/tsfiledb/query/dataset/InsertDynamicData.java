@@ -1,6 +1,7 @@
 package cn.edu.thu.tsfiledb.query.dataset;
 
 import cn.edu.thu.tsfile.common.exception.UnSupportedDataTypeException;
+import cn.edu.thu.tsfile.common.utils.Binary;
 import cn.edu.thu.tsfile.common.utils.Pair;
 import cn.edu.thu.tsfile.common.utils.ReadWriteStreamUtils;
 import cn.edu.thu.tsfile.encoding.decoder.Decoder;
@@ -45,6 +46,7 @@ public class InsertDynamicData extends DynamicOneColumnData {
     private long curSatisfiedLongValue;
     private float curSatisfiedFloatValue;
     private double curSatisfiedDoubleValue;
+    private Binary curSatisfiedBinaryValue;
     private int curTimeIndex = -1;
     private long[] timeValues; // time for current read page
     private InputStream page = null; // value inputstream for current read page
@@ -137,9 +139,13 @@ public class InsertDynamicData extends DynamicOneColumnData {
         }
     }
 
-//    public Binary getCurrentBinaryValue() {
-//
-//    }
+    public Binary getCurrentBinaryValue() {
+        if (insertTrue.insertTrueIndex < insertTrue.length && insertTrue.getTime(insertTrue.insertTrueIndex) <= currentSatisfiedTime) {
+            return insertTrue.getBinary(insertTrue.insertTrueIndex);
+        } else {
+            return curSatisfiedBinaryValue;
+        }
+    }
 
 
     /**
@@ -488,6 +494,53 @@ public class InsertDynamicData extends DynamicOneColumnData {
                             }
                         }
                         break;
+                    case BYTE_ARRAY:
+                        cnt = 0;
+                        while (valueDecoder.hasNext(page)) {
+                            while (cnt < unValidTimeCount) {
+                                curSatisfiedBinaryValue = valueDecoder.readBinary(page);
+                                cnt++;
+                            }
+
+                            curSatisfiedBinaryValue = valueDecoder.readBinary(page);
+
+                            if (timeFilter == null || singleTimeVisitor.verify(timeValues[curTimeIndex])) {
+                                while (updateTrue != null && updateTrue.curIdx < updateTrue.length && updateTrue.getTime(updateTrue.curIdx*2+1) < timeValues[curTimeIndex])
+                                    updateTrue.curIdx ++;
+                                while (updateFalse != null && updateFalse.curIdx < updateFalse.length && updateFalse.getTime(updateFalse.curIdx*2+1) < timeValues[curTimeIndex])
+                                    updateFalse.curIdx ++;
+
+                                // updateTrue.length*2 - 1
+                                if (updateTrue != null && updateTrue.curIdx < updateTrue.length && updateTrue.getTime(updateTrue.curIdx*2) <= timeValues[curTimeIndex]) {
+                                    currentSatisfiedTime = timeValues[curTimeIndex];
+                                    curSatisfiedBinaryValue = updateTrue.getBinary(updateTrue.curIdx);
+                                    pageFindFlag = true;
+                                    break;
+                                } else if (updateFalse != null && updateFalse.curIdx < updateFalse.length && updateFalse.getTime(updateFalse.curIdx*2) <= timeValues[curTimeIndex]) {
+                                    currentSatisfiedTime = -1;
+                                    curTimeIndex++;
+                                } else {
+                                    if (valueFilter == null || singleValueVisitor.satisfyObject(curSatisfiedBinaryValue, valueFilter)) {
+                                        currentSatisfiedTime = timeValues[curTimeIndex];
+                                        pageFindFlag = true;
+                                        break;
+                                    } else {
+                                        currentSatisfiedTime = -1;
+                                        curTimeIndex++;
+                                    }
+                                }
+                            } else {
+                                currentSatisfiedTime = -1;
+                                curTimeIndex++;
+                            }
+
+                            // for removeCurrentValue function pageIndex++
+                            if (currentSatisfiedTime == -1 && !valueDecoder.hasNext(page)) {
+                                pageReaderReset();
+                                break;
+                            }
+                        }
+                        break;
                     default:
                             throw new UnSupportedDataTypeException("UnSupport Aggregation DataType:" + dataType);
                 }
@@ -529,6 +582,8 @@ public class InsertDynamicData extends DynamicOneColumnData {
                 return singleValueVisitor.satisfyObject(insertTrue.getFloat(insertTrue.insertTrueIndex), valueFilter);
             case DOUBLE:
                 return singleValueVisitor.satisfyObject(insertTrue.getDouble(insertTrue.insertTrueIndex), valueFilter);
+            case BYTE_ARRAY:
+                return singleValueVisitor.satisfyObject(insertTrue.getBinary(insertTrue.insertTrueIndex), valueFilter);
             default:
                 throw new UnSupportedDataTypeException("UnSupport Aggregation DataType:" + dataType);
         }
@@ -586,6 +641,10 @@ public class InsertDynamicData extends DynamicOneColumnData {
             case DOUBLE:
                 curSatisfiedDoubleValue = updateTrue.getDouble(updateTrue.curIdx);
                 insertTrue.setDouble(insertTrue.insertTrueIndex, curSatisfiedDoubleValue);
+                break;
+            case BYTE_ARRAY:
+                curSatisfiedBinaryValue = updateTrue.getBinary(updateTrue.curIdx);
+                insertTrue.setBinary(insertTrue.insertTrueIndex, curSatisfiedBinaryValue);
                 break;
             default:
                 throw new UnSupportedDataTypeException("UnSupport Aggregation DataType:" + dataType);
@@ -670,6 +729,11 @@ public class InsertDynamicData extends DynamicOneColumnData {
         maxDoubleValue = Math.max(maxDoubleValue, getCurrentDoubleValue());
     }
 
+    private void calcBinaryAggregation() {
+        minTime = Math.min(minTime, getCurrentMinTime());
+        maxTime = Math.max(maxTime, getCurrentMinTime());
+    }
+
     public Pair<Long, Object> calcAggregation(String aggType) throws IOException {
         readStatusReset();
         rowNum = 0;
@@ -704,6 +768,11 @@ public class InsertDynamicData extends DynamicOneColumnData {
                 case DOUBLE:
                     rowNum++;
                     calcDoubleAggregation();
+                    removeCurrentValue();
+                    break;
+                case BYTE_ARRAY:
+                    rowNum++;
+                    calcBinaryAggregation();
                     removeCurrentValue();
                     break;
                 default:
