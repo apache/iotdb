@@ -189,7 +189,12 @@ public class Client {
 
 			boolean printTimestamp = true;
 			boolean printHeader = false;
-
+			if(!printHeader){
+				printBlockLine(printTimestamp, colCount, res);
+				printName(printTimestamp, colCount, res);
+				printBlockLine(printTimestamp, colCount, res);
+				printHeader = true;
+			}
 			// Output values
 			while (res.next()) {
 
@@ -200,12 +205,7 @@ public class Client {
 					    printTimestamp = false;
 					}
 				}
-				if(!printHeader){
-					printBlockLine(printTimestamp, colCount, res);
-					printName(printTimestamp, colCount, res);
-					printBlockLine(printTimestamp, colCount, res);
-					printHeader = true;
-				}
+
 				
 			    	if(cnt < maxPrintRowCount){
 			    	    	System.out.print("|");
