@@ -207,7 +207,7 @@ struct TSDynamicOneColumnData{
 	7: optional list<i64> i64List
 	8: optional list<double> floatList
 	9: optional list<double> doubleList
-	10: optional list<byte> binaryList
+	10: optional list<binary> binaryList
 }
 
 struct TSFetchResultsReq{

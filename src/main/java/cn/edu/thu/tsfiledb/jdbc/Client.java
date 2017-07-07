@@ -153,7 +153,7 @@ public class Client {
 									output(resultSet, printToConsole);
 								}
 								statement.close();
-								
+								System.out.println(TSFILEDB_CLI_PREFIX+": execute successfully.");
 							} catch (TsfileSQLException e) {
 								System.out.println(TSFILEDB_CLI_PREFIX+": statement error: " + e.getMessage());
 							} catch (Exception e) {
@@ -231,7 +231,6 @@ public class Client {
 			}
 			printBlockLine(printTimestamp, colCount, res);
 			System.out.println(TSFILEDB_CLI_PREFIX+": result size=" + cnt);
-			System.out.println(TSFILEDB_CLI_PREFIX+": execute successfully.");
 		} catch (Exception e) {
 			System.out.println(e.getMessage());
 		}
@@ -286,7 +285,7 @@ public class Client {
 	private static void setTimeFormatForNumber(){
 	    timeFormatInISO8601 = false;
 	    maxTimeLength = maxValueLength;
-	    formatTime = "|%"+maxTimeLength+"s|";
+	    formatTime = "%"+maxTimeLength+"s|";
 	}
 	
 	private static void printBlockLine(boolean printTimestamp, int colCount, ResultSet res) throws SQLException{
