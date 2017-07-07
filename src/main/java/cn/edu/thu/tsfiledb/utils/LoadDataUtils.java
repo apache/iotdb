@@ -33,7 +33,6 @@ public class LoadDataUtils {
     private MManager mManager;
     private int writeInstanceThreshold;
     private boolean hasExtra = false;
-    private String measureType;
     private long totalPointCount = 0;
     private FileNodeManager fileNodeManager;
     private TsfileDBConfig conf = TsfileDBDescriptor.getInstance().getConfig();
@@ -98,7 +97,6 @@ public class LoadDataUtils {
         return extraDataFilePath;
     }
 
-    @SuppressWarnings("finally")
     private void loadOneRecordLine(String line) {
         TSRecord record = RecordUtils.parseSimpleTupleRecord(line, this.fileSchema);
         totalPointCount += record.dataPointList.size();
@@ -119,14 +117,14 @@ public class LoadDataUtils {
                 } catch (IOException e) {
                     LOG.error("record the extra data into extraFile failed, record:{}", line);
                 }
+                return;
             }
         }
         // appeared before, insert directly
         try {
             fileNodeManager.insert(record);
         } catch (FileNodeManagerException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+            LOG.error("failed when insert into fileNodeManager, record:{}, reason:{}", line, e.getMessage());
 		}
     }
 
@@ -161,11 +159,6 @@ public class LoadDataUtils {
     }
 
     private void closeWriteInstance() {
-        //TODO for data load, don't close the write processor
-//        for (Entry<String, WriteInstance> entry : writeInstanceMap.entrySet()) {
-//            entry.getValue().close();
-//            LOG.info("closed write instance:{}", entry.getKey());
-//        }
         writeInstanceMap.clear();
     }
 
@@ -173,21 +166,14 @@ public class LoadDataUtils {
     public void loadLocalDataMultiPass(String inputCsvDataPath, String measureType,
                                        MManager mManager) {
         LOG.info("start loading data...");
-        long start = System.currentTimeMillis();
-        System.out.println("asdaasd");
-        System.out.println("asdaasd");
-        System.out.println("asdaasd");
-        System.out.println("asdaasd");
         long startTime = System.currentTimeMillis();
         this.mManager = mManager;
         // get measurement schema
         try {
             ArrayList<ColumnSchema> meaSchema = mManager.getSchemaForOneType(measureType);
-            this.measureType = measureType;
             fileSchema = FileSchemaUtil.getFileSchemaFromColumnSchema(meaSchema, measureType);
         } catch (PathErrorException e) {
-            LOG.error("the path of input measurement schema meet error!");
-            e.printStackTrace();
+            LOG.error("the path of input measurement schema meet error!", e);
             close();
             return;
         }
