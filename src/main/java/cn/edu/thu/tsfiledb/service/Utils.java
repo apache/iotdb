@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 
 import cn.edu.thu.tsfile.common.exception.UnSupportedDataTypeException;
+import cn.edu.thu.tsfile.common.utils.BytesUtils;
 import cn.edu.thu.tsfile.timeseries.read.query.DynamicOneColumnData;
 import cn.edu.thu.tsfile.timeseries.read.query.QueryDataSet;
 import cn.edu.thu.tsfiledb.metadata.ColumnSchema;
@@ -104,7 +105,9 @@ public class Utils {
 		case BYTE_ARRAY:
 			List<Byte> byteList = new ArrayList<>();
 			for(int i = 0 ; i < dynamicOneColumnData.length; i ++){
+					//byteList.add(BytesUtils.StringToBytes(dynamicOneColumnData.getStringValue(i)));
 					byteList.add(Byte.valueOf(dynamicOneColumnData.getStringValue(i)));
+							// Byte.valueOf(dynamicOneColumnData.getStringValue(i)));
 			}
 			tsDynamicOneColumnData.setBinaryList(byteList);
 			break;
