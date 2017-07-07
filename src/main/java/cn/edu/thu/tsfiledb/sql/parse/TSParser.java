@@ -1,4 +1,4 @@
-// $ANTLR 3.5.2 TSParser.g 2017-07-04 16:19:34
+// $ANTLR 3.5.2 TSParser.g 2017-07-07 11:42:18
 
 package cn.edu.thu.tsfiledb.sql.parse;
 
@@ -700,7 +700,7 @@ public class TSParser extends Parser {
 					root_0 = (CommonTree)adaptor.nil();
 
 
-					pushFollow(FOLLOW_authorStatement_in_execStatement270);
+					pushFollow(FOLLOW_authorStatement_in_execStatement271);
 					authorStatement6=authorStatement();
 					state._fsp--;
 					if (state.failed) return retval;
@@ -714,7 +714,7 @@ public class TSParser extends Parser {
 					root_0 = (CommonTree)adaptor.nil();
 
 
-					pushFollow(FOLLOW_deleteStatement_in_execStatement278);
+					pushFollow(FOLLOW_deleteStatement_in_execStatement279);
 					deleteStatement7=deleteStatement();
 					state._fsp--;
 					if (state.failed) return retval;
@@ -728,7 +728,7 @@ public class TSParser extends Parser {
 					root_0 = (CommonTree)adaptor.nil();
 
 
-					pushFollow(FOLLOW_updateStatement_in_execStatement286);
+					pushFollow(FOLLOW_updateStatement_in_execStatement287);
 					updateStatement8=updateStatement();
 					state._fsp--;
 					if (state.failed) return retval;
@@ -742,7 +742,7 @@ public class TSParser extends Parser {
 					root_0 = (CommonTree)adaptor.nil();
 
 
-					pushFollow(FOLLOW_insertStatement_in_execStatement294);
+					pushFollow(FOLLOW_insertStatement_in_execStatement295);
 					insertStatement9=insertStatement();
 					state._fsp--;
 					if (state.failed) return retval;
@@ -756,7 +756,7 @@ public class TSParser extends Parser {
 					root_0 = (CommonTree)adaptor.nil();
 
 
-					pushFollow(FOLLOW_queryStatement_in_execStatement302);
+					pushFollow(FOLLOW_queryStatement_in_execStatement303);
 					queryStatement10=queryStatement();
 					state._fsp--;
 					if (state.failed) return retval;
@@ -770,7 +770,7 @@ public class TSParser extends Parser {
 					root_0 = (CommonTree)adaptor.nil();
 
 
-					pushFollow(FOLLOW_metadataStatement_in_execStatement310);
+					pushFollow(FOLLOW_metadataStatement_in_execStatement311);
 					metadataStatement11=metadataStatement();
 					state._fsp--;
 					if (state.failed) return retval;
@@ -784,7 +784,7 @@ public class TSParser extends Parser {
 					root_0 = (CommonTree)adaptor.nil();
 
 
-					pushFollow(FOLLOW_mergeStatement_in_execStatement318);
+					pushFollow(FOLLOW_mergeStatement_in_execStatement319);
 					mergeStatement12=mergeStatement();
 					state._fsp--;
 					if (state.failed) return retval;
@@ -798,7 +798,7 @@ public class TSParser extends Parser {
 					root_0 = (CommonTree)adaptor.nil();
 
 
-					pushFollow(FOLLOW_quitStatement_in_execStatement326);
+					pushFollow(FOLLOW_quitStatement_in_execStatement327);
 					quitStatement13=quitStatement();
 					state._fsp--;
 					if (state.failed) return retval;
@@ -880,7 +880,7 @@ public class TSParser extends Parser {
 				case 1 :
 					// TSParser.g:279:7: datetime= DATETIME
 					{
-					datetime=(Token)match(input,DATETIME,FOLLOW_DATETIME_in_dateFormat347); if (state.failed) return retval; 
+					datetime=(Token)match(input,DATETIME,FOLLOW_DATETIME_in_dateFormat348); if (state.failed) return retval; 
 					if ( state.backtracking==0 ) stream_DATETIME.add(datetime);
 
 					// AST REWRITE
@@ -917,13 +917,13 @@ public class TSParser extends Parser {
 				case 2 :
 					// TSParser.g:280:7: func= Identifier LPAREN RPAREN
 					{
-					func=(Token)match(input,Identifier,FOLLOW_Identifier_in_dateFormat366); if (state.failed) return retval; 
+					func=(Token)match(input,Identifier,FOLLOW_Identifier_in_dateFormat367); if (state.failed) return retval; 
 					if ( state.backtracking==0 ) stream_Identifier.add(func);
 
-					LPAREN14=(Token)match(input,LPAREN,FOLLOW_LPAREN_in_dateFormat368); if (state.failed) return retval; 
+					LPAREN14=(Token)match(input,LPAREN,FOLLOW_LPAREN_in_dateFormat369); if (state.failed) return retval; 
 					if ( state.backtracking==0 ) stream_LPAREN.add(LPAREN14);
 
-					RPAREN15=(Token)match(input,RPAREN,FOLLOW_RPAREN_in_dateFormat370); if (state.failed) return retval; 
+					RPAREN15=(Token)match(input,RPAREN,FOLLOW_RPAREN_in_dateFormat371); if (state.failed) return retval; 
 					if ( state.backtracking==0 ) stream_RPAREN.add(RPAREN15);
 
 					// AST REWRITE
@@ -1024,7 +1024,7 @@ public class TSParser extends Parser {
 				case 1 :
 					// TSParser.g:284:7: dateFormat
 					{
-					pushFollow(FOLLOW_dateFormat_in_dateFormatWithNumber396);
+					pushFollow(FOLLOW_dateFormat_in_dateFormatWithNumber397);
 					dateFormat16=dateFormat();
 					state._fsp--;
 					if (state.failed) return retval;
@@ -1055,7 +1055,7 @@ public class TSParser extends Parser {
 				case 2 :
 					// TSParser.g:285:7: Integer
 					{
-					Integer17=(Token)match(input,Integer,FOLLOW_Integer_in_dateFormatWithNumber408); if (state.failed) return retval; 
+					Integer17=(Token)match(input,Integer,FOLLOW_Integer_in_dateFormatWithNumber409); if (state.failed) return retval; 
 					if ( state.backtracking==0 ) stream_Integer.add(Integer17);
 
 					// AST REWRITE
@@ -1228,7 +1228,7 @@ public class TSParser extends Parser {
 					root_0 = (CommonTree)adaptor.nil();
 
 
-					pushFollow(FOLLOW_createTimeseries_in_metadataStatement435);
+					pushFollow(FOLLOW_createTimeseries_in_metadataStatement436);
 					createTimeseries18=createTimeseries();
 					state._fsp--;
 					if (state.failed) return retval;
@@ -1242,7 +1242,7 @@ public class TSParser extends Parser {
 					root_0 = (CommonTree)adaptor.nil();
 
 
-					pushFollow(FOLLOW_setFileLevel_in_metadataStatement443);
+					pushFollow(FOLLOW_setFileLevel_in_metadataStatement444);
 					setFileLevel19=setFileLevel();
 					state._fsp--;
 					if (state.failed) return retval;
@@ -1256,7 +1256,7 @@ public class TSParser extends Parser {
 					root_0 = (CommonTree)adaptor.nil();
 
 
-					pushFollow(FOLLOW_addAPropertyTree_in_metadataStatement451);
+					pushFollow(FOLLOW_addAPropertyTree_in_metadataStatement452);
 					addAPropertyTree20=addAPropertyTree();
 					state._fsp--;
 					if (state.failed) return retval;
@@ -1270,7 +1270,7 @@ public class TSParser extends Parser {
 					root_0 = (CommonTree)adaptor.nil();
 
 
-					pushFollow(FOLLOW_addALabelProperty_in_metadataStatement459);
+					pushFollow(FOLLOW_addALabelProperty_in_metadataStatement460);
 					addALabelProperty21=addALabelProperty();
 					state._fsp--;
 					if (state.failed) return retval;
@@ -1284,7 +1284,7 @@ public class TSParser extends Parser {
 					root_0 = (CommonTree)adaptor.nil();
 
 
-					pushFollow(FOLLOW_deleteALebelFromPropertyTree_in_metadataStatement467);
+					pushFollow(FOLLOW_deleteALebelFromPropertyTree_in_metadataStatement468);
 					deleteALebelFromPropertyTree22=deleteALebelFromPropertyTree();
 					state._fsp--;
 					if (state.failed) return retval;
@@ -1298,7 +1298,7 @@ public class TSParser extends Parser {
 					root_0 = (CommonTree)adaptor.nil();
 
 
-					pushFollow(FOLLOW_linkMetadataToPropertyTree_in_metadataStatement475);
+					pushFollow(FOLLOW_linkMetadataToPropertyTree_in_metadataStatement476);
 					linkMetadataToPropertyTree23=linkMetadataToPropertyTree();
 					state._fsp--;
 					if (state.failed) return retval;
@@ -1312,7 +1312,7 @@ public class TSParser extends Parser {
 					root_0 = (CommonTree)adaptor.nil();
 
 
-					pushFollow(FOLLOW_unlinkMetadataNodeFromPropertyTree_in_metadataStatement483);
+					pushFollow(FOLLOW_unlinkMetadataNodeFromPropertyTree_in_metadataStatement484);
 					unlinkMetadataNodeFromPropertyTree24=unlinkMetadataNodeFromPropertyTree();
 					state._fsp--;
 					if (state.failed) return retval;
@@ -1326,7 +1326,7 @@ public class TSParser extends Parser {
 					root_0 = (CommonTree)adaptor.nil();
 
 
-					pushFollow(FOLLOW_deleteTimeseries_in_metadataStatement491);
+					pushFollow(FOLLOW_deleteTimeseries_in_metadataStatement492);
 					deleteTimeseries25=deleteTimeseries();
 					state._fsp--;
 					if (state.failed) return retval;
@@ -1340,7 +1340,7 @@ public class TSParser extends Parser {
 					root_0 = (CommonTree)adaptor.nil();
 
 
-					pushFollow(FOLLOW_showMetadata_in_metadataStatement499);
+					pushFollow(FOLLOW_showMetadata_in_metadataStatement500);
 					showMetadata26=showMetadata();
 					state._fsp--;
 					if (state.failed) return retval;
@@ -1354,7 +1354,7 @@ public class TSParser extends Parser {
 					root_0 = (CommonTree)adaptor.nil();
 
 
-					pushFollow(FOLLOW_describePath_in_metadataStatement507);
+					pushFollow(FOLLOW_describePath_in_metadataStatement508);
 					describePath27=describePath();
 					state._fsp--;
 					if (state.failed) return retval;
@@ -1411,10 +1411,10 @@ public class TSParser extends Parser {
 			// TSParser.g:313:5: ( KW_DESCRIBE path -> ^( TOK_DESCRIBE path ) )
 			// TSParser.g:313:7: KW_DESCRIBE path
 			{
-			KW_DESCRIBE28=(Token)match(input,KW_DESCRIBE,FOLLOW_KW_DESCRIBE_in_describePath524); if (state.failed) return retval; 
+			KW_DESCRIBE28=(Token)match(input,KW_DESCRIBE,FOLLOW_KW_DESCRIBE_in_describePath525); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_KW_DESCRIBE.add(KW_DESCRIBE28);
 
-			pushFollow(FOLLOW_path_in_describePath526);
+			pushFollow(FOLLOW_path_in_describePath527);
 			path29=path();
 			state._fsp--;
 			if (state.failed) return retval;
@@ -1497,10 +1497,10 @@ public class TSParser extends Parser {
 			// TSParser.g:318:3: ( KW_SHOW KW_METADATA -> ^( TOK_SHOW_METADATA ) )
 			// TSParser.g:318:5: KW_SHOW KW_METADATA
 			{
-			KW_SHOW30=(Token)match(input,KW_SHOW,FOLLOW_KW_SHOW_in_showMetadata553); if (state.failed) return retval; 
+			KW_SHOW30=(Token)match(input,KW_SHOW,FOLLOW_KW_SHOW_in_showMetadata554); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_KW_SHOW.add(KW_SHOW30);
 
-			KW_METADATA31=(Token)match(input,KW_METADATA,FOLLOW_KW_METADATA_in_showMetadata555); if (state.failed) return retval; 
+			KW_METADATA31=(Token)match(input,KW_METADATA,FOLLOW_KW_METADATA_in_showMetadata556); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_KW_METADATA.add(KW_METADATA31);
 
 			// AST REWRITE
@@ -1587,27 +1587,27 @@ public class TSParser extends Parser {
 			// TSParser.g:323:3: ( KW_CREATE KW_TIMESERIES timeseries KW_WITH propertyClauses -> ^( TOK_CREATE ^( TOK_TIMESERIES timeseries ) ^( TOK_WITH propertyClauses ) ) )
 			// TSParser.g:323:5: KW_CREATE KW_TIMESERIES timeseries KW_WITH propertyClauses
 			{
-			KW_CREATE32=(Token)match(input,KW_CREATE,FOLLOW_KW_CREATE_in_createTimeseries576); if (state.failed) return retval; 
+			KW_CREATE32=(Token)match(input,KW_CREATE,FOLLOW_KW_CREATE_in_createTimeseries577); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_KW_CREATE.add(KW_CREATE32);
 
-			KW_TIMESERIES33=(Token)match(input,KW_TIMESERIES,FOLLOW_KW_TIMESERIES_in_createTimeseries578); if (state.failed) return retval; 
+			KW_TIMESERIES33=(Token)match(input,KW_TIMESERIES,FOLLOW_KW_TIMESERIES_in_createTimeseries579); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_KW_TIMESERIES.add(KW_TIMESERIES33);
 
-			pushFollow(FOLLOW_timeseries_in_createTimeseries580);
+			pushFollow(FOLLOW_timeseries_in_createTimeseries581);
 			timeseries34=timeseries();
 			state._fsp--;
 			if (state.failed) return retval;
 			if ( state.backtracking==0 ) stream_timeseries.add(timeseries34.getTree());
-			KW_WITH35=(Token)match(input,KW_WITH,FOLLOW_KW_WITH_in_createTimeseries582); if (state.failed) return retval; 
+			KW_WITH35=(Token)match(input,KW_WITH,FOLLOW_KW_WITH_in_createTimeseries583); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_KW_WITH.add(KW_WITH35);
 
-			pushFollow(FOLLOW_propertyClauses_in_createTimeseries584);
+			pushFollow(FOLLOW_propertyClauses_in_createTimeseries585);
 			propertyClauses36=propertyClauses();
 			state._fsp--;
 			if (state.failed) return retval;
 			if ( state.backtracking==0 ) stream_propertyClauses.add(propertyClauses36.getTree());
 			// AST REWRITE
-			// elements: propertyClauses, timeseries
+			// elements: timeseries, propertyClauses
 			// token labels: 
 			// rule labels: retval
 			// token list labels: 
@@ -1708,19 +1708,19 @@ public class TSParser extends Parser {
 			// TSParser.g:328:3: (root= Identifier DOT deviceType= Identifier DOT identifier ( DOT identifier )+ -> ^( TOK_ROOT $deviceType ( identifier )+ ) )
 			// TSParser.g:328:5: root= Identifier DOT deviceType= Identifier DOT identifier ( DOT identifier )+
 			{
-			root=(Token)match(input,Identifier,FOLLOW_Identifier_in_timeseries619); if (state.failed) return retval; 
+			root=(Token)match(input,Identifier,FOLLOW_Identifier_in_timeseries620); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_Identifier.add(root);
 
-			DOT37=(Token)match(input,DOT,FOLLOW_DOT_in_timeseries621); if (state.failed) return retval; 
+			DOT37=(Token)match(input,DOT,FOLLOW_DOT_in_timeseries622); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_DOT.add(DOT37);
 
-			deviceType=(Token)match(input,Identifier,FOLLOW_Identifier_in_timeseries625); if (state.failed) return retval; 
+			deviceType=(Token)match(input,Identifier,FOLLOW_Identifier_in_timeseries626); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_Identifier.add(deviceType);
 
-			DOT38=(Token)match(input,DOT,FOLLOW_DOT_in_timeseries627); if (state.failed) return retval; 
+			DOT38=(Token)match(input,DOT,FOLLOW_DOT_in_timeseries628); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_DOT.add(DOT38);
 
-			pushFollow(FOLLOW_identifier_in_timeseries629);
+			pushFollow(FOLLOW_identifier_in_timeseries630);
 			identifier39=identifier();
 			state._fsp--;
 			if (state.failed) return retval;
@@ -1739,10 +1739,10 @@ public class TSParser extends Parser {
 				case 1 :
 					// TSParser.g:328:63: DOT identifier
 					{
-					DOT40=(Token)match(input,DOT,FOLLOW_DOT_in_timeseries632); if (state.failed) return retval; 
+					DOT40=(Token)match(input,DOT,FOLLOW_DOT_in_timeseries633); if (state.failed) return retval; 
 					if ( state.backtracking==0 ) stream_DOT.add(DOT40);
 
-					pushFollow(FOLLOW_identifier_in_timeseries634);
+					pushFollow(FOLLOW_identifier_in_timeseries635);
 					identifier41=identifier();
 					state._fsp--;
 					if (state.failed) return retval;
@@ -1760,7 +1760,7 @@ public class TSParser extends Parser {
 			}
 
 			// AST REWRITE
-			// elements: deviceType, identifier
+			// elements: identifier, deviceType
 			// token labels: deviceType
 			// rule labels: retval
 			// token list labels: 
@@ -1862,27 +1862,27 @@ public class TSParser extends Parser {
 			// TSParser.g:333:3: ( KW_DATATYPE EQUAL propertyName= identifier COMMA KW_ENCODING EQUAL pv= propertyValue ( COMMA propertyClause )* -> ^( TOK_DATATYPE $propertyName) ^( TOK_ENCODING $pv) ( propertyClause )* )
 			// TSParser.g:333:5: KW_DATATYPE EQUAL propertyName= identifier COMMA KW_ENCODING EQUAL pv= propertyValue ( COMMA propertyClause )*
 			{
-			KW_DATATYPE42=(Token)match(input,KW_DATATYPE,FOLLOW_KW_DATATYPE_in_propertyClauses663); if (state.failed) return retval; 
+			KW_DATATYPE42=(Token)match(input,KW_DATATYPE,FOLLOW_KW_DATATYPE_in_propertyClauses664); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_KW_DATATYPE.add(KW_DATATYPE42);
 
-			EQUAL43=(Token)match(input,EQUAL,FOLLOW_EQUAL_in_propertyClauses665); if (state.failed) return retval; 
+			EQUAL43=(Token)match(input,EQUAL,FOLLOW_EQUAL_in_propertyClauses666); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_EQUAL.add(EQUAL43);
 
-			pushFollow(FOLLOW_identifier_in_propertyClauses669);
+			pushFollow(FOLLOW_identifier_in_propertyClauses670);
 			propertyName=identifier();
 			state._fsp--;
 			if (state.failed) return retval;
 			if ( state.backtracking==0 ) stream_identifier.add(propertyName.getTree());
-			COMMA44=(Token)match(input,COMMA,FOLLOW_COMMA_in_propertyClauses671); if (state.failed) return retval; 
+			COMMA44=(Token)match(input,COMMA,FOLLOW_COMMA_in_propertyClauses672); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_COMMA.add(COMMA44);
 
-			KW_ENCODING45=(Token)match(input,KW_ENCODING,FOLLOW_KW_ENCODING_in_propertyClauses673); if (state.failed) return retval; 
+			KW_ENCODING45=(Token)match(input,KW_ENCODING,FOLLOW_KW_ENCODING_in_propertyClauses674); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_KW_ENCODING.add(KW_ENCODING45);
 
-			EQUAL46=(Token)match(input,EQUAL,FOLLOW_EQUAL_in_propertyClauses675); if (state.failed) return retval; 
+			EQUAL46=(Token)match(input,EQUAL,FOLLOW_EQUAL_in_propertyClauses676); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_EQUAL.add(EQUAL46);
 
-			pushFollow(FOLLOW_propertyValue_in_propertyClauses679);
+			pushFollow(FOLLOW_propertyValue_in_propertyClauses680);
 			pv=propertyValue();
 			state._fsp--;
 			if (state.failed) return retval;
@@ -1900,10 +1900,10 @@ public class TSParser extends Parser {
 				case 1 :
 					// TSParser.g:333:89: COMMA propertyClause
 					{
-					COMMA47=(Token)match(input,COMMA,FOLLOW_COMMA_in_propertyClauses682); if (state.failed) return retval; 
+					COMMA47=(Token)match(input,COMMA,FOLLOW_COMMA_in_propertyClauses683); if (state.failed) return retval; 
 					if ( state.backtracking==0 ) stream_COMMA.add(COMMA47);
 
-					pushFollow(FOLLOW_propertyClause_in_propertyClauses684);
+					pushFollow(FOLLOW_propertyClause_in_propertyClauses685);
 					propertyClause48=propertyClause();
 					state._fsp--;
 					if (state.failed) return retval;
@@ -1917,7 +1917,7 @@ public class TSParser extends Parser {
 			}
 
 			// AST REWRITE
-			// elements: pv, propertyClause, propertyName
+			// elements: propertyName, pv, propertyClause
 			// token labels: 
 			// rule labels: propertyName, pv, retval
 			// token list labels: 
@@ -2011,21 +2011,21 @@ public class TSParser extends Parser {
 			// TSParser.g:338:3: (propertyName= identifier EQUAL pv= propertyValue -> ^( TOK_CLAUSE $propertyName $pv) )
 			// TSParser.g:338:5: propertyName= identifier EQUAL pv= propertyValue
 			{
-			pushFollow(FOLLOW_identifier_in_propertyClause722);
+			pushFollow(FOLLOW_identifier_in_propertyClause723);
 			propertyName=identifier();
 			state._fsp--;
 			if (state.failed) return retval;
 			if ( state.backtracking==0 ) stream_identifier.add(propertyName.getTree());
-			EQUAL49=(Token)match(input,EQUAL,FOLLOW_EQUAL_in_propertyClause724); if (state.failed) return retval; 
+			EQUAL49=(Token)match(input,EQUAL,FOLLOW_EQUAL_in_propertyClause725); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_EQUAL.add(EQUAL49);
 
-			pushFollow(FOLLOW_propertyValue_in_propertyClause728);
+			pushFollow(FOLLOW_propertyValue_in_propertyClause729);
 			pv=propertyValue();
 			state._fsp--;
 			if (state.failed) return retval;
 			if ( state.backtracking==0 ) stream_propertyValue.add(pv.getTree());
 			// AST REWRITE
-			// elements: pv, propertyName
+			// elements: propertyName, pv
 			// token labels: 
 			// rule labels: propertyName, pv, retval
 			// token list labels: 
@@ -2103,7 +2103,7 @@ public class TSParser extends Parser {
 			root_0 = (CommonTree)adaptor.nil();
 
 
-			pushFollow(FOLLOW_numberOrString_in_propertyValue755);
+			pushFollow(FOLLOW_numberOrString_in_propertyValue756);
 			numberOrString50=numberOrString();
 			state._fsp--;
 			if (state.failed) return retval;
@@ -2167,19 +2167,19 @@ public class TSParser extends Parser {
 			// TSParser.g:347:3: ( KW_SET KW_STORAGE KW_GROUP KW_TO path -> ^( TOK_SET ^( TOK_STORAGEGROUP path ) ) )
 			// TSParser.g:347:5: KW_SET KW_STORAGE KW_GROUP KW_TO path
 			{
-			KW_SET51=(Token)match(input,KW_SET,FOLLOW_KW_SET_in_setFileLevel768); if (state.failed) return retval; 
+			KW_SET51=(Token)match(input,KW_SET,FOLLOW_KW_SET_in_setFileLevel769); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_KW_SET.add(KW_SET51);
 
-			KW_STORAGE52=(Token)match(input,KW_STORAGE,FOLLOW_KW_STORAGE_in_setFileLevel770); if (state.failed) return retval; 
+			KW_STORAGE52=(Token)match(input,KW_STORAGE,FOLLOW_KW_STORAGE_in_setFileLevel771); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_KW_STORAGE.add(KW_STORAGE52);
 
-			KW_GROUP53=(Token)match(input,KW_GROUP,FOLLOW_KW_GROUP_in_setFileLevel772); if (state.failed) return retval; 
+			KW_GROUP53=(Token)match(input,KW_GROUP,FOLLOW_KW_GROUP_in_setFileLevel773); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_KW_GROUP.add(KW_GROUP53);
 
-			KW_TO54=(Token)match(input,KW_TO,FOLLOW_KW_TO_in_setFileLevel774); if (state.failed) return retval; 
+			KW_TO54=(Token)match(input,KW_TO,FOLLOW_KW_TO_in_setFileLevel775); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_KW_TO.add(KW_TO54);
 
-			pushFollow(FOLLOW_path_in_setFileLevel776);
+			pushFollow(FOLLOW_path_in_setFileLevel777);
 			path55=path();
 			state._fsp--;
 			if (state.failed) return retval;
@@ -2271,13 +2271,13 @@ public class TSParser extends Parser {
 			// TSParser.g:352:3: ( KW_CREATE KW_PROPERTY property= identifier -> ^( TOK_CREATE ^( TOK_PROPERTY $property) ) )
 			// TSParser.g:352:5: KW_CREATE KW_PROPERTY property= identifier
 			{
-			KW_CREATE56=(Token)match(input,KW_CREATE,FOLLOW_KW_CREATE_in_addAPropertyTree803); if (state.failed) return retval; 
+			KW_CREATE56=(Token)match(input,KW_CREATE,FOLLOW_KW_CREATE_in_addAPropertyTree804); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_KW_CREATE.add(KW_CREATE56);
 
-			KW_PROPERTY57=(Token)match(input,KW_PROPERTY,FOLLOW_KW_PROPERTY_in_addAPropertyTree805); if (state.failed) return retval; 
+			KW_PROPERTY57=(Token)match(input,KW_PROPERTY,FOLLOW_KW_PROPERTY_in_addAPropertyTree806); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_KW_PROPERTY.add(KW_PROPERTY57);
 
-			pushFollow(FOLLOW_identifier_in_addAPropertyTree809);
+			pushFollow(FOLLOW_identifier_in_addAPropertyTree810);
 			property=identifier();
 			state._fsp--;
 			if (state.failed) return retval;
@@ -2377,24 +2377,24 @@ public class TSParser extends Parser {
 			// TSParser.g:357:3: ( KW_ADD KW_LABEL label= identifier KW_TO KW_PROPERTY property= identifier -> ^( TOK_ADD ^( TOK_LABEL $label) ^( TOK_PROPERTY $property) ) )
 			// TSParser.g:357:5: KW_ADD KW_LABEL label= identifier KW_TO KW_PROPERTY property= identifier
 			{
-			KW_ADD58=(Token)match(input,KW_ADD,FOLLOW_KW_ADD_in_addALabelProperty837); if (state.failed) return retval; 
+			KW_ADD58=(Token)match(input,KW_ADD,FOLLOW_KW_ADD_in_addALabelProperty838); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_KW_ADD.add(KW_ADD58);
 
-			KW_LABEL59=(Token)match(input,KW_LABEL,FOLLOW_KW_LABEL_in_addALabelProperty839); if (state.failed) return retval; 
+			KW_LABEL59=(Token)match(input,KW_LABEL,FOLLOW_KW_LABEL_in_addALabelProperty840); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_KW_LABEL.add(KW_LABEL59);
 
-			pushFollow(FOLLOW_identifier_in_addALabelProperty843);
+			pushFollow(FOLLOW_identifier_in_addALabelProperty844);
 			label=identifier();
 			state._fsp--;
 			if (state.failed) return retval;
 			if ( state.backtracking==0 ) stream_identifier.add(label.getTree());
-			KW_TO60=(Token)match(input,KW_TO,FOLLOW_KW_TO_in_addALabelProperty845); if (state.failed) return retval; 
+			KW_TO60=(Token)match(input,KW_TO,FOLLOW_KW_TO_in_addALabelProperty846); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_KW_TO.add(KW_TO60);
 
-			KW_PROPERTY61=(Token)match(input,KW_PROPERTY,FOLLOW_KW_PROPERTY_in_addALabelProperty847); if (state.failed) return retval; 
+			KW_PROPERTY61=(Token)match(input,KW_PROPERTY,FOLLOW_KW_PROPERTY_in_addALabelProperty848); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_KW_PROPERTY.add(KW_PROPERTY61);
 
-			pushFollow(FOLLOW_identifier_in_addALabelProperty851);
+			pushFollow(FOLLOW_identifier_in_addALabelProperty852);
 			property=identifier();
 			state._fsp--;
 			if (state.failed) return retval;
@@ -2503,30 +2503,30 @@ public class TSParser extends Parser {
 			// TSParser.g:362:3: ( KW_DELETE KW_LABEL label= identifier KW_FROM KW_PROPERTY property= identifier -> ^( TOK_DELETE ^( TOK_LABEL $label) ^( TOK_PROPERTY $property) ) )
 			// TSParser.g:362:5: KW_DELETE KW_LABEL label= identifier KW_FROM KW_PROPERTY property= identifier
 			{
-			KW_DELETE62=(Token)match(input,KW_DELETE,FOLLOW_KW_DELETE_in_deleteALebelFromPropertyTree886); if (state.failed) return retval; 
+			KW_DELETE62=(Token)match(input,KW_DELETE,FOLLOW_KW_DELETE_in_deleteALebelFromPropertyTree887); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_KW_DELETE.add(KW_DELETE62);
 
-			KW_LABEL63=(Token)match(input,KW_LABEL,FOLLOW_KW_LABEL_in_deleteALebelFromPropertyTree888); if (state.failed) return retval; 
+			KW_LABEL63=(Token)match(input,KW_LABEL,FOLLOW_KW_LABEL_in_deleteALebelFromPropertyTree889); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_KW_LABEL.add(KW_LABEL63);
 
-			pushFollow(FOLLOW_identifier_in_deleteALebelFromPropertyTree892);
+			pushFollow(FOLLOW_identifier_in_deleteALebelFromPropertyTree893);
 			label=identifier();
 			state._fsp--;
 			if (state.failed) return retval;
 			if ( state.backtracking==0 ) stream_identifier.add(label.getTree());
-			KW_FROM64=(Token)match(input,KW_FROM,FOLLOW_KW_FROM_in_deleteALebelFromPropertyTree894); if (state.failed) return retval; 
+			KW_FROM64=(Token)match(input,KW_FROM,FOLLOW_KW_FROM_in_deleteALebelFromPropertyTree895); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_KW_FROM.add(KW_FROM64);
 
-			KW_PROPERTY65=(Token)match(input,KW_PROPERTY,FOLLOW_KW_PROPERTY_in_deleteALebelFromPropertyTree896); if (state.failed) return retval; 
+			KW_PROPERTY65=(Token)match(input,KW_PROPERTY,FOLLOW_KW_PROPERTY_in_deleteALebelFromPropertyTree897); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_KW_PROPERTY.add(KW_PROPERTY65);
 
-			pushFollow(FOLLOW_identifier_in_deleteALebelFromPropertyTree900);
+			pushFollow(FOLLOW_identifier_in_deleteALebelFromPropertyTree901);
 			property=identifier();
 			state._fsp--;
 			if (state.failed) return retval;
 			if ( state.backtracking==0 ) stream_identifier.add(property.getTree());
 			// AST REWRITE
-			// elements: property, label
+			// elements: label, property
 			// token labels: 
 			// rule labels: property, label, retval
 			// token list labels: 
@@ -2624,24 +2624,24 @@ public class TSParser extends Parser {
 			// TSParser.g:367:3: ( KW_LINK timeseriesPath KW_TO propertyPath -> ^( TOK_LINK timeseriesPath propertyPath ) )
 			// TSParser.g:367:5: KW_LINK timeseriesPath KW_TO propertyPath
 			{
-			KW_LINK66=(Token)match(input,KW_LINK,FOLLOW_KW_LINK_in_linkMetadataToPropertyTree935); if (state.failed) return retval; 
+			KW_LINK66=(Token)match(input,KW_LINK,FOLLOW_KW_LINK_in_linkMetadataToPropertyTree936); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_KW_LINK.add(KW_LINK66);
 
-			pushFollow(FOLLOW_timeseriesPath_in_linkMetadataToPropertyTree937);
+			pushFollow(FOLLOW_timeseriesPath_in_linkMetadataToPropertyTree938);
 			timeseriesPath67=timeseriesPath();
 			state._fsp--;
 			if (state.failed) return retval;
 			if ( state.backtracking==0 ) stream_timeseriesPath.add(timeseriesPath67.getTree());
-			KW_TO68=(Token)match(input,KW_TO,FOLLOW_KW_TO_in_linkMetadataToPropertyTree939); if (state.failed) return retval; 
+			KW_TO68=(Token)match(input,KW_TO,FOLLOW_KW_TO_in_linkMetadataToPropertyTree940); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_KW_TO.add(KW_TO68);
 
-			pushFollow(FOLLOW_propertyPath_in_linkMetadataToPropertyTree941);
+			pushFollow(FOLLOW_propertyPath_in_linkMetadataToPropertyTree942);
 			propertyPath69=propertyPath();
 			state._fsp--;
 			if (state.failed) return retval;
 			if ( state.backtracking==0 ) stream_propertyPath.add(propertyPath69.getTree());
 			// AST REWRITE
-			// elements: timeseriesPath, propertyPath
+			// elements: propertyPath, timeseriesPath
 			// token labels: 
 			// rule labels: retval
 			// token list labels: 
@@ -2721,7 +2721,7 @@ public class TSParser extends Parser {
 			// TSParser.g:372:3: ( Identifier ( DOT identifier )+ -> ^( TOK_ROOT ( identifier )+ ) )
 			// TSParser.g:372:5: Identifier ( DOT identifier )+
 			{
-			Identifier70=(Token)match(input,Identifier,FOLLOW_Identifier_in_timeseriesPath966); if (state.failed) return retval; 
+			Identifier70=(Token)match(input,Identifier,FOLLOW_Identifier_in_timeseriesPath967); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_Identifier.add(Identifier70);
 
 			// TSParser.g:372:16: ( DOT identifier )+
@@ -2738,10 +2738,10 @@ public class TSParser extends Parser {
 				case 1 :
 					// TSParser.g:372:17: DOT identifier
 					{
-					DOT71=(Token)match(input,DOT,FOLLOW_DOT_in_timeseriesPath969); if (state.failed) return retval; 
+					DOT71=(Token)match(input,DOT,FOLLOW_DOT_in_timeseriesPath970); if (state.failed) return retval; 
 					if ( state.backtracking==0 ) stream_DOT.add(DOT71);
 
-					pushFollow(FOLLOW_identifier_in_timeseriesPath971);
+					pushFollow(FOLLOW_identifier_in_timeseriesPath972);
 					identifier72=identifier();
 					state._fsp--;
 					if (state.failed) return retval;
@@ -2843,15 +2843,15 @@ public class TSParser extends Parser {
 			// TSParser.g:377:3: (property= identifier DOT label= identifier -> ^( TOK_LABEL $label) ^( TOK_PROPERTY $property) )
 			// TSParser.g:377:5: property= identifier DOT label= identifier
 			{
-			pushFollow(FOLLOW_identifier_in_propertyPath999);
+			pushFollow(FOLLOW_identifier_in_propertyPath1000);
 			property=identifier();
 			state._fsp--;
 			if (state.failed) return retval;
 			if ( state.backtracking==0 ) stream_identifier.add(property.getTree());
-			DOT73=(Token)match(input,DOT,FOLLOW_DOT_in_propertyPath1001); if (state.failed) return retval; 
+			DOT73=(Token)match(input,DOT,FOLLOW_DOT_in_propertyPath1002); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_DOT.add(DOT73);
 
-			pushFollow(FOLLOW_identifier_in_propertyPath1005);
+			pushFollow(FOLLOW_identifier_in_propertyPath1006);
 			label=identifier();
 			state._fsp--;
 			if (state.failed) return retval;
@@ -2948,24 +2948,24 @@ public class TSParser extends Parser {
 			// TSParser.g:382:3: ( KW_UNLINK timeseriesPath KW_FROM propertyPath -> ^( TOK_UNLINK timeseriesPath propertyPath ) )
 			// TSParser.g:382:4: KW_UNLINK timeseriesPath KW_FROM propertyPath
 			{
-			KW_UNLINK74=(Token)match(input,KW_UNLINK,FOLLOW_KW_UNLINK_in_unlinkMetadataNodeFromPropertyTree1035); if (state.failed) return retval; 
+			KW_UNLINK74=(Token)match(input,KW_UNLINK,FOLLOW_KW_UNLINK_in_unlinkMetadataNodeFromPropertyTree1036); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_KW_UNLINK.add(KW_UNLINK74);
 
-			pushFollow(FOLLOW_timeseriesPath_in_unlinkMetadataNodeFromPropertyTree1037);
+			pushFollow(FOLLOW_timeseriesPath_in_unlinkMetadataNodeFromPropertyTree1038);
 			timeseriesPath75=timeseriesPath();
 			state._fsp--;
 			if (state.failed) return retval;
 			if ( state.backtracking==0 ) stream_timeseriesPath.add(timeseriesPath75.getTree());
-			KW_FROM76=(Token)match(input,KW_FROM,FOLLOW_KW_FROM_in_unlinkMetadataNodeFromPropertyTree1039); if (state.failed) return retval; 
+			KW_FROM76=(Token)match(input,KW_FROM,FOLLOW_KW_FROM_in_unlinkMetadataNodeFromPropertyTree1040); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_KW_FROM.add(KW_FROM76);
 
-			pushFollow(FOLLOW_propertyPath_in_unlinkMetadataNodeFromPropertyTree1041);
+			pushFollow(FOLLOW_propertyPath_in_unlinkMetadataNodeFromPropertyTree1042);
 			propertyPath77=propertyPath();
 			state._fsp--;
 			if (state.failed) return retval;
 			if ( state.backtracking==0 ) stream_propertyPath.add(propertyPath77.getTree());
 			// AST REWRITE
-			// elements: timeseriesPath, propertyPath
+			// elements: propertyPath, timeseriesPath
 			// token labels: 
 			// rule labels: retval
 			// token list labels: 
@@ -3045,13 +3045,13 @@ public class TSParser extends Parser {
 			// TSParser.g:387:3: ( KW_DELETE KW_TIMESERIES timeseries -> ^( TOK_DELETE ^( TOK_TIMESERIES timeseries ) ) )
 			// TSParser.g:387:5: KW_DELETE KW_TIMESERIES timeseries
 			{
-			KW_DELETE78=(Token)match(input,KW_DELETE,FOLLOW_KW_DELETE_in_deleteTimeseries1067); if (state.failed) return retval; 
+			KW_DELETE78=(Token)match(input,KW_DELETE,FOLLOW_KW_DELETE_in_deleteTimeseries1068); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_KW_DELETE.add(KW_DELETE78);
 
-			KW_TIMESERIES79=(Token)match(input,KW_TIMESERIES,FOLLOW_KW_TIMESERIES_in_deleteTimeseries1069); if (state.failed) return retval; 
+			KW_TIMESERIES79=(Token)match(input,KW_TIMESERIES,FOLLOW_KW_TIMESERIES_in_deleteTimeseries1070); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_KW_TIMESERIES.add(KW_TIMESERIES79);
 
-			pushFollow(FOLLOW_timeseries_in_deleteTimeseries1071);
+			pushFollow(FOLLOW_timeseries_in_deleteTimeseries1072);
 			timeseries80=timeseries();
 			state._fsp--;
 			if (state.failed) return retval;
@@ -3138,7 +3138,7 @@ public class TSParser extends Parser {
 			// TSParser.g:400:5: ( KW_MERGE -> ^( TOK_MERGE ) )
 			// TSParser.g:401:5: KW_MERGE
 			{
-			KW_MERGE81=(Token)match(input,KW_MERGE,FOLLOW_KW_MERGE_in_mergeStatement1107); if (state.failed) return retval; 
+			KW_MERGE81=(Token)match(input,KW_MERGE,FOLLOW_KW_MERGE_in_mergeStatement1108); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_KW_MERGE.add(KW_MERGE81);
 
 			// AST REWRITE
@@ -3215,7 +3215,7 @@ public class TSParser extends Parser {
 			// TSParser.g:406:5: ( KW_QUIT -> ^( TOK_QUIT ) )
 			// TSParser.g:407:5: KW_QUIT
 			{
-			KW_QUIT82=(Token)match(input,KW_QUIT,FOLLOW_KW_QUIT_in_quitStatement1138); if (state.failed) return retval; 
+			KW_QUIT82=(Token)match(input,KW_QUIT,FOLLOW_KW_QUIT_in_quitStatement1139); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_KW_QUIT.add(KW_QUIT82);
 
 			// AST REWRITE
@@ -3295,7 +3295,7 @@ public class TSParser extends Parser {
 			// TSParser.g:412:4: ( selectClause ( fromClause )? ( whereClause )? -> ^( TOK_QUERY selectClause ( fromClause )? ( whereClause )? ) )
 			// TSParser.g:413:4: selectClause ( fromClause )? ( whereClause )?
 			{
-			pushFollow(FOLLOW_selectClause_in_queryStatement1167);
+			pushFollow(FOLLOW_selectClause_in_queryStatement1168);
 			selectClause83=selectClause();
 			state._fsp--;
 			if (state.failed) return retval;
@@ -3310,7 +3310,7 @@ public class TSParser extends Parser {
 				case 1 :
 					// TSParser.g:414:4: fromClause
 					{
-					pushFollow(FOLLOW_fromClause_in_queryStatement1172);
+					pushFollow(FOLLOW_fromClause_in_queryStatement1173);
 					fromClause84=fromClause();
 					state._fsp--;
 					if (state.failed) return retval;
@@ -3330,7 +3330,7 @@ public class TSParser extends Parser {
 				case 1 :
 					// TSParser.g:415:4: whereClause
 					{
-					pushFollow(FOLLOW_whereClause_in_queryStatement1178);
+					pushFollow(FOLLOW_whereClause_in_queryStatement1179);
 					whereClause85=whereClause();
 					state._fsp--;
 					if (state.failed) return retval;
@@ -3341,7 +3341,7 @@ public class TSParser extends Parser {
 			}
 
 			// AST REWRITE
-			// elements: fromClause, whereClause, selectClause
+			// elements: selectClause, whereClause, fromClause
 			// token labels: 
 			// rule labels: retval
 			// token list labels: 
@@ -3569,7 +3569,7 @@ public class TSParser extends Parser {
 					root_0 = (CommonTree)adaptor.nil();
 
 
-					pushFollow(FOLLOW_loadStatement_in_authorStatement1212);
+					pushFollow(FOLLOW_loadStatement_in_authorStatement1213);
 					loadStatement86=loadStatement();
 					state._fsp--;
 					if (state.failed) return retval;
@@ -3583,7 +3583,7 @@ public class TSParser extends Parser {
 					root_0 = (CommonTree)adaptor.nil();
 
 
-					pushFollow(FOLLOW_createUser_in_authorStatement1220);
+					pushFollow(FOLLOW_createUser_in_authorStatement1221);
 					createUser87=createUser();
 					state._fsp--;
 					if (state.failed) return retval;
@@ -3597,7 +3597,7 @@ public class TSParser extends Parser {
 					root_0 = (CommonTree)adaptor.nil();
 
 
-					pushFollow(FOLLOW_dropUser_in_authorStatement1228);
+					pushFollow(FOLLOW_dropUser_in_authorStatement1229);
 					dropUser88=dropUser();
 					state._fsp--;
 					if (state.failed) return retval;
@@ -3611,7 +3611,7 @@ public class TSParser extends Parser {
 					root_0 = (CommonTree)adaptor.nil();
 
 
-					pushFollow(FOLLOW_createRole_in_authorStatement1236);
+					pushFollow(FOLLOW_createRole_in_authorStatement1237);
 					createRole89=createRole();
 					state._fsp--;
 					if (state.failed) return retval;
@@ -3625,7 +3625,7 @@ public class TSParser extends Parser {
 					root_0 = (CommonTree)adaptor.nil();
 
 
-					pushFollow(FOLLOW_dropRole_in_authorStatement1244);
+					pushFollow(FOLLOW_dropRole_in_authorStatement1245);
 					dropRole90=dropRole();
 					state._fsp--;
 					if (state.failed) return retval;
@@ -3639,7 +3639,7 @@ public class TSParser extends Parser {
 					root_0 = (CommonTree)adaptor.nil();
 
 
-					pushFollow(FOLLOW_grantUser_in_authorStatement1252);
+					pushFollow(FOLLOW_grantUser_in_authorStatement1253);
 					grantUser91=grantUser();
 					state._fsp--;
 					if (state.failed) return retval;
@@ -3653,7 +3653,7 @@ public class TSParser extends Parser {
 					root_0 = (CommonTree)adaptor.nil();
 
 
-					pushFollow(FOLLOW_grantRole_in_authorStatement1260);
+					pushFollow(FOLLOW_grantRole_in_authorStatement1261);
 					grantRole92=grantRole();
 					state._fsp--;
 					if (state.failed) return retval;
@@ -3667,7 +3667,7 @@ public class TSParser extends Parser {
 					root_0 = (CommonTree)adaptor.nil();
 
 
-					pushFollow(FOLLOW_revokeUser_in_authorStatement1268);
+					pushFollow(FOLLOW_revokeUser_in_authorStatement1269);
 					revokeUser93=revokeUser();
 					state._fsp--;
 					if (state.failed) return retval;
@@ -3681,7 +3681,7 @@ public class TSParser extends Parser {
 					root_0 = (CommonTree)adaptor.nil();
 
 
-					pushFollow(FOLLOW_revokeRole_in_authorStatement1276);
+					pushFollow(FOLLOW_revokeRole_in_authorStatement1277);
 					revokeRole94=revokeRole();
 					state._fsp--;
 					if (state.failed) return retval;
@@ -3695,7 +3695,7 @@ public class TSParser extends Parser {
 					root_0 = (CommonTree)adaptor.nil();
 
 
-					pushFollow(FOLLOW_grantRoleToUser_in_authorStatement1284);
+					pushFollow(FOLLOW_grantRoleToUser_in_authorStatement1285);
 					grantRoleToUser95=grantRoleToUser();
 					state._fsp--;
 					if (state.failed) return retval;
@@ -3709,7 +3709,7 @@ public class TSParser extends Parser {
 					root_0 = (CommonTree)adaptor.nil();
 
 
-					pushFollow(FOLLOW_revokeRoleFromUser_in_authorStatement1292);
+					pushFollow(FOLLOW_revokeRoleFromUser_in_authorStatement1293);
 					revokeRoleFromUser96=revokeRoleFromUser();
 					state._fsp--;
 					if (state.failed) return retval;
@@ -3776,21 +3776,21 @@ public class TSParser extends Parser {
 			// TSParser.g:434:5: ( KW_LOAD KW_TIMESERIES (fileName= StringLiteral ) identifier ( DOT identifier )* -> ^( TOK_LOAD $fileName ( identifier )+ ) )
 			// TSParser.g:434:7: KW_LOAD KW_TIMESERIES (fileName= StringLiteral ) identifier ( DOT identifier )*
 			{
-			KW_LOAD97=(Token)match(input,KW_LOAD,FOLLOW_KW_LOAD_in_loadStatement1309); if (state.failed) return retval; 
+			KW_LOAD97=(Token)match(input,KW_LOAD,FOLLOW_KW_LOAD_in_loadStatement1310); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_KW_LOAD.add(KW_LOAD97);
 
-			KW_TIMESERIES98=(Token)match(input,KW_TIMESERIES,FOLLOW_KW_TIMESERIES_in_loadStatement1311); if (state.failed) return retval; 
+			KW_TIMESERIES98=(Token)match(input,KW_TIMESERIES,FOLLOW_KW_TIMESERIES_in_loadStatement1312); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_KW_TIMESERIES.add(KW_TIMESERIES98);
 
 			// TSParser.g:434:29: (fileName= StringLiteral )
 			// TSParser.g:434:30: fileName= StringLiteral
 			{
-			fileName=(Token)match(input,StringLiteral,FOLLOW_StringLiteral_in_loadStatement1316); if (state.failed) return retval; 
+			fileName=(Token)match(input,StringLiteral,FOLLOW_StringLiteral_in_loadStatement1317); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_StringLiteral.add(fileName);
 
 			}
 
-			pushFollow(FOLLOW_identifier_in_loadStatement1319);
+			pushFollow(FOLLOW_identifier_in_loadStatement1320);
 			identifier99=identifier();
 			state._fsp--;
 			if (state.failed) return retval;
@@ -3808,10 +3808,10 @@ public class TSParser extends Parser {
 				case 1 :
 					// TSParser.g:434:66: DOT identifier
 					{
-					DOT100=(Token)match(input,DOT,FOLLOW_DOT_in_loadStatement1322); if (state.failed) return retval; 
+					DOT100=(Token)match(input,DOT,FOLLOW_DOT_in_loadStatement1323); if (state.failed) return retval; 
 					if ( state.backtracking==0 ) stream_DOT.add(DOT100);
 
-					pushFollow(FOLLOW_identifier_in_loadStatement1324);
+					pushFollow(FOLLOW_identifier_in_loadStatement1325);
 					identifier101=identifier();
 					state._fsp--;
 					if (state.failed) return retval;
@@ -3825,7 +3825,7 @@ public class TSParser extends Parser {
 			}
 
 			// AST REWRITE
-			// elements: fileName, identifier
+			// elements: identifier, fileName
 			// token labels: fileName
 			// rule labels: retval
 			// token list labels: 
@@ -3914,18 +3914,18 @@ public class TSParser extends Parser {
 			// TSParser.g:439:5: ( KW_CREATE KW_USER userName= numberOrString password= numberOrString -> ^( TOK_CREATE ^( TOK_USER $userName) ^( TOK_PASSWORD $password) ) )
 			// TSParser.g:439:7: KW_CREATE KW_USER userName= numberOrString password= numberOrString
 			{
-			KW_CREATE102=(Token)match(input,KW_CREATE,FOLLOW_KW_CREATE_in_createUser1359); if (state.failed) return retval; 
+			KW_CREATE102=(Token)match(input,KW_CREATE,FOLLOW_KW_CREATE_in_createUser1360); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_KW_CREATE.add(KW_CREATE102);
 
-			KW_USER103=(Token)match(input,KW_USER,FOLLOW_KW_USER_in_createUser1361); if (state.failed) return retval; 
+			KW_USER103=(Token)match(input,KW_USER,FOLLOW_KW_USER_in_createUser1362); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_KW_USER.add(KW_USER103);
 
-			pushFollow(FOLLOW_numberOrString_in_createUser1373);
+			pushFollow(FOLLOW_numberOrString_in_createUser1374);
 			userName=numberOrString();
 			state._fsp--;
 			if (state.failed) return retval;
 			if ( state.backtracking==0 ) stream_numberOrString.add(userName.getTree());
-			pushFollow(FOLLOW_numberOrString_in_createUser1385);
+			pushFollow(FOLLOW_numberOrString_in_createUser1386);
 			password=numberOrString();
 			state._fsp--;
 			if (state.failed) return retval;
@@ -4027,13 +4027,13 @@ public class TSParser extends Parser {
 			// TSParser.g:446:5: ( KW_DROP KW_USER userName= identifier -> ^( TOK_DROP ^( TOK_USER $userName) ) )
 			// TSParser.g:446:7: KW_DROP KW_USER userName= identifier
 			{
-			KW_DROP104=(Token)match(input,KW_DROP,FOLLOW_KW_DROP_in_dropUser1427); if (state.failed) return retval; 
+			KW_DROP104=(Token)match(input,KW_DROP,FOLLOW_KW_DROP_in_dropUser1428); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_KW_DROP.add(KW_DROP104);
 
-			KW_USER105=(Token)match(input,KW_USER,FOLLOW_KW_USER_in_dropUser1429); if (state.failed) return retval; 
+			KW_USER105=(Token)match(input,KW_USER,FOLLOW_KW_USER_in_dropUser1430); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_KW_USER.add(KW_USER105);
 
-			pushFollow(FOLLOW_identifier_in_dropUser1433);
+			pushFollow(FOLLOW_identifier_in_dropUser1434);
 			userName=identifier();
 			state._fsp--;
 			if (state.failed) return retval;
@@ -4126,13 +4126,13 @@ public class TSParser extends Parser {
 			// TSParser.g:451:5: ( KW_CREATE KW_ROLE roleName= identifier -> ^( TOK_CREATE ^( TOK_ROLE $roleName) ) )
 			// TSParser.g:451:7: KW_CREATE KW_ROLE roleName= identifier
 			{
-			KW_CREATE106=(Token)match(input,KW_CREATE,FOLLOW_KW_CREATE_in_createRole1467); if (state.failed) return retval; 
+			KW_CREATE106=(Token)match(input,KW_CREATE,FOLLOW_KW_CREATE_in_createRole1468); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_KW_CREATE.add(KW_CREATE106);
 
-			KW_ROLE107=(Token)match(input,KW_ROLE,FOLLOW_KW_ROLE_in_createRole1469); if (state.failed) return retval; 
+			KW_ROLE107=(Token)match(input,KW_ROLE,FOLLOW_KW_ROLE_in_createRole1470); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_KW_ROLE.add(KW_ROLE107);
 
-			pushFollow(FOLLOW_identifier_in_createRole1473);
+			pushFollow(FOLLOW_identifier_in_createRole1474);
 			roleName=identifier();
 			state._fsp--;
 			if (state.failed) return retval;
@@ -4225,13 +4225,13 @@ public class TSParser extends Parser {
 			// TSParser.g:456:5: ( KW_DROP KW_ROLE roleName= identifier -> ^( TOK_DROP ^( TOK_ROLE $roleName) ) )
 			// TSParser.g:456:7: KW_DROP KW_ROLE roleName= identifier
 			{
-			KW_DROP108=(Token)match(input,KW_DROP,FOLLOW_KW_DROP_in_dropRole1507); if (state.failed) return retval; 
+			KW_DROP108=(Token)match(input,KW_DROP,FOLLOW_KW_DROP_in_dropRole1508); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_KW_DROP.add(KW_DROP108);
 
-			KW_ROLE109=(Token)match(input,KW_ROLE,FOLLOW_KW_ROLE_in_dropRole1509); if (state.failed) return retval; 
+			KW_ROLE109=(Token)match(input,KW_ROLE,FOLLOW_KW_ROLE_in_dropRole1510); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_KW_ROLE.add(KW_ROLE109);
 
-			pushFollow(FOLLOW_identifier_in_dropRole1513);
+			pushFollow(FOLLOW_identifier_in_dropRole1514);
 			roleName=identifier();
 			state._fsp--;
 			if (state.failed) return retval;
@@ -4331,32 +4331,32 @@ public class TSParser extends Parser {
 			// TSParser.g:461:5: ( KW_GRANT KW_USER userName= identifier privileges KW_ON path -> ^( TOK_GRANT ^( TOK_USER $userName) privileges path ) )
 			// TSParser.g:461:7: KW_GRANT KW_USER userName= identifier privileges KW_ON path
 			{
-			KW_GRANT110=(Token)match(input,KW_GRANT,FOLLOW_KW_GRANT_in_grantUser1547); if (state.failed) return retval; 
+			KW_GRANT110=(Token)match(input,KW_GRANT,FOLLOW_KW_GRANT_in_grantUser1548); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_KW_GRANT.add(KW_GRANT110);
 
-			KW_USER111=(Token)match(input,KW_USER,FOLLOW_KW_USER_in_grantUser1549); if (state.failed) return retval; 
+			KW_USER111=(Token)match(input,KW_USER,FOLLOW_KW_USER_in_grantUser1550); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_KW_USER.add(KW_USER111);
 
-			pushFollow(FOLLOW_identifier_in_grantUser1555);
+			pushFollow(FOLLOW_identifier_in_grantUser1556);
 			userName=identifier();
 			state._fsp--;
 			if (state.failed) return retval;
 			if ( state.backtracking==0 ) stream_identifier.add(userName.getTree());
-			pushFollow(FOLLOW_privileges_in_grantUser1557);
+			pushFollow(FOLLOW_privileges_in_grantUser1558);
 			privileges112=privileges();
 			state._fsp--;
 			if (state.failed) return retval;
 			if ( state.backtracking==0 ) stream_privileges.add(privileges112.getTree());
-			KW_ON113=(Token)match(input,KW_ON,FOLLOW_KW_ON_in_grantUser1559); if (state.failed) return retval; 
+			KW_ON113=(Token)match(input,KW_ON,FOLLOW_KW_ON_in_grantUser1560); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_KW_ON.add(KW_ON113);
 
-			pushFollow(FOLLOW_path_in_grantUser1561);
+			pushFollow(FOLLOW_path_in_grantUser1562);
 			path114=path();
 			state._fsp--;
 			if (state.failed) return retval;
 			if ( state.backtracking==0 ) stream_path.add(path114.getTree());
 			// AST REWRITE
-			// elements: path, userName, privileges
+			// elements: userName, privileges, path
 			// token labels: 
 			// rule labels: userName, retval
 			// token list labels: 
@@ -4452,32 +4452,32 @@ public class TSParser extends Parser {
 			// TSParser.g:466:5: ( KW_GRANT KW_ROLE roleName= identifier privileges KW_ON path -> ^( TOK_GRANT ^( TOK_ROLE $roleName) privileges path ) )
 			// TSParser.g:466:7: KW_GRANT KW_ROLE roleName= identifier privileges KW_ON path
 			{
-			KW_GRANT115=(Token)match(input,KW_GRANT,FOLLOW_KW_GRANT_in_grantRole1599); if (state.failed) return retval; 
+			KW_GRANT115=(Token)match(input,KW_GRANT,FOLLOW_KW_GRANT_in_grantRole1600); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_KW_GRANT.add(KW_GRANT115);
 
-			KW_ROLE116=(Token)match(input,KW_ROLE,FOLLOW_KW_ROLE_in_grantRole1601); if (state.failed) return retval; 
+			KW_ROLE116=(Token)match(input,KW_ROLE,FOLLOW_KW_ROLE_in_grantRole1602); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_KW_ROLE.add(KW_ROLE116);
 
-			pushFollow(FOLLOW_identifier_in_grantRole1605);
+			pushFollow(FOLLOW_identifier_in_grantRole1606);
 			roleName=identifier();
 			state._fsp--;
 			if (state.failed) return retval;
 			if ( state.backtracking==0 ) stream_identifier.add(roleName.getTree());
-			pushFollow(FOLLOW_privileges_in_grantRole1607);
+			pushFollow(FOLLOW_privileges_in_grantRole1608);
 			privileges117=privileges();
 			state._fsp--;
 			if (state.failed) return retval;
 			if ( state.backtracking==0 ) stream_privileges.add(privileges117.getTree());
-			KW_ON118=(Token)match(input,KW_ON,FOLLOW_KW_ON_in_grantRole1609); if (state.failed) return retval; 
+			KW_ON118=(Token)match(input,KW_ON,FOLLOW_KW_ON_in_grantRole1610); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_KW_ON.add(KW_ON118);
 
-			pushFollow(FOLLOW_path_in_grantRole1611);
+			pushFollow(FOLLOW_path_in_grantRole1612);
 			path119=path();
 			state._fsp--;
 			if (state.failed) return retval;
 			if ( state.backtracking==0 ) stream_path.add(path119.getTree());
 			// AST REWRITE
-			// elements: path, roleName, privileges
+			// elements: roleName, path, privileges
 			// token labels: 
 			// rule labels: roleName, retval
 			// token list labels: 
@@ -4573,26 +4573,26 @@ public class TSParser extends Parser {
 			// TSParser.g:471:5: ( KW_REVOKE KW_USER userName= identifier privileges KW_ON path -> ^( TOK_REVOKE ^( TOK_USER $userName) privileges path ) )
 			// TSParser.g:471:7: KW_REVOKE KW_USER userName= identifier privileges KW_ON path
 			{
-			KW_REVOKE120=(Token)match(input,KW_REVOKE,FOLLOW_KW_REVOKE_in_revokeUser1649); if (state.failed) return retval; 
+			KW_REVOKE120=(Token)match(input,KW_REVOKE,FOLLOW_KW_REVOKE_in_revokeUser1650); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_KW_REVOKE.add(KW_REVOKE120);
 
-			KW_USER121=(Token)match(input,KW_USER,FOLLOW_KW_USER_in_revokeUser1651); if (state.failed) return retval; 
+			KW_USER121=(Token)match(input,KW_USER,FOLLOW_KW_USER_in_revokeUser1652); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_KW_USER.add(KW_USER121);
 
-			pushFollow(FOLLOW_identifier_in_revokeUser1657);
+			pushFollow(FOLLOW_identifier_in_revokeUser1658);
 			userName=identifier();
 			state._fsp--;
 			if (state.failed) return retval;
 			if ( state.backtracking==0 ) stream_identifier.add(userName.getTree());
-			pushFollow(FOLLOW_privileges_in_revokeUser1659);
+			pushFollow(FOLLOW_privileges_in_revokeUser1660);
 			privileges122=privileges();
 			state._fsp--;
 			if (state.failed) return retval;
 			if ( state.backtracking==0 ) stream_privileges.add(privileges122.getTree());
-			KW_ON123=(Token)match(input,KW_ON,FOLLOW_KW_ON_in_revokeUser1661); if (state.failed) return retval; 
+			KW_ON123=(Token)match(input,KW_ON,FOLLOW_KW_ON_in_revokeUser1662); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_KW_ON.add(KW_ON123);
 
-			pushFollow(FOLLOW_path_in_revokeUser1663);
+			pushFollow(FOLLOW_path_in_revokeUser1664);
 			path124=path();
 			state._fsp--;
 			if (state.failed) return retval;
@@ -4694,32 +4694,32 @@ public class TSParser extends Parser {
 			// TSParser.g:476:5: ( KW_REVOKE KW_ROLE roleName= identifier privileges KW_ON path -> ^( TOK_REVOKE ^( TOK_ROLE $roleName) privileges path ) )
 			// TSParser.g:476:7: KW_REVOKE KW_ROLE roleName= identifier privileges KW_ON path
 			{
-			KW_REVOKE125=(Token)match(input,KW_REVOKE,FOLLOW_KW_REVOKE_in_revokeRole1701); if (state.failed) return retval; 
+			KW_REVOKE125=(Token)match(input,KW_REVOKE,FOLLOW_KW_REVOKE_in_revokeRole1702); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_KW_REVOKE.add(KW_REVOKE125);
 
-			KW_ROLE126=(Token)match(input,KW_ROLE,FOLLOW_KW_ROLE_in_revokeRole1703); if (state.failed) return retval; 
+			KW_ROLE126=(Token)match(input,KW_ROLE,FOLLOW_KW_ROLE_in_revokeRole1704); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_KW_ROLE.add(KW_ROLE126);
 
-			pushFollow(FOLLOW_identifier_in_revokeRole1709);
+			pushFollow(FOLLOW_identifier_in_revokeRole1710);
 			roleName=identifier();
 			state._fsp--;
 			if (state.failed) return retval;
 			if ( state.backtracking==0 ) stream_identifier.add(roleName.getTree());
-			pushFollow(FOLLOW_privileges_in_revokeRole1711);
+			pushFollow(FOLLOW_privileges_in_revokeRole1712);
 			privileges127=privileges();
 			state._fsp--;
 			if (state.failed) return retval;
 			if ( state.backtracking==0 ) stream_privileges.add(privileges127.getTree());
-			KW_ON128=(Token)match(input,KW_ON,FOLLOW_KW_ON_in_revokeRole1713); if (state.failed) return retval; 
+			KW_ON128=(Token)match(input,KW_ON,FOLLOW_KW_ON_in_revokeRole1714); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_KW_ON.add(KW_ON128);
 
-			pushFollow(FOLLOW_path_in_revokeRole1715);
+			pushFollow(FOLLOW_path_in_revokeRole1716);
 			path129=path();
 			state._fsp--;
 			if (state.failed) return retval;
 			if ( state.backtracking==0 ) stream_path.add(path129.getTree());
 			// AST REWRITE
-			// elements: roleName, path, privileges
+			// elements: privileges, path, roleName
 			// token labels: 
 			// rule labels: roleName, retval
 			// token list labels: 
@@ -4809,24 +4809,24 @@ public class TSParser extends Parser {
 			// TSParser.g:481:5: ( KW_GRANT roleName= identifier KW_TO userName= identifier -> ^( TOK_GRANT ^( TOK_ROLE $roleName) ^( TOK_USER $userName) ) )
 			// TSParser.g:481:7: KW_GRANT roleName= identifier KW_TO userName= identifier
 			{
-			KW_GRANT130=(Token)match(input,KW_GRANT,FOLLOW_KW_GRANT_in_grantRoleToUser1753); if (state.failed) return retval; 
+			KW_GRANT130=(Token)match(input,KW_GRANT,FOLLOW_KW_GRANT_in_grantRoleToUser1754); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_KW_GRANT.add(KW_GRANT130);
 
-			pushFollow(FOLLOW_identifier_in_grantRoleToUser1759);
+			pushFollow(FOLLOW_identifier_in_grantRoleToUser1760);
 			roleName=identifier();
 			state._fsp--;
 			if (state.failed) return retval;
 			if ( state.backtracking==0 ) stream_identifier.add(roleName.getTree());
-			KW_TO131=(Token)match(input,KW_TO,FOLLOW_KW_TO_in_grantRoleToUser1761); if (state.failed) return retval; 
+			KW_TO131=(Token)match(input,KW_TO,FOLLOW_KW_TO_in_grantRoleToUser1762); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_KW_TO.add(KW_TO131);
 
-			pushFollow(FOLLOW_identifier_in_grantRoleToUser1767);
+			pushFollow(FOLLOW_identifier_in_grantRoleToUser1768);
 			userName=identifier();
 			state._fsp--;
 			if (state.failed) return retval;
 			if ( state.backtracking==0 ) stream_identifier.add(userName.getTree());
 			// AST REWRITE
-			// elements: roleName, userName
+			// elements: userName, roleName
 			// token labels: 
 			// rule labels: roleName, userName, retval
 			// token list labels: 
@@ -4923,18 +4923,18 @@ public class TSParser extends Parser {
 			// TSParser.g:486:5: ( KW_REVOKE roleName= identifier KW_FROM userName= identifier -> ^( TOK_REVOKE ^( TOK_ROLE $roleName) ^( TOK_USER $userName) ) )
 			// TSParser.g:486:7: KW_REVOKE roleName= identifier KW_FROM userName= identifier
 			{
-			KW_REVOKE132=(Token)match(input,KW_REVOKE,FOLLOW_KW_REVOKE_in_revokeRoleFromUser1808); if (state.failed) return retval; 
+			KW_REVOKE132=(Token)match(input,KW_REVOKE,FOLLOW_KW_REVOKE_in_revokeRoleFromUser1809); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_KW_REVOKE.add(KW_REVOKE132);
 
-			pushFollow(FOLLOW_identifier_in_revokeRoleFromUser1814);
+			pushFollow(FOLLOW_identifier_in_revokeRoleFromUser1815);
 			roleName=identifier();
 			state._fsp--;
 			if (state.failed) return retval;
 			if ( state.backtracking==0 ) stream_identifier.add(roleName.getTree());
-			KW_FROM133=(Token)match(input,KW_FROM,FOLLOW_KW_FROM_in_revokeRoleFromUser1816); if (state.failed) return retval; 
+			KW_FROM133=(Token)match(input,KW_FROM,FOLLOW_KW_FROM_in_revokeRoleFromUser1817); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_KW_FROM.add(KW_FROM133);
 
-			pushFollow(FOLLOW_identifier_in_revokeRoleFromUser1822);
+			pushFollow(FOLLOW_identifier_in_revokeRoleFromUser1823);
 			userName=identifier();
 			state._fsp--;
 			if (state.failed) return retval;
@@ -5039,10 +5039,10 @@ public class TSParser extends Parser {
 			// TSParser.g:491:5: ( KW_PRIVILEGES StringLiteral ( COMMA StringLiteral )* -> ^( TOK_PRIVILEGES ( StringLiteral )+ ) )
 			// TSParser.g:491:7: KW_PRIVILEGES StringLiteral ( COMMA StringLiteral )*
 			{
-			KW_PRIVILEGES134=(Token)match(input,KW_PRIVILEGES,FOLLOW_KW_PRIVILEGES_in_privileges1863); if (state.failed) return retval; 
+			KW_PRIVILEGES134=(Token)match(input,KW_PRIVILEGES,FOLLOW_KW_PRIVILEGES_in_privileges1864); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_KW_PRIVILEGES.add(KW_PRIVILEGES134);
 
-			StringLiteral135=(Token)match(input,StringLiteral,FOLLOW_StringLiteral_in_privileges1865); if (state.failed) return retval; 
+			StringLiteral135=(Token)match(input,StringLiteral,FOLLOW_StringLiteral_in_privileges1866); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_StringLiteral.add(StringLiteral135);
 
 			// TSParser.g:491:35: ( COMMA StringLiteral )*
@@ -5058,10 +5058,10 @@ public class TSParser extends Parser {
 				case 1 :
 					// TSParser.g:491:36: COMMA StringLiteral
 					{
-					COMMA136=(Token)match(input,COMMA,FOLLOW_COMMA_in_privileges1868); if (state.failed) return retval; 
+					COMMA136=(Token)match(input,COMMA,FOLLOW_COMMA_in_privileges1869); if (state.failed) return retval; 
 					if ( state.backtracking==0 ) stream_COMMA.add(COMMA136);
 
-					StringLiteral137=(Token)match(input,StringLiteral,FOLLOW_StringLiteral_in_privileges1870); if (state.failed) return retval; 
+					StringLiteral137=(Token)match(input,StringLiteral,FOLLOW_StringLiteral_in_privileges1871); if (state.failed) return retval; 
 					if ( state.backtracking==0 ) stream_StringLiteral.add(StringLiteral137);
 
 					}
@@ -5157,7 +5157,7 @@ public class TSParser extends Parser {
 			// TSParser.g:496:5: ( nodeName ( DOT nodeName )* -> ^( TOK_PATH ( nodeName )+ ) )
 			// TSParser.g:496:7: nodeName ( DOT nodeName )*
 			{
-			pushFollow(FOLLOW_nodeName_in_path1902);
+			pushFollow(FOLLOW_nodeName_in_path1903);
 			nodeName138=nodeName();
 			state._fsp--;
 			if (state.failed) return retval;
@@ -5175,10 +5175,10 @@ public class TSParser extends Parser {
 				case 1 :
 					// TSParser.g:496:17: DOT nodeName
 					{
-					DOT139=(Token)match(input,DOT,FOLLOW_DOT_in_path1905); if (state.failed) return retval; 
+					DOT139=(Token)match(input,DOT,FOLLOW_DOT_in_path1906); if (state.failed) return retval; 
 					if ( state.backtracking==0 ) stream_DOT.add(DOT139);
 
-					pushFollow(FOLLOW_nodeName_in_path1907);
+					pushFollow(FOLLOW_nodeName_in_path1908);
 					nodeName140=nodeName();
 					state._fsp--;
 					if (state.failed) return retval;
@@ -5294,7 +5294,7 @@ public class TSParser extends Parser {
 					root_0 = (CommonTree)adaptor.nil();
 
 
-					pushFollow(FOLLOW_identifier_in_nodeName1941);
+					pushFollow(FOLLOW_identifier_in_nodeName1942);
 					identifier141=identifier();
 					state._fsp--;
 					if (state.failed) return retval;
@@ -5308,7 +5308,7 @@ public class TSParser extends Parser {
 					root_0 = (CommonTree)adaptor.nil();
 
 
-					STAR142=(Token)match(input,STAR,FOLLOW_STAR_in_nodeName1949); if (state.failed) return retval;
+					STAR142=(Token)match(input,STAR,FOLLOW_STAR_in_nodeName1950); if (state.failed) return retval;
 					if ( state.backtracking==0 ) {
 					STAR142_tree = (CommonTree)adaptor.create(STAR142);
 					adaptor.addChild(root_0, STAR142_tree);
@@ -5375,32 +5375,32 @@ public class TSParser extends Parser {
 			// TSParser.g:506:4: ( KW_INSERT KW_INTO path multidentifier KW_VALUES multiValue -> ^( TOK_INSERT path multidentifier multiValue ) )
 			// TSParser.g:506:6: KW_INSERT KW_INTO path multidentifier KW_VALUES multiValue
 			{
-			KW_INSERT143=(Token)match(input,KW_INSERT,FOLLOW_KW_INSERT_in_insertStatement1965); if (state.failed) return retval; 
+			KW_INSERT143=(Token)match(input,KW_INSERT,FOLLOW_KW_INSERT_in_insertStatement1966); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_KW_INSERT.add(KW_INSERT143);
 
-			KW_INTO144=(Token)match(input,KW_INTO,FOLLOW_KW_INTO_in_insertStatement1967); if (state.failed) return retval; 
+			KW_INTO144=(Token)match(input,KW_INTO,FOLLOW_KW_INTO_in_insertStatement1968); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_KW_INTO.add(KW_INTO144);
 
-			pushFollow(FOLLOW_path_in_insertStatement1969);
+			pushFollow(FOLLOW_path_in_insertStatement1970);
 			path145=path();
 			state._fsp--;
 			if (state.failed) return retval;
 			if ( state.backtracking==0 ) stream_path.add(path145.getTree());
-			pushFollow(FOLLOW_multidentifier_in_insertStatement1971);
+			pushFollow(FOLLOW_multidentifier_in_insertStatement1972);
 			multidentifier146=multidentifier();
 			state._fsp--;
 			if (state.failed) return retval;
 			if ( state.backtracking==0 ) stream_multidentifier.add(multidentifier146.getTree());
-			KW_VALUES147=(Token)match(input,KW_VALUES,FOLLOW_KW_VALUES_in_insertStatement1973); if (state.failed) return retval; 
+			KW_VALUES147=(Token)match(input,KW_VALUES,FOLLOW_KW_VALUES_in_insertStatement1974); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_KW_VALUES.add(KW_VALUES147);
 
-			pushFollow(FOLLOW_multiValue_in_insertStatement1975);
+			pushFollow(FOLLOW_multiValue_in_insertStatement1976);
 			multiValue148=multiValue();
 			state._fsp--;
 			if (state.failed) return retval;
 			if ( state.backtracking==0 ) stream_multiValue.add(multiValue148.getTree());
 			// AST REWRITE
-			// elements: multiValue, path, multidentifier
+			// elements: path, multiValue, multidentifier
 			// token labels: 
 			// rule labels: retval
 			// token list labels: 
@@ -5487,10 +5487,10 @@ public class TSParser extends Parser {
 			// TSParser.g:515:2: ( LPAREN KW_TIMESTAMP ( COMMA identifier )* RPAREN -> ^( TOK_MULT_IDENTIFIER TOK_TIME ( identifier )* ) )
 			// TSParser.g:516:2: LPAREN KW_TIMESTAMP ( COMMA identifier )* RPAREN
 			{
-			LPAREN149=(Token)match(input,LPAREN,FOLLOW_LPAREN_in_multidentifier2007); if (state.failed) return retval; 
+			LPAREN149=(Token)match(input,LPAREN,FOLLOW_LPAREN_in_multidentifier2008); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_LPAREN.add(LPAREN149);
 
-			KW_TIMESTAMP150=(Token)match(input,KW_TIMESTAMP,FOLLOW_KW_TIMESTAMP_in_multidentifier2009); if (state.failed) return retval; 
+			KW_TIMESTAMP150=(Token)match(input,KW_TIMESTAMP,FOLLOW_KW_TIMESTAMP_in_multidentifier2010); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_KW_TIMESTAMP.add(KW_TIMESTAMP150);
 
 			// TSParser.g:516:22: ( COMMA identifier )*
@@ -5506,10 +5506,10 @@ public class TSParser extends Parser {
 				case 1 :
 					// TSParser.g:516:23: COMMA identifier
 					{
-					COMMA151=(Token)match(input,COMMA,FOLLOW_COMMA_in_multidentifier2012); if (state.failed) return retval; 
+					COMMA151=(Token)match(input,COMMA,FOLLOW_COMMA_in_multidentifier2013); if (state.failed) return retval; 
 					if ( state.backtracking==0 ) stream_COMMA.add(COMMA151);
 
-					pushFollow(FOLLOW_identifier_in_multidentifier2014);
+					pushFollow(FOLLOW_identifier_in_multidentifier2015);
 					identifier152=identifier();
 					state._fsp--;
 					if (state.failed) return retval;
@@ -5522,7 +5522,7 @@ public class TSParser extends Parser {
 				}
 			}
 
-			RPAREN153=(Token)match(input,RPAREN,FOLLOW_RPAREN_in_multidentifier2018); if (state.failed) return retval; 
+			RPAREN153=(Token)match(input,RPAREN,FOLLOW_RPAREN_in_multidentifier2019); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_RPAREN.add(RPAREN153);
 
 			// AST REWRITE
@@ -5590,7 +5590,7 @@ public class TSParser extends Parser {
 
 
 	// $ANTLR start "multiValue"
-	// TSParser.g:519:1: multiValue : LPAREN time= dateFormatWithNumber ( COMMA number )* RPAREN -> ^( TOK_MULT_VALUE $time ( number )* ) ;
+	// TSParser.g:519:1: multiValue : LPAREN time= dateFormatWithNumber ( COMMA numberOrString )* RPAREN -> ^( TOK_MULT_VALUE $time ( numberOrString )* ) ;
 	public final TSParser.multiValue_return multiValue() throws RecognitionException {
 		TSParser.multiValue_return retval = new TSParser.multiValue_return();
 		retval.start = input.LT(1);
@@ -5601,7 +5601,7 @@ public class TSParser extends Parser {
 		Token COMMA155=null;
 		Token RPAREN157=null;
 		ParserRuleReturnScope time =null;
-		ParserRuleReturnScope number156 =null;
+		ParserRuleReturnScope numberOrString156 =null;
 
 		CommonTree LPAREN154_tree=null;
 		CommonTree COMMA155_tree=null;
@@ -5609,22 +5609,22 @@ public class TSParser extends Parser {
 		RewriteRuleTokenStream stream_COMMA=new RewriteRuleTokenStream(adaptor,"token COMMA");
 		RewriteRuleTokenStream stream_LPAREN=new RewriteRuleTokenStream(adaptor,"token LPAREN");
 		RewriteRuleTokenStream stream_RPAREN=new RewriteRuleTokenStream(adaptor,"token RPAREN");
-		RewriteRuleSubtreeStream stream_number=new RewriteRuleSubtreeStream(adaptor,"rule number");
+		RewriteRuleSubtreeStream stream_numberOrString=new RewriteRuleSubtreeStream(adaptor,"rule numberOrString");
 		RewriteRuleSubtreeStream stream_dateFormatWithNumber=new RewriteRuleSubtreeStream(adaptor,"rule dateFormatWithNumber");
 
 		try {
-			// TSParser.g:520:2: ( LPAREN time= dateFormatWithNumber ( COMMA number )* RPAREN -> ^( TOK_MULT_VALUE $time ( number )* ) )
-			// TSParser.g:521:2: LPAREN time= dateFormatWithNumber ( COMMA number )* RPAREN
+			// TSParser.g:520:2: ( LPAREN time= dateFormatWithNumber ( COMMA numberOrString )* RPAREN -> ^( TOK_MULT_VALUE $time ( numberOrString )* ) )
+			// TSParser.g:521:2: LPAREN time= dateFormatWithNumber ( COMMA numberOrString )* RPAREN
 			{
-			LPAREN154=(Token)match(input,LPAREN,FOLLOW_LPAREN_in_multiValue2041); if (state.failed) return retval; 
+			LPAREN154=(Token)match(input,LPAREN,FOLLOW_LPAREN_in_multiValue2042); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_LPAREN.add(LPAREN154);
 
-			pushFollow(FOLLOW_dateFormatWithNumber_in_multiValue2045);
+			pushFollow(FOLLOW_dateFormatWithNumber_in_multiValue2046);
 			time=dateFormatWithNumber();
 			state._fsp--;
 			if (state.failed) return retval;
 			if ( state.backtracking==0 ) stream_dateFormatWithNumber.add(time.getTree());
-			// TSParser.g:521:35: ( COMMA number )*
+			// TSParser.g:521:35: ( COMMA numberOrString )*
 			loop17:
 			while (true) {
 				int alt17=2;
@@ -5635,16 +5635,16 @@ public class TSParser extends Parser {
 
 				switch (alt17) {
 				case 1 :
-					// TSParser.g:521:36: COMMA number
+					// TSParser.g:521:36: COMMA numberOrString
 					{
-					COMMA155=(Token)match(input,COMMA,FOLLOW_COMMA_in_multiValue2048); if (state.failed) return retval; 
+					COMMA155=(Token)match(input,COMMA,FOLLOW_COMMA_in_multiValue2049); if (state.failed) return retval; 
 					if ( state.backtracking==0 ) stream_COMMA.add(COMMA155);
 
-					pushFollow(FOLLOW_number_in_multiValue2050);
-					number156=number();
+					pushFollow(FOLLOW_numberOrString_in_multiValue2051);
+					numberOrString156=numberOrString();
 					state._fsp--;
 					if (state.failed) return retval;
-					if ( state.backtracking==0 ) stream_number.add(number156.getTree());
+					if ( state.backtracking==0 ) stream_numberOrString.add(numberOrString156.getTree());
 					}
 					break;
 
@@ -5653,11 +5653,11 @@ public class TSParser extends Parser {
 				}
 			}
 
-			RPAREN157=(Token)match(input,RPAREN,FOLLOW_RPAREN_in_multiValue2054); if (state.failed) return retval; 
+			RPAREN157=(Token)match(input,RPAREN,FOLLOW_RPAREN_in_multiValue2055); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_RPAREN.add(RPAREN157);
 
 			// AST REWRITE
-			// elements: number, time
+			// elements: numberOrString, time
 			// token labels: 
 			// rule labels: time, retval
 			// token list labels: 
@@ -5669,18 +5669,18 @@ public class TSParser extends Parser {
 			RewriteRuleSubtreeStream stream_retval=new RewriteRuleSubtreeStream(adaptor,"rule retval",retval!=null?retval.getTree():null);
 
 			root_0 = (CommonTree)adaptor.nil();
-			// 522:2: -> ^( TOK_MULT_VALUE $time ( number )* )
+			// 522:2: -> ^( TOK_MULT_VALUE $time ( numberOrString )* )
 			{
-				// TSParser.g:522:5: ^( TOK_MULT_VALUE $time ( number )* )
+				// TSParser.g:522:5: ^( TOK_MULT_VALUE $time ( numberOrString )* )
 				{
 				CommonTree root_1 = (CommonTree)adaptor.nil();
 				root_1 = (CommonTree)adaptor.becomeRoot((CommonTree)adaptor.create(TOK_MULT_VALUE, "TOK_MULT_VALUE"), root_1);
 				adaptor.addChild(root_1, stream_time.nextTree());
-				// TSParser.g:522:28: ( number )*
-				while ( stream_number.hasNext() ) {
-					adaptor.addChild(root_1, stream_number.nextTree());
+				// TSParser.g:522:28: ( numberOrString )*
+				while ( stream_numberOrString.hasNext() ) {
+					adaptor.addChild(root_1, stream_numberOrString.nextTree());
 				}
-				stream_number.reset();
+				stream_numberOrString.reset();
 
 				adaptor.addChild(root_0, root_1);
 				}
@@ -5745,13 +5745,13 @@ public class TSParser extends Parser {
 			// TSParser.g:527:4: ( KW_DELETE KW_FROM path ( whereClause )? -> ^( TOK_DELETE path ( whereClause )? ) )
 			// TSParser.g:528:4: KW_DELETE KW_FROM path ( whereClause )?
 			{
-			KW_DELETE158=(Token)match(input,KW_DELETE,FOLLOW_KW_DELETE_in_deleteStatement2084); if (state.failed) return retval; 
+			KW_DELETE158=(Token)match(input,KW_DELETE,FOLLOW_KW_DELETE_in_deleteStatement2085); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_KW_DELETE.add(KW_DELETE158);
 
-			KW_FROM159=(Token)match(input,KW_FROM,FOLLOW_KW_FROM_in_deleteStatement2086); if (state.failed) return retval; 
+			KW_FROM159=(Token)match(input,KW_FROM,FOLLOW_KW_FROM_in_deleteStatement2087); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_KW_FROM.add(KW_FROM159);
 
-			pushFollow(FOLLOW_path_in_deleteStatement2088);
+			pushFollow(FOLLOW_path_in_deleteStatement2089);
 			path160=path();
 			state._fsp--;
 			if (state.failed) return retval;
@@ -5766,7 +5766,7 @@ public class TSParser extends Parser {
 				case 1 :
 					// TSParser.g:528:28: whereClause
 					{
-					pushFollow(FOLLOW_whereClause_in_deleteStatement2091);
+					pushFollow(FOLLOW_whereClause_in_deleteStatement2092);
 					whereClause161=whereClause();
 					state._fsp--;
 					if (state.failed) return retval;
@@ -5922,24 +5922,24 @@ public class TSParser extends Parser {
 				case 1 :
 					// TSParser.g:533:6: KW_UPDATE path KW_SET KW_VALUE EQUAL value= number ( whereClause )?
 					{
-					KW_UPDATE162=(Token)match(input,KW_UPDATE,FOLLOW_KW_UPDATE_in_updateStatement2122); if (state.failed) return retval; 
+					KW_UPDATE162=(Token)match(input,KW_UPDATE,FOLLOW_KW_UPDATE_in_updateStatement2123); if (state.failed) return retval; 
 					if ( state.backtracking==0 ) stream_KW_UPDATE.add(KW_UPDATE162);
 
-					pushFollow(FOLLOW_path_in_updateStatement2124);
+					pushFollow(FOLLOW_path_in_updateStatement2125);
 					path163=path();
 					state._fsp--;
 					if (state.failed) return retval;
 					if ( state.backtracking==0 ) stream_path.add(path163.getTree());
-					KW_SET164=(Token)match(input,KW_SET,FOLLOW_KW_SET_in_updateStatement2126); if (state.failed) return retval; 
+					KW_SET164=(Token)match(input,KW_SET,FOLLOW_KW_SET_in_updateStatement2127); if (state.failed) return retval; 
 					if ( state.backtracking==0 ) stream_KW_SET.add(KW_SET164);
 
-					KW_VALUE165=(Token)match(input,KW_VALUE,FOLLOW_KW_VALUE_in_updateStatement2128); if (state.failed) return retval; 
+					KW_VALUE165=(Token)match(input,KW_VALUE,FOLLOW_KW_VALUE_in_updateStatement2129); if (state.failed) return retval; 
 					if ( state.backtracking==0 ) stream_KW_VALUE.add(KW_VALUE165);
 
-					EQUAL166=(Token)match(input,EQUAL,FOLLOW_EQUAL_in_updateStatement2130); if (state.failed) return retval; 
+					EQUAL166=(Token)match(input,EQUAL,FOLLOW_EQUAL_in_updateStatement2131); if (state.failed) return retval; 
 					if ( state.backtracking==0 ) stream_EQUAL.add(EQUAL166);
 
-					pushFollow(FOLLOW_number_in_updateStatement2134);
+					pushFollow(FOLLOW_number_in_updateStatement2135);
 					value=number();
 					state._fsp--;
 					if (state.failed) return retval;
@@ -5954,7 +5954,7 @@ public class TSParser extends Parser {
 						case 1 :
 							// TSParser.g:533:57: whereClause
 							{
-							pushFollow(FOLLOW_whereClause_in_updateStatement2137);
+							pushFollow(FOLLOW_whereClause_in_updateStatement2138);
 							whereClause167=whereClause();
 							state._fsp--;
 							if (state.failed) return retval;
@@ -5965,7 +5965,7 @@ public class TSParser extends Parser {
 					}
 
 					// AST REWRITE
-					// elements: value, whereClause, path
+					// elements: path, whereClause, value
 					// token labels: 
 					// rule labels: value, retval
 					// token list labels: 
@@ -6012,26 +6012,26 @@ public class TSParser extends Parser {
 				case 2 :
 					// TSParser.g:535:6: KW_UPDATE KW_USER userName= StringLiteral KW_SET KW_PASSWORD psw= StringLiteral
 					{
-					KW_UPDATE168=(Token)match(input,KW_UPDATE,FOLLOW_KW_UPDATE_in_updateStatement2167); if (state.failed) return retval; 
+					KW_UPDATE168=(Token)match(input,KW_UPDATE,FOLLOW_KW_UPDATE_in_updateStatement2168); if (state.failed) return retval; 
 					if ( state.backtracking==0 ) stream_KW_UPDATE.add(KW_UPDATE168);
 
-					KW_USER169=(Token)match(input,KW_USER,FOLLOW_KW_USER_in_updateStatement2169); if (state.failed) return retval; 
+					KW_USER169=(Token)match(input,KW_USER,FOLLOW_KW_USER_in_updateStatement2170); if (state.failed) return retval; 
 					if ( state.backtracking==0 ) stream_KW_USER.add(KW_USER169);
 
-					userName=(Token)match(input,StringLiteral,FOLLOW_StringLiteral_in_updateStatement2173); if (state.failed) return retval; 
+					userName=(Token)match(input,StringLiteral,FOLLOW_StringLiteral_in_updateStatement2174); if (state.failed) return retval; 
 					if ( state.backtracking==0 ) stream_StringLiteral.add(userName);
 
-					KW_SET170=(Token)match(input,KW_SET,FOLLOW_KW_SET_in_updateStatement2175); if (state.failed) return retval; 
+					KW_SET170=(Token)match(input,KW_SET,FOLLOW_KW_SET_in_updateStatement2176); if (state.failed) return retval; 
 					if ( state.backtracking==0 ) stream_KW_SET.add(KW_SET170);
 
-					KW_PASSWORD171=(Token)match(input,KW_PASSWORD,FOLLOW_KW_PASSWORD_in_updateStatement2177); if (state.failed) return retval; 
+					KW_PASSWORD171=(Token)match(input,KW_PASSWORD,FOLLOW_KW_PASSWORD_in_updateStatement2178); if (state.failed) return retval; 
 					if ( state.backtracking==0 ) stream_KW_PASSWORD.add(KW_PASSWORD171);
 
-					psw=(Token)match(input,StringLiteral,FOLLOW_StringLiteral_in_updateStatement2181); if (state.failed) return retval; 
+					psw=(Token)match(input,StringLiteral,FOLLOW_StringLiteral_in_updateStatement2182); if (state.failed) return retval; 
 					if ( state.backtracking==0 ) stream_StringLiteral.add(psw);
 
 					// AST REWRITE
-					// elements: userName, psw
+					// elements: psw, userName
 					// token labels: psw, userName
 					// rule labels: retval
 					// token list labels: 
@@ -6259,10 +6259,10 @@ public class TSParser extends Parser {
 				case 1 :
 					// TSParser.g:554:7: KW_SELECT path ( COMMA path )*
 					{
-					KW_SELECT173=(Token)match(input,KW_SELECT,FOLLOW_KW_SELECT_in_selectClause2245); if (state.failed) return retval; 
+					KW_SELECT173=(Token)match(input,KW_SELECT,FOLLOW_KW_SELECT_in_selectClause2246); if (state.failed) return retval; 
 					if ( state.backtracking==0 ) stream_KW_SELECT.add(KW_SELECT173);
 
-					pushFollow(FOLLOW_path_in_selectClause2247);
+					pushFollow(FOLLOW_path_in_selectClause2248);
 					path174=path();
 					state._fsp--;
 					if (state.failed) return retval;
@@ -6280,10 +6280,10 @@ public class TSParser extends Parser {
 						case 1 :
 							// TSParser.g:554:23: COMMA path
 							{
-							COMMA175=(Token)match(input,COMMA,FOLLOW_COMMA_in_selectClause2250); if (state.failed) return retval; 
+							COMMA175=(Token)match(input,COMMA,FOLLOW_COMMA_in_selectClause2251); if (state.failed) return retval; 
 							if ( state.backtracking==0 ) stream_COMMA.add(COMMA175);
 
-							pushFollow(FOLLOW_path_in_selectClause2252);
+							pushFollow(FOLLOW_path_in_selectClause2253);
 							path176=path();
 							state._fsp--;
 							if (state.failed) return retval;
@@ -6336,23 +6336,23 @@ public class TSParser extends Parser {
 				case 2 :
 					// TSParser.g:556:7: KW_SELECT clstcmd= identifier LPAREN path RPAREN ( COMMA clstcmd= identifier LPAREN path RPAREN )*
 					{
-					KW_SELECT177=(Token)match(input,KW_SELECT,FOLLOW_KW_SELECT_in_selectClause2275); if (state.failed) return retval; 
+					KW_SELECT177=(Token)match(input,KW_SELECT,FOLLOW_KW_SELECT_in_selectClause2276); if (state.failed) return retval; 
 					if ( state.backtracking==0 ) stream_KW_SELECT.add(KW_SELECT177);
 
-					pushFollow(FOLLOW_identifier_in_selectClause2281);
+					pushFollow(FOLLOW_identifier_in_selectClause2282);
 					clstcmd=identifier();
 					state._fsp--;
 					if (state.failed) return retval;
 					if ( state.backtracking==0 ) stream_identifier.add(clstcmd.getTree());
-					LPAREN178=(Token)match(input,LPAREN,FOLLOW_LPAREN_in_selectClause2283); if (state.failed) return retval; 
+					LPAREN178=(Token)match(input,LPAREN,FOLLOW_LPAREN_in_selectClause2284); if (state.failed) return retval; 
 					if ( state.backtracking==0 ) stream_LPAREN.add(LPAREN178);
 
-					pushFollow(FOLLOW_path_in_selectClause2285);
+					pushFollow(FOLLOW_path_in_selectClause2286);
 					path179=path();
 					state._fsp--;
 					if (state.failed) return retval;
 					if ( state.backtracking==0 ) stream_path.add(path179.getTree());
-					RPAREN180=(Token)match(input,RPAREN,FOLLOW_RPAREN_in_selectClause2287); if (state.failed) return retval; 
+					RPAREN180=(Token)match(input,RPAREN,FOLLOW_RPAREN_in_selectClause2288); if (state.failed) return retval; 
 					if ( state.backtracking==0 ) stream_RPAREN.add(RPAREN180);
 
 					// TSParser.g:556:57: ( COMMA clstcmd= identifier LPAREN path RPAREN )*
@@ -6368,23 +6368,23 @@ public class TSParser extends Parser {
 						case 1 :
 							// TSParser.g:556:58: COMMA clstcmd= identifier LPAREN path RPAREN
 							{
-							COMMA181=(Token)match(input,COMMA,FOLLOW_COMMA_in_selectClause2290); if (state.failed) return retval; 
+							COMMA181=(Token)match(input,COMMA,FOLLOW_COMMA_in_selectClause2291); if (state.failed) return retval; 
 							if ( state.backtracking==0 ) stream_COMMA.add(COMMA181);
 
-							pushFollow(FOLLOW_identifier_in_selectClause2294);
+							pushFollow(FOLLOW_identifier_in_selectClause2295);
 							clstcmd=identifier();
 							state._fsp--;
 							if (state.failed) return retval;
 							if ( state.backtracking==0 ) stream_identifier.add(clstcmd.getTree());
-							LPAREN182=(Token)match(input,LPAREN,FOLLOW_LPAREN_in_selectClause2296); if (state.failed) return retval; 
+							LPAREN182=(Token)match(input,LPAREN,FOLLOW_LPAREN_in_selectClause2297); if (state.failed) return retval; 
 							if ( state.backtracking==0 ) stream_LPAREN.add(LPAREN182);
 
-							pushFollow(FOLLOW_path_in_selectClause2298);
+							pushFollow(FOLLOW_path_in_selectClause2299);
 							path183=path();
 							state._fsp--;
 							if (state.failed) return retval;
 							if ( state.backtracking==0 ) stream_path.add(path183.getTree());
-							RPAREN184=(Token)match(input,RPAREN,FOLLOW_RPAREN_in_selectClause2300); if (state.failed) return retval; 
+							RPAREN184=(Token)match(input,RPAREN,FOLLOW_RPAREN_in_selectClause2301); if (state.failed) return retval; 
 							if ( state.backtracking==0 ) stream_RPAREN.add(RPAREN184);
 
 							}
@@ -6535,24 +6535,24 @@ public class TSParser extends Parser {
 				case 1 :
 					// TSParser.g:561:4: clstcmd= identifier LPAREN path RPAREN
 					{
-					pushFollow(FOLLOW_identifier_in_clusteredPath2341);
+					pushFollow(FOLLOW_identifier_in_clusteredPath2342);
 					clstcmd=identifier();
 					state._fsp--;
 					if (state.failed) return retval;
 					if ( state.backtracking==0 ) stream_identifier.add(clstcmd.getTree());
-					LPAREN185=(Token)match(input,LPAREN,FOLLOW_LPAREN_in_clusteredPath2343); if (state.failed) return retval; 
+					LPAREN185=(Token)match(input,LPAREN,FOLLOW_LPAREN_in_clusteredPath2344); if (state.failed) return retval; 
 					if ( state.backtracking==0 ) stream_LPAREN.add(LPAREN185);
 
-					pushFollow(FOLLOW_path_in_clusteredPath2345);
+					pushFollow(FOLLOW_path_in_clusteredPath2346);
 					path186=path();
 					state._fsp--;
 					if (state.failed) return retval;
 					if ( state.backtracking==0 ) stream_path.add(path186.getTree());
-					RPAREN187=(Token)match(input,RPAREN,FOLLOW_RPAREN_in_clusteredPath2347); if (state.failed) return retval; 
+					RPAREN187=(Token)match(input,RPAREN,FOLLOW_RPAREN_in_clusteredPath2348); if (state.failed) return retval; 
 					if ( state.backtracking==0 ) stream_RPAREN.add(RPAREN187);
 
 					// AST REWRITE
-					// elements: path, clstcmd
+					// elements: clstcmd, path
 					// token labels: 
 					// rule labels: retval, clstcmd
 					// token list labels: 
@@ -6593,7 +6593,7 @@ public class TSParser extends Parser {
 				case 2 :
 					// TSParser.g:563:4: path
 					{
-					pushFollow(FOLLOW_path_in_clusteredPath2369);
+					pushFollow(FOLLOW_path_in_clusteredPath2370);
 					path188=path();
 					state._fsp--;
 					if (state.failed) return retval;
@@ -6674,10 +6674,10 @@ public class TSParser extends Parser {
 			// TSParser.g:568:5: ( KW_FROM path ( COMMA path )* -> ^( TOK_FROM ( path )+ ) )
 			// TSParser.g:569:5: KW_FROM path ( COMMA path )*
 			{
-			KW_FROM189=(Token)match(input,KW_FROM,FOLLOW_KW_FROM_in_fromClause2392); if (state.failed) return retval; 
+			KW_FROM189=(Token)match(input,KW_FROM,FOLLOW_KW_FROM_in_fromClause2393); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_KW_FROM.add(KW_FROM189);
 
-			pushFollow(FOLLOW_path_in_fromClause2394);
+			pushFollow(FOLLOW_path_in_fromClause2395);
 			path190=path();
 			state._fsp--;
 			if (state.failed) return retval;
@@ -6695,10 +6695,10 @@ public class TSParser extends Parser {
 				case 1 :
 					// TSParser.g:569:19: COMMA path
 					{
-					COMMA191=(Token)match(input,COMMA,FOLLOW_COMMA_in_fromClause2397); if (state.failed) return retval; 
+					COMMA191=(Token)match(input,COMMA,FOLLOW_COMMA_in_fromClause2398); if (state.failed) return retval; 
 					if ( state.backtracking==0 ) stream_COMMA.add(COMMA191);
 
-					pushFollow(FOLLOW_path_in_fromClause2399);
+					pushFollow(FOLLOW_path_in_fromClause2400);
 					path192=path();
 					state._fsp--;
 					if (state.failed) return retval;
@@ -6795,10 +6795,10 @@ public class TSParser extends Parser {
 			// TSParser.g:574:5: ( KW_WHERE searchCondition -> ^( TOK_WHERE searchCondition ) )
 			// TSParser.g:575:5: KW_WHERE searchCondition
 			{
-			KW_WHERE193=(Token)match(input,KW_WHERE,FOLLOW_KW_WHERE_in_whereClause2432); if (state.failed) return retval; 
+			KW_WHERE193=(Token)match(input,KW_WHERE,FOLLOW_KW_WHERE_in_whereClause2433); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_KW_WHERE.add(KW_WHERE193);
 
-			pushFollow(FOLLOW_searchCondition_in_whereClause2434);
+			pushFollow(FOLLOW_searchCondition_in_whereClause2435);
 			searchCondition194=searchCondition();
 			state._fsp--;
 			if (state.failed) return retval;
@@ -6879,7 +6879,7 @@ public class TSParser extends Parser {
 			root_0 = (CommonTree)adaptor.nil();
 
 
-			pushFollow(FOLLOW_expression_in_searchCondition2463);
+			pushFollow(FOLLOW_expression_in_searchCondition2464);
 			expression195=expression();
 			state._fsp--;
 			if (state.failed) return retval;
@@ -6933,7 +6933,7 @@ public class TSParser extends Parser {
 			root_0 = (CommonTree)adaptor.nil();
 
 
-			pushFollow(FOLLOW_precedenceOrExpression_in_expression2484);
+			pushFollow(FOLLOW_precedenceOrExpression_in_expression2485);
 			precedenceOrExpression196=precedenceOrExpression();
 			state._fsp--;
 			if (state.failed) return retval;
@@ -6990,7 +6990,7 @@ public class TSParser extends Parser {
 			root_0 = (CommonTree)adaptor.nil();
 
 
-			pushFollow(FOLLOW_precedenceAndExpression_in_precedenceOrExpression2505);
+			pushFollow(FOLLOW_precedenceAndExpression_in_precedenceOrExpression2506);
 			precedenceAndExpression197=precedenceAndExpression();
 			state._fsp--;
 			if (state.failed) return retval;
@@ -7009,13 +7009,13 @@ public class TSParser extends Parser {
 				case 1 :
 					// TSParser.g:590:31: KW_OR ^ precedenceAndExpression
 					{
-					KW_OR198=(Token)match(input,KW_OR,FOLLOW_KW_OR_in_precedenceOrExpression2509); if (state.failed) return retval;
+					KW_OR198=(Token)match(input,KW_OR,FOLLOW_KW_OR_in_precedenceOrExpression2510); if (state.failed) return retval;
 					if ( state.backtracking==0 ) {
 					KW_OR198_tree = (CommonTree)adaptor.create(KW_OR198);
 					root_0 = (CommonTree)adaptor.becomeRoot(KW_OR198_tree, root_0);
 					}
 
-					pushFollow(FOLLOW_precedenceAndExpression_in_precedenceOrExpression2512);
+					pushFollow(FOLLOW_precedenceAndExpression_in_precedenceOrExpression2513);
 					precedenceAndExpression199=precedenceAndExpression();
 					state._fsp--;
 					if (state.failed) return retval;
@@ -7080,7 +7080,7 @@ public class TSParser extends Parser {
 			root_0 = (CommonTree)adaptor.nil();
 
 
-			pushFollow(FOLLOW_precedenceNotExpression_in_precedenceAndExpression2535);
+			pushFollow(FOLLOW_precedenceNotExpression_in_precedenceAndExpression2536);
 			precedenceNotExpression200=precedenceNotExpression();
 			state._fsp--;
 			if (state.failed) return retval;
@@ -7099,13 +7099,13 @@ public class TSParser extends Parser {
 				case 1 :
 					// TSParser.g:595:31: KW_AND ^ precedenceNotExpression
 					{
-					KW_AND201=(Token)match(input,KW_AND,FOLLOW_KW_AND_in_precedenceAndExpression2539); if (state.failed) return retval;
+					KW_AND201=(Token)match(input,KW_AND,FOLLOW_KW_AND_in_precedenceAndExpression2540); if (state.failed) return retval;
 					if ( state.backtracking==0 ) {
 					KW_AND201_tree = (CommonTree)adaptor.create(KW_AND201);
 					root_0 = (CommonTree)adaptor.becomeRoot(KW_AND201_tree, root_0);
 					}
 
-					pushFollow(FOLLOW_precedenceNotExpression_in_precedenceAndExpression2542);
+					pushFollow(FOLLOW_precedenceNotExpression_in_precedenceAndExpression2543);
 					precedenceNotExpression202=precedenceNotExpression();
 					state._fsp--;
 					if (state.failed) return retval;
@@ -7182,7 +7182,7 @@ public class TSParser extends Parser {
 				case 1 :
 					// TSParser.g:600:6: KW_NOT ^
 					{
-					KW_NOT203=(Token)match(input,KW_NOT,FOLLOW_KW_NOT_in_precedenceNotExpression2566); if (state.failed) return retval;
+					KW_NOT203=(Token)match(input,KW_NOT,FOLLOW_KW_NOT_in_precedenceNotExpression2567); if (state.failed) return retval;
 					if ( state.backtracking==0 ) {
 					KW_NOT203_tree = (CommonTree)adaptor.create(KW_NOT203);
 					root_0 = (CommonTree)adaptor.becomeRoot(KW_NOT203_tree, root_0);
@@ -7196,7 +7196,7 @@ public class TSParser extends Parser {
 				}
 			}
 
-			pushFollow(FOLLOW_precedenceEqualExpressionSingle_in_precedenceNotExpression2571);
+			pushFollow(FOLLOW_precedenceEqualExpressionSingle_in_precedenceNotExpression2572);
 			precedenceEqualExpressionSingle204=precedenceEqualExpressionSingle();
 			state._fsp--;
 			if (state.failed) return retval;
@@ -7254,7 +7254,7 @@ public class TSParser extends Parser {
 			// TSParser.g:606:5: (left= atomExpression -> $left)
 			// TSParser.g:606:6: left= atomExpression
 			{
-			pushFollow(FOLLOW_atomExpression_in_precedenceEqualExpressionSingle2596);
+			pushFollow(FOLLOW_atomExpression_in_precedenceEqualExpressionSingle2597);
 			left=atomExpression();
 			state._fsp--;
 			if (state.failed) return retval;
@@ -7299,12 +7299,12 @@ public class TSParser extends Parser {
 					// TSParser.g:608:6: ( precedenceEqualOperator equalExpr= atomExpression )
 					// TSParser.g:608:7: precedenceEqualOperator equalExpr= atomExpression
 					{
-					pushFollow(FOLLOW_precedenceEqualOperator_in_precedenceEqualExpressionSingle2616);
+					pushFollow(FOLLOW_precedenceEqualOperator_in_precedenceEqualExpressionSingle2617);
 					precedenceEqualOperator205=precedenceEqualOperator();
 					state._fsp--;
 					if (state.failed) return retval;
 					if ( state.backtracking==0 ) stream_precedenceEqualOperator.add(precedenceEqualOperator205.getTree());
-					pushFollow(FOLLOW_atomExpression_in_precedenceEqualExpressionSingle2620);
+					pushFollow(FOLLOW_atomExpression_in_precedenceEqualExpressionSingle2621);
 					equalExpr=atomExpression();
 					state._fsp--;
 					if (state.failed) return retval;
@@ -7312,7 +7312,7 @@ public class TSParser extends Parser {
 					}
 
 					// AST REWRITE
-					// elements: precedenceEqualExpressionSingle, precedenceEqualOperator, equalExpr
+					// elements: precedenceEqualOperator, precedenceEqualExpressionSingle, equalExpr
 					// token labels: 
 					// rule labels: retval, equalExpr
 					// token list labels: 
@@ -7480,7 +7480,7 @@ public class TSParser extends Parser {
 				case 1 :
 					// TSParser.g:623:5: KW_NULL
 					{
-					KW_NULL207=(Token)match(input,KW_NULL,FOLLOW_KW_NULL_in_nullCondition2716); if (state.failed) return retval; 
+					KW_NULL207=(Token)match(input,KW_NULL,FOLLOW_KW_NULL_in_nullCondition2717); if (state.failed) return retval; 
 					if ( state.backtracking==0 ) stream_KW_NULL.add(KW_NULL207);
 
 					// AST REWRITE
@@ -7515,10 +7515,10 @@ public class TSParser extends Parser {
 				case 2 :
 					// TSParser.g:624:7: KW_NOT KW_NULL
 					{
-					KW_NOT208=(Token)match(input,KW_NOT,FOLLOW_KW_NOT_in_nullCondition2730); if (state.failed) return retval; 
+					KW_NOT208=(Token)match(input,KW_NOT,FOLLOW_KW_NOT_in_nullCondition2731); if (state.failed) return retval; 
 					if ( state.backtracking==0 ) stream_KW_NOT.add(KW_NOT208);
 
-					KW_NULL209=(Token)match(input,KW_NULL,FOLLOW_KW_NULL_in_nullCondition2732); if (state.failed) return retval; 
+					KW_NULL209=(Token)match(input,KW_NULL,FOLLOW_KW_NULL_in_nullCondition2733); if (state.failed) return retval; 
 					if ( state.backtracking==0 ) stream_KW_NULL.add(KW_NULL209);
 
 					// AST REWRITE
@@ -7667,7 +7667,7 @@ public class TSParser extends Parser {
 				case 1 :
 					// TSParser.g:631:5: ( KW_NULL )=> KW_NULL
 					{
-					KW_NULL210=(Token)match(input,KW_NULL,FOLLOW_KW_NULL_in_atomExpression2767); if (state.failed) return retval; 
+					KW_NULL210=(Token)match(input,KW_NULL,FOLLOW_KW_NULL_in_atomExpression2768); if (state.failed) return retval; 
 					if ( state.backtracking==0 ) stream_KW_NULL.add(KW_NULL210);
 
 					// AST REWRITE
@@ -7699,7 +7699,7 @@ public class TSParser extends Parser {
 					root_0 = (CommonTree)adaptor.nil();
 
 
-					pushFollow(FOLLOW_constant_in_atomExpression2785);
+					pushFollow(FOLLOW_constant_in_atomExpression2786);
 					constant211=constant();
 					state._fsp--;
 					if (state.failed) return retval;
@@ -7713,7 +7713,7 @@ public class TSParser extends Parser {
 					root_0 = (CommonTree)adaptor.nil();
 
 
-					pushFollow(FOLLOW_path_in_atomExpression2793);
+					pushFollow(FOLLOW_path_in_atomExpression2794);
 					path212=path();
 					state._fsp--;
 					if (state.failed) return retval;
@@ -7727,14 +7727,14 @@ public class TSParser extends Parser {
 					root_0 = (CommonTree)adaptor.nil();
 
 
-					LPAREN213=(Token)match(input,LPAREN,FOLLOW_LPAREN_in_atomExpression2801); if (state.failed) return retval;
-					pushFollow(FOLLOW_expression_in_atomExpression2804);
+					LPAREN213=(Token)match(input,LPAREN,FOLLOW_LPAREN_in_atomExpression2802); if (state.failed) return retval;
+					pushFollow(FOLLOW_expression_in_atomExpression2805);
 					expression214=expression();
 					state._fsp--;
 					if (state.failed) return retval;
 					if ( state.backtracking==0 ) adaptor.addChild(root_0, expression214.getTree());
 
-					RPAREN215=(Token)match(input,RPAREN,FOLLOW_RPAREN_in_atomExpression2806); if (state.failed) return retval;
+					RPAREN215=(Token)match(input,RPAREN,FOLLOW_RPAREN_in_atomExpression2807); if (state.failed) return retval;
 					}
 					break;
 
@@ -7815,7 +7815,7 @@ public class TSParser extends Parser {
 					root_0 = (CommonTree)adaptor.nil();
 
 
-					pushFollow(FOLLOW_number_in_constant2824);
+					pushFollow(FOLLOW_number_in_constant2825);
 					number216=number();
 					state._fsp--;
 					if (state.failed) return retval;
@@ -7829,7 +7829,7 @@ public class TSParser extends Parser {
 					root_0 = (CommonTree)adaptor.nil();
 
 
-					StringLiteral217=(Token)match(input,StringLiteral,FOLLOW_StringLiteral_in_constant2832); if (state.failed) return retval;
+					StringLiteral217=(Token)match(input,StringLiteral,FOLLOW_StringLiteral_in_constant2833); if (state.failed) return retval;
 					if ( state.backtracking==0 ) {
 					StringLiteral217_tree = (CommonTree)adaptor.create(StringLiteral217);
 					adaptor.addChild(root_0, StringLiteral217_tree);
@@ -7843,7 +7843,7 @@ public class TSParser extends Parser {
 					root_0 = (CommonTree)adaptor.nil();
 
 
-					pushFollow(FOLLOW_dateFormat_in_constant2840);
+					pushFollow(FOLLOW_dateFormat_in_constant2841);
 					dateFormat218=dateFormat();
 					state._fsp--;
 					if (state.failed) return retval;
@@ -7878,7 +7878,7 @@ public class TSParser extends Parser {
 		// TSParser.g:631:5: ( KW_NULL )
 		// TSParser.g:631:6: KW_NULL
 		{
-		match(input,KW_NULL,FOLLOW_KW_NULL_in_synpred1_TSParser2762); if (state.failed) return;
+		match(input,KW_NULL,FOLLOW_KW_NULL_in_synpred1_TSParser2763); if (state.failed) return;
 
 		}
 
@@ -7890,7 +7890,7 @@ public class TSParser extends Parser {
 		// TSParser.g:632:7: ( constant )
 		// TSParser.g:632:8: constant
 		{
-		pushFollow(FOLLOW_constant_in_synpred2_TSParser2780);
+		pushFollow(FOLLOW_constant_in_synpred2_TSParser2781);
 		constant();
 		state._fsp--;
 		if (state.failed) return;
@@ -7937,255 +7937,255 @@ public class TSParser extends Parser {
 	public static final BitSet FOLLOW_EOF_in_statement212 = new BitSet(new long[]{0x0000000000000002L});
 	public static final BitSet FOLLOW_identifier_in_numberOrString248 = new BitSet(new long[]{0x0000000000000002L});
 	public static final BitSet FOLLOW_Float_in_numberOrString252 = new BitSet(new long[]{0x0000000000000002L});
-	public static final BitSet FOLLOW_authorStatement_in_execStatement270 = new BitSet(new long[]{0x0000000000000002L});
-	public static final BitSet FOLLOW_deleteStatement_in_execStatement278 = new BitSet(new long[]{0x0000000000000002L});
-	public static final BitSet FOLLOW_updateStatement_in_execStatement286 = new BitSet(new long[]{0x0000000000000002L});
-	public static final BitSet FOLLOW_insertStatement_in_execStatement294 = new BitSet(new long[]{0x0000000000000002L});
-	public static final BitSet FOLLOW_queryStatement_in_execStatement302 = new BitSet(new long[]{0x0000000000000002L});
-	public static final BitSet FOLLOW_metadataStatement_in_execStatement310 = new BitSet(new long[]{0x0000000000000002L});
-	public static final BitSet FOLLOW_mergeStatement_in_execStatement318 = new BitSet(new long[]{0x0000000000000002L});
-	public static final BitSet FOLLOW_quitStatement_in_execStatement326 = new BitSet(new long[]{0x0000000000000002L});
-	public static final BitSet FOLLOW_DATETIME_in_dateFormat347 = new BitSet(new long[]{0x0000000000000002L});
-	public static final BitSet FOLLOW_Identifier_in_dateFormat366 = new BitSet(new long[]{0x0000000000000000L,0x0000000000000001L});
-	public static final BitSet FOLLOW_LPAREN_in_dateFormat368 = new BitSet(new long[]{0x0000000000000000L,0x0000000000000040L});
-	public static final BitSet FOLLOW_RPAREN_in_dateFormat370 = new BitSet(new long[]{0x0000000000000002L});
-	public static final BitSet FOLLOW_dateFormat_in_dateFormatWithNumber396 = new BitSet(new long[]{0x0000000000000002L});
-	public static final BitSet FOLLOW_Integer_in_dateFormatWithNumber408 = new BitSet(new long[]{0x0000000000000002L});
-	public static final BitSet FOLLOW_createTimeseries_in_metadataStatement435 = new BitSet(new long[]{0x0000000000000002L});
-	public static final BitSet FOLLOW_setFileLevel_in_metadataStatement443 = new BitSet(new long[]{0x0000000000000002L});
-	public static final BitSet FOLLOW_addAPropertyTree_in_metadataStatement451 = new BitSet(new long[]{0x0000000000000002L});
-	public static final BitSet FOLLOW_addALabelProperty_in_metadataStatement459 = new BitSet(new long[]{0x0000000000000002L});
-	public static final BitSet FOLLOW_deleteALebelFromPropertyTree_in_metadataStatement467 = new BitSet(new long[]{0x0000000000000002L});
-	public static final BitSet FOLLOW_linkMetadataToPropertyTree_in_metadataStatement475 = new BitSet(new long[]{0x0000000000000002L});
-	public static final BitSet FOLLOW_unlinkMetadataNodeFromPropertyTree_in_metadataStatement483 = new BitSet(new long[]{0x0000000000000002L});
-	public static final BitSet FOLLOW_deleteTimeseries_in_metadataStatement491 = new BitSet(new long[]{0x0000000000000002L});
-	public static final BitSet FOLLOW_showMetadata_in_metadataStatement499 = new BitSet(new long[]{0x0000000000000002L});
-	public static final BitSet FOLLOW_describePath_in_metadataStatement507 = new BitSet(new long[]{0x0000000000000002L});
-	public static final BitSet FOLLOW_KW_DESCRIBE_in_describePath524 = new BitSet(new long[]{0x0000000000030000L,0x0000000000000100L});
-	public static final BitSet FOLLOW_path_in_describePath526 = new BitSet(new long[]{0x0000000000000002L});
-	public static final BitSet FOLLOW_KW_SHOW_in_showMetadata553 = new BitSet(new long[]{0x0000001000000000L});
-	public static final BitSet FOLLOW_KW_METADATA_in_showMetadata555 = new BitSet(new long[]{0x0000000000000002L});
-	public static final BitSet FOLLOW_KW_CREATE_in_createTimeseries576 = new BitSet(new long[]{0x0010000000000000L});
-	public static final BitSet FOLLOW_KW_TIMESERIES_in_createTimeseries578 = new BitSet(new long[]{0x0000000000010000L});
-	public static final BitSet FOLLOW_timeseries_in_createTimeseries580 = new BitSet(new long[]{0x2000000000000000L});
-	public static final BitSet FOLLOW_KW_WITH_in_createTimeseries582 = new BitSet(new long[]{0x0000000000400000L});
-	public static final BitSet FOLLOW_propertyClauses_in_createTimeseries584 = new BitSet(new long[]{0x0000000000000002L});
-	public static final BitSet FOLLOW_Identifier_in_timeseries619 = new BitSet(new long[]{0x0000000000000100L});
-	public static final BitSet FOLLOW_DOT_in_timeseries621 = new BitSet(new long[]{0x0000000000010000L});
-	public static final BitSet FOLLOW_Identifier_in_timeseries625 = new BitSet(new long[]{0x0000000000000100L});
-	public static final BitSet FOLLOW_DOT_in_timeseries627 = new BitSet(new long[]{0x0000000000030000L});
-	public static final BitSet FOLLOW_identifier_in_timeseries629 = new BitSet(new long[]{0x0000000000000100L});
-	public static final BitSet FOLLOW_DOT_in_timeseries632 = new BitSet(new long[]{0x0000000000030000L});
-	public static final BitSet FOLLOW_identifier_in_timeseries634 = new BitSet(new long[]{0x0000000000000102L});
-	public static final BitSet FOLLOW_KW_DATATYPE_in_propertyClauses663 = new BitSet(new long[]{0x0000000000000400L});
-	public static final BitSet FOLLOW_EQUAL_in_propertyClauses665 = new BitSet(new long[]{0x0000000000030000L});
-	public static final BitSet FOLLOW_identifier_in_propertyClauses669 = new BitSet(new long[]{0x0000000000000020L});
-	public static final BitSet FOLLOW_COMMA_in_propertyClauses671 = new BitSet(new long[]{0x0000000004000000L});
-	public static final BitSet FOLLOW_KW_ENCODING_in_propertyClauses673 = new BitSet(new long[]{0x0000000000000400L});
-	public static final BitSet FOLLOW_EQUAL_in_propertyClauses675 = new BitSet(new long[]{0x0000000000031000L});
-	public static final BitSet FOLLOW_propertyValue_in_propertyClauses679 = new BitSet(new long[]{0x0000000000000022L});
-	public static final BitSet FOLLOW_COMMA_in_propertyClauses682 = new BitSet(new long[]{0x0000000000030000L});
-	public static final BitSet FOLLOW_propertyClause_in_propertyClauses684 = new BitSet(new long[]{0x0000000000000022L});
-	public static final BitSet FOLLOW_identifier_in_propertyClause722 = new BitSet(new long[]{0x0000000000000400L});
-	public static final BitSet FOLLOW_EQUAL_in_propertyClause724 = new BitSet(new long[]{0x0000000000031000L});
-	public static final BitSet FOLLOW_propertyValue_in_propertyClause728 = new BitSet(new long[]{0x0000000000000002L});
-	public static final BitSet FOLLOW_numberOrString_in_propertyValue755 = new BitSet(new long[]{0x0000000000000002L});
-	public static final BitSet FOLLOW_KW_SET_in_setFileLevel768 = new BitSet(new long[]{0x0008000000000000L});
-	public static final BitSet FOLLOW_KW_STORAGE_in_setFileLevel770 = new BitSet(new long[]{0x0000000020000000L});
-	public static final BitSet FOLLOW_KW_GROUP_in_setFileLevel772 = new BitSet(new long[]{0x0040000000000000L});
-	public static final BitSet FOLLOW_KW_TO_in_setFileLevel774 = new BitSet(new long[]{0x0000000000030000L,0x0000000000000100L});
-	public static final BitSet FOLLOW_path_in_setFileLevel776 = new BitSet(new long[]{0x0000000000000002L});
-	public static final BitSet FOLLOW_KW_CREATE_in_addAPropertyTree803 = new BitSet(new long[]{0x0000100000000000L});
-	public static final BitSet FOLLOW_KW_PROPERTY_in_addAPropertyTree805 = new BitSet(new long[]{0x0000000000030000L});
-	public static final BitSet FOLLOW_identifier_in_addAPropertyTree809 = new BitSet(new long[]{0x0000000000000002L});
-	public static final BitSet FOLLOW_KW_ADD_in_addALabelProperty837 = new BitSet(new long[]{0x0000000100000000L});
-	public static final BitSet FOLLOW_KW_LABEL_in_addALabelProperty839 = new BitSet(new long[]{0x0000000000030000L});
-	public static final BitSet FOLLOW_identifier_in_addALabelProperty843 = new BitSet(new long[]{0x0040000000000000L});
-	public static final BitSet FOLLOW_KW_TO_in_addALabelProperty845 = new BitSet(new long[]{0x0000100000000000L});
-	public static final BitSet FOLLOW_KW_PROPERTY_in_addALabelProperty847 = new BitSet(new long[]{0x0000000000030000L});
-	public static final BitSet FOLLOW_identifier_in_addALabelProperty851 = new BitSet(new long[]{0x0000000000000002L});
-	public static final BitSet FOLLOW_KW_DELETE_in_deleteALebelFromPropertyTree886 = new BitSet(new long[]{0x0000000100000000L});
-	public static final BitSet FOLLOW_KW_LABEL_in_deleteALebelFromPropertyTree888 = new BitSet(new long[]{0x0000000000030000L});
-	public static final BitSet FOLLOW_identifier_in_deleteALebelFromPropertyTree892 = new BitSet(new long[]{0x0000000008000000L});
-	public static final BitSet FOLLOW_KW_FROM_in_deleteALebelFromPropertyTree894 = new BitSet(new long[]{0x0000100000000000L});
-	public static final BitSet FOLLOW_KW_PROPERTY_in_deleteALebelFromPropertyTree896 = new BitSet(new long[]{0x0000000000030000L});
-	public static final BitSet FOLLOW_identifier_in_deleteALebelFromPropertyTree900 = new BitSet(new long[]{0x0000000000000002L});
-	public static final BitSet FOLLOW_KW_LINK_in_linkMetadataToPropertyTree935 = new BitSet(new long[]{0x0000000000010000L});
-	public static final BitSet FOLLOW_timeseriesPath_in_linkMetadataToPropertyTree937 = new BitSet(new long[]{0x0040000000000000L});
-	public static final BitSet FOLLOW_KW_TO_in_linkMetadataToPropertyTree939 = new BitSet(new long[]{0x0000000000030000L});
-	public static final BitSet FOLLOW_propertyPath_in_linkMetadataToPropertyTree941 = new BitSet(new long[]{0x0000000000000002L});
-	public static final BitSet FOLLOW_Identifier_in_timeseriesPath966 = new BitSet(new long[]{0x0000000000000100L});
-	public static final BitSet FOLLOW_DOT_in_timeseriesPath969 = new BitSet(new long[]{0x0000000000030000L});
-	public static final BitSet FOLLOW_identifier_in_timeseriesPath971 = new BitSet(new long[]{0x0000000000000102L});
-	public static final BitSet FOLLOW_identifier_in_propertyPath999 = new BitSet(new long[]{0x0000000000000100L});
-	public static final BitSet FOLLOW_DOT_in_propertyPath1001 = new BitSet(new long[]{0x0000000000030000L});
-	public static final BitSet FOLLOW_identifier_in_propertyPath1005 = new BitSet(new long[]{0x0000000000000002L});
-	public static final BitSet FOLLOW_KW_UNLINK_in_unlinkMetadataNodeFromPropertyTree1035 = new BitSet(new long[]{0x0000000000010000L});
-	public static final BitSet FOLLOW_timeseriesPath_in_unlinkMetadataNodeFromPropertyTree1037 = new BitSet(new long[]{0x0000000008000000L});
-	public static final BitSet FOLLOW_KW_FROM_in_unlinkMetadataNodeFromPropertyTree1039 = new BitSet(new long[]{0x0000000000030000L});
-	public static final BitSet FOLLOW_propertyPath_in_unlinkMetadataNodeFromPropertyTree1041 = new BitSet(new long[]{0x0000000000000002L});
-	public static final BitSet FOLLOW_KW_DELETE_in_deleteTimeseries1067 = new BitSet(new long[]{0x0010000000000000L});
-	public static final BitSet FOLLOW_KW_TIMESERIES_in_deleteTimeseries1069 = new BitSet(new long[]{0x0000000000010000L});
-	public static final BitSet FOLLOW_timeseries_in_deleteTimeseries1071 = new BitSet(new long[]{0x0000000000000002L});
-	public static final BitSet FOLLOW_KW_MERGE_in_mergeStatement1107 = new BitSet(new long[]{0x0000000000000002L});
-	public static final BitSet FOLLOW_KW_QUIT_in_quitStatement1138 = new BitSet(new long[]{0x0000000000000002L});
-	public static final BitSet FOLLOW_selectClause_in_queryStatement1167 = new BitSet(new long[]{0x1000000008000002L});
-	public static final BitSet FOLLOW_fromClause_in_queryStatement1172 = new BitSet(new long[]{0x1000000000000002L});
-	public static final BitSet FOLLOW_whereClause_in_queryStatement1178 = new BitSet(new long[]{0x0000000000000002L});
-	public static final BitSet FOLLOW_loadStatement_in_authorStatement1212 = new BitSet(new long[]{0x0000000000000002L});
-	public static final BitSet FOLLOW_createUser_in_authorStatement1220 = new BitSet(new long[]{0x0000000000000002L});
-	public static final BitSet FOLLOW_dropUser_in_authorStatement1228 = new BitSet(new long[]{0x0000000000000002L});
-	public static final BitSet FOLLOW_createRole_in_authorStatement1236 = new BitSet(new long[]{0x0000000000000002L});
-	public static final BitSet FOLLOW_dropRole_in_authorStatement1244 = new BitSet(new long[]{0x0000000000000002L});
-	public static final BitSet FOLLOW_grantUser_in_authorStatement1252 = new BitSet(new long[]{0x0000000000000002L});
-	public static final BitSet FOLLOW_grantRole_in_authorStatement1260 = new BitSet(new long[]{0x0000000000000002L});
-	public static final BitSet FOLLOW_revokeUser_in_authorStatement1268 = new BitSet(new long[]{0x0000000000000002L});
-	public static final BitSet FOLLOW_revokeRole_in_authorStatement1276 = new BitSet(new long[]{0x0000000000000002L});
-	public static final BitSet FOLLOW_grantRoleToUser_in_authorStatement1284 = new BitSet(new long[]{0x0000000000000002L});
-	public static final BitSet FOLLOW_revokeRoleFromUser_in_authorStatement1292 = new BitSet(new long[]{0x0000000000000002L});
-	public static final BitSet FOLLOW_KW_LOAD_in_loadStatement1309 = new BitSet(new long[]{0x0010000000000000L});
-	public static final BitSet FOLLOW_KW_TIMESERIES_in_loadStatement1311 = new BitSet(new long[]{0x0000000000000000L,0x0000000000000200L});
-	public static final BitSet FOLLOW_StringLiteral_in_loadStatement1316 = new BitSet(new long[]{0x0000000000030000L});
-	public static final BitSet FOLLOW_identifier_in_loadStatement1319 = new BitSet(new long[]{0x0000000000000102L});
-	public static final BitSet FOLLOW_DOT_in_loadStatement1322 = new BitSet(new long[]{0x0000000000030000L});
-	public static final BitSet FOLLOW_identifier_in_loadStatement1324 = new BitSet(new long[]{0x0000000000000102L});
-	public static final BitSet FOLLOW_KW_CREATE_in_createUser1359 = new BitSet(new long[]{0x0200000000000000L});
-	public static final BitSet FOLLOW_KW_USER_in_createUser1361 = new BitSet(new long[]{0x0000000000031000L});
-	public static final BitSet FOLLOW_numberOrString_in_createUser1373 = new BitSet(new long[]{0x0000000000031000L});
-	public static final BitSet FOLLOW_numberOrString_in_createUser1385 = new BitSet(new long[]{0x0000000000000002L});
-	public static final BitSet FOLLOW_KW_DROP_in_dropUser1427 = new BitSet(new long[]{0x0200000000000000L});
-	public static final BitSet FOLLOW_KW_USER_in_dropUser1429 = new BitSet(new long[]{0x0000000000030000L});
-	public static final BitSet FOLLOW_identifier_in_dropUser1433 = new BitSet(new long[]{0x0000000000000002L});
-	public static final BitSet FOLLOW_KW_CREATE_in_createRole1467 = new BitSet(new long[]{0x0000800000000000L});
-	public static final BitSet FOLLOW_KW_ROLE_in_createRole1469 = new BitSet(new long[]{0x0000000000030000L});
-	public static final BitSet FOLLOW_identifier_in_createRole1473 = new BitSet(new long[]{0x0000000000000002L});
-	public static final BitSet FOLLOW_KW_DROP_in_dropRole1507 = new BitSet(new long[]{0x0000800000000000L});
-	public static final BitSet FOLLOW_KW_ROLE_in_dropRole1509 = new BitSet(new long[]{0x0000000000030000L});
-	public static final BitSet FOLLOW_identifier_in_dropRole1513 = new BitSet(new long[]{0x0000000000000002L});
-	public static final BitSet FOLLOW_KW_GRANT_in_grantUser1547 = new BitSet(new long[]{0x0200000000000000L});
-	public static final BitSet FOLLOW_KW_USER_in_grantUser1549 = new BitSet(new long[]{0x0000000000030000L});
-	public static final BitSet FOLLOW_identifier_in_grantUser1555 = new BitSet(new long[]{0x0000080000000000L});
-	public static final BitSet FOLLOW_privileges_in_grantUser1557 = new BitSet(new long[]{0x0000008000000000L});
-	public static final BitSet FOLLOW_KW_ON_in_grantUser1559 = new BitSet(new long[]{0x0000000000030000L,0x0000000000000100L});
-	public static final BitSet FOLLOW_path_in_grantUser1561 = new BitSet(new long[]{0x0000000000000002L});
-	public static final BitSet FOLLOW_KW_GRANT_in_grantRole1599 = new BitSet(new long[]{0x0000800000000000L});
-	public static final BitSet FOLLOW_KW_ROLE_in_grantRole1601 = new BitSet(new long[]{0x0000000000030000L});
-	public static final BitSet FOLLOW_identifier_in_grantRole1605 = new BitSet(new long[]{0x0000080000000000L});
-	public static final BitSet FOLLOW_privileges_in_grantRole1607 = new BitSet(new long[]{0x0000008000000000L});
-	public static final BitSet FOLLOW_KW_ON_in_grantRole1609 = new BitSet(new long[]{0x0000000000030000L,0x0000000000000100L});
-	public static final BitSet FOLLOW_path_in_grantRole1611 = new BitSet(new long[]{0x0000000000000002L});
-	public static final BitSet FOLLOW_KW_REVOKE_in_revokeUser1649 = new BitSet(new long[]{0x0200000000000000L});
-	public static final BitSet FOLLOW_KW_USER_in_revokeUser1651 = new BitSet(new long[]{0x0000000000030000L});
-	public static final BitSet FOLLOW_identifier_in_revokeUser1657 = new BitSet(new long[]{0x0000080000000000L});
-	public static final BitSet FOLLOW_privileges_in_revokeUser1659 = new BitSet(new long[]{0x0000008000000000L});
-	public static final BitSet FOLLOW_KW_ON_in_revokeUser1661 = new BitSet(new long[]{0x0000000000030000L,0x0000000000000100L});
-	public static final BitSet FOLLOW_path_in_revokeUser1663 = new BitSet(new long[]{0x0000000000000002L});
-	public static final BitSet FOLLOW_KW_REVOKE_in_revokeRole1701 = new BitSet(new long[]{0x0000800000000000L});
-	public static final BitSet FOLLOW_KW_ROLE_in_revokeRole1703 = new BitSet(new long[]{0x0000000000030000L});
-	public static final BitSet FOLLOW_identifier_in_revokeRole1709 = new BitSet(new long[]{0x0000080000000000L});
-	public static final BitSet FOLLOW_privileges_in_revokeRole1711 = new BitSet(new long[]{0x0000008000000000L});
-	public static final BitSet FOLLOW_KW_ON_in_revokeRole1713 = new BitSet(new long[]{0x0000000000030000L,0x0000000000000100L});
-	public static final BitSet FOLLOW_path_in_revokeRole1715 = new BitSet(new long[]{0x0000000000000002L});
-	public static final BitSet FOLLOW_KW_GRANT_in_grantRoleToUser1753 = new BitSet(new long[]{0x0000000000030000L});
-	public static final BitSet FOLLOW_identifier_in_grantRoleToUser1759 = new BitSet(new long[]{0x0040000000000000L});
-	public static final BitSet FOLLOW_KW_TO_in_grantRoleToUser1761 = new BitSet(new long[]{0x0000000000030000L});
-	public static final BitSet FOLLOW_identifier_in_grantRoleToUser1767 = new BitSet(new long[]{0x0000000000000002L});
-	public static final BitSet FOLLOW_KW_REVOKE_in_revokeRoleFromUser1808 = new BitSet(new long[]{0x0000000000030000L});
-	public static final BitSet FOLLOW_identifier_in_revokeRoleFromUser1814 = new BitSet(new long[]{0x0000000008000000L});
-	public static final BitSet FOLLOW_KW_FROM_in_revokeRoleFromUser1816 = new BitSet(new long[]{0x0000000000030000L});
-	public static final BitSet FOLLOW_identifier_in_revokeRoleFromUser1822 = new BitSet(new long[]{0x0000000000000002L});
-	public static final BitSet FOLLOW_KW_PRIVILEGES_in_privileges1863 = new BitSet(new long[]{0x0000000000000000L,0x0000000000000200L});
-	public static final BitSet FOLLOW_StringLiteral_in_privileges1865 = new BitSet(new long[]{0x0000000000000022L});
-	public static final BitSet FOLLOW_COMMA_in_privileges1868 = new BitSet(new long[]{0x0000000000000000L,0x0000000000000200L});
-	public static final BitSet FOLLOW_StringLiteral_in_privileges1870 = new BitSet(new long[]{0x0000000000000022L});
-	public static final BitSet FOLLOW_nodeName_in_path1902 = new BitSet(new long[]{0x0000000000000102L});
-	public static final BitSet FOLLOW_DOT_in_path1905 = new BitSet(new long[]{0x0000000000030000L,0x0000000000000100L});
-	public static final BitSet FOLLOW_nodeName_in_path1907 = new BitSet(new long[]{0x0000000000000102L});
-	public static final BitSet FOLLOW_identifier_in_nodeName1941 = new BitSet(new long[]{0x0000000000000002L});
-	public static final BitSet FOLLOW_STAR_in_nodeName1949 = new BitSet(new long[]{0x0000000000000002L});
-	public static final BitSet FOLLOW_KW_INSERT_in_insertStatement1965 = new BitSet(new long[]{0x0000000080000000L});
-	public static final BitSet FOLLOW_KW_INTO_in_insertStatement1967 = new BitSet(new long[]{0x0000000000030000L,0x0000000000000100L});
-	public static final BitSet FOLLOW_path_in_insertStatement1969 = new BitSet(new long[]{0x0000000000000000L,0x0000000000000001L});
-	public static final BitSet FOLLOW_multidentifier_in_insertStatement1971 = new BitSet(new long[]{0x0800000000000000L});
-	public static final BitSet FOLLOW_KW_VALUES_in_insertStatement1973 = new BitSet(new long[]{0x0000000000000000L,0x0000000000000001L});
-	public static final BitSet FOLLOW_multiValue_in_insertStatement1975 = new BitSet(new long[]{0x0000000000000002L});
-	public static final BitSet FOLLOW_LPAREN_in_multidentifier2007 = new BitSet(new long[]{0x0020000000000000L});
-	public static final BitSet FOLLOW_KW_TIMESTAMP_in_multidentifier2009 = new BitSet(new long[]{0x0000000000000020L,0x0000000000000040L});
-	public static final BitSet FOLLOW_COMMA_in_multidentifier2012 = new BitSet(new long[]{0x0000000000030000L});
-	public static final BitSet FOLLOW_identifier_in_multidentifier2014 = new BitSet(new long[]{0x0000000000000020L,0x0000000000000040L});
-	public static final BitSet FOLLOW_RPAREN_in_multidentifier2018 = new BitSet(new long[]{0x0000000000000002L});
-	public static final BitSet FOLLOW_LPAREN_in_multiValue2041 = new BitSet(new long[]{0x0000000000030040L});
-	public static final BitSet FOLLOW_dateFormatWithNumber_in_multiValue2045 = new BitSet(new long[]{0x0000000000000020L,0x0000000000000040L});
-	public static final BitSet FOLLOW_COMMA_in_multiValue2048 = new BitSet(new long[]{0x0000000000021000L});
-	public static final BitSet FOLLOW_number_in_multiValue2050 = new BitSet(new long[]{0x0000000000000020L,0x0000000000000040L});
-	public static final BitSet FOLLOW_RPAREN_in_multiValue2054 = new BitSet(new long[]{0x0000000000000002L});
-	public static final BitSet FOLLOW_KW_DELETE_in_deleteStatement2084 = new BitSet(new long[]{0x0000000008000000L});
-	public static final BitSet FOLLOW_KW_FROM_in_deleteStatement2086 = new BitSet(new long[]{0x0000000000030000L,0x0000000000000100L});
-	public static final BitSet FOLLOW_path_in_deleteStatement2088 = new BitSet(new long[]{0x1000000000000002L});
-	public static final BitSet FOLLOW_whereClause_in_deleteStatement2091 = new BitSet(new long[]{0x0000000000000002L});
-	public static final BitSet FOLLOW_KW_UPDATE_in_updateStatement2122 = new BitSet(new long[]{0x0000000000030000L,0x0000000000000100L});
-	public static final BitSet FOLLOW_path_in_updateStatement2124 = new BitSet(new long[]{0x0002000000000000L});
-	public static final BitSet FOLLOW_KW_SET_in_updateStatement2126 = new BitSet(new long[]{0x0400000000000000L});
-	public static final BitSet FOLLOW_KW_VALUE_in_updateStatement2128 = new BitSet(new long[]{0x0000000000000400L});
-	public static final BitSet FOLLOW_EQUAL_in_updateStatement2130 = new BitSet(new long[]{0x0000000000021000L});
-	public static final BitSet FOLLOW_number_in_updateStatement2134 = new BitSet(new long[]{0x1000000000000002L});
-	public static final BitSet FOLLOW_whereClause_in_updateStatement2137 = new BitSet(new long[]{0x0000000000000002L});
-	public static final BitSet FOLLOW_KW_UPDATE_in_updateStatement2167 = new BitSet(new long[]{0x0200000000000000L});
-	public static final BitSet FOLLOW_KW_USER_in_updateStatement2169 = new BitSet(new long[]{0x0000000000000000L,0x0000000000000200L});
-	public static final BitSet FOLLOW_StringLiteral_in_updateStatement2173 = new BitSet(new long[]{0x0002000000000000L});
-	public static final BitSet FOLLOW_KW_SET_in_updateStatement2175 = new BitSet(new long[]{0x0000040000000000L});
-	public static final BitSet FOLLOW_KW_PASSWORD_in_updateStatement2177 = new BitSet(new long[]{0x0000000000000000L,0x0000000000000200L});
-	public static final BitSet FOLLOW_StringLiteral_in_updateStatement2181 = new BitSet(new long[]{0x0000000000000002L});
-	public static final BitSet FOLLOW_KW_SELECT_in_selectClause2245 = new BitSet(new long[]{0x0000000000030000L,0x0000000000000100L});
-	public static final BitSet FOLLOW_path_in_selectClause2247 = new BitSet(new long[]{0x0000000000000022L});
-	public static final BitSet FOLLOW_COMMA_in_selectClause2250 = new BitSet(new long[]{0x0000000000030000L,0x0000000000000100L});
-	public static final BitSet FOLLOW_path_in_selectClause2252 = new BitSet(new long[]{0x0000000000000022L});
-	public static final BitSet FOLLOW_KW_SELECT_in_selectClause2275 = new BitSet(new long[]{0x0000000000030000L});
-	public static final BitSet FOLLOW_identifier_in_selectClause2281 = new BitSet(new long[]{0x0000000000000000L,0x0000000000000001L});
-	public static final BitSet FOLLOW_LPAREN_in_selectClause2283 = new BitSet(new long[]{0x0000000000030000L,0x0000000000000100L});
-	public static final BitSet FOLLOW_path_in_selectClause2285 = new BitSet(new long[]{0x0000000000000000L,0x0000000000000040L});
-	public static final BitSet FOLLOW_RPAREN_in_selectClause2287 = new BitSet(new long[]{0x0000000000000022L});
-	public static final BitSet FOLLOW_COMMA_in_selectClause2290 = new BitSet(new long[]{0x0000000000030000L});
-	public static final BitSet FOLLOW_identifier_in_selectClause2294 = new BitSet(new long[]{0x0000000000000000L,0x0000000000000001L});
-	public static final BitSet FOLLOW_LPAREN_in_selectClause2296 = new BitSet(new long[]{0x0000000000030000L,0x0000000000000100L});
-	public static final BitSet FOLLOW_path_in_selectClause2298 = new BitSet(new long[]{0x0000000000000000L,0x0000000000000040L});
-	public static final BitSet FOLLOW_RPAREN_in_selectClause2300 = new BitSet(new long[]{0x0000000000000022L});
-	public static final BitSet FOLLOW_identifier_in_clusteredPath2341 = new BitSet(new long[]{0x0000000000000000L,0x0000000000000001L});
-	public static final BitSet FOLLOW_LPAREN_in_clusteredPath2343 = new BitSet(new long[]{0x0000000000030000L,0x0000000000000100L});
-	public static final BitSet FOLLOW_path_in_clusteredPath2345 = new BitSet(new long[]{0x0000000000000000L,0x0000000000000040L});
-	public static final BitSet FOLLOW_RPAREN_in_clusteredPath2347 = new BitSet(new long[]{0x0000000000000002L});
-	public static final BitSet FOLLOW_path_in_clusteredPath2369 = new BitSet(new long[]{0x0000000000000002L});
-	public static final BitSet FOLLOW_KW_FROM_in_fromClause2392 = new BitSet(new long[]{0x0000000000030000L,0x0000000000000100L});
-	public static final BitSet FOLLOW_path_in_fromClause2394 = new BitSet(new long[]{0x0000000000000022L});
-	public static final BitSet FOLLOW_COMMA_in_fromClause2397 = new BitSet(new long[]{0x0000000000030000L,0x0000000000000100L});
-	public static final BitSet FOLLOW_path_in_fromClause2399 = new BitSet(new long[]{0x0000000000000022L});
-	public static final BitSet FOLLOW_KW_WHERE_in_whereClause2432 = new BitSet(new long[]{0x0000006000031040L,0x0000000000000301L});
-	public static final BitSet FOLLOW_searchCondition_in_whereClause2434 = new BitSet(new long[]{0x0000000000000002L});
-	public static final BitSet FOLLOW_expression_in_searchCondition2463 = new BitSet(new long[]{0x0000000000000002L});
-	public static final BitSet FOLLOW_precedenceOrExpression_in_expression2484 = new BitSet(new long[]{0x0000000000000002L});
-	public static final BitSet FOLLOW_precedenceAndExpression_in_precedenceOrExpression2505 = new BitSet(new long[]{0x0000010000000002L});
-	public static final BitSet FOLLOW_KW_OR_in_precedenceOrExpression2509 = new BitSet(new long[]{0x0000006000031040L,0x0000000000000301L});
-	public static final BitSet FOLLOW_precedenceAndExpression_in_precedenceOrExpression2512 = new BitSet(new long[]{0x0000010000000002L});
-	public static final BitSet FOLLOW_precedenceNotExpression_in_precedenceAndExpression2535 = new BitSet(new long[]{0x0000000000080002L});
-	public static final BitSet FOLLOW_KW_AND_in_precedenceAndExpression2539 = new BitSet(new long[]{0x0000006000031040L,0x0000000000000301L});
-	public static final BitSet FOLLOW_precedenceNotExpression_in_precedenceAndExpression2542 = new BitSet(new long[]{0x0000000000080002L});
-	public static final BitSet FOLLOW_KW_NOT_in_precedenceNotExpression2566 = new BitSet(new long[]{0x0000006000031040L,0x0000000000000301L});
-	public static final BitSet FOLLOW_precedenceEqualExpressionSingle_in_precedenceNotExpression2571 = new BitSet(new long[]{0x0000000000000002L});
-	public static final BitSet FOLLOW_atomExpression_in_precedenceEqualExpressionSingle2596 = new BitSet(new long[]{0xC000000000006C02L,0x0000000000000008L});
-	public static final BitSet FOLLOW_precedenceEqualOperator_in_precedenceEqualExpressionSingle2616 = new BitSet(new long[]{0x0000004000031040L,0x0000000000000301L});
-	public static final BitSet FOLLOW_atomExpression_in_precedenceEqualExpressionSingle2620 = new BitSet(new long[]{0xC000000000006C02L,0x0000000000000008L});
-	public static final BitSet FOLLOW_KW_NULL_in_nullCondition2716 = new BitSet(new long[]{0x0000000000000002L});
-	public static final BitSet FOLLOW_KW_NOT_in_nullCondition2730 = new BitSet(new long[]{0x0000004000000000L});
-	public static final BitSet FOLLOW_KW_NULL_in_nullCondition2732 = new BitSet(new long[]{0x0000000000000002L});
-	public static final BitSet FOLLOW_KW_NULL_in_atomExpression2767 = new BitSet(new long[]{0x0000000000000002L});
-	public static final BitSet FOLLOW_constant_in_atomExpression2785 = new BitSet(new long[]{0x0000000000000002L});
-	public static final BitSet FOLLOW_path_in_atomExpression2793 = new BitSet(new long[]{0x0000000000000002L});
-	public static final BitSet FOLLOW_LPAREN_in_atomExpression2801 = new BitSet(new long[]{0x0000006000031040L,0x0000000000000301L});
-	public static final BitSet FOLLOW_expression_in_atomExpression2804 = new BitSet(new long[]{0x0000000000000000L,0x0000000000000040L});
-	public static final BitSet FOLLOW_RPAREN_in_atomExpression2806 = new BitSet(new long[]{0x0000000000000002L});
-	public static final BitSet FOLLOW_number_in_constant2824 = new BitSet(new long[]{0x0000000000000002L});
-	public static final BitSet FOLLOW_StringLiteral_in_constant2832 = new BitSet(new long[]{0x0000000000000002L});
-	public static final BitSet FOLLOW_dateFormat_in_constant2840 = new BitSet(new long[]{0x0000000000000002L});
-	public static final BitSet FOLLOW_KW_NULL_in_synpred1_TSParser2762 = new BitSet(new long[]{0x0000000000000002L});
-	public static final BitSet FOLLOW_constant_in_synpred2_TSParser2780 = new BitSet(new long[]{0x0000000000000002L});
+	public static final BitSet FOLLOW_authorStatement_in_execStatement271 = new BitSet(new long[]{0x0000000000000002L});
+	public static final BitSet FOLLOW_deleteStatement_in_execStatement279 = new BitSet(new long[]{0x0000000000000002L});
+	public static final BitSet FOLLOW_updateStatement_in_execStatement287 = new BitSet(new long[]{0x0000000000000002L});
+	public static final BitSet FOLLOW_insertStatement_in_execStatement295 = new BitSet(new long[]{0x0000000000000002L});
+	public static final BitSet FOLLOW_queryStatement_in_execStatement303 = new BitSet(new long[]{0x0000000000000002L});
+	public static final BitSet FOLLOW_metadataStatement_in_execStatement311 = new BitSet(new long[]{0x0000000000000002L});
+	public static final BitSet FOLLOW_mergeStatement_in_execStatement319 = new BitSet(new long[]{0x0000000000000002L});
+	public static final BitSet FOLLOW_quitStatement_in_execStatement327 = new BitSet(new long[]{0x0000000000000002L});
+	public static final BitSet FOLLOW_DATETIME_in_dateFormat348 = new BitSet(new long[]{0x0000000000000002L});
+	public static final BitSet FOLLOW_Identifier_in_dateFormat367 = new BitSet(new long[]{0x0000000000000000L,0x0000000000000001L});
+	public static final BitSet FOLLOW_LPAREN_in_dateFormat369 = new BitSet(new long[]{0x0000000000000000L,0x0000000000000040L});
+	public static final BitSet FOLLOW_RPAREN_in_dateFormat371 = new BitSet(new long[]{0x0000000000000002L});
+	public static final BitSet FOLLOW_dateFormat_in_dateFormatWithNumber397 = new BitSet(new long[]{0x0000000000000002L});
+	public static final BitSet FOLLOW_Integer_in_dateFormatWithNumber409 = new BitSet(new long[]{0x0000000000000002L});
+	public static final BitSet FOLLOW_createTimeseries_in_metadataStatement436 = new BitSet(new long[]{0x0000000000000002L});
+	public static final BitSet FOLLOW_setFileLevel_in_metadataStatement444 = new BitSet(new long[]{0x0000000000000002L});
+	public static final BitSet FOLLOW_addAPropertyTree_in_metadataStatement452 = new BitSet(new long[]{0x0000000000000002L});
+	public static final BitSet FOLLOW_addALabelProperty_in_metadataStatement460 = new BitSet(new long[]{0x0000000000000002L});
+	public static final BitSet FOLLOW_deleteALebelFromPropertyTree_in_metadataStatement468 = new BitSet(new long[]{0x0000000000000002L});
+	public static final BitSet FOLLOW_linkMetadataToPropertyTree_in_metadataStatement476 = new BitSet(new long[]{0x0000000000000002L});
+	public static final BitSet FOLLOW_unlinkMetadataNodeFromPropertyTree_in_metadataStatement484 = new BitSet(new long[]{0x0000000000000002L});
+	public static final BitSet FOLLOW_deleteTimeseries_in_metadataStatement492 = new BitSet(new long[]{0x0000000000000002L});
+	public static final BitSet FOLLOW_showMetadata_in_metadataStatement500 = new BitSet(new long[]{0x0000000000000002L});
+	public static final BitSet FOLLOW_describePath_in_metadataStatement508 = new BitSet(new long[]{0x0000000000000002L});
+	public static final BitSet FOLLOW_KW_DESCRIBE_in_describePath525 = new BitSet(new long[]{0x0000000000030000L,0x0000000000000100L});
+	public static final BitSet FOLLOW_path_in_describePath527 = new BitSet(new long[]{0x0000000000000002L});
+	public static final BitSet FOLLOW_KW_SHOW_in_showMetadata554 = new BitSet(new long[]{0x0000001000000000L});
+	public static final BitSet FOLLOW_KW_METADATA_in_showMetadata556 = new BitSet(new long[]{0x0000000000000002L});
+	public static final BitSet FOLLOW_KW_CREATE_in_createTimeseries577 = new BitSet(new long[]{0x0010000000000000L});
+	public static final BitSet FOLLOW_KW_TIMESERIES_in_createTimeseries579 = new BitSet(new long[]{0x0000000000010000L});
+	public static final BitSet FOLLOW_timeseries_in_createTimeseries581 = new BitSet(new long[]{0x2000000000000000L});
+	public static final BitSet FOLLOW_KW_WITH_in_createTimeseries583 = new BitSet(new long[]{0x0000000000400000L});
+	public static final BitSet FOLLOW_propertyClauses_in_createTimeseries585 = new BitSet(new long[]{0x0000000000000002L});
+	public static final BitSet FOLLOW_Identifier_in_timeseries620 = new BitSet(new long[]{0x0000000000000100L});
+	public static final BitSet FOLLOW_DOT_in_timeseries622 = new BitSet(new long[]{0x0000000000010000L});
+	public static final BitSet FOLLOW_Identifier_in_timeseries626 = new BitSet(new long[]{0x0000000000000100L});
+	public static final BitSet FOLLOW_DOT_in_timeseries628 = new BitSet(new long[]{0x0000000000030000L});
+	public static final BitSet FOLLOW_identifier_in_timeseries630 = new BitSet(new long[]{0x0000000000000100L});
+	public static final BitSet FOLLOW_DOT_in_timeseries633 = new BitSet(new long[]{0x0000000000030000L});
+	public static final BitSet FOLLOW_identifier_in_timeseries635 = new BitSet(new long[]{0x0000000000000102L});
+	public static final BitSet FOLLOW_KW_DATATYPE_in_propertyClauses664 = new BitSet(new long[]{0x0000000000000400L});
+	public static final BitSet FOLLOW_EQUAL_in_propertyClauses666 = new BitSet(new long[]{0x0000000000030000L});
+	public static final BitSet FOLLOW_identifier_in_propertyClauses670 = new BitSet(new long[]{0x0000000000000020L});
+	public static final BitSet FOLLOW_COMMA_in_propertyClauses672 = new BitSet(new long[]{0x0000000004000000L});
+	public static final BitSet FOLLOW_KW_ENCODING_in_propertyClauses674 = new BitSet(new long[]{0x0000000000000400L});
+	public static final BitSet FOLLOW_EQUAL_in_propertyClauses676 = new BitSet(new long[]{0x0000000000031000L});
+	public static final BitSet FOLLOW_propertyValue_in_propertyClauses680 = new BitSet(new long[]{0x0000000000000022L});
+	public static final BitSet FOLLOW_COMMA_in_propertyClauses683 = new BitSet(new long[]{0x0000000000030000L});
+	public static final BitSet FOLLOW_propertyClause_in_propertyClauses685 = new BitSet(new long[]{0x0000000000000022L});
+	public static final BitSet FOLLOW_identifier_in_propertyClause723 = new BitSet(new long[]{0x0000000000000400L});
+	public static final BitSet FOLLOW_EQUAL_in_propertyClause725 = new BitSet(new long[]{0x0000000000031000L});
+	public static final BitSet FOLLOW_propertyValue_in_propertyClause729 = new BitSet(new long[]{0x0000000000000002L});
+	public static final BitSet FOLLOW_numberOrString_in_propertyValue756 = new BitSet(new long[]{0x0000000000000002L});
+	public static final BitSet FOLLOW_KW_SET_in_setFileLevel769 = new BitSet(new long[]{0x0008000000000000L});
+	public static final BitSet FOLLOW_KW_STORAGE_in_setFileLevel771 = new BitSet(new long[]{0x0000000020000000L});
+	public static final BitSet FOLLOW_KW_GROUP_in_setFileLevel773 = new BitSet(new long[]{0x0040000000000000L});
+	public static final BitSet FOLLOW_KW_TO_in_setFileLevel775 = new BitSet(new long[]{0x0000000000030000L,0x0000000000000100L});
+	public static final BitSet FOLLOW_path_in_setFileLevel777 = new BitSet(new long[]{0x0000000000000002L});
+	public static final BitSet FOLLOW_KW_CREATE_in_addAPropertyTree804 = new BitSet(new long[]{0x0000100000000000L});
+	public static final BitSet FOLLOW_KW_PROPERTY_in_addAPropertyTree806 = new BitSet(new long[]{0x0000000000030000L});
+	public static final BitSet FOLLOW_identifier_in_addAPropertyTree810 = new BitSet(new long[]{0x0000000000000002L});
+	public static final BitSet FOLLOW_KW_ADD_in_addALabelProperty838 = new BitSet(new long[]{0x0000000100000000L});
+	public static final BitSet FOLLOW_KW_LABEL_in_addALabelProperty840 = new BitSet(new long[]{0x0000000000030000L});
+	public static final BitSet FOLLOW_identifier_in_addALabelProperty844 = new BitSet(new long[]{0x0040000000000000L});
+	public static final BitSet FOLLOW_KW_TO_in_addALabelProperty846 = new BitSet(new long[]{0x0000100000000000L});
+	public static final BitSet FOLLOW_KW_PROPERTY_in_addALabelProperty848 = new BitSet(new long[]{0x0000000000030000L});
+	public static final BitSet FOLLOW_identifier_in_addALabelProperty852 = new BitSet(new long[]{0x0000000000000002L});
+	public static final BitSet FOLLOW_KW_DELETE_in_deleteALebelFromPropertyTree887 = new BitSet(new long[]{0x0000000100000000L});
+	public static final BitSet FOLLOW_KW_LABEL_in_deleteALebelFromPropertyTree889 = new BitSet(new long[]{0x0000000000030000L});
+	public static final BitSet FOLLOW_identifier_in_deleteALebelFromPropertyTree893 = new BitSet(new long[]{0x0000000008000000L});
+	public static final BitSet FOLLOW_KW_FROM_in_deleteALebelFromPropertyTree895 = new BitSet(new long[]{0x0000100000000000L});
+	public static final BitSet FOLLOW_KW_PROPERTY_in_deleteALebelFromPropertyTree897 = new BitSet(new long[]{0x0000000000030000L});
+	public static final BitSet FOLLOW_identifier_in_deleteALebelFromPropertyTree901 = new BitSet(new long[]{0x0000000000000002L});
+	public static final BitSet FOLLOW_KW_LINK_in_linkMetadataToPropertyTree936 = new BitSet(new long[]{0x0000000000010000L});
+	public static final BitSet FOLLOW_timeseriesPath_in_linkMetadataToPropertyTree938 = new BitSet(new long[]{0x0040000000000000L});
+	public static final BitSet FOLLOW_KW_TO_in_linkMetadataToPropertyTree940 = new BitSet(new long[]{0x0000000000030000L});
+	public static final BitSet FOLLOW_propertyPath_in_linkMetadataToPropertyTree942 = new BitSet(new long[]{0x0000000000000002L});
+	public static final BitSet FOLLOW_Identifier_in_timeseriesPath967 = new BitSet(new long[]{0x0000000000000100L});
+	public static final BitSet FOLLOW_DOT_in_timeseriesPath970 = new BitSet(new long[]{0x0000000000030000L});
+	public static final BitSet FOLLOW_identifier_in_timeseriesPath972 = new BitSet(new long[]{0x0000000000000102L});
+	public static final BitSet FOLLOW_identifier_in_propertyPath1000 = new BitSet(new long[]{0x0000000000000100L});
+	public static final BitSet FOLLOW_DOT_in_propertyPath1002 = new BitSet(new long[]{0x0000000000030000L});
+	public static final BitSet FOLLOW_identifier_in_propertyPath1006 = new BitSet(new long[]{0x0000000000000002L});
+	public static final BitSet FOLLOW_KW_UNLINK_in_unlinkMetadataNodeFromPropertyTree1036 = new BitSet(new long[]{0x0000000000010000L});
+	public static final BitSet FOLLOW_timeseriesPath_in_unlinkMetadataNodeFromPropertyTree1038 = new BitSet(new long[]{0x0000000008000000L});
+	public static final BitSet FOLLOW_KW_FROM_in_unlinkMetadataNodeFromPropertyTree1040 = new BitSet(new long[]{0x0000000000030000L});
+	public static final BitSet FOLLOW_propertyPath_in_unlinkMetadataNodeFromPropertyTree1042 = new BitSet(new long[]{0x0000000000000002L});
+	public static final BitSet FOLLOW_KW_DELETE_in_deleteTimeseries1068 = new BitSet(new long[]{0x0010000000000000L});
+	public static final BitSet FOLLOW_KW_TIMESERIES_in_deleteTimeseries1070 = new BitSet(new long[]{0x0000000000010000L});
+	public static final BitSet FOLLOW_timeseries_in_deleteTimeseries1072 = new BitSet(new long[]{0x0000000000000002L});
+	public static final BitSet FOLLOW_KW_MERGE_in_mergeStatement1108 = new BitSet(new long[]{0x0000000000000002L});
+	public static final BitSet FOLLOW_KW_QUIT_in_quitStatement1139 = new BitSet(new long[]{0x0000000000000002L});
+	public static final BitSet FOLLOW_selectClause_in_queryStatement1168 = new BitSet(new long[]{0x1000000008000002L});
+	public static final BitSet FOLLOW_fromClause_in_queryStatement1173 = new BitSet(new long[]{0x1000000000000002L});
+	public static final BitSet FOLLOW_whereClause_in_queryStatement1179 = new BitSet(new long[]{0x0000000000000002L});
+	public static final BitSet FOLLOW_loadStatement_in_authorStatement1213 = new BitSet(new long[]{0x0000000000000002L});
+	public static final BitSet FOLLOW_createUser_in_authorStatement1221 = new BitSet(new long[]{0x0000000000000002L});
+	public static final BitSet FOLLOW_dropUser_in_authorStatement1229 = new BitSet(new long[]{0x0000000000000002L});
+	public static final BitSet FOLLOW_createRole_in_authorStatement1237 = new BitSet(new long[]{0x0000000000000002L});
+	public static final BitSet FOLLOW_dropRole_in_authorStatement1245 = new BitSet(new long[]{0x0000000000000002L});
+	public static final BitSet FOLLOW_grantUser_in_authorStatement1253 = new BitSet(new long[]{0x0000000000000002L});
+	public static final BitSet FOLLOW_grantRole_in_authorStatement1261 = new BitSet(new long[]{0x0000000000000002L});
+	public static final BitSet FOLLOW_revokeUser_in_authorStatement1269 = new BitSet(new long[]{0x0000000000000002L});
+	public static final BitSet FOLLOW_revokeRole_in_authorStatement1277 = new BitSet(new long[]{0x0000000000000002L});
+	public static final BitSet FOLLOW_grantRoleToUser_in_authorStatement1285 = new BitSet(new long[]{0x0000000000000002L});
+	public static final BitSet FOLLOW_revokeRoleFromUser_in_authorStatement1293 = new BitSet(new long[]{0x0000000000000002L});
+	public static final BitSet FOLLOW_KW_LOAD_in_loadStatement1310 = new BitSet(new long[]{0x0010000000000000L});
+	public static final BitSet FOLLOW_KW_TIMESERIES_in_loadStatement1312 = new BitSet(new long[]{0x0000000000000000L,0x0000000000000200L});
+	public static final BitSet FOLLOW_StringLiteral_in_loadStatement1317 = new BitSet(new long[]{0x0000000000030000L});
+	public static final BitSet FOLLOW_identifier_in_loadStatement1320 = new BitSet(new long[]{0x0000000000000102L});
+	public static final BitSet FOLLOW_DOT_in_loadStatement1323 = new BitSet(new long[]{0x0000000000030000L});
+	public static final BitSet FOLLOW_identifier_in_loadStatement1325 = new BitSet(new long[]{0x0000000000000102L});
+	public static final BitSet FOLLOW_KW_CREATE_in_createUser1360 = new BitSet(new long[]{0x0200000000000000L});
+	public static final BitSet FOLLOW_KW_USER_in_createUser1362 = new BitSet(new long[]{0x0000000000031000L});
+	public static final BitSet FOLLOW_numberOrString_in_createUser1374 = new BitSet(new long[]{0x0000000000031000L});
+	public static final BitSet FOLLOW_numberOrString_in_createUser1386 = new BitSet(new long[]{0x0000000000000002L});
+	public static final BitSet FOLLOW_KW_DROP_in_dropUser1428 = new BitSet(new long[]{0x0200000000000000L});
+	public static final BitSet FOLLOW_KW_USER_in_dropUser1430 = new BitSet(new long[]{0x0000000000030000L});
+	public static final BitSet FOLLOW_identifier_in_dropUser1434 = new BitSet(new long[]{0x0000000000000002L});
+	public static final BitSet FOLLOW_KW_CREATE_in_createRole1468 = new BitSet(new long[]{0x0000800000000000L});
+	public static final BitSet FOLLOW_KW_ROLE_in_createRole1470 = new BitSet(new long[]{0x0000000000030000L});
+	public static final BitSet FOLLOW_identifier_in_createRole1474 = new BitSet(new long[]{0x0000000000000002L});
+	public static final BitSet FOLLOW_KW_DROP_in_dropRole1508 = new BitSet(new long[]{0x0000800000000000L});
+	public static final BitSet FOLLOW_KW_ROLE_in_dropRole1510 = new BitSet(new long[]{0x0000000000030000L});
+	public static final BitSet FOLLOW_identifier_in_dropRole1514 = new BitSet(new long[]{0x0000000000000002L});
+	public static final BitSet FOLLOW_KW_GRANT_in_grantUser1548 = new BitSet(new long[]{0x0200000000000000L});
+	public static final BitSet FOLLOW_KW_USER_in_grantUser1550 = new BitSet(new long[]{0x0000000000030000L});
+	public static final BitSet FOLLOW_identifier_in_grantUser1556 = new BitSet(new long[]{0x0000080000000000L});
+	public static final BitSet FOLLOW_privileges_in_grantUser1558 = new BitSet(new long[]{0x0000008000000000L});
+	public static final BitSet FOLLOW_KW_ON_in_grantUser1560 = new BitSet(new long[]{0x0000000000030000L,0x0000000000000100L});
+	public static final BitSet FOLLOW_path_in_grantUser1562 = new BitSet(new long[]{0x0000000000000002L});
+	public static final BitSet FOLLOW_KW_GRANT_in_grantRole1600 = new BitSet(new long[]{0x0000800000000000L});
+	public static final BitSet FOLLOW_KW_ROLE_in_grantRole1602 = new BitSet(new long[]{0x0000000000030000L});
+	public static final BitSet FOLLOW_identifier_in_grantRole1606 = new BitSet(new long[]{0x0000080000000000L});
+	public static final BitSet FOLLOW_privileges_in_grantRole1608 = new BitSet(new long[]{0x0000008000000000L});
+	public static final BitSet FOLLOW_KW_ON_in_grantRole1610 = new BitSet(new long[]{0x0000000000030000L,0x0000000000000100L});
+	public static final BitSet FOLLOW_path_in_grantRole1612 = new BitSet(new long[]{0x0000000000000002L});
+	public static final BitSet FOLLOW_KW_REVOKE_in_revokeUser1650 = new BitSet(new long[]{0x0200000000000000L});
+	public static final BitSet FOLLOW_KW_USER_in_revokeUser1652 = new BitSet(new long[]{0x0000000000030000L});
+	public static final BitSet FOLLOW_identifier_in_revokeUser1658 = new BitSet(new long[]{0x0000080000000000L});
+	public static final BitSet FOLLOW_privileges_in_revokeUser1660 = new BitSet(new long[]{0x0000008000000000L});
+	public static final BitSet FOLLOW_KW_ON_in_revokeUser1662 = new BitSet(new long[]{0x0000000000030000L,0x0000000000000100L});
+	public static final BitSet FOLLOW_path_in_revokeUser1664 = new BitSet(new long[]{0x0000000000000002L});
+	public static final BitSet FOLLOW_KW_REVOKE_in_revokeRole1702 = new BitSet(new long[]{0x0000800000000000L});
+	public static final BitSet FOLLOW_KW_ROLE_in_revokeRole1704 = new BitSet(new long[]{0x0000000000030000L});
+	public static final BitSet FOLLOW_identifier_in_revokeRole1710 = new BitSet(new long[]{0x0000080000000000L});
+	public static final BitSet FOLLOW_privileges_in_revokeRole1712 = new BitSet(new long[]{0x0000008000000000L});
+	public static final BitSet FOLLOW_KW_ON_in_revokeRole1714 = new BitSet(new long[]{0x0000000000030000L,0x0000000000000100L});
+	public static final BitSet FOLLOW_path_in_revokeRole1716 = new BitSet(new long[]{0x0000000000000002L});
+	public static final BitSet FOLLOW_KW_GRANT_in_grantRoleToUser1754 = new BitSet(new long[]{0x0000000000030000L});
+	public static final BitSet FOLLOW_identifier_in_grantRoleToUser1760 = new BitSet(new long[]{0x0040000000000000L});
+	public static final BitSet FOLLOW_KW_TO_in_grantRoleToUser1762 = new BitSet(new long[]{0x0000000000030000L});
+	public static final BitSet FOLLOW_identifier_in_grantRoleToUser1768 = new BitSet(new long[]{0x0000000000000002L});
+	public static final BitSet FOLLOW_KW_REVOKE_in_revokeRoleFromUser1809 = new BitSet(new long[]{0x0000000000030000L});
+	public static final BitSet FOLLOW_identifier_in_revokeRoleFromUser1815 = new BitSet(new long[]{0x0000000008000000L});
+	public static final BitSet FOLLOW_KW_FROM_in_revokeRoleFromUser1817 = new BitSet(new long[]{0x0000000000030000L});
+	public static final BitSet FOLLOW_identifier_in_revokeRoleFromUser1823 = new BitSet(new long[]{0x0000000000000002L});
+	public static final BitSet FOLLOW_KW_PRIVILEGES_in_privileges1864 = new BitSet(new long[]{0x0000000000000000L,0x0000000000000200L});
+	public static final BitSet FOLLOW_StringLiteral_in_privileges1866 = new BitSet(new long[]{0x0000000000000022L});
+	public static final BitSet FOLLOW_COMMA_in_privileges1869 = new BitSet(new long[]{0x0000000000000000L,0x0000000000000200L});
+	public static final BitSet FOLLOW_StringLiteral_in_privileges1871 = new BitSet(new long[]{0x0000000000000022L});
+	public static final BitSet FOLLOW_nodeName_in_path1903 = new BitSet(new long[]{0x0000000000000102L});
+	public static final BitSet FOLLOW_DOT_in_path1906 = new BitSet(new long[]{0x0000000000030000L,0x0000000000000100L});
+	public static final BitSet FOLLOW_nodeName_in_path1908 = new BitSet(new long[]{0x0000000000000102L});
+	public static final BitSet FOLLOW_identifier_in_nodeName1942 = new BitSet(new long[]{0x0000000000000002L});
+	public static final BitSet FOLLOW_STAR_in_nodeName1950 = new BitSet(new long[]{0x0000000000000002L});
+	public static final BitSet FOLLOW_KW_INSERT_in_insertStatement1966 = new BitSet(new long[]{0x0000000080000000L});
+	public static final BitSet FOLLOW_KW_INTO_in_insertStatement1968 = new BitSet(new long[]{0x0000000000030000L,0x0000000000000100L});
+	public static final BitSet FOLLOW_path_in_insertStatement1970 = new BitSet(new long[]{0x0000000000000000L,0x0000000000000001L});
+	public static final BitSet FOLLOW_multidentifier_in_insertStatement1972 = new BitSet(new long[]{0x0800000000000000L});
+	public static final BitSet FOLLOW_KW_VALUES_in_insertStatement1974 = new BitSet(new long[]{0x0000000000000000L,0x0000000000000001L});
+	public static final BitSet FOLLOW_multiValue_in_insertStatement1976 = new BitSet(new long[]{0x0000000000000002L});
+	public static final BitSet FOLLOW_LPAREN_in_multidentifier2008 = new BitSet(new long[]{0x0020000000000000L});
+	public static final BitSet FOLLOW_KW_TIMESTAMP_in_multidentifier2010 = new BitSet(new long[]{0x0000000000000020L,0x0000000000000040L});
+	public static final BitSet FOLLOW_COMMA_in_multidentifier2013 = new BitSet(new long[]{0x0000000000030000L});
+	public static final BitSet FOLLOW_identifier_in_multidentifier2015 = new BitSet(new long[]{0x0000000000000020L,0x0000000000000040L});
+	public static final BitSet FOLLOW_RPAREN_in_multidentifier2019 = new BitSet(new long[]{0x0000000000000002L});
+	public static final BitSet FOLLOW_LPAREN_in_multiValue2042 = new BitSet(new long[]{0x0000000000030040L});
+	public static final BitSet FOLLOW_dateFormatWithNumber_in_multiValue2046 = new BitSet(new long[]{0x0000000000000020L,0x0000000000000040L});
+	public static final BitSet FOLLOW_COMMA_in_multiValue2049 = new BitSet(new long[]{0x0000000000031000L});
+	public static final BitSet FOLLOW_numberOrString_in_multiValue2051 = new BitSet(new long[]{0x0000000000000020L,0x0000000000000040L});
+	public static final BitSet FOLLOW_RPAREN_in_multiValue2055 = new BitSet(new long[]{0x0000000000000002L});
+	public static final BitSet FOLLOW_KW_DELETE_in_deleteStatement2085 = new BitSet(new long[]{0x0000000008000000L});
+	public static final BitSet FOLLOW_KW_FROM_in_deleteStatement2087 = new BitSet(new long[]{0x0000000000030000L,0x0000000000000100L});
+	public static final BitSet FOLLOW_path_in_deleteStatement2089 = new BitSet(new long[]{0x1000000000000002L});
+	public static final BitSet FOLLOW_whereClause_in_deleteStatement2092 = new BitSet(new long[]{0x0000000000000002L});
+	public static final BitSet FOLLOW_KW_UPDATE_in_updateStatement2123 = new BitSet(new long[]{0x0000000000030000L,0x0000000000000100L});
+	public static final BitSet FOLLOW_path_in_updateStatement2125 = new BitSet(new long[]{0x0002000000000000L});
+	public static final BitSet FOLLOW_KW_SET_in_updateStatement2127 = new BitSet(new long[]{0x0400000000000000L});
+	public static final BitSet FOLLOW_KW_VALUE_in_updateStatement2129 = new BitSet(new long[]{0x0000000000000400L});
+	public static final BitSet FOLLOW_EQUAL_in_updateStatement2131 = new BitSet(new long[]{0x0000000000021000L});
+	public static final BitSet FOLLOW_number_in_updateStatement2135 = new BitSet(new long[]{0x1000000000000002L});
+	public static final BitSet FOLLOW_whereClause_in_updateStatement2138 = new BitSet(new long[]{0x0000000000000002L});
+	public static final BitSet FOLLOW_KW_UPDATE_in_updateStatement2168 = new BitSet(new long[]{0x0200000000000000L});
+	public static final BitSet FOLLOW_KW_USER_in_updateStatement2170 = new BitSet(new long[]{0x0000000000000000L,0x0000000000000200L});
+	public static final BitSet FOLLOW_StringLiteral_in_updateStatement2174 = new BitSet(new long[]{0x0002000000000000L});
+	public static final BitSet FOLLOW_KW_SET_in_updateStatement2176 = new BitSet(new long[]{0x0000040000000000L});
+	public static final BitSet FOLLOW_KW_PASSWORD_in_updateStatement2178 = new BitSet(new long[]{0x0000000000000000L,0x0000000000000200L});
+	public static final BitSet FOLLOW_StringLiteral_in_updateStatement2182 = new BitSet(new long[]{0x0000000000000002L});
+	public static final BitSet FOLLOW_KW_SELECT_in_selectClause2246 = new BitSet(new long[]{0x0000000000030000L,0x0000000000000100L});
+	public static final BitSet FOLLOW_path_in_selectClause2248 = new BitSet(new long[]{0x0000000000000022L});
+	public static final BitSet FOLLOW_COMMA_in_selectClause2251 = new BitSet(new long[]{0x0000000000030000L,0x0000000000000100L});
+	public static final BitSet FOLLOW_path_in_selectClause2253 = new BitSet(new long[]{0x0000000000000022L});
+	public static final BitSet FOLLOW_KW_SELECT_in_selectClause2276 = new BitSet(new long[]{0x0000000000030000L});
+	public static final BitSet FOLLOW_identifier_in_selectClause2282 = new BitSet(new long[]{0x0000000000000000L,0x0000000000000001L});
+	public static final BitSet FOLLOW_LPAREN_in_selectClause2284 = new BitSet(new long[]{0x0000000000030000L,0x0000000000000100L});
+	public static final BitSet FOLLOW_path_in_selectClause2286 = new BitSet(new long[]{0x0000000000000000L,0x0000000000000040L});
+	public static final BitSet FOLLOW_RPAREN_in_selectClause2288 = new BitSet(new long[]{0x0000000000000022L});
+	public static final BitSet FOLLOW_COMMA_in_selectClause2291 = new BitSet(new long[]{0x0000000000030000L});
+	public static final BitSet FOLLOW_identifier_in_selectClause2295 = new BitSet(new long[]{0x0000000000000000L,0x0000000000000001L});
+	public static final BitSet FOLLOW_LPAREN_in_selectClause2297 = new BitSet(new long[]{0x0000000000030000L,0x0000000000000100L});
+	public static final BitSet FOLLOW_path_in_selectClause2299 = new BitSet(new long[]{0x0000000000000000L,0x0000000000000040L});
+	public static final BitSet FOLLOW_RPAREN_in_selectClause2301 = new BitSet(new long[]{0x0000000000000022L});
+	public static final BitSet FOLLOW_identifier_in_clusteredPath2342 = new BitSet(new long[]{0x0000000000000000L,0x0000000000000001L});
+	public static final BitSet FOLLOW_LPAREN_in_clusteredPath2344 = new BitSet(new long[]{0x0000000000030000L,0x0000000000000100L});
+	public static final BitSet FOLLOW_path_in_clusteredPath2346 = new BitSet(new long[]{0x0000000000000000L,0x0000000000000040L});
+	public static final BitSet FOLLOW_RPAREN_in_clusteredPath2348 = new BitSet(new long[]{0x0000000000000002L});
+	public static final BitSet FOLLOW_path_in_clusteredPath2370 = new BitSet(new long[]{0x0000000000000002L});
+	public static final BitSet FOLLOW_KW_FROM_in_fromClause2393 = new BitSet(new long[]{0x0000000000030000L,0x0000000000000100L});
+	public static final BitSet FOLLOW_path_in_fromClause2395 = new BitSet(new long[]{0x0000000000000022L});
+	public static final BitSet FOLLOW_COMMA_in_fromClause2398 = new BitSet(new long[]{0x0000000000030000L,0x0000000000000100L});
+	public static final BitSet FOLLOW_path_in_fromClause2400 = new BitSet(new long[]{0x0000000000000022L});
+	public static final BitSet FOLLOW_KW_WHERE_in_whereClause2433 = new BitSet(new long[]{0x0000006000031040L,0x0000000000000301L});
+	public static final BitSet FOLLOW_searchCondition_in_whereClause2435 = new BitSet(new long[]{0x0000000000000002L});
+	public static final BitSet FOLLOW_expression_in_searchCondition2464 = new BitSet(new long[]{0x0000000000000002L});
+	public static final BitSet FOLLOW_precedenceOrExpression_in_expression2485 = new BitSet(new long[]{0x0000000000000002L});
+	public static final BitSet FOLLOW_precedenceAndExpression_in_precedenceOrExpression2506 = new BitSet(new long[]{0x0000010000000002L});
+	public static final BitSet FOLLOW_KW_OR_in_precedenceOrExpression2510 = new BitSet(new long[]{0x0000006000031040L,0x0000000000000301L});
+	public static final BitSet FOLLOW_precedenceAndExpression_in_precedenceOrExpression2513 = new BitSet(new long[]{0x0000010000000002L});
+	public static final BitSet FOLLOW_precedenceNotExpression_in_precedenceAndExpression2536 = new BitSet(new long[]{0x0000000000080002L});
+	public static final BitSet FOLLOW_KW_AND_in_precedenceAndExpression2540 = new BitSet(new long[]{0x0000006000031040L,0x0000000000000301L});
+	public static final BitSet FOLLOW_precedenceNotExpression_in_precedenceAndExpression2543 = new BitSet(new long[]{0x0000000000080002L});
+	public static final BitSet FOLLOW_KW_NOT_in_precedenceNotExpression2567 = new BitSet(new long[]{0x0000006000031040L,0x0000000000000301L});
+	public static final BitSet FOLLOW_precedenceEqualExpressionSingle_in_precedenceNotExpression2572 = new BitSet(new long[]{0x0000000000000002L});
+	public static final BitSet FOLLOW_atomExpression_in_precedenceEqualExpressionSingle2597 = new BitSet(new long[]{0xC000000000006C02L,0x0000000000000008L});
+	public static final BitSet FOLLOW_precedenceEqualOperator_in_precedenceEqualExpressionSingle2617 = new BitSet(new long[]{0x0000004000031040L,0x0000000000000301L});
+	public static final BitSet FOLLOW_atomExpression_in_precedenceEqualExpressionSingle2621 = new BitSet(new long[]{0xC000000000006C02L,0x0000000000000008L});
+	public static final BitSet FOLLOW_KW_NULL_in_nullCondition2717 = new BitSet(new long[]{0x0000000000000002L});
+	public static final BitSet FOLLOW_KW_NOT_in_nullCondition2731 = new BitSet(new long[]{0x0000004000000000L});
+	public static final BitSet FOLLOW_KW_NULL_in_nullCondition2733 = new BitSet(new long[]{0x0000000000000002L});
+	public static final BitSet FOLLOW_KW_NULL_in_atomExpression2768 = new BitSet(new long[]{0x0000000000000002L});
+	public static final BitSet FOLLOW_constant_in_atomExpression2786 = new BitSet(new long[]{0x0000000000000002L});
+	public static final BitSet FOLLOW_path_in_atomExpression2794 = new BitSet(new long[]{0x0000000000000002L});
+	public static final BitSet FOLLOW_LPAREN_in_atomExpression2802 = new BitSet(new long[]{0x0000006000031040L,0x0000000000000301L});
+	public static final BitSet FOLLOW_expression_in_atomExpression2805 = new BitSet(new long[]{0x0000000000000000L,0x0000000000000040L});
+	public static final BitSet FOLLOW_RPAREN_in_atomExpression2807 = new BitSet(new long[]{0x0000000000000002L});
+	public static final BitSet FOLLOW_number_in_constant2825 = new BitSet(new long[]{0x0000000000000002L});
+	public static final BitSet FOLLOW_StringLiteral_in_constant2833 = new BitSet(new long[]{0x0000000000000002L});
+	public static final BitSet FOLLOW_dateFormat_in_constant2841 = new BitSet(new long[]{0x0000000000000002L});
+	public static final BitSet FOLLOW_KW_NULL_in_synpred1_TSParser2763 = new BitSet(new long[]{0x0000000000000002L});
+	public static final BitSet FOLLOW_constant_in_synpred2_TSParser2781 = new BitSet(new long[]{0x0000000000000002L});
 }

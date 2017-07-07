@@ -258,7 +258,7 @@ number
     ;
 
 numberOrString // identifier is string or integer
-    : identifier | Float
+    : identifier | Float 
     ;
 
 
@@ -518,8 +518,8 @@ multidentifier
 	;
 multiValue
 	:
-	LPAREN time=dateFormatWithNumber (COMMA number)* RPAREN
-	-> ^(TOK_MULT_VALUE $time number*)
+	LPAREN time=dateFormatWithNumber (COMMA numberOrString)* RPAREN
+	-> ^(TOK_MULT_VALUE $time numberOrString*)
 	;
 
 

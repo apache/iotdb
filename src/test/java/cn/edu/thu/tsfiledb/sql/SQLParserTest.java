@@ -74,9 +74,9 @@ public class SQLParserTest {
     public void multiInsert() throws ParseException {
         // template for test case
         ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_INSERT", "TOK_PATH", "root", "vehicle", "d0",
-                "TOK_MULT_IDENTIFIER", "TOK_TIME", "s0","s1" ,"TOK_MULT_VALUE", "12345678", "-1011.666", "1231"));
+                "TOK_MULT_IDENTIFIER", "TOK_TIME", "s0","s1" ,"TOK_MULT_VALUE", "12345678", "-1011.666", "dafa"));
         ArrayList<String> rec = new ArrayList<>();
-        ASTNode astTree = ParseGenerator.generateAST("insert into root.vehicle.d0 (timestamp, s0, s1)  values(12345678 , -1011.666, 1231)");
+        ASTNode astTree = ParseGenerator.generateAST("insert into root.vehicle.d0 (timestamp, s0, s1)  values(12345678 , -1011.666, dafa)");
         astTree = ParseUtils.findRootNonNullToken(astTree);
         recursivePrintSon(astTree, rec);
 
