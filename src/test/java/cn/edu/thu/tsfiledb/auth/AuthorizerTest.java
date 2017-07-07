@@ -12,13 +12,17 @@ import org.junit.Test;
 import cn.edu.thu.tsfiledb.auth.dao.Authorizer;
 import cn.edu.thu.tsfiledb.auth.dao.DBDao;
 import cn.edu.thu.tsfiledb.auth.model.User;
+import cn.edu.thu.tsfiledb.conf.TsfileDBConfig;
+import cn.edu.thu.tsfiledb.conf.TsfileDBDescriptor;
 
 public class AuthorizerTest {
 
 	private DBDao dbdao = null;
+	private TsfileDBConfig dbconfig = TsfileDBDescriptor.getInstance().getConfig();
 
 	@Before
 	public void setUp() throws Exception {
+		dbconfig.derbyHome = "";
 		dbdao = new DBDao();
 		dbdao.open();
 	}
