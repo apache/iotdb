@@ -25,6 +25,7 @@ import org.slf4j.LoggerFactory;
 
 import ch.qos.logback.core.joran.spi.JoranException;
 import cn.edu.thu.tsfile.common.constant.SystemConstant;
+import cn.edu.thu.tsfiledb.conf.TsfileDBConfig;
 import cn.edu.thu.tsfiledb.conf.TsfileDBDescriptor;
 
 /**
@@ -76,6 +77,7 @@ public class JMXManager {
 		mbs.registerMBean(mbean, mBeanName);
 		connector.start();
 		LOGGER.info("JMXManager: start JMX manager...");
+		LOGGER.info("TsFileDB Started. Listening on port: {}", TsfileDBDescriptor.getInstance().getConfig().JDBCServerPort);
 	}
 
 	public void close() throws IOException {

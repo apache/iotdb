@@ -10,6 +10,7 @@ tsfiledb/*
 **/*.log
 # Apple OS X related
 **/.DS_Store
+derby-tsfile-db
 
 # build generated
 **/target/

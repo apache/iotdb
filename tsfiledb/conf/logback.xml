@@ -138,6 +138,7 @@
 		而其它包则会按root的级别输出日志
 	-->
 	<!-- 生产环境，将此级别配置为适合的级别，以名日志文件太多或影响程序性能 -->
+	<logger name="cn.edu.thu.tsfiledb.service" level="info" />
 	<root level="ERROR">
 		<appender-ref ref="FILEDEBUG" />
 		<appender-ref ref="FILEINFO" />

@@ -1,8 +1,4 @@
 #!/bin/sh
-if [ $# -lt 3 ] ; then
-    echo "Arguments : -host<host> -port<port> -u<username>"
-    exit 0
-fi
 
 if [ -z "${TSFILE_HOME}" ]; then
   export TSFILE_HOME="$(cd "`dirname "$0"`"/..; pwd)"
@@ -32,6 +28,6 @@ else
 fi
 
 
-exec "$JAVA" -DTSFILE_HOME=${TSFILE_HOME} -Dlogback.configurationFile=${TSFILE_CONF}/logback.xml -cp "$CLASSPATH" "$MAIN_CLASS" "$1" "$2" "$3"
+exec "$JAVA" -DTSFILE_HOME=${TSFILE_HOME} -Dlogback.configurationFile=${TSFILE_CONF}/logback.xml -cp "$CLASSPATH" "$MAIN_CLASS" "$@" 
 
 exit $?
