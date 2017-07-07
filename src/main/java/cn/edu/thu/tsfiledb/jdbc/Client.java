@@ -45,7 +45,7 @@ public class Client {
 	private static final String TSFILEDB_CLI_PREFIX = "TsFileDB Client-Cli";
 	private static final String QUIT_COMMAND = "quit";
 	private static final String EXIT_COMMAND = "exit";
-	private static final String SHOW_METADATA_COMMAND = "show metadata";
+	private static final String SHOW_METADATA_COMMAND = "show timeseries";
 	private static final int MAX_HELP_CONSOLE_WIDTH = 88;
 	
 	private static final String TIMESTAMP_STR = "Timestamp";
