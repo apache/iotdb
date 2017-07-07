@@ -77,7 +77,6 @@ public class JMXManager {
 		mbs.registerMBean(mbean, mBeanName);
 		connector.start();
 		LOGGER.info("JMXManager: start JMX manager...");
-		LOGGER.info("TsFileDB Started. Listening on port: {}", TsfileDBDescriptor.getInstance().getConfig().JDBCServerPort);
 	}
 
 	public void close() throws IOException {

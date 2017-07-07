@@ -61,6 +61,7 @@ public class JDBCServer implements JDBCServerMBean {
 
 
         LOGGER.info("TsFileDB Server: start server successfully");
+        LOGGER.info("Listening on port: {}", TsfileDBDescriptor.getInstance().getConfig().JDBCServerPort);
         isStart = true;
     }
 

@@ -36,7 +36,7 @@ for f in ${TSFILE_HOME}/lib/*.jar; do
   CLASSPATH=${CLASSPATH}":"$f
 done
 
-MAIN_CLASS=cn.edu.thu.tsfiledb.service.JMXManager
+MAIN_CLASS=cn.edu.thu.tsfiledb.service.JDBCServer
 
 pid="$TSFILE_HOME"/tmp/tsfiledb.pid
 
