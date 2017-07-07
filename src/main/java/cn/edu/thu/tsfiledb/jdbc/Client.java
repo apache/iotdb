@@ -229,8 +229,8 @@ public class Client {
 					System.out.println(cnt);
 				}
 			}
-
-			System.out.println(TSFILEDB_CLI_PREFIX+": result size= " + cnt);
+			printBlockLine(printTimestamp, colCount, res);
+			System.out.println(TSFILEDB_CLI_PREFIX+": result size=" + cnt);
 			System.out.println(TSFILEDB_CLI_PREFIX+": execute successfully.");
 		} catch (Exception e) {
 			System.out.println(e.getMessage());
