@@ -220,9 +220,12 @@ public class JDBCExample {
 					words[1], words[2], words[0], words[3], words[4], words[5], words[6], words[7], words[8], words[9],
 					words[10], words[11], words[12], words[13], words[14], words[15], words[16], words[17]);
 			try {
-				statement.executeUpdate(insertSql);
+				
+				statement.executeUpdate(insertSql.toLowerCase());
 			} catch (SQLException e) {
+				System.out.println(e);
 				LOGGER.error(insertSql);
+				LOGGER.error(e.getMessage());
 			}
 		}
 
