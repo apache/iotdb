@@ -355,7 +355,6 @@ public class TSServiceImpl implements TSIService.Iface {
             resp.setColumns(columns);
             operationHandle = new TSOperationHandle(operationId, true);
             resp.setOperationHandle(operationHandle);
-
             recordANewQuery(statement, plan);
 
             return resp;

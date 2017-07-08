@@ -633,11 +633,11 @@ public class TsfileQueryResultSet implements ResultSet {
 			return false;
 		}
 		record = recordItr.next();
-		if(record.getDeltaObjectType() != null && record.getDeltaObjectType().equals(AGGREGATION_STR)){
-		    if(columnInfo.containsKey(TIMESTAMP_STR)){
-    			columnInfo.remove(TIMESTAMP_STR);
-    		    }
-		}
+//		if(record.getDeltaObjectType() != null && record.getDeltaObjectType().equals(AGGREGATION_STR)){
+//		    if(columnInfo.containsKey(TIMESTAMP_STR)){
+//    			columnInfo.remove(TIMESTAMP_STR);
+//    		    }
+//		}
 		rowsFetched++;
 		return true;
 	}

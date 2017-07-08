@@ -41,7 +41,7 @@ MAIN_CLASS=cn.edu.thu.tsfiledb.service.JDBCServer
 pid="$TSFILE_HOME"/tmp/tsfiledb.pid
 
 
-echo "starting tsfiledb"
+# echo "starting tsfiledb"
 "$JAVA" -DTSFILE_HOME=${TSFILE_HOME} -Dlogback.configurationFile=${TSFILE_CONF}/logback.xml -cp "$CLASSPATH" "$MAIN_CLASS"
 
 

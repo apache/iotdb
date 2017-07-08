@@ -1,4 +1,4 @@
-// $ANTLR 3.5.2 TSLexer.g 2017-07-04 16:19:32
+// $ANTLR 3.5.2 TSLexer.g 2017-07-08 15:49:50
 
 package cn.edu.thu.tsfiledb.sql.parse;
 
@@ -1654,8 +1654,8 @@ public class TSLexer extends Lexer {
 		try {
 			int _type = DATETIME;
 			int _channel = DEFAULT_TOKEN_CHANNEL;
-			// TSLexer.g:115:5: ( ( Digit )+ MINUS ( Digit )+ MINUS ( Digit )+ 'T' ( Digit )+ COLON ( Digit )+ COLON ( Digit )+ PLUS ( Digit )+ COLON ( Digit )+ )
-			// TSLexer.g:115:7: ( Digit )+ MINUS ( Digit )+ MINUS ( Digit )+ 'T' ( Digit )+ COLON ( Digit )+ COLON ( Digit )+ PLUS ( Digit )+ COLON ( Digit )+
+			// TSLexer.g:115:5: ( ( Digit )+ MINUS ( Digit )+ MINUS ( Digit )+ 'T' ( Digit )+ COLON ( Digit )+ COLON ( Digit )+ ( DOT ( Digit )+ )? PLUS ( Digit )+ COLON ( Digit )+ )
+			// TSLexer.g:115:7: ( Digit )+ MINUS ( Digit )+ MINUS ( Digit )+ 'T' ( Digit )+ COLON ( Digit )+ COLON ( Digit )+ ( DOT ( Digit )+ )? PLUS ( Digit )+ COLON ( Digit )+
 			{
 			// TSLexer.g:115:7: ( Digit )+
 			int cnt7=0;
@@ -1864,19 +1864,69 @@ public class TSLexer extends Lexer {
 				cnt12++;
 			}
 
+			// TSLexer.g:115:77: ( DOT ( Digit )+ )?
+			int alt14=2;
+			int LA14_0 = input.LA(1);
+			if ( (LA14_0=='.') ) {
+				alt14=1;
+			}
+			switch (alt14) {
+				case 1 :
+					// TSLexer.g:115:78: DOT ( Digit )+
+					{
+					mDOT(); 
+
+					// TSLexer.g:115:82: ( Digit )+
+					int cnt13=0;
+					loop13:
+					while (true) {
+						int alt13=2;
+						int LA13_0 = input.LA(1);
+						if ( ((LA13_0 >= '0' && LA13_0 <= '9')) ) {
+							alt13=1;
+						}
+
+						switch (alt13) {
+						case 1 :
+							// TSLexer.g:
+							{
+							if ( (input.LA(1) >= '0' && input.LA(1) <= '9') ) {
+								input.consume();
+							}
+							else {
+								MismatchedSetException mse = new MismatchedSetException(null,input);
+								recover(mse);
+								throw mse;
+							}
+							}
+							break;
+
+						default :
+							if ( cnt13 >= 1 ) break loop13;
+							EarlyExitException eee = new EarlyExitException(13, input);
+							throw eee;
+						}
+						cnt13++;
+					}
+
+					}
+					break;
+
+			}
+
 			mPLUS(); 
 
-			// TSLexer.g:115:82: ( Digit )+
-			int cnt13=0;
-			loop13:
+			// TSLexer.g:115:96: ( Digit )+
+			int cnt15=0;
+			loop15:
 			while (true) {
-				int alt13=2;
-				int LA13_0 = input.LA(1);
-				if ( ((LA13_0 >= '0' && LA13_0 <= '9')) ) {
-					alt13=1;
+				int alt15=2;
+				int LA15_0 = input.LA(1);
+				if ( ((LA15_0 >= '0' && LA15_0 <= '9')) ) {
+					alt15=1;
 				}
 
-				switch (alt13) {
+				switch (alt15) {
 				case 1 :
 					// TSLexer.g:
 					{
@@ -1892,91 +1942,16 @@ public class TSLexer extends Lexer {
 					break;
 
 				default :
-					if ( cnt13 >= 1 ) break loop13;
-					EarlyExitException eee = new EarlyExitException(13, input);
+					if ( cnt15 >= 1 ) break loop15;
+					EarlyExitException eee = new EarlyExitException(15, input);
 					throw eee;
 				}
-				cnt13++;
+				cnt15++;
 			}
 
 			mCOLON(); 
 
-			// TSLexer.g:115:95: ( Digit )+
-			int cnt14=0;
-			loop14:
-			while (true) {
-				int alt14=2;
-				int LA14_0 = input.LA(1);
-				if ( ((LA14_0 >= '0' && LA14_0 <= '9')) ) {
-					alt14=1;
-				}
-
-				switch (alt14) {
-				case 1 :
-					// TSLexer.g:
-					{
-					if ( (input.LA(1) >= '0' && input.LA(1) <= '9') ) {
-						input.consume();
-					}
-					else {
-						MismatchedSetException mse = new MismatchedSetException(null,input);
-						recover(mse);
-						throw mse;
-					}
-					}
-					break;
-
-				default :
-					if ( cnt14 >= 1 ) break loop14;
-					EarlyExitException eee = new EarlyExitException(14, input);
-					throw eee;
-				}
-				cnt14++;
-			}
-
-			}
-
-			state.type = _type;
-			state.channel = _channel;
-		}
-		finally {
-			// do for sure before leaving
-		}
-	}
-	// $ANTLR end "DATETIME"
-
-	// $ANTLR start "Integer"
-	public final void mInteger() throws RecognitionException {
-		try {
-			int _type = Integer;
-			int _channel = DEFAULT_TOKEN_CHANNEL;
-			// TSLexer.g:119:2: ( ( '-' | '+' )? ( Digit )+ )
-			// TSLexer.g:120:2: ( '-' | '+' )? ( Digit )+
-			{
-			// TSLexer.g:120:2: ( '-' | '+' )?
-			int alt15=2;
-			int LA15_0 = input.LA(1);
-			if ( (LA15_0=='+'||LA15_0=='-') ) {
-				alt15=1;
-			}
-			switch (alt15) {
-				case 1 :
-					// TSLexer.g:
-					{
-					if ( input.LA(1)=='+'||input.LA(1)=='-' ) {
-						input.consume();
-					}
-					else {
-						MismatchedSetException mse = new MismatchedSetException(null,input);
-						recover(mse);
-						throw mse;
-					}
-					}
-					break;
-
-			}
-
-			// TSLexer.g:120:15: ( Digit )+
+			// TSLexer.g:115:109: ( Digit )+
 			int cnt16=0;
 			loop16:
 			while (true) {
@@ -2018,17 +1993,17 @@ public class TSLexer extends Lexer {
 			// do for sure before leaving
 		}
 	}
-	// $ANTLR end "Integer"
+	// $ANTLR end "DATETIME"
 
-	// $ANTLR start "Float"
-	public final void mFloat() throws RecognitionException {
+	// $ANTLR start "Integer"
+	public final void mInteger() throws RecognitionException {
 		try {
-			int _type = Float;
+			int _type = Integer;
 			int _channel = DEFAULT_TOKEN_CHANNEL;
-			// TSLexer.g:125:2: ( ( '-' | '+' )? ( Digit )+ DOT ( Digit )+ )
-			// TSLexer.g:126:2: ( '-' | '+' )? ( Digit )+ DOT ( Digit )+
+			// TSLexer.g:119:2: ( ( '-' | '+' )? ( Digit )+ )
+			// TSLexer.g:120:2: ( '-' | '+' )? ( Digit )+
 			{
-			// TSLexer.g:126:2: ( '-' | '+' )?
+			// TSLexer.g:120:2: ( '-' | '+' )?
 			int alt17=2;
 			int LA17_0 = input.LA(1);
 			if ( (LA17_0=='+'||LA17_0=='-') ) {
@@ -2051,7 +2026,7 @@ public class TSLexer extends Lexer {
 
 			}
 
-			// TSLexer.g:126:15: ( Digit )+
+			// TSLexer.g:120:15: ( Digit )+
 			int cnt18=0;
 			loop18:
 			while (true) {
@@ -2084,19 +2059,59 @@ public class TSLexer extends Lexer {
 				cnt18++;
 			}
 
-			mDOT(); 
+			}
 
-			// TSLexer.g:126:26: ( Digit )+
-			int cnt19=0;
-			loop19:
+			state.type = _type;
+			state.channel = _channel;
+		}
+		finally {
+			// do for sure before leaving
+		}
+	}
+	// $ANTLR end "Integer"
+
+	// $ANTLR start "Float"
+	public final void mFloat() throws RecognitionException {
+		try {
+			int _type = Float;
+			int _channel = DEFAULT_TOKEN_CHANNEL;
+			// TSLexer.g:125:2: ( ( '-' | '+' )? ( Digit )+ DOT ( Digit )+ )
+			// TSLexer.g:126:2: ( '-' | '+' )? ( Digit )+ DOT ( Digit )+
+			{
+			// TSLexer.g:126:2: ( '-' | '+' )?
+			int alt19=2;
+			int LA19_0 = input.LA(1);
+			if ( (LA19_0=='+'||LA19_0=='-') ) {
+				alt19=1;
+			}
+			switch (alt19) {
+				case 1 :
+					// TSLexer.g:
+					{
+					if ( input.LA(1)=='+'||input.LA(1)=='-' ) {
+						input.consume();
+					}
+					else {
+						MismatchedSetException mse = new MismatchedSetException(null,input);
+						recover(mse);
+						throw mse;
+					}
+					}
+					break;
+
+			}
+
+			// TSLexer.g:126:15: ( Digit )+
+			int cnt20=0;
+			loop20:
 			while (true) {
-				int alt19=2;
-				int LA19_0 = input.LA(1);
-				if ( ((LA19_0 >= '0' && LA19_0 <= '9')) ) {
-					alt19=1;
+				int alt20=2;
+				int LA20_0 = input.LA(1);
+				if ( ((LA20_0 >= '0' && LA20_0 <= '9')) ) {
+					alt20=1;
 				}
 
-				switch (alt19) {
+				switch (alt20) {
 				case 1 :
 					// TSLexer.g:
 					{
@@ -2112,11 +2127,46 @@ public class TSLexer extends Lexer {
 					break;
 
 				default :
-					if ( cnt19 >= 1 ) break loop19;
-					EarlyExitException eee = new EarlyExitException(19, input);
+					if ( cnt20 >= 1 ) break loop20;
+					EarlyExitException eee = new EarlyExitException(20, input);
 					throw eee;
 				}
-				cnt19++;
+				cnt20++;
+			}
+
+			mDOT(); 
+
+			// TSLexer.g:126:26: ( Digit )+
+			int cnt21=0;
+			loop21:
+			while (true) {
+				int alt21=2;
+				int LA21_0 = input.LA(1);
+				if ( ((LA21_0 >= '0' && LA21_0 <= '9')) ) {
+					alt21=1;
+				}
+
+				switch (alt21) {
+				case 1 :
+					// TSLexer.g:
+					{
+					if ( (input.LA(1) >= '0' && input.LA(1) <= '9') ) {
+						input.consume();
+					}
+					else {
+						MismatchedSetException mse = new MismatchedSetException(null,input);
+						recover(mse);
+						throw mse;
+					}
+					}
+					break;
+
+				default :
+					if ( cnt21 >= 1 ) break loop21;
+					EarlyExitException eee = new EarlyExitException(21, input);
+					throw eee;
+				}
+				cnt21++;
 			}
 
 			}
@@ -2147,15 +2197,15 @@ public class TSLexer extends Lexer {
 				throw mse;
 			}
 			// TSLexer.g:131:28: ( Letter | Digit | '_' )*
-			loop20:
+			loop22:
 			while (true) {
-				int alt20=2;
-				int LA20_0 = input.LA(1);
-				if ( ((LA20_0 >= '0' && LA20_0 <= '9')||(LA20_0 >= 'A' && LA20_0 <= 'Z')||LA20_0=='_'||(LA20_0 >= 'a' && LA20_0 <= 'z')) ) {
-					alt20=1;
+				int alt22=2;
+				int LA22_0 = input.LA(1);
+				if ( ((LA22_0 >= '0' && LA22_0 <= '9')||(LA22_0 >= 'A' && LA22_0 <= 'Z')||LA22_0=='_'||(LA22_0 >= 'a' && LA22_0 <= 'z')) ) {
+					alt22=1;
 				}
 
-				switch (alt20) {
+				switch (alt22) {
 				case 1 :
 					// TSLexer.g:
 					{
@@ -2171,7 +2221,7 @@ public class TSLexer extends Lexer {
 					break;
 
 				default :
-					break loop20;
+					break loop22;
 				}
 			}
 
@@ -2217,9 +2267,9 @@ public class TSLexer extends Lexer {
 	@Override
 	public void mTokens() throws RecognitionException {
 		// TSLexer.g:1:8: ( KW_PRIVILEGES | KW_TIMESERIES | KW_ROLE | KW_GRANT | KW_REVOKE | KW_MERGE | KW_QUIT | KW_METADATA | KW_DATATYPE | KW_ENCODING | KW_STORAGE | KW_AND | KW_OR | KW_NOT | KW_ORDER | KW_GROUP | KW_BY | KW_WHERE | KW_FROM | KW_SELECT | KW_INSERT | KW_ON | KW_SHOW | KW_LOAD | KW_NULL | KW_CREATE | KW_DROP | KW_TO | KW_TIMESTAMP | KW_USER | KW_INTO | KW_WITH | KW_SET | KW_DELETE | KW_UPDATE | KW_VALUES | KW_VALUE | KW_PASSWORD | KW_DESCRIBE | KW_PROPERTY | KW_ADD | KW_LABEL | KW_LINK | KW_UNLINK | QUOTE | DOT | COLON | COMMA | SEMICOLON | LPAREN | RPAREN | EQUAL | EQUAL_NS | NOTEQUAL | LESSTHANOREQUALTO | LESSTHAN | GREATERTHANOREQUALTO | GREATERTHAN | DIVIDE | PLUS | MINUS | STAR | StringLiteral | DATETIME | Integer | Float | Identifier | WS )
-		int alt21=68;
-		alt21 = dfa21.predict(input);
-		switch (alt21) {
+		int alt23=68;
+		alt23 = dfa23.predict(input);
+		switch (alt23) {
 			case 1 :
 				// TSLexer.g:1:10: KW_PRIVILEGES
 				{
@@ -2701,8 +2751,8 @@ public class TSLexer extends Lexer {
 	}
 
 
-	protected DFA21 dfa21 = new DFA21(this);
-	static final String DFA21_eotS =
+	protected DFA23 dfa23 = new DFA23(this);
+	static final String DFA23_eotS =
 		"\1\uffff\14\46\1\77\10\46\1\115\7\uffff\1\117\1\121\1\uffff\1\122\1\124"+
 		"\2\uffff\1\127\2\uffff\3\46\1\135\16\46\1\161\1\162\2\46\2\uffff\1\165"+
 		"\14\46\1\uffff\1\u0084\4\uffff\1\127\2\uffff\1\127\2\uffff\4\46\1\uffff"+
@@ -2716,9 +2766,9 @@ public class TSLexer extends Lexer {
 		"\u00f6\1\uffff\5\46\1\uffff\2\46\1\uffff\2\46\1\u0100\6\uffff\1\46\1\u0102"+
 		"\1\u0103\2\46\1\u0106\1\u0107\1\u0108\1\u0109\1\uffff\1\46\2\uffff\1\46"+
 		"\1\u010c\4\uffff\1\u010d\1\u010e\3\uffff";
-	static final String DFA21_eofS =
+	static final String DFA23_eofS =
 		"\u010f\uffff";
-	static final String DFA21_minS =
+	static final String DFA23_minS =
 		"\1\11\1\101\1\111\1\105\1\122\1\105\1\125\1\101\1\116\1\105\1\104\1\116"+
 		"\1\117\1\75\1\131\1\110\1\122\1\116\1\101\1\122\1\116\1\101\1\0\7\uffff"+
 		"\2\75\1\uffff\2\60\2\uffff\1\55\2\uffff\1\111\1\123\1\115\1\60\1\114\1"+
@@ -2738,7 +2788,7 @@ public class TSLexer extends Lexer {
 		"\1\60\2\uffff\1\60\1\uffff\4\60\1\uffff\1\107\1\131\1\104\1\111\1\115"+
 		"\1\uffff\1\101\1\105\1\uffff\1\105\1\107\1\60\6\uffff\1\105\2\60\1\105"+
 		"\1\120\4\60\1\uffff\1\123\2\uffff\1\123\1\60\4\uffff\2\60\3\uffff";
-	static final String DFA21_maxS =
+	static final String DFA23_maxS =
 		"\1\172\1\122\2\117\1\122\1\105\1\125\1\122\1\116\1\124\1\116\1\122\1\125"+
 		"\1\75\1\131\1\111\1\122\1\116\1\117\1\122\1\123\1\101\1\uffff\7\uffff"+
 		"\1\76\1\75\1\uffff\2\71\2\uffff\1\172\2\uffff\1\117\1\123\1\115\1\172"+
@@ -2759,7 +2809,7 @@ public class TSLexer extends Lexer {
 		"\1\107\1\131\1\104\1\111\1\115\1\uffff\1\101\1\105\1\uffff\1\105\1\107"+
 		"\1\172\6\uffff\1\105\2\172\1\105\1\120\4\172\1\uffff\1\123\2\uffff\1\123"+
 		"\1\172\4\uffff\2\172\3\uffff";
-	static final String DFA21_acceptS =
+	static final String DFA23_acceptS =
 		"\27\uffff\1\56\1\57\1\60\1\61\1\62\1\63\1\64\2\uffff\1\73\2\uffff\1\76"+
 		"\1\77\1\uffff\1\103\1\104\26\uffff\1\66\1\16\15\uffff\1\55\1\uffff\1\70"+
 		"\1\71\1\72\1\74\1\uffff\1\75\1\100\1\uffff\1\101\1\102\4\uffff\1\34\23"+
@@ -2769,9 +2819,9 @@ public class TSLexer extends Lexer {
 		"\uffff\1\4\1\20\1\6\7\uffff\1\17\1\22\1\uffff\1\52\4\uffff\1\45\5\uffff"+
 		"\1\5\2\uffff\1\42\3\uffff\1\24\1\25\1\32\1\43\1\54\1\44\11\uffff\1\13"+
 		"\1\uffff\1\50\1\46\2\uffff\1\10\1\11\1\47\1\12\2\uffff\1\35\1\1\1\2";
-	static final String DFA21_specialS =
+	static final String DFA23_specialS =
 		"\26\uffff\1\0\u00f8\uffff}>";
-	static final String[] DFA21_transitionS = {
+	static final String[] DFA23_transitionS = {
 			"\2\47\2\uffff\1\47\22\uffff\1\47\1\15\1\44\4\uffff\1\26\1\33\1\34\1\43"+
 			"\1\41\1\31\1\42\1\27\1\40\12\45\1\30\1\32\1\36\1\35\1\37\2\uffff\1\12"+
 			"\1\16\1\23\1\7\1\10\1\20\1\4\1\46\1\21\2\46\1\22\1\5\1\14\1\13\1\1\1"+
@@ -3048,34 +3098,34 @@ public class TSLexer extends Lexer {
 			""
 	};
 
-	static final short[] DFA21_eot = DFA.unpackEncodedString(DFA21_eotS);
-	static final short[] DFA21_eof = DFA.unpackEncodedString(DFA21_eofS);
-	static final char[] DFA21_min = DFA.unpackEncodedStringToUnsignedChars(DFA21_minS);
-	static final char[] DFA21_max = DFA.unpackEncodedStringToUnsignedChars(DFA21_maxS);
-	static final short[] DFA21_accept = DFA.unpackEncodedString(DFA21_acceptS);
-	static final short[] DFA21_special = DFA.unpackEncodedString(DFA21_specialS);
-	static final short[][] DFA21_transition;
+	static final short[] DFA23_eot = DFA.unpackEncodedString(DFA23_eotS);
+	static final short[] DFA23_eof = DFA.unpackEncodedString(DFA23_eofS);
+	static final char[] DFA23_min = DFA.unpackEncodedStringToUnsignedChars(DFA23_minS);
+	static final char[] DFA23_max = DFA.unpackEncodedStringToUnsignedChars(DFA23_maxS);
+	static final short[] DFA23_accept = DFA.unpackEncodedString(DFA23_acceptS);
+	static final short[] DFA23_special = DFA.unpackEncodedString(DFA23_specialS);
+	static final short[][] DFA23_transition;
 
 	static {
-		int numStates = DFA21_transitionS.length;
-		DFA21_transition = new short[numStates][];
+		int numStates = DFA23_transitionS.length;
+		DFA23_transition = new short[numStates][];
 		for (int i=0; i<numStates; i++) {
-			DFA21_transition[i] = DFA.unpackEncodedString(DFA21_transitionS[i]);
+			DFA23_transition[i] = DFA.unpackEncodedString(DFA23_transitionS[i]);
 		}
 	}
 
-	protected class DFA21 extends DFA {
+	protected class DFA23 extends DFA {
 
-		public DFA21(BaseRecognizer recognizer) {
+		public DFA23(BaseRecognizer recognizer) {
 			this.recognizer = recognizer;
-			this.decisionNumber = 21;
-			this.eot = DFA21_eot;
-			this.eof = DFA21_eof;
-			this.min = DFA21_min;
-			this.max = DFA21_max;
-			this.accept = DFA21_accept;
-			this.special = DFA21_special;
-			this.transition = DFA21_transition;
+			this.decisionNumber = 23;
+			this.eot = DFA23_eot;
+			this.eof = DFA23_eof;
+			this.min = DFA23_min;
+			this.max = DFA23_max;
+			this.accept = DFA23_accept;
+			this.special = DFA23_special;
+			this.transition = DFA23_transition;
 		}
 		@Override
 		public String getDescription() {
@@ -3087,15 +3137,15 @@ public class TSLexer extends Lexer {
 			int _s = s;
 			switch ( s ) {
 					case 0 : 
-						int LA21_22 = input.LA(1);
+						int LA23_22 = input.LA(1);
 						s = -1;
-						if ( ((LA21_22 >= '\u0000' && LA21_22 <= '\uFFFF')) ) {s = 36;}
+						if ( ((LA23_22 >= '\u0000' && LA23_22 <= '\uFFFF')) ) {s = 36;}
 						else s = 77;
 						if ( s>=0 ) return s;
 						break;
 			}
 			NoViableAltException nvae =
-				new NoViableAltException(getDescription(), 21, _s, input);
+				new NoViableAltException(getDescription(), 23, _s, input);
 			error(nvae);
 			throw nvae;
 		}

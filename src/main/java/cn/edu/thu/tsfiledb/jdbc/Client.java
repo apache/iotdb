@@ -19,6 +19,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.joda.time.DateTime;
 
 import cn.edu.thu.tsfiledb.exception.ArgsErrorException;
+import jline.console.ConsoleReader;
 
 public class Client {
 	private static final String HOST_ARGS = "h";
@@ -42,11 +43,13 @@ public class Client {
 	private static final String MAX_PRINT_ROW_COUNT_NAME = "maxPrintRowCount";
 	private static int maxPrintRowCount = 1000;
 	
-	private static final String TSFILEDB_CLI_PREFIX = "TsFileDB Client-Cli";
+	private static final String TSFILEDB_CLI_PREFIX = "TsFileDB";
 	private static final String QUIT_COMMAND = "quit";
 	private static final String EXIT_COMMAND = "exit";
 	private static final String SHOW_METADATA_COMMAND = "show timeseries";
 	private static final int MAX_HELP_CONSOLE_WIDTH = 88;
+	
+	private static final String[] AGGREGATION_OPERATOR = new String[]{"count", "min_timestamp", "max_timestamp", "max_value", "min_value"};
 	
 	private static final String TIMESTAMP_STR = "Timestamp";
 
@@ -59,7 +62,7 @@ public class Client {
 		Class.forName("cn.edu.thu.tsfiledb.jdbc.TsfileDriver");
 		Connection connection = null;
 		boolean printToConsole = true;
-
+		ConsoleReader reader = null;
 		Options options = createOptions();
 		HelpFormatter hf = new HelpFormatter();
 		hf.setWidth(MAX_HELP_CONSOLE_WIDTH);
@@ -87,10 +90,9 @@ public class Client {
 				    maxPrintRowCount = Integer.MAX_VALUE;
 				}
 			    } catch (NumberFormatException e) {
-				System.out.println(TSFILEDB_CLI_PREFIX+": error format of max print row count, it should be number");
+				System.out.println(TSFILEDB_CLI_PREFIX+"> error format of max print row count, it should be number");
 				return;
-			    }
-			    
+			    }  
 			}
 		} catch (ParseException e) {
 			hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
@@ -98,37 +100,42 @@ public class Client {
 		}	
 
 		try {
-			String host = checkRequiredArg(HOST_ARGS, HOST_NAME, commandLine);
-			String port = checkRequiredArg(PORT_ARGS, PORT_NAME, commandLine);
-			String username = checkRequiredArg(USERNAME_ARGS, USERNAME_NAME, commandLine);
-			String password = checkRequiredArg(PASSWORD_ARGS, PASSWORD_NAME, commandLine);
-			try{
-				connection = DriverManager.getConnection("jdbc:tsfile://" + host + ":" + port + "/", username, password);
-			} catch (SQLException e) {
-				System.out.println(TSFILEDB_CLI_PREFIX+": "+e.getMessage());
+			String s;
+			reader = new ConsoleReader();
+			
+			try {
+				String host = checkRequiredArg(HOST_ARGS, HOST_NAME, commandLine);
+				String port = checkRequiredArg(PORT_ARGS, PORT_NAME, commandLine);
+				String username = checkRequiredArg(USERNAME_ARGS, USERNAME_NAME, commandLine);
+				
+				String password = commandLine.getOptionValue(PASSWORD_ARGS);
+				if(password == null){
+				    password = reader.readLine(TSFILEDB_CLI_PREFIX+"> please input password: ");
+				}
+				try{
+					connection = DriverManager.getConnection("jdbc:tsfile://" + host + ":" + port + "/", username, password);
+				} catch (SQLException e) {
+					System.out.println(TSFILEDB_CLI_PREFIX+"> "+e.getMessage());
+					return;
+				}
+			} catch (ArgsErrorException e) {
+			    	System.out.println(TSFILEDB_CLI_PREFIX+": "+e.getMessage());
 				return;
 			}
-		} catch (ArgsErrorException e1) {
-			return;
-		}
 
-		System.out.println(" _______________________________.___.__          \n"
+			
+			System.out.println(" _______________________________.___.__          \n"
 				+ " \\__    ___/   _____/\\_   _____/|   |  |   ____  \n"
 				+ "   |    |  \\_____  \\  |    __)  |   |  | _/ __ \\ \n"
 				+ "   |    |  /        \\ |     \\   |   |  |_\\  ___/ \n"
 				+ "   |____| /_______  / \\___  /   |___|____/\\___  >   version 0.0.1\n"
 				+ "                  \\/      \\/                  \\/ \n");
 
-		System.out.println(TSFILEDB_CLI_PREFIX+": login successfully");
-		Scanner scanner = null;
-		try {
-			String s;
-			scanner = new Scanner(System.in);
-			System.out.print(TSFILEDB_CLI_PREFIX+"> ");
+			System.out.println(TSFILEDB_CLI_PREFIX+"> login successfully");			
+			
 			while (true) {
-				s = scanner.nextLine();
+			    	s = reader.readLine(TSFILEDB_CLI_PREFIX+"> ");
 				if(s == null || s.trim().equals("")){
-				    System.out.print(TSFILEDB_CLI_PREFIX+"> ");
 				    continue;
 				} else{
 					String[] cmds = s.trim().split(";");
@@ -136,7 +143,7 @@ public class Client {
 						String cmd = cmds[i];
 						if (cmd != null && !cmd.trim().equals("")) {
 							if(cmd.toLowerCase().equals(QUIT_COMMAND) || cmd.toLowerCase().equals(EXIT_COMMAND)){
-								System.out.println(TSFILEDB_CLI_PREFIX+": quit");
+								System.out.println(TSFILEDB_CLI_PREFIX+"> quit normally");
 								return;
 							}
 							
@@ -150,63 +157,47 @@ public class Client {
 								boolean hasResultSet = statement.execute(cmd.trim());
 								if (hasResultSet) {
 									ResultSet resultSet = statement.getResultSet();
-									output(resultSet, printToConsole);
+									output(resultSet, printToConsole, cmd.trim());
 								}
 								statement.close();
-								System.out.println(TSFILEDB_CLI_PREFIX+": execute successfully.");
+								System.out.println(TSFILEDB_CLI_PREFIX+"> execute successfully.");
 							} catch (TsfileSQLException e) {
-								System.out.println(TSFILEDB_CLI_PREFIX+": statement error: " + e.getMessage());
+								System.out.println(TSFILEDB_CLI_PREFIX+"> statement error: " + e.getMessage());
 							} catch (Exception e) {
-								System.out.println(TSFILEDB_CLI_PREFIX+": connection error. " + e.getMessage());
+								System.out.println(TSFILEDB_CLI_PREFIX+"> connection error: " + e.getMessage());
 							}
 						}
 					}
-					System.out.println();
 				}
-
-				System.out.print(TSFILEDB_CLI_PREFIX+"> ");
 			}
-			
 		} catch (Exception e) {
-			System.out.println(TSFILEDB_CLI_PREFIX+": exit client with error "+e.getMessage());
+			System.out.println(TSFILEDB_CLI_PREFIX+"> exit client with error "+e.getMessage());
 		} finally {
-			if(scanner != null){
-				scanner.close();
-			}
 			if(connection != null){
 				connection.close();
 			}
-			
 		}
 	}
 
-	public static void output(ResultSet res, boolean printToConsole) {
-	    	System.out.println();
+	public static void output(ResultSet res, boolean printToConsole, String statement) {
 		try {
 			int cnt = 0;
 			int colCount = res.getMetaData().getColumnCount();
-			// //Output Labels
-
-			boolean printTimestamp = true;
+			
+			boolean printTimestamp = printTimestamp(statement);
 			boolean printHeader = false;
-			if(!printHeader){
-				printBlockLine(printTimestamp, colCount, res);
-				printName(printTimestamp, colCount, res);
-				printBlockLine(printTimestamp, colCount, res);
-				printHeader = true;
-			}
+			
+
 			// Output values
-			while (res.next()) {
+			while (res.next()) {	
 
-				if (printToConsole && cnt < maxPrintRowCount && printTimestamp) {
-				    	try {
-				    	    	res.getLong(TIMESTAMP_STR);
-					} catch (SQLException e) {
-					    printTimestamp = false;
-					}
+				// Output Labels
+				if(!printHeader){
+					printBlockLine(printTimestamp, colCount, res);
+					printName(printTimestamp, colCount, res);
+					printBlockLine(printTimestamp, colCount, res);
+					printHeader = true;
 				}
-
-				
 			    	if(cnt < maxPrintRowCount){
 			    	    	System.out.print("|");
 			    	    	if(printTimestamp){
@@ -229,8 +220,14 @@ public class Client {
 					System.out.println(cnt);
 				}
 			}
+			if(!printHeader){
+				printBlockLine(printTimestamp, colCount, res);
+				printName(printTimestamp, colCount, res);
+				printBlockLine(printTimestamp, colCount, res);
+				printHeader = true;
+			}
 			printBlockLine(printTimestamp, colCount, res);
-			System.out.println(TSFILEDB_CLI_PREFIX+": result size=" + cnt);
+			System.out.println(TSFILEDB_CLI_PREFIX+"> record number = " + cnt);
 		} catch (Exception e) {
 			System.out.println(e.getMessage());
 		}
@@ -315,5 +312,16 @@ public class Client {
 			System.out.printf(formatValue, res.getMetaData().getColumnLabel(i + 1));
 		}
 		System.out.printf("\n");
+	}
+	
+	private static boolean printTimestamp(String statement){
+	    if(statement != null){
+		for(String operator : AGGREGATION_OPERATOR){
+		    if(statement.indexOf(operator) != -1){
+			return false;
+		    }
+		} 
+	    }
+	    return true;
 	}
 }
