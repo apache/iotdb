@@ -39,8 +39,8 @@ public class WriteLogNode {
 
     WriteLogNode(String path) {
         this.path = path;
-        this.LogCompactSize = TsfileDBDescriptor.getInstance().getConfig().LogCompactSize;
-        this.LogMemorySize = TsfileDBDescriptor.getInstance().getConfig().LogMemorySize;
+        this.LogCompactSize = TsfileDBDescriptor.getInstance().getConfig().walCleanupThreshold;
+        this.LogMemorySize = TsfileDBDescriptor.getInstance().getConfig().flushWalThreshold;
         String walPath = TsfileDBDescriptor.getInstance().getConfig().walFolder;
         if (walPath.length() > 0 && walPath.charAt(walPath.length() - 1) != File.separatorChar) {
            walPath += File.separatorChar;

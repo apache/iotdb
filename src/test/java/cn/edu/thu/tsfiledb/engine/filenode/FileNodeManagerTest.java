@@ -52,29 +52,29 @@ public class FileNodeManagerTest {
 	private String overflowDataDir;
 	private int rowGroupSize;
 	private int pageCheckSizeThreshold = tsconfig.pageCheckSizeThreshold;
-	private int defaultMaxStringLength = tsconfig.defaultMaxStringLength;
-	private boolean cachePageData = tsconfig.cachePageData;
-	private int pageSize = tsconfig.pageSize;
+	private int defaultMaxStringLength = tsconfig.maxStringLength;
+	private boolean cachePageData = tsconfig.duplicateIncompletedPage;
+	private int pageSize = tsconfig.pageSizeInByte;
 
 	@Before
 	public void setUp() throws Exception {
-		FileNodeDir = tsdbconfig.FileNodeDir;
-		BufferWriteDir = tsdbconfig.BufferWriteDir;
+		FileNodeDir = tsdbconfig.fileNodeDir;
+		BufferWriteDir = tsdbconfig.bufferWriteDir;
 		overflowDataDir = tsdbconfig.overflowDataDir;
 		
-		tsdbconfig.FileNodeDir = "filenode" + File.separatorChar;
-		tsdbconfig.BufferWriteDir = "bufferwrite";
+		tsdbconfig.fileNodeDir = "filenode" + File.separatorChar;
+		tsdbconfig.bufferWriteDir = "bufferwrite";
 		tsdbconfig.overflowDataDir = "overflow";
 		tsdbconfig.metadataDir = "metadata";
-		tsconfig.cachePageData = true;
+		tsconfig.duplicateIncompletedPage = true;
 
 		// set rowgroupsize
-		tsconfig.rowGroupSize = 2000;
+		tsconfig.groupSizeInByte = 2000;
 		tsconfig.pageCheckSizeThreshold = 3;
-		tsconfig.pageSize = 100;
-		tsconfig.defaultMaxStringLength = 2;
-		EngineTestHelper.delete(tsdbconfig.FileNodeDir);
-		EngineTestHelper.delete(tsdbconfig.BufferWriteDir);
+		tsconfig.pageSizeInByte = 100;
+		tsconfig.maxStringLength = 2;
+		EngineTestHelper.delete(tsdbconfig.fileNodeDir);
+		EngineTestHelper.delete(tsdbconfig.bufferWriteDir);
 		EngineTestHelper.delete(tsdbconfig.overflowDataDir);
 		EngineTestHelper.delete(tsdbconfig.walFolder);
 		EngineTestHelper.delete(tsdbconfig.metadataDir);
@@ -86,21 +86,21 @@ public class FileNodeManagerTest {
 	public void tearDown() throws Exception {
 		WriteLogManager.getInstance().close();
 		MManager.getInstance().flushObjectToFile();
-		EngineTestHelper.delete(tsdbconfig.FileNodeDir);
-		EngineTestHelper.delete(tsdbconfig.BufferWriteDir);
+		EngineTestHelper.delete(tsdbconfig.fileNodeDir);
+		EngineTestHelper.delete(tsdbconfig.bufferWriteDir);
 		EngineTestHelper.delete(tsdbconfig.overflowDataDir);
 		EngineTestHelper.delete(tsdbconfig.walFolder);
 		EngineTestHelper.delete(tsdbconfig.metadataDir);
 		
-		tsdbconfig.FileNodeDir = FileNodeDir;
+		tsdbconfig.fileNodeDir = FileNodeDir;
 		tsdbconfig.overflowDataDir = overflowDataDir;
-		tsdbconfig.BufferWriteDir = BufferWriteDir;
+		tsdbconfig.bufferWriteDir = BufferWriteDir;
 		
-		tsconfig.rowGroupSize = rowGroupSize;
+		tsconfig.groupSizeInByte = rowGroupSize;
 		tsconfig.pageCheckSizeThreshold = pageCheckSizeThreshold;
-		tsconfig.pageSize = pageSize;
-		tsconfig.defaultMaxStringLength = defaultMaxStringLength;
-		tsconfig.cachePageData = cachePageData;
+		tsconfig.pageSizeInByte = pageSize;
+		tsconfig.maxStringLength = defaultMaxStringLength;
+		tsconfig.duplicateIncompletedPage = cachePageData;
 	}
 
 	@Test
@@ -270,7 +270,7 @@ public class FileNodeManagerTest {
 
 	@Test
 	public void testRecoveryWait() {
-		String dirPath = tsdbconfig.BufferWriteDir;
+		String dirPath = tsdbconfig.bufferWriteDir;
 		File dir = new File(dirPath);
 		if (!dir.exists()) {
 			dir.mkdirs();
@@ -317,7 +317,7 @@ public class FileNodeManagerTest {
 		newFileNodes.add(fileNode);
 		FileNodeProcessorStore fileNodeProcessorStore = new FileNodeProcessorStore(lastUpdateTimeMap,
 				emptyIntervalFileNode, newFileNodes, FileNodeProcessorStatus.NONE, 0);
-		File fileNodeDir = new File(tsdbconfig.FileNodeDir + File.separatorChar + deltaObjectId);
+		File fileNodeDir = new File(tsdbconfig.fileNodeDir + File.separatorChar + deltaObjectId);
 		if (!fileNodeDir.exists()) {
 			fileNodeDir.mkdirs();
 		}
@@ -449,7 +449,7 @@ public class FileNodeManagerTest {
 			e.printStackTrace();
 			fail(e.getMessage());
 		}
-		File fileNodeDir = new File(tsdbconfig.FileNodeDir + File.separatorChar + deltaObjectId);
+		File fileNodeDir = new File(tsdbconfig.fileNodeDir + File.separatorChar + deltaObjectId);
 		if (!fileNodeDir.exists()) {
 			fileNodeDir.mkdirs();
 		}

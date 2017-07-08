@@ -66,8 +66,8 @@ public class BufferWriteProcessorTest {
 	
 	@Before
 	public void setUp() throws Exception {
-		cachePageData = TsFileConf.cachePageData;
-		TsFileConf.cachePageData = true;
+		cachePageData = TsFileConf.duplicateIncompletedPage;
+		TsFileConf.duplicateIncompletedPage = true;
 		EngineTestHelper.delete(nsp);
 		EngineTestHelper.delete(dbConfig.walFolder);
 		dbConfig.metadataDir = "metadata";
@@ -83,7 +83,7 @@ public class BufferWriteProcessorTest {
 		EngineTestHelper.delete(nsp);
 		EngineTestHelper.delete(dbConfig.walFolder);
 		EngineTestHelper.delete(dbConfig.metadataDir);
-		TsFileConf.cachePageData = cachePageData;
+		TsFileConf.duplicateIncompletedPage = cachePageData;
 	}
 
 	@Test
@@ -98,11 +98,11 @@ public class BufferWriteProcessorTest {
 		parameters.put(FileNodeConstants.FILENODE_PROCESSOR_FLUSH_ACTION, fnflushaction);
 		TSFileConfig tsconfig = TSFileDescriptor.getInstance().getConfig();
 		TsfileDBConfig tsdbconfig = TsfileDBDescriptor.getInstance().getConfig();
-		tsdbconfig.BufferWriteDir = "";
-		tsconfig.rowGroupSize = 2000;
+		tsdbconfig.bufferWriteDir = "";
+		tsconfig.groupSizeInByte = 2000;
 		tsconfig.pageCheckSizeThreshold = 3;
-		tsconfig.pageSize = 100;
-		tsconfig.defaultMaxStringLength = 2;
+		tsconfig.pageSizeInByte = 100;
+		tsconfig.maxStringLength = 2;
 		File outputfile = new File(nsp + File.separatorChar + filename);
 		File restorefile = new File(nsp + File.separatorChar + filename + ".restore");
 		if (outputfile.exists()) {

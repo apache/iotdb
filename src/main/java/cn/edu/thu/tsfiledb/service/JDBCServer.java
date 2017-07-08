@@ -61,7 +61,7 @@ public class JDBCServer implements JDBCServerMBean {
 
 
         LOGGER.info("TsFileDB Server: start server successfully");
-        LOGGER.info("Listening on port: {}", TsfileDBDescriptor.getInstance().getConfig().JDBCServerPort);
+        LOGGER.info("Listening on port: {}", TsfileDBDescriptor.getInstance().getConfig().rpcPort);
         isStart = true;
     }
 
@@ -119,7 +119,7 @@ public class JDBCServer implements JDBCServerMBean {
         @Override
         public void run() {
             try {
-                serverTransport = new TServerSocket(TsfileDBDescriptor.getInstance().getConfig().JDBCServerPort);
+                serverTransport = new TServerSocket(TsfileDBDescriptor.getInstance().getConfig().rpcPort);
                 poolArgs = new TThreadPoolServer.Args(serverTransport);
                 poolArgs.processor(processor);
                 poolArgs.protocolFactory(protocolFactory);

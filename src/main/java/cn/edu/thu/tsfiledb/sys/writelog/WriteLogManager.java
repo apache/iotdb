@@ -31,7 +31,7 @@ public class WriteLogManager {
         // system log timing merge task
         ScheduledExecutorService service = Executors.newScheduledThreadPool(1);
         long delay = 0;
-        long interval = TsfileDBDescriptor.getInstance().getConfig().LogMergeTime;
+        long interval = TsfileDBDescriptor.getInstance().getConfig().flushWalPeriodInMs;
         service.scheduleAtFixedRate(new LogMergeTimingTask(), delay, interval, TimeUnit.SECONDS);
     }
 

@@ -78,8 +78,8 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 		instanceLock.lock();
 		try {
 			if (instance == null) {
-				instance = new FileNodeManager(TsFileDBConf.maxFileNodeNum, MManager.getInstance(),
-						TsFileDBConf.FileNodeDir);
+				instance = new FileNodeManager(TsFileDBConf.maxOpenFolder, MManager.getInstance(),
+						TsFileDBConf.fileNodeDir);
 			}
 			return instance;
 		} finally {
@@ -98,7 +98,7 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 
 	private FileNodeManager(int maxLRUNumber, MManager mManager, String normalDataDir) {
 		super(maxLRUNumber, mManager, normalDataDir);
-		TsFileConf.cachePageData = true;
+		TsFileConf.duplicateIncompletedPage = true;
 		this.fileNodeManagerStoreFile = this.normalDataDir + restoreFileName;
 		this.overflowNameSpaceSet = readOverflowSetFromDisk();
 		if (overflowNameSpaceSet == null) {
@@ -561,7 +561,7 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 
 		@Override
 		public void run() {
-			ExecutorService mergeExecutorPool = Executors.newFixedThreadPool(TsFileDBConf.mergeConcurrentThreadNum);
+			ExecutorService mergeExecutorPool = Executors.newFixedThreadPool(TsFileDBConf.mergeConcurrentThreads);
 			for (String fileNodeNamespacePath : allChangedFileNodes) {
 				MergeOneProcessor mergeOneProcessorThread = new MergeOneProcessor(fileNodeNamespacePath);
 				mergeExecutorPool.execute(mergeOneProcessorThread);

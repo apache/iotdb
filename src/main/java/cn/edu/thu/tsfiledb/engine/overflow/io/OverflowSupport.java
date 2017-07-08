@@ -72,7 +72,7 @@ public class OverflowSupport {
 	}
 
 	private void init(long lastFileOffset, OFFileMetadata ofFileMetadata) throws IOException {
-		this.compressor = Compressor.getCompressor(conf.compressName);
+		this.compressor = Compressor.getCompressor(conf.compressor);
 		this.overflowMap = new HashMap<>();
 
 		// overflow data from file for metaForread
@@ -173,7 +173,7 @@ public class OverflowSupport {
 	 * @throws IOException
 	 */
 	private void init() throws IOException {
-		this.compressor = Compressor.getCompressor(conf.compressName);
+		this.compressor = Compressor.getCompressor(conf.compressor);
 		this.overflowMap = new HashMap<>();
 		Map<String, Map<String, List<TimeSeriesChunkMetaData>>> metaForReader = fileWriter.getSeriesListMap();
 		for (Entry<String, Map<String, List<TimeSeriesChunkMetaData>>> devEntry : metaForReader.entrySet()) {
