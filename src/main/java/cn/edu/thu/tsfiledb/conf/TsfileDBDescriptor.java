@@ -17,10 +17,8 @@ public class TsfileDBDescriptor {
 
 	private static TsfileDBDescriptor descriptor = new TsfileDBDescriptor();
 
-	private final String CONFIG_DEFAULT_PATH = "/tsfiledb.properties";
-
 	private TsfileDBDescriptor() {
-		loadYaml();
+		loadProps();
 	}
 
 	public static TsfileDBDescriptor getInstance() {
@@ -37,16 +35,21 @@ public class TsfileDBDescriptor {
 	 * load an properties file and set TsfileDBConfig variables
 	 *
 	 */
-	private void loadYaml() {
-		String tsfileHome = System.getProperty(SystemConstant.TSFILE_HOME, CONFIG_DEFAULT_PATH);
+	private void loadProps() {
+		String tsfileHome = System.getProperty(SystemConstant.TSFILE_HOME, TsfileDBConfig.CONFIG_DEFAULT_PATH);
 		String url;
 		InputStream inputStream = null;
-		if (tsfileHome.equals(CONFIG_DEFAULT_PATH)) {
+		if (tsfileHome.equals(TsfileDBConfig.CONFIG_DEFAULT_PATH)) {
 			url = tsfileHome;
-			inputStream = this.getClass().getResourceAsStream(url);
-			return;
+			try {
+			    inputStream = new FileInputStream(new File(url));
+			} catch (Exception e) {
+			    LOGGER.error("Fail to find config file {}", url, e);
+			    return;
+			}
+			
 		} else {
-			url = tsfileHome + "/conf/tsfiledb.properties";
+			url = tsfileHome + "/conf/"+TsfileDBConfig.CONFIG_NAME;
 			try {
 				File file = new File(url);
 				inputStream = new FileInputStream(file);
@@ -59,20 +62,24 @@ public class TsfileDBDescriptor {
 		Properties properties = new Properties();
 		try {
 			properties.load(inputStream);
-
-			conf.writeInstanceThreshold = Integer.parseInt(properties.getProperty("writeInstanceThreshold", conf.writeInstanceThreshold + ""));
-			conf.overflowDataDir = properties.getProperty("overflowDataDir", tsfileHome+"/data/overflow");
-			conf.FileNodeDir = properties.getProperty("FileNodeDir", tsfileHome+"/data/digest");
-			conf.BufferWriteDir = properties.getProperty("BufferWriteDir", tsfileHome+"/data/delta");
-			conf.metadataDir = properties.getProperty("metadataDir", tsfileHome+"/data/metadata");
-			conf.derbyHome = properties.getProperty("derbyHome", tsfileHome+"/data/derby");
-			conf.mergeConcurrentThreadNum = Integer.parseInt(properties.getProperty("mergeConcurrentThreadNum", conf.mergeConcurrentThreadNum + ""));
-			conf.maxFileNodeNum = Integer.parseInt(properties.getProperty("maxFileNodeNum", conf.maxFileNodeNum + ""));
-			conf.maxOverflowNodeNum = Integer.parseInt(properties.getProperty("maxOverflowNodeNum", conf.maxOverflowNodeNum + ""));
-			conf.maxBufferWriteNodeNum = Integer.parseInt(properties.getProperty("maxBufferWriteNodeNum", conf.maxBufferWriteNodeNum + ""));
-			conf.defaultFetchSize = Integer.parseInt(properties.getProperty("defaultFetchSize", conf.defaultFetchSize + ""));
-			conf.walFolder = properties.getProperty("walFolder", tsfileHome+"/data/wals/");
-
+			conf.rpcPort = Integer.parseInt(properties.getProperty("rpc_port",conf.rpcPort+""));
+			
+			conf.enableWal = Boolean.parseBoolean(properties.getProperty("enable_wal", conf.enableWal+""));
+			conf.walFolder = properties.getProperty("wal_folder", conf.walFolder);
+			conf.walCleanupThreshold = Integer.parseInt(properties.getProperty("wal_cleanup_threshold", conf.walCleanupThreshold+""));
+			conf.flushWalThreshold = Integer.parseInt(properties.getProperty("flush_wal_threshold", conf.flushWalThreshold+""));
+			conf.flushWalPeriodInMs = Integer.parseInt(properties.getProperty("flush_wal_period_in_ms", conf.flushWalPeriodInMs+""));
+			
+			conf.overflowDataDir = properties.getProperty("overflow_data_dir", conf.overflowDataDir);
+			conf.fileNodeDir = properties.getProperty("file_node_dir", conf.fileNodeDir);
+			conf.bufferWriteDir = properties.getProperty("buffer_write_dir", conf.bufferWriteDir);
+			conf.metadataDir = properties.getProperty("metadata_dir", conf.metadataDir);
+			conf.derbyHome = properties.getProperty("derby_dir", conf.derbyHome);
+			
+			conf.mergeConcurrentThreads = Integer.parseInt(properties.getProperty("merge_concurrent_threads", conf.mergeConcurrentThreads + ""));
+			conf.maxOpenFolder = Integer.parseInt(properties.getProperty("max_opened_folder", conf.maxOpenFolder + ""));
+			
+			conf.fetchSize = Integer.parseInt(properties.getProperty("fetch_size", conf.fetchSize + ""));
 		} catch (IOException e) {
 			LOGGER.warn("Cannot load config file, use default configuration", e);
 		} catch (Exception e) {
@@ -85,23 +92,5 @@ public class TsfileDBDescriptor {
 				LOGGER.error("Fail to close config file input stream", e);
 			}
 		}
-	}
-
-	public static void main(String[] args) {
-		TsfileDBDescriptor descriptor = TsfileDBDescriptor.getInstance();
-		TsfileDBConfig config = descriptor.getConfig();
-
-		System.out.println(config.writeInstanceThreshold);
-		System.out.println(config.overflowDataDir);
-		System.out.println(config.FileNodeDir);
-		System.out.println(config.BufferWriteDir);
-		System.out.println(config.metadataDir);
-		System.out.println(config.derbyHome);
-		System.out.println(config.mergeConcurrentThreadNum);
-		System.out.println(config.maxFileNodeNum);
-		System.out.println(config.maxOverflowNodeNum);
-		System.out.println(config.maxBufferWriteNodeNum);
-		System.out.println(config.defaultFetchSize);
-		System.out.println(config.walFolder);
 	}
 }

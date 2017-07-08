@@ -42,7 +42,7 @@ public class OverflowProcessor extends LRUProcessor {
 	private long recordCountForNextMemCheck = MINIMUM_RECORD_COUNT_FOR_CHECK;
 
 	private OverflowSupport ofSupport;
-	private final int memoryBlockSize = TSFileDescriptor.getInstance().getConfig().rowGroupSize;
+	private final int memoryBlockSize = TSFileDescriptor.getInstance().getConfig().groupSizeInByte;
 
 	private boolean isMerging = false;
 	private final FlushState flushState = new FlushState();

@@ -87,7 +87,7 @@ public class BufferWriteProcessor extends LRUProcessor {
 		this.fileName = fileName;
 		String restoreFileName = fileName + restoreFile;
 
-		String bufferwriteDirPath = TsFileDBConf.BufferWriteDir;
+		String bufferwriteDirPath = TsFileDBConf.bufferWriteDir;
 		if (bufferwriteDirPath.length() > 0
 				&& bufferwriteDirPath.charAt(bufferwriteDirPath.length() - 1) != File.separatorChar) {
 			bufferwriteDirPath = bufferwriteDirPath + File.separatorChar;

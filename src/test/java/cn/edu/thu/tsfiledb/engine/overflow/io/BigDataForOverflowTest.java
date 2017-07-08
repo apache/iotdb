@@ -89,9 +89,9 @@ public class BigDataForOverflowTest {
 		parameters.put(FileNodeConstants.OVERFLOW_BACKUP_MANAGER_ACTION, filenodemanagerbackupaction);
 		parameters.put(FileNodeConstants.OVERFLOW_FLUSH_MANAGER_ACTION, filenodemanagerflushaction);
 		overflowDataDir = tsdbconfig.overflowDataDir;
-		rowGroupSize = tsconfig.rowGroupSize;
+		rowGroupSize = tsconfig.groupSizeInByte;
 		tsdbconfig.overflowDataDir = "";
-		tsconfig.rowGroupSize = 1024 * 1024 * 10;
+		tsconfig.groupSizeInByte = 1024 * 1024 * 10;
 		overflowfilePath = tsdbconfig.overflowDataDir + nameSpacePath + File.separatorChar + nameSpacePath
 				+ ".overflow";
 		overflowrestorefilePath = overflowfilePath + ".restore";
@@ -107,7 +107,7 @@ public class BigDataForOverflowTest {
 		EngineTestHelper.delete(nameSpacePath);
 		EngineTestHelper.delete(tsdbconfig.walFolder);
 		tsdbconfig.overflowDataDir = overflowDataDir;
-		tsconfig.rowGroupSize = rowGroupSize;
+		tsconfig.groupSizeInByte = rowGroupSize;
 	}
 
 	@Test

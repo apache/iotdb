@@ -851,7 +851,7 @@ public class FileNodeProcessor extends LRUProcessor {
 				// delete the all files which are in the newFileNodes
 				// notice: the last restore file of the interval file
 
-				String bufferwriteDirPath = TsFileDBConf.BufferWriteDir;
+				String bufferwriteDirPath = TsFileDBConf.bufferWriteDir;
 				if (bufferwriteDirPath.length() > 0
 						&& bufferwriteDirPath.charAt(bufferwriteDirPath.length() - 1) != File.separatorChar) {
 					bufferwriteDirPath = bufferwriteDirPath + File.separatorChar;
@@ -1011,7 +1011,7 @@ public class FileNodeProcessor extends LRUProcessor {
 
 	private String constructOutputFilePath(String nameSpacePath, String fileName) {
 
-		String dataDirPath = TsFileDBConf.BufferWriteDir;
+		String dataDirPath = TsFileDBConf.bufferWriteDir;
 		if (dataDirPath.charAt(dataDirPath.length() - 1) != File.separatorChar) {
 			dataDirPath = dataDirPath + File.separatorChar + nameSpacePath;
 		}

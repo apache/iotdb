@@ -81,32 +81,32 @@ public class FileNodeLastUpdateMulTest {
 	private String overflowDataDir;
 	private int rowGroupSize;
 	private int pageCheckSizeThreshold = tsconfig.pageCheckSizeThreshold;
-	private int defaultMaxStringLength = tsconfig.defaultMaxStringLength;
-	private boolean cachePageData = tsconfig.cachePageData;
-	private int pageSize = tsconfig.pageSize;
+	private int defaultMaxStringLength = tsconfig.maxStringLength;
+	private boolean cachePageData = tsconfig.duplicateIncompletedPage;
+	private int pageSize = tsconfig.pageSizeInByte;
 
 	@Before
 	public void setUp() throws Exception {
-		FileNodeDir = tsdbconfig.FileNodeDir;
-		BufferWriteDir = tsdbconfig.BufferWriteDir;
+		FileNodeDir = tsdbconfig.fileNodeDir;
+		BufferWriteDir = tsdbconfig.bufferWriteDir;
 		overflowDataDir = tsdbconfig.overflowDataDir;
 
-		tsdbconfig.FileNodeDir = "filenode" + File.separatorChar;
-		tsdbconfig.BufferWriteDir = "bufferwrite";
+		tsdbconfig.fileNodeDir = "filenode" + File.separatorChar;
+		tsdbconfig.bufferWriteDir = "bufferwrite";
 		tsdbconfig.overflowDataDir = "overflow";
 		tsdbconfig.metadataDir = "metadata";
 		// set rowgroupsize
-		tsconfig.rowGroupSize = 10000;
+		tsconfig.groupSizeInByte = 10000;
 		tsconfig.pageCheckSizeThreshold = 3;
-		tsconfig.pageSize = 100;
-		tsconfig.defaultMaxStringLength = 2;
-		tsconfig.cachePageData = true;
+		tsconfig.pageSizeInByte = 100;
+		tsconfig.maxStringLength = 2;
+		tsconfig.duplicateIncompletedPage = true;
 
 		parameters = new HashMap<>();
 		parameters.put(FileNodeConstants.OVERFLOW_BACKUP_MANAGER_ACTION, overflowBackUpAction);
 		parameters.put(FileNodeConstants.OVERFLOW_FLUSH_MANAGER_ACTION, overflowFlushAction);
-		EngineTestHelper.delete(tsdbconfig.FileNodeDir);
-		EngineTestHelper.delete(tsdbconfig.BufferWriteDir);
+		EngineTestHelper.delete(tsdbconfig.fileNodeDir);
+		EngineTestHelper.delete(tsdbconfig.bufferWriteDir);
 		EngineTestHelper.delete(tsdbconfig.overflowDataDir);
 		EngineTestHelper.delete(tsdbconfig.metadataDir);
 		EngineTestHelper.delete(tsdbconfig.walFolder);
@@ -121,21 +121,21 @@ public class FileNodeLastUpdateMulTest {
 		WriteLogManager.getInstance().close();
 		MManager.getInstance().flushObjectToFile();
 		
-		EngineTestHelper.delete(tsdbconfig.FileNodeDir);
-		EngineTestHelper.delete(tsdbconfig.BufferWriteDir);
+		EngineTestHelper.delete(tsdbconfig.fileNodeDir);
+		EngineTestHelper.delete(tsdbconfig.bufferWriteDir);
 		EngineTestHelper.delete(tsdbconfig.overflowDataDir);
 		EngineTestHelper.delete(tsdbconfig.metadataDir);
 		EngineTestHelper.delete(tsdbconfig.walFolder);
 		
-		tsdbconfig.FileNodeDir = FileNodeDir;
+		tsdbconfig.fileNodeDir = FileNodeDir;
 		tsdbconfig.overflowDataDir = overflowDataDir;
-		tsdbconfig.BufferWriteDir = BufferWriteDir;
+		tsdbconfig.bufferWriteDir = BufferWriteDir;
 		
-		tsconfig.rowGroupSize = rowGroupSize;
+		tsconfig.groupSizeInByte = rowGroupSize;
 		tsconfig.pageCheckSizeThreshold = pageCheckSizeThreshold;
-		tsconfig.pageSize = pageSize;
-		tsconfig.defaultMaxStringLength = defaultMaxStringLength;
-		tsconfig.cachePageData = cachePageData;
+		tsconfig.pageSizeInByte = pageSize;
+		tsconfig.maxStringLength = defaultMaxStringLength;
+		tsconfig.duplicateIncompletedPage = cachePageData;
 	}
 
 	@Test
@@ -282,7 +282,7 @@ public class FileNodeLastUpdateMulTest {
 	public void WriteOverflowAndQueryTest() {
 		WriteCloseAndQueryTest();
 		try {
-			processor = new FileNodeProcessor(tsdbconfig.FileNodeDir, nameSpacePath, parameters);
+			processor = new FileNodeProcessor(tsdbconfig.fileNodeDir, nameSpacePath, parameters);
 			processor.getOverflowProcessor(nameSpacePath, parameters);
 			QueryStructure queryStructure = processor.query(deltaObjectId0, measurementId, null, null, null);
 			// test origin
@@ -349,7 +349,7 @@ public class FileNodeLastUpdateMulTest {
 		createBufferwriteFile(10, 20, deltaObjectId1);
 		closeBufferWrite();
 		try {
-			processor = new FileNodeProcessor(tsdbconfig.FileNodeDir, nameSpacePath, parameters);
+			processor = new FileNodeProcessor(tsdbconfig.fileNodeDir, nameSpacePath, parameters);
 			// deltaObjectId2 empty overflow
 			processor.setLastUpdateTime(deltaObjectId2, 100);
 			OverflowProcessor ofProcessor = processor.getOverflowProcessor(nameSpacePath, parameters);
@@ -467,7 +467,7 @@ public class FileNodeLastUpdateMulTest {
 			String deltaObjectId = deltaObjectIds[i];
 			if (i == 0) {
 				try {
-					processor = new FileNodeProcessor(tsdbconfig.FileNodeDir, nameSpacePath, parameters);
+					processor = new FileNodeProcessor(tsdbconfig.fileNodeDir, nameSpacePath, parameters);
 					BufferWriteProcessor bfProcessor = processor.getBufferWriteProcessor(nameSpacePath, begin);
 					assertEquals(true, bfProcessor.isNewProcessor());
 					bfProcessor.write(deltaObjectId, measurementId, begin, TSDataType.INT32, String.valueOf(begin));

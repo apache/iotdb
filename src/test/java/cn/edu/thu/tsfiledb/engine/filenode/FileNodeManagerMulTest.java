@@ -52,28 +52,28 @@ public class FileNodeManagerMulTest {
 	private String overflowDataDir;
 	private int rowGroupSize;
 	private int pageCheckSizeThreshold = tsconfig.pageCheckSizeThreshold;
-	private int defaultMaxStringLength = tsconfig.defaultMaxStringLength;
-	private boolean cachePageData = tsconfig.cachePageData;
-	private int pageSize = tsconfig.pageSize;
+	private int defaultMaxStringLength = tsconfig.maxStringLength;
+	private boolean cachePageData = tsconfig.duplicateIncompletedPage;
+	private int pageSize = tsconfig.pageSizeInByte;
 
 	@Before
 	public void setUp() throws Exception {
-		FileNodeDir = tsdbconfig.FileNodeDir;
-		BufferWriteDir = tsdbconfig.BufferWriteDir;
+		FileNodeDir = tsdbconfig.fileNodeDir;
+		BufferWriteDir = tsdbconfig.bufferWriteDir;
 		overflowDataDir = tsdbconfig.overflowDataDir;
 
-		tsdbconfig.FileNodeDir = "filenode" + File.separatorChar;
-		tsdbconfig.BufferWriteDir = "bufferwrite";
+		tsdbconfig.fileNodeDir = "filenode" + File.separatorChar;
+		tsdbconfig.bufferWriteDir = "bufferwrite";
 		tsdbconfig.overflowDataDir = "overflow";
 		tsdbconfig.metadataDir = "metadata";
 		// set rowgroupsize
-		tsconfig.rowGroupSize = 10000;
+		tsconfig.groupSizeInByte = 10000;
 		tsconfig.pageCheckSizeThreshold = 3;
-		tsconfig.pageSize = 100;
-		tsconfig.defaultMaxStringLength = 2;
-		tsconfig.cachePageData = true;
-		EngineTestHelper.delete(tsdbconfig.FileNodeDir);
-		EngineTestHelper.delete(tsdbconfig.BufferWriteDir);
+		tsconfig.pageSizeInByte = 100;
+		tsconfig.maxStringLength = 2;
+		tsconfig.duplicateIncompletedPage = true;
+		EngineTestHelper.delete(tsdbconfig.fileNodeDir);
+		EngineTestHelper.delete(tsdbconfig.bufferWriteDir);
 		EngineTestHelper.delete(tsdbconfig.overflowDataDir);
 		EngineTestHelper.delete(tsdbconfig.walFolder);
 		EngineTestHelper.delete(tsdbconfig.metadataDir);
@@ -85,21 +85,21 @@ public class FileNodeManagerMulTest {
 	public void tearDown() throws Exception {
 		WriteLogManager.getInstance().close();
 		MManager.getInstance().flushObjectToFile();
-		EngineTestHelper.delete(tsdbconfig.FileNodeDir);
-		EngineTestHelper.delete(tsdbconfig.BufferWriteDir);
+		EngineTestHelper.delete(tsdbconfig.fileNodeDir);
+		EngineTestHelper.delete(tsdbconfig.bufferWriteDir);
 		EngineTestHelper.delete(tsdbconfig.overflowDataDir);
 		EngineTestHelper.delete(tsdbconfig.walFolder);
 		EngineTestHelper.delete(tsdbconfig.metadataDir);
 
-		tsdbconfig.FileNodeDir = FileNodeDir;
+		tsdbconfig.fileNodeDir = FileNodeDir;
 		tsdbconfig.overflowDataDir = overflowDataDir;
-		tsdbconfig.BufferWriteDir = BufferWriteDir;
+		tsdbconfig.bufferWriteDir = BufferWriteDir;
 
-		tsconfig.rowGroupSize = rowGroupSize;
+		tsconfig.groupSizeInByte = rowGroupSize;
 		tsconfig.pageCheckSizeThreshold = pageCheckSizeThreshold;
-		tsconfig.pageSize = pageSize;
-		tsconfig.defaultMaxStringLength = defaultMaxStringLength;
-		tsconfig.cachePageData = cachePageData;
+		tsconfig.pageSizeInByte = pageSize;
+		tsconfig.maxStringLength = defaultMaxStringLength;
+		tsconfig.duplicateIncompletedPage = cachePageData;
 	}
 
 	@Test

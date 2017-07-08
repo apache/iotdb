@@ -82,34 +82,34 @@ public class FileNodeProcessorTest {
 	private String overflowDataDir;
 	private int rowGroupSize;
 	private int pageCheckSizeThreshold = tsconfig.pageCheckSizeThreshold;
-	private int defaultMaxStringLength = tsconfig.defaultMaxStringLength;
-	private boolean cachePageData = tsconfig.cachePageData;
-	private int pageSize = tsconfig.pageSize;
+	private int defaultMaxStringLength = tsconfig.maxStringLength;
+	private boolean cachePageData = tsconfig.duplicateIncompletedPage;
+	private int pageSize = tsconfig.pageSizeInByte;
 	@Before
 	public void setUp() throws Exception {
-		FileNodeDir = tsdbconfig.FileNodeDir;
-		BufferWriteDir = tsdbconfig.BufferWriteDir;
+		FileNodeDir = tsdbconfig.fileNodeDir;
+		BufferWriteDir = tsdbconfig.bufferWriteDir;
 		overflowDataDir = tsdbconfig.overflowDataDir;
 		
-		tsdbconfig.FileNodeDir = "filenode" + File.separatorChar;
-		tsdbconfig.BufferWriteDir = "bufferwrite";
+		tsdbconfig.fileNodeDir = "filenode" + File.separatorChar;
+		tsdbconfig.bufferWriteDir = "bufferwrite";
 		tsdbconfig.overflowDataDir = "overflow";
 		tsdbconfig.metadataDir = "metadata";
 		// set rowgroupsize
-		rowGroupSize = tsconfig.rowGroupSize;
+		rowGroupSize = tsconfig.groupSizeInByte;
 		
 		
-		tsconfig.rowGroupSize = 2000;
+		tsconfig.groupSizeInByte = 2000;
 		tsconfig.pageCheckSizeThreshold = 3;
-		tsconfig.pageSize = 100;
-		tsconfig.defaultMaxStringLength = 2;
-		tsconfig.cachePageData = true;
+		tsconfig.pageSizeInByte = 100;
+		tsconfig.maxStringLength = 2;
+		tsconfig.duplicateIncompletedPage = true;
 
 		parameters = new HashMap<>();
 		parameters.put(FileNodeConstants.OVERFLOW_BACKUP_MANAGER_ACTION, overflowBackUpAction);
 		parameters.put(FileNodeConstants.OVERFLOW_FLUSH_MANAGER_ACTION, overflowFlushAction);
-		EngineTestHelper.delete(tsdbconfig.FileNodeDir);
-		EngineTestHelper.delete(tsdbconfig.BufferWriteDir);
+		EngineTestHelper.delete(tsdbconfig.fileNodeDir);
+		EngineTestHelper.delete(tsdbconfig.bufferWriteDir);
 		EngineTestHelper.delete(tsdbconfig.overflowDataDir);
 		EngineTestHelper.delete(tsdbconfig.metadataDir);
 		EngineTestHelper.delete(tsdbconfig.walFolder);
@@ -123,21 +123,21 @@ public class FileNodeProcessorTest {
 	public void tearDown() throws Exception {
 		WriteLogManager.getInstance().close();
 		MManager.getInstance().flushObjectToFile();
-		EngineTestHelper.delete(tsdbconfig.FileNodeDir);
-		EngineTestHelper.delete(tsdbconfig.BufferWriteDir);
+		EngineTestHelper.delete(tsdbconfig.fileNodeDir);
+		EngineTestHelper.delete(tsdbconfig.bufferWriteDir);
 		EngineTestHelper.delete(tsdbconfig.overflowDataDir);
 		EngineTestHelper.delete(tsdbconfig.metadataDir);
 		EngineTestHelper.delete(tsdbconfig.walFolder);
 		
-		tsdbconfig.FileNodeDir = FileNodeDir;
+		tsdbconfig.fileNodeDir = FileNodeDir;
 		tsdbconfig.overflowDataDir = overflowDataDir;
-		tsdbconfig.BufferWriteDir = BufferWriteDir;
+		tsdbconfig.bufferWriteDir = BufferWriteDir;
 		
-		tsconfig.rowGroupSize = rowGroupSize;
+		tsconfig.groupSizeInByte = rowGroupSize;
 		tsconfig.pageCheckSizeThreshold = pageCheckSizeThreshold;
-		tsconfig.pageSize = pageSize;
-		tsconfig.defaultMaxStringLength = defaultMaxStringLength;
-		tsconfig.cachePageData = cachePageData;
+		tsconfig.pageSizeInByte = pageSize;
+		tsconfig.maxStringLength = defaultMaxStringLength;
+		tsconfig.duplicateIncompletedPage = cachePageData;
 		
 
 	}
@@ -147,7 +147,7 @@ public class FileNodeProcessorTest {
 
 		try {
 			// nameSpacePath
-			processor = new FileNodeProcessor(tsdbconfig.FileNodeDir, nameSpacePath, parameters);
+			processor = new FileNodeProcessor(tsdbconfig.fileNodeDir, nameSpacePath, parameters);
 			assertEquals(-1, processor.getLastUpdateTime(deltaObjectId));
 			assertEquals(-1, processor.getLastUpdateTime(deltaObjectId2));
 			processor.setLastUpdateTime(deltaObjectId, 20);
@@ -165,7 +165,7 @@ public class FileNodeProcessorTest {
 
 			String filename = bfprocessor.getFileName();
 			System.out.println(bfprocessor.getFileAbsolutePath());
-			String bufferwritefilePath = tsdbconfig.BufferWriteDir + File.separatorChar + deltaObjectId
+			String bufferwritefilePath = tsdbconfig.bufferWriteDir + File.separatorChar + deltaObjectId
 					+ File.separatorChar + filename;
 			assertEquals(true, new File(bufferwritefilePath).exists());
 			// add intervalFileNode
@@ -211,7 +211,7 @@ public class FileNodeProcessorTest {
 
 		try {
 			// test memory data in index
-			processor = new FileNodeProcessor(tsdbconfig.FileNodeDir, nameSpacePath, parameters);
+			processor = new FileNodeProcessor(tsdbconfig.fileNodeDir, nameSpacePath, parameters);
 			BufferWriteProcessor bfprocessor = processor.getBufferWriteProcessor(deltaObjectId, 1);
 			bfprocessor.setNewProcessor(false);
 			processor.addIntervalFileNode(1, bfprocessor.getFileAbsolutePath());
@@ -293,7 +293,7 @@ public class FileNodeProcessorTest {
 			processor.close();
 
 			// test data in closed bufferwrite file
-			processor = new FileNodeProcessor(tsdbconfig.FileNodeDir, deltaObjectId, parameters);
+			processor = new FileNodeProcessor(tsdbconfig.fileNodeDir, deltaObjectId, parameters);
 			bfprocessor = processor.getBufferWriteProcessor(deltaObjectId, 401);
 			bfprocessor.setNewProcessor(false);
 			processor.addIntervalFileNode(401, bfprocessor.getFileAbsolutePath());
@@ -336,7 +336,7 @@ public class FileNodeProcessorTest {
 			assertEquals(null, overflowResult.get(3));
 			processor.close();
 
-			processor = new FileNodeProcessor(tsdbconfig.FileNodeDir, deltaObjectId, parameters);
+			processor = new FileNodeProcessor(tsdbconfig.fileNodeDir, deltaObjectId, parameters);
 			bfprocessor = processor.getBufferWriteProcessor(deltaObjectId, 801);
 			bfprocessor.setNewProcessor(false);
 			processor.addIntervalFileNode(801, bfprocessor.getFileAbsolutePath());
@@ -350,7 +350,7 @@ public class FileNodeProcessorTest {
 			}
 			processor.close();
 
-			processor = new FileNodeProcessor(tsdbconfig.FileNodeDir, deltaObjectId, parameters);
+			processor = new FileNodeProcessor(tsdbconfig.fileNodeDir, deltaObjectId, parameters);
 			bfprocessor = processor.getBufferWriteProcessor(deltaObjectId, 820);
 			bfprocessor.setNewProcessor(false);
 			processor.addIntervalFileNode(820, bfprocessor.getFileAbsolutePath());
@@ -365,7 +365,7 @@ public class FileNodeProcessorTest {
 			processor.close();
 
 			// file range: 1-400 401-800 801-819 820-839
-			processor = new FileNodeProcessor(tsdbconfig.FileNodeDir, deltaObjectId, parameters);
+			processor = new FileNodeProcessor(tsdbconfig.fileNodeDir, deltaObjectId, parameters);
 			// assertEquals(false, tempFile.exists());
 
 			// overflow data
@@ -425,7 +425,7 @@ public class FileNodeProcessorTest {
 	@Test
 	public void testQueryToken() {
 		try {
-			processor = new FileNodeProcessor(tsdbconfig.FileNodeDir, deltaObjectId, parameters);
+			processor = new FileNodeProcessor(tsdbconfig.fileNodeDir, deltaObjectId, parameters);
 			processor.writeLock();
 			int token = processor.addMultiPassLock();
 			assertEquals(0, token);
@@ -453,7 +453,7 @@ public class FileNodeProcessorTest {
 
 		FileNodeProcessor fileNodeProcessor = null;
 		try {
-			fileNodeProcessor = new FileNodeProcessor(tsdbconfig.FileNodeDir, deltaObjectId, parameters);
+			fileNodeProcessor = new FileNodeProcessor(tsdbconfig.fileNodeDir, deltaObjectId, parameters);
 			BufferWriteProcessor bfprocessor = fileNodeProcessor.getBufferWriteProcessor(deltaObjectId, 1);
 			bfprocessor.setNewProcessor(false);
 			fileNodeProcessor.addIntervalFileNode(1, bfprocessor.getFileAbsolutePath());
@@ -487,7 +487,7 @@ public class FileNodeProcessorTest {
 			assertEquals(null, overflowResult.get(3));
 
 			// not close and restore the bufferwrite file
-			processor = new FileNodeProcessor(tsdbconfig.FileNodeDir, deltaObjectId, parameters);
+			processor = new FileNodeProcessor(tsdbconfig.fileNodeDir, deltaObjectId, parameters);
 			processor.writeLock();
 			assertEquals(true, processor.shouldRecovery());
 			processor.fileNodeRecovery();
@@ -547,7 +547,7 @@ public class FileNodeProcessorTest {
 		fileNodeProcessorStore = new FileNodeProcessorStore(lastUpdateTimeMap, emptyIntervalFileNode, newFilenodes,
 				fileNodeProcessorState, 0);
 
-		String filenodedirPath = tsdbconfig.FileNodeDir + deltaObjectId + File.separatorChar;
+		String filenodedirPath = tsdbconfig.fileNodeDir + deltaObjectId + File.separatorChar;
 		File file = new File(filenodedirPath);
 		if (!file.exists()) {
 			file.mkdirs();
@@ -564,7 +564,7 @@ public class FileNodeProcessorTest {
 
 		// test recovery from waiting
 		try {
-			processor = new FileNodeProcessor(tsdbconfig.FileNodeDir, deltaObjectId, parameters);
+			processor = new FileNodeProcessor(tsdbconfig.fileNodeDir, deltaObjectId, parameters);
 			processor.writeLock();
 			assertEquals(true, processor.shouldRecovery());
 			// recovery
@@ -610,7 +610,7 @@ public class FileNodeProcessorTest {
 
 	private void checkUnFile(String filename) {
 
-		String filePath = tsdbconfig.BufferWriteDir + File.separatorChar + deltaObjectId;
+		String filePath = tsdbconfig.bufferWriteDir + File.separatorChar + deltaObjectId;
 		File dataDir = new File(filePath);
 		if (!dataDir.exists()) {
 			dataDir.mkdirs();
@@ -639,7 +639,7 @@ public class FileNodeProcessorTest {
 	 */
 	private void createBufferwriteFile(long begin, long end) {
 		try {
-			processor = new FileNodeProcessor(tsdbconfig.FileNodeDir, deltaObjectId, parameters);
+			processor = new FileNodeProcessor(tsdbconfig.fileNodeDir, deltaObjectId, parameters);
 			BufferWriteProcessor bfProcessor = processor.getBufferWriteProcessor(deltaObjectId, begin);
 			assertEquals(true, bfProcessor.isNewProcessor());
 			bfProcessor.write(measurementId, measurementId, begin, TSDataType.INT32, String.valueOf(begin));
@@ -679,7 +679,7 @@ public class FileNodeProcessorTest {
 
 	private void createOverflowInsert(long time, int value) {
 		try {
-			processor = new FileNodeProcessor(tsdbconfig.FileNodeDir, deltaObjectId, parameters);
+			processor = new FileNodeProcessor(tsdbconfig.fileNodeDir, deltaObjectId, parameters);
 			OverflowProcessor ofProcessor = processor.getOverflowProcessor(deltaObjectId, parameters);
 			ofProcessor.insert(deltaObjectId, measurementId, time, TSDataType.INT32, String.valueOf(value));
 			processor.changeTypeToChanged(deltaObjectId, time);
@@ -699,7 +699,7 @@ public class FileNodeProcessorTest {
 
 	private void createOverflowUpdate(long begin, long end, int value) {
 		try {
-			processor = new FileNodeProcessor(tsdbconfig.FileNodeDir, deltaObjectId, parameters);
+			processor = new FileNodeProcessor(tsdbconfig.fileNodeDir, deltaObjectId, parameters);
 			OverflowProcessor ofProcessor = processor.getOverflowProcessor(deltaObjectId, parameters);
 			ofProcessor.update(deltaObjectId, measurementId, begin, end, TSDataType.INT32, String.valueOf(value));
 			processor.changeTypeToChanged(deltaObjectId, begin, end);

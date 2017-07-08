@@ -252,7 +252,7 @@ public class OverflowProcessorTest {
 	@Test
 	public void testFlush() {
 		// set the tsfile tsdbconfig
-		tsconfig.rowGroupSize = 500;
+		tsconfig.groupSizeInByte = 500;
 		try {
 			ofprocessor = new OverflowProcessor(nameSpacePath, parameters);
 			for (int i = 1; i < 1001; i++) {
@@ -280,7 +280,7 @@ public class OverflowProcessorTest {
 	@Test
 	public void testMerge() {
 		// insert data
-		tsconfig.rowGroupSize = 500;
+		tsconfig.groupSizeInByte = 500;
 		try {
 			ofprocessor = new OverflowProcessor(nameSpacePath, parameters);
 			for (int i = 1; i < 1001; i++) {
