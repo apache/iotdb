@@ -1,9 +1,10 @@
 #!/bin/sh
 
-if [ -z "${TSFILE_HOME}" ]; then
-  export TSFILE_HOME="$(cd "`dirname "$0"`"/..; pwd)"
+PIDS=$(ps ax | grep -i 'tsfiledb\.TsFileDB' | grep java | grep -v grep | awk '{print $1}')
+
+if [ -z "$PIDS" ]; then
+  echo "No TsFileDB server to stop"
+  exit 1
+else 
+  kill -s TERM $PIDS
 fi
-
-pid="$TSFILE_HOME"/tsfiledb.pid
-
-kill `cat $pid`
