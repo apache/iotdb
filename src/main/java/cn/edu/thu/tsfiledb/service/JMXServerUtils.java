@@ -22,11 +22,7 @@ public class JMXServerUtils {
 	    System.setProperty(TsFileDBConstant.RMI_SERVER_HOST_NAME, serverAddress.getHostAddress());
 	}
 	int rmiPort = Integer.getInteger(TsFileDBConstant.JMX_REMOTE_RMI_PORT, 0);
-//	String addr = String.format("service:jmx:rmi://%s:%d/jndi/rmi://%s:%d/jmxrmi", 
-//		serverAddress,
-//		port,
-//		serverAddress, 
-//		port);
+
 	JMXConnectorServer jmxServer = JMXConnectorServerFactory.newJMXConnectorServer(
 		new JMXServiceURL("rmi", null, rmiPort), env, ManagementFactory.getPlatformMBeanServer());
 	jmxServer.start();

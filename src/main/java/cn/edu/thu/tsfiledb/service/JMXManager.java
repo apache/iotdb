@@ -31,6 +31,7 @@ import cn.edu.thu.tsfiledb.conf.TsfileDBDescriptor;
 /**
  * A manager for starting JDBC server and registering server to JMX.
  */
+@Deprecated
 public class JMXManager {
 	
 //	static{
