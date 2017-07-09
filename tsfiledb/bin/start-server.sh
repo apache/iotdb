@@ -36,7 +36,7 @@ for f in ${TSFILE_HOME}/lib/*.jar; do
   CLASSPATH=${CLASSPATH}":"$f
 done
 
-MAIN_CLASS=cn.edu.thu.tsfiledb.service.JDBCServer
+MAIN_CLASS=cn.edu.thu.tsfiledb.service.Daemon
 
 "$JAVA" -DTSFILE_HOME=${TSFILE_HOME} -Dlogback.configurationFile=${TSFILE_CONF}/logback.xml $TSFILEDB_JMX_OPTS -Dname=tsfiledb\.TsFileDB -cp "$CLASSPATH" "$MAIN_CLASS" 
 

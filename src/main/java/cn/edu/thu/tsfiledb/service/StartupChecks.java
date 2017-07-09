@@ -6,10 +6,10 @@ import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import cn.edu.thu.tsfiledb.conf.TsFileDBConstant;
 import cn.edu.thu.tsfiledb.exception.StartupException;
 
 public class StartupChecks {
-    private static final String ENV_FILE_NAME = "tsfile-env.sh";
     private static final Logger LOGGER = LoggerFactory.getLogger(StartupChecks.class);
     
     private final List<StartupCheck> preChecks = new ArrayList<>();
@@ -36,20 +36,19 @@ public class StartupChecks {
     }
     
     public static final StartupCheck checkJMXPort = new StartupCheck() {
-        private final String REMOTE_JMX_NAME = "com.sun.management.jmxremote.port";
-        private final String LOCAL_PORT_NAME = "tsfiledb.jmx.local.port";
+
         @Override
         public void execute() throws StartupException {
-    		String jmxPort = System.getProperty(REMOTE_JMX_NAME);
+    		String jmxPort = System.getProperty(TsFileDBConstant.REMOTE_JMX_PORT_NAME);
     		if(jmxPort == null){
     		    LOGGER.warn("JMX is not enabled to receive remote connection. "
-    		    	+ "Please check conf/{} for more info", ENV_FILE_NAME);
-    		    jmxPort = System.getProperty(LOCAL_PORT_NAME);
+    		    	+ "Please check conf/{} for more info", TsFileDBConstant.ENV_FILE_NAME);
+    		    jmxPort = System.getProperty(TsFileDBConstant.TSFILEDB_LOCAL_JMX_PORT_NAME);
     		    if(jmxPort == null){
-    			LOGGER.error("{} missing from {}", LOCAL_PORT_NAME, ENV_FILE_NAME);
+    			LOGGER.error("{} missing from {}", TsFileDBConstant.TSFILEDB_LOCAL_JMX_PORT_NAME, TsFileDBConstant.ENV_FILE_NAME);
     		    }
     		}else{
-    		    LOGGER.info("JMXis enabled to receive remote connection on port {}", jmxPort);
+    		    LOGGER.info("JMX is enabled to receive remote connection on port {}", jmxPort);
     		}
         }
     };

@@ -33,17 +33,17 @@ import cn.edu.thu.tsfiledb.conf.TsfileDBDescriptor;
  */
 public class JMXManager {
 	
-	static{
-		try {
-			String home = System.getProperty(SystemConstant.TSFILE_HOME);
-			if(home != null && !home.equals("")){
-				LogBackConfigLoader.load(home + File.separator + "conf" + File.separator + "logback.xml");
-			}
-		} catch (IOException | JoranException e) {
-			System.out.println("Load configuration file error");
-			e.printStackTrace();
-		}
-	}
+//	static{
+//		try {
+//			String home = System.getProperty(SystemConstant.TSFILE_HOME);
+//			if(home != null && !home.equals("")){
+//				LogBackConfigLoader.load(home + File.separator + "conf" + File.separator + "logback.xml");
+//			}
+//		} catch (IOException | JoranException e) {
+//			System.out.println("Load configuration file error");
+//			e.printStackTrace();
+//		}
+//	}
 	
 	private static final Logger LOGGER = LoggerFactory.getLogger(JMXManager.class);
 
