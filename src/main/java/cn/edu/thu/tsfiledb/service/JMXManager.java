@@ -56,27 +56,27 @@ public class JMXManager {
 
 	public void service() throws IOException, TTransportException, MalformedObjectNameException,
 			InstanceAlreadyExistsException, MBeanRegistrationException, NotCompliantMBeanException {
-		MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
-		String addr = String.format("service:jmx:rmi://%s:%d/jndi/rmi://%s:%d/jmxrmi", 
-			TsfileDBDescriptor.getInstance().getConfig().JMXIP,
-			TsfileDBDescriptor.getInstance().getConfig().JMXPort,
-			TsfileDBDescriptor.getInstance().getConfig().JMXIP, 
-			TsfileDBDescriptor.getInstance().getConfig().JMXPort);
-		JMXServiceURL address = new JMXServiceURL(addr);
-
-		RMISocketFactory rmiFactory = RMISocketFactory.getDefaultSocketFactory();
-		LocateRegistry.createRegistry(TsfileDBDescriptor.getInstance().getConfig().JMXPort, null, rmiFactory);
-
-		jmxEnvironment.put(RMIConnectorServer.RMI_SERVER_SOCKET_FACTORY_ATTRIBUTE, rmiFactory);
-
-		connector = JMXConnectorServerFactory.newJMXConnectorServer(address, jmxEnvironment,
-				ManagementFactory.getPlatformMBeanServer());
-		JDBCServerMBean mbean = new JDBCServer();
-		mbean.startServer();
-		ObjectName mBeanName = new ObjectName("JDBCServerDomain", "type", "JDBCServer");
-		mbs.registerMBean(mbean, mBeanName);
-		connector.start();
-		LOGGER.info("JMXManager: start JMX manager...");
+//		MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
+//		String addr = String.format("service:jmx:rmi://%s:%d/jndi/rmi://%s:%d/jmxrmi", 
+//			TsfileDBDescriptor.getInstance().getConfig().JMXIP,
+//			TsfileDBDescriptor.getInstance().getConfig().JMXPort,
+//			TsfileDBDescriptor.getInstance().getConfig().JMXIP, 
+//			TsfileDBDescriptor.getInstance().getConfig().JMXPort);
+//		JMXServiceURL address = new JMXServiceURL(addr);
+//
+//		RMISocketFactory rmiFactory = RMISocketFactory.getDefaultSocketFactory();
+//		LocateRegistry.createRegistry(TsfileDBDescriptor.getInstance().getConfig().JMXPort, null, rmiFactory);
+//
+//		jmxEnvironment.put(RMIConnectorServer.RMI_SERVER_SOCKET_FACTORY_ATTRIBUTE, rmiFactory);
+//
+//		connector = JMXConnectorServerFactory.newJMXConnectorServer(address, jmxEnvironment,
+//				ManagementFactory.getPlatformMBeanServer());
+//		JDBCServerMBean mbean = new JDBCServer2();
+//		mbean.startServer();
+//		ObjectName mBeanName = new ObjectName("JDBCServerDomain", "type", "JDBCServer");
+//		mbs.registerMBean(mbean, mBeanName);
+//		connector.start();
+//		LOGGER.info("JMXManager: start JMX manager...");
 	}
 
 	public void close() throws IOException {
