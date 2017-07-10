@@ -262,7 +262,8 @@ numberOrString // identifier is string or integer
     ;
 
 numberOrStringWidely
-    : number | StringLiteral 
+    : number 
+    | StringLiteral
     ;
 
 execStatement
@@ -273,6 +274,7 @@ execStatement
     | queryStatement
     | metadataStatement
     | mergeStatement
+    | loadStatement
     | quitStatement
     ;
 
@@ -420,8 +422,7 @@ queryStatement
    ;
 
 authorStatement
-    : loadStatement
-    | createUser
+    : createUser
     | dropUser
     | createRole
     | dropRole
@@ -533,7 +534,7 @@ deleteStatement
    ;
 
 updateStatement
-   : KW_UPDATE path KW_SET KW_VALUE EQUAL value=number (whereClause)?
+   : KW_UPDATE path KW_SET KW_VALUE EQUAL value=numberOrStringWidely (whereClause)?
    -> ^(TOK_UPDATE path ^(TOK_VALUE $value) whereClause?)
    | KW_UPDATE KW_USER userName=StringLiteral KW_SET KW_PASSWORD psw=StringLiteral
    -> ^(TOK_UPDATE ^(TOK_UPDATE_PSWD $userName $psw))
