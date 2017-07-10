@@ -141,10 +141,10 @@ public class SQLParserTest {
     @Test
     public void updateValueWithTimeFilter2() throws ParseException {
         // template for test case
-        ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_UPDATE", "TOK_PATH", "d1", "s1", "TOK_VALUE", "33000",
+        ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_UPDATE", "TOK_PATH", "d1", "s1", "TOK_VALUE", "'3gfdg3000'",
                 "TOK_WHERE", "and", "<=", "TOK_PATH", "time", "TOK_DATETIME", "now", ">=", "TOK_PATH", "time", "1234567890102" ));
         ArrayList<String> rec = new ArrayList<>();
-        ASTNode astTree = ParseGenerator.generateAST("update d1.s1 set value = 33000 where time <= now() and time >= 1234567890102");
+        ASTNode astTree = ParseGenerator.generateAST("update d1.s1 set value = '3gfdg3000' where time <= now() and time >= 1234567890102");
         astTree = ParseUtils.findRootNonNullToken(astTree);
         recursivePrintSon(astTree, rec);
 
