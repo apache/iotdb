@@ -7,6 +7,7 @@ import cn.edu.thu.tsfile.timeseries.read.query.QueryDataSet;
 import cn.edu.thu.tsfile.timeseries.utils.StringContainer;
 import cn.edu.thu.tsfiledb.qp.exception.QueryProcessorException;
 import cn.edu.thu.tsfiledb.qp.physical.PhysicalPlan;
+import cn.edu.thu.tsfiledb.exception.ArgsErrorException;
 import cn.edu.thu.tsfiledb.qp.QueryProcessor;
 import cn.edu.thu.tsfiledb.qp.utils.MemIntQpExecutor;
 import org.junit.Before;
@@ -104,7 +105,7 @@ public class TestOnePassQpQuery {
     }
 
     @Test
-    public void testQueryBasic() throws QueryProcessorException {
+    public void testQueryBasic() throws QueryProcessorException, ArgsErrorException {
         PhysicalPlan plan = processor.parseSQLToPhysicalPlan(inputSQL);
         if (!plan.isQuery())
             fail();

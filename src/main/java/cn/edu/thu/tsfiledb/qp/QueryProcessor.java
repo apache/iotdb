@@ -3,7 +3,7 @@ package cn.edu.thu.tsfiledb.qp;
 import cn.edu.thu.tsfiledb.qp.exception.LogicalOperatorException;
 import cn.edu.thu.tsfiledb.qp.strategy.LogicalGenerator;
 import cn.edu.thu.tsfiledb.sql.ParseGenerator;
-
+import cn.edu.thu.tsfiledb.exception.ArgsErrorException;
 import cn.edu.thu.tsfiledb.qp.exception.IllegalASTFormatException;
 import cn.edu.thu.tsfiledb.qp.exception.QueryProcessorException;
 import cn.edu.thu.tsfiledb.qp.exception.LogicalOptimizeException;
@@ -40,7 +40,7 @@ public class QueryProcessor {
     }
 
     public PhysicalPlan parseSQLToPhysicalPlan(String sqlStr)
-            throws QueryProcessorException {
+            throws QueryProcessorException, ArgsErrorException {
         ASTNode astNode = parseSQLToAST(sqlStr);
         Operator operator = parseASTToOperator(astNode);
         operator = logicalOptimize(operator);
@@ -54,8 +54,9 @@ public class QueryProcessor {
      * @param astNode - input ast tree
      * @return - RootOperator has four subclass:Query/Insert/Delete/Update/Author
      * @throws QueryProcessorException exception in converting sql to operator
+     * @throws ArgsErrorException 
      */
-    private RootOperator parseASTToOperator(ASTNode astNode) throws QueryProcessorException {
+    private RootOperator parseASTToOperator(ASTNode astNode) throws QueryProcessorException, ArgsErrorException {
         LogicalGenerator generator = new LogicalGenerator();
         return generator.getLogicalPlan(astNode);
     }

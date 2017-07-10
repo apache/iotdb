@@ -36,5 +36,5 @@ tsfiledb/		<-- 根目录
 
 # 启动客户端
 
-> ./bin/start-client.sh -h <hostname> -port <port> -u <username>
+> ./bin/start-client.sh -h xxx -p xxx -u xxx
 

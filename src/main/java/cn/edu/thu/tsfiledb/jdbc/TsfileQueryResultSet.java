@@ -62,7 +62,7 @@ public class TsfileQueryResultSet implements ResultSet {
 	private boolean emptyResultSet = false;
 	
 	private final String TIMESTAMP_STR = "Timestamp";
-	private final String AGGREGATION_STR = "Aggregation";
+//	private final String AGGREGATION_STR = "Aggregation";
 
 	public TsfileQueryResultSet(){
 		

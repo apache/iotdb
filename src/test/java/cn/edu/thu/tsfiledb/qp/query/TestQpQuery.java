@@ -8,6 +8,7 @@ import cn.edu.thu.tsfile.timeseries.utils.StringContainer;
 import cn.edu.thu.tsfiledb.qp.constant.SQLConstant;
 import cn.edu.thu.tsfiledb.qp.exception.QueryProcessorException;
 import cn.edu.thu.tsfiledb.qp.physical.PhysicalPlan;
+import cn.edu.thu.tsfiledb.exception.ArgsErrorException;
 import cn.edu.thu.tsfiledb.qp.QueryProcessor;
 import cn.edu.thu.tsfiledb.qp.utils.MemIntQpExecutor;
 import org.antlr.runtime.RecognitionException;
@@ -119,7 +120,7 @@ public class TestQpQuery {
     }
 
     @Test
-    public void testQueryBasic() throws QueryProcessorException, RecognitionException {
+    public void testQueryBasic() throws QueryProcessorException, RecognitionException, ArgsErrorException {
         LOG.info("input SQL String:{}", inputSQL);
         PhysicalPlan plan = processor.parseSQLToPhysicalPlan(inputSQL);
         if (!plan.isQuery())
@@ -142,7 +143,7 @@ public class TestQpQuery {
     }
 
     @Test
-    public void testAggregation() throws QueryProcessorException {
+    public void testAggregation() throws QueryProcessorException, ArgsErrorException {
         String sqlStr =
                 "select sum(device_1.sensor_1) " + "from root.laptop "
                         + "where time <= 51 or !(time != 100 and time < 460)";

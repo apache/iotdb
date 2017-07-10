@@ -4,6 +4,7 @@ import cn.edu.thu.tsfile.timeseries.read.qp.Path;
 import cn.edu.thu.tsfiledb.qp.exception.QueryProcessorException;
 import cn.edu.thu.tsfiledb.qp.logical.sys.PropertyOperator.PropertyType;
 import cn.edu.thu.tsfiledb.qp.physical.sys.PropertyPlan;
+import cn.edu.thu.tsfiledb.exception.ArgsErrorException;
 import cn.edu.thu.tsfiledb.qp.QueryProcessor;
 import cn.edu.thu.tsfiledb.qp.utils.MemIntQpExecutor;
 import org.junit.Test;
@@ -64,7 +65,7 @@ public class TSPlanContextPropertyTest {
     }
 
     @Test
-    public void testanalyzeMetadata() throws QueryProcessorException {
+    public void testanalyzeMetadata() throws QueryProcessorException, ArgsErrorException {
         QueryProcessor processor = new QueryProcessor(new MemIntQpExecutor());
         PropertyPlan plan = (PropertyPlan) processor.parseSQLToPhysicalPlan(inputSQL);
         assertEquals(propertyType, plan.getPropertyType());
