@@ -148,7 +148,7 @@ public class Client {
 						String cmd = cmds[i];
 						if (cmd != null && !cmd.trim().equals("")) {
 							if(cmd.toLowerCase().equals(QUIT_COMMAND) || cmd.toLowerCase().equals(EXIT_COMMAND)){
-								System.out.println(TSFILEDB_CLI_PREFIX+"> "+cmd.toLowerCase()+ "normally");
+								System.out.println(TSFILEDB_CLI_PREFIX+"> "+cmd.toLowerCase()+ " normally");
 								return;
 							}
 							

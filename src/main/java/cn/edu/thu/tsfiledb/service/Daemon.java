@@ -15,7 +15,10 @@ import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import cn.edu.thu.tsfiledb.auth.dao.DBDao;
 import cn.edu.thu.tsfiledb.conf.TsFileDBConstant;
+import cn.edu.thu.tsfiledb.engine.exception.FileNodeManagerException;
+import cn.edu.thu.tsfiledb.engine.filenode.FileNodeManager;
 import cn.edu.thu.tsfiledb.exception.StartupException;
 
 public class Daemon {
@@ -24,6 +27,8 @@ public class Daemon {
     static final Daemon instance = new Daemon();
     private JMXConnectorServer jmxServer;
     private MBeanServer mbs;
+    private DBDao dBdao;
+    private JDBCServerMBean jdbcMBean;
     
     public Daemon(){
 	mbs = ManagementFactory.getPlatformMBeanServer();
@@ -46,6 +51,9 @@ public class Daemon {
     }
     
     private void setUp() throws MalformedObjectNameException, InstanceAlreadyExistsException, MBeanRegistrationException, NotCompliantMBeanException, TTransportException{
+	initDBDao();
+	initFileNodeManager();
+	
 	maybeInitJmx();
 	registJDBCServer();
     }
@@ -78,10 +86,35 @@ public class Daemon {
     }
     
     private void registJDBCServer() throws TTransportException, MalformedObjectNameException, InstanceAlreadyExistsException, MBeanRegistrationException, NotCompliantMBeanException{
-	JDBCServerMBean mbean = new JDBCServer();
-	mbean.startServer();
+	jdbcMBean = new JDBCServer();
+	jdbcMBean.startServer();
 	ObjectName mBeanName = new ObjectName("JDBCServer", "type", "JDBCServer");
-	mbs.registerMBean(mbean, mBeanName);
+	mbs.registerMBean(jdbcMBean, mBeanName);
+    }
+    
+    private void initDBDao(){
+        dBdao = new DBDao();
+        dBdao.open();
+    }
+    
+    private void initFileNodeManager(){
+	 FileNodeManager.getInstance().managerRecovery();
+    }
+    
+    public void stop() throws FileNodeManagerException, IOException{
+	if(dBdao != null){
+	    dBdao.close();
+	}
+	
+	FileNodeManager.getInstance().closeAll();
+	
+	if(jdbcMBean != null){
+	    jdbcMBean.stopServer();
+	}
+	
+	if(jmxServer != null){
+	    jmxServer.stop();
+	}
     }
 
     public static void main(String[] args) {
