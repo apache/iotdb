@@ -90,11 +90,6 @@ public class TsfileDBConfig {
 	 */
 	public int writeInstanceThreshold = 5;
 	
-	public String JMXIP = "0.0.0.0";
-	
-	// port registered to jmx
-	public int JMXPort = 31999;
-	
 	public TsfileDBConfig() {
 	}
 
