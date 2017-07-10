@@ -1,4 +1,4 @@
-package cn.edu.thu.tsfiledb;
+package cn.edu.thu.tsfiledb.jdbc;
 
 import java.io.BufferedReader;
 import java.io.File;

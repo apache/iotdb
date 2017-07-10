@@ -7,4 +7,5 @@ if [ -z "$PIDS" ]; then
   exit 1
 else 
   kill -s TERM $PIDS
+  echo "close TsFileDB server"
 fi
