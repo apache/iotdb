@@ -146,12 +146,13 @@ public class FileNodeProcessor extends LRUProcessor {
 		}
 	}
 
-	public void addIntervalFileNode(long startTime, String fileName) {
+	public void addIntervalFileNode(long startTime, String fileName) throws Exception {
 
 		IntervalFileNode intervalFileNode = new IntervalFileNode(OverflowChangeType.NO_CHANGE, fileName);
 		this.currentIntervalFileNode = intervalFileNode;
 		newFileNodes.add(intervalFileNode);
-
+		fileNodeProcessorStore.setNewFileNodes(newFileNodes);
+		flushFileNodeProcessorAction.act();
 	}
 
 	public void setIntervalFileNodeStartTime(String deltaObjectId, long startTime) {
