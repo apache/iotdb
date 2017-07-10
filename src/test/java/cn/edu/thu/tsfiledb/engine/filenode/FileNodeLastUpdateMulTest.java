@@ -139,7 +139,7 @@ public class FileNodeLastUpdateMulTest {
 	}
 
 	@Test
-	public void WriteCloseAndQueryTest() {
+	public void WriteCloseAndQueryTest() throws Exception {
 
 		// write file
 		// file1: d0[10,20]
@@ -279,7 +279,7 @@ public class FileNodeLastUpdateMulTest {
 	}
 
 	@Test
-	public void WriteOverflowAndQueryTest() {
+	public void WriteOverflowAndQueryTest() throws Exception {
 		WriteCloseAndQueryTest();
 		try {
 			processor = new FileNodeProcessor(tsdbconfig.fileNodeDir, nameSpacePath, parameters);
@@ -342,7 +342,7 @@ public class FileNodeLastUpdateMulTest {
 	}
 
 	@Deprecated
-	public void FileEmptyMergeAnaWrite() {
+	public void FileEmptyMergeAnaWrite() throws Exception {
 
 		createBufferwriteFile(10, 20, deltaObjectId0);
 		closeBufferWrite();
@@ -408,6 +408,9 @@ public class FileNodeLastUpdateMulTest {
 					} catch (OverflowProcessorException e) {
 						e.printStackTrace();
 						fail(e.getMessage());
+					} catch (Exception e) {
+						e.printStackTrace();
+						fail(e.getMessage());
 					} finally {
 						processor.writeUnlock();
 					}
@@ -460,8 +463,9 @@ public class FileNodeLastUpdateMulTest {
 	 * @param begin
 	 * @param end
 	 * @param deltaObjectId
+	 * @throws Exception 
 	 */
-	private void createBufferwriteFile(long begin, long end, String... deltaObjectIds) {
+	private void createBufferwriteFile(long begin, long end, String... deltaObjectIds) throws Exception {
 
 		for (int i = 0; i < deltaObjectIds.length; i++) {
 			String deltaObjectId = deltaObjectIds[i];
