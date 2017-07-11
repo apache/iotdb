@@ -16,13 +16,11 @@ import org.apache.commons.cli.OptionBuilder;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.lang3.StringUtils;
-import org.jline.reader.LineReader;
-import org.jline.reader.LineReaderBuilder;
-import org.jline.terminal.Terminal;
-import org.jline.terminal.TerminalBuilder;
+
 import org.joda.time.DateTime;
 
 import cn.edu.thu.tsfiledb.exception.ArgsErrorException;
+import jline.console.ConsoleReader;
 
 public class Client {
 	private static final String HOST_ARGS = "h";
@@ -65,7 +63,6 @@ public class Client {
 		Class.forName("cn.edu.thu.tsfiledb.jdbc.TsfileDriver");
 		Connection connection = null;
 		boolean printToConsole = true;
-		LineReader reader = null;
 		Options options = createOptions();
 		HelpFormatter hf = new HelpFormatter();
 		hf.setWidth(MAX_HELP_CONSOLE_WIDTH);
@@ -101,25 +98,26 @@ public class Client {
 			hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
 			return;
 		}	
-
+		ConsoleReader reader = null;
 		try {
 			String s;
-			Terminal terminal = TerminalBuilder.builder()
-	                          .system(true)
-	                          .build();
-			reader = LineReaderBuilder.builder().terminal(terminal).build();
-			
+			String osName = System.getProperty("os.name");
+			reader = new ConsoleReader();
+			if(osName.toLowerCase().indexOf("windows")>-1){
+				jline.WindowsTerminal winTerm=(jline.WindowsTerminal) reader.getTerminal();
+				winTerm.setDirectConsole(false);
+			}else{
+			}
+
+			reader.setBellEnabled(false);
 			try {
 				String host = checkRequiredArg(HOST_ARGS, HOST_NAME, commandLine);
 				String port = checkRequiredArg(PORT_ARGS, PORT_NAME, commandLine);
 				String username = checkRequiredArg(USERNAME_ARGS, USERNAME_NAME, commandLine);
 				
 				String password = commandLine.getOptionValue(PASSWORD_ARGS);
-				if(password == null){
-				    Console console = System.console();
-				    System.out.print(TSFILEDB_CLI_PREFIX+"> please input password: ");
-				    password = new String(console.readPassword());
-				    console = null;
+				if(password == null){	
+				    password = reader.readLine(TSFILEDB_CLI_PREFIX+"> please input password: ", new Character('*'));
 				}
 				try{
 					connection = DriverManager.getConnection("jdbc:tsfile://" + host + ":" + port + "/", username, password);
@@ -143,8 +141,9 @@ public class Client {
 			System.out.println(TSFILEDB_CLI_PREFIX+"> login successfully");			
 			
 			while (true) {
-			    	s = reader.readLine(TSFILEDB_CLI_PREFIX+"> ");
-				if(s == null || s.trim().equals("")){
+			    	s = reader.readLine(TSFILEDB_CLI_PREFIX+"> ", null);
+//			    	System.out.println("\n");
+				if(s == null){
 				    continue;
 				} else{
 					String[] cmds = s.trim().split(";");
@@ -182,6 +181,9 @@ public class Client {
 		} catch (Exception e) {
 			System.out.println(TSFILEDB_CLI_PREFIX+"> exit client with error "+e.getMessage());
 		} finally {
+		    if(reader != null){
+			reader.close();
+		    }
 			if(connection != null){
 				connection.close();
 			}
