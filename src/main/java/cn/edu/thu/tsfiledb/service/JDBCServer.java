@@ -11,11 +11,7 @@ import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import cn.edu.thu.tsfiledb.auth.dao.DBDao;
 import cn.edu.thu.tsfiledb.conf.TsfileDBDescriptor;
-import cn.edu.thu.tsfiledb.engine.exception.FileNodeManagerException;
-import cn.edu.thu.tsfiledb.engine.exception.LRUManagerException;
-import cn.edu.thu.tsfiledb.engine.filenode.FileNodeManager;
 import cn.edu.thu.tsfiledb.service.rpc.thrift.TSIService;
 import cn.edu.thu.tsfiledb.service.rpc.thrift.TSIService.Processor;
 
@@ -24,7 +20,6 @@ import cn.edu.thu.tsfiledb.service.rpc.thrift.TSIService.Processor;
  */
 public class JDBCServer implements JDBCServerMBean {
     private static final Logger LOGGER = LoggerFactory.getLogger(JDBCServer.class);
-    private DBDao dBdao;
     private Thread jdbcServerThread;
     private boolean isStart;
 
@@ -41,27 +36,20 @@ public class JDBCServer implements JDBCServerMBean {
     @Override
     public synchronized void startServer() {
         if (isStart) {
-            LOGGER.info("TsFileDB Server: server has been already running now");
+            LOGGER.info("TsFileDB: jdbc server has been already running now");
             return;
         }
-        LOGGER.info("TsFileDB Server: start server...");
-        dBdao = new DBDao();
-        dBdao.open();
-        FileNodeManager.getInstance().managerRecovery();
+        LOGGER.info("TsFileDB: start jdbc server...");
+
         try {
             jdbcServerThread = new Thread(new JDBCServerThread());
         } catch (IOException e) {
-            LOGGER.error("TsFileDB Server: failed to start server. {}", e.getMessage());
-            if (dBdao != null) {
-                dBdao.close();
-            }
+            LOGGER.error("TsFileDB Server: failed to start jdbc server. {}", e.getMessage());
             return;
         }
         jdbcServerThread.start();
 
-
-        LOGGER.info("TsFileDB Server: start server successfully");
-        LOGGER.info("Listening on port: {}", TsfileDBDescriptor.getInstance().getConfig().rpcPort);
+        LOGGER.info("TsFileDB: start jdbc server successfully, listening on port {}",TsfileDBDescriptor.getInstance().getConfig().rpcPort);
         isStart = true;
     }
 
@@ -74,26 +62,13 @@ public class JDBCServer implements JDBCServerMBean {
     @Override
     public synchronized void stopServer() {
         if (!isStart) {
-            LOGGER.info("TsFileDB Server: server isn't running now");
+            LOGGER.info("TsFileDB: jdbc server isn't running now");
             return;
 
         }
-
-        LOGGER.info("TsFileDB Server: closing jdbc server...");
-
-        if (dBdao != null) {
-            dBdao.close();
-            dBdao = null;
-        }
-
-        try {
-            FileNodeManager.getInstance().close();
-        } catch (LRUManagerException e) {
-            e.printStackTrace();
-        }
-
+        LOGGER.info("TsFileDB: closing jdbc server...");
         close();
-        LOGGER.info("TsFileDB Server: close server successfully");
+        LOGGER.info("TsFileDB: close jdbc server successfully");
     }
 
     private synchronized void close() {
@@ -126,12 +101,12 @@ public class JDBCServer implements JDBCServerMBean {
                 poolServer = new TThreadPoolServer(poolArgs);
                 poolServer.serve();
             } catch (TTransportException e) {
-                LOGGER.error("TsFileDB Server: failed to start server, because ", e);
+                LOGGER.error("TsFileDB: failed to start jdbc server, because ", e);
             } catch (Exception e) {
-                LOGGER.error("TsFileDB Server: server exit, because ", e);
+                LOGGER.error("TsFileDB: jdbc server exit, because ", e);
             } finally {
                 close();
-                LOGGER.info("TsFileDB Server: close TThreadPoolServer and TServerSocket");
+                LOGGER.info("TsFileDB: close TThreadPoolServer and TServerSocket for jdbc server");
             }
         }
     }
@@ -139,16 +114,5 @@ public class JDBCServer implements JDBCServerMBean {
     public static void main(String[] args) throws TTransportException, InterruptedException {
         JDBCServer server = new JDBCServer();
         server.startServer();
-    }
-
-    @Override
-    public synchronized void mergeAll() {
-        LOGGER.info("TsFileDB Server: start merging...");
-        try {
-            FileNodeManager.getInstance().mergeAll();
-        } catch (FileNodeManagerException e) {
-            e.printStackTrace();
-        }
-        LOGGER.info("TsFileDB Server: finish merge operation.");
     }
 }

@@ -5,7 +5,6 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.Scanner;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -16,10 +15,13 @@ import org.apache.commons.cli.OptionBuilder;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.lang3.StringUtils;
+import org.jline.reader.LineReader;
+import org.jline.reader.LineReaderBuilder;
+import org.jline.terminal.Terminal;
+import org.jline.terminal.TerminalBuilder;
 import org.joda.time.DateTime;
 
 import cn.edu.thu.tsfiledb.exception.ArgsErrorException;
-import jline.console.ConsoleReader;
 
 public class Client {
 	private static final String HOST_ARGS = "h";
@@ -62,7 +64,7 @@ public class Client {
 		Class.forName("cn.edu.thu.tsfiledb.jdbc.TsfileDriver");
 		Connection connection = null;
 		boolean printToConsole = true;
-		ConsoleReader reader = null;
+		LineReader reader = null;
 		Options options = createOptions();
 		HelpFormatter hf = new HelpFormatter();
 		hf.setWidth(MAX_HELP_CONSOLE_WIDTH);
@@ -101,7 +103,10 @@ public class Client {
 
 		try {
 			String s;
-			reader = new ConsoleReader();
+			Terminal terminal = TerminalBuilder.builder()
+	                          .system(true)
+	                          .build();
+			reader = LineReaderBuilder.builder().terminal(terminal).build();
 			
 			try {
 				String host = checkRequiredArg(HOST_ARGS, HOST_NAME, commandLine);
@@ -143,7 +148,7 @@ public class Client {
 						String cmd = cmds[i];
 						if (cmd != null && !cmd.trim().equals("")) {
 							if(cmd.toLowerCase().equals(QUIT_COMMAND) || cmd.toLowerCase().equals(EXIT_COMMAND)){
-								System.out.println(TSFILEDB_CLI_PREFIX+"> quit normally");
+								System.out.println(TSFILEDB_CLI_PREFIX+"> "+cmd.toLowerCase()+ " normally");
 								return;
 							}
 							

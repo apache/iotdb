@@ -143,7 +143,7 @@ public class FileNodeProcessorTest {
 	}
 
 	@Test
-	public void testGetAndCloseProcessor() {
+	public void testGetAndCloseProcessor() throws Exception {
 
 		try {
 			// nameSpacePath
@@ -207,7 +207,7 @@ public class FileNodeProcessorTest {
 	}
 
 	@Test
-	public void testQuery() {
+	public void testQuery() throws Exception {
 
 		try {
 			// test memory data in index
@@ -449,7 +449,7 @@ public class FileNodeProcessorTest {
 	}
 
 	@Test
-	public void testRecoveryBufferFile() {
+	public void testRecoveryBufferFile() throws Exception {
 
 		FileNodeProcessor fileNodeProcessor = null;
 		try {
@@ -619,7 +619,7 @@ public class FileNodeProcessorTest {
 		assertEquals(false, file.exists());
 	}
 
-	private void createBufferwritedata(List<Pair<Long, Long>> bufferwriteRanges) {
+	private void createBufferwritedata(List<Pair<Long, Long>> bufferwriteRanges) throws Exception {
 		for (Pair<Long, Long> timePair : bufferwriteRanges) {
 			createBufferwriteFile(timePair.left, timePair.right);
 			try {
@@ -636,8 +636,9 @@ public class FileNodeProcessorTest {
 	 * 
 	 * @param begin
 	 * @param end
+	 * @throws Exception 
 	 */
-	private void createBufferwriteFile(long begin, long end) {
+	private void createBufferwriteFile(long begin, long end) throws Exception {
 		try {
 			processor = new FileNodeProcessor(tsdbconfig.fileNodeDir, deltaObjectId, parameters);
 			BufferWriteProcessor bfProcessor = processor.getBufferWriteProcessor(deltaObjectId, begin);
