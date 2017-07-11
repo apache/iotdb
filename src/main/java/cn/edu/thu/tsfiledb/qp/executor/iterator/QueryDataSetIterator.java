@@ -35,7 +35,6 @@ public class QueryDataSetIterator implements Iterator<QueryDataSet> {
         this.timeFilter = timeFilter;
         this.freqFilter = freqFilter;
         this.valueFilter = valueFilter;
-
     }
 
     @Override
