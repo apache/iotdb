@@ -96,6 +96,11 @@ public class TSServiceImpl implements TSIService.Iface {
             WriteLogManager.isRecovering = false;
             LOGGER.info("TsFileDB Server: Done. Recover operation count {}", cnt);
         }
+        /**
+         * close and merge regularly
+         */
+        CloseMergeServer closeMergeServer = CloseMergeServer.getInstance();
+        closeMergeServer.startServer();
     }
 
     @Override
