@@ -8,6 +8,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
+import cn.edu.thu.tsfiledb.conf.TsfileDBConfig;
+import cn.edu.thu.tsfiledb.conf.TsfileDBDescriptor;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -75,23 +77,25 @@ public class TSServiceImpl implements TSIService.Iface {
     private static final Logger LOGGER = LoggerFactory.getLogger(TSServiceImpl.class);
 
     public TSServiceImpl() throws IOException {
-        LOGGER.info("TsFileDB Server: start checking write log...");
-        writeLogManager = WriteLogManager.getInstance();
-        writeLogManager.recovery();
-        long cnt = 0L;
-        PhysicalPlan plan;
-        WriteLogManager.isRecovering = true;
-        while ((plan = writeLogManager.getPhysicalPlan()) != null) {
-            try {
-                processor.getExecutor().processNonQuery(plan);
-                cnt++;
-            } catch (ProcessorException e) {
-                e.printStackTrace();
-                throw new IOException("Error in recovery from write log");
+        if (TsfileDBDescriptor.getInstance().getConfig().enableWal) {
+            LOGGER.info("TsFileDB Server: start checking write log...");
+            writeLogManager = WriteLogManager.getInstance();
+            writeLogManager.recovery();
+            long cnt = 0L;
+            PhysicalPlan plan;
+            WriteLogManager.isRecovering = true;
+            while ((plan = writeLogManager.getPhysicalPlan()) != null) {
+                try {
+                    processor.getExecutor().processNonQuery(plan);
+                    cnt++;
+                } catch (ProcessorException e) {
+                    e.printStackTrace();
+                    throw new IOException("Error in recovery from write log");
+                }
             }
+            WriteLogManager.isRecovering = false;
+            LOGGER.info("TsFileDB Server: Done. Recover operation count {}", cnt);
         }
-        WriteLogManager.isRecovering = false;
-        LOGGER.info("TsFileDB Server: Done. Recover operation count {}", cnt);
     }
 
     @Override
@@ -443,7 +447,8 @@ public class TSServiceImpl implements TSIService.Iface {
             } catch (ProcessorException e) {
                 return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
             }
-            if (WriteLogManager.getInstance().isRecovering==false && execRet && needToBeWrittenToLog(plan)) {
+            if (TsfileDBDescriptor.getInstance().getConfig().enableWal &&
+                    WriteLogManager.getInstance().isRecovering==false && execRet && needToBeWrittenToLog(plan)) {
                 writeLogManager.write(plan);
             }
             TS_StatusCode statusCode = execRet ? TS_StatusCode.SUCCESS_STATUS : TS_StatusCode.ERROR_STATUS;
