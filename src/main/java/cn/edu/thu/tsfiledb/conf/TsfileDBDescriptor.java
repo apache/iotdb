@@ -44,18 +44,18 @@ public class TsfileDBDescriptor {
 			try {
 			    inputStream = new FileInputStream(new File(url));
 			} catch (Exception e) {
-			    LOGGER.error("Fail to find config file {}", url, e);
+			    LOGGER.warn("Fail to find config file {}", url, e);
 			    return;
 			}
 			
 		} else {
-			url = tsfileHome + "/conf/"+TsfileDBConfig.CONFIG_NAME;
+			url = tsfileHome + File.pathSeparator+"conf"+ File.pathSeparator+TsfileDBConfig.CONFIG_NAME;
 			try {
 				File file = new File(url);
 				inputStream = new FileInputStream(file);
 			} catch (FileNotFoundException e) {
-				LOGGER.error("Fail to find config file {}", url, e);
-				System.exit(1);
+				LOGGER.warn("Fail to find config file {}", url, e);
+				return;
 			}
 		}
 		LOGGER.info("Start to read config file {}", url);
