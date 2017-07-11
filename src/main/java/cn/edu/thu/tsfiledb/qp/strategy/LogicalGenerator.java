@@ -53,7 +53,8 @@ public class LogicalGenerator {
 
 	/**
 	 * input an astNode parsing by {@code antlr} and analyze it.
-	 * @throws MetadataArgsErrorException 
+	 * @throws QueryProcessorException
+	 * @throws ArgsErrorException 
 	 *
 	 */
 	private void analyze(ASTNode astNode) throws QueryProcessorException, ArgsErrorException {
