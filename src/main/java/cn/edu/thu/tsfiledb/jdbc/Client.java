@@ -1,5 +1,6 @@
 package cn.edu.thu.tsfiledb.jdbc;
 
+import java.io.Console;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
@@ -115,7 +116,10 @@ public class Client {
 				
 				String password = commandLine.getOptionValue(PASSWORD_ARGS);
 				if(password == null){
-				    password = reader.readLine(TSFILEDB_CLI_PREFIX+"> please input password: ");
+				    Console console = System.console();
+				    System.out.print(TSFILEDB_CLI_PREFIX+"> please input password: ");
+				    password = new String(console.readPassword());
+				    console = null;
 				}
 				try{
 					connection = DriverManager.getConnection("jdbc:tsfile://" + host + ":" + port + "/", username, password);
