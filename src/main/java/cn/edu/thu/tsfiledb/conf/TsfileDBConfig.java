@@ -9,12 +9,12 @@ public class TsfileDBConfig {
 	 * Port which JDBC server listens to
 	 */
 	public int rpcPort = 6667;
-
-	/**
-	 * Is write ahead log enable
-	 */
-	public boolean enableWal = true;
-
+	
+    	/**
+    	 * Is write ahead log enable
+    	 */	
+	public boolean enableWal = false;
+	
 	/**
 	 * Write ahead log folder.
 	 */
