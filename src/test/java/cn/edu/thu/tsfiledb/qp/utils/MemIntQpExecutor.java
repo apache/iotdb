@@ -41,7 +41,8 @@ public class MemIntQpExecutor extends QueryProcessExecutor {
     private TreeSet<Long> timeStampUnion = new TreeSet<>();
 
     public MemIntQpExecutor() {
-        super.fetchSize = 5;
+        this.fetchSize.set(5);
+        // super.fetchSize = 5;
     }
 
     @Override
