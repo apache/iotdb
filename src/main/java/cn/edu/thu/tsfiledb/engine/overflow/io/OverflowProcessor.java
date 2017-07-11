@@ -381,11 +381,13 @@ public class OverflowProcessor extends LRUProcessor {
 					}
 				}
 			}
-			
-			try {
-				WriteLogManager.getInstance().startOverflowFlush(nameSpacePath);
-			} catch (IOException e1) {
-				throw new OverflowProcessorException(e1);
+
+			if (TsfileDBDescriptor.getInstance().getConfig().enableWal) {
+				try {
+					WriteLogManager.getInstance().startOverflowFlush(nameSpacePath);
+				} catch (IOException e1) {
+					throw new OverflowProcessorException(e1);
+				}
 			}
 			
 			ofSupport.switchWorkToFlush();
@@ -417,7 +419,9 @@ public class OverflowProcessor extends LRUProcessor {
 					// call filenode manager function to flush overflow
 					// nameSpacePath set
 					filenodeManagerFlushAction.act();
-					WriteLogManager.getInstance().endOverflowFlush(nameSpacePath);
+					if (TsfileDBDescriptor.getInstance().getConfig().enableWal) {
+						WriteLogManager.getInstance().endOverflowFlush(nameSpacePath);
+					}
 				} catch (IOException e) {
 					LOGGER.error("Flush overflow rowGroup to file failed synchronously");
 					throw new OverflowProcessorException(
@@ -452,7 +456,9 @@ public class OverflowProcessor extends LRUProcessor {
 							// call filenode manager function to flush overflow
 							// nameSpacePath set
 							filenodeManagerFlushAction.act();
-							WriteLogManager.getInstance().endOverflowFlush(nameSpacePath);
+							if (TsfileDBDescriptor.getInstance().getConfig().enableWal) {
+								WriteLogManager.getInstance().endOverflowFlush(nameSpacePath);
+							}
 						} catch (IOException e) {
 							LOGGER.error("Flush overflow rowgroup to file error in asynchronously. The reason is {}",
 									e.getMessage());
