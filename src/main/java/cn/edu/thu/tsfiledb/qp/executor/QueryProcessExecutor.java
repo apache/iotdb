@@ -24,7 +24,7 @@ import cn.edu.thu.tsfiledb.qp.strategy.PhysicalGenerator;
 public abstract class QueryProcessExecutor {
 
     protected ThreadLocal<Map<String, Object>> parameters = new ThreadLocal<>();
-    protected ThreadLocal fetchSize = new ThreadLocal();
+    protected ThreadLocal<Integer> fetchSize = new ThreadLocal<>();
 
     public QueryProcessExecutor() {
     }
@@ -79,11 +79,10 @@ public abstract class QueryProcessExecutor {
 
     public void setFetchSize(int fetchSize) {
         this.fetchSize.set(fetchSize);
-        // this.fetchSize = fetchSize;
     }
 
     public int getFetchSize() {
-        return (int) fetchSize.get();
+        return fetchSize.get();
     }
 
     public abstract QueryDataSet query(List<Path> paths, FilterExpression timeFilter,
@@ -139,8 +138,11 @@ public abstract class QueryProcessExecutor {
     }
 
     public void clearParameters(){
-        if(parameters.get() != null){
+        if (parameters.get() != null){
             parameters.get().clear();
+        }
+        if (fetchSize.get() != null) {
+            fetchSize.remove();
         }
     }
 
