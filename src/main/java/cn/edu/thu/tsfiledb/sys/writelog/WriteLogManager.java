@@ -26,13 +26,15 @@ public class WriteLogManager {
     public static boolean isRecovering = false;
 
     private WriteLogManager() {
-        logNodeMaps = new ConcurrentHashMap<>();
+        if (TsfileDBDescriptor.getInstance().getConfig().enableWal) {
+            logNodeMaps = new ConcurrentHashMap<>();
 
-        // system log timing merge task
-        ScheduledExecutorService service = Executors.newScheduledThreadPool(1);
-        long delay = 0;
-        long interval = TsfileDBDescriptor.getInstance().getConfig().flushWalPeriodInMs;
-        service.scheduleAtFixedRate(new LogMergeTimingTask(), delay, interval, TimeUnit.SECONDS);
+            // system log timing merge task
+            ScheduledExecutorService service = Executors.newScheduledThreadPool(1);
+            long delay = 0;
+            long interval = TsfileDBDescriptor.getInstance().getConfig().flushWalPeriodInMs;
+            service.scheduleAtFixedRate(new LogMergeTimingTask(), delay, interval, TimeUnit.SECONDS);
+        }
     }
 
     class LogMergeTimingTask implements Runnable {

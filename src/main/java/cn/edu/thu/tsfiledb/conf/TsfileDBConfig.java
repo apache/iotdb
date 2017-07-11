@@ -12,7 +12,7 @@ public class TsfileDBConfig {
     	/**
     	 * Is write ahead log enable
     	 */	
-	public boolean enableWal = true;
+	public boolean enableWal = false;
 	
 	/**
 	 * Write ahead log folder.
