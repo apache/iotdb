@@ -1,5 +1,6 @@
 package cn.edu.thu.tsfiledb.metadata;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 import java.io.IOException;
@@ -262,5 +263,11 @@ public class MManagerTest {
 
 		ans = mManager.getPaths("root.laptop.*.s1");
 		Assert.assertEquals(ans.size(), 2);
+
+		try {
+			ans = mManager.getPaths("root.laptop.d1.s5");
+		} catch (PathErrorException p) {
+			Assert.assertTrue(p instanceof PathErrorException);
+		}
 	}
 }
