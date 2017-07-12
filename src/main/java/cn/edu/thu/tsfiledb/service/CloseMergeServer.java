@@ -21,7 +21,7 @@ public class CloseMergeServer {
 	private static final Logger LOGGER = LoggerFactory.getLogger(CloseMergeServer.class);
 
 	private MergeServerThread mergeServer = new MergeServerThread();
-	private CloseServerThread closeServer = new CloseServerThre();
+	private CloseServerThread closeServer = new CloseServerThread();
 	private ScheduledThreadPoolExecutor service;
 	private CloseAndMergeDaemon closeAndMergeDaemon = new CloseAndMergeDaemon();
 
