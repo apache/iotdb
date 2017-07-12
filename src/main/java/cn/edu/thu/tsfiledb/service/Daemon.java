@@ -60,8 +60,11 @@ public class Daemon {
 		initFileNodeManager();
 
         systemDataRecovery();
+        
 		maybeInitJmx();
 		registJDBCServer();
+		
+		startCloseAndMergeServer();
 	}
 
 	private void maybeInitJmx() {
@@ -131,6 +134,15 @@ public class Daemon {
 		}
 		WriteLogManager.isRecovering = false;
 		LOGGER.info("TsFileDB Server: Done. Recover operation count {}", cnt);
+	}
+	
+	/**
+	 * start the close and merge server
+	 */
+	private void startCloseAndMergeServer(){
+		// close and merge regularly
+        CloseMergeServer closeMergeServer = CloseMergeServer.getInstance();
+        closeMergeServer.startServer();
 	}
 
 	public void stop() throws FileNodeManagerException, IOException{

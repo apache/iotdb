@@ -80,10 +80,6 @@ public class TSServiceImpl implements TSIService.Iface {
         if (TsfileDBDescriptor.getInstance().getConfig().enableWal) {
             writeLogManager = WriteLogManager.getInstance();
         }
-        
-        // close and merge regularly
-        CloseMergeServer closeMergeServer = CloseMergeServer.getInstance();
-        closeMergeServer.startServer();
     }
 
     @Override
