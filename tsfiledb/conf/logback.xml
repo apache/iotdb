@@ -27,7 +27,7 @@
    		<rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
    			<!-- 归档的日志文件的路径，例如今天是2013-12-21日志，当前写的日志文件路径为file节点指定，可以将此文件与file指定文件路径设置为不同路径，从而将当前日志文件或归档日志文件置不同的目录。
    			而2013-12-21的日志文件在由fileNamePattern指定。%d{yyyy-MM-dd}指定日期格式，%i指定索引 -->
-   			<fileNamePattern>${TSFILE_HOME}/log-error-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+   			<fileNamePattern>${TSFILE_HOME}/logs/log-error-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
    			<!-- 除按日志记录之外，还配置了日志文件不能超过2M，若超过2M，日志文件会以索引0开始，
    			命名日志文件，例如log-error-2013-12-21.0.log -->
    			<timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
@@ -52,7 +52,7 @@
 	<appender name="FILEWARN" class="ch.qos.logback.core.rolling.RollingFileAppender">
 		<file>${TSFILE_HOME}/logs/log_warn.log</file>
    		<rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-   			<fileNamePattern>${TSFILE_HOME}/log-warn-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+   			<fileNamePattern>${TSFILE_HOME}/logs/log-warn-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
    			<timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
        	 		<maxFileSize>2MB</maxFileSize>
     		</timeBasedFileNamingAndTriggeringPolicy>
@@ -73,7 +73,7 @@
 	<appender name="FILEINFO" class="ch.qos.logback.core.rolling.RollingFileAppender">
 		<file>${TSFILE_HOME}/logs/log_info.log</file>
    		<rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-   			<fileNamePattern>${TSFILE_HOME}/log-info-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+   			<fileNamePattern>${TSFILE_HOME}/logs/log-info-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
    			<timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
        	 		<maxFileSize>200MB</maxFileSize>
     		</timeBasedFileNamingAndTriggeringPolicy>
@@ -95,7 +95,7 @@
 	<appender name="FILEDEBUG" class="ch.qos.logback.core.rolling.RollingFileAppender">
 		<file>${TSFILE_HOME}/logs/log_debug.log</file>
    		<rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-   			<fileNamePattern>${TSFILE_HOME}/log-debug-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+   			<fileNamePattern>${TSFILE_HOME}/logs/log-debug-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
    			<timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
        	 		<maxFileSize>200MB</maxFileSize>
     		</timeBasedFileNamingAndTriggeringPolicy>

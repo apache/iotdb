@@ -4,9 +4,13 @@ import cn.edu.thu.tsfile.common.constant.SystemConstant;
 import cn.edu.thu.tsfile.common.utils.Pair;
 import cn.edu.thu.tsfile.timeseries.read.qp.Path;
 import cn.edu.thu.tsfile.timeseries.utils.StringContainer;
+import cn.edu.thu.tsfiledb.exception.ArgsErrorException;
+import cn.edu.thu.tsfiledb.exception.MetadataArgsErrorException;
 import cn.edu.thu.tsfiledb.qp.constant.SQLConstant;
 import cn.edu.thu.tsfiledb.qp.constant.TSParserConstant;
-import cn.edu.thu.tsfiledb.qp.exception.*;
+import cn.edu.thu.tsfiledb.qp.exception.IllegalASTFormatException;
+import cn.edu.thu.tsfiledb.qp.exception.LogicalOperatorException;
+import cn.edu.thu.tsfiledb.qp.exception.QueryProcessorException;
 import cn.edu.thu.tsfiledb.qp.logical.RootOperator;
 import cn.edu.thu.tsfiledb.qp.logical.crud.*;
 import cn.edu.thu.tsfiledb.qp.logical.sys.AuthorOperator;
@@ -25,10 +29,7 @@ import org.joda.time.DateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 
 import static cn.edu.thu.tsfiledb.qp.constant.SQLConstant.*;
@@ -45,16 +46,18 @@ public class LogicalGenerator {
 	private Logger LOG = LoggerFactory.getLogger(LogicalGenerator.class);
 	private RootOperator initializedOperator = null;
 
-	public RootOperator getLogicalPlan(ASTNode astNode) throws QueryProcessorException {
+	public RootOperator getLogicalPlan(ASTNode astNode) throws QueryProcessorException, ArgsErrorException {
 		analyze(astNode);
 		return initializedOperator;
 	}
 
 	/**
 	 * input an astNode parsing by {@code antlr} and analyze it.
+	 * @throws QueryProcessorException
+	 * @throws ArgsErrorException 
 	 *
 	 */
-	private void analyze(ASTNode astNode) throws QueryProcessorException {
+	private void analyze(ASTNode astNode) throws QueryProcessorException, ArgsErrorException {
 		Token token = astNode.getToken();
 		if (token == null)
 			throw new QueryProcessorException("given token is null");
@@ -195,11 +198,12 @@ public class LogicalGenerator {
 		initializedOperator = propertyOperator;
 	}
 
-	private void analyzeMetadataCreate(ASTNode astNode) {
+	private void analyzeMetadataCreate(ASTNode astNode) throws MetadataArgsErrorException {
 		Path series = parseRootPath(astNode.getChild(0).getChild(0));
 		ASTNode paramNode = astNode.getChild(1);
 		String dataType = paramNode.getChild(0).getChild(0).getText();
 		String encodingType = paramNode.getChild(1).getChild(0).getText();
+		checkMetadataArgs(dataType, encodingType);
 		String[] paramStrings = new String[paramNode.getChildCount() - 2];
 		for (int i = 0; i < paramStrings.length; i++) {
 			ASTNode node = paramNode.getChild(i + 2);
@@ -636,4 +640,61 @@ public class LogicalGenerator {
 		initializedOperator = authorOperator;
 	}
 
+    private void checkMetadataArgs(String dataType, String encoding) throws MetadataArgsErrorException {
+	final String RLE = "RLE";
+	final String PLAIN = "PLAIN";
+	final String TS_2DIFF = "TS_2DIFF";
+	final String BITMAP = "BITMAP";
+
+	if (dataType == null) {
+	    throw new MetadataArgsErrorException("data type cannot be null");
+	}
+	switch (dataType) {
+	case "BOOLEAN":
+	    if (encoding == null || encoding.equals(PLAIN)) {
+		throw new MetadataArgsErrorException(
+			String.format("encoding %s does not support %s", encoding, dataType));
+	    }
+	    break;
+	case "INT32":
+	    if (encoding == null || (!encoding.equals(PLAIN) && !encoding.equals(RLE) && !encoding.equals(TS_2DIFF))) {
+		throw new MetadataArgsErrorException(
+			String.format("encoding %s does not support %s", encoding, dataType));
+	    }
+	    break;
+	case "INT64":
+	    if (encoding == null || (!encoding.equals(PLAIN) && !encoding.equals(RLE) && !encoding.equals(TS_2DIFF))) {
+		throw new MetadataArgsErrorException(
+			String.format("encoding %s does not support %s", encoding, dataType));
+	    }
+	    break;
+	case "FLOAT":
+	    if (encoding == null || (!encoding.equals(PLAIN) && !encoding.equals(RLE) && !encoding.equals(TS_2DIFF))) {
+		throw new MetadataArgsErrorException(
+			String.format("encoding %s does not support %s", encoding, dataType));
+	    }
+	    break;
+	case "DOUBLE":
+	    if (encoding == null || (!encoding.equals(PLAIN) && !encoding.equals(RLE) && !encoding.equals(TS_2DIFF))) {
+		throw new MetadataArgsErrorException(
+			String.format("encoding %s does not support %s", encoding, dataType));
+	    }
+	    break;
+	case "ENUMS":
+	    if (encoding == null || (!encoding.equals(PLAIN) && !encoding.equals(BITMAP))) {
+		throw new MetadataArgsErrorException(
+			String.format("encoding %s does not support %s", encoding, dataType));
+	    }
+	    break;
+	case "BYTE_ARRAY":
+	    if (encoding == null || !encoding.equals(PLAIN)) {
+		throw new MetadataArgsErrorException(
+			String.format("encoding %s does not support %s", encoding, dataType));
+	    }
+	    break;
+	default:
+	    throw new MetadataArgsErrorException(String.format("data type %s is not supprot", dataType));
+	}
+    }
+	
 }

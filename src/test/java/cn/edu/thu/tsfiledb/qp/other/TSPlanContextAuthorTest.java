@@ -3,6 +3,7 @@ package cn.edu.thu.tsfiledb.qp.other;
 import cn.edu.thu.tsfile.timeseries.read.qp.Path;
 import cn.edu.thu.tsfiledb.qp.exception.QueryProcessorException;
 import cn.edu.thu.tsfiledb.qp.physical.sys.AuthorPlan;
+import cn.edu.thu.tsfiledb.exception.ArgsErrorException;
 import cn.edu.thu.tsfiledb.qp.QueryProcessor;
 import cn.edu.thu.tsfiledb.qp.utils.MemIntQpExecutor;
 import org.junit.Test;
@@ -52,7 +53,7 @@ public class TSPlanContextAuthorTest {
     }
 
     @Test
-    public void testAnalyzeAuthor() throws QueryProcessorException {
+    public void testAnalyzeAuthor() throws QueryProcessorException, ArgsErrorException {
         QueryProcessor processor = new QueryProcessor(new MemIntQpExecutor());
         AuthorPlan author = (AuthorPlan) processor.parseSQLToPhysicalPlan(inputSQL);
         if (author == null)

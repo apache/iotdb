@@ -22,6 +22,7 @@ import cn.edu.thu.tsfiledb.auth.AuthorityChecker;
 import cn.edu.thu.tsfiledb.auth.dao.Authorizer;
 import cn.edu.thu.tsfiledb.engine.exception.FileNodeManagerException;
 import cn.edu.thu.tsfiledb.engine.filenode.FileNodeManager;
+import cn.edu.thu.tsfiledb.exception.ArgsErrorException;
 import cn.edu.thu.tsfiledb.exception.NotConsistentException;
 import cn.edu.thu.tsfiledb.exception.PathErrorException;
 import cn.edu.thu.tsfiledb.metadata.ColumnSchema;
@@ -297,8 +298,8 @@ public class TSServiceImpl implements TSIService.Iface {
                     return getTSExecuteStatementResp(TS_StatusCode.SUCCESS_STATUS, "ADMIN_COMMAND_SUCCESS");
                 }
             } catch (Exception e) {
-                e.printStackTrace();
-                return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, "Server Internal Error");
+        		e.printStackTrace();
+                return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
             }
 
             PhysicalPlan physicalPlan;
@@ -306,7 +307,7 @@ public class TSServiceImpl implements TSIService.Iface {
                 physicalPlan = processor.parseSQLToPhysicalPlan(statement);
             } catch (IllegalASTFormatException e) {
                 return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS,
-                        "Statement is not right:" + e.getMessage());
+                        "Statement format is not right:" + e.getMessage());
             } catch (NullPointerException e) {
                 return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, "Statement is not allowed");
             }
@@ -480,7 +481,7 @@ public class TSServiceImpl implements TSIService.Iface {
         PhysicalPlan physicalPlan;
         try {
             physicalPlan = processor.parseSQLToPhysicalPlan(statement);
-        } catch (QueryProcessorException e) {
+        } catch (QueryProcessorException | ArgsErrorException e) {
             e.printStackTrace();
             return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
         }

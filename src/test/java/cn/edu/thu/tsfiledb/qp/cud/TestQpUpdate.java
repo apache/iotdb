@@ -7,6 +7,7 @@ import cn.edu.thu.tsfile.timeseries.read.query.QueryDataSet;
 import cn.edu.thu.tsfile.timeseries.utils.StringContainer;
 import cn.edu.thu.tsfiledb.qp.exception.QueryProcessorException;
 import cn.edu.thu.tsfiledb.qp.physical.PhysicalPlan;
+import cn.edu.thu.tsfiledb.exception.ArgsErrorException;
 import cn.edu.thu.tsfiledb.qp.QueryProcessor;
 import cn.edu.thu.tsfiledb.qp.utils.MemIntQpExecutor;
 import org.antlr.runtime.RecognitionException;
@@ -44,7 +45,7 @@ public class TestQpUpdate {
 
 
     @Test
-    public void testUpdate() throws QueryProcessorException, ProcessorException, RecognitionException {
+    public void testUpdate() throws QueryProcessorException, ProcessorException, RecognitionException, ArgsErrorException {
         String sqlStr =
                 "update root.laptop.device_1.sensor_1 set value = 33000 where time >= 10 and time <= 10";
         PhysicalPlan plan1 = processor.parseSQLToPhysicalPlan(sqlStr);
@@ -69,7 +70,7 @@ public class TestQpUpdate {
     }
 
     @Test
-    public void testDelete() throws QueryProcessorException, ProcessorException, RecognitionException {
+    public void testDelete() throws QueryProcessorException, ProcessorException, RecognitionException, ArgsErrorException {
         String sqlStr = "delete from root.laptop.device_1.sensor_1 where time < 15";
         PhysicalPlan plan1 = processor.parseSQLToPhysicalPlan(sqlStr);
         boolean upRet = processor.getExecutor().processNonQuery(plan1);
@@ -93,7 +94,7 @@ public class TestQpUpdate {
     }
 
     @Test
-    public void testInsert() throws QueryProcessorException, ProcessorException, RecognitionException {
+    public void testInsert() throws QueryProcessorException, ProcessorException, RecognitionException, ArgsErrorException {
         String sqlStr = "insert into root.laptop.device_1 (timestamp, sensor_1) values (30,30)";
         PhysicalPlan plan1 = processor.parseSQLToPhysicalPlan(sqlStr);
 

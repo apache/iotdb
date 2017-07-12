@@ -6,6 +6,7 @@ import cn.edu.thu.tsfiledb.qp.exception.QueryProcessorException;
 import cn.edu.thu.tsfiledb.qp.executor.QueryProcessExecutor;
 import cn.edu.thu.tsfiledb.qp.executor.SingleFileQPExecutor;
 import cn.edu.thu.tsfiledb.qp.physical.PhysicalPlan;
+import cn.edu.thu.tsfiledb.exception.ArgsErrorException;
 import cn.edu.thu.tsfiledb.qp.QueryProcessor;
 import org.junit.Before;
 import org.junit.Test;
@@ -65,7 +66,7 @@ public class TestSingleFileQpQuery {
     }
 
     @Test
-    public void testQueryBasic() throws QueryProcessorException {
+    public void testQueryBasic() throws QueryProcessorException, ArgsErrorException {
         if(exec == null)
             return;
         PhysicalPlan physicalPlan = processor.parseSQLToPhysicalPlan(inputSQL);
