@@ -159,7 +159,7 @@ public class BufferWriteProcessor extends LRUProcessor {
 	 * The one part is the last intervalFile<br>
 	 * The other part is all the intervalFile, and other file will be deleted
 	 * </p>
-	 * 
+	 *
 	 * @throws BufferWriteProcessorException
 	 */
 	private void bufferwriteRecovery() throws BufferWriteProcessorException {
@@ -271,7 +271,7 @@ public class BufferWriteProcessor extends LRUProcessor {
 
 	/**
 	 * This is only used after flush one rowroup data successfully.
-	 * 
+	 *
 	 * @throws BufferWriteProcessorException
 	 */
 	private void writeStoreToDisk() throws BufferWriteProcessorException {
@@ -336,7 +336,7 @@ public class BufferWriteProcessor extends LRUProcessor {
 	/**
 	 * The left of the pair is the last position. The right of the pair is the
 	 * rowGroupMetadata.
-	 * 
+	 *
 	 * @return - left is the end position of the last rowgroup flushed, the
 	 *         right is all the rowgroup meatdata flushed
 	 * @throws IOException
@@ -446,7 +446,7 @@ public class BufferWriteProcessor extends LRUProcessor {
 
 	/**
 	 * Write a data point
-	 * 
+	 *
 	 * @param deltaObjectId
 	 * @param measurementId
 	 * @param timestamp
@@ -465,7 +465,7 @@ public class BufferWriteProcessor extends LRUProcessor {
 
 	/**
 	 * Write a tsRecord
-	 * 
+	 *
 	 * @param tsRecord
 	 * @throws BufferWriteProcessorException
 	 */
@@ -482,7 +482,7 @@ public class BufferWriteProcessor extends LRUProcessor {
 	}
 
 	public Pair<List<Object>, List<RowGroupMetaData>> getIndexAndRowGroupList(String deltaObjectId,
-			String measurementId) {
+																			  String measurementId) {
 		List<Object> memData = null;
 		List<RowGroupMetaData> list = null;
 		// wait until flush over
@@ -553,7 +553,7 @@ public class BufferWriteProcessor extends LRUProcessor {
 		private long flushingRecordCount;
 
 		BufferWriteRecordWriter(TSFileConfig conf, BufferWriteIOWriter ioFileWriter,
-				WriteSupport<TSRecord> writeSupport, FileSchema schema) {
+								WriteSupport<TSRecord> writeSupport, FileSchema schema) {
 			super(conf, ioFileWriter, writeSupport, schema);
 		}
 
@@ -601,15 +601,20 @@ public class BufferWriteProcessor extends LRUProcessor {
 					throw new IOException(e);
 				}
 
-				// For WAL
-				WriteLogManager.getInstance().startBufferWriteFlush(nameSpacePath);
+				if (TsfileDBDescriptor.getInstance().getConfig().enableWal) {
+					// For WAL
+					WriteLogManager.getInstance().startBufferWriteFlush(nameSpacePath);
+				}
+
 				// flush bufferwrite data
 				if (isFlushingSync) {
 					try {
 						super.flushRowGroup(false);
 						writeStoreToDisk();
 						filenodeFlushAction.act();
-						WriteLogManager.getInstance().endBufferWriteFlush(nameSpacePath);
+						if (TsfileDBDescriptor.getInstance().getConfig().enableWal) {
+							WriteLogManager.getInstance().endBufferWriteFlush(nameSpacePath);
+						}
 					} catch (IOException e) {
 						LOGGER.error("Flush row group to store failed, processor:{}. Message: {}", nameSpacePath,
 								e.getMessage());
@@ -643,7 +648,9 @@ public class BufferWriteProcessor extends LRUProcessor {
 							asyncFlushRowGroupToStore();
 							writeStoreToDisk();
 							filenodeFlushAction.act();
-							WriteLogManager.getInstance().endBufferWriteFlush(nameSpacePath);
+							if (TsfileDBDescriptor.getInstance().getConfig().enableWal) {
+								WriteLogManager.getInstance().endBufferWriteFlush(nameSpacePath);
+							}
 						} catch (IOException e) {
 							/*
 							 * There should be added system log by CGF and throw

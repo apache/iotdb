@@ -1,4 +1,4 @@
-#使用方法
+# 使用方法
 
 ## 环境依赖
 
@@ -36,5 +36,4 @@ tsfiledb/		<-- 根目录
 
 # 启动客户端
 
-> ./bin/start-client.sh -h xxx -p xxx -u xxx
-
+> ./bin/start-client.sh -h xxx.xxx.xxx.xxx -p xxx -u xxx
