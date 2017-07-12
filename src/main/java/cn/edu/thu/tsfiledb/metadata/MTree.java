@@ -412,7 +412,8 @@ public class MTree implements Serializable {
 
 		if (!nodeReg.equals("*")) {
 			if (!node.hasChild(nodeReg)) {
-				throw new PathErrorException("Path Error in node : " + nodeReg);
+				// throw new PathErrorException("Path Error in node : " + nodeReg);
+				return;
 			}
 			findPath(node.getChild(nodeReg), nodes, idx + 1, parent + node.getName() + ".", paths);
 		} else {
