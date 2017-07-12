@@ -59,9 +59,9 @@ public class Daemon {
 		initDBDao();
 		initFileNodeManager();
 
+        systemDataRecovery();
 		maybeInitJmx();
 		registJDBCServer();
-		systemDataRecovery();
 	}
 
 	private void maybeInitJmx() {
