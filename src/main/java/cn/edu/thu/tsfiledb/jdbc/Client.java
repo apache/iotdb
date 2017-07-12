@@ -101,14 +101,14 @@ public class Client {
 		ConsoleReader reader = null;
 		try {
 			String s;
-			String osName = System.getProperty("os.name");
+//			String osName = System.getProperty("os.name");
 			reader = new ConsoleReader();
-			if(osName.toLowerCase().indexOf("windows")>-1){
-//				System.setProperty("jline.WindowsTerminal.directConsole", "false");
-				jline.WindowsTerminal winTerm=(jline.WindowsTerminal) reader.getTerminal();
-				winTerm.setDirectConsole(false);
-			}else{
-			}
+//			if(osName.toLowerCase().indexOf("windows")>-1){
+////				System.setProperty("jline.WindowsTerminal.directConsole", "false");
+//				jline.WindowsTerminal winTerm=(jline.WindowsTerminal) reader.getTerminal();
+//				winTerm.setDirectConsole(false);
+//			}else{
+//			}
 
 //			reader.setBellEnabled(false);
 			try {
