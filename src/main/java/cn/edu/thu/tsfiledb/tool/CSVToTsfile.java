@@ -30,11 +30,16 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.OptionBuilder;
 import org.apache.commons.cli.Options;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import cn.edu.thu.tsfiledb.jdbc.JDBCExample;
 
 public class CSVToTsfile {
 	private static final int MAX_HELP_CONSOLE_WIDTH = 88;
 	private static final String ISO8601_ARGS = "disableISO8601";
 	private static boolean timeFormatInISO8601 = true;
+	private static final Logger LOGGER = LoggerFactory.getLogger(CSVToTsfile.class);
 
 	private static String host;
 	private static String port;
@@ -66,23 +71,24 @@ public class CSVToTsfile {
 		//SetTimeFormat(timeformat);
 		Class.forName("cn.edu.thu.tsfiledb.jdbc.TsfileDriver");
 		connection = DriverManager.getConnection("jdbc:tsfile://" + host + ":" + port + "/", username, password);
+		
 		loadDataFromCSV();
 
 		connection.close();
 
 	}
 
-	private static void SetTimeFormat(String tf) {
+	private static String setTimeFormat(String tf, String words) {
 		if(tf.equals("ISO8601")) {
-			
+			return  "\'" + words + "\'";
 		}else if(tf.equals("timestamps")) {
-			
+			return words;
 		}else {
-			
+			return "\'" + words + "\'";
 		}
 	}
 
-	public static void loadDataFromCSV() throws IOException {
+	public static void loadDataFromCSV()  {
 		try {
 			statement = connection.createStatement();
 			BufferedReader br = new BufferedReader(new InputStreamReader
@@ -116,19 +122,32 @@ public class CSVToTsfile {
 //				System.out.println(entry.getKey() + " " + entry.getValue());
 //			}
 //			System.out.println(colInfo);
+			int successCount = 0;
+			int failCount =0;
 			while ((line = br.readLine()) != null) {
-				ArrayList<String> sqls = createInsertSQL(line);
-				for (String str : sqls) {
-					statement.execute(str);
+				ArrayList<StringBuilder> sqls = createInsertSQL(line);
+				for (StringBuilder str : sqls) {
+					if(statement.execute(str.toString())) {
+						successCount++;
+					}else {
+						failCount++;
+					}
 				}
 //				ResultSet rs = statement.executeQuery("select d1.s1 from root.fit");
 //				while (rs.next()) {
 //					System.out.println(rs.getString(0) + " " +  rs.getString(1));
 //				}
 			}
+			System.out.println("Success Count : " + successCount);
+			System.out.println("fail Count : " + failCount);
 			br.close();
-		} catch (SQLException e1) {
-			e1.printStackTrace();
+			statement.close();
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		} catch (SQLException e) {
+			LOGGER.error(e.getMessage());
 		}
 	}
 
@@ -146,17 +165,16 @@ public class CSVToTsfile {
 		hm.put("root.fit.p.s1", "INT32");
 	}
 
-	private static ArrayList<String> createInsertSQL(String line) {
-		String[] words = line.split(",", 6);
-		long timestamps = Long.valueOf(words[0]);
+	private static ArrayList<StringBuilder> createInsertSQL(String line) {
+		String[] words = line.split(",", headInfo.size()+1);
 		
-		ArrayList<String> sqls = new ArrayList<String>();
+		ArrayList<StringBuilder> sqls = new ArrayList<StringBuilder>();
 		Iterator<Map.Entry<String, ArrayList<Integer>>> it = hm_timeseries.entrySet().iterator();
 		while (it.hasNext()) {
 			Map.Entry<String, ArrayList<Integer>> entry = it.next();
-			String sql = "";
+			StringBuilder sql = new StringBuilder();
 			ArrayList<Integer> colIndex = entry.getValue();
-			sql = "insert into " + entry.getKey() + "(timestamp";
+			sql = sql.append("insert into " + entry.getKey() + "(timestamp");
 			int skipcount = 0;
 			for (int j = 0; j < colIndex.size(); ++j) {
 
@@ -164,23 +182,23 @@ public class CSVToTsfile {
 					skipcount++;
 					continue;
 				}
-				sql += (", " + colInfo.get(colIndex.get(j)));
+				sql.append(", " + colInfo.get(colIndex.get(j)));
 			}
 			if (skipcount == entry.getValue().size())
 				continue;
-			sql = sql + ") values(" + timestamps;
+			sql.append(") values(" + setTimeFormat(timeformat, words[0])); //accord to time set sql
 			for (int j = 0; j < colIndex.size(); ++j) {
 				if (words[entry.getValue().get(j) + 1].equals(""))
 					continue;
 				if (typeIdentify(headInfo.get(colIndex.get(j))) == "BYTE_ARRAY") {
-					sql = sql + ", \'" + words[colIndex.get(j) + 1] + "\'";
+					sql.append(", \'" + words[colIndex.get(j) + 1] + "\'");
 				} else {
-					sql = sql + "," + words[colIndex.get(j) + 1];
+					sql.append("," + words[colIndex.get(j) + 1]) ;
 				}
 			}
-			sql += ")";
+			sql.append(")");
 			sqls.add(sql);
-//			System.out.println(sql);
+			//System.out.println(sql);
 		}
 
 		return sqls;
