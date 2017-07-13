@@ -112,7 +112,7 @@ public class Daemon {
 	 *
 	 * @throws IOException
 	 */
-	public void systemDataRecovery() throws IOException {
+	private void systemDataRecovery() throws IOException {
 		LOGGER.info("TsFileDB Server: start checking write log...");
 		QueryProcessor processor = new QueryProcessor(new OverflowQPExecutor());
 		WriteLogManager writeLogManager = WriteLogManager.getInstance();
