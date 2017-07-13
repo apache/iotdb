@@ -13,7 +13,7 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.Map; 
+import java.util.Map;
 import java.util.Scanner;
 
 import org.apache.commons.cli.CommandLine;
@@ -77,11 +77,6 @@ public class CSVToTsfile {
 		help.setRequired(false);
 		options.addOption(help);
 
-		// Option timeFormat = new Option(TIMEFORMAT_ARGS, false, "Display
-		// timestamp in number");
-		// timeFormat.setRequired(false);
-		// options.addOption(timeFormat);
-
 		Option op_host = OptionBuilder.withArgName(HOST_NAME).hasArg().withDescription("Host Name (required)")
 				.create(HOST_ARGS);
 		options.addOption(op_host);
@@ -122,18 +117,6 @@ public class CSVToTsfile {
 
 	public static void main(String[] args) throws ClassNotFoundException, SQLException, IOException {
 
-		// if (args == null || args.length == 0) {
-		// System.out.println("usage: host port username password csv_filename
-		// timeformat");
-		// return;
-		// }
-		// host = args[0];
-		// port = args[1];
-		// username = args[2];
-		// password = args[3];
-		// filename = args[4];
-		// timeformat = args[5];
-		// SetTimeFormat(timeformat);
 		Options options = createOptions();
 		HelpFormatter hf = new HelpFormatter();
 		hf.setWidth(MAX_HELP_CONSOLE_WIDTH);
@@ -241,11 +224,7 @@ public class CSVToTsfile {
 						failCount++;
 					}
 				}
-				// ResultSet rs = statement.executeQuery("select d1.s1 from
-				// root.fit");
-				// while (rs.next()) {
-				// System.out.println(rs.getString(0) + " " + rs.getString(1));
-				// }
+
 			}
 			System.out.println("Success Count : " + successCount);
 			System.out.println("fail Count : " + failCount);
@@ -295,11 +274,8 @@ public class CSVToTsfile {
 			}
 			if (skipcount == entry.getValue().size())
 				continue;
-			sbd.append(") values(" + setTimeFormat(timeformat, words[0])); // accord
-																			// to
-																			// time
-																			// set
-																			// sql
+			sbd.append(") values(" + setTimeFormat(timeformat, words[0]));
+
 			for (int j = 0; j < colIndex.size(); ++j) {
 				if (words[entry.getValue().get(j) + 1].equals(""))
 					continue;
