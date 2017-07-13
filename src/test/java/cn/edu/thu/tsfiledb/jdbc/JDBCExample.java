@@ -19,7 +19,7 @@ import org.slf4j.LoggerFactory;
 
 public class JDBCExample {
 	private static final Logger LOGGER = LoggerFactory.getLogger(JDBCExample.class);
-	private static String schemaFilePath = "src/main/resources/schema.csv";
+	private static String schemaFilePath = "schema.csv";
 	private static String sourceFilePath = "D:\\datayingyeda";
 	private static String host = "127.0.0.1";
 	private static String port = "6667";
@@ -36,7 +36,7 @@ public class JDBCExample {
 		connection = DriverManager.getConnection("jdbc:tsfile://" + host + ":" + port + "/", username, password);
 		createSchema(schemaFilePath, connection);
 		connection.close();
-		insertData(sourceFilePath);
+//		insertData(sourceFilePath);
 		// mergeData(connection);
 
 	}

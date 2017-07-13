@@ -5,6 +5,7 @@ import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.RowIdLifetime;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -12,7 +13,7 @@ import cn.edu.thu.tsfiledb.metadata.ColumnSchema;
 
 
 public class TsfileDatabaseMetadata implements DatabaseMetaData {
-	
+	private final String ROOT_PATH = "root";
 	private TsfileConnection connection;
 	private Map<String, List<ColumnSchema>> seriesMap;
 	private Map<String, List<String>> deltaObjectMap;
@@ -44,20 +45,57 @@ public class TsfileDatabaseMetadata implements DatabaseMetaData {
 			return new TsfileMetadataResultSet(null, deltaObjectList); 
 		}
 		
-		if(columnPattern != null){
+		if(columnPattern != null && !columnPattern.equals("")){
 			if(seriesMap == null){
 				throw new SQLException("No schema for TsfileDatabaseMetadata");
 			}
-			List<ColumnSchema> columnSchemas = seriesMap.get(columnPattern);
 			
-			if(columnSchemas == null){
-				throw new SQLException(String.format("Cannot find table %s",columnPattern));
-			}
+			String[] values = columnPattern.split("\\.");
+			
 
-			return new TsfileMetadataResultSet(columnSchemas, null);
+			if(values.length < 2){
+				throw new SQLException(String.format("column path should starts like %s.xxx",ROOT_PATH));
+			} 
+			if(!values[0].equals(ROOT_PATH)){
+				throw new SQLException("column path should starts with: "+ROOT_PATH);
+			}
+			List<ColumnSchema> columnSchemaNew = new ArrayList<>();
+			List<ColumnSchema> columnSchemaOld = getColumnSchemaList(values[1], columnPattern);
+			if (values.length == 2) {
+				List<String> deltaObjectList = deltaObjectMap.get(values[1]);
+				if(deltaObjectList == null){
+					throw new SQLException(String.format("Cannot find delta object %s", values[1]));
+				}
+				
+				for(String deltaObject : deltaObjectList){
+					for(ColumnSchema schema: columnSchemaOld){
+						columnSchemaNew.add(new ColumnSchema(String.format("%s.%s", deltaObject, schema.name), schema.dataType, null));
+					}
+				}
+				
+			} else if (values.length == 3) {
+				for(ColumnSchema schema: columnSchemaOld){
+					columnSchemaNew.add(new ColumnSchema(String.format("%s.%s", columnPattern,schema.name), schema.dataType, null));
+				}
+			} else {
+				for(ColumnSchema schema: columnSchemaOld){
+					if(values[3].equals(schema.name)){
+						columnSchemaNew.add(new ColumnSchema(columnPattern, schema.dataType, null));
+					}
+				}
+				
+			} 
+			return new TsfileMetadataResultSet(columnSchemaNew, null);
 		}
-		
 		return null;
+	}
+	
+	private List<ColumnSchema> getColumnSchemaList(String deltaObjectType, String columnPattern) throws SQLException{
+		List<ColumnSchema> columnSchemaOld = seriesMap.get(deltaObjectType);
+		if(columnSchemaOld == null){
+			throw new SQLException(String.format("Cannot find table %s",columnPattern));
+		}
+		return columnSchemaOld;
 	}
 	
 	@Override
