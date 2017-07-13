@@ -79,29 +79,8 @@ public class TSServiceImpl implements TSIService.Iface {
 
     public TSServiceImpl() throws IOException {
         if (TsfileDBDescriptor.getInstance().getConfig().enableWal) {
-            LOGGER.info("TsFileDB Server: start checking write log...");
             writeLogManager = WriteLogManager.getInstance();
-            writeLogManager.recovery();
-            long cnt = 0L;
-            PhysicalPlan plan;
-            WriteLogManager.isRecovering = true;
-            while ((plan = writeLogManager.getPhysicalPlan()) != null) {
-                try {
-                    processor.getExecutor().processNonQuery(plan);
-                    cnt++;
-                } catch (ProcessorException e) {
-                    e.printStackTrace();
-                    throw new IOException("Error in recovery from write log");
-                }
-            }
-            WriteLogManager.isRecovering = false;
-            LOGGER.info("TsFileDB Server: Done. Recover operation count {}", cnt);
         }
-        /**
-         * close and merge regularly
-         */
-        CloseMergeServer closeMergeServer = CloseMergeServer.getInstance();
-        closeMergeServer.startServer();
     }
 
     @Override
