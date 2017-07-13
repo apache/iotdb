@@ -1,44 +1,25 @@
 package cn.edu.thu.tsfiledb.tool;
 
-import java.io.BufferedInputStream;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.lang.reflect.Array;
 import java.sql.Connection;
-import java.sql.DatabaseMetaData;
 import java.sql.DriverManager;
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Scanner;
 
-import org.apache.commons.cli.CommandLine;
-import org.apache.commons.cli.CommandLineParser;
-import org.apache.commons.cli.DefaultParser;
-import org.apache.commons.cli.HelpFormatter;
-import org.apache.commons.cli.Option;
-import org.apache.commons.cli.OptionBuilder;
-import org.apache.commons.cli.Options;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import cn.edu.thu.tsfiledb.jdbc.JDBCExample;
 
 public class CSVToTsfile {
-	private static final int MAX_HELP_CONSOLE_WIDTH = 88;
-	private static final String ISO8601_ARGS = "disableISO8601";
-	private static boolean timeFormatInISO8601 = true;
 	private static final Logger LOGGER = LoggerFactory.getLogger(CSVToTsfile.class);
 
 	private static String host;
@@ -125,8 +106,8 @@ public class CSVToTsfile {
 			int successCount = 0;
 			int failCount =0;
 			while ((line = br.readLine()) != null) {
-				ArrayList<StringBuilder> sqls = createInsertSQL(line);
-				for (StringBuilder str : sqls) {
+				ArrayList<String> sqls = createInsertSQL(line);
+				for (String str : sqls) {
 					if(statement.execute(str.toString())) {
 						successCount++;
 					}else {
@@ -165,16 +146,16 @@ public class CSVToTsfile {
 		hm.put("root.fit.p.s1", "INT32");
 	}
 
-	private static ArrayList<StringBuilder> createInsertSQL(String line) {
+	private static ArrayList<String> createInsertSQL(String line) {
 		String[] words = line.split(",", headInfo.size()+1);
 		
-		ArrayList<StringBuilder> sqls = new ArrayList<StringBuilder>();
+		ArrayList<String> sqls = new ArrayList<String>();
 		Iterator<Map.Entry<String, ArrayList<Integer>>> it = hm_timeseries.entrySet().iterator();
 		while (it.hasNext()) {
 			Map.Entry<String, ArrayList<Integer>> entry = it.next();
-			StringBuilder sql = new StringBuilder();
+			StringBuilder sbd = new StringBuilder();
 			ArrayList<Integer> colIndex = entry.getValue();
-			sql = sql.append("insert into " + entry.getKey() + "(timestamp");
+			sbd.append("insert into " + entry.getKey() + "(timestamp");
 			int skipcount = 0;
 			for (int j = 0; j < colIndex.size(); ++j) {
 
@@ -182,23 +163,23 @@ public class CSVToTsfile {
 					skipcount++;
 					continue;
 				}
-				sql.append(", " + colInfo.get(colIndex.get(j)));
+				sbd.append(", " + colInfo.get(colIndex.get(j)));
 			}
 			if (skipcount == entry.getValue().size())
 				continue;
-			sql.append(") values(" + setTimeFormat(timeformat, words[0])); //accord to time set sql
+			sbd.append(") values(" + setTimeFormat(timeformat, words[0])); //accord to time set sql
 			for (int j = 0; j < colIndex.size(); ++j) {
 				if (words[entry.getValue().get(j) + 1].equals(""))
 					continue;
 				if (typeIdentify(headInfo.get(colIndex.get(j))) == "BYTE_ARRAY") {
-					sql.append(", \'" + words[colIndex.get(j) + 1] + "\'");
+					sbd.append(", \'" + words[colIndex.get(j) + 1] + "\'");
 				} else {
-					sql.append("," + words[colIndex.get(j) + 1]) ;
+					sbd.append("," + words[colIndex.get(j) + 1]) ;
 				}
 			}
-			sql.append(")");
-			sqls.add(sql);
-			//System.out.println(sql);
+			sbd.append(")");
+			sqls.add(sbd.toString());
+			System.out.println(sbd.toString());
 		}
 
 		return sqls;
