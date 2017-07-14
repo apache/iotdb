@@ -281,13 +281,16 @@ public class MTree implements Serializable {
 		if (nodes.length == 0 || !nodes[0].equals(getRoot().getName())) {
 			throw new PathErrorException("Input path NOT correct. PathReg: " + pathReg);
 		}
-		if (pathReg != "root" && !findPath(getRoot(), nodes, 1, "", paths, false)) {
-			throw new PathErrorException("Input path NOT correct. PathReg: " + pathReg);
+		if (!pathReg.equals("root")) {
+			if (!findPath(getRoot(), nodes, 1, "", paths, false)) {
+				throw new PathErrorException("Input path NOT correct. PathReg: " + pathReg);
+			}
 		} else {
+			findPath(getRoot(), nodes, 1, "", paths, false);
 			return paths;
 		}
+		return paths;
 	}
-	
 
 	public ArrayList<String> getAllPathInList(String path) throws PathErrorException{
 		ArrayList<String> res = new ArrayList<>();
