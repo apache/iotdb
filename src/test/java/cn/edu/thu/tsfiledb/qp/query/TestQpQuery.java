@@ -30,7 +30,7 @@ import static org.junit.Assert.fail;
 
 /**
  * test query operation
- * 
+ *
  * @author kangrong
  *
  */
@@ -63,8 +63,9 @@ public class TestQpQuery {
                                 new String[] {
                                         "20, <root.laptop.device_1.sensor_1,21> <root.laptop.device_1.sensor_2,null> ",
                                         "40, <root.laptop.device_1.sensor_1,41> <root.laptop.device_1.sensor_2,null> ",
-                                        "50, <root.laptop.device_1.sensor_1,null> <root.laptop.device_1.sensor_2,52> "}},
-                        // test complex time,
+                                        "50, <root.laptop.device_1.sensor_1,null> <root.laptop.device_1.sensor_2,52> "}
+                        },
+////                        // test complex time,
                         {
                                 "select sensor_1,sensor_2 " + "from root.laptop.device_1 "
                                         + "where time <= 51 or (time != 100 and time > 460)",
@@ -72,8 +73,9 @@ public class TestQpQuery {
                                         "20, <root.laptop.device_1.sensor_1,21> <root.laptop.device_1.sensor_2,null> ",
                                         "40, <root.laptop.device_1.sensor_1,41> <root.laptop.device_1.sensor_2,null> ",
                                         "50, <root.laptop.device_1.sensor_1,null> <root.laptop.device_1.sensor_2,52> ",
-                                        "500, <root.laptop.device_1.sensor_1,null> <root.laptop.device_1.sensor_2,502> "}},
-                        // test not
+                                        "500, <root.laptop.device_1.sensor_1,null> <root.laptop.device_1.sensor_2,502> "}
+                        },
+////                        // test not
                         {
                                 "select sensor_1,sensor_2 " + "from root.laptop.device_1 "
                                         + "where time <= 51 or !(time != 100 and time < 460)",
@@ -82,13 +84,17 @@ public class TestQpQuery {
                                         "40, <root.laptop.device_1.sensor_1,41> <root.laptop.device_1.sensor_2,null> ",
                                         "50, <root.laptop.device_1.sensor_1,null> <root.laptop.device_1.sensor_2,52> ",
                                         "100, <root.laptop.device_1.sensor_1,101> <root.laptop.device_1.sensor_2,102> ",
-                                        "500, <root.laptop.device_1.sensor_1,null> <root.laptop.device_1.sensor_2,502> "}},
+                                        "500, <root.laptop.device_1.sensor_1,null> <root.laptop.device_1.sensor_2,502> "}
+                        },
                         // test DNF, just test DNF transform original expression to a conjunction
-//                        {
-//                                "select sensor_1,sensor_2 "
-//                                        + "from root.laptop.device_1 "
-//                                        + "where time <= 20 and (sensor_1 >= 60 or sensor_1 <= 110)",
-//                                new String[] {"20, <root.laptop.device_1.sensor_1,21> <root.laptop.device_1.sensor_2,null> "}},
+                        {
+                                "select sensor_1,sensor_2 "
+                                        + "from root.laptop.device_1 "
+                                        + "where time <= 20 and (sensor_1 >= 60 or sensor_1 <= 110)",
+                                // new String[] {"20, <root.laptop.device_1.sensor_1,21> <root.laptop.device_1.sensor_2,null> "}
+                                new String[] {"20\t21\tnull"}
+                        },
+                        // TODO
                         // test DNF2
 //                        {
 //
@@ -102,13 +108,13 @@ public class TestQpQuery {
 //                                        "100, <root.laptop.device_1.sensor_1,101> <root.laptop.device_1.sensor_2,102> ",
 //                                        "120, <root.laptop.device_1.sensor_1,121> <root.laptop.device_1.sensor_2,null> ",
 //                                        "140, <root.laptop.device_1.sensor_1,141> <root.laptop.device_1.sensor_2,null> "},
-//                                null},
+//                        },
                         // test Merge
                         {
                                 "select sensor_1,sensor_2 " + "from root.laptop.device_1 "
                                         + "where time < 150 and sensor_1 >= 20 and time = 60",
                                 new String[] {"60, <root.laptop.device_1.sensor_1,61> <root.laptop.device_1.sensor_2,null> "}}
-                                });
+                });
     }
 
     private final String inputSQL;

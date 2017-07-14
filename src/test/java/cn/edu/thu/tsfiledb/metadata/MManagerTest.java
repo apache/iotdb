@@ -44,6 +44,7 @@ public class MManagerTest {
 			mManager.addAPathToMTree("root.vehicle.d2.s2", "FLOAT", "TS_2DIFF", new String[0]);
 			mManager.addAPathToMTree("root.vehicle.d2.s3", "DOUBLE", "RLE", new String[0]);
 			mManager.addAPathToMTree("root.vehicle.d2.s4", "INT64", "RLE", new String[0]);
+
 			mManager.addAPathToMTree("root.laptop.d1.s1", "INT32", "RLE", new String[0]);
 			mManager.addAPathToMTree("root.laptop.d1.s2", "INT32", "RLE", new String[0]);
 			mManager.addAPathToMTree("root.laptop.d1.s3", "INT32", "RLE", new String[0]);
