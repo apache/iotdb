@@ -32,11 +32,11 @@ public class MergeQuerySetIterator implements Iterator<QueryDataSet> {
     private long lastRowTime = -1;
 
     public MergeQuerySetIterator(List<SeriesSelectPlan> selectPlans, int mergeFetchSize,
-                                 QueryProcessExecutor conf) throws QueryProcessorException {
+                                 QueryProcessExecutor executor) throws QueryProcessorException {
         this.mergeFetchSize = mergeFetchSize;
         heapSize = selectPlans.size();
         nodes = new Node[heapSize + 1];
-        recordIters = SeriesSelectPlan.getRecordIteratorArray(selectPlans, conf);
+        recordIters = SeriesSelectPlan.getRecordIteratorArray(selectPlans, executor);
         initIters();
     }
 

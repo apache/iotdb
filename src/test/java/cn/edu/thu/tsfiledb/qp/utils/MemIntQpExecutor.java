@@ -10,6 +10,7 @@ import cn.edu.thu.tsfile.timeseries.filter.definition.SingleSeriesFilterExpressi
 import cn.edu.thu.tsfile.timeseries.filter.visitorImpl.SingleValueVisitor;
 import cn.edu.thu.tsfile.timeseries.read.qp.Path;
 import cn.edu.thu.tsfile.timeseries.read.query.QueryDataSet;
+import cn.edu.thu.tsfile.timeseries.read.support.Field;
 import cn.edu.thu.tsfile.timeseries.read.support.RowRecord;
 import cn.edu.thu.tsfile.timeseries.utils.StringContainer;
 import cn.edu.thu.tsfiledb.qp.executor.QueryProcessExecutor;
@@ -172,6 +173,7 @@ public class MemIntQpExecutor extends QueryProcessExecutor {
                     if (!demoMemDataBase.containsKey(fullPath)) {
                         // this database has not this path
                         rowRecord.addSensor(fullPath, "null");
+
                     } else {
                         TestSeries ts = demoMemDataBase.get(fullPath);
                         if (ts.data.containsKey(time)) {
@@ -181,16 +183,26 @@ public class MemIntQpExecutor extends QueryProcessExecutor {
                                 // no filter
                                 rowRecord.addSensor(fullPath, v.toString());
                                 isInputed = true;
+                                Field f = new Field(TSDataType.INT32, path.getDeltaObjectToString(), path.getMeasurementToString());
+                                f.setNull(true);
+                                rowRecord.addField(f);
                             } else {
                                 Boolean satisfyResult =
                                         satisfyValue(valueVisitor, valueFilter, fullPath, v);
                                 if (satisfyResult == null) {
                                     // not my filter, I add it but don't set inputed
                                     rowRecord.addSensor(fullPath, v.toString());
+                                    Field f = new Field(TSDataType.INT32, path.getDeltaObjectToString(), path.getMeasurementToString());
+                                    f.setIntV(v);
+                                    rowRecord.addField(f);
                                 } else if (satisfyResult) {
                                     // have filter and it's my filter,and satisfy, inputed
                                     rowRecord.addSensor(fullPath, v.toString());
                                     isInputed = true;
+
+                                    Field f = new Field(TSDataType.INT32, path.getDeltaObjectToString(), path.getMeasurementToString());
+                                    f.setIntV(v);
+                                    rowRecord.addField(f);
                                 } else {
                                     // have filter, and it's my filter,and not satisfy, don't
                                     // satisfy
@@ -201,6 +213,9 @@ public class MemIntQpExecutor extends QueryProcessExecutor {
                         } else {
                             // this series has not this path
                             rowRecord.addSensor(fullPath, "null");
+                            Field f = new Field(TSDataType.INT32, path.getDeltaObjectToString(), path.getMeasurementToString());
+                            f.setNull(true);
+                            rowRecord.addField(f);
                         }
                     }
                 }
@@ -244,6 +259,7 @@ public class MemIntQpExecutor extends QueryProcessExecutor {
             // return this.data[this.size == fetchSize ? size - 1 : size].timestamp;
             return this.data[size - 1].timestamp;
         }
+
     }
 
     /**
@@ -261,8 +277,16 @@ public class MemIntQpExecutor extends QueryProcessExecutor {
             super(timestamp, "", "");
         }
 
+        // TODO
         public void addSensor(String path, String value) {
             measurementData.add(new Pair<>(path, value));
+        }
+
+        public void putARowRecord(RowRecord record) {
+            TestIntegerRowRecord tmpRecord = (TestIntegerRowRecord) record;
+            for (Pair<String, String> pair : tmpRecord.getMeasureMentData()) {
+                this.addSensor(pair.left, pair.right);
+            }
         }
 
         @Override
@@ -273,6 +297,10 @@ public class MemIntQpExecutor extends QueryProcessExecutor {
                 sc.addTail("<", v.left, ",", v.right, "> ");
             }
             return sc.toString();
+        }
+
+        public List<Pair<String, String>> getMeasureMentData() {
+            return this.measurementData;
         }
     }
 
