@@ -28,11 +28,11 @@ public class MergeQuerySetIterator implements Iterator<QueryDataSet> {
     private long lastRowTime = -1;
 
     public MergeQuerySetIterator(List<SeriesSelectPlan> selectPlans, int mergeFetchSize,
-                                 QueryProcessExecutor conf) throws QueryProcessorException {
+                                 QueryProcessExecutor executor) throws QueryProcessorException {
         this.mergeFetchSize = mergeFetchSize;
         heapSize = selectPlans.size();
         nodes = new Node[heapSize + 1];
-        recordIters = SeriesSelectPlan.getRecordIteratorArray(selectPlans, conf);
+        recordIters = SeriesSelectPlan.getRecordIteratorArray(selectPlans, executor);
         initIters();
     }
 
@@ -63,13 +63,13 @@ public class MergeQuerySetIterator implements Iterator<QueryDataSet> {
         int i = 0;
         while (i < mergeFetchSize && heapSize > 0) {
             Node minNode = nodes[1];
-            if (minNode.r.timestamp != lastRowTime) {
-                lastRowTime = minNode.r.timestamp;
+            if (minNode.rowRecord.timestamp != lastRowTime) {
+                lastRowTime = minNode.rowRecord.timestamp;
                 i++;
-                ret.putARowRecord(minNode.r);
+                ret.putARowRecord(minNode.rowRecord);
             }
             if (minNode.iter.hasNext()) {
-                nodes[1].r = nodes[1].iter.next();
+                nodes[1].rowRecord = nodes[1].iter.next();
             } else {
                 nodes[1] = nodes[heapSize];
                 heapSize -= 1;
@@ -97,21 +97,21 @@ public class MergeQuerySetIterator implements Iterator<QueryDataSet> {
     }
 
     private class Node {
-        public RowRecord r;
+        public RowRecord rowRecord;
         public Iterator<RowRecord> iter;
 
         public Node(RowRecord r, Iterator<RowRecord> iter) {
-            this.r = r;
+            this.rowRecord = r;
             this.iter = iter;
         }
 
         public boolean lessThan(Node o) {
-            return r.timestamp <= o.r.timestamp;
+            return rowRecord.timestamp <= o.rowRecord.timestamp;
         }
 
         @Override
         public String toString() {
-            return r.toString();
+            return rowRecord.toString();
         }
     }
 }
