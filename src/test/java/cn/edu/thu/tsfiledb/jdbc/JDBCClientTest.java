@@ -16,16 +16,12 @@ public class JDBCClientTest {
 			DatabaseMetaData databaseMetaData = connection.getMetaData();
 			ResultSet resultSet = databaseMetaData.getColumns(null, null, "root.Inventec.C101_1_2", null);
 			while(resultSet.next()){
-//				System.out.println(String.format("column %s, type %s", resultSet.getString("COLUMN_NAME"), resultSet.getString("COLUMN_TYPE")));
+				//System.out.println(String.format("column %s, type %s", resultSet.getString("COLUMN_NAME"), resultSet.getString("COLUMN_TYPE")));
 				System.out.println(String.format("column %s, type %s", resultSet.getString(0), resultSet.getString(1)));
 			}
 		} finally {
-			// TODO: handle finally clause
 			connection.close();
 		}
-		
-
-		
 	}
 
 }
