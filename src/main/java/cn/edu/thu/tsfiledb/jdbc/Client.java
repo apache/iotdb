@@ -2,9 +2,7 @@ package cn.edu.thu.tsfiledb.jdbc;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
-import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -20,7 +18,6 @@ public class Client extends AbstractClient {
 	public static void main(String[] args) throws ClassNotFoundException, SQLException {
 		Class.forName("cn.edu.thu.tsfiledb.jdbc.TsfileDriver");
 		Connection connection = null;
-		boolean printToConsole = true;
 		Options options = createOptions();
 		HelpFormatter hf = new HelpFormatter();
 		hf.setWidth(MAX_HELP_CONSOLE_WIDTH);
@@ -40,7 +37,7 @@ public class Client extends AbstractClient {
 				return;
 			}
 			if (commandLine.hasOption(ISO8601_ARGS)) {
-				setTimeFormatForNumber();
+				setTimeFormat("long");
 			}
 			if (commandLine.hasOption(MAX_PRINT_ROW_COUNT_ARGS)) {
 				try {
@@ -58,6 +55,7 @@ public class Client extends AbstractClient {
 			hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
 			return;
 		}
+
 		ConsoleReader reader = null;
 		try {
 			String s;
@@ -83,12 +81,7 @@ public class Client extends AbstractClient {
 				return;
 			}
 
-			System.out.println(" _______________________________.___.__          \n"
-					+ " \\__    ___/   _____/\\_   _____/|   |  |   ____  \n"
-					+ "   |    |  \\_____  \\  |    __)  |   |  | _/ __ \\ \n"
-					+ "   |    |  /        \\ |     \\   |   |  |_\\  ___/ \n"
-					+ "   |____| /_______  / \\___  /   |___|____/\\___  >   version 0.0.1\n"
-					+ "                  \\/      \\/                  \\/ \n");
+			displayLogo();
 
 			System.out.println(TSFILEDB_CLI_PREFIX + "> login successfully");
 
@@ -101,29 +94,14 @@ public class Client extends AbstractClient {
 					for (int i = 0; i < cmds.length; i++) {
 						String cmd = cmds[i];
 						if (cmd != null && !cmd.trim().equals("")) {
-							if (cmd.toLowerCase().equals(QUIT_COMMAND) || cmd.toLowerCase().equals(EXIT_COMMAND)) {
-								System.out.println(TSFILEDB_CLI_PREFIX + "> " + cmd.toLowerCase() + " normally");
+							OPERATION_RESULT result = handleInputInputCmd(cmd, connection);
+							switch (result) {
+							case RETURN_OPER:
 								return;
-							}
-
-							if (cmd.toLowerCase().equals(SHOW_METADATA_COMMAND)) {
-								System.out.println(connection.getMetaData());
+							case CONTINUE_OPER:
 								continue;
-							}
-
-							Statement statement = connection.createStatement();
-							try {
-								boolean hasResultSet = statement.execute(cmd.trim());
-								if (hasResultSet) {
-									ResultSet resultSet = statement.getResultSet();
-									output(resultSet, printToConsole, cmd.trim());
-								}
-								statement.close();
-								System.out.println(TSFILEDB_CLI_PREFIX + "> execute successfully.");
-							} catch (TsfileSQLException e) {
-								System.out.println(TSFILEDB_CLI_PREFIX + "> statement error: " + e.getMessage());
-							} catch (Exception e) {
-								System.out.println(TSFILEDB_CLI_PREFIX + "> connection error: " + e.getMessage());
+							default:
+								break;
 							}
 						}
 					}
