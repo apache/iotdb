@@ -1,14 +1,19 @@
 package cn.edu.thu.tsfiledb.jdbc;
 
+import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.HashSet;
 import java.util.Set;
 
 import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.CommandLineParser;
+import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.OptionBuilder;
 import org.apache.commons.cli.Options;
+import org.apache.commons.cli.ParseException;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.joda.time.DateTime;
@@ -31,12 +36,14 @@ public abstract class AbstractClient {
 	protected static final String USERNAME_NAME = "username";
 
 	protected static final String ISO8601_ARGS = "disableISO8601";
-	protected static boolean timeFormatInISO8601 = true;
+	protected static String timeFormat = "default";
 
 	protected static final String MAX_PRINT_ROW_COUNT_ARGS = "maxPRC";
 	protected static final String MAX_PRINT_ROW_COUNT_NAME = "maxPrintRowCount";
 	protected static int maxPrintRowCount = 1000;
 
+	protected static final String SET_TIMESTAMP_DISPLAY = "set timestamp_display_type";
+	
 	protected static final String TSFILEDB_CLI_PREFIX = "TsFileDB";
 	protected static final String QUIT_COMMAND = "quit";
 	protected static final String EXIT_COMMAND = "exit";
@@ -47,10 +54,13 @@ public abstract class AbstractClient {
 			"max_value", "min_value" };
 
 	protected static final String TIMESTAMP_STR = "Timestamp";
-	protected static int maxTimeLength = 30;
+	protected static final int ISO_DATETIME_LEN = 30;
+	protected static int maxTimeLength = ISO_DATETIME_LEN;
 	protected static int maxValueLength = 15;
 	protected static String formatTime = "%" + maxTimeLength + "s|";
 	protected static String formatValue = "%" + maxValueLength + "s|";
+	
+	protected static boolean printToConsole = true;
 	
 	protected static Set<String> keywordSet = new HashSet<>();
 	
@@ -150,11 +160,17 @@ public abstract class AbstractClient {
 	}
 
 	private static String formatDatetime(long timestamp) {
-		if (timeFormatInISO8601) {
-			DateTime dateTime = new DateTime(timestamp);
+		DateTime dateTime = new DateTime(timestamp);
+		switch (timeFormat) {
+		case "long":
+		case "number":
+			return timestamp+"";
+		case "default":
+		case "ISO8601":
 			return dateTime.toString();
+		default:
+			return dateTime.toString(timeFormat);
 		}
-		return timestamp + "";
 	}
 
 	protected static String checkRequiredArg(String arg, String name, CommandLine commandLine) throws ArgsErrorException {
@@ -168,9 +184,21 @@ public abstract class AbstractClient {
 		return str;
 	}
 
-	protected static void setTimeFormatForNumber() {
-		timeFormatInISO8601 = false;
-		maxTimeLength = maxValueLength;
+	protected static void setTimeFormat(String newTimeformat) {
+		switch (timeFormat) {
+		case "long":
+		case "number":
+			maxTimeLength = maxValueLength;
+			break;
+		case "defalut":
+		case "ISO8601":
+			maxTimeLength = ISO_DATETIME_LEN;
+			break;
+		default:
+			maxTimeLength = TIMESTAMP_STR.length() > newTimeformat.length() ? TIMESTAMP_STR.length() : newTimeformat.length();
+			break;
+		}
+		timeFormat = newTimeformat;
 		formatTime = "%" + maxTimeLength + "s|";
 	}
 
@@ -231,4 +259,59 @@ public abstract class AbstractClient {
 		return args;
 	}
 	
+	protected static void displayLogo(){
+		System.out.println(" _______________________________.___.__          \n"
+				+ " \\__    ___/   _____/\\_   _____/|   |  |   ____  \n"
+				+ "   |    |  \\_____  \\  |    __)  |   |  | _/ __ \\ \n"
+				+ "   |    |  /        \\ |     \\   |   |  |_\\  ___/ \n"
+				+ "   |____| /_______  / \\___  /   |___|____/\\___  >   version 0.0.1\n"
+				+ "                  \\/      \\/                  \\/ \n");
+	}
+	
+	protected static OPERATION_RESULT handleInputInputCmd(String cmd, Connection connection){
+		String sepecialCmd = cmd.toLowerCase().trim();
+		
+		if (sepecialCmd.equals(QUIT_COMMAND) || sepecialCmd.equals(EXIT_COMMAND)) {
+			System.out.println(TSFILEDB_CLI_PREFIX + "> " + sepecialCmd + " normally");
+			return OPERATION_RESULT.RETURN_OPER;
+		}
+		if (sepecialCmd.equals(SHOW_METADATA_COMMAND)) {
+			try {
+				System.out.println(connection.getMetaData());
+			} catch (SQLException e) {
+				System.out.println(TSFILEDB_CLI_PREFIX + "> failed to show timeseries beacause: " + e.getMessage());
+			}
+			return OPERATION_RESULT.CONTINUE_OPER;
+		}
+		
+		if(sepecialCmd.startsWith(SET_TIMESTAMP_DISPLAY)){
+			String[] values = sepecialCmd.split("=");
+			if(values.length != 2){
+				System.out.println(TSFILEDB_CLI_PREFIX + "> format error, please input like set timestamp_display_type=ISO8601");
+				return OPERATION_RESULT.CONTINUE_OPER;
+			}		
+			setTimeFormat(values[1]);
+			return OPERATION_RESULT.CONTINUE_OPER;
+		}
+
+		try {
+			Statement statement = connection.createStatement();
+			boolean hasResultSet = statement.execute(cmd.trim());
+			if (hasResultSet) {
+				ResultSet resultSet = statement.getResultSet();
+				output(resultSet, printToConsole, cmd.trim());
+			}
+			statement.close();
+			System.out.println(TSFILEDB_CLI_PREFIX + "> execute successfully.");
+		} catch (TsfileSQLException e) {
+			System.out.println(TSFILEDB_CLI_PREFIX + "> statement error: " + e.getMessage());
+		} catch (Exception e) {
+			System.out.println(TSFILEDB_CLI_PREFIX + "> connection error: " + e.getMessage());
+		}
+		return OPERATION_RESULT.NO_OPER;
+	}
+
+	static enum OPERATION_RESULT{
+		RETURN_OPER, CONTINUE_OPER, NO_OPER
+	}
 }
