@@ -28,7 +28,6 @@ public class WriteLogManager {
     private WriteLogManager() {
         if (TsfileDBDescriptor.getInstance().getConfig().enableWal) {
             logNodeMaps = new ConcurrentHashMap<>();
-
             // system log timing merge task
             ScheduledExecutorService service = Executors.newScheduledThreadPool(1);
             long delay = 0;
