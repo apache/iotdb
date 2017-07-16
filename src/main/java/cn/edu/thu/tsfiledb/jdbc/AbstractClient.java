@@ -195,7 +195,7 @@ public abstract class AbstractClient {
 			maxTimeLength = ISO_DATETIME_LEN;
 			break;
 		default:
-			maxTimeLength = newTimeformat.length();
+			maxTimeLength = TIMESTAMP_STR.length() > newTimeformat.length() ? TIMESTAMP_STR.length() : newTimeformat.length();
 			break;
 		}
 		timeFormat = newTimeformat;
