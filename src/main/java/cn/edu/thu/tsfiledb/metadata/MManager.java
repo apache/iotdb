@@ -53,12 +53,13 @@ public class MManager {
 	private MManager() {
 		writeToLog = false;
 
-		String folderPath = TsfileDBDescriptor.getInstance().getConfig().metadataDir;
-		if (folderPath.length() > 0 && folderPath.charAt(folderPath.length() - 1) != File.separatorChar) {
-			folderPath = folderPath + File.separatorChar;
+		String metadataDirPath = TsfileDBDescriptor.getInstance().getConfig().metadataDir;
+		if (metadataDirPath.length() > 0
+				&& metadataDirPath.charAt(metadataDirPath.length() - 1) != File.separatorChar) {
+			metadataDirPath = metadataDirPath + File.separatorChar;
 		}
-		datafilePath = folderPath + "mdata.obj";
-		logFilePath = folderPath + "mlog.txt";
+		datafilePath = metadataDirPath + "mdata.obj";
+		logFilePath = metadataDirPath + "mlog.txt";
 		initialized = false;
 		init();
 	}
@@ -506,7 +507,6 @@ public class MManager {
 			File newDataFile = new File(datafilePath + ".backup");
 			FileOutputStream fos = new FileOutputStream(newDataFile);
 			ObjectOutputStream oos = new ObjectOutputStream(fos);
-			lock.writeLock().lock();
 			oos.writeObject(mGraph);
 			oos.close();
 
