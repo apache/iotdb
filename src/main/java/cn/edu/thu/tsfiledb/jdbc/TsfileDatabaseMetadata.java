@@ -28,33 +28,32 @@ public class TsfileDatabaseMetadata implements DatabaseMetaData {
 
 	/** 
 	 * if deltaObjectPattern != null, return all delta object
-	 * if deltaObjectPattern == null and columnPattern != null, return column schema
-    	 * otherwise return null
-    	 */ 
+	 * if deltaObjectPattern == null and columnPattern != null, return column schema， otherwise return null
+	 */ 
 	@Override
 	public ResultSet getColumns(String catalog, String schemaPattern, String columnPattern, String deltaObjectPattern) throws SQLException {
 
-	    	if(deltaObjectPattern != null){
+	    if(deltaObjectPattern != null && !deltaObjectPattern.trim().equals("")){
 			if(deltaObjectMap == null){
 				throw new SQLException("No delta object metadata");
 			}
 			List<String> deltaObjectList = deltaObjectMap.get(deltaObjectPattern);
 			if(deltaObjectList == null){
-				throw new SQLException(String.format("Cannot find delta object %s", deltaObjectPattern));
+				throw new SQLException(String.format("Cannot find %s", deltaObjectPattern));
 			}
 			return new TsfileMetadataResultSet(null, deltaObjectList); 
 		}
 		
-		if(columnPattern != null && !columnPattern.equals("")){
+		if(columnPattern != null && !columnPattern.trim().equals("")){
 			if(seriesMap == null){
-				throw new SQLException("No schema for TsfileDatabaseMetadata");
+				throw new SQLException("No schema for column metadata");
 			}
 			
 			String[] values = columnPattern.split("\\.");
 			
 
 			if(values.length < 2){
-				throw new SQLException(String.format("column path should starts like %s.xxx",ROOT_PATH));
+				throw new SQLException(String.format("path should starts like %s.xxx",ROOT_PATH));
 			} 
 			if(!values[0].equals(ROOT_PATH)){
 				throw new SQLException("column path should starts with: "+ROOT_PATH);
@@ -81,6 +80,7 @@ public class TsfileDatabaseMetadata implements DatabaseMetaData {
 				for(ColumnSchema schema: columnSchemaOld){
 					if(values[3].equals(schema.name)){
 						columnSchemaNew.add(new ColumnSchema(columnPattern, schema.dataType, null));
+						break;
 					}
 				}
 				
@@ -93,7 +93,7 @@ public class TsfileDatabaseMetadata implements DatabaseMetaData {
 	private List<ColumnSchema> getColumnSchemaList(String deltaObjectType, String columnPattern) throws SQLException{
 		List<ColumnSchema> columnSchemaOld = seriesMap.get(deltaObjectType);
 		if(columnSchemaOld == null){
-			throw new SQLException(String.format("Cannot find table %s",columnPattern));
+			throw new SQLException(String.format("Cannot find %s", columnPattern));
 		}
 		return columnSchemaOld;
 	}
