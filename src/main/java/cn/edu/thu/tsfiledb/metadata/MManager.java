@@ -40,7 +40,7 @@ public class MManager {
 	private static final Logger LOGGER = LoggerFactory.getLogger(MManager.class);
 	private static MManager manager = new MManager();
 	private static final String ROOT_NAME = "root";
-	private static ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
+	private ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
 	// The file storing the serialize info for metadata
 	private String datafilePath;
 	// log file path
@@ -487,7 +487,7 @@ public class MManager {
 	 * {@code MNode.isStorageLevel} is true
 	 */
 	public boolean checkFileLevel(List<Path> path) throws PathErrorException {
-		lock.readLock().unlock();
+		lock.readLock().lock();
 		try {
 			for (Path p : path) {
 				getFileNameByPath(p.getFullPath());
@@ -502,7 +502,7 @@ public class MManager {
 	 * Persistent the MGraph instance into file
 	 */
 	public void flushObjectToFile() throws IOException {
-		lock.writeLock().unlock();
+		lock.writeLock().lock();
 		try {
 			File newDataFile = new File(datafilePath + ".backup");
 			FileOutputStream fos = new FileOutputStream(newDataFile);
@@ -547,13 +547,10 @@ public class MManager {
 	}
 
 	public static MManager getInstance() {
-		lock.writeLock().lock();
-		try {
+		synchronized (manager) {
 			if (!manager.initialized) {
 				manager.init();
 			}
-		} finally {
-			lock.writeLock().unlock();
 		}
 		return manager;
 	}
