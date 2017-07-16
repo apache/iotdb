@@ -82,6 +82,9 @@ public abstract class QueryProcessExecutor {
     }
 
     public int getFetchSize() {
+        if (fetchSize.get() == null) {
+            return 100;
+        }
         return fetchSize.get();
     }
 

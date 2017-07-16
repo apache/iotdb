@@ -921,7 +921,9 @@ public class IntervalTreeOperation implements IIntervalTreeOperator {
             long R = overflowData.getTime(i * 2 + 1);
             for (int j = 0; j < filterInterval.count; j += 2) {
                 TimePair exist = constructTimePair(L, R, MergeStatus.MERGING);
-                TimePair filterTimePair = constructTimePair(filterInterval.v[j], filterInterval.v[j + 1], MergeStatus.MERGING);
+                TimePair filterTimePair = constructTimePair(
+                        filterInterval.flag[j] ? filterInterval.v[j] : filterInterval.v[j]+1,
+                        filterInterval.flag[j+1] ? filterInterval.v[j + 1] : filterInterval.v[j + 1] - 1, MergeStatus.MERGING);
                 CrossRelation crossRelation = IntervalRelation.getRelation(filterTimePair, exist);
                 if (L > 0 && R < 0) {    // INSERT
                     switch (crossRelation) {
