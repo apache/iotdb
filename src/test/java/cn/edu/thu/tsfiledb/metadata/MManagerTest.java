@@ -1,5 +1,6 @@
 package cn.edu.thu.tsfiledb.metadata;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 import java.io.IOException;
@@ -43,6 +44,7 @@ public class MManagerTest {
 			mManager.addAPathToMTree("root.vehicle.d2.s2", "FLOAT", "TS_2DIFF", new String[0]);
 			mManager.addAPathToMTree("root.vehicle.d2.s3", "DOUBLE", "RLE", new String[0]);
 			mManager.addAPathToMTree("root.vehicle.d2.s4", "INT64", "RLE", new String[0]);
+
 			mManager.addAPathToMTree("root.laptop.d1.s1", "INT32", "RLE", new String[0]);
 			mManager.addAPathToMTree("root.laptop.d1.s2", "INT32", "RLE", new String[0]);
 			mManager.addAPathToMTree("root.laptop.d1.s3", "INT32", "RLE", new String[0]);
@@ -237,17 +239,36 @@ public class MManagerTest {
 			Assert.assertEquals(true, true);
 		}
 	}
+
+	@Test
+	public void testSelectWildCard() throws PathErrorException {
+		List<String> ans = mManager.getPaths("root.*.*.*");
+		Assert.assertEquals(ans.size(), 15);
+//		for (String str : ans) {
+//			System.out.println(str);
+//		}
+
+		ans = mManager.getPaths("root.vehicle.*.s1");
+		Assert.assertEquals(ans.size(), 2);
+		Assert.assertEquals(ans.get(0), "root.vehicle.d1.s1");
+		Assert.assertEquals(ans.get(1), "root.vehicle.d2.s1");
+
+		// s4 only exists in d1
+		ans = mManager.getPaths("root.laptop.*.s4");
+		Assert.assertEquals(ans.size(), 1);
+		Assert.assertEquals(ans.get(0), "root.laptop.d1.s4");
+
+		ans = mManager.getPaths("root.*.*.s2");
+		Assert.assertEquals(ans.size(), 4);
+		Assert.assertEquals(ans.get(2), "root.laptop.d1.s2");
+
+		ans = mManager.getPaths("root.laptop.*.s1");
+		Assert.assertEquals(ans.size(), 2);
+
+		try {
+			ans = mManager.getPaths("root.laptop.d1.s5");
+		} catch (PathErrorException p) {
+			Assert.assertTrue(p instanceof PathErrorException);
+		}
+	}
 }
-
-
-
-
-
-
-
-
-
-
-
-
-

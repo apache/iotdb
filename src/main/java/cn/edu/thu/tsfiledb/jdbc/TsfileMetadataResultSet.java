@@ -203,7 +203,22 @@ public class TsfileMetadataResultSet extends TsfileQueryResultSet {
 
 	@Override
 	public String getString(int columnIndex) throws SQLException {
-		throw new SQLException("Method not supported");
+		switch (type) {
+		case DELTA_OBJECT:
+			if(columnIndex == 0){
+				return getString("DELTA_OBJECT");
+			}
+			break;
+		case COLUMN:
+			if(columnIndex == 0){
+				return getString("COLUMN_NAME");
+			} else if (columnIndex == 1) {
+				return getString("COLUMN_TYPE");
+			}
+		default:
+			break;
+		}
+		throw new SQLException(String.format("select column index %d does not exists", columnIndex));
 	}
 
 	@Override

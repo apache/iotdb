@@ -281,10 +281,16 @@ public class MTree implements Serializable {
 		if (nodes.length == 0 || !nodes[0].equals(getRoot().getName())) {
 			throw new PathErrorException("Input path NOT correct. PathReg: " + pathReg);
 		}
-		findPath(getRoot(), nodes, 1, "", paths);
+		if (!pathReg.equals("root")) {
+			if (!findPath(getRoot(), nodes, 1, "", paths, false)) {
+				throw new PathErrorException("Input path NOT correct. PathReg: " + pathReg);
+			}
+		} else {
+			findPath(getRoot(), nodes, 1, "", paths, false);
+			return paths;
+		}
 		return paths;
 	}
-	
 
 	public ArrayList<String> getAllPathInList(String path) throws PathErrorException{
 		ArrayList<String> res = new ArrayList<>();
@@ -395,13 +401,14 @@ public class MTree implements Serializable {
 		}
 	}
 
-	private void findPath(MNode node, String[] nodes, int idx, String parent, HashMap<String, ArrayList<String>> paths)
+	private boolean findPath(MNode node, String[] nodes, int idx, String parent, HashMap<String, ArrayList<String>> paths, boolean pathExist)
 			throws PathErrorException {
 		if (node.isLeaf()) {
 			String fileName = node.getDataFileName();
 			String nodePath = parent + node;
 			putAPath(paths, fileName, nodePath);
-			return;
+			pathExist = true;
+			return pathExist;
 		}
 		String nodeReg;
 		if (idx >= nodes.length) {
@@ -412,14 +419,17 @@ public class MTree implements Serializable {
 
 		if (!nodeReg.equals("*")) {
 			if (!node.hasChild(nodeReg)) {
-				throw new PathErrorException("Path Error in node : " + nodeReg);
+				// throw new PathErrorException("Path Error in node : " + nodeReg);
+				// return false;
+			} else {
+				pathExist = findPath(node.getChild(nodeReg), nodes, idx + 1, parent + node.getName() + ".", paths, pathExist);
 			}
-			findPath(node.getChild(nodeReg), nodes, idx + 1, parent + node.getName() + ".", paths);
 		} else {
 			for (MNode child : node.getChildren().values()) {
-				findPath(child, nodes, idx + 1, parent + node.getName() + ".", paths);
+				pathExist = findPath(child, nodes, idx + 1, parent + node.getName() + ".", paths, pathExist);
 			}
 		}
+		return pathExist;
 	}
 
 	private void putAPath(HashMap<String, ArrayList<String>> paths, String fileName, String nodePath) {
