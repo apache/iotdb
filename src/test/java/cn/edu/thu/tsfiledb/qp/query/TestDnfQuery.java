@@ -28,7 +28,7 @@ import static org.junit.Assert.fail;
 public class TestDnfQuery {
 
     private static final Logger LOG = LoggerFactory.getLogger(TestQpQuery.class);
-    private QueryProcessor processor = new QueryProcessor(new OverflowQPExecutor());
+    private QueryProcessor processor = new QueryProcessor(new MemIntQpExecutor());
 
     // @Before
     public void before() throws ProcessorException {
@@ -92,6 +92,43 @@ public class TestDnfQuery {
 
     }
 
+    // @Test
+    public void testEqualsOperator() throws QueryProcessorException, ArgsErrorException {
+        String str1 = "select s1 from root.vehicle.d0 where time <= 2";
+        PhysicalPlan plan = processor.parseSQLToPhysicalPlan(str1);
+        if (!plan.isQuery())
+            fail();
+        Iterator<QueryDataSet> iter = processor.getExecutor().processQuery(plan);
+        LOG.info("query result:");
+        String[] result = new String[]{"1, <root.vehicle.d0.s1,1101> ", "2, <root.vehicle.d0.s1,40000> "};
+        int cnt = 0;
+        while (iter.hasNext()) {
+            QueryDataSet set = iter.next();
+            while (set.hasNextRecord()) {
+                String actual = set.getNextRecord().toString();
+                assertEquals(actual, result[cnt++]);
+                //System.out.println(actual);
+            }
+        }
+
+        str1 = "select s1 from root.vehicle.d0 where time > 2";
+        plan = processor.parseSQLToPhysicalPlan(str1);
+        if (!plan.isQuery())
+            fail();
+        iter = processor.getExecutor().processQuery(plan);
+        LOG.info("query result:");
+        result = new String[]{"1, <root.vehicle.d0.s1,1101> ", "2, <root.vehicle.d0.s1,40000> "};
+        cnt = 0;
+        while (iter.hasNext()) {
+            QueryDataSet set = iter.next();
+            while (set.hasNextRecord()) {
+                String actual = set.getNextRecord().toString();
+                //assertEquals(actual, result[cnt++]);
+                System.out.println(actual);
+            }
+        }
+    }
+
     //@Test
     public void testQueryBasic() throws QueryProcessorException, RecognitionException, ArgsErrorException {
         String str1 = "select s0,s1 from root.vehicle.d0 where time <= 150";
@@ -107,7 +144,6 @@ public class TestDnfQuery {
                 System.out.println(actual);
             }
         }
-        LOG.info("Query processing complete\n");
     }
 
     //@Test
