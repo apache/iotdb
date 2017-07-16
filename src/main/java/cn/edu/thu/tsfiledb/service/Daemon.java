@@ -12,6 +12,7 @@ import javax.management.ObjectName;
 import javax.management.remote.JMXConnectorServer;
 
 import cn.edu.thu.tsfile.common.exception.ProcessorException;
+import cn.edu.thu.tsfiledb.conf.TsfileDBDescriptor;
 import cn.edu.thu.tsfiledb.qp.QueryProcessor;
 import cn.edu.thu.tsfiledb.qp.executor.OverflowQPExecutor;
 import cn.edu.thu.tsfiledb.qp.physical.PhysicalPlan;
@@ -56,6 +57,7 @@ public class Daemon {
 	}
 
 	private void setUp() throws MalformedObjectNameException, InstanceAlreadyExistsException, MBeanRegistrationException, NotCompliantMBeanException, TTransportException, IOException {
+
 		initDBDao();
 		initFileNodeManager();
 
