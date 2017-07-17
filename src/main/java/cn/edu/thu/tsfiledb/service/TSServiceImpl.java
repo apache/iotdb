@@ -337,7 +337,10 @@ public class TSServiceImpl implements TSIService.Iface {
             TSExecuteStatementResp resp = getTSExecuteStatementResp(TS_StatusCode.SUCCESS_STATUS, "");
             List<String> columns = new ArrayList<>();
             // Restore column header of aggregation to func(column_name), only support single aggregation function for now
-            String aggregateFuncName = (String) processor.getExecutor().getParameter(SQLConstant.IS_AGGREGATION);
+            String aggregateFuncName = null;
+            try {
+                aggregateFuncName = (String) processor.getExecutor().getParameter(SQLConstant.IS_AGGREGATION);
+            } catch (NullPointerException ignored) {}
             if (aggregateFuncName != null) {
                  columns.add(aggregateFuncName + "(" + paths.get(0).getFullPath() + ")");
             } else {
