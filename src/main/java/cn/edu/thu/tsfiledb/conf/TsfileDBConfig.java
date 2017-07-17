@@ -109,20 +109,14 @@ public class TsfileDBConfig {
 
 	public void updateDataPath() {
 		// filenode dir
-		if (dataDir.length() > 0 && dataDir.charAt(0) != File.separatorChar) {
-			fileNodeDir = dataDir + File.separatorChar + fileNodeDir;
-			bufferWriteDir = dataDir + File.separatorChar + bufferWriteDir;
-			overflowDataDir = dataDir + File.separatorChar + overflowDataDir;
-			metadataDir = dataDir + File.separatorChar + metadataDir;
-			derbyHome = dataDir + File.separatorChar + derbyHome;
-			walFolder = dataDir + File.separatorChar + walFolder;
-		} else {
-			fileNodeDir = dataDir + fileNodeDir;
-			bufferWriteDir = dataDir + bufferWriteDir;
-			overflowDataDir = dataDir + overflowDataDir;
-			metadataDir = dataDir + metadataDir;
-			derbyHome = dataDir + derbyHome;
-			walFolder = dataDir + walFolder;
+		if (dataDir.length() > 0 && !dataDir.endsWith(File.separator)) {
+			dataDir = dataDir + File.separatorChar;
 		}
+		fileNodeDir = dataDir + fileNodeDir;
+		bufferWriteDir = dataDir + bufferWriteDir;
+		overflowDataDir = dataDir + overflowDataDir;
+		metadataDir = dataDir + metadataDir;
+		derbyHome = dataDir + derbyHome;
+		walFolder = dataDir + walFolder;
 	}
 }
