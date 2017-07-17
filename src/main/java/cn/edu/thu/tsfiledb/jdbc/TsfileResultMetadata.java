@@ -78,7 +78,6 @@ public class TsfileResultMetadata implements ResultSetMetaData {
 
 	@Override
 	public String getColumnTypeName(int arg0) throws SQLException {
-	    	System.out.println(operationType);
 		return operationType;
 	}
 
