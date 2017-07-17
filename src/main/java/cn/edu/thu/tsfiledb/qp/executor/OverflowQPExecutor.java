@@ -280,9 +280,9 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
                     mManager.addAPathToMTree(path.getFullPath(), dataType, encoding, encodingArgs);
                     break;
                 case DELETE_PATH:
-                    if(!mManager.pathExist(path.getFullPath())){
-                		throw new ProcessorException(String.format("path %s does not exists", path.getFullPath()));
-                    }
+//                    if(!mManager.pathExist(path.getFullPath())){
+//                		throw new ProcessorException(String.format("path %s does not exists", path.getFullPath()));
+//                    }
                     try {
                         // First delete all data interactive
                         deleteAllData(mManager, path);
