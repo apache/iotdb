@@ -109,39 +109,19 @@ public class TsfileDBConfig {
 
 	public void updateDataPath() {
 		// filenode dir
-		if (fileNodeDir.length() > 0 && fileNodeDir.charAt(0) != File.pathSeparatorChar) {
-			fileNodeDir = dataDir + File.pathSeparatorChar + fileNodeDir;
+		if (dataDir.length() > 0 && dataDir.charAt(0) != File.separatorChar) {
+			fileNodeDir = dataDir + File.separatorChar + fileNodeDir;
+			bufferWriteDir = dataDir + File.separatorChar + bufferWriteDir;
+			overflowDataDir = dataDir + File.separatorChar + overflowDataDir;
+			metadataDir = dataDir + File.separatorChar + metadataDir;
+			derbyHome = dataDir + File.separatorChar + derbyHome;
+			walFolder = dataDir + File.separatorChar + walFolder;
 		} else {
 			fileNodeDir = dataDir + fileNodeDir;
-		}
-		// bufferwrite dir
-		if (bufferWriteDir.length() > 0 && bufferWriteDir.charAt(0) != File.pathSeparatorChar) {
-			bufferWriteDir = dataDir + File.pathSeparatorChar + bufferWriteDir;
-		} else {
 			bufferWriteDir = dataDir + bufferWriteDir;
-		}
-		// overflow dir
-		if (overflowDataDir.length() > 0 && overflowDataDir.charAt(0) != File.pathSeparatorChar) {
-			overflowDataDir = dataDir + File.pathSeparatorChar + overflowDataDir;
-		} else {
 			overflowDataDir = dataDir + overflowDataDir;
-		}
-		// metadata dir
-		if (metadataDir.length() > 0 && metadataDir.charAt(0) != File.pathSeparatorChar) {
-			metadataDir = dataDir + File.pathSeparatorChar + metadataDir;
-		} else {
 			metadataDir = dataDir + metadataDir;
-		}
-		// derby dir
-		if (derbyHome.length() > 0 && derbyHome.charAt(0) != File.pathSeparatorChar) {
-			derbyHome = dataDir + File.pathSeparatorChar + derbyHome;
-		} else {
 			derbyHome = dataDir + derbyHome;
-		}
-		// wal dir
-		if (walFolder.length() > 0 && walFolder.charAt(0) != File.pathSeparatorChar) {
-			walFolder = dataDir + File.pathSeparatorChar + walFolder;
-		} else {
 			walFolder = dataDir + walFolder;
 		}
 	}
