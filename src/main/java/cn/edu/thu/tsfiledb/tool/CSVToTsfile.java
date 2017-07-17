@@ -146,7 +146,7 @@ public class CSVToTsfile {
 	 */
 	private static String setTimeFormat(String tf, String words) {
 		if (tf.equals("ISO8601")) {
-			return "\'" + words + "\'";
+			return  words;
 		} else if (tf.equals("timestamps")) {
 			return words;
 		} else {
@@ -261,7 +261,12 @@ public class CSVToTsfile {
 ////		timeseriesToType.put("root.fit.d2.s3", "INT32");
 ////		timeseriesToType.put("root.fit.p.s1", "INT32");
 //	}
-
+	
+	/**
+	 * create Insert SQL statement according to every line csv data
+	 * @param line csv line data
+	 * @return ArrayList<String> SQL statement list
+	 */
 	private static ArrayList<String> createInsertSQL(String line) {
 		String[] words = line.split(",", headInfo.size() + 1);
 
@@ -300,7 +305,6 @@ public class CSVToTsfile {
 			}
 			sbd.append(")");
 			sqls.add(sbd.toString());
-			//System.out.println(sbd.toString());
 		}
 
 		return sqls;
