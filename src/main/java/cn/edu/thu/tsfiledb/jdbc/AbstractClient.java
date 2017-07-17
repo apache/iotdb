@@ -74,7 +74,7 @@ public abstract class AbstractClient {
 		keywordSet.add("-"+MAX_PRINT_ROW_COUNT_ARGS);
 	}
 	
-	protected static void output(ResultSet res, boolean printToConsole, String statement) {
+	public static void output(ResultSet res, boolean printToConsole, String statement) {
 		try {
 			int cnt = 0;
 			int colCount = res.getMetaData().getColumnCount();

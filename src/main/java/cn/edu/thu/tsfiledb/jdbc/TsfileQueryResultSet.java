@@ -1114,6 +1114,6 @@ public class TsfileQueryResultSet implements ResultSet {
 		if(columnIndex > len || len == 0){
 			throw new SQLException(String.format("columnIndex %d out of range %d",columnIndex,len));
 		}
-		return record.fields.get(columnIndex-1).getStringValue();
+		return record.fields.get(columnIndex).getStringValue();
 	}
 }
