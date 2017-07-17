@@ -45,7 +45,7 @@ public abstract class AbstractClient {
 	protected static final String SHOW_METADATA_COMMAND = "show timeseries";
 	protected static final int MAX_HELP_CONSOLE_WIDTH = 88;
 
-	protected static final String[] AGGREGATION_OPERATOR = new String[] { "count", "min_timestamp", "max_timestamp",
+	protected static final String[] AGGREGATION_OPERATOR = new String[] { "count", "min_time", "max_time",
 			"max_value", "min_value" };
 
 	protected static final String TIMESTAMP_STR = "Time";
