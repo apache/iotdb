@@ -13,10 +13,10 @@ public class AggreFuncFactory {
         if (aggrFuncName == null) {
             throw new ProcessorException("AggregateFunction Name must not be null");
         }
-        else if (aggrFuncName.toLowerCase().equals("min_timestamp")) {
+        else if (aggrFuncName.toLowerCase().equals("min_time")) {
             return new MinTimeAggrFunc();
         }
-        else if (aggrFuncName.toLowerCase().equals("max_timestamp")) {
+        else if (aggrFuncName.toLowerCase().equals("max_time")) {
             return new MaxTimeAggrFunc();
         }
         else if (aggrFuncName.toLowerCase().equals("max_value")) {
