@@ -60,9 +60,8 @@ public class TsfileQueryResultSet implements ResultSet {
 	private int maxRows;
 	private int fetchSize;
 	private boolean emptyResultSet = false;
-	
+	private String operationType;
 	private final String TIMESTAMP_STR = "Time";
-//	private final String AGGREGATION_STR = "Aggregation";
 
 	public TsfileQueryResultSet(){
 		
@@ -70,7 +69,7 @@ public class TsfileQueryResultSet implements ResultSet {
 	
 	public TsfileQueryResultSet(Statement statement,List<String> columnName, 
 			TSIService.Iface client, TS_SessionHandle sessionHandle ,
-			TSOperationHandle operationHandle, String sql) throws SQLException {
+			TSOperationHandle operationHandle, String sql, String operationType) throws SQLException {
 		this.statement = statement;
 		this.sql = sql;
 		this.columnInfo = new HashMap<>();
@@ -83,6 +82,8 @@ public class TsfileQueryResultSet implements ResultSet {
 		}
 		this.maxRows = statement.getMaxRows();
 		this.fetchSize = statement.getFetchSize();
+		this.operationHandle = operationHandle;
+		this.operationType = operationType;
 	}
 
 	@Override
@@ -133,7 +134,7 @@ public class TsfileQueryResultSet implements ResultSet {
 		try {
 			if (operationHandle != null) {
 				TSCloseOperationReq closeReq = new TSCloseOperationReq(operationHandle);
-				TSCloseOperationResp closeResp = client.CloseOperation(closeReq);
+				TSCloseOperationResp closeResp = client.closeOperation(closeReq);
 				Utils.verifySuccess(closeResp.getStatus());
 			}
 		} catch (SQLException e) {
@@ -367,7 +368,7 @@ public class TsfileQueryResultSet implements ResultSet {
 
 	@Override
 	public ResultSetMetaData getMetaData() throws SQLException {
-		return new TsfileResultMetadata(columnInfo);
+		return new TsfileResultMetadata(columnInfo, operationType);
 	}
 
 	@Override
@@ -611,7 +612,7 @@ public class TsfileQueryResultSet implements ResultSet {
 		if((recordItr == null || !recordItr.hasNext()) && !emptyResultSet){
 			TSFetchResultsReq req = new TSFetchResultsReq(sql,fetchSize);
 			try {
-				TSFetchResultsResp resp = client.FetchResults(req);
+				TSFetchResultsResp resp = client.fetchResults(req);
 				Utils.verifySuccess(resp.status);
 				if(!resp.hasResultSet){
 					emptyResultSet = true;

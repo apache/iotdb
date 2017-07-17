@@ -96,7 +96,7 @@ public class TsfileStatement implements Statement {
 	try {
 	    if (operationHandle != null) {
 		TSCancelOperationReq closeReq = new TSCancelOperationReq(operationHandle);
-		TSCancelOperationResp closeResp = client.CancelOperation(closeReq);
+		TSCancelOperationResp closeResp = client.cancelOperation(closeReq);
 		Utils.verifySuccess(closeResp.getStatus());
 	    }
 	} catch (Exception e) {
@@ -122,7 +122,7 @@ public class TsfileStatement implements Statement {
 	try {
 	    if (operationHandle != null) {
 		TSCloseOperationReq closeReq = new TSCloseOperationReq(operationHandle);
-		TSCloseOperationResp closeResp = client.CloseOperation(closeReq);
+		TSCloseOperationResp closeResp = client.closeOperation(closeReq);
 		Utils.verifySuccess(closeResp.getStatus());
 	    }
 	} catch (Exception e) {
@@ -170,12 +170,12 @@ public class TsfileStatement implements Statement {
     private boolean executeSQL(String sql) throws TException, SQLException {
 	isCancelled = false;
 	TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionHandle, sql);
-	TSExecuteStatementResp execResp = client.ExecuteStatement(execReq);
+	TSExecuteStatementResp execResp = client.executeStatement(execReq);
 	operationHandle = execResp.getOperationHandle();
 	Utils.verifySuccess(execResp.getStatus());
 	if (execResp.getOperationHandle().hasResultSet) {
-	    resultSet = new TsfileQueryResultSet(this, execResp.getColumns(), client, sessionHandle, operationHandle,
-		    sql);
+	    resultSet = new TsfileQueryResultSet(this, execResp.getColumns(), client, 
+		    sessionHandle, operationHandle, sql, execResp.getOperationType());
 	    return true;
 	}
 	return false;
@@ -219,7 +219,7 @@ public class TsfileStatement implements Statement {
     private int[] executeBatchSQL() throws TException, TsfileSQLException {
 	isCancelled = false;
 	TSExecuteBatchStatementReq execReq = new TSExecuteBatchStatementReq(sessionHandle, batchSQLList);
-	TSExecuteBatchStatementResp execResp = client.ExecuteBatchStatement(execReq);
+	TSExecuteBatchStatementResp execResp = client.executeBatchStatement(execReq);
 	Utils.verifySuccess(execResp.getStatus());
 	if (execResp.getResult() == null) {
 	    return new int[0];
@@ -258,10 +258,11 @@ public class TsfileStatement implements Statement {
     private ResultSet executeQuerySQL(String sql) throws TException, SQLException {
 	isCancelled = false;
 	TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionHandle, sql);
-	TSExecuteStatementResp execResp = client.ExecuteQueryStatement(execReq);
+	TSExecuteStatementResp execResp = client.executeQueryStatement(execReq);
 	operationHandle = execResp.getOperationHandle();
 	Utils.verifySuccess(execResp.getStatus());
-	resultSet = new TsfileQueryResultSet(this, execResp.getColumns(), client, sessionHandle, operationHandle, sql);
+	resultSet = new TsfileQueryResultSet(this, execResp.getColumns(), client, 
+		sessionHandle, operationHandle, sql, execResp.getOperationType());
 	return resultSet;
     }
 
@@ -287,7 +288,7 @@ public class TsfileStatement implements Statement {
 
     private int executeUpdateSQL(String sql) throws TException, TsfileSQLException {
 	TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionHandle, sql);
-	TSExecuteStatementResp execResp = client.ExecuteUpdateStatement(execReq);
+	TSExecuteStatementResp execResp = client.executeUpdateStatement(execReq);
 	operationHandle = execResp.getOperationHandle();
 	Utils.verifySuccess(execResp.getStatus());
 	return 0;
