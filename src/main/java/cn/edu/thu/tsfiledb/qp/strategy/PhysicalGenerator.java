@@ -130,10 +130,11 @@ public class PhysicalGenerator {
             throw new LogicalOperatorException("startTime:" + startTime + ",endTime:" + endTime
                     + ", one of them is illegal");
         }
-        if (startTime > endTime) {
-            throw new LogicalOperatorException("startTime:" + startTime + ",endTime:" + endTime
-                    + ", start time cannot be greater than end time");
-        }
+        // update : where time > 503 and time <504
+        // if (startTime > endTime) {
+        // throw new LogicalOperatorException("startTime:" + startTime + ",endTime:" + endTime
+        // + ", start time cannot be greater than end time");
+        // }
 
         plan.setStartTime(startTime);
         plan.setEndTime(endTime);
