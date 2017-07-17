@@ -6,9 +6,11 @@ import java.util.Map;
 
 public class TsfileResultMetadata implements ResultSetMetaData {
 	private Map<String, Integer> columnInfo;
-
-	public TsfileResultMetadata(Map<String, Integer> columnInfo) {
+	private String operationType;
+	
+	public TsfileResultMetadata(Map<String, Integer> columnInfo, String operationType) {
 		this.columnInfo = columnInfo;
+		this.operationType = operationType;
 	}
 
 	@Override
@@ -76,8 +78,8 @@ public class TsfileResultMetadata implements ResultSetMetaData {
 
 	@Override
 	public String getColumnTypeName(int arg0) throws SQLException {
-		// TODO Auto-generated method stub
-		return null;
+	    	System.out.println(operationType);
+		return operationType;
 	}
 
 	@Override

@@ -85,7 +85,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext{
     }
 
     @Override
-    public TSOpenSessionResp OpenSession(TSOpenSessionReq req) throws TException {
+    public TSOpenSessionResp openSession(TSOpenSessionReq req) throws TException {
 
         LOGGER.info("TsFileDB Server: receive open session request from username {}", req.getUsername());
 
@@ -119,7 +119,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext{
     }
 
     @Override
-    public TSCloseSessionResp CloseSession(TSCloseSessionReq req) throws TException {
+    public TSCloseSessionResp closeSession(TSCloseSessionReq req) throws TException {
         LOGGER.info("TsFileDB Server: receive close session");
         TS_Status ts_status;
         if (username.get() == null) {
@@ -133,12 +133,12 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext{
     }
 
     @Override
-    public TSCancelOperationResp CancelOperation(TSCancelOperationReq req) throws TException {
+    public TSCancelOperationResp cancelOperation(TSCancelOperationReq req) throws TException {
         return new TSCancelOperationResp(new TS_Status(TS_StatusCode.SUCCESS_STATUS));
     }
 
     @Override
-    public TSCloseOperationResp CloseOperation(TSCloseOperationReq req) throws TException {
+    public TSCloseOperationResp closeOperation(TSCloseOperationReq req) throws TException {
 	LOGGER.info("TsFileDB Server: receive close operation");
         try {
             ReadLockManager.getInstance().unlockForOneRequest();
@@ -157,7 +157,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext{
     }
 
     @Override
-    public TSFetchMetadataResp FetchMetadata(TSFetchMetadataReq req) throws TException {
+    public TSFetchMetadataResp fetchMetadata(TSFetchMetadataReq req) throws TException {
         TS_Status status;
         if (!checkLogin()) {
             LOGGER.info("TsFileDB Server: Not login.");
@@ -236,7 +236,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext{
     }
 
     @Override
-    public TSExecuteBatchStatementResp ExecuteBatchStatement(TSExecuteBatchStatementReq req) throws TException {
+    public TSExecuteBatchStatementResp executeBatchStatement(TSExecuteBatchStatementReq req) throws TException {
         try {
             if (!checkLogin()) {
                 LOGGER.info("TsFileDB Server: Not login.");
@@ -264,7 +264,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext{
     }
 
     @Override
-    public TSExecuteStatementResp ExecuteStatement(TSExecuteStatementReq req) throws TException {
+    public TSExecuteStatementResp executeStatement(TSExecuteStatementReq req) throws TException {
         try {
             if (!checkLogin()) {
                 LOGGER.info("TsFileDB Server: Not login.");
@@ -291,7 +291,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext{
                 return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, "Statement is not allowed");
             }
             if (physicalPlan.isQuery()) {
-                return ExecuteQueryStatement(req);
+                return executeQueryStatement(req);
             } else {
                 return ExecuteUpdateStatement(physicalPlan);
             }
@@ -302,7 +302,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext{
     }
 
     @Override
-    public TSExecuteStatementResp ExecuteQueryStatement(TSExecuteStatementReq req) throws TException {
+    public TSExecuteStatementResp executeQueryStatement(TSExecuteStatementReq req) throws TException {
 
         try {
             if (!checkLogin()) {
@@ -354,7 +354,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext{
             operationHandle = new TSOperationHandle(operationId, true);
             resp.setOperationHandle(operationHandle);
             recordANewQuery(statement, plan);
-
+            resp.setOperationType(aggregateFuncName);
+            System.out.println(aggregateFuncName);
             return resp;
         } catch (Exception e) {
             LOGGER.error("TsFileDB Server: server internal error: {}", e.getMessage());
@@ -363,7 +364,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext{
     }
 
     @Override
-    public TSFetchResultsResp FetchResults(TSFetchResultsReq req) throws TException {
+    public TSFetchResultsResp fetchResults(TSFetchResultsReq req) throws TException {
         try {
             if (!checkLogin()) {
                 return getTSFetchResultsResp(TS_StatusCode.ERROR_STATUS, "Not login.");
@@ -409,7 +410,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext{
     }
 
     @Override
-    public TSExecuteStatementResp ExecuteUpdateStatement(TSExecuteStatementReq req) throws TException {
+    public TSExecuteStatementResp executeUpdateStatement(TSExecuteStatementReq req) throws TException {
         try {
             if (!checkLogin()) {
                 return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, "Not login");
@@ -573,8 +574,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext{
     }
     
     public void handleClientExit() throws TException{
-	CloseOperation(null);
-	CloseSession(null);
+	closeOperation(null);
+	closeSession(null);
     }
 
 }

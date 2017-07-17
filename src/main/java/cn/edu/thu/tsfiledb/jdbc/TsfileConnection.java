@@ -100,7 +100,7 @@ public class TsfileConnection implements Connection {
 	    return;
 	TSCloseSessionReq req = new TSCloseSessionReq(sessionHandle);
 	try {
-	    client.CloseSession(req);
+	    client.closeSession(req);
 	} catch (TException e) {
 	    throw new SQLException("Error occurs when closing session at server", e);
 	} finally {
@@ -218,7 +218,7 @@ public class TsfileConnection implements Connection {
     }
 
     private DatabaseMetaData getMetaDataFromServer() throws TException, TsfileSQLException  {
-	TSFetchMetadataResp resp = client.FetchMetadata(new TSFetchMetadataReq());
+	TSFetchMetadataResp resp = client.fetchMetadata(new TSFetchMetadataReq());
 	Utils.verifySuccess(resp.getStatus());
 	Map<String, List<ColumnSchema>> seriesMap = Utils.convertAllSchema(resp.getSeriesMap());
 	Map<String, List<String>> deltaObjectMap = resp.getDeltaObjectMap();
@@ -414,7 +414,7 @@ public class TsfileConnection implements Connection {
 	openReq.setPassword(params.getPassword());
 
 	try {
-	    TSOpenSessionResp openResp = client.OpenSession(openReq);
+	    TSOpenSessionResp openResp = client.openSession(openReq);
 
 	    // validate connection
 	    Utils.verifySuccess(openResp.getStatus());
