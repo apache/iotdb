@@ -4,6 +4,7 @@ import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
+import java.net.SocketException;
 import java.sql.Array;
 import java.sql.Blob;
 import java.sql.CallableStatement;
@@ -28,6 +29,9 @@ import java.util.concurrent.Executor;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
+import org.apache.thrift.protocol.TCompactProtocol;
+import org.apache.thrift.protocol.TProtocol;
+import org.apache.thrift.transport.TFramedTransport;
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
@@ -59,10 +63,10 @@ public class TsfileConnection implements Connection {
 	params = Utils.parseURL(url, info);
 
 	supportedProtocols.add(TSProtocolVersion.TSFILE_SERVICE_PROTOCOL_V1);
-
+	
 	openTransport();
-
-	client = new TSIService.Client(new TBinaryProtocol(transport));
+	TProtocol protocol = new TBinaryProtocol(transport);
+	client = new TSIService.Client(protocol);
 	// open client session
 	openSession();
 
@@ -390,7 +394,14 @@ public class TsfileConnection implements Connection {
     }
 
     private void openTransport() throws TTransportException {
-	transport = new TSocket(params.getHost(), params.getPort());
+	TSocket socket = new TSocket(params.getHost(), params.getPort(), TsfileJDBCConfig.connectionTimeoutInMs);
+	try {
+	    socket.getSocket().setKeepAlive(true);
+	} catch (SocketException e) {
+	    // TODO Auto-generated catch block
+	    e.printStackTrace();
+	}
+	transport = new TFramedTransport(socket);
 	if (!transport.isOpen()) {
 	    transport.open();
 	}
@@ -414,7 +425,7 @@ public class TsfileConnection implements Connection {
 	    sessionHandle = openResp.getSessionHandle();
 	} catch (TException e) {
 	    throw new SQLException(
-		    String.format("Can not establish connection with %s. because %s", params.getJdbcUriString()), e.getMessage());
+		    String.format("Can not establish connection with %s. because %s", params.getJdbcUriString(), e.getMessage()));
 	}
 	isClosed = false;
     }
