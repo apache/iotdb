@@ -293,20 +293,27 @@ public abstract class AbstractClient {
 			setTimeFormat(values[1]);
 			return OPERATION_RESULT.CONTINUE_OPER;
 		}
-
+		Statement statement = null;
 		try {
-			Statement statement = connection.createStatement();
+			 statement = connection.createStatement();
 			boolean hasResultSet = statement.execute(cmd.trim());
 			if (hasResultSet) {
 				ResultSet resultSet = statement.getResultSet();
 				output(resultSet, printToConsole, cmd.trim());
-			}
-			statement.close();
-			System.out.println(TSFILEDB_CLI_PREFIX + "> execute successfully.");
+			}			
+			System.out.println("execute successfully.");
 		} catch (TsfileSQLException e) {
-			System.out.println(TSFILEDB_CLI_PREFIX + "> statement error: " + e.getMessage());
+			System.out.println("statement error: " + e.getMessage());
 		} catch (Exception e) {
-			System.out.println(TSFILEDB_CLI_PREFIX + "> connection error: " + e.getMessage());
+			System.out.println("connection error: " + e.getMessage());
+		} finally {
+		    	if(statement != null){
+			    	try {
+				    statement.close();
+				} catch (SQLException e) {
+				    System.out.println("cannot close statement because: " + e.getMessage());
+				}
+		    	}
 		}
 		return OPERATION_RESULT.NO_OPER;
 	}
