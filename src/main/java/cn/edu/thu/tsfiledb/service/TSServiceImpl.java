@@ -10,6 +10,7 @@ import java.util.Map;
 
 import cn.edu.thu.tsfiledb.conf.TsfileDBConfig;
 import cn.edu.thu.tsfiledb.conf.TsfileDBDescriptor;
+import cn.edu.thu.tsfiledb.qp.constant.SQLConstant;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -335,8 +336,14 @@ public class TSServiceImpl implements TSIService.Iface {
 
             TSExecuteStatementResp resp = getTSExecuteStatementResp(TS_StatusCode.SUCCESS_STATUS, "");
             List<String> columns = new ArrayList<>();
-            for (Path p : paths) {
-                columns.add(p.getFullPath());
+            // Restore column header of aggregation to func(column_name), only support single aggregation function for now
+            String aggregateFuncName = (String) processor.getExecutor().getParameter(SQLConstant.IS_AGGREGATION);
+            if (aggregateFuncName != null) {
+                 columns.add(aggregateFuncName + "(" + paths.get(0).getFullPath() + ")");
+            } else {
+                for (Path p : paths) {
+                    columns.add(p.getFullPath());
+                }
             }
             TSHandleIdentifier operationId = new TSHandleIdentifier(ByteBuffer.wrap(username.get().getBytes()),
                     ByteBuffer.wrap(("PASS".getBytes())));
