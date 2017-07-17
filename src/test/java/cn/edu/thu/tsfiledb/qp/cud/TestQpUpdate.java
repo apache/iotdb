@@ -94,6 +94,30 @@ public class TestQpUpdate {
     }
 
     @Test
+    public void testDeletePaths() throws QueryProcessorException, ProcessorException, RecognitionException, ArgsErrorException {
+        String sqlStr = "delete sensor_1,sensor2 from root.laptop.device_1 where time < 15";
+        PhysicalPlan plan1 = processor.parseSQLToPhysicalPlan(sqlStr);
+        boolean upRet = processor.getExecutor().processNonQuery(plan1);
+
+        assertTrue(upRet);
+        // query to assert
+        sqlStr = "select sensor_1,sensor_2 " + "from root.laptop.device_1";
+        PhysicalPlan plan2 = processor.parseSQLToPhysicalPlan(sqlStr);
+        Iterator<QueryDataSet> iter = processor.getExecutor().processQuery(plan2);
+
+        String[] expect =
+                {"20, <root.laptop.device_1.sensor_1,null> <root.laptop.device_1.sensor_2,20> "};
+        int i = 0;
+        while (iter.hasNext()) {
+            QueryDataSet set = iter.next();
+            while (set.hasNextRecord()) {
+                assertEquals(set.getNextRecord().toString(), expect[i++]);
+            }
+        }
+        assertEquals(expect.length, i);
+    }
+
+    @Test
     public void testInsert() throws QueryProcessorException, ProcessorException, RecognitionException, ArgsErrorException {
         String sqlStr = "insert into root.laptop.device_1 (timestamp, sensor_1) values (30,30)";
         PhysicalPlan plan1 = processor.parseSQLToPhysicalPlan(sqlStr);

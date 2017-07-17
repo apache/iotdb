@@ -55,7 +55,7 @@ public enum PhysicalPlanCodec {
                 int type = OperatorType.DELETE.ordinal();
                 byte[] timeBytes = BytesUtils.longToBytes(t.getDeleteTime());
 
-                byte[] pathBytes = BytesUtils.StringToBytes(t.getPath().getFullPath());
+                byte[] pathBytes = BytesUtils.StringToBytes(t.getPaths().get(0).getFullPath());
                 byte[] pathBytesLength = ReadWriteStreamUtils.getUnsignedVarInt(pathBytes.length);
 
                 int totalLength = 1 + timeBytes.length + pathBytes.length + pathBytesLength.length;
