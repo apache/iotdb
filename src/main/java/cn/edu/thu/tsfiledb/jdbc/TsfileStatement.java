@@ -26,7 +26,7 @@ import cn.edu.thu.tsfiledb.service.rpc.thrift.TS_SessionHandle;
 public class TsfileStatement implements Statement {
 
     private ResultSet resultSet = null;
-    private final TsfileConnection connection;
+    private TsfileConnection connection;
     private int fetchSize = TsfileJDBCConfig.fetchSize;
     private int queryTimeout = 10;
     private TSIService.Iface client = null;
@@ -152,6 +152,7 @@ public class TsfileStatement implements Statement {
 	    return executeSQL(sql);
 	} catch (TException e) {
 	    boolean flag = connection.reconnect();
+	    reInit();
 	    if (flag) {
 		try {
 		    return executeSQL(sql);
@@ -203,6 +204,7 @@ public class TsfileStatement implements Statement {
 	    return executeBatchSQL();
 	} catch (TException e) {
 	    boolean flag = connection.reconnect();
+	    reInit();
 	    if (flag) {
 		try {
 		    return executeBatchSQL();
@@ -241,6 +243,7 @@ public class TsfileStatement implements Statement {
 	    return executeQuerySQL(sql);
 	} catch (TException e) {
 	    boolean flag = connection.reconnect();
+	    reInit();
 	    if (flag) {
 		try {
 		    return executeQuerySQL(sql);
@@ -272,6 +275,7 @@ public class TsfileStatement implements Statement {
 	    return executeUpdateSQL(sql);
 	} catch (TException e) {
 	    boolean flag = connection.reconnect();
+	    reInit();
 	    if (flag) {
 		try {
 		    return executeUpdateSQL(sql);
@@ -463,6 +467,11 @@ public class TsfileStatement implements Statement {
 	if (isClosed) {
 	    throw new SQLException(String.format("Cannot %s after statement has been closed!", action));
 	}
+    }
+    
+    private void reInit(){
+	    this.client = connection.client;
+	    this.sessionHandle = connection.sessionHandle;
     }
 
 }

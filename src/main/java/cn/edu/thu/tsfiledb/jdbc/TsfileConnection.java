@@ -29,12 +29,13 @@ import java.util.concurrent.Executor;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
-import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.transport.TFramedTransport;
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import cn.edu.thu.tsfiledb.service.rpc.thrift.TSIService;
 import cn.edu.thu.tsfiledb.metadata.ColumnSchema;
@@ -47,12 +48,13 @@ import cn.edu.thu.tsfiledb.service.rpc.thrift.TSProtocolVersion;
 import cn.edu.thu.tsfiledb.service.rpc.thrift.TS_SessionHandle;
 
 public class TsfileConnection implements Connection {
+    private static final Logger LOGGER = LoggerFactory.getLogger(TsfileConnection.class);
     private TsfileConnectionParams params;
     private boolean isClosed = true;
     private SQLWarning warningChain = null;
     private TTransport transport;
-    private TSIService.Iface client = null;
-    private TS_SessionHandle sessionHandle = null;
+    public TSIService.Iface client = null;
+    public TS_SessionHandle sessionHandle = null;
     private final List<TSProtocolVersion> supportedProtocols = new LinkedList<TSProtocolVersion>();
     private TSProtocolVersion protocol;
 
@@ -200,7 +202,6 @@ public class TsfileConnection implements Connection {
 	if (isClosed) {
 	    throw new SQLException("Cannot create statement because connection is closed");
 	}
-
 	try {
 	    return getMetaDataFromServer();
 	} catch (TException e) {
@@ -398,8 +399,10 @@ public class TsfileConnection implements Connection {
 	try {
 	    socket.getSocket().setKeepAlive(true);
 	} catch (SocketException e) {
-	    // TODO Auto-generated catch block
-	    e.printStackTrace();
+	    LOGGER.error("Cannot set socket keep alive", e);
+	}
+	if(socket.isOpen()){
+	    socket.open();
 	}
 	transport = new TFramedTransport(socket);
 	if (!transport.isOpen()) {
