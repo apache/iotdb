@@ -8,9 +8,9 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
-import cn.edu.thu.tsfiledb.conf.TsfileDBConfig;
 import cn.edu.thu.tsfiledb.conf.TsfileDBDescriptor;
 import org.apache.thrift.TException;
+import org.apache.thrift.server.ServerContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -65,7 +65,7 @@ import cn.edu.thu.tsfiledb.sys.writelog.WriteLogManager;
 /**
  * Thrift RPC implementation at server side
  */
-public class TSServiceImpl implements TSIService.Iface {
+public class TSServiceImpl implements TSIService.Iface, ServerContext{
 
     private WriteLogManager writeLogManager;
     private QueryProcessor processor = new QueryProcessor(new OverflowQPExecutor());
@@ -138,11 +138,10 @@ public class TSServiceImpl implements TSIService.Iface {
 
     @Override
     public TSCloseOperationResp CloseOperation(TSCloseOperationReq req) throws TException {
+	LOGGER.info("TsFileDB Server: receive close operation");
         try {
             ReadLockManager.getInstance().unlockForOneRequest();
             clearAllStatusForCurrentRequest();
-        } catch (NotConsistentException e) {
-            LOGGER.warn("Warning in closeOperation : {}", e.getMessage());
         } catch (ProcessorException e) {
             LOGGER.error("Error in closeOperation : {}", e.getMessage());
         }
@@ -415,7 +414,6 @@ public class TSServiceImpl implements TSIService.Iface {
         }
     }
 
-
     private TSExecuteStatementResp ExecuteUpdateStatement(PhysicalPlan plan) throws TException {
         try {
             List<Path> paths = plan.getPaths();
@@ -562,6 +560,11 @@ public class TSServiceImpl implements TSIService.Iface {
         ts_status.setErrorMessage(msg);
         resp.setStatus(ts_status);
         return resp;
+    }
+    
+    public void handleClientExit() throws TException{
+	CloseOperation(null);
+	CloseSession(null);
     }
 
 }
