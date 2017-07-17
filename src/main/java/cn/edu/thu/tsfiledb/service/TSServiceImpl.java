@@ -355,7 +355,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext{
             resp.setOperationHandle(operationHandle);
             recordANewQuery(statement, plan);
             resp.setOperationType(aggregateFuncName);
-            System.out.println(aggregateFuncName);
             return resp;
         } catch (Exception e) {
             LOGGER.error("TsFileDB Server: server internal error: {}", e.getMessage());
