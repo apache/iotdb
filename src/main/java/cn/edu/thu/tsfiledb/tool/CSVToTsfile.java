@@ -7,7 +7,10 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.sql.Connection;
+import java.sql.DatabaseMetaData;
 import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.text.SimpleDateFormat;
@@ -31,8 +34,15 @@ import org.slf4j.LoggerFactory;
 
 import cn.edu.thu.tsfiledb.exception.ArgsErrorException;
 
+/**
+ * CSV File To TsFile Class
+ * @author zhanggr
+ *
+ */
 public class CSVToTsfile {
+	
 	private static final Logger LOGGER = LoggerFactory.getLogger(CSVToTsfile.class);
+	
 	private static final String HOST_ARGS = "h";
 	private static final String HOST_NAME = "host";
 
@@ -63,16 +73,18 @@ public class CSVToTsfile {
 	private static String filename;
 	private static String timeformat = "timestamps";
 
-	private static HashMap<String, String> hm = null;
-	private static HashMap<String, ArrayList<Integer>> hm_timeseries; // storage
-																		// device
-																		// info
-	private static ArrayList<String> headInfo; // storage csv head info
-	private static ArrayList<String> colInfo; // storage csv sensor info
+	private static HashMap<String, String> timeseriesToType = null;
+	private static HashMap<String, ArrayList<Integer>> deviceToColumn; // storage every device column in csv file
+	private static ArrayList<String> headInfo; // storage csv table head info
+	private static ArrayList<String> colInfo; // storage csv device sensor info, corresponding csv table head
 
 	private static Connection connection = null;
 	private static Statement statement = null;
 
+	/**
+	 * commandline option create
+	 * @return object Options
+	 */
 	private static Options createOptions() {
 		Options options = new Options();
 		Option help = new Option(HELP_ARGS, false, "Display help information");
@@ -105,7 +117,15 @@ public class CSVToTsfile {
 
 		return options;
 	}
-
+	
+	/**
+	 * 
+	 * @param arg argument for commandline e:h,f,p..
+	 * @param name the name of argument
+	 * @param commandLine
+	 * @return the value of the option e: the argument h's value is 127.0.0.1
+	 * @throws ArgsErrorException
+	 */
 	private static String checkRequiredArg(String arg, String name, CommandLine commandLine) throws ArgsErrorException {
 		String str = commandLine.getOptionValue(arg);
 		if (str == null) {
@@ -118,14 +138,18 @@ public class CSVToTsfile {
 	}
 
 	
-
+	/**
+	 * 
+	 * @param tf the time format, optioned:ISO8601, timestamps, self-defined: yyyy-mm-dd hh:mm:ss
+	 * @param words the time column of the csv file
+	 * @return the timestamps will insert into SQL
+	 */
 	private static String setTimeFormat(String tf, String words) {
 		if (tf.equals("ISO8601")) {
 			return "\'" + words + "\'";
 		} else if (tf.equals("timestamps")) {
 			return words;
 		} else {
-			// return "\'" + words + "\'";
 			SimpleDateFormat sdf = new SimpleDateFormat(tf);
 			Date date = null;
 			try {
@@ -139,50 +163,67 @@ public class CSVToTsfile {
 			return "";
 		}
 	}
-
+	
+	/**
+	 * Data from csv To tsfile 
+	 */
 	public static void loadDataFromCSV() {
 		try {
 			statement = connection.createStatement();
-			BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(new File(filename))));
+			BufferedReader br = new BufferedReader(
+					new InputStreamReader(new FileInputStream(new File(filename))));
 			String line = "";
 			String[] str_headInfo = br.readLine().split(",");
-			hm_timeseries = new HashMap<String, ArrayList<Integer>>();
+			deviceToColumn = new HashMap<String, ArrayList<Integer>>();
 			colInfo = new ArrayList<String>();
 			headInfo = new ArrayList<String>();
-
-			createType(); // create metadata info
-
-			for (int i = 1; i < str_headInfo.length; i++) {
-				if (hm.containsKey(str_headInfo[i]) == false) {
-					System.out.println("data colum not exist!");
+			
+			if(str_headInfo.length <= 1) {
+				LOGGER.debug("The CSV file illegal");
+				System.exit(1);
+			}
+			
+			timeseriesToType = new HashMap<String, String>();
+			DatabaseMetaData databaseMetaData = connection.getMetaData();
+			
+			
+			for(int i = 1; i < str_headInfo.length; i++) {
+				ResultSet resultSet = null;
+				try {
+					resultSet = databaseMetaData.getColumns(null, null, str_headInfo[i], null);
+					while(resultSet.next()){
+						timeseriesToType.put(resultSet.getString(0), resultSet.getString(1));
+					}
+				}catch(SQLException colerr) {
+					LOGGER.debug("database Cannot find " +  str_headInfo[i] + ",stop import!");
 					System.exit(1);
 				}
+			}
+			
+			for (int i = 1; i < str_headInfo.length; i++) {
+				
 				headInfo.add(str_headInfo[i]);
 				String deviceInfo = str_headInfo[i].substring(0, str_headInfo[i].lastIndexOf("."));
-				if (hm_timeseries.containsKey(deviceInfo)) {
-					hm_timeseries.get(deviceInfo).add(i - 1); // storage every
-																// device's
-																// sensor index
-																// info
+				if (deviceToColumn.containsKey(deviceInfo)) {
+					// storage every  device's sensor index info
+					deviceToColumn.get(deviceInfo).add(i - 1); 
 					colInfo.add(str_headInfo[i].substring(str_headInfo[i].lastIndexOf(".") + 1));
 				} else {
-					hm_timeseries.put(deviceInfo, new ArrayList<Integer>());
-					hm_timeseries.get(deviceInfo).add(i - 1); // storage every
-																// device's
-																// sensor index
-																// info
+					deviceToColumn.put(deviceInfo, new ArrayList<Integer>());
+					// storage every device's sensor index info
+					deviceToColumn.get(deviceInfo).add(i - 1); 
 					colInfo.add(str_headInfo[i].substring(str_headInfo[i].lastIndexOf(".") + 1));
 				}
-
 			}
 			while ((line = br.readLine()) != null) {
 				ArrayList<String> sqls = createInsertSQL(line);
 				for (String str : sqls) {
 					try {
 						statement.execute(str);
+						LOGGER.debug( str + " :excuted successfull");
 
 					} catch (SQLException e) {
-						LOGGER.error(str + " excuted fail");
+						LOGGER.error(str + " :excuted fail");
 					}
 				}
 
@@ -199,24 +240,33 @@ public class CSVToTsfile {
 	}
 
 	private static String typeIdentify(String key_timeseries) {
-		return hm.get(key_timeseries);
+		return timeseriesToType.get(key_timeseries);
 
 	}
-
-	private static void createType() {
-		hm = new HashMap<String, String>();
-		hm.put("root.fit.d1.s1", "INT32");
-		hm.put("root.fit.d1.s2", "BYTE_ARRAY");
-		hm.put("root.fit.d2.s1", "INT32");
-		hm.put("root.fit.d2.s3", "INT32");
-		hm.put("root.fit.p.s1", "INT32");
-	}
+	
+//	/**
+//	 * create corresponding of timeseries and type 
+//	 * @throws SQLException
+//	 */
+//	private static void createType() throws SQLException {
+//		timeseriesToType = new HashMap<String, String>();
+//		DatabaseMetaData databaseMetaData = connection.getMetaData();
+//		ResultSet resultSet = databaseMetaData.getColumns(null, null, "root.fit", null);
+//		while(resultSet.next()){
+//			timeseriesToType.put(resultSet.getString(0), resultSet.getString(1));
+//		}
+////		timeseriesToType.put("root.fit.d1.s1", "INT32");
+////		timeseriesToType.put("root.fit.d1.s2", "BYTE_ARRAY");
+////		timeseriesToType.put("root.fit.d2.s1", "INT32");
+////		timeseriesToType.put("root.fit.d2.s3", "INT32");
+////		timeseriesToType.put("root.fit.p.s1", "INT32");
+//	}
 
 	private static ArrayList<String> createInsertSQL(String line) {
 		String[] words = line.split(",", headInfo.size() + 1);
 
 		ArrayList<String> sqls = new ArrayList<String>();
-		Iterator<Map.Entry<String, ArrayList<Integer>>> it = hm_timeseries.entrySet().iterator();
+		Iterator<Map.Entry<String, ArrayList<Integer>>> it = deviceToColumn.entrySet().iterator();
 		while (it.hasNext()) {
 			Map.Entry<String, ArrayList<Integer>> entry = it.next();
 			StringBuilder sbd = new StringBuilder();
@@ -250,7 +300,7 @@ public class CSVToTsfile {
 			}
 			sbd.append(")");
 			sqls.add(sbd.toString());
-			System.out.println(sbd.toString());
+			//System.out.println(sbd.toString());
 		}
 
 		return sqls;
