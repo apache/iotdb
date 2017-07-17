@@ -61,7 +61,7 @@ public class TsfileQueryResultSet implements ResultSet {
 	private int fetchSize;
 	private boolean emptyResultSet = false;
 	
-	private final String TIMESTAMP_STR = "Timestamp";
+	private final String TIMESTAMP_STR = "Time";
 //	private final String AGGREGATION_STR = "Aggregation";
 
 	public TsfileQueryResultSet(){

@@ -1,5 +1,7 @@
 package cn.edu.thu.tsfiledb.conf;
 
+import java.io.File;
+
 public class TsfileDBConfig {
 
 	public static final String CONFIG_NAME = "tsfile-engine.properties";
@@ -9,16 +11,11 @@ public class TsfileDBConfig {
 	 * Port which JDBC server listens to
 	 */
 	public int rpcPort = 6667;
-	
-    	/**
-    	 * Is write ahead log enable
-    	 */	
-	public boolean enableWal = false;
-	
+
 	/**
-	 * Write ahead log folder.
+	 * Is write ahead log enable
 	 */
-	public String walFolder = "wals";
+	public boolean enableWal = false;
 
 	/**
 	 * When the total number of write ahead log in the file and memory reaches
@@ -40,31 +37,39 @@ public class TsfileDBConfig {
 	 * operations
 	 */
 	public long flushWalPeriodInMs = 10;
-
+	/**
+	 * Data directory
+	 */
+	public String dataDir = "data";
 	/**
 	 * Data directory of Overflow data
 	 */
-	public String overflowDataDir = "data/overflow";
+	public String overflowDataDir = "overflow";
 
 	/**
 	 * Data directory of fileNode data
 	 */
-	public String fileNodeDir = "data/digest";
+	public String fileNodeDir = "digest";
 
 	/**
 	 * Data directory of bufferWrite data
 	 */
-	public String bufferWriteDir = "data/delta";
+	public String bufferWriteDir = "delta";
 
 	/**
 	 * Data directory of metadata data
 	 */
-	public String metadataDir = "data/metadata";
+	public String metadataDir = "metadata";
 
 	/**
 	 * Data directory of derby data
 	 */
-	public String derbyHome = "data/derby";
+	public String derbyHome = "derby";
+
+	/**
+	 * Data directory of Write ahead log folder.
+	 */
+	public String walFolder = "wals";
 
 	/**
 	 * The maximum concurrent thread number for merging overflow
@@ -86,18 +91,32 @@ public class TsfileDBConfig {
 	 * the maximum number of writing instances existing in same time.
 	 */
 	public int writeInstanceThreshold = 5;
-	
+
 	/**
 	 * The period time for close file. The unit is second.
 	 */
 	public long periodTimeForClose = 3600;
-	
+
 	/**
-	 * The period time for merge overflow data with tsfile data. The unit is second.
+	 * The period time for merge overflow data with tsfile data. The unit is
+	 * second.
 	 */
 	public long periodTimeForMerge = 7200;
 
 	public TsfileDBConfig() {
+
 	}
 
+	public void updateDataPath() {
+		// filenode dir
+		if (dataDir.length() > 0 && !dataDir.endsWith(File.separator)) {
+			dataDir = dataDir + File.separatorChar;
+		}
+		fileNodeDir = dataDir + fileNodeDir;
+		bufferWriteDir = dataDir + bufferWriteDir;
+		overflowDataDir = dataDir + overflowDataDir;
+		metadataDir = dataDir + metadataDir;
+		derbyHome = dataDir + derbyHome;
+		walFolder = dataDir + walFolder;
+	}
 }
