@@ -51,9 +51,9 @@ public class ReadLockManager {
         }
     }
 
-    public void unlockForOneRequest() throws NotConsistentException, ProcessorException {
+    public void unlockForOneRequest() throws ProcessorException {
         if (locksMap.get() == null) {
-            throw new NotConsistentException("There is no locks in last request");
+            return;
         }
         HashMap<String, Integer> locks = locksMap.get();
         for (String key : locks.keySet()) {
