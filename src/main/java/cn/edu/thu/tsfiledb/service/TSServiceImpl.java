@@ -24,9 +24,7 @@ import cn.edu.thu.tsfiledb.auth.dao.Authorizer;
 import cn.edu.thu.tsfiledb.engine.exception.FileNodeManagerException;
 import cn.edu.thu.tsfiledb.engine.filenode.FileNodeManager;
 import cn.edu.thu.tsfiledb.exception.ArgsErrorException;
-import cn.edu.thu.tsfiledb.exception.NotConsistentException;
 import cn.edu.thu.tsfiledb.exception.PathErrorException;
-import cn.edu.thu.tsfiledb.metadata.ColumnSchema;
 import cn.edu.thu.tsfiledb.metadata.MManager;
 import cn.edu.thu.tsfiledb.metadata.Metadata;
 import cn.edu.thu.tsfiledb.qp.QueryProcessor;
@@ -42,7 +40,6 @@ import cn.edu.thu.tsfiledb.service.rpc.thrift.TSCloseOperationReq;
 import cn.edu.thu.tsfiledb.service.rpc.thrift.TSCloseOperationResp;
 import cn.edu.thu.tsfiledb.service.rpc.thrift.TSCloseSessionReq;
 import cn.edu.thu.tsfiledb.service.rpc.thrift.TSCloseSessionResp;
-import cn.edu.thu.tsfiledb.service.rpc.thrift.TSColumnSchema;
 import cn.edu.thu.tsfiledb.service.rpc.thrift.TSExecuteBatchStatementReq;
 import cn.edu.thu.tsfiledb.service.rpc.thrift.TSExecuteBatchStatementResp;
 import cn.edu.thu.tsfiledb.service.rpc.thrift.TSExecuteStatementReq;
@@ -167,12 +164,12 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 		}
 		TSFetchMetadataResp resp = new TSFetchMetadataResp();
 		switch (req.getType()) {
-		case METADATA_IN_JSON:
+		case "METADATA_IN_JSON":
 			String metadataInJson = MManager.getInstance().getMetadataInString();
 			resp.setMetadataInJson(metadataInJson);
 			status = new TS_Status(TS_StatusCode.SUCCESS_STATUS);
 			break;
-		case DELTAOBJECT:
+		case "DELTA_OBEJECT":
 			Metadata metadata;
 			try {
 				metadata = MManager.getInstance().getMetadata();
@@ -183,14 +180,18 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 			}
 			status = new TS_Status(TS_StatusCode.SUCCESS_STATUS);
 			break;
-		case COLUMN:
+		case "COLUMN":
 			try {
 				resp.setDataType(MManager.getInstance().getSeriesType(req.getColumnPath()).toString());
-			} catch (PathErrorException e) {
-				//LOGGER.error("cannot get column {} data type", req.getColumnPath(), e);
-			}
+			} catch (PathErrorException e) { }
 			status = new TS_Status(TS_StatusCode.SUCCESS_STATUS);
 			break;
+		case "ALL_COLUMNS":
+		    	try {
+				resp.setAllColumns(MManager.getInstance().getPaths(req.getColumnPath()));
+		    	} catch (PathErrorException e) {}
+		    	status = new TS_Status(TS_StatusCode.SUCCESS_STATUS);
+		    	break;
 		default:
 			status = new TS_Status(TS_StatusCode.ERROR_STATUS);
 			status.setErrorMessage(String.format("Unsuport fetch metadata operation %s", req.getType()));

@@ -13,7 +13,6 @@ import org.apache.thrift.TException;
 
 import cn.edu.thu.tsfile.file.metadata.enums.TSDataType;
 import cn.edu.thu.tsfiledb.metadata.ColumnSchema;
-import cn.edu.thu.tsfiledb.service.rpc.thrift.MEATADATA_OPERATION_TYPE;
 import cn.edu.thu.tsfiledb.service.rpc.thrift.TSFetchMetadataReq;
 import cn.edu.thu.tsfiledb.service.rpc.thrift.TSFetchMetadataResp;
 import cn.edu.thu.tsfiledb.service.rpc.thrift.TSIService;
@@ -60,7 +59,7 @@ public class TsfileDatabaseMetadata implements DatabaseMetaData {
 	
 	private ResultSet getColumnsOrDeltaObject(String catalog, String schemaPattern, String columnPattern, String deltaObjectPattern) throws TException, SQLException{
 	    if(deltaObjectPattern != null && !deltaObjectPattern.trim().equals("")){
-			TSFetchMetadataReq req = new TSFetchMetadataReq(MEATADATA_OPERATION_TYPE.DELTAOBJECT);
+			TSFetchMetadataReq req = new TSFetchMetadataReq("DELTA_OBEJECT");
 			TSFetchMetadataResp resp;
 			try {
 				resp = client.fetchMetadata(req);
@@ -71,28 +70,46 @@ public class TsfileDatabaseMetadata implements DatabaseMetaData {
 				}
 				return new TsfileMetadataResultSet(null, deltaObjectList.get(deltaObjectPattern));
 			} catch (TException e) {
-				throw new TException("Conncetion error when fetching delta object metadata");
+				throw new TException("Conncetion error when fetching delta object metadata", e);
 			}
 			
 		}
 
 		if(columnPattern != null && !columnPattern.trim().equals("")){
-			TSFetchMetadataReq req = new TSFetchMetadataReq(MEATADATA_OPERATION_TYPE.COLUMN);
-			req.setColumnPath(columnPattern);
-			TSFetchMetadataResp resp;
-			try {
-				resp = client.fetchMetadata(req);
-				Utils.verifySuccess(resp.getStatus());
-				List<ColumnSchema> columnSchemaNew = new ArrayList<>();
-				if(resp.getDataType() != null){
-					columnSchemaNew.add(new ColumnSchema(columnPattern, 
-							TSDataType.valueOf(resp.getDataType()), 
-							null));
+		    	TSFetchMetadataReq req;
+		    	if(!columnPattern.endsWith("*")){
+		    	    	req = new TSFetchMetadataReq("COLUMN"); 
+		    	    	req.setColumnPath(columnPattern);
+				try {
+				    	TSFetchMetadataResp resp = client.fetchMetadata(req);
+					Utils.verifySuccess(resp.getStatus());
+					List<ColumnSchema> columnSchemaNew = new ArrayList<>();
+					if(resp.getDataType() != null){
+						columnSchemaNew.add(new ColumnSchema(columnPattern, 
+								TSDataType.valueOf(resp.getDataType()), 
+								null));
+					}
+					return new TsfileMetadataResultSet(columnSchemaNew, null);
+				} catch (TException e) {
+					throw new TException("Conncetion error when fetching column data type", e);
 				}
-				return new TsfileMetadataResultSet(columnSchemaNew, null);
-			} catch (TException e) {
-				throw new TException("Conncetion error when fetching column data type");
-			}
+		    	} else{
+		    	    	req = new TSFetchMetadataReq("ALL_COLUMNS");
+		    	    	req.setColumnPath(columnPattern);
+				try {
+				    	TSFetchMetadataResp resp = client.fetchMetadata(req);
+					Utils.verifySuccess(resp.getStatus());
+					List<ColumnSchema> columnSchemaNew = new ArrayList<>();
+					if(resp.getAllColumns() != null){
+					    for(String path : resp.getAllColumns()){
+						columnSchemaNew.add(new ColumnSchema(path, null, null));
+					    }
+					}
+					return new TsfileMetadataResultSet(columnSchemaNew, null);
+				} catch (TException e) {
+					throw new TException("Conncetion error when fetching column data type", e);
+				}
+		    	}
 		}
 		return null;
 	}
@@ -1175,7 +1192,7 @@ public class TsfileDatabaseMetadata implements DatabaseMetaData {
 	}
 	
 	private String getFullTimeseries() throws TException, TsfileSQLException{
-		TSFetchMetadataReq req = new TSFetchMetadataReq(MEATADATA_OPERATION_TYPE.METADATA_IN_JSON);
+		TSFetchMetadataReq req = new TSFetchMetadataReq("METADATA_IN_JSON");
 		TSFetchMetadataResp resp;
 		resp = client.fetchMetadata(req);
 		Utils.verifySuccess(resp.getStatus());

@@ -305,16 +305,11 @@ struct TSFetchMetadataResp{
 		2: optional string metadataInJson
 		3: optional map<string, list<string>> deltaObjectMap
 		4: optional string dataType
-}
-
-enum MEATADATA_OPERATION_TYPE{
-METADATA_IN_JSON,
-DELTAOBJECT,
-COLUMN
+		5: optional list<string> allColumns
 }
 
 struct TSFetchMetadataReq{
-		1: required MEATADATA_OPERATION_TYPE type
+		1: required string type
 		2: optional string columnPath
 }
 
