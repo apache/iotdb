@@ -43,7 +43,7 @@ public class TsfileDatabaseMetadata implements DatabaseMetaData {
 				Utils.verifySuccess(resp.getStatus());
 				Map<String, List<String>> deltaObjectList = resp.getDeltaObjectMap();
 				if(deltaObjectList == null || !deltaObjectList.containsKey(deltaObjectPattern)){
-					throw new SQLException("No schema for delta object");
+					new TsfileMetadataResultSet(null, new ArrayList<>());
 				}
 				return new TsfileMetadataResultSet(null, deltaObjectList.get(deltaObjectPattern));
 			} catch (TException e) {
@@ -60,9 +60,11 @@ public class TsfileDatabaseMetadata implements DatabaseMetaData {
 				resp = client.fetchMetadata(req);
 				Utils.verifySuccess(resp.getStatus());
 				List<ColumnSchema> columnSchemaNew = new ArrayList<>();
-				columnSchemaNew.add(new ColumnSchema(columnPattern, 
-						resp.getDataType() == null ? null : TSDataType.valueOf(resp.getDataType()), 
-						null));
+				if(resp.getDataType() != null){
+					columnSchemaNew.add(new ColumnSchema(columnPattern, 
+							TSDataType.valueOf(resp.getDataType()), 
+							null));
+				}
 				return new TsfileMetadataResultSet(columnSchemaNew, null);
 			} catch (TException e) {
 				throw new SQLException("Conncetion error when fetching column data type");

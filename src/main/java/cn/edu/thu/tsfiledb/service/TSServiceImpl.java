@@ -166,40 +166,37 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 			return new TSFetchMetadataResp(status);
 		}
 		TSFetchMetadataResp resp = new TSFetchMetadataResp();
-		try {
-			switch (req.getType()) {
-			case METADATA_IN_JSON:
-				String metadataInJson = MManager.getInstance().getMetadataInString();
-				resp.setMetadataInJson(metadataInJson);
-				status = new TS_Status(TS_StatusCode.SUCCESS_STATUS);
-				break;
-			case DELTAOBJECT:
-				Metadata metadata = MManager.getInstance().getMetadata();
+		switch (req.getType()) {
+		case METADATA_IN_JSON:
+			String metadataInJson = MManager.getInstance().getMetadataInString();
+			resp.setMetadataInJson(metadataInJson);
+			status = new TS_Status(TS_StatusCode.SUCCESS_STATUS);
+			break;
+		case DELTAOBJECT:
+			Metadata metadata;
+			try {
+				metadata = MManager.getInstance().getMetadata();
 				Map<String, List<String>> deltaObjectMap = metadata.getDeltaObjectMap();
 				resp.setDeltaObjectMap(deltaObjectMap);
-				status = new TS_Status(TS_StatusCode.SUCCESS_STATUS);
-				break;
-			case COLUMN:
-				resp.setDataType(MManager.getInstance().getSeriesType(req.getColumnPath()).toString());
-				status = new TS_Status(TS_StatusCode.SUCCESS_STATUS);
-				break;
-			default:
-				status = new TS_Status(TS_StatusCode.ERROR_STATUS);
-				status.setErrorMessage(String.format("Unsuport fetch metadata operation %s", req.getType()));
-				break;
+			} catch (PathErrorException e) {
+				//LOGGER.error("cannot get delta object map", e);
 			}
-			resp.setStatus(status);
-		} catch (PathErrorException e) {
-			LOGGER.error("TsFileDB Server: failed to get all schema", e);
+			status = new TS_Status(TS_StatusCode.SUCCESS_STATUS);
+			break;
+		case COLUMN:
+			try {
+				resp.setDataType(MManager.getInstance().getSeriesType(req.getColumnPath()).toString());
+			} catch (PathErrorException e) {
+				//LOGGER.error("cannot get column {} data type", req.getColumnPath(), e);
+			}
+			status = new TS_Status(TS_StatusCode.SUCCESS_STATUS);
+			break;
+		default:
 			status = new TS_Status(TS_StatusCode.ERROR_STATUS);
-			status.setErrorMessage(e.getMessage());
-			resp.setStatus(status);
-		} catch (Exception e) {
-			LOGGER.error("TsFileDB Server: failed to get all schema for unknown reason", e);
-			status = new TS_Status(TS_StatusCode.ERROR_STATUS);
-			status.setErrorMessage(e.getMessage());
-			resp.setStatus(status);
+			status.setErrorMessage(String.format("Unsuport fetch metadata operation %s", req.getType()));
+			break;
 		}
+		resp.setStatus(status);
 		return resp;
 	}
 
