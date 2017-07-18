@@ -482,7 +482,7 @@ public class BufferWriteProcessor extends LRUProcessor {
 	}
 
 	public Pair<List<Object>, List<RowGroupMetaData>> getIndexAndRowGroupList(String deltaObjectId,
-																			  String measurementId) {
+			String measurementId) {
 		List<Object> memData = null;
 		List<RowGroupMetaData> list = null;
 		// wait until flush over
@@ -553,7 +553,7 @@ public class BufferWriteProcessor extends LRUProcessor {
 		private long flushingRecordCount;
 
 		BufferWriteRecordWriter(TSFileConfig conf, BufferWriteIOWriter ioFileWriter,
-								WriteSupport<TSRecord> writeSupport, FileSchema schema) {
+				WriteSupport<TSRecord> writeSupport, FileSchema schema) {
 			super(conf, ioFileWriter, writeSupport, schema);
 		}
 
@@ -616,25 +616,20 @@ public class BufferWriteProcessor extends LRUProcessor {
 							WriteLogManager.getInstance().endBufferWriteFlush(nameSpacePath);
 						}
 					} catch (IOException e) {
-						LOGGER.error("Flush row group to store failed, processor:{}. Message: {}", nameSpacePath,
-								e.getMessage());
+						LOGGER.error("Flush row group to store failed, processor:{}.", nameSpacePath);
+						e.printStackTrace();
 						throw e;
 					} catch (BufferWriteProcessorException e) {
 						// write restore error
-						LOGGER.error("Write bufferwrite information to disk failed, the reason is {}", e.getMessage());
+						LOGGER.error("Write bufferwrite information to disk failed");
 						e.printStackTrace();
-						throw new IOException(
-								"Write bufferwrite information to disk failed, the reason is " + e.getMessage());
+						throw new IOException("Write bufferwrite information to disk failed");
 					} catch (Exception e) {
 						// action error
-						LOGGER.error(
-								"Flush bufferwrite row group failed, when call the action function, the reason is {}",
-								e.getMessage());
+						LOGGER.error("Flush bufferwrite row group failed, when call the action function");
 						e.printStackTrace();
 						// handle
-						throw new IOException(
-								"Flush bufferwrite row group failed, when call the action function, the reason is "
-										+ e.getMessage());
+						throw new IOException("Flush bufferwrite row group failed, when call the action function");
 					}
 				} else {
 					flushState.setFlushing();
@@ -663,7 +658,8 @@ public class BufferWriteProcessor extends LRUProcessor {
 							LOGGER.error("Write bufferwrite information to disk failed, the reason is {}",
 									e.getMessage());
 							e.printStackTrace();
-							System.exit(0);
+							// how to handle this error
+							// TODO
 						} catch (Exception e) {
 							// action error
 							LOGGER.error(
@@ -671,6 +667,7 @@ public class BufferWriteProcessor extends LRUProcessor {
 									e.getMessage());
 							e.printStackTrace();
 							// how to handle this error
+							// TODO
 						}
 						switchRecordWriterFromFlushToWork();
 						convertBufferLock.writeLock().lock();
