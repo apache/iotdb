@@ -48,7 +48,7 @@ public abstract class AbstractClient {
 	protected static final int MAX_HELP_CONSOLE_WIDTH = 88;
 
 	protected static final String TIMESTAMP_STR = "Time";
-	protected static final int ISO_DATETIME_LEN = 30;
+	protected static final int ISO_DATETIME_LEN = 29;
 	protected static int maxTimeLength = ISO_DATETIME_LEN;
 	protected static int maxValueLength = 15;
 	protected static String formatTime = "%" + maxTimeLength + "s|";
@@ -179,7 +179,7 @@ public abstract class AbstractClient {
 	}
 
 	protected static void setTimeFormat(String newTimeFormat) {
-		switch (timeFormat) {
+		switch (newTimeFormat) {
 		case "long":
 		case "number":
 			maxTimeLength = maxValueLength;
@@ -269,10 +269,10 @@ public abstract class AbstractClient {
 		if(specialCmd.startsWith(SET_TIMESTAMP_DISPLAY)){
 			String[] values = specialCmd.split("=");
 			if(values.length != 2){
-				System.out.println(String.format("%s> format error, please input like set %s=ISO8601", TSFILEDB_CLI_PREFIX, SET_TIMESTAMP_DISPLAY));
+				System.out.println(String.format("time display format error, please input like %s=ISO8601", SET_TIMESTAMP_DISPLAY));
 				return OPERATION_RESULT.CONTINUE_OPER;
 			}
-			setTimeFormat(values[1]);
+			setTimeFormat(cmd.split("=")[1]);
 			System.out.println("time display type has set to "+values[1]);
 			return OPERATION_RESULT.CONTINUE_OPER;
 		}
