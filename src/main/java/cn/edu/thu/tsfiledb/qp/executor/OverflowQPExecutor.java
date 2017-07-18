@@ -74,7 +74,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
                 PropertyPlan property = (PropertyPlan) plan;
                 return operateProperty(property);
             default:
-                throw new UnsupportedOperationException();
+                throw new UnsupportedOperationException(String.format("operation %s does not support", plan.getOperatorType()));
         }
     }
 
