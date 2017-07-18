@@ -102,7 +102,24 @@ public abstract class QueryProcessExecutor {
      * @return - whether the operator is successful.
      */
     public abstract boolean update(Path path, long startTime, long endTime, String value) throws ProcessorException;
-    
+
+
+    /**
+     * execute delete command and return whether the operator is successful.
+     *
+     * @param paths : delete series paths
+     * @param deleteTime end time in delete command
+     * @return - whether the operator is successful.
+     */
+    public boolean delete(List<Path> paths, long deleteTime) throws ProcessorException {
+        boolean result = true;
+        for(Path path: paths) {
+            result &= delete(path, deleteTime);
+        }
+        return result;
+    }
+
+
     /**
      * execute delete command and return whether the operator is successful.
      * 

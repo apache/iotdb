@@ -58,7 +58,7 @@ public class MemIntQpExecutor extends QueryProcessExecutor {
         switch (plan.getOperatorType()) {
             case DELETE:
                 DeletePlan delete = (DeletePlan) plan;
-                return delete(delete.getPath(), delete.getDeleteTime());
+                return delete(delete.getPaths(), delete.getDeleteTime());
             case UPDATE:
                 UpdatePlan update = (UpdatePlan) plan;
                 return update(update.getPath(), update.getStartTime(), update.getEndTime(), update.getValue());
