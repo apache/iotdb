@@ -284,11 +284,20 @@ public class LogicalGenerator {
 	}
 
 	private void analyzeDelete(ASTNode astNode) throws LogicalOperatorException {
-		if (astNode.getChildCount() != 2)
-			throw new LogicalOperatorException("error format in DELETE statement:" + astNode.dump());
 		initializedOperator = new DeleteOperator(SQLConstant.TOK_DELETE);
-		analyzeSelect(astNode.getChild(0));
-		analyzeWhere(astNode.getChild(1));
+		SelectOperator selectOp = new SelectOperator(TSParser.TOK_SELECT);
+		int selChildCount = astNode.getChildCount() - 1;
+		for (int i = 0; i < selChildCount; i++) {
+			ASTNode child = astNode.getChild(i);
+			if (child.getType() != TSParser.TOK_PATH) {
+				throw new LogicalOperatorException(
+						"children FROM clause except last one must all be TOK_PATH, actual:" + child.getText());
+			}
+			Path tablePath = parsePath(child);
+			selectOp.addSuffixTablePath(tablePath);
+		}
+		((SFWOperator) initializedOperator).setSelectOperator(selectOp);
+		analyzeWhere(astNode.getChild(selChildCount));
 		long deleteTime = parseDeleteTimeFilter((DeleteOperator) initializedOperator);
 		((DeleteOperator) initializedOperator).setTime(deleteTime);
 	}

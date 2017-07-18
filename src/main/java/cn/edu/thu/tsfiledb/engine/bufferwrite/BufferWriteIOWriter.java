@@ -20,6 +20,7 @@ public class BufferWriteIOWriter extends TSFileIOWriter {
 	 * been flushed into file.
 	 */
 	private final List<RowGroupMetaData> backUpList = new ArrayList<RowGroupMetaData>();
+	private int lastRowGroupIndex = 0;
 
 	public BufferWriteIOWriter(FileSchema schema, TSRandomAccessFileWriter output) throws IOException {
 		super(schema, output);
@@ -35,19 +36,24 @@ public class BufferWriteIOWriter extends TSFileIOWriter {
 	public BufferWriteIOWriter(FileSchema schema,TSRandomAccessFileWriter output, long offset,List<RowGroupMetaData> rowGroups) throws IOException{
 		super(schema, output,offset, rowGroups);
 		addrowGroupsTobackupList(rowGroups);
+		
 	}
 	
 	private void addrowGroupsTobackupList(List<RowGroupMetaData> rowGroups){
 		for(RowGroupMetaData rowGroupMetaData:rowGroups){
 			backUpList.add(rowGroupMetaData);
 		}
+		lastRowGroupIndex = rowGroups.size();
 	}
 
 	/**
 	 * <b>Note that</b>,the method is not thread safe.
 	 */
 	public void addNewRowGroupMetaDataToBackUp() {
-		backUpList.add(rowGroups.get(rowGroups.size() - 1));
+		for(int i = lastRowGroupIndex;i<rowGroups.size();i++){
+			backUpList.add(rowGroups.get(i));
+		}
+		lastRowGroupIndex = rowGroups.size();
 	}
 
 	/**

@@ -276,7 +276,7 @@ public class WriteLogNodeTest {
             System.out.println("Update: " + p.getPath() + " " + p.getStartTime() + " " + p.getEndTime() + " " + p.getValue());
         } else if (plan instanceof DeletePlan) {
             DeletePlan p = (DeletePlan) plan;
-            System.out.println("Delete: " + p.getPath() + " " + p.getDeleteTime());
+            System.out.println("Delete: " + p.getPaths().get(0) + " " + p.getDeleteTime());
         } else if (plan instanceof InsertPlan) {
             InsertPlan InsertPlan = (InsertPlan) plan;
             System.out.println("MultiInsert: " + InsertPlan.getDeltaObject() + " " + InsertPlan.getTime());

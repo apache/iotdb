@@ -27,4 +27,5 @@ public class TsfileJDBCConfig {
 	public static final long RETRY_INTERVAL = 1000;
 	
 	public static int fetchSize = 1000;
+	public static int connectionTimeoutInMs = 10000;
 }
