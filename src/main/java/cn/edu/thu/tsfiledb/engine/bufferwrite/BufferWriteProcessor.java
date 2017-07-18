@@ -585,9 +585,7 @@ public class BufferWriteProcessor extends LRUProcessor {
 						try {
 							flushState.wait();
 						} catch (InterruptedException e) {
-							LOGGER.error("Interrupt error when waiting flush,processor:{}. Message: {}", nameSpacePath,
-									e.getMessage());
-							e.printStackTrace();
+							LOGGER.error("Interrupt error when waiting flush,processor:{}", nameSpacePath,e);
 						}
 					}
 				}
@@ -595,9 +593,7 @@ public class BufferWriteProcessor extends LRUProcessor {
 				try {
 					bufferwriteFlushAction.act();
 				} catch (Exception e) {
-					LOGGER.error("Flush bufferwrite row group failed, when call the action function, the reason is {}",
-							e.getMessage());
-					e.printStackTrace();
+					LOGGER.error("Flush bufferwrite row group failed, when call the action function.",e);
 					throw new IOException(e);
 				}
 
@@ -616,18 +612,15 @@ public class BufferWriteProcessor extends LRUProcessor {
 							WriteLogManager.getInstance().endBufferWriteFlush(nameSpacePath);
 						}
 					} catch (IOException e) {
-						LOGGER.error("Flush row group to store failed, processor:{}.", nameSpacePath);
-						e.printStackTrace();
+						LOGGER.error("Flush row group to store failed, processor:{}.", nameSpacePath,e);
 						throw e;
 					} catch (BufferWriteProcessorException e) {
 						// write restore error
-						LOGGER.error("Write bufferwrite information to disk failed");
-						e.printStackTrace();
+						LOGGER.error("Write bufferwrite information to disk failed",e);
 						throw new IOException("Write bufferwrite information to disk failed");
 					} catch (Exception e) {
 						// action error
-						LOGGER.error("Flush bufferwrite row group failed, when call the action function");
-						e.printStackTrace();
+						LOGGER.error("Flush bufferwrite row group failed, when call the action function",e);
 						// handle
 						throw new IOException("Flush bufferwrite row group failed, when call the action function");
 					}
@@ -651,21 +644,16 @@ public class BufferWriteProcessor extends LRUProcessor {
 							 * There should be added system log by CGF and throw
 							 * exception
 							 */
-							LOGGER.error("{} Asynchronous flush error, sleep this thread-{}. Message:{}", nameSpacePath,
-									Thread.currentThread().getId(), e.getMessage());
-							e.printStackTrace();
+							LOGGER.error("{} Asynchronous flush error, sleep this thread-{}.", nameSpacePath,
+									Thread.currentThread().getId(),e);
 						} catch (BufferWriteProcessorException e) {
-							LOGGER.error("Write bufferwrite information to disk failed, the reason is {}",
-									e.getMessage());
-							e.printStackTrace();
+							LOGGER.error("Write bufferwrite information to disk failed.",e);
 							// how to handle this error
 							// TODO
 						} catch (Exception e) {
 							// action error
 							LOGGER.error(
-									"Flush bufferwrite row group failed, when call the action function, the reason is {}",
-									e.getMessage());
-							e.printStackTrace();
+									"Flush bufferwrite row group failed, when call the action function.",e);
 							// how to handle this error
 							// TODO
 						}
@@ -720,7 +708,6 @@ public class BufferWriteProcessor extends LRUProcessor {
 			writeSupport.init(groupWriters);
 			schema.getDeltaObjectAppearedSet().clear();
 			recordCount = 0;
-
 		}
 
 		private void switchRecordWriterFromFlushToWork() {
