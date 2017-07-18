@@ -57,8 +57,6 @@ public class QueryForMerge {
 	private void unlockForCurrentQuery() {
 		try {
 			ReadLockManager.getInstance().unlockForOneRequest();
-		} catch (NotConsistentException e) {
-			e.printStackTrace();
 		} catch (ProcessorException e) {
 			e.printStackTrace();
 		}

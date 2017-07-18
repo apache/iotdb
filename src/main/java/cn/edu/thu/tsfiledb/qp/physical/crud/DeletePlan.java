@@ -13,7 +13,7 @@ import cn.edu.thu.tsfiledb.qp.physical.PhysicalPlan;
  */
 public class DeletePlan extends PhysicalPlan {
     private long deleteTime;
-    private Path path;
+    private List<Path> paths = new ArrayList<>();
 
     public DeletePlan() {
         super(false, OperatorType.DELETE);
@@ -21,8 +21,14 @@ public class DeletePlan extends PhysicalPlan {
 
     public DeletePlan(long deleteTime, Path path) {
         super(false, OperatorType.DELETE);
-        this.setDeleteTime(deleteTime);
-        this.setPath(path);
+        this.deleteTime = deleteTime;
+        this.paths.add(path);
+    }
+
+    public DeletePlan(long deleteTime, List<Path> paths) {
+        super(false, OperatorType.DELETE);
+        this.deleteTime = deleteTime;
+        this.paths = paths;
     }
 
     public long getDeleteTime() {
@@ -33,20 +39,17 @@ public class DeletePlan extends PhysicalPlan {
         this.deleteTime = delTime;
     }
 
-    public Path getPath() {
-        return path;
+    public void addPath(Path path) {
+        this.paths.add(path);
     }
 
-    public void setPath(Path path) {
-        this.path = path;
+    public void setPaths(List<Path> paths) {
+        this.paths = paths;
     }
 
     @Override
     public List<Path> getPaths() {
-        List<Path> ret = new ArrayList<>();
-        if (path != null)
-            ret.add(path);
-        return ret;
+        return paths;
     }
 
 }

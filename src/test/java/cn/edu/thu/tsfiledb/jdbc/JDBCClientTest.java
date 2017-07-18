@@ -14,7 +14,7 @@ public class JDBCClientTest {
 		try {
 			connection =  DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
 			DatabaseMetaData databaseMetaData = connection.getMetaData();
-			ResultSet resultSet = databaseMetaData.getColumns(null, null, "root.Inventec.C101_1_2", null);
+			ResultSet resultSet = databaseMetaData.getColumns(null, null, "root.vehicle.d0.s0", null);
 			while(resultSet.next()){
 				//System.out.println(String.format("column %s, type %s", resultSet.getString("COLUMN_NAME"), resultSet.getString("COLUMN_TYPE")));
 				System.out.println(String.format("column %s, type %s", resultSet.getString(0), resultSet.getString(1)));

@@ -36,6 +36,7 @@ import cn.edu.thu.tsfiledb.query.engine.OverflowQueryEngine;
 
 public class OverflowQPExecutor extends QueryProcessExecutor {
 
+<<<<<<< HEAD
 	private static final Logger logger = LoggerFactory.getLogger(OverflowQPExecutor.class);
 	private OverflowQueryEngine queryEngine;
 	private FileNodeManager fileNodeManager;
@@ -371,5 +372,5 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 		}
 		return true;
 	}
-
 }
+
