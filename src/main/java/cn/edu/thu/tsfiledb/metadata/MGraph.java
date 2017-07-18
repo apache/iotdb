@@ -237,14 +237,14 @@ public class MGraph implements Serializable {
 
 	public String toString() {
 		StringBuilder sb = new StringBuilder();
-		sb.append("===  MetaData Tree  ===\n\n");
+		sb.append("===  Timeseries Tree  ===\n\n");
 		sb.append(mTree.toString());
-		sb.append("\n\n===  Properties Tree  ===   Size : " + pTreeMap.size() + "\n\n");
-		for (String key : pTreeMap.keySet()) {
-			sb.append("--- name : " + key + "---\n");
-			sb.append(pTreeMap.get(key).toString());
-			sb.append("\n\n");
-		}
+//		sb.append("\n\n===  Properties Tree  ===   Size : " + pTreeMap.size() + "\n\n");
+//		for (String key : pTreeMap.keySet()) {
+//			sb.append("--- name : " + key + "---\n");
+//			sb.append(pTreeMap.get(key).toString());
+//			sb.append("\n\n");
+//		}
 		return sb.toString();
 	}
 }
