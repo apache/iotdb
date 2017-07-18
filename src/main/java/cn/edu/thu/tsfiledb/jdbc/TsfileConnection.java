@@ -107,8 +107,9 @@ public class TsfileConnection implements Connection {
 	    throw new SQLException("Error occurs when closing session at server", e);
 	} finally {
 	    isClosed = true;
-	    if (transport != null)
-		transport.close();
+	    if (transport != null){
+			transport.close();
+	    }
 	}
     }
 
