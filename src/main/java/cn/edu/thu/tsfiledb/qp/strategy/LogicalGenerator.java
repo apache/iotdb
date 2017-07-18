@@ -53,8 +53,9 @@ public class LogicalGenerator {
 
 	/**
 	 * input an astNode parsing by {@code antlr} and analyze it.
+	 * 
 	 * @throws QueryProcessorException
-	 * @throws ArgsErrorException 
+	 * @throws ArgsErrorException
 	 *
 	 */
 	private void analyze(ASTNode astNode) throws QueryProcessorException, ArgsErrorException {
@@ -236,40 +237,41 @@ public class LogicalGenerator {
 
 	private void analyzeInsert(ASTNode astNode) throws QueryProcessorException {
 		InsertOperator InsertOp = new InsertOperator(SQLConstant.TOK_INSERT);
-        initializedOperator = InsertOp;
-        analyzeSelect(astNode.getChild(0));
-        long timestamp;
-        ASTNode timeChild;
-        try {
-            timeChild = astNode.getChild(1).getChild(0);
-            if (timeChild.getToken().getType() != TSParser.TOK_TIME) {
-                throw new LogicalOperatorException("need keyword 'timestamp'");
-            }
-            ASTNode timeValue = astNode.getChild(2).getChild(0);
-            if(timeValue.getType()==TSParser.TOK_DATETIME){
-            	timestamp = Long.valueOf(parseTokenTime(timeValue));
-            }else{
-            	timestamp = Long.valueOf(astNode.getChild(2).getChild(0).getText());
-            }
-        } catch (NumberFormatException e) {
-            throw new LogicalOperatorException("need a long value in insert clause, but given:" + astNode.getChild(2).getChild(0).getText());
-        }
-        if (astNode.getChild(1).getChildCount() != astNode.getChild(2).getChildCount()) {
-            throw new QueryProcessorException("length of measurement is NOT EQUAL TO the length of values");
-        }
-        InsertOp.setTime(timestamp);
-        List<String> measurementList = new ArrayList<>();
-        for (int i = 1; i < astNode.getChild(1).getChildCount(); i++) {
-            measurementList.add(astNode.getChild(1).getChild(i).getText());
-        }
-        InsertOp.setMeasurementList(measurementList);
+		initializedOperator = InsertOp;
+		analyzeSelect(astNode.getChild(0));
+		long timestamp;
+		ASTNode timeChild;
+		try {
+			timeChild = astNode.getChild(1).getChild(0);
+			if (timeChild.getToken().getType() != TSParser.TOK_TIME) {
+				throw new LogicalOperatorException("need keyword 'timestamp'");
+			}
+			ASTNode timeValue = astNode.getChild(2).getChild(0);
+			if (timeValue.getType() == TSParser.TOK_DATETIME) {
+				timestamp = Long.valueOf(parseTokenTime(timeValue));
+			} else {
+				timestamp = Long.valueOf(astNode.getChild(2).getChild(0).getText());
+			}
+		} catch (NumberFormatException e) {
+			throw new LogicalOperatorException(
+					"need a long value in insert clause, but given:" + astNode.getChild(2).getChild(0).getText());
+		}
+		if (astNode.getChild(1).getChildCount() != astNode.getChild(2).getChildCount()) {
+			throw new QueryProcessorException("length of measurement is NOT EQUAL TO the length of values");
+		}
+		InsertOp.setTime(timestamp);
+		List<String> measurementList = new ArrayList<>();
+		for (int i = 1; i < astNode.getChild(1).getChildCount(); i++) {
+			measurementList.add(astNode.getChild(1).getChild(i).getText());
+		}
+		InsertOp.setMeasurementList(measurementList);
 
-        List<String> valueList = new ArrayList<>();
-        for (int i = 1; i < astNode.getChild(2).getChildCount(); i++) {
-            valueList.add(astNode.getChild(2).getChild(i).getText());
-        }
-        InsertOp.setValueList(valueList);
-    }
+		List<String> valueList = new ArrayList<>();
+		for (int i = 1; i < astNode.getChild(2).getChildCount(); i++) {
+			valueList.add(astNode.getChild(2).getChild(i).getText());
+		}
+		InsertOp.setValueList(valueList);
+	}
 
 	private void analyzeUpdate(ASTNode astNode) throws QueryProcessorException {
 		if (astNode.getChildCount() != 3)
@@ -458,7 +460,7 @@ public class LogicalGenerator {
 		int childCount = node.getChildCount();
 		String[] path = new String[node.getChildCount()];
 		for (int i = 0; i < childCount; i++) {
-//			path[i] = node.getChild(i).getText().toLowerCase();
+			// path[i] = node.getChild(i).getText().toLowerCase();
 			path[i] = node.getChild(i).getText();
 		}
 		return new Path(new StringContainer(path, SystemConstant.PATH_SEPARATOR));
@@ -469,7 +471,7 @@ public class LogicalGenerator {
 		sc.addTail(SQLConstant.ROOT);
 		int childCount = node.getChildCount();
 		for (int i = 0; i < childCount; i++) {
-//			sc.addTail(node.getChild(i).getText().toLowerCase());
+			// sc.addTail(node.getChild(i).getText().toLowerCase());
 			sc.addTail(node.getChild(i).getText());
 		}
 		return new Path(sc);
@@ -485,7 +487,8 @@ public class LogicalGenerator {
 		int childCount = astNode.getChildCount();
 		// node path should have more than one level and first node level must
 		// be root
-//		if (childCount < 3 || !SQLConstant.ROOT.equals(astNode.getChild(1).getText().toLowerCase()))
+		// if (childCount < 3 ||
+		// !SQLConstant.ROOT.equals(astNode.getChild(1).getText().toLowerCase()))
 		if (childCount < 3 || !SQLConstant.ROOT.equals(astNode.getChild(1).getText()))
 			throw new IllegalASTFormatException("data load command: child count < 3\n" + astNode.dump());
 		String csvPath = astNode.getChild(0).getText();
@@ -494,7 +497,7 @@ public class LogicalGenerator {
 		StringContainer sc = new StringContainer(SystemConstant.PATH_SEPARATOR);
 		sc.addTail(SQLConstant.ROOT);
 		for (int i = 2; i < childCount; i++) {
-//			String pathNode = astNode.getChild(i).getText().toLowerCase();
+			// String pathNode = astNode.getChild(i).getText().toLowerCase();
 			String pathNode = astNode.getChild(i).getText();
 			sc.addTail(pathNode);
 		}
@@ -640,61 +643,68 @@ public class LogicalGenerator {
 		initializedOperator = authorOperator;
 	}
 
-    private void checkMetadataArgs(String dataType, String encoding) throws MetadataArgsErrorException {
-	final String RLE = "RLE";
-	final String PLAIN = "PLAIN";
-	final String TS_2DIFF = "TS_2DIFF";
-	final String BITMAP = "BITMAP";
+	private void checkMetadataArgs(String dataType, String encoding) throws MetadataArgsErrorException {
+		final String RLE = "RLE";
+		final String PLAIN = "PLAIN";
+		final String TS_2DIFF = "TS_2DIFF";
+		final String BITMAP = "BITMAP";
 
-	if (dataType == null) {
-	    throw new MetadataArgsErrorException("data type cannot be null");
+		if (dataType == null) {
+			throw new MetadataArgsErrorException("data type cannot be null");
+		}
+		if (encoding == null) {
+			throw new MetadataArgsErrorException("encoding type cannot be null");
+		}
+		if (!encoding.equals(RLE) && !encoding.equals(PLAIN) && !encoding.equals(TS_2DIFF)
+				&& !encoding.equals(BITMAP)) {
+			throw new MetadataArgsErrorException(String.format("encoding %s is not support", encoding));
+		}
+		switch (dataType) {
+		case "BOOLEAN":
+			if (encoding.equals(PLAIN)) {
+				throw new MetadataArgsErrorException(
+						String.format("encoding %s does not support %s", encoding, dataType));
+			}
+			break;
+		case "INT32":
+			if ((!encoding.equals(PLAIN) && !encoding.equals(RLE) && !encoding.equals(TS_2DIFF))) {
+				throw new MetadataArgsErrorException(
+						String.format("encoding %s does not support %s", encoding, dataType));
+			}
+			break;
+		case "INT64":
+			if ((!encoding.equals(PLAIN) && !encoding.equals(RLE) && !encoding.equals(TS_2DIFF))) {
+				throw new MetadataArgsErrorException(
+						String.format("encoding %s does not support %s", encoding, dataType));
+			}
+			break;
+		case "FLOAT":
+			if ((!encoding.equals(PLAIN) && !encoding.equals(RLE) && !encoding.equals(TS_2DIFF))) {
+				throw new MetadataArgsErrorException(
+						String.format("encoding %s does not support %s", encoding, dataType));
+			}
+			break;
+		case "DOUBLE":
+			if ((!encoding.equals(PLAIN) && !encoding.equals(RLE) && !encoding.equals(TS_2DIFF))) {
+				throw new MetadataArgsErrorException(
+						String.format("encoding %s does not support %s", encoding, dataType));
+			}
+			break;
+		case "ENUMS":
+			if ((!encoding.equals(PLAIN) && !encoding.equals(BITMAP))) {
+				throw new MetadataArgsErrorException(
+						String.format("encoding %s does not support %s", encoding, dataType));
+			}
+			break;
+		case "BYTE_ARRAY":
+			if (!encoding.equals(PLAIN)) {
+				throw new MetadataArgsErrorException(
+						String.format("encoding %s does not support %s", encoding, dataType));
+			}
+			break;
+		default:
+			throw new MetadataArgsErrorException(String.format("data type %s is not supprot", dataType));
+		}
 	}
-	switch (dataType) {
-	case "BOOLEAN":
-	    if (encoding == null || encoding.equals(PLAIN)) {
-		throw new MetadataArgsErrorException(
-			String.format("encoding %s does not support %s", encoding, dataType));
-	    }
-	    break;
-	case "INT32":
-	    if (encoding == null || (!encoding.equals(PLAIN) && !encoding.equals(RLE) && !encoding.equals(TS_2DIFF))) {
-		throw new MetadataArgsErrorException(
-			String.format("encoding %s does not support %s", encoding, dataType));
-	    }
-	    break;
-	case "INT64":
-	    if (encoding == null || (!encoding.equals(PLAIN) && !encoding.equals(RLE) && !encoding.equals(TS_2DIFF))) {
-		throw new MetadataArgsErrorException(
-			String.format("encoding %s does not support %s", encoding, dataType));
-	    }
-	    break;
-	case "FLOAT":
-	    if (encoding == null || (!encoding.equals(PLAIN) && !encoding.equals(RLE) && !encoding.equals(TS_2DIFF))) {
-		throw new MetadataArgsErrorException(
-			String.format("encoding %s does not support %s", encoding, dataType));
-	    }
-	    break;
-	case "DOUBLE":
-	    if (encoding == null || (!encoding.equals(PLAIN) && !encoding.equals(RLE) && !encoding.equals(TS_2DIFF))) {
-		throw new MetadataArgsErrorException(
-			String.format("encoding %s does not support %s", encoding, dataType));
-	    }
-	    break;
-	case "ENUMS":
-	    if (encoding == null || (!encoding.equals(PLAIN) && !encoding.equals(BITMAP))) {
-		throw new MetadataArgsErrorException(
-			String.format("encoding %s does not support %s", encoding, dataType));
-	    }
-	    break;
-	case "BYTE_ARRAY":
-	    if (encoding == null || !encoding.equals(PLAIN)) {
-		throw new MetadataArgsErrorException(
-			String.format("encoding %s does not support %s", encoding, dataType));
-	    }
-	    break;
-	default:
-	    throw new MetadataArgsErrorException(String.format("data type %s is not supprot", dataType));
-	}
-    }
-	
+
 }
