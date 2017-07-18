@@ -3,6 +3,7 @@ package cn.edu.thu.tsfiledb.utils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import cn.edu.thu.tsfile.common.exception.ProcessorException;
 import cn.edu.thu.tsfile.timeseries.utils.FileUtils;
 import cn.edu.thu.tsfile.timeseries.utils.RecordUtils;
 import cn.edu.thu.tsfile.timeseries.write.record.TSRecord;
@@ -75,6 +76,7 @@ public class LoadDataUtils {
         String line;
         try {
             while ((line = inputCsvFileReader.readLine()) != null) {
+        		if(line.trim().equals("")) continue;
                 if (lineCount % 1000000 == 0) {
                     long endTime = System.currentTimeMillis();
                     LOG.info("write line:{}, use time:{}", lineCount,
@@ -164,7 +166,8 @@ public class LoadDataUtils {
 
 
     public void loadLocalDataMultiPass(String inputCsvDataPath, String measureType,
-                                       MManager mManager) {
+                                       MManager mManager) throws ProcessorException {
+	checkIfFileExist(inputCsvDataPath);
         LOG.info("start loading data...");
         long startTime = System.currentTimeMillis();
         this.mManager = mManager;
@@ -184,12 +187,24 @@ public class LoadDataUtils {
             extraPath = loadLocalDataOnePass(extraPath);
             extraPaths.add(extraPath);
         } while (hasExtra);
-        for (String ext : extraPaths) {
-            LOG.info("delete old file:{}", ext);
-            new File(ext).delete();
+        for (String ext : extraPaths) {  
+            try {
+		org.apache.commons.io.FileUtils.forceDelete(new File(ext));
+		LOG.info("delete old file:{}", ext);
+	    } catch (IOException e) {
+		LOG.error("fail to delete extra file {}", ext, e);
+	    }  
         }
         long endTime = System.currentTimeMillis();
         LOG.info("load data successfully! total data points:{}, load data speed:{}w point/s",
                 totalPointCount, FileUtils.format(((float) totalPointCount / 10) / (endTime - startTime), 2));
+    }
+    
+    // add by XuYi on 2017/7/17
+    private void checkIfFileExist(String filePath) throws ProcessorException{
+	File file = new File(filePath);
+	if(!file.exists()){
+	    throw new ProcessorException(String.format("input file %s does not exist", filePath));
+	}
     }
 }
