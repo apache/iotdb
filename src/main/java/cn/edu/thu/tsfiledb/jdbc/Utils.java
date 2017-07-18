@@ -1,6 +1,7 @@
 package cn.edu.thu.tsfiledb.jdbc;
 
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -140,7 +141,7 @@ public class Utils {
             case BYTE_ARRAY:
                 List<ByteBuffer> binaries = tsDynamicOneColumnData.getBinaryList();
                 for (ByteBuffer b : binaries) {
-                    dynamicOneColumnData.putBinary(new Binary(b.array()));
+                    dynamicOneColumnData.putBinary(new Binary(StandardCharsets.UTF_8.decode(b).toString()));
                 }
                 break;
             default:
