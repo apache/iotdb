@@ -51,7 +51,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
         switch (plan.getOperatorType()) {
             case DELETE:
                 DeletePlan delete = (DeletePlan) plan;
-                return delete(delete.getPath(), delete.getDeleteTime());
+                return delete(delete.getPaths(), delete.getDeleteTime());
             case UPDATE:
                 UpdatePlan update = (UpdatePlan) plan;
                 return update(update.getPath(), update.getStartTime(), update.getEndTime(), update.getValue());
@@ -134,7 +134,6 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
             throw new ProcessorException(e);
         }
     }
-
 
     @Override
     public boolean delete(Path path, long timestamp) throws ProcessorException {
@@ -280,6 +279,9 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
                     mManager.addAPathToMTree(path.getFullPath(), dataType, encoding, encodingArgs);
                     break;
                 case DELETE_PATH:
+//                    if(!mManager.pathExist(path.getFullPath())){
+//                		throw new ProcessorException(String.format("path %s does not exists", path.getFullPath()));
+//                    }
                     try {
                         // First delete all data interactive
                         deleteAllData(mManager, path);
@@ -306,7 +308,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
         for (String p : pathList) {
             if(mManager.pathExist(p)){
                 DeletePlan deletePlan = new DeletePlan();
-                deletePlan.setPath(new Path(p));
+                deletePlan.addPath(new Path(p));
                 deletePlan.setDeleteTime(Long.MAX_VALUE);
                 processNonQuery(deletePlan);
             }
