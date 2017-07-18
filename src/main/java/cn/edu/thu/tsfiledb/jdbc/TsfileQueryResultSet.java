@@ -41,18 +41,16 @@ import org.slf4j.LoggerFactory;
 import cn.edu.thu.tsfile.timeseries.read.query.QueryDataSet;
 import cn.edu.thu.tsfile.timeseries.read.support.RowRecord;
 
-
-
 public class TsfileQueryResultSet implements ResultSet {
 	private static final Logger LOGGER = LoggerFactory.getLogger(TsfileQueryResultSet.class);
-	
+
 	private Statement statement = null;
 	private String sql;
 	private SQLWarning warningChain = null;
 	private boolean wasNull = false;
 	private boolean isClosed = false;
 	private TSIService.Iface client = null;
-	private TSOperationHandle operationHandle = null;	
+	private TSOperationHandle operationHandle = null;
 	private Map<String, Integer> columnInfo;
 	private RowRecord record;
 	private Iterator<RowRecord> recordItr;
@@ -63,13 +61,13 @@ public class TsfileQueryResultSet implements ResultSet {
 	private String operationType;
 	private final String TIMESTAMP_STR = "Time";
 
-	public TsfileQueryResultSet(){
-		
+	public TsfileQueryResultSet() {
+
 	}
-	
-	public TsfileQueryResultSet(Statement statement,List<String> columnName, 
-			TSIService.Iface client, TS_SessionHandle sessionHandle ,
-			TSOperationHandle operationHandle, String sql, String operationType) throws SQLException {
+
+	public TsfileQueryResultSet(Statement statement, List<String> columnName, TSIService.Iface client,
+			TS_SessionHandle sessionHandle, TSOperationHandle operationHandle, String sql, String operationType)
+			throws SQLException {
 		this.statement = statement;
 		this.sql = sql;
 		this.columnInfo = new HashMap<>();
@@ -77,7 +75,7 @@ public class TsfileQueryResultSet implements ResultSet {
 		this.operationHandle = operationHandle;
 		columnInfo.put(TIMESTAMP_STR, 0);
 		int index = 1;
-		for(String name : columnName){
+		for (String name : columnName) {
 			columnInfo.put(name, index++);
 		}
 		this.maxRows = statement.getMaxRows();
@@ -123,14 +121,15 @@ public class TsfileQueryResultSet implements ResultSet {
 
 	@Override
 	public void close() throws SQLException {
-		if(isClosed) return;
+		if (isClosed)
+			return;
 
-	    	closeOperationHandle();
-	    	client = null;
+		closeOperationHandle();
+		client = null;
 		isClosed = true;
 	}
-	
-	private void closeOperationHandle() throws SQLException{
+
+	private void closeOperationHandle() throws SQLException {
 		try {
 			if (operationHandle != null) {
 				TSCloseOperationReq closeReq = new TSCloseOperationReq(operationHandle);
@@ -138,9 +137,10 @@ public class TsfileQueryResultSet implements ResultSet {
 				Utils.verifySuccess(closeResp.getStatus());
 			}
 		} catch (SQLException e) {
-			throw new SQLException("Error occurs for close opeation in server side becasuse "+e.getMessage());
+			throw new SQLException("Error occurs for close opeation in server side becasuse " + e.getMessage());
 		} catch (TException e) {
-		    	throw new SQLException("Error occurs when connecting to server for close operation, becasue: "+e.getMessage());
+			throw new SQLException(
+					"Error occurs when connecting to server for close operation, becasue: " + e.getMessage());
 		}
 	}
 
@@ -152,7 +152,7 @@ public class TsfileQueryResultSet implements ResultSet {
 	@Override
 	public int findColumn(String columnName) throws SQLException {
 		Integer column = columnInfo.get(columnName);
-		if(column == null){
+		if (column == null) {
 			throw new SQLException(String.format("Column %s does not exist", columnName));
 		}
 		return column;
@@ -201,7 +201,7 @@ public class TsfileQueryResultSet implements ResultSet {
 
 	@Override
 	public BigDecimal getBigDecimal(String columnName, int scale) throws SQLException {
-		return getBigDecimal(findColumn(columnName),scale);
+		return getBigDecimal(findColumn(columnName), scale);
 	}
 
 	@Override
@@ -227,8 +227,10 @@ public class TsfileQueryResultSet implements ResultSet {
 	@Override
 	public boolean getBoolean(int columnIndex) throws SQLException {
 		String b = getValue(columnIndex);
-		if(b.trim().equalsIgnoreCase("0")) return false;
-		if(b.trim().equalsIgnoreCase("1")) return true;
+		if (b.trim().equalsIgnoreCase("0"))
+			return false;
+		if (b.trim().equalsIgnoreCase("1"))
+			return true;
 		return Boolean.parseBoolean(getValue(columnIndex));
 	}
 
@@ -343,7 +345,7 @@ public class TsfileQueryResultSet implements ResultSet {
 
 	@Override
 	public int getHoldability() throws SQLException {
-	    throw new SQLException("Method not supported");
+		throw new SQLException("Method not supported");
 	}
 
 	@Override
@@ -443,17 +445,17 @@ public class TsfileQueryResultSet implements ResultSet {
 
 	@Override
 	public int getRow() throws SQLException {
-	    throw new SQLException("Method not supported");
+		throw new SQLException("Method not supported");
 	}
 
 	@Override
 	public RowId getRowId(int arg0) throws SQLException {
-	    throw new SQLException("Method not supported");
+		throw new SQLException("Method not supported");
 	}
 
 	@Override
 	public RowId getRowId(String arg0) throws SQLException {
-	    throw new SQLException("Method not supported");
+		throw new SQLException("Method not supported");
 	}
 
 	@Override
@@ -523,25 +525,27 @@ public class TsfileQueryResultSet implements ResultSet {
 
 	@Override
 	public Timestamp getTimestamp(int arg0, Calendar arg1) throws SQLException {
-		throw new SQLException("Method not supported");	}
+		throw new SQLException("Method not supported");
+	}
 
 	@Override
 	public Timestamp getTimestamp(String arg0, Calendar arg1) throws SQLException {
-		throw new SQLException("Method not supported");	}
+		throw new SQLException("Method not supported");
+	}
 
 	@Override
 	public int getType() throws SQLException {
-	    return ResultSet.TYPE_FORWARD_ONLY;
+		return ResultSet.TYPE_FORWARD_ONLY;
 	}
 
 	@Override
 	public URL getURL(int arg0) throws SQLException {
-	    throw new SQLException("Method not supported");
+		throw new SQLException("Method not supported");
 	}
 
 	@Override
 	public URL getURL(String arg0) throws SQLException {
-	    throw new SQLException("Method not supported");
+		throw new SQLException("Method not supported");
 	}
 
 	@Override
@@ -566,11 +570,13 @@ public class TsfileQueryResultSet implements ResultSet {
 
 	@Override
 	public boolean isAfterLast() throws SQLException {
-		throw new SQLException("Method not supported");	}
+		throw new SQLException("Method not supported");
+	}
 
 	@Override
 	public boolean isBeforeFirst() throws SQLException {
-		throw new SQLException("Method not supported");	}
+		throw new SQLException("Method not supported");
+	}
 
 	@Override
 	public boolean isClosed() throws SQLException {
@@ -589,7 +595,7 @@ public class TsfileQueryResultSet implements ResultSet {
 
 	@Override
 	public boolean last() throws SQLException {
-		throw new SQLException("Method not supported");	
+		throw new SQLException("Method not supported");
 	}
 
 	@Override
@@ -604,48 +610,51 @@ public class TsfileQueryResultSet implements ResultSet {
 
 	@Override
 	public boolean next() throws SQLException {
-		if(maxRows > 0 && rowsFetched >= maxRows){
+		if (maxRows > 0 && rowsFetched >= maxRows) {
 			LOGGER.info("Reach max rows {}", maxRows);
 			return false;
 		}
-		
-		if((recordItr == null || !recordItr.hasNext()) && !emptyResultSet){
-			TSFetchResultsReq req = new TSFetchResultsReq(sql,fetchSize);
+
+		if ((recordItr == null || !recordItr.hasNext()) && !emptyResultSet) {
+			TSFetchResultsReq req = new TSFetchResultsReq(sql, fetchSize);
+			
 			try {
 				TSFetchResultsResp resp = client.fetchResults(req);
 				Utils.verifySuccess(resp.status);
-				if(!resp.hasResultSet){
+				if (!resp.hasResultSet) {
 					emptyResultSet = true;
-				}else{
+				} else {
 					QueryDataSet queryDataSet = Utils.convertQueryDataSet(resp.getQueryDataSet());
 					List<RowRecord> records = new ArrayList<>();
-					while(queryDataSet.hasNextRecord()){
-						records.add(queryDataSet.getNextRecord());
+					while (queryDataSet.hasNextRecord()) {
+						RowRecord rowRecord = queryDataSet.getNextRecord();
+						records.add(rowRecord);
 					}
-
 					recordItr = records.iterator();
 				}
 			} catch (TException e) {
-			    	throw new SQLException("Cannot fetch result from server, because of network connection");
+				throw new SQLException("Cannot fetch result from server, because of network connection");
 			}
 		}
-		
-		if(emptyResultSet){
+
+		if (emptyResultSet) {
 			return false;
 		}
 		record = recordItr.next();
-//		if(record.getDeltaObjectType() != null && record.getDeltaObjectType().equals(AGGREGATION_STR)){
-//		    if(columnInfo.containsKey(TIMESTAMP_STR)){
-//    			columnInfo.remove(TIMESTAMP_STR);
-//    		    }
-//		}
+		// if(record.getDeltaObjectType() != null &&
+		// record.getDeltaObjectType().equals(AGGREGATION_STR)){
+		// if(columnInfo.containsKey(TIMESTAMP_STR)){
+		// columnInfo.remove(TIMESTAMP_STR);
+		// }
+		// }
 		rowsFetched++;
 		return true;
 	}
 
 	@Override
 	public boolean previous() throws SQLException {
-		throw new SQLException("Method not supported");	}
+		throw new SQLException("Method not supported");
+	}
 
 	@Override
 	public void refreshRow() throws SQLException {
@@ -659,15 +668,18 @@ public class TsfileQueryResultSet implements ResultSet {
 
 	@Override
 	public boolean rowDeleted() throws SQLException {
-		throw new SQLException("Method not supported");	}
+		throw new SQLException("Method not supported");
+	}
 
 	@Override
 	public boolean rowInserted() throws SQLException {
-		throw new SQLException("Method not supported");	}
+		throw new SQLException("Method not supported");
+	}
 
 	@Override
 	public boolean rowUpdated() throws SQLException {
-		throw new SQLException("Method not supported");	}
+		throw new SQLException("Method not supported");
+	}
 
 	@Override
 	public void setFetchDirection(int arg0) throws SQLException {
@@ -1100,21 +1112,21 @@ public class TsfileQueryResultSet implements ResultSet {
 		return wasNull;
 	}
 
-	private void checkRecord() throws SQLException{
-		if(record == null){
+	private void checkRecord() throws SQLException {
+		if (record == null) {
 			throw new SQLException("No record remains");
 		}
 	}
-	
-	private String getValue(int columnIndex) throws SQLException{
+
+	private String getValue(int columnIndex) throws SQLException {
 		checkRecord();
-		if(columnIndex == 0){
+		if (columnIndex == 0) {
 			return String.valueOf(record.getTime());
 		}
 		int len = record.fields.size();
-		if(columnIndex > len || len == 0){
-			throw new SQLException(String.format("columnIndex %d out of range %d",columnIndex,len));
+		if (columnIndex > len || len == 0) {
+			throw new SQLException(String.format("columnIndex %d out of range %d", columnIndex, len));
 		}
-		return record.fields.get(columnIndex-1).getStringValue();
+		return record.fields.get(columnIndex - 1).getStringValue();
 	}
 }
