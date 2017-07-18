@@ -332,7 +332,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 				throw new ProcessorException("unknown namespace type:" + namespaceType);
 			}
 		} catch (PathErrorException | IOException | ArgsErrorException e) {
-			throw new ProcessorException(e);
+			throw new ProcessorException(e.getMessage());
 		}
 		return true;
 	}
