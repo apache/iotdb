@@ -35,13 +35,14 @@ import cn.edu.thu.tsfiledb.exception.ArgsErrorException;
 
 /**
  * CSV File To TsFile Class
+ * 
  * @author zhanggr
  *
  */
 public class CSVToTsfile {
-	
+
 	private static final Logger LOGGER = LoggerFactory.getLogger(CSVToTsfile.class);
-	
+
 	private static final String HOST_ARGS = "h";
 	private static final String HOST_NAME = "host";
 
@@ -65,6 +66,8 @@ public class CSVToTsfile {
 	private static final int MAX_HELP_CONSOLE_WIDTH = 88;
 	private static final String TSFILEDB_CLI_PREFIX = "CSV_To_TsFile";
 
+	private static final String METADATA_TYPE_STRING = "BYTE_ARRAY";
+
 	private static String host;
 	private static String port;
 	private static String username;
@@ -73,15 +76,14 @@ public class CSVToTsfile {
 	private static String timeformat = "timestamps";
 
 	private static HashMap<String, String> timeseriesToType = null;
-	private static HashMap<String, ArrayList<Integer>> deviceToColumn; // storage every device column in csv file
+	
+	private static HashMap<String, ArrayList<Integer>> deviceToColumn;  // storage csv table head info
 	private static ArrayList<String> headInfo; // storage csv table head info
 	private static ArrayList<String> colInfo; // storage csv device sensor info, corresponding csv table head
 
-	private static Connection connection = null;
-	private static Statement statement = null;
-
 	/**
 	 * commandline option create
+	 * 
 	 * @return object Options
 	 */
 	private static Options createOptions() {
@@ -116,11 +118,13 @@ public class CSVToTsfile {
 
 		return options;
 	}
-	
+
 	/**
 	 * 
-	 * @param arg argument for commandline e:h,f,p..
-	 * @param name the name of argument
+	 * @param arg
+	 *            argument for commandline e:h,f,p..
+	 * @param name
+	 *            the name of argument
 	 * @param commandLine
 	 * @return the value of the option e: the argument h's value is 127.0.0.1
 	 * @throws ArgsErrorException
@@ -134,16 +138,18 @@ public class CSVToTsfile {
 		return str;
 	}
 
-	
 	/**
 	 * 
-	 * @param tf the time format, optioned:ISO8601, timestamps, self-defined: yyyy-mm-dd hh:mm:ss
-	 * @param words the time column of the csv file
+	 * @param tf
+	 *            the time format, optioned:ISO8601, timestamps, self-defined:
+	 *            yyyy-mm-dd hh:mm:ss
+	 * @param words
+	 *            the time column of the csv file
 	 * @return the timestamps will insert into SQL
 	 */
 	private static String setTimeFormat(String tf, String words) {
 		if (tf.equals("ISO8601")) {
-			return  words;
+			return words;
 		} else if (tf.equals("timestamps")) {
 			return words;
 		} else {
@@ -160,84 +166,105 @@ public class CSVToTsfile {
 			return "";
 		}
 	}
-	
+
 	/**
-	 * Data from csv To tsfile 
+	 * Data from csv To tsfile
 	 */
 	public static void loadDataFromCSV() {
+		Connection connection = null;
+		Statement statement = null;
+
 		try {
-			statement = connection.createStatement();
-			BufferedReader br = new BufferedReader(
-					new InputStreamReader(new FileInputStream(new File(filename))));
+			Class.forName("cn.edu.thu.tsfiledb.jdbc.TsfileDriver");
+			connection = DriverManager.getConnection("jdbc:tsfile://" + host + ":" + port + "/", username, password);
+			BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(new File(filename))));
 			String line = "";
-			String[] str_headInfo = br.readLine().split(",");
+			String[] strHeadInfo = br.readLine().split(",");
 			deviceToColumn = new HashMap<String, ArrayList<Integer>>();
 			colInfo = new ArrayList<String>();
 			headInfo = new ArrayList<String>();
-			
-			if(str_headInfo.length <= 1) {
-				LOGGER.debug("The CSV file illegal");
+
+			if (strHeadInfo.length <= 1) {
+				LOGGER.error("The CSV file illegal");
+				br.close();
+				connection.close();
 				System.exit(1);
 			}
-			
+
 			timeseriesToType = new HashMap<String, String>();
 			DatabaseMetaData databaseMetaData = connection.getMetaData();
-			
-			
-			for (int i = 1; i < str_headInfo.length; i++) {
+
+			for (int i = 1; i < strHeadInfo.length; i++) {
+
 				ResultSet resultSet = null;
-				resultSet = databaseMetaData.getColumns(null, null, str_headInfo[i], null);
-				if(resultSet.next()) {
-					timeseriesToType.put(resultSet.getString(0), resultSet.getString(1));						
-				}else {
-					LOGGER.debug("database Cannot find " +  str_headInfo[i] + ",stop import!");
+				resultSet = databaseMetaData.getColumns(null, null, strHeadInfo[i], null);
+				if (resultSet.next()) {
+					timeseriesToType.put(resultSet.getString(0), resultSet.getString(1));
+				} else {
+					LOGGER.error("database Cannot find " + strHeadInfo[i] + ",stop import!");
+					br.close();
+					connection.close();
 					System.exit(1);
 				}
-				headInfo.add(str_headInfo[i]);
-				String deviceInfo = str_headInfo[i].substring(0, str_headInfo[i].lastIndexOf("."));
+				headInfo.add(strHeadInfo[i]);
+				String deviceInfo = strHeadInfo[i].substring(0, strHeadInfo[i].lastIndexOf("."));
 				if (deviceToColumn.containsKey(deviceInfo)) {
 					// storage every device's sensor index info
-					deviceToColumn.get(deviceInfo).add(i - 1); 
-					colInfo.add(str_headInfo[i].substring(str_headInfo[i].lastIndexOf(".") + 1));
+					deviceToColumn.get(deviceInfo).add(i - 1);
+					colInfo.add(strHeadInfo[i].substring(strHeadInfo[i].lastIndexOf(".") + 1));
 				} else {
 					deviceToColumn.put(deviceInfo, new ArrayList<Integer>());
 					// storage every device's sensor index info
-					deviceToColumn.get(deviceInfo).add(i - 1); 
-					colInfo.add(str_headInfo[i].substring(str_headInfo[i].lastIndexOf(".") + 1));
+					deviceToColumn.get(deviceInfo).add(i - 1);
+					colInfo.add(strHeadInfo[i].substring(strHeadInfo[i].lastIndexOf(".") + 1));
 				}
 			}
+
+			statement = connection.createStatement();
 			while ((line = br.readLine()) != null) {
 				ArrayList<String> sqls = createInsertSQL(line);
 				for (String str : sqls) {
 					try {
 						statement.execute(str);
-						LOGGER.debug( str + " :excuted successfull");
+						LOGGER.debug(str + " :excuted successful!");
 
 					} catch (SQLException e) {
-						LOGGER.error(str + " :excuted fail");
+						LOGGER.error(str + " :excuted fail!");
 					}
 				}
 
 			}
-			br.close();
-			statement.close();
+
 		} catch (FileNotFoundException e) {
-			LOGGER.error(e.getMessage());
+			LOGGER.error("The csv file can't find!");
 		} catch (IOException e) {
-			LOGGER.error(e.getMessage());
-		} catch (SQLException e1) {
-			LOGGER.error(e1.getMessage());
+			LOGGER.error("CSV file read exception!");
+		} catch (ClassNotFoundException e2) {
+			e2.printStackTrace();
+		} catch (SQLException e) {
+			LOGGER.error("database connection exception!");
+		} finally {
+			try {
+				statement.close();
+				connection.close();
+			} catch (SQLException e) {
+				e.printStackTrace();
+			}
+
 		}
+
 	}
 
 	private static String typeIdentify(String key_timeseries) {
 		return timeseriesToType.get(key_timeseries);
 
 	}
-	
+
 	/**
 	 * create Insert SQL statement according to every line csv data
-	 * @param line csv line data
+	 * 
+	 * @param line
+	 *            csv line data
 	 * @return ArrayList<String> SQL statement list
 	 */
 	private static ArrayList<String> createInsertSQL(String line) {
@@ -252,14 +279,14 @@ public class CSVToTsfile {
 			sbd.append("insert into " + entry.getKey() + "(timestamp");
 			int skipcount = 0;
 			for (int j = 0; j < colIndex.size(); ++j) {
-
 				if (words[entry.getValue().get(j) + 1].equals("")) {
 					skipcount++;
 					continue;
 				}
 				sbd.append(", " + colInfo.get(colIndex.get(j)));
 			}
-			//define every device null value' number, if the number equal the sensor number, the insert operation stop 
+			// define every device null value' number, if the number equal the
+			// sensor number, the insert operation stop
 			if (skipcount == entry.getValue().size())
 				continue;
 
@@ -271,7 +298,7 @@ public class CSVToTsfile {
 			for (int j = 0; j < colIndex.size(); ++j) {
 				if (words[entry.getValue().get(j) + 1].equals(""))
 					continue;
-				if (typeIdentify(headInfo.get(colIndex.get(j))) == "BYTE_ARRAY") {
+				if (typeIdentify(headInfo.get(colIndex.get(j))) == METADATA_TYPE_STRING) {
 					sbd.append(", \'" + words[colIndex.get(j) + 1] + "\'");
 				} else {
 					sbd.append("," + words[colIndex.get(j) + 1]);
@@ -283,8 +310,8 @@ public class CSVToTsfile {
 
 		return sqls;
 	}
-	
-	public static void main(String[] args) throws ClassNotFoundException, SQLException, IOException {
+
+	public static void main(String[] args) {
 
 		Options options = createOptions();
 		HelpFormatter hf = new HelpFormatter();
@@ -295,6 +322,7 @@ public class CSVToTsfile {
 
 		if (args == null || args.length == 0) {
 			hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
+			scanner.close();
 			return;
 		}
 
@@ -302,12 +330,9 @@ public class CSVToTsfile {
 			commandLine = parser.parse(options, args);
 			if (commandLine.hasOption(HELP_ARGS)) {
 				hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
+				scanner.close();
 				return;
 			}
-		} catch (ParseException e) {
-			e.printStackTrace();
-		}
-		try {
 			host = checkRequiredArg(HOST_ARGS, HOST_NAME, commandLine);
 			port = checkRequiredArg(PORT_ARGS, PORT_NAME, commandLine);
 			username = checkRequiredArg(USERNAME_ARGS, USERNAME_NAME, commandLine);
@@ -317,8 +342,13 @@ public class CSVToTsfile {
 				password = scanner.nextLine();
 			}
 			filename = checkRequiredArg(FILE_ARGS, FILE_NAME, commandLine);
+		} catch (ParseException e) {
+			LOGGER.error(" problems encountered while parsing the command line tokens.");
+			scanner.close();
+			System.exit(1);
 		} catch (ArgsErrorException e) {
 			hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
+			scanner.close();
 			System.exit(1);
 		}
 		try {
@@ -328,16 +358,6 @@ public class CSVToTsfile {
 			System.out.println("the time format use default value long type!");
 		}
 
-		Class.forName("cn.edu.thu.tsfiledb.jdbc.TsfileDriver");
-		connection = DriverManager.getConnection("jdbc:tsfile://" + host + ":" + port + "/", username, password);
-
 		loadDataFromCSV();
-
-		connection.close();
-		scanner.close();
-
 	}
 }
-
-
-
