@@ -10,7 +10,6 @@ import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.text.SimpleDateFormat;
@@ -130,8 +129,6 @@ public class CSVToTsfile {
 		String str = commandLine.getOptionValue(arg);
 		if (str == null) {
 			String msg = String.format("%s: Required values for option '%s' not provided", TSFILEDB_CLI_PREFIX, name);
-			System.out.println(msg);
-			System.out.println("Use -help for more information");
 			throw new ArgsErrorException(msg);
 		}
 		return str;
@@ -187,25 +184,19 @@ public class CSVToTsfile {
 			DatabaseMetaData databaseMetaData = connection.getMetaData();
 			
 			
-			for(int i = 1; i < str_headInfo.length; i++) {
+			for (int i = 1; i < str_headInfo.length; i++) {
 				ResultSet resultSet = null;
-				try {
-					resultSet = databaseMetaData.getColumns(null, null, str_headInfo[i], null);
-					while(resultSet.next()){
-						timeseriesToType.put(resultSet.getString(0), resultSet.getString(1));
-					}
-				}catch(SQLException colerr) {
+				resultSet = databaseMetaData.getColumns(null, null, str_headInfo[i], null);
+				if(resultSet.next()) {
+					timeseriesToType.put(resultSet.getString(0), resultSet.getString(1));						
+				}else {
 					LOGGER.debug("database Cannot find " +  str_headInfo[i] + ",stop import!");
 					System.exit(1);
 				}
-			}
-			
-			for (int i = 1; i < str_headInfo.length; i++) {
-				
 				headInfo.add(str_headInfo[i]);
 				String deviceInfo = str_headInfo[i].substring(0, str_headInfo[i].lastIndexOf("."));
 				if (deviceToColumn.containsKey(deviceInfo)) {
-					// storage every  device's sensor index info
+					// storage every device's sensor index info
 					deviceToColumn.get(deviceInfo).add(i - 1); 
 					colInfo.add(str_headInfo[i].substring(str_headInfo[i].lastIndexOf(".") + 1));
 				} else {
@@ -244,24 +235,6 @@ public class CSVToTsfile {
 
 	}
 	
-//	/**
-//	 * create corresponding of timeseries and type 
-//	 * @throws SQLException
-//	 */
-//	private static void createType() throws SQLException {
-//		timeseriesToType = new HashMap<String, String>();
-//		DatabaseMetaData databaseMetaData = connection.getMetaData();
-//		ResultSet resultSet = databaseMetaData.getColumns(null, null, "root.fit", null);
-//		while(resultSet.next()){
-//			timeseriesToType.put(resultSet.getString(0), resultSet.getString(1));
-//		}
-////		timeseriesToType.put("root.fit.d1.s1", "INT32");
-////		timeseriesToType.put("root.fit.d1.s2", "BYTE_ARRAY");
-////		timeseriesToType.put("root.fit.d2.s1", "INT32");
-////		timeseriesToType.put("root.fit.d2.s3", "INT32");
-////		timeseriesToType.put("root.fit.p.s1", "INT32");
-//	}
-	
 	/**
 	 * create Insert SQL statement according to every line csv data
 	 * @param line csv line data
@@ -286,6 +259,7 @@ public class CSVToTsfile {
 				}
 				sbd.append(", " + colInfo.get(colIndex.get(j)));
 			}
+			//define every device null value' number, if the number equal the sensor number, the insert operation stop 
 			if (skipcount == entry.getValue().size())
 				continue;
 
@@ -343,9 +317,15 @@ public class CSVToTsfile {
 				password = scanner.nextLine();
 			}
 			filename = checkRequiredArg(FILE_ARGS, FILE_NAME, commandLine);
+		} catch (ArgsErrorException e) {
+			hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
+			System.exit(1);
+		}
+		try {
 			timeformat = checkRequiredArg(TIMEFORMAT_ARGS, TIMEFORMAT_NAME, commandLine);
 		} catch (ArgsErrorException e) {
-			e.printStackTrace();
+			timeformat = "timestamps";
+			System.out.println("the time format use default value long type!");
 		}
 
 		Class.forName("cn.edu.thu.tsfiledb.jdbc.TsfileDriver");
