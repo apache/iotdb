@@ -219,12 +219,7 @@ public class TsfileConnection implements Connection {
     }
 
     private DatabaseMetaData getMetaDataFromServer() throws TException, TsfileSQLException  {
-	TSFetchMetadataResp resp = client.fetchMetadata(new TSFetchMetadataReq());
-	Utils.verifySuccess(resp.getStatus());
-	Map<String, List<ColumnSchema>> seriesMap = Utils.convertAllSchema(resp.getSeriesMap());
-	Map<String, List<String>> deltaObjectMap = resp.getDeltaObjectMap();
-	String metadataInJson = resp.getMetadataInJson();
-	return new TsfileDatabaseMetadata(this, seriesMap, deltaObjectMap, metadataInJson);
+	return new TsfileDatabaseMetadata(this, client);
     }
 
     @Override
