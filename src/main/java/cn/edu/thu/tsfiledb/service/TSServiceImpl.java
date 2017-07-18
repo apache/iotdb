@@ -319,7 +319,7 @@ public class TSServiceImpl implements TSIService.Iface {
 
             // check path exists
             if (paths.size() == 0) {
-                return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, "Selected columns do NOT EXIST.");
+                return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, "Timeseries does not exist.");
             }
 
             // check file level set
