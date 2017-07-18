@@ -1,4 +1,5 @@
 package tool;
+
 import java.awt.List;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -39,13 +40,14 @@ import org.slf4j.LoggerFactory;
 
 import cn.edu.thu.tsfiledb.exception.ArgsErrorException;
 
+
+
 /**
- * Tsfile dump to CSV Class
- *
- * @author chengaru
+ * @author car
+ * @version 1.0.0
+ * 2017年7月19日
  */
-public class TsFileDump
-{
+public class TsFileDump {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(TsFileDump.class);
 
@@ -54,7 +56,6 @@ public class TsFileDump
 
 	private static final String HELP_ARGS = "help";
 
-	
 	private static final String PORT_ARGS = "p";
 	private static final String PORT_NAME = "port";
 
@@ -94,8 +95,14 @@ public class TsFileDump
 	private static Connection connection = null;
 	private static Statement statement = null;
 
-	public static void main(String[] args) throws ClassNotFoundException, SQLException, IOException
-	{
+	/**
+	 * @param args
+	 * @throws ClassNotFoundException
+	 * @throws SQLException
+	 * @throws IOException
+	
+	 */
+	public static void main(String[] args) throws ClassNotFoundException, SQLException, IOException {
 
 		Options options = createOptions();
 		HelpFormatter hf = new HelpFormatter();
@@ -104,32 +111,26 @@ public class TsFileDump
 		CommandLineParser parser = new DefaultParser();
 		Scanner scanner = new Scanner(System.in);
 
-		if (args == null || args.length == 0)
-		{
+		if (args == null || args.length == 0) {
 			hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
 			return;
 		}
 
-		try
-		{
+		try {
 			commandLine = parser.parse(options, args);
-			if (commandLine.hasOption(HELP_ARGS))
-			{
+			if (commandLine.hasOption(HELP_ARGS)) {
 				hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
 				return;
 			}
-		} catch (ParseException e)
-		{
+		} catch (ParseException e) {
 			e.printStackTrace();
 		}
-		try
-		{
+		try {
 			host = checkRequiredArg(HOST_ARGS, HOST_NAME, commandLine);
 			port = checkRequiredArg(PORT_ARGS, PORT_NAME, commandLine);
 			username = checkRequiredArg(USERNAME_ARGS, USERNAME_NAME, commandLine);
 			password = commandLine.getOptionValue(PASSWORD_ARGS);
-			if (password == null)
-			{
+			if (password == null) {
 				System.out.print(TSFILEDB_CLI_PREFIX + "> please input password: ");
 				password = scanner.nextLine();
 			}
@@ -137,23 +138,19 @@ public class TsFileDump
 
 			sqlfile = checkRequiredArg(SQLFILE_ARGS, SQLFILE_NAME, commandLine);
 			headerdis = commandLine.getOptionValue(HEADERDIS_ARGS);
-			if (headerdis == null)
-			{
+			if (headerdis == null) {
 				headerdis = "true";
 			}
 			timeformat = commandLine.getOptionValue(TIMEFORMAT_ARGS);
-			if (timeformat == null)
-			{
+			if (timeformat == null) {
 				timeformat = "ISO8601";
 			}
-		} catch (ArgsErrorException e)
-		{
+		} catch (ArgsErrorException e) {
 			e.printStackTrace();
 		}
 
 		Class.forName("cn.edu.thu.tsfiledb.jdbc.TsfileDriver");
 		connection = DriverManager.getConnection("jdbc:tsfile://" + host + ":" + port + "/", username, password);
-		System.out.println("!!!!!!!!!");
 		tsfileDump();
 		connection.close();
 		scanner.close();
@@ -164,8 +161,7 @@ public class TsFileDump
 	 *
 	 * @return object Options
 	 */
-	private static Options createOptions()
-	{
+	private static Options createOptions() {
 		Options options = new Options();
 		Option help = new Option(HELP_ARGS, false, "Display help information");
 		help.setRequired(false);
@@ -213,19 +209,21 @@ public class TsFileDump
 	 * @return
 	 * @throws ArgsErrorException
 	 */
-	private static String checkRequiredArg(String arg, String name, CommandLine commandLine) throws ArgsErrorException
-	{
+	private static String checkRequiredArg(String arg, String name, CommandLine commandLine) throws ArgsErrorException {
 		String str = commandLine.getOptionValue(arg);
-		if (str == null)
-		{
+		if (str == null) {
 			String msg = String.format("%s: Required values for option '%s' not provided", TSFILEDB_CLI_PREFIX, name);
 			throw new ArgsErrorException(msg);
 		}
 		return str;
 	}
 
-	public static String matchSelectFileName(String selectsql)
-	{
+	/**
+	 * @param selectsql
+	 * @return
+	
+	 */
+	public static String matchSelectFileName(String selectsql) {
 		System.out.println(selectsql);
 		String newselectsql = selectsql.trim();
 
@@ -236,8 +234,12 @@ public class TsFileDump
 		return queryfilename;
 	}
 
-	public static void tsfileDump() throws SQLException, IOException
-	{
+	/**
+	 * @throws SQLException
+	 * @throws IOException
+	 * Dump files from database to CSV file
+	 */
+	public static void tsfileDump() throws SQLException, IOException {
 		connection = DriverManager.getConnection("jdbc:tsfile://" + host + ":" + port + "/", username, password);
 		Statement stmtement = connection.createStatement();
 
@@ -245,84 +247,64 @@ public class TsFileDump
 		String str = null;
 		InputStreamReader read = new InputStreamReader(new FileInputStream(sf));
 		BufferedReader reader = new BufferedReader(read);
-		str = reader.readLine();
+		try{
+			str = reader.readLine();     //read select Sentence
+		
+		}catch(Exception e){
+			e.printStackTrace();
+		}
 		ResultSet rs = null;
 
-		System.out.println(str);
+		try {
+			rs = stmtement.executeQuery(str);    //get select resultset
 
-		try
-		{
-			rs = stmtement.executeQuery(str);
-
-		} catch (Exception e)
-		{
-			System.out.println("file not exist");
-		} // obtin query resulest
-			
-		ResultSetMetaData metadata = rs.getMetaData(); 
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		ResultSetMetaData metadata = rs.getMetaData(); //get table ColumnLabel
 		File tf = new File(targetfile + "/" + matchSelectFileName(str) + ".csv");
-
-		if (!tf.exists())
-		{
+		if (!tf.exists()) {
 			tf.createNewFile();
 		}
+		
 		OutputStreamWriter write = new OutputStreamWriter(new FileOutputStream(tf));
 		BufferedWriter writer = new BufferedWriter(write);
 
-		int count = metadata.getColumnCount(); // obtin columnlcount of
-												// table
-
-		if (headerdis.equals("true"))
-		{
-			for (int i = 0; i < count; i++)
-			{
-				if (i < count - 1)
-				{
+		int count = metadata.getColumnCount();
+        // write in csv file
+		if (headerdis.equals("true")) {
+			for (int i = 0; i < count; i++) {
+				if (i < count - 1) {
 					writer.write(metadata.getColumnLabel(i) + ",");
 				} else
 					writer.write(metadata.getColumnLabel(i) + "\n");
 			}
 		}
-		System.out.println(rs.next());
-		while (rs.next())
-		{
-			System.out.println("######");
-			if (rs.getString(0) == "null")
-			{
+		while (rs.next()) {
+			if (rs.getString(0).equals("null")) {
 				writer.write(",");
-			} else
-			{
-				if (timeformat.equals("ISO8601"))
-				{
+			} else {
+				if (timeformat.equals("ISO8601")) {
 					SimpleDateFormat tformat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSXXX");
 					writer.write(tformat.format(rs.getDate(0)) + ",");
-				} else if (timeformat.equals("timestamp"))
-				{
+				} else if (timeformat.equals("timestamp")) {
 					writer.write(rs.getLong(0) + ",");
-				} else
-				{
+				} else {
 					SimpleDateFormat tformat = new SimpleDateFormat(timeformat);
 					writer.write(tformat.format(rs.getDate(0)) + ",");
 				}
 
-				for (int j = 1; j < count; j++)
-				{
-					if (j < count - 1)
-					{
-						if (rs.getString(j) == "null")
-						{
+				for (int j = 1; j < count; j++) {
+					if (j < count - 1) {
+						if (rs.getString(j).equals("null")) {
 							writer.write(",");
-						} else
-						{
+						} else {
 							writer.write(rs.getString(j) + ",");
 						}
-					} else
-					{
-						if (rs.getString(j) == "null")
-						{
+					} else {
+						if (rs.getString(j).equals("null")) {
 							writer.write("\n");
-						} else
-						{
+						} else {
 							writer.write(rs.getString(j) + "\n");
 						}
 					}
