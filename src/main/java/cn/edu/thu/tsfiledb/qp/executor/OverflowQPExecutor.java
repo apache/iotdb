@@ -135,14 +135,19 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 				throw new ProcessorException(String.format("Timeseries %s does not exist.", p));
 			}
 			mManager.getFileNameByPath(p);
-			TSDataType type = queryEngine.getDataTypeByDeviceAndSensor(deltaObjectId, measurementId);
+			TSDataType dataType = queryEngine.getDataTypeByDeviceAndSensor(deltaObjectId, measurementId);
 			/*
 			 * modify by liukun
 			 */
-			if (type == TSDataType.BYTE_ARRAY) {
-				value = value.substring(1, value.length() - 1);
+			if (dataType == TSDataType.BYTE_ARRAY) {
+				if (dataType == TSDataType.BYTE_ARRAY) {
+					if ((value.startsWith("'") && value.endsWith("'"))
+							|| (value.startsWith("\"") && value.endsWith("\""))) {
+						value = value.substring(1, value.length() - 1);
+					}
+				}
 			}
-			fileNodeManager.update(deltaObjectId, measurementId, startTime, endTime, type, value);
+			fileNodeManager.update(deltaObjectId, measurementId, startTime, endTime, dataType, value);
 			return true;
 		} catch (PathErrorException e) {
 			throw new ProcessorException(e.getMessage());
@@ -166,10 +171,10 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 			fileNodeManager.delete(deltaObjectId, measurementId, timestamp, type);
 			return true;
 		} catch (PathErrorException e) {
-			throw new ProcessorException(e);
+			throw new ProcessorException(e.getMessage());
 		} catch (FileNodeManagerException e) {
 			e.printStackTrace();
-			throw new ProcessorException(e);
+			throw new ProcessorException(e.getMessage());
 		}
 	}
 
@@ -211,7 +216,10 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 				 */
 				String value = insertValues.get(i);
 				if (dataType == TSDataType.BYTE_ARRAY) {
-					value = value.substring(1, value.length() - 1);
+					if ((value.startsWith("'") && value.endsWith("'"))
+							|| (value.startsWith("\"") && value.endsWith("\""))) {
+						value = value.substring(1, value.length() - 1);
+					}
 				}
 				DataPoint dataPoint = DataPoint.getDataPoint(dataType, measurementList.get(i), value);
 				tsRecord.addTuple(dataPoint);
@@ -219,7 +227,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 			return fileNodeManager.insert(tsRecord);
 
 		} catch (PathErrorException | FileNodeManagerException e) {
-			throw new ProcessorException(e);
+			throw new ProcessorException(e.getMessage());
 		}
 	}
 
@@ -371,6 +379,5 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 		}
 		return true;
 	}
-	
-}
 
+}
