@@ -67,8 +67,7 @@ public class TsfileConnection implements Connection {
 	supportedProtocols.add(TSProtocolVersion.TSFILE_SERVICE_PROTOCOL_V1);
 	
 	openTransport();
-	TProtocol protocol = new TBinaryProtocol(transport);
-	client = new TSIService.Client(protocol);
+	client = new TSIService.Client(new TBinaryProtocol(transport));	
 	// open client session
 	openSession();
 
@@ -391,16 +390,20 @@ public class TsfileConnection implements Connection {
     }
 
     private void openTransport() throws TTransportException {
-	TSocket socket = new TSocket(params.getHost(), params.getPort(), TsfileJDBCConfig.connectionTimeoutInMs);
-	try {
-	    socket.getSocket().setKeepAlive(true);
-	} catch (SocketException e) {
-	    LOGGER.error("Cannot set socket keep alive", e);
-	}
-	if(socket.isOpen()){
-	    socket.open();
-	}
-	transport = new TFramedTransport(socket);
+//	TSocket socket = new TSocket(params.getHost(), params.getPort(), TsfileJDBCConfig.connectionTimeoutInMs);
+//	try {
+//	    socket.getSocket().setKeepAlive(true);
+//	} catch (SocketException e) {
+//	    LOGGER.error("Cannot set socket keep alive", e);
+//	}
+//	if(socket.isOpen()){
+//	    socket.open();
+//	}
+//	transport = new TFramedTransport(socket);
+//	if (!transport.isOpen()) {
+//	    transport.open();
+//	}
+	transport = new TSocket(params.getHost(), params.getPort(), TsfileJDBCConfig.connectionTimeoutInMs);
 	if (!transport.isOpen()) {
 	    transport.open();
 	}
