@@ -113,8 +113,10 @@ public class TsFileDump {
                 return;
             }
         } catch (ParseException e) {
-            e.printStackTrace();
+            System.out.println(String.format(e.getMessage()));
+            return;
         }
+
         try {
             host = checkRequiredArg(HOST_ARGS, HOST_NAME, commandLine);
             port = checkRequiredArg(PORT_ARGS, PORT_NAME, commandLine);
@@ -136,7 +138,8 @@ public class TsFileDump {
                 timeformat = "ISO8601";
             }
         } catch (ArgsErrorException e) {
-            e.printStackTrace();
+            System.out.println("parameters exist error");
+            return;
         }
 
         Class.forName("cn.edu.thu.tsfiledb.jdbc.TsfileDriver");
@@ -178,7 +181,7 @@ public class TsFileDump {
                 .create(TARGETFILE_ARGS);
         options.addOption(os_targetfile);
 
-        Option os_sqlfile = OptionBuilder.withArgName(SQLFILE_NAME).hasArg().withDescription("SqlFile Path (required)")
+        Option os_sqlfile = OptionBuilder.withArgName(SQLFILE_NAME).hasArg().withDescription("Sql Operation(required)")
                 .create(SQLFILE_ARGS);
         options.addOption(os_sqlfile);
 
@@ -201,14 +204,16 @@ public class TsFileDump {
      * @throws ArgsErrorException
      */
     private static String checkRequiredArg(String arg, String name, CommandLine commandLine) throws ArgsErrorException {
-        String str = commandLine.getOptionValue(arg);
-        if (str == null) {
+        String str;
+        try {
+            str = commandLine.getOptionValue(arg);
+            return str;
+        } catch (Exception e) {
             String msg = String.format("%s: Required values for option '%s' not provided", TSFILEDB_CLI_PREFIX, name);
             System.out.println(msg);
-            System.out.println("Use -help for more information");
-            throw new ArgsErrorException(msg);
+            // System.out.println("Use -help for more information");
         }
-        return str;
+        return null;
     }
 
     public static void tsfileDump() throws SQLException, IOException {
@@ -220,11 +225,24 @@ public class TsFileDump {
         BufferedWriter writer = new BufferedWriter(write);
         connection = DriverManager.getConnection("jdbc:tsfile://" + host + ":" + port + "/", username, password);
         Statement stmtement = connection.createStatement();
-        ResultSet rs = stmtement.executeQuery("select * from " + sqlfile);//obtin query resultset
 
-        ResultSetMetaData metadata = rs.getMetaData(); //obtin columnlabel of table
+        //TODO
+//        if (!sqlfile.startsWith("\"") || !sqlfile.endsWith("\"")) {
+//            System.out.println("sql operation must start and end with \" ");
+//            return;
+//        }
 
-        int count = metadata.getColumnCount(); //obtin columnlcount of table
+        ResultSet rs = null;
+        try {
+            rs = stmtement.executeQuery(sqlfile);//obtain query resultset
+        }catch (SQLException e) {
+            System.out.println(e.getMessage());
+            return;
+        }
+
+        ResultSetMetaData metadata = rs.getMetaData(); //obtain columnlabel of table
+
+        int count = metadata.getColumnCount(); //obtain columnlcount of table
 
         if (headerdis.equals("true")) {     //write columnlabel in table
             for (int i = 0; i < count; i++) {
@@ -234,7 +252,7 @@ public class TsFileDump {
                     writer.write(metadata.getColumnLabel(i) + "\n");
             }
         }
-        while (rs.next()) {                //write querydate in table
+        while (rs.next()) {                //write querydata in table
             if (rs.getString(0) == "null") {
                 writer.write(",");
             } else {
@@ -265,7 +283,7 @@ public class TsFileDump {
 
             }
         }
-        System.out.println("file read successful!");
+        System.out.println("file dump successful!");
         writer.flush();
         write.close();
         writer.close();
