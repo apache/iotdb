@@ -267,7 +267,7 @@ struct TSDynamicOneColumnData{
 	7: optional list<i64> i64List
 	8: optional list<double> floatList
 	9: optional list<double> doubleList
-	10: optional list<byte> binaryList
+	10: optional list<binary> binaryList
 }
 
 struct TSFetchResultsReq{
@@ -302,13 +302,19 @@ struct TSFetchResultsResp{
 
 struct TSFetchMetadataResp{
 		1: required TS_Status status
-		2: optional map<string, list<TSColumnSchema>> seriesMap
+		2: optional string metadataInJson
 		3: optional map<string, list<string>> deltaObjectMap
-		4: optional string metadataInJson
+		4: optional string dataType
+}
+
+enum MEATADATA_OPERATION_TYPE{
+METADATA_IN_JSON,
+DELTAOBJECT,
+COLUMN
 }
 
 struct TSFetchMetadataReq{
-
+		1: required MEATADATA_OPERATION_TYPE type
 }
 
 
