@@ -11,14 +11,13 @@ import java.util.Map;
 
 import cn.edu.thu.tsfiledb.metadata.ColumnSchema;
 
-
 public class TsfileDatabaseMetadata implements DatabaseMetaData {
 	private final String ROOT_PATH = "root";
 	private TsfileConnection connection;
 	private Map<String, List<ColumnSchema>> seriesMap;
 	private Map<String, List<String>> deltaObjectMap;
 	private String metadataInJson;
-	
+
 	public TsfileDatabaseMetadata(TsfileConnection connection, Map<String, List<ColumnSchema>> seriesMap, Map<String, List<String>> deltaObjectMap, String metadataInJson) {
 		this.connection = connection;
 		this.seriesMap = seriesMap;
@@ -26,10 +25,10 @@ public class TsfileDatabaseMetadata implements DatabaseMetaData {
 		this.metadataInJson = metadataInJson;
 	}
 
-	/** 
+	/**
 	 * if deltaObjectPattern != null, return all delta object
 	 * if deltaObjectPattern == null and columnPattern != null, return column schema， otherwise return null
-	 */ 
+	 */
 	@Override
 	public ResultSet getColumns(String catalog, String schemaPattern, String columnPattern, String deltaObjectPattern) throws SQLException {
 
@@ -41,20 +40,20 @@ public class TsfileDatabaseMetadata implements DatabaseMetaData {
 			if(deltaObjectList == null){
 				throw new SQLException(String.format("Cannot find %s", deltaObjectPattern));
 			}
-			return new TsfileMetadataResultSet(null, deltaObjectList); 
+			return new TsfileMetadataResultSet(null, deltaObjectList);
 		}
-		
+
 		if(columnPattern != null && !columnPattern.trim().equals("")){
 			if(seriesMap == null){
 				throw new SQLException("No schema for column metadata");
 			}
-			
+
 			String[] values = columnPattern.split("\\.");
-			
+
 
 			if(values.length < 2){
 				throw new SQLException(String.format("path should starts like %s.xxx",ROOT_PATH));
-			} 
+			}
 			if(!values[0].equals(ROOT_PATH)){
 				throw new SQLException("column path should starts with: "+ROOT_PATH);
 			}
@@ -65,13 +64,13 @@ public class TsfileDatabaseMetadata implements DatabaseMetaData {
 				if(deltaObjectList == null){
 					throw new SQLException(String.format("Cannot find delta object %s", values[1]));
 				}
-				
+
 				for(String deltaObject : deltaObjectList){
 					for(ColumnSchema schema: columnSchemaOld){
 						columnSchemaNew.add(new ColumnSchema(String.format("%s.%s", deltaObject, schema.name), schema.dataType, null));
 					}
 				}
-				
+
 			} else if (values.length == 3) {
 				for(ColumnSchema schema: columnSchemaOld){
 					columnSchemaNew.add(new ColumnSchema(String.format("%s.%s", columnPattern,schema.name), schema.dataType, null));
@@ -83,13 +82,13 @@ public class TsfileDatabaseMetadata implements DatabaseMetaData {
 						break;
 					}
 				}
-				
-			} 
+
+			}
 			return new TsfileMetadataResultSet(columnSchemaNew, null);
 		}
 		return null;
 	}
-	
+
 	private List<ColumnSchema> getColumnSchemaList(String deltaObjectType, String columnPattern) throws SQLException{
 		List<ColumnSchema> columnSchemaOld = seriesMap.get(deltaObjectType);
 		if(columnSchemaOld == null){
@@ -97,7 +96,7 @@ public class TsfileDatabaseMetadata implements DatabaseMetaData {
 		}
 		return columnSchemaOld;
 	}
-	
+
 	@Override
 	public boolean isWrapperFor(Class<?> arg0) throws SQLException {
 		// TODO Auto-generated method stub
@@ -227,8 +226,7 @@ public class TsfileDatabaseMetadata implements DatabaseMetaData {
 
 	@Override
 	public String getDatabaseProductName() throws SQLException {
-		// TODO Auto-generated method stub
-		throw new SQLException("Method not supported");
+		return "TsFileDB";
 	}
 
 	@Override
@@ -592,8 +590,8 @@ public class TsfileDatabaseMetadata implements DatabaseMetaData {
 
 	@Override
 	public String getURL() throws SQLException {
-		// TODO Auto-generated method stub
-		throw new SQLException("Method not supported");
+		// TODO: Return the URL for this DBMS or null if it cannot be generated
+		return null;
 	}
 
 	@Override
