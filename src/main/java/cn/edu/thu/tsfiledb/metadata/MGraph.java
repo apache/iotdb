@@ -50,7 +50,7 @@ public class MGraph implements Serializable {
 			throws PathErrorException, MetadataArgsErrorException {
 		String nodes[] = path.trim().split("\\.");
 		if (nodes.length == 0) {
-			throw new PathErrorException(String.format("Timeseries is null"));
+			throw new PathErrorException("Timeseries is null");
 		}
 		return this.mTree.addPath(path, dataType, encoding, args);
 	}

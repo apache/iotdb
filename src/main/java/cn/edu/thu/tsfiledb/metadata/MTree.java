@@ -20,6 +20,7 @@ public class MTree implements Serializable {
 	private static final long serialVersionUID = -4200394435237291964L;
 	private final String space = "    ";
 	private MNode root;
+	private final String separator = "\\.";
 
 	public MTree(String rootName) {
 		this.setRoot(new MNode(rootName, null, false));
@@ -41,7 +42,7 @@ public class MTree implements Serializable {
 		if (getRoot() == null) {
 			throw new PathErrorException("Root node is null, please initialize root first");
 		}
-		String[] nodeNames = path.trim().split("\\.");
+		String[] nodeNames = path.trim().split(separator);
 		if (nodeNames.length <= 1 || !nodeNames[0].equals(getRoot().getName())) {
 			throw new PathErrorException(String.format("Timeseries %s is not right.", path));
 		}
@@ -81,7 +82,7 @@ public class MTree implements Serializable {
 	 *            from root to leaf node.
 	 */
 	public void deletePath(String path) throws PathErrorException {
-		String[] nodes = path.split("\\.");
+		String[] nodes = path.split(separator);
 		if (nodes.length == 0 || !nodes[0].equals(getRoot().getName())) {
 			throw new PathErrorException("Timeseries %s is not correct." + path);
 		}
@@ -106,7 +107,7 @@ public class MTree implements Serializable {
 	 *            Format: root.node.(node)*
 	 */
 	private void setFileNameToOnePath(String path) throws PathErrorException {
-		String nodes[] = path.trim().split("\\.");
+		String nodes[] = path.trim().split(separator);
 		if (nodes.length == 0 || !nodes[0].equals(getRoot().getName())) {
 			throw new PathErrorException(String.format("Timeseries %s is not correct", path));
 		}
@@ -131,7 +132,7 @@ public class MTree implements Serializable {
 	 *            Format: root.node.(node)*
 	 */
 	public void setStorageLevel(String path) throws PathErrorException {
-		String nodes[] = path.trim().split("\\.");
+		String nodes[] = path.trim().split(separator);
 		if (nodes.length <= 1 || !nodes[0].equals(getRoot().getName())) {
 			throw new PathErrorException(String.format("Timeseries %s is not correct", path));
 		}
@@ -175,7 +176,7 @@ public class MTree implements Serializable {
 	 * Check whether the path given exists
 	 */
 	public boolean hasPath(String path) {
-		String[] nodes = path.split("\\.");
+		String[] nodes = path.split(separator);
 		if (nodes.length == 0 || !nodes[0].equals(getRoot().getName())) {
 			return false;
 		}
@@ -211,7 +212,7 @@ public class MTree implements Serializable {
 
 	private MNode getLeafByPath(String path) throws PathErrorException {
 		checkPath(path);
-		String[] node = path.split("\\.");
+		String[] node = path.split(separator);
 		MNode cur = getRoot();
 		for (int i = 1; i < node.length; i++) {
 			cur = cur.getChild(node[i]);
@@ -229,7 +230,7 @@ public class MTree implements Serializable {
 	 */
 	public String getDeltaObjectTypeByPath(String path) throws PathErrorException {
 		checkPath(path);
-		String[] nodes = path.split("\\.");
+		String[] nodes = path.split(separator);
 		if (nodes.length < 2) {
 			throw new PathErrorException(String.format("Timeseries %s must have two or more nodes", path));
 		}
@@ -240,7 +241,7 @@ public class MTree implements Serializable {
 	 * Check whether a path is available
 	 */
 	private void checkPath(String path) throws PathErrorException {
-		String[] nodes = path.split("\\.");
+		String[] nodes = path.split(separator);
 		if (nodes.length < 2 || !nodes[0].equals(getRoot().getName())) {
 			throw new PathErrorException(String.format("Timeseries %s is not correct", path));
 		}
@@ -260,7 +261,7 @@ public class MTree implements Serializable {
 	 * true
 	 */
 	public String getFileNameByPath(String path) throws PathErrorException {
-		String[] nodes = path.split("\\.");
+		String[] nodes = path.split(separator);
 		if (nodes.length == 0 || !nodes[0].equals(getRoot().getName())) {
 			throw new PathErrorException(String.format("Timeseries %s is not correct", path));
 		}
@@ -292,7 +293,7 @@ public class MTree implements Serializable {
 	 */
 	public HashMap<String, ArrayList<String>> getAllPath(String pathReg) throws PathErrorException {
 		HashMap<String, ArrayList<String>> paths = new HashMap<>();
-		String[] nodes = pathReg.split("\\.");
+		String[] nodes = pathReg.split(separator);
 		if (nodes.length == 0 || !nodes[0].equals(getRoot().getName())) {
 			throw new PathErrorException(String.format("Timeseries %s is not correct", pathReg));
 		}
@@ -322,7 +323,7 @@ public class MTree implements Serializable {
 	 * @return The total count of storage-level nodes.
 	 */
 	public int getFileCountForOneType(String path) throws PathErrorException {
-		String nodes[] = path.split("\\.");
+		String nodes[] = path.split(separator);
 		if (nodes.length != 2 || !nodes[0].equals(getRoot().getName()) || !getRoot().hasChild(nodes[1])) {
 			throw new PathErrorException(
 					"Timeseries must be " + getRoot().getName() + ". X (X is one of the nodes of root's children)");
@@ -398,7 +399,7 @@ public class MTree implements Serializable {
 	 * @throws PathErrorException
 	 */
 	public ArrayList<ColumnSchema> getSchemaForOneType(String path) throws PathErrorException {
-		String nodes[] = path.split("\\.");
+		String nodes[] = path.split(separator);
 		if (nodes.length != 2 || !nodes[0].equals(getRoot().getName()) || !getRoot().hasChild(nodes[1])) {
 			throw new PathErrorException(
 					"Timeseries must be " + getRoot().getName() + ". X (X is one of the nodes of root's children)");
