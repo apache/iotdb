@@ -3,7 +3,7 @@ if [ -z "${TSFILE_HOME}" ];then
    export TSFILE_HOME="$(cd "`dirname "$0"`"/..; pwd)"
 fi
 
-MAIN_CLASS=cn.edu.thu.tsfiledb.jdbc.TsfileDump
+MAIN_CLASS=cn.edu.thu.tsfiledb.tool.TsFileDump
 
 CLASSPATH="."
 
