@@ -145,10 +145,10 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 			fileNodeManager.update(deltaObjectId, measurementId, startTime, endTime, type, value);
 			return true;
 		} catch (PathErrorException e) {
-			throw new ProcessorException(e);
+			throw new ProcessorException(e.getMessage());
 		} catch (FileNodeManagerException e) {
 			e.printStackTrace();
-			throw new ProcessorException(e);
+			throw new ProcessorException(e.getMessage());
 		}
 	}
 
