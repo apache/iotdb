@@ -67,8 +67,8 @@ public abstract class AbstractClient {
 		keywordSet.add("-"+ISO8601_ARGS);
 		keywordSet.add("-"+MAX_PRINT_ROW_COUNT_ARGS);
 	}
-
-	protected static void output(ResultSet res, boolean printToConsole, String statement) {
+	
+	public static void output(ResultSet res, boolean printToConsole, String statement) {
 		try {
 			int cnt = 0;
 			ResultSetMetaData resultSetMetaData = res.getMetaData();
