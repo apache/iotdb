@@ -315,6 +315,7 @@ COLUMN
 
 struct TSFetchMetadataReq{
 		1: required MEATADATA_OPERATION_TYPE type
+		2: optional string columnPath
 }
 
 

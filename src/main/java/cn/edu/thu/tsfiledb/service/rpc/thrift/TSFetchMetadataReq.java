@@ -39,6 +39,7 @@ public class TSFetchMetadataReq implements org.apache.thrift.TBase<TSFetchMetada
   private static final org.apache.thrift.protocol.TStruct STRUCT_DESC = new org.apache.thrift.protocol.TStruct("TSFetchMetadataReq");
 
   private static final org.apache.thrift.protocol.TField TYPE_FIELD_DESC = new org.apache.thrift.protocol.TField("type", org.apache.thrift.protocol.TType.I32, (short)1);
+  private static final org.apache.thrift.protocol.TField COLUMN_PATH_FIELD_DESC = new org.apache.thrift.protocol.TField("columnPath", org.apache.thrift.protocol.TType.STRING, (short)2);
 
   private static final Map<Class<? extends IScheme>, SchemeFactory> schemes = new HashMap<Class<? extends IScheme>, SchemeFactory>();
   static {
@@ -51,6 +52,7 @@ public class TSFetchMetadataReq implements org.apache.thrift.TBase<TSFetchMetada
    * @see MEATADATA_OPERATION_TYPE
    */
   public MEATADATA_OPERATION_TYPE type; // required
+  public String columnPath; // optional
 
   /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
   public enum _Fields implements org.apache.thrift.TFieldIdEnum {
@@ -58,7 +60,8 @@ public class TSFetchMetadataReq implements org.apache.thrift.TBase<TSFetchMetada
      * 
      * @see MEATADATA_OPERATION_TYPE
      */
-    TYPE((short)1, "type");
+    TYPE((short)1, "type"),
+    COLUMN_PATH((short)2, "columnPath");
 
     private static final Map<String, _Fields> byName = new HashMap<String, _Fields>();
 
@@ -75,6 +78,8 @@ public class TSFetchMetadataReq implements org.apache.thrift.TBase<TSFetchMetada
       switch(fieldId) {
         case 1: // TYPE
           return TYPE;
+        case 2: // COLUMN_PATH
+          return COLUMN_PATH;
         default:
           return null;
       }
@@ -115,11 +120,14 @@ public class TSFetchMetadataReq implements org.apache.thrift.TBase<TSFetchMetada
   }
 
   // isset id assignments
+  private static final _Fields optionals[] = {_Fields.COLUMN_PATH};
   public static final Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
   static {
     Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> tmpMap = new EnumMap<_Fields, org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
     tmpMap.put(_Fields.TYPE, new org.apache.thrift.meta_data.FieldMetaData("type", org.apache.thrift.TFieldRequirementType.REQUIRED, 
         new org.apache.thrift.meta_data.EnumMetaData(org.apache.thrift.protocol.TType.ENUM, MEATADATA_OPERATION_TYPE.class)));
+    tmpMap.put(_Fields.COLUMN_PATH, new org.apache.thrift.meta_data.FieldMetaData("columnPath", org.apache.thrift.TFieldRequirementType.OPTIONAL, 
+        new org.apache.thrift.meta_data.FieldValueMetaData(org.apache.thrift.protocol.TType.STRING)));
     metaDataMap = Collections.unmodifiableMap(tmpMap);
     org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(TSFetchMetadataReq.class, metaDataMap);
   }
@@ -141,6 +149,9 @@ public class TSFetchMetadataReq implements org.apache.thrift.TBase<TSFetchMetada
     if (other.isSetType()) {
       this.type = other.type;
     }
+    if (other.isSetColumnPath()) {
+      this.columnPath = other.columnPath;
+    }
   }
 
   public TSFetchMetadataReq deepCopy() {
@@ -150,6 +161,7 @@ public class TSFetchMetadataReq implements org.apache.thrift.TBase<TSFetchMetada
   @Override
   public void clear() {
     this.type = null;
+    this.columnPath = null;
   }
 
   /**
@@ -184,6 +196,30 @@ public class TSFetchMetadataReq implements org.apache.thrift.TBase<TSFetchMetada
     }
   }
 
+  public String getColumnPath() {
+    return this.columnPath;
+  }
+
+  public TSFetchMetadataReq setColumnPath(String columnPath) {
+    this.columnPath = columnPath;
+    return this;
+  }
+
+  public void unsetColumnPath() {
+    this.columnPath = null;
+  }
+
+  /** Returns true if field columnPath is set (has been assigned a value) and false otherwise */
+  public boolean isSetColumnPath() {
+    return this.columnPath != null;
+  }
+
+  public void setColumnPathIsSet(boolean value) {
+    if (!value) {
+      this.columnPath = null;
+    }
+  }
+
   public void setFieldValue(_Fields field, Object value) {
     switch (field) {
     case TYPE:
@@ -194,6 +230,14 @@ public class TSFetchMetadataReq implements org.apache.thrift.TBase<TSFetchMetada
       }
       break;
 
+    case COLUMN_PATH:
+      if (value == null) {
+        unsetColumnPath();
+      } else {
+        setColumnPath((String)value);
+      }
+      break;
+
     }
   }
 
@@ -201,6 +245,9 @@ public class TSFetchMetadataReq implements org.apache.thrift.TBase<TSFetchMetada
     switch (field) {
     case TYPE:
       return getType();
+
+    case COLUMN_PATH:
+      return getColumnPath();
 
     }
     throw new IllegalStateException();
@@ -215,6 +262,8 @@ public class TSFetchMetadataReq implements org.apache.thrift.TBase<TSFetchMetada
     switch (field) {
     case TYPE:
       return isSetType();
+    case COLUMN_PATH:
+      return isSetColumnPath();
     }
     throw new IllegalStateException();
   }
@@ -241,6 +290,15 @@ public class TSFetchMetadataReq implements org.apache.thrift.TBase<TSFetchMetada
         return false;
     }
 
+    boolean this_present_columnPath = true && this.isSetColumnPath();
+    boolean that_present_columnPath = true && that.isSetColumnPath();
+    if (this_present_columnPath || that_present_columnPath) {
+      if (!(this_present_columnPath && that_present_columnPath))
+        return false;
+      if (!this.columnPath.equals(that.columnPath))
+        return false;
+    }
+
     return true;
   }
 
@@ -252,6 +310,11 @@ public class TSFetchMetadataReq implements org.apache.thrift.TBase<TSFetchMetada
     list.add(present_type);
     if (present_type)
       list.add(type.getValue());
+
+    boolean present_columnPath = true && (isSetColumnPath());
+    list.add(present_columnPath);
+    if (present_columnPath)
+      list.add(columnPath);
 
     return list.hashCode();
   }
@@ -270,6 +333,16 @@ public class TSFetchMetadataReq implements org.apache.thrift.TBase<TSFetchMetada
     }
     if (isSetType()) {
       lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.type, other.type);
+      if (lastComparison != 0) {
+        return lastComparison;
+      }
+    }
+    lastComparison = Boolean.valueOf(isSetColumnPath()).compareTo(other.isSetColumnPath());
+    if (lastComparison != 0) {
+      return lastComparison;
+    }
+    if (isSetColumnPath()) {
+      lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.columnPath, other.columnPath);
       if (lastComparison != 0) {
         return lastComparison;
       }
@@ -301,6 +374,16 @@ public class TSFetchMetadataReq implements org.apache.thrift.TBase<TSFetchMetada
       sb.append(this.type);
     }
     first = false;
+    if (isSetColumnPath()) {
+      if (!first) sb.append(", ");
+      sb.append("columnPath:");
+      if (this.columnPath == null) {
+        sb.append("null");
+      } else {
+        sb.append(this.columnPath);
+      }
+      first = false;
+    }
     sb.append(")");
     return sb.toString();
   }
@@ -355,6 +438,14 @@ public class TSFetchMetadataReq implements org.apache.thrift.TBase<TSFetchMetada
               org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
             }
             break;
+          case 2: // COLUMN_PATH
+            if (schemeField.type == org.apache.thrift.protocol.TType.STRING) {
+              struct.columnPath = iprot.readString();
+              struct.setColumnPathIsSet(true);
+            } else { 
+              org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+            }
+            break;
           default:
             org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
         }
@@ -375,6 +466,13 @@ public class TSFetchMetadataReq implements org.apache.thrift.TBase<TSFetchMetada
         oprot.writeI32(struct.type.getValue());
         oprot.writeFieldEnd();
       }
+      if (struct.columnPath != null) {
+        if (struct.isSetColumnPath()) {
+          oprot.writeFieldBegin(COLUMN_PATH_FIELD_DESC);
+          oprot.writeString(struct.columnPath);
+          oprot.writeFieldEnd();
+        }
+      }
       oprot.writeFieldStop();
       oprot.writeStructEnd();
     }
@@ -393,6 +491,14 @@ public class TSFetchMetadataReq implements org.apache.thrift.TBase<TSFetchMetada
     public void write(org.apache.thrift.protocol.TProtocol prot, TSFetchMetadataReq struct) throws org.apache.thrift.TException {
       TTupleProtocol oprot = (TTupleProtocol) prot;
       oprot.writeI32(struct.type.getValue());
+      BitSet optionals = new BitSet();
+      if (struct.isSetColumnPath()) {
+        optionals.set(0);
+      }
+      oprot.writeBitSet(optionals, 1);
+      if (struct.isSetColumnPath()) {
+        oprot.writeString(struct.columnPath);
+      }
     }
 
     @Override
@@ -400,6 +506,11 @@ public class TSFetchMetadataReq implements org.apache.thrift.TBase<TSFetchMetada
       TTupleProtocol iprot = (TTupleProtocol) prot;
       struct.type = cn.edu.thu.tsfiledb.service.rpc.thrift.MEATADATA_OPERATION_TYPE.findByValue(iprot.readI32());
       struct.setTypeIsSet(true);
+      BitSet incoming = iprot.readBitSet(1);
+      if (incoming.get(0)) {
+        struct.columnPath = iprot.readString();
+        struct.setColumnPathIsSet(true);
+      }
     }
   }
 
