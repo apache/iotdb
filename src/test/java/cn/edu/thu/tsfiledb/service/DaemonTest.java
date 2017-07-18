@@ -8,6 +8,7 @@ import java.sql.*;
 import cn.edu.thu.tsfiledb.jdbc.AbstractClient;
 import org.apache.commons.io.FileUtils;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -19,6 +20,14 @@ import cn.edu.thu.tsfiledb.conf.TsfileDBDescriptor;
  */
 public class DaemonTest {
     private final String FOLDER_HEADER = "src/test/resources";
+    private static final String TIMESTAMP_STR = "Timestamp";
+    private final String d0s0 = "root.vehicle.d0.s0";
+    private final String d0s1 = "root.vehicle.d0.s1";
+    private final String d0s2 = "root.vehicle.d0.s2";
+    private final String d0s3 = "root.vehicle.d0.s3";
+    private final String d1s0 = "root.vehicle.d1.s0";
+    private final String d1s1 = "root.vehicle.d1.s1";
+
     private String[] sqls = new String[]{
             "CREATE TIMESERIES root.vehicle.d1.s0 WITH DATATYPE=INT32, ENCODING=RLE",
             "CREATE TIMESERIES root.vehicle.d0.s2 WITH DATATYPE=FLOAT, ENCODING=RLE",
@@ -74,8 +83,7 @@ public class DaemonTest {
 
             "insert into root.vehicle.d0(timestamp,s1) values(2000-01-01T08:00:00+08:00, 100)",
             "insert into root.vehicle.d0(timestamp,s3) values(2000-01-01T08:00:00+08:00, 'good')",
-            "insert into root.vehicle.d0(timestamp,s2) values(now(),55.5)",
-};
+    };
 
     private String overflowDataDirPre;
     private String fileNodeDirPre;
@@ -85,7 +93,7 @@ public class DaemonTest {
 
     private Daemon deamon;
 
-    @Before
+    //@Before
     public void setUp() throws Exception {
         TsfileDBConfig config = TsfileDBDescriptor.getInstance().getConfig();
         overflowDataDirPre = config.overflowDataDir;
@@ -103,7 +111,7 @@ public class DaemonTest {
         deamon.active();
     }
 
-    @After
+    //@After
     public void tearDown() throws Exception {
         deamon.stop();
         Thread.sleep(5000);
@@ -123,7 +131,7 @@ public class DaemonTest {
         config.derbyHome = derbyHomePre;
     }
 
-    @Test
+    //@Test
     public void test() throws ClassNotFoundException, SQLException, InterruptedException {
         Thread.sleep(5000);
         insertSQL();
@@ -132,8 +140,10 @@ public class DaemonTest {
         //TODO: add your query statement
         Connection connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
         System.out.println(connection.getMetaData());
-        // outSQL();
-        dnfErrorSQL();
+        selectAllSQLTest();
+        dnfErrorSQLTest();
+        selectWildCardSQLTest();
+        selectAndOperatorTest();
         connection.close();
     }
 
@@ -156,7 +166,26 @@ public class DaemonTest {
         }
     }
 
-    private void outSQL() throws ClassNotFoundException, SQLException {
+    private void selectAllSQLTest() throws ClassNotFoundException, SQLException {
+        String[] retArray = new String[]{
+                "1,null,1101,null,null,999",
+                "2,null,40000,2.22,null,null",
+                "3,null,null,3.33,null,null",
+                "4,null,null,4.44,null,null",
+                "50,null,50000,null,null,null",
+                "60,null,null,null,aaaaa,null",
+                "70,null,null,null,bbbbb,null",
+                "80,null,null,null,ccccc,null",
+                "100,null,199,null,null,null",
+                "101,null,199,null,tomorrow is another day,null",
+                "102,null,180,10.0,tomorrow is another day,null",
+                "103,null,199,null,null,null",
+                "104,33333,190,null,null,null",
+                "105,33333,199,11.11,null,null",
+                "106,99,null,null,null,null",
+                "1000,22222,55555,1000.11,null,888",
+                "946684800000,null,100,null,good,null"};
+
         Class.forName("cn.edu.thu.tsfiledb.jdbc.TsfileDriver");
         Connection connection = null;
         try {
@@ -166,9 +195,15 @@ public class DaemonTest {
             System.out.println(hasResultSet + "...");
             if (hasResultSet) {
                 ResultSet resultSet = statement.getResultSet();
+                int cnt = 0;
                 while (resultSet.next()) {
-                    AbstractClient.output(resultSet, true, "select *");
+                    String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s0) + "," + resultSet.getString(d0s1)
+                            +","+resultSet.getString(d0s2)+","+resultSet.getString(d0s3)+","+resultSet.getString(d1s0);
+                    // System.out.println(ans);
+                    Assert.assertEquals(ans, retArray[cnt]);
+                    cnt++;
                 }
+                Assert.assertEquals(cnt, 17);
             }
             statement.close();
         } catch (Exception e) {
@@ -180,7 +215,18 @@ public class DaemonTest {
         }
     }
 
-    private void dnfErrorSQL() throws ClassNotFoundException, SQLException {
+    private void dnfErrorSQLTest() throws ClassNotFoundException, SQLException {
+        String[] retArray = new String[]{
+                "1,null,1101",
+                "2,null,40000",
+                "50,null,50000",
+                "100,null,199",
+                "101,null,199",
+                "102,null,180",
+                "103,null,199",
+                "104,33333,190",
+                "105,33333,199"};
+
         Class.forName("cn.edu.thu.tsfiledb.jdbc.TsfileDriver");
         Connection connection = null;
         try {
@@ -189,9 +235,14 @@ public class DaemonTest {
             boolean hasResultSet = statement.execute("select s0,s1 from root.vehicle.d0 where time < 106 and (s0 >= 60 or s1 <= 200)");
             if (hasResultSet) {
                 ResultSet resultSet = statement.getResultSet();
+                int cnt = 0;
                 while (resultSet.next()) {
-                    AbstractClient.output(resultSet, true, "select *");
+                    String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s0) + "," + resultSet.getString(d0s1);
+                    Assert.assertEquals(ans, retArray[cnt]);
+                    cnt++;
+                    // AbstractClient.output(resultSet, true, "select statement");
                 }
+                Assert.assertEquals(cnt, 9);
             }
             statement.close();
         } catch (Exception e) {
@@ -203,4 +254,74 @@ public class DaemonTest {
         }
     }
 
+    private void selectWildCardSQLTest() throws ClassNotFoundException, SQLException {
+        String[] retArray = new String[]{
+                "2,2.22",
+                "3,3.33",
+                "4,4.44",
+                "102,10.0",
+                "105,11.11",
+                "1000,1000.11"};
+
+        Class.forName("cn.edu.thu.tsfiledb.jdbc.TsfileDriver");
+        Connection connection = null;
+        try {
+            connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
+            Statement statement = connection.createStatement();
+            boolean hasResultSet = statement.execute("select s2 from root.vehicle.*");
+            if (hasResultSet) {
+                ResultSet resultSet = statement.getResultSet();
+                int cnt = 0;
+                while (resultSet.next()) {
+                    String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s2);
+                    // System.out.println(ans);
+                    Assert.assertEquals(ans, retArray[cnt]);
+                    cnt++;
+                    // AbstractClient.output(resultSet, true, "select statement");
+                }
+                Assert.assertEquals(cnt, 6);
+            }
+            statement.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            if (connection != null) {
+                connection.close();
+            }
+        }
+    }
+
+    private void selectAndOperatorTest() throws ClassNotFoundException, SQLException {
+        String[] retArray = new String[]{
+                "1000,22222,55555,888"};
+
+        Class.forName("cn.edu.thu.tsfiledb.jdbc.TsfileDriver");
+        Connection connection = null;
+        try {
+            connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
+            Statement statement = connection.createStatement();
+            //TODO  select s0,s1 from root.vehicle.d0 where time > 106 and root.vehicle.d1.s0 > 100;
+            boolean hasResultSet = statement.execute("select s0,s1 from root.vehicle.d0,root.vehicle.d1 where time > 106 and root.vehicle.d0.s0 > 100");
+            if (hasResultSet) {
+                ResultSet resultSet = statement.getResultSet();
+                int cnt = 0;
+                while (resultSet.next()) {
+                    String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s0)+","+resultSet.getString(d0s1)+","
+                            +resultSet.getString(d1s0);
+                    // System.out.println(ans);
+                    Assert.assertEquals(ans, retArray[cnt]);
+                    cnt++;
+                    // AbstractClient.output(resultSet, true, "select statement");
+                }
+                Assert.assertEquals(cnt, 1);
+            }
+            statement.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            if (connection != null) {
+                connection.close();
+            }
+        }
+    }
 }
