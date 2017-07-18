@@ -9,20 +9,23 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.thrift.TException;
+
+import cn.edu.thu.tsfile.file.metadata.enums.TSDataType;
 import cn.edu.thu.tsfiledb.metadata.ColumnSchema;
+import cn.edu.thu.tsfiledb.service.rpc.thrift.MEATADATA_OPERATION_TYPE;
+import cn.edu.thu.tsfiledb.service.rpc.thrift.TSFetchMetadataReq;
+import cn.edu.thu.tsfiledb.service.rpc.thrift.TSFetchMetadataResp;
+import cn.edu.thu.tsfiledb.service.rpc.thrift.TSIService;
 
 public class TsfileDatabaseMetadata implements DatabaseMetaData {
 	private final String ROOT_PATH = "root";
 	private TsfileConnection connection;
-	private Map<String, List<ColumnSchema>> seriesMap;
-	private Map<String, List<String>> deltaObjectMap;
-	private String metadataInJson;
+	private TSIService.Iface client;
 
-	public TsfileDatabaseMetadata(TsfileConnection connection, Map<String, List<ColumnSchema>> seriesMap, Map<String, List<String>> deltaObjectMap, String metadataInJson) {
+	public TsfileDatabaseMetadata(TsfileConnection connection, TSIService.Iface client) {
 		this.connection = connection;
-		this.seriesMap = seriesMap;
-		this.deltaObjectMap = deltaObjectMap;
-		this.metadataInJson = metadataInJson;
+		this.client = client;
 	}
 
 	/**
@@ -33,68 +36,39 @@ public class TsfileDatabaseMetadata implements DatabaseMetaData {
 	public ResultSet getColumns(String catalog, String schemaPattern, String columnPattern, String deltaObjectPattern) throws SQLException {
 
 	    if(deltaObjectPattern != null && !deltaObjectPattern.trim().equals("")){
-			if(deltaObjectMap == null){
-				throw new SQLException("No delta object metadata");
+			TSFetchMetadataReq req = new TSFetchMetadataReq(MEATADATA_OPERATION_TYPE.DELTAOBJECT);
+			TSFetchMetadataResp resp;
+			try {
+				resp = client.fetchMetadata(req);
+				Utils.verifySuccess(resp.getStatus());
+				Map<String, List<String>> deltaObjectList = resp.getDeltaObjectMap();
+				if(deltaObjectList == null || !deltaObjectList.containsKey(deltaObjectPattern)){
+					throw new SQLException("No schema for delta object");
+				}
+				return new TsfileMetadataResultSet(null, deltaObjectList.get(deltaObjectPattern));
+			} catch (TException e) {
+				throw new SQLException("Conncetion error when fetching delta object metadata");
 			}
-			List<String> deltaObjectList = deltaObjectMap.get(deltaObjectPattern);
-			if(deltaObjectList == null){
-				throw new SQLException(String.format("Cannot find %s", deltaObjectPattern));
-			}
-			return new TsfileMetadataResultSet(null, deltaObjectList);
+			
 		}
 
 		if(columnPattern != null && !columnPattern.trim().equals("")){
-			if(seriesMap == null){
-				throw new SQLException("No schema for column metadata");
+			TSFetchMetadataReq req = new TSFetchMetadataReq(MEATADATA_OPERATION_TYPE.COLUMN);
+			req.setColumnPath(columnPattern);
+			TSFetchMetadataResp resp;
+			try {
+				resp = client.fetchMetadata(req);
+				Utils.verifySuccess(resp.getStatus());
+				List<ColumnSchema> columnSchemaNew = new ArrayList<>();
+				columnSchemaNew.add(new ColumnSchema(columnPattern, 
+						resp.getDataType() == null ? null : TSDataType.valueOf(resp.getDataType()), 
+						null));
+				return new TsfileMetadataResultSet(columnSchemaNew, null);
+			} catch (TException e) {
+				throw new SQLException("Conncetion error when fetching column data type");
 			}
-
-			String[] values = columnPattern.split("\\.");
-
-
-			if(values.length < 2){
-				throw new SQLException(String.format("path should starts like %s.xxx",ROOT_PATH));
-			}
-			if(!values[0].equals(ROOT_PATH)){
-				throw new SQLException("column path should starts with: "+ROOT_PATH);
-			}
-			List<ColumnSchema> columnSchemaNew = new ArrayList<>();
-			List<ColumnSchema> columnSchemaOld = getColumnSchemaList(values[1], columnPattern);
-			if (values.length == 2) {
-				List<String> deltaObjectList = deltaObjectMap.get(values[1]);
-				if(deltaObjectList == null){
-					throw new SQLException(String.format("Cannot find delta object %s", values[1]));
-				}
-
-				for(String deltaObject : deltaObjectList){
-					for(ColumnSchema schema: columnSchemaOld){
-						columnSchemaNew.add(new ColumnSchema(String.format("%s.%s", deltaObject, schema.name), schema.dataType, null));
-					}
-				}
-
-			} else if (values.length == 3) {
-				for(ColumnSchema schema: columnSchemaOld){
-					columnSchemaNew.add(new ColumnSchema(String.format("%s.%s", columnPattern,schema.name), schema.dataType, null));
-				}
-			} else {
-				for(ColumnSchema schema: columnSchemaOld){
-					if(values[3].equals(schema.name)){
-						columnSchemaNew.add(new ColumnSchema(columnPattern, schema.dataType, null));
-						break;
-					}
-				}
-
-			}
-			return new TsfileMetadataResultSet(columnSchemaNew, null);
 		}
 		return null;
-	}
-
-	private List<ColumnSchema> getColumnSchemaList(String deltaObjectType, String columnPattern) throws SQLException{
-		List<ColumnSchema> columnSchemaOld = seriesMap.get(deltaObjectType);
-		if(columnSchemaOld == null){
-			throw new SQLException(String.format("Cannot find %s", columnPattern));
-		}
-		return columnSchemaOld;
 	}
 
 	@Override
@@ -1154,6 +1128,17 @@ public class TsfileDatabaseMetadata implements DatabaseMetaData {
 
 	@Override
 	public String toString(){
-	    return metadataInJson;
+		TSFetchMetadataReq req = new TSFetchMetadataReq(MEATADATA_OPERATION_TYPE.METADATA_IN_JSON);
+		TSFetchMetadataResp resp;
+		try {
+			resp = client.fetchMetadata(req);
+			Utils.verifySuccess(resp.getStatus());
+			return resp.getMetadataInJson();
+		} catch (TException e) {
+			System.out.println("Conncetion error when fetching timeseries metadata");
+		} catch (Exception e) {
+			System.out.println("Failed to fetch metadata because: "+e.getMessage());
+		}
+		return null;
 	}
 }
