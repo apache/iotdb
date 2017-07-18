@@ -2,9 +2,13 @@ package cn.edu.thu.tsfiledb.query.engine;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 
 import cn.edu.thu.tsfile.common.exception.UnSupportedDataTypeException;
+import cn.edu.thu.tsfile.timeseries.filter.definition.filterseries.FilterSeries;
+import cn.edu.thu.tsfile.timeseries.filter.definition.operators.SingleBinaryExpression;
+import cn.edu.thu.tsfile.timeseries.filter.definition.operators.SingleUnaryExpression;
 import cn.edu.thu.tsfiledb.query.dataset.InsertDynamicData;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -277,6 +281,8 @@ public class OverflowQueryEngine {
         // Step 1: calculate common timestamp
         LOGGER.info("step 1: init time value generator...");
         if (queryDataSet == null) {
+            // reset status of RecordReader used ValueFilter
+            resetRecordStatusUsingValueFilter(valueFilter, new HashSet<String>());
             queryDataSet = new QueryDataSet();
             queryDataSet.timeQueryDataSet = new CrossQueryTimeGenerator(timeFilter, freqFilter, valueFilter, fetchSize) {
                 @Override
@@ -603,6 +609,36 @@ public class OverflowQueryEngine {
                 return new SingleValueVisitor<Double>(filter);
             default:
                 return SingleValueVisitorFactory.getSingleValueVisitor(type);
+        }
+    }
+
+    /**
+     * In cross column query, such as "select s0,s1,s2 from root.vehicle.d0 where time < 106 and (s0 >= 60 or s1 <= 200)," </br>
+     * when calculate the common time, the position in InsertDynamicData may be wrong. </br>
+     *
+     * @param filter
+     * @param hashSet
+     */
+    private void resetRecordStatusUsingValueFilter(FilterExpression filter, HashSet<String> hashSet) throws ProcessorException {
+        if (filter instanceof SingleSeriesFilterExpression) {
+            if (filter instanceof SingleUnaryExpression) {
+                FilterSeries series = ((SingleUnaryExpression) filter).getFilterSeries();
+                String key = series.getDeltaObjectUID() + "." + series.getMeasurementUID();
+                if (!hashSet.contains(key)) {
+                    RecordReader recordReader = RecordReaderFactory.getInstance().getRecordReader(series.getDeltaObjectUID(), series.getMeasurementUID(),
+                            null, null, null);
+                    if (recordReader.insertAllData != null) {
+                        recordReader.insertAllData.readStatusReset();
+                    }
+                    hashSet.add(key);
+                }
+            } else if (filter instanceof SingleBinaryExpression) {
+                resetRecordStatusUsingValueFilter(((SingleBinaryExpression) filter).getLeft(), hashSet);
+                resetRecordStatusUsingValueFilter(((SingleBinaryExpression) filter).getRight(), hashSet);
+            }
+        } else if (filter instanceof CrossSeriesFilterExpression) {
+            resetRecordStatusUsingValueFilter(((CrossSeriesFilterExpression) filter).getLeft(), hashSet);
+            resetRecordStatusUsingValueFilter(((CrossSeriesFilterExpression) filter).getRight(), hashSet);
         }
     }
 }
