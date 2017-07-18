@@ -408,6 +408,8 @@ public class MManager {
 		lock.readLock().lock();
 		try {
 			return mGraph.getFileNameByPath(path);
+		} catch (PathErrorException e) {
+			throw new PathErrorException(String.format(e.getMessage()));
 		} finally {
 			lock.readLock().unlock();
 		}
