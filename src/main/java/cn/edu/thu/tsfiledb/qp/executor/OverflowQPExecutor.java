@@ -290,7 +290,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 		return false;
 	}
 
-	private boolean operateMetadata(MetadataPlan metadataPlan) throws ProcessorException {
+	private boolean operateMetadata(MetadataPlan metadataPlan) throws ProcessorException{
 		MetadataOperator.NamespaceType namespaceType = metadataPlan.getNamespaceType();
 		Path path = metadataPlan.getPath();
 		String dataType = metadataPlan.getDataType();
@@ -310,7 +310,11 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 				}
 
 				List<String> pathStringList = mManager.getPaths(path.getFullPath());
-				deleteDataOfTimeSeries(mManager, pathStringList);
+				try {
+					deleteDataOfTimeSeries(mManager, pathStringList);
+				} catch (ProcessorException e) {
+					// no operation
+				}
 				mManager.deletePathFromMTree(path.getFullPath());
 				break;
 			case SET_FILE_LEVEL:
@@ -342,14 +346,13 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 	private void deleteDataOfTimeSeries(MManager mManager, List<String> pathList)
 			throws PathErrorException, ProcessorException {
 		for (String p : pathList) {
-			if (mManager.pathExist(p)) {
-				DeletePlan deletePlan = new DeletePlan();
-				deletePlan.addPath(new Path(p));
-				deletePlan.setDeleteTime(Long.MAX_VALUE);
-				processNonQuery(deletePlan);
-			}
+			DeletePlan deletePlan = new DeletePlan();
+			deletePlan.addPath(new Path(p));
+			deletePlan.setDeleteTime(Long.MAX_VALUE);
+			processNonQuery(deletePlan);
 		}
 	}
+
 
 	private boolean operateProperty(PropertyPlan propertyPlan) throws ProcessorException {
 		PropertyOperator.PropertyType propertyType = propertyPlan.getPropertyType();

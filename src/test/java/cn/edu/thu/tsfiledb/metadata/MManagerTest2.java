@@ -204,5 +204,20 @@ public class MManagerTest2 {
 			e.printStackTrace();
 			fail(e.getMessage());
 		}
+		
+		try {
+			manager.addPathToMTree("root.laptop.d1.s3","INT32","RLE",new String[0]);
+		} catch (PathErrorException | MetadataArgsErrorException | IOException e1) {
+			e1.printStackTrace();
+			fail(e1.getMessage());
+		}
+		paths = new ArrayList<>();
+		paths.add(new Path("root.laptop.d1.s3"));
+		try {
+			manager.checkFileLevel(paths);
+		} catch (PathErrorException e) {
+			e.printStackTrace();
+			fail(e.getMessage());
+		}
 	}
 }

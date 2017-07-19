@@ -58,7 +58,6 @@ public class MTree implements Serializable {
 			}
 			cur.setDataFileName(levePath);
 			cur = cur.getChild(nodeName);
-			
 			i++;
 		}
 		TSDataType dt = TSDataType.valueOf(dataType);
@@ -70,6 +69,7 @@ public class MTree implements Serializable {
 				leaf.getSchema().putKeyValueToArgs(arg[0], arg[1]);
 			}
 		}
+		levePath = cur.getDataFileName();
 		leaf.setDataFileName(levePath);
 		cur.addChild(nodeNames[i], leaf);
 	}
