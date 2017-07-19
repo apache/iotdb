@@ -274,7 +274,7 @@ execStatement
     | queryStatement
     | metadataStatement
     | mergeStatement
-    | loadStatement
+//    | loadStatement
     | quitStatement
     ;
 
