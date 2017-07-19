@@ -49,6 +49,7 @@ public class MManager {
 	private BufferedWriter bw;
 	private boolean writeToLog;
 	private boolean initialized;
+	private String storageGroup = null;
 
 	private MManager() {
 		writeToLog = false;
@@ -129,6 +130,7 @@ public class MManager {
 		lock.writeLock().lock();
 		try {
 			this.mGraph = new MGraph(ROOT_NAME);
+			this.storageGroup = null;
 		} finally {
 			lock.writeLock().unlock();
 		}
@@ -219,12 +221,16 @@ public class MManager {
 	public void setStorageLevelToMTree(String path) throws PathErrorException, IOException {
 		lock.writeLock().lock();
 		try {
+			if(storageGroup!=null){
+				throw new PathErrorException(String.format("The storage group %s has already been set",storageGroup));
+			}
 			mGraph.setStorageLevel(path);
 			if (writeToLog) {
 				bw.write(MetadataOperationType.SET_STORAGE_LEVEL_TO_MTREE + "," + path);
 				bw.newLine();
 				bw.flush();
 			}
+			storageGroup = path;
 		} finally {
 			lock.writeLock().unlock();
 		}
@@ -408,6 +414,8 @@ public class MManager {
 		lock.readLock().lock();
 		try {
 			return mGraph.getFileNameByPath(path);
+		} catch (PathErrorException e) {
+			throw new PathErrorException(String.format(e.getMessage()));
 		} finally {
 			lock.readLock().unlock();
 		}
