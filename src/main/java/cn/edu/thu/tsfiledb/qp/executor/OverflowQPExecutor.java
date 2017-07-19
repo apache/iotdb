@@ -140,8 +140,8 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 			 * modify by liukun
 			 */
             if (dataType == TSDataType.TEXT) {
-                if ((value.startsWith("'") && value.endsWith("'"))
-                        || (value.startsWith("\"") && value.endsWith("\""))) {
+                if ((value.startsWith(SQLConstant.QUOTE) && value.endsWith(SQLConstant.QUOTE))
+                        || (value.startsWith(SQLConstant.DQUOTE) && value.endsWith(SQLConstant.DQUOTE))) {
                     value = value.substring(1, value.length() - 1);
                 }
             }
@@ -214,8 +214,8 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 				 */
                 String value = insertValues.get(i);
                 if (dataType == TSDataType.TEXT) {
-                    if ((value.startsWith("'") && value.endsWith("'"))
-                            || (value.startsWith("\"") && value.endsWith("\""))) {
+                    if ((value.startsWith(SQLConstant.QUOTE) && value.endsWith(SQLConstant.QUOTE))
+                            || (value.startsWith(SQLConstant.DQUOTE) && value.endsWith(SQLConstant.DQUOTE))) {
                         value = value.substring(1, value.length() - 1);
                     }
                 }
