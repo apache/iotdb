@@ -122,7 +122,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
             /*
              * modify by liukun
              */
-            if(type==TSDataType.BYTE_ARRAY){
+            if(type==TSDataType.TEXT){
             	value = value.substring(1, value.length()-1);
             }
             fileNodeManager.update(device, sensor, startTime, endTime, type, value);
@@ -189,7 +189,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
                  * modify by liukun
                  */
                 String value = insertValues.get(i);
-                if(dataType==TSDataType.BYTE_ARRAY){
+                if(dataType==TSDataType.TEXT){
                 	value = value.substring(1, value.length()-1);
                 }
                 DataPoint dataPoint = DataPoint.getDataPoint(dataType, measurementList.get(i), value);

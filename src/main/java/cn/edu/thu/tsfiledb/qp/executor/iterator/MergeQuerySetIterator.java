@@ -167,7 +167,7 @@ public class MergeQuerySetIterator implements Iterator<QueryDataSet> {
                         mapRet.get(key).putDouble(f.getFloatV());
                     }
                     break;
-                case BYTE_ARRAY:
+                case TEXT:
                     if (!f.isNull()) {
                         mapRet.get(key).putTime(record.timestamp);
                         mapRet.get(key).putBinary(f.getBinaryV());

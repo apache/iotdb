@@ -569,7 +569,7 @@ public class OverflowProcessor extends LRUProcessor {
 			return BytesUtils.floatToBytes(Float.valueOf(o));
 		case DOUBLE:
 			return BytesUtils.doubleToBytes(Double.valueOf(o));
-		case BYTE_ARRAY:
+		case TEXT:
 			return BytesUtils.StringToBytes(o);
 		default:
 			LOGGER.error("unsupport data type: {}", type);
