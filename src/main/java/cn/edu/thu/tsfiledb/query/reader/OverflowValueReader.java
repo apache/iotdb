@@ -683,7 +683,7 @@ public class OverflowValueReader extends ValueReader {
                             }
                         }
                         break;
-                    case BYTE_ARRAY:
+                    case TEXT:
                         while (decoder.hasNext(page)) {
                             // put insert points
                             while (insertMemoryData.hasInsertData() && timeIdx < timeValues.length
@@ -1384,7 +1384,7 @@ public class OverflowValueReader extends ValueReader {
                         }
                     }
                     break;
-                case BYTE_ARRAY:
+                case TEXT:
                     while (decoder.hasNext(page)) {
                         // put insert points
                         while (insertMemoryData.curIdx < insertMemoryData.length && timeIdx < timeValues.length

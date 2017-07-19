@@ -20,6 +20,8 @@ public class SQLConstant {
     public static final String lineFeedSignal = "\n";
     public static final String ROOT = "root";
     public static final String METADATA_PARAM_EQUAL = "=";
+    public static final String QUOTE = "'";
+    public static final String DQUOTE = "\"";    
 
     public static final int KW_AND = 1;
     public static final int KW_OR = 2;
