@@ -2,7 +2,9 @@ package cn.edu.thu.tsfiledb.qp.cud;
 
 import cn.edu.thu.tsfiledb.exception.ArgsErrorException;
 import cn.edu.thu.tsfiledb.qp.QueryProcessor;
+import cn.edu.thu.tsfiledb.qp.constant.SQLConstant;
 import cn.edu.thu.tsfiledb.qp.exception.QueryProcessorException;
+import cn.edu.thu.tsfiledb.qp.physical.PhysicalPlan;
 import cn.edu.thu.tsfiledb.qp.physical.sys.AuthorPlan;
 import cn.edu.thu.tsfiledb.qp.physical.sys.MetadataPlan;
 import cn.edu.thu.tsfiledb.qp.physical.sys.PropertyPlan;
@@ -10,8 +12,12 @@ import cn.edu.thu.tsfiledb.qp.utils.MemIntQpExecutor;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 public class PhysicalPlanTest {
+
+    private QueryProcessor processor = new QueryProcessor(new MemIntQpExecutor());
+
     @Test
     public void testMetadata() throws QueryProcessorException, ArgsErrorException {
         String metadata = "create timeseries root.laptop.d1.s1 with datatype=INT32,encoding=RLE";
@@ -46,6 +52,17 @@ public class PhysicalPlanTest {
         assertEquals("propertyPath: propropro.label1021\n" +
                 "metadataPath: null\n" +
                 "propertyType: ADD_PROPERTY_LABEL", plan.toString());
+    }
+
+    @Test
+    public void testAggregation() throws QueryProcessorException, ArgsErrorException {
+        String sqlStr =
+                "select sum(device_1.sensor_1) " + "from root.laptop "
+                        + "where time <= 51 or !(time != 100 and time < 460)";
+        PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
+        if (!plan.isQuery())
+            fail();
+        assertEquals("sum", processor.getExecutor().getParameter(SQLConstant.IS_AGGREGATION));
     }
 
 }

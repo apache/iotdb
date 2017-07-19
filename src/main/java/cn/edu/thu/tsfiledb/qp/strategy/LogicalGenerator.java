@@ -353,20 +353,15 @@ public class LogicalGenerator {
 			int selChildCount = astNode.getChildCount();
 			for (int i = 0; i < selChildCount; i++) {
 				ASTNode child = astNode.getChild(i);
-				switch (child.getType()) {
-				case TSParser.TOK_CLUSTER:
-					ASTNode pathChild = child.getChild(0);
+				if(child.getChild(0).getType() == TSParser.TOK_CLUSTER) {
+					ASTNode cluster = child.getChild(0);
+					ASTNode pathChild = cluster.getChild(0);
 					Path selectPath = parsePath(pathChild);
-					String aggregation = child.getChild(1).getText();
+					String aggregation = cluster.getChild(1).getText();
 					selectOp.addSuffixTablePath(selectPath, aggregation);
-					break;
-				case TSParser.TOK_PATH:
-					selectPath = parsePath(child);
+				} else {
+					Path selectPath = parsePath(child);
 					selectOp.addSuffixTablePath(selectPath);
-					break;
-				default:
-					throw new LogicalOperatorException(
-							"children SELECT clause must all be TOK_PATH, actual:" + tokenIntType);
 				}
 			}
 		} else if (tokenIntType == TSParser.TOK_PATH) {

@@ -148,15 +148,4 @@ public class TestQpQuery {
         LOG.info("Query processing complete\n");
     }
 
-    @Test
-    public void testAggregation() throws QueryProcessorException, ArgsErrorException {
-        String sqlStr =
-                "select sum(device_1.sensor_1) " + "from root.laptop "
-                        + "where time <= 51 or !(time != 100 and time < 460)";
-        PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
-        if (!plan.isQuery())
-            fail();
-        assertEquals("sum", processor.getExecutor().getParameter(SQLConstant.IS_AGGREGATION));
-    }
-
 }
