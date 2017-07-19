@@ -69,7 +69,7 @@ public class CSVToTsfile {
 	private static final int MAX_HELP_CONSOLE_WIDTH = 88;
 	private static final String TSFILEDB_CLI_PREFIX = "CSV_To_TsFile";
 
-	private static final String STRING_DATA_TYPE = "BYTE_ARRAY";
+	private static final String STRING_DATA_TYPE = "TEXT";
 
 	private static String host;
 	private static String port;
@@ -242,7 +242,7 @@ public class CSVToTsfile {
 					}
 				}
 			}
-			if(file.length() == 0) {
+			if(file.exists() && (file.length() == 0)) {
 				file.delete();
 			}
 		} catch (FileNotFoundException e) {
