@@ -36,15 +36,15 @@ public class TsFileDump {
     private static final String SQL_FILE_ARGS = "s";
     private static final String SQL_FILE_NAME = "sqlfile";
 
-    private static final String HEADER_DIS_ARGS = "hd";
-    private static final String HEADER_DIS_NAME = "headerdis";
+    private static final String HEADER_DIS_ARGS = "nhd";
+    private static final String HEADER_DIS_NAME = "noheaderdis";
 
     private static final int MAX_HELP_CONSOLE_WIDTH = 88;
     private static final String TSFILEDB_CLI_PREFIX = "Tsfile_Dump";
 
     private static String targetFile;
-    private static String headerDis;
     private static String timeFormat;
+    private static boolean headerDis;
 
     private static Connection connection = null;
 
@@ -85,10 +85,7 @@ public class TsFileDump {
             System.out.print(TSFILEDB_CLI_PREFIX + "> please input password: ");
             password = scanner.nextLine();
         }
-        headerDis = commandLine.getOptionValue(HEADER_DIS_ARGS);
-        if (headerDis == null) {
-            headerDis = "true";
-        }
+        headerDis = commandLine.hasOption(HEADER_DIS_ARGS);
         timeFormat = commandLine.getOptionValue(TIME_FORMAT_ARGS);
         if (timeFormat == null) {
             timeFormat = "ISO8601";
@@ -155,7 +152,7 @@ public class TsFileDump {
         Option opPassword = Option.builder(PASSWORD_ARGS).optionalArg(true).argName(PASSWORD_NAME).hasArg().desc("Password (optional)").build();
         options.addOption(opPassword);
 
-        Option opTargetFile = Option.builder(TARGET_FILE_ARGS).argName(TARGET_FILE_NAME).hasArg().desc("Target File Path (required)").build();
+        Option opTargetFile = Option.builder(TARGET_FILE_ARGS).argName(TARGET_FILE_NAME).hasArg().desc("Target File Path (optional)").build();
         options.addOption(opTargetFile);
 
         Option opSqlFile = Option.builder(SQL_FILE_ARGS).optionalArg(true).argName(SQL_FILE_NAME).hasArg().desc("SqlFile Path (optional)").build();
@@ -164,7 +161,7 @@ public class TsFileDump {
         Option opTimeFormat = Option.builder(TIME_FORMAT_ARGS).optionalArg(true).argName(TIME_FORMAT_NAME).hasArg().desc("Time Format (optional)").build();
         options.addOption(opTimeFormat);
 
-        Option opHeaderDis = Option.builder(HEADER_DIS_ARGS).optionalArg(true).argName(HEADER_DIS_NAME).hasArg().desc("Header Display Format (optional)").build();
+        Option opHeaderDis = Option.builder(HEADER_DIS_ARGS).optionalArg(true).argName(HEADER_DIS_NAME).desc("No Header Display (optional)").build();
         options.addOption(opHeaderDis);
 
         return options;
@@ -199,12 +196,13 @@ public class TsFileDump {
         try {
             int count = metadata.getColumnCount();
             // write data in csv file
-            if (headerDis.equals("true")) {
+            if (!headerDis) {
                 for (int i = 0; i < count; i++) {
                     if (i < count - 1) {
                         writer.write(metadata.getColumnLabel(i) + ",");
-                    } else
+                    } else {
                         writer.write(metadata.getColumnLabel(i) + "\n");
+                    }
                 }
             }
             while (rs.next()) {
