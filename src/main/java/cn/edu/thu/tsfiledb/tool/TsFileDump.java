@@ -8,7 +8,7 @@ import java.text.SimpleDateFormat;
 import java.util.Scanner;
 
 /**
- * @author car
+ * @author aru cheng
  * @version 1.0.0 20170719
  */
 public class TsFileDump {
@@ -168,7 +168,7 @@ public class TsFileDump {
         BufferedReader reader = null;
         try {
             reader = new BufferedReader(new InputStreamReader(new FileInputStream(sf)));
-            str = reader.readLine(); // read select Sentence
+            str = reader.readLine();
         } catch (IOException e) {
             System.out.println(e.getMessage());
             return;
@@ -177,12 +177,11 @@ public class TsFileDump {
                 reader.close();
             }
         }
-        ResultSet rs = statement.executeQuery(str); // get select resultset
+        ResultSet rs = statement.executeQuery(str);
         BufferedWriter writer;
-        ResultSetMetaData metadata = rs.getMetaData(); // get table ColumnLabel
+        ResultSetMetaData metadata = rs.getMetaData();
         try {
             File tf = new File(targetFile);
-            //File tf = new File(targetFile + "/" + matchSelectFileName(str) + ".csv");
             if (!tf.exists()) {
                 if (!tf.createNewFile()) {
                     System.out.println("could not create target file");
