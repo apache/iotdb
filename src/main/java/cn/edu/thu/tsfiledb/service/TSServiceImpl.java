@@ -66,6 +66,7 @@ import cn.edu.thu.tsfiledb.sys.writelog.WriteLogManager;
 /**
  * Thrift RPC implementation at server side
  */
+
 public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
 	private WriteLogManager writeLogManager;
@@ -324,7 +325,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
 			// check path exists
 			if (paths.size() == 0) {
-				return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, "Selected columns do NOT EXIST.");
+				return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, "Timeseries does not exist.");
 			}
 
 			// check file level set
@@ -584,5 +585,4 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 		closeOperation(null);
 		closeSession(null);
 	}
-
 }

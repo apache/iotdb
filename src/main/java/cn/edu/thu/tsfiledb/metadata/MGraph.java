@@ -50,7 +50,7 @@ public class MGraph implements Serializable {
 			throws PathErrorException, MetadataArgsErrorException {
 		String nodes[] = path.trim().split("\\.");
 		if (nodes.length == 0) {
-			throw new PathErrorException("Path is null. Path: " + path);
+			throw new PathErrorException("Timeseries is null");
 		}
 		return this.mTree.addPath(path, dataType, encoding, args);
 	}
@@ -61,14 +61,14 @@ public class MGraph implements Serializable {
 	public void addPathToPTree(String path) throws PathErrorException, MetadataArgsErrorException {
 		String nodes[] = path.trim().split("\\.");
 		if (nodes.length == 0) {
-			throw new PathErrorException("Path is null. Path: " + path);
+			throw new PathErrorException("Timeseries is null.");
 		}
 		String rootName = path.trim().split("\\.")[0];
 		if (pTreeMap.containsKey(rootName)) {
 			PTree pTree = pTreeMap.get(rootName);
 			pTree.addPath(path);
 		} else {
-			throw new PathErrorException("Path Root is Not Correct. RootName: " + rootName);
+			throw new PathErrorException("Timeseries's root is not Correct. RootName: " + rootName);
 		}
 	}
 
@@ -80,7 +80,7 @@ public class MGraph implements Serializable {
 	public void deletePath(String path) throws PathErrorException {
 		String nodes[] = path.trim().split("\\.");
 		if (nodes.length == 0) {
-			throw new PathErrorException("Path is null. Path: " + path);
+			throw new PathErrorException("Timeseries is null");
 		}
 		String rootName = path.trim().split("\\.")[0];
 		if (mTree.getRoot().getName().equals(rootName)) {
@@ -89,7 +89,7 @@ public class MGraph implements Serializable {
 			PTree pTree = pTreeMap.get(rootName);
 			pTree.deletePath(path);
 		} else {
-			throw new PathErrorException("Path Root is Not Correct. RootName: " + rootName);
+			throw new PathErrorException("Timeseries's root is not Correct. RootName: " + rootName);
 		}
 	}
 
@@ -142,7 +142,7 @@ public class MGraph implements Serializable {
 			PTree pTree = pTreeMap.get(rootName);
 			return pTree.getAllLinkedPath(path);
 		}
-		throw new PathErrorException("Path Root is Not Correct. RootName: " + rootName);
+		throw new PathErrorException("Timeseries's root is not Correct. RootName: " + rootName);
 	}	
 	
 	/**
