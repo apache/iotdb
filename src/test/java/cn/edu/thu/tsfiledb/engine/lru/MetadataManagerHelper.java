@@ -14,26 +14,26 @@ public class MetadataManagerHelper {
 		mmanager = MManager.getInstance();
 		mmanager.clear();
 		try {
-			mmanager.addAPathToMTree("root.vehicle.d0.s0", "INT32", "RLE", new String[0]);
-			mmanager.addAPathToMTree("root.vehicle.d0.s1", "INT64", "RLE", new String[0]);
-			mmanager.addAPathToMTree("root.vehicle.d0.s2", "FLOAT", "RLE", new String[0]);
-			mmanager.addAPathToMTree("root.vehicle.d0.s3", "DOUBLE", "RLE", new String[0]);
-			mmanager.addAPathToMTree("root.vehicle.d0.s4", "BOOLEAN", "PLAIN", new String[0]);
-			mmanager.addAPathToMTree("root.vehicle.d0.s5", "TEXT", "PLAIN", new String[0]);
+			mmanager.addPathToMTree("root.vehicle.d0.s0", "INT32", "RLE", new String[0]);
+			mmanager.addPathToMTree("root.vehicle.d0.s1", "INT64", "RLE", new String[0]);
+			mmanager.addPathToMTree("root.vehicle.d0.s2", "FLOAT", "RLE", new String[0]);
+			mmanager.addPathToMTree("root.vehicle.d0.s3", "DOUBLE", "RLE", new String[0]);
+			mmanager.addPathToMTree("root.vehicle.d0.s4", "BOOLEAN", "PLAIN", new String[0]);
+			mmanager.addPathToMTree("root.vehicle.d0.s5", "TEXT", "PLAIN", new String[0]);
 
-			mmanager.addAPathToMTree("root.vehicle.d1.s0", "INT32", "RLE", new String[0]);
-			mmanager.addAPathToMTree("root.vehicle.d1.s1", "INT64", "RLE", new String[0]);
-			mmanager.addAPathToMTree("root.vehicle.d1.s2", "FLOAT", "RLE", new String[0]);
-			mmanager.addAPathToMTree("root.vehicle.d1.s3", "DOUBLE", "RLE", new String[0]);
-			mmanager.addAPathToMTree("root.vehicle.d1.s4", "BOOLEAN", "PLAIN", new String[0]);
-			mmanager.addAPathToMTree("root.vehicle.d1.s5", "TEXT", "PLAIN", new String[0]);
+			mmanager.addPathToMTree("root.vehicle.d1.s0", "INT32", "RLE", new String[0]);
+			mmanager.addPathToMTree("root.vehicle.d1.s1", "INT64", "RLE", new String[0]);
+			mmanager.addPathToMTree("root.vehicle.d1.s2", "FLOAT", "RLE", new String[0]);
+			mmanager.addPathToMTree("root.vehicle.d1.s3", "DOUBLE", "RLE", new String[0]);
+			mmanager.addPathToMTree("root.vehicle.d1.s4", "BOOLEAN", "PLAIN", new String[0]);
+			mmanager.addPathToMTree("root.vehicle.d1.s5", "TEXT", "PLAIN", new String[0]);
 
-			mmanager.addAPathToMTree("root.vehicle.d2.s0", "INT32", "RLE", new String[0]);
-			mmanager.addAPathToMTree("root.vehicle.d2.s1", "INT64", "RLE", new String[0]);
-			mmanager.addAPathToMTree("root.vehicle.d2.s2", "FLOAT", "RLE", new String[0]);
-			mmanager.addAPathToMTree("root.vehicle.d2.s3", "DOUBLE", "RLE", new String[0]);
-			mmanager.addAPathToMTree("root.vehicle.d2.s4", "BOOLEAN", "PLAIN", new String[0]);
-			mmanager.addAPathToMTree("root.vehicle.d2.s5", "TEXT", "PLAIN", new String[0]);
+			mmanager.addPathToMTree("root.vehicle.d2.s0", "INT32", "RLE", new String[0]);
+			mmanager.addPathToMTree("root.vehicle.d2.s1", "INT64", "RLE", new String[0]);
+			mmanager.addPathToMTree("root.vehicle.d2.s2", "FLOAT", "RLE", new String[0]);
+			mmanager.addPathToMTree("root.vehicle.d2.s3", "DOUBLE", "RLE", new String[0]);
+			mmanager.addPathToMTree("root.vehicle.d2.s4", "BOOLEAN", "PLAIN", new String[0]);
+			mmanager.addPathToMTree("root.vehicle.d2.s5", "TEXT", "PLAIN", new String[0]);
 
 			mmanager.setStorageLevelToMTree("root.vehicle.d0");
 		} catch (Exception e) {
@@ -46,26 +46,26 @@ public class MetadataManagerHelper {
 		mmanager = MManager.getInstance();
 		mmanager.clear();
 		try {
-			mmanager.addAPathToMTree("root.vehicle.d0.s0", "INT32", "RLE", new String[0]);
-			mmanager.addAPathToMTree("root.vehicle.d0.s1", "INT64", "RLE", new String[0]);
-			mmanager.addAPathToMTree("root.vehicle.d0.s2", "FLOAT", "RLE", new String[0]);
-			mmanager.addAPathToMTree("root.vehicle.d0.s3", "DOUBLE", "RLE", new String[0]);
-			mmanager.addAPathToMTree("root.vehicle.d0.s4", "BOOLEAN", "PLAIN", new String[0]);
-			mmanager.addAPathToMTree("root.vehicle.d0.s5", "TEXT", "PLAIN", new String[0]);
+			mmanager.addPathToMTree("root.vehicle.d0.s0", "INT32", "RLE", new String[0]);
+			mmanager.addPathToMTree("root.vehicle.d0.s1", "INT64", "RLE", new String[0]);
+			mmanager.addPathToMTree("root.vehicle.d0.s2", "FLOAT", "RLE", new String[0]);
+			mmanager.addPathToMTree("root.vehicle.d0.s3", "DOUBLE", "RLE", new String[0]);
+			mmanager.addPathToMTree("root.vehicle.d0.s4", "BOOLEAN", "PLAIN", new String[0]);
+			mmanager.addPathToMTree("root.vehicle.d0.s5", "TEXT", "PLAIN", new String[0]);
 
-			mmanager.addAPathToMTree("root.vehicle.d1.s0", "INT32", "RLE", new String[0]);
-			mmanager.addAPathToMTree("root.vehicle.d1.s1", "INT64", "RLE", new String[0]);
-			mmanager.addAPathToMTree("root.vehicle.d1.s2", "FLOAT", "RLE", new String[0]);
-			mmanager.addAPathToMTree("root.vehicle.d1.s3", "DOUBLE", "RLE", new String[0]);
-			mmanager.addAPathToMTree("root.vehicle.d1.s4", "BOOLEAN", "PLAIN", new String[0]);
-			mmanager.addAPathToMTree("root.vehicle.d1.s5", "TEXT", "PLAIN", new String[0]);
+			mmanager.addPathToMTree("root.vehicle.d1.s0", "INT32", "RLE", new String[0]);
+			mmanager.addPathToMTree("root.vehicle.d1.s1", "INT64", "RLE", new String[0]);
+			mmanager.addPathToMTree("root.vehicle.d1.s2", "FLOAT", "RLE", new String[0]);
+			mmanager.addPathToMTree("root.vehicle.d1.s3", "DOUBLE", "RLE", new String[0]);
+			mmanager.addPathToMTree("root.vehicle.d1.s4", "BOOLEAN", "PLAIN", new String[0]);
+			mmanager.addPathToMTree("root.vehicle.d1.s5", "TEXT", "PLAIN", new String[0]);
 
-			mmanager.addAPathToMTree("root.vehicle.d2.s0", "INT32", "RLE", new String[0]);
-			mmanager.addAPathToMTree("root.vehicle.d2.s1", "INT64", "RLE", new String[0]);
-			mmanager.addAPathToMTree("root.vehicle.d2.s2", "FLOAT", "RLE", new String[0]);
-			mmanager.addAPathToMTree("root.vehicle.d2.s3", "DOUBLE", "RLE", new String[0]);
-			mmanager.addAPathToMTree("root.vehicle.d2.s4", "BOOLEAN", "PLAIN", new String[0]);
-			mmanager.addAPathToMTree("root.vehicle.d2.s5", "TEXT", "PLAIN", new String[0]);
+			mmanager.addPathToMTree("root.vehicle.d2.s0", "INT32", "RLE", new String[0]);
+			mmanager.addPathToMTree("root.vehicle.d2.s1", "INT64", "RLE", new String[0]);
+			mmanager.addPathToMTree("root.vehicle.d2.s2", "FLOAT", "RLE", new String[0]);
+			mmanager.addPathToMTree("root.vehicle.d2.s3", "DOUBLE", "RLE", new String[0]);
+			mmanager.addPathToMTree("root.vehicle.d2.s4", "BOOLEAN", "PLAIN", new String[0]);
+			mmanager.addPathToMTree("root.vehicle.d2.s5", "TEXT", "PLAIN", new String[0]);
 
 			mmanager.setStorageLevelToMTree("root.vehicle");
 		} catch (Exception e) {
