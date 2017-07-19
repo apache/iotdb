@@ -587,20 +587,20 @@ public class IntervalTreeTest {
      */
     @Test
     public void stringDataMixTest() {
-        IntervalTree tree = new IntervalTree(TSDataType.BYTE_ARRAY);
+        IntervalTree tree = new IntervalTree(TSDataType.TEXT);
 
-        TimePair i1 = new TimePair(100L, 100L, IntervalTreeTest.s1, OverflowOpType.INSERT, TSDataType.BYTE_ARRAY);
-        TimePair i2 = new TimePair(500L, 500L, IntervalTreeTest.s2, OverflowOpType.INSERT, TSDataType.BYTE_ARRAY);
-        TimePair u1 = new TimePair(250L, 490L, s3, OverflowOpType.UPDATE, TSDataType.BYTE_ARRAY);
-        TimePair d1 = new TimePair(0L, 250L, s0, OverflowOpType.DELETE, TSDataType.BYTE_ARRAY);
-        TimePair u2 = new TimePair(130L, 140L, s4, OverflowOpType.UPDATE, TSDataType.BYTE_ARRAY);
+        TimePair i1 = new TimePair(100L, 100L, IntervalTreeTest.s1, OverflowOpType.INSERT, TSDataType.TEXT);
+        TimePair i2 = new TimePair(500L, 500L, IntervalTreeTest.s2, OverflowOpType.INSERT, TSDataType.TEXT);
+        TimePair u1 = new TimePair(250L, 490L, s3, OverflowOpType.UPDATE, TSDataType.TEXT);
+        TimePair d1 = new TimePair(0L, 250L, s0, OverflowOpType.DELETE, TSDataType.TEXT);
+        TimePair u2 = new TimePair(130L, 140L, s4, OverflowOpType.UPDATE, TSDataType.TEXT);
         tree.update(i1);
         tree.update(i2);
         tree.update(u1);
         tree.update(d1);
         tree.update(u2);
 
-        DynamicOneColumnData crudResult = tree.dynamicQuery(null,  TSDataType.BYTE_ARRAY);
+        DynamicOneColumnData crudResult = tree.dynamicQuery(null,  TSDataType.TEXT);
 
         Assert.assertEquals(crudResult.length, 3);
         for (int i = 0; i < crudResult.length; i++) {
@@ -627,13 +627,13 @@ public class IntervalTreeTest {
      */
     @Test
     public void stringSerializationTest() throws IOException {
-        IntervalTree tree = new IntervalTree(TSDataType.BYTE_ARRAY);
+        IntervalTree tree = new IntervalTree(TSDataType.TEXT);
 
-        TimePair i1 = new TimePair(100L, 100L, IntervalTreeTest.s1, OverflowOpType.INSERT, TSDataType.BYTE_ARRAY);
-        TimePair i2 = new TimePair(500L, 500L, IntervalTreeTest.s2, OverflowOpType.INSERT, TSDataType.BYTE_ARRAY);
-        TimePair u1 = new TimePair(250L, 490L, s3, OverflowOpType.UPDATE, TSDataType.BYTE_ARRAY);
-        TimePair d1 = new TimePair(0L, 250L, s0, OverflowOpType.DELETE, TSDataType.BYTE_ARRAY);
-        TimePair u2 = new TimePair(130L, 140L, s4, OverflowOpType.UPDATE, TSDataType.BYTE_ARRAY);
+        TimePair i1 = new TimePair(100L, 100L, IntervalTreeTest.s1, OverflowOpType.INSERT, TSDataType.TEXT);
+        TimePair i2 = new TimePair(500L, 500L, IntervalTreeTest.s2, OverflowOpType.INSERT, TSDataType.TEXT);
+        TimePair u1 = new TimePair(250L, 490L, s3, OverflowOpType.UPDATE, TSDataType.TEXT);
+        TimePair d1 = new TimePair(0L, 250L, s0, OverflowOpType.DELETE, TSDataType.TEXT);
+        TimePair u2 = new TimePair(130L, 140L, s4, OverflowOpType.UPDATE, TSDataType.TEXT);
         tree.update(i1);
         tree.update(i2);
         tree.update(u1);

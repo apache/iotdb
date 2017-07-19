@@ -42,7 +42,7 @@ public class OverflowSupportTest {
 	// should add boolean and enum
 	private String[] measurementIds = { "s0", "s1", "s2", "s3", "s4", "s5", "s6" };
 	private TSDataType[] dataTypes = { TSDataType.INT32, TSDataType.INT64, TSDataType.FLOAT, TSDataType.DOUBLE,
-			TSDataType.BOOLEAN, TSDataType.BYTE_ARRAY, TSDataType.ENUMS };
+			TSDataType.BOOLEAN, TSDataType.TEXT, TSDataType.ENUMS };
 	private OverflowFileIO ofio = null;
 	private OverflowReadWriter ofrw = null;
 	private OverflowSupport ofsupport = null;

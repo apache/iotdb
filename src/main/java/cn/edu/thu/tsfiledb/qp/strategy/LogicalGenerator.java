@@ -2,6 +2,7 @@ package cn.edu.thu.tsfiledb.qp.strategy;
 
 import cn.edu.thu.tsfile.common.constant.SystemConstant;
 import cn.edu.thu.tsfile.common.utils.Pair;
+import cn.edu.thu.tsfile.file.metadata.enums.TSDataType;
 import cn.edu.thu.tsfile.timeseries.read.qp.Path;
 import cn.edu.thu.tsfile.timeseries.utils.StringContainer;
 import cn.edu.thu.tsfiledb.exception.ArgsErrorException;
@@ -380,7 +381,7 @@ public class LogicalGenerator {
 		if (astNode.getType() != TSParser.TOK_WHERE)
 			throw new LogicalOperatorException("given node is not WHERE! " + astNode.dump());
 		if (astNode.getChildCount() != 1)
-			throw new LogicalOperatorException("where clause has {} child, return" + astNode.getChildCount());
+			throw new LogicalOperatorException("where clause has" + astNode.getChildCount() + " child, return");
 		FilterOperator whereOp = new FilterOperator(SQLConstant.TOK_WHERE);
 		ASTNode child = astNode.getChild(0);
 		analyzeWhere(child, child.getType(), whereOp);
@@ -657,55 +658,64 @@ public class LogicalGenerator {
 		final String PLAIN = "PLAIN";
 		final String TS_2DIFF = "TS_2DIFF";
 		final String BITMAP = "BITMAP";
-
+		TSDataType tsDataType;
 		if (dataType == null) {
 			throw new MetadataArgsErrorException("data type cannot be null");
 		}
+
+		try {
+			tsDataType = TSDataType.valueOf(dataType);
+		} catch (Exception e) {
+			throw new MetadataArgsErrorException(String.format("data type %s not support", dataType));
+		}
+		
 		if (encoding == null) {
 			throw new MetadataArgsErrorException("encoding type cannot be null");
 		}
+		
+
 		if (!encoding.equals(RLE) && !encoding.equals(PLAIN) && !encoding.equals(TS_2DIFF)
 				&& !encoding.equals(BITMAP)) {
 			throw new MetadataArgsErrorException(String.format("encoding %s is not support", encoding));
 		}
-		switch (dataType) {
-		case "BOOLEAN":
+		switch (tsDataType) {
+		case BOOLEAN:
 			if (encoding.equals(PLAIN)) {
 				throw new MetadataArgsErrorException(
 						String.format("encoding %s does not support %s", encoding, dataType));
 			}
 			break;
-		case "INT32":
+		case INT32:
 			if ((!encoding.equals(PLAIN) && !encoding.equals(RLE) && !encoding.equals(TS_2DIFF))) {
 				throw new MetadataArgsErrorException(
 						String.format("encoding %s does not support %s", encoding, dataType));
 			}
 			break;
-		case "INT64":
+		case INT64:
 			if ((!encoding.equals(PLAIN) && !encoding.equals(RLE) && !encoding.equals(TS_2DIFF))) {
 				throw new MetadataArgsErrorException(
 						String.format("encoding %s does not support %s", encoding, dataType));
 			}
 			break;
-		case "FLOAT":
+		case FLOAT:
 			if ((!encoding.equals(PLAIN) && !encoding.equals(RLE) && !encoding.equals(TS_2DIFF))) {
 				throw new MetadataArgsErrorException(
 						String.format("encoding %s does not support %s", encoding, dataType));
 			}
 			break;
-		case "DOUBLE":
+		case DOUBLE:
 			if ((!encoding.equals(PLAIN) && !encoding.equals(RLE) && !encoding.equals(TS_2DIFF))) {
 				throw new MetadataArgsErrorException(
 						String.format("encoding %s does not support %s", encoding, dataType));
 			}
 			break;
-		case "ENUMS":
+		case ENUMS:
 			if ((!encoding.equals(PLAIN) && !encoding.equals(BITMAP))) {
 				throw new MetadataArgsErrorException(
 						String.format("encoding %s does not support %s", encoding, dataType));
 			}
 			break;
-		case "BYTE_ARRAY":
+		case TEXT:
 			if (!encoding.equals(PLAIN)) {
 				throw new MetadataArgsErrorException(
 						String.format("encoding %s does not support %s", encoding, dataType));
