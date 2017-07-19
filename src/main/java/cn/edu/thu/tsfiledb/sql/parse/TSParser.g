@@ -554,16 +554,21 @@ identifier
     Identifier | Integer
     ;
 
+//selectClause
+//    : KW_SELECT path (COMMA path)*
+//    -> ^(TOK_SELECT path+)
+//    | KW_SELECT clstcmd = identifier LPAREN path RPAREN (COMMA clstcmd=identifier LPAREN path RPAREN)*
+//    -> ^(TOK_SELECT ^(TOK_CLUSTER path $clstcmd)+ )
+//    ;
+
 selectClause
-    : KW_SELECT path (COMMA path)*
-    -> ^(TOK_SELECT path+)
-    | KW_SELECT clstcmd = identifier LPAREN path RPAREN (COMMA clstcmd=identifier LPAREN path RPAREN)*
-    -> ^(TOK_SELECT ^(TOK_CLUSTER path $clstcmd)+ )
+    : KW_SELECT clusteredPath (COMMA clusteredPath)*
+    -> ^(TOK_SELECT clusteredPath+)
     ;
 
 clusteredPath
 	: clstcmd = identifier LPAREN path RPAREN
-	-> ^(TOK_PATH path ^(TOK_CLUSTER $clstcmd) )
+	-> ^(TOK_PATH ^(TOK_CLUSTER path $clstcmd) )
 	| path
 	-> path
 	;
