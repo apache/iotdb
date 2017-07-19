@@ -290,7 +290,7 @@ public abstract class AbstractClient {
 				System.out.println(String.format("time display format error, %s", e.getMessage()));
 				return OPERATION_RESULT.CONTINUE_OPER;
 			}
-			System.out.println("time display type has set to "+values[1]);
+			System.out.println("time display type has set to "+cmd.split("=")[1]);
 			return OPERATION_RESULT.CONTINUE_OPER;
 		}
 		
