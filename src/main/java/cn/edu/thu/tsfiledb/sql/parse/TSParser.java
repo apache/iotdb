@@ -1,4 +1,4 @@
-// $ANTLR 3.5.2 TSParser.g 2017-07-19 20:46:32
+// $ANTLR 3.5.2 TSParser.g 2017-07-19 20:53:22
 
 package cn.edu.thu.tsfiledb.sql.parse;
 
@@ -3589,7 +3589,6 @@ public class TSParser extends Parser {
 					}
 					break;
 				case Identifier:
-				case Integer:
 					{
 					alt12=9;
 					}
@@ -3622,7 +3621,6 @@ public class TSParser extends Parser {
 					}
 					break;
 				case Identifier:
-				case Integer:
 					{
 					alt12=10;
 					}
@@ -4077,26 +4075,27 @@ public class TSParser extends Parser {
 
 
 	// $ANTLR start "dropUser"
-	// TSParser.g:451:1: dropUser : KW_DROP KW_USER userName= identifier -> ^( TOK_DROP ^( TOK_USER $userName) ) ;
+	// TSParser.g:451:1: dropUser : KW_DROP KW_USER userName= Identifier -> ^( TOK_DROP ^( TOK_USER $userName) ) ;
 	public final TSParser.dropUser_return dropUser() throws RecognitionException {
 		TSParser.dropUser_return retval = new TSParser.dropUser_return();
 		retval.start = input.LT(1);
 
 		CommonTree root_0 = null;
 
+		Token userName=null;
 		Token KW_DROP105=null;
 		Token KW_USER106=null;
-		ParserRuleReturnScope userName =null;
 
+		CommonTree userName_tree=null;
 		CommonTree KW_DROP105_tree=null;
 		CommonTree KW_USER106_tree=null;
 		RewriteRuleTokenStream stream_KW_DROP=new RewriteRuleTokenStream(adaptor,"token KW_DROP");
+		RewriteRuleTokenStream stream_Identifier=new RewriteRuleTokenStream(adaptor,"token Identifier");
 		RewriteRuleTokenStream stream_KW_USER=new RewriteRuleTokenStream(adaptor,"token KW_USER");
-		RewriteRuleSubtreeStream stream_identifier=new RewriteRuleSubtreeStream(adaptor,"rule identifier");
 
 		try {
-			// TSParser.g:452:5: ( KW_DROP KW_USER userName= identifier -> ^( TOK_DROP ^( TOK_USER $userName) ) )
-			// TSParser.g:452:7: KW_DROP KW_USER userName= identifier
+			// TSParser.g:452:5: ( KW_DROP KW_USER userName= Identifier -> ^( TOK_DROP ^( TOK_USER $userName) ) )
+			// TSParser.g:452:7: KW_DROP KW_USER userName= Identifier
 			{
 			KW_DROP105=(Token)match(input,KW_DROP,FOLLOW_KW_DROP_in_dropUser1446); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_KW_DROP.add(KW_DROP105);
@@ -4104,21 +4103,19 @@ public class TSParser extends Parser {
 			KW_USER106=(Token)match(input,KW_USER,FOLLOW_KW_USER_in_dropUser1448); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_KW_USER.add(KW_USER106);
 
-			pushFollow(FOLLOW_identifier_in_dropUser1452);
-			userName=identifier();
-			state._fsp--;
-			if (state.failed) return retval;
-			if ( state.backtracking==0 ) stream_identifier.add(userName.getTree());
+			userName=(Token)match(input,Identifier,FOLLOW_Identifier_in_dropUser1452); if (state.failed) return retval; 
+			if ( state.backtracking==0 ) stream_Identifier.add(userName);
+
 			// AST REWRITE
 			// elements: userName
-			// token labels: 
-			// rule labels: userName, retval
+			// token labels: userName
+			// rule labels: retval
 			// token list labels: 
 			// rule list labels: 
 			// wildcard labels: 
 			if ( state.backtracking==0 ) {
 			retval.tree = root_0;
-			RewriteRuleSubtreeStream stream_userName=new RewriteRuleSubtreeStream(adaptor,"rule userName",userName!=null?userName.getTree():null);
+			RewriteRuleTokenStream stream_userName=new RewriteRuleTokenStream(adaptor,"token userName",userName);
 			RewriteRuleSubtreeStream stream_retval=new RewriteRuleSubtreeStream(adaptor,"rule retval",retval!=null?retval.getTree():null);
 
 			root_0 = (CommonTree)adaptor.nil();
@@ -4132,7 +4129,7 @@ public class TSParser extends Parser {
 				{
 				CommonTree root_2 = (CommonTree)adaptor.nil();
 				root_2 = (CommonTree)adaptor.becomeRoot((CommonTree)adaptor.create(TOK_USER, "TOK_USER"), root_2);
-				adaptor.addChild(root_2, stream_userName.nextTree());
+				adaptor.addChild(root_2, stream_userName.nextNode());
 				adaptor.addChild(root_1, root_2);
 				}
 
@@ -4176,26 +4173,27 @@ public class TSParser extends Parser {
 
 
 	// $ANTLR start "createRole"
-	// TSParser.g:456:1: createRole : KW_CREATE KW_ROLE roleName= identifier -> ^( TOK_CREATE ^( TOK_ROLE $roleName) ) ;
+	// TSParser.g:456:1: createRole : KW_CREATE KW_ROLE roleName= Identifier -> ^( TOK_CREATE ^( TOK_ROLE $roleName) ) ;
 	public final TSParser.createRole_return createRole() throws RecognitionException {
 		TSParser.createRole_return retval = new TSParser.createRole_return();
 		retval.start = input.LT(1);
 
 		CommonTree root_0 = null;
 
+		Token roleName=null;
 		Token KW_CREATE107=null;
 		Token KW_ROLE108=null;
-		ParserRuleReturnScope roleName =null;
 
+		CommonTree roleName_tree=null;
 		CommonTree KW_CREATE107_tree=null;
 		CommonTree KW_ROLE108_tree=null;
 		RewriteRuleTokenStream stream_KW_ROLE=new RewriteRuleTokenStream(adaptor,"token KW_ROLE");
+		RewriteRuleTokenStream stream_Identifier=new RewriteRuleTokenStream(adaptor,"token Identifier");
 		RewriteRuleTokenStream stream_KW_CREATE=new RewriteRuleTokenStream(adaptor,"token KW_CREATE");
-		RewriteRuleSubtreeStream stream_identifier=new RewriteRuleSubtreeStream(adaptor,"rule identifier");
 
 		try {
-			// TSParser.g:457:5: ( KW_CREATE KW_ROLE roleName= identifier -> ^( TOK_CREATE ^( TOK_ROLE $roleName) ) )
-			// TSParser.g:457:7: KW_CREATE KW_ROLE roleName= identifier
+			// TSParser.g:457:5: ( KW_CREATE KW_ROLE roleName= Identifier -> ^( TOK_CREATE ^( TOK_ROLE $roleName) ) )
+			// TSParser.g:457:7: KW_CREATE KW_ROLE roleName= Identifier
 			{
 			KW_CREATE107=(Token)match(input,KW_CREATE,FOLLOW_KW_CREATE_in_createRole1486); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_KW_CREATE.add(KW_CREATE107);
@@ -4203,21 +4201,19 @@ public class TSParser extends Parser {
 			KW_ROLE108=(Token)match(input,KW_ROLE,FOLLOW_KW_ROLE_in_createRole1488); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_KW_ROLE.add(KW_ROLE108);
 
-			pushFollow(FOLLOW_identifier_in_createRole1492);
-			roleName=identifier();
-			state._fsp--;
-			if (state.failed) return retval;
-			if ( state.backtracking==0 ) stream_identifier.add(roleName.getTree());
+			roleName=(Token)match(input,Identifier,FOLLOW_Identifier_in_createRole1492); if (state.failed) return retval; 
+			if ( state.backtracking==0 ) stream_Identifier.add(roleName);
+
 			// AST REWRITE
 			// elements: roleName
-			// token labels: 
-			// rule labels: roleName, retval
+			// token labels: roleName
+			// rule labels: retval
 			// token list labels: 
 			// rule list labels: 
 			// wildcard labels: 
 			if ( state.backtracking==0 ) {
 			retval.tree = root_0;
-			RewriteRuleSubtreeStream stream_roleName=new RewriteRuleSubtreeStream(adaptor,"rule roleName",roleName!=null?roleName.getTree():null);
+			RewriteRuleTokenStream stream_roleName=new RewriteRuleTokenStream(adaptor,"token roleName",roleName);
 			RewriteRuleSubtreeStream stream_retval=new RewriteRuleSubtreeStream(adaptor,"rule retval",retval!=null?retval.getTree():null);
 
 			root_0 = (CommonTree)adaptor.nil();
@@ -4231,7 +4227,7 @@ public class TSParser extends Parser {
 				{
 				CommonTree root_2 = (CommonTree)adaptor.nil();
 				root_2 = (CommonTree)adaptor.becomeRoot((CommonTree)adaptor.create(TOK_ROLE, "TOK_ROLE"), root_2);
-				adaptor.addChild(root_2, stream_roleName.nextTree());
+				adaptor.addChild(root_2, stream_roleName.nextNode());
 				adaptor.addChild(root_1, root_2);
 				}
 
@@ -4275,26 +4271,27 @@ public class TSParser extends Parser {
 
 
 	// $ANTLR start "dropRole"
-	// TSParser.g:461:1: dropRole : KW_DROP KW_ROLE roleName= identifier -> ^( TOK_DROP ^( TOK_ROLE $roleName) ) ;
+	// TSParser.g:461:1: dropRole : KW_DROP KW_ROLE roleName= Identifier -> ^( TOK_DROP ^( TOK_ROLE $roleName) ) ;
 	public final TSParser.dropRole_return dropRole() throws RecognitionException {
 		TSParser.dropRole_return retval = new TSParser.dropRole_return();
 		retval.start = input.LT(1);
 
 		CommonTree root_0 = null;
 
+		Token roleName=null;
 		Token KW_DROP109=null;
 		Token KW_ROLE110=null;
-		ParserRuleReturnScope roleName =null;
 
+		CommonTree roleName_tree=null;
 		CommonTree KW_DROP109_tree=null;
 		CommonTree KW_ROLE110_tree=null;
 		RewriteRuleTokenStream stream_KW_DROP=new RewriteRuleTokenStream(adaptor,"token KW_DROP");
 		RewriteRuleTokenStream stream_KW_ROLE=new RewriteRuleTokenStream(adaptor,"token KW_ROLE");
-		RewriteRuleSubtreeStream stream_identifier=new RewriteRuleSubtreeStream(adaptor,"rule identifier");
+		RewriteRuleTokenStream stream_Identifier=new RewriteRuleTokenStream(adaptor,"token Identifier");
 
 		try {
-			// TSParser.g:462:5: ( KW_DROP KW_ROLE roleName= identifier -> ^( TOK_DROP ^( TOK_ROLE $roleName) ) )
-			// TSParser.g:462:7: KW_DROP KW_ROLE roleName= identifier
+			// TSParser.g:462:5: ( KW_DROP KW_ROLE roleName= Identifier -> ^( TOK_DROP ^( TOK_ROLE $roleName) ) )
+			// TSParser.g:462:7: KW_DROP KW_ROLE roleName= Identifier
 			{
 			KW_DROP109=(Token)match(input,KW_DROP,FOLLOW_KW_DROP_in_dropRole1526); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_KW_DROP.add(KW_DROP109);
@@ -4302,21 +4299,19 @@ public class TSParser extends Parser {
 			KW_ROLE110=(Token)match(input,KW_ROLE,FOLLOW_KW_ROLE_in_dropRole1528); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_KW_ROLE.add(KW_ROLE110);
 
-			pushFollow(FOLLOW_identifier_in_dropRole1532);
-			roleName=identifier();
-			state._fsp--;
-			if (state.failed) return retval;
-			if ( state.backtracking==0 ) stream_identifier.add(roleName.getTree());
+			roleName=(Token)match(input,Identifier,FOLLOW_Identifier_in_dropRole1532); if (state.failed) return retval; 
+			if ( state.backtracking==0 ) stream_Identifier.add(roleName);
+
 			// AST REWRITE
 			// elements: roleName
-			// token labels: 
-			// rule labels: roleName, retval
+			// token labels: roleName
+			// rule labels: retval
 			// token list labels: 
 			// rule list labels: 
 			// wildcard labels: 
 			if ( state.backtracking==0 ) {
 			retval.tree = root_0;
-			RewriteRuleSubtreeStream stream_roleName=new RewriteRuleSubtreeStream(adaptor,"rule roleName",roleName!=null?roleName.getTree():null);
+			RewriteRuleTokenStream stream_roleName=new RewriteRuleTokenStream(adaptor,"token roleName",roleName);
 			RewriteRuleSubtreeStream stream_retval=new RewriteRuleSubtreeStream(adaptor,"rule retval",retval!=null?retval.getTree():null);
 
 			root_0 = (CommonTree)adaptor.nil();
@@ -4330,7 +4325,7 @@ public class TSParser extends Parser {
 				{
 				CommonTree root_2 = (CommonTree)adaptor.nil();
 				root_2 = (CommonTree)adaptor.becomeRoot((CommonTree)adaptor.create(TOK_ROLE, "TOK_ROLE"), root_2);
-				adaptor.addChild(root_2, stream_roleName.nextTree());
+				adaptor.addChild(root_2, stream_roleName.nextNode());
 				adaptor.addChild(root_1, root_2);
 				}
 
@@ -4374,33 +4369,34 @@ public class TSParser extends Parser {
 
 
 	// $ANTLR start "grantUser"
-	// TSParser.g:466:1: grantUser : KW_GRANT KW_USER userName= identifier privileges KW_ON path -> ^( TOK_GRANT ^( TOK_USER $userName) privileges path ) ;
+	// TSParser.g:466:1: grantUser : KW_GRANT KW_USER userName= Identifier privileges KW_ON path -> ^( TOK_GRANT ^( TOK_USER $userName) privileges path ) ;
 	public final TSParser.grantUser_return grantUser() throws RecognitionException {
 		TSParser.grantUser_return retval = new TSParser.grantUser_return();
 		retval.start = input.LT(1);
 
 		CommonTree root_0 = null;
 
+		Token userName=null;
 		Token KW_GRANT111=null;
 		Token KW_USER112=null;
 		Token KW_ON114=null;
-		ParserRuleReturnScope userName =null;
 		ParserRuleReturnScope privileges113 =null;
 		ParserRuleReturnScope path115 =null;
 
+		CommonTree userName_tree=null;
 		CommonTree KW_GRANT111_tree=null;
 		CommonTree KW_USER112_tree=null;
 		CommonTree KW_ON114_tree=null;
+		RewriteRuleTokenStream stream_Identifier=new RewriteRuleTokenStream(adaptor,"token Identifier");
 		RewriteRuleTokenStream stream_KW_USER=new RewriteRuleTokenStream(adaptor,"token KW_USER");
 		RewriteRuleTokenStream stream_KW_GRANT=new RewriteRuleTokenStream(adaptor,"token KW_GRANT");
 		RewriteRuleTokenStream stream_KW_ON=new RewriteRuleTokenStream(adaptor,"token KW_ON");
-		RewriteRuleSubtreeStream stream_identifier=new RewriteRuleSubtreeStream(adaptor,"rule identifier");
 		RewriteRuleSubtreeStream stream_privileges=new RewriteRuleSubtreeStream(adaptor,"rule privileges");
 		RewriteRuleSubtreeStream stream_path=new RewriteRuleSubtreeStream(adaptor,"rule path");
 
 		try {
-			// TSParser.g:467:5: ( KW_GRANT KW_USER userName= identifier privileges KW_ON path -> ^( TOK_GRANT ^( TOK_USER $userName) privileges path ) )
-			// TSParser.g:467:7: KW_GRANT KW_USER userName= identifier privileges KW_ON path
+			// TSParser.g:467:5: ( KW_GRANT KW_USER userName= Identifier privileges KW_ON path -> ^( TOK_GRANT ^( TOK_USER $userName) privileges path ) )
+			// TSParser.g:467:7: KW_GRANT KW_USER userName= Identifier privileges KW_ON path
 			{
 			KW_GRANT111=(Token)match(input,KW_GRANT,FOLLOW_KW_GRANT_in_grantUser1566); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_KW_GRANT.add(KW_GRANT111);
@@ -4408,11 +4404,9 @@ public class TSParser extends Parser {
 			KW_USER112=(Token)match(input,KW_USER,FOLLOW_KW_USER_in_grantUser1568); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_KW_USER.add(KW_USER112);
 
-			pushFollow(FOLLOW_identifier_in_grantUser1574);
-			userName=identifier();
-			state._fsp--;
-			if (state.failed) return retval;
-			if ( state.backtracking==0 ) stream_identifier.add(userName.getTree());
+			userName=(Token)match(input,Identifier,FOLLOW_Identifier_in_grantUser1574); if (state.failed) return retval; 
+			if ( state.backtracking==0 ) stream_Identifier.add(userName);
+
 			pushFollow(FOLLOW_privileges_in_grantUser1576);
 			privileges113=privileges();
 			state._fsp--;
@@ -4428,14 +4422,14 @@ public class TSParser extends Parser {
 			if ( state.backtracking==0 ) stream_path.add(path115.getTree());
 			// AST REWRITE
 			// elements: userName, privileges, path
-			// token labels: 
-			// rule labels: userName, retval
+			// token labels: userName
+			// rule labels: retval
 			// token list labels: 
 			// rule list labels: 
 			// wildcard labels: 
 			if ( state.backtracking==0 ) {
 			retval.tree = root_0;
-			RewriteRuleSubtreeStream stream_userName=new RewriteRuleSubtreeStream(adaptor,"rule userName",userName!=null?userName.getTree():null);
+			RewriteRuleTokenStream stream_userName=new RewriteRuleTokenStream(adaptor,"token userName",userName);
 			RewriteRuleSubtreeStream stream_retval=new RewriteRuleSubtreeStream(adaptor,"rule retval",retval!=null?retval.getTree():null);
 
 			root_0 = (CommonTree)adaptor.nil();
@@ -4449,7 +4443,7 @@ public class TSParser extends Parser {
 				{
 				CommonTree root_2 = (CommonTree)adaptor.nil();
 				root_2 = (CommonTree)adaptor.becomeRoot((CommonTree)adaptor.create(TOK_USER, "TOK_USER"), root_2);
-				adaptor.addChild(root_2, stream_userName.nextTree());
+				adaptor.addChild(root_2, stream_userName.nextNode());
 				adaptor.addChild(root_1, root_2);
 				}
 
@@ -4495,33 +4489,34 @@ public class TSParser extends Parser {
 
 
 	// $ANTLR start "grantRole"
-	// TSParser.g:471:1: grantRole : KW_GRANT KW_ROLE roleName= identifier privileges KW_ON path -> ^( TOK_GRANT ^( TOK_ROLE $roleName) privileges path ) ;
+	// TSParser.g:471:1: grantRole : KW_GRANT KW_ROLE roleName= Identifier privileges KW_ON path -> ^( TOK_GRANT ^( TOK_ROLE $roleName) privileges path ) ;
 	public final TSParser.grantRole_return grantRole() throws RecognitionException {
 		TSParser.grantRole_return retval = new TSParser.grantRole_return();
 		retval.start = input.LT(1);
 
 		CommonTree root_0 = null;
 
+		Token roleName=null;
 		Token KW_GRANT116=null;
 		Token KW_ROLE117=null;
 		Token KW_ON119=null;
-		ParserRuleReturnScope roleName =null;
 		ParserRuleReturnScope privileges118 =null;
 		ParserRuleReturnScope path120 =null;
 
+		CommonTree roleName_tree=null;
 		CommonTree KW_GRANT116_tree=null;
 		CommonTree KW_ROLE117_tree=null;
 		CommonTree KW_ON119_tree=null;
 		RewriteRuleTokenStream stream_KW_ROLE=new RewriteRuleTokenStream(adaptor,"token KW_ROLE");
+		RewriteRuleTokenStream stream_Identifier=new RewriteRuleTokenStream(adaptor,"token Identifier");
 		RewriteRuleTokenStream stream_KW_GRANT=new RewriteRuleTokenStream(adaptor,"token KW_GRANT");
 		RewriteRuleTokenStream stream_KW_ON=new RewriteRuleTokenStream(adaptor,"token KW_ON");
-		RewriteRuleSubtreeStream stream_identifier=new RewriteRuleSubtreeStream(adaptor,"rule identifier");
 		RewriteRuleSubtreeStream stream_privileges=new RewriteRuleSubtreeStream(adaptor,"rule privileges");
 		RewriteRuleSubtreeStream stream_path=new RewriteRuleSubtreeStream(adaptor,"rule path");
 
 		try {
-			// TSParser.g:472:5: ( KW_GRANT KW_ROLE roleName= identifier privileges KW_ON path -> ^( TOK_GRANT ^( TOK_ROLE $roleName) privileges path ) )
-			// TSParser.g:472:7: KW_GRANT KW_ROLE roleName= identifier privileges KW_ON path
+			// TSParser.g:472:5: ( KW_GRANT KW_ROLE roleName= Identifier privileges KW_ON path -> ^( TOK_GRANT ^( TOK_ROLE $roleName) privileges path ) )
+			// TSParser.g:472:7: KW_GRANT KW_ROLE roleName= Identifier privileges KW_ON path
 			{
 			KW_GRANT116=(Token)match(input,KW_GRANT,FOLLOW_KW_GRANT_in_grantRole1618); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_KW_GRANT.add(KW_GRANT116);
@@ -4529,11 +4524,9 @@ public class TSParser extends Parser {
 			KW_ROLE117=(Token)match(input,KW_ROLE,FOLLOW_KW_ROLE_in_grantRole1620); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_KW_ROLE.add(KW_ROLE117);
 
-			pushFollow(FOLLOW_identifier_in_grantRole1624);
-			roleName=identifier();
-			state._fsp--;
-			if (state.failed) return retval;
-			if ( state.backtracking==0 ) stream_identifier.add(roleName.getTree());
+			roleName=(Token)match(input,Identifier,FOLLOW_Identifier_in_grantRole1624); if (state.failed) return retval; 
+			if ( state.backtracking==0 ) stream_Identifier.add(roleName);
+
 			pushFollow(FOLLOW_privileges_in_grantRole1626);
 			privileges118=privileges();
 			state._fsp--;
@@ -4549,14 +4542,14 @@ public class TSParser extends Parser {
 			if ( state.backtracking==0 ) stream_path.add(path120.getTree());
 			// AST REWRITE
 			// elements: path, privileges, roleName
-			// token labels: 
-			// rule labels: roleName, retval
+			// token labels: roleName
+			// rule labels: retval
 			// token list labels: 
 			// rule list labels: 
 			// wildcard labels: 
 			if ( state.backtracking==0 ) {
 			retval.tree = root_0;
-			RewriteRuleSubtreeStream stream_roleName=new RewriteRuleSubtreeStream(adaptor,"rule roleName",roleName!=null?roleName.getTree():null);
+			RewriteRuleTokenStream stream_roleName=new RewriteRuleTokenStream(adaptor,"token roleName",roleName);
 			RewriteRuleSubtreeStream stream_retval=new RewriteRuleSubtreeStream(adaptor,"rule retval",retval!=null?retval.getTree():null);
 
 			root_0 = (CommonTree)adaptor.nil();
@@ -4570,7 +4563,7 @@ public class TSParser extends Parser {
 				{
 				CommonTree root_2 = (CommonTree)adaptor.nil();
 				root_2 = (CommonTree)adaptor.becomeRoot((CommonTree)adaptor.create(TOK_ROLE, "TOK_ROLE"), root_2);
-				adaptor.addChild(root_2, stream_roleName.nextTree());
+				adaptor.addChild(root_2, stream_roleName.nextNode());
 				adaptor.addChild(root_1, root_2);
 				}
 
@@ -4616,33 +4609,34 @@ public class TSParser extends Parser {
 
 
 	// $ANTLR start "revokeUser"
-	// TSParser.g:476:1: revokeUser : KW_REVOKE KW_USER userName= identifier privileges KW_ON path -> ^( TOK_REVOKE ^( TOK_USER $userName) privileges path ) ;
+	// TSParser.g:476:1: revokeUser : KW_REVOKE KW_USER userName= Identifier privileges KW_ON path -> ^( TOK_REVOKE ^( TOK_USER $userName) privileges path ) ;
 	public final TSParser.revokeUser_return revokeUser() throws RecognitionException {
 		TSParser.revokeUser_return retval = new TSParser.revokeUser_return();
 		retval.start = input.LT(1);
 
 		CommonTree root_0 = null;
 
+		Token userName=null;
 		Token KW_REVOKE121=null;
 		Token KW_USER122=null;
 		Token KW_ON124=null;
-		ParserRuleReturnScope userName =null;
 		ParserRuleReturnScope privileges123 =null;
 		ParserRuleReturnScope path125 =null;
 
+		CommonTree userName_tree=null;
 		CommonTree KW_REVOKE121_tree=null;
 		CommonTree KW_USER122_tree=null;
 		CommonTree KW_ON124_tree=null;
+		RewriteRuleTokenStream stream_Identifier=new RewriteRuleTokenStream(adaptor,"token Identifier");
 		RewriteRuleTokenStream stream_KW_USER=new RewriteRuleTokenStream(adaptor,"token KW_USER");
 		RewriteRuleTokenStream stream_KW_ON=new RewriteRuleTokenStream(adaptor,"token KW_ON");
 		RewriteRuleTokenStream stream_KW_REVOKE=new RewriteRuleTokenStream(adaptor,"token KW_REVOKE");
-		RewriteRuleSubtreeStream stream_identifier=new RewriteRuleSubtreeStream(adaptor,"rule identifier");
 		RewriteRuleSubtreeStream stream_privileges=new RewriteRuleSubtreeStream(adaptor,"rule privileges");
 		RewriteRuleSubtreeStream stream_path=new RewriteRuleSubtreeStream(adaptor,"rule path");
 
 		try {
-			// TSParser.g:477:5: ( KW_REVOKE KW_USER userName= identifier privileges KW_ON path -> ^( TOK_REVOKE ^( TOK_USER $userName) privileges path ) )
-			// TSParser.g:477:7: KW_REVOKE KW_USER userName= identifier privileges KW_ON path
+			// TSParser.g:477:5: ( KW_REVOKE KW_USER userName= Identifier privileges KW_ON path -> ^( TOK_REVOKE ^( TOK_USER $userName) privileges path ) )
+			// TSParser.g:477:7: KW_REVOKE KW_USER userName= Identifier privileges KW_ON path
 			{
 			KW_REVOKE121=(Token)match(input,KW_REVOKE,FOLLOW_KW_REVOKE_in_revokeUser1668); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_KW_REVOKE.add(KW_REVOKE121);
@@ -4650,11 +4644,9 @@ public class TSParser extends Parser {
 			KW_USER122=(Token)match(input,KW_USER,FOLLOW_KW_USER_in_revokeUser1670); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_KW_USER.add(KW_USER122);
 
-			pushFollow(FOLLOW_identifier_in_revokeUser1676);
-			userName=identifier();
-			state._fsp--;
-			if (state.failed) return retval;
-			if ( state.backtracking==0 ) stream_identifier.add(userName.getTree());
+			userName=(Token)match(input,Identifier,FOLLOW_Identifier_in_revokeUser1676); if (state.failed) return retval; 
+			if ( state.backtracking==0 ) stream_Identifier.add(userName);
+
 			pushFollow(FOLLOW_privileges_in_revokeUser1678);
 			privileges123=privileges();
 			state._fsp--;
@@ -4670,14 +4662,14 @@ public class TSParser extends Parser {
 			if ( state.backtracking==0 ) stream_path.add(path125.getTree());
 			// AST REWRITE
 			// elements: path, userName, privileges
-			// token labels: 
-			// rule labels: userName, retval
+			// token labels: userName
+			// rule labels: retval
 			// token list labels: 
 			// rule list labels: 
 			// wildcard labels: 
 			if ( state.backtracking==0 ) {
 			retval.tree = root_0;
-			RewriteRuleSubtreeStream stream_userName=new RewriteRuleSubtreeStream(adaptor,"rule userName",userName!=null?userName.getTree():null);
+			RewriteRuleTokenStream stream_userName=new RewriteRuleTokenStream(adaptor,"token userName",userName);
 			RewriteRuleSubtreeStream stream_retval=new RewriteRuleSubtreeStream(adaptor,"rule retval",retval!=null?retval.getTree():null);
 
 			root_0 = (CommonTree)adaptor.nil();
@@ -4691,7 +4683,7 @@ public class TSParser extends Parser {
 				{
 				CommonTree root_2 = (CommonTree)adaptor.nil();
 				root_2 = (CommonTree)adaptor.becomeRoot((CommonTree)adaptor.create(TOK_USER, "TOK_USER"), root_2);
-				adaptor.addChild(root_2, stream_userName.nextTree());
+				adaptor.addChild(root_2, stream_userName.nextNode());
 				adaptor.addChild(root_1, root_2);
 				}
 
@@ -4737,33 +4729,34 @@ public class TSParser extends Parser {
 
 
 	// $ANTLR start "revokeRole"
-	// TSParser.g:481:1: revokeRole : KW_REVOKE KW_ROLE roleName= identifier privileges KW_ON path -> ^( TOK_REVOKE ^( TOK_ROLE $roleName) privileges path ) ;
+	// TSParser.g:481:1: revokeRole : KW_REVOKE KW_ROLE roleName= Identifier privileges KW_ON path -> ^( TOK_REVOKE ^( TOK_ROLE $roleName) privileges path ) ;
 	public final TSParser.revokeRole_return revokeRole() throws RecognitionException {
 		TSParser.revokeRole_return retval = new TSParser.revokeRole_return();
 		retval.start = input.LT(1);
 
 		CommonTree root_0 = null;
 
+		Token roleName=null;
 		Token KW_REVOKE126=null;
 		Token KW_ROLE127=null;
 		Token KW_ON129=null;
-		ParserRuleReturnScope roleName =null;
 		ParserRuleReturnScope privileges128 =null;
 		ParserRuleReturnScope path130 =null;
 
+		CommonTree roleName_tree=null;
 		CommonTree KW_REVOKE126_tree=null;
 		CommonTree KW_ROLE127_tree=null;
 		CommonTree KW_ON129_tree=null;
 		RewriteRuleTokenStream stream_KW_ROLE=new RewriteRuleTokenStream(adaptor,"token KW_ROLE");
+		RewriteRuleTokenStream stream_Identifier=new RewriteRuleTokenStream(adaptor,"token Identifier");
 		RewriteRuleTokenStream stream_KW_ON=new RewriteRuleTokenStream(adaptor,"token KW_ON");
 		RewriteRuleTokenStream stream_KW_REVOKE=new RewriteRuleTokenStream(adaptor,"token KW_REVOKE");
-		RewriteRuleSubtreeStream stream_identifier=new RewriteRuleSubtreeStream(adaptor,"rule identifier");
 		RewriteRuleSubtreeStream stream_privileges=new RewriteRuleSubtreeStream(adaptor,"rule privileges");
 		RewriteRuleSubtreeStream stream_path=new RewriteRuleSubtreeStream(adaptor,"rule path");
 
 		try {
-			// TSParser.g:482:5: ( KW_REVOKE KW_ROLE roleName= identifier privileges KW_ON path -> ^( TOK_REVOKE ^( TOK_ROLE $roleName) privileges path ) )
-			// TSParser.g:482:7: KW_REVOKE KW_ROLE roleName= identifier privileges KW_ON path
+			// TSParser.g:482:5: ( KW_REVOKE KW_ROLE roleName= Identifier privileges KW_ON path -> ^( TOK_REVOKE ^( TOK_ROLE $roleName) privileges path ) )
+			// TSParser.g:482:7: KW_REVOKE KW_ROLE roleName= Identifier privileges KW_ON path
 			{
 			KW_REVOKE126=(Token)match(input,KW_REVOKE,FOLLOW_KW_REVOKE_in_revokeRole1720); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_KW_REVOKE.add(KW_REVOKE126);
@@ -4771,11 +4764,9 @@ public class TSParser extends Parser {
 			KW_ROLE127=(Token)match(input,KW_ROLE,FOLLOW_KW_ROLE_in_revokeRole1722); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_KW_ROLE.add(KW_ROLE127);
 
-			pushFollow(FOLLOW_identifier_in_revokeRole1728);
-			roleName=identifier();
-			state._fsp--;
-			if (state.failed) return retval;
-			if ( state.backtracking==0 ) stream_identifier.add(roleName.getTree());
+			roleName=(Token)match(input,Identifier,FOLLOW_Identifier_in_revokeRole1728); if (state.failed) return retval; 
+			if ( state.backtracking==0 ) stream_Identifier.add(roleName);
+
 			pushFollow(FOLLOW_privileges_in_revokeRole1730);
 			privileges128=privileges();
 			state._fsp--;
@@ -4791,14 +4782,14 @@ public class TSParser extends Parser {
 			if ( state.backtracking==0 ) stream_path.add(path130.getTree());
 			// AST REWRITE
 			// elements: path, roleName, privileges
-			// token labels: 
-			// rule labels: roleName, retval
+			// token labels: roleName
+			// rule labels: retval
 			// token list labels: 
 			// rule list labels: 
 			// wildcard labels: 
 			if ( state.backtracking==0 ) {
 			retval.tree = root_0;
-			RewriteRuleSubtreeStream stream_roleName=new RewriteRuleSubtreeStream(adaptor,"rule roleName",roleName!=null?roleName.getTree():null);
+			RewriteRuleTokenStream stream_roleName=new RewriteRuleTokenStream(adaptor,"token roleName",roleName);
 			RewriteRuleSubtreeStream stream_retval=new RewriteRuleSubtreeStream(adaptor,"rule retval",retval!=null?retval.getTree():null);
 
 			root_0 = (CommonTree)adaptor.nil();
@@ -4812,7 +4803,7 @@ public class TSParser extends Parser {
 				{
 				CommonTree root_2 = (CommonTree)adaptor.nil();
 				root_2 = (CommonTree)adaptor.becomeRoot((CommonTree)adaptor.create(TOK_ROLE, "TOK_ROLE"), root_2);
-				adaptor.addChild(root_2, stream_roleName.nextTree());
+				adaptor.addChild(root_2, stream_roleName.nextNode());
 				adaptor.addChild(root_1, root_2);
 				}
 
@@ -4858,55 +4849,53 @@ public class TSParser extends Parser {
 
 
 	// $ANTLR start "grantRoleToUser"
-	// TSParser.g:486:1: grantRoleToUser : KW_GRANT roleName= identifier KW_TO userName= identifier -> ^( TOK_GRANT ^( TOK_ROLE $roleName) ^( TOK_USER $userName) ) ;
+	// TSParser.g:486:1: grantRoleToUser : KW_GRANT roleName= Identifier KW_TO userName= Identifier -> ^( TOK_GRANT ^( TOK_ROLE $roleName) ^( TOK_USER $userName) ) ;
 	public final TSParser.grantRoleToUser_return grantRoleToUser() throws RecognitionException {
 		TSParser.grantRoleToUser_return retval = new TSParser.grantRoleToUser_return();
 		retval.start = input.LT(1);
 
 		CommonTree root_0 = null;
 
+		Token roleName=null;
+		Token userName=null;
 		Token KW_GRANT131=null;
 		Token KW_TO132=null;
-		ParserRuleReturnScope roleName =null;
-		ParserRuleReturnScope userName =null;
 
+		CommonTree roleName_tree=null;
+		CommonTree userName_tree=null;
 		CommonTree KW_GRANT131_tree=null;
 		CommonTree KW_TO132_tree=null;
+		RewriteRuleTokenStream stream_Identifier=new RewriteRuleTokenStream(adaptor,"token Identifier");
 		RewriteRuleTokenStream stream_KW_TO=new RewriteRuleTokenStream(adaptor,"token KW_TO");
 		RewriteRuleTokenStream stream_KW_GRANT=new RewriteRuleTokenStream(adaptor,"token KW_GRANT");
-		RewriteRuleSubtreeStream stream_identifier=new RewriteRuleSubtreeStream(adaptor,"rule identifier");
 
 		try {
-			// TSParser.g:487:5: ( KW_GRANT roleName= identifier KW_TO userName= identifier -> ^( TOK_GRANT ^( TOK_ROLE $roleName) ^( TOK_USER $userName) ) )
-			// TSParser.g:487:7: KW_GRANT roleName= identifier KW_TO userName= identifier
+			// TSParser.g:487:5: ( KW_GRANT roleName= Identifier KW_TO userName= Identifier -> ^( TOK_GRANT ^( TOK_ROLE $roleName) ^( TOK_USER $userName) ) )
+			// TSParser.g:487:7: KW_GRANT roleName= Identifier KW_TO userName= Identifier
 			{
 			KW_GRANT131=(Token)match(input,KW_GRANT,FOLLOW_KW_GRANT_in_grantRoleToUser1772); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_KW_GRANT.add(KW_GRANT131);
 
-			pushFollow(FOLLOW_identifier_in_grantRoleToUser1778);
-			roleName=identifier();
-			state._fsp--;
-			if (state.failed) return retval;
-			if ( state.backtracking==0 ) stream_identifier.add(roleName.getTree());
+			roleName=(Token)match(input,Identifier,FOLLOW_Identifier_in_grantRoleToUser1778); if (state.failed) return retval; 
+			if ( state.backtracking==0 ) stream_Identifier.add(roleName);
+
 			KW_TO132=(Token)match(input,KW_TO,FOLLOW_KW_TO_in_grantRoleToUser1780); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_KW_TO.add(KW_TO132);
 
-			pushFollow(FOLLOW_identifier_in_grantRoleToUser1786);
-			userName=identifier();
-			state._fsp--;
-			if (state.failed) return retval;
-			if ( state.backtracking==0 ) stream_identifier.add(userName.getTree());
+			userName=(Token)match(input,Identifier,FOLLOW_Identifier_in_grantRoleToUser1786); if (state.failed) return retval; 
+			if ( state.backtracking==0 ) stream_Identifier.add(userName);
+
 			// AST REWRITE
 			// elements: roleName, userName
-			// token labels: 
-			// rule labels: roleName, userName, retval
+			// token labels: roleName, userName
+			// rule labels: retval
 			// token list labels: 
 			// rule list labels: 
 			// wildcard labels: 
 			if ( state.backtracking==0 ) {
 			retval.tree = root_0;
-			RewriteRuleSubtreeStream stream_roleName=new RewriteRuleSubtreeStream(adaptor,"rule roleName",roleName!=null?roleName.getTree():null);
-			RewriteRuleSubtreeStream stream_userName=new RewriteRuleSubtreeStream(adaptor,"rule userName",userName!=null?userName.getTree():null);
+			RewriteRuleTokenStream stream_roleName=new RewriteRuleTokenStream(adaptor,"token roleName",roleName);
+			RewriteRuleTokenStream stream_userName=new RewriteRuleTokenStream(adaptor,"token userName",userName);
 			RewriteRuleSubtreeStream stream_retval=new RewriteRuleSubtreeStream(adaptor,"rule retval",retval!=null?retval.getTree():null);
 
 			root_0 = (CommonTree)adaptor.nil();
@@ -4920,7 +4909,7 @@ public class TSParser extends Parser {
 				{
 				CommonTree root_2 = (CommonTree)adaptor.nil();
 				root_2 = (CommonTree)adaptor.becomeRoot((CommonTree)adaptor.create(TOK_ROLE, "TOK_ROLE"), root_2);
-				adaptor.addChild(root_2, stream_roleName.nextTree());
+				adaptor.addChild(root_2, stream_roleName.nextNode());
 				adaptor.addChild(root_1, root_2);
 				}
 
@@ -4928,7 +4917,7 @@ public class TSParser extends Parser {
 				{
 				CommonTree root_2 = (CommonTree)adaptor.nil();
 				root_2 = (CommonTree)adaptor.becomeRoot((CommonTree)adaptor.create(TOK_USER, "TOK_USER"), root_2);
-				adaptor.addChild(root_2, stream_userName.nextTree());
+				adaptor.addChild(root_2, stream_userName.nextNode());
 				adaptor.addChild(root_1, root_2);
 				}
 
@@ -4972,55 +4961,53 @@ public class TSParser extends Parser {
 
 
 	// $ANTLR start "revokeRoleFromUser"
-	// TSParser.g:491:1: revokeRoleFromUser : KW_REVOKE roleName= identifier KW_FROM userName= identifier -> ^( TOK_REVOKE ^( TOK_ROLE $roleName) ^( TOK_USER $userName) ) ;
+	// TSParser.g:491:1: revokeRoleFromUser : KW_REVOKE roleName= Identifier KW_FROM userName= Identifier -> ^( TOK_REVOKE ^( TOK_ROLE $roleName) ^( TOK_USER $userName) ) ;
 	public final TSParser.revokeRoleFromUser_return revokeRoleFromUser() throws RecognitionException {
 		TSParser.revokeRoleFromUser_return retval = new TSParser.revokeRoleFromUser_return();
 		retval.start = input.LT(1);
 
 		CommonTree root_0 = null;
 
+		Token roleName=null;
+		Token userName=null;
 		Token KW_REVOKE133=null;
 		Token KW_FROM134=null;
-		ParserRuleReturnScope roleName =null;
-		ParserRuleReturnScope userName =null;
 
+		CommonTree roleName_tree=null;
+		CommonTree userName_tree=null;
 		CommonTree KW_REVOKE133_tree=null;
 		CommonTree KW_FROM134_tree=null;
+		RewriteRuleTokenStream stream_Identifier=new RewriteRuleTokenStream(adaptor,"token Identifier");
 		RewriteRuleTokenStream stream_KW_FROM=new RewriteRuleTokenStream(adaptor,"token KW_FROM");
 		RewriteRuleTokenStream stream_KW_REVOKE=new RewriteRuleTokenStream(adaptor,"token KW_REVOKE");
-		RewriteRuleSubtreeStream stream_identifier=new RewriteRuleSubtreeStream(adaptor,"rule identifier");
 
 		try {
-			// TSParser.g:492:5: ( KW_REVOKE roleName= identifier KW_FROM userName= identifier -> ^( TOK_REVOKE ^( TOK_ROLE $roleName) ^( TOK_USER $userName) ) )
-			// TSParser.g:492:7: KW_REVOKE roleName= identifier KW_FROM userName= identifier
+			// TSParser.g:492:5: ( KW_REVOKE roleName= Identifier KW_FROM userName= Identifier -> ^( TOK_REVOKE ^( TOK_ROLE $roleName) ^( TOK_USER $userName) ) )
+			// TSParser.g:492:7: KW_REVOKE roleName= Identifier KW_FROM userName= Identifier
 			{
 			KW_REVOKE133=(Token)match(input,KW_REVOKE,FOLLOW_KW_REVOKE_in_revokeRoleFromUser1827); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_KW_REVOKE.add(KW_REVOKE133);
 
-			pushFollow(FOLLOW_identifier_in_revokeRoleFromUser1833);
-			roleName=identifier();
-			state._fsp--;
-			if (state.failed) return retval;
-			if ( state.backtracking==0 ) stream_identifier.add(roleName.getTree());
+			roleName=(Token)match(input,Identifier,FOLLOW_Identifier_in_revokeRoleFromUser1833); if (state.failed) return retval; 
+			if ( state.backtracking==0 ) stream_Identifier.add(roleName);
+
 			KW_FROM134=(Token)match(input,KW_FROM,FOLLOW_KW_FROM_in_revokeRoleFromUser1835); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_KW_FROM.add(KW_FROM134);
 
-			pushFollow(FOLLOW_identifier_in_revokeRoleFromUser1841);
-			userName=identifier();
-			state._fsp--;
-			if (state.failed) return retval;
-			if ( state.backtracking==0 ) stream_identifier.add(userName.getTree());
+			userName=(Token)match(input,Identifier,FOLLOW_Identifier_in_revokeRoleFromUser1841); if (state.failed) return retval; 
+			if ( state.backtracking==0 ) stream_Identifier.add(userName);
+
 			// AST REWRITE
 			// elements: roleName, userName
-			// token labels: 
-			// rule labels: roleName, userName, retval
+			// token labels: roleName, userName
+			// rule labels: retval
 			// token list labels: 
 			// rule list labels: 
 			// wildcard labels: 
 			if ( state.backtracking==0 ) {
 			retval.tree = root_0;
-			RewriteRuleSubtreeStream stream_roleName=new RewriteRuleSubtreeStream(adaptor,"rule roleName",roleName!=null?roleName.getTree():null);
-			RewriteRuleSubtreeStream stream_userName=new RewriteRuleSubtreeStream(adaptor,"rule userName",userName!=null?userName.getTree():null);
+			RewriteRuleTokenStream stream_roleName=new RewriteRuleTokenStream(adaptor,"token roleName",roleName);
+			RewriteRuleTokenStream stream_userName=new RewriteRuleTokenStream(adaptor,"token userName",userName);
 			RewriteRuleSubtreeStream stream_retval=new RewriteRuleSubtreeStream(adaptor,"rule retval",retval!=null?retval.getTree():null);
 
 			root_0 = (CommonTree)adaptor.nil();
@@ -5034,7 +5021,7 @@ public class TSParser extends Parser {
 				{
 				CommonTree root_2 = (CommonTree)adaptor.nil();
 				root_2 = (CommonTree)adaptor.becomeRoot((CommonTree)adaptor.create(TOK_ROLE, "TOK_ROLE"), root_2);
-				adaptor.addChild(root_2, stream_roleName.nextTree());
+				adaptor.addChild(root_2, stream_roleName.nextNode());
 				adaptor.addChild(root_1, root_2);
 				}
 
@@ -5042,7 +5029,7 @@ public class TSParser extends Parser {
 				{
 				CommonTree root_2 = (CommonTree)adaptor.nil();
 				root_2 = (CommonTree)adaptor.becomeRoot((CommonTree)adaptor.create(TOK_USER, "TOK_USER"), root_2);
-				adaptor.addChild(root_2, stream_userName.nextTree());
+				adaptor.addChild(root_2, stream_userName.nextNode());
 				adaptor.addChild(root_1, root_2);
 				}
 
@@ -5531,7 +5518,7 @@ public class TSParser extends Parser {
 
 
 	// $ANTLR start "multidentifier"
-	// TSParser.g:520:1: multidentifier : LPAREN KW_TIMESTAMP ( COMMA identifier )* RPAREN -> ^( TOK_MULT_IDENTIFIER TOK_TIME ( identifier )* ) ;
+	// TSParser.g:520:1: multidentifier : LPAREN KW_TIMESTAMP ( COMMA Identifier )* RPAREN -> ^( TOK_MULT_IDENTIFIER TOK_TIME ( Identifier )* ) ;
 	public final TSParser.multidentifier_return multidentifier() throws RecognitionException {
 		TSParser.multidentifier_return retval = new TSParser.multidentifier_return();
 		retval.start = input.LT(1);
@@ -5541,22 +5528,23 @@ public class TSParser extends Parser {
 		Token LPAREN150=null;
 		Token KW_TIMESTAMP151=null;
 		Token COMMA152=null;
+		Token Identifier153=null;
 		Token RPAREN154=null;
-		ParserRuleReturnScope identifier153 =null;
 
 		CommonTree LPAREN150_tree=null;
 		CommonTree KW_TIMESTAMP151_tree=null;
 		CommonTree COMMA152_tree=null;
+		CommonTree Identifier153_tree=null;
 		CommonTree RPAREN154_tree=null;
 		RewriteRuleTokenStream stream_COMMA=new RewriteRuleTokenStream(adaptor,"token COMMA");
+		RewriteRuleTokenStream stream_Identifier=new RewriteRuleTokenStream(adaptor,"token Identifier");
 		RewriteRuleTokenStream stream_KW_TIMESTAMP=new RewriteRuleTokenStream(adaptor,"token KW_TIMESTAMP");
 		RewriteRuleTokenStream stream_LPAREN=new RewriteRuleTokenStream(adaptor,"token LPAREN");
 		RewriteRuleTokenStream stream_RPAREN=new RewriteRuleTokenStream(adaptor,"token RPAREN");
-		RewriteRuleSubtreeStream stream_identifier=new RewriteRuleSubtreeStream(adaptor,"rule identifier");
 
 		try {
-			// TSParser.g:521:2: ( LPAREN KW_TIMESTAMP ( COMMA identifier )* RPAREN -> ^( TOK_MULT_IDENTIFIER TOK_TIME ( identifier )* ) )
-			// TSParser.g:522:2: LPAREN KW_TIMESTAMP ( COMMA identifier )* RPAREN
+			// TSParser.g:521:2: ( LPAREN KW_TIMESTAMP ( COMMA Identifier )* RPAREN -> ^( TOK_MULT_IDENTIFIER TOK_TIME ( Identifier )* ) )
+			// TSParser.g:522:2: LPAREN KW_TIMESTAMP ( COMMA Identifier )* RPAREN
 			{
 			LPAREN150=(Token)match(input,LPAREN,FOLLOW_LPAREN_in_multidentifier2026); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_LPAREN.add(LPAREN150);
@@ -5564,7 +5552,7 @@ public class TSParser extends Parser {
 			KW_TIMESTAMP151=(Token)match(input,KW_TIMESTAMP,FOLLOW_KW_TIMESTAMP_in_multidentifier2028); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_KW_TIMESTAMP.add(KW_TIMESTAMP151);
 
-			// TSParser.g:522:22: ( COMMA identifier )*
+			// TSParser.g:522:22: ( COMMA Identifier )*
 			loop17:
 			while (true) {
 				int alt17=2;
@@ -5575,16 +5563,14 @@ public class TSParser extends Parser {
 
 				switch (alt17) {
 				case 1 :
-					// TSParser.g:522:23: COMMA identifier
+					// TSParser.g:522:23: COMMA Identifier
 					{
 					COMMA152=(Token)match(input,COMMA,FOLLOW_COMMA_in_multidentifier2031); if (state.failed) return retval; 
 					if ( state.backtracking==0 ) stream_COMMA.add(COMMA152);
 
-					pushFollow(FOLLOW_identifier_in_multidentifier2033);
-					identifier153=identifier();
-					state._fsp--;
-					if (state.failed) return retval;
-					if ( state.backtracking==0 ) stream_identifier.add(identifier153.getTree());
+					Identifier153=(Token)match(input,Identifier,FOLLOW_Identifier_in_multidentifier2033); if (state.failed) return retval; 
+					if ( state.backtracking==0 ) stream_Identifier.add(Identifier153);
+
 					}
 					break;
 
@@ -5597,7 +5583,7 @@ public class TSParser extends Parser {
 			if ( state.backtracking==0 ) stream_RPAREN.add(RPAREN154);
 
 			// AST REWRITE
-			// elements: identifier
+			// elements: Identifier
 			// token labels: 
 			// rule labels: retval
 			// token list labels: 
@@ -5608,18 +5594,18 @@ public class TSParser extends Parser {
 			RewriteRuleSubtreeStream stream_retval=new RewriteRuleSubtreeStream(adaptor,"rule retval",retval!=null?retval.getTree():null);
 
 			root_0 = (CommonTree)adaptor.nil();
-			// 523:2: -> ^( TOK_MULT_IDENTIFIER TOK_TIME ( identifier )* )
+			// 523:2: -> ^( TOK_MULT_IDENTIFIER TOK_TIME ( Identifier )* )
 			{
-				// TSParser.g:523:5: ^( TOK_MULT_IDENTIFIER TOK_TIME ( identifier )* )
+				// TSParser.g:523:5: ^( TOK_MULT_IDENTIFIER TOK_TIME ( Identifier )* )
 				{
 				CommonTree root_1 = (CommonTree)adaptor.nil();
 				root_1 = (CommonTree)adaptor.becomeRoot((CommonTree)adaptor.create(TOK_MULT_IDENTIFIER, "TOK_MULT_IDENTIFIER"), root_1);
 				adaptor.addChild(root_1, (CommonTree)adaptor.create(TOK_TIME, "TOK_TIME"));
-				// TSParser.g:523:36: ( identifier )*
-				while ( stream_identifier.hasNext() ) {
-					adaptor.addChild(root_1, stream_identifier.nextTree());
+				// TSParser.g:523:36: ( Identifier )*
+				while ( stream_Identifier.hasNext() ) {
+					adaptor.addChild(root_1, stream_Identifier.nextNode());
 				}
-				stream_identifier.reset();
+				stream_Identifier.reset();
 
 				adaptor.addChild(root_0, root_1);
 				}
@@ -5952,7 +5938,7 @@ public class TSParser extends Parser {
 
 
 	// $ANTLR start "updateStatement"
-	// TSParser.g:538:1: updateStatement : ( KW_UPDATE path ( COMMA path )* KW_SET KW_VALUE EQUAL value= numberOrStringWidely ( whereClause )? -> ^( TOK_UPDATE ( path )+ ^( TOK_VALUE $value) ( whereClause )? ) | KW_UPDATE KW_USER userName= StringLiteral KW_SET KW_PASSWORD psw= StringLiteral -> ^( TOK_UPDATE ^( TOK_UPDATE_PSWD $userName $psw) ) );
+	// TSParser.g:538:1: updateStatement : ( KW_UPDATE path ( COMMA path )* KW_SET KW_VALUE EQUAL value= numberOrStringWidely ( whereClause )? -> ^( TOK_UPDATE ( path )+ ^( TOK_VALUE $value) ( whereClause )? ) | KW_UPDATE KW_USER userName= Identifier KW_SET KW_PASSWORD psw= numberOrString -> ^( TOK_UPDATE ^( TOK_UPDATE_PSWD $userName $psw) ) );
 	public final TSParser.updateStatement_return updateStatement() throws RecognitionException {
 		TSParser.updateStatement_return retval = new TSParser.updateStatement_return();
 		retval.start = input.LT(1);
@@ -5960,7 +5946,6 @@ public class TSParser extends Parser {
 		CommonTree root_0 = null;
 
 		Token userName=null;
-		Token psw=null;
 		Token KW_UPDATE165=null;
 		Token COMMA167=null;
 		Token KW_SET169=null;
@@ -5971,12 +5956,12 @@ public class TSParser extends Parser {
 		Token KW_SET175=null;
 		Token KW_PASSWORD176=null;
 		ParserRuleReturnScope value =null;
+		ParserRuleReturnScope psw =null;
 		ParserRuleReturnScope path166 =null;
 		ParserRuleReturnScope path168 =null;
 		ParserRuleReturnScope whereClause172 =null;
 
 		CommonTree userName_tree=null;
-		CommonTree psw_tree=null;
 		CommonTree KW_UPDATE165_tree=null;
 		CommonTree COMMA167_tree=null;
 		CommonTree KW_SET169_tree=null;
@@ -5988,7 +5973,7 @@ public class TSParser extends Parser {
 		CommonTree KW_PASSWORD176_tree=null;
 		RewriteRuleTokenStream stream_COMMA=new RewriteRuleTokenStream(adaptor,"token COMMA");
 		RewriteRuleTokenStream stream_KW_VALUE=new RewriteRuleTokenStream(adaptor,"token KW_VALUE");
-		RewriteRuleTokenStream stream_StringLiteral=new RewriteRuleTokenStream(adaptor,"token StringLiteral");
+		RewriteRuleTokenStream stream_Identifier=new RewriteRuleTokenStream(adaptor,"token Identifier");
 		RewriteRuleTokenStream stream_KW_PASSWORD=new RewriteRuleTokenStream(adaptor,"token KW_PASSWORD");
 		RewriteRuleTokenStream stream_KW_USER=new RewriteRuleTokenStream(adaptor,"token KW_USER");
 		RewriteRuleTokenStream stream_EQUAL=new RewriteRuleTokenStream(adaptor,"token EQUAL");
@@ -5996,10 +5981,11 @@ public class TSParser extends Parser {
 		RewriteRuleTokenStream stream_KW_SET=new RewriteRuleTokenStream(adaptor,"token KW_SET");
 		RewriteRuleSubtreeStream stream_path=new RewriteRuleSubtreeStream(adaptor,"rule path");
 		RewriteRuleSubtreeStream stream_whereClause=new RewriteRuleSubtreeStream(adaptor,"rule whereClause");
+		RewriteRuleSubtreeStream stream_numberOrString=new RewriteRuleSubtreeStream(adaptor,"rule numberOrString");
 		RewriteRuleSubtreeStream stream_numberOrStringWidely=new RewriteRuleSubtreeStream(adaptor,"rule numberOrStringWidely");
 
 		try {
-			// TSParser.g:539:4: ( KW_UPDATE path ( COMMA path )* KW_SET KW_VALUE EQUAL value= numberOrStringWidely ( whereClause )? -> ^( TOK_UPDATE ( path )+ ^( TOK_VALUE $value) ( whereClause )? ) | KW_UPDATE KW_USER userName= StringLiteral KW_SET KW_PASSWORD psw= StringLiteral -> ^( TOK_UPDATE ^( TOK_UPDATE_PSWD $userName $psw) ) )
+			// TSParser.g:539:4: ( KW_UPDATE path ( COMMA path )* KW_SET KW_VALUE EQUAL value= numberOrStringWidely ( whereClause )? -> ^( TOK_UPDATE ( path )+ ^( TOK_VALUE $value) ( whereClause )? ) | KW_UPDATE KW_USER userName= Identifier KW_SET KW_PASSWORD psw= numberOrString -> ^( TOK_UPDATE ^( TOK_UPDATE_PSWD $userName $psw) ) )
 			int alt23=2;
 			int LA23_0 = input.LA(1);
 			if ( (LA23_0==KW_UPDATE) ) {
@@ -6161,7 +6147,7 @@ public class TSParser extends Parser {
 					}
 					break;
 				case 2 :
-					// TSParser.g:541:6: KW_UPDATE KW_USER userName= StringLiteral KW_SET KW_PASSWORD psw= StringLiteral
+					// TSParser.g:541:6: KW_UPDATE KW_USER userName= Identifier KW_SET KW_PASSWORD psw= numberOrString
 					{
 					KW_UPDATE173=(Token)match(input,KW_UPDATE,FOLLOW_KW_UPDATE_in_updateStatement2202); if (state.failed) return retval; 
 					if ( state.backtracking==0 ) stream_KW_UPDATE.add(KW_UPDATE173);
@@ -6169,8 +6155,8 @@ public class TSParser extends Parser {
 					KW_USER174=(Token)match(input,KW_USER,FOLLOW_KW_USER_in_updateStatement2204); if (state.failed) return retval; 
 					if ( state.backtracking==0 ) stream_KW_USER.add(KW_USER174);
 
-					userName=(Token)match(input,StringLiteral,FOLLOW_StringLiteral_in_updateStatement2208); if (state.failed) return retval; 
-					if ( state.backtracking==0 ) stream_StringLiteral.add(userName);
+					userName=(Token)match(input,Identifier,FOLLOW_Identifier_in_updateStatement2208); if (state.failed) return retval; 
+					if ( state.backtracking==0 ) stream_Identifier.add(userName);
 
 					KW_SET175=(Token)match(input,KW_SET,FOLLOW_KW_SET_in_updateStatement2210); if (state.failed) return retval; 
 					if ( state.backtracking==0 ) stream_KW_SET.add(KW_SET175);
@@ -6178,20 +6164,22 @@ public class TSParser extends Parser {
 					KW_PASSWORD176=(Token)match(input,KW_PASSWORD,FOLLOW_KW_PASSWORD_in_updateStatement2212); if (state.failed) return retval; 
 					if ( state.backtracking==0 ) stream_KW_PASSWORD.add(KW_PASSWORD176);
 
-					psw=(Token)match(input,StringLiteral,FOLLOW_StringLiteral_in_updateStatement2216); if (state.failed) return retval; 
-					if ( state.backtracking==0 ) stream_StringLiteral.add(psw);
-
+					pushFollow(FOLLOW_numberOrString_in_updateStatement2216);
+					psw=numberOrString();
+					state._fsp--;
+					if (state.failed) return retval;
+					if ( state.backtracking==0 ) stream_numberOrString.add(psw.getTree());
 					// AST REWRITE
 					// elements: psw, userName
-					// token labels: psw, userName
-					// rule labels: retval
+					// token labels: userName
+					// rule labels: psw, retval
 					// token list labels: 
 					// rule list labels: 
 					// wildcard labels: 
 					if ( state.backtracking==0 ) {
 					retval.tree = root_0;
-					RewriteRuleTokenStream stream_psw=new RewriteRuleTokenStream(adaptor,"token psw",psw);
 					RewriteRuleTokenStream stream_userName=new RewriteRuleTokenStream(adaptor,"token userName",userName);
+					RewriteRuleSubtreeStream stream_psw=new RewriteRuleSubtreeStream(adaptor,"rule psw",psw!=null?psw.getTree():null);
 					RewriteRuleSubtreeStream stream_retval=new RewriteRuleSubtreeStream(adaptor,"rule retval",retval!=null?retval.getTree():null);
 
 					root_0 = (CommonTree)adaptor.nil();
@@ -6206,7 +6194,7 @@ public class TSParser extends Parser {
 						CommonTree root_2 = (CommonTree)adaptor.nil();
 						root_2 = (CommonTree)adaptor.becomeRoot((CommonTree)adaptor.create(TOK_UPDATE_PSWD, "TOK_UPDATE_PSWD"), root_2);
 						adaptor.addChild(root_2, stream_userName.nextNode());
-						adaptor.addChild(root_2, stream_psw.nextNode());
+						adaptor.addChild(root_2, stream_psw.nextTree());
 						adaptor.addChild(root_1, root_2);
 						}
 
@@ -8020,46 +8008,46 @@ public class TSParser extends Parser {
 	public static final BitSet FOLLOW_Identifier_in_createUser1392 = new BitSet(new long[]{0x0000000000031000L});
 	public static final BitSet FOLLOW_numberOrString_in_createUser1404 = new BitSet(new long[]{0x0000000000000002L});
 	public static final BitSet FOLLOW_KW_DROP_in_dropUser1446 = new BitSet(new long[]{0x0200000000000000L});
-	public static final BitSet FOLLOW_KW_USER_in_dropUser1448 = new BitSet(new long[]{0x0000000000030000L});
-	public static final BitSet FOLLOW_identifier_in_dropUser1452 = new BitSet(new long[]{0x0000000000000002L});
+	public static final BitSet FOLLOW_KW_USER_in_dropUser1448 = new BitSet(new long[]{0x0000000000010000L});
+	public static final BitSet FOLLOW_Identifier_in_dropUser1452 = new BitSet(new long[]{0x0000000000000002L});
 	public static final BitSet FOLLOW_KW_CREATE_in_createRole1486 = new BitSet(new long[]{0x0000800000000000L});
-	public static final BitSet FOLLOW_KW_ROLE_in_createRole1488 = new BitSet(new long[]{0x0000000000030000L});
-	public static final BitSet FOLLOW_identifier_in_createRole1492 = new BitSet(new long[]{0x0000000000000002L});
+	public static final BitSet FOLLOW_KW_ROLE_in_createRole1488 = new BitSet(new long[]{0x0000000000010000L});
+	public static final BitSet FOLLOW_Identifier_in_createRole1492 = new BitSet(new long[]{0x0000000000000002L});
 	public static final BitSet FOLLOW_KW_DROP_in_dropRole1526 = new BitSet(new long[]{0x0000800000000000L});
-	public static final BitSet FOLLOW_KW_ROLE_in_dropRole1528 = new BitSet(new long[]{0x0000000000030000L});
-	public static final BitSet FOLLOW_identifier_in_dropRole1532 = new BitSet(new long[]{0x0000000000000002L});
+	public static final BitSet FOLLOW_KW_ROLE_in_dropRole1528 = new BitSet(new long[]{0x0000000000010000L});
+	public static final BitSet FOLLOW_Identifier_in_dropRole1532 = new BitSet(new long[]{0x0000000000000002L});
 	public static final BitSet FOLLOW_KW_GRANT_in_grantUser1566 = new BitSet(new long[]{0x0200000000000000L});
-	public static final BitSet FOLLOW_KW_USER_in_grantUser1568 = new BitSet(new long[]{0x0000000000030000L});
-	public static final BitSet FOLLOW_identifier_in_grantUser1574 = new BitSet(new long[]{0x0000080000000000L});
+	public static final BitSet FOLLOW_KW_USER_in_grantUser1568 = new BitSet(new long[]{0x0000000000010000L});
+	public static final BitSet FOLLOW_Identifier_in_grantUser1574 = new BitSet(new long[]{0x0000080000000000L});
 	public static final BitSet FOLLOW_privileges_in_grantUser1576 = new BitSet(new long[]{0x0000008000000000L});
 	public static final BitSet FOLLOW_KW_ON_in_grantUser1578 = new BitSet(new long[]{0x0000000000030000L,0x0000000000000100L});
 	public static final BitSet FOLLOW_path_in_grantUser1580 = new BitSet(new long[]{0x0000000000000002L});
 	public static final BitSet FOLLOW_KW_GRANT_in_grantRole1618 = new BitSet(new long[]{0x0000800000000000L});
-	public static final BitSet FOLLOW_KW_ROLE_in_grantRole1620 = new BitSet(new long[]{0x0000000000030000L});
-	public static final BitSet FOLLOW_identifier_in_grantRole1624 = new BitSet(new long[]{0x0000080000000000L});
+	public static final BitSet FOLLOW_KW_ROLE_in_grantRole1620 = new BitSet(new long[]{0x0000000000010000L});
+	public static final BitSet FOLLOW_Identifier_in_grantRole1624 = new BitSet(new long[]{0x0000080000000000L});
 	public static final BitSet FOLLOW_privileges_in_grantRole1626 = new BitSet(new long[]{0x0000008000000000L});
 	public static final BitSet FOLLOW_KW_ON_in_grantRole1628 = new BitSet(new long[]{0x0000000000030000L,0x0000000000000100L});
 	public static final BitSet FOLLOW_path_in_grantRole1630 = new BitSet(new long[]{0x0000000000000002L});
 	public static final BitSet FOLLOW_KW_REVOKE_in_revokeUser1668 = new BitSet(new long[]{0x0200000000000000L});
-	public static final BitSet FOLLOW_KW_USER_in_revokeUser1670 = new BitSet(new long[]{0x0000000000030000L});
-	public static final BitSet FOLLOW_identifier_in_revokeUser1676 = new BitSet(new long[]{0x0000080000000000L});
+	public static final BitSet FOLLOW_KW_USER_in_revokeUser1670 = new BitSet(new long[]{0x0000000000010000L});
+	public static final BitSet FOLLOW_Identifier_in_revokeUser1676 = new BitSet(new long[]{0x0000080000000000L});
 	public static final BitSet FOLLOW_privileges_in_revokeUser1678 = new BitSet(new long[]{0x0000008000000000L});
 	public static final BitSet FOLLOW_KW_ON_in_revokeUser1680 = new BitSet(new long[]{0x0000000000030000L,0x0000000000000100L});
 	public static final BitSet FOLLOW_path_in_revokeUser1682 = new BitSet(new long[]{0x0000000000000002L});
 	public static final BitSet FOLLOW_KW_REVOKE_in_revokeRole1720 = new BitSet(new long[]{0x0000800000000000L});
-	public static final BitSet FOLLOW_KW_ROLE_in_revokeRole1722 = new BitSet(new long[]{0x0000000000030000L});
-	public static final BitSet FOLLOW_identifier_in_revokeRole1728 = new BitSet(new long[]{0x0000080000000000L});
+	public static final BitSet FOLLOW_KW_ROLE_in_revokeRole1722 = new BitSet(new long[]{0x0000000000010000L});
+	public static final BitSet FOLLOW_Identifier_in_revokeRole1728 = new BitSet(new long[]{0x0000080000000000L});
 	public static final BitSet FOLLOW_privileges_in_revokeRole1730 = new BitSet(new long[]{0x0000008000000000L});
 	public static final BitSet FOLLOW_KW_ON_in_revokeRole1732 = new BitSet(new long[]{0x0000000000030000L,0x0000000000000100L});
 	public static final BitSet FOLLOW_path_in_revokeRole1734 = new BitSet(new long[]{0x0000000000000002L});
-	public static final BitSet FOLLOW_KW_GRANT_in_grantRoleToUser1772 = new BitSet(new long[]{0x0000000000030000L});
-	public static final BitSet FOLLOW_identifier_in_grantRoleToUser1778 = new BitSet(new long[]{0x0040000000000000L});
-	public static final BitSet FOLLOW_KW_TO_in_grantRoleToUser1780 = new BitSet(new long[]{0x0000000000030000L});
-	public static final BitSet FOLLOW_identifier_in_grantRoleToUser1786 = new BitSet(new long[]{0x0000000000000002L});
-	public static final BitSet FOLLOW_KW_REVOKE_in_revokeRoleFromUser1827 = new BitSet(new long[]{0x0000000000030000L});
-	public static final BitSet FOLLOW_identifier_in_revokeRoleFromUser1833 = new BitSet(new long[]{0x0000000008000000L});
-	public static final BitSet FOLLOW_KW_FROM_in_revokeRoleFromUser1835 = new BitSet(new long[]{0x0000000000030000L});
-	public static final BitSet FOLLOW_identifier_in_revokeRoleFromUser1841 = new BitSet(new long[]{0x0000000000000002L});
+	public static final BitSet FOLLOW_KW_GRANT_in_grantRoleToUser1772 = new BitSet(new long[]{0x0000000000010000L});
+	public static final BitSet FOLLOW_Identifier_in_grantRoleToUser1778 = new BitSet(new long[]{0x0040000000000000L});
+	public static final BitSet FOLLOW_KW_TO_in_grantRoleToUser1780 = new BitSet(new long[]{0x0000000000010000L});
+	public static final BitSet FOLLOW_Identifier_in_grantRoleToUser1786 = new BitSet(new long[]{0x0000000000000002L});
+	public static final BitSet FOLLOW_KW_REVOKE_in_revokeRoleFromUser1827 = new BitSet(new long[]{0x0000000000010000L});
+	public static final BitSet FOLLOW_Identifier_in_revokeRoleFromUser1833 = new BitSet(new long[]{0x0000000008000000L});
+	public static final BitSet FOLLOW_KW_FROM_in_revokeRoleFromUser1835 = new BitSet(new long[]{0x0000000000010000L});
+	public static final BitSet FOLLOW_Identifier_in_revokeRoleFromUser1841 = new BitSet(new long[]{0x0000000000000002L});
 	public static final BitSet FOLLOW_KW_PRIVILEGES_in_privileges1882 = new BitSet(new long[]{0x0000000000000000L,0x0000000000000200L});
 	public static final BitSet FOLLOW_StringLiteral_in_privileges1884 = new BitSet(new long[]{0x0000000000000022L});
 	public static final BitSet FOLLOW_COMMA_in_privileges1887 = new BitSet(new long[]{0x0000000000000000L,0x0000000000000200L});
@@ -8077,8 +8065,8 @@ public class TSParser extends Parser {
 	public static final BitSet FOLLOW_multiValue_in_insertStatement1994 = new BitSet(new long[]{0x0000000000000002L});
 	public static final BitSet FOLLOW_LPAREN_in_multidentifier2026 = new BitSet(new long[]{0x0020000000000000L});
 	public static final BitSet FOLLOW_KW_TIMESTAMP_in_multidentifier2028 = new BitSet(new long[]{0x0000000000000020L,0x0000000000000040L});
-	public static final BitSet FOLLOW_COMMA_in_multidentifier2031 = new BitSet(new long[]{0x0000000000030000L});
-	public static final BitSet FOLLOW_identifier_in_multidentifier2033 = new BitSet(new long[]{0x0000000000000020L,0x0000000000000040L});
+	public static final BitSet FOLLOW_COMMA_in_multidentifier2031 = new BitSet(new long[]{0x0000000000010000L});
+	public static final BitSet FOLLOW_Identifier_in_multidentifier2033 = new BitSet(new long[]{0x0000000000000020L,0x0000000000000040L});
 	public static final BitSet FOLLOW_RPAREN_in_multidentifier2037 = new BitSet(new long[]{0x0000000000000002L});
 	public static final BitSet FOLLOW_LPAREN_in_multiValue2060 = new BitSet(new long[]{0x0000000000030040L});
 	public static final BitSet FOLLOW_dateFormatWithNumber_in_multiValue2064 = new BitSet(new long[]{0x0000000000000020L,0x0000000000000040L});
@@ -8101,11 +8089,11 @@ public class TSParser extends Parser {
 	public static final BitSet FOLLOW_numberOrStringWidely_in_updateStatement2168 = new BitSet(new long[]{0x1000000000000002L});
 	public static final BitSet FOLLOW_whereClause_in_updateStatement2171 = new BitSet(new long[]{0x0000000000000002L});
 	public static final BitSet FOLLOW_KW_UPDATE_in_updateStatement2202 = new BitSet(new long[]{0x0200000000000000L});
-	public static final BitSet FOLLOW_KW_USER_in_updateStatement2204 = new BitSet(new long[]{0x0000000000000000L,0x0000000000000200L});
-	public static final BitSet FOLLOW_StringLiteral_in_updateStatement2208 = new BitSet(new long[]{0x0002000000000000L});
+	public static final BitSet FOLLOW_KW_USER_in_updateStatement2204 = new BitSet(new long[]{0x0000000000010000L});
+	public static final BitSet FOLLOW_Identifier_in_updateStatement2208 = new BitSet(new long[]{0x0002000000000000L});
 	public static final BitSet FOLLOW_KW_SET_in_updateStatement2210 = new BitSet(new long[]{0x0000040000000000L});
-	public static final BitSet FOLLOW_KW_PASSWORD_in_updateStatement2212 = new BitSet(new long[]{0x0000000000000000L,0x0000000000000200L});
-	public static final BitSet FOLLOW_StringLiteral_in_updateStatement2216 = new BitSet(new long[]{0x0000000000000002L});
+	public static final BitSet FOLLOW_KW_PASSWORD_in_updateStatement2212 = new BitSet(new long[]{0x0000000000031000L});
+	public static final BitSet FOLLOW_numberOrString_in_updateStatement2216 = new BitSet(new long[]{0x0000000000000002L});
 	public static final BitSet FOLLOW_KW_SELECT_in_selectClause2287 = new BitSet(new long[]{0x0000000000030000L,0x0000000000000100L});
 	public static final BitSet FOLLOW_clusteredPath_in_selectClause2289 = new BitSet(new long[]{0x0000000000000022L});
 	public static final BitSet FOLLOW_COMMA_in_selectClause2292 = new BitSet(new long[]{0x0000000000030000L,0x0000000000000100L});
