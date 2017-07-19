@@ -237,8 +237,8 @@ public class CSVToTsfile {
 						LOGGER.debug("{} :excuted successful!", str);
 					} catch (SQLException e) {
 						LOGGER.error("{} :excuted fail!", str);
-						//bw.write(e.getMessage());
-						//bw.newLine();
+						bw.write(e.getMessage());
+						bw.newLine();
 					}
 				}
 			}
