@@ -215,13 +215,15 @@ ArrayList<ParseError> errors = new ArrayList<ParseError>();
             // "decision=<<"+nvae.grammarDecisionDescription+">>"
             // and "(decision="+nvae.decisionNumber+") and
             // "state "+nvae.stateNumber
-            msg = "cannot recognize input near"
-                    + (input.LT(1) != null ? " " + getTokenErrorDisplay(input.LT(1)) : "")
-                    + (input.LT(2) != null ? " " + getTokenErrorDisplay(input.LT(2)) : "")
-                    + (input.LT(3) != null ? " " + getTokenErrorDisplay(input.LT(3)) : "");
+            msg = "cannot recognize input near "
+                + input.LT(1) != null ? " " + getTokenErrorDisplay(input.LT(1)) : ""
+                + input.LT(1) != null ? " " + getTokenErrorDisplay(input.LT(1)) : ""
+                + input.LT(3) != null ? " " + getTokenErrorDisplay(input.LT(3)) : "";
+                        
         } else if (e instanceof MismatchedTokenException) {
             MismatchedTokenException mte = (MismatchedTokenException) e;
-            msg = super.getErrorMessage(e, xlateNames) + (input.LT(-1) == null ? "":" near '" + input.LT(-1).getText()) + "'";
+            msg = super.getErrorMessage(e, xlateNames) + (input.LT(-1) == null ? "":" near '" + input.LT(-1).getText()) + "'"
+            + ". Please refer to SQL document and check if there is any keyword conflict.";
         } else if (e instanceof FailedPredicateException) {
             FailedPredicateException fpe = (FailedPredicateException) e;
             msg = "Failed to recognize predicate '" + fpe.token.getText() + "'. Failed rule: '" + fpe.ruleName + "'";
@@ -441,7 +443,7 @@ loadStatement
 
 createUser
     : KW_CREATE KW_USER
-        userName=numberOrString
+        userName=Identifier
         password=numberOrString
     -> ^(TOK_CREATE ^(TOK_USER $userName) ^(TOK_PASSWORD $password ))
     ;
