@@ -139,12 +139,10 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
             /*
 			 * modify by liukun
 			 */
-            if (dataType == TSDataType.BYTE_ARRAY) {
-                if (dataType == TSDataType.BYTE_ARRAY) {
-                    if ((value.startsWith("'") && value.endsWith("'"))
-                            || (value.startsWith("\"") && value.endsWith("\""))) {
-                        value = value.substring(1, value.length() - 1);
-                    }
+            if (dataType == TSDataType.TEXT) {
+                if ((value.startsWith(SQLConstant.QUOTE) && value.endsWith(SQLConstant.QUOTE))
+                        || (value.startsWith(SQLConstant.DQUOTE) && value.endsWith(SQLConstant.DQUOTE))) {
+                    value = value.substring(1, value.length() - 1);
                 }
             }
             fileNodeManager.update(deltaObjectId, measurementId, startTime, endTime, dataType, value);
@@ -215,9 +213,9 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 				 * modify by liukun
 				 */
                 String value = insertValues.get(i);
-                if (dataType == TSDataType.BYTE_ARRAY) {
-                    if ((value.startsWith("'") && value.endsWith("'"))
-                            || (value.startsWith("\"") && value.endsWith("\""))) {
+                if (dataType == TSDataType.TEXT) {
+                    if ((value.startsWith(SQLConstant.QUOTE) && value.endsWith(SQLConstant.QUOTE))
+                            || (value.startsWith(SQLConstant.DQUOTE) && value.endsWith(SQLConstant.DQUOTE))) {
                         value = value.substring(1, value.length() - 1);
                     }
                 }

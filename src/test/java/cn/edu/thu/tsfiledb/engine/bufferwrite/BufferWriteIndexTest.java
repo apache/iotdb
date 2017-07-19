@@ -62,7 +62,7 @@ public class BufferWriteIndexTest {
 					Float.valueOf(i * 1.5 + "").toString());
 			DataPoint tuple4 = DataPoint.getDataPoint(TSDataType.DOUBLE, measurementId3,
 					Double.valueOf(i * 2.5 + "").toString());
-			DataPoint tuple5 = DataPoint.getDataPoint(TSDataType.BYTE_ARRAY, measurementId4,
+			DataPoint tuple5 = DataPoint.getDataPoint(TSDataType.TEXT, measurementId4,
 					Binary.valueOf(i + "").toString());
 			DataPoint tuple6 = DataPoint.getDataPoint(TSDataType.BOOLEAN, measurementId5,
 					Boolean.valueOf(i / 2 == 0 ? true : false).toString());

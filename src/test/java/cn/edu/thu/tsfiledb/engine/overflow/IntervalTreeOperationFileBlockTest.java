@@ -265,14 +265,14 @@ public class IntervalTreeOperationFileBlockTest {
 
     @Test
     public void stringMixTest() throws IOException {
-        IntervalTreeOperation newTree = new IntervalTreeOperation(TSDataType.BYTE_ARRAY);
+        IntervalTreeOperation newTree = new IntervalTreeOperation(TSDataType.TEXT);
 
         // old : [1, 10] "s1"
         // new : [5, 10] "s2"
         newTree.update(5L, 10L, s2);
         DynamicOneColumnData memoryData = newTree.queryMemory(null, null, null, null);
 
-        IntervalTreeOperation oldTree = new IntervalTreeOperation(TSDataType.BYTE_ARRAY);
+        IntervalTreeOperation oldTree = new IntervalTreeOperation(TSDataType.TEXT);
         oldTree.update(1L, 10L, s1);
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         oldTree.toBytes(outputStream);

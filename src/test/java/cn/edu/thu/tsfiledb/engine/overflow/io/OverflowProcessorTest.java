@@ -43,7 +43,7 @@ public class OverflowProcessorTest {
 	private String deltaObjectId = "root.vehicle.d0";
 	private String[] measurementIds = { "s0", "s1", "s2", "s3", "s4", "s5" };
 	private TSDataType[] dataTypes = { TSDataType.INT32, TSDataType.INT64, TSDataType.FLOAT, TSDataType.DOUBLE,
-			TSDataType.BOOLEAN, TSDataType.BYTE_ARRAY };
+			TSDataType.BOOLEAN, TSDataType.TEXT };
 
 	private Action overflowflushaction = new Action() {
 
