@@ -1,11 +1,14 @@
 package cn.edu.thu.tsfiledb.tool;
 
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.DriverManager;
@@ -140,19 +143,30 @@ public class CSVToTsfile {
 	 * 
 	 * @param tf time format, optioned:ISO8601, timestamps, self-defined:
 	 *            yyyy-mm-dd hh:mm:ss
-	 * @param words the time column of the csv file
+	 * @param timestamp the time column of the csv file
 	 * @return the timestamps will insert into SQL
 	 */
-	private static String setTimeFormat(String tf, String words) {
+	private static String setTimeFormat(String tf, String timestamp) {
 		if (tf.equals("ISO8601")) {
-			return words;
+				try {
+					Long.parseLong(timestamp);									
+				}catch (NumberFormatException nfe) {
+					return timestamp;
+				}
+			return  "";
 		} else if (tf.equals("timestamps")) {
-			return words;
+			try {
+				Long.parseLong(timestamp);				
+			}catch(NumberFormatException nfe) {
+				LOGGER.error("time format exception, don't insert " + timestamp);
+				return "";
+			}
+			return timestamp;
 		} else {
 			SimpleDateFormat sdf = new SimpleDateFormat(tf);
 			Date date = null;
 			try {
-				date = sdf.parse(words);
+				date = sdf.parse(timestamp);
 			} catch (java.text.ParseException e) {
 				LOGGER.error("input time format error please re-input, Unparseable date: " + tf);
 			}
@@ -168,11 +182,14 @@ public class CSVToTsfile {
 	public static void loadDataFromCSV() {
 		Connection connection = null;
 		Statement statement = null;
-
+		BufferedReader br = null;
+		BufferedWriter bw = null;
 		try {
 			Class.forName("cn.edu.thu.tsfiledb.jdbc.TsfileDriver");
 			connection = DriverManager.getConnection("jdbc:tsfile://" + host + ":" + port + "/", username, password);
-			BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(new File(filename))));
+			br = new BufferedReader(new InputStreamReader(new FileInputStream(new File(filename))));
+			File file = new File("csvInsertError.txt");
+			bw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file)));
 			String line = "";
 			String[] strHeadInfo = br.readLine().split(",");
 			deviceToColumn = new HashMap<String, ArrayList<Integer>>();
@@ -219,9 +236,14 @@ public class CSVToTsfile {
 						statement.execute(str);
 						LOGGER.debug("{} :excuted successful!", str);
 					} catch (SQLException e) {
-						LOGGER.error("{} :excuted fail!", str, e);
+						LOGGER.error("{} :excuted fail!", str);
+						//bw.write(e.getMessage());
+						//bw.newLine();
 					}
 				}
+			}
+			if(file.length() == 0) {
+				file.delete();
 			}
 		} catch (FileNotFoundException e) {
 			LOGGER.error("The csv file {} can't find!",filename, e);
@@ -233,9 +255,12 @@ public class CSVToTsfile {
 			LOGGER.error("database connection exception!", e);
 		} finally {
 			try {
+				bw.close();
 				statement.close();
 				connection.close();
 			} catch (SQLException e) {
+				e.printStackTrace();
+			} catch (IOException e) {
 				e.printStackTrace();
 			}
 
@@ -279,8 +304,10 @@ public class CSVToTsfile {
 				continue;
 
 			String timestampsStr = setTimeFormat(timeformat, words[0]);
-			if (timestampsStr == "")
+			if (timestampsStr == "") {
+				LOGGER.error("Time Format Error!");
 				continue;
+			}
 			sbd.append(") values(").append(timestampsStr);
 
 			for (int j = 0; j < colIndex.size(); ++j) {
