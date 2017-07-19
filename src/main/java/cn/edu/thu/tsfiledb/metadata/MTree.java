@@ -96,6 +96,11 @@ public class MTree implements Serializable {
 			cur = cur.getChild(nodes[i]);
 		}
 		cur.getParent().deleteChild(cur.getName());
+		cur = cur.getParent();
+		while (cur != null && !cur.getName().equals("root") && cur.getChildren().size() == 0) {
+			cur.getParent().deleteChild(cur.getName());
+			cur = cur.getParent();
+		}
 	}
 
 	/**
