@@ -160,16 +160,15 @@ public abstract class AbstractClient {
 	}
 
 	private static String formatDatetime(long timestamp) {
-		DateTime dateTime = new DateTime(timestamp, timeZone);
 		switch (timeFormat) {
 		case "long":
 		case "number":
 			return timestamp+"";
 		case "default":
 		case "ISO8601":
-			return dateTime.toString(ISODateTimeFormat.dateHourMinuteSecondMillis());
+			return new DateTime(timestamp, timeZone).toString(ISODateTimeFormat.dateHourMinuteSecondMillis());
 		default:
-			return dateTime.toString(timeFormat);
+			return new DateTime(timestamp, timeZone).toString(timeFormat);
 		}
 	}
 
