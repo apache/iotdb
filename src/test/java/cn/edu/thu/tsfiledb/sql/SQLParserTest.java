@@ -240,21 +240,21 @@ public class SQLParserTest {
         }
     }  
     
-    @Test
-    public void loadData() throws ParseException{
-        // template for test case
-        ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_LOAD", "'/user/data/input.csv'", "root", "laptop", "d1", "s1"));
-        ArrayList<String> rec = new ArrayList<>();
-        ASTNode astTree = ParseGenerator.generateAST("LOAD TIMESERIES '/user/data/input.csv' root.laptop.d1.s1");
-        astTree = ParseUtils.findRootNonNullToken(astTree);
-        recursivePrintSon(astTree, rec);
-
-        int i = 0;
-        while (i <= rec.size() - 1) {
-            assertEquals(rec.get(i), ans.get(i));
-            i++;
-        }
-    }
+//    @Test
+//    public void loadData() throws ParseException{
+//        // template for test case
+//        ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_LOAD", "'/user/data/input.csv'", "root", "laptop", "d1", "s1"));
+//        ArrayList<String> rec = new ArrayList<>();
+//        ASTNode astTree = ParseGenerator.generateAST("LOAD TIMESERIES '/user/data/input.csv' root.laptop.d1.s1");
+//        astTree = ParseUtils.findRootNonNullToken(astTree);
+//        recursivePrintSon(astTree, rec);
+//
+//        int i = 0;
+//        while (i <= rec.size() - 1) {
+//            assertEquals(rec.get(i), ans.get(i));
+//            i++;
+//        }
+//    }
     
     @Test
     public void deleteTimeseires() throws ParseException, RecognitionException {
