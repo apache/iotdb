@@ -31,7 +31,7 @@ public class DaemonTest {
     private String[] sqls = new String[]{
             "CREATE TIMESERIES root.vehicle.d1.s0 WITH DATATYPE=INT32, ENCODING=RLE",
             "CREATE TIMESERIES root.vehicle.d0.s2 WITH DATATYPE=FLOAT, ENCODING=RLE",
-            "CREATE TIMESERIES root.vehicle.d0.s3 WITH DATATYPE=BYTE_ARRAY, ENCODING=PLAIN",
+            "CREATE TIMESERIES root.vehicle.d0.s3 WITH DATATYPE=TEXT, ENCODING=PLAIN",
             "CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE",
             "CREATE TIMESERIES root.vehicle.d0.s1 WITH DATATYPE=INT64, ENCODING=RLE",
             "SET STORAGE GROUP TO root.vehicle",
