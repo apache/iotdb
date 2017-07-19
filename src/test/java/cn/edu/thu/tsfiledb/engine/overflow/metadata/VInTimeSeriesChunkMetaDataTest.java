@@ -40,7 +40,7 @@ public class VInTimeSeriesChunkMetaDataTest {
   @Test
   public void testWriteIntoFile() throws IOException {
     VInTimeSeriesChunkMetaData metaData =
-        TestHelper.createSimpleV2InTSF(TSDataType.BYTE_ARRAY, new TSDigest(), maxString, minString);
+        TestHelper.createSimpleV2InTSF(TSDataType.TEXT, new TSDigest(), maxString, minString);
     
     File file = new File(PATH);
     if (file.exists())
