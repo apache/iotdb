@@ -473,7 +473,7 @@ public class OverflowSeriesImplTest {
 
 	@Test
 	public void testByteArray() {
-		seriesimpl = createSeriesImpl(TSDataType.BYTE_ARRAY);
+		seriesimpl = createSeriesImpl(TSDataType.TEXT);
 
 		for (long i = 1; i < 11; i++) {
 			seriesimpl.insert(i, BytesUtils.StringToBytes(String.valueOf(i)));

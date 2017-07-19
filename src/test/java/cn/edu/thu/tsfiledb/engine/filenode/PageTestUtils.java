@@ -57,7 +57,7 @@ public class PageTestUtils {
                     ans.putTime(timeValues[i++]);
                     ans.putDouble(valueDecoder.readDouble(page));
                     break;
-                case BYTE_ARRAY:
+                case TEXT:
                     ans.putTime(timeValues[i++]);
                     ans.putBinary(valueDecoder.readBinary(page));
                     break;

@@ -51,7 +51,7 @@ public class OverflowFileIOTest {
 	private int numOfBytes = 20;
 	private String[] measurementIds = { "s0", "s1", "s2", "s3", "s4", "s5" };
 	private TSDataType[] datatypes = { TSDataType.INT32, TSDataType.INT64, TSDataType.FLOAT, TSDataType.DOUBLE,
-			TSDataType.BOOLEAN, TSDataType.BYTE_ARRAY };
+			TSDataType.BOOLEAN, TSDataType.TEXT };
 
 	private int numofrowgroup = 10;
 	private int numofseries = measurementIds.length;
