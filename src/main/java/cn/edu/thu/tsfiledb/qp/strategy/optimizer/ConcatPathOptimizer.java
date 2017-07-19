@@ -101,7 +101,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
             Path fromPath = fromPaths.get(0);
             if (!fromPath.startWith(SQLConstant.ROOT))
                 throw new LogicalOptimizeException("illegal from clause : " + fromPath.getFullPath());
-            if (!filterPath.startWith(fromPath)) {
+            if (!filterPath.startWith(SQLConstant.ROOT)) {
                 filterPath.addHeadPath(fromPath);
             }
             //don't support select s1 from root.car.d1,root.car.d2 where s1 > 10
