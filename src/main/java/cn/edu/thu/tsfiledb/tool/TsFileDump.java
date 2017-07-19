@@ -1,6 +1,8 @@
 package cn.edu.thu.tsfiledb.tool;
 
 import org.apache.commons.cli.*;
+import org.joda.time.format.DateTimeFormatter;
+import org.joda.time.format.ISODateTimeFormat;
 
 import java.io.*;
 import java.sql.*;
@@ -210,8 +212,8 @@ public class TsFileDump {
                 } else {
                     switch (timeFormat) {
                         case DEFAULT_TIME_FORMAT: {
-                            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSXXX");
-                            writer.write(sdf.format(rs.getDate(0)) + ",");
+                            DateTimeFormatter fmt = ISODateTimeFormat.dateTime();
+                            writer.write(fmt.print(rs.getDate(0).getTime()) + ",");
                             break;
                         }
                         case "timestamp":
