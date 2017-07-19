@@ -111,8 +111,8 @@ public abstract class QueryProcessExecutor {
      * @param deleteTime end time in delete command
      * @return - whether the operator is successful.
      */
-    public boolean delete(List<Path> paths, long deleteTime) throws ProcessorException {
-        boolean result = true;
+    public boolean delete(List<Path> paths, long deleteTime) throws ProcessorException{
+    	boolean result = true;
         for(Path path: paths) {
             result &= delete(path, deleteTime);
         }

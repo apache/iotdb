@@ -138,7 +138,7 @@ public class Utils {
             case DOUBLE:
                 tsDynamicOneColumnData.getDoubleList().forEach(dynamicOneColumnData::putDouble);
                 break;
-            case BYTE_ARRAY:
+            case TEXT:
                 List<ByteBuffer> binaries = tsDynamicOneColumnData.getBinaryList();
                 for (ByteBuffer b : binaries) {
                     dynamicOneColumnData.putBinary(new Binary(StandardCharsets.UTF_8.decode(b).toString()));

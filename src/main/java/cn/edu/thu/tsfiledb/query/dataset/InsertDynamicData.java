@@ -494,7 +494,7 @@ public class InsertDynamicData extends DynamicOneColumnData {
                             }
                         }
                         break;
-                    case BYTE_ARRAY:
+                    case TEXT:
                         cnt = 0;
                         while (valueDecoder.hasNext(page)) {
                             while (cnt < unValidTimeCount) {
@@ -582,7 +582,7 @@ public class InsertDynamicData extends DynamicOneColumnData {
                 return singleValueVisitor.satisfyObject(insertTrue.getFloat(insertTrue.insertTrueIndex), valueFilter);
             case DOUBLE:
                 return singleValueVisitor.satisfyObject(insertTrue.getDouble(insertTrue.insertTrueIndex), valueFilter);
-            case BYTE_ARRAY:
+            case TEXT:
                 return singleValueVisitor.satisfyObject(insertTrue.getBinary(insertTrue.insertTrueIndex), valueFilter);
             default:
                 throw new UnSupportedDataTypeException("UnSupport Aggregation DataType:" + dataType);
@@ -642,7 +642,7 @@ public class InsertDynamicData extends DynamicOneColumnData {
                 curSatisfiedDoubleValue = updateTrue.getDouble(updateTrue.curIdx);
                 insertTrue.setDouble(insertTrue.insertTrueIndex, curSatisfiedDoubleValue);
                 break;
-            case BYTE_ARRAY:
+            case TEXT:
                 curSatisfiedBinaryValue = updateTrue.getBinary(updateTrue.curIdx);
                 insertTrue.setBinary(insertTrue.insertTrueIndex, curSatisfiedBinaryValue);
                 break;
@@ -770,7 +770,7 @@ public class InsertDynamicData extends DynamicOneColumnData {
                     calcDoubleAggregation();
                     removeCurrentValue();
                     break;
-                case BYTE_ARRAY:
+                case TEXT:
                     rowNum++;
                     calcBinaryAggregation();
                     removeCurrentValue();

@@ -47,7 +47,7 @@ public class TInTimeSeriesChunkMetaDataTest {
 
   @Test
   public void testWriteIntoFile() throws IOException {
-    TInTimeSeriesChunkMetaData metaData = TestHelper.createT2inTSF(TSDataType.BYTE_ARRAY,
+    TInTimeSeriesChunkMetaData metaData = TestHelper.createT2inTSF(TSDataType.TEXT,
         TSFreqType.IRREGULAR_FREQ, frequencies2, startTime, endTime);
     File file = new File(PATH);
     if (file.exists())
