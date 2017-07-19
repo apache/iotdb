@@ -1,32 +1,25 @@
 namespace java cn.edu.thu.tsfiledb.service.rpc.thrift
 
 service TSIService {
-	TSOpenSessionResp OpenSession(1:TSOpenSessionReq req);
+	TSOpenSessionResp openSession(1:TSOpenSessionReq req);
 
-	TSCloseSessionResp CloseSession(1:TSCloseSessionReq req);
+	TSCloseSessionResp closeSession(1:TSCloseSessionReq req);
 
-	TSExecuteStatementResp ExecuteStatement(1:TSExecuteStatementReq req);
+	TSExecuteStatementResp executeStatement(1:TSExecuteStatementReq req);
 	
-	TSExecuteBatchStatementResp ExecuteBatchStatement(1:TSExecuteBatchStatementReq req);
+	TSExecuteBatchStatementResp executeBatchStatement(1:TSExecuteBatchStatementReq req);
 
-	TSExecuteStatementResp ExecuteQueryStatement(1:TSExecuteStatementReq req);
+	TSExecuteStatementResp executeQueryStatement(1:TSExecuteStatementReq req);
 
-	TSExecuteStatementResp ExecuteUpdateStatement(1:TSExecuteStatementReq req);
+	TSExecuteStatementResp executeUpdateStatement(1:TSExecuteStatementReq req);
 
-	TSFetchResultsResp FetchResults(1:TSFetchResultsReq req)
+	TSFetchResultsResp fetchResults(1:TSFetchResultsReq req)
 
-	TSFetchMetadataResp FetchMetadata(1:TSFetchMetadataReq req)
+	TSFetchMetadataResp fetchMetadata(1:TSFetchMetadataReq req)
 
-	//TSGetOperationStatusResp GetOperationStatus(1:TSGetOperationStatusReq req);
+	TSCancelOperationResp cancelOperation(1:TSCancelOperationReq req);
 
-	TSCancelOperationResp CancelOperation(1:TSCancelOperationReq req);
-
-	TSCloseOperationResp CloseOperation(1:TSCloseOperationReq req);
-
-
-	//TSGetResultSetMetadataResp GetResultSetMetadata(1:TSGetResultSetMetadataReq req);
-
-	//TSFetchResultsResp FetchResults(1:TSFetchResultsReq req);
+	TSCloseOperationResp closeOperation(1:TSCloseOperationReq req);
 }
 
 enum TSProtocolVersion {
@@ -237,9 +230,10 @@ struct TSExecuteStatementReq {
 }
 
 struct TSExecuteStatementResp {
-  1: required TS_Status status
-  2: optional TSOperationHandle operationHandle
+	1: required TS_Status status
+	2: optional TSOperationHandle operationHandle
 	3: optional list<string> columns
+	4: optional string operationType
 }
 
 struct TSExecuteBatchStatementResp{
@@ -273,7 +267,7 @@ struct TSDynamicOneColumnData{
 	7: optional list<i64> i64List
 	8: optional list<double> floatList
 	9: optional list<double> doubleList
-	10: optional list<byte> binaryList
+	10: optional list<binary> binaryList
 }
 
 struct TSFetchResultsReq{
@@ -308,13 +302,20 @@ struct TSFetchResultsResp{
 
 struct TSFetchMetadataResp{
 		1: required TS_Status status
-		2: optional map<string, list<TSColumnSchema>> seriesMap
+		2: optional string metadataInJson
 		3: optional map<string, list<string>> deltaObjectMap
-		4: optional string metadataInJson
+		4: optional string dataType
+}
+
+enum MEATADATA_OPERATION_TYPE{
+METADATA_IN_JSON,
+DELTAOBJECT,
+COLUMN
 }
 
 struct TSFetchMetadataReq{
-
+		1: required MEATADATA_OPERATION_TYPE type
+		2: optional string columnPath
 }
 
 

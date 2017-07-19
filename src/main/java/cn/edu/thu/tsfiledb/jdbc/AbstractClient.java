@@ -7,16 +7,20 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.joda.time.DateTime;
+import org.joda.time.DateTimeZone;
+import org.joda.time.format.ISODateTimeFormat;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.text.SimpleDateFormat;
 import java.util.HashSet;
 import java.util.Set;
 
 public abstract class AbstractClient {
-	protected static final String HOST_ARGS = "h";
+    	protected static final String HOST_ARGS = "h";
 	protected static final String HOST_NAME = "host";
 
 	protected static final String HELP_ARGS = "help";
@@ -32,24 +36,25 @@ public abstract class AbstractClient {
 
 	protected static final String ISO8601_ARGS = "disableISO8601";
 	protected static String timeFormat = "default";
+	protected static final String TIME_KEY_WORD = "time";
+	protected static DateTimeZone timeZone = DateTimeZone.getDefault();
 
+	
 	protected static final String MAX_PRINT_ROW_COUNT_ARGS = "maxPRC";
 	protected static final String MAX_PRINT_ROW_COUNT_NAME = "maxPrintRowCount";
 	protected static int maxPrintRowCount = 1000;
 
-	protected static final String SET_TIMESTAMP_DISPLAY = "set timestamp_display_type";
-
+	protected static final String SET_TIMESTAMP_DISPLAY = "set time_display_type";
+	protected static final String SET_TIME_ZONE = "set time_zone";
+	
 	protected static final String TSFILEDB_CLI_PREFIX = "TsFileDB";
-	protected static final String QUIT_COMMAND = "quit";
-	protected static final String EXIT_COMMAND = "exit";
-	protected static final String SHOW_METADATA_COMMAND = "show timeseries";
+	private static final String QUIT_COMMAND = "quit";
+	private static final String EXIT_COMMAND = "exit";
+	private static final String SHOW_METADATA_COMMAND = "show timeseries";
 	protected static final int MAX_HELP_CONSOLE_WIDTH = 88;
 
-	protected static final String[] AGGREGATION_OPERATOR = new String[] { "count", "min_time", "max_time",
-			"max_value", "min_value" };
-
 	protected static final String TIMESTAMP_STR = "Time";
-	protected static final int ISO_DATETIME_LEN = 30;
+	protected static final int ISO_DATETIME_LEN = 23;
 	protected static int maxTimeLength = ISO_DATETIME_LEN;
 	protected static int maxValueLength = 15;
 	protected static String formatTime = "%" + maxTimeLength + "s|";
@@ -68,13 +73,13 @@ public abstract class AbstractClient {
 		keywordSet.add("-"+ISO8601_ARGS);
 		keywordSet.add("-"+MAX_PRINT_ROW_COUNT_ARGS);
 	}
-
-	protected static void output(ResultSet res, boolean printToConsole, String statement) {
+	
+	public static void output(ResultSet res, boolean printToConsole, String statement) {
 		try {
 			int cnt = 0;
-			int colCount = res.getMetaData().getColumnCount();
-
-			boolean printTimestamp = printTimestamp(statement);
+			ResultSetMetaData resultSetMetaData = res.getMetaData();
+			int colCount = resultSetMetaData.getColumnCount();
+			boolean printTimestamp = res.getMetaData().getColumnTypeName(0) == null ? true : false; 
 			boolean printHeader = false;
 
 			// Output values
@@ -96,7 +101,11 @@ public abstract class AbstractClient {
 
 				for (int i = 1; i < colCount; i++) {
 					if (printToConsole && cnt < maxPrintRowCount) {
-						System.out.printf(formatValue, String.valueOf(res.getString(i)));
+					    	if(resultSetMetaData.getColumnLabel(i).indexOf(TIME_KEY_WORD) != -1){
+					    	    	System.out.printf(formatValue, formatDatetime(res.getLong(i)));
+					    	} else{
+							System.out.printf(formatValue, String.valueOf(res.getString(i)));
+					    	}
 					}
 				}
 
@@ -116,7 +125,7 @@ public abstract class AbstractClient {
 				printHeader = true;
 			}
 			printBlockLine(printTimestamp, colCount, res);
-			System.out.println(TSFILEDB_CLI_PREFIX + "> record number = " + cnt);
+			System.out.println("record number = " + cnt);
 		} catch (Exception e) {
 			System.out.println(e.getMessage());
 		}
@@ -151,16 +160,15 @@ public abstract class AbstractClient {
 	}
 
 	private static String formatDatetime(long timestamp) {
-		DateTime dateTime = new DateTime(timestamp);
 		switch (timeFormat) {
 		case "long":
 		case "number":
 			return timestamp+"";
 		case "default":
 		case "ISO8601":
-			return dateTime.toString();
+			return new DateTime(timestamp, timeZone).toString(ISODateTimeFormat.dateHourMinuteSecondMillis());
 		default:
-			return dateTime.toString(timeFormat);
+			return new DateTime(timestamp, timeZone).toString(timeFormat);
 		}
 	}
 
@@ -176,7 +184,7 @@ public abstract class AbstractClient {
 	}
 
 	protected static void setTimeFormat(String newTimeFormat) {
-		switch (timeFormat) {
+		switch (newTimeFormat) {
 		case "long":
 		case "number":
 			maxTimeLength = maxValueLength;
@@ -186,11 +194,18 @@ public abstract class AbstractClient {
 			maxTimeLength = ISO_DATETIME_LEN;
 			break;
 		default:
+			// use java default SimpleDateFormat to check whether input time format is legal
+			// if illegal, it will throw an exception
+			new SimpleDateFormat(newTimeFormat);
 			maxTimeLength = TIMESTAMP_STR.length() > newTimeFormat.length() ? TIMESTAMP_STR.length() : newTimeFormat.length();
 			break;
 		}
 		timeFormat = newTimeFormat;
 		formatTime = "%" + maxTimeLength + "s|";
+	}
+	
+	private static void setTimeZone(String timeZoneString){
+		timeZone = DateTimeZone.forID(timeZoneString);
 	}
 
 	protected static void printBlockLine(boolean printTimestamp, int colCount, ResultSet res) throws SQLException {
@@ -222,17 +237,6 @@ public abstract class AbstractClient {
 		System.out.printf("\n");
 	}
 
-	protected static boolean printTimestamp(String statement) {
-		if (statement != null) {
-			for (String operator : AGGREGATION_OPERATOR) {
-				if (statement.contains(operator)) {
-					return false;
-				}
-			}
-		}
-		return true;
-	}
-
 	protected static String[] checkPasswordArgs(String[] args) {
 		int index = -1;
 		for(int i = 0; i < args.length; i++){
@@ -262,14 +266,14 @@ public abstract class AbstractClient {
 		String specialCmd = cmd.toLowerCase().trim();
 
 		if (specialCmd.equals(QUIT_COMMAND) || specialCmd.equals(EXIT_COMMAND)) {
-			System.out.println(TSFILEDB_CLI_PREFIX + "> " + specialCmd + " normally");
+			System.out.println(specialCmd + " normally");
 			return OPERATION_RESULT.RETURN_OPER;
 		}
 		if (specialCmd.equals(SHOW_METADATA_COMMAND)) {
 			try {
 				System.out.println(connection.getMetaData());
 			} catch (SQLException e) {
-				System.out.println(TSFILEDB_CLI_PREFIX + "> failed to show timeseries because: " + e.getMessage());
+				System.out.println("> failed to show timeseries because: " + e.getMessage());
 			}
 			return OPERATION_RESULT.CONTINUE_OPER;
 		}
@@ -277,12 +281,35 @@ public abstract class AbstractClient {
 		if(specialCmd.startsWith(SET_TIMESTAMP_DISPLAY)){
 			String[] values = specialCmd.split("=");
 			if(values.length != 2){
-				System.out.println(TSFILEDB_CLI_PREFIX + "> format error, please input like set timestamp_display_type=ISO8601");
+				System.out.println(String.format("time display format error, please input like %s=ISO8601", SET_TIMESTAMP_DISPLAY));
 				return OPERATION_RESULT.CONTINUE_OPER;
 			}
-			setTimeFormat(values[1]);
+			try {
+				setTimeFormat(cmd.split("=")[1]);
+			} catch (Exception e) {
+				System.out.println(String.format("time display format error, %s", e.getMessage()));
+				return OPERATION_RESULT.CONTINUE_OPER;
+			}
+			System.out.println("time display type has set to "+values[1]);
 			return OPERATION_RESULT.CONTINUE_OPER;
 		}
+		
+		if(specialCmd.startsWith(SET_TIME_ZONE)){
+			String[] values = specialCmd.split("=");
+			if(values.length != 2){
+				System.out.println(String.format("time zone format error, please input like %s=+08:00", SET_TIME_ZONE));
+				return OPERATION_RESULT.CONTINUE_OPER;
+			}
+			try {
+				setTimeZone(cmd.split("=")[1]);
+			} catch (Exception e) {
+				System.out.println(String.format("time zone format error, %s", e.getMessage()));
+				return OPERATION_RESULT.CONTINUE_OPER;
+			}
+			System.out.println("time zone has set to "+values[1]);
+			return OPERATION_RESULT.CONTINUE_OPER;
+		}
+		
 		Statement statement = null;
 		try {
 			statement = connection.createStatement();

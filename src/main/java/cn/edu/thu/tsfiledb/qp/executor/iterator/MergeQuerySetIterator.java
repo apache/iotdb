@@ -134,46 +134,55 @@ public class MergeQuerySetIterator implements Iterator<QueryDataSet> {
                 oneCol.setDeltaObjectType(record.deltaObjectType);
                 mapRet.put(key, oneCol);
             }
+
+            // only when f is not null, the value of f could be put into DynamicOneColumnData.
             switch (f.dataType) {
                 case BOOLEAN:
                     if (!f.isNull()) {
+                        mapRet.get(key).putTime(record.timestamp);
                         mapRet.get(key).putBoolean(f.getBoolV());
                     }
                     break;
                 case INT32:
                     if (!f.isNull()) {
+                        mapRet.get(key).putTime(record.timestamp);
                         mapRet.get(key).putInt(f.getIntV());
                     }
                     break;
                 case INT64:
                     if (!f.isNull()) {
+                        mapRet.get(key).putTime(record.timestamp);
                         mapRet.get(key).putLong(f.getLongV());
                     }
                     break;
                 case FLOAT:
                     if (!f.isNull()) {
+                        mapRet.get(key).putTime(record.timestamp);
                         mapRet.get(key).putFloat(f.getFloatV());
                     }
                     break;
                 case DOUBLE:
                     if (!f.isNull()) {
+                        mapRet.get(key).putTime(record.timestamp);
                         mapRet.get(key).putDouble(f.getFloatV());
                     }
                     break;
-                case BYTE_ARRAY:
+                case TEXT:
                     if (!f.isNull()) {
+                        mapRet.get(key).putTime(record.timestamp);
                         mapRet.get(key).putBinary(f.getBinaryV());
                     }
                     break;
                 case ENUMS:
                     if (!f.isNull()) {
+                        mapRet.get(key).putTime(record.timestamp);
                         mapRet.get(key).putBinary(f.getBinaryV());
                     }
                     break;
                 default:
                     throw new UnSupportedDataTypeException("UnSupported" + String.valueOf(f.dataType));
             }
-            mapRet.get(key).putTime(record.timestamp);
+            // mapRet.get(key).putTime(record.timestamp);
         }
     }
 }

@@ -205,6 +205,40 @@ public class SQLParserTest {
             i++;
         }
     }  
+
+    @Test
+    public void delete4() throws ParseException {
+        // template for test case
+        ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_DELETE", "TOK_PATH", "d1", "s1", "TOK_PATH", "d2", "s3", "TOK_WHERE", "<",
+                "TOK_PATH", "time", "TOK_DATETIME", "now"));
+        ArrayList<String> rec = new ArrayList<>();
+        ASTNode astTree = ParseGenerator.generateAST("delete from d1.s1,d2.s3 where time < now()");
+        astTree = ParseUtils.findRootNonNullToken(astTree);
+        recursivePrintSon(astTree, rec);
+
+        int i = 0;
+        while (i <= rec.size() - 1) {
+            assertEquals(rec.get(i), ans.get(i));
+            i++;
+        }
+    }  
+    
+    @Test
+    public void delete5() throws ParseException {
+        // template for test case
+        ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_DELETE", "TOK_PATH", "d1", "*", "TOK_PATH", "*", "s2", "TOK_WHERE", "<",
+                "TOK_PATH", "time", "123456"));
+        ArrayList<String> rec = new ArrayList<>();
+        ASTNode astTree = ParseGenerator.generateAST("delete from d1.*,*.s2 where time < 123456");
+        astTree = ParseUtils.findRootNonNullToken(astTree);
+        recursivePrintSon(astTree, rec);
+
+        int i = 0;
+        while (i <= rec.size() - 1) {
+            assertEquals(rec.get(i), ans.get(i));
+            i++;
+        }
+    }  
     
     @Test
     public void loadData() throws ParseException{
