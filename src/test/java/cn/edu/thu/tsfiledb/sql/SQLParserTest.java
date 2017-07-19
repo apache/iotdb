@@ -507,9 +507,9 @@ public class SQLParserTest {
     @Test
     public void updatePassword() throws ParseException {
         // template for test case
-        ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_UPDATE", "TOK_UPDATE_PSWD", "'myname'", "'newpassword'"));
+        ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_UPDATE", "TOK_UPDATE_PSWD", "myname", "newpassword"));
         ArrayList<String> rec = new ArrayList<>();
-        ASTNode astTree = ParseGenerator.generateAST("update user 'myname' set password 'newpassword'");
+        ASTNode astTree = ParseGenerator.generateAST("update user myname set password newpassword");
         astTree = ParseUtils.findRootNonNullToken(astTree);
         recursivePrintSon(astTree, rec);
 
