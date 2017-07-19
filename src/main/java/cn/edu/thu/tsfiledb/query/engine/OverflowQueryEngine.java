@@ -555,7 +555,7 @@ public class OverflowQueryEngine {
                     }
                 }
                 break;
-            case BYTE_ARRAY:
+            case TEXT:
                 for (int i = 0; i < oneColData.length; i++) {
                     Binary v = oneColData.getBinary(i);
                     if ((valueFilter == null && timeFilter == null) ||
