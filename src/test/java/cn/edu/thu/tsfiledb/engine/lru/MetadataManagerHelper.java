@@ -37,7 +37,7 @@ public class MetadataManagerHelper {
 
 			mmanager.setStorageLevelToMTree("root.vehicle.d0");
 		} catch (Exception e) {
-			throw new RuntimeException("Initialize the metadata manager failed");
+			throw new RuntimeException("Initialize the metadata manager failed",e);
 		}
 	}
 

@@ -130,6 +130,7 @@ public class MManager {
 		lock.writeLock().lock();
 		try {
 			this.mGraph = new MGraph(ROOT_NAME);
+			this.storageGroup = null;
 		} finally {
 			lock.writeLock().unlock();
 		}
