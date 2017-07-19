@@ -130,12 +130,12 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
         String measurementId = path.getMeasurementToString();
 
         try {
-            String p = deltaObjectId + "." + measurementId;
-            if (!mManager.pathExist(p)) {
-                throw new ProcessorException(String.format("Timeseries %s does not exist.", p));
+            String fullPath = deltaObjectId + "." + measurementId;
+            if (!mManager.pathExist(fullPath)) {
+                throw new ProcessorException(String.format("Timeseries %s does not exist.", fullPath));
             }
-            mManager.getFileNameByPath(p);
-            TSDataType dataType = queryEngine.getDataTypeByDeviceAndSensor(deltaObjectId, measurementId);
+            mManager.getFileNameByPath(fullPath);
+            TSDataType dataType = mManager.getSeriesType(fullPath);
             /*
 			 * modify by liukun
 			 */
@@ -165,7 +165,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
                 throw new ProcessorException(String.format("Timeseries %s does not exist.", p));
             }
             mManager.getFileNameByPath(p);
-            TSDataType type = queryEngine.getDataTypeByDeviceAndSensor(deltaObjectId, measurementId);
+            TSDataType type = mManager.getSeriesType(deltaObjectId+","+measurementId);
             fileNodeManager.delete(deltaObjectId, measurementId, timestamp, type);
             return true;
         } catch (PathErrorException e) {
@@ -179,13 +179,13 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
     @Override
     // return 0: failed, 1: Overflow, 2:Bufferwrite
     public int insert(Path path, long timestamp, String value) throws ProcessorException {
-        String device = path.getDeltaObjectToString();
-        String sensor = path.getMeasurementToString();
+        String deltaObjectId = path.getDeltaObjectToString();
+        String measurementId = path.getMeasurementToString();
 
         try {
-            TSDataType type = queryEngine.getDataTypeByDeviceAndSensor(device, sensor);
-            TSRecord tsRecord = new TSRecord(timestamp, device);
-            DataPoint dataPoint = DataPoint.getDataPoint(type, sensor, value);
+            TSDataType type = mManager.getSeriesType(deltaObjectId+","+measurementId);
+            TSRecord tsRecord = new TSRecord(timestamp, deltaObjectId);
+            DataPoint dataPoint = DataPoint.getDataPoint(type, measurementId, value);
             tsRecord.addTuple(dataPoint);
             return fileNodeManager.insert(tsRecord);
 
@@ -302,29 +302,16 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
                     mManager.addAPathToMTree(path.getFullPath(), dataType, encoding, encodingArgs);
                     break;
                 case DELETE_PATH:
-                    // check timeseries
                     if (!mManager.pathExist(path.getFullPath())) {
                         throw new ProcessorException(
                                 String.format("Timeseries %s does not exist.", path.getFullPath()));
                     }
-                    List<String> pathStringList = null;
-                    try {
-                        pathStringList = mManager.getPaths(path.getFullPath());
-                        List<Path> pathList = new ArrayList<>();
-                        for (String str : pathStringList) {
-                            pathList.add(new Path(str));
-                        }
-                        mManager.checkFileLevel(pathList);
-                    } catch (PathErrorException e) {
-                        throw new ProcessorException(e.getMessage());
-                    }
-                    // First delete all data interactive
-                    deleteAllData(mManager, pathStringList);
-                    // Then delete the metadata
+
+                    List<String> pathStringList = mManager.getPaths(path.getFullPath());
+                    deleteDataOfTimeSeries(mManager, pathStringList);
                     mManager.deletePathFromMTree(path.getFullPath());
                     break;
                 case SET_FILE_LEVEL:
-                    // check timeseries
                     if (!mManager.pathExist(path.getFullPath())) {
                         throw new ProcessorException(String.format("Timeseries %s does not exist.", path.getFullPath()));
                     }
@@ -342,7 +329,15 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
         return true;
     }
 
-    private void deleteAllData(MManager mManager, List<String> pathList) throws PathErrorException, ProcessorException {
+    /**
+     * Delete all data of timeseries in pathList.
+     *
+     * @param mManager
+     * @param pathList
+     * @throws PathErrorException
+     * @throws ProcessorException
+     */
+    private void deleteDataOfTimeSeries(MManager mManager, List<String> pathList) throws PathErrorException, ProcessorException {
         for (String p : pathList) {
             if (mManager.pathExist(p)) {
                 DeletePlan deletePlan = new DeletePlan();
