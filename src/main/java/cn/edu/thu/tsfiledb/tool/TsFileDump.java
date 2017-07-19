@@ -43,7 +43,6 @@ public class TsFileDump {
     private static final String TSFILEDB_CLI_PREFIX = "Tsfile_Dump";
 
     private static String targetFile;
-    private static String sqlFile;
     private static String headerDis;
     private static String timeFormat;
 
@@ -86,8 +85,6 @@ public class TsFileDump {
             System.out.print(TSFILEDB_CLI_PREFIX + "> please input password: ");
             password = scanner.nextLine();
         }
-        targetFile = commandLine.getOptionValue(TARGET_FILE_ARGS);
-        sqlFile = commandLine.getOptionValue(SQL_FILE_ARGS);
         headerDis = commandLine.getOptionValue(HEADER_DIS_ARGS);
         if (headerDis == null) {
             headerDis = "true";
@@ -95,6 +92,25 @@ public class TsFileDump {
         timeFormat = commandLine.getOptionValue(TIME_FORMAT_ARGS);
         if (timeFormat == null) {
             timeFormat = "ISO8601";
+        }
+        String sqlFile = commandLine.getOptionValue(SQL_FILE_ARGS);
+        String sql;
+        if (sqlFile == null) {
+            System.out.print(TSFILEDB_CLI_PREFIX + "> please input query: ");
+            sql = scanner.nextLine();
+        } else {
+            File sf = new File(sqlFile);
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(sf)))) {
+                sql = reader.readLine();
+            } catch (IOException e) {
+                System.out.println(e.getMessage());
+                return;
+            }
+        }
+        targetFile = commandLine.getOptionValue(TARGET_FILE_ARGS);
+        if (targetFile == null) {
+            System.out.print(TSFILEDB_CLI_PREFIX + "> please input dump filename: ");
+            targetFile = scanner.nextLine();
         }
 
         try {
@@ -106,7 +122,7 @@ public class TsFileDump {
         }
 
         try {
-            tsFileDump();
+            dumpResult(sql);
         } catch (SQLException | IOException e) {
             System.out.println(e.getMessage());
         } finally {
@@ -142,7 +158,7 @@ public class TsFileDump {
         Option opTargetFile = Option.builder(TARGET_FILE_ARGS).argName(TARGET_FILE_NAME).hasArg().desc("Target File Path (required)").build();
         options.addOption(opTargetFile);
 
-        Option opSqlFile = Option.builder(SQL_FILE_ARGS).argName(SQL_FILE_NAME).hasArg().desc("SqlFile Path (required)").build();
+        Option opSqlFile = Option.builder(SQL_FILE_ARGS).optionalArg(true).argName(SQL_FILE_NAME).hasArg().desc("SqlFile Path (optional)").build();
         options.addOption(opSqlFile);
 
         Option opTimeFormat = Option.builder(TIME_FORMAT_ARGS).optionalArg(true).argName(TIME_FORMAT_NAME).hasArg().desc("Time Format (optional)").build();
@@ -157,27 +173,13 @@ public class TsFileDump {
     /**
      * Dump files from database to CSV file
      *
+     * @param sql export the result of executing the sql
      * @throws SQLException if SQL is not valid
      * @throws IOException  if file error occurred
      */
-    private static void tsFileDump() throws SQLException, IOException {
+    private static void dumpResult(String sql) throws SQLException, IOException {
         Statement statement = connection.createStatement();
-
-        File sf = new File(sqlFile);
-        String str;
-        BufferedReader reader = null;
-        try {
-            reader = new BufferedReader(new InputStreamReader(new FileInputStream(sf)));
-            str = reader.readLine();
-        } catch (IOException e) {
-            System.out.println(e.getMessage());
-            return;
-        } finally {
-            if (reader != null) {
-                reader.close();
-            }
-        }
-        ResultSet rs = statement.executeQuery(str);
+        ResultSet rs = statement.executeQuery(sql);
         BufferedWriter writer;
         ResultSetMetaData metadata = rs.getMetaData();
         try {
@@ -185,6 +187,7 @@ public class TsFileDump {
             if (!tf.exists()) {
                 if (!tf.createNewFile()) {
                     System.out.println("could not create target file");
+                    return;
                 }
             }
             writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(tf)));
@@ -241,7 +244,7 @@ public class TsFileDump {
                     }
                 }
             }
-            System.out.println("file dump successful!");
+            System.out.println("Data dump to file successfully!");
         } catch (IOException e) {
             System.out.println(e.getMessage());
         } finally {
