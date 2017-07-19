@@ -381,7 +381,7 @@ public class LogicalGenerator {
 		if (astNode.getType() != TSParser.TOK_WHERE)
 			throw new LogicalOperatorException("given node is not WHERE! " + astNode.dump());
 		if (astNode.getChildCount() != 1)
-			throw new LogicalOperatorException("where clause has {} child, return" + astNode.getChildCount());
+			throw new LogicalOperatorException("where clause has" + astNode.getChildCount() + " child, return");
 		FilterOperator whereOp = new FilterOperator(SQLConstant.TOK_WHERE);
 		ASTNode child = astNode.getChild(0);
 		analyzeWhere(child, child.getType(), whereOp);
