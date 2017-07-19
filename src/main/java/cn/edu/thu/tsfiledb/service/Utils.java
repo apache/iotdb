@@ -103,7 +103,7 @@ public class Utils {
 			}
 			tsDynamicOneColumnData.setDoubleList(doubleList);
 			break;
-		case BYTE_ARRAY:
+		case TEXT:
 			List<ByteBuffer> binaryList = new ArrayList<>();
 			for(int i = 0 ; i < dynamicOneColumnData.length; i ++){
 			    		binaryList.add(ByteBuffer.wrap(dynamicOneColumnData.getBinary(i).values));

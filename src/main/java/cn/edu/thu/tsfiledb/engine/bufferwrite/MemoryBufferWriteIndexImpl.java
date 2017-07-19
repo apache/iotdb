@@ -54,7 +54,7 @@ public class MemoryBufferWriteIndexImpl implements BufferWriteIndex {
 			case DOUBLE:
 				deltaMea.putDouble((Double) value);
 				break;
-			case BYTE_ARRAY:
+			case TEXT:
 				deltaMea.putBinary((Binary) value);
 				break;
 			case BOOLEAN:

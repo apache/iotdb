@@ -415,7 +415,7 @@ public class RecordReader {
             case DOUBLE:
                 res.putDouble(insertMemoryData.getCurrentDoubleValue());
                 break;
-            case BYTE_ARRAY:
+            case TEXT:
                 res.putBinary(insertMemoryData.getCurrentBinaryValue());
                 break;
             default:
@@ -440,7 +440,7 @@ public class RecordReader {
             case DOUBLE:
                 res.putDouble(updateData.getDouble(updateData.curIdx/2));
                 break;
-            case BYTE_ARRAY:
+            case TEXT:
                 res.putBinary(updateData.getBinary(updateData.curIdx/2));
                 break;
             default:
