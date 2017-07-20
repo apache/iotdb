@@ -105,12 +105,14 @@ public class RecordReader {
         // iterative res, res may be expand
         for (; i < rowGroupReaderList.size(); i++) {
             RowGroupReader rowGroupReader = rowGroupReaderList.get(i);
-            res = getValueInOneColumnWithOverflow(rowGroupReader, sensorId, updateTrue, updateFalse, insertMemoryData,
-                    timeFilter, res, fetchSize);
-            res.setDeltaObjectType(rowGroupReader.getDeltaObjectType());
-            if (res.length >= fetchSize) {
-                res.hasReadAll = false;
-                return res;
+            if (rowGroupReader.getValueReaders().containsKey(sensorId)) {
+                res = rowGroupReader.getValueReaders().get(sensorId)
+                        .getValuesWithOverFlow(updateTrue, updateFalse, insertMemoryData, timeFilter, null, null, res, fetchSize);
+                res.setDeltaObjectType(rowGroupReader.getDeltaObjectType());
+                if (res.length >= fetchSize) {
+                    res.hasReadAll = false;
+                    return res;
+                }
             }
         }
 
@@ -124,13 +126,6 @@ public class RecordReader {
             res.hasReadAll = true;
         }
         return res;
-    }
-
-    private DynamicOneColumnData getValueInOneColumnWithOverflow(RowGroupReader rowGroupReader, String sensorId,
-                                                                 DynamicOneColumnData updateTrue, DynamicOneColumnData updateFalse, InsertDynamicData insertMemoryData,
-                                                                 SingleSeriesFilterExpression timeFilter, DynamicOneColumnData res, int fetchSize) throws IOException {
-        return rowGroupReader.getValueReaders().get(sensorId)
-                .getValuesWithOverFlow(updateTrue, updateFalse, insertMemoryData, timeFilter, null, null, res, fetchSize);
     }
 
     /**
@@ -152,13 +147,15 @@ public class RecordReader {
         }
         for (; i < rowGroupReaderList.size(); i++) {
             RowGroupReader rowGroupReader = rowGroupReaderList.get(i);
-
-            res = getValueWithFilterAndOverflow(rowGroupReader, sensorId, updateTrue, updateFalse, insertMemoryData,
-                    timeFilter, freqFilter, valueFilter, res, fetchSize);
-            res.setDeltaObjectType(rowGroupReader.getDeltaObjectType());
-            if (res.length >= fetchSize) {
-                res.hasReadAll = false;
-                return res;
+            if (rowGroupReader.getValueReaders().containsKey(sensorId)) {
+                res = rowGroupReader.getValueReaders().get(sensorId)
+                        .getValuesWithOverFlow(updateTrue, updateFalse, insertMemoryData, timeFilter, freqFilter, valueFilter, res,
+                                fetchSize);
+                res.setDeltaObjectType(rowGroupReader.getDeltaObjectType());
+                if (res.length >= fetchSize) {
+                    res.hasReadAll = false;
+                    return res;
+                }
             }
         }
 
@@ -173,15 +170,6 @@ public class RecordReader {
             res.hasReadAll = true;
         }
         return res;
-    }
-
-    private DynamicOneColumnData getValueWithFilterAndOverflow(RowGroupReader rowGroupReader, String sensorId,
-                                                               DynamicOneColumnData updateTrue, DynamicOneColumnData updateFalse, InsertDynamicData insertMemoryData,
-                                                               SingleSeriesFilterExpression timeFilter, SingleSeriesFilterExpression freqFilter, SingleSeriesFilterExpression valueFilter,
-                                                               DynamicOneColumnData res, int fetchSize) throws IOException {
-        return rowGroupReader.getValueReaders().get(sensorId)
-                .getValuesWithOverFlow(updateTrue, updateFalse, insertMemoryData, timeFilter, freqFilter, valueFilter, res,
-                        fetchSize);
     }
 
     private DynamicOneColumnData createAOneColRetByFullPath(String fullPath) throws ProcessorException {
@@ -204,8 +192,10 @@ public class RecordReader {
         List<RowGroupReader> rowGroupReaderList = readerManager.getRowGroupReaderListByDeltaObject(deviceUID);
 
         for (RowGroupReader rowGroupReader : rowGroupReaderList) {
-            aggregate(rowGroupReader, sensorId, func, insertMemoryData, updateTrue, updateFalse
-                    , timeFilter, freqFilter, valueFilter);
+            if (rowGroupReader.getValueReaders().containsKey(sensorId)) {
+                rowGroupReader.getValueReaders().get(sensorId)
+                        .aggreate(func, insertMemoryData, updateTrue, updateFalse, timeFilter, freqFilter, valueFilter);
+            }
         }
 
         // add left insert values
@@ -214,16 +204,6 @@ public class RecordReader {
         }
         return func.result;
     }
-
-
-    private AggregationResult aggregate(RowGroupReader rowGroupReader, String sensorId, AggregateFunction func
-            , InsertDynamicData insertMemoryData, DynamicOneColumnData updateTrue, DynamicOneColumnData updateFalse
-            , SingleSeriesFilterExpression timeFilter, SingleSeriesFilterExpression freqFilter, SingleSeriesFilterExpression valueFilter) throws IOException {
-
-        return rowGroupReader.getValueReaders().get(sensorId)
-                .aggreate(func, insertMemoryData, updateTrue, updateFalse, timeFilter, freqFilter, valueFilter);
-    }
-
 
     /**
      * function 3* Get time value according to filter for one column
