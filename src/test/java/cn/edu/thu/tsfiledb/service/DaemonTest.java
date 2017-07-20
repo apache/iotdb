@@ -93,7 +93,7 @@ public class DaemonTest {
 
     private Daemon deamon;
 
-    //@Before
+    @Before
     public void setUp() throws Exception {
         TsfileDBConfig config = TsfileDBDescriptor.getInstance().getConfig();
         overflowDataDirPre = config.overflowDataDir;
@@ -111,7 +111,7 @@ public class DaemonTest {
         deamon.active();
     }
 
-    //@After
+    @After
     public void tearDown() throws Exception {
         deamon.stop();
         Thread.sleep(5000);
@@ -131,7 +131,7 @@ public class DaemonTest {
         config.derbyHome = derbyHomePre;
     }
 
-    //@Test
+    @Test
     public void test() throws ClassNotFoundException, SQLException, InterruptedException {
         Thread.sleep(5000);
         insertSQL();
@@ -145,6 +145,8 @@ public class DaemonTest {
         selectWildCardSQLTest();
         selectAndOperatorTest();
         selectAndOpeCrossTest();
+
+        aggregationTest();
         connection.close();
     }
 
@@ -348,6 +350,55 @@ public class DaemonTest {
                 }
                 Assert.assertEquals(cnt, 1);
             }
+            statement.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            if (connection != null) {
+                connection.close();
+            }
+        }
+    }
+
+    private void aggregationTest() throws ClassNotFoundException, SQLException {
+        String[] retArray = new String[]{
+                "6,tomorrow is another day",
+                "6,aaaaa"
+        };
+
+        Class.forName("cn.edu.thu.tsfiledb.jdbc.TsfileDriver");
+        Connection connection = null;
+        try {
+            connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
+            Statement statement = connection.createStatement();
+
+            boolean hasTextMaxResultSet = statement.execute("select max_value(s3) from root.vehicle.d0");
+            if (hasTextMaxResultSet) {
+                ResultSet resultSet = statement.getResultSet();
+                int cnt = 0;
+                while (resultSet.next()) {
+                    String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(1);
+                    // System.out.println("=====" + ans);
+                    Assert.assertEquals(ans, retArray[0]);
+                    cnt++;
+                    //AbstractClient.output(resultSet, true, "select statement");
+                }
+                Assert.assertEquals(cnt, 1);
+            }
+
+            boolean hasTextMinResultSet = statement.execute("select min_value(s3) from root.vehicle.d0");
+            if (hasTextMinResultSet) {
+                ResultSet resultSet = statement.getResultSet();
+                int cnt = 0;
+                while (resultSet.next()) {
+                    String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(1);
+                    // System.out.println("=====" + ans);
+                    Assert.assertEquals(ans, retArray[1]);
+                    cnt++;
+                }
+                Assert.assertEquals(cnt, 1);
+            }
+
             statement.close();
         } catch (Exception e) {
             e.printStackTrace();
