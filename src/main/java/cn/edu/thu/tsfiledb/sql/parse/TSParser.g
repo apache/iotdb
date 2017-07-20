@@ -215,13 +215,15 @@ ArrayList<ParseError> errors = new ArrayList<ParseError>();
             // "decision=<<"+nvae.grammarDecisionDescription+">>"
             // and "(decision="+nvae.decisionNumber+") and
             // "state "+nvae.stateNumber
-            msg = "cannot recognize input near"
-                    + (input.LT(1) != null ? " " + getTokenErrorDisplay(input.LT(1)) : "")
-                    + (input.LT(2) != null ? " " + getTokenErrorDisplay(input.LT(2)) : "")
-                    + (input.LT(3) != null ? " " + getTokenErrorDisplay(input.LT(3)) : "");
+            msg = "cannot recognize input near "
+                + input.LT(1) != null ? " " + getTokenErrorDisplay(input.LT(1)) : ""
+                + input.LT(1) != null ? " " + getTokenErrorDisplay(input.LT(1)) : ""
+                + input.LT(3) != null ? " " + getTokenErrorDisplay(input.LT(3)) : "";
+                        
         } else if (e instanceof MismatchedTokenException) {
             MismatchedTokenException mte = (MismatchedTokenException) e;
-            msg = super.getErrorMessage(e, xlateNames) + (input.LT(-1) == null ? "":" near '" + input.LT(-1).getText()) + "'";
+            msg = super.getErrorMessage(e, xlateNames) + (input.LT(-1) == null ? "":" near '" + input.LT(-1).getText()) + "'"
+            + ". Please refer to SQL document and check if there is any keyword conflict.";
         } else if (e instanceof FailedPredicateException) {
             FailedPredicateException fpe = (FailedPredicateException) e;
             msg = "Failed to recognize predicate '" + fpe.token.getText() + "'. Failed rule: '" + fpe.ruleName + "'";
@@ -274,7 +276,7 @@ execStatement
     | queryStatement
     | metadataStatement
     | mergeStatement
-    | loadStatement
+//    | loadStatement
     | quitStatement
     ;
 
@@ -441,53 +443,53 @@ loadStatement
 
 createUser
     : KW_CREATE KW_USER
-        userName=numberOrString
+        userName=Identifier
         password=numberOrString
     -> ^(TOK_CREATE ^(TOK_USER $userName) ^(TOK_PASSWORD $password ))
     ;
 
 dropUser
-    : KW_DROP KW_USER userName=identifier
+    : KW_DROP KW_USER userName=Identifier
     -> ^(TOK_DROP ^(TOK_USER $userName))
     ;
 
 createRole
-    : KW_CREATE KW_ROLE roleName=identifier
+    : KW_CREATE KW_ROLE roleName=Identifier
     -> ^(TOK_CREATE ^(TOK_ROLE $roleName))
     ;
 
 dropRole
-    : KW_DROP KW_ROLE roleName=identifier
+    : KW_DROP KW_ROLE roleName=Identifier
     -> ^(TOK_DROP ^(TOK_ROLE $roleName))
     ;
 
 grantUser
-    : KW_GRANT KW_USER userName = identifier privileges KW_ON path
+    : KW_GRANT KW_USER userName = Identifier privileges KW_ON path
     -> ^(TOK_GRANT ^(TOK_USER $userName) privileges path)
     ;
 
 grantRole
-    : KW_GRANT KW_ROLE roleName=identifier privileges KW_ON path
+    : KW_GRANT KW_ROLE roleName=Identifier privileges KW_ON path
     -> ^(TOK_GRANT ^(TOK_ROLE $roleName) privileges path)
     ;
 
 revokeUser
-    : KW_REVOKE KW_USER userName = identifier privileges KW_ON path
+    : KW_REVOKE KW_USER userName = Identifier privileges KW_ON path
     -> ^(TOK_REVOKE ^(TOK_USER $userName) privileges path)
     ;
 
 revokeRole
-    : KW_REVOKE KW_ROLE roleName = identifier privileges KW_ON path
+    : KW_REVOKE KW_ROLE roleName = Identifier privileges KW_ON path
     -> ^(TOK_REVOKE ^(TOK_ROLE $roleName) privileges path)
     ;
 
 grantRoleToUser
-    : KW_GRANT roleName = identifier KW_TO userName = identifier
+    : KW_GRANT roleName = Identifier KW_TO userName = Identifier
     -> ^(TOK_GRANT ^(TOK_ROLE $roleName) ^(TOK_USER $userName))
     ;
 
 revokeRoleFromUser
-    : KW_REVOKE roleName = identifier KW_FROM userName = identifier
+    : KW_REVOKE roleName = Identifier KW_FROM userName = Identifier
     -> ^(TOK_REVOKE ^(TOK_ROLE $roleName) ^(TOK_USER $userName))
     ;
 
@@ -517,8 +519,8 @@ Assit to multi insert, target grammar:  insert into root.<deviceType>.<deviceNam
 
 multidentifier
 	:
-	LPAREN KW_TIMESTAMP (COMMA identifier)* RPAREN
-	-> ^(TOK_MULT_IDENTIFIER TOK_TIME identifier*)
+	LPAREN KW_TIMESTAMP (COMMA Identifier)* RPAREN
+	-> ^(TOK_MULT_IDENTIFIER TOK_TIME Identifier*)
 	;
 multiValue
 	:
@@ -534,9 +536,9 @@ deleteStatement
    ;
 
 updateStatement
-   : KW_UPDATE path KW_SET KW_VALUE EQUAL value=numberOrStringWidely (whereClause)?
-   -> ^(TOK_UPDATE path ^(TOK_VALUE $value) whereClause?)
-   | KW_UPDATE KW_USER userName=StringLiteral KW_SET KW_PASSWORD psw=StringLiteral
+   : KW_UPDATE path (COMMA path)* KW_SET KW_VALUE EQUAL value=numberOrStringWidely (whereClause)?
+   -> ^(TOK_UPDATE path+ ^(TOK_VALUE $value) whereClause?)
+   | KW_UPDATE KW_USER userName=Identifier KW_SET KW_PASSWORD psw=numberOrString
    -> ^(TOK_UPDATE ^(TOK_UPDATE_PSWD $userName $psw))
    ;
 
@@ -554,16 +556,21 @@ identifier
     Identifier | Integer
     ;
 
+//selectClause
+//    : KW_SELECT path (COMMA path)*
+//    -> ^(TOK_SELECT path+)
+//    | KW_SELECT clstcmd = identifier LPAREN path RPAREN (COMMA clstcmd=identifier LPAREN path RPAREN)*
+//    -> ^(TOK_SELECT ^(TOK_CLUSTER path $clstcmd)+ )
+//    ;
+
 selectClause
-    : KW_SELECT path (COMMA path)*
-    -> ^(TOK_SELECT path+)
-    | KW_SELECT clstcmd = identifier LPAREN path RPAREN (COMMA clstcmd=identifier LPAREN path RPAREN)*
-    -> ^(TOK_SELECT ^(TOK_CLUSTER path $clstcmd)+ )
+    : KW_SELECT clusteredPath (COMMA clusteredPath)*
+    -> ^(TOK_SELECT clusteredPath+)
     ;
 
 clusteredPath
 	: clstcmd = identifier LPAREN path RPAREN
-	-> ^(TOK_PATH path ^(TOK_CLUSTER $clstcmd) )
+	-> ^(TOK_PATH ^(TOK_CLUSTER path $clstcmd) )
 	| path
 	-> path
 	;
