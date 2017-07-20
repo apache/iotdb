@@ -700,6 +700,7 @@ public class InsertDynamicData extends DynamicOneColumnData {
     private long minLongValue = Long.MAX_VALUE, maxLongValue = Long.MIN_VALUE;
     private float minFloatValue = Float.MAX_VALUE, maxFloatValue = Float.MIN_VALUE;
     private double minDoubleValue = Double.MIN_VALUE, maxDoubleValue = Double.MIN_VALUE;
+    private Binary minBinaryValue = null, maxBinaryValue = null;
 
     private void calcIntAggregation() {
         minTime = Math.min(minTime, getCurrentMinTime());
@@ -729,9 +730,21 @@ public class InsertDynamicData extends DynamicOneColumnData {
         maxDoubleValue = Math.max(maxDoubleValue, getCurrentDoubleValue());
     }
 
-    private void calcBinaryAggregation() {
+    private void calcTextAggregation() {
         minTime = Math.min(minTime, getCurrentMinTime());
         maxTime = Math.max(maxTime, getCurrentMinTime());
+        if (minBinaryValue == null) {
+            minBinaryValue = getCurrentBinaryValue();
+        }
+        if (maxBinaryValue == null) {
+            maxBinaryValue = getCurrentBinaryValue();
+        }
+        if (getCurrentBinaryValue().compareTo(minBinaryValue) < 0) {
+            minBinaryValue = getCurrentBinaryValue();
+        }
+        if (getCurrentBinaryValue().compareTo(maxBinaryValue) > 0) {
+            maxBinaryValue = getCurrentBinaryValue();
+        }
     }
 
     public Pair<Long, Object> calcAggregation(String aggType) throws IOException {
@@ -747,6 +760,8 @@ public class InsertDynamicData extends DynamicOneColumnData {
         maxFloatValue = Float.MIN_VALUE;
         minDoubleValue = Double.MIN_VALUE;
         maxDoubleValue = Double.MIN_VALUE;
+        minBinaryValue = null;
+        maxBinaryValue = null;
 
         while (hasInsertData()) {
             switch (dataType) {
@@ -772,7 +787,7 @@ public class InsertDynamicData extends DynamicOneColumnData {
                     break;
                 case TEXT:
                     rowNum++;
-                    calcBinaryAggregation();
+                    calcTextAggregation();
                     removeCurrentValue();
                     break;
                 default:
@@ -798,9 +813,11 @@ public class InsertDynamicData extends DynamicOneColumnData {
                         return new Pair<>(rowNum, minFloatValue);
                     case DOUBLE:
                         return new Pair<>(rowNum, minDoubleValue);
+                    case TEXT:
+                        return new Pair<>(rowNum, minBinaryValue);
                     default:
                         LOG.error("Aggregation Error!");
-                        throw new UnSupportedDataTypeException("UnSupported" + dataType);
+                        throw new UnSupportedDataTypeException("UnSupported datatype: " + dataType);
 
                 }
             case "MAX_VALUE":
@@ -814,419 +831,11 @@ public class InsertDynamicData extends DynamicOneColumnData {
                         return new Pair<>(rowNum, maxFloatValue);
                     case DOUBLE:
                         return new Pair<>(rowNum, maxDoubleValue);
+                    case TEXT:
+                        return new Pair<>(rowNum, maxBinaryValue);
                     default:
                         LOG.error("Aggregation Error!");
-                        throw new UnSupportedDataTypeException("UnSupported" + dataType);
-                }
-            default:
-                return null;
-        }
-    }
-
-    public Pair<Long, Object> calcAggregation2(String aggType) throws IOException {
-        readStatusReset();
-        rowNum = 0;
-        minTime = Long.MAX_VALUE; maxTime = Long.MIN_VALUE;
-        minIntValue = Integer.MAX_VALUE; maxIntValue = Integer.MIN_VALUE;
-        minLongValue = Long.MAX_VALUE; maxLongValue = Long.MIN_VALUE;
-        minFloatValue = Float.MAX_VALUE; maxFloatValue = Float.MIN_VALUE;
-        minDoubleValue = Double.MIN_VALUE; maxDoubleValue = Double.MIN_VALUE;
-
-        while (pageReader != null || (pageReader==null && pageList != null && pageIndex < pageList.size())) {
-
-            if (pageReader == null && pageList != null && pageIndex < pageList.size()) {
-                pageReader = new PageReader(pageList.get(pageIndex), compressionTypeName);
-                PageHeader pageHeader = pageReader.getNextPageHeader();
-                Digest pageDigest = pageHeader.data_page_header.getDigest();
-
-                // construct value filter digest
-                DigestForFilter valueDigest = new DigestForFilter(pageDigest.min, pageDigest.max, dataType);
-                // construct time filter digest
-                long mint = pageHeader.data_page_header.min_timestamp;
-                long maxt = pageHeader.data_page_header.max_timestamp;
-                DigestForFilter timeDigest = new DigestForFilter(mint, maxt);
-                LOG.debug("Page min time:{}, max time:{}, min value:{}, max value:{}", String.valueOf(mint),
-                        String.valueOf(maxt), String.valueOf(pageDigest.bufferForMax()), pageDigest.bufferForMax().toString());
-
-                while (updateTrue != null && updateTrue.curIdx < updateTrue.length && updateTrue.getTime(updateTrue.curIdx*2+1) < mint) {
-                    updateTrue.curIdx ++;
-                }
-
-                while (updateFalse != null && updateFalse.curIdx < updateFalse.length && updateFalse.getTime(updateFalse.curIdx*2+1) < mint) {
-                    updateFalse.curIdx ++;
-                }
-
-                // not satisfied with time filter.
-                if ((timeFilter != null && !digestVisitor.satisfy(timeDigest, timeFilter))) {
-                    pageReaderReset();
-                    continue;
-                } else {
-                    // no updateTrue and updateFalse, not satisfied with valueFilter
-                    if (updateTrue != null && updateTrue.curIdx >= updateTrue.length && updateFalse != null && updateFalse.curIdx >= updateFalse.length
-                            && valueFilter != null && !digestVisitor.satisfy(valueDigest, valueFilter)) {
-                        pageReaderReset();
-                        continue;
-                    }
-                    // has updateTrue, updateTrue not update this page and not satisfied with valueFilter
-                    else if (updateTrue != null && updateTrue.curIdx < updateTrue.length && updateTrue.getTime(updateTrue.curIdx*2) >= maxt &&
-                            valueFilter != null && !digestVisitor.satisfy(valueDigest, valueFilter)) {
-                        pageReaderReset();
-                        continue;
-                    }
-                    // has updateFalse and updateFalse update this page all
-                    else if (updateFalse != null && updateFalse.curIdx < updateFalse.length &&
-                            updateFalse.getTime(updateFalse.curIdx*2) >= mint && updateFalse.getTime(updateFalse.curIdx*2+1) <= maxt) {
-                        pageReaderReset();
-                        continue;
-                    }
-                }
-
-                page = pageReader.getNextPage();
-                timeValues = initTimeValue(page, pageHeader.data_page_header.num_rows, false);
-                curTimeIndex = 0;
-                this.valueDecoder = Decoder.getDecoderByType(pageHeader.getData_page_header().getEncoding(), dataType);
-            }
-
-            if (pageReader != null) {
-                int unValidTimeCount = 0;
-                if (timeValues == null) {
-                    LOG.error("timeValues is null");
-                }
-                while (timeFilter != null && (curTimeIndex < timeValues.length && !singleTimeVisitor.verify(timeValues[curTimeIndex]))) {
-                    curTimeIndex++;
-                    unValidTimeCount++;
-                }
-
-                // all of remain time data are not satisfied with the time filter.
-                if (curTimeIndex == timeValues.length) {
-                    pageReader = null; // pageReader reset
-                    currentSatisfiedTime = -1;
-                    pageIndex++;
-                    continue;
-                }
-                boolean pageValueRemoveFlag;
-                int cnt;
-                switch (dataType) {
-                    case INT32:
-                        cnt = 0;
-                        pageValueRemoveFlag = true;
-                        while (currentSatisfiedTime != -1 || valueDecoder.hasNext(page)) {
-                            while (cnt < unValidTimeCount) {
-                                curSatisfiedIntValue = valueDecoder.readInt(page);
-                                cnt++;
-                            }
-
-                            if (currentSatisfiedTime == -1 && pageValueRemoveFlag) {
-                                curSatisfiedIntValue = valueDecoder.readInt(page);
-                            }
-
-                            if (timeFilter == null || singleTimeVisitor.verify(timeValues[curTimeIndex])) {
-                                while (updateTrue != null && updateTrue.curIdx < updateTrue.length && updateTrue.getTime(updateTrue.curIdx*2+1) < timeValues[curTimeIndex])
-                                    updateTrue.curIdx ++;
-                                while (updateFalse != null && updateFalse.curIdx < updateFalse.length && updateFalse.getTime(updateFalse.curIdx*2+1) < timeValues[curTimeIndex])
-                                    updateFalse.curIdx ++;
-
-                                currentSatisfiedTime = timeValues[curTimeIndex];
-                                if (insertTrue.insertTrueIndex < insertTrue.length && insertTrue.getTime(insertTrue.insertTrueIndex) <= currentSatisfiedTime) {
-                                    rowNum++;
-                                    calcIntAggregation();
-
-                                    if (insertTrue.getTime(insertTrue.insertTrueIndex) == currentSatisfiedTime) {
-                                        pageValueRemoveFlag = true;
-                                        currentSatisfiedTime = -1;
-                                        curTimeIndex++;
-                                    } else {
-                                        pageValueRemoveFlag = false;
-                                    }
-                                    insertTrue.insertTrueIndex ++;
-                                } else {
-                                    rowNum++;
-                                    calcIntAggregation();
-                                    // reset page read status
-                                    pageValueRemoveFlag = true;
-                                    currentSatisfiedTime = -1;
-                                    curTimeIndex++;
-                                }
-                            } else {
-                                pageValueRemoveFlag = true;
-                                currentSatisfiedTime = -1;
-                                curTimeIndex++;
-                            }
-                            // for removeCurrentValue function pageIndex++
-                            if (currentSatisfiedTime == -1 && !valueDecoder.hasNext(page)) {
-                                pageReaderReset();
-                                break;
-                            }
-                        }
-                        break;
-                    case BOOLEAN:
-                        cnt = 0;
-                        pageValueRemoveFlag = true;
-                        while (valueDecoder.hasNext(page)) {
-                            while (cnt < unValidTimeCount) {
-                                curSatisfiedBooleanValue = valueDecoder.readBoolean(page);
-                                cnt++;
-                            }
-                            if (pageValueRemoveFlag) {
-                                curSatisfiedBooleanValue = valueDecoder.readBoolean(page);
-                            }
-                            if ((timeFilter == null || singleTimeVisitor.verify(timeValues[curTimeIndex])) &&
-                                    (valueFilter == null || singleValueVisitor.satisfyObject(curSatisfiedBooleanValue, valueFilter))) {
-                                currentSatisfiedTime = timeValues[curTimeIndex];
-                                if (insertTrue.insertTrueIndex < insertTrue.length && insertTrue.getTime(insertTrue.insertTrueIndex) <= currentSatisfiedTime) {
-                                    minTime = Math.min(minTime, insertTrue.getTime(insertTrue.insertTrueIndex));
-                                    maxTime = Math.max(maxTime, insertTrue.getTime(insertTrue.insertTrueIndex));
-                                    rowNum++;
-                                    if (insertTrue.getTime(insertTrue.insertTrueIndex) == currentSatisfiedTime) {
-                                        pageValueRemoveFlag = true;
-                                    } else {
-                                        pageValueRemoveFlag = false;
-                                    }
-                                } else {
-                                    minTime = Math.min(minTime, currentSatisfiedTime);
-                                    maxTime = Math.max(maxTime, currentSatisfiedTime);
-                                    //minIntValue = Math.min(minIntValue, cur)
-                                    rowNum++;
-                                }
-                            } else {
-                                currentSatisfiedTime = -1;
-                                curTimeIndex++;
-                            }
-                            // connections with removeCurrentValue function pageIndex++
-                            if (currentSatisfiedTime == -1 && !valueDecoder.hasNext(page)) {
-                                pageReader = null; // pageReader reset
-                                currentSatisfiedTime = -1;
-                                pageIndex++;
-                                break;
-                            }
-                        }
-                        break;
-                    case INT64:
-                        cnt = 0;
-                        pageValueRemoveFlag = true;
-                        while (valueDecoder.hasNext(page)) {
-                            while (cnt < unValidTimeCount) {
-                                curSatisfiedLongValue = valueDecoder.readLong(page);
-                                cnt++;
-                            }
-                            if (pageValueRemoveFlag)
-                                curSatisfiedLongValue = valueDecoder.readLong(page);
-                            if ((timeFilter == null || singleTimeVisitor.verify(timeValues[curTimeIndex])) &&
-                                    (valueFilter == null || singleValueVisitor.verify(curSatisfiedLongValue))) {
-                                currentSatisfiedTime = timeValues[curTimeIndex];
-                                if (insertTrue.insertTrueIndex < insertTrue.length && insertTrue.getTime(insertTrue.insertTrueIndex) <= currentSatisfiedTime) {
-                                    minTime = Math.min(minTime, insertTrue.getTime(insertTrue.insertTrueIndex));
-                                    maxTime = Math.max(maxTime, insertTrue.getTime(insertTrue.insertTrueIndex));
-                                    minLongValue = Math.min(minLongValue, insertTrue.getLong(insertTrue.insertTrueIndex));
-                                    maxLongValue = Math.max(maxLongValue, insertTrue.getLong(insertTrue.insertTrueIndex));
-                                    rowNum++;
-                                    insertTrue.insertTrueIndex ++;
-                                    if (insertTrue.getTime(insertTrue.insertTrueIndex) == currentSatisfiedTime) {
-                                        pageValueRemoveFlag = true;
-
-                                    } else {
-                                        pageValueRemoveFlag = false;
-                                    }
-                                } else {
-                                    minTime = Math.min(minTime, currentSatisfiedTime);
-                                    maxTime = Math.max(maxTime, currentSatisfiedTime);
-                                    minLongValue = Math.min(minLongValue, curSatisfiedLongValue);
-                                    maxLongValue = Math.max(maxLongValue, curSatisfiedLongValue);
-                                    rowNum++;
-                                }
-                            } else {
-                                currentSatisfiedTime = -1;
-                                curTimeIndex++;
-                            }
-                            // for removeCurrentValue function pageIndex++
-                            if (currentSatisfiedTime == -1 && !valueDecoder.hasNext(page)) {
-                                pageReader = null; // pageReader reset
-                                currentSatisfiedTime = -1;
-                                pageIndex++;
-                                break;
-                            }
-                        }
-                        break;
-                    case FLOAT:
-                        cnt = 0;
-                        pageValueRemoveFlag = true;
-                        while (valueDecoder.hasNext(page)) {
-                            while (cnt < unValidTimeCount) {
-                                curSatisfiedFloatValue = valueDecoder.readFloat(page);
-                                cnt++;
-                            }
-                            if (pageValueRemoveFlag)
-                                curSatisfiedFloatValue = valueDecoder.readFloat(page);
-                            if ((timeFilter == null || singleTimeVisitor.verify(timeValues[curTimeIndex])) &&
-                                    (valueFilter == null || singleValueVisitor.verify(curSatisfiedFloatValue))) {
-                                currentSatisfiedTime = timeValues[curTimeIndex];
-                                if (insertTrue.insertTrueIndex < insertTrue.length && insertTrue.getTime(insertTrue.insertTrueIndex) <= currentSatisfiedTime) {
-                                    minTime = Math.min(minTime, insertTrue.getTime(insertTrue.insertTrueIndex));
-                                    maxTime = Math.max(maxTime, insertTrue.getTime(insertTrue.insertTrueIndex));
-                                    minFloatValue = Math.min(minFloatValue, insertTrue.getFloat(insertTrue.insertTrueIndex));
-                                    maxFloatValue = Math.max(maxFloatValue, insertTrue.getFloat(insertTrue.insertTrueIndex));
-                                    rowNum++;
-                                    insertTrue.insertTrueIndex ++;
-                                    if (insertTrue.getTime(insertTrue.insertTrueIndex) == currentSatisfiedTime) {
-                                        pageValueRemoveFlag = true;
-
-                                    } else {
-                                        pageValueRemoveFlag = false;
-                                    }
-                                } else {
-                                    minTime = Math.min(minTime, currentSatisfiedTime);
-                                    maxTime = Math.max(maxTime, currentSatisfiedTime);
-                                    minFloatValue = Math.min(minFloatValue, curSatisfiedFloatValue);
-                                    maxFloatValue = Math.max(maxFloatValue, curSatisfiedFloatValue);
-                                    rowNum++;
-                                }
-                            } else {
-                                currentSatisfiedTime = -1;
-                                curTimeIndex++;
-                            }
-                            // for removeCurrentValue function pageIndex++
-                            if (currentSatisfiedTime == -1 && !valueDecoder.hasNext(page)) {
-                                pageReader = null; // pageReader reset
-                                currentSatisfiedTime = -1;
-                                pageIndex++;
-                                break;
-                            }
-                        }
-                        break;
-                    case DOUBLE:
-                        cnt = 0;
-                        pageValueRemoveFlag = true;
-                        while (valueDecoder.hasNext(page)) {
-                            while (cnt < unValidTimeCount) {
-                                curSatisfiedDoubleValue = valueDecoder.readDouble(page);
-                                cnt++;
-                            }
-                            if (pageValueRemoveFlag)
-                                curSatisfiedDoubleValue = valueDecoder.readDouble(page);
-                            if ((timeFilter == null || singleTimeVisitor.verify(timeValues[curTimeIndex])) &&
-                                    (valueFilter == null || singleValueVisitor.verify(curSatisfiedDoubleValue))) {
-                                currentSatisfiedTime = timeValues[curTimeIndex];
-                                if (insertTrue.insertTrueIndex < insertTrue.length && insertTrue.getTime(insertTrue.insertTrueIndex) <= currentSatisfiedTime) {
-                                    minTime = Math.min(minTime, insertTrue.getTime(insertTrue.insertTrueIndex));
-                                    maxTime = Math.max(maxTime, insertTrue.getTime(insertTrue.insertTrueIndex));
-                                    minDoubleValue = Math.min(minDoubleValue, insertTrue.getDouble(insertTrue.insertTrueIndex));
-                                    maxDoubleValue = Math.max(maxDoubleValue, insertTrue.getDouble(insertTrue.insertTrueIndex));
-                                    rowNum++;
-                                    insertTrue.insertTrueIndex ++;
-                                    if (insertTrue.getTime(insertTrue.insertTrueIndex) == currentSatisfiedTime) {
-                                        pageValueRemoveFlag = true;
-
-                                    } else {
-                                        pageValueRemoveFlag = false;
-                                    }
-                                } else {
-                                    minTime = Math.min(minTime, currentSatisfiedTime);
-                                    maxTime = Math.max(maxTime, currentSatisfiedTime);
-                                    minDoubleValue = Math.min(minDoubleValue, curSatisfiedDoubleValue);
-                                    maxDoubleValue = Math.max(maxDoubleValue, curSatisfiedDoubleValue);
-                                    rowNum++;
-                                }
-                            } else {
-                                currentSatisfiedTime = -1;
-                                curTimeIndex++;
-                            }
-                            // for removeCurrentValue function pageIndex++
-                            if (currentSatisfiedTime == -1 && !valueDecoder.hasNext(page)) {
-                                pageReader = null; // pageReader reset
-                                currentSatisfiedTime = -1;
-                                pageIndex++;
-                                break;
-                            }
-                        }
-                        break;
-                    default:
-                        throw new UnSupportedDataTypeException("UnSupport Aggregation DataType:" + dataType);
-                }
-            }
-        }
-
-        // insertTrue is no need to examine filter.
-        // TODO need to consider update operation.
-        while (insertTrue != null && insertTrue.insertTrueIndex < insertTrue.length) {
-            currentSatisfiedTime = insertTrue.getTime(insertTrue.insertTrueIndex);
-            switch (dataType) {
-                case INT32:
-                    curSatisfiedIntValue = insertTrue.getInt(insertTrue.insertTrueIndex);
-                    minTime = Math.min(minTime, insertTrue.getTime(insertTrue.insertTrueIndex));
-                    maxTime = Math.max(maxTime, insertTrue.getTime(insertTrue.insertTrueIndex));
-                    minIntValue = Math.min(minIntValue, insertTrue.getInt(insertTrue.insertTrueIndex));
-                    maxIntValue = Math.max(maxIntValue, insertTrue.getInt(insertTrue.insertTrueIndex));
-                    insertTrue.insertTrueIndex ++;
-                    rowNum ++;
-                    break;
-                case INT64:
-                    curSatisfiedLongValue = insertTrue.getLong(insertTrue.insertTrueIndex);
-                    minTime = Math.min(minTime, insertTrue.getTime(insertTrue.insertTrueIndex));
-                    maxTime = Math.max(maxTime, insertTrue.getTime(insertTrue.insertTrueIndex));
-                    minLongValue = Math.min(minLongValue, insertTrue.getLong(insertTrue.insertTrueIndex));
-                    maxLongValue = Math.max(maxLongValue, insertTrue.getLong(insertTrue.insertTrueIndex));
-                    insertTrue.insertTrueIndex ++;
-                    rowNum ++;
-                    break;
-                case FLOAT:
-                    curSatisfiedFloatValue = insertTrue.getFloat(insertTrue.insertTrueIndex);
-                    minTime = Math.min(minTime, insertTrue.getTime(insertTrue.insertTrueIndex));
-                    maxTime = Math.max(maxTime, insertTrue.getTime(insertTrue.insertTrueIndex));
-                    minFloatValue = Math.min(minFloatValue, insertTrue.getFloat(insertTrue.insertTrueIndex));
-                    maxFloatValue = Math.max(maxFloatValue, insertTrue.getFloat(insertTrue.insertTrueIndex));
-                    insertTrue.insertTrueIndex ++;
-                    rowNum ++;
-                    break;
-                case DOUBLE:
-                    curSatisfiedDoubleValue = insertTrue.getInt(insertTrue.insertTrueIndex);
-                    minTime = Math.min(minTime, insertTrue.getTime(insertTrue.insertTrueIndex));
-                    maxTime = Math.max(maxTime, insertTrue.getTime(insertTrue.insertTrueIndex));
-                    minDoubleValue = Math.min(minDoubleValue, insertTrue.getDouble(insertTrue.insertTrueIndex));
-                    maxDoubleValue = Math.max(maxDoubleValue, insertTrue.getDouble(insertTrue.insertTrueIndex));
-                    insertTrue.insertTrueIndex ++;
-                    rowNum ++;
-                    break;
-                default:
-                    LOG.error("Aggregation Error!");
-                    throw new UnSupportedDataTypeException("UnSupported" + dataType);
-            }
-        }
-
-        switch (aggType) {
-            case "COUNT":
-                return new Pair<>(rowNum, rowNum);
-            case "MIN_TIME":
-                return new Pair<>(rowNum, minTime);
-            case "MAX_TIME":
-                return new Pair<>(rowNum, maxTime);
-            case "MIN_VALUE":
-                switch (dataType) {
-                    case INT32:
-                        return new Pair<>(rowNum, minIntValue);
-                    case INT64:
-                        return new Pair<>(rowNum, minLongValue);
-                    case FLOAT:
-                        return new Pair<>(rowNum, minFloatValue);
-                    case DOUBLE:
-                        return new Pair<>(rowNum, minDoubleValue);
-                    default:
-                        LOG.error("Aggregation Error!");
-                        throw new UnSupportedDataTypeException("UnSupported" + dataType);
-
-                }
-            case "MAX_VALUE":
-                switch (dataType) {
-                    case INT32:
-                        return new Pair<>(rowNum, maxIntValue);
-                    case INT64:
-                        return new Pair<>(rowNum, maxLongValue);
-                    case FLOAT:
-                        return new Pair<>(rowNum, maxFloatValue);
-                    case DOUBLE:
-                        return new Pair<>(rowNum, maxDoubleValue);
-                    default:
-                        LOG.error("Aggregation Error!");
-                        throw new UnSupportedDataTypeException("UnSupported" + dataType);
+                        throw new UnSupportedDataTypeException("UnSupported datatype: " + dataType);
                 }
             default:
                 return null;
