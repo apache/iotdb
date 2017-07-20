@@ -29,19 +29,13 @@ import java.util.concurrent.Executor;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
-import org.apache.thrift.protocol.TProtocol;
-import org.apache.thrift.transport.TFramedTransport;
 import org.apache.thrift.transport.TSocket;
-import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import cn.edu.thu.tsfiledb.service.rpc.thrift.TSIService;
-import cn.edu.thu.tsfiledb.metadata.ColumnSchema;
 import cn.edu.thu.tsfiledb.service.rpc.thrift.TSCloseSessionReq;
-import cn.edu.thu.tsfiledb.service.rpc.thrift.TSFetchMetadataReq;
-import cn.edu.thu.tsfiledb.service.rpc.thrift.TSFetchMetadataResp;
 import cn.edu.thu.tsfiledb.service.rpc.thrift.TSOpenSessionReq;
 import cn.edu.thu.tsfiledb.service.rpc.thrift.TSOpenSessionResp;
 import cn.edu.thu.tsfiledb.service.rpc.thrift.TSProtocolVersion;
@@ -52,7 +46,7 @@ public class TsfileConnection implements Connection {
     private TsfileConnectionParams params;
     private boolean isClosed = true;
     private SQLWarning warningChain = null;
-    private TTransport transport;
+    private TSocket transport;
     public TSIService.Iface client = null;
     public TS_SessionHandle sessionHandle = null;
     private final List<TSProtocolVersion> supportedProtocols = new LinkedList<TSProtocolVersion>();
@@ -67,8 +61,7 @@ public class TsfileConnection implements Connection {
 	supportedProtocols.add(TSProtocolVersion.TSFILE_SERVICE_PROTOCOL_V1);
 	
 	openTransport();
-	TProtocol protocol = new TBinaryProtocol(transport);
-	client = new TSIService.Client(protocol);
+	client = new TSIService.Client(new TBinaryProtocol(transport));	
 	// open client session
 	openSession();
 
@@ -203,23 +196,6 @@ public class TsfileConnection implements Connection {
 	if (isClosed) {
 	    throw new SQLException("Cannot create statement because connection is closed");
 	}
-	try {
-	    return getMetaDataFromServer();
-	} catch (TException e) {
-	    boolean flag = reconnect();
-	    if (flag) {
-		try {
-		    return getMetaDataFromServer();
-		} catch (TException e2) {
-		    throw new SQLException("Fail to fetch metadata after reconnecting. please check server status");
-		}
-	    } else {
-		throw new SQLException("Fail to reconnect to server when fetching metadata. please check server status");
-	    }
-	}
-    }
-
-    private DatabaseMetaData getMetaDataFromServer() throws TException, TsfileSQLException  {
 	return new TsfileDatabaseMetadata(this, client);
     }
 
@@ -391,19 +367,15 @@ public class TsfileConnection implements Connection {
     }
 
     private void openTransport() throws TTransportException {
-	TSocket socket = new TSocket(params.getHost(), params.getPort(), TsfileJDBCConfig.connectionTimeoutInMs);
-	try {
-	    socket.getSocket().setKeepAlive(true);
-	} catch (SocketException e) {
-	    LOGGER.error("Cannot set socket keep alive", e);
-	}
-	if(socket.isOpen()){
-	    socket.open();
-	}
-	transport = new TFramedTransport(socket);
-	if (!transport.isOpen()) {
-	    transport.open();
-	}
+		transport = new TSocket(params.getHost(), params.getPort(), TsfileJDBCConfig.connectionTimeoutInMs);
+		try {
+			transport.getSocket().setKeepAlive(true);
+		} catch (SocketException e) {
+		    LOGGER.error("Cannot set socket keep alive", e);
+		}
+		if (!transport.isOpen()) {
+		    transport.open();
+		}
     }
 
     private void openSession() throws SQLException {
@@ -432,8 +404,9 @@ public class TsfileConnection implements Connection {
     public boolean reconnect() {
 	boolean flag = false;
 	for (int i = 1; i <= TsfileJDBCConfig.RETRY_NUM; i++) {
-	    try {
+	    try {   	
 		if (transport != null) {
+			transport.close();
 		    openTransport();
 		    client = new TSIService.Client(new TBinaryProtocol(transport));
 		    openSession();
