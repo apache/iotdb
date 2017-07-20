@@ -36,6 +36,8 @@ public class MetadataManagerHelper {
 			mmanager.addPathToMTree("root.vehicle.d2.s5", "TEXT", "PLAIN", new String[0]);
 
 			mmanager.setStorageLevelToMTree("root.vehicle.d0");
+			mmanager.setStorageLevelToMTree("root.vehicle.d1");
+			mmanager.setStorageLevelToMTree("root.vehicle.d2");
 		} catch (Exception e) {
 			throw new RuntimeException("Initialize the metadata manager failed",e);
 		}
