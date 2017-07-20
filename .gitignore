@@ -1,0 +1,35 @@
+tsfiledb/data/*
+tsfiledb/derby.log
+tsfiledb/*.pid
+# Eclipse IDE files
+**/.classpath
+**/.project
+**/.settings/
+# src/main/resources/
+# intellij IDE files
+**/*.iml
+**/.idea/
+**/*.log
+# Apple OS X related
+**/.DS_Store
+derby-tsfile-db
+
+# build generated
+**/target/
+**/build/
+
+# intermediately generated locally
+**/logs/
+src/main/resources/*
+
+tsfile-timeseries/src/main/resources/logback.out.out.xml
+tsfile-timeseries/src/main/resources/logback.out.xml
+tsfile-service/derby-tsfile-db/
+tsfile-timeseries/src/test/resources/data
+src/main/resources/metadata/mlog.txt
+tsfile-jdbc/src/main/resources/output/queryRes.csv
+
+*.jar
+*.gz
+*.tar.gz
+*.tar
