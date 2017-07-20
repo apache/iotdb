@@ -306,7 +306,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 				return ExecuteUpdateStatement(physicalPlan);
 			}
 		} catch (Exception e) {
-			e.printStackTrace();
 			return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
 		}
 	}
