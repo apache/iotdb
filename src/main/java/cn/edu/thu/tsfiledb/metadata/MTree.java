@@ -137,6 +137,9 @@ public class MTree implements Serializable {
 				throw new PathErrorException(String.format("Timeseries %s does not exist", path));
 			}
 		}
+		if(cur.isLeaf()){
+			throw new PathErrorException(String.format("The storage group can't be set to the left node"));
+		}
 		cur.setStorageLevel(true);
 		setDataFileName(path, cur);
 	}
