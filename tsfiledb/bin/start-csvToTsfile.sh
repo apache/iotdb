@@ -25,5 +25,5 @@ else
     JAVA=java
 fi
 
-exec "$JAVA" -DTSFILE_HOME=${TSFILE_HOME}  -cp "$CLASSPATH" "$MAIN_CLASS" "$@" -e ${TSFILE_HOME}
+exec "$JAVA" -DTSFILE_HOME=${TSFILE_HOME}  -cp "$CLASSPATH" "$MAIN_CLASS" "$@"
 exit $?

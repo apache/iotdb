@@ -33,6 +33,8 @@ import org.apache.commons.cli.ParseException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import cn.edu.thu.tsfile.common.constant.SystemConstant;
+
 
 /**
  * CSV File To TsFileDB
@@ -64,8 +66,8 @@ public class CSVToTsfile {
 	private static final String TIMEFORMAT_ARGS = "t";
 	private static final String TIMEFORMAT_NAME = "timeformat";
 
-	private static final String TSFILE_HOME_ARGS = "e";
-	private static final String TSFILE_HOME_NAME = "errorCSVTran";
+//	private static final String TSFILE_HOME_ARGS = "e";
+//	private static final String TSFILE_HOME_NAME = "errorCSVTran";
 
 	private static final int MAX_HELP_CONSOLE_WIDTH = 88;
 	private static final String TSFILEDB_CLI_PREFIX = "CSV_To_TsFile";
@@ -116,8 +118,8 @@ public class CSVToTsfile {
 		Option opTimeformat = Option.builder(TIMEFORMAT_ARGS).optionalArg(true).argName(TIMEFORMAT_NAME).hasArg().desc("timeFormat  (not required)").build();
 		options.addOption(opTimeformat);
 		
-		Option opTsfileHome = Option.builder(TSFILE_HOME_ARGS).argName(TSFILE_HOME_NAME).hasArg().desc("TSFILE_HOME (required, auto config)").build();
-		options.addOption(opTsfileHome);
+//		Option opTsfileHome = Option.builder(TSFILE_HOME_ARGS).argName(TSFILE_HOME_NAME).hasArg().desc("TSFILE_HOME (required, auto config)").build();
+//		options.addOption(opTsfileHome);
 		return options;
 	}
 
@@ -135,7 +137,6 @@ public class CSVToTsfile {
 			try {
 				Long.parseLong(timestamp);				
 			}catch(NumberFormatException nfe) {
-				LOGGER.error("time format exception, don't insert " + timestamp);
 				return "";
 			}
 			return timestamp;
@@ -369,17 +370,18 @@ public class CSVToTsfile {
 			timeformat = "timestamps";
 		}
 		
-		if(commandLine.getOptionValue(TSFILE_HOME_ARGS) == null) {
+//		if(commandLine.getOptionValue(TSFILE_HOME_ARGS) == null) {
+		if(System.getProperty(SystemConstant.TSFILE_HOME) == null){
 			errorInsertInfo = "src/test/resources/csvInsertError.error";
-			if(timeformat == "timestamps") {
+			if(timeformat.equals("timestamps")) {
 				filename = CsvTestDataGen.defaultLongDataGen();
-			} else if(timeformat == "ISO8601") {
+			} else if(timeformat.equals("ISO8601")) {
 				filename = CsvTestDataGen.isoDataGen();
 			}else {
-				filename = CsvTestDataGen.userSelfDataGen();;
+				filename = CsvTestDataGen.userSelfDataGen();
 			}
 		}else {
-			errorInsertInfo = commandLine.getOptionValue(TSFILE_HOME_ARGS) + "/csvInsertError.error";
+			errorInsertInfo = System.getProperty(SystemConstant.TSFILE_HOME) + "/csvInsertError.error";
 			filename = commandLine.getOptionValue(FILE_ARGS);
 			if(filename == null) {
 				hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
