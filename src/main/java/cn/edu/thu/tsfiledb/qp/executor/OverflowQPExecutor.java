@@ -160,12 +160,11 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 		String deltaObjectId = path.getDeltaObjectToString();
 		String measurementId = path.getMeasurementToString();
 		try {
-			String p = deltaObjectId + "." + measurementId;
-			if (!mManager.pathExist(p)) {
-				throw new ProcessorException(String.format("Timeseries %s does not exist.", p));
+			if (!mManager.pathExist(path.getFullPath())) {
+				throw new ProcessorException(String.format("Timeseries %s does not exist.", path.getFullPath()));
 			}
-			mManager.getFileNameByPath(p);
-			TSDataType type = mManager.getSeriesType(deltaObjectId + "," + measurementId);
+			mManager.getFileNameByPath(path.getFullPath());
+			TSDataType type = mManager.getSeriesType(path.getFullPath());
 			fileNodeManager.delete(deltaObjectId, measurementId, timestamp, type);
 			return true;
 		} catch (PathErrorException e) {
@@ -290,7 +289,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 		return false;
 	}
 
-	private boolean operateMetadata(MetadataPlan metadataPlan) throws ProcessorException{
+	private boolean operateMetadata(MetadataPlan metadataPlan) throws ProcessorException {
 		MetadataOperator.NamespaceType namespaceType = metadataPlan.getNamespaceType();
 		Path path = metadataPlan.getPath();
 		String dataType = metadataPlan.getDataType();
@@ -352,7 +351,6 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 			processNonQuery(deletePlan);
 		}
 	}
-
 
 	private boolean operateProperty(PropertyPlan propertyPlan) throws ProcessorException {
 		PropertyOperator.PropertyType propertyType = propertyPlan.getPropertyType();
