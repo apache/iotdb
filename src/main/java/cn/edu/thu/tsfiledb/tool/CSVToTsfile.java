@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
 
@@ -115,7 +116,8 @@ public class CSVToTsfile {
 		Option opFile = Option.builder(FILE_ARGS).optionalArg(true).argName(FILE_NAME).hasArg().desc("csv file path (required)").build();
 		options.addOption(opFile);
 
-		Option opTimeformat = Option.builder(TIMEFORMAT_ARGS).optionalArg(true).argName(TIMEFORMAT_NAME).hasArg().desc("timeFormat  (not required)").build();
+		Option opTimeformat = Option.builder(TIMEFORMAT_ARGS).optionalArg(true).argName(TIMEFORMAT_NAME).hasArg().desc("timeFormat  (not required),"
+				+ " you can choose 1) timestamp 2) ISO8601 3) user-defined pattern like yyyy-MM-dd HH:mm:ss, default timestamp").build();
 		options.addOption(opTimeformat);
 		
 //		Option opTsfileHome = Option.builder(TSFILE_HOME_ARGS).argName(TSFILE_HOME_NAME).hasArg().desc("TSFILE_HOME (required, auto config)").build();
@@ -146,7 +148,7 @@ public class CSVToTsfile {
 			try {
 				date = sdf.parse(timestamp);
 			} catch (java.text.ParseException e) {
-				LOGGER.error("input time format error please re-input, Unparseable date: " + tf);
+				LOGGER.error("input time format error please re-input, Unparseable date: {}", tf, e);
 			}
 			if (date != null)
 				return date.getTime() + "";
@@ -177,7 +179,7 @@ public class CSVToTsfile {
 			headInfo = new ArrayList<String>();
 
 			if (strHeadInfo.length <= 1) {
-				LOGGER.error("The CSV file illegal");
+				LOGGER.error("The CSV file illegal, please check first line");
 				br.close();
 				connection.close();
 				System.exit(1);
@@ -192,8 +194,8 @@ public class CSVToTsfile {
 				if (resultSet.next()) {
 					timeseriesToType.put(resultSet.getString(0), resultSet.getString(1));
 				} else {
-					LOGGER.error("database Cannot find " + strHeadInfo[i] + ",stop import!");
-					bw.write("database Cannot find " + strHeadInfo[i] + ",stop import!");
+					LOGGER.error("database Cannot find {}, stop import!", strHeadInfo[i]);
+					bw.write("database Cannot find " + strHeadInfo[i] + ", stop import!");
 					br.close();
 					bw.close();
 					connection.close();
@@ -211,9 +213,9 @@ public class CSVToTsfile {
 			}
 
 			statement = connection.createStatement();
-			int count =0;
+			int count = 0;
 			while ((line = br.readLine()) != null) {
-				ArrayList<String> sqls = createInsertSQL(line,bw);
+				List<String> sqls = createInsertSQL(line,bw);
 				for (String str : sqls) {
 					try {
 						count++;
@@ -225,14 +227,15 @@ public class CSVToTsfile {
 						}
 					} catch (SQLException e) {
 						LOGGER.error("{} :excuted fail!");
-						bw.write(e.getMessage());
+						bw.write(str);
 						bw.newLine();
 					}
 				}
 			}
 			try {
 				statement.executeBatch();
-				LOGGER.debug("excuted finish!");
+				statement.clearBatch();
+				LOGGER.info("excuted finish!");
 			} catch (SQLException e) {
 				bw.write(e.getMessage());
 				bw.newLine();
@@ -276,10 +279,10 @@ public class CSVToTsfile {
 	 * @return ArrayList<String> SQL statement list
 	 * @throws IOException 
 	 */
-	private static ArrayList<String> createInsertSQL(String line, BufferedWriter bwToErrorFile) throws IOException {
+	private static List<String> createInsertSQL(String line, BufferedWriter bwToErrorFile) throws IOException {
 		String[] data = line.split(",", headInfo.size() + 1);
 
-		ArrayList<String> sqls = new ArrayList<String>();
+		List<String> sqls = new ArrayList<String>();
 		Iterator<Map.Entry<String, ArrayList<Integer>>> it = deviceToColumn.entrySet().iterator();
 		while (it.hasNext()) {
 			Map.Entry<String, ArrayList<Integer>> entry = it.next();
@@ -300,9 +303,9 @@ public class CSVToTsfile {
 				continue;
 
 			String timestampsStr = setTimestamp(timeformat, data[0]);
-			if (timestampsStr == "") {
-				LOGGER.error("Time Format Error!");
-				bwToErrorFile.write(line + ": Time Format Error!");
+			if (timestampsStr.equals("")) {
+				LOGGER.error("Time Format Error! {}", line);
+				bwToErrorFile.write(line);
 				bwToErrorFile.newLine();
 				continue;
 			}
@@ -311,7 +314,7 @@ public class CSVToTsfile {
 			for (int j = 0; j < colIndex.size(); ++j) {
 				if (data[entry.getValue().get(j) + 1].equals(""))
 					continue;
-				if (typeIdentify(headInfo.get(colIndex.get(j))) == STRING_DATA_TYPE) {
+				if (typeIdentify(headInfo.get(colIndex.get(j))).equals(STRING_DATA_TYPE)) {
 					sbd.append(", \'" + data[colIndex.get(j) + 1] + "\'");
 				} else {
 					sbd.append("," + data[colIndex.get(j) + 1]);

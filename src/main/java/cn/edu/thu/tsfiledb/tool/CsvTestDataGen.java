@@ -115,4 +115,8 @@ public class CsvTestDataGen {
 		return path;
 	}
 	
+	public static void main(String[] args){
+		System.out.println(defaultLongDataGen());
+	}
+	
 }
