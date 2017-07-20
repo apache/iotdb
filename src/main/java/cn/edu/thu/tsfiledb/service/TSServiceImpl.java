@@ -251,14 +251,17 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 			}
 			List<String> statements = req.getStatements();
 			List<Integer> result = new ArrayList<>();
-
 			for (String statement : statements) {
-				PhysicalPlan physicalPlan = processor.parseSQLToPhysicalPlan(statement);
-				if (physicalPlan.isQuery()) {
-					return getTSBathExecuteStatementResp(TS_StatusCode.ERROR_STATUS, "statement is query :" + statement,
-							result);
+				try {
+					PhysicalPlan physicalPlan = processor.parseSQLToPhysicalPlan(statement);
+					if (physicalPlan.isQuery()) {
+						return getTSBathExecuteStatementResp(TS_StatusCode.ERROR_STATUS, "statement is query :" + statement,
+								result);
+					}
+					ExecuteUpdateStatement(physicalPlan);
+				} catch (Exception e) {
+					LOGGER.error("Fail generate physcial plan for statement {}", statement);
 				}
-				ExecuteUpdateStatement(physicalPlan);
 			}
 
 			return getTSBathExecuteStatementResp(TS_StatusCode.SUCCESS_STATUS, "Execute statements successfully",
