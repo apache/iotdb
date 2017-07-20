@@ -60,12 +60,18 @@ public class PhysicalGenerator {
             case DELETE:
                 DeleteOperator delete = (DeleteOperator) operator;
                 paths = delete.getSelectedPaths();
+                if(delete.getTime()<=0){
+                	throw new LogicalOperatorException("For Delete command, time must greater than 0.");
+                }
                 return new DeletePlan(delete.getTime(), paths);
             case INSERT:
             	InsertOperator Insert = (InsertOperator) operator;
                 paths = Insert.getSelectedPaths();
                 if(paths.size() != 1){
-                    throw new LogicalOperatorException("for Insert command, cannot specified more than one path:{}"+ paths);
+                    throw new LogicalOperatorException("For Insert command, cannot specified more than one path:{}"+ paths);
+                }
+                if(Insert.getTime()<=0){
+                	throw new LogicalOperatorException("For Insert command, time must greater than 0.");
                 }
                 return new InsertPlan(paths.get(0).getFullPath(), Insert.getTime(),
                         Insert.getMeasurementList(), Insert.getValueList());
