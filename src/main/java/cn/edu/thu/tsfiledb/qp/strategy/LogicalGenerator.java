@@ -453,12 +453,20 @@ public class LogicalGenerator {
 		return parseTimeFormat(sc.toString()) + "";
 	}
 
-	private long parseTimeFormat(String format) {
-		if (format.equals(SQLConstant.NOW_FUNC)) {
+	private long parseTimeFormat(String timestampStr) throws LogicalOperatorException {
+		if(timestampStr == null || timestampStr.trim().equals("")){
+			throw new LogicalOperatorException("input timestamp cannot be empty");
+		}
+		if (timestampStr.toLowerCase().equals(SQLConstant.NOW_FUNC)) {
 			return System.currentTimeMillis();
 		}
-		DateTime datetime = new DateTime(format);
-		return datetime.getMillis();
+		try {
+			DateTime datetime = new DateTime(timestampStr);
+			return datetime.getMillis();
+		} catch (Exception e) {
+			throw new LogicalOperatorException(e.getMessage());
+		}
+		
 	}
 
 	private Path parsePath(ASTNode node) {
