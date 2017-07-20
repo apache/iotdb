@@ -30,11 +30,10 @@ public class CsvTestDataGen {
 			"1974,4,,,4,4"
 	};
 	private static BufferedWriter bw = null;
-	File file = new File(System.getProperties().getProperty("user.dir") + "/");
 	
 	public static String isoDataGen() {
-		String path = System.getProperties().getProperty("user.dir") + "/iso.csv";
-		File file = new File(System.getProperties().getProperty("user.dir") + "/iso.csv");
+		String path = System.getProperties().getProperty("user.dir") + "/src/test/resources/iso.csv";
+		File file = new File(path);
 		
 		try {
 			if(!file.exists()) {
@@ -61,7 +60,7 @@ public class CsvTestDataGen {
 		return path;
 	}
 	public static String defaultLongDataGen() {
-		String path = System.getProperties().getProperty("user.dir") + "/defaultLong.csv";
+		String path = System.getProperties().getProperty("user.dir") + "/src/test/resources/defaultLong.csv";
 		File file = new File(path);
 		try {
 			if(!file.exists()) {
@@ -89,7 +88,7 @@ public class CsvTestDataGen {
 	}
 	
 	public static String userSelfDataGen() {
-		String path = System.getProperties().getProperty("user.dir") + "/userSelfDefine.csv";
+		String path = System.getProperties().getProperty("user.dir") + "/src/test/resources/userSelfDefine.csv";
 		File file = new File(path);
 		try {
 			if(!file.exists()) {
