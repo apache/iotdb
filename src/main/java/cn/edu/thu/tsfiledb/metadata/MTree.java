@@ -6,7 +6,6 @@ import java.util.HashMap;
 
 import cn.edu.thu.tsfile.file.metadata.enums.TSDataType;
 import cn.edu.thu.tsfile.file.metadata.enums.TSEncoding;
-import cn.edu.thu.tsfiledb.exception.MetadataArgsErrorException;
 import cn.edu.thu.tsfiledb.exception.PathErrorException;
 
 /**
@@ -23,56 +22,198 @@ public class MTree implements Serializable {
 	private final String separator = "\\.";
 
 	public MTree(String rootName) {
-		this.setRoot(new MNode(rootName, null, false));
+		this.root = new MNode(rootName, null, false);
 	}
 
 	public MTree(MNode root) {
-		this.setRoot(root);
+		this.root = root;
 	}
 
 	/**
-	 * Add a path to current Metadata Tree
+	 *	add timeseries, it should check whether path exists.
 	 * 
-	 * @param path
-	 *            Format: root.node.(node)*
+	 * @param timeseriesPath  - A full path
+	 * @param dataType
+	 * @param encoding
+	 * @param args
+	 * @throws PathErrorException
 	 */
-	public int addPath(String path, String dataType, String encoding, String[] args)
-			throws PathErrorException, MetadataArgsErrorException {
-		int addCount = 0;
-		if (getRoot() == null) {
-			throw new PathErrorException("Root node is null, please initialize root first");
+	public void addTimeseriesPath(String timeseriesPath, String dataType, String encoding, String[] args)
+			throws PathErrorException {
+		String[] nodeNames = timeseriesPath.trim().split(separator);
+		if (nodeNames.length <= 1 || !nodeNames[0].equals(root.getName())) {
+			throw new PathErrorException(String.format("Timeseries %s is not right.", timeseriesPath));
 		}
-		String[] nodeNames = path.trim().split(separator);
-		if (nodeNames.length <= 1 || !nodeNames[0].equals(getRoot().getName())) {
-			throw new PathErrorException(String.format("Timeseries %s is not right.", path));
-		}
-
-		MNode cur = getRoot();
-		int i;
-		for (i = 1; i < nodeNames.length - 1; i++) {
-			if (!cur.hasChild(nodeNames[i])) {
-				cur.addChild(nodeNames[i], new MNode(nodeNames[i], cur, false));
-				addCount++;
+		int i = 1;
+		MNode cur = root;
+		String levePath = null;
+		while (i < nodeNames.length - 1) {
+			String nodeName = nodeNames[i];
+			if (!cur.hasChild(nodeName)) {
+				cur.addChild(nodeName, new MNode(nodeName, cur, false));
 			}
-			cur = cur.getChild(nodeNames[i]);
-		}
-		if (cur.hasChild(nodeNames[i])) {
-			throw new PathErrorException(String.format("Timeseries %s already exists.", path));
-		} else {
-			TSDataType dt = TSDataType.valueOf(dataType);
-			TSEncoding ed = TSEncoding.valueOf(encoding);
-			MNode leaf = new MNode(nodeNames[i], cur, dt, ed);
-			if (args.length > 0) {
-				for (int k = 0; k < args.length; k++) {
-					String[] arg = args[k].split("=");
-					leaf.getSchema().putKeyValueToArgs(arg[0], arg[1]);
-				}
+			if (cur.isStorageLevel()) {
+				levePath = cur.getDataFileName();
 			}
-			cur.addChild(nodeNames[i], leaf);
-			addCount++;
+			cur.setDataFileName(levePath);
+			cur = cur.getChild(nodeName);
+			i++;
 		}
-		return addCount;
+		TSDataType dt = TSDataType.valueOf(dataType);
+		TSEncoding ed = TSEncoding.valueOf(encoding);
+		MNode leaf = new MNode(nodeNames[i], cur, dt, ed);
+		if (args.length > 0) {
+			for (int k = 0; k < args.length; k++) {
+				String[] arg = args[k].split("=");
+				leaf.getSchema().putKeyValueToArgs(arg[0], arg[1]);
+			}
+		}
+		levePath = cur.getDataFileName();
+		leaf.setDataFileName(levePath);
+		cur.addChild(nodeNames[i], leaf);
 	}
+
+	/**
+	 * 
+	 * @param path  -path not necessarily the whole path (possibly a prefix of a sequence)
+	 * @return
+	 */
+	public boolean isPathExist(String path) {
+		String[] nodeNames = path.trim().split(separator);
+		MNode cur = root;
+		int i = 0;
+		while (i < nodeNames.length - 1) {
+			String nodeName = nodeNames[i];
+			if (cur.getName().equals(nodeName)) {
+				i++;
+				nodeName = nodeNames[i];
+				if (cur.hasChild(nodeName)) {
+					cur = cur.getChild(nodeName);
+				} else {
+					return false;
+				}
+			} else {
+				return false;
+			}
+		}
+		if (cur.getName().equals(nodeNames[i])) {
+			return true;
+		} else {
+			return false;
+		}
+	}
+
+	/**
+	 * make sure check path before setting storage group
+	 * @param path
+	 * @throws PathErrorException
+	 */
+	public void setStorageGroup(String path) throws PathErrorException {
+		String[] nodeNames = path.split(separator);
+		MNode cur = root;
+		if (nodeNames.length <= 1 || !nodeNames[0].equals(root.getName())) {
+			throw new PathErrorException(String.format("Timeseries %s is not correct", path));
+		}
+		int i = 1;
+		while (i < nodeNames.length) {
+			cur = cur.getChild(nodeNames[i]);
+			i++;
+		}
+		checkStorageGroup(cur);
+//		for (MNode node : cur.getChildren().values()) {
+//			if (node.getDataFileName() == null) {
+//				cur = node;
+//			} else {
+//				throw new PathErrorException(
+//						String.format("The storage group %s has been set", node.getDataFileName()));
+//			}
+//		}
+		// set storage group level
+		cur = root;
+		for (i = 1; i < nodeNames.length; i++) {
+			if (cur.hasChild(nodeNames[i])) {
+				cur = cur.getChild(nodeNames[i]);
+			} else {
+				throw new PathErrorException(String.format("Timeseries %s does not exist", path));
+			}
+		}
+		cur.setStorageLevel(true);
+		setDataFileName(path, cur);
+	}
+	/**
+	 * Check whether set file path for this node or not. If not, throw an exception
+	 * 
+	 * @param node
+	 * @throws PathErrorException 
+	 */
+	private void checkStorageGroup(MNode node) throws PathErrorException{
+		if(node.getDataFileName()!=null){
+			throw new PathErrorException(
+					String.format("The storage group %s has been set", node.getDataFileName()));
+		}
+		if(node.getChildren()==null){
+			return;
+		}
+		for(MNode child :node.getChildren().values()){
+			checkStorageGroup(child);
+		}
+	}
+
+	private void setDataFileName(String path, MNode node) {
+		node.setDataFileName(path);
+		if(node.getChildren()==null){
+			return;
+		}
+		for (MNode child : node.getChildren().values()) {
+			setDataFileName(path, child);
+		}
+	}
+	
+	
+
+//	/**
+//	 * Add a path to current Metadata Tree
+//	 * 
+//	 * @param path
+//	 *            Format: root.node.(node)*
+//	 */
+//	public int addPath(String path, String dataType, String encoding, String[] args)
+//			throws PathErrorException, MetadataArgsErrorException {
+//		int addCount = 0;
+//		if (getRoot() == null) {
+//			throw new PathErrorException("Root node is null, please initialize root first");
+//		}
+//		String[] nodeNames = path.trim().split(separator);
+//		if (nodeNames.length <= 1 || !nodeNames[0].equals(getRoot().getName())) {
+//			throw new PathErrorException(String.format("Timeseries %s is not right.", path));
+//		}
+//
+//		MNode cur = getRoot();
+//		int i;
+//		for (i = 1; i < nodeNames.length - 1; i++) {
+//			if (!cur.hasChild(nodeNames[i])) {
+//				cur.addChild(nodeNames[i], new MNode(nodeNames[i], cur, false));
+//				addCount++;
+//			}
+//			cur = cur.getChild(nodeNames[i]);
+//		}
+//		if (cur.hasChild(nodeNames[i])) {
+//			throw new PathErrorException(String.format("Timeseries %s already exists.", path));
+//		} else {
+//			TSDataType dt = TSDataType.valueOf(dataType);
+//			TSEncoding ed = TSEncoding.valueOf(encoding);
+//			MNode leaf = new MNode(nodeNames[i], cur, dt, ed);
+//			if (args.length > 0) {
+//				for (int k = 0; k < args.length; k++) {
+//					String[] arg = args[k].split("=");
+//					leaf.getSchema().putKeyValueToArgs(arg[0], arg[1]);
+//				}
+//			}
+//			cur.addChild(nodeNames[i], leaf);
+//			addCount++;
+//		}
+//		return addCount;
+//	}
 
 	/**
 	 * Delete one path from current Metadata Tree
@@ -100,80 +241,6 @@ public class MTree implements Serializable {
 		while (cur != null && !cur.getName().equals("root") && cur.getChildren().size() == 0) {
 			cur.getParent().deleteChild(cur.getName());
 			cur = cur.getParent();
-		}
-	}
-
-	/**
-	 * Set filename to one node in the Metadata Tree Notice: This method will
-	 * set the {@code MNode.dataFileName} and {@code MNode.isStorageLevel} of
-	 * current node called if and only if {@code MNode.isStorageLevel} is true.
-	 * 
-	 * @param path
-	 *            Format: root.node.(node)*
-	 */
-	private void setFileNameToOnePath(String path) throws PathErrorException {
-		String nodes[] = path.trim().split(separator);
-		if (nodes.length == 0 || !nodes[0].equals(getRoot().getName())) {
-			throw new PathErrorException(String.format("Timeseries %s is not correct", path));
-		}
-		MNode cur = getRoot();
-		for (int i = 1; i < nodes.length; i++) {
-			if (cur.hasChild(nodes[i])) {
-				cur = cur.getChild(nodes[i]);
-			} else {
-				throw new PathErrorException(
-						"Timeseries is not correct. Node[" + cur.getName() + "] doesn't have child named:" + nodes[i]);
-			}
-		}
-
-		cur.setStorageLevel(true);
-		setFileNameToMNode(cur, path);
-	}
-
-	/**
-	 * Set storage level for current Metadata Tree.
-	 * 
-	 * @param path
-	 *            Format: root.node.(node)*
-	 */
-	public void setStorageLevel(String path) throws PathErrorException {
-		String nodes[] = path.trim().split(separator);
-		if (nodes.length <= 1 || !nodes[0].equals(getRoot().getName())) {
-			throw new PathErrorException(String.format("Timeseries %s is not correct", path));
-		}
-
-		int level = 0;
-		MNode cur = getRoot();
-		for (int i = 1; i < nodes.length; i++) {
-			if (cur.hasChild(nodes[i])) {
-				cur = cur.getChild(nodes[i]);
-				level++;
-			} else {
-				throw new PathErrorException(
-						"Timeseries is not correct. Node[" + cur.getName() + "] doesn't have child named:" + nodes[i]);
-			}
-		}
-
-		cur = getRoot().getChild(nodes[1]);
-		setFileName(1, level, cur, "root." + cur.getName());
-	}
-
-	private void setFileName(int curLevel, int level, MNode node, String path) throws PathErrorException {
-		if (curLevel == level) {
-			setFileNameToOnePath(path);
-			return;
-		}
-		for (MNode child : node.getChildren().values()) {
-			setFileName(curLevel + 1, level, child, path + "." + child.getName());
-		}
-	}
-
-	private void setFileNameToMNode(MNode node, String fileName) {
-		node.setDataFileName(fileName);
-		if (!node.isLeaf()) {
-			for (MNode child : node.getChildren().values()) {
-				setFileNameToMNode(child, fileName);
-			}
 		}
 	}
 
@@ -446,7 +513,7 @@ public class MTree implements Serializable {
 
 		if (!nodeReg.equals("*")) {
 			if (!node.hasChild(nodeReg)) {
-				
+
 			} else {
 				pathExist = findPath(node.getChild(nodeReg), nodes, idx + 1, parent + node.getName() + ".", paths,
 						pathExist);
@@ -517,9 +584,5 @@ public class MTree implements Serializable {
 
 	public MNode getRoot() {
 		return root;
-	}
-
-	public void setRoot(MNode root) {
-		this.root = root;
 	}
 }

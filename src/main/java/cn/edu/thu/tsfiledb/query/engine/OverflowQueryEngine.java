@@ -52,11 +52,6 @@ public class OverflowQueryEngine {
         }
     }
 
-    public TSDataType getDataTypeByDeviceAndSensor(String device, String sensor) throws PathErrorException {
-        String path = device + "." + sensor;
-        return mManager.getSeriesType(path);
-    }
-
     private TSDataType getDataTypeByPath(Path path) throws PathErrorException {
         return mManager.getSeriesType(path.getFullPath());
     }

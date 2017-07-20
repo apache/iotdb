@@ -49,7 +49,6 @@ public class MManager {
 	private BufferedWriter bw;
 	private boolean writeToLog;
 	private boolean initialized;
-	private String storageGroup = null;
 
 	private MManager() {
 		writeToLog = false;
@@ -130,7 +129,6 @@ public class MManager {
 		lock.writeLock().lock();
 		try {
 			this.mGraph = new MGraph(ROOT_NAME);
-			this.storageGroup = null;
 		} finally {
 			lock.writeLock().unlock();
 		}
@@ -164,7 +162,7 @@ public class MManager {
 			} else {
 				leftArgs = new String[0];
 			}
-			addAPathToMTree(args[1], args[2], args[3], leftArgs);
+			addPathToMTree(args[1], args[2], args[3], leftArgs);
 		} else if (args[0].equals(MetadataOperationType.DELETE_PATH_FROM_MTREE)) {
 			deletePathFromMTree(args[1]);
 		} else if (args[0].equals(MetadataOperationType.SET_STORAGE_LEVEL_TO_MTREE)) {
@@ -172,7 +170,7 @@ public class MManager {
 		} else if (args[0].equals(MetadataOperationType.ADD_A_PTREE)) {
 			addAPTree(args[1]);
 		} else if (args[0].equals(MetadataOperationType.ADD_A_PATH_TO_PTREE)) {
-			addAPathToPTree(args[1]);
+			addPathToPTree(args[1]);
 		} else if (args[0].equals(MetadataOperationType.DELETE_PATH_FROM_PTREE)) {
 			deletePathFromPTree(args[1]);
 		} else if (args[0].equals(MetadataOperationType.LINK_MNODE_TO_PTREE)) {
@@ -185,11 +183,11 @@ public class MManager {
 	/**
 	 * operation: Add a path to Metadata Tree
 	 */
-	public int addAPathToMTree(String path, String dataType, String encoding, String[] args)
+	public void addPathToMTree(String path, String dataType, String encoding, String[] args)
 			throws PathErrorException, IOException, MetadataArgsErrorException {
 		lock.writeLock().lock();
 		try {
-			int addCount = mGraph.addPathToMTree(path, dataType, encoding, args);
+			mGraph.addPathToMTree(path, dataType, encoding, args);
 			if (writeToLog) {
 				bw.write(MetadataOperationType.ADD_PATH_TO_MTREE + "," + path + "," + dataType + "," + encoding);
 				for (int i = 0; i < args.length; i++) {
@@ -198,7 +196,6 @@ public class MManager {
 				bw.newLine();
 				bw.flush();
 			}
-			return addCount;
 		} finally {
 			lock.writeLock().unlock();
 		}
@@ -221,16 +218,12 @@ public class MManager {
 	public void setStorageLevelToMTree(String path) throws PathErrorException, IOException {
 		lock.writeLock().lock();
 		try {
-			if(storageGroup!=null){
-				throw new PathErrorException(String.format("The storage group %s has already been set",storageGroup));
-			}
 			mGraph.setStorageLevel(path);
 			if (writeToLog) {
 				bw.write(MetadataOperationType.SET_STORAGE_LEVEL_TO_MTREE + "," + path);
 				bw.newLine();
 				bw.flush();
 			}
-			storageGroup = path;
 		} finally {
 			lock.writeLock().unlock();
 		}
@@ -250,7 +243,7 @@ public class MManager {
 		}
 	}
 
-	public void addAPathToPTree(String path) throws PathErrorException, IOException, MetadataArgsErrorException {
+	public void addPathToPTree(String path) throws PathErrorException, IOException, MetadataArgsErrorException {
 		lock.writeLock().lock();
 		try {
 			mGraph.addPathToPTree(path);
