@@ -11,7 +11,7 @@ SET STORAGE GROUP TO root.fit.d1;
 
 ## 启动load脚本
 
-> ./bin/start-csvToTsfile.sh.sh -h 127.0.0.1 -p 6667 -u root -pw root -f default-long.csv -t timestamps
+> ./bin/start-csvToTsfile.sh.sh -h 127.0.0.1 -p 6667 -u root -pw root -f <载入文件路径> -t <时间格式>
 usage: CSV_To_TsFile [-f <file>] [-h <host>] [-help] [-p <port>] [-pw <password>] [-t
        <timeformat>] [-u <username>]
  -f <file>         csv file path (required)
@@ -21,3 +21,6 @@ usage: CSV_To_TsFile [-f <file>] [-h <host>] [-help] [-p <port>] [-pw <password>
  -pw <password>    Password (required)
  -t <timeformat>   timeFormat  (not required) format: timestamps, ISO8601, "yyyy-MM-dd HH:mm:ss"(自定义格式)
  -u <username>     User name (required)
+ 
+ ## 导入错误文件
+ 位于${TSFILE_HOME}下
