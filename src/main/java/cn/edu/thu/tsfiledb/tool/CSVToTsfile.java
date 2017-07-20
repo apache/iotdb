@@ -64,6 +64,9 @@ public class CSVToTsfile {
 	private static final String TIMEFORMAT_ARGS = "t";
 	private static final String TIMEFORMAT_NAME = "timeformat";
 
+	private static final String TSFILE_HOME_ARGS = "e";
+	private static final String TSFILE_HOME_NAME = "errorCSVTran";
+
 	private static final int MAX_HELP_CONSOLE_WIDTH = 88;
 	private static final String TSFILEDB_CLI_PREFIX = "CSV_To_TsFile";
 
@@ -76,7 +79,7 @@ public class CSVToTsfile {
 	private static String password;
 	private static String filename;
 	private static String timeformat = "timestamps";
-	private static String errorInsertInfo = "${TSFILE_HOME}/csvInsertError.txt";
+	private static String errorInsertInfo = "";
 	
 	private static HashMap<String, String> timeseriesToType = null;
 	
@@ -112,7 +115,9 @@ public class CSVToTsfile {
 
 		Option opTimeformat = Option.builder(TIMEFORMAT_ARGS).optionalArg(true).argName(TIMEFORMAT_NAME).hasArg().desc("timeFormat  (not required)").build();
 		options.addOption(opTimeformat);
-
+		
+		Option opTsfileHome = Option.builder(TSFILE_HOME_ARGS).argName(TSFILE_HOME_NAME).hasArg().desc("TSFILE_HOME (required, auto config)").build();
+		options.addOption(opTsfileHome);
 		return options;
 	}
 
@@ -156,12 +161,14 @@ public class CSVToTsfile {
 		Statement statement = null;
 		BufferedReader br = null;
 		BufferedWriter bw = null;
-		File file = new File(errorInsertInfo);
+		File errorFile = new File(errorInsertInfo);
+		
 		try {
 			Class.forName("cn.edu.thu.tsfiledb.jdbc.TsfileDriver");
 			connection = DriverManager.getConnection("jdbc:tsfile://" + host + ":" + port + "/", username, password);
 			br = new BufferedReader(new InputStreamReader(new FileInputStream(new File(filename))));
-			bw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file)));
+			errorFile.createNewFile();
+			bw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(errorFile)));
 			String line = "";
 			String[] strHeadInfo = br.readLine().split(",");
 			deviceToColumn = new HashMap<String, ArrayList<Integer>>();
@@ -249,8 +256,8 @@ public class CSVToTsfile {
 				e.printStackTrace();
 			}
 		}
-		if(file.exists() && (file.length() == 0)) {
-			file.delete();
+		if(errorFile.exists() && (errorFile.length() == 0)) {
+			errorFile.delete();
 		}
 
 	}
@@ -294,7 +301,7 @@ public class CSVToTsfile {
 			String timestampsStr = setTimestamp(timeformat, data[0]);
 			if (timestampsStr == "") {
 				LOGGER.error("Time Format Error!");
-				bwToErrorFile.write("Time Format Error!");
+				bwToErrorFile.write(line + ": Time Format Error!");
 				bwToErrorFile.newLine();
 				continue;
 			}
@@ -351,8 +358,8 @@ public class CSVToTsfile {
 			 System.out.print(TSFILEDB_CLI_PREFIX + "> please input password: ");
 			 password = scanner.nextLine();
 		 }
-		 filename = commandLine.getOptionValue(FILE_ARGS);
-		 if(host == null || port == null || username == null || filename == null) {
+		 
+		 if(host == null || port == null || username == null) {
 			 hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
 			 scanner.close();
 			 return;
@@ -361,7 +368,25 @@ public class CSVToTsfile {
 		if(timeformat == null) {
 			timeformat = "timestamps";
 		}
-		 
+		
+		if(commandLine.getOptionValue(TSFILE_HOME_ARGS) == null) {
+			errorInsertInfo = "src/test/resources/csvInsertError.error";
+			if(timeformat == "timestamps") {
+				filename = CsvTestDataGen.defaultLongDataGen();
+			} else if(timeformat == "ISO8601") {
+				filename = CsvTestDataGen.isoDataGen();
+			}else {
+				filename = CsvTestDataGen.userSelfDataGen();;
+			}
+		}else {
+			errorInsertInfo = commandLine.getOptionValue(TSFILE_HOME_ARGS) + "/csvInsertError.error";
+			filename = commandLine.getOptionValue(FILE_ARGS);
+			if(filename == null) {
+				hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
+				 scanner.close();
+				 return;
+			}
+		}
 		loadDataFromCSV();
 	}
 }
