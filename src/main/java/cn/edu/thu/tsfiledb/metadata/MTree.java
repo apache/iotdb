@@ -6,7 +6,6 @@ import java.util.HashMap;
 
 import cn.edu.thu.tsfile.file.metadata.enums.TSDataType;
 import cn.edu.thu.tsfile.file.metadata.enums.TSEncoding;
-import cn.edu.thu.tsfiledb.exception.MetadataArgsErrorException;
 import cn.edu.thu.tsfiledb.exception.PathErrorException;
 
 /**
@@ -31,9 +30,9 @@ public class MTree implements Serializable {
 	}
 
 	/**
-	 * timeseriesPath 指的是一个全路径 在添加一个path之前有应该先去检查这个path是否存在，如果不存在再添加
+	 *	add timeseries, it should check whether path exists.
 	 * 
-	 * @param timeseriesPath
+	 * @param timeseriesPath  - A full path
 	 * @param dataType
 	 * @param encoding
 	 * @param args
@@ -75,9 +74,8 @@ public class MTree implements Serializable {
 	}
 
 	/**
-	 * path 指向的是一个路径，不一定是全路径（有可能是一个序列的前缀）
 	 * 
-	 * @param path
+	 * @param path  -path not necessarily the whole path (possibly a prefix of a sequence)
 	 * @return
 	 */
 	public boolean isPathExist(String path) {
@@ -106,8 +104,7 @@ public class MTree implements Serializable {
 	}
 
 	/**
-	 * 新的set storage group的方法必须再使用之前进行路径的检查才可以
-	 * 
+	 * make sure check path before setting storage group
 	 * @param path
 	 * @throws PathErrorException
 	 */
@@ -144,7 +141,8 @@ public class MTree implements Serializable {
 		setDataFileName(path, cur);
 	}
 	/**
-	 * 检查这个节点下的内容是否有被设置了filepath如果有就抛出异常如果没有就返回
+	 * Check whether set file path for this node or not. If not, throw an exception
+	 * 
 	 * @param node
 	 * @throws PathErrorException 
 	 */
@@ -161,12 +159,6 @@ public class MTree implements Serializable {
 		}
 	}
 
-	/**
-	 * 递归的设置path路径下的所有节点的filepath
-	 * 
-	 * @param path
-	 * @param node
-	 */
 	private void setDataFileName(String path, MNode node) {
 		node.setDataFileName(path);
 		if(node.getChildren()==null){
