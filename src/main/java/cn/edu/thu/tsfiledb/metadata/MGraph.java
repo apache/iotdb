@@ -20,6 +20,7 @@ public class MGraph implements Serializable {
 
 	private MTree mTree;
 	private HashMap<String, PTree> pTreeMap;
+	private final String separator = "\\.";
 
 	public MGraph(String MTreeName) {
 		mTree = new MTree(MTreeName);
@@ -46,24 +47,24 @@ public class MGraph implements Serializable {
 	 * @throws MetadataArgsErrorException
 	 * @throws PathErrorException
 	 */
-	public int addPathToMTree(String path, String dataType, String encoding, String args[])
+	public void addPathToMTree(String path, String dataType, String encoding, String args[])
 			throws PathErrorException, MetadataArgsErrorException {
-		String nodes[] = path.trim().split("\\.");
+		String nodes[] = path.trim().split(separator);
 		if (nodes.length == 0) {
 			throw new PathErrorException("Timeseries is null");
 		}
-		return this.mTree.addPath(path, dataType, encoding, args);
+		mTree.addTimeseriesPath(path, dataType, encoding, args);
 	}
 
 	/**
 	 * Add a path to {@code PTree}
 	 */
 	public void addPathToPTree(String path) throws PathErrorException, MetadataArgsErrorException {
-		String nodes[] = path.trim().split("\\.");
+		String nodes[] = path.trim().split(separator);
 		if (nodes.length == 0) {
 			throw new PathErrorException("Timeseries is null.");
 		}
-		String rootName = path.trim().split("\\.")[0];
+		String rootName = path.trim().split(separator)[0];
 		if (pTreeMap.containsKey(rootName)) {
 			PTree pTree = pTreeMap.get(rootName);
 			pTree.addPath(path);
@@ -78,11 +79,11 @@ public class MGraph implements Serializable {
 	 * @throws PathErrorException
 	 */
 	public void deletePath(String path) throws PathErrorException {
-		String nodes[] = path.trim().split("\\.");
+		String nodes[] = path.trim().split(separator);
 		if (nodes.length == 0) {
 			throw new PathErrorException("Timeseries is null");
 		}
-		String rootName = path.trim().split("\\.")[0];
+		String rootName = path.trim().split(separator)[0];
 		if (mTree.getRoot().getName().equals(rootName)) {
 			mTree.deletePath(path);
 		} else if (pTreeMap.containsKey(rootName)) {
@@ -97,7 +98,7 @@ public class MGraph implements Serializable {
 	 * Link a {@code MNode} to a {@code PNode} in current PTree
 	 */
 	public void linkMNodeToPTree(String path, String mPath) throws PathErrorException {
-		String pTreeName = path.trim().split("\\.")[0];
+		String pTreeName = path.trim().split(separator)[0];
 		if (!pTreeMap.containsKey(pTreeName)) {
 			throw new PathErrorException("Error: PTree Path Not Correct. Path: " + path);
 		} else {
@@ -109,7 +110,7 @@ public class MGraph implements Serializable {
 	 * Unlink a {@code MNode} from a {@code PNode} in current PTree
 	 */
 	public void unlinkMNodeFromPTree(String path, String mPath) throws PathErrorException {
-		String pTreeName = path.trim().split("\\.")[0];
+		String pTreeName = path.trim().split(separator)[0];
 		if (!pTreeMap.containsKey(pTreeName)) {
 			throw new PathErrorException("Error: PTree Path Not Correct. Path: " + path);
 		} else {
@@ -123,7 +124,7 @@ public class MGraph implements Serializable {
 	 * @throws PathErrorException
 	 */
 	public void setStorageLevel(String path) throws PathErrorException {
-		mTree.setStorageLevel(path);
+		mTree.setStorageGroup(path);
 	}
 
 	/**
@@ -135,7 +136,7 @@ public class MGraph implements Serializable {
 	 * @return A HashMap whose Keys are separated by the storage file name.
 	 */
 	public HashMap<String, ArrayList<String>> getAllPathGroupByFilename(String path) throws PathErrorException {
-		String rootName = path.trim().split("\\.")[0];
+		String rootName = path.trim().split(separator)[0];
 		if (mTree.getRoot().getName().equals(rootName)) {
 			return mTree.getAllPath(path);
 		} else if (pTreeMap.containsKey(rootName)) {
@@ -216,7 +217,7 @@ public class MGraph implements Serializable {
 	 * Check whether the path given exists
 	 */
 	public boolean pathExist(String path) {
-		return mTree.hasPath(path);
+		return mTree.isPathExist(path);
 	}
 
 	/**
