@@ -1,6 +1,8 @@
 package cn.edu.thu.tsfiledb.tool;
 
 import org.apache.commons.cli.*;
+import org.joda.time.format.DateTimeFormatter;
+import org.joda.time.format.ISODateTimeFormat;
 
 import java.io.*;
 import java.sql.*;
@@ -12,6 +14,8 @@ import java.util.Scanner;
  * @version 1.0.0 20170719
  */
 public class TsFileDump {
+
+    private static final String DEFAULT_TIME_FORMAT = "ISO8601";
 
     private static final String HOST_ARGS = "h";
     private static final String HOST_NAME = "host";
@@ -36,15 +40,15 @@ public class TsFileDump {
     private static final String SQL_FILE_ARGS = "s";
     private static final String SQL_FILE_NAME = "sqlfile";
 
-    private static final String HEADER_DIS_ARGS = "hd";
-    private static final String HEADER_DIS_NAME = "headerdis";
+    private static final String HEADER_DIS_ARGS = "nhd";
+    private static final String HEADER_DIS_NAME = "noheaderdis";
 
     private static final int MAX_HELP_CONSOLE_WIDTH = 88;
     private static final String TSFILEDB_CLI_PREFIX = "Tsfile_Dump";
 
     private static String targetFile;
-    private static String headerDis;
     private static String timeFormat;
+    private static boolean headerDis;
 
     private static Connection connection = null;
 
@@ -59,77 +63,71 @@ public class TsFileDump {
         hf.setWidth(MAX_HELP_CONSOLE_WIDTH);
         CommandLine commandLine;
         CommandLineParser parser = new DefaultParser();
-        Scanner scanner = new Scanner(System.in);
-
-        if (args == null || args.length == 0) {
-            hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
-            return;
-        }
-
-        try {
-            commandLine = parser.parse(options, args);
-            if (commandLine.hasOption(HELP_ARGS)) {
+        try (Scanner scanner = new Scanner(System.in)) {
+            if (args == null || args.length == 0) {
                 hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
                 return;
             }
-        } catch (ParseException e) {
-            System.out.println(e.getMessage());
-            return;
-        }
 
-        String host = commandLine.getOptionValue(HOST_ARGS);
-        String port = commandLine.getOptionValue(PORT_ARGS);
-        String username = commandLine.getOptionValue(USERNAME_ARGS);
-        String password = commandLine.getOptionValue(PASSWORD_ARGS);
-        if (password == null) {
-            System.out.print(TSFILEDB_CLI_PREFIX + "> please input password: ");
-            password = scanner.nextLine();
-        }
-        headerDis = commandLine.getOptionValue(HEADER_DIS_ARGS);
-        if (headerDis == null) {
-            headerDis = "true";
-        }
-        timeFormat = commandLine.getOptionValue(TIME_FORMAT_ARGS);
-        if (timeFormat == null) {
-            timeFormat = "ISO8601";
-        }
-        String sqlFile = commandLine.getOptionValue(SQL_FILE_ARGS);
-        String sql;
-        if (sqlFile == null) {
-            System.out.print(TSFILEDB_CLI_PREFIX + "> please input query: ");
-            sql = scanner.nextLine();
-        } else {
-            File sf = new File(sqlFile);
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(sf)))) {
-                sql = reader.readLine();
-            } catch (IOException e) {
+            try {
+                commandLine = parser.parse(options, args);
+                if (commandLine.hasOption(HELP_ARGS)) {
+                    hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
+                    return;
+                }
+            } catch (ParseException e) {
                 System.out.println(e.getMessage());
                 return;
             }
-        }
-        targetFile = commandLine.getOptionValue(TARGET_FILE_ARGS);
-        if (targetFile == null) {
-            System.out.print(TSFILEDB_CLI_PREFIX + "> please input dump filename: ");
-            targetFile = scanner.nextLine();
-        }
 
-        try {
-            Class.forName("cn.edu.thu.tsfiledb.jdbc.TsfileDriver");
-            connection = DriverManager.getConnection("jdbc:tsfile://" + host + ":" + port + "/", username, password);
-        } catch (SQLException e) {
-            System.out.println(e.getMessage());
-            return;
-        }
+            String host = commandLine.getOptionValue(HOST_ARGS);
+            String port = commandLine.getOptionValue(PORT_ARGS);
+            String username = commandLine.getOptionValue(USERNAME_ARGS);
+            String password = commandLine.getOptionValue(PASSWORD_ARGS);
+            if (password == null) {
+                System.out.print(TSFILEDB_CLI_PREFIX + "> please input password: ");
+                password = scanner.nextLine();
+            }
+            headerDis = commandLine.hasOption(HEADER_DIS_ARGS);
+            timeFormat = commandLine.getOptionValue(TIME_FORMAT_ARGS);
+            if (timeFormat == null) {
+                timeFormat = DEFAULT_TIME_FORMAT;
+            }
+            String sqlFile = commandLine.getOptionValue(SQL_FILE_ARGS);
+            String sql;
+            if (sqlFile == null) {
+                System.out.print(TSFILEDB_CLI_PREFIX + "> please input query: ");
+                sql = scanner.nextLine();
+            } else {
+                try (BufferedReader reader = new BufferedReader(new FileReader(sqlFile))) {
+                    sql = reader.readLine();
+                } catch (IOException e) {
+                    System.out.println(e.getMessage());
+                    return;
+                }
+            }
+            targetFile = commandLine.getOptionValue(TARGET_FILE_ARGS);
+            if (targetFile == null) {
+                System.out.print(TSFILEDB_CLI_PREFIX + "> please input dump filename: ");
+                targetFile = scanner.nextLine();
+            }
 
-        try {
-            dumpResult(sql);
-        } catch (SQLException | IOException e) {
-            System.out.println(e.getMessage());
-        } finally {
-            connection.close();
-        }
+            try {
+                Class.forName("cn.edu.thu.tsfiledb.jdbc.TsfileDriver");
+                connection = DriverManager.getConnection("jdbc:tsfile://" + host + ":" + port + "/", username, password);
+            } catch (SQLException e) {
+                System.out.println(e.getMessage());
+                return;
+            }
 
-        scanner.close();
+            try {
+                dumpResult(sql);
+            } catch (SQLException | IOException e) {
+                System.out.println(e.getMessage());
+            } finally {
+                connection.close();
+            }
+        }
     }
 
     /**
@@ -155,7 +153,7 @@ public class TsFileDump {
         Option opPassword = Option.builder(PASSWORD_ARGS).optionalArg(true).argName(PASSWORD_NAME).hasArg().desc("Password (optional)").build();
         options.addOption(opPassword);
 
-        Option opTargetFile = Option.builder(TARGET_FILE_ARGS).argName(TARGET_FILE_NAME).hasArg().desc("Target File Path (required)").build();
+        Option opTargetFile = Option.builder(TARGET_FILE_ARGS).argName(TARGET_FILE_NAME).hasArg().desc("Target File Path (optional)").build();
         options.addOption(opTargetFile);
 
         Option opSqlFile = Option.builder(SQL_FILE_ARGS).optionalArg(true).argName(SQL_FILE_NAME).hasArg().desc("SqlFile Path (optional)").build();
@@ -164,7 +162,7 @@ public class TsFileDump {
         Option opTimeFormat = Option.builder(TIME_FORMAT_ARGS).optionalArg(true).argName(TIME_FORMAT_NAME).hasArg().desc("Time Format (optional)").build();
         options.addOption(opTimeFormat);
 
-        Option opHeaderDis = Option.builder(HEADER_DIS_ARGS).optionalArg(true).argName(HEADER_DIS_NAME).hasArg().desc("Header Display Format (optional)").build();
+        Option opHeaderDis = Option.builder(HEADER_DIS_ARGS).optionalArg(true).argName(HEADER_DIS_NAME).desc("No Header Display (optional)").build();
         options.addOption(opHeaderDis);
 
         return options;
@@ -199,12 +197,13 @@ public class TsFileDump {
         try {
             int count = metadata.getColumnCount();
             // write data in csv file
-            if (headerDis.equals("true")) {
+            if (!headerDis) {
                 for (int i = 0; i < count; i++) {
                     if (i < count - 1) {
                         writer.write(metadata.getColumnLabel(i) + ",");
-                    } else
+                    } else {
                         writer.write(metadata.getColumnLabel(i) + "\n");
+                    }
                 }
             }
             while (rs.next()) {
@@ -212,9 +211,9 @@ public class TsFileDump {
                     writer.write(",");
                 } else {
                     switch (timeFormat) {
-                        case "ISO8601": {
-                            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSXXX");
-                            writer.write(sdf.format(rs.getDate(0)) + ",");
+                        case DEFAULT_TIME_FORMAT: {
+                            DateTimeFormatter fmt = ISODateTimeFormat.dateTime();
+                            writer.write(fmt.print(rs.getDate(0).getTime()) + ",");
                             break;
                         }
                         case "timestamp":
