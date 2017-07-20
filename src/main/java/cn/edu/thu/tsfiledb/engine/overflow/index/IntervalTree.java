@@ -329,6 +329,7 @@ public class IntervalTree {
 	 */
 	public void midOrderSerialize(OutputStream out) throws IOException {
 		midOrderSerialize(root, out);
+		out.close();
 		root = null;
 	}
 
