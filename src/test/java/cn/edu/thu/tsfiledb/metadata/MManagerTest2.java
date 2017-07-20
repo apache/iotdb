@@ -30,6 +30,7 @@ public class MManagerTest2 {
 	public void tearDown() throws Exception {
 		MManager.getInstance().flushObjectToFile();
 		EngineTestHelper.delete(dbconfig.metadataDir);
+		MManager.getInstance().clear();
 	}
 
 	@Test
