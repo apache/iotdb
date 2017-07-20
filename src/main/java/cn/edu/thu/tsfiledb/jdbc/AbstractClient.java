@@ -165,7 +165,7 @@ public abstract class AbstractClient {
 		case "number":
 			return timestamp+"";
 		case "default":
-		case "ISO8601":
+		case "iso8601":
 			return new DateTime(timestamp, timeZone).toString(ISODateTimeFormat.dateHourMinuteSecondMillis());
 		default:
 			return new DateTime(timestamp, timeZone).toString(timeFormat);
@@ -184,23 +184,25 @@ public abstract class AbstractClient {
 	}
 
 	protected static void setTimeFormat(String newTimeFormat) {
-		switch (newTimeFormat) {
+		switch (newTimeFormat.toLowerCase()) {
 		case "long":
 		case "number":
 			maxTimeLength = maxValueLength;
+			timeFormat = newTimeFormat.toLowerCase();
 			break;
 		case "default":
-		case "ISO8601":
+		case "iso8601":
 			maxTimeLength = ISO_DATETIME_LEN;
+			timeFormat = newTimeFormat.toLowerCase();
 			break;
 		default:
 			// use java default SimpleDateFormat to check whether input time format is legal
 			// if illegal, it will throw an exception
 			new SimpleDateFormat(newTimeFormat);
 			maxTimeLength = TIMESTAMP_STR.length() > newTimeFormat.length() ? TIMESTAMP_STR.length() : newTimeFormat.length();
+			timeFormat = newTimeFormat;
 			break;
 		}
-		timeFormat = newTimeFormat;
 		formatTime = "%" + maxTimeLength + "s|";
 	}
 	
