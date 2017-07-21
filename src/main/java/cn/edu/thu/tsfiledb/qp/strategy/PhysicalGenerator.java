@@ -1,5 +1,12 @@
 package cn.edu.thu.tsfiledb.qp.strategy;
 
+import cn.edu.thu.tsfile.common.utils.Pair;
+import cn.edu.thu.tsfile.timeseries.filter.definition.FilterExpression;
+import cn.edu.thu.tsfile.timeseries.filter.definition.SingleSeriesFilterExpression;
+import cn.edu.thu.tsfile.timeseries.filter.definition.filterseries.FilterSeriesType;
+import cn.edu.thu.tsfile.timeseries.filter.utils.LongInterval;
+import cn.edu.thu.tsfile.timeseries.filter.verifier.FilterVerifier;
+import cn.edu.thu.tsfile.timeseries.filter.verifier.LongFilterVerifier;
 import cn.edu.thu.tsfile.timeseries.read.qp.Path;
 import cn.edu.thu.tsfiledb.qp.constant.SQLConstant;
 import cn.edu.thu.tsfiledb.qp.exception.GeneratePhysicalPlanException;
@@ -106,40 +113,33 @@ public class PhysicalGenerator {
             throw new LogicalOperatorException(
                     "for update command, it has non-time condition in where clause");
         }
-        if (filterOperator.getChildren().size() != 2)
-            throw new LogicalOperatorException(
-                    "for update command, time must have left and right boundaries");
-
+        // transfer the filter operator to FilterExpression
+        FilterExpression timeFilter = null;
+        try {
+        	timeFilter = filterOperator.transformToFilterExpression(executor, FilterSeriesType.TIME_FILTER);
+		} catch (QueryProcessorException e) {
+			e.printStackTrace();
+			throw new LogicalOperatorException(e.getMessage());
+		}
+        LongFilterVerifier filterVerifier = (LongFilterVerifier) FilterVerifier.get((SingleSeriesFilterExpression)timeFilter);
+        LongInterval longInterval = (LongInterval)filterVerifier.getInterval((SingleSeriesFilterExpression)timeFilter);
         long startTime = -1;
         long endTime = -1;
-
-        for(FilterOperator operator: filterOperator.getChildren()) {
-            if(!operator.isLeaf())
-                throw new LogicalOperatorException("illegal time condition:" + filterOperator.showTree());
-            switch (operator.getTokenIntType()) {
-                case LESSTHAN: endTime = Long.valueOf(((BasicFunctionOperator) operator).getValue()) - 1; break;
-                case LESSTHANOREQUALTO: endTime = Long.valueOf(((BasicFunctionOperator) operator).getValue()); break;
-                case GREATERTHAN:
-                    startTime = Long.valueOf(((BasicFunctionOperator) operator).getValue());
-                    if(startTime < Long.MAX_VALUE)
-                        startTime++; break;
-                case GREATERTHANOREQUALTO: startTime = Long.valueOf(((BasicFunctionOperator) operator).getValue()); break;
-                default: throw new LogicalOperatorException("time filter must be >,<,>=,<=");
-            }
+        for(int i = 0;i<longInterval.count;i=i+2){
+        	startTime = longInterval.v[i];
+        	endTime = longInterval.v[i+1];
+        	if((startTime<=0&&startTime!=Long.MIN_VALUE)||endTime<=0){
+        		throw new LogicalOperatorException("startTime:" + startTime + ",endTime:" + endTime
+                        + ", one of them is illegal");
+        	}
+        	if(startTime==Long.MIN_VALUE){
+        		startTime = 1;
+        	}
+        	plan.addInterval(new Pair<Long, Long>(startTime, endTime));
         }
-
-        if (startTime < 0 || endTime < 0) {
-            throw new LogicalOperatorException("startTime:" + startTime + ",endTime:" + endTime
-                    + ", one of them is illegal");
+        if(plan.getIntervals().isEmpty()){
+        	throw new LogicalOperatorException("For update command, time filter is invalid");
         }
-        // update : where time > 503 and time <504
-        // if (startTime > endTime) {
-        // throw new LogicalOperatorException("startTime:" + startTime + ",endTime:" + endTime
-        // + ", start time cannot be greater than end time");
-        // }
-
-        plan.setStartTime(startTime);
-        plan.setEndTime(endTime);
     }
 
 
