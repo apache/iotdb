@@ -20,6 +20,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.text.SimpleDateFormat;
 import java.util.HashSet;
+import java.util.Scanner;
 import java.util.Set;
 
 public abstract class AbstractClient {
@@ -344,24 +345,8 @@ public abstract class AbstractClient {
 		Console c = System.console();
 		if (c == null) { // IN ECLIPSE IDE
 			System.out.print(TSFILEDB_CLI_PREFIX + "> please input password: ");
-			InputStream in = System.in;
-			int max = 50;
-			byte[] b = new byte[max];
-
-			int l = 0;
-			try {
-				l = in.read(b);
-			} catch (IOException e1) {
-				return null;
-			}
-			l--;// last character is \n
-			if (l > 0) {
-				byte[] e = new byte[l];
-				System.arraycopy(b, 0, e, 0, l);
-				return new String(e);
-			} else {
-				return null;
-			}
+			Scanner scanner = new Scanner(System.in);
+			return scanner.nextLine();
 		} else { // Outside Eclipse IDE
 			return new String(c.readPassword(TSFILEDB_CLI_PREFIX + "> please input password: "));
 		}
