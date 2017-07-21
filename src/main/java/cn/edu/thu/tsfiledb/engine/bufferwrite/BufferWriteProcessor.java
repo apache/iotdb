@@ -1,5 +1,6 @@
 package cn.edu.thu.tsfiledb.engine.bufferwrite;
 
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -344,17 +345,22 @@ public class BufferWriteProcessor extends LRUProcessor {
 	private Pair<Long, List<RowGroupMetaData>> ReadStoreFromDisk() throws IOException {
 		byte[] lastPostionBytes = new byte[8];
 		List<RowGroupMetaData> groupMetaDatas;
-		FileInputStream fileInputStream = null;
+		RandomAccessFile randomAccessFile = null;
 		try {
-			fileInputStream = new FileInputStream(bufferwriteRestoreFilePath);
-			FileMetaData fileMetaData = ReadWriteThriftFormatUtils.readFileMetaData(fileInputStream);
+			randomAccessFile = new RandomAccessFile(bufferwriteRestoreFilePath, "rw");
+			long fileLength = randomAccessFile.length();
+			long thrift = fileLength - 8;
+			byte[] thriftBytes = new byte[(int) thrift];
+			randomAccessFile.read(thriftBytes);
+			ByteArrayInputStream inputStream = new ByteArrayInputStream(thriftBytes);
+			FileMetaData fileMetaData = ReadWriteThriftFormatUtils.readFileMetaData(inputStream);
 			TSFileMetaDataConverter metadataConverter = new TSFileMetaDataConverter();
 			TSFileMetaData tsFileMetaData = metadataConverter.toTSFileMetadata(fileMetaData);
 			groupMetaDatas = tsFileMetaData.getRowGroups();
 			int off = 0;
 			int len = lastPostionBytes.length - off;
 			do {
-				int num = fileInputStream.read(lastPostionBytes, off, len);
+				int num = randomAccessFile.read(lastPostionBytes, off, len);
 				off = off + num;
 				len = len - num;
 			} while (len > 0);
@@ -367,8 +373,8 @@ public class BufferWriteProcessor extends LRUProcessor {
 			LOGGER.error("read data from file error, the reasion is {}", e.getMessage());
 			throw e;
 		} finally {
-			if (fileInputStream != null) {
-				fileInputStream.close();
+			if(randomAccessFile!=null){
+				randomAccessFile.close();
 			}
 		}
 		long lastPostion = BytesUtils.bytesToLong(lastPostionBytes);
@@ -585,7 +591,7 @@ public class BufferWriteProcessor extends LRUProcessor {
 						try {
 							flushState.wait();
 						} catch (InterruptedException e) {
-							LOGGER.error("Interrupt error when waiting flush,processor:{}", nameSpacePath,e);
+							LOGGER.error("Interrupt error when waiting flush,processor:{}", nameSpacePath, e);
 						}
 					}
 				}
@@ -593,7 +599,7 @@ public class BufferWriteProcessor extends LRUProcessor {
 				try {
 					bufferwriteFlushAction.act();
 				} catch (Exception e) {
-					LOGGER.error("Flush bufferwrite row group failed, when call the action function.",e);
+					LOGGER.error("Flush bufferwrite row group failed, when call the action function.", e);
 					throw new IOException(e);
 				}
 
@@ -612,15 +618,15 @@ public class BufferWriteProcessor extends LRUProcessor {
 							WriteLogManager.getInstance().endBufferWriteFlush(nameSpacePath);
 						}
 					} catch (IOException e) {
-						LOGGER.error("Flush row group to store failed, processor:{}.", nameSpacePath,e);
+						LOGGER.error("Flush row group to store failed, processor:{}.", nameSpacePath, e);
 						throw e;
 					} catch (BufferWriteProcessorException e) {
 						// write restore error
-						LOGGER.error("Write bufferwrite information to disk failed",e);
+						LOGGER.error("Write bufferwrite information to disk failed", e);
 						throw new IOException("Write bufferwrite information to disk failed");
 					} catch (Exception e) {
 						// action error
-						LOGGER.error("Flush bufferwrite row group failed, when call the action function",e);
+						LOGGER.error("Flush bufferwrite row group failed, when call the action function", e);
 						// handle
 						throw new IOException("Flush bufferwrite row group failed, when call the action function");
 					}
@@ -645,15 +651,14 @@ public class BufferWriteProcessor extends LRUProcessor {
 							 * exception
 							 */
 							LOGGER.error("{} Asynchronous flush error, sleep this thread-{}.", nameSpacePath,
-									Thread.currentThread().getId(),e);
+									Thread.currentThread().getId(), e);
 						} catch (BufferWriteProcessorException e) {
-							LOGGER.error("Write bufferwrite information to disk failed.",e);
+							LOGGER.error("Write bufferwrite information to disk failed.", e);
 							// how to handle this error
 							// TODO
 						} catch (Exception e) {
 							// action error
-							LOGGER.error(
-									"Flush bufferwrite row group failed, when call the action function.",e);
+							LOGGER.error("Flush bufferwrite row group failed, when call the action function.", e);
 							// how to handle this error
 							// TODO
 						}
