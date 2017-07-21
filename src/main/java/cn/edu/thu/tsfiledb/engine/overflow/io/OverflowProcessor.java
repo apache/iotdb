@@ -23,7 +23,7 @@ import cn.edu.thu.tsfiledb.engine.bufferwrite.FileNodeConstants;
 import cn.edu.thu.tsfiledb.engine.exception.OverflowProcessorException;
 import cn.edu.thu.tsfiledb.engine.lru.LRUProcessor;
 import cn.edu.thu.tsfiledb.engine.overflow.metadata.OFFileMetadata;
-import cn.edu.thu.tsfiledb.engine.overflow.utils.ReadWriteThriftFormatUtils;
+import cn.edu.thu.tsfiledb.engine.overflow.utils.OverflowReadWriteThriftFormatUtils;
 import cn.edu.thu.tsfiledb.engine.overflow.utils.TSFileMetaDataConverter;
 import cn.edu.thu.tsfiledb.engine.overflow.utils.TimePair;
 import cn.edu.thu.tsfiledb.engine.utils.FlushState;
@@ -152,7 +152,7 @@ public class OverflowProcessor extends LRUProcessor {
 					lastOverflowRowGroupPostion = ofSupport.getPos();
 					fileOutputStream.write(BytesUtils.longToBytes(lastOverflowRowGroupPostion));
 					TSFileMetaDataConverter metadataConverter = new TSFileMetaDataConverter();
-					ReadWriteThriftFormatUtils.writeOFFileMetaData(
+					OverflowReadWriteThriftFormatUtils.writeOFFileMetaData(
 							metadataConverter.toThriftOFFileMetadata(0, fileMetadata), fileOutputStream);
 
 				} else {
@@ -223,7 +223,7 @@ public class OverflowProcessor extends LRUProcessor {
 				} while (len > 0);
 
 				long lastOverflowRowGroupPosition = BytesUtils.bytesToLong(buff);
-				thriftfileMetadata = ReadWriteThriftFormatUtils.readOFFileMetaData(fileInputStream);
+				thriftfileMetadata = OverflowReadWriteThriftFormatUtils.readOFFileMetaData(fileInputStream);
 				TSFileMetaDataConverter metadataConverter = new TSFileMetaDataConverter();
 				OFFileMetadata ofFileMetadata = metadataConverter.toOFFileMetadata(thriftfileMetadata);
 				return new OverflowStoreStruct(lastOverflowFilePosition, lastOverflowRowGroupPosition, ofFileMetadata);
