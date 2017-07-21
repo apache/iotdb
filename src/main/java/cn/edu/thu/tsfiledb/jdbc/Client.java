@@ -59,7 +59,6 @@ public class Client extends AbstractClient {
 		ConsoleReader reader = null;
 		try {
 			String s;
-			reader = new ConsoleReader();
 			try {
 				String host = checkRequiredArg(HOST_ARGS, HOST_NAME, commandLine);
 				String port = checkRequiredArg(PORT_ARGS, PORT_NAME, commandLine);
@@ -67,7 +66,7 @@ public class Client extends AbstractClient {
 
 				String password = commandLine.getOptionValue(PASSWORD_ARGS);
 				if (password == null) {
-					password = reader.readLine(TSFILEDB_CLI_PREFIX + "> please input password: ", new Character('*'));
+					password = readPassword();
 				}
 				try {
 					connection = DriverManager.getConnection("jdbc:tsfile://" + host + ":" + port + "/", username,
@@ -82,9 +81,9 @@ public class Client extends AbstractClient {
 			}
 
 			displayLogo();
-
 			System.out.println(TSFILEDB_CLI_PREFIX + "> login successfully");
-
+			
+			reader = new ConsoleReader();
 			while (true) {
 				s = reader.readLine(TSFILEDB_CLI_PREFIX + "> ", null);
 				if (s == null) {

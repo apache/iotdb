@@ -60,8 +60,7 @@ public class WinClient extends AbstractClient {
 			hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
 			return;
 		}
-
-		Scanner scanner = new Scanner(System.in);
+		Scanner scanner = null;
 		try {
 			String s;
 
@@ -72,8 +71,7 @@ public class WinClient extends AbstractClient {
 
 				String password = commandLine.getOptionValue(PASSWORD_ARGS);
 				if (password == null) {
-					System.out.print(TSFILEDB_CLI_PREFIX + "> please input password: ");
-					password = scanner.nextLine();
+					password = readPassword();
 				}
 				try {
 					connection = DriverManager.getConnection("jdbc:tsfile://" + host + ":" + port + "/", username,
@@ -90,7 +88,7 @@ public class WinClient extends AbstractClient {
 			displayLogo();
 
 			System.out.println(TSFILEDB_CLI_PREFIX + "> login successfully");
-
+			scanner = new Scanner(System.in);
 			while (true) {
 				System.out.print(TSFILEDB_CLI_PREFIX + "> ");
 				s = scanner.nextLine();
