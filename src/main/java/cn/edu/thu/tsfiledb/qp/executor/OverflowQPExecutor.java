@@ -20,6 +20,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import cn.edu.thu.tsfile.common.exception.ProcessorException;
+import cn.edu.thu.tsfile.common.utils.Pair;
 import cn.edu.thu.tsfile.file.metadata.enums.TSDataType;
 import cn.edu.thu.tsfile.timeseries.filter.definition.FilterExpression;
 import cn.edu.thu.tsfile.timeseries.read.qp.Path;
@@ -54,7 +55,13 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 			return delete(delete.getPaths(), delete.getDeleteTime());
 		case UPDATE:
 			UpdatePlan update = (UpdatePlan) plan;
-			return update(update.getPath(), update.getStartTime(), update.getEndTime(), update.getValue());
+			boolean flag = true;
+			for (Pair<Long, Long> timePair : update.getIntervals()) {
+				flag &= update(update.getPath(), timePair.left, timePair.right, update.getValue());
+			}
+			return flag;
+		// return update(update.getPath(), update.getStartTime(),
+		// update.getEndTime(), update.getValue());
 		case INSERT:
 			InsertPlan insert = (InsertPlan) plan;
 			int result = multiInsert(insert.getDeltaObject(), insert.getTime(), insert.getMeasurements(),

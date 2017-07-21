@@ -19,6 +19,7 @@ import java.util.Iterator;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 /**
  * test non-query operation, which includes insert/update/delete
@@ -43,6 +44,32 @@ public class TestQpUpdate {
         processor.getExecutor().insert(path2, 20, "20");
     }
 
+    @Test
+    public void testUpdate2() throws QueryProcessorException, ArgsErrorException, ProcessorException{
+    	// update: just time>x or time<x
+    	String sql = "update root.laptop.device_1.sensor_1 set value=100 where time>100 or (time<=50 and time>10)";
+    	PhysicalPlan plan1 = processor.parseSQLToPhysicalPlan(sql);
+    	boolean upRet = processor.getExecutor().processNonQuery(plan1);
+    	assertTrue(upRet);
+    	sql = "update root.laptop.device_1.sensor_1 set value=100 where time>100 and time<20";
+    	try{
+    		plan1 = processor.parseSQLToPhysicalPlan(sql);
+    	}catch (QueryProcessorException e) {
+    		assertEquals("For update command, time filter is invalid", e.getMessage());
+		}
+    	sql = "update root.laptop.device_1.sensor_1 set value=100 where time<-10 or time>1000";
+    	try{
+    		plan1 = processor.parseSQLToPhysicalPlan(sql);
+    	}catch (QueryProcessorException e) {
+    		assertEquals("startTime:-9223372036854775808,endTime:-10, one of them is illegal", e.getMessage());
+		}
+    	sql = "update root.laptop.device_1.sensor_1 set value=100 where time<100";
+    	try{
+    		plan1 = processor.parseSQLToPhysicalPlan(sql);
+    	}catch (QueryProcessorException e) {
+    		fail(e.getMessage());
+		}
+    }
 
     @Test
     public void testUpdate() throws QueryProcessorException, ProcessorException, RecognitionException, ArgsErrorException {

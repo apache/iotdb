@@ -60,8 +60,12 @@ public class MemIntQpExecutor extends QueryProcessExecutor {
                 DeletePlan delete = (DeletePlan) plan;
                 return delete(delete.getPaths(), delete.getDeleteTime());
             case UPDATE:
-                UpdatePlan update = (UpdatePlan) plan;
-                return update(update.getPath(), update.getStartTime(), update.getEndTime(), update.getValue());
+            	UpdatePlan update = (UpdatePlan) plan;
+    			boolean flag = true;
+    			for (Pair<Long, Long> timePair : update.getIntervals()) {
+    				flag &= update(update.getPath(), timePair.left, timePair.right, update.getValue());
+    			}
+    			return flag;
             case INSERT:
             	InsertPlan insert = (InsertPlan) plan;
                 int result = multiInsert(insert.getDeltaObject(), insert.getTime(), insert.getMeasurements(), insert.getValues());

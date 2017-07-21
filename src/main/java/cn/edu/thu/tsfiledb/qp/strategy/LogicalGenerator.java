@@ -315,13 +315,12 @@ public class LogicalGenerator {
 		FilterOperator filterOperator = operator.getFilterOperator();
 		if (!(filterOperator.isLeaf())) {
 			throw new LogicalOperatorException(
-					"for delete command, where clause must be like : time < XXX or time <= XXX");
+					"For delete command, where clause must be like : time < XXX or time <= XXX");
 		}
 
 		if (filterOperator.getTokenIntType() != LESSTHAN && filterOperator.getTokenIntType() != LESSTHANOREQUALTO) {
 			throw new LogicalOperatorException(
-					"for delete command, time filter must be less than or less than or equal to, this:"
-							+ filterOperator.getTokenIntType());
+					"For delete command, time filter must be less than or less than or equal to");
 		}
 		long time = Long.valueOf(((BasicFunctionOperator) filterOperator).getValue());
 
