@@ -42,7 +42,6 @@ public class QueryProcessor {
     public PhysicalPlan parseSQLToPhysicalPlan(String sqlStr)
             throws QueryProcessorException, ArgsErrorException {
         ASTNode astNode = parseSQLToAST(sqlStr);
-        System.out.println(astNode.dump());
         Operator operator = parseASTToOperator(astNode);
         operator = logicalOptimize(operator);
         return executor.transformToPhysicalPlan(operator);
