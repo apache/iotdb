@@ -10,6 +10,9 @@ import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.joda.time.format.ISODateTimeFormat;
 
+import java.io.Console;
+import java.io.IOException;
+import java.io.InputStream;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
@@ -38,7 +41,6 @@ public abstract class AbstractClient {
 	protected static String timeFormat = "default";
 	protected static final String TIME_KEY_WORD = "time";
 	protected static DateTimeZone timeZone = DateTimeZone.getDefault();
-
 	
 	protected static final String MAX_PRINT_ROW_COUNT_ARGS = "maxPRC";
 	protected static final String MAX_PRINT_ROW_COUNT_NAME = "maxPrintRowCount";
@@ -72,6 +74,7 @@ public abstract class AbstractClient {
 		keywordSet.add("-"+USERNAME_ARGS);
 		keywordSet.add("-"+ISO8601_ARGS);
 		keywordSet.add("-"+MAX_PRINT_ROW_COUNT_ARGS);
+		
 	}
 	
 	public static void output(ResultSet res, boolean printToConsole, String statement) {
@@ -335,6 +338,33 @@ public abstract class AbstractClient {
 		    	}
 		}
 		return OPERATION_RESULT.NO_OPER;
+	}
+	
+	protected static String readPassword() {
+		Console c = System.console();
+		if (c == null) { // IN ECLIPSE IDE
+			System.out.print(TSFILEDB_CLI_PREFIX + "> please input password: ");
+			InputStream in = System.in;
+			int max = 50;
+			byte[] b = new byte[max];
+
+			int l = 0;
+			try {
+				l = in.read(b);
+			} catch (IOException e1) {
+				return null;
+			}
+			l--;// last character is \n
+			if (l > 0) {
+				byte[] e = new byte[l];
+				System.arraycopy(b, 0, e, 0, l);
+				return new String(e);
+			} else {
+				return null;
+			}
+		} else { // Outside Eclipse IDE
+			return new String(c.readPassword(TSFILEDB_CLI_PREFIX + "> please input password: "));
+		}
 	}
 
 	enum OPERATION_RESULT{
