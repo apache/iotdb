@@ -28,6 +28,13 @@ public class UpdatePlan extends PhysicalPlan {
         addInterval(new Pair<>(startTime, endTime));
     }
 
+    public UpdatePlan(List<Pair<Long,Long>> list, String value, Path path) {
+        super(false, OperatorType.UPDATE);
+        setValue(value);
+        setPath(path);
+        intervals = list;
+    }
+
     public List<Pair<Long, Long>> getIntervals() {
         return intervals;
     }
