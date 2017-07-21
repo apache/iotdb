@@ -72,8 +72,7 @@ public class WinClient extends AbstractClient {
 
 				String password = commandLine.getOptionValue(PASSWORD_ARGS);
 				if (password == null) {
-					System.out.print(TSFILEDB_CLI_PREFIX + "> please input password: ");
-					password = scanner.nextLine();
+					password = readPassword();
 				}
 				try {
 					connection = DriverManager.getConnection("jdbc:tsfile://" + host + ":" + port + "/", username,
