@@ -26,7 +26,7 @@ import cn.edu.thu.tsfile.file.metadata.statistics.Statistics;
 import cn.edu.thu.tsfiledb.engine.overflow.metadata.OFFileMetadata;
 import cn.edu.thu.tsfiledb.engine.overflow.metadata.OFRowGroupListMetadata;
 import cn.edu.thu.tsfiledb.engine.overflow.metadata.OFSeriesListMetadata;
-import cn.edu.thu.tsfiledb.engine.overflow.utils.ReadWriteThriftFormatUtils;
+import cn.edu.thu.tsfiledb.engine.overflow.utils.OverflowReadWriteThriftFormatUtils;
 import cn.edu.thu.tsfiledb.engine.overflow.utils.TSFileMetaDataConverter;
 
 import cn.edu.thu.tsfiledb.engine.bufferwrite.FileNodeConstants;
@@ -93,7 +93,7 @@ public class OverflowFileIO {
 
 			ByteArrayInputStream bais = new ByteArrayInputStream(buf);
 			OFFileMetadata ofFileMetadata = new TSFileMetaDataConverter()
-					.toOFFileMetadata(ReadWriteThriftFormatUtils.readOFFileMetaData(bais));
+					.toOFFileMetadata(OverflowReadWriteThriftFormatUtils.readOFFileMetaData(bais));
 			lastOffset = ofFileMetadata.getLastFooterOffset();
 			for (OFRowGroupListMetadata rowGroupListMeta : ofFileMetadata.getMetaDatas()) {
 				String deltaObjectId = rowGroupListMeta.getDeltaObjectId();
@@ -141,7 +141,7 @@ public class OverflowFileIO {
 
 			ByteArrayInputStream bais = new ByteArrayInputStream(buf);
 			OFFileMetadata ofFileMetadata = new TSFileMetaDataConverter()
-					.toOFFileMetadata(ReadWriteThriftFormatUtils.readOFFileMetaData(bais));
+					.toOFFileMetadata(OverflowReadWriteThriftFormatUtils.readOFFileMetaData(bais));
 			lastOffset = ofFileMetadata.getLastFooterOffset();
 			for (OFRowGroupListMetadata rowGroupListMeta : ofFileMetadata.getMetaDatas()) {
 				String deltaObjectId = rowGroupListMeta.getDeltaObjectId();
@@ -235,7 +235,7 @@ public class OverflowFileIO {
 	 */
 	public long endOverflow(OFFileMetadata footer) throws IOException {
 		long footerBeginOffset = raf.toTail();
-		ReadWriteThriftFormatUtils.writeOFFileMetaData(
+		OverflowReadWriteThriftFormatUtils.writeOFFileMetaData(
 				metadataConverter.toThriftOFFileMetadata(OVERFLOW_VERSION, footer), raf.getOutputStream());
 		LOGGER.info("Serialize the overflow footer, footer length:{}, last overflow file offset: {}",
 				raf.getPos() - footerBeginOffset, footer.getLastFooterOffset());
