@@ -46,31 +46,36 @@ public class MTree implements Serializable {
 		}
 		int i = 1;
 		MNode cur = root;
-		String levePath = null;
-		while (i < nodeNames.length - 1) {
+		String levelPath = null;
+		while (i < nodeNames.length) {
 			String nodeName = nodeNames[i];
+			if (i == nodeNames.length-1) {
+				cur.setDataFileName(levelPath);
+				break;
+			}
+			if (cur.isStorageLevel()) {
+				levelPath = cur.getDataFileName();
+			}
 			if (!cur.hasChild(nodeName)) {
 				cur.addChild(nodeName, new MNode(nodeName, cur, false));
 			}
-			if (cur.isStorageLevel()) {
-				levePath = cur.getDataFileName();
-			}
-			cur.setDataFileName(levePath);
+
+			cur.setDataFileName(levelPath);
 			cur = cur.getChild(nodeName);
 			i++;
 		}
 		TSDataType dt = TSDataType.valueOf(dataType);
 		TSEncoding ed = TSEncoding.valueOf(encoding);
-		MNode leaf = new MNode(nodeNames[i], cur, dt, ed);
+		MNode leaf = new MNode(nodeNames[nodeNames.length-1], cur, dt, ed);
 		if (args.length > 0) {
 			for (int k = 0; k < args.length; k++) {
 				String[] arg = args[k].split("=");
 				leaf.getSchema().putKeyValueToArgs(arg[0], arg[1]);
 			}
 		}
-		levePath = cur.getDataFileName();
-		leaf.setDataFileName(levePath);
-		cur.addChild(nodeNames[i], leaf);
+		levelPath = cur.getDataFileName();
+		leaf.setDataFileName(levelPath);
+		cur.addChild(nodeNames[nodeNames.length-1], leaf);
 	}
 
 	/**
