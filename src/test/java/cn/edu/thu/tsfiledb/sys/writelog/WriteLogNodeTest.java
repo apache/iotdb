@@ -276,18 +276,25 @@ public class WriteLogNodeTest {
         WriteLogNode node = new WriteLogNode(fileNode);
         node.setLogMemorySize(1);
         node.setLogCompactSize(100);
+
         List<Pair<Long,Long>> pairs = new ArrayList<>();
         pairs.add(new Pair<>(1L, 2L));
         pairs.add(new Pair<>(4L, 8L));
         pairs.add(new Pair<>(14L, 18L));
         node.write(new UpdatePlan(pairs, "2.0", path));
+
+        pairs = new ArrayList<>();
+        pairs.add(new Pair<>(100L, 101L));
+        pairs.add(new Pair<>(994L, 998L));
+        node.write(new UpdatePlan(pairs, "3.0", path));
+
         PhysicalPlan plan;
         int cnt = 0;
         while ((plan = node.getPhysicalPlan()) != null) {
-            // output(plan);
+            output(plan);
             cnt ++;
         }
-        Assert.assertEquals(cnt, 1);
+        Assert.assertEquals(cnt, 2);
         node.closeStreams();
         node.removeFiles();
     }
