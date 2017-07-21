@@ -138,13 +138,14 @@ public class PhysicalGenerator {
 			}
 			if ((startTime <= 0 && startTime != Long.MIN_VALUE) || endTime <= 0) {
 				throw new LogicalOperatorException(
-						"startTime:" + startTime + ",endTime:" + endTime + ", one of them is illegal");
+						"update time must be greater than 0.");
 			}
 			if (startTime == Long.MIN_VALUE) {
 				startTime = 1;
 			}
 
-			plan.addInterval(new Pair<Long, Long>(startTime, endTime));
+			if (endTime >= startTime)
+				plan.addInterval(new Pair<Long, Long>(startTime, endTime));
 		}
 		if (plan.getIntervals().isEmpty()) {
 			throw new LogicalOperatorException("For update command, time filter is invalid");
