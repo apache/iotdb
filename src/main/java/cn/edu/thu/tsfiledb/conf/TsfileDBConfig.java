@@ -90,6 +90,7 @@ public class TsfileDBConfig {
 	/**
 	 * the maximum number of writing instances existing in same time.
 	 */
+	@Deprecated
 	public int writeInstanceThreshold = 5;
 
 	/**
