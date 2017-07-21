@@ -1,5 +1,6 @@
 package cn.edu.thu.tsfiledb.sys.writelog;
 
+import cn.edu.thu.tsfile.common.utils.Pair;
 import cn.edu.thu.tsfile.timeseries.read.qp.Path;
 import cn.edu.thu.tsfiledb.conf.TsfileDBConfig;
 import cn.edu.thu.tsfiledb.conf.TsfileDBDescriptor;
@@ -67,8 +68,8 @@ public class WriteLogNodeTest {
                 Assert.assertEquals(plan.getPaths().get(0), path);
                 Assert.assertTrue(plan instanceof UpdatePlan);
                 UpdatePlan updatePlan = (UpdatePlan) plan;
-                Assert.assertEquals(updatePlan.getStartTime(), 500L);
-                Assert.assertEquals(updatePlan.getEndTime(), 600L);
+                Assert.assertEquals((long)updatePlan.getIntervals().get(0).left, 500L);
+                Assert.assertEquals((long)updatePlan.getIntervals().get(0).right, 600L);
                 Assert.assertEquals(updatePlan.getValue(), "4.0");
             }
             cnt++;
@@ -103,8 +104,8 @@ public class WriteLogNodeTest {
                 Assert.assertEquals(plan.getPaths().get(0), path);
                 Assert.assertTrue(plan instanceof UpdatePlan);
                 UpdatePlan updatePlan = (UpdatePlan) plan;
-                Assert.assertEquals(updatePlan.getStartTime(), 1L);
-                Assert.assertEquals(updatePlan.getEndTime(), 2L);
+                Assert.assertEquals((long)updatePlan.getIntervals().get(0).left, 1L);
+                Assert.assertEquals((long)updatePlan.getIntervals().get(0).right, 2L);
                 Assert.assertEquals(updatePlan.getValue(), "1.0");
             } else if (cnt == 100) {
                 Assert.assertEquals(plan.getPaths().get(0), new Path("root.vehicle.d1.s1"));
@@ -116,8 +117,8 @@ public class WriteLogNodeTest {
                 Assert.assertEquals(plan.getPaths().get(0), path);
                 Assert.assertTrue(plan instanceof UpdatePlan);
                 UpdatePlan updatePlan = (UpdatePlan) plan;
-                Assert.assertEquals(updatePlan.getStartTime(), 200L);
-                Assert.assertEquals(updatePlan.getEndTime(), 400L);
+                Assert.assertEquals((long)updatePlan.getIntervals().get(0).left, 200L);
+                Assert.assertEquals((long)updatePlan.getIntervals().get(0).right, 400L);
                 Assert.assertEquals(updatePlan.getValue(), "2.0");
             }
             cnt++;
@@ -270,10 +271,34 @@ public class WriteLogNodeTest {
 
     }
 
+    @Test
+    public void multiUpdateTest() throws IOException {
+        WriteLogNode node = new WriteLogNode(fileNode);
+        node.setLogMemorySize(1);
+        node.setLogCompactSize(100);
+        List<Pair<Long,Long>> pairs = new ArrayList<>();
+        pairs.add(new Pair<>(1L, 2L));
+        pairs.add(new Pair<>(4L, 8L));
+        pairs.add(new Pair<>(14L, 18L));
+        node.write(new UpdatePlan(pairs, "2.0", path));
+        PhysicalPlan plan;
+        int cnt = 0;
+        while ((plan = node.getPhysicalPlan()) != null) {
+            // output(plan);
+            cnt ++;
+        }
+        Assert.assertEquals(cnt, 1);
+        node.closeStreams();
+        node.removeFiles();
+    }
+
     private void output(PhysicalPlan plan) {
         if (plan instanceof UpdatePlan) {
             UpdatePlan p = (UpdatePlan) plan;
-            System.out.println("Update: " + p.getPath() + " " + p.getStartTime() + " " + p.getEndTime() + " " + p.getValue());
+            System.out.println("Update: ========= " + p.getPath());
+            for (Pair<Long,Long> pair : ((UpdatePlan) plan).getIntervals()) {
+                System.out.println(pair.left + "," + pair.right + " " + p.getValue());
+            }
         } else if (plan instanceof DeletePlan) {
             DeletePlan p = (DeletePlan) plan;
             System.out.println("Delete: " + p.getPaths().get(0) + " " + p.getDeleteTime());

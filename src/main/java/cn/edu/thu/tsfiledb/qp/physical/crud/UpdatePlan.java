@@ -3,6 +3,7 @@ package cn.edu.thu.tsfiledb.qp.physical.crud;
 import java.util.ArrayList;
 import java.util.List;
 
+import cn.edu.thu.tsfile.common.utils.Pair;
 import cn.edu.thu.tsfile.timeseries.read.qp.Path;
 import cn.edu.thu.tsfiledb.qp.logical.Operator.OperatorType;
 import cn.edu.thu.tsfiledb.qp.physical.PhysicalPlan;
@@ -12,8 +13,7 @@ import cn.edu.thu.tsfiledb.qp.physical.PhysicalPlan;
  * @author qiaojialin
  */
 public class UpdatePlan extends PhysicalPlan {
-    private long startTime;
-    private long endTime;
+	private List<Pair<Long, Long>> intervals = new ArrayList<>();
     private String value;
     private Path path;
 
@@ -23,26 +23,24 @@ public class UpdatePlan extends PhysicalPlan {
 
     public UpdatePlan(long startTime, long endTime, String value, Path path) {
         super(false, OperatorType.UPDATE);
-        this.setStartTime(startTime);
-        this.setEndTime(endTime);
-        this.setValue(value);
-        this.setPath(path);
+        setValue(value);
+        setPath(path);
+        addInterval(new Pair<>(startTime, endTime));
     }
 
-    public long getStartTime() {
-        return startTime;
+    public UpdatePlan(List<Pair<Long,Long>> list, String value, Path path) {
+        super(false, OperatorType.UPDATE);
+        setValue(value);
+        setPath(path);
+        intervals = list;
     }
 
-    public void setStartTime(long startTime) {
-        this.startTime = startTime;
+    public List<Pair<Long, Long>> getIntervals() {
+        return intervals;
     }
 
-    public long getEndTime() {
-        return endTime;
-    }
-
-    public void setEndTime(long endTime) {
-        this.endTime = endTime;
+    public void addInterval(Pair<Long, Long> interval) {
+        this.intervals.add(interval);
     }
 
     public String getValue() {
