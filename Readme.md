@@ -43,7 +43,7 @@ tsfiledb/     <-- 根目录
 > ./bin/stop-server.sh
 
 # Windows
-ctrl+c
+> bin/stop-server.bat
 ```
 # 启动客户端
 
