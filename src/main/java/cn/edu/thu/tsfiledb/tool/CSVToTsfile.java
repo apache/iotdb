@@ -31,8 +31,6 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import cn.edu.thu.tsfile.common.constant.SystemConstant;
 
@@ -44,9 +42,6 @@ import cn.edu.thu.tsfile.common.constant.SystemConstant;
  *
  */
 public class CSVToTsfile {
-
-	private static final Logger LOGGER = LoggerFactory.getLogger(CSVToTsfile.class);
-
 	private static final String HOST_ARGS = "h";
 	private static final String HOST_NAME = "host";
 
@@ -66,9 +61,6 @@ public class CSVToTsfile {
 
 	private static final String TIMEFORMAT_ARGS = "t";
 	private static final String TIMEFORMAT_NAME = "timeformat";
-
-//	private static final String TSFILE_HOME_ARGS = "e";
-//	private static final String TSFILE_HOME_NAME = "errorCSVTran";
 
 	private static final int MAX_HELP_CONSOLE_WIDTH = 88;
 	private static final String TSFILEDB_CLI_PREFIX = "CSV_To_TsFile";
@@ -97,31 +89,28 @@ public class CSVToTsfile {
 	 */
 	private static Options createOptions() {
 		Options options = new Options();
-		Option help = new Option(HELP_ARGS, false, "Display help information");
-		help.setRequired(false);
-		options.addOption(help);
+		Option opHelp = Option.builder(HELP_ARGS).longOpt(HELP_ARGS).hasArg(false).desc("Display help information").build();
+        options.addOption(opHelp);
 
-		 Option opHost = Option.builder(HOST_ARGS).argName(HOST_NAME).hasArg().desc("Host Name (required)").build();
-		options.addOption(opHost);
+        Option opHost = Option.builder(HOST_ARGS).longOpt(HOST_NAME).required().argName(HOST_NAME).hasArg().desc("Host Name (required)").build();
+        options.addOption(opHost);
 
-		Option opPort = Option.builder(PORT_ARGS).argName(PORT_NAME).hasArg().desc("Port (required)").build();
-		options.addOption(opPort);
+        Option opPort = Option.builder(PORT_ARGS).longOpt(PORT_NAME).required().argName(PORT_NAME).hasArg().desc("Port (required)").build();
+        options.addOption(opPort);
 
-		Option opUsername = Option.builder(USERNAME_ARGS).argName(USERNAME_NAME).hasArg().desc("User Name (required)").build();
-		options.addOption(opUsername);
+        Option opUsername = Option.builder(USERNAME_ARGS).longOpt(USERNAME_NAME).required().argName(USERNAME_NAME).hasArg().desc("Username (required)").build();
+        options.addOption(opUsername);
 
-		Option opPassword = Option.builder(PASSWORD_ARGS).optionalArg(true).argName(PASSWORD_NAME).hasArg().desc("Password (optional)").build();
-		options.addOption(opPassword);
+        Option opPassword = Option.builder(PASSWORD_ARGS).longOpt(PASSWORD_NAME).optionalArg(true).argName(PASSWORD_NAME).hasArg().desc("Password (optional)").build();
+        options.addOption(opPassword);
 
-		Option opFile = Option.builder(FILE_ARGS).optionalArg(true).argName(FILE_NAME).hasArg().desc("csv file path (required)").build();
+		Option opFile = Option.builder(FILE_ARGS).longOpt(FILE_NAME).required().argName(FILE_NAME).hasArg().desc("csv file path (required)").build();
 		options.addOption(opFile);
 
 		Option opTimeformat = Option.builder(TIMEFORMAT_ARGS).optionalArg(true).argName(TIMEFORMAT_NAME).hasArg().desc("timeFormat  (not required),"
 				+ " you can choose 1) timestamp 2) ISO8601 3) user-defined pattern like yyyy-MM-dd HH:mm:ss, default timestamp").build();
 		options.addOption(opTimeformat);
-		
-//		Option opTsfileHome = Option.builder(TSFILE_HOME_ARGS).argName(TSFILE_HOME_NAME).hasArg().desc("TSFILE_HOME (required, auto config)").build();
-//		options.addOption(opTsfileHome);
+
 		return options;
 	}
 
@@ -148,7 +137,7 @@ public class CSVToTsfile {
 			try {
 				date = sdf.parse(timestamp);
 			} catch (java.text.ParseException e) {
-				LOGGER.error("input time format error please re-input, Unparseable date: {}", tf, e);
+//				LOGGER.error("input time format error please re-input, Unparseable date: {}", tf, e);
 			}
 			if (date != null)
 				return date.getTime() + "";
@@ -179,7 +168,7 @@ public class CSVToTsfile {
 			headInfo = new ArrayList<String>();
 
 			if (strHeadInfo.length <= 1) {
-				LOGGER.error("The CSV file illegal, please check first line");
+				System.out.println("The CSV file illegal, please check first line");
 				br.close();
 				connection.close();
 				System.exit(1);
@@ -194,7 +183,7 @@ public class CSVToTsfile {
 				if (resultSet.next()) {
 					timeseriesToType.put(resultSet.getString(0), resultSet.getString(1));
 				} else {
-					LOGGER.error("database Cannot find {}, stop import!", strHeadInfo[i]);
+					System.out.println("database Cannot find "+strHeadInfo[i]+", stop import!" );
 					bw.write("database Cannot find " + strHeadInfo[i] + ", stop import!");
 					br.close();
 					bw.close();
@@ -226,7 +215,7 @@ public class CSVToTsfile {
 							count = 0;
 						}
 					} catch (SQLException e) {
-						LOGGER.error("{} :excuted fail!");
+//						LOGGER.error("{} :excuted fail!");
 						bw.write(str);
 						bw.newLine();
 					}
@@ -235,20 +224,20 @@ public class CSVToTsfile {
 			try {
 				statement.executeBatch();
 				statement.clearBatch();
-				LOGGER.info("excuted finish!");
+				System.out.println("excuted finish!");
 			} catch (SQLException e) {
 				bw.write(e.getMessage());
 				bw.newLine();
 			}
 			
 		} catch (FileNotFoundException e) {
-			LOGGER.error("The csv file {} can't find!",filename, e);
+			System.out.println("The csv file "+filename+" can't find!");
 		} catch (IOException e) {
-			LOGGER.error("CSV file read exception!", e);
+			System.out.println("CSV file read exception!" + e.getMessage());
 		} catch (ClassNotFoundException e2) {
-			LOGGER.error("Cannot find cn.edu.thu.tsfiledb.jdbc.TsfileDriver");
+			System.out.println("Cannot find cn.edu.thu.tsfiledb.jdbc.TsfileDriver");
 		} catch (SQLException e) {
-			LOGGER.error("database connection exception!", e);
+			System.out.println("database connection exception!"+ e.getMessage());
 		} finally {
 			try {
 				bw.close();
@@ -304,7 +293,7 @@ public class CSVToTsfile {
 
 			String timestampsStr = setTimestamp(timeformat, data[0]);
 			if (timestampsStr.equals("")) {
-				LOGGER.error("Time Format Error! {}", line);
+//				LOGGER.error("Time Format Error! {}", line);
 				bwToErrorFile.write(line);
 				bwToErrorFile.newLine();
 				continue;
@@ -337,6 +326,7 @@ public class CSVToTsfile {
 		Scanner scanner = new Scanner(System.in);
 
 		if (args == null || args.length == 0) {
+			System.out.println("Too few params input, please check the following hint.");
 			hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
 			scanner.close();
 			return;
@@ -345,7 +335,8 @@ public class CSVToTsfile {
 		try {
 			commandLine = parser.parse(options, args);
 		} catch (ParseException e) {
-			LOGGER.error("problems encountered while parsing the command line tokens.", e);
+            System.out.println(e.getMessage());
+			hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
 			scanner.close();
 			System.exit(1);
 		}
