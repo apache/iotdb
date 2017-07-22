@@ -518,7 +518,10 @@ public class FileNodeManagerMulTest {
 		// merge
 		try {
 			fileNodeManager.mergeAll();
-			Thread.sleep(4000);
+			Thread.sleep(400);
+			while(!fileNodeManager.closeAll()){
+				Thread.sleep(1000);
+			}
 			QueryStructure queryStructure = fileNodeManager.query(deltaObjectId0, measurementId, null, null, null);
 			assertEquals(1, queryStructure.getBufferwriteDataInFiles().size());
 			IntervalFileNode temp = queryStructure.getBufferwriteDataInFiles().get(0);
