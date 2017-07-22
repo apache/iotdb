@@ -1,7 +1,7 @@
 #!/bin/sh
 
 if [ -z "${TSFILE_HOME}" ]; then
-  export TSFILE_HOME="$(cd "`dirname "$0"`"/..; pwd)"
+    export TSFILE_HOME="$(cd "`dirname "$0"`"/..; pwd)"
 fi
 
 if [ -n "$JAVA_HOME" ]; then
@@ -22,7 +22,7 @@ fi
 
 CLASSPATH=""
 for f in ${TSFILE_HOME}/lib/*.jar; do
-  CLASSPATH=${CLASSPATH}":"$f
+    CLASSPATH=${CLASSPATH}":"$f
 done
 
 MAIN_CLASS=cn.edu.thu.tsfiledb.tool.ImportCsv

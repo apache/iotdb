@@ -71,7 +71,7 @@ public class ImportCsv {
 //	private static final String TSFILE_HOME_NAME = "errorCSVTran";
 
 	private static final int MAX_HELP_CONSOLE_WIDTH = 88;
-	private static final String TSFILEDB_CLI_PREFIX = "CSV_To_TsFile";
+	private static final String TSFILEDB_CLI_PREFIX = "ImportCsv";
 
 	private static final String STRING_DATA_TYPE = "TEXT";
 	private static final int BATCH_EXCUTE_COUNT = 10;
