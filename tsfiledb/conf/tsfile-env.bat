@@ -1,5 +1,4 @@
 @echo off
-rem if "%OS%" == "Windows_NT" setlocal
 
 set LOCAL_JMX=yes
 
@@ -11,7 +10,3 @@ if "%LOCAL_JMX%" == "yes" (
 		set TSFILEDB_JMX_OPTS="-Dcom.sun.management.jmxremote" "-Dcom.sun.management.jmxremote.authenticate=false"  "-Dcom.sun.management.jmxremote.ssl=false" "-Dcom.sun.management.jmxremote.port=%JMX_PORT%"
 	)
 set TSFILEDB_DERBY_OPTS= "-Dderby.stream.error.field=cn.edu.thu.tsfiledb.auth.dao.DerbyUtil.DEV_NULL"
-
-echo %TSFILEDB_JMX_OPTS%
-echo %TSFILEDB_DERBY_OPTS%
-rem ENDLOCAL
