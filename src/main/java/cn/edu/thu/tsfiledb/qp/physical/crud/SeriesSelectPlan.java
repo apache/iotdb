@@ -54,7 +54,7 @@ public class SeriesSelectPlan extends PhysicalPlan {
         this.valueFilterOperator = valueFilter;
         removeStarsInPath(executor);
         LOG.debug(Arrays.toString(paths.toArray()));
-        removeNotExistsPaths(executor);
+        checkPaths(executor);
         LOG.debug(Arrays.toString(paths.toArray()));
         filterExpressions = transformToFilterExpressions(executor);
     }
@@ -96,22 +96,13 @@ public class SeriesSelectPlan extends PhysicalPlan {
     }
 
     /**
-     * remove paths that do not exit
+     * check if all paths exist
      */
-    private void removeNotExistsPaths(QueryProcessExecutor executor) {
-        List<Path> existsPaths = new ArrayList<>();
-        List<Path> notExistsPaths = new ArrayList<>();
+    private void checkPaths(QueryProcessExecutor executor) throws QueryProcessorException {
         for (Path path : paths) {
-            if (executor.judgePathExists(path))
-                existsPaths.add(path);
-            else
-                notExistsPaths.add(path);
+            if (!executor.judgePathExists(path))
+                throw new QueryProcessorException("Path doesn't exist: " + path);
         }
-        if (!notExistsPaths.isEmpty()) {
-            LOG.warn("following paths don't exist:{}", notExistsPaths.toString());
-        }
-        this.paths = existsPaths;
-
     }
 
     /**
