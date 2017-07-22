@@ -60,6 +60,7 @@ public class TsFileDump {
     public static void main(String[] args) throws ClassNotFoundException, SQLException {
         Options options = createOptions();
         HelpFormatter hf = new HelpFormatter();
+        hf.setOptionComparator(null);  // avoid reordering
         hf.setWidth(MAX_HELP_CONSOLE_WIDTH);
         CommandLine commandLine;
         CommandLineParser parser = new DefaultParser();
@@ -68,15 +69,11 @@ public class TsFileDump {
                 hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
                 return;
             }
-
             try {
                 commandLine = parser.parse(options, args);
-                if (commandLine.hasOption(HELP_ARGS)) {
-                    hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
-                    return;
-                }
             } catch (ParseException e) {
                 System.out.println(e.getMessage());
+                hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
                 return;
             }
 
@@ -107,10 +104,6 @@ public class TsFileDump {
                 }
             }
             targetFile = commandLine.getOptionValue(TARGET_FILE_ARGS);
-            if (targetFile == null) {
-                System.out.print(TSFILEDB_CLI_PREFIX + "> please input dump filename: ");
-                targetFile = scanner.nextLine();
-            }
 
             try {
                 Class.forName("cn.edu.thu.tsfiledb.jdbc.TsfileDriver");
@@ -137,33 +130,33 @@ public class TsFileDump {
      */
     private static Options createOptions() {
         Options options = new Options();
-        Option help = new Option(HELP_ARGS, false, "Display help information");
-        help.setRequired(false);
-        options.addOption(help);
 
-        Option opHost = Option.builder(HOST_ARGS).argName(HOST_NAME).hasArg().desc("Host Name (required)").build();
+        Option opHost = Option.builder(HOST_ARGS).longOpt(HOST_NAME).required().argName(HOST_NAME).hasArg().desc("Host Name (required)").build();
         options.addOption(opHost);
 
-        Option opPort = Option.builder(PORT_ARGS).argName(PORT_NAME).hasArg().desc("Port (required)").build();
+        Option opPort = Option.builder(PORT_ARGS).longOpt(PORT_NAME).required().argName(PORT_NAME).hasArg().desc("Port (required)").build();
         options.addOption(opPort);
 
-        Option opUsername = Option.builder(USERNAME_ARGS).argName(USERNAME_NAME).hasArg().desc("User Name (required)").build();
+        Option opUsername = Option.builder(USERNAME_ARGS).longOpt(USERNAME_NAME).required().argName(USERNAME_NAME).hasArg().desc("Username (required)").build();
         options.addOption(opUsername);
 
-        Option opPassword = Option.builder(PASSWORD_ARGS).optionalArg(true).argName(PASSWORD_NAME).hasArg().desc("Password (optional)").build();
+        Option opPassword = Option.builder(PASSWORD_ARGS).longOpt(PASSWORD_NAME).optionalArg(true).argName(PASSWORD_NAME).hasArg().desc("Password (optional)").build();
         options.addOption(opPassword);
 
-        Option opTargetFile = Option.builder(TARGET_FILE_ARGS).argName(TARGET_FILE_NAME).hasArg().desc("Target File Path (optional)").build();
+        Option opTargetFile = Option.builder(TARGET_FILE_ARGS).required().argName(TARGET_FILE_NAME).hasArg().desc("Target File Path (required)").build();
         options.addOption(opTargetFile);
 
-        Option opSqlFile = Option.builder(SQL_FILE_ARGS).optionalArg(true).argName(SQL_FILE_NAME).hasArg().desc("SqlFile Path (optional)").build();
+        Option opSqlFile = Option.builder(SQL_FILE_ARGS).argName(SQL_FILE_NAME).hasArg().desc("SQL File Path (optional)").build();
         options.addOption(opSqlFile);
 
-        Option opTimeFormat = Option.builder(TIME_FORMAT_ARGS).optionalArg(true).argName(TIME_FORMAT_NAME).hasArg().desc("Time Format (optional)").build();
+        Option opTimeFormat = Option.builder(TIME_FORMAT_ARGS).argName(TIME_FORMAT_NAME).hasArg().desc("Time Format (optional)").build();
         options.addOption(opTimeFormat);
 
-        Option opHeaderDis = Option.builder(HEADER_DIS_ARGS).optionalArg(true).argName(HEADER_DIS_NAME).desc("No Header Display (optional)").build();
+        Option opHeaderDis = Option.builder().longOpt(HEADER_DIS_NAME).hasArg(false).desc("No Header Display (optional)").build();
         options.addOption(opHeaderDis);
+
+        Option opHelp = Option.builder(HELP_ARGS).longOpt(HELP_ARGS).hasArg(false).desc("Display help information").build();
+        options.addOption(opHelp);
 
         return options;
     }
