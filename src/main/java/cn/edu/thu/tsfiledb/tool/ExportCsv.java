@@ -44,7 +44,7 @@ public class ExportCsv {
     private static final String HEADER_DIS_NAME = "noheaderdis";
 
     private static final int MAX_HELP_CONSOLE_WIDTH = 88;
-    private static final String TSFILEDB_CLI_PREFIX = "Tsfile_Dump";
+    private static final String TSFILEDB_CLI_PREFIX = "ExportCsv";
 
     private static String targetFile;
     private static String timeFormat;
