@@ -45,7 +45,7 @@ public class StartupChecks {
     		    	+ "Please check conf/{} for more info", TsFileDBConstant.ENV_FILE_NAME);
     		    jmxPort = System.getProperty(TsFileDBConstant.TSFILEDB_LOCAL_JMX_PORT_NAME);
     		    if(jmxPort == null){
-    			LOGGER.error("{} missing from {}", TsFileDBConstant.TSFILEDB_LOCAL_JMX_PORT_NAME, TsFileDBConstant.ENV_FILE_NAME);
+    			LOGGER.warn("{} missing from {}", TsFileDBConstant.TSFILEDB_LOCAL_JMX_PORT_NAME, TsFileDBConstant.ENV_FILE_NAME);
     		    }
     		}else{
     		    LOGGER.info("JMX is enabled to receive remote connection on port {}", jmxPort);
