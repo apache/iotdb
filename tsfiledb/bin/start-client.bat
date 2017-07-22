@@ -35,9 +35,8 @@ goto :eof
 REM -----------------------------------------------------------------------------
 :okClasspath
 
-echo Starting TsFiledb Client.
 "%JAVA_HOME%\bin\java" -DTSFILE_HOME=%TSFILE_HOME% %JAVA_OPTS% -cp %CLASSPATH% %MAIN_CLASS% %*
-echo TsFiledb client is starting.
+
 goto finally
 
 

@@ -9,8 +9,6 @@ pushd %~dp0..
 if NOT DEFINED TSFILE_HOME set TSFILE_HOME=%CD%
 popd
 
-echo TSFILE_HOME = %TSFILE_HOME%
-
 set TSFILE_CONF=%TSFILE_HOME%\conf
 set TSFILE_LOGS=%TSFILE_HOME%\logs
 
@@ -46,9 +44,7 @@ REM ----------------------------------------------------------------------------
 
 rem echo CLASSPATH: %CLASSPATH%
 
-echo Starting TsFiledb Server.
 "%JAVA_HOME%\bin\java" %JAVA_OPTS% -cp %CLASSPATH% %TSFILEDB_DERBY_OPTS% %TSFILEDB_JMX_OPTS% %MAIN_CLASS%
-echo TsFiledb is starting.
 goto finally
 
 
