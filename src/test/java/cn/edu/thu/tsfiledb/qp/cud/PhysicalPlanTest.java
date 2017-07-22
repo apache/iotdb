@@ -1,5 +1,9 @@
 package cn.edu.thu.tsfiledb.qp.cud;
 
+import cn.edu.thu.tsfile.common.constant.SystemConstant;
+import cn.edu.thu.tsfile.common.exception.ProcessorException;
+import cn.edu.thu.tsfile.timeseries.read.qp.Path;
+import cn.edu.thu.tsfile.timeseries.utils.StringContainer;
 import cn.edu.thu.tsfiledb.exception.ArgsErrorException;
 import cn.edu.thu.tsfiledb.qp.QueryProcessor;
 import cn.edu.thu.tsfiledb.qp.constant.SQLConstant;
@@ -9,6 +13,7 @@ import cn.edu.thu.tsfiledb.qp.physical.sys.AuthorPlan;
 import cn.edu.thu.tsfiledb.qp.physical.sys.MetadataPlan;
 import cn.edu.thu.tsfiledb.qp.physical.sys.PropertyPlan;
 import cn.edu.thu.tsfiledb.qp.utils.MemIntQpExecutor;
+import org.junit.Before;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
@@ -17,6 +22,15 @@ import static org.junit.Assert.fail;
 public class PhysicalPlanTest {
 
     private QueryProcessor processor = new QueryProcessor(new MemIntQpExecutor());
+
+    @Before
+    public void before() throws ProcessorException {
+        Path path1 =
+                new Path(new StringContainer(
+                        new String[] {"root", "laptop", "device_1", "sensor_1"},
+                        SystemConstant.PATH_SEPARATOR));
+        processor.getExecutor().insert(path1, 10, "10");
+    }
 
     @Test
     public void testMetadata() throws QueryProcessorException, ArgsErrorException {
