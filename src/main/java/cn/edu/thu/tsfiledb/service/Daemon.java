@@ -2,6 +2,7 @@ package cn.edu.thu.tsfiledb.service;
 
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
+import java.sql.SQLException;
 
 import javax.management.InstanceAlreadyExistsException;
 import javax.management.MBeanRegistrationException;
@@ -12,7 +13,6 @@ import javax.management.ObjectName;
 import javax.management.remote.JMXConnectorServer;
 
 import cn.edu.thu.tsfile.common.exception.ProcessorException;
-import cn.edu.thu.tsfiledb.conf.TsfileDBDescriptor;
 import cn.edu.thu.tsfiledb.qp.QueryProcessor;
 import cn.edu.thu.tsfiledb.qp.executor.OverflowQPExecutor;
 import cn.edu.thu.tsfiledb.qp.physical.PhysicalPlan;
@@ -22,6 +22,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import cn.edu.thu.tsfiledb.auth.dao.DBDao;
+import cn.edu.thu.tsfiledb.auth.dao.DBDaoInitException;
 import cn.edu.thu.tsfiledb.conf.TsFileDBConstant;
 import cn.edu.thu.tsfiledb.engine.exception.FileNodeManagerException;
 import cn.edu.thu.tsfiledb.engine.filenode.FileNodeManager;
@@ -58,8 +59,13 @@ public class Daemon {
 
     private void setUp() throws MalformedObjectNameException, InstanceAlreadyExistsException,
             MBeanRegistrationException, NotCompliantMBeanException, TTransportException, IOException {
+    	try {
+			initDBDao();
+		} catch (ClassNotFoundException | SQLException | DBDaoInitException e) {
+			LOGGER.error("Fail to start TsFileDB!");
+			return;
+		}
 
-        initDBDao();
         initFileNodeManager();
 
         systemDataRecovery();
@@ -105,7 +111,7 @@ public class Daemon {
         mbs.registerMBean(jdbcMBean, mBeanName);
     }
 
-    private void initDBDao() {
+    private void initDBDao() throws ClassNotFoundException, SQLException, DBDaoInitException {
         dBdao = new DBDao();
         dBdao.open();
     }
