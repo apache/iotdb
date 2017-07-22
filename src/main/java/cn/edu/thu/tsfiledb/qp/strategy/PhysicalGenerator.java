@@ -112,7 +112,7 @@ public class PhysicalGenerator {
 			throw new LogicalOperatorException("for update command, it has non-time condition in where clause");
 		}
 		// transfer the filter operator to FilterExpression
-		FilterExpression timeFilter = null;
+		FilterExpression timeFilter;
 		try {
 			timeFilter = filterOperator.transformToFilterExpression(executor, FilterSeriesType.TIME_FILTER);
 		} catch (QueryProcessorException e) {
@@ -121,10 +121,10 @@ public class PhysicalGenerator {
 		}
 		LongFilterVerifier filterVerifier = (LongFilterVerifier) FilterVerifier
 				.get((SingleSeriesFilterExpression) timeFilter);
-		LongInterval longInterval = (LongInterval) filterVerifier
+		LongInterval longInterval = filterVerifier
 				.getInterval((SingleSeriesFilterExpression) timeFilter);
-		long startTime = -1;
-		long endTime = -1;
+		long startTime;
+		long endTime;
 		for (int i = 0; i < longInterval.count; i = i + 2) {
 			if (longInterval.flag[i]) {
 				startTime = longInterval.v[i];
@@ -138,13 +138,14 @@ public class PhysicalGenerator {
 			}
 			if ((startTime <= 0 && startTime != Long.MIN_VALUE) || endTime <= 0) {
 				throw new LogicalOperatorException(
-						"startTime:" + startTime + ",endTime:" + endTime + ", one of them is illegal");
+						"update time must be greater than 0.");
 			}
 			if (startTime == Long.MIN_VALUE) {
 				startTime = 1;
 			}
 
-			plan.addInterval(new Pair<Long, Long>(startTime, endTime));
+			if (endTime >= startTime)
+				plan.addInterval(new Pair<>(startTime, endTime));
 		}
 		if (plan.getIntervals().isEmpty()) {
 			throw new LogicalOperatorException("For update command, time filter is invalid");
