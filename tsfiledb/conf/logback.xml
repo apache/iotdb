@@ -1,47 +1,20 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!--
-	说明：
-	1、日志级别及文件
-		日志记录采用分级记录，级别与日志文件名相对应，不同级别的日志信息记录到不同的日志文件中
-		例如：error级别记录到log_error_xxx.log或log_error.log（该文件为当前记录的日志文件），而log_error_xxx.log为归档日志，
-		日志文件按日期记录，同一天内，若日志文件大小等于或大于2M，则按0、1、2...顺序分别命名
-		例如log-level-2013-12-21.0.log
-		其它级别的日志也是如此。
-	2、文件路径
-		若开发、测试用，在Eclipse中运行项目，则到Eclipse的安装路径查找logs文件夹，以相对路径../logs。
-		若部署到Tomcat下，则在Tomcat下的logs文件中
-	3、Appender
-		FILEERROR对应error级别，文件名以log-error-xxx.log形式命名
-		FILEWARN对应warn级别，文件名以log-warn-xxx.log形式命名
-		FILEINFO对应info级别，文件名以log-info-xxx.log形式命名
-		FILEDEBUG对应debug级别，文件名以log-debug-xxx.log形式命名
-		stdout将日志信息输出到控制上，为方便开发测试使用
- -->
-<configuration>
 
-	<!-- 日志记录器，日期滚动记录 -->
+<configuration>
 	<appender name="FILEERROR" class="ch.qos.logback.core.rolling.RollingFileAppender">
 		<!-- 正在记录的日志文件的路径及文件名 -->
 		<file>${TSFILE_HOME}/logs/log_error.log</file>
-		<!-- 日志记录器的滚动策略，按日期，按大小记录 -->
    		<rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-   			<!-- 归档的日志文件的路径，例如今天是2013-12-21日志，当前写的日志文件路径为file节点指定，可以将此文件与file指定文件路径设置为不同路径，从而将当前日志文件或归档日志文件置不同的目录。
-   			而2013-12-21的日志文件在由fileNamePattern指定。%d{yyyy-MM-dd}指定日期格式，%i指定索引 -->
    			<fileNamePattern>${TSFILE_HOME}/logs/log-error-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
-   			<!-- 除按日志记录之外，还配置了日志文件不能超过2M，若超过2M，日志文件会以索引0开始，
-   			命名日志文件，例如log-error-2013-12-21.0.log -->
    			<timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
        	 		<maxFileSize>2MB</maxFileSize>
     		</timeBasedFileNamingAndTriggeringPolicy>
    		</rollingPolicy>
-   		<!-- 追加方式记录日志 -->
 		<append>true</append>
-		<!-- 日志文件的格式 -->
 		<encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
 			<pattern>%-5p [%d] %C:%L - %m %n</pattern>
 			<charset>utf-8</charset>
 		</encoder>
-		<!-- 此日志文件只记录error级别的 -->
 		<filter class="ch.qos.logback.classic.filter.LevelFilter">
 			<level>error</level>
 			<onMatch>ACCEPT</onMatch>
@@ -123,28 +96,15 @@
 		<filter class="ch.qos.logback.classic.filter.ThresholdFilter">
 			<level>DEBUG</level>
 		</filter>
-<!-- 		<filter class="ch.qos.logback.classic.filter.LevelFilter"> -->
-<!-- 			<level>DEBUG</level> -->
-<!-- 			<onMatch>ACCEPT</onMatch> -->
-<!--       		<onMismatch>DENY</onMismatch> -->
-<!-- 		</filter> -->
 	</appender>
 	
-	 <!-- <logger name="com.corp.tsfile.bufferwrite" level="debug"/> -->
-	
-	<!-- 为单独的包配置日志级别，若root的级别大于此级别， 此处级别也会输出
-		应用场景：生产环境一般不会将日志级别设置为trace或debug，但是为详细的记录SQL语句的情况，
-		可将hibernate的级别设置为debug，如此一来，日志文件中就会出现hibernate的debug级别日志，
-		而其它包则会按root的级别输出日志
-	-->
-	<!-- 生产环境，将此级别配置为适合的级别，以名日志文件太多或影响程序性能 -->
+
 	<logger name="cn.edu.thu.tsfiledb.service" level="info" />
 	<root level="ERROR">
 		<appender-ref ref="FILEDEBUG" />
 		<appender-ref ref="FILEINFO" />
 		<appender-ref ref="FILEWARN" />
 		<appender-ref ref="FILEERROR" />
-		<!-- 生产环境将请stdout去掉 -->
 		<appender-ref ref="stdout" />
 	</root>
 </configuration>
