@@ -124,4 +124,10 @@ public class RecordReaderFactory {
 	public static RecordReaderFactory getInstance() {
 		return instance;
 	}
+
+	public void removeRecordReader(String deltaObjectId, String measurementId) {
+		if (readLockManager.recordReaderCache.containsRecordReader(deltaObjectId, measurementId)) {
+			readLockManager.recordReaderCache.remove(deltaObjectId, measurementId);
+		}
+	}
 }

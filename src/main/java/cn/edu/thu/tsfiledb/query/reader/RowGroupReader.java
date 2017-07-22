@@ -82,7 +82,7 @@ public class RowGroupReader {
      * @param timeRet       Array of the time.
      * @throws IOException
      */
-    public DynamicOneColumnData readValueUseTimeValue(String measurementId, long[] timeRet) throws IOException {
+    public DynamicOneColumnData readValueUseTimestamps(String measurementId, long[] timeRet) throws IOException {
         return valueReaders.get(measurementId).getValuesForGivenValues(timeRet);
     }
 

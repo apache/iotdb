@@ -28,6 +28,11 @@ public class RecordReaderCache {
         cache.get().put(getKey(deltaObjectUID, measurementID), recordReader);
     }
 
+    public RecordReader remove(String deltaObjectUID, String measurementID) {
+        checkCacheInitialized();
+        return cache.get().remove(getKey(deltaObjectUID, measurementID));
+    }
+
     public void clear() throws ProcessorException {
         for (RecordReader rr : cache.get().values()) {
             try {
