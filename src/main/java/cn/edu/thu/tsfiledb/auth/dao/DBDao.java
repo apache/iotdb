@@ -1,6 +1,7 @@
 package cn.edu.thu.tsfiledb.auth.dao;
 
 import java.io.File;
+import java.io.IOException;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.DriverManager;
@@ -9,6 +10,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 
+import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -56,13 +58,31 @@ public class DBDao {
 		}
 	}
 
-	private void connection() throws SQLException {
+	private void connection() throws SQLException, DBDaoInitException{
 		String url = protocal + DBLocalPath + createOrNot;
 		try {
 			connection = DriverManager.getConnection(url);
 		} catch (SQLException e) {
-			LOGGER.error(e.getMessage());
-			throw e;
+			SQLException e2 = e.getNextException();
+			if(e2 != null){
+				// special code defined by Derby
+				if(e2.getSQLState().equals("XBM0A")){
+					LOGGER.error(e2.getMessage());
+					try {
+						FileUtils.deleteDirectory(new File(DBLocalPath));
+						System.out.println(String.format("Delete %s successfully, you may restart TsFileDB now.", DBLocalPath));
+					} catch (IOException e1) {
+						LOGGER.error("Fail to delete {} automatically, you may delete manually and restart TsFileDB");
+					} 
+					throw new DBDaoInitException(e2);
+				} else{
+					LOGGER.error(e.getMessage());
+					throw e;
+				}
+			} else{
+				LOGGER.error(e.getMessage());
+				throw e;
+			}
 		}
 	}
 
@@ -153,17 +173,12 @@ public class DBDao {
 		return true;
 	}
 
-	public void open() {
-		
-		try {
-			initDriver();
-			connection();
-			statement();
-			if (!checkTableExist()) {
-				createOriTable();
-			}
-		} catch (ClassNotFoundException | SQLException e) {
-			throw new AuthRuntimeException(e);
+	public void open() throws ClassNotFoundException, SQLException, DBDaoInitException{
+		initDriver();
+		connection();
+		statement();
+		if (!checkTableExist()) {
+			createOriTable();
 		}
 	}
 
