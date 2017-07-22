@@ -310,14 +310,12 @@ public class RecordReader {
      * Function 4#2: for cross getIndex.
      * To get values in one column according to a time list from specific RowGroupReader(s).
      *
-     * @param deviceUID
-     * @param sensorId
      * @param timeRet
      * @param idxs
      * @return
      * @throws IOException
      */
-    public DynamicOneColumnData getValuesUseTimestamps(String deviceUID, String sensorId, long[] timeRet,
+    public DynamicOneColumnData getValuesUseTimestamps(String deltaObjectUID, String measurementUId, long[] timeRet,
                                                        ArrayList<Integer> idxs) throws IOException {
         DynamicOneColumnData res = null;
         List<RowGroupReader> rowGroupReaderList = readerManager.getAllRowGroupReaders();
@@ -326,15 +324,15 @@ public class RecordReader {
         for (int i = 0; i < idxs.size(); i++) {
             int idx = idxs.get(i);
             RowGroupReader rowGroupReader = rowGroupReaderList.get(idx);
-            if (!deviceUID.equals(rowGroupReader.getDeltaObjectUID())) {
+            if (!deltaObjectUID.equals(rowGroupReader.getDeltaObjectUID())) {
                 continue;
             }
             if (!init) {
-                res = rowGroupReader.readValueUseTimeValue(sensorId, timeRet);
+                res = rowGroupReader.readValueUseTimeValue(measurementUId, timeRet);
                 res.setDeltaObjectType(rowGroupReader.getDeltaObjectType());
                 init = true;
             } else {
-                DynamicOneColumnData tmpRes = rowGroupReader.readValueUseTimeValue(sensorId, timeRet);
+                DynamicOneColumnData tmpRes = rowGroupReader.readValueUseTimeValue(measurementUId, timeRet);
                 res.mergeRecord(tmpRes);
             }
         }
@@ -399,7 +397,7 @@ public class RecordReader {
                 res.putBinary(insertMemoryData.getCurrentBinaryValue());
                 break;
             default:
-                throw new UnSupportedDataTypeException("UnuSupported DataType!");
+                throw new UnSupportedDataTypeException("UnuSupported DataType : " + insertMemoryData.getDataType());
         }
     }
 
@@ -424,7 +422,7 @@ public class RecordReader {
                 res.putBinary(updateData.getBinary(updateData.curIdx/2));
                 break;
             default:
-                throw new UnSupportedDataTypeException("UnuSupported DataType!");
+                throw new UnSupportedDataTypeException("UnuSupported DataType : " + dataType);
         }
     }
 

@@ -99,7 +99,7 @@ public class FileReader {
 
     /**
      * @param deltaObjectUID
-     * @param index          from 0 to n-1
+     * @param index  from 0 to n-1
      * @return
      */
     public RowGroupReader getRowGroupReader(String deltaObjectUID, int index) {

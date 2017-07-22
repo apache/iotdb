@@ -13,6 +13,7 @@ public class ReadLockManager {
 
     private static ReadLockManager instance = new ReadLockManager();
     private FileNodeManager fileNodeManager = FileNodeManager.getInstance();
+    // storage deltaObjectId and its read lock
     private ThreadLocal<HashMap<String, Integer>> locksMap = new ThreadLocal<>();
     public RecordReaderCache recordReaderCache = new RecordReaderCache();
 
@@ -21,18 +22,17 @@ public class ReadLockManager {
 
     public int lock(String deltaObjectUID, String measurementID) throws ProcessorException {
         checkLocksMap();
-        String key = getKey(deltaObjectUID, measurementID);
         int token;
-        if (!locksMap.get().containsKey(key)) {
+        if (!locksMap.get().containsKey(deltaObjectUID)) {
             try {
                 token = fileNodeManager.beginQuery(deltaObjectUID);
             } catch (FileNodeManagerException e) {
                 e.printStackTrace();
                 throw new ProcessorException(e.getMessage());
             }
-            locksMap.get().put(key, token);
+            locksMap.get().put(deltaObjectUID, token);
         } else {
-            token = locksMap.get().get(key);
+            token = locksMap.get().get(deltaObjectUID);
         }
         return token;
     }
@@ -64,24 +64,13 @@ public class ReadLockManager {
         recordReaderCache.clear();
     }
 
-    public String getKey(String deltaObjectUID, String measurementID) {
-        return deltaObjectUID;
-    }
-
-//	public String[] splitKey(String key){
-//		return key.split("#");
-//	}
-
     public static ReadLockManager getInstance() {
-        if (instance == null) {
-            instance = new ReadLockManager();
-        }
         return instance;
     }
 
     private void checkLocksMap() {
         if (locksMap.get() == null) {
-            locksMap.set(new HashMap<String, Integer>());
+            locksMap.set(new HashMap<>());
         }
     }
 }
