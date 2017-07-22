@@ -72,7 +72,11 @@ SET STORAGE GROUP TO root.fit.p;
 ### 启动import脚本
 
 ```
+# Unix/OS X
 > ./bin/import-csv.sh -h xxx.xxx.xxx.xxx -p xxx -u xxx -pw xxx -f <载入文件路径> [-t <时间格式>]
+
+# Windows
+> bin/import-csv.bat -h xxx.xxx.xxx.xxx -p xxx -u xxx -pw xxx -f <载入文件路径> [-t <时间格式>]
 ```
 
 ### 错误文件
@@ -83,5 +87,9 @@ SET STORAGE GROUP TO root.fit.p;
 
 ### 启动export脚本
 ```
-> ./bin/export-csv.sh -h xxx.xxx.xxx.xxx -p xxx -u xxx -pw xxx -tf <导出文件路径> [-t <时间格式>]
+# Unix/OS X
+> ./bin/export-csv.sh -h xxx.xxx.xxx.xxx -p xxx -u xxx -tf <导出文件路径> [-t <时间格式>]
+
+# Windows
+> bin/export-csv.bat -h xxx.xxx.xxx.xxx -p xxx -u xxx -tf <导出文件路径> [-t <时间格式>]
 ```
