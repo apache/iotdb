@@ -25,6 +25,7 @@ public class Client extends AbstractClient {
 		CommandLineParser parser = new DefaultParser();
 
 		if (args == null || args.length == 0) {
+			System.out.println("Require more params input, please check the following hint.");
 			hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
 			return;
 		}
@@ -52,6 +53,7 @@ public class Client extends AbstractClient {
 				}
 			}
 		} catch (ParseException e) {
+			System.out.println("Require more params input, please check the following hint.");
 			hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
 			return;
 		}
@@ -76,7 +78,7 @@ public class Client extends AbstractClient {
 					return;
 				}
 			} catch (ArgsErrorException e) {
-				System.out.println(TSFILEDB_CLI_PREFIX + ": " + e.getMessage());
+//				System.out.println(TSFILEDB_CLI_PREFIX + ": " + e.getMessage());
 				return;
 			}
 

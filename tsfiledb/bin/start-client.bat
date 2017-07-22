@@ -1,6 +1,6 @@
 @echo off
 echo ````````````````````````
-echo Starting tsfiledb client
+echo Starting TsFileDB Client
 echo ````````````````````````
 
 if "%OS%" == "Windows_NT" setlocal
