@@ -236,7 +236,6 @@ public abstract class QueryProcessExecutor {
         return plan;
     }
 
-    public List<String> getAllPaths(String fullPath) throws PathErrorException {
-        return getMManager().getPaths(fullPath);
-    }
+    public abstract List<String> getAllPaths(String originPath) throws PathErrorException;
+
 }
