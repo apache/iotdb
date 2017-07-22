@@ -19,7 +19,6 @@ import cn.edu.thu.tsfile.timeseries.read.LocalFileInput;
 
 public class ReaderManager {
 
-    // private FileReader fileReader;
     private List<FileReader> fileReaderList;
 
     private List<TSRandomAccessFileReader> rafList; // file has been serialized, sealed
@@ -56,12 +55,6 @@ public class ReaderManager {
             addRowGroupReadersToMap(fr);
             addRowGroupReadersToList(fr);
         }
-//        for (int i = 0; i < rafList.size(); i++) {
-//            FileReader fr = new FileReader(rafList.get(i));
-//            fileReaderList.add(fr);
-//            addRowGroupReadersToMap(fr);
-//            addRowGroupReadersToList(fr);
-//        }
     }
 
     /**

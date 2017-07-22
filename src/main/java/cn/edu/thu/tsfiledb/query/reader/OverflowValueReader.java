@@ -449,7 +449,7 @@ public class OverflowValueReader extends ValueReader {
                             if (mode == 0) {
                                 if (updateData[0].getTime(updateIdx[0]) <= timeValues[timeIdx]
                                         && timeValues[timeIdx] <= updateData[0].getTime(updateIdx[0] + 1)) {
-                                    // update the value,需要和高飞再商量一下这个逻辑
+                                    //TODO update the value, need discuss the logic with gaofei
                                     if (timeFilter == null
                                             || timeVisitor.verify(timeValues[timeIdx])) {
                                         res.putLong(updateData[0].getLong(updateIdx[0] / 2));
@@ -1471,7 +1471,7 @@ public class OverflowValueReader extends ValueReader {
                     }
                     break;
                 default:
-                    throw new IOException("Data type not support. " + dataType);
+                    throw new IOException("Data type not support : " + dataType);
             }
         } catch (IOException e) {
             e.printStackTrace();

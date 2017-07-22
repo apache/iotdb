@@ -15,14 +15,13 @@ public class FileStreamManager {
 	private static FileStreamManager instance = new FileStreamManager();
 	
 	private FileStreamManager(){
-		
 	}
 	
 	public TSRandomAccessFileReader getLocalRandomAccessFileReader(String path) throws FileNotFoundException{
 		return new LocalFileInput(path);
 	}
 	
-	public void closeLocalRandomAcessFileReader(LocalFileInput localFileInput) throws IOException{
+	public void closeLocalRandomAccessFileReader(LocalFileInput localFileInput) throws IOException{
 		localFileInput.close();
 	}
 	
@@ -32,8 +31,8 @@ public class FileStreamManager {
 		}
 		return instance;
 	}
-	
-	public void close(TSRandomAccessFileReader raf){
+
+	public void closeFileStreams(TSRandomAccessFileReader raf){
 		try {
 			raf.close();
 		} catch (IOException e) {
