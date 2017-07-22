@@ -43,7 +43,7 @@ tsfiledb/     <-- 根目录
 > ./bin/stop-server.sh
 
 # Windows
-ctrl+c
+> bin/stop-server.bat
 ```
 # 启动客户端
 
@@ -55,7 +55,7 @@ ctrl+c
 > bin\start-client.bat -h xxx.xxx.xxx.xxx -p xxx -u xxx
 ```
 
-# TsFile Load脚本使用说明
+# TsFile 导入脚本使用说明
 ## 使用方法
 
 ###创建MetaData(自定义创建，样例为测试数据metadata)
@@ -66,12 +66,30 @@ CREATE TIMESERIES root.fit.d2.s1 WITH DATATYPE=INT32,ENCODING=RLE;
 CREATE TIMESERIES root.fit.d2.s3 WITH DATATYPE=INT32,ENCODING=RLE;
 CREATE TIMESERIES root.fit.p.s1 WITH DATATYPE=INT32,ENCODING=RLE;
 SET STORAGE GROUP TO root.fit.d1;
+SET STORAGE GROUP TO root.fit.d2;
+SET STORAGE GROUP TO root.fit.p;
 ```
-### 启动load脚本
+### 启动import脚本
 
 ```
-> ./bin/start-csvToTsfile.sh.sh -h xxx.xxx.xxx.xxx -p xxx -u xxx -pw xxx -f <载入文件路径> -t <时间格式>
+# Unix/OS X
+> ./bin/import-csv.sh -h xxx.xxx.xxx.xxx -p xxx -u xxx -pw xxx -f <载入文件路径> [-t <时间格式>]
+
+# Windows
+> bin/import-csv.bat -h xxx.xxx.xxx.xxx -p xxx -u xxx -pw xxx -f <载入文件路径> [-t <时间格式>]
 ```
 
 ### 错误文件
 位于当前目录下的csvInsertError.error文件
+
+# TsFile 导出脚本使用说明
+## 使用方法
+
+### 启动export脚本
+```
+# Unix/OS X
+> ./bin/export-csv.sh -h xxx.xxx.xxx.xxx -p xxx -u xxx -tf <导出文件路径> [-t <时间格式>]
+
+# Windows
+> bin/export-csv.bat -h xxx.xxx.xxx.xxx -p xxx -u xxx -tf <导出文件路径> [-t <时间格式>]
+```
