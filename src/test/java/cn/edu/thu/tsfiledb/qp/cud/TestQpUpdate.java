@@ -61,7 +61,7 @@ public class TestQpUpdate {
     	try{
     		plan1 = processor.parseSQLToPhysicalPlan(sql);
     	}catch (QueryProcessorException e) {
-    		assertEquals("startTime:-9223372036854775808,endTime:-10, one of them is illegal", e.getMessage());
+    		assertEquals("update time must be greater than 0.", e.getMessage());
 		}
     	sql = "update root.laptop.device_1.sensor_1 set value=100 where time<100";
     	try{
