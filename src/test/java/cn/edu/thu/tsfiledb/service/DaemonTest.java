@@ -220,9 +220,6 @@ public class DaemonTest {
 
     private void dnfErrorSQLTest() throws ClassNotFoundException, SQLException {
         String[] retArray = new String[]{
-                "1,null,1101",
-                "2,null,40000",
-                "50,null,50000",
                 "100,null,199",
                 "101,null,199",
                 "102,null,180",
@@ -245,7 +242,7 @@ public class DaemonTest {
                     cnt++;
                     // AbstractClient.output(resultSet, true, "select statement");
                 }
-                Assert.assertEquals(cnt, 9);
+                Assert.assertEquals(cnt, 6);
             }
             statement.close();
         } catch (Exception e) {
