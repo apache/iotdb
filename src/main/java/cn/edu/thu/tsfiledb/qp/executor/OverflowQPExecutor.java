@@ -237,6 +237,12 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 		}
 	}
 
+
+	@Override
+	public List<String> getAllPaths(String originPath) throws PathErrorException {
+		return getMManager().getPaths(originPath);
+	}
+
 	private boolean operateAuthor(AuthorPlan author) throws ProcessorException {
 		AuthorOperator.AuthorType authorType = author.getAuthorType();
 		String userName = author.getUserName();
