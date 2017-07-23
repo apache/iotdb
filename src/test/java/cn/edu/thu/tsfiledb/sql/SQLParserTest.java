@@ -345,10 +345,10 @@ public class SQLParserTest {
         		"TOK_PATH", "device_2", "sensor_2",
                 "TOK_FROM", "TOK_PATH", "root", "vehicle", 
                 "TOK_WHERE", "or", 
-                "<", "TOK_PATH", "root", "laptop", "device_1", "sensor_1", "-2000",
+                "<", "TOK_PATH", "root", "laptop", "device_1", "sensor_1", "-2.2E10",
                 ">", "TOK_PATH", "time", "TOK_DATETIME" ,"now"));
         ArrayList<String> rec = new ArrayList<>();
-        ASTNode astTree = ParseGenerator.generateAST("SELECT device_1.sensor_1,device_2.sensor_2 FROM root.vehicle WHERE root.laptop.device_1.sensor_1 < -2000 or time > now()");
+        ASTNode astTree = ParseGenerator.generateAST("SELECT device_1.sensor_1,device_2.sensor_2 FROM root.vehicle WHERE root.laptop.device_1.sensor_1 < -2.2E10 or time > now()");
         astTree = ParseUtils.findRootNonNullToken(astTree);
         recursivePrintSon(astTree, rec);
 
@@ -411,10 +411,10 @@ public class SQLParserTest {
         		"TOK_PATH", "TOK_CLUSTER", "TOK_PATH", "s2", "max_time",
         		"TOK_FROM", "TOK_PATH", "root", "vehicle", "d1",
         		"TOK_WHERE", "and", 
-        		"<", "TOK_PATH", "root", "vehicle", "d1", "s1", "2000",
+        		"<", "TOK_PATH", "root", "vehicle", "d1", "s1", "0.32e6",
         		"<=", "TOK_PATH", "time", "TOK_DATETIME", "now"));
         ArrayList<String> rec = new ArrayList<>();
-        ASTNode astTree = ParseGenerator.generateAST("select count(s1),max_time(s2) from root.vehicle.d1 where root.vehicle.d1.s1 < 2000 and time <= now()");
+        ASTNode astTree = ParseGenerator.generateAST("select count(s1),max_time(s2) from root.vehicle.d1 where root.vehicle.d1.s1 < 0.32e6 and time <= now()");
         astTree = ParseUtils.findRootNonNullToken(astTree);
         recursivePrintSon(astTree, rec);
 

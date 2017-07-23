@@ -123,7 +123,7 @@ Integer
 
 Float
 	:
-	('-' | '+')? Digit+ DOT Digit+
+	('-' | '+')? Digit+ DOT Digit+ (('e' | 'E') ('-' | '+')? Digit+)?
 	;
 
 Identifier
