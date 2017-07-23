@@ -1,4 +1,4 @@
-// $ANTLR 3.5.2 TSLexer.g 2017-07-08 15:49:50
+// $ANTLR 3.5.2 TSLexer.g 2017-07-23 22:47:20
 
 package cn.edu.thu.tsfiledb.sql.parse;
 
@@ -2075,8 +2075,8 @@ public class TSLexer extends Lexer {
 		try {
 			int _type = Float;
 			int _channel = DEFAULT_TOKEN_CHANNEL;
-			// TSLexer.g:125:2: ( ( '-' | '+' )? ( Digit )+ DOT ( Digit )+ )
-			// TSLexer.g:126:2: ( '-' | '+' )? ( Digit )+ DOT ( Digit )+
+			// TSLexer.g:125:2: ( ( '-' | '+' )? ( Digit )+ DOT ( Digit )+ ( ( 'e' | 'E' ) ( '-' | '+' )? ( Digit )+ )? )
+			// TSLexer.g:126:2: ( '-' | '+' )? ( Digit )+ DOT ( Digit )+ ( ( 'e' | 'E' ) ( '-' | '+' )? ( Digit )+ )?
 			{
 			// TSLexer.g:126:2: ( '-' | '+' )?
 			int alt19=2;
@@ -2169,6 +2169,85 @@ public class TSLexer extends Lexer {
 				cnt21++;
 			}
 
+			// TSLexer.g:126:33: ( ( 'e' | 'E' ) ( '-' | '+' )? ( Digit )+ )?
+			int alt24=2;
+			int LA24_0 = input.LA(1);
+			if ( (LA24_0=='E'||LA24_0=='e') ) {
+				alt24=1;
+			}
+			switch (alt24) {
+				case 1 :
+					// TSLexer.g:126:34: ( 'e' | 'E' ) ( '-' | '+' )? ( Digit )+
+					{
+					if ( input.LA(1)=='E'||input.LA(1)=='e' ) {
+						input.consume();
+					}
+					else {
+						MismatchedSetException mse = new MismatchedSetException(null,input);
+						recover(mse);
+						throw mse;
+					}
+					// TSLexer.g:126:46: ( '-' | '+' )?
+					int alt22=2;
+					int LA22_0 = input.LA(1);
+					if ( (LA22_0=='+'||LA22_0=='-') ) {
+						alt22=1;
+					}
+					switch (alt22) {
+						case 1 :
+							// TSLexer.g:
+							{
+							if ( input.LA(1)=='+'||input.LA(1)=='-' ) {
+								input.consume();
+							}
+							else {
+								MismatchedSetException mse = new MismatchedSetException(null,input);
+								recover(mse);
+								throw mse;
+							}
+							}
+							break;
+
+					}
+
+					// TSLexer.g:126:59: ( Digit )+
+					int cnt23=0;
+					loop23:
+					while (true) {
+						int alt23=2;
+						int LA23_0 = input.LA(1);
+						if ( ((LA23_0 >= '0' && LA23_0 <= '9')) ) {
+							alt23=1;
+						}
+
+						switch (alt23) {
+						case 1 :
+							// TSLexer.g:
+							{
+							if ( (input.LA(1) >= '0' && input.LA(1) <= '9') ) {
+								input.consume();
+							}
+							else {
+								MismatchedSetException mse = new MismatchedSetException(null,input);
+								recover(mse);
+								throw mse;
+							}
+							}
+							break;
+
+						default :
+							if ( cnt23 >= 1 ) break loop23;
+							EarlyExitException eee = new EarlyExitException(23, input);
+							throw eee;
+						}
+						cnt23++;
+					}
+
+					}
+					break;
+
+			}
+
 			}
 
 			state.type = _type;
@@ -2197,15 +2276,15 @@ public class TSLexer extends Lexer {
 				throw mse;
 			}
 			// TSLexer.g:131:28: ( Letter | Digit | '_' )*
-			loop22:
+			loop25:
 			while (true) {
-				int alt22=2;
-				int LA22_0 = input.LA(1);
-				if ( ((LA22_0 >= '0' && LA22_0 <= '9')||(LA22_0 >= 'A' && LA22_0 <= 'Z')||LA22_0=='_'||(LA22_0 >= 'a' && LA22_0 <= 'z')) ) {
-					alt22=1;
+				int alt25=2;
+				int LA25_0 = input.LA(1);
+				if ( ((LA25_0 >= '0' && LA25_0 <= '9')||(LA25_0 >= 'A' && LA25_0 <= 'Z')||LA25_0=='_'||(LA25_0 >= 'a' && LA25_0 <= 'z')) ) {
+					alt25=1;
 				}
 
-				switch (alt22) {
+				switch (alt25) {
 				case 1 :
 					// TSLexer.g:
 					{
@@ -2221,7 +2300,7 @@ public class TSLexer extends Lexer {
 					break;
 
 				default :
-					break loop22;
+					break loop25;
 				}
 			}
 
@@ -2267,9 +2346,9 @@ public class TSLexer extends Lexer {
 	@Override
 	public void mTokens() throws RecognitionException {
 		// TSLexer.g:1:8: ( KW_PRIVILEGES | KW_TIMESERIES | KW_ROLE | KW_GRANT | KW_REVOKE | KW_MERGE | KW_QUIT | KW_METADATA | KW_DATATYPE | KW_ENCODING | KW_STORAGE | KW_AND | KW_OR | KW_NOT | KW_ORDER | KW_GROUP | KW_BY | KW_WHERE | KW_FROM | KW_SELECT | KW_INSERT | KW_ON | KW_SHOW | KW_LOAD | KW_NULL | KW_CREATE | KW_DROP | KW_TO | KW_TIMESTAMP | KW_USER | KW_INTO | KW_WITH | KW_SET | KW_DELETE | KW_UPDATE | KW_VALUES | KW_VALUE | KW_PASSWORD | KW_DESCRIBE | KW_PROPERTY | KW_ADD | KW_LABEL | KW_LINK | KW_UNLINK | QUOTE | DOT | COLON | COMMA | SEMICOLON | LPAREN | RPAREN | EQUAL | EQUAL_NS | NOTEQUAL | LESSTHANOREQUALTO | LESSTHAN | GREATERTHANOREQUALTO | GREATERTHAN | DIVIDE | PLUS | MINUS | STAR | StringLiteral | DATETIME | Integer | Float | Identifier | WS )
-		int alt23=68;
-		alt23 = dfa23.predict(input);
-		switch (alt23) {
+		int alt26=68;
+		alt26 = dfa26.predict(input);
+		switch (alt26) {
 			case 1 :
 				// TSLexer.g:1:10: KW_PRIVILEGES
 				{
@@ -2751,8 +2830,8 @@ public class TSLexer extends Lexer {
 	}
 
 
-	protected DFA23 dfa23 = new DFA23(this);
-	static final String DFA23_eotS =
+	protected DFA26 dfa26 = new DFA26(this);
+	static final String DFA26_eotS =
 		"\1\uffff\14\46\1\77\10\46\1\115\7\uffff\1\117\1\121\1\uffff\1\122\1\124"+
 		"\2\uffff\1\127\2\uffff\3\46\1\135\16\46\1\161\1\162\2\46\2\uffff\1\165"+
 		"\14\46\1\uffff\1\u0084\4\uffff\1\127\2\uffff\1\127\2\uffff\4\46\1\uffff"+
@@ -2766,9 +2845,9 @@ public class TSLexer extends Lexer {
 		"\u00f6\1\uffff\5\46\1\uffff\2\46\1\uffff\2\46\1\u0100\6\uffff\1\46\1\u0102"+
 		"\1\u0103\2\46\1\u0106\1\u0107\1\u0108\1\u0109\1\uffff\1\46\2\uffff\1\46"+
 		"\1\u010c\4\uffff\1\u010d\1\u010e\3\uffff";
-	static final String DFA23_eofS =
+	static final String DFA26_eofS =
 		"\u010f\uffff";
-	static final String DFA23_minS =
+	static final String DFA26_minS =
 		"\1\11\1\101\1\111\1\105\1\122\1\105\1\125\1\101\1\116\1\105\1\104\1\116"+
 		"\1\117\1\75\1\131\1\110\1\122\1\116\1\101\1\122\1\116\1\101\1\0\7\uffff"+
 		"\2\75\1\uffff\2\60\2\uffff\1\55\2\uffff\1\111\1\123\1\115\1\60\1\114\1"+
@@ -2788,7 +2867,7 @@ public class TSLexer extends Lexer {
 		"\1\60\2\uffff\1\60\1\uffff\4\60\1\uffff\1\107\1\131\1\104\1\111\1\115"+
 		"\1\uffff\1\101\1\105\1\uffff\1\105\1\107\1\60\6\uffff\1\105\2\60\1\105"+
 		"\1\120\4\60\1\uffff\1\123\2\uffff\1\123\1\60\4\uffff\2\60\3\uffff";
-	static final String DFA23_maxS =
+	static final String DFA26_maxS =
 		"\1\172\1\122\2\117\1\122\1\105\1\125\1\122\1\116\1\124\1\116\1\122\1\125"+
 		"\1\75\1\131\1\111\1\122\1\116\1\117\1\122\1\123\1\101\1\uffff\7\uffff"+
 		"\1\76\1\75\1\uffff\2\71\2\uffff\1\172\2\uffff\1\117\1\123\1\115\1\172"+
@@ -2809,7 +2888,7 @@ public class TSLexer extends Lexer {
 		"\1\107\1\131\1\104\1\111\1\115\1\uffff\1\101\1\105\1\uffff\1\105\1\107"+
 		"\1\172\6\uffff\1\105\2\172\1\105\1\120\4\172\1\uffff\1\123\2\uffff\1\123"+
 		"\1\172\4\uffff\2\172\3\uffff";
-	static final String DFA23_acceptS =
+	static final String DFA26_acceptS =
 		"\27\uffff\1\56\1\57\1\60\1\61\1\62\1\63\1\64\2\uffff\1\73\2\uffff\1\76"+
 		"\1\77\1\uffff\1\103\1\104\26\uffff\1\66\1\16\15\uffff\1\55\1\uffff\1\70"+
 		"\1\71\1\72\1\74\1\uffff\1\75\1\100\1\uffff\1\101\1\102\4\uffff\1\34\23"+
@@ -2819,9 +2898,9 @@ public class TSLexer extends Lexer {
 		"\uffff\1\4\1\20\1\6\7\uffff\1\17\1\22\1\uffff\1\52\4\uffff\1\45\5\uffff"+
 		"\1\5\2\uffff\1\42\3\uffff\1\24\1\25\1\32\1\43\1\54\1\44\11\uffff\1\13"+
 		"\1\uffff\1\50\1\46\2\uffff\1\10\1\11\1\47\1\12\2\uffff\1\35\1\1\1\2";
-	static final String DFA23_specialS =
+	static final String DFA26_specialS =
 		"\26\uffff\1\0\u00f8\uffff}>";
-	static final String[] DFA23_transitionS = {
+	static final String[] DFA26_transitionS = {
 			"\2\47\2\uffff\1\47\22\uffff\1\47\1\15\1\44\4\uffff\1\26\1\33\1\34\1\43"+
 			"\1\41\1\31\1\42\1\27\1\40\12\45\1\30\1\32\1\36\1\35\1\37\2\uffff\1\12"+
 			"\1\16\1\23\1\7\1\10\1\20\1\4\1\46\1\21\2\46\1\22\1\5\1\14\1\13\1\1\1"+
@@ -3098,34 +3177,34 @@ public class TSLexer extends Lexer {
 			""
 	};
 
-	static final short[] DFA23_eot = DFA.unpackEncodedString(DFA23_eotS);
-	static final short[] DFA23_eof = DFA.unpackEncodedString(DFA23_eofS);
-	static final char[] DFA23_min = DFA.unpackEncodedStringToUnsignedChars(DFA23_minS);
-	static final char[] DFA23_max = DFA.unpackEncodedStringToUnsignedChars(DFA23_maxS);
-	static final short[] DFA23_accept = DFA.unpackEncodedString(DFA23_acceptS);
-	static final short[] DFA23_special = DFA.unpackEncodedString(DFA23_specialS);
-	static final short[][] DFA23_transition;
+	static final short[] DFA26_eot = DFA.unpackEncodedString(DFA26_eotS);
+	static final short[] DFA26_eof = DFA.unpackEncodedString(DFA26_eofS);
+	static final char[] DFA26_min = DFA.unpackEncodedStringToUnsignedChars(DFA26_minS);
+	static final char[] DFA26_max = DFA.unpackEncodedStringToUnsignedChars(DFA26_maxS);
+	static final short[] DFA26_accept = DFA.unpackEncodedString(DFA26_acceptS);
+	static final short[] DFA26_special = DFA.unpackEncodedString(DFA26_specialS);
+	static final short[][] DFA26_transition;
 
 	static {
-		int numStates = DFA23_transitionS.length;
-		DFA23_transition = new short[numStates][];
+		int numStates = DFA26_transitionS.length;
+		DFA26_transition = new short[numStates][];
 		for (int i=0; i<numStates; i++) {
-			DFA23_transition[i] = DFA.unpackEncodedString(DFA23_transitionS[i]);
+			DFA26_transition[i] = DFA.unpackEncodedString(DFA26_transitionS[i]);
 		}
 	}
 
-	protected class DFA23 extends DFA {
+	protected class DFA26 extends DFA {
 
-		public DFA23(BaseRecognizer recognizer) {
+		public DFA26(BaseRecognizer recognizer) {
 			this.recognizer = recognizer;
-			this.decisionNumber = 23;
-			this.eot = DFA23_eot;
-			this.eof = DFA23_eof;
-			this.min = DFA23_min;
-			this.max = DFA23_max;
-			this.accept = DFA23_accept;
-			this.special = DFA23_special;
-			this.transition = DFA23_transition;
+			this.decisionNumber = 26;
+			this.eot = DFA26_eot;
+			this.eof = DFA26_eof;
+			this.min = DFA26_min;
+			this.max = DFA26_max;
+			this.accept = DFA26_accept;
+			this.special = DFA26_special;
+			this.transition = DFA26_transition;
 		}
 		@Override
 		public String getDescription() {
@@ -3137,15 +3216,15 @@ public class TSLexer extends Lexer {
 			int _s = s;
 			switch ( s ) {
 					case 0 : 
-						int LA23_22 = input.LA(1);
+						int LA26_22 = input.LA(1);
 						s = -1;
-						if ( ((LA23_22 >= '\u0000' && LA23_22 <= '\uFFFF')) ) {s = 36;}
+						if ( ((LA26_22 >= '\u0000' && LA26_22 <= '\uFFFF')) ) {s = 36;}
 						else s = 77;
 						if ( s>=0 ) return s;
 						break;
 			}
 			NoViableAltException nvae =
-				new NoViableAltException(getDescription(), 23, _s, input);
+				new NoViableAltException(getDescription(), 26, _s, input);
 			error(nvae);
 			throw nvae;
 		}
