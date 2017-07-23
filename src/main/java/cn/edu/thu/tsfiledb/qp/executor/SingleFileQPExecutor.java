@@ -7,9 +7,11 @@ import cn.edu.thu.tsfile.timeseries.filter.definition.FilterExpression;
 import cn.edu.thu.tsfile.timeseries.read.qp.Path;
 import cn.edu.thu.tsfile.timeseries.read.query.QueryDataSet;
 import cn.edu.thu.tsfile.timeseries.read.query.QueryEngine;
+import cn.edu.thu.tsfiledb.exception.PathErrorException;
 import cn.edu.thu.tsfiledb.qp.physical.PhysicalPlan;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 public class SingleFileQPExecutor extends QueryProcessExecutor {
@@ -69,5 +71,12 @@ public class SingleFileQPExecutor extends QueryProcessExecutor {
 	public int multiInsert(String deltaObject, long insertTime, List<String> measurementList, List<String> insertValues)
 			throws ProcessorException {
 		return 0;
+	}
+
+	@Override
+	public List<String> getAllPaths(String originPath) throws PathErrorException {
+		List<String> allPaths = new ArrayList<>();
+		allPaths.add(originPath);
+		return allPaths;
 	}
 }
