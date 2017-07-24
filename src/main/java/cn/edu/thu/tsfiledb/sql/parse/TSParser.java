@@ -1,4 +1,4 @@
-// $ANTLR 3.5.2 TSParser.g 2017-07-24 21:01:29
+// $ANTLR 3.5.2 TSParser.g 2017-07-24 21:18:45
 
 package cn.edu.thu.tsfiledb.sql.parse;
 
@@ -6386,7 +6386,7 @@ public class TSParser extends Parser {
 
 
 	// $ANTLR start "createIndexStatement"
-	// TSParser.g:566:1: createIndexStatement : KW_CREATE KW_INDEX KW_ON p= path KW_USING func= Identifier ( indexWithClause )? ( whereClause )? -> ^( TOK_CREATE ^( TOK_INDEX $p ^( TOK_FUNC $func ( indexWithClause )? ( whereClause )? ) ) ) ;
+	// TSParser.g:566:1: createIndexStatement : KW_CREATE KW_INDEX KW_ON p= timeseries KW_USING func= Identifier ( indexWithClause )? ( whereClause )? -> ^( TOK_CREATE ^( TOK_INDEX $p ^( TOK_FUNC $func ( indexWithClause )? ( whereClause )? ) ) ) ;
 	public final TSParser.createIndexStatement_return createIndexStatement() throws RecognitionException {
 		TSParser.createIndexStatement_return retval = new TSParser.createIndexStatement_return();
 		retval.start = input.LT(1);
@@ -6412,13 +6412,13 @@ public class TSParser extends Parser {
 		RewriteRuleTokenStream stream_KW_INDEX=new RewriteRuleTokenStream(adaptor,"token KW_INDEX");
 		RewriteRuleTokenStream stream_KW_USING=new RewriteRuleTokenStream(adaptor,"token KW_USING");
 		RewriteRuleTokenStream stream_KW_ON=new RewriteRuleTokenStream(adaptor,"token KW_ON");
-		RewriteRuleSubtreeStream stream_path=new RewriteRuleSubtreeStream(adaptor,"rule path");
 		RewriteRuleSubtreeStream stream_whereClause=new RewriteRuleSubtreeStream(adaptor,"rule whereClause");
+		RewriteRuleSubtreeStream stream_timeseries=new RewriteRuleSubtreeStream(adaptor,"rule timeseries");
 		RewriteRuleSubtreeStream stream_indexWithClause=new RewriteRuleSubtreeStream(adaptor,"rule indexWithClause");
 
 		try {
-			// TSParser.g:567:5: ( KW_CREATE KW_INDEX KW_ON p= path KW_USING func= Identifier ( indexWithClause )? ( whereClause )? -> ^( TOK_CREATE ^( TOK_INDEX $p ^( TOK_FUNC $func ( indexWithClause )? ( whereClause )? ) ) ) )
-			// TSParser.g:567:7: KW_CREATE KW_INDEX KW_ON p= path KW_USING func= Identifier ( indexWithClause )? ( whereClause )?
+			// TSParser.g:567:5: ( KW_CREATE KW_INDEX KW_ON p= timeseries KW_USING func= Identifier ( indexWithClause )? ( whereClause )? -> ^( TOK_CREATE ^( TOK_INDEX $p ^( TOK_FUNC $func ( indexWithClause )? ( whereClause )? ) ) ) )
+			// TSParser.g:567:7: KW_CREATE KW_INDEX KW_ON p= timeseries KW_USING func= Identifier ( indexWithClause )? ( whereClause )?
 			{
 			KW_CREATE180=(Token)match(input,KW_CREATE,FOLLOW_KW_CREATE_in_createIndexStatement2300); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_KW_CREATE.add(KW_CREATE180);
@@ -6429,18 +6429,18 @@ public class TSParser extends Parser {
 			KW_ON182=(Token)match(input,KW_ON,FOLLOW_KW_ON_in_createIndexStatement2304); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_KW_ON.add(KW_ON182);
 
-			pushFollow(FOLLOW_path_in_createIndexStatement2308);
-			p=path();
+			pushFollow(FOLLOW_timeseries_in_createIndexStatement2308);
+			p=timeseries();
 			state._fsp--;
 			if (state.failed) return retval;
-			if ( state.backtracking==0 ) stream_path.add(p.getTree());
+			if ( state.backtracking==0 ) stream_timeseries.add(p.getTree());
 			KW_USING183=(Token)match(input,KW_USING,FOLLOW_KW_USING_in_createIndexStatement2310); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_KW_USING.add(KW_USING183);
 
 			func=(Token)match(input,Identifier,FOLLOW_Identifier_in_createIndexStatement2314); if (state.failed) return retval; 
 			if ( state.backtracking==0 ) stream_Identifier.add(func);
 
-			// TSParser.g:567:64: ( indexWithClause )?
+			// TSParser.g:567:70: ( indexWithClause )?
 			int alt25=2;
 			int LA25_0 = input.LA(1);
 			if ( (LA25_0==KW_WITH) ) {
@@ -6448,7 +6448,7 @@ public class TSParser extends Parser {
 			}
 			switch (alt25) {
 				case 1 :
-					// TSParser.g:567:64: indexWithClause
+					// TSParser.g:567:70: indexWithClause
 					{
 					pushFollow(FOLLOW_indexWithClause_in_createIndexStatement2316);
 					indexWithClause184=indexWithClause();
@@ -6460,7 +6460,7 @@ public class TSParser extends Parser {
 
 			}
 
-			// TSParser.g:567:81: ( whereClause )?
+			// TSParser.g:567:87: ( whereClause )?
 			int alt26=2;
 			int LA26_0 = input.LA(1);
 			if ( (LA26_0==KW_WHERE) ) {
@@ -6468,7 +6468,7 @@ public class TSParser extends Parser {
 			}
 			switch (alt26) {
 				case 1 :
-					// TSParser.g:567:81: whereClause
+					// TSParser.g:567:87: whereClause
 					{
 					pushFollow(FOLLOW_whereClause_in_createIndexStatement2319);
 					whereClause185=whereClause();
@@ -8924,8 +8924,8 @@ public class TSParser extends Parser {
 	public static final BitSet FOLLOW_dropIndexStatement_in_indexStatement2283 = new BitSet(new long[]{0x0000000000000002L});
 	public static final BitSet FOLLOW_KW_CREATE_in_createIndexStatement2300 = new BitSet(new long[]{0x0000000040000000L});
 	public static final BitSet FOLLOW_KW_INDEX_in_createIndexStatement2302 = new BitSet(new long[]{0x0000010000000000L});
-	public static final BitSet FOLLOW_KW_ON_in_createIndexStatement2304 = new BitSet(new long[]{0x0000000000030000L,0x0000000000000400L});
-	public static final BitSet FOLLOW_path_in_createIndexStatement2308 = new BitSet(new long[]{0x0800000000000000L});
+	public static final BitSet FOLLOW_KW_ON_in_createIndexStatement2304 = new BitSet(new long[]{0x0000000000010000L});
+	public static final BitSet FOLLOW_timeseries_in_createIndexStatement2308 = new BitSet(new long[]{0x0800000000000000L});
 	public static final BitSet FOLLOW_KW_USING_in_createIndexStatement2310 = new BitSet(new long[]{0x0000000000010000L});
 	public static final BitSet FOLLOW_Identifier_in_createIndexStatement2314 = new BitSet(new long[]{0xC000000000000002L});
 	public static final BitSet FOLLOW_indexWithClause_in_createIndexStatement2316 = new BitSet(new long[]{0x4000000000000002L});

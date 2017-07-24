@@ -564,7 +564,7 @@ indexStatement
     ;
 
 createIndexStatement
-    : KW_CREATE KW_INDEX KW_ON p=path KW_USING func=Identifier indexWithClause? whereClause?
+    : KW_CREATE KW_INDEX KW_ON p=timeseries KW_USING func=Identifier indexWithClause? whereClause?
     -> ^(TOK_CREATE ^(TOK_INDEX $p ^(TOK_FUNC $func indexWithClause? whereClause?)))
     ;
 

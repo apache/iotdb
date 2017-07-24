@@ -782,7 +782,7 @@ public class SQLParserTest {
     @Test
     public void createIndex1() throws ParseException, RecognitionException {
     	ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_CREATE", "TOK_INDEX", 
-    			"TOK_PATH", "root", "a", "b", "c",
+    			"TOK_ROOT", "a", "b", "c",
     			"TOK_FUNC", "kv-match",
     			"TOK_WITH", "TOK_INDEX_KV", "window_length", "50",
     			"TOK_WHERE", ">", "TOK_PATH", "time", "123"));
@@ -801,7 +801,7 @@ public class SQLParserTest {
     @Test
     public void createIndex2() throws ParseException, RecognitionException {
     	ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_CREATE", "TOK_INDEX", 
-    			"TOK_PATH", "root", "a", "b", "c",
+    			"TOK_ROOT", "a", "b", "c",
     			"TOK_FUNC", "kv-match2",
     			"TOK_WITH", "TOK_INDEX_KV", "xxx", "50", "TOK_INDEX_KV", "xxx", "123",
     			"TOK_WHERE", ">", "TOK_PATH", "time" ,"TOK_DATETIME", "now"));
