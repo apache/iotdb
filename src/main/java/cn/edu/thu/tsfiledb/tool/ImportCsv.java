@@ -148,7 +148,7 @@ public class ImportCsv {
                 connection.close();
                 System.exit(1);
             }
-
+            long startTime = System.currentTimeMillis();
             timeseriesToType = new HashMap<>();
             DatabaseMetaData databaseMetaData = connection.getMetaData();
 
@@ -190,8 +190,7 @@ public class ImportCsv {
                             count = 0;
                         }
                     } catch (SQLException e) {
-//						LOGGER.error("{} :excuted fail!");
-                        bw.write(str);
+                        bw.write(e.getMessage());
                         bw.newLine();
                     }
                 }
@@ -199,7 +198,7 @@ public class ImportCsv {
             try {
                 statement.executeBatch();
                 statement.clearBatch();
-//                System.out.println(String.format("load data from %s succe", args));
+                System.out.println(String.format("load data from %s successfully, it cost %dms", file.getName(), (System.currentTimeMillis()-startTime)));
             } catch (SQLException e) {
                 bw.write(e.getMessage());
                 bw.newLine();
@@ -212,7 +211,7 @@ public class ImportCsv {
         } catch (ClassNotFoundException e2) {
             System.out.println("Cannot find cn.edu.thu.tsfiledb.jdbc.TsfileDriver");
         } catch (SQLException e) {
-            System.out.println("database connection exception!" + e.getMessage());
+            System.out.println("Database connection exception!" + e.getMessage());
         } finally {
             try {
                 bw.close();
@@ -266,7 +265,6 @@ public class ImportCsv {
 
             String timestampsStr = setTimestamp(timeFormat, data[0]);
             if (timestampsStr.equals("")) {
-//				LOGGER.error("Time Format Error! {}", line);
                 bwToErrorFile.write(line);
                 bwToErrorFile.newLine();
                 continue;
