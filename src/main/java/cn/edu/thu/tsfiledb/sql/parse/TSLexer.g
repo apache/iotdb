@@ -47,6 +47,7 @@ KW_TO: 'TO';
 
 KW_TIMESTAMP: 'TIMESTAMP';
 KW_USER: 'USER';
+KW_INDEX: 'INDEX';
 KW_INTO: 'INTO';
 KW_WITH: 'WITH';
 KW_SET: 'SET';
@@ -61,7 +62,7 @@ KW_ADD: 'ADD';
 KW_LABEL: 'LABEL' ;
 KW_LINK: 'LINK' ;
 KW_UNLINK: 'UNLINK';
-
+KW_USING: 'USING';
 
 QUOTE : '\'' ;
 
@@ -128,7 +129,7 @@ Float
 
 Identifier
     :
-    (Letter | Digit | '_') (Letter | Digit | '_')*
+    (Letter | Digit | '_' | MINUS) (Letter | Digit | '_'  | MINUS)*
     ;
 
 WS
