@@ -564,8 +564,8 @@ indexStatement
     ;
 
 createIndexStatement
-    : KW_CREATE KW_INDEX KW_ON p=path KW_USING func=Identifier indexWithClause? indexWhereClause?
-    -> ^(TOK_CREATE ^(TOK_INDEX $p ^(TOK_FUNC $func indexWithClause? indexWhereClause?)))
+    : KW_CREATE KW_INDEX KW_ON p=path KW_USING func=Identifier indexWithClause? whereClause?
+    -> ^(TOK_CREATE ^(TOK_INDEX $p ^(TOK_FUNC $func indexWithClause? whereClause?)))
     ;
 
 
@@ -579,10 +579,10 @@ indexWithEqualExpression
     -> ^(TOK_INDEX_KV $k $v)
     ;
 
-indexWhereClause
-    : KW_WHERE name=Identifier GREATERTHAN value=dateFormatWithNumber
-    -> ^(TOK_WHERE $name $value)
-    ;
+//indexWhereClause
+//    : KW_WHERE name=Identifier GREATERTHAN value=dateFormatWithNumber
+//    -> ^(TOK_WHERE $name $value)
+//    ;
 
 
 dropIndexStatement
