@@ -43,6 +43,7 @@ TOK_DATETIME;
 TOK_DELETE;
 TOK_INDEX_KV;
 TOK_FUNC;
+TOK_SELECT_INDEX;
 
 /*
   BELOW IS THE METADATA TOKEN
@@ -560,6 +561,7 @@ Index Statment
 indexStatement
     : createIndexStatement
 //    | selectIndexStatement
+    | dropIndexStatement
     ;
 
 createIndexStatement
@@ -583,8 +585,15 @@ indexWhereClause
     -> ^(TOK_WHERE $name $value)
     ;
 
-//selectIndexStatement
-//    :
+selectIndexStatement
+    : KW_SELECT func=Identifier LPAREN p=path COMMA file=Identifier COMMA epsilon=Float (COMMA alpha=Float COMMA beta=Float)? RPAREN
+    -> ^(TOK_SELECT_INDEX $func $p $file $epsilon $alpha $beta)
+    ;
+
+dropIndexStatement
+    : KW_DROP KW_INDEX KW_ON p=path
+    -> ^(TOK_DROP ^(TOK_INDEX $p))
+    ;
 
 /*
 ****
@@ -608,7 +617,9 @@ identifier
 //    ;
 
 selectClause
-    : KW_SELECT clusteredPath (COMMA clusteredPath)*
+    : KW_SELECT KW_INDEX func=Identifier LPAREN p=path COMMA file=StringLiteral COMMA epsilon=Float (COMMA alpha=Float COMMA beta=Float)? RPAREN
+    -> ^(TOK_SELECT_INDEX $func $p $file $epsilon ($alpha $beta)?)
+    | KW_SELECT clusteredPath (COMMA clusteredPath)*
     -> ^(TOK_SELECT clusteredPath+)
     ;
 

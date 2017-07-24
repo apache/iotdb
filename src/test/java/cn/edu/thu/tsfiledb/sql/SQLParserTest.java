@@ -817,6 +817,56 @@ public class SQLParserTest {
         }
     }
     
+    @Test
+    public void selectIndex1() throws ParseException, RecognitionException {
+    	ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_QUERY", 
+    			"TOK_SELECT_INDEX", "subsequence_matching", 
+    			"TOK_PATH","root", "a", "b", "c", "'query.csv'", "123.1"));
+        ArrayList<String> rec = new ArrayList<>();
+        ASTNode astTree = ParseGenerator.generateAST("select index subsequence_matching(root.a.b.c, 'query.csv' , 123.1)");
+        astTree = ParseUtils.findRootNonNullToken(astTree);
+        recursivePrintSon(astTree, rec);
+
+        int i = 0;
+        while (i <= rec.size() - 1) {
+            assertEquals(rec.get(i), ans.get(i));
+            i++;
+        }
+    }    
+    
+    @Test
+    public void selectIndex2() throws ParseException, RecognitionException {
+    	ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_QUERY", 
+    			"TOK_SELECT_INDEX", "subsequence_matching", 
+    			"TOK_PATH","root", "a", "b", "c", "'query.csv'", "123.1", "0.123", "0.5"));
+        ArrayList<String> rec = new ArrayList<>();
+        ASTNode astTree = ParseGenerator.generateAST("select index subsequence_matching(root.a.b.c, 'query.csv' , 123.1, 0.123, 0.5)");
+        astTree = ParseUtils.findRootNonNullToken(astTree);
+        recursivePrintSon(astTree, rec);
+
+        int i = 0;
+        while (i <= rec.size() - 1) {
+            assertEquals(rec.get(i), ans.get(i));
+            i++;
+        }
+    }    
+    
+    @Test
+    public void dropIndex() throws ParseException, RecognitionException {
+    	ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_DROP", "TOK_INDEX", 
+    			"TOK_PATH", "root", "a", "b", "c"));
+        ArrayList<String> rec = new ArrayList<>();
+        ASTNode astTree = ParseGenerator.generateAST("drop index on root.a.b.c");
+        astTree = ParseUtils.findRootNonNullToken(astTree);
+        recursivePrintSon(astTree, rec);
+
+        int i = 0;
+        while (i <= rec.size() - 1) {
+            assertEquals(rec.get(i), ans.get(i));
+            i++;
+        }
+    } 
+    
     public void recursivePrintSon(Node ns, ArrayList<String> rec) {
         rec.add(ns.toString());
         if (ns.getChildren() != null) {
