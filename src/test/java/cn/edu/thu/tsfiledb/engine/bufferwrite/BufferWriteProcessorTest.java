@@ -128,7 +128,9 @@ public class BufferWriteProcessorTest {
 		}
 		//query
 		Pair<List<Object>, List<RowGroupMetaData>> pair = processor.getIndexAndRowGroupList(nsp, "s0");
-		assertEquals(2, pair.right.size());
+		int size = pair.right.size();
+		pair = processor.getIndexAndRowGroupList(nps2, "s0");
+		assertEquals(size, pair.right.size());
 		processor.close();
 	}
 
