@@ -220,6 +220,7 @@ public class ExportCsv {
         Statement statement = connection.createStatement();
         ResultSet rs = statement.executeQuery(sql);
         ResultSetMetaData metadata = rs.getMetaData();
+        long startTime = System.currentTimeMillis();
         try {
             int count = metadata.getColumnCount();
             // write data in csv file
@@ -267,7 +268,7 @@ public class ExportCsv {
                     }
                 }
             }
-            System.out.println(String.format("Statement %s dump to file %s successfully!",sql, path));
+            System.out.println(String.format("Statement %s dump to file %s successfully! It costs %dms",sql, path, (System.currentTimeMillis() - startTime)));
         } catch (IOException e) {
             System.out.println(e.getMessage());
         } finally {
