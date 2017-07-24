@@ -1,5 +1,6 @@
 package cn.edu.thu.tsfiledb.qp.physical.crud;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -22,11 +23,11 @@ public class IndexPlan extends PhysicalPlan {
 
 	@Override
 	public List<Path> getPaths() {
-		return null;
-	}
-
-	public Path getPath() {
-		return path;
+		List<Path> list = new ArrayList<>();
+		if(path!=null){
+			list.add(path);
+		}
+		return list;
 	}
 
 	public Map<String, Integer> getParameters() {
