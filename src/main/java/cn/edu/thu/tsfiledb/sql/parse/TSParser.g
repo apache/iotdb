@@ -17,6 +17,7 @@ TOK_MERGE;
 TOK_QUIT;
 TOK_PRIVILEGES;
 TOK_USER;
+TOK_INDEX;
 TOK_ROLE;
 TOK_CREATE;
 TOK_DROP;
@@ -40,7 +41,9 @@ TOK_ISNULL;
 TOK_ISNOTNULL;
 TOK_DATETIME;
 TOK_DELETE;
-
+TOK_INDEX_KV;
+TOK_FUNC;
+TOK_SELECT_INDEX;
 
 /*
   BELOW IS THE METADATA TOKEN
@@ -116,6 +119,8 @@ ArrayList<ParseError> errors = new ArrayList<ParseError>();
         xlateMap.put("KW_DESCRIBE", "DESCRIBE");
 
         xlateMap.put("KW_TO", "TO");
+        xlateMap.put("KW_ON", "ON");
+        xlateMap.put("KW_USING", "USING");
 
         xlateMap.put("KW_DATETIME", "DATETIME");
         xlateMap.put("KW_TIMESTAMP", "TIMESTAMP");
@@ -277,6 +282,7 @@ execStatement
     | metadataStatement
     | mergeStatement
 //    | loadStatement
+    | indexStatement
     | quitStatement
     ;
 
@@ -542,6 +548,48 @@ updateStatement
    -> ^(TOK_UPDATE ^(TOK_UPDATE_PSWD $userName $psw))
    ;
 
+
+
+/*
+****
+*************
+Index Statment
+*************
+****
+*/
+
+indexStatement
+    : createIndexStatement
+    | dropIndexStatement
+    ;
+
+createIndexStatement
+    : KW_CREATE KW_INDEX KW_ON p=timeseries KW_USING func=Identifier indexWithClause? whereClause?
+    -> ^(TOK_CREATE ^(TOK_INDEX $p ^(TOK_FUNC $func indexWithClause? whereClause?)))
+    ;
+
+
+indexWithClause
+    : KW_WITH indexWithEqualExpression (COMMA indexWithEqualExpression)?
+    -> ^(TOK_WITH indexWithEqualExpression+)
+    ;
+
+indexWithEqualExpression
+    : k=Identifier EQUAL v=Integer
+    -> ^(TOK_INDEX_KV $k $v)
+    ;
+
+//indexWhereClause
+//    : KW_WHERE name=Identifier GREATERTHAN value=dateFormatWithNumber
+//    -> ^(TOK_WHERE $name $value)
+//    ;
+
+
+dropIndexStatement
+    : KW_DROP KW_INDEX KW_ON p=path
+    -> ^(TOK_DROP ^(TOK_INDEX $p))
+    ;
+
 /*
 ****
 *************
@@ -564,7 +612,9 @@ identifier
 //    ;
 
 selectClause
-    : KW_SELECT clusteredPath (COMMA clusteredPath)*
+    : KW_SELECT KW_INDEX func=Identifier LPAREN p=path COMMA file=StringLiteral COMMA epsilon=Float (COMMA alpha=Float COMMA beta=Float)? RPAREN
+    -> ^(TOK_SELECT_INDEX $func $p $file $epsilon ($alpha $beta)?)
+    | KW_SELECT clusteredPath (COMMA clusteredPath)*
     -> ^(TOK_SELECT clusteredPath+)
     ;
 
