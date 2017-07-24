@@ -17,6 +17,7 @@ TOK_MERGE;
 TOK_QUIT;
 TOK_PRIVILEGES;
 TOK_USER;
+TOK_INDEX;
 TOK_ROLE;
 TOK_CREATE;
 TOK_DROP;
@@ -40,7 +41,8 @@ TOK_ISNULL;
 TOK_ISNOTNULL;
 TOK_DATETIME;
 TOK_DELETE;
-
+TOK_INDEX_KV;
+TOK_FUNC;
 
 /*
   BELOW IS THE METADATA TOKEN
@@ -116,6 +118,8 @@ ArrayList<ParseError> errors = new ArrayList<ParseError>();
         xlateMap.put("KW_DESCRIBE", "DESCRIBE");
 
         xlateMap.put("KW_TO", "TO");
+        xlateMap.put("KW_ON", "ON");
+        xlateMap.put("KW_USING", "USING");
 
         xlateMap.put("KW_DATETIME", "DATETIME");
         xlateMap.put("KW_TIMESTAMP", "TIMESTAMP");
@@ -277,6 +281,7 @@ execStatement
     | metadataStatement
     | mergeStatement
 //    | loadStatement
+    | indexStatement
     | quitStatement
     ;
 
@@ -541,6 +546,45 @@ updateStatement
    | KW_UPDATE KW_USER userName=Identifier KW_SET KW_PASSWORD psw=numberOrString
    -> ^(TOK_UPDATE ^(TOK_UPDATE_PSWD $userName $psw))
    ;
+
+
+
+/*
+****
+*************
+Index Statment
+*************
+****
+*/
+
+indexStatement
+    : createIndexStatement
+//    | selectIndexStatement
+    ;
+
+createIndexStatement
+    : KW_CREATE KW_INDEX KW_ON p=path KW_USING func=Identifier indexWithClause? indexWhereClause?
+    -> ^(TOK_CREATE ^(TOK_INDEX $p ^(TOK_FUNC $func indexWithClause? indexWhereClause?)))
+    ;
+
+
+indexWithClause
+    : KW_WITH indexWithEqualExpression (COMMA indexWithEqualExpression)?
+    -> ^(TOK_WITH indexWithEqualExpression+)
+    ;
+
+indexWithEqualExpression
+    : k=Identifier EQUAL v=Integer
+    -> ^(TOK_INDEX_KV $k $v)
+    ;
+
+indexWhereClause
+    : KW_WHERE name=Identifier GREATERTHAN value=dateFormatWithNumber
+    -> ^(TOK_WHERE $name $value)
+    ;
+
+//selectIndexStatement
+//    :
 
 /*
 ****

@@ -1,4 +1,4 @@
-// $ANTLR 3.5.2 TSLexer.g 2017-07-23 22:47:20
+// $ANTLR 3.5.2 TSLexer.g 2017-07-24 11:14:17
 
 package cn.edu.thu.tsfiledb.sql.parse;
 
@@ -38,51 +38,53 @@ public class TSLexer extends Lexer {
 	public static final int KW_FROM=27;
 	public static final int KW_GRANT=28;
 	public static final int KW_GROUP=29;
-	public static final int KW_INSERT=30;
-	public static final int KW_INTO=31;
-	public static final int KW_LABEL=32;
-	public static final int KW_LINK=33;
-	public static final int KW_LOAD=34;
-	public static final int KW_MERGE=35;
-	public static final int KW_METADATA=36;
-	public static final int KW_NOT=37;
-	public static final int KW_NULL=38;
-	public static final int KW_ON=39;
-	public static final int KW_OR=40;
-	public static final int KW_ORDER=41;
-	public static final int KW_PASSWORD=42;
-	public static final int KW_PRIVILEGES=43;
-	public static final int KW_PROPERTY=44;
-	public static final int KW_QUIT=45;
-	public static final int KW_REVOKE=46;
-	public static final int KW_ROLE=47;
-	public static final int KW_SELECT=48;
-	public static final int KW_SET=49;
-	public static final int KW_SHOW=50;
-	public static final int KW_STORAGE=51;
-	public static final int KW_TIMESERIES=52;
-	public static final int KW_TIMESTAMP=53;
-	public static final int KW_TO=54;
-	public static final int KW_UNLINK=55;
-	public static final int KW_UPDATE=56;
-	public static final int KW_USER=57;
-	public static final int KW_VALUE=58;
-	public static final int KW_VALUES=59;
-	public static final int KW_WHERE=60;
-	public static final int KW_WITH=61;
-	public static final int LESSTHAN=62;
-	public static final int LESSTHANOREQUALTO=63;
-	public static final int LPAREN=64;
-	public static final int Letter=65;
-	public static final int MINUS=66;
-	public static final int NOTEQUAL=67;
-	public static final int PLUS=68;
-	public static final int QUOTE=69;
-	public static final int RPAREN=70;
-	public static final int SEMICOLON=71;
-	public static final int STAR=72;
-	public static final int StringLiteral=73;
-	public static final int WS=74;
+	public static final int KW_INDEX=30;
+	public static final int KW_INSERT=31;
+	public static final int KW_INTO=32;
+	public static final int KW_LABEL=33;
+	public static final int KW_LINK=34;
+	public static final int KW_LOAD=35;
+	public static final int KW_MERGE=36;
+	public static final int KW_METADATA=37;
+	public static final int KW_NOT=38;
+	public static final int KW_NULL=39;
+	public static final int KW_ON=40;
+	public static final int KW_OR=41;
+	public static final int KW_ORDER=42;
+	public static final int KW_PASSWORD=43;
+	public static final int KW_PRIVILEGES=44;
+	public static final int KW_PROPERTY=45;
+	public static final int KW_QUIT=46;
+	public static final int KW_REVOKE=47;
+	public static final int KW_ROLE=48;
+	public static final int KW_SELECT=49;
+	public static final int KW_SET=50;
+	public static final int KW_SHOW=51;
+	public static final int KW_STORAGE=52;
+	public static final int KW_TIMESERIES=53;
+	public static final int KW_TIMESTAMP=54;
+	public static final int KW_TO=55;
+	public static final int KW_UNLINK=56;
+	public static final int KW_UPDATE=57;
+	public static final int KW_USER=58;
+	public static final int KW_USING=59;
+	public static final int KW_VALUE=60;
+	public static final int KW_VALUES=61;
+	public static final int KW_WHERE=62;
+	public static final int KW_WITH=63;
+	public static final int LESSTHAN=64;
+	public static final int LESSTHANOREQUALTO=65;
+	public static final int LPAREN=66;
+	public static final int Letter=67;
+	public static final int MINUS=68;
+	public static final int NOTEQUAL=69;
+	public static final int PLUS=70;
+	public static final int QUOTE=71;
+	public static final int RPAREN=72;
+	public static final int SEMICOLON=73;
+	public static final int STAR=74;
+	public static final int StringLiteral=75;
+	public static final int WS=76;
 
 	// delegates
 	// delegators
@@ -754,13 +756,34 @@ public class TSLexer extends Lexer {
 	}
 	// $ANTLR end "KW_USER"
 
+	// $ANTLR start "KW_INDEX"
+	public final void mKW_INDEX() throws RecognitionException {
+		try {
+			int _type = KW_INDEX;
+			int _channel = DEFAULT_TOKEN_CHANNEL;
+			// TSLexer.g:50:9: ( 'INDEX' )
+			// TSLexer.g:50:11: 'INDEX'
+			{
+			match("INDEX"); 
+
+			}
+
+			state.type = _type;
+			state.channel = _channel;
+		}
+		finally {
+			// do for sure before leaving
+		}
+	}
+	// $ANTLR end "KW_INDEX"
+
 	// $ANTLR start "KW_INTO"
 	public final void mKW_INTO() throws RecognitionException {
 		try {
 			int _type = KW_INTO;
 			int _channel = DEFAULT_TOKEN_CHANNEL;
-			// TSLexer.g:50:8: ( 'INTO' )
-			// TSLexer.g:50:10: 'INTO'
+			// TSLexer.g:51:8: ( 'INTO' )
+			// TSLexer.g:51:10: 'INTO'
 			{
 			match("INTO"); 
 
@@ -780,8 +803,8 @@ public class TSLexer extends Lexer {
 		try {
 			int _type = KW_WITH;
 			int _channel = DEFAULT_TOKEN_CHANNEL;
-			// TSLexer.g:51:8: ( 'WITH' )
-			// TSLexer.g:51:10: 'WITH'
+			// TSLexer.g:52:8: ( 'WITH' )
+			// TSLexer.g:52:10: 'WITH'
 			{
 			match("WITH"); 
 
@@ -801,8 +824,8 @@ public class TSLexer extends Lexer {
 		try {
 			int _type = KW_SET;
 			int _channel = DEFAULT_TOKEN_CHANNEL;
-			// TSLexer.g:52:7: ( 'SET' )
-			// TSLexer.g:52:9: 'SET'
+			// TSLexer.g:53:7: ( 'SET' )
+			// TSLexer.g:53:9: 'SET'
 			{
 			match("SET"); 
 
@@ -822,8 +845,8 @@ public class TSLexer extends Lexer {
 		try {
 			int _type = KW_DELETE;
 			int _channel = DEFAULT_TOKEN_CHANNEL;
-			// TSLexer.g:53:10: ( 'DELETE' )
-			// TSLexer.g:53:12: 'DELETE'
+			// TSLexer.g:54:10: ( 'DELETE' )
+			// TSLexer.g:54:12: 'DELETE'
 			{
 			match("DELETE"); 
 
@@ -843,8 +866,8 @@ public class TSLexer extends Lexer {
 		try {
 			int _type = KW_UPDATE;
 			int _channel = DEFAULT_TOKEN_CHANNEL;
-			// TSLexer.g:54:10: ( 'UPDATE' )
-			// TSLexer.g:54:12: 'UPDATE'
+			// TSLexer.g:55:10: ( 'UPDATE' )
+			// TSLexer.g:55:12: 'UPDATE'
 			{
 			match("UPDATE"); 
 
@@ -864,8 +887,8 @@ public class TSLexer extends Lexer {
 		try {
 			int _type = KW_VALUES;
 			int _channel = DEFAULT_TOKEN_CHANNEL;
-			// TSLexer.g:55:10: ( 'VALUES' )
-			// TSLexer.g:55:12: 'VALUES'
+			// TSLexer.g:56:10: ( 'VALUES' )
+			// TSLexer.g:56:12: 'VALUES'
 			{
 			match("VALUES"); 
 
@@ -885,8 +908,8 @@ public class TSLexer extends Lexer {
 		try {
 			int _type = KW_VALUE;
 			int _channel = DEFAULT_TOKEN_CHANNEL;
-			// TSLexer.g:56:9: ( 'VALUE' )
-			// TSLexer.g:56:11: 'VALUE'
+			// TSLexer.g:57:9: ( 'VALUE' )
+			// TSLexer.g:57:11: 'VALUE'
 			{
 			match("VALUE"); 
 
@@ -906,8 +929,8 @@ public class TSLexer extends Lexer {
 		try {
 			int _type = KW_PASSWORD;
 			int _channel = DEFAULT_TOKEN_CHANNEL;
-			// TSLexer.g:57:12: ( 'PASSWORD' )
-			// TSLexer.g:57:14: 'PASSWORD'
+			// TSLexer.g:58:12: ( 'PASSWORD' )
+			// TSLexer.g:58:14: 'PASSWORD'
 			{
 			match("PASSWORD"); 
 
@@ -927,8 +950,8 @@ public class TSLexer extends Lexer {
 		try {
 			int _type = KW_DESCRIBE;
 			int _channel = DEFAULT_TOKEN_CHANNEL;
-			// TSLexer.g:58:12: ( 'DESCRIBE' )
-			// TSLexer.g:58:14: 'DESCRIBE'
+			// TSLexer.g:59:12: ( 'DESCRIBE' )
+			// TSLexer.g:59:14: 'DESCRIBE'
 			{
 			match("DESCRIBE"); 
 
@@ -948,8 +971,8 @@ public class TSLexer extends Lexer {
 		try {
 			int _type = KW_PROPERTY;
 			int _channel = DEFAULT_TOKEN_CHANNEL;
-			// TSLexer.g:59:12: ( 'PROPERTY' )
-			// TSLexer.g:59:14: 'PROPERTY'
+			// TSLexer.g:60:12: ( 'PROPERTY' )
+			// TSLexer.g:60:14: 'PROPERTY'
 			{
 			match("PROPERTY"); 
 
@@ -969,8 +992,8 @@ public class TSLexer extends Lexer {
 		try {
 			int _type = KW_ADD;
 			int _channel = DEFAULT_TOKEN_CHANNEL;
-			// TSLexer.g:60:7: ( 'ADD' )
-			// TSLexer.g:60:9: 'ADD'
+			// TSLexer.g:61:7: ( 'ADD' )
+			// TSLexer.g:61:9: 'ADD'
 			{
 			match("ADD"); 
 
@@ -990,8 +1013,8 @@ public class TSLexer extends Lexer {
 		try {
 			int _type = KW_LABEL;
 			int _channel = DEFAULT_TOKEN_CHANNEL;
-			// TSLexer.g:61:9: ( 'LABEL' )
-			// TSLexer.g:61:11: 'LABEL'
+			// TSLexer.g:62:9: ( 'LABEL' )
+			// TSLexer.g:62:11: 'LABEL'
 			{
 			match("LABEL"); 
 
@@ -1011,8 +1034,8 @@ public class TSLexer extends Lexer {
 		try {
 			int _type = KW_LINK;
 			int _channel = DEFAULT_TOKEN_CHANNEL;
-			// TSLexer.g:62:8: ( 'LINK' )
-			// TSLexer.g:62:10: 'LINK'
+			// TSLexer.g:63:8: ( 'LINK' )
+			// TSLexer.g:63:10: 'LINK'
 			{
 			match("LINK"); 
 
@@ -1032,8 +1055,8 @@ public class TSLexer extends Lexer {
 		try {
 			int _type = KW_UNLINK;
 			int _channel = DEFAULT_TOKEN_CHANNEL;
-			// TSLexer.g:63:10: ( 'UNLINK' )
-			// TSLexer.g:63:12: 'UNLINK'
+			// TSLexer.g:64:10: ( 'UNLINK' )
+			// TSLexer.g:64:12: 'UNLINK'
 			{
 			match("UNLINK"); 
 
@@ -1048,13 +1071,34 @@ public class TSLexer extends Lexer {
 	}
 	// $ANTLR end "KW_UNLINK"
 
+	// $ANTLR start "KW_USING"
+	public final void mKW_USING() throws RecognitionException {
+		try {
+			int _type = KW_USING;
+			int _channel = DEFAULT_TOKEN_CHANNEL;
+			// TSLexer.g:65:9: ( 'USING' )
+			// TSLexer.g:65:11: 'USING'
+			{
+			match("USING"); 
+
+			}
+
+			state.type = _type;
+			state.channel = _channel;
+		}
+		finally {
+			// do for sure before leaving
+		}
+	}
+	// $ANTLR end "KW_USING"
+
 	// $ANTLR start "QUOTE"
 	public final void mQUOTE() throws RecognitionException {
 		try {
 			int _type = QUOTE;
 			int _channel = DEFAULT_TOKEN_CHANNEL;
-			// TSLexer.g:66:7: ( '\\'' )
-			// TSLexer.g:66:9: '\\''
+			// TSLexer.g:67:7: ( '\\'' )
+			// TSLexer.g:67:9: '\\''
 			{
 			match('\''); 
 			}
@@ -1073,8 +1117,8 @@ public class TSLexer extends Lexer {
 		try {
 			int _type = DOT;
 			int _channel = DEFAULT_TOKEN_CHANNEL;
-			// TSLexer.g:68:5: ( '.' )
-			// TSLexer.g:68:7: '.'
+			// TSLexer.g:69:5: ( '.' )
+			// TSLexer.g:69:7: '.'
 			{
 			match('.'); 
 			}
@@ -1093,8 +1137,8 @@ public class TSLexer extends Lexer {
 		try {
 			int _type = COLON;
 			int _channel = DEFAULT_TOKEN_CHANNEL;
-			// TSLexer.g:69:7: ( ':' )
-			// TSLexer.g:69:9: ':'
+			// TSLexer.g:70:7: ( ':' )
+			// TSLexer.g:70:9: ':'
 			{
 			match(':'); 
 			}
@@ -1113,8 +1157,8 @@ public class TSLexer extends Lexer {
 		try {
 			int _type = COMMA;
 			int _channel = DEFAULT_TOKEN_CHANNEL;
-			// TSLexer.g:70:7: ( ',' )
-			// TSLexer.g:70:9: ','
+			// TSLexer.g:71:7: ( ',' )
+			// TSLexer.g:71:9: ','
 			{
 			match(','); 
 			}
@@ -1133,8 +1177,8 @@ public class TSLexer extends Lexer {
 		try {
 			int _type = SEMICOLON;
 			int _channel = DEFAULT_TOKEN_CHANNEL;
-			// TSLexer.g:71:11: ( ';' )
-			// TSLexer.g:71:13: ';'
+			// TSLexer.g:72:11: ( ';' )
+			// TSLexer.g:72:13: ';'
 			{
 			match(';'); 
 			}
@@ -1153,8 +1197,8 @@ public class TSLexer extends Lexer {
 		try {
 			int _type = LPAREN;
 			int _channel = DEFAULT_TOKEN_CHANNEL;
-			// TSLexer.g:73:8: ( '(' )
-			// TSLexer.g:73:10: '('
+			// TSLexer.g:74:8: ( '(' )
+			// TSLexer.g:74:10: '('
 			{
 			match('('); 
 			}
@@ -1173,8 +1217,8 @@ public class TSLexer extends Lexer {
 		try {
 			int _type = RPAREN;
 			int _channel = DEFAULT_TOKEN_CHANNEL;
-			// TSLexer.g:74:8: ( ')' )
-			// TSLexer.g:74:10: ')'
+			// TSLexer.g:75:8: ( ')' )
+			// TSLexer.g:75:10: ')'
 			{
 			match(')'); 
 			}
@@ -1193,7 +1237,7 @@ public class TSLexer extends Lexer {
 		try {
 			int _type = EQUAL;
 			int _channel = DEFAULT_TOKEN_CHANNEL;
-			// TSLexer.g:76:7: ( '=' | '==' )
+			// TSLexer.g:77:7: ( '=' | '==' )
 			int alt2=2;
 			int LA2_0 = input.LA(1);
 			if ( (LA2_0=='=') ) {
@@ -1216,13 +1260,13 @@ public class TSLexer extends Lexer {
 
 			switch (alt2) {
 				case 1 :
-					// TSLexer.g:76:9: '='
+					// TSLexer.g:77:9: '='
 					{
 					match('='); 
 					}
 					break;
 				case 2 :
-					// TSLexer.g:76:15: '=='
+					// TSLexer.g:77:15: '=='
 					{
 					match("=="); 
 
@@ -1244,8 +1288,8 @@ public class TSLexer extends Lexer {
 		try {
 			int _type = EQUAL_NS;
 			int _channel = DEFAULT_TOKEN_CHANNEL;
-			// TSLexer.g:77:10: ( '<=>' )
-			// TSLexer.g:77:12: '<=>'
+			// TSLexer.g:78:10: ( '<=>' )
+			// TSLexer.g:78:12: '<=>'
 			{
 			match("<=>"); 
 
@@ -1265,7 +1309,7 @@ public class TSLexer extends Lexer {
 		try {
 			int _type = NOTEQUAL;
 			int _channel = DEFAULT_TOKEN_CHANNEL;
-			// TSLexer.g:78:10: ( '<>' | '!=' )
+			// TSLexer.g:79:10: ( '<>' | '!=' )
 			int alt3=2;
 			int LA3_0 = input.LA(1);
 			if ( (LA3_0=='<') ) {
@@ -1283,14 +1327,14 @@ public class TSLexer extends Lexer {
 
 			switch (alt3) {
 				case 1 :
-					// TSLexer.g:78:12: '<>'
+					// TSLexer.g:79:12: '<>'
 					{
 					match("<>"); 
 
 					}
 					break;
 				case 2 :
-					// TSLexer.g:78:19: '!='
+					// TSLexer.g:79:19: '!='
 					{
 					match("!="); 
 
@@ -1312,8 +1356,8 @@ public class TSLexer extends Lexer {
 		try {
 			int _type = LESSTHANOREQUALTO;
 			int _channel = DEFAULT_TOKEN_CHANNEL;
-			// TSLexer.g:79:19: ( '<=' )
-			// TSLexer.g:79:21: '<='
+			// TSLexer.g:80:19: ( '<=' )
+			// TSLexer.g:80:21: '<='
 			{
 			match("<="); 
 
@@ -1333,8 +1377,8 @@ public class TSLexer extends Lexer {
 		try {
 			int _type = LESSTHAN;
 			int _channel = DEFAULT_TOKEN_CHANNEL;
-			// TSLexer.g:80:10: ( '<' )
-			// TSLexer.g:80:12: '<'
+			// TSLexer.g:81:10: ( '<' )
+			// TSLexer.g:81:12: '<'
 			{
 			match('<'); 
 			}
@@ -1353,8 +1397,8 @@ public class TSLexer extends Lexer {
 		try {
 			int _type = GREATERTHANOREQUALTO;
 			int _channel = DEFAULT_TOKEN_CHANNEL;
-			// TSLexer.g:81:22: ( '>=' )
-			// TSLexer.g:81:24: '>='
+			// TSLexer.g:82:22: ( '>=' )
+			// TSLexer.g:82:24: '>='
 			{
 			match(">="); 
 
@@ -1374,8 +1418,8 @@ public class TSLexer extends Lexer {
 		try {
 			int _type = GREATERTHAN;
 			int _channel = DEFAULT_TOKEN_CHANNEL;
-			// TSLexer.g:82:13: ( '>' )
-			// TSLexer.g:82:15: '>'
+			// TSLexer.g:83:13: ( '>' )
+			// TSLexer.g:83:15: '>'
 			{
 			match('>'); 
 			}
@@ -1394,8 +1438,8 @@ public class TSLexer extends Lexer {
 		try {
 			int _type = DIVIDE;
 			int _channel = DEFAULT_TOKEN_CHANNEL;
-			// TSLexer.g:84:8: ( '/' )
-			// TSLexer.g:84:10: '/'
+			// TSLexer.g:85:8: ( '/' )
+			// TSLexer.g:85:10: '/'
 			{
 			match('/'); 
 			}
@@ -1414,8 +1458,8 @@ public class TSLexer extends Lexer {
 		try {
 			int _type = PLUS;
 			int _channel = DEFAULT_TOKEN_CHANNEL;
-			// TSLexer.g:85:6: ( '+' )
-			// TSLexer.g:85:8: '+'
+			// TSLexer.g:86:6: ( '+' )
+			// TSLexer.g:86:8: '+'
 			{
 			match('+'); 
 			}
@@ -1434,8 +1478,8 @@ public class TSLexer extends Lexer {
 		try {
 			int _type = MINUS;
 			int _channel = DEFAULT_TOKEN_CHANNEL;
-			// TSLexer.g:86:7: ( '-' )
-			// TSLexer.g:86:9: '-'
+			// TSLexer.g:87:7: ( '-' )
+			// TSLexer.g:87:9: '-'
 			{
 			match('-'); 
 			}
@@ -1454,8 +1498,8 @@ public class TSLexer extends Lexer {
 		try {
 			int _type = STAR;
 			int _channel = DEFAULT_TOKEN_CHANNEL;
-			// TSLexer.g:87:6: ( '*' )
-			// TSLexer.g:87:8: '*'
+			// TSLexer.g:88:6: ( '*' )
+			// TSLexer.g:88:8: '*'
 			{
 			match('*'); 
 			}
@@ -1472,7 +1516,7 @@ public class TSLexer extends Lexer {
 	// $ANTLR start "Letter"
 	public final void mLetter() throws RecognitionException {
 		try {
-			// TSLexer.g:92:5: ( 'a' .. 'z' | 'A' .. 'Z' )
+			// TSLexer.g:93:5: ( 'a' .. 'z' | 'A' .. 'Z' )
 			// TSLexer.g:
 			{
 			if ( (input.LA(1) >= 'A' && input.LA(1) <= 'Z')||(input.LA(1) >= 'a' && input.LA(1) <= 'z') ) {
@@ -1495,7 +1539,7 @@ public class TSLexer extends Lexer {
 	// $ANTLR start "HexDigit"
 	public final void mHexDigit() throws RecognitionException {
 		try {
-			// TSLexer.g:97:5: ( 'a' .. 'f' | 'A' .. 'F' )
+			// TSLexer.g:98:5: ( 'a' .. 'f' | 'A' .. 'F' )
 			// TSLexer.g:
 			{
 			if ( (input.LA(1) >= 'A' && input.LA(1) <= 'F')||(input.LA(1) >= 'a' && input.LA(1) <= 'f') ) {
@@ -1518,7 +1562,7 @@ public class TSLexer extends Lexer {
 	// $ANTLR start "Digit"
 	public final void mDigit() throws RecognitionException {
 		try {
-			// TSLexer.g:102:5: ( '0' .. '9' )
+			// TSLexer.g:103:5: ( '0' .. '9' )
 			// TSLexer.g:
 			{
 			if ( (input.LA(1) >= '0' && input.LA(1) <= '9') ) {
@@ -1543,10 +1587,10 @@ public class TSLexer extends Lexer {
 		try {
 			int _type = StringLiteral;
 			int _channel = DEFAULT_TOKEN_CHANNEL;
-			// TSLexer.g:107:5: ( ( '\\'' (~ ( '\\'' ) )* '\\'' | '\\\"' (~ ( '\\\"' ) )* '\\\"' ) )
-			// TSLexer.g:108:5: ( '\\'' (~ ( '\\'' ) )* '\\'' | '\\\"' (~ ( '\\\"' ) )* '\\\"' )
+			// TSLexer.g:108:5: ( ( '\\'' (~ ( '\\'' ) )* '\\'' | '\\\"' (~ ( '\\\"' ) )* '\\\"' ) )
+			// TSLexer.g:109:5: ( '\\'' (~ ( '\\'' ) )* '\\'' | '\\\"' (~ ( '\\\"' ) )* '\\\"' )
 			{
-			// TSLexer.g:108:5: ( '\\'' (~ ( '\\'' ) )* '\\'' | '\\\"' (~ ( '\\\"' ) )* '\\\"' )
+			// TSLexer.g:109:5: ( '\\'' (~ ( '\\'' ) )* '\\'' | '\\\"' (~ ( '\\\"' ) )* '\\\"' )
 			int alt6=2;
 			int LA6_0 = input.LA(1);
 			if ( (LA6_0=='\'') ) {
@@ -1564,10 +1608,10 @@ public class TSLexer extends Lexer {
 
 			switch (alt6) {
 				case 1 :
-					// TSLexer.g:108:7: '\\'' (~ ( '\\'' ) )* '\\''
+					// TSLexer.g:109:7: '\\'' (~ ( '\\'' ) )* '\\''
 					{
 					match('\''); 
-					// TSLexer.g:108:12: (~ ( '\\'' ) )*
+					// TSLexer.g:109:12: (~ ( '\\'' ) )*
 					loop4:
 					while (true) {
 						int alt4=2;
@@ -1600,10 +1644,10 @@ public class TSLexer extends Lexer {
 					}
 					break;
 				case 2 :
-					// TSLexer.g:109:7: '\\\"' (~ ( '\\\"' ) )* '\\\"'
+					// TSLexer.g:110:7: '\\\"' (~ ( '\\\"' ) )* '\\\"'
 					{
 					match('\"'); 
-					// TSLexer.g:109:12: (~ ( '\\\"' ) )*
+					// TSLexer.g:110:12: (~ ( '\\\"' ) )*
 					loop5:
 					while (true) {
 						int alt5=2;
@@ -1654,10 +1698,10 @@ public class TSLexer extends Lexer {
 		try {
 			int _type = DATETIME;
 			int _channel = DEFAULT_TOKEN_CHANNEL;
-			// TSLexer.g:115:5: ( ( Digit )+ MINUS ( Digit )+ MINUS ( Digit )+ 'T' ( Digit )+ COLON ( Digit )+ COLON ( Digit )+ ( DOT ( Digit )+ )? PLUS ( Digit )+ COLON ( Digit )+ )
-			// TSLexer.g:115:7: ( Digit )+ MINUS ( Digit )+ MINUS ( Digit )+ 'T' ( Digit )+ COLON ( Digit )+ COLON ( Digit )+ ( DOT ( Digit )+ )? PLUS ( Digit )+ COLON ( Digit )+
+			// TSLexer.g:116:5: ( ( Digit )+ MINUS ( Digit )+ MINUS ( Digit )+ 'T' ( Digit )+ COLON ( Digit )+ COLON ( Digit )+ ( DOT ( Digit )+ )? PLUS ( Digit )+ COLON ( Digit )+ )
+			// TSLexer.g:116:7: ( Digit )+ MINUS ( Digit )+ MINUS ( Digit )+ 'T' ( Digit )+ COLON ( Digit )+ COLON ( Digit )+ ( DOT ( Digit )+ )? PLUS ( Digit )+ COLON ( Digit )+
 			{
-			// TSLexer.g:115:7: ( Digit )+
+			// TSLexer.g:116:7: ( Digit )+
 			int cnt7=0;
 			loop7:
 			while (true) {
@@ -1692,7 +1736,7 @@ public class TSLexer extends Lexer {
 
 			mMINUS(); 
 
-			// TSLexer.g:115:20: ( Digit )+
+			// TSLexer.g:116:20: ( Digit )+
 			int cnt8=0;
 			loop8:
 			while (true) {
@@ -1727,7 +1771,7 @@ public class TSLexer extends Lexer {
 
 			mMINUS(); 
 
-			// TSLexer.g:115:33: ( Digit )+
+			// TSLexer.g:116:33: ( Digit )+
 			int cnt9=0;
 			loop9:
 			while (true) {
@@ -1761,7 +1805,7 @@ public class TSLexer extends Lexer {
 			}
 
 			match('T'); 
-			// TSLexer.g:115:44: ( Digit )+
+			// TSLexer.g:116:44: ( Digit )+
 			int cnt10=0;
 			loop10:
 			while (true) {
@@ -1796,7 +1840,7 @@ public class TSLexer extends Lexer {
 
 			mCOLON(); 
 
-			// TSLexer.g:115:57: ( Digit )+
+			// TSLexer.g:116:57: ( Digit )+
 			int cnt11=0;
 			loop11:
 			while (true) {
@@ -1831,7 +1875,7 @@ public class TSLexer extends Lexer {
 
 			mCOLON(); 
 
-			// TSLexer.g:115:70: ( Digit )+
+			// TSLexer.g:116:70: ( Digit )+
 			int cnt12=0;
 			loop12:
 			while (true) {
@@ -1864,7 +1908,7 @@ public class TSLexer extends Lexer {
 				cnt12++;
 			}
 
-			// TSLexer.g:115:77: ( DOT ( Digit )+ )?
+			// TSLexer.g:116:77: ( DOT ( Digit )+ )?
 			int alt14=2;
 			int LA14_0 = input.LA(1);
 			if ( (LA14_0=='.') ) {
@@ -1872,11 +1916,11 @@ public class TSLexer extends Lexer {
 			}
 			switch (alt14) {
 				case 1 :
-					// TSLexer.g:115:78: DOT ( Digit )+
+					// TSLexer.g:116:78: DOT ( Digit )+
 					{
 					mDOT(); 
 
-					// TSLexer.g:115:82: ( Digit )+
+					// TSLexer.g:116:82: ( Digit )+
 					int cnt13=0;
 					loop13:
 					while (true) {
@@ -1916,7 +1960,7 @@ public class TSLexer extends Lexer {
 
 			mPLUS(); 
 
-			// TSLexer.g:115:96: ( Digit )+
+			// TSLexer.g:116:96: ( Digit )+
 			int cnt15=0;
 			loop15:
 			while (true) {
@@ -1951,7 +1995,7 @@ public class TSLexer extends Lexer {
 
 			mCOLON(); 
 
-			// TSLexer.g:115:109: ( Digit )+
+			// TSLexer.g:116:109: ( Digit )+
 			int cnt16=0;
 			loop16:
 			while (true) {
@@ -2000,10 +2044,10 @@ public class TSLexer extends Lexer {
 		try {
 			int _type = Integer;
 			int _channel = DEFAULT_TOKEN_CHANNEL;
-			// TSLexer.g:119:2: ( ( '-' | '+' )? ( Digit )+ )
-			// TSLexer.g:120:2: ( '-' | '+' )? ( Digit )+
+			// TSLexer.g:120:2: ( ( '-' | '+' )? ( Digit )+ )
+			// TSLexer.g:121:2: ( '-' | '+' )? ( Digit )+
 			{
-			// TSLexer.g:120:2: ( '-' | '+' )?
+			// TSLexer.g:121:2: ( '-' | '+' )?
 			int alt17=2;
 			int LA17_0 = input.LA(1);
 			if ( (LA17_0=='+'||LA17_0=='-') ) {
@@ -2026,7 +2070,7 @@ public class TSLexer extends Lexer {
 
 			}
 
-			// TSLexer.g:120:15: ( Digit )+
+			// TSLexer.g:121:15: ( Digit )+
 			int cnt18=0;
 			loop18:
 			while (true) {
@@ -2075,10 +2119,10 @@ public class TSLexer extends Lexer {
 		try {
 			int _type = Float;
 			int _channel = DEFAULT_TOKEN_CHANNEL;
-			// TSLexer.g:125:2: ( ( '-' | '+' )? ( Digit )+ DOT ( Digit )+ ( ( 'e' | 'E' ) ( '-' | '+' )? ( Digit )+ )? )
-			// TSLexer.g:126:2: ( '-' | '+' )? ( Digit )+ DOT ( Digit )+ ( ( 'e' | 'E' ) ( '-' | '+' )? ( Digit )+ )?
+			// TSLexer.g:126:2: ( ( '-' | '+' )? ( Digit )+ DOT ( Digit )+ ( ( 'e' | 'E' ) ( '-' | '+' )? ( Digit )+ )? )
+			// TSLexer.g:127:2: ( '-' | '+' )? ( Digit )+ DOT ( Digit )+ ( ( 'e' | 'E' ) ( '-' | '+' )? ( Digit )+ )?
 			{
-			// TSLexer.g:126:2: ( '-' | '+' )?
+			// TSLexer.g:127:2: ( '-' | '+' )?
 			int alt19=2;
 			int LA19_0 = input.LA(1);
 			if ( (LA19_0=='+'||LA19_0=='-') ) {
@@ -2101,7 +2145,7 @@ public class TSLexer extends Lexer {
 
 			}
 
-			// TSLexer.g:126:15: ( Digit )+
+			// TSLexer.g:127:15: ( Digit )+
 			int cnt20=0;
 			loop20:
 			while (true) {
@@ -2136,7 +2180,7 @@ public class TSLexer extends Lexer {
 
 			mDOT(); 
 
-			// TSLexer.g:126:26: ( Digit )+
+			// TSLexer.g:127:26: ( Digit )+
 			int cnt21=0;
 			loop21:
 			while (true) {
@@ -2169,7 +2213,7 @@ public class TSLexer extends Lexer {
 				cnt21++;
 			}
 
-			// TSLexer.g:126:33: ( ( 'e' | 'E' ) ( '-' | '+' )? ( Digit )+ )?
+			// TSLexer.g:127:33: ( ( 'e' | 'E' ) ( '-' | '+' )? ( Digit )+ )?
 			int alt24=2;
 			int LA24_0 = input.LA(1);
 			if ( (LA24_0=='E'||LA24_0=='e') ) {
@@ -2177,7 +2221,7 @@ public class TSLexer extends Lexer {
 			}
 			switch (alt24) {
 				case 1 :
-					// TSLexer.g:126:34: ( 'e' | 'E' ) ( '-' | '+' )? ( Digit )+
+					// TSLexer.g:127:34: ( 'e' | 'E' ) ( '-' | '+' )? ( Digit )+
 					{
 					if ( input.LA(1)=='E'||input.LA(1)=='e' ) {
 						input.consume();
@@ -2187,7 +2231,7 @@ public class TSLexer extends Lexer {
 						recover(mse);
 						throw mse;
 					}
-					// TSLexer.g:126:46: ( '-' | '+' )?
+					// TSLexer.g:127:46: ( '-' | '+' )?
 					int alt22=2;
 					int LA22_0 = input.LA(1);
 					if ( (LA22_0=='+'||LA22_0=='-') ) {
@@ -2210,7 +2254,7 @@ public class TSLexer extends Lexer {
 
 					}
 
-					// TSLexer.g:126:59: ( Digit )+
+					// TSLexer.g:127:59: ( Digit )+
 					int cnt23=0;
 					loop23:
 					while (true) {
@@ -2264,10 +2308,10 @@ public class TSLexer extends Lexer {
 		try {
 			int _type = Identifier;
 			int _channel = DEFAULT_TOKEN_CHANNEL;
-			// TSLexer.g:130:5: ( ( Letter | Digit | '_' ) ( Letter | Digit | '_' )* )
-			// TSLexer.g:131:5: ( Letter | Digit | '_' ) ( Letter | Digit | '_' )*
+			// TSLexer.g:131:5: ( ( Letter | Digit | '_' | MINUS ) ( Letter | Digit | '_' | MINUS )* )
+			// TSLexer.g:132:5: ( Letter | Digit | '_' | MINUS ) ( Letter | Digit | '_' | MINUS )*
 			{
-			if ( (input.LA(1) >= '0' && input.LA(1) <= '9')||(input.LA(1) >= 'A' && input.LA(1) <= 'Z')||input.LA(1)=='_'||(input.LA(1) >= 'a' && input.LA(1) <= 'z') ) {
+			if ( input.LA(1)=='-'||(input.LA(1) >= '0' && input.LA(1) <= '9')||(input.LA(1) >= 'A' && input.LA(1) <= 'Z')||input.LA(1)=='_'||(input.LA(1) >= 'a' && input.LA(1) <= 'z') ) {
 				input.consume();
 			}
 			else {
@@ -2275,12 +2319,12 @@ public class TSLexer extends Lexer {
 				recover(mse);
 				throw mse;
 			}
-			// TSLexer.g:131:28: ( Letter | Digit | '_' )*
+			// TSLexer.g:132:36: ( Letter | Digit | '_' | MINUS )*
 			loop25:
 			while (true) {
 				int alt25=2;
 				int LA25_0 = input.LA(1);
-				if ( ((LA25_0 >= '0' && LA25_0 <= '9')||(LA25_0 >= 'A' && LA25_0 <= 'Z')||LA25_0=='_'||(LA25_0 >= 'a' && LA25_0 <= 'z')) ) {
+				if ( (LA25_0=='-'||(LA25_0 >= '0' && LA25_0 <= '9')||(LA25_0 >= 'A' && LA25_0 <= 'Z')||LA25_0=='_'||(LA25_0 >= 'a' && LA25_0 <= 'z')) ) {
 					alt25=1;
 				}
 
@@ -2288,7 +2332,7 @@ public class TSLexer extends Lexer {
 				case 1 :
 					// TSLexer.g:
 					{
-					if ( (input.LA(1) >= '0' && input.LA(1) <= '9')||(input.LA(1) >= 'A' && input.LA(1) <= 'Z')||input.LA(1)=='_'||(input.LA(1) >= 'a' && input.LA(1) <= 'z') ) {
+					if ( input.LA(1)=='-'||(input.LA(1) >= '0' && input.LA(1) <= '9')||(input.LA(1) >= 'A' && input.LA(1) <= 'Z')||input.LA(1)=='_'||(input.LA(1) >= 'a' && input.LA(1) <= 'z') ) {
 						input.consume();
 					}
 					else {
@@ -2320,8 +2364,8 @@ public class TSLexer extends Lexer {
 		try {
 			int _type = WS;
 			int _channel = DEFAULT_TOKEN_CHANNEL;
-			// TSLexer.g:135:5: ( ( ' ' | '\\r' | '\\t' | '\\n' ) )
-			// TSLexer.g:135:8: ( ' ' | '\\r' | '\\t' | '\\n' )
+			// TSLexer.g:136:5: ( ( ' ' | '\\r' | '\\t' | '\\n' ) )
+			// TSLexer.g:136:8: ( ' ' | '\\r' | '\\t' | '\\n' )
 			{
 			if ( (input.LA(1) >= '\t' && input.LA(1) <= '\n')||input.LA(1)=='\r'||input.LA(1)==' ' ) {
 				input.consume();
@@ -2345,8 +2389,8 @@ public class TSLexer extends Lexer {
 
 	@Override
 	public void mTokens() throws RecognitionException {
-		// TSLexer.g:1:8: ( KW_PRIVILEGES | KW_TIMESERIES | KW_ROLE | KW_GRANT | KW_REVOKE | KW_MERGE | KW_QUIT | KW_METADATA | KW_DATATYPE | KW_ENCODING | KW_STORAGE | KW_AND | KW_OR | KW_NOT | KW_ORDER | KW_GROUP | KW_BY | KW_WHERE | KW_FROM | KW_SELECT | KW_INSERT | KW_ON | KW_SHOW | KW_LOAD | KW_NULL | KW_CREATE | KW_DROP | KW_TO | KW_TIMESTAMP | KW_USER | KW_INTO | KW_WITH | KW_SET | KW_DELETE | KW_UPDATE | KW_VALUES | KW_VALUE | KW_PASSWORD | KW_DESCRIBE | KW_PROPERTY | KW_ADD | KW_LABEL | KW_LINK | KW_UNLINK | QUOTE | DOT | COLON | COMMA | SEMICOLON | LPAREN | RPAREN | EQUAL | EQUAL_NS | NOTEQUAL | LESSTHANOREQUALTO | LESSTHAN | GREATERTHANOREQUALTO | GREATERTHAN | DIVIDE | PLUS | MINUS | STAR | StringLiteral | DATETIME | Integer | Float | Identifier | WS )
-		int alt26=68;
+		// TSLexer.g:1:8: ( KW_PRIVILEGES | KW_TIMESERIES | KW_ROLE | KW_GRANT | KW_REVOKE | KW_MERGE | KW_QUIT | KW_METADATA | KW_DATATYPE | KW_ENCODING | KW_STORAGE | KW_AND | KW_OR | KW_NOT | KW_ORDER | KW_GROUP | KW_BY | KW_WHERE | KW_FROM | KW_SELECT | KW_INSERT | KW_ON | KW_SHOW | KW_LOAD | KW_NULL | KW_CREATE | KW_DROP | KW_TO | KW_TIMESTAMP | KW_USER | KW_INDEX | KW_INTO | KW_WITH | KW_SET | KW_DELETE | KW_UPDATE | KW_VALUES | KW_VALUE | KW_PASSWORD | KW_DESCRIBE | KW_PROPERTY | KW_ADD | KW_LABEL | KW_LINK | KW_UNLINK | KW_USING | QUOTE | DOT | COLON | COMMA | SEMICOLON | LPAREN | RPAREN | EQUAL | EQUAL_NS | NOTEQUAL | LESSTHANOREQUALTO | LESSTHAN | GREATERTHANOREQUALTO | GREATERTHAN | DIVIDE | PLUS | MINUS | STAR | StringLiteral | DATETIME | Integer | Float | Identifier | WS )
+		int alt26=70;
 		alt26 = dfa26.predict(input);
 		switch (alt26) {
 			case 1 :
@@ -2560,266 +2604,280 @@ public class TSLexer extends Lexer {
 				}
 				break;
 			case 31 :
-				// TSLexer.g:1:285: KW_INTO
+				// TSLexer.g:1:285: KW_INDEX
+				{
+				mKW_INDEX(); 
+
+				}
+				break;
+			case 32 :
+				// TSLexer.g:1:294: KW_INTO
 				{
 				mKW_INTO(); 
 
 				}
 				break;
-			case 32 :
-				// TSLexer.g:1:293: KW_WITH
+			case 33 :
+				// TSLexer.g:1:302: KW_WITH
 				{
 				mKW_WITH(); 
 
 				}
 				break;
-			case 33 :
-				// TSLexer.g:1:301: KW_SET
+			case 34 :
+				// TSLexer.g:1:310: KW_SET
 				{
 				mKW_SET(); 
 
 				}
 				break;
-			case 34 :
-				// TSLexer.g:1:308: KW_DELETE
+			case 35 :
+				// TSLexer.g:1:317: KW_DELETE
 				{
 				mKW_DELETE(); 
 
 				}
 				break;
-			case 35 :
-				// TSLexer.g:1:318: KW_UPDATE
+			case 36 :
+				// TSLexer.g:1:327: KW_UPDATE
 				{
 				mKW_UPDATE(); 
 
 				}
 				break;
-			case 36 :
-				// TSLexer.g:1:328: KW_VALUES
+			case 37 :
+				// TSLexer.g:1:337: KW_VALUES
 				{
 				mKW_VALUES(); 
 
 				}
 				break;
-			case 37 :
-				// TSLexer.g:1:338: KW_VALUE
+			case 38 :
+				// TSLexer.g:1:347: KW_VALUE
 				{
 				mKW_VALUE(); 
 
 				}
 				break;
-			case 38 :
-				// TSLexer.g:1:347: KW_PASSWORD
+			case 39 :
+				// TSLexer.g:1:356: KW_PASSWORD
 				{
 				mKW_PASSWORD(); 
 
 				}
 				break;
-			case 39 :
-				// TSLexer.g:1:359: KW_DESCRIBE
+			case 40 :
+				// TSLexer.g:1:368: KW_DESCRIBE
 				{
 				mKW_DESCRIBE(); 
 
 				}
 				break;
-			case 40 :
-				// TSLexer.g:1:371: KW_PROPERTY
+			case 41 :
+				// TSLexer.g:1:380: KW_PROPERTY
 				{
 				mKW_PROPERTY(); 
 
 				}
 				break;
-			case 41 :
-				// TSLexer.g:1:383: KW_ADD
+			case 42 :
+				// TSLexer.g:1:392: KW_ADD
 				{
 				mKW_ADD(); 
 
 				}
 				break;
-			case 42 :
-				// TSLexer.g:1:390: KW_LABEL
+			case 43 :
+				// TSLexer.g:1:399: KW_LABEL
 				{
 				mKW_LABEL(); 
 
 				}
 				break;
-			case 43 :
-				// TSLexer.g:1:399: KW_LINK
+			case 44 :
+				// TSLexer.g:1:408: KW_LINK
 				{
 				mKW_LINK(); 
 
 				}
 				break;
-			case 44 :
-				// TSLexer.g:1:407: KW_UNLINK
+			case 45 :
+				// TSLexer.g:1:416: KW_UNLINK
 				{
 				mKW_UNLINK(); 
 
 				}
 				break;
-			case 45 :
-				// TSLexer.g:1:417: QUOTE
+			case 46 :
+				// TSLexer.g:1:426: KW_USING
+				{
+				mKW_USING(); 
+
+				}
+				break;
+			case 47 :
+				// TSLexer.g:1:435: QUOTE
 				{
 				mQUOTE(); 
 
 				}
 				break;
-			case 46 :
-				// TSLexer.g:1:423: DOT
+			case 48 :
+				// TSLexer.g:1:441: DOT
 				{
 				mDOT(); 
 
 				}
 				break;
-			case 47 :
-				// TSLexer.g:1:427: COLON
+			case 49 :
+				// TSLexer.g:1:445: COLON
 				{
 				mCOLON(); 
 
 				}
 				break;
-			case 48 :
-				// TSLexer.g:1:433: COMMA
+			case 50 :
+				// TSLexer.g:1:451: COMMA
 				{
 				mCOMMA(); 
 
 				}
 				break;
-			case 49 :
-				// TSLexer.g:1:439: SEMICOLON
+			case 51 :
+				// TSLexer.g:1:457: SEMICOLON
 				{
 				mSEMICOLON(); 
 
 				}
 				break;
-			case 50 :
-				// TSLexer.g:1:449: LPAREN
+			case 52 :
+				// TSLexer.g:1:467: LPAREN
 				{
 				mLPAREN(); 
 
 				}
 				break;
-			case 51 :
-				// TSLexer.g:1:456: RPAREN
+			case 53 :
+				// TSLexer.g:1:474: RPAREN
 				{
 				mRPAREN(); 
 
 				}
 				break;
-			case 52 :
-				// TSLexer.g:1:463: EQUAL
+			case 54 :
+				// TSLexer.g:1:481: EQUAL
 				{
 				mEQUAL(); 
 
 				}
 				break;
-			case 53 :
-				// TSLexer.g:1:469: EQUAL_NS
+			case 55 :
+				// TSLexer.g:1:487: EQUAL_NS
 				{
 				mEQUAL_NS(); 
 
 				}
 				break;
-			case 54 :
-				// TSLexer.g:1:478: NOTEQUAL
+			case 56 :
+				// TSLexer.g:1:496: NOTEQUAL
 				{
 				mNOTEQUAL(); 
 
 				}
 				break;
-			case 55 :
-				// TSLexer.g:1:487: LESSTHANOREQUALTO
+			case 57 :
+				// TSLexer.g:1:505: LESSTHANOREQUALTO
 				{
 				mLESSTHANOREQUALTO(); 
 
 				}
 				break;
-			case 56 :
-				// TSLexer.g:1:505: LESSTHAN
+			case 58 :
+				// TSLexer.g:1:523: LESSTHAN
 				{
 				mLESSTHAN(); 
 
 				}
 				break;
-			case 57 :
-				// TSLexer.g:1:514: GREATERTHANOREQUALTO
+			case 59 :
+				// TSLexer.g:1:532: GREATERTHANOREQUALTO
 				{
 				mGREATERTHANOREQUALTO(); 
 
 				}
 				break;
-			case 58 :
-				// TSLexer.g:1:535: GREATERTHAN
+			case 60 :
+				// TSLexer.g:1:553: GREATERTHAN
 				{
 				mGREATERTHAN(); 
 
 				}
 				break;
-			case 59 :
-				// TSLexer.g:1:547: DIVIDE
+			case 61 :
+				// TSLexer.g:1:565: DIVIDE
 				{
 				mDIVIDE(); 
 
 				}
 				break;
-			case 60 :
-				// TSLexer.g:1:554: PLUS
+			case 62 :
+				// TSLexer.g:1:572: PLUS
 				{
 				mPLUS(); 
 
 				}
 				break;
-			case 61 :
-				// TSLexer.g:1:559: MINUS
+			case 63 :
+				// TSLexer.g:1:577: MINUS
 				{
 				mMINUS(); 
 
 				}
 				break;
-			case 62 :
-				// TSLexer.g:1:565: STAR
+			case 64 :
+				// TSLexer.g:1:583: STAR
 				{
 				mSTAR(); 
 
 				}
 				break;
-			case 63 :
-				// TSLexer.g:1:570: StringLiteral
+			case 65 :
+				// TSLexer.g:1:588: StringLiteral
 				{
 				mStringLiteral(); 
 
 				}
 				break;
-			case 64 :
-				// TSLexer.g:1:584: DATETIME
+			case 66 :
+				// TSLexer.g:1:602: DATETIME
 				{
 				mDATETIME(); 
 
 				}
 				break;
-			case 65 :
-				// TSLexer.g:1:593: Integer
+			case 67 :
+				// TSLexer.g:1:611: Integer
 				{
 				mInteger(); 
 
 				}
 				break;
-			case 66 :
-				// TSLexer.g:1:601: Float
+			case 68 :
+				// TSLexer.g:1:619: Float
 				{
 				mFloat(); 
 
 				}
 				break;
-			case 67 :
-				// TSLexer.g:1:607: Identifier
+			case 69 :
+				// TSLexer.g:1:625: Identifier
 				{
 				mIdentifier(); 
 
 				}
 				break;
-			case 68 :
-				// TSLexer.g:1:618: WS
+			case 70 :
+				// TSLexer.g:1:636: WS
 				{
 				mWS(); 
 
@@ -2833,73 +2891,77 @@ public class TSLexer extends Lexer {
 	protected DFA26 dfa26 = new DFA26(this);
 	static final String DFA26_eotS =
 		"\1\uffff\14\46\1\77\10\46\1\115\7\uffff\1\117\1\121\1\uffff\1\122\1\124"+
-		"\2\uffff\1\127\2\uffff\3\46\1\135\16\46\1\161\1\162\2\46\2\uffff\1\165"+
-		"\14\46\1\uffff\1\u0084\4\uffff\1\127\2\uffff\1\127\2\uffff\4\46\1\uffff"+
-		"\16\46\1\u0097\1\46\1\u0099\1\u009a\1\46\2\uffff\1\77\1\46\1\uffff\15"+
-		"\46\2\uffff\4\46\1\u00ae\5\46\1\u00b4\1\46\1\u00b6\5\46\1\uffff\1\u00bc"+
-		"\2\uffff\1\46\1\u00be\1\46\1\u00c0\1\u00c1\1\46\1\u00c3\1\u00c4\1\46\1"+
-		"\u00c6\1\46\1\u00c8\7\46\1\uffff\1\46\1\u00d2\1\u00d3\1\u00d4\1\46\1\uffff"+
-		"\1\46\1\uffff\5\46\1\uffff\1\u00dc\1\uffff\1\u00dd\2\uffff\1\46\2\uffff"+
-		"\1\u00df\1\uffff\1\46\1\uffff\2\46\1\u00e4\5\46\1\u00ea\3\uffff\2\46\1"+
-		"\u00ed\3\46\1\u00f1\2\uffff\1\u00f2\1\uffff\1\u00f3\1\u00f4\1\u00f5\1"+
-		"\u00f6\1\uffff\5\46\1\uffff\2\46\1\uffff\2\46\1\u0100\6\uffff\1\46\1\u0102"+
-		"\1\u0103\2\46\1\u0106\1\u0107\1\u0108\1\u0109\1\uffff\1\46\2\uffff\1\46"+
-		"\1\u010c\4\uffff\1\u010d\1\u010e\3\uffff";
+		"\2\uffff\1\130\2\uffff\3\46\1\136\16\46\1\162\1\163\2\46\2\uffff\1\166"+
+		"\14\46\1\uffff\1\u0087\4\uffff\1\130\1\uffff\1\130\1\46\1\130\2\uffff"+
+		"\4\46\1\uffff\16\46\1\u009b\1\46\1\u009d\1\u009e\1\46\2\uffff\1\77\1\46"+
+		"\1\uffff\17\46\2\uffff\5\46\1\u00b5\5\46\1\u00bb\1\46\1\u00bd\5\46\1\uffff"+
+		"\1\u00c3\2\uffff\1\46\1\u00c5\1\46\1\u00c7\1\u00c8\2\46\1\u00cb\1\u00cc"+
+		"\1\46\1\u00ce\1\46\1\u00d0\11\46\1\uffff\1\46\1\u00dc\1\u00dd\1\u00de"+
+		"\1\46\1\uffff\1\46\1\uffff\5\46\1\uffff\1\u00e6\1\uffff\1\u00e7\2\uffff"+
+		"\1\46\1\u00e9\2\uffff\1\u00ea\1\uffff\1\46\1\uffff\1\u00ec\2\46\1\u00f0"+
+		"\6\46\1\u00f7\3\uffff\2\46\1\u00fa\3\46\1\u00fe\2\uffff\1\u00ff\2\uffff"+
+		"\1\u0100\1\uffff\1\u0101\1\u0102\1\u0103\1\uffff\6\46\1\uffff\2\46\1\uffff"+
+		"\2\46\1\u010e\6\uffff\2\46\1\u0111\1\u0112\2\46\1\u0115\1\u0116\1\u0117"+
+		"\1\u0118\2\uffff\1\46\2\uffff\1\46\1\u011b\4\uffff\1\u011c\1\u011d\3\uffff";
 	static final String DFA26_eofS =
-		"\u010f\uffff";
+		"\u011e\uffff";
 	static final String DFA26_minS =
 		"\1\11\1\101\1\111\1\105\1\122\1\105\1\125\1\101\1\116\1\105\1\104\1\116"+
 		"\1\117\1\75\1\131\1\110\1\122\1\116\1\101\1\122\1\116\1\101\1\0\7\uffff"+
-		"\2\75\1\uffff\2\60\2\uffff\1\55\2\uffff\1\111\1\123\1\115\1\60\1\114\1"+
-		"\126\1\101\1\122\1\111\1\124\1\117\1\114\1\103\1\117\1\114\1\117\2\104"+
-		"\2\60\1\124\1\114\2\uffff\1\60\1\105\1\124\1\117\1\123\1\101\1\102\1\116"+
-		"\2\105\1\104\2\114\1\uffff\1\76\4\uffff\1\56\2\uffff\1\55\2\uffff\1\126"+
-		"\1\120\1\123\1\105\1\uffff\1\105\1\117\1\116\1\125\1\107\1\101\1\124\1"+
-		"\101\1\120\1\105\1\103\1\117\1\122\1\105\1\60\1\127\2\60\1\105\2\uffff"+
-		"\1\60\1\114\1\uffff\1\122\1\110\1\115\1\105\1\117\1\104\1\105\1\113\1"+
-		"\101\1\122\1\101\1\111\1\125\2\uffff\1\111\1\105\1\127\1\123\1\60\1\113"+
-		"\1\124\1\120\1\105\1\104\1\60\1\124\1\60\1\124\1\122\1\104\1\101\1\103"+
-		"\1\uffff\1\60\2\uffff\1\122\1\60\1\105\2\60\1\122\2\60\1\114\1\60\1\124"+
-		"\1\60\1\124\1\116\1\105\1\114\1\122\1\117\1\105\1\uffff\1\105\3\60\1\101"+
-		"\1\uffff\1\131\1\uffff\1\105\2\111\1\107\1\124\1\uffff\1\60\1\uffff\1"+
-		"\60\2\uffff\1\124\2\uffff\1\60\1\uffff\1\105\1\uffff\1\105\1\113\1\60"+
-		"\1\105\1\124\2\122\1\101\1\60\3\uffff\1\124\1\120\1\60\1\102\1\116\1\105"+
-		"\1\60\2\uffff\1\60\1\uffff\4\60\1\uffff\1\107\1\131\1\104\1\111\1\115"+
-		"\1\uffff\1\101\1\105\1\uffff\1\105\1\107\1\60\6\uffff\1\105\2\60\1\105"+
-		"\1\120\4\60\1\uffff\1\123\2\uffff\1\123\1\60\4\uffff\2\60\3\uffff";
+		"\2\75\1\uffff\1\60\1\55\2\uffff\1\55\2\uffff\1\111\1\123\1\115\1\55\1"+
+		"\114\1\126\1\101\1\122\1\111\1\124\1\117\1\114\1\103\1\117\1\114\1\117"+
+		"\2\104\2\55\1\124\1\114\2\uffff\1\55\1\105\1\124\1\117\1\104\1\101\1\102"+
+		"\1\116\2\105\1\104\2\114\1\uffff\1\76\4\uffff\1\56\1\uffff\1\55\1\60\1"+
+		"\55\2\uffff\1\126\1\120\1\123\1\105\1\uffff\1\105\1\117\1\116\1\125\1"+
+		"\107\1\101\1\124\1\101\1\120\1\105\1\103\1\117\1\122\1\105\1\55\1\127"+
+		"\2\55\1\105\2\uffff\1\55\1\114\1\uffff\1\122\1\110\1\115\2\105\1\117\1"+
+		"\104\1\105\1\113\1\101\1\122\1\116\1\101\1\111\1\125\2\uffff\1\55\1\111"+
+		"\1\105\1\127\1\123\1\55\1\113\1\124\1\120\1\105\1\104\1\55\1\124\1\55"+
+		"\1\124\1\122\1\104\1\101\1\103\1\uffff\1\55\2\uffff\1\122\1\55\1\105\2"+
+		"\55\1\122\1\130\2\55\1\114\1\55\1\124\1\55\1\107\1\124\1\116\1\105\1\60"+
+		"\1\114\1\122\1\117\1\105\1\uffff\1\105\3\55\1\101\1\uffff\1\131\1\uffff"+
+		"\1\105\2\111\1\107\1\124\1\uffff\1\55\1\uffff\1\55\2\uffff\1\124\1\55"+
+		"\2\uffff\1\55\1\uffff\1\105\1\uffff\1\55\1\105\1\113\1\55\1\60\1\105\1"+
+		"\124\2\122\1\101\1\55\3\uffff\1\124\1\120\1\55\1\102\1\116\1\105\1\55"+
+		"\2\uffff\1\55\2\uffff\1\55\1\uffff\3\55\1\uffff\1\60\1\107\1\131\1\104"+
+		"\1\111\1\115\1\uffff\1\101\1\105\1\uffff\1\105\1\107\1\55\6\uffff\1\60"+
+		"\1\105\2\55\1\105\1\120\4\55\2\uffff\1\123\2\uffff\1\123\1\55\4\uffff"+
+		"\2\55\3\uffff";
 	static final String DFA26_maxS =
 		"\1\172\1\122\2\117\1\122\1\105\1\125\1\122\1\116\1\124\1\116\1\122\1\125"+
 		"\1\75\1\131\1\111\1\122\1\116\1\117\1\122\1\123\1\101\1\uffff\7\uffff"+
-		"\1\76\1\75\1\uffff\2\71\2\uffff\1\172\2\uffff\1\117\1\123\1\115\1\172"+
-		"\1\114\1\126\1\117\1\124\1\111\1\124\1\117\1\123\1\103\1\117\1\124\1\117"+
-		"\2\104\2\172\1\124\1\114\2\uffff\1\172\1\105\1\124\1\117\1\124\1\101\1"+
-		"\102\1\116\2\105\1\104\2\114\1\uffff\1\76\4\uffff\1\71\2\uffff\1\172\2"+
-		"\uffff\1\126\1\120\1\123\1\105\1\uffff\1\105\1\117\1\116\1\125\1\107\1"+
-		"\101\1\124\1\101\1\120\1\105\1\103\1\117\1\122\1\105\1\172\1\127\2\172"+
-		"\1\105\2\uffff\1\172\1\114\1\uffff\1\122\1\110\1\115\1\105\1\117\1\104"+
-		"\1\105\1\113\1\101\1\122\1\101\1\111\1\125\2\uffff\1\111\1\105\1\127\1"+
-		"\123\1\172\1\113\1\124\1\120\1\105\1\104\1\172\1\124\1\172\1\124\1\122"+
-		"\1\104\1\101\1\103\1\uffff\1\172\2\uffff\1\122\1\172\1\105\2\172\1\122"+
-		"\2\172\1\114\1\172\1\124\1\172\1\124\1\116\1\105\1\114\1\122\1\117\1\124"+
-		"\1\uffff\1\105\3\172\1\101\1\uffff\1\131\1\uffff\1\105\2\111\1\107\1\124"+
-		"\1\uffff\1\172\1\uffff\1\172\2\uffff\1\124\2\uffff\1\172\1\uffff\1\105"+
-		"\1\uffff\1\105\1\113\1\172\1\105\1\124\2\122\1\101\1\172\3\uffff\1\124"+
-		"\1\120\1\172\1\102\1\116\1\105\1\172\2\uffff\1\172\1\uffff\4\172\1\uffff"+
-		"\1\107\1\131\1\104\1\111\1\115\1\uffff\1\101\1\105\1\uffff\1\105\1\107"+
-		"\1\172\6\uffff\1\105\2\172\1\105\1\120\4\172\1\uffff\1\123\2\uffff\1\123"+
-		"\1\172\4\uffff\2\172\3\uffff";
+		"\1\76\1\75\1\uffff\1\71\1\172\2\uffff\1\172\2\uffff\1\117\1\123\1\115"+
+		"\1\172\1\114\1\126\1\117\1\124\1\111\1\124\1\117\1\123\1\103\1\117\1\124"+
+		"\1\117\2\104\2\172\1\124\1\114\2\uffff\1\172\1\105\1\124\1\117\1\124\1"+
+		"\101\1\102\1\116\1\105\1\111\1\104\2\114\1\uffff\1\76\4\uffff\1\71\1\uffff"+
+		"\1\172\1\71\1\172\2\uffff\1\126\1\120\1\123\1\105\1\uffff\1\105\1\117"+
+		"\1\116\1\125\1\107\1\101\1\124\1\101\1\120\1\105\1\103\1\117\1\122\1\105"+
+		"\1\172\1\127\2\172\1\105\2\uffff\1\172\1\114\1\uffff\1\122\1\110\1\115"+
+		"\2\105\1\117\1\104\1\105\1\113\1\101\1\122\1\116\1\101\1\111\1\125\2\uffff"+
+		"\1\71\1\111\1\105\1\127\1\123\1\172\1\113\1\124\1\120\1\105\1\104\1\172"+
+		"\1\124\1\172\1\124\1\122\1\104\1\101\1\103\1\uffff\1\172\2\uffff\1\122"+
+		"\1\172\1\105\2\172\1\122\1\130\2\172\1\114\1\172\1\124\1\172\1\107\1\124"+
+		"\1\116\1\105\1\71\1\114\1\122\1\117\1\124\1\uffff\1\105\3\172\1\101\1"+
+		"\uffff\1\131\1\uffff\1\105\2\111\1\107\1\124\1\uffff\1\172\1\uffff\1\172"+
+		"\2\uffff\1\124\1\172\2\uffff\1\172\1\uffff\1\105\1\uffff\1\172\1\105\1"+
+		"\113\1\172\1\124\1\105\1\124\2\122\1\101\1\172\3\uffff\1\124\1\120\1\172"+
+		"\1\102\1\116\1\105\1\172\2\uffff\1\172\2\uffff\1\172\1\uffff\3\172\1\uffff"+
+		"\1\71\1\107\1\131\1\104\1\111\1\115\1\uffff\1\101\1\105\1\uffff\1\105"+
+		"\1\107\1\172\6\uffff\1\72\1\105\2\172\1\105\1\120\4\172\2\uffff\1\123"+
+		"\2\uffff\1\123\1\172\4\uffff\2\172\3\uffff";
 	static final String DFA26_acceptS =
-		"\27\uffff\1\56\1\57\1\60\1\61\1\62\1\63\1\64\2\uffff\1\73\2\uffff\1\76"+
-		"\1\77\1\uffff\1\103\1\104\26\uffff\1\66\1\16\15\uffff\1\55\1\uffff\1\70"+
-		"\1\71\1\72\1\74\1\uffff\1\75\1\100\1\uffff\1\101\1\102\4\uffff\1\34\23"+
-		"\uffff\1\15\1\26\2\uffff\1\21\15\uffff\1\65\1\67\22\uffff\1\41\1\uffff"+
-		"\1\14\1\51\23\uffff\1\3\5\uffff\1\7\1\uffff\1\33\5\uffff\1\27\1\uffff"+
-		"\1\31\1\uffff\1\40\1\23\1\uffff\1\37\1\30\1\uffff\1\53\1\uffff\1\36\11"+
-		"\uffff\1\4\1\20\1\6\7\uffff\1\17\1\22\1\uffff\1\52\4\uffff\1\45\5\uffff"+
-		"\1\5\2\uffff\1\42\3\uffff\1\24\1\25\1\32\1\43\1\54\1\44\11\uffff\1\13"+
-		"\1\uffff\1\50\1\46\2\uffff\1\10\1\11\1\47\1\12\2\uffff\1\35\1\1\1\2";
+		"\27\uffff\1\60\1\61\1\62\1\63\1\64\1\65\1\66\2\uffff\1\75\2\uffff\1\100"+
+		"\1\101\1\uffff\1\105\1\106\26\uffff\1\70\1\16\15\uffff\1\57\1\uffff\1"+
+		"\72\1\73\1\74\1\76\1\uffff\1\77\3\uffff\1\103\1\104\4\uffff\1\34\23\uffff"+
+		"\1\15\1\26\2\uffff\1\21\17\uffff\1\67\1\71\23\uffff\1\42\1\uffff\1\14"+
+		"\1\52\26\uffff\1\3\5\uffff\1\7\1\uffff\1\33\5\uffff\1\27\1\uffff\1\31"+
+		"\1\uffff\1\41\1\23\2\uffff\1\40\1\30\1\uffff\1\54\1\uffff\1\36\13\uffff"+
+		"\1\4\1\20\1\6\7\uffff\1\17\1\22\1\uffff\1\37\1\53\1\uffff\1\56\3\uffff"+
+		"\1\46\6\uffff\1\5\2\uffff\1\43\3\uffff\1\24\1\25\1\32\1\44\1\55\1\45\12"+
+		"\uffff\1\13\1\102\1\uffff\1\51\1\47\2\uffff\1\10\1\11\1\50\1\12\2\uffff"+
+		"\1\35\1\1\1\2";
 	static final String DFA26_specialS =
-		"\26\uffff\1\0\u00f8\uffff}>";
+		"\26\uffff\1\0\u0107\uffff}>";
 	static final String[] DFA26_transitionS = {
 			"\2\47\2\uffff\1\47\22\uffff\1\47\1\15\1\44\4\uffff\1\26\1\33\1\34\1\43"+
 			"\1\41\1\31\1\42\1\27\1\40\12\45\1\30\1\32\1\36\1\35\1\37\2\uffff\1\12"+
@@ -2938,70 +3000,68 @@ public class TSLexer extends Lexer {
 			"\1\120",
 			"",
 			"\12\123",
-			"\12\123",
+			"\1\46\2\uffff\12\125\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
 			"",
 			"",
-			"\1\125\1\130\1\uffff\12\126\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
+			"\1\126\1\131\1\uffff\12\127\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
 			"",
 			"",
-			"\1\131\5\uffff\1\132",
-			"\1\133",
+			"\1\132\5\uffff\1\133",
 			"\1\134",
-			"\12\46\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
-			"\1\136",
+			"\1\135",
+			"\1\46\2\uffff\12\46\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
 			"\1\137",
-			"\1\140\15\uffff\1\141",
-			"\1\142\1\uffff\1\143",
-			"\1\144",
+			"\1\140",
+			"\1\141\15\uffff\1\142",
+			"\1\143\1\uffff\1\144",
 			"\1\145",
 			"\1\146",
-			"\1\147\6\uffff\1\150",
-			"\1\151",
+			"\1\147",
+			"\1\150\6\uffff\1\151",
 			"\1\152",
-			"\1\153\7\uffff\1\154",
-			"\1\155",
+			"\1\153",
+			"\1\154\7\uffff\1\155",
 			"\1\156",
 			"\1\157",
-			"\12\46\7\uffff\3\46\1\160\26\46\4\uffff\1\46\1\uffff\32\46",
-			"\12\46\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
-			"\1\163",
+			"\1\160",
+			"\1\46\2\uffff\12\46\7\uffff\3\46\1\161\26\46\4\uffff\1\46\1\uffff\32"+
+			"\46",
+			"\1\46\2\uffff\12\46\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
 			"\1\164",
+			"\1\165",
 			"",
 			"",
-			"\12\46\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
-			"\1\166",
+			"\1\46\2\uffff\12\46\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
 			"\1\167",
 			"\1\170",
-			"\1\171\1\172",
-			"\1\173",
-			"\1\174",
+			"\1\171",
+			"\1\173\16\uffff\1\172\1\174",
 			"\1\175",
 			"\1\176",
 			"\1\177",
 			"\1\u0080",
-			"\1\u0081",
-			"\1\u0082",
-			"",
+			"\1\u0081\3\uffff\1\u0082",
 			"\1\u0083",
-			"",
-			"",
-			"",
-			"",
-			"\1\130\1\uffff\12\123",
-			"",
-			"",
-			"\1\125\1\130\1\uffff\12\126\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
-			"",
-			"",
+			"\1\u0084",
 			"\1\u0085",
+			"",
 			"\1\u0086",
-			"\1\u0087",
-			"\1\u0088",
+			"",
+			"",
+			"",
+			"",
+			"\1\131\1\uffff\12\123",
+			"",
+			"\1\46\1\131\1\uffff\12\125\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
+			"\12\u0088",
+			"\1\126\1\131\1\uffff\12\127\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
+			"",
 			"",
 			"\1\u0089",
 			"\1\u008a",
 			"\1\u008b",
 			"\1\u008c",
+			"",
 			"\1\u008d",
 			"\1\u008e",
 			"\1\u008f",
@@ -3012,20 +3072,20 @@ public class TSLexer extends Lexer {
 			"\1\u0094",
 			"\1\u0095",
 			"\1\u0096",
-			"\12\46\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
+			"\1\u0097",
 			"\1\u0098",
-			"\12\46\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
-			"\12\46\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
-			"\1\u009b",
-			"",
-			"",
-			"\12\46\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
+			"\1\u0099",
+			"\1\u009a",
+			"\1\46\2\uffff\12\46\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
 			"\1\u009c",
-			"",
-			"\1\u009d",
-			"\1\u009e",
+			"\1\46\2\uffff\12\46\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
+			"\1\46\2\uffff\12\46\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
 			"\1\u009f",
+			"",
+			"",
+			"\1\46\2\uffff\12\46\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
 			"\1\u00a0",
+			"",
 			"\1\u00a1",
 			"\1\u00a2",
 			"\1\u00a3",
@@ -3035,143 +3095,162 @@ public class TSLexer extends Lexer {
 			"\1\u00a7",
 			"\1\u00a8",
 			"\1\u00a9",
-			"",
-			"",
 			"\1\u00aa",
 			"\1\u00ab",
 			"\1\u00ac",
 			"\1\u00ad",
-			"\12\46\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
+			"\1\u00ae",
 			"\1\u00af",
-			"\1\u00b0",
+			"",
+			"",
+			"\1\u00b0\2\uffff\12\u0088",
 			"\1\u00b1",
 			"\1\u00b2",
 			"\1\u00b3",
-			"\12\46\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
-			"\1\u00b5",
-			"\12\46\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
+			"\1\u00b4",
+			"\1\46\2\uffff\12\46\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
+			"\1\u00b6",
 			"\1\u00b7",
 			"\1\u00b8",
 			"\1\u00b9",
 			"\1\u00ba",
-			"\1\u00bb",
-			"",
-			"\12\46\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
-			"",
-			"",
-			"\1\u00bd",
-			"\12\46\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
+			"\1\46\2\uffff\12\46\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
+			"\1\u00bc",
+			"\1\46\2\uffff\12\46\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
+			"\1\u00be",
 			"\1\u00bf",
-			"\12\46\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
-			"\12\46\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
+			"\1\u00c0",
+			"\1\u00c1",
 			"\1\u00c2",
-			"\12\46\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
-			"\12\46\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
-			"\1\u00c5",
-			"\12\46\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
-			"\1\u00c7",
-			"\12\46\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
+			"",
+			"\1\46\2\uffff\12\46\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
+			"",
+			"",
+			"\1\u00c4",
+			"\1\46\2\uffff\12\46\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
+			"\1\u00c6",
+			"\1\46\2\uffff\12\46\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
+			"\1\46\2\uffff\12\46\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
 			"\1\u00c9",
 			"\1\u00ca",
-			"\1\u00cb",
-			"\1\u00cc",
+			"\1\46\2\uffff\12\46\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
+			"\1\46\2\uffff\12\46\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
 			"\1\u00cd",
-			"\1\u00ce",
-			"\1\u00cf\16\uffff\1\u00d0",
-			"",
+			"\1\46\2\uffff\12\46\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
+			"\1\u00cf",
+			"\1\46\2\uffff\12\46\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
 			"\1\u00d1",
-			"\12\46\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
-			"\12\46\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
-			"\12\46\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
-			"\1\u00d5",
-			"",
+			"\1\u00d2",
+			"\1\u00d3",
+			"\1\u00d4",
+			"\12\u00d5",
 			"\1\u00d6",
-			"",
 			"\1\u00d7",
 			"\1\u00d8",
-			"\1\u00d9",
-			"\1\u00da",
+			"\1\u00d9\16\uffff\1\u00da",
+			"",
 			"\1\u00db",
-			"",
-			"\12\46\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
-			"",
-			"\12\46\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
-			"",
-			"",
-			"\1\u00de",
-			"",
-			"",
-			"\12\46\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
+			"\1\46\2\uffff\12\46\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
+			"\1\46\2\uffff\12\46\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
+			"\1\46\2\uffff\12\46\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
+			"\1\u00df",
 			"",
 			"\1\u00e0",
 			"",
 			"\1\u00e1",
 			"\1\u00e2",
-			"\12\46\7\uffff\22\46\1\u00e3\7\46\4\uffff\1\46\1\uffff\32\46",
+			"\1\u00e3",
+			"\1\u00e4",
 			"\1\u00e5",
-			"\1\u00e6",
-			"\1\u00e7",
+			"",
+			"\1\46\2\uffff\12\46\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
+			"",
+			"\1\46\2\uffff\12\46\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
+			"",
+			"",
 			"\1\u00e8",
-			"\1\u00e9",
-			"\12\46\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
+			"\1\46\2\uffff\12\46\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
 			"",
 			"",
+			"\1\46\2\uffff\12\46\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
 			"",
 			"\1\u00eb",
-			"\1\u00ec",
-			"\12\46\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
+			"",
+			"\1\46\2\uffff\12\46\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
+			"\1\u00ed",
 			"\1\u00ee",
-			"\1\u00ef",
-			"\1\u00f0",
-			"\12\46\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
+			"\1\46\2\uffff\12\46\7\uffff\22\46\1\u00ef\7\46\4\uffff\1\46\1\uffff"+
+			"\32\46",
+			"\12\u00d5\32\uffff\1\u00f1",
+			"\1\u00f2",
+			"\1\u00f3",
+			"\1\u00f4",
+			"\1\u00f5",
+			"\1\u00f6",
+			"\1\46\2\uffff\12\46\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
 			"",
 			"",
-			"\12\46\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
 			"",
-			"\12\46\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
-			"\12\46\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
-			"\12\46\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
-			"\12\46\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
-			"",
-			"\1\u00f7",
 			"\1\u00f8",
 			"\1\u00f9",
-			"\1\u00fa",
+			"\1\46\2\uffff\12\46\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
 			"\1\u00fb",
-			"",
 			"\1\u00fc",
 			"\1\u00fd",
-			"",
-			"\1\u00fe",
-			"\1\u00ff",
-			"\12\46\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
+			"\1\46\2\uffff\12\46\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
 			"",
 			"",
+			"\1\46\2\uffff\12\46\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
 			"",
 			"",
+			"\1\46\2\uffff\12\46\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
 			"",
+			"\1\46\2\uffff\12\46\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
+			"\1\46\2\uffff\12\46\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
+			"\1\46\2\uffff\12\46\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
 			"",
-			"\1\u0101",
-			"\12\46\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
-			"\12\46\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
-			"\1\u0104",
+			"\12\u0104",
 			"\1\u0105",
-			"\12\46\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
-			"\12\46\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
-			"\12\46\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
-			"\12\46\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
+			"\1\u0106",
+			"\1\u0107",
+			"\1\u0108",
+			"\1\u0109",
 			"",
 			"\1\u010a",
-			"",
-			"",
 			"\1\u010b",
-			"\12\46\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
+			"",
+			"\1\u010c",
+			"\1\u010d",
+			"\1\46\2\uffff\12\46\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
 			"",
 			"",
 			"",
 			"",
-			"\12\46\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
-			"\12\46\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
+			"",
+			"",
+			"\12\u0104\1\u010f",
+			"\1\u0110",
+			"\1\46\2\uffff\12\46\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
+			"\1\46\2\uffff\12\46\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
+			"\1\u0113",
+			"\1\u0114",
+			"\1\46\2\uffff\12\46\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
+			"\1\46\2\uffff\12\46\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
+			"\1\46\2\uffff\12\46\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
+			"\1\46\2\uffff\12\46\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
+			"",
+			"",
+			"\1\u0119",
+			"",
+			"",
+			"\1\u011a",
+			"\1\46\2\uffff\12\46\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
+			"",
+			"",
+			"",
+			"",
+			"\1\46\2\uffff\12\46\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
+			"\1\46\2\uffff\12\46\7\uffff\32\46\4\uffff\1\46\1\uffff\32\46",
 			"",
 			"",
 			""
@@ -3208,7 +3287,7 @@ public class TSLexer extends Lexer {
 		}
 		@Override
 		public String getDescription() {
-			return "1:1: Tokens : ( KW_PRIVILEGES | KW_TIMESERIES | KW_ROLE | KW_GRANT | KW_REVOKE | KW_MERGE | KW_QUIT | KW_METADATA | KW_DATATYPE | KW_ENCODING | KW_STORAGE | KW_AND | KW_OR | KW_NOT | KW_ORDER | KW_GROUP | KW_BY | KW_WHERE | KW_FROM | KW_SELECT | KW_INSERT | KW_ON | KW_SHOW | KW_LOAD | KW_NULL | KW_CREATE | KW_DROP | KW_TO | KW_TIMESTAMP | KW_USER | KW_INTO | KW_WITH | KW_SET | KW_DELETE | KW_UPDATE | KW_VALUES | KW_VALUE | KW_PASSWORD | KW_DESCRIBE | KW_PROPERTY | KW_ADD | KW_LABEL | KW_LINK | KW_UNLINK | QUOTE | DOT | COLON | COMMA | SEMICOLON | LPAREN | RPAREN | EQUAL | EQUAL_NS | NOTEQUAL | LESSTHANOREQUALTO | LESSTHAN | GREATERTHANOREQUALTO | GREATERTHAN | DIVIDE | PLUS | MINUS | STAR | StringLiteral | DATETIME | Integer | Float | Identifier | WS );";
+			return "1:1: Tokens : ( KW_PRIVILEGES | KW_TIMESERIES | KW_ROLE | KW_GRANT | KW_REVOKE | KW_MERGE | KW_QUIT | KW_METADATA | KW_DATATYPE | KW_ENCODING | KW_STORAGE | KW_AND | KW_OR | KW_NOT | KW_ORDER | KW_GROUP | KW_BY | KW_WHERE | KW_FROM | KW_SELECT | KW_INSERT | KW_ON | KW_SHOW | KW_LOAD | KW_NULL | KW_CREATE | KW_DROP | KW_TO | KW_TIMESTAMP | KW_USER | KW_INDEX | KW_INTO | KW_WITH | KW_SET | KW_DELETE | KW_UPDATE | KW_VALUES | KW_VALUE | KW_PASSWORD | KW_DESCRIBE | KW_PROPERTY | KW_ADD | KW_LABEL | KW_LINK | KW_UNLINK | KW_USING | QUOTE | DOT | COLON | COMMA | SEMICOLON | LPAREN | RPAREN | EQUAL | EQUAL_NS | NOTEQUAL | LESSTHANOREQUALTO | LESSTHAN | GREATERTHANOREQUALTO | GREATERTHAN | DIVIDE | PLUS | MINUS | STAR | StringLiteral | DATETIME | Integer | Float | Identifier | WS );";
 		}
 		@Override
 		public int specialStateTransition(int s, IntStream _input) throws NoViableAltException {
