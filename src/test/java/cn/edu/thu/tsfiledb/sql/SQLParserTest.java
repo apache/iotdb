@@ -785,7 +785,7 @@ public class SQLParserTest {
     			"TOK_PATH", "root", "a", "b", "c",
     			"TOK_FUNC", "kv-match",
     			"TOK_WITH", "TOK_INDEX_KV", "window_length", "50",
-    			"TOK_WHERE", "time", "123"));
+    			"TOK_WHERE", ">", "TOK_PATH", "time", "123"));
         ArrayList<String> rec = new ArrayList<>();
         ASTNode astTree = ParseGenerator.generateAST("create index on root.a.b.c using kv-match with window_length=50 where time > 123");
         astTree = ParseUtils.findRootNonNullToken(astTree);
@@ -804,7 +804,7 @@ public class SQLParserTest {
     			"TOK_PATH", "root", "a", "b", "c",
     			"TOK_FUNC", "kv-match2",
     			"TOK_WITH", "TOK_INDEX_KV", "xxx", "50", "TOK_INDEX_KV", "xxx", "123",
-    			"TOK_WHERE", "time", "TOK_DATETIME", "now"));
+    			"TOK_WHERE", ">", "TOK_PATH", "time" ,"TOK_DATETIME", "now"));
         ArrayList<String> rec = new ArrayList<>();
         ASTNode astTree = ParseGenerator.generateAST("create index on root.a.b.c using kv-match2 with xxx=50,xxx=123 where time > now()");
         astTree = ParseUtils.findRootNonNullToken(astTree);
