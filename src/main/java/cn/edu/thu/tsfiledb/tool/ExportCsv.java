@@ -1,11 +1,27 @@
 package cn.edu.thu.tsfiledb.tool;
 
-import org.apache.commons.cli.*;
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.CommandLineParser;
+import org.apache.commons.cli.DefaultParser;
+import org.apache.commons.cli.HelpFormatter;
+import org.apache.commons.cli.Option;
+import org.apache.commons.cli.Options;
+import org.apache.commons.cli.ParseException;
 import org.joda.time.format.DateTimeFormatter;
 import org.joda.time.format.ISODateTimeFormat;
 
-import java.io.*;
-import java.sql.*;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.text.SimpleDateFormat;
 import java.util.Scanner;
 
@@ -87,7 +103,10 @@ public class ExportCsv {
             if (sqlFile == null) {
                 System.out.print(TSFILEDB_CLI_PREFIX + "> please input query: ");
                 sql = scanner.nextLine();
-                dumpResult(sql, 0);
+                String[] values = sql.trim().split(";");
+                for(int i = 0; i < values.length; i++){
+                		dumpResult(values[i], i);
+                }                
                 return;
             } else{
             		dumpFromSQLFile(sqlFile);
@@ -164,7 +183,7 @@ public class ExportCsv {
     			try {
 				dumpResult(sql, index);
 			} catch (SQLException e) {
-				System.out.println(String.format("Cannot dump data for statment %s", sql));
+				System.out.println(String.format("Cannot dump data for statment %s, because ", sql, e.getMessage()));
 			}
     			index++;
     		}
