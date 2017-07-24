@@ -123,7 +123,7 @@ public class MTree implements Serializable {
 		String[] nodeNames = path.split(separator);
 		MNode cur = root;
 		if (nodeNames.length <= 1 || !nodeNames[0].equals(root.getName())) {
-			throw new PathErrorException(String.format("Timeseries %s is not correct", path));
+			throw new PathErrorException(String.format("The storage group can't be set to the %s node", path));
 		}
 		int i = 1;
 		while (i < nodeNames.length) {
