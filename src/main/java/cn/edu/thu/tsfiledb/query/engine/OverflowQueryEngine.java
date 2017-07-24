@@ -38,11 +38,9 @@ import cn.edu.thu.tsfiledb.query.reader.RecordReader;
 public class OverflowQueryEngine {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(OverflowQueryEngine.class);
-    //private RecordReaderFactory recordReaderFactory;
     private MManager mManager;
 
     public OverflowQueryEngine() {
-        //recordReaderFactory = RecordReaderFactory.getInstance();
         mManager = MManager.getInstance();
     }
 
@@ -91,13 +89,9 @@ public class OverflowQueryEngine {
      */
     public QueryDataSet aggregate(Path path, String aggreFuncName
             , FilterExpression timeFilter, FilterExpression freqFilter, FilterExpression valueFilter) throws ProcessorException, IOException, PathErrorException {
-        TSDataType dataType;
-        try {
-            dataType = MManager.getInstance().getSeriesType(path.getFullPath());
-        } catch (PathErrorException e) {
-            throw new ProcessorException(e.getMessage());
-        }
+        TSDataType dataType= MManager.getInstance().getSeriesType(path.getFullPath());
         AggregateFunction func = AggreFuncFactory.getAggrFuncByName(aggreFuncName, dataType);
+        RecordReaderFactory.getInstance().removeRecordReader(path.getDeltaObjectToString(), path.getMeasurementToString());
         return aggregate(path, func, timeFilter, freqFilter, valueFilter);
     }
 
@@ -141,8 +135,8 @@ public class OverflowQueryEngine {
                 , deleteFilter, (SingleSeriesFilterExpression) freqFilter, (SingleSeriesFilterExpression) valueFilter);
 
         queryDataSet.mapRet.put(func.name + "(" + path.getFullPath() + ")", aggrRet.data);
-        //close current recordReader
-        recordReader.closeFromFactory();
+        // TODO close current recordReader, need close file stream?
+        // recordReader.closeFromFactory();
         return queryDataSet;
     }
 
@@ -168,6 +162,9 @@ public class OverflowQueryEngine {
         clearQueryDataSet(queryDataSet);
         queryDataSet.getBatchReaderRetGenerator().calculateRecord();
         queryDataSet.putRecordFromBatchReadRetGenerator();
+        for (Path path : paths) {
+            RecordReaderFactory.getInstance().removeRecordReader(path.getDeltaObjectToString(), path.getMeasurementToString());
+        }
         return queryDataSet;
     }
 
@@ -195,15 +192,14 @@ public class OverflowQueryEngine {
             recordReader.insertAllData.setBufferWritePageList(recordReader.bufferWritePageList);
             recordReader.insertAllData.setCurrentPageBuffer(insertTrue);
         }
-        //System.out.println("---------" + recordReader.insertAllData.insertTrue);
-        //System.out.println("---------" + recordReader.insertAllData.pageList.get(0));
+
         res = recordReader.getValueInOneColumnWithOverflow(deltaObjectUID, measurementUID,
                 updateTrue, updateFalse, recordReader.insertAllData, deleteFilter, res, fetchSize);
 
         res.putOverflowInfo(insertTrue, updateTrue, updateFalse, deleteFilter);
 
-        //close current recordReader
-        recordReader.closeFromFactory();
+        // close current recordReader
+        // recordReader.closeFromFactory();
 
         return res;
     }
@@ -231,6 +227,9 @@ public class OverflowQueryEngine {
         clearQueryDataSet(queryDataSet);
         queryDataSet.getBatchReaderRetGenerator().calculateRecord();
         queryDataSet.putRecordFromBatchReadRetGenerator();
+        for (Path path : paths) {
+            RecordReaderFactory.getInstance().removeRecordReader(path.getDeltaObjectToString(), path.getMeasurementToString());
+        }
         return queryDataSet;
     }
 
@@ -332,7 +331,10 @@ public class OverflowQueryEngine {
                     timeRet, updateTrue, recordReader.insertAllData, deleteFilter);
             ret.mapRet.put(device_sensor, oneColDataList);
 
-            recordReader.closeFromFactory();
+            // recordReader.closeFromFactory();
+        }
+        for (Path path : paths) {
+            RecordReaderFactory.getInstance().removeRecordReader(path.getDeltaObjectToString(), path.getMeasurementToString());
         }
         return ret;
     }
@@ -467,7 +469,7 @@ public class OverflowQueryEngine {
             return oneColData;
         }
 
-        //update the value in oneColData according to updateTrue
+        // update the value in oneColData according to updateTrue
         oneColData = updateValueAccordingToUpdateTrue(updateTrue, oneColData);
         DynamicOneColumnData res = new DynamicOneColumnData(oneColData.dataType, true);
         SingleValueVisitor<?> timeVisitor = null;
@@ -565,11 +567,22 @@ public class OverflowQueryEngine {
                 }
                 break;
             default:
-                throw new UnSupportedDataTypeException("UnSupported data type for read:" + oneColData.dataType);
+                throw new UnSupportedDataTypeException("UnSupported data type for read: " + oneColData.dataType);
         }
 
         return res;
     }
+
+//    private boolean mayHasSatisfiedValue(SingleSeriesFilterExpression timeFilter, SingleValueVisitor<?> timeVisitor,
+//                                         SingleSeriesFilterExpression valueFilter, SingleValueVisitor<?> valueVisitor) {
+//        if ((valueFilter == null && timeFilter == null) ||
+//                (valueFilter != null && timeFilter == null && valueVisitor.verify(v)) ||
+//                (valueFilter == null && timeFilter != null && timeVisitor.verify(oneColData.getTime(i))) ||
+//                (valueFilter != null && timeFilter != null && valueVisitor.verify(v) && timeVisitor.verify(oneColData.getTime(i)))) {
+//            return true;
+//        }
+//        return false;
+//    }
 
     private static DynamicOneColumnData updateValueAccordingToUpdateTrue(DynamicOneColumnData updateTrue
             , DynamicOneColumnData oneColData) {
@@ -637,18 +650,3 @@ public class OverflowQueryEngine {
         }
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

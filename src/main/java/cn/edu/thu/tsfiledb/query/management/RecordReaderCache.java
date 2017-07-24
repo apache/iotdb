@@ -6,6 +6,9 @@ import java.util.HashMap;
 import cn.edu.thu.tsfile.common.exception.ProcessorException;
 import cn.edu.thu.tsfiledb.query.reader.RecordReader;
 
+/**
+ * Used for read process, put the query structure in the cache for one query process.
+ */
 public class RecordReaderCache {
 
     private ThreadLocal<HashMap<String, RecordReader>> cache = new ThreadLocal<>();
@@ -23,6 +26,11 @@ public class RecordReaderCache {
     public void put(String deltaObjectUID, String measurementID, RecordReader recordReader) {
         checkCacheInitialized();
         cache.get().put(getKey(deltaObjectUID, measurementID), recordReader);
+    }
+
+    public RecordReader remove(String deltaObjectUID, String measurementID) {
+        checkCacheInitialized();
+        return cache.get().remove(getKey(deltaObjectUID, measurementID));
     }
 
     public void clear() throws ProcessorException {

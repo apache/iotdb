@@ -20,11 +20,11 @@ public class RowGroupReader {
 
     protected static final Logger Logger = LoggerFactory.getLogger(RowGroupReader.class);
     public HashMap<String, TSDataType> seriesTypeMap;
-    protected HashMap<String, OverflowValueReader> valueReaders = new HashMap<>();
-    protected String deltaObjectUID, deltaObjectType;
+    private HashMap<String, OverflowValueReader> valueReaders = new HashMap<>();
+    private String deltaObjectUID, deltaObjectType;
 
     protected ArrayList<String> sids;
-    protected long totalByteSize;
+    private long totalByteSize;
 
     protected TSRandomAccessFileReader raf;
 
@@ -82,7 +82,7 @@ public class RowGroupReader {
      * @param timeRet       Array of the time.
      * @throws IOException
      */
-    public DynamicOneColumnData readValueUseTimeValue(String measurementId, long[] timeRet) throws IOException {
+    public DynamicOneColumnData readValueUseTimestamps(String measurementId, long[] timeRet) throws IOException {
         return valueReaders.get(measurementId).getValuesForGivenValues(timeRet);
     }
 

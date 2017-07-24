@@ -17,7 +17,8 @@ import cn.edu.thu.tsfiledb.engine.filenode.QueryStructure;
 import cn.edu.thu.tsfiledb.query.reader.RecordReader;
 
 /**
- * To avoid create RecordReader frequently. Add cache in later version
+ * To avoid create RecordReader frequently,<br>
+ * RecordReaderFactory could create a RecordReader using cache.
  * 
  * @author Jinrui Zhang
  *
@@ -45,14 +46,11 @@ public class RecordReaderFactory {
 		} else {
 			QueryStructure queryStructure;
 			try {
-				queryStructure = fileNodeManager.query(deltaObjectUID, measurementID, timeFilter, freqFilter,
-						valueFilter);
-				// LOGGER.info("====== Device:" + deltaObjectUID + ". Sensor:" + measurementID);
+				queryStructure = fileNodeManager.query(deltaObjectUID, measurementID, timeFilter, freqFilter, valueFilter);
 				LOGGER.info(queryStructure.toString());
 			} catch (FileNodeManagerException e) {
 				throw new ProcessorException(e.getMessage());
 			}
-			// TODO: This can be optimized in later version
 			RecordReader recordReader = createANewRecordReader(deltaObjectUID, measurementID, queryStructure, token);
 			readLockManager.recordReaderCache.put(deltaObjectUID, measurementID, recordReader);
 			return recordReader;
@@ -83,13 +81,13 @@ public class RecordReaderFactory {
 
 				// if currentPage is null, both currentPage and pageList must both are null
 				if (queryStructure.getCurrentPage() == null) {
-					recordReader = new RecordReader(rafList, unsealedRaf, queryStructure.getBufferwriteDataInDisk(), deltaObjectUID, measurementID, token,
-							null, null, null,
+					recordReader = new RecordReader(rafList, unsealedRaf, queryStructure.getBufferwriteDataInDisk(),
+							deltaObjectUID, measurementID, token, null, null, null,
 							queryStructure.getAllOverflowData());
 				} else {
-					recordReader = new RecordReader(rafList, unsealedRaf, queryStructure.getBufferwriteDataInDisk(), deltaObjectUID, measurementID, token,
-							queryStructure.getCurrentPage(), queryStructure.getPageList().left, queryStructure.getPageList().right,
-							queryStructure.getAllOverflowData());
+					recordReader = new RecordReader(rafList, unsealedRaf, queryStructure.getBufferwriteDataInDisk(),
+							deltaObjectUID, measurementID, token, queryStructure.getCurrentPage(),
+							queryStructure.getPageList().left, queryStructure.getPageList().right, queryStructure.getAllOverflowData());
 				}
 			} else {
 				if (fileNodes.size() > 0) {
@@ -101,7 +99,8 @@ public class RecordReaderFactory {
 							queryStructure.getCurrentPage(), null, null, queryStructure.getAllOverflowData());
 				} else {
 					recordReader = new RecordReader(rafList, deltaObjectUID, measurementID, token,
-							queryStructure.getCurrentPage(), queryStructure.getPageList().left, queryStructure.getPageList().right, queryStructure.getAllOverflowData());
+							queryStructure.getCurrentPage(), queryStructure.getPageList().left, queryStructure.getPageList().right,
+							queryStructure.getAllOverflowData());
 				}
 			}
 		} catch (IOException e) {
@@ -112,6 +111,7 @@ public class RecordReaderFactory {
 
 	}
 
+	//TODO this just close the RecordReader but never remove it from cache?
 	public void closeOneRecordReader(RecordReader recordReader) throws ProcessorException {
 //		try {
 //			recordReader.close();
@@ -122,9 +122,12 @@ public class RecordReaderFactory {
 	}
 
 	public static RecordReaderFactory getInstance() {
-		if (instance == null) {
-			instance = new RecordReaderFactory();
-		}
 		return instance;
+	}
+
+	public void removeRecordReader(String deltaObjectId, String measurementId) {
+		if (readLockManager.recordReaderCache.containsRecordReader(deltaObjectId, measurementId)) {
+			readLockManager.recordReaderCache.remove(deltaObjectId, measurementId);
+		}
 	}
 }
