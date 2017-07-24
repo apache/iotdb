@@ -560,7 +560,6 @@ Index Statment
 
 indexStatement
     : createIndexStatement
-//    | selectIndexStatement
     | dropIndexStatement
     ;
 
@@ -585,10 +584,6 @@ indexWhereClause
     -> ^(TOK_WHERE $name $value)
     ;
 
-selectIndexStatement
-    : KW_SELECT func=Identifier LPAREN p=path COMMA file=Identifier COMMA epsilon=Float (COMMA alpha=Float COMMA beta=Float)? RPAREN
-    -> ^(TOK_SELECT_INDEX $func $p $file $epsilon $alpha $beta)
-    ;
 
 dropIndexStatement
     : KW_DROP KW_INDEX KW_ON p=path
