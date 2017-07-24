@@ -638,11 +638,13 @@ public class FileNodeManagerTest {
 		}
 		// check query before merge
 		QueryStructure queryStructure;
+		String originFilePath = null;
 		try {
 			int token = fileNodeManager.beginQuery(deltaObjectId);
 			queryStructure = fileNodeManager.query(deltaObjectId, measurementId, null, null, null);
 			fileNodeManager.endQuery(deltaObjectId, token);
 			assertEquals(1, queryStructure.getBufferwriteDataInFiles().size());
+			originFilePath = queryStructure.getBufferwriteDataInFiles().get(0).filePath;
 			IntervalFileNode temp = queryStructure.getBufferwriteDataInFiles().get(0);
 			assertEquals(OverflowChangeType.CHANGED, temp.overflowChangeType);
 			assertEquals(100, temp.getStartTime(deltaObjectId));
@@ -652,6 +654,8 @@ public class FileNodeManagerTest {
 			e1.printStackTrace();
 			fail(e1.getMessage());
 		}
+		File fileBeforeMerge = new File(originFilePath);
+		assertEquals(true, fileBeforeMerge.exists());
 		// merge
 		try {
 			fileNodeManager.mergeAll();
@@ -662,6 +666,8 @@ public class FileNodeManagerTest {
 		// wait to end of merge
 		waitToSleep(3000);
 		// check query after merge: no tsfile data and no overflow data
+		fileBeforeMerge = new File(originFilePath);
+		assertEquals(false, fileBeforeMerge.exists());
 		try {
 			int token = fileNodeManager.beginQuery(deltaObjectId);
 			queryStructure = fileNodeManager.query(deltaObjectId, measurementId, null, null, null);
