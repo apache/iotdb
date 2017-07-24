@@ -133,9 +133,9 @@ public class ImportCsv {
         try {
             Class.forName("cn.edu.thu.tsfiledb.jdbc.TsfileDriver");
             connection = DriverManager.getConnection("jdbc:tsfile://" + host + ":" + port + "/", username, password);
-            br = new BufferedReader(new InputStreamReader(new FileInputStream(file)));
-            errorFile.createNewFile();
-            bw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(errorFile)));
+            br = new BufferedReader(new FileReader(file));
+            if(!errorFile.exists()) errorFile.createNewFile();
+            bw = new BufferedWriter(new FileWriter(errorFile, true));
             String line = "";
             String[] strHeadInfo = br.readLine().split(",");
             deviceToColumn = new HashMap<>();
