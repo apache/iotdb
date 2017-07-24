@@ -93,6 +93,7 @@ public class QueryProcessor {
             case PROPERTY:
             case LOADDATA:
             case INSERT:
+            case INDEX:
                 return operator;
             case QUERY:
             case UPDATE:

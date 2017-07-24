@@ -31,7 +31,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static cn.edu.thu.tsfiledb.qp.constant.SQLConstant.*;
 
@@ -122,6 +124,9 @@ public class LogicalGenerator {
 			case TSParser.TOK_PROPERTY:
 				analyzePropertyCreate(astNode);
 				break;
+			case TSParser.TOK_INDEX:
+				analyzeIndexCreate(astNode);
+				break;
 			default:
 				break;
 			}
@@ -201,6 +206,7 @@ public class LogicalGenerator {
 	}
 
 	private void analyzeMetadataCreate(ASTNode astNode) throws MetadataArgsErrorException {
+		System.out.println(astNode.dump());
 		Path series = parseRootPath(astNode.getChild(0).getChild(0));
 		ASTNode paramNode = astNode.getChild(1);
 		String dataType = paramNode.getChild(0).getChild(0).getText();
@@ -305,6 +311,30 @@ public class LogicalGenerator {
 		((DeleteOperator) initializedOperator).setTime(deleteTime);
 	}
 
+	private long parseIndexTimeFilter(IndexOperator operator) throws LogicalOperatorException {
+		FilterOperator filterOperator = operator.getFilterOperator();
+		if (filterOperator == null) {
+			return 0;
+		}
+		if (!(filterOperator.isLeaf())) {
+			throw new LogicalOperatorException(
+					"For delete command, where clause must be like : time < XXX or time <= XXX");
+		}
+		if (filterOperator.getTokenIntType() != GREATERTHAN
+				&& filterOperator.getTokenIntType() != GREATERTHANOREQUALTO) {
+			throw new LogicalOperatorException(
+					"For delete command, time filter must be less than or less than or equal to");
+		}
+		long time = Long.valueOf(((BasicFunctionOperator) filterOperator).getValue());
+		if (filterOperator.getTokenIntType() == GREATERTHAN) {
+			time = time + 1;
+		}
+		if (time < 0) {
+			throw new LogicalOperatorException("index Time:" + time + ", time must >= 0");
+		}
+		return time;
+	}
+
 	/**
 	 * for delete command, time should only have an end time.
 	 *
@@ -352,7 +382,7 @@ public class LogicalGenerator {
 			int selChildCount = astNode.getChildCount();
 			for (int i = 0; i < selChildCount; i++) {
 				ASTNode child = astNode.getChild(i);
-				if(child.getChild(0).getType() == TSParser.TOK_CLUSTER) {
+				if (child.getChild(0).getType() == TSParser.TOK_CLUSTER) {
 					ASTNode cluster = child.getChild(0);
 					ASTNode pathChild = cluster.getChild(0);
 					Path selectPath = parsePath(pathChild);
@@ -453,7 +483,7 @@ public class LogicalGenerator {
 	}
 
 	private long parseTimeFormat(String timestampStr) throws LogicalOperatorException {
-		if(timestampStr == null || timestampStr.trim().equals("")){
+		if (timestampStr == null || timestampStr.trim().equals("")) {
 			throw new LogicalOperatorException("input timestamp cannot be empty");
 		}
 		if (timestampStr.toLowerCase().equals(SQLConstant.NOW_FUNC)) {
@@ -465,7 +495,7 @@ public class LogicalGenerator {
 		} catch (Exception e) {
 			throw new LogicalOperatorException(e.getMessage());
 		}
-		
+
 	}
 
 	private Path parsePath(ASTNode node) {
@@ -670,11 +700,10 @@ public class LogicalGenerator {
 		} catch (Exception e) {
 			throw new MetadataArgsErrorException(String.format("data type %s not support", dataType));
 		}
-		
+
 		if (encoding == null) {
 			throw new MetadataArgsErrorException("encoding type cannot be null");
 		}
-		
 
 		if (!encoding.equals(RLE) && !encoding.equals(PLAIN) && !encoding.equals(TS_2DIFF)
 				&& !encoding.equals(BITMAP)) {
@@ -726,6 +755,46 @@ public class LogicalGenerator {
 		default:
 			throw new MetadataArgsErrorException(String.format("data type %s is not supprot", dataType));
 		}
+	}
+
+	private void analyzeIndexCreate(ASTNode astNode) throws LogicalOperatorException {
+		Path path = parseRootPath(astNode.getChild(0).getChild(0));
+		String indexName = astNode.getChild(0).getChild(1).getChild(0).getText();
+		if (!"kv-match".equals(indexName)) {
+			throw new LogicalOperatorException(
+					String.format("Not support the index %s, just support the kv-match index", indexName));
+		}
+		IndexOperator indexOperator = new IndexOperator(SQLConstant.TOK_CREATE_INDEX);
+		initializedOperator = indexOperator;
+		indexOperator.setPath(path);
+		int childCount = astNode.getChild(0).getChild(1).getChildCount();
+		if (childCount > 1) {
+			for (int i = 1; i < childCount; i++) {
+				ASTNode child = astNode.getChild(0).getChild(1).getChild(i);
+				if (child.getToken().getType() == TSParser.TOK_WITH) {
+					Map<String, Integer> indexParameters = parseIndexWithParameters(child);
+					indexOperator.setParameters(indexParameters);
+				} else if (child.getToken().getType() == TSParser.TOK_WHERE) {
+					analyzeWhere(child);
+				} else {
+					throw new LogicalOperatorException(
+							String.format("Not support keyword %s in create index", child.getToken().getText()));
+				}
+			}
+		}
+		long indexTime = parseIndexTimeFilter((IndexOperator) initializedOperator);
+		indexOperator.setStartTime(indexTime);
+	}
+
+	private Map<String, Integer> parseIndexWithParameters(ASTNode astNode) {
+		Map<String, Integer> indexParameters = new HashMap<String, Integer>();
+		for (int i = 0; i < astNode.getChildCount(); i++) {
+			ASTNode child = astNode.getChild(i);
+			String key = child.getChild(0).getText();
+			Integer value = Integer.valueOf(child.getChild(1).getText());
+			indexParameters.put(key, value);
+		}
+		return indexParameters;
 	}
 
 }
