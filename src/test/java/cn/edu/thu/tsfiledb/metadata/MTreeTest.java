@@ -6,16 +6,24 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import cn.edu.thu.tsfiledb.conf.TsfileDBConfig;
+import cn.edu.thu.tsfiledb.conf.TsfileDBDescriptor;
+import cn.edu.thu.tsfiledb.engine.overflow.io.EngineTestHelper;
 import cn.edu.thu.tsfiledb.exception.PathErrorException;
 
 public class MTreeTest {
 
+	private static TsfileDBConfig dbconfig = TsfileDBDescriptor.getInstance().getConfig();
 	@Before
 	public void setUp() throws Exception {
+		MManager.getInstance().clear();
+		EngineTestHelper.delete(dbconfig.metadataDir);
 	}
 
 	@After
 	public void tearDown() throws Exception {
+		MManager.getInstance().flushObjectToFile();
+		EngineTestHelper.delete(dbconfig.metadataDir);
 	}
 
 	@Test

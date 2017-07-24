@@ -941,7 +941,7 @@ public class FileNodeProcessor extends LRUProcessor {
 				e.printStackTrace();
 				throw new FileNodeProcessorException(e);
 			}
-			if(pathList.isEmpty()){
+			if (pathList.isEmpty()) {
 				continue;
 			}
 
