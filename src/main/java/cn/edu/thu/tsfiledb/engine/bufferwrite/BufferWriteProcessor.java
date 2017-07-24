@@ -505,7 +505,7 @@ public class BufferWriteProcessor extends LRUProcessor {
 		convertBufferLock.readLock().lock();
 		try {
 			memData = recordWriter.query(deltaObjectId, measurementId);
-			list = bufferIOWriter.getCurrentRowGroupMetaList();
+			list = bufferIOWriter.getCurrentRowGroupMetaList(deltaObjectId);
 		} finally {
 			convertBufferLock.readLock().unlock();
 		}
@@ -693,7 +693,8 @@ public class BufferWriteProcessor extends LRUProcessor {
 					deltaFileWriter.endRowGroup(deltaFileWriter.getPos() - rowGroupStart);
 				}
 				long actualTotalRowGroupSize = deltaFileWriter.getPos() - totalMemStart;
-				fillInRowGroupSize(actualTotalRowGroupSize);
+				// remove the feature: fill the row group
+				// fillInRowGroupSize(actualTotalRowGroupSize);
 				LOGGER.info("Asynchronous total row group size:{}, actual:{}, less:{}", primaryRowGroupSize,
 						actualTotalRowGroupSize, primaryRowGroupSize - actualTotalRowGroupSize);
 				LOGGER.info("Asynchronous write row group end");
