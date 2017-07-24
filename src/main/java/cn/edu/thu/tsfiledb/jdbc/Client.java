@@ -86,6 +86,7 @@ public class Client extends AbstractClient {
 			System.out.println(TSFILEDB_CLI_PREFIX + "> login successfully");
 			
 			reader = new ConsoleReader();
+			reader.setExpandEvents(false);
 			while (true) {
 				s = reader.readLine(TSFILEDB_CLI_PREFIX + "> ", null);
 				if (s == null) {
