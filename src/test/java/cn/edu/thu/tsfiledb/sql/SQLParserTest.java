@@ -778,7 +778,95 @@ public class SQLParserTest {
             i++;
         }
     }
+    
+    @Test
+    public void createIndex1() throws ParseException, RecognitionException {
+    	ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_CREATE", "TOK_INDEX", 
+    			"TOK_ROOT", "a", "b", "c",
+    			"TOK_FUNC", "kv-match",
+    			"TOK_WITH", "TOK_INDEX_KV", "window_length", "50",
+    			"TOK_WHERE", ">", "TOK_PATH", "time", "123"));
+        ArrayList<String> rec = new ArrayList<>();
+        ASTNode astTree = ParseGenerator.generateAST("create index on root.a.b.c using kv-match with window_length=50 where time > 123");
+        astTree = ParseUtils.findRootNonNullToken(astTree);
+        recursivePrintSon(astTree, rec);
 
+        int i = 0;
+        while (i <= rec.size() - 1) {
+            assertEquals(rec.get(i), ans.get(i));
+            i++;
+        }
+    }
+
+    @Test
+    public void createIndex2() throws ParseException, RecognitionException {
+    	ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_CREATE", "TOK_INDEX", 
+    			"TOK_ROOT", "a", "b", "c",
+    			"TOK_FUNC", "kv-match2",
+    			"TOK_WITH", "TOK_INDEX_KV", "xxx", "50", "TOK_INDEX_KV", "xxx", "123",
+    			"TOK_WHERE", ">", "TOK_PATH", "time" ,"TOK_DATETIME", "now"));
+        ArrayList<String> rec = new ArrayList<>();
+        ASTNode astTree = ParseGenerator.generateAST("create index on root.a.b.c using kv-match2 with xxx=50,xxx=123 where time > now()");
+        astTree = ParseUtils.findRootNonNullToken(astTree);
+        recursivePrintSon(astTree, rec);
+
+        int i = 0;
+        while (i <= rec.size() - 1) {
+            assertEquals(rec.get(i), ans.get(i));
+            i++;
+        }
+    }
+    
+    @Test
+    public void selectIndex1() throws ParseException, RecognitionException {
+    	ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_QUERY", 
+    			"TOK_SELECT_INDEX", "subsequence_matching", 
+    			"TOK_PATH","root", "a", "b", "c", "'query.csv'", "123.1"));
+        ArrayList<String> rec = new ArrayList<>();
+        ASTNode astTree = ParseGenerator.generateAST("select index subsequence_matching(root.a.b.c, 'query.csv' , 123.1)");
+        astTree = ParseUtils.findRootNonNullToken(astTree);
+        recursivePrintSon(astTree, rec);
+
+        int i = 0;
+        while (i <= rec.size() - 1) {
+            assertEquals(rec.get(i), ans.get(i));
+            i++;
+        }
+    }    
+    
+    @Test
+    public void selectIndex2() throws ParseException, RecognitionException {
+    	ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_QUERY", 
+    			"TOK_SELECT_INDEX", "subsequence_matching", 
+    			"TOK_PATH","root", "a", "b", "c", "'query.csv'", "123.1", "0.123", "0.5"));
+        ArrayList<String> rec = new ArrayList<>();
+        ASTNode astTree = ParseGenerator.generateAST("select index subsequence_matching(root.a.b.c, 'query.csv' , 123.1, 0.123, 0.5)");
+        astTree = ParseUtils.findRootNonNullToken(astTree);
+        recursivePrintSon(astTree, rec);
+
+        int i = 0;
+        while (i <= rec.size() - 1) {
+            assertEquals(rec.get(i), ans.get(i));
+            i++;
+        }
+    }    
+    
+    @Test
+    public void dropIndex() throws ParseException, RecognitionException {
+    	ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_DROP", "TOK_INDEX", 
+    			"TOK_PATH", "root", "a", "b", "c"));
+        ArrayList<String> rec = new ArrayList<>();
+        ASTNode astTree = ParseGenerator.generateAST("drop index on root.a.b.c");
+        astTree = ParseUtils.findRootNonNullToken(astTree);
+        recursivePrintSon(astTree, rec);
+
+        int i = 0;
+        while (i <= rec.size() - 1) {
+            assertEquals(rec.get(i), ans.get(i));
+            i++;
+        }
+    } 
+    
     public void recursivePrintSon(Node ns, ArrayList<String> rec) {
         rec.add(ns.toString());
         if (ns.getChildren() != null) {
