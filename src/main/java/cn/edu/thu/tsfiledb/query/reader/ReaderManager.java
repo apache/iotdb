@@ -19,7 +19,6 @@ import cn.edu.thu.tsfile.timeseries.read.LocalFileInput;
 
 public class ReaderManager {
 
-    // private FileReader fileReader;
     private List<FileReader> fileReaderList;
 
     private List<TSRandomAccessFileReader> rafList; // file has been serialized, sealed
@@ -27,16 +26,6 @@ public class ReaderManager {
     private HashMap<String, List<RowGroupReader>> rowGroupReaderMap;
     private List<RowGroupReader> rowGroupReaderList;
 
-    //     private TSRandomAccessFileReader raf;
-//    public ReaderManager(TSRandomAccessFileReader raf) throws IOException {
-//        // this.raf = raf;
-//        rowGroupReaderList = new ArrayList<>();
-//        rowGroupReaderMap = new HashMap<>();
-//
-//        fileReader = new FileReader(raf);
-//        addRowGroupReadersToMap(fileReader);
-//        addRowGroupReadersToList(fileReader);
-//    }
 
     /**
      * {NEWFUNC}
@@ -56,12 +45,6 @@ public class ReaderManager {
             addRowGroupReadersToMap(fr);
             addRowGroupReadersToList(fr);
         }
-//        for (int i = 0; i < rafList.size(); i++) {
-//            FileReader fr = new FileReader(rafList.get(i));
-//            fileReaderList.add(fr);
-//            addRowGroupReadersToMap(fr);
-//            addRowGroupReadersToList(fr);
-//        }
     }
 
     /**
@@ -108,22 +91,6 @@ public class ReaderManager {
         }
         return ret;
     }
-
-//    public RowGroupReader getRowGroupReader(String deviceUID, int index) {
-//        return this.fileReader.getRowGroupReader(deviceUID, index);
-//    }
-
-//    public TSRandomAccessFileReader getInput() {
-//        return this.raf;
-//    }
-
-//    TSDataType getDataTypeBySeriesName(String device, String sensor) {
-//        ArrayList<RowGroupReader> rgrList = fileReader.getRowGroupReadersMap().get(device);
-//        if (rgrList == null || rgrList.size() == 0) {
-//            return null;
-//        }
-//        return rgrList.get(0).getDataTypeBySeriesName(sensor);
-//    }
 
     HashMap<String, List<RowGroupReader>> getRowGroupReaderMap() {
         return rowGroupReaderMap;
