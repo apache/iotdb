@@ -199,7 +199,7 @@ public class ImportCsv {
             try {
                 statement.executeBatch();
                 statement.clearBatch();
-                System.out.println("excuted finish!");
+//                System.out.println(String.format("load data from %s succe", args));
             } catch (SQLException e) {
                 bw.write(e.getMessage());
                 bw.newLine();
