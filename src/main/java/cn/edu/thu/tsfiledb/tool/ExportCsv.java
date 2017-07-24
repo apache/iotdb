@@ -74,13 +74,13 @@ public class ExportCsv {
                 hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
                 return;
             }
-            
-            paraseParams(commandLine, scanner);
             targetDirectory = commandLine.getOptionValue(TARGET_FILE_ARGS);
             if(targetDirectory == null){
             		System.out.println("Target File Path(-tf) cannot be empty!");
             		return;
-            }
+            }            
+            paraseParams(commandLine, scanner);
+
             
             String sqlFile = commandLine.getOptionValue(SQL_FILE_ARGS);
             String sql;
