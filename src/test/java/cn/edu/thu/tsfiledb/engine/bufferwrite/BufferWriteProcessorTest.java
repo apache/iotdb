@@ -59,6 +59,7 @@ public class BufferWriteProcessorTest {
 
 	BufferWriteProcessor processor = null;
 	String nsp = "root.vehicle.d0";
+	String nps2 = "root.vehicle.d1";
 
 	private boolean cachePageData = false;
 	private TSFileConfig TsFileConf = TSFileDescriptor.getInstance().getConfig();
@@ -85,9 +86,56 @@ public class BufferWriteProcessorTest {
 		EngineTestHelper.delete(dbConfig.metadataDir);
 		TsFileConf.duplicateIncompletedPage = cachePageData;
 	}
+	
+	@Test
+	public void testMultipleRowgroup() throws BufferWriteProcessorException, IOException{
+		String filename = "bufferwritetest";
+		Map<String, Object> parameters = new HashMap<>();
+		parameters.put(FileNodeConstants.BUFFERWRITE_FLUSH_ACTION, bfflushaction);
+		parameters.put(FileNodeConstants.BUFFERWRITE_CLOSE_ACTION, bfcloseaction);
+		parameters.put(FileNodeConstants.FILENODE_PROCESSOR_FLUSH_ACTION, fnflushaction);
+		TSFileConfig tsconfig = TSFileDescriptor.getInstance().getConfig();
+		TsfileDBConfig tsdbconfig = TsfileDBDescriptor.getInstance().getConfig();
+		tsdbconfig.bufferWriteDir = "";
+		tsconfig.groupSizeInByte = 2000;
+		tsconfig.pageCheckSizeThreshold = 3;
+		tsconfig.pageSizeInByte = 100;
+		tsconfig.maxStringLength = 2;
+		File outputfile = new File(nsp + File.separatorChar + filename);
+		if (outputfile.exists()) {
+			outputfile.delete();
+		}
+		try {
+			processor = new BufferWriteProcessor(nsp, filename, parameters);
+		} catch (BufferWriteProcessorException e) {
+			e.printStackTrace();
+			fail(e.getMessage());
+		}
+		File nspdir = new File(nsp);
+		assertEquals(true, nspdir.isDirectory());
+		for (int i = 0; i < 1000; i++) {
+			processor.write(nsp, "s0", 100, TSDataType.INT32, i + "");
+			processor.write(nps2, "s0", 100, TSDataType.INT32, i + "");
+			if (i == 200) {
+				break;
+			}
+		}
+		// wait to flush end
+		try {
+			Thread.sleep(100);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+		//query
+		Pair<List<Object>, List<RowGroupMetaData>> pair = processor.getIndexAndRowGroupList(nsp, "s0");
+		int size = pair.right.size();
+		pair = processor.getIndexAndRowGroupList(nps2, "s0");
+		assertEquals(size, pair.right.size());
+		processor.close();
+	}
 
 	@Test
-	public void test() throws IOException, BufferWriteProcessorException {
+	public void testBufferwrite() throws IOException, BufferWriteProcessorException {
 		String filename = "bufferwritetest";
 
 		BufferWriteProcessor bufferWriteProcessor1 = null;
