@@ -17,12 +17,12 @@ import cn.edu.thu.tsfiledb.engine.overflow.io.EngineTestHelper;
 import cn.edu.thu.tsfiledb.exception.MetadataArgsErrorException;
 import cn.edu.thu.tsfiledb.exception.PathErrorException;
 
-public class MManagerTest2 {
+public class MManagerBasicTest {
 
-	
 	private static TsfileDBConfig dbconfig = TsfileDBDescriptor.getInstance().getConfig();
 	@Before
 	public void setUp() throws Exception {
+		MManager.getInstance().clear();
 		EngineTestHelper.delete(dbconfig.metadataDir);
 	}
 
@@ -30,7 +30,6 @@ public class MManagerTest2 {
 	public void tearDown() throws Exception {
 		MManager.getInstance().flushObjectToFile();
 		EngineTestHelper.delete(dbconfig.metadataDir);
-		MManager.getInstance().clear();
 	}
 
 	@Test

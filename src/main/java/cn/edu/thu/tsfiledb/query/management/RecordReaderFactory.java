@@ -125,8 +125,9 @@ public class RecordReaderFactory {
 		return instance;
 	}
 
-	public void removeRecordReader(String deltaObjectId, String measurementId) {
+	public void removeRecordReader(String deltaObjectId, String measurementId) throws IOException, ProcessorException {
 		if (readLockManager.recordReaderCache.containsRecordReader(deltaObjectId, measurementId)) {
+			readLockManager.recordReaderCache.get(deltaObjectId, measurementId).close();
 			readLockManager.recordReaderCache.remove(deltaObjectId, measurementId);
 		}
 	}
