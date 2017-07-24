@@ -377,14 +377,7 @@ public class MTree implements Serializable {
 		if (nodes.length == 0 || !nodes[0].equals(getRoot().getName())) {
 			throw new PathErrorException(String.format("Timeseries %s is not correct", pathReg));
 		}
-		if (!pathReg.equals("root")) {
-			if (!findPath(getRoot(), nodes, 1, "", paths, false)) {
-				throw new PathErrorException(String.format("Timeseries %s is not correct", pathReg));
-			}
-		} else {
-			findPath(getRoot(), nodes, 1, "", paths, false);
-			return paths;
-		}
+		findPath(getRoot(), nodes, 1, "", paths, false);
 		return paths;
 	}
 
