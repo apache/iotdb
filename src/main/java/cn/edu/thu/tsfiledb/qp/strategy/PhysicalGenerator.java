@@ -22,6 +22,7 @@ import cn.edu.thu.tsfiledb.qp.logical.sys.MetadataOperator;
 import cn.edu.thu.tsfiledb.qp.logical.sys.PropertyOperator;
 import cn.edu.thu.tsfiledb.qp.physical.PhysicalPlan;
 import cn.edu.thu.tsfiledb.qp.physical.crud.DeletePlan;
+import cn.edu.thu.tsfiledb.qp.physical.crud.IndexPlan;
 import cn.edu.thu.tsfiledb.qp.physical.crud.InsertPlan;
 import cn.edu.thu.tsfiledb.qp.physical.crud.UpdatePlan;
 import cn.edu.thu.tsfiledb.qp.physical.sys.MetadataPlan;
@@ -96,6 +97,11 @@ public class PhysicalGenerator {
 		case QUERY:
 			QueryOperator query = (QueryOperator) operator;
 			return transformQuery(query);
+		case INDEX:
+			IndexOperator indexOperator = (IndexOperator) operator;
+			IndexPlan indexPlan = new IndexPlan(indexOperator.getPath(), indexOperator.getParameters(),
+					indexOperator.getStartTime());
+			return indexPlan;
 		default:
 			throw new LogicalOperatorException("not supported operator type: " + operator.getType());
 		}
@@ -138,8 +144,7 @@ public class PhysicalGenerator {
 				endTime = longInterval.v[i + 1] - 1;
 			}
 			if ((startTime <= 0 && startTime != Long.MIN_VALUE) || endTime <= 0) {
-				throw new LogicalOperatorException(
-						"update time must be greater than 0.");
+				throw new LogicalOperatorException("update time must be greater than 0.");
 			}
 			if (startTime == Long.MIN_VALUE) {
 				startTime = 1;

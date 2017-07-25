@@ -133,9 +133,9 @@ public class ImportCsv {
         try {
             Class.forName("cn.edu.thu.tsfiledb.jdbc.TsfileDriver");
             connection = DriverManager.getConnection("jdbc:tsfile://" + host + ":" + port + "/", username, password);
-            br = new BufferedReader(new InputStreamReader(new FileInputStream(file)));
-            errorFile.createNewFile();
-            bw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(errorFile)));
+            br = new BufferedReader(new FileReader(file));
+            if(!errorFile.exists()) errorFile.createNewFile();
+            bw = new BufferedWriter(new FileWriter(errorFile, true));
             String line = "";
             String[] strHeadInfo = br.readLine().split(",");
             deviceToColumn = new HashMap<>();
@@ -148,7 +148,7 @@ public class ImportCsv {
                 connection.close();
                 System.exit(1);
             }
-
+            long startTime = System.currentTimeMillis();
             timeseriesToType = new HashMap<>();
             DatabaseMetaData databaseMetaData = connection.getMetaData();
 
@@ -190,8 +190,7 @@ public class ImportCsv {
                             count = 0;
                         }
                     } catch (SQLException e) {
-//						LOGGER.error("{} :excuted fail!");
-                        bw.write(str);
+                        bw.write(e.getMessage());
                         bw.newLine();
                     }
                 }
@@ -199,7 +198,7 @@ public class ImportCsv {
             try {
                 statement.executeBatch();
                 statement.clearBatch();
-                System.out.println("excuted finish!");
+                System.out.println(String.format("load data from %s successfully, it cost %dms", file.getName(), (System.currentTimeMillis()-startTime)));
             } catch (SQLException e) {
                 bw.write(e.getMessage());
                 bw.newLine();
@@ -212,7 +211,7 @@ public class ImportCsv {
         } catch (ClassNotFoundException e2) {
             System.out.println("Cannot find cn.edu.thu.tsfiledb.jdbc.TsfileDriver");
         } catch (SQLException e) {
-            System.out.println("database connection exception!" + e.getMessage());
+            System.out.println("Database connection exception!" + e.getMessage());
         } finally {
             try {
                 bw.close();
@@ -266,7 +265,6 @@ public class ImportCsv {
 
             String timestampsStr = setTimestamp(timeFormat, data[0]);
             if (timestampsStr.equals("")) {
-//				LOGGER.error("Time Format Error! {}", line);
                 bwToErrorFile.write(line);
                 bwToErrorFile.newLine();
                 continue;

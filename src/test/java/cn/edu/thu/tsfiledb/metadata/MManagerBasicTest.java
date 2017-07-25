@@ -23,7 +23,7 @@ public class MManagerBasicTest {
 	@Before
 	public void setUp() throws Exception {
 		MManager.getInstance().clear();
-		EngineTestHelper.delete(dbconfig.metadataDir);
+		// EngineTestHelper.delete(dbconfig.metadataDir);
 	}
 
 	@After

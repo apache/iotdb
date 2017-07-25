@@ -81,10 +81,10 @@ public class IntervalTreeOperationMemoryTest {
             doc = tree[i].queryMemory(null, null, null, doc);
         }
 
-//        for (int i = 0; i < d.length; i++) {
+//        for (int i = 0; i < d.valueLength; i++) {
 //            System.out.println(d.getTime(i * 2) + " " + d.getTime(i * 2 + 1) + " " + d.getInt(i));
 //        }
-        Assert.assertEquals(doc.length, 18);
+        Assert.assertEquals(doc.valueLength, 18);
         Assert.assertEquals(doc.getTime(0), 0L);
         Assert.assertEquals(doc.getTime(1), -1463369845019L);
         Assert.assertEquals(doc.getInt(0), 0);
@@ -171,8 +171,8 @@ public class IntervalTreeOperationMemoryTest {
         oldTree.update(1L, 10L, l1);
         DynamicOneColumnData mergeAns = oldTree.queryMemory(null, null, null,  newMemoryData);
 
-        Assert.assertEquals(mergeAns.length, 2);
-        for (int i = 0; i < mergeAns.length; i++) {
+        Assert.assertEquals(mergeAns.valueLength, 2);
+        for (int i = 0; i < mergeAns.valueLength; i++) {
             if (i == 0) {
                 Assert.assertEquals(mergeAns.getTime(i * 2), 1);
                 Assert.assertEquals(mergeAns.getTime(i * 2 + 1), 4);
@@ -198,8 +198,8 @@ public class IntervalTreeOperationMemoryTest {
         oldTree.update(1L, 10L, f1);
         DynamicOneColumnData mergeAns = oldTree.queryMemory(null, null, null,  newMemoryData);
 
-        Assert.assertEquals(mergeAns.length, 2);
-        for (int i = 0; i < mergeAns.length; i++) {
+        Assert.assertEquals(mergeAns.valueLength, 2);
+        for (int i = 0; i < mergeAns.valueLength; i++) {
             if (i == 0) {
                 Assert.assertEquals(mergeAns.getTime(i * 2), 1);
                 Assert.assertEquals(mergeAns.getTime(i * 2 + 1), 4);
@@ -224,8 +224,8 @@ public class IntervalTreeOperationMemoryTest {
         oldTree.update(1L, 10L, d1);
         DynamicOneColumnData mergeAns = oldTree.queryMemory(null, null, null,  newMemoryData);
 
-        Assert.assertEquals(mergeAns.length, 2);
-        for (int i = 0; i < mergeAns.length; i++) {
+        Assert.assertEquals(mergeAns.valueLength, 2);
+        for (int i = 0; i < mergeAns.valueLength; i++) {
             if (i == 0) {
                 Assert.assertEquals(mergeAns.getTime(i * 2), 1);
                 Assert.assertEquals(mergeAns.getTime(i * 2 + 1), 4);
@@ -250,8 +250,8 @@ public class IntervalTreeOperationMemoryTest {
         IntervalTreeOperation oldTree = new IntervalTreeOperation(TSDataType.INT32);
         oldTree.update(1L, 10L, i1);
         DynamicOneColumnData mergeAnswer = oldTree.queryMemory(null, null, null,  memoryData);
-        Assert.assertEquals(mergeAnswer.length, 2);
-        for (int i = 0; i < mergeAnswer.length; i++) {
+        Assert.assertEquals(mergeAnswer.valueLength, 2);
+        for (int i = 0; i < mergeAnswer.valueLength; i++) {
             if (i == 0) {
                 Assert.assertEquals(mergeAnswer.getTime(i * 2), 1);
                 Assert.assertEquals(mergeAnswer.getTime(i * 2 + 1), 4);
@@ -272,7 +272,7 @@ public class IntervalTreeOperationMemoryTest {
         oldTree.reset();
         oldTree.insert(5L, i1);
         mergeAnswer = oldTree.queryMemory(null, null, null,  memoryData);
-        for (int i = 0; i < mergeAnswer.length; i++) {
+        for (int i = 0; i < mergeAnswer.valueLength; i++) {
             if (i == 0) {
                 Assert.assertEquals(mergeAnswer.getTime(i * 2), 5);
                 Assert.assertEquals(mergeAnswer.getTime(i * 2 + 1), -5);
@@ -290,8 +290,8 @@ public class IntervalTreeOperationMemoryTest {
         oldTree.reset();
         oldTree.delete(11L);
         mergeAnswer = oldTree.queryMemory(null, null, null,  memoryData);
-        Assert.assertEquals(mergeAnswer.length, 2);
-        for (int i = 0; i < mergeAnswer.length; i++) {
+        Assert.assertEquals(mergeAnswer.valueLength, 2);
+        for (int i = 0; i < mergeAnswer.valueLength; i++) {
             // outputDynamicOneColumn(mergeBlockAns, i);
             if (i == 0) {
                 Assert.assertEquals(mergeAnswer.getTime(i * 2), 0);
@@ -314,7 +314,7 @@ public class IntervalTreeOperationMemoryTest {
         oldTree.reset();
         oldTree.delete(11L);
         mergeAnswer = oldTree.queryMemory(null, null, null,  memoryData);
-        for (int i = 0; i < mergeAnswer.length; i++) {
+        for (int i = 0; i < mergeAnswer.valueLength; i++) {
             Assert.assertEquals(mergeAnswer.getTime(i * 2), 0);
             Assert.assertEquals(mergeAnswer.getTime(i * 2 + 1), -10);
             Assert.assertEquals(mergeAnswer.getInt(i), 0);
@@ -330,8 +330,8 @@ public class IntervalTreeOperationMemoryTest {
         oldTree.reset();
         oldTree.delete(21L);
         mergeAnswer = oldTree.queryMemory(null, null, null,  memoryData);
-        Assert.assertEquals(mergeAnswer.length, 2);
-        for (int i = 0; i < mergeAnswer.length; i++) {
+        Assert.assertEquals(mergeAnswer.valueLength, 2);
+        for (int i = 0; i < mergeAnswer.valueLength; i++) {
             if (i == 0) {
                 Assert.assertEquals(mergeAnswer.getTime(i * 2), 0);
                 Assert.assertEquals(mergeAnswer.getTime(i * 2 + 1), -10);
@@ -353,8 +353,8 @@ public class IntervalTreeOperationMemoryTest {
         oldTree.reset();
         oldTree.delete(21L);
         mergeAnswer = oldTree.queryMemory(null, null, null,   memoryData);
-        Assert.assertEquals(mergeAnswer.length, 1);
-        for (int i = 0; i < mergeAnswer.length; i++) {
+        Assert.assertEquals(mergeAnswer.valueLength, 1);
+        for (int i = 0; i < mergeAnswer.valueLength; i++) {
              // outputDynamicOneColumn(mergeBlockAns, i);
             if (i == 0) {
                 Assert.assertEquals(mergeAnswer.getTime(i * 2), 0);
@@ -373,8 +373,8 @@ public class IntervalTreeOperationMemoryTest {
         oldTree.reset();
         oldTree.update(1L, 5L, i1);
         mergeAnswer = oldTree.queryMemory(null, null, null,   memoryData);
-        Assert.assertEquals(mergeAnswer.length, 2);
-        for (int i = 0; i < mergeAnswer.length; i++) {
+        Assert.assertEquals(mergeAnswer.valueLength, 2);
+        for (int i = 0; i < mergeAnswer.valueLength; i++) {
             // outputDynamicOneColumn(mergeBlockAns, i);
             if (i == 0) {
                 Assert.assertEquals(mergeAnswer.getTime(i * 2), 1);
@@ -397,8 +397,8 @@ public class IntervalTreeOperationMemoryTest {
         oldTree.reset();
         oldTree.insert(1L, i1);
         mergeAnswer = oldTree.queryMemory(null, null, null,   memoryData);
-        Assert.assertEquals(mergeAnswer.length, 2);
-        for (int i = 0; i < mergeAnswer.length; i++) {
+        Assert.assertEquals(mergeAnswer.valueLength, 2);
+        for (int i = 0; i < mergeAnswer.valueLength; i++) {
             // outputDynamicOneColumn(mergeBlockAns, i);
             if (i == 0) {
                 Assert.assertEquals(mergeAnswer.getTime(i * 2), 1);
@@ -421,8 +421,8 @@ public class IntervalTreeOperationMemoryTest {
         oldTree.reset();
         oldTree.update(1L, 5L, i1);
         mergeAnswer = oldTree.queryMemory(null, null, null, memoryData);
-        Assert.assertEquals(mergeAnswer.length, 1);
-        for (int i = 0; i < mergeAnswer.length; i++) {
+        Assert.assertEquals(mergeAnswer.valueLength, 1);
+        for (int i = 0; i < mergeAnswer.valueLength; i++) {
             if (i == 0) {
                 Assert.assertEquals(mergeAnswer.getTime(i * 2), 1);
                 Assert.assertEquals(mergeAnswer.getTime(i * 2 + 1), 5);
@@ -440,8 +440,8 @@ public class IntervalTreeOperationMemoryTest {
         oldTree.reset();
         oldTree.update(1L, 5L, i1);
         mergeAnswer = oldTree.queryMemory(null, null, null, memoryData);
-        Assert.assertEquals(mergeAnswer.length, 3);
-        for (int i = 0; i < mergeAnswer.length; i++) {
+        Assert.assertEquals(mergeAnswer.valueLength, 3);
+        for (int i = 0; i < mergeAnswer.valueLength; i++) {
             // outputDynamicOneColumn(mergeBlockAns, i);
             if (i == 0) {
                 Assert.assertEquals(mergeAnswer.getTime(i * 2), 1);
@@ -469,8 +469,8 @@ public class IntervalTreeOperationMemoryTest {
         oldTree.update(1L, 5L, i1);
         oldTree.update(6L, 7L, i3);
         mergeAnswer = oldTree.queryMemory(null, null, null,  memoryData);
-        Assert.assertEquals(mergeAnswer.length, 4);
-        for (int i = 0; i < mergeAnswer.length; i++) {
+        Assert.assertEquals(mergeAnswer.valueLength, 4);
+        for (int i = 0; i < mergeAnswer.valueLength; i++) {
             // outputDynamicOneColumn(mergeBlockAns, i);
             if (i == 0) {
                 Assert.assertEquals(mergeAnswer.getTime(i * 2), 1);
