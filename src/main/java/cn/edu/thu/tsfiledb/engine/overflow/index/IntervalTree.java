@@ -620,7 +620,7 @@ public class IntervalTree {
 						break;
 					case DELETE:
 						putTimePair(crudResult, -s, -e);
-						crudResult.putBinary(Binary.valueOf(BytesUtils.bytesToString(value)));
+						crudResult.putBinary(Binary.valueOf(""));
 						break;
 					case UPDATE:
 						putTimePair(crudResult, s, e);

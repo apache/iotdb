@@ -1,5 +1,7 @@
 package cn.edu.thu.tsfiledb.qp.logical.sys;
 
+import java.util.List;
+
 import cn.edu.thu.tsfile.timeseries.read.qp.Path;
 import cn.edu.thu.tsfiledb.qp.logical.RootOperator;
 
@@ -23,6 +25,7 @@ public class MetadataOperator extends RootOperator {
     private String encoding;
     private String[] encodingArgs;
 
+    private List<Path> deletePathList;
 
     public Path getPath() {
         return path;
@@ -60,7 +63,15 @@ public class MetadataOperator extends RootOperator {
         return namespaceType;
     }
 
-    public enum NamespaceType {
+    public List<Path> getDeletePathList() {
+		return deletePathList;
+	}
+
+	public void setDeletePathList(List<Path> deletePathList) {
+		this.deletePathList = deletePathList;
+	}
+
+	public enum NamespaceType {
         ADD_PATH, DELETE_PATH, SET_FILE_LEVEL
     }
 }
