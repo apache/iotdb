@@ -2,6 +2,7 @@ package cn.edu.thu.tsfiledb.qp.executor;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -308,6 +309,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 		String dataType = metadataPlan.getDataType();
 		String encoding = metadataPlan.getEncoding();
 		String[] encodingArgs = metadataPlan.getEncodingArgs();
+		List<Path> deletePathList = metadataPlan.getDeletePathList();
 		try {
 			switch (namespaceType) {
 			case ADD_PATH:
@@ -317,17 +319,25 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 				mManager.addPathToMTree(path.getFullPath(), dataType, encoding, encodingArgs);
 				break;
 			case DELETE_PATH:
-				if (!mManager.pathExist(path.getFullPath())) {
-					throw new ProcessorException(String.format("Timeseries %s does not exist.", path.getFullPath()));
+				if(deletePathList != null && !deletePathList.isEmpty()){
+					Set<String> pathSet = new HashSet<>();
+					for(Path p : deletePathList){
+						if (!mManager.pathExist(p.getFullPath())) {
+							throw new ProcessorException(String.format("Timeseries %s does not exist.", p.getFullPath()));
+						}
+						pathSet.addAll(mManager.getPaths(p.getFullPath()));
+					}
+					List<String> fullPath = new ArrayList<>();
+					fullPath.addAll(pathSet);
+					try {
+						deleteDataOfTimeSeries(mManager, fullPath);
+					} catch (ProcessorException e) {
+						// no operation
+					}
+					for(String p : fullPath){
+						mManager.deletePathFromMTree(p);
+					}
 				}
-
-				List<String> pathStringList = mManager.getPaths(path.getFullPath());
-				try {
-					deleteDataOfTimeSeries(mManager, pathStringList);
-				} catch (ProcessorException e) {
-					// no operation
-				}
-				mManager.deletePathFromMTree(path.getFullPath());
 				break;
 			case SET_FILE_LEVEL:
 				if (!mManager.pathExist(path.getFullPath())) {

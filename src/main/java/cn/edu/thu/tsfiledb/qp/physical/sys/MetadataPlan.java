@@ -19,6 +19,8 @@ public class MetadataPlan extends PhysicalPlan {
 	private String dataType;
 	private String encoding;
 	private String[] encodingArgs;
+	
+	private List<Path> deletePathList;
 
 	public Path getPath() {
 		return path;
@@ -57,13 +59,14 @@ public class MetadataPlan extends PhysicalPlan {
 	}
 
 	public MetadataPlan(NamespaceType namespaceType, Path path, String dataType, String encoding,
-			String[] encodingArgs) {
+			String[] encodingArgs, List<Path> deletePathList) {
 		super(false, OperatorType.METADATA);
 		this.namespaceType = namespaceType;
 		this.path = path;
 		this.dataType = dataType;
 		this.encoding = encoding;
 		this.encodingArgs = encodingArgs;
+		this.deletePathList = deletePathList;
 	}
 
 	@Override
@@ -78,9 +81,21 @@ public class MetadataPlan extends PhysicalPlan {
 		}
 		return ret;
 	}
+	
+	public void addDeletePath(Path path){
+		deletePathList.add(path);
+	}
+	
+	public List<Path> getDeletePathList() {
+		return deletePathList;
+	}
 
 	@Override
 	public List<Path> getPaths() {
+		if(deletePathList != null){
+			return deletePathList;
+		}
+		
 		List<Path> ret = new ArrayList<>();
 		if (path != null)
 			ret.add(path);
