@@ -206,7 +206,6 @@ public class LogicalGenerator {
 	}
 
 	private void analyzeMetadataCreate(ASTNode astNode) throws MetadataArgsErrorException {
-		System.out.println(astNode.dump());
 		Path series = parseRootPath(astNode.getChild(0).getChild(0));
 		ASTNode paramNode = astNode.getChild(1);
 		String dataType = paramNode.getChild(0).getChild(0).getText();
