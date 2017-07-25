@@ -186,7 +186,7 @@ public class FileNodeLastUpdateMulTest {
 							measurementId);
 					CachePage.mergeRecord(pagedata);
 				}
-				assertEquals(11, CachePage.length);
+				assertEquals(11, CachePage.valueLength);
 				assertEquals(0, bufferwriteDataInDisk.size());
 			} else {
 				assertEquals(1, bufferwriteDataInDisk.size());
@@ -318,7 +318,7 @@ public class FileNodeLastUpdateMulTest {
 			bufferwriteDataInFiles = queryStructure.getBufferwriteDataInFiles();
 			allOverflowData = queryStructure.getAllOverflowData();
 			DynamicOneColumnData insert = (DynamicOneColumnData) allOverflowData.get(0);
-			assertEquals(1, insert.length);
+			assertEquals(1, insert.valueLength);
 			assertEquals(5, insert.getTime(0));
 			assertEquals(5, insert.getInt(0));
 
@@ -462,7 +462,6 @@ public class FileNodeLastUpdateMulTest {
 	 * 
 	 * @param begin
 	 * @param end
-	 * @param deltaObjectId
 	 * @throws Exception 
 	 */
 	private void createBufferwriteFile(long begin, long end, String... deltaObjectIds) throws Exception {

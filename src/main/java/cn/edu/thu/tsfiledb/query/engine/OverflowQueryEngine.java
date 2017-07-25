@@ -429,18 +429,18 @@ public class OverflowQueryEngine {
         DynamicOneColumnData res = new DynamicOneColumnData(overflowData.dataType, true);
         int overflowIdx = 0;
         int memoryIdx = 0;
-        while (overflowIdx < overflowData.length || memoryIdx < memoryData.length) {
-            while (overflowIdx < overflowData.length && (memoryIdx >= memoryData.length ||
+        while (overflowIdx < overflowData.valueLength || memoryIdx < memoryData.valueLength) {
+            while (overflowIdx < overflowData.valueLength && (memoryIdx >= memoryData.valueLength ||
                     memoryData.getTime(memoryIdx) >= overflowData.getTime(overflowIdx))) {
                 res.putTime(overflowData.getTime(overflowIdx));
                 res.putAValueFromDynamicOneColumnData(overflowData, overflowIdx);
-                if (memoryIdx < memoryData.length && memoryData.getTime(memoryIdx) == overflowData.getTime(overflowIdx)) {
+                if (memoryIdx < memoryData.valueLength && memoryData.getTime(memoryIdx) == overflowData.getTime(overflowIdx)) {
                     memoryIdx++;
                 }
                 overflowIdx++;
             }
 
-            while (memoryIdx < memoryData.length && (overflowIdx >= overflowData.length ||
+            while (memoryIdx < memoryData.valueLength && (overflowIdx >= overflowData.valueLength ||
                     overflowData.getTime(overflowIdx) > memoryData.getTime(memoryIdx))) {
                 res.putTime(memoryData.getTime(memoryIdx));
                 res.putAValueFromDynamicOneColumnData(memoryData, memoryIdx);
@@ -465,7 +465,7 @@ public class OverflowQueryEngine {
         if (oneColData == null) {
             return null;
         }
-        if (oneColData.length == 0) {
+        if (oneColData.valueLength == 0) {
             return oneColData;
         }
 
@@ -483,7 +483,7 @@ public class OverflowQueryEngine {
 
         switch (oneColData.dataType) {
             case BOOLEAN:
-                for (int i = 0; i < oneColData.length; i++) {
+                for (int i = 0; i < oneColData.valueLength; i++) {
                     boolean v = oneColData.getBoolean(i);
                     if ((valueFilter == null && timeFilter == null) ||
                             (valueFilter != null && timeFilter == null && valueVisitor.satisfyObject(v, valueFilter)) ||
@@ -497,7 +497,7 @@ public class OverflowQueryEngine {
                 }
                 break;
             case DOUBLE:
-                for (int i = 0; i < oneColData.length; i++) {
+                for (int i = 0; i < oneColData.valueLength; i++) {
                     double v = oneColData.getDouble(i);
                     if ((valueFilter == null && timeFilter == null) ||
                             (valueFilter != null && timeFilter == null && valueVisitor.verify(v)) ||
@@ -511,7 +511,7 @@ public class OverflowQueryEngine {
                 }
                 break;
             case FLOAT:
-                for (int i = 0; i < oneColData.length; i++) {
+                for (int i = 0; i < oneColData.valueLength; i++) {
                     float v = oneColData.getFloat(i);
                     if ((valueFilter == null && timeFilter == null) ||
                             (valueFilter != null && timeFilter == null && valueVisitor.verify(v)) ||
@@ -525,7 +525,7 @@ public class OverflowQueryEngine {
                 }
                 break;
             case INT32:
-                for (int i = 0; i < oneColData.length; i++) {
+                for (int i = 0; i < oneColData.valueLength; i++) {
                     int v = oneColData.getInt(i);
                     if ((valueFilter == null && timeFilter == null) ||
                             (valueFilter != null && timeFilter == null && valueVisitor.verify(v)) ||
@@ -539,7 +539,7 @@ public class OverflowQueryEngine {
                 }
                 break;
             case INT64:
-                for (int i = 0; i < oneColData.length; i++) {
+                for (int i = 0; i < oneColData.valueLength; i++) {
                     long v = oneColData.getLong(i);
                     if ((valueFilter == null && timeFilter == null) ||
                             (valueFilter != null && timeFilter == null && valueVisitor.verify(v)) ||
@@ -553,7 +553,7 @@ public class OverflowQueryEngine {
                 }
                 break;
             case TEXT:
-                for (int i = 0; i < oneColData.length; i++) {
+                for (int i = 0; i < oneColData.valueLength; i++) {
                     Binary v = oneColData.getBinary(i);
                     if ((valueFilter == null && timeFilter == null) ||
                             (valueFilter != null && timeFilter == null && valueVisitor.satisfyObject(v, valueFilter)) ||
@@ -593,8 +593,8 @@ public class OverflowQueryEngine {
             return null;
         }
         int idx = 0;
-        for (int i = 0; i < updateTrue.length; i++) {
-            while (idx < oneColData.length && updateTrue.getTime(i * 2 + 1) >= oneColData.getTime(idx)) {
+        for (int i = 0; i < updateTrue.valueLength; i++) {
+            while (idx < oneColData.valueLength && updateTrue.getTime(i * 2 + 1) >= oneColData.getTime(idx)) {
                 if (updateTrue.getTime(i) <= oneColData.getTime(idx)) {
                     oneColData.updateAValueFromDynamicOneColumnData(updateTrue, i, idx);
                 }

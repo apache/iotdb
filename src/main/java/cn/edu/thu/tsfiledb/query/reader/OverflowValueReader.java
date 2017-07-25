@@ -117,7 +117,7 @@ public class OverflowValueReader extends ValueReader {
         updateTrueData = (updateTrueData == null ? new DynamicOneColumnData(dataType, true) : updateTrueData);
         updateFalseData = (updateFalseData == null ? new DynamicOneColumnData(dataType, true) : updateFalseData);
 
-        if (updateTrueData.length == 0 && !insertMemoryData.hasInsertData() && valueFilter != null
+        if (updateTrueData.valueLength == 0 && !insertMemoryData.hasInsertData() && valueFilter != null
                 && !digestVisitor.satisfy(digestFF, valueFilter)) {
             return res;
         }
@@ -134,8 +134,8 @@ public class OverflowValueReader extends ValueReader {
         PageReader pageReader = new PageReader(bis, compressionTypeName);
         int pageCount = 0;
         // let resCount be the sum of records in last read
-        // In BatchReadRecordGenerator, The ResCount needed equals to (res.length - res.curIdx)??
-        int resCount = res.length - res.curIdx;
+        // In BatchReadRecordGenerator, The ResCount needed equals to (res.valueLength - res.curIdx)??
+        int resCount = res.valueLength - res.curIdx;
 
         // some variables for frequency calculation with overflow
         boolean hasOverflowDataInThisPage = false;
@@ -203,7 +203,7 @@ public class OverflowValueReader extends ValueReader {
 
             // Record the length of this res before the new records in this page
             // were put in.
-            int resPreviousLength = res.length;
+            int resPreviousLength = res.valueLength;
 
             SingleValueVisitor<?> timeVisitor = null;
             if (timeFilter != null) {
@@ -785,7 +785,7 @@ public class OverflowValueReader extends ValueReader {
 
             // Check where new records were put into res and whether the
             // frequency need to be recalculated.
-            int resCurrentLength = res.length;
+            int resCurrentLength = res.valueLength;
             if (hasOverflowDataInThisPage && freqFilter != null) {
 //					boolean satisfied = frequencyCalculator.satisfy(freqFilter);
                 boolean satisfied = true;
@@ -826,7 +826,7 @@ public class OverflowValueReader extends ValueReader {
         updateFalse = (updateFalse == null ? new DynamicOneColumnData(dataType, true) : updateFalse);
 
         // if this column is not satisfied to the filter, then return.
-        if (updateTrue.length == 0 && insertMemoryData == null && valueFilter != null
+        if (updateTrue.valueLength == 0 && insertMemoryData == null && valueFilter != null
                 && !digestVisitor.satisfy(digestFF, valueFilter)) {
             return func.result;
         }
@@ -1043,7 +1043,7 @@ public class OverflowValueReader extends ValueReader {
                 case BOOLEAN:
                     while (decoder.hasNext(page)) {
                         // put insert points
-                        while (insertMemoryData.curIdx < insertMemoryData.length && timeIdx < timeValues.length
+                        while (insertMemoryData.curIdx < insertMemoryData.valueLength && timeIdx < timeValues.length
                                 && insertMemoryData.getTime(insertMemoryData.curIdx) <= timeValues[timeIdx]) {
                             res.putTime(insertMemoryData.getTime(insertMemoryData.curIdx));
                             res.putBoolean(insertMemoryData.getBoolean(insertMemoryData.curIdx));
@@ -1129,7 +1129,7 @@ public class OverflowValueReader extends ValueReader {
                 case INT64:
                     while (decoder.hasNext(page)) {
                         // put insert points
-                        while (insertMemoryData.curIdx < insertMemoryData.length && timeIdx < timeValues.length
+                        while (insertMemoryData.curIdx < insertMemoryData.valueLength && timeIdx < timeValues.length
                                 && insertMemoryData.getTime(insertMemoryData.curIdx) <= timeValues[timeIdx]) {
                             res.putTime(insertMemoryData.getTime(insertMemoryData.curIdx));
                             res.putLong(insertMemoryData.getLong(insertMemoryData.curIdx));
@@ -1215,7 +1215,7 @@ public class OverflowValueReader extends ValueReader {
                 case FLOAT:
                     while (decoder.hasNext(page)) {
                         // put insert points
-                        while (insertMemoryData.curIdx < insertMemoryData.length && timeIdx < timeValues.length
+                        while (insertMemoryData.curIdx < insertMemoryData.valueLength && timeIdx < timeValues.length
                                 && insertMemoryData.getTime(insertMemoryData.curIdx) <= timeValues[timeIdx]) {
                             res.putTime(insertMemoryData.getTime(insertMemoryData.curIdx));
                             res.putFloat(insertMemoryData.getFloat(insertMemoryData.curIdx));
@@ -1301,7 +1301,7 @@ public class OverflowValueReader extends ValueReader {
                 case DOUBLE:
                     while (decoder.hasNext(page)) {
                         // put insert points
-                        while (insertMemoryData.curIdx < insertMemoryData.length && timeIdx < timeValues.length
+                        while (insertMemoryData.curIdx < insertMemoryData.valueLength && timeIdx < timeValues.length
                                 && insertMemoryData.getTime(insertMemoryData.curIdx) <= timeValues[timeIdx]) {
                             res.putTime(insertMemoryData.getTime(insertMemoryData.curIdx));
                             res.putDouble(insertMemoryData.getDouble(insertMemoryData.curIdx));
@@ -1387,7 +1387,7 @@ public class OverflowValueReader extends ValueReader {
                 case TEXT:
                     while (decoder.hasNext(page)) {
                         // put insert points
-                        while (insertMemoryData.curIdx < insertMemoryData.length && timeIdx < timeValues.length
+                        while (insertMemoryData.curIdx < insertMemoryData.valueLength && timeIdx < timeValues.length
                                 && insertMemoryData.getTime(insertMemoryData.curIdx) <= timeValues[timeIdx]) {
                             res.putTime(insertMemoryData.getTime(insertMemoryData.curIdx));
                             res.putBinary(insertMemoryData.getBinary(insertMemoryData.curIdx));

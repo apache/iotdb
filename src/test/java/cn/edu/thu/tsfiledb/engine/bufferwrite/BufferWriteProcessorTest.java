@@ -219,7 +219,7 @@ public class BufferWriteProcessorTest {
 		right = (Pair<List<ByteArrayInputStream>, CompressionTypeName>) pair.left.get(1);
 		assertEquals(false, columnData == null);
 		assertEquals(false, right == null);
-		System.out.println(columnData.length);
+		System.out.println(columnData.valueLength);
 		System.out.println(right.left.size() + " " + right.right);
 		processor = new BufferWriteProcessor(nsp, filename, parameters);
 		pair = processor.getIndexAndRowGroupList(nsp, "s0");

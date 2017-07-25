@@ -126,7 +126,7 @@ public class IntervalTreeTest {
         tree.update(d1);
         tree.update(u1);
         DynamicOneColumnData crudResult = tree.dynamicQuery(null,  TSDataType.INT32);
-        for (int i = 0; i < crudResult.length; i++) {
+        for (int i = 0; i < crudResult.valueLength; i++) {
             if (i == 0) {
                 Assert.assertEquals(crudResult.getTime(i * 2), 0);
                 Assert.assertEquals(crudResult.getTime(i * 2 + 1), -100);
@@ -146,7 +146,7 @@ public class IntervalTreeTest {
         tree.update(d2);
         tree.update(u2);
         crudResult = tree.dynamicQuery(null,  TSDataType.INT32);
-        for (int i = 0; i < crudResult.length; i++) {
+        for (int i = 0; i < crudResult.valueLength; i++) {
             if (i == 0) {
                 Assert.assertEquals(crudResult.getTime(i * 2), 0);
                 Assert.assertEquals(crudResult.getTime(i * 2 + 1), -20);
@@ -166,8 +166,8 @@ public class IntervalTreeTest {
         tree.update(d2);
         tree.update(u2);
         crudResult = tree.dynamicQuery(null,  TSDataType.INT32);
-        Assert.assertEquals(crudResult.length, 1);
-        for (int i = 0; i < crudResult.length; i++) {
+        Assert.assertEquals(crudResult.valueLength, 1);
+        for (int i = 0; i < crudResult.valueLength; i++) {
             if (i == 0) {
                 Assert.assertEquals(crudResult.getTime(i * 2), 0);
                 Assert.assertEquals(crudResult.getTime(i * 2 + 1), -20);
@@ -183,8 +183,8 @@ public class IntervalTreeTest {
         tree.update(d2);
         tree.update(u2);
         crudResult = tree.dynamicQuery(null,  TSDataType.INT32);
-        Assert.assertEquals(crudResult.length, 1);
-        for (int i = 0; i < crudResult.length; i++) {
+        Assert.assertEquals(crudResult.valueLength, 1);
+        for (int i = 0; i < crudResult.valueLength; i++) {
             if (i == 0) {
                 Assert.assertEquals(crudResult.getTime(i * 2), 0);
                 Assert.assertEquals(crudResult.getTime(i * 2 + 1), -20);
@@ -200,8 +200,8 @@ public class IntervalTreeTest {
         tree.update(d2);
         tree.update(u2);
         crudResult = tree.dynamicQuery(null,  TSDataType.INT32);
-        Assert.assertEquals(crudResult.length, 1);
-        for (int i = 0; i < crudResult.length; i++) {
+        Assert.assertEquals(crudResult.valueLength, 1);
+        for (int i = 0; i < crudResult.valueLength; i++) {
             if (i == 0) {
                 Assert.assertEquals(crudResult.getTime(i * 2), 0);
                 Assert.assertEquals(crudResult.getTime(i * 2 + 1), -20);
@@ -217,8 +217,8 @@ public class IntervalTreeTest {
         tree.update(d2);
         tree.update(u2);
         crudResult = tree.dynamicQuery(null,  TSDataType.INT32);
-        Assert.assertEquals(crudResult.length, 1);
-        for (int i = 0; i < crudResult.length; i++) {
+        Assert.assertEquals(crudResult.valueLength, 1);
+        for (int i = 0; i < crudResult.valueLength; i++) {
             if (i == 0) {
                 Assert.assertEquals(crudResult.getTime(i * 2), 0);
                 Assert.assertEquals(crudResult.getTime(i * 2 + 1), -40);
@@ -234,8 +234,8 @@ public class IntervalTreeTest {
         tree.update(i1);
         tree.update(u2);
         crudResult = tree.dynamicQuery(null,  TSDataType.INT32);
-        Assert.assertEquals(crudResult.length, 3);
-        for (int i = 0; i < crudResult.length; i++) {
+        Assert.assertEquals(crudResult.valueLength, 3);
+        for (int i = 0; i < crudResult.valueLength; i++) {
             if (i == 0) {
                 Assert.assertEquals(crudResult.getTime(i * 2), 1);
                 Assert.assertEquals(crudResult.getTime(i * 2 + 1), 4);
@@ -261,8 +261,8 @@ public class IntervalTreeTest {
         SingleSeriesFilterExpression filter = FilterFactory.gtEq(FilterFactory.longFilterSeries(
                 "Any", "Any", FilterSeriesType.TIME_FILTER), 7L, true);
         crudResult = tree.dynamicQuery(filter,  TSDataType.INT32);
-        Assert.assertEquals(crudResult.length, 1);
-        for (int i = 0; i < crudResult.length; i++) {
+        Assert.assertEquals(crudResult.valueLength, 1);
+        for (int i = 0; i < crudResult.valueLength; i++) {
             if (i == 0) {
                 Assert.assertEquals(crudResult.getTime(i * 2), 7);
                 Assert.assertEquals(crudResult.getTime(i * 2 + 1), 10);
@@ -278,8 +278,8 @@ public class IntervalTreeTest {
         tree.update(i1);
         tree.update(u2);
         crudResult = tree.dynamicQuery(null,  TSDataType.INT32);
-        Assert.assertEquals(crudResult.length, 1);
-        for (int i = 0; i < crudResult.length; i++) {
+        Assert.assertEquals(crudResult.valueLength, 1);
+        for (int i = 0; i < crudResult.valueLength; i++) {
             if (i == 0) {
                 Assert.assertEquals(crudResult.getTime(i * 2), 5);
                 Assert.assertEquals(crudResult.getTime(i * 2 + 1), -5);
@@ -295,8 +295,8 @@ public class IntervalTreeTest {
         tree.update(u1);
         tree.update(u2);
         crudResult = tree.dynamicQuery(null,  TSDataType.INT32);
-        Assert.assertEquals(crudResult.length, 1);
-        for (int i = 0; i < crudResult.length; i++) {
+        Assert.assertEquals(crudResult.valueLength, 1);
+        for (int i = 0; i < crudResult.valueLength; i++) {
             if (i == 0) {
                 Assert.assertEquals(crudResult.getTime(i * 2), 5);
                 Assert.assertEquals(crudResult.getTime(i * 2 + 1), 5);
@@ -314,13 +314,13 @@ public class IntervalTreeTest {
         filter = FilterFactory.ltEq(FilterFactory.longFilterSeries(
                 "Any", "Any", FilterSeriesType.TIME_FILTER), 4L, true);
         crudResult = tree.dynamicQuery(filter,  TSDataType.INT32);
-        Assert.assertEquals(crudResult.length, 0);
+        Assert.assertEquals(crudResult.valueLength, 0);
 
         filter = FilterFactory.ltEq(FilterFactory.longFilterSeries(
                 "Any", "Any", FilterSeriesType.TIME_FILTER), 5L, true);
         crudResult = tree.dynamicQuery(filter,  TSDataType.INT32);
-        Assert.assertEquals(crudResult.length, 1);
-        for (int i = 0; i < crudResult.length; i++) {
+        Assert.assertEquals(crudResult.valueLength, 1);
+        for (int i = 0; i < crudResult.valueLength; i++) {
             if (i == 0) {
                 Assert.assertEquals(crudResult.getTime(i * 2), 5);
                 Assert.assertEquals(crudResult.getTime(i * 2 + 1), 5);
@@ -341,8 +341,8 @@ public class IntervalTreeTest {
                 "Any", "Any", FilterSeriesType.TIME_FILTER), 6L, true);
         SingleSeriesFilterExpression filterAnd = (SingleSeriesFilterExpression) FilterFactory.and(filter, filter2);
         crudResult = tree.dynamicQuery(filterAnd,  TSDataType.INT32);
-        Assert.assertEquals(crudResult.length, 1);
-        for (int i = 0; i < crudResult.length; i++) {
+        Assert.assertEquals(crudResult.valueLength, 1);
+        for (int i = 0; i < crudResult.valueLength; i++) {
             if (i == 0) {
                 Assert.assertEquals(crudResult.getTime(i * 2), -6);
                 Assert.assertEquals(crudResult.getTime(i * 2 + 1), -6);
@@ -351,8 +351,8 @@ public class IntervalTreeTest {
         filter = FilterFactory.gtEq(FilterFactory.longFilterSeries(
                 "Any", "Any", FilterSeriesType.TIME_FILTER), 6L, true);
         crudResult = tree.dynamicQuery(filter,  TSDataType.INT32);
-        Assert.assertEquals(crudResult.length, 1);
-        for (int i = 0; i < crudResult.length; i++) {
+        Assert.assertEquals(crudResult.valueLength, 1);
+        for (int i = 0; i < crudResult.valueLength; i++) {
             if (i == 0) {
                 Assert.assertEquals(crudResult.getTime(i * 2), -6);
                 Assert.assertEquals(crudResult.getTime(i * 2 + 1), -7);
@@ -367,8 +367,8 @@ public class IntervalTreeTest {
         tree.update(d1);
         tree.update(u2);
         crudResult = tree.dynamicQuery(null,  TSDataType.INT32);
-        Assert.assertEquals(crudResult.length, 1);
-        for (int i = 0; i < crudResult.length; i++) {
+        Assert.assertEquals(crudResult.valueLength, 1);
+        for (int i = 0; i < crudResult.valueLength; i++) {
             if (i == 0) {
                 Assert.assertEquals(crudResult.getTime(i * 2), -5);
                 Assert.assertEquals(crudResult.getTime(i * 2 + 1), -7);
@@ -383,8 +383,8 @@ public class IntervalTreeTest {
         tree.update(u1);
         tree.update(u2);
         crudResult = tree.dynamicQuery(null,  TSDataType.INT32);
-        Assert.assertEquals(crudResult.length, 2);
-        for (int i = 0; i < crudResult.length; i++) {
+        Assert.assertEquals(crudResult.valueLength, 2);
+        for (int i = 0; i < crudResult.valueLength; i++) {
             if (i == 0) {
                 Assert.assertEquals(crudResult.getTime(i * 2), 5);
                 Assert.assertEquals(crudResult.getTime(i * 2 + 1), 5);
@@ -405,8 +405,8 @@ public class IntervalTreeTest {
         tree.update(u1);
         tree.update(u2);
         crudResult = tree.dynamicQuery(null,  TSDataType.INT32);
-        Assert.assertEquals(crudResult.length, 2);
-        for (int i = 0; i < crudResult.length; i++) {
+        Assert.assertEquals(crudResult.valueLength, 2);
+        for (int i = 0; i < crudResult.valueLength; i++) {
             if (i == 0) {
                 Assert.assertEquals(crudResult.getTime(i * 2), 5);
                 Assert.assertEquals(crudResult.getTime(i * 2 + 1), 5);
@@ -442,8 +442,8 @@ public class IntervalTreeTest {
 
         DynamicOneColumnData crudResult = tree.dynamicQuery(null,  TSDataType.INT32);
 
-        Assert.assertEquals(crudResult.length, 3);
-        for (int i = 0; i < crudResult.length; i++) {
+        Assert.assertEquals(crudResult.valueLength, 3);
+        for (int i = 0; i < crudResult.valueLength; i++) {
             if (i == 0) {
                 Assert.assertEquals(crudResult.getTime(i * 2), 0);
                 Assert.assertEquals(crudResult.getTime(i * 2 + 1), -250);
@@ -482,8 +482,8 @@ public class IntervalTreeTest {
 
         DynamicOneColumnData crudResult = tree.dynamicQuery(null,  TSDataType.FLOAT);
 
-        Assert.assertEquals(crudResult.length, 3);
-        for (int i = 0; i < crudResult.length; i++) {
+        Assert.assertEquals(crudResult.valueLength, 3);
+        for (int i = 0; i < crudResult.valueLength; i++) {
             if (i == 0) {
                 Assert.assertEquals(crudResult.getTime(i * 2), 0);
                 Assert.assertEquals(crudResult.getTime(i * 2 + 1), -250);
@@ -522,8 +522,8 @@ public class IntervalTreeTest {
 
         DynamicOneColumnData crudResult = tree.dynamicQuery(null,  TSDataType.INT64);
 
-        Assert.assertEquals(crudResult.length, 3);
-        for (int i = 0; i < crudResult.length; i++) {
+        Assert.assertEquals(crudResult.valueLength, 3);
+        for (int i = 0; i < crudResult.valueLength; i++) {
             if (i == 0) {
                 Assert.assertEquals(crudResult.getTime(i * 2), 0);
                 Assert.assertEquals(crudResult.getTime(i * 2 + 1), -250);
@@ -562,8 +562,8 @@ public class IntervalTreeTest {
 
         DynamicOneColumnData crudResult = tree.dynamicQuery(null,  TSDataType.DOUBLE);
 
-        Assert.assertEquals(crudResult.length, 3);
-        for (int i = 0; i < crudResult.length; i++) {
+        Assert.assertEquals(crudResult.valueLength, 3);
+        for (int i = 0; i < crudResult.valueLength; i++) {
             if (i == 0) {
                 Assert.assertEquals(crudResult.getTime(i * 2), 0);
                 Assert.assertEquals(crudResult.getTime(i * 2 + 1), -250);
@@ -602,8 +602,8 @@ public class IntervalTreeTest {
 
         DynamicOneColumnData crudResult = tree.dynamicQuery(null,  TSDataType.TEXT);
 
-        Assert.assertEquals(crudResult.length, 3);
-        for (int i = 0; i < crudResult.length; i++) {
+        Assert.assertEquals(crudResult.valueLength, 3);
+        for (int i = 0; i < crudResult.valueLength; i++) {
             if (i == 0) {
                 Assert.assertEquals(crudResult.getTime(i * 2), 0);
                 Assert.assertEquals(crudResult.getTime(i * 2 + 1), -250);
