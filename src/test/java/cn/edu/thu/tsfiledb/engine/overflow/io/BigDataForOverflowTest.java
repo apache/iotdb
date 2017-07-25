@@ -138,7 +138,7 @@ public class BigDataForOverflowTest {
 				"(>=" + 0 + ")&" + "(<=" + length + ")");
 		List<Object> queryResult = ofprocessor.query(deltaObjectId, measurementId, timeFilter, null, null);
 		DynamicOneColumnData insertData = (DynamicOneColumnData) queryResult.get(0);
-		assertEquals(length, insertData.length);
+		assertEquals(length, insertData.valueLength);
 		try {
 			ofprocessor.close();
 		} catch (OverflowProcessorException e1) {
@@ -164,7 +164,7 @@ public class BigDataForOverflowTest {
 
 		queryResult = ofprocessor.query(deltaObjectId, measurementId, timeFilter, null, null);
 		insertData = (DynamicOneColumnData) queryResult.get(0);
-		assertEquals(length, insertData.length);
+		assertEquals(length, insertData.valueLength);
 		try {
 			ofprocessor.switchMergeToWorking();
 			ofprocessor.close();

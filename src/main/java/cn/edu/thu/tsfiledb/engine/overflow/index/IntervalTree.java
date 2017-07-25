@@ -454,7 +454,7 @@ public class IntervalTree {
 					.gtEq(FilterFactory.longFilterSeries("NULL", "NULL", FilterSeriesType.TIME_FILTER), 0L, true);
 		}
 
-		LongInterval val = (LongInterval) FilterVerifier.get(timeFilter).getInterval(timeFilter);
+		LongInterval val = (LongInterval) FilterVerifier.create(TSDataType.INT64).getInterval(timeFilter);
 		dynamicQuery(crudResult, root, val, dataType);
 
 		return crudResult;
@@ -531,106 +531,106 @@ public class IntervalTree {
 	 *            byte value
 	 */
 	private void putTreeNodeValue(DynamicOneColumnData crudResult, OverflowOpType opType, long s, long e,
-			TSDataType dataType, byte[] value) {
+								  TSDataType dataType, byte[] value) {
 		switch (dataType) {
-		case INT32:
-			switch (opType) {
-			case INSERT:
-				crudResult.putTimePair(s, -e);
-				crudResult.putInt(BytesUtils.bytesToInt(value));
+			case INT32:
+				switch (opType) {
+					case INSERT:
+						putTimePair(crudResult, s, -e);
+						crudResult.putInt(BytesUtils.bytesToInt(value));
+						break;
+					case DELETE:
+						putTimePair(crudResult, -s, -e);
+						crudResult.putInt(0);
+						break;
+					case UPDATE:
+						putTimePair(crudResult, s, e);
+						crudResult.putInt(BytesUtils.bytesToInt(value));
+						break;
+				}
 				break;
-			case DELETE:
-				crudResult.putTimePair(-s, -e);
-				crudResult.putInt(0);
+			case INT64:
+				switch (opType) {
+					case INSERT:
+						putTimePair(crudResult, s, -e);
+						crudResult.putLong(BytesUtils.bytesToLong(value));
+						break;
+					case DELETE:
+						putTimePair(crudResult, -s, -e);
+						crudResult.putLong(0);
+						break;
+					case UPDATE:
+						putTimePair(crudResult, s, e);
+						crudResult.putLong(BytesUtils.bytesToLong(value));
+				}
 				break;
-			case UPDATE:
-				crudResult.putTimePair(s, e);
-				crudResult.putInt(BytesUtils.bytesToInt(value));
+			case FLOAT:
+				switch (opType) {
+					case INSERT:
+						putTimePair(crudResult, s, -e);
+						crudResult.putFloat(BytesUtils.bytesToFloat(value));
+						break;
+					case DELETE:
+						putTimePair(crudResult, -s, -e);
+						crudResult.putFloat(0);
+						break;
+					case UPDATE:
+						putTimePair(crudResult, s, e);
+						crudResult.putFloat(BytesUtils.bytesToFloat(value));
+						break;
+				}
 				break;
-			}
-			break;
-		case INT64:
-			switch (opType) {
-			case INSERT:
-				crudResult.putTimePair(s, -e);
-				crudResult.putLong(BytesUtils.bytesToLong(value));
+			case DOUBLE:
+				switch (opType) {
+					case INSERT:
+						putTimePair(crudResult, s, -e);
+						crudResult.putDouble(BytesUtils.bytesToDouble(value));
+						break;
+					case DELETE:
+						putTimePair(crudResult, -s, -e);
+						crudResult.putDouble(0);
+						break;
+					case UPDATE:
+						putTimePair(crudResult, s, e);
+						crudResult.putDouble(BytesUtils.bytesToDouble(value));
+						break;
+				}
 				break;
-			case DELETE:
-				crudResult.putTimePair(-s, -e);
-				crudResult.putLong(0);
+			case BOOLEAN:
+				switch (opType) {
+					case INSERT:
+						putTimePair(crudResult, s, -e);
+						crudResult.putBoolean(BytesUtils.bytesToBool(value));
+						break;
+					case DELETE:
+						putTimePair(crudResult, -s, -e);
+						crudResult.putBoolean(false);;
+						break;
+					case UPDATE:
+						putTimePair(crudResult, s, e);
+						crudResult.putBoolean(BytesUtils.bytesToBool(value));
+						break;
+				}
 				break;
-			case UPDATE:
-				crudResult.putTimePair(s, e);
-				crudResult.putLong(BytesUtils.bytesToLong(value));
-			}
-			break;
-		case FLOAT:
-			switch (opType) {
-			case INSERT:
-				crudResult.putTimePair(s, -e);
-				crudResult.putFloat(BytesUtils.bytesToFloat(value));
+			case TEXT:
+				switch (opType) {
+					case INSERT:
+						putTimePair(crudResult, s, -e);
+						crudResult.putBinary(Binary.valueOf(BytesUtils.bytesToString(value)));
+						break;
+					case DELETE:
+						putTimePair(crudResult, -s, -e);
+						crudResult.putBinary(Binary.valueOf(BytesUtils.bytesToString(value)));
+						break;
+					case UPDATE:
+						putTimePair(crudResult, s, e);
+						crudResult.putBinary(Binary.valueOf(BytesUtils.bytesToString(value)));
+						break;
+				}
 				break;
-			case DELETE:
-				crudResult.putTimePair(-s, -e);
-				crudResult.putFloat(0);
-				break;
-			case UPDATE:
-				crudResult.putTimePair(s, e);
-				crudResult.putFloat(BytesUtils.bytesToFloat(value));
-				break;
-			}
-			break;
-		case DOUBLE:
-			switch (opType) {
-			case INSERT:
-				crudResult.putTimePair(s, -e);
-				crudResult.putDouble(BytesUtils.bytesToDouble(value));
-				break;
-			case DELETE:
-				crudResult.putTimePair(-s, -e);
-				crudResult.putDouble(0);
-				break;
-			case UPDATE:
-				crudResult.putTimePair(s, e);
-				crudResult.putDouble(BytesUtils.bytesToDouble(value));
-				break;
-			}
-			break;
-		case BOOLEAN:
-			switch (opType) {
-			case INSERT:
-				crudResult.putTimePair(s, -e);
-				crudResult.putBoolean(BytesUtils.bytesToBool(value));
-				break;
-			case DELETE:
-				crudResult.putTimePair(-s, -e);
-				crudResult.putBoolean(false);;
-				break;
-			case UPDATE:
-				crudResult.putTimePair(s, e);
-				crudResult.putBoolean(BytesUtils.bytesToBool(value));
-				break;
-			}
-			break;
-		case TEXT:
-			switch (opType) {
-			case INSERT:
-				crudResult.putTimePair(s, -e);
-				crudResult.putBinary(Binary.valueOf(BytesUtils.bytesToString(value)));
-				break;
-			case DELETE:
-				crudResult.putTimePair(-s, -e);
-				crudResult.putBinary(Binary.valueOf(BytesUtils.bytesToString(value)));
-				break;
-			case UPDATE:
-				crudResult.putTimePair(s, e);
-				crudResult.putBinary(Binary.valueOf(BytesUtils.bytesToString(value)));
-				break;
-			}
-			break;
-		default:
-			LOG.error("Unsupported tsfile data type.");
-			throw new UnSupportedDataTypeException("Unsupported tsfile data type.");
+			default:
+				LOG.error("Unsupported tsfile data type.");
+				throw new UnSupportedDataTypeException("Unsupported tsfile data type.");
 		}
 	}
 
@@ -666,5 +666,10 @@ public class IntervalTree {
 
 	public boolean isEmpty() {
 		return root == null;
+	}
+
+	private void putTimePair(DynamicOneColumnData data, long s, long e) {
+		data.putTime(s);
+		data.putTime(e);
 	}
 }
