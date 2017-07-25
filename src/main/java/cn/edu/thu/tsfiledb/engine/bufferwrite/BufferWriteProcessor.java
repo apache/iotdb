@@ -59,6 +59,8 @@ public class BufferWriteProcessor extends LRUProcessor {
 	private static final TSFileConfig TsFileConf = TSFileDescriptor.getInstance().getConfig();
 	private static final TsfileDBConfig TsFileDBConf = TsfileDBDescriptor.getInstance().getConfig();
 	private static final MManager mManager = MManager.getInstance();
+	private static final int TSMETADATABYTESIZE = 4;
+	private static final int TSFILEPOINTBYTESIZE = 8;
 
 	private boolean isFlushingSync = false;
 	private final FlushState flushState = new FlushState();
@@ -308,9 +310,8 @@ public class BufferWriteProcessor extends LRUProcessor {
 			throw new BufferWriteProcessorException(e);
 		}
 		try {
-			// seek 8 byte
 			if(out.length()>0){
-				out.seek(out.length()-8);
+				out.seek(out.length()-TSFILEPOINTBYTESIZE);
 			}
 			ByteArrayOutputStream baos = new ByteArrayOutputStream();
 			ReadWriteThriftFormatUtils.writeFileMetaData(metadataConverter.toThriftFileMetadata(tsfileMetadata), baos);
@@ -319,7 +320,7 @@ public class BufferWriteProcessor extends LRUProcessor {
 			out.write(BytesUtils.intToBytes(metadataSize));
 			// write metadata
 			out.write(baos.toByteArray());
-			// write tsfile position
+			// write tsfile position using byte[8] which is present one long number
 			byte[] lastPositionBytes = BytesUtils.longToBytes(lastPosition);
 			out.write(lastPositionBytes);
 			LOGGER.info("Write restore information to the restore file");
@@ -360,7 +361,7 @@ public class BufferWriteProcessor extends LRUProcessor {
 	 * @throws IOException
 	 */
 	private Pair<Long, List<RowGroupMetaData>> ReadStoreFromDisk() throws IOException {
-		byte[] lastPostionBytes = new byte[8];
+		byte[] lastPostionBytes = new byte[TSFILEPOINTBYTESIZE];
 		List<RowGroupMetaData> groupMetaDatas = new ArrayList<>();
 		RandomAccessFile randomAccessFile = null;
 		try {
@@ -368,8 +369,8 @@ public class BufferWriteProcessor extends LRUProcessor {
 			long fileLength = randomAccessFile.length();
 			// read tsfile position
 			long point = randomAccessFile.getFilePointer();
-			while(point+8<fileLength){
-				byte[] metadataSizeBytes = new byte[4];
+			while(point+TSFILEPOINTBYTESIZE<fileLength){
+				byte[] metadataSizeBytes = new byte[TSMETADATABYTESIZE];
 				randomAccessFile.read(metadataSizeBytes);
 				int metadataSize = BytesUtils.bytesToInt(metadataSizeBytes);
 				byte[] thriftBytes = new byte[metadataSize];
@@ -382,6 +383,7 @@ public class BufferWriteProcessor extends LRUProcessor {
 				lastRowgroupSize = groupMetaDatas.size();
 				point = randomAccessFile.getFilePointer();
 			}
+			// read the tsfile position information using byte[8] which is present one long number.
 			randomAccessFile.read(lastPostionBytes);
 		} catch (FileNotFoundException e) {
 			LOGGER.error("The restore file is not exist, the restore file path is {}", bufferwriteRestoreFilePath);
