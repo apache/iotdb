@@ -300,9 +300,10 @@ public class SQLParserTest {
 //    }
     
     @Test
-    public void deleteTimeseires() throws ParseException, RecognitionException {
+    public void deleteTimeseires1() throws ParseException, RecognitionException {
         // template for test case
-        ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_DELETE", "TOK_TIMESERIES", "TOK_ROOT", "dt", "a", "b", "d1", "s1"));
+        ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_DELETE", "TOK_TIMESERIES", 
+        		"TOK_PATH","root", "dt", "a", "b", "d1", "s1"));
         ArrayList<String> rec = new ArrayList<>();
         ASTNode astTree = ParseGenerator.generateAST("delete timeseries root.dt.a.b.d1.s1");
         astTree = ParseUtils.findRootNonNullToken(astTree);
@@ -314,7 +315,42 @@ public class SQLParserTest {
             i++;
         }
     }
-  
+
+    @Test
+    public void deleteTimeseires2() throws ParseException, RecognitionException {
+        // template for test case
+        ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_DELETE", "TOK_TIMESERIES", 
+        		"TOK_PATH","root", "*"));
+        ArrayList<String> rec = new ArrayList<>();
+        ASTNode astTree = ParseGenerator.generateAST("delete timeseries root.*");
+        astTree = ParseUtils.findRootNonNullToken(astTree);
+        recursivePrintSon(astTree, rec);
+
+        int i = 0;
+        while (i <= rec.size() - 1) {
+            assertEquals(rec.get(i), ans.get(i));
+            i++;
+        }
+    }
+    
+    @Test
+    public void deleteTimeseires3() throws ParseException, RecognitionException {
+        // template for test case
+        ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_DELETE", "TOK_TIMESERIES", 
+        		"TOK_PATH","root", "dt", "a", "b",
+        		"TOK_PATH","root", "*"));
+        ArrayList<String> rec = new ArrayList<>();
+        ASTNode astTree = ParseGenerator.generateAST("delete timeseries root.dt.a.b,root.*");
+        astTree = ParseUtils.findRootNonNullToken(astTree);
+        recursivePrintSon(astTree, rec);
+
+        int i = 0;
+        while (i <= rec.size() - 1) {
+            assertEquals(rec.get(i), ans.get(i));
+            i++;
+        }
+    }
+    
     @Test
     public void query1() throws ParseException, RecognitionException {
         // template for test case

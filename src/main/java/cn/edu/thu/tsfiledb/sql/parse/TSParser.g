@@ -397,8 +397,8 @@ unlinkMetadataNodeFromPropertyTree
   ;
 
 deleteTimeseries
-  : KW_DELETE KW_TIMESERIES timeseries
-  -> ^(TOK_DELETE ^(TOK_TIMESERIES timeseries))
+  : KW_DELETE KW_TIMESERIES path (COMMA path)*
+  -> ^(TOK_DELETE ^(TOK_TIMESERIES path+))
   ;
 
 

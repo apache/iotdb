@@ -227,10 +227,13 @@ public class LogicalGenerator {
 	}
 
 	private void analyzeMetadataDelete(ASTNode astNode) {
-		Path series = parseRootPath(astNode.getChild(0).getChild(0));
+		List<Path> deletePaths = new ArrayList<>();
+		for(int i = 0; i < astNode.getChild(0).getChildCount(); i++){
+			deletePaths.add(parsePath(astNode.getChild(0).getChild(i)));
+		}
 		MetadataOperator metadataOperator = new MetadataOperator(SQLConstant.TOK_METADATA_DELETE,
 				NamespaceType.DELETE_PATH);
-		metadataOperator.setPath(series);
+		metadataOperator.setDeletePathList(deletePaths);
 		initializedOperator = metadataOperator;
 	}
 
