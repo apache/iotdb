@@ -607,7 +607,7 @@ public class IntervalTreeTest {
             if (i == 0) {
                 Assert.assertEquals(crudResult.getTime(i * 2), 0);
                 Assert.assertEquals(crudResult.getTime(i * 2 + 1), -250);
-                Assert.assertEquals(crudResult.getBinary(i).getStringValue(), "tsfile0");
+                Assert.assertEquals(crudResult.getBinary(i).getStringValue(), "");
             } else if (i == 1) {
                 Assert.assertEquals(crudResult.getTime(i * 2), 251);
                 Assert.assertEquals(crudResult.getTime(i * 2 + 1), 490);
