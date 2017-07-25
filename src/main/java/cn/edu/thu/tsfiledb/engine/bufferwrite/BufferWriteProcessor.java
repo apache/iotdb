@@ -292,6 +292,7 @@ public class BufferWriteProcessor extends LRUProcessor {
 		for(int i = lastRowgroupSize;i<rowGroupMetaDatas.size();i++){
 			appendMetadata.add(rowGroupMetaDatas.get(i));
 		}
+		lastRowgroupSize = rowGroupMetaDatas.size();
 		// construct the tsfile metadate
 		// List<TimeSeriesMetadata> timeSeriesList = fileSchema.getTimeSeriesMetadatas();
 		List<TimeSeriesMetadata> timeSeriesList = new ArrayList<>();
