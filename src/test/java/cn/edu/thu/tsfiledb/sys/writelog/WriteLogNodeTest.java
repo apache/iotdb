@@ -291,7 +291,7 @@ public class WriteLogNodeTest {
         PhysicalPlan plan;
         int cnt = 0;
         while ((plan = node.getPhysicalPlan()) != null) {
-            output(plan);
+            // output(plan);
             cnt ++;
         }
         Assert.assertEquals(cnt, 2);

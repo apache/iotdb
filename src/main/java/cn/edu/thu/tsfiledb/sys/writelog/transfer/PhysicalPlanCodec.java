@@ -10,7 +10,6 @@ import cn.edu.thu.tsfile.common.utils.BytesUtils;
 import cn.edu.thu.tsfile.common.utils.Pair;
 import cn.edu.thu.tsfile.common.utils.ReadWriteStreamUtils;
 import cn.edu.thu.tsfile.timeseries.read.qp.Path;
-import cn.edu.thu.tsfiledb.qp.logical.Operator.OperatorType;
 import cn.edu.thu.tsfiledb.qp.physical.crud.DeletePlan;
 import cn.edu.thu.tsfiledb.qp.physical.crud.InsertPlan;
 import cn.edu.thu.tsfiledb.qp.physical.crud.UpdatePlan;
@@ -20,9 +19,9 @@ import cn.edu.thu.tsfiledb.qp.physical.crud.UpdatePlan;
  */
 public enum PhysicalPlanCodec {
 
-    MULTIINSERTPLAN(OperatorType.INSERT.ordinal(), codecInstances.multiInsertPlanCodec),
-    UPDATEPLAN(OperatorType.UPDATE.ordinal(), codecInstances.updatePlanCodec),
-    DELETEPLAN(OperatorType.DELETE.ordinal(), codecInstances.deletePlanCodec);
+    MULTIINSERTPLAN(SystemLogOperator.INSERT, codecInstances.multiInsertPlanCodec),
+    UPDATEPLAN(SystemLogOperator.UPDATE, codecInstances.updatePlanCodec),
+    DELETEPLAN(SystemLogOperator.DELETE, codecInstances.deletePlanCodec);
 
     public final int planCode;
     public final Codec<?> codec;
@@ -42,7 +41,7 @@ public enum PhysicalPlanCodec {
 
     public static PhysicalPlanCodec fromOpcode(int opcode) {
         if (!codecMap.containsKey(opcode)) {
-            throw new UnsupportedOperationException("opcode given is not supported. " + opcode);
+            throw new UnsupportedOperationException("SystemLogOperator given is not supported. " + opcode);
         }
         return codecMap.get(opcode);
     }
@@ -53,7 +52,7 @@ public enum PhysicalPlanCodec {
 
             @Override
             public byte[] encode(DeletePlan t) {
-                int type = OperatorType.DELETE.ordinal();
+                int type = SystemLogOperator.DELETE;
                 byte[] timeBytes = BytesUtils.longToBytes(t.getDeleteTime());
 
                 byte[] pathBytes = BytesUtils.StringToBytes(t.getPaths().get(0).getFullPath());
@@ -98,7 +97,7 @@ public enum PhysicalPlanCodec {
 
             @Override
             public byte[] encode(UpdatePlan updatePlan) throws IOException {
-                int type = OperatorType.UPDATE.ordinal();
+                int type = SystemLogOperator.UPDATE;
 
                 List<byte[]> startTimeList = new ArrayList<>();
                 List<byte[]> endTimeList = new ArrayList<>();
@@ -183,7 +182,7 @@ public enum PhysicalPlanCodec {
         static final Codec<InsertPlan> multiInsertPlanCodec = new Codec<InsertPlan>() {
             @Override
             public byte[] encode(InsertPlan t) {
-                int type = OperatorType.INSERT.ordinal();
+                int type = SystemLogOperator.INSERT;
                 int insertType = t.getInsertType();
                 byte[] timeBytes = BytesUtils.longToBytes(t.getTime());
                 byte[] deltaObjectBytes = BytesUtils.StringToBytes(t.getDeltaObject());
