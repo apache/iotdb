@@ -167,7 +167,7 @@ public class OverflowSeriesImplTest {
 		// no merge query
 		List<Object> queryResult = seriesimpl.query(null, null, null);
 		DynamicOneColumnData insertData = (DynamicOneColumnData) queryResult.get(0);
-		assertEquals(20, insertData.length);
+		assertEquals(20, insertData.valueLength);
 		for (int i = 0; i < 20; i++) {
 			assertEquals(i + 21, insertData.getTime(i));
 			assertEquals(i + 21, insertData.getInt(i));
@@ -185,7 +185,7 @@ public class OverflowSeriesImplTest {
 		}
 		
 		insertData = (DynamicOneColumnData) queryResult.get(0);
-		assertEquals(40, insertData.length);
+		assertEquals(40, insertData.valueLength);
 		for (int i = 0; i < 40; i++) {
 			assertEquals(i + 1, insertData.getTime(i));
 			assertEquals(i + 1, insertData.getInt(i));
@@ -238,7 +238,7 @@ public class OverflowSeriesImplTest {
 		List<Object> result = seriesimpl.query(null, null, null);
 		DynamicOneColumnData insertresult = (DynamicOneColumnData) result.get(0);
 		assertEquals(false, insertresult == null);
-		assertEquals(10, insertresult.length);
+		assertEquals(10, insertresult.valueLength);
 		for (int i = 1; i < 11; i++) {
 			assertEquals(i, insertresult.getTime(i - 1));
 			assertEquals(i, insertresult.getInt(i - 1));
@@ -258,7 +258,7 @@ public class OverflowSeriesImplTest {
 		// query update data
 		result = seriesimpl.query(null, null, null);
 		DynamicOneColumnData updateresult = (DynamicOneColumnData) result.get(1);
-		assertEquals(10, updateresult.length);
+		assertEquals(10, updateresult.valueLength);
 		assertEquals(20, updateresult.timeLength);
 		for (int i = 0; i < 10; i++) {
 			assertEquals(10 + 2 * i + 1, updateresult.getTime(i * 2));
@@ -289,8 +289,8 @@ public class OverflowSeriesImplTest {
 		result = seriesimpl.query(null, null, null);
 		insertresult = (DynamicOneColumnData) result.get(0);
 		updateresult = (DynamicOneColumnData) result.get(1);
-		assertEquals(0, updateresult.length);
-		assertEquals(0, insertresult.length);
+		assertEquals(0, updateresult.valueLength);
+		assertEquals(0, insertresult.valueLength);
 
 		// test flush empty data
 		seriesimpl.switchWorkingToFlushing();
@@ -352,7 +352,7 @@ public class OverflowSeriesImplTest {
 		List<Object> result = seriesimpl.query(null, null, null);
 		DynamicOneColumnData insertresult = (DynamicOneColumnData) result.get(0);
 		assertEquals(false, insertresult == null);
-		assertEquals(10, insertresult.length);
+		assertEquals(10, insertresult.valueLength);
 		for (int i = 1; i < 11; i++) {
 			assertEquals(i, insertresult.getTime(i - 1));
 			assertEquals(i, insertresult.getLong(i - 1));
@@ -387,7 +387,7 @@ public class OverflowSeriesImplTest {
 		List<Object> result = seriesimpl.query(null, null, null);
 		DynamicOneColumnData insertresult = (DynamicOneColumnData) result.get(0);
 		assertEquals(false, insertresult == null);
-		assertEquals(10, insertresult.length);
+		assertEquals(10, insertresult.valueLength);
 		for (int i = 1; i < 11; i++) {
 			assertEquals(i, insertresult.getTime(i - 1));
 			assertEquals(String.valueOf(i + 1.1), String.valueOf(insertresult.getFloat(i - 1)));
@@ -423,7 +423,7 @@ public class OverflowSeriesImplTest {
 		List<Object> result = seriesimpl.query(null, null, null);
 		DynamicOneColumnData insertresult = (DynamicOneColumnData) result.get(0);
 		assertEquals(false, insertresult == null);
-		assertEquals(10, insertresult.length);
+		assertEquals(10, insertresult.valueLength);
 		for (int i = 1; i < 11; i++) {
 			assertEquals(i, insertresult.getTime(i - 1));
 			assertEquals(String.valueOf(i + 1.1), String.valueOf(insertresult.getDouble(i - 1)));
@@ -458,7 +458,7 @@ public class OverflowSeriesImplTest {
 		List<Object> result = seriesimpl.query(null, null, null);
 		DynamicOneColumnData insertresult = (DynamicOneColumnData) result.get(0);
 		assertEquals(false, insertresult == null);
-		assertEquals(10, insertresult.length);
+		assertEquals(10, insertresult.valueLength);
 		for (int i = 1; i < 11; i++) {
 			assertEquals(i, insertresult.getTime(i - 1));
 			assertEquals(i / 2 == 0 ? true : false, insertresult.getBoolean(i - 1));
@@ -493,7 +493,7 @@ public class OverflowSeriesImplTest {
 		List<Object> result = seriesimpl.query(null, null, null);
 		DynamicOneColumnData insertresult = (DynamicOneColumnData) result.get(0);
 		assertEquals(false, insertresult == null);
-		assertEquals(10, insertresult.length);
+		assertEquals(10, insertresult.valueLength);
 		for (int i = 1; i < 11; i++) {
 			assertEquals(i, insertresult.getTime(i - 1));
 			assertEquals(String.valueOf(i), insertresult.getStringValue(i - 1));

@@ -42,6 +42,9 @@ public class SQLConstant {
     public static final int TOK_DELETE = 25;
     public static final int TOK_UPDATE = 26;
     public static final int TOK_QUERY = 27;
+    
+    public static final int TOK_CREATE_INDEX = 31;
+    public static final int TOK_SELECT_INDEX = 32;
 
     public static final int TOK_AUTHOR_CREATE = 41;
     public static final int TOK_AUTHOR_DROP = 42;

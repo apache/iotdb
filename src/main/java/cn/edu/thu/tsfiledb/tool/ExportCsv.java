@@ -1,11 +1,27 @@
 package cn.edu.thu.tsfiledb.tool;
 
-import org.apache.commons.cli.*;
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.CommandLineParser;
+import org.apache.commons.cli.DefaultParser;
+import org.apache.commons.cli.HelpFormatter;
+import org.apache.commons.cli.Option;
+import org.apache.commons.cli.Options;
+import org.apache.commons.cli.ParseException;
 import org.joda.time.format.DateTimeFormatter;
 import org.joda.time.format.ISODateTimeFormat;
 
-import java.io.*;
-import java.sql.*;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.text.SimpleDateFormat;
 import java.util.Scanner;
 
@@ -39,25 +55,22 @@ public class ExportCsv {
 
     private static final String SQL_FILE_ARGS = "s";
     private static final String SQL_FILE_NAME = "sqlfile";
-
-    private static final String HEADER_DIS_ARGS = "nhd";
-    private static final String HEADER_DIS_NAME = "noheaderdis";
+    
+    private static String host;
+    private static String port;
+    private static String username;
+    private static String password;
 
     private static final int MAX_HELP_CONSOLE_WIDTH = 88;
     private static final String TSFILEDB_CLI_PREFIX = "ExportCsv";
+    
+    private static final String DUMP_FILE_NAME = "dump";
+    
 
-    private static String targetFile;
+    private static String targetDirectory;
     private static String timeFormat;
-    private static boolean headerDis;
 
-    private static Connection connection = null;
-
-    /**
-     * @param args arguments
-     * @throws ClassNotFoundException if JDBC driver not found
-     * @throws SQLException           if connection error occurred
-     */
-    public static void main(String[] args) throws ClassNotFoundException, SQLException {
+    public static void main(String[] args) {
         Options options = createOptions();
         HelpFormatter hf = new HelpFormatter();
         hf.setOptionComparator(null);  // avoid reordering
@@ -66,7 +79,8 @@ public class ExportCsv {
         CommandLineParser parser = new DefaultParser();
         try (Scanner scanner = new Scanner(System.in)) {
             if (args == null || args.length == 0) {
-                hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
+            		System.out.println("Too few params input, please check the following hint.");
+            		hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
                 return;
             }
             try {
@@ -76,53 +90,55 @@ public class ExportCsv {
                 hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
                 return;
             }
+            targetDirectory = commandLine.getOptionValue(TARGET_FILE_ARGS);
+            if(targetDirectory == null){
+            		System.out.println("Target File Path(-tf) cannot be empty!");
+            		return;
+            }            
+            paraseParams(commandLine, scanner);
 
-            String host = commandLine.getOptionValue(HOST_ARGS);
-            String port = commandLine.getOptionValue(PORT_ARGS);
-            String username = commandLine.getOptionValue(USERNAME_ARGS);
-            String password = commandLine.getOptionValue(PASSWORD_ARGS);
-            if (password == null) {
-                System.out.print(TSFILEDB_CLI_PREFIX + "> please input password: ");
-                password = scanner.nextLine();
-            }
-            headerDis = commandLine.hasOption(HEADER_DIS_ARGS);
-            timeFormat = commandLine.getOptionValue(TIME_FORMAT_ARGS);
-            if (timeFormat == null) {
-                timeFormat = DEFAULT_TIME_FORMAT;
-            }
+            
             String sqlFile = commandLine.getOptionValue(SQL_FILE_ARGS);
             String sql;
             if (sqlFile == null) {
                 System.out.print(TSFILEDB_CLI_PREFIX + "> please input query: ");
                 sql = scanner.nextLine();
-            } else {
-                try (BufferedReader reader = new BufferedReader(new FileReader(sqlFile))) {
-                    sql = reader.readLine();
-                } catch (IOException e) {
-                    System.out.println(e.getMessage());
-                    return;
-                }
-            }
-            targetFile = commandLine.getOptionValue(TARGET_FILE_ARGS);
-
-            try {
-                Class.forName("cn.edu.thu.tsfiledb.jdbc.TsfileDriver");
-                connection = DriverManager.getConnection("jdbc:tsfile://" + host + ":" + port + "/", username, password);
-            } catch (SQLException e) {
-                System.out.println(e.getMessage());
+                String[] values = sql.trim().split(";");
+                for(int i = 0; i < values.length; i++){
+                		dumpResult(values[i], i);
+                }                
                 return;
-            }
-
-            try {
-                dumpResult(sql);
-            } catch (SQLException | IOException e) {
-                System.out.println(e.getMessage());
-            } finally {
-                connection.close();
-            }
-        }
+            } else{
+            		dumpFromSQLFile(sqlFile);
+            }   
+        } catch (ClassNotFoundException e) {
+			System.out.println("Failed to dump data because cannot find TsFile JDBC Driver, please check whether you have imported driver or not");
+		} catch (SQLException e) {
+			System.out.println(String.format("Encounter an error when dumping data, error is %s", e.getMessage()));
+		} catch (IOException e) {
+			System.out.println(String.format("Failed to operate on file, because %s", e.getMessage()));
+		}
     }
 
+    private static void paraseParams(CommandLine commandLine, Scanner scanner){
+        host = commandLine.getOptionValue(HOST_ARGS);
+        port = commandLine.getOptionValue(PORT_ARGS);
+        username = commandLine.getOptionValue(USERNAME_ARGS);
+        password = commandLine.getOptionValue(PASSWORD_ARGS);
+        if (password == null) {
+            System.out.print(TSFILEDB_CLI_PREFIX + "> please input password: ");
+            password = scanner.nextLine();
+        }
+        timeFormat = commandLine.getOptionValue(TIME_FORMAT_ARGS);
+        if (timeFormat == null) {
+            timeFormat = DEFAULT_TIME_FORMAT;
+        }
+        
+        if(!targetDirectory.endsWith(File.separator)){
+        		targetDirectory += File.separator;
+        }    	
+    }
+    
     /**
      * commandline option create
      *
@@ -143,17 +159,15 @@ public class ExportCsv {
         Option opPassword = Option.builder(PASSWORD_ARGS).longOpt(PASSWORD_NAME).optionalArg(true).argName(PASSWORD_NAME).hasArg().desc("Password (optional)").build();
         options.addOption(opPassword);
 
-        Option opTargetFile = Option.builder(TARGET_FILE_ARGS).required().argName(TARGET_FILE_NAME).hasArg().desc("Target File Path (required)").build();
+        Option opTargetFile = Option.builder(TARGET_FILE_ARGS).required().argName(TARGET_FILE_NAME).hasArg().desc("Target File Directory (required)").build();
         options.addOption(opTargetFile);
 
         Option opSqlFile = Option.builder(SQL_FILE_ARGS).argName(SQL_FILE_NAME).hasArg().desc("SQL File Path (optional)").build();
         options.addOption(opSqlFile);
 
-        Option opTimeFormat = Option.builder(TIME_FORMAT_ARGS).argName(TIME_FORMAT_NAME).hasArg().desc("Time Format (optional)").build();
+        Option opTimeFormat = Option.builder(TIME_FORMAT_ARGS).argName(TIME_FORMAT_NAME).hasArg().desc("Time Format. "
+        		+ "You can choose 1) timestamp 2) ISO8601 3) user-defined pattern like yyyy-MM-dd HH:mm:ss, default timestamp (optional)").build();
         options.addOption(opTimeFormat);
-
-        Option opHeaderDis = Option.builder().longOpt(HEADER_DIS_NAME).hasArg(false).desc("No Header Display (optional)").build();
-        options.addOption(opHeaderDis);
 
         Option opHelp = Option.builder(HELP_ARGS).longOpt(HELP_ARGS).hasArg(false).desc("Display help information").build();
         options.addOption(opHelp);
@@ -161,42 +175,60 @@ public class ExportCsv {
         return options;
     }
 
+    private static void dumpFromSQLFile(String filePath) throws ClassNotFoundException, IOException{
+    		BufferedReader reader = new BufferedReader(new FileReader(filePath));
+    		String sql = null;
+    		int index = 0;
+    		while((sql = reader.readLine()) != null){
+    			try {
+				dumpResult(sql, index);
+			} catch (SQLException e) {
+				System.out.println(String.format("Cannot dump data for statment %s, because ", sql, e.getMessage()));
+			}
+    			index++;
+    		}
+    		reader.close();
+    }
+    
     /**
      * Dump files from database to CSV file
      *
      * @param sql export the result of executing the sql
-     * @throws SQLException if SQL is not valid
-     * @throws IOException  if file error occurred
+     * @param index use to create dump file name
+     * @throws ClassNotFoundException if cannot find driver
+     * @throws SQLException  if SQL is not valid
      */
-    private static void dumpResult(String sql) throws SQLException, IOException {
-        Statement statement = connection.createStatement();
-        ResultSet rs = statement.executeQuery(sql);
-        BufferedWriter writer;
-        ResultSetMetaData metadata = rs.getMetaData();
+    private static void dumpResult(String sql, int index) throws ClassNotFoundException, SQLException{
+        BufferedWriter writer = null;
+        final String path = targetDirectory+DUMP_FILE_NAME+index+".csv";
         try {
-            File tf = new File(targetFile);
+            File tf = new File(path);
             if (!tf.exists()) {
                 if (!tf.createNewFile()) {
-                    System.out.println("could not create target file");
+                    System.out.println("could not create target file for sql statement: " + sql);
                     return;
                 }
             }
-            writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(tf)));
+            writer = new BufferedWriter(new FileWriter(tf));
         } catch (IOException e) {
             System.out.println(e.getMessage());
             return;
         }
-
+        
+		Class.forName("cn.edu.thu.tsfiledb.jdbc.TsfileDriver");
+        Connection connection = DriverManager.getConnection("jdbc:tsfile://" + host + ":" + port + "/", username, password);
+        Statement statement = connection.createStatement();
+        ResultSet rs = statement.executeQuery(sql);
+        ResultSetMetaData metadata = rs.getMetaData();
+        long startTime = System.currentTimeMillis();
         try {
             int count = metadata.getColumnCount();
             // write data in csv file
-            if (!headerDis) {
-                for (int i = 0; i < count; i++) {
-                    if (i < count - 1) {
-                        writer.write(metadata.getColumnLabel(i) + ",");
-                    } else {
-                        writer.write(metadata.getColumnLabel(i) + "\n");
-                    }
+            for (int i = 0; i < count; i++) {
+                if (i < count - 1) {
+                    writer.write(metadata.getColumnLabel(i) + ",");
+                } else {
+                    writer.write(metadata.getColumnLabel(i) + "\n");
                 }
             }
             while (rs.next()) {
@@ -236,16 +268,18 @@ public class ExportCsv {
                     }
                 }
             }
-            System.out.println("Data dump to file successfully!");
+            System.out.println(String.format("Statement %s dump to file %s successfully! It costs %dms",sql, path, (System.currentTimeMillis() - startTime)));
         } catch (IOException e) {
             System.out.println(e.getMessage());
         } finally {
-            try {
+            try {            	
                 writer.flush();
-                writer.close();
+                writer.close();               
             } catch (IOException e) {
                 System.out.println(e.getMessage());
             }
+            if(statement != null) statement.close();
+            if(connection != null) connection.close();
         }
     }
 }
