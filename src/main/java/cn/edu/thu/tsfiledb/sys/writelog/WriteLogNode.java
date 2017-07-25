@@ -10,6 +10,7 @@ import cn.edu.thu.tsfiledb.qp.physical.crud.InsertPlan;
 import cn.edu.thu.tsfiledb.sys.writelog.impl.LocalFileLogReader;
 import cn.edu.thu.tsfiledb.sys.writelog.impl.LocalFileLogWriter;
 import cn.edu.thu.tsfiledb.sys.writelog.transfer.PhysicalPlanLogTransfer;
+import cn.edu.thu.tsfiledb.sys.writelog.transfer.SystemLogOperator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -102,7 +103,7 @@ public class WriteLogNode {
             writer = new LocalFileLogWriter(filePath);
         }
         byte[] flushStart = new byte[1];
-        flushStart[0] = (byte) Operator.OperatorType.OVERFLOWFLUSHSTART.ordinal();
+        flushStart[0] = (byte) SystemLogOperator.OVERFLOWFLUSHSTART;
         writer.write(flushStart);
         writer.write(BytesUtils.intToBytes(flushStart.length)); // 2 bytes to represent the content size
         LOG.info("Write overflow log start.");
@@ -115,7 +116,7 @@ public class WriteLogNode {
             writer = new LocalFileLogWriter(filePath);
         }
         byte[] flushEnd = new byte[1];
-        flushEnd[0] = (byte) Operator.OperatorType.OVERFLOWFLUSHEND.ordinal();
+        flushEnd[0] = (byte) SystemLogOperator.OVERFLOWFLUSHEND;
         writer.write(flushEnd);
         writer.write(BytesUtils.intToBytes(flushEnd.length));
         hasOverflowFlush = true;
@@ -130,7 +131,7 @@ public class WriteLogNode {
             writer = new LocalFileLogWriter(filePath);
         }
         byte[] flushStart = new byte[1];
-        flushStart[0] = (byte) Operator.OperatorType.BUFFERFLUSHSTART.ordinal();
+        flushStart[0] = (byte) SystemLogOperator.BUFFERFLUSHSTART;
         writer.write(flushStart);
         writer.write(BytesUtils.intToBytes(flushStart.length));
         LOG.info("Write bufferwrite log start.");
@@ -143,7 +144,7 @@ public class WriteLogNode {
             writer = new LocalFileLogWriter(filePath);
         }
         byte[] flushEnd = new byte[1];
-        flushEnd[0] = (byte) Operator.OperatorType.BUFFERFLUSHEND.ordinal();
+        flushEnd[0] = (byte) SystemLogOperator.BUFFERFLUSHEND;
         writer.write(flushEnd);
         writer.write(BytesUtils.intToBytes(flushEnd.length));
         LOG.info("Write bufferwrite log end.");
