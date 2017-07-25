@@ -391,7 +391,7 @@ public class FileNodeProcessorTest {
 			assertEquals(OverflowChangeType.CHANGED, bufferwritedatainfiles.get(2).overflowChangeType);
 			assertEquals(OverflowChangeType.NO_CHANGE, bufferwritedatainfiles.get(3).overflowChangeType);
 			DynamicOneColumnData updateDate = (DynamicOneColumnData) overflowResult.get(1);
-			assertEquals(2, updateDate.length);
+			assertEquals(2, updateDate.valueLength);
 			assertEquals(4, updateDate.timeLength);
 			assertEquals(2, updateDate.getTime(0));
 			assertEquals(10, updateDate.getTime(1));

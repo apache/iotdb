@@ -106,7 +106,7 @@ public class OverflowSupportTest {
 		// query
 		List<Object> result = ofsupport.query(deltaObjectId, measurementIds[0], null, null, null);
 		DynamicOneColumnData insertData = (DynamicOneColumnData) result.get(0);
-		assertEquals(3, insertData.length);
+		assertEquals(3, insertData.valueLength);
 		// check time check value
 		assertEquals(1, insertData.getTime(0));
 		assertEquals(1, insertData.getInt(0));
@@ -282,7 +282,7 @@ public class OverflowSupportTest {
 		// int
 		List<Object> result = ofsupport.query(deltaObjectId, measurementIds[0], null, null, null);
 		DynamicOneColumnData insertData = (DynamicOneColumnData) result.get(0);
-		assertEquals(10, insertData.length);
+		assertEquals(10, insertData.valueLength);
 		for (int i = 1; i < 11; i++) {
 			assertEquals(i, insertData.getTime(i - 1));
 			assertEquals(i, insertData.getInt(i - 1));
@@ -311,7 +311,7 @@ public class OverflowSupportTest {
 		// long
 		result = ofsupport.query(deltaObjectId, measurementIds[1], null, null, null);
 		DynamicOneColumnData updateData = (DynamicOneColumnData) result.get(1);
-		assertEquals(10, updateData.length);
+		assertEquals(10, updateData.valueLength);
 		assertEquals(20, updateData.timeLength);
 		for (int i = 1; i < 20; i = i + 2) {
 			assertEquals(i, updateData.getTime(i - 1));
@@ -383,7 +383,7 @@ public class OverflowSupportTest {
 		// query data
 		result = ofsupport.query(deltaObjectId, measurementIds[0], null, null, null);
 		DynamicOneColumnData insertData = (DynamicOneColumnData) result.get(0);
-		assertEquals(10, insertData.length);
+		assertEquals(10, insertData.valueLength);
 		for (int i = 1; i < 11; i++) {
 			assertEquals(i, insertData.getTime(i - 1));
 			assertEquals(i, insertData.getInt(i - 1));
@@ -429,7 +429,7 @@ public class OverflowSupportTest {
 		// query data
 		result = ofsupport.query(deltaObjectId, measurementIds[1], null, null, null);
 		DynamicOneColumnData updateData = (DynamicOneColumnData) result.get(1);
-		assertEquals(10, updateData.length);
+		assertEquals(10, updateData.valueLength);
 		assertEquals(20, updateData.timeLength);
 		for (int i = 1; i < 20; i = i + 2) {
 			assertEquals(i, updateData.getTime(i - 1));
@@ -440,7 +440,7 @@ public class OverflowSupportTest {
 		ofsupport.delete(deltaObjectId, measurementIds[0], 20, dataTypes[0]);
 		result = ofsupport.query(deltaObjectId, measurementIds[0], null, null, null);
 		insertData = (DynamicOneColumnData) result.get(0);
-		assertEquals(0, insertData.length);
+		assertEquals(0, insertData.valueLength);
 		assertEquals(0, insertData.timeLength);
 		// test flush
 		ofsupport.switchWorkToFlush();

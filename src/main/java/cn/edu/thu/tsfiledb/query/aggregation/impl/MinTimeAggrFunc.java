@@ -51,7 +51,7 @@ public class MinTimeAggrFunc extends AggregateFunction {
             }
         }
         else {
-            if (dataInThisPage.length == 0) {
+            if (dataInThisPage.valueLength == 0) {
                 return;
             }
             long timestamp = dataInThisPage.getTime(0);
