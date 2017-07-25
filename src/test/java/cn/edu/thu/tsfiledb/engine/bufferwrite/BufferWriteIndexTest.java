@@ -77,7 +77,7 @@ public class BufferWriteIndexTest {
 		DynamicOneColumnData oneColumnData = null;
 		// test int
 		oneColumnData = bufferwriteindex.query(deltaObjectId0, measurementId0);
-		int allLength = oneColumnData.length;
+		int allLength = oneColumnData.valueLength;
 		int timeLength = oneColumnData.timeLength;
 		assertEquals(allLength, timeLength);
 

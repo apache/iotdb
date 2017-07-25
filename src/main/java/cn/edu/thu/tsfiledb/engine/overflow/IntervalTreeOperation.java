@@ -119,13 +119,13 @@ public class IntervalTreeOperation implements IIntervalTreeOperator {
                                        byte[] value, OverflowOpType overflowOpType, TSDataType dataType) {
         switch (overflowOpType) {
             case INSERT:
-                doc.putTimePair(s, -e);
+                putTimePair(doc, s, -e);
                 break;
             case UPDATE:
-                doc.putTimePair(s, e);
+                putTimePair(doc, s, e);
                 break;
             case DELETE:
-                doc.putTimePair(-s, -e);
+                putTimePair(doc, -s, -e);
                 break;
             default:
                 LOG.error("Unsupported Overflow operation type.");
@@ -191,13 +191,13 @@ public class IntervalTreeOperation implements IIntervalTreeOperator {
         // don't care the plus or minus of the value of start time or end time.
         switch (overflowOpType) {
             case INSERT:
-                ansData.putTimePair(Math.abs(startTime), -Math.abs(endTime));
+                putTimePair(ansData, Math.abs(startTime), -Math.abs(endTime));
                 break;
             case UPDATE:
-                ansData.putTimePair(Math.abs(startTime), Math.abs(endTime));
+                putTimePair(ansData, Math.abs(startTime), Math.abs(endTime));
                 break;
             case DELETE:
-                ansData.putTimePair(-Math.abs(startTime), -Math.abs(endTime));
+                putTimePair(ansData, -Math.abs(startTime), -Math.abs(endTime));
                 break;
             default:
                 LOG.error("Unsupported Overflow operation type.");
@@ -305,7 +305,7 @@ public class IntervalTreeOperation implements IIntervalTreeOperator {
         long L = Long.MIN_VALUE;
         long R = Long.MIN_VALUE;
 
-        while (i < newData.length) {
+        while (i < newData.valueLength) {
 
             if (newTimePair.mergestatus == MergeStatus.DONE) {
                 // (L,R) represent new time pair range.
@@ -557,7 +557,7 @@ public class IntervalTreeOperation implements IIntervalTreeOperator {
         long L = Long.MIN_VALUE;
         long R = Long.MIN_VALUE;
 
-        while (i < newerMemoryData.length) {
+        while (i < newerMemoryData.valueLength) {
 
             if (newTimePair.mergestatus == MergeStatus.DONE) {
                 // (L,R) represent new time pair range.
@@ -566,7 +566,7 @@ public class IntervalTreeOperation implements IIntervalTreeOperator {
                 newTimePair = constructTimePair(newerMemoryData.getTime(i * 2), newerMemoryData.getTime(i * 2 + 1), MergeStatus.MERGING);
             }
 
-            if (oldTimePair.mergestatus == MergeStatus.DONE && j >= oldData.length) {  // old overflow file is empty, but newData is not empty
+            if (oldTimePair.mergestatus == MergeStatus.DONE && j >= oldData.valueLength) {  // old overflow file is empty, but newData is not empty
                 putValueUseDynamic(ans, L, R, newerMemoryData, i++, newTimePair.opType, dataType);
                 newTimePair.reset();
                 continue;
@@ -574,7 +574,7 @@ public class IntervalTreeOperation implements IIntervalTreeOperator {
 
             if (L <= 0 && R < 0) {  // DELETE OPERATION
                 long rightTime = -R;
-                while (j < oldData.length || oldTimePair.mergestatus == MergeStatus.MERGING) {
+                while (j < oldData.valueLength || oldTimePair.mergestatus == MergeStatus.MERGING) {
                     if (oldTimePair.mergestatus == MergeStatus.DONE) {
                         oldTimePair = constructTimePair(oldData.getTime(j * 2), oldData.getTime(j * 2 + 1), null, MergeStatus.MERGING);
                     }
@@ -594,7 +594,7 @@ public class IntervalTreeOperation implements IIntervalTreeOperator {
                 }
             } else if (L > 0 && R < 0) {   // INSERT OPERATION
                 R = -R;
-                while (j < oldData.length || oldTimePair.mergestatus == MergeStatus.MERGING) {
+                while (j < oldData.valueLength || oldTimePair.mergestatus == MergeStatus.MERGING) {
                     if (oldTimePair.mergestatus == MergeStatus.DONE) {
                         oldTimePair = constructTimePair(oldData.getTime(j * 2), oldData.getTime(j * 2 + 1), null, MergeStatus.MERGING);
                     }
@@ -642,7 +642,7 @@ public class IntervalTreeOperation implements IIntervalTreeOperator {
                     }
                 }
             } else {  // UPDATE OPERATION
-                while (j < oldData.length || oldTimePair.mergestatus == MergeStatus.MERGING) {
+                while (j < oldData.valueLength || oldTimePair.mergestatus == MergeStatus.MERGING) {
                     if (oldTimePair.mergestatus == MergeStatus.DONE) {
                         oldTimePair = constructTimePair(oldData.getTime(j * 2), oldData.getTime(j * 2 + 1), null, MergeStatus.MERGING);
                     }
@@ -800,7 +800,7 @@ public class IntervalTreeOperation implements IIntervalTreeOperator {
         }
 
         // newData is empty, but old memory still has data.
-        while (j < oldData.length || oldTimePair.mergestatus == MergeStatus.MERGING) {
+        while (j < oldData.valueLength || oldTimePair.mergestatus == MergeStatus.MERGING) {
             if (oldTimePair.mergestatus == MergeStatus.DONE) {
                 oldTimePair = constructTimePair(oldData.getTime(j * 2), oldData.getTime(j * 2 + 1), null, MergeStatus.MERGING);
             }
@@ -914,9 +914,9 @@ public class IntervalTreeOperation implements IIntervalTreeOperator {
         DynamicOneColumnData insertAdopt = new DynamicOneColumnData(dataType, true);
         DynamicOneColumnData updateAdopt = new DynamicOneColumnData(dataType, true);
         DynamicOneColumnData updateNotAdopt = new DynamicOneColumnData(dataType, true);
-        LongInterval filterInterval = (LongInterval) FilterVerifier.get(timeFilter).getInterval(timeFilter);
+        LongInterval filterInterval = (LongInterval) FilterVerifier.create(TSDataType.INT64).getInterval(timeFilter);
 
-        for (int i = 0; i < overflowData.length; i++) {
+        for (int i = 0; i < overflowData.valueLength; i++) {
             long L = overflowData.getTime(i * 2);
             long R = overflowData.getTime(i * 2 + 1);
             for (int j = 0; j < filterInterval.count; j += 2) {
@@ -1023,6 +1023,11 @@ public class IntervalTreeOperation implements IIntervalTreeOperator {
 
     public boolean isEmpty() {
         return index.isEmpty();
+    }
+
+    private void putTimePair(DynamicOneColumnData data, long s, long e) {
+        data.putTime(s);
+        data.putTime(e);
     }
 
 }

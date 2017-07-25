@@ -105,7 +105,7 @@ public class IntervalTreeOperationFileBlockTest {
             d = tree.queryFileBlock(null, null, null, ins[i], d);
         }
 
-        Assert.assertEquals(d.length, 18);
+        Assert.assertEquals(d.valueLength, 18);
         Assert.assertEquals(d.getTime(0), 0L);
         Assert.assertEquals(d.getTime(1), -1463369845019L);
         Assert.assertEquals(d.getInt(0), 0);
@@ -193,8 +193,8 @@ public class IntervalTreeOperationFileBlockTest {
         byte[] page = outputStream.toByteArray();
         ByteArrayInputStream inputStream = new ByteArrayInputStream(page);
         DynamicOneColumnData mergeBlockAns = tree.queryFileBlock(null, null, null, inputStream, memoryData);
-        Assert.assertEquals(mergeBlockAns.length, 2);
-        for (int i = 0; i < mergeBlockAns.length; i++) {
+        Assert.assertEquals(mergeBlockAns.valueLength, 2);
+        for (int i = 0; i < mergeBlockAns.valueLength; i++) {
             if (i == 0) {
                 Assert.assertEquals(mergeBlockAns.getTime(i * 2), 1);
                 Assert.assertEquals(mergeBlockAns.getTime(i * 2 + 1), 4);
@@ -221,8 +221,8 @@ public class IntervalTreeOperationFileBlockTest {
         byte[] page = outputStream.toByteArray();
         ByteArrayInputStream inputStream = new ByteArrayInputStream(page);
         DynamicOneColumnData mergeBlockAns = tree.queryFileBlock(null, null, null, inputStream, memoryData);
-        Assert.assertEquals(mergeBlockAns.length, 2);
-        for (int i = 0; i < mergeBlockAns.length; i++) {
+        Assert.assertEquals(mergeBlockAns.valueLength, 2);
+        for (int i = 0; i < mergeBlockAns.valueLength; i++) {
             if (i == 0) {
                 Assert.assertEquals(mergeBlockAns.getTime(i * 2), 1);
                 Assert.assertEquals(mergeBlockAns.getTime(i * 2 + 1), 4);
@@ -249,8 +249,8 @@ public class IntervalTreeOperationFileBlockTest {
         byte[] page = outputStream.toByteArray();
         ByteArrayInputStream inputStream = new ByteArrayInputStream(page);
         DynamicOneColumnData mergeBlockAns = tree.queryFileBlock(null, null, null, inputStream, memoryData);
-        Assert.assertEquals(mergeBlockAns.length, 2);
-        for (int i = 0; i < mergeBlockAns.length; i++) {
+        Assert.assertEquals(mergeBlockAns.valueLength, 2);
+        for (int i = 0; i < mergeBlockAns.valueLength; i++) {
             if (i == 0) {
                 Assert.assertEquals(mergeBlockAns.getTime(i * 2), 1);
                 Assert.assertEquals(mergeBlockAns.getTime(i * 2 + 1), 4);
@@ -279,8 +279,8 @@ public class IntervalTreeOperationFileBlockTest {
         byte[] page = outputStream.toByteArray();
         ByteArrayInputStream inputStream = new ByteArrayInputStream(page);
         DynamicOneColumnData mergeBlockAns = newTree.queryFileBlock(null, null, null, inputStream, memoryData);
-        Assert.assertEquals(mergeBlockAns.length, 2);
-        for (int i = 0; i < mergeBlockAns.length; i++) {
+        Assert.assertEquals(mergeBlockAns.valueLength, 2);
+        for (int i = 0; i < mergeBlockAns.valueLength; i++) {
             if (i == 0) {
                 Assert.assertEquals(mergeBlockAns.getTime(i * 2), 1);
                 Assert.assertEquals(mergeBlockAns.getTime(i * 2 + 1), 4);
@@ -318,8 +318,8 @@ public class IntervalTreeOperationFileBlockTest {
         byte[] page = outputStream.toByteArray();
         ByteArrayInputStream inputStream = new ByteArrayInputStream(page);
         DynamicOneColumnData mergeBlockAns = tree.queryFileBlock(null, null, null, inputStream, memoryData);
-        Assert.assertEquals(mergeBlockAns.length, 2);
-        for (int i = 0; i < mergeBlockAns.length; i++) {
+        Assert.assertEquals(mergeBlockAns.valueLength, 2);
+        for (int i = 0; i < mergeBlockAns.valueLength; i++) {
             if (i == 0) {
                 Assert.assertEquals(mergeBlockAns.getTime(i * 2), 1);
                 Assert.assertEquals(mergeBlockAns.getTime(i * 2 + 1), 4);
@@ -342,7 +342,7 @@ public class IntervalTreeOperationFileBlockTest {
         page = outputStream.toByteArray();
         inputStream = new ByteArrayInputStream(page);
         mergeBlockAns = tree.queryFileBlock(null, null, null, inputStream, memoryData);
-        for (int i = 0; i < mergeBlockAns.length; i++) {
+        for (int i = 0; i < mergeBlockAns.valueLength; i++) {
             if (i == 0) {
                 Assert.assertEquals(mergeBlockAns.getTime(i * 2), 5);
                 Assert.assertEquals(mergeBlockAns.getTime(i * 2 + 1), -5);
@@ -362,8 +362,8 @@ public class IntervalTreeOperationFileBlockTest {
         page = outputStream.toByteArray();
         inputStream = new ByteArrayInputStream(page);
         mergeBlockAns = tree.queryFileBlock(null, null, null, inputStream, memoryData);
-        Assert.assertEquals(mergeBlockAns.length, 2);
-        for (int i = 0; i < mergeBlockAns.length; i++) {
+        Assert.assertEquals(mergeBlockAns.valueLength, 2);
+        for (int i = 0; i < mergeBlockAns.valueLength; i++) {
             // outputDynamicOneColumn(mergeBlockAns, i);
             if (i == 0) {
                 Assert.assertEquals(mergeBlockAns.getTime(i * 2), 0);
@@ -388,7 +388,7 @@ public class IntervalTreeOperationFileBlockTest {
         page = outputStream.toByteArray();
         inputStream = new ByteArrayInputStream(page);
         mergeBlockAns = tree.queryFileBlock(null, null, null, inputStream, memoryData);
-        for (int i = 0; i < mergeBlockAns.length; i++) {
+        for (int i = 0; i < mergeBlockAns.valueLength; i++) {
             Assert.assertEquals(mergeBlockAns.getTime(i * 2), 0);
             Assert.assertEquals(mergeBlockAns.getTime(i * 2 + 1), -10);
             Assert.assertEquals(mergeBlockAns.getInt(i), 0);
@@ -406,7 +406,7 @@ public class IntervalTreeOperationFileBlockTest {
         page = outputStream.toByteArray();
         inputStream = new ByteArrayInputStream(page);
         mergeBlockAns = tree.queryFileBlock(null, null, null, inputStream, memoryData);
-        for (int i = 0; i < mergeBlockAns.length; i++) {
+        for (int i = 0; i < mergeBlockAns.valueLength; i++) {
             Assert.assertEquals(mergeBlockAns.getTime(i * 2), 1);
             Assert.assertEquals(mergeBlockAns.getTime(i * 2 + 1), 4);
             Assert.assertEquals(mergeBlockAns.getInt(i), 2);
@@ -424,7 +424,7 @@ public class IntervalTreeOperationFileBlockTest {
         page = outputStream.toByteArray();
         inputStream = new ByteArrayInputStream(page);
         mergeBlockAns = tree.queryFileBlock(null, null, null, inputStream, memoryData);
-        for (int i = 0; i < mergeBlockAns.length; i++) {
+        for (int i = 0; i < mergeBlockAns.valueLength; i++) {
             // outputDynamicOneColumn(mergeBlockAns, i);
             if (i == 0) {
                 Assert.assertEquals(mergeBlockAns.getTime(i * 2), 1);
@@ -449,8 +449,8 @@ public class IntervalTreeOperationFileBlockTest {
         page = outputStream.toByteArray();
         inputStream = new ByteArrayInputStream(page);
         mergeBlockAns = tree.queryFileBlock(null, null, null, inputStream, memoryData);
-        Assert.assertEquals(mergeBlockAns.length, 2);
-        for (int i = 0; i < mergeBlockAns.length; i++) {
+        Assert.assertEquals(mergeBlockAns.valueLength, 2);
+        for (int i = 0; i < mergeBlockAns.valueLength; i++) {
             // outputDynamicOneColumn(mergeBlockAns, i);
             if (i == 0) {
                 Assert.assertEquals(mergeBlockAns.getTime(i * 2), 0);
@@ -475,8 +475,8 @@ public class IntervalTreeOperationFileBlockTest {
         page = outputStream.toByteArray();
         inputStream = new ByteArrayInputStream(page);
         mergeBlockAns = tree.queryFileBlock(null, null, null, inputStream, memoryData);
-        Assert.assertEquals(mergeBlockAns.length, 1);
-        for (int i = 0; i < mergeBlockAns.length; i++) {
+        Assert.assertEquals(mergeBlockAns.valueLength, 1);
+        for (int i = 0; i < mergeBlockAns.valueLength; i++) {
              // outputDynamicOneColumn(mergeBlockAns, i);
             if (i == 0) {
                 Assert.assertEquals(mergeBlockAns.getTime(i * 2), 0);
@@ -497,8 +497,8 @@ public class IntervalTreeOperationFileBlockTest {
         page = outputStream.toByteArray();
         inputStream = new ByteArrayInputStream(page);
         mergeBlockAns = tree.queryFileBlock(null, null, null, inputStream, memoryData);
-        Assert.assertEquals(mergeBlockAns.length, 2);
-        for (int i = 0; i < mergeBlockAns.length; i++) {
+        Assert.assertEquals(mergeBlockAns.valueLength, 2);
+        for (int i = 0; i < mergeBlockAns.valueLength; i++) {
             // outputDynamicOneColumn(mergeBlockAns, i);
             if (i == 0) {
                 Assert.assertEquals(mergeBlockAns.getTime(i * 2), 1);
@@ -523,8 +523,8 @@ public class IntervalTreeOperationFileBlockTest {
         page = outputStream.toByteArray();
         inputStream = new ByteArrayInputStream(page);
         mergeBlockAns = tree.queryFileBlock(null, null, null, inputStream, memoryData);
-        Assert.assertEquals(mergeBlockAns.length, 2);
-        for (int i = 0; i < mergeBlockAns.length; i++) {
+        Assert.assertEquals(mergeBlockAns.valueLength, 2);
+        for (int i = 0; i < mergeBlockAns.valueLength; i++) {
             // outputDynamicOneColumn(mergeBlockAns, i);
             if (i == 0) {
                 Assert.assertEquals(mergeBlockAns.getTime(i * 2), 1);
@@ -549,8 +549,8 @@ public class IntervalTreeOperationFileBlockTest {
         page = outputStream.toByteArray();
         inputStream = new ByteArrayInputStream(page);
         mergeBlockAns = tree.queryFileBlock(null, null, null, inputStream, memoryData);
-        Assert.assertEquals(mergeBlockAns.length, 1);
-        for (int i = 0; i < mergeBlockAns.length; i++) {
+        Assert.assertEquals(mergeBlockAns.valueLength, 1);
+        for (int i = 0; i < mergeBlockAns.valueLength; i++) {
             if (i == 0) {
                 Assert.assertEquals(mergeBlockAns.getTime(i * 2), 1);
                 Assert.assertEquals(mergeBlockAns.getTime(i * 2 + 1), 5);
@@ -570,8 +570,8 @@ public class IntervalTreeOperationFileBlockTest {
         page = outputStream.toByteArray();
         inputStream = new ByteArrayInputStream(page);
         mergeBlockAns = tree.queryFileBlock(null, null, null, inputStream, memoryData);
-        Assert.assertEquals(mergeBlockAns.length, 3);
-        for (int i = 0; i < mergeBlockAns.length; i++) {
+        Assert.assertEquals(mergeBlockAns.valueLength, 3);
+        for (int i = 0; i < mergeBlockAns.valueLength; i++) {
             // outputDynamicOneColumn(mergeBlockAns, i);
             if (i == 0) {
                 Assert.assertEquals(mergeBlockAns.getTime(i * 2), 1);
@@ -601,8 +601,8 @@ public class IntervalTreeOperationFileBlockTest {
         page = outputStream.toByteArray();
         inputStream = new ByteArrayInputStream(page);
         mergeBlockAns = tree.queryFileBlock(null, null, null, inputStream, memoryData);
-        Assert.assertEquals(mergeBlockAns.length, 4);
-        for (int i = 0; i < mergeBlockAns.length; i++) {
+        Assert.assertEquals(mergeBlockAns.valueLength, 4);
+        for (int i = 0; i < mergeBlockAns.valueLength; i++) {
             // outputDynamicOneColumn(mergeBlockAns, i);
             if (i == 0) {
                 Assert.assertEquals(mergeBlockAns.getTime(i * 2), 1);
@@ -701,7 +701,7 @@ public class IntervalTreeOperationFileBlockTest {
         DynamicOneColumnData insertAdopt = (DynamicOneColumnData) ans.get(0);
         DynamicOneColumnData updateAdopt = (DynamicOneColumnData) ans.get(1);
 
-        for(int i = 0;i < insertAdopt.length;i++) {
+        for(int i = 0;i < insertAdopt.valueLength;i++) {
             //LOG.info(insertAdopt.getTime(i) + "," + insertAdopt.getInt(i));
             if (i == 0) {
                 Assert.assertEquals(insertAdopt.getTime(i), 1463369845030L);
@@ -721,8 +721,8 @@ public class IntervalTreeOperationFileBlockTest {
             }
         }
 
-        Assert.assertEquals(updateAdopt.length, 9);
-        for(int i = 0;i < updateAdopt.length;i++) {
+        Assert.assertEquals(updateAdopt.valueLength, 9);
+        for(int i = 0;i < updateAdopt.valueLength;i++) {
             if (i == 0) {
                 Assert.assertEquals(updateAdopt.getTime(i*2), 1463369845045L);
                 Assert.assertEquals(updateAdopt.getTime(i*2+1), 1463369845050L);
