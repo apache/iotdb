@@ -87,7 +87,7 @@ public class IntervalTreeOperation implements IIntervalTreeOperator {
         // timestamp-1 for TSFile sql expression
         // in TSFile sql expression, there only exists "DELETE X where Y < Z"
         if (timestamp > 0)
-            index.update(new TimePair(0, timestamp - 1, null, OverflowOpType.DELETE, dataType));
+            index.update(new TimePair(0, timestamp, null, OverflowOpType.DELETE, dataType));
         else
             // for "DELETE X where Y = 0"
             index.update(new TimePair(0, timestamp, null, OverflowOpType.DELETE, dataType));
