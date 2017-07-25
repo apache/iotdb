@@ -75,7 +75,7 @@ public class IntervalTreeOperationFileBlockTest {
         ins[2] = new ByteArrayInputStream(page);
 
         // (3)
-        tree.delete(1463369845045L);
+        tree.delete(1463369845044L);
         tree.update(1463369845060L, 1463369845070L, b3);
         tree.update(1463369845095L, 1463369845110L, b3);
         ByteArrayOutputStream out3 = new ByteArrayOutputStream();
@@ -91,7 +91,7 @@ public class IntervalTreeOperationFileBlockTest {
         ins[4] = new ByteArrayInputStream(page);
 
         // (5)
-        tree.delete(1463369845020L);
+        tree.delete(1463369845019L);
         tree.insert(1463369845030L, b5);
         tree.insert(1463369845040L, b5);
         tree.update(1463369845060L, 1463369845065L, b5);
@@ -662,7 +662,7 @@ public class IntervalTreeOperationFileBlockTest {
         ins[2] = new ByteArrayInputStream(page);
 
         // (3)
-        tree.delete(1463369845045L);
+        tree.delete(1463369845044L);
         tree.update(1463369845060L, 1463369845070L, b3);
         tree.update(1463369845095L, 1463369845110L, b3);
         ByteArrayOutputStream out3 = new ByteArrayOutputStream();
@@ -678,7 +678,7 @@ public class IntervalTreeOperationFileBlockTest {
         ins[4] = new ByteArrayInputStream(page);
 
         // (5)
-        tree.delete(1463369845020L);
+        tree.delete(1463369845019L);
         tree.insert(1463369845030L, b5);
         tree.insert(1463369845040L, b5);
         tree.update(1463369845060L, 1463369845065L, b5);
