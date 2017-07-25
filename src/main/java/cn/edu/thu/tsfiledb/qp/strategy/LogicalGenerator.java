@@ -206,7 +206,6 @@ public class LogicalGenerator {
 	}
 
 	private void analyzeMetadataCreate(ASTNode astNode) throws MetadataArgsErrorException {
-		System.out.println(astNode.dump());
 		Path series = parseRootPath(astNode.getChild(0).getChild(0));
 		ASTNode paramNode = astNode.getChild(1);
 		String dataType = paramNode.getChild(0).getChild(0).getText();
@@ -350,15 +349,17 @@ public class LogicalGenerator {
 			throw new LogicalOperatorException(
 					"For delete command, where clause must be like : time < XXX or time <= XXX");
 		}
-
 		if (filterOperator.getTokenIntType() != LESSTHAN && filterOperator.getTokenIntType() != LESSTHANOREQUALTO) {
 			throw new LogicalOperatorException(
 					"For delete command, time filter must be less than or less than or equal to");
 		}
 		long time = Long.valueOf(((BasicFunctionOperator) filterOperator).getValue());
-
-		if (time < 0) {
-			throw new LogicalOperatorException("delete Time:" + time + ", time must >= 0");
+		if(filterOperator.getTokenIntType()==LESSTHAN){
+			time = time -1;
+		}
+		// time must greater than 0 now
+		if (time <= 0) {
+			throw new LogicalOperatorException("delete Time:" + time + ", time must > 0");
 		}
 		return time;
 	}
