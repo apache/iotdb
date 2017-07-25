@@ -92,6 +92,10 @@ public class MetadataPlan extends PhysicalPlan {
 
 	@Override
 	public List<Path> getPaths() {
+		if(deletePathList != null){
+			return deletePathList;
+		}
+		
 		List<Path> ret = new ArrayList<>();
 		if (path != null)
 			ret.add(path);
