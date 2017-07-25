@@ -50,10 +50,10 @@ public class MaxTimeAggrFunc extends AggregateFunction {
                 result.data.setTime(0, count);
             }
         } else {
-            if (dataInThisPage.length == 0) {
+            if (dataInThisPage.valueLength == 0) {
                 return;
             }
-            long timestamp = dataInThisPage.getTime(dataInThisPage.length - 1);
+            long timestamp = dataInThisPage.getTime(dataInThisPage.valueLength - 1);
             if (!hasSetValue) {
                 result.data.putLong(timestamp);
                 hasSetValue = true;

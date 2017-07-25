@@ -1,6 +1,7 @@
 package cn.edu.thu.tsfiledb.qp.strategy;
 
 import cn.edu.thu.tsfile.common.utils.Pair;
+import cn.edu.thu.tsfile.file.metadata.enums.TSDataType;
 import cn.edu.thu.tsfile.timeseries.filter.definition.FilterExpression;
 import cn.edu.thu.tsfile.timeseries.filter.definition.SingleSeriesFilterExpression;
 import cn.edu.thu.tsfile.timeseries.filter.definition.filterseries.FilterSeriesType;
@@ -120,7 +121,7 @@ public class PhysicalGenerator {
 			throw new LogicalOperatorException(e.getMessage());
 		}
 		LongFilterVerifier filterVerifier = (LongFilterVerifier) FilterVerifier
-				.get((SingleSeriesFilterExpression) timeFilter);
+				.create(TSDataType.INT64);
 		LongInterval longInterval = filterVerifier
 				.getInterval((SingleSeriesFilterExpression) timeFilter);
 		long startTime;

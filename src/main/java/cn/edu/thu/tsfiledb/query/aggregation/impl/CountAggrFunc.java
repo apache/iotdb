@@ -37,7 +37,7 @@ public class CountAggrFunc extends AggregateFunction {
             result.data.setLong(0, preValue);
         } else {
             long preValue = result.data.getLong(0);
-            preValue += dataInThisPage.length;
+            preValue += dataInThisPage.valueLength;
             result.data.setLong(0, preValue);
         }
     }
