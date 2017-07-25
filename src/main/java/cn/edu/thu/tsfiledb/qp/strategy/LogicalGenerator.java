@@ -715,7 +715,7 @@ public class LogicalGenerator {
 		}
 		switch (tsDataType) {
 		case BOOLEAN:
-			if (encoding.equals(PLAIN)) {
+			if (!encoding.equals(PLAIN)) {
 				throw new MetadataArgsErrorException(
 						String.format("encoding %s does not support %s", encoding, dataType));
 			}
