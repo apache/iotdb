@@ -56,7 +56,7 @@ public class IntervalTreeOperationMemoryTest {
 
         // (3)
         tree[3] = new IntervalTreeOperation(TSDataType.INT32);
-        tree[3].delete(1463369845045L);
+        tree[3].delete(1463369845044L);
         tree[3].update(1463369845060L, 1463369845070L, b3);
         tree[3].update(1463369845095L, 1463369845110L, b3);
 
@@ -67,7 +67,7 @@ public class IntervalTreeOperationMemoryTest {
 
         // (5)
         tree[5] = new IntervalTreeOperation(TSDataType.INT32);
-        tree[5].delete(1463369845020L);
+        tree[5].delete(1463369845019L);
         tree[5].insert(1463369845030L, b5);
         tree[5].insert(1463369845040L, b5);
         tree[5].update(1463369845060L, 1463369845065L, b5);
@@ -288,7 +288,7 @@ public class IntervalTreeOperationMemoryTest {
         memoryData = newTree.queryMemory(null, null, null,  null);
 
         oldTree.reset();
-        oldTree.delete(11L);
+        oldTree.delete(10L);
         mergeAnswer = oldTree.queryMemory(null, null, null,  memoryData);
         Assert.assertEquals(mergeAnswer.valueLength, 2);
         for (int i = 0; i < mergeAnswer.valueLength; i++) {
@@ -312,7 +312,7 @@ public class IntervalTreeOperationMemoryTest {
         memoryData = newTree.queryMemory(null, null, null,  null);
 
         oldTree.reset();
-        oldTree.delete(11L);
+        oldTree.delete(10L);
         mergeAnswer = oldTree.queryMemory(null, null, null,  memoryData);
         for (int i = 0; i < mergeAnswer.valueLength; i++) {
             Assert.assertEquals(mergeAnswer.getTime(i * 2), 0);
@@ -328,7 +328,7 @@ public class IntervalTreeOperationMemoryTest {
         memoryData = newTree.queryMemory(null, null, null, null);
 
         oldTree.reset();
-        oldTree.delete(21L);
+        oldTree.delete(20L);
         mergeAnswer = oldTree.queryMemory(null, null, null,  memoryData);
         Assert.assertEquals(mergeAnswer.valueLength, 2);
         for (int i = 0; i < mergeAnswer.valueLength; i++) {
@@ -351,7 +351,7 @@ public class IntervalTreeOperationMemoryTest {
         memoryData = newTree.queryMemory(null, null, null,  null);
 
         oldTree.reset();
-        oldTree.delete(21L);
+        oldTree.delete(20L);
         mergeAnswer = oldTree.queryMemory(null, null, null,   memoryData);
         Assert.assertEquals(mergeAnswer.valueLength, 1);
         for (int i = 0; i < mergeAnswer.valueLength; i++) {
