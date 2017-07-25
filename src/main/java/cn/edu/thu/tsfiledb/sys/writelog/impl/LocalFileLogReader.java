@@ -10,6 +10,7 @@ import cn.edu.thu.tsfiledb.qp.physical.PhysicalPlan;
 import cn.edu.thu.tsfiledb.sys.writelog.transfer.PhysicalPlanLogTransfer;
 import cn.edu.thu.tsfiledb.sys.writelog.WriteLogReadable;
 
+import cn.edu.thu.tsfiledb.sys.writelog.transfer.SystemLogOperator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -58,22 +59,22 @@ public class LocalFileLogReader implements WriteLogReadable {
             lraf.read(opeTypeBytes);
             int opeType = (int) opeTypeBytes[0];
 
-            if (opeType == OperatorType.OVERFLOWFLUSHEND.ordinal()) {
+            if (opeType == SystemLogOperator.OVERFLOWFLUSHEND) {
                 overflowVis = 1;
                 i -= (4 + opeContentLength);
                 continue;
-            } else if (opeType == OperatorType.OVERFLOWFLUSHSTART.ordinal()) {
+            } else if (opeType == SystemLogOperator.OVERFLOWFLUSHSTART) {
                 if (overflowVis == 1)
                     overflowVis = 2;
                 else
                     overflowVis = 3;
                 i -= (4 + opeContentLength);
                 continue;
-            } else if (opeType == OperatorType.BUFFERFLUSHEND.ordinal()) {
+            } else if (opeType == SystemLogOperator.BUFFERFLUSHEND) {
                 bufferVis = 1;
                 i -= (4 + opeContentLength);
                 continue;
-            } else if (opeType == OperatorType.BUFFERFLUSHSTART.ordinal()) {
+            } else if (opeType == SystemLogOperator.BUFFERFLUSHSTART) {
                 if (bufferVis == 1)
                     bufferVis = 2;
                 else
@@ -86,7 +87,7 @@ public class LocalFileLogReader implements WriteLogReadable {
                 break;
             }
 
-            if (opeType == OperatorType.INSERT.ordinal()) {
+            if (opeType == SystemLogOperator.INSERT) {
                 byte[] insertTypeBytes = new byte[1];
                 lraf.read(insertTypeBytes);
                 int insertType = (int) insertTypeBytes[0];
@@ -173,22 +174,22 @@ public class LocalFileLogReader implements WriteLogReadable {
             lraf.read(opeTypeBytes);
             int opeType = (int) opeTypeBytes[0];
 
-            if (opeType == OperatorType.OVERFLOWFLUSHEND.ordinal()) {
+            if (opeType == SystemLogOperator.OVERFLOWFLUSHEND) {
                 overflowVis = 1;
                 i -= (4 + opeContentLength);
                 continue;
-            } else if (opeType == OperatorType.OVERFLOWFLUSHSTART.ordinal()) {
+            } else if (opeType == SystemLogOperator.OVERFLOWFLUSHSTART) {
                 if (overflowVis == 1)
                     overflowVis = 2;
                 else
                     overflowVis = 3;
                 i -= (4 + opeContentLength);
                 continue;
-            } else if (opeType == OperatorType.BUFFERFLUSHEND.ordinal()) {
+            } else if (opeType == SystemLogOperator.BUFFERFLUSHEND) {
                 bufferVis = 1;
                 i -= (4 + opeContentLength);
                 continue;
-            } else if (opeType == OperatorType.BUFFERFLUSHSTART.ordinal()) {
+            } else if (opeType == SystemLogOperator.BUFFERFLUSHSTART) {
                 if (bufferVis == 1)
                     bufferVis = 2;
                 else
@@ -201,7 +202,7 @@ public class LocalFileLogReader implements WriteLogReadable {
                 break;
             }
 
-            if (opeType == OperatorType.INSERT.ordinal()) {
+            if (opeType == SystemLogOperator.INSERT) {
                 byte[] insertTypeBytes = new byte[1];
                 lraf.read(insertTypeBytes);
                 int insertType = (int) insertTypeBytes[0];
