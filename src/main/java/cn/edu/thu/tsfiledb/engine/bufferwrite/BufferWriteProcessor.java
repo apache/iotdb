@@ -631,7 +631,7 @@ public class BufferWriteProcessor extends LRUProcessor {
 				if (isFlushingSync) {
 					try {
 						super.flushRowGroup(false);
-						 writeStoreToDisk();
+						writeStoreToDisk();
 						filenodeFlushAction.act();
 						if (TsfileDBDescriptor.getInstance().getConfig().enableWal) {
 							WriteLogManager.getInstance().endBufferWriteFlush(nameSpacePath);
