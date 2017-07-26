@@ -76,7 +76,7 @@ public class PhysicalGenerator {
 			paths = Insert.getSelectedPaths();
 			if (paths.size() != 1) {
 				throw new LogicalOperatorException(
-						"For Insert command, cannot specified more than one path:{}" + paths);
+						"For Insert command, cannot specified more than one path:" + paths);
 			}
 			if (Insert.getTime() <= 0) {
 				throw new LogicalOperatorException("For Insert command, time must greater than 0.");
@@ -246,4 +246,5 @@ public class PhysicalGenerator {
 		// a list of partion linked with or
 		return filterOperator.getChildren();
 	}
+
 }
