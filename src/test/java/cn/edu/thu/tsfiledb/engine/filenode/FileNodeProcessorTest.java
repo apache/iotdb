@@ -97,8 +97,6 @@ public class FileNodeProcessorTest {
 		tsdbconfig.metadataDir = "metadata";
 		// set rowgroupsize
 		rowGroupSize = tsconfig.groupSizeInByte;
-		
-		
 		tsconfig.groupSizeInByte = 2000;
 		tsconfig.pageCheckSizeThreshold = 3;
 		tsconfig.pageSizeInByte = 100;
@@ -593,7 +591,7 @@ public class FileNodeProcessorTest {
 			fail(e.getMessage());
 		}
 	}
-
+	
 	private void createFile(String filename) {
 
 		File file = new File(filename);
