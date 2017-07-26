@@ -241,7 +241,7 @@ public class OverflowQueryEngine {
         RecordReader recordReader = RecordReaderFactory.getInstance().getRecordReader(device, sensor, timeFilter, freqFilter, valueFilter);
 
         // Get 4 params
-        List<Object> params = getOverflowInfoAndFilterDataInMem(timeFilter, freqFilter, valueFilter, res, recordReader.insertPageInMemory, recordReader.overflowInfo);
+            List<Object> params = getOverflowInfoAndFilterDataInMem(timeFilter, freqFilter, valueFilter, res, recordReader.insertPageInMemory, recordReader.overflowInfo);
         DynamicOneColumnData insertTrue = (DynamicOneColumnData) params.get(0);
         DynamicOneColumnData updateTrue = (DynamicOneColumnData) params.get(1);
         DynamicOneColumnData updateFalse = (DynamicOneColumnData) params.get(2);
@@ -380,8 +380,10 @@ public class OverflowQueryEngine {
         List<Object> paramList = new ArrayList<>();
 
         if (res == null) {
-            // filter satisfied value from insertDataInMemory
-            timeFilter = (SingleSeriesFilterExpression) overflowParams.get(3);
+            // time filter of overflow is not null, time filter should be as same as time filter of overflow.
+            if (overflowParams.get(3) != null) {
+                timeFilter = (SingleSeriesFilterExpression) overflowParams.get(3);
+            }
 
             DynamicOneColumnData updateTrue = (DynamicOneColumnData) overflowParams.get(1);
             insertDataInMemory = getSatisfiedData(updateTrue, timeFilter, freqFilter, valueFilter, insertDataInMemory);
@@ -396,7 +398,7 @@ public class OverflowQueryEngine {
             paramList.add(overflowInsertTrue);
             paramList.add(overflowParams.get(1));
             paramList.add(overflowParams.get(2));
-            paramList.add(overflowParams.get(3));
+            paramList.add(timeFilter);
         } else {
             paramList.add(res.insertTrue);
             paramList.add(res.updateTrue);
