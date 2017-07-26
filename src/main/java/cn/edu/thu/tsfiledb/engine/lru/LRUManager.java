@@ -7,6 +7,8 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Timer;
+import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -284,7 +286,7 @@ public abstract class LRUManager<T extends LRUProcessor> {
 	 * @return false - can't close all processors true - close all processors
 	 * @throws LRUManagerException
 	 */
-	public boolean close() throws LRUManagerException {
+	protected boolean closeAll() throws LRUManagerException {
 		synchronized (processorMap) {
 			Iterator<Entry<String, T>> processorIterator = processorMap.entrySet().iterator();
 			while (processorIterator.hasNext()) {
@@ -299,6 +301,43 @@ public abstract class LRUManager<T extends LRUProcessor> {
 			}
 			return processorMap.isEmpty();
 		}
+	}
+
+	/**
+	 * close one processor which is in the LRU list
+	 * @param namespacePath
+	 * @return 
+	 * @throws LRUManagerException
+	 */
+	protected boolean closeOneProcessor(String namespacePath) throws LRUManagerException {
+		synchronized (processorMap) {
+			if (processorMap.containsKey(namespacePath)) {
+				LRUProcessor processor = processorMap.get(namespacePath);
+				try {
+					processor.writeLock();
+					// wait until the processor can be closed
+					while (!processor.canBeClosed()) {
+						try {
+							TimeUnit.MILLISECONDS.sleep(100);
+						} catch (InterruptedException e) {
+							e.printStackTrace();
+							LOGGER.warn("Wait to close the processor, the reason is {}", e.getMessage());
+						}
+					}
+					processor.close();
+					processorLRUList.remove(processor);
+					processorMap.remove(namespacePath);
+				} catch (ProcessorException e) {
+					e.printStackTrace();
+					LOGGER.error("Close processor error when close one processor, the nameSpacePath is {}",
+							namespacePath);
+					throw new LRUManagerException(e);
+				} finally {
+					processor.writeUnlock();
+				}
+			}
+		}
+		return true;
 	}
 
 	/**
