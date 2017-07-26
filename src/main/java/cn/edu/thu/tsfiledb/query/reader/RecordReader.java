@@ -244,9 +244,9 @@ public class RecordReader {
                     }
                     insertMemoryData.removeCurrentValue();
                 } else {
-                    oldResIdx++;
                     res.putTime(timestamps[i]);
                     res.putAValueFromDynamicOneColumnData(oldRes, oldResIdx);
+                    oldResIdx++;
                 }
             }
 
