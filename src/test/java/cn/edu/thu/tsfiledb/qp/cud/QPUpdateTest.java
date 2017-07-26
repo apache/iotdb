@@ -6,10 +6,8 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Iterator;
 
-import org.antlr.runtime.RecognitionException;
 import org.apache.commons.io.FileUtils;
 import org.junit.After;
-import org.junit.Before;
 import org.junit.Test;
 
 import cn.edu.thu.tsfile.common.exception.ProcessorException;
@@ -25,35 +23,25 @@ public class QPUpdateTest {
 	QueryProcessor processor = new QueryProcessor(new OverflowQPExecutor());
 	@After
 	public void after() throws ProcessorException {
-		try {
-			FileUtils.deleteDirectory(new File(TsfileDBDescriptor.getInstance().getConfig().metadataDir));
-			FileUtils.forceDelete(new File(TsfileDBDescriptor.getInstance().getConfig().overflowDataDir+File.separator+"root.qp_update_test"));
-			FileUtils.forceDelete(new File(TsfileDBDescriptor.getInstance().getConfig().bufferWriteDir+File.separator+"root.qp_update_test"));
-			FileUtils.forceDelete(new File(TsfileDBDescriptor.getInstance().getConfig().fileNodeDir+File.separator+"root.qp_update_test"));
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+//		try {
+//			FileUtils.deleteDirectory(new File(TsfileDBDescriptor.getInstance().getConfig().metadataDir));
+//			FileUtils.forceDelete(new File(TsfileDBDescriptor.getInstance().getConfig().overflowDataDir+File.separator+"root.qp_update_test"));
+//			FileUtils.forceDelete(new File(TsfileDBDescriptor.getInstance().getConfig().bufferWriteDir+File.separator+"root.qp_update_test"));
+//			FileUtils.forceDelete(new File(TsfileDBDescriptor.getInstance().getConfig().fileNodeDir+File.separator+"root.qp_update_test"));
+//		} catch (IOException e) {
+//			// TODO Auto-generated catch block
+//			e.printStackTrace();
+//		}
 	}
 
-	@Test
+	//@Test
 	public void test() throws QueryProcessorException, ArgsErrorException, ProcessorException {
-		
-		
-//        Path path1 =
-//                new Path(new StringContainer(
-//                        new String[] {"root", "qp_update_test", "device_1", "sensor_1"},
-//                        SystemConstant.PATH_SEPARATOR));
-//        Path path2 =
-//                new Path(new StringContainer(
-//                        new String[] {"root", "qp_update_test", "device_1", "sensor_2"},
-//                        SystemConstant.PATH_SEPARATOR));
         init();
         testUpdate();
-
         testUpdate2();
-
-		
+        testDelete();
+        testInsert();
+        testDeletePaths();
 	}
 	
 	private void init() throws QueryProcessorException, ArgsErrorException, ProcessorException{
@@ -93,6 +81,24 @@ public class QPUpdateTest {
 		sql = "update root.qp_update_test.device_1.sensor_1 set value=100 where time<100";
 		try {
 			plan = processor.parseSQLToPhysicalPlan(sql);
+			processor.getExecutor().processNonQuery(plan);
+			String sqlStr = "select sensor_1,sensor_2 from root.qp_update_test.device_1";
+			PhysicalPlan plan2 = processor.parseSQLToPhysicalPlan(sqlStr);
+			Iterator<QueryDataSet> iter = processor.getExecutor().processQuery(plan2);
+
+			String[] expect = { 
+					"10	100	null",
+					"20	null	10" };
+			int i = 0;
+			while (iter.hasNext()) {
+				QueryDataSet set = iter.next();
+				while (set.hasNextRecord()) {
+					String result = set.getNextRecord().toString();
+					assertEquals(expect[i++], result);
+				}
+			}
+			assertEquals(expect.length, i);
+			
 		} catch (QueryProcessorException e) {
 			fail(e.getMessage());
 		}
@@ -120,5 +126,74 @@ public class QPUpdateTest {
 		assertEquals(expect.length, i);
 	}
 	
+	private void testDeletePaths() throws QueryProcessorException, ProcessorException, ArgsErrorException {
+		String sqlStr = "delete from root.qp_update_test.device_1 where time < 15";
+		PhysicalPlan plan1 = processor.parseSQLToPhysicalPlan(sqlStr);
+		boolean upRet = processor.getExecutor().processNonQuery(plan1);
+
+		assertTrue(upRet);
+		// query to assert
+		sqlStr = "select sensor_1,sensor_2 from root.qp_update_test.device_1";
+		PhysicalPlan plan2 = processor.parseSQLToPhysicalPlan(sqlStr);
+		Iterator<QueryDataSet> iter = processor.getExecutor().processQuery(plan2);
+
+		String[] expect = { "20	null	10" };
+		int i = 0;
+		while (iter.hasNext()) {
+			QueryDataSet set = iter.next();
+			while (set.hasNextRecord()) {
+				assertEquals(expect[i++], set.getNextRecord().toString());
+			}
+		}
+		assertEquals(expect.length, i);
+	}
 	
+	private void testDelete() throws QueryProcessorException, ProcessorException, ArgsErrorException {
+		String sqlStr = "delete from root.qp_update_test.device_1.sensor_1 where time < 15";
+		PhysicalPlan plan1 = processor.parseSQLToPhysicalPlan(sqlStr);
+		boolean upRet = processor.getExecutor().processNonQuery(plan1);
+
+		assertTrue(upRet);
+		// query to assert
+		sqlStr = "select sensor_1,sensor_2 from root.qp_update_test.device_1";
+		PhysicalPlan plan2 = processor.parseSQLToPhysicalPlan(sqlStr);
+		Iterator<QueryDataSet> iter = processor.getExecutor().processQuery(plan2);
+
+		String[] expect = { "20	null	10" };
+		int i = 0;
+		while (iter.hasNext()) {
+			QueryDataSet set = iter.next();
+			while (set.hasNextRecord()) {
+				assertEquals(expect[i++], set.getNextRecord().toString());
+			}
+		}
+		assertEquals(expect.length, i);
+	}
+	
+	private void testInsert() throws QueryProcessorException, ProcessorException, ArgsErrorException {
+		String sqlStr = "insert into root.qp_update_test.device_1 (timestamp, sensor_1, sensor_2) values (13, 50, 40)";
+		PhysicalPlan plan1 = processor.parseSQLToPhysicalPlan(sqlStr);
+
+		// execute insert
+		boolean upRet = processor.getExecutor().processNonQuery(plan1);
+		assertTrue(upRet);
+
+		// query to assert
+		sqlStr = "select sensor_1,sensor_2 from root.qp_update_test.device_1";
+		PhysicalPlan plan2 = processor.parseSQLToPhysicalPlan(sqlStr);
+		Iterator<QueryDataSet> iter = processor.getExecutor().processQuery(plan2);
+
+		String[] expect = { 
+				"13	50	40",
+				"20	null	10" };
+		int i = 0;
+		while (iter.hasNext()) {
+			QueryDataSet set = iter.next();
+			while (set.hasNextRecord()) {
+				String result = set.getNextRecord().toString();
+				assertEquals(expect[i++], result);
+			}
+		}
+		assertEquals(expect.length, i);
+	}
 }
