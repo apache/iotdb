@@ -487,6 +487,22 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 			return false;
 		}
 	}
+	
+	public synchronized boolean closeOneFileNode(String namespacePath) throws FileNodeManagerException{
+		if (fileNodeManagerStatus == FileNodeManagerStatus.NONE) {
+			fileNodeManagerStatus = FileNodeManagerStatus.CLOSE;
+			try {
+				return super.closeOneProcessor(namespacePath);
+			} catch (LRUManagerException e) {
+				e.printStackTrace();
+				throw new FileNodeManagerException(e);
+			} finally {
+				fileNodeManagerStatus = FileNodeManagerStatus.NONE;
+			}
+		} else {
+			return false;
+		}
+	}
 
 	/**
 	 * Try to close All
@@ -498,7 +514,7 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 		if (fileNodeManagerStatus == FileNodeManagerStatus.NONE) {
 			fileNodeManagerStatus = FileNodeManagerStatus.CLOSE;
 			try {
-				return super.close();
+				return super.closeAll();
 			} catch (LRUManagerException e) {
 				e.printStackTrace();
 				throw new FileNodeManagerException(e);

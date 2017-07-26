@@ -303,7 +303,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 		return false;
 	}
 
-	private boolean operateMetadata(MetadataPlan metadataPlan) throws ProcessorException {
+	private boolean operateMetadata(MetadataPlan metadataPlan)throws ProcessorException  {
 		MetadataOperator.NamespaceType namespaceType = metadataPlan.getNamespaceType();
 		Path path = metadataPlan.getPath();
 		String dataType = metadataPlan.getDataType();
@@ -317,6 +317,15 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 					throw new ProcessorException(String.format("Timeseries %s already exist", path.getFullPath()));
 				}
 				mManager.addPathToMTree(path.getFullPath(), dataType, encoding, encodingArgs);
+				try {
+					String nsp = mManager.getFileNameByPath(path.getFullPath());
+					fileNodeManager.closeOneFileNode(nsp);
+				} catch (PathErrorException e) {
+					
+				} catch (FileNodeManagerException e) {
+					e.printStackTrace();
+					throw new ProcessorException(e.getMessage());
+				} 
 				break;
 			case DELETE_PATH:
 				if(deletePathList != null && !deletePathList.isEmpty()){
