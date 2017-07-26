@@ -237,17 +237,19 @@ public class RecordReader {
             // no need to consider update data, because insertMemoryData has dealed with update data.
             if (oldResIdx < oldRes.timeLength && timestamps[i] == oldRes.getTime(oldResIdx)) {
                 if (insertMemoryData != null && insertMemoryData.hasInsertData() && insertMemoryData.getCurrentMinTime() <= timestamps[i]) {
-                    res.putTime(insertMemoryData.getCurrentMinTime());
-                    putValueUseDataType(res, insertMemoryData);
-                    if (insertMemoryData.hasInsertData() && insertMemoryData.getCurrentMinTime() <= timestamps[i]) {
+                    if (insertMemoryData.getCurrentMinTime() == timestamps[i]) {
+                        res.putTime(insertMemoryData.getCurrentMinTime());
+                        putValueUseDataType(res, insertMemoryData);
+                        insertMemoryData.removeCurrentValue();
                         oldResIdx++;
+                        continue;
+                    } else {
+                        insertMemoryData.removeCurrentValue();
                     }
-                    insertMemoryData.removeCurrentValue();
-                } else {
-                    res.putTime(timestamps[i]);
-                    res.putAValueFromDynamicOneColumnData(oldRes, oldResIdx);
-                    oldResIdx++;
                 }
+                res.putTime(timestamps[i]);
+                res.putAValueFromDynamicOneColumnData(oldRes, oldResIdx);
+                oldResIdx++;
             }
 
             // deal with insert data
