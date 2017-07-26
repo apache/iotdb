@@ -370,7 +370,7 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 			LOGGER.debug("Unlock the FileNodeProcessor: {}", fileNodeProcessor.getNameSpacePath());
 		} else {
 			if (timestamp > lastUpdateTime) {
-				timestamp = lastUpdateTime + 1;
+				timestamp = lastUpdateTime;
 			}
 			Map<String, Object> parameters = new HashMap<>();
 			parameters.put(FileNodeConstants.OVERFLOW_BACKUP_MANAGER_ACTION, overflowBackUpAction);
