@@ -130,13 +130,13 @@ public class LRUManagerTest {
 		processor = manager.getProcessorByLRU(deltaObjectId2, true);
 		assertEquals(null, processor);
 		// the processor of deltaObjectId1 is used, the manager closed completly
-		assertEquals(false, manager.close());
+		assertEquals(false, manager.closeAll());
 		Thread.sleep(1000);
 
 		processor = manager.getProcessorByLRU(deltaObjectId, true);
 		assertEquals(false, processor == null);
 		processor.writeUnlock();
-		assertEquals(true, manager.close());
+		assertEquals(true, manager.closeAll());
 
 		// multiple thread read test
 		Thread thread2 = new Thread(new GetReaderProcessor(deltaObjectId));
@@ -183,7 +183,7 @@ public class LRUManagerTest {
 		}
 
 		try {
-			manager.close();
+			manager.closeAll();
 		} catch (LRUManagerException e) {
 			e.printStackTrace();
 			fail(e.getMessage());

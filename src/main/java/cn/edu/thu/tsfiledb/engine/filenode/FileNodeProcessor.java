@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -1130,7 +1131,11 @@ public class FileNodeProcessor extends LRUProcessor {
 		if (bufferWriteProcessor != null) {
 			try {
 				while (!bufferWriteProcessor.canBeClosed()) {
-
+					try {
+						TimeUnit.MICROSECONDS.sleep(1000);
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
 				}
 				bufferWriteProcessor.close();
 				bufferWriteProcessor = null;
@@ -1143,7 +1148,11 @@ public class FileNodeProcessor extends LRUProcessor {
 		if (overflowProcessor != null) {
 			try {
 				while (!overflowProcessor.canBeClosed()) {
-
+					try {
+						TimeUnit.MICROSECONDS.sleep(1000);
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
 				}
 				overflowProcessor.close();
 				overflowProcessor = null;
