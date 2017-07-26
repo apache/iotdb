@@ -108,7 +108,7 @@ public class FileNodeManagerTest {
 
 	@Test
 	public void testBufferwriteAndAddMetadata() {
-		createBufferwriteInMemory(new Pair<Long, Long>(900L, 901L),measurementId);
+		createBufferwriteInMemory(new Pair<Long, Long>(900L, 1000L), measurementId);
 		fManager = FileNodeManager.getInstance();
 
 		// add metadata
@@ -135,13 +135,13 @@ public class FileNodeManagerTest {
 			e.printStackTrace();
 			fail(e.getMessage());
 		}
-//		try {
-//			Thread.sleep(1000);
-//		} catch (InterruptedException e1) {
-//			e1.printStackTrace();
-//		}
+		// try {
+		// Thread.sleep(1000);
+		// } catch (InterruptedException e1) {
+		// e1.printStackTrace();
+		// }
 		System.out.println("close+++++++++++++++++++++++++++++++++++");
-		createBufferwriteInMemory(new Pair<Long, Long>(2L, 3L),measurementId6);
+		createBufferwriteInMemory(new Pair<Long, Long>(200L, 300L), measurementId6);
 		// write data
 		System.out.println("closeAll start+++++++++++++++++++++++++++++++++++");
 		try {
@@ -162,7 +162,7 @@ public class FileNodeManagerTest {
 		pairList.add(new Pair<Long, Long>(700L, 800L));
 		createBufferwriteFiles(pairList, deltaObjectId);
 
-		createBufferwriteInMemory(new Pair<Long, Long>(900L, 1000L),measurementId);
+		createBufferwriteInMemory(new Pair<Long, Long>(900L, 1000L), measurementId);
 
 		fManager = FileNodeManager.getInstance();
 		try {
@@ -855,7 +855,7 @@ public class FileNodeManagerTest {
 		}
 	}
 
-	private void createBufferwriteInMemory(Pair<Long, Long> timePair,String measurementId) {
+	private void createBufferwriteInMemory(Pair<Long, Long> timePair, String measurementId) {
 		long startTime = timePair.left;
 		long endTime = timePair.right;
 		// create bufferwrite file
