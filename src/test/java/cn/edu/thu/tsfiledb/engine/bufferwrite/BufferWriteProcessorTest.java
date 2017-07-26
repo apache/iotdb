@@ -137,7 +137,6 @@ public class BufferWriteProcessorTest {
 	@Test
 	public void testBufferwrite() throws IOException, BufferWriteProcessorException {
 		String filename = "bufferwritetest";
-
 		BufferWriteProcessor bufferWriteProcessor1 = null;
 		BufferWriteProcessor bufferWriteProcessor2 = null;
 		Map<String, Object> parameters = new HashMap<>();
@@ -163,7 +162,6 @@ public class BufferWriteProcessorTest {
 			e.printStackTrace();
 			fail(e.getMessage());
 		}
-
 		// check dir
 		File nspdir = new File(nsp);
 		assertEquals(true, nspdir.isDirectory());
@@ -230,5 +228,43 @@ public class BufferWriteProcessorTest {
 		bufferWriteProcessor2.close();
 		processor.close();
 		assertEquals(false, restorefile.exists());
+	}
+	@Test
+	public void testNoDataBufferwriteRecovery() throws BufferWriteProcessorException{
+		String filename = "bufferwritetest";
+		BufferWriteProcessor bufferWriteProcessor1 = null;
+		Map<String, Object> parameters = new HashMap<>();
+		parameters.put(FileNodeConstants.BUFFERWRITE_FLUSH_ACTION, bfflushaction);
+		parameters.put(FileNodeConstants.BUFFERWRITE_CLOSE_ACTION, bfcloseaction);
+		parameters.put(FileNodeConstants.FILENODE_PROCESSOR_FLUSH_ACTION, fnflushaction);
+		TSFileConfig tsconfig = TSFileDescriptor.getInstance().getConfig();
+		TsfileDBConfig tsdbconfig = TsfileDBDescriptor.getInstance().getConfig();
+		tsdbconfig.bufferWriteDir = "";
+		tsconfig.groupSizeInByte = 2000;
+		tsconfig.pageCheckSizeThreshold = 3;
+		tsconfig.pageSizeInByte = 100;
+		tsconfig.maxStringLength = 2;
+		File outputfile = new File(nsp + File.separatorChar + filename);
+		if (outputfile.exists()) {
+			outputfile.delete();
+		}
+		try {
+			bufferWriteProcessor1 = new BufferWriteProcessor(nsp, filename, parameters);
+			processor = bufferWriteProcessor1;
+		} catch (BufferWriteProcessorException e) {
+			e.printStackTrace();
+			fail(e.getMessage());
+		}
+		File nspdir = new File(nsp);
+		assertEquals(true, nspdir.isDirectory());
+		for (int i = 0; i < 1000; i++) {
+			processor.write(nsp, "s0", 100, TSDataType.INT32, i + "");
+			if (i == 1) {
+				break;
+			}
+		}
+		processor = new BufferWriteProcessor(nsp, filename, parameters);
+		processor.close();
+		bufferWriteProcessor1.close();
 	}
 }

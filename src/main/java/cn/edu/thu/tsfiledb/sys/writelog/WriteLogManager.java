@@ -61,7 +61,9 @@ public class WriteLogManager {
     }
 
     public void write(PhysicalPlan plan) throws IOException, PathErrorException {
-        getWriteLogNode(MManager.getInstance().getFileNameByPath(plan.getPaths().get(0).getFullPath())).write(plan);
+    		for(int i = 0;i < plan.getPaths().size(); i++){
+    			getWriteLogNode(MManager.getInstance().getFileNameByPath(plan.getPaths().get(i).getFullPath())).write(plan);
+    		}
     }
 
     public void write(TSRecord record, int type) throws IOException, PathErrorException {

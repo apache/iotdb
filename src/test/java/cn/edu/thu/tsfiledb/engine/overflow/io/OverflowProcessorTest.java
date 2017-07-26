@@ -228,7 +228,7 @@ public class OverflowProcessorTest {
 			}
 			// delete data
 			// delete time<5
-			ofprocessor.delete(deltaObjectId, measurementIds[0], 5, dataTypes[0]);
+			ofprocessor.delete(deltaObjectId, measurementIds[0], 4, dataTypes[0]);
 			List<Object> result = ofprocessor.query(deltaObjectId, measurementIds[0], null, null, null);
 			DynamicOneColumnData insertDate = (DynamicOneColumnData) result.get(0);
 			assertEquals(6, insertDate.valueLength);

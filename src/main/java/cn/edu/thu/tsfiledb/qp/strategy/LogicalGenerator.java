@@ -206,7 +206,6 @@ public class LogicalGenerator {
 	}
 
 	private void analyzeMetadataCreate(ASTNode astNode) throws MetadataArgsErrorException {
-		System.out.println(astNode.dump());
 		Path series = parseRootPath(astNode.getChild(0).getChild(0));
 		ASTNode paramNode = astNode.getChild(1);
 		String dataType = paramNode.getChild(0).getChild(0).getText();
@@ -227,10 +226,13 @@ public class LogicalGenerator {
 	}
 
 	private void analyzeMetadataDelete(ASTNode astNode) {
-		Path series = parseRootPath(astNode.getChild(0).getChild(0));
+		List<Path> deletePaths = new ArrayList<>();
+		for(int i = 0; i < astNode.getChild(0).getChildCount(); i++){
+			deletePaths.add(parsePath(astNode.getChild(0).getChild(i)));
+		}
 		MetadataOperator metadataOperator = new MetadataOperator(SQLConstant.TOK_METADATA_DELETE,
 				NamespaceType.DELETE_PATH);
-		metadataOperator.setPath(series);
+		metadataOperator.setDeletePathList(deletePaths);
 		initializedOperator = metadataOperator;
 	}
 
@@ -347,15 +349,17 @@ public class LogicalGenerator {
 			throw new LogicalOperatorException(
 					"For delete command, where clause must be like : time < XXX or time <= XXX");
 		}
-
 		if (filterOperator.getTokenIntType() != LESSTHAN && filterOperator.getTokenIntType() != LESSTHANOREQUALTO) {
 			throw new LogicalOperatorException(
 					"For delete command, time filter must be less than or less than or equal to");
 		}
 		long time = Long.valueOf(((BasicFunctionOperator) filterOperator).getValue());
-
-		if (time < 0) {
-			throw new LogicalOperatorException("delete Time:" + time + ", time must >= 0");
+		if(filterOperator.getTokenIntType()==LESSTHAN){
+			time = time -1;
+		}
+		// time must greater than 0 now
+		if (time <= 0) {
+			throw new LogicalOperatorException("delete Time:" + time + ", time must > 0");
 		}
 		return time;
 	}
@@ -711,7 +715,7 @@ public class LogicalGenerator {
 		}
 		switch (tsDataType) {
 		case BOOLEAN:
-			if (encoding.equals(PLAIN)) {
+			if (!encoding.equals(PLAIN)) {
 				throw new MetadataArgsErrorException(
 						String.format("encoding %s does not support %s", encoding, dataType));
 			}
