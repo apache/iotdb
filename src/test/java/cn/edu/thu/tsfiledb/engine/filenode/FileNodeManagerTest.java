@@ -108,7 +108,7 @@ public class FileNodeManagerTest {
 
 	@Test
 	public void testBufferwriteAndAddMetadata() {
-		createBufferwriteInMemory(new Pair<Long, Long>(900L, 1000L), measurementId);
+		createBufferwriteInMemory(new Pair<Long, Long>(1000L, 1001L), measurementId);
 		fManager = FileNodeManager.getInstance();
 
 		// add metadata
@@ -135,15 +135,47 @@ public class FileNodeManagerTest {
 			e.printStackTrace();
 			fail(e.getMessage());
 		}
-		// try {
-		// Thread.sleep(1000);
-		// } catch (InterruptedException e1) {
-		// e1.printStackTrace();
-		// }
-		System.out.println("close+++++++++++++++++++++++++++++++++++");
-		createBufferwriteInMemory(new Pair<Long, Long>(200L, 300L), measurementId6);
+		createBufferwriteInMemory(new Pair<Long, Long>(200L, 302L), measurementId6);
 		// write data
-		System.out.println("closeAll start+++++++++++++++++++++++++++++++++++");
+		try {
+			fManager.closeAll();
+		} catch (FileNodeManagerException e) {
+			e.printStackTrace();
+			fail(e.getMessage());
+		}
+	}
+	
+	@Test
+	public void testBufferwriteAndAddMetadata2(){
+		createBufferwriteInMemory(new Pair<Long, Long>(10L, 101L), measurementId);
+		fManager = FileNodeManager.getInstance();
+
+		// add metadata
+		MManager mManager = MManager.getInstance();
+		assertEquals(false, mManager.pathExist(deltaObjectId + "." + measurementId6));
+		try {
+			mManager.addPathToMTree(deltaObjectId + "." + measurementId6, "INT32", "RLE", new String[0]);
+		} catch (PathErrorException | MetadataArgsErrorException | IOException e) {
+			e.printStackTrace();
+			fail(e.getMessage());
+		}
+		assertEquals(true, mManager.pathExist(deltaObjectId + "." + measurementId6));
+		// check level
+		String nsp = null;
+		try {
+			nsp = mManager.getFileNameByPath(deltaObjectId + "." + measurementId6);
+		} catch (PathErrorException e) {
+			e.printStackTrace();
+			fail(e.getMessage());
+		}
+		try {
+			fManager.closeOneFileNode(nsp);
+		} catch (FileNodeManagerException e) {
+			e.printStackTrace();
+			fail(e.getMessage());
+		}
+		createBufferwriteInMemory(new Pair<Long, Long>(200L, 302L), measurementId6);
+		// write data
 		try {
 			fManager.closeAll();
 		} catch (FileNodeManagerException e) {
