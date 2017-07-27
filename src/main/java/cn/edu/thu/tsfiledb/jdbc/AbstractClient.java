@@ -49,6 +49,10 @@ public abstract class AbstractClient {
 	protected static final String SET_TIME_ZONE = "set time_zone";
 	protected static final String SHOW_TIMEZONE = "show time_zone";
 	
+	protected static final String SET_FETCH_SIZE = "set fetch_size";
+	protected static final String SHOW_FETCH_SIZE = "show fetch_size";
+	protected static int fetchSize = 10000;
+	
 	protected static final String TSFILEDB_CLI_PREFIX = "TsFileDB";
 	private static final String QUIT_COMMAND = "quit";
 	private static final String EXIT_COMMAND = "exit";
@@ -212,6 +216,10 @@ public abstract class AbstractClient {
 	private static void setTimeZone(String timeZoneString){
 		timeZone = DateTimeZone.forID(timeZoneString.trim());
 	}
+	
+	private static void setFetchSize(String fetchSizeString){
+		fetchSize = Integer.parseInt(fetchSizeString.trim());
+	}
 
 	protected static void printBlockLine(boolean printTimestamp, int colCount, ResultSet res) throws SQLException {
 		StringBuilder blockLine = new StringBuilder();
@@ -295,7 +303,7 @@ public abstract class AbstractClient {
 				System.out.println(String.format("time display format error, %s", e.getMessage()));
 				return OPERATION_RESULT.CONTINUE_OPER;
 			}
-			System.out.println("time display type has set to "+cmd.split("=")[1]);
+			System.out.println("time display type has set to "+cmd.split("=")[1].trim());
 			return OPERATION_RESULT.CONTINUE_OPER;
 		}
 		
@@ -311,22 +319,43 @@ public abstract class AbstractClient {
 				System.out.println(String.format("time zone format error, %s", e.getMessage()));
 				return OPERATION_RESULT.CONTINUE_OPER;
 			}
-			System.out.println("time zone has set to "+values[1]);
+			System.out.println("time zone has set to "+values[1].trim());
+			return OPERATION_RESULT.CONTINUE_OPER;
+		}
+		
+		if(specialCmd.startsWith(SET_FETCH_SIZE)){
+			String[] values = specialCmd.split("=");
+			if(values.length != 2){
+				System.out.println(String.format("fetch size format error, please input like %s=10000", SET_FETCH_SIZE));
+				return OPERATION_RESULT.CONTINUE_OPER;
+			}
+			try {
+				setFetchSize(cmd.split("=")[1]);
+			} catch (Exception e) {
+				System.out.println(String.format("fetch size format error, %s", e.getMessage()));
+				return OPERATION_RESULT.CONTINUE_OPER;
+			}
+			System.out.println("fetch size has set to "+values[1].trim());
 			return OPERATION_RESULT.CONTINUE_OPER;
 		}
 		
 		if(specialCmd.startsWith(SHOW_TIMEZONE)){
-			System.out.println(timeZone);
+			System.out.println("Current time zone: "+timeZone);
 			return OPERATION_RESULT.CONTINUE_OPER;
 		}
 		if(specialCmd.startsWith(SHOW_TIMESTAMP_DISPLAY)){
-			System.out.println(timeFormat);
+			System.out.println("Current time format: "+timeFormat);
 			return OPERATION_RESULT.CONTINUE_OPER;
 		}
-
+		if(specialCmd.startsWith(SHOW_FETCH_SIZE)){
+			System.out.println("Current fetch size: "+fetchSize);
+			return OPERATION_RESULT.CONTINUE_OPER;
+		}
+			
 		Statement statement = null;
 		try {
 			statement = connection.createStatement();
+			statement.setFetchSize(fetchSize);
 			boolean hasResultSet = statement.execute(cmd.trim());
 			if (hasResultSet) {
 				ResultSet resultSet = statement.getResultSet();
