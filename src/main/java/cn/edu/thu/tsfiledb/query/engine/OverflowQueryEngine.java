@@ -249,7 +249,7 @@ public class OverflowQueryEngine {
 
             recordReader.insertAllData = new InsertDynamicData(recordReader.bufferWritePageList, recordReader.compressionTypeName,
                     insertTrue, updateTrue, updateFalse,
-                    newTimeFilter, null, null, getDataTypeByPath(path));
+                    newTimeFilter, valueFilter, null, getDataTypeByPath(path));
             res = recordReader.getValueInOneColumnWithOverflow(deltaObjectId, measurementId,
                     updateTrue, updateFalse, recordReader.insertAllData, newTimeFilter, res, fetchSize);
             res.putOverflowInfo(insertTrue, updateTrue, updateFalse, newTimeFilter);
