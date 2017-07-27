@@ -136,7 +136,6 @@ public class DaemonTest {
         Thread.sleep(5000);
         insertSQL();
 
-
         //TODO: add your query statement
         Connection connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
         System.out.println(connection.getMetaData());
@@ -145,8 +144,8 @@ public class DaemonTest {
         selectWildCardSQLTest();
         selectAndOperatorTest();
         selectAndOpeCrossTest();
-
         aggregationTest();
+        selectOneColumnWithFilterTest();
         connection.close();
     }
 
@@ -396,6 +395,41 @@ public class DaemonTest {
                 Assert.assertEquals(cnt, 1);
             }
 
+            statement.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            if (connection != null) {
+                connection.close();
+            }
+        }
+    }
+
+    private void selectOneColumnWithFilterTest() throws ClassNotFoundException, SQLException {
+        String[] retArray = new String[]{
+                "102,180",
+                "104,190",
+                "946684800000,100"
+        };
+
+        Class.forName("cn.edu.thu.tsfiledb.jdbc.TsfileDriver");
+        Connection connection = null;
+        try {
+            connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
+            Statement statement = connection.createStatement();
+
+            boolean hasTextMaxResultSet = statement.execute("select s1 from root.vehicle.d0 where s1 < 199");
+            if (hasTextMaxResultSet) {
+                ResultSet resultSet = statement.getResultSet();
+                int cnt = 0;
+                while (resultSet.next()) {
+                    String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s1);
+                    //System.out.println("=====" + ans);
+                    Assert.assertEquals(ans, retArray[cnt++]);
+                    //AbstractClient.output(resultSet, true, "select statement");
+                }
+                Assert.assertEquals(cnt, 3);
+            }
             statement.close();
         } catch (Exception e) {
             e.printStackTrace();
