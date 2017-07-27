@@ -1,6 +1,7 @@
 package cn.edu.thu.tsfiledb.jdbc;
 
 import cn.edu.thu.tsfiledb.exception.ArgsErrorException;
+
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
@@ -10,9 +11,6 @@ import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.joda.time.format.ISODateTimeFormat;
 
-import java.io.Console;
-import java.io.IOException;
-import java.io.InputStream;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
@@ -20,7 +18,6 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.text.SimpleDateFormat;
 import java.util.HashSet;
-import java.util.Scanner;
 import java.util.Set;
 
 public abstract class AbstractClient {
@@ -48,7 +45,9 @@ public abstract class AbstractClient {
 	protected static int maxPrintRowCount = 1000;
 
 	protected static final String SET_TIMESTAMP_DISPLAY = "set time_display_type";
+	protected static final String SHOW_TIMESTAMP_DISPLAY = "show time_display_type";
 	protected static final String SET_TIME_ZONE = "set time_zone";
+	protected static final String SHOW_TIMEZONE = "show time_zone";
 	
 	protected static final String TSFILEDB_CLI_PREFIX = "TsFileDB";
 	private static final String QUIT_COMMAND = "quit";
@@ -188,7 +187,7 @@ public abstract class AbstractClient {
 	}
 
 	protected static void setTimeFormat(String newTimeFormat) {
-		switch (newTimeFormat.toLowerCase()) {
+		switch (newTimeFormat.trim().toLowerCase()) {
 		case "long":
 		case "number":
 			maxTimeLength = maxValueLength;
@@ -211,7 +210,7 @@ public abstract class AbstractClient {
 	}
 	
 	private static void setTimeZone(String timeZoneString){
-		timeZone = DateTimeZone.forID(timeZoneString);
+		timeZone = DateTimeZone.forID(timeZoneString.trim());
 	}
 
 	protected static void printBlockLine(boolean printTimestamp, int colCount, ResultSet res) throws SQLException {
@@ -316,6 +315,15 @@ public abstract class AbstractClient {
 			return OPERATION_RESULT.CONTINUE_OPER;
 		}
 		
+		if(specialCmd.startsWith(SHOW_TIMEZONE)){
+			System.out.println(timeZone);
+			return OPERATION_RESULT.CONTINUE_OPER;
+		}
+		if(specialCmd.startsWith(SHOW_TIMESTAMP_DISPLAY)){
+			System.out.println(timeFormat);
+			return OPERATION_RESULT.CONTINUE_OPER;
+		}
+
 		Statement statement = null;
 		try {
 			statement = connection.createStatement();
@@ -339,17 +347,6 @@ public abstract class AbstractClient {
 		    	}
 		}
 		return OPERATION_RESULT.NO_OPER;
-	}
-	
-	protected static String readPassword() {
-		Console c = System.console();
-		if (c == null) { // IN ECLIPSE IDE
-			System.out.print(TSFILEDB_CLI_PREFIX + "> please input password: ");
-			Scanner scanner = new Scanner(System.in);
-			return scanner.nextLine();
-		} else { // Outside Eclipse IDE
-			return new String(c.readPassword(TSFILEDB_CLI_PREFIX + "> please input password: "));
-		}
 	}
 
 	enum OPERATION_RESULT{
