@@ -83,7 +83,7 @@ public class Client extends AbstractClient {
 
 				String password = commandLine.getOptionValue(PASSWORD_ARGS);
 				if (password == null) {
-					password = reader.readLine(TSFILEDB_CLI_PREFIX + "> ", '\0');
+					password = reader.readLine("please input your password:", '\0');
 				}
 				try {
 					connection = DriverManager.getConnection("jdbc:tsfile://" + host + ":" + port + "/", username,
