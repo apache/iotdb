@@ -163,45 +163,42 @@ public class OverflowQueryEngine {
         clearQueryDataSet(queryDataSet);
         queryDataSet.getBatchReaderRetGenerator().calculateRecord();
         queryDataSet.putRecordFromBatchReadRetGenerator();
-        for (Path path : paths) {
-            RecordReaderFactory.getInstance().removeRecordReader(path.getDeltaObjectToString(), path.getMeasurementToString());
-        }
+//        for (Path path : paths) {
+//            RecordReaderFactory.getInstance().removeRecordReader(path.getDeltaObjectToString(), path.getMeasurementToString());
+//        }
         return queryDataSet;
     }
 
     private DynamicOneColumnData readOneColumnWithoutFilter(Path path, DynamicOneColumnData res, int fetchSize, Integer readLock) throws ProcessorException, IOException, PathErrorException {
 
-        String deltaObjectUID = path.getDeltaObjectToString();
-        String measurementUID = path.getMeasurementToString();
+        String deltaObjectID = path.getDeltaObjectToString();
+        String measurementID = path.getMeasurementToString();
 
-        RecordReader recordReader = RecordReaderFactory.getInstance().getRecordReader(deltaObjectUID, measurementUID, null, null, null, readLock);
+        RecordReader recordReader = RecordReaderFactory.getInstance().getRecordReader(deltaObjectID, measurementID, null, null, null, readLock);
 
-        // Get 4 params
-        List<Object> params = getOverflowInfoAndFilterDataInMem( null, null, null,
-                res, recordReader.insertPageInMemory, recordReader.overflowInfo);
+        if (res == null) {
+            // get four overflow params
+            List<Object> params = getOverflowInfoAndFilterDataInMem(null, null, null,
+                    res, recordReader.insertPageInMemory, recordReader.overflowInfo);
 
-        DynamicOneColumnData insertTrue = (DynamicOneColumnData) params.get(0);
-        DynamicOneColumnData updateTrue = (DynamicOneColumnData) params.get(1);
-        DynamicOneColumnData updateFalse = (DynamicOneColumnData) params.get(2);
-        SingleSeriesFilterExpression deleteFilter = (SingleSeriesFilterExpression) params.get(3);
+            DynamicOneColumnData insertTrue = (DynamicOneColumnData) params.get(0);
+            DynamicOneColumnData updateTrue = (DynamicOneColumnData) params.get(1);
+            DynamicOneColumnData updateFalse = (DynamicOneColumnData) params.get(2);
+            SingleSeriesFilterExpression newTimeFilter = (SingleSeriesFilterExpression) params.get(3);
 
-        if (recordReader.insertAllData == null) {
             recordReader.insertAllData = new InsertDynamicData(recordReader.bufferWritePageList, recordReader.compressionTypeName,
                     insertTrue, updateTrue, updateFalse,
-                    deleteFilter, null, null, getDataTypeByPath(path));
+                    newTimeFilter, null, null, getDataTypeByPath(path));
+            res = recordReader.getValueInOneColumnWithOverflow(deltaObjectID, measurementID,
+                    updateTrue, updateFalse, recordReader.insertAllData, newTimeFilter, res, fetchSize);
+            res.putOverflowInfo(insertTrue, updateTrue, updateFalse, newTimeFilter);
         } else {
-            recordReader.insertAllData.setBufferWritePageList(recordReader.bufferWritePageList);
-            recordReader.insertAllData.setCurrentPageBuffer(insertTrue);
+            res = recordReader.getValueInOneColumnWithOverflow(deltaObjectID, measurementID,
+                    res.updateTrue, res.updateFalse, recordReader.insertAllData, res.timeFilter, res, fetchSize);
         }
-
-        res = recordReader.getValueInOneColumnWithOverflow(deltaObjectUID, measurementUID,
-                updateTrue, updateFalse, recordReader.insertAllData, deleteFilter, res, fetchSize);
-
-        res.putOverflowInfo(insertTrue, updateTrue, updateFalse, deleteFilter);
 
         // close current recordReader
         // recordReader.closeFromFactory();
-
         return res;
     }
 
@@ -229,41 +226,63 @@ public class OverflowQueryEngine {
         clearQueryDataSet(queryDataSet);
         queryDataSet.getBatchReaderRetGenerator().calculateRecord();
         queryDataSet.putRecordFromBatchReadRetGenerator();
-        for (Path path : paths) {
-            RecordReaderFactory.getInstance().removeRecordReader(path.getDeltaObjectToString(), path.getMeasurementToString());
-        }
+//        for (Path path : paths) {
+//            RecordReaderFactory.getInstance().removeRecordReader(path.getDeltaObjectToString(), path.getMeasurementToString());
+//        }
         return queryDataSet;
     }
 
     private DynamicOneColumnData readOneColumnUseFilter(Path path, SingleSeriesFilterExpression timeFilter,
                                                         SingleSeriesFilterExpression freqFilter, SingleSeriesFilterExpression valueFilter,
                                                         DynamicOneColumnData res, int fetchSize, Integer readLock) throws ProcessorException, IOException, PathErrorException {
-        String device = path.getDeltaObjectToString();
-        String sensor = path.getMeasurementToString();
+        String deltaObjectId = path.getDeltaObjectToString();
+        String measurementId = path.getMeasurementToString();
 
-        RecordReader recordReader = RecordReaderFactory.getInstance().getRecordReader(device, sensor, timeFilter, freqFilter, valueFilter, readLock);
+        RecordReader recordReader = RecordReaderFactory.getInstance().getRecordReader(deltaObjectId, measurementId, timeFilter, freqFilter, valueFilter, readLock);
 
-        // Get 4 params
-            List<Object> params = getOverflowInfoAndFilterDataInMem(timeFilter, freqFilter, valueFilter, res, recordReader.insertPageInMemory, recordReader.overflowInfo);
-        DynamicOneColumnData insertTrue = (DynamicOneColumnData) params.get(0);
-        DynamicOneColumnData updateTrue = (DynamicOneColumnData) params.get(1);
-        DynamicOneColumnData updateFalse = (DynamicOneColumnData) params.get(2);
-        SingleSeriesFilterExpression deleteFilter = (SingleSeriesFilterExpression) params.get(3);
+        if (res == null) {
+            // get four overflow params
+            List<Object> params = getOverflowInfoAndFilterDataInMem(timeFilter, freqFilter, valueFilter,
+                    res, recordReader.insertPageInMemory, recordReader.overflowInfo);
 
-        if (recordReader.insertAllData == null) {
+            DynamicOneColumnData insertTrue = (DynamicOneColumnData) params.get(0);
+            DynamicOneColumnData updateTrue = (DynamicOneColumnData) params.get(1);
+            DynamicOneColumnData updateFalse = (DynamicOneColumnData) params.get(2);
+            SingleSeriesFilterExpression newTimeFilter = (SingleSeriesFilterExpression) params.get(3);
+
             recordReader.insertAllData = new InsertDynamicData(recordReader.bufferWritePageList, recordReader.compressionTypeName,
                     insertTrue, updateTrue, updateFalse,
-                    deleteFilter, valueFilter, freqFilter, getDataTypeByPath(path));
+                    newTimeFilter, valueFilter, null, getDataTypeByPath(path));
+            res = recordReader.getValueInOneColumnWithOverflow(deltaObjectId, measurementId,
+                    updateTrue, updateFalse, recordReader.insertAllData, newTimeFilter, res, fetchSize);
+            res.putOverflowInfo(insertTrue, updateTrue, updateFalse, newTimeFilter);
         } else {
-            recordReader.insertAllData.setBufferWritePageList(recordReader.bufferWritePageList);
-            recordReader.insertAllData.setCurrentPageBuffer(insertTrue);
+            res = recordReader.getValueInOneColumnWithOverflow(deltaObjectId, measurementId,
+                    res.updateTrue, res.updateFalse, recordReader.insertAllData, res.timeFilter, res, fetchSize);
         }
 
-        DynamicOneColumnData oneColDataList = recordReader.getValueWithFilterAndOverflow(device, sensor, updateTrue,
-                updateFalse, recordReader.insertAllData, deleteFilter, freqFilter, valueFilter, res, fetchSize);
-        oneColDataList.putOverflowInfo(insertTrue, updateTrue, updateFalse, deleteFilter);
-        recordReader.closeFromFactory();
-        return oneColDataList;
+        return res;
+//        // Get 4 params
+//        List<Object> params = getOverflowInfoAndFilterDataInMem(timeFilter, freqFilter, valueFilter, res, recordReader.insertPageInMemory, recordReader.overflowInfo);
+//        DynamicOneColumnData insertTrue = (DynamicOneColumnData) params.get(0);
+//        DynamicOneColumnData updateTrue = (DynamicOneColumnData) params.get(1);
+//        DynamicOneColumnData updateFalse = (DynamicOneColumnData) params.get(2);
+//        SingleSeriesFilterExpression deleteFilter = (SingleSeriesFilterExpression) params.get(3);
+//
+//        if (recordReader.insertAllData == null) {
+//            recordReader.insertAllData = new InsertDynamicData(recordReader.bufferWritePageList, recordReader.compressionTypeName,
+//                    insertTrue, updateTrue, updateFalse,
+//                    deleteFilter, valueFilter, freqFilter, getDataTypeByPath(path));
+//        } else {
+//            recordReader.insertAllData.setBufferWritePageList(recordReader.bufferWritePageList);
+//            recordReader.insertAllData.setCurrentPageBuffer(insertTrue);
+//        }
+//
+//        DynamicOneColumnData oneColDataList = recordReader.getValueWithFilterAndOverflow(deltaObjectId, measurementId, updateTrue,
+//                updateFalse, recordReader.insertAllData, deleteFilter, freqFilter, valueFilter, res, fetchSize);
+//        oneColDataList.putOverflowInfo(insertTrue, updateTrue, updateFalse, deleteFilter);
+//        recordReader.closeFromFactory();
+//        return oneColDataList;
     }
 
     /**

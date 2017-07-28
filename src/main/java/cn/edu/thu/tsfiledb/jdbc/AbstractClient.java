@@ -1,6 +1,7 @@
 package cn.edu.thu.tsfiledb.jdbc;
 
 import cn.edu.thu.tsfiledb.exception.ArgsErrorException;
+
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
@@ -10,9 +11,6 @@ import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.joda.time.format.ISODateTimeFormat;
 
-import java.io.Console;
-import java.io.IOException;
-import java.io.InputStream;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
@@ -20,7 +18,6 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.text.SimpleDateFormat;
 import java.util.HashSet;
-import java.util.Scanner;
 import java.util.Set;
 
 public abstract class AbstractClient {
@@ -48,7 +45,13 @@ public abstract class AbstractClient {
 	protected static int maxPrintRowCount = 1000;
 
 	protected static final String SET_TIMESTAMP_DISPLAY = "set time_display_type";
+	protected static final String SHOW_TIMESTAMP_DISPLAY = "show time_display_type";
 	protected static final String SET_TIME_ZONE = "set time_zone";
+	protected static final String SHOW_TIMEZONE = "show time_zone";
+	
+	protected static final String SET_FETCH_SIZE = "set fetch_size";
+	protected static final String SHOW_FETCH_SIZE = "show fetch_size";
+	protected static int fetchSize = 10000;
 	
 	protected static final String TSFILEDB_CLI_PREFIX = "TsFileDB";
 	private static final String QUIT_COMMAND = "quit";
@@ -188,7 +191,7 @@ public abstract class AbstractClient {
 	}
 
 	protected static void setTimeFormat(String newTimeFormat) {
-		switch (newTimeFormat.toLowerCase()) {
+		switch (newTimeFormat.trim().toLowerCase()) {
 		case "long":
 		case "number":
 			maxTimeLength = maxValueLength;
@@ -211,7 +214,11 @@ public abstract class AbstractClient {
 	}
 	
 	private static void setTimeZone(String timeZoneString){
-		timeZone = DateTimeZone.forID(timeZoneString);
+		timeZone = DateTimeZone.forID(timeZoneString.trim());
+	}
+	
+	private static void setFetchSize(String fetchSizeString){
+		fetchSize = Integer.parseInt(fetchSizeString.trim());
 	}
 
 	protected static void printBlockLine(boolean printTimestamp, int colCount, ResultSet res) throws SQLException {
@@ -296,7 +303,7 @@ public abstract class AbstractClient {
 				System.out.println(String.format("time display format error, %s", e.getMessage()));
 				return OPERATION_RESULT.CONTINUE_OPER;
 			}
-			System.out.println("time display type has set to "+cmd.split("=")[1]);
+			System.out.println("time display type has set to "+cmd.split("=")[1].trim());
 			return OPERATION_RESULT.CONTINUE_OPER;
 		}
 		
@@ -312,13 +319,43 @@ public abstract class AbstractClient {
 				System.out.println(String.format("time zone format error, %s", e.getMessage()));
 				return OPERATION_RESULT.CONTINUE_OPER;
 			}
-			System.out.println("time zone has set to "+values[1]);
+			System.out.println("time zone has set to "+values[1].trim());
 			return OPERATION_RESULT.CONTINUE_OPER;
 		}
 		
+		if(specialCmd.startsWith(SET_FETCH_SIZE)){
+			String[] values = specialCmd.split("=");
+			if(values.length != 2){
+				System.out.println(String.format("fetch size format error, please input like %s=10000", SET_FETCH_SIZE));
+				return OPERATION_RESULT.CONTINUE_OPER;
+			}
+			try {
+				setFetchSize(cmd.split("=")[1]);
+			} catch (Exception e) {
+				System.out.println(String.format("fetch size format error, %s", e.getMessage()));
+				return OPERATION_RESULT.CONTINUE_OPER;
+			}
+			System.out.println("fetch size has set to "+values[1].trim());
+			return OPERATION_RESULT.CONTINUE_OPER;
+		}
+		
+		if(specialCmd.startsWith(SHOW_TIMEZONE)){
+			System.out.println("Current time zone: "+timeZone);
+			return OPERATION_RESULT.CONTINUE_OPER;
+		}
+		if(specialCmd.startsWith(SHOW_TIMESTAMP_DISPLAY)){
+			System.out.println("Current time format: "+timeFormat);
+			return OPERATION_RESULT.CONTINUE_OPER;
+		}
+		if(specialCmd.startsWith(SHOW_FETCH_SIZE)){
+			System.out.println("Current fetch size: "+fetchSize);
+			return OPERATION_RESULT.CONTINUE_OPER;
+		}
+			
 		Statement statement = null;
 		try {
 			statement = connection.createStatement();
+			statement.setFetchSize(fetchSize);
 			boolean hasResultSet = statement.execute(cmd.trim());
 			if (hasResultSet) {
 				ResultSet resultSet = statement.getResultSet();
@@ -339,17 +376,6 @@ public abstract class AbstractClient {
 		    	}
 		}
 		return OPERATION_RESULT.NO_OPER;
-	}
-	
-	protected static String readPassword() {
-		Console c = System.console();
-		if (c == null) { // IN ECLIPSE IDE
-			System.out.print(TSFILEDB_CLI_PREFIX + "> please input password: ");
-			Scanner scanner = new Scanner(System.in);
-			return scanner.nextLine();
-		} else { // Outside Eclipse IDE
-			return new String(c.readPassword(TSFILEDB_CLI_PREFIX + "> please input password: "));
-		}
 	}
 
 	enum OPERATION_RESULT{
