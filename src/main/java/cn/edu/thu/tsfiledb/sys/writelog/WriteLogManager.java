@@ -126,6 +126,7 @@ public class WriteLogManager {
             if (plan != null) {
                 return plan;
             } else {
+            	node.closeReadStream();
                 iterator.remove();
             }
         }
