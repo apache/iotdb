@@ -37,10 +37,22 @@ public class RecordReaderFactory {
 		fileStreamManager = FileStreamManager.getInstance();
 	}
 
+	/**
+	 * Construct a RecordReader which contains QueryStructure and read lock token.
+	 *
+	 * @param readLock
+	 * @return
+	 * @throws ProcessorException
+	 */
 	public RecordReader getRecordReader(String deltaObjectUID, String measurementID,
-			SingleSeriesFilterExpression timeFilter, SingleSeriesFilterExpression freqFilter, SingleSeriesFilterExpression valueFilter)
+			SingleSeriesFilterExpression timeFilter, SingleSeriesFilterExpression freqFilter, SingleSeriesFilterExpression valueFilter, Integer readLock)
 			throws ProcessorException {
-		int token = readLockManager.lock(deltaObjectUID, measurementID);
+		int token = 0;
+		if (readLock == null) {
+			token = readLockManager.lock(deltaObjectUID, measurementID);
+		} else {
+			token = readLock;
+		}
 		if (readLockManager.recordReaderCache.containsRecordReader(deltaObjectUID, measurementID)) {
 			return readLockManager.recordReaderCache.get(deltaObjectUID, measurementID);
 		} else {
