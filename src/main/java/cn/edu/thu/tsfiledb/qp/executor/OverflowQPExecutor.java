@@ -332,7 +332,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 					Set<String> pathSet = new HashSet<>();
 					for(Path p : deletePathList){
 						if (!mManager.pathExist(p.getFullPath())) {
-							throw new ProcessorException(String.format("Timeseries %s does not exist.", p.getFullPath()));
+							throw new ProcessorException(String.format("Timeseries %s does not exist and cannot be delete its metadata and data", p.getFullPath()));
 						}
 						pathSet.addAll(mManager.getPaths(p.getFullPath()));
 					}

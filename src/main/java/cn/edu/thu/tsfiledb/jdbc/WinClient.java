@@ -1,5 +1,6 @@
 package cn.edu.thu.tsfiledb.jdbc;
 
+import java.io.Console;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -17,7 +18,6 @@ import cn.edu.thu.tsfiledb.exception.ArgsErrorException;
 public class WinClient extends AbstractClient {
 
 	public static void main(String[] args) throws ClassNotFoundException, SQLException {
-		// TODO Auto-generated method stub
 		Class.forName("cn.edu.thu.tsfiledb.jdbc.TsfileDriver");
 		Connection connection = null;
 		Options options = createOptions();
@@ -125,5 +125,15 @@ public class WinClient extends AbstractClient {
 			}
 		}
 	}
-
+	
+	private static String readPassword() {
+		Console c = System.console();
+		if (c == null) { // IN ECLIPSE IDE
+			System.out.print(TSFILEDB_CLI_PREFIX + "> please input password: ");
+			Scanner scanner = new Scanner(System.in);
+			return scanner.nextLine();
+		} else { // Outside Eclipse IDE
+			return new String(c.readPassword(TSFILEDB_CLI_PREFIX + "> please input password: "));
+		}
+	}
 }
