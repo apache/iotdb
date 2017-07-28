@@ -167,7 +167,10 @@ public class WriteLogNode {
             // Don't forget to close the stream.
             writerV2.close();
             oldReader.close();
-            writer.close();
+            
+            if (writer != null) {
+            	writer.close();	
+            }
             writer = null;
             if (!new File(filePath).delete()) {
                 LOG.error("Error in compact log : old log file can not delete");
