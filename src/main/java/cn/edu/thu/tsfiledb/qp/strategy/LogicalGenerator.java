@@ -266,7 +266,7 @@ public class LogicalGenerator {
 					"need a long value in insert clause, but given:" + astNode.getChild(2).getChild(0).getText());
 		}
 		if (astNode.getChild(1).getChildCount() != astNode.getChild(2).getChildCount()) {
-			throw new QueryProcessorException("length of measurement is NOT EQUAL TO the length of values");
+			throw new QueryProcessorException("number of measurement is NOT EQUAL TO the number of values");
 		}
 		InsertOp.setTime(timestamp);
 		List<String> measurementList = new ArrayList<>();
@@ -284,12 +284,12 @@ public class LogicalGenerator {
 
 	private void analyzeUpdate(ASTNode astNode) throws QueryProcessorException {
 		if (astNode.getChildCount() != 3)
-			throw new LogicalOperatorException("error format in UPDATE statement:" + astNode.dump());
+			throw new LogicalOperatorException("error format in UPDATE statement, please check whether SQL statement is correct." );
 		UpdateOperator updateOp = new UpdateOperator(SQLConstant.TOK_UPDATE);
 		initializedOperator = updateOp;
 		analyzeSelect(astNode.getChild(0));
 		if (astNode.getChild(1).getType() != TSParser.TOK_VALUE)
-			throw new LogicalOperatorException("error format in UPDATE statement:" + astNode.dump());
+			throw new LogicalOperatorException("error format in UPDATE statement, please check whether SQL statement is correct.");
 		updateOp.setValue(astNode.getChild(1).getChild(0).getText());
 		analyzeWhere(astNode.getChild(2));
 	}
@@ -302,7 +302,7 @@ public class LogicalGenerator {
 			ASTNode child = astNode.getChild(i);
 			if (child.getType() != TSParser.TOK_PATH) {
 				throw new LogicalOperatorException(
-						"children FROM clause except last one must all be TOK_PATH, actual:" + child.getText());
+						"children FROM clause except last one must all be path like root.a.b, actual:" + child.getText());
 			}
 			Path tablePath = parsePath(child);
 			selectOp.addSuffixTablePath(tablePath);
@@ -371,7 +371,7 @@ public class LogicalGenerator {
 			ASTNode child = node.getChild(i);
 			if (child.getType() != TSParser.TOK_PATH) {
 				throw new LogicalOperatorException(
-						"children FROM clause must all be TOK_PATH, actual:" + child.getText());
+						"children FROM clause must all be path like root.a.b, actual:" + child.getText());
 			}
 			Path tablePath = parsePath(child);
 			from.addPrefixTablePath(tablePath);
@@ -401,15 +401,15 @@ public class LogicalGenerator {
 			Path selectPath = parsePath(astNode);
 			selectOp.addSuffixTablePath(selectPath);
 		} else
-			throw new LogicalOperatorException("children SELECT clause must all be TOK_PATH, actual:" + astNode.dump());
+			throw new LogicalOperatorException("children SELECT clause must all be path like root.a.b, actual:" + astNode.dump());
 		((SFWOperator) initializedOperator).setSelectOperator(selectOp);
 	}
 
 	private void analyzeWhere(ASTNode astNode) throws LogicalOperatorException {
 		if (astNode.getType() != TSParser.TOK_WHERE)
-			throw new LogicalOperatorException("given node is not WHERE! " + astNode.dump());
+			throw new LogicalOperatorException("given node is not WHERE! please check whether SQL statement is correct.");
 		if (astNode.getChildCount() != 1)
-			throw new LogicalOperatorException("where clause has" + astNode.getChildCount() + " child, return");
+			throw new LogicalOperatorException("where clause has" + astNode.getChildCount() + " child, please check whether SQL grammar is correct.");
 		FilterOperator whereOp = new FilterOperator(SQLConstant.TOK_WHERE);
 		ASTNode child = astNode.getChild(0);
 		analyzeWhere(child, child.getType(), whereOp);
@@ -421,7 +421,7 @@ public class LogicalGenerator {
 		switch (tokenIntType) {
 		case TSParser.KW_NOT:
 			if (childCount != 1) {
-				throw new LogicalOperatorException("parsing where clause failed: children count != 1");
+				throw new LogicalOperatorException("parsing where clause failed: NOT operator requries one param");
 			}
 			FilterOperator notOp = new FilterOperator(SQLConstant.KW_NOT);
 			filterOp.addChildOperator(notOp);
@@ -462,10 +462,10 @@ public class LogicalGenerator {
 
 	private Pair<Path, String> parseLeafNode(ASTNode node) throws LogicalOperatorException {
 		if (node.getChildCount() != 2)
-			throw new LogicalOperatorException("leaf node children count != 2");
+			throw new LogicalOperatorException("error format in SQL statement, please check whether SQL statement is correct.");
 		ASTNode col = node.getChild(0);
 		if (col.getType() != TSParser.TOK_PATH)
-			throw new LogicalOperatorException("left node of leaf isn't PATH");
+			throw new LogicalOperatorException("error format in SQL statement, please check whether SQL statement is correct.");
 		Path seriesPath = parsePath(col);
 		ASTNode rightKey = node.getChild(1);
 		String seriesValue;
@@ -564,7 +564,7 @@ public class LogicalGenerator {
 			authorOperator = new AuthorOperator(SQLConstant.TOK_AUTHOR_CREATE, AuthorType.CREATE_ROLE);
 			authorOperator.setRoleName(astNode.getChild(0).getChild(0).getText());
 		} else {
-			throw new IllegalASTFormatException("illegal ast tree in create author command:\n" + astNode.dump());
+			throw new IllegalASTFormatException("illegal ast tree in grant author command, please check you SQL statement");
 		}
 		initializedOperator = authorOperator;
 	}
@@ -576,12 +576,12 @@ public class LogicalGenerator {
 			authorOperator = new AuthorOperator(SQLConstant.TOK_AUTHOR_UPDATE_USER, AuthorType.UPDATE_USER);
 			ASTNode user = astNode.getChild(0);
 			if (user.getChildCount() != 3) {
-				throw new IllegalASTFormatException("illegal ast tree in create author command:\n" + astNode.dump());
+				throw new IllegalASTFormatException("illegal ast tree in grant author command, please check you SQL statement");
 			}
 			authorOperator.setUserName(parseStringWithQuoto(user.getChild(0).getText()));
 			authorOperator.setNewPassword(parseStringWithQuoto(user.getChild(1).getText()));
 		} else {
-			throw new IllegalASTFormatException("illegal ast tree in create author command:\n" + astNode.dump());
+			throw new IllegalASTFormatException("illegal ast tree in grant author command, please check you SQL statement");
 		}
 		initializedOperator = authorOperator;
 	}
@@ -601,10 +601,10 @@ public class LogicalGenerator {
 				authorOperator.setRoleName(astNode.getChild(0).getChild(0).getText());
 				break;
 			default:
-				throw new IllegalASTFormatException("illegal ast tree in drop author command:\n" + astNode.dump());
+				throw new IllegalASTFormatException("illegal ast tree in grant author command, please check you SQL statement");
 			}
 		} else {
-			throw new IllegalASTFormatException("illegal ast tree in drop author command:\n" + astNode.dump());
+			throw new IllegalASTFormatException("illegal ast tree in grant author command, please check you SQL statement");
 		}
 		initializedOperator = authorOperator;
 	}
@@ -641,10 +641,10 @@ public class LogicalGenerator {
 				authorOperator.setPrivilegeList(privileges);
 				authorOperator.setNodeNameList(nodeNameList);
 			} else {
-				throw new IllegalASTFormatException("illegal ast tree in grant author command:\n" + astNode.dump());
+				throw new IllegalASTFormatException("illegal ast tree in grant author command, please check you SQL statement");
 			}
 		} else {
-			throw new IllegalASTFormatException("illegal ast tree in grant author command:\n" + astNode.dump());
+			throw new IllegalASTFormatException("illegal ast tree in grant author command, please check you SQL statement");
 		}
 		initializedOperator = authorOperator;
 	}
@@ -681,10 +681,10 @@ public class LogicalGenerator {
 				authorOperator.setPrivilegeList(privileges);
 				authorOperator.setNodeNameList(nodeNameList);
 			} else {
-				throw new IllegalASTFormatException("illegal ast tree in revoke author command:\n" + astNode.dump());
+				throw new IllegalASTFormatException("illegal ast tree in grant author command, please check you SQL statement");
 			}
 		} else {
-			throw new IllegalASTFormatException("illegal ast tree in revoke author command:\n" + astNode.dump());
+			throw new IllegalASTFormatException("illegal ast tree in grant author command, please check you SQL statement");
 		}
 		initializedOperator = authorOperator;
 	}

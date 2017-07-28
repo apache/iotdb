@@ -112,11 +112,25 @@ public abstract class QueryProcessExecutor {
      * @return - whether the operator is successful.
      */
     public boolean delete(List<Path> paths, long deleteTime) throws ProcessorException{
-    	boolean result = true;
-        for(Path path: paths) {
-            result &= delete(path, deleteTime);
-        }
-        return result;
+    		try {
+			boolean result = true;
+			MManager mManager = MManager.getInstance();
+			Set<String> pathSet = new HashSet<>();
+			for(Path p : paths){
+				if (!mManager.pathExist(p.getFullPath())) {
+					throw new ProcessorException(String.format("Timeseries %s does not exist and cannot be delete its data", p.getFullPath()));
+				}
+				pathSet.addAll(mManager.getPaths(p.getFullPath()));
+			}
+			List<String> fullPath = new ArrayList<>();
+			fullPath.addAll(pathSet);
+			for(String path: fullPath) {
+			    result &= delete(new Path(path), deleteTime);
+			}
+			return result;
+		} catch (PathErrorException e) {
+			throw new ProcessorException(e.getMessage());
+		}
     }
 
 
