@@ -1,5 +1,7 @@
 package cn.edu.thu.tsfiledb.service;
 
+import cn.edu.thu.tsfile.common.conf.TSFileConfig;
+import cn.edu.thu.tsfile.common.conf.TSFileDescriptor;
 import cn.edu.thu.tsfiledb.conf.TsfileDBConfig;
 import cn.edu.thu.tsfiledb.conf.TsfileDBDescriptor;
 import org.apache.commons.io.FileUtils;
@@ -12,9 +14,10 @@ import java.io.File;
 import java.sql.*;
 
 /**
- * .
+ *
  */
-public class CrossReadBugFixTest {
+public class SmallPageSizeTest {
+
     private final String FOLDER_HEADER = "src/test/resources";
     private static final String TIMESTAMP_STR = "Time";
     private final String d0s0 = "root.vehicle.d0.s0";
@@ -41,6 +44,11 @@ public class CrossReadBugFixTest {
             "insert into root.vehicle.d0(timestamp,s0) values(104,90)",
             "insert into root.vehicle.d0(timestamp,s0) values(105,99)",
             "insert into root.vehicle.d0(timestamp,s0) values(106,99)",
+            "insert into root.vehicle.d0(timestamp,s0) values(2,10000)",
+            "insert into root.vehicle.d0(timestamp,s0) values(50,10000)",
+            "insert into root.vehicle.d0(timestamp,s0) values(1000,22222)",
+            "DELETE FROM root.vehicle.d0.s0 WHERE time < 104",
+            "UPDATE root.vehicle.d0.s0 SET VALUE = 33333 WHERE time < 106 and time > 103",
 
             "insert into root.vehicle.d0(timestamp,s1) values(1,1101)",
             "insert into root.vehicle.d0(timestamp,s1) values(2,198)",
@@ -50,17 +58,35 @@ public class CrossReadBugFixTest {
             "insert into root.vehicle.d0(timestamp,s1) values(103,199)",
             "insert into root.vehicle.d0(timestamp,s1) values(104,190)",
             "insert into root.vehicle.d0(timestamp,s1) values(105,199)",
+            "insert into root.vehicle.d0(timestamp,s1) values(2,40000)",
+            "insert into root.vehicle.d0(timestamp,s1) values(50,50000)",
+            "insert into root.vehicle.d0(timestamp,s1) values(1000,55555)",
 
-            "merge",
+            "insert into root.vehicle.d0(timestamp,s2) values(1000,55555)",
+            "insert into root.vehicle.d0(timestamp,s2) values(2,2.22)",
+            "insert into root.vehicle.d0(timestamp,s2) values(3,3.33)",
+            "insert into root.vehicle.d0(timestamp,s2) values(4,4.44)",
+            "insert into root.vehicle.d0(timestamp,s2) values(102,10.00)",
+            "insert into root.vehicle.d0(timestamp,s2) values(105,11.11)",
+            "insert into root.vehicle.d0(timestamp,s2) values(1000,1000.11)",
 
-            "insert into root.vehicle.d0(timestamp,s1) values(51,51)",
-            "insert into root.vehicle.d0(timestamp,s1) values(52,52)",
-            "insert into root.vehicle.d0(timestamp,s1) values(53,53)",
-            "insert into root.vehicle.d0(timestamp,s1) values(54,54)",
-            "insert into root.vehicle.d0(timestamp,s1) values(55,55)",
-            "insert into root.vehicle.d0(timestamp,s1) values(56,56)",
-            "insert into root.vehicle.d0(timestamp,s1) values(57,57)",
-            "insert into root.vehicle.d0(timestamp,s1) values(58,58)"
+            "insert into root.vehicle.d0(timestamp,s3) values(60,'aaaaa')",
+            "insert into root.vehicle.d0(timestamp,s3) values(70,'bbbbb')",
+            "insert into root.vehicle.d0(timestamp,s3) values(80,'ccccc')",
+            "insert into root.vehicle.d0(timestamp,s3) values(101,'ddddd')",
+            "insert into root.vehicle.d0(timestamp,s3) values(102,'fffff')",
+            "UPDATE root.vehicle.d0.s3 SET VALUE = 'tomorrow is another day' WHERE time >100 and time < 103",
+
+            // to flush bufferwrite data into page list
+            "insert into root.vehicle.d1(timestamp,s0) values(1,999)",
+            "insert into root.vehicle.d1(timestamp,s0) values(1100,1100)",
+            "insert into root.vehicle.d1(timestamp,s0) values(1200,1200)",
+            "insert into root.vehicle.d1(timestamp,s0) values(1300,1300)",
+            "insert into root.vehicle.d1(timestamp,s0) values(1400,1400)",
+            "insert into root.vehicle.d1(timestamp,s0) values(1500,1500)",
+            "insert into root.vehicle.d1(timestamp,s0) values(1600,1600)",
+            "insert into root.vehicle.d1(timestamp,s0) values(1700,1700)"
+
     };
 
     private String overflowDataDirPre;
@@ -79,6 +105,10 @@ public class CrossReadBugFixTest {
         bufferWriteDirPre = config.bufferWriteDir;
         metadataDirPre = config.metadataDir;
         derbyHomePre = config.derbyHome;
+
+        TSFileConfig tsFileConfig = TSFileDescriptor.getInstance().getConfig();
+        tsFileConfig.maxNumberOfPointsInPage = 5;
+        tsFileConfig.pageSizeInByte = 200;
 
         config.overflowDataDir = FOLDER_HEADER + "/data/overflow";
         config.fileNodeDir = FOLDER_HEADER + "/data/digest";
@@ -116,8 +146,8 @@ public class CrossReadBugFixTest {
 
         //TODO: add your query statement
         Connection connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
-        System.out.println(connection.getMetaData());
-        crossReadTest();
+        selectAllSQLTest();
+
         connection.close();
     }
 
@@ -141,38 +171,52 @@ public class CrossReadBugFixTest {
     }
 
     /**
-     *  Insert bufferwrite, merge, and insert overflow. <br>
-     *  Cross read.
-     *
+     * Set small page size manually.
      */
-    private void crossReadTest() throws ClassNotFoundException, SQLException {
+    private void selectAllSQLTest() throws ClassNotFoundException, SQLException {
         String[] retArray = new String[]{
-                "1,1101",
-                "2,198",
-                "100,199",
-                "101,199",
-                "102,180",
-                "103,199",
-                "104,190",
-                "105,199"};
+                "1,null,1101,null,null,999",
+                "2,null,40000,2.22,null,null",
+                "3,null,null,3.33,null,null",
+                "4,null,null,4.44,null,null",
+                "50,null,50000,null,null,null",
+                "60,null,null,null,aaaaa,null",
+                "70,null,null,null,bbbbb,null",
+                "80,null,null,null,ccccc,null",
+                "100,null,199,null,null,null",
+                "101,null,199,null,tomorrow is another day,null",
+                "102,null,180,10.0,tomorrow is another day,null",
+                "103,null,199,null,null,null",
+                "104,33333,190,null,null,null",
+                "105,33333,199,11.11,null,null",
+                "106,99,null,null,null,null",
+                "1000,22222,55555,1000.11,null,null",
+                "1100,null,null,null,null,1100",
+                "1200,null,null,null,null,1200",
+                "1300,null,null,null,null,1300",
+                "1400,null,null,null,null,1400",
+                "1500,null,null,null,null,1500",
+                "1600,null,null,null,null,1600",
+                "1700,null,null,null,null,1700"};
 
         Class.forName("cn.edu.thu.tsfiledb.jdbc.TsfileDriver");
         Connection connection = null;
         try {
             connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
             Statement statement = connection.createStatement();
-            boolean hasResultSet = statement.execute("select s1 from root.vehicle.d0 where s0 < 10000000");
+            boolean hasResultSet = statement.execute("select * from root");
+            // System.out.println(hasResultSet + "...");
             if (hasResultSet) {
                 ResultSet resultSet = statement.getResultSet();
                 int cnt = 0;
                 while (resultSet.next()) {
-                    String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s1);
+                    String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s0) + "," + resultSet.getString(d0s1)
+                            +","+resultSet.getString(d0s2)+","+resultSet.getString(d0s3)+","+resultSet.getString(d1s0);
                     // System.out.println(ans);
                     Assert.assertEquals(ans, retArray[cnt]);
                     cnt++;
-                    // AbstractClient.output(resultSet, true, "select statement");
                 }
-                Assert.assertEquals(cnt, 8);
+                //Assert.assertEquals(cnt, 16);
             }
             statement.close();
         } catch (Exception e) {
@@ -183,5 +227,5 @@ public class CrossReadBugFixTest {
             }
         }
     }
-}
 
+}

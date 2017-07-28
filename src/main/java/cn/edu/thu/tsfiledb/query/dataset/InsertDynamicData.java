@@ -547,6 +547,7 @@ public class InsertDynamicData extends DynamicOneColumnData {
             }
         }
 
+        // insertTrue value already satisfy the time filter
         while (insertTrue != null && insertTrue.insertTrueIndex < insertTrue.valueLength) {
             while (updateTrue != null && updateTrue.curIdx < updateTrue.valueLength && updateTrue.getTime(updateTrue.curIdx*2+1) < insertTrue.getTime(insertTrue.insertTrueIndex))
                 updateTrue.curIdx += 1;
@@ -561,7 +562,8 @@ public class InsertDynamicData extends DynamicOneColumnData {
                 insertTrue.insertTrueIndex ++;
             } else {
                 if (valueFilter == null || valueSatisfied()) {
-                    currentSatisfiedTime = insertTrue.getTime(insertTrue.insertTrueIndex);
+                    if (currentSatisfiedTime == -1)
+                        currentSatisfiedTime = insertTrue.getTime(insertTrue.insertTrueIndex);
                     return true;
                 } else {
                     insertTrue.insertTrueIndex ++;
