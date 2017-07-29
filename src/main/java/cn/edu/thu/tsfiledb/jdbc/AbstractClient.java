@@ -242,7 +242,7 @@ public abstract class AbstractClient {
 			int len = res.getMetaData().getColumnLabel(i + 1).length();
 			tmp = tmp > len ? tmp : len;
 		}
-		maxValueLength = maxValueLength < tmp ? tmp : maxValueLength;
+		maxValueLength = tmp;
 		if (printTimestamp) {
 			blockLine.append("+").append(StringUtils.repeat('-', maxTimeLength)).append("+");
 		} else {
