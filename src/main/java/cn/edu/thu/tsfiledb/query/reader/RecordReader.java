@@ -94,7 +94,7 @@ public class RecordReader {
      */
     public DynamicOneColumnData getValueInOneColumnWithOverflow(String deviceUID, String sensorId,
                                                                 DynamicOneColumnData updateTrue, DynamicOneColumnData updateFalse, InsertDynamicData insertMemoryData,
-                                                                SingleSeriesFilterExpression timeFilter, DynamicOneColumnData res, int fetchSize)
+                                                                SingleSeriesFilterExpression timeFilter, SingleSeriesFilterExpression valueFilter, DynamicOneColumnData res, int fetchSize)
             throws ProcessorException, IOException {
 
         List<RowGroupReader> rowGroupReaderList = readerManager.getRowGroupReaderListByDeltaObject(deviceUID);
@@ -107,7 +107,7 @@ public class RecordReader {
             RowGroupReader rowGroupReader = rowGroupReaderList.get(i);
             if (rowGroupReader.getValueReaders().containsKey(sensorId)) {
                 res = rowGroupReader.getValueReaders().get(sensorId)
-                        .getValuesWithOverFlow(updateTrue, updateFalse, insertMemoryData, timeFilter, null, null, res, fetchSize);
+                        .getValuesWithOverFlow(updateTrue, updateFalse, insertMemoryData, timeFilter, null, valueFilter, res, fetchSize);
                 res.setDeltaObjectType(rowGroupReader.getDeltaObjectType());
                 if (res.valueLength >= fetchSize) {
                     res.hasReadAll = false;
