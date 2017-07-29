@@ -42,6 +42,8 @@ public abstract class AbstractClient {
 	
 	protected static final String MAX_PRINT_ROW_COUNT_ARGS = "maxPRC";
 	protected static final String MAX_PRINT_ROW_COUNT_NAME = "maxPrintRowCount";
+	
+	protected static final String SET_MAX_DISPLAY_NUM = "set max_display_num";
 	protected static int maxPrintRowCount = 1000;
 
 	protected static final String SET_TIMESTAMP_DISPLAY = "set time_display_type";
@@ -220,6 +222,10 @@ public abstract class AbstractClient {
 	private static void setFetchSize(String fetchSizeString){
 		fetchSize = Integer.parseInt(fetchSizeString.trim());
 	}
+	
+	private static void setMaxDisplayNumber(String maxDisplayNum){
+		maxPrintRowCount = Integer.parseInt(maxDisplayNum.trim());
+	}
 
 	protected static void printBlockLine(boolean printTimestamp, int colCount, ResultSet res) throws SQLException {
 		StringBuilder blockLine = new StringBuilder();
@@ -338,7 +344,23 @@ public abstract class AbstractClient {
 			System.out.println("fetch size has set to "+values[1].trim());
 			return OPERATION_RESULT.CONTINUE_OPER;
 		}
-		
+
+		if(specialCmd.startsWith(SET_MAX_DISPLAY_NUM)) {
+			String[] values = specialCmd.split("=");
+			if(values.length != 2){
+				System.out.println(String.format("max display number format error, please input like %s = 10000", SET_MAX_DISPLAY_NUM));
+				return OPERATION_RESULT.CONTINUE_OPER;
+			}
+			try {
+				setMaxDisplayNumber(cmd.split("=")[1]);
+			} catch (Exception e) {
+				System.out.println(String.format("max display number format error, %s", e.getMessage()));
+				return OPERATION_RESULT.CONTINUE_OPER;
+			}
+			System.out.println("max display number has set to "+values[1].trim());
+			return OPERATION_RESULT.CONTINUE_OPER;
+		}
+
 		if(specialCmd.startsWith(SHOW_TIMEZONE)){
 			System.out.println("Current time zone: "+timeZone);
 			return OPERATION_RESULT.CONTINUE_OPER;
@@ -351,6 +373,7 @@ public abstract class AbstractClient {
 			System.out.println("Current fetch size: "+fetchSize);
 			return OPERATION_RESULT.CONTINUE_OPER;
 		}
+
 			
 		Statement statement = null;
 		try {
