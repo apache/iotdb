@@ -195,17 +195,17 @@ public abstract class AbstractClient {
 		case "long":
 		case "number":
 			maxTimeLength = maxValueLength;
-			timeFormat = newTimeFormat.toLowerCase();
+			timeFormat = newTimeFormat.trim().toLowerCase();
 			break;
 		case "default":
 		case "iso8601":
 			maxTimeLength = ISO_DATETIME_LEN;
-			timeFormat = newTimeFormat.toLowerCase();
+			timeFormat = newTimeFormat.trim().toLowerCase();
 			break;
 		default:
 			// use java default SimpleDateFormat to check whether input time format is legal
 			// if illegal, it will throw an exception
-			new SimpleDateFormat(newTimeFormat);
+			new SimpleDateFormat(newTimeFormat.trim());
 			maxTimeLength = TIMESTAMP_STR.length() > newTimeFormat.length() ? TIMESTAMP_STR.length() : newTimeFormat.length();
 			timeFormat = newTimeFormat;
 			break;
