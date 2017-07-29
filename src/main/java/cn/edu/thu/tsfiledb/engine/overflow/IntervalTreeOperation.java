@@ -167,7 +167,7 @@ public class IntervalTreeOperation implements IIntervalTreeOperator {
                 if (overflowOpType != OverflowOpType.DELETE)
                     doc.putBinary(Binary.valueOf(BytesUtils.bytesToString(value)));
                 else
-                    doc.putDouble(0);
+                    doc.putBinary(new Binary(""));
                 break;
             default:
                 LOG.error("Unsupported TSFile data type.");
