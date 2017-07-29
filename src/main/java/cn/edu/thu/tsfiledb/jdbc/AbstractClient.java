@@ -111,7 +111,12 @@ public abstract class AbstractClient {
 				for (int i = 1; i < colCount; i++) {
 					if (printToConsole && cnt < maxPrintRowCount) {
 					    	if(resultSetMetaData.getColumnLabel(i).indexOf(TIME_KEY_WORD) != -1){
-					    	    	System.out.printf(formatValue, formatDatetime(res.getLong(i)));
+					    		try {
+					    			System.out.printf(formatValue, formatDatetime(res.getLong(i)));
+							} catch (Exception e) {
+								System.out.printf(formatValue, "null");
+							}
+					    	    	
 					    	} else{
 							System.out.printf(formatValue, String.valueOf(res.getString(i)));
 					    	}
@@ -232,10 +237,12 @@ public abstract class AbstractClient {
 
 	protected static void printBlockLine(boolean printTimestamp, int colCount, ResultSet res) throws SQLException {
 		StringBuilder blockLine = new StringBuilder();
+		int tmp = Integer.MIN_VALUE;
 		for (int i = 0; i < colCount - 1; i++) {
 			int len = res.getMetaData().getColumnLabel(i + 1).length();
-			maxValueLength = maxValueLength < len ? len : maxValueLength;
+			tmp = tmp > len ? tmp : len;
 		}
+		maxValueLength = maxValueLength < tmp ? tmp : maxValueLength;
 		if (printTimestamp) {
 			blockLine.append("+").append(StringUtils.repeat('-', maxTimeLength)).append("+");
 		} else {
