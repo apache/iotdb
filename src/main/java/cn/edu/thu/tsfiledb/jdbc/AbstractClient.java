@@ -223,8 +223,11 @@ public abstract class AbstractClient {
 		fetchSize = Integer.parseInt(fetchSizeString.trim());
 	}
 	
-	private static void setMaxDisplayNumber(String maxDisplayNum){
+	protected static void setMaxDisplayNumber(String maxDisplayNum){
 		maxPrintRowCount = Integer.parseInt(maxDisplayNum.trim());
+		if (maxPrintRowCount < 0) {
+			maxPrintRowCount = Integer.MAX_VALUE;
+		}
 	}
 
 	protected static void printBlockLine(boolean printTimestamp, int colCount, ResultSet res) throws SQLException {

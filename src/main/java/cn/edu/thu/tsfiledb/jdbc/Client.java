@@ -5,6 +5,7 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.List;
 
+import org.antlr.grammar.v3.TreeToNFAConverter.set_return;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -55,10 +56,7 @@ public class Client extends AbstractClient {
 			}
 			if (commandLine.hasOption(MAX_PRINT_ROW_COUNT_ARGS)) {
 				try {
-					maxPrintRowCount = Integer.valueOf(commandLine.getOptionValue(MAX_PRINT_ROW_COUNT_ARGS));
-					if (maxPrintRowCount < 0) {
-						maxPrintRowCount = Integer.MAX_VALUE;
-					}
+					setMaxDisplayNumber(commandLine.getOptionValue(MAX_PRINT_ROW_COUNT_ARGS));
 				} catch (NumberFormatException e) {
 					System.out.println(
 							TSFILEDB_CLI_PREFIX + "> error format of max print row count, it should be number");
