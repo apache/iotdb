@@ -39,6 +39,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import cn.edu.thu.tsfile.timeseries.read.query.QueryDataSet;
+import cn.edu.thu.tsfile.timeseries.read.support.Field;
 import cn.edu.thu.tsfile.timeseries.read.support.RowRecord;
 
 public class TsfileQueryResultSet implements ResultSet {
@@ -1127,6 +1128,8 @@ public class TsfileQueryResultSet implements ResultSet {
 		if (columnIndex > len || len == 0) {
 			throw new SQLException(String.format("columnIndex %d out of range %d", columnIndex, len));
 		}
-		return record.fields.get(columnIndex - 1).getStringValue();
+		Field field = record.fields.get(columnIndex - 1);
+		if(field == null || field.getStringValue() == null) return null;
+		return field.getStringValue();
 	}
 }
