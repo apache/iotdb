@@ -20,7 +20,8 @@ public class Client extends AbstractClient {
 
 	private static final String[] args = new String[]{
 			"show", "set", "select", "drop", "update", "delete", "create", "insert",
-			"timeseries", "time_display_type", "time_zone","storage", "group", "time", "timestamp", "values", "now()", "index", "fetch_size",
+			"timeseries", "time_display_type", "time_zone","storage", "group", 
+			"time", "timestamp", "values", "now()", "index", "fetch_size", "max_display_num",
 			"count", "max_time", "min_time", "max_value", "min_value",
 			"from", "where", "to", "on",
 			"and", "or",
