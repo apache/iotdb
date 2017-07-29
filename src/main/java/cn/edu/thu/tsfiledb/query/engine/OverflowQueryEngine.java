@@ -190,11 +190,11 @@ public class OverflowQueryEngine {
                     insertTrue, updateTrue, updateFalse,
                     newTimeFilter, null, null, getDataTypeByPath(path));
             res = recordReader.getValueInOneColumnWithOverflow(deltaObjectID, measurementID,
-                    updateTrue, updateFalse, recordReader.insertAllData, newTimeFilter, res, fetchSize);
+                    updateTrue, updateFalse, recordReader.insertAllData, newTimeFilter, null, res, fetchSize);
             res.putOverflowInfo(insertTrue, updateTrue, updateFalse, newTimeFilter);
         } else {
             res = recordReader.getValueInOneColumnWithOverflow(deltaObjectID, measurementID,
-                    res.updateTrue, res.updateFalse, recordReader.insertAllData, res.timeFilter, res, fetchSize);
+                    res.updateTrue, res.updateFalse, recordReader.insertAllData, res.timeFilter, null, res, fetchSize);
         }
 
         // close current recordReader
@@ -254,11 +254,11 @@ public class OverflowQueryEngine {
                     insertTrue, updateTrue, updateFalse,
                     newTimeFilter, valueFilter, null, getDataTypeByPath(path));
             res = recordReader.getValueInOneColumnWithOverflow(deltaObjectId, measurementId,
-                    updateTrue, updateFalse, recordReader.insertAllData, newTimeFilter, res, fetchSize);
+                    updateTrue, updateFalse, recordReader.insertAllData, newTimeFilter, valueFilter, res, fetchSize);
             res.putOverflowInfo(insertTrue, updateTrue, updateFalse, newTimeFilter);
         } else {
             res = recordReader.getValueInOneColumnWithOverflow(deltaObjectId, measurementId,
-                    res.updateTrue, res.updateFalse, recordReader.insertAllData, res.timeFilter, res, fetchSize);
+                    res.updateTrue, res.updateFalse, recordReader.insertAllData, res.timeFilter, valueFilter, res, fetchSize);
         }
 
         return res;
