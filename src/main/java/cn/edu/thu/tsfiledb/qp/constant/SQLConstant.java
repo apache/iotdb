@@ -1,7 +1,5 @@
 package cn.edu.thu.tsfiledb.qp.constant;
 
-import static org.junit.Assert.fail;
-
 import java.util.HashMap;
 import java.util.Map;
 
@@ -44,7 +42,6 @@ public class SQLConstant {
 	            return SQLConstant.DATE_FORMAT_REGEXPS.get(regexp);
 	        }
 	    }
-	    fail();
 		return null;
 	}
 
