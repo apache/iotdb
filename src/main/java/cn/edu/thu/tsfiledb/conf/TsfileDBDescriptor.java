@@ -83,10 +83,10 @@ public class TsfileDBDescriptor {
 			conf.periodTimeForClose = Long.parseLong(properties.getProperty("period_time_for_close_in_second", conf.periodTimeForClose+"").trim());
 			conf.periodTimeForMerge = Long.parseLong(properties.getProperty("period_time_for_merge_in_second", conf.periodTimeForMerge+"").trim());
 			
-			String tmpTimeZone = properties.getProperty("time_zone", conf.timeZone);
+			String tmpTimeZone = properties.getProperty("time_zone", conf.timeZone.getID());
 			try {
-				DateTimeZone.forID(tmpTimeZone.trim());
-				conf.timeZone = tmpTimeZone;
+				conf.timeZone = DateTimeZone.forID(tmpTimeZone.trim());
+				LOGGER.info("Time zone has been set to {}", conf.timeZone);
 			} catch (Exception e) {
 				LOGGER.error("Time zone foramt error {}, use default configuration {}", tmpTimeZone, conf.timeZone);
 			}
