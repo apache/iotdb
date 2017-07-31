@@ -29,7 +29,6 @@ import cn.edu.thu.tsfiledb.sql.parse.TSParser;
 
 import org.antlr.runtime.Token;
 import org.joda.time.DateTime;
-import org.joda.time.DateTimeZone;
 import org.joda.time.format.DateTimeFormat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -499,8 +498,8 @@ public class LogicalGenerator {
 			return System.currentTimeMillis();
 		}
 		try {
-			DateTime datetime = DateTime.parse(timestampStr, DateTimeFormat.forPattern(SQLConstant.determineDateFormat(timestampStr)));
-			return datetime.toDateTime(DateTimeZone.forID(config.timeZone)).getMillis();
+			DateTime datetime = DateTime.parse(timestampStr, DateTimeFormat.forPattern(SQLConstant.determineDateFormat(timestampStr)).withZone(config.timeZone));
+			return datetime.getMillis();
 		} catch (Exception e) {
 			throw new LogicalOperatorException(e.getMessage());
 		}

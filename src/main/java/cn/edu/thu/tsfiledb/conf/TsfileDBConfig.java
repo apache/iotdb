@@ -2,6 +2,8 @@ package cn.edu.thu.tsfiledb.conf;
 
 import java.io.File;
 
+import org.joda.time.DateTimeZone;
+
 public class TsfileDBConfig {
 
 	public static final String CONFIG_NAME = "tsfile-engine.properties";
@@ -103,7 +105,7 @@ public class TsfileDBConfig {
 	 */
 	public long periodTimeForMerge = 7200;
 
-	public String timeZone = "+08:00";
+	public DateTimeZone timeZone = DateTimeZone.getDefault();
 
 	public TsfileDBConfig() {
 
