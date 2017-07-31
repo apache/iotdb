@@ -103,6 +103,8 @@ public class TsfileDBConfig {
 	 */
 	public long periodTimeForMerge = 7200;
 
+	public String timeZone = "+08:00";
+
 	public TsfileDBConfig() {
 
 	}

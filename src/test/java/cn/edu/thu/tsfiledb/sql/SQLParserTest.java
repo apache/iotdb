@@ -108,9 +108,9 @@ public class SQLParserTest {
     public void multiInsert3() throws ParseException {
         // template for test case
         ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_INSERT", "TOK_PATH", "root", "vehicle", "d0",
-                "TOK_MULT_IDENTIFIER", "TOK_TIME", "s0","s1" ,"TOK_MULT_VALUE","TOK_DATETIME" ,"2017-6-2T12:00:12.000+07:00", "-1011.666", "1231"));
+                "TOK_MULT_IDENTIFIER", "TOK_TIME", "s0","s1" ,"TOK_MULT_VALUE","TOK_DATETIME" ,"2016-02-01 11:12:35", "-1011.666", "1231"));
         ArrayList<String> rec = new ArrayList<>();
-        ASTNode astTree = ParseGenerator.generateAST("insert into root.vehicle.d0 (timestamp, s0, s1)  values(2017-6-2T12:00:12.000+07:00, -1011.666, 1231)");
+        ASTNode astTree = ParseGenerator.generateAST("insert into root.vehicle.d0 (timestamp, s0, s1)  values(2016-02-01 11:12:35, -1011.666, 1231)");
         astTree = ParseUtils.findRootNonNullToken(astTree);
         recursivePrintSon(astTree, rec);
 
@@ -202,9 +202,9 @@ public class SQLParserTest {
     public void delete() throws ParseException {
         // template for test case
         ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_DELETE", "TOK_PATH", "d1", "s1", "TOK_WHERE", "<",
-                "TOK_PATH", "time", "TOK_DATETIME", "2016-11-16T16:22:33+08:00"));
+                "TOK_PATH", "time", "TOK_DATETIME", "2016-11-16 16:22:33+08:00"));
         ArrayList<String> rec = new ArrayList<>();
-        ASTNode astTree = ParseGenerator.generateAST("delete from d1.s1 where time < 2016-11-16T16:22:33+08:00");
+        ASTNode astTree = ParseGenerator.generateAST("delete from d1.s1 where time < 2016-11-16 16:22:33+08:00");
         astTree = ParseUtils.findRootNonNullToken(astTree);
         recursivePrintSon(astTree, rec);
 
