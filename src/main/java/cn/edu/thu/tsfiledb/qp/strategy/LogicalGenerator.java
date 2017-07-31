@@ -5,6 +5,8 @@ import cn.edu.thu.tsfile.common.utils.Pair;
 import cn.edu.thu.tsfile.file.metadata.enums.TSDataType;
 import cn.edu.thu.tsfile.timeseries.read.qp.Path;
 import cn.edu.thu.tsfile.timeseries.utils.StringContainer;
+import cn.edu.thu.tsfiledb.conf.TsfileDBConfig;
+import cn.edu.thu.tsfiledb.conf.TsfileDBDescriptor;
 import cn.edu.thu.tsfiledb.exception.ArgsErrorException;
 import cn.edu.thu.tsfiledb.exception.MetadataArgsErrorException;
 import cn.edu.thu.tsfiledb.qp.constant.SQLConstant;
@@ -27,6 +29,8 @@ import cn.edu.thu.tsfiledb.sql.parse.TSParser;
 
 import org.antlr.runtime.Token;
 import org.joda.time.DateTime;
+import org.joda.time.DateTimeZone;
+import org.joda.time.format.DateTimeFormat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,6 +52,7 @@ import static cn.edu.thu.tsfiledb.qp.constant.SQLConstant.*;
 public class LogicalGenerator {
 	private Logger LOG = LoggerFactory.getLogger(LogicalGenerator.class);
 	private RootOperator initializedOperator = null;
+	private TsfileDBConfig config = TsfileDBDescriptor.getInstance().getConfig();
 
 	public RootOperator getLogicalPlan(ASTNode astNode) throws QueryProcessorException, ArgsErrorException {
 		analyze(astNode);
@@ -494,8 +499,8 @@ public class LogicalGenerator {
 			return System.currentTimeMillis();
 		}
 		try {
-			DateTime datetime = new DateTime(timestampStr);
-			return datetime.getMillis();
+			DateTime datetime = DateTime.parse(timestampStr, DateTimeFormat.forPattern(SQLConstant.determineDateFormat(timestampStr)));
+			return datetime.toDateTime(DateTimeZone.forID(config.timeZone)).getMillis();
 		} catch (Exception e) {
 			throw new LogicalOperatorException(e.getMessage());
 		}
