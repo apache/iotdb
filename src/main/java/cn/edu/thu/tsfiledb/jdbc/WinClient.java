@@ -19,7 +19,7 @@ public class WinClient extends AbstractClient {
 
 	public static void main(String[] args) throws ClassNotFoundException, SQLException {
 		Class.forName("cn.edu.thu.tsfiledb.jdbc.TsfileDriver");
-		Connection connection = null;
+		TsfileConnection connection = null;
 		Options options = createOptions();
 		HelpFormatter hf = new HelpFormatter();
 		hf.setWidth(MAX_HELP_CONSOLE_WIDTH);
@@ -76,7 +76,7 @@ public class WinClient extends AbstractClient {
 					password = readPassword();
 				}
 				try {
-					connection = DriverManager.getConnection("jdbc:tsfile://" + host + ":" + port + "/", username,
+					connection = (TsfileConnection) DriverManager.getConnection("jdbc:tsfile://" + host + ":" + port + "/", username,
 							password);
 				} catch (SQLException e) {
 					System.out.println(TSFILEDB_CLI_PREFIX + "> " + e.getMessage());

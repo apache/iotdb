@@ -36,9 +36,12 @@ import org.slf4j.LoggerFactory;
 
 import cn.edu.thu.tsfiledb.service.rpc.thrift.TSIService;
 import cn.edu.thu.tsfiledb.service.rpc.thrift.TSCloseSessionReq;
+import cn.edu.thu.tsfiledb.service.rpc.thrift.TSGetTimeZoneResp;
 import cn.edu.thu.tsfiledb.service.rpc.thrift.TSOpenSessionReq;
 import cn.edu.thu.tsfiledb.service.rpc.thrift.TSOpenSessionResp;
 import cn.edu.thu.tsfiledb.service.rpc.thrift.TSProtocolVersion;
+import cn.edu.thu.tsfiledb.service.rpc.thrift.TSSetTimeZoneReq;
+import cn.edu.thu.tsfiledb.service.rpc.thrift.TSSetTimeZoneResp;
 import cn.edu.thu.tsfiledb.service.rpc.thrift.TS_SessionHandle;
 
 public class TsfileConnection implements Connection {
@@ -201,7 +204,7 @@ public class TsfileConnection implements Connection {
 
     @Override
     public int getNetworkTimeout() throws SQLException {
-	throw new SQLException("Method not supported");
+	return TsfileJDBCConfig.connectionTimeoutInMs;
     }
 
     @Override
@@ -425,6 +428,18 @@ public class TsfileConnection implements Connection {
 	return flag;
     }
 
+    public void setTimeZone(String timeZone) throws TException, TsfileSQLException{
+    	TSSetTimeZoneReq req = new TSSetTimeZoneReq(timeZone);
+    	TSSetTimeZoneResp resp = client.setTimeZone(req);
+    	Utils.verifySuccess(resp.getStatus());
+    }
+    
+    public String getTimeZone() throws TException, TsfileSQLException{
+    	TSGetTimeZoneResp resp = client.getTimeZone();
+    	Utils.verifySuccess(resp.getStatus());
+    	return resp.getTimeZone();
+    }
+    
     public static TSIService.Iface newSynchronizedClient(TSIService.Iface client) {
 	return (TSIService.Iface) Proxy.newProxyInstance(TsfileConnection.class.getClassLoader(),
 		new Class[] { TSIService.Iface.class }, new SynchronizedHandler(client));
