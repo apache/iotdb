@@ -1,6 +1,5 @@
 package cn.edu.thu.tsfiledb.jdbc;
 
-import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.List;
@@ -11,6 +10,7 @@ import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
+import org.joda.time.DateTimeZone;
 
 import cn.edu.thu.tsfiledb.exception.ArgsErrorException;
 import jline.console.ConsoleReader;
@@ -28,7 +28,7 @@ public class Client extends AbstractClient {
 			"user", "role",
 			"exit", "quit"};
 
-	public static void main(String[] args) throws ClassNotFoundException, SQLException {
+	public static void main(String[] args) throws ClassNotFoundException {
 		Class.forName("cn.edu.thu.tsfiledb.jdbc.TsfileDriver");
 		TsfileConnection connection = null;
 		Options options = createOptions();
@@ -90,6 +90,13 @@ public class Client extends AbstractClient {
 					System.out.println(TSFILEDB_CLI_PREFIX + "> " + e.getMessage());
 					return;
 				}
+				try {
+					timeZone = DateTimeZone.forID(connection.getTimeZone());
+				} catch (Exception e) {
+					timeZone = DateTimeZone.getDefault();
+					System.out.println("Failed to get time zone from server, use default "+timeZone.getID());					
+				}
+				
 			} catch (ArgsErrorException e) {
 //				System.out.println(TSFILEDB_CLI_PREFIX + ": " + e.getMessage());
 				return;
@@ -127,7 +134,11 @@ public class Client extends AbstractClient {
 				reader.close();
 			}
 			if (connection != null) {
-				connection.close();
+				try {
+					connection.close();
+				} catch (SQLException e) {
+					
+				}
 			}
 		}
 	}
