@@ -219,10 +219,6 @@ public abstract class AbstractClient {
 		formatTime = "%" + maxTimeLength + "s|";
 	}
 	
-	private static void setTimeZone(String timeZoneString){
-		timeZone = DateTimeZone.forID(timeZoneString.trim());
-	}
-	
 	private static void setFetchSize(String fetchSizeString){
 		fetchSize = Integer.parseInt(fetchSizeString.trim());
 	}

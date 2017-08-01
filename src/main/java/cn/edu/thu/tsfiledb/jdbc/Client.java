@@ -84,8 +84,7 @@ public class Client extends AbstractClient {
 					password = reader.readLine("please input your password:", '\0');
 				}
 				try {
-					connection = (TsfileConnection) DriverManager.getConnection("jdbc:tsfile://" + host + ":" + port + "/", username,
-							password);
+					connection = (TsfileConnection) DriverManager.getConnection("jdbc:tsfile://" + host + ":" + port + "/", username, password);
 				} catch (SQLException e) {
 					System.out.println(TSFILEDB_CLI_PREFIX + "> " + e.getMessage());
 					return;
