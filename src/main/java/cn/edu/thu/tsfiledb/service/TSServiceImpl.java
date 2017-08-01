@@ -131,9 +131,15 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 		if (username.get() == null) {
 			ts_status = new TS_Status(TS_StatusCode.ERROR_STATUS);
 			ts_status.setErrorMessage("Has not logged in");
+			if(timeZone.get() != null){
+				timeZone.remove();
+			}
 		} else {
 			ts_status = new TS_Status(TS_StatusCode.SUCCESS_STATUS);
 			username.remove();
+			if(timeZone.get() != null){
+				timeZone.remove();
+			}
 		}
 		return new TSCloseSessionResp(ts_status);
 	}

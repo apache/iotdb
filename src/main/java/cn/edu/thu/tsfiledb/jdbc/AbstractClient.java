@@ -11,7 +11,6 @@ import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.joda.time.format.ISODateTimeFormat;
 
-import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
@@ -38,7 +37,7 @@ public abstract class AbstractClient {
 	protected static final String ISO8601_ARGS = "disableISO8601";
 	protected static String timeFormat = "default";
 	protected static final String TIME_KEY_WORD = "time";
-	protected static DateTimeZone timeZone = DateTimeZone.getDefault();
+	protected static DateTimeZone timeZone;
 	
 	protected static final String MAX_PRINT_ROW_COUNT_ARGS = "maxPRC";
 	protected static final String MAX_PRINT_ROW_COUNT_NAME = "maxPrintRowCount";
@@ -331,8 +330,9 @@ public abstract class AbstractClient {
 			}
 			try {
 				connection.setTimeZone(cmd.split("=")[1]);
+				timeZone = DateTimeZone.forID(cmd.split("=")[1]);
 			} catch (Exception e) {
-//				System.out.println(String.format("time zone format error, %s", e.getMessage()));
+				System.out.println(String.format("time zone format error, %s", e.getMessage()));
 				return OPERATION_RESULT.CONTINUE_OPER;
 			}
 			System.out.println("time zone has set to "+values[1].trim());
@@ -374,7 +374,9 @@ public abstract class AbstractClient {
 		if(specialCmd.startsWith(SHOW_TIMEZONE)){
 			try {
 				System.out.println("Current time zone: "+connection.getTimeZone());
-			} catch (Exception e) {}
+			} catch (Exception e) {
+				System.out.println("Cannot get time zone from server side because: "+e.getMessage());
+			}
 			return OPERATION_RESULT.CONTINUE_OPER;
 		}
 		if(specialCmd.startsWith(SHOW_TIMESTAMP_DISPLAY)){
