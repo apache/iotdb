@@ -11,7 +11,6 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import cn.edu.thu.tsfiledb.qp.constant.SQLConstant;
 
 public class DateFormatTest {
 	private static final String TIME_FORMAT_PATTERN = "^\\d{4}%s\\d{1,2}%s\\d{1,2}%s\\d{1,2}:\\d{2}:\\d{2}%s$";
@@ -20,27 +19,47 @@ public class DateFormatTest {
 		{
 			put(String.format(TIME_FORMAT_PATTERN, "-", "-", "\\s", ""), "yyyy-MM-dd HH:mm:ss");
 			put(String.format(TIME_FORMAT_PATTERN, "/", "/", "\\s", ""), "yyyy/MM/dd HH:mm:ss");
+			put(String.format(TIME_FORMAT_PATTERN, "\\.", "\\.", "\\s", ""), "yyyy.MM.dd HH:mm:ss");
+			
 			put(String.format(TIME_FORMAT_PATTERN, "-", "-", "T", ""), "yyyy-MM-dd'T'HH:mm:ss");
 			put(String.format(TIME_FORMAT_PATTERN, "/", "/", "T", ""), "yyyy/MM/dd'T'HH:mm:ss");
+			put(String.format(TIME_FORMAT_PATTERN, "\\.", "\\.", "T", ""), "yyyy.MM.dd'T'HH:mm:ss");
+
+			put(String.format(TIME_FORMAT_PATTERN, "-", "-", "\\s", "(\\+|-)\\d{2}:\\d{2}"), "yyyy-MM-dd HH:mm:ssZZ");
+			put(String.format(TIME_FORMAT_PATTERN, "/", "/", "\\s", "(\\+|-)\\d{2}:\\d{2}"), "yyyy/MM/dd HH:mm:ssZZ");
+			put(String.format(TIME_FORMAT_PATTERN, "\\.", "\\.", "\\s", "(\\+|-)\\d{2}:\\d{2}"), "yyyy.MM.dd HH:mm:ssZZ");
+			
 			put(String.format(TIME_FORMAT_PATTERN, "-", "-", "T", "(\\+|-)\\d{2}:\\d{2}"), "yyyy-MM-dd'T'HH:mm:ssZZ");
 			put(String.format(TIME_FORMAT_PATTERN, "/", "/", "T", "(\\+|-)\\d{2}:\\d{2}"), "yyyy/MM/dd'T'HH:mm:ssZZ");
+			put(String.format(TIME_FORMAT_PATTERN, "\\.", "\\.", "T", "(\\+|-)\\d{2}:\\d{2}"), "yyyy.MM.dd'T'HH:mm:ssZZ");
+	
 			put(String.format(TIME_FORMAT_PATTERN, "/", "/", "\\s", "\\.\\d{3}"), "yyyy/MM/dd HH:mm:ss.SSS");
 			put(String.format(TIME_FORMAT_PATTERN, "-", "-", "\\s", "\\.\\d{3}"), "yyyy-MM-dd HH:mm:ss.SSS");
+			put(String.format(TIME_FORMAT_PATTERN, "\\.", "\\.", "\\s", "\\.\\d{3}"), "yyyy.MM.dd HH:mm:ss.SSS");
+			
 			put(String.format(TIME_FORMAT_PATTERN, "/", "/", "T", "\\.\\d{3}"), "yyyy/MM/dd'T'HH:mm:ss.SSS");
-			put(String.format(TIME_FORMAT_PATTERN, "-", "-", "T", "\\.\\d{3}"), "yyyy-MM-dd'T'HH:mm:ss.SSS");
+			put(String.format(TIME_FORMAT_PATTERN, "-", "-", "T", "\\.\\d{3}"), "yyyy-MM-dd'T'HH:mm:ss.SSS");		
+			put(String.format(TIME_FORMAT_PATTERN, "\\.", "\\.", "T", "\\.\\d{3}"), "yyyy.MM.dd'T'HH:mm:ss.SSS");
+
+			put(String.format(TIME_FORMAT_PATTERN, "-", "-", "\\s", "\\.\\d{3}(\\+|-)\\d{2}:\\d{2}"), "yyyy-MM-dd HH:mm:ss.SSSZZ");
+			put(String.format(TIME_FORMAT_PATTERN, "/", "/", "\\s", "\\.\\d{3}(\\+|-)\\d{2}:\\d{2}"), "yyyy/MM/dd HH:mm:ss.SSSZZ");
+			put(String.format(TIME_FORMAT_PATTERN, "\\.", "\\.", "\\s", "\\.\\d{3}(\\+|-)\\d{2}:\\d{2}"), "yyyy.MM.dd HH:mm:ss.SSSZZ");
+			
 			put(String.format(TIME_FORMAT_PATTERN, "-", "-", "T", "\\.\\d{3}(\\+|-)\\d{2}:\\d{2}"), "yyyy-MM-dd'T'HH:mm:ss.SSSZZ");
 			put(String.format(TIME_FORMAT_PATTERN, "/", "/", "T", "\\.\\d{3}(\\+|-)\\d{2}:\\d{2}"), "yyyy/MM/dd'T'HH:mm:ss.SSSZZ");
+			put(String.format(TIME_FORMAT_PATTERN, "\\.", "\\.", "T", "\\.\\d{3}(\\+|-)\\d{2}:\\d{2}"), "yyyy.MM.dd'T'HH:mm:ss.SSSZZ");
 		}
 	};
 
 	public static String determineDateFormat(String dateString) {
-	    for (String regexp : SQLConstant.DATE_FORMAT_REGEXPS.keySet()) {
+	    for (String regexp : DATE_FORMAT_REGEXPS.keySet()) {
 	        if (dateString.matches(regexp)) {
-	            return SQLConstant.DATE_FORMAT_REGEXPS.get(regexp);
+	            return DATE_FORMAT_REGEXPS.get(regexp);
 	        }
 	    }
 		return null;
 	}
+	
 	@Before
 	public void setUp() throws Exception {
 	}
@@ -54,31 +73,43 @@ public class DateFormatTest {
 		String[] timeFormatWithoutMs = new String[]{
 				"2016-02-01 11:12:35",
 				"2016/02/01 11:12:35",
+				"2016.02.01 11:12:35",
 				"2016-02-01T11:12:35",
 				"2016/02/01T11:12:35",
+				"2016.02.01T11:12:35",
+				"2016-02-01 11:12:35+08:00",
+				"2016/02/01 11:12:35+08:00",
+				"2016.02.01 11:12:35+08:00",
 				"2016-02-01T11:12:35+08:00",
 				"2016/02/01T11:12:35+08:00",
+				"2016.02.01T11:12:35+08:00",
 		};
 		for(String t: timeFormatWithoutMs){
-			DateTime d = DateTime.parse(t, DateTimeFormat.forPattern(SQLConstant.determineDateFormat(t)));
+			String format = determineDateFormat(t);
+			DateTime d = DateTime.parse(t, DateTimeFormat.forPattern(format));
 			assertEquals(d.toString(), "2016-02-01T11:12:35.000+08:00");
 		}
 
 		String[] timeFormatWithMs = new String[]{
 				"2016/02/01 11:12:35.123",
 				"2016-02-01 11:12:35.123",
+				"2016.02.01 11:12:35.123",
 				"2016-02-01T11:12:35.123",
 				"2016/02/01T11:12:35.123",
+				"2016.02.01T11:12:35.123",
+				"2016-02-01 11:12:35.123+08:00",
+				"2016/02/01 11:12:35.123+08:00",
+				"2016.02.01 11:12:35.123+08:00",
 				"2016-02-01T11:12:35.123+08:00",
 				"2016/02/01T11:12:35.123+08:00",
+				"2016.02.01T11:12:35.123+08:00",
 		};
 		for(String t: timeFormatWithMs){
-			DateTime d = DateTime.parse(t, DateTimeFormat.forPattern(SQLConstant.determineDateFormat(t)));
+			DateTime d = DateTime.parse(t, DateTimeFormat.forPattern(determineDateFormat(t)));
 			assertEquals(d.toString(), "2016-02-01T11:12:35.123+08:00");
 		}
 	}
 	
 
-	
 
 }
