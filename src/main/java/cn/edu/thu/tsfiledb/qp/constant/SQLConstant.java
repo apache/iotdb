@@ -23,16 +23,35 @@ public class SQLConstant {
 		{
 			put(String.format(TIME_FORMAT_PATTERN, "-", "-", "\\s", ""), "yyyy-MM-dd HH:mm:ss");
 			put(String.format(TIME_FORMAT_PATTERN, "/", "/", "\\s", ""), "yyyy/MM/dd HH:mm:ss");
+			put(String.format(TIME_FORMAT_PATTERN, "\\.", "\\.", "\\s", ""), "yyyy.MM.dd HH:mm:ss");
+			
 			put(String.format(TIME_FORMAT_PATTERN, "-", "-", "T", ""), "yyyy-MM-dd'T'HH:mm:ss");
 			put(String.format(TIME_FORMAT_PATTERN, "/", "/", "T", ""), "yyyy/MM/dd'T'HH:mm:ss");
+			put(String.format(TIME_FORMAT_PATTERN, "\\.", "\\.", "T", ""), "yyyy.MM.dd'T'HH:mm:ss");
+
+			put(String.format(TIME_FORMAT_PATTERN, "-", "-", "\\s", "(\\+|-)\\d{2}:\\d{2}"), "yyyy-MM-dd HH:mm:ssZZ");
+			put(String.format(TIME_FORMAT_PATTERN, "/", "/", "\\s", "(\\+|-)\\d{2}:\\d{2}"), "yyyy/MM/dd HH:mm:ssZZ");
+			put(String.format(TIME_FORMAT_PATTERN, "\\.", "\\.", "\\s", "(\\+|-)\\d{2}:\\d{2}"), "yyyy.MM.dd HH:mm:ssZZ");
+			
 			put(String.format(TIME_FORMAT_PATTERN, "-", "-", "T", "(\\+|-)\\d{2}:\\d{2}"), "yyyy-MM-dd'T'HH:mm:ssZZ");
 			put(String.format(TIME_FORMAT_PATTERN, "/", "/", "T", "(\\+|-)\\d{2}:\\d{2}"), "yyyy/MM/dd'T'HH:mm:ssZZ");
+			put(String.format(TIME_FORMAT_PATTERN, "\\.", "\\.", "T", "(\\+|-)\\d{2}:\\d{2}"), "yyyy.MM.dd'T'HH:mm:ssZZ");
+	
 			put(String.format(TIME_FORMAT_PATTERN, "/", "/", "\\s", "\\.\\d{3}"), "yyyy/MM/dd HH:mm:ss.SSS");
 			put(String.format(TIME_FORMAT_PATTERN, "-", "-", "\\s", "\\.\\d{3}"), "yyyy-MM-dd HH:mm:ss.SSS");
+			put(String.format(TIME_FORMAT_PATTERN, "\\.", "\\.", "\\s", "\\.\\d{3}"), "yyyy.MM.dd HH:mm:ss.SSS");
+			
 			put(String.format(TIME_FORMAT_PATTERN, "/", "/", "T", "\\.\\d{3}"), "yyyy/MM/dd'T'HH:mm:ss.SSS");
-			put(String.format(TIME_FORMAT_PATTERN, "-", "-", "T", "\\.\\d{3}"), "yyyy-MM-dd'T'HH:mm:ss.SSS");
+			put(String.format(TIME_FORMAT_PATTERN, "-", "-", "T", "\\.\\d{3}"), "yyyy-MM-dd'T'HH:mm:ss.SSS");		
+			put(String.format(TIME_FORMAT_PATTERN, "\\.", "\\.", "T", "\\.\\d{3}"), "yyyy.MM.dd'T'HH:mm:ss.SSS");
+
+			put(String.format(TIME_FORMAT_PATTERN, "-", "-", "\\s", "\\.\\d{3}(\\+|-)\\d{2}:\\d{2}"), "yyyy-MM-dd HH:mm:ss.SSSZZ");
+			put(String.format(TIME_FORMAT_PATTERN, "/", "/", "\\s", "\\.\\d{3}(\\+|-)\\d{2}:\\d{2}"), "yyyy/MM/dd HH:mm:ss.SSSZZ");
+			put(String.format(TIME_FORMAT_PATTERN, "\\.", "\\.", "\\s", "\\.\\d{3}(\\+|-)\\d{2}:\\d{2}"), "yyyy.MM.dd HH:mm:ss.SSSZZ");
+			
 			put(String.format(TIME_FORMAT_PATTERN, "-", "-", "T", "\\.\\d{3}(\\+|-)\\d{2}:\\d{2}"), "yyyy-MM-dd'T'HH:mm:ss.SSSZZ");
 			put(String.format(TIME_FORMAT_PATTERN, "/", "/", "T", "\\.\\d{3}(\\+|-)\\d{2}:\\d{2}"), "yyyy/MM/dd'T'HH:mm:ss.SSSZZ");
+			put(String.format(TIME_FORMAT_PATTERN, "\\.", "\\.", "T", "\\.\\d{3}(\\+|-)\\d{2}:\\d{2}"), "yyyy.MM.dd'T'HH:mm:ss.SSSZZ");
 		}
 	};
 

@@ -3,6 +3,11 @@ package cn.edu.thu.tsfiledb.qp;
 import cn.edu.thu.tsfiledb.qp.exception.LogicalOperatorException;
 import cn.edu.thu.tsfiledb.qp.strategy.LogicalGenerator;
 import cn.edu.thu.tsfiledb.sql.ParseGenerator;
+
+import org.joda.time.DateTimeZone;
+
+import cn.edu.thu.tsfiledb.conf.TsfileDBConfig;
+import cn.edu.thu.tsfiledb.conf.TsfileDBDescriptor;
 import cn.edu.thu.tsfiledb.exception.ArgsErrorException;
 import cn.edu.thu.tsfiledb.qp.exception.IllegalASTFormatException;
 import cn.edu.thu.tsfiledb.qp.exception.QueryProcessorException;
@@ -41,8 +46,14 @@ public class QueryProcessor {
 
     public PhysicalPlan parseSQLToPhysicalPlan(String sqlStr)
             throws QueryProcessorException, ArgsErrorException {
+    		TsfileDBConfig config = TsfileDBDescriptor.getInstance().getConfig();
+        return parseSQLToPhysicalPlan(sqlStr, config.timeZone);
+    }
+    
+    public PhysicalPlan parseSQLToPhysicalPlan(String sqlStr, DateTimeZone timeZone)
+            throws QueryProcessorException, ArgsErrorException {
         ASTNode astNode = parseSQLToAST(sqlStr);
-        Operator operator = parseASTToOperator(astNode);
+        Operator operator = parseASTToOperator(astNode, timeZone);
         operator = logicalOptimize(operator);
         return executor.transformToPhysicalPlan(operator);
     }
@@ -56,8 +67,8 @@ public class QueryProcessor {
      * @throws QueryProcessorException exception in converting sql to operator
      * @throws ArgsErrorException 
      */
-    private RootOperator parseASTToOperator(ASTNode astNode) throws QueryProcessorException, ArgsErrorException {
-        LogicalGenerator generator = new LogicalGenerator();
+    private RootOperator parseASTToOperator(ASTNode astNode, DateTimeZone timeZone) throws QueryProcessorException, ArgsErrorException {
+        LogicalGenerator generator = new LogicalGenerator(timeZone);
         return generator.getLogicalPlan(astNode);
     }
 

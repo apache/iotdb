@@ -113,7 +113,7 @@ StringLiteral
 
 //2016-11-16T16:22:33+0800
 DATETIME
-    : Digit+ (MINUS | DIVIDE) Digit+ (MINUS | DIVIDE) Digit+ ('T' | WS) Digit+ COLON Digit+ COLON Digit+ (DOT Digit+)? ((PLUS | MINUS) Digit+ COLON Digit+)?
+    : Digit+ (MINUS | DIVIDE | DOT) Digit+ (MINUS | DIVIDE | DOT) Digit+ ('T' | WS) Digit+ COLON Digit+ COLON Digit+ (DOT Digit+)? ((PLUS | MINUS) Digit+ COLON Digit+)?
     ;
 
 Integer
