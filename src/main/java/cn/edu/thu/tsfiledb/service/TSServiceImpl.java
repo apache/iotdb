@@ -278,18 +278,17 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 								result);
 					}
 					ExecuteUpdateStatement(physicalPlan);
+					result.add(1);
 				} catch (Exception e) {
-					LOGGER.error("Fail generate physcial plan for statement {}", statement);
+					LOGGER.error("Fail to generate physcial plan and execute for statement {}", statement);
+					result.add(-1);
 				}
 			}
-
-			return getTSBathExecuteStatementResp(TS_StatusCode.SUCCESS_STATUS, "Execute statements successfully",
-					result);
+			return getTSBathExecuteStatementResp(TS_StatusCode.SUCCESS_STATUS, "Execute batch statements successfully", result);
 		} catch (Exception e) {
 			LOGGER.error("TsFileDB Server: error occurs when executing statements", e);
 			return getTSBathExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage(), null);
 		}
-
 	}
 
 	@Override

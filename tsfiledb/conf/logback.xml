@@ -12,7 +12,7 @@
    		</rollingPolicy>
 		<append>true</append>
 		<encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
-			<pattern>%-5p [%d] %C:%L - %m %n</pattern>
+			<pattern>%d %-5p %C:%L - %m %n</pattern>
 			<charset>utf-8</charset>
 		</encoder>
 		<filter class="ch.qos.logback.classic.filter.LevelFilter">
@@ -32,7 +32,7 @@
    		</rollingPolicy>
 		<append>true</append>
 		<encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
-			<pattern>%-5p [%d] %C:%L - %m %n</pattern>
+            <pattern>%d %-5p %C:%L - %m %n</pattern>
 			<charset>utf-8</charset>
 		</encoder>
 		<!-- 此日志文件只记录warn级别，不记录大于warn级别的日志 -->
@@ -53,7 +53,7 @@
    		</rollingPolicy>
 		<append>true</append>
 		<encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
-			<pattern>%-5p [%d] [%t] %C:%L - %m %n</pattern>
+            <pattern>%d %-5p %C:%L - %m %n</pattern>
 			<charset>utf-8</charset>
 		</encoder>
 		<!-- 此日志文件只记录info级别，不记录大于info级别的日志 -->
@@ -75,7 +75,7 @@
    		</rollingPolicy>
 		<append>true</append>
 		<encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
-			<pattern>%-5p [%d] [%t] %C:%L - %m %n</pattern>
+            <pattern>%d %-5p %C:%L - %m %n</pattern>
 			<charset>utf-8</charset>
 		</encoder>
 		<!-- 此日志文件只记录debug级别，不记录大于debug级别的日志 -->
