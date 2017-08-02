@@ -45,7 +45,7 @@ public class TsfileDriver implements Driver {
 		try {
 			return acceptsURL(url) ? new TsfileConnection(url, info) : null;
 		} catch (TTransportException e) {
-			throw new SQLException("Connection Error, Please check whether the network is avaliable or the server has started. " + e.getMessage());
+			throw new SQLException("Connection Error, please check whether the network is avaliable or the server has started.");
 		}
 	}
 
