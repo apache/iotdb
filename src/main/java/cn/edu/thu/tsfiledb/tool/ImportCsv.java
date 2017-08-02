@@ -1,61 +1,55 @@
 package cn.edu.thu.tsfiledb.tool;
 
 import cn.edu.thu.tsfile.common.constant.SystemConstant;
-import org.apache.commons.cli.*;
+import cn.edu.thu.tsfiledb.exception.ArgsErrorException;
+import cn.edu.thu.tsfiledb.jdbc.TsfileConnection;
+import jline.console.ConsoleReader;
 
-import java.io.*;
-import java.sql.*;
-import java.text.SimpleDateFormat;
-import java.util.*;
-import java.util.Date;
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.CommandLineParser;
+import org.apache.commons.cli.DefaultParser;
+import org.apache.commons.cli.HelpFormatter;
+import org.apache.commons.cli.Option;
+import org.apache.commons.cli.Options;
+import org.apache.commons.cli.ParseException;
+import org.apache.commons.io.FileUtils;
+import org.apache.thrift.TException;
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.sql.DatabaseMetaData;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 
 /**
  * CSV File To TsFileDB
  *
  * @author zhanggr
  */
-public class ImportCsv {
-    private static final String HOST_ARGS = "h";
-    private static final String HOST_NAME = "host";
-
-    private static final String HELP_ARGS = "help";
-
-    private static final String PORT_ARGS = "p";
-    private static final String PORT_NAME = "port";
-
-    private static final String PASSWORD_ARGS = "pw";
-    private static final String PASSWORD_NAME = "password";
-
-    private static final String USERNAME_ARGS = "u";
-    private static final String USERNAME_NAME = "username";
-
+public class ImportCsv extends AbstractCsvTool{
     private static final String FILE_ARGS = "f";
     private static final String FILE_NAME = "file or folder";
     private static final String FILE_SUFFIX = "csv";
 
-    private static final String TIME_FORMAT_ARGS = "t";
-    private static final String TIME_FORMAT_NAME = "timeformat";
-
-    private static final int MAX_HELP_CONSOLE_WIDTH = 88;
     private static final String TSFILEDB_CLI_PREFIX = "ImportCsv";
 
     private static final String STRING_DATA_TYPE = "TEXT";
     private static final int BATCH_EXECUTE_COUNT = 10;
 
-    private static String host;
-    private static String port;
-    private static String username;
-    private static String password;
     private static String filename;
-    private static String timeFormat = "timestamps";
     private static String errorInsertInfo = "";
-
-    private static HashMap<String, String> timeseriesToType = null;
-
-    private static HashMap<String, ArrayList<Integer>> deviceToColumn;  // storage csv table head info
-    private static ArrayList<String> headInfo; // storage csv table head info
-    private static ArrayList<String> colInfo; // storage csv device sensor info, corresponding csv table head
 
     /**
      * commandline option create
@@ -80,90 +74,63 @@ public class ImportCsv {
         Option opFile = Option.builder(FILE_ARGS).required().argName(FILE_NAME).hasArg().desc("If input a file path, load a csv file, otherwise load all csv file under this directory (required)").build();
         options.addOption(opFile);
 
-        Option opTimeFormat = Option.builder(TIME_FORMAT_ARGS).optionalArg(true).argName(TIME_FORMAT_NAME).hasArg().desc("Time Format (optional),"
-                + " you can choose 1) timestamp 2) ISO8601 3) user-defined pattern like yyyy-MM-dd HH:mm:ss, default timestamp").build();
-        options.addOption(opTimeFormat);
-
         Option opHelp = Option.builder(HELP_ARGS).longOpt(HELP_ARGS).hasArg(false).desc("Display help information").build();
         options.addOption(opHelp);
-
+        
+		Option opTimeZone = Option.builder(TIME_ZONE_ARGS).argName(TIME_ZONE_NAME).hasArg().desc("Time Zone eg. +08:00 or -01:00 (optional)").build();
+		options.addOption(opTimeZone);
+		
         return options;
-    }
-
-    /**
-     * @param tf        time format, optioned:ISO8601, timestamps, self-defined:
-     *                  yyyy-mm-dd hh:mm:ss
-     * @param timestamp the time column of the csv file
-     * @return the timestamps will insert into SQL
-     */
-    private static String setTimestamp(String tf, String timestamp) {
-        if (tf.equals("ISO8601")) {
-            return timestamp;
-        } else if (tf.equals("timestamps")) {
-            try {
-                Long.parseLong(timestamp);
-            } catch (NumberFormatException nfe) {
-                return "";
-            }
-            return timestamp;
-        } else {
-            SimpleDateFormat sdf = new SimpleDateFormat(tf);
-            Date date = null;
-            try {
-                date = sdf.parse(timestamp);
-            } catch (java.text.ParseException e) {
-//				LOGGER.error("input time format error please re-input, Unparseable date: {}", tf, e);
-            }
-            if (date != null)
-                return date.getTime() + "";
-            return "";
-        }
     }
 
     /**
      * Data from csv To tsfile
      */
-    private static void loadDataFromCSV(File file) {
-        Connection connection = null;
+    private static void loadDataFromCSV(File file, int index) {
         Statement statement = null;
         BufferedReader br = null;
         BufferedWriter bw = null;
-        File errorFile = new File(errorInsertInfo);
-
+        File errorFile = new File(errorInsertInfo+index);
+        boolean errorFlag = true;
         try {
-            Class.forName("cn.edu.thu.tsfiledb.jdbc.TsfileDriver");
-            connection = DriverManager.getConnection("jdbc:tsfile://" + host + ":" + port + "/", username, password);
             br = new BufferedReader(new FileReader(file));
             if(!errorFile.exists()) errorFile.createNewFile();
-            bw = new BufferedWriter(new FileWriter(errorFile, true));
+            bw = new BufferedWriter(new FileWriter(errorFile));
+            
             String line = "";
-            String[] strHeadInfo = br.readLine().split(",");
-            deviceToColumn = new HashMap<>();
-            colInfo = new ArrayList<>();
-            headInfo = new ArrayList<>();
+            String header = br.readLine();
+            String[] strHeadInfo = header.split(",");
+            
+            bw.write("From " + file.getAbsolutePath());
+            bw.newLine();
+            bw.newLine();
+            bw.write(header);
+            bw.newLine();
+            bw.newLine();
+     
+            Map<String, ArrayList<Integer>> deviceToColumn = new HashMap<>(); // storage csv table head info
+            List<String> colInfo = new ArrayList<>(); // storage csv table head info
+            List<String> headInfo = new ArrayList<>(); // storage csv device sensor info, corresponding csv table head
 
             if (strHeadInfo.length <= 1) {
-                System.out.println("The CSV file" + filename + " illegal, please check first line");
-                br.close();
-                connection.close();
-                System.exit(1);
+                System.out.println("[ERROR] The CSV file" + file.getName() + " illegal, please check first line");
+                return;
             }
+            
             long startTime = System.currentTimeMillis();
-            timeseriesToType = new HashMap<>();
+            Map<String, String> timeseriesDataType = new HashMap<>();
             DatabaseMetaData databaseMetaData = connection.getMetaData();
 
             for (int i = 1; i < strHeadInfo.length; i++) {
-
                 ResultSet resultSet = databaseMetaData.getColumns(null, null, strHeadInfo[i], null);
                 if (resultSet.next()) {
-                    timeseriesToType.put(resultSet.getString(0), resultSet.getString(1));
+                    timeseriesDataType.put(resultSet.getString(0), resultSet.getString(1));
                 } else {
-                    System.out.println("database Cannot find " + strHeadInfo[i] + ", stop import!");
-                    bw.write("database Cannot find " + strHeadInfo[i] + ", stop import!");
-                    br.close();
-                    bw.close();
-                    connection.close();
-                    System.exit(1);
+                		String errorInfo = String.format("[ERROR] Database cannot find %s in %s, stop import!", strHeadInfo[i], file.getAbsolutePath());
+                    System.out.println(errorInfo);
+                    bw.write(errorInfo);
+                    errorFlag = false;
+                    return;
                 }
                 headInfo.add(strHeadInfo[i]);
                 String deviceInfo = strHeadInfo[i].substring(0, strHeadInfo[i].lastIndexOf("."));
@@ -178,58 +145,82 @@ public class ImportCsv {
 
             statement = connection.createStatement();
             int count = 0;
+            List<String > tmp = new ArrayList<>();
             while ((line = br.readLine()) != null) {
-                List<String> sqls = createInsertSQL(line, bw);
+            		List<String> sqls = new ArrayList<>(); 
+            		try {
+                        sqls = createInsertSQL(line, timeseriesDataType, deviceToColumn, colInfo, headInfo);
+					} catch (Exception e) {
+						bw.write(String.format("error input line: %s", line));
+						bw.newLine();
+						errorFlag = false;
+				}
                 for (String str : sqls) {
                     try {
                         count++;
                         statement.addBatch(str);
+                        tmp.add(str);
                         if (count == BATCH_EXECUTE_COUNT) {
-                            statement.executeBatch();
+                            int[] result = statement.executeBatch();
+                            for(int i = 0; i < result.length;i++){
+                            		if(result[i] < 0 && i < tmp.size()){
+                            			bw.write(tmp.get(i));
+                            			bw.newLine();
+                            			errorFlag = false;
+                            		}
+                            }
                             statement.clearBatch();
                             count = 0;
+                            tmp.clear();
                         }
                     } catch (SQLException e) {
                         bw.write(e.getMessage());
                         bw.newLine();
+                        errorFlag = false;
                     }
                 }
             }
             try {
-                statement.executeBatch();
-                statement.clearBatch();
-                System.out.println(String.format("load data from %s successfully, it cost %dms", file.getName(), (System.currentTimeMillis()-startTime)));
+            		int[] result = statement.executeBatch();
+            		for(int i = 0; i < result.length;i++){
+                		if(result[i] < 0 && i < tmp.size()){
+                			bw.write(tmp.get(i));
+                			bw.newLine();
+                			errorFlag = false;
+                		}
+                }
+            		statement.clearBatch();
+            		count = 0;
+                tmp.clear();
+                System.out.println(String.format("[INFO] Load data from %s successfully, it cost %dms", file.getName(), (System.currentTimeMillis()-startTime)));
             } catch (SQLException e) {
                 bw.write(e.getMessage());
                 bw.newLine();
+                errorFlag = false;
             }
 
         } catch (FileNotFoundException e) {
-            System.out.println("The csv file " + filename + " can't find!");
+            System.out.println("[ERROR] Cannot find " + file.getName());
         } catch (IOException e) {
-            System.out.println("CSV file read exception!" + e.getMessage());
-        } catch (ClassNotFoundException e2) {
-            System.out.println("Cannot find cn.edu.thu.tsfiledb.jdbc.TsfileDriver");
+            System.out.println("[ERROR] CSV file read exception!" + e.getMessage());
         } catch (SQLException e) {
-            System.out.println("Database connection exception!" + e.getMessage());
+            System.out.println("[ERROR] Database connection exception!" + e.getMessage());
         } finally {
             try {
-                bw.close();
-                statement.close();
-                connection.close();
+            		if(br != null) br.close();
+            		if(bw != null) bw.close();
+            		if(statement != null) statement.close();
+            		if(errorFlag){
+            			FileUtils.forceDelete(errorFile);
+            		} else{
+            			System.out.println(String.format("[ERROR] Format of some lines in %s error, please check %s for more information", file.getAbsolutePath(), errorFile.getAbsolutePath()));
+            		}
             } catch (SQLException e) {
                 e.printStackTrace();
             } catch (IOException e) {
                 e.printStackTrace();
             }
         }
-        if (errorFile.exists() && (errorFile.length() == 0)) {
-            errorFile.delete();
-        }
-    }
-
-    private static String typeIdentify(String timeseries) {
-        return timeseriesToType.get(timeseries);
     }
 
     /**
@@ -240,9 +231,9 @@ public class ImportCsv {
      * @return ArrayList<String> SQL statement list
      * @throws IOException
      */
-    private static List<String> createInsertSQL(String line, BufferedWriter bwToErrorFile) throws IOException {
+    private static List<String> createInsertSQL(String line,  Map<String, String> timeseriesToType,
+    		Map<String, ArrayList<Integer>> deviceToColumn, List<String> colInfo, List<String> headInfo) throws IOException {
         String[] data = line.split(",", headInfo.size() + 1);
-
         List<String> sqls = new ArrayList<>();
         Iterator<Map.Entry<String, ArrayList<Integer>>> it = deviceToColumn.entrySet().iterator();
         while (it.hasNext()) {
@@ -263,10 +254,8 @@ public class ImportCsv {
             if (skipcount == entry.getValue().size())
                 continue;
 
-            String timestampsStr = setTimestamp(timeFormat, data[0]);
-            if (timestampsStr.equals("")) {
-                bwToErrorFile.write(line);
-                bwToErrorFile.newLine();
+            String timestampsStr = data[0];
+            if (timestampsStr.trim().equals("")) {
                 continue;
             }
             sbd.append(") values(").append(timestampsStr);
@@ -274,7 +263,7 @@ public class ImportCsv {
             for (int j = 0; j < colIndex.size(); ++j) {
                 if (data[entry.getValue().get(j) + 1].equals(""))
                     continue;
-                if (typeIdentify(headInfo.get(colIndex.get(j))).equals(STRING_DATA_TYPE)) {
+                if (timeseriesToType.get(headInfo.get(colIndex.get(j))).equals(STRING_DATA_TYPE)) {
                     sbd.append(", \'" + data[colIndex.get(j) + 1] + "\'");
                 } else {
                     sbd.append("," + data[colIndex.get(j) + 1]);
@@ -283,86 +272,86 @@ public class ImportCsv {
             sbd.append(")");
             sqls.add(sbd.toString());
         }
-
         return sqls;
     }
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws IOException, SQLException {
         Options options = createOptions();
         HelpFormatter hf = new HelpFormatter();
         hf.setOptionComparator(null);
         hf.setWidth(MAX_HELP_CONSOLE_WIDTH);
         CommandLine commandLine = null;
         CommandLineParser parser = new DefaultParser();
-        Scanner scanner = new Scanner(System.in);
 
-        if (args == null || args.length == 0) {
-            System.out.println("Too few params input, please check the following hint.");
-            hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
-            scanner.close();
-            return;
-        }
-
-        try {
-            commandLine = parser.parse(options, args);
-        } catch (ParseException e) {
-            System.out.println(e.getMessage());
-            hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
-            scanner.close();
-            System.exit(1);
-        }
+		if (args == null || args.length == 0) {
+			System.out.println("[ERROR] Too few params input, please check the following hint.");
+			hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
+			return;
+		}
+		try {
+			commandLine = parser.parse(options, args);
+		} catch (ParseException e) {
+			System.out.println(e.getMessage());
+			hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
+			return;
+		}	
         if (commandLine.hasOption(HELP_ARGS)) {
             hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
-            scanner.close();
             return;
-        }
-        host = commandLine.getOptionValue(HOST_ARGS);
-        port = commandLine.getOptionValue(PORT_ARGS);
-        username = commandLine.getOptionValue(USERNAME_ARGS);
-        password = commandLine.getOptionValue(PASSWORD_ARGS);
-        if (password == null) {
-            System.out.print(TSFILEDB_CLI_PREFIX + "> please input password: ");
-            password = scanner.nextLine();
-        }
-
-        if (host == null || port == null || username == null) {
-            hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
-            scanner.close();
-            return;
-        }
-        timeFormat = commandLine.getOptionValue(TIME_FORMAT_ARGS);
-        if (timeFormat == null) {
-            timeFormat = "timestamps";
-        }
-
-        if (System.getProperty(SystemConstant.TSFILE_HOME) == null) {
-            errorInsertInfo = "src/test/resources/csvInsertError.error";
-            if (timeFormat.equals("timestamps")) {
-                filename = CsvTestDataGen.defaultLongDataGen();
-            } else if (timeFormat.equals("ISO8601")) {
-                filename = CsvTestDataGen.isoDataGen();
-            } else {
-                filename = CsvTestDataGen.userSelfDataGen();
-            }
-        } else {
-            errorInsertInfo = System.getProperty(SystemConstant.TSFILE_HOME) + "/csvInsertError.error";
-            filename = commandLine.getOptionValue(FILE_ARGS);
-            if (filename == null) {
-                hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
-                scanner.close();
-                return;
-            }
         }
         
-        File file = new File(filename);
-        if(file.isFile() && file.getName().endsWith(FILE_SUFFIX)){
-        		loadDataFromCSV(file);
-        } else{
-        		for(File f : file.listFiles()){
-        			if(f.isFile() && f.getName().endsWith(FILE_SUFFIX)){
-        				loadDataFromCSV(f);
-        			}
-        		}
-        }
+        ConsoleReader reader = new ConsoleReader();
+		reader.setExpandEvents(false);
+		try {
+			parseBasicParams(commandLine, reader);
+			parseSpecialParams(commandLine, reader);
+			Class.forName(JDBC_DRIVER);
+			connection = (TsfileConnection) DriverManager.getConnection("jdbc:tsfile://" + host + ":" + port + "/", username, password);
+			setTimeZone();
+			
+	        if (System.getProperty(SystemConstant.TSFILE_HOME) == null) {
+	            errorInsertInfo = "src/test/resources/csvInsertError.error";
+	        } else {
+	            errorInsertInfo = System.getProperty(SystemConstant.TSFILE_HOME) + "/csvInsertError.error";
+	            filename = commandLine.getOptionValue(FILE_ARGS);
+	            if (filename == null) {
+	                hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
+	                return;
+	            }
+	        }
+	        
+	        File file = new File(filename);
+	        if(file.isFile() && file.getName().endsWith(FILE_SUFFIX)){
+	        		loadDataFromCSV(file, 1);
+	        } else{
+	        		int i = 1;
+	        		for(File f : file.listFiles()){
+	        			if(f.isFile() && f.getName().endsWith(FILE_SUFFIX)){
+	        				loadDataFromCSV(f, i);
+	        				i++;
+	        			}
+	        		}
+	        }
+		} catch (ArgsErrorException e) { 		
+		} catch (ClassNotFoundException e) {
+			System.out.println("[ERROR] Failed to dump data because cannot find TsFile JDBC Driver, please check whether you have imported driver or not");
+		} catch (TException e) {
+			System.out.println(String.format("[ERROR] Encounter an error when connecting to server, because %s", e.getMessage()));
+		} finally {
+			if(reader != null){
+				reader.close();
+			}
+			if (connection != null){
+				connection.close();
+			}
+		}
+			
+
     }
+    
+    
+    private static void parseSpecialParams(CommandLine commandLine, ConsoleReader reader) throws IOException, ArgsErrorException {
+		timeZoneID = commandLine.getOptionValue(TIME_ZONE_ARGS);
+
+	}
 }

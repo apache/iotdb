@@ -2,7 +2,6 @@
 
 <configuration>
 	<appender name="FILEERROR" class="ch.qos.logback.core.rolling.RollingFileAppender">
-		<!-- 正在记录的日志文件的路径及文件名 -->
 		<file>${TSFILE_HOME}/logs/log_error.log</file>
    		<rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
    			<fileNamePattern>${TSFILE_HOME}/logs/log-error-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
@@ -12,7 +11,7 @@
    		</rollingPolicy>
 		<append>true</append>
 		<encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
-			<pattern>%-5p [%d] %C:%L - %m %n</pattern>
+			<pattern>%d %-5p %C:%L - %m %n</pattern>
 			<charset>utf-8</charset>
 		</encoder>
 		<filter class="ch.qos.logback.classic.filter.LevelFilter">
@@ -32,10 +31,9 @@
    		</rollingPolicy>
 		<append>true</append>
 		<encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
-			<pattern>%-5p [%d] %C:%L - %m %n</pattern>
+            <pattern>%d %-5p %C:%L - %m %n</pattern>
 			<charset>utf-8</charset>
 		</encoder>
-		<!-- 此日志文件只记录warn级别，不记录大于warn级别的日志 -->
 		<filter class="ch.qos.logback.classic.filter.LevelFilter">
 			<level>WARN</level>
 			<onMatch>ACCEPT</onMatch>
@@ -53,10 +51,9 @@
    		</rollingPolicy>
 		<append>true</append>
 		<encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
-			<pattern>%-5p [%d] [%t] %C:%L - %m %n</pattern>
+            <pattern>%d %-5p %C:%L - %m %n</pattern>
 			<charset>utf-8</charset>
 		</encoder>
-		<!-- 此日志文件只记录info级别，不记录大于info级别的日志 -->
 		<filter class="ch.qos.logback.classic.filter.LevelFilter">
 			<level>INFO</level>
 			<onMatch>ACCEPT</onMatch>
@@ -75,10 +72,9 @@
    		</rollingPolicy>
 		<append>true</append>
 		<encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
-			<pattern>%-5p [%d] [%t] %C:%L - %m %n</pattern>
+            <pattern>%d %-5p %C:%L - %m %n</pattern>
 			<charset>utf-8</charset>
 		</encoder>
-		<!-- 此日志文件只记录debug级别，不记录大于debug级别的日志 -->
 		<filter class="ch.qos.logback.classic.filter.LevelFilter">
 			<level>DEBUG</level>
 			<onMatch>ACCEPT</onMatch>
@@ -89,10 +85,9 @@
 	<appender name="stdout" class="ch.qos.logback.core.ConsoleAppender">
 		<Target>System.out</Target>
 		<encoder>
-			<pattern>%-5p [%d] [%thread] %C:%L - %m %n</pattern>
+            <pattern>%d %-5p %C:%L - %m %n</pattern>
 			<charset>utf-8</charset>
 		</encoder>
-		<!-- 此日志appender是为开发使用，只配置最底级别，控制台输出的日志级别是大于或等于此级别的日志信息-->
 		<filter class="ch.qos.logback.classic.filter.ThresholdFilter">
 			<level>DEBUG</level>
 		</filter>
