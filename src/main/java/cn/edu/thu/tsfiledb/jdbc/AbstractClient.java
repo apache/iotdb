@@ -325,8 +325,8 @@ public abstract class AbstractClient {
 				return OPERATION_RESULT.CONTINUE_OPER;
 			}
 			try {
-				connection.setTimeZone(cmd.split("=")[1]);
-				timeZone = DateTimeZone.forID(cmd.split("=")[1]);
+				connection.setTimeZone(cmd.split("=")[1].trim());
+				timeZone = DateTimeZone.forID(cmd.split("=")[1].trim());
 			} catch (Exception e) {
 				System.out.println(String.format("time zone format error, %s", e.getMessage()));
 				return OPERATION_RESULT.CONTINUE_OPER;
