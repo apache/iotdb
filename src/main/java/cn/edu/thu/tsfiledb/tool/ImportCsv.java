@@ -12,12 +12,15 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
+import org.apache.commons.io.FileUtils;
 import org.apache.thrift.TException;
 
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.sql.DatabaseMetaData;
 import java.sql.DriverManager;
@@ -47,12 +50,6 @@ public class ImportCsv extends AbstractCsvTool{
 
     private static String filename;
     private static String errorInsertInfo = "";
-
-    private static HashMap<String, String> timeseriesToType = null;
-
-    private static HashMap<String, ArrayList<Integer>> deviceToColumn;  // storage csv table head info
-    private static ArrayList<String> headInfo; // storage csv table head info
-    private static ArrayList<String> colInfo; // storage csv device sensor info, corresponding csv table head
 
     /**
      * commandline option create
@@ -90,43 +87,48 @@ public class ImportCsv extends AbstractCsvTool{
     /**
      * Data from csv To tsfile
      */
-    private static void loadDataFromCSV(File file) {
+    private static void loadDataFromCSV(File file, int index) {
         Statement statement = null;
         BufferedReader br = null;
-//        BufferedWriter bw = null;
-//        File errorFile = new File(errorInsertInfo+index);
-//        boolean errorFlag = true;
+        BufferedWriter bw = null;
+        File errorFile = new File(errorInsertInfo+index);
+        boolean errorFlag = true;
         try {
             br = new BufferedReader(new FileReader(file));
-//            if(!errorFile.exists()) errorFile.createNewFile();
-//            bw = new BufferedWriter(new FileWriter(errorFile));
+            if(!errorFile.exists()) errorFile.createNewFile();
+            bw = new BufferedWriter(new FileWriter(errorFile));
+            
             String line = "";
             String header = br.readLine();
             String[] strHeadInfo = header.split(",");
             
-//            bw.write(header);
-//            bw.newLine();
-            
-            deviceToColumn = new HashMap<>();
-            colInfo = new ArrayList<>();
-            headInfo = new ArrayList<>();
+            bw.write(header);
+            bw.newLine();
+            bw.write("From " + file.getAbsolutePath());
+            bw.newLine();
+     
+            Map<String, ArrayList<Integer>> deviceToColumn = new HashMap<>(); // storage csv table head info
+            List<String> colInfo = new ArrayList<>(); // storage csv table head info
+            List<String> headInfo = new ArrayList<>(); // storage csv device sensor info, corresponding csv table head
 
             if (strHeadInfo.length <= 1) {
-                System.out.println("The CSV file" + filename + " illegal, please check first line");
+                System.out.println("The CSV file" + file.getName() + " illegal, please check first line");
                 return;
             }
+            
             long startTime = System.currentTimeMillis();
-            timeseriesToType = new HashMap<>();
+            Map<String, String> timeseriesDataType = new HashMap<>();
             DatabaseMetaData databaseMetaData = connection.getMetaData();
 
             for (int i = 1; i < strHeadInfo.length; i++) {
                 ResultSet resultSet = databaseMetaData.getColumns(null, null, strHeadInfo[i], null);
                 if (resultSet.next()) {
-                    timeseriesToType.put(resultSet.getString(0), resultSet.getString(1));
+                    timeseriesDataType.put(resultSet.getString(0), resultSet.getString(1));
                 } else {
-                    System.out.println("database Cannot find " + strHeadInfo[i] + ", stop import!");
-//                    bw.write("database Cannot find " + strHeadInfo[i] + ", stop import!");
-//                    errorFlag = false;
+                		String errorInfo = String.format("Database cannot find %s in %s, stop import!", strHeadInfo[i], file.getAbsolutePath());
+                    System.out.println(errorInfo);
+                    bw.write(errorInfo);
+                    errorFlag = false;
                     return;
                 }
                 headInfo.add(strHeadInfo[i]);
@@ -142,36 +144,55 @@ public class ImportCsv extends AbstractCsvTool{
 
             statement = connection.createStatement();
             int count = 0;
+            List<String > tmp = new ArrayList<>();
             while ((line = br.readLine()) != null) {
-                List<String> sqls = createInsertSQL(line);
+                List<String> sqls = createInsertSQL(line, timeseriesDataType, deviceToColumn, colInfo, headInfo);
                 for (String str : sqls) {
                     try {
                         count++;
                         statement.addBatch(str);
+                        tmp.add(str);
                         if (count == BATCH_EXECUTE_COUNT) {
-                            statement.executeBatch();
+                            int[] result = statement.executeBatch();
+                            for(int i = 0; i < result.length;i++){
+                            		if(result[i] < 0 && i < tmp.size()){
+                            			bw.write(tmp.get(i));
+                            			bw.newLine();
+                            			errorFlag = false;
+                            		}
+                            }
                             statement.clearBatch();
                             count = 0;
+                            tmp.clear();
                         }
                     } catch (SQLException e) {
-//                        bw.write(e.getMessage());
-//                        bw.newLine();
-//                        errorFlag = false;
+                        bw.write(e.getMessage());
+                        bw.newLine();
+                        errorFlag = false;
                     }
                 }
             }
             try {
-                statement.executeBatch();
-                statement.clearBatch();
+            		int[] result = statement.executeBatch();
+            		for(int i = 0; i < result.length;i++){
+                		if(result[i] < 0 && i < tmp.size()){
+                			bw.write(tmp.get(i));
+                			bw.newLine();
+                			errorFlag = false;
+                		}
+                }
+            		statement.clearBatch();
+            		count = 0;
+                tmp.clear();
                 System.out.println(String.format("load data from %s successfully, it cost %dms", file.getName(), (System.currentTimeMillis()-startTime)));
             } catch (SQLException e) {
-//                bw.write(e.getMessage());
-//                bw.newLine();
-//                errorFlag = false;
+                bw.write(e.getMessage());
+                bw.newLine();
+                errorFlag = false;
             }
 
         } catch (FileNotFoundException e) {
-            System.out.println("The csv file " + filename + " can't find!");
+            System.out.println("Cannot find " + file.getName());
         } catch (IOException e) {
             System.out.println("CSV file read exception!" + e.getMessage());
         } catch (SQLException e) {
@@ -179,22 +200,15 @@ public class ImportCsv extends AbstractCsvTool{
         } finally {
             try {
             		if(br != null) br.close();
-//            		if(bw != null) bw.close();
+            		if(bw != null) bw.close();
             		if(statement != null) statement.close();
-//            		if(errorFlag) FileUtils.forceDelete(errorFile);
+            		if(errorFlag) FileUtils.forceDelete(errorFile);
             } catch (SQLException e) {
                 e.printStackTrace();
             } catch (IOException e) {
                 e.printStackTrace();
             }
         }
-//        if (errorFile.exists() && (errorFile.length() == 0)) {
-//            errorFile.delete();
-//        }
-    }
-
-    private static String typeIdentify(String timeseries) {
-        return timeseriesToType.get(timeseries);
     }
 
     /**
@@ -205,9 +219,9 @@ public class ImportCsv extends AbstractCsvTool{
      * @return ArrayList<String> SQL statement list
      * @throws IOException
      */
-    private static List<String> createInsertSQL(String line) throws IOException {
+    private static List<String> createInsertSQL(String line,  Map<String, String> timeseriesToType,
+    		Map<String, ArrayList<Integer>> deviceToColumn, List<String> colInfo, List<String> headInfo) throws IOException {
         String[] data = line.split(",", headInfo.size() + 1);
-
         List<String> sqls = new ArrayList<>();
         Iterator<Map.Entry<String, ArrayList<Integer>>> it = deviceToColumn.entrySet().iterator();
         while (it.hasNext()) {
@@ -229,9 +243,7 @@ public class ImportCsv extends AbstractCsvTool{
                 continue;
 
             String timestampsStr = data[0];
-            if (timestampsStr.equals("")) {
-//                bwToErrorFile.write(line);
-//                bwToErrorFile.newLine();
+            if (timestampsStr.trim().equals("")) {
                 continue;
             }
             sbd.append(") values(").append(timestampsStr);
@@ -239,7 +251,7 @@ public class ImportCsv extends AbstractCsvTool{
             for (int j = 0; j < colIndex.size(); ++j) {
                 if (data[entry.getValue().get(j) + 1].equals(""))
                     continue;
-                if (typeIdentify(headInfo.get(colIndex.get(j))).equals(STRING_DATA_TYPE)) {
+                if (timeseriesToType.get(headInfo.get(colIndex.get(j))).equals(STRING_DATA_TYPE)) {
                     sbd.append(", \'" + data[colIndex.get(j) + 1] + "\'");
                 } else {
                     sbd.append("," + data[colIndex.get(j) + 1]);
@@ -248,7 +260,6 @@ public class ImportCsv extends AbstractCsvTool{
             sbd.append(")");
             sqls.add(sbd.toString());
         }
-
         return sqls;
     }
 
@@ -287,13 +298,6 @@ public class ImportCsv extends AbstractCsvTool{
 			
 	        if (System.getProperty(SystemConstant.TSFILE_HOME) == null) {
 	            errorInsertInfo = "src/test/resources/csvInsertError.error";
-	            if (timeFormat.equals("timestamps")) {
-	                filename = CsvTestDataGen.defaultLongDataGen();
-	            } else if (timeFormat.equals("ISO8601")) {
-	                filename = CsvTestDataGen.isoDataGen();
-	            } else {
-	                filename = CsvTestDataGen.userSelfDataGen();
-	            }
 	        } else {
 	            errorInsertInfo = System.getProperty(SystemConstant.TSFILE_HOME) + "/csvInsertError.error";
 	            filename = commandLine.getOptionValue(FILE_ARGS);
@@ -305,11 +309,13 @@ public class ImportCsv extends AbstractCsvTool{
 	        
 	        File file = new File(filename);
 	        if(file.isFile() && file.getName().endsWith(FILE_SUFFIX)){
-	        		loadDataFromCSV(file);
+	        		loadDataFromCSV(file, 1);
 	        } else{
+	        		int i = 1;
 	        		for(File f : file.listFiles()){
 	        			if(f.isFile() && f.getName().endsWith(FILE_SUFFIX)){
-	        				loadDataFromCSV(f);
+	        				loadDataFromCSV(f, i);
+	        				i++;
 	        			}
 	        		}
 	        }
