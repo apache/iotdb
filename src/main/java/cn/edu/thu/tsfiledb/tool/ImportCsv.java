@@ -74,13 +74,12 @@ public class ImportCsv extends AbstractCsvTool{
         Option opFile = Option.builder(FILE_ARGS).required().argName(FILE_NAME).hasArg().desc("If input a file path, load a csv file, otherwise load all csv file under this directory (required)").build();
         options.addOption(opFile);
 
-        Option opTimeFormat = Option.builder(TIME_FORMAT_ARGS).optionalArg(true).argName(TIME_FORMAT_NAME).hasArg().desc("Time Format (optional),"
-                + " you can choose 1) timestamp 2) ISO8601 3) user-defined pattern like yyyy-MM-dd\\ HH:mm:ss, default timestamp").build();
-        options.addOption(opTimeFormat);
-
         Option opHelp = Option.builder(HELP_ARGS).longOpt(HELP_ARGS).hasArg(false).desc("Display help information").build();
         options.addOption(opHelp);
-
+        
+		Option opTimeZone = Option.builder(TIME_ZONE_ARGS).argName(TIME_ZONE_NAME).hasArg().desc("Time Zone eg. +08:00 or -01:00 (optional)").build();
+		options.addOption(opTimeZone);
+		
         return options;
     }
 
@@ -102,9 +101,11 @@ public class ImportCsv extends AbstractCsvTool{
             String header = br.readLine();
             String[] strHeadInfo = header.split(",");
             
+            bw.write("From " + file.getAbsolutePath());
+            bw.newLine();
+            bw.newLine();
             bw.write(header);
             bw.newLine();
-            bw.write("From " + file.getAbsolutePath());
             bw.newLine();
      
             Map<String, ArrayList<Integer>> deviceToColumn = new HashMap<>(); // storage csv table head info
@@ -112,7 +113,7 @@ public class ImportCsv extends AbstractCsvTool{
             List<String> headInfo = new ArrayList<>(); // storage csv device sensor info, corresponding csv table head
 
             if (strHeadInfo.length <= 1) {
-                System.out.println("The CSV file" + file.getName() + " illegal, please check first line");
+                System.out.println("[ERROR] The CSV file" + file.getName() + " illegal, please check first line");
                 return;
             }
             
@@ -125,7 +126,7 @@ public class ImportCsv extends AbstractCsvTool{
                 if (resultSet.next()) {
                     timeseriesDataType.put(resultSet.getString(0), resultSet.getString(1));
                 } else {
-                		String errorInfo = String.format("Database cannot find %s in %s, stop import!", strHeadInfo[i], file.getAbsolutePath());
+                		String errorInfo = String.format("[ERROR] Database cannot find %s in %s, stop import!", strHeadInfo[i], file.getAbsolutePath());
                     System.out.println(errorInfo);
                     bw.write(errorInfo);
                     errorFlag = false;
@@ -146,7 +147,14 @@ public class ImportCsv extends AbstractCsvTool{
             int count = 0;
             List<String > tmp = new ArrayList<>();
             while ((line = br.readLine()) != null) {
-                List<String> sqls = createInsertSQL(line, timeseriesDataType, deviceToColumn, colInfo, headInfo);
+            		List<String> sqls = new ArrayList<>(); 
+            		try {
+                        sqls = createInsertSQL(line, timeseriesDataType, deviceToColumn, colInfo, headInfo);
+					} catch (Exception e) {
+						bw.write(String.format("error input line: %s", line));
+						bw.newLine();
+						errorFlag = false;
+				}
                 for (String str : sqls) {
                     try {
                         count++;
@@ -184,7 +192,7 @@ public class ImportCsv extends AbstractCsvTool{
             		statement.clearBatch();
             		count = 0;
                 tmp.clear();
-                System.out.println(String.format("load data from %s successfully, it cost %dms", file.getName(), (System.currentTimeMillis()-startTime)));
+                System.out.println(String.format("[INFO] Load data from %s successfully, it cost %dms", file.getName(), (System.currentTimeMillis()-startTime)));
             } catch (SQLException e) {
                 bw.write(e.getMessage());
                 bw.newLine();
@@ -192,17 +200,21 @@ public class ImportCsv extends AbstractCsvTool{
             }
 
         } catch (FileNotFoundException e) {
-            System.out.println("Cannot find " + file.getName());
+            System.out.println("[ERROR] Cannot find " + file.getName());
         } catch (IOException e) {
-            System.out.println("CSV file read exception!" + e.getMessage());
+            System.out.println("[ERROR] CSV file read exception!" + e.getMessage());
         } catch (SQLException e) {
-            System.out.println("Database connection exception!" + e.getMessage());
+            System.out.println("[ERROR] Database connection exception!" + e.getMessage());
         } finally {
             try {
             		if(br != null) br.close();
             		if(bw != null) bw.close();
             		if(statement != null) statement.close();
-            		if(errorFlag) FileUtils.forceDelete(errorFile);
+            		if(errorFlag){
+            			FileUtils.forceDelete(errorFile);
+            		} else{
+            			System.out.println(String.format("[ERROR] Format of some lines in %s error, please check %s for more information", file.getAbsolutePath(), errorFile.getAbsolutePath()));
+            		}
             } catch (SQLException e) {
                 e.printStackTrace();
             } catch (IOException e) {
@@ -272,7 +284,7 @@ public class ImportCsv extends AbstractCsvTool{
         CommandLineParser parser = new DefaultParser();
 
 		if (args == null || args.length == 0) {
-			System.out.println("Too few params input, please check the following hint.");
+			System.out.println("[ERROR] Too few params input, please check the following hint.");
 			hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
 			return;
 		}
@@ -292,6 +304,7 @@ public class ImportCsv extends AbstractCsvTool{
 		reader.setExpandEvents(false);
 		try {
 			parseBasicParams(commandLine, reader);
+			parseSpecialParams(commandLine, reader);
 			Class.forName(JDBC_DRIVER);
 			connection = (TsfileConnection) DriverManager.getConnection("jdbc:tsfile://" + host + ":" + port + "/", username, password);
 			setTimeZone();
@@ -319,13 +332,11 @@ public class ImportCsv extends AbstractCsvTool{
 	        			}
 	        		}
 	        }
-			
-		} catch (ArgsErrorException e) { 
-			
+		} catch (ArgsErrorException e) { 		
 		} catch (ClassNotFoundException e) {
-			System.out.println("Failed to dump data because cannot find TsFile JDBC Driver, please check whether you have imported driver or not");
+			System.out.println("[ERROR] Failed to dump data because cannot find TsFile JDBC Driver, please check whether you have imported driver or not");
 		} catch (TException e) {
-			System.out.println(String.format("Encounter an error when connecting to server, because %s", e.getMessage()));
+			System.out.println(String.format("[ERROR] Encounter an error when connecting to server, because %s", e.getMessage()));
 		} finally {
 			if(reader != null){
 				reader.close();
@@ -337,4 +348,10 @@ public class ImportCsv extends AbstractCsvTool{
 			
 
     }
+    
+    
+    private static void parseSpecialParams(CommandLine commandLine, ConsoleReader reader) throws IOException, ArgsErrorException {
+		timeZoneID = commandLine.getOptionValue(TIME_ZONE_ARGS);
+
+	}
 }

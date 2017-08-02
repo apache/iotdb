@@ -53,7 +53,7 @@ public class ExportCsv extends AbstractCsvTool{
 		CommandLineParser parser = new DefaultParser();
 		
 		if (args == null || args.length == 0) {
-			System.out.println("Too few params input, please check the following hint.");
+			System.out.println("[ERROR] Too few params input, please check the following hint.");
 			hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
 			return;
 		}
@@ -97,13 +97,13 @@ public class ExportCsv extends AbstractCsvTool{
 				dumpFromSQLFile(sqlFile);
 			}
 		} catch (ClassNotFoundException e) {
-			System.out.println("Failed to dump data because cannot find TsFile JDBC Driver, please check whether you have imported driver or not");
+			System.out.println("[ERROR] Failed to dump data because cannot find TsFile JDBC Driver, please check whether you have imported driver or not");
 		} catch (SQLException e) {
-			System.out.println(String.format("Encounter an error when dumping data, error is %s", e.getMessage()));
+			System.out.println(String.format("[ERROR] Encounter an error when dumping data, error is %s", e.getMessage()));
 		} catch (IOException e) {
-			System.out.println(String.format("Failed to operate on file, because %s", e.getMessage()));
+			System.out.println(String.format("[ERROR] Failed to operate on file, because %s", e.getMessage()));
 		} catch (TException e){
-			System.out.println(String.format("Encounter an error when connecting to server, because %s", e.getMessage()));
+			System.out.println(String.format("[ERROR] Encounter an error when connecting to server, because %s", e.getMessage()));
 		} catch (ArgsErrorException e) {
 			
 		} finally {
@@ -166,7 +166,7 @@ public class ExportCsv extends AbstractCsvTool{
 				.build();
 		options.addOption(opTimeFormat);
 		
-		Option opTimeZone = Option.builder(TIME_ZONE_ARGS).argName(TIME_ZONE_NAME).hasArg().desc("Time Zone eg. +08:00 or -01:00").build();
+		Option opTimeZone = Option.builder(TIME_ZONE_ARGS).argName(TIME_ZONE_NAME).hasArg().desc("Time Zone eg. +08:00 or -01:00 (optional)").build();
 		options.addOption(opTimeZone);
 		
 		Option opHelp = Option.builder(HELP_ARGS).longOpt(HELP_ARGS).hasArg(false).desc("Display help information").build();
@@ -183,7 +183,7 @@ public class ExportCsv extends AbstractCsvTool{
 			try {
 				dumpResult(sql, index);
 			} catch (SQLException e) {
-				System.out.println(String.format("Cannot dump data for statment %s, because %s", sql, e.getMessage()));
+				System.out.println(String.format("[ERROR] Cannot dump data for statment %s, because %s", sql, e.getMessage()));
 			}
 			index++;
 		}
@@ -205,7 +205,7 @@ public class ExportCsv extends AbstractCsvTool{
 			File tf = new File(path);
 			if (!tf.exists()) {
 				if (!tf.createNewFile()) {
-					System.out.println("could not create target file for sql statement: " + sql);
+					System.out.println("[ERROR] Could not create target file for sql statement: " + sql);
 					return;
 				}
 			}
@@ -268,7 +268,7 @@ public class ExportCsv extends AbstractCsvTool{
 					}
 				}
 			}
-			System.out.println(String.format("Statement %s dump to file %s successfully! It costs %dms", sql, path, (System.currentTimeMillis() - startTime)));
+			System.out.println(String.format("[INFO] Statement %s dump to file %s successfully! It costs %dms", sql, path, (System.currentTimeMillis() - startTime)));
 		} catch (IOException e) {
 			System.out.println(e.getMessage());
 		} finally {
