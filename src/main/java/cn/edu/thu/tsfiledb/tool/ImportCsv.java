@@ -151,7 +151,7 @@ public class ImportCsv extends AbstractCsvTool{
             		try {
                         sqls = createInsertSQL(line, timeseriesDataType, deviceToColumn, colInfo, headInfo);
 					} catch (Exception e) {
-						bw.write(String.format("error input line: %s", line));
+						bw.write(String.format("error input line, maybe it is not complete: %s", line));
 						bw.newLine();
 						errorFlag = false;
 				}
@@ -253,12 +253,14 @@ public class ImportCsv extends AbstractCsvTool{
             // sensor number, the insert operation stop
             if (skipcount == entry.getValue().size())
                 continue;
-
+            
+            // TODO when timestampsStr is empty, 
             String timestampsStr = data[0];
-            if (timestampsStr.trim().equals("")) {
-                continue;
-            }
-            sbd.append(") values(").append(timestampsStr);
+            sbd.append(") values(").append(timestampsStr.trim().equals("") ? "NO TIMESTAMP" : timestampsStr);
+//            if (timestampsStr.trim().equals("")) {
+//                continue;
+//            }
+//            sbd.append(") values(").append(timestampsStr);
 
             for (int j = 0; j < colIndex.size(); ++j) {
                 if (data[entry.getValue().get(j) + 1].equals(""))
@@ -304,6 +306,11 @@ public class ImportCsv extends AbstractCsvTool{
 		reader.setExpandEvents(false);
 		try {
 			parseBasicParams(commandLine, reader);
+            filename = commandLine.getOptionValue(FILE_ARGS);
+            if (filename == null) {
+                hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
+                return;
+            }
 			parseSpecialParams(commandLine, reader);
 			Class.forName(JDBC_DRIVER);
 			connection = (TsfileConnection) DriverManager.getConnection("jdbc:tsfile://" + host + ":" + port + "/", username, password);
@@ -313,11 +320,6 @@ public class ImportCsv extends AbstractCsvTool{
 	            errorInsertInfo = "src/test/resources/csvInsertError.error";
 	        } else {
 	            errorInsertInfo = System.getProperty(SystemConstant.TSFILE_HOME) + "/csvInsertError.error";
-	            filename = commandLine.getOptionValue(FILE_ARGS);
-	            if (filename == null) {
-	                hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
-	                return;
-	            }
 	        }
 	        
 	        File file = new File(filename);
@@ -337,6 +339,8 @@ public class ImportCsv extends AbstractCsvTool{
 			System.out.println("[ERROR] Failed to dump data because cannot find TsFile JDBC Driver, please check whether you have imported driver or not");
 		} catch (TException e) {
 			System.out.println(String.format("[ERROR] Encounter an error when connecting to server, because %s", e.getMessage()));
+		} catch (Exception e) {
+			System.out.println(String.format("[ERROR] Encounter an error, because %s", e.getMessage()));
 		} finally {
 			if(reader != null){
 				reader.close();
@@ -345,13 +349,13 @@ public class ImportCsv extends AbstractCsvTool{
 				connection.close();
 			}
 		}
-			
-
     }
-    
-    
+
     private static void parseSpecialParams(CommandLine commandLine, ConsoleReader reader) throws IOException, ArgsErrorException {
 		timeZoneID = commandLine.getOptionValue(TIME_ZONE_ARGS);
+		
+		
+		
 
 	}
 }
