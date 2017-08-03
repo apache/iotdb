@@ -37,7 +37,6 @@ public abstract class AbstractClient {
 	protected static final String ISO8601_ARGS = "disableISO8601";
 	protected static String timeFormat = "default";
 	protected static final String TIME_KEY_WORD = "time";
-	protected static DateTimeZone timeZone;
 	
 	protected static final String MAX_PRINT_ROW_COUNT_ARGS = "maxPRC";
 	protected static final String MAX_PRINT_ROW_COUNT_NAME = "maxPrintRowCount";
@@ -82,7 +81,7 @@ public abstract class AbstractClient {
 		
 	}
 	
-	public static void output(ResultSet res, boolean printToConsole, String statement) {
+	public static void output(ResultSet res, boolean printToConsole, String statement, DateTimeZone timeZone) {
 		try {
 			int cnt = 0;
 			ResultSetMetaData resultSetMetaData = res.getMetaData();
@@ -103,7 +102,7 @@ public abstract class AbstractClient {
 				if (cnt < maxPrintRowCount) {
 					System.out.print("|");
 					if (printTimestamp) {
-						System.out.printf(formatTime, formatDatetime(res.getLong(TIMESTAMP_STR)));
+						System.out.printf(formatTime, formatDatetime(res.getLong(TIMESTAMP_STR), timeZone));
 					}
 				}
 
@@ -111,7 +110,7 @@ public abstract class AbstractClient {
 					if (printToConsole && cnt < maxPrintRowCount) {
 					    	if(resultSetMetaData.getColumnLabel(i).indexOf(TIME_KEY_WORD) != -1){
 					    		try {
-					    			System.out.printf(formatValue, formatDatetime(res.getLong(i)));
+					    			System.out.printf(formatValue, formatDatetime(res.getLong(i), timeZone));
 							} catch (Exception e) {
 								System.out.printf(formatValue, "null");
 							}
@@ -172,7 +171,7 @@ public abstract class AbstractClient {
 		return options;
 	}
 
-	private static String formatDatetime(long timestamp) {
+	private static String formatDatetime(long timestamp, DateTimeZone timeZone) {
 		switch (timeFormat) {
 		case "long":
 		case "number":
@@ -326,7 +325,6 @@ public abstract class AbstractClient {
 			}
 			try {
 				connection.setTimeZone(cmd.split("=")[1].trim());
-				timeZone = DateTimeZone.forID(cmd.split("=")[1].trim());
 			} catch (Exception e) {
 				System.out.println(String.format("time zone format error, %s", e.getMessage()));
 				return OPERATION_RESULT.CONTINUE_OPER;
@@ -384,15 +382,15 @@ public abstract class AbstractClient {
 			return OPERATION_RESULT.CONTINUE_OPER;
 		}
 
-			
 		Statement statement = null;
 		try {
+			DateTimeZone timeZone = DateTimeZone.forID(connection.getTimeZone());
 			statement = connection.createStatement();
 			statement.setFetchSize(fetchSize);
 			boolean hasResultSet = statement.execute(cmd.trim());
 			if (hasResultSet) {
 				ResultSet resultSet = statement.getResultSet();
-				output(resultSet, printToConsole, cmd.trim());
+				output(resultSet, printToConsole, cmd.trim(), timeZone);
 			}
 			System.out.println("execute successfully.");
 		} catch (TsfileSQLException e) {
