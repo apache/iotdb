@@ -292,7 +292,7 @@ public class ASTNode extends CommonTree implements cn.edu.thu.tsfiledb.sql.parse
 				// Leaf
 				if (next.children == null || next.children.size() == 0) {
 					String str = next.toString();
-					rootNode.addtoMemoizedString(next.getType() != TSParser.StringLiteral ? str.toLowerCase() : str);
+					rootNode.addtoMemoizedString(next.getType() != cn.edu.thu.tsfiledb.sql.parse.TSParser.StringLiteral ? str.toLowerCase() : str);
 					next.endIndx = rootNode.getMemoizedStringLen();
 					stack.pop();
 					continue;
@@ -302,7 +302,7 @@ public class ASTNode extends CommonTree implements cn.edu.thu.tsfiledb.sql.parse
 					rootNode.addtoMemoizedString("(");
 					String str = next.toString();
 					rootNode.addtoMemoizedString(
-							(next.getType() == TSParser.StringLiteral || null == str) ? str : str.toLowerCase());
+							(next.getType() == cn.edu.thu.tsfiledb.sql.parse.TSParser.StringLiteral || null == str) ? str : str.toLowerCase());
 					rootNode.addtoMemoizedString(" ");
 				}
 
