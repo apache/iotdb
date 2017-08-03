@@ -151,7 +151,7 @@ public class ImportCsv extends AbstractCsvTool{
             		try {
                         sqls = createInsertSQL(line, timeseriesDataType, deviceToColumn, colInfo, headInfo);
 					} catch (Exception e) {
-						bw.write(String.format("error input line: %s", line));
+						bw.write(String.format("error input line, maybe it is not complete: %s", line));
 						bw.newLine();
 						errorFlag = false;
 				}
