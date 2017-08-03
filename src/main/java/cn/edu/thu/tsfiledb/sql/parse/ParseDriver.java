@@ -80,7 +80,7 @@ public class ParseDriver {
    * TSLexerX.
    *
    */
-  public class TSLexerX extends TSLexer {
+  public class TSLexerX extends cn.edu.thu.tsfiledb.sql.parse.TSLexer {
 
     private final ArrayList<ParseError> errors;
 
@@ -166,11 +166,6 @@ public class ParseDriver {
    * @param command
    *          command to parse
    *
-   * @param ctx
-   *          context with which to associate this parser's token stream, or
-   *          null if either no context is available or the context already has
-   *          an existing stream
-   *
    * @return parsed AST
    */
   public ASTNode parse(String command) throws ParseException
@@ -182,10 +177,10 @@ public class ParseDriver {
     TSLexerX lexer = new TSLexerX(new ANTLRNoCaseStringStream(command));
     TokenRewriteStream tokens = new TokenRewriteStream(lexer);
 
-    TSParser parser = new TSParser(tokens);
+    cn.edu.thu.tsfiledb.sql.parse.TSParser parser = new cn.edu.thu.tsfiledb.sql.parse.TSParser(tokens);
 
     parser.setTreeAdaptor(adaptor);
-    TSParser.statement_return r = null;
+    cn.edu.thu.tsfiledb.sql.parse.TSParser.statement_return r = null;
 
     
     try {
