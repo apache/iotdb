@@ -63,7 +63,7 @@ public class Daemon {
     	try {
 			initDBDao();
 		} catch (ClassNotFoundException | SQLException | DBDaoInitException e) {
-			LOGGER.error("Fail to start TsFileDB!");
+			LOGGER.error("Fail to start TsFileDB! because: {}", e.getMessage());
 			return;
 		}
 
@@ -107,13 +107,13 @@ public class Daemon {
     private void registJDBCServer() throws TTransportException, MalformedObjectNameException, InstanceAlreadyExistsException, MBeanRegistrationException, NotCompliantMBeanException {
         jdbcMBean = new JDBCServer();
         jdbcMBean.startServer();
-        ObjectName mBeanName = new ObjectName("JDBCServer", "type", "JDBCServer");
+        ObjectName mBeanName = new ObjectName("cn.edu.thu.tsfiledb.service", "type", "JDBCServer");
         mbs.registerMBean(jdbcMBean, mBeanName);
     }
     
 	private void registMonitor() throws MalformedObjectNameException, InstanceAlreadyExistsException, MBeanRegistrationException, NotCompliantMBeanException {
 		monitorMBean = new Monitor();
-		ObjectName mBeanName = new ObjectName("Monitor", "type", "Monitor");
+		ObjectName mBeanName = new ObjectName("cn.edu.thu.tsfiledb.service", "type", "Monitor");
 		mbs.registerMBean(monitorMBean, mBeanName);
 	}
 
@@ -175,8 +175,6 @@ public class Daemon {
             jmxServer.stop();
         }
         CloseMergeServer.getInstance().closeServer();
-        ;
-
     }
 
     public static void main(String[] args) {
