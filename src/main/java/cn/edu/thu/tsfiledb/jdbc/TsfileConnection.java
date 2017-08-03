@@ -436,13 +436,17 @@ public class TsfileConnection implements Connection {
 	return flag;
     }
 
-    public void setTimeZone(String timeZone) throws TException, TsfileSQLException{
-    	TSSetTimeZoneReq req = new TSSetTimeZoneReq(timeZone);
+    public void setTimeZone(String tz) throws TException, TsfileSQLException{
+    	TSSetTimeZoneReq req = new TSSetTimeZoneReq(tz);
     	TSSetTimeZoneResp resp = client.setTimeZone(req);
     	Utils.verifySuccess(resp.getStatus());
+    	
+    	timeZone = DateTimeZone.forID(tz);
     }
     
     public String getTimeZone() throws TException, TsfileSQLException{
+    	if(timeZone != null) return timeZone.getID();
+    	
     	TSGetTimeZoneResp resp = client.getTimeZone();
     	Utils.verifySuccess(resp.getStatus());
     	return resp.getTimeZone();
