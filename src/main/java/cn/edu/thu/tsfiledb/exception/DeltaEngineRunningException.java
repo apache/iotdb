@@ -8,7 +8,9 @@ package cn.edu.thu.tsfiledb.exception;
  * @author CGF
  */
 public abstract class DeltaEngineRunningException extends RuntimeException{
-    public DeltaEngineRunningException() { super();}
+	private static final long serialVersionUID = 7537799061005397794L;
+
+	public DeltaEngineRunningException() { super();}
 
     public DeltaEngineRunningException(String message, Throwable cause) { super(message, cause);}
 

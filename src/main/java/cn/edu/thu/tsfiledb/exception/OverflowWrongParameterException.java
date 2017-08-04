@@ -8,7 +8,9 @@ package cn.edu.thu.tsfiledb.exception;
  * @author CGF
  */
 public class OverflowWrongParameterException extends DeltaEngineRunningException{
-    public OverflowWrongParameterException(String message, Throwable cause) { super(message, cause);}
+	private static final long serialVersionUID = 5386506095896639099L;
+
+	public OverflowWrongParameterException(String message, Throwable cause) { super(message, cause);}
 
     public OverflowWrongParameterException(String message) {
         super(message);
