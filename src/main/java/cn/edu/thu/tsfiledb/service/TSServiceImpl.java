@@ -8,6 +8,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
+import cn.edu.thu.tsfiledb.conf.TsFileDBConstant;
 import cn.edu.thu.tsfiledb.conf.TsfileDBConfig;
 import cn.edu.thu.tsfiledb.conf.TsfileDBDescriptor;
 import cn.edu.thu.tsfiledb.qp.constant.SQLConstant;
@@ -91,8 +92,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
 	@Override
 	public TSOpenSessionResp openSession(TSOpenSessionReq req) throws TException {
-
-		LOGGER.info("TsFileDB Server: receive open session request from username {}", req.getUsername());
+		LOGGER.info("{} Server: receive open session request from username {}",TsFileDBConstant.GLOBAL_DB_NAME, req.getUsername());
 
 		boolean status;
 		try {
@@ -114,7 +114,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 		TSOpenSessionResp resp = new TSOpenSessionResp(ts_status, TSProtocolVersion.TSFILE_SERVICE_PROTOCOL_V1);
 		resp.setSessionHandle(new TS_SessionHandle(new TSHandleIdentifier(ByteBuffer.wrap(req.getUsername().getBytes()),
 				ByteBuffer.wrap((req.getPassword().getBytes())))));
-		LOGGER.info("TsFileDB Server: Login status: {}. User : {}", ts_status.getErrorMessage(), req.getUsername());
+		LOGGER.info("{} Server: Login status: {}. User : {}",TsFileDBConstant.GLOBAL_DB_NAME, ts_status.getErrorMessage(), req.getUsername());
 
 		return resp;
 	}
@@ -126,7 +126,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
 	@Override
 	public TSCloseSessionResp closeSession(TSCloseSessionReq req) throws TException {
-		LOGGER.info("TsFileDB Server: receive close session");
+		LOGGER.info("{} Server: receive close session",TsFileDBConstant.GLOBAL_DB_NAME);
 		TS_Status ts_status;
 		if (username.get() == null) {
 			ts_status = new TS_Status(TS_StatusCode.ERROR_STATUS);
@@ -151,7 +151,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
 	@Override
 	public TSCloseOperationResp closeOperation(TSCloseOperationReq req) throws TException {
-		LOGGER.info("TsFileDB Server: receive close operation");
+		LOGGER.info("{} Server: receive close operation",TsFileDBConstant.GLOBAL_DB_NAME);
 		try {
 			ReadLockManager.getInstance().unlockForOneRequest();
 			clearAllStatusForCurrentRequest();
@@ -176,7 +176,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 	public TSFetchMetadataResp fetchMetadata(TSFetchMetadataReq req) throws TException {
 		TS_Status status;
 		if (!checkLogin()) {
-			LOGGER.info("TsFileDB Server: Not login.");
+			LOGGER.info("{} Server: Not login.",TsFileDBConstant.GLOBAL_DB_NAME);
 			status = new TS_Status(TS_StatusCode.ERROR_STATUS);
 			status.setErrorMessage("Not login");
 			return new TSFetchMetadataResp(status);
@@ -265,7 +265,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 	public TSExecuteBatchStatementResp executeBatchStatement(TSExecuteBatchStatementReq req) throws TException {
 		try {
 			if (!checkLogin()) {
-				LOGGER.info("TsFileDB Server: Not login.");
+				LOGGER.info("{} Server: Not login.",TsFileDBConstant.GLOBAL_DB_NAME);
 				return getTSBathExecuteStatementResp(TS_StatusCode.ERROR_STATUS, "Not login", null);
 			}
 			List<String> statements = req.getStatements();
@@ -286,7 +286,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 			}
 			return getTSBathExecuteStatementResp(TS_StatusCode.SUCCESS_STATUS, "Execute batch statements successfully", result);
 		} catch (Exception e) {
-			LOGGER.error("TsFileDB Server: error occurs when executing statements", e);
+			LOGGER.error("{} Server: error occurs when executing statements",TsFileDBConstant.GLOBAL_DB_NAME, e);
 			return getTSBathExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage(), null);
 		}
 	}
@@ -295,7 +295,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 	public TSExecuteStatementResp executeStatement(TSExecuteStatementReq req) throws TException {
 		try {
 			if (!checkLogin()) {
-				LOGGER.info("TsFileDB Server: Not login.");
+				LOGGER.info("{} Server: Not login.",TsFileDBConstant.GLOBAL_DB_NAME);
 				return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, "Not login");
 			}
 			String statement = req.getStatement();
@@ -333,7 +333,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
 		try {
 			if (!checkLogin()) {
-				LOGGER.info("TsFileDB Server: Not login.");
+				LOGGER.info("{} Server: Not login.",TsFileDBConstant.GLOBAL_DB_NAME);
 				return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, "Not login");
 			}
 
@@ -386,7 +386,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 			resp.setOperationType(aggregateFuncName);
 			return resp;
 		} catch (Exception e) {
-			LOGGER.error("TsFileDB Server: server internal error: {}", e.getMessage());
+			LOGGER.error("{} Server: Internal server error: {}",TsFileDBConstant.GLOBAL_DB_NAME, e.getMessage());
 			return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
 		}
 	}
@@ -431,8 +431,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 			resp.setQueryDataSet(tsQueryDataSet);
 			return resp;
 		} catch (Exception e) {
-			LOGGER.error("TsFileDB Server: server Internal Error: {}", e.getMessage());
-			return getTSFetchResultsResp(TS_StatusCode.ERROR_STATUS, "Server Internal Error");
+			LOGGER.error("{} Server: Internal server error: {}",TsFileDBConstant.GLOBAL_DB_NAME, e.getMessage());
+			return getTSFetchResultsResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
 		}
 
 	}
@@ -448,7 +448,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 		} catch (ProcessorException e) {
 			return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
 		} catch (Exception e) {
-			LOGGER.error("TsFileDB Server: server Internal Error: {}", e.getMessage());
+			LOGGER.error("{} Server: server Internal Error: {}",TsFileDBConstant.GLOBAL_DB_NAME, e.getMessage());
 			return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
 		}
 	}
@@ -486,7 +486,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 			LOGGER.error(e.getMessage());
 			return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
 		} catch (IOException e) {
-			LOGGER.error("TsFileDB Server: write preLog error", e);
+			LOGGER.error("{} Server: write preLog error",TsFileDBConstant.GLOBAL_DB_NAME, e);
 			return getTSExecuteStatementResp(TS_StatusCode.SUCCESS_STATUS, "Write log error");
 		}
 	}

@@ -84,7 +84,7 @@ public class TsfileDBConfig {
 	public int maxOpenFolder = 100;
 
 	/**
-	 * The amount of data that is read every time when TsFileDB merge data.
+	 * The amount of data that is read every time when IoTDB merge data.
 	 */
 	public int fetchSize = 10000;
 

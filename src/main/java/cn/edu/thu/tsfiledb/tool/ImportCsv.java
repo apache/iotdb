@@ -34,7 +34,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * CSV File To TsFileDB
+ * CSV File To IoTDB
  *
  * @author zhanggr
  */

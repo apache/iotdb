@@ -1,6 +1,6 @@
 @echo off
 echo ````````````````````````
-echo Starting TsFileDB Client
+echo Starting IoTDB Client
 echo ````````````````````````
 
 if "%OS%" == "Windows_NT" setlocal
