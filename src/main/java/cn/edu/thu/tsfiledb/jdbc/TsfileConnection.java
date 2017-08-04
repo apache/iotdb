@@ -304,12 +304,12 @@ public class TsfileConnection implements Connection {
 
     @Override
     public void rollback() throws SQLException {
-	throw new SQLException("Method not supported");
+	
     }
 
     @Override
     public void rollback(Savepoint arg0) throws SQLException {
-	throw new SQLException("Method not supported");
+	
     }
 
     @Override
