@@ -53,7 +53,7 @@ public abstract class AbstractClient {
 	protected static final String SHOW_FETCH_SIZE = "show fetch_size";
 	protected static int fetchSize = 10000;
 	
-	protected static final String TSFILEDB_CLI_PREFIX = "TsFileDB";
+	protected static final String TSFILEDB_CLI_PREFIX = "IoTDB";
 	private static final String QUIT_COMMAND = "quit";
 	private static final String EXIT_COMMAND = "exit";
 	private static final String SHOW_METADATA_COMMAND = "show timeseries";
