@@ -3,6 +3,9 @@ package cn.edu.thu.tsfiledb.conf;
 public class TsFileDBConstant {
     public static final String ENV_FILE_NAME = "tsfile-env.sh";
     
+	public static final String GLOBAL_DB_NAME = "IoTDB";
+
+    
     public static final String REMOTE_JMX_PORT_NAME = "com.sun.management.jmxremote.port";
     public static final String TSFILEDB_LOCAL_JMX_PORT_NAME = "tsfiledb.jmx.local.port";
     public static final String TSFILEDB_REMOTE_JMX_PORT_NAME = "tsfiledb.jmx.remote.port";

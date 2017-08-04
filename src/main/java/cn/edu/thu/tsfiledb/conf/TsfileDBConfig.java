@@ -8,7 +8,7 @@ public class TsfileDBConfig {
 
 	public static final String CONFIG_NAME = "tsfile-engine.properties";
 	public static final String CONFIG_DEFAULT_PATH = "tsfiledb/conf/" + CONFIG_NAME;
-
+	
 	/**
 	 * Port which JDBC server listens to
 	 */
