@@ -54,7 +54,7 @@ public class WriteLogManager {
         }
     }
 
-    public static WriteLogManager getInstance() {
+    public static final WriteLogManager getInstance() {
         return WriteLogManagerHolder.INSTANCE;
     }
 
