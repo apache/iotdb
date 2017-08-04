@@ -9,8 +9,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,8 +48,13 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 	private Set<String> overflowNameSpaceSet;
 	private Set<String> backUpOverflowNameSpaceSet;
 
-	private static final Lock instanceLock = new ReentrantLock(false);
-	private static FileNodeManager instance;
+//	private static final Lock instanceLock = new ReentrantLock(false);
+//	private static FileNodeManager instance;
+	
+	private static class FileNodeManagerHolder {  
+        private static final FileNodeManager INSTANCE = new FileNodeManager(TsFileDBConf.maxOpenFolder, 
+        		MManager.getInstance(), TsFileDBConf.fileNodeDir);
+    }
 
 	private FileNodeManagerStatus fileNodeManagerStatus = FileNodeManagerStatus.NONE;
 
@@ -75,26 +78,17 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 	};
 
 	public static FileNodeManager getInstance() {
-		instanceLock.lock();
-		try {
-			if (instance == null) {
-				instance = new FileNodeManager(TsFileDBConf.maxOpenFolder, MManager.getInstance(),
-						TsFileDBConf.fileNodeDir);
-			}
-			return instance;
-		} finally {
-			instanceLock.unlock();
-		}
+		return FileNodeManagerHolder.INSTANCE;
 	}
 
-	public static void init(int maxNodeNum, MManager mManager, String fileNodeDirPath) {
-		instanceLock.lock();
-		try {
-			instance = new FileNodeManager(maxNodeNum, mManager, fileNodeDirPath);
-		} finally {
-			instanceLock.unlock();
-		}
-	}
+//	public static void init(int maxNodeNum, MManager mManager, String fileNodeDirPath) {
+//		instanceLock.lock();
+//		try {
+//			instance = new FileNodeManager(maxNodeNum, mManager, fileNodeDirPath);
+//		} finally {
+//			instanceLock.unlock();
+//		}
+//	}
 
 	private FileNodeManager(int maxLRUNumber, MManager mManager, String normalDataDir) {
 		super(maxLRUNumber, mManager, normalDataDir);

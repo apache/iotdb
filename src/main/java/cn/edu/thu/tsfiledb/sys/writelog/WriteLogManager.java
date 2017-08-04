@@ -20,7 +20,12 @@ import cn.edu.thu.tsfiledb.qp.physical.PhysicalPlan;
 
 public class WriteLogManager {
 //    private static final Logger LOG = LoggerFactory.getLogger(WriteLogManager.class);
-    private static WriteLogManager instance = new WriteLogManager();
+//    private static WriteLogManager instance = new WriteLogManager();
+    
+    private static class WriteLogManagerHolder {  
+        private static final WriteLogManager INSTANCE = new WriteLogManager();  
+    } 
+    
     private static ConcurrentHashMap<String, WriteLogNode> logNodeMaps;
     public static final int BUFFERWRITER = 0, OVERFLOW = 1;
     private static List<String> recoveryPathList = new ArrayList<>();
@@ -50,7 +55,7 @@ public class WriteLogManager {
     }
 
     public static WriteLogManager getInstance() {
-        return instance;
+        return WriteLogManagerHolder.INSTANCE;
     }
 
     private static WriteLogNode getWriteLogNode(String fileNode) {
