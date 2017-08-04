@@ -16,14 +16,16 @@ import cn.edu.thu.tsfile.common.constant.SystemConstant;
 public class TsfileDBDescriptor {
 	private static final Logger LOGGER = LoggerFactory.getLogger(TsfileDBDescriptor.class);
 
-	private static TsfileDBDescriptor descriptor = new TsfileDBDescriptor();
-
+	private static class TsfileDBDescriptorHolder{
+		private static final TsfileDBDescriptor INSTANCE = new TsfileDBDescriptor();
+	}
+	
 	private TsfileDBDescriptor() {
 		loadProps();
 	}
 
-	public static TsfileDBDescriptor getInstance() {
-		return descriptor;
+	public static final TsfileDBDescriptor getInstance() {
+		return TsfileDBDescriptorHolder.INSTANCE;
 	}
 
 	public TsfileDBConfig getConfig() {
