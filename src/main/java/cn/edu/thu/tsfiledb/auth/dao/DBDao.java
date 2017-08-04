@@ -16,6 +16,7 @@ import org.slf4j.LoggerFactory;
 
 import cn.edu.thu.tsfiledb.auth.AuthException;
 import cn.edu.thu.tsfiledb.auth.AuthRuntimeException;
+import cn.edu.thu.tsfiledb.conf.TsFileDBConstant;
 import cn.edu.thu.tsfiledb.conf.TsfileDBDescriptor;
 
 /**
@@ -70,9 +71,9 @@ public class DBDao {
 					LOGGER.error(e2.getMessage());
 					try {
 						FileUtils.deleteDirectory(new File(DBLocalPath));
-						System.out.println(String.format("Delete %s successfully, you may restart TsFileDB now.", DBLocalPath));
+						System.out.println(String.format("Delete %s successfully, you may restart %s now.",TsFileDBConstant.GLOBAL_DB_NAME, DBLocalPath));
 					} catch (IOException e1) {
-						LOGGER.error("Fail to delete {} automatically, you may delete manually and restart TsFileDB");
+						LOGGER.error("Fail to delete {} automatically, you may delete manually and restart {}",TsFileDBConstant.GLOBAL_DB_NAME);
 					} 
 					throw new DBDaoInitException(e2);
 				} else{

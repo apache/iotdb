@@ -31,6 +31,7 @@ import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransportException;
+import org.joda.time.DateTimeZone;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -54,6 +55,8 @@ public class TsfileConnection implements Connection {
     public TS_SessionHandle sessionHandle = null;
     private final List<TSProtocolVersion> supportedProtocols = new LinkedList<TSProtocolVersion>();
     private TSProtocolVersion protocol;
+    private DateTimeZone timeZone;
+    private boolean autoCommit;
 
     public TsfileConnection(String url, Properties info) throws SQLException, TTransportException {
 	if (url == null) {
@@ -67,9 +70,9 @@ public class TsfileConnection implements Connection {
 	client = new TSIService.Client(new TBinaryProtocol(transport));	
 	// open client session
 	openSession();
-
 	// Wrap the client with a thread-safe proxy to serialize the RPC calls
 	client = newSynchronizedClient(client);
+	autoCommit = false;
     }
 
     @Override
@@ -171,7 +174,7 @@ public class TsfileConnection implements Connection {
 
     @Override
     public boolean getAutoCommit() throws SQLException {
-	return false;
+	return autoCommit;
     }
 
     @Override
@@ -191,7 +194,8 @@ public class TsfileConnection implements Connection {
 
     @Override
     public int getHoldability() throws SQLException {
-	throw new SQLException("Method not supported");
+//	throw new SQLException("Method not supported");
+    	return 0;
     }
 
     @Override
@@ -234,7 +238,7 @@ public class TsfileConnection implements Connection {
 
     @Override
     public boolean isReadOnly() throws SQLException {
-	throw new SQLException("Method not supported");
+	return false;
     }
 
     @Override
@@ -301,17 +305,17 @@ public class TsfileConnection implements Connection {
 
     @Override
     public void rollback() throws SQLException {
-	throw new SQLException("Method not supported");
+	
     }
 
     @Override
     public void rollback(Savepoint arg0) throws SQLException {
-	throw new SQLException("Method not supported");
+	
     }
 
     @Override
     public void setAutoCommit(boolean arg0) throws SQLException {
-	throw new SQLException("Method not supported");
+	autoCommit = arg0;
     }
 
     @Override
@@ -397,6 +401,13 @@ public class TsfileConnection implements Connection {
 	    }
 	    setProtocol(openResp.getServerProtocolVersion());
 	    sessionHandle = openResp.getSessionHandle();
+	    
+	    if(timeZone != null){
+	    		setTimeZone(timeZone.getID());
+	    } else {
+	    		timeZone = DateTimeZone.forID(getTimeZone());
+	    }
+	    
 	} catch (TException e) {
 	    throw new SQLException(
 		    String.format("Can not establish connection with %s. because %s", params.getJdbcUriString(), e.getMessage()));
@@ -428,13 +439,17 @@ public class TsfileConnection implements Connection {
 	return flag;
     }
 
-    public void setTimeZone(String timeZone) throws TException, TsfileSQLException{
-    	TSSetTimeZoneReq req = new TSSetTimeZoneReq(timeZone);
+    public void setTimeZone(String tz) throws TException, TsfileSQLException{
+    	TSSetTimeZoneReq req = new TSSetTimeZoneReq(tz);
     	TSSetTimeZoneResp resp = client.setTimeZone(req);
     	Utils.verifySuccess(resp.getStatus());
+    	
+    	timeZone = DateTimeZone.forID(tz);
     }
     
     public String getTimeZone() throws TException, TsfileSQLException{
+    	if(timeZone != null) return timeZone.getID();
+    	
     	TSGetTimeZoneResp resp = client.getTimeZone();
     	Utils.verifySuccess(resp.getStatus());
     	return resp.getTimeZone();

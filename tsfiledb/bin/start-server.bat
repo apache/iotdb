@@ -1,6 +1,6 @@
 @echo off
 echo ````````````````````````
-echo Starting TsFileDB Server
+echo Starting IoTDB
 echo ````````````````````````
 
 if "%OS%" == "Windows_NT" setlocal
@@ -33,7 +33,7 @@ set CLASSPATH="TSFILE_HOME%\conf"
 
 REM For each jar in the CASSANDRA_HOME lib directory call append to build the CLASSPATH variable.
 for %%i in ("%TSFILE_HOME%\lib\*.jar") do call :append "%%i"
-set CLASSPATH=%CLASSPATH%;tsfiledb.TsFileDB
+set CLASSPATH=%CLASSPATH%;tsfiledb.IoTDB
 goto okClasspath
 
 :append
