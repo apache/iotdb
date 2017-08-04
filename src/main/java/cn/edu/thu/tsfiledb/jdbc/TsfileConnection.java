@@ -237,7 +237,7 @@ public class TsfileConnection implements Connection {
 
     @Override
     public boolean isReadOnly() throws SQLException {
-	throw new SQLException("Method not supported");
+	return false;
     }
 
     @Override
