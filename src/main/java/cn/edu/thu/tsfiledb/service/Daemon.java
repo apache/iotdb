@@ -36,6 +36,7 @@ public class Daemon {
     private MBeanServer mbs;
     private DBDao dBdao;
     private JDBCServerMBean jdbcMBean;
+    private MonitorMBean monitorMBean;
 
     public Daemon() {
         mbs = ManagementFactory.getPlatformMBeanServer();
@@ -72,7 +73,7 @@ public class Daemon {
 
         maybeInitJmx();
         registJDBCServer();
-
+        registMonitor();
         startCloseAndMergeServer();
     }
 
@@ -103,13 +104,18 @@ public class Daemon {
         }
     }
 
-    private void registJDBCServer() throws TTransportException, MalformedObjectNameException,
-            InstanceAlreadyExistsException, MBeanRegistrationException, NotCompliantMBeanException {
+    private void registJDBCServer() throws TTransportException, MalformedObjectNameException, InstanceAlreadyExistsException, MBeanRegistrationException, NotCompliantMBeanException {
         jdbcMBean = new JDBCServer();
         jdbcMBean.startServer();
-        ObjectName mBeanName = new ObjectName("JDBCServer", "type", "JDBCServer");
+        ObjectName mBeanName = new ObjectName("cn.edu.thu.tsfiledb.service", "type", "JDBCServer");
         mbs.registerMBean(jdbcMBean, mBeanName);
     }
+    
+	private void registMonitor() throws MalformedObjectNameException, InstanceAlreadyExistsException, MBeanRegistrationException, NotCompliantMBeanException {
+		monitorMBean = new Monitor();
+		ObjectName mBeanName = new ObjectName("cn.edu.thu.tsfiledb.service", "type", "Monitor");
+		mbs.registerMBean(monitorMBean, mBeanName);
+	}
 
     private void initDBDao() throws ClassNotFoundException, SQLException, DBDaoInitException {
         dBdao = new DBDao();
@@ -169,8 +175,6 @@ public class Daemon {
             jmxServer.stop();
         }
         CloseMergeServer.getInstance().closeServer();
-        ;
-
     }
 
     public static void main(String[] args) {

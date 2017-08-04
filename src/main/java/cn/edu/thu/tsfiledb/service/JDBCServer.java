@@ -11,7 +11,9 @@ import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+
 import cn.edu.thu.tsfiledb.conf.TsFileDBConstant;
+import cn.edu.thu.tsfiledb.conf.TsfileDBConfig;
 import cn.edu.thu.tsfiledb.conf.TsfileDBDescriptor;
 import cn.edu.thu.tsfiledb.service.rpc.thrift.TSIService;
 import cn.edu.thu.tsfiledb.service.rpc.thrift.TSIService.Processor;
@@ -31,6 +33,18 @@ public class JDBCServer implements JDBCServerMBean {
     private TServer poolServer;
     private TSServiceImpl impl;
 
+	@Override
+	public String getJDBCServerStatus() {
+		if(isStart) return "UP";
+		else return "DOWN";
+	}
+	
+	@Override
+	public int getRPCPort() {
+		TsfileDBConfig config = TsfileDBDescriptor.getInstance().getConfig();
+		return config.rpcPort;
+	}
+	
     public JDBCServer() throws TTransportException {
         isStart = false;
     }
@@ -120,4 +134,8 @@ public class JDBCServer implements JDBCServerMBean {
         JDBCServer server = new JDBCServer();
         server.startServer();
     }
+
+
+
+
 }
