@@ -1,5 +1,6 @@
 package cn.edu.thu.tsfiledb.jdbc;
 
+import cn.edu.thu.tsfiledb.conf.TsFileDBConstant;
 import cn.edu.thu.tsfiledb.exception.ArgsErrorException;
 
 import org.apache.commons.cli.CommandLine;
@@ -53,7 +54,7 @@ public abstract class AbstractClient {
 	protected static final String SHOW_FETCH_SIZE = "show fetch_size";
 	protected static int fetchSize = 10000;
 	
-	protected static final String TSFILEDB_CLI_PREFIX = "TsFileDB";
+	protected static final String TSFILEDB_CLI_PREFIX = "IoTDB";
 	private static final String QUIT_COMMAND = "quit";
 	private static final String EXIT_COMMAND = "exit";
 	private static final String SHOW_METADATA_COMMAND = "show timeseries";
@@ -277,12 +278,14 @@ public abstract class AbstractClient {
 	}
 
 	protected static void displayLogo(){
-		System.out.println(" _______________________________.___.__          \n"
-				+ " \\__    ___/   _____/\\_   _____/|   |  |   ____  \n"
-				+ "   |    |  \\_____  \\  |    __)  |   |  | _/ __ \\ \n"
-				+ "   |    |  /        \\ |     \\   |   |  |_\\  ___/ \n"
-				+ "   |____| /_______  / \\___  /   |___|____/\\___  >   version 0.0.1\n"
-				+ "                  \\/      \\/                  \\/ \n");
+		System.out.println(
+				" _____       _________  ______   ______    \n" +
+				"|_   _|     |  _   _  ||_   _ `.|_   _ \\   \n" +
+				"  | |   .--.|_/ | | \\_|  | | `. \\ | |_) |  \n" +
+				"  | | / .'`\\ \\  | |      | |  | | |  __'.  \n" +
+				" _| |_| \\__. | _| |_    _| |_.' /_| |__) | \n" +
+				"|_____|'.__.' |_____|  |______.'|_______/  version"+TsFileDBConstant.VERSION+"\n" +
+				"                                           \n");
 	}
 
 	protected static OPERATION_RESULT handleInputInputCmd(String cmd, TsfileConnection connection){
