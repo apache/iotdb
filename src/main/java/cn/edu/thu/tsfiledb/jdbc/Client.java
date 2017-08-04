@@ -89,12 +89,6 @@ public class Client extends AbstractClient {
 					System.out.println(TSFILEDB_CLI_PREFIX + "> " + e.getMessage());
 					return;
 				}
-				try {
-					timeZone = DateTimeZone.forID(connection.getTimeZone());
-				} catch (Exception e) {
-					timeZone = DateTimeZone.getDefault();
-					System.out.println("Failed to get time zone from server, use default "+timeZone.getID());					
-				}
 				
 			} catch (ArgsErrorException e) {
 //				System.out.println(TSFILEDB_CLI_PREFIX + ": " + e.getMessage());

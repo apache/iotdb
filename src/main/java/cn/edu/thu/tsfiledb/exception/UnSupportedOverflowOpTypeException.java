@@ -7,8 +7,9 @@ package cn.edu.thu.tsfiledb.exception;
  * @author CGF
  */
 public class UnSupportedOverflowOpTypeException extends DeltaEngineRunningException{
+	private static final long serialVersionUID = -3834482432038784174L;
 
-    public UnSupportedOverflowOpTypeException(String message, Throwable cause) { super(message, cause);}
+	public UnSupportedOverflowOpTypeException(String message, Throwable cause) { super(message, cause);}
 
     public UnSupportedOverflowOpTypeException(String message) {
         super(message);

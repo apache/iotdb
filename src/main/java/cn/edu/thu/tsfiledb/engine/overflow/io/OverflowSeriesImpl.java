@@ -76,16 +76,16 @@ public class OverflowSeriesImpl {
 		queryOverflowIndex = new IntervalTreeOperation(type);
 	}
 
-	private OverflowSeriesImpl(TSDataType type, List<TimeSeriesChunkMetaData> metaForReader,
-			List<TimeSeriesChunkMetaData> metaForWriter, IIntervalTreeOperator workingOverflowIndex,
-			OverflowFileIO tempForMergeIO) {
-		this.type = type;
-		this.metaForReader = metaForReader;
-		this.metaForWriter = metaForWriter;
-		this.workingOverflowIndex = workingOverflowIndex;
-		this.overflowFileIO = tempForMergeIO;
-		queryOverflowIndex = new IntervalTreeOperation(type);
-	}
+//	private OverflowSeriesImpl(TSDataType type, List<TimeSeriesChunkMetaData> metaForReader,
+//			List<TimeSeriesChunkMetaData> metaForWriter, IIntervalTreeOperator workingOverflowIndex,
+//			OverflowFileIO tempForMergeIO) {
+//		this.type = type;
+//		this.metaForReader = metaForReader;
+//		this.metaForWriter = metaForWriter;
+//		this.workingOverflowIndex = workingOverflowIndex;
+//		this.overflowFileIO = tempForMergeIO;
+//		queryOverflowIndex = new IntervalTreeOperation(type);
+//	}
 
 	/**
 	 * Insert one data point into the overflow index with the special timestamp

@@ -7,7 +7,6 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Timer;
 import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;

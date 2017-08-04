@@ -162,7 +162,7 @@ public class ExportCsv extends AbstractCsvTool{
 
 		Option opTimeFormat = Option.builder(TIME_FORMAT_ARGS).argName(TIME_FORMAT_NAME).hasArg()
 				.desc("Output time Format in csv file. "
-						+ "You can choose 1) timestamp 2) ISO8601 3) user-defined pattern like yyyy-MM-dd\\ HH:mm:ss, default ISO8601 (optional)")
+						+ "You can choose 1) timestamp, number, long 2) ISO8601, default 3) user-defined pattern like yyyy-MM-dd\\ HH:mm:ss, default ISO8601 (optional)")
 				.build();
 		options.addOption(opTimeFormat);
 		

@@ -1,5 +1,6 @@
 package cn.edu.thu.tsfiledb.jdbc;
 
+import cn.edu.thu.tsfiledb.conf.TsFileDBConstant;
 import cn.edu.thu.tsfiledb.exception.ArgsErrorException;
 
 import org.apache.commons.cli.CommandLine;
@@ -37,7 +38,6 @@ public abstract class AbstractClient {
 	protected static final String ISO8601_ARGS = "disableISO8601";
 	protected static String timeFormat = "default";
 	protected static final String TIME_KEY_WORD = "time";
-	protected static DateTimeZone timeZone;
 	
 	protected static final String MAX_PRINT_ROW_COUNT_ARGS = "maxPRC";
 	protected static final String MAX_PRINT_ROW_COUNT_NAME = "maxPrintRowCount";
@@ -54,7 +54,7 @@ public abstract class AbstractClient {
 	protected static final String SHOW_FETCH_SIZE = "show fetch_size";
 	protected static int fetchSize = 10000;
 	
-	protected static final String TSFILEDB_CLI_PREFIX = "TsFileDB";
+	protected static final String TSFILEDB_CLI_PREFIX = "IoTDB";
 	private static final String QUIT_COMMAND = "quit";
 	private static final String EXIT_COMMAND = "exit";
 	private static final String SHOW_METADATA_COMMAND = "show timeseries";
@@ -82,7 +82,7 @@ public abstract class AbstractClient {
 		
 	}
 	
-	public static void output(ResultSet res, boolean printToConsole, String statement) {
+	public static void output(ResultSet res, boolean printToConsole, String statement, DateTimeZone timeZone) {
 		try {
 			int cnt = 0;
 			ResultSetMetaData resultSetMetaData = res.getMetaData();
@@ -103,7 +103,7 @@ public abstract class AbstractClient {
 				if (cnt < maxPrintRowCount) {
 					System.out.print("|");
 					if (printTimestamp) {
-						System.out.printf(formatTime, formatDatetime(res.getLong(TIMESTAMP_STR)));
+						System.out.printf(formatTime, formatDatetime(res.getLong(TIMESTAMP_STR), timeZone));
 					}
 				}
 
@@ -111,7 +111,7 @@ public abstract class AbstractClient {
 					if (printToConsole && cnt < maxPrintRowCount) {
 					    	if(resultSetMetaData.getColumnLabel(i).indexOf(TIME_KEY_WORD) != -1){
 					    		try {
-					    			System.out.printf(formatValue, formatDatetime(res.getLong(i)));
+					    			System.out.printf(formatValue, formatDatetime(res.getLong(i), timeZone));
 							} catch (Exception e) {
 								System.out.printf(formatValue, "null");
 							}
@@ -172,7 +172,7 @@ public abstract class AbstractClient {
 		return options;
 	}
 
-	private static String formatDatetime(long timestamp) {
+	private static String formatDatetime(long timestamp, DateTimeZone timeZone) {
 		switch (timeFormat) {
 		case "long":
 		case "number":
@@ -278,12 +278,14 @@ public abstract class AbstractClient {
 	}
 
 	protected static void displayLogo(){
-		System.out.println(" _______________________________.___.__          \n"
-				+ " \\__    ___/   _____/\\_   _____/|   |  |   ____  \n"
-				+ "   |    |  \\_____  \\  |    __)  |   |  | _/ __ \\ \n"
-				+ "   |    |  /        \\ |     \\   |   |  |_\\  ___/ \n"
-				+ "   |____| /_______  / \\___  /   |___|____/\\___  >   version 0.0.1\n"
-				+ "                  \\/      \\/                  \\/ \n");
+		System.out.println(
+				" _____       _________  ______   ______    \n" +
+				"|_   _|     |  _   _  ||_   _ `.|_   _ \\   \n" +
+				"  | |   .--.|_/ | | \\_|  | | `. \\ | |_) |  \n" +
+				"  | | / .'`\\ \\  | |      | |  | | |  __'.  \n" +
+				" _| |_| \\__. | _| |_    _| |_.' /_| |__) | \n" +
+				"|_____|'.__.' |_____|  |______.'|_______/  version"+TsFileDBConstant.VERSION+"\n" +
+				"                                           \n");
 	}
 
 	protected static OPERATION_RESULT handleInputInputCmd(String cmd, TsfileConnection connection){
@@ -326,7 +328,6 @@ public abstract class AbstractClient {
 			}
 			try {
 				connection.setTimeZone(cmd.split("=")[1].trim());
-				timeZone = DateTimeZone.forID(cmd.split("=")[1].trim());
 			} catch (Exception e) {
 				System.out.println(String.format("time zone format error, %s", e.getMessage()));
 				return OPERATION_RESULT.CONTINUE_OPER;
@@ -384,15 +385,15 @@ public abstract class AbstractClient {
 			return OPERATION_RESULT.CONTINUE_OPER;
 		}
 
-			
 		Statement statement = null;
 		try {
+			DateTimeZone timeZone = DateTimeZone.forID(connection.getTimeZone());
 			statement = connection.createStatement();
 			statement.setFetchSize(fetchSize);
 			boolean hasResultSet = statement.execute(cmd.trim());
 			if (hasResultSet) {
 				ResultSet resultSet = statement.getResultSet();
-				output(resultSet, printToConsole, cmd.trim());
+				output(resultSet, printToConsole, cmd.trim(), timeZone);
 			}
 			System.out.println("execute successfully.");
 		} catch (TsfileSQLException e) {

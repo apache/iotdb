@@ -246,7 +246,7 @@ public class IntervalTree {
 	 *            whether pNode is left child of paNode
 	 * @return whether update process is over
 	 */
-	private boolean update(TimePair tp, TreeNode currentNode, TreeNode parentNode, boolean left, List insertList) {
+	private boolean update(TimePair tp, TreeNode currentNode, TreeNode parentNode, boolean left, List<TimePair> insertList) {
 		if (currentNode == null) {
 			insert(tp);
 			return true;

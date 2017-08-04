@@ -11,7 +11,6 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import cn.edu.thu.tsfile.common.conf.TSFileConfig;
 import cn.edu.thu.tsfile.common.conf.TSFileDescriptor;
 import cn.edu.thu.tsfile.common.utils.BytesUtils;
 import cn.edu.thu.tsfile.file.metadata.enums.TSDataType;
@@ -33,7 +32,6 @@ import cn.edu.thu.tsfile.common.exception.ProcessorException;
 public class OverflowProcessor extends LRUProcessor {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(OverflowProcessor.class);
-	private static final TSFileConfig TsFileConf = TSFileDescriptor.getInstance().getConfig();
 	private static final TsfileDBConfig TsFileDBConf = TsfileDBDescriptor.getInstance().getConfig();
 
 	private static final int MINIMUM_RECORD_COUNT_FOR_CHECK = 100;
@@ -49,7 +47,7 @@ public class OverflowProcessor extends LRUProcessor {
 
 	private static final String storeFileName = ".overflow";
 	private static final String restoreFileName = ".restore";
-	private static final String mergeFileName = ".merge";
+//	private static final String mergeFileName = ".merge";
 	private String fileName;
 	private String overflowRetoreFilePath;
 	private String overflowOutputFilePath;
