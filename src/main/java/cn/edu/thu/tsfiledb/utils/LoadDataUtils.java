@@ -25,6 +25,7 @@ import java.util.Set;
 /**
  * @author kangrong
  */
+@Deprecated
 public class LoadDataUtils {
     private static Logger LOG = LoggerFactory.getLogger(LoadDataUtils.class);
     private BufferedReader inputCsvFileReader;
