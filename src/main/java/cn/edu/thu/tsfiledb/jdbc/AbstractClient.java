@@ -1,5 +1,6 @@
 package cn.edu.thu.tsfiledb.jdbc;
 
+import cn.edu.thu.tsfiledb.conf.TsFileDBConstant;
 import cn.edu.thu.tsfiledb.exception.ArgsErrorException;
 
 import org.apache.commons.cli.CommandLine;
@@ -277,19 +278,14 @@ public abstract class AbstractClient {
 	}
 
 	protected static void displayLogo(){
-		System.out.println(" _____       _________  ______   ______    \n" +
+		System.out.println(
+				" _____       _________  ______   ______    \n" +
 				"|_   _|     |  _   _  ||_   _ `.|_   _ \\   \n" +
 				"  | |   .--.|_/ | | \\_|  | | `. \\ | |_) |  \n" +
 				"  | | / .'`\\ \\  | |      | |  | | |  __'.  \n" +
 				" _| |_| \\__. | _| |_    _| |_.' /_| |__) | \n" +
-				"|_____|'.__.' |_____|  |______.'|_______/  version 0.0.1\n" +
+				"|_____|'.__.' |_____|  |______.'|_______/  version"+TsFileDBConstant.VERSION+"\n" +
 				"                                           \n");
-//		System.out.println(" _______________________________.___.__          \n"
-//				+ " \\__    ___/   _____/\\_   _____/|   |  |   ____  \n"
-//				+ "   |    |  \\_____  \\  |    __)  |   |  | _/ __ \\ \n"
-//				+ "   |    |  /        \\ |     \\   |   |  |_\\  ___/ \n"
-//				+ "   |____| /_______  / \\___  /   |___|____/\\___  >   version 0.0.1\n"
-//				+ "                  \\/      \\/                  \\/ \n");
 	}
 
 	protected static OPERATION_RESULT handleInputInputCmd(String cmd, TsfileConnection connection){
