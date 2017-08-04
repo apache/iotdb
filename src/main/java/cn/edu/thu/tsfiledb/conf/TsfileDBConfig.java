@@ -8,7 +8,7 @@ public class TsfileDBConfig {
 
 	public static final String CONFIG_NAME = "tsfile-engine.properties";
 	public static final String CONFIG_DEFAULT_PATH = "tsfiledb/conf/" + CONFIG_NAME;
-
+	
 	/**
 	 * Port which JDBC server listens to
 	 */
@@ -84,7 +84,7 @@ public class TsfileDBConfig {
 	public int maxOpenFolder = 100;
 
 	/**
-	 * The amount of data that is read every time when TsFileDB merge data.
+	 * The amount of data that is read every time when IoTDB merge data.
 	 */
 	public int fetchSize = 10000;
 

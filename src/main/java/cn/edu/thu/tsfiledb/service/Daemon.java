@@ -46,14 +46,14 @@ public class Daemon {
         try {
             checks.verify();
         } catch (StartupException e) {
-            LOGGER.error("TsFileDB: failed to start because of some check fail. {}", e.getMessage());
+            LOGGER.error("{}: failed to start because of some check fail. {}",TsFileDBConstant.GLOBAL_DB_NAME, e.getMessage());
             return;
         }
         try {
             setUp();
         } catch (MalformedObjectNameException | InstanceAlreadyExistsException | MBeanRegistrationException
                 | NotCompliantMBeanException | TTransportException | IOException e) {
-            LOGGER.error("TsFileDB: failed to start because: {}", e.getMessage());
+            LOGGER.error("{}: failed to start because: {}",TsFileDBConstant.GLOBAL_DB_NAME, e.getMessage());
         }
     }
 
@@ -62,7 +62,7 @@ public class Daemon {
     	try {
 			initDBDao();
 		} catch (ClassNotFoundException | SQLException | DBDaoInitException e) {
-			LOGGER.error("Fail to start TsFileDB!");
+			LOGGER.error("Fail to start {}!",TsFileDBConstant.GLOBAL_DB_NAME);
 			return;
 		}
 
@@ -126,7 +126,7 @@ public class Daemon {
      * @throws IOException
      */
     private void systemDataRecovery() throws IOException {
-        LOGGER.info("TsFileDB Server: start checking write log...");
+        LOGGER.info("{}: start checking write log...",TsFileDBConstant.GLOBAL_DB_NAME);
         QueryProcessor processor = new QueryProcessor(new OverflowQPExecutor());
         WriteLogManager writeLogManager = WriteLogManager.getInstance();
         writeLogManager.recovery();
@@ -143,7 +143,7 @@ public class Daemon {
             }
         }
         WriteLogManager.isRecovering = false;
-        LOGGER.info("TsFileDB Server: Done. Recover operation count {}", cnt);
+        LOGGER.info("{}: Done. Recover operation count {}",TsFileDBConstant.GLOBAL_DB_NAME, cnt);
     }
 
     /**
