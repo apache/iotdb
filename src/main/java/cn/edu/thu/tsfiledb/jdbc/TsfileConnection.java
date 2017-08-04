@@ -194,7 +194,8 @@ public class TsfileConnection implements Connection {
 
     @Override
     public int getHoldability() throws SQLException {
-	throw new SQLException("Method not supported");
+//	throw new SQLException("Method not supported");
+    	return 0;
     }
 
     @Override
