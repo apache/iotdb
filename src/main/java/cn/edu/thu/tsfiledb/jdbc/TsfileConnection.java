@@ -56,6 +56,7 @@ public class TsfileConnection implements Connection {
     private final List<TSProtocolVersion> supportedProtocols = new LinkedList<TSProtocolVersion>();
     private TSProtocolVersion protocol;
     private DateTimeZone timeZone;
+    private boolean autoCommit;
 
     public TsfileConnection(String url, Properties info) throws SQLException, TTransportException {
 	if (url == null) {
@@ -71,6 +72,7 @@ public class TsfileConnection implements Connection {
 	openSession();
 	// Wrap the client with a thread-safe proxy to serialize the RPC calls
 	client = newSynchronizedClient(client);
+	autoCommit = false;
     }
 
     @Override
@@ -172,7 +174,7 @@ public class TsfileConnection implements Connection {
 
     @Override
     public boolean getAutoCommit() throws SQLException {
-	return false;
+	return autoCommit;
     }
 
     @Override
@@ -312,7 +314,7 @@ public class TsfileConnection implements Connection {
 
     @Override
     public void setAutoCommit(boolean arg0) throws SQLException {
-	throw new SQLException("Method not supported");
+	autoCommit = arg0;
     }
 
     @Override
