@@ -43,9 +43,10 @@ tsfiledb/     <-- 根目录
 > ./bin/stop-server.sh
 
 # Windows
-> bin/stop-server.bat
+> bin\stop-server.bat
 ```
-# 启动客户端
+
+## 启动客户端
 
 ```
 # Unix/OS X
@@ -73,10 +74,10 @@ SET STORAGE GROUP TO root.fit.p;
 
 ```
 # Unix/OS X
-> ./bin/import-csv.sh -h xxx.xxx.xxx.xxx -p xxx -u xxx -pw xxx -f <载入文件路径> [-t <时间格式>]
+> ./bin/import-csv.sh -h xxx.xxx.xxx.xxx -p xxx -u xxx -pw xxx -f <载入文件路径>
 
 # Windows
-> bin/import-csv.bat -h xxx.xxx.xxx.xxx -p xxx -u xxx -pw xxx -f <载入文件路径> [-t <时间格式>]
+> bin\import-csv.bat -h xxx.xxx.xxx.xxx -p xxx -u xxx -pw xxx -f <载入文件路径>
 ```
 
 ### 错误文件
@@ -91,5 +92,5 @@ SET STORAGE GROUP TO root.fit.p;
 > ./bin/export-csv.sh -h xxx.xxx.xxx.xxx -p xxx -u xxx -tf <导出文件路径> [-t <时间格式>]
 
 # Windows
-> bin/export-csv.bat -h xxx.xxx.xxx.xxx -p xxx -u xxx -tf <导出文件路径> [-t <时间格式>]
+> bin\export-csv.bat -h xxx.xxx.xxx.xxx -p xxx -u xxx -tf <导出文件路径> [-t <时间格式>]
 ```
