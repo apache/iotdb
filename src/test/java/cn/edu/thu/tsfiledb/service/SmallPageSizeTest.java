@@ -76,6 +76,9 @@ public class SmallPageSizeTest {
             "insert into root.vehicle.d0(timestamp,s3) values(101,'ddddd')",
             "insert into root.vehicle.d0(timestamp,s3) values(102,'fffff')",
             "UPDATE root.vehicle.d0.s3 SET VALUE = 'tomorrow is another day' WHERE time >100 and time < 103",
+            "UPDATE root.vehicle.d0.s3 SET VALUE = 'QQQ' WHERE time >=60 and time <= 70",
+            "UPDATE root.vehicle.d0.s3 SET VALUE = 'WWW' WHERE time >=80 and time <= 80",
+            "UPDATE root.vehicle.d0.s3 SET VALUE = 'EEE' WHERE time >=101 and time <= 101",
 
             // to flush bufferwrite data into page list
             "insert into root.vehicle.d1(timestamp,s0) values(1,999)",
@@ -180,11 +183,11 @@ public class SmallPageSizeTest {
                 "3,null,null,3.33,null,null",
                 "4,null,null,4.44,null,null",
                 "50,null,50000,null,null,null",
-                "60,null,null,null,aaaaa,null",
-                "70,null,null,null,bbbbb,null",
-                "80,null,null,null,ccccc,null",
+                "60,null,null,null,QQQ,null",
+                "70,null,null,null,QQQ,null",
+                "80,null,null,null,WWW,null",
                 "100,null,199,null,null,null",
-                "101,null,199,null,tomorrow is another day,null",
+                "101,null,199,null,EEE,null",
                 "102,null,180,10.0,tomorrow is another day,null",
                 "103,null,199,null,null,null",
                 "104,33333,190,null,null,null",
@@ -213,7 +216,7 @@ public class SmallPageSizeTest {
                     String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s0) + "," + resultSet.getString(d0s1)
                             +","+resultSet.getString(d0s2)+","+resultSet.getString(d0s3)+","+resultSet.getString(d1s0);
                     // System.out.println(ans);
-                    Assert.assertEquals(ans, retArray[cnt]);
+                    Assert.assertEquals(retArray[cnt], ans);
                     cnt++;
                 }
                 //Assert.assertEquals(cnt, 16);

@@ -291,11 +291,7 @@ public class OverflowQueryEngine {
     private QueryDataSet crossColumnQuery(List<Path> paths,
                                                  SingleSeriesFilterExpression timeFilter, SingleSeriesFilterExpression freqFilter, CrossSeriesFilterExpression valueFilter,
                                                  QueryDataSet queryDataSet, int fetchSize) throws ProcessorException, IOException, PathErrorException {
-
-        LOGGER.info("start cross columns getIndex...");
         clearQueryDataSet(queryDataSet);
-        // Step 1: calculate common timestamp
-        LOGGER.info("step 1: init time value generator...");
         if (queryDataSet == null) {
             // reset status of RecordReader used ValueFilter
             resetRecordStatusUsingValueFilter(valueFilter, new HashSet<String>());
@@ -314,13 +310,9 @@ public class OverflowQueryEngine {
             };
         }
 
-        LOGGER.info("step 1 done.");
-        LOGGER.info("step 2: calculate timeRet...");
+        // calculate common timestamp
         long[] timeRet = queryDataSet.timeQueryDataSet.generateTimes();
-        LOGGER.info("step 2 done. timeRet size is: " + timeRet.length + ", FetchSize is: " + fetchSize);
-
-        // Step 3: Get result using common timestamp
-        LOGGER.info("step 3: Get result using common timestamp");
+        LOGGER.info("calculate common timestamps complete.");
 
         QueryDataSet ret = queryDataSet;
         for (Path path : paths) {
@@ -619,10 +611,36 @@ public class OverflowQueryEngine {
         int idx = 0;
         for (int i = 0; i < updateTrue.valueLength; i++) {
             while (idx < oneColData.valueLength && updateTrue.getTime(i * 2 + 1) >= oneColData.getTime(idx)) {
-                if (updateTrue.getTime(i) <= oneColData.getTime(idx)) {
-                    oneColData.updateAValueFromDynamicOneColumnData(updateTrue, i, idx);
+                if (updateTrue.getTime(i * 2) <= oneColData.getTime(idx)) {
+                    // oneColData.updateAValueFromDynamicOneColumnData(updateTrue, i, idx);
+                    switch (oneColData.dataType) {
+                        case BOOLEAN:
+                            oneColData.setBoolean(idx, updateTrue.getBoolean(i));
+                            break;
+                        case INT32:
+                            oneColData.setInt(idx, updateTrue.getInt(i));
+                            break;
+                        case INT64:
+                            oneColData.setLong(idx, updateTrue.getLong(i));
+                            break;
+                        case FLOAT:
+                            oneColData.setFloat(idx, updateTrue.getFloat(i));
+                            break;
+                        case DOUBLE:
+                            oneColData.setDouble(idx, updateTrue.getDouble(i));
+                            break;
+                        case TEXT:
+                            oneColData.setBinary(idx, updateTrue.getBinary(i));
+                            break;
+                        case ENUMS:
+                        default:
+                            throw new UnSupportedDataTypeException(String.valueOf(oneColData.dataType));
+                    }
                 }
                 idx++;
+            }
+            if (idx >= oneColData.valueLength) {
+                break;
             }
         }
 
