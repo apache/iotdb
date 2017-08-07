@@ -291,11 +291,7 @@ public class OverflowQueryEngine {
     private QueryDataSet crossColumnQuery(List<Path> paths,
                                                  SingleSeriesFilterExpression timeFilter, SingleSeriesFilterExpression freqFilter, CrossSeriesFilterExpression valueFilter,
                                                  QueryDataSet queryDataSet, int fetchSize) throws ProcessorException, IOException, PathErrorException {
-
-        LOGGER.info("start cross columns getIndex...");
         clearQueryDataSet(queryDataSet);
-        // Step 1: calculate common timestamp
-        LOGGER.info("step 1: init time value generator...");
         if (queryDataSet == null) {
             // reset status of RecordReader used ValueFilter
             resetRecordStatusUsingValueFilter(valueFilter, new HashSet<String>());
@@ -313,14 +309,10 @@ public class OverflowQueryEngine {
                 }
             };
         }
-
-        LOGGER.info("step 1 done.");
-        LOGGER.info("step 2: calculate timeRet...");
+        
+        // calculate common timestamp
         long[] timeRet = queryDataSet.timeQueryDataSet.generateTimes();
-        LOGGER.info("step 2 done. timeRet size is: " + timeRet.length + ", FetchSize is: " + fetchSize);
-
-        // Step 3: Get result using common timestamp
-        LOGGER.info("step 3: Get result using common timestamp");
+        LOGGER.info("calculate common timestamps complete.");
 
         QueryDataSet ret = queryDataSet;
         for (Path path : paths) {
