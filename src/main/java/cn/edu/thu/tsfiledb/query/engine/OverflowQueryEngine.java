@@ -619,10 +619,36 @@ public class OverflowQueryEngine {
         int idx = 0;
         for (int i = 0; i < updateTrue.valueLength; i++) {
             while (idx < oneColData.valueLength && updateTrue.getTime(i * 2 + 1) >= oneColData.getTime(idx)) {
-                if (updateTrue.getTime(i) <= oneColData.getTime(idx)) {
-                    oneColData.updateAValueFromDynamicOneColumnData(updateTrue, i, idx);
+                if (updateTrue.getTime(i * 2) <= oneColData.getTime(idx)) {
+                    // oneColData.updateAValueFromDynamicOneColumnData(updateTrue, i, idx);
+                    switch (oneColData.dataType) {
+                        case BOOLEAN:
+                            oneColData.setBoolean(idx, updateTrue.getBoolean(i));
+                            break;
+                        case INT32:
+                            oneColData.setInt(idx, updateTrue.getInt(i));
+                            break;
+                        case INT64:
+                            oneColData.setLong(idx, updateTrue.getLong(i));
+                            break;
+                        case FLOAT:
+                            oneColData.setFloat(idx, updateTrue.getFloat(i));
+                            break;
+                        case DOUBLE:
+                            oneColData.setDouble(idx, updateTrue.getDouble(i));
+                            break;
+                        case TEXT:
+                            oneColData.setBinary(idx, updateTrue.getBinary(i));
+                            break;
+                        case ENUMS:
+                        default:
+                            throw new UnSupportedDataTypeException(String.valueOf(oneColData.dataType));
+                    }
                 }
                 idx++;
+            }
+            if (idx >= oneColData.valueLength) {
+                break;
             }
         }
 
