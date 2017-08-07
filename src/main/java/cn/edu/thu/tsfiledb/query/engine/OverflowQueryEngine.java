@@ -309,7 +309,7 @@ public class OverflowQueryEngine {
                 }
             };
         }
-        
+
         // calculate common timestamp
         long[] timeRet = queryDataSet.timeQueryDataSet.generateTimes();
         LOGGER.info("calculate common timestamps complete.");
