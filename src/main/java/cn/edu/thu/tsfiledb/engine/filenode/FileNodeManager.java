@@ -482,6 +482,24 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 		}
 	}
 	
+	public void clearAllLastUpateTime(String namespacePath) throws FileNodeManagerException{
+		FileNodeProcessor fileNodeProcessor = null;
+		try {
+			do {
+				fileNodeProcessor = getProcessorWithDeltaObjectIdByLRU(namespacePath, true);
+			} while (fileNodeProcessor == null);
+			fileNodeProcessor.clearAllLastUpdateTime();
+			LOGGER.debug("Get the FileNodeProcessor: {}, begin query.", fileNodeProcessor.getNameSpacePath());
+		} catch (LRUManagerException e) {
+			e.printStackTrace();
+			throw new FileNodeManagerException(e);
+		} finally {
+			if (fileNodeProcessor != null) {
+				fileNodeProcessor.writeUnlock();
+			}
+		}
+	}
+	
 	public synchronized boolean closeOneFileNode(String namespacePath) throws FileNodeManagerException{
 		if (fileNodeManagerStatus == FileNodeManagerStatus.NONE) {
 			fileNodeManagerStatus = FileNodeManagerStatus.CLOSE;
