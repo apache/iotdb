@@ -130,10 +130,12 @@ public class FileNodeProcessor extends LRUProcessor {
 
 	private void addLastTimeToIntervalFile() {
 
+		/*
 		if (lastUpdateTimeMap.isEmpty()) {
 			LOGGER.error("The lastUpdateTimeMap is empty when close the bufferwrite file");
 			throw new ProcessorRuntimException("The lastUpdateTimeMap is empty when close the bufferwrite file");
 		}
+		*/
 		if (!newFileNodes.isEmpty()) {
 			// end time with one start time
 			Map<String, Long> endTimeMap = new HashMap<>();
@@ -180,6 +182,10 @@ public class FileNodeProcessor extends LRUProcessor {
 			}
 		}
 	};
+	
+	public void clearAllLastUpdateTime(){
+		lastUpdateTimeMap.clear();
+	}
 
 	public FileNodeProcessor(String fileNodeDirPath, String nameSpacePath, Map<String, Object> parameters)
 			throws FileNodeProcessorException {
