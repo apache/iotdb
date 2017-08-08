@@ -10,7 +10,6 @@ import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
-import org.joda.time.DateTimeZone;
 
 import cn.edu.thu.tsfiledb.exception.ArgsErrorException;
 import jline.console.ConsoleReader;
@@ -19,11 +18,12 @@ import jline.console.completer.Completer;
 public class Client extends AbstractClient {
 
 	private static final String[] args = new String[]{
-			"show", "set", "select", "drop", "update", "delete", "create", "insert",
-			"timeseries", "time_display_type", "time_zone","storage", "group", 
+			"show", "select", "drop", "update", "delete", "create", "insert",
+			"timeseries", "time_display_type", "time_zone", "storage", "group",
+			"datatype", "encoding",
 			"time", "timestamp", "values", "now()", "index", "fetch_size", "max_display_num",
-			"count", "max_time", "min_time", "max_value", "min_value",
-			"from", "where", "to", "on",
+			"count(", "max_time(", "min_time(", "max_value(", "min_value(", "subsequence_matching(",
+			"from", "where", "to", "on", "with", "using",
 			"and", "or",
 			"user", "role",
 			"exit", "quit"};
@@ -142,10 +142,10 @@ public class Client extends AbstractClient {
 		public int complete(String buffer, int cursor, List<CharSequence> candidates) {
 			if (buffer.length() > 0 && cursor > 0) {
 				int lastIndex = buffer.lastIndexOf(' ');
-				if(lastIndex > cursor) return cursor;
+				if (lastIndex > cursor) return cursor;
 				String substring = buffer.substring(lastIndex+1, cursor);
-				if(substring == null || substring.trim().equals("")) return cursor;
-				for(String arg : args){
+				if (substring.trim().equals("")) return cursor;
+				for (String arg : args) {
 					if (arg.startsWith(substring)) {
 						candidates.add(arg);	
 					}
