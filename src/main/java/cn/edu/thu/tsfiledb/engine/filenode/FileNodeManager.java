@@ -48,13 +48,13 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 	private Set<String> overflowNameSpaceSet;
 	private Set<String> backUpOverflowNameSpaceSet;
 
-//	private static final Lock instanceLock = new ReentrantLock(false);
-//	private static FileNodeManager instance;
-	
-	private static class FileNodeManagerHolder {  
-        private static final FileNodeManager INSTANCE = new FileNodeManager(TsFileDBConf.maxOpenFolder, 
-        		MManager.getInstance(), TsFileDBConf.fileNodeDir);
-    }
+	// private static final Lock instanceLock = new ReentrantLock(false);
+	// private static FileNodeManager instance;
+
+	private static class FileNodeManagerHolder {
+		private static final FileNodeManager INSTANCE = new FileNodeManager(TsFileDBConf.maxOpenFolder,
+				MManager.getInstance(), TsFileDBConf.fileNodeDir);
+	}
 
 	private FileNodeManagerStatus fileNodeManagerStatus = FileNodeManagerStatus.NONE;
 
@@ -81,14 +81,15 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 		return FileNodeManagerHolder.INSTANCE;
 	}
 
-//	public static void init(int maxNodeNum, MManager mManager, String fileNodeDirPath) {
-//		instanceLock.lock();
-//		try {
-//			instance = new FileNodeManager(maxNodeNum, mManager, fileNodeDirPath);
-//		} finally {
-//			instanceLock.unlock();
-//		}
-//	}
+	// public static void init(int maxNodeNum, MManager mManager, String
+	// fileNodeDirPath) {
+	// instanceLock.lock();
+	// try {
+	// instance = new FileNodeManager(maxNodeNum, mManager, fileNodeDirPath);
+	// } finally {
+	// instanceLock.unlock();
+	// }
+	// }
 
 	private FileNodeManager(int maxLRUNumber, MManager mManager, String normalDataDir) {
 		super(maxLRUNumber, mManager, normalDataDir);
@@ -481,10 +482,28 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 			return false;
 		}
 	}
-	
-	public synchronized boolean closeOneFileNode(String namespacePath) throws FileNodeManagerException{
+
+	public synchronized boolean closeOneFileNode(String namespacePath) throws FileNodeManagerException {
 		if (fileNodeManagerStatus == FileNodeManagerStatus.NONE) {
 			fileNodeManagerStatus = FileNodeManagerStatus.CLOSE;
+			// check the filenode has bufferwrite or not
+			FileNodeProcessor fileNodeProcessor = null;
+			try {
+				do {
+					fileNodeProcessor = getProcessorWithDeltaObjectIdByLRU(namespacePath, true);
+				} while (fileNodeProcessor == null);
+				if(!fileNodeProcessor.hasBufferwriteProcessor()){
+					return true;
+				}
+			} catch (LRUManagerException e) {
+				e.printStackTrace();
+				throw new FileNodeManagerException(e);
+			} finally {
+				if (fileNodeProcessor != null) {
+					fileNodeProcessor.writeUnlock();
+				}
+			}
+			// close bufferwrite data
 			try {
 				return super.closeOneProcessor(namespacePath);
 			} catch (LRUManagerException e) {
