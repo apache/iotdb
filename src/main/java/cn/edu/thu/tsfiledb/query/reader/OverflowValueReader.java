@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
 
+import cn.edu.thu.tsfile.common.exception.ProcessorException;
 import cn.edu.thu.tsfile.common.utils.Binary;
 import cn.edu.thu.tsfile.common.utils.TSRandomAccessFileReader;
 import cn.edu.thu.tsfile.encoding.decoder.Decoder;
@@ -808,7 +809,7 @@ public class OverflowValueReader extends ValueReader {
 
     AggregationResult aggreate(AggregateFunction func, InsertDynamicData insertMemoryData,
                                       DynamicOneColumnData updateTrue, DynamicOneColumnData updateFalse, SingleSeriesFilterExpression timeFilter,
-                                      SingleSeriesFilterExpression freqFilter, SingleSeriesFilterExpression valueFilter) throws IOException {
+                                      SingleSeriesFilterExpression freqFilter, SingleSeriesFilterExpression valueFilter) throws IOException, ProcessorException {
 
         // initialize
         DynamicOneColumnData res = new DynamicOneColumnData(dataType, true);

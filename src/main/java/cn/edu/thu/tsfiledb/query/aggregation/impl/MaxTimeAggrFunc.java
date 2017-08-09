@@ -1,5 +1,6 @@
 package cn.edu.thu.tsfiledb.query.aggregation.impl;
 
+import cn.edu.thu.tsfile.common.exception.ProcessorException;
 import cn.edu.thu.tsfile.common.utils.Pair;
 import cn.edu.thu.tsfile.file.metadata.enums.TSDataType;
 import cn.edu.thu.tsfile.format.PageHeader;
@@ -33,7 +34,7 @@ public class MaxTimeAggrFunc extends AggregateFunction {
     }
 
     @Override
-    public void calculateValueFromDataInThisPage(DynamicOneColumnData dataInThisPage) throws IOException {
+    public void calculateValueFromDataInThisPage(DynamicOneColumnData dataInThisPage) throws IOException, ProcessorException {
         if (dataInThisPage instanceof InsertDynamicData) {
             Pair<Long, Object> pair = ((InsertDynamicData) dataInThisPage).calcAggregation("MAX_TIME");
             if (pair.left != 0) {
