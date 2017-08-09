@@ -35,15 +35,12 @@ import cn.edu.thu.tsfiledb.service.rpc.thrift.TSFetchResultsResp;
 import cn.edu.thu.tsfiledb.service.rpc.thrift.TSIService;
 import cn.edu.thu.tsfiledb.service.rpc.thrift.TSOperationHandle;
 import cn.edu.thu.tsfiledb.service.rpc.thrift.TS_SessionHandle;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import cn.edu.thu.tsfile.timeseries.read.query.QueryDataSet;
 import cn.edu.thu.tsfile.timeseries.read.support.Field;
 import cn.edu.thu.tsfile.timeseries.read.support.RowRecord;
 
 public class TsfileQueryResultSet implements ResultSet {
-	private static final Logger LOGGER = LoggerFactory.getLogger(TsfileQueryResultSet.class);
 
 	private Statement statement = null;
 	private String sql;
@@ -612,7 +609,7 @@ public class TsfileQueryResultSet implements ResultSet {
 	@Override
 	public boolean next() throws SQLException {
 		if (maxRows > 0 && rowsFetched >= maxRows) {
-			LOGGER.info("Reach max rows {}", maxRows);
+			System.out.println("Reach max rows " + maxRows);
 			return false;
 		}
 
