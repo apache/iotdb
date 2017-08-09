@@ -42,8 +42,8 @@ public class OverflowProcessor extends LRUProcessor {
 	private OverflowSupport ofSupport;
 	private final int memoryBlockSize = TSFileDescriptor.getInstance().getConfig().groupSizeInByte;
 
-	private boolean isMerging = false;
-	private final FlushState flushState = new FlushState();
+	private volatile boolean isMerging = false;
+	private volatile FlushState flushState = new FlushState();
 
 	private static final String storeFileName = ".overflow";
 	private static final String restoreFileName = ".restore";

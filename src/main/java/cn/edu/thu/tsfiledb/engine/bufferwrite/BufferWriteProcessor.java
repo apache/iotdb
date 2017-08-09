@@ -63,7 +63,7 @@ public class BufferWriteProcessor extends LRUProcessor {
 	private static final int TSFILEPOINTBYTESIZE = 8;
 
 	private boolean isFlushingSync = false;
-	private final FlushState flushState = new FlushState();
+	private volatile FlushState flushState = new FlushState();
 	private ReadWriteLock convertBufferLock = new ReentrantReadWriteLock(false);
 
 	private FileSchema fileSchema;
