@@ -1,5 +1,6 @@
 package cn.edu.thu.tsfiledb.query.aggregation.impl;
 
+import cn.edu.thu.tsfile.common.exception.ProcessorException;
 import cn.edu.thu.tsfile.common.exception.UnSupportedDataTypeException;
 import cn.edu.thu.tsfile.common.utils.Binary;
 import cn.edu.thu.tsfile.common.utils.Pair;
@@ -41,7 +42,7 @@ public class MinValueAggrFunc extends AggregateFunction {
     }
 
     @Override
-    public void calculateValueFromDataInThisPage(DynamicOneColumnData dataInThisPage) throws IOException {
+    public void calculateValueFromDataInThisPage(DynamicOneColumnData dataInThisPage) throws IOException, ProcessorException {
         if (dataInThisPage instanceof InsertDynamicData) {
             Pair<Long, Object> pair = ((InsertDynamicData) dataInThisPage).calcAggregation("MIN_VALUE");
             if (pair.left != 0) {

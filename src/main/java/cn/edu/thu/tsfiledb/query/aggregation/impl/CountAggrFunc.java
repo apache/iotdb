@@ -1,5 +1,6 @@
 package cn.edu.thu.tsfiledb.query.aggregation.impl;
 
+import cn.edu.thu.tsfile.common.exception.ProcessorException;
 import cn.edu.thu.tsfile.common.utils.Pair;
 import cn.edu.thu.tsfile.file.metadata.enums.TSDataType;
 import cn.edu.thu.tsfile.format.PageHeader;
@@ -25,7 +26,7 @@ public class CountAggrFunc extends AggregateFunction {
     }
 
     @Override
-    public void calculateValueFromDataInThisPage(DynamicOneColumnData dataInThisPage) throws IOException {
+    public void calculateValueFromDataInThisPage(DynamicOneColumnData dataInThisPage) throws IOException, ProcessorException {
         if (dataInThisPage instanceof InsertDynamicData) {
             InsertDynamicData insertMemoryData = (InsertDynamicData) dataInThisPage;
             long preValue = result.data.getLong(0);
