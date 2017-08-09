@@ -10,7 +10,6 @@ import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
-import org.joda.time.DateTimeZone;
 
 import cn.edu.thu.tsfiledb.exception.ArgsErrorException;
 import jline.console.ConsoleReader;

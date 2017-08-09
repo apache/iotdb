@@ -162,8 +162,7 @@ public class TsfileStatement implements Statement {
 		}
 	    } else {
 		throw new SQLException(
-			String.format("Fail to reconnect to server when executing %s. please check server status"),
-			sql);
+			String.format("Fail to reconnect to server when executing %s. please check server status", sql));
 	    }
 	}
     }

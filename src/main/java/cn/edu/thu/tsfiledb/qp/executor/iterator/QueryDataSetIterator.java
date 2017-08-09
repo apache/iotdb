@@ -48,7 +48,8 @@ public class QueryDataSetIterator implements Iterator<QueryDataSet> {
             try {
                 data = conf.query(paths, timeFilter, freqFilter, valueFilter, fetchSize, usedData);
             } catch (ProcessorException e) {
-                throw new RuntimeException("meet error in hasNext" + Arrays.toString(e.getStackTrace()));
+            		logger.error("meet error in hasNext,", e);
+                throw new RuntimeException(e.getMessage());
             }
         if (data == null) {
             logger.error(
