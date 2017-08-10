@@ -1,5 +1,6 @@
 package cn.edu.thu.tsfiledb.query.dataset;
 
+import cn.edu.thu.tsfile.common.exception.ProcessorException;
 import cn.edu.thu.tsfile.common.exception.UnSupportedDataTypeException;
 import cn.edu.thu.tsfile.common.utils.Binary;
 import cn.edu.thu.tsfile.common.utils.Pair;
@@ -749,7 +750,7 @@ public class InsertDynamicData extends DynamicOneColumnData {
         }
     }
 
-    public Pair<Long, Object> calcAggregation(String aggType) throws IOException {
+    public Pair<Long, Object> calcAggregation(String aggType) throws IOException, ProcessorException {
         readStatusReset();
         rowNum = 0;
         minTime = Long.MAX_VALUE;
@@ -840,7 +841,7 @@ public class InsertDynamicData extends DynamicOneColumnData {
                         throw new UnSupportedDataTypeException("UnSupported datatype: " + dataType);
                 }
             default:
-                return null;
+                throw new ProcessorException("AggregateFunction not support. Name:" + aggType);
         }
     }
 }

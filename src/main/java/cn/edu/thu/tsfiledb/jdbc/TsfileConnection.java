@@ -32,8 +32,6 @@ import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransportException;
 import org.joda.time.DateTimeZone;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import cn.edu.thu.tsfiledb.service.rpc.thrift.TSIService;
 import cn.edu.thu.tsfiledb.service.rpc.thrift.TSCloseSessionReq;
@@ -46,7 +44,6 @@ import cn.edu.thu.tsfiledb.service.rpc.thrift.TSSetTimeZoneResp;
 import cn.edu.thu.tsfiledb.service.rpc.thrift.TS_SessionHandle;
 
 public class TsfileConnection implements Connection {
-    private static final Logger LOGGER = LoggerFactory.getLogger(TsfileConnection.class);
     private TsfileConnectionParams params;
     private boolean isClosed = true;
     private SQLWarning warningChain = null;
@@ -378,7 +375,7 @@ public class TsfileConnection implements Connection {
 		try {
 			transport.getSocket().setKeepAlive(true);
 		} catch (SocketException e) {
-		    LOGGER.error("Cannot set socket keep alive", e);
+		    System.out.println("Cannot set socket keep alive because: " + e.getMessage());
 		}
 		if (!transport.isOpen()) {
 		    transport.open();

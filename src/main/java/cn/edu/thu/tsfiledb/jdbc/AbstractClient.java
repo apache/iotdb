@@ -82,66 +82,62 @@ public abstract class AbstractClient {
 		
 	}
 	
-	public static void output(ResultSet res, boolean printToConsole, String statement, DateTimeZone timeZone) {
-		try {
-			int cnt = 0;
-			ResultSetMetaData resultSetMetaData = res.getMetaData();
-			int colCount = resultSetMetaData.getColumnCount();
-			boolean printTimestamp = res.getMetaData().getColumnTypeName(0) == null ? true : false; 
-			boolean printHeader = false;
+	public static void output(ResultSet res, boolean printToConsole, String statement, DateTimeZone timeZone) throws SQLException {
+		int cnt = 0;
+		ResultSetMetaData resultSetMetaData = res.getMetaData();
+		int colCount = resultSetMetaData.getColumnCount();
+		boolean printTimestamp = res.getMetaData().getColumnTypeName(0) == null ? true : false; 
+		boolean printHeader = false;
 
-			// Output values
-			while (res.next()) {
+		// Output values
+		while (res.next()) {
 
-				// Output Labels
-				if (!printHeader) {
-					printBlockLine(printTimestamp, colCount, res);
-					printName(printTimestamp, colCount, res);
-					printBlockLine(printTimestamp, colCount, res);
-					printHeader = true;
-				}
-				if (cnt < maxPrintRowCount) {
-					System.out.print("|");
-					if (printTimestamp) {
-						System.out.printf(formatTime, formatDatetime(res.getLong(TIMESTAMP_STR), timeZone));
-					}
-				}
-
-				for (int i = 1; i < colCount; i++) {
-					if (printToConsole && cnt < maxPrintRowCount) {
-					    	if(resultSetMetaData.getColumnLabel(i).indexOf(TIME_KEY_WORD) != -1){
-					    		try {
-					    			System.out.printf(formatValue, formatDatetime(res.getLong(i), timeZone));
-							} catch (Exception e) {
-								System.out.printf(formatValue, "null");
-							}
-					    	    	
-					    	} else{
-							System.out.printf(formatValue, String.valueOf(res.getString(i)));
-					    	}
-					}
-				}
-
-				if (printToConsole && cnt < maxPrintRowCount) {
-					System.out.printf("\n");
-				}
-				cnt++;
-
-				if (!printToConsole && cnt % 10000 == 0) {
-					System.out.println(cnt);
-				}
-			}
+			// Output Labels
 			if (!printHeader) {
 				printBlockLine(printTimestamp, colCount, res);
 				printName(printTimestamp, colCount, res);
 				printBlockLine(printTimestamp, colCount, res);
 				printHeader = true;
 			}
-			printBlockLine(printTimestamp, colCount, res);
-			System.out.println("record number = " + cnt);
-		} catch (Exception e) {
-			System.out.println(e.getMessage());
+			if (cnt < maxPrintRowCount) {
+				System.out.print("|");
+				if (printTimestamp) {
+					System.out.printf(formatTime, formatDatetime(res.getLong(TIMESTAMP_STR), timeZone));
+				}
+			}
+
+			for (int i = 1; i < colCount; i++) {
+				if (printToConsole && cnt < maxPrintRowCount) {
+				    	if(resultSetMetaData.getColumnLabel(i).indexOf(TIME_KEY_WORD) != -1){
+				    		try {
+				    			System.out.printf(formatValue, formatDatetime(res.getLong(i), timeZone));
+						} catch (Exception e) {
+							System.out.printf(formatValue, "null");
+						}
+				    	    	
+				    	} else{
+						System.out.printf(formatValue, String.valueOf(res.getString(i)));
+				    	}
+				}
+			}
+
+			if (printToConsole && cnt < maxPrintRowCount) {
+				System.out.printf("\n");
+			}
+			cnt++;
+
+			if (!printToConsole && cnt % 10000 == 0) {
+				System.out.println(cnt);
+			}
 		}
+		if (!printHeader) {
+			printBlockLine(printTimestamp, colCount, res);
+			printName(printTimestamp, colCount, res);
+			printBlockLine(printTimestamp, colCount, res);
+			printHeader = true;
+		}
+		printBlockLine(printTimestamp, colCount, res);
+		System.out.println("record number = " + cnt);
 	}
 
 	protected static Options createOptions() {

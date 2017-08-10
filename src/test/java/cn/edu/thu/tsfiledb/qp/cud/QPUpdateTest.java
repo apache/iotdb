@@ -6,6 +6,8 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Iterator;
 
+import cn.edu.thu.tsfiledb.query.management.RecordReaderFactory;
+import cn.edu.thu.tsfiledb.query.reader.RecordReader;
 import org.apache.commons.io.FileUtils;
 import org.junit.After;
 import org.junit.Test;
@@ -34,8 +36,8 @@ public class QPUpdateTest {
 //		}
 	}
 
-	//@Test
-	public void test() throws QueryProcessorException, ArgsErrorException, ProcessorException {
+	// @Test
+	public void test() throws QueryProcessorException, ArgsErrorException, ProcessorException, IOException {
         init();
         testUpdate();
         testUpdate2();
@@ -61,7 +63,7 @@ public class QPUpdateTest {
 		processor.getExecutor().processNonQuery(plan);
 	}
 	
-	private void testUpdate2() throws QueryProcessorException, ArgsErrorException, ProcessorException{
+	private void testUpdate2() throws QueryProcessorException, ArgsErrorException, ProcessorException, IOException {
 		String sql = "update root.qp_update_test.device_1.sensor_1 set value=100 where time>100 or (time<=50 and time>10)";
 		PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sql);
 		boolean upRet = processor.getExecutor().processNonQuery(plan);
@@ -79,6 +81,8 @@ public class QPUpdateTest {
 			assertEquals("update time must be greater than 0.", e.getMessage());
 		}
 		sql = "update root.qp_update_test.device_1.sensor_1 set value=100 where time<100";
+		// remove read cache compulsory
+		RecordReaderFactory.getInstance().removeRecordReader("root.qp_update_test.device_1", "sensor_1");
 		try {
 			plan = processor.parseSQLToPhysicalPlan(sql);
 			processor.getExecutor().processNonQuery(plan);
@@ -126,7 +130,7 @@ public class QPUpdateTest {
 		assertEquals(expect.length, i);
 	}
 	
-	private void testDeletePaths() throws QueryProcessorException, ProcessorException, ArgsErrorException {
+	private void testDeletePaths() throws QueryProcessorException, ProcessorException, ArgsErrorException, IOException {
 		String sqlStr = "delete from root.qp_update_test.device_1 where time < 15";
 		PhysicalPlan plan1 = processor.parseSQLToPhysicalPlan(sqlStr);
 		boolean upRet = processor.getExecutor().processNonQuery(plan1);
@@ -135,6 +139,8 @@ public class QPUpdateTest {
 		// query to assert
 		sqlStr = "select sensor_1,sensor_2 from root.qp_update_test.device_1";
 		PhysicalPlan plan2 = processor.parseSQLToPhysicalPlan(sqlStr);
+		RecordReaderFactory.getInstance().removeRecordReader("root.qp_update_test.device_1", "sensor_1");
+		RecordReaderFactory.getInstance().removeRecordReader("root.qp_update_test.device_1", "sensor_2");
 		Iterator<QueryDataSet> iter = processor.getExecutor().processQuery(plan2);
 
 		String[] expect = { "20	null	10" };
@@ -148,7 +154,7 @@ public class QPUpdateTest {
 		assertEquals(expect.length, i);
 	}
 	
-	private void testDelete() throws QueryProcessorException, ProcessorException, ArgsErrorException {
+	private void testDelete() throws QueryProcessorException, ProcessorException, ArgsErrorException, IOException {
 		String sqlStr = "delete from root.qp_update_test.device_1.sensor_1 where time < 15";
 		PhysicalPlan plan1 = processor.parseSQLToPhysicalPlan(sqlStr);
 		boolean upRet = processor.getExecutor().processNonQuery(plan1);
@@ -157,6 +163,8 @@ public class QPUpdateTest {
 		// query to assert
 		sqlStr = "select sensor_1,sensor_2 from root.qp_update_test.device_1";
 		PhysicalPlan plan2 = processor.parseSQLToPhysicalPlan(sqlStr);
+		RecordReaderFactory.getInstance().removeRecordReader("root.qp_update_test.device_1", "sensor_1");
+		RecordReaderFactory.getInstance().removeRecordReader("root.qp_update_test.device_1", "sensor_2");
 		Iterator<QueryDataSet> iter = processor.getExecutor().processQuery(plan2);
 
 		String[] expect = { "20	null	10" };
@@ -170,7 +178,7 @@ public class QPUpdateTest {
 		assertEquals(expect.length, i);
 	}
 	
-	private void testInsert() throws QueryProcessorException, ProcessorException, ArgsErrorException {
+	private void testInsert() throws QueryProcessorException, ProcessorException, ArgsErrorException, IOException {
 		String sqlStr = "insert into root.qp_update_test.device_1 (timestamp, sensor_1, sensor_2) values (13, 50, 40)";
 		PhysicalPlan plan1 = processor.parseSQLToPhysicalPlan(sqlStr);
 
@@ -178,6 +186,8 @@ public class QPUpdateTest {
 		boolean upRet = processor.getExecutor().processNonQuery(plan1);
 		assertTrue(upRet);
 
+		RecordReaderFactory.getInstance().removeRecordReader("root.qp_update_test.device_1", "sensor_1");
+		RecordReaderFactory.getInstance().removeRecordReader("root.qp_update_test.device_1", "sensor_2");
 		// query to assert
 		sqlStr = "select sensor_1,sensor_2 from root.qp_update_test.device_1";
 		PhysicalPlan plan2 = processor.parseSQLToPhysicalPlan(sqlStr);
