@@ -9,7 +9,7 @@ package cn.edu.thu.tsfiledb.engine.utils;
  */
 public class FlushState {
 
-	private boolean isFlushing;
+	private volatile boolean isFlushing;
 
 	public FlushState() {
 		this.isFlushing = false;
