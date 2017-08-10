@@ -396,7 +396,7 @@ public class MTree implements Serializable {
 		if (nodes.length == 0 || !nodes[0].equals(getRoot().getName())) {
 			throw new PathErrorException(String.format("Timeseries %s is not correct", pathReg));
 		}
-		findPath(getRoot(), nodes, 1, "", paths, false);
+		findPath(getRoot(), nodes, 1, "", paths);
 		return paths;
 	}
 
@@ -515,14 +515,15 @@ public class MTree implements Serializable {
 		}
 	}
 
-	private boolean findPath(MNode node, String[] nodes, int idx, String parent,
-			HashMap<String, ArrayList<String>> paths, boolean pathExist) {
+	private void findPath(MNode node, String[] nodes, int idx, String parent,
+			HashMap<String, ArrayList<String>> paths) {
 		if (node.isLeaf()) {
-			String fileName = node.getDataFileName();
-			String nodePath = parent + node;
-			putAPath(paths, fileName, nodePath);
-			pathExist = true;
-			return pathExist;
+			if(nodes.length <= idx){
+				String fileName = node.getDataFileName();
+				String nodePath = parent + node;
+				putAPath(paths, fileName, nodePath);
+			}
+			return;
 		}
 		String nodeReg;
 		if (idx >= nodes.length) {
@@ -535,15 +536,14 @@ public class MTree implements Serializable {
 			if (!node.hasChild(nodeReg)) {
 
 			} else {
-				pathExist = findPath(node.getChild(nodeReg), nodes, idx + 1, parent + node.getName() + ".", paths,
-						pathExist);
+				findPath(node.getChild(nodeReg), nodes, idx + 1, parent + node.getName() + ".", paths);
 			}
 		} else {
 			for (MNode child : node.getChildren().values()) {
-				pathExist = findPath(child, nodes, idx + 1, parent + node.getName() + ".", paths, pathExist);
+				findPath(child, nodes, idx + 1, parent + node.getName() + ".", paths);
 			}
 		}
-		return pathExist;
+		return;
 	}
 
 	private void putAPath(HashMap<String, ArrayList<String>> paths, String fileName, String nodePath) {
