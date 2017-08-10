@@ -240,7 +240,7 @@ public class MTree implements Serializable {
 	 *            Format: root.node.(node)* Notice: Path must be a complete Path
 	 *            from root to leaf node.
 	 */
-	public void deletePath(String path) throws PathErrorException {
+	public String deletePath(String path) throws PathErrorException {
 		String[] nodes = path.split(separator);
 		if (nodes.length == 0 || !nodes[0].equals(getRoot().getName())) {
 			throw new PathErrorException("Timeseries %s is not correct." + path);
@@ -254,12 +254,21 @@ public class MTree implements Serializable {
 			}
 			cur = cur.getChild(nodes[i]);
 		}
+
+		// if the storage group node is deleted, the dataFileName should be return
+		String dataFileName = null;
+		if (cur.isStorageLevel())
+			dataFileName = cur.getDataFileName();
 		cur.getParent().deleteChild(cur.getName());
 		cur = cur.getParent();
 		while (cur != null && !cur.getName().equals("root") && cur.getChildren().size() == 0) {
+			if (cur.isStorageLevel())
+				dataFileName = cur.getDataFileName();
 			cur.getParent().deleteChild(cur.getName());
 			cur = cur.getParent();
 		}
+
+		return dataFileName;
 	}
 
 	/**
