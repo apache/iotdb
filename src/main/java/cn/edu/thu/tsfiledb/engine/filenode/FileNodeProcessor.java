@@ -144,9 +144,10 @@ public class FileNodeProcessor extends LRUProcessor {
 				endTimeMap.put(deltaObjectId, lastUpdateTimeMap.get(deltaObjectId));
 			}
 			currentIntervalFileNode.setEndTimeMap(endTimeMap);
-		} else {
-			throw new ProcessorRuntimException("The intervalFile list is empty when close bufferwrite file");
-		}
+		} 
+		// else {
+		// throw new ProcessorRuntimException("The intervalFile list is empty when close bufferwrite file");
+		// }
 	}
 
 	public void addIntervalFileNode(long startTime, String fileName) throws Exception {
