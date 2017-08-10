@@ -483,13 +483,13 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 		}
 	}
 	
-	public void clearAllLastUpateTime(String namespacePath) throws FileNodeManagerException{
+	public void clearOneFileNode(String namespacePath) throws FileNodeManagerException{
 		FileNodeProcessor fileNodeProcessor = null;
 		try {
 			do {
-				fileNodeProcessor = getProcessorWithDeltaObjectIdByLRU(namespacePath, true);
+				fileNodeProcessor = getProcessorByLRU(namespacePath, true);
 			} while (fileNodeProcessor == null);
-			fileNodeProcessor.clearAllLastUpdateTime();
+			fileNodeProcessor.clearFileNode();
 			LOGGER.debug("Get the FileNodeProcessor: {}, begin query.", fileNodeProcessor.getNameSpacePath());
 		} catch (LRUManagerException e) {
 			e.printStackTrace();
@@ -510,7 +510,7 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 			try {
 				try {
 					do {
-						fileNodeProcessor = getProcessorWithDeltaObjectIdByLRU(namespacePath, true);
+						fileNodeProcessor = getProcessorByLRU(namespacePath, true);
 					} while (fileNodeProcessor == null);
 					if (!fileNodeProcessor.hasBufferwriteProcessor()) {
 						return true;

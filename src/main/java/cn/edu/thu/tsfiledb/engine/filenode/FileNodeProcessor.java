@@ -183,8 +183,17 @@ public class FileNodeProcessor extends LRUProcessor {
 		}
 	};
 	
-	public void clearAllLastUpdateTime(){
+	public void clearFileNode(){
 		lastUpdateTimeMap.clear();
+		emptyIntervalFileNode = new IntervalFileNode(OverflowChangeType.NO_CHANGE, null);
+		newFileNodes = new ArrayList<>();
+		isMerging = FileNodeProcessorStatus.NONE;
+		numOfMergeFile = 0;
+		fileNodeProcessorStore.setLastUpdateTimeMap(lastUpdateTimeMap);
+		fileNodeProcessorStore.setFileNodeProcessorState(isMerging);
+		fileNodeProcessorStore.setNewFileNodes(newFileNodes);
+		fileNodeProcessorStore.setNumOfMergeFile(numOfMergeFile);
+		fileNodeProcessorStore.setEmptyIntervalFileNode(emptyIntervalFileNode);
 	}
 
 	public FileNodeProcessor(String fileNodeDirPath, String nameSpacePath, Map<String, Object> parameters)

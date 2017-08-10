@@ -345,7 +345,18 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 						// no operation
 					}
 					for (String p : fullPath) {
-						mManager.deletePathFromMTree(p);
+						String nsp = mManager.deletePathFromMTree(p);
+						if(nsp!=null){
+							// clear filenode
+							try {
+								fileNodeManager.clearOneFileNode(path.getFullPath());
+								// close processor
+								fileNodeManager.closeOneFileNode(path.getFullPath());
+							} catch (FileNodeManagerException e) {
+								e.printStackTrace();
+								throw new ProcessorException(e.getMessage());
+							}
+						}
 					}
 				}
 				break;
@@ -357,15 +368,6 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 				 * only once
 				 */
 				mManager.setStorageLevelToMTree(path.getFullPath());
-				// clear lastupdatetime
-				try {
-					fileNodeManager.clearAllLastUpateTime(path.getFullPath());
-					// close processor
-					fileNodeManager.closeOneFileNode(path.getFullPath());
-				} catch (FileNodeManagerException e) {
-					e.printStackTrace();
-					throw new ProcessorException(e.getMessage());
-				}
 				break;
 			default:
 				throw new ProcessorException("unknown namespace type:" + namespaceType);
