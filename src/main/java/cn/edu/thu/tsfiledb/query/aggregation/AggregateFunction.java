@@ -1,5 +1,6 @@
 package cn.edu.thu.tsfiledb.query.aggregation;
 
+import cn.edu.thu.tsfile.common.exception.ProcessorException;
 import cn.edu.thu.tsfile.file.metadata.enums.TSDataType;
 import cn.edu.thu.tsfile.format.PageHeader;
 import cn.edu.thu.tsfile.timeseries.filter.definition.SingleSeriesFilterExpression;
@@ -29,7 +30,7 @@ public abstract class AggregateFunction {
     /**
      * Calculate the value according to all data in this page.
      */
-    public abstract void calculateValueFromDataInThisPage(DynamicOneColumnData dataInThisPage) throws IOException;
+    public abstract void calculateValueFromDataInThisPage(DynamicOneColumnData dataInThisPage) throws IOException, ProcessorException;
 
     public boolean calculateFromPageHeader(PageHeader pageHeader) {
         boolean ret = calculateValueFromPageHeader(pageHeader);
@@ -39,12 +40,12 @@ public abstract class AggregateFunction {
         return ret;
     }
 
-    public void calculateFromDataInThisPage(DynamicOneColumnData dataInThisPage) throws IOException {
+    public void calculateFromDataInThisPage(DynamicOneColumnData dataInThisPage) throws IOException, ProcessorException {
         calculateValueFromDataInThisPage(dataInThisPage);
         addCount(dataInThisPage);
     }
 
-    public void calculateFromLeftMemoryData(InsertDynamicData insertMemoryData) throws IOException {
+    public void calculateFromLeftMemoryData(InsertDynamicData insertMemoryData) throws IOException, ProcessorException {
         calculateValueFromDataInThisPage(insertMemoryData);
         // addCount(insertMemoryData);
     }

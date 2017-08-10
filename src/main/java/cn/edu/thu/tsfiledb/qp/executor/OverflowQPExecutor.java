@@ -126,9 +126,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 
 			return ret;
 		} catch (Exception e) {
-			logger.error("Error in query", e);
-			e.printStackTrace();
-			return null;
+			throw new ProcessorException(e.getMessage());
 		}
 	}
 
