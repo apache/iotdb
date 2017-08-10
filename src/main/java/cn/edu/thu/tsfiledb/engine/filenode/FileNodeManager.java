@@ -489,28 +489,30 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 			// check the filenode has bufferwrite or not
 			FileNodeProcessor fileNodeProcessor = null;
 			try {
-				do {
-					fileNodeProcessor = getProcessorWithDeltaObjectIdByLRU(namespacePath, true);
-				} while (fileNodeProcessor == null);
-				if(!fileNodeProcessor.hasBufferwriteProcessor()){
-					return true;
+				try {
+					do {
+						fileNodeProcessor = getProcessorWithDeltaObjectIdByLRU(namespacePath, true);
+					} while (fileNodeProcessor == null);
+					if (!fileNodeProcessor.hasBufferwriteProcessor()) {
+						return true;
+					}
+				} catch (LRUManagerException e) {
+					e.printStackTrace();
+					throw new FileNodeManagerException(e);
 				}
-			} catch (LRUManagerException e) {
-				e.printStackTrace();
-				throw new FileNodeManagerException(e);
+				// close bufferwrite data
+				try {
+					return super.closeOneProcessor(namespacePath);
+				} catch (LRUManagerException e) {
+					e.printStackTrace();
+					throw new FileNodeManagerException(e);
+				} finally {
+					fileNodeManagerStatus = FileNodeManagerStatus.NONE;
+				}
 			} finally {
 				if (fileNodeProcessor != null) {
 					fileNodeProcessor.writeUnlock();
 				}
-			}
-			// close bufferwrite data
-			try {
-				return super.closeOneProcessor(namespacePath);
-			} catch (LRUManagerException e) {
-				e.printStackTrace();
-				throw new FileNodeManagerException(e);
-			} finally {
-				fileNodeManagerStatus = FileNodeManagerStatus.NONE;
 			}
 		} else {
 			return false;
