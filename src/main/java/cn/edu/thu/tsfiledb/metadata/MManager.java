@@ -201,15 +201,16 @@ public class MManager {
 		}
 	}
 
-	public void deletePathFromMTree(String path) throws PathErrorException, IOException {
+	public String deletePathFromMTree(String path) throws PathErrorException, IOException {
 		lock.writeLock().lock();
 		try {
-			mGraph.deletePath(path);
+			String dataFileName = mGraph.deletePath(path);
 			if (writeToLog) {
 				bw.write(MetadataOperationType.DELETE_PATH_FROM_MTREE + "," + path);
 				bw.newLine();
 				bw.flush();
 			}
+			return dataFileName;
 		} finally {
 			lock.writeLock().unlock();
 		}

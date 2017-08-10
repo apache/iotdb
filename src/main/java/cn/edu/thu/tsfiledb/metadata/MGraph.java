@@ -78,17 +78,18 @@ public class MGraph implements Serializable {
 	 * @param path a path belongs to MTree or PTree
 	 * @throws PathErrorException
 	 */
-	public void deletePath(String path) throws PathErrorException {
+	public String deletePath(String path) throws PathErrorException {
 		String nodes[] = path.trim().split(separator);
 		if (nodes.length == 0) {
 			throw new PathErrorException("Timeseries is null");
 		}
 		String rootName = path.trim().split(separator)[0];
 		if (mTree.getRoot().getName().equals(rootName)) {
-			mTree.deletePath(path);
+			return mTree.deletePath(path);
 		} else if (pTreeMap.containsKey(rootName)) {
 			PTree pTree = pTreeMap.get(rootName);
 			pTree.deletePath(path);
+			return null;
 		} else {
 			throw new PathErrorException("Timeseries's root is not Correct. RootName: " + rootName);
 		}
