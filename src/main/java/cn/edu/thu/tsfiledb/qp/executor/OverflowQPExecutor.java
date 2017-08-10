@@ -349,9 +349,9 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 						if(nsp!=null){
 							// clear filenode
 							try {
-								fileNodeManager.clearOneFileNode(path.getFullPath());
+								fileNodeManager.clearOneFileNode(nsp);
 								// close processor
-								fileNodeManager.closeOneFileNode(path.getFullPath());
+								fileNodeManager.closeOneFileNode(nsp);
 							} catch (FileNodeManagerException e) {
 								e.printStackTrace();
 								throw new ProcessorException(e.getMessage());
