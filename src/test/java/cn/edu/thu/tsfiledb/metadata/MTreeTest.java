@@ -27,6 +27,23 @@ public class MTreeTest {
 		MManager.getInstance().flushObjectToFile();
 		EngineTestHelper.delete(dbconfig.metadataDir);
 	}
+	
+	@Test
+	public void testAddLeftNodePath(){
+		MTree root = new MTree("root");
+		try {
+			root.addTimeseriesPath("root.laptop.d1.s1", "INT32", "RLE", new String[0]);
+		} catch (PathErrorException e) {
+			e.printStackTrace();
+			fail(e.getMessage());
+		}
+		try {
+			root.addTimeseriesPath("root.laptop.d1.s1.b", "INT32", "RLE", new String[0]);
+		} catch (PathErrorException e) {
+			assertEquals(String.format("The Node [%s] is left node, the timeseries %s can't be created",
+					"s1","root.laptop.d1.s1.b" ), e.getMessage());
+		}
+	}
 
 	@Test
 	public void testAddAndPathExist() {
