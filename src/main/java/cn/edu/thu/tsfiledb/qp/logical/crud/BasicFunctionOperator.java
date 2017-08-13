@@ -59,6 +59,10 @@ public class BasicFunctionOperator extends FunctionOperator {
         return singlePath;
     }
 
+    public void setSinglePath(Path singlePath) {
+        this.path = this.singlePath = singlePath;
+    }
+
     @Override
     protected Pair<SingleSeriesFilterExpression, String> transformToSingleFilter(QueryProcessExecutor executor, FilterSeriesType filterType)
             throws LogicalOperatorException, PathErrorException {
