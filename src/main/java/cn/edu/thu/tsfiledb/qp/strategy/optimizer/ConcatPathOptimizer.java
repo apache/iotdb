@@ -62,10 +62,11 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
             Path fromPath = fromPaths.get(0);
             if (!fromPath.startWith(SQLConstant.ROOT))
                 throw new LogicalOptimizeException("illegal from clause : " + fromPath.getFullPath());
-            for (Path selectPath : selectPaths) {
+            for (int i = 0;i < selectPaths.size();i++) {
+                Path selectPath = selectPaths.get(i);
                 if (!selectPath.startWith(SQLConstant.ROOT)) {
                     // add prefix root path
-                    selectPath.addHeadPath(fromPath);
+                    selectPaths.set(i, Path.addPrefixPath(selectPath, fromPath));
                 }
             }
             return selectPaths;
@@ -78,7 +79,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
                     if (!fromPath.startWith(SQLConstant.ROOT))
                         throw new LogicalOptimizeException("illegal from clause : " + fromPath.getFullPath());
                     Path newPath = selectPath.clone();
-                    newPath.addHeadPath(fromPath);
+                    newPath = Path.addPrefixPath(newPath, fromPath);
                     allPaths.add(newPath);
                 }
             }
@@ -102,7 +103,9 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
             if (!fromPath.startWith(SQLConstant.ROOT))
                 throw new LogicalOptimizeException("illegal from clause : " + fromPath.getFullPath());
             if (!filterPath.startWith(SQLConstant.ROOT)) {
-                filterPath.addHeadPath(fromPath);
+                Path newFilterPath = Path.addPrefixPath(filterPath, fromPath);
+                basicOperator.setSinglePath(newFilterPath);
+                // System.out.println("3===========" + basicOperator.getSinglePath());
             }
             //don't support select s1 from root.car.d1,root.car.d2 where s1 > 10
         } else if (!filterPath.startWith(SQLConstant.ROOT)){
