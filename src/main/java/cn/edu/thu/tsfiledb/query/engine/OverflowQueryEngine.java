@@ -6,7 +6,6 @@ import java.util.HashSet;
 import java.util.List;
 
 import cn.edu.thu.tsfile.common.exception.UnSupportedDataTypeException;
-import cn.edu.thu.tsfile.common.utils.Pair;
 import cn.edu.thu.tsfile.timeseries.filter.definition.filterseries.FilterSeries;
 import cn.edu.thu.tsfile.timeseries.filter.definition.operators.SingleBinaryExpression;
 import cn.edu.thu.tsfile.timeseries.filter.definition.operators.SingleUnaryExpression;
@@ -113,7 +112,7 @@ public class OverflowQueryEngine {
                 (SingleSeriesFilterExpression) freqFilter,
                 (SingleSeriesFilterExpression) valueFilter, null);
 
-        // Get 4 params
+        // get overflow params merged with bufferwrite insert data.
         List<Object> params = getOverflowInfoAndFilterDataInMem((SingleSeriesFilterExpression) timeFilter, (SingleSeriesFilterExpression) freqFilter,
                 (SingleSeriesFilterExpression) valueFilter, null, recordReader.insertPageInMemory, recordReader.overflowInfo);
         DynamicOneColumnData insertTrue = (DynamicOneColumnData) params.get(0);
@@ -262,46 +261,25 @@ public class OverflowQueryEngine {
         }
 
         return res;
-//        // Get 4 params
-//        List<Object> params = getOverflowInfoAndFilterDataInMem(timeFilter, freqFilter, valueFilter, res, recordReader.insertPageInMemory, recordReader.overflowInfo);
-//        DynamicOneColumnData insertTrue = (DynamicOneColumnData) params.get(0);
-//        DynamicOneColumnData updateTrue = (DynamicOneColumnData) params.get(1);
-//        DynamicOneColumnData updateFalse = (DynamicOneColumnData) params.get(2);
-//        SingleSeriesFilterExpression deleteFilter = (SingleSeriesFilterExpression) params.get(3);
-//
-//        if (recordReader.insertAllData == null) {
-//            recordReader.insertAllData = new InsertDynamicData(recordReader.bufferWritePageList, recordReader.compressionTypeName,
-//                    insertTrue, updateTrue, updateFalse,
-//                    deleteFilter, valueFilter, freqFilter, getDataTypeByPath(path));
-//        } else {
-//            recordReader.insertAllData.setBufferWritePageList(recordReader.bufferWritePageList);
-//            recordReader.insertAllData.setCurrentPageBuffer(insertTrue);
-//        }
-//
-//        DynamicOneColumnData oneColDataList = recordReader.getValueWithFilterAndOverflow(deltaObjectId, measurementId, updateTrue,
-//                updateFalse, recordReader.insertAllData, deleteFilter, freqFilter, valueFilter, res, fetchSize);
-//        oneColDataList.putOverflowInfo(insertTrue, updateTrue, updateFalse, deleteFilter);
-//        recordReader.closeFromFactory();
-//        return oneColDataList;
     }
 
     /**
      * Query type 3: cross series read.
      */
     private QueryDataSet crossColumnQuery(List<Path> paths,
-                                                 SingleSeriesFilterExpression timeFilter, SingleSeriesFilterExpression freqFilter, CrossSeriesFilterExpression valueFilter,
-                                                 QueryDataSet queryDataSet, int fetchSize) throws ProcessorException, IOException, PathErrorException {
+                                          SingleSeriesFilterExpression timeFilter, SingleSeriesFilterExpression freqFilter, CrossSeriesFilterExpression valueFilter,
+                                          QueryDataSet queryDataSet, int fetchSize) throws ProcessorException, IOException, PathErrorException {
         clearQueryDataSet(queryDataSet);
         if (queryDataSet == null) {
             // reset status of RecordReader used ValueFilter
-            resetRecordStatusUsingValueFilter(valueFilter, new HashSet<String>());
+            resetRecordStatusUsingValueFilter(valueFilter, new HashSet<>());
             queryDataSet = new QueryDataSet();
             queryDataSet.timeQueryDataSet = new CrossQueryTimeGenerator(timeFilter, freqFilter, valueFilter, fetchSize) {
                 @Override
                 public DynamicOneColumnData getDataInNextBatch(DynamicOneColumnData res, int fetchSize,
                                                                SingleSeriesFilterExpression valueFilter) throws ProcessorException, IOException {
                     try {
-                        return readOneColumnValueUseValueFilter(timeFilter, valueFilter, freqFilter, res, fetchSize);
+                        return getDataUseSingleValueFilter(timeFilter, valueFilter, freqFilter, res, fetchSize);
                     } catch (PathErrorException e) {
                         e.printStackTrace();
                         return null;
@@ -323,7 +301,7 @@ public class OverflowQueryEngine {
 
             RecordReader recordReader = RecordReaderFactory.getInstance().getRecordReader(deltaObject, measurement, null, null, null, null);
 
-            // Get 4 params
+            // get overflow params merged with bufferwrite insert data
             List<Object> params = getOverflowInfoAndFilterDataInMem(null, null, null, null, recordReader.insertPageInMemory, recordReader.overflowInfo);
             DynamicOneColumnData insertTrue = (DynamicOneColumnData) params.get(0);
             DynamicOneColumnData updateTrue = (DynamicOneColumnData) params.get(1);
@@ -355,33 +333,39 @@ public class OverflowQueryEngine {
 
     /**
      *  This function is only used for CrossQueryTimeGenerator.
+     *  A CrossSeriesFilterExpression is consist of many SingleSeriesFilterExpression.
+     *  e.g. CSAnd(d1.s1, d2.s1) is consist of d1.s1 and d2.s1, so this method would be invoked twice,
+     *  once for querying d1.s1, once for querying d2.s1.
+     *
+     *  Note that
      */
-    private DynamicOneColumnData readOneColumnValueUseValueFilter(SingleSeriesFilterExpression timeFilter, SingleSeriesFilterExpression valueFilter,
-                                                                         SingleSeriesFilterExpression freqFilter, DynamicOneColumnData res, int fetchSize) throws ProcessorException, IOException, PathErrorException {
+    private DynamicOneColumnData getDataUseSingleValueFilter(SingleSeriesFilterExpression timeFilter, SingleSeriesFilterExpression valueFilter,
+                                                             SingleSeriesFilterExpression freqFilter, DynamicOneColumnData res, int fetchSize)
+            throws ProcessorException, IOException, PathErrorException {
 
         String deltaObjectUID = ((SingleSeriesFilterExpression) valueFilter).getFilterSeries().getDeltaObjectUID();
         String measurementUID = ((SingleSeriesFilterExpression) valueFilter).getFilterSeries().getMeasurementUID();
 
         RecordReader recordReader = RecordReaderFactory.getInstance().getRecordReader(deltaObjectUID, measurementUID, null, freqFilter, valueFilter, null);
-        // Get 4 params
+        // get overflow params merged with bufferwrite insert data
         List<Object> params = getOverflowInfoAndFilterDataInMem( null, freqFilter, valueFilter, res, recordReader.insertPageInMemory, recordReader.overflowInfo);
         DynamicOneColumnData insertTrue = (DynamicOneColumnData) params.get(0);
         DynamicOneColumnData updateTrue = (DynamicOneColumnData) params.get(1);
         DynamicOneColumnData updateFalse = (DynamicOneColumnData) params.get(2);
-        SingleSeriesFilterExpression deleteFilter = (SingleSeriesFilterExpression) params.get(3);
+        SingleSeriesFilterExpression newTimeFilter = (SingleSeriesFilterExpression) params.get(3);
 
         if (recordReader.insertAllData == null) {
             recordReader.insertAllData = new InsertDynamicData(recordReader.bufferWritePageList, recordReader.compressionTypeName,
                     insertTrue, updateTrue, updateFalse,
-                    deleteFilter, valueFilter, freqFilter, mManager.getSeriesType(deltaObjectUID+"."+measurementUID));
+                    newTimeFilter, valueFilter, freqFilter, mManager.getSeriesType(deltaObjectUID+"."+measurementUID));
         } else {
             recordReader.insertAllData.setBufferWritePageList(recordReader.bufferWritePageList);
             recordReader.insertAllData.setCurrentPageBuffer(insertTrue);
         }
 
         res = recordReader.getValueWithFilterAndOverflow(deltaObjectUID, measurementUID, updateTrue, updateFalse, recordReader.insertAllData,
-                deleteFilter, freqFilter, valueFilter, res, fetchSize);
-        res.putOverflowInfo(insertTrue, updateTrue, updateFalse, deleteFilter);
+                newTimeFilter, freqFilter, valueFilter, res, fetchSize);
+        res.putOverflowInfo(insertTrue, updateTrue, updateFalse, newTimeFilter);
 
         recordReader.closeFromFactory();
         return res;
