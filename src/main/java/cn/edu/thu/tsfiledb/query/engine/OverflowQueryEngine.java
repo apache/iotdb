@@ -61,8 +61,15 @@ public class OverflowQueryEngine {
      */
     public QueryDataSet query(List<Path> paths, FilterExpression timeFilter, FilterExpression freqFilter,
                               FilterExpression valueFilter, QueryDataSet queryDataSet, int fetchSize) throws ProcessorException, IOException, PathErrorException {
+        System.out.println("=====================");
+        System.out.println("Query Paths: ");
+        for (Path path : paths) {
+            System.out.println(path);
+        }
+        System.out.println("TimeFilter: " + timeFilter);
+        System.out.println("ValueFilter: " + valueFilter);
+        System.out.println("=====================");
         clearQueryDataSet(queryDataSet);
-        // System.out.println();
         if (timeFilter == null && freqFilter == null && valueFilter == null) {
             return readWithoutFilter(paths, queryDataSet, fetchSize, null);
         } else if (valueFilter != null && valueFilter instanceof CrossSeriesFilterExpression) {
