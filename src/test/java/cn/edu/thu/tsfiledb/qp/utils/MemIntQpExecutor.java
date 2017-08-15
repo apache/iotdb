@@ -150,7 +150,7 @@ public class MemIntQpExecutor extends QueryProcessExecutor {
      * doesn't support frequency filter.
      */
     @Override
-    public QueryDataSet query(List<Path> paths, FilterExpression timeFilter,
+    public QueryDataSet query(int formNumber, List<Path> paths, FilterExpression timeFilter,
                               FilterExpression freqFilter, FilterExpression valueFilter, int fetchSize,
                               QueryDataSet lastData) {
         if (fetchSize == 0) {

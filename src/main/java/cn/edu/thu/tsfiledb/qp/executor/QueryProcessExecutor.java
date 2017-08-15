@@ -88,7 +88,7 @@ public abstract class QueryProcessExecutor {
 		return fetchSize.get();
 	}
 
-	public abstract QueryDataSet query(List<Path> paths, FilterExpression timeFilter, FilterExpression freqFilter,
+	public abstract QueryDataSet query(int formNumber, List<Path> paths, FilterExpression timeFilter, FilterExpression freqFilter,
 			FilterExpression valueFilter, int fetchSize, QueryDataSet lastData) throws ProcessorException;
 
 	/**

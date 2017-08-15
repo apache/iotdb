@@ -132,23 +132,22 @@ public class SeriesSelectPlan extends PhysicalPlan {
     }
 
 
+    public static Iterator<RowRecord>[] getRecordIteratorArray(List<SeriesSelectPlan> plans,
+                                                               QueryProcessExecutor executor) throws QueryProcessorException {
+        Iterator<RowRecord>[] ret = new RowRecordIterator[plans.size()];
+        for (int formNumber = 0; formNumber < plans.size(); formNumber++) {
+            ret[formNumber] = plans.get(formNumber).getRecordIterator(executor, formNumber);
+        }
+        return ret;
+    }
+
     /**
      * @param executor query process executor
      * @return Iterator<RowRecord>
      */
-    private Iterator<RowRecord> getRecordIterator(QueryProcessExecutor executor) throws QueryProcessorException {
+    private Iterator<RowRecord> getRecordIterator(QueryProcessExecutor executor, int formNumber) throws QueryProcessorException {
 
-        return new RowRecordIterator(paths, executor.getFetchSize(), executor, filterExpressions[0], filterExpressions[1], filterExpressions[2]);
-    }
-
-
-    public static Iterator<RowRecord>[] getRecordIteratorArray(List<SeriesSelectPlan> plans,
-                                                               QueryProcessExecutor conf) throws QueryProcessorException {
-        Iterator<RowRecord>[] ret = new RowRecordIterator[plans.size()];
-        for (int i = 0; i < plans.size(); i++) {
-            ret[i] = plans.get(i).getRecordIterator(conf);
-        }
-        return ret;
+        return new RowRecordIterator(formNumber, paths, executor.getFetchSize(), executor, filterExpressions[0], filterExpressions[1], filterExpressions[2]);
     }
 
     @Override
@@ -180,10 +179,12 @@ public class SeriesSelectPlan extends PhysicalPlan {
         private FilterExpression timeFilter;
         private FilterExpression freqFilter;
         private FilterExpression valueFilter;
+        private int formNumber;
 
-        public RowRecordIterator(List<Path> paths, int fetchSize, QueryProcessExecutor executor,
+        public RowRecordIterator(int formNumber, List<Path> paths, int fetchSize, QueryProcessExecutor executor,
                                  FilterExpression timeFilter, FilterExpression freqFilter,
                                  FilterExpression valueFilter) {
+            this.formNumber = formNumber;
             this.paths = paths;
             this.fetchSize = fetchSize;
             this.executor = executor;
@@ -198,7 +199,7 @@ public class SeriesSelectPlan extends PhysicalPlan {
                 return false;
             if (data == null || !data.hasNextRecord())
                 try {
-                    data = executor.query(paths, timeFilter, freqFilter, valueFilter, fetchSize, data);
+                    data = executor.query(formNumber, paths, timeFilter, freqFilter, valueFilter, fetchSize, data);
                 } catch (ProcessorException e) {
                     throw new RuntimeException(e.getMessage());
                 }
