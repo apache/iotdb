@@ -35,7 +35,7 @@ public class AggregateEngine {
         RecordReader recordReader = RecordReaderFactory.getInstance().getRecordReader(deltaObjectUID, measurementUID,
                 (SingleSeriesFilterExpression) timeFilter,
                 (SingleSeriesFilterExpression) freqFilter,
-                (SingleSeriesFilterExpression) valueFilter, null);
+                (SingleSeriesFilterExpression) valueFilter, null, "");
 
         // get overflow params merged with bufferwrite insert data.
         List<Object> params = EngineUtils.getOverflowInfoAndFilterDataInMem((SingleSeriesFilterExpression) timeFilter, (SingleSeriesFilterExpression) freqFilter,

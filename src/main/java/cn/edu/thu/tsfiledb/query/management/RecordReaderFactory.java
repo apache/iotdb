@@ -42,20 +42,23 @@ public class RecordReaderFactory {
 	 *
 	 * @param readLock if readLock is not null, the read lock of file node has been created,<br>
 	 *                 else a new read lock token should be applied.
+     * @param prefix for the exist of <code>RecordReaderCache</code> and batch read, we need a prefix to
+     *               represent the uniqueness.
 	 * @return
 	 * @throws ProcessorException
 	 */
 	public RecordReader getRecordReader(String deltaObjectUID, String measurementID,
-			SingleSeriesFilterExpression timeFilter, SingleSeriesFilterExpression freqFilter, SingleSeriesFilterExpression valueFilter, Integer readLock)
-			throws ProcessorException {
+			SingleSeriesFilterExpression timeFilter, SingleSeriesFilterExpression freqFilter, SingleSeriesFilterExpression valueFilter,
+            Integer readLock, String prefix) throws ProcessorException {
 		int token = 0;
 		if (readLock == null) {
 			token = readLockManager.lock(deltaObjectUID, measurementID);
 		} else {
 			token = readLock;
 		}
-		if (readLockManager.recordReaderCache.containsRecordReader(deltaObjectUID, measurementID)) {
-			return readLockManager.recordReaderCache.get(deltaObjectUID, measurementID);
+		String cacheDeltaKey = prefix + deltaObjectUID;
+		if (readLockManager.recordReaderCache.containsRecordReader(cacheDeltaKey, measurementID)) {
+			return readLockManager.recordReaderCache.get(cacheDeltaKey, measurementID);
 		} else {
 			QueryStructure queryStructure;
 			try {
@@ -65,7 +68,7 @@ public class RecordReaderFactory {
 				throw new ProcessorException(e.getMessage());
 			}
 			RecordReader recordReader = createANewRecordReader(deltaObjectUID, measurementID, queryStructure, token);
-			readLockManager.recordReaderCache.put(deltaObjectUID, measurementID, recordReader);
+			readLockManager.recordReaderCache.put(cacheDeltaKey, measurementID, recordReader);
 			return recordReader;
 		}
 	}
