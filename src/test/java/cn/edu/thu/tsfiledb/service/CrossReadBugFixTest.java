@@ -170,9 +170,9 @@ public class CrossReadBugFixTest {
         try {
             connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
             Statement statement = connection.createStatement();
-            // boolean hasResultSet = statement.execute("select s1 from root.vehicle.d0 where (time < 104 and s0 < 99) or s2 < 16.0");
+            boolean hasResultSet = statement.execute("select s1 from root.vehicle.d0 where (time < 104 and s0 < 99) or s2 < 16.0");
             // boolean hasResultSet = statement.execute("select s1 from root.vehicle.d0 where time < 104 and (s0 < 99 or s2 < 16.0)");
-            boolean hasResultSet = statement.execute("select s1 from root.vehicle.d0 where time < 104 and s0 < 99 and s2 < 16.0");
+            // boolean hasResultSet = statement.execute("select s1 from root.vehicle.d0 where time < 104 and s0 < 99 and s2 < 16.0");
             if (hasResultSet) {
                 ResultSet resultSet = statement.getResultSet();
                 int cnt = 0;

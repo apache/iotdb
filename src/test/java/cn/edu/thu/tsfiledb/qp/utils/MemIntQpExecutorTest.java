@@ -49,7 +49,7 @@ public class MemIntQpExecutorTest {
         QueryDataSet ret = null;
 
         while (true) {
-            ret = processor.getExecutor().query(pathList, null, null, null, 1, ret);
+            ret = processor.getExecutor().query(0, pathList, null, null, null, 1, ret);
             if (!ret.hasNextRecord())
                 break;
             while (ret.hasNextRecord()) {
@@ -72,7 +72,7 @@ public class MemIntQpExecutorTest {
         // default filter type is integer
         SingleSeriesFilterExpression valueFilter = FilterUtils.construct(filterString, null);
         while (true) {
-            ret = processor.getExecutor().query(pathList, null, null, valueFilter, 1, ret);
+            ret = processor.getExecutor().query(0,pathList, null, null, valueFilter, 1, ret);
             if (!ret.hasNextRecord())
                 break;
             while (ret.hasNextRecord()) {
@@ -93,7 +93,7 @@ public class MemIntQpExecutorTest {
         // default filter type is integer
         SingleSeriesFilterExpression valueFilter = FilterUtils.construct(filterString, null);
         while (true) {
-            ret = processor.getExecutor().query(pathList, null, null, valueFilter, 1, ret);
+            ret = processor.getExecutor().query(0, pathList, null, null, valueFilter, 1, ret);
             if (!ret.hasNextRecord())
                 break;
             while (ret.hasNextRecord()) {
