@@ -2,6 +2,9 @@ package cn.edu.thu.tsfiledb.metadata;
 
 import static org.junit.Assert.*;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -24,6 +27,23 @@ public class MTreeTest {
 		MManager.getInstance().flushObjectToFile();
 		EngineTestHelper.delete(dbconfig.metadataDir);
 	}
+	
+	@Test
+	public void testAddLeftNodePath(){
+		MTree root = new MTree("root");
+		try {
+			root.addTimeseriesPath("root.laptop.d1.s1", "INT32", "RLE", new String[0]);
+		} catch (PathErrorException e) {
+			e.printStackTrace();
+			fail(e.getMessage());
+		}
+		try {
+			root.addTimeseriesPath("root.laptop.d1.s1.b", "INT32", "RLE", new String[0]);
+		} catch (PathErrorException e) {
+			assertEquals(String.format("The Node [%s] is left node, the timeseries %s can't be created",
+					"s1","root.laptop.d1.s1.b" ), e.getMessage());
+		}
+	}
 
 	@Test
 	public void testAddAndPathExist() {
@@ -44,6 +64,40 @@ public class MTreeTest {
 		} catch (PathErrorException e) {
 			assertEquals(String.format("Timeseries %s is not right.", "aa.bb.cc"), e.getMessage());
 		}
+	}
+	
+	@Test
+	public void testAddAndQueryPath() {
+		MTree root = new MTree("root");
+		try {
+			root.addTimeseriesPath("root.a.d0.s0", "INT32", "RLE", new String[0]);
+			root.addTimeseriesPath("root.a.d0.s1", "INT32", "RLE", new String[0]);
+			root.setStorageGroup("root.a.d0");
+			root.addTimeseriesPath("root.a.d1.s0", "INT32", "RLE", new String[0]);
+			root.addTimeseriesPath("root.a.d1.s1", "INT32", "RLE", new String[0]);
+			root.setStorageGroup("root.a.d1");
+			root.addTimeseriesPath("root.a.b.d0.s0", "INT32", "RLE", new String[0]);
+			root.setStorageGroup("root.a.b.d0");
+		} catch (PathErrorException e1) {
+			fail(e1.getMessage());
+		}
+		try {
+			HashMap<String, ArrayList<String>> result = root.getAllPath("root.a.*.s0");
+			assertEquals(result.size(), 2);
+			assertTrue(result.containsKey("root.a.d1"));
+			assertEquals(result.get("root.a.d1").get(0), "root.a.d1.s0");
+			assertTrue(result.containsKey("root.a.d0"));
+			assertEquals(result.get("root.a.d0").get(0), "root.a.d0.s0");
+			
+			result = root.getAllPath("root.a.*.*.s0");
+			assertTrue(result.containsKey("root.a.b.d0"));
+			assertEquals(result.get("root.a.b.d0").get(0), "root.a.b.d0.s0");
+		} catch (PathErrorException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		
 	}
 	
 	@Test
