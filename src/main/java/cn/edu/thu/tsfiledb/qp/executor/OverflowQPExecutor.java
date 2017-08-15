@@ -121,7 +121,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 				String aggregateFuncName = (String) parameters.get().get(SQLConstant.IS_AGGREGATION);
 				ret = queryEngine.aggregate(paths.get(0), aggregateFuncName, timeFilter, freqFilter, valueFilter);
 			} else {
-				ret = queryEngine.query(paths, timeFilter, freqFilter, valueFilter, lastData, fetchSize);
+				ret = queryEngine.query(formNumber, paths, timeFilter, freqFilter, valueFilter, lastData, fetchSize);
 			}
 
 			return ret;
