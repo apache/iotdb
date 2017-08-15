@@ -46,8 +46,7 @@ public abstract class IteratorQueryDataSet extends QueryDataSet {
 
         for (Path p : retMap.keySet()) {
             DynamicOneColumnData res = retMap.get(p);
-            //先将初始化的值放进去
-            if (res != null && res.curIdx < res.valueLength) {
+            if (res != null && res.curIdx < res.valueLength) { // put the init value into it
                 heapPut(res.getTime(res.curIdx));
             }
         }
@@ -108,12 +107,3 @@ public abstract class IteratorQueryDataSet extends QueryDataSet {
         return r;
     }
 }
-
-
-
-
-
-
-
-
-

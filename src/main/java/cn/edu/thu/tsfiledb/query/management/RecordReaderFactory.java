@@ -40,7 +40,8 @@ public class RecordReaderFactory {
 	/**
 	 * Construct a RecordReader which contains QueryStructure and read lock token.
 	 *
-	 * @param readLock
+	 * @param readLock if readLock is not null, the read lock of file node has been created,<br>
+	 *                 else a new read lock token should be applied.
 	 * @return
 	 * @throws ProcessorException
 	 */

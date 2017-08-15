@@ -78,8 +78,8 @@ public class RowGroupReader {
      * Read time-value pairs whose time is included in timeRet.
      * WARNING: this function is only for "time" Series
      *
-     * @param measurementId measurement's id
-     * @param timeRet       Array of the time.
+     * @param measurementId id of measurement
+     * @param timeRet       array of the time.
      * @throws IOException
      */
     public DynamicOneColumnData readValueUseTimestamps(String measurementId, long[] timeRet) throws IOException {
