@@ -51,6 +51,12 @@ public class ReadLockManager {
         }
     }
 
+    /**
+     * When jdbc connection is closed normally or quit abnormally, this method should be invoked.<br>
+     * All read cache in this request should be released.
+     *
+     * @throws ProcessorException
+     */
     public void unlockForOneRequest() throws ProcessorException {
         if (locksMap.get() == null) {
             return;
