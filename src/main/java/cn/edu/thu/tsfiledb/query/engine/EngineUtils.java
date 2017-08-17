@@ -7,7 +7,9 @@ import cn.edu.thu.tsfile.file.metadata.enums.TSDataType;
 import cn.edu.thu.tsfile.timeseries.filter.definition.SingleSeriesFilterExpression;
 import cn.edu.thu.tsfile.timeseries.filter.visitorImpl.SingleValueVisitor;
 import cn.edu.thu.tsfile.timeseries.filter.visitorImpl.SingleValueVisitorFactory;
+import cn.edu.thu.tsfile.timeseries.read.qp.Path;
 import cn.edu.thu.tsfile.timeseries.read.query.DynamicOneColumnData;
+import cn.edu.thu.tsfile.timeseries.read.query.QueryDataSet;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -16,6 +18,25 @@ import java.util.List;
  * Take out some common methods used for QueryEngine.
  */
 public class EngineUtils {
+
+    /**
+     * QueryDataSet.BatchReadGenerator has calculated and removed the common RowRecord timestamps in the top of heap.
+     * For the reason of that the RowRecord number is greater than fetch size,
+     * so there may be remaining data in QueryDataSet.BatchReadGenerator,
+     */
+    public static void putRecordFromBatchReadGenerator(QueryDataSet dataSet) {
+        for (Path path : dataSet.getBatchReaderRetGenerator().retMap.keySet()) {
+            DynamicOneColumnData batchReadData = dataSet.getBatchReaderRetGenerator().retMap.get(path);
+            DynamicOneColumnData leftData = batchReadData.sub(batchReadData.curIdx);
+            leftData.setDeltaObjectType(batchReadData.getDeltaObjectType());
+
+            // copy batch read info from oneColRet to leftRet
+            batchReadData.copyFetchInfoTo(leftData);
+            dataSet.getBatchReaderRetGenerator().retMap.put(path, leftData);
+            batchReadData.rollBack(batchReadData.valueLength - batchReadData.curIdx);
+            dataSet.mapRet.put(path.getFullPath(), batchReadData);
+        }
+    }
 
     /**
      *  Merge the overflow params with the bufferwrite insert data.
