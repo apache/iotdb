@@ -121,7 +121,7 @@ public class OverflowQueryEngine {
         }
         clearQueryDataSet(queryDataSet);
         queryDataSet.getBatchReaderRetGenerator().calculateRecord();
-        queryDataSet.putRecordFromBatchReadRetGenerator();
+        EngineUtils.putRecordFromBatchReadGenerator(queryDataSet);
 //        for (Path path : paths) {
 //            RecordReaderFactory.getInstance().removeRecordReader(path.getDeltaObjectToString(), path.getMeasurementToString());
 //        }
@@ -186,7 +186,7 @@ public class OverflowQueryEngine {
         }
         clearQueryDataSet(queryDataSet);
         queryDataSet.getBatchReaderRetGenerator().calculateRecord();
-        queryDataSet.putRecordFromBatchReadRetGenerator();
+        EngineUtils.putRecordFromBatchReadGenerator(queryDataSet);
 //        for (Path path : paths) {
 //            RecordReaderFactory.getInstance().removeRecordReader(path.getDeltaObjectToString(), path.getMeasurementToString());
 //        }
