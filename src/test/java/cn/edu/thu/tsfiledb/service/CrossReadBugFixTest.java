@@ -1,5 +1,7 @@
 package cn.edu.thu.tsfiledb.service;
 
+import cn.edu.thu.tsfile.common.conf.TSFileConfig;
+import cn.edu.thu.tsfile.common.conf.TSFileDescriptor;
 import cn.edu.thu.tsfiledb.conf.TsfileDBConfig;
 import cn.edu.thu.tsfiledb.conf.TsfileDBDescriptor;
 import org.apache.commons.io.FileUtils;
@@ -34,7 +36,7 @@ public class CrossReadBugFixTest {
 
             "insert into root.vehicle.d0(timestamp,s0) values(1,101)",
             "insert into root.vehicle.d0(timestamp,s0) values(2,198)",
-            "insert into root.vehicle.d0(timestamp,s0) values(100,99)",
+            "insert into root.vehicle.d0(timestamp,s0) values(100,300)",
             "insert into root.vehicle.d0(timestamp,s0) values(101,99)",
             "insert into root.vehicle.d0(timestamp,s0) values(102,80)",
             "insert into root.vehicle.d0(timestamp,s0) values(103,99)",
@@ -64,9 +66,9 @@ public class CrossReadBugFixTest {
 
             "insert into root.vehicle.d0(timestamp,s2) values(1,7.0)",
             "insert into root.vehicle.d0(timestamp,s2) values(2,8.0)",
-            "insert into root.vehicle.d0(timestamp,s2) values(100,9.0)",
+            "insert into root.vehicle.d0(timestamp,s2) values(100,19.0)",
             "insert into root.vehicle.d0(timestamp,s2) values(101,10.0)",
-            "insert into root.vehicle.d0(timestamp,s2) values(102,11.0)",
+            "insert into root.vehicle.d0(timestamp,s2) values(102,18.0)",
             "insert into root.vehicle.d0(timestamp,s2) values(103,12.0)",
             "insert into root.vehicle.d0(timestamp,s2) values(104,13.0)",
             "insert into root.vehicle.d0(timestamp,s2) values(105,14.0)",
@@ -88,6 +90,10 @@ public class CrossReadBugFixTest {
         bufferWriteDirPre = config.bufferWriteDir;
         metadataDirPre = config.metadataDir;
         derbyHomePre = config.derbyHome;
+
+        TSFileConfig tsFileConfig = TSFileDescriptor.getInstance().getConfig();
+        tsFileConfig.maxNumberOfPointsInPage = 4;
+        tsFileConfig.pageSizeInByte = 300;
 
         config.overflowDataDir = FOLDER_HEADER + "/data/overflow";
         config.fileNodeDir = FOLDER_HEADER + "/data/digest";
@@ -123,9 +129,9 @@ public class CrossReadBugFixTest {
         Thread.sleep(5000);
         insertSQL();
 
-        //TODO: add your query statement
         Connection connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
         System.out.println(connection.getMetaData());
+        selectWildTest();
         crossReadTest();
         connection.close();
     }
@@ -149,37 +155,68 @@ public class CrossReadBugFixTest {
         }
     }
 
-    /**
-     *  Insert bufferwrite, merge, and insert overflow. <br>
-     *  Cross read.
-     *
-     */
-    private void crossReadTest() throws ClassNotFoundException, SQLException {
-        String[] retArray = new String[]{
-                "1,1101",
-                "2,198",
-                "100,199",
-                "101,199",
-                "102,180",
-                "103,199",
-                "104,190",
-                "105,199"};
+    private void selectWildTest() throws ClassNotFoundException, SQLException {
 
         Class.forName("cn.edu.thu.tsfiledb.jdbc.TsfileDriver");
         Connection connection = null;
         try {
             connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
             Statement statement = connection.createStatement();
-            boolean hasResultSet = statement.execute("select s1 from root.vehicle.d0 where (time < 104 and s0 < 99) or s2 < 16.0");
+
+            boolean hasResultSet = statement.execute("select * from root");
+            if (hasResultSet) {
+                ResultSet resultSet = statement.getResultSet();
+                int cnt = 0;
+                while (resultSet.next()) {
+                    String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s0) + ","
+                            + resultSet.getString(d0s1) + "," + resultSet.getString(d0s2);
+                    System.out.println(ans);
+                    cnt++;
+                }
+            }
+
+            statement.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            if (connection != null) {
+                connection.close();
+            }
+        }
+    }
+
+    /**
+     *  <p>Insert bufferwrite, merge, and insert overflow.
+     *  Cross read.
+     *
+     */
+    private void crossReadTest() throws ClassNotFoundException, SQLException {
+        String[] retArray = new String[]{
+                "1,101,1101,7.0",
+                "2,198,198,8.0",
+                "100,300,199,19.0",
+                "101,99,199,10.0",
+                "102,80,180,18.0",
+                "103,99,199,12.0",
+                "104,90,190,13.0",
+                "105,99,199,14.0"};
+
+        Class.forName("cn.edu.thu.tsfiledb.jdbc.TsfileDriver");
+        Connection connection = null;
+        try {
+            connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
+            Statement statement = connection.createStatement();
+
+            boolean hasResultSet = statement.execute("select s0,s1,s2 from root.vehicle.d0 where (time < 104 and s0 < 99) or (s2 < 16.0) or (s0 = 300)");
             // boolean hasResultSet = statement.execute("select s1 from root.vehicle.d0 where time < 104 and (s0 < 99 or s2 < 16.0)");
             // boolean hasResultSet = statement.execute("select s1 from root.vehicle.d0 where time < 104 and s0 < 99 and s2 < 16.0");
             if (hasResultSet) {
                 ResultSet resultSet = statement.getResultSet();
                 int cnt = 0;
                 while (resultSet.next()) {
-                    String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s1);
+                    String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s0) + "," + resultSet.getString(d0s1) + "," + resultSet.getString(d0s2);
                     System.out.println(ans);
-                    // Assert.assertEquals(ans, retArray[cnt]);
+                    Assert.assertEquals(retArray[cnt], ans);
                     cnt++;
                 }
                 //Assert.assertEquals(cnt, 8);
