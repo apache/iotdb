@@ -211,8 +211,8 @@ public class RecordReader {
      * @throws ProcessorException
      * @throws IOException
      */
-    public DynamicOneColumnData getValuesUseTimeValueWithOverflow(String deviceUID, String sensorId, long[] timestamps,
-                                                                  DynamicOneColumnData updateTrue, InsertDynamicData insertMemoryData, SingleSeriesFilterExpression deleteFilter)
+    public DynamicOneColumnData getValuesUseTimestampsWithOverflow(String deviceUID, String sensorId, long[] timestamps,
+                                                                   DynamicOneColumnData updateTrue, InsertDynamicData insertMemoryData, SingleSeriesFilterExpression deleteFilter)
             throws ProcessorException, IOException {
         TSDataType dataType;
         String deviceType;
