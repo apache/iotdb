@@ -10,6 +10,7 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -288,6 +289,7 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 
 	public void update(String deltaObjectId, String measurementId, long startTime, long endTime, TSDataType type,
 			String v) throws FileNodeManagerException {
+
 		FileNodeProcessor fileNodeProcessor = null;
 		try {
 			do {
@@ -343,6 +345,7 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 
 	public void delete(String deltaObjectId, String measurementId, long timestamp, TSDataType type)
 			throws FileNodeManagerException {
+
 		FileNodeProcessor fileNodeProcessor = null;
 		try {
 			do {
@@ -399,6 +402,7 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 	}
 
 	public int beginQuery(String deltaObjectId) throws FileNodeManagerException {
+
 		FileNodeProcessor fileNodeProcessor = null;
 		try {
 			do {
@@ -420,6 +424,7 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 	public QueryStructure query(String deltaObjectId, String measurementId, SingleSeriesFilterExpression timeFilter,
 			SingleSeriesFilterExpression freqFilter, SingleSeriesFilterExpression valueFilter)
 			throws FileNodeManagerException {
+
 		FileNodeProcessor fileNodeProcessor = null;
 		try {
 			do {
@@ -451,6 +456,7 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 	}
 
 	public void endQuery(String deltaObjectId, int token) throws FileNodeManagerException {
+
 		FileNodeProcessor fileNodeProcessor = null;
 		try {
 			do {
@@ -469,6 +475,7 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 	}
 
 	public synchronized boolean mergeAll() throws FileNodeManagerException {
+
 		if (fileNodeManagerStatus == FileNodeManagerStatus.NONE) {
 			fileNodeManagerStatus = FileNodeManagerStatus.MERGE;
 			// flush information first
@@ -482,14 +489,16 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 			return false;
 		}
 	}
-	
-	public void clearOneFileNode(String namespacePath) throws FileNodeManagerException{
+
+	public void clearOneFileNode(String namespacePath) throws FileNodeManagerException {
+
 		FileNodeProcessor fileNodeProcessor = null;
 		try {
 			do {
 				fileNodeProcessor = getProcessorByLRU(namespacePath, true);
 			} while (fileNodeProcessor == null);
 			fileNodeProcessor.clearFileNode();
+			overflowNameSpaceSet.remove(namespacePath);
 			LOGGER.debug("Get the FileNodeProcessor: {}, begin query.", fileNodeProcessor.getNameSpacePath());
 		} catch (LRUManagerException e) {
 			e.printStackTrace();
@@ -500,7 +509,61 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 			}
 		}
 	}
-	
+
+	public synchronized boolean deleteOneFileNode(String namespacePath) throws FileNodeManagerException {
+
+		if (fileNodeManagerStatus == FileNodeManagerStatus.NONE) {
+			fileNodeManagerStatus = FileNodeManagerStatus.CLOSE;
+			// check the filenode has bufferwrite or not
+			FileNodeProcessor fileNodeProcessor = null;
+			try {
+				try {
+					do {
+						fileNodeProcessor = getProcessorByLRU(namespacePath, true);
+					} while (fileNodeProcessor == null);
+				} catch (LRUManagerException e) {
+					e.printStackTrace();
+					throw new FileNodeManagerException(e);
+				}
+				try {
+					super.closeOneProcessor(namespacePath);
+					// delete filenode/bufferwrite/overflow dir
+					String fileNodePath = TsFileDBConf.fileNodeDir;
+					fileNodePath = standardizeDir(fileNodePath) + namespacePath;
+					FileUtils.deleteDirectory(new File(fileNodePath));
+
+					String bufferwritePath = TsFileDBConf.bufferWriteDir;
+					bufferwritePath = standardizeDir(bufferwritePath) + namespacePath;
+					FileUtils.deleteDirectory(new File(bufferwritePath));
+
+					String overflowPath = TsFileDBConf.overflowDataDir;
+					overflowPath = standardizeDir(overflowPath) + namespacePath;
+					FileUtils.deleteDirectory(new File(overflowPath));
+					return true;
+				} catch (LRUManagerException | IOException e) {
+					e.printStackTrace();
+					throw new FileNodeManagerException(e);
+				} finally {
+					fileNodeManagerStatus = FileNodeManagerStatus.NONE;
+				}
+			} finally {
+				if (fileNodeProcessor != null) {
+					fileNodeProcessor.writeUnlock();
+				}
+			}
+		} else {
+			return false;
+		}
+	}
+
+	private String standardizeDir(String originalPath) {
+		String res = originalPath;
+		if ((originalPath.length() > 0 && originalPath.charAt(originalPath.length() - 1) != File.separatorChar)
+				|| originalPath.length() == 0) {
+			res = originalPath + File.separatorChar;
+		}
+		return res;
+	}
 
 	public synchronized boolean closeOneFileNode(String namespacePath) throws FileNodeManagerException {
 		if (fileNodeManagerStatus == FileNodeManagerStatus.NONE) {
