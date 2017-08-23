@@ -5,9 +5,8 @@ import java.util.Collections;
 import java.util.List;
 
 import cn.edu.thu.tsfiledb.qp.exception.LogicalOptimizeException;
-
-import cn.edu.thu.tsfile.timeseries.read.qp.Path;
 import cn.edu.thu.tsfiledb.qp.logical.crud.FilterOperator;
+import cn.edu.tsinghua.tsfile.timeseries.read.qp.Path;
 
 public class MergeSingleFilterOptimizer implements IFilterOptimizer {
 

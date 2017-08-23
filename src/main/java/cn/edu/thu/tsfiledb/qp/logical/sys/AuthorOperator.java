@@ -1,9 +1,9 @@
 package cn.edu.thu.tsfiledb.qp.logical.sys;
 
-import cn.edu.thu.tsfile.common.constant.SystemConstant;
-import cn.edu.thu.tsfile.timeseries.read.qp.Path;
-import cn.edu.thu.tsfile.timeseries.utils.StringContainer;
 import cn.edu.thu.tsfiledb.qp.logical.RootOperator;
+import cn.edu.tsinghua.tsfile.common.constant.SystemConstant;
+import cn.edu.tsinghua.tsfile.timeseries.read.qp.Path;
+import cn.edu.tsinghua.tsfile.timeseries.utils.StringContainer;
 
 /**
  * this class maintains information in Author statement, including CREATE, DROP, GRANT and REVOKE

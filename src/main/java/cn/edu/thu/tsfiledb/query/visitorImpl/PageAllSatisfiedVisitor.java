@@ -3,16 +3,16 @@ package cn.edu.thu.tsfiledb.query.visitorImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import cn.edu.thu.tsfile.timeseries.filter.definition.SingleSeriesFilterExpression;
-import cn.edu.thu.tsfile.timeseries.filter.definition.operators.And;
-import cn.edu.thu.tsfile.timeseries.filter.definition.operators.Eq;
-import cn.edu.thu.tsfile.timeseries.filter.definition.operators.GtEq;
-import cn.edu.thu.tsfile.timeseries.filter.definition.operators.LtEq;
-import cn.edu.thu.tsfile.timeseries.filter.definition.operators.Not;
-import cn.edu.thu.tsfile.timeseries.filter.definition.operators.NotEq;
-import cn.edu.thu.tsfile.timeseries.filter.definition.operators.Or;
-import cn.edu.thu.tsfile.timeseries.filter.utils.DigestForFilter;
-import cn.edu.thu.tsfile.timeseries.filter.visitorImpl.FilterVisitor;
+import cn.edu.tsinghua.tsfile.timeseries.filter.definition.SingleSeriesFilterExpression;
+import cn.edu.tsinghua.tsfile.timeseries.filter.definition.operators.And;
+import cn.edu.tsinghua.tsfile.timeseries.filter.definition.operators.Eq;
+import cn.edu.tsinghua.tsfile.timeseries.filter.definition.operators.GtEq;
+import cn.edu.tsinghua.tsfile.timeseries.filter.definition.operators.LtEq;
+import cn.edu.tsinghua.tsfile.timeseries.filter.definition.operators.Not;
+import cn.edu.tsinghua.tsfile.timeseries.filter.definition.operators.NotEq;
+import cn.edu.tsinghua.tsfile.timeseries.filter.definition.operators.Or;
+import cn.edu.tsinghua.tsfile.timeseries.filter.utils.DigestForFilter;
+import cn.edu.tsinghua.tsfile.timeseries.filter.visitorImpl.FilterVisitor;
 
 
 public class PageAllSatisfiedVisitor implements FilterVisitor<Boolean> {

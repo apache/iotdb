@@ -4,9 +4,7 @@ import java.util.HashMap;
 
 import cn.edu.thu.tsfiledb.engine.exception.FileNodeManagerException;
 import cn.edu.thu.tsfiledb.engine.filenode.FileNodeManager;
-import cn.edu.thu.tsfiledb.exception.NotConsistentException;
-import cn.edu.thu.tsfiledb.query.reader.RecordReader;
-import cn.edu.thu.tsfile.common.exception.ProcessorException;
+import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 
 
 public class ReadLockManager {

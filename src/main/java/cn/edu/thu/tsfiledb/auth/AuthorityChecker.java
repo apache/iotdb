@@ -6,10 +6,10 @@ import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import cn.edu.thu.tsfile.timeseries.read.qp.Path;
 import cn.edu.thu.tsfiledb.auth.dao.Authorizer;
 import cn.edu.thu.tsfiledb.auth.model.Permission;
 import cn.edu.thu.tsfiledb.qp.logical.Operator.OperatorType;
+import cn.edu.tsinghua.tsfile.timeseries.read.qp.Path;
 
 public class AuthorityChecker {
 

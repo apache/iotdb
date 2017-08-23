@@ -11,7 +11,8 @@ import org.joda.time.DateTimeZone;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import cn.edu.thu.tsfile.common.constant.SystemConstant;
+import cn.edu.tsinghua.tsfile.common.constant.SystemConstant;
+
 
 public class TsfileDBDescriptor {
 	private static final Logger LOGGER = LoggerFactory.getLogger(TsfileDBDescriptor.class);

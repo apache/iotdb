@@ -1,7 +1,7 @@
 package cn.edu.thu.tsfiledb.query.aggregation;
 
-import cn.edu.thu.tsfile.file.metadata.enums.TSDataType;
-import cn.edu.thu.tsfile.timeseries.read.query.DynamicOneColumnData;
+import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
+import cn.edu.tsinghua.tsfile.timeseries.read.query.DynamicOneColumnData;
 
 public class AggregationResult {
 	

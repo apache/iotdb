@@ -11,12 +11,12 @@ import java.util.Map;
 
 import org.apache.thrift.TException;
 
-import cn.edu.thu.tsfile.file.metadata.enums.TSDataType;
 import cn.edu.thu.tsfiledb.conf.TsFileDBConstant;
 import cn.edu.thu.tsfiledb.metadata.ColumnSchema;
 import cn.edu.thu.tsfiledb.service.rpc.thrift.TSFetchMetadataReq;
 import cn.edu.thu.tsfiledb.service.rpc.thrift.TSFetchMetadataResp;
 import cn.edu.thu.tsfiledb.service.rpc.thrift.TSIService;
+import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
 
 public class TsfileDatabaseMetadata implements DatabaseMetaData {
 //	private final String ROOT_PATH = "root";

@@ -3,8 +3,8 @@ package cn.edu.thu.tsfiledb.metadata;
 import java.io.Serializable;
 import java.util.LinkedHashMap;
 
-import cn.edu.thu.tsfile.file.metadata.enums.TSDataType;
-import cn.edu.thu.tsfile.file.metadata.enums.TSEncoding;
+import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
+import cn.edu.tsinghua.tsfile.file.metadata.enums.TSEncoding;
 
 /**
  * This class is the implementation of Metadata Node where "MNode" is the

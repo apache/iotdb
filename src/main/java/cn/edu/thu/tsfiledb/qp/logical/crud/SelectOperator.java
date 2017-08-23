@@ -3,8 +3,8 @@ package cn.edu.thu.tsfiledb.qp.logical.crud;
 import java.util.ArrayList;
 import java.util.List;
 
-import cn.edu.thu.tsfile.timeseries.read.qp.Path;
 import cn.edu.thu.tsfiledb.qp.logical.Operator;
+import cn.edu.tsinghua.tsfile.timeseries.read.qp.Path;
 
 /**
  * this class maintains information from select clause

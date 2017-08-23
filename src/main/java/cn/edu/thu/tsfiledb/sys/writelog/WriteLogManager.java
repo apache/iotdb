@@ -2,21 +2,25 @@ package cn.edu.thu.tsfiledb.sys.writelog;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-import cn.edu.thu.tsfile.timeseries.read.qp.Path;
-import cn.edu.thu.tsfile.timeseries.write.record.TSRecord;
 import cn.edu.thu.tsfiledb.conf.TsfileDBDescriptor;
 import cn.edu.thu.tsfiledb.exception.PathErrorException;
 import cn.edu.thu.tsfiledb.metadata.MManager;
 //import org.slf4j.Logger;
 //import org.slf4j.LoggerFactory;
-
 import cn.edu.thu.tsfiledb.qp.physical.PhysicalPlan;
+import cn.edu.tsinghua.tsfile.timeseries.read.qp.Path;
+import cn.edu.tsinghua.tsfile.timeseries.write.record.TSRecord;
 
 public class WriteLogManager {
 //    private static final Logger LOG = LoggerFactory.getLogger(WriteLogManager.class);

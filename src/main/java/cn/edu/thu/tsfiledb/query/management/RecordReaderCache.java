@@ -3,8 +3,8 @@ package cn.edu.thu.tsfiledb.query.management;
 import java.io.IOException;
 import java.util.HashMap;
 
-import cn.edu.thu.tsfile.common.exception.ProcessorException;
 import cn.edu.thu.tsfiledb.query.reader.RecordReader;
+import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 
 /**
  * Used for read process, put the query structure in the cache for one query process.

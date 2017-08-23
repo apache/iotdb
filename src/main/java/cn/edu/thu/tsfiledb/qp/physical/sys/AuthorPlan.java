@@ -5,10 +5,10 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import cn.edu.thu.tsfile.timeseries.read.qp.Path;
 import cn.edu.thu.tsfiledb.qp.logical.Operator.OperatorType;
 import cn.edu.thu.tsfiledb.qp.logical.sys.AuthorOperator.AuthorType;
 import cn.edu.thu.tsfiledb.qp.physical.PhysicalPlan;
+import cn.edu.tsinghua.tsfile.timeseries.read.qp.Path;
 
 /**
  * @author kangrong

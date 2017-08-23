@@ -1,11 +1,10 @@
 package cn.edu.thu.tsfiledb.qp.logical.crud;
 
-import cn.edu.thu.tsfiledb.qp.exception.LogicalOperatorException;
-
-import cn.edu.thu.tsfile.timeseries.filter.definition.FilterFactory;
-import cn.edu.thu.tsfile.timeseries.filter.definition.SingleSeriesFilterExpression;
-import cn.edu.thu.tsfile.timeseries.filter.definition.filterseries.FilterSeries;
 import cn.edu.thu.tsfiledb.qp.constant.SQLConstant;
+import cn.edu.thu.tsfiledb.qp.exception.LogicalOperatorException;
+import cn.edu.tsinghua.tsfile.timeseries.filter.definition.FilterFactory;
+import cn.edu.tsinghua.tsfile.timeseries.filter.definition.SingleSeriesFilterExpression;
+import cn.edu.tsinghua.tsfile.timeseries.filter.definition.filterseries.FilterSeries;
 
 /**
  * all basic operator in filter

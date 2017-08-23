@@ -3,8 +3,8 @@ package cn.edu.thu.tsfiledb.qp.logical.crud;
 import java.util.List;
 
 import cn.edu.thu.tsfiledb.qp.exception.LogicalOperatorException;
-import cn.edu.thu.tsfile.timeseries.read.qp.Path;
 import cn.edu.thu.tsfiledb.qp.logical.RootOperator;
+import cn.edu.tsinghua.tsfile.timeseries.read.qp.Path;
 
 /**
  * SFWOperator(select-from-where) includes four subclass: INSERT,DELETE,UPDATE,QUERY. All of these four statements has

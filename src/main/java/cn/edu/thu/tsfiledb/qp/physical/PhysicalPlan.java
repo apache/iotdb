@@ -1,8 +1,9 @@
 package cn.edu.thu.tsfiledb.qp.physical;
 
 import java.util.List;
-import cn.edu.thu.tsfile.timeseries.read.qp.Path;
+
 import cn.edu.thu.tsfiledb.qp.logical.Operator.OperatorType;
+import cn.edu.tsinghua.tsfile.timeseries.read.qp.Path;
 
 /**
  * This class is a abstract class for all type of PhysicalPlan.

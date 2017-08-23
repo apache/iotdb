@@ -1,21 +1,25 @@
 package cn.edu.thu.tsfiledb.qp.strategy;
 
-import cn.edu.thu.tsfile.common.utils.Pair;
-import cn.edu.thu.tsfile.file.metadata.enums.TSDataType;
-import cn.edu.thu.tsfile.timeseries.filter.definition.FilterExpression;
-import cn.edu.thu.tsfile.timeseries.filter.definition.SingleSeriesFilterExpression;
-import cn.edu.thu.tsfile.timeseries.filter.definition.filterseries.FilterSeriesType;
-import cn.edu.thu.tsfile.timeseries.filter.utils.LongInterval;
-import cn.edu.thu.tsfile.timeseries.filter.verifier.FilterVerifier;
-import cn.edu.thu.tsfile.timeseries.filter.verifier.LongFilterVerifier;
-import cn.edu.thu.tsfile.timeseries.read.qp.Path;
+import static cn.edu.thu.tsfiledb.qp.constant.SQLConstant.KW_AND;
+import static cn.edu.thu.tsfiledb.qp.constant.SQLConstant.KW_OR;
+import static cn.edu.thu.tsfiledb.qp.constant.SQLConstant.RESERVED_TIME;
+
+import java.util.ArrayList;
+import java.util.List;
+
 import cn.edu.thu.tsfiledb.qp.constant.SQLConstant;
 import cn.edu.thu.tsfiledb.qp.exception.GeneratePhysicalPlanException;
-import cn.edu.thu.tsfiledb.qp.exception.QueryProcessorException;
 import cn.edu.thu.tsfiledb.qp.exception.LogicalOperatorException;
+import cn.edu.thu.tsfiledb.qp.exception.QueryProcessorException;
 import cn.edu.thu.tsfiledb.qp.executor.QueryProcessExecutor;
 import cn.edu.thu.tsfiledb.qp.logical.Operator;
-import cn.edu.thu.tsfiledb.qp.logical.crud.*;
+import cn.edu.thu.tsfiledb.qp.logical.crud.DeleteOperator;
+import cn.edu.thu.tsfiledb.qp.logical.crud.FilterOperator;
+import cn.edu.thu.tsfiledb.qp.logical.crud.IndexOperator;
+import cn.edu.thu.tsfiledb.qp.logical.crud.InsertOperator;
+import cn.edu.thu.tsfiledb.qp.logical.crud.QueryOperator;
+import cn.edu.thu.tsfiledb.qp.logical.crud.SelectOperator;
+import cn.edu.thu.tsfiledb.qp.logical.crud.UpdateOperator;
 import cn.edu.thu.tsfiledb.qp.logical.sys.AuthorOperator;
 import cn.edu.thu.tsfiledb.qp.logical.sys.LoadDataOperator;
 import cn.edu.thu.tsfiledb.qp.logical.sys.MetadataOperator;
@@ -24,18 +28,22 @@ import cn.edu.thu.tsfiledb.qp.physical.PhysicalPlan;
 import cn.edu.thu.tsfiledb.qp.physical.crud.DeletePlan;
 import cn.edu.thu.tsfiledb.qp.physical.crud.IndexPlan;
 import cn.edu.thu.tsfiledb.qp.physical.crud.InsertPlan;
-import cn.edu.thu.tsfiledb.qp.physical.crud.UpdatePlan;
-import cn.edu.thu.tsfiledb.qp.physical.sys.MetadataPlan;
-import cn.edu.thu.tsfiledb.qp.physical.sys.PropertyPlan;
 import cn.edu.thu.tsfiledb.qp.physical.crud.MergeQuerySetPlan;
 import cn.edu.thu.tsfiledb.qp.physical.crud.SeriesSelectPlan;
+import cn.edu.thu.tsfiledb.qp.physical.crud.UpdatePlan;
 import cn.edu.thu.tsfiledb.qp.physical.sys.AuthorPlan;
 import cn.edu.thu.tsfiledb.qp.physical.sys.LoadDataPlan;
-
-import java.util.ArrayList;
-import java.util.List;
-
-import static cn.edu.thu.tsfiledb.qp.constant.SQLConstant.*;
+import cn.edu.thu.tsfiledb.qp.physical.sys.MetadataPlan;
+import cn.edu.thu.tsfiledb.qp.physical.sys.PropertyPlan;
+import cn.edu.tsinghua.tsfile.common.utils.Pair;
+import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
+import cn.edu.tsinghua.tsfile.timeseries.filter.definition.FilterExpression;
+import cn.edu.tsinghua.tsfile.timeseries.filter.definition.SingleSeriesFilterExpression;
+import cn.edu.tsinghua.tsfile.timeseries.filter.definition.filterseries.FilterSeriesType;
+import cn.edu.tsinghua.tsfile.timeseries.filter.utils.LongInterval;
+import cn.edu.tsinghua.tsfile.timeseries.filter.verifier.FilterVerifier;
+import cn.edu.tsinghua.tsfile.timeseries.filter.verifier.LongFilterVerifier;
+import cn.edu.tsinghua.tsfile.timeseries.read.qp.Path;
 
 /**
  * Used to convert logical operator to physical plan
