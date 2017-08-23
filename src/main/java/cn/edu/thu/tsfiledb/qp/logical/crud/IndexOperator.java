@@ -3,8 +3,8 @@ package cn.edu.thu.tsfiledb.qp.logical.crud;
 import java.util.HashMap;
 import java.util.Map;
 
-import cn.edu.thu.tsfile.timeseries.read.qp.Path;
 import cn.edu.thu.tsfiledb.qp.logical.Operator;
+import cn.edu.tsinghua.tsfile.timeseries.read.qp.Path;
 
 public final class IndexOperator extends SFWOperator {
 	

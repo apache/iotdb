@@ -3,7 +3,7 @@ package cn.edu.thu.tsfiledb.qp.constant;
 import java.util.HashMap;
 import java.util.Map;
 
-import cn.edu.thu.tsfile.timeseries.read.qp.Path;
+import cn.edu.tsinghua.tsfile.timeseries.read.qp.Path;
 
 /**
  * this class contains several constants used in SQL.

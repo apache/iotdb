@@ -2,8 +2,8 @@ package cn.edu.thu.tsfiledb.qp.logical.sys;
 
 import java.util.List;
 
-import cn.edu.thu.tsfile.timeseries.read.qp.Path;
 import cn.edu.thu.tsfiledb.qp.logical.RootOperator;
+import cn.edu.tsinghua.tsfile.timeseries.read.qp.Path;
 
 /**
  * this class maintains information in Metadata.namespace statement

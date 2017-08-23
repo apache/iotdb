@@ -3,10 +3,10 @@ package cn.edu.thu.tsfiledb.qp.physical.sys;
 import java.util.ArrayList;
 import java.util.List;
 
-import cn.edu.thu.tsfile.timeseries.read.qp.Path;
 import cn.edu.thu.tsfiledb.qp.logical.Operator.OperatorType;
 import cn.edu.thu.tsfiledb.qp.logical.sys.MetadataOperator.NamespaceType;
 import cn.edu.thu.tsfiledb.qp.physical.PhysicalPlan;
+import cn.edu.tsinghua.tsfile.timeseries.read.qp.Path;
 
 /**
  *

@@ -1,7 +1,7 @@
 package cn.edu.thu.tsfiledb.engine.overflow.utils;
 
 
-import cn.edu.thu.tsfile.file.metadata.enums.TSDataType;
+import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
 
 /**
  * TimePair represents an overflow operation.

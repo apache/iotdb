@@ -4,8 +4,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
-import cn.edu.thu.tsfile.file.utils.ReadWriteThriftFormatUtils;
 import cn.edu.thu.tsfiledb.engine.overflow.thrift.OFFileMetadata;
+import cn.edu.tsinghua.tsfile.file.utils.ReadWriteThriftFormatUtils;
 
 
 /**

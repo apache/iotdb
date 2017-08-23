@@ -1,6 +1,6 @@
 package cn.edu.thu.tsfiledb.exception;
 
-import cn.edu.thu.tsfile.common.exception.ProcessorException;
+import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 
 public class OverflowProcessorException extends ProcessorException {
 

@@ -1,29 +1,14 @@
 package cn.edu.thu.tsfiledb.qp.strategy;
 
-import cn.edu.thu.tsfile.common.constant.SystemConstant;
-import cn.edu.thu.tsfile.common.utils.Pair;
-import cn.edu.thu.tsfile.file.metadata.enums.TSDataType;
-import cn.edu.thu.tsfile.timeseries.read.qp.Path;
-import cn.edu.thu.tsfile.timeseries.utils.StringContainer;
-import cn.edu.thu.tsfiledb.exception.ArgsErrorException;
-import cn.edu.thu.tsfiledb.exception.MetadataArgsErrorException;
-import cn.edu.thu.tsfiledb.qp.constant.SQLConstant;
-import cn.edu.thu.tsfiledb.qp.constant.TSParserConstant;
-import cn.edu.thu.tsfiledb.qp.exception.IllegalASTFormatException;
-import cn.edu.thu.tsfiledb.qp.exception.LogicalOperatorException;
-import cn.edu.thu.tsfiledb.qp.exception.QueryProcessorException;
-import cn.edu.thu.tsfiledb.qp.logical.RootOperator;
-import cn.edu.thu.tsfiledb.qp.logical.crud.*;
-import cn.edu.thu.tsfiledb.qp.logical.sys.AuthorOperator;
-import cn.edu.thu.tsfiledb.qp.logical.sys.AuthorOperator.AuthorType;
-import cn.edu.thu.tsfiledb.qp.logical.sys.LoadDataOperator;
-import cn.edu.thu.tsfiledb.qp.logical.sys.MetadataOperator;
-import cn.edu.thu.tsfiledb.qp.logical.sys.PropertyOperator;
-import cn.edu.thu.tsfiledb.qp.logical.sys.MetadataOperator.NamespaceType;
-import cn.edu.thu.tsfiledb.qp.logical.sys.PropertyOperator.PropertyType;
-import cn.edu.thu.tsfiledb.sql.parse.ASTNode;
-import cn.edu.thu.tsfiledb.sql.parse.Node;
-import cn.edu.thu.tsfiledb.sql.parse.TSParser;
+import static cn.edu.thu.tsfiledb.qp.constant.SQLConstant.GREATERTHAN;
+import static cn.edu.thu.tsfiledb.qp.constant.SQLConstant.GREATERTHANOREQUALTO;
+import static cn.edu.thu.tsfiledb.qp.constant.SQLConstant.LESSTHAN;
+import static cn.edu.thu.tsfiledb.qp.constant.SQLConstant.LESSTHANOREQUALTO;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import org.antlr.runtime.Token;
 import org.joda.time.DateTime;
@@ -32,12 +17,39 @@ import org.joda.time.format.DateTimeFormat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-import static cn.edu.thu.tsfiledb.qp.constant.SQLConstant.*;
+import cn.edu.thu.tsfiledb.exception.ArgsErrorException;
+import cn.edu.thu.tsfiledb.exception.MetadataArgsErrorException;
+import cn.edu.thu.tsfiledb.qp.constant.SQLConstant;
+import cn.edu.thu.tsfiledb.qp.constant.TSParserConstant;
+import cn.edu.thu.tsfiledb.qp.exception.IllegalASTFormatException;
+import cn.edu.thu.tsfiledb.qp.exception.LogicalOperatorException;
+import cn.edu.thu.tsfiledb.qp.exception.QueryProcessorException;
+import cn.edu.thu.tsfiledb.qp.logical.RootOperator;
+import cn.edu.thu.tsfiledb.qp.logical.crud.BasicFunctionOperator;
+import cn.edu.thu.tsfiledb.qp.logical.crud.DeleteOperator;
+import cn.edu.thu.tsfiledb.qp.logical.crud.FilterOperator;
+import cn.edu.thu.tsfiledb.qp.logical.crud.FromOperator;
+import cn.edu.thu.tsfiledb.qp.logical.crud.IndexOperator;
+import cn.edu.thu.tsfiledb.qp.logical.crud.InsertOperator;
+import cn.edu.thu.tsfiledb.qp.logical.crud.QueryOperator;
+import cn.edu.thu.tsfiledb.qp.logical.crud.SFWOperator;
+import cn.edu.thu.tsfiledb.qp.logical.crud.SelectOperator;
+import cn.edu.thu.tsfiledb.qp.logical.crud.UpdateOperator;
+import cn.edu.thu.tsfiledb.qp.logical.sys.AuthorOperator;
+import cn.edu.thu.tsfiledb.qp.logical.sys.AuthorOperator.AuthorType;
+import cn.edu.thu.tsfiledb.qp.logical.sys.LoadDataOperator;
+import cn.edu.thu.tsfiledb.qp.logical.sys.MetadataOperator;
+import cn.edu.thu.tsfiledb.qp.logical.sys.MetadataOperator.NamespaceType;
+import cn.edu.thu.tsfiledb.qp.logical.sys.PropertyOperator;
+import cn.edu.thu.tsfiledb.qp.logical.sys.PropertyOperator.PropertyType;
+import cn.edu.thu.tsfiledb.sql.parse.ASTNode;
+import cn.edu.thu.tsfiledb.sql.parse.Node;
+import cn.edu.thu.tsfiledb.sql.parse.TSParser;
+import cn.edu.tsinghua.tsfile.common.constant.SystemConstant;
+import cn.edu.tsinghua.tsfile.common.utils.Pair;
+import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
+import cn.edu.tsinghua.tsfile.timeseries.read.qp.Path;
+import cn.edu.tsinghua.tsfile.timeseries.utils.StringContainer;
 
 /**
  * This class receives an ASTNode and transform it to an operator which is a

@@ -1,7 +1,7 @@
 package cn.edu.thu.tsfiledb.engine.exception;
 
-import cn.edu.thu.tsfile.common.exception.ProcessorException;
 import cn.edu.thu.tsfiledb.exception.PathErrorException;
+import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 
 public class FileNodeProcessorException extends ProcessorException {
 

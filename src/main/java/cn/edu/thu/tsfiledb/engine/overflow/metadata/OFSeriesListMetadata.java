@@ -7,8 +7,8 @@ import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import cn.edu.thu.tsfile.file.metadata.TimeSeriesChunkMetaData;
-import cn.edu.thu.tsfile.file.metadata.converter.IConverter;
+import cn.edu.tsinghua.tsfile.file.metadata.TimeSeriesChunkMetaData;
+import cn.edu.tsinghua.tsfile.file.metadata.converter.IConverter;
 
 /**
  * This is the metadata for overflow file. More information see
@@ -64,9 +64,9 @@ public class OFSeriesListMetadata implements IConverter<cn.edu.thu.tsfiledb.engi
 	@Override
 	public cn.edu.thu.tsfiledb.engine.overflow.thrift.OFSeriesListMetadata convertToThrift() {
 		try {
-			List<cn.edu.thu.tsfile.format.TimeSeriesChunkMetaData> tsc_metadata = null;
+			List<cn.edu.tsinghua.tsfile.format.TimeSeriesChunkMetaData> tsc_metadata = null;
 			if (timeSeriesList != null) {
-				tsc_metadata = new ArrayList<cn.edu.thu.tsfile.format.TimeSeriesChunkMetaData>();
+				tsc_metadata = new ArrayList<cn.edu.tsinghua.tsfile.format.TimeSeriesChunkMetaData>();
 				for (TimeSeriesChunkMetaData timeSeriesMetaData : timeSeriesList) {
 					tsc_metadata.add(timeSeriesMetaData.convertToThrift());
 				}
@@ -85,7 +85,7 @@ public class OFSeriesListMetadata implements IConverter<cn.edu.thu.tsfiledb.engi
 	public void convertToTSF(cn.edu.thu.tsfiledb.engine.overflow.thrift.OFSeriesListMetadata metadata) {
 		try {
 			measurementId = metadata.getMeasurement_id();
-			List<cn.edu.thu.tsfile.format.TimeSeriesChunkMetaData> timeSeriesChunkMetaDatalist = metadata
+			List<cn.edu.tsinghua.tsfile.format.TimeSeriesChunkMetaData> timeSeriesChunkMetaDatalist = metadata
 					.getTsc_metadata();
 			if (timeSeriesChunkMetaDatalist == null) {
 				timeSeriesList = null;
@@ -94,7 +94,7 @@ public class OFSeriesListMetadata implements IConverter<cn.edu.thu.tsfiledb.engi
 					timeSeriesList = new ArrayList<TimeSeriesChunkMetaData>();
 				}
 				timeSeriesList.clear();
-				for (cn.edu.thu.tsfile.format.TimeSeriesChunkMetaData formatSeries : timeSeriesChunkMetaDatalist) {
+				for (cn.edu.tsinghua.tsfile.format.TimeSeriesChunkMetaData formatSeries : timeSeriesChunkMetaDatalist) {
 					TimeSeriesChunkMetaData seriesMetaData = new TimeSeriesChunkMetaData();
 					seriesMetaData.convertToTSF(formatSeries);
 					timeSeriesList.add(seriesMetaData);

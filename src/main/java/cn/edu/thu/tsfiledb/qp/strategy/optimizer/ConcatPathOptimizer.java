@@ -3,18 +3,18 @@ package cn.edu.thu.tsfiledb.qp.strategy.optimizer;
 import java.util.ArrayList;
 import java.util.List;
 
-import cn.edu.thu.tsfiledb.qp.exception.LogicalOptimizeException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import cn.edu.thu.tsfiledb.qp.constant.SQLConstant;
-import cn.edu.thu.tsfile.timeseries.read.qp.Path;
+import cn.edu.thu.tsfiledb.qp.exception.LogicalOptimizeException;
 import cn.edu.thu.tsfiledb.qp.logical.Operator;
 import cn.edu.thu.tsfiledb.qp.logical.crud.BasicFunctionOperator;
 import cn.edu.thu.tsfiledb.qp.logical.crud.FilterOperator;
 import cn.edu.thu.tsfiledb.qp.logical.crud.FromOperator;
 import cn.edu.thu.tsfiledb.qp.logical.crud.SFWOperator;
 import cn.edu.thu.tsfiledb.qp.logical.crud.SelectOperator;
+import cn.edu.tsinghua.tsfile.timeseries.read.qp.Path;
 
 /**
  * concat paths in select and from clause

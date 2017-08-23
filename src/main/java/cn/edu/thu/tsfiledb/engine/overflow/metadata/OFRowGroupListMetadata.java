@@ -7,7 +7,7 @@ import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import cn.edu.thu.tsfile.file.metadata.converter.IConverter;
+import cn.edu.tsinghua.tsfile.file.metadata.converter.IConverter;
 
 /**
  * This is metadata for overflow file. More information see

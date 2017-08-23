@@ -1,7 +1,7 @@
 package cn.edu.thu.tsfiledb.engine.bufferwrite;
 
-import cn.edu.thu.tsfile.timeseries.read.query.DynamicOneColumnData;
-import cn.edu.thu.tsfile.timeseries.write.record.TSRecord;
+import cn.edu.tsinghua.tsfile.timeseries.read.query.DynamicOneColumnData;
+import cn.edu.tsinghua.tsfile.timeseries.write.record.TSRecord;
 
 /**
  * The function of this interface is to store and index TSRecord in memory

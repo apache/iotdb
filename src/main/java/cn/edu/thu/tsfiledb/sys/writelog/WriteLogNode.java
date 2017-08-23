@@ -1,8 +1,13 @@
 package cn.edu.thu.tsfiledb.sys.writelog;
 
-import cn.edu.thu.tsfile.common.utils.BytesUtils;
-import cn.edu.thu.tsfile.timeseries.write.record.DataPoint;
-import cn.edu.thu.tsfile.timeseries.write.record.TSRecord;
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import cn.edu.thu.tsfiledb.conf.TsfileDBDescriptor;
 import cn.edu.thu.tsfiledb.qp.physical.PhysicalPlan;
 import cn.edu.thu.tsfiledb.qp.physical.crud.InsertPlan;
@@ -10,13 +15,9 @@ import cn.edu.thu.tsfiledb.sys.writelog.impl.LocalFileLogReader;
 import cn.edu.thu.tsfiledb.sys.writelog.impl.LocalFileLogWriter;
 import cn.edu.thu.tsfiledb.sys.writelog.transfer.PhysicalPlanLogTransfer;
 import cn.edu.thu.tsfiledb.sys.writelog.transfer.SystemLogOperator;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
+import cn.edu.tsinghua.tsfile.common.utils.BytesUtils;
+import cn.edu.tsinghua.tsfile.timeseries.write.record.DataPoint;
+import cn.edu.tsinghua.tsfile.timeseries.write.record.TSRecord;
 
 
 /**

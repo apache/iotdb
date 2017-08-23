@@ -5,8 +5,7 @@ import java.util.List;
 
 import cn.edu.thu.tsfiledb.qp.exception.LogicalOperatorException;
 import cn.edu.thu.tsfiledb.qp.logical.Operator;
-
-import cn.edu.thu.tsfile.timeseries.read.qp.Path;
+import cn.edu.tsinghua.tsfile.timeseries.read.qp.Path;
 
 
 /**

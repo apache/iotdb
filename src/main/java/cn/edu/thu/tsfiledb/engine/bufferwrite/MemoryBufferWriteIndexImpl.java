@@ -3,10 +3,10 @@ package cn.edu.thu.tsfiledb.engine.bufferwrite;
 import java.util.HashMap;
 import java.util.Map;
 
-import cn.edu.thu.tsfile.common.utils.Binary;
-import cn.edu.thu.tsfile.timeseries.read.query.DynamicOneColumnData;
-import cn.edu.thu.tsfile.timeseries.write.record.DataPoint;
-import cn.edu.thu.tsfile.timeseries.write.record.TSRecord;
+import cn.edu.tsinghua.tsfile.common.utils.Binary;
+import cn.edu.tsinghua.tsfile.timeseries.read.query.DynamicOneColumnData;
+import cn.edu.tsinghua.tsfile.timeseries.write.record.DataPoint;
+import cn.edu.tsinghua.tsfile.timeseries.write.record.TSRecord;
 
 /**
  * Implement the {@code BufferWriteIndex}<br>
