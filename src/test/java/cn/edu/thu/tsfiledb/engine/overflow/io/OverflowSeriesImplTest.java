@@ -11,16 +11,16 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import cn.edu.thu.tsfile.common.utils.BytesUtils;
-import cn.edu.thu.tsfile.compress.Compressor;
-import cn.edu.thu.tsfile.file.metadata.TimeSeriesChunkMetaData;
-import cn.edu.thu.tsfile.file.metadata.enums.CompressionTypeName;
-import cn.edu.thu.tsfile.file.metadata.enums.TSDataType;
-import cn.edu.thu.tsfile.timeseries.read.query.DynamicOneColumnData;
 import cn.edu.thu.tsfiledb.conf.TsfileDBConfig;
 import cn.edu.thu.tsfiledb.conf.TsfileDBDescriptor;
 import cn.edu.thu.tsfiledb.metadata.MManager;
 import cn.edu.thu.tsfiledb.sys.writelog.WriteLogManager;
+import cn.edu.tsinghua.tsfile.common.utils.BytesUtils;
+import cn.edu.tsinghua.tsfile.compress.Compressor;
+import cn.edu.tsinghua.tsfile.file.metadata.TimeSeriesChunkMetaData;
+import cn.edu.tsinghua.tsfile.file.metadata.enums.CompressionTypeName;
+import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
+import cn.edu.tsinghua.tsfile.timeseries.read.query.DynamicOneColumnData;
 
 /**
  * @author liukun

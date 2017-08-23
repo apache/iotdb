@@ -1,9 +1,11 @@
 package cn.edu.thu.tsfiledb.qp.cud;
 
-import cn.edu.thu.tsfile.common.constant.SystemConstant;
-import cn.edu.thu.tsfile.common.exception.ProcessorException;
-import cn.edu.thu.tsfile.timeseries.read.qp.Path;
-import cn.edu.thu.tsfile.timeseries.utils.StringContainer;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
+
+import org.junit.Before;
+import org.junit.Test;
+
 import cn.edu.thu.tsfiledb.exception.ArgsErrorException;
 import cn.edu.thu.tsfiledb.qp.QueryProcessor;
 import cn.edu.thu.tsfiledb.qp.constant.SQLConstant;
@@ -13,11 +15,10 @@ import cn.edu.thu.tsfiledb.qp.physical.sys.AuthorPlan;
 import cn.edu.thu.tsfiledb.qp.physical.sys.MetadataPlan;
 import cn.edu.thu.tsfiledb.qp.physical.sys.PropertyPlan;
 import cn.edu.thu.tsfiledb.qp.utils.MemIntQpExecutor;
-import org.junit.Before;
-import org.junit.Test;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
+import cn.edu.tsinghua.tsfile.common.constant.SystemConstant;
+import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
+import cn.edu.tsinghua.tsfile.timeseries.read.qp.Path;
+import cn.edu.tsinghua.tsfile.timeseries.utils.StringContainer;
 
 public class PhysicalPlanTest {
 

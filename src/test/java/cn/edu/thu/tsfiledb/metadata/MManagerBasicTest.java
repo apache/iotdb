@@ -10,12 +10,12 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import cn.edu.thu.tsfile.timeseries.read.qp.Path;
 import cn.edu.thu.tsfiledb.conf.TsfileDBConfig;
 import cn.edu.thu.tsfiledb.conf.TsfileDBDescriptor;
 import cn.edu.thu.tsfiledb.engine.overflow.io.EngineTestHelper;
 import cn.edu.thu.tsfiledb.exception.MetadataArgsErrorException;
 import cn.edu.thu.tsfiledb.exception.PathErrorException;
+import cn.edu.tsinghua.tsfile.timeseries.read.qp.Path;
 
 public class MManagerBasicTest {
 

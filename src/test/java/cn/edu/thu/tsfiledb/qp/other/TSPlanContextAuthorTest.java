@@ -1,21 +1,22 @@
 package cn.edu.thu.tsfiledb.qp.other;
 
-import cn.edu.thu.tsfile.timeseries.read.qp.Path;
-import cn.edu.thu.tsfiledb.qp.exception.QueryProcessorException;
-import cn.edu.thu.tsfiledb.qp.physical.sys.AuthorPlan;
-import cn.edu.thu.tsfiledb.exception.ArgsErrorException;
-import cn.edu.thu.tsfiledb.qp.QueryProcessor;
-import cn.edu.thu.tsfiledb.qp.utils.MemIntQpExecutor;
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.fail;
+
+import java.util.Arrays;
+import java.util.Collection;
+
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 
-import java.util.Arrays;
-import java.util.Collection;
-
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.fail;
+import cn.edu.thu.tsfiledb.exception.ArgsErrorException;
+import cn.edu.thu.tsfiledb.qp.QueryProcessor;
+import cn.edu.thu.tsfiledb.qp.exception.QueryProcessorException;
+import cn.edu.thu.tsfiledb.qp.physical.sys.AuthorPlan;
+import cn.edu.thu.tsfiledb.qp.utils.MemIntQpExecutor;
+import cn.edu.tsinghua.tsfile.timeseries.read.qp.Path;
 
 /**
  * test ast node parsing on authorization

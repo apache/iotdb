@@ -1,6 +1,6 @@
 package cn.edu.thu.tsfiledb.qp.cud;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
 
 import java.util.Map;
 

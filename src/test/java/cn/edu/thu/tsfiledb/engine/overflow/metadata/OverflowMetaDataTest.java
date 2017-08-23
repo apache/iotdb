@@ -9,13 +9,13 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import cn.edu.thu.tsfile.common.utils.RandomAccessOutputStream;
-import cn.edu.thu.tsfile.file.metadata.TimeSeriesChunkMetaData;
-import cn.edu.thu.tsfile.file.metadata.enums.CompressionTypeName;
-import cn.edu.thu.tsfile.file.metadata.enums.TSChunkType;
-import cn.edu.thu.tsfile.format.CompressionType;
-import cn.edu.thu.tsfile.format.TimeSeriesChunkType;
 import cn.edu.thu.tsfiledb.engine.overflow.utils.TSFileMetaDataConverter;
+import cn.edu.tsinghua.tsfile.common.utils.RandomAccessOutputStream;
+import cn.edu.tsinghua.tsfile.file.metadata.TimeSeriesChunkMetaData;
+import cn.edu.tsinghua.tsfile.file.metadata.enums.CompressionTypeName;
+import cn.edu.tsinghua.tsfile.file.metadata.enums.TSChunkType;
+import cn.edu.tsinghua.tsfile.format.CompressionType;
+import cn.edu.tsinghua.tsfile.format.TimeSeriesChunkType;
 
 
 
@@ -49,7 +49,7 @@ public class OverflowMetaDataTest {
 
 	// series chunk metadata
 	private TimeSeriesChunkMetaData tsfTimeSeriesChunkMetaData;
-	private cn.edu.thu.tsfile.format.TimeSeriesChunkMetaData thriftTimeSeriesChunkMetaData;
+	private cn.edu.tsinghua.tsfile.format.TimeSeriesChunkMetaData thriftTimeSeriesChunkMetaData;
 	// of series list
 	private OFSeriesListMetadata tsfOFSeriesListMetadata;
 	private cn.edu.thu.tsfiledb.engine.overflow.thrift.OFSeriesListMetadata thriftOFSeriesListMetadata;
@@ -103,7 +103,7 @@ public class OverflowMetaDataTest {
 		thriftOFSeriesListMetadata.setMeasurement_id(MEASUREMENT_UID);
 		for (CompressionType compressionType : CompressionType.values()) {
 			for (TimeSeriesChunkType chunkType : TimeSeriesChunkType.values()) {
-				thriftTimeSeriesChunkMetaData = new cn.edu.thu.tsfile.format.TimeSeriesChunkMetaData(
+				thriftTimeSeriesChunkMetaData = new cn.edu.tsinghua.tsfile.format.TimeSeriesChunkMetaData(
 						MEASUREMENT_UID, chunkType, FILE_OFFSET, compressionType);
 				thriftTimeSeriesChunkMetaData.setNum_rows(MAX_NUM_ROWS);
 				thriftTimeSeriesChunkMetaData.setTotal_byte_size(TOTAL_BYTE_SIZE);
@@ -160,7 +160,7 @@ public class OverflowMetaDataTest {
 			thriftOFSeriesListMetadata.setMeasurement_id(MEASUREMENT_UID);
 			for (CompressionType compressionType : CompressionType.values()) {
 				for (TimeSeriesChunkType chunkType : TimeSeriesChunkType.values()) {
-					thriftTimeSeriesChunkMetaData = new cn.edu.thu.tsfile.format.TimeSeriesChunkMetaData(
+					thriftTimeSeriesChunkMetaData = new cn.edu.tsinghua.tsfile.format.TimeSeriesChunkMetaData(
 							MEASUREMENT_UID, chunkType, FILE_OFFSET, compressionType);
 					thriftTimeSeriesChunkMetaData.setNum_rows(MAX_NUM_ROWS);
 					thriftTimeSeriesChunkMetaData.setTotal_byte_size(TOTAL_BYTE_SIZE);
@@ -233,7 +233,7 @@ public class OverflowMetaDataTest {
 				thriftOFSeriesListMetadata.setMeasurement_id(MEASUREMENT_UID);
 				for (CompressionType compressionType : CompressionType.values()) {
 					for (TimeSeriesChunkType chunkType : TimeSeriesChunkType.values()) {
-						thriftTimeSeriesChunkMetaData = new cn.edu.thu.tsfile.format.TimeSeriesChunkMetaData(
+						thriftTimeSeriesChunkMetaData = new cn.edu.tsinghua.tsfile.format.TimeSeriesChunkMetaData(
 								MEASUREMENT_UID, chunkType, FILE_OFFSET, compressionType);
 						thriftTimeSeriesChunkMetaData.setNum_rows(MAX_NUM_ROWS);
 						thriftTimeSeriesChunkMetaData.setTotal_byte_size(TOTAL_BYTE_SIZE);

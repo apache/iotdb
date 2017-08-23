@@ -1,6 +1,8 @@
 package cn.edu.thu.tsfiledb.engine.overflow.metadata;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -13,19 +15,16 @@ import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.transport.TIOStreamTransport;
 
-import cn.edu.thu.tsfile.file.metadata.RowGroupMetaData;
-import cn.edu.thu.tsfile.file.metadata.TInTimeSeriesChunkMetaData;
-import cn.edu.thu.tsfile.file.metadata.TSFileMetaData;
-import cn.edu.thu.tsfile.file.metadata.TimeSeriesChunkMetaData;
-import cn.edu.thu.tsfile.file.metadata.TimeSeriesMetadata;
-import cn.edu.thu.tsfile.file.metadata.VInTimeSeriesChunkMetaData;
-import cn.edu.thu.tsfiledb.engine.overflow.metadata.OFFileMetadata;
-import cn.edu.thu.tsfiledb.engine.overflow.metadata.OFRowGroupListMetadata;
-import cn.edu.thu.tsfiledb.engine.overflow.metadata.OFSeriesListMetadata;
-import cn.edu.thu.tsfile.format.FileMetaData;
-import cn.edu.thu.tsfile.format.TimeInTimeSeriesChunkMetaData;
-import cn.edu.thu.tsfile.format.TimeSeries;
-import cn.edu.thu.tsfile.format.ValueInTimeSeriesChunkMetaData;
+import cn.edu.tsinghua.tsfile.file.metadata.RowGroupMetaData;
+import cn.edu.tsinghua.tsfile.file.metadata.TInTimeSeriesChunkMetaData;
+import cn.edu.tsinghua.tsfile.file.metadata.TSFileMetaData;
+import cn.edu.tsinghua.tsfile.file.metadata.TimeSeriesChunkMetaData;
+import cn.edu.tsinghua.tsfile.file.metadata.TimeSeriesMetadata;
+import cn.edu.tsinghua.tsfile.file.metadata.VInTimeSeriesChunkMetaData;
+import cn.edu.tsinghua.tsfile.format.FileMetaData;
+import cn.edu.tsinghua.tsfile.format.TimeInTimeSeriesChunkMetaData;
+import cn.edu.tsinghua.tsfile.format.TimeSeries;
+import cn.edu.tsinghua.tsfile.format.ValueInTimeSeriesChunkMetaData;
 
 public class Utils {
   public static void isListEqual(List<?> listA, List<?> listB, String name) {
@@ -70,7 +69,7 @@ public class Utils {
   }
 
   public static void isTimeSeriesEqual(TimeSeriesMetadata timeSeriesInTSF,
-		  cn.edu.thu.tsfile.format.TimeSeries timeSeriesInThrift) {
+		  cn.edu.tsinghua.tsfile.format.TimeSeries timeSeriesInThrift) {
     if (Utils.isTwoObjectsNotNULL(timeSeriesInTSF.getMeasurementUID(),
         timeSeriesInThrift.getMeasurement_uid(), "sensorUID")) {
       assertTrue(
@@ -158,7 +157,7 @@ public class Utils {
 
   public static void isTimeSeriesChunkMetaDataEqual(
       TimeSeriesChunkMetaData timeSeriesChunkMetaDataInTSF,
-      cn.edu.thu.tsfile.format.TimeSeriesChunkMetaData timeSeriesChunkMetaDataInThrift) {
+      cn.edu.tsinghua.tsfile.format.TimeSeriesChunkMetaData timeSeriesChunkMetaDataInThrift) {
     if (Utils.isTwoObjectsNotNULL(timeSeriesChunkMetaDataInTSF, timeSeriesChunkMetaDataInThrift,
         "TimeSeriesChunkMetaData")) {
       assertTrue(timeSeriesChunkMetaDataInTSF.getProperties().getMeasurementUID()
@@ -194,7 +193,7 @@ public class Utils {
   }
 
   public static void isRowGroupMetaDataEqual(RowGroupMetaData rowGroupMetaDataInTSF,
-		  cn.edu.thu.tsfile.format.RowGroupMetaData rowGroupMetaDataInThrift) {
+		  cn.edu.tsinghua.tsfile.format.RowGroupMetaData rowGroupMetaDataInThrift) {
     if (Utils.isTwoObjectsNotNULL(rowGroupMetaDataInTSF, rowGroupMetaDataInThrift,
         "RowGroupMetaData")) {
       assertTrue(rowGroupMetaDataInTSF.getDeltaObjectUID()
@@ -214,7 +213,7 @@ public class Utils {
       if (Utils.isTwoObjectsNotNULL(rowGroupMetaDataInTSF.getMetaDatas(),
           rowGroupMetaDataInThrift.getTsc_metadata(), "TimeSeriesChunkMetaData List")) {
         List<TimeSeriesChunkMetaData> listTSF = rowGroupMetaDataInTSF.getMetaDatas();
-        List<cn.edu.thu.tsfile.format.TimeSeriesChunkMetaData> listThrift =
+        List<cn.edu.tsinghua.tsfile.format.TimeSeriesChunkMetaData> listThrift =
             rowGroupMetaDataInThrift.getTsc_metadata();
 
         if (listTSF.size() != listThrift.size()) {
@@ -241,7 +240,7 @@ public class Utils {
       if (Utils.isTwoObjectsNotNULL(fileMetaDataInTSF.getRowGroups(), fileMetaDataInThrift.getRow_groups(),
           "Row Group List")) {
         List<RowGroupMetaData> listTSF = fileMetaDataInTSF.getRowGroups();
-        List<cn.edu.thu.tsfile.format.RowGroupMetaData> listThrift =
+        List<cn.edu.tsinghua.tsfile.format.RowGroupMetaData> listThrift =
             fileMetaDataInThrift.getRow_groups();
 
         if (listTSF.size() != listThrift.size()) {

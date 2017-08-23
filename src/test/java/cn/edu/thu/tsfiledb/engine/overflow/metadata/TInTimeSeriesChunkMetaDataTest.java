@@ -11,13 +11,13 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import cn.edu.thu.tsfile.common.utils.RandomAccessOutputStream;
-import cn.edu.thu.tsfile.file.metadata.TInTimeSeriesChunkMetaData;
-import cn.edu.thu.tsfile.file.metadata.enums.TSDataType;
-import cn.edu.thu.tsfile.file.metadata.enums.TSFreqType;
-import cn.edu.thu.tsfile.format.DataType;
-import cn.edu.thu.tsfile.format.FreqType;
-import cn.edu.thu.tsfile.format.TimeInTimeSeriesChunkMetaData;
+import cn.edu.tsinghua.tsfile.common.utils.RandomAccessOutputStream;
+import cn.edu.tsinghua.tsfile.file.metadata.TInTimeSeriesChunkMetaData;
+import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
+import cn.edu.tsinghua.tsfile.file.metadata.enums.TSFreqType;
+import cn.edu.tsinghua.tsfile.format.DataType;
+import cn.edu.tsinghua.tsfile.format.FreqType;
+import cn.edu.tsinghua.tsfile.format.TimeInTimeSeriesChunkMetaData;
 
 public class TInTimeSeriesChunkMetaDataTest {
   private TInTimeSeriesChunkMetaData metaData;

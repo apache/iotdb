@@ -4,18 +4,18 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 
-import cn.edu.thu.tsfile.common.exception.UnSupportedDataTypeException;
-import cn.edu.thu.tsfile.common.utils.ReadWriteStreamUtils;
-import cn.edu.thu.tsfile.encoding.decoder.Decoder;
-import cn.edu.thu.tsfile.encoding.decoder.DeltaBinaryDecoder;
-import cn.edu.thu.tsfile.file.metadata.enums.CompressionTypeName;
-import cn.edu.thu.tsfile.file.metadata.enums.TSDataType;
-import cn.edu.thu.tsfile.format.Digest;
-import cn.edu.thu.tsfile.format.PageHeader;
-import cn.edu.thu.tsfile.timeseries.read.PageReader;
-import cn.edu.thu.tsfile.timeseries.read.query.DynamicOneColumnData;
 import cn.edu.thu.tsfiledb.exception.PathErrorException;
 import cn.edu.thu.tsfiledb.metadata.MManager;
+import cn.edu.tsinghua.tsfile.common.exception.UnSupportedDataTypeException;
+import cn.edu.tsinghua.tsfile.common.utils.ReadWriteStreamUtils;
+import cn.edu.tsinghua.tsfile.encoding.decoder.Decoder;
+import cn.edu.tsinghua.tsfile.encoding.decoder.DeltaBinaryDecoder;
+import cn.edu.tsinghua.tsfile.file.metadata.enums.CompressionTypeName;
+import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
+import cn.edu.tsinghua.tsfile.format.Digest;
+import cn.edu.tsinghua.tsfile.format.PageHeader;
+import cn.edu.tsinghua.tsfile.timeseries.read.PageReader;
+import cn.edu.tsinghua.tsfile.timeseries.read.query.DynamicOneColumnData;
 
 /**
  * @author CGF.

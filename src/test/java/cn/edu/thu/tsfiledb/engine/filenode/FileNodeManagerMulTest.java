@@ -12,12 +12,6 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import cn.edu.thu.tsfile.common.conf.TSFileConfig;
-import cn.edu.thu.tsfile.common.conf.TSFileDescriptor;
-import cn.edu.thu.tsfile.file.metadata.enums.TSDataType;
-import cn.edu.thu.tsfile.timeseries.read.query.DynamicOneColumnData;
-import cn.edu.thu.tsfile.timeseries.write.record.DataPoint;
-import cn.edu.thu.tsfile.timeseries.write.record.TSRecord;
 import cn.edu.thu.tsfiledb.conf.TsfileDBConfig;
 import cn.edu.thu.tsfiledb.conf.TsfileDBDescriptor;
 import cn.edu.thu.tsfiledb.engine.exception.FileNodeManagerException;
@@ -26,6 +20,12 @@ import cn.edu.thu.tsfiledb.engine.overflow.io.EngineTestHelper;
 import cn.edu.thu.tsfiledb.exception.PathErrorException;
 import cn.edu.thu.tsfiledb.metadata.MManager;
 import cn.edu.thu.tsfiledb.sys.writelog.WriteLogManager;
+import cn.edu.tsinghua.tsfile.common.conf.TSFileConfig;
+import cn.edu.tsinghua.tsfile.common.conf.TSFileDescriptor;
+import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
+import cn.edu.tsinghua.tsfile.timeseries.read.query.DynamicOneColumnData;
+import cn.edu.tsinghua.tsfile.timeseries.write.record.DataPoint;
+import cn.edu.tsinghua.tsfile.timeseries.write.record.TSRecord;
 
 /**
  * @author liukun
