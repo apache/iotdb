@@ -2,6 +2,7 @@ package cn.edu.thu.tsfiledb.qp.constant;
 
 import java.util.HashMap;
 import java.util.Map;
+import cn.edu.thu.tsfiledb.sql.parse.TSParser;
 
 
 public class TSParserConstant {

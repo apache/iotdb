@@ -1,7 +1,13 @@
 package cn.edu.thu.tsfiledb.sys.writelog;
 
-import cn.edu.thu.tsfile.common.utils.Pair;
-import cn.edu.thu.tsfile.timeseries.read.qp.Path;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Test;
+
 import cn.edu.thu.tsfiledb.conf.TsfileDBConfig;
 import cn.edu.thu.tsfiledb.conf.TsfileDBDescriptor;
 import cn.edu.thu.tsfiledb.engine.overflow.io.EngineTestHelper;
@@ -9,14 +15,8 @@ import cn.edu.thu.tsfiledb.qp.physical.PhysicalPlan;
 import cn.edu.thu.tsfiledb.qp.physical.crud.DeletePlan;
 import cn.edu.thu.tsfiledb.qp.physical.crud.InsertPlan;
 import cn.edu.thu.tsfiledb.qp.physical.crud.UpdatePlan;
-
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Test;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
+import cn.edu.tsinghua.tsfile.common.utils.Pair;
+import cn.edu.tsinghua.tsfile.timeseries.read.qp.Path;
 
 /**
  * @author CGF.

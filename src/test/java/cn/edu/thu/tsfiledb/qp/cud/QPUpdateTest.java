@@ -1,25 +1,22 @@
 package cn.edu.thu.tsfiledb.qp.cud;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.Iterator;
 
-import cn.edu.thu.tsfiledb.query.management.RecordReaderFactory;
-import cn.edu.thu.tsfiledb.query.reader.RecordReader;
-import org.apache.commons.io.FileUtils;
 import org.junit.After;
-import org.junit.Test;
 
-import cn.edu.thu.tsfile.common.exception.ProcessorException;
-import cn.edu.thu.tsfile.timeseries.read.query.QueryDataSet;
-import cn.edu.thu.tsfiledb.conf.TsfileDBDescriptor;
 import cn.edu.thu.tsfiledb.exception.ArgsErrorException;
 import cn.edu.thu.tsfiledb.qp.QueryProcessor;
 import cn.edu.thu.tsfiledb.qp.exception.QueryProcessorException;
 import cn.edu.thu.tsfiledb.qp.executor.OverflowQPExecutor;
 import cn.edu.thu.tsfiledb.qp.physical.PhysicalPlan;
+import cn.edu.thu.tsfiledb.query.management.RecordReaderFactory;
+import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
+import cn.edu.tsinghua.tsfile.timeseries.read.query.QueryDataSet;
 
 public class QPUpdateTest {
 	QueryProcessor processor = new QueryProcessor(new OverflowQPExecutor());

@@ -7,11 +7,11 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import cn.edu.thu.tsfile.common.exception.ProcessorException;
 import cn.edu.thu.tsfiledb.conf.TsfileDBConfig;
 import cn.edu.thu.tsfiledb.conf.TsfileDBDescriptor;
 import cn.edu.thu.tsfiledb.engine.overflow.io.EngineTestHelper;
 import cn.edu.thu.tsfiledb.metadata.MManager;
+import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 
 /**
  * @author liukun

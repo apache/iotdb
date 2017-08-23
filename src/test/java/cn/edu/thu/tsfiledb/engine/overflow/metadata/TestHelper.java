@@ -5,21 +5,21 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
-import cn.edu.thu.tsfile.file.metadata.TInTimeSeriesChunkMetaData;
-import cn.edu.thu.tsfile.file.metadata.TSDigest;
-import cn.edu.thu.tsfile.file.metadata.TimeSeriesChunkMetaData;
-import cn.edu.thu.tsfile.file.metadata.VInTimeSeriesChunkMetaData;
-import cn.edu.thu.tsfile.file.metadata.enums.CompressionTypeName;
-import cn.edu.thu.tsfile.file.metadata.enums.TSChunkType;
-import cn.edu.thu.tsfile.file.metadata.enums.TSDataType;
-import cn.edu.thu.tsfile.file.metadata.enums.TSFreqType;
-import cn.edu.thu.tsfile.format.CompressionType;
-import cn.edu.thu.tsfile.format.DataType;
-import cn.edu.thu.tsfile.format.Digest;
-import cn.edu.thu.tsfile.format.FreqType;
-import cn.edu.thu.tsfile.format.TimeInTimeSeriesChunkMetaData;
-import cn.edu.thu.tsfile.format.TimeSeriesChunkType;
-import cn.edu.thu.tsfile.format.ValueInTimeSeriesChunkMetaData;
+import cn.edu.tsinghua.tsfile.file.metadata.TInTimeSeriesChunkMetaData;
+import cn.edu.tsinghua.tsfile.file.metadata.TSDigest;
+import cn.edu.tsinghua.tsfile.file.metadata.TimeSeriesChunkMetaData;
+import cn.edu.tsinghua.tsfile.file.metadata.VInTimeSeriesChunkMetaData;
+import cn.edu.tsinghua.tsfile.file.metadata.enums.CompressionTypeName;
+import cn.edu.tsinghua.tsfile.file.metadata.enums.TSChunkType;
+import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
+import cn.edu.tsinghua.tsfile.file.metadata.enums.TSFreqType;
+import cn.edu.tsinghua.tsfile.format.CompressionType;
+import cn.edu.tsinghua.tsfile.format.DataType;
+import cn.edu.tsinghua.tsfile.format.Digest;
+import cn.edu.tsinghua.tsfile.format.FreqType;
+import cn.edu.tsinghua.tsfile.format.TimeInTimeSeriesChunkMetaData;
+import cn.edu.tsinghua.tsfile.format.TimeSeriesChunkType;
+import cn.edu.tsinghua.tsfile.format.ValueInTimeSeriesChunkMetaData;
 
 public class TestHelper {
 
@@ -44,10 +44,10 @@ public class TestHelper {
     return metaData;
   }
 
-  public static cn.edu.thu.tsfile.format.TimeSeriesChunkMetaData createSimpleTimeSeriesChunkMetaDataInThrift()
+  public static cn.edu.tsinghua.tsfile.format.TimeSeriesChunkMetaData createSimpleTimeSeriesChunkMetaDataInThrift()
       throws UnsupportedEncodingException {
-    cn.edu.thu.tsfile.format.TimeSeriesChunkMetaData metaData =
-        new cn.edu.thu.tsfile.format.TimeSeriesChunkMetaData(
+    cn.edu.tsinghua.tsfile.format.TimeSeriesChunkMetaData metaData =
+        new cn.edu.tsinghua.tsfile.format.TimeSeriesChunkMetaData(
             TimeSeriesChunkMetaDataTest.MEASUREMENT_UID, TimeSeriesChunkType.VALUE,
             TimeSeriesChunkMetaDataTest.FILE_OFFSET, CompressionType.LZO);
     metaData.setNum_rows(TimeSeriesChunkMetaDataTest.MAX_NUM_ROWS);

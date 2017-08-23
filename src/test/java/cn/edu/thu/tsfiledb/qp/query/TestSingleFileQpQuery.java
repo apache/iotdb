@@ -1,18 +1,7 @@
 package cn.edu.thu.tsfiledb.qp.query;
 
-import cn.edu.thu.tsfile.timeseries.read.LocalFileInput;
-import cn.edu.thu.tsfile.timeseries.read.query.QueryDataSet;
-import cn.edu.thu.tsfiledb.qp.exception.QueryProcessorException;
-import cn.edu.thu.tsfiledb.qp.executor.QueryProcessExecutor;
-import cn.edu.thu.tsfiledb.qp.executor.SingleFileQPExecutor;
-import cn.edu.thu.tsfiledb.qp.physical.PhysicalPlan;
-import cn.edu.thu.tsfiledb.exception.ArgsErrorException;
-import cn.edu.thu.tsfiledb.qp.QueryProcessor;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameters;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 import java.io.File;
 import java.io.IOException;
@@ -20,8 +9,20 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Iterator;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameters;
+
+import cn.edu.thu.tsfiledb.exception.ArgsErrorException;
+import cn.edu.thu.tsfiledb.qp.QueryProcessor;
+import cn.edu.thu.tsfiledb.qp.exception.QueryProcessorException;
+import cn.edu.thu.tsfiledb.qp.executor.QueryProcessExecutor;
+import cn.edu.thu.tsfiledb.qp.executor.SingleFileQPExecutor;
+import cn.edu.thu.tsfiledb.qp.physical.PhysicalPlan;
+import cn.edu.tsinghua.tsfile.timeseries.read.LocalFileInput;
+import cn.edu.tsinghua.tsfile.timeseries.read.query.QueryDataSet;
 
 /**
  * test query operation

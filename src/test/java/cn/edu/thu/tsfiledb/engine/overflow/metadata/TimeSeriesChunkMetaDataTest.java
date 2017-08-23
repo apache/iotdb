@@ -10,16 +10,16 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import cn.edu.thu.tsfile.common.utils.RandomAccessOutputStream;
-import cn.edu.thu.tsfile.file.metadata.TimeSeriesChunkMetaData;
-import cn.edu.thu.tsfile.file.metadata.TInTimeSeriesChunkMetaData;
-import cn.edu.thu.tsfile.file.metadata.VInTimeSeriesChunkMetaData;
-import cn.edu.thu.tsfile.file.metadata.enums.CompressionTypeName;
-import cn.edu.thu.tsfile.file.metadata.enums.TSChunkType;
-import cn.edu.thu.tsfile.format.CompressionType;
-import cn.edu.thu.tsfile.format.TimeInTimeSeriesChunkMetaData;
-import cn.edu.thu.tsfile.format.TimeSeriesChunkType;
-import cn.edu.thu.tsfile.format.ValueInTimeSeriesChunkMetaData;
+import cn.edu.tsinghua.tsfile.common.utils.RandomAccessOutputStream;
+import cn.edu.tsinghua.tsfile.file.metadata.TInTimeSeriesChunkMetaData;
+import cn.edu.tsinghua.tsfile.file.metadata.TimeSeriesChunkMetaData;
+import cn.edu.tsinghua.tsfile.file.metadata.VInTimeSeriesChunkMetaData;
+import cn.edu.tsinghua.tsfile.file.metadata.enums.CompressionTypeName;
+import cn.edu.tsinghua.tsfile.file.metadata.enums.TSChunkType;
+import cn.edu.tsinghua.tsfile.format.CompressionType;
+import cn.edu.tsinghua.tsfile.format.TimeInTimeSeriesChunkMetaData;
+import cn.edu.tsinghua.tsfile.format.TimeSeriesChunkType;
+import cn.edu.tsinghua.tsfile.format.ValueInTimeSeriesChunkMetaData;
 
 public class TimeSeriesChunkMetaDataTest {
 
@@ -58,7 +58,7 @@ public class TimeSeriesChunkMetaDataTest {
     FileInputStream fis = new FileInputStream(new File(PATH));
     Utils.isTimeSeriesChunkMetaDataEqual(metaData, metaData.convertToThrift());
     Utils.isTimeSeriesChunkMetaDataEqual(metaData,
-        Utils.read(fis, new cn.edu.thu.tsfile.format.TimeSeriesChunkMetaData()));
+        Utils.read(fis, new cn.edu.tsinghua.tsfile.format.TimeSeriesChunkMetaData()));
   }
 
   @Test
@@ -97,8 +97,8 @@ public class TimeSeriesChunkMetaDataTest {
     for (CompressionType compressionType : CompressionType.values()) {
       for (TimeSeriesChunkType chunkType : TimeSeriesChunkType.values()) {
         TimeSeriesChunkMetaData metaData = new TimeSeriesChunkMetaData();
-        cn.edu.thu.tsfile.format.TimeSeriesChunkMetaData timeSeriesChunkMetaData =
-            new cn.edu.thu.tsfile.format.TimeSeriesChunkMetaData(MEASUREMENT_UID, chunkType,
+        cn.edu.tsinghua.tsfile.format.TimeSeriesChunkMetaData timeSeriesChunkMetaData =
+            new cn.edu.tsinghua.tsfile.format.TimeSeriesChunkMetaData(MEASUREMENT_UID, chunkType,
                 FILE_OFFSET, compressionType);
         metaData.convertToTSF(timeSeriesChunkMetaData);
         Utils.isTimeSeriesChunkMetaDataEqual(metaData, timeSeriesChunkMetaData);
