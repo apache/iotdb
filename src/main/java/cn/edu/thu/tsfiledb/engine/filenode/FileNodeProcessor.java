@@ -185,7 +185,7 @@ public class FileNodeProcessor extends LRUProcessor {
 	};
 	
 	public void clearFileNode(){
-		lastUpdateTimeMap.clear();
+		// lastUpdateTimeMap.clear();
 		emptyIntervalFileNode = new IntervalFileNode(OverflowChangeType.NO_CHANGE, null);
 		newFileNodes = new ArrayList<>();
 		isMerging = FileNodeProcessorStatus.NONE;
