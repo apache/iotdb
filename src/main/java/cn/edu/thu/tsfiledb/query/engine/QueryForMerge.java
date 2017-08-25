@@ -33,7 +33,7 @@ public class QueryForMerge {
 
 		if (queryDataSet == null || !queryDataSet.hasNextRecord()) {
 			try {
-				queryDataSet = queryEngine.query(pathList, timeFilter, null, null, queryDataSet,
+				queryDataSet = queryEngine.query(0, pathList, timeFilter, null, null, queryDataSet,
 						TsFileDBConf.fetchSize);
 			} catch (ProcessorException | IOException | PathErrorException e) {
 				e.printStackTrace();
