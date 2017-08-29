@@ -4,6 +4,7 @@ package cn.edu.thu.tsfiledb.query.engine;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.PriorityQueue;
 
 import cn.edu.thu.tsfiledb.exception.PathErrorException;
 import cn.edu.thu.tsfiledb.metadata.MManager;
@@ -77,8 +78,10 @@ public class AggregateEngine {
     public static QueryDataSet multiAggregate(List<Pair<Path, AggregateFunction>> aggres, List<FilterStructure> filterStructures) throws ProcessorException, IOException, PathErrorException {
 
         QueryDataSet ansQueryDataSet = new QueryDataSet();
-        List<QueryDataSet> filterQueryDataSets = new ArrayList<>();
-        List<long[]> timeArrays = new ArrayList<>();
+        List<QueryDataSet> filterQueryDataSets = new ArrayList<>(); // stores QueryDataSet of each FilterStructure answer
+        List<long[]> timeArray = new ArrayList<>(); // stores calculated common timestamps of each FilterStructure answer
+        List<Integer> indexArray = new ArrayList<>(); // stores used index of each timeArray
+        List<Boolean> hasDataArray = new ArrayList<>(); // represents whether this FilterStructure answer still has unread data
         for (int idx = 0;idx < filterStructures.size();idx++) {
             FilterStructure filterStructure = filterStructures.get(idx);
             QueryDataSet queryDataSet = new QueryDataSet();
@@ -95,14 +98,65 @@ public class AggregateEngine {
                 }
             };
             filterQueryDataSets.add(queryDataSet);
-            long[] timestamps = ansQueryDataSet.timeQueryDataSet.generateTimes();
-            timeArrays.add(timestamps);
+            long[] curTimestamps = ansQueryDataSet.timeQueryDataSet.generateTimes();
+            timeArray.add(curTimestamps);
+            indexArray.add(0);
+            if (curTimestamps.length > 0) {
+                hasDataArray.add(true);
+            } else {
+                hasDataArray.add(false);
+            }
         }
 
-        boolean hasDataFlag = true;
+        // the aggregation timestamps calculated by all dnf
         List<Long> timestamps = new ArrayList<>();
-        while (hasDataFlag) {
-            
+        PriorityQueue<Long> priorityQueue = new PriorityQueue<>();
+
+        for (int i = 0;i < timeArray.size();i++) {
+            boolean flag = hasDataArray.get(i);
+            if (flag) {
+                priorityQueue.add(timeArray.get(i)[indexArray.get(i)]);
+            }
+        }
+
+        int batchSize = 100000;
+        while (true) {
+
+            while (timestamps.size() < batchSize && !priorityQueue.isEmpty()) {
+
+                // add the minimum timestamp and remove others in timeArray
+                long minTime = priorityQueue.poll();
+                timestamps.add(minTime);
+                while (!priorityQueue.isEmpty() && minTime == priorityQueue.peek())
+                    priorityQueue.poll();
+
+                for (int i = 0;i < timeArray.size();i++) {
+                    boolean flag = hasDataArray.get(i);
+                    if (flag) {
+                        int curTimeIdx = indexArray.get(i);
+                        long[] curTimestamps = timeArray.get(i);
+                        // remove all timestamp equals to min time in all series
+                        while (curTimeIdx < curTimestamps.length && curTimestamps[curTimeIdx] == minTime) {
+                            curTimeIdx++;
+                        }
+                        if (curTimeIdx < curTimestamps.length) {
+                            indexArray.set(i, curTimeIdx);
+                            priorityQueue.add(curTimestamps[curTimeIdx]);
+                        } else {
+                            long[] newTimeStamps = filterQueryDataSets.get(i).timeQueryDataSet.generateTimes();
+                            if (newTimeStamps.length > 0) {
+                                indexArray.set(i, 0);
+                            } else {
+                                hasDataArray.set(i, false);
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (timestamps.size() == 0)
+                break;
+
             for (Pair<Path, AggregateFunction> pair : aggres) {
                 Path path = pair.left;
                 AggregateFunction aggregateFunction = pair.right;
@@ -128,8 +182,8 @@ public class AggregateEngine {
                     //aggreData.putOverflowInfo(insertTrue, updateTrue, updateFalse, newTimeFilter);
                     //ansQueryDataSet.mapRet.put(aggregateFunction.name + "(" + path.getFullPath() + ")", aggreData);
 
-                    AggregationResult aggrRet = recordReader.aggregate(deltaObjectUID, measurementUID, aggregateFunction,
-                            aggreData.updateTrue, aggreData.updateFalse, recordReader.insertAllData, newTimeFilter, null, null, );
+                    AggregationResult aggrRet = recordReader.aggregateUseTimestamps(deltaObjectUID, measurementUID, aggregateFunction,
+                            aggreData.updateTrue, aggreData.updateFalse, recordReader.insertAllData, newTimeFilter, null, null, timestamps);
                 }
 
                 DynamicOneColumnData aggreData = ansQueryDataSet.mapRet.get(aggregateFunction.name + "(" + path.getFullPath() + ")");
