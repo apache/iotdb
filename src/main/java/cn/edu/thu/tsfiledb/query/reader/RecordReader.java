@@ -204,7 +204,7 @@ public class RecordReader {
     // calculate the aggregation result used the common timestamps
     public AggregationResult aggregateUseTimestamps(String deltaObjectId, String measurementId, AggregateFunction func,
                                                     DynamicOneColumnData updateTrue, DynamicOneColumnData updateFalse, InsertDynamicData insertMemoryData,
-                                                    SingleSeriesFilterExpression timeFilter, SingleSeriesFilterExpression freqFilter, SingleSeriesFilterExpression valueFilter, long[] timestamps
+                                                    SingleSeriesFilterExpression timeFilter, SingleSeriesFilterExpression freqFilter, SingleSeriesFilterExpression valueFilter, List<Long> timestamps
     ) throws ProcessorException, IOException {
 
         List<RowGroupReader> rowGroupReaderList = readerManager.getRowGroupReaderListByDeltaObject(deltaObjectId);

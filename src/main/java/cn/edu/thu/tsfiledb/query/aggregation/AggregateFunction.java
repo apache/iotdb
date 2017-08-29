@@ -1,6 +1,7 @@
 package cn.edu.thu.tsfiledb.query.aggregation;
 
 import java.io.IOException;
+import java.util.List;
 
 import cn.edu.thu.tsfiledb.query.dataset.InsertDynamicData;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
@@ -46,7 +47,11 @@ public abstract class AggregateFunction {
 
     public void calculateFromLeftMemoryData(InsertDynamicData insertMemoryData) throws IOException, ProcessorException {
         calculateValueFromDataInThisPage(insertMemoryData);
-        // addCount(insertMemoryData);
+    }
+
+    // for cross series multi aggregation
+    public void calcMemoryUseTimestamps(InsertDynamicData insertMemoryData, List<Long> timestamps) throws IOException, ProcessorException {
+
     }
 
     private void addCount(PageHeader pageHeader) {
