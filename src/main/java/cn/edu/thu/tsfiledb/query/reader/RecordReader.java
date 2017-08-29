@@ -180,17 +180,39 @@ public class RecordReader {
         }
     }
 
-    public AggregationResult aggregate(String deviceUID, String sensorId, AggregateFunction func,
+    public AggregationResult aggregate(String deltaObjectId, String measurementId, AggregateFunction func,
                                        DynamicOneColumnData updateTrue, DynamicOneColumnData updateFalse, InsertDynamicData insertMemoryData,
                                        SingleSeriesFilterExpression timeFilter, SingleSeriesFilterExpression freqFilter, SingleSeriesFilterExpression valueFilter
     ) throws ProcessorException, IOException {
 
-        List<RowGroupReader> rowGroupReaderList = readerManager.getRowGroupReaderListByDeltaObject(deviceUID);
+        List<RowGroupReader> rowGroupReaderList = readerManager.getRowGroupReaderListByDeltaObject(deltaObjectId);
 
         for (RowGroupReader rowGroupReader : rowGroupReaderList) {
-            if (rowGroupReader.getValueReaders().containsKey(sensorId)) {
-                rowGroupReader.getValueReaders().get(sensorId)
+            if (rowGroupReader.getValueReaders().containsKey(measurementId)) {
+                rowGroupReader.getValueReaders().get(measurementId)
                         .aggreate(func, insertMemoryData, updateTrue, updateFalse, timeFilter, freqFilter, valueFilter);
+            }
+        }
+
+        // add left insert values
+        if (insertMemoryData != null && insertMemoryData.hasInsertData()) {
+            func.calculateFromLeftMemoryData(insertMemoryData);
+        }
+        return func.result;
+    }
+
+    // calculate the aggregation result used the common timestamps
+    public AggregationResult aggregateUseTimestamps(String deltaObjectId, String measurementId, AggregateFunction func,
+                                                    DynamicOneColumnData updateTrue, DynamicOneColumnData updateFalse, InsertDynamicData insertMemoryData,
+                                                    SingleSeriesFilterExpression timeFilter, SingleSeriesFilterExpression freqFilter, SingleSeriesFilterExpression valueFilter, long[] timestamps
+    ) throws ProcessorException, IOException {
+
+        List<RowGroupReader> rowGroupReaderList = readerManager.getRowGroupReaderListByDeltaObject(deltaObjectId);
+
+        for (RowGroupReader rowGroupReader : rowGroupReaderList) {
+            if (rowGroupReader.getValueReaders().containsKey(measurementId)) {
+                rowGroupReader.getValueReaders().get(measurementId)
+                        .aggregateUseTimestamps(func, insertMemoryData, updateTrue, updateFalse, timeFilter, freqFilter, valueFilter, timestamps);
             }
         }
 

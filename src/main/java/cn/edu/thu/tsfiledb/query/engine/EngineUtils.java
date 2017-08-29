@@ -13,11 +13,15 @@ import cn.edu.tsinghua.tsfile.timeseries.filter.visitorImpl.SingleValueVisitorFa
 import cn.edu.tsinghua.tsfile.timeseries.read.qp.Path;
 import cn.edu.tsinghua.tsfile.timeseries.read.query.DynamicOneColumnData;
 import cn.edu.tsinghua.tsfile.timeseries.read.query.QueryDataSet;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Take out some common methods used for QueryEngine.
  */
 public class EngineUtils {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(EngineUtils.class);
 
     /**
      * QueryDataSet.BatchReadGenerator has calculated and removed the common RowRecord timestamps in the top of heap.
