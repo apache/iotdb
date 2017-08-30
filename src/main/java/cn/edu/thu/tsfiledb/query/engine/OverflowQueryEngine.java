@@ -84,7 +84,7 @@ public class OverflowQueryEngine {
             throws ProcessorException, IOException, PathErrorException {
         List<Pair<Path, AggregateFunction>> aggregations = new ArrayList<>();
         for (Pair<Path, String> pair : aggres) {
-            TSDataType dataType= MManager.getInstance().getSeriesType(pair.right);
+            TSDataType dataType= MManager.getInstance().getSeriesType(pair.left.getFullPath());
             AggregateFunction func = AggreFuncFactory.getAggrFuncByName(pair.right, dataType);
             aggregations.add(new Pair<>(pair.left, func));
         }

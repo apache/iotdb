@@ -33,8 +33,8 @@ public class CountAggrFunc extends AggregateFunction {
             // preValue += insertMemoryData.getValuesNumber();
             Pair<Long, Object> pair = insertMemoryData.calcAggregation("COUNT");
             preValue += pair.left;
-            long count = result.data.getTime(0) + (long)pair.right;
-            result.data.setTime(0, count);
+            // long count = result.data.getTime(0) + (long)pair.right;
+            result.data.setTime(0, 0);
             result.data.setLong(0, preValue);
         } else {
             long preValue = result.data.getLong(0);

@@ -63,8 +63,8 @@ public abstract class AggregateFunction {
         if (dataInThisPage instanceof InsertDynamicData) {
 
         } else {
-            long count = result.data.getTime(0) + dataInThisPage.valueLength;
-            result.data.setTime(0, count);
+            // long count = result.data.getTime(0) + dataInThisPage.valueLength;
+            result.data.setTime(0, 0);
         }
     }
 

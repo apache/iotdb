@@ -77,7 +77,7 @@ public class AggregateEngine {
 
     public static QueryDataSet multiAggregate(List<Pair<Path, AggregateFunction>> aggres, List<FilterStructure> filterStructures) throws ProcessorException, IOException, PathErrorException {
 
-        if (filterStructures == null || filterStructures.size() == 0) {
+        if (filterStructures == null || filterStructures.size() == 0 || (filterStructures.size()==1 && filterStructures.get(0).noFilter()) ) {
             return multiAggregateWithoutFilter(aggres, filterStructures);
         }
 
@@ -210,23 +210,32 @@ public class AggregateEngine {
             String measurementUID = path.getMeasurementToString();
             TSDataType dataType = MManager.getInstance().getSeriesType(path.getFullPath());
 
+
             RecordReader recordReader = RecordReaderFactory.getInstance().getRecordReader(deltaObjectUID, measurementUID,
                     null, null, null, null, "MultiAggre_Query");
 
-            // get overflow params merged with bufferwrite insert data
-            List<Object> params = EngineUtils.getOverflowInfoAndFilterDataInMem(null, null, null, null, recordReader.insertPageInMemory, recordReader.overflowInfo);
-            DynamicOneColumnData insertTrue = (DynamicOneColumnData) params.get(0);
-            DynamicOneColumnData updateTrue = (DynamicOneColumnData) params.get(1);
-            DynamicOneColumnData updateFalse = (DynamicOneColumnData) params.get(2);
-            SingleSeriesFilterExpression newTimeFilter = (SingleSeriesFilterExpression) params.get(3);
+            if (recordReader.insertAllData == null) {
+                // get overflow params merged with bufferwrite insert data
+                List<Object> params = EngineUtils.getOverflowInfoAndFilterDataInMem(null, null, null, null, recordReader.insertPageInMemory, recordReader.overflowInfo);
+                DynamicOneColumnData insertTrue = (DynamicOneColumnData) params.get(0);
+                DynamicOneColumnData updateTrue = (DynamicOneColumnData) params.get(1);
+                DynamicOneColumnData updateFalse = (DynamicOneColumnData) params.get(2);
+                SingleSeriesFilterExpression newTimeFilter = (SingleSeriesFilterExpression) params.get(3);
 
-            recordReader.insertAllData = new InsertDynamicData(recordReader.bufferWritePageList, recordReader.compressionTypeName,
-                    insertTrue, updateTrue, updateFalse,
-                    newTimeFilter, null, null, dataType);
+                recordReader.insertAllData = new InsertDynamicData(recordReader.bufferWritePageList, recordReader.compressionTypeName,
+                        insertTrue, updateTrue, updateFalse,
+                        newTimeFilter, null, null, dataType);
 
-            AggregationResult aggrRet = recordReader.aggregate(deltaObjectUID, measurementUID, aggregateFunction,
-                    updateTrue, updateFalse, recordReader.insertAllData, newTimeFilter, null, null);
-            ansQueryDataSet.mapRet.put(aggregateFunction.name + "(" + path.getFullPath() + ")", aggrRet.data);
+                AggregationResult aggrRet = recordReader.aggregate(deltaObjectUID, measurementUID, aggregateFunction,
+                        updateTrue, updateFalse, recordReader.insertAllData, newTimeFilter, null, null);
+                ansQueryDataSet.mapRet.put(aggregateFunction.name + "(" + path.getFullPath() + ")", aggrRet.data);
+            } else {
+                DynamicOneColumnData aggData = ansQueryDataSet.mapRet.get(aggregateFunction.name + "(" + path.getFullPath() + ")");
+                if (aggData != null) {
+                    aggData.clearData();
+                }
+                ansQueryDataSet.mapRet.put(aggregateFunction.name + "(" + path.getFullPath() + ")", aggData);
+            }
         }
 
         return ansQueryDataSet;
