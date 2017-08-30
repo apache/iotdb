@@ -32,7 +32,6 @@ import cn.edu.thu.tsfiledb.qp.physical.PhysicalPlan;
  * {@code SeriesSelectPlan} is regard as a portion of {@code MergeQuerySetPlan}. This class provide
  * a {@code Iterator<RowRecord>}in the latter case.
  *
- * @author kangrong
  */
 public class SeriesSelectPlan extends PhysicalPlan {
 
@@ -207,7 +206,7 @@ public class SeriesSelectPlan extends PhysicalPlan {
                 return false;
             if (data == null || !data.hasNextRecord())
                 try {
-                    data = executor.query(0, paths, timeFilter, freqFilter, valueFilter, fetchSize, data, aggregations);
+                    data = executor.query(0, paths, timeFilter, freqFilter, valueFilter, fetchSize, data);
                 } catch (ProcessorException e) {
                     throw new RuntimeException(e.getMessage());
                 }

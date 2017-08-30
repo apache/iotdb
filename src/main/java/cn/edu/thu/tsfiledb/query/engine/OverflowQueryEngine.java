@@ -80,7 +80,7 @@ public class OverflowQueryEngine {
     }
 
 
-    public QueryDataSet multiAggregate(List<Pair<Path, String>> aggres, List<FilterStructure> filterStructures)
+    public QueryDataSet aggregate(List<Pair<Path, String>> aggres, List<FilterStructure> filterStructures)
             throws ProcessorException, IOException, PathErrorException {
         List<Pair<Path, AggregateFunction>> aggregations = new ArrayList<>();
         for (Pair<Path, String> pair : aggres) {
@@ -89,23 +89,6 @@ public class OverflowQueryEngine {
             aggregations.add(new Pair<>(pair.left, func));
         }
         return AggregateEngine.multiAggregate(aggregations, filterStructures);
-    }
-
-    /**
-     * Basic aggregate function.
-     *
-     * @param path aggregate paths
-     * @param aggreFuncName aggregate function name
-     * @return QueryDataSet for aggregation
-     * @throws ProcessorException
-     * @throws IOException
-     */
-    public QueryDataSet aggregate(Path path, String aggreFuncName
-            , FilterExpression timeFilter, FilterExpression freqFilter, FilterExpression valueFilter) throws ProcessorException, IOException, PathErrorException {
-        TSDataType dataType= MManager.getInstance().getSeriesType(path.getFullPath());
-        AggregateFunction func = AggreFuncFactory.getAggrFuncByName(aggreFuncName, dataType);
-        // RecordReaderFactory.getInstance().removeRecordReader(path.getDeltaObjectToString(), path.getMeasurementToString());
-        return AggregateEngine.aggregate(path, func, timeFilter, freqFilter, valueFilter);
     }
 
     /**

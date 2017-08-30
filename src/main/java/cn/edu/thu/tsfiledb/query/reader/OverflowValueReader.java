@@ -925,7 +925,7 @@ public class OverflowValueReader extends ValueReader {
         return func.result;
     }
 
-    // calculate the aggregation using timestamps
+    // calculate the aggregate using timestamps
     AggregationResult aggregateUseTimestamps(AggregateFunction func, InsertDynamicData insertMemoryData,
                                DynamicOneColumnData updateTrue, DynamicOneColumnData updateFalse, SingleSeriesFilterExpression timeFilter,
                                SingleSeriesFilterExpression freqFilter, SingleSeriesFilterExpression valueFilter, List<Long> timestamps) throws IOException, ProcessorException {

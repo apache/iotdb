@@ -183,7 +183,13 @@ public class PhysicalGenerator {
 					subPlans.add(plan);
 			}
 		}
-		return new MergeQuerySetPlan(subPlans, aggregations);
+
+		if(subPlans.size() == 1) {
+			subPlans.get(0).setAggregations(aggregations);
+			return subPlans.get(0);
+		} else {
+			return new MergeQuerySetPlan(subPlans, aggregations);
+		}
 	}
 
 	private SeriesSelectPlan constructSelectPlan(FilterOperator filterOperator, List<Path> paths,

@@ -697,7 +697,7 @@ public class InsertDynamicData extends DynamicOneColumnData {
         return res;
     }
 
-    // Below are used for aggregation function
+    // Below are used for aggregate function
     private long rowNum = 0;
     private long minTime = Long.MAX_VALUE, maxTime = Long.MIN_VALUE;
     private int minIntValue = Integer.MAX_VALUE, maxIntValue = Integer.MIN_VALUE;
