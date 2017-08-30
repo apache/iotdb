@@ -13,22 +13,18 @@ public class AggreFuncFactory {
         if (aggrFuncName == null) {
             throw new ProcessorException("AggregateFunction Name must not be null");
         }
-        else if (aggrFuncName.toLowerCase().equals("min_time")) {
+
+        if (aggrFuncName.toLowerCase().equals("min_time")) {
             return new MinTimeAggrFunc();
-        }
-        else if (aggrFuncName.toLowerCase().equals("max_time")) {
+        } else if (aggrFuncName.toLowerCase().equals("max_time")) {
             return new MaxTimeAggrFunc();
-        }
-        else if (aggrFuncName.toLowerCase().equals("max_value")) {
+        } else if (aggrFuncName.toLowerCase().equals("max_value")) {
             return new MaxValueAggrFunc(dataType);
-        }
-        else if (aggrFuncName.toLowerCase().equals("min_value")) {
+        } else if (aggrFuncName.toLowerCase().equals("min_value")) {
             return new MinValueAggrFunc(dataType);
-        }
-        else if (aggrFuncName.toLowerCase().equals("count")) {
+        } else if (aggrFuncName.toLowerCase().equals("count")) {
             return new CountAggrFunc();
-        }
-        else
+        } else
             throw new ProcessorException("AggregateFunction not support. Name:" + aggrFuncName);
     }
 }

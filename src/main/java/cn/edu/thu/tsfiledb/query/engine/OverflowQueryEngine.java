@@ -1,6 +1,7 @@
 package cn.edu.thu.tsfiledb.query.engine;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 
@@ -79,9 +80,15 @@ public class OverflowQueryEngine {
     }
 
 
-    public QueryDataSet multiAggregate(List<Pair<Path, AggregateFunction>> aggres, List<FilterStructure> filterStructures)
+    public QueryDataSet multiAggregate(List<Pair<Path, String>> aggres, List<FilterStructure> filterStructures)
             throws ProcessorException, IOException, PathErrorException {
-        return AggregateEngine.multiAggregate(aggres, filterStructures);
+        List<Pair<Path, AggregateFunction>> aggregations = new ArrayList<>();
+        for (Pair<Path, String> pair : aggres) {
+            TSDataType dataType= MManager.getInstance().getSeriesType(pair.right);
+            AggregateFunction func = AggreFuncFactory.getAggrFuncByName(pair.right, dataType);
+            aggregations.add(new Pair<>(pair.left, func));
+        }
+        return AggregateEngine.multiAggregate(aggregations, filterStructures);
     }
 
     /**
