@@ -1,16 +1,16 @@
 package cn.edu.thu.tsfiledb.qp.executor.iterator;
 
-import java.util.Iterator;
-import java.util.List;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import cn.edu.thu.tsfiledb.qp.executor.QueryProcessExecutor;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 import cn.edu.tsinghua.tsfile.timeseries.filter.definition.FilterExpression;
 import cn.edu.tsinghua.tsfile.timeseries.read.qp.Path;
 import cn.edu.tsinghua.tsfile.timeseries.read.query.QueryDataSet;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.Arrays;
+import java.util.Iterator;
+import java.util.List;
 
 
 public class QueryDataSetIterator implements Iterator<QueryDataSet> {
@@ -25,16 +25,18 @@ public class QueryDataSetIterator implements Iterator<QueryDataSet> {
     private FilterExpression freqFilter;
     private FilterExpression valueFilter;
     private List<Path> paths;
+    private List<String> aggregations;
 
     public QueryDataSetIterator(List<Path> paths, int fetchSize, QueryProcessExecutor conf,
                                 FilterExpression timeFilter, FilterExpression freqFilter,
-                                FilterExpression valueFilter) {
+                                FilterExpression valueFilter, List<String> aggregations) {
         this.paths = paths;
         this.fetchSize = fetchSize;
         this.conf = conf;
         this.timeFilter = timeFilter;
         this.freqFilter = freqFilter;
         this.valueFilter = valueFilter;
+        this.aggregations = aggregations;
     }
 
     @Override
@@ -46,10 +48,9 @@ public class QueryDataSetIterator implements Iterator<QueryDataSet> {
             return false;
         if (data == null || !data.hasNextRecord())
             try {
-                data = conf.query(0, paths, timeFilter, freqFilter, valueFilter, fetchSize, usedData);
+                data = conf.query(0, paths, timeFilter, freqFilter, valueFilter, fetchSize, usedData, aggregations);
             } catch (ProcessorException e) {
-            		logger.error("meet error in hasNext,", e);
-                throw new RuntimeException(e.getMessage());
+                throw new RuntimeException("meet error in hasNext" + Arrays.toString(e.getStackTrace()));
             }
         if (data == null) {
             logger.error(

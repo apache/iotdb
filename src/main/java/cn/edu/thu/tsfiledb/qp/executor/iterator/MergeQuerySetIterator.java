@@ -1,5 +1,6 @@
 package cn.edu.thu.tsfiledb.qp.executor.iterator;
 
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -30,13 +31,15 @@ public class MergeQuerySetIterator implements Iterator<QueryDataSet> {
     // it's actually number of series iterators which has next record;
     private int heapSize;
     private long lastRowTime = -1;
+    private List<String> aggregations = new ArrayList<>();
 
     public MergeQuerySetIterator(List<SeriesSelectPlan> selectPlans, int mergeFetchSize,
-                                 QueryProcessExecutor executor) throws QueryProcessorException {
+                                 QueryProcessExecutor executor, List<String> aggregations) throws QueryProcessorException {
         this.mergeFetchSize = mergeFetchSize;
         heapSize = selectPlans.size();
         nodes = new Node[heapSize + 1];
         recordIters = SeriesSelectPlan.getRecordIteratorArray(selectPlans, executor);
+        this.aggregations = aggregations;
         initIters();
     }
 
@@ -182,7 +185,6 @@ public class MergeQuerySetIterator implements Iterator<QueryDataSet> {
                 default:
                     throw new UnSupportedDataTypeException("UnSupported" + String.valueOf(f.dataType));
             }
-            // mapRet.get(key).putTime(record.timestamp);
         }
     }
 }

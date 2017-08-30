@@ -46,21 +46,25 @@ public abstract class QueryProcessExecutor {
 
 	public Iterator<QueryDataSet> processQuery(PhysicalPlan plan) throws QueryProcessorException {
 		switch (plan.getOperatorType()) {
-		case QUERY:
-			SeriesSelectPlan query = (SeriesSelectPlan) plan;
-			FilterExpression[] filterExpressions = query.getFilterExpressions();
-			return new QueryDataSetIterator(query.getPaths(), getFetchSize(), this, filterExpressions[0],
-					filterExpressions[1], filterExpressions[2]);
-		case MERGEQUERY:
-			MergeQuerySetPlan mergeQuery = (MergeQuerySetPlan) plan;
-			List<SeriesSelectPlan> selectPlans = mergeQuery.getSeriesSelectPlans();
-			if (selectPlans.size() == 1) {
-				return processQuery(selectPlans.get(0));
-			} else {
-				return new MergeQuerySetIterator(selectPlans, getFetchSize(), this);
-			}
-		default:
-			throw new UnsupportedOperationException();
+			case QUERY:
+				SeriesSelectPlan query = (SeriesSelectPlan) plan;
+				FilterExpression[] filterExpressions = query.getFilterExpressions();
+				return new QueryDataSetIterator(query.getPaths(), getFetchSize(),
+						this, filterExpressions[0], filterExpressions[1],
+						filterExpressions[2], query.getAggregations());
+			case MERGEQUERY:
+				MergeQuerySetPlan mergeQuery = (MergeQuerySetPlan) plan;
+				List<SeriesSelectPlan> selectPlans = mergeQuery.getSeriesSelectPlans();
+				if (selectPlans.size() == 1) {
+					SeriesSelectPlan seriesSelectPlan = selectPlans.get(0);
+					seriesSelectPlan.setAggregations(mergeQuery.getAggregations());
+					return processQuery(seriesSelectPlan);
+				} else {
+					return new MergeQuerySetIterator(selectPlans, getFetchSize(),
+							this, mergeQuery.getAggregations());
+				}
+			default:
+				throw new UnsupportedOperationException();
 		}
 	}
 
@@ -95,7 +99,7 @@ public abstract class QueryProcessExecutor {
 	}
 
 	public abstract QueryDataSet query(int formNumber, List<Path> paths, FilterExpression timeFilter, FilterExpression freqFilter,
-			FilterExpression valueFilter, int fetchSize, QueryDataSet lastData) throws ProcessorException;
+			FilterExpression valueFilter, int fetchSize, QueryDataSet lastData, List<String> aggregations) throws ProcessorException;
 
 	/**
 	 * execute update command and return whether the operator is successful.

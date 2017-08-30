@@ -1,22 +1,8 @@
 package cn.edu.thu.tsfiledb.qp.physical.crud;
 
 import static cn.edu.thu.tsfiledb.qp.constant.SQLConstant.lineFeedSignal;
+import java.util.*;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.List;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import cn.edu.thu.tsfiledb.exception.PathErrorException;
-import cn.edu.thu.tsfiledb.qp.exception.QueryProcessorException;
-import cn.edu.thu.tsfiledb.qp.executor.QueryProcessExecutor;
-import cn.edu.thu.tsfiledb.qp.logical.Operator.OperatorType;
-import cn.edu.thu.tsfiledb.qp.logical.crud.FilterOperator;
-import cn.edu.thu.tsfiledb.qp.physical.PhysicalPlan;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 import cn.edu.tsinghua.tsfile.timeseries.filter.definition.FilterExpression;
 import cn.edu.tsinghua.tsfile.timeseries.filter.definition.FilterFactory;
@@ -27,6 +13,14 @@ import cn.edu.tsinghua.tsfile.timeseries.read.qp.Path;
 import cn.edu.tsinghua.tsfile.timeseries.read.query.QueryDataSet;
 import cn.edu.tsinghua.tsfile.timeseries.read.support.RowRecord;
 import cn.edu.tsinghua.tsfile.timeseries.utils.StringContainer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import cn.edu.thu.tsfiledb.exception.PathErrorException;
+import cn.edu.thu.tsfiledb.qp.exception.QueryProcessorException;
+import cn.edu.thu.tsfiledb.qp.executor.QueryProcessExecutor;
+import cn.edu.thu.tsfiledb.qp.logical.Operator.OperatorType;
+import cn.edu.thu.tsfiledb.qp.logical.crud.FilterOperator;
+import cn.edu.thu.tsfiledb.qp.physical.PhysicalPlan;
 
 /**
  * This class is constructed with a single query plan. Single query means it could be processed by
@@ -44,13 +38,15 @@ public class SeriesSelectPlan extends PhysicalPlan {
 
     private static final Logger LOG = LoggerFactory.getLogger(SeriesSelectPlan.class);
     private List<Path> paths = new ArrayList<>();
+    private List<String> aggregations = new ArrayList<>();
     private FilterOperator timeFilterOperator;
     private FilterOperator freqFilterOperator;
     private FilterOperator valueFilterOperator;
     private FilterExpression[] filterExpressions;
 
-    public SeriesSelectPlan(List<Path> paths,
-                            FilterOperator timeFilter, FilterOperator freqFilter, FilterOperator valueFilter, QueryProcessExecutor executor) throws QueryProcessorException {
+    public SeriesSelectPlan(List<Path> paths, FilterOperator timeFilter,
+                            FilterOperator freqFilter, FilterOperator valueFilter,
+                            QueryProcessExecutor executor, List<String> aggregations) throws QueryProcessorException {
         super(true, OperatorType.QUERY);
         this.paths = paths;
         this.timeFilterOperator = timeFilter;
@@ -61,6 +57,15 @@ public class SeriesSelectPlan extends PhysicalPlan {
         checkPaths(executor);
         LOG.debug(Arrays.toString(paths.toArray()));
         filterExpressions = transformToFilterExpressions(executor);
+        this.aggregations = aggregations;
+    }
+
+    public void setAggregations(List<String> aggregations) {
+        this.aggregations = aggregations;
+    }
+
+    public List<String> getAggregations() {
+        return aggregations;
     }
 
     /**
@@ -136,22 +141,23 @@ public class SeriesSelectPlan extends PhysicalPlan {
     }
 
 
-    public static Iterator<RowRecord>[] getRecordIteratorArray(List<SeriesSelectPlan> plans,
-                                                               QueryProcessExecutor executor) throws QueryProcessorException {
-        Iterator<RowRecord>[] ret = new RowRecordIterator[plans.size()];
-        for (int formNumber = 0; formNumber < plans.size(); formNumber++) {
-            ret[formNumber] = plans.get(formNumber).getRecordIterator(executor, formNumber);
-        }
-        return ret;
-    }
-
     /**
      * @param executor query process executor
      * @return Iterator<RowRecord>
      */
-    private Iterator<RowRecord> getRecordIterator(QueryProcessExecutor executor, int formNumber) throws QueryProcessorException {
+    private Iterator<RowRecord> getRecordIterator(QueryProcessExecutor executor) throws QueryProcessorException {
 
-        return new RowRecordIterator(formNumber, paths, executor.getFetchSize(), executor, filterExpressions[0], filterExpressions[1], filterExpressions[2]);
+        return new RowRecordIterator(paths, executor.getFetchSize(), executor, filterExpressions[0], filterExpressions[1], filterExpressions[2]);
+    }
+
+
+    public static Iterator<RowRecord>[] getRecordIteratorArray(List<SeriesSelectPlan> plans,
+                                                               QueryProcessExecutor conf) throws QueryProcessorException {
+        Iterator<RowRecord>[] ret = new RowRecordIterator[plans.size()];
+        for (int i = 0; i < plans.size(); i++) {
+            ret[i] = plans.get(i).getRecordIterator(conf);
+        }
+        return ret;
     }
 
     @Override
@@ -183,12 +189,10 @@ public class SeriesSelectPlan extends PhysicalPlan {
         private FilterExpression timeFilter;
         private FilterExpression freqFilter;
         private FilterExpression valueFilter;
-        private int formNumber;
 
-        public RowRecordIterator(int formNumber, List<Path> paths, int fetchSize, QueryProcessExecutor executor,
+        public RowRecordIterator(List<Path> paths, int fetchSize, QueryProcessExecutor executor,
                                  FilterExpression timeFilter, FilterExpression freqFilter,
                                  FilterExpression valueFilter) {
-            this.formNumber = formNumber;
             this.paths = paths;
             this.fetchSize = fetchSize;
             this.executor = executor;
@@ -203,7 +207,7 @@ public class SeriesSelectPlan extends PhysicalPlan {
                 return false;
             if (data == null || !data.hasNextRecord())
                 try {
-                    data = executor.query(formNumber, paths, timeFilter, freqFilter, valueFilter, fetchSize, data);
+                    data = executor.query(0, paths, timeFilter, freqFilter, valueFilter, fetchSize, data, aggregations);
                 } catch (ProcessorException e) {
                     throw new RuntimeException(e.getMessage());
                 }
