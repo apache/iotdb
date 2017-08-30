@@ -39,7 +39,7 @@ public class SingleFileQPExecutor extends QueryProcessExecutor {
 
 	@Override
 	public QueryDataSet query(int formNumber, List<Path> paths, FilterExpression timeFilter, FilterExpression freqFilter,
-							  FilterExpression valueFilter, int fetchSize, QueryDataSet lastData) {
+							  FilterExpression valueFilter, int fetchSize, QueryDataSet lastData, List<String> aggregations) {
 		if (lastData != null) {
 			lastData.clear();
 			return lastData;

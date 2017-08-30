@@ -324,7 +324,7 @@ public class LogicalGenerator {
 						"children FROM clause except last one must all be path like root.a.b, actual:" + child.getText());
 			}
 			Path tablePath = parsePath(child);
-			selectOp.addSuffixTablePath(tablePath);
+			selectOp.addSelectPath(tablePath);
 		}
 		((SFWOperator) initializedOperator).setSelectOperator(selectOp);
 		analyzeWhere(astNode.getChild(selChildCount));
@@ -410,15 +410,15 @@ public class LogicalGenerator {
 					ASTNode pathChild = cluster.getChild(0);
 					Path selectPath = parsePath(pathChild);
 					String aggregation = cluster.getChild(1).getText();
-					selectOp.addSuffixTablePath(selectPath, aggregation);
+					selectOp.addClusterPath(selectPath, aggregation);
 				} else {
 					Path selectPath = parsePath(child);
-					selectOp.addSuffixTablePath(selectPath);
+					selectOp.addSelectPath(selectPath);
 				}
 			}
 		} else if (tokenIntType == TSParser.TOK_PATH) {
 			Path selectPath = parsePath(astNode);
-			selectOp.addSuffixTablePath(selectPath);
+			selectOp.addSelectPath(selectPath);
 		} else
 			throw new LogicalOperatorException("children SELECT clause must all be path like root.a.b, actual:" + astNode.dump());
 		((SFWOperator) initializedOperator).setSelectOperator(selectOp);

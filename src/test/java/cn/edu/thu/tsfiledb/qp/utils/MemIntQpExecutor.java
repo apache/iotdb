@@ -157,8 +157,8 @@ public class MemIntQpExecutor extends QueryProcessExecutor {
      */
     @Override
     public QueryDataSet query(int formNumber, List<Path> paths, FilterExpression timeFilter,
-                              FilterExpression freqFilter, FilterExpression valueFilter, int fetchSize,
-                              QueryDataSet lastData) {
+                              FilterExpression freqFilter, FilterExpression valueFilter,
+                              int fetchSize, QueryDataSet lastData, List<String> aggregations) {
         if (fetchSize == 0) {
             LOG.error("cannot specify fetchSize to zero,exit");
             System.exit(0);
