@@ -77,6 +77,10 @@ public class AggregateEngine {
 
     public static QueryDataSet multiAggregate(List<Pair<Path, AggregateFunction>> aggres, List<FilterStructure> filterStructures) throws ProcessorException, IOException, PathErrorException {
 
+        if (filterStructures == null || filterStructures.size() == 0) {
+            return multiAggregateWithoutFilter(aggres, filterStructures);
+        }
+
         QueryDataSet ansQueryDataSet = new QueryDataSet();
         List<QueryDataSet> filterQueryDataSets = new ArrayList<>(); // stores QueryDataSet of each FilterStructure answer
         List<long[]> timeArray = new ArrayList<>(); // stores calculated common timestamps of each FilterStructure answer
@@ -188,13 +192,44 @@ public class AggregateEngine {
 
                 DynamicOneColumnData aggreData = ansQueryDataSet.mapRet.get(aggregateFunction.name + "(" + path.getFullPath() + ")");
 
-
             }
         }
 
         return ansQueryDataSet;
 
+    }
 
+    private static QueryDataSet multiAggregateWithoutFilter(List<Pair<Path, AggregateFunction>> aggres, List<FilterStructure> filterStructures) throws PathErrorException, ProcessorException, IOException {
+
+        QueryDataSet ansQueryDataSet = new QueryDataSet();
+
+        for (Pair<Path, AggregateFunction> pair : aggres) {
+            Path path = pair.left;
+            AggregateFunction aggregateFunction = pair.right;
+            String deltaObjectUID = path.getDeltaObjectToString();
+            String measurementUID = path.getMeasurementToString();
+            TSDataType dataType = MManager.getInstance().getSeriesType(path.getFullPath());
+
+            RecordReader recordReader = RecordReaderFactory.getInstance().getRecordReader(deltaObjectUID, measurementUID,
+                    null, null, null, null, "MultiAggre_Query");
+
+            // get overflow params merged with bufferwrite insert data
+            List<Object> params = EngineUtils.getOverflowInfoAndFilterDataInMem(null, null, null, null, recordReader.insertPageInMemory, recordReader.overflowInfo);
+            DynamicOneColumnData insertTrue = (DynamicOneColumnData) params.get(0);
+            DynamicOneColumnData updateTrue = (DynamicOneColumnData) params.get(1);
+            DynamicOneColumnData updateFalse = (DynamicOneColumnData) params.get(2);
+            SingleSeriesFilterExpression newTimeFilter = (SingleSeriesFilterExpression) params.get(3);
+
+            recordReader.insertAllData = new InsertDynamicData(recordReader.bufferWritePageList, recordReader.compressionTypeName,
+                    insertTrue, updateTrue, updateFalse,
+                    newTimeFilter, null, null, dataType);
+
+            AggregationResult aggrRet = recordReader.aggregate(deltaObjectUID, measurementUID, aggregateFunction,
+                    updateTrue, updateFalse, recordReader.insertAllData, newTimeFilter, null, null);
+            ansQueryDataSet.mapRet.put(aggregateFunction.name + "(" + path.getFullPath() + ")", aggrRet.data);
+        }
+
+        return ansQueryDataSet;
     }
 
     /**
