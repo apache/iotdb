@@ -49,7 +49,7 @@ public abstract class AggregateFunction {
         calculateValueFromDataInThisPage(insertMemoryData);
     }
 
-    // for cross series multi aggregation
+    // for cross series multi aggregate
     public void calcMemoryUseTimestamps(InsertDynamicData insertMemoryData, List<Long> timestamps) throws IOException, ProcessorException {
 
     }

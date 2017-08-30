@@ -16,8 +16,8 @@ public class FilterStructure {
     private SingleSeriesFilterExpression timeFilter;
     private FilterExpression valueFilter, frequencyFilter;
 
-    public FilterStructure(FilterExpression timeFilter, FilterExpression valueFilter, FilterExpression frequencyFilter) {
-        if (!(timeFilter instanceof SingleSeriesFilterExpression)) {
+    public FilterStructure(FilterExpression timeFilter, FilterExpression frequencyFilter, FilterExpression valueFilter) {
+        if (timeFilter != null && !(timeFilter instanceof SingleSeriesFilterExpression)) {
             LOGGER.error("Time filter is not single!");
             return;
         }

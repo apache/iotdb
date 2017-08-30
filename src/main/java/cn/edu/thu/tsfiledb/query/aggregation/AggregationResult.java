@@ -6,12 +6,12 @@ import cn.edu.tsinghua.tsfile.timeseries.read.query.DynamicOneColumnData;
 public class AggregationResult {
 	
 	/*
-	 * We use the DataStructure -> DynamicOneColumnData to store the aggregation value.
+	 * We use the DataStructure -> DynamicOneColumnData to store the aggregate value.
 	 * And in general, only one data point can be used whose index is 0 in this DynamicOneColumnData
-	 * to store the aggregation value.
+	 * to store the aggregate value.
 	 * 
 	 * And we make following rules: using the time whose index is 0 to represents the count of
-	 * the records calculated; using the value whose index is 0 to represents the aggregation value.
+	 * the records calculated; using the value whose index is 0 to represents the aggregate value.
 	 */
 	public DynamicOneColumnData data;
 	

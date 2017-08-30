@@ -31,15 +31,14 @@ public class MergeQuerySetIterator implements Iterator<QueryDataSet> {
     // it's actually number of series iterators which has next record;
     private int heapSize;
     private long lastRowTime = -1;
-    private List<String> aggregations = new ArrayList<>();
 
+    //merge query
     public MergeQuerySetIterator(List<SeriesSelectPlan> selectPlans, int mergeFetchSize,
-                                 QueryProcessExecutor executor, List<String> aggregations) throws QueryProcessorException {
+                                 QueryProcessExecutor executor) throws QueryProcessorException {
         this.mergeFetchSize = mergeFetchSize;
         heapSize = selectPlans.size();
         nodes = new Node[heapSize + 1];
         recordIters = SeriesSelectPlan.getRecordIteratorArray(selectPlans, executor);
-        this.aggregations = aggregations;
         initIters();
     }
 

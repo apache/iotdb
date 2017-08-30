@@ -112,7 +112,7 @@ public class AggregateEngine {
             }
         }
 
-        // the aggregation timestamps calculated by all dnf
+        // the aggregate timestamps calculated by all dnf
         List<Long> timestamps = new ArrayList<>();
         PriorityQueue<Long> priorityQueue = new PriorityQueue<>();
 

@@ -1,5 +1,6 @@
 package cn.edu.thu.tsfiledb.qp.utils;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -8,6 +9,8 @@ import java.util.Map.Entry;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
+import cn.edu.thu.tsfiledb.exception.PathErrorException;
+import cn.edu.thu.tsfiledb.query.engine.FilterStructure;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -151,6 +154,13 @@ public class MemIntQpExecutor extends QueryProcessExecutor {
         }
     }
 
+
+    @Override
+    public QueryDataSet aggregate(List<Pair<Path, String>> aggres, List<FilterStructure> filterStructures)
+            throws ProcessorException, IOException, PathErrorException {
+        return null;
+    }
+
     /**
      * This method is just a simple implementation of read processing in memory for JUnit Test. It
      * doesn't support frequency filter.
@@ -158,7 +168,7 @@ public class MemIntQpExecutor extends QueryProcessExecutor {
     @Override
     public QueryDataSet query(int formNumber, List<Path> paths, FilterExpression timeFilter,
                               FilterExpression freqFilter, FilterExpression valueFilter,
-                              int fetchSize, QueryDataSet lastData, List<String> aggregations) {
+                              int fetchSize, QueryDataSet lastData) {
         if (fetchSize == 0) {
             LOG.error("cannot specify fetchSize to zero,exit");
             System.exit(0);

@@ -201,7 +201,7 @@ public class RecordReader {
         return func.result;
     }
 
-    // calculate the aggregation result used the common timestamps
+    // calculate the aggregate result used the common timestamps
     public AggregationResult aggregateUseTimestamps(String deltaObjectId, String measurementId, AggregateFunction func,
                                                     DynamicOneColumnData updateTrue, DynamicOneColumnData updateFalse, InsertDynamicData insertMemoryData,
                                                     SingleSeriesFilterExpression timeFilter, SingleSeriesFilterExpression freqFilter, SingleSeriesFilterExpression valueFilter, List<Long> timestamps
