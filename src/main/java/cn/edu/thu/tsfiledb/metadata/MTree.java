@@ -597,7 +597,7 @@ public class MTree implements Serializable {
 			builder.append(String.format("%s DataType: %s,\n", getTabs(tab + 1), node.getSchema().dataType));
 			builder.append(String.format("%s Encoding: %s,\n", getTabs(tab + 1), node.getSchema().encoding));
 			builder.append(String.format("%s args: %s,\n", getTabs(tab + 1), node.getSchema().getArgsMap()));
-			builder.append(String.format("%s FileName: %s \n", getTabs(tab + 1), node.getDataFileName()));
+			builder.append(String.format("%s StorageGroup: %s \n", getTabs(tab + 1), node.getDataFileName()));
 			builder.append(getTabs(tab));
 			builder.append("}");
 		}
