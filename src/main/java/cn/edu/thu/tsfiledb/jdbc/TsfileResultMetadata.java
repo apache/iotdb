@@ -2,13 +2,14 @@ package cn.edu.thu.tsfiledb.jdbc;
 
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
+import java.util.List;
 import java.util.Map;
 
 public class TsfileResultMetadata implements ResultSetMetaData {
 	private Map<String, Integer> columnInfo;
-	private String operationType;
+	private List<String> operationType;
 	
-	public TsfileResultMetadata(Map<String, Integer> columnInfo, String operationType) {
+	public TsfileResultMetadata(Map<String, Integer> columnInfo, List<String> operationType) {
 		this.columnInfo = columnInfo;
 		this.operationType = operationType;
 	}
@@ -78,7 +79,9 @@ public class TsfileResultMetadata implements ResultSetMetaData {
 
 	@Override
 	public String getColumnTypeName(int arg0) throws SQLException {
-		return operationType;
+		if(arg0 >= operationType.size())
+			throw new SQLException("Column " + arg0 + " does not exist");
+		return operationType.get(arg0);
 	}
 
 	@Override
