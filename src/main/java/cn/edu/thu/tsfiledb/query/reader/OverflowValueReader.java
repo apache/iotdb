@@ -848,7 +848,6 @@ public class OverflowValueReader extends ValueReader {
             LOG.debug("read page {}, offset : {}", pageCount, res.pageOffset);
 
             PageHeader pageHeader = pageReader.getNextPageHeader();
-//				System.out.println("===== Page: " + pageCount + ". Count: " + pageHeader.data_page_header.num_rows);
             // construct value and time digest for this page
             Digest pageDigest = pageHeader.data_page_header.getDigest();
             DigestForFilter valueDigestFF = new DigestForFilter(pageDigest.min, pageDigest.max, getDataType());
@@ -899,7 +898,7 @@ public class OverflowValueReader extends ValueReader {
             //If there is no overflow data in this page
             boolean needToReadData = true;
             if (!hasOverflowDataInThisPage) {
-                needToReadData = !func.calculateFromPageHeader(pageHeader);
+                needToReadData = !func.couldCalculateFromPageHeader(pageHeader);
             }
 
             if (needToReadData) {
@@ -1015,7 +1014,7 @@ public class OverflowValueReader extends ValueReader {
             //If there is no overflow data in this page
             boolean needToReadData = true;
             if (!hasOverflowDataInThisPage) {
-                needToReadData = !func.calculateFromPageHeader(pageHeader);
+                needToReadData = !func.couldCalculateFromPageHeader(pageHeader);
             }
 
             if (needToReadData) {
