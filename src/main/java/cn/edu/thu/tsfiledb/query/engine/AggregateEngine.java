@@ -203,7 +203,9 @@ public class AggregateEngine {
 
         QueryDataSet ansQueryDataSet = new QueryDataSet();
 
+        int aggreNumber = 0;
         for (Pair<Path, AggregateFunction> pair : aggres) {
+            aggreNumber ++;
             Path path = pair.left;
             AggregateFunction aggregateFunction = pair.right;
             String deltaObjectUID = path.getDeltaObjectToString();
@@ -212,7 +214,7 @@ public class AggregateEngine {
 
 
             RecordReader recordReader = RecordReaderFactory.getInstance().getRecordReader(deltaObjectUID, measurementUID,
-                    null, null, null, null, "MultiAggre_Query");
+                    null, null, null, null, "MultiAggre_Query" + aggreNumber);
 
             if (recordReader.insertAllData == null) {
                 // get overflow params merged with bufferwrite insert data
