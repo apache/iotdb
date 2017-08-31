@@ -8,6 +8,7 @@ import cn.edu.thu.tsfiledb.qp.constant.SQLConstant;
 import cn.edu.thu.tsfiledb.qp.exception.LogicalOperatorException;
 import cn.edu.thu.tsfiledb.qp.executor.QueryProcessExecutor;
 import cn.edu.thu.tsfiledb.qp.logical.Operator;
+import cn.edu.tsinghua.tsfile.common.utils.Binary;
 import cn.edu.tsinghua.tsfile.common.utils.Pair;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
 import cn.edu.tsinghua.tsfile.timeseries.filter.definition.FilterFactory;
@@ -113,6 +114,15 @@ public class BasicFunctionOperator extends FunctionOperator {
                                 filterType),
                         Double.valueOf(value));
                 break;
+            case TEXT:
+            		ret = funcToken.getSingleSeriesFilterExpression(
+            				FilterFactory.stringFilterSeries(
+            						path.getDeltaObjectToString(),
+            						path.getMeasurementToString(), 
+                                filterType),            
+            						(value.startsWith("'") && value.endsWith("'")) || (value.startsWith("\"") && value.endsWith("\"")) ?
+            							new Binary(value.substring(1, value.length()-1)) : new Binary(value));
+            		break;
             default:
                 throw new LogicalOperatorException("unsupported data type:" + type);
         }

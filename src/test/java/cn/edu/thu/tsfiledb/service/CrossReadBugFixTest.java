@@ -5,10 +5,7 @@ import cn.edu.thu.tsfiledb.conf.TsfileDBDescriptor;
 import cn.edu.tsinghua.tsfile.common.conf.TSFileConfig;
 import cn.edu.tsinghua.tsfile.common.conf.TSFileDescriptor;
 import org.apache.commons.io.FileUtils;
-import org.junit.After;
 import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
 
 import java.io.File;
 import java.sql.*;
@@ -82,7 +79,7 @@ public class CrossReadBugFixTest {
 
     private Daemon deamon;
 
-    @Before
+    //@Before
     public void setUp() throws Exception {
         TsfileDBConfig config = TsfileDBDescriptor.getInstance().getConfig();
         overflowDataDirPre = config.overflowDataDir;
@@ -104,7 +101,7 @@ public class CrossReadBugFixTest {
         deamon.active();
     }
 
-    @After
+    //@After
     public void tearDown() throws Exception {
         deamon.stop();
         Thread.sleep(5000);
@@ -124,7 +121,7 @@ public class CrossReadBugFixTest {
         config.derbyHome = derbyHomePre;
     }
 
-    @Test
+    //@Test
     public void test() throws ClassNotFoundException, SQLException, InterruptedException {
         Thread.sleep(5000);
         insertSQL();
