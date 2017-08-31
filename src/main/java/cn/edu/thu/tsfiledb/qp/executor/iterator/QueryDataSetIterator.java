@@ -58,7 +58,11 @@ public class QueryDataSetIterator implements Iterator<QueryDataSet> {
                 if(aggregations != null && !aggregations.isEmpty()) {
                     List<Pair<Path, String>> aggres = new ArrayList<>();
                     for(int i = 0; i < paths.size(); i++) {
-                        aggres.add(new Pair<>(paths.get(i), aggregations.get(i)));
+                        if(paths.size() == aggregations.size()) {
+                            aggres.add(new Pair<>(paths.get(i), aggregations.get(i)));
+                        } else {
+                            aggres.add(new Pair<>(paths.get(i), aggregations.get(0)));
+                        }
                     }
                     data = executor.aggregate(aggres, filterStructures);
                 } else {

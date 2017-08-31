@@ -339,9 +339,13 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 			// support single aggregate function for now
 			List<String> aggregations = plan.getAggregations();
 
-			if (aggregations != null && !aggregations.isEmpty()) {
-				for(int i = 0; i < aggregations.size(); i++) {
-					columns.add(aggregations.get(i) + "(" + paths.get(i).getFullPath() + ")");
+			if (aggregations != null && !aggregations.isEmpty() && aggregations.size() != paths.size()) {
+				//select count(*) from root.*.*
+				for(int i = 1; i < paths.size(); i++) {
+					aggregations.add(aggregations.get(0));
+				}
+				for(int i = 0; i < paths.size(); i++) {
+						columns.add(aggregations.get(i) + "(" + paths.get(i).getFullPath() + ")");
 				}
 			} else {
 				for (Path p : paths) {
