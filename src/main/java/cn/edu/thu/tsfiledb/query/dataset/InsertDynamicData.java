@@ -751,7 +751,7 @@ public class InsertDynamicData extends DynamicOneColumnData {
         }
     }
 
-    public Pair<Long, Object> calcAggregation(String aggType) throws IOException, ProcessorException {
+    public Object calcAggregation(String aggType) throws IOException, ProcessorException {
         readStatusReset();
         rowNum = 0;
         minTime = Long.MAX_VALUE;
@@ -802,41 +802,40 @@ public class InsertDynamicData extends DynamicOneColumnData {
 
         switch (aggType) {
             case "COUNT":
-                return new Pair<>(rowNum, rowNum);
+                return rowNum == 0 ? null : rowNum;
             case "MIN_TIME":
-                return new Pair<>(rowNum, minTime);
+                return rowNum == 0 ? null : minTime;
             case "MAX_TIME":
-                return new Pair<>(rowNum, maxTime);
+                return rowNum == 0 ? null : maxTime;
             case "MIN_VALUE":
                 switch (dataType) {
                     case INT32:
-                        return new Pair<>(rowNum, minIntValue);
+                        return rowNum == 0 ? null : minIntValue;
                     case INT64:
-                        return new Pair<>(rowNum, minLongValue);
+                        return rowNum == 0 ? null : minLongValue;
                     case FLOAT:
-                        return new Pair<>(rowNum, minFloatValue);
+                        return rowNum == 0 ? null : minFloatValue;
                     case DOUBLE:
-                        return new Pair<>(rowNum, minDoubleValue);
+                        return rowNum == 0 ? null : minDoubleValue;
                     case TEXT:
-                        return new Pair<>(rowNum, minBinaryValue);
+                        return rowNum == 0 ? null : minBinaryValue;
                     default:
                         LOG.error("Aggregation Error!");
                         throw new UnSupportedDataTypeException("UnSupported datatype: " + dataType);
 
                 }
             case "MAX_VALUE":
-                // System.out.println(maxIntValue + ">>>" + maxLongValue + ">>>" + maxFloatValue + ">>>" + maxDoubleValue);
                 switch (dataType) {
                     case INT32:
-                        return new Pair<>(rowNum, maxIntValue);
+                        return rowNum == 0 ? null : maxIntValue;
                     case INT64:
-                        return new Pair<>(rowNum, maxLongValue);
+                        return rowNum == 0 ? null : maxLongValue;
                     case FLOAT:
-                        return new Pair<>(rowNum, maxFloatValue);
+                        return rowNum == 0 ? null : maxFloatValue;
                     case DOUBLE:
-                        return new Pair<>(rowNum, maxDoubleValue);
+                        return rowNum == 0 ? null : maxDoubleValue;
                     case TEXT:
-                        return new Pair<>(rowNum, maxBinaryValue);
+                        return rowNum == 0 ? null : maxBinaryValue;
                     default:
                         LOG.error("Aggregation Error!");
                         throw new UnSupportedDataTypeException("UnSupported datatype: " + dataType);
