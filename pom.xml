@@ -110,7 +110,7 @@
 							<goal>copy-dependencies</goal>
 						</goals>
 						<configuration>
-							<outputDirectory>${project.basedir}/tsfiledb/lib</outputDirectory>
+							<outputDirectory>${project.basedir}/iotdb/lib</outputDirectory>
 						</configuration>
 					</execution>
 				</executions>
@@ -128,7 +128,7 @@
 						</goals>
 						<configuration>
 							<target>
-								<copy todir="${project.basedir}/tsfiledb/lib">
+								<copy todir="${project.basedir}/iotdb/lib">
 									<fileset dir="${project.basedir}/target/">
 										<include name="*.jar" />
 									</fileset>

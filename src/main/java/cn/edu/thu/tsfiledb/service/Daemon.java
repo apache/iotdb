@@ -79,8 +79,9 @@ public class Daemon {
 
     private void maybeInitJmx() {
         if (System.getProperty(TsFileDBConstant.REMOTE_JMX_PORT_NAME) != null) {
-            LOGGER.warn("JMX settings in tsfile-env.sh have been bypassed as the JMX connector server is "
-                    + "already initialized. Please refer to tsfile-env.sh for JMX configuration info");
+            LOGGER.warn("JMX settings in conf/{}.sh(Unix or OS X, if you use Windows, check conf/{}.bat) have been bypassed as the JMX connector server is "
+                    + "already initialized. Please refer to {}.sh/bat for JMX configuration info", TsFileDBConstant.ENV_FILE_NAME, 
+                    TsFileDBConstant.ENV_FILE_NAME, TsFileDBConstant.ENV_FILE_NAME);
             return;
         }
         System.setProperty(TsFileDBConstant.SERVER_RMI_ID, "true");
