@@ -491,11 +491,11 @@ public class TSExecuteStatementResp implements org.apache.thrift.TBase<TSExecute
     return _Fields.findByThriftId(fieldId);
   }
 
-  public void read(org.apache.thrift.protocol.TProtocol iprot) throws org.apache.thrift.TException {
+  public void read(org.apache.thrift.protocol.TProtocol iprot) throws TException {
     schemes.get(iprot.getScheme()).getScheme().read(iprot, this);
   }
 
-  public void write(org.apache.thrift.protocol.TProtocol oprot) throws org.apache.thrift.TException {
+  public void write(org.apache.thrift.protocol.TProtocol oprot) throws TException {
     schemes.get(oprot.getScheme()).getScheme().write(oprot, this);
   }
 
@@ -545,10 +545,10 @@ public class TSExecuteStatementResp implements org.apache.thrift.TBase<TSExecute
     return sb.toString();
   }
 
-  public void validate() throws org.apache.thrift.TException {
+  public void validate() throws TException {
     // check for required fields
     if (status == null) {
-      throw new org.apache.thrift.protocol.TProtocolException("Required field 'status' was not present! Struct: " + toString());
+      throw new TProtocolException("Required field 'status' was not present! Struct: " + toString());
     }
     // check for sub-struct validity
     if (status != null) {
@@ -562,7 +562,7 @@ public class TSExecuteStatementResp implements org.apache.thrift.TBase<TSExecute
   private void writeObject(java.io.ObjectOutputStream out) throws java.io.IOException {
     try {
       write(new org.apache.thrift.protocol.TCompactProtocol(new org.apache.thrift.transport.TIOStreamTransport(out)));
-    } catch (org.apache.thrift.TException te) {
+    } catch (TException te) {
       throw new java.io.IOException(te);
     }
   }
@@ -570,7 +570,7 @@ public class TSExecuteStatementResp implements org.apache.thrift.TBase<TSExecute
   private void readObject(java.io.ObjectInputStream in) throws java.io.IOException, ClassNotFoundException {
     try {
       read(new org.apache.thrift.protocol.TCompactProtocol(new org.apache.thrift.transport.TIOStreamTransport(in)));
-    } catch (org.apache.thrift.TException te) {
+    } catch (TException te) {
       throw new java.io.IOException(te);
     }
   }
@@ -583,7 +583,7 @@ public class TSExecuteStatementResp implements org.apache.thrift.TBase<TSExecute
 
   private static class TSExecuteStatementRespStandardScheme extends StandardScheme<TSExecuteStatementResp> {
 
-    public void read(org.apache.thrift.protocol.TProtocol iprot, TSExecuteStatementResp struct) throws org.apache.thrift.TException {
+    public void read(org.apache.thrift.protocol.TProtocol iprot, TSExecuteStatementResp struct) throws TException {
       org.apache.thrift.protocol.TField schemeField;
       iprot.readStructBegin();
       while (true)
@@ -658,7 +658,7 @@ public class TSExecuteStatementResp implements org.apache.thrift.TBase<TSExecute
       struct.validate();
     }
 
-    public void write(org.apache.thrift.protocol.TProtocol oprot, TSExecuteStatementResp struct) throws org.apache.thrift.TException {
+    public void write(org.apache.thrift.protocol.TProtocol oprot, TSExecuteStatementResp struct) throws TException {
       struct.validate();
 
       oprot.writeStructBegin(STRUCT_DESC);
@@ -717,7 +717,7 @@ public class TSExecuteStatementResp implements org.apache.thrift.TBase<TSExecute
   private static class TSExecuteStatementRespTupleScheme extends TupleScheme<TSExecuteStatementResp> {
 
     @Override
-    public void write(org.apache.thrift.protocol.TProtocol prot, TSExecuteStatementResp struct) throws org.apache.thrift.TException {
+    public void write(org.apache.thrift.protocol.TProtocol prot, TSExecuteStatementResp struct) throws TException {
       TTupleProtocol oprot = (TTupleProtocol) prot;
       struct.status.write(oprot);
       BitSet optionals = new BitSet();
@@ -755,7 +755,7 @@ public class TSExecuteStatementResp implements org.apache.thrift.TBase<TSExecute
     }
 
     @Override
-    public void read(org.apache.thrift.protocol.TProtocol prot, TSExecuteStatementResp struct) throws org.apache.thrift.TException {
+    public void read(org.apache.thrift.protocol.TProtocol prot, TSExecuteStatementResp struct) throws TException {
       TTupleProtocol iprot = (TTupleProtocol) prot;
       struct.status = new TS_Status();
       struct.status.read(iprot);

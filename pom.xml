@@ -92,7 +92,6 @@
 							<testIncludes>
 								<testInclude>**/*.java</testInclude>
 							</testIncludes>
-							<outputDirectory>${project.build.directory}/it-classes</outputDirectory>
 						</configuration>
 					</execution>
 				</executions>
