@@ -93,7 +93,7 @@ public class DaemonTest {
 
     private Daemon deamon;
 
-    //@Before
+//    @Before
     public void setUp() throws Exception {
         TsfileDBConfig config = TsfileDBDescriptor.getInstance().getConfig();
         overflowDataDirPre = config.overflowDataDir;
@@ -111,7 +111,7 @@ public class DaemonTest {
         deamon.active();
     }
 
-    //@After
+//    @After
     public void tearDown() throws Exception {
         deamon.stop();
         Thread.sleep(5000);
@@ -131,7 +131,7 @@ public class DaemonTest {
         config.derbyHome = derbyHomePre;
     }
 
-    //@Test
+//    @Test
     public void test() throws ClassNotFoundException, SQLException, InterruptedException {
         Thread.sleep(5000);
         insertSQL();
@@ -146,6 +146,7 @@ public class DaemonTest {
         selectAndOpeCrossTest();
         aggregationTest();
         selectOneColumnWithFilterTest();
+        multiAggregationTest();
         connection.close();
     }
 
@@ -157,6 +158,36 @@ public class DaemonTest {
             Statement statement = connection.createStatement();
             for (String sql : sqls) {
                 statement.execute(sql);
+            }
+            statement.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            if (connection != null) {
+                connection.close();
+            }
+        }
+    }
+
+    private void multiAggregationTest() throws ClassNotFoundException, SQLException {
+        String[] retArray = new String[]{
+                "11,6,6"};
+
+        Class.forName("cn.edu.thu.tsfiledb.jdbc.TsfileDriver");
+        Connection connection = null;
+        try {
+            connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
+            Statement statement = connection.createStatement();
+            boolean hasResultSet = statement.execute("select count(s1),count(s2),count(s3) from root.vehicle.d0");
+            if (hasResultSet) {
+                ResultSet resultSet = statement.getResultSet();
+                int cnt = 0;
+                while (resultSet.next()) {
+                    String ans = resultSet.getString("count(" + d0s1 + ")") + "," + resultSet.getString("count(" + d0s2 + ")") + ","+resultSet.getString("count(" + d0s3 + ")");
+                    Assert.assertEquals(ans, retArray[cnt]);
+                    cnt++;
+                }
+                Assert.assertEquals(cnt, 1);
             }
             statement.close();
         } catch (Exception e) {
@@ -205,7 +236,7 @@ public class DaemonTest {
                     Assert.assertEquals(ans, retArray[cnt]);
                     cnt++;
                 }
-                Assert.assertEquals(cnt, 17);
+                Assert.assertEquals(17, cnt);
             }
             statement.close();
         } catch (Exception e) {
@@ -241,7 +272,7 @@ public class DaemonTest {
                     cnt++;
                     // AbstractClient.output(resultSet, true, "select statement");
                 }
-                Assert.assertEquals(cnt, 6);
+                Assert.assertEquals(6, cnt);
             }
             statement.close();
         } catch (Exception e) {
@@ -278,7 +309,7 @@ public class DaemonTest {
                     cnt++;
                     // AbstractClient.output(resultSet, true, "select statement");
                 }
-                Assert.assertEquals(cnt, 6);
+                Assert.assertEquals(6, cnt);
             }
             statement.close();
         } catch (Exception e) {
@@ -312,7 +343,7 @@ public class DaemonTest {
                     cnt++;
                     // AbstractClient.output(resultSet, true, "select statement");
                 }
-                Assert.assertEquals(cnt, 1);
+                Assert.assertEquals(1, cnt);
             }
             statement.close();
         } catch (Exception e) {
@@ -344,7 +375,7 @@ public class DaemonTest {
                     cnt++;
                     //AbstractClient.output(resultSet, true, "select statement");
                 }
-                Assert.assertEquals(cnt, 1);
+                Assert.assertEquals(1, cnt);
             }
             statement.close();
         } catch (Exception e) {
@@ -379,7 +410,7 @@ public class DaemonTest {
                     cnt++;
                     //AbstractClient.output(resultSet, true, "select statement");
                 }
-                Assert.assertEquals(cnt, 1);
+                Assert.assertEquals(1, cnt);
             }
 
             boolean hasTextMinResultSet = statement.execute("select min_value(s3) from root.vehicle.d0");
@@ -392,7 +423,7 @@ public class DaemonTest {
                     Assert.assertEquals(ans, retArray[1]);
                     cnt++;
                 }
-                Assert.assertEquals(cnt, 1);
+                Assert.assertEquals(1, cnt);
             }
 
             statement.close();
