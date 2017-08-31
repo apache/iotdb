@@ -57,6 +57,7 @@ public class TsfileQueryResultSet implements ResultSet {
 	private int fetchSize;
 	private boolean emptyResultSet = false;
 	private List<String> operationType;
+	private List<String> columns;
 	private final String TIMESTAMP_STR = "Time";
 
 	public TsfileQueryResultSet() {
@@ -64,7 +65,8 @@ public class TsfileQueryResultSet implements ResultSet {
 	}
 
 	public TsfileQueryResultSet(Statement statement, List<String> columnName, TSIService.Iface client,
-			TS_SessionHandle sessionHandle, TSOperationHandle operationHandle, String sql, List<String> aggregations)
+			TS_SessionHandle sessionHandle, TSOperationHandle operationHandle, String sql,
+								List<String> aggregations, List<String> columns)
 			throws SQLException {
 		this.statement = statement;
 		this.sql = sql;
@@ -80,6 +82,7 @@ public class TsfileQueryResultSet implements ResultSet {
 		this.fetchSize = statement.getFetchSize();
 		this.operationHandle = operationHandle;
 		this.operationType = aggregations;
+		this.columns = columns;
 	}
 
 	@Override

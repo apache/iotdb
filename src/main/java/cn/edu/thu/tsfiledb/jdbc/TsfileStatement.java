@@ -164,7 +164,7 @@ public class TsfileStatement implements Statement {
 	Utils.verifySuccess(execResp.getStatus());
 	if (execResp.getOperationHandle().hasResultSet) {
 	    resultSet = new TsfileQueryResultSet(this, execResp.getColumns(), client, 
-		    sessionHandle, operationHandle, sql, execResp.getOperationType());
+		    sessionHandle, operationHandle, sql, execResp.getOperationType(), execResp.getColumns());
 	    return true;
 	}
 	return false;
@@ -253,7 +253,7 @@ public class TsfileStatement implements Statement {
 	operationHandle = execResp.getOperationHandle();
 	Utils.verifySuccess(execResp.getStatus());
 	resultSet = new TsfileQueryResultSet(this, execResp.getColumns(), client, 
-		sessionHandle, operationHandle, sql, execResp.getOperationType());
+		sessionHandle, operationHandle, sql, execResp.getOperationType(), execResp.getColumns());
 	return resultSet;
     }
 
