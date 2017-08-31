@@ -83,18 +83,12 @@ public class SeriesSelectPlan extends PhysicalPlan {
      * @param executor query process executor
      */
     private void removeStarsInPath(QueryProcessExecutor executor) throws PathErrorException {
-        LinkedHashMap<String, Integer> pathMap = new LinkedHashMap<>();
+        List<String> all = new ArrayList<>();
         for (Path path : paths) {
-            List<String> all;
-            all = executor.getAllPaths(path.getFullPath());
-            for (String subPath : all) {
-                if (!pathMap.containsKey(subPath)) {
-                    pathMap.put(subPath, 1);
-                }
-            }
+            all.addAll(executor.getAllPaths(path.getFullPath()));
         }
         paths = new ArrayList<>();
-        for (String pathStr : pathMap.keySet()) {
+        for (String pathStr : all) {
             paths.add(new Path(pathStr));
         }
     }
