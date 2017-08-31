@@ -82,6 +82,7 @@ public class OverflowQueryEngine {
 
     public QueryDataSet aggregate(List<Pair<Path, String>> aggres, List<FilterStructure> filterStructures)
             throws ProcessorException, IOException, PathErrorException {
+        LOGGER.info("Aggregation content: " + aggres.toString());
         List<Pair<Path, AggregateFunction>> aggregations = new ArrayList<>();
         for (Pair<Path, String> pair : aggres) {
             TSDataType dataType= MManager.getInstance().getSeriesType(pair.left.getFullPath());

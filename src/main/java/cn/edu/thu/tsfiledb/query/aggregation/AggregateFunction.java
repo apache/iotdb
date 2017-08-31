@@ -19,7 +19,6 @@ public abstract class AggregateFunction {
         this.name = name;
         this.dataType = dataType;
         result = new AggregationResult(dataType);
-        result.data.putTime(0);
     }
 
     /**
@@ -32,17 +31,12 @@ public abstract class AggregateFunction {
      */
     public abstract void calculateValueFromDataInThisPage(DynamicOneColumnData dataInThisPage) throws IOException, ProcessorException;
 
-    public boolean calculateFromPageHeader(PageHeader pageHeader) {
-        boolean ret = calculateValueFromPageHeader(pageHeader);
-        if (ret) {
-            addCount(pageHeader);
-        }
-        return ret;
+    public boolean couldCalculateFromPageHeader(PageHeader pageHeader) {
+        return calculateValueFromPageHeader(pageHeader);
     }
 
     public void calculateFromDataInThisPage(DynamicOneColumnData dataInThisPage) throws IOException, ProcessorException {
         calculateValueFromDataInThisPage(dataInThisPage);
-        addCount(dataInThisPage);
     }
 
     public void calculateFromLeftMemoryData(InsertDynamicData insertMemoryData) throws IOException, ProcessorException {
@@ -53,19 +47,4 @@ public abstract class AggregateFunction {
     public void calcMemoryUseTimestamps(InsertDynamicData insertMemoryData, List<Long> timestamps) throws IOException, ProcessorException {
 
     }
-
-    private void addCount(PageHeader pageHeader) {
-        long count = result.data.getTime(0) + pageHeader.data_page_header.num_rows;
-        result.data.setTime(0, count);
-    }
-
-    private void addCount(DynamicOneColumnData dataInThisPage) {
-        if (dataInThisPage instanceof InsertDynamicData) {
-
-        } else {
-            // long count = result.data.getTime(0) + dataInThisPage.valueLength;
-            result.data.setTime(0, 0);
-        }
-    }
-
 }
