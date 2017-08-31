@@ -121,17 +121,17 @@ Integer
 	('-' | '+')? Digit+
 	;
 
-
 Float
 	:
-	('-' | '+')? Digit+ DOT Digit+ (('e' | 'E') ('-' | '+')? Digit+)?
+	Integer DOT Digit+ (('e' | 'E') Integer)?
 	;
 
 Identifier
     :
-    (Letter | Digit | '_' | MINUS) (Letter | Digit | '_'  | MINUS)*
+    (Letter | '_') (Letter | Digit | '_' | MINUS)*
     ;
 
 WS
-    :  (' '|'\r'|'\t'|'\n') { $channel=HIDDEN; }
+    :  
+    (' '|'\r'|'\t'|'\n') { $channel=HIDDEN; }
     ;

@@ -827,15 +827,18 @@ public class IntervalTreeOperation implements IIntervalTreeOperator {
             return true;
         }
 
-        SingleValueVisitor<?> visitor = new SingleValueVisitor(valueFilter);
         switch (valueFilter.getFilterSeries().getSeriesDataType()) {
             case INT32:
+                SingleValueVisitor<?> visitor = new SingleValueVisitor(valueFilter);
                 return visitor.verify(data.getInt(i));
             case INT64:
+                visitor = new SingleValueVisitor(valueFilter);
                 return visitor.verify(data.getLong(i));
             case FLOAT:
+                visitor = new SingleValueVisitor(valueFilter);
                 return visitor.verify(data.getFloat(i));
             case DOUBLE:
+                visitor = new SingleValueVisitor(valueFilter);
                 return visitor.verify(data.getDouble(i));
             case BOOLEAN:
                 return SingleValueVisitorFactory.getSingleValueVisitor(TSDataType.BOOLEAN).satisfyObject(data.getBoolean(i), valueFilter);
