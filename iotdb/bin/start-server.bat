@@ -12,10 +12,10 @@ popd
 set TSFILE_CONF=%TSFILE_HOME%\conf
 set TSFILE_LOGS=%TSFILE_HOME%\logs
 
-IF EXIST %TSFILE_CONF%\tsfile-env.bat (
-	CALL %TSFILE_CONF%\tsfile-env.bat
+IF EXIST %TSFILE_CONF%\iotdb-env.bat (
+	CALL %TSFILE_CONF%\iotdb-env.bat
 	) ELSE (
-	echo "can't find %TSFILE_CONF%/tsfile-env.bat"
+	echo "can't find %TSFILE_CONF%/iotdb-env.bat"
 	)
 
 if NOT DEFINED MAIN_CLASS set MAIN_CLASS=cn.edu.thu.tsfiledb.service.Daemon

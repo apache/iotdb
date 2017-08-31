@@ -11,10 +11,10 @@
 
 ## 打包后的项目结构
 
-> cd tsfiledb
+> cd iotdb
 
 ```
-tsfiledb/     <-- 根目录
+iotdb/     <-- 根目录
 |
 +- bin/       <-- 运行脚本
 |

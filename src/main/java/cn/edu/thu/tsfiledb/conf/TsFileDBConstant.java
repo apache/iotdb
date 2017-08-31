@@ -1,7 +1,7 @@
 package cn.edu.thu.tsfiledb.conf;
 
 public class TsFileDBConstant {
-    public static final String ENV_FILE_NAME = "tsfile-env";
+    public static final String ENV_FILE_NAME = "iotdb-env";
     
 	public static final String GLOBAL_DB_NAME = "IoTDB";
 	public static final String VERSION = "0.0.1";
