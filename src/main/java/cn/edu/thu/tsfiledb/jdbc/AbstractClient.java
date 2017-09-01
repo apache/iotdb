@@ -392,7 +392,7 @@ public abstract class AbstractClient {
 				output(resultSet, printToConsole, cmd.trim(), timeZone);
 			}
 			System.out.println("execute successfully.");
-		} catch (TsfileSQLException e) {
+		} catch (SQLException e) {
 			System.out.println("statement error: " + e.getMessage());
 		} catch (Exception e) {
 			System.out.println("connection error: " + e.getMessage());
