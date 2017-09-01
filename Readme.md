@@ -11,10 +11,10 @@
 
 ## 打包后的项目结构
 
-> cd tsfiledb
+> cd iotdb
 
 ```
-tsfiledb/     <-- 根目录
+iotdb/     <-- 根目录
 |
 +- bin/       <-- 运行脚本
 |
@@ -87,7 +87,6 @@ SET STORAGE GROUP TO root.fit.p;
 ## 使用方法
 
 ### 启动export脚本
-
 ```
 # Unix/OS X
 > ./bin/export-csv.sh -h xxx.xxx.xxx.xxx -p xxx -u xxx -tf <导出文件路径> [-t <时间格式>]

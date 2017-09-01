@@ -1,6 +1,6 @@
-tsfiledb/data/*
-tsfiledb/derby.log
-tsfiledb/*.pid
+iotdb/data/*
+iotdb/derby.log
+iotdb/*.pid
 # Eclipse IDE files
 **/.classpath
 **/.project

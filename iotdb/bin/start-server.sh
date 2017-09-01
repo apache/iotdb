@@ -8,10 +8,10 @@ TSFILE_CONF=${TSFILE_HOME}/conf
 TSFILE_LOGS=${TSFILE_HOME}/logs
 
 
-if [ -f "$TSFILE_CONF/tsfile-env.sh" ]; then
-    . "$TSFILE_CONF/tsfile-env.sh"
+if [ -f "$TSFILE_CONF/iotdb-env.sh" ]; then
+    . "$TSFILE_CONF/iotdb-env.sh"
 else
-    echo "can't find $TSFILE_CONF/tsfile-env.sh"
+    echo "can't find $TSFILE_CONF/iotdb-env.sh"
 fi
 
 
