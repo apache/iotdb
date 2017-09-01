@@ -7,9 +7,9 @@ import java.util.Map;
 
 public class TsfileResultMetadata implements ResultSetMetaData {
 	private Map<String, Integer> columnInfo;
-	private List<String> operationType;
+	private String operationType;
 	
-	public TsfileResultMetadata(Map<String, Integer> columnInfo, List<String> operationType) {
+	public TsfileResultMetadata(Map<String, Integer> columnInfo, String operationType) {
 		this.columnInfo = columnInfo;
 		this.operationType = operationType;
 	}
@@ -79,12 +79,7 @@ public class TsfileResultMetadata implements ResultSetMetaData {
 
 	@Override
 	public String getColumnTypeName(int arg0) throws SQLException {
-		if(operationType.isEmpty()) {
-			return null;
-		}
-		if(arg0 >= operationType.size())
-			throw new SQLException("Column " + arg0 + " does not exist");
-		return operationType.get(arg0);
+		return operationType;
 	}
 
 	@Override

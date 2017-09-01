@@ -109,7 +109,7 @@
 							<goal>copy-dependencies</goal>
 						</goals>
 						<configuration>
-							<outputDirectory>${project.basedir}/tsfiledb/lib</outputDirectory>
+							<outputDirectory>tsfiledb/lib</outputDirectory>
 						</configuration>
 					</execution>
 				</executions>

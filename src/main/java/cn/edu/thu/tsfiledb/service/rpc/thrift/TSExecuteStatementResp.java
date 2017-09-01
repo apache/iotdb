@@ -38,7 +38,7 @@ public class TSExecuteStatementResp implements org.apache.thrift.TBase<TSExecute
   private static final org.apache.thrift.protocol.TField STATUS_FIELD_DESC = new org.apache.thrift.protocol.TField("status", org.apache.thrift.protocol.TType.STRUCT, (short)1);
   private static final org.apache.thrift.protocol.TField OPERATION_HANDLE_FIELD_DESC = new org.apache.thrift.protocol.TField("operationHandle", org.apache.thrift.protocol.TType.STRUCT, (short)2);
   private static final org.apache.thrift.protocol.TField COLUMNS_FIELD_DESC = new org.apache.thrift.protocol.TField("columns", org.apache.thrift.protocol.TType.LIST, (short)3);
-  private static final org.apache.thrift.protocol.TField OPERATION_TYPE_FIELD_DESC = new org.apache.thrift.protocol.TField("operationType", org.apache.thrift.protocol.TType.LIST, (short)4);
+  private static final org.apache.thrift.protocol.TField OPERATION_TYPE_FIELD_DESC = new org.apache.thrift.protocol.TField("operationType", org.apache.thrift.protocol.TType.STRING, (short)4);
 
   private static final Map<Class<? extends IScheme>, SchemeFactory> schemes = new HashMap<Class<? extends IScheme>, SchemeFactory>();
   static {
@@ -49,7 +49,7 @@ public class TSExecuteStatementResp implements org.apache.thrift.TBase<TSExecute
   public TS_Status status; // required
   public TSOperationHandle operationHandle; // optional
   public List<String> columns; // optional
-  public List<String> operationType; // optional
+  public String operationType; // optional
 
   /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
   public enum _Fields implements org.apache.thrift.TFieldIdEnum {
@@ -131,8 +131,7 @@ public class TSExecuteStatementResp implements org.apache.thrift.TBase<TSExecute
         new org.apache.thrift.meta_data.ListMetaData(org.apache.thrift.protocol.TType.LIST, 
             new org.apache.thrift.meta_data.FieldValueMetaData(org.apache.thrift.protocol.TType.STRING))));
     tmpMap.put(_Fields.OPERATION_TYPE, new org.apache.thrift.meta_data.FieldMetaData("operationType", org.apache.thrift.TFieldRequirementType.OPTIONAL, 
-        new org.apache.thrift.meta_data.ListMetaData(org.apache.thrift.protocol.TType.LIST, 
-            new org.apache.thrift.meta_data.FieldValueMetaData(org.apache.thrift.protocol.TType.STRING))));
+        new org.apache.thrift.meta_data.FieldValueMetaData(org.apache.thrift.protocol.TType.STRING)));
     metaDataMap = Collections.unmodifiableMap(tmpMap);
     org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(TSExecuteStatementResp.class, metaDataMap);
   }
@@ -162,8 +161,7 @@ public class TSExecuteStatementResp implements org.apache.thrift.TBase<TSExecute
       this.columns = __this__columns;
     }
     if (other.isSetOperationType()) {
-      List<String> __this__operationType = new ArrayList<String>(other.operationType);
-      this.operationType = __this__operationType;
+      this.operationType = other.operationType;
     }
   }
 
@@ -266,26 +264,11 @@ public class TSExecuteStatementResp implements org.apache.thrift.TBase<TSExecute
     }
   }
 
-  public int getOperationTypeSize() {
-    return (this.operationType == null) ? 0 : this.operationType.size();
-  }
-
-  public java.util.Iterator<String> getOperationTypeIterator() {
-    return (this.operationType == null) ? null : this.operationType.iterator();
-  }
-
-  public void addToOperationType(String elem) {
-    if (this.operationType == null) {
-      this.operationType = new ArrayList<String>();
-    }
-    this.operationType.add(elem);
-  }
-
-  public List<String> getOperationType() {
+  public String getOperationType() {
     return this.operationType;
   }
 
-  public TSExecuteStatementResp setOperationType(List<String> operationType) {
+  public TSExecuteStatementResp setOperationType(String operationType) {
     this.operationType = operationType;
     return this;
   }
@@ -335,7 +318,7 @@ public class TSExecuteStatementResp implements org.apache.thrift.TBase<TSExecute
       if (value == null) {
         unsetOperationType();
       } else {
-        setOperationType((List<String>)value);
+        setOperationType((String)value);
       }
       break;
 
@@ -630,18 +613,8 @@ public class TSExecuteStatementResp implements org.apache.thrift.TBase<TSExecute
             }
             break;
           case 4: // OPERATION_TYPE
-            if (schemeField.type == org.apache.thrift.protocol.TType.LIST) {
-              {
-                org.apache.thrift.protocol.TList _list11 = iprot.readListBegin();
-                struct.operationType = new ArrayList<String>(_list11.size);
-                for (int _i12 = 0; _i12 < _list11.size; ++_i12)
-                {
-                  String _elem13;
-                  _elem13 = iprot.readString();
-                  struct.operationType.add(_elem13);
-                }
-                iprot.readListEnd();
-              }
+            if (schemeField.type == org.apache.thrift.protocol.TType.STRING) {
+              struct.operationType = iprot.readString();
               struct.setOperationTypeIsSet(true);
             } else { 
               org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
@@ -679,9 +652,9 @@ public class TSExecuteStatementResp implements org.apache.thrift.TBase<TSExecute
           oprot.writeFieldBegin(COLUMNS_FIELD_DESC);
           {
             oprot.writeListBegin(new org.apache.thrift.protocol.TList(org.apache.thrift.protocol.TType.STRING, struct.columns.size()));
-            for (String _iter14 : struct.columns)
+            for (String _iter11 : struct.columns)
             {
-              oprot.writeString(_iter14);
+              oprot.writeString(_iter11);
             }
             oprot.writeListEnd();
           }
@@ -691,14 +664,7 @@ public class TSExecuteStatementResp implements org.apache.thrift.TBase<TSExecute
       if (struct.operationType != null) {
         if (struct.isSetOperationType()) {
           oprot.writeFieldBegin(OPERATION_TYPE_FIELD_DESC);
-          {
-            oprot.writeListBegin(new org.apache.thrift.protocol.TList(org.apache.thrift.protocol.TType.STRING, struct.operationType.size()));
-            for (String _iter15 : struct.operationType)
-            {
-              oprot.writeString(_iter15);
-            }
-            oprot.writeListEnd();
-          }
+          oprot.writeString(struct.operationType);
           oprot.writeFieldEnd();
         }
       }
@@ -737,20 +703,14 @@ public class TSExecuteStatementResp implements org.apache.thrift.TBase<TSExecute
       if (struct.isSetColumns()) {
         {
           oprot.writeI32(struct.columns.size());
-          for (String _iter16 : struct.columns)
+          for (String _iter12 : struct.columns)
           {
-            oprot.writeString(_iter16);
+            oprot.writeString(_iter12);
           }
         }
       }
       if (struct.isSetOperationType()) {
-        {
-          oprot.writeI32(struct.operationType.size());
-          for (String _iter17 : struct.operationType)
-          {
-            oprot.writeString(_iter17);
-          }
-        }
+        oprot.writeString(struct.operationType);
       }
     }
 
@@ -768,28 +728,19 @@ public class TSExecuteStatementResp implements org.apache.thrift.TBase<TSExecute
       }
       if (incoming.get(1)) {
         {
-          org.apache.thrift.protocol.TList _list18 = new org.apache.thrift.protocol.TList(org.apache.thrift.protocol.TType.STRING, iprot.readI32());
-          struct.columns = new ArrayList<String>(_list18.size);
-          for (int _i19 = 0; _i19 < _list18.size; ++_i19)
+          org.apache.thrift.protocol.TList _list13 = new org.apache.thrift.protocol.TList(org.apache.thrift.protocol.TType.STRING, iprot.readI32());
+          struct.columns = new ArrayList<String>(_list13.size);
+          for (int _i14 = 0; _i14 < _list13.size; ++_i14)
           {
-            String _elem20;
-            _elem20 = iprot.readString();
-            struct.columns.add(_elem20);
+            String _elem15;
+            _elem15 = iprot.readString();
+            struct.columns.add(_elem15);
           }
         }
         struct.setColumnsIsSet(true);
       }
       if (incoming.get(2)) {
-        {
-          org.apache.thrift.protocol.TList _list21 = new org.apache.thrift.protocol.TList(org.apache.thrift.protocol.TType.STRING, iprot.readI32());
-          struct.operationType = new ArrayList<String>(_list21.size);
-          for (int _i22 = 0; _i22 < _list21.size; ++_i22)
-          {
-            String _elem23;
-            _elem23 = iprot.readString();
-            struct.operationType.add(_elem23);
-          }
-        }
+        struct.operationType = iprot.readString();
         struct.setOperationTypeIsSet(true);
       }
     }

@@ -77,7 +77,7 @@ struct TSExecuteStatementResp {
 	1: required TS_Status status
 	2: optional TSOperationHandle operationHandle
 	3: optional list<string> columns
-	4: optional list<string> operationType
+	4: optional string operationType
 }
 
 enum TSProtocolVersion {

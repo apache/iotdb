@@ -361,7 +361,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 			operationHandle = new TSOperationHandle(operationId, true);
 			resp.setOperationHandle(operationHandle);
 			recordANewQuery(statement, plan);
-			resp.setOperationType(aggregations);
+			if (aggregations != null && !aggregations.isEmpty()) {
+				resp.setOperationType("aggregation");
+			} else {
+				resp.setOperationType(null);
+			}
 			return resp;
 		} catch (Exception e) {
 			LOGGER.error("{}: Internal server error: {}",TsFileDBConstant.GLOBAL_DB_NAME, e.getMessage());
