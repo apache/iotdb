@@ -157,6 +157,25 @@ public class CrossReadBugFixTest {
     }
 
     private void selectWildTest() throws ClassNotFoundException, SQLException {
+        String[] retArray = new String[]{
+                "1,101,1101,7.0",
+                "2,198,198,8.0",
+                "51,null,51,null",
+                "52,null,52,null",
+                "53,null,53,null",
+                "54,null,54,null",
+                "55,null,55,null",
+                "56,null,56,null",
+                "57,null,57,null",
+                "58,null,58,null",
+                "100,300,199,19.0",
+                "101,99,199,10.0",
+                "102,80,180,18.0",
+                "103,99,199,12.0",
+                "104,90,190,13.0",
+                "105,99,199,14.0",
+                "106,99,null,null"
+        };
 
         Class.forName("cn.edu.thu.tsfiledb.jdbc.TsfileDriver");
         Connection connection = null;
@@ -171,7 +190,8 @@ public class CrossReadBugFixTest {
                 while (resultSet.next()) {
                     String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s0) + ","
                             + resultSet.getString(d0s1) + "," + resultSet.getString(d0s2);
-                    System.out.println(ans);
+                    // System.out.println(ans);
+                    Assert.assertEquals(retArray[cnt], ans);
                     cnt++;
                 }
             }
@@ -216,7 +236,7 @@ public class CrossReadBugFixTest {
                 int cnt = 0;
                 while (resultSet.next()) {
                     String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s0) + "," + resultSet.getString(d0s1) + "," + resultSet.getString(d0s2);
-                    System.out.println(ans);
+                    // System.out.println(ans);
                     Assert.assertEquals(retArray[cnt], ans);
                     cnt++;
                 }
