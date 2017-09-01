@@ -3,6 +3,7 @@ package cn.edu.thu.tsfiledb.qp.strategy.optimizer;
 import java.util.ArrayList;
 import java.util.List;
 
+import cn.edu.thu.tsfiledb.qp.exception.LogicalOperatorException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -14,6 +15,7 @@ import cn.edu.thu.tsfiledb.qp.logical.crud.FilterOperator;
 import cn.edu.thu.tsfiledb.qp.logical.crud.FromOperator;
 import cn.edu.thu.tsfiledb.qp.logical.crud.SFWOperator;
 import cn.edu.thu.tsfiledb.qp.logical.crud.SelectOperator;
+import cn.edu.thu.tsfiledb.qp.logical.crud.FunctionOperator;
 import cn.edu.tsinghua.tsfile.timeseries.read.qp.Path;
 
 /**
@@ -50,66 +52,64 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
         FilterOperator filter = sfwOperator.getFilterOperator();
         if (filter == null)
             return operator;
-        concatFilter(prefixPaths, filter);
-        sfwOperator.setFilterOperator(filter);
+        sfwOperator.setFilterOperator(concatFilter(prefixPaths, filter));
         return sfwOperator;
     }
 
 
     private List<Path> concatSelect(List<Path> fromPaths, List<Path> selectPaths)
             throws LogicalOptimizeException {
-        if (fromPaths.size() == 1) {
-            Path fromPath = fromPaths.get(0);
-            if (!fromPath.startWith(SQLConstant.ROOT))
-                throw new LogicalOptimizeException("illegal from clause : " + fromPath.getFullPath());
-            for (int i = 0;i < selectPaths.size();i++) {
-                Path selectPath = selectPaths.get(i);
-                if (!selectPath.startWith(SQLConstant.ROOT)) {
-                    // add prefix root path
-                    selectPaths.set(i, Path.addPrefixPath(selectPath, fromPath));
-                }
-            }
-            return selectPaths;
-        } else {
-            List<Path> allPaths = new ArrayList<>();
-            for (Path selectPath : selectPaths) {
-                if(selectPath.startWith(SQLConstant.ROOT))
-                    continue;
+        List<Path> allPaths = new ArrayList<>();
+        for (Path selectPath : selectPaths) {
+            if (selectPath.startWith(SQLConstant.ROOT))
+                allPaths.add(selectPath);
+            else {
                 for (Path fromPath : fromPaths) {
                     if (!fromPath.startWith(SQLConstant.ROOT))
                         throw new LogicalOptimizeException("illegal from clause : " + fromPath.getFullPath());
-                    Path newPath = selectPath.clone();
-                    newPath = Path.addPrefixPath(newPath, fromPath);
-                    allPaths.add(newPath);
+                    allPaths.add(Path.addPrefixPath(selectPath, fromPath));
                 }
             }
-            return allPaths;
         }
+        return allPaths;
     }
 
-    private void concatFilter(List<Path> fromPaths, FilterOperator operator)
+    private FilterOperator concatFilter(List<Path> fromPaths, FilterOperator operator)
             throws LogicalOptimizeException {
         if (!operator.isLeaf()) {
-            for (FilterOperator child : operator.getChildren())
-                concatFilter(fromPaths, child);
-            return;
+            List<FilterOperator> newFilterList = new ArrayList<>();
+            for (FilterOperator child : operator.getChildren()) {
+                newFilterList.add(concatFilter(fromPaths, child));
+            }
+            operator.setChildren(newFilterList);
+            return operator;
         }
         BasicFunctionOperator basicOperator = (BasicFunctionOperator) operator;
         Path filterPath = basicOperator.getSinglePath();
-        if (SQLConstant.isReservedPath(filterPath))
-            return;
+        // do nothing in the cases of "where time > 5" or "where root.d1.s1 > 5"
+        if (SQLConstant.isReservedPath(filterPath) || filterPath.startWith(SQLConstant.ROOT))
+            return operator;
         if (fromPaths.size() == 1) {
-            Path fromPath = fromPaths.get(0);
-            if (!fromPath.startWith(SQLConstant.ROOT))
-                throw new LogicalOptimizeException("illegal from clause : " + fromPath.getFullPath());
-            if (!filterPath.startWith(SQLConstant.ROOT)) {
-                Path newFilterPath = Path.addPrefixPath(filterPath, fromPath);
-                basicOperator.setSinglePath(newFilterPath);
-                // System.out.println("3===========" + basicOperator.getSinglePath());
+            //transfer "select s1 from root.car.* where s1 > 10" to
+            // "select s1 from root.car.* where root.car.*.s1 > 10"
+            Path newFilterPath = Path.addPrefixPath(filterPath, fromPaths.get(0));
+            basicOperator.setSinglePath(newFilterPath);
+            return operator;
+        } else {
+            //transfer "select s1 from root.car.d1, root.car.d2 where s1 > 10" to
+            // "select s1 from root.car.d1, root.car.d2 where root.car.d1.s1 > 10 and root.car.d2.s1 > 10"
+            FilterOperator newFilter = new FilterOperator(SQLConstant.KW_AND);
+            try {
+                for (Path fromPath : fromPaths) {
+                    Path concatPath = Path.addPrefixPath(filterPath, fromPath);
+                    FunctionOperator newFuncOp = new BasicFunctionOperator(operator.getTokenIntType(), concatPath,
+                            ((BasicFunctionOperator) operator).getValue());
+                    newFilter.addChildOperator(newFuncOp);
+                }
+            } catch (LogicalOperatorException e) {
+                throw new LogicalOptimizeException(e.getMessage());
             }
-            //don't support select s1 from root.car.d1,root.car.d2 where s1 > 10
-        } else if (!filterPath.startWith(SQLConstant.ROOT)){
-            throw new LogicalOptimizeException("illegal filter path : " + filterPath.getFullPath());
+            return newFilter;
         }
     }
 }
