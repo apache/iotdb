@@ -22,7 +22,6 @@ import java.sql.Time;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Calendar;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -49,7 +48,7 @@ public class TsfileQueryResultSet implements ResultSet {
 	private boolean isClosed = false;
 	private TSIService.Iface client = null;
 	private TSOperationHandle operationHandle = null;
-	private Map<String, Integer> columnInfo;
+	private List<String> columnInfo;
 	private RowRecord record;
 	private Iterator<RowRecord> recordItr;
 	private int rowsFetched = 0;
@@ -69,13 +68,13 @@ public class TsfileQueryResultSet implements ResultSet {
 			throws SQLException {
 		this.statement = statement;
 		this.sql = sql;
-		this.columnInfo = new HashMap<>();
+		this.columnInfo = new ArrayList<>();
 		this.client = client;
 		this.operationHandle = operationHandle;
-		columnInfo.put(TIMESTAMP_STR, 0);
-		int index = 1;
+		columnInfo.add(TIMESTAMP_STR);
+//		int index = 1;
 		for (String name : columnName) {
-			columnInfo.put(name, index++);
+			columnInfo.add(name);
 		}
 		this.maxRows = statement.getMaxRows();
 		this.fetchSize = statement.getFetchSize();
@@ -150,11 +149,12 @@ public class TsfileQueryResultSet implements ResultSet {
 
 	@Override
 	public int findColumn(String columnName) throws SQLException {
-		Integer column = columnInfo.get(columnName);
-		if (column == null) {
-			throw new SQLException(String.format("Column %s does not exist", columnName));
+		for(int i = 0; i < columnInfo.size(); i++){
+			if(columnInfo.get(i).equals(columnName)){
+				return i;
+			}
 		}
-		return column;
+		throw new SQLException(String.format("Column %s does not exist", columnName));
 	}
 
 	@Override
@@ -1123,10 +1123,21 @@ public class TsfileQueryResultSet implements ResultSet {
 			return String.valueOf(record.getTime());
 		}
 		int len = record.fields.size();
-		if (columnIndex > len || len == 0) {
-			throw new SQLException(String.format("columnIndex %d out of range %d", columnIndex, len));
+		if(columnIndex >= columnInfo.size()){
+			throw new SQLException(String.format("column index %d out of range %d", columnIndex, columnInfo.size()));
 		}
-		Field field = record.fields.get(columnIndex - 1);
+		String columnName = columnInfo.get(columnIndex);
+		int tmp = columnIndex;
+		for(int i = 1; i < columnInfo.size();i++){
+			if(columnInfo.get(i).equals(columnName)){
+				tmp = i;
+				break;
+			}
+		}
+		if (tmp > len || len == 0) {
+			throw new SQLException(String.format("column index %d out of range %d", columnIndex, len));
+		}
+		Field field = record.fields.get(tmp - 1);
 		if(field == null || field.getStringValue() == null) return null;
 		return field.getStringValue();
 	}
