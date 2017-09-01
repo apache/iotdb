@@ -138,7 +138,7 @@ public class DaemonTest {
 
         //TODO: add your query statement
         Connection connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
-        System.out.println(connection.getMetaData());
+        //System.out.println(connection.getMetaData());
         selectAllSQLTest();
         dnfErrorSQLTest();
         selectWildCardSQLTest();
@@ -146,6 +146,7 @@ public class DaemonTest {
         selectAndOpeCrossTest();
         aggregationTest();
         selectOneColumnWithFilterTest();
+        textDataTypeTest();
         connection.close();
     }
 
@@ -427,6 +428,41 @@ public class DaemonTest {
                     //System.out.println("=====" + ans);
                     Assert.assertEquals(ans, retArray[cnt++]);
                     //AbstractClient.output(resultSet, true, "select statement");
+                }
+                Assert.assertEquals(cnt, 3);
+            }
+            statement.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            if (connection != null) {
+                connection.close();
+            }
+        }
+    }
+
+    private void textDataTypeTest() throws ClassNotFoundException, SQLException {
+        String[] retArray = new String[]{
+                "101,199,null,tomorrow is another day",
+                "102,180,10.0,tomorrow is another day",
+                "946684800000,100,null,good"
+        };
+
+        Class.forName("cn.edu.thu.tsfiledb.jdbc.TsfileDriver");
+        Connection connection = null;
+        try {
+            connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
+            Statement statement = connection.createStatement();
+
+            boolean hasTextMaxResultSet = statement.execute("select s1,s2,s3 from root.vehicle.d0 where s3 = 'tomorrow is another day' or s3 = 'good'");
+            if (hasTextMaxResultSet) {
+                ResultSet resultSet = statement.getResultSet();
+                int cnt = 0;
+                while (resultSet.next()) {
+                    String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s1) + "," +
+                            resultSet.getString(d0s2) + "," + resultSet.getString(d0s3);
+                    //System.out.println("=====" + ans);
+                    Assert.assertEquals(ans, retArray[cnt++]);
                 }
                 Assert.assertEquals(cnt, 3);
             }
