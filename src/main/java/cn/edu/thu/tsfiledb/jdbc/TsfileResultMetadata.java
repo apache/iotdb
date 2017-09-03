@@ -3,13 +3,16 @@ package cn.edu.thu.tsfiledb.jdbc;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Map;
 
 public class TsfileResultMetadata implements ResultSetMetaData {
-	private List<String> columnInfo;
+	private List<String> columnInfoList;
+	private Map<String, Integer> columnInfoMap;
 	private String operationType;
 	
-	public TsfileResultMetadata(List<String> columnInfo, String operationType) {
-		this.columnInfo = columnInfo;
+	public TsfileResultMetadata(List<String> columnInfoList,Map<String, Integer> columnInfoMap, String operationType) {
+		this.columnInfoList = columnInfoList;
+		this.columnInfoMap = columnInfoMap;
 		this.operationType = operationType;
 	}
 
@@ -39,10 +42,10 @@ public class TsfileResultMetadata implements ResultSetMetaData {
 
 	@Override
 	public int getColumnCount() throws SQLException {
-		if (columnInfo == null || columnInfo.size() == 0) {
+		if (columnInfoList == null || columnInfoList.size() == 0) {
 			throw new SQLException("No column exists");
 		}
-		return columnInfo.size();
+		return columnInfoList.size();
 	}
 
 	@Override
@@ -53,13 +56,13 @@ public class TsfileResultMetadata implements ResultSetMetaData {
 
 	@Override
 	public String getColumnLabel(int column) throws SQLException {
-		if (columnInfo == null || columnInfo.size() == 0) {
+		if (columnInfoList == null || columnInfoList.size() == 0) {
 			throw new SQLException("No column exists");
 		}
-		if(column >= columnInfo.size()){
+		if(column >= columnInfoList.size()){
 			throw new SQLException(String.format("column %d does not exist", column));
 		}
-		return columnInfo.get(column);		
+		return columnInfoList.get(column);		
 	}
 
 	@Override
