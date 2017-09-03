@@ -2,9 +2,7 @@ package cn.edu.thu.tsfiledb.query.engine;
 
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.PriorityQueue;
+import java.util.*;
 
 import cn.edu.thu.tsfiledb.exception.PathErrorException;
 import cn.edu.thu.tsfiledb.metadata.MManager;
@@ -121,7 +119,7 @@ public class AggregateEngine {
             }
         }
 
-        int batchSize = 100000;
+        int batchSize = 50000;
         while (true) {
 
             while (timestamps.size() < batchSize && !priorityQueue.isEmpty()) {
@@ -137,7 +135,7 @@ public class AggregateEngine {
                     if (flag) {
                         int curTimeIdx = indexArray.get(i);
                         long[] curTimestamps = timeArray.get(i);
-                        // remove all timestamp equals to min time in all series
+                        // remove all timestamps equal to min time in all series
                         while (curTimeIdx < curTimestamps.length && curTimestamps[curTimeIdx] == minTime) {
                             curTimeIdx++;
                         }
@@ -159,12 +157,19 @@ public class AggregateEngine {
             if (timestamps.size() == 0)
                 break;
 
+            Set<String> aggrePathSet = new HashSet<>();
             for (Pair<Path, AggregateFunction> pair : aggres) {
                 Path path = pair.left;
                 AggregateFunction aggregateFunction = pair.right;
                 String deltaObjectUID = path.getDeltaObjectToString();
                 String measurementUID = path.getMeasurementToString();
                 TSDataType dataType = MManager.getInstance().getSeriesType(path.getFullPath());
+                String aggregationKey = aggregateFunction.name + "(" + path.getFullPath() + ")";
+                if (aggrePathSet.contains(aggregationKey)) {
+                    continue;
+                } else {
+                    aggrePathSet.add(aggregationKey);
+                }
 
                 RecordReader recordReader = RecordReaderFactory.getInstance().getRecordReader(deltaObjectUID, measurementUID,
                         null, null, null, null, "MultiAggre_Query");
@@ -180,16 +185,17 @@ public class AggregateEngine {
                     recordReader.insertAllData = new InsertDynamicData(recordReader.bufferWritePageList, recordReader.compressionTypeName,
                             insertTrue, updateTrue, updateFalse,
                             newTimeFilter, null, null, dataType);
-                    DynamicOneColumnData aggreData = new DynamicOneColumnData(dataType, true);
-                    //aggreData.putOverflowInfo(insertTrue, updateTrue, updateFalse, newTimeFilter);
-                    //ansQueryDataSet.mapRet.put(aggregateFunction.name + "(" + path.getFullPath() + ")", aggreData);
 
-                    AggregationResult aggrRet = recordReader.aggregateUseTimestamps(deltaObjectUID, measurementUID, aggregateFunction,
-                            aggreData.updateTrue, aggreData.updateFalse, recordReader.insertAllData, newTimeFilter, null, null, timestamps);
+                    AggregationResult aggrResult = recordReader.aggregateUsingTimestamps(deltaObjectUID, measurementUID, aggregateFunction,
+                            recordReader.insertAllData.updateTrue, recordReader.insertAllData.updateFalse, recordReader.insertAllData,
+                            newTimeFilter, null, null, timestamps, null);
+                    ansQueryDataSet.mapRet.put(aggregationKey, aggrResult.data);
+                } else {
+                    DynamicOneColumnData aggreData = ansQueryDataSet.mapRet.get(aggregationKey);
+                    AggregationResult aggrResult = recordReader.aggregateUsingTimestamps(deltaObjectUID, measurementUID, aggregateFunction,
+                            recordReader.insertAllData.updateTrue, recordReader.insertAllData.updateFalse, recordReader.insertAllData,
+                            recordReader.insertAllData.timeFilter, null, null, timestamps, aggreData);
                 }
-
-                DynamicOneColumnData aggreData = ansQueryDataSet.mapRet.get(aggregateFunction.name + "(" + path.getFullPath() + ")");
-
             }
         }
 

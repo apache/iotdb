@@ -21,30 +21,54 @@ public abstract class AggregateFunction {
         result = new AggregationResult(dataType);
     }
 
+    protected abstract boolean calculateValueFromPageHeader(PageHeader pageHeader);
+
     /**
      * Return false if the result can not be calculated from pageHeader.
+     * //TODO this method always reture true..
+     *
+     * @param pageHeader <code>PageHeader</code>
+     * @return false if the result can not be judged from pageHeader.
      */
-    public abstract boolean calculateValueFromPageHeader(PageHeader pageHeader);
-
-    /**
-     * Calculate the value according to all data in this page.
-     */
-    public abstract void calculateValueFromDataInThisPage(DynamicOneColumnData dataInThisPage) throws IOException, ProcessorException;
-
     public boolean couldCalculateFromPageHeader(PageHeader pageHeader) {
         return calculateValueFromPageHeader(pageHeader);
     }
 
+    protected abstract void calculateValueFromDataInThisPage(DynamicOneColumnData dataInThisPage) throws IOException, ProcessorException;
+
+    /**
+     * Before invoking this method, <code>couldCalculateFromPageHeader</code> method will return false.
+     * Calculate the aggregation according to all decompressed data in this page.
+     *
+     * @param dataInThisPage the data in the DataPage
+     * @throws IOException tsfile data read excption
+     * @throws ProcessorException wrong aggregation method parameter
+     */
     public void calculateFromDataInThisPage(DynamicOneColumnData dataInThisPage) throws IOException, ProcessorException {
         calculateValueFromDataInThisPage(dataInThisPage);
     }
 
+    /**
+     * Before invoking this method, <code>couldCalculateFromPageHeader</code> method will return false.
+     * Calculate the aggregation according to all decompressed data in this page.
+     *
+     * @param insertMemoryData the data in the DataPage with memory bufferwrite data
+     * @throws IOException tsfile data read excption
+     * @throws ProcessorException wrong aggregation method parameter
+     */
     public void calculateFromLeftMemoryData(InsertDynamicData insertMemoryData) throws IOException, ProcessorException {
         calculateValueFromDataInThisPage(insertMemoryData);
     }
 
-    // for cross series multi aggregate
-    public void calcAggregationUseTimestamps(InsertDynamicData insertMemoryData, List<Long> timestamps) throws IOException, ProcessorException {
+    /**
+     * This method is calculate the aggregation using the common timestamps of cross series filter.
+     *
+     * @param insertMemoryData the data in the DataPage with memory bufferwrite data
+     * @param timestamps the common timestamps calculated by cross series filter
+     * @throws IOException tsfile data read excption
+     * @throws ProcessorException wrong aggregation method parameter
+     */
+    public void calcAggregationUsingTimestamps(InsertDynamicData insertMemoryData, List<Long> timestamps) throws IOException, ProcessorException {
 
     }
 }
