@@ -206,7 +206,7 @@ public class RecordReader {
         for (RowGroupReader rowGroupReader : rowGroupReaderList) {
             if (rowGroupReader.getValueReaders().containsKey(measurementId)) {
                 rowGroupReader.getValueReaders().get(measurementId)
-                        .aggreate(func, insertMemoryData, updateTrue, updateFalse, timeFilter, freqFilter, valueFilter);
+                        .aggregate(func, insertMemoryData, updateTrue, updateFalse, timeFilter, freqFilter, valueFilter);
             }
         }
 
@@ -234,9 +234,10 @@ public class RecordReader {
      * @throws ProcessorException
      * @throws IOException
      */
-    public AggregationResult aggregateUseTimestamps(String deltaObjectId, String measurementId, AggregateFunction func,
-                                                    DynamicOneColumnData updateTrue, DynamicOneColumnData updateFalse, InsertDynamicData insertMemoryData,
-                                                    SingleSeriesFilterExpression timeFilter, SingleSeriesFilterExpression freqFilter, SingleSeriesFilterExpression valueFilter, List<Long> timestamps
+    public AggregationResult aggregateUsingTimestamps(String deltaObjectId, String measurementId, AggregateFunction func,
+                                                      DynamicOneColumnData updateTrue, DynamicOneColumnData updateFalse, InsertDynamicData insertMemoryData,
+                                                      SingleSeriesFilterExpression timeFilter, SingleSeriesFilterExpression freqFilter, SingleSeriesFilterExpression valueFilter,
+                                                      List<Long> timestamps, DynamicOneColumnData aggreData
     ) throws ProcessorException, IOException {
 
         List<RowGroupReader> rowGroupReaderList = readerManager.getRowGroupReaderListByDeltaObject(deltaObjectId);
@@ -244,13 +245,13 @@ public class RecordReader {
         for (RowGroupReader rowGroupReader : rowGroupReaderList) {
             if (rowGroupReader.getValueReaders().containsKey(measurementId)) {
                 rowGroupReader.getValueReaders().get(measurementId)
-                        .aggregateUseTimestamps(func, insertMemoryData, updateTrue, updateFalse, timeFilter, freqFilter, valueFilter, timestamps);
+                        .aggregateUsingTimestamps(func, insertMemoryData, updateTrue, updateFalse, timeFilter, freqFilter, timestamps, aggreData);
             }
         }
 
         // calc aggregation using memory data
         if (insertMemoryData != null && insertMemoryData.hasInsertData()) {
-            func.calcAggregationUseTimestamps(insertMemoryData, timestamps);
+            func.calcAggregationUsingTimestamps(insertMemoryData, timestamps);
         }
         return func.result;
     }
