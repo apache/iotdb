@@ -22,6 +22,7 @@ import java.sql.Time;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -48,7 +49,8 @@ public class TsfileQueryResultSet implements ResultSet {
 	private boolean isClosed = false;
 	private TSIService.Iface client = null;
 	private TSOperationHandle operationHandle = null;
-	private List<String> columnInfo;
+	private List<String> columnInfoList;
+	private Map<String, Integer> columnInfoMap;
 	private RowRecord record;
 	private Iterator<RowRecord> recordItr;
 	private int rowsFetched = 0;
@@ -68,13 +70,18 @@ public class TsfileQueryResultSet implements ResultSet {
 			throws SQLException {
 		this.statement = statement;
 		this.sql = sql;
-		this.columnInfo = new ArrayList<>();
+		this.columnInfoList = new ArrayList<>();
+		this.columnInfoMap = new HashMap<>();
 		this.client = client;
 		this.operationHandle = operationHandle;
-		columnInfo.add(TIMESTAMP_STR);
-//		int index = 1;
+		this.columnInfoList.add(TIMESTAMP_STR);
+		this.columnInfoMap.put(TIMESTAMP_STR, 0);
+		int index = 1;
 		for (String name : columnName) {
-			columnInfo.add(name);
+			columnInfoList.add(name);
+			if(!columnInfoMap.containsKey(name)){
+				columnInfoMap.put(name, index++);
+			}
 		}
 		this.maxRows = statement.getMaxRows();
 		this.fetchSize = statement.getFetchSize();
@@ -149,12 +156,13 @@ public class TsfileQueryResultSet implements ResultSet {
 
 	@Override
 	public int findColumn(String columnName) throws SQLException {
-		for(int i = 0; i < columnInfo.size(); i++){
-			if(columnInfo.get(i).equals(columnName)){
-				return i;
-			}
-		}
-		throw new SQLException(String.format("Column %s does not exist", columnName));
+		return columnInfoMap.get(columnName);
+//		for(int i = 0; i < columnInfoList.size(); i++){
+//			if(columnInfoList.get(i).equals(columnName)){
+//				return i;
+//			}
+//		}
+//		throw new SQLException(String.format("Column %s does not exist", columnName));
 	}
 
 	@Override
@@ -369,7 +377,7 @@ public class TsfileQueryResultSet implements ResultSet {
 
 	@Override
 	public ResultSetMetaData getMetaData() throws SQLException {
-		return new TsfileResultMetadata(columnInfo, operationType);
+		return new TsfileResultMetadata(columnInfoList, columnInfoMap, operationType);
 	}
 
 	@Override
@@ -1123,17 +1131,11 @@ public class TsfileQueryResultSet implements ResultSet {
 			return String.valueOf(record.getTime());
 		}
 		int len = record.fields.size();
-		if(columnIndex >= columnInfo.size()){
-			throw new SQLException(String.format("column index %d out of range %d", columnIndex, columnInfo.size()));
+		if(columnIndex >= columnInfoList.size()){
+			throw new SQLException(String.format("column index %d out of range %d", columnIndex, columnInfoList.size()));
 		}
-		String columnName = columnInfo.get(columnIndex);
-		int tmp = columnIndex;
-		for(int i = 1; i < columnInfo.size();i++){
-			if(columnInfo.get(i).equals(columnName)){
-				tmp = i;
-				break;
-			}
-		}
+		String columnName = columnInfoList.get(columnIndex);
+		int tmp = columnInfoMap.get(columnName);
 		if (tmp > len || len == 0) {
 			throw new SQLException(String.format("column index %d out of range %d", columnIndex, len));
 		}
