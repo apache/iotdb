@@ -1134,12 +1134,10 @@ public class TsfileQueryResultSet implements ResultSet {
 		if(columnIndex >= columnInfoList.size()){
 			throw new SQLException(String.format("column index %d out of range %d", columnIndex, columnInfoList.size()));
 		}
-		String columnName = columnInfoList.get(columnIndex);
-		int tmp = columnInfoMap.get(columnName);
-		if (tmp > len || len == 0) {
+		if (columnIndex > len || len == 0) {
 			throw new SQLException(String.format("column index %d out of range %d", columnIndex, len));
 		}
-		Field field = record.fields.get(tmp - 1);
+		Field field = record.fields.get(columnIndex - 1);
 		if(field == null || field.getStringValue() == null) return null;
 		return field.getStringValue();
 	}
