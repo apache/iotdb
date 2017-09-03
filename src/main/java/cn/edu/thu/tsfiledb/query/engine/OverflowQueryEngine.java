@@ -66,7 +66,7 @@ public class OverflowQueryEngine {
     public QueryDataSet query(int formNumber, List<Path> paths, FilterExpression timeFilter, FilterExpression freqFilter,
                               FilterExpression valueFilter, QueryDataSet queryDataSet, int fetchSize) throws ProcessorException, IOException, PathErrorException {
         this.formNumber = formNumber;
-        LOGGER.info("\r\n======== FormNumber: " + formNumber + ", TimeFilter: " + timeFilter + "; ValueFilter: " + valueFilter + "\r\nQuery Paths: " + paths.toString());
+        LOGGER.info("\r\nFormNumber: " + formNumber + ", TimeFilter: " + timeFilter + "; ValueFilter: " + valueFilter + "\r\nQuery Paths: " + paths.toString());
         clearQueryDataSet(queryDataSet);
         if (timeFilter == null && freqFilter == null && valueFilter == null) {
             return readWithoutFilter(paths, queryDataSet, fetchSize, null);
@@ -243,7 +243,7 @@ public class OverflowQueryEngine {
 
         // calculate common timestamps
         long[] timestamps = queryDataSet.timeQueryDataSet.generateTimes();
-        LOGGER.info("calculate common timestamps complete.");
+        LOGGER.debug("calculate common timestamps complete.");
 
         QueryDataSet ret = queryDataSet;
         for (Path path : paths) {

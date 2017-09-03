@@ -211,7 +211,10 @@ public class AggregateEngine {
             String deltaObjectUID = path.getDeltaObjectToString();
             String measurementUID = path.getMeasurementToString();
             TSDataType dataType = MManager.getInstance().getSeriesType(path.getFullPath());
-
+            String aggregationKey = aggregateFunction.name + "(" + path.getFullPath() + ")";
+            if (ansQueryDataSet.mapRet.size() > 0 && ansQueryDataSet.mapRet.containsKey(aggregationKey)) {
+                continue;
+            }
 
             RecordReader recordReader = RecordReaderFactory.getInstance().getRecordReader(deltaObjectUID, measurementUID,
                     null, null, null, null, "MultiAggre_Query" + aggreNumber);
@@ -230,13 +233,13 @@ public class AggregateEngine {
 
                 AggregationResult aggrRet = recordReader.aggregate(deltaObjectUID, measurementUID, aggregateFunction,
                         updateTrue, updateFalse, recordReader.insertAllData, newTimeFilter, null, null);
-                ansQueryDataSet.mapRet.put(aggregateFunction.name + "(" + path.getFullPath() + ")", aggrRet.data);
+                ansQueryDataSet.mapRet.put(aggregationKey, aggrRet.data);
             } else {
-                DynamicOneColumnData aggData = ansQueryDataSet.mapRet.get(aggregateFunction.name + "(" + path.getFullPath() + ")");
+                DynamicOneColumnData aggData = ansQueryDataSet.mapRet.get(aggregationKey);
                 if (aggData != null) {
                     aggData.clearData();
                 }
-                ansQueryDataSet.mapRet.put(aggregateFunction.name + "(" + path.getFullPath() + ")", aggData);
+                ansQueryDataSet.mapRet.put(aggregationKey, aggData);
             }
         }
 
