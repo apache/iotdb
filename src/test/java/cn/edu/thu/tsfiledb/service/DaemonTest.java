@@ -93,7 +93,7 @@ public class DaemonTest {
 
     private Daemon deamon;
 
-    @Before
+    //@Before
     public void setUp() throws Exception {
         TsfileDBConfig config = TsfileDBDescriptor.getInstance().getConfig();
         overflowDataDirPre = config.overflowDataDir;
@@ -111,7 +111,7 @@ public class DaemonTest {
         deamon.active();
     }
 
-    @After
+    //@After
     public void tearDown() throws Exception {
         deamon.stop();
         Thread.sleep(5000);
@@ -131,7 +131,7 @@ public class DaemonTest {
         config.derbyHome = derbyHomePre;
     }
 
-    @Test
+    //@Test
     public void test() throws ClassNotFoundException, SQLException, InterruptedException {
         Thread.sleep(5000);
         insertSQL();
@@ -139,13 +139,13 @@ public class DaemonTest {
         //TODO: add your query statement
         Connection connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
         System.out.println(connection.getMetaData());
-//        selectAllSQLTest();
-//        dnfErrorSQLTest();
-//        selectWildCardSQLTest();
-//        selectAndOperatorTest();
-//        selectAndOpeCrossTest();
-//        aggregationTest();
-//        selectOneColumnWithFilterTest();
+        selectAllSQLTest();
+        dnfErrorSQLTest();
+        selectWildCardSQLTest();
+        selectAndOperatorTest();
+        selectAndOpeCrossTest();
+        aggregationTest();
+        selectOneColumnWithFilterTest();
         multiAggregationTest();
         connection.close();
     }
@@ -190,7 +190,7 @@ public class DaemonTest {
                     Assert.assertEquals(ans, retArray[cnt]);
                     cnt++;
                 }
-                Assert.assertEquals(cnt, 1);
+                Assert.assertEquals(1, cnt);
             }
             statement.close();
 
@@ -208,17 +208,17 @@ public class DaemonTest {
                              + resultSet.getString("count(" + d0s1 + ")") + ","
                             + resultSet.getString("count(" + d0s3 + ")") + ","
                             + resultSet.getString("max_value(" + d0s2 + ")");
-                    System.out.println("!!" + ans);
+                    //System.out.println("!!" + ans);
                     Assert.assertEquals(ans, retArray[cnt]);
                     cnt++;
                 }
-                Assert.assertEquals(cnt, 1);
+                Assert.assertEquals(1, cnt);
             }
             statement.close();
 
             // the statement has same columns and different aggregation
             retArray = new String[]{
-                    "11,33333,946684800000,6"
+                    "11,55555,946684800000,6"
             };
             statement = connection.createStatement();
             hasResultSet = statement.execute("select count(s1),max_value(s1),max_time(s1),count(s3) from root.vehicle.d0");
@@ -230,11 +230,11 @@ public class DaemonTest {
                             + resultSet.getString("max_value(" + d0s1 + ")") + ","
                             + resultSet.getString("max_time(" + d0s1 + ")") + ","
                             + resultSet.getString("count(" + d0s3 + ")");
-                    System.out.println("==" + ans);
-                    // Assert.assertEquals(ans, retArray[cnt]);
+                    //System.out.println("==" + ans);
+                    Assert.assertEquals(ans, retArray[cnt]);
                     cnt++;
                 }
-                Assert.assertEquals(cnt, 1);
+                Assert.assertEquals(1, cnt);
             }
             statement.close();
         } catch (Exception e) {
@@ -391,7 +391,7 @@ public class DaemonTest {
                     cnt++;
                     // AbstractClient.output(resultSet, true, "select statement");
                 }
-                Assert.assertEquals(1, cnt);
+                Assert.assertEquals(1,cnt);
             }
             statement.close();
         } catch (Exception e) {
@@ -454,7 +454,6 @@ public class DaemonTest {
                     // System.out.println("=====" + ans);
                     Assert.assertEquals(retArray[0], ans);
                     cnt++;
-                    //AbstractClient.output(resultSet, true, "select statement");
                 }
                 Assert.assertEquals(1, cnt);
             }
@@ -468,7 +467,7 @@ public class DaemonTest {
                 while (resultSet.next()) {
                     String ans = resultSet.getString(1);
                     // System.out.println("=====" + ans);
-                    Assert.assertEquals(ans, retArray[1]);
+                    Assert.assertEquals(ans, "aaaaa");
                     cnt++;
                 }
                 Assert.assertEquals(cnt, 1);

@@ -70,8 +70,6 @@ public class AggregateEngine {
                 , newTimeFilter, (SingleSeriesFilterExpression) freqFilter, (SingleSeriesFilterExpression) valueFilter);
 
         queryDataSet.mapRet.put(func.name + "(" + path.getFullPath() + ")", aggrRet.data);
-        // TODO close current recordReader, need close file stream?
-        // recordReader.closeFromFactory();
         return queryDataSet;
     }
 
@@ -263,10 +261,10 @@ public class AggregateEngine {
         // V.valueFilterNumber.deltaObjectId.measurementId
         String deltaObjectUID = ((SingleSeriesFilterExpression) valueFilter).getFilterSeries().getDeltaObjectUID();
         String measurementUID = ((SingleSeriesFilterExpression) valueFilter).getFilterSeries().getMeasurementUID();
-        String valueFilterPrefix = "MultiAggre" + "." + "V" + valueFilterNumber + ".";
+        String valueFilterPrefix = "MultiAggre.V." + valueFilterNumber;
         // String formNumberPrefix = formNumber;
 
-        LOGGER.info("Cross query value filter : " + "MultiAggre" +  ".V" + valueFilterNumber + "." + deltaObjectUID + "." + measurementUID);
+        LOGGER.info("Cross query value filter : " + "MultiAggre.V" + valueFilterNumber + "." + deltaObjectUID + "." + measurementUID);
         RecordReader recordReader = RecordReaderFactory.getInstance().getRecordReader(deltaObjectUID, measurementUID,
                 null, freqFilter, valueFilter, null, valueFilterPrefix);
 

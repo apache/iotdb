@@ -44,7 +44,7 @@ public abstract class AggregateFunction {
     }
 
     // for cross series multi aggregate
-    public void calcMemoryUseTimestamps(InsertDynamicData insertMemoryData, List<Long> timestamps) throws IOException, ProcessorException {
+    public void calcAggregationUseTimestamps(InsertDynamicData insertMemoryData, List<Long> timestamps) throws IOException, ProcessorException {
 
     }
 }
