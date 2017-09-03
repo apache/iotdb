@@ -924,7 +924,23 @@ public class OverflowValueReader extends ValueReader {
         return func.result;
     }
 
-    // calculate the aggregate using timestamps
+
+    /**
+     * This function is used for aggregation calculation.
+     * Calculate the aggregation using timestamps.
+     *
+     * @param func
+     * @param insertMemoryData
+     * @param updateTrue
+     * @param updateFalse
+     * @param timeFilter
+     * @param freqFilter
+     * @param valueFilter
+     * @param timestamps
+     * @return
+     * @throws IOException
+     * @throws ProcessorException
+     */
     AggregationResult aggregateUseTimestamps(AggregateFunction func, InsertDynamicData insertMemoryData,
                                DynamicOneColumnData updateTrue, DynamicOneColumnData updateFalse, SingleSeriesFilterExpression timeFilter,
                                SingleSeriesFilterExpression freqFilter, SingleSeriesFilterExpression valueFilter, List<Long> timestamps) throws IOException, ProcessorException {
@@ -963,8 +979,6 @@ public class OverflowValueReader extends ValueReader {
             LOG.debug("read page {}, offset : {}", pageCount, res.pageOffset);
 
             PageHeader pageHeader = pageReader.getNextPageHeader();
-//				System.out.println("===== Page: " + pageCount + ". Count: " + pageHeader.data_page_header.num_rows);
-            // construct value and time digest for this page
             Digest pageDigest = pageHeader.data_page_header.getDigest();
             DigestForFilter valueDigestFF = new DigestForFilter(pageDigest.min, pageDigest.max, getDataType());
             long mint = pageHeader.data_page_header.min_timestamp;
@@ -1001,7 +1015,7 @@ public class OverflowValueReader extends ValueReader {
                 continue;
             }
 
-            //Get the InputStream for this page
+            // get the InputStream for this page
             InputStream page = pageReader.getNextPage();
             // update current res's pageOffset to the start of next page.
             res.pageOffset += lastAvailable - bis.available();
@@ -1032,8 +1046,8 @@ public class OverflowValueReader extends ValueReader {
             }
         }
 
-        //Record the current index for overflow info
-//			insertTrue.curIdx = idx2;
+        // record the current index for overflow info
+        // insertTrue.curIdx = idx2;
         updateTrue.curIdx = idx[0];
         updateFalse.curIdx = idx[1];
 
@@ -1041,7 +1055,7 @@ public class OverflowValueReader extends ValueReader {
     }
 
     /**
-     * Only used for aggreate function.
+     * Only used for aggregation function.
      *
      * @return
      * @throws IOException

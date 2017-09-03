@@ -180,6 +180,22 @@ public class RecordReader {
         }
     }
 
+    /**
+     * Aggregation calculate function of <code>RecordReader</code> without filter.
+     *
+     * @param deltaObjectId deltaObjectId of <code>Path</code>
+     * @param measurementId measurementId of <code>Path</code>
+     * @param func
+     * @param updateTrue
+     * @param updateFalse
+     * @param insertMemoryData
+     * @param timeFilter
+     * @param freqFilter
+     * @param valueFilter
+     * @return aggregation result
+     * @throws ProcessorException
+     * @throws IOException
+     */
     public AggregationResult aggregate(String deltaObjectId, String measurementId, AggregateFunction func,
                                        DynamicOneColumnData updateTrue, DynamicOneColumnData updateFalse, InsertDynamicData insertMemoryData,
                                        SingleSeriesFilterExpression timeFilter, SingleSeriesFilterExpression freqFilter, SingleSeriesFilterExpression valueFilter
@@ -201,7 +217,23 @@ public class RecordReader {
         return func.result;
     }
 
-    // calculate the aggregate result used the common timestamps
+    /**
+     * Calculate the aggregate result using the common timestamps.
+     *
+     * @param deltaObjectId deltaObjectId deltaObjectId of <code>Path</code>
+     * @param measurementId measurementId of <code>Path</code>
+     * @param func
+     * @param updateTrue
+     * @param updateFalse
+     * @param insertMemoryData
+     * @param timeFilter
+     * @param freqFilter
+     * @param valueFilter
+     * @param timestamps
+     * @return
+     * @throws ProcessorException
+     * @throws IOException
+     */
     public AggregationResult aggregateUseTimestamps(String deltaObjectId, String measurementId, AggregateFunction func,
                                                     DynamicOneColumnData updateTrue, DynamicOneColumnData updateFalse, InsertDynamicData insertMemoryData,
                                                     SingleSeriesFilterExpression timeFilter, SingleSeriesFilterExpression freqFilter, SingleSeriesFilterExpression valueFilter, List<Long> timestamps
@@ -216,9 +248,9 @@ public class RecordReader {
             }
         }
 
-        // add left insert values
+        // calc aggregation using memory data
         if (insertMemoryData != null && insertMemoryData.hasInsertData()) {
-            func.calculateFromLeftMemoryData(insertMemoryData);
+            func.calcAggregationUseTimestamps(insertMemoryData, timestamps);
         }
         return func.result;
     }
@@ -308,12 +340,17 @@ public class RecordReader {
     }
 
     /**
-     * Put left values in insertMemoryData to res.
+     * Calculate the left value in memory.
      *
      * @param res result answer
      * @param insertMemoryData memory data
      * @param fetchSize read fetch size
-     * @return true represents that all the values has been read.
+     * @param timeFilter filter to select time
+     * @param updateTrue <code>DynamicOneColumnData</code> represents which value to update to new value
+     * @param updateFalse <code>DynamicOneColumnData</code> represents which value of update to new value is
+     *                    not satisfied with the filter
+     * @return true represents that all the values has been read
+     * @throws IOException
      */
     private boolean addLeftInsertValue(DynamicOneColumnData res, InsertDynamicData insertMemoryData, int fetchSize,
                                        SingleSeriesFilterExpression timeFilter, DynamicOneColumnData updateTrue, DynamicOneColumnData updateFalse) throws IOException {
@@ -369,7 +406,7 @@ public class RecordReader {
     }
 
     /**
-     * {NEWFUNC} use {@code RecordReaderFactory} to manage all RecordReader
+     * Use {@code RecordReaderFactory} to manage all RecordReader.
      *
      * @throws ProcessorException
      */
@@ -378,14 +415,7 @@ public class RecordReader {
     }
 
     /**
-     * {NEWFUNC} for optimization in recordReaderFactory
-     */
-    public void reopenIfChanged() {
-        // TODO: how to reopen a recordReader
-    }
-
-    /**
-     * {NEWFUNC} close current RecordReader
+     * Close current RecordReader.
      *
      * @throws IOException
      * @throws ProcessorException
