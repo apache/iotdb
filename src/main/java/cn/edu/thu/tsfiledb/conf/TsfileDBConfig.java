@@ -95,9 +95,9 @@ public class TsfileDBConfig {
 	public int writeInstanceThreshold = 5;
 
 	/**
-	 * The period time for close file. The unit is second.
+	 * The period time of flushing data from memory to file. . The unit is second.
 	 */
-	public long periodTimeForClose = 3600;
+	public long periodTimeForFlush = 3600;
 
 	/**
 	 * The period time for merge overflow data with tsfile data. The unit is
