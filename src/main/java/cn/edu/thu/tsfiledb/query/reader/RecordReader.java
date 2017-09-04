@@ -185,16 +185,16 @@ public class RecordReader {
      *
      * @param deltaObjectId deltaObjectId of <code>Path</code>
      * @param measurementId measurementId of <code>Path</code>
-     * @param func
-     * @param updateTrue
-     * @param updateFalse
-     * @param insertMemoryData
-     * @param timeFilter
-     * @param freqFilter
-     * @param valueFilter
+     * @param func aggregation function
+     * @param updateTrue update operation which satisfies the filter
+     * @param updateFalse update operation which doesn't satisfy the filter
+     * @param insertMemoryData memory bufferwrite insert data
+     * @param timeFilter time filter
+     * @param freqFilter frequency filter
+     * @param valueFilter value filter
      * @return aggregation result
-     * @throws ProcessorException
-     * @throws IOException
+     * @throws ProcessorException aggregation invoking exception
+     * @throws IOException tsfile read exception
      */
     public AggregationResult aggregate(String deltaObjectId, String measurementId, AggregateFunction func,
                                        DynamicOneColumnData updateTrue, DynamicOneColumnData updateFalse, InsertDynamicData insertMemoryData,
@@ -222,17 +222,17 @@ public class RecordReader {
      *
      * @param deltaObjectId deltaObjectId deltaObjectId of <code>Path</code>
      * @param measurementId measurementId of <code>Path</code>
-     * @param func
-     * @param updateTrue
-     * @param updateFalse
-     * @param insertMemoryData
-     * @param timeFilter
-     * @param freqFilter
-     * @param valueFilter
-     * @param timestamps
-     * @return
-     * @throws ProcessorException
-     * @throws IOException
+     * @param func aggregation function
+     * @param updateTrue update operation which satisfies the filter
+     * @param updateFalse update operation which doesn't satisfy the filter
+     * @param insertMemoryData memory bufferwrite insert data
+     * @param timeFilter time filter
+     * @param freqFilter frequency filter
+     * @param valueFilter value filter
+     * @param timestamps timestamps calculated by the cross filter
+     * @return aggregation result
+     * @throws ProcessorException aggregation invoking exception
+     * @throws IOException tsfile read exception
      */
     public AggregationResult aggregateUsingTimestamps(String deltaObjectId, String measurementId, AggregateFunction func,
                                                       DynamicOneColumnData updateTrue, DynamicOneColumnData updateFalse, InsertDynamicData insertMemoryData,
