@@ -95,7 +95,7 @@ public class TsfileDBConfig {
 	public int writeInstanceThreshold = 5;
 
 	/**
-	 * The period time for close file. The unit is second.
+	 * The period time of flushing data from memory to file. . The unit is second.
 	 */
 	public long periodTimeForFlush = 3600;
 
