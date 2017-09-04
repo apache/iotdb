@@ -21,8 +21,6 @@ import org.slf4j.LoggerFactory;
  */
 public class EngineUtils {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(EngineUtils.class);
-
     /**
      * QueryDataSet.BatchReadGenerator has calculated and removed the common RowRecord timestamps in the top of heap.
      * For the reason of that the RowRecord number is greater than fetch size,
@@ -279,7 +277,7 @@ public class EngineUtils {
      *
      * @param overflowData data in overflow insert
      * @param memoryData data in buffer write insert
-     * @return
+     * @return merge result of the overflow and memory insert
      */
     private static DynamicOneColumnData mergeOverflowAndMemory(
             DynamicOneColumnData overflowData, DynamicOneColumnData memoryData) {

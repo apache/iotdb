@@ -1,6 +1,5 @@
 package cn.edu.thu.tsfiledb.qp.executor.iterator;
 
-import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -166,7 +165,7 @@ public class MergeQuerySetIterator implements Iterator<QueryDataSet> {
                 case DOUBLE:
                     if (!f.isNull()) {
                         mapRet.get(key).putTime(record.timestamp);
-                        mapRet.get(key).putDouble(f.getFloatV());
+                        mapRet.get(key).putDouble(f.getDoubleV());
                     }
                     break;
                 case TEXT:

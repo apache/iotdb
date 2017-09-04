@@ -41,8 +41,4 @@ public class FilterStructure {
     public boolean noFilter() {
         return timeFilter == null && frequencyFilter == null && valueFilter == null;
     }
-
-    public boolean isValueFilterCross() {
-        return valueFilter instanceof CrossSeriesFilterExpression;
-    }
 }
