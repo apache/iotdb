@@ -59,7 +59,7 @@ public class Monitor implements MonitorMBean{
 
 	@Override
 	public long getClosePeriodInSecond() {
-		return config.periodTimeForClose;
+		return config.periodTimeForFlush;
 	}
 
 }

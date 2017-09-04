@@ -26,9 +26,9 @@ public class CloseMergeServer {
 	private CloseAndMergeDaemon closeAndMergeDaemon = new CloseAndMergeDaemon();
 
 	private static final long mergeDelay = TsfileDBDescriptor.getInstance().getConfig().periodTimeForMerge;
-	private static final long closeDelay = TsfileDBDescriptor.getInstance().getConfig().periodTimeForClose;
+	private static final long closeDelay = TsfileDBDescriptor.getInstance().getConfig().periodTimeForFlush;
 	private static final long mergePeriod = TsfileDBDescriptor.getInstance().getConfig().periodTimeForMerge;
-	private static final long closePeriod = TsfileDBDescriptor.getInstance().getConfig().periodTimeForClose;
+	private static final long closePeriod = TsfileDBDescriptor.getInstance().getConfig().periodTimeForFlush;
 
 	private boolean isStart = false;
 
