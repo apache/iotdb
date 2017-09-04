@@ -83,7 +83,7 @@ public class TsfileDBDescriptor {
 			
 			conf.fetchSize = Integer.parseInt(properties.getProperty("fetch_size", conf.fetchSize + ""));
 			
-			conf.periodTimeForClose = Long.parseLong(properties.getProperty("period_time_for_close_in_second", conf.periodTimeForClose+"").trim());
+			conf.periodTimeForFlush = Long.parseLong(properties.getProperty("period_time_for_flush_in_second", conf.periodTimeForFlush+"").trim());
 			conf.periodTimeForMerge = Long.parseLong(properties.getProperty("period_time_for_merge_in_second", conf.periodTimeForMerge+"").trim());
 			
 			String tmpTimeZone = properties.getProperty("time_zone", conf.timeZone.getID());
