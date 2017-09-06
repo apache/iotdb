@@ -49,15 +49,12 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 	private Set<String> overflowNameSpaceSet;
 	private Set<String> backUpOverflowNameSpaceSet;
 
-	// private static final Lock instanceLock = new ReentrantLock(false);
-	// private static FileNodeManager instance;
-
 	private static class FileNodeManagerHolder {
 		private static final FileNodeManager INSTANCE = new FileNodeManager(TsFileDBConf.maxOpenFolder,
 				MManager.getInstance(), TsFileDBConf.fileNodeDir);
 	}
 
-	private FileNodeManagerStatus fileNodeManagerStatus = FileNodeManagerStatus.NONE;
+	private volatile FileNodeManagerStatus fileNodeManagerStatus = FileNodeManagerStatus.NONE;
 
 	private Action overflowBackUpAction = new Action() {
 		@Override
@@ -81,16 +78,6 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 	public static FileNodeManager getInstance() {
 		return FileNodeManagerHolder.INSTANCE;
 	}
-
-	// public static void init(int maxNodeNum, MManager mManager, String
-	// fileNodeDirPath) {
-	// instanceLock.lock();
-	// try {
-	// instance = new FileNodeManager(maxNodeNum, mManager, fileNodeDirPath);
-	// } finally {
-	// instanceLock.unlock();
-	// }
-	// }
 
 	private FileNodeManager(int maxLRUNumber, MManager mManager, String normalDataDir) {
 		super(maxLRUNumber, mManager, normalDataDir);
@@ -543,13 +530,12 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 				} catch (LRUManagerException | IOException e) {
 					e.printStackTrace();
 					throw new FileNodeManagerException(e);
-				} finally {
-					fileNodeManagerStatus = FileNodeManagerStatus.NONE;
 				}
 			} finally {
 				if (fileNodeProcessor != null) {
 					fileNodeProcessor.writeUnlock();
 				}
+				fileNodeManagerStatus = FileNodeManagerStatus.NONE;
 			}
 		} else {
 			return false;
@@ -588,13 +574,12 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 				} catch (LRUManagerException e) {
 					e.printStackTrace();
 					throw new FileNodeManagerException(e);
-				} finally {
-					fileNodeManagerStatus = FileNodeManagerStatus.NONE;
 				}
 			} finally {
 				if (fileNodeProcessor != null) {
 					fileNodeProcessor.writeUnlock();
 				}
+				fileNodeManagerStatus = FileNodeManagerStatus.NONE;
 			}
 		} else {
 			return false;

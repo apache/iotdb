@@ -101,8 +101,9 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 	}
 
 	@Override
-	public QueryDataSet query(int formNumber, List<Path> paths, FilterExpression timeFilter, FilterExpression freqFilter,
-			FilterExpression valueFilter, int fetchSize, QueryDataSet lastData) throws ProcessorException {
+	public QueryDataSet query(int formNumber, List<Path> paths, FilterExpression timeFilter,
+			FilterExpression freqFilter, FilterExpression valueFilter, int fetchSize, QueryDataSet lastData)
+			throws ProcessorException {
 		QueryDataSet ret;
 		for (Path path : paths) {
 			if (!mManager.pathExist(path.getFullPath())) {
@@ -317,10 +318,10 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 				}
 				mManager.addPathToMTree(path.getFullPath(), dataType, encoding, encodingArgs);
 				try {
-					String nsp = mManager.getFileNameByPath(path.getFullPath());
-					fileNodeManager.closeOneFileNode(nsp);
+					String namespacePath = mManager.getFileNameByPath(path.getFullPath());
+					fileNodeManager.closeOneFileNode(namespacePath);
 				} catch (PathErrorException e) {
-
+					// no operation
 				} catch (FileNodeManagerException e) {
 					e.printStackTrace();
 					throw new ProcessorException(e.getMessage());
@@ -336,11 +337,10 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 						throw new ProcessorException(
 								String.format("Timeseries does not exist and cannot be delete its metadata and data"));
 					}
-					for (String onePath : pathSet) {
-						if (!mManager.pathExist(onePath)) {
+					for (String p : pathSet) {
+						if (!mManager.pathExist(p)) {
 							throw new ProcessorException(String.format(
-									"Timeseries %s does not exist and cannot be delete its metadata and data",
-									onePath));
+									"Timeseries %s does not exist and cannot be delete its metadata and data", p));
 						}
 					}
 					List<String> fullPath = new ArrayList<>();
@@ -351,13 +351,28 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 						// no operation
 					}
 					for (String p : fullPath) {
-						String nsp = mManager.deletePathFromMTree(p);
-						if (nsp != null) {
-							// clear filenode
+						String nameSpacePath = null;
+						try {
+							nameSpacePath = mManager.getFileNameByPath(p);
+						} catch (PathErrorException e) {
+							// no operation
+						}
+						String deleteNameSpacePath = mManager.deletePathFromMTree(p);
+						if (deleteNameSpacePath != null) {
+							// delete this filenode
 							try {
-								fileNodeManager.clearOneFileNode(nsp);
+								// clear filenode
+								fileNodeManager.clearOneFileNode(deleteNameSpacePath);
 								// close processor
-								fileNodeManager.closeOneFileNode(nsp);
+								fileNodeManager.deleteOneFileNode(deleteNameSpacePath);
+							} catch (FileNodeManagerException e) {
+								e.printStackTrace();
+								throw new ProcessorException(e.getMessage());
+							}
+						} else if (nameSpacePath != null) {
+							// close this filenode
+							try {
+								fileNodeManager.closeOneFileNode(nameSpacePath);
 							} catch (FileNodeManagerException e) {
 								e.printStackTrace();
 								throw new ProcessorException(e.getMessage());
@@ -370,9 +385,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 				if (!mManager.pathExist(path.getFullPath())) {
 					throw new ProcessorException(String.format("Timeseries %s does not exist.", path.getFullPath()));
 				}
-				/**
-				 * only once
-				 */
+				// Storage group just can be set only once
 				mManager.setStorageLevelToMTree(path.getFullPath());
 				break;
 			default:
