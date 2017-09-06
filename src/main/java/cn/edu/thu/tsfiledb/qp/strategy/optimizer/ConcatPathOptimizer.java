@@ -98,7 +98,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
             return operator;
         List<Path> concatPaths = new ArrayList<>();
         fromPaths.forEach(fromPath -> concatPaths.add(Path.addPrefixPath(filterPath, fromPath)));
-        List<Path> noStarPaths = removeStarsInPath(concatPaths);
+        List<Path> noStarPaths = removeStarsInPathWithUnique(concatPaths);
         if (noStarPaths.size() == 1) {
             // Transform "select s1 from root.car.* where s1 > 10" to
             // "select s1 from root.car.* where root.car.*.s1 > 10"
@@ -147,8 +147,10 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
      * replace "*" by actual paths
      *
      * @param paths list of paths which may contain stars
+     * @return a unique path list
+     * @throws LogicalOptimizeException
      */
-    private List<Path> removeStarsInPath(List<Path> paths) throws LogicalOptimizeException {
+    private List<Path> removeStarsInPathWithUnique(List<Path> paths) throws LogicalOptimizeException {
         List<Path> retPaths = new ArrayList<>();
         LinkedHashMap<String, Integer> pathMap = new LinkedHashMap<>();
         try {
@@ -166,6 +168,18 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
             }
         } catch (PathErrorException e) {
             throw new LogicalOptimizeException("error when remove star: " + e.getMessage());
+        }
+        return retPaths;
+    }
+
+    private List<Path> removeStarsInPath(List<Path> paths) throws LogicalOptimizeException {
+        List<Path> retPaths = new ArrayList<>();
+        for (Path path : paths) {
+            try {
+                executor.getAllPaths(path.getFullPath()).forEach(p -> retPaths.add(new Path(p)));
+            } catch (PathErrorException e) {
+                throw new LogicalOptimizeException("error when remove star: " + e.getMessage());
+            }
         }
         return retPaths;
     }
