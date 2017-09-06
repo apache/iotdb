@@ -96,14 +96,16 @@ public class TestConcatOptimizer {
                                         " or s1 > 10)",
                                 "showing series plan:0\n" +
                                         "  series getIndex plan:\n" +
-                                        "  paths:  [root.laptop.d1.s1, root.laptop.d2.s1, root.laptop.d3.s1]\n" +
+                                        "  paths:  [root.laptop.d1.s1, root.laptop.d2.s1, root.laptop.d3.s1, root" +
+                                        ".laptop.d2.s1]\n" +
                                         "  [and[single:time] [time<5][time>3]]\n" +
                                         "  null\n" +
                                         "  [and [root.laptop.d1.s2>5][root.laptop.d2.s2>5][root.laptop.d3.s2>5]]\n" +
                                         "\n" +
                                         "showing series plan:1\n" +
                                         "  series getIndex plan:\n" +
-                                        "  paths:  [root.laptop.d1.s1, root.laptop.d2.s1, root.laptop.d3.s1]\n" +
+                                        "  paths:  [root.laptop.d1.s1, root.laptop.d2.s1, root.laptop.d3.s1, root" +
+                                        ".laptop.d2.s1]\n" +
                                         "  [time<5]\n" +
                                         "  null\n" +
                                         "  [and [root.laptop.d1.s1>10][root.laptop.d1.s2>5][root.laptop" +
