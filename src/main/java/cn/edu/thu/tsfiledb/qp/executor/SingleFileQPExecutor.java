@@ -25,8 +25,8 @@ public class SingleFileQPExecutor extends QueryProcessExecutor {
 	}
 
 	@Override
-	public boolean processNonQuery(PhysicalPlan plan) {
-		return false;
+	public boolean processNonQuery(PhysicalPlan plan) throws ProcessorException{
+		throw new ProcessorException("Do not support");
 	}
 
 	@Override
@@ -42,7 +42,7 @@ public class SingleFileQPExecutor extends QueryProcessExecutor {
 	@Override
 	public QueryDataSet aggregate(List<Pair<Path, String>> aggres, List<FilterStructure> filterStructures)
 			throws ProcessorException, IOException, PathErrorException {
-		return null;
+		throw new ProcessorException("Do not support");
 	}
 
 	@Override
@@ -61,24 +61,24 @@ public class SingleFileQPExecutor extends QueryProcessExecutor {
 	}
 
 	@Override
-	public boolean update(Path path, long startTime, long endTime, String value) {
-		return false;
+	public boolean update(Path path, long startTime, long endTime, String value) throws ProcessorException{
+		throw new ProcessorException("Do not support");
 	}
 
 	@Override
-	public boolean delete(Path path, long deleteTime) {
-		return false;
+	public boolean delete(Path path, long deleteTime) throws ProcessorException{
+		throw new ProcessorException("Do not support");
 	}
 
 	@Override
-	public int insert(Path path, long insertTime, String value) {
-		return 0;
+	public int insert(Path path, long insertTime, String value) throws ProcessorException{
+		throw new ProcessorException("Do not support");
 	}
 
 	@Override
 	public int multiInsert(String deltaObject, long insertTime, List<String> measurementList, List<String> insertValues)
 			throws ProcessorException {
-		return 0;
+		throw new ProcessorException("Do not support");
 	}
 
 	@Override

@@ -110,16 +110,6 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 	@Override
 	public QueryDataSet query(int formNumber, List<Path> paths, FilterExpression timeFilter, FilterExpression freqFilter,
 			FilterExpression valueFilter, int fetchSize, QueryDataSet lastData) throws ProcessorException {
-		for (Path path : paths) {
-			if (!mManager.pathExist(path.getFullPath())) {
-				throw new ProcessorException(String.format("Timeseries %s does not exist", path.getFullPath()));
-			}
-			try {
-				mManager.getFileNameByPath(path.getFullPath());
-			} catch (PathErrorException e) {
-				throw new ProcessorException(e);
-			}
-		}
 		try {
 			return queryEngine.query(formNumber, paths, timeFilter, freqFilter, valueFilter, lastData, fetchSize);
 		} catch (Exception e) {

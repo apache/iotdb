@@ -158,7 +158,7 @@ public class MemIntQpExecutor extends QueryProcessExecutor {
     @Override
     public QueryDataSet aggregate(List<Pair<Path, String>> aggres, List<FilterStructure> filterStructures)
             throws ProcessorException, IOException, PathErrorException {
-        return null;
+        throw new ProcessorException("Do not support");
     }
 
     /**
