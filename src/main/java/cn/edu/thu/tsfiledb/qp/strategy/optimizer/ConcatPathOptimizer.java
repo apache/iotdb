@@ -1,9 +1,12 @@
 package cn.edu.thu.tsfiledb.qp.strategy.optimizer;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 
+import cn.edu.thu.tsfiledb.exception.PathErrorException;
 import cn.edu.thu.tsfiledb.qp.exception.LogicalOperatorException;
+import cn.edu.thu.tsfiledb.qp.executor.QueryProcessExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -15,7 +18,6 @@ import cn.edu.thu.tsfiledb.qp.logical.crud.FilterOperator;
 import cn.edu.thu.tsfiledb.qp.logical.crud.FromOperator;
 import cn.edu.thu.tsfiledb.qp.logical.crud.SFWOperator;
 import cn.edu.thu.tsfiledb.qp.logical.crud.SelectOperator;
-import cn.edu.thu.tsfiledb.qp.logical.crud.FunctionOperator;
 import cn.edu.tsinghua.tsfile.timeseries.read.qp.Path;
 
 /**
@@ -25,6 +27,11 @@ import cn.edu.tsinghua.tsfile.timeseries.read.qp.Path;
  */
 public class ConcatPathOptimizer implements ILogicalOptimizer {
     private static final Logger LOG = LoggerFactory.getLogger(ConcatPathOptimizer.class);
+    private QueryProcessExecutor executor;
+
+    public ConcatPathOptimizer(QueryProcessExecutor executor) {
+        this.executor = executor;
+    }
 
     @Override
     public Operator transform(Operator operator) throws LogicalOptimizeException {
@@ -71,7 +78,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
                 }
             }
         }
-        return allPaths;
+        return removeStarsInPath(allPaths);
     }
 
     private FilterOperator concatFilter(List<Path> fromPaths, FilterOperator operator)
@@ -89,27 +96,77 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
         // do nothing in the cases of "where time > 5" or "where root.d1.s1 > 5"
         if (SQLConstant.isReservedPath(filterPath) || filterPath.startWith(SQLConstant.ROOT))
             return operator;
-        if (fromPaths.size() == 1) {
-            //transfer "select s1 from root.car.* where s1 > 10" to
+        List<Path> concatPaths = new ArrayList<>();
+        fromPaths.forEach(fromPath -> concatPaths.add(Path.addPrefixPath(filterPath, fromPath)));
+        List<Path> noStarPaths = removeStarsInPath(concatPaths);
+        if (noStarPaths.size() == 1) {
+            // Transform "select s1 from root.car.* where s1 > 10" to
             // "select s1 from root.car.* where root.car.*.s1 > 10"
-            Path newFilterPath = Path.addPrefixPath(filterPath, fromPaths.get(0));
-            basicOperator.setSinglePath(newFilterPath);
+            basicOperator.setSinglePath(noStarPaths.get(0));
             return operator;
         } else {
-            //transfer "select s1 from root.car.d1, root.car.d2 where s1 > 10" to
+            // Transform "select s1 from root.car.d1, root.car.d2 where s1 > 10" to
             // "select s1 from root.car.d1, root.car.d2 where root.car.d1.s1 > 10 and root.car.d2.s1 > 10"
-            FilterOperator newFilter = new FilterOperator(SQLConstant.KW_AND);
+            // Note that, two fork tree has to be maintained while removing stars in paths for DNFFilterOptimizer
+            // requirement.
+            return constructTwoForkFilterTreeWithAND(noStarPaths, operator);
+        }
+    }
+
+    private FilterOperator constructTwoForkFilterTreeWithAND(List<Path> noStarPaths, FilterOperator operator)
+            throws LogicalOptimizeException {
+        FilterOperator filterTwoFolkTree = new FilterOperator(SQLConstant.KW_AND);
+        FilterOperator currentNode = filterTwoFolkTree;
+        for (int i = 0; i < noStarPaths.size(); i++) {
+//            if ((i & 1) == 0 || i == noStarPaths.size() - 1) {
+//                try {
+//                    currentNode.addChildOperator(new BasicFunctionOperator(operator.getTokenIntType(), noStarPaths
+//                            .get(i),
+//                            ((BasicFunctionOperator) operator).getValue()));
+//                } catch (LogicalOperatorException e) {
+//                    throw new LogicalOptimizeException(e.getMessage());
+//                }
+//            } else {
+            if ((i & 1) == 1 && i != noStarPaths.size() - 1) {
+                FilterOperator newInnerNode = new FilterOperator(SQLConstant.KW_AND);
+                currentNode.addChildOperator(newInnerNode);
+                currentNode = newInnerNode;
+            }
             try {
-                for (Path fromPath : fromPaths) {
-                    Path concatPath = Path.addPrefixPath(filterPath, fromPath);
-                    FunctionOperator newFuncOp = new BasicFunctionOperator(operator.getTokenIntType(), concatPath,
-                            ((BasicFunctionOperator) operator).getValue());
-                    newFilter.addChildOperator(newFuncOp);
-                }
+                currentNode.addChildOperator(new BasicFunctionOperator(operator.getTokenIntType(), noStarPaths
+                        .get(i),
+                        ((BasicFunctionOperator) operator).getValue()));
             } catch (LogicalOperatorException e) {
                 throw new LogicalOptimizeException(e.getMessage());
             }
-            return newFilter;
         }
+        return filterTwoFolkTree;
+    }
+
+    /**
+     * replace "*" by actual paths
+     *
+     * @param paths list of paths which may contain stars
+     */
+    private List<Path> removeStarsInPath(List<Path> paths) throws LogicalOptimizeException {
+        List<Path> retPaths = new ArrayList<>();
+        LinkedHashMap<String, Integer> pathMap = new LinkedHashMap<>();
+        try {
+            for (Path path : paths) {
+                List<String> all;
+                all = executor.getAllPaths(path.getFullPath());
+                for (String subPath : all) {
+                    if (!pathMap.containsKey(subPath)) {
+                        pathMap.put(subPath, 1);
+                    }
+                }
+            }
+            for (String pathStr : pathMap.keySet()) {
+                retPaths.add(new Path(pathStr));
+            }
+        } catch (PathErrorException e) {
+            throw new LogicalOptimizeException("error when remove star: " + e.getMessage());
+        }
+        return retPaths;
     }
 }

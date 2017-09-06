@@ -54,7 +54,7 @@ public class QueryProcessor {
             throws QueryProcessorException, ArgsErrorException {
         ASTNode astNode = parseSQLToAST(sqlStr);
         Operator operator = parseASTToOperator(astNode, timeZone);
-        operator = logicalOptimize(operator);
+        operator = logicalOptimize(operator, executor);
         return executor.transformToPhysicalPlan(operator);
     }
 
@@ -94,10 +94,11 @@ public class QueryProcessor {
      * given an unoptimized logical operator tree and return a optimized result.
      *
      * @param operator unoptimized logical operator
+     * @param executor
      * @return optimized logical operator
      * @throws LogicalOptimizeException exception in logical optimizing
      */
-    private Operator logicalOptimize(Operator operator) throws LogicalOperatorException {
+    private Operator logicalOptimize(Operator operator, QueryProcessExecutor executor) throws LogicalOperatorException {
         switch (operator.getType()) {
             case AUTHOR:
             case METADATA:
@@ -110,7 +111,7 @@ public class QueryProcessor {
             case UPDATE:
             case DELETE:
                 SFWOperator root = (SFWOperator) operator;
-                return optimizeSFWOperator(root);
+                return optimizeSFWOperator(root, executor);
             default:
                 throw new LogicalOperatorException("unknown operator type:{}" + operator.getType());
         }
@@ -120,11 +121,12 @@ public class QueryProcessor {
      * given an unoptimized select-from-where operator and return an optimized result.
      *
      * @param root unoptimized select-from-where operator
+     * @param executor
      * @return optimized select-from-where operator
      * @throws LogicalOptimizeException exception in SFW optimizing
      */
-    private SFWOperator optimizeSFWOperator(SFWOperator root) throws LogicalOperatorException {
-        ConcatPathOptimizer concatPathOptimizer = new ConcatPathOptimizer();
+    private SFWOperator optimizeSFWOperator(SFWOperator root, QueryProcessExecutor executor) throws LogicalOperatorException {
+        ConcatPathOptimizer concatPathOptimizer = new ConcatPathOptimizer(executor);
         root = (SFWOperator) concatPathOptimizer.transform(root);
         FilterOperator filter = root.getFilterOperator();
         if (filter == null)

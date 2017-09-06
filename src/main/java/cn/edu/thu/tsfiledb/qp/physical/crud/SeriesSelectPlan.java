@@ -56,7 +56,6 @@ public class SeriesSelectPlan extends PhysicalPlan {
         this.timeFilterOperator = timeFilter;
         this.freqFilterOperator = freqFilter;
         this.valueFilterOperator = valueFilter;
-        removeStarsInPath(executor);
         LOG.debug(Arrays.toString(paths.toArray()));
         checkPaths(executor);
         LOG.debug(Arrays.toString(paths.toArray()));
@@ -71,28 +70,6 @@ public class SeriesSelectPlan extends PhysicalPlan {
      */
     public FilterExpression[] getFilterExpressions() {
         return filterExpressions;
-    }
-
-    /**
-     * replace "*" by actual paths
-     *
-     * @param executor query process executor
-     */
-    private void removeStarsInPath(QueryProcessExecutor executor) throws PathErrorException {
-        LinkedHashMap<String, Integer> pathMap = new LinkedHashMap<>();
-        for (Path path : paths) {
-            List<String> all;
-            all = executor.getAllPaths(path.getFullPath());
-            for (String subPath : all) {
-                if (!pathMap.containsKey(subPath)) {
-                    pathMap.put(subPath, 1);
-                }
-            }
-        }
-        paths = new ArrayList<>();
-        for (String pathStr : pathMap.keySet()) {
-            paths.add(new Path(pathStr));
-        }
     }
 
     /**
