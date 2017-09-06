@@ -3,6 +3,7 @@ package cn.edu.thu.tsfiledb.query.aggregation.impl;
 import java.io.IOException;
 
 import cn.edu.thu.tsfiledb.query.aggregation.AggregateFunction;
+import cn.edu.thu.tsfiledb.query.aggregation.AggregationConstant;
 import cn.edu.thu.tsfiledb.query.dataset.InsertDynamicData;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 import cn.edu.tsinghua.tsfile.common.exception.UnSupportedDataTypeException;
@@ -19,7 +20,7 @@ public class MaxValueAggrFunc extends AggregateFunction {
     private boolean hasSetValue = false;
 
     public MaxValueAggrFunc(TSDataType dataType) {
-        super("MAX_VALUE", dataType);
+        super(AggregationConstant.MAX_VALUE, dataType);
         result.data.putTime(0);
     }
 
@@ -43,7 +44,7 @@ public class MaxValueAggrFunc extends AggregateFunction {
     @Override
     public void calculateValueFromDataInThisPage(DynamicOneColumnData dataInThisPage) throws IOException, ProcessorException {
         if (dataInThisPage instanceof InsertDynamicData) {
-            Object max_value = ((InsertDynamicData) dataInThisPage).calcAggregation("MAX_VALUE");
+            Object max_value = ((InsertDynamicData) dataInThisPage).calcAggregation(AggregationConstant.MAX_VALUE);
             if (max_value != null) {
                 if (!hasSetValue) {
                     result.data.putAnObject(max_value);
