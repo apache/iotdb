@@ -3,6 +3,7 @@ package cn.edu.thu.tsfiledb.query.aggregation.impl;
 import java.io.IOException;
 
 import cn.edu.thu.tsfiledb.query.aggregation.AggregateFunction;
+import cn.edu.thu.tsfiledb.query.aggregation.AggregationConstant;
 import cn.edu.thu.tsfiledb.query.dataset.InsertDynamicData;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 import cn.edu.tsinghua.tsfile.common.exception.UnSupportedDataTypeException;
@@ -20,7 +21,7 @@ public class MinValueAggrFunc extends AggregateFunction {
     private boolean hasSetValue = false;
 
     public MinValueAggrFunc(TSDataType dataType) {
-        super("MIN_VALUE", dataType);
+        super(AggregationConstant.MIN_VALUE, dataType);
         result.data.putTime(0);
     }
 
@@ -44,7 +45,7 @@ public class MinValueAggrFunc extends AggregateFunction {
     @Override
     public void calculateValueFromDataInThisPage(DynamicOneColumnData dataInThisPage) throws IOException, ProcessorException {
         if (dataInThisPage instanceof InsertDynamicData) {
-            Object min_value = ((InsertDynamicData) dataInThisPage).calcAggregation("MIN_VALUE");
+            Object min_value = ((InsertDynamicData) dataInThisPage).calcAggregation(AggregationConstant.MIN_VALUE);
             if (min_value != null) {
                 if (!hasSetValue) {
                     result.data.putAnObject(min_value);
