@@ -37,7 +37,6 @@ import cn.edu.tsinghua.tsfile.timeseries.utils.StringContainer;
  * Implement a simple executor with a memory demo reading processor for test.
  *
  * @author kangrong
- *
  */
 public class MemIntQpExecutor extends QueryProcessExecutor {
     private static Logger LOG = LoggerFactory.getLogger(MemIntQpExecutor.class);
@@ -50,6 +49,12 @@ public class MemIntQpExecutor extends QueryProcessExecutor {
 
     private TreeSet<Long> timeStampUnion = new TreeSet<>();
 
+    public void setFakeAllPaths(Map<String, List<String>> fakeAllPaths) {
+        this.fakeAllPaths = fakeAllPaths;
+    }
+
+    private Map<String, List<String>> fakeAllPaths;
+
     public MemIntQpExecutor() {
         this.fetchSize.set(5);
         // super.fetchSize = 5;
@@ -57,6 +62,8 @@ public class MemIntQpExecutor extends QueryProcessExecutor {
 
     @Override
     public TSDataType getNonReservedSeriesType(Path fullPath) {
+        if (fakeAllPaths != null && fakeAllPaths.containsKey(fullPath.toString()))
+            return TSDataType.INT32;
         if (demoMemDataBase.containsKey(fullPath.toString()))
             return TSDataType.INT32;
         return null;
@@ -69,15 +76,16 @@ public class MemIntQpExecutor extends QueryProcessExecutor {
                 DeletePlan delete = (DeletePlan) plan;
                 return delete(delete.getPaths(), delete.getDeleteTime());
             case UPDATE:
-            	UpdatePlan update = (UpdatePlan) plan;
-    			boolean flag = true;
-    			for (Pair<Long, Long> timePair : update.getIntervals()) {
-    				flag &= update(update.getPath(), timePair.left, timePair.right, update.getValue());
-    			}
-    			return flag;
+                UpdatePlan update = (UpdatePlan) plan;
+                boolean flag = true;
+                for (Pair<Long, Long> timePair : update.getIntervals()) {
+                    flag &= update(update.getPath(), timePair.left, timePair.right, update.getValue());
+                }
+                return flag;
             case INSERT:
-            	InsertPlan insert = (InsertPlan) plan;
-                int result = multiInsert(insert.getDeltaObject(), insert.getTime(), insert.getMeasurements(), insert.getValues());
+                InsertPlan insert = (InsertPlan) plan;
+                int result = multiInsert(insert.getDeltaObject(), insert.getTime(), insert.getMeasurements(), insert
+                        .getValues());
                 return result == 0;
             default:
                 throw new UnsupportedOperationException();
@@ -86,6 +94,9 @@ public class MemIntQpExecutor extends QueryProcessExecutor {
 
     @Override
     public boolean judgeNonReservedPathExists(Path string) {
+        if (fakeAllPaths != null) {
+            return fakeAllPaths.containsKey(string.toString());
+        }
         return demoMemDataBase.containsKey(string.toString());
     }
 
@@ -203,7 +214,8 @@ public class MemIntQpExecutor extends QueryProcessExecutor {
                                 // no filter
                                 rowRecord.addSensor(fullPath, v.toString());
                                 isInputed = true;
-                                Field f = new Field(TSDataType.INT32, path.getDeltaObjectToString(), path.getMeasurementToString());
+                                Field f = new Field(TSDataType.INT32, path.getDeltaObjectToString(), path
+                                        .getMeasurementToString());
                                 f.setNull(true);
                                 rowRecord.addField(f);
                             } else {
@@ -212,7 +224,8 @@ public class MemIntQpExecutor extends QueryProcessExecutor {
                                 if (satisfyResult == null) {
                                     // not my filter, I add it but don't set inputed
                                     rowRecord.addSensor(fullPath, v.toString());
-                                    Field f = new Field(TSDataType.INT32, path.getDeltaObjectToString(), path.getMeasurementToString());
+                                    Field f = new Field(TSDataType.INT32, path.getDeltaObjectToString(), path
+                                            .getMeasurementToString());
                                     f.setIntV(v);
                                     rowRecord.addField(f);
                                 } else if (satisfyResult) {
@@ -220,7 +233,8 @@ public class MemIntQpExecutor extends QueryProcessExecutor {
                                     rowRecord.addSensor(fullPath, v.toString());
                                     isInputed = true;
 
-                                    Field f = new Field(TSDataType.INT32, path.getDeltaObjectToString(), path.getMeasurementToString());
+                                    Field f = new Field(TSDataType.INT32, path.getDeltaObjectToString(), path
+                                            .getMeasurementToString());
                                     f.setIntV(v);
                                     rowRecord.addField(f);
                                 } else {
@@ -233,7 +247,8 @@ public class MemIntQpExecutor extends QueryProcessExecutor {
                         } else {
                             // this series has not this path
                             rowRecord.addSensor(fullPath, "null");
-                            Field f = new Field(TSDataType.INT32, path.getDeltaObjectToString(), path.getMeasurementToString());
+                            Field f = new Field(TSDataType.INT32, path.getDeltaObjectToString(), path
+                                    .getMeasurementToString());
                             f.setNull(true);
                             rowRecord.addField(f);
                         }
@@ -252,15 +267,17 @@ public class MemIntQpExecutor extends QueryProcessExecutor {
 
     @Override
     public List<String> getAllPaths(String fullPath) {
-        List<String> ret = new ArrayList<>();
-        ret.add(fullPath);
-        return ret;
+        return fakeAllPaths != null ? fakeAllPaths.get(fullPath) :
+                new ArrayList<String>() {{
+                    add(fullPath);
+                }};
     }
 
-	@Override
-	public int multiInsert(String deltaObject, long insertTime, List<String> measurementList, List<String> insertValues) {
-		return 0;
-	}
+    @Override
+    public int multiInsert(String deltaObject, long insertTime, List<String> measurementList, List<String>
+            insertValues) {
+        return 0;
+    }
 
     private class TestOutputQueryDataSet extends OutputQueryDataSet {
 
@@ -287,7 +304,6 @@ public class MemIntQpExecutor extends QueryProcessExecutor {
      * provides a list of sensors integer type of string and their values in type of integer.
      *
      * @author kangrong
-     *
      */
     private class TestIntegerRowRecord extends RowRecord {
         //pair<path, value>

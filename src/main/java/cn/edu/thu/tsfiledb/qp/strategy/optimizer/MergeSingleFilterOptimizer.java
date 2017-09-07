@@ -1,12 +1,13 @@
 package cn.edu.thu.tsfiledb.qp.strategy.optimizer;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-
 import cn.edu.thu.tsfiledb.qp.exception.LogicalOptimizeException;
+import cn.edu.thu.tsfiledb.qp.logical.crud.BasicFunctionOperator;
 import cn.edu.thu.tsfiledb.qp.logical.crud.FilterOperator;
 import cn.edu.tsinghua.tsfile.timeseries.read.qp.Path;
+
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 
 public class MergeSingleFilterOptimizer implements IFilterOptimizer {
 
@@ -54,8 +55,9 @@ public class MergeSingleFilterOptimizer implements IFilterOptimizer {
             return childPath;
         }
 
-        // make same paths close
-        Collections.sort(children);
+        // sort paths of BasicFunction by their single path. We don't sort children on non-leaf layer.
+        if(!children.isEmpty() && children.get(0) instanceof BasicFunctionOperator)
+            children.sort(Comparator.comparing(o -> o.getSinglePath().getFullPath()));
         List<FilterOperator> ret = new ArrayList<>();
 
         List<FilterOperator> tempExtrNode = null;

@@ -120,10 +120,10 @@ public class FilterOperator extends Operator implements Comparable<FilterOperato
                 currentFilter = childOperators.get(i).transformToFilterExpression(executor, type);
                 switch (tokenIntType) {
                     case KW_AND:
-                        retFilter = FilterFactory.and(retFilter, currentFilter);
+                        retFilter = FilterFactory.csAnd(retFilter, currentFilter);
                         break;
                     case KW_OR:
-                        retFilter = FilterFactory.or(retFilter, currentFilter);
+                        retFilter = FilterFactory.csOr(retFilter, currentFilter);
                         break;
                     default:
                         throw new LogicalOperatorException("unknown binary tokenIntType:"

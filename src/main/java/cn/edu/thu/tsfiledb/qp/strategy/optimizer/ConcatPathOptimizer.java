@@ -1,8 +1,12 @@
 package cn.edu.thu.tsfiledb.qp.strategy.optimizer;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 
+import cn.edu.thu.tsfiledb.exception.PathErrorException;
+import cn.edu.thu.tsfiledb.qp.exception.LogicalOperatorException;
+import cn.edu.thu.tsfiledb.qp.executor.QueryProcessExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -23,6 +27,11 @@ import cn.edu.tsinghua.tsfile.timeseries.read.qp.Path;
  */
 public class ConcatPathOptimizer implements ILogicalOptimizer {
     private static final Logger LOG = LoggerFactory.getLogger(ConcatPathOptimizer.class);
+    private QueryProcessExecutor executor;
+
+    public ConcatPathOptimizer(QueryProcessExecutor executor) {
+        this.executor = executor;
+    }
 
     @Override
     public Operator transform(Operator operator) throws LogicalOptimizeException {
@@ -38,78 +47,139 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
             return operator;
         }
         SelectOperator select = sfwOperator.getSelectOperator();
-        List<Path> suffixPaths;
-        if (select == null || (suffixPaths = select.getSuffixPaths()).isEmpty()) {
-            LOG.warn("given SFWOperator doesn't have suffix paths, cannot concat path");
-            return operator;
-        }
+
         // concat select paths
-        suffixPaths = concatSelect(prefixPaths, suffixPaths);
-        select.setSuffixPathList(suffixPaths);
+        concatSelect(prefixPaths, select);
+
         // concat filter
         FilterOperator filter = sfwOperator.getFilterOperator();
         if (filter == null)
             return operator;
-        concatFilter(prefixPaths, filter);
-        sfwOperator.setFilterOperator(filter);
+        sfwOperator.setFilterOperator(concatFilter(prefixPaths, filter));
         return sfwOperator;
     }
 
 
-    private List<Path> concatSelect(List<Path> fromPaths, List<Path> selectPaths)
+    private void concatSelect(List<Path> fromPaths, SelectOperator selectOperator)
             throws LogicalOptimizeException {
-        if (fromPaths.size() == 1) {
-            Path fromPath = fromPaths.get(0);
-            if (!fromPath.startWith(SQLConstant.ROOT))
-                throw new LogicalOptimizeException("illegal from clause : " + fromPath.getFullPath());
-            for (int i = 0;i < selectPaths.size();i++) {
-                Path selectPath = selectPaths.get(i);
-                if (!selectPath.startWith(SQLConstant.ROOT)) {
-                    // add prefix root path
-                    selectPaths.set(i, Path.addPrefixPath(selectPath, fromPath));
-                }
-            }
-            return selectPaths;
-        } else {
-            List<Path> allPaths = new ArrayList<>();
-            for (Path selectPath : selectPaths) {
-                if(selectPath.startWith(SQLConstant.ROOT))
-                    continue;
+        List<Path> suffixPaths;
+        if (selectOperator == null || (suffixPaths = selectOperator.getSuffixPaths()).isEmpty()) {
+            throw new LogicalOptimizeException("given SFWOperator doesn't have suffix paths, cannot concat path");
+        }
+
+        List<Path> allPaths = new ArrayList<>();
+        for (Path selectPath : suffixPaths) {
+            if (selectPath.startWith(SQLConstant.ROOT))
+                allPaths.add(selectPath);
+            else {
                 for (Path fromPath : fromPaths) {
                     if (!fromPath.startWith(SQLConstant.ROOT))
                         throw new LogicalOptimizeException("illegal from clause : " + fromPath.getFullPath());
-                    Path newPath = selectPath.clone();
-                    newPath = Path.addPrefixPath(newPath, fromPath);
-                    allPaths.add(newPath);
+                    allPaths.add(Path.addPrefixPath(selectPath, fromPath));
                 }
             }
-            return allPaths;
         }
+        removeStarsInPath(allPaths, selectOperator);
     }
 
-    private void concatFilter(List<Path> fromPaths, FilterOperator operator)
+    private FilterOperator concatFilter(List<Path> fromPaths, FilterOperator operator)
             throws LogicalOptimizeException {
         if (!operator.isLeaf()) {
-            for (FilterOperator child : operator.getChildren())
-                concatFilter(fromPaths, child);
-            return;
+            List<FilterOperator> newFilterList = new ArrayList<>();
+            for (FilterOperator child : operator.getChildren()) {
+                newFilterList.add(concatFilter(fromPaths, child));
+            }
+            operator.setChildren(newFilterList);
+            return operator;
         }
         BasicFunctionOperator basicOperator = (BasicFunctionOperator) operator;
         Path filterPath = basicOperator.getSinglePath();
-        if (SQLConstant.isReservedPath(filterPath))
-            return;
-        if (fromPaths.size() == 1) {
-            Path fromPath = fromPaths.get(0);
-            if (!fromPath.startWith(SQLConstant.ROOT))
-                throw new LogicalOptimizeException("illegal from clause : " + fromPath.getFullPath());
-            if (!filterPath.startWith(SQLConstant.ROOT)) {
-                Path newFilterPath = Path.addPrefixPath(filterPath, fromPath);
-                basicOperator.setSinglePath(newFilterPath);
-                // System.out.println("3===========" + basicOperator.getSinglePath());
-            }
-            //don't support select s1 from root.car.d1,root.car.d2 where s1 > 10
-        } else if (!filterPath.startWith(SQLConstant.ROOT)){
-            throw new LogicalOptimizeException("illegal filter path : " + filterPath.getFullPath());
+        // do nothing in the cases of "where time > 5" or "where root.d1.s1 > 5"
+        if (SQLConstant.isReservedPath(filterPath) || filterPath.startWith(SQLConstant.ROOT))
+            return operator;
+        List<Path> concatPaths = new ArrayList<>();
+        fromPaths.forEach(fromPath -> concatPaths.add(Path.addPrefixPath(filterPath, fromPath)));
+        List<Path> noStarPaths = removeStarsInPathWithUnique(concatPaths);
+        if (noStarPaths.size() == 1) {
+            // Transform "select s1 from root.car.* where s1 > 10" to
+            // "select s1 from root.car.* where root.car.*.s1 > 10"
+            basicOperator.setSinglePath(noStarPaths.get(0));
+            return operator;
+        } else {
+            // Transform "select s1 from root.car.d1, root.car.d2 where s1 > 10" to
+            // "select s1 from root.car.d1, root.car.d2 where root.car.d1.s1 > 10 and root.car.d2.s1 > 10"
+            // Note that, two fork tree has to be maintained while removing stars in paths for DNFFilterOptimizer
+            // requirement.
+            return constructTwoForkFilterTreeWithAND(noStarPaths, operator);
         }
+    }
+
+    private FilterOperator constructTwoForkFilterTreeWithAND(List<Path> noStarPaths, FilterOperator operator)
+            throws LogicalOptimizeException {
+        FilterOperator filterTwoFolkTree = new FilterOperator(SQLConstant.KW_AND);
+        FilterOperator currentNode = filterTwoFolkTree;
+        for (int i = 0; i < noStarPaths.size(); i++) {
+            if ((i & 1) == 1 && i != noStarPaths.size() - 1) {
+                FilterOperator newInnerNode = new FilterOperator(SQLConstant.KW_AND);
+                currentNode.addChildOperator(newInnerNode);
+                currentNode = newInnerNode;
+            }
+            try {
+                currentNode.addChildOperator(new BasicFunctionOperator(operator.getTokenIntType(), noStarPaths
+                        .get(i),
+                        ((BasicFunctionOperator) operator).getValue()));
+            } catch (LogicalOperatorException e) {
+                throw new LogicalOptimizeException(e.getMessage());
+            }
+        }
+        return filterTwoFolkTree;
+    }
+
+    /**
+     * replace "*" by actual paths
+     *
+     * @param paths list of paths which may contain stars
+     * @return a unique path list
+     * @throws LogicalOptimizeException
+     */
+    private List<Path> removeStarsInPathWithUnique(List<Path> paths) throws LogicalOptimizeException {
+        List<Path> retPaths = new ArrayList<>();
+        LinkedHashMap<String, Integer> pathMap = new LinkedHashMap<>();
+        try {
+            for (Path path : paths) {
+                List<String> all;
+                all = executor.getAllPaths(path.getFullPath());
+                for (String subPath : all) {
+                    if (!pathMap.containsKey(subPath)) {
+                        pathMap.put(subPath, 1);
+                    }
+                }
+            }
+            for (String pathStr : pathMap.keySet()) {
+                retPaths.add(new Path(pathStr));
+            }
+        } catch (PathErrorException e) {
+            throw new LogicalOptimizeException("error when remove star: " + e.getMessage());
+        }
+        return retPaths;
+    }
+
+    private void removeStarsInPath(List<Path> paths, SelectOperator selectOperator) throws LogicalOptimizeException {
+        List<Path> retPaths = new ArrayList<>();
+        List<String> originAggregations = selectOperator.getAggregations();
+        List<String> newAggregations = new ArrayList<>();
+        for (int i = 0; i < paths.size(); i++) {
+            try {
+                List<String> actualPaths = executor.getAllPaths(paths.get(i).getFullPath());
+                for(String actualPath: actualPaths) {
+                    retPaths.add(new Path(actualPath));
+                    newAggregations.add(originAggregations.get(i));
+                }
+            } catch (PathErrorException e) {
+                throw new LogicalOptimizeException("error when remove star: " + e.getMessage());
+            }
+        }
+        selectOperator.setSuffixPathList(retPaths);
+        selectOperator.setAggregations(newAggregations);
     }
 }

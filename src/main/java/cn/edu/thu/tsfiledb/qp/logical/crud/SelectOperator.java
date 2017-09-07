@@ -38,6 +38,10 @@ public final class SelectOperator extends Operator {
         return this.aggregations;
     }
 
+    public void setAggregations(List<String> aggregations) {
+        this.aggregations = aggregations;
+    }
+
     public void setSuffixPathList(List<Path> suffixPaths) {
         suffixList = suffixPaths;
     }
