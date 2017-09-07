@@ -209,7 +209,7 @@ public class DaemonTest {
                             + resultSet.getString("count(" + d0s3 + ")") + ","
                             + resultSet.getString("max_value(" + d0s2 + ")");
                     //System.out.println("!!" + ans);
-                    Assert.assertEquals(ans, retArray[cnt]);
+                    Assert.assertEquals(retArray[cnt], ans);
                     cnt++;
                 }
                 Assert.assertEquals(1, cnt);

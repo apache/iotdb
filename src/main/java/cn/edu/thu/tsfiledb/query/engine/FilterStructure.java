@@ -1,7 +1,5 @@
 package cn.edu.thu.tsfiledb.query.engine;
 
-
-import cn.edu.tsinghua.tsfile.timeseries.filter.definition.CrossSeriesFilterExpression;
 import cn.edu.tsinghua.tsfile.timeseries.filter.definition.FilterExpression;
 import cn.edu.tsinghua.tsfile.timeseries.filter.definition.SingleSeriesFilterExpression;
 import org.slf4j.Logger;
