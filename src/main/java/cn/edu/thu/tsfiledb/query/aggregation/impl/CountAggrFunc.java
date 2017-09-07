@@ -3,6 +3,7 @@ package cn.edu.thu.tsfiledb.query.aggregation.impl;
 import java.io.IOException;
 
 import cn.edu.thu.tsfiledb.query.aggregation.AggregateFunction;
+import cn.edu.thu.tsfiledb.query.aggregation.AggregationConstant;
 import cn.edu.thu.tsfiledb.query.dataset.InsertDynamicData;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 import cn.edu.tsinghua.tsfile.common.utils.Pair;
@@ -13,7 +14,7 @@ import cn.edu.tsinghua.tsfile.timeseries.read.query.DynamicOneColumnData;
 public class CountAggrFunc extends AggregateFunction {
 
     public CountAggrFunc() {
-        super("COUNT", TSDataType.INT64);
+        super(AggregationConstant.COUNT, TSDataType.INT64);
         result.data.putTime(0);
         result.data.putLong(0);
     }
@@ -31,7 +32,7 @@ public class CountAggrFunc extends AggregateFunction {
         if (dataInThisPage instanceof InsertDynamicData) {
             InsertDynamicData insertMemoryData = (InsertDynamicData) dataInThisPage;
             long preValue = result.data.getLong(0);
-            Object count = insertMemoryData.calcAggregation("COUNT");
+            Object count = insertMemoryData.calcAggregation(AggregationConstant.COUNT);
             preValue += (long)count;
             result.data.setLong(0, preValue);
         } else {

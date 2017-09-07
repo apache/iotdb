@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
 
+import cn.edu.thu.tsfiledb.query.aggregation.AggregationConstant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -801,13 +802,13 @@ public class InsertDynamicData extends DynamicOneColumnData {
         }
 
         switch (aggType) {
-            case "COUNT":
+            case AggregationConstant.COUNT:
                 return rowNum == 0 ? null : rowNum;
-            case "MIN_TIME":
+            case AggregationConstant.MIN_TIME:
                 return rowNum == 0 ? null : minTime;
-            case "MAX_TIME":
+            case AggregationConstant.MAX_TIME:
                 return rowNum == 0 ? null : maxTime;
-            case "MIN_VALUE":
+            case AggregationConstant.MIN_VALUE:
                 switch (dataType) {
                     case INT32:
                         return rowNum == 0 ? null : minIntValue;
@@ -824,7 +825,7 @@ public class InsertDynamicData extends DynamicOneColumnData {
                         throw new UnSupportedDataTypeException("UnSupported datatype: " + dataType);
 
                 }
-            case "MAX_VALUE":
+            case AggregationConstant.MAX_VALUE:
                 switch (dataType) {
                     case INT32:
                         return rowNum == 0 ? null : maxIntValue;
