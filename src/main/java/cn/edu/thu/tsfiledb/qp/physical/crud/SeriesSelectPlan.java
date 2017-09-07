@@ -4,6 +4,7 @@ import static cn.edu.thu.tsfiledb.qp.constant.SQLConstant.lineFeedSignal;
 import java.util.*;
 
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
+import cn.edu.tsinghua.tsfile.common.utils.Pair;
 import cn.edu.tsinghua.tsfile.timeseries.filter.definition.FilterExpression;
 import cn.edu.tsinghua.tsfile.timeseries.filter.definition.FilterFactory;
 import cn.edu.tsinghua.tsfile.timeseries.filter.definition.SingleSeriesFilterExpression;
@@ -51,7 +52,6 @@ public class SeriesSelectPlan extends PhysicalPlan {
         this.timeFilterOperator = timeFilter;
         this.freqFilterOperator = freqFilter;
         this.valueFilterOperator = valueFilter;
-        removeStarsInPath(executor);
         LOG.debug(Arrays.toString(paths.toArray()));
         checkPaths(executor);
         LOG.debug(Arrays.toString(paths.toArray()));
@@ -75,22 +75,6 @@ public class SeriesSelectPlan extends PhysicalPlan {
      */
     public FilterExpression[] getFilterExpressions() {
         return filterExpressions;
-    }
-
-    /**
-     * replace "*" by actual paths
-     *
-     * @param executor query process executor
-     */
-    private void removeStarsInPath(QueryProcessExecutor executor) throws PathErrorException {
-        List<String> all = new ArrayList<>();
-        for (Path path : paths) {
-            all.addAll(executor.getAllPaths(path.getFullPath()));
-        }
-        paths = new ArrayList<>();
-        for (String pathStr : all) {
-            paths.add(new Path(pathStr));
-        }
     }
 
     /**
