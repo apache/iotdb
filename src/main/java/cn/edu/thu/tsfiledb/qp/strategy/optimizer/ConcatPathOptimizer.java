@@ -173,12 +173,15 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
                 List<String> actualPaths = executor.getAllPaths(paths.get(i).getFullPath());
                 for(String actualPath: actualPaths) {
                     retPaths.add(new Path(actualPath));
-                    newAggregations.add(originAggregations.get(i));
+                    if(originAggregations != null && !originAggregations.isEmpty())
+                        newAggregations.add(originAggregations.get(i));
                 }
             } catch (PathErrorException e) {
                 throw new LogicalOptimizeException("error when remove star: " + e.getMessage());
             }
         }
+        if(retPaths.isEmpty())
+            throw new LogicalOptimizeException("do not select any existing path");
         selectOperator.setSuffixPathList(retPaths);
         selectOperator.setAggregations(newAggregations);
     }
