@@ -46,9 +46,9 @@ public class MergeQuerySetPlan extends PhysicalPlan {
     @Override
     public String printQueryPlan() {
         StringContainer sc = new StringContainer("\n");
-        for (int i = 0; i < seriesSelectPlans.size(); i++) {
-            sc.addTail("showing series plan:" + i);
-            sc.addTail(seriesSelectPlans.get(i).printQueryPlan());
+        sc.addTail("MergeQuerySetPlan:");
+        for (SeriesSelectPlan seriesSelectPlan : seriesSelectPlans) {
+            sc.addTail(seriesSelectPlan.printQueryPlan());
         }
         return sc.toString();
     }

@@ -84,8 +84,7 @@ public class TestConcatOptimizer {
                 .asList(new Object[][]{
                         {
                                 "select s1 from root.laptop.* where s2 > 5",
-                                "showing series plan:0\n" +
-                                        "  series getIndex plan:\n" +
+                                "SeriesSelectPlan:\n" +
                                         "  paths:  [root.laptop.d1.s1, root.laptop.d2.s1, root.laptop.d3.s1]\n" +
                                         "  null\n" +
                                         "  null\n" +
@@ -94,16 +93,15 @@ public class TestConcatOptimizer {
                         {
                                 "select s1 from root.laptop.*, root.laptop.d2 where s2 > 5 and time < 5 and (time > 3" +
                                         " or s1 > 10)",
-                                "showing series plan:0\n" +
-                                        "  series getIndex plan:\n" +
+                                "MergeQuerySetPlan:\n" +
+                                        "SeriesSelectPlan:\n" +
                                         "  paths:  [root.laptop.d1.s1, root.laptop.d2.s1, root.laptop.d3.s1, root" +
                                         ".laptop.d2.s1]\n" +
                                         "  [and[single:time] [time<5][time>3]]\n" +
                                         "  null\n" +
                                         "  [and [root.laptop.d1.s2>5][root.laptop.d2.s2>5][root.laptop.d3.s2>5]]\n" +
                                         "\n" +
-                                        "showing series plan:1\n" +
-                                        "  series getIndex plan:\n" +
+                                        "SeriesSelectPlan:\n" +
                                         "  paths:  [root.laptop.d1.s1, root.laptop.d2.s1, root.laptop.d3.s1, root" +
                                         ".laptop.d2.s1]\n" +
                                         "  [time<5]\n" +
@@ -113,8 +111,7 @@ public class TestConcatOptimizer {
                         },
                         {
                                 "select s1 from root.laptop.d1, root.laptop.d2 where s1 > 5",
-                                "showing series plan:0\n" +
-                                        "  series getIndex plan:\n" +
+                                "SeriesSelectPlan:\n" +
                                         "  paths:  [root.laptop.d1.s1, root.laptop.d2.s1]\n" +
                                         "  null\n" +
                                         "  null\n" +
@@ -122,8 +119,7 @@ public class TestConcatOptimizer {
                         },
                         {
                                 "select s1 from root.laptop.d1, root.laptop.d2 where root.laptop.d2.s2 > 10",
-                                "showing series plan:0\n" +
-                                        "  series getIndex plan:\n" +
+                                "SeriesSelectPlan:\n" +
                                         "  paths:  [root.laptop.d1.s1, root.laptop.d2.s1]\n" +
                                         "  null\n" +
                                         "  null\n" +
@@ -131,15 +127,14 @@ public class TestConcatOptimizer {
                         },
                         {
                                 "select s1 from root.laptop.d1, root.laptop.d2 where s1 > 5 and time > 5 or s2 < 10",
-                                "showing series plan:0\n" +
-                                        "  series getIndex plan:\n" +
+                                "MergeQuerySetPlan:\n" +
+                                        "SeriesSelectPlan:\n" +
                                         "  paths:  [root.laptop.d1.s1, root.laptop.d2.s1]\n" +
                                         "  [time>5]\n" +
                                         "  null\n" +
                                         "  [and [root.laptop.d1.s1>5][root.laptop.d2.s1>5]]\n" +
                                         "\n" +
-                                        "showing series plan:1\n" +
-                                        "  series getIndex plan:\n" +
+                                        "SeriesSelectPlan:\n" +
                                         "  paths:  [root.laptop.d1.s1, root.laptop.d2.s1]\n" +
                                         "  null\n" +
                                         "  null\n" +
