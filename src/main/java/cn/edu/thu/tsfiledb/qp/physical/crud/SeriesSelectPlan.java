@@ -141,7 +141,7 @@ public class SeriesSelectPlan extends PhysicalPlan {
     public String printQueryPlan() {
         StringContainer sc = new StringContainer();
         String preSpace = "  ";
-        sc.addTail(preSpace, "series getIndex plan:", lineFeedSignal);
+        sc.addTail("SeriesSelectPlan:", lineFeedSignal);
         sc.addTail(preSpace, "paths:  ").addTail(paths.toString(), lineFeedSignal);
         sc.addTail(preSpace, timeFilterOperator == null ? "null" : timeFilterOperator.toString(),
                 lineFeedSignal);
