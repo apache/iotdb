@@ -11,7 +11,7 @@ popd
 
 set TSFILE_CONF=%TSFILE_HOME%\conf
 set TSFILE_LOGS=%TSFILE_HOME%\logs
-if NOT DEFINED MAIN_CLASS set MAIN_CLASS=cn.edu.thu.tsfiledb.Client.Client
+if NOT DEFINED MAIN_CLASS set MAIN_CLASS=cn.edu.thu.tsfiledb.client.Client
 if NOT DEFINED JAVA_HOME goto :err
 
 @REM -----------------------------------------------------------------------------
