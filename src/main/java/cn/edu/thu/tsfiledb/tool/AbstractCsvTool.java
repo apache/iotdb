@@ -43,7 +43,7 @@ public abstract class AbstractCsvTool {
     protected static String timeZoneID;
     protected static String timeFormat;
     
-    protected static final String JDBC_DRIVER = "cn.edu.thu.tsfiledb.jdbc.TsfileDriver";
+//    protected static final String JDBC_DRIVER = "cn.edu.thu.tsfiledb.jdbc.TsfileDriver";
 
     protected static final String DEFAULT_TIME_FORMAT = "ISO8601";
 

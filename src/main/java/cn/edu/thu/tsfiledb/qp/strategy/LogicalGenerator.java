@@ -713,6 +713,7 @@ public class LogicalGenerator {
 		final String PLAIN = "PLAIN";
 		final String TS_2DIFF = "TS_2DIFF";
 		final String BITMAP = "BITMAP";
+		final String GORILLA = "GORILLA";
 		TSDataType tsDataType;
 		if (dataType == null) {
 			throw new MetadataArgsErrorException("data type cannot be null");
@@ -729,7 +730,7 @@ public class LogicalGenerator {
 		}
 
 		if (!encoding.equals(RLE) && !encoding.equals(PLAIN) && !encoding.equals(TS_2DIFF)
-				&& !encoding.equals(BITMAP)) {
+				&& !encoding.equals(BITMAP) && !encoding.equals(GORILLA)) {
 			throw new MetadataArgsErrorException(String.format("encoding %s is not support", encoding));
 		}
 		switch (tsDataType) {
@@ -752,13 +753,13 @@ public class LogicalGenerator {
 			}
 			break;
 		case FLOAT:
-			if ((!encoding.equals(PLAIN) && !encoding.equals(RLE) && !encoding.equals(TS_2DIFF))) {
+			if ((!encoding.equals(PLAIN) && !encoding.equals(RLE) && !encoding.equals(TS_2DIFF) && !encoding.equals(GORILLA))) {
 				throw new MetadataArgsErrorException(
 						String.format("encoding %s does not support %s", encoding, dataType));
 			}
 			break;
 		case DOUBLE:
-			if ((!encoding.equals(PLAIN) && !encoding.equals(RLE) && !encoding.equals(TS_2DIFF))) {
+			if ((!encoding.equals(PLAIN) && !encoding.equals(RLE) && !encoding.equals(TS_2DIFF) && !encoding.equals(GORILLA))) {
 				throw new MetadataArgsErrorException(
 						String.format("encoding %s does not support %s", encoding, dataType));
 			}
@@ -776,7 +777,7 @@ public class LogicalGenerator {
 			}
 			break;
 		default:
-			throw new MetadataArgsErrorException(String.format("data type %s is not supprot", dataType));
+			throw new MetadataArgsErrorException(String.format("data type %s is not supported", dataType));
 		}
 	}
 

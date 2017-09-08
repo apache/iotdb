@@ -2,12 +2,14 @@ package cn.edu.thu.tsfiledb.jdbc;
 
 import cn.edu.thu.tsfiledb.conf.TsFileDBConstant;
 import cn.edu.thu.tsfiledb.exception.ArgsErrorException;
+import cn.edu.thu.tsfiledb.tool.ImportCsv;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.thrift.TException;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.joda.time.format.ISODateTimeFormat;
@@ -66,6 +68,14 @@ public abstract class AbstractClient {
 	protected static int maxValueLength = 15;
 	protected static String formatTime = "%" + maxTimeLength + "s|";
 	protected static String formatValue = "%" + maxValueLength + "s|";
+	
+	protected static final String IMPORT_CMD = "import";
+	protected static final String EXPORT_CMD = "export";
+	
+	protected static String host;
+	protected static String port;
+	protected static String username;
+	protected static String password;
 
 	protected static boolean printToConsole = true;
 
@@ -378,6 +388,23 @@ public abstract class AbstractClient {
 		}
 		if(specialCmd.startsWith(SHOW_FETCH_SIZE)){
 			System.out.println("Current fetch size: "+fetchSize);
+			return OPERATION_RESULT.CONTINUE_OPER;
+		}
+		
+		if(specialCmd.startsWith(IMPORT_CMD)){
+			String[] values = specialCmd.split(" ");
+			if(values.length != 2){
+				System.out.println(String.format("please input file path like /User/myfile"));
+				return OPERATION_RESULT.CONTINUE_OPER;
+			}
+			try {
+				System.out.println(cmd.split(" ")[1]);
+				ImportCsv.importCsvFromFile(host, port, username, password, cmd.split(" ")[1], connection.getTimeZone());
+			} catch (SQLException e) {
+				System.out.println(String.format("Failed to import from %s because %s", cmd.split(" ")[1], e.getMessage()));
+			} catch (TException e) {
+				System.out.println("Cannot get current time zone");
+			}
 			return OPERATION_RESULT.CONTINUE_OPER;
 		}
 
