@@ -25,7 +25,7 @@ for f in ${TSFILE_HOME}/lib/*.jar; do
     CLASSPATH=${CLASSPATH}":"$f
 done
 
-MAIN_CLASS=cn.edu.thu.tsfiledb.tool.ImportCsv
+MAIN_CLASS=cn.edu.tsinghua.iotdb.tool.ImportCsv
 
 "$JAVA" -DTSFILE_HOME=${TSFILE_HOME} -cp "$CLASSPATH" "$MAIN_CLASS" "$@"
 exit $?
