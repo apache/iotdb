@@ -6,7 +6,7 @@ pushd %~dp0..
 if NOT DEFINED TSFILE_HOME set TSFILE_HOME=%CD%
 popd
 
-if NOT DEFINED MAIN_CLASS set MAIN_CLASS=cn.edu.thu.tsfiledb.tool.ExportCsv
+if NOT DEFINED MAIN_CLASS set MAIN_CLASS=cn.edu.tsinghua.iotdb.tool.ExportCsv
 if NOT DEFINED JAVA_HOME goto :err
 
 @REM -----------------------------------------------------------------------------

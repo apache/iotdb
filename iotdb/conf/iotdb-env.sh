@@ -14,4 +14,4 @@ else
 	TSFILEDB_JMX_OPTS="$TSFILEDB_JMX_OPTS -Dcom.sun.management.jmxremote.port=$JMX_PORT "
 fi
 
-TSFILEDB_DERBY_OPTS="-Dderby.stream.error.field=cn.edu.thu.tsfiledb.auth.dao.DerbyUtil.DEV_NULL"
+TSFILEDB_DERBY_OPTS="-Dderby.stream.error.field=cn.edu.tsinghua.iotdb.auth.dao.DerbyUtil.DEV_NULL"
