@@ -320,19 +320,12 @@ public class ImportCsv extends AbstractCsvTool{
 		} catch (Exception e) {
 			System.out.println(String.format("[ERROR] Encounter an error, because %s", e.getMessage()));
 		} finally {
-			if(reader != null){
-				reader.close();
-			}
-
-		}
+            reader.close();
+        }
     }
 
     private static void parseSpecialParams(CommandLine commandLine, ConsoleReader reader) throws IOException, ArgsErrorException {
 		timeZoneID = commandLine.getOptionValue(TIME_ZONE_ARGS);
-		
-		
-		
-
 	}
 
     public static void importCsvFromFile(String ip,String port, String username, String password, String filename, String timeZone) throws SQLException{

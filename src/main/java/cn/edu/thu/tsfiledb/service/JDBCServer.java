@@ -15,8 +15,8 @@ import org.slf4j.LoggerFactory;
 import cn.edu.thu.tsfiledb.conf.TsFileDBConstant;
 import cn.edu.thu.tsfiledb.conf.TsfileDBConfig;
 import cn.edu.thu.tsfiledb.conf.TsfileDBDescriptor;
-import cn.edu.thu.tsfiledb.service.rpc.thrift.TSIService;
-import cn.edu.thu.tsfiledb.service.rpc.thrift.TSIService.Processor;
+import cn.edu.tsinghua.iotdb.jdbc.thrift.TSIService;
+import cn.edu.tsinghua.iotdb.jdbc.thrift.TSIService.Processor;
 
 /**
  * A server to handle jdbc request from client.
