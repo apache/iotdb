@@ -93,10 +93,10 @@ public class Client extends AbstractClient {
 		try {
 			reader = new ConsoleReader();
 			reader.setExpandEvents(false);
-			for (Completer completer : getCommandCompleter()) {
-				reader.addCompleter(completer);
-			}
-			((CandidateListCompletionHandler) reader.getCompletionHandler()).setPrintSpaceAfterFullCompletion(false);
+//			for (Completer completer : getCommandCompleter()) {
+//				reader.addCompleter(completer);
+//			}
+//			((CandidateListCompletionHandler) reader.getCompletionHandler()).setPrintSpaceAfterFullCompletion(false);
 			String s;
 			try {
 				String host = checkRequiredArg(HOST_ARGS, HOST_NAME, commandLine);
@@ -215,8 +215,40 @@ public class Client extends AbstractClient {
 				return ret;
 			}
 		};
+		
+		StringsCompleter insertConfCompleter = new StringsCompleter(Arrays.asList("into")) {
+			@Override
+			public int complete(final String buffer, final int cursor, final List<CharSequence> candidates) {
+				int result = super.complete(buffer, cursor, candidates);
+				if (candidates.isEmpty() && cursor > 1 && buffer.charAt(cursor - 1) == '=') {
+					String confName = buffer.substring(0, cursor - 1);
+					switch (confName) {  // TODO: give config suggestion
+						default:
+							break;
+					}
+					return cursor;
+				}
+				return result;
+			}
+		};
+		StringsCompleter insertCompleter = new StringsCompleter(Arrays.asList("insert")) {
+			@Override
+			public int complete(String buffer, int cursor, List<CharSequence> candidates) {
+				return buffer != null && (buffer.equals("insert")) ? super.complete(buffer, cursor, candidates) : -1;
+			}
+		};
+		ArgumentCompleter insertPropCompleter = new ArgumentCompleter(insertCompleter, insertConfCompleter) {
+			@Override
+			public int complete(String buffer, int offset, List<CharSequence> completions) {
+				int ret = super.complete(buffer, offset, completions);
+				if (completions.size() == 1) {
+					completions.set(0, ((String)completions.get(0)).trim());
+				}
+				return ret;
+			}
+		};
 
-		StringsCompleter paramCompleter = new StringsCompleter(Arrays.asList(PARAM_NAME_LIST)) {
+		StringsCompleter withParamCompleter = new StringsCompleter(Arrays.asList(PARAM_NAME_LIST)) {
 			@Override
 			public int complete(final String buffer, final int cursor, final List<CharSequence> candidates) {
 				int result = super.complete(buffer, cursor, candidates);
@@ -246,7 +278,7 @@ public class Client extends AbstractClient {
 				return result;
 			}
 		};
-		ArgumentCompleter paramPropCompleter = new ArgumentCompleter(delim, paramCompleter) {
+		ArgumentCompleter withParamPropCompleter = new ArgumentCompleter(delim, withParamCompleter) {
 			@Override
 			public int complete(String buffer, int offset, List<CharSequence> completions) {
 				int ret = super.complete(buffer, offset, completions);
@@ -256,8 +288,8 @@ public class Client extends AbstractClient {
 				return ret;
 			}
 		};
-		paramPropCompleter.setStrict(false);
+		withParamPropCompleter.setStrict(false);
 
-		return new Completer[]{confPropCompleter, paramPropCompleter, argCompleter};
+		return new Completer[]{confPropCompleter, insertPropCompleter,withParamPropCompleter, argCompleter};
 	}
 }

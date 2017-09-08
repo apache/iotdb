@@ -211,7 +211,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 		}
 		statement = statement.toLowerCase();
 		switch (statement) {
-		case "close":
+		case "flush":
 			try {
 				FileNodeManager.getInstance().closeAll();
 			} catch (FileNodeManagerException e) {

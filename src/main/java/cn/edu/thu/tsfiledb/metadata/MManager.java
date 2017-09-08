@@ -37,53 +37,63 @@ import cn.edu.tsinghua.tsfile.timeseries.read.qp.Path;
  *
  */
 public class MManager {
-	private static final Logger LOGGER = LoggerFactory.getLogger(MManager.class);
-	private static MManager manager = new MManager();
-	private static final String ROOT_NAME = "root";
+	//private static MManager manager = new MManager();
+	private static final String ROOT_NAME = MetadataConstant.ROOT;
+	// the lock for read/write
 	private ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
 	// The file storing the serialize info for metadata
 	private String datafilePath;
-	// log file path
+	// the log file path
 	private String logFilePath;
 	private MGraph mGraph;
-	private BufferedWriter bw;
+	private BufferedWriter logWriter;
 	private boolean writeToLog;
-	private boolean initialized;
+	private String metadataDirPath;
+
+	private static class MManagerHolder{
+		private static final MManager INSTANCE = new MManager(); 
+	}
+	
+	public static MManager getInstance() {
+		
+		return MManagerHolder.INSTANCE;
+	}
 
 	private MManager() {
-		writeToLog = false;
 
-		String metadataDirPath = TsfileDBDescriptor.getInstance().getConfig().metadataDir;
+		metadataDirPath = TsfileDBDescriptor.getInstance().getConfig().metadataDir;
 		if (metadataDirPath.length() > 0
 				&& metadataDirPath.charAt(metadataDirPath.length() - 1) != File.separatorChar) {
 			metadataDirPath = metadataDirPath + File.separatorChar;
 		}
-		datafilePath = metadataDirPath + "mdata.obj";
-		logFilePath = metadataDirPath + "mlog.txt";
-		initialized = false;
+		File metadataDir = new File(metadataDirPath);
+		if (!metadataDir.exists()) {
+			metadataDir.mkdirs();
+		}
+		datafilePath = metadataDirPath + MetadataConstant.METADATA_OBJ;
+		logFilePath = metadataDirPath + MetadataConstant.METADATA_LOG;
+		writeToLog = false;
 		init();
 	}
 
 	private void init() {
+
 		lock.writeLock().lock();
+		File dataFile = new File(datafilePath);
+		File logFile = new File(logFilePath);
 		try {
-			if (!this.initialized) {
-				try {
-					File file = new File(datafilePath);
-					// inital MGraph from file
-					if (file.exists()) {
-						FileInputStream fis = new FileInputStream(file);
-						ObjectInputStream ois = new ObjectInputStream(fis);
-						mGraph = (MGraph) ois.readObject();
-						ois.close();
-						fis.close();
-
-					} else {
-						mGraph = new MGraph(ROOT_NAME);
-					}
-
-					// recover operation from log file
-					File logFile = new File(logFilePath);
+			try {
+				if (dataFile.exists()) {
+					// init the metadata from the serialized file
+					FileInputStream fis = new FileInputStream(dataFile);
+					ObjectInputStream ois = new ObjectInputStream(fis);
+					mGraph = (MGraph) ois.readObject();
+					ois.close();
+					fis.close();
+					dataFile.delete();
+				} else {
+					// init the metadata from the operation log
+					mGraph = new MGraph(ROOT_NAME);
 					if (logFile.exists()) {
 						FileReader fr;
 						fr = new FileReader(logFile);
@@ -93,38 +103,20 @@ public class MManager {
 							operation(cmd);
 						}
 						br.close();
-					} else {
-						if (!logFile.getParentFile().exists()) {
-							logFile.getParentFile().mkdirs();
-						}
-						logFile.createNewFile();
 					}
-
-					FileWriter fw = new FileWriter(logFile, true);
-					bw = new BufferedWriter(fw);
-					writeToLog = true;
-
-				} catch (FileNotFoundException e) {
-					e.printStackTrace();
-				} catch (IOException e) {
-					e.printStackTrace();
-				} catch (ClassNotFoundException e) {
-					e.printStackTrace();
-				} catch (PathErrorException e) {
-					e.printStackTrace();
-				} catch (MetadataArgsErrorException e) {
-					e.printStackTrace();
 				}
-				this.initialized = true;
+				FileWriter fw = new FileWriter(logFile, true);
+				logWriter = new BufferedWriter(fw);
+				writeToLog = true;
+			} catch (Exception e) {
+				e.printStackTrace();
+				throw new RuntimeException(e);
 			}
 		} finally {
 			lock.writeLock().unlock();
 		}
 	}
 
-	/**
-	 * Clear all metadata info
-	 */
 	public void clear() {
 		lock.writeLock().lock();
 		try {
@@ -134,25 +126,10 @@ public class MManager {
 		}
 	}
 
-	public void deleteLogAndDataFiles() {
-		lock.writeLock().lock();
-		try {
-			File file = new File(logFilePath);
-			if (file.exists()) {
-				file.delete();
-			}
-			File dataFile = new File(datafilePath);
-			if (dataFile.exists()) {
-				dataFile.delete();
-			}
-		} finally {
-			lock.writeLock().unlock();
-		}
-	}
-
 	private void operation(String cmd) throws PathErrorException, IOException, MetadataArgsErrorException {
+
 		String args[] = cmd.trim().split(",");
-		if (args[0].equals("0")) {
+		if (args[0].equals(MetadataOperationType.ADD_PATH_TO_MTREE)) {
 			String[] leftArgs;
 			if (args.length > 4) {
 				leftArgs = new String[args.length - 4];
@@ -179,22 +156,43 @@ public class MManager {
 			unlinkMNodeFromPTree(args[1], args[2]);
 		}
 	}
+	
+	private void initLogStream(){
+		if(logWriter==null){
+			File logFile = new File(logFilePath);
+			File metadataDir = new File(metadataDirPath);
+			if(!metadataDir.exists()){
+				metadataDir.mkdirs();
+			}
+			FileWriter fileWriter;
+			try {
+				
+				fileWriter = new FileWriter(logFile,true);
+				logWriter = new BufferedWriter(fileWriter);
+			} catch (IOException e) {
+				e.printStackTrace();
+				throw new RuntimeException(e);
+			}
+		}
+	}
 
 	/**
 	 * operation: Add a path to Metadata Tree
 	 */
 	public void addPathToMTree(String path, String dataType, String encoding, String[] args)
 			throws PathErrorException, IOException, MetadataArgsErrorException {
+
 		lock.writeLock().lock();
 		try {
 			mGraph.addPathToMTree(path, dataType, encoding, args);
 			if (writeToLog) {
-				bw.write(MetadataOperationType.ADD_PATH_TO_MTREE + "," + path + "," + dataType + "," + encoding);
+				initLogStream();
+				logWriter.write(MetadataOperationType.ADD_PATH_TO_MTREE + "," + path + "," + dataType + "," + encoding);
 				for (int i = 0; i < args.length; i++) {
-					bw.write("," + args[i]);
+					logWriter.write("," + args[i]);
 				}
-				bw.newLine();
-				bw.flush();
+				logWriter.newLine();
+				logWriter.flush();
 			}
 		} finally {
 			lock.writeLock().unlock();
@@ -202,13 +200,15 @@ public class MManager {
 	}
 
 	public String deletePathFromMTree(String path) throws PathErrorException, IOException {
+
 		lock.writeLock().lock();
 		try {
 			String dataFileName = mGraph.deletePath(path);
 			if (writeToLog) {
-				bw.write(MetadataOperationType.DELETE_PATH_FROM_MTREE + "," + path);
-				bw.newLine();
-				bw.flush();
+				initLogStream();
+				logWriter.write(MetadataOperationType.DELETE_PATH_FROM_MTREE + "," + path);
+				logWriter.newLine();
+				logWriter.flush();
 			}
 			return dataFileName;
 		} finally {
@@ -217,13 +217,15 @@ public class MManager {
 	}
 
 	public void setStorageLevelToMTree(String path) throws PathErrorException, IOException {
+
 		lock.writeLock().lock();
 		try {
 			mGraph.setStorageLevel(path);
 			if (writeToLog) {
-				bw.write(MetadataOperationType.SET_STORAGE_LEVEL_TO_MTREE + "," + path);
-				bw.newLine();
-				bw.flush();
+				initLogStream();
+				logWriter.write(MetadataOperationType.SET_STORAGE_LEVEL_TO_MTREE + "," + path);
+				logWriter.newLine();
+				logWriter.flush();
 			}
 		} finally {
 			lock.writeLock().unlock();
@@ -231,13 +233,15 @@ public class MManager {
 	}
 
 	public void addAPTree(String pTreeRootName) throws IOException, MetadataArgsErrorException {
+
 		lock.writeLock().lock();
 		try {
 			mGraph.addAPTree(pTreeRootName);
 			if (writeToLog) {
-				bw.write(MetadataOperationType.ADD_A_PTREE + "," + pTreeRootName);
-				bw.newLine();
-				bw.flush();
+				initLogStream();
+				logWriter.write(MetadataOperationType.ADD_A_PTREE + "," + pTreeRootName);
+				logWriter.newLine();
+				logWriter.flush();
 			}
 		} finally {
 			lock.writeLock().unlock();
@@ -245,13 +249,15 @@ public class MManager {
 	}
 
 	public void addPathToPTree(String path) throws PathErrorException, IOException, MetadataArgsErrorException {
+
 		lock.writeLock().lock();
 		try {
 			mGraph.addPathToPTree(path);
 			if (writeToLog) {
-				bw.write(MetadataOperationType.ADD_A_PATH_TO_PTREE + "," + path);
-				bw.newLine();
-				bw.flush();
+				initLogStream();
+				logWriter.write(MetadataOperationType.ADD_A_PATH_TO_PTREE + "," + path);
+				logWriter.newLine();
+				logWriter.flush();
 			}
 		} finally {
 			lock.writeLock().unlock();
@@ -259,13 +265,15 @@ public class MManager {
 	}
 
 	public void deletePathFromPTree(String path) throws PathErrorException, IOException {
+
 		lock.writeLock().lock();
 		try {
 			mGraph.deletePath(path);
 			if (writeToLog) {
-				bw.write(MetadataOperationType.DELETE_PATH_FROM_PTREE + "," + path);
-				bw.newLine();
-				bw.flush();
+				initLogStream();
+				logWriter.write(MetadataOperationType.DELETE_PATH_FROM_PTREE + "," + path);
+				logWriter.newLine();
+				logWriter.flush();
 			}
 		} finally {
 			lock.writeLock().unlock();
@@ -273,13 +281,15 @@ public class MManager {
 	}
 
 	public void linkMNodeToPTree(String path, String mPath) throws PathErrorException, IOException {
+
 		lock.writeLock().lock();
 		try {
 			mGraph.linkMNodeToPTree(path, mPath);
 			if (writeToLog) {
-				bw.write(MetadataOperationType.LINK_MNODE_TO_PTREE + "," + path + "," + mPath);
-				bw.newLine();
-				bw.flush();
+				initLogStream();
+				logWriter.write(MetadataOperationType.LINK_MNODE_TO_PTREE + "," + path + "," + mPath);
+				logWriter.newLine();
+				logWriter.flush();
 			}
 		} finally {
 			lock.writeLock().unlock();
@@ -287,13 +297,15 @@ public class MManager {
 	}
 
 	public void unlinkMNodeFromPTree(String path, String mPath) throws PathErrorException, IOException {
+
 		lock.writeLock().lock();
 		try {
 			mGraph.unlinkMNodeFromPTree(path, mPath);
 			if (writeToLog) {
-				bw.write(MetadataOperationType.UNLINK_MNODE_FROM_PTREE + "," + path + "," + mPath);
-				bw.newLine();
-				bw.flush();
+				initLogStream();
+				logWriter.write(MetadataOperationType.UNLINK_MNODE_FROM_PTREE + "," + path + "," + mPath);
+				logWriter.newLine();
+				logWriter.flush();
 			}
 		} finally {
 			lock.writeLock().unlock();
@@ -307,6 +319,7 @@ public class MManager {
 	 * @return String represents the DeltaObjectId
 	 */
 	public String getDeltaObjectTypeByPath(String path) throws PathErrorException {
+
 		lock.readLock().lock();
 		try {
 			return mGraph.getDeltaObjectTypeByPath(path);
@@ -323,6 +336,7 @@ public class MManager {
 	 * @throws PathErrorException
 	 */
 	public TSDataType getSeriesType(String fullPath) throws PathErrorException {
+
 		lock.readLock().lock();
 		try {
 			return getSchemaForOnePath(fullPath).dataType;
@@ -339,6 +353,7 @@ public class MManager {
 	 * @throws PathErrorException
 	 */
 	public Map<String, List<ColumnSchema>> getSchemaForAllType() throws PathErrorException {
+
 		lock.readLock().lock();
 		try {
 			return mGraph.getSchemaForAllType();
@@ -354,6 +369,7 @@ public class MManager {
 	 * @throws PathErrorException
 	 */
 	public Metadata getMetadata() throws PathErrorException {
+
 		lock.readLock().lock();
 		try {
 			return mGraph.getMetadata();
@@ -371,6 +387,7 @@ public class MManager {
 	 * @throws PathErrorException
 	 */
 	public ArrayList<ColumnSchema> getSchemaForOneType(String path) throws PathErrorException {
+
 		lock.readLock().lock();
 		try {
 			return mGraph.getSchemaForOneType(path);
@@ -387,6 +404,7 @@ public class MManager {
 	 * @throws PathErrorException
 	 */
 	public int getFileCountForOneType(String path) throws PathErrorException {
+
 		lock.readLock().lock();
 		try {
 			return mGraph.getFileCountForOneType(path);
@@ -405,6 +423,7 @@ public class MManager {
 	 * @throws PathErrorException
 	 */
 	public String getFileNameByPath(String path) throws PathErrorException {
+
 		lock.readLock().lock();
 		try {
 			return mGraph.getFileNameByPath(path);
@@ -416,6 +435,7 @@ public class MManager {
 	}
 
 	public List<String> getAllFileNames() throws PathErrorException {
+
 		lock.readLock().lock();
 		try {
 			HashMap<String, ArrayList<String>> res = getAllPathGroupByFileName(ROOT_NAME);
@@ -433,6 +453,7 @@ public class MManager {
 	 * return a HashMap contains all the paths separated by File Name
 	 */
 	public HashMap<String, ArrayList<String>> getAllPathGroupByFileName(String path) throws PathErrorException {
+
 		lock.readLock().lock();
 		try {
 			return mGraph.getAllPathGroupByFilename(path);
@@ -446,6 +467,7 @@ public class MManager {
 	 * path itself.
 	 */
 	public ArrayList<String> getPaths(String path) throws PathErrorException {
+
 		lock.readLock().lock();
 		try {
 			ArrayList<String> res = new ArrayList<>();
@@ -463,6 +485,7 @@ public class MManager {
 	 * Check whether the path given exists
 	 */
 	public boolean pathExist(String path) {
+
 		lock.readLock().lock();
 		try {
 			return mGraph.pathExist(path);
@@ -476,6 +499,7 @@ public class MManager {
 	 * from root to leaf node.
 	 */
 	public ColumnSchema getSchemaForOnePath(String path) throws PathErrorException {
+
 		lock.readLock().lock();
 		try {
 			return mGraph.getSchemaForOnePath(path);
@@ -489,6 +513,7 @@ public class MManager {
 	 * {@code MNode.isStorageLevel} is true
 	 */
 	public boolean checkFileLevel(List<Path> path) throws PathErrorException {
+
 		lock.readLock().lock();
 		try {
 			for (Path p : path) {
@@ -500,60 +525,43 @@ public class MManager {
 		}
 	}
 
-	/**
-	 * Persistent the MGraph instance into file
-	 */
 	public void flushObjectToFile() throws IOException {
+
 		lock.writeLock().lock();
 		try {
-			File newDataFile = new File(datafilePath + ".backup");
-			FileOutputStream fos = new FileOutputStream(newDataFile);
+			File dataFile = new File(datafilePath);
+			// delete old metadata data file
+			if (dataFile.exists()) {
+				dataFile.delete();
+			}
+			File metadataDir = new File(metadataDirPath);
+			if (!metadataDir.exists()) {
+				metadataDir.mkdirs();
+			}
+			File tempFile = new File(datafilePath + MetadataConstant.METADATA_TEMP);
+			FileOutputStream fos = new FileOutputStream(tempFile);
 			ObjectOutputStream oos = new ObjectOutputStream(fos);
 			oos.writeObject(mGraph);
 			oos.close();
-
 			// close the logFile stream
-			if (bw != null) {
-				bw.close();
+			if (logWriter != null) {
+				logWriter.close();
+				logWriter = null;
 			}
-			// delete log file
-			File logFile = new File(logFilePath);
-			boolean deleteRet = logFile.delete();
-			LOGGER.info("Delete Ret: {}", deleteRet);
-			// Copy New DataFile to OldDataFile
-			FileOutputStream oldFileFos = new FileOutputStream(datafilePath);
-			FileChannel outChannel = oldFileFos.getChannel();
-			FileInputStream newFileFis = new FileInputStream(datafilePath + ".backup");
-			FileChannel inChannel = newFileFis.getChannel();
-			inChannel.transferTo(0, inChannel.size(), outChannel);
-			outChannel.close();
-			inChannel.close();
-			oldFileFos.close();
-			newFileFis.close();
-
-			// delete DataFileBackUp
-			newDataFile.delete();
-			this.initialized = false;
+			// rename temp file to data file
+			tempFile.renameTo(dataFile);
 		} finally {
 			lock.writeLock().unlock();
 		}
 	}
 
 	public String getMetadataInString() {
+
 		lock.readLock().lock();
 		try {
 			return mGraph.toString();
 		} finally {
 			lock.readLock().unlock();
 		}
-	}
-
-	public static MManager getInstance() {
-		synchronized (manager) {
-			if (!manager.initialized) {
-				manager.init();
-			}
-		}
-		return manager;
 	}
 }
