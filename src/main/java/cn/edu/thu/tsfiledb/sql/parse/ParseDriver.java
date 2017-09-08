@@ -116,7 +116,10 @@ public class ParseDriver {
       } else {
         msg = super.getErrorMessage(e, tokenNames);
       }
-
+      String input = e.input.toString();
+      if (input.indexOf("timestamp") > 0 || input.indexOf("time") > 0) {
+    	  	msg += ". (Note that time format should be something like 1) number: eg.123456 2) function: eg.now() 3) datatime: eg.yyyy-MM-dd HH:mm:ss, please check whether inputting correct time format or referring to sql document)";
+      }
       return msg;
     }
 
