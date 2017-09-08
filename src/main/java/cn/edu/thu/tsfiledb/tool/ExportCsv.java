@@ -1,5 +1,7 @@
 package cn.edu.thu.tsfiledb.tool;
 
+import cn.edu.tsinghua.iotdb.jdbc.TsfileConnection;
+import cn.edu.tsinghua.iotdb.jdbc.TsfileJDBCConfig;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -12,8 +14,6 @@ import org.joda.time.DateTime;
 import org.joda.time.format.ISODateTimeFormat;
 
 import cn.edu.thu.tsfiledb.exception.ArgsErrorException;
-import cn.edu.thu.tsfiledb.jdbc.TsfileConnection;
-import cn.edu.thu.tsfiledb.jdbc.TsfileJDBCConfig;
 import jline.console.ConsoleReader;
 
 import java.io.BufferedReader;
@@ -78,7 +78,7 @@ public class ExportCsv extends AbstractCsvTool{
 			parseSpecialParams(commandLine, reader);
 			if(!checkTimeFormat()){
 				return;
-			}	
+			}
 			Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);
 
 			String sqlFile = commandLine.getOptionValue(SQL_FILE_ARGS);

@@ -4,6 +4,7 @@ import cn.edu.thu.tsfiledb.conf.TsFileDBConstant;
 import cn.edu.thu.tsfiledb.exception.ArgsErrorException;
 import cn.edu.thu.tsfiledb.tool.ImportCsv;
 
+import cn.edu.tsinghua.iotdb.jdbc.TsfileConnection;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
@@ -144,7 +145,6 @@ public abstract class AbstractClient {
 			printBlockLine(printTimestamp, colCount, res);
 			printName(printTimestamp, colCount, res);
 			printBlockLine(printTimestamp, colCount, res);
-			printHeader = true;
 		}
 		printBlockLine(printTimestamp, colCount, res);
 		System.out.println("record number = " + cnt);

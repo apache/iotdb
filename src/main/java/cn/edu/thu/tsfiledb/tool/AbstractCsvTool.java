@@ -2,13 +2,13 @@ package cn.edu.thu.tsfiledb.tool;
 
 import java.io.IOException;
 
+import cn.edu.tsinghua.iotdb.jdbc.TsfileConnection;
+import cn.edu.tsinghua.iotdb.jdbc.TsfileSQLException;
 import org.apache.commons.cli.CommandLine;
 import org.apache.thrift.TException;
 import org.joda.time.DateTimeZone;
 
 import cn.edu.thu.tsfiledb.exception.ArgsErrorException;
-import cn.edu.thu.tsfiledb.jdbc.TsfileConnection;
-import cn.edu.thu.tsfiledb.jdbc.TsfileSQLException;
 import jline.console.ConsoleReader;
 
 public abstract class AbstractCsvTool {
