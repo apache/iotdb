@@ -491,6 +491,8 @@ public class LogicalGenerator {
 		if (rightKey.getType() == TSParser.TOK_PATH)
 			seriesValue = parsePath(rightKey).getFullPath();
 		else if (rightKey.getType() == TSParser.TOK_DATETIME) {
+			if(!seriesPath.equals(SQLConstant.RESERVED_TIME))
+				throw new LogicalOperatorException("Date can only be used to time");
 			seriesValue = parseTokenTime(rightKey);
 		} else
 			seriesValue = rightKey.getText();
