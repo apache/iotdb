@@ -7,9 +7,9 @@ import java.util.List;
 import java.util.Map;
 
 import cn.edu.thu.tsfiledb.metadata.ColumnSchema;
-import cn.edu.thu.tsfiledb.service.rpc.thrift.TSColumnSchema;
-import cn.edu.thu.tsfiledb.service.rpc.thrift.TSDynamicOneColumnData;
-import cn.edu.thu.tsfiledb.service.rpc.thrift.TSQueryDataSet;
+import cn.edu.tsinghua.iotdb.jdbc.thrift.TSColumnSchema;
+import cn.edu.tsinghua.iotdb.jdbc.thrift.TSDynamicOneColumnData;
+import cn.edu.tsinghua.iotdb.jdbc.thrift.TSQueryDataSet;
 import cn.edu.tsinghua.tsfile.common.exception.UnSupportedDataTypeException;
 import cn.edu.tsinghua.tsfile.timeseries.read.query.DynamicOneColumnData;
 import cn.edu.tsinghua.tsfile.timeseries.read.query.QueryDataSet;

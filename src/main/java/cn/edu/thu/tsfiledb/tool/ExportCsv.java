@@ -78,7 +78,7 @@ public class ExportCsv extends AbstractCsvTool{
 			parseSpecialParams(commandLine, reader);
 			if(!checkTimeFormat()){
 				return;
-			}	
+			}
 			Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);
 
 			String sqlFile = commandLine.getOptionValue(SQL_FILE_ARGS);

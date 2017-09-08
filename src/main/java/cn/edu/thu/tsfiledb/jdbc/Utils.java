@@ -12,11 +12,11 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import cn.edu.thu.tsfiledb.metadata.ColumnSchema;
-import cn.edu.thu.tsfiledb.service.rpc.thrift.TSColumnSchema;
-import cn.edu.thu.tsfiledb.service.rpc.thrift.TSDynamicOneColumnData;
-import cn.edu.thu.tsfiledb.service.rpc.thrift.TSQueryDataSet;
-import cn.edu.thu.tsfiledb.service.rpc.thrift.TS_Status;
-import cn.edu.thu.tsfiledb.service.rpc.thrift.TS_StatusCode;
+import cn.edu.tsinghua.iotdb.jdbc.thrift.TSColumnSchema;
+import cn.edu.tsinghua.iotdb.jdbc.thrift.TSDynamicOneColumnData;
+import cn.edu.tsinghua.iotdb.jdbc.thrift.TSQueryDataSet;
+import cn.edu.tsinghua.iotdb.jdbc.thrift.TS_Status;
+import cn.edu.tsinghua.iotdb.jdbc.thrift.TS_StatusCode;
 import cn.edu.tsinghua.iotdb.jdbc.TsfileConnectionParams;
 import cn.edu.tsinghua.iotdb.jdbc.TsfileJDBCConfig;
 import cn.edu.tsinghua.iotdb.jdbc.TsfileSQLException;
