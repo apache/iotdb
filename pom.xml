@@ -3,11 +3,11 @@
 	<modelVersion>4.0.0</modelVersion>
 
 	<groupId>cn.edu.thu</groupId>
-	<artifactId>tsfiledb</artifactId>
+	<artifactId>IoTDB</artifactId>
 	<version>0.0.1</version>
 	<packaging>jar</packaging>
 
-	<name>tsfiledb</name>
+	<name>IoTDB</name>
 	<url>http://maven.apache.org</url>
 
 	<properties>
@@ -92,7 +92,6 @@
 							<testIncludes>
 								<testInclude>**/*.java</testInclude>
 							</testIncludes>
-							<outputDirectory>${project.build.directory}/it-classes</outputDirectory>
 						</configuration>
 					</execution>
 				</executions>

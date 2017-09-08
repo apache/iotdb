@@ -180,23 +180,78 @@ public class RecordReader {
         }
     }
 
-    public AggregationResult aggregate(String deviceUID, String sensorId, AggregateFunction func,
+    /**
+     * Aggregation calculate function of <code>RecordReader</code> without filter.
+     *
+     * @param deltaObjectId deltaObjectId of <code>Path</code>
+     * @param measurementId measurementId of <code>Path</code>
+     * @param func aggregation function
+     * @param updateTrue update operation which satisfies the filter
+     * @param updateFalse update operation which doesn't satisfy the filter
+     * @param insertMemoryData memory bufferwrite insert data
+     * @param timeFilter time filter
+     * @param freqFilter frequency filter
+     * @param valueFilter value filter
+     * @return aggregation result
+     * @throws ProcessorException aggregation invoking exception
+     * @throws IOException tsfile read exception
+     */
+    public AggregationResult aggregate(String deltaObjectId, String measurementId, AggregateFunction func,
                                        DynamicOneColumnData updateTrue, DynamicOneColumnData updateFalse, InsertDynamicData insertMemoryData,
                                        SingleSeriesFilterExpression timeFilter, SingleSeriesFilterExpression freqFilter, SingleSeriesFilterExpression valueFilter
     ) throws ProcessorException, IOException {
 
-        List<RowGroupReader> rowGroupReaderList = readerManager.getRowGroupReaderListByDeltaObject(deviceUID);
+        List<RowGroupReader> rowGroupReaderList = readerManager.getRowGroupReaderListByDeltaObject(deltaObjectId);
 
         for (RowGroupReader rowGroupReader : rowGroupReaderList) {
-            if (rowGroupReader.getValueReaders().containsKey(sensorId)) {
-                rowGroupReader.getValueReaders().get(sensorId)
-                        .aggreate(func, insertMemoryData, updateTrue, updateFalse, timeFilter, freqFilter, valueFilter);
+            if (rowGroupReader.getValueReaders().containsKey(measurementId)) {
+                rowGroupReader.getValueReaders().get(measurementId)
+                        .aggregate(func, insertMemoryData, updateTrue, updateFalse, timeFilter, freqFilter, valueFilter);
             }
         }
 
         // add left insert values
         if (insertMemoryData != null && insertMemoryData.hasInsertData()) {
             func.calculateFromLeftMemoryData(insertMemoryData);
+        }
+        return func.result;
+    }
+
+    /**
+     * Calculate the aggregate result using the common timestamps.
+     *
+     * @param deltaObjectId deltaObjectId deltaObjectId of <code>Path</code>
+     * @param measurementId measurementId of <code>Path</code>
+     * @param func aggregation function
+     * @param updateTrue update operation which satisfies the filter
+     * @param updateFalse update operation which doesn't satisfy the filter
+     * @param insertMemoryData memory bufferwrite insert data
+     * @param timeFilter time filter
+     * @param freqFilter frequency filter
+     * @param valueFilter value filter
+     * @param timestamps timestamps calculated by the cross filter
+     * @return aggregation result
+     * @throws ProcessorException aggregation invoking exception
+     * @throws IOException tsfile read exception
+     */
+    public AggregationResult aggregateUsingTimestamps(String deltaObjectId, String measurementId, AggregateFunction func,
+                                                      DynamicOneColumnData updateTrue, DynamicOneColumnData updateFalse, InsertDynamicData insertMemoryData,
+                                                      SingleSeriesFilterExpression timeFilter, SingleSeriesFilterExpression freqFilter, SingleSeriesFilterExpression valueFilter,
+                                                      List<Long> timestamps, DynamicOneColumnData aggreData
+    ) throws ProcessorException, IOException {
+
+        List<RowGroupReader> rowGroupReaderList = readerManager.getRowGroupReaderListByDeltaObject(deltaObjectId);
+
+        for (RowGroupReader rowGroupReader : rowGroupReaderList) {
+            if (rowGroupReader.getValueReaders().containsKey(measurementId)) {
+                rowGroupReader.getValueReaders().get(measurementId)
+                        .aggregateUsingTimestamps(func, insertMemoryData, updateTrue, updateFalse, timeFilter, freqFilter, timestamps, aggreData);
+            }
+        }
+
+        // calc aggregation using memory data
+        if (insertMemoryData != null && insertMemoryData.hasInsertData()) {
+            func.calcAggregationUsingTimestamps(insertMemoryData, timestamps);
         }
         return func.result;
     }
@@ -286,12 +341,17 @@ public class RecordReader {
     }
 
     /**
-     * Put left values in insertMemoryData to res.
+     * Calculate the left value in memory.
      *
      * @param res result answer
      * @param insertMemoryData memory data
      * @param fetchSize read fetch size
-     * @return true represents that all the values has been read.
+     * @param timeFilter filter to select time
+     * @param updateTrue <code>DynamicOneColumnData</code> represents which value to update to new value
+     * @param updateFalse <code>DynamicOneColumnData</code> represents which value of update to new value is
+     *                    not satisfied with the filter
+     * @return true represents that all the values has been read
+     * @throws IOException
      */
     private boolean addLeftInsertValue(DynamicOneColumnData res, InsertDynamicData insertMemoryData, int fetchSize,
                                        SingleSeriesFilterExpression timeFilter, DynamicOneColumnData updateTrue, DynamicOneColumnData updateFalse) throws IOException {
@@ -347,7 +407,7 @@ public class RecordReader {
     }
 
     /**
-     * {NEWFUNC} use {@code RecordReaderFactory} to manage all RecordReader
+     * Use {@code RecordReaderFactory} to manage all RecordReader.
      *
      * @throws ProcessorException
      */
@@ -356,14 +416,7 @@ public class RecordReader {
     }
 
     /**
-     * {NEWFUNC} for optimization in recordReaderFactory
-     */
-    public void reopenIfChanged() {
-        // TODO: how to reopen a recordReader
-    }
-
-    /**
-     * {NEWFUNC} close current RecordReader
+     * Close current RecordReader.
      *
      * @throws IOException
      * @throws ProcessorException

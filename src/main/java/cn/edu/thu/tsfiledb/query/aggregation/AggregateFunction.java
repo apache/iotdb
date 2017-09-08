@@ -1,6 +1,7 @@
 package cn.edu.thu.tsfiledb.query.aggregation;
 
 import java.io.IOException;
+import java.util.List;
 
 import cn.edu.thu.tsfiledb.query.dataset.InsertDynamicData;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
@@ -18,49 +19,56 @@ public abstract class AggregateFunction {
         this.name = name;
         this.dataType = dataType;
         result = new AggregationResult(dataType);
-        result.data.putTime(0);
     }
+
+    protected abstract boolean calculateValueFromPageHeader(PageHeader pageHeader);
 
     /**
      * Return false if the result can not be calculated from pageHeader.
+     * //TODO this method always reture true..
+     *
+     * @param pageHeader <code>PageHeader</code>
+     * @return false if the result can not be judged from pageHeader.
      */
-    public abstract boolean calculateValueFromPageHeader(PageHeader pageHeader);
+    public boolean couldCalculateFromPageHeader(PageHeader pageHeader) {
+        return calculateValueFromPageHeader(pageHeader);
+    }
+
+    protected abstract void calculateValueFromDataInThisPage(DynamicOneColumnData dataInThisPage) throws IOException, ProcessorException;
 
     /**
-     * Calculate the value according to all data in this page.
+     * Before invoking this method, <code>couldCalculateFromPageHeader</code> method will return false.
+     * Calculate the aggregation according to all decompressed data in this page.
+     *
+     * @param dataInThisPage the data in the DataPage
+     * @throws IOException tsfile data read excption
+     * @throws ProcessorException wrong aggregation method parameter
      */
-    public abstract void calculateValueFromDataInThisPage(DynamicOneColumnData dataInThisPage) throws IOException, ProcessorException;
-
-    public boolean calculateFromPageHeader(PageHeader pageHeader) {
-        boolean ret = calculateValueFromPageHeader(pageHeader);
-        if (ret) {
-            addCount(pageHeader);
-        }
-        return ret;
-    }
-
     public void calculateFromDataInThisPage(DynamicOneColumnData dataInThisPage) throws IOException, ProcessorException {
         calculateValueFromDataInThisPage(dataInThisPage);
-        addCount(dataInThisPage);
     }
 
+    /**
+     * Before invoking this method, <code>couldCalculateFromPageHeader</code> method will return false.
+     * Calculate the aggregation according to all decompressed data in this page.
+     *
+     * @param insertMemoryData the data in the DataPage with memory bufferwrite data
+     * @throws IOException tsfile data read excption
+     * @throws ProcessorException wrong aggregation method parameter
+     */
     public void calculateFromLeftMemoryData(InsertDynamicData insertMemoryData) throws IOException, ProcessorException {
         calculateValueFromDataInThisPage(insertMemoryData);
-        // addCount(insertMemoryData);
     }
 
-    private void addCount(PageHeader pageHeader) {
-        long count = result.data.getTime(0) + pageHeader.data_page_header.num_rows;
-        result.data.setTime(0, count);
+    /**
+     * This method is calculate the aggregation using the common timestamps of cross series filter.
+     *
+     * @param insertMemoryData the data in the DataPage with memory bufferwrite data
+     * @param timestamps the common timestamps calculated by cross series filter
+     * @throws IOException tsfile data read excption
+     * @throws ProcessorException wrong aggregation method parameter
+     */
+    public void calcAggregationUsingTimestamps(InsertDynamicData insertMemoryData, List<Long> timestamps) throws IOException, ProcessorException {
+
     }
-
-    private void addCount(DynamicOneColumnData dataInThisPage) {
-        if (dataInThisPage instanceof InsertDynamicData) {
-
-        } else {
-            long count = result.data.getTime(0) + dataInThisPage.valueLength;
-            result.data.setTime(0, count);
-        }
-    }
-
 }

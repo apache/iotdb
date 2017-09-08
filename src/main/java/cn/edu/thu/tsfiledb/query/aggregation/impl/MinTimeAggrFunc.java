@@ -3,6 +3,7 @@ package cn.edu.thu.tsfiledb.query.aggregation.impl;
 import java.io.IOException;
 
 import cn.edu.thu.tsfiledb.query.aggregation.AggregateFunction;
+import cn.edu.thu.tsfiledb.query.aggregation.AggregationConstant;
 import cn.edu.thu.tsfiledb.query.dataset.InsertDynamicData;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 import cn.edu.tsinghua.tsfile.common.utils.Pair;
@@ -15,7 +16,8 @@ public class MinTimeAggrFunc extends AggregateFunction {
     private boolean hasSetValue = false;
 
     public MinTimeAggrFunc() {
-        super("MIN_TIME", TSDataType.INT64);
+        super(AggregationConstant.MIN_TIME, TSDataType.INT64);
+        result.data.putTime(0);
     }
 
     @Override
@@ -35,9 +37,9 @@ public class MinTimeAggrFunc extends AggregateFunction {
     @Override
     public void calculateValueFromDataInThisPage(DynamicOneColumnData dataInThisPage) throws IOException, ProcessorException {
         if (dataInThisPage instanceof InsertDynamicData) {
-            Pair<Long, Object> pair = ((InsertDynamicData) dataInThisPage).calcAggregation("MIN_TIME");
-            if (pair.left != 0) {
-                long timestamp = (long)pair.right;
+            Object min_time = ((InsertDynamicData) dataInThisPage).calcAggregation(AggregationConstant.MIN_TIME);
+            if (min_time != null) {
+                long timestamp = (long)min_time;
                 if (!hasSetValue) {
                     result.data.putLong(timestamp);
                     hasSetValue = true;
@@ -46,14 +48,13 @@ public class MinTimeAggrFunc extends AggregateFunction {
                     minv = minv < timestamp ? minv : timestamp;
                     result.data.setLong(0, minv);
                 }
-                long count = result.data.getTime(0) + pair.left;
-                result.data.setTime(0, count);
             }
         }
         else {
             if (dataInThisPage.valueLength == 0) {
                 return;
             }
+            // use the first timestamp of the DynamicOneColumnData
             long timestamp = dataInThisPage.getTime(0);
             if (!hasSetValue) {
                 result.data.putLong(timestamp);

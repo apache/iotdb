@@ -4,7 +4,6 @@ import cn.edu.thu.tsfiledb.conf.TsfileDBConfig;
 import cn.edu.thu.tsfiledb.conf.TsfileDBDescriptor;
 import cn.edu.tsinghua.tsfile.common.conf.TSFileConfig;
 import cn.edu.tsinghua.tsfile.common.conf.TSFileDescriptor;
-
 import org.apache.commons.io.FileUtils;
 import org.junit.After;
 import org.junit.Assert;
@@ -15,7 +14,7 @@ import java.io.File;
 import java.sql.*;
 
 /**
- * .
+ *
  */
 public class CrossReadBugFixTest {
     private final String FOLDER_HEADER = "src/test/resources";

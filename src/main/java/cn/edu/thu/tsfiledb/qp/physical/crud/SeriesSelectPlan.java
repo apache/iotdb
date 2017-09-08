@@ -1,23 +1,10 @@
 package cn.edu.thu.tsfiledb.qp.physical.crud;
 
 import static cn.edu.thu.tsfiledb.qp.constant.SQLConstant.lineFeedSignal;
+import java.util.*;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.List;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import cn.edu.thu.tsfiledb.exception.PathErrorException;
-import cn.edu.thu.tsfiledb.qp.exception.QueryProcessorException;
-import cn.edu.thu.tsfiledb.qp.executor.QueryProcessExecutor;
-import cn.edu.thu.tsfiledb.qp.logical.Operator.OperatorType;
-import cn.edu.thu.tsfiledb.qp.logical.crud.FilterOperator;
-import cn.edu.thu.tsfiledb.qp.physical.PhysicalPlan;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
+import cn.edu.tsinghua.tsfile.common.utils.Pair;
 import cn.edu.tsinghua.tsfile.timeseries.filter.definition.FilterExpression;
 import cn.edu.tsinghua.tsfile.timeseries.filter.definition.FilterFactory;
 import cn.edu.tsinghua.tsfile.timeseries.filter.definition.SingleSeriesFilterExpression;
@@ -27,6 +14,14 @@ import cn.edu.tsinghua.tsfile.timeseries.read.qp.Path;
 import cn.edu.tsinghua.tsfile.timeseries.read.query.QueryDataSet;
 import cn.edu.tsinghua.tsfile.timeseries.read.support.RowRecord;
 import cn.edu.tsinghua.tsfile.timeseries.utils.StringContainer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import cn.edu.thu.tsfiledb.exception.PathErrorException;
+import cn.edu.thu.tsfiledb.qp.exception.QueryProcessorException;
+import cn.edu.thu.tsfiledb.qp.executor.QueryProcessExecutor;
+import cn.edu.thu.tsfiledb.qp.logical.Operator.OperatorType;
+import cn.edu.thu.tsfiledb.qp.logical.crud.FilterOperator;
+import cn.edu.thu.tsfiledb.qp.physical.PhysicalPlan;
 
 /**
  * This class is constructed with a single query plan. Single query means it could be processed by
@@ -38,29 +33,38 @@ import cn.edu.tsinghua.tsfile.timeseries.utils.StringContainer;
  * {@code SeriesSelectPlan} is regard as a portion of {@code MergeQuerySetPlan}. This class provide
  * a {@code Iterator<RowRecord>}in the latter case.
  *
- * @author kangrong
  */
 public class SeriesSelectPlan extends PhysicalPlan {
 
     private static final Logger LOG = LoggerFactory.getLogger(SeriesSelectPlan.class);
     private List<Path> paths = new ArrayList<>();
+    private List<String> aggregations = new ArrayList<>();
     private FilterOperator timeFilterOperator;
     private FilterOperator freqFilterOperator;
     private FilterOperator valueFilterOperator;
     private FilterExpression[] filterExpressions;
 
-    public SeriesSelectPlan(List<Path> paths,
-                            FilterOperator timeFilter, FilterOperator freqFilter, FilterOperator valueFilter, QueryProcessExecutor executor) throws QueryProcessorException {
+    public SeriesSelectPlan(List<Path> paths, FilterOperator timeFilter,
+                            FilterOperator freqFilter, FilterOperator valueFilter,
+                            QueryProcessExecutor executor, List<String> aggregations) throws QueryProcessorException {
         super(true, OperatorType.QUERY);
         this.paths = paths;
         this.timeFilterOperator = timeFilter;
         this.freqFilterOperator = freqFilter;
         this.valueFilterOperator = valueFilter;
-        removeStarsInPath(executor);
         LOG.debug(Arrays.toString(paths.toArray()));
         checkPaths(executor);
         LOG.debug(Arrays.toString(paths.toArray()));
         filterExpressions = transformToFilterExpressions(executor);
+        this.aggregations = aggregations;
+    }
+
+    public void setAggregations(List<String> aggregations) {
+        this.aggregations = aggregations;
+    }
+
+    public List<String> getAggregations() {
+        return aggregations;
     }
 
     /**
@@ -71,28 +75,6 @@ public class SeriesSelectPlan extends PhysicalPlan {
      */
     public FilterExpression[] getFilterExpressions() {
         return filterExpressions;
-    }
-
-    /**
-     * replace "*" by actual paths
-     *
-     * @param executor query process executor
-     */
-    private void removeStarsInPath(QueryProcessExecutor executor) throws PathErrorException {
-        LinkedHashMap<String, Integer> pathMap = new LinkedHashMap<>();
-        for (Path path : paths) {
-            List<String> all;
-            all = executor.getAllPaths(path.getFullPath());
-            for (String subPath : all) {
-                if (!pathMap.containsKey(subPath)) {
-                    pathMap.put(subPath, 1);
-                }
-            }
-        }
-        paths = new ArrayList<>();
-        for (String pathStr : pathMap.keySet()) {
-            paths.add(new Path(pathStr));
-        }
     }
 
     /**
@@ -136,29 +118,30 @@ public class SeriesSelectPlan extends PhysicalPlan {
     }
 
 
-    public static Iterator<RowRecord>[] getRecordIteratorArray(List<SeriesSelectPlan> plans,
-                                                               QueryProcessExecutor executor) throws QueryProcessorException {
-        Iterator<RowRecord>[] ret = new RowRecordIterator[plans.size()];
-        for (int formNumber = 0; formNumber < plans.size(); formNumber++) {
-            ret[formNumber] = plans.get(formNumber).getRecordIterator(executor, formNumber);
-        }
-        return ret;
-    }
-
     /**
      * @param executor query process executor
      * @return Iterator<RowRecord>
      */
     private Iterator<RowRecord> getRecordIterator(QueryProcessExecutor executor, int formNumber) throws QueryProcessorException {
 
-        return new RowRecordIterator(formNumber, paths, executor.getFetchSize(), executor, filterExpressions[0], filterExpressions[1], filterExpressions[2]);
+        return new RowRecordIterator(formNumber,paths, executor.getFetchSize(), executor, filterExpressions[0], filterExpressions[1], filterExpressions[2]);
+    }
+
+
+    public static Iterator<RowRecord>[] getRecordIteratorArray(List<SeriesSelectPlan> plans,
+                                                               QueryProcessExecutor conf) throws QueryProcessorException {
+        Iterator<RowRecord>[] ret = new RowRecordIterator[plans.size()];
+        for (int i = 0; i < plans.size(); i++) {
+            ret[i] = plans.get(i).getRecordIterator(conf, i);
+        }
+        return ret;
     }
 
     @Override
     public String printQueryPlan() {
         StringContainer sc = new StringContainer();
         String preSpace = "  ";
-        sc.addTail(preSpace, "series getIndex plan:", lineFeedSignal);
+        sc.addTail("SeriesSelectPlan:", lineFeedSignal);
         sc.addTail(preSpace, "paths:  ").addTail(paths.toString(), lineFeedSignal);
         sc.addTail(preSpace, timeFilterOperator == null ? "null" : timeFilterOperator.toString(),
                 lineFeedSignal);

@@ -171,12 +171,10 @@ public class PhysicalGenerator {
 		SelectOperator selectOperator = queryOperator.getSelectOperator();
 		FilterOperator filterOperator = queryOperator.getFilterOperator();
 
-		String aggregation = selectOperator.getAggregation();
-		if (aggregation != null)
-			executor.addParameter(SQLConstant.IS_AGGREGATION, aggregation);
+		List<String> aggregations = selectOperator.getAggregations();
 		ArrayList<SeriesSelectPlan> subPlans = new ArrayList<>();
 		if (filterOperator == null) {
-			subPlans.add(new SeriesSelectPlan(paths, null, null, null, executor));
+			subPlans.add(new SeriesSelectPlan(paths, null, null, null, executor, null));
 		} else {
 			List<FilterOperator> parts = splitFilter(filterOperator);
 			for (FilterOperator filter : parts) {
@@ -185,11 +183,17 @@ public class PhysicalGenerator {
 					subPlans.add(plan);
 			}
 		}
-		return new MergeQuerySetPlan(subPlans);
+
+		if(subPlans.size() == 1) {
+			subPlans.get(0).setAggregations(aggregations);
+			return subPlans.get(0);
+		} else {
+			return new MergeQuerySetPlan(subPlans, aggregations);
+		}
 	}
 
 	private SeriesSelectPlan constructSelectPlan(FilterOperator filterOperator, List<Path> paths,
-			QueryProcessExecutor conf) throws QueryProcessorException {
+												 QueryProcessExecutor conf) throws QueryProcessorException {
 		FilterOperator timeFilter = null;
 		FilterOperator freqFilter = null;
 		FilterOperator valueFilter = null;
@@ -199,8 +203,7 @@ public class PhysicalGenerator {
 			singleFilterList.add(filterOperator);
 		} else if (filterOperator.getTokenIntType() == KW_AND) {
 			// now it has been dealt with merge optimizer, thus all nodes with
-			// same path have been
-			// merged to one node
+			// same path have been merged to one node
 			singleFilterList = filterOperator.getChildren();
 		} else {
 			throw new GeneratePhysicalPlanException("for one tasks, filter cannot be OR if it's not single");
@@ -212,21 +215,21 @@ public class PhysicalGenerator {
 						"in format:[(a) and () and ()] or [] or [], a is not single! a:" + child);
 			}
 			switch (child.getSinglePath().toString()) {
-			case SQLConstant.RESERVED_TIME:
-				if (timeFilter != null) {
-					throw new GeneratePhysicalPlanException("time filter has been specified more than once");
-				}
-				timeFilter = child;
-				break;
-			case SQLConstant.RESERVED_FREQ:
-				if (freqFilter != null) {
-					throw new GeneratePhysicalPlanException("freq filter has been specified more than once");
-				}
-				freqFilter = child;
-				break;
-			default:
-				valueList.add(child);
-				break;
+				case SQLConstant.RESERVED_TIME:
+					if (timeFilter != null) {
+						throw new GeneratePhysicalPlanException("time filter has been specified more than once");
+					}
+					timeFilter = child;
+					break;
+				case SQLConstant.RESERVED_FREQ:
+					if (freqFilter != null) {
+						throw new GeneratePhysicalPlanException("freq filter has been specified more than once");
+					}
+					freqFilter = child;
+					break;
+				default:
+					valueList.add(child);
+					break;
 			}
 		}
 		if (valueList.size() == 1) {
@@ -236,7 +239,7 @@ public class PhysicalGenerator {
 			valueFilter.setChildren(valueList);
 		}
 
-		return new SeriesSelectPlan(paths, timeFilter, freqFilter, valueFilter, conf);
+		return new SeriesSelectPlan(paths, timeFilter, freqFilter, valueFilter, conf, null);
 	}
 
 	/**

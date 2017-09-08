@@ -34,4 +34,7 @@ public abstract class PhysicalPlan {
         return operatorType;
     }
 
+    public List<String> getAggregations(){
+        return null;
+    }
 }

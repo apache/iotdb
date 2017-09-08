@@ -13,6 +13,8 @@ import cn.edu.tsinghua.tsfile.timeseries.filter.visitorImpl.SingleValueVisitorFa
 import cn.edu.tsinghua.tsfile.timeseries.read.qp.Path;
 import cn.edu.tsinghua.tsfile.timeseries.read.query.DynamicOneColumnData;
 import cn.edu.tsinghua.tsfile.timeseries.read.query.QueryDataSet;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Take out some common methods used for QueryEngine.
@@ -275,7 +277,7 @@ public class EngineUtils {
      *
      * @param overflowData data in overflow insert
      * @param memoryData data in buffer write insert
-     * @return
+     * @return merge result of the overflow and memory insert
      */
     private static DynamicOneColumnData mergeOverflowAndMemory(
             DynamicOneColumnData overflowData, DynamicOneColumnData memoryData) {

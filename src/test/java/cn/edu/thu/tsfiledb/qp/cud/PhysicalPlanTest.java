@@ -3,6 +3,8 @@ package cn.edu.thu.tsfiledb.qp.cud;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
+import cn.edu.thu.tsfiledb.qp.physical.crud.MergeQuerySetPlan;
+import cn.edu.thu.tsfiledb.qp.physical.crud.SeriesSelectPlan;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -77,7 +79,8 @@ public class PhysicalPlanTest {
         PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
         if (!plan.isQuery())
             fail();
-        assertEquals("sum", processor.getExecutor().getParameter(SQLConstant.IS_AGGREGATION));
+        SeriesSelectPlan mergePlan = (SeriesSelectPlan) plan;
+        assertEquals("sum", mergePlan.getAggregations().get(0));
     }
 
 }

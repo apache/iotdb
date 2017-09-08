@@ -49,7 +49,8 @@ public class TsfileQueryResultSet implements ResultSet {
 	private boolean isClosed = false;
 	private TSIService.Iface client = null;
 	private TSOperationHandle operationHandle = null;
-	private Map<String, Integer> columnInfo;
+	private List<String> columnInfoList;
+	private Map<String, Integer> columnInfoMap;
 	private RowRecord record;
 	private Iterator<RowRecord> recordItr;
 	private int rowsFetched = 0;
@@ -64,22 +65,28 @@ public class TsfileQueryResultSet implements ResultSet {
 	}
 
 	public TsfileQueryResultSet(Statement statement, List<String> columnName, TSIService.Iface client,
-			TS_SessionHandle sessionHandle, TSOperationHandle operationHandle, String sql, String operationType)
+			TS_SessionHandle sessionHandle, TSOperationHandle operationHandle, String sql,
+								String aggregations)
 			throws SQLException {
 		this.statement = statement;
 		this.sql = sql;
-		this.columnInfo = new HashMap<>();
+		this.columnInfoList = new ArrayList<>();
+		this.columnInfoMap = new HashMap<>();
 		this.client = client;
 		this.operationHandle = operationHandle;
-		columnInfo.put(TIMESTAMP_STR, 0);
+		this.columnInfoList.add(TIMESTAMP_STR);
+		this.columnInfoMap.put(TIMESTAMP_STR, 0);
 		int index = 1;
 		for (String name : columnName) {
-			columnInfo.put(name, index++);
+			columnInfoList.add(name);
+			if(!columnInfoMap.containsKey(name)){
+				columnInfoMap.put(name, index++);
+			}
 		}
 		this.maxRows = statement.getMaxRows();
 		this.fetchSize = statement.getFetchSize();
 		this.operationHandle = operationHandle;
-		this.operationType = operationType;
+		this.operationType = aggregations;
 	}
 
 	@Override
@@ -149,11 +156,7 @@ public class TsfileQueryResultSet implements ResultSet {
 
 	@Override
 	public int findColumn(String columnName) throws SQLException {
-		Integer column = columnInfo.get(columnName);
-		if (column == null) {
-			throw new SQLException(String.format("Column %s does not exist", columnName));
-		}
-		return column;
+		return columnInfoMap.get(columnName);
 	}
 
 	@Override
@@ -183,12 +186,12 @@ public class TsfileQueryResultSet implements ResultSet {
 
 	@Override
 	public BigDecimal getBigDecimal(int columnIndex) throws SQLException {
-		return new BigDecimal(getValue(columnIndex));
+		return getBigDecimal(findColumnNameByIndex(columnIndex));
 	}
 
 	@Override
 	public BigDecimal getBigDecimal(String columnName) throws SQLException {
-		return getBigDecimal(findColumn(columnName));
+		return new BigDecimal(getValueByNane(columnName));
 	}
 
 	@Override
@@ -224,17 +227,17 @@ public class TsfileQueryResultSet implements ResultSet {
 
 	@Override
 	public boolean getBoolean(int columnIndex) throws SQLException {
-		String b = getValue(columnIndex);
-		if (b.trim().equalsIgnoreCase("0"))
-			return false;
-		if (b.trim().equalsIgnoreCase("1"))
-			return true;
-		return Boolean.parseBoolean(getValue(columnIndex));
+		return getBoolean(findColumnNameByIndex(columnIndex));
 	}
 
 	@Override
 	public boolean getBoolean(String columnName) throws SQLException {
-		return getBoolean(findColumn(columnName));
+		String b = getValueByNane(columnName);
+		if (b.trim().equalsIgnoreCase("0"))
+			return false;
+		if (b.trim().equalsIgnoreCase("1"))
+			return true;
+		return Boolean.parseBoolean(b);
 	}
 
 	@Override
@@ -313,12 +316,12 @@ public class TsfileQueryResultSet implements ResultSet {
 
 	@Override
 	public double getDouble(int columnIndex) throws SQLException {
-		return Double.parseDouble(getValue(columnIndex));
+		return getDouble(findColumnNameByIndex(columnIndex));
 	}
 
 	@Override
 	public double getDouble(String columnName) throws SQLException {
-		return getDouble(findColumn(columnName));
+		return Double.parseDouble(getValueByNane(columnName));
 	}
 
 	@Override
@@ -333,12 +336,12 @@ public class TsfileQueryResultSet implements ResultSet {
 
 	@Override
 	public float getFloat(int columnIndex) throws SQLException {
-		return Float.parseFloat(getValue(columnIndex));
+		return getFloat(findColumnNameByIndex(columnIndex));
 	}
 
 	@Override
 	public float getFloat(String columnName) throws SQLException {
-		return getFloat(findColumn(columnName));
+		return Float.parseFloat(getValueByNane(columnName));
 	}
 
 	@Override
@@ -348,27 +351,27 @@ public class TsfileQueryResultSet implements ResultSet {
 
 	@Override
 	public int getInt(int columnIndex) throws SQLException {
-		return Integer.parseInt(getValue(columnIndex));
+		return getInt(findColumnNameByIndex(columnIndex));
 	}
 
 	@Override
 	public int getInt(String columnName) throws SQLException {
-		return getInt(findColumn(columnName));
+		return Integer.parseInt(getValueByNane(columnName));
 	}
 
 	@Override
 	public long getLong(int columnIndex) throws SQLException {
-		return Long.parseLong(getValue(columnIndex));
+		return getLong(findColumnNameByIndex(columnIndex));
 	}
 
 	@Override
 	public long getLong(String columnName) throws SQLException {
-		return getLong(findColumn(columnName));
+		return Long.parseLong(getValueByNane(columnName));
 	}
 
 	@Override
 	public ResultSetMetaData getMetaData() throws SQLException {
-		return new TsfileResultMetadata(columnInfo, operationType);
+		return new TsfileResultMetadata(columnInfoList, columnInfoMap, operationType);
 	}
 
 	@Override
@@ -403,12 +406,12 @@ public class TsfileQueryResultSet implements ResultSet {
 
 	@Override
 	public Object getObject(int columnIndex) throws SQLException {
-		return getValue(columnIndex);
+		return getObject(findColumnNameByIndex(columnIndex));
 	}
 
 	@Override
 	public Object getObject(String columnName) throws SQLException {
-		return getObject(findColumn(columnName));
+		return getValueByNane(columnName);
 	}
 
 	@Override
@@ -468,12 +471,12 @@ public class TsfileQueryResultSet implements ResultSet {
 
 	@Override
 	public short getShort(int columnIndex) throws SQLException {
-		return Short.parseShort(getValue(columnIndex));
+		return getShort(findColumnNameByIndex(columnIndex));
 	}
 
 	@Override
 	public short getShort(String columnName) throws SQLException {
-		return getShort(findColumn(columnName));
+		return Short.parseShort(getValueByNane(columnName));
 	}
 
 	@Override
@@ -483,12 +486,12 @@ public class TsfileQueryResultSet implements ResultSet {
 
 	@Override
 	public String getString(int columnIndex) throws SQLException {
-		return getValue(columnIndex);
+		return getString(findColumnNameByIndex(columnIndex));
 	}
 
 	@Override
 	public String getString(String columnName) throws SQLException {
-		return getString(findColumn(columnName));
+		return getValueByNane(columnName);
 	}
 
 	@Override
@@ -1115,17 +1118,21 @@ public class TsfileQueryResultSet implements ResultSet {
 			throw new SQLException("No record remains");
 		}
 	}
+	
+	private String findColumnNameByIndex(int columnIndex) throws SQLException{
+		if(columnIndex >= columnInfoList.size()){
+			throw new SQLException(String.format("column index %d out of range %d", columnIndex, columnInfoList.size()));
+		}
+		return columnInfoList.get(columnIndex);
+	}
 
-	private String getValue(int columnIndex) throws SQLException {
+	private String getValueByNane(String columnName) throws SQLException {
 		checkRecord();
-		if (columnIndex == 0) {
+		if (columnName.equals(TIMESTAMP_STR)) {
 			return String.valueOf(record.getTime());
 		}
-		int len = record.fields.size();
-		if (columnIndex > len || len == 0) {
-			throw new SQLException(String.format("columnIndex %d out of range %d", columnIndex, len));
-		}
-		Field field = record.fields.get(columnIndex - 1);
+		int tmp = columnInfoMap.get(columnName);
+		Field field = record.fields.get(tmp - 1);
 		if(field == null || field.getStringValue() == null) return null;
 		return field.getStringValue();
 	}

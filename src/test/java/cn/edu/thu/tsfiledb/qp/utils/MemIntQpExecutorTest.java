@@ -73,7 +73,7 @@ public class MemIntQpExecutorTest {
         // default filter type is integer
         SingleSeriesFilterExpression valueFilter = FilterUtils.construct(filterString, null);
         while (true) {
-            ret = processor.getExecutor().query(0,pathList, null, null, valueFilter, 1, ret);
+            ret = processor.getExecutor().query(0, pathList, null, null, valueFilter, 1, ret);
             if (!ret.hasNextRecord())
                 break;
             while (ret.hasNextRecord()) {
