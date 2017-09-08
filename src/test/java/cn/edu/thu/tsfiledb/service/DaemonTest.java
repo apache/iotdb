@@ -25,6 +25,7 @@ public class DaemonTest {
     private final String d0s1 = "root.vehicle.d0.s1";
     private final String d0s2 = "root.vehicle.d0.s2";
     private final String d0s3 = "root.vehicle.d0.s3";
+    private final String d0s4 = "root.vehicle.d0.s4";
     private final String d1s0 = "root.vehicle.d1.s0";
     private final String d1s1 = "root.vehicle.d1.s1";
 
@@ -34,6 +35,7 @@ public class DaemonTest {
             "CREATE TIMESERIES root.vehicle.d0.s3 WITH DATATYPE=TEXT, ENCODING=PLAIN",
             "CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE",
             "CREATE TIMESERIES root.vehicle.d0.s1 WITH DATATYPE=INT64, ENCODING=RLE",
+            "CREATE TIMESERIES root.vehicle.d0.s4 WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
             "SET STORAGE GROUP TO root.vehicle",
 
             "insert into root.vehicle.d0(timestamp,s0) values(1,101)",
@@ -83,6 +85,9 @@ public class DaemonTest {
 
             "insert into root.vehicle.d0(timestamp,s1) values(2000-01-01T08:00:00+08:00, 100)",
             "insert into root.vehicle.d0(timestamp,s3) values(2000-01-01T08:00:00+08:00, 'good')",
+
+            "insert into root.vehicle.d0(timestamp,s4) values(100, false)",
+            "insert into root.vehicle.d0(timestamp,s4) values(100, true)",
     };
 
     private String overflowDataDirPre;
@@ -285,6 +290,24 @@ public class DaemonTest {
                     cnt++;
                 }
                 Assert.assertEquals(17, cnt);
+            }
+            statement.close();
+
+            retArray = new String[]{
+                    "100,true"
+            };
+            statement = connection.createStatement();
+            hasResultSet = statement.execute("select s4 from root.vehicle.d0");
+            if (hasResultSet) {
+                ResultSet resultSet = statement.getResultSet();
+                int cnt = 0;
+                while (resultSet.next()) {
+                    String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s4);
+                    //System.out.println("======" + ans);
+                    Assert.assertEquals(ans, retArray[cnt]);
+                    cnt++;
+                }
+                Assert.assertEquals(1, cnt);
             }
             statement.close();
         } catch (Exception e) {
