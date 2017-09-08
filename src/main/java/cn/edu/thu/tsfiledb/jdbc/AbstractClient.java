@@ -145,7 +145,6 @@ public abstract class AbstractClient {
 			printBlockLine(printTimestamp, colCount, res);
 			printName(printTimestamp, colCount, res);
 			printBlockLine(printTimestamp, colCount, res);
-			printHeader = true;
 		}
 		printBlockLine(printTimestamp, colCount, res);
 		System.out.println("record number = " + cnt);
