@@ -123,10 +123,10 @@ public class OverflowQueryEngine {
 
         String deltaObjectID = path.getDeltaObjectToString();
         String measurementID = path.getMeasurementToString();
-        String deltaKey = "Q" + this.formNumber + "." + deltaObjectID;
+        String recordReaderPrefix = ReadCachePrefix.addQueryPrefix(formNumber);
 
         RecordReader recordReader = RecordReaderFactory.getInstance().getRecordReader(deltaObjectID, measurementID,
-                null, null, null, readLock, deltaKey);
+                null, null, null, readLock, recordReaderPrefix);
 
         if (res == null) {
             // get overflow params merged with bufferwrite insert data
@@ -187,10 +187,10 @@ public class OverflowQueryEngine {
                                                         DynamicOneColumnData res, int fetchSize, Integer readLock) throws ProcessorException, IOException, PathErrorException {
         String deltaObjectId = path.getDeltaObjectToString();
         String measurementId = path.getMeasurementToString();
-        String deltaKey = "Q" + this.formNumber + "." + deltaObjectId;
+        String recordReaderPrefix = ReadCachePrefix.addQueryPrefix(formNumber);
 
         RecordReader recordReader = RecordReaderFactory.getInstance().getRecordReader(deltaObjectId, measurementId,
-                timeFilter, freqFilter, valueFilter, readLock, deltaKey);
+                timeFilter, freqFilter, valueFilter, readLock, recordReaderPrefix);
 
         if (res == null) {
             // get overflow params merged with bufferwrite insert data
@@ -250,8 +250,8 @@ public class OverflowQueryEngine {
 
             String deltaObjectId = path.getDeltaObjectToString();
             String measurementId = path.getMeasurementToString();
-            String recordReaderPrefix = "Q" + this.formNumber + "." + deltaObjectId;
-            String queryKey = deltaObjectId + "." + measurementId;
+            String recordReaderPrefix = ReadCachePrefix.addQueryPrefix(formNumber);
+            String queryKey = String.format("%s.%s", deltaObjectId, measurementId);
 
             RecordReader recordReader = RecordReaderFactory.getInstance().getRecordReader(deltaObjectId, measurementId,
                     null, null, null, null, recordReaderPrefix);
@@ -302,13 +302,11 @@ public class OverflowQueryEngine {
                                                              DynamicOneColumnData res, int fetchSize, int valueFilterNumber)
             throws ProcessorException, IOException, PathErrorException {
 
-        // V.valueFilterNumber.deltaObjectId.measurementId
+        // form.V.valueFilterNumber.deltaObjectId.measurementId
         String deltaObjectUID = ((SingleSeriesFilterExpression) valueFilter).getFilterSeries().getDeltaObjectUID();
         String measurementUID = ((SingleSeriesFilterExpression) valueFilter).getFilterSeries().getMeasurementUID();
-        String valueFilterPrefix = formNumber + "." + "V" + valueFilterNumber + ".";
-        // String formNumberPrefix = formNumber;
+        String valueFilterPrefix = ReadCachePrefix.addFilterPrefix(ReadCachePrefix.addFilterPrefix(valueFilterNumber), formNumber);
 
-        LOGGER.info("Cross query value filter : " + formNumber +  ".V" + valueFilterNumber + "." + deltaObjectUID + "." + measurementUID);
         RecordReader recordReader = RecordReaderFactory.getInstance().getRecordReader(deltaObjectUID, measurementUID,
                 null, freqFilter, valueFilter, null, valueFilterPrefix);
 
@@ -334,35 +332,5 @@ public class OverflowQueryEngine {
         }
 
         return res;
-    }
-
-    /**
-     * In cross column query, such as "select s0,s1,s2 from root.vehicle.d0 where time < 106 and (s0 >= 60 or s1 <= 200),"
-     * when calculate the common time, the position in InsertDynamicData may be wrong.
-     *
-     * @param filter
-     * @param hashSet
-     */
-    private void resetRecordStatusUsingValueFilter(FilterExpression filter, HashSet<String> hashSet) throws ProcessorException {
-        if (filter instanceof SingleSeriesFilterExpression) {
-            if (filter instanceof SingleUnaryExpression) {
-                FilterSeries series = ((SingleUnaryExpression) filter).getFilterSeries();
-                String key = series.getDeltaObjectUID() + "." + series.getMeasurementUID();
-                if (!hashSet.contains(key)) {
-                    RecordReader recordReader = RecordReaderFactory.getInstance().getRecordReader(series.getDeltaObjectUID(), series.getMeasurementUID(),
-                            null, null, null, null, "");
-                    if (recordReader.insertAllData != null) {
-                        recordReader.insertAllData.readStatusReset();
-                    }
-                    hashSet.add(key);
-                }
-            } else if (filter instanceof SingleBinaryExpression) {
-                resetRecordStatusUsingValueFilter(((SingleBinaryExpression) filter).getLeft(), hashSet);
-                resetRecordStatusUsingValueFilter(((SingleBinaryExpression) filter).getRight(), hashSet);
-            }
-        } else if (filter instanceof CrossSeriesFilterExpression) {
-            resetRecordStatusUsingValueFilter(((CrossSeriesFilterExpression) filter).getLeft(), hashSet);
-            resetRecordStatusUsingValueFilter(((CrossSeriesFilterExpression) filter).getRight(), hashSet);
-        }
     }
 }
