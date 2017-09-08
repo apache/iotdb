@@ -30,6 +30,7 @@ import org.apache.thrift.TException;
 
 import cn.edu.thu.tsfiledb.exception.ArgsErrorException;
 import cn.edu.thu.tsfiledb.jdbc.TsfileConnection;
+import cn.edu.thu.tsfiledb.jdbc.TsfileJDBCConfig;
 import cn.edu.tsinghua.tsfile.common.constant.SystemConstant;
 import jline.console.ConsoleReader;
 
@@ -192,7 +193,7 @@ public class ImportCsv extends AbstractCsvTool{
             		statement.clearBatch();
             		count = 0;
                 tmp.clear();
-                System.out.println(String.format("[INFO] Load data from %s successfully, it cost %dms", file.getName(), (System.currentTimeMillis()-startTime)));
+                System.out.println(String.format("[INFO] Load data from %s successfully, it takes %dms", file.getName(), (System.currentTimeMillis()-startTime)));
             } catch (SQLException e) {
                 bw.write(e.getMessage());
                 bw.newLine();
@@ -312,42 +313,15 @@ public class ImportCsv extends AbstractCsvTool{
                 return;
             }
 			parseSpecialParams(commandLine, reader);
-			Class.forName(JDBC_DRIVER);
-			connection = (TsfileConnection) DriverManager.getConnection("jdbc:tsfile://" + host + ":" + port + "/", username, password);
-			setTimeZone();
-			
-	        if (System.getProperty(SystemConstant.TSFILE_HOME) == null) {
-	            errorInsertInfo = "src/test/resources/csvInsertError.error";
-	        } else {
-	            errorInsertInfo = System.getProperty(SystemConstant.TSFILE_HOME) + "/csvInsertError.error";
-	        }
-	        
-	        File file = new File(filename);
-	        if(file.isFile() && file.getName().endsWith(FILE_SUFFIX)){
-	        		loadDataFromCSV(file, 1);
-	        } else{
-	        		int i = 1;
-	        		for(File f : file.listFiles()){
-	        			if(f.isFile() && f.getName().endsWith(FILE_SUFFIX)){
-	        				loadDataFromCSV(f, i);
-	        				i++;
-	        			}
-	        		}
-	        }
+	        importCsvFromFile(host, port, username, password, filename, timeZoneID);
 		} catch (ArgsErrorException e) { 		
-		} catch (ClassNotFoundException e) {
-			System.out.println("[ERROR] Failed to dump data because cannot find TsFile JDBC Driver, please check whether you have imported driver or not");
-		} catch (TException e) {
-			System.out.println(String.format("[ERROR] Encounter an error when connecting to server, because %s", e.getMessage()));
 		} catch (Exception e) {
 			System.out.println(String.format("[ERROR] Encounter an error, because %s", e.getMessage()));
 		} finally {
 			if(reader != null){
 				reader.close();
 			}
-			if (connection != null){
-				connection.close();
-			}
+
 		}
     }
 
@@ -358,4 +332,47 @@ public class ImportCsv extends AbstractCsvTool{
 		
 
 	}
+
+    public static void importCsvFromFile(String ip,String port, String username, String password, String filename, String timeZone) throws SQLException{
+        if (System.getProperty(SystemConstant.TSFILE_HOME) == null) {
+            errorInsertInfo = "src/test/resources/csvInsertError.error";
+        } else {
+            errorInsertInfo = System.getProperty(SystemConstant.TSFILE_HOME) + "/csvInsertError.error";
+        }
+    		try {
+    			Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);
+    			connection = (TsfileConnection) DriverManager.getConnection("jdbc:tsfile://" + ip + ":" + port + "/", username, password);
+    			timeZoneID = timeZone;
+    			setTimeZone();
+    	        File file = new File(filename);
+    	        if(file.isFile()){
+    	        		if(file.getName().endsWith(FILE_SUFFIX)){
+    		        		loadDataFromCSV(file, 1);
+    	        		} else{
+    	        			System.out.println("[WARN] File "+file.getName()+" should ends with '.csv' if you want to import");	        			
+    	        		}
+    	        } else if(file.isDirectory()){
+    	        		int i = 1;
+    	        		for(File f : file.listFiles()){
+    	        			if(f.isFile()) {
+    	        				if(f.getName().endsWith(FILE_SUFFIX)){
+    		        				loadDataFromCSV(f, i);
+    		        				i++;
+    	        				} else{
+    	    	        				System.out.println("[WARN] File "+f.getName()+" should ends with '.csv' if you want to import");	        			
+    	    	        			}
+    	        			}
+    	        		}
+    	        }
+		} catch (ClassNotFoundException e) {
+			System.out.println("[ERROR] Failed to dump data because cannot find TsFile JDBC Driver, please check whether you have imported driver or not");		
+		} catch (TException e) {
+			System.out.println(String.format("[ERROR] Encounter an error when connecting to server, because %s", e.getMessage()));
+		} finally {
+			if (connection != null){
+				connection.close();
+			}
+		}
+
+    }
 }
