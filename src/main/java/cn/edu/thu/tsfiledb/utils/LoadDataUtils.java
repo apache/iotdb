@@ -31,7 +31,6 @@ import cn.edu.tsinghua.tsfile.timeseries.write.schema.FileSchema;
 /**
  * @author kangrong
  */
-@Deprecated
 public class LoadDataUtils {
     private static Logger LOG = LoggerFactory.getLogger(LoadDataUtils.class);
     private BufferedReader inputCsvFileReader;
