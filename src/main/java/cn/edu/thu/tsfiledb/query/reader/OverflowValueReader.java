@@ -334,9 +334,11 @@ public class OverflowValueReader extends ValueReader {
                                     insertMemoryData.removeCurrentValue();
                                 }
                             }
-
+                            if (!decoder.hasNext(page)) {
+                                break;
+                            }
+                            boolean v = decoder.readBoolean(page);
                             if (mode == -1) {
-                                boolean v = decoder.readBoolean(page);
                                 if ((valueFilter == null && timeFilter == null)
                                         || (valueFilter != null && timeFilter == null
                                         && valueVisitor.satisfyObject(v, valueFilter))
@@ -353,13 +355,12 @@ public class OverflowValueReader extends ValueReader {
                             }
 
                             if (mode == 0) {
-                                boolean v = decoder.readBoolean(page);
                                 if (updateData[0].getTime(updateIdx[0]) <= timeValues[timeIdx]
                                         && timeValues[timeIdx] <= updateData[0].getTime(updateIdx[0] + 1)) {
                                     // update the value
                                     if (timeFilter == null
                                             || timeVisitor.verify(timeValues[timeIdx])) {
-                                        res.putBoolean(updateData[0].getBoolean(updateIdx[0] / 2));
+                                        res.putInt(updateData[0].getInt(updateIdx[0] / 2));
                                         res.putTime(timeValues[timeIdx]);
                                         resCount++;
                                     }
@@ -379,7 +380,6 @@ public class OverflowValueReader extends ValueReader {
                             }
 
                             if (mode == 1) {
-                                boolean v = decoder.readBoolean(page);
                                 if (updateData[1].getTime(updateIdx[1]) <= timeValues[timeIdx]
                                         && timeValues[timeIdx] <= updateData[1].getTime(updateIdx[1] + 1)) {
                                     // do nothing
@@ -398,6 +398,8 @@ public class OverflowValueReader extends ValueReader {
                                 timeIdx++;
                             }
 
+                            // set the interval to next position that current time
+                            // in page maybe be included.
                             while (mode != -1 && timeIdx < timeValues.length
                                     && timeValues[timeIdx] > updateData[mode].getTime(updateIdx[mode] + 1)) {
                                 updateIdx[mode] += 2;
