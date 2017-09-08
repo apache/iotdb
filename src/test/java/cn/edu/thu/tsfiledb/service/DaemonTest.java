@@ -5,13 +5,13 @@ import static org.junit.Assert.*;
 import java.io.File;
 import java.sql.*;
 
-import cn.edu.thu.tsfiledb.jdbc.AbstractClient;
 import org.apache.commons.io.FileUtils;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import cn.edu.thu.tsfiledb.client.AbstractClient;
 import cn.edu.thu.tsfiledb.conf.TsfileDBConfig;
 import cn.edu.thu.tsfiledb.conf.TsfileDBDescriptor;
 

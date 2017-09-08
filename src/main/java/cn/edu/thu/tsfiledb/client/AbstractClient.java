@@ -1,4 +1,4 @@
-package cn.edu.thu.tsfiledb.jdbc;
+package cn.edu.thu.tsfiledb.client;
 
 import cn.edu.thu.tsfiledb.conf.TsFileDBConstant;
 import cn.edu.thu.tsfiledb.exception.ArgsErrorException;
