@@ -4,8 +4,9 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.*;
 
+import cn.edu.tsinghua.iotdb.jdbc.TsfileConnection;
+import cn.edu.tsinghua.iotdb.jdbc.TsfileJDBCConfig;
 import jline.console.completer.ArgumentCompleter;
-import jline.console.completer.CandidateListCompletionHandler;
 import jline.console.completer.StringsCompleter;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;

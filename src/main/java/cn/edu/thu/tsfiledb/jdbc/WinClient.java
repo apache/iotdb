@@ -5,6 +5,8 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.Scanner;
 
+import cn.edu.tsinghua.iotdb.jdbc.TsfileConnection;
+import cn.edu.tsinghua.iotdb.jdbc.TsfileJDBCConfig;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;

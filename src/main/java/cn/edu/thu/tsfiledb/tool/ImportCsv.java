@@ -18,6 +18,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
+import cn.edu.tsinghua.iotdb.jdbc.TsfileConnection;
+import cn.edu.tsinghua.iotdb.jdbc.TsfileJDBCConfig;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -29,8 +31,6 @@ import org.apache.commons.io.FileUtils;
 import org.apache.thrift.TException;
 
 import cn.edu.thu.tsfiledb.exception.ArgsErrorException;
-import cn.edu.thu.tsfiledb.jdbc.TsfileConnection;
-import cn.edu.thu.tsfiledb.jdbc.TsfileJDBCConfig;
 import cn.edu.tsinghua.tsfile.common.constant.SystemConstant;
 import jline.console.ConsoleReader;
 
@@ -225,11 +225,13 @@ public class ImportCsv extends AbstractCsvTool{
     }
 
     /**
-     * create Insert SQL statement according to every line csv data
      *
-     * @param line          csv line data
-     * @param bwToErrorFile the error info insert to file
-     * @return ArrayList<String> SQL statement list
+     * @param line csv line data
+     * @param timeseriesToType
+     * @param deviceToColumn
+     * @param colInfo
+     * @param headInfo
+     * @return
      * @throws IOException
      */
     private static List<String> createInsertSQL(String line,  Map<String, String> timeseriesToType,
