@@ -88,8 +88,8 @@ ArrayList<ParseError> errors = new ArrayList<ParseError>();
         xlateMap = new HashMap<String, String>();
 
         // Keywords
-        xlateMap.put("KW_TRUE", "TRUE");
-        xlateMap.put("KW_FALSE", "FALSE");
+        // xlateMap.put("KW_TRUE", "TRUE");
+        // xlateMap.put("KW_FALSE", "FALSE");
 
         xlateMap.put("KW_AND", "AND");
         xlateMap.put("KW_OR", "OR");
@@ -261,11 +261,11 @@ statement
 	;
 
 number
-    : Integer | Float
+    : Integer | Float | Boolean
     ;
 
 numberOrString // identifier is string or integer
-    : identifier | Float 
+    : Boolean | Float | identifier
     ;
 
 numberOrStringWidely

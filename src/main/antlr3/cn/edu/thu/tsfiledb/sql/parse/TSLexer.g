@@ -126,6 +126,12 @@ Float
 	Integer DOT Digit+ (('e' | 'E') Integer)?
 	;
 
+Boolean
+    :
+    ('T' | 't') ('R' | 'r') ('U' | 'u') ('E' | 'e') 
+    | ('F' | 'f') ('A' | 'a') ('L' | 'l') ('S' | 's') ('E' | 'e') 
+    ;
+
 Identifier
     :
     (Letter | '_') (Letter | Digit | '_' | MINUS)*

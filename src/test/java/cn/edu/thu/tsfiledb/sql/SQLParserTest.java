@@ -23,10 +23,10 @@ public class SQLParserTest {
         ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_CREATE", "TOK_TIMESERIES", "TOK_ROOT", "laptop",
                 "d0", "s2", "TOK_WITH", "TOK_DATATYPE", "FLOAT", "TOK_ENCODING", "RLE", "TOK_CLAUSE", "freq_encoding",
                 "DFT", "TOK_CLAUSE", "write_main_freq", "true", "TOK_CLAUSE", "dft_pack_length", "300", "TOK_CLAUSE",
-                "dft_rate", "0.4", "TOK_CLAUSE", "write_encoding", "false"));
+                "dft_rate", "0.4", "TOK_CLAUSE", "write_encoding", "False"));
         ArrayList<String> rec = new ArrayList<>();
         ASTNode astTree = ParseGenerator.generateAST("create timeseries root.laptop.d0.s2 with datatype=FLOAT" +
-                ",encoding=RLE,freq_encoding=DFT,write_main_freq=true,dft_pack_length=300,dft_rate=0.4,write_encoding=false");
+                ",encoding=RLE,freq_encoding=DFT,write_main_freq=true,dft_pack_length=300,dft_rate=0.4,write_encoding=False");
         astTree = ParseUtils.findRootNonNullToken(astTree);
         recursivePrintSon(astTree, rec);
 
@@ -74,9 +74,9 @@ public class SQLParserTest {
     public void multiInsert() throws ParseException {
         // template for test case
         ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_INSERT", "TOK_PATH", "root", "vehicle", "d0",
-                "TOK_MULT_IDENTIFIER", "TOK_TIME", "s0","s1" ,"TOK_MULT_VALUE", "12345678", "-1011.666", "'da#$%fa'"));
+                "TOK_MULT_IDENTIFIER", "TOK_TIME", "s0","s1", "s2", "TOK_MULT_VALUE", "12345678", "-1011.666", "'da#$%fa'", "FALSE", "True"));
         ArrayList<String> rec = new ArrayList<>();
-        ASTNode astTree = ParseGenerator.generateAST("insert into root.vehicle.d0 (timestamp, s0, s1)  values(12345678 , -1011.666, 'da#$%fa')");
+        ASTNode astTree = ParseGenerator.generateAST("insert into root.vehicle.d0 (timestamp, s0, s1, s2)  values(12345678 , -1011.666, 'da#$%fa', FALSE, True)");
         astTree = ParseUtils.findRootNonNullToken(astTree);
         recursivePrintSon(astTree, rec);
 
