@@ -93,10 +93,10 @@ public class Client extends AbstractClient {
 		try {
 			reader = new ConsoleReader();
 			reader.setExpandEvents(false);
-			for (Completer completer : getCommandCompleter()) {
-				reader.addCompleter(completer);
-			}
-			((CandidateListCompletionHandler) reader.getCompletionHandler()).setPrintSpaceAfterFullCompletion(false);
+//			for (Completer completer : getCommandCompleter()) {
+//				reader.addCompleter(completer);
+//			}
+//			((CandidateListCompletionHandler) reader.getCompletionHandler()).setPrintSpaceAfterFullCompletion(false);
 			String s;
 			try {
 				String host = checkRequiredArg(HOST_ARGS, HOST_NAME, commandLine);
