@@ -1,4 +1,4 @@
-package cn.edu.thu.tsfiledb.jdbc;
+package cn.edu.thu.tsfiledb.client;
 
 import java.io.Console;
 import java.sql.DriverManager;

@@ -1,4 +1,4 @@
-package cn.edu.thu.tsfiledb.jdbc;
+package cn.edu.thu.tsfiledb.client;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
