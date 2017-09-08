@@ -48,7 +48,7 @@ public class MManagerAdvancedTest {
 	@After
 	public void tearDown() throws Exception {
 		MManager.getInstance().flushObjectToFile();
-		EngineTestHelper.delete(dbconfig.metadataDir);
+		EngineTestHelper.delete(dbconfig.dataDir);
 	}
 
 	@org.junit.Test
