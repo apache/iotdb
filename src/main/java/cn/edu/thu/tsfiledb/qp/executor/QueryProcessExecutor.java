@@ -1,5 +1,6 @@
 package cn.edu.thu.tsfiledb.qp.executor;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -7,6 +8,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.logging.Filter;
 
 import cn.edu.thu.tsfiledb.auth.AuthException;
 import cn.edu.thu.tsfiledb.auth.dao.Authorizer;
@@ -21,7 +23,9 @@ import cn.edu.thu.tsfiledb.qp.physical.PhysicalPlan;
 import cn.edu.thu.tsfiledb.qp.physical.crud.MergeQuerySetPlan;
 import cn.edu.thu.tsfiledb.qp.physical.crud.SeriesSelectPlan;
 import cn.edu.thu.tsfiledb.qp.strategy.PhysicalGenerator;
+import cn.edu.thu.tsfiledb.query.engine.FilterStructure;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
+import cn.edu.tsinghua.tsfile.common.utils.Pair;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
 import cn.edu.tsinghua.tsfile.timeseries.filter.definition.FilterExpression;
 import cn.edu.tsinghua.tsfile.timeseries.read.qp.Path;
@@ -46,21 +50,32 @@ public abstract class QueryProcessExecutor {
 
 	public Iterator<QueryDataSet> processQuery(PhysicalPlan plan) throws QueryProcessorException {
 		switch (plan.getOperatorType()) {
-		case QUERY:
-			SeriesSelectPlan query = (SeriesSelectPlan) plan;
-			FilterExpression[] filterExpressions = query.getFilterExpressions();
-			return new QueryDataSetIterator(query.getPaths(), getFetchSize(), this, filterExpressions[0],
-					filterExpressions[1], filterExpressions[2]);
-		case MERGEQUERY:
-			MergeQuerySetPlan mergeQuery = (MergeQuerySetPlan) plan;
-			List<SeriesSelectPlan> selectPlans = mergeQuery.getSeriesSelectPlans();
-			if (selectPlans.size() == 1) {
-				return processQuery(selectPlans.get(0));
-			} else {
-				return new MergeQuerySetIterator(selectPlans, getFetchSize(), this);
-			}
-		default:
-			throw new UnsupportedOperationException();
+			case QUERY:
+				//query and aggregate
+				SeriesSelectPlan query = (SeriesSelectPlan) plan;
+				FilterExpression[] filterExpressions = query.getFilterExpressions();
+				return new QueryDataSetIterator(query.getPaths(), getFetchSize(),
+						this, filterExpressions[0], filterExpressions[1],
+						filterExpressions[2], query.getAggregations());
+			case MERGEQUERY:
+				MergeQuerySetPlan mergeQuery = (MergeQuerySetPlan) plan;
+				List<SeriesSelectPlan> selectPlans = mergeQuery.getSeriesSelectPlans();
+				//query
+				if (mergeQuery.getAggregations().isEmpty()) {
+					return new MergeQuerySetIterator(selectPlans, getFetchSize(), this);
+				} else {
+					//aggregate
+					List<FilterStructure> filterStructures = new ArrayList<>();
+					for(SeriesSelectPlan selectPlan: selectPlans) {
+						FilterExpression[] expressions = selectPlan.getFilterExpressions();
+						FilterStructure filterStructure = new FilterStructure(expressions[0], expressions[1], expressions[2]);
+						filterStructures.add(filterStructure);
+					}
+					return new QueryDataSetIterator(mergeQuery.getPaths(), getFetchSize(),
+							mergeQuery.getAggregations(), filterStructures, this);
+				}
+			default:
+				throw new UnsupportedOperationException();
 		}
 	}
 
@@ -93,6 +108,11 @@ public abstract class QueryProcessExecutor {
 		}
 		return fetchSize.get();
 	}
+
+
+	public abstract QueryDataSet aggregate(List<Pair<Path, String>> aggres, List<FilterStructure> filterStructures)
+			throws ProcessorException, IOException, PathErrorException;
+
 
 	public abstract QueryDataSet query(int formNumber, List<Path> paths, FilterExpression timeFilter, FilterExpression freqFilter,
 			FilterExpression valueFilter, int fetchSize, QueryDataSet lastData) throws ProcessorException;

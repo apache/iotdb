@@ -3,6 +3,7 @@ package cn.edu.thu.tsfiledb.query.aggregation.impl;
 import java.io.IOException;
 
 import cn.edu.thu.tsfiledb.query.aggregation.AggregateFunction;
+import cn.edu.thu.tsfiledb.query.aggregation.AggregationConstant;
 import cn.edu.thu.tsfiledb.query.dataset.InsertDynamicData;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 import cn.edu.tsinghua.tsfile.common.utils.Pair;
@@ -15,7 +16,8 @@ public class MaxTimeAggrFunc extends AggregateFunction {
     private boolean hasSetValue = false;
 
     public MaxTimeAggrFunc() {
-        super("MAX_TIME", TSDataType.INT64);
+        super(AggregationConstant.MAX_TIME, TSDataType.INT64);
+        result.data.putTime(0);
     }
 
     @Override
@@ -35,9 +37,9 @@ public class MaxTimeAggrFunc extends AggregateFunction {
     @Override
     public void calculateValueFromDataInThisPage(DynamicOneColumnData dataInThisPage) throws IOException, ProcessorException {
         if (dataInThisPage instanceof InsertDynamicData) {
-            Pair<Long, Object> pair = ((InsertDynamicData) dataInThisPage).calcAggregation("MAX_TIME");
-            if (pair.left != 0) {
-                long timestamp = (long)pair.right;
+            Object max_time = ((InsertDynamicData) dataInThisPage).calcAggregation(AggregationConstant.MAX_TIME);
+            if (max_time != null) {
+                long timestamp = (long)max_time;
                 if (!hasSetValue) {
                     result.data.putLong(timestamp);
                     hasSetValue = true;
@@ -46,8 +48,6 @@ public class MaxTimeAggrFunc extends AggregateFunction {
                     maxv = maxv > timestamp ? maxv : timestamp;
                     result.data.setLong(0, maxv);
                 }
-                long count = result.data.getTime(0) + pair.left;
-                result.data.setTime(0, count);
             }
         } else {
             if (dataInThisPage.valueLength == 0) {

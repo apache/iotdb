@@ -8,6 +8,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
+import cn.edu.thu.tsfiledb.service.rpc.thrift.*;
 import org.apache.thrift.TException;
 import org.apache.thrift.server.ServerContext;
 import org.joda.time.DateTimeZone;
@@ -27,40 +28,12 @@ import cn.edu.thu.tsfiledb.exception.PathErrorException;
 import cn.edu.thu.tsfiledb.metadata.MManager;
 import cn.edu.thu.tsfiledb.metadata.Metadata;
 import cn.edu.thu.tsfiledb.qp.QueryProcessor;
-import cn.edu.thu.tsfiledb.qp.constant.SQLConstant;
 import cn.edu.thu.tsfiledb.qp.exception.IllegalASTFormatException;
 import cn.edu.thu.tsfiledb.qp.exception.QueryProcessorException;
 import cn.edu.thu.tsfiledb.qp.executor.OverflowQPExecutor;
 import cn.edu.thu.tsfiledb.qp.logical.Operator.OperatorType;
 import cn.edu.thu.tsfiledb.qp.physical.PhysicalPlan;
 import cn.edu.thu.tsfiledb.query.management.ReadLockManager;
-import cn.edu.thu.tsfiledb.service.rpc.thrift.TSCancelOperationReq;
-import cn.edu.thu.tsfiledb.service.rpc.thrift.TSCancelOperationResp;
-import cn.edu.thu.tsfiledb.service.rpc.thrift.TSCloseOperationReq;
-import cn.edu.thu.tsfiledb.service.rpc.thrift.TSCloseOperationResp;
-import cn.edu.thu.tsfiledb.service.rpc.thrift.TSCloseSessionReq;
-import cn.edu.thu.tsfiledb.service.rpc.thrift.TSCloseSessionResp;
-import cn.edu.thu.tsfiledb.service.rpc.thrift.TSExecuteBatchStatementReq;
-import cn.edu.thu.tsfiledb.service.rpc.thrift.TSExecuteBatchStatementResp;
-import cn.edu.thu.tsfiledb.service.rpc.thrift.TSExecuteStatementReq;
-import cn.edu.thu.tsfiledb.service.rpc.thrift.TSExecuteStatementResp;
-import cn.edu.thu.tsfiledb.service.rpc.thrift.TSFetchMetadataReq;
-import cn.edu.thu.tsfiledb.service.rpc.thrift.TSFetchMetadataResp;
-import cn.edu.thu.tsfiledb.service.rpc.thrift.TSFetchResultsReq;
-import cn.edu.thu.tsfiledb.service.rpc.thrift.TSFetchResultsResp;
-import cn.edu.thu.tsfiledb.service.rpc.thrift.TSGetTimeZoneResp;
-import cn.edu.thu.tsfiledb.service.rpc.thrift.TSHandleIdentifier;
-import cn.edu.thu.tsfiledb.service.rpc.thrift.TSIService;
-import cn.edu.thu.tsfiledb.service.rpc.thrift.TSOpenSessionReq;
-import cn.edu.thu.tsfiledb.service.rpc.thrift.TSOpenSessionResp;
-import cn.edu.thu.tsfiledb.service.rpc.thrift.TSOperationHandle;
-import cn.edu.thu.tsfiledb.service.rpc.thrift.TSProtocolVersion;
-import cn.edu.thu.tsfiledb.service.rpc.thrift.TSQueryDataSet;
-import cn.edu.thu.tsfiledb.service.rpc.thrift.TSSetTimeZoneReq;
-import cn.edu.thu.tsfiledb.service.rpc.thrift.TSSetTimeZoneResp;
-import cn.edu.thu.tsfiledb.service.rpc.thrift.TS_SessionHandle;
-import cn.edu.thu.tsfiledb.service.rpc.thrift.TS_Status;
-import cn.edu.thu.tsfiledb.service.rpc.thrift.TS_StatusCode;
 import cn.edu.thu.tsfiledb.sys.writelog.WriteLogManager;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 import cn.edu.tsinghua.tsfile.timeseries.read.qp.Path;
@@ -362,15 +335,20 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
 			TSExecuteStatementResp resp = getTSExecuteStatementResp(TS_StatusCode.SUCCESS_STATUS, "");
 			List<String> columns = new ArrayList<>();
-			// Restore column header of aggregation to func(column_name), only
-			// support single aggregation function for now
-			String aggregateFuncName = null;
-			try {
-				aggregateFuncName = (String) processor.getExecutor().getParameter(SQLConstant.IS_AGGREGATION);
-			} catch (NullPointerException ignored) {
-			}
-			if (aggregateFuncName != null) {
-				columns.add(aggregateFuncName + "(" + paths.get(0).getFullPath() + ")");
+			// Restore column header of aggregate to func(column_name), only
+			// support single aggregate function for now
+			List<String> aggregations = plan.getAggregations();
+
+			if (aggregations != null && !aggregations.isEmpty()) {
+				//select count(*) from root.*.*
+				if(aggregations.size() != paths.size()) {
+					for (int i = 1; i < paths.size(); i++) {
+						aggregations.add(aggregations.get(0));
+					}
+				}
+				for(int i = 0; i < paths.size(); i++) {
+						columns.add(aggregations.get(i) + "(" + paths.get(i).getFullPath() + ")");
+				}
 			} else {
 				for (Path p : paths) {
 					columns.add(p.getFullPath());
@@ -383,7 +361,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 			operationHandle = new TSOperationHandle(operationId, true);
 			resp.setOperationHandle(operationHandle);
 			recordANewQuery(statement, plan);
-			resp.setOperationType(aggregateFuncName);
+			if (aggregations != null && !aggregations.isEmpty()) {
+				resp.setOperationType("aggregation");
+			} else {
+				resp.setOperationType(null);
+			}
 			return resp;
 		} catch (Exception e) {
 			LOGGER.error("{}: Internal server error: {}",TsFileDBConstant.GLOBAL_DB_NAME, e.getMessage());

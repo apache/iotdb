@@ -58,10 +58,6 @@ public abstract class SFWOperator extends RootOperator {
         List<Path> suffixPaths = null;
         if (selectOperator != null)
             suffixPaths = selectOperator.getSuffixPaths();
-        if ((suffixPaths == null || suffixPaths.isEmpty())) {
-            throw new LogicalOperatorException("select clause cannot be empty!");
-        }
-        else
-            return suffixPaths;
+        return suffixPaths;
     }
 }

@@ -44,7 +44,7 @@ public class RecordReaderFactory {
 	 *                 else a new read lock token should be applied.
      * @param prefix for the exist of <code>RecordReaderCache</code> and batch read, we need a prefix to
      *               represent the uniqueness.
-	 * @return
+	 * @return <code>RecordReader</code>
 	 * @throws ProcessorException
 	 */
 	public RecordReader getRecordReader(String deltaObjectUID, String measurementID,

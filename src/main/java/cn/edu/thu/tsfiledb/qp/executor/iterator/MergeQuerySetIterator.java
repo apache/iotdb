@@ -31,6 +31,7 @@ public class MergeQuerySetIterator implements Iterator<QueryDataSet> {
     private int heapSize;
     private long lastRowTime = -1;
 
+    //merge query
     public MergeQuerySetIterator(List<SeriesSelectPlan> selectPlans, int mergeFetchSize,
                                  QueryProcessExecutor executor) throws QueryProcessorException {
         this.mergeFetchSize = mergeFetchSize;
@@ -164,7 +165,7 @@ public class MergeQuerySetIterator implements Iterator<QueryDataSet> {
                 case DOUBLE:
                     if (!f.isNull()) {
                         mapRet.get(key).putTime(record.timestamp);
-                        mapRet.get(key).putDouble(f.getFloatV());
+                        mapRet.get(key).putDouble(f.getDoubleV());
                     }
                     break;
                 case TEXT:
@@ -182,7 +183,6 @@ public class MergeQuerySetIterator implements Iterator<QueryDataSet> {
                 default:
                     throw new UnSupportedDataTypeException("UnSupported" + String.valueOf(f.dataType));
             }
-            // mapRet.get(key).putTime(record.timestamp);
         }
     }
 }

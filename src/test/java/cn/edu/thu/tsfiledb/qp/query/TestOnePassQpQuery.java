@@ -68,19 +68,7 @@ public class TestOnePassQpQuery {
                                         "select root.laptop.d1.s2 where root.laptop.d1.s2 < 200",
                                         new String[]{"50, <root.laptop.d1.s2,52> ",
                                                 "100, <root.laptop.d1.s2,102> ",
-                                                "150, <root.laptop.d1.s2,152> "}},
-                                {
-                                        "select count(s1) from root.laptop.d1",
-                                        new String[]{"20, <root.laptop.d1.s1,21> ",
-                                                "40, <root.laptop.d1.s1,41> ",
-                                                "60, <root.laptop.d1.s1,61> ",
-                                                "80, <root.laptop.d1.s1,81> ",
-                                                "100, <root.laptop.d1.s1,101> ",
-                                                "120, <root.laptop.d1.s1,121> ",
-                                                "140, <root.laptop.d1.s1,141> ",
-                                                "160, <root.laptop.d1.s1,161> ",
-                                                "180, <root.laptop.d1.s1,181> ",
-                                                "200, <root.laptop.d1.s1,201> "}}
+                                                "150, <root.laptop.d1.s2,152> "}}
                         }
                 );
     }

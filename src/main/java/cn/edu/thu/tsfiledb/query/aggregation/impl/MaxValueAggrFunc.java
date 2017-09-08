@@ -3,6 +3,7 @@ package cn.edu.thu.tsfiledb.query.aggregation.impl;
 import java.io.IOException;
 
 import cn.edu.thu.tsfiledb.query.aggregation.AggregateFunction;
+import cn.edu.thu.tsfiledb.query.aggregation.AggregationConstant;
 import cn.edu.thu.tsfiledb.query.dataset.InsertDynamicData;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 import cn.edu.tsinghua.tsfile.common.exception.UnSupportedDataTypeException;
@@ -19,7 +20,8 @@ public class MaxValueAggrFunc extends AggregateFunction {
     private boolean hasSetValue = false;
 
     public MaxValueAggrFunc(TSDataType dataType) {
-        super("MAX_VALUE", dataType);
+        super(AggregationConstant.MAX_VALUE, dataType);
+        result.data.putTime(0);
     }
 
     @Override
@@ -42,19 +44,17 @@ public class MaxValueAggrFunc extends AggregateFunction {
     @Override
     public void calculateValueFromDataInThisPage(DynamicOneColumnData dataInThisPage) throws IOException, ProcessorException {
         if (dataInThisPage instanceof InsertDynamicData) {
-            Pair<Long, Object> pair = ((InsertDynamicData) dataInThisPage).calcAggregation("MAX_VALUE");
-            if (pair.left != 0) {
+            Object max_value = ((InsertDynamicData) dataInThisPage).calcAggregation(AggregationConstant.MAX_VALUE);
+            if (max_value != null) {
                 if (!hasSetValue) {
-                    result.data.putAnObject(pair.right);
+                    result.data.putAnObject(max_value);
                     hasSetValue = true;
                 } else {
                     Comparable<?> v = result.data.getAnObject(0);
-                    if (compare(v, (Comparable<?>)pair.right) < 0) {
-                        result.data.setAnObject(0, (Comparable<?>)pair.right);
+                    if (compare(v, (Comparable<?>)max_value) < 0) {
+                        result.data.setAnObject(0, (Comparable<?>)max_value);
                     }
                 }
-                long count = result.data.getTime(0) + pair.left;
-                result.data.setTime(0, count);
             }
         } else {
             if (dataInThisPage.valueLength == 0) {

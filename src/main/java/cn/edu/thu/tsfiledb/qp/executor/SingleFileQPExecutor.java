@@ -6,7 +6,9 @@ import java.util.List;
 
 import cn.edu.thu.tsfiledb.exception.PathErrorException;
 import cn.edu.thu.tsfiledb.qp.physical.PhysicalPlan;
+import cn.edu.thu.tsfiledb.query.engine.FilterStructure;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
+import cn.edu.tsinghua.tsfile.common.utils.Pair;
 import cn.edu.tsinghua.tsfile.common.utils.TSRandomAccessFileReader;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
 import cn.edu.tsinghua.tsfile.timeseries.filter.definition.FilterExpression;
@@ -23,8 +25,8 @@ public class SingleFileQPExecutor extends QueryProcessExecutor {
 	}
 
 	@Override
-	public boolean processNonQuery(PhysicalPlan plan) {
-		return false;
+	public boolean processNonQuery(PhysicalPlan plan) throws ProcessorException{
+		throw new ProcessorException("Do not support");
 	}
 
 	@Override
@@ -35,6 +37,12 @@ public class SingleFileQPExecutor extends QueryProcessExecutor {
 	@Override
 	protected boolean judgeNonReservedPathExists(Path path) {
 		return queryEngine.pathExist(path);
+	}
+
+	@Override
+	public QueryDataSet aggregate(List<Pair<Path, String>> aggres, List<FilterStructure> filterStructures)
+			throws ProcessorException, IOException, PathErrorException {
+		throw new ProcessorException("Do not support");
 	}
 
 	@Override
@@ -53,24 +61,24 @@ public class SingleFileQPExecutor extends QueryProcessExecutor {
 	}
 
 	@Override
-	public boolean update(Path path, long startTime, long endTime, String value) {
-		return false;
+	public boolean update(Path path, long startTime, long endTime, String value) throws ProcessorException{
+		throw new ProcessorException("Do not support");
 	}
 
 	@Override
-	public boolean delete(Path path, long deleteTime) {
-		return false;
+	public boolean delete(Path path, long deleteTime) throws ProcessorException{
+		throw new ProcessorException("Do not support");
 	}
 
 	@Override
-	public int insert(Path path, long insertTime, String value) {
-		return 0;
+	public int insert(Path path, long insertTime, String value) throws ProcessorException{
+		throw new ProcessorException("Do not support");
 	}
 
 	@Override
 	public int multiInsert(String deltaObject, long insertTime, List<String> measurementList, List<String> insertValues)
 			throws ProcessorException {
-		return 0;
+		throw new ProcessorException("Do not support");
 	}
 
 	@Override

@@ -6,6 +6,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import cn.edu.thu.tsfiledb.query.engine.FilterStructure;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,7 +41,6 @@ import cn.edu.tsinghua.tsfile.timeseries.write.record.TSRecord;
 
 public class OverflowQPExecutor extends QueryProcessExecutor {
 
-	private static final Logger logger = LoggerFactory.getLogger(OverflowQPExecutor.class);
 	private OverflowQueryEngine queryEngine;
 	private FileNodeManager fileNodeManager;
 	private MManager mManager = MManager.getInstance();
@@ -63,8 +63,6 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 				flag &= update(update.getPath(), timePair.left, timePair.right, update.getValue());
 			}
 			return flag;
-		// return update(update.getPath(), update.getStartTime(),
-		// update.getEndTime(), update.getValue());
 		case INSERT:
 			InsertPlan insert = (InsertPlan) plan;
 			int result = multiInsert(insert.getDeltaObject(), insert.getTime(), insert.getMeasurements(),
@@ -101,33 +99,17 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 	}
 
 	@Override
-	public QueryDataSet query(int formNumber, List<Path> paths, FilterExpression timeFilter,
-			FilterExpression freqFilter, FilterExpression valueFilter, int fetchSize, QueryDataSet lastData)
-			throws ProcessorException {
-		QueryDataSet ret;
-		for (Path path : paths) {
-			if (!mManager.pathExist(path.getFullPath())) {
-				throw new ProcessorException(String.format("Timeseries %s does not exist", path.getFullPath()));
-			}
-			try {
-				mManager.getFileNameByPath(path.getFullPath());
-			} catch (PathErrorException e) {
-				throw new ProcessorException(e);
-			}
-		}
-		try {
-			if (parameters.get() != null && parameters.get().containsKey(SQLConstant.IS_AGGREGATION)) {
-				if (lastData != null) {
-					lastData.clear();
-					return lastData;
-				}
-				String aggregateFuncName = (String) parameters.get().get(SQLConstant.IS_AGGREGATION);
-				ret = queryEngine.aggregate(paths.get(0), aggregateFuncName, timeFilter, freqFilter, valueFilter);
-			} else {
-				ret = queryEngine.query(formNumber, paths, timeFilter, freqFilter, valueFilter, lastData, fetchSize);
-			}
+	public QueryDataSet aggregate(List<Pair<Path, String>> aggres, List<FilterStructure> filterStructures)
+			throws ProcessorException, IOException, PathErrorException {
+		return queryEngine.aggregate(aggres, filterStructures);
+	}
 
-			return ret;
+	@Override
+	public QueryDataSet query(int formNumber, List<Path> paths, FilterExpression timeFilter, FilterExpression freqFilter,
+			FilterExpression valueFilter, int fetchSize, QueryDataSet lastData) throws ProcessorException {
+
+		try {
+			return queryEngine.query(formNumber, paths, timeFilter, freqFilter, valueFilter, lastData, fetchSize);
 		} catch (Exception e) {
 			throw new ProcessorException(e.getMessage());
 		}
@@ -335,7 +317,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 					}
 					if (pathSet.isEmpty()) {
 						throw new ProcessorException(
-								String.format("Timeseries does not exist and cannot be delete its metadata and data"));
+								"Timeseries does not exist and cannot be delete its metadata and data");
 					}
 					for (String p : pathSet) {
 						if (!mManager.pathExist(p)) {
@@ -346,7 +328,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 					List<String> fullPath = new ArrayList<>();
 					fullPath.addAll(pathSet);
 					try {
-						deleteDataOfTimeSeries(mManager, fullPath);
+						deleteDataOfTimeSeries(fullPath);
 					} catch (ProcessorException e) {
 						// no operation
 					}
@@ -400,12 +382,11 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 	/**
 	 * Delete all data of timeseries in pathList.
 	 *
-	 * @param mManager
-	 * @param pathList
+	 * @param pathList deleted paths
 	 * @throws PathErrorException
 	 * @throws ProcessorException
 	 */
-	private void deleteDataOfTimeSeries(MManager mManager, List<String> pathList)
+	private void deleteDataOfTimeSeries(List<String> pathList)
 			throws PathErrorException, ProcessorException {
 		for (String p : pathList) {
 			DeletePlan deletePlan = new DeletePlan();

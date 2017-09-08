@@ -1,40 +1,48 @@
 package cn.edu.thu.tsfiledb.qp.executor.iterator;
 
-import java.util.Iterator;
-import java.util.List;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import cn.edu.thu.tsfiledb.qp.executor.QueryProcessExecutor;
-import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
+import cn.edu.thu.tsfiledb.query.engine.FilterStructure;
+import cn.edu.tsinghua.tsfile.common.utils.Pair;
 import cn.edu.tsinghua.tsfile.timeseries.filter.definition.FilterExpression;
 import cn.edu.tsinghua.tsfile.timeseries.read.qp.Path;
 import cn.edu.tsinghua.tsfile.timeseries.read.query.QueryDataSet;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Iterator;
+import java.util.List;
+
 
 public class QueryDataSetIterator implements Iterator<QueryDataSet> {
-    private static final Logger logger = LoggerFactory.getLogger(QueryDataSetIterator.class);
 
     private boolean noNext = false;
     private final int fetchSize;
-    private final QueryProcessExecutor conf;
+    private final QueryProcessExecutor executor;
     private QueryDataSet data = null;
     private QueryDataSet usedData = null;
-    private FilterExpression timeFilter;
-    private FilterExpression freqFilter;
-    private FilterExpression valueFilter;
     private List<Path> paths;
+    private List<String> aggregations;
+    private List<FilterStructure> filterStructures = new ArrayList<>();
 
-    public QueryDataSetIterator(List<Path> paths, int fetchSize, QueryProcessExecutor conf,
+    //single query and single aggregations
+    public QueryDataSetIterator(List<Path> paths, int fetchSize, QueryProcessExecutor executor,
                                 FilterExpression timeFilter, FilterExpression freqFilter,
-                                FilterExpression valueFilter) {
+                                FilterExpression valueFilter, List<String> aggregations) {
         this.paths = paths;
         this.fetchSize = fetchSize;
-        this.conf = conf;
-        this.timeFilter = timeFilter;
-        this.freqFilter = freqFilter;
-        this.valueFilter = valueFilter;
+        this.executor = executor;
+        this.filterStructures.add(new FilterStructure(timeFilter, freqFilter, valueFilter));
+        this.aggregations = aggregations;
+    }
+
+    //merge aggregations
+    public QueryDataSetIterator(List<Path> paths, int fetchSize, List<String> aggregations,
+                                List<FilterStructure> filterStructures, QueryProcessExecutor executor) {
+        this.fetchSize = fetchSize;
+        this.executor = executor;
+        this.filterStructures = filterStructures;
+        this.paths = paths;
+        this.aggregations = aggregations;
     }
 
     @Override
@@ -46,15 +54,27 @@ public class QueryDataSetIterator implements Iterator<QueryDataSet> {
             return false;
         if (data == null || !data.hasNextRecord())
             try {
-                data = conf.query(0, paths, timeFilter, freqFilter, valueFilter, fetchSize, usedData);
-            } catch (ProcessorException e) {
-            		logger.error("meet error in hasNext,", e);
-                throw new RuntimeException(e.getMessage());
+                //aggregations
+                if(aggregations != null && !aggregations.isEmpty()) {
+                    List<Pair<Path, String>> aggres = new ArrayList<>();
+                    for(int i = 0; i < paths.size(); i++) {
+                        if(paths.size() == aggregations.size()) {
+                            aggres.add(new Pair<>(paths.get(i), aggregations.get(i)));
+                        } else {
+                            aggres.add(new Pair<>(paths.get(i), aggregations.get(0)));
+                        }
+                    }
+                    data = executor.aggregate(aggres, filterStructures);
+                } else {
+                    //query
+                    FilterStructure filterStructure = filterStructures.get(0);
+                    data = executor.query(0, paths, filterStructure.getTimeFilter(), filterStructure.getFrequencyFilter(),
+                            filterStructure.getValueFilter(), fetchSize, usedData);
+                }
+            } catch (Exception e) {
+                throw new RuntimeException("meet error in hasNext" + Arrays.toString(e.getStackTrace()));
             }
         if (data == null) {
-            logger.error(
-                    "data is null! parameters: paths:{},timeFilter:{}, freqFilter:{}, valueFilter:{}, fetchSize:{}, usedData:{}",
-                    paths, timeFilter, freqFilter, valueFilter, fetchSize, usedData);
             throw new RuntimeException("data is null! parameters: paths:" + paths);
         }
         if (data.hasNextRecord())
