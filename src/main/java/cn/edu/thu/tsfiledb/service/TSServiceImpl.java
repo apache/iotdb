@@ -8,7 +8,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
-import cn.edu.thu.tsfiledb.service.rpc.thrift.*;
+import cn.edu.tsinghua.iotdb.jdbc.thrift.*;
 import org.apache.thrift.TException;
 import org.apache.thrift.server.ServerContext;
 import org.joda.time.DateTimeZone;
