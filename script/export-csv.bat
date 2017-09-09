@@ -38,7 +38,6 @@ goto finally
 echo JAVA_HOME environment variable must be set!
 pause
 
-
 @REM -----------------------------------------------------------------------------
 :finally
 
