@@ -13,25 +13,26 @@ import java.util.Set;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
-import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
-import cn.edu.tsinghua.iotdb.engine.bufferwrite.Action;
-import cn.edu.tsinghua.iotdb.engine.bufferwrite.BufferWriteProcessor;
-import cn.edu.tsinghua.iotdb.engine.bufferwrite.FileNodeConstants;
-import cn.edu.tsinghua.iotdb.engine.exception.BufferWriteProcessorException;
-import cn.edu.tsinghua.iotdb.engine.exception.FileNodeProcessorException;
-import cn.edu.tsinghua.iotdb.engine.exception.OverflowProcessorException;
-import cn.edu.tsinghua.iotdb.engine.lru.LRUProcessor;
-import cn.edu.tsinghua.iotdb.engine.overflow.io.OverflowProcessor;
-import cn.edu.tsinghua.iotdb.exception.PathErrorException;
-import cn.edu.tsinghua.iotdb.metadata.ColumnSchema;
-import cn.edu.tsinghua.iotdb.metadata.MManager;
-import cn.edu.tsinghua.iotdb.query.engine.QueryForMerge;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
+import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
+import cn.edu.tsinghua.iotdb.engine.bufferwrite.Action;
+import cn.edu.tsinghua.iotdb.engine.bufferwrite.BufferWriteProcessor;
+import cn.edu.tsinghua.iotdb.engine.bufferwrite.FileNodeConstants;
+import cn.edu.tsinghua.iotdb.engine.lru.LRUProcessor;
+import cn.edu.tsinghua.iotdb.engine.overflow.io.OverflowProcessor;
+import cn.edu.tsinghua.iotdb.exception.BufferWriteProcessorException;
+import cn.edu.tsinghua.iotdb.exception.FileNodeProcessorException;
+import cn.edu.tsinghua.iotdb.exception.OverflowProcessorException;
+import cn.edu.tsinghua.iotdb.exception.PathErrorException;
+import cn.edu.tsinghua.iotdb.exception.ProcessorRuntimException;
+import cn.edu.tsinghua.iotdb.metadata.ColumnSchema;
+import cn.edu.tsinghua.iotdb.metadata.MManager;
+import cn.edu.tsinghua.iotdb.query.engine.QueryForMerge;
 import cn.edu.tsinghua.tsfile.common.conf.TSFileConfig;
 import cn.edu.tsinghua.tsfile.common.conf.TSFileDescriptor;
 import cn.edu.tsinghua.tsfile.common.constant.JsonFormatConstant;
@@ -63,7 +64,6 @@ public class FileNodeProcessor extends LRUProcessor {
 	private static final MManager mManager = MManager.getInstance();
 	private static final String LOCK_SIGNAL = "lock___signal";
 
-	// private long lastUpdateTime = -1;
 	private Map<String, Long> lastUpdateTimeMap;
 
 	private Map<String, List<IntervalFileNode>> indexOfFiles;
@@ -128,12 +128,6 @@ public class FileNodeProcessor extends LRUProcessor {
 
 	private void addLastTimeToIntervalFile() {
 
-		/*
-		if (lastUpdateTimeMap.isEmpty()) {
-			LOGGER.error("The lastUpdateTimeMap is empty when close the bufferwrite file");
-			throw new ProcessorRuntimException("The lastUpdateTimeMap is empty when close the bufferwrite file");
-		}
-		*/
 		if (!newFileNodes.isEmpty()) {
 			// end time with one start time
 			Map<String, Long> endTimeMap = new HashMap<>();
@@ -142,10 +136,9 @@ public class FileNodeProcessor extends LRUProcessor {
 				endTimeMap.put(deltaObjectId, lastUpdateTimeMap.get(deltaObjectId));
 			}
 			currentIntervalFileNode.setEndTimeMap(endTimeMap);
-		} 
-		// else {
-		// throw new ProcessorRuntimException("The intervalFile list is empty when close bufferwrite file");
-		// }
+		} else {
+			throw new ProcessorRuntimException("The intervalFile list is empty when close bufferwrite file");
+		}
 	}
 
 	public void addIntervalFileNode(long startTime, String fileName) throws Exception {
@@ -181,9 +174,8 @@ public class FileNodeProcessor extends LRUProcessor {
 			}
 		}
 	};
-	
-	public void clearFileNode(){
-		// lastUpdateTimeMap.clear();
+
+	public void clearFileNode() {
 		emptyIntervalFileNode = new IntervalFileNode(OverflowChangeType.NO_CHANGE, null);
 		newFileNodes = new ArrayList<>();
 		isMerging = FileNodeProcessorStatus.NONE;
@@ -209,10 +201,8 @@ public class FileNodeProcessor extends LRUProcessor {
 		try {
 			fileNodeProcessorStore = readStoreToDisk();
 		} catch (FileNodeProcessorException e) {
-			e.printStackTrace();
 			LOGGER.error("Restore the FileNodeProcessor information error, the nameSpacePath is {}", nameSpacePath);
-			throw new FileNodeProcessorException(
-					"Restore the FileNodeProcessor information error, the nameSpacePath is " + nameSpacePath);
+			throw new FileNodeProcessorException(e);
 		}
 		lastUpdateTimeMap = fileNodeProcessorStore.getLastUpdateTimeMap();
 		emptyIntervalFileNode = fileNodeProcessorStore.getEmptyIntervalFileNode();
@@ -224,7 +214,6 @@ public class FileNodeProcessor extends LRUProcessor {
 		if (isMerging != FileNodeProcessorStatus.NONE
 				|| (!newFileNodes.isEmpty() && !newFileNodes.get(newFileNodes.size() - 1).isClosed())) {
 			shouldRecovery = true;
-			// FileNodeRecovery();
 		} else {
 			// add file into the index of file
 			addALLFileIntoIndex(newFileNodes);
@@ -277,9 +266,8 @@ public class FileNodeProcessor extends LRUProcessor {
 			} catch (BufferWriteProcessorException e) {
 				// unlock
 				writeUnlock();
-				LOGGER.error("Restore the bufferwrite failed, the reason is {}", e.getMessage());
-				e.printStackTrace();
-				throw new FileNodeProcessorException("Restore the bufferwrte failed, the reason is " + e.getMessage());
+				LOGGER.error("Restore the bufferwrite failed");
+				throw new FileNodeProcessorException(e);
 			}
 		}
 		// restore the overflow processor
@@ -290,9 +278,8 @@ public class FileNodeProcessor extends LRUProcessor {
 		} catch (OverflowProcessorException e) {
 			// unlock
 			writeUnlock();
-			LOGGER.error("Restore the overflow failed, the reason is {}", e.getMessage());
-			e.printStackTrace();
-			throw new FileNodeProcessorException("Restore the overflow failed, the reason is " + e.getMessage());
+			LOGGER.error("Restore the overflow failed.");
+			throw new FileNodeProcessorException(e);
 		}
 
 		shouldRecovery = false;
@@ -343,12 +330,8 @@ public class FileNodeProcessor extends LRUProcessor {
 						insertTime + FileNodeConstants.BUFFERWRITE_FILE_SEPARATOR + System.currentTimeMillis(),
 						parameters);
 			} catch (BufferWriteProcessorException e) {
-				e.printStackTrace();
-				LOGGER.error("Get the bufferwrite processor instance failed, the nameSpacePath is {}, reason is {}",
-						namespacePath, e.getMessage());
-				throw new FileNodeProcessorException(String.format(
-						"Get the bufferwrite processor instance failed, the nameSpacePath is %s, reason is %s",
-						namespacePath, e.getMessage()));
+				LOGGER.error("Get the bufferwrite processor instance failed, the nameSpacePath is {}.", namespacePath);
+				throw new FileNodeProcessorException(e);
 			}
 			;
 		}
@@ -373,11 +356,8 @@ public class FileNodeProcessor extends LRUProcessor {
 				overflowProcessor = new OverflowProcessor(nameSpacePath, parameters);
 			} catch (OverflowProcessorException e) {
 				LOGGER.error("Get the overflow processor instance failed, the nameSpacePath is {}, reason is {}",
-						nameSpacePath, e.getMessage());
-				e.printStackTrace();
-				throw new FileNodeProcessorException(String.format(
-						"Get the overflow processor instance failed, the nameSpacePath is %s, reason is %s",
-						nameSpacePath, e.getMessage()));
+						nameSpacePath, e);
+				throw new FileNodeProcessorException(e);
 			}
 		}
 		return overflowProcessor;
@@ -640,14 +620,10 @@ public class FileNodeProcessor extends LRUProcessor {
 			try {
 				writeStoreToDisk(fileNodeProcessorStore);
 			} catch (FileNodeProcessorException e) {
-				LOGGER.error(
-						"Merge: write filenode information to revocery file failed, the nameSpacePath is {}, the reason is {}",
-						nameSpacePath, e.getMessage());
-				e.printStackTrace();
+				LOGGER.error("Merge: write filenode information to revocery file failed, the nameSpacePath is {}.",
+						nameSpacePath);
 				writeUnlock();
-				throw new FileNodeProcessorException(
-						"Merge: write filenode information to revocery file failed, the nameSpacePath is "
-								+ nameSpacePath);
+				throw new FileNodeProcessorException(e);
 			}
 		}
 		// add numOfMergeFile to control the number of the merge file
@@ -669,7 +645,6 @@ public class FileNodeProcessor extends LRUProcessor {
 			overflowProcessor.switchWorkingToMerge();
 		} catch (ProcessorException e) {
 			LOGGER.error("Merge: Can't change overflow processor status from work to merge");
-			e.printStackTrace();
 			writeUnlock();
 			throw new FileNodeProcessorException(e);
 		}
@@ -689,10 +664,8 @@ public class FileNodeProcessor extends LRUProcessor {
 					}
 					queryAndWriteDataForMerge(backupIntervalFile);
 				} catch (IOException | WriteProcessException e) {
-					LOGGER.error("Merge: query and write data error, the reason is {}", e.getMessage());
-					e.printStackTrace();
-					throw new FileNodeProcessorException(
-							"Merge: query and write data error, the reason is " + e.getMessage());
+					LOGGER.error("Merge: query and write data error.");
+					throw new FileNodeProcessorException(e);
 				}
 			} else if (backupIntervalFile.overflowChangeType == OverflowChangeType.MERGING_CHANGE) {
 				LOGGER.error("The overflowChangeType of backupIntervalFile must not be {}",
@@ -837,10 +810,8 @@ public class FileNodeProcessor extends LRUProcessor {
 				try {
 					writeStoreToDisk(fileNodeProcessorStore);
 				} catch (FileNodeProcessorException e) {
-					LOGGER.error(
-							"Merge: write filenode information to revocery file failed, the nameSpacePath is {}, the reason is {}",
-							nameSpacePath, e.getMessage());
-					e.printStackTrace();
+					LOGGER.error("Merge: write filenode information to revocery file failed, the nameSpacePath is {}.",
+							nameSpacePath);
 					throw new FileNodeProcessorException(
 							"Merge: write filenode information to revocery file failed, the nameSpacePath is "
 									+ nameSpacePath);
@@ -913,8 +884,7 @@ public class FileNodeProcessor extends LRUProcessor {
 					writeStoreToDisk(fileNodeProcessorStore);
 				}
 			} catch (ProcessorException e) {
-				LOGGER.error("Merge: switch wait to work failed. the reason is {}", e.getMessage());
-				e.printStackTrace();
+				LOGGER.error("Merge: switch wait to work failed.");
 				throw new FileNodeProcessorException(e);
 			} finally {
 				oldMultiPassTokenSet = null;
@@ -953,7 +923,6 @@ public class FileNodeProcessor extends LRUProcessor {
 				}
 			} catch (PathErrorException e) {
 				LOGGER.error("Can't get all the paths from MManager, the deltaObjectId is {}", deltaObjectId);
-				e.printStackTrace();
 				throw new FileNodeProcessorException(e);
 			}
 			if (pathList.isEmpty()) {
@@ -1004,12 +973,9 @@ public class FileNodeProcessor extends LRUProcessor {
 					try {
 						recordWriter.write(filledRecord);
 					} catch (WriteProcessException e) {
-						LOGGER.error("Merge query: write one record error, the tsrecord is {}", filledRecord);
-						e.printStackTrace();
-
-						/**
-						 * should throw exception
-						 */
+						LOGGER.error(
+								String.format("Merge query: write one record error, the tsrecord is {}", filledRecord),
+								e);
 					}
 				}
 				startTimeMap.put(deltaObjectId, startTime);
@@ -1145,11 +1111,11 @@ public class FileNodeProcessor extends LRUProcessor {
 		if (bufferWriteProcessor != null) {
 			try {
 				while (!bufferWriteProcessor.canBeClosed()) {
-//					try {
-//						TimeUnit.MICROSECONDS.sleep(1000);
-//					} catch (InterruptedException e) {
-//						e.printStackTrace();
-//					}
+					// try {
+					// TimeUnit.MICROSECONDS.sleep(1000);
+					// } catch (InterruptedException e) {
+					// e.printStackTrace();
+					// }
 				}
 				bufferWriteProcessor.close();
 				bufferWriteProcessor = null;
@@ -1162,11 +1128,11 @@ public class FileNodeProcessor extends LRUProcessor {
 		if (overflowProcessor != null) {
 			try {
 				while (!overflowProcessor.canBeClosed()) {
-//					try {
-//						TimeUnit.MICROSECONDS.sleep(1000);
-//					} catch (InterruptedException e) {
-//						e.printStackTrace();
-//					}
+					// try {
+					// TimeUnit.MICROSECONDS.sleep(1000);
+					// } catch (InterruptedException e) {
+					// e.printStackTrace();
+					// }
 				}
 				overflowProcessor.close();
 				overflowProcessor = null;
@@ -1185,7 +1151,6 @@ public class FileNodeProcessor extends LRUProcessor {
 				serializeUtil.serialize(fileNodeProcessorStore, fileNodeRestoreFilePath);
 				LOGGER.info("Write restore information to the restore file");
 			} catch (IOException e) {
-				e.printStackTrace();
 				throw new FileNodeProcessorException(e);
 			}
 		}

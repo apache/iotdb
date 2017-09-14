@@ -16,20 +16,20 @@ import java.util.Set;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
-import cn.edu.tsinghua.iotdb.engine.exception.BufferWriteProcessorException;
-import cn.edu.tsinghua.iotdb.metadata.ColumnSchema;
-import cn.edu.tsinghua.iotdb.metadata.MManager;
-import cn.edu.tsinghua.iotdb.sys.writelog.WriteLogManager;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
+import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
 import cn.edu.tsinghua.iotdb.engine.lru.LRUProcessor;
 import cn.edu.tsinghua.iotdb.engine.utils.FlushState;
+import cn.edu.tsinghua.iotdb.exception.BufferWriteProcessorException;
 import cn.edu.tsinghua.iotdb.exception.PathErrorException;
+import cn.edu.tsinghua.iotdb.metadata.ColumnSchema;
+import cn.edu.tsinghua.iotdb.metadata.MManager;
+import cn.edu.tsinghua.iotdb.sys.writelog.WriteLogManager;
 import cn.edu.tsinghua.tsfile.common.conf.TSFileConfig;
 import cn.edu.tsinghua.tsfile.common.conf.TSFileDescriptor;
 import cn.edu.tsinghua.tsfile.common.constant.JsonFormatConstant;
@@ -100,7 +100,7 @@ public class BufferWriteProcessor extends LRUProcessor {
 		File dataDir = new File(dataDirPath);
 		if (!dataDir.exists()) {
 			dataDir.mkdirs();
-			LOGGER.warn("The bufferwrite processor data dir doesn't exists, and mkdir the dir {}", dataDirPath);
+			LOGGER.info("The bufferwrite processor data dir doesn't exists, and mkdir the dir {}.", dataDirPath);
 		}
 		File outputFile = new File(dataDir, fileName);
 		File restoreFile = new File(dataDir, restoreFileName);
@@ -110,10 +110,8 @@ public class BufferWriteProcessor extends LRUProcessor {
 		try {
 			fileSchema = constructFileSchema(nameSpacePath);
 		} catch (PathErrorException | WriteProcessException e) {
-			LOGGER.error("Get the FileSchema error, the nameSpacePath is {}", nameSpacePath);
-			throw new BufferWriteProcessorException(
-					String.format("Get the FileSchema error, the nameSpacePath is %s, the reason is %s", nameSpacePath,
-							e.getMessage()));
+			LOGGER.error("Get the FileSchema error, the nameSpacePath is {}.", nameSpacePath);
+			throw new BufferWriteProcessorException(e);
 		}
 		//
 		// There is one damaged file, and the restoreFile exist
@@ -128,20 +126,16 @@ public class BufferWriteProcessor extends LRUProcessor {
 			try {
 				outputWriter = new RandomAccessOutputStream(outputFile);
 			} catch (IOException e) {
-				LOGGER.error("Construct the TSRandomAccessFileWriter error, the absolutePath is {}",
+				LOGGER.error("Construct the TSRandomAccessFileWriter error, the absolutePath is {}.",
 						outputFile.getAbsolutePath());
-				throw new BufferWriteProcessorException(
-						String.format("Can't get the TSRandomAccessFileWriter, the abslutePath is %s, the reason is %s",
-								outputFile.getAbsolutePath(), e.getMessage()));
+				throw new BufferWriteProcessorException(e);
 			}
 
 			try {
 				bufferIOWriter = new BufferWriteIOWriter(fileSchema, outputWriter);
 			} catch (IOException e) {
-				LOGGER.error("Get the BufferWriteIOWriter error, the nameSpacePath is {}", nameSpacePath);
-				throw new BufferWriteProcessorException(
-						String.format("Get the BufferWriteIOWriter error, the nameSpacePath is %s, the reason is %s",
-								nameSpacePath, e.getMessage()));
+				LOGGER.error("Get the BufferWriteIOWriter error, the nameSpacePath is {}.", nameSpacePath);
+				throw new BufferWriteProcessorException(e);
 			}
 
 			WriteSupport<TSRecord> writeSupport = new TSRecordWriteSupport();
@@ -172,37 +166,31 @@ public class BufferWriteProcessor extends LRUProcessor {
 		try {
 			pair = ReadStoreFromDisk();
 		} catch (IOException e) {
-			LOGGER.error("Read restore file failed, reason is {}", e.getMessage());
-			e.printStackTrace();
-			throw new BufferWriteProcessorException("Read restore file failed, reason is " + e.getMessage());
+			LOGGER.error("Read bufferwrite restore file failed.");
+			throw new BufferWriteProcessorException(e);
 		}
 		TSRandomAccessFileWriter output;
 		long lastPosition = pair.left;
 		File lastBufferWriteFile = new File(bufferwriteOutputFilePath);
 		if (lastBufferWriteFile.length() != lastPosition) {
-			LOGGER.warn("The length of the last bufferwrite file is {}, the lastPosion is {}",
+			LOGGER.warn("The length of the last bufferwrite file is {}, the lastPosion is {}.",
 					lastBufferWriteFile.length(), lastPosition);
 			try {
 				cutOffFile(lastPosition);
 			} catch (IOException e) {
 				LOGGER.error(
-						"Cut off damaged file error. the damaged file path is {}, the length is {}, the cut off length is {}",
+						"Cut off damaged file error. the damaged file path is {}, the length is {}, the cut off length is {}.",
 						bufferwriteOutputFilePath, lastBufferWriteFile.length(), lastPosition);
-				e.printStackTrace();
-				throw new BufferWriteProcessorException(String.format(
-						"Cut off damaged file error. the damaged file path is %s, the length is %s, the cut off length is %s",
-						bufferwriteOutputFilePath, lastBufferWriteFile.length(), lastPosition));
+				throw new BufferWriteProcessorException(e);
 			}
 		}
 		try {
 			// Notice: the offset is seek to end of the file by API of kr
 			output = new RandomAccessOutputStream(lastBufferWriteFile);
 		} catch (IOException e) {
-			LOGGER.error("Can't construct the RandomAccessOutputStream, the outputPath is {}",
+			LOGGER.error("Can't construct the RandomAccessOutputStream, the outputPath is {}.",
 					bufferwriteOutputFilePath);
-			e.printStackTrace();
-			throw new BufferWriteProcessorException(
-					"Can't construct the RandomAccessOutputStream, the reason is " + e.getMessage());
+			throw new BufferWriteProcessorException(e);
 		}
 		try {
 			// Notice: the parameter of lastPosition is not used beacuse of the
@@ -210,10 +198,7 @@ public class BufferWriteProcessor extends LRUProcessor {
 			bufferIOWriter = new BufferWriteIOWriter(fileSchema, output, lastPosition, pair.right);
 		} catch (IOException e) {
 			LOGGER.error("Can't get the bufferwrite io when recovery, the nameSpacePath is {}.", nameSpacePath);
-			e.printStackTrace();
-			throw new BufferWriteProcessorException(String.format(
-					"Can't get the bufferwrite io when recovery, the nameSpacePath is %s, the reason is %s",
-					nameSpacePath, e.getMessage()));
+			throw new BufferWriteProcessorException(e);
 		}
 		WriteSupport<TSRecord> writeSupport = new TSRecordWriteSupport();
 		recordWriter = new BufferWriteRecordWriter(TsFileConf, bufferIOWriter, writeSupport, fileSchema);
@@ -235,9 +220,8 @@ public class BufferWriteProcessor extends LRUProcessor {
 				tempWriter = new RandomAccessFile(tempFile, "rw");
 			} catch (FileNotFoundException e) {
 				LOGGER.error(
-						"Can't get the RandomAccessFile read and write, the normal path is {}, the temp path is {}",
+						"Can't get the RandomAccessFile read and write, the normal path is {}, the temp path is {}.",
 						bufferwriteOutputFilePath, tempPath);
-				e.printStackTrace();
 				if (normalReader != null) {
 					normalReader.close();
 				}
@@ -258,8 +242,7 @@ public class BufferWriteProcessor extends LRUProcessor {
 					normalReader.readFully(buff);
 					tempWriter.write(buff);
 				} catch (IOException e) {
-					LOGGER.error("normalReader read data failed or tempWriter write data error");
-					e.printStackTrace();
+					LOGGER.error("normalReader read data failed or tempWriter write data error.");
 					throw e;
 				}
 				offset = offset + step;
@@ -284,18 +267,18 @@ public class BufferWriteProcessor extends LRUProcessor {
 		try {
 			lastPosition = bufferIOWriter.getPos();
 		} catch (IOException e) {
-			LOGGER.error("Can't get the bufferwrite io position");
-			e.printStackTrace();
+			LOGGER.error("Can't get the bufferwrite io position.");
 			throw new BufferWriteProcessorException(e);
 		}
 		List<RowGroupMetaData> rowGroupMetaDatas = bufferIOWriter.getRowGroups();
 		List<RowGroupMetaData> appendMetadata = new ArrayList<>();
-		for(int i = lastRowgroupSize;i<rowGroupMetaDatas.size();i++){
+		for (int i = lastRowgroupSize; i < rowGroupMetaDatas.size(); i++) {
 			appendMetadata.add(rowGroupMetaDatas.get(i));
 		}
 		lastRowgroupSize = rowGroupMetaDatas.size();
 		// construct the tsfile metadate
-		// List<TimeSeriesMetadata> timeSeriesList = fileSchema.getTimeSeriesMetadatas();
+		// List<TimeSeriesMetadata> timeSeriesList =
+		// fileSchema.getTimeSeriesMetadatas();
 		List<TimeSeriesMetadata> timeSeriesList = new ArrayList<>();
 		TSFileMetaData tsfileMetadata = new TSFileMetaData(appendMetadata, timeSeriesList,
 				TSFileDescriptor.getInstance().getConfig().currentVersion);
@@ -303,15 +286,14 @@ public class BufferWriteProcessor extends LRUProcessor {
 		TSFileMetaDataConverter metadataConverter = new TSFileMetaDataConverter();
 		RandomAccessFile out = null;
 		try {
-			out = new RandomAccessFile(bufferwriteRestoreFilePath,"rw");
+			out = new RandomAccessFile(bufferwriteRestoreFilePath, "rw");
 		} catch (FileNotFoundException e) {
-			LOGGER.error("The restore file can't be created, the file path is {}", bufferwriteRestoreFilePath);
-			e.printStackTrace();
+			LOGGER.error("The restore file can't be created, the file path is {}.", bufferwriteRestoreFilePath);
 			throw new BufferWriteProcessorException(e);
 		}
 		try {
-			if(out.length()>0){
-				out.seek(out.length()-TSFILEPOINTBYTESIZE);
+			if (out.length() > 0) {
+				out.seek(out.length() - TSFILEPOINTBYTESIZE);
 			}
 			ByteArrayOutputStream baos = new ByteArrayOutputStream();
 			ReadWriteThriftFormatUtils.writeFileMetaData(metadataConverter.toThriftFileMetadata(tsfileMetadata), baos);
@@ -320,13 +302,13 @@ public class BufferWriteProcessor extends LRUProcessor {
 			out.write(BytesUtils.intToBytes(metadataSize));
 			// write metadata
 			out.write(baos.toByteArray());
-			// write tsfile position using byte[8] which is present one long number
+			// write tsfile position using byte[8] which is present one long
+			// number
 			byte[] lastPositionBytes = BytesUtils.longToBytes(lastPosition);
 			out.write(lastPositionBytes);
-			LOGGER.info("Write restore information to the restore file");
+			LOGGER.info("Write restore information to the restore file.");
 		} catch (IOException e) {
-			LOGGER.error("Serialize the TSFileMetaData error");
-			e.printStackTrace();
+			LOGGER.error("Serialize the TSFileMetaData error.");
 			throw new BufferWriteProcessorException(e);
 		} finally {
 			if (out != null) {
@@ -369,7 +351,7 @@ public class BufferWriteProcessor extends LRUProcessor {
 			long fileLength = randomAccessFile.length();
 			// read tsfile position
 			long point = randomAccessFile.getFilePointer();
-			while(point+TSFILEPOINTBYTESIZE<fileLength){
+			while (point + TSFILEPOINTBYTESIZE < fileLength) {
 				byte[] metadataSizeBytes = new byte[TSMETADATABYTESIZE];
 				randomAccessFile.read(metadataSizeBytes);
 				int metadataSize = BytesUtils.bytesToInt(metadataSizeBytes);
@@ -383,18 +365,17 @@ public class BufferWriteProcessor extends LRUProcessor {
 				lastRowgroupSize = groupMetaDatas.size();
 				point = randomAccessFile.getFilePointer();
 			}
-			// read the tsfile position information using byte[8] which is present one long number.
+			// read the tsfile position information using byte[8] which is
+			// present one long number.
 			randomAccessFile.read(lastPostionBytes);
 		} catch (FileNotFoundException e) {
-			LOGGER.error("The restore file is not exist, the restore file path is {}", bufferwriteRestoreFilePath);
-			e.printStackTrace();
+			LOGGER.error("The restore file is not exist, the restore file path is {}.", bufferwriteRestoreFilePath);
 			throw e;
 		} catch (IOException e) {
-			e.printStackTrace();
-			LOGGER.error("read data from file error, the reasion is {}", e.getMessage());
+			LOGGER.error("Read data from file error.");
 			throw e;
 		} finally {
-			if(randomAccessFile!=null){
+			if (randomAccessFile != null) {
 				randomAccessFile.close();
 			}
 		}
@@ -410,13 +391,13 @@ public class BufferWriteProcessor extends LRUProcessor {
 		try {
 			deltaObjectType = mManager.getDeltaObjectTypeByPath(nameSpacePath);
 		} catch (PathErrorException e) {
-			LOGGER.error("Get the deltaObjectType from MManager error using nameSpacePath is {}", nameSpacePath);
+			LOGGER.error("Get the deltaObjectType from MManager error using nameSpacePath is {}.", nameSpacePath);
 			throw e;
 		}
 		try {
 			columnSchemaList = mManager.getSchemaForOneType(deltaObjectType);
 		} catch (PathErrorException e) {
-			LOGGER.error("The list of ColumnSchema error from MManager error using deltaObjectType is {}",
+			LOGGER.error("The list of ColumnSchema error from MManager error using deltaObjectType is {}.",
 					deltaObjectType);
 			throw e;
 		}
@@ -424,7 +405,7 @@ public class BufferWriteProcessor extends LRUProcessor {
 		try {
 			fileSchema = getFileSchemaFromColumnSchema(columnSchemaList, deltaObjectType);
 		} catch (WriteProcessException e) {
-			LOGGER.error("Get the FileSchema error, the list of ColumnSchema is {}", columnSchemaList);
+			LOGGER.error("Get the FileSchema error, the list of ColumnSchema is {}.", columnSchemaList);
 			throw e;
 		}
 		return fileSchema;
@@ -501,10 +482,8 @@ public class BufferWriteProcessor extends LRUProcessor {
 		try {
 			recordWriter.write(tsRecord);
 		} catch (IOException | WriteProcessException e) {
-			LOGGER.error("Write TSRecord error, the TSRecord is {}, the nameSpacePath is {}", tsRecord, nameSpacePath);
-			throw new BufferWriteProcessorException(
-					String.format("Write TSRecord error, the TSRecord is %s, the nameSpacePath is %s, the reason is %s",
-							tsRecord, nameSpacePath, e.getMessage()));
+			LOGGER.error("Write TSRecord error, the TSRecord is {}, the nameSpacePath is {}.", tsRecord, nameSpacePath);
+			throw new BufferWriteProcessorException(e);
 		}
 	}
 
@@ -518,8 +497,7 @@ public class BufferWriteProcessor extends LRUProcessor {
 				try {
 					flushState.wait();
 				} catch (InterruptedException e) {
-					e.printStackTrace();
-					LOGGER.error(e.getMessage());
+					LOGGER.error("Interrupted from waitting to flush.");
 				}
 			}
 		}
@@ -535,12 +513,12 @@ public class BufferWriteProcessor extends LRUProcessor {
 
 	@Override
 	public boolean canBeClosed() {
-		LOGGER.info("Check nameSpacePath {} can be closed or not", nameSpacePath);
+		LOGGER.info("Check nameSpacePath {} can be closed or not.", nameSpacePath);
 		if (flushState.isFlushing()) {
-			LOGGER.info("The nameSpacePath {} can't be closed", nameSpacePath);
+			LOGGER.info("The nameSpacePath {} can't be closed.", nameSpacePath);
 			return false;
 		} else {
-			LOGGER.info("The nameSpacePath {} can be closed", nameSpacePath);
+			LOGGER.info("The nameSpacePath {} can be closed.", nameSpacePath);
 			return true;
 		}
 	}
@@ -557,16 +535,11 @@ public class BufferWriteProcessor extends LRUProcessor {
 			// delete the restore for this bufferwrite processor
 			deleteRestoreFile();
 		} catch (IOException e) {
-			LOGGER.error("Close the bufferwrite processor error, the nameSpacePath is {}", nameSpacePath);
-			throw new BufferWriteProcessorException(
-					String.format("Close the bufferwrite processor error, the nameSpacePath is %s, the reason is %s",
-							nameSpacePath, e.getMessage()));
+			LOGGER.error("Close the bufferwrite processor error, the nameSpacePath is {}.", nameSpacePath);
+			throw new BufferWriteProcessorException(e);
 		} catch (Exception e) {
-			LOGGER.error("Close the bufferwrite processor failed, when call the action function. The reason is {}",
-					e.getMessage());
-			e.printStackTrace();
-			throw new BufferWriteProcessorException(
-					"Close the bufferwrite processor failed, when call the action function");
+			LOGGER.error("Close the bufferwrite processor failed, when call the action function.");
+			throw new BufferWriteProcessorException(e);
 		} finally {
 			isFlushingSync = false;
 		}
@@ -598,7 +571,7 @@ public class BufferWriteProcessor extends LRUProcessor {
 			try {
 				super.write(record);
 			} catch (IOException | WriteProcessException e) {
-				LOGGER.error("Write TSRecord error, TSRecord is {}", record);
+				LOGGER.error("Write TSRecord error, TSRecord is {}.", record);
 				throw e;
 			}
 		}
@@ -612,7 +585,7 @@ public class BufferWriteProcessor extends LRUProcessor {
 						try {
 							flushState.wait();
 						} catch (InterruptedException e) {
-							LOGGER.error("Interrupt error when waiting flush,processor:{}", nameSpacePath, e);
+							LOGGER.error("Interrupt error when waitting to flush, the processor:{}.", nameSpacePath, e);
 						}
 					}
 				}
@@ -620,7 +593,7 @@ public class BufferWriteProcessor extends LRUProcessor {
 				try {
 					bufferwriteFlushAction.act();
 				} catch (Exception e) {
-					LOGGER.error("Flush bufferwrite row group failed, when call the action function.", e);
+					LOGGER.error("Flush bufferwrite row group failed, when call the action function.");
 					throw new IOException(e);
 				}
 
@@ -639,17 +612,17 @@ public class BufferWriteProcessor extends LRUProcessor {
 							WriteLogManager.getInstance().endBufferWriteFlush(nameSpacePath);
 						}
 					} catch (IOException e) {
-						LOGGER.error("Flush row group to store failed, processor:{}.", nameSpacePath, e);
+						LOGGER.error("Flush row group to store failed, processor:{}.", nameSpacePath);
 						throw e;
 					} catch (BufferWriteProcessorException e) {
 						// write restore error
-						LOGGER.error("Write bufferwrite information to disk failed", e);
-						throw new IOException("Write bufferwrite information to disk failed");
+						LOGGER.error("Write bufferwrite information to disk failed.");
+						throw new IOException(e);
 					} catch (Exception e) {
 						// action error
-						LOGGER.error("Flush bufferwrite row group failed, when call the action function", e);
+						LOGGER.error("Flush bufferwrite row group failed, when call the action function.");
 						// handle
-						throw new IOException("Flush bufferwrite row group failed, when call the action function");
+						throw new IOException(e);
 					}
 				} else {
 					flushState.setFlushing();
@@ -658,7 +631,7 @@ public class BufferWriteProcessor extends LRUProcessor {
 
 					Runnable flushThread;
 					flushThread = () -> {
-						LOGGER.info("Asynchronous flushing start,-Thread id {}", Thread.currentThread().getId());
+						LOGGER.info("Asynchronous flushing start,-Thread id {}.", Thread.currentThread().getId());
 						try {
 							asyncFlushRowGroupToStore();
 							writeStoreToDisk();
@@ -671,8 +644,9 @@ public class BufferWriteProcessor extends LRUProcessor {
 							 * There should be added system log by CGF and throw
 							 * exception
 							 */
-							LOGGER.error("{} Asynchronous flush error, sleep this thread-{}.", nameSpacePath,
-									Thread.currentThread().getId(), e);
+							LOGGER.error(String.format("%s Asynchronous flush error, sleep this thread-%s.",
+									nameSpacePath, Thread.currentThread().getId()), e);
+							// TODO
 						} catch (BufferWriteProcessorException e) {
 							LOGGER.error("Write bufferwrite information to disk failed.", e);
 							// how to handle this error
@@ -688,7 +662,7 @@ public class BufferWriteProcessor extends LRUProcessor {
 						try {
 							synchronized (flushState) {
 								switchIndexFromFlushToWork();
-								LOGGER.info("Asynchronous flushing end,-Thread is {}", Thread.currentThread().getId());
+								LOGGER.info("Asynchronous flushing end,-Thread is {}.", Thread.currentThread().getId());
 								flushState.setUnFlushing();
 								flushState.notify();
 							}
@@ -716,9 +690,9 @@ public class BufferWriteProcessor extends LRUProcessor {
 				long actualTotalRowGroupSize = deltaFileWriter.getPos() - totalMemStart;
 				// remove the feature: fill the row group
 				// fillInRowGroupSize(actualTotalRowGroupSize);
-				LOGGER.info("Asynchronous total row group size:{}, actual:{}, less:{}", primaryRowGroupSize,
+				LOGGER.info("Asynchronous total row group size:{}, actual:{}, less:{}.", primaryRowGroupSize,
 						actualTotalRowGroupSize, primaryRowGroupSize - actualTotalRowGroupSize);
-				LOGGER.info("Asynchronous write row group end");
+				LOGGER.info("Asynchronous write row group end.");
 			}
 		}
 

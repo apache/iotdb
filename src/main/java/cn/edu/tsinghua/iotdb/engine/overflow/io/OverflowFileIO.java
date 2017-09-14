@@ -49,13 +49,14 @@ public class OverflowFileIO {
 
 	// The parameter of normalFileNamePath is not useful
 	public OverflowFileIO(OverflowReadWriter raf, String normalFileNamePath, long lastUpdateOffset) throws IOException {
+
 		this.raf = raf;
 		this.normalFileNamePath = normalFileNamePath;
 		try {
 			restoreBrokenFile(lastUpdateOffset);
 		} catch (IOException e) {
-			LOGGER.error("Restore broken file error, reason {}", e.getMessage());
-			throw new IOException("Restore broken file error, reason: " + e.getMessage());
+			LOGGER.error("Restore broken file error, reason is {}.", e.getMessage());
+			throw e;
 		}
 	}
 
@@ -83,8 +84,8 @@ public class OverflowFileIO {
 			raf.seek(lastOffset - FOOTER_LENGTH);
 			ofFileMetaDataLength = raf.readInt();
 
-			LOGGER.info("The last overflow footer metadata length is :{}", ofFileMetaDataLength);
-			LOGGER.info("The begin offset of the last overflow footer metadata is :{}",
+			LOGGER.info("The last overflow footer metadata length is :{}.", ofFileMetaDataLength);
+			LOGGER.info("The begin offset of the last overflow footer metadata is :{}.",
 					lastOffset - FOOTER_LENGTH - ofFileMetaDataLength);
 			raf.seek(lastOffset - FOOTER_LENGTH - ofFileMetaDataLength);
 			byte[] buf = new byte[ofFileMetaDataLength];
@@ -110,8 +111,8 @@ public class OverflowFileIO {
 						seriesList.add(index, oneTimeSeriesChunkMetaData);
 					}
 					// seriesList.addAll(seriesListInFile);
-					LOGGER.debug("Init the old overflow deltaObjectId:{},measurementId:{},serieslist:{}", deltaObjectId,
-							measurementId, seriesListInFile);
+					LOGGER.debug("Init the old overflow deltaObjectId:{},measurementId:{},serieslist:{}.",
+							deltaObjectId, measurementId, seriesListInFile);
 				}
 			}
 		}
@@ -131,8 +132,8 @@ public class OverflowFileIO {
 			raf.seek(lastOffset - FOOTER_LENGTH);
 			ofFileMetaDataLength = raf.readInt();
 
-			LOGGER.info("The last overflow footer metadata length is :{}", ofFileMetaDataLength);
-			LOGGER.info("The begin offset of the last overflow footer metadata is :{}",
+			LOGGER.info("The last overflow footer metadata length is :{}.", ofFileMetaDataLength);
+			LOGGER.info("The begin offset of the last overflow footer metadata is :{}.",
 					lastOffset - FOOTER_LENGTH - ofFileMetaDataLength);
 			raf.seek(lastOffset - FOOTER_LENGTH - ofFileMetaDataLength);
 			byte[] buf = new byte[ofFileMetaDataLength];
@@ -158,8 +159,8 @@ public class OverflowFileIO {
 						seriesList.add(index, oneTimeSeriesChunkMetaData);
 					}
 					// seriesList.addAll(seriesListInFile);
-					LOGGER.debug("Init the old overflow deltaObjectId:{},measurementId:{},serieslist:{}", deltaObjectId,
-							measurementId, seriesListInFile);
+					LOGGER.debug("Init the old overflow deltaObjectId:{},measurementId:{},serieslist:{}.",
+							deltaObjectId, measurementId, seriesListInFile);
 				}
 			}
 		}
@@ -178,10 +179,10 @@ public class OverflowFileIO {
 				off = off + num;
 				len = len - num;
 			}
-			LOGGER.info("Read series chunk: offset:{}, chunkSize {}", offset, chunkSize);
+			LOGGER.info("Read series chunk: offset:{}, chunkSize {}.", offset, chunkSize);
 			return new ByteArrayInputStream(chunk);
 		} catch (IOException e) {
-			LOGGER.error("Read series chunk failed, offset:{}, chunkSize:{}", offset, chunkSize);
+			LOGGER.error("Read series chunk failed, reason is {}", e.getMessage());
 			return new ByteArrayInputStream(new byte[0]);
 		}
 	}
@@ -199,7 +200,7 @@ public class OverflowFileIO {
 	public void startSeries(int valueCount, String measurementId, CompressionTypeName compressionCodecName,
 			TSDataType tsDataType, Statistics<?> statistics) throws IOException {
 		LOGGER.info(
-				"Start overflow series chunk meatadata: measurementId: {}, valueCount: {}, compressionName: {}, TSdatatype: {}",
+				"Start overflow series chunk meatadata: measurementId: {}, valueCount: {}, compressionName: {}, TSdatatype: {}.",
 				measurementId, valueCount, compressionCodecName, tsDataType);
 		currentSeries = new TimeSeriesChunkMetaData(measurementId, TSChunkType.VALUE, raf.getPos(),
 				compressionCodecName);
@@ -221,7 +222,7 @@ public class OverflowFileIO {
 	}
 
 	public TimeSeriesChunkMetaData endSeries(long size) throws IOException {
-		LOGGER.info("End overflow series chunk meatadata: {}, size: {}", currentSeries, size);
+		LOGGER.info("End overflow series chunk meatadata: {}, size: {}.", currentSeries, size);
 		currentSeries.setTotalByteSize(size);
 		return currentSeries;
 	}
@@ -236,18 +237,18 @@ public class OverflowFileIO {
 		long footerBeginOffset = raf.toTail();
 		OverflowReadWriteThriftFormatUtils.writeOFFileMetaData(
 				metadataConverter.toThriftOFFileMetadata(OVERFLOW_VERSION, footer), raf.getOutputStream());
-		LOGGER.info("Serialize the overflow footer, footer length:{}, last overflow file offset: {}",
+		LOGGER.info("Serialize the overflow footer, footer length:{}, last overflow file offset: {}.",
 				raf.getPos() - footerBeginOffset, footer.getLastFooterOffset());
-		LOGGER.info("Serialize the footer finished, file pos:{}", raf.getPos());
+		LOGGER.info("Serialize the footer finished, file pos:{}.", raf.getPos());
 		raf.write(BytesUtils.intToBytes((int) (raf.getPos() - footerBeginOffset)));
 		long len = raf.getPos();
 		LOGGER.info(
-				"Write overflow file block, last overflow file offset: {}, this overflow filemeta length: {},this end pos: {}",
+				"Write overflow file block, last overflow file offset: {}, this overflow filemeta length: {},this end pos: {}.",
 				footer.getLastFooterOffset(), len - footerBeginOffset - FOOTER_LENGTH, len);
 		// close the stream
 		close();
-		LOGGER.info("Overflow output stream is closed");
-		LOGGER.info("Overflow error output stream is closed");
+		LOGGER.info("Overflow output stream is closed.");
+		LOGGER.info("Overflow error output stream is closed.");
 		return len;
 	}
 

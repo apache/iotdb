@@ -89,9 +89,8 @@ public abstract class LRUProcessor {
 					Thread.currentThread().getId());
 			lock.readLock().lock();
 		}
-
 	}
-	
+
 	public boolean tryLock(boolean isWriteLock){
 		if (isWriteLock) {
 			LOGGER.debug("{}: lru write lock-Thread id {}",this.getClass().getSimpleName(),Thread.currentThread().getId());

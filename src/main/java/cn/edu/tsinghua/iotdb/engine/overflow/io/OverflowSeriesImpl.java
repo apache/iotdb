@@ -32,7 +32,7 @@ import cn.edu.tsinghua.tsfile.timeseries.read.query.DynamicOneColumnData;
  *
  */
 public class OverflowSeriesImpl {
-	private static final Logger LOG = LoggerFactory.getLogger(OverflowSeriesImpl.class);
+	private static final Logger LOGGER = LoggerFactory.getLogger(OverflowSeriesImpl.class);
 
 	private IIntervalTreeOperator workingOverflowIndex;
 	private IIntervalTreeOperator flushingOverflowIndex;
@@ -76,16 +76,6 @@ public class OverflowSeriesImpl {
 		queryOverflowIndex = new IntervalTreeOperation(type);
 	}
 
-//	private OverflowSeriesImpl(TSDataType type, List<TimeSeriesChunkMetaData> metaForReader,
-//			List<TimeSeriesChunkMetaData> metaForWriter, IIntervalTreeOperator workingOverflowIndex,
-//			OverflowFileIO tempForMergeIO) {
-//		this.type = type;
-//		this.metaForReader = metaForReader;
-//		this.metaForWriter = metaForWriter;
-//		this.workingOverflowIndex = workingOverflowIndex;
-//		this.overflowFileIO = tempForMergeIO;
-//		queryOverflowIndex = new IntervalTreeOperation(type);
-//	}
 
 	/**
 	 * Insert one data point into the overflow index with the special timestamp
@@ -171,17 +161,13 @@ public class OverflowSeriesImpl {
 			List<TimeSeriesChunkMetaData> TimeSeriesChunkMetaDataList, SingleSeriesFilterExpression timeFilter,
 			SingleSeriesFilterExpression freqFilter, SingleSeriesFilterExpression valueFilter) {
 		for (TimeSeriesChunkMetaData seriesMetaData : TimeSeriesChunkMetaDataList) {
-			// for (int i = TimeSeriesChunkMetaDataList.size() - 1; i >= 0; i--)
-			// {
-			// TimeSeriesChunkMetaData seriesMetaData =
-			// TimeSeriesChunkMetaDataList.get(i);
 			int chunkSize = (int) seriesMetaData.getTotalByteSize();
 			long offset = seriesMetaData.getProperties().getFileOffset();
 			InputStream in = overflowFileIO.getSeriesChunkBytes(chunkSize, offset);
 			try {
 				newerData = workingOverflowIndex.queryFileBlock(timeFilter, valueFilter, freqFilter, in, newerData);
 			} catch (IOException e) {
-				LOG.error("Read overflow file block failed, reason {}", e.getMessage());
+				LOGGER.error("Read overflow file block failed, reason is {}", e.getMessage());
 				// should throw the reason of the exception and handled by high
 				// level function
 				return null;
@@ -201,7 +187,7 @@ public class OverflowSeriesImpl {
 			try {
 				newerData = workingOverflowIndex.queryFileBlock(timeFilter, valueFilter, freqFilter, in, newerData);
 			} catch (IOException e) {
-				LOG.error("Read overflow file block failed, reason {}", e.getMessage());
+				LOGGER.error("Read overflow file block failed, reason {}", e.getMessage());
 				// should throw the reason of the exception and handled by high
 				// level function
 				return null;
@@ -294,12 +280,6 @@ public class OverflowSeriesImpl {
 	// add one input parameters: mergingSeriesImpl
 	public void switchWorkingToMerging() {
 
-		// this.workingOverflowIndex = new IntervalTreeOperation(type);// error
-		// this.metaForWriter = new ArrayList<TimeSeriesChunkMetaData>();//
-		// error
-		// this.metaForReader = null;// error
-		// statistics = new LongStatistics();// error
-		// valueCount = 0;// error
 		isMerging = true;
 	}
 

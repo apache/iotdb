@@ -2,8 +2,8 @@ package cn.edu.tsinghua.iotdb.query.management;
 
 import java.util.HashMap;
 
-import cn.edu.tsinghua.iotdb.engine.exception.FileNodeManagerException;
 import cn.edu.tsinghua.iotdb.engine.filenode.FileNodeManager;
+import cn.edu.tsinghua.iotdb.exception.FileNodeManagerException;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 
 
