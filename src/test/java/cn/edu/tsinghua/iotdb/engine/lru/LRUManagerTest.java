@@ -7,16 +7,16 @@ import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
 
-import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
-import cn.edu.tsinghua.iotdb.engine.bufferwrite.Action;
-import cn.edu.tsinghua.iotdb.engine.overflow.io.EngineTestHelper;
-import cn.edu.tsinghua.iotdb.metadata.MManager;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
 import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
-import cn.edu.tsinghua.iotdb.engine.exception.LRUManagerException;
+import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
+import cn.edu.tsinghua.iotdb.engine.bufferwrite.Action;
+import cn.edu.tsinghua.iotdb.engine.overflow.io.EngineTestHelper;
+import cn.edu.tsinghua.iotdb.exception.LRUManagerException;
+import cn.edu.tsinghua.iotdb.metadata.MManager;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 
 /**

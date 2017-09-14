@@ -8,21 +8,21 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
-import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
-import cn.edu.tsinghua.iotdb.engine.bufferwrite.FileNodeConstants;
-import cn.edu.tsinghua.iotdb.engine.overflow.utils.TimePair;
-import cn.edu.tsinghua.iotdb.sys.writelog.WriteLogManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
+import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
 import cn.edu.tsinghua.iotdb.engine.bufferwrite.Action;
-import cn.edu.tsinghua.iotdb.engine.exception.OverflowProcessorException;
+import cn.edu.tsinghua.iotdb.engine.bufferwrite.FileNodeConstants;
 import cn.edu.tsinghua.iotdb.engine.lru.LRUProcessor;
 import cn.edu.tsinghua.iotdb.engine.overflow.metadata.OFFileMetadata;
 import cn.edu.tsinghua.iotdb.engine.overflow.utils.OverflowReadWriteThriftFormatUtils;
 import cn.edu.tsinghua.iotdb.engine.overflow.utils.TSFileMetaDataConverter;
+import cn.edu.tsinghua.iotdb.engine.overflow.utils.TimePair;
 import cn.edu.tsinghua.iotdb.engine.utils.FlushState;
+import cn.edu.tsinghua.iotdb.exception.OverflowProcessorException;
+import cn.edu.tsinghua.iotdb.sys.writelog.WriteLogManager;
 import cn.edu.tsinghua.tsfile.common.conf.TSFileDescriptor;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 import cn.edu.tsinghua.tsfile.common.utils.BytesUtils;
@@ -47,7 +47,6 @@ public class OverflowProcessor extends LRUProcessor {
 
 	private static final String storeFileName = ".overflow";
 	private static final String restoreFileName = ".restore";
-//	private static final String mergeFileName = ".merge";
 	private String fileName;
 	private String overflowRetoreFilePath;
 	private String overflowOutputFilePath;
@@ -90,7 +89,7 @@ public class OverflowProcessor extends LRUProcessor {
 			raf = new OverflowReadWriter(overflowOutputFilePath);
 		} catch (IOException e) {
 			LOGGER.error("Can't get the overflowReadWrite, the nameSpacePath is {}", nameSpacePath);
-			throw new OverflowProcessorException("Can't get the overflowReadWrite, the reason is " + e.getMessage());
+			throw new OverflowProcessorException(e);
 		}
 		long lastUpdateOffset = 0;
 		if (lastOverflowFilePostion == -1) {
@@ -111,14 +110,14 @@ public class OverflowProcessor extends LRUProcessor {
 			overflowFileIO = new OverflowFileIO(raf, overflowOutputFilePath, lastUpdateOffset);
 		} catch (IOException e) {
 			LOGGER.error("Can't get the overflowFileIO, the nameSpacePath is {}", nameSpacePath);
-			throw new OverflowProcessorException("Can't get the overflowFileIO, reason is " + e.getMessage());
+			throw new OverflowProcessorException(e);
 		}
 		// create overflow supoort
 		try {
 			this.ofSupport = new OverflowSupport(overflowFileIO, ofFileMetadata);
 		} catch (IOException e) {
 			LOGGER.error("Can't get the overflowSupport, the nameSpacePath is {}", nameSpacePath);
-			throw new OverflowProcessorException("Can't get the overflowSupport, reason is " + e.getMessage());
+			throw new OverflowProcessorException(e);
 		}
 
 		overflowFlushAction = (Action) parameters.get(FileNodeConstants.OVERFLOW_FLUSH_ACTION);
@@ -160,10 +159,7 @@ public class OverflowProcessor extends LRUProcessor {
 			} catch (IOException e) {
 				LOGGER.error("Flush the information for the overflow processor error, the nameSpacePath is {}",
 						nameSpacePath);
-				e.printStackTrace();
-				throw new OverflowProcessorException(
-						"Flush the information for the overflow processor error, the nameSpacePath is " + nameSpacePath
-								+ " the reason is " + e.getMessage());
+				throw new OverflowProcessorException(e);
 			} finally {
 				if (fileOutputStream != null) {
 					try {
@@ -194,7 +190,6 @@ public class OverflowProcessor extends LRUProcessor {
 				fileInputStream = new FileInputStream(overflowRestoreFile);
 			} catch (FileNotFoundException e) {
 				LOGGER.error("The overflow restore file is not found, the file path is {}", overflowRetoreFilePath);
-				e.printStackTrace();
 				throw new OverflowProcessorException(e);
 			}
 			int off = 0;
@@ -228,8 +223,7 @@ public class OverflowProcessor extends LRUProcessor {
 			} catch (IOException e) {
 				LOGGER.error(
 						"Read the data: lastOverflowFilePostion, lastOverflowRowGroupPostion, offilemetadata error");
-				throw new OverflowProcessorException(
-						"Read the data: lastOverflowFilePostion, lastOverflowRowGroupPostion, offilemetadata error");
+				throw new OverflowProcessorException(e);
 			} finally {
 				if (fileInputStream != null) {
 					try {
@@ -373,8 +367,7 @@ public class OverflowProcessor extends LRUProcessor {
 					try {
 						flushState.wait();
 					} catch (InterruptedException e) {
-						LOGGER.error("Waiting the flushstate error in flush row group to store. reason {}",
-								e.getMessage());
+						LOGGER.error("Waiting the flushstate error in flush row group to store.", e);
 						// continue to wait
 					}
 				}
@@ -387,7 +380,7 @@ public class OverflowProcessor extends LRUProcessor {
 					throw new OverflowProcessorException(e1);
 				}
 			}
-			
+
 			ofSupport.switchWorkToFlush();
 			recordCount = 0;
 			// update the status of the newIntervalFiles
@@ -398,9 +391,7 @@ public class OverflowProcessor extends LRUProcessor {
 				filenodeManagerBackUpAction.act();
 			} catch (Exception e) {
 				LOGGER.error("Flush the overflow rowGroup to file faied, when overflowFlushAction act");
-				e.printStackTrace();
-				throw new OverflowProcessorException(
-						"Flush the overflow rowGroup to file faied, when overflowFlushAction act");
+				throw new OverflowProcessorException(e);
 			}
 			if (synchronize) {
 				// flush overflow row group synchronously
@@ -422,15 +413,13 @@ public class OverflowProcessor extends LRUProcessor {
 					}
 				} catch (IOException e) {
 					LOGGER.error("Flush overflow rowGroup to file failed synchronously");
-					throw new OverflowProcessorException(
-							"Flush overflow rowGroup to file failed synchronously, reason:" + e.getMessage());
+					throw new OverflowProcessorException(e);
 				} catch (OverflowProcessorException e) {
-					LOGGER.error("Flush overflow rowgroup restore failed, the reason is {}", e.getMessage());
+					LOGGER.error("Flush overflow rowgroup restore failed.", e);
 					System.exit(0);
 				} catch (Exception e) {
 					LOGGER.error("filenodeFlushAction action failed");
-					e.printStackTrace();
-					throw new OverflowProcessorException("FilenodeFlushAction action failed");
+					throw new OverflowProcessorException(e);
 				} finally {
 					synchronized (flushState) {
 						flushState.setUnFlushing();
@@ -458,15 +447,12 @@ public class OverflowProcessor extends LRUProcessor {
 								WriteLogManager.getInstance().endOverflowFlush(nameSpacePath);
 							}
 						} catch (IOException e) {
-							LOGGER.error("Flush overflow rowgroup to file error in asynchronously. The reason is {}",
-									e.getMessage());
-							e.printStackTrace();
+							LOGGER.error("Flush overflow rowgroup to file error in asynchronously.", e);
 						} catch (OverflowProcessorException e) {
-							LOGGER.error("Flush overflow rowgroup restore failed, the reason is {}", e.getMessage());
+							LOGGER.error("Flush overflow rowgroup restore failed.", e);
 							System.exit(0);
 						} catch (Exception e) {
-							LOGGER.error("filenodeFlushAction action failed");
-							e.printStackTrace();
+							LOGGER.error("filenodeFlushAction action failed.", e);
 						} finally {
 							synchronized (flushState) {
 								flushState.setUnFlushing();
@@ -496,18 +482,14 @@ public class OverflowProcessor extends LRUProcessor {
 			flushRowGroupToStore(true);
 		} catch (OverflowProcessorException e) {
 			LOGGER.error("Close the overflow processor error, the nameSpacePath is {}", nameSpacePath);
-			throw new OverflowProcessorException(
-					String.format("Close the bufferwrite processor error, the nameSpacePath is %s, the reason is %s",
-							nameSpacePath, e.getMessage()));
+			throw new OverflowProcessorException(e);
 		}
 		long lastUpdateOffset = -1L;
 		try {
 			lastUpdateOffset = ofSupport.endFile();
 		} catch (IOException e) {
 			LOGGER.error("Get the last update time failed, the nameSpacePath is {}", nameSpacePath);
-			throw new OverflowProcessorException(
-					String.format("End the overflow file failed, the nameSpacePath is %s, the reason is %s",
-							nameSpacePath, e.getMessage()));
+			throw new OverflowProcessorException(e);
 		}
 		if (lastUpdateOffset != -1) {
 			writeStoreToDisk(lastUpdateOffset, true);
@@ -522,9 +504,7 @@ public class OverflowProcessor extends LRUProcessor {
 				try {
 					flushState.wait();
 				} catch (InterruptedException e) {
-					LOGGER.error("Waiting the flushstate error in switch overflow to merger. reason {}",
-							e.getMessage());
-					e.printStackTrace();
+					LOGGER.error("Waiting the flushstate error in switch overflow to merge.", e);
 				}
 			}
 		}
@@ -532,9 +512,8 @@ public class OverflowProcessor extends LRUProcessor {
 		try {
 			ofSupport.switchWorkToMerge();
 		} catch (IOException e) {
-			LOGGER.error("SwitchFileIOToMerge failed, reason:{}", e.getMessage());
-			throw new OverflowProcessorException(
-					"Switch overflow from working to merge error, reason: " + e.getMessage());
+			LOGGER.error("SwitchFileIOToMerge failed.");
+			throw new OverflowProcessorException(e);
 		}
 	}
 
@@ -542,9 +521,8 @@ public class OverflowProcessor extends LRUProcessor {
 		try {
 			ofSupport.switchMergeToWork();
 		} catch (IOException e) {
-			LOGGER.error("Switch overflow from merge to working error, reason: {}", e.getMessage());
-			throw new OverflowProcessorException(
-					"Switch overflow from merge to working error, reason: " + e.getMessage());
+			LOGGER.error("Switch overflow from merge to working error");
+			throw new OverflowProcessorException(e);
 		} finally {
 			isMerging = false;
 		}

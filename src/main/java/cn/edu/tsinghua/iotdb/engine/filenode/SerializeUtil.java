@@ -29,7 +29,7 @@ public class SerializeUtil<T> {
 			oos.writeObject(obj);
 			oos.flush();
 		} catch (IOException e) {
-			LOGGER.error("Serizelize the object failed, object {}. Message {}", obj, e.getMessage());
+			LOGGER.error("Serizelize the object failed, object {}.", obj);
 			throw e;
 		} finally {
 			if (oos != null) {
@@ -45,13 +45,13 @@ public class SerializeUtil<T> {
 			return Optional.empty();
 		}
 		T result = null;
-		try{
-		ois = new ObjectInputStream(new FileInputStream(file));
-		result = (T) ois.readObject();
-		ois.close();
-		}catch (Exception e) {
-			LOGGER.error("Deserialize the object error. {}",e.getMessage());
-			if(ois!=null){
+		try {
+			ois = new ObjectInputStream(new FileInputStream(file));
+			result = (T) ois.readObject();
+			ois.close();
+		} catch (Exception e) {
+			LOGGER.error("Deserialize the object error.");
+			if (ois != null) {
 				ois.close();
 			}
 			return Optional.empty();

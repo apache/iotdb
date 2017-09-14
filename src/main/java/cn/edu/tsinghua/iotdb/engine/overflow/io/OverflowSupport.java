@@ -43,14 +43,14 @@ public class OverflowSupport {
 			lastFileOffset = fileWriter.getTail();
 		} catch (IOException e) {
 			LOGGER.error("Get the tail of the file failed. reason: {}", e.getMessage());
-			throw new IOException("Get tail failed: " + e.getMessage());
+			throw e;
 		}
 		this.fileWriter = fileWriter;
 		try {
 			init();
 		} catch (IOException e) {
 			LOGGER.error("Initialize the overflow support failed. reason:{}", e.getMessage());
-			throw new IOException("Initialize the overflow support failed.");
+			throw e;
 		}
 	}
 
@@ -62,7 +62,7 @@ public class OverflowSupport {
 				lastFileOffset = fileWriter.getTail();
 			} catch (IOException e) {
 				LOGGER.error("Get the tail of the file failed. reason: {}", e.getMessage());
-				throw new IOException("Get tail failed: " + e.getMessage());
+				throw e;
 			}
 		} else {
 			// recovery from rowgroup level
@@ -114,56 +114,6 @@ public class OverflowSupport {
 				}
 			}
 		}
-
-		/*
-		 * if (ofFileMetadata != null) {
-		 * 
-		 * Map<String, Map<String, List<TimeSeriesChunkMetaData>>>
-		 * overflowMetadataMap = new HashMap<String, Map<String,
-		 * List<TimeSeriesChunkMetaData>>>(); for (OFRowGroupListMetadata
-		 * rowGroupListMeta : ofFileMetadata.getMetaDatas()) { String
-		 * deltaObjectId = rowGroupListMeta.getDeltaObjectId(); if
-		 * (!overflowMetadataMap.containsKey(deltaObjectId))
-		 * overflowMetadataMap.put(deltaObjectId, new HashMap<String,
-		 * List<TimeSeriesChunkMetaData>>()); Map<String,
-		 * List<TimeSeriesChunkMetaData>> ofRowGroup =
-		 * overflowMetadataMap.get(deltaObjectId); for (OFSeriesListMetadata
-		 * seriesListMeta : rowGroupListMeta.getMetaDatas()) { String
-		 * measurementId = seriesListMeta.getMeasurementId(); if
-		 * (!ofRowGroup.containsKey(measurementId))
-		 * ofRowGroup.put(measurementId, new
-		 * ArrayList<TimeSeriesChunkMetaData>()); List<TimeSeriesChunkMetaData>
-		 * seriesList = ofRowGroup.get(measurementId);
-		 * List<TimeSeriesChunkMetaData> seriesListInFile =
-		 * seriesListMeta.getMetaDatas(); seriesList.addAll(seriesListInFile);
-		 * LOGGER.
-		 * debug("Init the old overflow deltaObjectId:{},measurementId:{},serieslist:{}"
-		 * , deltaObjectId, measurementId, seriesListInFile); } }
-		 * 
-		 * // merge metaForread and metaForwrite for (Entry<String, Map<String,
-		 * List<TimeSeriesChunkMetaData>>> devEntry :
-		 * overflowMetadataMap.entrySet()) { String deltaObjectId =
-		 * devEntry.getKey(); if (!overflowMap.containsKey(deltaObjectId)) {
-		 * overflowMap.put(deltaObjectId, new HashMap<>()); } Map<String,
-		 * OverflowSeriesImpl> seriesImplMap = overflowMap.get(deltaObjectId);
-		 * 
-		 * for (Entry<String, List<TimeSeriesChunkMetaData>> senEntry :
-		 * devEntry.getValue().entrySet()) { String measurementId =
-		 * senEntry.getKey(); List<TimeSeriesChunkMetaData> seriesList =
-		 * senEntry.getValue(); if (seriesImplMap.containsKey(measurementId)) {
-		 * seriesImplMap.get(measurementId).setMetaForWriter(seriesList); } else
-		 * { TimeSeriesChunkMetaData first = seriesList.get(0); Compressor
-		 * compressor =
-		 * Compressor.getCompressor(first.getProperties().getCompression());
-		 * TSDataType type =
-		 * first.getVInTimeSeriesChunkMetaData().getDataType(); // set the
-		 * metaForReader is null OverflowSeriesImpl overflowSeriesImpl = new
-		 * OverflowSeriesImpl(measurementId, type, fileWriter, compressor,
-		 * null); // set the metaForWriter is seriesList
-		 * overflowSeriesImpl.setMetaForWriter(seriesList);
-		 * seriesImplMap.put(measurementId, overflowSeriesImpl); } }
-		 * overflowMap.put(deltaObjectId, seriesImplMap); } }
-		 */
 	}
 
 	/**

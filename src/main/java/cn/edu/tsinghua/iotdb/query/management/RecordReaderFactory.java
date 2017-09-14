@@ -4,13 +4,13 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import cn.edu.tsinghua.iotdb.engine.exception.FileNodeManagerException;
-import cn.edu.tsinghua.iotdb.engine.filenode.IntervalFileNode;
-import cn.edu.tsinghua.iotdb.engine.filenode.QueryStructure;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import cn.edu.tsinghua.iotdb.engine.filenode.FileNodeManager;
+import cn.edu.tsinghua.iotdb.engine.filenode.IntervalFileNode;
+import cn.edu.tsinghua.iotdb.engine.filenode.QueryStructure;
+import cn.edu.tsinghua.iotdb.exception.FileNodeManagerException;
 import cn.edu.tsinghua.iotdb.query.reader.RecordReader;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 import cn.edu.tsinghua.tsfile.common.utils.TSRandomAccessFileReader;
