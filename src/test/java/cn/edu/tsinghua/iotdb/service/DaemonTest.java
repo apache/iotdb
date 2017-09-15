@@ -4,10 +4,14 @@ import java.io.File;
 import java.sql.*;
 
 import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
+import cn.edu.tsinghua.iotdb.jdbc.TsfileJDBCConfig;
 import org.apache.commons.io.FileUtils;
+import org.junit.After;
 import org.junit.Assert;
 
 import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
+import org.junit.Before;
+import org.junit.Test;
 
 /**
  * Just used for integration test.
@@ -92,65 +96,73 @@ public class DaemonTest {
 
     private Daemon deamon;
 
-    //@Before
+    private boolean testFlag = false;
+
+    @Before
     public void setUp() throws Exception {
-        TsfileDBConfig config = TsfileDBDescriptor.getInstance().getConfig();
-        overflowDataDirPre = config.overflowDataDir;
-        fileNodeDirPre = config.fileNodeDir;
-        bufferWriteDirPre = config.bufferWriteDir;
-        metadataDirPre = config.metadataDir;
-        derbyHomePre = config.derbyHome;
+        if (testFlag) {
+            TsfileDBConfig config = TsfileDBDescriptor.getInstance().getConfig();
+            overflowDataDirPre = config.overflowDataDir;
+            fileNodeDirPre = config.fileNodeDir;
+            bufferWriteDirPre = config.bufferWriteDir;
+            metadataDirPre = config.metadataDir;
+            derbyHomePre = config.derbyHome;
 
-        config.overflowDataDir = FOLDER_HEADER + "/data/overflow";
-        config.fileNodeDir = FOLDER_HEADER + "/data/digest";
-        config.bufferWriteDir = FOLDER_HEADER + "/data/delta";
-        config.metadataDir = FOLDER_HEADER + "/data/metadata";
-        config.derbyHome = FOLDER_HEADER + "/data/derby";
-        deamon = new Daemon();
-        deamon.active();
+            config.overflowDataDir = FOLDER_HEADER + "/data/overflow";
+            config.fileNodeDir = FOLDER_HEADER + "/data/digest";
+            config.bufferWriteDir = FOLDER_HEADER + "/data/delta";
+            config.metadataDir = FOLDER_HEADER + "/data/metadata";
+            config.derbyHome = FOLDER_HEADER + "/data/derby";
+            deamon = new Daemon();
+            deamon.active();
+        }
     }
 
-    //@After
+    @After
     public void tearDown() throws Exception {
-        deamon.stop();
-        Thread.sleep(5000);
+        if (testFlag) {
+            deamon.stop();
+            Thread.sleep(5000);
 
-        TsfileDBConfig config = TsfileDBDescriptor.getInstance().getConfig();
-        FileUtils.deleteDirectory(new File(config.overflowDataDir));
-        FileUtils.deleteDirectory(new File(config.fileNodeDir));
-        FileUtils.deleteDirectory(new File(config.bufferWriteDir));
-        FileUtils.deleteDirectory(new File(config.metadataDir));
-        FileUtils.deleteDirectory(new File(config.derbyHome));
-        FileUtils.deleteDirectory(new File(FOLDER_HEADER + "/data"));
+            TsfileDBConfig config = TsfileDBDescriptor.getInstance().getConfig();
+            FileUtils.deleteDirectory(new File(config.overflowDataDir));
+            FileUtils.deleteDirectory(new File(config.fileNodeDir));
+            FileUtils.deleteDirectory(new File(config.bufferWriteDir));
+            FileUtils.deleteDirectory(new File(config.metadataDir));
+            FileUtils.deleteDirectory(new File(config.derbyHome));
+            FileUtils.deleteDirectory(new File(FOLDER_HEADER + "/data"));
 
-        config.overflowDataDir = overflowDataDirPre;
-        config.fileNodeDir = fileNodeDirPre;
-        config.bufferWriteDir = bufferWriteDirPre;
-        config.metadataDir = metadataDirPre;
-        config.derbyHome = derbyHomePre;
+            config.overflowDataDir = overflowDataDirPre;
+            config.fileNodeDir = fileNodeDirPre;
+            config.bufferWriteDir = bufferWriteDirPre;
+            config.metadataDir = metadataDirPre;
+            config.derbyHome = derbyHomePre;
+        }
     }
 
-    //@Test
+    @Test
     public void test() throws ClassNotFoundException, SQLException, InterruptedException {
-        Thread.sleep(5000);
-        insertSQL();
+        if (testFlag) {
+            Thread.sleep(5000);
+            insertSQL();
 
-        //TODO: add your query statement
-        Connection connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
-        //System.out.println(connection.getMetaData());
-        selectAllSQLTest();
-        dnfErrorSQLTest();
-        selectWildCardSQLTest();
-        selectAndOperatorTest();
-        selectAndOpeCrossTest();
-        aggregationTest();
-        selectOneColumnWithFilterTest();
-        multiAggregationTest();
-        connection.close();
+            //TODO: add your query statement
+            Connection connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
+            //System.out.println(connection.getMetaData());
+            selectAllSQLTest();
+            dnfErrorSQLTest();
+            selectWildCardSQLTest();
+            selectAndOperatorTest();
+            selectAndOpeCrossTest();
+            aggregationTest();
+            selectOneColumnWithFilterTest();
+            multiAggregationTest();
+            connection.close();
+        }
     }
 
     private void insertSQL() throws ClassNotFoundException, SQLException {
-        Class.forName("cn.edu.thu.tsfiledb.jdbc.TsfileDriver");
+        Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);
         Connection connection = null;
         try {
             connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
@@ -173,7 +185,7 @@ public class DaemonTest {
                 "11,6,6"
         };
 
-        Class.forName("cn.edu.thu.tsfiledb.jdbc.TsfileDriver");
+        Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);
         Connection connection = null;
         try {
             connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
@@ -266,7 +278,7 @@ public class DaemonTest {
                 "946684800000,null,100,null,good,null"
         };
 
-        Class.forName("cn.edu.thu.tsfiledb.jdbc.TsfileDriver");
+        Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);
         Connection connection = null;
         try {
             connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
@@ -322,7 +334,7 @@ public class DaemonTest {
                 "104,33333,190",
                 "105,33333,199"};
 
-        Class.forName("cn.edu.thu.tsfiledb.jdbc.TsfileDriver");
+        Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);
         Connection connection = null;
         try {
             connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
@@ -358,7 +370,7 @@ public class DaemonTest {
                 "105,11.11",
                 "1000,1000.11"};
 
-        Class.forName("cn.edu.thu.tsfiledb.jdbc.TsfileDriver");
+        Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);
         Connection connection = null;
         try {
             connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
@@ -390,7 +402,7 @@ public class DaemonTest {
         String[] retArray = new String[]{
                 "1000,22222,55555,888"};
 
-        Class.forName("cn.edu.thu.tsfiledb.jdbc.TsfileDriver");
+        Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);
         Connection connection = null;
         try {
             connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
@@ -424,7 +436,7 @@ public class DaemonTest {
         String[] retArray = new String[]{
                 "1000,22222,55555"};
 
-        Class.forName("cn.edu.thu.tsfiledb.jdbc.TsfileDriver");
+        Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);
         Connection connection = null;
         try {
             connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
@@ -457,7 +469,7 @@ public class DaemonTest {
                 "tomorrow is another day",
         };
 
-        Class.forName("cn.edu.thu.tsfiledb.jdbc.TsfileDriver");
+        Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);
         Connection connection = null;
         try {
             connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
@@ -506,7 +518,7 @@ public class DaemonTest {
                 "946684800000,100"
         };
 
-        Class.forName("cn.edu.thu.tsfiledb.jdbc.TsfileDriver");
+        Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);
         Connection connection = null;
         try {
             connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
@@ -541,7 +553,7 @@ public class DaemonTest {
                 "946684800000,100,null,good"
         };
 
-        Class.forName("cn.edu.thu.tsfiledb.jdbc.TsfileDriver");
+        Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);
         Connection connection = null;
         try {
             connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
