@@ -11,6 +11,7 @@ import cn.edu.tsinghua.iotdb.query.aggregation.AggregationResult;
 import cn.edu.tsinghua.iotdb.query.dataset.InsertDynamicData;
 import cn.edu.tsinghua.iotdb.query.management.RecordReaderFactory;
 import cn.edu.tsinghua.iotdb.query.reader.RecordReader;
+import cn.edu.tsinghua.iotdb.query.reader.TimestampRecord;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 import cn.edu.tsinghua.tsfile.common.utils.Pair;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
@@ -159,6 +160,7 @@ public class AggregateEngine {
                             insertTrue, updateTrue, updateFalse,
                             newTimeFilter, null, null, dataType);
 
+                    TimestampRecord timestampRecord = new TimestampRecord(timestamps, 0);
                     AggregationResult aggrResult = recordReader.aggregateUsingTimestamps(deltaObjectUID, measurementUID, aggregateFunction,
                             recordReader.insertAllData.updateTrue, recordReader.insertAllData.updateFalse, recordReader.insertAllData,
                             newTimeFilter, null, null, timestamps, null);
