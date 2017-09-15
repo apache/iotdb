@@ -48,7 +48,7 @@ public class TsfileDBDescriptor {
 			try {
 			    inputStream = new FileInputStream(new File(url));
 			} catch (Exception e) {
-			    LOGGER.warn("Fail to find config file {}", url, e);
+			    LOGGER.warn("Fail to find config file {}", url);
 			    return;
 			}
 			
@@ -58,7 +58,7 @@ public class TsfileDBDescriptor {
 				File file = new File(url);
 				inputStream = new FileInputStream(file);
 			} catch (FileNotFoundException e) {
-				LOGGER.warn("Fail to find config file {}", url, e);
+				LOGGER.warn("Fail to find config file {}", url);
 				return;
 			}
 		}
@@ -95,15 +95,15 @@ public class TsfileDBDescriptor {
 			}
 
 		} catch (IOException e) {
-			LOGGER.warn("Cannot load config file, use default configuration", e);
+			LOGGER.warn("Cannot load config file because {}, use default configuration", e.getMessage());
 		} catch (Exception e) {
-			LOGGER.warn("Error format in config file, use default configuration", e);
+			LOGGER.warn("Error format in config file because {}, use default configuration", e.getMessage());
 		}
 		if (inputStream != null) {
 			try {
 				inputStream.close();
 			} catch (IOException e) {
-				LOGGER.error("Fail to close config file input stream", e);
+				LOGGER.error("Fail to close config file input stream because {}", e.getMessage());
 			}
 		}
 	}
