@@ -16,8 +16,9 @@ import cn.edu.tsinghua.tsfile.common.utils.Pair;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
 import cn.edu.tsinghua.tsfile.timeseries.filter.definition.SingleSeriesFilterExpression;
 import cn.edu.tsinghua.tsfile.timeseries.read.qp.Path;
+import cn.edu.tsinghua.tsfile.timeseries.read.query.CrossQueryTimeGenerator;
 import cn.edu.tsinghua.tsfile.timeseries.read.query.DynamicOneColumnData;
-import cn.edu.tsinghua.tsfile.timeseries.read.query.QueryDataSet;
+import cn.edu.tsinghua.tsfile.timeseries.read.query.QueryDataSet;¡
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,9 +30,131 @@ public class AggregateEngine {
 
         if (filterStructures == null || filterStructures.size() == 0 || (filterStructures.size()==1 && filterStructures.get(0).noFilter()) ) {
             return multiAggregateWithoutFilter(aggres, filterStructures);
-        } else {
-            throw new ProcessorException("Multi aggregation doesn't support filter currently.");
         }
+
+        QueryDataSet ansQueryDataSet = new QueryDataSet();
+        List<QueryDataSet> filterQueryDataSets = new ArrayList<>(); // stores QueryDataSet of each FilterStructure answer
+        List<long[]> timeArray = new ArrayList<>(); // stores calculated common timestamps of each FilterStructure answer
+        List<Integer> indexArray = new ArrayList<>(); // stores used index of each timeArray
+        List<Boolean> hasDataArray = new ArrayList<>(); // represents whether this FilterStructure answer still has unread data
+        for (int idx = 0;idx < filterStructures.size();idx++) {
+            FilterStructure filterStructure = filterStructures.get(idx);
+            QueryDataSet queryDataSet = new QueryDataSet();
+            queryDataSet.timeQueryDataSet = new CrossQueryTimeGenerator(filterStructure.getTimeFilter(), filterStructure.getFrequencyFilter(), filterStructure.getValueFilter(), 10000) {
+                @Override
+                public DynamicOneColumnData getDataInNextBatch(DynamicOneColumnData res, int fetchSize,
+                                                               SingleSeriesFilterExpression valueFilter, int valueFilterNumber) throws ProcessorException, IOException {
+                    try {
+                        return getDataUseSingleValueFilter(valueFilter, freqFilter, res, fetchSize, valueFilterNumber);
+                    } catch (PathErrorException e) {
+                        e.printStackTrace();
+                        return null;
+                    }
+                }
+            };
+            filterQueryDataSets.add(queryDataSet);
+            long[] curTimestamps = ansQueryDataSet.timeQueryDataSet.generateTimes();
+            timeArray.add(curTimestamps);
+            indexArray.add(0);
+            if (curTimestamps.length > 0) {
+                hasDataArray.add(true);
+            } else {
+                hasDataArray.add(false);
+            }
+        }
+
+        // the aggregate timestamps calculated by all dnf
+        List<Long> timestamps = new ArrayList<>();
+        PriorityQueue<Long> priorityQueue = new PriorityQueue<>();
+
+        for (int i = 0;i < timeArray.size();i++) {
+            boolean flag = hasDataArray.get(i);
+            if (flag) {
+                priorityQueue.add(timeArray.get(i)[indexArray.get(i)]);
+            }
+        }
+
+        int batchSize = 50000;
+        while (true) {
+
+            while (timestamps.size() < batchSize && !priorityQueue.isEmpty()) {
+
+                // add the minimum timestamp and remove others in timeArray
+                long minTime = priorityQueue.poll();
+                timestamps.add(minTime);
+                while (!priorityQueue.isEmpty() && minTime == priorityQueue.peek())
+                    priorityQueue.poll();
+
+                for (int i = 0;i < timeArray.size();i++) {
+                    boolean flag = hasDataArray.get(i);
+                    if (flag) {
+                        int curTimeIdx = indexArray.get(i);
+                        long[] curTimestamps = timeArray.get(i);
+                        // remove all timestamps equal to min time in all series
+                        while (curTimeIdx < curTimestamps.length && curTimestamps[curTimeIdx] == minTime) {
+                            curTimeIdx++;
+                        }
+                        if (curTimeIdx < curTimestamps.length) {
+                            indexArray.set(i, curTimeIdx);
+                            priorityQueue.add(curTimestamps[curTimeIdx]);
+                        } else {
+                            long[] newTimeStamps = filterQueryDataSets.get(i).timeQueryDataSet.generateTimes();
+                            if (newTimeStamps.length > 0) {
+                                indexArray.set(i, 0);
+                            } else {
+                                hasDataArray.set(i, false);
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (timestamps.size() == 0)
+                break;
+
+            Set<String> aggrePathSet = new HashSet<>();
+            for (Pair<Path, AggregateFunction> pair : aggres) {
+                Path path = pair.left;
+                AggregateFunction aggregateFunction = pair.right;
+                String deltaObjectUID = path.getDeltaObjectToString();
+                String measurementUID = path.getMeasurementToString();
+                TSDataType dataType = MManager.getInstance().getSeriesType(path.getFullPath());
+                String aggregationKey = aggregateFunction.name + "(" + path.getFullPath() + ")";
+                if (aggrePathSet.contains(aggregationKey)) {
+                    continue;
+                } else {
+                    aggrePathSet.add(aggregationKey);
+                }
+
+                RecordReader recordReader = RecordReaderFactory.getInstance().getRecordReader(deltaObjectUID, measurementUID,
+                        null, null, null, null, "MultiAggre_Query");
+
+                if (recordReader.insertAllData == null) {
+                    // get overflow params merged with bufferwrite insert data
+                    List<Object> params = EngineUtils.getOverflowInfoAndFilterDataInMem(null, null, null, null, recordReader.insertPageInMemory, recordReader.overflowInfo);
+                    DynamicOneColumnData insertTrue = (DynamicOneColumnData) params.get(0);
+                    DynamicOneColumnData updateTrue = (DynamicOneColumnData) params.get(1);
+                    DynamicOneColumnData updateFalse = (DynamicOneColumnData) params.get(2);
+                    SingleSeriesFilterExpression newTimeFilter = (SingleSeriesFilterExpression) params.get(3);
+
+                    recordReader.insertAllData = new InsertDynamicData(recordReader.bufferWritePageList, recordReader.compressionTypeName,
+                            insertTrue, updateTrue, updateFalse,
+                            newTimeFilter, null, null, dataType);
+
+                    AggregationResult aggrResult = recordReader.aggregateUsingTimestamps(deltaObjectUID, measurementUID, aggregateFunction,
+                            recordReader.insertAllData.updateTrue, recordReader.insertAllData.updateFalse, recordReader.insertAllData,
+                            newTimeFilter, null, null, timestamps, null);
+                    ansQueryDataSet.mapRet.put(aggregationKey, aggrResult.data);
+                } else {
+                    DynamicOneColumnData aggreData = ansQueryDataSet.mapRet.get(aggregationKey);
+                    AggregationResult aggrResult = recordReader.aggregateUsingTimestamps(deltaObjectUID, measurementUID, aggregateFunction,
+                            recordReader.insertAllData.updateTrue, recordReader.insertAllData.updateFalse, recordReader.insertAllData,
+                            recordReader.insertAllData.timeFilter, null, null, timestamps, aggreData);
+                }
+            }
+        }
+
+        return ansQueryDataSet;
     }
 
     private static QueryDataSet multiAggregateWithoutFilter(List<Pair<Path, AggregateFunction>> aggres, List<FilterStructure> filterStructures) throws PathErrorException, ProcessorException, IOException {
