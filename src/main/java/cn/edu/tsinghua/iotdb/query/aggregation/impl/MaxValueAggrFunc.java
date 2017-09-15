@@ -24,7 +24,7 @@ public class MaxValueAggrFunc extends AggregateFunction {
     }
 
     @Override
-    public boolean calculateValueFromPageHeader(PageHeader pageHeader) {
+    public void calculateValueFromPageHeader(PageHeader pageHeader) {
         Digest pageDigest = pageHeader.data_page_header.getDigest();
         DigestForFilter digest = new DigestForFilter(pageDigest.min, pageDigest.max, dataType);
         Comparable<?> maxv = digest.getMaxValue();
@@ -37,36 +37,36 @@ public class MaxValueAggrFunc extends AggregateFunction {
                 result.data.setAnObject(0, maxv);
             }
         }
-        return true;
     }
 
     @Override
-    public void calculateValueFromDataInThisPage(DynamicOneColumnData dataInThisPage) throws IOException, ProcessorException {
-        if (dataInThisPage instanceof InsertDynamicData) {
-            Object max_value = ((InsertDynamicData) dataInThisPage).calcAggregation(AggregationConstant.MAX_VALUE);
-            if (max_value != null) {
-                if (!hasSetValue) {
-                    result.data.putAnObject(max_value);
-                    hasSetValue = true;
-                } else {
-                    Comparable<?> v = result.data.getAnObject(0);
-                    if (compare(v, (Comparable<?>)max_value) < 0) {
-                        result.data.setAnObject(0, (Comparable<?>)max_value);
-                    }
-                }
-            }
+    public void calculateValueFromDataPage(DynamicOneColumnData dataInThisPage) throws IOException, ProcessorException {
+        if (dataInThisPage.valueLength == 0) {
+            return;
+        }
+        Comparable<?> maxv = getMaxValue(dataInThisPage);
+        if (!hasSetValue) {
+            result.data.putAnObject(maxv);
+            hasSetValue = true;
         } else {
-            if (dataInThisPage.valueLength == 0) {
-                return;
+            Comparable<?> v = result.data.getAnObject(0);
+            if (compare(v, maxv) < 0) {
+                result.data.setAnObject(0, maxv);
             }
-            Comparable<?> maxv = getMaxValue(dataInThisPage);
+        }
+    }
+
+    @Override
+    public void calculateValueFromLeftMemoryData(InsertDynamicData insertMemoryData) throws IOException, ProcessorException {
+        Object max_value = insertMemoryData.calcAggregation(AggregationConstant.MAX_VALUE);
+        if (max_value != null) {
             if (!hasSetValue) {
-                result.data.putAnObject(maxv);
+                result.data.putAnObject(max_value);
                 hasSetValue = true;
             } else {
                 Comparable<?> v = result.data.getAnObject(0);
-                if (compare(v, maxv) < 0) {
-                    result.data.setAnObject(0, maxv);
+                if (compare(v, (Comparable<?>) max_value) < 0) {
+                    result.data.setAnObject(0, (Comparable<?>) max_value);
                 }
             }
         }

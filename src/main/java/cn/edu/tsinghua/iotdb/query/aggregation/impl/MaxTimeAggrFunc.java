@@ -20,7 +20,7 @@ public class MaxTimeAggrFunc extends AggregateFunction {
     }
 
     @Override
-    public boolean calculateValueFromPageHeader(PageHeader pageHeader) {
+    public void calculateValueFromPageHeader(PageHeader pageHeader) {
         long timestamp = pageHeader.data_page_header.max_timestamp;
         if (!hasSetValue) {
             result.data.putLong(timestamp);
@@ -30,29 +30,29 @@ public class MaxTimeAggrFunc extends AggregateFunction {
             maxv = maxv > timestamp ? maxv : timestamp;
             result.data.setLong(0, maxv);
         }
-        return true;
     }
 
     @Override
-    public void calculateValueFromDataInThisPage(DynamicOneColumnData dataInThisPage) throws IOException, ProcessorException {
-        if (dataInThisPage instanceof InsertDynamicData) {
-            Object max_time = ((InsertDynamicData) dataInThisPage).calcAggregation(AggregationConstant.MAX_TIME);
-            if (max_time != null) {
-                long timestamp = (long)max_time;
-                if (!hasSetValue) {
-                    result.data.putLong(timestamp);
-                    hasSetValue = true;
-                } else {
-                    long maxv = result.data.getLong(0);
-                    maxv = maxv > timestamp ? maxv : timestamp;
-                    result.data.setLong(0, maxv);
-                }
-            }
+    public void calculateValueFromDataPage(DynamicOneColumnData dataInThisPage) throws IOException, ProcessorException {
+        if (dataInThisPage.valueLength == 0) {
+            return;
+        }
+        long timestamp = dataInThisPage.getTime(dataInThisPage.valueLength - 1);
+        if (!hasSetValue) {
+            result.data.putLong(timestamp);
+            hasSetValue = true;
         } else {
-            if (dataInThisPage.valueLength == 0) {
-                return;
-            }
-            long timestamp = dataInThisPage.getTime(dataInThisPage.valueLength - 1);
+            long maxv = result.data.getLong(0);
+            maxv = maxv > timestamp ? maxv : timestamp;
+            result.data.setLong(0, maxv);
+        }
+    }
+
+    @Override
+    public void calculateValueFromLeftMemoryData(InsertDynamicData insertMemoryData) throws IOException, ProcessorException {
+        Object max_time = insertMemoryData.calcAggregation(AggregationConstant.MAX_TIME);
+        if (max_time != null) {
+            long timestamp = (long) max_time;
             if (!hasSetValue) {
                 result.data.putLong(timestamp);
                 hasSetValue = true;

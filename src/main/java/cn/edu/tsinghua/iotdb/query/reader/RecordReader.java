@@ -194,7 +194,7 @@ public class RecordReader {
      * @param valueFilter value filter
      * @return aggregation result
      * @throws ProcessorException aggregation invoking exception
-     * @throws IOException tsfile read exception
+     * @throws IOException TsFile read exception
      */
     public AggregationResult aggregate(String deltaObjectId, String measurementId, AggregateFunction func,
                                        DynamicOneColumnData updateTrue, DynamicOneColumnData updateFalse, InsertDynamicData insertMemoryData,
@@ -212,13 +212,13 @@ public class RecordReader {
 
         // add left insert values
         if (insertMemoryData != null && insertMemoryData.hasInsertData()) {
-            func.calculateFromLeftMemoryData(insertMemoryData);
+            func.calculateValueFromLeftMemoryData(insertMemoryData);
         }
         return func.result;
     }
 
     /**
-     * Calculate the aggregate result using the common timestamps.
+     * Calculate the aggregate result using the given timestamps.
      *
      * @param deltaObjectId deltaObjectId deltaObjectId of <code>Path</code>
      * @param measurementId measurementId of <code>Path</code>
@@ -232,7 +232,7 @@ public class RecordReader {
      * @param timestamps timestamps calculated by the cross filter
      * @return aggregation result
      * @throws ProcessorException aggregation invoking exception
-     * @throws IOException tsfile read exception
+     * @throws IOException TsFile read exception
      */
     public AggregationResult aggregateUsingTimestamps(String deltaObjectId, String measurementId, AggregateFunction func,
                                                       DynamicOneColumnData updateTrue, DynamicOneColumnData updateFalse, InsertDynamicData insertMemoryData,
