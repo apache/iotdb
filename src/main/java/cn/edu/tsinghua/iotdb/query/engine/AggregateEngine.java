@@ -18,15 +18,29 @@ import cn.edu.tsinghua.tsfile.timeseries.filter.definition.SingleSeriesFilterExp
 import cn.edu.tsinghua.tsfile.timeseries.read.qp.Path;
 import cn.edu.tsinghua.tsfile.timeseries.read.query.CrossQueryTimeGenerator;
 import cn.edu.tsinghua.tsfile.timeseries.read.query.DynamicOneColumnData;
-import cn.edu.tsinghua.tsfile.timeseries.read.query.QueryDataSet;¡
+import cn.edu.tsinghua.tsfile.timeseries.read.query.QueryDataSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class AggregateEngine {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(AggregateEngine.class);
+    private static final Logger LOG = LoggerFactory.getLogger(AggregateEngine.class);
 
-    public static QueryDataSet multiAggregate(List<Pair<Path, AggregateFunction>> aggres, List<FilterStructure> filterStructures) throws ProcessorException, IOException, PathErrorException {
+    /**
+     * Public invoking method of multiple aggregation.
+     *
+     * @param aggres aggregation pairs
+     * @param filterStructures list of <code>FilterStructure</code>
+     *
+     * @return QueryDataSet result of multi aggregation
+     * @throws ProcessorException read or write lock error etc
+     * @throws IOException read tsfile error
+     * @throws PathErrorException path resolving error
+     */
+    public static QueryDataSet multiAggregate(List<Pair<Path, AggregateFunction>> aggres, List<FilterStructure> filterStructures)
+            throws IOException, PathErrorException, ProcessorException {
+
+        // LOG.info("multip");
 
         if (filterStructures == null || filterStructures.size() == 0 || (filterStructures.size()==1 && filterStructures.get(0).noFilter()) ) {
             return multiAggregateWithoutFilter(aggres, filterStructures);
@@ -77,6 +91,7 @@ public class AggregateEngine {
         int batchSize = 50000;
         while (true) {
 
+
             while (timestamps.size() < batchSize && !priorityQueue.isEmpty()) {
 
                 // add the minimum timestamp and remove others in timeArray
@@ -109,6 +124,7 @@ public class AggregateEngine {
                 }
             }
 
+            LOG.debug("common timestamps in multiple aggregation process : " + timestamps.toString());
             if (timestamps.size() == 0)
                 break;
 
@@ -150,6 +166,7 @@ public class AggregateEngine {
                     AggregationResult aggrResult = recordReader.aggregateUsingTimestamps(deltaObjectUID, measurementUID, aggregateFunction,
                             recordReader.insertAllData.updateTrue, recordReader.insertAllData.updateFalse, recordReader.insertAllData,
                             recordReader.insertAllData.timeFilter, null, null, timestamps, aggreData);
+                    ansQueryDataSet.mapRet.put(aggregationKey, aggrResult.data);
                 }
             }
         }
@@ -213,6 +230,7 @@ public class AggregateEngine {
      *  When this method is invoked, need add the filter index as a new parameter, for the reason of exist of
      *  <code>RecordReaderCache</code>, if the composition of CrossFilterExpression exist same SingleFilterExpression,
      *  we must guarantee that the <code>RecordReaderCache</code> doesn't cause conflict to the same SingleFilterExpression.
+     *
      */
     private static DynamicOneColumnData getDataUseSingleValueFilter(SingleSeriesFilterExpression valueFilter, SingleSeriesFilterExpression freqFilter,
                                                             DynamicOneColumnData res, int fetchSize, int valueFilterNumber)

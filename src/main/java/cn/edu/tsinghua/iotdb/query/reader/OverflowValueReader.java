@@ -812,7 +812,6 @@ public class OverflowValueReader extends ValueReader {
                                 DynamicOneColumnData updateTrue, DynamicOneColumnData updateFalse, SingleSeriesFilterExpression timeFilter,
                                 SingleSeriesFilterExpression freqFilter, SingleSeriesFilterExpression valueFilter) throws IOException, ProcessorException {
 
-        // initialize
         DynamicOneColumnData res = new DynamicOneColumnData(dataType, true);
         res.pageOffset = this.fileOffset;
 
@@ -854,8 +853,8 @@ public class OverflowValueReader extends ValueReader {
             long maxt = pageHeader.data_page_header.max_timestamp;
             DigestForFilter timeDigestFF = new DigestForFilter(mint, maxt);
 
-
             int mode = getNextMode(updateIdx[0], updateIdx[1], updateTrue, updateFalse);
+
             // find first interval , skip some intervals that not available
             while (mode != -1 && update[mode].getTime(updateIdx[mode] + 1) < mint) {
                 updateIdx[mode] += 2;
@@ -897,7 +896,7 @@ public class OverflowValueReader extends ValueReader {
             // ff there is no overflow data in this page
             boolean needToReadData = true;
             if (!hasOverflowDataInThisPage) {
-                needToReadData = !func.couldCalculateFromPageHeader(pageHeader);
+                func.calculateValueFromPageHeader(pageHeader);
             }
 
             if (needToReadData) {
@@ -910,7 +909,7 @@ public class OverflowValueReader extends ValueReader {
                 // TODO max, min value could be optimized
                 res = readOnePageWithOverflow(updateIdx, timeValues, page, pageHeader, res,
                             timeFilter, freqFilter, valueFilter, insertMemoryData, update);
-                func.calculateFromDataInThisPage(res);
+                func.calculateValueFromDataPage(res);
                 res.clearData();
             }
         }
@@ -923,22 +922,22 @@ public class OverflowValueReader extends ValueReader {
         return func.result;
     }
 
-    // value filter is always null
+
     int aggregateUsingTimestamps(AggregateFunction func, InsertDynamicData insertMemoryData,
                                                DynamicOneColumnData updateTrue, DynamicOneColumnData updateFalse, SingleSeriesFilterExpression timeFilter,
                                                SingleSeriesFilterExpression freqFilter, List<Long> timestamps,
-                                               DynamicOneColumnData aggreData) throws IOException, ProcessorException {
-
-        if (aggreData == null) {
-            aggreData = new DynamicOneColumnData(dataType, true);
+                                               DynamicOneColumnData lastAggreData) throws IOException, ProcessorException {
+        // value filter is always null
+        if (lastAggreData == null) {
+            lastAggreData = new DynamicOneColumnData(dataType, true);
         }
-        aggreData.pageOffset = this.fileOffset;
+        lastAggreData.pageOffset = this.fileOffset;
         int timeIndex = 0;
 
         // get column digest
         TSDigest digest = getDigest();
         DigestForFilter digestFF = new DigestForFilter(digest.min, digest.max, getDataType());
-        LOG.debug("Aggregation calculation using timestamps process, column Digest min and max is: "
+        LOG.debug("aggregate using given timestamps, column Digest min and max is: "
                 + digestFF.getMinValue() + " --- " + digestFF.getMaxValue());
         DigestVisitor digestVisitor = new DigestVisitor();
 
@@ -950,15 +949,16 @@ public class OverflowValueReader extends ValueReader {
         update[0] = updateTrue;
         update[1] = updateFalse;
         int[] updateIdx = new int[]{updateTrue.curIdx, updateFalse.curIdx};
-        //int updateTrueIdx = ;
-        ByteArrayInputStream bis = initBAISForOnePage(aggreData.pageOffset);
+
+        ByteArrayInputStream bis = initBAISForOnePage(lastAggreData.pageOffset);
         PageReader pageReader = new PageReader(bis, compressionTypeName);
         int pageCount = 0;
 
-        while ((aggreData.pageOffset - fileOffset) < totalSize) {
+        // (lastAggreData.pageOffset - fileOffset) < totalSize : still has unread data
+        while ((lastAggreData.pageOffset - fileOffset) < totalSize) {
             int lastAvailable = bis.available();
             pageCount++;
-            LOG.debug("read page {}, offset : {}", pageCount, aggreData.pageOffset);
+            LOG.debug("aggregate using given timestamps, read page {}, offset : {}", pageCount, lastAggreData.pageOffset);
 
             PageHeader pageHeader = pageReader.getNextPageHeader();
             Digest pageDigest = pageHeader.data_page_header.getDigest();
@@ -970,37 +970,34 @@ public class OverflowValueReader extends ValueReader {
             // the min value of common timestamps is greater than max time in this series
             if (timestamps.get(timeIndex) > maxt) {
                 pageReader.skipCurrentPage();
-                aggreData.pageOffset += lastAvailable - bis.available();
+                lastAggreData.pageOffset += lastAvailable - bis.available();
                 continue;
             }
 
             // if the current page doesn't satisfy the time filter
             if (timeFilter != null && !digestVisitor.satisfy(timeDigestFF, timeFilter))  {
                 pageReader.skipCurrentPage();
-                aggreData.pageOffset += lastAvailable - bis.available();
+                lastAggreData.pageOffset += lastAvailable - bis.available();
                 continue;
             }
 
             // get the InputStream for this page
             InputStream page = pageReader.getNextPage();
-            // update current aggreData's pageOffset to the start of next page.
-            aggreData.pageOffset += lastAvailable - bis.available();
+            // update lastAggreData's pageOffset to the start of next page.
+            lastAggreData.pageOffset += lastAvailable - bis.available();
             boolean hasOverflowDataInThisPage = checkDataChangedForAggregation(mint, maxt, valueDigestFF
                     , updateTrue, updateIdx[0], updateFalse, updateIdx[1], insertMemoryData
                     , timeFilter, freqFilter, null);
-            LOG.debug("Having Overflow info in this page : {}", hasOverflowDataInThisPage);
+            LOG.debug("aggregate using given timestamps, having Overflow info in this page : {}", hasOverflowDataInThisPage);
 
-            // if there is no overflow data in this page
-            boolean needToReadData = true;
             if (!hasOverflowDataInThisPage) {
-                func.couldCalculateFromPageHeader(pageHeader);
+                func.calculateValueFromPageHeader(pageHeader);
             } else {
-                func.couldCalculateFromPageHeader(pageHeader);
+
             }
         }
 
-        // record the current index for overflow info
-        // insertTrue.curIdx = idx2;
+        // record the current updateTrue,updateFalse index for overflow info
         updateTrue.curIdx = updateIdx[0];
         updateFalse.curIdx = updateIdx[1];
 

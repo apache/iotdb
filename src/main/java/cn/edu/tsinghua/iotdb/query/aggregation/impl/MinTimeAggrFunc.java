@@ -20,7 +20,7 @@ public class MinTimeAggrFunc extends AggregateFunction {
     }
 
     @Override
-    public boolean calculateValueFromPageHeader(PageHeader pageHeader) {
+    public void calculateValueFromPageHeader(PageHeader pageHeader) {
         long timestamp = pageHeader.data_page_header.min_timestamp;
         if (!hasSetValue) {
             result.data.putLong(timestamp);
@@ -30,31 +30,30 @@ public class MinTimeAggrFunc extends AggregateFunction {
             maxv = maxv > timestamp ? maxv : timestamp;
             result.data.setLong(0, maxv);
         }
-        return true;
     }
 
     @Override
-    public void calculateValueFromDataInThisPage(DynamicOneColumnData dataInThisPage) throws IOException, ProcessorException {
-        if (dataInThisPage instanceof InsertDynamicData) {
-            Object min_time = ((InsertDynamicData) dataInThisPage).calcAggregation(AggregationConstant.MIN_TIME);
-            if (min_time != null) {
-                long timestamp = (long)min_time;
-                if (!hasSetValue) {
-                    result.data.putLong(timestamp);
-                    hasSetValue = true;
-                } else {
-                    long minv = result.data.getLong(0);
-                    minv = minv < timestamp ? minv : timestamp;
-                    result.data.setLong(0, minv);
-                }
-            }
+    public void calculateValueFromDataPage(DynamicOneColumnData dataInThisPage) throws IOException, ProcessorException {
+        if (dataInThisPage.valueLength == 0) {
+            return;
         }
-        else {
-            if (dataInThisPage.valueLength == 0) {
-                return;
-            }
-            // use the first timestamp of the DynamicOneColumnData
-            long timestamp = dataInThisPage.getTime(0);
+        // use the first timestamp of the DynamicOneColumnData
+        long timestamp = dataInThisPage.getTime(0);
+        if (!hasSetValue) {
+            result.data.putLong(timestamp);
+            hasSetValue = true;
+        } else {
+            long minv = result.data.getLong(0);
+            minv = minv < timestamp ? minv : timestamp;
+            result.data.setLong(0, minv);
+        }
+    }
+
+    @Override
+    public void calculateValueFromLeftMemoryData(InsertDynamicData insertMemoryData) throws IOException, ProcessorException {
+        Object min_time = insertMemoryData.calcAggregation(AggregationConstant.MIN_TIME);
+        if (min_time != null) {
+            long timestamp = (long) min_time;
             if (!hasSetValue) {
                 result.data.putLong(timestamp);
                 hasSetValue = true;
