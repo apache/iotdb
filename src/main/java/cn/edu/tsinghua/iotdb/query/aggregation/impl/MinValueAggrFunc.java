@@ -1,6 +1,7 @@
 package cn.edu.tsinghua.iotdb.query.aggregation.impl;
 
 import java.io.IOException;
+import java.util.List;
 
 import cn.edu.tsinghua.iotdb.query.aggregation.AggregateFunction;
 import cn.edu.tsinghua.iotdb.query.aggregation.AggregationConstant;
@@ -55,6 +56,11 @@ public class MinValueAggrFunc extends AggregateFunction {
                 result.data.setAnObject(0, minv);
             }
         }
+    }
+
+    @Override
+    public int calculateValueFromDataPage(DynamicOneColumnData dataInThisPage, List<Long> timestamps, int timeIndex) {
+        return 0;
     }
 
     @Override

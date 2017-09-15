@@ -128,6 +128,8 @@ public class AggregateEngine {
             if (timestamps.size() == 0)
                 break;
 
+            //TODO optimize it using multi process
+
             Set<String> aggrePathSet = new HashSet<>();
             for (Pair<Path, AggregateFunction> pair : aggres) {
                 Path path = pair.left;

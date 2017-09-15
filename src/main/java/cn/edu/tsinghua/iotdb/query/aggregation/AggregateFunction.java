@@ -25,17 +25,17 @@ public abstract class AggregateFunction {
      * <p>
      * Calculate the aggregation using <code>PageHeader</code>.
      * </p>
+     *
      * @param pageHeader <code>PageHeader</code>
      */
     public abstract void calculateValueFromPageHeader(PageHeader pageHeader);
-
-
 
     /**
      * <p>
      * Could not calculate using <method>calculateValueFromPageHeader</method> directly.
      * Calculate the aggregation according to all decompressed data in this page.
      * </p>
+     *
      * @param dataInThisPage the data in the DataPage
      * @throws IOException TsFile data read exception
      * @throws ProcessorException wrong aggregation method parameter
@@ -44,8 +44,21 @@ public abstract class AggregateFunction {
 
     /**
      * <p>
+     * Calculate the aggregation using <code>PageHeader</code> along with given timestamps.
+     * </p>
+     *
+     * @param dataInThisPage Page data after overflow/bufferwrite operation
+     * @param timestamps given timestamps, must consider in aggregation calculate
+     * @param timeIndex represents the read index of timestamps
+     * @return the index of read of timestamps after executing this method
+     */
+    public abstract int calculateValueFromDataPage(DynamicOneColumnData dataInThisPage, List<Long> timestamps, int timeIndex);
+
+    /**
+     * <p>
      * Calculate the aggregation in <code>InsertDynamicData</code>.
      * </p>
+     *
      * @param insertMemoryData the data in the DataPage with bufferwrite and overflow data
      * @throws IOException TsFile data read exception
      * @throws ProcessorException wrong aggregation method parameter
