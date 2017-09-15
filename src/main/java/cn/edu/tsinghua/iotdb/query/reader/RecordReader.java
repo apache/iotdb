@@ -230,6 +230,7 @@ public class RecordReader {
      * @param freqFilter frequency filter
      * @param valueFilter value filter
      * @param timestamps timestamps calculated by the cross filter
+     * @param aggreData aggregation result calculated last time
      * @return aggregation result
      * @throws ProcessorException aggregation invoking exception
      * @throws IOException TsFile read exception

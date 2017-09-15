@@ -2,6 +2,7 @@ package cn.edu.tsinghua.iotdb.query.aggregation;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 
 import cn.edu.tsinghua.iotdb.query.dataset.InsertDynamicData;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
@@ -14,6 +15,10 @@ public abstract class AggregateFunction {
     public String name;
     public AggregationResult result;
     public TSDataType dataType;
+    /**
+     * storage some necessary object for batch read, such as incompletely read Page
+     */
+    public Map<String, Object> maps;
 
     public AggregateFunction(String name, TSDataType dataType) {
         this.name = name;

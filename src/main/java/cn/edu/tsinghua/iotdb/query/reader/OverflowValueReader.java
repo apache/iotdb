@@ -6,6 +6,7 @@ import java.io.InputStream;
 import java.util.List;
 
 import cn.edu.tsinghua.iotdb.query.visitorImpl.PageAllSatisfiedVisitor;
+import cn.edu.tsinghua.tsfile.common.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -881,40 +882,25 @@ public class OverflowValueReader extends ValueReader {
 
                 // clear data in res to make the res only store the data in current page;
                 // TODO max, min value could be optimized
-                res = ReaderUtils.readOnePageWithOverflow(dataType, updateIdx, timeValues, decoder, page, pageHeader, res,
-                        timeFilter, freqFilter, valueFilter, insertMemoryData, update);
+                res = ReaderUtils.readOnePage(dataType, timeValues, decoder, page, res,
+                        timeFilter, freqFilter, valueFilter, insertMemoryData, update, updateIdx);
                 func.calculateValueFromDataPage(res);
                 res.clearData();
             }
         }
 
         // record the current index for overflow info
-        // insertTrue.curIdx = idx2;
         updateTrue.curIdx = updateIdx[0];
         updateFalse.curIdx = updateIdx[1];
 
         return func.result;
     }
 
-
+    //TODO what's the use of lastAggreData
     int aggregateUsingTimestamps(AggregateFunction func, InsertDynamicData insertMemoryData,
-                                               DynamicOneColumnData updateTrue, DynamicOneColumnData updateFalse, SingleSeriesFilterExpression timeFilter,
-                                               SingleSeriesFilterExpression freqFilter, List<Long> timestamps,
-                                               DynamicOneColumnData lastAggreData) throws IOException, ProcessorException {
-        // value filter is always null
-        if (lastAggreData == null) {
-            lastAggreData = new DynamicOneColumnData(dataType, true);
-        }
-        lastAggreData.pageOffset = this.fileOffset;
-        int timeIndex = 0;
-
-        // get column digest
-        TSDigest digest = getDigest();
-        DigestForFilter digestFF = new DigestForFilter(digest.min, digest.max, getDataType());
-        LOG.debug("aggregate using given timestamps, column Digest min and max is: "
-                + digestFF.getMinValue() + " --- " + digestFF.getMaxValue());
-        DigestVisitor digestVisitor = new DigestVisitor();
-
+                                 DynamicOneColumnData updateTrue, DynamicOneColumnData updateFalse, SingleSeriesFilterExpression timeFilter,
+                                 SingleSeriesFilterExpression freqFilter, List<Long> timestamps,
+                                 DynamicOneColumnData lastAggreData) throws IOException, ProcessorException {
         // to ensure that updateTrue and updateFalse is not null
         updateTrue = (updateTrue == null ? new DynamicOneColumnData(dataType, true) : updateTrue);
         updateFalse = (updateFalse == null ? new DynamicOneColumnData(dataType, true) : updateFalse);
@@ -923,6 +909,37 @@ public class OverflowValueReader extends ValueReader {
         update[0] = updateTrue;
         update[1] = updateFalse;
         int[] updateIdx = new int[]{updateTrue.curIdx, updateFalse.curIdx};
+        int timeIndex = 0;
+
+        // for batch read
+        if (func.maps.containsKey("pageTimeValues")) {
+            long[] pageTimeValues = (long[]) func.maps.get("pageTimeValues");
+            int pageTimeIndex = (int) func.maps.get("pageTimeIndex");
+            InputStream page = (InputStream) func.maps.get("page");
+            Pair<DynamicOneColumnData, Integer> ans = ReaderUtils.readOnePage(
+                    dataType, pageTimeValues, pageTimeIndex, decoder, page,
+                    timeFilter, freqFilter, timestamps, 0, insertMemoryData, update, updateIdx, lastAggreData);
+            func.calculateValueFromDataPage(ans.left);
+            lastAggreData.clearData();
+            timeIndex = ans.right;
+            if (timeIndex >= timestamps.size()) {
+                return timeIndex;
+            }
+        }
+
+        // value filter is always null
+        if (lastAggreData == null) {
+            lastAggreData = new DynamicOneColumnData(dataType, true);
+        }
+        lastAggreData.pageOffset = this.fileOffset;
+
+
+        // get column digest
+        TSDigest digest = getDigest();
+        DigestForFilter digestFF = new DigestForFilter(digest.min, digest.max, getDataType());
+        LOG.debug("aggregate using given timestamps, column Digest min and max is: "
+                + digestFF.getMinValue() + " --- " + digestFF.getMaxValue());
+        DigestVisitor digestVisitor = new DigestVisitor();
 
         ByteArrayInputStream bis = initBAISForOnePage(lastAggreData.pageOffset);
         PageReader pageReader = new PageReader(bis, compressionTypeName);
@@ -961,16 +978,16 @@ public class OverflowValueReader extends ValueReader {
             lastAggreData.pageOffset += lastAvailable - bis.available();
 
             // get all time values in this page
-            long[] timeValues = initTimeValue(page, pageHeader.data_page_header.num_rows, false);
+            long[] pageTimeValues = initTimeValue(page, pageHeader.data_page_header.num_rows, false);
             // set Decoder for current page
             setDecoder(Decoder.getDecoderByType(pageHeader.getData_page_header().getEncoding(), getDataType()));
 
-            // clear data in res to make the res only store the data in current page;
-            // TODO max, min value could be optimized
-//            lastAggreData = readOnePageWithOverflow(updateIdx, timeValues, page, pageHeader, lastAggreData,
-//                    timeFilter, freqFilter, valueFilter, insertMemoryData, update);
-            func.calculateValueFromDataPage(lastAggreData);
+            Pair<DynamicOneColumnData, Integer> ans = ReaderUtils.readOnePage(
+                    dataType, pageTimeValues, 0, decoder, page,
+                    timeFilter, freqFilter, timestamps, timeIndex, insertMemoryData, update, updateIdx, lastAggreData);
+            func.calculateValueFromDataPage(ans.left);
             lastAggreData.clearData();
+            timeIndex = ans.right;
         }
 
         // record the current updateTrue,updateFalse index for overflow info
