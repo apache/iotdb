@@ -42,17 +42,17 @@ public class TsfileDBDescriptor {
 	private void loadProps() {
 		InputStream inputStream = null;
 		String url = System.getProperty(TsFileDBConstant.IOTDB_CONF, null);
-		if(url == null){
+		if (url == null) {
 			url = System.getProperty(SystemConstant.TSFILE_HOME, TsfileDBConfig.CONFIG_DEFAULT_PATH);
-            if(!url.equals(TsfileDBConfig.CONFIG_DEFAULT_PATH)){
-            	    url = url + File.separatorChar+"conf"+ File.separatorChar+TsfileDBConfig.CONFIG_NAME;
-            }
+			if (!url.equals(TsfileDBConfig.CONFIG_DEFAULT_PATH)) {
+				url = url + File.separatorChar + "conf" + File.separatorChar + TsfileDBConfig.CONFIG_NAME;
+			}
 		}
 		try {
-		    inputStream = new FileInputStream(new File(url));
+			inputStream = new FileInputStream(new File(url));
 		} catch (FileNotFoundException e) {
-		    LOGGER.warn("Fail to find config file {}", url);
-		    return;
+			LOGGER.warn("Fail to find config file {}", url);
+			return;
 		}
 
 		LOGGER.info("Start to read config file {}", url);
