@@ -1,6 +1,7 @@
 package cn.edu.tsinghua.iotdb.query.aggregation.impl;
 
 import java.io.IOException;
+import java.util.List;
 
 import cn.edu.tsinghua.iotdb.query.aggregation.AggregateFunction;
 import cn.edu.tsinghua.iotdb.query.aggregation.AggregationConstant;
@@ -30,6 +31,11 @@ public class CountAggrFunc extends AggregateFunction {
         long preValue = result.data.getLong(0);
         preValue += dataInThisPage.valueLength;
         result.data.setLong(0, preValue);
+    }
+
+    @Override
+    public int calculateValueFromDataPage(DynamicOneColumnData dataInThisPage, List<Long> timestamps, int timeIndex) {
+        return 0;
     }
 
     @Override
