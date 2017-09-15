@@ -40,28 +40,21 @@ public class TsfileDBDescriptor {
 	 *
 	 */
 	private void loadProps() {
-		String tsfileHome = System.getProperty(SystemConstant.TSFILE_HOME, TsfileDBConfig.CONFIG_DEFAULT_PATH);
-		String url;
 		InputStream inputStream = null;
-		if (tsfileHome.equals(TsfileDBConfig.CONFIG_DEFAULT_PATH)) {
-			url = tsfileHome;
-			try {
-			    inputStream = new FileInputStream(new File(url));
-			} catch (Exception e) {
-			    LOGGER.warn("Fail to find config file {}", url);
-			    return;
-			}
-			
-		} else {
-			url = tsfileHome + File.separatorChar+"conf"+ File.separatorChar+TsfileDBConfig.CONFIG_NAME;
-			try {
-				File file = new File(url);
-				inputStream = new FileInputStream(file);
-			} catch (FileNotFoundException e) {
-				LOGGER.warn("Fail to find config file {}", url);
-				return;
-			}
+		String url = System.getProperty(TsFileDBConstant.IOTDB_CONF, null);
+		if(url == null){
+			url = System.getProperty(SystemConstant.TSFILE_HOME, TsfileDBConfig.CONFIG_DEFAULT_PATH);
+            if(!url.equals(TsfileDBConfig.CONFIG_DEFAULT_PATH)){
+            	    url = url + File.separatorChar+"conf"+ File.separatorChar+TsfileDBConfig.CONFIG_NAME;
+            }
 		}
+		try {
+		    inputStream = new FileInputStream(new File(url));
+		} catch (FileNotFoundException e) {
+		    LOGGER.warn("Fail to find config file {}", url);
+		    return;
+		}
+
 		LOGGER.info("Start to read config file {}", url);
 		Properties properties = new Properties();
 		try {
