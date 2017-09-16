@@ -11,6 +11,7 @@ import cn.edu.tsinghua.iotdb.query.aggregation.AggregateFunction;
 import cn.edu.tsinghua.iotdb.query.aggregation.AggregationResult;
 import cn.edu.tsinghua.iotdb.query.management.ReadLockManager;
 import cn.edu.tsinghua.iotdb.query.management.RecordReaderFactory;
+import cn.edu.tsinghua.tsfile.common.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -218,7 +219,11 @@ public class RecordReader {
     }
 
     /**
+     * <p>
      * Calculate the aggregate result using the given timestamps.
+     * Return a pair of AggregationResult and Boolean, AggregationResult represents the aggregation result,
+     * Boolean represents that whether there still has unread data.
+     * </p>
      *
      * @param deltaObjectId deltaObjectId deltaObjectId of <code>Path</code>
      * @param measurementId measurementId of <code>Path</code>
@@ -231,15 +236,17 @@ public class RecordReader {
      * @param valueFilter value filter
      * @param timestamps timestamps calculated by the cross filter
      * @param aggreData aggregation result calculated last time
-     * @return aggregation result
+     * @return aggregation result and whether still has unread data
      * @throws ProcessorException aggregation invoking exception
      * @throws IOException TsFile read exception
      */
-    public AggregationResult aggregateUsingTimestamps(String deltaObjectId, String measurementId, AggregateFunction func,
-                                                      DynamicOneColumnData updateTrue, DynamicOneColumnData updateFalse, InsertDynamicData insertMemoryData,
-                                                      SingleSeriesFilterExpression timeFilter, SingleSeriesFilterExpression freqFilter, SingleSeriesFilterExpression valueFilter,
-                                                      List<Long> timestamps, DynamicOneColumnData aggreData
+    public Pair<AggregationResult, Boolean> aggregateUsingTimestamps(String deltaObjectId, String measurementId, AggregateFunction func,
+                                                                     DynamicOneColumnData updateTrue, DynamicOneColumnData updateFalse, InsertDynamicData insertMemoryData,
+                                                                     SingleSeriesFilterExpression timeFilter, SingleSeriesFilterExpression freqFilter, SingleSeriesFilterExpression valueFilter,
+                                                                     List<Long> timestamps, DynamicOneColumnData aggreData
     ) throws ProcessorException, IOException {
+
+        boolean hasUnReadData = false;
 
         List<RowGroupReader> rowGroupReaderList = readerManager.getRowGroupReaderListByDeltaObject(deltaObjectId);
 
@@ -253,9 +260,16 @@ public class RecordReader {
 
         // calc aggregation using memory data
         if (insertMemoryData != null && insertMemoryData.hasInsertData()) {
-            func.calcAggregationUsingTimestamps(insertMemoryData, timestamps, commonTimestampsIndex);
+            hasUnReadData = func.calcAggregationUsingTimestamps(insertMemoryData, timestamps, commonTimestampsIndex);
+        } else {
+            if (commonTimestampsIndex < timestamps.size()) {
+                hasUnReadData = false;
+            } else {
+                hasUnReadData = true;
+            }
         }
-        return func.result;
+
+        return new Pair<>(func.result, hasUnReadData);
     }
 
     /**

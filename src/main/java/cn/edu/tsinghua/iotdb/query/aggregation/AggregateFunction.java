@@ -1,6 +1,7 @@
 package cn.edu.tsinghua.iotdb.query.aggregation;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -18,7 +19,7 @@ public abstract class AggregateFunction {
     /**
      * storage some necessary object for batch read, such as incompletely read Page
      */
-    public Map<String, Object> maps;
+    public Map<String, Object> maps = new HashMap<>();
 
     public AggregateFunction(String name, TSDataType dataType) {
         this.name = name;
@@ -81,6 +82,6 @@ public abstract class AggregateFunction {
      * @throws IOException        TsFile data read error
      * @throws ProcessorException wrong aggregation method parameter
      */
-    public abstract void calcAggregationUsingTimestamps(InsertDynamicData insertMemoryData, List<Long> timestamps, int timeIndex)
+    public abstract boolean calcAggregationUsingTimestamps(InsertDynamicData insertMemoryData, List<Long> timestamps, int timeIndex)
             throws IOException, ProcessorException;
 }

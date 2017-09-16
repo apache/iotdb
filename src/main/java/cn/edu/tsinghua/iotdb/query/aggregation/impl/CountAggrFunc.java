@@ -47,16 +47,15 @@ public class CountAggrFunc extends AggregateFunction {
     }
 
     @Override
-    public void calcAggregationUsingTimestamps(InsertDynamicData insertMemoryData, List<Long> timestamps, int timeIndex) throws IOException, ProcessorException {
-        if (timeIndex >= timestamps.size())
-            return;
-
+    public boolean calcAggregationUsingTimestamps(InsertDynamicData insertMemoryData, List<Long> timestamps, int timeIndex) throws IOException, ProcessorException {
         while (timeIndex < timestamps.size()) {
            if (insertMemoryData.hasInsertData()) {
                if (timestamps.get(timeIndex) == insertMemoryData.getCurrentMinTime()) {
                    long preValue = result.data.getLong(0);
                    preValue += 1;
                    result.data.setLong(0, preValue);
+                   timeIndex ++;
+                   insertMemoryData.removeCurrentValue();
                } else if (timestamps.get(timeIndex) > insertMemoryData.getCurrentMinTime()) {
                    insertMemoryData.removeCurrentValue();
                } else {
@@ -66,5 +65,7 @@ public class CountAggrFunc extends AggregateFunction {
                break;
            }
         }
+
+        return insertMemoryData.hasInsertData();
     }
 }
