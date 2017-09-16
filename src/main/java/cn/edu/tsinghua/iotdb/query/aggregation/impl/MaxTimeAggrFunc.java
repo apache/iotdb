@@ -72,7 +72,30 @@ public class MaxTimeAggrFunc extends AggregateFunction {
 
     @Override
     public boolean calcAggregationUsingTimestamps(InsertDynamicData insertMemoryData, List<Long> timestamps, int timeIndex) throws IOException, ProcessorException {
-        return false;
+        while (timeIndex < timestamps.size()) {
+            if (insertMemoryData.hasInsertData()) {
+                if (timestamps.get(timeIndex) == insertMemoryData.getCurrentMinTime()) {
+                    if (!hasSetValue) {
+                        result.data.putLong(timestamps.get(timeIndex));
+                        hasSetValue = true;
+                    } else {
+                        long maxv = result.data.getLong(0);
+                        maxv = maxv > timestamps.get(timeIndex) ? maxv : timestamps.get(timeIndex);
+                        result.data.setLong(0, maxv);
+                    }
+                    timeIndex ++;
+                    insertMemoryData.removeCurrentValue();
+                } else if (timestamps.get(timeIndex) > insertMemoryData.getCurrentMinTime()) {
+                    insertMemoryData.removeCurrentValue();
+                } else {
+                    timeIndex += 1;
+                }
+            } else {
+                break;
+            }
+        }
+
+        return insertMemoryData.hasInsertData();
     }
 
 }

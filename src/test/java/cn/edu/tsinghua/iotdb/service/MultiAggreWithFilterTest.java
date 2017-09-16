@@ -3,6 +3,7 @@ package cn.edu.tsinghua.iotdb.service;
 import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
 import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
 import cn.edu.tsinghua.iotdb.jdbc.TsfileJDBCConfig;
+import cn.edu.tsinghua.iotdb.query.engine.AggregateEngine;
 import org.apache.commons.io.FileUtils;
 import org.junit.After;
 import org.junit.Assert;
@@ -11,6 +12,8 @@ import org.junit.Test;
 
 import java.io.File;
 import java.sql.*;
+
+import static cn.edu.tsinghua.iotdb.service.TestUtils.*;
 
 /**
  * Multiple aggregation with filter test.
@@ -25,10 +28,6 @@ public class MultiAggreWithFilterTest {
     private final String d0s4 = "root.vehicle.d0.s4";
     private final String d1s0 = "root.vehicle.d1.s0";
     private final String d1s1 = "root.vehicle.d1.s1";
-
-    private String count(String path) {
-        return String.format("count(%s)", path);
-    }
 
     private String[] sqls = new String[]{
             "CREATE TIMESERIES root.vehicle.d1.s0 WITH DATATYPE=INT32, ENCODING=RLE",
@@ -104,6 +103,7 @@ public class MultiAggreWithFilterTest {
     @Before
     public void setUp() throws Exception {
         if (testFlag) {
+            AggregateEngine.batchSize = 2;
             TsfileDBConfig config = TsfileDBDescriptor.getInstance().getConfig();
             overflowDataDirPre = config.overflowDataDir;
             fileNodeDirPre = config.fileNodeDir;
@@ -152,11 +152,198 @@ public class MultiAggreWithFilterTest {
             Connection connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
             // selectAllSQLTest();
             countAggreWithSingleFilterTest();
+            minTimeAggreWithSingleFilterTest();
+            maxTimeAggreWithSingleFilterTest();
+            minValueAggreWithSingleFilterTest();
+            maxValueAggreWithSingleFilterTest();
             connection.close();
         }
     }
 
     private void countAggreWithSingleFilterTest() throws ClassNotFoundException, SQLException {
+        String[] retArray = new String[]{
+                "0,2,3,5,1,0"
+        };
+
+        Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);
+        Connection connection = null;
+        try {
+            connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
+            Statement statement = connection.createStatement();
+            boolean hasResultSet = statement.execute("select count(s0),count(s1),count(s2),count(s3),count(s4) from root.vehicle.d0 where s2 >= 3.33");
+            // System.out.println(hasResultSet + "...");
+            if (hasResultSet) {
+                ResultSet resultSet = statement.getResultSet();
+                int cnt = 0;
+                while (resultSet.next()) {
+                    String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(count(d0s0))
+                            + "," + resultSet.getString(count(d0s1)) + "," + resultSet.getString(count(d0s2))
+                            + "," + resultSet.getString(count(d0s3)) + "," + resultSet.getString(count(d0s4));
+                    // System.out.println("============ " + ans);
+                    Assert.assertEquals(ans, retArray[cnt]);
+                    cnt++;
+                }
+                Assert.assertEquals(1, cnt);
+            }
+            statement.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            if (connection != null) {
+                connection.close();
+            }
+        }
+    }
+
+    private void minTimeAggreWithSingleFilterTest() throws ClassNotFoundException, SQLException {
+        String[] retArray = new String[]{
+                "0,104,1,2,101,100"
+        };
+
+        Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);
+        Connection connection = null;
+        try {
+            connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
+            Statement statement = connection.createStatement();
+            boolean hasResultSet = statement.execute("select min_time(s0),min_time(s1),min_time(s2),min_time(s3),min_time(s4) from root.vehicle.d0 " +
+                    "where s1 < 50000 and s1 != 100");
+
+            if (hasResultSet) {
+                ResultSet resultSet = statement.getResultSet();
+                int cnt = 0;
+                while (resultSet.next()) {
+                    String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(min_time(d0s0))
+                            + "," + resultSet.getString(min_time(d0s1)) + "," + resultSet.getString(min_time(d0s2))
+                            + "," + resultSet.getString(min_time(d0s3)) + "," + resultSet.getString(min_time(d0s4));
+                    // System.out.println("============ " + ans);
+                    Assert.assertEquals(ans, retArray[cnt]);
+                    cnt++;
+                }
+                Assert.assertEquals(1, cnt);
+            }
+            statement.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            if (connection != null) {
+                connection.close();
+            }
+        }
+    }
+
+    private void maxTimeAggreWithSingleFilterTest() throws ClassNotFoundException, SQLException {
+        String[] retArray = new String[]{
+                "0,105,105,105,102,100"
+        };
+
+        Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);
+        Connection connection = null;
+        try {
+            connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
+            Statement statement = connection.createStatement();
+            boolean hasResultSet = statement.execute("select max_time(s0),max_time(s1),max_time(s2),max_time(s3),max_time(s4) from root.vehicle.d0 " +
+                    "where s1 < 50000 and s1 != 100");
+
+            if (hasResultSet) {
+                ResultSet resultSet = statement.getResultSet();
+                int cnt = 0;
+                while (resultSet.next()) {
+                    String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(max_time(d0s0))
+                            + "," + resultSet.getString(max_time(d0s1)) + "," + resultSet.getString(max_time(d0s2))
+                            + "," + resultSet.getString(max_time(d0s3)) + "," + resultSet.getString(max_time(d0s4));
+                    // System.out.println("============ " + ans);
+                    Assert.assertEquals(ans, retArray[cnt]);
+                    cnt++;
+                }
+                Assert.assertEquals(1, cnt);
+            }
+            statement.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            if (connection != null) {
+                connection.close();
+            }
+        }
+    }
+
+    private void minValueAggreWithSingleFilterTest() throws ClassNotFoundException, SQLException {
+        String[] retArray = new String[]{
+                "0,2,3,5,1,0"
+        };
+
+        Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);
+        Connection connection = null;
+        try {
+            connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
+            Statement statement = connection.createStatement();
+            boolean hasResultSet = statement.execute("select min_value(s0),min_value(s1),min_value(s2),min_value(s3),min_value(s4) from root.vehicle.d0 " +
+                    "where s1 < 50000 and s1 != 100");
+
+            if (hasResultSet) {
+                ResultSet resultSet = statement.getResultSet();
+                int cnt = 0;
+                while (resultSet.next()) {
+                    String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(min_value(d0s0))
+                            + "," + resultSet.getString(min_value(d0s1)) + "," + resultSet.getString(min_value(d0s2))
+                            + "," + resultSet.getString(min_value(d0s3)) + "," + resultSet.getString(min_value(d0s4));
+                    System.out.println("============ " + ans);
+                    Assert.assertEquals(ans, retArray[cnt]);
+                    cnt++;
+                }
+                Assert.assertEquals(1, cnt);
+            }
+            statement.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            if (connection != null) {
+                connection.close();
+            }
+        }
+    }
+
+    private void maxValueAggreWithSingleFilterTest() throws ClassNotFoundException, SQLException {
+        String[] retArray = new String[]{
+                "0,2,3,5,1,0"
+        };
+
+        Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);
+        Connection connection = null;
+        try {
+            connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
+            Statement statement = connection.createStatement();
+            boolean hasResultSet = statement.execute("select max_value(s0),max_value(s1),max_value(s2),max_value(s3),max_value(s4) from root.vehicle.d0 " +
+                    "where s1 < 50000 and s1 != 100");
+
+            if (hasResultSet) {
+                ResultSet resultSet = statement.getResultSet();
+                int cnt = 0;
+                while (resultSet.next()) {
+                    String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(max_value(d0s0))
+                            + "," + resultSet.getString(max_value(d0s1)) + "," + resultSet.getString(max_value(d0s2))
+                            + "," + resultSet.getString(max_value(d0s3)) + "," + resultSet.getString(max_value(d0s4));
+                    System.out.println("============ " + ans);
+                    //Assert.assertEquals(ans, retArray[cnt]);
+                    cnt++;
+                }
+                Assert.assertEquals(1, cnt);
+            }
+            statement.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            if (connection != null) {
+                connection.close();
+            }
+        }
+    }
+
+    private void countAggreWithMultiMultiFilterTest() throws ClassNotFoundException, SQLException {
+        String[] retArray = new String[]{
+                "1,null,1101,null,null,999",
+        };
+
         Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);
         Connection connection = null;
         try {
@@ -186,7 +373,7 @@ public class MultiAggreWithFilterTest {
     }
 
     private void selectAllSQLTest() throws ClassNotFoundException, SQLException {
-                //d0s0,d0s1,d0s2,d0s3,d1s0
+        //d0s0,d0s1,d0s2,d0s3,d1s0
         String[] retArray = new String[]{
                 "1,null,1101,null,null,999",
                 "2,null,40000,2.22,null,null",

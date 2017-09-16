@@ -55,9 +55,6 @@ public class AggregateEngine {
         if (threadLocal.get() != null && threadLocal.get()) {
             return ansQueryDataSet;
         }
-//        if (aggres.size() > 0 && aggres.get(0).right.maps.containsKey("done")) {
-//            return ansQueryDataSet;
-//        }
 
         List<QueryDataSet> filterQueryDataSets = new ArrayList<>(); // stores QueryDataSet of each FilterStructure answer
         List<long[]> timeArray = new ArrayList<>(); // stores calculated common timestamps of each FilterStructure answer
@@ -208,18 +205,18 @@ public class AggregateEngine {
             timestamps.clear();
         }
 
-        /**
-         * <p>
-         * Aggregation result is also storage in <code>QueryDataSet</code>,
-         * <code>QueryDataSet</code> has a hasNextRecord method,
-         * however, multiAggregate will only be invoked once,
-         * the twice time multiAggregate is invoked, we will reject it,
-         * so stores a string "done" in aggres.get(0).right.maps,
-         * if there exists a "done" string in aggres.get(0).right.maps,
-         * we will skip this invoking directly.
-         * </p>
-         */
-        aggres.get(0).right.maps.put("done", true);
+//        /**
+//         * <p>
+//         * Aggregation result is also storage in <code>QueryDataSet</code>,
+//         * <code>QueryDataSet</code> has a hasNextRecord method,
+//         * however, multiAggregate will only be invoked once,
+//         * the twice time multiAggregate is invoked, we will reject it,
+//         * so stores a string "done" in aggres.get(0).right.maps,
+//         * if there exists a "done" string in aggres.get(0).right.maps,
+//         * we will skip this invoking directly.
+//         * </p>
+//         */
+//        aggres.get(0).right.maps.put("done", true);
         threadLocal.set(true);
         return ansQueryDataSet;
     }

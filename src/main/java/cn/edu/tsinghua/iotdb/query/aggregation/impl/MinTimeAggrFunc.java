@@ -73,7 +73,28 @@ public class MinTimeAggrFunc extends AggregateFunction {
 
     @Override
     public boolean calcAggregationUsingTimestamps(InsertDynamicData insertMemoryData, List<Long> timestamps, int timeIndex) throws IOException, ProcessorException {
-        return false;
-    }
+        while (timeIndex < timestamps.size()) {
+            if (insertMemoryData.hasInsertData()) {
+                if (timestamps.get(timeIndex) == insertMemoryData.getCurrentMinTime()) {
+                    if (!hasSetValue) {
+                        result.data.putLong(timestamps.get(timeIndex));
+                        hasSetValue = true;
+                    } else {
+                        long minv = result.data.getLong(0);
+                        minv = minv < timestamps.get(timeIndex) ? minv : timestamps.get(timeIndex);
+                        result.data.setLong(0, minv);
+                    }
+                    return false;
+                } else if (timestamps.get(timeIndex) > insertMemoryData.getCurrentMinTime()) {
+                    insertMemoryData.removeCurrentValue();
+                } else {
+                    timeIndex += 1;
+                }
+            } else {
+                break;
+            }
+        }
 
+        return insertMemoryData.hasInsertData();
+    }
 }
