@@ -26,9 +26,13 @@ import org.slf4j.LoggerFactory;
 public class AggregateEngine {
 
     private static final Logger LOG = LoggerFactory.getLogger(AggregateEngine.class);
+    public static int batchSize = 50000;
+    private static ThreadLocal<Boolean> threadLocal = new ThreadLocal<>();
 
     /**
-     * Public invoking method of multiple aggregation.
+     * <p>Public invoking method of multiple aggregation.</p>
+     *
+     * TODO group by aggregation implementation could not use this method
      *
      * @param aggres aggregation pairs
      * @param filterStructures list of <code>FilterStructure</code>
@@ -41,18 +45,25 @@ public class AggregateEngine {
     public static QueryDataSet multiAggregate(List<Pair<Path, AggregateFunction>> aggres, List<FilterStructure> filterStructures)
             throws IOException, PathErrorException, ProcessorException {
 
-        // LOG.info("multip");
+        LOG.debug("multiple aggregation calculation");
 
         if (filterStructures == null || filterStructures.size() == 0 || (filterStructures.size()==1 && filterStructures.get(0).noFilter()) ) {
             return multiAggregateWithoutFilter(aggres, filterStructures);
         }
 
         QueryDataSet ansQueryDataSet = new QueryDataSet();
+        if (threadLocal.get() != null && threadLocal.get()) {
+            return ansQueryDataSet;
+        }
+//        if (aggres.size() > 0 && aggres.get(0).right.maps.containsKey("done")) {
+//            return ansQueryDataSet;
+//        }
+
         List<QueryDataSet> filterQueryDataSets = new ArrayList<>(); // stores QueryDataSet of each FilterStructure answer
         List<long[]> timeArray = new ArrayList<>(); // stores calculated common timestamps of each FilterStructure answer
         List<Integer> indexArray = new ArrayList<>(); // stores used index of each timeArray
         List<Boolean> hasDataArray = new ArrayList<>(); // represents whether this FilterStructure answer still has unread data
-        for (int idx = 0;idx < filterStructures.size();idx++) {
+        for (int idx = 0; idx < filterStructures.size(); idx++) {
             FilterStructure filterStructure = filterStructures.get(idx);
             QueryDataSet queryDataSet = new QueryDataSet();
             queryDataSet.timeQueryDataSet = new CrossQueryTimeGenerator(filterStructure.getTimeFilter(), filterStructure.getFrequencyFilter(), filterStructure.getValueFilter(), 10000) {
@@ -68,7 +79,7 @@ public class AggregateEngine {
                 }
             };
             filterQueryDataSets.add(queryDataSet);
-            long[] curTimestamps = ansQueryDataSet.timeQueryDataSet.generateTimes();
+            long[] curTimestamps = queryDataSet.timeQueryDataSet.generateTimes();
             timeArray.add(curTimestamps);
             indexArray.add(0);
             if (curTimestamps.length > 0) {
@@ -89,12 +100,13 @@ public class AggregateEngine {
             }
         }
 
-        int batchSize = 50000;
+        // represents that whether the 'key' ordinal aggregation still has unread data
+        Map<Integer, Boolean> hasUnReadDataMap = new HashMap<>();
+        // if there has any uncompleted data, hasAnyUnReadDataFlag is true
+        boolean hasAnyUnReadDataFlag = true;
         while (true) {
 
-
-            while (timestamps.size() < batchSize && !priorityQueue.isEmpty()) {
-
+            while (timestamps.size() < batchSize && !priorityQueue.isEmpty() && hasAnyUnReadDataFlag) {
                 // add the minimum timestamp and remove others in timeArray
                 long minTime = priorityQueue.poll();
                 timestamps.add(minTime);
@@ -131,7 +143,9 @@ public class AggregateEngine {
 
             //TODO optimize it using multi process
 
+            hasAnyUnReadDataFlag = false;
             Set<String> aggrePathSet = new HashSet<>();
+            int aggregationOrdinal = 0;
             for (Pair<Path, AggregateFunction> pair : aggres) {
                 Path path = pair.left;
                 AggregateFunction aggregateFunction = pair.right;
@@ -143,10 +157,14 @@ public class AggregateEngine {
                     continue;
                 } else {
                     aggrePathSet.add(aggregationKey);
+                    aggregationOrdinal ++;
+                }
+                if (hasUnReadDataMap.containsKey(aggregationOrdinal) && !hasUnReadDataMap.get(aggregationOrdinal)) {
+                    continue;
                 }
 
                 RecordReader recordReader = RecordReaderFactory.getInstance().getRecordReader(deltaObjectUID, measurementUID,
-                        null, null, null, null, "MultiAggre_Query");
+                        null, null, null, null, ReadCachePrefix.addQueryPrefix(aggregationOrdinal));
 
                 if (recordReader.insertAllData == null) {
                     // get overflow params merged with bufferwrite insert data
@@ -161,20 +179,48 @@ public class AggregateEngine {
                             newTimeFilter, null, null, dataType);
 
                     TimestampRecord timestampRecord = new TimestampRecord(timestamps, 0);
-                    AggregationResult aggrResult = recordReader.aggregateUsingTimestamps(deltaObjectUID, measurementUID, aggregateFunction,
+                    Pair<AggregationResult, Boolean> aggrPair = recordReader.aggregateUsingTimestamps(deltaObjectUID, measurementUID, aggregateFunction,
                             recordReader.insertAllData.updateTrue, recordReader.insertAllData.updateFalse, recordReader.insertAllData,
                             newTimeFilter, null, null, timestamps, null);
-                    ansQueryDataSet.mapRet.put(aggregationKey, aggrResult.data);
+                    AggregationResult result = aggrPair.left;
+                    boolean hasUnReadDataFlag = aggrPair.right;
+                    hasUnReadDataMap.put(aggregationOrdinal, hasUnReadDataFlag);
+                    if (hasUnReadDataFlag) {
+                        hasAnyUnReadDataFlag = true;
+                    }
+                    ansQueryDataSet.mapRet.put(aggregationKey, result.data);
                 } else {
                     DynamicOneColumnData aggreData = ansQueryDataSet.mapRet.get(aggregationKey);
-                    AggregationResult aggrResult = recordReader.aggregateUsingTimestamps(deltaObjectUID, measurementUID, aggregateFunction,
+                    Pair<AggregationResult, Boolean> aggrPair = recordReader.aggregateUsingTimestamps(deltaObjectUID, measurementUID, aggregateFunction,
                             recordReader.insertAllData.updateTrue, recordReader.insertAllData.updateFalse, recordReader.insertAllData,
                             recordReader.insertAllData.timeFilter, null, null, timestamps, aggreData);
-                    ansQueryDataSet.mapRet.put(aggregationKey, aggrResult.data);
+                    AggregationResult result = aggrPair.left;
+                    boolean hasUnReadDataFlag = aggrPair.right;
+                    hasUnReadDataMap.put(aggregationOrdinal, hasUnReadDataFlag);
+                    if (hasUnReadDataFlag) {
+                        hasAnyUnReadDataFlag = true;
+                    }
+                    ansQueryDataSet.mapRet.put(aggregationKey, result.data);
                 }
             }
+
+            // current batch timestamps has been used all
+            timestamps.clear();
         }
 
+        /**
+         * <p>
+         * Aggregation result is also storage in <code>QueryDataSet</code>,
+         * <code>QueryDataSet</code> has a hasNextRecord method,
+         * however, multiAggregate will only be invoked once,
+         * the twice time multiAggregate is invoked, we will reject it,
+         * so stores a string "done" in aggres.get(0).right.maps,
+         * if there exists a "done" string in aggres.get(0).right.maps,
+         * we will skip this invoking directly.
+         * </p>
+         */
+        aggres.get(0).right.maps.put("done", true);
+        threadLocal.set(true);
         return ansQueryDataSet;
     }
 
@@ -242,6 +288,7 @@ public class AggregateEngine {
 
         String deltaObjectUID = ((SingleSeriesFilterExpression) valueFilter).getFilterSeries().getDeltaObjectUID();
         String measurementUID = ((SingleSeriesFilterExpression) valueFilter).getFilterSeries().getMeasurementUID();
+        //TODO may has dnf conflict
         String valueFilterPrefix = ReadCachePrefix.addFilterPrefix(valueFilterNumber);
 
         RecordReader recordReader = RecordReaderFactory.getInstance().getRecordReader(deltaObjectUID, measurementUID,

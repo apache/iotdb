@@ -151,25 +151,25 @@ public class MultiAggreWithFilterTest {
 
             Connection connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
             // selectAllSQLTest();
-            countAggreWithFilterTest();
+            countAggreWithSingleFilterTest();
             connection.close();
         }
     }
 
-    private void countAggreWithFilterTest() throws ClassNotFoundException, SQLException {
+    private void countAggreWithSingleFilterTest() throws ClassNotFoundException, SQLException {
         Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);
         Connection connection = null;
         try {
             connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
             Statement statement = connection.createStatement();
-            boolean hasResultSet = statement.execute("select count(s0) from root.vehicle.d0 where s2 >= 44");
+            boolean hasResultSet = statement.execute("select count(s0) from root.vehicle.d0 where s2 >= 3.33");
             // System.out.println(hasResultSet + "...");
             if (hasResultSet) {
                 ResultSet resultSet = statement.getResultSet();
                 int cnt = 0;
                 while (resultSet.next()) {
                     String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(count(d0s0));
-                    // System.out.println(ans);
+                    System.out.println("============ " + ans);
                     // Assert.assertEquals(ans, retArray[cnt]);
                     cnt++;
                 }
@@ -186,6 +186,7 @@ public class MultiAggreWithFilterTest {
     }
 
     private void selectAllSQLTest() throws ClassNotFoundException, SQLException {
+                //d0s0,d0s1,d0s2,d0s3,d1s0
         String[] retArray = new String[]{
                 "1,null,1101,null,null,999",
                 "2,null,40000,2.22,null,null",

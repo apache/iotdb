@@ -72,8 +72,8 @@ public class MinTimeAggrFunc extends AggregateFunction {
     }
 
     @Override
-    public void calcAggregationUsingTimestamps(InsertDynamicData insertMemoryData, List<Long> timestamps, int timeIndex) throws IOException, ProcessorException {
-
+    public boolean calcAggregationUsingTimestamps(InsertDynamicData insertMemoryData, List<Long> timestamps, int timeIndex) throws IOException, ProcessorException {
+        return false;
     }
 
 }
