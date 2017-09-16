@@ -70,4 +70,9 @@ public class MaxTimeAggrFunc extends AggregateFunction {
         }
     }
 
+    @Override
+    public void calcAggregationUsingTimestamps(InsertDynamicData insertMemoryData, List<Long> timestamps, int timeIndex) throws IOException, ProcessorException {
+
+    }
+
 }

@@ -1,5 +1,6 @@
 package cn.edu.tsinghua.iotdb.query.reader;
 
+import cn.edu.tsinghua.iotdb.query.aggregation.AggregateFunction;
 import cn.edu.tsinghua.iotdb.query.dataset.InsertDynamicData;
 import cn.edu.tsinghua.tsfile.common.utils.Binary;
 import cn.edu.tsinghua.tsfile.common.utils.Pair;
@@ -645,7 +646,7 @@ public class ReaderUtils {
                                                                   SingleSeriesFilterExpression timeFilter, SingleSeriesFilterExpression freqFilter,
                                                                   List<Long> commonTimestamps, int commonTimestampsIndex,
                                                                   InsertDynamicData insertMemoryData, DynamicOneColumnData[] update, int[] updateIdx,
-                                                                  DynamicOneColumnData lastAggreData) throws IOException {
+                                                                  DynamicOneColumnData lastAggreData, AggregateFunction func) throws IOException {
         // This method is only used for aggregation function.
 
         // calculate current mode
@@ -759,12 +760,16 @@ public class ReaderUtils {
 
                     // still has page data, no common timestamps
                     if (decoder.hasNext(page) && commonTimestampsIndex >= commonTimestamps.size()) {
-
+                        func.maps.clear();
+                        func.maps.put("pageTimeValues", pageTimeValues);
+                        func.maps.put("pageTimeIndex", pageTimeIndex);
+                        func.maps.put("page", page);
+                        return new Pair<>(lastAggreData, commonTimestampsIndex);
                     }
 
                     // still has common timestamps, no page data
                     if (!decoder.hasNext(page) && commonTimestampsIndex < commonTimestamps.size()) {
-
+                        return new Pair<>(lastAggreData, commonTimestampsIndex);
                     }
 
                     break;

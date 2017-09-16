@@ -918,7 +918,7 @@ public class OverflowValueReader extends ValueReader {
             InputStream page = (InputStream) func.maps.get("page");
             Pair<DynamicOneColumnData, Integer> ans = ReaderUtils.readOnePage(
                     dataType, pageTimeValues, pageTimeIndex, decoder, page,
-                    timeFilter, freqFilter, timestamps, 0, insertMemoryData, update, updateIdx, lastAggreData);
+                    timeFilter, freqFilter, timestamps, 0, insertMemoryData, update, updateIdx, lastAggreData, func);
             func.calculateValueFromDataPage(ans.left);
             lastAggreData.clearData();
             timeIndex = ans.right;
@@ -984,7 +984,7 @@ public class OverflowValueReader extends ValueReader {
 
             Pair<DynamicOneColumnData, Integer> ans = ReaderUtils.readOnePage(
                     dataType, pageTimeValues, 0, decoder, page,
-                    timeFilter, freqFilter, timestamps, timeIndex, insertMemoryData, update, updateIdx, lastAggreData);
+                    timeFilter, freqFilter, timestamps, timeIndex, insertMemoryData, update, updateIdx, lastAggreData, func);
             func.calculateValueFromDataPage(ans.left);
             lastAggreData.clearData();
             timeIndex = ans.right;

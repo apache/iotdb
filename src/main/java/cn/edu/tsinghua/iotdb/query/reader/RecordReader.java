@@ -243,16 +243,17 @@ public class RecordReader {
 
         List<RowGroupReader> rowGroupReaderList = readerManager.getRowGroupReaderListByDeltaObject(deltaObjectId);
 
+        int commonTimestampsIndex = 0;
         for (RowGroupReader rowGroupReader : rowGroupReaderList) {
             if (rowGroupReader.getValueReaders().containsKey(measurementId)) {
-                rowGroupReader.getValueReaders().get(measurementId)
+                commonTimestampsIndex = rowGroupReader.getValueReaders().get(measurementId)
                         .aggregateUsingTimestamps(func, insertMemoryData, updateTrue, updateFalse, timeFilter, freqFilter, timestamps, aggreData);
             }
         }
 
         // calc aggregation using memory data
         if (insertMemoryData != null && insertMemoryData.hasInsertData()) {
-            func.calcAggregationUsingTimestamps(insertMemoryData, timestamps);
+            func.calcAggregationUsingTimestamps(insertMemoryData, timestamps, commonTimestampsIndex);
         }
         return func.result;
     }
