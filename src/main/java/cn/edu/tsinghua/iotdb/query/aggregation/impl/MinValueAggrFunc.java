@@ -79,6 +79,11 @@ public class MinValueAggrFunc extends AggregateFunction {
         }
     }
 
+    @Override
+    public void calcAggregationUsingTimestamps(InsertDynamicData insertMemoryData, List<Long> timestamps, int timeIndex) throws IOException, ProcessorException {
+
+    }
+
     private Comparable<?> getMinValue(DynamicOneColumnData dataInThisPage) {
         Comparable<?> v = dataInThisPage.getAnObject(0);
         for (int i = 1; i < dataInThisPage.valueLength; i++) {

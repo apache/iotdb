@@ -42,7 +42,7 @@ public abstract class AggregateFunction {
      * </p>
      *
      * @param dataInThisPage the data in the DataPage
-     * @throws IOException TsFile data read exception
+     * @throws IOException        TsFile data read exception
      * @throws ProcessorException wrong aggregation method parameter
      */
     public abstract void calculateValueFromDataPage(DynamicOneColumnData dataInThisPage) throws IOException, ProcessorException;
@@ -53,8 +53,8 @@ public abstract class AggregateFunction {
      * </p>
      *
      * @param dataInThisPage Page data after overflow/bufferwrite operation
-     * @param timestamps given timestamps, must consider in aggregation calculate
-     * @param timeIndex represents the read index of timestamps
+     * @param timestamps     given timestamps, must consider in aggregation calculate
+     * @param timeIndex      represents the read index of timestamps
      * @return the index of read of timestamps after executing this method
      */
     public abstract int calculateValueFromDataPage(DynamicOneColumnData dataInThisPage, List<Long> timestamps, int timeIndex);
@@ -65,34 +65,22 @@ public abstract class AggregateFunction {
      * </p>
      *
      * @param insertMemoryData the data in the DataPage with bufferwrite and overflow data
-     * @throws IOException TsFile data read exception
+     * @throws IOException        TsFile data read exception
      * @throws ProcessorException wrong aggregation method parameter
      */
     public abstract void calculateValueFromLeftMemoryData(InsertDynamicData insertMemoryData) throws IOException, ProcessorException;
 
     /**
+     * <p>
      * This method is calculate the aggregation using the common timestamps of cross series filter.
+     * </p>
      *
-     * @param insertMemoryData the data in the DataPage with memory bufferwrite data
-     * @param timestamps the common timestamps calculated by cross series filter
-     * @throws IOException TsFile data read exception
+     * @param insertMemoryData the data in memory which contains bufferwirte along with overflow operation
+     * @param timestamps the common timestamps given which must be considered
+     * @param timeIndex the used index of timestamps
+     * @throws IOException        TsFile data read error
      * @throws ProcessorException wrong aggregation method parameter
      */
-    public void calcAggregationUsingTimestamps(InsertDynamicData insertMemoryData, List<Long> timestamps) throws IOException, ProcessorException {
-
-    }
-
-//    /**
-//     * Before invoking this method, <code>couldCalculateFromPageHeader</code> method will return false.
-//     * Calculate the aggregation according to all decompressed data in this page.
-//     * <p>
-//     * @param insertMemoryData the data in the DataPage with memory bufferwrite data
-//     * @throws IOException TsFile data read exception
-//     * @throws ProcessorException wrong aggregation method parameter
-//     */
-//    public void calculateFromLeftMemoryData(InsertDynamicData insertMemoryData) throws IOException, ProcessorException {
-//        calculateValueFromDataPage(insertMemoryData);
-//    }
-
-
+    public abstract void calcAggregationUsingTimestamps(InsertDynamicData insertMemoryData, List<Long> timestamps, int timeIndex)
+            throws IOException, ProcessorException;
 }
