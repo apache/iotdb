@@ -27,7 +27,6 @@ public class AggregateEngine {
 
     private static final Logger LOG = LoggerFactory.getLogger(AggregateEngine.class);
     public static int batchSize = 50000;
-    private static ThreadLocal<Boolean> threadLocal = new ThreadLocal<>();
 
     /**
      * <p>Public invoking method of multiple aggregation.</p>
@@ -52,9 +51,6 @@ public class AggregateEngine {
         }
 
         QueryDataSet ansQueryDataSet = new QueryDataSet();
-        if (threadLocal.get() != null && threadLocal.get()) {
-            return ansQueryDataSet;
-        }
 
         List<QueryDataSet> filterQueryDataSets = new ArrayList<>(); // stores QueryDataSet of each FilterStructure answer
         List<long[]> timeArray = new ArrayList<>(); // stores calculated common timestamps of each FilterStructure answer
@@ -217,7 +213,6 @@ public class AggregateEngine {
 //         * </p>
 //         */
 //        aggres.get(0).right.maps.put("done", true);
-        threadLocal.set(true);
         return ansQueryDataSet;
     }
 
