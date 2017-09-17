@@ -80,7 +80,32 @@ public class MaxValueAggrFunc extends AggregateFunction {
 
     @Override
     public boolean calcAggregationUsingTimestamps(InsertDynamicData insertMemoryData, List<Long> timestamps, int timeIndex) throws IOException, ProcessorException {
-        return false;
+        while (timeIndex < timestamps.size()) {
+            if (insertMemoryData.hasInsertData()) {
+                if (timestamps.get(timeIndex) == insertMemoryData.getCurrentMinTime()) {
+                    Object value = insertMemoryData.getCurrentObjectValue();
+                    if (!hasSetValue) {
+                        result.data.putAnObject(value);
+                        hasSetValue = true;
+                    } else {
+                        Comparable<?> v = result.data.getAnObject(0);
+                        if (compare(v, (Comparable<?>) value) < 0) {
+                            result.data.setAnObject(0, (Comparable<?>) value);
+                        }
+                    }
+                    timeIndex ++;
+                    insertMemoryData.removeCurrentValue();
+                } else if (timestamps.get(timeIndex) > insertMemoryData.getCurrentMinTime()) {
+                    insertMemoryData.removeCurrentValue();
+                } else {
+                    timeIndex += 1;
+                }
+            } else {
+                break;
+            }
+        }
+
+        return insertMemoryData.hasInsertData();
     }
 
     private Comparable<?> getMaxValue(DynamicOneColumnData dataInThisPage) {
