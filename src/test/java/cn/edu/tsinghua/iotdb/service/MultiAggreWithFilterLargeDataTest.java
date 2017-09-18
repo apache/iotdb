@@ -1,9 +1,12 @@
 package cn.edu.tsinghua.iotdb.service;
 
+
 import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
 import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
 import cn.edu.tsinghua.iotdb.jdbc.TsfileJDBCConfig;
 import cn.edu.tsinghua.iotdb.query.engine.AggregateEngine;
+import cn.edu.tsinghua.tsfile.common.conf.TSFileConfig;
+import cn.edu.tsinghua.tsfile.common.conf.TSFileDescriptor;
 import org.apache.commons.io.FileUtils;
 import org.junit.After;
 import org.junit.Assert;
@@ -14,11 +17,9 @@ import java.io.File;
 import java.sql.*;
 
 import static cn.edu.tsinghua.iotdb.service.TestUtils.*;
+import static cn.edu.tsinghua.iotdb.service.TestUtils.count;
 
-/**
- * Multiple aggregation with filter test.
- */
-public class MultiAggreWithFilterTest {
+public class MultiAggreWithFilterLargeDataTest {
     private final String FOLDER_HEADER = "src/test/resources";
     private static final String TIMESTAMP_STR = "Time";
     private final String d0s0 = "root.vehicle.d0.s0";
@@ -83,7 +84,7 @@ public class MultiAggreWithFilterTest {
             "insert into root.vehicle.d1(timestamp,s0) values(1,999)",
             "insert into root.vehicle.d1(timestamp,s0) values(1000,888)",
 
-            "insert into root.vehicle.d0(timestamp,s1) values(2000-01-01T08:00:00+08:00, 100)",
+            // "insert into root.vehicle.d0(timestamp,s1) values(2000-01-01T08:00:00+08:00, 100)",
             "insert into root.vehicle.d0(timestamp,s3) values(2000-01-01T08:00:00+08:00, 'good')",
 
             "insert into root.vehicle.d0(timestamp,s4) values(100, false)",
@@ -103,13 +104,19 @@ public class MultiAggreWithFilterTest {
     @Before
     public void setUp() throws Exception {
         if (testFlag) {
-            AggregateEngine.batchSize = 2;
+            AggregateEngine.batchSize = 4000;
             TsfileDBConfig config = TsfileDBDescriptor.getInstance().getConfig();
             overflowDataDirPre = config.overflowDataDir;
             fileNodeDirPre = config.fileNodeDir;
             bufferWriteDirPre = config.bufferWriteDir;
             metadataDirPre = config.metadataDir;
             derbyHomePre = config.derbyHome;
+
+            // use small page setting
+//            TSFileConfig tsFileConfig = TSFileDescriptor.getInstance().getConfig();
+//            tsFileConfig.maxNumberOfPointsInPage = 10;
+//            tsFileConfig.pageSizeInByte = 1024 * 2;
+//            tsFileConfig.groupSizeInByte = 1024 * 100;
 
             config.overflowDataDir = FOLDER_HEADER + "/data/overflow";
             config.fileNodeDir = FOLDER_HEADER + "/data/digest";
@@ -150,7 +157,7 @@ public class MultiAggreWithFilterTest {
             insertSQL();
 
             Connection connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
-            // selectAllSQLTest();
+            //selectAllSQLTest();
             countAggreWithSingleFilterTest();
             minTimeAggreWithSingleFilterTest();
             maxTimeAggreWithSingleFilterTest();
@@ -162,7 +169,7 @@ public class MultiAggreWithFilterTest {
 
     private void countAggreWithSingleFilterTest() throws ClassNotFoundException, SQLException {
         String[] retArray = new String[]{
-                "0,2,3,5,1,0"
+                "0,733,740,734,482,1"
         };
 
         Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);
@@ -170,8 +177,8 @@ public class MultiAggreWithFilterTest {
         try {
             connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
             Statement statement = connection.createStatement();
-            boolean hasResultSet = statement.execute("select count(s0),count(s1),count(s2),count(s3),count(s4) from root.vehicle.d0 where s2 >= 3.33");
-            // System.out.println(hasResultSet + "...");
+            boolean hasResultSet = statement.execute("select count(s0),count(s1),count(s2),count(s3),count(s4) from root.vehicle.d0 where s1 >= 0");
+            //boolean hasResultSet = statement.execute("select count(s3) from root.vehicle.d0 where s1 >= 0");
             if (hasResultSet) {
                 ResultSet resultSet = statement.getResultSet();
                 int cnt = 0;
@@ -179,7 +186,8 @@ public class MultiAggreWithFilterTest {
                     String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(count(d0s0))
                             + "," + resultSet.getString(count(d0s1)) + "," + resultSet.getString(count(d0s2))
                             + "," + resultSet.getString(count(d0s3)) + "," + resultSet.getString(count(d0s4));
-                    // System.out.println("============ " + ans);
+                    //String ans = resultSet.getString(count(d0s3));
+                    //System.out.println("!!!!!============ " + ans);
                     Assert.assertEquals(ans, retArray[cnt]);
                     cnt++;
                 }
@@ -205,16 +213,15 @@ public class MultiAggreWithFilterTest {
         try {
             connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
             Statement statement = connection.createStatement();
-            boolean hasResultSet = statement.execute("select min_time(s0),min_time(s1),min_time(s2),min_time(s3),min_time(s4) from root.vehicle.d0 " +
-                    "where s1 < 50000 and s1 != 100");
-
+            boolean hasResultSet = statement.execute("select min_time(s0),min_time(s1),min_time(s2),min_time(s3),min_time(s4)" +
+                    " from root.vehicle.d0 where s1 >= 0");
             if (hasResultSet) {
                 ResultSet resultSet = statement.getResultSet();
                 int cnt = 0;
                 while (resultSet.next()) {
-                    String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(min_time(d0s0))
-                            + "," + resultSet.getString(min_time(d0s1)) + "," + resultSet.getString(min_time(d0s2))
-                            + "," + resultSet.getString(min_time(d0s3)) + "," + resultSet.getString(min_time(d0s4));
+                    String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(TestUtils.min_time(d0s0)) + ","
+                            + resultSet.getString(TestUtils.min_time(d0s1)) + "," + resultSet.getString(TestUtils.min_time(d0s2))
+                            + "," + resultSet.getString(TestUtils.min_time(d0s3)) + "," + resultSet.getString(TestUtils.min_time(d0s4));
                     // System.out.println("============ " + ans);
                     Assert.assertEquals(ans, retArray[cnt]);
                     cnt++;
@@ -233,7 +240,7 @@ public class MultiAggreWithFilterTest {
 
     private void maxTimeAggreWithSingleFilterTest() throws ClassNotFoundException, SQLException {
         String[] retArray = new String[]{
-                "0,105,105,105,102,100"
+                "0,3999,3999,3999,3599,100"
         };
 
         Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);
@@ -251,7 +258,7 @@ public class MultiAggreWithFilterTest {
                     String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(max_time(d0s0))
                             + "," + resultSet.getString(max_time(d0s1)) + "," + resultSet.getString(max_time(d0s2))
                             + "," + resultSet.getString(max_time(d0s3)) + "," + resultSet.getString(max_time(d0s4));
-                    // System.out.println("============ " + ans);
+                    //System.out.println("============ " + ans);
                     Assert.assertEquals(ans, retArray[cnt]);
                     cnt++;
                 }
@@ -269,7 +276,7 @@ public class MultiAggreWithFilterTest {
 
     private void minValueAggreWithSingleFilterTest() throws ClassNotFoundException, SQLException {
         String[] retArray = new String[]{
-                "0,33333,180,2.22,tomorrow is another day,true"
+                "0,0,0,0.0,B,true"
         };
 
         Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);
@@ -287,7 +294,7 @@ public class MultiAggreWithFilterTest {
                     String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(min_value(d0s0))
                             + "," + resultSet.getString(min_value(d0s1)) + "," + resultSet.getString(min_value(d0s2))
                             + "," + resultSet.getString(min_value(d0s3)) + "," + resultSet.getString(min_value(d0s4));
-                    // System.out.println("============ " + ans);
+                    //System.out.println("============ " + ans);
                     Assert.assertEquals(ans, retArray[cnt]);
                     cnt++;
                 }
@@ -305,7 +312,7 @@ public class MultiAggreWithFilterTest {
 
     private void maxValueAggreWithSingleFilterTest() throws ClassNotFoundException, SQLException {
         String[] retArray = new String[]{
-                "0,33333,40000,11.11,tomorrow is another day,true"
+                "0,33333,40000,122.0,tomorrow is another day,true"
         };
 
         Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);
@@ -323,8 +330,8 @@ public class MultiAggreWithFilterTest {
                     String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(max_value(d0s0))
                             + "," + resultSet.getString(max_value(d0s1)) + "," + resultSet.getString(max_value(d0s2))
                             + "," + resultSet.getString(max_value(d0s3)) + "," + resultSet.getString(max_value(d0s4));
-                    System.out.println("============ " + ans);
-                    //Assert.assertEquals(ans, retArray[cnt]);
+                    //System.out.println("============ " + ans);
+                    Assert.assertEquals(ans, retArray[cnt]);
                     cnt++;
                 }
                 Assert.assertEquals(1, cnt);
@@ -339,29 +346,49 @@ public class MultiAggreWithFilterTest {
         }
     }
 
-    private void countAggreWithMultiMultiFilterTest() throws ClassNotFoundException, SQLException {
-        String[] retArray = new String[]{
-                "1,null,1101,null,null,999",
-        };
-
+    private String[] stringValue = new String[]{"A", "B", "C", "D", "E"};
+    private void insertSQL() throws ClassNotFoundException, SQLException {
         Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);
         Connection connection = null;
         try {
             connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
             Statement statement = connection.createStatement();
-            boolean hasResultSet = statement.execute("select count(s0) from root.vehicle.d0 where s2 >= 3.33");
-            // System.out.println(hasResultSet + "...");
-            if (hasResultSet) {
-                ResultSet resultSet = statement.getResultSet();
-                int cnt = 0;
-                while (resultSet.next()) {
-                    String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(count(d0s0));
-                    //System.out.println("============ " + ans);
-                    Assert.assertEquals(ans, retArray[cnt]);
-                    cnt++;
-                }
-                Assert.assertEquals(1, cnt);
+            for (String sql : sqls) {
+                statement.execute(sql);
             }
+
+            // insert large amount of data
+            for (int time = 3000; time < 3600; time ++) {
+                if (time % 5 == 0) {
+                    continue;
+                }
+
+                String sql = String.format("insert into root.vehicle.d0(timestamp,s0) values(%s,%s)", time, time % 100);
+                statement.execute(sql);
+                sql = String.format("insert into root.vehicle.d0(timestamp,s1) values(%s,%s)", time, time % 17);
+                statement.execute(sql);
+                sql = String.format("insert into root.vehicle.d0(timestamp,s2) values(%s,%s)", time, time % 22);
+                statement.execute(sql);
+                sql = String.format("insert into root.vehicle.d0(timestamp,s3) values(%s,'%s')", time, stringValue[time%5]);
+                statement.execute(sql);
+            }
+
+            statement.execute("flush");
+
+            // insert large amount of data
+            for (int time  = 3700; time < 4000; time ++) {
+                if (time % 6 == 0) {
+                    continue;
+                }
+
+                String sql = String.format("insert into root.vehicle.d0(timestamp,s0) values(%s,%s)", time, time % 70);
+                statement.execute(sql);
+                sql = String.format("insert into root.vehicle.d0(timestamp,s1) values(%s,%s)", time, time % 40);
+                statement.execute(sql);
+                sql = String.format("insert into root.vehicle.d0(timestamp,s2) values(%s,%s)", time, time % 123);
+                statement.execute(sql);
+            }
+
             statement.close();
         } catch (Exception e) {
             e.printStackTrace();
@@ -407,28 +434,11 @@ public class MultiAggreWithFilterTest {
                 while (resultSet.next()) {
                     String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s0) + "," + resultSet.getString(d0s1)
                             +","+resultSet.getString(d0s2)+","+resultSet.getString(d0s3)+","+resultSet.getString(d1s0);
-                    // System.out.println(ans);
-                    Assert.assertEquals(ans, retArray[cnt]);
-                    cnt++;
+                    System.out.println(ans);
+                    //Assert.assertEquals(ans, retArray[cnt]);
+                    //cnt++;
                 }
-                Assert.assertEquals(17, cnt);
-            }
-            statement.close();
-
-            retArray = new String[]{
-                    "100,true"
-            };
-            statement = connection.createStatement();
-            hasResultSet = statement.execute("select s4 from root.vehicle.d0");
-            if (hasResultSet) {
-                ResultSet resultSet = statement.getResultSet();
-                int cnt = 0;
-                while (resultSet.next()) {
-                    String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s4);
-                    Assert.assertEquals(ans, retArray[cnt]);
-                    cnt++;
-                }
-                Assert.assertEquals(1, cnt);
+                //Assert.assertEquals(17, cnt);
             }
             statement.close();
         } catch (Exception e) {
@@ -439,24 +449,4 @@ public class MultiAggreWithFilterTest {
             }
         }
     }
-
-    private void insertSQL() throws ClassNotFoundException, SQLException {
-        Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);
-        Connection connection = null;
-        try {
-            connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
-            Statement statement = connection.createStatement();
-            for (String sql : sqls) {
-                statement.execute(sql);
-            }
-            statement.close();
-        } catch (Exception e) {
-            e.printStackTrace();
-        } finally {
-            if (connection != null) {
-                connection.close();
-            }
-        }
-    }
-
 }

@@ -171,7 +171,6 @@ public class AggregateEngine {
                             insertTrue, updateTrue, updateFalse,
                             newTimeFilter, null, null, dataType);
 
-                    TimestampRecord timestampRecord = new TimestampRecord(timestamps, 0);
                     Pair<AggregationResult, Boolean> aggrPair = recordReader.aggregateUsingTimestamps(deltaObjectUID, measurementUID, aggregateFunction,
                             recordReader.insertAllData.updateTrue, recordReader.insertAllData.updateFalse, recordReader.insertAllData,
                             newTimeFilter, null, null, timestamps, null);
@@ -183,10 +182,13 @@ public class AggregateEngine {
                     }
                     ansQueryDataSet.mapRet.put(aggregationKey, result.data);
                 } else {
-                    DynamicOneColumnData aggreData = ansQueryDataSet.mapRet.get(aggregationKey);
+                    /*
+                     * ansQueryDataSet.mapRet.get(aggregationKey) stores the aggregation result,
+                     * not the lastAggreData.
+                     */
                     Pair<AggregationResult, Boolean> aggrPair = recordReader.aggregateUsingTimestamps(deltaObjectUID, measurementUID, aggregateFunction,
                             recordReader.insertAllData.updateTrue, recordReader.insertAllData.updateFalse, recordReader.insertAllData,
-                            recordReader.insertAllData.timeFilter, null, null, timestamps, aggreData);
+                            recordReader.insertAllData.timeFilter, null, null, timestamps, null);
                     AggregationResult result = aggrPair.left;
                     boolean hasUnReadDataFlag = aggrPair.right;
                     hasUnReadDataMap.put(aggregationOrdinal, hasUnReadDataFlag);

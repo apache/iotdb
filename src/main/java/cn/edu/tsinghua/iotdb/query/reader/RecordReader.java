@@ -235,7 +235,7 @@ public class RecordReader {
      * @param freqFilter frequency filter
      * @param valueFilter value filter
      * @param timestamps timestamps calculated by the cross filter
-     * @param aggreData aggregation result calculated last time
+     * @param aggreData aggregation result calculated last time //TODO this parameter is unnecessary?
      * @return aggregation result and whether still has unread data
      * @throws ProcessorException aggregation invoking exception
      * @throws IOException TsFile read exception
@@ -251,6 +251,7 @@ public class RecordReader {
         List<RowGroupReader> rowGroupReaderList = readerManager.getRowGroupReaderListByDeltaObject(deltaObjectId);
 
         int commonTimestampsIndex = 0;
+        // TODO if the RowGroupReader.ValueReaders.get(measurementId) has been read, how to avoid it?
         for (RowGroupReader rowGroupReader : rowGroupReaderList) {
             if (rowGroupReader.getValueReaders().containsKey(measurementId)) {
                 commonTimestampsIndex = rowGroupReader.getValueReaders().get(measurementId)
