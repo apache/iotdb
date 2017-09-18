@@ -15,7 +15,7 @@ public interface WriteLogPersistable {
      * length: the length of operatorContent which uses two bytes
      *
      * @param operator (operatorType)(operatorContent)
-     * @throws IOException
+     * @throws IOException read,write log file error
      */
     void write(byte[] operator) throws IOException;
 
