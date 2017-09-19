@@ -7,7 +7,7 @@ import org.joda.time.DateTimeZone;
 public class TsfileDBConfig {
 
 	public static final String CONFIG_NAME = "iotdb-engine.properties";
-	public static final String CONFIG_DEFAULT_PATH = "conf/" + CONFIG_NAME;
+	public static final String HOME_DEFAULT_PATH = "conf/" + CONFIG_NAME;
 	
 	/**
 	 * Port which JDBC server listens to
