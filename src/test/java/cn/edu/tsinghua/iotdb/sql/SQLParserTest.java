@@ -20,7 +20,7 @@ public class SQLParserTest {
     @Test
     public void createTimeseries() throws ParseException {
         // template for test case
-        ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_CREATE", "TOK_TIMESERIES","TOK_ROOT", "laptop",
+        ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_CREATE", "TOK_TIMESERIES","TOK_PATH" ,"TOK_ROOT", "laptop",
                 "d0", "s2", "TOK_WITH", "TOK_DATATYPE", "FLOAT", "TOK_ENCODING", "RLE", "TOK_CLAUSE", "freq_encoding",
                 "DFT", "TOK_CLAUSE", "write_main_freq", "true", "TOK_CLAUSE", "dft_pack_length", "300", "TOK_CLAUSE",
                 "dft_rate", "0.4", "TOK_CLAUSE", "write_encoding", "False"));
@@ -40,7 +40,7 @@ public class SQLParserTest {
     @Test
     public void createTimeseries2() throws ParseException {
         // template for test case
-        ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_CREATE", "TOK_TIMESERIES", "TOK_ROOT", "laptop",
+        ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_CREATE", "TOK_TIMESERIES","TOK_PATH" , "TOK_ROOT", "laptop",
                 "d1", "s1", "TOK_WITH", "TOK_DATATYPE", "INT64", "TOK_ENCODING", "rle"));
         ArrayList<String> rec = new ArrayList<>();
         ASTNode astTree = ParseGenerator.generateAST("create timeseries root.laptop.d1.s1 with datatype=INT64,encoding=rle");
@@ -820,7 +820,7 @@ public class SQLParserTest {
     @Test
     public void createIndex1() throws ParseException, RecognitionException {
     	ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_CREATE", "TOK_INDEX", 
-    			"TOK_ROOT", "a", "b", "c",
+    			"TOK_PATH" ,"TOK_ROOT", "a", "b", "c",
     			"TOK_FUNC", "kv-match",
     			"TOK_WITH", "TOK_INDEX_KV", "window_length", "50",
     			"TOK_WHERE", ">", "TOK_PATH", "time", "123"));
@@ -839,7 +839,7 @@ public class SQLParserTest {
     @Test
     public void createIndex2() throws ParseException, RecognitionException {
     	ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_CREATE", "TOK_INDEX", 
-    			"TOK_ROOT", "a", "b", "c",
+    			"TOK_PATH" ,"TOK_ROOT", "a", "b", "c",
     			"TOK_FUNC", "kv-match2",
     			"TOK_WITH", "TOK_INDEX_KV", "xxx", "50", "TOK_INDEX_KV", "xxx", "123",
     			"TOK_WHERE", ">", "TOK_PATH", "time" ,"TOK_DATETIME", "now"));
