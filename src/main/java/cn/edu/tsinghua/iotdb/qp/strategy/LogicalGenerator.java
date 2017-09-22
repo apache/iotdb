@@ -524,10 +524,20 @@ public class LogicalGenerator {
 
 	private Path parsePath(ASTNode node) {
 		int childCount = node.getChildCount();
-		String[] path = new String[node.getChildCount()];
-		for (int i = 0; i < childCount; i++) {
-			// path[i] = node.getChild(i).getText().toLowerCase();
-			path[i] = node.getChild(i).getText();
+		String[] path;
+		if(childCount == 1 && node.getChild(0).getType() == TSParser.TOK_ROOT){
+			ASTNode childNode = node.getChild(0);
+			childCount = childNode.getChildCount();
+			path = new String[childCount+1];
+			path[0] = SQLConstant.ROOT;
+			for (int i = 0; i < childCount; i++) {
+				path[i+1] = childNode.getChild(i).getText();
+			}
+		}else{
+			path = new String[childCount];
+			for (int i = 0; i < childCount; i++) {
+				path[i] = node.getChild(i).getText();
+			}
 		}
 		return new Path(new StringContainer(path, SystemConstant.PATH_SEPARATOR));
 	}
@@ -540,7 +550,8 @@ public class LogicalGenerator {
 			// sc.addTail(node.getChild(i).getText().toLowerCase());
 			sc.addTail(node.getChild(i).getText());
 		}
-		return new Path(sc);
+//		return new Path(sc);
+		return new Path("");
 	}
 
 	private String parseStringWithQuoto(String src) throws IllegalASTFormatException {
