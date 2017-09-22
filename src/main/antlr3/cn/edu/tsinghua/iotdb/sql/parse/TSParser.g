@@ -339,7 +339,7 @@ createTimeseries
 
 timeseries
   : KW_ROOT DOT deviceType=Identifier DOT identifier (DOT identifier)+
-  -> ^(TOK_ROOT $deviceType identifier+)
+  -> ^(TOK_PATH ^(TOK_ROOT $deviceType identifier+))
   ;
 
 propertyClauses
