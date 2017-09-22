@@ -9,11 +9,15 @@ import java.sql.Statement;
 
 import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
 import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
+import cn.edu.tsinghua.iotdb.jdbc.TsfileJDBCConfig;
 import org.apache.commons.io.FileUtils;
+import org.junit.After;
 import org.junit.Assert;
 
 import cn.edu.tsinghua.tsfile.common.conf.TSFileConfig;
 import cn.edu.tsinghua.tsfile.common.conf.TSFileDescriptor;
+import org.junit.Before;
+import org.junit.Test;
 
 /**
  *
@@ -157,7 +161,7 @@ public class SmallPageSizeTest {
     }
 
     private void insertSQL() throws ClassNotFoundException, SQLException {
-        Class.forName("cn.edu.thu.tsfiledb.jdbc.TsfileDriver");
+        Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);
         Connection connection = null;
         try {
             connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
@@ -204,7 +208,7 @@ public class SmallPageSizeTest {
                 "1600,null,null,null,null,1600",
                 "1700,null,null,null,null,1700"};
 
-        Class.forName("cn.edu.thu.tsfiledb.jdbc.TsfileDriver");
+        Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);
         Connection connection = null;
         try {
             connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");

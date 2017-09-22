@@ -338,8 +338,8 @@ createTimeseries
   ;
 
 timeseries
-  : KW_ROOT DOT deviceType=Identifier DOT identifier (DOT identifier)+
-  -> ^(TOK_PATH ^(TOK_ROOT $deviceType identifier+))
+  : KW_ROOT (DOT identifier)+
+  -> ^(TOK_PATH ^(TOK_ROOT identifier+))
   ;
 
 propertyClauses
@@ -623,8 +623,8 @@ identifier
 //    ;
 
 selectClause
-    : KW_SELECT KW_INDEX func=Identifier LPAREN p=prefixPath COMMA file=StringLiteral COMMA epsilon=Float (COMMA alpha=Float COMMA beta=Float)? RPAREN
-    -> ^(TOK_SELECT_INDEX $func $p $file $epsilon ($alpha $beta)?)
+    : KW_SELECT KW_INDEX func=Identifier LPAREN p=prefixPath COMMA file=StringLiteral COMMA epsilon=Float (COMMA alpha=Float COMMA beta=Float)? RPAREN (fromClause)?
+    -> ^(TOK_SELECT_INDEX $func $p $file $epsilon ($alpha $beta)?) fromClause?
     | KW_SELECT clusteredPath (COMMA clusteredPath)* fromClause
     -> ^(TOK_SELECT clusteredPath+) fromClause
     ;

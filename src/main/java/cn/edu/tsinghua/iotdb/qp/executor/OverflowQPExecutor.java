@@ -102,8 +102,9 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 	}
 
 	@Override
-	public QueryDataSet query(int formNumber, List<Path> paths, FilterExpression timeFilter, FilterExpression freqFilter,
-			FilterExpression valueFilter, int fetchSize, QueryDataSet lastData) throws ProcessorException {
+	public QueryDataSet query(int formNumber, List<Path> paths, FilterExpression timeFilter,
+			FilterExpression freqFilter, FilterExpression valueFilter, int fetchSize, QueryDataSet lastData)
+			throws ProcessorException {
 
 		try {
 			return queryEngine.query(formNumber, paths, timeFilter, freqFilter, valueFilter, lastData, fetchSize);
@@ -335,7 +336,12 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 				if (deletePathList != null && !deletePathList.isEmpty()) {
 					Set<String> pathSet = new HashSet<>();
 					for (Path p : deletePathList) {
-						pathSet.addAll(mManager.getPaths(p.getFullPath()));
+						ArrayList<String> subPaths = mManager.getPaths(p.getFullPath());
+						if (subPaths.isEmpty()) {
+							throw new ProcessorException(String
+									.format("The timeseries %s does not exist and can't be deleted", p.getFullPath()));
+						}
+						pathSet.addAll(subPaths);
 					}
 					if (pathSet.isEmpty()) {
 						throw new ProcessorException(
@@ -404,12 +410,12 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 	/**
 	 * Delete all data of timeseries in pathList.
 	 *
-	 * @param pathList deleted paths
+	 * @param pathList
+	 *            deleted paths
 	 * @throws PathErrorException
 	 * @throws ProcessorException
 	 */
-	private void deleteDataOfTimeSeries(List<String> pathList)
-			throws PathErrorException, ProcessorException {
+	private void deleteDataOfTimeSeries(List<String> pathList) throws PathErrorException, ProcessorException {
 		for (String p : pathList) {
 			DeletePlan deletePlan = new DeletePlan();
 			deletePlan.addPath(new Path(p));
