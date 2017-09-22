@@ -37,14 +37,15 @@ public class WriteLogNodeTest {
 
     @Test
     public void bufferWriteOverflowFlushTest() throws IOException {
+        // note that Overflow operation and Bufferwrite operation must have meanings
         WriteLogNode node = new WriteLogNode(fileNode);
         measurements.clear();
         measurements.add("s1");
         values.add("1.0");
-        node.write(new InsertPlan("d1", 100L, measurements, values));
         node.write(new UpdatePlan(200L, 300L, "2.0", path));
         node.write(new DeletePlan(200L, path));
         node.write(new UpdatePlan(400L, 500L, "3.0", path));
+        node.write(new InsertPlan(1,"d1", 506L, measurements, values));
         node.write(new UpdatePlan(500L, 600L, "4.0", path));
         node.bufferFlushStart();
         node.write(new UpdatePlan(900L, 901L, "3.0", path));
@@ -73,7 +74,7 @@ public class WriteLogNodeTest {
                 Assert.assertEquals(updatePlan.getValue(), "4.0");
             }
             cnt++;
-            //output(plan);
+            output(plan);
         }
         node.closeStreams();
         node.removeFiles();
@@ -302,7 +303,7 @@ public class WriteLogNodeTest {
     private void output(PhysicalPlan plan) {
         if (plan instanceof UpdatePlan) {
             UpdatePlan p = (UpdatePlan) plan;
-            System.out.println("Update: ========= " + p.getPath());
+            System.out.println("Update: " + p.getPath());
             for (Pair<Long,Long> pair : ((UpdatePlan) plan).getIntervals()) {
                 System.out.println(pair.left + "," + pair.right + " " + p.getValue());
             }

@@ -2,10 +2,14 @@ package cn.edu.tsinghua.iotdb.service;
 
 import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
 import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
+import cn.edu.tsinghua.iotdb.jdbc.TsfileJDBCConfig;
 import cn.edu.tsinghua.tsfile.common.conf.TSFileConfig;
 import cn.edu.tsinghua.tsfile.common.conf.TSFileDescriptor;
 import org.apache.commons.io.FileUtils;
+import org.junit.After;
 import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
 
 import java.io.File;
 import java.sql.*;
@@ -134,7 +138,7 @@ public class CrossReadBugFixTest {
     }
 
     private void insertSQL() throws ClassNotFoundException, SQLException {
-        Class.forName("cn.edu.thu.tsfiledb.jdbc.TsfileDriver");
+        Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);
         Connection connection = null;
         try {
             connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
@@ -173,7 +177,7 @@ public class CrossReadBugFixTest {
                 "106,99,null,null"
         };
 
-        Class.forName("cn.edu.thu.tsfiledb.jdbc.TsfileDriver");
+        Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);
         Connection connection = null;
         try {
             connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
@@ -218,7 +222,7 @@ public class CrossReadBugFixTest {
                 "104,90,190,13.0",
                 "105,99,199,14.0"};
 
-        Class.forName("cn.edu.thu.tsfiledb.jdbc.TsfileDriver");
+        Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);
         Connection connection = null;
         try {
             connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
