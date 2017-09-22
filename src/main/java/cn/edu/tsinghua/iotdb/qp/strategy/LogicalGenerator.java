@@ -206,7 +206,7 @@ public class LogicalGenerator {
 	private void analyzePropertyLink(ASTNode astNode) {
 		PropertyOperator propertyOperator = new PropertyOperator(SQLConstant.TOK_PROPERTY_LINK,
 				PropertyType.ADD_PROPERTY_TO_METADATA);
-		Path metaPath = parseRootPath(astNode.getChild(0));
+		Path metaPath = parsePath(astNode.getChild(0));
 		propertyOperator.setMetadataPath(metaPath);
 		Path propertyLabel = parsePropertyAndLabel(astNode, 1);
 		propertyOperator.setPropertyPath(propertyLabel);
@@ -216,7 +216,7 @@ public class LogicalGenerator {
 	private void analyzePropertyUnLink(ASTNode astNode) {
 		PropertyOperator propertyOperator = new PropertyOperator(SQLConstant.TOK_PROPERTY_UNLINK,
 				PropertyType.DEL_PROPERTY_FROM_METADATA);
-		Path metaPath = parseRootPath(astNode.getChild(0));
+		Path metaPath = parsePath(astNode.getChild(0));
 		propertyOperator.setMetadataPath(metaPath);
 		Path propertyLabel = parsePropertyAndLabel(astNode, 1);
 		propertyOperator.setPropertyPath(propertyLabel);
@@ -224,7 +224,7 @@ public class LogicalGenerator {
 	}
 
 	private void analyzeMetadataCreate(ASTNode astNode) throws MetadataArgsErrorException {
-		Path series = parseRootPath(astNode.getChild(0).getChild(0));
+		Path series = parsePath(astNode.getChild(0).getChild(0));
 		ASTNode paramNode = astNode.getChild(1);
 		String dataType = paramNode.getChild(0).getChild(0).getText();
 		String encodingType = paramNode.getChild(1).getChild(0).getText();
@@ -542,18 +542,6 @@ public class LogicalGenerator {
 		return new Path(new StringContainer(path, SystemConstant.PATH_SEPARATOR));
 	}
 
-	private Path parseRootPath(ASTNode node) {
-		StringContainer sc = new StringContainer(SystemConstant.PATH_SEPARATOR);
-		sc.addTail(SQLConstant.ROOT);
-		int childCount = node.getChildCount();
-		for (int i = 0; i < childCount; i++) {
-			// sc.addTail(node.getChild(i).getText().toLowerCase());
-			sc.addTail(node.getChild(i).getText());
-		}
-//		return new Path(sc);
-		return new Path("");
-	}
-
 	private String parseStringWithQuoto(String src) throws IllegalASTFormatException {
 		if (src.length() < 3 || src.charAt(0) != '\'' || src.charAt(src.length() - 1) != '\'')
 			throw new IllegalASTFormatException("error format for string with quoto:" + src);
@@ -654,23 +642,19 @@ public class LogicalGenerator {
 			for (int i = 0; i < privileges.length; i++) {
 				privileges[i] = parseStringWithQuoto(privilegesNode.getChild(i).getText());
 			}
-			ASTNode pathNode = astNode.getChild(2);
-			String[] nodeNameList = new String[pathNode.getChildCount()];
-			for (int i = 0; i < nodeNameList.length; i++) {
-				nodeNameList[i] = pathNode.getChild(i).getText();
-			}
+			Path nodePath = parsePath(astNode.getChild(2));
 			if (astNode.getChild(0).getType() == TSParser.TOK_USER) {
 				// grant user
 				authorOperator = new AuthorOperator(SQLConstant.TOK_AUTHOR_GRANT, AuthorType.GRANT_USER);
 				authorOperator.setUserName(astNode.getChild(0).getChild(0).getText());
 				authorOperator.setPrivilegeList(privileges);
-				authorOperator.setNodeNameList(nodeNameList);
+				authorOperator.setNodeNameList(nodePath);
 			} else if (astNode.getChild(0).getType() == TSParser.TOK_ROLE) {
 				// grant role
 				authorOperator = new AuthorOperator(SQLConstant.TOK_AUTHOR_GRANT, AuthorType.GRANT_ROLE);
 				authorOperator.setRoleName(astNode.getChild(0).getChild(0).getText());
 				authorOperator.setPrivilegeList(privileges);
-				authorOperator.setNodeNameList(nodeNameList);
+				authorOperator.setNodeNameList(nodePath);
 			} else {
 				throw new IllegalASTFormatException("illegal ast tree in grant author command, please check you SQL statement");
 			}
@@ -694,23 +678,19 @@ public class LogicalGenerator {
 			for (int i = 0; i < privileges.length; i++) {
 				privileges[i] = parseStringWithQuoto(privilegesNode.getChild(i).getText());
 			}
-			ASTNode pathNode = astNode.getChild(2);
-			String[] nodeNameList = new String[pathNode.getChildCount()];
-			for (int i = 0; i < nodeNameList.length; i++) {
-				nodeNameList[i] = pathNode.getChild(i).getText();
-			}
+			Path nodePath = parsePath(astNode.getChild(2));
 			if (astNode.getChild(0).getType() == TSParser.TOK_USER) {
 				// revoke user
 				authorOperator = new AuthorOperator(SQLConstant.TOK_AUTHOR_REVOKE, AuthorType.REVOKE_USER);
 				authorOperator.setUserName(astNode.getChild(0).getChild(0).getText());
 				authorOperator.setPrivilegeList(privileges);
-				authorOperator.setNodeNameList(nodeNameList);
+				authorOperator.setNodeNameList(nodePath);
 			} else if (astNode.getChild(0).getType() == TSParser.TOK_ROLE) {
 				// revoke role
 				authorOperator = new AuthorOperator(SQLConstant.TOK_AUTHOR_REVOKE, AuthorType.REVOKE_ROLE);
 				authorOperator.setRoleName(astNode.getChild(0).getChild(0).getText());
 				authorOperator.setPrivilegeList(privileges);
-				authorOperator.setNodeNameList(nodeNameList);
+				authorOperator.setNodeNameList(nodePath);
 			} else {
 				throw new IllegalASTFormatException("illegal ast tree in grant author command, please check you SQL statement");
 			}
@@ -794,7 +774,8 @@ public class LogicalGenerator {
 	}
 
 	private void analyzeIndexCreate(ASTNode astNode) throws LogicalOperatorException {
-		Path path = parseRootPath(astNode.getChild(0).getChild(0));
+//		Path path = parseRootPath(astNode.getChild(0).getChild(0));
+		Path path = parsePath(astNode.getChild(0).getChild(0));
 		String indexName = astNode.getChild(0).getChild(1).getChild(0).getText();
 		if (!"kv-match".equals(indexName)) {
 			throw new LogicalOperatorException(
