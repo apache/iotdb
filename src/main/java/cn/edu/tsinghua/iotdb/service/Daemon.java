@@ -3,8 +3,6 @@ package cn.edu.tsinghua.iotdb.service;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.List;
 
 import javax.management.InstanceAlreadyExistsException;
 import javax.management.MBeanRegistrationException;
@@ -28,23 +26,14 @@ import cn.edu.tsinghua.iotdb.exception.FileNodeManagerException;
 
 import cn.edu.tsinghua.iotdb.exception.StartupException;
 import cn.edu.tsinghua.iotdb.qp.QueryProcessor;
-import cn.edu.tsinghua.iotdb.qp.constant.SQLConstant;
 import cn.edu.tsinghua.iotdb.qp.executor.OverflowQPExecutor;
 
 import cn.edu.tsinghua.iotdb.qp.physical.crud.DeletePlan;
 import cn.edu.tsinghua.iotdb.qp.physical.crud.InsertPlan;
 import cn.edu.tsinghua.iotdb.qp.physical.crud.UpdatePlan;
 import cn.edu.tsinghua.iotdb.sys.writelog.WriteLogManager;
-import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
-import cn.edu.tsinghua.tsfile.timeseries.read.qp.Path;
-import cn.edu.tsinghua.tsfile.timeseries.write.record.DataPoint;
-import cn.edu.tsinghua.tsfile.timeseries.write.record.TSRecord;
-import org.apache.thrift.transport.TTransportException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import cn.edu.tsinghua.iotdb.qp.physical.PhysicalPlan;
-import cn.edu.tsinghua.iotdb.sys.writelog.WriteLogManager;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 
 public class Daemon {
@@ -157,7 +146,7 @@ public class Daemon {
      */
     private void systemDataRecovery() throws IOException, FileNodeManagerException, PathErrorException {
         LOGGER.info("{}: start checking write log...",TsFileDBConstant.GLOBAL_DB_NAME);
-        QueryProcessor processor = new QueryProcessor(new OverflowQPExecutor());
+//        QueryProcessor processor = new QueryProcessor(new OverflowQPExecutor());
         WriteLogManager writeLogManager = WriteLogManager.getInstance();
         writeLogManager.recovery();
         long cnt = 0L;
