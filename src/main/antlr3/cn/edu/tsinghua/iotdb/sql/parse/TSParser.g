@@ -420,9 +420,8 @@ quitStatement
 queryStatement
    :
    selectClause
-   fromClause?
    whereClause?
-   -> ^(TOK_QUERY selectClause fromClause? whereClause?)
+   -> ^(TOK_QUERY selectClause whereClause?)
    ;
 
 authorStatement
@@ -626,8 +625,8 @@ identifier
 selectClause
     : KW_SELECT KW_INDEX func=Identifier LPAREN p=prefixPath COMMA file=StringLiteral COMMA epsilon=Float (COMMA alpha=Float COMMA beta=Float)? RPAREN
     -> ^(TOK_SELECT_INDEX $func $p $file $epsilon ($alpha $beta)?)
-    | KW_SELECT clusteredPath (COMMA clusteredPath)*
-    -> ^(TOK_SELECT clusteredPath+)
+    | KW_SELECT clusteredPath (COMMA clusteredPath)* fromClause
+    -> ^(TOK_SELECT clusteredPath+) fromClause
     ;
 
 clusteredPath
