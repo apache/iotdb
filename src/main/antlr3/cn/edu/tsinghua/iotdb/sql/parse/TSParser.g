@@ -311,7 +311,7 @@ metadata
 
 metadataStatement
     : createTimeseries
-    | setFileLevel
+    | setStorageGroup
     | addAPropertyTree
     | addALabelProperty
     | deleteALebelFromPropertyTree
@@ -356,7 +356,7 @@ propertyValue
   : numberOrString
   ;
 
-setFileLevel
+setStorageGroup
   : KW_SET KW_STORAGE KW_GROUP KW_TO prefixPath
   -> ^(TOK_SET ^(TOK_STORAGEGROUP prefixPath))
   ;
