@@ -53,7 +53,6 @@ public class QueryProcessor {
     public PhysicalPlan parseSQLToPhysicalPlan(String sqlStr, DateTimeZone timeZone)
             throws QueryProcessorException, ArgsErrorException {
         ASTNode astNode = parseSQLToAST(sqlStr);
-//        System.out.println(astNode.dump());
         Operator operator = parseASTToOperator(astNode, timeZone);
         operator = logicalOptimize(operator, executor);
         return executor.transformToPhysicalPlan(operator);
