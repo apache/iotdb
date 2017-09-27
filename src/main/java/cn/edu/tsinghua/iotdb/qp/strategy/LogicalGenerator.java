@@ -75,8 +75,8 @@ public class LogicalGenerator {
 	/**
 	 * input an astNode parsing by {@code antlr} and analyze it.
 	 * 
-	 * @throws QueryProcessorException
-	 * @throws ArgsErrorException
+	 * @throws QueryProcessorException exception in query process
+	 * @throws ArgsErrorException args error
 	 *
 	 */
 	private void analyze(ASTNode astNode) throws QueryProcessorException, ArgsErrorException {
