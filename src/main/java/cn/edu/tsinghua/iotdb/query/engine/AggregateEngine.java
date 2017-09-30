@@ -202,19 +202,7 @@ public class AggregateEngine {
             // current batch timestamps has been used all
             timestamps.clear();
         }
-
-//        /**
-//         * <p>
-//         * Aggregation result is also storage in <code>QueryDataSet</code>,
-//         * <code>QueryDataSet</code> has a hasNextRecord method,
-//         * however, multiAggregate will only be invoked once,
-//         * the twice time multiAggregate is invoked, we will reject it,
-//         * so stores a string "done" in aggres.get(0).right.maps,
-//         * if there exists a "done" string in aggres.get(0).right.maps,
-//         * we will skip this invoking directly.
-//         * </p>
-//         */
-//        aggres.get(0).right.maps.put("done", true);
+        
         return ansQueryDataSet;
     }
 
