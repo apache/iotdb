@@ -968,7 +968,6 @@ public class OverflowValueReader extends ValueReader {
 
             PageHeader pageHeader = pageReader.getNextPageHeader();
             Digest pageDigest = pageHeader.data_page_header.getDigest();
-            DigestForFilter valueDigestFF = new DigestForFilter(pageDigest.min, pageDigest.max, getDataType());
             long mint = pageHeader.data_page_header.min_timestamp;
             long maxt = pageHeader.data_page_header.max_timestamp;
             DigestForFilter timeDigestFF = new DigestForFilter(mint, maxt);
