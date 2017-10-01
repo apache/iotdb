@@ -23,14 +23,7 @@ public class MinTimeAggrFunc extends AggregateFunction {
     @Override
     public void calculateValueFromPageHeader(PageHeader pageHeader) {
         long timestamp = pageHeader.data_page_header.min_timestamp;
-        if (!hasSetValue) {
-            result.data.putLong(timestamp);
-            hasSetValue = true;
-        } else {
-            long maxv = result.data.getLong(0);
-            maxv = maxv > timestamp ? maxv : timestamp;
-            result.data.setLong(0, maxv);
-        }
+        updateMinTime(timestamp);
     }
 
     @Override
@@ -40,14 +33,7 @@ public class MinTimeAggrFunc extends AggregateFunction {
         }
         // use the first timestamp of the DynamicOneColumnData
         long timestamp = dataInThisPage.getTime(0);
-        if (!hasSetValue) {
-            result.data.putLong(timestamp);
-            hasSetValue = true;
-        } else {
-            long minv = result.data.getLong(0);
-            minv = minv < timestamp ? minv : timestamp;
-            result.data.setLong(0, minv);
-        }
+        updateMinTime(timestamp);
     }
 
     @Override
@@ -60,14 +46,7 @@ public class MinTimeAggrFunc extends AggregateFunction {
         Object min_time = insertMemoryData.calcAggregation(AggregationConstant.MIN_TIME);
         if (min_time != null) {
             long timestamp = (long) min_time;
-            if (!hasSetValue) {
-                result.data.putLong(timestamp);
-                hasSetValue = true;
-            } else {
-                long minv = result.data.getLong(0);
-                minv = minv < timestamp ? minv : timestamp;
-                result.data.setLong(0, minv);
-            }
+            updateMinTime(timestamp);
         }
     }
 
@@ -76,14 +55,7 @@ public class MinTimeAggrFunc extends AggregateFunction {
         while (timeIndex < timestamps.size()) {
             if (insertMemoryData.hasInsertData()) {
                 if (timestamps.get(timeIndex) == insertMemoryData.getCurrentMinTime()) {
-                    if (!hasSetValue) {
-                        result.data.putLong(timestamps.get(timeIndex));
-                        hasSetValue = true;
-                    } else {
-                        long minv = result.data.getLong(0);
-                        minv = minv < timestamps.get(timeIndex) ? minv : timestamps.get(timeIndex);
-                        result.data.setLong(0, minv);
-                    }
+                    updateMinTime(timestamps.get(timeIndex));
                     return false;
                 } else if (timestamps.get(timeIndex) > insertMemoryData.getCurrentMinTime()) {
                     insertMemoryData.removeCurrentValue();
@@ -96,5 +68,16 @@ public class MinTimeAggrFunc extends AggregateFunction {
         }
 
         return insertMemoryData.hasInsertData();
+    }
+
+    private void updateMinTime(long timestamp) {
+        if (!hasSetValue) {
+            result.data.putLong(timestamp);
+            hasSetValue = true;
+        } else {
+            long mint = result.data.getLong(0);
+            mint = mint < timestamp ? mint : timestamp;
+            result.data.setLong(0, mint);
+        }
     }
 }

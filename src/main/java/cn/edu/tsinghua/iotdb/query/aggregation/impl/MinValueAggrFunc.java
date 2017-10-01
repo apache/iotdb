@@ -30,15 +30,7 @@ public class MinValueAggrFunc extends AggregateFunction {
         Digest pageDigest = pageHeader.data_page_header.getDigest();
         DigestForFilter digest = new DigestForFilter(pageDigest.min, pageDigest.max, dataType);
         Comparable<?> minv = digest.getMinValue();
-        if (!hasSetValue) {
-            result.data.putAnObject(minv);
-            hasSetValue = true;
-        } else {
-            Comparable<?> v = result.data.getAnObject(0);
-            if (compare(v, minv) > 0) {
-                result.data.setAnObject(0, minv);
-            }
-        }
+        updateMinValue(minv);
     }
 
     @Override
@@ -47,15 +39,7 @@ public class MinValueAggrFunc extends AggregateFunction {
             return;
         }
         Comparable<?> minv = getMinValue(dataInThisPage);
-        if (!hasSetValue) {
-            result.data.putAnObject(minv);
-            hasSetValue = true;
-        } else {
-            Comparable<?> v = result.data.getAnObject(0);
-            if (compare(v, minv) > 0) {
-                result.data.setAnObject(0, minv);
-            }
-        }
+        updateMinValue(minv);
     }
 
     @Override
@@ -67,15 +51,7 @@ public class MinValueAggrFunc extends AggregateFunction {
     public void calculateValueFromLeftMemoryData(InsertDynamicData insertMemoryData) throws IOException, ProcessorException {
         Object min_value = insertMemoryData.calcAggregation(AggregationConstant.MIN_VALUE);
         if (min_value != null) {
-            if (!hasSetValue) {
-                result.data.putAnObject(min_value);
-                hasSetValue = true;
-            } else {
-                Comparable<?> v = result.data.getAnObject(0);
-                if (compare(v, (Comparable<?>) min_value) > 0) {
-                    result.data.setAnObject(0, (Comparable<?>) min_value);
-                }
-            }
+            updateMinValue((Comparable<?>) min_value);
         }
     }
 
@@ -85,15 +61,7 @@ public class MinValueAggrFunc extends AggregateFunction {
             if (insertMemoryData.hasInsertData()) {
                 if (timestamps.get(timeIndex) == insertMemoryData.getCurrentMinTime()) {
                     Object value = insertMemoryData.getCurrentObjectValue();
-                    if (!hasSetValue) {
-                        result.data.putAnObject(value);
-                        hasSetValue = true;
-                    } else {
-                        Comparable<?> v = result.data.getAnObject(0);
-                        if (compare(v, (Comparable<?>) value) > 0) {
-                            result.data.setAnObject(0, (Comparable<?>) value);
-                        }
-                    }
+                    updateMinValue((Comparable<?>) value);
                     timeIndex ++;
                     insertMemoryData.removeCurrentValue();
                 } else if (timestamps.get(timeIndex) > insertMemoryData.getCurrentMinTime()) {
@@ -107,6 +75,18 @@ public class MinValueAggrFunc extends AggregateFunction {
         }
 
         return insertMemoryData.hasInsertData();
+    }
+
+    private void updateMinValue(Comparable<?> minv) {
+        if (!hasSetValue) {
+            result.data.putAnObject(minv);
+            hasSetValue = true;
+        } else {
+            Comparable<?> v = result.data.getAnObject(0);
+            if (compare(v, minv) > 0) {
+                result.data.setAnObject(0, minv);
+            }
+        }
     }
 
     private Comparable<?> getMinValue(DynamicOneColumnData dataInThisPage) {

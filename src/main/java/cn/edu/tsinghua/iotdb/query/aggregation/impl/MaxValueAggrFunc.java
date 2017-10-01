@@ -29,15 +29,7 @@ public class MaxValueAggrFunc extends AggregateFunction {
         Digest pageDigest = pageHeader.data_page_header.getDigest();
         DigestForFilter digest = new DigestForFilter(pageDigest.min, pageDigest.max, dataType);
         Comparable<?> maxv = digest.getMaxValue();
-        if (!hasSetValue) {
-            result.data.putAnObject(maxv);
-            hasSetValue = true;
-        } else {
-            Comparable<?> v = result.data.getAnObject(0);
-            if (compare(v, maxv) < 0) {
-                result.data.setAnObject(0, maxv);
-            }
-        }
+        updateMaxValue(maxv);
     }
 
     @Override
@@ -46,15 +38,7 @@ public class MaxValueAggrFunc extends AggregateFunction {
             return;
         }
         Comparable<?> maxv = getMaxValue(dataInThisPage);
-        if (!hasSetValue) {
-            result.data.putAnObject(maxv);
-            hasSetValue = true;
-        } else {
-            Comparable<?> v = result.data.getAnObject(0);
-            if (compare(v, maxv) < 0) {
-                result.data.setAnObject(0, maxv);
-            }
-        }
+        updateMaxValue(maxv);
     }
 
     @Override
@@ -66,15 +50,7 @@ public class MaxValueAggrFunc extends AggregateFunction {
     public void calculateValueFromLeftMemoryData(InsertDynamicData insertMemoryData) throws IOException, ProcessorException {
         Object max_value = insertMemoryData.calcAggregation(AggregationConstant.MAX_VALUE);
         if (max_value != null) {
-            if (!hasSetValue) {
-                result.data.putAnObject(max_value);
-                hasSetValue = true;
-            } else {
-                Comparable<?> v = result.data.getAnObject(0);
-                if (compare(v, (Comparable<?>) max_value) < 0) {
-                    result.data.setAnObject(0, (Comparable<?>) max_value);
-                }
-            }
+            updateMaxValue((Comparable<?>)max_value);
         }
     }
 
@@ -84,15 +60,7 @@ public class MaxValueAggrFunc extends AggregateFunction {
             if (insertMemoryData.hasInsertData()) {
                 if (timestamps.get(timeIndex) == insertMemoryData.getCurrentMinTime()) {
                     Object value = insertMemoryData.getCurrentObjectValue();
-                    if (!hasSetValue) {
-                        result.data.putAnObject(value);
-                        hasSetValue = true;
-                    } else {
-                        Comparable<?> v = result.data.getAnObject(0);
-                        if (compare(v, (Comparable<?>) value) < 0) {
-                            result.data.setAnObject(0, (Comparable<?>) value);
-                        }
-                    }
+                    updateMaxValue((Comparable<?>)value);
                     timeIndex ++;
                     insertMemoryData.removeCurrentValue();
                 } else if (timestamps.get(timeIndex) > insertMemoryData.getCurrentMinTime()) {
@@ -106,6 +74,18 @@ public class MaxValueAggrFunc extends AggregateFunction {
         }
 
         return insertMemoryData.hasInsertData();
+    }
+
+    private void updateMaxValue(Comparable<?> maxv) {
+        if (!hasSetValue) {
+            result.data.putAnObject(maxv);
+            hasSetValue = true;
+        } else {
+            Comparable<?> v = result.data.getAnObject(0);
+            if (compare(v, maxv) < 0) {
+                result.data.setAnObject(0, maxv);
+            }
+        }
     }
 
     private Comparable<?> getMaxValue(DynamicOneColumnData dataInThisPage) {

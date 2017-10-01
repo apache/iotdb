@@ -202,7 +202,7 @@ public class AggregateEngine {
             // current batch timestamps has been used all
             timestamps.clear();
         }
-        
+
         return ansQueryDataSet;
     }
 

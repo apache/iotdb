@@ -23,14 +23,7 @@ public class MaxTimeAggrFunc extends AggregateFunction {
     @Override
     public void calculateValueFromPageHeader(PageHeader pageHeader) {
         long timestamp = pageHeader.data_page_header.max_timestamp;
-        if (!hasSetValue) {
-            result.data.putLong(timestamp);
-            hasSetValue = true;
-        } else {
-            long maxv = result.data.getLong(0);
-            maxv = maxv > timestamp ? maxv : timestamp;
-            result.data.setLong(0, maxv);
-        }
+        updateMaxTime(timestamp);
     }
 
     @Override
@@ -39,14 +32,7 @@ public class MaxTimeAggrFunc extends AggregateFunction {
             return;
         }
         long timestamp = dataInThisPage.getTime(dataInThisPage.valueLength - 1);
-        if (!hasSetValue) {
-            result.data.putLong(timestamp);
-            hasSetValue = true;
-        } else {
-            long maxv = result.data.getLong(0);
-            maxv = maxv > timestamp ? maxv : timestamp;
-            result.data.setLong(0, maxv);
-        }
+        updateMaxTime(timestamp);
     }
 
     @Override
@@ -59,14 +45,7 @@ public class MaxTimeAggrFunc extends AggregateFunction {
         Object max_time = insertMemoryData.calcAggregation(AggregationConstant.MAX_TIME);
         if (max_time != null) {
             long timestamp = (long) max_time;
-            if (!hasSetValue) {
-                result.data.putLong(timestamp);
-                hasSetValue = true;
-            } else {
-                long maxv = result.data.getLong(0);
-                maxv = maxv > timestamp ? maxv : timestamp;
-                result.data.setLong(0, maxv);
-            }
+            updateMaxTime(timestamp);
         }
     }
 
@@ -75,14 +54,7 @@ public class MaxTimeAggrFunc extends AggregateFunction {
         while (timeIndex < timestamps.size()) {
             if (insertMemoryData.hasInsertData()) {
                 if (timestamps.get(timeIndex) == insertMemoryData.getCurrentMinTime()) {
-                    if (!hasSetValue) {
-                        result.data.putLong(timestamps.get(timeIndex));
-                        hasSetValue = true;
-                    } else {
-                        long maxv = result.data.getLong(0);
-                        maxv = maxv > timestamps.get(timeIndex) ? maxv : timestamps.get(timeIndex);
-                        result.data.setLong(0, maxv);
-                    }
+                    updateMaxTime(timestamps.get(timeIndex));
                     timeIndex ++;
                     insertMemoryData.removeCurrentValue();
                 } else if (timestamps.get(timeIndex) > insertMemoryData.getCurrentMinTime()) {
@@ -98,4 +70,14 @@ public class MaxTimeAggrFunc extends AggregateFunction {
         return insertMemoryData.hasInsertData();
     }
 
+    private void updateMaxTime(long timestamp) {
+        if (!hasSetValue) {
+            result.data.putLong(timestamp);
+            hasSetValue = true;
+        } else {
+            long maxt = result.data.getLong(0);
+            maxt = maxt > timestamp ? maxt : timestamp;
+            result.data.setLong(0, maxt);
+        }
+    }
 }
