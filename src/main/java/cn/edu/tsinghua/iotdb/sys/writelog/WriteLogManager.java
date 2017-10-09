@@ -28,7 +28,7 @@ public class WriteLogManager {
     private static class WriteLogManagerHolder {  
         private static final WriteLogManager INSTANCE = new WriteLogManager();  
     }
-    private static ConcurrentHashMap<String, WriteLogNode> logNodeMaps;
+    private static ConcurrentHashMap<String, WriteLogNode> logNodeMaps = new ConcurrentHashMap<>();
     private static List<String> recoveryPathList = new ArrayList<>();
 
 
