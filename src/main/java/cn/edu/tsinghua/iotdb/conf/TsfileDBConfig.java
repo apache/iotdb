@@ -16,7 +16,7 @@ public class TsfileDBConfig {
 	/**
 	 * Is write ahead log enable
 	 */
-	public boolean enableWal = false;
+	public boolean enableWal = true;
 
 	/**
 	 * When the total number of write ahead log in the file and memory reaches
@@ -27,7 +27,7 @@ public class TsfileDBConfig {
 	public int walCleanupThreshold = 500000;
 
 	/**
-	 * When a certain amount ofwrite ahead log is reached, it will be flushed to
+	 * When a certain amount of write ahead log is reached, it will be flushed to
 	 * disk. It is possible to lose at most flush_wal_threshold operations
 	 */
 	public int flushWalThreshold = 10000;
