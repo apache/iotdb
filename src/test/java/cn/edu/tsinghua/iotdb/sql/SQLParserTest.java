@@ -203,10 +203,10 @@ public class SQLParserTest {
     @Test
     public void delete() throws ParseException {
         // template for test case
-        ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_DELETE", "TOK_PATH", "d1", "s1", "TOK_WHERE", "<",
+        ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_DELETE", "TOK_PATH", "TOK_ROOT","d1", "s1", "TOK_WHERE", "<",
                 "TOK_PATH", "time", "TOK_DATETIME", "2016-11-16 16:22:33+08:00"));
         ArrayList<String> rec = new ArrayList<>();
-        ASTNode astTree = ParseGenerator.generateAST("delete from d1.s1 where time < 2016-11-16 16:22:33+08:00");
+        ASTNode astTree = ParseGenerator.generateAST("delete from root.d1.s1 where time < 2016-11-16 16:22:33+08:00");
         astTree = ParseUtils.findRootNonNullToken(astTree);
         recursivePrintSon(astTree, rec);
 
@@ -220,10 +220,10 @@ public class SQLParserTest {
     @Test
     public void delete2() throws ParseException {
         // template for test case
-        ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_DELETE", "TOK_PATH", "d1", "s1", "TOK_WHERE", "<",
+        ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_DELETE", "TOK_PATH","TOK_ROOT", "d1", "s1", "TOK_WHERE", "<",
                 "TOK_PATH", "time", "TOK_DATETIME", "now"));
         ArrayList<String> rec = new ArrayList<>();
-        ASTNode astTree = ParseGenerator.generateAST("delete from d1.s1 where time < now()");
+        ASTNode astTree = ParseGenerator.generateAST("delete from root.d1.s1 where time < now()");
         astTree = ParseUtils.findRootNonNullToken(astTree);
         recursivePrintSon(astTree, rec);
 
@@ -237,10 +237,10 @@ public class SQLParserTest {
     @Test
     public void delete3() throws ParseException {
         // template for test case
-        ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_DELETE", "TOK_PATH", "d1", "s1", "TOK_WHERE", "<",
+        ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_DELETE", "TOK_PATH","TOK_ROOT", "d1", "s1", "TOK_WHERE", "<",
                 "TOK_PATH", "time",  "12345678909876"));
         ArrayList<String> rec = new ArrayList<>();
-        ASTNode astTree = ParseGenerator.generateAST("delete from d1.s1 where time < 12345678909876");
+        ASTNode astTree = ParseGenerator.generateAST("delete from root.d1.s1 where time < 12345678909876");
         astTree = ParseUtils.findRootNonNullToken(astTree);
         recursivePrintSon(astTree, rec);
 
@@ -254,10 +254,10 @@ public class SQLParserTest {
     @Test
     public void delete4() throws ParseException {
         // template for test case
-        ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_DELETE", "TOK_PATH", "d1", "s1", "TOK_PATH", "d2", "s3", "TOK_WHERE", "<",
+        ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_DELETE", "TOK_PATH", "TOK_ROOT","d1", "s1", "TOK_PATH", "TOK_ROOT","d2", "s3", "TOK_WHERE", "<",
                 "TOK_PATH", "time", "TOK_DATETIME", "now"));
         ArrayList<String> rec = new ArrayList<>();
-        ASTNode astTree = ParseGenerator.generateAST("delete from d1.s1,d2.s3 where time < now()");
+        ASTNode astTree = ParseGenerator.generateAST("delete from root.d1.s1,root.d2.s3 where time < now()");
         astTree = ParseUtils.findRootNonNullToken(astTree);
         recursivePrintSon(astTree, rec);
 
@@ -272,11 +272,11 @@ public class SQLParserTest {
     public void delete5() throws ParseException {
         // template for test case
         ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_DELETE", 
-        		"TOK_PATH", "d1", "*", 
-        		"TOK_PATH", "*", "s2", "TOK_WHERE", 
+        		"TOK_PATH", "TOK_ROOT", "d1", "*", 
+        		"TOK_PATH", "TOK_ROOT", "*", "s2", "TOK_WHERE", 
         		"!", "<", "TOK_PATH", "time", "123456"));
         ArrayList<String> rec = new ArrayList<>();
-        ASTNode astTree = ParseGenerator.generateAST("delete from d1.*,*.s2 where !(time < 123456)");
+        ASTNode astTree = ParseGenerator.generateAST("delete from root.d1.*,root.*.s2 where !(time < 123456)");
         astTree = ParseUtils.findRootNonNullToken(astTree);
         recursivePrintSon(astTree, rec);
 

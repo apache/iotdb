@@ -539,8 +539,8 @@ multiValue
 
 deleteStatement
    :
-   KW_DELETE KW_FROM suffixPath (COMMA suffixPath)* (whereClause)?
-   -> ^(TOK_DELETE suffixPath+ whereClause?)
+   KW_DELETE KW_FROM prefixPath (COMMA prefixPath)* (whereClause)?
+   -> ^(TOK_DELETE prefixPath+ whereClause?)
    ;
 
 updateStatement
