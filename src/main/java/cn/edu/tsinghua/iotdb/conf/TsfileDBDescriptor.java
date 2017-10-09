@@ -43,9 +43,12 @@ public class TsfileDBDescriptor {
 		InputStream inputStream = null;
 		String url = System.getProperty(TsFileDBConstant.IOTDB_CONF, null);
 		if (url == null) {
-			url = System.getProperty(SystemConstant.TSFILE_HOME, TsfileDBConfig.HOME_DEFAULT_PATH);
-			if (!url.equals(TsfileDBConfig.HOME_DEFAULT_PATH)) {
+			url = System.getProperty(SystemConstant.TSFILE_HOME, null);
+			if (url != null) {
 				url = url + File.separatorChar + "conf" + File.separatorChar + TsfileDBConfig.CONFIG_NAME;
+			} else {
+				LOGGER.warn("Cannot find TSFILE_HOME or IOTDB_CONF environment variable when loading config file {}, use default configuration", TsfileDBConfig.CONFIG_NAME);
+				return;
 			}
 		}
 		try {
