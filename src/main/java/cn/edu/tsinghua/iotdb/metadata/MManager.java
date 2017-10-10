@@ -20,6 +20,8 @@ import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
 import cn.edu.tsinghua.iotdb.exception.MetadataArgsErrorException;
 import cn.edu.tsinghua.iotdb.exception.PathErrorException;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
+import cn.edu.tsinghua.tsfile.format.DataType;
+import cn.edu.tsinghua.tsfile.format.Encoding;
 import cn.edu.tsinghua.tsfile.timeseries.read.qp.Path;
 
 /**
@@ -32,7 +34,7 @@ import cn.edu.tsinghua.tsfile.timeseries.read.qp.Path;
  *
  */
 public class MManager {
-	//private static MManager manager = new MManager();
+	// private static MManager manager = new MManager();
 	private static final String ROOT_NAME = MetadataConstant.ROOT;
 	// the lock for read/write
 	private ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
@@ -45,12 +47,12 @@ public class MManager {
 	private boolean writeToLog;
 	private String metadataDirPath;
 
-	private static class MManagerHolder{
-		private static final MManager INSTANCE = new MManager(); 
+	private static class MManagerHolder {
+		private static final MManager INSTANCE = new MManager();
 	}
-	
+
 	public static MManager getInstance() {
-		
+
 		return MManagerHolder.INSTANCE;
 	}
 
@@ -151,18 +153,18 @@ public class MManager {
 			unlinkMNodeFromPTree(args[1], args[2]);
 		}
 	}
-	
-	private void initLogStream(){
-		if(logWriter==null){
+
+	private void initLogStream() {
+		if (logWriter == null) {
 			File logFile = new File(logFilePath);
 			File metadataDir = new File(metadataDirPath);
-			if(!metadataDir.exists()){
+			if (!metadataDir.exists()) {
 				metadataDir.mkdirs();
 			}
 			FileWriter fileWriter;
 			try {
-				
-				fileWriter = new FileWriter(logFile,true);
+
+				fileWriter = new FileWriter(logFile, true);
 				logWriter = new BufferedWriter(fileWriter);
 			} catch (IOException e) {
 				e.printStackTrace();
@@ -172,7 +174,21 @@ public class MManager {
 	}
 
 	/**
-	 * operation: Add a path to Metadata Tree
+	 * <p>
+	 * Add one timeseries to metadata. Must invoke the<code>pathExist</code> and
+	 * <code>getFileNameByPath</code> method first to check timeseries.
+	 * </p>
+	 * 
+	 * @param path
+	 *            the timeseries path
+	 * @param dataType
+	 *            the datetype {@code DataType} for the timeseries
+	 * @param encoding
+	 *            the encoding function {@code Encoding} for the timeseries
+	 * @param args
+	 * @throws PathErrorException
+	 * @throws IOException
+	 * @throws MetadataArgsErrorException
 	 */
 	public void addPathToMTree(String path, String dataType, String encoding, String[] args)
 			throws PathErrorException, IOException, MetadataArgsErrorException {
@@ -390,6 +406,21 @@ public class MManager {
 			lock.readLock().unlock();
 		}
 	}
+	
+	/**
+	 * <p>Get all ColumnSchemas for the filenode path</p>
+	 * @param path
+	 * @return ArrayList<ColumnSchema> The list of the schema
+	 */
+	public ArrayList<ColumnSchema> getSchemaForFileName(String path){
+
+		lock.readLock().lock();
+		try{
+			return mGraph.getSchemaForOneFileNode(path);
+		}finally {
+			lock.readLock().unlock();
+		}
+	}
 
 	/**
 	 * Calculate the count of storage-level nodes included in given path
@@ -424,6 +455,16 @@ public class MManager {
 			return mGraph.getFileNameByPath(path);
 		} catch (PathErrorException e) {
 			throw new PathErrorException(String.format(e.getMessage()));
+		} finally {
+			lock.readLock().unlock();
+		}
+	}
+
+	public boolean checkFileNameByPath(String path) {
+
+		lock.readLock().lock();
+		try {
+			return mGraph.checkFileNameByPath(path);
 		} finally {
 			lock.readLock().unlock();
 		}

@@ -948,13 +948,7 @@ public class FileNodeProcessor extends LRUProcessor {
 							+ FileNodeConstants.BUFFERWRITE_FILE_SEPARATOR + System.currentTimeMillis());
 
 					FileSchema fileSchema;
-					try {
-						fileSchema = constructFileSchema(nameSpacePath);
-					} catch (PathErrorException e) {
-						LOGGER.error("Get the FileSchema error, the nameSpacePath is {}", nameSpacePath);
-						throw new WriteProcessException(
-								"Get the FileSchema error, the nameSpacePath is " + nameSpacePath);
-					}
+					fileSchema = constructFileSchema(nameSpacePath);
 					raf = new RandomAccessOutputStream(new File(outputPath));
 					tsfileIOWriter = new TSFileIOWriter(fileSchema, raf);
 					writeSupport = new TSRecordWriteSupport();
@@ -1009,29 +1003,14 @@ public class FileNodeProcessor extends LRUProcessor {
 		return outputFile.getAbsolutePath();
 	}
 
-	private FileSchema constructFileSchema(String nameSpacePath) throws PathErrorException, WriteProcessException {
+	private FileSchema constructFileSchema(String nameSpacePath) throws WriteProcessException {
 
 		List<ColumnSchema> columnSchemaList;
-		String deltaObjectType = null;
-		try {
-			deltaObjectType = mManager.getDeltaObjectTypeByPath(nameSpacePath);
-		} catch (PathErrorException e) {
-			LOGGER.error("Get the deltaObjectType from MManager error using nameSpacePath is {}", nameSpacePath);
-			throw e;
-		}
-
-		try {
-			columnSchemaList = mManager.getSchemaForOneType(deltaObjectType);
-		} catch (PathErrorException e) {
-			LOGGER.error("The list of ColumnSchema error from MManager error using deltaObjectType is {}",
-					deltaObjectType);
-			throw e;
-		}
+		columnSchemaList = mManager.getSchemaForFileName(nameSpacePath);
 
 		FileSchema fileSchema = null;
-
 		try {
-			fileSchema = getFileSchemaFromColumnSchema(columnSchemaList, deltaObjectType);
+			fileSchema = getFileSchemaFromColumnSchema(columnSchemaList, nameSpacePath);
 		} catch (WriteProcessException e) {
 			LOGGER.error("Get the FileSchema error, the list of ColumnSchema is {}", columnSchemaList);
 			throw e;
