@@ -106,8 +106,7 @@ public class TsfileDBConfig {
 
 	public DateTimeZone timeZone = DateTimeZone.getDefault();
 
-	public TsfileDBConfig() {
-	}
+	public TsfileDBConfig() {}
 
 	public void updateDataPath() {
 		// filenode dir
