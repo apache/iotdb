@@ -11,6 +11,7 @@ import cn.edu.tsinghua.iotdb.engine.filenode.FileNodeManager;
 import cn.edu.tsinghua.iotdb.exception.ArgsErrorException;
 import cn.edu.tsinghua.iotdb.exception.FileNodeManagerException;
 import cn.edu.tsinghua.iotdb.exception.PathErrorException;
+import cn.edu.tsinghua.iotdb.metadata.ColumnSchema;
 import cn.edu.tsinghua.iotdb.metadata.MManager;
 import cn.edu.tsinghua.iotdb.qp.constant.SQLConstant;
 import cn.edu.tsinghua.iotdb.qp.logical.sys.AuthorOperator;
@@ -41,6 +42,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 	private OverflowQueryEngine queryEngine;
 	private FileNodeManager fileNodeManager;
 	private MManager mManager = MManager.getInstance();
+	private final String separator = "\\.";
 
 	public OverflowQPExecutor() {
 		queryEngine = new OverflowQueryEngine();
@@ -321,15 +323,34 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 				if (mManager.pathExist(path.getFullPath())) {
 					throw new ProcessorException(String.format("Timeseries %s already exist", path.getFullPath()));
 				}
+				if (!mManager.checkFileNameByPath(path.getFullPath())) {
+					throw new ProcessorException("Storage group should be created first");
+				}
+				String fileNodePath = mManager.getFileNameByPath(path.getFullPath());
+				ArrayList<ColumnSchema> columnSchemas = mManager.getSchemaForFileName(fileNodePath);
+				String lastNode = path.getMeasurementToString();
+				boolean isNewMeasurement = true;
+				for (ColumnSchema columnSchema : columnSchemas) {
+					if (columnSchema.getName().equals(lastNode)) {
+						isNewMeasurement = false;
+						if (!columnSchema.geTsDataType().toString().equals(dataType)
+								|| !columnSchema.getEncoding().toString().equals(encoding)) {
+							throw new ProcessorException(String.format(
+									"The dataType or encoding of the last node %s is conflicting in the storage group %s",
+									lastNode, fileNodePath));
+						}
+					}
+				}
 				mManager.addPathToMTree(path.getFullPath(), dataType, encoding, encodingArgs);
 				try {
 					String namespacePath = mManager.getFileNameByPath(path.getFullPath());
-					fileNodeManager.closeOneFileNode(namespacePath);
-				} catch (PathErrorException e) {
-					// no operation
-				} catch (FileNodeManagerException e) {
-					e.printStackTrace();
-					throw new ProcessorException(e.getMessage());
+					if (isNewMeasurement) {
+						// add time series to schema
+						fileNodeManager.addTimeSeries(path, dataType, encoding, encodingArgs);
+					}
+					// fileNodeManager.closeOneFileNode(namespacePath);
+				} catch (PathErrorException | FileNodeManagerException e) {
+					throw new ProcessorException(e);
 				}
 				break;
 			case DELETE_PATH:
@@ -338,14 +359,10 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 					for (Path p : deletePathList) {
 						ArrayList<String> subPaths = mManager.getPaths(p.getFullPath());
 						if (subPaths.isEmpty()) {
-							throw new ProcessorException(String
-									.format("The timeseries %s does not exist and can't be deleted", p.getFullPath()));
+							throw new ProcessorException(
+									String.format("There are no timeseries in the prefix of %s path", p.getFullPath()));
 						}
 						pathSet.addAll(subPaths);
-					}
-					if (pathSet.isEmpty()) {
-						throw new ProcessorException(
-								"Timeseries does not exist and cannot be delete its metadata and data");
 					}
 					for (String p : pathSet) {
 						if (!mManager.pathExist(p)) {
@@ -358,17 +375,19 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 					try {
 						deleteDataOfTimeSeries(fullPath);
 					} catch (ProcessorException e) {
-						// no operation
+						throw new ProcessorException(e);
 					}
 					for (String p : fullPath) {
 						String nameSpacePath = null;
 						try {
 							nameSpacePath = mManager.getFileNameByPath(p);
 						} catch (PathErrorException e) {
-							// no operation
+							throw new ProcessorException(e);
 						}
+						// TODO: don't delete the storage group path recursively
 						String deleteNameSpacePath = mManager.deletePathFromMTree(p);
 						if (deleteNameSpacePath != null) {
+							// TODO: should we delete the filenode in the disk
 							// delete this filenode
 							try {
 								// clear filenode
@@ -376,26 +395,21 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 								// close processor
 								fileNodeManager.deleteOneFileNode(deleteNameSpacePath);
 							} catch (FileNodeManagerException e) {
-								e.printStackTrace();
-								throw new ProcessorException(e.getMessage());
+								throw new ProcessorException(e);
 							}
 						} else if (nameSpacePath != null) {
+							// TODO: should we must close the filenode
 							// close this filenode
 							try {
 								fileNodeManager.closeOneFileNode(nameSpacePath);
 							} catch (FileNodeManagerException e) {
-								e.printStackTrace();
-								throw new ProcessorException(e.getMessage());
+								throw new ProcessorException(e);
 							}
 						}
 					}
 				}
 				break;
 			case SET_FILE_LEVEL:
-				if (!mManager.pathExist(path.getFullPath())) {
-					throw new ProcessorException(String.format("Timeseries %s does not exist.", path.getFullPath()));
-				}
-				// Storage group just can be set only once
 				mManager.setStorageLevelToMTree(path.getFullPath());
 				break;
 			default:

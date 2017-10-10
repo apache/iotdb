@@ -127,12 +127,8 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 					fileNodeProcessor.writeUnlock();
 				}
 			}
-		} catch (PathErrorException e1) {
-			LOGGER.error("Restore all FileNodeManager failed.", e1);
-		} catch (LRUManagerException e2) {
-			LOGGER.error("Construt the filenode processor failed.", e2);
-		} catch (FileNodeProcessorException e3) {
-			LOGGER.error("Recovery the filenode processor failed.", e3);
+		} catch (PathErrorException | LRUManagerException | FileNodeProcessorException e) {
+			LOGGER.error("Restore all FileNode failed, the reason is {}", e.getMessage());
 		}
 	}
 
@@ -572,6 +568,30 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 			res = originalPath + File.separatorChar;
 		}
 		return res;
+	}
+
+	// TODO: should synchronized
+	public synchronized void addTimeSeries(Path path, String dataType, String encoding, String[] encodingArgs)
+			throws FileNodeManagerException {
+		// TODO: optimize and do't get the filenode processor instance
+		FileNodeProcessor fileNodeProcessor = null;
+		try {
+			do {
+				fileNodeProcessor = getProcessorWithDeltaObjectIdByLRU(path.getFullPath(), true);
+			} while (fileNodeProcessor == null);
+			if (fileNodeProcessor.hasBufferwriteProcessor()) {
+				BufferWriteProcessor bufferWriteProcessor = fileNodeProcessor.getBufferWriteProcessor();
+				bufferWriteProcessor.addTimeSeries(path.getMeasurementToString(), dataType, encoding, encodingArgs);
+			} else {
+				return;
+			}
+		} catch (LRUManagerException | IOException | FileNodeProcessorException e) {
+			throw new FileNodeManagerException(e);
+		} finally {
+			if (fileNodeProcessor != null) {
+				fileNodeProcessor.writeUnlock();
+			}
+		}
 	}
 
 	public synchronized boolean closeOneFileNode(String namespacePath) throws FileNodeManagerException {
