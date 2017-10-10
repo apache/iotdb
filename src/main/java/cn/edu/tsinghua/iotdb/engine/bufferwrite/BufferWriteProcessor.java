@@ -42,6 +42,7 @@ import cn.edu.tsinghua.tsfile.file.metadata.TSFileMetaData;
 import cn.edu.tsinghua.tsfile.file.metadata.TimeSeriesMetadata;
 import cn.edu.tsinghua.tsfile.file.metadata.converter.TSFileMetaDataConverter;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
+import cn.edu.tsinghua.tsfile.file.metadata.enums.TSEncoding;
 import cn.edu.tsinghua.tsfile.file.utils.ReadWriteThriftFormatUtils;
 import cn.edu.tsinghua.tsfile.format.FileMetaData;
 import cn.edu.tsinghua.tsfile.timeseries.write.TSRecordWriteSupport;
@@ -139,7 +140,11 @@ public class BufferWriteProcessor extends LRUProcessor {
 			}
 
 			WriteSupport<TSRecord> writeSupport = new TSRecordWriteSupport();
-			recordWriter = new BufferWriteRecordWriter(TsFileConf, bufferIOWriter, writeSupport, fileSchema);
+			try {
+				recordWriter = new BufferWriteRecordWriter(TsFileConf, bufferIOWriter, writeSupport, fileSchema);
+			} catch (WriteProcessException e) {
+				throw new BufferWriteProcessorException(e);
+			}
 			isNewProcessor = true;
 			// write restore file
 			writeStoreToDisk();
@@ -201,7 +206,11 @@ public class BufferWriteProcessor extends LRUProcessor {
 			throw new BufferWriteProcessorException(e);
 		}
 		WriteSupport<TSRecord> writeSupport = new TSRecordWriteSupport();
-		recordWriter = new BufferWriteRecordWriter(TsFileConf, bufferIOWriter, writeSupport, fileSchema);
+		try {
+			recordWriter = new BufferWriteRecordWriter(TsFileConf, bufferIOWriter, writeSupport, fileSchema);
+		} catch (WriteProcessException e) {
+			throw new BufferWriteProcessorException(e);
+		}
 		isNewProcessor = false;
 	}
 
@@ -387,53 +396,42 @@ public class BufferWriteProcessor extends LRUProcessor {
 	private FileSchema constructFileSchema(String nameSpacePath) throws PathErrorException, WriteProcessException {
 		List<ColumnSchema> columnSchemaList;
 
-		String deltaObjectType = null;
-		try {
-			deltaObjectType = mManager.getDeltaObjectTypeByPath(nameSpacePath);
-		} catch (PathErrorException e) {
-			LOGGER.error("Get the deltaObjectType from MManager error using nameSpacePath is {}.", nameSpacePath);
-			throw e;
-		}
-		try {
-			columnSchemaList = mManager.getSchemaForOneType(deltaObjectType);
-		} catch (PathErrorException e) {
-			LOGGER.error("The list of ColumnSchema error from MManager error using deltaObjectType is {}.",
-					deltaObjectType);
-			throw e;
-		}
+		columnSchemaList = mManager.getSchemaForFileName(nameSpacePath);
 		FileSchema fileSchema = null;
 		try {
-			fileSchema = getFileSchemaFromColumnSchema(columnSchemaList, deltaObjectType);
+			fileSchema = getFileSchemaFromColumnSchema(columnSchemaList, nameSpacePath);
 		} catch (WriteProcessException e) {
 			LOGGER.error("Get the FileSchema error, the list of ColumnSchema is {}.", columnSchemaList);
 			throw e;
 		}
 		return fileSchema;
-
 	}
 
-	private FileSchema getFileSchemaFromColumnSchema(List<ColumnSchema> schemaList, String deltaObjectType)
+	private FileSchema getFileSchemaFromColumnSchema(List<ColumnSchema> schemaList, String nameSpacePath)
 			throws WriteProcessException {
 		JSONArray rowGroup = new JSONArray();
-
 		for (ColumnSchema col : schemaList) {
-			JSONObject measurement = new JSONObject();
-			measurement.put(JsonFormatConstant.MEASUREMENT_UID, col.name);
-			measurement.put(JsonFormatConstant.DATA_TYPE, col.dataType.toString());
-			measurement.put(JsonFormatConstant.MEASUREMENT_ENCODING, col.encoding.toString());
-			for (Entry<String, String> entry : col.getArgsMap().entrySet()) {
-				if (JsonFormatConstant.ENUM_VALUES.equals(entry.getKey())) {
-					String[] valueArray = entry.getValue().split(",");
-					measurement.put(JsonFormatConstant.ENUM_VALUES, new JSONArray(valueArray));
-				} else
-					measurement.put(entry.getKey(), entry.getValue().toString());
-			}
-			rowGroup.put(measurement);
+			rowGroup.put(constrcutMeasurement(col));
 		}
 		JSONObject jsonSchema = new JSONObject();
 		jsonSchema.put(JsonFormatConstant.JSON_SCHEMA, rowGroup);
-		jsonSchema.put(JsonFormatConstant.DELTA_TYPE, deltaObjectType);
+		jsonSchema.put(JsonFormatConstant.DELTA_TYPE, nameSpacePath);
 		return new FileSchema(jsonSchema);
+	}
+
+	private JSONObject constrcutMeasurement(ColumnSchema col) {
+		JSONObject measurement = new JSONObject();
+		measurement.put(JsonFormatConstant.MEASUREMENT_UID, col.name);
+		measurement.put(JsonFormatConstant.DATA_TYPE, col.dataType.toString());
+		measurement.put(JsonFormatConstant.MEASUREMENT_ENCODING, col.encoding.toString());
+		for (Entry<String, String> entry : col.getArgsMap().entrySet()) {
+			if (JsonFormatConstant.ENUM_VALUES.equals(entry.getKey())) {
+				String[] valueArray = entry.getValue().split(",");
+				measurement.put(JsonFormatConstant.ENUM_VALUES, new JSONArray(valueArray));
+			} else
+				measurement.put(entry.getKey(), entry.getValue().toString());
+		}
+		return measurement;
 	}
 
 	public String getFileName() {
@@ -546,6 +544,18 @@ public class BufferWriteProcessor extends LRUProcessor {
 
 	}
 
+	public void addTimeSeries(String measurementToString, String dataType, String encoding, String[] encodingArgs)
+			throws IOException {
+		ColumnSchema col = new ColumnSchema(measurementToString, TSDataType.valueOf(dataType),
+				TSEncoding.valueOf(encoding));
+		JSONObject measurement = constrcutMeasurement(col);
+		try {
+			recordWriter.addMeasurementByJson(measurement);
+		} catch (WriteProcessException e) {
+			throw new IOException(e);
+		}
+	}
+
 	private class BufferWriteRecordWriter extends TSRecordWriter {
 
 		private Map<String, IRowGroupWriter> flushingRowGroupWriters;
@@ -553,7 +563,7 @@ public class BufferWriteProcessor extends LRUProcessor {
 		private long flushingRecordCount;
 
 		BufferWriteRecordWriter(TSFileConfig conf, BufferWriteIOWriter ioFileWriter,
-				WriteSupport<TSRecord> writeSupport, FileSchema schema) {
+				WriteSupport<TSRecord> writeSupport, FileSchema schema) throws WriteProcessException {
 			super(conf, ioFileWriter, writeSupport, schema);
 		}
 
@@ -725,4 +735,5 @@ public class BufferWriteProcessor extends LRUProcessor {
 	private void switchIndexFromFlushToWork() {
 		bufferIOWriter.addNewRowGroupMetaDataToBackUp();
 	}
+
 }
