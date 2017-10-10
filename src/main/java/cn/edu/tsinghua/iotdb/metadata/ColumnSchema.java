@@ -6,6 +6,7 @@ import java.util.Map;
 
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSEncoding;
+import cn.edu.tsinghua.tsfile.format.Encoding;
 
 public class ColumnSchema implements Serializable {
 	private static final long serialVersionUID = -8257474930341487207L;
@@ -28,6 +29,18 @@ public class ColumnSchema implements Serializable {
 
 	public String getValueFromArgs(String key) {
 		return args.get(key);
+	}
+	
+	public String getName(){
+		return name;
+	}
+	
+	public TSDataType geTsDataType(){
+		return dataType;
+	}
+	
+	public TSEncoding getEncoding(){
+		return encoding;
 	}
 
 	public Map<String, String> getArgsMap() {
