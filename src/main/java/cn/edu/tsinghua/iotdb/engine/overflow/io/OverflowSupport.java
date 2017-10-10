@@ -13,6 +13,8 @@ import org.slf4j.LoggerFactory;
 import cn.edu.tsinghua.iotdb.engine.overflow.metadata.OFFileMetadata;
 import cn.edu.tsinghua.iotdb.engine.overflow.metadata.OFRowGroupListMetadata;
 import cn.edu.tsinghua.iotdb.engine.overflow.metadata.OFSeriesListMetadata;
+import cn.edu.tsinghua.iotdb.exception.PathErrorException;
+import cn.edu.tsinghua.iotdb.metadata.MManager;
 import cn.edu.tsinghua.tsfile.common.conf.TSFileConfig;
 import cn.edu.tsinghua.tsfile.common.conf.TSFileDescriptor;
 import cn.edu.tsinghua.tsfile.compress.Compressor;
@@ -86,7 +88,21 @@ public class OverflowSupport {
 				List<TimeSeriesChunkMetaData> seriesList = senEntry.getValue();
 				TimeSeriesChunkMetaData first = seriesList.get(0);
 				Compressor compressor = Compressor.getCompressor(first.getProperties().getCompression());
+				// check data type for delete time series
+				TSDataType mType = null;
+				if (MManager.getInstance().pathExist((deltaObjectId + "." + measurementId))) {
+					try {
+						mType = MManager.getInstance().getSeriesType(deltaObjectId + "." + measurementId);
+					} catch (PathErrorException e) {
+						throw new IOException(e);
+					}
+				} else {
+					continue;
+				}
 				TSDataType type = first.getVInTimeSeriesChunkMetaData().getDataType();
+				if (!mType.equals(type)) {
+					continue;
+				}
 				OverflowSeriesImpl seriesImpl = new OverflowSeriesImpl(measurementId, type, fileWriter, compressor,
 						senEntry.getValue());
 				seriesImplMap.put(measurementId, seriesImpl);
@@ -105,7 +121,21 @@ public class OverflowSupport {
 					if (!overflowMap.get(deltaObjectId).containsKey(measurementId)) {
 						TimeSeriesChunkMetaData first = seriesListMeta.getMetaDatas().get(0);
 						Compressor compressor = Compressor.getCompressor(first.getProperties().getCompression());
+						// check data type for delete time series
+						TSDataType mType = null;
+						if (MManager.getInstance().pathExist((deltaObjectId + "." + measurementId))) {
+							try {
+								mType = MManager.getInstance().getSeriesType(deltaObjectId + "." + measurementId);
+							} catch (PathErrorException e) {
+								throw new IOException(e);
+							}
+						} else {
+							continue;
+						}
 						TSDataType type = first.getVInTimeSeriesChunkMetaData().getDataType();
+						if (!mType.equals(type)) {
+							continue;
+						}
 						OverflowSeriesImpl overflowSeriesImpl = new OverflowSeriesImpl(measurementId, type, fileWriter,
 								compressor, null);
 						overflowMap.get(deltaObjectId).put(measurementId, overflowSeriesImpl);
@@ -346,7 +376,7 @@ public class OverflowSupport {
 				}
 			}
 		}
-		
+
 		for (Entry<String, Map<String, OverflowSeriesImpl>> rowGroupWriterEntry : overflowMap.entrySet()) {
 			for (Entry<String, OverflowSeriesImpl> seriesWriterEntry : rowGroupWriterEntry.getValue().entrySet()) {
 				//
