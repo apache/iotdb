@@ -300,17 +300,20 @@ public class LogicalGenerator {
 		InsertOp.setValueList(valueList);
 	}
 
-	private void analyzeUpdate(ASTNode astNode) throws QueryProcessorException {
-		if (astNode.getChildCount() != 3)
-			throw new LogicalOperatorException("error format in UPDATE statement, please check whether SQL statement is correct." );
-		UpdateOperator updateOp = new UpdateOperator(SQLConstant.TOK_UPDATE);
-		initializedOperator = updateOp;
-		analyzeSelect(astNode.getChild(0));
-		if (astNode.getChild(1).getType() != TSParser.TOK_VALUE)
-			throw new LogicalOperatorException("error format in UPDATE statement, please check whether SQL statement is correct.");
-		updateOp.setValue(astNode.getChild(1).getChild(0).getText());
-		analyzeWhere(astNode.getChild(2));
-	}
+    private void analyzeUpdate(ASTNode astNode) throws QueryProcessorException {
+        if (astNode.getChildCount() > 3)
+            throw new LogicalOperatorException("UPDATE clause doesn't support multi-update yet.");
+        UpdateOperator updateOp = new UpdateOperator(SQLConstant.TOK_UPDATE);
+        initializedOperator = updateOp;
+        FromOperator fromOp = new FromOperator(TSParser.TOK_SELECT);
+        fromOp.addPrefixTablePath(parsePath(astNode.getChild(0)));
+        updateOp.setFromOperator(fromOp);
+        SelectOperator selectOp = new SelectOperator(TSParser.TOK_SELECT);
+        selectOp.addSelectPath(parsePath(astNode.getChild(1).getChild(0)));
+        updateOp.setSelectOperator(selectOp);
+        updateOp.setValue(astNode.getChild(1).getChild(1).getText());
+        analyzeWhere(astNode.getChild(2));
+    }
 
 	private void analyzeDelete(ASTNode astNode) throws LogicalOperatorException {
 		initializedOperator = new DeleteOperator(SQLConstant.TOK_DELETE);

@@ -7,6 +7,9 @@ import cn.edu.tsinghua.iotdb.qp.physical.PhysicalPlan;
 import cn.edu.tsinghua.iotdb.qp.logical.Operator;
 import cn.edu.tsinghua.tsfile.common.utils.Pair;
 import cn.edu.tsinghua.tsfile.timeseries.read.qp.Path;
+import cn.edu.tsinghua.tsfile.timeseries.utils.StringContainer;
+
+import static cn.edu.tsinghua.iotdb.qp.constant.SQLConstant.lineFeedSignal;
 
 /**
  * @author kangrong
@@ -65,5 +68,17 @@ public class UpdatePlan extends PhysicalPlan {
         if (path != null)
             ret.add(path);
         return ret;
+    }
+
+    @Override
+    public String printQueryPlan() {
+        StringContainer sc = new StringContainer();
+        String preSpace = "  ";
+        sc.addTail("UpdatePlan:");
+        sc.addTail(preSpace, "paths:  ", path.toString(), lineFeedSignal);
+        sc.addTail(preSpace, "value:", value, lineFeedSignal);
+        sc.addTail(preSpace, "filter: ", lineFeedSignal);
+        intervals.forEach(p->sc.addTail(preSpace, preSpace, p.left,p.right, lineFeedSignal));
+        return sc.toString();
     }
 }
