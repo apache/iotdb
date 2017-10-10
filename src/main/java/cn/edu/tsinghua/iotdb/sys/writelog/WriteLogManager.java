@@ -24,12 +24,13 @@ public class WriteLogManager {
     public static boolean isRecovering = false;
     // 0 represents BUFFERWRITE insert operation, 1 represents OVERFLOW insert operation
     public static final int BUFFERWRITER = 0, OVERFLOW = 1;
-
+    private static List<String> recoveryPathList = new ArrayList<>();
+    
     private static class WriteLogManagerHolder {  
         private static final WriteLogManager INSTANCE = new WriteLogManager();  
     }
     private static ConcurrentHashMap<String, WriteLogNode> logNodeMaps = new ConcurrentHashMap<>();
-    private static List<String> recoveryPathList = new ArrayList<>();
+
 
 
     private WriteLogManager() {
