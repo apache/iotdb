@@ -196,6 +196,15 @@ public class MGraph implements Serializable {
 	public ArrayList<ColumnSchema> getSchemaForOneType(String path) throws PathErrorException {
 		return mTree.getSchemaForOneType(path);
 	}
+	
+	/**
+	 * <p>Get all ColumnSchemas for the filenode path</p>
+	 * @param path
+	 * @return ArrayList<ColumnSchema> The list of the schema
+	 */
+	public ArrayList<ColumnSchema> getSchemaForOneFileNode(String path){
+		return mTree.getSchemaForOneFileNode(path);
+	}
 
 	/**
 	 * Calculate the count of storage-level nodes included in given path
@@ -213,6 +222,10 @@ public class MGraph implements Serializable {
 	public String getFileNameByPath(String path) throws PathErrorException {
 		return mTree.getFileNameByPath(path);
 	}
+	
+	public boolean checkFileNameByPath(String path){
+		return mTree.checkFileNameByPath(path);
+	}
 
 	/**
 	 * Check whether the path given exists
@@ -228,7 +241,7 @@ public class MGraph implements Serializable {
 	public String getDeltaObjectTypeByPath(String path) throws PathErrorException {
 		return mTree.getDeltaObjectTypeByPath(path);
 	}
-
+	
 	/**
 	 * Get ColumnSchema for given path. Notice: Path must be a complete Path
 	 * from root to leaf node.
@@ -241,12 +254,6 @@ public class MGraph implements Serializable {
 		StringBuilder sb = new StringBuilder();
 		sb.append("===  Timeseries Tree  ===\n\n");
 		sb.append(mTree.toString());
-//		sb.append("\n\n===  Properties Tree  ===   Size : " + pTreeMap.size() + "\n\n");
-//		for (String key : pTreeMap.keySet()) {
-//			sb.append("--- name : " + key + "---\n");
-//			sb.append(pTreeMap.get(key).toString());
-//			sb.append("\n\n");
-//		}
 		return sb.toString();
 	}
 }
