@@ -162,8 +162,8 @@ public abstract class QueryProcessExecutor {
 	protected abstract boolean delete(Path path, long deleteTime) throws ProcessorException;
 
 	/**
-	 * execute insert command and return whether the operator is successful.
-	 * 
+	 * insert a single value. Only used in test
+	 *
 	 * @param path
 	 *            path to be inserted
 	 * @param insertTime
@@ -174,12 +174,21 @@ public abstract class QueryProcessExecutor {
 	 */
 	public abstract int insert(Path path, long insertTime, String value) throws ProcessorException;
 
+	/**
+	 * execute insert command and return whether the operator is successful.
+	 *
+	 * @param deltaObject
+	 *            deltaObject to be inserted
+	 * @param insertTime
+	 *            - it's time point but not a range
+	 * @param measurementList
+	 *            measurements to be inserted
+	 * @param insertValues
+	 * 			  values to be inserted
+	 * @return - Operate Type.
+	 */
 	public abstract int multiInsert(String deltaObject, long insertTime, List<String> measurementList,
 			List<String> insertValues) throws ProcessorException;
-
-	public MManager getMManager() {
-		return MManager.getInstance();
-	}
 
 
 	public abstract List<String> getAllPaths(String originPath) throws PathErrorException;
