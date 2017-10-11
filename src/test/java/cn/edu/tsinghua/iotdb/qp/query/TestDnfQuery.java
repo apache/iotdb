@@ -3,7 +3,9 @@ package cn.edu.tsinghua.iotdb.qp.query;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
+import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
 
 import org.antlr.runtime.RecognitionException;
 import org.slf4j.Logger;
@@ -59,7 +61,9 @@ public class TestDnfQuery {
         processor.getExecutor().insert(path1, 2, Integer.toString(10000));
         processor.getExecutor().insert(path1, 50, Integer.toString(10000));
         processor.getExecutor().insert(path1, 1000, Integer.toString(22222));
-        processor.getExecutor().delete(path1, 104);
+        List<Path> paths = new ArrayList<>();
+        paths.add(path1);
+        processor.getExecutor().delete(paths, 104);
         processor.getExecutor().update(path1, 103, 106, Integer.toString(33333));
 
         processor.getExecutor().insert(path2, 1, Integer.toString(1101));
