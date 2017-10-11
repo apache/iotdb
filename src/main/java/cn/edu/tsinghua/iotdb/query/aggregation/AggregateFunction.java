@@ -76,7 +76,7 @@ public abstract class AggregateFunction {
      * This method is calculate the aggregation using the common timestamps of cross series filter.
      * </p>
      *
-     * @param insertMemoryData the data in memory which contains bufferwirte along with overflow operation
+     * @param insertMemoryData the data in memory which contains bufferwrite along with overflow operation
      * @param timestamps the common timestamps given which must be considered
      * @param timeIndex the used index of timestamps
      * @throws IOException        TsFile data read error
