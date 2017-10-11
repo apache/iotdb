@@ -34,12 +34,13 @@ public class SmallPageSizeTest {
     private final String d1s1 = "root.vehicle.d1.s1";
 
     private String[] sqls = new String[]{
+    			"SET STORAGE GROUP TO root.vehicle",
             "CREATE TIMESERIES root.vehicle.d1.s0 WITH DATATYPE=INT32, ENCODING=RLE",
             "CREATE TIMESERIES root.vehicle.d0.s2 WITH DATATYPE=FLOAT, ENCODING=RLE",
             "CREATE TIMESERIES root.vehicle.d0.s3 WITH DATATYPE=TEXT, ENCODING=PLAIN",
             "CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE",
             "CREATE TIMESERIES root.vehicle.d0.s1 WITH DATATYPE=INT64, ENCODING=RLE",
-            "SET STORAGE GROUP TO root.vehicle",
+            
 
             "insert into root.vehicle.d0(timestamp,s0) values(1,101)",
             "insert into root.vehicle.d0(timestamp,s0) values(2,198)",
@@ -54,7 +55,7 @@ public class SmallPageSizeTest {
             "insert into root.vehicle.d0(timestamp,s0) values(50,10000)",
             "insert into root.vehicle.d0(timestamp,s0) values(1000,22222)",
             "DELETE FROM root.vehicle.d0.s0 WHERE time < 104",
-            "UPDATE root.vehicle.d0.s0 SET VALUE = 33333 WHERE time < 106 and time > 103",
+            "UPDATE root.vehicle SET d0.s0 = 33333 WHERE time < 106 and time > 103",
 
             "insert into root.vehicle.d0(timestamp,s1) values(1,1101)",
             "insert into root.vehicle.d0(timestamp,s1) values(2,198)",
@@ -81,10 +82,10 @@ public class SmallPageSizeTest {
             "insert into root.vehicle.d0(timestamp,s3) values(80,'ccccc')",
             "insert into root.vehicle.d0(timestamp,s3) values(101,'ddddd')",
             "insert into root.vehicle.d0(timestamp,s3) values(102,'fffff')",
-            "UPDATE root.vehicle.d0.s3 SET VALUE = 'tomorrow is another day' WHERE time >100 and time < 103",
-            "UPDATE root.vehicle.d0.s3 SET VALUE = 'QQQ' WHERE time >=60 and time <= 70",
-            "UPDATE root.vehicle.d0.s3 SET VALUE = 'WWW' WHERE time >=80 and time <= 80",
-            "UPDATE root.vehicle.d0.s3 SET VALUE = 'EEE' WHERE time >=101 and time <= 101",
+            "UPDATE root.vehicle SET d0.s3 = 'tomorrow is another day' WHERE time >100 and time < 103",
+            "UPDATE root.vehicle SET d0.s3 = 'QQQ' WHERE time >=60 and time <= 70",
+            "UPDATE root.vehicle SET d0.s3 = 'WWW' WHERE time >=80 and time <= 80",
+            "UPDATE root.vehicle SET d0.s3 = 'EEE' WHERE time >=101 and time <= 101",
 
             // to flush bufferwrite data into page list
             "insert into root.vehicle.d1(timestamp,s0) values(1,999)",
