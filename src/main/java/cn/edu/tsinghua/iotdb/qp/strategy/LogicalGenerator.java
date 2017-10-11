@@ -305,7 +305,7 @@ public class LogicalGenerator {
             throw new LogicalOperatorException("UPDATE clause doesn't support multi-update yet.");
         UpdateOperator updateOp = new UpdateOperator(SQLConstant.TOK_UPDATE);
         initializedOperator = updateOp;
-        FromOperator fromOp = new FromOperator(TSParser.TOK_SELECT);
+        FromOperator fromOp = new FromOperator(TSParser.TOK_FROM);
         fromOp.addPrefixTablePath(parsePath(astNode.getChild(0)));
         updateOp.setFromOperator(fromOp);
         SelectOperator selectOp = new SelectOperator(TSParser.TOK_SELECT);
