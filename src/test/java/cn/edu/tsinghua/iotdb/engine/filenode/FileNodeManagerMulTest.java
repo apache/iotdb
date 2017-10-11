@@ -392,10 +392,17 @@ public class FileNodeManagerMulTest {
 		// merge
 		try {
 			fileNodeManager.mergeAll();
+			while(!fileNodeManager.closeAll()){
+				Thread.sleep(1000);
+			}
 		} catch (FileNodeManagerException e) {
 			e.printStackTrace();
 			fail(e.getMessage());
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+			fail(e.getMessage());
 		}
+		
 		try {
 			Thread.sleep(2000);
 		} catch (InterruptedException e) {
@@ -477,7 +484,13 @@ public class FileNodeManagerMulTest {
 		// merge
 		try {
 			fileNodeManager.mergeAll();
+			while(!fileNodeManager.closeAll()){
+				Thread.sleep(1000);
+			}
 		} catch (FileNodeManagerException e) {
+			e.printStackTrace();
+			fail(e.getMessage());
+		} catch (InterruptedException e) {
 			e.printStackTrace();
 			fail(e.getMessage());
 		}
@@ -522,7 +535,7 @@ public class FileNodeManagerMulTest {
 		try {
 			fileNodeManager.mergeAll();
 			while(!fileNodeManager.closeAll()){
-				Thread.sleep(1000);
+				Thread.sleep(3000);
 			}
 			QueryStructure queryStructure = fileNodeManager.query(deltaObjectId0, measurementId, null, null, null);
 			assertEquals(1, queryStructure.getBufferwriteDataInFiles().size());

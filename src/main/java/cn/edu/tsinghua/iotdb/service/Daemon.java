@@ -20,12 +20,20 @@ import cn.edu.tsinghua.iotdb.auth.dao.DBDao;
 import cn.edu.tsinghua.iotdb.auth.dao.DBDaoInitException;
 import cn.edu.tsinghua.iotdb.conf.TsFileDBConstant;
 import cn.edu.tsinghua.iotdb.engine.filenode.FileNodeManager;
+
+import cn.edu.tsinghua.iotdb.exception.PathErrorException;
 import cn.edu.tsinghua.iotdb.exception.FileNodeManagerException;
+
 import cn.edu.tsinghua.iotdb.exception.StartupException;
 import cn.edu.tsinghua.iotdb.qp.QueryProcessor;
 import cn.edu.tsinghua.iotdb.qp.executor.OverflowQPExecutor;
-import cn.edu.tsinghua.iotdb.qp.physical.PhysicalPlan;
+
+import cn.edu.tsinghua.iotdb.qp.physical.crud.DeletePlan;
+import cn.edu.tsinghua.iotdb.qp.physical.crud.InsertPlan;
+import cn.edu.tsinghua.iotdb.qp.physical.crud.UpdatePlan;
 import cn.edu.tsinghua.iotdb.sys.writelog.WriteLogManager;
+
+import cn.edu.tsinghua.iotdb.qp.physical.PhysicalPlan;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 
 public class Daemon {
@@ -55,11 +63,15 @@ public class Daemon {
         } catch (MalformedObjectNameException | InstanceAlreadyExistsException | MBeanRegistrationException
                 | NotCompliantMBeanException | TTransportException | IOException e) {
             LOGGER.error("{}: failed to start because: {}",TsFileDBConstant.GLOBAL_DB_NAME, e.getMessage());
+        } catch (FileNodeManagerException e) {
+            e.printStackTrace();
+        } catch (PathErrorException e) {
+            e.printStackTrace();
         }
     }
 
     private void setUp() throws MalformedObjectNameException, InstanceAlreadyExistsException,
-            MBeanRegistrationException, NotCompliantMBeanException, TTransportException, IOException {
+            MBeanRegistrationException, NotCompliantMBeanException, TTransportException, IOException, FileNodeManagerException, PathErrorException {
     	try {
 			initDBDao();
 		} catch (ClassNotFoundException | SQLException | DBDaoInitException e) {
@@ -132,9 +144,9 @@ public class Daemon {
      *
      * @throws IOException
      */
-    private void systemDataRecovery() throws IOException {
+    private void systemDataRecovery() throws IOException, FileNodeManagerException, PathErrorException {
         LOGGER.info("{}: start checking write log...",TsFileDBConstant.GLOBAL_DB_NAME);
-        QueryProcessor processor = new QueryProcessor(new OverflowQPExecutor());
+//        QueryProcessor processor = new QueryProcessor(new OverflowQPExecutor());
         WriteLogManager writeLogManager = WriteLogManager.getInstance();
         writeLogManager.recovery();
         long cnt = 0L;
@@ -142,7 +154,16 @@ public class Daemon {
         WriteLogManager.isRecovering = true;
         while ((plan = writeLogManager.getPhysicalPlan()) != null) {
             try {
-                processor.getExecutor().processNonQuery(plan);
+                if (plan instanceof InsertPlan) {
+                    InsertPlan insertPlan = (InsertPlan) plan;
+                    WriteLogRecovery.multiInsert(insertPlan);
+                } else if (plan instanceof UpdatePlan) {
+                    UpdatePlan updatePlan = (UpdatePlan) plan;
+                    WriteLogRecovery.update(updatePlan);
+                } else if (plan instanceof DeletePlan){
+                    DeletePlan deletePlan = (DeletePlan) plan;
+                    WriteLogRecovery.delete(deletePlan);
+                }
                 cnt++;
             } catch (ProcessorException e) {
                 e.printStackTrace();

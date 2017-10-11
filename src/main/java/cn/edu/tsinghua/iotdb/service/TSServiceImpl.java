@@ -462,41 +462,33 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 	}
 
 	private TSExecuteStatementResp ExecuteUpdateStatement(PhysicalPlan plan) throws TException {
-		try {
-			List<Path> paths = plan.getPaths();
+		List<Path> paths = plan.getPaths();
 
-			if (!checkAuthorization(paths, plan.getOperatorType())) {
-				return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, "No permissions for this operation");
-			}
-			// TODO
-			// In current version, we only return OK/ERROR
-			// Do we need to add extra information of executive condition
-			boolean execRet;
-			try {
-				execRet = processor.getExecutor().processNonQuery(plan);
-			} catch (ProcessorException e) {
-				return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
-			}
-			if (TsfileDBDescriptor.getInstance().getConfig().enableWal
-					&& WriteLogManager.getInstance().isRecovering == false && execRet && needToBeWrittenToLog(plan)) {
-				writeLogManager.write(plan);
-			}
-			TS_StatusCode statusCode = execRet ? TS_StatusCode.SUCCESS_STATUS : TS_StatusCode.ERROR_STATUS;
-			String msg = execRet ? "Execute successfully" : "Execute statement error.";
-			TSExecuteStatementResp resp = getTSExecuteStatementResp(statusCode, msg);
-			TSHandleIdentifier operationId = new TSHandleIdentifier(ByteBuffer.wrap(username.get().getBytes()),
-					ByteBuffer.wrap(("PASS".getBytes())));
-			TSOperationHandle operationHandle;
-			operationHandle = new TSOperationHandle(operationId, false);
-			resp.setOperationHandle(operationHandle);
-			return resp;
-		} catch (QueryProcessorException e) {
-			LOGGER.error(e.getMessage());
-			return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
-		} catch (IOException e) {
-			LOGGER.error("{}: write preLog error",TsFileDBConstant.GLOBAL_DB_NAME, e);
-			return getTSExecuteStatementResp(TS_StatusCode.SUCCESS_STATUS, "Write log error");
+		if (!checkAuthorization(paths, plan.getOperatorType())) {
+			return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, "No permissions for this operation");
 		}
+		// TODO
+		// In current version, we only return OK/ERROR
+		// Do we need to add extra information of executive condition
+		boolean execRet;
+		try {
+			execRet = processor.getExecutor().processNonQuery(plan);
+		} catch (ProcessorException e) {
+			return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
+		}
+//			if (TsfileDBDescriptor.getInstance().getConfig().enableWal
+//					&& !WriteLogManager.isRecovering && execRet && needToBeWrittenToLog(plan)) {
+//				writeLogManager.write(plan);
+//			}
+		TS_StatusCode statusCode = execRet ? TS_StatusCode.SUCCESS_STATUS : TS_StatusCode.ERROR_STATUS;
+		String msg = execRet ? "Execute successfully" : "Execute statement error.";
+		TSExecuteStatementResp resp = getTSExecuteStatementResp(statusCode, msg);
+		TSHandleIdentifier operationId = new TSHandleIdentifier(ByteBuffer.wrap(username.get().getBytes()),
+				ByteBuffer.wrap(("PASS".getBytes())));
+		TSOperationHandle operationHandle;
+		operationHandle = new TSOperationHandle(operationId, false);
+		resp.setOperationHandle(operationHandle);
+		return resp;
 	}
 
 	private TSExecuteStatementResp ExecuteUpdateStatement(String statement)
@@ -530,13 +522,13 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 		} catch (ProcessorException e) {
 			return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
 		}
-		if (WriteLogManager.isRecovering == false && execRet && needToBeWrittenToLog(physicalPlan)) {
-			try {
-				writeLogManager.write(physicalPlan);
-			} catch (PathErrorException e) {
-				throw new ProcessorException(e);
-			}
-		}
+//		if (!WriteLogManager.isRecovering && execRet && needToBeWrittenToLog(physicalPlan)) {
+//			try {
+//				writeLogManager.write(physicalPlan);
+//			} catch (PathErrorException e) {
+//				throw new ProcessorException(e);
+//			}
+//		}
 		TS_StatusCode statusCode = execRet ? TS_StatusCode.SUCCESS_STATUS : TS_StatusCode.ERROR_STATUS;
 		String msg = execRet ? "Execute successfully" : "Execute statement error.";
 		TSExecuteStatementResp resp = getTSExecuteStatementResp(statusCode, msg);

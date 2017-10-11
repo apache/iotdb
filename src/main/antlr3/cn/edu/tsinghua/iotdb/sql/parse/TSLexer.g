@@ -20,8 +20,8 @@ KW_ENCODING: 'ENCODING';
 
 KW_STORAGE: 'STORAGE';
 
-KW_AND : 'AND';
-KW_OR : 'OR';
+KW_AND : 'AND' | '&' | '&&';
+KW_OR : 'OR' | '|' | '||';
 KW_NOT : 'NOT' | '!';
 
 

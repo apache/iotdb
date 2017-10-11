@@ -35,18 +35,18 @@ public class WriteLogNode {
     private String filePath, backFilePath;
     private int LogCompactSize, LogMemorySize;
     private int logSize;
-    private String path;
+    private String fileNodePrefix;
     private List<PhysicalPlan> plansInMemory;
 
-    WriteLogNode(String path) {
-        this.path = path;
+    WriteLogNode(String fileNodePrefix) {
+        this.fileNodePrefix = fileNodePrefix;
         this.LogCompactSize = TsfileDBDescriptor.getInstance().getConfig().walCleanupThreshold;
         this.LogMemorySize = TsfileDBDescriptor.getInstance().getConfig().flushWalThreshold;
         String walPath = TsfileDBDescriptor.getInstance().getConfig().walFolder;
         if (walPath.length() > 0 && walPath.charAt(walPath.length() - 1) != File.separatorChar) {
            walPath += File.separatorChar;
         }
-        filePath = walPath + path + ".log";
+        filePath = walPath + fileNodePrefix + ".log";
         backFilePath = filePath + ".backup";
         plansInMemory = new ArrayList<>();
         hasBufferWriteFlush = false;
@@ -232,7 +232,7 @@ public class WriteLogNode {
     /**
      * may cause errors in multi processors
      *
-     * @return
+     * @return PhysicalPlan
      */
     synchronized public PhysicalPlan getPhysicalPlan() throws IOException {
         if (reader == null) {

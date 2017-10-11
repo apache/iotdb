@@ -29,12 +29,15 @@ import cn.edu.tsinghua.iotdb.exception.LRUManagerException;
 import cn.edu.tsinghua.iotdb.exception.OverflowProcessorException;
 import cn.edu.tsinghua.iotdb.exception.PathErrorException;
 import cn.edu.tsinghua.iotdb.metadata.MManager;
+import cn.edu.tsinghua.iotdb.qp.physical.crud.DeletePlan;
+import cn.edu.tsinghua.iotdb.qp.physical.crud.UpdatePlan;
 import cn.edu.tsinghua.iotdb.sys.writelog.WriteLogManager;
 import cn.edu.tsinghua.tsfile.common.conf.TSFileConfig;
 import cn.edu.tsinghua.tsfile.common.conf.TSFileDescriptor;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
 import cn.edu.tsinghua.tsfile.timeseries.filter.definition.SingleSeriesFilterExpression;
+import cn.edu.tsinghua.tsfile.timeseries.read.qp.Path;
 import cn.edu.tsinghua.tsfile.timeseries.write.record.DataPoint;
 import cn.edu.tsinghua.tsfile.timeseries.write.record.TSRecord;
 
@@ -124,12 +127,8 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 					fileNodeProcessor.writeUnlock();
 				}
 			}
-		} catch (PathErrorException e1) {
-			LOGGER.error("Restore all FileNodeManager failed.", e1);
-		} catch (LRUManagerException e2) {
-			LOGGER.error("Construt the filenode processor failed.", e2);
-		} catch (FileNodeProcessorException e3) {
-			LOGGER.error("Recovery the filenode processor failed.", e3);
+		} catch (PathErrorException | LRUManagerException | FileNodeProcessorException e) {
+			LOGGER.error("Restore all FileNode failed, the reason is {}", e.getMessage());
 		}
 	}
 
@@ -170,11 +169,12 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 						e);
 				throw new FileNodeManagerException(e);
 			}
-			// For WAL
+
+			// for WAL
 			try {
 				if (TsfileDBDescriptor.getInstance().getConfig().enableWal) {
 					if (!WriteLogManager.isRecovering) {
-						WriteLogManager.getInstance().write(tsRecord, WriteLogManager.OVERFLOW);
+						WriteLogManager.getInstance().write(nameSpacePath, tsRecord, WriteLogManager.OVERFLOW);
 					}
 				}
 			} catch (IOException | PathErrorException e) {
@@ -223,7 +223,7 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 			try {
 				if (TsfileDBDescriptor.getInstance().getConfig().enableWal) {
 					if (!WriteLogManager.isRecovering) {
-						WriteLogManager.getInstance().write(tsRecord, WriteLogManager.BUFFERWRITER);
+						WriteLogManager.getInstance().write(nameSpacePath, tsRecord, WriteLogManager.BUFFERWRITER);
 					}
 				}
 			} catch (IOException | PathErrorException e) {
@@ -288,6 +288,20 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 			}
 			throw new FileNodeManagerException(e);
 		}
+
+		// for WAL
+		try {
+			if (TsfileDBDescriptor.getInstance().getConfig().enableWal) {
+				if (!WriteLogManager.isRecovering) {
+					WriteLogManager.getInstance().write(fileNodeProcessor.getNameSpacePath(),
+							new UpdatePlan(startTime, endTime, v, new Path(deltaObjectId + "." + measurementId)));
+				}
+			}
+		} catch (IOException | PathErrorException e) {
+			LOGGER.error("Error in write WAL: {}", e.getMessage());
+			throw new FileNodeManagerException(e);
+		}
+
 		long lastUpdateTime = fileNodeProcessor.getLastUpdateTime(deltaObjectId);
 		LOGGER.debug("Get the FileNodeProcessor: {}, the last update time is: {}, the update time is from {} to {}",
 				fileNodeProcessor.getNameSpacePath(), lastUpdateTime, startTime, endTime);
@@ -343,6 +357,20 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 			}
 			throw new FileNodeManagerException(e);
 		}
+
+		// for WAL
+		try {
+			if (TsfileDBDescriptor.getInstance().getConfig().enableWal) {
+				if (!WriteLogManager.isRecovering) {
+					WriteLogManager.getInstance().write(fileNodeProcessor.getNameSpacePath(),
+							new DeletePlan(timestamp, new Path(deltaObjectId + "." + measurementId)));
+				}
+			}
+		} catch (IOException | PathErrorException e) {
+			LOGGER.error("Error in write WAL: {}", e.getMessage());
+			throw new FileNodeManagerException(e);
+		}
+
 		long lastUpdateTime = fileNodeProcessor.getLastUpdateTime(deltaObjectId);
 		LOGGER.debug("Get the FileNodeProcessor: {}, the last update time is: {}, the delete time is from 0 to {}",
 				fileNodeProcessor.getNameSpacePath(), lastUpdateTime, timestamp);
@@ -540,6 +568,30 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 			res = originalPath + File.separatorChar;
 		}
 		return res;
+	}
+
+	// TODO: should synchronized
+	public synchronized void addTimeSeries(Path path, String dataType, String encoding, String[] encodingArgs)
+			throws FileNodeManagerException {
+		// TODO: optimize and do't get the filenode processor instance
+		FileNodeProcessor fileNodeProcessor = null;
+		try {
+			do {
+				fileNodeProcessor = getProcessorWithDeltaObjectIdByLRU(path.getFullPath(), true);
+			} while (fileNodeProcessor == null);
+			if (fileNodeProcessor.hasBufferwriteProcessor()) {
+				BufferWriteProcessor bufferWriteProcessor = fileNodeProcessor.getBufferWriteProcessor();
+				bufferWriteProcessor.addTimeSeries(path.getMeasurementToString(), dataType, encoding, encodingArgs);
+			} else {
+				return;
+			}
+		} catch (LRUManagerException | IOException | FileNodeProcessorException e) {
+			throw new FileNodeManagerException(e);
+		} finally {
+			if (fileNodeProcessor != null) {
+				fileNodeProcessor.writeUnlock();
+			}
+		}
 	}
 
 	public synchronized boolean closeOneFileNode(String namespacePath) throws FileNodeManagerException {
