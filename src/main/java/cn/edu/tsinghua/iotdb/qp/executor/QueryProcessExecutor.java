@@ -42,10 +42,6 @@ public abstract class QueryProcessExecutor {
 
 	protected abstract boolean judgeNonReservedPathExists(Path fullPath);
 
-	public PhysicalPlan transformToPhysicalPlan(Operator operator) throws QueryProcessorException {
-		PhysicalGenerator transformer = new PhysicalGenerator(this);
-		return transformer.transformToPhysicalPlan(operator);
-	}
 
 	public Iterator<QueryDataSet> processQuery(PhysicalPlan plan) throws QueryProcessorException {
 		switch (plan.getOperatorType()) {
