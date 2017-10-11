@@ -43,7 +43,6 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 	private OverflowQueryEngine queryEngine;
 	private FileNodeManager fileNodeManager;
 	private MManager mManager = MManager.getInstance();
-	private final String separator = "\\.";
 
 	public OverflowQPExecutor() {
 		queryEngine = new OverflowQueryEngine();
