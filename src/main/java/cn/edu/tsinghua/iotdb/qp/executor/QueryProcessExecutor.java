@@ -9,7 +9,6 @@ import java.util.Set;
 
 import cn.edu.tsinghua.iotdb.exception.PathErrorException;
 import cn.edu.tsinghua.iotdb.metadata.MManager;
-import cn.edu.tsinghua.iotdb.qp.constant.SQLConstant;
 import cn.edu.tsinghua.iotdb.qp.exception.QueryProcessorException;
 import cn.edu.tsinghua.iotdb.qp.executor.iterator.MergeQuerySetIterator;
 import cn.edu.tsinghua.iotdb.qp.executor.iterator.QueryDataSetIterator;
@@ -31,7 +30,7 @@ public abstract class QueryProcessExecutor {
 	public QueryProcessExecutor() {
 	}
 
-	protected abstract TSDataType getNonReservedSeriesType(Path fullPath) throws PathErrorException;
+	public abstract TSDataType getSeriesType(Path fullPath) throws PathErrorException;
 
 	public abstract boolean judgePathExists(Path fullPath);
 
@@ -68,14 +67,6 @@ public abstract class QueryProcessExecutor {
 
 	public boolean processNonQuery(PhysicalPlan plan) throws ProcessorException {
 		throw new UnsupportedOperationException();
-	}
-
-	public TSDataType getSeriesType(Path fullPath) throws PathErrorException {
-		if (fullPath.equals(SQLConstant.RESERVED_TIME))
-			return TSDataType.INT64;
-		if (fullPath.equals(SQLConstant.RESERVED_FREQ))
-			return TSDataType.FLOAT;
-		return getNonReservedSeriesType(fullPath);
 	}
 
 

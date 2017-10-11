@@ -62,7 +62,11 @@ public class MemIntQpExecutor extends QueryProcessExecutor {
     }
 
     @Override
-    public TSDataType getNonReservedSeriesType(Path fullPath) {
+    public TSDataType getSeriesType(Path fullPath) {
+        if (fullPath.equals(SQLConstant.RESERVED_TIME))
+            return TSDataType.INT64;
+        if (fullPath.equals(SQLConstant.RESERVED_FREQ))
+            return TSDataType.FLOAT;
         if (fakeAllPaths != null && fakeAllPaths.containsKey(fullPath.toString()))
             return TSDataType.INT32;
         if (demoMemDataBase.containsKey(fullPath.toString()))

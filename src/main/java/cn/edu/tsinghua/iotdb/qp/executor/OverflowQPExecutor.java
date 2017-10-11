@@ -88,7 +88,11 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 	}
 
 	@Override
-	protected TSDataType getNonReservedSeriesType(Path path) throws PathErrorException {
+	public TSDataType getSeriesType(Path path) throws PathErrorException {
+		if (path.equals(SQLConstant.RESERVED_TIME))
+			return TSDataType.INT64;
+		if (path.equals(SQLConstant.RESERVED_FREQ))
+			return TSDataType.FLOAT;
 		return MManager.getInstance().getSeriesType(path.getFullPath());
 	}
 
