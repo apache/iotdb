@@ -2,6 +2,7 @@ package cn.edu.tsinghua.iotdb.qp;
 
 import cn.edu.tsinghua.iotdb.qp.exception.LogicalOperatorException;
 import cn.edu.tsinghua.iotdb.qp.strategy.LogicalGenerator;
+import cn.edu.tsinghua.iotdb.qp.strategy.PhysicalGenerator;
 import cn.edu.tsinghua.iotdb.sql.ParseGenerator;
 
 import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
@@ -55,7 +56,8 @@ public class QueryProcessor {
         ASTNode astNode = parseSQLToAST(sqlStr);
         Operator operator = parseASTToOperator(astNode, timeZone);
         operator = logicalOptimize(operator, executor);
-        return executor.transformToPhysicalPlan(operator);
+        PhysicalGenerator physicalGenerator = new PhysicalGenerator(executor);
+        return physicalGenerator.transformToPhysicalPlan(operator);
     }
 
     /**

@@ -167,8 +167,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 		if(this.queryStatus.get() != null){
 			this.queryStatus.get().clear();
 		}
-		// Clear all parameters in last request.
-		processor.getExecutor().clearParameters();
 	}
 
 	@Override
