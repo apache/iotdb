@@ -31,7 +31,11 @@ public class SingleFileQPExecutor extends QueryProcessExecutor {
 	}
 
 	@Override
-	protected TSDataType getNonReservedSeriesType(Path path) {
+	public TSDataType getSeriesType(Path path) {
+		if (path.equals(SQLConstant.RESERVED_TIME))
+			return TSDataType.INT64;
+		if (path.equals(SQLConstant.RESERVED_FREQ))
+			return TSDataType.FLOAT;
 		return queryEngine.getSeriesType(path);
 	}
 
