@@ -73,7 +73,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 		case LOADDATA:
 			LoadDataPlan loadData = (LoadDataPlan) plan;
 			LoadDataUtils load = new LoadDataUtils();
-			load.loadLocalDataMultiPass(loadData.getInputFilePath(), loadData.getMeasureType(), getMManager());
+			load.loadLocalDataMultiPass(loadData.getInputFilePath(), loadData.getMeasureType(), MManager.getInstance());
 			return true;
 		case METADATA:
 			MetadataPlan metadata = (MetadataPlan) plan;
@@ -250,7 +250,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 
 	@Override
 	public List<String> getAllPaths(String originPath) throws PathErrorException {
-		return getMManager().getPaths(originPath);
+		return MManager.getInstance().getPaths(originPath);
 	}
 
 	private boolean operateAuthor(AuthorPlan author) throws ProcessorException {
@@ -444,7 +444,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 		PropertyOperator.PropertyType propertyType = propertyPlan.getPropertyType();
 		Path propertyPath = propertyPlan.getPropertyPath();
 		Path metadataPath = propertyPlan.getMetadataPath();
-		MManager mManager = getMManager();
+		MManager mManager = MManager.getInstance();
 		try {
 			switch (propertyType) {
 			case ADD_TREE:
