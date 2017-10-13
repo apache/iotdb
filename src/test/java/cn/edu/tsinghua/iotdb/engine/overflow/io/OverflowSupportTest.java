@@ -9,6 +9,7 @@ import java.util.List;
 
 import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
 import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
+import cn.edu.tsinghua.iotdb.engine.lru.MetadataManagerHelper;
 import cn.edu.tsinghua.iotdb.engine.overflow.metadata.OFFileMetadata;
 import cn.edu.tsinghua.iotdb.metadata.MManager;
 import cn.edu.tsinghua.iotdb.sys.writelog.WriteLogManager;
@@ -57,6 +58,7 @@ public class OverflowSupportTest {
 		ofsupport = null;
 		ofrw = null;
 		ofio = null;
+		MetadataManagerHelper.initMetadata();
 		WriteLogManager.getInstance().close();
 	}
 
