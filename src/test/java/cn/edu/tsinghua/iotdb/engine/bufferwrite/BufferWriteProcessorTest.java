@@ -25,8 +25,8 @@ import cn.edu.tsinghua.iotdb.sys.writelog.WriteLogManager;
 import cn.edu.tsinghua.tsfile.common.conf.TSFileConfig;
 import cn.edu.tsinghua.tsfile.common.conf.TSFileDescriptor;
 import cn.edu.tsinghua.tsfile.common.utils.Pair;
-import cn.edu.tsinghua.tsfile.common.utils.RandomAccessOutputStream;
-import cn.edu.tsinghua.tsfile.common.utils.TSRandomAccessFileWriter;
+import cn.edu.tsinghua.tsfile.common.utils.TsRandomAccessFileWriter;
+import cn.edu.tsinghua.tsfile.common.utils.ITsRandomAccessFileWriter;
 import cn.edu.tsinghua.tsfile.file.metadata.RowGroupMetaData;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.CompressionTypeName;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
@@ -182,7 +182,7 @@ public class BufferWriteProcessorTest {
 		// write some bytes in the outputfile and test cuf off function
 		File dir = new File(nsp);
 		File outFile = new File(dir, filename);
-		TSRandomAccessFileWriter raf = new RandomAccessOutputStream(outFile);
+		ITsRandomAccessFileWriter raf = new TsRandomAccessFileWriter(outFile);
 		raf.seek(outFile.length());
 		byte[] buff = new byte[100];
 		Arrays.fill(buff, (byte) 10);

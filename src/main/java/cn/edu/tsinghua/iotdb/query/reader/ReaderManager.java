@@ -5,9 +5,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
-import cn.edu.tsinghua.tsfile.common.utils.TSRandomAccessFileReader;
+import cn.edu.tsinghua.tsfile.common.utils.ITsRandomAccessFileReader;
 import cn.edu.tsinghua.tsfile.file.metadata.RowGroupMetaData;
-import cn.edu.tsinghua.tsfile.timeseries.read.LocalFileInput;
+import cn.edu.tsinghua.tsfile.timeseries.read.TsRandomAccessLocalFileReader;
 
 
 /**
@@ -21,7 +21,7 @@ public class ReaderManager {
 
     private List<FileReader> fileReaderList;
 
-    private List<TSRandomAccessFileReader> rafList; // file has been serialized, sealed
+    private List<ITsRandomAccessFileReader> rafList; // file has been serialized, sealed
 
     private HashMap<String, List<RowGroupReader>> rowGroupReaderMap;
     private List<RowGroupReader> rowGroupReaderList;
@@ -33,13 +33,13 @@ public class ReaderManager {
      * @param rafList fileInputStreamList
      * @throws IOException
      */
-    ReaderManager(List<TSRandomAccessFileReader> rafList) throws IOException {
+    ReaderManager(List<ITsRandomAccessFileReader> rafList) throws IOException {
         this.rafList = rafList;
         rowGroupReaderList = new ArrayList<>();
         rowGroupReaderMap = new HashMap<>();
         fileReaderList = new ArrayList<>();
 
-        for (TSRandomAccessFileReader taf : rafList) {
+        for (ITsRandomAccessFileReader taf : rafList) {
             FileReader fr = new FileReader(taf);
             fileReaderList.add(fr);
             addRowGroupReadersToMap(fr);
@@ -55,8 +55,8 @@ public class ReaderManager {
      * @param rowGroupMetadataList  RowGroupMetadata List for unsealedFile
      * @throws IOException
      */
-    ReaderManager(List<TSRandomAccessFileReader> rafList,
-                         TSRandomAccessFileReader unsealedFileReader, List<RowGroupMetaData> rowGroupMetadataList) throws IOException {
+    ReaderManager(List<ITsRandomAccessFileReader> rafList,
+                         ITsRandomAccessFileReader unsealedFileReader, List<RowGroupMetaData> rowGroupMetadataList) throws IOException {
         this(rafList);
         this.rafList.add(unsealedFileReader);
 
@@ -100,9 +100,9 @@ public class ReaderManager {
      * @throws IOException
      */
     public void close() throws IOException {
-        for (TSRandomAccessFileReader raf : rafList) {
-            if (raf instanceof LocalFileInput) {
-                ((LocalFileInput) raf).closeFromManager();
+        for (ITsRandomAccessFileReader raf : rafList) {
+            if (raf instanceof TsRandomAccessLocalFileReader) {
+                ((TsRandomAccessLocalFileReader) raf).closeFromManager();
             } else {
                 raf.close();
             }

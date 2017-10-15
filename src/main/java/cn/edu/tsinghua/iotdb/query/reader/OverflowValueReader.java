@@ -14,7 +14,7 @@ import cn.edu.tsinghua.iotdb.query.aggregation.AggregationResult;
 import cn.edu.tsinghua.iotdb.query.dataset.InsertDynamicData;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 import cn.edu.tsinghua.tsfile.common.utils.Binary;
-import cn.edu.tsinghua.tsfile.common.utils.TSRandomAccessFileReader;
+import cn.edu.tsinghua.tsfile.common.utils.ITsRandomAccessFileReader;
 import cn.edu.tsinghua.tsfile.encoding.decoder.Decoder;
 import cn.edu.tsinghua.tsfile.file.metadata.TSDigest;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.CompressionTypeName;
@@ -34,7 +34,7 @@ public class OverflowValueReader extends ValueReader {
     private static final Logger LOG = LoggerFactory.getLogger(OverflowValueReader.class);
     
     OverflowValueReader(long offset, long totalSize, TSDataType dataType, TSDigest digest,
-                               TSRandomAccessFileReader raf, List<String> enumValues, CompressionTypeName compressionTypeName,
+                               ITsRandomAccessFileReader raf, List<String> enumValues, CompressionTypeName compressionTypeName,
                                long rowNums) {
         super(offset, totalSize, dataType, digest, raf, enumValues, compressionTypeName, rowNums);
     }

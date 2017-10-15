@@ -17,7 +17,7 @@ import org.slf4j.LoggerFactory;
 import cn.edu.tsinghua.iotdb.query.dataset.InsertDynamicData;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 import cn.edu.tsinghua.tsfile.common.exception.UnSupportedDataTypeException;
-import cn.edu.tsinghua.tsfile.common.utils.TSRandomAccessFileReader;
+import cn.edu.tsinghua.tsfile.common.utils.ITsRandomAccessFileReader;
 import cn.edu.tsinghua.tsfile.file.metadata.RowGroupMetaData;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.CompressionTypeName;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
@@ -50,7 +50,7 @@ public class RecordReader {
      * @param rafList bufferwrite file has been serialized completely
      * @throws IOException file error
      */
-    public RecordReader(List<TSRandomAccessFileReader> rafList, String deltaObjectUID, String measurementID, int lockToken,
+    public RecordReader(List<ITsRandomAccessFileReader> rafList, String deltaObjectUID, String measurementID, int lockToken,
                         DynamicOneColumnData insertPageInMemory, List<ByteArrayInputStream> bufferWritePageList, CompressionTypeName compressionTypeName,
                         List<Object> overflowInfo) throws IOException {
         this.readerManager = new ReaderManager(rafList);
@@ -69,7 +69,7 @@ public class RecordReader {
      * @param rowGroupMetadataList unsealed RowGroupMetadataList to construct unsealedFileReader
      * @throws IOException file error
      */
-    public RecordReader(List<TSRandomAccessFileReader> rafList, TSRandomAccessFileReader unsealedFileReader,
+    public RecordReader(List<ITsRandomAccessFileReader> rafList, ITsRandomAccessFileReader unsealedFileReader,
                         List<RowGroupMetaData> rowGroupMetadataList, String deltaObjectUID, String measurementID, int lockToken,
                         DynamicOneColumnData insertPageInMemory, List<ByteArrayInputStream> bufferWritePageList, CompressionTypeName compressionTypeName,
                         List<Object> overflowInfo) throws IOException {
@@ -105,7 +105,6 @@ public class RecordReader {
             if (rowGroupReader.getValueReaders().containsKey(sensorId)) {
                 res = rowGroupReader.getValueReaders().get(sensorId)
                         .getValuesWithOverFlow(updateTrue, updateFalse, insertMemoryData, timeFilter, null, valueFilter, res, fetchSize);
-                res.setDeltaObjectType(rowGroupReader.getDeltaObjectType());
                 if (res.valueLength >= fetchSize) {
                     res.hasReadAll = false;
                     return res;
@@ -148,7 +147,6 @@ public class RecordReader {
                 res = rowGroupReader.getValueReaders().get(sensorId)
                         .getValuesWithOverFlow(updateTrue, updateFalse, insertMemoryData, timeFilter, freqFilter, valueFilter, res,
                                 fetchSize);
-                res.setDeltaObjectType(rowGroupReader.getDeltaObjectType());
                 if (res.valueLength >= fetchSize) {
                     res.hasReadAll = false;
                     return res;
@@ -173,7 +171,6 @@ public class RecordReader {
         try {
             TSDataType type = MManager.getInstance().getSeriesType(fullPath);
             DynamicOneColumnData res = new DynamicOneColumnData(type, true);
-            res.setDeltaObjectType(MManager.getInstance().getDeltaObjectTypeByPath(fullPath));
             return res;
         } catch (PathErrorException e) {
             throw new ProcessorException(e.getMessage());
@@ -277,10 +274,8 @@ public class RecordReader {
         DynamicOneColumnData oldRes = getValuesUseTimestamps(deviceUID, sensorId, timestamps);
         if (oldRes == null) {
             oldRes = new DynamicOneColumnData(dataType, true);
-            oldRes.setDeltaObjectType(deviceType);
         }
         DynamicOneColumnData res = new DynamicOneColumnData(dataType, true);
-        res.setDeltaObjectType(deviceType);
 
         // the timestamps of timeData is eventual, its has conclude the value of insertMemory.
         int oldResIdx = 0;
@@ -331,7 +326,6 @@ public class RecordReader {
             RowGroupReader rowGroupReader = rowGroupReaderList.get(i);
             if (i == 0) {
                 res = rowGroupReader.readValueUseTimestamps(measurementUId, timestamps);
-                res.setDeltaObjectType(rowGroupReader.getDeltaObjectType());
             } else {
                 DynamicOneColumnData tmpRes = rowGroupReader.readValueUseTimestamps(measurementUId, timestamps);
                 res.mergeRecord(tmpRes);

@@ -75,11 +75,6 @@ public class Utils {
       assertTrue(
           timeSeriesInTSF.getMeasurementUID().equals(timeSeriesInThrift.getMeasurement_uid()));
     }
-    if (Utils.isTwoObjectsNotNULL(timeSeriesInTSF.getDeltaObjectType(),
-        timeSeriesInThrift.getDelta_object_type(), "device type")) {
-      assertTrue(
-          timeSeriesInTSF.getDeltaObjectType().equals(timeSeriesInThrift.getDelta_object_type()));
-    }
     assertTrue(timeSeriesInTSF.getTypeLength() == timeSeriesInThrift.getType_length());
     if (Utils.isTwoObjectsNotNULL(timeSeriesInTSF.getType(), timeSeriesInThrift.getType(),
         "data type")) {
