@@ -13,7 +13,7 @@ import cn.edu.tsinghua.iotdb.engine.filenode.QueryStructure;
 import cn.edu.tsinghua.iotdb.exception.FileNodeManagerException;
 import cn.edu.tsinghua.iotdb.query.reader.RecordReader;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
-import cn.edu.tsinghua.tsfile.common.utils.TSRandomAccessFileReader;
+import cn.edu.tsinghua.tsfile.common.utils.ITsRandomAccessFileReader;
 import cn.edu.tsinghua.tsfile.timeseries.filter.definition.SingleSeriesFilterExpression;
 
 /**
@@ -84,15 +84,15 @@ public class RecordReaderFactory {
 		} else {
 			hasUnEnvelopedFile = false;
 		}
-		List<TSRandomAccessFileReader> rafList = new ArrayList<>();
+		List<ITsRandomAccessFileReader> rafList = new ArrayList<>();
 		try {
 			for (int i = 0; i < fileNodes.size() - 1; i++) {
 				IntervalFileNode fileNode = fileNodes.get(i);
-				TSRandomAccessFileReader raf = fileStreamManager.getLocalRandomAccessFileReader(fileNode.filePath);
+				ITsRandomAccessFileReader raf = fileStreamManager.getLocalRandomAccessFileReader(fileNode.filePath);
 				rafList.add(raf);
 			}
 			if (hasUnEnvelopedFile) {
-				TSRandomAccessFileReader unsealedRaf = fileStreamManager
+				ITsRandomAccessFileReader unsealedRaf = fileStreamManager
 						.getLocalRandomAccessFileReader(fileNodes.get(fileNodes.size() - 1).filePath);
 
 				// if currentPage is null, both currentPage and pageList must both are null

@@ -10,7 +10,7 @@ import cn.edu.tsinghua.iotdb.qp.physical.PhysicalPlan;
 import cn.edu.tsinghua.iotdb.query.engine.FilterStructure;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 import cn.edu.tsinghua.tsfile.common.utils.Pair;
-import cn.edu.tsinghua.tsfile.common.utils.TSRandomAccessFileReader;
+import cn.edu.tsinghua.tsfile.common.utils.ITsRandomAccessFileReader;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
 import cn.edu.tsinghua.tsfile.timeseries.filter.definition.FilterExpression;
 import cn.edu.tsinghua.tsfile.timeseries.read.qp.Path;
@@ -21,7 +21,7 @@ public class SingleFileQPExecutor extends QueryProcessExecutor {
 
 	private QueryEngine queryEngine;
 
-	public SingleFileQPExecutor(TSRandomAccessFileReader raf) throws IOException {
+	public SingleFileQPExecutor(ITsRandomAccessFileReader raf) throws IOException {
 		queryEngine = new QueryEngine(raf);
 	}
 

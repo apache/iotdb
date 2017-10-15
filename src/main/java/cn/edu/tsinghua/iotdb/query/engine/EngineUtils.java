@@ -30,7 +30,6 @@ public class EngineUtils {
         for (Path path : dataSet.getBatchReaderRetGenerator().retMap.keySet()) {
             DynamicOneColumnData batchReadData = dataSet.getBatchReaderRetGenerator().retMap.get(path);
             DynamicOneColumnData leftData = batchReadData.sub(batchReadData.curIdx);
-            leftData.setDeltaObjectType(batchReadData.getDeltaObjectType());
 
             // copy batch read info from oneColRet to leftRet
             batchReadData.copyFetchInfoTo(leftData);

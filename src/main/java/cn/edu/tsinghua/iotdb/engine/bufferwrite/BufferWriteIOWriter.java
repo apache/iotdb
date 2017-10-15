@@ -4,10 +4,9 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import cn.edu.tsinghua.tsfile.common.utils.TSRandomAccessFileWriter;
+import cn.edu.tsinghua.tsfile.common.utils.ITsRandomAccessFileWriter;
 import cn.edu.tsinghua.tsfile.file.metadata.RowGroupMetaData;
 import cn.edu.tsinghua.tsfile.timeseries.write.io.TSFileIOWriter;
-import cn.edu.tsinghua.tsfile.timeseries.write.schema.FileSchema;
 
 
 /**
@@ -23,8 +22,8 @@ public class BufferWriteIOWriter extends TSFileIOWriter {
 	private final List<RowGroupMetaData> backUpList = new ArrayList<RowGroupMetaData>();
 	private int lastRowGroupIndex = 0;
 
-	public BufferWriteIOWriter(FileSchema schema, TSRandomAccessFileWriter output) throws IOException {
-		super(schema, output);
+	public BufferWriteIOWriter(ITsRandomAccessFileWriter output) throws IOException {
+		super(output);
 	}
 	
 	/**
@@ -34,8 +33,8 @@ public class BufferWriteIOWriter extends TSFileIOWriter {
 	 * @param rowGroups
 	 * @throws IOException
 	 */
-	public BufferWriteIOWriter(FileSchema schema,TSRandomAccessFileWriter output, long offset,List<RowGroupMetaData> rowGroups) throws IOException{
-		super(schema, output,offset, rowGroups);
+	public BufferWriteIOWriter(ITsRandomAccessFileWriter output, long offset,List<RowGroupMetaData> rowGroups) throws IOException{
+		super(output,offset, rowGroups);
 		addrowGroupsTobackupList(rowGroups);
 		
 	}
@@ -51,10 +50,10 @@ public class BufferWriteIOWriter extends TSFileIOWriter {
 	 * <b>Note that</b>,the method is not thread safe.
 	 */
 	public void addNewRowGroupMetaDataToBackUp() {
-		for(int i = lastRowGroupIndex;i<rowGroups.size();i++){
-			backUpList.add(rowGroups.get(i));
+		for(int i = lastRowGroupIndex;i<rowGroupMetaDatas.size();i++){
+			backUpList.add(rowGroupMetaDatas.get(i));
 		}
-		lastRowGroupIndex = rowGroups.size();
+		lastRowGroupIndex = rowGroupMetaDatas.size();
 	}
 
 	/**

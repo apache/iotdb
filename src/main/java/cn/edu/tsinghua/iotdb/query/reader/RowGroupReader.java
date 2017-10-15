@@ -8,7 +8,7 @@ import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import cn.edu.tsinghua.tsfile.common.utils.TSRandomAccessFileReader;
+import cn.edu.tsinghua.tsfile.common.utils.ITsRandomAccessFileReader;
 import cn.edu.tsinghua.tsfile.file.metadata.RowGroupMetaData;
 import cn.edu.tsinghua.tsfile.file.metadata.TimeSeriesChunkMetaData;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
@@ -26,9 +26,9 @@ public class RowGroupReader {
     protected ArrayList<String> sids;
     private long totalByteSize;
 
-    protected TSRandomAccessFileReader raf;
+    protected ITsRandomAccessFileReader raf;
 
-    public RowGroupReader(RowGroupMetaData rowGroupMetaData, TSRandomAccessFileReader raf) {
+    public RowGroupReader(RowGroupMetaData rowGroupMetaData, ITsRandomAccessFileReader raf) {
         Logger.debug("init a new RowGroupReader..");
         seriesTypeMap = new HashMap<>();
         deltaObjectUID = rowGroupMetaData.getDeltaObjectUID();
@@ -117,11 +117,11 @@ public class RowGroupReader {
         this.valueReaders = valueReaders;
     }
 
-    public TSRandomAccessFileReader getRaf() {
+    public ITsRandomAccessFileReader getRaf() {
         return raf;
     }
 
-    public void setRaf(TSRandomAccessFileReader raf) {
+    public void setRaf(ITsRandomAccessFileReader raf) {
         this.raf = raf;
     }
 

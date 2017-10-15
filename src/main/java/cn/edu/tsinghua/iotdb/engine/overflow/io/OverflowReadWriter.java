@@ -5,8 +5,8 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.RandomAccessFile;
 
-import cn.edu.tsinghua.tsfile.common.utils.TSRandomAccessFileReader;
-import cn.edu.tsinghua.tsfile.common.utils.TSRandomAccessFileWriter;
+import cn.edu.tsinghua.tsfile.common.utils.ITsRandomAccessFileReader;
+import cn.edu.tsinghua.tsfile.common.utils.ITsRandomAccessFileWriter;
 
 /**
  * The stream of bytes for overflow read and write
@@ -15,7 +15,7 @@ import cn.edu.tsinghua.tsfile.common.utils.TSRandomAccessFileWriter;
  * @author liukun
  *
  */
-public class OverflowReadWriter extends OutputStream implements TSRandomAccessFileReader, TSRandomAccessFileWriter {
+public class OverflowReadWriter extends OutputStream implements ITsRandomAccessFileReader, ITsRandomAccessFileWriter {
 	private RandomAccessFile raf;
 	private final String filePath;
 	private final int onePassCopySize = 4 * 1024 * 1024;
