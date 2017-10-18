@@ -339,8 +339,8 @@ public class OverflowProcessor extends LRUProcessor {
 	}
 
 	public List<Object> query(String deltaObjectId, String measurementId, SingleSeriesFilterExpression timeFilter,
-			SingleSeriesFilterExpression freqFilter, SingleSeriesFilterExpression valueFilter) {
-		return ofSupport.query(deltaObjectId, measurementId, timeFilter, freqFilter, valueFilter);
+			SingleSeriesFilterExpression freqFilter, SingleSeriesFilterExpression valueFilter, TSDataType dataType) {
+		return ofSupport.query(deltaObjectId, measurementId, timeFilter, freqFilter, valueFilter, dataType);
 	}
 
 	private void checkMemorySize() throws OverflowProcessorException {
