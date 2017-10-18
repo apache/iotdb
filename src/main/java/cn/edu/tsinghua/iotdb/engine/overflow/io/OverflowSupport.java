@@ -88,21 +88,7 @@ public class OverflowSupport {
 				List<TimeSeriesChunkMetaData> seriesList = senEntry.getValue();
 				TimeSeriesChunkMetaData first = seriesList.get(0);
 				Compressor compressor = Compressor.getCompressor(first.getProperties().getCompression());
-				// check data type for delete time series
-				TSDataType mType = null;
-				if (MManager.getInstance().pathExist((deltaObjectId + "." + measurementId))) {
-					try {
-						mType = MManager.getInstance().getSeriesType(deltaObjectId + "." + measurementId);
-					} catch (PathErrorException e) {
-						throw new IOException(e);
-					}
-				} else {
-					continue;
-				}
 				TSDataType type = first.getVInTimeSeriesChunkMetaData().getDataType();
-				if (!mType.equals(type)) {
-					continue;
-				}
 				OverflowSeriesImpl seriesImpl = new OverflowSeriesImpl(measurementId, type, fileWriter, compressor,
 						senEntry.getValue());
 				seriesImplMap.put(measurementId, seriesImpl);
@@ -121,21 +107,7 @@ public class OverflowSupport {
 					if (!overflowMap.get(deltaObjectId).containsKey(measurementId)) {
 						TimeSeriesChunkMetaData first = seriesListMeta.getMetaDatas().get(0);
 						Compressor compressor = Compressor.getCompressor(first.getProperties().getCompression());
-						// check data type for delete time series
-						TSDataType mType = null;
-						if (MManager.getInstance().pathExist((deltaObjectId + "." + measurementId))) {
-							try {
-								mType = MManager.getInstance().getSeriesType(deltaObjectId + "." + measurementId);
-							} catch (PathErrorException e) {
-								throw new IOException(e);
-							}
-						} else {
-							continue;
-						}
 						TSDataType type = first.getVInTimeSeriesChunkMetaData().getDataType();
-						if (!mType.equals(type)) {
-							continue;
-						}
 						OverflowSeriesImpl overflowSeriesImpl = new OverflowSeriesImpl(measurementId, type, fileWriter,
 								compressor, null);
 						overflowMap.get(deltaObjectId).put(measurementId, overflowSeriesImpl);
@@ -285,7 +257,7 @@ public class OverflowSupport {
 	 * @return
 	 */
 	public List<Object> query(String deltaObjectId, String measurementId, SingleSeriesFilterExpression timeFilter,
-			SingleSeriesFilterExpression freqFilter, SingleSeriesFilterExpression valueFilter) {
+			SingleSeriesFilterExpression freqFilter, SingleSeriesFilterExpression valueFilter, TSDataType dataType) {
 		List<Object> res;
 		if (!checkRecordForQuery(deltaObjectId, measurementId)) {
 			res = new ArrayList<>();
@@ -295,8 +267,7 @@ public class OverflowSupport {
 			res.add(timeFilter);
 			return res;
 		}
-
-		res = overflowMap.get(deltaObjectId).get(measurementId).query(timeFilter, freqFilter, valueFilter);
+		res = overflowMap.get(deltaObjectId).get(measurementId).query(timeFilter, freqFilter, valueFilter, dataType);
 		if (res == null) {
 			res = new ArrayList<>();
 			res.add(null);

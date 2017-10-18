@@ -110,7 +110,7 @@ public class OverflowSeriesImplTest {
 			e.printStackTrace();
 			fail(e.getMessage());
 		}
-		
+
 		// change file name
 		File overflowFile = new File(filePath);
 		File overflowMergeFile = new File(mergeFilePath);
@@ -166,7 +166,7 @@ public class OverflowSeriesImplTest {
 			seriesimpl.insert(i, BytesUtils.intToBytes(i));
 		}
 		// no merge query
-		List<Object> queryResult = seriesimpl.query(null, null, null);
+		List<Object> queryResult = seriesimpl.query(null, null, null, TSDataType.INT32);
 		DynamicOneColumnData insertData = (DynamicOneColumnData) queryResult.get(0);
 		assertEquals(20, insertData.valueLength);
 		for (int i = 0; i < 20; i++) {
@@ -177,14 +177,14 @@ public class OverflowSeriesImplTest {
 		seriesimpl.switchWorkingToMerging();
 		seriesimpl.setMergingSeriesImpl(mergeseriesimpl);
 
-		queryResult = seriesimpl.query(null, null, null);
+		queryResult = seriesimpl.query(null, null, null, TSDataType.INT32);
 		try {
 			seriesimpl.switchMergeToWorking();
 		} catch (IOException e) {
 			e.printStackTrace();
 			fail(e.getMessage());
 		}
-		
+
 		insertData = (DynamicOneColumnData) queryResult.get(0);
 		assertEquals(40, insertData.valueLength);
 		for (int i = 0; i < 40; i++) {
@@ -236,7 +236,7 @@ public class OverflowSeriesImplTest {
 		assertEquals(false, seriesimpl.isEmptyForWrite());
 		Assert.assertEquals(1, seriesimpl.getOFSeriesListMetadata().getMetaDatas().size());
 		// query insert data
-		List<Object> result = seriesimpl.query(null, null, null);
+		List<Object> result = seriesimpl.query(null, null, null, TSDataType.INT32);
 		DynamicOneColumnData insertresult = (DynamicOneColumnData) result.get(0);
 		assertEquals(false, insertresult == null);
 		assertEquals(10, insertresult.valueLength);
@@ -257,7 +257,7 @@ public class OverflowSeriesImplTest {
 		}
 		Assert.assertEquals(2, seriesimpl.getOFSeriesListMetadata().getMetaDatas().size());
 		// query update data
-		result = seriesimpl.query(null, null, null);
+		result = seriesimpl.query(null, null, null, TSDataType.INT32);
 		DynamicOneColumnData updateresult = (DynamicOneColumnData) result.get(1);
 		assertEquals(10, updateresult.valueLength);
 		assertEquals(20, updateresult.timeLength);
@@ -287,7 +287,7 @@ public class OverflowSeriesImplTest {
 		}
 		Assert.assertEquals(4, seriesimpl.getOFSeriesListMetadata().getMetaDatas().size());
 
-		result = seriesimpl.query(null, null, null);
+		result = seriesimpl.query(null, null, null, TSDataType.INT32);
 		insertresult = (DynamicOneColumnData) result.get(0);
 		updateresult = (DynamicOneColumnData) result.get(1);
 		assertEquals(0, updateresult.valueLength);
@@ -302,7 +302,7 @@ public class OverflowSeriesImplTest {
 			fail("Flush overflowfileio failed");
 		}
 		Assert.assertEquals(4, seriesimpl.getOFSeriesListMetadata().getMetaDatas().size());
-		
+
 		try {
 			seriesimpl.close();
 		} catch (IOException e) {
@@ -350,7 +350,7 @@ public class OverflowSeriesImplTest {
 		assertEquals(false, seriesimpl.isEmptyForWrite());
 		Assert.assertEquals(1, seriesimpl.getOFSeriesListMetadata().getMetaDatas().size());
 		// query
-		List<Object> result = seriesimpl.query(null, null, null);
+		List<Object> result = seriesimpl.query(null, null, null, TSDataType.INT64);
 		DynamicOneColumnData insertresult = (DynamicOneColumnData) result.get(0);
 		assertEquals(false, insertresult == null);
 		assertEquals(10, insertresult.valueLength);
@@ -385,7 +385,7 @@ public class OverflowSeriesImplTest {
 		assertEquals(false, seriesimpl.isEmptyForWrite());
 		Assert.assertEquals(1, seriesimpl.getOFSeriesListMetadata().getMetaDatas().size());
 		// query
-		List<Object> result = seriesimpl.query(null, null, null);
+		List<Object> result = seriesimpl.query(null, null, null, TSDataType.FLOAT);
 		DynamicOneColumnData insertresult = (DynamicOneColumnData) result.get(0);
 		assertEquals(false, insertresult == null);
 		assertEquals(10, insertresult.valueLength);
@@ -421,7 +421,7 @@ public class OverflowSeriesImplTest {
 		assertEquals(false, seriesimpl.isEmptyForWrite());
 		Assert.assertEquals(1, seriesimpl.getOFSeriesListMetadata().getMetaDatas().size());
 		// query
-		List<Object> result = seriesimpl.query(null, null, null);
+		List<Object> result = seriesimpl.query(null, null, null, TSDataType.DOUBLE);
 		DynamicOneColumnData insertresult = (DynamicOneColumnData) result.get(0);
 		assertEquals(false, insertresult == null);
 		assertEquals(10, insertresult.valueLength);
@@ -456,7 +456,7 @@ public class OverflowSeriesImplTest {
 		assertEquals(false, seriesimpl.isEmptyForWrite());
 		Assert.assertEquals(1, seriesimpl.getOFSeriesListMetadata().getMetaDatas().size());
 		// query
-		List<Object> result = seriesimpl.query(null, null, null);
+		List<Object> result = seriesimpl.query(null, null, null, TSDataType.BOOLEAN);
 		DynamicOneColumnData insertresult = (DynamicOneColumnData) result.get(0);
 		assertEquals(false, insertresult == null);
 		assertEquals(10, insertresult.valueLength);
@@ -491,7 +491,7 @@ public class OverflowSeriesImplTest {
 		assertEquals(false, seriesimpl.isEmptyForWrite());
 		Assert.assertEquals(1, seriesimpl.getOFSeriesListMetadata().getMetaDatas().size());
 		// query
-		List<Object> result = seriesimpl.query(null, null, null);
+		List<Object> result = seriesimpl.query(null, null, null, TSDataType.TEXT);
 		DynamicOneColumnData insertresult = (DynamicOneColumnData) result.get(0);
 		assertEquals(false, insertresult == null);
 		assertEquals(10, insertresult.valueLength);
@@ -511,13 +511,13 @@ public class OverflowSeriesImplTest {
 	public void testEnum() {
 
 		seriesimpl = createSeriesImpl(TSDataType.ENUMS);
-		
+
 		try {
 			seriesimpl.close();
 		} catch (IOException e) {
 			e.printStackTrace();
 			fail(e.getMessage());
 		}
-		//fail("Not support Type");
+		// fail("Not support Type");
 	}
 }

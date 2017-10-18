@@ -76,7 +76,6 @@ public class OverflowSeriesImpl {
 		queryOverflowIndex = new IntervalTreeOperation(type);
 	}
 
-
 	/**
 	 * Insert one data point into the overflow index with the special timestamp
 	 * 
@@ -123,7 +122,7 @@ public class OverflowSeriesImpl {
 	 * @return
 	 */
 	public List<Object> query(SingleSeriesFilterExpression timeFilter, SingleSeriesFilterExpression freqFilter,
-			SingleSeriesFilterExpression valueFilter) {
+			SingleSeriesFilterExpression valueFilter, TSDataType dataType) {
 		List<Object> ret = null;
 		overflowConvertLock.readLock().lock();
 		try {
@@ -131,10 +130,11 @@ public class OverflowSeriesImpl {
 			if (metaForReader == null && metaForWriter.isEmpty() && workingOverflowIndex.isEmpty() && !isFlushing
 					&& !isMerging)
 				return ret;
-			DynamicOneColumnData newerData = queryToDynamicOneColumnData(timeFilter, freqFilter, valueFilter, null);
+			DynamicOneColumnData newerData = queryToDynamicOneColumnData(timeFilter, freqFilter, valueFilter, null,
+					dataType);
 			if (isMerging) {
 				newerData = mergingSeriesImpl.queryToDynamicOneColumnData(timeFilter, freqFilter, valueFilter,
-						newerData);
+						newerData, dataType);
 			}
 			ret = queryOverflowIndex.getDynamicList(timeFilter, valueFilter, freqFilter, newerData);
 		} finally {
@@ -145,22 +145,27 @@ public class OverflowSeriesImpl {
 
 	private DynamicOneColumnData queryToDynamicOneColumnData(SingleSeriesFilterExpression timeFilter,
 			SingleSeriesFilterExpression freqFilter, SingleSeriesFilterExpression valueFilter,
-			DynamicOneColumnData newerData) {
+			DynamicOneColumnData newerData, TSDataType dataType) {
 		if (workingOverflowIndex != null)
 			newerData = workingOverflowIndex.queryMemory(timeFilter, valueFilter, freqFilter, newerData);
 		if (isFlushing)
 			newerData = flushingOverflowIndex.queryMemory(timeFilter, valueFilter, freqFilter, newerData);
 		if (!metaForWriter.isEmpty())
-			newerData = readFileFromFileBlockForWriter(newerData, metaForWriter, timeFilter, freqFilter, valueFilter);
+			newerData = readFileFromFileBlockForWriter(newerData, metaForWriter, timeFilter, freqFilter, valueFilter,
+					dataType);
 		if (metaForReader != null)
-			newerData = readFileFromFileBlockForReader(newerData, metaForReader, timeFilter, freqFilter, valueFilter);
+			newerData = readFileFromFileBlockForReader(newerData, metaForReader, timeFilter, freqFilter, valueFilter,
+					dataType);
 		return newerData;
 	}
 
 	private DynamicOneColumnData readFileFromFileBlockForReader(DynamicOneColumnData newerData,
 			List<TimeSeriesChunkMetaData> TimeSeriesChunkMetaDataList, SingleSeriesFilterExpression timeFilter,
-			SingleSeriesFilterExpression freqFilter, SingleSeriesFilterExpression valueFilter) {
+			SingleSeriesFilterExpression freqFilter, SingleSeriesFilterExpression valueFilter, TSDataType dataType) {
 		for (TimeSeriesChunkMetaData seriesMetaData : TimeSeriesChunkMetaDataList) {
+			if (!seriesMetaData.getVInTimeSeriesChunkMetaData().getDataType().equals(dataType)) {
+				continue;
+			}
 			int chunkSize = (int) seriesMetaData.getTotalByteSize();
 			long offset = seriesMetaData.getProperties().getFileOffset();
 			InputStream in = overflowFileIO.getSeriesChunkBytes(chunkSize, offset);
@@ -178,9 +183,12 @@ public class OverflowSeriesImpl {
 
 	private DynamicOneColumnData readFileFromFileBlockForWriter(DynamicOneColumnData newerData,
 			List<TimeSeriesChunkMetaData> TimeSeriesChunkMetaDataList, SingleSeriesFilterExpression timeFilter,
-			SingleSeriesFilterExpression freqFilter, SingleSeriesFilterExpression valueFilter) {
+			SingleSeriesFilterExpression freqFilter, SingleSeriesFilterExpression valueFilter, TSDataType dataType) {
 		for (int i = TimeSeriesChunkMetaDataList.size() - 1; i >= 0; i--) {
 			TimeSeriesChunkMetaData seriesMetaData = TimeSeriesChunkMetaDataList.get(i);
+			if (!seriesMetaData.getVInTimeSeriesChunkMetaData().getDataType().equals(dataType)) {
+				continue;
+			}
 			int chunkSize = (int) seriesMetaData.getTotalByteSize();
 			long offset = seriesMetaData.getProperties().getFileOffset();
 			InputStream in = overflowFileIO.getSeriesChunkBytes(chunkSize, offset);
@@ -286,15 +294,15 @@ public class OverflowSeriesImpl {
 	// bug: should be deprecated
 	public void switchMergeToWorking() throws IOException {
 		overflowConvertLock.writeLock().lock();
-		if(mergingSeriesImpl!=null){
+		if (mergingSeriesImpl != null) {
 			mergingSeriesImpl.close();
 		}
 		mergingSeriesImpl = null;
 		isMerging = false;
 		overflowConvertLock.writeLock().unlock();
 	}
-	
-	public void close() throws IOException{
+
+	public void close() throws IOException {
 		overflowFileIO.close();
 	}
 }

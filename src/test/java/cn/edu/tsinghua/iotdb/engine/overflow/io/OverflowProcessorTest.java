@@ -76,7 +76,7 @@ public class OverflowProcessorTest {
 			System.out.println("filenode manager flush action");
 		}
 	};
-	
+
 	private String overflowDataDir;
 
 	@Before
@@ -109,7 +109,7 @@ public class OverflowProcessorTest {
 		EngineTestHelper.delete(tsdbconfig.metadataDir);
 		EngineTestHelper.delete(tsdbconfig.walFolder);
 		tsdbconfig.overflowDataDir = overflowDataDir;
-		
+
 	}
 
 	@Test
@@ -128,7 +128,7 @@ public class OverflowProcessorTest {
 		try {
 			ofprocessor = new OverflowProcessor(nameSpacePath, parameters);
 			ofprocessor.insert(deltaObjectId, measurementIds[0], 1, dataTypes[0], Integer.toString(10));
-			List<Object> result = ofprocessor.query(deltaObjectId, measurementIds[0], null, null, null);
+			List<Object> result = ofprocessor.query(deltaObjectId, measurementIds[0], null, null, null, dataTypes[0]);
 			DynamicOneColumnData insertDate = (DynamicOneColumnData) result.get(0);
 			assertEquals(1, insertDate.valueLength);
 			assertEquals(1, insertDate.getTime(0));
@@ -143,7 +143,7 @@ public class OverflowProcessorTest {
 			ras.write(new byte[10]);
 			ras.close();
 			ofprocessor = new OverflowProcessor(nameSpacePath, parameters);
-			result = ofprocessor.query(deltaObjectId, measurementIds[0], null, null, null);
+			result = ofprocessor.query(deltaObjectId, measurementIds[0], null, null, null, dataTypes[0]);
 			insertDate = (DynamicOneColumnData) result.get(0);
 			assertEquals(1, insertDate.valueLength);
 			assertEquals(1, insertDate.getTime(0));
@@ -167,7 +167,7 @@ public class OverflowProcessorTest {
 			for (int i = 1; i < 11; i++) {
 				ofprocessor.insert(deltaObjectId, measurementIds[0], i, dataTypes[0], Integer.toString(i));
 			}
-			List<Object> result = ofprocessor.query(deltaObjectId, measurementIds[0], null, null, null);
+			List<Object> result = ofprocessor.query(deltaObjectId, measurementIds[0], null, null, null, dataTypes[0]);
 			DynamicOneColumnData insertDate = (DynamicOneColumnData) result.get(0);
 			assertEquals(10, insertDate.valueLength);
 			assertEquals(10, insertDate.timeLength);
@@ -178,7 +178,7 @@ public class OverflowProcessorTest {
 			ofprocessor.close();
 
 			ofprocessor = new OverflowProcessor(nameSpacePath, parameters);
-			result = ofprocessor.query(deltaObjectId, measurementIds[0], null, null, null);
+			result = ofprocessor.query(deltaObjectId, measurementIds[0], null, null, null, dataTypes[0]);
 			insertDate = (DynamicOneColumnData) result.get(0);
 			assertEquals(10, insertDate.valueLength);
 			assertEquals(10, insertDate.timeLength);
@@ -202,7 +202,7 @@ public class OverflowProcessorTest {
 			for (int i = 1; i < 20; i = i + 2) {
 				ofprocessor.update(deltaObjectId, measurementIds[1], i, i + 1, dataTypes[1], Long.toString(i));
 			}
-			List<Object> result = ofprocessor.query(deltaObjectId, measurementIds[1], null, null, null);
+			List<Object> result = ofprocessor.query(deltaObjectId, measurementIds[1], null, null, null, dataTypes[0]);
 			DynamicOneColumnData updateData = (DynamicOneColumnData) result.get(1);
 			assertEquals(10, updateData.valueLength);
 			assertEquals(20, updateData.timeLength);
@@ -230,7 +230,7 @@ public class OverflowProcessorTest {
 			// delete data
 			// delete time<5
 			ofprocessor.delete(deltaObjectId, measurementIds[0], 4, dataTypes[0]);
-			List<Object> result = ofprocessor.query(deltaObjectId, measurementIds[0], null, null, null);
+			List<Object> result = ofprocessor.query(deltaObjectId, measurementIds[0], null, null, null, dataTypes[0]);
 			DynamicOneColumnData insertDate = (DynamicOneColumnData) result.get(0);
 			assertEquals(6, insertDate.valueLength);
 			for (int i = 5; i < 11; i++) {
@@ -238,7 +238,7 @@ public class OverflowProcessorTest {
 				assertEquals(i, insertDate.getInt(i - 5));
 			}
 			ofprocessor.insert(deltaObjectId, measurementIds[0], 1, dataTypes[0], String.valueOf(1));
-			result = ofprocessor.query(deltaObjectId, measurementIds[0], null, null, null);
+			result = ofprocessor.query(deltaObjectId, measurementIds[0], null, null, null, dataTypes[0]);
 			insertDate = (DynamicOneColumnData) result.get(0);
 			assertEquals(7, insertDate.valueLength);
 			assertEquals(1, insertDate.getTime(0));
@@ -261,7 +261,7 @@ public class OverflowProcessorTest {
 			}
 			// wait to flush
 			Thread.sleep(100);
-			List<Object> result = ofprocessor.query(deltaObjectId, measurementIds[0], null, null, null);
+			List<Object> result = ofprocessor.query(deltaObjectId, measurementIds[0], null, null, null, dataTypes[0]);
 			DynamicOneColumnData insertData = (DynamicOneColumnData) result.get(0);
 			assertEquals(1000, insertData.valueLength);
 			for (int i = 1; i < 1001; i++) {
@@ -297,7 +297,7 @@ public class OverflowProcessorTest {
 			assertEquals(0, new File(overflowfilePath).length());
 			assertEquals(false, new File(overflowrestorefilePath).exists());
 			// query data
-			List<Object> result = ofprocessor.query(deltaObjectId, measurementIds[0], null, null, null);
+			List<Object> result = ofprocessor.query(deltaObjectId, measurementIds[0], null, null, null, dataTypes[0]);
 			DynamicOneColumnData insertData = (DynamicOneColumnData) result.get(0);
 			assertEquals(1000, insertData.valueLength);
 			for (int i = 1; i < 1001; i++) {
@@ -305,11 +305,11 @@ public class OverflowProcessorTest {
 				assertEquals(i, insertData.getInt(i - 1));
 			}
 			ofprocessor.switchMergeToWorking();
-			result = ofprocessor.query(deltaObjectId, measurementIds[0], null, null, null);
+			result = ofprocessor.query(deltaObjectId, measurementIds[0], null, null, null, dataTypes[0]);
 			insertData = (DynamicOneColumnData) result.get(0);
 			assertEquals(null, insertData);
 			ofprocessor.insert(deltaObjectId, measurementIds[0], 1010, dataTypes[0], String.valueOf(1010));
-			result = ofprocessor.query(deltaObjectId, measurementIds[0], null, null, null);
+			result = ofprocessor.query(deltaObjectId, measurementIds[0], null, null, null, dataTypes[0]);
 			insertData = (DynamicOneColumnData) result.get(0);
 			assertEquals(1, insertData.valueLength);
 			assertEquals(1010, insertData.getTime(0));
@@ -317,7 +317,7 @@ public class OverflowProcessorTest {
 			ofprocessor.close();
 
 			ofprocessor = new OverflowProcessor(nameSpacePath, parameters);
-			result = ofprocessor.query(deltaObjectId, measurementIds[0], null, null, null);
+			result = ofprocessor.query(deltaObjectId, measurementIds[0], null, null, null, dataTypes[0]);
 			insertData = (DynamicOneColumnData) result.get(0);
 			assertEquals(1, insertData.valueLength);
 			assertEquals(1010, insertData.getTime(0));
@@ -344,7 +344,7 @@ public class OverflowProcessorTest {
 
 		// check query
 
-		//fail("restore from merege");
+		// fail("restore from merege");
 	}
 
 	@Test
@@ -357,9 +357,7 @@ public class OverflowProcessorTest {
 		// optional: write data in new file
 
 		// query data and check data
-		
-		
 
-		//fail("merge and query");
+		// fail("merge and query");
 	}
 }
