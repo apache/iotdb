@@ -75,8 +75,8 @@ public class LogicalGenerator {
 	/**
 	 * input an astNode parsing by {@code antlr} and analyze it.
 	 * 
-	 * @throws QueryProcessorException
-	 * @throws ArgsErrorException
+	 * @throws QueryProcessorException exception in query process
+	 * @throws ArgsErrorException args error
 	 *
 	 */
 	private void analyze(ASTNode astNode) throws QueryProcessorException, ArgsErrorException {
@@ -206,7 +206,7 @@ public class LogicalGenerator {
 	private void analyzePropertyLink(ASTNode astNode) {
 		PropertyOperator propertyOperator = new PropertyOperator(SQLConstant.TOK_PROPERTY_LINK,
 				PropertyType.ADD_PROPERTY_TO_METADATA);
-		Path metaPath = parseRootPath(astNode.getChild(0));
+		Path metaPath = parsePath(astNode.getChild(0));
 		propertyOperator.setMetadataPath(metaPath);
 		Path propertyLabel = parsePropertyAndLabel(astNode, 1);
 		propertyOperator.setPropertyPath(propertyLabel);
@@ -216,7 +216,7 @@ public class LogicalGenerator {
 	private void analyzePropertyUnLink(ASTNode astNode) {
 		PropertyOperator propertyOperator = new PropertyOperator(SQLConstant.TOK_PROPERTY_UNLINK,
 				PropertyType.DEL_PROPERTY_FROM_METADATA);
-		Path metaPath = parseRootPath(astNode.getChild(0));
+		Path metaPath = parsePath(astNode.getChild(0));
 		propertyOperator.setMetadataPath(metaPath);
 		Path propertyLabel = parsePropertyAndLabel(astNode, 1);
 		propertyOperator.setPropertyPath(propertyLabel);
@@ -224,7 +224,7 @@ public class LogicalGenerator {
 	}
 
 	private void analyzeMetadataCreate(ASTNode astNode) throws MetadataArgsErrorException {
-		Path series = parseRootPath(astNode.getChild(0).getChild(0));
+		Path series = parsePath(astNode.getChild(0).getChild(0));
 		ASTNode paramNode = astNode.getChild(1);
 		String dataType = paramNode.getChild(0).getChild(0).getText();
 		String encodingType = paramNode.getChild(1).getChild(0).getText();
@@ -300,17 +300,20 @@ public class LogicalGenerator {
 		InsertOp.setValueList(valueList);
 	}
 
-	private void analyzeUpdate(ASTNode astNode) throws QueryProcessorException {
-		if (astNode.getChildCount() != 3)
-			throw new LogicalOperatorException("error format in UPDATE statement, please check whether SQL statement is correct." );
-		UpdateOperator updateOp = new UpdateOperator(SQLConstant.TOK_UPDATE);
-		initializedOperator = updateOp;
-		analyzeSelect(astNode.getChild(0));
-		if (astNode.getChild(1).getType() != TSParser.TOK_VALUE)
-			throw new LogicalOperatorException("error format in UPDATE statement, please check whether SQL statement is correct.");
-		updateOp.setValue(astNode.getChild(1).getChild(0).getText());
-		analyzeWhere(astNode.getChild(2));
-	}
+    private void analyzeUpdate(ASTNode astNode) throws QueryProcessorException {
+        if (astNode.getChildCount() > 3)
+            throw new LogicalOperatorException("UPDATE clause doesn't support multi-update yet.");
+        UpdateOperator updateOp = new UpdateOperator(SQLConstant.TOK_UPDATE);
+        initializedOperator = updateOp;
+        FromOperator fromOp = new FromOperator(TSParser.TOK_FROM);
+        fromOp.addPrefixTablePath(parsePath(astNode.getChild(0)));
+        updateOp.setFromOperator(fromOp);
+        SelectOperator selectOp = new SelectOperator(TSParser.TOK_SELECT);
+        selectOp.addSelectPath(parsePath(astNode.getChild(1).getChild(0)));
+        updateOp.setSelectOperator(selectOp);
+        updateOp.setValue(astNode.getChild(1).getChild(1).getText());
+        analyzeWhere(astNode.getChild(2));
+    }
 
 	private void analyzeDelete(ASTNode astNode) throws LogicalOperatorException {
 		initializedOperator = new DeleteOperator(SQLConstant.TOK_DELETE);
@@ -524,23 +527,22 @@ public class LogicalGenerator {
 
 	private Path parsePath(ASTNode node) {
 		int childCount = node.getChildCount();
-		String[] path = new String[node.getChildCount()];
-		for (int i = 0; i < childCount; i++) {
-			// path[i] = node.getChild(i).getText().toLowerCase();
-			path[i] = node.getChild(i).getText();
+		String[] path;
+		if(childCount == 1 && node.getChild(0).getType() == TSParser.TOK_ROOT){
+			ASTNode childNode = node.getChild(0);
+			childCount = childNode.getChildCount();
+			path = new String[childCount+1];
+			path[0] = SQLConstant.ROOT;
+			for (int i = 0; i < childCount; i++) {
+				path[i+1] = childNode.getChild(i).getText();
+			}
+		}else{
+			path = new String[childCount];
+			for (int i = 0; i < childCount; i++) {
+				path[i] = node.getChild(i).getText();
+			}
 		}
 		return new Path(new StringContainer(path, SystemConstant.PATH_SEPARATOR));
-	}
-
-	private Path parseRootPath(ASTNode node) {
-		StringContainer sc = new StringContainer(SystemConstant.PATH_SEPARATOR);
-		sc.addTail(SQLConstant.ROOT);
-		int childCount = node.getChildCount();
-		for (int i = 0; i < childCount; i++) {
-			// sc.addTail(node.getChild(i).getText().toLowerCase());
-			sc.addTail(node.getChild(i).getText());
-		}
-		return new Path(sc);
 	}
 
 	private String parseStringWithQuoto(String src) throws IllegalASTFormatException {
@@ -643,23 +645,19 @@ public class LogicalGenerator {
 			for (int i = 0; i < privileges.length; i++) {
 				privileges[i] = parseStringWithQuoto(privilegesNode.getChild(i).getText());
 			}
-			ASTNode pathNode = astNode.getChild(2);
-			String[] nodeNameList = new String[pathNode.getChildCount()];
-			for (int i = 0; i < nodeNameList.length; i++) {
-				nodeNameList[i] = pathNode.getChild(i).getText();
-			}
+			Path nodePath = parsePath(astNode.getChild(2));
 			if (astNode.getChild(0).getType() == TSParser.TOK_USER) {
 				// grant user
 				authorOperator = new AuthorOperator(SQLConstant.TOK_AUTHOR_GRANT, AuthorType.GRANT_USER);
 				authorOperator.setUserName(astNode.getChild(0).getChild(0).getText());
 				authorOperator.setPrivilegeList(privileges);
-				authorOperator.setNodeNameList(nodeNameList);
+				authorOperator.setNodeNameList(nodePath);
 			} else if (astNode.getChild(0).getType() == TSParser.TOK_ROLE) {
 				// grant role
 				authorOperator = new AuthorOperator(SQLConstant.TOK_AUTHOR_GRANT, AuthorType.GRANT_ROLE);
 				authorOperator.setRoleName(astNode.getChild(0).getChild(0).getText());
 				authorOperator.setPrivilegeList(privileges);
-				authorOperator.setNodeNameList(nodeNameList);
+				authorOperator.setNodeNameList(nodePath);
 			} else {
 				throw new IllegalASTFormatException("illegal ast tree in grant author command, please check you SQL statement");
 			}
@@ -683,23 +681,19 @@ public class LogicalGenerator {
 			for (int i = 0; i < privileges.length; i++) {
 				privileges[i] = parseStringWithQuoto(privilegesNode.getChild(i).getText());
 			}
-			ASTNode pathNode = astNode.getChild(2);
-			String[] nodeNameList = new String[pathNode.getChildCount()];
-			for (int i = 0; i < nodeNameList.length; i++) {
-				nodeNameList[i] = pathNode.getChild(i).getText();
-			}
+			Path nodePath = parsePath(astNode.getChild(2));
 			if (astNode.getChild(0).getType() == TSParser.TOK_USER) {
 				// revoke user
 				authorOperator = new AuthorOperator(SQLConstant.TOK_AUTHOR_REVOKE, AuthorType.REVOKE_USER);
 				authorOperator.setUserName(astNode.getChild(0).getChild(0).getText());
 				authorOperator.setPrivilegeList(privileges);
-				authorOperator.setNodeNameList(nodeNameList);
+				authorOperator.setNodeNameList(nodePath);
 			} else if (astNode.getChild(0).getType() == TSParser.TOK_ROLE) {
 				// revoke role
 				authorOperator = new AuthorOperator(SQLConstant.TOK_AUTHOR_REVOKE, AuthorType.REVOKE_ROLE);
 				authorOperator.setRoleName(astNode.getChild(0).getChild(0).getText());
 				authorOperator.setPrivilegeList(privileges);
-				authorOperator.setNodeNameList(nodeNameList);
+				authorOperator.setNodeNameList(nodePath);
 			} else {
 				throw new IllegalASTFormatException("illegal ast tree in grant author command, please check you SQL statement");
 			}
@@ -783,7 +777,8 @@ public class LogicalGenerator {
 	}
 
 	private void analyzeIndexCreate(ASTNode astNode) throws LogicalOperatorException {
-		Path path = parseRootPath(astNode.getChild(0).getChild(0));
+//		Path path = parseRootPath(astNode.getChild(0).getChild(0));
+		Path path = parsePath(astNode.getChild(0).getChild(0));
 		String indexName = astNode.getChild(0).getChild(1).getChild(0).getText();
 		if (!"kv-match".equals(indexName)) {
 			throw new LogicalOperatorException(

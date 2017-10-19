@@ -64,11 +64,6 @@ public class TestOnePassQpQuery {
                                                 "40, <root.laptop.d1.s1,41> <root.laptop.d2.s1,102> ",
                                                 "60, <root.laptop.d1.s1,61> <root.laptop.d2.s1,152> ",
                                                 "80, <root.laptop.d1.s1,81> <root.laptop.d2.s1,202> "}},
-                                {
-                                        "select root.laptop.d1.s2 where root.laptop.d1.s2 < 200",
-                                        new String[]{"50, <root.laptop.d1.s2,52> ",
-                                                "100, <root.laptop.d1.s2,102> ",
-                                                "150, <root.laptop.d1.s2,152> "}}
                         }
                 );
     }
