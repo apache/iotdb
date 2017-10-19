@@ -202,7 +202,7 @@ public class OverflowProcessorTest {
 			for (int i = 1; i < 20; i = i + 2) {
 				ofprocessor.update(deltaObjectId, measurementIds[1], i, i + 1, dataTypes[1], Long.toString(i));
 			}
-			List<Object> result = ofprocessor.query(deltaObjectId, measurementIds[1], null, null, null, dataTypes[0]);
+			List<Object> result = ofprocessor.query(deltaObjectId, measurementIds[1], null, null, null, dataTypes[1]);
 			DynamicOneColumnData updateData = (DynamicOneColumnData) result.get(1);
 			assertEquals(10, updateData.valueLength);
 			assertEquals(20, updateData.timeLength);
