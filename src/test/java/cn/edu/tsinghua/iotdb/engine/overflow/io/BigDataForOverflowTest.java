@@ -74,7 +74,7 @@ public class BigDataForOverflowTest {
 			System.out.println("filenode manager flush action");
 		}
 	};
-	
+
 	private String overflowDataDir = null;
 	private int rowGroupSize;
 
@@ -136,7 +136,8 @@ public class BigDataForOverflowTest {
 		// construct the time filter for the query
 		SingleSeriesFilterExpression timeFilter = FilterUtilsForOverflow.construct(null, null, "0",
 				"(>=" + 0 + ")&" + "(<=" + length + ")");
-		List<Object> queryResult = ofprocessor.query(deltaObjectId, measurementId, timeFilter, null, null);
+		List<Object> queryResult = ofprocessor.query(deltaObjectId, measurementId, timeFilter, null, null,
+				TSDataType.INT64);
 		DynamicOneColumnData insertData = (DynamicOneColumnData) queryResult.get(0);
 		assertEquals(length, insertData.valueLength);
 		try {
@@ -162,7 +163,7 @@ public class BigDataForOverflowTest {
 			fail(e1.getMessage());
 		}
 
-		queryResult = ofprocessor.query(deltaObjectId, measurementId, timeFilter, null, null);
+		queryResult = ofprocessor.query(deltaObjectId, measurementId, timeFilter, null, null, TSDataType.INT64);
 		insertData = (DynamicOneColumnData) queryResult.get(0);
 		assertEquals(length, insertData.valueLength);
 		try {
