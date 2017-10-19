@@ -287,10 +287,10 @@ public class OverflowQueryEngine {
                 recordReader.insertAllData = new InsertDynamicData(recordReader.bufferWritePageList, recordReader.compressionTypeName,
                         insertTrue, updateTrue, updateFalse,
                         newTimeFilter, null, freqFilter, getDataTypeByPath(path));
-                DynamicOneColumnData oneColDataList = recordReader.getValuesUseTimestampsWithOverflow(deltaObjectId, measurementId,
+                DynamicOneColumnData queryResult = recordReader.getValuesUseTimestampsWithOverflow(deltaObjectId, measurementId,
                         timestamps, updateTrue, recordReader.insertAllData, newTimeFilter);
-                oneColDataList.putOverflowInfo(insertTrue, updateTrue, updateFalse, newTimeFilter);
-                ret.mapRet.put(queryKey, oneColDataList);
+                queryResult.putOverflowInfo(insertTrue, updateTrue, updateFalse, newTimeFilter);
+                ret.mapRet.put(queryKey, queryResult);
             } else {
                 // reset the insertMemory read status
                 // recordReader.insertAllData.readStatusReset();
