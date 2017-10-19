@@ -27,7 +27,7 @@ import cn.edu.tsinghua.tsfile.timeseries.read.qp.Path;
 @RunWith(Parameterized.class)
 public class TSPlanContextAuthorTest {
     private static Path[] emptyPaths = new Path[] {};
-    private static Path[] testPaths = new Path[] {new Path("node1.a.b")};
+    private static Path[] testPaths = new Path[] {new Path("root.node1.a.b")};
 
     private String inputSQL;
     private Path[] paths;
@@ -40,10 +40,10 @@ public class TSPlanContextAuthorTest {
                 {"DROP USER username", emptyPaths},
                 {"CREATE ROLE rolename", emptyPaths},
                 {"DROP ROLE rolename", emptyPaths},
-                {"GRANT USER username PRIVILEGES 'create','insert' ON node1.a.b", testPaths},
-                {"REVOKE USER username PRIVILEGES 'create','insert' ON node1.a.b", testPaths},
-                {"GRANT ROLE rolename PRIVILEGES 'create','insert' ON node1.a.b", testPaths},
-                {"REVOKE ROLE rolename PRIVILEGES 'create','insert' ON node1.a.b", testPaths},
+                {"GRANT USER username PRIVILEGES 'create','insert' ON root.node1.a.b", testPaths},
+                {"REVOKE USER username PRIVILEGES 'create','insert' ON root.node1.a.b", testPaths},
+                {"GRANT ROLE rolename PRIVILEGES 'create','insert' ON root.node1.a.b", testPaths},
+                {"REVOKE ROLE rolename PRIVILEGES 'create','insert' ON root.node1.a.b", testPaths},
                 {"GRANT rolename TO username", emptyPaths},
                 {"REVOKE rolename FROM username", emptyPaths}});
     }

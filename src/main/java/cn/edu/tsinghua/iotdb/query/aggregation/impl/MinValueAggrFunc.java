@@ -1,6 +1,7 @@
 package cn.edu.tsinghua.iotdb.query.aggregation.impl;
 
 import java.io.IOException;
+import java.util.List;
 
 import cn.edu.tsinghua.iotdb.query.aggregation.AggregateFunction;
 import cn.edu.tsinghua.iotdb.query.aggregation.AggregationConstant;
@@ -25,10 +26,58 @@ public class MinValueAggrFunc extends AggregateFunction {
     }
 
     @Override
-    public boolean calculateValueFromPageHeader(PageHeader pageHeader) {
+    public void calculateValueFromPageHeader(PageHeader pageHeader) {
         Digest pageDigest = pageHeader.data_page_header.getDigest();
         DigestForFilter digest = new DigestForFilter(pageDigest.min, pageDigest.max, dataType);
         Comparable<?> minv = digest.getMinValue();
+        updateMinValue(minv);
+    }
+
+    @Override
+    public void calculateValueFromDataPage(DynamicOneColumnData dataInThisPage) throws IOException, ProcessorException {
+        if (dataInThisPage.valueLength == 0) {
+            return;
+        }
+        Comparable<?> minv = getMinValue(dataInThisPage);
+        updateMinValue(minv);
+    }
+
+    @Override
+    public int calculateValueFromDataPage(DynamicOneColumnData dataInThisPage, List<Long> timestamps, int timeIndex) {
+        return 0;
+    }
+
+    @Override
+    public void calculateValueFromLeftMemoryData(InsertDynamicData insertMemoryData) throws IOException, ProcessorException {
+        Object min_value = insertMemoryData.calcAggregation(AggregationConstant.MIN_VALUE);
+        if (min_value != null) {
+            updateMinValue((Comparable<?>) min_value);
+        }
+    }
+
+    @Override
+    public boolean calcAggregationUsingTimestamps(InsertDynamicData insertMemoryData, List<Long> timestamps, int timeIndex) throws IOException, ProcessorException {
+        while (timeIndex < timestamps.size()) {
+            if (insertMemoryData.hasInsertData()) {
+                if (timestamps.get(timeIndex) == insertMemoryData.getCurrentMinTime()) {
+                    Object value = insertMemoryData.getCurrentObjectValue();
+                    updateMinValue((Comparable<?>) value);
+                    timeIndex ++;
+                    insertMemoryData.removeCurrentValue();
+                } else if (timestamps.get(timeIndex) > insertMemoryData.getCurrentMinTime()) {
+                    insertMemoryData.removeCurrentValue();
+                } else {
+                    timeIndex += 1;
+                }
+            } else {
+                break;
+            }
+        }
+
+        return insertMemoryData.hasInsertData();
+    }
+
+    private void updateMinValue(Comparable<?> minv) {
         if (!hasSetValue) {
             result.data.putAnObject(minv);
             hasSetValue = true;
@@ -36,39 +85,6 @@ public class MinValueAggrFunc extends AggregateFunction {
             Comparable<?> v = result.data.getAnObject(0);
             if (compare(v, minv) > 0) {
                 result.data.setAnObject(0, minv);
-            }
-        }
-        return true;
-    }
-
-    @Override
-    public void calculateValueFromDataInThisPage(DynamicOneColumnData dataInThisPage) throws IOException, ProcessorException {
-        if (dataInThisPage instanceof InsertDynamicData) {
-            Object min_value = ((InsertDynamicData) dataInThisPage).calcAggregation(AggregationConstant.MIN_VALUE);
-            if (min_value != null) {
-                if (!hasSetValue) {
-                    result.data.putAnObject(min_value);
-                    hasSetValue = true;
-                } else {
-                    Comparable<?> v = result.data.getAnObject(0);
-                    if (compare(v, (Comparable<?>)min_value) > 0) {
-                        result.data.setAnObject(0, (Comparable<?>)min_value);
-                    }
-                }
-            }
-        } else {
-            if (dataInThisPage.valueLength == 0) {
-                return;
-            }
-            Comparable<?> minv = getMinValue(dataInThisPage);
-            if (!hasSetValue) {
-                result.data.putAnObject(minv);
-                hasSetValue = true;
-            } else {
-                Comparable<?> v = result.data.getAnObject(0);
-                if (compare(v, minv) > 0) {
-                    result.data.setAnObject(0, minv);
-                }
             }
         }
     }

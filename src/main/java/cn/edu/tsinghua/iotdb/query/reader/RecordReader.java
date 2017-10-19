@@ -11,6 +11,7 @@ import cn.edu.tsinghua.iotdb.query.aggregation.AggregateFunction;
 import cn.edu.tsinghua.iotdb.query.aggregation.AggregationResult;
 import cn.edu.tsinghua.iotdb.query.management.ReadLockManager;
 import cn.edu.tsinghua.iotdb.query.management.RecordReaderFactory;
+import cn.edu.tsinghua.tsfile.common.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -151,7 +152,7 @@ public class RecordReader {
      * @param valueFilter value filter
      * @return aggregation result
      * @throws ProcessorException aggregation invoking exception
-     * @throws IOException tsfile read exception
+     * @throws IOException TsFile read exception
      */
     public AggregationResult aggregate(String deltaObjectId, String measurementId, AggregateFunction func,
                                        DynamicOneColumnData updateTrue, DynamicOneColumnData updateFalse, InsertDynamicData insertMemoryData,
@@ -170,13 +171,17 @@ public class RecordReader {
 
         // add left insert values
         if (insertMemoryData != null && insertMemoryData.hasInsertData()) {
-            func.calculateFromLeftMemoryData(insertMemoryData);
+            func.calculateValueFromLeftMemoryData(insertMemoryData);
         }
         return func.result;
     }
 
     /**
-     * Calculate the aggregate result using the common timestamps.
+     * <p>
+     * Calculate the aggregate result using the given timestamps.
+     * Return a pair of AggregationResult and Boolean, AggregationResult represents the aggregation result,
+     * Boolean represents that whether there still has unread data.
+     * </p>
      *
      * @param deltaObjectId deltaObjectId deltaObjectId of <code>Path</code>
      * @param measurementId measurementId of <code>Path</code>
@@ -188,32 +193,42 @@ public class RecordReader {
      * @param freqFilter frequency filter
      * @param valueFilter value filter
      * @param timestamps timestamps calculated by the cross filter
-     * @return aggregation result
+     * @param aggreData aggregation result calculated last time //TODO this parameter is unnecessary?
+     * @return aggregation result and whether still has unread data
      * @throws ProcessorException aggregation invoking exception
-     * @throws IOException tsfile read exception
+     * @throws IOException TsFile read exception
      */
-    public AggregationResult aggregateUsingTimestamps(String deltaObjectId, String measurementId, AggregateFunction func,
-                                                      DynamicOneColumnData updateTrue, DynamicOneColumnData updateFalse, InsertDynamicData insertMemoryData,
-                                                      SingleSeriesFilterExpression timeFilter, SingleSeriesFilterExpression freqFilter, SingleSeriesFilterExpression valueFilter,
-                                                      List<Long> timestamps, DynamicOneColumnData aggreData
-    ) throws ProcessorException, IOException, PathErrorException {
+    public Pair<AggregationResult, Boolean> aggregateUsingTimestamps(String deltaObjectId, String measurementId, AggregateFunction func,
+                                                                     DynamicOneColumnData updateTrue, DynamicOneColumnData updateFalse, InsertDynamicData insertMemoryData,
+                                                                     SingleSeriesFilterExpression timeFilter, SingleSeriesFilterExpression freqFilter, SingleSeriesFilterExpression valueFilter,
+                                                                     List<Long> timestamps, DynamicOneColumnData aggreData
+    ) throws ProcessorException, IOException {
 
-        TSDataType dataType = MManager.getInstance().getSeriesType(deltaObjectId + "." + measurementId);
+        boolean hasUnReadData = false;
+
         List<RowGroupReader> rowGroupReaderList = readerManager.getRowGroupReaderListByDeltaObject(deltaObjectId);
 
+        int commonTimestampsIndex = 0;
+        // TODO if the RowGroupReader.ValueReaders.get(measurementId) has been read, how to avoid it?
         for (RowGroupReader rowGroupReader : rowGroupReaderList) {
-            if (rowGroupReader.getValueReaders().containsKey(measurementId) &&
-                    rowGroupReader.getValueReaders().get(measurementId).getDataType().equals(dataType)) {
-                rowGroupReader.getValueReaders().get(measurementId)
+            if (rowGroupReader.getValueReaders().containsKey(measurementId)) {
+                commonTimestampsIndex = rowGroupReader.getValueReaders().get(measurementId)
                         .aggregateUsingTimestamps(func, insertMemoryData, updateTrue, updateFalse, timeFilter, freqFilter, timestamps, aggreData);
             }
         }
 
         // calc aggregation using memory data
         if (insertMemoryData != null && insertMemoryData.hasInsertData()) {
-            func.calcAggregationUsingTimestamps(insertMemoryData, timestamps);
+            hasUnReadData = func.calcAggregationUsingTimestamps(insertMemoryData, timestamps, commonTimestampsIndex);
+        } else {
+            if (commonTimestampsIndex < timestamps.size()) {
+                hasUnReadData = false;
+            } else {
+                hasUnReadData = true;
+            }
         }
-        return func.result;
+
+        return new Pair<>(func.result, hasUnReadData);
     }
 
     /**

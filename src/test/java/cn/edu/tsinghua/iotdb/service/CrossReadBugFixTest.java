@@ -28,12 +28,13 @@ public class CrossReadBugFixTest {
     private final String d1s1 = "root.vehicle.d1.s1";
 
     private String[] sqls = new String[]{
+    			"SET STORAGE GROUP TO root.vehicle",
             "CREATE TIMESERIES root.vehicle.d1.s0 WITH DATATYPE=INT32, ENCODING=RLE",
             "CREATE TIMESERIES root.vehicle.d0.s2 WITH DATATYPE=FLOAT, ENCODING=RLE",
             "CREATE TIMESERIES root.vehicle.d0.s3 WITH DATATYPE=TEXT, ENCODING=PLAIN",
             "CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE",
             "CREATE TIMESERIES root.vehicle.d0.s1 WITH DATATYPE=INT64, ENCODING=RLE",
-            "SET STORAGE GROUP TO root.vehicle",
+            
 
             "insert into root.vehicle.d0(timestamp,s0) values(1,101)",
             "insert into root.vehicle.d0(timestamp,s0) values(2,198)",
@@ -83,58 +84,66 @@ public class CrossReadBugFixTest {
 
     private Daemon deamon;
 
-    //@Before
+    private boolean testFlag = false;
+
+    @Before
     public void setUp() throws Exception {
-        TsfileDBConfig config = TsfileDBDescriptor.getInstance().getConfig();
-        overflowDataDirPre = config.overflowDataDir;
-        fileNodeDirPre = config.fileNodeDir;
-        bufferWriteDirPre = config.bufferWriteDir;
-        metadataDirPre = config.metadataDir;
-        derbyHomePre = config.derbyHome;
+        if (testFlag) {
+            TsfileDBConfig config = TsfileDBDescriptor.getInstance().getConfig();
+            overflowDataDirPre = config.overflowDataDir;
+            fileNodeDirPre = config.fileNodeDir;
+            bufferWriteDirPre = config.bufferWriteDir;
+            metadataDirPre = config.metadataDir;
+            derbyHomePre = config.derbyHome;
 
-        TSFileConfig tsFileConfig = TSFileDescriptor.getInstance().getConfig();
-        tsFileConfig.maxNumberOfPointsInPage = 4;
-        tsFileConfig.pageSizeInByte = 300;
+            TSFileConfig tsFileConfig = TSFileDescriptor.getInstance().getConfig();
+            tsFileConfig.maxNumberOfPointsInPage = 4;
+            tsFileConfig.pageSizeInByte = 300;
 
-        config.overflowDataDir = FOLDER_HEADER + "/data/overflow";
-        config.fileNodeDir = FOLDER_HEADER + "/data/digest";
-        config.bufferWriteDir = FOLDER_HEADER + "/data/delta";
-        config.metadataDir = FOLDER_HEADER + "/data/metadata";
-        config.derbyHome = FOLDER_HEADER + "/data/derby";
-        deamon = new Daemon();
-        deamon.active();
+            config.overflowDataDir = FOLDER_HEADER + "/data/overflow";
+            config.fileNodeDir = FOLDER_HEADER + "/data/digest";
+            config.bufferWriteDir = FOLDER_HEADER + "/data/delta";
+            config.metadataDir = FOLDER_HEADER + "/data/metadata";
+            config.derbyHome = FOLDER_HEADER + "/data/derby";
+            deamon = new Daemon();
+            deamon.active();
+        }
     }
 
-    //@After
+    @After
     public void tearDown() throws Exception {
-        deamon.stop();
-        Thread.sleep(5000);
+        if (testFlag) {
+            deamon.stop();
+            Thread.sleep(5000);
 
-        TsfileDBConfig config = TsfileDBDescriptor.getInstance().getConfig();
-        FileUtils.deleteDirectory(new File(config.overflowDataDir));
-        FileUtils.deleteDirectory(new File(config.fileNodeDir));
-        FileUtils.deleteDirectory(new File(config.bufferWriteDir));
-        FileUtils.deleteDirectory(new File(config.metadataDir));
-        FileUtils.deleteDirectory(new File(config.derbyHome));
-        FileUtils.deleteDirectory(new File(FOLDER_HEADER + "/data"));
+            TsfileDBConfig config = TsfileDBDescriptor.getInstance().getConfig();
+            FileUtils.deleteDirectory(new File(config.overflowDataDir));
+            FileUtils.deleteDirectory(new File(config.fileNodeDir));
+            FileUtils.deleteDirectory(new File(config.bufferWriteDir));
+            FileUtils.deleteDirectory(new File(config.metadataDir));
+            FileUtils.deleteDirectory(new File(config.derbyHome));
+            FileUtils.deleteDirectory(new File(FOLDER_HEADER + "/data"));
 
-        config.overflowDataDir = overflowDataDirPre;
-        config.fileNodeDir = fileNodeDirPre;
-        config.bufferWriteDir = bufferWriteDirPre;
-        config.metadataDir = metadataDirPre;
-        config.derbyHome = derbyHomePre;
+            config.overflowDataDir = overflowDataDirPre;
+            config.fileNodeDir = fileNodeDirPre;
+            config.bufferWriteDir = bufferWriteDirPre;
+            config.metadataDir = metadataDirPre;
+            config.derbyHome = derbyHomePre;
+        }
     }
 
-    //@Test
+    @Test
     public void test() throws ClassNotFoundException, SQLException, InterruptedException {
-        Thread.sleep(5000);
-        insertSQL();
+        if (testFlag) {
+            Thread.sleep(5000);
+            insertSQL();
 
-        Connection connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
-        System.out.println(connection.getMetaData());
-        selectWildTest();
-        crossReadTest();
-        connection.close();
+            Connection connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
+            System.out.println(connection.getMetaData());
+            selectWildTest();
+            crossReadTest();
+            connection.close();
+        }
     }
 
     private void insertSQL() throws ClassNotFoundException, SQLException {
