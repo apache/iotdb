@@ -48,6 +48,8 @@ public class TsfileDBDescriptor {
 				url = url + File.separatorChar + "conf" + File.separatorChar + TsfileDBConfig.CONFIG_NAME;
 			} else {
 				LOGGER.warn("Cannot find TSFILE_HOME or IOTDB_CONF environment variable when loading config file {}, use default configuration", TsfileDBConfig.CONFIG_NAME);
+				// update all data path
+				conf.updateDataPath();
 				return;
 			}
 		}
@@ -55,6 +57,8 @@ public class TsfileDBDescriptor {
 			inputStream = new FileInputStream(new File(url));
 		} catch (FileNotFoundException e) {
 			LOGGER.warn("Fail to find config file {}", url);
+			// update all data path
+			conf.updateDataPath();
 			return;
 		}
 
@@ -71,8 +75,7 @@ public class TsfileDBDescriptor {
 			conf.flushWalPeriodInMs = Integer.parseInt(properties.getProperty("flush_wal_period_in_ms", conf.flushWalPeriodInMs+""));
 			
 			conf.dataDir = properties.getProperty("data_dir", conf.dataDir);
-			// update all data path
-			conf.updateDataPath();
+			
 			
 			conf.mergeConcurrentThreads = Integer.parseInt(properties.getProperty("merge_concurrent_threads", conf.mergeConcurrentThreads + ""));
 			conf.maxOpenFolder = Integer.parseInt(properties.getProperty("max_opened_folder", conf.maxOpenFolder + ""));
@@ -94,6 +97,9 @@ public class TsfileDBDescriptor {
 			LOGGER.warn("Cannot load config file because {}, use default configuration", e.getMessage());
 		} catch (Exception e) {
 			LOGGER.warn("Error format in config file because {}, use default configuration", e.getMessage());
+		} finally {
+			// update all data path
+			conf.updateDataPath();
 		}
 		if (inputStream != null) {
 			try {
