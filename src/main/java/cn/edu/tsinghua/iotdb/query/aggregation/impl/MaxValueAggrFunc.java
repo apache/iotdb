@@ -1,6 +1,7 @@
 package cn.edu.tsinghua.iotdb.query.aggregation.impl;
 
 import java.io.IOException;
+import java.util.List;
 
 import cn.edu.tsinghua.iotdb.query.aggregation.AggregateFunction;
 import cn.edu.tsinghua.iotdb.query.aggregation.AggregationConstant;
@@ -24,10 +25,58 @@ public class MaxValueAggrFunc extends AggregateFunction {
     }
 
     @Override
-    public boolean calculateValueFromPageHeader(PageHeader pageHeader) {
+    public void calculateValueFromPageHeader(PageHeader pageHeader) {
         Digest pageDigest = pageHeader.data_page_header.getDigest();
         DigestForFilter digest = new DigestForFilter(pageDigest.min, pageDigest.max, dataType);
         Comparable<?> maxv = digest.getMaxValue();
+        updateMaxValue(maxv);
+    }
+
+    @Override
+    public void calculateValueFromDataPage(DynamicOneColumnData dataInThisPage) throws IOException, ProcessorException {
+        if (dataInThisPage.valueLength == 0) {
+            return;
+        }
+        Comparable<?> maxv = getMaxValue(dataInThisPage);
+        updateMaxValue(maxv);
+    }
+
+    @Override
+    public int calculateValueFromDataPage(DynamicOneColumnData dataInThisPage, List<Long> timestamps, int timeIndex) {
+        return 0;
+    }
+
+    @Override
+    public void calculateValueFromLeftMemoryData(InsertDynamicData insertMemoryData) throws IOException, ProcessorException {
+        Object max_value = insertMemoryData.calcAggregation(AggregationConstant.MAX_VALUE);
+        if (max_value != null) {
+            updateMaxValue((Comparable<?>)max_value);
+        }
+    }
+
+    @Override
+    public boolean calcAggregationUsingTimestamps(InsertDynamicData insertMemoryData, List<Long> timestamps, int timeIndex) throws IOException, ProcessorException {
+        while (timeIndex < timestamps.size()) {
+            if (insertMemoryData.hasInsertData()) {
+                if (timestamps.get(timeIndex) == insertMemoryData.getCurrentMinTime()) {
+                    Object value = insertMemoryData.getCurrentObjectValue();
+                    updateMaxValue((Comparable<?>)value);
+                    timeIndex ++;
+                    insertMemoryData.removeCurrentValue();
+                } else if (timestamps.get(timeIndex) > insertMemoryData.getCurrentMinTime()) {
+                    insertMemoryData.removeCurrentValue();
+                } else {
+                    timeIndex += 1;
+                }
+            } else {
+                break;
+            }
+        }
+
+        return insertMemoryData.hasInsertData();
+    }
+
+    private void updateMaxValue(Comparable<?> maxv) {
         if (!hasSetValue) {
             result.data.putAnObject(maxv);
             hasSetValue = true;
@@ -35,39 +84,6 @@ public class MaxValueAggrFunc extends AggregateFunction {
             Comparable<?> v = result.data.getAnObject(0);
             if (compare(v, maxv) < 0) {
                 result.data.setAnObject(0, maxv);
-            }
-        }
-        return true;
-    }
-
-    @Override
-    public void calculateValueFromDataInThisPage(DynamicOneColumnData dataInThisPage) throws IOException, ProcessorException {
-        if (dataInThisPage instanceof InsertDynamicData) {
-            Object max_value = ((InsertDynamicData) dataInThisPage).calcAggregation(AggregationConstant.MAX_VALUE);
-            if (max_value != null) {
-                if (!hasSetValue) {
-                    result.data.putAnObject(max_value);
-                    hasSetValue = true;
-                } else {
-                    Comparable<?> v = result.data.getAnObject(0);
-                    if (compare(v, (Comparable<?>)max_value) < 0) {
-                        result.data.setAnObject(0, (Comparable<?>)max_value);
-                    }
-                }
-            }
-        } else {
-            if (dataInThisPage.valueLength == 0) {
-                return;
-            }
-            Comparable<?> maxv = getMaxValue(dataInThisPage);
-            if (!hasSetValue) {
-                result.data.putAnObject(maxv);
-                hasSetValue = true;
-            } else {
-                Comparable<?> v = result.data.getAnObject(0);
-                if (compare(v, maxv) < 0) {
-                    result.data.setAnObject(0, maxv);
-                }
             }
         }
     }
