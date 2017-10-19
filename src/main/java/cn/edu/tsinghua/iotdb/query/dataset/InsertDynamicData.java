@@ -149,6 +149,24 @@ public class InsertDynamicData extends DynamicOneColumnData {
         }
     }
 
+    public Object getCurrentObjectValue() {
+        switch (dataType) {
+            case INT32:
+                return getCurrentIntValue();
+            case INT64:
+                return getCurrentLongValue();
+            case BOOLEAN:
+                return getCurrentBooleanValue();
+            case FLOAT:
+                return getCurrentFloatValue();
+            case DOUBLE:
+                return getCurrentDoubleValue();
+            case TEXT:
+                return getCurrentBinaryValue();
+            default:
+                throw new UnSupportedDataTypeException("UnSupported aggregation datatype: " + dataType);
+        }
+    }
 
     /**
      * Remove current time and value, to get next time and value satisfied with the filters.
@@ -673,10 +691,10 @@ public class InsertDynamicData extends DynamicOneColumnData {
     /**
      * Read time value from the page and return them.
      *
-     * @param page
-     * @param size
+     * @param page data page inputstream
+     * @param size data page inputstream size
      * @param skip If skip is true, then return long[] which is null.
-     * @throws IOException
+     * @throws IOException read page error
      */
     private long[] initTimeValue(InputStream page, int size, boolean skip) throws IOException {
         long[] res = null;
