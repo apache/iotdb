@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import cn.edu.tsinghua.iotdb.exception.PathErrorException;
+import cn.edu.tsinghua.iotdb.qp.constant.SQLConstant;
 import cn.edu.tsinghua.iotdb.qp.physical.PhysicalPlan;
 import cn.edu.tsinghua.iotdb.query.engine.FilterStructure;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
@@ -30,12 +31,18 @@ public class SingleFileQPExecutor extends QueryProcessExecutor {
 	}
 
 	@Override
-	protected TSDataType getNonReservedSeriesType(Path path) {
+	public TSDataType getSeriesType(Path path) {
+		if (path.equals(SQLConstant.RESERVED_TIME))
+			return TSDataType.INT64;
+		if (path.equals(SQLConstant.RESERVED_FREQ))
+			return TSDataType.FLOAT;
 		return queryEngine.getSeriesType(path);
 	}
 
 	@Override
-	protected boolean judgeNonReservedPathExists(Path path) {
+	public boolean judgePathExists(Path path) {
+		if (SQLConstant.isReservedPath(path))
+			return true;
 		return queryEngine.pathExist(path);
 	}
 
@@ -66,7 +73,7 @@ public class SingleFileQPExecutor extends QueryProcessExecutor {
 	}
 
 	@Override
-	public boolean delete(Path path, long deleteTime) throws ProcessorException{
+	protected boolean delete(Path path, long deleteTime) throws ProcessorException{
 		throw new ProcessorException("Do not support");
 	}
 

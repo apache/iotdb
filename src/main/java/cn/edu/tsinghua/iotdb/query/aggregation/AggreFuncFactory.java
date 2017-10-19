@@ -8,6 +8,10 @@ import cn.edu.tsinghua.iotdb.query.aggregation.impl.MinValueAggrFunc;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
 
+/**
+ * Easy factory pattern to build AggregateFunction.
+ *
+ */
 public class AggreFuncFactory {
     public static AggregateFunction getAggrFuncByName(String aggrFuncName, TSDataType dataType) throws ProcessorException {
         if (aggrFuncName == null) {

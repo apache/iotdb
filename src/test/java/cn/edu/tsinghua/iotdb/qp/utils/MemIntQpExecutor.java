@@ -10,6 +10,7 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 
 import cn.edu.tsinghua.iotdb.exception.PathErrorException;
+import cn.edu.tsinghua.iotdb.qp.constant.SQLConstant;
 import cn.edu.tsinghua.iotdb.query.engine.FilterStructure;
 import cn.edu.tsinghua.iotdb.qp.executor.QueryProcessExecutor;
 import cn.edu.tsinghua.iotdb.qp.physical.crud.DeletePlan;
@@ -61,7 +62,11 @@ public class MemIntQpExecutor extends QueryProcessExecutor {
     }
 
     @Override
-    public TSDataType getNonReservedSeriesType(Path fullPath) {
+    public TSDataType getSeriesType(Path fullPath) {
+        if (fullPath.equals(SQLConstant.RESERVED_TIME))
+            return TSDataType.INT64;
+        if (fullPath.equals(SQLConstant.RESERVED_FREQ))
+            return TSDataType.FLOAT;
         if (fakeAllPaths != null && fakeAllPaths.containsKey(fullPath.toString()))
             return TSDataType.INT32;
         if (demoMemDataBase.containsKey(fullPath.toString()))
@@ -93,11 +98,13 @@ public class MemIntQpExecutor extends QueryProcessExecutor {
     }
 
     @Override
-    public boolean judgeNonReservedPathExists(Path string) {
+    public boolean judgePathExists(Path path) {
+        if (SQLConstant.isReservedPath(path))
+            return true;
         if (fakeAllPaths != null) {
-            return fakeAllPaths.containsKey(string.toString());
+            return fakeAllPaths.containsKey(path.toString());
         }
-        return demoMemDataBase.containsKey(string.toString());
+        return demoMemDataBase.containsKey(path.toString());
     }
 
     @Override
@@ -117,7 +124,7 @@ public class MemIntQpExecutor extends QueryProcessExecutor {
     }
 
     @Override
-    public boolean delete(Path path, long deleteTime) {
+    protected boolean delete(Path path, long deleteTime) {
         if (!demoMemDataBase.containsKey(path.toString()))
             return true;
         TestSeries series = demoMemDataBase.get(path.toString());

@@ -32,6 +32,11 @@ public class OverflowQueryEngine {
     private static final Logger LOGGER = LoggerFactory.getLogger(OverflowQueryEngine.class);
     private MManager mManager;
     private int formNumber = -1;
+    /**
+     * this variable is represent that whether it is
+     * the second execution of aggregate method.
+     */
+    private static ThreadLocal<Boolean> threadLocal = new ThreadLocal<>();
 
     public OverflowQueryEngine() {
         mManager = MManager.getInstance();
@@ -48,7 +53,8 @@ public class OverflowQueryEngine {
     }
 
     /**
-     * Basic query function.
+     * <p>
+     * Basic query method.
      *
      * @param formNumber a complex query will be taken out to some disjunctive normal forms in query process,
      *                   the formNumber represent the number of normal form.
@@ -56,8 +62,8 @@ public class OverflowQueryEngine {
      * @param queryDataSet query data set to return
      * @param fetchSize fetch size for batch read
      * @return basic QueryDataSet
-     * @throws ProcessorException
-     * @throws IOException
+     * @throws ProcessorException series resolve error
+     * @throws IOException TsFile read error
      */
     public QueryDataSet query(int formNumber, List<Path> paths, FilterExpression timeFilter, FilterExpression freqFilter,
                               FilterExpression valueFilter, QueryDataSet queryDataSet, int fetchSize) throws ProcessorException, IOException, PathErrorException {
@@ -75,7 +81,18 @@ public class OverflowQueryEngine {
         }
     }
 
-
+    /**
+     * <p>
+     * Basic aggregation method,
+     * both single aggregation method or multi aggregation method is implemented here.
+     *
+     * @param aggres a list of aggregations and corresponding path
+     * @param filterStructures see <code>FilterStructure</code>, a list of all conjunction form
+     * @return result QueryDataSet
+     * @throws ProcessorException series resolve error
+     * @throws IOException TsFile read error
+     * @throws PathErrorException path resolve error
+     */
     public QueryDataSet aggregate(List<Pair<Path, String>> aggres, List<FilterStructure> filterStructures)
             throws ProcessorException, IOException, PathErrorException {
         LOGGER.info("Aggregation content: {}", aggres.toString());
@@ -85,6 +102,12 @@ public class OverflowQueryEngine {
             AggregateFunction func = AggreFuncFactory.getAggrFuncByName(pair.right, dataType);
             aggregations.add(new Pair<>(pair.left, func));
         }
+
+        if (threadLocal.get() != null && threadLocal.get()) {
+            threadLocal.remove();
+            return new QueryDataSet();
+        }
+        threadLocal.set(true);
         return AggregateEngine.multiAggregate(aggregations, filterStructures);
     }
 
