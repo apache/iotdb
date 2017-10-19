@@ -76,6 +76,16 @@ public class OverflowSeriesImpl {
 		queryOverflowIndex = new IntervalTreeOperation(type);
 	}
 
+	public void setType(TSDataType type) {
+		this.type = type;
+	}
+
+	public void reset() {
+		workingOverflowIndex = new IntervalTreeOperation(type);
+		flushingOverflowIndex = new IntervalTreeOperation(type);
+		queryOverflowIndex = new IntervalTreeOperation(type);
+	}
+
 	/**
 	 * Insert one data point into the overflow index with the special timestamp
 	 * 

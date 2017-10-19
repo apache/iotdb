@@ -167,7 +167,8 @@ public class OverflowSupport {
 		}
 		seriesWriter = deltaObjectIdWriterMap.get(measurementId);
 		if (type != seriesWriter.getTSDataType()) {
-			return false;
+			seriesWriter.setType(type);
+			seriesWriter.reset();
 		}
 		return true;
 	}
@@ -267,7 +268,12 @@ public class OverflowSupport {
 			res.add(timeFilter);
 			return res;
 		}
-		res = overflowMap.get(deltaObjectId).get(measurementId).query(timeFilter, freqFilter, valueFilter, dataType);
+		OverflowSeriesImpl seriesImpl = overflowMap.get(deltaObjectId).get(measurementId);
+		if(seriesImpl.getTSDataType()!=dataType){
+			seriesImpl.setType(dataType);
+			seriesImpl.reset();
+		}
+		res = seriesImpl.query(timeFilter, freqFilter, valueFilter, dataType);
 		if (res == null) {
 			res = new ArrayList<>();
 			res.add(null);
