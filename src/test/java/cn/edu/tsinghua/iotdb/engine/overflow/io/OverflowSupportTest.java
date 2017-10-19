@@ -394,7 +394,7 @@ public class OverflowSupportTest {
 			ofsupport.insert(deltaObjectId, measurementIds[2], i, dataTypes[2],
 					BytesUtils.floatToBytes((float) (i * 1.5)));
 		}
-		result = ofsupport.query(deltaObjectId, measurementIds[2], null, null, null, dataTypes[0]);
+		result = ofsupport.query(deltaObjectId, measurementIds[2], null, null, null, dataTypes[2]);
 		insertData = (DynamicOneColumnData) result.get(0);
 		for (int i = 1; i < 11; i++) {
 			assertEquals(i, insertData.getTime(i - 1));
@@ -405,7 +405,7 @@ public class OverflowSupportTest {
 			ofsupport.insert(deltaObjectId, measurementIds[3], i, dataTypes[3],
 					BytesUtils.doubleToBytes((double) (i * 1.5)));
 		}
-		result = ofsupport.query(deltaObjectId, measurementIds[3], null, null, null, dataTypes[0]);
+		result = ofsupport.query(deltaObjectId, measurementIds[3], null, null, null, dataTypes[3]);
 		insertData = (DynamicOneColumnData) result.get(0);
 		for (int i = 1; i < 11; i++) {
 			assertEquals(i, insertData.getTime(i - 1));
@@ -416,7 +416,7 @@ public class OverflowSupportTest {
 		for (int i = 1; i < 11; i++) {
 			ofsupport.insert(deltaObjectId, measurementIds[5], i, dataTypes[5], BytesUtils.StringToBytes("tsfile" + i));
 		}
-		result = ofsupport.query(deltaObjectId, measurementIds[5], null, null, null, dataTypes[0]);
+		result = ofsupport.query(deltaObjectId, measurementIds[5], null, null, null, dataTypes[5]);
 		insertData = (DynamicOneColumnData) result.get(0);
 		for (int i = 1; i < 11; i++) {
 			assertEquals(i, insertData.getTime(i - 1));
@@ -428,7 +428,7 @@ public class OverflowSupportTest {
 			ofsupport.update(deltaObjectId, measurementIds[1], i, i + 1, dataTypes[1], BytesUtils.longToBytes(i));
 		}
 		// query data
-		result = ofsupport.query(deltaObjectId, measurementIds[1], null, null, null, dataTypes[0]);
+		result = ofsupport.query(deltaObjectId, measurementIds[1], null, null, null, dataTypes[1]);
 		DynamicOneColumnData updateData = (DynamicOneColumnData) result.get(1);
 		assertEquals(10, updateData.valueLength);
 		assertEquals(20, updateData.timeLength);
@@ -470,7 +470,7 @@ public class OverflowSupportTest {
 					BytesUtils.boolToBytes(i / 2 == 0 ? true : false));
 		}
 		// query data
-		result = ofsupport.query(deltaObjectId, measurementIds[4], null, null, null, dataTypes[0]);
+		result = ofsupport.query(deltaObjectId, measurementIds[4], null, null, null, dataTypes[4]);
 		updateData = (DynamicOneColumnData) result.get(1);
 		for (int i = 1; i < 20; i = i + 2) {
 			assertEquals(i, updateData.getTime(i - 1));
