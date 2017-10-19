@@ -75,10 +75,8 @@ public class AuthorOperator extends RootOperator {
         return nodeName;
     }
 
-    public void setNodeNameList(String[] nodeNameList) {
-        StringContainer sc = new StringContainer(SystemConstant.PATH_SEPARATOR);
-        sc.addTail(nodeNameList);
-        this.nodeName = new Path(sc);
+    public void setNodeNameList(Path nodePath) {
+        this.nodeName = nodePath;
     }
 
     public enum AuthorType {

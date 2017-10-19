@@ -105,7 +105,7 @@ ArrayList<ParseError> errors = new ArrayList<ParseError>();
         xlateMap.put("KW_INSERT", "INSERT");
 
         xlateMap.put("KW_ON", "ON");
-
+        xlateMap.put("KW_ROOT", "ROOT");
 
         xlateMap.put("KW_SHOW", "SHOW");
 
@@ -311,7 +311,7 @@ metadata
 
 metadataStatement
     : createTimeseries
-    | setFileLevel
+    | setStorageGroup
     | addAPropertyTree
     | addALabelProperty
     | deleteALebelFromPropertyTree
@@ -323,8 +323,8 @@ metadataStatement
     ;
 
 describePath
-    : KW_DESCRIBE path
-    -> ^(TOK_DESCRIBE path)
+    : KW_DESCRIBE prefixPath
+    -> ^(TOK_DESCRIBE prefixPath)
     ;
 
 showMetadata
@@ -338,8 +338,8 @@ createTimeseries
   ;
 
 timeseries
-  : root=Identifier DOT deviceType=Identifier DOT identifier (DOT identifier)+
-  -> ^(TOK_ROOT $deviceType identifier+)
+  : KW_ROOT (DOT identifier)+
+  -> ^(TOK_PATH ^(TOK_ROOT identifier+))
   ;
 
 propertyClauses
@@ -356,9 +356,9 @@ propertyValue
   : numberOrString
   ;
 
-setFileLevel
-  : KW_SET KW_STORAGE KW_GROUP KW_TO path
-  -> ^(TOK_SET ^(TOK_STORAGEGROUP path))
+setStorageGroup
+  : KW_SET KW_STORAGE KW_GROUP KW_TO prefixPath
+  -> ^(TOK_SET ^(TOK_STORAGEGROUP prefixPath))
   ;
 
 addAPropertyTree
@@ -377,14 +377,10 @@ deleteALebelFromPropertyTree
   ;
 
 linkMetadataToPropertyTree
-  : KW_LINK timeseriesPath KW_TO propertyPath
-  -> ^(TOK_LINK timeseriesPath propertyPath)
+  : KW_LINK prefixPath KW_TO propertyPath
+  -> ^(TOK_LINK prefixPath propertyPath)
   ;
 
-timeseriesPath
-  : Identifier (DOT identifier)+
-  -> ^(TOK_ROOT identifier+)
-  ;
 
 propertyPath
   : property=identifier DOT label=identifier
@@ -392,13 +388,13 @@ propertyPath
   ;
 
 unlinkMetadataNodeFromPropertyTree
-  :KW_UNLINK timeseriesPath KW_FROM propertyPath
-  -> ^(TOK_UNLINK timeseriesPath  propertyPath)
+  :KW_UNLINK prefixPath KW_FROM propertyPath
+  -> ^(TOK_UNLINK prefixPath  propertyPath)
   ;
 
 deleteTimeseries
-  : KW_DELETE KW_TIMESERIES path (COMMA path)*
-  -> ^(TOK_DELETE ^(TOK_TIMESERIES path+))
+  : KW_DELETE KW_TIMESERIES prefixPath (COMMA prefixPath)*
+  -> ^(TOK_DELETE ^(TOK_TIMESERIES prefixPath+))
   ;
 
 
@@ -424,9 +420,8 @@ quitStatement
 queryStatement
    :
    selectClause
-   fromClause?
    whereClause?
-   -> ^(TOK_QUERY selectClause fromClause? whereClause?)
+   -> ^(TOK_QUERY selectClause whereClause?)
    ;
 
 authorStatement
@@ -470,23 +465,23 @@ dropRole
     ;
 
 grantUser
-    : KW_GRANT KW_USER userName = Identifier privileges KW_ON path
-    -> ^(TOK_GRANT ^(TOK_USER $userName) privileges path)
+    : KW_GRANT KW_USER userName = Identifier privileges KW_ON prefixPath
+    -> ^(TOK_GRANT ^(TOK_USER $userName) privileges prefixPath)
     ;
 
 grantRole
-    : KW_GRANT KW_ROLE roleName=Identifier privileges KW_ON path
-    -> ^(TOK_GRANT ^(TOK_ROLE $roleName) privileges path)
+    : KW_GRANT KW_ROLE roleName=Identifier privileges KW_ON prefixPath
+    -> ^(TOK_GRANT ^(TOK_ROLE $roleName) privileges prefixPath)
     ;
 
 revokeUser
-    : KW_REVOKE KW_USER userName = Identifier privileges KW_ON path
-    -> ^(TOK_REVOKE ^(TOK_USER $userName) privileges path)
+    : KW_REVOKE KW_USER userName = Identifier privileges KW_ON prefixPath
+    -> ^(TOK_REVOKE ^(TOK_USER $userName) privileges prefixPath)
     ;
 
 revokeRole
-    : KW_REVOKE KW_ROLE roleName = Identifier privileges KW_ON path
-    -> ^(TOK_REVOKE ^(TOK_ROLE $roleName) privileges path)
+    : KW_REVOKE KW_ROLE roleName = Identifier privileges KW_ON prefixPath
+    -> ^(TOK_REVOKE ^(TOK_ROLE $roleName) privileges prefixPath)
     ;
 
 grantRoleToUser
@@ -504,7 +499,14 @@ privileges
     -> ^(TOK_PRIVILEGES StringLiteral+)
     ;
 
-path
+
+
+prefixPath
+    : KW_ROOT (DOT nodeName)*
+    -> ^(TOK_PATH ^(TOK_ROOT nodeName*))
+    ;
+
+suffixPath
     : nodeName (DOT nodeName)*
       -> ^(TOK_PATH nodeName+)
     ;
@@ -515,8 +517,8 @@ nodeName
     ;
 
 insertStatement
-   : KW_INSERT KW_INTO path multidentifier KW_VALUES multiValue
-   -> ^(TOK_INSERT path multidentifier multiValue)
+   : KW_INSERT KW_INTO prefixPath multidentifier KW_VALUES multiValue
+   -> ^(TOK_INSERT prefixPath multidentifier multiValue)
    ;
 
 /*
@@ -537,17 +539,26 @@ multiValue
 
 deleteStatement
    :
-   KW_DELETE KW_FROM path (COMMA path)* (whereClause)?
-   -> ^(TOK_DELETE path+ whereClause?)
+   KW_DELETE KW_FROM prefixPath (COMMA prefixPath)* (whereClause)?
+   -> ^(TOK_DELETE prefixPath+ whereClause?)
    ;
 
 updateStatement
-   : KW_UPDATE path (COMMA path)* KW_SET KW_VALUE EQUAL value=numberOrStringWidely (whereClause)?
-   -> ^(TOK_UPDATE path+ ^(TOK_VALUE $value) whereClause?)
+   : KW_UPDATE prefixPath (COMMA prefixPath)* KW_SET setClause (whereClause)?
+   -> ^(TOK_UPDATE prefixPath+ setClause whereClause?)
    | KW_UPDATE KW_USER userName=Identifier KW_SET KW_PASSWORD psw=numberOrString
    -> ^(TOK_UPDATE ^(TOK_UPDATE_PSWD $userName $psw))
    ;
 
+setClause
+    : setExpression (COMMA setExpression)*
+    -> setExpression+
+    ;
+
+setExpression
+    : suffixPath EQUAL numberOrStringWidely
+    -> ^(TOK_VALUE suffixPath numberOrStringWidely)
+    ;
 
 
 /*
@@ -586,8 +597,8 @@ indexWithEqualExpression
 
 
 dropIndexStatement
-    : KW_DROP KW_INDEX KW_ON p=path
-    -> ^(TOK_DROP ^(TOK_INDEX $p))
+    : KW_DROP KW_INDEX KW_ON prefixPath
+    -> ^(TOK_DROP ^(TOK_INDEX prefixPath))
     ;
 
 /*
@@ -612,22 +623,22 @@ identifier
 //    ;
 
 selectClause
-    : KW_SELECT KW_INDEX func=Identifier LPAREN p=path COMMA file=StringLiteral COMMA epsilon=Float (COMMA alpha=Float COMMA beta=Float)? RPAREN
-    -> ^(TOK_SELECT_INDEX $func $p $file $epsilon ($alpha $beta)?)
-    | KW_SELECT clusteredPath (COMMA clusteredPath)*
-    -> ^(TOK_SELECT clusteredPath+)
+    : KW_SELECT KW_INDEX func=Identifier LPAREN p=prefixPath COMMA file=StringLiteral COMMA epsilon=Float (COMMA alpha=Float COMMA beta=Float)? RPAREN (fromClause)?
+    -> ^(TOK_SELECT_INDEX $func $p $file $epsilon ($alpha $beta)?) fromClause?
+    | KW_SELECT clusteredPath (COMMA clusteredPath)* fromClause
+    -> ^(TOK_SELECT clusteredPath+) fromClause
     ;
 
 clusteredPath
-	: clstcmd = identifier LPAREN path RPAREN
-	-> ^(TOK_PATH ^(TOK_CLUSTER path $clstcmd) )
-	| path
-	-> path
+	: clstcmd = identifier LPAREN suffixPath RPAREN
+	-> ^(TOK_PATH ^(TOK_CLUSTER suffixPath $clstcmd) )
+	| suffixPath
+	-> suffixPath
 	;
 
 fromClause
     :
-    KW_FROM path (COMMA path)* -> ^(TOK_FROM path+)
+    KW_FROM prefixPath (COMMA prefixPath)* -> ^(TOK_FROM prefixPath+)
     ;
 
 
@@ -691,7 +702,8 @@ atomExpression
     :
     (KW_NULL) => KW_NULL -> TOK_NULL
     | (constant) => constant
-    | path
+    | prefixPath
+    | suffixPath
     | LPAREN! expression RPAREN!
     ;
 
