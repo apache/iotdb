@@ -184,9 +184,9 @@ public class DeleteCreateSameSeriesTest {
     private void selectTest_2() throws ClassNotFoundException, SQLException {
         String[] selectResult = new String[]{
                 "5,5,null",
-                "20,null,xxx",
-                "25,null,fff",
-                "100,100,aaa"
+                "20,null,66.7",
+                "25,null,55.0",
+                "100,100,88.0"
         };
 
         Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);
@@ -200,8 +200,8 @@ public class DeleteCreateSameSeriesTest {
                 int cnt = 0;
                 while (resultSet.next()) {
                     String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s0) + "," + resultSet.getString(d0s1);
-                    System.out.println(ans);
-                    // Assert.assertEquals(selectResult[cnt], ans);
+                    // System.out.println(ans);
+                    Assert.assertEquals(selectResult[cnt], ans);
                     cnt++;
                 }
                 Assert.assertEquals(4, cnt);
