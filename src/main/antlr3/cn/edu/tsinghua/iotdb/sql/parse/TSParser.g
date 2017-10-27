@@ -28,6 +28,11 @@ TOK_VALUE;
 TOK_INSERT;
 TOK_QUERY;
 TOK_SELECT;
+TOK_GROUPBY;
+TOK_TIMEUNIT;
+TOK_TIMEORIGIN;
+TOK_TIMEINTERVAL;
+TOK_TIMEINTERVALPAIR;
 TOK_PASSWORD;
 TOK_PATH;
 TOK_UPDATE_PSWD;
@@ -299,7 +304,6 @@ dateFormatWithNumber
     ;
 
 
-
 /*
 ****
 *************
@@ -421,7 +425,8 @@ queryStatement
    :
    selectClause
    whereClause?
-   -> ^(TOK_QUERY selectClause whereClause?)
+   groupbyClause?
+   -> ^(TOK_QUERY selectClause whereClause? groupbyClause?)
    ;
 
 authorStatement
@@ -645,6 +650,18 @@ fromClause
 whereClause
     :
     KW_WHERE searchCondition -> ^(TOK_WHERE searchCondition)
+    ;
+
+groupbyClause
+    :
+    KW_GROUP KW_BY LPAREN value=Integer unit=Identifier (COMMA timeOrigin=dateFormatWithNumber)? COMMA timeInterval (COMMA timeInterval)* RPAREN
+    -> ^(TOK_GROUPBY ^(TOK_TIMEUNIT $value $unit) ^(TOK_TIMEORIGIN $timeOrigin)? ^(TOK_TIMEINTERVAL timeInterval+))
+    ;
+
+timeInterval
+    :
+    LSQUARE startTime=dateFormatWithNumber COMMA endTime=dateFormatWithNumber RSQUARE
+    -> ^(TOK_TIMEINTERVALPAIR $startTime $endTime)
     ;
 
 searchCondition
