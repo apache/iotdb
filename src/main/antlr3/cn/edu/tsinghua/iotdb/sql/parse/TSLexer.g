@@ -73,6 +73,8 @@ SEMICOLON : ';' ;
 
 LPAREN : '(' ;
 RPAREN : ')' ;
+LSQUARE : '[';
+RSQUARE : ']';
 
 EQUAL : '=' | '==';
 EQUAL_NS : '<=>';
