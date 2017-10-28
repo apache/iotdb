@@ -84,17 +84,10 @@ public class QueryDataSetIterator implements Iterator<QueryDataSet> {
                                 filterStructure.getValueFilter(), fetchSize, usedData);
                         break;
                     case AGGREGATION:
-                        List<Pair<Path, String>> aggres = new ArrayList<>();
-                        for(int i = 0; i < paths.size(); i++) {
-                            if(paths.size() == aggregations.size()) {
-                                aggres.add(new Pair<>(paths.get(i), aggregations.get(i)));
-                            } else {
-                                aggres.add(new Pair<>(paths.get(i), aggregations.get(0)));
-                            }
-                        }
-                        data = executor.aggregate(aggres, filterStructures);
+                        data = executor.aggregate(getAggrePair(), filterStructures);
                         break;
                     case GROUPBY:
+                        data = executor.groupBy(getAggrePair(), filterStructures, unit, origin, intervals);
                         break;
                 }
             } catch (Exception e) {
@@ -109,6 +102,18 @@ public class QueryDataSetIterator implements Iterator<QueryDataSet> {
             noNext = true;
             return false;
         }
+    }
+
+    private List<Pair<Path, String>> getAggrePair() {
+        List<Pair<Path, String>> aggres = new ArrayList<>();
+        for(int i = 0; i < paths.size(); i++) {
+            if(paths.size() == aggregations.size()) {
+                aggres.add(new Pair<>(paths.get(i), aggregations.get(i)));
+            } else {
+                aggres.add(new Pair<>(paths.get(i), aggregations.get(0)));
+            }
+        }
+        return aggres;
     }
 
     @Override
