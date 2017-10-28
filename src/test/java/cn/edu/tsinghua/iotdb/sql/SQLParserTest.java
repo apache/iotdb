@@ -588,7 +588,7 @@ public class SQLParserTest {
         		">=", "TOK_PATH", "time", "1234567",
     			"TOK_GROUPBY", 
     			"TOK_TIMEUNIT", "111", "w",
-    			"TOK_TIMEORIGIN", "77",
+    			"TOK_TIMEORIGIN", "TOK_DATETIME" ,"2017-6-2T02:00:12+07:00",
     			"TOK_TIMEINTERVAL",
     			"TOK_TIMEINTERVALPAIR", "TOK_DATETIME" ,"2017-6-2T12:00:12+07:00", "TOK_DATETIME" ,"now"));
         ArrayList<String> rec = new ArrayList<>();
@@ -596,7 +596,7 @@ public class SQLParserTest {
         		+ "select s1,sum(s2) "
         		+ "FROM root.vehicle.d1 "
         		+ "WHERE root.vehicle.d1.s1 < 2000 | time >= 1234567 "
-        		+ "group by(111w, 77, [2017-6-2T12:00:12+07:00, now()])");
+        		+ "group by(111w, 2017-6-2T02:00:12+07:00, [2017-6-2T12:00:12+07:00, now()])");
         astTree = ParseUtils.findRootNonNullToken(astTree);
         recursivePrintSon(astTree, rec);
 
