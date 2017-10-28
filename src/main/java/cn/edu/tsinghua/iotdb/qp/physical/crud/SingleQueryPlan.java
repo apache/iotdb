@@ -26,15 +26,15 @@ import cn.edu.tsinghua.iotdb.qp.physical.PhysicalPlan;
  * TsFile reading API by one pass directly.<br>
  * Up to now, Single Query that {@code TsFile reading API} supports is a conjunction among time
  * filter, frequency filter and value filter. <br>
- * This class provide two public function. If the whole SeriesSelectPlan has exactly one single path,
- * {@code SeriesSelectPlan} return a {@code Iterator<QueryDataSet>} directly. Otherwise
- * {@code SeriesSelectPlan} is regard as a portion of {@code MergeQuerySetPlan}. This class provide
+ * This class provide two public function. If the whole SingleQueryPlan has exactly one single path,
+ * {@code SingleQueryPlan} return a {@code Iterator<QueryDataSet>} directly. Otherwise
+ * {@code SingleQueryPlan} is regard as a portion of {@code MultiQueryPlan}. This class provide
  * a {@code Iterator<RowRecord>}in the latter case.
  *
  */
-public class SeriesSelectPlan extends PhysicalPlan {
+public class SingleQueryPlan extends PhysicalPlan {
 
-    private static final Logger LOG = LoggerFactory.getLogger(SeriesSelectPlan.class);
+    private static final Logger LOG = LoggerFactory.getLogger(SingleQueryPlan.class);
     private List<Path> paths = new ArrayList<>();
     private List<String> aggregations = new ArrayList<>();
     private FilterOperator timeFilterOperator;
@@ -42,9 +42,9 @@ public class SeriesSelectPlan extends PhysicalPlan {
     private FilterOperator valueFilterOperator;
     private FilterExpression[] filterExpressions;
 
-    public SeriesSelectPlan(List<Path> paths, FilterOperator timeFilter,
-                            FilterOperator freqFilter, FilterOperator valueFilter,
-                            QueryProcessExecutor executor, List<String> aggregations) throws QueryProcessorException {
+    public SingleQueryPlan(List<Path> paths, FilterOperator timeFilter,
+                           FilterOperator freqFilter, FilterOperator valueFilter,
+                           QueryProcessExecutor executor, List<String> aggregations) throws QueryProcessorException {
         super(true, Operator.OperatorType.QUERY);
         this.paths = paths;
         this.timeFilterOperator = timeFilter;
@@ -126,7 +126,7 @@ public class SeriesSelectPlan extends PhysicalPlan {
     }
 
 
-    public static Iterator<RowRecord>[] getRecordIteratorArray(List<SeriesSelectPlan> plans,
+    public static Iterator<RowRecord>[] getRecordIteratorArray(List<SingleQueryPlan> plans,
                                                                QueryProcessExecutor conf) throws QueryProcessorException {
         Iterator<RowRecord>[] ret = new RowRecordIterator[plans.size()];
         for (int i = 0; i < plans.size(); i++) {
@@ -139,7 +139,7 @@ public class SeriesSelectPlan extends PhysicalPlan {
     public String printQueryPlan() {
         StringContainer sc = new StringContainer();
         String preSpace = "  ";
-        sc.addTail("SeriesSelectPlan:", lineFeedSignal);
+        sc.addTail("SingleQueryPlan:", lineFeedSignal);
         sc.addTail(preSpace, "paths:  ").addTail(paths.toString(), lineFeedSignal);
         sc.addTail(preSpace, timeFilterOperator == null ? "null" : timeFilterOperator.toString(),
                 lineFeedSignal);

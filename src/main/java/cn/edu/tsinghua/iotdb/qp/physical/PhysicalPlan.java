@@ -20,6 +20,10 @@ public abstract class PhysicalPlan {
         this.operatorType = operatorType;
     }
 
+    public void setOperatorType(Operator.OperatorType operatorType) {
+        this.operatorType = operatorType;
+    }
+
     public String printQueryPlan() {
         return "abstract plan";
     }

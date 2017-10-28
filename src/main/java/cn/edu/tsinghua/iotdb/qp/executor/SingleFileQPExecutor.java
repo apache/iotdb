@@ -53,6 +53,11 @@ public class SingleFileQPExecutor extends QueryProcessExecutor {
 	}
 
 	@Override
+	public QueryDataSet groupBy(List<Pair<Path, String>> aggres, List<FilterStructure> filterStructures, long unit, long origin, FilterExpression intervals) throws ProcessorException, IOException, PathErrorException {
+		throw new ProcessorException("Do not support");
+	}
+
+	@Override
 	public QueryDataSet query(int formNumber, List<Path> paths, FilterExpression timeFilter, FilterExpression freqFilter,
 							  FilterExpression valueFilter, int fetchSize, QueryDataSet lastData) {
 		if (lastData != null) {

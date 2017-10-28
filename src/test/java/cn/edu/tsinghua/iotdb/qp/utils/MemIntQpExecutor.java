@@ -179,6 +179,11 @@ public class MemIntQpExecutor extends QueryProcessExecutor {
         throw new ProcessorException("Do not support");
     }
 
+    @Override
+    public QueryDataSet groupBy(List<Pair<Path, String>> aggres, List<FilterStructure> filterStructures, long unit, long origin, FilterExpression intervals) throws ProcessorException, IOException, PathErrorException {
+        throw new ProcessorException("Do not support");
+    }
+
     /**
      * This method is just a simple implementation of read processing in memory for JUnit Test. It
      * doesn't support frequency filter.

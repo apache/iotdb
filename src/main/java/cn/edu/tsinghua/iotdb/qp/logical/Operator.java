@@ -39,6 +39,10 @@ public abstract class Operator {
 		return tokenName;
 	}
 
+	public void setOperatorType(OperatorType operatorType) {
+		this.operatorType = operatorType;
+	}
+
 	@Override
 	public String toString() {
 		return tokenName;
@@ -49,7 +53,7 @@ public abstract class Operator {
 	 */
 	public enum OperatorType {
 		SFW, JOIN, UNION, FILTER, GROUPBY, ORDERBY, LIMIT, SELECT, SEQTABLESCAN, HASHTABLESCAN, MERGEJOIN, FILEREAD, NULL, TABLESCAN,
-		UPDATE, INSERT, DELETE, BASIC_FUNC, QUERY, MERGEQUERY, AUTHOR, FROM, FUNC, LOADDATA, METADATA, PROPERTY,
+		UPDATE, INSERT, DELETE, BASIC_FUNC, QUERY, MERGEQUERY, AGGREGATION, AUTHOR, FROM, FUNC, LOADDATA, METADATA, PROPERTY,
 		OVERFLOWFLUSHSTART,
 		OVERFLOWFLUSHEND,
 		BUFFERFLUSHSTART,
