@@ -6,7 +6,7 @@ import java.util.List;
 
 import cn.edu.tsinghua.iotdb.qp.exception.QueryProcessorException;
 import cn.edu.tsinghua.iotdb.qp.executor.QueryProcessExecutor;
-import cn.edu.tsinghua.iotdb.qp.physical.crud.SeriesSelectPlan;
+import cn.edu.tsinghua.iotdb.qp.physical.crud.SingleQueryPlan;
 import cn.edu.tsinghua.tsfile.common.exception.UnSupportedDataTypeException;
 import cn.edu.tsinghua.tsfile.timeseries.read.query.DynamicOneColumnData;
 import cn.edu.tsinghua.tsfile.timeseries.read.query.QueryDataSet;
@@ -15,10 +15,10 @@ import cn.edu.tsinghua.tsfile.timeseries.read.support.RowRecord;
 
 /**
  * This class implements the interface {@code Iterator<QueryDataSet>}. It is the result of
- * {@code MergeQuerySetPlan}(for multi-pass getIndex). {@code MergeQuerySetPlan} provides it with a
- * list of {@code SeriesSelectPlan}.<br>
+ * {@code MultiQueryPlan}(for multi-pass getIndex). {@code MultiQueryPlan} provides it with a
+ * list of {@code SingleQueryPlan}.<br>
  * This class merge row record data set from a list of {@code Iterator<RowRecord>} provided by
- * {@code SeriesSelectPlan} according to the time ascending, using <em>minimum heap</em>
+ * {@code SingleQueryPlan} according to the time ascending, using <em>minimum heap</em>
  *
  * @author kangrong
  *
@@ -32,12 +32,12 @@ public class MergeQuerySetIterator implements Iterator<QueryDataSet> {
     private long lastRowTime = -1;
 
     //merge query
-    public MergeQuerySetIterator(List<SeriesSelectPlan> selectPlans, int mergeFetchSize,
+    public MergeQuerySetIterator(List<SingleQueryPlan> selectPlans, int mergeFetchSize,
                                  QueryProcessExecutor executor) throws QueryProcessorException {
         this.mergeFetchSize = mergeFetchSize;
         heapSize = selectPlans.size();
         nodes = new Node[heapSize + 1];
-        recordIters = SeriesSelectPlan.getRecordIteratorArray(selectPlans, executor);
+        recordIters = SingleQueryPlan.getRecordIteratorArray(selectPlans, executor);
         initIters();
     }
 
