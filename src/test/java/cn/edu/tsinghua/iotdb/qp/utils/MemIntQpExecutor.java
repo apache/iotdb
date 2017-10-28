@@ -180,7 +180,9 @@ public class MemIntQpExecutor extends QueryProcessExecutor {
     }
 
     @Override
-    public QueryDataSet groupBy(List<Pair<Path, String>> aggres, List<FilterStructure> filterStructures, long unit, long origin, FilterExpression intervals) throws ProcessorException, IOException, PathErrorException {
+    public QueryDataSet groupBy(List<Pair<Path, String>> aggres, List<FilterStructure> filterStructures,
+                                long unit, long origin, FilterExpression intervals, int fetchSize)
+            throws ProcessorException, IOException, PathErrorException {
         throw new ProcessorException("Do not support");
     }
 

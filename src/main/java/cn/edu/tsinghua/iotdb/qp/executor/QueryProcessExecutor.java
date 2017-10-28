@@ -86,14 +86,12 @@ public abstract class QueryProcessExecutor {
 		return fetchSize.get();
 	}
 
-
 	public abstract QueryDataSet aggregate(List<Pair<Path, String>> aggres, List<FilterStructure> filterStructures)
 			throws ProcessorException, IOException, PathErrorException;
 
 	public abstract QueryDataSet groupBy(List<Pair<Path, String>> aggres, List<FilterStructure> filterStructures,
-										 long unit, long origin, FilterExpression intervals)
+										 long unit, long origin, FilterExpression intervals, int fetchSize)
 			throws ProcessorException, IOException, PathErrorException;
-
 
 	public abstract QueryDataSet query(int formNumber, List<Path> paths, FilterExpression timeFilter, FilterExpression freqFilter,
 			FilterExpression valueFilter, int fetchSize, QueryDataSet lastData) throws ProcessorException;
