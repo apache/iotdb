@@ -87,7 +87,7 @@ public class QueryDataSetIterator implements Iterator<QueryDataSet> {
                         data = executor.aggregate(getAggrePair(), filterStructures);
                         break;
                     case GROUPBY:
-                        data = executor.groupBy(getAggrePair(), filterStructures, unit, origin, intervals);
+                        data = executor.groupBy(getAggrePair(), filterStructures, unit, origin, intervals, fetchSize);
                         break;
                 }
             } catch (Exception e) {
