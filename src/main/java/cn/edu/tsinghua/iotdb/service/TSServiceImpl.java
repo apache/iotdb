@@ -8,6 +8,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
+import cn.edu.tsinghua.iotdb.qp.physical.crud.MultiQueryPlan;
 import org.apache.thrift.TException;
 import org.apache.thrift.server.ServerContext;
 import org.joda.time.DateTimeZone;
@@ -361,21 +362,21 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 			List<String> columns = new ArrayList<>();
 			// Restore column header of aggregate to func(column_name), only
 			// support single aggregate function for now
-			List<String> aggregations = plan.getAggregations();
 
-			if (aggregations != null && !aggregations.isEmpty()) {
-				//select count(*) from root.*.*
+			if (((MultiQueryPlan)plan).getType() == MultiQueryPlan.QueryType.QUERY) {
+				for (Path p : paths) {
+					columns.add(p.getFullPath());
+				}
+			} else {
+				//aggregation or groupby
+				List<String> aggregations = plan.getAggregations();
 				if(aggregations.size() != paths.size()) {
 					for (int i = 1; i < paths.size(); i++) {
 						aggregations.add(aggregations.get(0));
 					}
 				}
 				for(int i = 0; i < paths.size(); i++) {
-						columns.add(aggregations.get(i) + "(" + paths.get(i).getFullPath() + ")");
-				}
-			} else {
-				for (Path p : paths) {
-					columns.add(p.getFullPath());
+					columns.add(aggregations.get(i) + "(" + paths.get(i).getFullPath() + ")");
 				}
 			}
 			TSHandleIdentifier operationId = new TSHandleIdentifier(ByteBuffer.wrap(username.get().getBytes()),
@@ -385,11 +386,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 			operationHandle = new TSOperationHandle(operationId, true);
 			resp.setOperationHandle(operationHandle);
 			recordANewQuery(statement, plan);
-			if (aggregations != null && !aggregations.isEmpty()) {
-				resp.setOperationType("aggregation");
-			} else {
-				resp.setOperationType(null);
-			}
 			return resp;
 		} catch (Exception e) {
 			LOGGER.error("{}: Internal server error: {}",TsFileDBConstant.GLOBAL_DB_NAME, e.getMessage());
