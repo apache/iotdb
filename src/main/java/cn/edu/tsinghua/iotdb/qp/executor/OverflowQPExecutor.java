@@ -28,6 +28,7 @@ import cn.edu.tsinghua.iotdb.qp.physical.sys.MetadataPlan;
 import cn.edu.tsinghua.iotdb.qp.physical.sys.PropertyPlan;
 import cn.edu.tsinghua.iotdb.query.engine.FilterStructure;
 import cn.edu.tsinghua.iotdb.query.engine.OverflowQueryEngine;
+import cn.edu.tsinghua.iotdb.query.engine.groupby.GroupByQueryDataSet;
 import cn.edu.tsinghua.iotdb.utils.LoadDataUtils;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 import cn.edu.tsinghua.tsfile.common.utils.Pair;
@@ -113,7 +114,8 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 	public QueryDataSet groupBy(List<Pair<Path, String>> aggres, List<FilterStructure> filterStructures,
 								long unit, long origin, FilterExpression intervals, int fetchSize)
 			throws ProcessorException, IOException, PathErrorException {
-		throw new ProcessorException("Do not support");
+		//throw new ProcessorException("Do not support");
+		return new GroupByQueryDataSet();
 	}
 
 	@Override
