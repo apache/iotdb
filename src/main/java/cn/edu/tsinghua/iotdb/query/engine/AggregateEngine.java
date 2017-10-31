@@ -47,7 +47,7 @@ public class AggregateEngine {
         LOG.debug("multiple aggregation calculation");
 
         if (filterStructures == null || filterStructures.size() == 0 || (filterStructures.size()==1 && filterStructures.get(0).noFilter()) ) {
-            return multiAggregateWithoutFilter(aggres, filterStructures);
+            return multiAggregateWithoutFilter(aggres);
         }
 
         QueryDataSet ansQueryDataSet = new QueryDataSet();
@@ -98,7 +98,6 @@ public class AggregateEngine {
         // if there has any uncompleted data, hasAnyUnReadDataFlag is true
         boolean hasAnyUnReadDataFlag = true;
         while (true) {
-
             while (timestamps.size() < batchSize && !priorityQueue.isEmpty() && hasAnyUnReadDataFlag) {
                 // add the minimum timestamp and remove others in timeArray
                 long minTime = priorityQueue.poll();
@@ -206,7 +205,7 @@ public class AggregateEngine {
         return ansQueryDataSet;
     }
 
-    private static QueryDataSet multiAggregateWithoutFilter(List<Pair<Path, AggregateFunction>> aggres, List<FilterStructure> filterStructures) throws PathErrorException, ProcessorException, IOException {
+    private static QueryDataSet multiAggregateWithoutFilter(List<Pair<Path, AggregateFunction>> aggres) throws PathErrorException, ProcessorException, IOException {
 
         QueryDataSet ansQueryDataSet = new QueryDataSet();
 

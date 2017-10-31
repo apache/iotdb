@@ -111,6 +111,11 @@ public class OverflowQueryEngine {
         return AggregateEngine.multiAggregate(aggregations, filterStructures);
     }
 
+    public QueryDataSet groupBy(List<Pair<Path, String>> aggres, List<FilterStructure> filterStructures,
+                                long unit, long origin, FilterExpression intervals, int fetchSize) {
+        return null;
+    }
+
     /**
      * Query type 1: read without filter.
      */
