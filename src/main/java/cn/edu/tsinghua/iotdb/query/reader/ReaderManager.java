@@ -102,7 +102,7 @@ public class ReaderManager {
     public void close() throws IOException {
         for (ITsRandomAccessFileReader raf : rafList) {
             if (raf instanceof TsRandomAccessLocalFileReader) {
-                ((TsRandomAccessLocalFileReader) raf).closeFromManager();
+                raf.close();
             } else {
                 raf.close();
             }
