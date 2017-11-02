@@ -11,6 +11,7 @@ import cn.edu.tsinghua.iotdb.query.aggregation.AggregateFunction;
 import cn.edu.tsinghua.iotdb.query.aggregation.AggregationResult;
 import cn.edu.tsinghua.iotdb.query.management.ReadLockManager;
 import cn.edu.tsinghua.iotdb.query.management.RecordReaderFactory;
+import cn.edu.tsinghua.tsfile.common.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -89,12 +90,12 @@ public class RecordReader {
      * @throws ProcessorException
      * @throws IOException
      */
-    public DynamicOneColumnData getValueInOneColumnWithOverflow(String deviceUID, String sensorId,
+    public DynamicOneColumnData getValueInOneColumnWithOverflow(String deltaObjectId, String measurementId,
                                                                 DynamicOneColumnData updateTrue, DynamicOneColumnData updateFalse, InsertDynamicData insertMemoryData,
                                                                 SingleSeriesFilterExpression timeFilter, SingleSeriesFilterExpression valueFilter, DynamicOneColumnData res, int fetchSize)
-            throws ProcessorException, IOException {
-
-        List<RowGroupReader> rowGroupReaderList = readerManager.getRowGroupReaderListByDeltaObject(deviceUID);
+            throws ProcessorException, IOException, PathErrorException {
+        TSDataType dataType = MManager.getInstance().getSeriesType(deltaObjectId + "." + measurementId);
+        List<RowGroupReader> rowGroupReaderList = readerManager.getRowGroupReaderListByDeltaObject(deltaObjectId);
         int i = 0;
         if (res != null) {
             i = res.getRowGroupIndex();
@@ -102,8 +103,9 @@ public class RecordReader {
         // iterative res, res may be expand
         for (; i < rowGroupReaderList.size(); i++) {
             RowGroupReader rowGroupReader = rowGroupReaderList.get(i);
-            if (rowGroupReader.getValueReaders().containsKey(sensorId)) {
-                res = rowGroupReader.getValueReaders().get(sensorId)
+            if (rowGroupReader.getValueReaders().containsKey(measurementId) &&
+                    rowGroupReader.getValueReaders().get(measurementId).getDataType().equals(dataType)) {
+                res = rowGroupReader.getValueReaders().get(measurementId)
                         .getValuesWithOverFlow(updateTrue, updateFalse, insertMemoryData, timeFilter, null, valueFilter, res, fetchSize);
                 if (res.valueLength >= fetchSize) {
                     res.hasReadAll = false;
@@ -157,7 +159,6 @@ public class RecordReader {
         if (res == null) {
             res = createAOneColRetByFullPath(deviceUID + "." + sensorId);
         }
-
         // add left insert values
         if (insertMemoryData.hasInsertData()) {
             res.hasReadAll = addLeftInsertValue(res, insertMemoryData, fetchSize, timeFilter, updateTrue, updateFalse);
@@ -191,17 +192,18 @@ public class RecordReader {
      * @param valueFilter value filter
      * @return aggregation result
      * @throws ProcessorException aggregation invoking exception
-     * @throws IOException tsfile read exception
+     * @throws IOException TsFile read exception
      */
     public AggregationResult aggregate(String deltaObjectId, String measurementId, AggregateFunction func,
                                        DynamicOneColumnData updateTrue, DynamicOneColumnData updateFalse, InsertDynamicData insertMemoryData,
                                        SingleSeriesFilterExpression timeFilter, SingleSeriesFilterExpression freqFilter, SingleSeriesFilterExpression valueFilter
-    ) throws ProcessorException, IOException {
-
+    ) throws ProcessorException, IOException, PathErrorException {
+        TSDataType dataType = MManager.getInstance().getSeriesType(deltaObjectId + "." + measurementId);
         List<RowGroupReader> rowGroupReaderList = readerManager.getRowGroupReaderListByDeltaObject(deltaObjectId);
 
         for (RowGroupReader rowGroupReader : rowGroupReaderList) {
-            if (rowGroupReader.getValueReaders().containsKey(measurementId)) {
+            if (rowGroupReader.getValueReaders().containsKey(measurementId) &&
+                    rowGroupReader.getValueReaders().get(measurementId).getDataType().equals(dataType)) {
                 rowGroupReader.getValueReaders().get(measurementId)
                         .aggregate(func, insertMemoryData, updateTrue, updateFalse, timeFilter, freqFilter, valueFilter);
             }
@@ -209,13 +211,17 @@ public class RecordReader {
 
         // add left insert values
         if (insertMemoryData != null && insertMemoryData.hasInsertData()) {
-            func.calculateFromLeftMemoryData(insertMemoryData);
+            func.calculateValueFromLeftMemoryData(insertMemoryData);
         }
         return func.result;
     }
 
     /**
-     * Calculate the aggregate result using the common timestamps.
+     * <p>
+     * Calculate the aggregate result using the given timestamps.
+     * Return a pair of AggregationResult and Boolean, AggregationResult represents the aggregation result,
+     * Boolean represents that whether there still has unread data.
+     * </p>
      *
      * @param deltaObjectId deltaObjectId deltaObjectId of <code>Path</code>
      * @param measurementId measurementId of <code>Path</code>
@@ -227,30 +233,42 @@ public class RecordReader {
      * @param freqFilter frequency filter
      * @param valueFilter value filter
      * @param timestamps timestamps calculated by the cross filter
-     * @return aggregation result
+     * @param aggreData aggregation result calculated last time //TODO this parameter is unnecessary?
+     * @return aggregation result and whether still has unread data
      * @throws ProcessorException aggregation invoking exception
-     * @throws IOException tsfile read exception
+     * @throws IOException TsFile read exception
      */
-    public AggregationResult aggregateUsingTimestamps(String deltaObjectId, String measurementId, AggregateFunction func,
-                                                      DynamicOneColumnData updateTrue, DynamicOneColumnData updateFalse, InsertDynamicData insertMemoryData,
-                                                      SingleSeriesFilterExpression timeFilter, SingleSeriesFilterExpression freqFilter, SingleSeriesFilterExpression valueFilter,
-                                                      List<Long> timestamps, DynamicOneColumnData aggreData
+    public Pair<AggregationResult, Boolean> aggregateUsingTimestamps(String deltaObjectId, String measurementId, AggregateFunction func,
+                                                                     DynamicOneColumnData updateTrue, DynamicOneColumnData updateFalse, InsertDynamicData insertMemoryData,
+                                                                     SingleSeriesFilterExpression timeFilter, SingleSeriesFilterExpression freqFilter, SingleSeriesFilterExpression valueFilter,
+                                                                     List<Long> timestamps, DynamicOneColumnData aggreData
     ) throws ProcessorException, IOException {
+
+        boolean hasUnReadData = false;
 
         List<RowGroupReader> rowGroupReaderList = readerManager.getRowGroupReaderListByDeltaObject(deltaObjectId);
 
+        int commonTimestampsIndex = 0;
+        // TODO if the RowGroupReader.ValueReaders.get(measurementId) has been read, how to avoid it?
         for (RowGroupReader rowGroupReader : rowGroupReaderList) {
             if (rowGroupReader.getValueReaders().containsKey(measurementId)) {
-                rowGroupReader.getValueReaders().get(measurementId)
+                commonTimestampsIndex = rowGroupReader.getValueReaders().get(measurementId)
                         .aggregateUsingTimestamps(func, insertMemoryData, updateTrue, updateFalse, timeFilter, freqFilter, timestamps, aggreData);
             }
         }
 
         // calc aggregation using memory data
         if (insertMemoryData != null && insertMemoryData.hasInsertData()) {
-            func.calcAggregationUsingTimestamps(insertMemoryData, timestamps);
+            hasUnReadData = func.calcAggregationUsingTimestamps(insertMemoryData, timestamps, commonTimestampsIndex);
+        } else {
+            if (commonTimestampsIndex < timestamps.size()) {
+                hasUnReadData = false;
+            } else {
+                hasUnReadData = true;
+            }
         }
-        return func.result;
+
+        return new Pair<>(func.result, hasUnReadData);
     }
 
     /**
@@ -260,18 +278,18 @@ public class RecordReader {
      * @throws ProcessorException
      * @throws IOException
      */
-    public DynamicOneColumnData getValuesUseTimestampsWithOverflow(String deviceUID, String sensorId, long[] timestamps,
+    public DynamicOneColumnData getValuesUseTimestampsWithOverflow(String deltaObjectId, String measurementId, long[] timestamps,
                                                                    DynamicOneColumnData updateTrue, InsertDynamicData insertMemoryData, SingleSeriesFilterExpression deleteFilter)
             throws ProcessorException, IOException {
         TSDataType dataType;
         String deviceType;
         try {
-            dataType = MManager.getInstance().getSeriesType(deviceUID + "." + sensorId);
-            deviceType = MManager.getInstance().getDeltaObjectTypeByPath(deviceUID);
+            dataType = MManager.getInstance().getSeriesType(deltaObjectId + "." + measurementId);
+            deviceType = MManager.getInstance().getDeltaObjectTypeByPath(deltaObjectId);
         } catch (PathErrorException e) {
             throw new ProcessorException(e.getMessage());
         }
-        DynamicOneColumnData oldRes = getValuesUseTimestamps(deviceUID, sensorId, timestamps);
+        DynamicOneColumnData oldRes = getValuesUseTimestamps(deltaObjectId, measurementId, timestamps);
         if (oldRes == null) {
             oldRes = new DynamicOneColumnData(dataType, true);
         }
@@ -318,16 +336,16 @@ public class RecordReader {
      * @return
      * @throws IOException
      */
-    private DynamicOneColumnData getValuesUseTimestamps(String deltaObjectUID, String measurementUId, long[] timestamps)
+    private DynamicOneColumnData getValuesUseTimestamps(String deltaObjectId, String measurementId, long[] timestamps)
             throws IOException {
         DynamicOneColumnData res = null;
-        List<RowGroupReader> rowGroupReaderList = readerManager.getRowGroupReaderListByDeltaObject(deltaObjectUID);
+        List<RowGroupReader> rowGroupReaderList = readerManager.getRowGroupReaderListByDeltaObject(deltaObjectId);
         for (int i = 0; i < rowGroupReaderList.size(); i++) {
             RowGroupReader rowGroupReader = rowGroupReaderList.get(i);
             if (i == 0) {
                 res = rowGroupReader.readValueUseTimestamps(measurementUId, timestamps);
             } else {
-                DynamicOneColumnData tmpRes = rowGroupReader.readValueUseTimestamps(measurementUId, timestamps);
+                DynamicOneColumnData tmpRes = rowGroupReader.readValueUseTimestamps(measurementId, timestamps);
                 res.mergeRecord(tmpRes);
             }
         }

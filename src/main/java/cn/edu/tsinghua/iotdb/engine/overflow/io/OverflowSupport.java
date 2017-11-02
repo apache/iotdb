@@ -13,6 +13,8 @@ import org.slf4j.LoggerFactory;
 import cn.edu.tsinghua.iotdb.engine.overflow.metadata.OFFileMetadata;
 import cn.edu.tsinghua.iotdb.engine.overflow.metadata.OFRowGroupListMetadata;
 import cn.edu.tsinghua.iotdb.engine.overflow.metadata.OFSeriesListMetadata;
+import cn.edu.tsinghua.iotdb.exception.PathErrorException;
+import cn.edu.tsinghua.iotdb.metadata.MManager;
 import cn.edu.tsinghua.tsfile.common.conf.TSFileConfig;
 import cn.edu.tsinghua.tsfile.common.conf.TSFileDescriptor;
 import cn.edu.tsinghua.tsfile.compress.Compressor;
@@ -165,7 +167,8 @@ public class OverflowSupport {
 		}
 		seriesWriter = deltaObjectIdWriterMap.get(measurementId);
 		if (type != seriesWriter.getTSDataType()) {
-			return false;
+			seriesWriter.setType(type);
+			seriesWriter.reset();
 		}
 		return true;
 	}
@@ -255,7 +258,7 @@ public class OverflowSupport {
 	 * @return
 	 */
 	public List<Object> query(String deltaObjectId, String measurementId, SingleSeriesFilterExpression timeFilter,
-			SingleSeriesFilterExpression freqFilter, SingleSeriesFilterExpression valueFilter) {
+			SingleSeriesFilterExpression freqFilter, SingleSeriesFilterExpression valueFilter, TSDataType dataType) {
 		List<Object> res;
 		if (!checkRecordForQuery(deltaObjectId, measurementId)) {
 			res = new ArrayList<>();
@@ -265,8 +268,12 @@ public class OverflowSupport {
 			res.add(timeFilter);
 			return res;
 		}
-
-		res = overflowMap.get(deltaObjectId).get(measurementId).query(timeFilter, freqFilter, valueFilter);
+		OverflowSeriesImpl seriesImpl = overflowMap.get(deltaObjectId).get(measurementId);
+		if(seriesImpl.getTSDataType()!=dataType){
+			seriesImpl.setType(dataType);
+			seriesImpl.reset();
+		}
+		res = seriesImpl.query(timeFilter, freqFilter, valueFilter, dataType);
 		if (res == null) {
 			res = new ArrayList<>();
 			res.add(null);
@@ -346,7 +353,7 @@ public class OverflowSupport {
 				}
 			}
 		}
-		
+
 		for (Entry<String, Map<String, OverflowSeriesImpl>> rowGroupWriterEntry : overflowMap.entrySet()) {
 			for (Entry<String, OverflowSeriesImpl> seriesWriterEntry : rowGroupWriterEntry.getValue().entrySet()) {
 				//

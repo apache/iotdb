@@ -7,15 +7,16 @@ import java.io.File;
 import java.io.IOException;
 import java.util.List;
 
-import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
-import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
-import cn.edu.tsinghua.iotdb.engine.overflow.metadata.OFFileMetadata;
-import cn.edu.tsinghua.iotdb.metadata.MManager;
-import cn.edu.tsinghua.iotdb.sys.writelog.WriteLogManager;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
+import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
+import cn.edu.tsinghua.iotdb.engine.lru.MetadataManagerHelper;
+import cn.edu.tsinghua.iotdb.engine.overflow.metadata.OFFileMetadata;
+import cn.edu.tsinghua.iotdb.metadata.MManager;
+import cn.edu.tsinghua.iotdb.sys.writelog.WriteLogManager;
 import cn.edu.tsinghua.tsfile.common.utils.BytesUtils;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
 import cn.edu.tsinghua.tsfile.timeseries.filter.definition.SingleSeriesFilterExpression;
@@ -57,6 +58,7 @@ public class OverflowSupportTest {
 		ofsupport = null;
 		ofrw = null;
 		ofio = null;
+		MetadataManagerHelper.initMetadata();
 		WriteLogManager.getInstance().close();
 	}
 
@@ -104,7 +106,7 @@ public class OverflowSupportTest {
 		// update data
 		updateData(ofsupport, deltaObjectId, measurementIds[0], 100, 4, 6);
 		// query
-		List<Object> result = ofsupport.query(deltaObjectId, measurementIds[0], null, null, null);
+		List<Object> result = ofsupport.query(deltaObjectId, measurementIds[0], null, null, null, dataTypes[0]);
 		DynamicOneColumnData insertData = (DynamicOneColumnData) result.get(0);
 		assertEquals(3, insertData.valueLength);
 		// check time check value
@@ -149,7 +151,6 @@ public class OverflowSupportTest {
 			fail(e.getMessage());
 		}
 	}
-
 
 	@Test
 	public void testNoDataClose() {
@@ -280,7 +281,7 @@ public class OverflowSupportTest {
 			fail("Restore overflow support from offilemedata failed, the reason is " + e.getMessage());
 		}
 		// int
-		List<Object> result = ofsupport.query(deltaObjectId, measurementIds[0], null, null, null);
+		List<Object> result = ofsupport.query(deltaObjectId, measurementIds[0], null, null, null, dataTypes[0]);
 		DynamicOneColumnData insertData = (DynamicOneColumnData) result.get(0);
 		assertEquals(10, insertData.valueLength);
 		for (int i = 1; i < 11; i++) {
@@ -288,28 +289,28 @@ public class OverflowSupportTest {
 			assertEquals(i, insertData.getInt(i - 1));
 		}
 		// float
-		result = ofsupport.query(deltaObjectId, measurementIds[2], null, null, null);
+		result = ofsupport.query(deltaObjectId, measurementIds[2], null, null, null, dataTypes[2]);
 		insertData = (DynamicOneColumnData) result.get(0);
 		for (int i = 1; i < 11; i++) {
 			assertEquals(i, insertData.getTime(i - 1));
 			assertEquals(String.valueOf(i * 1.5), String.valueOf(insertData.getFloat(i - 1)));
 		}
 		// double
-		result = ofsupport.query(deltaObjectId, measurementIds[3], null, null, null);
+		result = ofsupport.query(deltaObjectId, measurementIds[3], null, null, null, dataTypes[3]);
 		insertData = (DynamicOneColumnData) result.get(0);
 		for (int i = 1; i < 11; i++) {
 			assertEquals(i, insertData.getTime(i - 1));
 			assertEquals(String.valueOf(i * 1.5), String.valueOf(insertData.getDouble(i - 1)));
 		}
 		// string
-		result = ofsupport.query(deltaObjectId, measurementIds[5], null, null, null);
+		result = ofsupport.query(deltaObjectId, measurementIds[5], null, null, null, dataTypes[5]);
 		insertData = (DynamicOneColumnData) result.get(0);
 		for (int i = 1; i < 11; i++) {
 			assertEquals(i, insertData.getTime(i - 1));
 			assertEquals("tsfile" + i, insertData.getStringValue(i - 1));
 		}
 		// long
-		result = ofsupport.query(deltaObjectId, measurementIds[1], null, null, null);
+		result = ofsupport.query(deltaObjectId, measurementIds[1], null, null, null, dataTypes[1]);
 		DynamicOneColumnData updateData = (DynamicOneColumnData) result.get(1);
 		assertEquals(10, updateData.valueLength);
 		assertEquals(20, updateData.timeLength);
@@ -374,14 +375,14 @@ public class OverflowSupportTest {
 		};
 
 		List<Object> result = ofsupport.query(deltaObjectId, measurementIds[0],
-				(SingleSeriesFilterExpression) timeFilter, null, null);
+				(SingleSeriesFilterExpression) timeFilter, null, null, dataTypes[0]);
 		assertEquals(timeFilter, result.get(3));
 		// test insert: int
 		for (int i = 1; i < 11; i++) {
 			ofsupport.insert(deltaObjectId, measurementIds[0], i, dataTypes[0], BytesUtils.intToBytes(i));
 		}
 		// query data
-		result = ofsupport.query(deltaObjectId, measurementIds[0], null, null, null);
+		result = ofsupport.query(deltaObjectId, measurementIds[0], null, null, null, dataTypes[0]);
 		DynamicOneColumnData insertData = (DynamicOneColumnData) result.get(0);
 		assertEquals(10, insertData.valueLength);
 		for (int i = 1; i < 11; i++) {
@@ -393,7 +394,7 @@ public class OverflowSupportTest {
 			ofsupport.insert(deltaObjectId, measurementIds[2], i, dataTypes[2],
 					BytesUtils.floatToBytes((float) (i * 1.5)));
 		}
-		result = ofsupport.query(deltaObjectId, measurementIds[2], null, null, null);
+		result = ofsupport.query(deltaObjectId, measurementIds[2], null, null, null, dataTypes[2]);
 		insertData = (DynamicOneColumnData) result.get(0);
 		for (int i = 1; i < 11; i++) {
 			assertEquals(i, insertData.getTime(i - 1));
@@ -404,7 +405,7 @@ public class OverflowSupportTest {
 			ofsupport.insert(deltaObjectId, measurementIds[3], i, dataTypes[3],
 					BytesUtils.doubleToBytes((double) (i * 1.5)));
 		}
-		result = ofsupport.query(deltaObjectId, measurementIds[3], null, null, null);
+		result = ofsupport.query(deltaObjectId, measurementIds[3], null, null, null, dataTypes[3]);
 		insertData = (DynamicOneColumnData) result.get(0);
 		for (int i = 1; i < 11; i++) {
 			assertEquals(i, insertData.getTime(i - 1));
@@ -415,7 +416,7 @@ public class OverflowSupportTest {
 		for (int i = 1; i < 11; i++) {
 			ofsupport.insert(deltaObjectId, measurementIds[5], i, dataTypes[5], BytesUtils.StringToBytes("tsfile" + i));
 		}
-		result = ofsupport.query(deltaObjectId, measurementIds[5], null, null, null);
+		result = ofsupport.query(deltaObjectId, measurementIds[5], null, null, null, dataTypes[5]);
 		insertData = (DynamicOneColumnData) result.get(0);
 		for (int i = 1; i < 11; i++) {
 			assertEquals(i, insertData.getTime(i - 1));
@@ -427,7 +428,7 @@ public class OverflowSupportTest {
 			ofsupport.update(deltaObjectId, measurementIds[1], i, i + 1, dataTypes[1], BytesUtils.longToBytes(i));
 		}
 		// query data
-		result = ofsupport.query(deltaObjectId, measurementIds[1], null, null, null);
+		result = ofsupport.query(deltaObjectId, measurementIds[1], null, null, null, dataTypes[1]);
 		DynamicOneColumnData updateData = (DynamicOneColumnData) result.get(1);
 		assertEquals(10, updateData.valueLength);
 		assertEquals(20, updateData.timeLength);
@@ -438,7 +439,7 @@ public class OverflowSupportTest {
 		}
 		// test delete
 		ofsupport.delete(deltaObjectId, measurementIds[0], 20, dataTypes[0]);
-		result = ofsupport.query(deltaObjectId, measurementIds[0], null, null, null);
+		result = ofsupport.query(deltaObjectId, measurementIds[0], null, null, null, dataTypes[0]);
 		insertData = (DynamicOneColumnData) result.get(0);
 		assertEquals(0, insertData.valueLength);
 		assertEquals(0, insertData.timeLength);
@@ -469,7 +470,7 @@ public class OverflowSupportTest {
 					BytesUtils.boolToBytes(i / 2 == 0 ? true : false));
 		}
 		// query data
-		result = ofsupport.query(deltaObjectId, measurementIds[4], null, null, null);
+		result = ofsupport.query(deltaObjectId, measurementIds[4], null, null, null, dataTypes[4]);
 		updateData = (DynamicOneColumnData) result.get(1);
 		for (int i = 1; i < 20; i = i + 2) {
 			assertEquals(i, updateData.getTime(i - 1));

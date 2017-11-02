@@ -7,7 +7,6 @@ import org.joda.time.DateTimeZone;
 public class TsfileDBConfig {
 
 	public static final String CONFIG_NAME = "iotdb-engine.properties";
-	public static final String CONFIG_DEFAULT_PATH = "iotdb/conf/" + CONFIG_NAME;
 	
 	/**
 	 * Port which JDBC server listens to
@@ -17,7 +16,7 @@ public class TsfileDBConfig {
 	/**
 	 * Is write ahead log enable
 	 */
-	public boolean enableWal = false;
+	public boolean enableWal = true;
 
 	/**
 	 * When the total number of write ahead log in the file and memory reaches
@@ -28,7 +27,7 @@ public class TsfileDBConfig {
 	public int walCleanupThreshold = 500000;
 
 	/**
-	 * When a certain amount ofwrite ahead log is reached, it will be flushed to
+	 * When a certain amount of write ahead log is reached, it will be flushed to
 	 * disk. It is possible to lose at most flush_wal_threshold operations
 	 */
 	public int flushWalThreshold = 10000;
@@ -107,9 +106,7 @@ public class TsfileDBConfig {
 
 	public DateTimeZone timeZone = DateTimeZone.getDefault();
 
-	public TsfileDBConfig() {
-
-	}
+	public TsfileDBConfig() {}
 
 	public void updateDataPath() {
 		// filenode dir

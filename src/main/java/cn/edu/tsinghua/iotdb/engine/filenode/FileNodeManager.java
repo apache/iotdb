@@ -604,9 +604,6 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 					do {
 						fileNodeProcessor = getProcessorByLRU(namespacePath, true);
 					} while (fileNodeProcessor == null);
-					if (!fileNodeProcessor.hasBufferwriteProcessor()) {
-						return true;
-					}
 				} catch (LRUManagerException e) {
 					throw new FileNodeManagerException(e);
 				}

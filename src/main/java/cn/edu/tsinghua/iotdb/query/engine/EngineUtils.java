@@ -44,7 +44,7 @@ public class EngineUtils {
      */
     public static List<Object> getOverflowInfoAndFilterDataInMem(SingleSeriesFilterExpression timeFilter,
                                                                  SingleSeriesFilterExpression freqFilter, SingleSeriesFilterExpression valueFilter
-            , DynamicOneColumnData res, DynamicOneColumnData insertDataInMemory, List<Object> overflowParams) throws ProcessorException {
+            , DynamicOneColumnData res, DynamicOneColumnData insertDataInMemory, List<Object> overflowParams) {
 
         List<Object> paramList = new ArrayList<>();
 
