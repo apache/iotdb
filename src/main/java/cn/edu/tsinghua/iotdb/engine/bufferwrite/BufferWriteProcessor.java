@@ -35,8 +35,8 @@ import cn.edu.tsinghua.tsfile.common.conf.TSFileDescriptor;
 import cn.edu.tsinghua.tsfile.common.constant.JsonFormatConstant;
 import cn.edu.tsinghua.tsfile.common.utils.BytesUtils;
 import cn.edu.tsinghua.tsfile.common.utils.Pair;
-import cn.edu.tsinghua.tsfile.common.utils.RandomAccessOutputStream;
-import cn.edu.tsinghua.tsfile.common.utils.TSRandomAccessFileWriter;
+import cn.edu.tsinghua.tsfile.common.utils.TsRandomAccessFileWriter;
+import cn.edu.tsinghua.tsfile.common.utils.ITsRandomAccessFileWriter;
 import cn.edu.tsinghua.tsfile.file.metadata.RowGroupMetaData;
 import cn.edu.tsinghua.tsfile.file.metadata.TSFileMetaData;
 import cn.edu.tsinghua.tsfile.file.metadata.TimeSeriesMetadata;
@@ -45,9 +45,7 @@ import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSEncoding;
 import cn.edu.tsinghua.tsfile.file.utils.ReadWriteThriftFormatUtils;
 import cn.edu.tsinghua.tsfile.format.FileMetaData;
-import cn.edu.tsinghua.tsfile.timeseries.write.TSRecordWriteSupport;
-import cn.edu.tsinghua.tsfile.timeseries.write.TSRecordWriter;
-import cn.edu.tsinghua.tsfile.timeseries.write.WriteSupport;
+import cn.edu.tsinghua.tsfile.timeseries.write.TsFileWriter;
 import cn.edu.tsinghua.tsfile.timeseries.write.exception.WriteProcessException;
 import cn.edu.tsinghua.tsfile.timeseries.write.record.DataPoint;
 import cn.edu.tsinghua.tsfile.timeseries.write.record.TSRecord;
@@ -123,9 +121,9 @@ public class BufferWriteProcessor extends LRUProcessor {
 
 		} else {
 
-			TSRandomAccessFileWriter outputWriter;
+			ITsRandomAccessFileWriter outputWriter;
 			try {
-				outputWriter = new RandomAccessOutputStream(outputFile);
+				outputWriter = new TsRandomAccessFileWriter(outputFile);
 			} catch (IOException e) {
 				LOGGER.error("Construct the TSRandomAccessFileWriter error, the absolutePath is {}.",
 						outputFile.getAbsolutePath());
@@ -133,15 +131,14 @@ public class BufferWriteProcessor extends LRUProcessor {
 			}
 
 			try {
-				bufferIOWriter = new BufferWriteIOWriter(fileSchema, outputWriter);
+				bufferIOWriter = new BufferWriteIOWriter(outputWriter);
 			} catch (IOException e) {
 				LOGGER.error("Get the BufferWriteIOWriter error, the nameSpacePath is {}.", nameSpacePath);
 				throw new BufferWriteProcessorException(e);
 			}
 
-			WriteSupport<TSRecord> writeSupport = new TSRecordWriteSupport();
 			try {
-				recordWriter = new BufferWriteRecordWriter(TsFileConf, bufferIOWriter, writeSupport, fileSchema);
+				recordWriter = new BufferWriteRecordWriter(TsFileConf, bufferIOWriter, fileSchema);
 			} catch (WriteProcessException e) {
 				throw new BufferWriteProcessorException(e);
 			}
@@ -174,7 +171,7 @@ public class BufferWriteProcessor extends LRUProcessor {
 			LOGGER.error("Read bufferwrite restore file failed.");
 			throw new BufferWriteProcessorException(e);
 		}
-		TSRandomAccessFileWriter output;
+		ITsRandomAccessFileWriter output;
 		long lastPosition = pair.left;
 		File lastBufferWriteFile = new File(bufferwriteOutputFilePath);
 		if (lastBufferWriteFile.length() != lastPosition) {
@@ -191,7 +188,7 @@ public class BufferWriteProcessor extends LRUProcessor {
 		}
 		try {
 			// Notice: the offset is seek to end of the file by API of kr
-			output = new RandomAccessOutputStream(lastBufferWriteFile);
+			output = new TsRandomAccessFileWriter(lastBufferWriteFile);
 		} catch (IOException e) {
 			LOGGER.error("Can't construct the RandomAccessOutputStream, the outputPath is {}.",
 					bufferwriteOutputFilePath);
@@ -200,14 +197,13 @@ public class BufferWriteProcessor extends LRUProcessor {
 		try {
 			// Notice: the parameter of lastPosition is not used beacuse of the
 			// API of kr
-			bufferIOWriter = new BufferWriteIOWriter(fileSchema, output, lastPosition, pair.right);
+			bufferIOWriter = new BufferWriteIOWriter(output, lastPosition, pair.right);
 		} catch (IOException e) {
 			LOGGER.error("Can't get the bufferwrite io when recovery, the nameSpacePath is {}.", nameSpacePath);
 			throw new BufferWriteProcessorException(e);
 		}
-		WriteSupport<TSRecord> writeSupport = new TSRecordWriteSupport();
 		try {
-			recordWriter = new BufferWriteRecordWriter(TsFileConf, bufferIOWriter, writeSupport, fileSchema);
+			recordWriter = new BufferWriteRecordWriter(TsFileConf, bufferIOWriter, fileSchema);
 		} catch (WriteProcessException e) {
 			throw new BufferWriteProcessorException(e);
 		}
@@ -501,7 +497,7 @@ public class BufferWriteProcessor extends LRUProcessor {
 		}
 		convertBufferLock.readLock().lock();
 		try {
-			memData = recordWriter.query(deltaObjectId, measurementId);
+			memData = recordWriter.getDataInMemory(deltaObjectId, measurementId);
 			list = bufferIOWriter.getCurrentRowGroupMetaList(deltaObjectId);
 		} finally {
 			convertBufferLock.readLock().unlock();
@@ -556,15 +552,15 @@ public class BufferWriteProcessor extends LRUProcessor {
 		}
 	}
 
-	private class BufferWriteRecordWriter extends TSRecordWriter {
+	private class BufferWriteRecordWriter extends TsFileWriter {
 
 		private Map<String, IRowGroupWriter> flushingRowGroupWriters;
 		private Set<String> flushingRowGroupSet;
 		private long flushingRecordCount;
 
 		BufferWriteRecordWriter(TSFileConfig conf, BufferWriteIOWriter ioFileWriter,
-				WriteSupport<TSRecord> writeSupport, FileSchema schema) throws WriteProcessException {
-			super(conf, ioFileWriter, writeSupport, schema);
+				 FileSchema schema) throws WriteProcessException {
+			super(ioFileWriter, schema, conf);
 		}
 
 		/**
@@ -688,11 +684,10 @@ public class BufferWriteProcessor extends LRUProcessor {
 
 		private void asyncFlushRowGroupToStore() throws IOException {
 			if (flushingRecordCount > 0) {
-				String deltaObjectType = schema.getDeltaType();
 				long totalMemStart = deltaFileWriter.getPos();
 				for (String deltaObjectId : flushingRowGroupSet) {
 					long rowGroupStart = deltaFileWriter.getPos();
-					deltaFileWriter.startRowGroup(flushingRecordCount, deltaObjectId, deltaObjectType);
+					deltaFileWriter.startRowGroup(flushingRecordCount, deltaObjectId);
 					IRowGroupWriter groupWriter = flushingRowGroupWriters.get(deltaObjectId);
 					groupWriter.flushToFileWriter(deltaFileWriter);
 					deltaFileWriter.endRowGroup(deltaFileWriter.getPos() - rowGroupStart);
@@ -716,7 +711,6 @@ public class BufferWriteProcessor extends LRUProcessor {
 			flushingRecordCount = recordCount;
 			// reset
 			groupWriters = new HashMap<String, IRowGroupWriter>();
-			writeSupport.init(groupWriters);
 			schema.getDeltaObjectAppearedSet().clear();
 			recordCount = 0;
 		}

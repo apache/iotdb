@@ -10,7 +10,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import cn.edu.tsinghua.iotdb.engine.overflow.utils.TSFileMetaDataConverter;
-import cn.edu.tsinghua.tsfile.common.utils.RandomAccessOutputStream;
+import cn.edu.tsinghua.tsfile.common.utils.TsRandomAccessFileWriter;
 import cn.edu.tsinghua.tsfile.file.metadata.TimeSeriesChunkMetaData;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.CompressionTypeName;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSChunkType;
@@ -296,7 +296,7 @@ public class OverflowMetaDataTest {
 		}
 
 		FileOutputStream fos = new FileOutputStream(file);
-		RandomAccessOutputStream out = new RandomAccessOutputStream(file, "rw");
+		TsRandomAccessFileWriter out = new TsRandomAccessFileWriter(file, "rw");
 		Utils.write(tsfOFFileMetadata.convertToThrift(), out.getOutputStream());
 
 		out.close();

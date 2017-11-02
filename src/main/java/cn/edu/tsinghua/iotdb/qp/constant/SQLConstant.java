@@ -1,9 +1,10 @@
 package cn.edu.tsinghua.iotdb.qp.constant;
 
+import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
+
 import java.util.HashMap;
 import java.util.Map;
 
-import cn.edu.tsinghua.tsfile.timeseries.read.qp.Path;
 
 /**
  * this class contains several constants used in SQL.

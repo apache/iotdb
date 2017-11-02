@@ -132,7 +132,6 @@ public class MergeQuerySetIterator implements Iterator<QueryDataSet> {
             LinkedHashMap<String, DynamicOneColumnData> mapRet = dataSet.mapRet;
             if (!mapRet.containsKey(key)) {
                 DynamicOneColumnData oneCol = new DynamicOneColumnData(f.dataType, true);
-                oneCol.setDeltaObjectType(record.deltaObjectType);
                 mapRet.put(key, oneCol);
             }
 

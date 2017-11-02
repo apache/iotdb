@@ -64,7 +64,7 @@ public class Utils {
 		for(int i = 0 ; i < dynamicOneColumnData.timeLength; i ++){
 				timeRetList.add(dynamicOneColumnData.getTime(i));
 		}
-		TSDynamicOneColumnData tsDynamicOneColumnData = new TSDynamicOneColumnData(dynamicOneColumnData.getDeltaObjectType(), dynamicOneColumnData.dataType.toString(), dynamicOneColumnData.valueLength, timeRetList);
+		TSDynamicOneColumnData tsDynamicOneColumnData = new TSDynamicOneColumnData("", dynamicOneColumnData.dataType.toString(), dynamicOneColumnData.valueLength, timeRetList);
 		
 		switch (dynamicOneColumnData.dataType) {
 		case BOOLEAN:
