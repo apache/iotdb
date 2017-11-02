@@ -12,7 +12,7 @@ import cn.edu.tsinghua.tsfile.file.metadata.RowGroupMetaData;
 import cn.edu.tsinghua.tsfile.file.metadata.TSFileMetaData;
 import cn.edu.tsinghua.tsfile.file.metadata.converter.TSFileMetaDataConverter;
 import cn.edu.tsinghua.tsfile.file.utils.ReadWriteThriftFormatUtils;
-import cn.edu.tsinghua.tsfile.timeseries.write.io.TSFileIOWriter;
+import cn.edu.tsinghua.tsfile.timeseries.write.io.TsFileIOWriter;
 
 /**
  * This class is used to read {@code TSFileMetaData} and construct
@@ -23,7 +23,7 @@ import cn.edu.tsinghua.tsfile.timeseries.write.io.TSFileIOWriter;
 public class FileReader {
     private TSFileMetaData fileMetaData;
     private static final int FOOTER_LENGTH = 4;
-    private static final int MAGIC_LENGTH = TSFileIOWriter.magicStringBytes.length;
+    private static final int MAGIC_LENGTH = TsFileIOWriter.magicStringBytes.length;
 
     private ITsRandomAccessFileReader raf; // file pointer
     private ArrayList<RowGroupReader> rowGroupReaderList;
