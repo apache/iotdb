@@ -1,18 +1,17 @@
 package cn.edu.tsinghua.iotdb.query.reader;
 
-
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
-import cn.edu.tsinghua.tsfile.common.utils.TSRandomAccessFileReader;
+import cn.edu.tsinghua.tsfile.common.utils.ITsRandomAccessFileReader;
 import cn.edu.tsinghua.tsfile.file.metadata.RowGroupMetaData;
 import cn.edu.tsinghua.tsfile.file.metadata.TSFileMetaData;
 import cn.edu.tsinghua.tsfile.file.metadata.converter.TSFileMetaDataConverter;
 import cn.edu.tsinghua.tsfile.file.utils.ReadWriteThriftFormatUtils;
-import cn.edu.tsinghua.tsfile.timeseries.write.io.TSFileIOWriter;
+import cn.edu.tsinghua.tsfile.timeseries.write.io.TsFileIOWriter;
 
 /**
  * This class is used to read {@code TSFileMetaData} and construct
@@ -23,13 +22,13 @@ import cn.edu.tsinghua.tsfile.timeseries.write.io.TSFileIOWriter;
 public class FileReader {
     private TSFileMetaData fileMetaData;
     private static final int FOOTER_LENGTH = 4;
-    private static final int MAGIC_LENGTH = TSFileIOWriter.magicStringBytes.length;
+    private static final int MAGIC_LENGTH = TsFileIOWriter.magicStringBytes.length;
 
-    private TSRandomAccessFileReader raf; // file pointer
+    private ITsRandomAccessFileReader raf; // file pointer
     private ArrayList<RowGroupReader> rowGroupReaderList;
     private HashMap<String, ArrayList<RowGroupReader>> rowGroupReadersMap;
 
-    FileReader(TSRandomAccessFileReader raf) throws IOException {
+    FileReader(ITsRandomAccessFileReader raf) throws IOException {
         this.raf = raf;
         init();
     }
@@ -40,7 +39,7 @@ public class FileReader {
      * @param raf file pointer
      * @param rowGroupMetaDataList RowGroupMetaDataList, no need to invoke init().
      */
-    FileReader(TSRandomAccessFileReader raf, List<RowGroupMetaData> rowGroupMetaDataList) {
+    FileReader(ITsRandomAccessFileReader raf, List<RowGroupMetaData> rowGroupMetaDataList) {
         this.raf = raf;
         initFromRowGroupMetadataList(rowGroupMetaDataList);
     }
