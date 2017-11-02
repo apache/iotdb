@@ -9,6 +9,7 @@ import org.json.JSONObject;
 
 import cn.edu.tsinghua.tsfile.common.constant.JsonFormatConstant;
 import cn.edu.tsinghua.tsfile.timeseries.write.exception.InvalidJsonSchemaException;
+import cn.edu.tsinghua.tsfile.timeseries.write.exception.WriteProcessException;
 import cn.edu.tsinghua.tsfile.timeseries.write.schema.FileSchema;
 
 public class FileSchemaUtil {
@@ -39,6 +40,9 @@ public class FileSchemaUtil {
 				fileSchema = new FileSchema(jsonSchema);
 			} catch (InvalidJsonSchemaException e) {
 				//This exception won't occur
+				e.printStackTrace();
+			} catch (WriteProcessException e) {
+				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 	        return fileSchema;

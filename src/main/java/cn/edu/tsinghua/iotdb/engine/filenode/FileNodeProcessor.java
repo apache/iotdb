@@ -41,6 +41,7 @@ import cn.edu.tsinghua.tsfile.common.utils.TsRandomAccessFileWriter;
 import cn.edu.tsinghua.tsfile.common.utils.ITsRandomAccessFileWriter;
 import cn.edu.tsinghua.tsfile.file.metadata.RowGroupMetaData;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.CompressionTypeName;
+import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
 import cn.edu.tsinghua.tsfile.timeseries.filter.definition.FilterExpression;
 import cn.edu.tsinghua.tsfile.timeseries.filter.definition.SingleSeriesFilterExpression;
 import cn.edu.tsinghua.tsfile.timeseries.read.qp.Path;
@@ -544,7 +545,14 @@ public class FileNodeProcessor extends LRUProcessor {
 					deltaObjectId, measurementId));
 		}
 		// query overflow data from overflow processor
-		overflowData = overflowProcessor.query(deltaObjectId, measurementId, timeFilter, freqFilter, valueFilter);
+		TSDataType dataType = null;
+		try {
+			dataType = mManager.getSeriesType(deltaObjectId + "." + measurementId);
+		} catch (PathErrorException e) {
+			throw new FileNodeProcessorException(e);
+		}
+		overflowData = overflowProcessor.query(deltaObjectId, measurementId, timeFilter, freqFilter, valueFilter,
+				dataType);
 		// query bufferwrite data in memory and disk
 		Pair<List<Object>, List<RowGroupMetaData>> bufferwriteDataInMemory = new Pair<List<Object>, List<RowGroupMetaData>>(
 				null, null);

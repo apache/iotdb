@@ -20,19 +20,13 @@ import cn.edu.tsinghua.iotdb.auth.dao.DBDao;
 import cn.edu.tsinghua.iotdb.auth.dao.DBDaoInitException;
 import cn.edu.tsinghua.iotdb.conf.TsFileDBConstant;
 import cn.edu.tsinghua.iotdb.engine.filenode.FileNodeManager;
-
 import cn.edu.tsinghua.iotdb.exception.PathErrorException;
 import cn.edu.tsinghua.iotdb.exception.FileNodeManagerException;
-
 import cn.edu.tsinghua.iotdb.exception.StartupException;
-import cn.edu.tsinghua.iotdb.qp.QueryProcessor;
-import cn.edu.tsinghua.iotdb.qp.executor.OverflowQPExecutor;
-
 import cn.edu.tsinghua.iotdb.qp.physical.crud.DeletePlan;
 import cn.edu.tsinghua.iotdb.qp.physical.crud.InsertPlan;
 import cn.edu.tsinghua.iotdb.qp.physical.crud.UpdatePlan;
 import cn.edu.tsinghua.iotdb.sys.writelog.WriteLogManager;
-
 import cn.edu.tsinghua.iotdb.qp.physical.PhysicalPlan;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 
