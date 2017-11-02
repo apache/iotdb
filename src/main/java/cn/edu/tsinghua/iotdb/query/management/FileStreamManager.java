@@ -6,8 +6,8 @@ import java.io.IOException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import cn.edu.tsinghua.tsfile.common.utils.TSRandomAccessFileReader;
-import cn.edu.tsinghua.tsfile.timeseries.read.LocalFileInput;
+import cn.edu.tsinghua.tsfile.common.utils.ITsRandomAccessFileReader;
+import cn.edu.tsinghua.tsfile.timeseries.read.TsRandomAccessLocalFileReader;
 
 
 public class FileStreamManager {
@@ -17,11 +17,11 @@ public class FileStreamManager {
 	private FileStreamManager(){
 	}
 	
-	public TSRandomAccessFileReader getLocalRandomAccessFileReader(String path) throws FileNotFoundException{
-		return new LocalFileInput(path);
+	public ITsRandomAccessFileReader getLocalRandomAccessFileReader(String path) throws FileNotFoundException{
+		return new TsRandomAccessLocalFileReader(path);
 	}
 	
-	public void closeLocalRandomAccessFileReader(LocalFileInput localFileInput) throws IOException{
+	public void closeLocalRandomAccessFileReader(TsRandomAccessLocalFileReader localFileInput) throws IOException{
 		localFileInput.close();
 	}
 	
@@ -32,7 +32,7 @@ public class FileStreamManager {
 		return instance;
 	}
 
-	public void closeFileStreams(TSRandomAccessFileReader raf){
+	public void closeFileStreams(ITsRandomAccessFileReader raf){
 		try {
 			raf.close();
 		} catch (IOException e) {

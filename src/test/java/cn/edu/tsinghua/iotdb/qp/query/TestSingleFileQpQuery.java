@@ -21,7 +21,7 @@ import cn.edu.tsinghua.iotdb.qp.exception.QueryProcessorException;
 import cn.edu.tsinghua.iotdb.qp.executor.QueryProcessExecutor;
 import cn.edu.tsinghua.iotdb.qp.executor.SingleFileQPExecutor;
 import cn.edu.tsinghua.iotdb.qp.physical.PhysicalPlan;
-import cn.edu.tsinghua.tsfile.timeseries.read.LocalFileInput;
+import cn.edu.tsinghua.tsfile.timeseries.read.TsRandomAccessLocalFileReader;
 import cn.edu.tsinghua.tsfile.timeseries.read.query.QueryDataSet;
 
 /**
@@ -41,7 +41,7 @@ public class TestSingleFileQpQuery {
         if(!file.exists())
             exec = null;
         else {
-            exec = new SingleFileQPExecutor(new LocalFileInput("src/test/resources/testMultiDeviceMerge.tsfile"));
+            exec = new SingleFileQPExecutor(new TsRandomAccessLocalFileReader("src/test/resources/testMultiDeviceMerge.tsfile"));
             processor = new QueryProcessor(exec);
         }
     }

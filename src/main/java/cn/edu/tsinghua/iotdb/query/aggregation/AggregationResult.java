@@ -18,7 +18,6 @@ public class AggregationResult {
 	
 	AggregationResult(TSDataType dataType){
 		data = new DynamicOneColumnData(dataType, true);
-		data.setDeltaObjectType("Aggregation");
 	}
 	
 }

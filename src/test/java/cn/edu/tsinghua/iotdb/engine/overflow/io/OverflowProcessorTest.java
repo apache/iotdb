@@ -22,7 +22,7 @@ import cn.edu.tsinghua.iotdb.metadata.MManager;
 import cn.edu.tsinghua.iotdb.sys.writelog.WriteLogManager;
 import cn.edu.tsinghua.tsfile.common.conf.TSFileConfig;
 import cn.edu.tsinghua.tsfile.common.conf.TSFileDescriptor;
-import cn.edu.tsinghua.tsfile.common.utils.RandomAccessOutputStream;
+import cn.edu.tsinghua.tsfile.common.utils.TsRandomAccessFileWriter;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
 import cn.edu.tsinghua.tsfile.timeseries.read.query.DynamicOneColumnData;
 
@@ -138,7 +138,7 @@ public class OverflowProcessorTest {
 			assertEquals(true, new File(overflowfilePath).exists());
 			assertEquals(true, new File(overflowrestorefilePath).exists());
 			// add bytes in the tail of the file
-			RandomAccessOutputStream ras = new RandomAccessOutputStream(new File(overflowfilePath));
+			TsRandomAccessFileWriter ras = new TsRandomAccessFileWriter(new File(overflowfilePath));
 			ras.seek(ras.getPos());
 			ras.write(new byte[10]);
 			ras.close();
