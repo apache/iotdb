@@ -29,7 +29,6 @@ import cn.edu.tsinghua.iotdb.exception.BufferWriteProcessorException;
 import cn.edu.tsinghua.iotdb.exception.FileNodeProcessorException;
 import cn.edu.tsinghua.iotdb.exception.OverflowProcessorException;
 import cn.edu.tsinghua.iotdb.exception.PathErrorException;
-import cn.edu.tsinghua.iotdb.exception.ProcessorRuntimException;
 import cn.edu.tsinghua.iotdb.metadata.ColumnSchema;
 import cn.edu.tsinghua.iotdb.metadata.MManager;
 import cn.edu.tsinghua.iotdb.query.engine.QueryForMerge;
@@ -38,8 +37,8 @@ import cn.edu.tsinghua.tsfile.common.conf.TSFileDescriptor;
 import cn.edu.tsinghua.tsfile.common.constant.JsonFormatConstant;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 import cn.edu.tsinghua.tsfile.common.utils.Pair;
-import cn.edu.tsinghua.tsfile.common.utils.RandomAccessOutputStream;
-import cn.edu.tsinghua.tsfile.common.utils.TSRandomAccessFileWriter;
+import cn.edu.tsinghua.tsfile.common.utils.TsRandomAccessFileWriter;
+import cn.edu.tsinghua.tsfile.common.utils.ITsRandomAccessFileWriter;
 import cn.edu.tsinghua.tsfile.file.metadata.RowGroupMetaData;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.CompressionTypeName;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
@@ -48,11 +47,9 @@ import cn.edu.tsinghua.tsfile.timeseries.filter.definition.SingleSeriesFilterExp
 import cn.edu.tsinghua.tsfile.timeseries.read.qp.Path;
 import cn.edu.tsinghua.tsfile.timeseries.read.query.DynamicOneColumnData;
 import cn.edu.tsinghua.tsfile.timeseries.read.support.RowRecord;
-import cn.edu.tsinghua.tsfile.timeseries.write.TSRecordWriteSupport;
-import cn.edu.tsinghua.tsfile.timeseries.write.TSRecordWriter;
-import cn.edu.tsinghua.tsfile.timeseries.write.WriteSupport;
+import cn.edu.tsinghua.tsfile.timeseries.write.TsFileWriter;
 import cn.edu.tsinghua.tsfile.timeseries.write.exception.WriteProcessException;
-import cn.edu.tsinghua.tsfile.timeseries.write.io.TSFileIOWriter;
+import cn.edu.tsinghua.tsfile.timeseries.write.io.TsFileIOWriter;
 import cn.edu.tsinghua.tsfile.timeseries.write.record.DataPoint;
 import cn.edu.tsinghua.tsfile.timeseries.write.record.TSRecord;
 import cn.edu.tsinghua.tsfile.timeseries.write.schema.FileSchema;
@@ -914,10 +911,9 @@ public class FileNodeProcessor extends LRUProcessor {
 		Map<String, Long> startTimeMap = new HashMap<>();
 		Map<String, Long> endTimeMap = new HashMap<>();
 
-		TSRandomAccessFileWriter raf = null;
-		TSFileIOWriter tsfileIOWriter = null;
-		WriteSupport<TSRecord> writeSupport = null;
-		TSRecordWriter recordWriter = null;
+		ITsRandomAccessFileWriter raf = null;
+		TsFileIOWriter tsfileIOWriter = null;
+		TsFileWriter recordWriter = null;
 		String outputPath = null;
 		for (String deltaObjectId : backupIntervalFile.getStartTimeMap().keySet()) {
 			// query one deltaObjectId
@@ -957,12 +953,8 @@ public class FileNodeProcessor extends LRUProcessor {
 					outputPath = constructOutputFilePath(nameSpacePath, firstRecord.timestamp
 							+ FileNodeConstants.BUFFERWRITE_FILE_SEPARATOR + System.currentTimeMillis());
 
-					FileSchema fileSchema;
-					fileSchema = constructFileSchema(nameSpacePath);
-					raf = new RandomAccessOutputStream(new File(outputPath));
-					tsfileIOWriter = new TSFileIOWriter(fileSchema, raf);
-					writeSupport = new TSRecordWriteSupport();
-					recordWriter = new TSRecordWriter(TsFileConf, tsfileIOWriter, writeSupport, fileSchema);
+					FileSchema fileSchema = constructFileSchema(nameSpacePath);
+					recordWriter = new TsFileWriter(new File(outputPath), fileSchema, TsFileConf);
 				}
 
 				TSRecord filledRecord = removeNullTSRecord(firstRecord);
