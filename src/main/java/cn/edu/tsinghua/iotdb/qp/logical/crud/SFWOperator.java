@@ -1,10 +1,10 @@
 package cn.edu.tsinghua.iotdb.qp.logical.crud;
 
-import java.util.List;
-
 import cn.edu.tsinghua.iotdb.qp.exception.LogicalOperatorException;
 import cn.edu.tsinghua.iotdb.qp.logical.RootOperator;
-import cn.edu.tsinghua.tsfile.timeseries.read.qp.Path;
+import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
+
+import java.util.List;
 
 /**
  * SFWOperator(select-from-where) includes four subclass: INSERT,DELETE,UPDATE,QUERY. All of these four statements has

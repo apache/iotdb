@@ -13,6 +13,9 @@ import java.util.Set;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+import cn.edu.tsinghua.tsfile.common.utils.ITsRandomAccessFileWriter;
+import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
+import cn.edu.tsinghua.tsfile.timeseries.write.io.TsFileIOWriter;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.slf4j.Logger;
@@ -38,21 +41,18 @@ import cn.edu.tsinghua.tsfile.common.conf.TSFileDescriptor;
 import cn.edu.tsinghua.tsfile.common.constant.JsonFormatConstant;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 import cn.edu.tsinghua.tsfile.common.utils.Pair;
-import cn.edu.tsinghua.tsfile.common.utils.RandomAccessOutputStream;
-import cn.edu.tsinghua.tsfile.common.utils.TSRandomAccessFileWriter;
 import cn.edu.tsinghua.tsfile.file.metadata.RowGroupMetaData;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.CompressionTypeName;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
 import cn.edu.tsinghua.tsfile.timeseries.filter.definition.FilterExpression;
 import cn.edu.tsinghua.tsfile.timeseries.filter.definition.SingleSeriesFilterExpression;
-import cn.edu.tsinghua.tsfile.timeseries.read.qp.Path;
 import cn.edu.tsinghua.tsfile.timeseries.read.query.DynamicOneColumnData;
 import cn.edu.tsinghua.tsfile.timeseries.read.support.RowRecord;
 import cn.edu.tsinghua.tsfile.timeseries.write.TSRecordWriteSupport;
 import cn.edu.tsinghua.tsfile.timeseries.write.TSRecordWriter;
 import cn.edu.tsinghua.tsfile.timeseries.write.WriteSupport;
 import cn.edu.tsinghua.tsfile.timeseries.write.exception.WriteProcessException;
-import cn.edu.tsinghua.tsfile.timeseries.write.io.TSFileIOWriter;
+import cn.edu.tsinghua.tsfile.timeseries.write.io.TsFileIOWriter;
 import cn.edu.tsinghua.tsfile.timeseries.write.record.DataPoint;
 import cn.edu.tsinghua.tsfile.timeseries.write.record.TSRecord;
 import cn.edu.tsinghua.tsfile.timeseries.write.schema.FileSchema;
@@ -914,8 +914,8 @@ public class FileNodeProcessor extends LRUProcessor {
 		Map<String, Long> startTimeMap = new HashMap<>();
 		Map<String, Long> endTimeMap = new HashMap<>();
 
-		TSRandomAccessFileWriter raf = null;
-		TSFileIOWriter tsfileIOWriter = null;
+		ITsRandomAccessFileWriter raf = null;
+		TsFileIOWriter tsfileIOWriter = null;
 		WriteSupport<TSRecord> writeSupport = null;
 		TSRecordWriter recordWriter = null;
 		String outputPath = null;
@@ -960,7 +960,7 @@ public class FileNodeProcessor extends LRUProcessor {
 					FileSchema fileSchema;
 					fileSchema = constructFileSchema(nameSpacePath);
 					raf = new RandomAccessOutputStream(new File(outputPath));
-					tsfileIOWriter = new TSFileIOWriter(fileSchema, raf);
+					tsfileIOWriter = new TsFileIOWriter(fileSchema, raf);
 					writeSupport = new TSRecordWriteSupport();
 					recordWriter = new TSRecordWriter(TsFileConf, tsfileIOWriter, writeSupport, fileSchema);
 				}
