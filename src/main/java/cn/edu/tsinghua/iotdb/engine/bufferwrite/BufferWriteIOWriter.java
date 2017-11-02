@@ -6,14 +6,14 @@ import java.util.List;
 
 import cn.edu.tsinghua.tsfile.common.utils.ITsRandomAccessFileWriter;
 import cn.edu.tsinghua.tsfile.file.metadata.RowGroupMetaData;
-import cn.edu.tsinghua.tsfile.timeseries.write.io.TSFileIOWriter;
+import cn.edu.tsinghua.tsfile.timeseries.write.io.TsFileIOWriter;
 
 
 /**
  * @author kangrong
  *
  */
-public class BufferWriteIOWriter extends TSFileIOWriter {
+public class BufferWriteIOWriter extends TsFileIOWriter {
 
 	/*
 	 * The backup list is used to store the rowgroup's metadata whose data has

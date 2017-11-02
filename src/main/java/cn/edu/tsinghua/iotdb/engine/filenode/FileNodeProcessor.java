@@ -48,7 +48,7 @@ import cn.edu.tsinghua.tsfile.timeseries.read.query.DynamicOneColumnData;
 import cn.edu.tsinghua.tsfile.timeseries.read.support.RowRecord;
 import cn.edu.tsinghua.tsfile.timeseries.write.TsFileWriter;
 import cn.edu.tsinghua.tsfile.timeseries.write.exception.WriteProcessException;
-import cn.edu.tsinghua.tsfile.timeseries.write.io.TSFileIOWriter;
+import cn.edu.tsinghua.tsfile.timeseries.write.io.TsFileIOWriter;
 import cn.edu.tsinghua.tsfile.timeseries.write.record.DataPoint;
 import cn.edu.tsinghua.tsfile.timeseries.write.record.TSRecord;
 import cn.edu.tsinghua.tsfile.timeseries.write.schema.FileSchema;
@@ -904,7 +904,7 @@ public class FileNodeProcessor extends LRUProcessor {
 		Map<String, Long> endTimeMap = new HashMap<>();
 
 		ITsRandomAccessFileWriter raf = null;
-		TSFileIOWriter tsfileIOWriter = null;
+		TsFileIOWriter tsfileIOWriter = null;
 		TsFileWriter recordWriter = null;
 		String outputPath = null;
 		for (String deltaObjectId : backupIntervalFile.getStartTimeMap().keySet()) {
