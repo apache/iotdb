@@ -115,7 +115,7 @@ public class RecordReader {
         }
 
         if (res == null) {
-            res = createAOneColRetByFullPath(deviceUID + "." + sensorId);
+            res = createAOneColRetByFullPath(deltaObjectId + "." + measurementId);
         }
         // add left insert values
         if (insertMemoryData.hasInsertData()) {
@@ -343,7 +343,7 @@ public class RecordReader {
         for (int i = 0; i < rowGroupReaderList.size(); i++) {
             RowGroupReader rowGroupReader = rowGroupReaderList.get(i);
             if (i == 0) {
-                res = rowGroupReader.readValueUseTimestamps(measurementUId, timestamps);
+                res = rowGroupReader.readValueUseTimestamps(measurementId, timestamps);
             } else {
                 DynamicOneColumnData tmpRes = rowGroupReader.readValueUseTimestamps(measurementId, timestamps);
                 res.mergeRecord(tmpRes);
