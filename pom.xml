@@ -4,11 +4,7 @@
 
 	<groupId>cn.edu.tsinghua</groupId>
 	<artifactId>IoTDB</artifactId>
-<<<<<<< HEAD
-	<version>0.1.3</version>
-=======
 	<version>0.1.3-SNAPSHOT</version>
->>>>>>> master
 	<packaging>jar</packaging>
 
 	<name>IoTDB</name>
@@ -27,11 +23,7 @@
 		<dependency>
 			<groupId>cn.edu.tsinghua</groupId>
 			<artifactId>iotdb-jdbc</artifactId>
-<<<<<<< HEAD
-			<version>0.1.3</version>
-=======
 			<version>0.2.0-SNAPSHOT</version>
->>>>>>> master
 		</dependency>
 		<dependency>
 			<groupId>junit</groupId>

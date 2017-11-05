@@ -16,9 +16,9 @@ import cn.edu.tsinghua.iotdb.qp.executor.QueryProcessExecutor;
 import cn.edu.tsinghua.iotdb.qp.physical.crud.DeletePlan;
 import cn.edu.tsinghua.iotdb.qp.physical.crud.InsertPlan;
 import cn.edu.tsinghua.iotdb.qp.physical.crud.UpdatePlan;
+import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import cn.edu.tsinghua.iotdb.qp.physical.PhysicalPlan;
 import cn.edu.tsinghua.tsfile.common.constant.SystemConstant;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
@@ -28,7 +28,6 @@ import cn.edu.tsinghua.tsfile.timeseries.filter.definition.CrossSeriesFilterExpr
 import cn.edu.tsinghua.tsfile.timeseries.filter.definition.FilterExpression;
 import cn.edu.tsinghua.tsfile.timeseries.filter.definition.SingleSeriesFilterExpression;
 import cn.edu.tsinghua.tsfile.timeseries.filter.visitorImpl.SingleValueVisitor;
-import cn.edu.tsinghua.tsfile.timeseries.read.qp.Path;
 import cn.edu.tsinghua.tsfile.timeseries.read.query.QueryDataSet;
 import cn.edu.tsinghua.tsfile.timeseries.read.support.Field;
 import cn.edu.tsinghua.tsfile.timeseries.read.support.RowRecord;
@@ -160,7 +159,7 @@ public class MemIntQpExecutor extends QueryProcessExecutor {
             sc.addTail(single.getFilterSeries().getDeltaObjectUID(), single.getFilterSeries().getMeasurementUID());
             String filterPath = sc.toString();
             if (path.equals(filterPath)) {
-                return v.satisfy(value, single);
+                return v.satisfyObject(value, single);
             } else
                 // not me, return true
                 return null;
@@ -209,7 +208,7 @@ public class MemIntQpExecutor extends QueryProcessExecutor {
         for (long time : timeStampUnion) {
             if (time <= lastGetTimeStamp)
                 continue;
-            if (timeFilter == null || timeVisitor.satisfy(time, timeSingleFilter)) {
+            if (timeFilter == null || timeVisitor.satisfyObject(time, timeSingleFilter)) {
                 TestIntegerRowRecord rowRecord = new TestIntegerRowRecord(time);
                 boolean isSatisfy = true;
                 boolean isInputed = false;

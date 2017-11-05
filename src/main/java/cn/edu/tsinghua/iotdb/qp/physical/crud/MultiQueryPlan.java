@@ -7,7 +7,7 @@ import cn.edu.tsinghua.iotdb.qp.logical.crud.FilterOperator;
 import cn.edu.tsinghua.iotdb.qp.physical.PhysicalPlan;
 import cn.edu.tsinghua.iotdb.qp.logical.Operator;
 import cn.edu.tsinghua.tsfile.timeseries.filter.definition.FilterExpression;
-import cn.edu.tsinghua.tsfile.timeseries.read.qp.Path;
+import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
 import cn.edu.tsinghua.tsfile.timeseries.utils.StringContainer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

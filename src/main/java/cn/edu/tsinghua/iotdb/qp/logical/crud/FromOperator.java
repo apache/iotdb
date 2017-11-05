@@ -5,7 +5,7 @@ import java.util.List;
 
 import cn.edu.tsinghua.iotdb.qp.exception.LogicalOperatorException;
 import cn.edu.tsinghua.iotdb.qp.logical.Operator;
-import cn.edu.tsinghua.tsfile.timeseries.read.qp.Path;
+import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
 
 
 /**
