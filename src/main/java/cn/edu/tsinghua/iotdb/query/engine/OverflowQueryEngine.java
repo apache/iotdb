@@ -8,6 +8,7 @@ import cn.edu.tsinghua.iotdb.exception.PathErrorException;
 import cn.edu.tsinghua.iotdb.metadata.MManager;
 import cn.edu.tsinghua.iotdb.query.aggregation.AggreFuncFactory;
 import cn.edu.tsinghua.iotdb.query.aggregation.AggregateFunction;
+import cn.edu.tsinghua.iotdb.query.engine.groupby.GroupByEngine;
 import cn.edu.tsinghua.tsfile.common.utils.Pair;
 import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
 import org.slf4j.Logger;
@@ -107,9 +108,37 @@ public class OverflowQueryEngine {
         return AggregateEngine.multiAggregate(aggregations, filterStructures);
     }
 
+    ThreadLocal<Boolean> testFloag = new ThreadLocal<>();
     public QueryDataSet groupBy(List<Pair<Path, String>> aggres, List<FilterStructure> filterStructures,
-                                long unit, long origin, FilterExpression intervals, int fetchSize) {
-        return null;
+                                long unit, long origin, FilterExpression intervals, int fetchSize)
+            throws ProcessorException, PathErrorException, IOException {
+//        if (testFloag.get() != null && testFloag.get() == true) {
+//            return new QueryDataSet();
+//        }
+//        QueryDataSet testQueryDataSet = new QueryDataSet();
+//        DynamicOneColumnData data1 = new DynamicOneColumnData(TSDataType.INT32, true, true);
+//        for (int i = 1;i <= 10;i ++) {
+//            if (i % 2 == 0) {
+//                data1.putEmptyTime(i);
+//            } else {
+//                data1.putTime(i);
+//                data1.putInt(i*2);
+//            }
+//        }
+//
+//        DynamicOneColumnData data2 = new DynamicOneColumnData(TSDataType.FLOAT, true, false);
+//        for (int i = 5;i <= 20;i ++) {
+//            data2.putTime(i);
+//            data2.putFloat(i * 3);
+//        }
+//
+//        testQueryDataSet.mapRet.put("count(root.vehicle.d0.s0)", data1);
+//        testQueryDataSet.mapRet.put("count(root.vehicle.d0.s1)", data2);
+//
+//        testFloag.set(true);
+//        return testQueryDataSet;
+        GroupByEngine groupByEngine = new GroupByEngine();
+        return groupByEngine.groupBy(aggres, filterStructures, unit, origin, intervals, fetchSize);
     }
 
     /**

@@ -34,6 +34,7 @@ import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 import cn.edu.tsinghua.tsfile.common.utils.Pair;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
 import cn.edu.tsinghua.tsfile.timeseries.filter.definition.FilterExpression;
+import cn.edu.tsinghua.tsfile.timeseries.read.query.DynamicOneColumnData;
 import cn.edu.tsinghua.tsfile.timeseries.read.query.QueryDataSet;
 import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
 import cn.edu.tsinghua.tsfile.timeseries.write.record.DataPoint;
@@ -110,12 +111,12 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 		return queryEngine.aggregate(aggres, filterStructures);
 	}
 
+
 	@Override
 	public QueryDataSet groupBy(List<Pair<Path, String>> aggres, List<FilterStructure> filterStructures,
 								long unit, long origin, FilterExpression intervals, int fetchSize)
 			throws ProcessorException, IOException, PathErrorException {
-		//throw new ProcessorException("Do not support");
-		return new GroupByQueryDataSet();
+		return queryEngine.groupBy(aggres, filterStructures, unit, origin, intervals, fetchSize);
 	}
 
 	@Override

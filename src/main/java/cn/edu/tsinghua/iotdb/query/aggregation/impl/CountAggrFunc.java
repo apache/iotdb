@@ -68,21 +68,21 @@ public class CountAggrFunc extends AggregateFunction {
         }
 
         while (timeIndex < timestamps.size()) {
-           if (insertMemoryData.hasInsertData()) {
-               if (timestamps.get(timeIndex) == insertMemoryData.getCurrentMinTime()) {
-                   long preValue = result.data.getLong(0);
-                   preValue += 1;
-                   result.data.setLong(0, preValue);
-                   timeIndex ++;
-                   insertMemoryData.removeCurrentValue();
-               } else if (timestamps.get(timeIndex) > insertMemoryData.getCurrentMinTime()) {
-                   insertMemoryData.removeCurrentValue();
-               } else {
-                   timeIndex += 1;
-               }
-           } else {
-               break;
-           }
+            if (insertMemoryData.hasInsertData()) {
+                if (timestamps.get(timeIndex) == insertMemoryData.getCurrentMinTime()) {
+                    long preValue = result.data.getLong(0);
+                    preValue += 1;
+                    result.data.setLong(0, preValue);
+                    timeIndex++;
+                    insertMemoryData.removeCurrentValue();
+                } else if (timestamps.get(timeIndex) > insertMemoryData.getCurrentMinTime()) {
+                    insertMemoryData.removeCurrentValue();
+                } else {
+                    timeIndex += 1;
+                }
+            } else {
+                break;
+            }
         }
 
         return insertMemoryData.hasInsertData();
@@ -93,6 +93,26 @@ public class CountAggrFunc extends AggregateFunction {
                                                     DynamicOneColumnData data, boolean firstPartitionFlag) {
         if (firstPartitionFlag) {
             result.data.putEmptyTime(partitionStart);
+        }
+
+        long valueSum = 0;
+        while (data.curIdx < data.timeLength) {
+            if (data.getTime(data.curIdx) > intervalEnd) {
+                return;
+            } else if (data.getTime(data.curIdx) < intervalStart) {
+                data.curIdx += 1;
+            } else if (data.getTime(data.curIdx) >= intervalStart && data.getTime(data.curIdx) <= intervalEnd) {
+                valueSum += 1;
+            }
+        }
+
+        if (result.data.emptyTimeLength > 0 && result.data.getEmptyTime(result.data.emptyTimeLength - 1) == partitionStart) {
+            result.data.removeLastEmptyTime();
+            result.data.putTime(partitionStart);
+            result.data.putLong(valueSum);
+        } else {
+            long preSum = result.data.getLong(result.data.valueLength - 1);
+            result.data.setLong(result.data.valueLength - 1, preSum + valueSum);
         }
     }
 }
