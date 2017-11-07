@@ -27,13 +27,13 @@ public class EngineUtils {
      * so there may be remaining data in QueryDataSet.BatchReadGenerator,
      */
     public static void putRecordFromBatchReadGenerator(QueryDataSet dataSet) {
-        for (Path path : dataSet.getBatchReaderRetGenerator().retMap.keySet()) {
-            DynamicOneColumnData batchReadData = dataSet.getBatchReaderRetGenerator().retMap.get(path);
+        for (Path path : dataSet.getBatchReadGenerator().retMap.keySet()) {
+            DynamicOneColumnData batchReadData = dataSet.getBatchReadGenerator().retMap.get(path);
             DynamicOneColumnData leftData = batchReadData.sub(batchReadData.curIdx);
 
             // copy batch read info from oneColRet to leftRet
             batchReadData.copyFetchInfoTo(leftData);
-            dataSet.getBatchReaderRetGenerator().retMap.put(path, leftData);
+            dataSet.getBatchReadGenerator().retMap.put(path, leftData);
             batchReadData.rollBack(batchReadData.valueLength - batchReadData.curIdx);
             dataSet.mapRet.put(path.getFullPath(), batchReadData);
         }

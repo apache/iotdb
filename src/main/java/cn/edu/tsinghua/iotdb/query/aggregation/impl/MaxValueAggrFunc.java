@@ -21,11 +21,14 @@ public class MaxValueAggrFunc extends AggregateFunction {
 
     public MaxValueAggrFunc(TSDataType dataType) {
         super(AggregationConstant.MAX_VALUE, dataType);
-        result.data.putTime(0);
     }
 
     @Override
     public void calculateValueFromPageHeader(PageHeader pageHeader) {
+        if (result.data.timeLength == 0) {
+            result.data.putTime(0);
+        }
+
         Digest pageDigest = pageHeader.data_page_header.getDigest();
         DigestForFilter digest = new DigestForFilter(pageDigest.min, pageDigest.max, dataType);
         Comparable<?> maxv = digest.getMaxValue();
@@ -34,6 +37,10 @@ public class MaxValueAggrFunc extends AggregateFunction {
 
     @Override
     public void calculateValueFromDataPage(DynamicOneColumnData dataInThisPage) throws IOException, ProcessorException {
+        if (result.data.timeLength == 0) {
+            result.data.putTime(0);
+        }
+
         if (dataInThisPage.valueLength == 0) {
             return;
         }
@@ -48,6 +55,10 @@ public class MaxValueAggrFunc extends AggregateFunction {
 
     @Override
     public void calculateValueFromLeftMemoryData(InsertDynamicData insertMemoryData) throws IOException, ProcessorException {
+        if (result.data.timeLength == 0) {
+            result.data.putTime(0);
+        }
+
         Object max_value = insertMemoryData.calcAggregation(AggregationConstant.MAX_VALUE);
         if (max_value != null) {
             updateMaxValue((Comparable<?>)max_value);
@@ -56,6 +67,10 @@ public class MaxValueAggrFunc extends AggregateFunction {
 
     @Override
     public boolean calcAggregationUsingTimestamps(InsertDynamicData insertMemoryData, List<Long> timestamps, int timeIndex) throws IOException, ProcessorException {
+        if (result.data.timeLength == 0) {
+            result.data.putTime(0);
+        }
+
         while (timeIndex < timestamps.size()) {
             if (insertMemoryData.hasInsertData()) {
                 if (timestamps.get(timeIndex) == insertMemoryData.getCurrentMinTime()) {
@@ -74,6 +89,11 @@ public class MaxValueAggrFunc extends AggregateFunction {
         }
 
         return insertMemoryData.hasInsertData();
+    }
+
+    @Override
+    public void calcGroupByAggregationWithoutFilter(long partitionStart, long intervalStart, long intervalEnd, DynamicOneColumnData data) {
+
     }
 
     private void updateMaxValue(Comparable<?> maxv) {

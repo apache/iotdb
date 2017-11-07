@@ -17,17 +17,24 @@ public class MinTimeAggrFunc extends AggregateFunction {
 
     public MinTimeAggrFunc() {
         super(AggregationConstant.MIN_TIME, TSDataType.INT64);
-        result.data.putTime(0);
     }
 
     @Override
     public void calculateValueFromPageHeader(PageHeader pageHeader) {
+        if (result.data.timeLength == 0) {
+            result.data.putTime(0);
+        }
+
         long timestamp = pageHeader.data_page_header.min_timestamp;
         updateMinTime(timestamp);
     }
 
     @Override
     public void calculateValueFromDataPage(DynamicOneColumnData dataInThisPage) throws IOException, ProcessorException {
+        if (result.data.timeLength == 0) {
+            result.data.putTime(0);
+        }
+
         if (dataInThisPage.valueLength == 0) {
             return;
         }
@@ -43,6 +50,10 @@ public class MinTimeAggrFunc extends AggregateFunction {
 
     @Override
     public void calculateValueFromLeftMemoryData(InsertDynamicData insertMemoryData) throws IOException, ProcessorException {
+        if (result.data.timeLength == 0) {
+            result.data.putTime(0);
+        }
+
         Object min_time = insertMemoryData.calcAggregation(AggregationConstant.MIN_TIME);
         if (min_time != null) {
             long timestamp = (long) min_time;
@@ -52,6 +63,10 @@ public class MinTimeAggrFunc extends AggregateFunction {
 
     @Override
     public boolean calcAggregationUsingTimestamps(InsertDynamicData insertMemoryData, List<Long> timestamps, int timeIndex) throws IOException, ProcessorException {
+        if (result.data.timeLength == 0) {
+            result.data.putTime(0);
+        }
+
         while (timeIndex < timestamps.size()) {
             if (insertMemoryData.hasInsertData()) {
                 if (timestamps.get(timeIndex) == insertMemoryData.getCurrentMinTime()) {
@@ -68,6 +83,11 @@ public class MinTimeAggrFunc extends AggregateFunction {
         }
 
         return insertMemoryData.hasInsertData();
+    }
+
+    @Override
+    public void calcGroupByAggregationWithoutFilter(long partitionStart, long intervalStart, long intervalEnd, DynamicOneColumnData data) {
+
     }
 
     private void updateMinTime(long timestamp) {
