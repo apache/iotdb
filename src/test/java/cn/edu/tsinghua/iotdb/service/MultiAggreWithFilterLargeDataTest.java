@@ -30,7 +30,7 @@ public class MultiAggreWithFilterLargeDataTest {
     private final String d1s0 = "root.vehicle.d1.s0";
     private final String d1s1 = "root.vehicle.d1.s1";
 
-    private String[] sqls = new String[]{
+    private static String[] sqls = new String[]{
             "SET STORAGE GROUP TO root.vehicle",
             "CREATE TIMESERIES root.vehicle.d1.s0 WITH DATATYPE=INT32, ENCODING=RLE",
             "CREATE TIMESERIES root.vehicle.d0.s2 WITH DATATYPE=FLOAT, ENCODING=RLE",
@@ -532,8 +532,8 @@ public class MultiAggreWithFilterLargeDataTest {
         }
     }
 
-    private String[] stringValue = new String[]{"A", "B", "C", "D", "E"};
-    private void insertSQL() throws ClassNotFoundException, SQLException {
+    private static String[] stringValue = new String[]{"A", "B", "C", "D", "E"};
+    public static void insertSQL() throws ClassNotFoundException, SQLException {
         Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);
         Connection connection = null;
         try {
