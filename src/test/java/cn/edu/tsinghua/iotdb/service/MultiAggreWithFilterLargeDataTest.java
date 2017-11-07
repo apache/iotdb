@@ -31,13 +31,14 @@ public class MultiAggreWithFilterLargeDataTest {
     private final String d1s1 = "root.vehicle.d1.s1";
 
     private String[] sqls = new String[]{
+            "SET STORAGE GROUP TO root.vehicle",
             "CREATE TIMESERIES root.vehicle.d1.s0 WITH DATATYPE=INT32, ENCODING=RLE",
             "CREATE TIMESERIES root.vehicle.d0.s2 WITH DATATYPE=FLOAT, ENCODING=RLE",
             "CREATE TIMESERIES root.vehicle.d0.s3 WITH DATATYPE=TEXT, ENCODING=PLAIN",
             "CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE",
             "CREATE TIMESERIES root.vehicle.d0.s1 WITH DATATYPE=INT64, ENCODING=RLE",
             "CREATE TIMESERIES root.vehicle.d0.s4 WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
-            "SET STORAGE GROUP TO root.vehicle",
+
 
             "insert into root.vehicle.d0(timestamp,s0) values(1,101)",
             "insert into root.vehicle.d0(timestamp,s0) values(2,198)",
@@ -99,7 +100,7 @@ public class MultiAggreWithFilterLargeDataTest {
 
     private Daemon deamon;
 
-    private boolean testFlag = false;
+    private boolean testFlag = !false;
 
     @Before
     public void setUp() throws Exception {

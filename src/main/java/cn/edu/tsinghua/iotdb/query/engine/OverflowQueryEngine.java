@@ -42,12 +42,6 @@ public class OverflowQueryEngine {
         mManager = MManager.getInstance();
     }
 
-    private static void clearQueryDataSet(QueryDataSet queryDataSet) {
-        if (queryDataSet != null) {
-            queryDataSet.clear();
-        }
-    }
-
     private TSDataType getDataTypeByPath(Path path) throws PathErrorException {
         return mManager.getSeriesType(path.getFullPath());
     }
@@ -69,7 +63,9 @@ public class OverflowQueryEngine {
                               FilterExpression valueFilter, QueryDataSet queryDataSet, int fetchSize) throws ProcessorException, IOException, PathErrorException {
         this.formNumber = formNumber;
         LOGGER.info("\r\nFormNumber: " + formNumber + ", TimeFilter: " + timeFilter + "; ValueFilter: " + valueFilter + "\r\nQuery Paths: " + paths.toString());
-        clearQueryDataSet(queryDataSet);
+        if (queryDataSet != null) {
+            queryDataSet.clear();
+        }
         if (timeFilter == null && freqFilter == null && valueFilter == null) {
             return readWithoutFilter(paths, queryDataSet, fetchSize, null);
         } else if (valueFilter != null && valueFilter instanceof CrossSeriesFilterExpression) {
@@ -133,10 +129,11 @@ public class OverflowQueryEngine {
                     }
                 }
             };
-            queryDataSet.setBatchReaderRetGenerator(batchReaderRetGenerator);
+            queryDataSet.setBatchReadGenerator(batchReaderRetGenerator);
         }
-        clearQueryDataSet(queryDataSet);
-        queryDataSet.getBatchReaderRetGenerator().calculateRecord();
+
+        queryDataSet.clear();
+        queryDataSet.getBatchReadGenerator().calculateRecord();
         EngineUtils.putRecordFromBatchReadGenerator(queryDataSet);
         // remove RecordReader cache of paths here is not collect, because of batch read,
         // must store the position offset status in RecordReader.
@@ -197,10 +194,11 @@ public class OverflowQueryEngine {
                     }
                 }
             };
-            queryDataSet.setBatchReaderRetGenerator(batchReaderRetGenerator);
+            queryDataSet.setBatchReadGenerator(batchReaderRetGenerator);
         }
-        clearQueryDataSet(queryDataSet);
-        queryDataSet.getBatchReaderRetGenerator().calculateRecord();
+
+        queryDataSet.clear();
+        queryDataSet.getBatchReadGenerator().calculateRecord();
         EngineUtils.putRecordFromBatchReadGenerator(queryDataSet);
 
         return queryDataSet;
@@ -246,12 +244,14 @@ public class OverflowQueryEngine {
     private QueryDataSet crossColumnQuery(List<Path> paths,
                                           SingleSeriesFilterExpression timeFilter, SingleSeriesFilterExpression freqFilter, CrossSeriesFilterExpression valueFilter,
                                           QueryDataSet queryDataSet, int fetchSize) throws ProcessorException, IOException, PathErrorException {
-        clearQueryDataSet(queryDataSet);
+        if (queryDataSet != null) {
+            queryDataSet.clear();
+        }
         if (queryDataSet == null) {
             // reset status of RecordReader used ValueFilter
             // resetRecordStatusUsingValueFilter(valueFilter, new HashSet<>());
             queryDataSet = new QueryDataSet();
-            queryDataSet.timeQueryDataSet = new CrossQueryTimeGenerator(timeFilter, freqFilter, valueFilter, fetchSize) {
+            queryDataSet.crossQueryTimeGenerator = new CrossQueryTimeGenerator(timeFilter, freqFilter, valueFilter, fetchSize) {
                 @Override
                 public DynamicOneColumnData getDataInNextBatch(DynamicOneColumnData res, int fetchSize,
                                                                SingleSeriesFilterExpression valueFilter, int valueFilterNumber) throws ProcessorException, IOException {
@@ -266,7 +266,7 @@ public class OverflowQueryEngine {
         }
 
         // calculate common timestamps
-        long[] timestamps = queryDataSet.timeQueryDataSet.generateTimes();
+        long[] timestamps = queryDataSet.crossQueryTimeGenerator.generateTimes();
         LOGGER.debug("calculate common timestamps complete.");
 
         QueryDataSet ret = queryDataSet;

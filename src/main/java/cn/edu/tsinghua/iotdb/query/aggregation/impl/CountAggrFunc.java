@@ -21,13 +21,24 @@ public class CountAggrFunc extends AggregateFunction {
 
     @Override
     public void calculateValueFromPageHeader(PageHeader pageHeader) {
+//        if (result.data.timeLength == 0) {
+//            result.data.putTime(0);
+//            result.data.putLong(0);
+//        }
+
         long preValue = result.data.getLong(0);
         preValue += pageHeader.data_page_header.num_rows;
         result.data.setLong(0, preValue);
+
     }
 
     @Override
     public void calculateValueFromDataPage(DynamicOneColumnData dataInThisPage) throws IOException, ProcessorException {
+//        if (result.data.timeLength == 0) {
+//            result.data.putTime(0);
+//            result.data.putLong(0);
+//        }
+
         long preValue = result.data.getLong(0);
         preValue += dataInThisPage.valueLength;
         result.data.setLong(0, preValue);
@@ -40,6 +51,11 @@ public class CountAggrFunc extends AggregateFunction {
 
     @Override
     public void calculateValueFromLeftMemoryData(InsertDynamicData insertMemoryData) throws IOException, ProcessorException {
+//        if (result.data.timeLength == 0) {
+//            result.data.putTime(0);
+//            result.data.putLong(0);
+//        }
+
         long preValue = result.data.getLong(0);
         Object count = insertMemoryData.calcAggregation(AggregationConstant.COUNT);
         preValue += (long) count;
@@ -48,6 +64,11 @@ public class CountAggrFunc extends AggregateFunction {
 
     @Override
     public boolean calcAggregationUsingTimestamps(InsertDynamicData insertMemoryData, List<Long> timestamps, int timeIndex) throws IOException, ProcessorException {
+//        if (result.data.timeLength == 0) {
+//            result.data.putTime(0);
+//            result.data.putLong(0);
+//        }
+
         while (timeIndex < timestamps.size()) {
            if (insertMemoryData.hasInsertData()) {
                if (timestamps.get(timeIndex) == insertMemoryData.getCurrentMinTime()) {
@@ -67,5 +88,10 @@ public class CountAggrFunc extends AggregateFunction {
         }
 
         return insertMemoryData.hasInsertData();
+    }
+
+    @Override
+    public void calcGroupByAggregationWithoutFilter(long partitionStart, long intervalStart, long intervalEnd, DynamicOneColumnData data) {
+
     }
 }

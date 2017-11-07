@@ -17,17 +17,24 @@ public class MaxTimeAggrFunc extends AggregateFunction {
 
     public MaxTimeAggrFunc() {
         super(AggregationConstant.MAX_TIME, TSDataType.INT64);
-        result.data.putTime(0);
     }
 
     @Override
     public void calculateValueFromPageHeader(PageHeader pageHeader) {
+        if (result.data.timeLength == 0) {
+            result.data.putTime(0);
+        }
+
         long timestamp = pageHeader.data_page_header.max_timestamp;
         updateMaxTime(timestamp);
     }
 
     @Override
     public void calculateValueFromDataPage(DynamicOneColumnData dataInThisPage) throws IOException, ProcessorException {
+        if (result.data.timeLength == 0) {
+            result.data.putTime(0);
+        }
+
         if (dataInThisPage.valueLength == 0) {
             return;
         }
@@ -42,6 +49,10 @@ public class MaxTimeAggrFunc extends AggregateFunction {
 
     @Override
     public void calculateValueFromLeftMemoryData(InsertDynamicData insertMemoryData) throws IOException, ProcessorException {
+        if (result.data.timeLength == 0) {
+            result.data.putTime(0);
+        }
+
         Object max_time = insertMemoryData.calcAggregation(AggregationConstant.MAX_TIME);
         if (max_time != null) {
             long timestamp = (long) max_time;
@@ -51,6 +62,10 @@ public class MaxTimeAggrFunc extends AggregateFunction {
 
     @Override
     public boolean calcAggregationUsingTimestamps(InsertDynamicData insertMemoryData, List<Long> timestamps, int timeIndex) throws IOException, ProcessorException {
+        if (result.data.timeLength == 0) {
+            result.data.putTime(0);
+        }
+
         while (timeIndex < timestamps.size()) {
             if (insertMemoryData.hasInsertData()) {
                 if (timestamps.get(timeIndex) == insertMemoryData.getCurrentMinTime()) {
@@ -68,6 +83,29 @@ public class MaxTimeAggrFunc extends AggregateFunction {
         }
 
         return insertMemoryData.hasInsertData();
+    }
+
+    @Override
+    public void calcGroupByAggregationWithoutFilter(long partitionStart, long intervalStart, long intervalEnd, DynamicOneColumnData data) {
+        if (partitionStart != result.data.getTime(result.data.timeLength-1) && partitionStart != 0) {
+            result.data.putTime(partitionStart);
+        } else if (result.data.getTime(result.data.timeLength-1) == 0 && partitionStart != 0) {
+            result.data.setTime(0, partitionStart);
+        }
+
+        while (data.curIdx < data.timeLength) {
+             if (data.getTime(data.curIdx) > intervalEnd) {
+                 return;
+             } else if (data.getTime(data.curIdx) < intervalStart) {
+                 data.curIdx ++;
+             } else if (data.getTime(data.curIdx) >= intervalStart && data.getTime(data.curIdx) <= intervalEnd) {
+                 long max_time = result.data.getTime(result.data.timeLength-1);
+                 if (data.getTime(data.curIdx) > max_time) {
+
+                 }
+                 data.curIdx ++;
+             }
+        }
     }
 
     private void updateMaxTime(long timestamp) {
