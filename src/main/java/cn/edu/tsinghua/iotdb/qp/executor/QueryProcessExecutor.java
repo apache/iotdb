@@ -1,12 +1,5 @@
 package cn.edu.tsinghua.iotdb.qp.executor;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Set;
-
 import cn.edu.tsinghua.iotdb.exception.PathErrorException;
 import cn.edu.tsinghua.iotdb.metadata.MManager;
 import cn.edu.tsinghua.iotdb.qp.exception.QueryProcessorException;
@@ -20,8 +13,16 @@ import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 import cn.edu.tsinghua.tsfile.common.utils.Pair;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
 import cn.edu.tsinghua.tsfile.timeseries.filter.definition.FilterExpression;
+import cn.edu.tsinghua.tsfile.timeseries.filter.definition.SingleSeriesFilterExpression;
 import cn.edu.tsinghua.tsfile.timeseries.read.query.QueryDataSet;
 import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Set;
 
 public abstract class QueryProcessExecutor {
 
@@ -90,7 +91,7 @@ public abstract class QueryProcessExecutor {
 			throws ProcessorException, IOException, PathErrorException;
 
 	public abstract QueryDataSet groupBy(List<Pair<Path, String>> aggres, List<FilterStructure> filterStructures,
-										 long unit, long origin, FilterExpression intervals, int fetchSize)
+										 long unit, long origin, SingleSeriesFilterExpression intervals, int fetchSize)
 			throws ProcessorException, IOException, PathErrorException;
 
 	public abstract QueryDataSet query(int formNumber, List<Path> paths, FilterExpression timeFilter, FilterExpression freqFilter,

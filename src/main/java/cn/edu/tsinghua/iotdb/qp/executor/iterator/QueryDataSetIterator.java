@@ -1,13 +1,13 @@
 package cn.edu.tsinghua.iotdb.qp.executor.iterator;
 
 import cn.edu.tsinghua.iotdb.qp.executor.QueryProcessExecutor;
-import cn.edu.tsinghua.iotdb.qp.logical.crud.FilterOperator;
 import cn.edu.tsinghua.iotdb.qp.physical.crud.MultiQueryPlan;
 import cn.edu.tsinghua.iotdb.query.engine.FilterStructure;
 import cn.edu.tsinghua.tsfile.common.utils.Pair;
 import cn.edu.tsinghua.tsfile.timeseries.filter.definition.FilterExpression;
-import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
+import cn.edu.tsinghua.tsfile.timeseries.filter.definition.SingleSeriesFilterExpression;
 import cn.edu.tsinghua.tsfile.timeseries.read.query.QueryDataSet;
+import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -27,7 +27,7 @@ public class QueryDataSetIterator implements Iterator<QueryDataSet> {
     private List<FilterStructure> filterStructures = new ArrayList<>();
     private long unit;
     private long origin;
-    private FilterExpression intervals;
+    private SingleSeriesFilterExpression intervals;
     private MultiQueryPlan.QueryType type = MultiQueryPlan.QueryType.QUERY;
 
     //single query
@@ -56,7 +56,7 @@ public class QueryDataSetIterator implements Iterator<QueryDataSet> {
     //groupby
     public QueryDataSetIterator(List<Path> paths, int fetchSize, List<String> aggregations,
                                 List<FilterStructure> filterStructures, long unit, long origin,
-                                FilterExpression intervals, QueryProcessExecutor executor) {
+                                SingleSeriesFilterExpression intervals, QueryProcessExecutor executor) {
         this.fetchSize = fetchSize;
         this.executor = executor;
         this.filterStructures = filterStructures;
