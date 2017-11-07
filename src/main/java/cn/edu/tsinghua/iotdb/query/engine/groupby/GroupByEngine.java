@@ -118,6 +118,7 @@ public class GroupByEngine {
                 if (noFilterFlag) {
                     int cnt = 0;
                     for (Pair<Path, AggregateFunction> pair : aggregations) {
+                        boolean firstPartitionFlag = true; // when calcGroupByAggregationWithoutFilter is invoked first time, this variable is true
                         Path path = pair.left;
                         AggregateFunction aggregateFunction = pair.right;
                         String aggregationKey = aggregationKey(path, aggregateFunction);
@@ -138,7 +139,8 @@ public class GroupByEngine {
                                         break;
                                     }
                                 }
-                                aggregateFunction.calcGroupByAggregationWithoutFilter(partitionStart, intervalStart, intervalEnd, data);
+                                aggregateFunction.calcGroupByAggregationWithoutFilter(partitionStart, intervalStart, intervalEnd, data, firstPartitionFlag);
+                                firstPartitionFlag = false;
                             }
                         }
                         cnt++;
