@@ -2,8 +2,7 @@ package cn.edu.tsinghua.iotdb.qp.physical.crud;
 
 import cn.edu.tsinghua.iotdb.qp.logical.Operator;
 import cn.edu.tsinghua.iotdb.qp.physical.PhysicalPlan;
-import cn.edu.tsinghua.tsfile.timeseries.filter.definition.FilterExpression;
-import cn.edu.tsinghua.tsfile.timeseries.filter.definition.SingleSeriesFilterExpression;
+import cn.edu.tsinghua.tsfile.common.utils.Pair;
 import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
 import cn.edu.tsinghua.tsfile.timeseries.utils.StringContainer;
 import org.slf4j.Logger;
@@ -28,7 +27,7 @@ public class MultiQueryPlan extends PhysicalPlan {
     private List<String> aggregations = new ArrayList<>();
     private long unit;
     private long origin;
-    private SingleSeriesFilterExpression intervals;
+    private List<Pair<Long, Long>> intervals;
 
     public QueryType getType() {
         return type;
@@ -60,12 +59,12 @@ public class MultiQueryPlan extends PhysicalPlan {
         this.origin = origin;
     }
 
-    public SingleSeriesFilterExpression getIntervals() {
+    public List<Pair<Long, Long>> getIntervals() {
         return intervals;
     }
 
-    public void setIntervals(FilterExpression intervals) {
-        this.intervals = (SingleSeriesFilterExpression)intervals;
+    public void setIntervals(List<Pair<Long, Long>> intervals) {
+        this.intervals = intervals;
     }
 
     public MultiQueryPlan(ArrayList<SingleQueryPlan> selectPlans, List<String> aggregations) {
