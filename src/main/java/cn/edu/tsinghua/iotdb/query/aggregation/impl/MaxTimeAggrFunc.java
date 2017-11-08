@@ -86,7 +86,7 @@ public class MaxTimeAggrFunc extends AggregateFunction {
     }
 
     @Override
-    public void calcGroupByAggregationWithoutFilter(long partitionStart, long intervalStart, long intervalEnd,
+    public void calcGroupByAggregationWithoutFilter(long partitionStart, long partitionEnd, long intervalStart, long intervalEnd,
                                                     DynamicOneColumnData data, boolean firstPartitionFlag) {
         if (partitionStart != result.data.getTime(result.data.timeLength-1) && partitionStart != 0) {
             result.data.putTime(partitionStart);
