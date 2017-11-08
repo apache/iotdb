@@ -40,7 +40,7 @@ public class GroupByEngine {
     private ThreadLocal<Boolean> threadLocal = new ThreadLocal<>();
 
     public QueryDataSet groupBy(List<Pair<Path, String>> aggres, List<FilterStructure> filterStructures,
-                                       long unit, long origin, FilterExpression intervals, int fetchSize)
+                                       long unit, long origin, SingleSeriesFilterExpression intervals, int fetchSize)
             throws IOException, ProcessorException, PathErrorException {
 
         for (Pair<Path, String> pair : aggres) {
@@ -61,10 +61,7 @@ public class GroupByEngine {
         QueryDataSet groupByResult = new QueryDataSet();
 
         // all the split time intervals
-        LongInterval longInterval = new LongInterval();
-        // longInterval = (LongInterval) FilterVerifier.create(TSDataType.INT64).getInterval((SingleSeriesFilterExpression) intervals);
-        longInterval.addValueFlag(1L, true);
-        longInterval.addValueFlag(10000L, true);
+        LongInterval longInterval = (LongInterval) FilterVerifier.create(TSDataType.INT64).getInterval(intervals);
 
         if (longInterval.count == 0) {
             return new QueryDataSet();

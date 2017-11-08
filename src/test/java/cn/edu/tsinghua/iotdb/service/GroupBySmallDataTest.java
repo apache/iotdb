@@ -13,7 +13,6 @@ import org.junit.Test;
 import java.io.File;
 import java.sql.*;
 
-import static cn.edu.tsinghua.iotdb.service.TestUtils.min_value;
 import static cn.edu.tsinghua.iotdb.service.TestUtils.count;
 
 /**
@@ -160,7 +159,7 @@ public class GroupBySmallDataTest {
             Connection connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
 
             // selectAllSQLTest();
-            countGroupByNoFilterTest();
+            groupByNoFilterOneIntervalTest();
 //            countAggreWithSingleFilterTest();
 //            minTimeAggreWithSingleFilterTest();
 //            maxTimeAggreWithSingleFilterTest();
@@ -175,7 +174,7 @@ public class GroupBySmallDataTest {
         }
     }
 
-    private void countGroupByNoFilterTest() throws ClassNotFoundException, SQLException {
+    private void groupByNoFilterOneIntervalTest() throws ClassNotFoundException, SQLException {
         String[] retArray = new String[]{
                 "0,0,0,0.0,B,true"
         };
@@ -185,19 +184,43 @@ public class GroupBySmallDataTest {
         try {
             connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
             Statement statement = connection.createStatement();
-            boolean hasResultSet = statement.execute("select count(s0),count(s1) from root.vehicle.d0 group by(1ms, [1,10000])");
+            boolean hasResultSet = statement.execute("select count(s0),count(s1),count(s2),count(s3) from root.vehicle.d0 group by(10ms, 0, [3,10000])");
 
             if (hasResultSet) {
                 ResultSet resultSet = statement.getResultSet();
-                int cnt = 0;
+                int cnt = 1;
                 while (resultSet.next()) {
                     String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(count(d0s0))
-                            + "," + resultSet.getString(count(d0s1));
+                            + "," + resultSet.getString(count(d0s1)) + "," + resultSet.getString(count(d0s2))
+                            + "," + resultSet.getString(count(d0s3));
                     System.out.println(ans);
-//                    Assert.assertEquals(ans, retArray[cnt]);
+                    switch (cnt) {
+                        case 1:
+                            Assert.assertEquals("3,null,null,2,null", ans);
+                            break;
+                        case 5:
+                            Assert.assertEquals("40,null,1,null,null", ans);
+                            break;
+                        default:
+                            Assert.assertEquals(resultSet.getString(TIMESTAMP_STR) + ",null,null,null,null", ans);
+                    }
+                    cnt++;
+//                    if (cnt == 1) {
+//                        Assert.assertEquals("1,null,2,3,null", ans);
+//                    } else if (cnt == 5) {
+//                        Assert.assertEquals("40,null,1,null,null", ans);
+//                    } else if (cnt == 7 || cnt == 8 || cnt == 9) {
+//                        Assert.assertEquals(resultSet.getString(TIMESTAMP_STR) + ",null,null,null,1", ans);
+//                    } else if (cnt == 11) {
+//                        Assert.assertEquals("100,3,6,2,2", ans);
+//                    } else if (cnt == 101){
+//                        Assert.assertEquals("1000,1,1,1,null", ans);
+//                    } else {
+//                        Assert.assertEquals(resultSet.getString(TIMESTAMP_STR) + ",null,null,null,null", ans);
+//                    }
 //                    cnt++;
                 }
-                // Assert.assertEquals(1, cnt);
+                //Assert.assertEquals(1, cnt);
             }
             statement.close();
         } catch (Exception e) {
