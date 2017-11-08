@@ -1,16 +1,16 @@
 package cn.edu.tsinghua.iotdb.qp.physical.crud;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import cn.edu.tsinghua.iotdb.qp.logical.crud.FilterOperator;
-import cn.edu.tsinghua.iotdb.qp.physical.PhysicalPlan;
 import cn.edu.tsinghua.iotdb.qp.logical.Operator;
+import cn.edu.tsinghua.iotdb.qp.physical.PhysicalPlan;
 import cn.edu.tsinghua.tsfile.timeseries.filter.definition.FilterExpression;
+import cn.edu.tsinghua.tsfile.timeseries.filter.definition.SingleSeriesFilterExpression;
 import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
 import cn.edu.tsinghua.tsfile.timeseries.utils.StringContainer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * {@code MultiQueryPlan} is used in multi-pass SingleQueryPlan. Multi-pass means it's a disjunction
@@ -28,7 +28,7 @@ public class MultiQueryPlan extends PhysicalPlan {
     private List<String> aggregations = new ArrayList<>();
     private long unit;
     private long origin;
-    private FilterExpression intervals;
+    private SingleSeriesFilterExpression intervals;
 
     public QueryType getType() {
         return type;
@@ -60,12 +60,12 @@ public class MultiQueryPlan extends PhysicalPlan {
         this.origin = origin;
     }
 
-    public FilterExpression getIntervals() {
+    public SingleSeriesFilterExpression getIntervals() {
         return intervals;
     }
 
     public void setIntervals(FilterExpression intervals) {
-        this.intervals = intervals;
+        this.intervals = (SingleSeriesFilterExpression)intervals;
     }
 
     public MultiQueryPlan(ArrayList<SingleQueryPlan> selectPlans, List<String> aggregations) {

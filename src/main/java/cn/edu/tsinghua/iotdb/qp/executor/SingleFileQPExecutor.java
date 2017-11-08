@@ -1,21 +1,22 @@
 package cn.edu.tsinghua.iotdb.qp.executor;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-
 import cn.edu.tsinghua.iotdb.exception.PathErrorException;
 import cn.edu.tsinghua.iotdb.qp.constant.SQLConstant;
 import cn.edu.tsinghua.iotdb.qp.physical.PhysicalPlan;
 import cn.edu.tsinghua.iotdb.query.engine.FilterStructure;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
-import cn.edu.tsinghua.tsfile.common.utils.Pair;
 import cn.edu.tsinghua.tsfile.common.utils.ITsRandomAccessFileReader;
+import cn.edu.tsinghua.tsfile.common.utils.Pair;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
 import cn.edu.tsinghua.tsfile.timeseries.filter.definition.FilterExpression;
+import cn.edu.tsinghua.tsfile.timeseries.filter.definition.SingleSeriesFilterExpression;
 import cn.edu.tsinghua.tsfile.timeseries.read.query.QueryDataSet;
 import cn.edu.tsinghua.tsfile.timeseries.read.query.QueryEngine;
 import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 public class SingleFileQPExecutor extends QueryProcessExecutor {
 
@@ -56,7 +57,7 @@ public class SingleFileQPExecutor extends QueryProcessExecutor {
 
 	@Override
 	public QueryDataSet groupBy(List<Pair<Path, String>> aggres, List<FilterStructure> filterStructures,
-								long unit, long origin, FilterExpression intervals, int fetchSize)
+								long unit, long origin, SingleSeriesFilterExpression intervals, int fetchSize)
 			throws ProcessorException, IOException, PathErrorException {
 		throw new ProcessorException("Do not support");
 	}
