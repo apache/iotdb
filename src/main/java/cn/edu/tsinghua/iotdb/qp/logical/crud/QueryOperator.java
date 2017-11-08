@@ -1,6 +1,9 @@
 package cn.edu.tsinghua.iotdb.qp.logical.crud;
 
 import cn.edu.tsinghua.iotdb.qp.logical.Operator;
+import cn.edu.tsinghua.tsfile.common.utils.Pair;
+
+import java.util.List;
 
 /**
  * this class extends {@code RootOperator} and process getIndex statement
@@ -15,7 +18,7 @@ public class QueryOperator extends SFWOperator {
 
     private long unit;
     private long origin;
-    private FilterOperator intervals;
+    private List<Pair<Long, Long>> intervals;
     private boolean isGroupBy = false;
 
     public void setGroupBy(boolean isGroupBy) {
@@ -42,11 +45,11 @@ public class QueryOperator extends SFWOperator {
         return origin;
     }
 
-    public void setIntervals(FilterOperator intervals) {
+    public void setIntervals(List<Pair<Long, Long>> intervals) {
         this.intervals = intervals;
     }
 
-    public FilterOperator getIntervals() {
+    public List<Pair<Long, Long>> getIntervals() {
         return intervals;
     }
 

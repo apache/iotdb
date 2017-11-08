@@ -1,12 +1,5 @@
 package cn.edu.tsinghua.iotdb.qp.strategy;
 
-import static cn.edu.tsinghua.iotdb.qp.constant.SQLConstant.KW_AND;
-import static cn.edu.tsinghua.iotdb.qp.constant.SQLConstant.KW_OR;
-import static cn.edu.tsinghua.iotdb.qp.constant.SQLConstant.RESERVED_TIME;
-
-import java.util.ArrayList;
-import java.util.List;
-
 import cn.edu.tsinghua.iotdb.qp.constant.SQLConstant;
 import cn.edu.tsinghua.iotdb.qp.exception.GeneratePhysicalPlanException;
 import cn.edu.tsinghua.iotdb.qp.exception.LogicalOperatorException;
@@ -44,6 +37,13 @@ import cn.edu.tsinghua.tsfile.timeseries.filter.utils.LongInterval;
 import cn.edu.tsinghua.tsfile.timeseries.filter.verifier.FilterVerifier;
 import cn.edu.tsinghua.tsfile.timeseries.filter.verifier.LongFilterVerifier;
 import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import static cn.edu.tsinghua.iotdb.qp.constant.SQLConstant.KW_AND;
+import static cn.edu.tsinghua.iotdb.qp.constant.SQLConstant.KW_OR;
+import static cn.edu.tsinghua.iotdb.qp.constant.SQLConstant.RESERVED_TIME;
 
 /**
  * Used to convert logical operator to physical plan
@@ -190,7 +190,7 @@ public class PhysicalGenerator {
 			multiQueryPlan.setType(MultiQueryPlan.QueryType.GROUPBY);
 			multiQueryPlan.setUnit(queryOperator.getUnit());
 			multiQueryPlan.setOrigin(queryOperator.getOrigin());
-			multiQueryPlan.setIntervals(queryOperator.getIntervals().transformToFilterExpression(executor, FilterSeriesType.TIME_FILTER));
+			multiQueryPlan.setIntervals(queryOperator.getIntervals());
 		}
 
 		return multiQueryPlan;

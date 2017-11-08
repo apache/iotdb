@@ -1,23 +1,15 @@
 package cn.edu.tsinghua.iotdb.query.engine;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-
 import cn.edu.tsinghua.iotdb.exception.PathErrorException;
 import cn.edu.tsinghua.iotdb.metadata.MManager;
 import cn.edu.tsinghua.iotdb.query.aggregation.AggreFuncFactory;
 import cn.edu.tsinghua.iotdb.query.aggregation.AggregateFunction;
-import cn.edu.tsinghua.iotdb.query.engine.groupby.GroupByEngine;
-import cn.edu.tsinghua.tsfile.common.utils.Pair;
-import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import cn.edu.tsinghua.iotdb.query.dataset.InsertDynamicData;
+import cn.edu.tsinghua.iotdb.query.engine.groupby.GroupByEngine;
 import cn.edu.tsinghua.iotdb.query.management.RecordReaderFactory;
 import cn.edu.tsinghua.iotdb.query.reader.RecordReader;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
+import cn.edu.tsinghua.tsfile.common.utils.Pair;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
 import cn.edu.tsinghua.tsfile.timeseries.filter.definition.CrossSeriesFilterExpression;
 import cn.edu.tsinghua.tsfile.timeseries.filter.definition.FilterExpression;
@@ -26,6 +18,13 @@ import cn.edu.tsinghua.tsfile.timeseries.read.query.BatchReadRecordGenerator;
 import cn.edu.tsinghua.tsfile.timeseries.read.query.CrossQueryTimeGenerator;
 import cn.edu.tsinghua.tsfile.timeseries.read.query.DynamicOneColumnData;
 import cn.edu.tsinghua.tsfile.timeseries.read.query.QueryDataSet;
+import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 
 public class OverflowQueryEngine {
@@ -110,7 +109,7 @@ public class OverflowQueryEngine {
 
     ThreadLocal<Boolean> testFloag = new ThreadLocal<>();
     public QueryDataSet groupBy(List<Pair<Path, String>> aggres, List<FilterStructure> filterStructures,
-                                long unit, long origin, FilterExpression intervals, int fetchSize)
+                                long unit, long origin, List<Pair<Long, Long>> intervals, int fetchSize)
             throws ProcessorException, PathErrorException, IOException {
 //        if (testFloag.get() != null && testFloag.get() == true) {
 //            return new QueryDataSet();
@@ -138,7 +137,9 @@ public class OverflowQueryEngine {
 //        testFloag.set(true);
 //        return testQueryDataSet;
         GroupByEngine groupByEngine = new GroupByEngine();
-        return groupByEngine.groupBy(aggres, filterStructures, unit, origin, intervals, fetchSize);
+        return null;
+
+//        return groupByEngine.groupBy(aggres, filterStructures, unit, origin, intervals, fetchSize);
     }
 
     /**

@@ -1,30 +1,37 @@
 package cn.edu.tsinghua.iotdb.qp.strategy;
 
-import static cn.edu.tsinghua.iotdb.qp.constant.SQLConstant.GREATERTHAN;
-import static cn.edu.tsinghua.iotdb.qp.constant.SQLConstant.GREATERTHANOREQUALTO;
-import static cn.edu.tsinghua.iotdb.qp.constant.SQLConstant.LESSTHAN;
-import static cn.edu.tsinghua.iotdb.qp.constant.SQLConstant.LESSTHANOREQUALTO;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
 import cn.edu.tsinghua.iotdb.exception.ArgsErrorException;
 import cn.edu.tsinghua.iotdb.exception.MetadataArgsErrorException;
+import cn.edu.tsinghua.iotdb.qp.constant.SQLConstant;
 import cn.edu.tsinghua.iotdb.qp.constant.TSParserConstant;
 import cn.edu.tsinghua.iotdb.qp.exception.IllegalASTFormatException;
 import cn.edu.tsinghua.iotdb.qp.exception.LogicalOperatorException;
+import cn.edu.tsinghua.iotdb.qp.exception.QueryProcessorException;
 import cn.edu.tsinghua.iotdb.qp.logical.RootOperator;
 import cn.edu.tsinghua.iotdb.qp.logical.crud.BasicFunctionOperator;
+import cn.edu.tsinghua.iotdb.qp.logical.crud.DeleteOperator;
 import cn.edu.tsinghua.iotdb.qp.logical.crud.FilterOperator;
 import cn.edu.tsinghua.iotdb.qp.logical.crud.FromOperator;
+import cn.edu.tsinghua.iotdb.qp.logical.crud.IndexOperator;
 import cn.edu.tsinghua.iotdb.qp.logical.crud.InsertOperator;
+import cn.edu.tsinghua.iotdb.qp.logical.crud.QueryOperator;
+import cn.edu.tsinghua.iotdb.qp.logical.crud.SFWOperator;
 import cn.edu.tsinghua.iotdb.qp.logical.crud.SelectOperator;
+import cn.edu.tsinghua.iotdb.qp.logical.crud.UpdateOperator;
+import cn.edu.tsinghua.iotdb.qp.logical.sys.AuthorOperator;
+import cn.edu.tsinghua.iotdb.qp.logical.sys.AuthorOperator.AuthorType;
 import cn.edu.tsinghua.iotdb.qp.logical.sys.LoadDataOperator;
 import cn.edu.tsinghua.iotdb.qp.logical.sys.MetadataOperator;
+import cn.edu.tsinghua.iotdb.qp.logical.sys.PropertyOperator;
+import cn.edu.tsinghua.iotdb.qp.logical.sys.PropertyOperator.PropertyType;
 import cn.edu.tsinghua.iotdb.sql.parse.ASTNode;
 import cn.edu.tsinghua.iotdb.sql.parse.Node;
+import cn.edu.tsinghua.iotdb.sql.parse.TSParser;
+import cn.edu.tsinghua.tsfile.common.constant.SystemConstant;
+import cn.edu.tsinghua.tsfile.common.utils.Pair;
+import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
+import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
+import cn.edu.tsinghua.tsfile.timeseries.utils.StringContainer;
 import org.antlr.runtime.Token;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
@@ -32,23 +39,15 @@ import org.joda.time.format.DateTimeFormat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import cn.edu.tsinghua.iotdb.qp.constant.SQLConstant;
-import cn.edu.tsinghua.iotdb.qp.exception.QueryProcessorException;
-import cn.edu.tsinghua.iotdb.qp.logical.crud.DeleteOperator;
-import cn.edu.tsinghua.iotdb.qp.logical.crud.IndexOperator;
-import cn.edu.tsinghua.iotdb.qp.logical.crud.QueryOperator;
-import cn.edu.tsinghua.iotdb.qp.logical.crud.SFWOperator;
-import cn.edu.tsinghua.iotdb.qp.logical.crud.UpdateOperator;
-import cn.edu.tsinghua.iotdb.qp.logical.sys.AuthorOperator;
-import cn.edu.tsinghua.iotdb.qp.logical.sys.AuthorOperator.AuthorType;
-import cn.edu.tsinghua.iotdb.qp.logical.sys.PropertyOperator;
-import cn.edu.tsinghua.iotdb.qp.logical.sys.PropertyOperator.PropertyType;
-import cn.edu.tsinghua.iotdb.sql.parse.TSParser;
-import cn.edu.tsinghua.tsfile.common.constant.SystemConstant;
-import cn.edu.tsinghua.tsfile.common.utils.Pair;
-import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
-import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
-import cn.edu.tsinghua.tsfile.timeseries.utils.StringContainer;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import static cn.edu.tsinghua.iotdb.qp.constant.SQLConstant.GREATERTHAN;
+import static cn.edu.tsinghua.iotdb.qp.constant.SQLConstant.GREATERTHANOREQUALTO;
+import static cn.edu.tsinghua.iotdb.qp.constant.SQLConstant.LESSTHAN;
+import static cn.edu.tsinghua.iotdb.qp.constant.SQLConstant.LESSTHANOREQUALTO;
 
 /**
  * This class receives an ASTNode and transform it to an operator which is a
@@ -506,13 +505,13 @@ public class LogicalGenerator {
 		((QueryOperator) initializedOperator).setUnit(value);
 
 		//parse show intervals
-		FilterOperator intervalFilters = new FilterOperator(SQLConstant.KW_OR);
-		long startTime;
-		long endTime;
 		ASTNode intervalsNode = astNode.getChild(childCount - 1);
 		int intervalCount = intervalsNode.getChildCount();
+		List<Pair<Long, Long>> intervals = new ArrayList<>();
 		ASTNode intervalNode;
-		for (int i = 0; i < intervalCount; i++) {
+		long startTime;
+		long endTime;
+		for(int i = 0; i < intervalCount; i++) {
 			intervalNode = intervalsNode.getChild(i);
 			ASTNode startNode = intervalNode.getChild(0);
 			if (startNode.getType() == TSParser.TOK_DATETIME) {
@@ -526,19 +525,10 @@ public class LogicalGenerator {
 			} else {
 				endTime = Long.valueOf(endNode.getText());
 			}
-			if(startTime > endTime)
-				throw new LogicalOperatorException("start time must less than or equal to end time");
-			FilterOperator intervalFilter = new FilterOperator(SQLConstant.KW_AND);
-			BasicFunctionOperator left = new BasicFunctionOperator(SQLConstant.GREATERTHANOREQUALTO,
-					new Path(SQLConstant.RESERVED_TIME), startTime+"");
-			intervalFilter.addChildOperator(left);
-
-			BasicFunctionOperator right = new BasicFunctionOperator(SQLConstant.LESSTHANOREQUALTO,
-					new Path(SQLConstant.RESERVED_TIME), endTime+"");
-			intervalFilter.addChildOperator(right);
-			intervalFilters.addChildOperator(intervalFilter);
+			intervals.add(new Pair<>(startTime, endTime));
 		}
-		((QueryOperator) initializedOperator).setIntervals(intervalFilters);
+
+		((QueryOperator) initializedOperator).setIntervals(intervals);
 
 		//parse time origin
 		long originTime = 0;
