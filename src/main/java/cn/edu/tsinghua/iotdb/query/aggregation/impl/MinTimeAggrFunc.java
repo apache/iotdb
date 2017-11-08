@@ -86,7 +86,7 @@ public class MinTimeAggrFunc extends AggregateFunction {
     }
 
     @Override
-    public void calcGroupByAggregationWithoutFilter(long partitionStart, long intervalStart, long intervalEnd, DynamicOneColumnData data,
+    public void calcGroupByAggregationWithoutFilter(long partitionStart, long partitionEnd, long intervalStart, long intervalEnd, DynamicOneColumnData data,
                                                     boolean firstPartitionFlag) {
 
     }

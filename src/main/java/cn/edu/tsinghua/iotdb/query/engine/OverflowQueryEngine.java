@@ -112,9 +112,10 @@ public class OverflowQueryEngine {
     public QueryDataSet groupBy(List<Pair<Path, String>> aggres, List<FilterStructure> filterStructures,
                                 long unit, long origin, FilterExpression intervals, int fetchSize)
             throws ProcessorException, PathErrorException, IOException {
-//        if (testFloag.get() != null && testFloag.get() == true) {
-//            return new QueryDataSet();
-//        }
+        if (testFloag.get() != null && testFloag.get() == true) {
+            return new QueryDataSet();
+        }
+        testFloag.set(true);
 //        QueryDataSet testQueryDataSet = new QueryDataSet();
 //        DynamicOneColumnData data1 = new DynamicOneColumnData(TSDataType.INT32, true, true);
 //        for (int i = 1;i <= 10;i ++) {
@@ -137,6 +138,7 @@ public class OverflowQueryEngine {
 //
 //        testFloag.set(true);
 //        return testQueryDataSet;
+
         GroupByEngine groupByEngine = new GroupByEngine();
         return groupByEngine.groupBy(aggres, filterStructures, unit, origin, intervals, fetchSize);
     }

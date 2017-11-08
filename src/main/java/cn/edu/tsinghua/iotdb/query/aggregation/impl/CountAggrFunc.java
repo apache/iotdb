@@ -14,7 +14,7 @@ import cn.edu.tsinghua.tsfile.timeseries.read.query.DynamicOneColumnData;
 public class CountAggrFunc extends AggregateFunction {
 
     public CountAggrFunc() {
-        super(AggregationConstant.COUNT, TSDataType.INT64);
+        super(AggregationConstant.COUNT, TSDataType.INT64, true);
     }
 
     @Override
@@ -89,30 +89,39 @@ public class CountAggrFunc extends AggregateFunction {
     }
 
     @Override
-    public void calcGroupByAggregationWithoutFilter(long partitionStart, long intervalStart, long intervalEnd,
+    public void calcGroupByAggregationWithoutFilter(long partitionStart, long partitionEnd, long intervalStart, long intervalEnd,
                                                     DynamicOneColumnData data, boolean firstPartitionFlag) {
-        if (firstPartitionFlag) {
+
+        if (result.data.emptyTimeLength == 0) {
+            result.data.putEmptyTime(partitionStart);
+        } else if( (result.data.getEmptyTime(result.data.emptyTimeLength-1) != partitionStart)
+            && (result.data.timeLength == 0 ||
+                (result.data.timeLength > 0 && result.data.getTime(result.data.timeLength-1) != partitionStart))){
             result.data.putEmptyTime(partitionStart);
         }
 
         long valueSum = 0;
         while (data.curIdx < data.timeLength) {
-            if (data.getTime(data.curIdx) > intervalEnd) {
-                return;
-            } else if (data.getTime(data.curIdx) < intervalStart) {
-                data.curIdx += 1;
-            } else if (data.getTime(data.curIdx) >= intervalStart && data.getTime(data.curIdx) <= intervalEnd) {
-                valueSum += 1;
+            long time = data.getTime(data.curIdx);
+            if (time > intervalEnd || time > partitionEnd) {
+                break;
+            } else if (time < intervalStart || time < partitionStart) {
+                data.curIdx ++;
+            } else if (time >= intervalStart && time <= intervalEnd && time >= partitionStart && time <= partitionEnd) {
+                valueSum ++;
+                data.curIdx ++;
             }
         }
 
-        if (result.data.emptyTimeLength > 0 && result.data.getEmptyTime(result.data.emptyTimeLength - 1) == partitionStart) {
-            result.data.removeLastEmptyTime();
-            result.data.putTime(partitionStart);
-            result.data.putLong(valueSum);
-        } else {
-            long preSum = result.data.getLong(result.data.valueLength - 1);
-            result.data.setLong(result.data.valueLength - 1, preSum + valueSum);
+        if (valueSum > 0) {
+            if (result.data.emptyTimeLength > 0 && result.data.getEmptyTime(result.data.emptyTimeLength - 1) == partitionStart) {
+                result.data.removeLastEmptyTime();
+                result.data.putTime(partitionStart);
+                result.data.putLong(valueSum);
+            } else {
+                long preSum = result.data.getLong(result.data.valueLength - 1);
+                result.data.setLong(result.data.valueLength - 1, preSum + valueSum);
+            }
         }
     }
 }
