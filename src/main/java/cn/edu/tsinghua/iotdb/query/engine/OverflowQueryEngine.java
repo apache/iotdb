@@ -13,7 +13,9 @@ import cn.edu.tsinghua.tsfile.common.utils.Pair;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
 import cn.edu.tsinghua.tsfile.timeseries.filter.definition.CrossSeriesFilterExpression;
 import cn.edu.tsinghua.tsfile.timeseries.filter.definition.FilterExpression;
+import cn.edu.tsinghua.tsfile.timeseries.filter.definition.FilterFactory;
 import cn.edu.tsinghua.tsfile.timeseries.filter.definition.SingleSeriesFilterExpression;
+import cn.edu.tsinghua.tsfile.timeseries.filter.definition.operators.And;
 import cn.edu.tsinghua.tsfile.timeseries.read.query.BatchReadRecordGenerator;
 import cn.edu.tsinghua.tsfile.timeseries.read.query.CrossQueryTimeGenerator;
 import cn.edu.tsinghua.tsfile.timeseries.read.query.DynamicOneColumnData;
@@ -137,9 +139,20 @@ public class OverflowQueryEngine {
 //
 //        testFloag.set(true);
 //        return testQueryDataSet;
-
+        SingleSeriesFilterExpression intervalFilter = null;
+        for (Pair<Long, Long> pair : intervals) {
+            if (intervalFilter == null) {
+                SingleSeriesFilterExpression left = FilterFactory.gtEq(FilterFactory.timeFilterSeries(), pair.left, true);
+                SingleSeriesFilterExpression right = FilterFactory.ltEq(FilterFactory.timeFilterSeries(), pair.right, true);
+                intervalFilter = (And) FilterFactory.and(left, right);
+            } else {
+                SingleSeriesFilterExpression left = FilterFactory.gtEq(FilterFactory.timeFilterSeries(), pair.left, true);
+                SingleSeriesFilterExpression right = FilterFactory.ltEq(FilterFactory.timeFilterSeries(), pair.right, true);
+                intervalFilter = (And) FilterFactory.and(intervalFilter, (And) FilterFactory.and(left, right));
+            }
+        }
         GroupByEngine groupByEngine = new GroupByEngine();
-        return null;
+        return groupByEngine.groupBy(aggres, filterStructures, unit, origin, intervalFilter, fetchSize);
 
 //        return groupByEngine.groupBy(aggres, filterStructures, unit, origin, intervals, fetchSize);
     }
