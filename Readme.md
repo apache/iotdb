@@ -61,7 +61,7 @@ iotdb/     <-- root path
 +- LICENSE    <-- LICENSE
 ```
 
-NOTE: We also provide already built JARs and project at [http://tsfile.org/download](http://tsfile.org/download) instead of build the jar package yourself.
+> NOTE: We also provide already built JARs and project at [http://tsfile.org/download](http://tsfile.org/download) instead of build the jar package yourself.
 
 ## Configure
 
@@ -105,7 +105,7 @@ To start the client, you need to explicit the server's IP and PORT as well as th
 > bin\start-client.bat -h <IP> -p <PORT> -u <USER_NAME>
 ```
 
-NOTE: In the system, we set a default user in IoTDB named 'root'. The default password for 'root' is 'root'. You can use this default user if you are making the first try or you didn't create users by yourself.
+> NOTE: In the system, we set a default user in IoTDB named 'root'. The default password for 'root' is 'root'. You can use this default user if you are making the first try or you didn't create users by yourself.
 
 
 # TsFile 导入脚本使用说明
