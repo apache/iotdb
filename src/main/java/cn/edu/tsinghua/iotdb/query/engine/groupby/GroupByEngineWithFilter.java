@@ -133,6 +133,7 @@ public class GroupByEngineWithFilter {
         Map<Integer, Boolean> hasUnReadDataMap = new HashMap<>();
         // if there still has any uncompleted read data, hasAnyUnReadDataFlag is true
         boolean hasAnyUnReadDataFlag = true;
+
         while (true) {
             while (aggregateTimestamps.size() < aggregateFetchSize && !priorityQueue.isEmpty() && hasAnyUnReadDataFlag) {
                 // add the minimum timestamp and remove others in timeArray
@@ -166,18 +167,25 @@ public class GroupByEngineWithFilter {
                 }
             }
 
-            logger.debug("common timestamps in multiple aggregation process : " + aggregateTimestamps.toString());
-            if (aggregateTimestamps.size() == 0)
-                break;
+            //logger.debug("common timestamps in multiple aggregation process : " + aggregateTimestamps.toString());
 
+            int duplicatedCnt = 0;
             for (Pair<Path, AggregateFunction> pair : aggregations) {
                 Path path = pair.left;
                 AggregateFunction aggregateFunction = pair.right;
                 String aggregationKey = aggregationKey(path, aggregateFunction);
-                if (queryPathResult.containsKey(aggregationKey)) {
+                if (duplicatedPaths.contains(duplicatedCnt)) {
                     continue;
                 }
+                duplicatedCnt++;
                 DynamicOneColumnData data = queryPathResult.get(aggregationKey);
+                // common aggregate timestamps is empty
+                // the query data of path should be set empty too
+                if (aggregateTimestamps.size() == 0) {
+                    data.clearData();
+                    continue;
+                }
+
                 String deltaObjectId = path.getDeltaObjectToString();
                 String measurementId = path.getMeasurementToString();
                 String recordReaderPrefix = ReadCachePrefix.addQueryPrefix(formNumber);
@@ -234,18 +242,13 @@ public class GroupByEngineWithFilter {
                     for (Pair<Path, AggregateFunction> pair : aggregations) {
                         if (duplicatedPaths.contains(cnt))
                             continue;
-
+                        cnt++;
                         Path path = pair.left;
                         AggregateFunction aggregateFunction = pair.right;
                         String aggregationKey = aggregationKey(path, aggregateFunction);
                         DynamicOneColumnData data = queryPathResult.get(aggregationKey);
 
-                        while (true) {
-                            aggregateFunction.calcGroupByAggregationWithoutFilter(partitionStart, partitionEnd, intervalStart, intervalEnd, data);
-                            if (data.timeLength == 0 || data.curIdx < data.timeLength) {
-                                break;
-                            }
-                        }
+                        aggregateFunction.calcGroupByAggregationWithoutFilter(partitionStart, partitionEnd, intervalStart, intervalEnd, data);
                     }
 
                     if (intervalEnd <= partitionEnd) {
@@ -259,19 +262,34 @@ public class GroupByEngineWithFilter {
                     }
                 }
 
+//                if (partitionStart > 9990) {
+//                    System.out.println("test");
+//                }
+
                 if (intervalIndex >= longInterval.count)
                     break;
 
                 if (aggregateTimestamps.size() > 0 && partitionEnd < aggregateTimestamps.get(aggregateTimestamps.size()-1)) {
                     partitionStart = partitionEnd + 1;
                     partitionEnd = partitionStart + unit - 1;
+                } else if (aggregateTimestamps.size() == 0) {
+                    // aggregate timestamps is empty
+                    // calculate the next partition range directly
+                    partitionStart = partitionEnd + 1;
+                    partitionEnd = partitionStart + unit - 1;
                 } else {
+                    // partitionEnd is greater than the last value of aggregate timestamps
                     break;
                 }
             }
 
-            // current batch timestamps has been used all
-            aggregateTimestamps.clear();
+            // partitionStart is greater or equals than the last value of aggregateTimestamps
+            // the next batch aggregateTimestamps should be loaded
+            if (aggregateTimestamps.size() > 0 && partitionStart >= aggregateTimestamps.get(aggregateTimestamps.size()-1)) {
+                aggregateTimestamps.clear();
+                continue;
+            }
+
             if (intervalIndex >= longInterval.count)
                 break;
         }
@@ -279,7 +297,8 @@ public class GroupByEngineWithFilter {
         int cnt = 0;
         for (Pair<Path, AggregateFunction> pair : aggregations) {
             if (duplicatedPaths.contains(cnt))
-                cnt++;
+                continue;
+            cnt++;
             Path path = pair.left;
             AggregateFunction aggregateFunction = pair.right;
             groupByResult.mapRet.put(aggregationKey(path, aggregateFunction), aggregateFunction.result.data);
