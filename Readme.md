@@ -64,12 +64,16 @@ iotdb/     <-- root path
 NOTE: We also provide already built JARs and project at [http://tsfile.org/download](http://tsfile.org/download) instead of build the jar package yourself.
 
 ## Configure
+
+Before starting to use IoTDB, you need to config the configuration files first. For your convenience, we have already set the default config in the files.
+
+In total, we provide users three kinds of configurations module: environment config module (iotdb-env.bat, iotdb-env.sh), system config module (tsfile-format.properties, iotdb-engine.properties) and log config module (logback.xml). All of these kinds of configuration files are put in iotdb/config folder.
+
+For more, you are advised to check our website [document page](http://tsfile.org/document). The forth chapter in User Guide Document will give you the details.
+
 ## Start
 
-# 使用方法
-
-
-## 启动服务器
+### Start Server
 
 ```
 # Unix/OS X
@@ -79,7 +83,7 @@ NOTE: We also provide already built JARs and project at [http://tsfile.org/downl
 > bin\start-server.bat
 ```
 
-## 关闭服务器
+### Stop Server
 
 ```
 # Unix/ OS X
@@ -89,15 +93,20 @@ NOTE: We also provide already built JARs and project at [http://tsfile.org/downl
 > bin\stop-server.bat
 ```
 
-## 启动客户端
+### Start Client
+
+To start the client, you need to explicit the server's IP and PORT as well as the USER_NAME and PASSWORD. 
 
 ```
 # Unix/OS X
-> ./bin/start-client.sh -h xxx.xxx.xxx.xxx -p xxx -u xxx
+> ./bin/start-client.sh -h <IP> -p <PORT> -u <USER_NAME>
 
 # Windows
-> bin\start-client.bat -h xxx.xxx.xxx.xxx -p xxx -u xxx
+> bin\start-client.bat -h <IP> -p <PORT> -u <USER_NAME>
 ```
+
+NOTE: In the system, we set a default user in IoTDB named 'root'. The default password for 'root' is 'root'. You can use this default user if you are making the first try or you didn't create users by yourself.
+
 
 # TsFile 导入脚本使用说明
 ## 使用方法
