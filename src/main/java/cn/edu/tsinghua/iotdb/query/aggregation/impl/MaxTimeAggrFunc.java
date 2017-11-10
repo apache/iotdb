@@ -61,7 +61,8 @@ public class MaxTimeAggrFunc extends AggregateFunction {
     }
 
     @Override
-    public boolean calcAggregationUsingTimestamps(InsertDynamicData insertMemoryData, List<Long> timestamps, int timeIndex) throws IOException, ProcessorException {
+    public boolean calcAggregationUsingTimestamps(InsertDynamicData insertMemoryData, List<Long> timestamps, int timeIndex)
+            throws IOException, ProcessorException {
         if (result.data.timeLength == 0) {
             result.data.putTime(0);
         }
@@ -87,7 +88,7 @@ public class MaxTimeAggrFunc extends AggregateFunction {
 
     @Override
     public void calcGroupByAggregationWithoutFilter(long partitionStart, long partitionEnd, long intervalStart, long intervalEnd,
-                                                    DynamicOneColumnData data, boolean firstPartitionFlag) {
+                                                    DynamicOneColumnData data) {
         if (partitionStart != result.data.getTime(result.data.timeLength-1) && partitionStart != 0) {
             result.data.putTime(partitionStart);
         } else if (result.data.getTime(result.data.timeLength-1) == 0 && partitionStart != 0) {

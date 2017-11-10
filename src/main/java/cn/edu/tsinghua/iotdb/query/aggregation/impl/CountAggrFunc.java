@@ -61,7 +61,8 @@ public class CountAggrFunc extends AggregateFunction {
     }
 
     @Override
-    public boolean calcAggregationUsingTimestamps(InsertDynamicData insertMemoryData, List<Long> timestamps, int timeIndex) throws IOException, ProcessorException {
+    public boolean calcAggregationUsingTimestamps(InsertDynamicData insertMemoryData, List<Long> timestamps, int timeIndex)
+            throws IOException, ProcessorException {
         if (result.data.timeLength == 0) {
             result.data.putTime(0);
             result.data.putLong(0);
@@ -90,14 +91,19 @@ public class CountAggrFunc extends AggregateFunction {
 
     @Override
     public void calcGroupByAggregationWithoutFilter(long partitionStart, long partitionEnd, long intervalStart, long intervalEnd,
-                                                    DynamicOneColumnData data, boolean firstPartitionFlag) {
+                                                    DynamicOneColumnData data) {
 
         if (result.data.emptyTimeLength == 0) {
-            result.data.putEmptyTime(partitionStart);
-        } else if( (result.data.getEmptyTime(result.data.emptyTimeLength-1) != partitionStart)
-            && (result.data.timeLength == 0 ||
-                (result.data.timeLength > 0 && result.data.getTime(result.data.timeLength-1) != partitionStart))){
-            result.data.putEmptyTime(partitionStart);
+            if (result.data.timeLength == 0) {
+                result.data.putEmptyTime(partitionStart);
+            } else if (result.data.getTime(result.data.timeLength - 1) != partitionStart) {
+                result.data.putEmptyTime(partitionStart);
+            }
+        } else {
+            if ((result.data.getEmptyTime(result.data.emptyTimeLength - 1) != partitionStart)
+                    && (result.data.timeLength == 0 ||
+                    (result.data.timeLength > 0 && result.data.getTime(result.data.timeLength - 1) != partitionStart)))
+                result.data.putEmptyTime(partitionStart);
         }
 
         long valueSum = 0;
@@ -106,10 +112,10 @@ public class CountAggrFunc extends AggregateFunction {
             if (time > intervalEnd || time > partitionEnd) {
                 break;
             } else if (time < intervalStart || time < partitionStart) {
-                data.curIdx ++;
+                data.curIdx++;
             } else if (time >= intervalStart && time <= intervalEnd && time >= partitionStart && time <= partitionEnd) {
-                valueSum ++;
-                data.curIdx ++;
+                valueSum++;
+                data.curIdx++;
             }
         }
 

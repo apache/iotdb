@@ -27,16 +27,13 @@ public class AggregateEngine {
     public static int batchSize = 50000;
 
     /**
-     * <p>Public invoking method of multiple aggregation.</p>
+     * <p>Public invoking method of multiple aggregation.
      *
-     * TODO group by aggregation implementation could not use this method
-     *
-     * @param aggres aggregation pairs
+     * @param aggres           aggregation pairs
      * @param filterStructures list of <code>FilterStructure</code>
-     *
      * @return QueryDataSet result of multi aggregation
      * @throws ProcessorException read or write lock error etc
-     * @throws IOException read tsfile error
+     * @throws IOException        read tsfile error
      * @throws PathErrorException path resolving error
      */
     public static QueryDataSet multiAggregate(List<Pair<Path, AggregateFunction>> aggres, List<FilterStructure> filterStructures)
@@ -57,10 +54,12 @@ public class AggregateEngine {
         for (int idx = 0; idx < filterStructures.size(); idx++) {
             FilterStructure filterStructure = filterStructures.get(idx);
             QueryDataSet queryDataSet = new QueryDataSet();
-            queryDataSet.crossQueryTimeGenerator = new CrossQueryTimeGenerator(filterStructure.getTimeFilter(), filterStructure.getFrequencyFilter(), filterStructure.getValueFilter(), 10000) {
+            queryDataSet.crossQueryTimeGenerator = new CrossQueryTimeGenerator(filterStructure.getTimeFilter(),
+                    filterStructure.getFrequencyFilter(), filterStructure.getValueFilter(), 10000) {
                 @Override
                 public DynamicOneColumnData getDataInNextBatch(DynamicOneColumnData res, int fetchSize,
-                                                               SingleSeriesFilterExpression valueFilter, int valueFilterNumber) throws ProcessorException, IOException {
+                                                               SingleSeriesFilterExpression valueFilter, int valueFilterNumber)
+                        throws ProcessorException, IOException {
                     try {
                         return getDataUseSingleValueFilter(valueFilter, freqFilter, res, fetchSize, valueFilterNumber);
                     } catch (PathErrorException e) {
@@ -84,7 +83,7 @@ public class AggregateEngine {
         List<Long> aggregateTimestamps = new ArrayList<>();
         PriorityQueue<Long> priorityQueue = new PriorityQueue<>();
 
-        for (int i = 0;i < timeArray.size();i++) {
+        for (int i = 0; i < timeArray.size(); i++) {
             boolean flag = hasDataArray.get(i);
             if (flag) {
                 priorityQueue.add(timeArray.get(i)[indexArray.get(i)]);
@@ -103,7 +102,7 @@ public class AggregateEngine {
                 while (!priorityQueue.isEmpty() && minTime == priorityQueue.peek())
                     priorityQueue.poll();
 
-                for (int i = 0;i < timeArray.size();i++) {
+                for (int i = 0; i < timeArray.size(); i++) {
                     boolean flag = hasDataArray.get(i);
                     if (flag) {
                         int curTimeIdx = indexArray.get(i);
@@ -147,7 +146,7 @@ public class AggregateEngine {
                     continue;
                 } else {
                     aggrePathSet.add(aggregationKey);
-                    aggregationOrdinal ++;
+                    aggregationOrdinal++;
                 }
                 if (hasUnReadDataMap.containsKey(aggregationOrdinal) && !hasUnReadDataMap.get(aggregationOrdinal)) {
                     continue;
@@ -158,7 +157,8 @@ public class AggregateEngine {
 
                 if (recordReader.insertAllData == null) {
                     // get overflow params merged with bufferwrite insert data
-                    List<Object> params = EngineUtils.getOverflowInfoAndFilterDataInMem(null, null, null, null, recordReader.insertPageInMemory, recordReader.overflowInfo);
+                    List<Object> params = EngineUtils.getOverflowInfoAndFilterDataInMem(null, null, null, null,
+                            recordReader.insertPageInMemory, recordReader.overflowInfo);
                     DynamicOneColumnData insertTrue = (DynamicOneColumnData) params.get(0);
                     DynamicOneColumnData updateTrue = (DynamicOneColumnData) params.get(1);
                     DynamicOneColumnData updateFalse = (DynamicOneColumnData) params.get(2);
@@ -203,13 +203,14 @@ public class AggregateEngine {
         return ansQueryDataSet;
     }
 
-    private static QueryDataSet multiAggregateWithoutFilter(List<Pair<Path, AggregateFunction>> aggres) throws PathErrorException, ProcessorException, IOException {
+    private static QueryDataSet multiAggregateWithoutFilter(List<Pair<Path, AggregateFunction>> aggres)
+            throws PathErrorException, ProcessorException, IOException {
 
         QueryDataSet ansQueryDataSet = new QueryDataSet();
 
         int aggreNumber = 0;
         for (Pair<Path, AggregateFunction> pair : aggres) {
-            aggreNumber ++;
+            aggreNumber++;
             Path path = pair.left;
             AggregateFunction aggregateFunction = pair.right;
             String deltaObjectUID = path.getDeltaObjectToString();
@@ -225,7 +226,8 @@ public class AggregateEngine {
 
             if (recordReader.insertAllData == null) {
                 // get overflow params merged with bufferwrite insert data
-                List<Object> params = EngineUtils.getOverflowInfoAndFilterDataInMem(null, null, null, null, recordReader.insertPageInMemory, recordReader.overflowInfo);
+                List<Object> params = EngineUtils.getOverflowInfoAndFilterDataInMem(null, null, null, null,
+                        recordReader.insertPageInMemory, recordReader.overflowInfo);
                 DynamicOneColumnData insertTrue = (DynamicOneColumnData) params.get(0);
                 DynamicOneColumnData updateTrue = (DynamicOneColumnData) params.get(1);
                 DynamicOneColumnData updateFalse = (DynamicOneColumnData) params.get(2);
@@ -251,18 +253,17 @@ public class AggregateEngine {
     }
 
     /**
-     *  This function is only used for CrossQueryTimeGenerator.
-     *  A CrossSeriesFilterExpression is consist of many SingleSeriesFilterExpression.
-     *  e.g. CSAnd(d1.s1, d2.s1) is consist of d1.s1 and d2.s1, so this method would be invoked twice,
-     *  once for querying d1.s1, once for querying d2.s1.
-     *  <p>
-     *  When this method is invoked, need add the filter index as a new parameter, for the reason of exist of
-     *  <code>RecordReaderCache</code>, if the composition of CrossFilterExpression exist same SingleFilterExpression,
-     *  we must guarantee that the <code>RecordReaderCache</code> doesn't cause conflict to the same SingleFilterExpression.
-     *
+     * This function is only used for CrossQueryTimeGenerator.
+     * A CrossSeriesFilterExpression is consist of many SingleSeriesFilterExpression.
+     * e.g. CSAnd(d1.s1, d2.s1) is consist of d1.s1 and d2.s1, so this method would be invoked twice,
+     * once for querying d1.s1, once for querying d2.s1.
+     * <p>
+     * When this method is invoked, need add the filter index as a new parameter, for the reason of exist of
+     * <code>RecordReaderCache</code>, if the composition of CrossFilterExpression exist same SingleFilterExpression,
+     * we must guarantee that the <code>RecordReaderCache</code> doesn't cause conflict to the same SingleFilterExpression.
      */
     private static DynamicOneColumnData getDataUseSingleValueFilter(SingleSeriesFilterExpression valueFilter, SingleSeriesFilterExpression freqFilter,
-                                                            DynamicOneColumnData res, int fetchSize, int valueFilterNumber)
+                                                                    DynamicOneColumnData res, int fetchSize, int valueFilterNumber)
             throws ProcessorException, IOException, PathErrorException {
 
         String deltaObjectUID = ((SingleSeriesFilterExpression) valueFilter).getFilterSeries().getDeltaObjectUID();
@@ -285,7 +286,7 @@ public class AggregateEngine {
 
             recordReader.insertAllData = new InsertDynamicData(recordReader.bufferWritePageList, recordReader.compressionTypeName,
                     insertTrue, updateTrue, updateFalse,
-                    newTimeFilter, valueFilter, null, MManager.getInstance().getSeriesType(deltaObjectUID+"."+measurementUID));
+                    newTimeFilter, valueFilter, null, MManager.getInstance().getSeriesType(deltaObjectUID + "." + measurementUID));
             res = recordReader.getValueInOneColumnWithOverflow(deltaObjectUID, measurementUID,
                     updateTrue, updateFalse, recordReader.insertAllData, newTimeFilter, valueFilter, res, fetchSize);
             res.putOverflowInfo(insertTrue, updateTrue, updateFalse, newTimeFilter);

@@ -93,5 +93,5 @@ public abstract class AggregateFunction {
 
 
     public abstract void calcGroupByAggregationWithoutFilter(long partitionStart, long partitionEnd, long intervalStart, long intervalEnd,
-                                                             DynamicOneColumnData data, boolean firstPartitionFlag);
+                                                             DynamicOneColumnData data);
 }

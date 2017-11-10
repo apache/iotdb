@@ -32,37 +32,36 @@ import java.util.*;
 /**
  * Group by aggregation implementation.
  */
-public class GroupByEngine {
+public class GroupByEngineNoFilter {
 
-    // ThreadLocal<>
+    /** formNumber is set to -1 default **/
     private int formNumber = -1;
-    private List<Path> queryPaths = new ArrayList<>();
-    private ThreadLocal<Boolean> threadLocal = new ThreadLocal<>();
 
-    public QueryDataSet groupBy(List<Pair<Path, String>> aggres, List<FilterStructure> filterStructures,
+    /** queryFetchSize is sed to read one column data, this variable is mainly used to debug to verify
+     * the rightness of iterative readOneColumnWithoutFilter **/
+    private int queryFetchSize = 10000;
+
+    /**
+     * TODO in current version, fetchSize is not implemented
+     *
+     * @param aggregations
+     * @param unit
+     * @param origin
+     * @param intervals
+     * @param fetchSize
+     * @return
+     * @throws IOException
+     * @throws ProcessorException
+     * @throws PathErrorException
+     */
+    public QueryDataSet groupBy(List<Pair<Path, AggregateFunction>> aggregations,
                                        long unit, long origin, SingleSeriesFilterExpression intervals, int fetchSize)
             throws IOException, ProcessorException, PathErrorException {
-
-        for (Pair<Path, String> pair : aggres) {
-            queryPaths.add(pair.left);
-        }
-        List<Pair<Path, AggregateFunction>> aggregations = new ArrayList<>();
-        for (Pair<Path, String> pair : aggres) {
-            TSDataType dataType = MManager.getInstance().getSeriesType(pair.left.getFullPath());
-            AggregateFunction func = AggreFuncFactory.getAggrFuncByName(pair.right, dataType);
-            aggregations.add(new Pair<>(pair.left, func));
-        }
-
-        boolean noFilterFlag = false;
-        if (filterStructures == null || filterStructures.size() == 0 || (filterStructures.size() == 1 && filterStructures.get(0).noFilter())) {
-            noFilterFlag = true;
-        }
 
         QueryDataSet groupByResult = new QueryDataSet();
 
         // all the split time intervals
         LongInterval longInterval = (LongInterval) FilterVerifier.create(TSDataType.INT64).getInterval(intervals);
-
         if (longInterval.count == 0) {
             return new QueryDataSet();
         }
@@ -75,11 +74,9 @@ public class GroupByEngine {
 
         // HashMap to record the query result of each aggregation Path
         Map<String, DynamicOneColumnData> queryPathResult = new HashMap<>();
-        // TODO HashMap to record the read lock of each query aggregation path
-        Map<String, Integer> readLockMap = new HashMap<>();
         // HashSet to record the duplicated queries
         Set<Integer> duplicatedPaths = new HashSet<>();
-        for (int i = 0;i < aggregations.size(); i++) {
+        for (int i = 0; i < aggregations.size(); i++) {
             String aggregateKey = aggregationKey(aggregations.get(i).left, aggregations.get(i).right);
             if (!groupByResult.mapRet.containsKey(aggregateKey)) {
                 groupByResult.mapRet.put(aggregateKey, new DynamicOneColumnData(aggregations.get(i).right.dataType, true, true));
@@ -112,10 +109,6 @@ public class GroupByEngine {
                 partitionStart = intervalStart;
             }
 
-            //System.out.println(partitionStart + "---" + partitionEnd);
-            if (partitionStart == 9999) {
-                System.out.println("haha");
-            }
             while (true) {
                 int cnt = 0;
                 for (Pair<Path, AggregateFunction> pair : aggregations) {
@@ -126,18 +119,18 @@ public class GroupByEngine {
                     AggregateFunction aggregateFunction = pair.right;
                     String aggregationKey = aggregationKey(path, aggregateFunction);
                     DynamicOneColumnData data = queryPathResult.get(aggregationKey);
-                    if (data == null || data.curIdx >= data.timeLength) {
-                        data = queryOnePath(path, data, filterStructures);
+                    if (data == null || (data.curIdx >= data.timeLength && !data.hasReadAll)) {
+                        data = queryOnePath(path, data);
                         queryPathResult.put(aggregationKey, data);
                     }
 
                     while (true) {
                         aggregateFunction.calcGroupByAggregationWithoutFilter(partitionStart, partitionEnd, intervalStart, intervalEnd, data, false);
-                        if (data.timeLength == 0 || data.curIdx < data.timeLength) {
+                        if (data.timeLength == 0 || data.hasReadAll || data.curIdx < data.timeLength) {
                             break;
                         }
                         if (data.curIdx >= data.timeLength && data.timeLength != 0) {
-                            data = queryOnePath(path, data, filterStructures);
+                            data = queryOnePath(path, data);
                         }
                         if (data.timeLength == 0 || data.curIdx >= data.timeLength) {
                             break;
@@ -174,15 +167,16 @@ public class GroupByEngine {
         return groupByResult;
     }
 
-    private DynamicOneColumnData queryOnePath(Path path, DynamicOneColumnData data, List<FilterStructure> filterStructures)
+    private DynamicOneColumnData queryOnePath(Path path, DynamicOneColumnData data)
             throws PathErrorException, IOException, ProcessorException {
-        if (filterStructures == null || filterStructures.size() == 0 || (filterStructures.size() == 1 && filterStructures.get(0).noFilter())) {
-            return readOneColumnWithoutFilter(path, data, 10000, null);
-        }
-        return null;
+        return readOneColumnWithoutFilter(path, data, null);
     }
 
-    private DynamicOneColumnData readOneColumnWithoutFilter(Path path, DynamicOneColumnData res, int fetchSize, Integer readLock) throws ProcessorException, IOException, PathErrorException {
+    private DynamicOneColumnData readOneColumnWithoutFilter(Path path, DynamicOneColumnData res, Integer readLock)
+            throws ProcessorException, IOException, PathErrorException {
+
+        // this read process is batch read
+        // every time the ```fetchSize``` data size will be return
 
         String deltaObjectID = path.getDeltaObjectToString();
         String measurementID = path.getMeasurementToString();
@@ -205,11 +199,12 @@ public class GroupByEngine {
                     insertTrue, updateTrue, updateFalse,
                     newTimeFilter, null, null, MManager.getInstance().getSeriesType(path.getFullPath()));
             res = recordReader.getValueInOneColumnWithOverflow(deltaObjectID, measurementID,
-                    updateTrue, updateFalse, recordReader.insertAllData, newTimeFilter, null, res, fetchSize);
+                    updateTrue, updateFalse, recordReader.insertAllData, newTimeFilter, null, res, queryFetchSize);
             res.putOverflowInfo(insertTrue, updateTrue, updateFalse, newTimeFilter);
         } else {
+            res.clearData();
             res = recordReader.getValueInOneColumnWithOverflow(deltaObjectID, measurementID,
-                    res.updateTrue, res.updateFalse, recordReader.insertAllData, res.timeFilter, null, res, fetchSize);
+                    res.updateTrue, res.updateFalse, recordReader.insertAllData, res.timeFilter, null, res, queryFetchSize);
         }
 
         return res;

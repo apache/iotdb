@@ -16,7 +16,11 @@ import java.sql.*;
 import static cn.edu.tsinghua.iotdb.service.TestUtils.count;
 
 /**
- * .
+ * This junit test is used for ```Group By``` function test.
+ * <p>
+ * Notice that: to make sure that the batch read in ```Group By``` process is collect,
+ * the fetchSize parameter in method <code>queryOnePath()</code> in <code>GroupByEngineNoFilter</code> should
+ * be set very small.
  */
 public class GroupBySmallDataTest {
     private final String FOLDER_HEADER = "src/test/resources";
@@ -112,12 +116,6 @@ public class GroupBySmallDataTest {
             metadataDirPre = config.metadataDir;
             derbyHomePre = config.derbyHome;
 
-            // use small page setting
-//            TSFileConfig tsFileConfig = TSFileDescriptor.getInstance().getConfig();
-//            tsFileConfig.maxNumberOfPointsInPage = 10;
-//            tsFileConfig.pageSizeInByte = 1024 * 2;
-//            tsFileConfig.groupSizeInByte = 1024 * 100;
-
             config.overflowDataDir = FOLDER_HEADER + "/data/overflow";
             config.fileNodeDir = FOLDER_HEADER + "/data/digest";
             config.bufferWriteDir = FOLDER_HEADER + "/data/delta";
@@ -193,34 +191,31 @@ public class GroupBySmallDataTest {
                     String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(count(d0s0))
                             + "," + resultSet.getString(count(d0s1)) + "," + resultSet.getString(count(d0s2))
                             + "," + resultSet.getString(count(d0s3));
-                    System.out.println(ans);
+                    // System.out.println(ans);
                     switch (cnt) {
                         case 1:
                             Assert.assertEquals("3,null,null,2,null", ans);
                             break;
-                        case 5:
-                            Assert.assertEquals("40,null,1,null,null", ans);
+                        case 6:
+                            Assert.assertEquals("50,null,1,null,null", ans);
+                            break;
+                        case 7:
+                        case 8:
+                        case 9:
+                            Assert.assertEquals(resultSet.getString(TIMESTAMP_STR) + ",null,null,null,1", ans);
+                            break;
+                        case 11:
+                            Assert.assertEquals("100,3,6,2,2", ans);
+                            break;
+                        case 101:
+                            Assert.assertEquals("1000,1,1,1,null", ans);
                             break;
                         default:
                             Assert.assertEquals(resultSet.getString(TIMESTAMP_STR) + ",null,null,null,null", ans);
                     }
                     cnt++;
-//                    if (cnt == 1) {
-//                        Assert.assertEquals("1,null,2,3,null", ans);
-//                    } else if (cnt == 5) {
-//                        Assert.assertEquals("40,null,1,null,null", ans);
-//                    } else if (cnt == 7 || cnt == 8 || cnt == 9) {
-//                        Assert.assertEquals(resultSet.getString(TIMESTAMP_STR) + ",null,null,null,1", ans);
-//                    } else if (cnt == 11) {
-//                        Assert.assertEquals("100,3,6,2,2", ans);
-//                    } else if (cnt == 101){
-//                        Assert.assertEquals("1000,1,1,1,null", ans);
-//                    } else {
-//                        Assert.assertEquals(resultSet.getString(TIMESTAMP_STR) + ",null,null,null,null", ans);
-//                    }
-//                    cnt++;
                 }
-                //Assert.assertEquals(1, cnt);
+                Assert.assertEquals(1002, cnt);
             }
             statement.close();
         } catch (Exception e) {
