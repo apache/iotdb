@@ -130,7 +130,7 @@ Now, you can use IoTDB SQL to operate IoTDB, and when you’ve had enough fun, y
 
 But lets try something slightly more interesting:
 
-``` SQL
+``` 
 IoTDB> SET STORAGE GROUP TO root.vehicle
 execute successfully.
 IoTDB> CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE
@@ -138,7 +138,7 @@ execute successfully.
 ```
 Till now, we have already create a table called root.vehicle and add a colomn called d0.s0 in the table. Let's take a look at what we have done by 'SHOW TIMESERIES' command.
 
-``` SQL
+``` 
 IoTDB> SHOW TIMESERIES
 ===  Timeseries Tree  ===
 
@@ -157,13 +157,13 @@ root:{
 ```
 Insert timeseries data is the basic operation of IoTDB, you can use 'INSERT' command to finish this:
 
-```SQL
+```
 IoTDB> insert into root.vehicle.d0(timestamp,s0) values(1,101);
 execute successfully.
 ```
 The data we've just inserted displays like this:
 
-```SQL
+```
 IoTDB> SELECT d0.s0 FROM root.vehicle
 +-----------------------+------------------+
 |                   Time|root.vehicle.d0.s0|
