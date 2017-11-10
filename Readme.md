@@ -75,6 +75,8 @@ For more, you are advised to check our website [document page](http://tsfile.org
 
 ### Start Server
 
+After that we start the server. Running the startup script: 
+
 ```
 # Unix/OS X
 > ./bin/start-server.sh
@@ -84,6 +86,8 @@ For more, you are advised to check our website [document page](http://tsfile.org
 ```
 
 ### Stop Server
+
+The server can be stopped with ctrl-C or the following script:
 
 ```
 # Unix/ OS X
@@ -95,7 +99,7 @@ For more, you are advised to check our website [document page](http://tsfile.org
 
 ### Start Client
 
-To start the client, you need to explicit the server's IP and PORT as well as the USER_NAME and PASSWORD. 
+Now let's trying to read and write some data from IoTDB using our Client. To start the client, you need to explicit the server's IP and PORT as well as the USER_NAME and PASSWORD. 
 
 ```
 # Unix/OS X
@@ -106,6 +110,73 @@ To start the client, you need to explicit the server's IP and PORT as well as th
 ```
 
 > NOTE: In the system, we set a default user in IoTDB named 'root'. The default password for 'root' is 'root'. You can use this default user if you are making the first try or you didn't create users by yourself.
+
+The command line client is interactive so if everything is ready you should see the welcome logo and statements:
+
+```
+ _____       _________  ______   ______
+|_   _|     |  _   _  ||_   _ `.|_   _ \
+  | |   .--.|_/ | | \_|  | | `. \ | |_) |
+  | | / .'`\ \  | |      | |  | | |  __'.
+ _| |_| \__. | _| |_    _| |_.' /_| |__) |
+|_____|'.__.' |_____|  |______.'|_______/  version 0.0.1
+
+
+IoTDB> login successfully
+IoTDB>
+```
+### Have a try
+Now, you can use IoTDB SQL to operate IoTDB, and when you’ve had enough fun, you can input 'quit' or 'exit' command to leave the client. 
+
+But lets try something slightly more interesting:
+
+``` SQL
+IoTDB> SET STORAGE GROUP TO root.vehicle
+execute successfully.
+IoTDB> CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE
+execute successfully.
+```
+Till now, we have already create a table called root.vehicle and add a colomn called d0.s0 in the table. Let's take a look at what we have done by 'SHOW TIMESERIES' command.
+
+``` SQL
+IoTDB> SHOW TIMESERIES
+===  Timeseries Tree  ===
+
+root:{
+    vehicle:{
+        d0:{
+            s0:{
+                 DataType: INT32,
+                 Encoding: RLE,
+                 args: {},
+                 StorageGroup: root.vehicle
+            }
+        }
+    }
+}
+```
+Insert timeseries data is the basic operation of IoTDB, you can use 'INSERT' command to finish this:
+
+```SQL
+IoTDB> insert into root.vehicle.d0(timestamp,s0) values(1,101);
+execute successfully.
+```
+The data we've just inserted displays like this:
+
+```SQL
+IoTDB> SELECT d0.s0 FROM root.vehicle
++-----------------------+------------------+
+|                   Time|root.vehicle.d0.s0|
++-----------------------+------------------+
+|1970-01-01T08:00:00.001|               101|
++-----------------------+------------------+
+record number = 1
+execute successfully.
+```
+
+If your session looks similar to what’s above, congrats, your IoTDB is operational!
+
+For more on what commands are supported by IoTDB SQL, see our website [document page](http://tsfile.org/document). The eighth chapter in User Guide Document will give you help.
 
 
 # TsFile 导入脚本使用说明
