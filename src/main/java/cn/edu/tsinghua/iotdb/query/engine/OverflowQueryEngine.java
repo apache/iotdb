@@ -6,6 +6,7 @@ import cn.edu.tsinghua.iotdb.query.aggregation.AggreFuncFactory;
 import cn.edu.tsinghua.iotdb.query.aggregation.AggregateFunction;
 import cn.edu.tsinghua.iotdb.query.dataset.InsertDynamicData;
 import cn.edu.tsinghua.iotdb.query.engine.groupby.GroupByEngineNoFilter;
+import cn.edu.tsinghua.iotdb.query.engine.groupby.GroupByEngineWithFilter;
 import cn.edu.tsinghua.iotdb.query.management.RecordReaderFactory;
 import cn.edu.tsinghua.iotdb.query.reader.RecordReader;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
@@ -114,6 +115,20 @@ public class OverflowQueryEngine {
 
     ThreadLocal<Boolean> groupByLocal = new ThreadLocal<>();
 
+    /**
+     * Group by feature implementation.
+     *
+     * @param aggres
+     * @param filterStructures
+     * @param unit
+     * @param origin
+     * @param intervals
+     * @param fetchSize
+     * @return
+     * @throws ProcessorException
+     * @throws PathErrorException
+     * @throws IOException
+     */
     public QueryDataSet groupBy(List<Pair<Path, String>> aggres, List<FilterStructure> filterStructures,
                                 long unit, long origin, List<Pair<Long, Long>> intervals, int fetchSize)
             throws ProcessorException, PathErrorException, IOException {
@@ -146,10 +161,9 @@ public class OverflowQueryEngine {
             GroupByEngineNoFilter groupByEngineNoFilter = new GroupByEngineNoFilter();
             return groupByEngineNoFilter.groupBy(aggregations, unit, origin, intervalFilter, fetchSize);
         } else {
-
+            GroupByEngineWithFilter groupByEngineWithFilter = new GroupByEngineWithFilter();
+            return groupByEngineWithFilter.groupBy(aggregations, filterStructures, unit, origin,  intervalFilter, fetchSize);
         }
-
-        return null;
     }
 
     /**

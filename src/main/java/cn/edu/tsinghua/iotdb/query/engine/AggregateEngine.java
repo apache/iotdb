@@ -23,7 +23,7 @@ import org.slf4j.LoggerFactory;
 
 public class AggregateEngine {
 
-    private static final Logger LOG = LoggerFactory.getLogger(AggregateEngine.class);
+    private static final Logger logger = LoggerFactory.getLogger(AggregateEngine.class);
     public static int batchSize = 50000;
 
     /**
@@ -39,7 +39,7 @@ public class AggregateEngine {
     public static QueryDataSet multiAggregate(List<Pair<Path, AggregateFunction>> aggres, List<FilterStructure> filterStructures)
             throws IOException, PathErrorException, ProcessorException {
 
-        LOG.debug("multiple aggregation calculation");
+        logger.debug("multiple aggregation calculation");
 
         if (filterStructures == null || filterStructures.size() == 0 || (filterStructures.size() == 1 && filterStructures.get(0).noFilter())) {
             return multiAggregateWithoutFilter(aggres);
@@ -50,7 +50,7 @@ public class AggregateEngine {
         List<QueryDataSet> filterQueryDataSets = new ArrayList<>(); // stores the query QueryDataSet of each FilterStructure in filterStructures
         List<long[]> timeArray = new ArrayList<>(); // stores calculated common timestamps of each FilterStructure answer
         List<Integer> indexArray = new ArrayList<>(); // stores used index of each timeArray
-        List<Boolean> hasDataArray = new ArrayList<>(); // represents whether this FilterStructure answer still has unread data
+        List<Boolean> hasUnReadDataArray = new ArrayList<>(); // represents whether this FilterStructure answer still has unread data
         for (int idx = 0; idx < filterStructures.size(); idx++) {
             FilterStructure filterStructure = filterStructures.get(idx);
             QueryDataSet queryDataSet = new QueryDataSet();
@@ -73,9 +73,9 @@ public class AggregateEngine {
             timeArray.add(curCommonTimestamps);
             indexArray.add(0);
             if (curCommonTimestamps.length > 0) {
-                hasDataArray.add(true);
+                hasUnReadDataArray.add(true);
             } else {
-                hasDataArray.add(false);
+                hasUnReadDataArray.add(false);
             }
         }
 
@@ -84,7 +84,7 @@ public class AggregateEngine {
         PriorityQueue<Long> priorityQueue = new PriorityQueue<>();
 
         for (int i = 0; i < timeArray.size(); i++) {
-            boolean flag = hasDataArray.get(i);
+            boolean flag = hasUnReadDataArray.get(i);
             if (flag) {
                 priorityQueue.add(timeArray.get(i)[indexArray.get(i)]);
             }
@@ -92,7 +92,7 @@ public class AggregateEngine {
 
         // represents that whether the 'key' ordinal aggregation still has unread data
         Map<Integer, Boolean> hasUnReadDataMap = new HashMap<>();
-        // if there has any uncompleted data, hasAnyUnReadDataFlag is true
+        // if there still has any uncompleted read data, hasAnyUnReadDataFlag is true
         boolean hasAnyUnReadDataFlag = true;
         while (true) {
             while (aggregateTimestamps.size() < batchSize && !priorityQueue.isEmpty() && hasAnyUnReadDataFlag) {
@@ -103,7 +103,7 @@ public class AggregateEngine {
                     priorityQueue.poll();
 
                 for (int i = 0; i < timeArray.size(); i++) {
-                    boolean flag = hasDataArray.get(i);
+                    boolean flag = hasUnReadDataArray.get(i);
                     if (flag) {
                         int curTimeIdx = indexArray.get(i);
                         long[] curTimestamps = timeArray.get(i);
@@ -117,16 +117,17 @@ public class AggregateEngine {
                         } else {
                             long[] newTimeStamps = filterQueryDataSets.get(i).crossQueryTimeGenerator.generateTimes();
                             if (newTimeStamps.length > 0) {
+                                timeArray.set(i, newTimeStamps);
                                 indexArray.set(i, 0);
                             } else {
-                                hasDataArray.set(i, false);
+                                hasUnReadDataArray.set(i, false);
                             }
                         }
                     }
                 }
             }
 
-            LOG.debug("common timestamps in multiple aggregation process : " + aggregateTimestamps.toString());
+            logger.debug("common timestamps in multiple aggregation process : " + aggregateTimestamps.toString());
             if (aggregateTimestamps.size() == 0)
                 break;
 

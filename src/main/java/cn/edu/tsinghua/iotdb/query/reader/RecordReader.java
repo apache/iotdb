@@ -237,16 +237,17 @@ public class RecordReader {
      * @throws IOException
      */
     public DynamicOneColumnData getValuesUseTimestampsWithOverflow(String deltaObjectId, String measurementId, long[] timestamps,
-                                                                   DynamicOneColumnData updateTrue, InsertDynamicData insertMemoryData, SingleSeriesFilterExpression deleteFilter)
+                                                                   DynamicOneColumnData updateTrue, InsertDynamicData insertMemoryData,
+                                                                   SingleSeriesFilterExpression deleteFilter)
             throws ProcessorException, IOException {
+
         TSDataType dataType;
-        String deviceType;
         try {
             dataType = MManager.getInstance().getSeriesType(deltaObjectId + "." + measurementId);
-            deviceType = MManager.getInstance().getDeltaObjectTypeByPath(deltaObjectId);
         } catch (PathErrorException e) {
             throw new ProcessorException(e.getMessage());
         }
+
         DynamicOneColumnData oldRes = getValuesUseTimestamps(deltaObjectId, measurementId, timestamps);
         if (oldRes == null) {
             oldRes = new DynamicOneColumnData(dataType, true);
