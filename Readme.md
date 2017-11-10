@@ -14,33 +14,59 @@ IoTDB's features are as following:
 6. Easy to get start. IoTDB supports SQL-Like language, JDBC standard API and import/export tools which is easy to use.
 7. Intense integration with Open Source Ecosystem. IoTDB supports Hadoop, Spark, etc. analysis ecosystems and Grafana visualization tool.
 
+For the latest information about Hadoop, please visit our [IoTDB official website](http://tsfile.org/index).
+
+# Prerequisites
+
+To use IoTDB, you need to have:
+
+1. Java >= 1.8
+2. Maven >= 3.0 (If you want to compile and install IoTDB from source code)
+3. TsFile >= 0.2.0 (TsFile Github page: [https://github.com/thulab/tsfile](https://github.com/thulab/tsfile))
+4. IoTDB-JDBC >= 0.1.2 (IoTDB-JDBC Github page: [https://github.com/thulab/iotdb-jdbc](https://github.com/thulab/iotdb-jdbc))
+
+TODO: TsFile and IoTDB-JDBC dependencies will be removed after Jialin Qiao re-structured the Project.
+
+# Quick Start
+
+This short guide will walk you through the basic process of using IoTDB. For a more-complete guide, please visit our website’s [Document Part](http://tsfile.org/document).
+
+## Build
+
+You can build IoTDB using Maven:
+
+```
+mvn clean package -Dmaven.test.skip=true
+```
+
+If successful, you will see the the following text in the terminal:
+
+```
+[INFO] BUILD SUCCESS
+```
+Otherwise, you may need to check the error statements and fix the problems.
+
+After build, the IoTDB project will be at the subfolder named iotdb. The folder will include the following contents:
+
+
+```
+iotdb/     <-- root path
+|
++- bin/       <-- script files
+|
++- conf/      <-- configuration files
+|
++- lib/       <-- project dependencies
+|
++- LICENSE    <-- LICENSE
+```
+
+NOTE: We also provide already built JARs and project at [http://tsfile.org/download](http://tsfile.org/download) instead of build the jar package yourself.
+
+## Configure
+## Start
 
 # 使用方法
-
-## 环境依赖
-
-* JDK >= 1.8
-* Maven > 3.0
-
-## 项目打包
-
-> mvn clean package -Dmaven.test.skip=true
-
-## 打包后的项目结构
-
-> cd iotdb
-
-```
-iotdb/     <-- 根目录
-|
-+- bin/       <-- 运行脚本
-|
-+- conf/      <-- 配置文件目录
-|
-+- lib/       <-- 项目依赖目录
-|
-+- LICENSE    <-- 代码LICENSE
-```
 
 
 ## 启动服务器
