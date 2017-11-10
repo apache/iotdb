@@ -30,7 +30,7 @@ import java.io.IOException;
 import java.util.*;
 
 /**
- * Group by aggregation implementation.
+ * Group by aggregation implementation without <code>FilterStructure</code>.
  */
 public class GroupByEngineNoFilter {
 
@@ -125,7 +125,7 @@ public class GroupByEngineNoFilter {
                     }
 
                     while (true) {
-                        aggregateFunction.calcGroupByAggregationWithoutFilter(partitionStart, partitionEnd, intervalStart, intervalEnd, data, false);
+                        aggregateFunction.calcGroupByAggregationWithoutFilter(partitionStart, partitionEnd, intervalStart, intervalEnd, data);
                         if (data.timeLength == 0 || data.hasReadAll || data.curIdx < data.timeLength) {
                             break;
                         }
