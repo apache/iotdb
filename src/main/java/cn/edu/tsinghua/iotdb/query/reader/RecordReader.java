@@ -95,19 +95,19 @@ public class RecordReader {
             throws ProcessorException, IOException, PathErrorException {
         TSDataType dataType = MManager.getInstance().getSeriesType(deltaObjectId + "." + measurementId);
         List<RowGroupReader> rowGroupReaderList = readerManager.getRowGroupReaderListByDeltaObject(deltaObjectId);
-        int i = 0;
+        int rowGroupIndex = 0;
         if (res != null) {
-            i = res.getRowGroupIndex();
+            rowGroupIndex = res.getRowGroupIndex();
         }
+
         // iterative res, res may be expand
-        for (; i < rowGroupReaderList.size(); i++) {
-            RowGroupReader rowGroupReader = rowGroupReaderList.get(i);
+        for (; rowGroupIndex < rowGroupReaderList.size(); rowGroupIndex++) {
+            RowGroupReader rowGroupReader = rowGroupReaderList.get(rowGroupIndex);
             if (rowGroupReader.getValueReaders().containsKey(measurementId) &&
                     rowGroupReader.getValueReaders().get(measurementId).getDataType().equals(dataType)) {
                 res = rowGroupReader.getValueReaders().get(measurementId)
                         .getValuesWithOverFlow(updateTrue, updateFalse, insertMemoryData, timeFilter, null, valueFilter, res, fetchSize);
                 if (res.valueLength >= fetchSize) {
-                    res.hasReadAll = false;
                     return res;
                 }
             }
@@ -116,48 +116,7 @@ public class RecordReader {
         if (res == null) {
             res = createAOneColRetByFullPath(deltaObjectId + "." + measurementId);
         }
-        // add left insert values
-        if (insertMemoryData.hasInsertData()) {
-            res.hasReadAll = addLeftInsertValue(res, insertMemoryData, fetchSize, timeFilter, updateTrue, updateFalse);
-        } else {
-            res.hasReadAll = true;
-        }
-        return res;
-    }
 
-    /**
-     * read one column with filter and overflow.
-     *
-     * @throws ProcessorException
-     * @throws IOException
-     */
-    public DynamicOneColumnData getValueWithFilterAndOverflow(String deviceUID, String sensorId,
-                                                              DynamicOneColumnData updateTrue, DynamicOneColumnData updateFalse, InsertDynamicData insertMemoryData,
-                                                              SingleSeriesFilterExpression timeFilter, SingleSeriesFilterExpression freqFilter, SingleSeriesFilterExpression valueFilter,
-                                                              DynamicOneColumnData res, int fetchSize) throws ProcessorException, IOException {
-
-        List<RowGroupReader> rowGroupReaderList = readerManager.getRowGroupReaderListByDeltaObject(deviceUID);
-
-        int i = 0;
-        if (res != null) {
-            i = res.getRowGroupIndex();
-        }
-        for (; i < rowGroupReaderList.size(); i++) {
-            RowGroupReader rowGroupReader = rowGroupReaderList.get(i);
-            if (rowGroupReader.getValueReaders().containsKey(sensorId)) {
-                res = rowGroupReader.getValueReaders().get(sensorId)
-                        .getValuesWithOverFlow(updateTrue, updateFalse, insertMemoryData, timeFilter, freqFilter, valueFilter, res,
-                                fetchSize);
-                if (res.valueLength >= fetchSize) {
-                    res.hasReadAll = false;
-                    return res;
-                }
-            }
-        }
-
-        if (res == null) {
-            res = createAOneColRetByFullPath(deviceUID + "." + sensorId);
-        }
         // add left insert values
         if (insertMemoryData.hasInsertData()) {
             res.hasReadAll = addLeftInsertValue(res, insertMemoryData, fetchSize, timeFilter, updateTrue, updateFalse);
