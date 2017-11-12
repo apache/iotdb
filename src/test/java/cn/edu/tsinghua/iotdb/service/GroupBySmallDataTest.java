@@ -109,7 +109,7 @@ public class GroupBySmallDataTest {
 
     private Daemon deamon;
 
-    private boolean testFlag = !false;
+    private boolean testFlag = false;
 
     @Before
     public void setUp() throws Exception {
