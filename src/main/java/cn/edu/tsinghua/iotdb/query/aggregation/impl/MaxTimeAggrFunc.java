@@ -16,7 +16,7 @@ public class MaxTimeAggrFunc extends AggregateFunction {
     private boolean hasSetValue = false;
 
     public MaxTimeAggrFunc() {
-        super(AggregationConstant.MAX_TIME, TSDataType.INT64);
+        super(AggregationConstant.MAX_TIME, TSDataType.INT64, true);
     }
 
     @Override
@@ -87,26 +87,46 @@ public class MaxTimeAggrFunc extends AggregateFunction {
     }
 
     @Override
-    public void calcGroupByAggregationWithoutFilter(long partitionStart, long partitionEnd, long intervalStart, long intervalEnd,
-                                                    DynamicOneColumnData data) {
-        if (partitionStart != result.data.getTime(result.data.timeLength-1) && partitionStart != 0) {
-            result.data.putTime(partitionStart);
-        } else if (result.data.getTime(result.data.timeLength-1) == 0 && partitionStart != 0) {
-            result.data.setTime(0, partitionStart);
+    public void calcGroupByAggregation(long partitionStart, long partitionEnd, long intervalStart, long intervalEnd,
+                                       DynamicOneColumnData data) {
+        if (result.data.emptyTimeLength == 0) {
+            if (result.data.timeLength == 0) {
+                result.data.putEmptyTime(partitionStart);
+            } else if (result.data.getTime(result.data.timeLength - 1) != partitionStart) {
+                result.data.putEmptyTime(partitionStart);
+            }
+        } else {
+            if ((result.data.getEmptyTime(result.data.emptyTimeLength - 1) != partitionStart)
+                    && (result.data.timeLength == 0 ||
+                    (result.data.timeLength > 0 && result.data.getTime(result.data.timeLength - 1) != partitionStart)))
+                result.data.putEmptyTime(partitionStart);
         }
 
+        long maxTime = -1;
         while (data.curIdx < data.timeLength) {
-             if (data.getTime(data.curIdx) > intervalEnd) {
-                 return;
-             } else if (data.getTime(data.curIdx) < intervalStart) {
-                 data.curIdx ++;
-             } else if (data.getTime(data.curIdx) >= intervalStart && data.getTime(data.curIdx) <= intervalEnd) {
-                 long max_time = result.data.getTime(result.data.timeLength-1);
-                 if (data.getTime(data.curIdx) > max_time) {
+            long time = data.getTime(data.curIdx);
+            if (time > intervalEnd || time > partitionEnd) {
+                break;
+            } else if (time < intervalStart || time < partitionStart) {
+                data.curIdx++;
+            } else if (time >= intervalStart && time <= intervalEnd && time >= partitionStart && time <= partitionEnd) {
+                if (maxTime < data.getTime(data.curIdx)) {
+                    maxTime = data.getTime(data.curIdx);
+                }
+                data.curIdx++;
+            }
+        }
 
-                 }
-                 data.curIdx ++;
-             }
+        if (maxTime != -1) {
+            if (result.data.emptyTimeLength > 0 && result.data.getEmptyTime(result.data.emptyTimeLength - 1) == partitionStart) {
+                result.data.removeLastEmptyTime();
+                result.data.putTime(partitionStart);
+                result.data.putLong(maxTime);
+            } else {
+                if (maxTime > result.data.getLong(result.data.valueLength - 1)) {
+                    result.data.setLong(result.data.valueLength - 1, maxTime);
+                }
+            }
         }
     }
 

@@ -41,7 +41,7 @@ public class GroupByEngineWithFilter {
 
     /** aggregateFetchSize is set to calculate the result of timestamps, when the size of common timestamps is
      * up to aggregateFetchSize, the aggregation calculation process will begin**/
-    private int aggregateFetchSize = 50000;
+    private int aggregateFetchSize = 2;
 
     /**
      *
@@ -167,7 +167,7 @@ public class GroupByEngineWithFilter {
                 }
             }
 
-            //logger.debug("common timestamps in multiple aggregation process : " + aggregateTimestamps.toString());
+            logger.debug("common timestamps in multiple aggregation process : " + aggregateTimestamps.toString());
 
             int duplicatedCnt = 0;
             for (Pair<Path, AggregateFunction> pair : aggregations) {
@@ -248,10 +248,12 @@ public class GroupByEngineWithFilter {
                         String aggregationKey = aggregationKey(path, aggregateFunction);
                         DynamicOneColumnData data = queryPathResult.get(aggregationKey);
 
-                        aggregateFunction.calcGroupByAggregationWithoutFilter(partitionStart, partitionEnd, intervalStart, intervalEnd, data);
+                        aggregateFunction.calcGroupByAggregation(partitionStart, partitionEnd, intervalStart, intervalEnd, data);
                     }
 
-                    if (intervalEnd <= partitionEnd) {
+                    // TODO need consider that, the aggregateTimestamps is smaller than intervalEnd, intervalEnd is smaller than partitionEnd
+                    if (intervalEnd <= partitionEnd &&
+                            (aggregateTimestamps.size() == 0 || intervalEnd < aggregateTimestamps.get(aggregateTimestamps.size()-1))) {
                         intervalIndex += 2;
                         if (intervalIndex >= longInterval.count)
                             break;
@@ -277,8 +279,11 @@ public class GroupByEngineWithFilter {
                     // calculate the next partition range directly
                     partitionStart = partitionEnd + 1;
                     partitionEnd = partitionStart + unit - 1;
+                } else if (partitionEnd >= aggregateTimestamps.get(aggregateTimestamps.size()-1)){
+                    // partitionEnd is greater or equals than the last value of aggregate timestamps
+                    aggregateTimestamps.clear();
+                    break;
                 } else {
-                    // partitionEnd is greater than the last value of aggregate timestamps
                     break;
                 }
             }

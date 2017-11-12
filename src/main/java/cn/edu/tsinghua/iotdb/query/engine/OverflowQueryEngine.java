@@ -17,6 +17,7 @@ import cn.edu.tsinghua.tsfile.timeseries.filter.definition.FilterExpression;
 import cn.edu.tsinghua.tsfile.timeseries.filter.definition.FilterFactory;
 import cn.edu.tsinghua.tsfile.timeseries.filter.definition.SingleSeriesFilterExpression;
 import cn.edu.tsinghua.tsfile.timeseries.filter.definition.operators.And;
+import cn.edu.tsinghua.tsfile.timeseries.filter.definition.operators.Or;
 import cn.edu.tsinghua.tsfile.timeseries.read.query.BatchReadRecordGenerator;
 import cn.edu.tsinghua.tsfile.timeseries.read.query.CrossQueryTimeGenerator;
 import cn.edu.tsinghua.tsfile.timeseries.read.query.DynamicOneColumnData;
@@ -112,8 +113,8 @@ public class OverflowQueryEngine {
         return AggregateEngine.multiAggregate(aggregations, filterStructures);
     }
 
-
-    ThreadLocal<Boolean> groupByLocal = new ThreadLocal<>();
+    /** group by function have no batch result, to ensure that group by logic is only executed once**/
+    private boolean groupByFlag = false;
 
     /**
      * Group by feature implementation.
@@ -132,10 +133,11 @@ public class OverflowQueryEngine {
     public QueryDataSet groupBy(List<Pair<Path, String>> aggres, List<FilterStructure> filterStructures,
                                 long unit, long origin, List<Pair<Long, Long>> intervals, int fetchSize)
             throws ProcessorException, PathErrorException, IOException {
-        if (groupByLocal.get() != null && groupByLocal.get()) {
+        if (groupByFlag) {
+            groupByFlag = false;
             return new QueryDataSet();
         }
-        groupByLocal.set(true);
+        groupByFlag = true;
 
         SingleSeriesFilterExpression intervalFilter = null;
         for (Pair<Long, Long> pair : intervals) {
@@ -146,7 +148,7 @@ public class OverflowQueryEngine {
             } else {
                 SingleSeriesFilterExpression left = FilterFactory.gtEq(FilterFactory.timeFilterSeries(), pair.left, true);
                 SingleSeriesFilterExpression right = FilterFactory.ltEq(FilterFactory.timeFilterSeries(), pair.right, true);
-                intervalFilter = (And) FilterFactory.and(intervalFilter, (And) FilterFactory.and(left, right));
+                intervalFilter = (Or) FilterFactory.or(intervalFilter, (And) FilterFactory.and(left, right));
             }
         }
 
