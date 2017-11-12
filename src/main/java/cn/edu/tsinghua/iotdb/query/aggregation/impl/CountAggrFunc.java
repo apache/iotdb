@@ -90,8 +90,8 @@ public class CountAggrFunc extends AggregateFunction {
     }
 
     @Override
-    public void calcGroupByAggregationWithoutFilter(long partitionStart, long partitionEnd, long intervalStart, long intervalEnd,
-                                                    DynamicOneColumnData data) {
+    public void calcGroupByAggregation(long partitionStart, long partitionEnd, long intervalStart, long intervalEnd,
+                                       DynamicOneColumnData data) {
 
         if (result.data.emptyTimeLength == 0) {
             if (result.data.timeLength == 0) {

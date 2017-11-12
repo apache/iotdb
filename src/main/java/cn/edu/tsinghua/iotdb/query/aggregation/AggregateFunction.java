@@ -92,6 +92,6 @@ public abstract class AggregateFunction {
             throws IOException, ProcessorException;
 
 
-    public abstract void calcGroupByAggregationWithoutFilter(long partitionStart, long partitionEnd, long intervalStart, long intervalEnd,
-                                                             DynamicOneColumnData data);
+    public abstract void calcGroupByAggregation(long partitionStart, long partitionEnd, long intervalStart, long intervalEnd,
+                                                DynamicOneColumnData data);
 }
