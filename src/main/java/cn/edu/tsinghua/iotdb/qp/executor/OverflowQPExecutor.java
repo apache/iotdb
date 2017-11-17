@@ -1,11 +1,5 @@
 package cn.edu.tsinghua.iotdb.qp.executor;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-
 import cn.edu.tsinghua.iotdb.auth.AuthException;
 import cn.edu.tsinghua.iotdb.auth.dao.Authorizer;
 import cn.edu.tsinghua.iotdb.engine.filenode.FileNodeManager;
@@ -33,10 +27,16 @@ import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 import cn.edu.tsinghua.tsfile.common.utils.Pair;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
 import cn.edu.tsinghua.tsfile.timeseries.filter.definition.FilterExpression;
-import cn.edu.tsinghua.tsfile.timeseries.read.qp.Path;
 import cn.edu.tsinghua.tsfile.timeseries.read.query.QueryDataSet;
+import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
 import cn.edu.tsinghua.tsfile.timeseries.write.record.DataPoint;
 import cn.edu.tsinghua.tsfile.timeseries.write.record.TSRecord;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 public class OverflowQPExecutor extends QueryProcessExecutor {
 
@@ -109,6 +109,14 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 		return queryEngine.aggregate(aggres, filterStructures);
 	}
 
+
+	@Override
+	public QueryDataSet groupBy(List<Pair<Path, String>> aggres, List<FilterStructure> filterStructures,
+								long unit, long origin, List<Pair<Long, Long>> intervals, int fetchSize)
+			throws ProcessorException, IOException, PathErrorException {
+		return queryEngine.groupBy(aggres, filterStructures, unit, origin, intervals, fetchSize);
+	}
+
 	@Override
 	public QueryDataSet query(int formNumber, List<Path> paths, FilterExpression timeFilter,
 			FilterExpression freqFilter, FilterExpression valueFilter, int fetchSize, QueryDataSet lastData)
@@ -125,7 +133,6 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 	public boolean update(Path path, long startTime, long endTime, String value) throws ProcessorException {
 		String deltaObjectId = path.getDeltaObjectToString();
 		String measurementId = path.getMeasurementToString();
-
 		try {
 			String fullPath = deltaObjectId + "." + measurementId;
 			if (!mManager.pathExist(fullPath)) {
@@ -133,28 +140,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 			}
 			mManager.getFileNameByPath(fullPath);
 			TSDataType dataType = mManager.getSeriesType(fullPath);
-			/*
-			 * modify by liukun
-			 */
-			if (dataType == TSDataType.BOOLEAN) {
-				value = value.toLowerCase();
-				if (SQLConstant.BOOLEAN_FALSE_NUM.equals(value)) {
-					value = "false";
-				} else if (SQLConstant.BOOLEAN_TRUE_NUM.equals(value)) {
-					value = "true";
-				} else if (!SQLConstant.BOOLEN_TRUE.equals(value) && !SQLConstant.BOOLEN_FALSE.equals(value)) {
-					throw new ProcessorException(
-							String.format("The BOOLEAN data type should be true/TRUE or false/FALSE"));
-				}
-			} else if (dataType == TSDataType.TEXT) {
-				if ((value.startsWith(SQLConstant.QUOTE) && value.endsWith(SQLConstant.QUOTE))
-						|| (value.startsWith(SQLConstant.DQUOTE) && value.endsWith(SQLConstant.DQUOTE))) {
-					value = value.substring(1, value.length() - 1);
-				} else {
-					throw new ProcessorException(String.format("The TEXT data type should be covered by \" or '"));
-				}
-			}
-
+			value = checkValue(dataType, value);
 			fileNodeManager.update(deltaObjectId, measurementId, startTime, endTime, dataType, value);
 			return true;
 		} catch (PathErrorException e) {
@@ -220,28 +206,8 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 				paths.add(new Path(p));
 				mManager.checkFileLevel(paths);
 				TSDataType dataType = mManager.getSeriesType(p);
-				/*
-				 * modify by liukun
-				 */
 				String value = insertValues.get(i);
-				if (dataType == TSDataType.BOOLEAN) {
-					value = value.toLowerCase();
-					if (SQLConstant.BOOLEAN_FALSE_NUM.equals(value)) {
-						value = "false";
-					} else if (SQLConstant.BOOLEAN_TRUE_NUM.equals(value)) {
-						value = "true";
-					} else if (!SQLConstant.BOOLEN_TRUE.equals(value) && !SQLConstant.BOOLEN_FALSE.equals(value)) {
-						throw new ProcessorException(
-								String.format("The BOOLEAN data type should be true/TRUE or false/FALSE"));
-					}
-				} else if (dataType == TSDataType.TEXT) {
-					if ((value.startsWith(SQLConstant.QUOTE) && value.endsWith(SQLConstant.QUOTE))
-							|| (value.startsWith(SQLConstant.DQUOTE) && value.endsWith(SQLConstant.DQUOTE))) {
-						value = value.substring(1, value.length() - 1);
-					} else {
-						throw new ProcessorException(String.format("The TEXT data type should be covered by \" or '"));
-					}
-				}
+				value = checkValue(dataType, value);
 				DataPoint dataPoint = DataPoint.getDataPoint(dataType, measurementList.get(i), value);
 				tsRecord.addTuple(dataPoint);
 			}
@@ -255,6 +221,28 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 	@Override
 	public List<String> getAllPaths(String originPath) throws PathErrorException {
 		return MManager.getInstance().getPaths(originPath);
+	}
+
+	private String checkValue(TSDataType dataType, String value) throws ProcessorException {
+		if (dataType == TSDataType.BOOLEAN) {
+			value = value.toLowerCase();
+			if (SQLConstant.BOOLEAN_FALSE_NUM.equals(value)) {
+				value = "false";
+			} else if (SQLConstant.BOOLEAN_TRUE_NUM.equals(value)) {
+				value = "true";
+			} else if (!SQLConstant.BOOLEN_TRUE.equals(value) && !SQLConstant.BOOLEN_FALSE.equals(value)) {
+				throw new ProcessorException(
+						String.format("The BOOLEAN data type should be true/TRUE or false/FALSE"));
+			}
+		} else if (dataType == TSDataType.TEXT) {
+			if ((value.startsWith(SQLConstant.QUOTE) && value.endsWith(SQLConstant.QUOTE))
+					|| (value.startsWith(SQLConstant.DQUOTE) && value.endsWith(SQLConstant.DQUOTE))) {
+				value = value.substring(1, value.length() - 1);
+			} else {
+				throw new ProcessorException(String.format("The TEXT data type should be covered by \" or '"));
+			}
+		}
+		return value;
 	}
 
 	private boolean operateAuthor(AuthorPlan author) throws ProcessorException {

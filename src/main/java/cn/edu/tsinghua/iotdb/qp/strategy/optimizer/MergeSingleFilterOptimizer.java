@@ -3,7 +3,7 @@ package cn.edu.tsinghua.iotdb.qp.strategy.optimizer;
 import cn.edu.tsinghua.iotdb.qp.exception.LogicalOptimizeException;
 import cn.edu.tsinghua.iotdb.qp.logical.crud.BasicFunctionOperator;
 import cn.edu.tsinghua.iotdb.qp.logical.crud.FilterOperator;
-import cn.edu.tsinghua.tsfile.timeseries.read.qp.Path;
+import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
 
 import java.util.ArrayList;
 import java.util.Comparator;

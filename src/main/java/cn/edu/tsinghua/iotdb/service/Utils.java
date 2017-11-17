@@ -65,7 +65,15 @@ public class Utils {
 				timeRetList.add(dynamicOneColumnData.getTime(i));
 		}
 		TSDynamicOneColumnData tsDynamicOneColumnData = new TSDynamicOneColumnData("", dynamicOneColumnData.dataType.toString(), dynamicOneColumnData.valueLength, timeRetList);
-		
+
+		List<Long> emptyTimeRetList = new ArrayList<>();
+		if (dynamicOneColumnData.emptyTimeLength > 0) {
+			for (int i = 0;i < dynamicOneColumnData.emptyTimeLength;i++) {
+				emptyTimeRetList.add(dynamicOneColumnData.getEmptyTime(i));
+			}
+		}
+		tsDynamicOneColumnData.setEmptyList(emptyTimeRetList);
+
 		switch (dynamicOneColumnData.dataType) {
 		case BOOLEAN:
 			List<Boolean> boolList = new ArrayList<>();

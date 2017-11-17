@@ -17,7 +17,7 @@ import cn.edu.tsinghua.iotdb.qp.exception.QueryProcessorException;
 import cn.edu.tsinghua.iotdb.qp.logical.sys.PropertyOperator.PropertyType;
 import cn.edu.tsinghua.iotdb.qp.physical.sys.PropertyPlan;
 import cn.edu.tsinghua.iotdb.qp.utils.MemIntQpExecutor;
-import cn.edu.tsinghua.tsfile.timeseries.read.qp.Path;
+import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
 
 /**
  * test ast node parsing on authorization

@@ -1,30 +1,37 @@
 package cn.edu.tsinghua.iotdb.qp.strategy;
 
-import static cn.edu.tsinghua.iotdb.qp.constant.SQLConstant.GREATERTHAN;
-import static cn.edu.tsinghua.iotdb.qp.constant.SQLConstant.GREATERTHANOREQUALTO;
-import static cn.edu.tsinghua.iotdb.qp.constant.SQLConstant.LESSTHAN;
-import static cn.edu.tsinghua.iotdb.qp.constant.SQLConstant.LESSTHANOREQUALTO;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
 import cn.edu.tsinghua.iotdb.exception.ArgsErrorException;
 import cn.edu.tsinghua.iotdb.exception.MetadataArgsErrorException;
+import cn.edu.tsinghua.iotdb.qp.constant.SQLConstant;
 import cn.edu.tsinghua.iotdb.qp.constant.TSParserConstant;
 import cn.edu.tsinghua.iotdb.qp.exception.IllegalASTFormatException;
 import cn.edu.tsinghua.iotdb.qp.exception.LogicalOperatorException;
+import cn.edu.tsinghua.iotdb.qp.exception.QueryProcessorException;
 import cn.edu.tsinghua.iotdb.qp.logical.RootOperator;
 import cn.edu.tsinghua.iotdb.qp.logical.crud.BasicFunctionOperator;
+import cn.edu.tsinghua.iotdb.qp.logical.crud.DeleteOperator;
 import cn.edu.tsinghua.iotdb.qp.logical.crud.FilterOperator;
 import cn.edu.tsinghua.iotdb.qp.logical.crud.FromOperator;
+import cn.edu.tsinghua.iotdb.qp.logical.crud.IndexOperator;
 import cn.edu.tsinghua.iotdb.qp.logical.crud.InsertOperator;
+import cn.edu.tsinghua.iotdb.qp.logical.crud.QueryOperator;
+import cn.edu.tsinghua.iotdb.qp.logical.crud.SFWOperator;
 import cn.edu.tsinghua.iotdb.qp.logical.crud.SelectOperator;
+import cn.edu.tsinghua.iotdb.qp.logical.crud.UpdateOperator;
+import cn.edu.tsinghua.iotdb.qp.logical.sys.AuthorOperator;
+import cn.edu.tsinghua.iotdb.qp.logical.sys.AuthorOperator.AuthorType;
 import cn.edu.tsinghua.iotdb.qp.logical.sys.LoadDataOperator;
 import cn.edu.tsinghua.iotdb.qp.logical.sys.MetadataOperator;
+import cn.edu.tsinghua.iotdb.qp.logical.sys.PropertyOperator;
+import cn.edu.tsinghua.iotdb.qp.logical.sys.PropertyOperator.PropertyType;
 import cn.edu.tsinghua.iotdb.sql.parse.ASTNode;
 import cn.edu.tsinghua.iotdb.sql.parse.Node;
+import cn.edu.tsinghua.iotdb.sql.parse.TSParser;
+import cn.edu.tsinghua.tsfile.common.constant.SystemConstant;
+import cn.edu.tsinghua.tsfile.common.utils.Pair;
+import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
+import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
+import cn.edu.tsinghua.tsfile.timeseries.utils.StringContainer;
 import org.antlr.runtime.Token;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
@@ -32,23 +39,15 @@ import org.joda.time.format.DateTimeFormat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import cn.edu.tsinghua.iotdb.qp.constant.SQLConstant;
-import cn.edu.tsinghua.iotdb.qp.exception.QueryProcessorException;
-import cn.edu.tsinghua.iotdb.qp.logical.crud.DeleteOperator;
-import cn.edu.tsinghua.iotdb.qp.logical.crud.IndexOperator;
-import cn.edu.tsinghua.iotdb.qp.logical.crud.QueryOperator;
-import cn.edu.tsinghua.iotdb.qp.logical.crud.SFWOperator;
-import cn.edu.tsinghua.iotdb.qp.logical.crud.UpdateOperator;
-import cn.edu.tsinghua.iotdb.qp.logical.sys.AuthorOperator;
-import cn.edu.tsinghua.iotdb.qp.logical.sys.AuthorOperator.AuthorType;
-import cn.edu.tsinghua.iotdb.qp.logical.sys.PropertyOperator;
-import cn.edu.tsinghua.iotdb.qp.logical.sys.PropertyOperator.PropertyType;
-import cn.edu.tsinghua.iotdb.sql.parse.TSParser;
-import cn.edu.tsinghua.tsfile.common.constant.SystemConstant;
-import cn.edu.tsinghua.tsfile.common.utils.Pair;
-import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
-import cn.edu.tsinghua.tsfile.timeseries.read.qp.Path;
-import cn.edu.tsinghua.tsfile.timeseries.utils.StringContainer;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import static cn.edu.tsinghua.iotdb.qp.constant.SQLConstant.GREATERTHAN;
+import static cn.edu.tsinghua.iotdb.qp.constant.SQLConstant.GREATERTHANOREQUALTO;
+import static cn.edu.tsinghua.iotdb.qp.constant.SQLConstant.LESSTHAN;
+import static cn.edu.tsinghua.iotdb.qp.constant.SQLConstant.LESSTHANOREQUALTO;
 
 /**
  * This class receives an ASTNode and transform it to an operator which is a
@@ -81,94 +80,98 @@ public class LogicalGenerator {
 	 */
 	private void analyze(ASTNode astNode) throws QueryProcessorException, ArgsErrorException {
 		Token token = astNode.getToken();
+		System.out.println(astNode.dump());
 		if (token == null)
 			throw new QueryProcessorException("given token is null");
 		int tokenIntType = token.getType();
 		LOG.debug("analyze token: {}", token.getText());
 		switch (tokenIntType) {
-		case TSParser.TOK_INSERT:
-			analyzeInsert(astNode);
-			return;
-		case TSParser.TOK_SELECT:
-			analyzeSelectedPath(astNode);
-			return;
-		case TSParser.TOK_FROM:
-			analyzeFrom(astNode);
-			return;
-		case TSParser.TOK_WHERE:
-			analyzeWhere(astNode);
-			return;
-		case TSParser.TOK_UPDATE:
-			if (astNode.getChild(0).getType() == TSParser.TOK_UPDATE_PSWD) {
-				analyzeAuthorUpdate(astNode);
+			case TSParser.TOK_INSERT:
+				analyzeInsert(astNode);
 				return;
-			}
-			analyzeUpdate(astNode);
+			case TSParser.TOK_SELECT:
+				analyzeSelectedPath(astNode);
+				return;
+			case TSParser.TOK_FROM:
+				analyzeFrom(astNode);
+				return;
+			case TSParser.TOK_WHERE:
+				analyzeWhere(astNode);
+				return;
+			case TSParser.TOK_GROUPBY:
+				analyzeGroupBy(astNode);
+				return;
+			case TSParser.TOK_UPDATE:
+				if (astNode.getChild(0).getType() == TSParser.TOK_UPDATE_PSWD) {
+					analyzeAuthorUpdate(astNode);
+					return;
+				}
+				analyzeUpdate(astNode);
+				return;
+			case TSParser.TOK_DELETE:
+				switch (astNode.getChild(0).getType()) {
+					case TSParser.TOK_TIMESERIES:
+						analyzeMetadataDelete(astNode);
+						break;
+					case TSParser.TOK_LABEL:
+						analyzePropertyDeleteLabel(astNode);
+						break;
+					default:
+						analyzeDelete(astNode);
+						break;
+				}
+				return;
+			case TSParser.TOK_SET:
+				analyzeMetadataSetFileLevel(astNode);
+				return;
+			case TSParser.TOK_ADD:
+				analyzePropertyAddLabel(astNode);
+				return;
+			case TSParser.TOK_LINK:
+				analyzePropertyLink(astNode);
+				return;
+			case TSParser.TOK_UNLINK:
+				analyzePropertyUnLink(astNode);
+				return;
+			case TSParser.TOK_CREATE:
+				switch (astNode.getChild(0).getType()) {
+					case TSParser.TOK_USER:
+					case TSParser.TOK_ROLE:
+						analyzeAuthorCreate(astNode);
+						break;
+					case TSParser.TOK_TIMESERIES:
+						analyzeMetadataCreate(astNode);
+						break;
+					case TSParser.TOK_PROPERTY:
+						analyzePropertyCreate(astNode);
+						break;
+					case TSParser.TOK_INDEX:
+						analyzeIndexCreate(astNode);
+						break;
+					default:
+						break;
+				}
 			return;
-		case TSParser.TOK_DELETE:
-			switch (astNode.getChild(0).getType()) {
-			case TSParser.TOK_TIMESERIES:
-				analyzeMetadataDelete(astNode);
-				break;
-			case TSParser.TOK_LABEL:
-				analyzePropertyDeleteLabel(astNode);
+			case TSParser.TOK_DROP:
+				analyzeAuthorDrop(astNode);
+				return;
+			case TSParser.TOK_GRANT:
+				analyzeAuthorGrant(astNode);
+				return;
+			case TSParser.TOK_REVOKE:
+				analyzeAuthorRevoke(astNode);
+				return;
+			case TSParser.TOK_LOAD:
+				analyzeDataLoad(astNode);
+				return;
+			case TSParser.TOK_QUERY:
+				// for TSParser.TOK_QUERY might appear in both query and insert
+				// command. Thus, do
+				// nothing and call analyze() with children nodes recursively.
+				initializedOperator = new QueryOperator(SQLConstant.TOK_QUERY);
 				break;
 			default:
-				analyzeDelete(astNode);
-				break;
-			}
-			return;
-		case TSParser.TOK_SET:
-			analyzeMetadataSetFileLevel(astNode);
-			return;
-		case TSParser.TOK_ADD:
-			analyzePropertyAddLabel(astNode);
-			return;
-		case TSParser.TOK_LINK:
-			analyzePropertyLink(astNode);
-			return;
-		case TSParser.TOK_UNLINK:
-			analyzePropertyUnLink(astNode);
-			return;
-		case TSParser.TOK_CREATE:
-			switch (astNode.getChild(0).getType()) {
-			case TSParser.TOK_USER:
-			case TSParser.TOK_ROLE:
-				analyzeAuthorCreate(astNode);
-				break;
-			case TSParser.TOK_TIMESERIES:
-				analyzeMetadataCreate(astNode);
-				break;
-			case TSParser.TOK_PROPERTY:
-				analyzePropertyCreate(astNode);
-				break;
-			case TSParser.TOK_INDEX:
-				analyzeIndexCreate(astNode);
-				break;
-			default:
-				break;
-			}
-			return;
-		case TSParser.TOK_DROP:
-			analyzeAuthorDrop(astNode);
-			return;
-		case TSParser.TOK_GRANT:
-			analyzeAuthorGrant(astNode);
-			return;
-		case TSParser.TOK_REVOKE:
-			analyzeAuthorRevoke(astNode);
-			return;
-		case TSParser.TOK_LOAD:
-			analyzeDataLoad(astNode);
-			return;
-		case TSParser.TOK_QUERY:
-			// for TSParser.TOK_QUERY might appear in both query and insert
-			// command. Thus, do
-			// nothing and call analyze() with children nodes recursively.
-			initializedOperator = new QueryOperator(SQLConstant.TOK_QUERY);
-			break;
-		default:
-			throw new QueryProcessorException("Not supported TSParser type" + tokenIntType);
+				throw new QueryProcessorException("Not supported TSParser type" + tokenIntType);
 		}
 		for (Node node : astNode.getChildren())
 			analyze((ASTNode) node);
@@ -480,6 +483,66 @@ public class LogicalGenerator {
 			throw new LogicalOperatorException("unsupported token:" + tokenIntType);
 		}
 	}
+
+	private void analyzeGroupBy(ASTNode astNode) throws LogicalOperatorException {
+		((QueryOperator) initializedOperator).setGroupBy(true);
+		int childCount = astNode.getChildCount();
+
+		//parse timeUnit
+		ASTNode unit = astNode.getChild(0);
+		long value = Long.valueOf(unit.getChild(0).getText());
+		if(value <= 0)
+			throw new LogicalOperatorException("Interval must more than 0.");
+		String granu = unit.getChild(1).getText();
+		switch (granu) {
+			case "w": value *= 7;
+			case "d": value *= 24;
+			case "h": value *= 60;
+			case "m": value *= 60;
+			case "s": value *= 1000;
+			default: break;
+		}
+		((QueryOperator) initializedOperator).setUnit(value);
+
+		//parse show intervals
+		ASTNode intervalsNode = astNode.getChild(childCount - 1);
+		int intervalCount = intervalsNode.getChildCount();
+		List<Pair<Long, Long>> intervals = new ArrayList<>();
+		ASTNode intervalNode;
+		long startTime;
+		long endTime;
+		for(int i = 0; i < intervalCount; i++) {
+			intervalNode = intervalsNode.getChild(i);
+			ASTNode startNode = intervalNode.getChild(0);
+			if (startNode.getType() == TSParser.TOK_DATETIME) {
+				startTime = Long.valueOf(parseTokenTime(startNode));
+			} else {
+				startTime = Long.valueOf(startNode.getText());
+			}
+			ASTNode endNode = intervalNode.getChild(1);
+			if (endNode.getType() == TSParser.TOK_DATETIME) {
+				endTime = Long.valueOf(parseTokenTime(endNode));
+			} else {
+				endTime = Long.valueOf(endNode.getText());
+			}
+			intervals.add(new Pair<>(startTime, endTime));
+		}
+
+		((QueryOperator) initializedOperator).setIntervals(intervals);
+
+		//parse time origin
+		long originTime = 0;
+		if (childCount == 3) {
+			ASTNode originNode = astNode.getChild(1).getChild(0);
+			if (originNode.getType() == TSParser.TOK_DATETIME) {
+				originTime = Long.valueOf(parseTokenTime(originNode));
+			} else {
+				originTime = Long.valueOf(originNode.getText());
+			}
+		}
+		((QueryOperator) initializedOperator).setOrigin(originTime);
+	}
+
 
 	private Pair<Path, String> parseLeafNode(ASTNode node) throws LogicalOperatorException {
 		if (node.getChildCount() != 2)

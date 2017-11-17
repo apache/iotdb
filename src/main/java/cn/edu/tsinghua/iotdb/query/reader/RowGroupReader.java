@@ -5,9 +5,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
+import cn.edu.tsinghua.tsfile.common.utils.ITsRandomAccessFileReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import cn.edu.tsinghua.tsfile.common.utils.ITsRandomAccessFileReader;
 import cn.edu.tsinghua.tsfile.file.metadata.RowGroupMetaData;
 import cn.edu.tsinghua.tsfile.file.metadata.TimeSeriesChunkMetaData;

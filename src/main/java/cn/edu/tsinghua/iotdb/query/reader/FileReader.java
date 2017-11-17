@@ -1,6 +1,5 @@
 package cn.edu.tsinghua.iotdb.query.reader;
 
-
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.util.ArrayList;

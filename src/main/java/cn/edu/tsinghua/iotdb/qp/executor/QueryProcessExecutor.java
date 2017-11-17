@@ -1,27 +1,27 @@
 package cn.edu.tsinghua.iotdb.qp.executor;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Set;
-
 import cn.edu.tsinghua.iotdb.exception.PathErrorException;
 import cn.edu.tsinghua.iotdb.metadata.MManager;
 import cn.edu.tsinghua.iotdb.qp.exception.QueryProcessorException;
 import cn.edu.tsinghua.iotdb.qp.executor.iterator.MergeQuerySetIterator;
 import cn.edu.tsinghua.iotdb.qp.executor.iterator.QueryDataSetIterator;
 import cn.edu.tsinghua.iotdb.qp.physical.PhysicalPlan;
-import cn.edu.tsinghua.iotdb.qp.physical.crud.MergeQuerySetPlan;
-import cn.edu.tsinghua.iotdb.qp.physical.crud.SeriesSelectPlan;
+import cn.edu.tsinghua.iotdb.qp.physical.crud.MultiQueryPlan;
+import cn.edu.tsinghua.iotdb.qp.physical.crud.SingleQueryPlan;
 import cn.edu.tsinghua.iotdb.query.engine.FilterStructure;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 import cn.edu.tsinghua.tsfile.common.utils.Pair;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
 import cn.edu.tsinghua.tsfile.timeseries.filter.definition.FilterExpression;
-import cn.edu.tsinghua.tsfile.timeseries.read.qp.Path;
 import cn.edu.tsinghua.tsfile.timeseries.read.query.QueryDataSet;
+import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Set;
 
 public abstract class QueryProcessExecutor {
 
@@ -34,32 +34,28 @@ public abstract class QueryProcessExecutor {
 
 	public abstract boolean judgePathExists(Path fullPath);
 
+	//process MultiQueryPlan
 	public Iterator<QueryDataSet> processQuery(PhysicalPlan plan) throws QueryProcessorException {
-		switch (plan.getOperatorType()) {
+		MultiQueryPlan mergeQuery = (MultiQueryPlan) plan;
+		List<SingleQueryPlan> selectPlans = mergeQuery.getSingleQueryPlans();
+		switch (mergeQuery.getType()) {
 			case QUERY:
-				//query and aggregate
-				SeriesSelectPlan query = (SeriesSelectPlan) plan;
-				FilterExpression[] filterExpressions = query.getFilterExpressions();
-				return new QueryDataSetIterator(query.getPaths(), getFetchSize(),
-						this, filterExpressions[0], filterExpressions[1],
-						filterExpressions[2], query.getAggregations());
-			case MERGEQUERY:
-				MergeQuerySetPlan mergeQuery = (MergeQuerySetPlan) plan;
-				List<SeriesSelectPlan> selectPlans = mergeQuery.getSeriesSelectPlans();
-				//query
-				if (mergeQuery.getAggregations().isEmpty()) {
-					return new MergeQuerySetIterator(selectPlans, getFetchSize(), this);
+				if (selectPlans.size() == 1) {
+					SingleQueryPlan query = selectPlans.get(0);
+					FilterExpression[] filterExpressions = query.getFilterExpressions();
+					return new QueryDataSetIterator(query.getPaths(), getFetchSize(),
+							this, filterExpressions[0], filterExpressions[1],
+							filterExpressions[2]);
 				} else {
-					//aggregate
-					List<FilterStructure> filterStructures = new ArrayList<>();
-					for(SeriesSelectPlan selectPlan: selectPlans) {
-						FilterExpression[] expressions = selectPlan.getFilterExpressions();
-						FilterStructure filterStructure = new FilterStructure(expressions[0], expressions[1], expressions[2]);
-						filterStructures.add(filterStructure);
-					}
-					return new QueryDataSetIterator(mergeQuery.getPaths(), getFetchSize(),
-							mergeQuery.getAggregations(), filterStructures, this);
+					return new MergeQuerySetIterator(selectPlans, getFetchSize(), this);
 				}
+			case AGGREGATION:
+				return new QueryDataSetIterator(mergeQuery.getPaths(), getFetchSize(),
+						mergeQuery.getAggregations(), getFilterStructure(selectPlans), this);
+			case GROUPBY:
+				return new QueryDataSetIterator(mergeQuery.getPaths(), getFetchSize(),
+						mergeQuery.getAggregations(), getFilterStructure(selectPlans),
+						mergeQuery.getUnit(), mergeQuery.getOrigin(), mergeQuery.getIntervals(), this);
 			default:
 				throw new UnsupportedOperationException();
 		}
@@ -69,6 +65,15 @@ public abstract class QueryProcessExecutor {
 		throw new UnsupportedOperationException();
 	}
 
+	private List<FilterStructure> getFilterStructure(List<SingleQueryPlan> selectPlans) {
+		List<FilterStructure> filterStructures = new ArrayList<>();
+		for(SingleQueryPlan selectPlan: selectPlans) {
+			FilterExpression[] expressions = selectPlan.getFilterExpressions();
+			FilterStructure filterStructure = new FilterStructure(expressions[0], expressions[1], expressions[2]);
+			filterStructures.add(filterStructure);
+		}
+		return filterStructures;
+	}
 
 	public void setFetchSize(int fetchSize) {
 		this.fetchSize.set(fetchSize);
@@ -81,10 +86,12 @@ public abstract class QueryProcessExecutor {
 		return fetchSize.get();
 	}
 
-
 	public abstract QueryDataSet aggregate(List<Pair<Path, String>> aggres, List<FilterStructure> filterStructures)
 			throws ProcessorException, IOException, PathErrorException;
 
+	public abstract QueryDataSet groupBy(List<Pair<Path, String>> aggres, List<FilterStructure> filterStructures,
+										 long unit, long origin, List<Pair<Long, Long>> intervals, int fetchSize)
+			throws ProcessorException, IOException, PathErrorException;
 
 	public abstract QueryDataSet query(int formNumber, List<Path> paths, FilterExpression timeFilter, FilterExpression freqFilter,
 			FilterExpression valueFilter, int fetchSize, QueryDataSet lastData) throws ProcessorException;

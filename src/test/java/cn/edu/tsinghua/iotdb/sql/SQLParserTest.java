@@ -511,6 +511,103 @@ public class SQLParserTest {
     }    
     
     
+    @Test
+    public void groupby1() throws ParseException, RecognitionException {
+        // template for test case
+        ArrayList<String> ans = new ArrayList<>(Arrays.asList(
+        		"TOK_QUERY", "TOK_SELECT", 
+        		"TOK_PATH", "TOK_CLUSTER", "TOK_PATH", "s1", "count",
+        		"TOK_PATH", "TOK_CLUSTER", "TOK_PATH", "s2", "max_time",
+        		"TOK_FROM", "TOK_PATH", "TOK_ROOT", "vehicle", "d1",
+        		"TOK_WHERE", "and", 
+        		"<", "TOK_PATH", "TOK_ROOT", "vehicle", "d1", "s1", "0.32e6",
+        		"<=", "TOK_PATH", "time", "TOK_DATETIME", "now",
+        		"TOK_GROUPBY", 
+        		"TOK_TIMEUNIT", "10", "w",
+        		"TOK_TIMEORIGIN", "44",
+        		"TOK_TIMEINTERVAL",
+        		"TOK_TIMEINTERVALPAIR", "1", "3",
+        		"TOK_TIMEINTERVALPAIR", "4", "5"));
+        ArrayList<String> rec = new ArrayList<>();
+        ASTNode astTree = ParseGenerator.generateAST(
+        		"select count(s1),max_time(s2) "
+        		+ "from root.vehicle.d1 "
+        		+ "where root.vehicle.d1.s1 < 0.32e6 and time <= now() "
+        		+ "group by(10w, 44, [1,3], [4,5])");
+        astTree = ParseUtils.findRootNonNullToken(astTree);
+        recursivePrintSon(astTree, rec);
+
+        int i = 0;
+        while (i <= rec.size() - 1) {
+            assertEquals(rec.get(i), ans.get(i));
+            i++;
+        }
+    }
+
+    @Test
+    public void groupby2() throws ParseException, RecognitionException {
+        // template for test case
+        ArrayList<String> ans = new ArrayList<>(Arrays.asList(
+        		"TOK_QUERY", "TOK_SELECT",
+        		"TOK_PATH", "TOK_CLUSTER", "TOK_PATH", "s2", "sum",
+        		"TOK_FROM", "TOK_PATH", "TOK_ROOT", "vehicle", "d1",
+        		"TOK_WHERE", "or", 
+        		"<", "TOK_PATH", "s1", "2000",
+        		">=", "TOK_PATH", "time", "1234567",
+			"TOK_GROUPBY", 
+			"TOK_TIMEUNIT", "111", "ms",
+			"TOK_TIMEINTERVAL",
+			"TOK_TIMEINTERVALPAIR", "123", "TOK_DATETIME" ,"2017-6-2T12:00:12+07:00",
+			"TOK_TIMEINTERVALPAIR", "55555", "TOK_DATETIME" ,"now"));
+        ArrayList<String> rec = new ArrayList<>();
+        ASTNode astTree = ParseGenerator.generateAST(
+        		"select sum(s2) "
+        		+ "FROM root.vehicle.d1 "
+        		+ "WHERE s1 < 2000 or time >= 1234567 "
+        		+ "group by(111ms, [123,2017-6-2T12:00:12+07:00], [55555, now()])");
+        astTree = ParseUtils.findRootNonNullToken(astTree);
+        recursivePrintSon(astTree, rec);
+
+        int i = 0;
+        while (i <= rec.size() - 1) {
+            assertEquals(rec.get(i), ans.get(i));
+            i++;
+        }
+    }
+
+    @Test
+    public void groupby3() throws ParseException, RecognitionException {
+        // template for test case
+        ArrayList<String> ans = new ArrayList<>(Arrays.asList(
+        		"TOK_QUERY", "TOK_SELECT",
+        		"TOK_PATH", "s1", 
+           	"TOK_PATH", "TOK_CLUSTER", "TOK_PATH", "s2", "sum",
+        		"TOK_FROM", "TOK_PATH", "TOK_ROOT", "vehicle", "d1",
+        		"TOK_WHERE", "|", 
+        		"<", "TOK_PATH", "TOK_ROOT", "vehicle", "d1", "s1", "2000",
+        		">=", "TOK_PATH", "time", "1234567",
+    			"TOK_GROUPBY", 
+    			"TOK_TIMEUNIT", "111", "w",
+    			"TOK_TIMEORIGIN", "TOK_DATETIME" ,"2017-6-2T02:00:12+07:00",
+    			"TOK_TIMEINTERVAL",
+    			"TOK_TIMEINTERVALPAIR", "TOK_DATETIME" ,"2017-6-2T12:00:12+07:00", "TOK_DATETIME" ,"now"));
+        ArrayList<String> rec = new ArrayList<>();
+        ASTNode astTree = ParseGenerator.generateAST(""
+        		+ "select s1,sum(s2) "
+        		+ "FROM root.vehicle.d1 "
+        		+ "WHERE root.vehicle.d1.s1 < 2000 | time >= 1234567 "
+        		+ "group by(111w, 2017-6-2T02:00:12+07:00, [2017-6-2T12:00:12+07:00, now()])");
+        astTree = ParseUtils.findRootNonNullToken(astTree);
+        recursivePrintSon(astTree, rec);
+
+        int i = 0;
+        while (i <= rec.size() - 1) {
+            assertEquals(rec.get(i), ans.get(i));
+            i++;
+        }
+    }    
+    
+    
     // Authority Operation
     @Test
     public void createUser() throws ParseException {

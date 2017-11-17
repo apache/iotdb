@@ -21,12 +21,15 @@ public class MinValueAggrFunc extends AggregateFunction {
     private boolean hasSetValue = false;
 
     public MinValueAggrFunc(TSDataType dataType) {
-        super(AggregationConstant.MIN_VALUE, dataType);
-        result.data.putTime(0);
+        super(AggregationConstant.MIN_VALUE, dataType, true);
     }
 
     @Override
     public void calculateValueFromPageHeader(PageHeader pageHeader) {
+        if (result.data.timeLength == 0) {
+            result.data.putTime(0);
+        }
+
         Digest pageDigest = pageHeader.data_page_header.getDigest();
         DigestForFilter digest = new DigestForFilter(pageDigest.min, pageDigest.max, dataType);
         Comparable<?> minv = digest.getMinValue();
@@ -35,6 +38,10 @@ public class MinValueAggrFunc extends AggregateFunction {
 
     @Override
     public void calculateValueFromDataPage(DynamicOneColumnData dataInThisPage) throws IOException, ProcessorException {
+        if (result.data.timeLength == 0) {
+            result.data.putTime(0);
+        }
+
         if (dataInThisPage.valueLength == 0) {
             return;
         }
@@ -49,6 +56,10 @@ public class MinValueAggrFunc extends AggregateFunction {
 
     @Override
     public void calculateValueFromLeftMemoryData(InsertDynamicData insertMemoryData) throws IOException, ProcessorException {
+        if (result.data.timeLength == 0) {
+            result.data.putTime(0);
+        }
+
         Object min_value = insertMemoryData.calcAggregation(AggregationConstant.MIN_VALUE);
         if (min_value != null) {
             updateMinValue((Comparable<?>) min_value);
@@ -56,7 +67,12 @@ public class MinValueAggrFunc extends AggregateFunction {
     }
 
     @Override
-    public boolean calcAggregationUsingTimestamps(InsertDynamicData insertMemoryData, List<Long> timestamps, int timeIndex) throws IOException, ProcessorException {
+    public boolean calcAggregationUsingTimestamps(InsertDynamicData insertMemoryData, List<Long> timestamps, int timeIndex)
+            throws IOException, ProcessorException {
+        if (result.data.timeLength == 0) {
+            result.data.putTime(0);
+        }
+
         while (timeIndex < timestamps.size()) {
             if (insertMemoryData.hasInsertData()) {
                 if (timestamps.get(timeIndex) == insertMemoryData.getCurrentMinTime()) {
@@ -75,6 +91,54 @@ public class MinValueAggrFunc extends AggregateFunction {
         }
 
         return insertMemoryData.hasInsertData();
+    }
+
+    @Override
+    public void calcGroupByAggregation(long partitionStart, long partitionEnd, long intervalStart, long intervalEnd, DynamicOneColumnData data) {
+        if (result.data.emptyTimeLength == 0) {
+            if (result.data.timeLength == 0) {
+                result.data.putEmptyTime(partitionStart);
+            } else if (result.data.getTime(result.data.timeLength - 1) != partitionStart) {
+                result.data.putEmptyTime(partitionStart);
+            }
+        } else {
+            if ((result.data.getEmptyTime(result.data.emptyTimeLength - 1) != partitionStart)
+                    && (result.data.timeLength == 0 ||
+                    (result.data.timeLength > 0 && result.data.getTime(result.data.timeLength - 1) != partitionStart)))
+                result.data.putEmptyTime(partitionStart);
+        }
+
+        Comparable<?> minValue = null;
+        while (data.curIdx < data.timeLength) {
+            long time = data.getTime(data.curIdx);
+            if (time > intervalEnd || time > partitionEnd) {
+                break;
+            } else if (time < intervalStart || time < partitionStart) {
+                data.curIdx++;
+            } else if (time >= intervalStart && time <= intervalEnd && time >= partitionStart && time <= partitionEnd) {
+                if (minValue == null) {
+                    minValue = data.getAnObject(data.curIdx);
+                } else {
+                    if (compare(minValue, data.getAnObject(data.curIdx)) > 0) {
+                        minValue = data.getAnObject(data.curIdx);
+                    }
+                }
+                data.curIdx++;
+            }
+        }
+
+        if (minValue != null) {
+            if (result.data.emptyTimeLength > 0 && result.data.getEmptyTime(result.data.emptyTimeLength - 1) == partitionStart) {
+                result.data.removeLastEmptyTime();
+                result.data.putTime(partitionStart);
+                result.data.putAnObject(minValue);
+            } else {
+                Comparable<?> v = result.data.getAnObject(result.data.valueLength - 1);
+                if (compare(minValue, v) < 0) {
+                    result.data.setAnObject(result.data.valueLength - 1, minValue);
+                }
+            }
+        }
     }
 
     private void updateMinValue(Comparable<?> minv) {

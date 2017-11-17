@@ -1,6 +1,5 @@
 package cn.edu.tsinghua.iotdb.query.reader;
 
-
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.util.List;
@@ -11,6 +10,7 @@ import cn.edu.tsinghua.iotdb.query.aggregation.AggregateFunction;
 import cn.edu.tsinghua.iotdb.query.aggregation.AggregationResult;
 import cn.edu.tsinghua.iotdb.query.management.ReadLockManager;
 import cn.edu.tsinghua.iotdb.query.management.RecordReaderFactory;
+import cn.edu.tsinghua.tsfile.common.utils.ITsRandomAccessFileReader;
 import cn.edu.tsinghua.tsfile.common.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,7 +25,6 @@ import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
 import cn.edu.tsinghua.tsfile.timeseries.filter.definition.SingleSeriesFilterExpression;
 import cn.edu.tsinghua.tsfile.timeseries.filter.visitorImpl.SingleValueVisitor;
 import cn.edu.tsinghua.tsfile.timeseries.read.query.DynamicOneColumnData;
-
 
 /**
  * This class implements several read methods which can read data in different ways.<br>
@@ -96,19 +95,19 @@ public class RecordReader {
             throws ProcessorException, IOException, PathErrorException {
         TSDataType dataType = MManager.getInstance().getSeriesType(deltaObjectId + "." + measurementId);
         List<RowGroupReader> rowGroupReaderList = readerManager.getRowGroupReaderListByDeltaObject(deltaObjectId);
-        int i = 0;
+        int rowGroupIndex = 0;
         if (res != null) {
-            i = res.getRowGroupIndex();
+            rowGroupIndex = res.getRowGroupIndex();
         }
+
         // iterative res, res may be expand
-        for (; i < rowGroupReaderList.size(); i++) {
-            RowGroupReader rowGroupReader = rowGroupReaderList.get(i);
+        for (; rowGroupIndex < rowGroupReaderList.size(); rowGroupIndex++) {
+            RowGroupReader rowGroupReader = rowGroupReaderList.get(rowGroupIndex);
             if (rowGroupReader.getValueReaders().containsKey(measurementId) &&
                     rowGroupReader.getValueReaders().get(measurementId).getDataType().equals(dataType)) {
                 res = rowGroupReader.getValueReaders().get(measurementId)
                         .getValuesWithOverFlow(updateTrue, updateFalse, insertMemoryData, timeFilter, null, valueFilter, res, fetchSize);
                 if (res.valueLength >= fetchSize) {
-                    res.hasReadAll = false;
                     return res;
                 }
             }
@@ -117,48 +116,7 @@ public class RecordReader {
         if (res == null) {
             res = createAOneColRetByFullPath(deltaObjectId + "." + measurementId);
         }
-        // add left insert values
-        if (insertMemoryData.hasInsertData()) {
-            res.hasReadAll = addLeftInsertValue(res, insertMemoryData, fetchSize, timeFilter, updateTrue, updateFalse);
-        } else {
-            res.hasReadAll = true;
-        }
-        return res;
-    }
 
-    /**
-     * read one column with filter and overflow.
-     *
-     * @throws ProcessorException
-     * @throws IOException
-     */
-    public DynamicOneColumnData getValueWithFilterAndOverflow(String deviceUID, String sensorId,
-                                                              DynamicOneColumnData updateTrue, DynamicOneColumnData updateFalse, InsertDynamicData insertMemoryData,
-                                                              SingleSeriesFilterExpression timeFilter, SingleSeriesFilterExpression freqFilter, SingleSeriesFilterExpression valueFilter,
-                                                              DynamicOneColumnData res, int fetchSize) throws ProcessorException, IOException {
-
-        List<RowGroupReader> rowGroupReaderList = readerManager.getRowGroupReaderListByDeltaObject(deviceUID);
-
-        int i = 0;
-        if (res != null) {
-            i = res.getRowGroupIndex();
-        }
-        for (; i < rowGroupReaderList.size(); i++) {
-            RowGroupReader rowGroupReader = rowGroupReaderList.get(i);
-            if (rowGroupReader.getValueReaders().containsKey(sensorId)) {
-                res = rowGroupReader.getValueReaders().get(sensorId)
-                        .getValuesWithOverFlow(updateTrue, updateFalse, insertMemoryData, timeFilter, freqFilter, valueFilter, res,
-                                fetchSize);
-                if (res.valueLength >= fetchSize) {
-                    res.hasReadAll = false;
-                    return res;
-                }
-            }
-        }
-
-        if (res == null) {
-            res = createAOneColRetByFullPath(deviceUID + "." + sensorId);
-        }
         // add left insert values
         if (insertMemoryData.hasInsertData()) {
             res.hasReadAll = addLeftInsertValue(res, insertMemoryData, fetchSize, timeFilter, updateTrue, updateFalse);
@@ -279,16 +237,17 @@ public class RecordReader {
      * @throws IOException
      */
     public DynamicOneColumnData getValuesUseTimestampsWithOverflow(String deltaObjectId, String measurementId, long[] timestamps,
-                                                                   DynamicOneColumnData updateTrue, InsertDynamicData insertMemoryData, SingleSeriesFilterExpression deleteFilter)
+                                                                   DynamicOneColumnData updateTrue, InsertDynamicData insertMemoryData,
+                                                                   SingleSeriesFilterExpression deleteFilter)
             throws ProcessorException, IOException {
+
         TSDataType dataType;
-        String deviceType;
         try {
             dataType = MManager.getInstance().getSeriesType(deltaObjectId + "." + measurementId);
-            deviceType = MManager.getInstance().getDeltaObjectTypeByPath(deltaObjectId);
         } catch (PathErrorException e) {
             throw new ProcessorException(e.getMessage());
         }
+
         DynamicOneColumnData oldRes = getValuesUseTimestamps(deltaObjectId, measurementId, timestamps);
         if (oldRes == null) {
             oldRes = new DynamicOneColumnData(dataType, true);

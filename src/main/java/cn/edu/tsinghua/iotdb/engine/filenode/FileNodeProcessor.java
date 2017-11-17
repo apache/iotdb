@@ -13,6 +13,9 @@ import java.util.Set;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+import cn.edu.tsinghua.tsfile.common.utils.ITsRandomAccessFileWriter;
+import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
+import cn.edu.tsinghua.tsfile.timeseries.write.io.TsFileIOWriter;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.slf4j.Logger;
@@ -44,7 +47,6 @@ import cn.edu.tsinghua.tsfile.file.metadata.enums.CompressionTypeName;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
 import cn.edu.tsinghua.tsfile.timeseries.filter.definition.FilterExpression;
 import cn.edu.tsinghua.tsfile.timeseries.filter.definition.SingleSeriesFilterExpression;
-import cn.edu.tsinghua.tsfile.timeseries.read.qp.Path;
 import cn.edu.tsinghua.tsfile.timeseries.read.query.DynamicOneColumnData;
 import cn.edu.tsinghua.tsfile.timeseries.read.support.RowRecord;
 import cn.edu.tsinghua.tsfile.timeseries.write.TsFileWriter;
@@ -952,7 +954,6 @@ public class FileNodeProcessor extends LRUProcessor {
 				if (raf == null) {
 					outputPath = constructOutputFilePath(nameSpacePath, firstRecord.timestamp
 							+ FileNodeConstants.BUFFERWRITE_FILE_SEPARATOR + System.currentTimeMillis());
-
 					FileSchema fileSchema = constructFileSchema(nameSpacePath);
 					recordWriter = new TsFileWriter(new File(outputPath), fileSchema, TsFileConf);
 				}

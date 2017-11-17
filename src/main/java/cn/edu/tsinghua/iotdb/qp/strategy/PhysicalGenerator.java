@@ -1,12 +1,5 @@
 package cn.edu.tsinghua.iotdb.qp.strategy;
 
-import static cn.edu.tsinghua.iotdb.qp.constant.SQLConstant.KW_AND;
-import static cn.edu.tsinghua.iotdb.qp.constant.SQLConstant.KW_OR;
-import static cn.edu.tsinghua.iotdb.qp.constant.SQLConstant.RESERVED_TIME;
-
-import java.util.ArrayList;
-import java.util.List;
-
 import cn.edu.tsinghua.iotdb.qp.constant.SQLConstant;
 import cn.edu.tsinghua.iotdb.qp.exception.GeneratePhysicalPlanException;
 import cn.edu.tsinghua.iotdb.qp.exception.LogicalOperatorException;
@@ -28,8 +21,8 @@ import cn.edu.tsinghua.iotdb.qp.physical.PhysicalPlan;
 import cn.edu.tsinghua.iotdb.qp.physical.crud.DeletePlan;
 import cn.edu.tsinghua.iotdb.qp.physical.crud.IndexPlan;
 import cn.edu.tsinghua.iotdb.qp.physical.crud.InsertPlan;
-import cn.edu.tsinghua.iotdb.qp.physical.crud.MergeQuerySetPlan;
-import cn.edu.tsinghua.iotdb.qp.physical.crud.SeriesSelectPlan;
+import cn.edu.tsinghua.iotdb.qp.physical.crud.MultiQueryPlan;
+import cn.edu.tsinghua.iotdb.qp.physical.crud.SingleQueryPlan;
 import cn.edu.tsinghua.iotdb.qp.physical.crud.UpdatePlan;
 import cn.edu.tsinghua.iotdb.qp.physical.sys.AuthorPlan;
 import cn.edu.tsinghua.iotdb.qp.physical.sys.LoadDataPlan;
@@ -43,7 +36,14 @@ import cn.edu.tsinghua.tsfile.timeseries.filter.definition.filterseries.FilterSe
 import cn.edu.tsinghua.tsfile.timeseries.filter.utils.LongInterval;
 import cn.edu.tsinghua.tsfile.timeseries.filter.verifier.FilterVerifier;
 import cn.edu.tsinghua.tsfile.timeseries.filter.verifier.LongFilterVerifier;
-import cn.edu.tsinghua.tsfile.timeseries.read.qp.Path;
+import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import static cn.edu.tsinghua.iotdb.qp.constant.SQLConstant.KW_AND;
+import static cn.edu.tsinghua.iotdb.qp.constant.SQLConstant.KW_OR;
+import static cn.edu.tsinghua.iotdb.qp.constant.SQLConstant.RESERVED_TIME;
 
 /**
  * Used to convert logical operator to physical plan
@@ -172,28 +172,32 @@ public class PhysicalGenerator {
 		FilterOperator filterOperator = queryOperator.getFilterOperator();
 
 		List<String> aggregations = selectOperator.getAggregations();
-		ArrayList<SeriesSelectPlan> subPlans = new ArrayList<>();
+		ArrayList<SingleQueryPlan> subPlans = new ArrayList<>();
 		if (filterOperator == null) {
-			subPlans.add(new SeriesSelectPlan(paths, null, null, null, executor, null));
+			subPlans.add(new SingleQueryPlan(paths, null, null, null, executor, null));
 		} else {
 			List<FilterOperator> parts = splitFilter(filterOperator);
 			for (FilterOperator filter : parts) {
-				SeriesSelectPlan plan = constructSelectPlan(filter, paths, executor);
+				SingleQueryPlan plan = constructSelectPlan(filter, paths, executor);
 				if (plan != null)
 					subPlans.add(plan);
 			}
 		}
 
-		if(subPlans.size() == 1) {
-			subPlans.get(0).setAggregations(aggregations);
-			return subPlans.get(0);
-		} else {
-			return new MergeQuerySetPlan(subPlans, aggregations);
+		MultiQueryPlan multiQueryPlan = new MultiQueryPlan(subPlans, aggregations);
+
+		if(queryOperator.isGroupBy()) {
+			multiQueryPlan.setType(MultiQueryPlan.QueryType.GROUPBY);
+			multiQueryPlan.setUnit(queryOperator.getUnit());
+			multiQueryPlan.setOrigin(queryOperator.getOrigin());
+			multiQueryPlan.setIntervals(queryOperator.getIntervals());
 		}
+
+		return multiQueryPlan;
 	}
 
-	private SeriesSelectPlan constructSelectPlan(FilterOperator filterOperator, List<Path> paths,
-												 QueryProcessExecutor conf) throws QueryProcessorException {
+	private SingleQueryPlan constructSelectPlan(FilterOperator filterOperator, List<Path> paths,
+												QueryProcessExecutor conf) throws QueryProcessorException {
 		FilterOperator timeFilter = null;
 		FilterOperator freqFilter = null;
 		FilterOperator valueFilter = null;
@@ -239,7 +243,7 @@ public class PhysicalGenerator {
 			valueFilter.setChildren(valueList);
 		}
 
-		return new SeriesSelectPlan(paths, timeFilter, freqFilter, valueFilter, conf, null);
+		return new SingleQueryPlan(paths, timeFilter, freqFilter, valueFilter, conf, null);
 	}
 
 	/**

@@ -4,7 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import cn.edu.tsinghua.iotdb.qp.logical.Operator;
-import cn.edu.tsinghua.tsfile.timeseries.read.qp.Path;
+import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
 
 public final class IndexOperator extends SFWOperator {
 	
