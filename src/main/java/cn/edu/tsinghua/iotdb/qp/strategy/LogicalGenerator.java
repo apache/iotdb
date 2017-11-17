@@ -90,7 +90,7 @@ public class LogicalGenerator {
 				analyzeInsert(astNode);
 				return;
 			case TSParser.TOK_SELECT:
-				analyzeSelect(astNode);
+				analyzeSelectedPath(astNode);
 				return;
 			case TSParser.TOK_FROM:
 				analyzeFrom(astNode);
@@ -268,7 +268,7 @@ public class LogicalGenerator {
 	private void analyzeInsert(ASTNode astNode) throws QueryProcessorException {
 		InsertOperator InsertOp = new InsertOperator(SQLConstant.TOK_INSERT);
 		initializedOperator = InsertOp;
-		analyzeSelect(astNode.getChild(0));
+		analyzeSelectedPath(astNode.getChild(0));
 		long timestamp;
 		ASTNode timeChild;
 		try {
@@ -403,7 +403,7 @@ public class LogicalGenerator {
 		((SFWOperator) initializedOperator).setFromOperator(from);
 	}
 
-	private void analyzeSelect(ASTNode astNode) throws LogicalOperatorException {
+	private void analyzeSelectedPath(ASTNode astNode) throws LogicalOperatorException {
 		int tokenIntType = astNode.getType();
 		SelectOperator selectOp = new SelectOperator(TSParser.TOK_SELECT);
 		if (tokenIntType == TSParser.TOK_SELECT) {
