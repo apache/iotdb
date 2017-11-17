@@ -20,12 +20,15 @@ public class MaxValueAggrFunc extends AggregateFunction {
     private boolean hasSetValue = false;
 
     public MaxValueAggrFunc(TSDataType dataType) {
-        super(AggregationConstant.MAX_VALUE, dataType);
-        result.data.putTime(0);
+        super(AggregationConstant.MAX_VALUE, dataType, true);
     }
 
     @Override
     public void calculateValueFromPageHeader(PageHeader pageHeader) {
+        if (result.data.timeLength == 0) {
+            result.data.putTime(0);
+        }
+
         Digest pageDigest = pageHeader.data_page_header.getDigest();
         DigestForFilter digest = new DigestForFilter(pageDigest.min, pageDigest.max, dataType);
         Comparable<?> maxv = digest.getMaxValue();
@@ -34,6 +37,10 @@ public class MaxValueAggrFunc extends AggregateFunction {
 
     @Override
     public void calculateValueFromDataPage(DynamicOneColumnData dataInThisPage) throws IOException, ProcessorException {
+        if (result.data.timeLength == 0) {
+            result.data.putTime(0);
+        }
+
         if (dataInThisPage.valueLength == 0) {
             return;
         }
@@ -48,6 +55,10 @@ public class MaxValueAggrFunc extends AggregateFunction {
 
     @Override
     public void calculateValueFromLeftMemoryData(InsertDynamicData insertMemoryData) throws IOException, ProcessorException {
+        if (result.data.timeLength == 0) {
+            result.data.putTime(0);
+        }
+
         Object max_value = insertMemoryData.calcAggregation(AggregationConstant.MAX_VALUE);
         if (max_value != null) {
             updateMaxValue((Comparable<?>)max_value);
@@ -55,7 +66,12 @@ public class MaxValueAggrFunc extends AggregateFunction {
     }
 
     @Override
-    public boolean calcAggregationUsingTimestamps(InsertDynamicData insertMemoryData, List<Long> timestamps, int timeIndex) throws IOException, ProcessorException {
+    public boolean calcAggregationUsingTimestamps(InsertDynamicData insertMemoryData, List<Long> timestamps, int timeIndex)
+            throws IOException, ProcessorException {
+        if (result.data.timeLength == 0) {
+            result.data.putTime(0);
+        }
+
         while (timeIndex < timestamps.size()) {
             if (insertMemoryData.hasInsertData()) {
                 if (timestamps.get(timeIndex) == insertMemoryData.getCurrentMinTime()) {
@@ -74,6 +90,55 @@ public class MaxValueAggrFunc extends AggregateFunction {
         }
 
         return insertMemoryData.hasInsertData();
+    }
+
+    @Override
+    public void calcGroupByAggregation(long partitionStart, long partitionEnd, long intervalStart, long intervalEnd,
+                                       DynamicOneColumnData data) {
+        if (result.data.emptyTimeLength == 0) {
+            if (result.data.timeLength == 0) {
+                result.data.putEmptyTime(partitionStart);
+            } else if (result.data.getTime(result.data.timeLength - 1) != partitionStart) {
+                result.data.putEmptyTime(partitionStart);
+            }
+        } else {
+            if ((result.data.getEmptyTime(result.data.emptyTimeLength - 1) != partitionStart)
+                    && (result.data.timeLength == 0 ||
+                    (result.data.timeLength > 0 && result.data.getTime(result.data.timeLength - 1) != partitionStart)))
+                result.data.putEmptyTime(partitionStart);
+        }
+
+        Comparable<?> maxValue = null;
+        while (data.curIdx < data.timeLength) {
+            long time = data.getTime(data.curIdx);
+            if (time > intervalEnd || time > partitionEnd) {
+                break;
+            } else if (time < intervalStart || time < partitionStart) {
+                data.curIdx++;
+            } else if (time >= intervalStart && time <= intervalEnd && time >= partitionStart && time <= partitionEnd) {
+                if (maxValue == null) {
+                    maxValue = data.getAnObject(data.curIdx);
+                } else {
+                    if (compare(maxValue, data.getAnObject(data.curIdx)) < 0) {
+                        maxValue = data.getAnObject(data.curIdx);
+                    }
+                }
+                data.curIdx++;
+            }
+        }
+
+        if (maxValue != null) {
+            if (result.data.emptyTimeLength > 0 && result.data.getEmptyTime(result.data.emptyTimeLength - 1) == partitionStart) {
+                result.data.removeLastEmptyTime();
+                result.data.putTime(partitionStart);
+                result.data.putAnObject(maxValue);
+            } else {
+                Comparable<?> v = result.data.getAnObject(result.data.valueLength - 1);
+                if (compare(maxValue, v) > 0) {
+                    result.data.setAnObject(result.data.valueLength - 1, maxValue);
+                }
+            }
+        }
     }
 
     private void updateMaxValue(Comparable<?> maxv) {
@@ -113,6 +178,25 @@ public class MaxValueAggrFunc extends AggregateFunction {
                 return ((Double) o1).compareTo((Double) o2);
             case TEXT:
                 return ((Binary) o1).compareTo((Binary) o2);
+            default:
+                throw new UnSupportedDataTypeException("Aggregation UnSupportDataType: " + dataType);
+        }
+    }
+
+    private Object getCurrentObject(DynamicOneColumnData data) {
+        switch (dataType) {
+            case BOOLEAN:
+                return data.getBoolean(data.curIdx);
+            case INT32:
+                return data.getInt(data.curIdx);
+            case INT64:
+                return data.getLong(data.curIdx);
+            case FLOAT:
+                return data.getFloat(data.curIdx);
+            case DOUBLE:
+                return data.getDouble(data.curIdx);
+            case TEXT:
+                return data.getBinary(data.curIdx);
             default:
                 throw new UnSupportedDataTypeException("Aggregation UnSupportDataType: " + dataType);
         }

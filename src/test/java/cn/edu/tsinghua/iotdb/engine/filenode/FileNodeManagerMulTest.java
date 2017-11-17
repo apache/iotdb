@@ -392,7 +392,7 @@ public class FileNodeManagerMulTest {
 		// merge
 		try {
 			fileNodeManager.mergeAll();
-			while(!fileNodeManager.closeAll()){
+			while (!fileNodeManager.closeAll()) {
 				Thread.sleep(1000);
 			}
 		} catch (FileNodeManagerException e) {
@@ -402,7 +402,7 @@ public class FileNodeManagerMulTest {
 			e.printStackTrace();
 			fail(e.getMessage());
 		}
-		
+
 		try {
 			Thread.sleep(2000);
 		} catch (InterruptedException e) {
@@ -444,7 +444,7 @@ public class FileNodeManagerMulTest {
 		try {
 			fileNodeManager.mergeAll();
 			Thread.sleep(5000);
-			while(!fileNodeManager.closeAll()){
+			while (!fileNodeManager.closeAll()) {
 				Thread.sleep(1000);
 			}
 			QueryStructure queryStructure = fileNodeManager.query(deltaObjectId0, measurementId, null, null, null);
@@ -484,7 +484,7 @@ public class FileNodeManagerMulTest {
 		// merge
 		try {
 			fileNodeManager.mergeAll();
-			while(!fileNodeManager.closeAll()){
+			while (!fileNodeManager.closeAll()) {
 				Thread.sleep(1000);
 			}
 		} catch (FileNodeManagerException e) {
@@ -534,7 +534,7 @@ public class FileNodeManagerMulTest {
 		// merge
 		try {
 			fileNodeManager.mergeAll();
-			while(!fileNodeManager.closeAll()){
+			while (!fileNodeManager.closeAll()) {
 				Thread.sleep(3000);
 			}
 			QueryStructure queryStructure = fileNodeManager.query(deltaObjectId0, measurementId, null, null, null);
@@ -772,35 +772,31 @@ public class FileNodeManagerMulTest {
 		// merge data
 		try {
 			fileNodeManager.mergeAll();
+			// wait end of merge
+			while (!fileNodeManager.closeAll()) {
+				System.out.println("wait to merge end, 1000ms...");
+				Thread.sleep(1000);
+			}
 			fileNodeManager.insert(record);
 			fileNodeManager.insert(overflow);
+			fileNodeManager.mergeAll();
 			// wait end of merge
 			while (!fileNodeManager.closeAll()) {
 				System.out.println("wait to merge end, 1000ms...");
 				Thread.sleep(1000);
 			}
 			QueryStructure queryStructure = fileNodeManager.query(deltaObjectId2, measurementId, null, null, null);
-			if (queryStructure.getBufferwriteDataInFiles().size() == 4) {
-				if (queryStructure.getBufferwriteDataInFiles()
-						.get(1).overflowChangeType == OverflowChangeType.CHANGED) {
-					assertEquals(OverflowChangeType.NO_CHANGE,
-							queryStructure.getBufferwriteDataInFiles().get(2).overflowChangeType);
-				} else {
-					fail("error");
-				}
-			} else if (queryStructure.getBufferwriteDataInFiles().size() == 3) {
+			if (queryStructure.getBufferwriteDataInFiles().size() == 3) {
 				IntervalFileNode temp = queryStructure.getBufferwriteDataInFiles().get(2);
 				if (temp.overflowChangeType == OverflowChangeType.NO_CHANGE) {
-					assertEquals(2, temp.getStartTime(deltaObjectId2));
+					assertEquals(200, temp.getStartTime(deltaObjectId2));
 					assertEquals(200, temp.getEndTime(deltaObjectId2));
-				} else {
-					assertEquals(2, temp.getStartTime(deltaObjectId2));
-					assertEquals(200, temp.getEndTime(deltaObjectId2));
-					DynamicOneColumnData insert = (DynamicOneColumnData) queryStructure.getAllOverflowData().get(0 + 2);
-					assertEquals(true, insert != null);
-					// assertEquals(1, insert.length);
-					// assertEquals(2, insert.getTime(0));
+				}else{
+					fail("Error");
 				}
+				temp = queryStructure.getBufferwriteDataInFiles().get(0);
+				assertEquals(2, temp.getStartTime(deltaObjectId2));
+				assertEquals(5, temp.getEndTime(deltaObjectId2));
 			} else {
 				System.out.println(queryStructure);
 				fail("Error");
@@ -823,7 +819,7 @@ public class FileNodeManagerMulTest {
 			} else if (queryStructure.getBufferwriteDataInFiles().size() == 3) {
 				IntervalFileNode temp = queryStructure.getBufferwriteDataInFiles().get(2);
 				assertEquals(1, temp.getStartTimeMap().size());
-				assertEquals(2, temp.getStartTime(deltaObjectId2));
+				assertEquals(200, temp.getStartTime(deltaObjectId2));
 				assertEquals(200, temp.getEndTime(deltaObjectId2));
 			} else {
 				fail("Error");

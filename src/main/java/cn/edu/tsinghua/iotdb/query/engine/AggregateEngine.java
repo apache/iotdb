@@ -1,6 +1,5 @@
 package cn.edu.tsinghua.iotdb.query.engine;
 
-
 import java.io.IOException;
 import java.util.*;
 
@@ -11,58 +10,56 @@ import cn.edu.tsinghua.iotdb.query.aggregation.AggregationResult;
 import cn.edu.tsinghua.iotdb.query.dataset.InsertDynamicData;
 import cn.edu.tsinghua.iotdb.query.management.RecordReaderFactory;
 import cn.edu.tsinghua.iotdb.query.reader.RecordReader;
-import cn.edu.tsinghua.iotdb.query.reader.TimestampRecord;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 import cn.edu.tsinghua.tsfile.common.utils.Pair;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
 import cn.edu.tsinghua.tsfile.timeseries.filter.definition.SingleSeriesFilterExpression;
-import cn.edu.tsinghua.tsfile.timeseries.read.qp.Path;
 import cn.edu.tsinghua.tsfile.timeseries.read.query.CrossQueryTimeGenerator;
 import cn.edu.tsinghua.tsfile.timeseries.read.query.DynamicOneColumnData;
 import cn.edu.tsinghua.tsfile.timeseries.read.query.QueryDataSet;
+import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class AggregateEngine {
 
-    private static final Logger LOG = LoggerFactory.getLogger(AggregateEngine.class);
+    private static final Logger logger = LoggerFactory.getLogger(AggregateEngine.class);
     public static int batchSize = 50000;
 
     /**
-     * <p>Public invoking method of multiple aggregation.</p>
+     * <p>Public invoking method of multiple aggregation.
      *
-     * TODO group by aggregation implementation could not use this method
-     *
-     * @param aggres aggregation pairs
+     * @param aggres           aggregation pairs
      * @param filterStructures list of <code>FilterStructure</code>
-     *
      * @return QueryDataSet result of multi aggregation
      * @throws ProcessorException read or write lock error etc
-     * @throws IOException read tsfile error
+     * @throws IOException        read tsfile error
      * @throws PathErrorException path resolving error
      */
     public static QueryDataSet multiAggregate(List<Pair<Path, AggregateFunction>> aggres, List<FilterStructure> filterStructures)
             throws IOException, PathErrorException, ProcessorException {
 
-        LOG.debug("multiple aggregation calculation");
+        logger.debug("multiple aggregation calculation");
 
-        if (filterStructures == null || filterStructures.size() == 0 || (filterStructures.size()==1 && filterStructures.get(0).noFilter()) ) {
-            return multiAggregateWithoutFilter(aggres, filterStructures);
+        if (filterStructures == null || filterStructures.size() == 0 || (filterStructures.size() == 1 && filterStructures.get(0).noFilter())) {
+            return multiAggregateWithoutFilter(aggres);
         }
 
         QueryDataSet ansQueryDataSet = new QueryDataSet();
 
-        List<QueryDataSet> filterQueryDataSets = new ArrayList<>(); // stores QueryDataSet of each FilterStructure answer
+        List<QueryDataSet> filterQueryDataSets = new ArrayList<>(); // stores the query QueryDataSet of each FilterStructure in filterStructures
         List<long[]> timeArray = new ArrayList<>(); // stores calculated common timestamps of each FilterStructure answer
         List<Integer> indexArray = new ArrayList<>(); // stores used index of each timeArray
-        List<Boolean> hasDataArray = new ArrayList<>(); // represents whether this FilterStructure answer still has unread data
+        List<Boolean> hasUnReadDataArray = new ArrayList<>(); // represents whether this FilterStructure answer still has unread data
         for (int idx = 0; idx < filterStructures.size(); idx++) {
             FilterStructure filterStructure = filterStructures.get(idx);
             QueryDataSet queryDataSet = new QueryDataSet();
-            queryDataSet.timeQueryDataSet = new CrossQueryTimeGenerator(filterStructure.getTimeFilter(), filterStructure.getFrequencyFilter(), filterStructure.getValueFilter(), 10000) {
+            queryDataSet.crossQueryTimeGenerator = new CrossQueryTimeGenerator(filterStructure.getTimeFilter(),
+                    filterStructure.getFrequencyFilter(), filterStructure.getValueFilter(), 10000) {
                 @Override
                 public DynamicOneColumnData getDataInNextBatch(DynamicOneColumnData res, int fetchSize,
-                                                               SingleSeriesFilterExpression valueFilter, int valueFilterNumber) throws ProcessorException, IOException {
+                                                               SingleSeriesFilterExpression valueFilter, int valueFilterNumber)
+                        throws ProcessorException, IOException {
                     try {
                         return getDataUseSingleValueFilter(valueFilter, freqFilter, res, fetchSize, valueFilterNumber);
                     } catch (PathErrorException e) {
@@ -72,22 +69,22 @@ public class AggregateEngine {
                 }
             };
             filterQueryDataSets.add(queryDataSet);
-            long[] curTimestamps = queryDataSet.timeQueryDataSet.generateTimes();
-            timeArray.add(curTimestamps);
+            long[] curCommonTimestamps = queryDataSet.crossQueryTimeGenerator.generateTimes();
+            timeArray.add(curCommonTimestamps);
             indexArray.add(0);
-            if (curTimestamps.length > 0) {
-                hasDataArray.add(true);
+            if (curCommonTimestamps.length > 0) {
+                hasUnReadDataArray.add(true);
             } else {
-                hasDataArray.add(false);
+                hasUnReadDataArray.add(false);
             }
         }
 
         // the aggregate timestamps calculated by all dnf
-        List<Long> timestamps = new ArrayList<>();
+        List<Long> aggregateTimestamps = new ArrayList<>();
         PriorityQueue<Long> priorityQueue = new PriorityQueue<>();
 
-        for (int i = 0;i < timeArray.size();i++) {
-            boolean flag = hasDataArray.get(i);
+        for (int i = 0; i < timeArray.size(); i++) {
+            boolean flag = hasUnReadDataArray.get(i);
             if (flag) {
                 priorityQueue.add(timeArray.get(i)[indexArray.get(i)]);
             }
@@ -95,19 +92,18 @@ public class AggregateEngine {
 
         // represents that whether the 'key' ordinal aggregation still has unread data
         Map<Integer, Boolean> hasUnReadDataMap = new HashMap<>();
-        // if there has any uncompleted data, hasAnyUnReadDataFlag is true
+        // if there still has any uncompleted read data, hasAnyUnReadDataFlag is true
         boolean hasAnyUnReadDataFlag = true;
         while (true) {
-
-            while (timestamps.size() < batchSize && !priorityQueue.isEmpty() && hasAnyUnReadDataFlag) {
+            while (aggregateTimestamps.size() < batchSize && !priorityQueue.isEmpty() && hasAnyUnReadDataFlag) {
                 // add the minimum timestamp and remove others in timeArray
                 long minTime = priorityQueue.poll();
-                timestamps.add(minTime);
+                aggregateTimestamps.add(minTime);
                 while (!priorityQueue.isEmpty() && minTime == priorityQueue.peek())
                     priorityQueue.poll();
 
-                for (int i = 0;i < timeArray.size();i++) {
-                    boolean flag = hasDataArray.get(i);
+                for (int i = 0; i < timeArray.size(); i++) {
+                    boolean flag = hasUnReadDataArray.get(i);
                     if (flag) {
                         int curTimeIdx = indexArray.get(i);
                         long[] curTimestamps = timeArray.get(i);
@@ -119,19 +115,20 @@ public class AggregateEngine {
                             indexArray.set(i, curTimeIdx);
                             priorityQueue.add(curTimestamps[curTimeIdx]);
                         } else {
-                            long[] newTimeStamps = filterQueryDataSets.get(i).timeQueryDataSet.generateTimes();
+                            long[] newTimeStamps = filterQueryDataSets.get(i).crossQueryTimeGenerator.generateTimes();
                             if (newTimeStamps.length > 0) {
+                                timeArray.set(i, newTimeStamps);
                                 indexArray.set(i, 0);
                             } else {
-                                hasDataArray.set(i, false);
+                                hasUnReadDataArray.set(i, false);
                             }
                         }
                     }
                 }
             }
 
-            LOG.debug("common timestamps in multiple aggregation process : " + timestamps.toString());
-            if (timestamps.size() == 0)
+            logger.debug("common timestamps in multiple aggregation process : " + aggregateTimestamps.toString());
+            if (aggregateTimestamps.size() == 0)
                 break;
 
             //TODO optimize it using multi process
@@ -150,7 +147,7 @@ public class AggregateEngine {
                     continue;
                 } else {
                     aggrePathSet.add(aggregationKey);
-                    aggregationOrdinal ++;
+                    aggregationOrdinal++;
                 }
                 if (hasUnReadDataMap.containsKey(aggregationOrdinal) && !hasUnReadDataMap.get(aggregationOrdinal)) {
                     continue;
@@ -161,7 +158,8 @@ public class AggregateEngine {
 
                 if (recordReader.insertAllData == null) {
                     // get overflow params merged with bufferwrite insert data
-                    List<Object> params = EngineUtils.getOverflowInfoAndFilterDataInMem(null, null, null, null, recordReader.insertPageInMemory, recordReader.overflowInfo);
+                    List<Object> params = EngineUtils.getOverflowInfoAndFilterDataInMem(null, null, null, null,
+                            recordReader.insertPageInMemory, recordReader.overflowInfo);
                     DynamicOneColumnData insertTrue = (DynamicOneColumnData) params.get(0);
                     DynamicOneColumnData updateTrue = (DynamicOneColumnData) params.get(1);
                     DynamicOneColumnData updateFalse = (DynamicOneColumnData) params.get(2);
@@ -173,7 +171,7 @@ public class AggregateEngine {
 
                     Pair<AggregationResult, Boolean> aggrPair = recordReader.aggregateUsingTimestamps(deltaObjectUID, measurementUID, aggregateFunction,
                             recordReader.insertAllData.updateTrue, recordReader.insertAllData.updateFalse, recordReader.insertAllData,
-                            newTimeFilter, null, null, timestamps, null);
+                            newTimeFilter, null, null, aggregateTimestamps, null);
                     AggregationResult result = aggrPair.left;
                     boolean hasUnReadDataFlag = aggrPair.right;
                     hasUnReadDataMap.put(aggregationOrdinal, hasUnReadDataFlag);
@@ -188,7 +186,7 @@ public class AggregateEngine {
                      */
                     Pair<AggregationResult, Boolean> aggrPair = recordReader.aggregateUsingTimestamps(deltaObjectUID, measurementUID, aggregateFunction,
                             recordReader.insertAllData.updateTrue, recordReader.insertAllData.updateFalse, recordReader.insertAllData,
-                            recordReader.insertAllData.timeFilter, null, null, timestamps, null);
+                            recordReader.insertAllData.timeFilter, null, null, aggregateTimestamps, null);
                     AggregationResult result = aggrPair.left;
                     boolean hasUnReadDataFlag = aggrPair.right;
                     hasUnReadDataMap.put(aggregationOrdinal, hasUnReadDataFlag);
@@ -200,19 +198,20 @@ public class AggregateEngine {
             }
 
             // current batch timestamps has been used all
-            timestamps.clear();
+            aggregateTimestamps.clear();
         }
 
         return ansQueryDataSet;
     }
 
-    private static QueryDataSet multiAggregateWithoutFilter(List<Pair<Path, AggregateFunction>> aggres, List<FilterStructure> filterStructures) throws PathErrorException, ProcessorException, IOException {
+    private static QueryDataSet multiAggregateWithoutFilter(List<Pair<Path, AggregateFunction>> aggres)
+            throws PathErrorException, ProcessorException, IOException {
 
         QueryDataSet ansQueryDataSet = new QueryDataSet();
 
         int aggreNumber = 0;
         for (Pair<Path, AggregateFunction> pair : aggres) {
-            aggreNumber ++;
+            aggreNumber++;
             Path path = pair.left;
             AggregateFunction aggregateFunction = pair.right;
             String deltaObjectUID = path.getDeltaObjectToString();
@@ -228,7 +227,8 @@ public class AggregateEngine {
 
             if (recordReader.insertAllData == null) {
                 // get overflow params merged with bufferwrite insert data
-                List<Object> params = EngineUtils.getOverflowInfoAndFilterDataInMem(null, null, null, null, recordReader.insertPageInMemory, recordReader.overflowInfo);
+                List<Object> params = EngineUtils.getOverflowInfoAndFilterDataInMem(null, null, null, null,
+                        recordReader.insertPageInMemory, recordReader.overflowInfo);
                 DynamicOneColumnData insertTrue = (DynamicOneColumnData) params.get(0);
                 DynamicOneColumnData updateTrue = (DynamicOneColumnData) params.get(1);
                 DynamicOneColumnData updateFalse = (DynamicOneColumnData) params.get(2);
@@ -254,18 +254,17 @@ public class AggregateEngine {
     }
 
     /**
-     *  This function is only used for CrossQueryTimeGenerator.
-     *  A CrossSeriesFilterExpression is consist of many SingleSeriesFilterExpression.
-     *  e.g. CSAnd(d1.s1, d2.s1) is consist of d1.s1 and d2.s1, so this method would be invoked twice,
-     *  once for querying d1.s1, once for querying d2.s1.
-     *  <p>
-     *  When this method is invoked, need add the filter index as a new parameter, for the reason of exist of
-     *  <code>RecordReaderCache</code>, if the composition of CrossFilterExpression exist same SingleFilterExpression,
-     *  we must guarantee that the <code>RecordReaderCache</code> doesn't cause conflict to the same SingleFilterExpression.
-     *
+     * This function is only used for CrossQueryTimeGenerator.
+     * A CrossSeriesFilterExpression is consist of many SingleSeriesFilterExpression.
+     * e.g. CSAnd(d1.s1, d2.s1) is consist of d1.s1 and d2.s1, so this method would be invoked twice,
+     * once for querying d1.s1, once for querying d2.s1.
+     * <p>
+     * When this method is invoked, need add the filter index as a new parameter, for the reason of exist of
+     * <code>RecordReaderCache</code>, if the composition of CrossFilterExpression exist same SingleFilterExpression,
+     * we must guarantee that the <code>RecordReaderCache</code> doesn't cause conflict to the same SingleFilterExpression.
      */
     private static DynamicOneColumnData getDataUseSingleValueFilter(SingleSeriesFilterExpression valueFilter, SingleSeriesFilterExpression freqFilter,
-                                                            DynamicOneColumnData res, int fetchSize, int valueFilterNumber)
+                                                                    DynamicOneColumnData res, int fetchSize, int valueFilterNumber)
             throws ProcessorException, IOException, PathErrorException {
 
         String deltaObjectUID = ((SingleSeriesFilterExpression) valueFilter).getFilterSeries().getDeltaObjectUID();
@@ -288,7 +287,7 @@ public class AggregateEngine {
 
             recordReader.insertAllData = new InsertDynamicData(recordReader.bufferWritePageList, recordReader.compressionTypeName,
                     insertTrue, updateTrue, updateFalse,
-                    newTimeFilter, valueFilter, null, MManager.getInstance().getSeriesType(deltaObjectUID+"."+measurementUID));
+                    newTimeFilter, valueFilter, null, MManager.getInstance().getSeriesType(deltaObjectUID + "." + measurementUID));
             res = recordReader.getValueInOneColumnWithOverflow(deltaObjectUID, measurementUID,
                     updateTrue, updateFalse, recordReader.insertAllData, newTimeFilter, valueFilter, res, fetchSize);
             res.putOverflowInfo(insertTrue, updateTrue, updateFalse, newTimeFilter);

@@ -8,7 +8,7 @@ public class AggregationResult {
 	/**
 	 *  <p>
 	 * We use the DataStructure -> DynamicOneColumnData to store the aggregate value.
-	 * And in general, only one data point can be used whose index is 0 in this DynamicOneColumnData
+	 * And in general, only one data point can be used whose index is 0 in this <code>DynamicOneColumnData</code>
 	 * to store the aggregate value.
 	 * </p>
 	 *
@@ -19,5 +19,8 @@ public class AggregationResult {
 	AggregationResult(TSDataType dataType){
 		data = new DynamicOneColumnData(dataType, true);
 	}
-	
+
+	AggregationResult(TSDataType dataType, boolean hasEmptyTime){
+		data = new DynamicOneColumnData(dataType, true, hasEmptyTime);
+	}
 }

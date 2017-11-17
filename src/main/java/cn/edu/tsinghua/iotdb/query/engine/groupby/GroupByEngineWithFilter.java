@@ -1,0 +1,363 @@
+package cn.edu.tsinghua.iotdb.query.engine.groupby;
+
+import cn.edu.tsinghua.iotdb.exception.PathErrorException;
+import cn.edu.tsinghua.iotdb.metadata.MManager;
+import cn.edu.tsinghua.iotdb.query.aggregation.AggregateFunction;
+import cn.edu.tsinghua.iotdb.query.dataset.InsertDynamicData;
+import cn.edu.tsinghua.iotdb.query.engine.EngineUtils;
+import cn.edu.tsinghua.iotdb.query.engine.FilterStructure;
+import cn.edu.tsinghua.iotdb.query.engine.ReadCachePrefix;
+import cn.edu.tsinghua.iotdb.query.management.RecordReaderFactory;
+import cn.edu.tsinghua.iotdb.query.reader.RecordReader;
+import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
+import cn.edu.tsinghua.tsfile.common.utils.Pair;
+import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
+import cn.edu.tsinghua.tsfile.timeseries.filter.definition.SingleSeriesFilterExpression;
+import cn.edu.tsinghua.tsfile.timeseries.filter.utils.LongInterval;
+import cn.edu.tsinghua.tsfile.timeseries.filter.verifier.FilterVerifier;
+import cn.edu.tsinghua.tsfile.timeseries.read.query.CrossQueryTimeGenerator;
+import cn.edu.tsinghua.tsfile.timeseries.read.query.DynamicOneColumnData;
+import cn.edu.tsinghua.tsfile.timeseries.read.query.QueryDataSet;
+import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.util.*;
+
+/**
+ * Group by aggregation implementation with <code>FilterStructure</code>.
+ */
+public class GroupByEngineWithFilter {
+
+    private static final Logger logger = LoggerFactory.getLogger(GroupByEngineWithFilter.class);
+
+    /** formNumber is set to -1 default **/
+    private int formNumber = -1;
+
+    /** queryFetchSize is set to read one column data, this variable is mainly used to debug to verify
+     * the rightness of iterative readOneColumnWithoutFilter **/
+    private int queryFetchSize = 10000;
+
+    /** aggregateFetchSize is set to calculate the result of timestamps, when the size of common timestamps is
+     * up to aggregateFetchSize, the aggregation calculation process will begin**/
+    private int aggregateFetchSize = 2;
+
+    /**
+     *
+     * @param aggregations
+     * @param filterStructures
+     * @param unit
+     * @param origin
+     * @param intervals
+     * @param fetchSize
+     * @return
+     * @throws IOException
+     * @throws ProcessorException
+     */
+    public QueryDataSet groupBy(List<Pair<Path, AggregateFunction>> aggregations, List<FilterStructure> filterStructures,
+                                long unit, long origin, SingleSeriesFilterExpression intervals, int fetchSize) throws IOException, ProcessorException, PathErrorException {
+
+        QueryDataSet groupByResult = new QueryDataSet();
+
+        // all the split time intervals
+        LongInterval longInterval = (LongInterval) FilterVerifier.create(TSDataType.INT64).getInterval(intervals);
+        if (longInterval.count == 0) {
+            return new QueryDataSet();
+        }
+
+        long partitionStart = origin; // partition start time
+        long partitionEnd = origin + unit - 1; // partition end time
+        int intervalIndex = 0;
+        long intervalStart = longInterval.flag[0] ? longInterval.v[0] : longInterval.v[0] + 1; // interval start time
+        long intervalEnd = longInterval.flag[1] ? longInterval.v[1] : longInterval.v[1] - 1; // interval end time
+
+        // HashMap to record the query result of each aggregation Path
+        Map<String, DynamicOneColumnData> queryPathResult = new HashMap<>();
+        // HashSet to record the duplicated queries
+        Set<Integer> duplicatedPaths = new HashSet<>();
+        for (int i = 0; i < aggregations.size(); i++) {
+            String aggregateKey = aggregationKey(aggregations.get(i).left, aggregations.get(i).right);
+            if (!groupByResult.mapRet.containsKey(aggregateKey)) {
+                groupByResult.mapRet.put(aggregateKey, new DynamicOneColumnData(aggregations.get(i).right.dataType, true, true));
+                queryPathResult.put(aggregateKey, null);
+            } else {
+                duplicatedPaths.add(i);
+            }
+        }
+
+        List<QueryDataSet> filterQueryDataSets = new ArrayList<>(); // stores the query QueryDataSet of each FilterStructure in filterStructures
+        List<long[]> timeArray = new ArrayList<>(); // stores calculated common timestamps of each FilterStructure answer
+        List<Integer> indexArray = new ArrayList<>(); // stores used index of each timeArray
+        List<Boolean> hasUnReadDataArray = new ArrayList<>(); // represents whether this FilterStructure answer still has unread data
+        for (int idx = 0; idx < filterStructures.size(); idx++) {
+            FilterStructure filterStructure = filterStructures.get(idx);
+            QueryDataSet queryDataSet = new QueryDataSet();
+            queryDataSet.crossQueryTimeGenerator = new CrossQueryTimeGenerator(filterStructure.getTimeFilter(),
+                    filterStructure.getFrequencyFilter(), filterStructure.getValueFilter(), 10000) {
+                @Override
+                public DynamicOneColumnData getDataInNextBatch(DynamicOneColumnData res, int fetchSize,
+                                                               SingleSeriesFilterExpression valueFilter, int valueFilterNumber)
+                        throws ProcessorException, IOException {
+                    try {
+                        return getDataUseSingleValueFilter(valueFilter, freqFilter, res, fetchSize, valueFilterNumber);
+                    } catch (PathErrorException e) {
+                        e.printStackTrace();
+                        return null;
+                    }
+                }
+            };
+            filterQueryDataSets.add(queryDataSet);
+            long[] curCommonTimestamps = queryDataSet.crossQueryTimeGenerator.generateTimes();
+            timeArray.add(curCommonTimestamps);
+            indexArray.add(0);
+            if (curCommonTimestamps.length > 0) {
+                hasUnReadDataArray.add(true);
+            } else {
+                hasUnReadDataArray.add(false);
+            }
+        }
+
+        // the aggregate timestamps calculated by all dnf
+        List<Long> aggregateTimestamps = new ArrayList<>();
+        PriorityQueue<Long> priorityQueue = new PriorityQueue<>();
+
+        for (int i = 0; i < timeArray.size(); i++) {
+            boolean flag = hasUnReadDataArray.get(i);
+            if (flag) {
+                priorityQueue.add(timeArray.get(i)[indexArray.get(i)]);
+            }
+        }
+
+        // represents that whether the 'key' ordinal aggregation still has unread data
+        Map<Integer, Boolean> hasUnReadDataMap = new HashMap<>();
+        // if there still has any uncompleted read data, hasAnyUnReadDataFlag is true
+        boolean hasAnyUnReadDataFlag = true;
+
+        while (true) {
+            while (aggregateTimestamps.size() < aggregateFetchSize && !priorityQueue.isEmpty() && hasAnyUnReadDataFlag) {
+                // add the minimum timestamp and remove others in timeArray
+                long minTime = priorityQueue.poll();
+                aggregateTimestamps.add(minTime);
+                while (!priorityQueue.isEmpty() && minTime == priorityQueue.peek())
+                    priorityQueue.poll();
+
+                for (int i = 0; i < timeArray.size(); i++) {
+                    boolean flag = hasUnReadDataArray.get(i);
+                    if (flag) {
+                        int curTimeIdx = indexArray.get(i);
+                        long[] curTimestamps = timeArray.get(i);
+                        // remove all timestamps equal to min time in all series
+                        while (curTimeIdx < curTimestamps.length && curTimestamps[curTimeIdx] == minTime) {
+                            curTimeIdx++;
+                        }
+                        if (curTimeIdx < curTimestamps.length) {
+                            indexArray.set(i, curTimeIdx);
+                            priorityQueue.add(curTimestamps[curTimeIdx]);
+                        } else {
+                            long[] newTimeStamps = filterQueryDataSets.get(i).crossQueryTimeGenerator.generateTimes();
+                            if (newTimeStamps.length > 0) {
+                                timeArray.set(i, newTimeStamps);
+                                indexArray.set(i, 0);
+                            } else {
+                                hasUnReadDataArray.set(i, false);
+                            }
+                        }
+                    }
+                }
+            }
+
+            logger.debug("common timestamps in multiple aggregation process : " + aggregateTimestamps.toString());
+
+            int duplicatedCnt = 0;
+            for (Pair<Path, AggregateFunction> pair : aggregations) {
+                Path path = pair.left;
+                AggregateFunction aggregateFunction = pair.right;
+                String aggregationKey = aggregationKey(path, aggregateFunction);
+                if (duplicatedPaths.contains(duplicatedCnt)) {
+                    continue;
+                }
+                duplicatedCnt++;
+                DynamicOneColumnData data = queryPathResult.get(aggregationKey);
+                // common aggregate timestamps is empty
+                // the query data of path should be set empty too
+                if (aggregateTimestamps.size() == 0) {
+                    data.clearData();
+                    continue;
+                }
+
+                String deltaObjectId = path.getDeltaObjectToString();
+                String measurementId = path.getMeasurementToString();
+                String recordReaderPrefix = ReadCachePrefix.addQueryPrefix(formNumber);
+                RecordReader recordReader = RecordReaderFactory.getInstance().getRecordReader(deltaObjectId, measurementId,
+                        null, null, null, null, recordReaderPrefix);
+
+                if (recordReader.insertAllData == null) {
+                    List<Object> params = EngineUtils.getOverflowInfoAndFilterDataInMem(null, null, null,
+                            null, recordReader.insertPageInMemory, recordReader.overflowInfo);
+                    DynamicOneColumnData insertTrue = (DynamicOneColumnData) params.get(0);
+                    DynamicOneColumnData updateTrue = (DynamicOneColumnData) params.get(1);
+                    DynamicOneColumnData updateFalse = (DynamicOneColumnData) params.get(2);
+                    SingleSeriesFilterExpression newTimeFilter = (SingleSeriesFilterExpression) params.get(3);
+
+                    recordReader.insertAllData = new InsertDynamicData(recordReader.bufferWritePageList, recordReader.compressionTypeName,
+                            insertTrue, updateTrue, updateFalse,
+                            newTimeFilter, null, null, MManager.getInstance().getSeriesType(path.getFullPath()));
+                    data = recordReader.getValuesUseTimestampsWithOverflow(deltaObjectId, measurementId,
+                            aggregateTimestamps.stream().mapToLong(i->i).toArray(), updateTrue, recordReader.insertAllData, newTimeFilter);
+                    data.putOverflowInfo(insertTrue, updateTrue, updateFalse, newTimeFilter);
+                    queryPathResult.put(aggregationKey, data);
+                } else {
+                    data = recordReader.getValuesUseTimestampsWithOverflow(deltaObjectId, measurementId,
+                            aggregateTimestamps.stream().mapToLong(i->i).toArray(), data.updateTrue, recordReader.insertAllData, data.timeFilter);
+                    queryPathResult.put(aggregationKey, data);
+                }
+            }
+
+            // this process is on the basis of the traverse of partition variable
+            // in each [partitionStart, partitionEnd], [intervalStart, intervalEnd] would be considered
+            while (true) {
+
+                // after this, intervalEnd must be bigger or equals than partitionStart
+                while (intervalEnd < partitionStart) {
+                    intervalIndex += 2;
+                    if (intervalIndex >= longInterval.count)
+                        break;
+                    intervalStart = longInterval.flag[intervalIndex] ? longInterval.v[intervalIndex] : longInterval.v[intervalIndex] + 1;
+                    intervalEnd = longInterval.flag[intervalIndex + 1] ? longInterval.v[intervalIndex + 1] : longInterval.v[intervalIndex + 1] - 1;
+                }
+
+                // current partition is location in the left of intervals, using mod operator
+                // to calculate the first satisfied partition which has intersection with intervals.
+                if (partitionEnd < intervalStart) {
+                    partitionStart = intervalStart - ((intervalStart - origin) % unit);
+                    partitionEnd = partitionStart + unit - 1;
+                }
+                if (partitionStart < intervalStart) {
+                    partitionStart = intervalStart;
+                }
+
+                while (true) {
+                    int cnt = 0;
+                    for (Pair<Path, AggregateFunction> pair : aggregations) {
+                        if (duplicatedPaths.contains(cnt))
+                            continue;
+                        cnt++;
+                        Path path = pair.left;
+                        AggregateFunction aggregateFunction = pair.right;
+                        String aggregationKey = aggregationKey(path, aggregateFunction);
+                        DynamicOneColumnData data = queryPathResult.get(aggregationKey);
+
+                        aggregateFunction.calcGroupByAggregation(partitionStart, partitionEnd, intervalStart, intervalEnd, data);
+                    }
+
+                    // TODO need consider that, the aggregateTimestamps is smaller than intervalEnd, intervalEnd is smaller than partitionEnd
+                    if (intervalEnd <= partitionEnd &&
+                            (aggregateTimestamps.size() == 0 || intervalEnd < aggregateTimestamps.get(aggregateTimestamps.size()-1))) {
+                        intervalIndex += 2;
+                        if (intervalIndex >= longInterval.count)
+                            break;
+                        intervalStart = longInterval.flag[intervalIndex] ? longInterval.v[intervalIndex] : longInterval.v[intervalIndex] + 1;
+                        intervalEnd = longInterval.flag[intervalIndex + 1] ? longInterval.v[intervalIndex + 1] : longInterval.v[intervalIndex + 1] - 1;
+                    } else {
+                        break;
+                    }
+                }
+
+//                if (partitionStart > 9990) {
+//                    System.out.println("test");
+//                }
+
+                if (intervalIndex >= longInterval.count)
+                    break;
+
+                if (aggregateTimestamps.size() > 0 && partitionEnd < aggregateTimestamps.get(aggregateTimestamps.size()-1)) {
+                    partitionStart = partitionEnd + 1;
+                    partitionEnd = partitionStart + unit - 1;
+                } else if (aggregateTimestamps.size() == 0) {
+                    // aggregate timestamps is empty
+                    // calculate the next partition range directly
+                    partitionStart = partitionEnd + 1;
+                    partitionEnd = partitionStart + unit - 1;
+                } else if (partitionEnd >= aggregateTimestamps.get(aggregateTimestamps.size()-1)){
+                    // partitionEnd is greater or equals than the last value of aggregate timestamps
+                    aggregateTimestamps.clear();
+                    break;
+                } else {
+                    break;
+                }
+            }
+
+            // partitionStart is greater or equals than the last value of aggregateTimestamps
+            // the next batch aggregateTimestamps should be loaded
+            if (aggregateTimestamps.size() > 0 && partitionStart >= aggregateTimestamps.get(aggregateTimestamps.size()-1)) {
+                aggregateTimestamps.clear();
+                continue;
+            }
+
+            if (intervalIndex >= longInterval.count)
+                break;
+        }
+
+        int cnt = 0;
+        for (Pair<Path, AggregateFunction> pair : aggregations) {
+            if (duplicatedPaths.contains(cnt))
+                continue;
+            cnt++;
+            Path path = pair.left;
+            AggregateFunction aggregateFunction = pair.right;
+            groupByResult.mapRet.put(aggregationKey(path, aggregateFunction), aggregateFunction.result.data);
+        }
+        return groupByResult;
+    }
+
+    /**
+     * This function is only used for CrossQueryTimeGenerator.
+     * A CrossSeriesFilterExpression is consist of many SingleSeriesFilterExpression.
+     * e.g. CSAnd(d1.s1, d2.s1) is consist of d1.s1 and d2.s1, so this method would be invoked twice,
+     * once for querying d1.s1, once for querying d2.s1.
+     * <p>
+     * When this method is invoked, need add the filter index as a new parameter, for the reason of exist of
+     * <code>RecordReaderCache</code>, if the composition of CrossFilterExpression exist same SingleFilterExpression,
+     * we must guarantee that the <code>RecordReaderCache</code> doesn't cause conflict to the same SingleFilterExpression.
+     */
+    private static DynamicOneColumnData getDataUseSingleValueFilter(SingleSeriesFilterExpression valueFilter, SingleSeriesFilterExpression freqFilter,
+                                                                    DynamicOneColumnData res, int fetchSize, int valueFilterNumber)
+            throws ProcessorException, IOException, PathErrorException {
+
+        String deltaObjectUID = ((SingleSeriesFilterExpression) valueFilter).getFilterSeries().getDeltaObjectUID();
+        String measurementUID = ((SingleSeriesFilterExpression) valueFilter).getFilterSeries().getMeasurementUID();
+        //TODO may has dnf conflict
+        String valueFilterPrefix = ReadCachePrefix.addFilterPrefix(valueFilterNumber);
+
+        RecordReader recordReader = RecordReaderFactory.getInstance().getRecordReader(deltaObjectUID, measurementUID,
+                null, freqFilter, valueFilter, null, valueFilterPrefix);
+
+        if (res == null) {
+            // get four overflow params
+            List<Object> params = EngineUtils.getOverflowInfoAndFilterDataInMem(null, freqFilter, valueFilter,
+                    res, recordReader.insertPageInMemory, recordReader.overflowInfo);
+
+            DynamicOneColumnData insertTrue = (DynamicOneColumnData) params.get(0);
+            DynamicOneColumnData updateTrue = (DynamicOneColumnData) params.get(1);
+            DynamicOneColumnData updateFalse = (DynamicOneColumnData) params.get(2);
+            SingleSeriesFilterExpression newTimeFilter = (SingleSeriesFilterExpression) params.get(3);
+
+            recordReader.insertAllData = new InsertDynamicData(recordReader.bufferWritePageList, recordReader.compressionTypeName,
+                    insertTrue, updateTrue, updateFalse,
+                    newTimeFilter, valueFilter, null, MManager.getInstance().getSeriesType(deltaObjectUID + "." + measurementUID));
+            res = recordReader.getValueInOneColumnWithOverflow(deltaObjectUID, measurementUID,
+                    updateTrue, updateFalse, recordReader.insertAllData, newTimeFilter, valueFilter, res, fetchSize);
+            res.putOverflowInfo(insertTrue, updateTrue, updateFalse, newTimeFilter);
+        } else {
+            res = recordReader.getValueInOneColumnWithOverflow(deltaObjectUID, measurementUID,
+                    res.updateTrue, res.updateFalse, recordReader.insertAllData, res.timeFilter, valueFilter, res, fetchSize);
+        }
+
+        return res;
+    }
+
+    private String aggregationKey(Path path, AggregateFunction aggregateFunction) {
+        return aggregateFunction.name + "(" + path.getFullPath() + ")";
+    }
+}

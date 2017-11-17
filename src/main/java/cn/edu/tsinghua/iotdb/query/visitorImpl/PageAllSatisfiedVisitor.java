@@ -1,16 +1,10 @@
 package cn.edu.tsinghua.iotdb.query.visitorImpl;
 
+import cn.edu.tsinghua.tsfile.timeseries.filter.definition.operators.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import cn.edu.tsinghua.tsfile.timeseries.filter.definition.SingleSeriesFilterExpression;
-import cn.edu.tsinghua.tsfile.timeseries.filter.definition.operators.And;
-import cn.edu.tsinghua.tsfile.timeseries.filter.definition.operators.Eq;
-import cn.edu.tsinghua.tsfile.timeseries.filter.definition.operators.GtEq;
-import cn.edu.tsinghua.tsfile.timeseries.filter.definition.operators.LtEq;
-import cn.edu.tsinghua.tsfile.timeseries.filter.definition.operators.Not;
-import cn.edu.tsinghua.tsfile.timeseries.filter.definition.operators.NotEq;
-import cn.edu.tsinghua.tsfile.timeseries.filter.definition.operators.Or;
 import cn.edu.tsinghua.tsfile.timeseries.filter.utils.DigestForFilter;
 import cn.edu.tsinghua.tsfile.timeseries.filter.visitorImpl.FilterVisitor;
 
@@ -89,6 +83,11 @@ public class PageAllSatisfiedVisitor implements FilterVisitor<Boolean> {
     @Override
     public Boolean visit(Or or) {
         return satisfy(digest, or.getLeft()) || satisfy(digest, or.getRight());
+    }
+
+    @Override
+    public Boolean visit(NoFilter noFilter) {
+        return true;
     }
 
 }

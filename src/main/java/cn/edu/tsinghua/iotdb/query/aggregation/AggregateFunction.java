@@ -27,6 +27,12 @@ public abstract class AggregateFunction {
         result = new AggregationResult(dataType);
     }
 
+    public AggregateFunction(String name, TSDataType dataType, boolean hasEmptyTime) {
+        this.name = name;
+        this.dataType = dataType;
+        result = new AggregationResult(dataType, true);
+    }
+
     /**
      * <p>
      * Calculate the aggregation using <code>PageHeader</code>.
@@ -84,4 +90,8 @@ public abstract class AggregateFunction {
      */
     public abstract boolean calcAggregationUsingTimestamps(InsertDynamicData insertMemoryData, List<Long> timestamps, int timeIndex)
             throws IOException, ProcessorException;
+
+
+    public abstract void calcGroupByAggregation(long partitionStart, long partitionEnd, long intervalStart, long intervalEnd,
+                                                DynamicOneColumnData data);
 }

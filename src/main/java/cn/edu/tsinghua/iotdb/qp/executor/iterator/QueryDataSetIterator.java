@@ -1,11 +1,12 @@
 package cn.edu.tsinghua.iotdb.qp.executor.iterator;
 
 import cn.edu.tsinghua.iotdb.qp.executor.QueryProcessExecutor;
+import cn.edu.tsinghua.iotdb.qp.physical.crud.MultiQueryPlan;
 import cn.edu.tsinghua.iotdb.query.engine.FilterStructure;
 import cn.edu.tsinghua.tsfile.common.utils.Pair;
 import cn.edu.tsinghua.tsfile.timeseries.filter.definition.FilterExpression;
-import cn.edu.tsinghua.tsfile.timeseries.read.qp.Path;
 import cn.edu.tsinghua.tsfile.timeseries.read.query.QueryDataSet;
+import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -23,19 +24,24 @@ public class QueryDataSetIterator implements Iterator<QueryDataSet> {
     private List<Path> paths;
     private List<String> aggregations;
     private List<FilterStructure> filterStructures = new ArrayList<>();
+    private long unit;
+    private long origin;
+    private List<Pair<Long, Long>> intervals;
+    private MultiQueryPlan.QueryType type = MultiQueryPlan.QueryType.QUERY;
 
-    //single query and single aggregations
+    //single query
     public QueryDataSetIterator(List<Path> paths, int fetchSize, QueryProcessExecutor executor,
                                 FilterExpression timeFilter, FilterExpression freqFilter,
-                                FilterExpression valueFilter, List<String> aggregations) {
+                                FilterExpression valueFilter) {
         this.paths = paths;
         this.fetchSize = fetchSize;
         this.executor = executor;
         this.filterStructures.add(new FilterStructure(timeFilter, freqFilter, valueFilter));
-        this.aggregations = aggregations;
+        this.aggregations = null;
+        this.type = MultiQueryPlan.QueryType.QUERY;
     }
 
-    //merge aggregations
+    //aggregation
     public QueryDataSetIterator(List<Path> paths, int fetchSize, List<String> aggregations,
                                 List<FilterStructure> filterStructures, QueryProcessExecutor executor) {
         this.fetchSize = fetchSize;
@@ -43,6 +49,22 @@ public class QueryDataSetIterator implements Iterator<QueryDataSet> {
         this.filterStructures = filterStructures;
         this.paths = paths;
         this.aggregations = aggregations;
+        this.type = MultiQueryPlan.QueryType.AGGREGATION;
+    }
+
+    //groupby
+    public QueryDataSetIterator(List<Path> paths, int fetchSize, List<String> aggregations,
+                                List<FilterStructure> filterStructures, long unit, long origin,
+                                List<Pair<Long, Long>> intervals, QueryProcessExecutor executor) {
+        this.fetchSize = fetchSize;
+        this.executor = executor;
+        this.filterStructures = filterStructures;
+        this.paths = paths;
+        this.aggregations = aggregations;
+        this.unit = unit;
+        this.origin = origin;
+        this.intervals = intervals;
+        this.type = MultiQueryPlan.QueryType.GROUPBY;
     }
 
     @Override
@@ -54,22 +76,18 @@ public class QueryDataSetIterator implements Iterator<QueryDataSet> {
             return false;
         if (data == null || !data.hasNextRecord())
             try {
-                //aggregations
-                if(aggregations != null && !aggregations.isEmpty()) {
-                    List<Pair<Path, String>> aggres = new ArrayList<>();
-                    for(int i = 0; i < paths.size(); i++) {
-                        if(paths.size() == aggregations.size()) {
-                            aggres.add(new Pair<>(paths.get(i), aggregations.get(i)));
-                        } else {
-                            aggres.add(new Pair<>(paths.get(i), aggregations.get(0)));
-                        }
-                    }
-                    data = executor.aggregate(aggres, filterStructures);
-                } else {
-                    //query
-                    FilterStructure filterStructure = filterStructures.get(0);
-                    data = executor.query(0, paths, filterStructure.getTimeFilter(), filterStructure.getFrequencyFilter(),
-                            filterStructure.getValueFilter(), fetchSize, usedData);
+                switch (type) {
+                    case QUERY:
+                        FilterStructure filterStructure = filterStructures.get(0);
+                        data = executor.query(0, paths, filterStructure.getTimeFilter(), filterStructure.getFrequencyFilter(),
+                                filterStructure.getValueFilter(), fetchSize, usedData);
+                        break;
+                    case AGGREGATION:
+                        data = executor.aggregate(getAggrePair(), filterStructures);
+                        break;
+                    case GROUPBY:
+                        data = executor.groupBy(getAggrePair(), filterStructures, unit, origin, intervals, fetchSize);
+                        break;
                 }
             } catch (Exception e) {
                 throw new RuntimeException("meet error in hasNext" + Arrays.toString(e.getStackTrace()));
@@ -83,6 +101,18 @@ public class QueryDataSetIterator implements Iterator<QueryDataSet> {
             noNext = true;
             return false;
         }
+    }
+
+    private List<Pair<Path, String>> getAggrePair() {
+        List<Pair<Path, String>> aggres = new ArrayList<>();
+        for(int i = 0; i < paths.size(); i++) {
+            if(paths.size() == aggregations.size()) {
+                aggres.add(new Pair<>(paths.get(i), aggregations.get(i)));
+            } else {
+                aggres.add(new Pair<>(paths.get(i), aggregations.get(0)));
+            }
+        }
+        return aggres;
     }
 
     @Override

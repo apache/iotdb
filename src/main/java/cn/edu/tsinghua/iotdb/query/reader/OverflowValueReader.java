@@ -6,6 +6,7 @@ import java.io.InputStream;
 import java.util.List;
 
 import cn.edu.tsinghua.iotdb.query.visitorImpl.PageAllSatisfiedVisitor;
+import cn.edu.tsinghua.tsfile.common.utils.ITsRandomAccessFileReader;
 import cn.edu.tsinghua.tsfile.common.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -775,12 +776,12 @@ public class OverflowValueReader extends ValueReader {
                 }
             }
         }
-        // represents current Column has been read all.
+        // represents current column has been read all.
         if ((res.pageOffset - fileOffset) >= totalSize) {
             res.plusRowGroupIndexAndInitPageOffset();
         }
 
-        // important. save curIdx for batch read
+        // save curIdx for batch read
         updateTrueData.curIdx = updateIdx[0];
         updateFalseData.curIdx = updateIdx[1];
         return res;
@@ -899,6 +900,7 @@ public class OverflowValueReader extends ValueReader {
     /**
      * <p>
      * An aggregation method implementation for the ValueReader aspect.
+     * The aggregation will be calculated using the calculated common timestamps.
      *
      * @param func aggregation function
      * @param insertMemoryData bufferwrite memory insert data with overflow operation

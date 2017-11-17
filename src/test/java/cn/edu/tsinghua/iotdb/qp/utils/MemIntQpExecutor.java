@@ -1,25 +1,13 @@
 package cn.edu.tsinghua.iotdb.qp.utils;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.TreeMap;
-import java.util.TreeSet;
-
 import cn.edu.tsinghua.iotdb.exception.PathErrorException;
 import cn.edu.tsinghua.iotdb.qp.constant.SQLConstant;
-import cn.edu.tsinghua.iotdb.query.engine.FilterStructure;
 import cn.edu.tsinghua.iotdb.qp.executor.QueryProcessExecutor;
+import cn.edu.tsinghua.iotdb.qp.physical.PhysicalPlan;
 import cn.edu.tsinghua.iotdb.qp.physical.crud.DeletePlan;
 import cn.edu.tsinghua.iotdb.qp.physical.crud.InsertPlan;
 import cn.edu.tsinghua.iotdb.qp.physical.crud.UpdatePlan;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import cn.edu.tsinghua.iotdb.qp.physical.PhysicalPlan;
+import cn.edu.tsinghua.iotdb.query.engine.FilterStructure;
 import cn.edu.tsinghua.tsfile.common.constant.SystemConstant;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 import cn.edu.tsinghua.tsfile.common.utils.Pair;
@@ -28,11 +16,22 @@ import cn.edu.tsinghua.tsfile.timeseries.filter.definition.CrossSeriesFilterExpr
 import cn.edu.tsinghua.tsfile.timeseries.filter.definition.FilterExpression;
 import cn.edu.tsinghua.tsfile.timeseries.filter.definition.SingleSeriesFilterExpression;
 import cn.edu.tsinghua.tsfile.timeseries.filter.visitorImpl.SingleValueVisitor;
-import cn.edu.tsinghua.tsfile.timeseries.read.qp.Path;
 import cn.edu.tsinghua.tsfile.timeseries.read.query.QueryDataSet;
 import cn.edu.tsinghua.tsfile.timeseries.read.support.Field;
+import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
 import cn.edu.tsinghua.tsfile.timeseries.read.support.RowRecord;
 import cn.edu.tsinghua.tsfile.timeseries.utils.StringContainer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.TreeMap;
+import java.util.TreeSet;
 
 /**
  * Implement a simple executor with a memory demo reading processor for test.
@@ -160,7 +159,7 @@ public class MemIntQpExecutor extends QueryProcessExecutor {
             sc.addTail(single.getFilterSeries().getDeltaObjectUID(), single.getFilterSeries().getMeasurementUID());
             String filterPath = sc.toString();
             if (path.equals(filterPath)) {
-                return v.satisfy(value, single);
+                return v.satisfyObject(value, single);
             } else
                 // not me, return true
                 return null;
@@ -175,6 +174,13 @@ public class MemIntQpExecutor extends QueryProcessExecutor {
 
     @Override
     public QueryDataSet aggregate(List<Pair<Path, String>> aggres, List<FilterStructure> filterStructures)
+            throws ProcessorException, IOException, PathErrorException {
+        throw new ProcessorException("Do not support");
+    }
+
+    @Override
+    public QueryDataSet groupBy(List<Pair<Path, String>> aggres, List<FilterStructure> filterStructures,
+                                long unit, long origin, List<Pair<Long, Long>> intervals, int fetchSize)
             throws ProcessorException, IOException, PathErrorException {
         throw new ProcessorException("Do not support");
     }
@@ -202,7 +208,7 @@ public class MemIntQpExecutor extends QueryProcessExecutor {
         for (long time : timeStampUnion) {
             if (time <= lastGetTimeStamp)
                 continue;
-            if (timeFilter == null || timeVisitor.satisfy(time, timeSingleFilter)) {
+            if (timeFilter == null || timeVisitor.satisfyObject(time, timeSingleFilter)) {
                 TestIntegerRowRecord rowRecord = new TestIntegerRowRecord(time);
                 boolean isSatisfy = true;
                 boolean isInputed = false;

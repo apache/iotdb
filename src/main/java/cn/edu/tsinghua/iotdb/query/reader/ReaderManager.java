@@ -9,7 +9,6 @@ import cn.edu.tsinghua.tsfile.common.utils.ITsRandomAccessFileReader;
 import cn.edu.tsinghua.tsfile.file.metadata.RowGroupMetaData;
 import cn.edu.tsinghua.tsfile.timeseries.read.TsRandomAccessLocalFileReader;
 
-
 /**
  * This class is used to construct FileReader. <br>
  * It is an adapter between {@code RecordReader} and {@code FileReader}
@@ -56,7 +55,7 @@ public class ReaderManager {
      * @throws IOException
      */
     ReaderManager(List<ITsRandomAccessFileReader> rafList,
-                         ITsRandomAccessFileReader unsealedFileReader, List<RowGroupMetaData> rowGroupMetadataList) throws IOException {
+                  ITsRandomAccessFileReader unsealedFileReader, List<RowGroupMetaData> rowGroupMetadataList) throws IOException {
         this(rafList);
         this.rafList.add(unsealedFileReader);
 
