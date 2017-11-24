@@ -68,18 +68,27 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
         }
 
         List<Path> allPaths = new ArrayList<>();
-        for (Path selectPath : suffixPaths) {
-            if (selectPath.startWith(SQLConstant.ROOT))
+        List<String> originAggregations = selectOperator.getAggregations();
+        List<String> afterConcatAggregations = new ArrayList<>();
+
+        for (int i = 0; i < suffixPaths.size(); i++) {
+            Path selectPath = suffixPaths.get(i);
+            if (selectPath.startWith(SQLConstant.ROOT)) {
                 allPaths.add(selectPath);
-            else {
+                if (originAggregations != null && !originAggregations.isEmpty())
+                    afterConcatAggregations.add(originAggregations.get(i));
+            } else {
                 for (Path fromPath : fromPaths) {
                     if (!fromPath.startWith(SQLConstant.ROOT))
                         throw new LogicalOptimizeException("illegal from clause : " + fromPath.getFullPath());
                     allPaths.add(Path.addPrefixPath(selectPath, fromPath));
+                    if (originAggregations != null && !originAggregations.isEmpty())
+                        afterConcatAggregations.add(originAggregations.get(i));
                 }
             }
         }
-        removeStarsInPath(allPaths, selectOperator);
+
+        removeStarsInPath(allPaths, afterConcatAggregations, selectOperator);
     }
 
     private FilterOperator concatFilter(List<Path> fromPaths, FilterOperator operator)
@@ -164,23 +173,22 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
         return retPaths;
     }
 
-    private void removeStarsInPath(List<Path> paths, SelectOperator selectOperator) throws LogicalOptimizeException {
+    private void removeStarsInPath(List<Path> paths, List<String> afterConcatAggregations, SelectOperator selectOperator) throws LogicalOptimizeException {
         List<Path> retPaths = new ArrayList<>();
-        List<String> originAggregations = selectOperator.getAggregations();
         List<String> newAggregations = new ArrayList<>();
         for (int i = 0; i < paths.size(); i++) {
             try {
                 List<String> actualPaths = executor.getAllPaths(paths.get(i).getFullPath());
-                for(String actualPath: actualPaths) {
+                for (String actualPath : actualPaths) {
                     retPaths.add(new Path(actualPath));
-                    if(originAggregations != null && !originAggregations.isEmpty())
-                        newAggregations.add(originAggregations.get(i));
+                    if (afterConcatAggregations != null && !afterConcatAggregations.isEmpty())
+                        newAggregations.add(afterConcatAggregations.get(i));
                 }
             } catch (PathErrorException e) {
                 throw new LogicalOptimizeException("error when remove star: " + e.getMessage());
             }
         }
-        if(retPaths.isEmpty())
+        if (retPaths.isEmpty())
             throw new LogicalOptimizeException("do not select any existing path");
         selectOperator.setSuffixPathList(retPaths);
         selectOperator.setAggregations(newAggregations);
