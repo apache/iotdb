@@ -278,8 +278,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 					TSExecuteStatementResp resp = ExecuteUpdateStatement(physicalPlan);
 					if(resp.getStatus().getStatusCode().equals(TS_StatusCode.SUCCESS_STATUS)){
 						result.add(1);
-					}
-					else{
+					} else{
 						result.add(-1);
 					}
 				} catch (Exception e) {
