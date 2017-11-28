@@ -506,6 +506,22 @@ public class DaemonTest {
                 Assert.assertEquals(cnt, 1);
             }
             statement.close();
+
+            statement = connection.createStatement();
+            boolean hasMultiAggreResult = statement.execute("select min_value(s0) from root.vehicle.d0,root.vehicle.d1");
+            if (hasMultiAggreResult) {
+                ResultSet resultSet = statement.getResultSet();
+                int cnt = 0;
+                while (resultSet.next()) {
+                    int ans1 = resultSet.getInt(1);
+                    int ans2 = resultSet.getInt(2);
+                    Assert.assertEquals(ans1, 99);
+                    Assert.assertEquals(ans2, 888);
+                    cnt++;
+                }
+                Assert.assertEquals(cnt, 1);
+            }
+            statement.close();
         } catch (Exception e) {
             e.printStackTrace();
         } finally {
