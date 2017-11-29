@@ -275,8 +275,13 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 						return getTSBathExecuteStatementResp(TS_StatusCode.ERROR_STATUS, "statement is query :" + statement,
 								result);
 					}
-					ExecuteUpdateStatement(physicalPlan);
-					result.add(1);
+					TSExecuteStatementResp resp = ExecuteUpdateStatement(physicalPlan);
+					if(resp.getStatus().getStatusCode().equals(TS_StatusCode.SUCCESS_STATUS)){
+						result.add(1);
+					} 
+					else{
+						result.add(-1);
+					}
 				} catch (Exception e) {
 					LOGGER.error("Fail to generate physcial plan and execute for statement {}", statement);
 					result.add(-1);
