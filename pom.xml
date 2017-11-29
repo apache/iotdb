@@ -94,6 +94,9 @@
 						</goals>
 						<configuration>
 							<outputDirectory>${project.basedir}/iotdb/lib</outputDirectory>
+							<overWriteIfNewer>true</overWriteIfNewer>
+							<overWriteReleases>true</overWriteReleases>
+							<overWriteSnapshots>true</overWriteSnapshots>
 						</configuration>
 					</execution>
 				</executions>

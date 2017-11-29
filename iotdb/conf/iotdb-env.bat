@@ -1,6 +1,6 @@
 @echo off
 
-set LOCAL_JMX=yes
+set LOCAL_JMX=no
 
 set JMX_PORT=31999
 
