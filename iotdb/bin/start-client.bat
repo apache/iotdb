@@ -24,7 +24,7 @@ set JAVA_OPTS=-ea^
 @REM Ensure that any user defined CLASSPATH variables are not used on startup
 set CLASSPATH="TSFILE_HOME%\conf"
 
-REM For each jar in the CASSANDRA_HOME lib directory call append to build the CLASSPATH variable.
+REM For each jar in the TSFILE_HOME lib directory call append to build the CLASSPATH variable.
 for %%i in ("%TSFILE_HOME%\lib\*.jar") do call :append "%%i"
 goto okClasspath
 

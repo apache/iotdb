@@ -38,7 +38,7 @@ done
 
 MAIN_CLASS=cn.edu.tsinghua.iotdb.service.Daemon
 
-"$JAVA" -DTSFILE_HOME=${TSFILE_HOME} -Dlogback.configurationFile=${TSFILE_CONF}/logback.xml $TSFILEDB_DERBY_OPTS $TSFILEDB_JMX_OPTS -Dname=tsfiledb\.IoTDB -cp "$CLASSPATH" "$MAIN_CLASS" 
+"$JAVA" -DTSFILE_HOME=${TSFILE_HOME} -Dlogback.configurationFile=${TSFILE_CONF}/logback.xml $TSFILEDB_DERBY_OPTS $TSFILEDB_JMX_OPTS -Dname=iotdb\.IoTDB -cp "$CLASSPATH" "$MAIN_CLASS" 
 
 
 exit $?
