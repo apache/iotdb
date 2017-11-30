@@ -14,7 +14,7 @@ IoTDB's features are as following:
 6. Easy to get start. IoTDB supports SQL-Like language, JDBC standard API and import/export tools which is easy to use.
 7. Intense integration with Open Source Ecosystem. IoTDB supports Hadoop, Spark, etc. analysis ecosystems and Grafana visualization tool.
 
-For the latest information about Hadoop, please visit our [IoTDB official website](http://tsfile.org/index).
+For the latest information about IoTDB, please visit our [IoTDB official website](http://tsfile.org/index).
 
 # Prerequisites
 
