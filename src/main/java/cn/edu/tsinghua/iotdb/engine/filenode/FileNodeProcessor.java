@@ -57,24 +57,24 @@ public class FileNodeProcessor extends LRUProcessor {
 	 * Used to keep the oldest timestamp for each deltaObjectId. The key is
 	 * deltaObjectId.
 	 */
-	private volatile Map<String, Long> lastUpdateTimeMap;
-	private volatile Map<String, List<IntervalFileNode>> InvertedindexOfFiles;
-	private volatile IntervalFileNode emptyIntervalFileNode;
-	private volatile IntervalFileNode currentIntervalFileNode;
-	private volatile List<IntervalFileNode> newFileNodes;
-	private volatile FileNodeProcessorStatus isMerging;
+	private Map<String, Long> lastUpdateTimeMap;
+	private Map<String, List<IntervalFileNode>> InvertedindexOfFiles;
+	private IntervalFileNode emptyIntervalFileNode;
+	private IntervalFileNode currentIntervalFileNode;
+	private List<IntervalFileNode> newFileNodes;
+	private FileNodeProcessorStatus isMerging;
 	// this is used when work->merge operation
-	private volatile int numOfMergeFile = 0;
-	private volatile FileNodeProcessorStore fileNodeProcessorStore = null;
+	private int numOfMergeFile = 0;
+	private FileNodeProcessorStore fileNodeProcessorStore = null;
 
 	private static final String restoreFile = ".restore";
-	private volatile String fileNodeRestoreFilePath = null;
+	private String fileNodeRestoreFilePath = null;
 
 	private BufferWriteProcessor bufferWriteProcessor = null;
 	private OverflowProcessor overflowProcessor = null;
 
-	private volatile Set<Integer> oldMultiPassTokenSet = null;
-	private volatile Set<Integer> newMultiPassTokenSet = new HashSet<>();
+	private Set<Integer> oldMultiPassTokenSet = null;
+	private Set<Integer> newMultiPassTokenSet = new HashSet<>();
 	private ReadWriteLock oldMultiPassLock = null;
 	private ReadWriteLock newMultiPassLock = new ReentrantReadWriteLock(false);
 
