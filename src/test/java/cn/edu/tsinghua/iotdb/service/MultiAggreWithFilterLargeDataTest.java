@@ -5,8 +5,6 @@ import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
 import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
 import cn.edu.tsinghua.iotdb.jdbc.TsfileJDBCConfig;
 import cn.edu.tsinghua.iotdb.query.engine.AggregateEngine;
-import cn.edu.tsinghua.tsfile.common.conf.TSFileConfig;
-import cn.edu.tsinghua.tsfile.common.conf.TSFileDescriptor;
 import org.apache.commons.io.FileUtils;
 import org.junit.After;
 import org.junit.Assert;
@@ -106,7 +104,7 @@ public class MultiAggreWithFilterLargeDataTest {
     @Before
     public void setUp() throws Exception {
         if (testFlag) {
-            AggregateEngine.batchSize = 4000;
+            AggregateEngine.aggregateFetchSize = 4000;
             TsfileDBConfig config = TsfileDBDescriptor.getInstance().getConfig();
             overflowDataDirPre = config.overflowDataDir;
             fileNodeDirPre = config.fileNodeDir;

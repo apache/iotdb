@@ -31,6 +31,8 @@ import cn.edu.tsinghua.tsfile.timeseries.read.query.QueryDataSet;
 import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
 import cn.edu.tsinghua.tsfile.timeseries.write.record.DataPoint;
 import cn.edu.tsinghua.tsfile.timeseries.write.record.TSRecord;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -39,6 +41,8 @@ import java.util.List;
 import java.util.Set;
 
 public class OverflowQPExecutor extends QueryProcessExecutor {
+
+	private static final Logger LOG = LoggerFactory.getLogger(OverflowQPExecutor.class);
 
 	private OverflowQueryEngine queryEngine;
 	private FileNodeManager fileNodeManager;
@@ -114,6 +118,9 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 	public QueryDataSet groupBy(List<Pair<Path, String>> aggres, List<FilterStructure> filterStructures,
 								long unit, long origin, List<Pair<Long, Long>> intervals, int fetchSize)
 			throws ProcessorException, IOException, PathErrorException {
+
+		//LOG.info("calculate group by aggregation: " + origin +"," + unit);
+
 		return queryEngine.groupBy(aggres, filterStructures, unit, origin, intervals, fetchSize);
 	}
 

@@ -105,7 +105,7 @@ public class MultiAggreWithFilterTest {
     @Before
     public void setUp() throws Exception {
         if (testFlag) {
-            AggregateEngine.batchSize = 2;
+            AggregateEngine.aggregateFetchSize = 2;
             TsfileDBConfig config = TsfileDBDescriptor.getInstance().getConfig();
             overflowDataDirPre = config.overflowDataDir;
             fileNodeDirPre = config.fileNodeDir;

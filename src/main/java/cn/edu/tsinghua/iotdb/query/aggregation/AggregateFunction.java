@@ -33,6 +33,8 @@ public abstract class AggregateFunction {
         result = new AggregationResult(dataType, true);
     }
 
+    public abstract void putDefaultValue();
+
     /**
      * <p>
      * Calculate the aggregation using <code>PageHeader</code>.

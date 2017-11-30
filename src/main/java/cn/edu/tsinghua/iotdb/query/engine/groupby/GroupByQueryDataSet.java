@@ -13,6 +13,7 @@ import java.util.List;
 
 /**
  * QueryDataSet for group by aggregation.
+ * Notice: this class is only used in test case.
  *
  * @author beyyes
  */

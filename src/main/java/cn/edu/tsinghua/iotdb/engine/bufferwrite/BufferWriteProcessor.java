@@ -15,7 +15,9 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import cn.edu.tsinghua.tsfile.format.RowGroupBlockMetaData;
 
+import cn.edu.tsinghua.tsfile.file.metadata.TsRowGroupBlockMetaData;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.slf4j.Logger;
