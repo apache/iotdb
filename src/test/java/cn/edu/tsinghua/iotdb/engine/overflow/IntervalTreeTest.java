@@ -27,7 +27,7 @@ import cn.edu.tsinghua.tsfile.timeseries.read.query.DynamicOneColumnData;
  */
 public class IntervalTreeTest {
 
-    // private static final Logger LOG = LoggerFactory.getLogger(IntervalTreeTest.class);
+    // private static final logger LOG = LoggerFactory.getLogger(IntervalTreeTest.class);
 
     private static final byte[] i0 = BytesUtils.intToBytes(0);
     private static final byte[] i1 = BytesUtils.intToBytes(1);

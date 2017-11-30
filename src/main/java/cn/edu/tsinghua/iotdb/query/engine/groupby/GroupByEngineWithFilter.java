@@ -56,7 +56,8 @@ public class GroupByEngineWithFilter {
      * @throws ProcessorException
      */
     public QueryDataSet groupBy(List<Pair<Path, AggregateFunction>> aggregations, List<FilterStructure> filterStructures,
-                                long unit, long origin, SingleSeriesFilterExpression intervals, int fetchSize) throws IOException, ProcessorException, PathErrorException {
+                                long unit, long origin, SingleSeriesFilterExpression intervals, int fetchSize)
+            throws IOException, ProcessorException, PathErrorException {
 
         QueryDataSet groupByResult = new QueryDataSet();
 
@@ -327,7 +328,7 @@ public class GroupByEngineWithFilter {
 
         String deltaObjectUID = ((SingleSeriesFilterExpression) valueFilter).getFilterSeries().getDeltaObjectUID();
         String measurementUID = ((SingleSeriesFilterExpression) valueFilter).getFilterSeries().getMeasurementUID();
-        //TODO may has dnf conflict
+        //TODO may have dnf conflict
         String valueFilterPrefix = ReadCachePrefix.addFilterPrefix(valueFilterNumber);
 
         RecordReader recordReader = RecordReaderFactory.getInstance().getRecordReader(deltaObjectUID, measurementUID,

@@ -19,6 +19,8 @@ import cn.edu.tsinghua.tsfile.common.conf.TSFileDescriptor;
 import org.junit.Before;
 import org.junit.Test;
 
+import static org.junit.Assert.fail;
+
 /**
  *
  */
@@ -107,7 +109,7 @@ public class SmallPageSizeTest {
 
     private Daemon deamon;
 
-    private boolean testFlag = false;
+    private boolean testFlag = TestUtils.testFlag;
 
     @Before
     public void setUp() throws Exception {
@@ -239,6 +241,7 @@ public class SmallPageSizeTest {
             statement.close();
         } catch (Exception e) {
             e.printStackTrace();
+            fail(e.getMessage());
         } finally {
             if (connection != null) {
                 connection.close();

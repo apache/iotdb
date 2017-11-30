@@ -65,7 +65,7 @@ public class BufferWriteIOWriter extends TsFileIOWriter {
 	public List<RowGroupMetaData> getCurrentRowGroupMetaList(String deltaObjectId) {
 		List<RowGroupMetaData> ret = new ArrayList<>();
 		for(RowGroupMetaData rowGroupMetaData:backUpList){
-			if(rowGroupMetaData.getDeltaObjectUID().equals(deltaObjectId)){
+			if(rowGroupMetaData.getDeltaObjectID().equals(deltaObjectId)){
 				ret.add(rowGroupMetaData);
 			}
 		}

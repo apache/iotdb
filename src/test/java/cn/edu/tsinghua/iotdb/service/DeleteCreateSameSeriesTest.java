@@ -13,6 +13,8 @@ import org.junit.Test;
 import java.io.File;
 import java.sql.*;
 
+import static org.junit.Assert.fail;
+
 public class DeleteCreateSameSeriesTest {
 
     private final String FOLDER_HEADER = "src/test/resources";
@@ -67,7 +69,7 @@ public class DeleteCreateSameSeriesTest {
 
     private Daemon deamon;
 
-    private boolean testFlag = false;
+    private boolean testFlag = TestUtils.testFlag;
 
     @Before
     public void setUp() throws Exception {
@@ -117,7 +119,7 @@ public class DeleteCreateSameSeriesTest {
             Thread.sleep(5000);
             insertSQL(sqls_1);
             Connection connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
-            System.out.println(connection.getMetaData());
+            // System.out.println(connection.getMetaData());
             selectTest_1();
             insertSQL(sqls_2);
             selectTest_2();
@@ -174,6 +176,7 @@ public class DeleteCreateSameSeriesTest {
             statement.close();
         } catch (Exception e) {
             e.printStackTrace();
+            fail(e.getMessage());
         } finally {
             if (connection != null) {
                 connection.close();
@@ -210,6 +213,7 @@ public class DeleteCreateSameSeriesTest {
             statement.close();
         } catch (Exception e) {
             e.printStackTrace();
+            fail(e.getMessage());
         } finally {
             if (connection != null) {
                 connection.close();

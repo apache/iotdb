@@ -32,7 +32,6 @@ public class WriteLogManager {
     private static ConcurrentHashMap<String, WriteLogNode> logNodeMaps = new ConcurrentHashMap<>();
 
 
-
     private WriteLogManager() {
         if (TsfileDBDescriptor.getInstance().getConfig().enableWal) {
             logNodeMaps = new ConcurrentHashMap<>();

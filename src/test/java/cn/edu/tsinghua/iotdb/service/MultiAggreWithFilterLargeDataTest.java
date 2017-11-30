@@ -18,6 +18,7 @@ import java.sql.*;
 
 import static cn.edu.tsinghua.iotdb.service.TestUtils.*;
 import static cn.edu.tsinghua.iotdb.service.TestUtils.count;
+import static org.junit.Assert.fail;
 
 public class MultiAggreWithFilterLargeDataTest {
     private final String FOLDER_HEADER = "src/test/resources";
@@ -100,7 +101,7 @@ public class MultiAggreWithFilterLargeDataTest {
 
     private Daemon deamon;
 
-    private boolean testFlag = false;
+    private boolean testFlag = TestUtils.testFlag;
 
     @Before
     public void setUp() throws Exception {
@@ -165,10 +166,10 @@ public class MultiAggreWithFilterLargeDataTest {
             minValueAggreWithSingleFilterTest();
             maxValueAggreWithSingleFilterTest();
             countAggreWithMultiFilterTest();
-            //minTimeAggreWithMultiFilterTest();
-            //maxTimeAggreWithMultiFilterTest();
-            //minValueAggreWithMultiFilterTest();
-            //maxValueAggreWithMultiFilterTest();
+            minTimeAggreWithMultiFilterTest();
+            maxTimeAggreWithMultiFilterTest();
+            minValueAggreWithMultiFilterTest();
+            maxValueAggreWithMultiFilterTest();
             connection.close();
         }
     }
@@ -202,6 +203,7 @@ public class MultiAggreWithFilterLargeDataTest {
             statement.close();
         } catch (Exception e) {
             e.printStackTrace();
+            fail(e.getMessage());
         } finally {
             if (connection != null) {
                 connection.close();
@@ -237,6 +239,7 @@ public class MultiAggreWithFilterLargeDataTest {
             statement.close();
         } catch (Exception e) {
             e.printStackTrace();
+            fail(e.getMessage());
         } finally {
             if (connection != null) {
                 connection.close();
@@ -273,6 +276,7 @@ public class MultiAggreWithFilterLargeDataTest {
             statement.close();
         } catch (Exception e) {
             e.printStackTrace();
+            fail(e.getMessage());
         } finally {
             if (connection != null) {
                 connection.close();
@@ -309,6 +313,7 @@ public class MultiAggreWithFilterLargeDataTest {
             statement.close();
         } catch (Exception e) {
             e.printStackTrace();
+            fail(e.getMessage());
         } finally {
             if (connection != null) {
                 connection.close();
@@ -345,6 +350,7 @@ public class MultiAggreWithFilterLargeDataTest {
             statement.close();
         } catch (Exception e) {
             e.printStackTrace();
+            fail(e.getMessage());
         } finally {
             if (connection != null) {
                 connection.close();
@@ -382,6 +388,7 @@ public class MultiAggreWithFilterLargeDataTest {
             statement.close();
         } catch (Exception e) {
             e.printStackTrace();
+            fail(e.getMessage());
         } finally {
             if (connection != null) {
                 connection.close();
@@ -417,6 +424,7 @@ public class MultiAggreWithFilterLargeDataTest {
             statement.close();
         } catch (Exception e) {
             e.printStackTrace();
+            fail(e.getMessage());
         } finally {
             if (connection != null) {
                 connection.close();
@@ -453,6 +461,7 @@ public class MultiAggreWithFilterLargeDataTest {
             statement.close();
         } catch (Exception e) {
             e.printStackTrace();
+            fail(e.getMessage());
         } finally {
             if (connection != null) {
                 connection.close();
@@ -489,6 +498,7 @@ public class MultiAggreWithFilterLargeDataTest {
             statement.close();
         } catch (Exception e) {
             e.printStackTrace();
+            fail(e.getMessage());
         } finally {
             if (connection != null) {
                 connection.close();
@@ -525,6 +535,7 @@ public class MultiAggreWithFilterLargeDataTest {
             statement.close();
         } catch (Exception e) {
             e.printStackTrace();
+            fail(e.getMessage());
         } finally {
             if (connection != null) {
                 connection.close();
@@ -578,6 +589,7 @@ public class MultiAggreWithFilterLargeDataTest {
             statement.close();
         } catch (Exception e) {
             e.printStackTrace();
+            fail(e.getMessage());
         } finally {
             if (connection != null) {
                 connection.close();
@@ -629,6 +641,7 @@ public class MultiAggreWithFilterLargeDataTest {
             statement.close();
         } catch (Exception e) {
             e.printStackTrace();
+            fail(e.getMessage());
         } finally {
             if (connection != null) {
                 connection.close();
