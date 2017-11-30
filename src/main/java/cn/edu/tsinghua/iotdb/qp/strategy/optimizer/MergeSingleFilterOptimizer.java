@@ -56,7 +56,7 @@ public class MergeSingleFilterOptimizer implements IFilterOptimizer {
         }
 
         // sort paths of BasicFunction by their single path. We don't sort children on non-leaf layer.
-        if(!children.isEmpty() && allIsBasic(children))
+        if(!children.isEmpty() && children.get(0) instanceof BasicFunctionOperator)
             children.sort(Comparator.comparing(o -> o.getSinglePath().getFullPath()));
         List<FilterOperator> ret = new ArrayList<>();
 
@@ -123,13 +123,5 @@ public class MergeSingleFilterOptimizer implements IFilterOptimizer {
             filter.setChildren(ret);
             return null;
         }
-    }
-
-    private boolean allIsBasic(List<FilterOperator> children) {
-        for(FilterOperator child: children) {
-            if(!(child instanceof BasicFunctionOperator))
-                return false;
-        }
-        return true;
     }
 }
