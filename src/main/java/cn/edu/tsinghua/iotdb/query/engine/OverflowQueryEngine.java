@@ -67,8 +67,6 @@ public class OverflowQueryEngine {
                               FilterExpression valueFilter, QueryDataSet queryDataSet, int fetchSize)
             throws ProcessorException, IOException, PathErrorException {
         this.formNumber = formNumber;
-        LOGGER.info("\r\nFormNumber: " + formNumber + ", TimeFilter: " + timeFilter + "; ValueFilter: " + valueFilter + "\r\nQuery Paths: "
-                + paths.toString());
         if (queryDataSet != null) {
             queryDataSet.clear();
         }
