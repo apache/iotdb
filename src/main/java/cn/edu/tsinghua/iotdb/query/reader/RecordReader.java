@@ -173,6 +173,10 @@ public class RecordReader {
         if (insertMemoryData != null && insertMemoryData.hasInsertData()) {
             func.calculateValueFromLeftMemoryData(insertMemoryData);
         }
+
+        if (func.result.data.timeLength == 0) {
+            func.putDefaultValue();
+        }
         return func.result;
     }
 
@@ -198,7 +202,7 @@ public class RecordReader {
      * @throws ProcessorException aggregation invoking exception
      * @throws IOException TsFile read exception
      */
-    public Pair<AggregationResult, Boolean> aggregateUsingTimestamps(String deltaObjectId, String measurementId, AggregateFunction func,
+    public Pair<AggregateFunction, Boolean> aggregateUsingTimestamps(String deltaObjectId, String measurementId, AggregateFunction func,
                                                                      DynamicOneColumnData updateTrue, DynamicOneColumnData updateFalse, InsertDynamicData insertMemoryData,
                                                                      SingleSeriesFilterExpression timeFilter, SingleSeriesFilterExpression freqFilter, SingleSeriesFilterExpression valueFilter,
                                                                      List<Long> timestamps, DynamicOneColumnData aggreData
@@ -228,7 +232,11 @@ public class RecordReader {
             }
         }
 
-        return new Pair<>(func.result, hasUnReadData);
+        if (func.result.data.timeLength == 0) {
+            func.putDefaultValue();
+        }
+
+        return new Pair<>(func, hasUnReadData);
     }
 
     /**

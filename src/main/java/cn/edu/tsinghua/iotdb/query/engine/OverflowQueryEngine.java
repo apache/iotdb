@@ -4,9 +4,11 @@ import cn.edu.tsinghua.iotdb.exception.PathErrorException;
 import cn.edu.tsinghua.iotdb.metadata.MManager;
 import cn.edu.tsinghua.iotdb.query.aggregation.AggreFuncFactory;
 import cn.edu.tsinghua.iotdb.query.aggregation.AggregateFunction;
+import cn.edu.tsinghua.iotdb.query.aggregation.AggregationResult;
 import cn.edu.tsinghua.iotdb.query.dataset.InsertDynamicData;
 import cn.edu.tsinghua.iotdb.query.engine.groupby.GroupByEngineNoFilter;
 import cn.edu.tsinghua.iotdb.query.engine.groupby.GroupByEngineWithFilter;
+import cn.edu.tsinghua.iotdb.query.management.ReadLockManager;
 import cn.edu.tsinghua.iotdb.query.management.RecordReaderFactory;
 import cn.edu.tsinghua.iotdb.query.reader.RecordReader;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
@@ -37,10 +39,10 @@ public class OverflowQueryEngine {
     private MManager mManager;
     private int formNumber = -1;
     /**
-     * this variable is represent that whether it is
-     * the second execution of aggregate method.
+     * this variable represents that whether it is
+     * the second execution of aggregation method.
      */
-    private static ThreadLocal<Boolean> threadLocal = new ThreadLocal<>();
+    private static ThreadLocal<Boolean> aggregateThreadLocal = new ThreadLocal<>();
 
     public OverflowQueryEngine() {
         mManager = MManager.getInstance();
@@ -103,16 +105,26 @@ public class OverflowQueryEngine {
             aggregations.add(new Pair<>(pair.left, func));
         }
 
-        if (threadLocal.get() != null && threadLocal.get()) {
-            threadLocal.remove();
-            return new QueryDataSet();
+        if (aggregateThreadLocal.get() != null && aggregateThreadLocal.get()) {
+            aggregateThreadLocal.remove();
+            QueryDataSet ansQueryDataSet = new QueryDataSet();
+            for (Pair<Path, AggregateFunction> pair : aggregations) {
+                Path path = pair.left;
+                AggregateFunction aggregateFunction = pair.right;
+                TSDataType dataType = MManager.getInstance().getSeriesType(path.getFullPath());
+                String aggregationKey = aggregateFunction.name + "(" + path.getFullPath() + ")";
+                if (ansQueryDataSet.mapRet.size() > 0 && ansQueryDataSet.mapRet.containsKey(aggregationKey)) {
+                    continue;
+                }
+
+                ansQueryDataSet.mapRet.put(aggregationKey, new DynamicOneColumnData(dataType, true));
+            }
+            return ansQueryDataSet;
         }
-        threadLocal.set(true);
+
+        aggregateThreadLocal.set(true);
         return AggregateEngine.multiAggregate(aggregations, filterStructures);
     }
-
-    /** group by function have no batch result, to ensure that group by logic is only executed once**/
-    private boolean groupByFlag = false;
 
     /**
      * Group by feature implementation.
@@ -129,41 +141,76 @@ public class OverflowQueryEngine {
      * @throws IOException
      */
     public QueryDataSet groupBy(List<Pair<Path, String>> aggres, List<FilterStructure> filterStructures,
-                                long unit, long origin, List<Pair<Long, Long>> intervals, int fetchSize)
-            throws ProcessorException, PathErrorException, IOException {
-        if (groupByFlag) {
-            groupByFlag = false;
-            return new QueryDataSet();
-        }
-        groupByFlag = true;
+                                long unit, long origin, List<Pair<Long, Long>> intervals, int fetchSize) {
 
-        SingleSeriesFilterExpression intervalFilter = null;
-        for (Pair<Long, Long> pair : intervals) {
-            if (intervalFilter == null) {
-                SingleSeriesFilterExpression left = FilterFactory.gtEq(FilterFactory.timeFilterSeries(), pair.left, true);
-                SingleSeriesFilterExpression right = FilterFactory.ltEq(FilterFactory.timeFilterSeries(), pair.right, true);
-                intervalFilter = (And) FilterFactory.and(left, right);
-            } else {
-                SingleSeriesFilterExpression left = FilterFactory.gtEq(FilterFactory.timeFilterSeries(), pair.left, true);
-                SingleSeriesFilterExpression right = FilterFactory.ltEq(FilterFactory.timeFilterSeries(), pair.right, true);
-                intervalFilter = (Or) FilterFactory.or(intervalFilter, (And) FilterFactory.and(left, right));
+        ThreadLocal<Integer> groupByCalcTime = ReadLockManager.getInstance().getGroupByCalcCalcTime();
+        ThreadLocal<GroupByEngineNoFilter> groupByEngineNoFilterLocal = ReadLockManager.getInstance().getGroupByEngineNoFilterLocal();
+        ThreadLocal<GroupByEngineWithFilter> groupByEngineWithFilterLocal = ReadLockManager.getInstance().getGroupByEngineWithFilterLocal();
+
+        if (groupByCalcTime.get() == null) {
+            LOGGER.info("calculate aggregations the 1 time");
+            groupByCalcTime.set(2);
+            SingleSeriesFilterExpression intervalFilter = null;
+            for (Pair<Long, Long> pair : intervals) {
+                if (intervalFilter == null) {
+                    SingleSeriesFilterExpression left = FilterFactory.gtEq(FilterFactory.timeFilterSeries(), pair.left, true);
+                    SingleSeriesFilterExpression right = FilterFactory.ltEq(FilterFactory.timeFilterSeries(), pair.right, true);
+                    intervalFilter = (And) FilterFactory.and(left, right);
+                } else {
+                    SingleSeriesFilterExpression left = FilterFactory.gtEq(FilterFactory.timeFilterSeries(), pair.left, true);
+                    SingleSeriesFilterExpression right = FilterFactory.ltEq(FilterFactory.timeFilterSeries(), pair.right, true);
+                    intervalFilter = (Or) FilterFactory.or(intervalFilter, (And) FilterFactory.and(left, right));
+                }
+            }
+
+            List<Pair<Path, AggregateFunction>> aggregations = new ArrayList<>();
+            try {
+                for (Pair<Path, String> pair : aggres) {
+                    TSDataType dataType = MManager.getInstance().getSeriesType(pair.left.getFullPath());
+                    AggregateFunction func = AggreFuncFactory.getAggrFuncByName(pair.right, dataType);
+                    aggregations.add(new Pair<>(pair.left, func));
+                }
+
+                if (filterStructures == null || filterStructures.size() == 0 || (filterStructures.size() == 1 && filterStructures.get(0).noFilter())) {
+                    GroupByEngineNoFilter groupByEngineNoFilter = new GroupByEngineNoFilter(aggregations, origin, unit, intervalFilter, fetchSize);
+                    groupByEngineNoFilterLocal.set(groupByEngineNoFilter);
+                    return groupByEngineNoFilter.groupBy();
+                }  else {
+                    GroupByEngineWithFilter groupByEngineWithFilter = new GroupByEngineWithFilter(aggregations, filterStructures, origin, unit, intervalFilter, fetchSize);
+                    groupByEngineWithFilterLocal.set(groupByEngineWithFilter);
+                    return groupByEngineWithFilter.groupBy();
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        } else {
+            LOGGER.info(String.format("calculate group by result function the %s time", String.valueOf(groupByCalcTime.get())));
+            groupByCalcTime.set(groupByCalcTime.get() + 1);
+            try {
+                if (filterStructures == null || filterStructures.size() == 0 || (filterStructures.size() == 1 && filterStructures.get(0).noFilter())) {
+                    QueryDataSet ans = groupByEngineNoFilterLocal.get().groupBy();
+                    if (!ans.hasNextRecord()) {
+                        groupByCalcTime.remove();
+                        groupByEngineNoFilterLocal.remove();
+                        groupByEngineWithFilterLocal.remove();
+                        LOGGER.info("group by function without filter has no result");
+                    }
+                    return ans;
+                } else {
+                    QueryDataSet ans = groupByEngineWithFilterLocal.get().groupBy();
+                    if (!ans.hasNextRecord()) {
+                        groupByCalcTime.remove();
+                        groupByEngineNoFilterLocal.remove();
+                        groupByEngineWithFilterLocal.remove();
+                        LOGGER.info("group by function with filter has no result");
+                    }
+                    return ans;
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
             }
         }
-
-        List<Pair<Path, AggregateFunction>> aggregations = new ArrayList<>();
-        for (Pair<Path, String> pair : aggres) {
-            TSDataType dataType = MManager.getInstance().getSeriesType(pair.left.getFullPath());
-            AggregateFunction func = AggreFuncFactory.getAggrFuncByName(pair.right, dataType);
-            aggregations.add(new Pair<>(pair.left, func));
-        }
-
-        if (filterStructures == null || filterStructures.size() == 0 || (filterStructures.size() == 1 && filterStructures.get(0).noFilter())) {
-            GroupByEngineNoFilter groupByEngineNoFilter = new GroupByEngineNoFilter();
-            return groupByEngineNoFilter.groupBy(aggregations, unit, origin, intervalFilter, fetchSize);
-        } else {
-            GroupByEngineWithFilter groupByEngineWithFilter = new GroupByEngineWithFilter();
-            return groupByEngineWithFilter.groupBy(aggregations, filterStructures, unit, origin,  intervalFilter, fetchSize);
-        }
+        return null;
     }
 
     /**

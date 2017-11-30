@@ -59,7 +59,6 @@ public class TsFileMetaDataCache {
 				}
 				return cache.get(path);
 			}
-
 		}
 	}
 

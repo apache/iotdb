@@ -41,19 +41,19 @@ public class OverflowBufferWriteProcessor{
 //        super(offset, totalSize, dataType, digest, raf, enumValues, compressionTypeName, rowNums);
 //    }
 
-//    private ByteArrayInputStream initBAISForOnePage(long pageOffset) throws IOException {
-//        int length = (int) (this.totalSize - (pageOffset - fileOffset));
-//        // int length = (int) (this.totalSize + fileOffset - valueOffset);
-//        byte[] buf = new byte[length]; // warning
-//        int readSize = 0;
-//        raf.seek(pageOffset);
-//        readSize = raf.read(buf, 0, length);
-//        if (readSize != length) {
-//            throw new IOException("Expect byte size : " + length + ". Read size : " + readSize);
-//        }
-//
-//        return new ByteArrayInputStream(buf);
-//    }
+    private ByteArrayInputStream initBAISForOnePage(ValueReader valueReader, long pageOffset) throws IOException {
+        int length = (int) (valueReader.totalSize - (pageOffset - valueReader.fileOffset));
+        // int length = (int) (this.totalSize + fileOffset - valueOffset);
+        byte[] buf = new byte[length]; // warning
+        int readSize = 0;
+        valueReader.raf.seek(pageOffset);
+        readSize = valueReader.raf.read(buf, 0, length);
+        if (readSize != length) {
+            throw new IOException("Expect byte size : " + length + ". Read size : " + readSize);
+        }
+
+        return new ByteArrayInputStream(buf);
+    }
 
     static DynamicOneColumnData getValuesWithOverFlow(ValueReader valueReader, DynamicOneColumnData updateTrueData, DynamicOneColumnData updateFalseData,
                                                InsertDynamicData insertMemoryData, SingleSeriesFilterExpression timeFilter,
@@ -68,8 +68,10 @@ public class OverflowBufferWriteProcessor{
             res.pageOffset = valueReader.getFileOffset();
             res.leftSize = valueReader.getTotalSize();
             res.insertTrueIndex = 0;
+            LOG.debug("first time : " + res.pageOffset);
         }
 
+        LOG.debug("not first time : " + res.pageOffset);
         // IMPORTANT!!
         if (res.pageOffset == -1) {
             res.pageOffset = valueReader.getFileOffset();
@@ -87,6 +89,8 @@ public class OverflowBufferWriteProcessor{
 
         if (updateTrueData.valueLength == 0 && !insertMemoryData.hasInsertData() && valueFilter != null
                 && !digestVisitor.satisfy(digestFF, valueFilter)) {
+            LOG.debug("column digest does not satisfy value filter ");
+            res.plusRowGroupIndexAndInitPageOffset();
             return res;
         }
 

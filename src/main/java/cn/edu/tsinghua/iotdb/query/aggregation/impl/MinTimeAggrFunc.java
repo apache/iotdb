@@ -20,6 +20,11 @@ public class MinTimeAggrFunc extends AggregateFunction {
     }
 
     @Override
+    public void putDefaultValue() {
+        result.data.putEmptyTime(0);
+    }
+
+    @Override
     public void calculateValueFromPageHeader(PageHeader pageHeader) {
         if (result.data.timeLength == 0) {
             result.data.putTime(0);
