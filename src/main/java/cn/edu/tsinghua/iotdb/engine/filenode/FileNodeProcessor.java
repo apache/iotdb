@@ -57,24 +57,24 @@ public class FileNodeProcessor extends LRUProcessor {
 	 * Used to keep the oldest timestamp for each deltaObjectId. The key is
 	 * deltaObjectId.
 	 */
-	private volatile Map<String, Long> lastUpdateTimeMap;
-	private volatile Map<String, List<IntervalFileNode>> InvertedindexOfFiles;
-	private volatile IntervalFileNode emptyIntervalFileNode;
-	private volatile IntervalFileNode currentIntervalFileNode;
-	private volatile List<IntervalFileNode> newFileNodes;
-	private volatile FileNodeProcessorStatus isMerging;
+	private Map<String, Long> lastUpdateTimeMap;
+	private Map<String, List<IntervalFileNode>> InvertedindexOfFiles;
+	private IntervalFileNode emptyIntervalFileNode;
+	private IntervalFileNode currentIntervalFileNode;
+	private List<IntervalFileNode> newFileNodes;
+	private FileNodeProcessorStatus isMerging;
 	// this is used when work->merge operation
-	private volatile int numOfMergeFile = 0;
-	private volatile FileNodeProcessorStore fileNodeProcessorStore = null;
+	private int numOfMergeFile = 0;
+	private FileNodeProcessorStore fileNodeProcessorStore = null;
 
 	private static final String restoreFile = ".restore";
-	private volatile String fileNodeRestoreFilePath = null;
+	private String fileNodeRestoreFilePath = null;
 
 	private BufferWriteProcessor bufferWriteProcessor = null;
 	private OverflowProcessor overflowProcessor = null;
 
-	private volatile Set<Integer> oldMultiPassTokenSet = null;
-	private volatile Set<Integer> newMultiPassTokenSet = new HashSet<>();
+	private Set<Integer> oldMultiPassTokenSet = null;
+	private Set<Integer> newMultiPassTokenSet = new HashSet<>();
 	private ReadWriteLock oldMultiPassLock = null;
 	private ReadWriteLock newMultiPassLock = new ReentrantReadWriteLock(false);
 
@@ -830,13 +830,13 @@ public class FileNodeProcessor extends LRUProcessor {
 
 		LOGGER.debug("Merge: switch wait to work, newIntervalFileNodes is {}", newFileNodes);
 
-		writeLock();
+		if (oldMultiPassLock != null) {
+			LOGGER.info("The old Multiple Pass Token set is {}, the old Multiple Pass Lock is {}", oldMultiPassTokenSet,
+					oldMultiPassLock);
+			oldMultiPassLock.writeLock().lock();
+		}
 		try {
-			if (oldMultiPassLock != null) {
-				LOGGER.info("The old Multiple Pass Token set is {}, the old Multiple Pass Lock is {}",
-						oldMultiPassTokenSet, oldMultiPassLock);
-				oldMultiPassLock.writeLock().lock();
-			}
+			writeLock();
 			try {
 				// delete the all files which are in the newFileNodes
 				// notice: the last restore file of the interval file
@@ -890,15 +890,16 @@ public class FileNodeProcessor extends LRUProcessor {
 				LOGGER.error("Merge: switch wait to work failed.");
 				throw new FileNodeProcessorException(e);
 			} finally {
-				oldMultiPassTokenSet = null;
-				if (oldMultiPassLock != null) {
-					oldMultiPassLock.writeLock().unlock();
-				}
-				oldMultiPassLock = null;
+				writeUnlock();
 			}
 		} finally {
-			writeUnlock();
+			oldMultiPassTokenSet = null;
+			if (oldMultiPassLock != null) {
+				oldMultiPassLock.writeLock().unlock();
+			}
+			oldMultiPassLock = null;
 		}
+
 	}
 
 	private void queryAndWriteDataForMerge(IntervalFileNode backupIntervalFile)

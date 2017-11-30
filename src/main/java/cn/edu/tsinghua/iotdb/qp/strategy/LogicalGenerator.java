@@ -824,12 +824,12 @@ public class LogicalGenerator {
 						String.format("encoding %s does not support %s", encoding, dataType));
 			}
 			break;
-		case ENUMS:
-			if ((!encoding.equals(PLAIN) && !encoding.equals(BITMAP))) {
-				throw new MetadataArgsErrorException(
-						String.format("encoding %s does not support %s", encoding, dataType));
-			}
-			break;
+//		case ENUMS:
+//			if ((!encoding.equals(PLAIN) && !encoding.equals(BITMAP))) {
+//				throw new MetadataArgsErrorException(
+//						String.format("encoding %s does not support %s", encoding, dataType));
+//			}
+//			break;
 		case TEXT:
 			if (!encoding.equals(PLAIN)) {
 				throw new MetadataArgsErrorException(

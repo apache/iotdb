@@ -100,7 +100,7 @@ public class DaemonTest {
     private String metadataDirPre;
     private String derbyHomePre;
 
-    private Daemon deamon;
+    private IoTDB deamon;
 
     private boolean testFlag = TestUtils.testFlag;
 
@@ -119,7 +119,7 @@ public class DaemonTest {
             config.bufferWriteDir = FOLDER_HEADER + "/data/delta";
             config.metadataDir = FOLDER_HEADER + "/data/metadata";
             config.derbyHome = FOLDER_HEADER + "/data/derby";
-            deamon = new Daemon();
+            deamon = new IoTDB();
             deamon.active();
         }
     }

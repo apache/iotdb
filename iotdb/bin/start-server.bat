@@ -18,7 +18,7 @@ IF EXIST %TSFILE_CONF%\iotdb-env.bat (
 	echo "can't find %TSFILE_CONF%/iotdb-env.bat"
 	)
 
-if NOT DEFINED MAIN_CLASS set MAIN_CLASS=cn.edu.tsinghua.iotdb.service.Daemon
+if NOT DEFINED MAIN_CLASS set MAIN_CLASS=cn.edu.tsinghua.iotdb.service.IoTDB
 if NOT DEFINED JAVA_HOME goto :err
 
 @REM -----------------------------------------------------------------------------
