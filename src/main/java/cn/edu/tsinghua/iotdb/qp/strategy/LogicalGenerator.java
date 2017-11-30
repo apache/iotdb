@@ -485,6 +485,9 @@ public class LogicalGenerator {
 	}
 
 	private void analyzeGroupBy(ASTNode astNode) throws LogicalOperatorException {
+		SelectOperator selectOp = ((QueryOperator) initializedOperator).getSelectOperator();
+		if(selectOp.getSuffixPaths().size() != selectOp.getAggregations().size())
+			throw new LogicalOperatorException("Group by must bind each path with an aggregation function");
 		((QueryOperator) initializedOperator).setGroupBy(true);
 		int childCount = astNode.getChildCount();
 
