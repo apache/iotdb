@@ -30,17 +30,17 @@ import cn.edu.tsinghua.iotdb.sys.writelog.WriteLogManager;
 import cn.edu.tsinghua.iotdb.qp.physical.PhysicalPlan;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 
-public class Daemon {
+public class IoTDB {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(Daemon.class);
-    static final Daemon instance = new Daemon();
+    private static final Logger LOGGER = LoggerFactory.getLogger(IoTDB.class);
+    static final IoTDB instance = new IoTDB();
     private JMXConnectorServer jmxServer;
     private MBeanServer mbs;
     private DBDao dBdao;
     private JDBCServerMBean jdbcMBean;
     private MonitorMBean monitorMBean;
 
-    public Daemon() {
+    public IoTDB() {
         mbs = ManagementFactory.getPlatformMBeanServer();
     }
 
@@ -194,8 +194,9 @@ public class Daemon {
     }
 
     public static void main(String[] args) {
-        Daemon daemon = new Daemon();
+        IoTDB daemon = new IoTDB();
         daemon.active();
+	    
     }
 
 }
