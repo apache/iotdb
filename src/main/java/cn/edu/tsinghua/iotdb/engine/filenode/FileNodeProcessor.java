@@ -830,13 +830,13 @@ public class FileNodeProcessor extends LRUProcessor {
 
 		LOGGER.debug("Merge: switch wait to work, newIntervalFileNodes is {}", newFileNodes);
 
-		writeLock();
+		if (oldMultiPassLock != null) {
+			LOGGER.info("The old Multiple Pass Token set is {}, the old Multiple Pass Lock is {}", oldMultiPassTokenSet,
+					oldMultiPassLock);
+			oldMultiPassLock.writeLock().lock();
+		}
 		try {
-			if (oldMultiPassLock != null) {
-				LOGGER.info("The old Multiple Pass Token set is {}, the old Multiple Pass Lock is {}",
-						oldMultiPassTokenSet, oldMultiPassLock);
-				oldMultiPassLock.writeLock().lock();
-			}
+			writeLock();
 			try {
 				// delete the all files which are in the newFileNodes
 				// notice: the last restore file of the interval file
@@ -890,15 +890,16 @@ public class FileNodeProcessor extends LRUProcessor {
 				LOGGER.error("Merge: switch wait to work failed.");
 				throw new FileNodeProcessorException(e);
 			} finally {
-				oldMultiPassTokenSet = null;
-				if (oldMultiPassLock != null) {
-					oldMultiPassLock.writeLock().unlock();
-				}
-				oldMultiPassLock = null;
+				writeUnlock();
 			}
 		} finally {
-			writeUnlock();
+			oldMultiPassTokenSet = null;
+			if (oldMultiPassLock != null) {
+				oldMultiPassLock.writeLock().unlock();
+			}
+			oldMultiPassLock = null;
 		}
+
 	}
 
 	private void queryAndWriteDataForMerge(IntervalFileNode backupIntervalFile)
