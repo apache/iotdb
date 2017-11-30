@@ -30,7 +30,7 @@ public class AggreFuncFactory {
             case AggregationConstant.COUNT:
                 return new CountAggrFunc();
             default:
-                throw new ProcessorException("AggregateFunction not support. Name:" + aggrFuncName);
+                throw new ProcessorException("aggregate does not support " + aggrFuncName + " function.");
         }
     }
 }

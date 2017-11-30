@@ -80,7 +80,6 @@ public class LogicalGenerator {
 	 */
 	private void analyze(ASTNode astNode) throws QueryProcessorException, ArgsErrorException {
 		Token token = astNode.getToken();
-		System.out.println(astNode.dump());
 		if (token == null)
 			throw new QueryProcessorException("given token is null");
 		int tokenIntType = token.getType();

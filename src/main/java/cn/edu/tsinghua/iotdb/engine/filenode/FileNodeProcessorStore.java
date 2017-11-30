@@ -1,6 +1,7 @@
 package cn.edu.tsinghua.iotdb.engine.filenode;
 
 import java.io.Serializable;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -35,7 +36,7 @@ public class FileNodeProcessorStore implements Serializable {
 	}
 
 	public Map<String, Long> getLastUpdateTimeMap() {
-		return lastUpdateTimeMap;
+		return new HashMap<String, Long>(lastUpdateTimeMap);
 	}
 
 	public void setLastUpdateTimeMap(Map<String, Long> lastUpdateTimeMap) {

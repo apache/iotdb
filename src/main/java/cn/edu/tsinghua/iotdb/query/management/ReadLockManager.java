@@ -10,15 +10,19 @@ import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 public class ReadLockManager {
 
     private static ReadLockManager instance = new ReadLockManager();
+
     private FileNodeManager fileNodeManager = FileNodeManager.getInstance();
-    // storage deltaObjectId and its read lock
+
+    /** storage deltaObjectId and its read lock **/
     private ThreadLocal<HashMap<String, Integer>> locksMap = new ThreadLocal<>();
+
+    /** this is no need to set as ThreadLocal, RecordReaderCache has ThreadLocal variable**/
     public RecordReaderCache recordReaderCache = new RecordReaderCache();
 
     private ReadLockManager() {
     }
 
-    public int lock(String deltaObjectUID, String measurementID) throws ProcessorException {
+    public int lock(String deltaObjectUID) throws ProcessorException {
         checkLocksMap();
         int token;
         if (!locksMap.get().containsKey(deltaObjectUID)) {
@@ -35,18 +39,10 @@ public class ReadLockManager {
         return token;
     }
 
+    @Deprecated
     public void unlockForSubQuery(String deltaObjectUID, String measurementID
             , int token) throws ProcessorException {
 
-    }
-
-    private void unlockForQuery(String deltaObjectUID, int token) throws ProcessorException {
-        try {
-            fileNodeManager.endQuery(deltaObjectUID, token);
-        } catch (FileNodeManagerException e) {
-            e.printStackTrace();
-            throw new ProcessorException(e.getMessage());
-        }
     }
 
     /**
@@ -64,8 +60,16 @@ public class ReadLockManager {
             unlockForQuery(key, locks.get(key));
         }
         locksMap.remove();
-        //remove recordReaders cached
         recordReaderCache.clear();
+    }
+
+    private void unlockForQuery(String deltaObjectUID, int token) throws ProcessorException {
+        try {
+            fileNodeManager.endQuery(deltaObjectUID, token);
+        } catch (FileNodeManagerException e) {
+            e.printStackTrace();
+            throw new ProcessorException(e.getMessage());
+        }
     }
 
     public static ReadLockManager getInstance() {

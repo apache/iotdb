@@ -15,13 +15,10 @@ import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.transport.TIOStreamTransport;
 
-import cn.edu.tsinghua.tsfile.file.metadata.RowGroupMetaData;
 import cn.edu.tsinghua.tsfile.file.metadata.TInTimeSeriesChunkMetaData;
-import cn.edu.tsinghua.tsfile.file.metadata.TSFileMetaData;
 import cn.edu.tsinghua.tsfile.file.metadata.TimeSeriesChunkMetaData;
 import cn.edu.tsinghua.tsfile.file.metadata.TimeSeriesMetadata;
 import cn.edu.tsinghua.tsfile.file.metadata.VInTimeSeriesChunkMetaData;
-import cn.edu.tsinghua.tsfile.format.FileMetaData;
 import cn.edu.tsinghua.tsfile.format.TimeInTimeSeriesChunkMetaData;
 import cn.edu.tsinghua.tsfile.format.TimeSeries;
 import cn.edu.tsinghua.tsfile.format.ValueInTimeSeriesChunkMetaData;
@@ -187,70 +184,6 @@ public class Utils {
     }
   }
 
-  public static void isRowGroupMetaDataEqual(RowGroupMetaData rowGroupMetaDataInTSF,
-		  cn.edu.tsinghua.tsfile.format.RowGroupMetaData rowGroupMetaDataInThrift) {
-    if (Utils.isTwoObjectsNotNULL(rowGroupMetaDataInTSF, rowGroupMetaDataInThrift,
-        "RowGroupMetaData")) {
-      assertTrue(rowGroupMetaDataInTSF.getDeltaObjectUID()
-          .equals(rowGroupMetaDataInThrift.getDelta_object_uid()));
-      assertTrue(rowGroupMetaDataInTSF.getDeltaObjectType()
-          .equals(rowGroupMetaDataInThrift.getDelta_object_type()));
-      assertTrue(rowGroupMetaDataInTSF.getTotalByteSize() == rowGroupMetaDataInThrift
-          .getTotal_byte_size());
-      assertTrue(
-          rowGroupMetaDataInTSF.getNumOfRows() == rowGroupMetaDataInThrift.getMax_num_rows());
-
-      if (Utils.isTwoObjectsNotNULL(rowGroupMetaDataInTSF.getPath(),
-          rowGroupMetaDataInThrift.getFile_path(), "Row group metadata file path")) {
-        assertTrue(rowGroupMetaDataInTSF.getPath().equals(rowGroupMetaDataInThrift.getFile_path()));
-      }
-
-      if (Utils.isTwoObjectsNotNULL(rowGroupMetaDataInTSF.getMetaDatas(),
-          rowGroupMetaDataInThrift.getTsc_metadata(), "TimeSeriesChunkMetaData List")) {
-        List<TimeSeriesChunkMetaData> listTSF = rowGroupMetaDataInTSF.getMetaDatas();
-        List<cn.edu.tsinghua.tsfile.format.TimeSeriesChunkMetaData> listThrift =
-            rowGroupMetaDataInThrift.getTsc_metadata();
-
-        if (listTSF.size() != listThrift.size()) {
-          fail("TimeSeriesGroupMetaData List size is different");
-        }
-
-        for (int i = 0; i < listTSF.size(); i++) {
-          Utils.isTimeSeriesChunkMetaDataEqual(listTSF.get(i), listThrift.get(i));
-        }
-      }
-    }
-  }
-
-  public static void isFileMetaDataEqual(TSFileMetaData fileMetaDataInTSF,
-      FileMetaData fileMetaDataInThrift) {
-    if (Utils.isTwoObjectsNotNULL(fileMetaDataInTSF, fileMetaDataInThrift, "File MetaData")) {
-
-      Utils.isTimeSeriesListEqual(fileMetaDataInTSF.getTimeSeriesList(),
-          fileMetaDataInThrift.getTimeseries_list());
-      Utils.isListEqual(fileMetaDataInTSF.getJsonMetaData(),
-          fileMetaDataInThrift.getJson_metadata(), "json metadata");
-
-
-      if (Utils.isTwoObjectsNotNULL(fileMetaDataInTSF.getRowGroups(), fileMetaDataInThrift.getRow_groups(),
-          "Row Group List")) {
-        List<RowGroupMetaData> listTSF = fileMetaDataInTSF.getRowGroups();
-        List<cn.edu.tsinghua.tsfile.format.RowGroupMetaData> listThrift =
-            fileMetaDataInThrift.getRow_groups();
-
-        if (listTSF.size() != listThrift.size()) {
-          fail("TimeSeriesGroupMetaData List size is different");
-        }
-        long maxNumRows = 0;
-        for (int i = 0; i < listTSF.size(); i++) {
-          Utils.isRowGroupMetaDataEqual(listTSF.get(i), listThrift.get(i));
-          maxNumRows += listTSF.get(i).getNumOfRows();
-        }
-        assertTrue(maxNumRows == fileMetaDataInThrift.getMax_num_rows());
-      }
-    }
-  }
-  
   public static void isOFSeriesListMetaDataEqual(OFSeriesListMetadata ofSeriesListMetadata,
 		  cn.edu.tsinghua.iotdb.engine.overflow.thrift.OFSeriesListMetadata ofSeriesListMetadata2) {
 		if (Utils.isTwoObjectsNotNULL(ofSeriesListMetadata, ofSeriesListMetadata, "OFSeriesListMetaData")) {

@@ -13,6 +13,8 @@ import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
 import org.junit.Before;
 import org.junit.Test;
 
+import static org.junit.Assert.fail;
+
 /**
  * Just used for integration test.
  */
@@ -100,7 +102,7 @@ public class DaemonTest {
 
     private Daemon deamon;
 
-    private boolean testFlag = false;
+    private boolean testFlag = TestUtils.testFlag;
 
     @Before
     public void setUp() throws Exception {
@@ -145,23 +147,26 @@ public class DaemonTest {
     }
 
     @Test
-    public void test() throws ClassNotFoundException, SQLException, InterruptedException {
+    public void test() {
         if (testFlag) {
-            Thread.sleep(5000);
-            insertSQL();
+            try {
+                Thread.sleep(5000);
+                insertSQL();
 
-            //TODO: add your query statement
-            Connection connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
-            //System.out.println(connection.getMetaData());
-            selectAllSQLTest();
-            dnfErrorSQLTest();
-            selectWildCardSQLTest();
-            selectAndOperatorTest();
-            selectAndOpeCrossTest();
-            aggregationTest();
-            selectOneColumnWithFilterTest();
-            multiAggregationTest();
-            connection.close();
+                Connection connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
+                //System.out.println(connection.getMetaData());
+                selectAllSQLTest();
+                dnfErrorSQLTest();
+                selectWildCardSQLTest();
+                selectAndOperatorTest();
+                selectAndOpeCrossTest();
+                aggregationTest();
+                selectOneColumnWithFilterTest();
+                multiAggregationTest();
+                connection.close();
+            } catch (ClassNotFoundException | SQLException | InterruptedException e) {
+                fail(e.getMessage());
+            }
         }
     }
 
@@ -253,6 +258,7 @@ public class DaemonTest {
             }
             statement.close();
         } catch (Exception e) {
+            fail(e.getMessage());
             e.printStackTrace();
         } finally {
             if (connection != null) {
@@ -322,6 +328,7 @@ public class DaemonTest {
             statement.close();
         } catch (Exception e) {
             e.printStackTrace();
+            fail(e.getMessage());
         } finally {
             if (connection != null) {
                 connection.close();
@@ -358,6 +365,7 @@ public class DaemonTest {
             statement.close();
         } catch (Exception e) {
             e.printStackTrace();
+            fail(e.getMessage());
         } finally {
             if (connection != null) {
                 connection.close();
@@ -395,6 +403,7 @@ public class DaemonTest {
             statement.close();
         } catch (Exception e) {
             e.printStackTrace();
+            fail(e.getMessage());
         } finally {
             if (connection != null) {
                 connection.close();
@@ -429,6 +438,7 @@ public class DaemonTest {
             statement.close();
         } catch (Exception e) {
             e.printStackTrace();
+            fail(e.getMessage());
         } finally {
             if (connection != null) {
                 connection.close();
@@ -461,6 +471,7 @@ public class DaemonTest {
             statement.close();
         } catch (Exception e) {
             e.printStackTrace();
+            fail(e.getMessage());
         } finally {
             if (connection != null) {
                 connection.close();
@@ -524,6 +535,7 @@ public class DaemonTest {
             statement.close();
         } catch (Exception e) {
             e.printStackTrace();
+            fail(e.getMessage());
         } finally {
             if (connection != null) {
                 connection.close();
@@ -559,6 +571,7 @@ public class DaemonTest {
             statement.close();
         } catch (Exception e) {
             e.printStackTrace();
+            fail(e.getMessage());
         } finally {
             if (connection != null) {
                 connection.close();
@@ -594,6 +607,7 @@ public class DaemonTest {
             statement.close();
         } catch (Exception e) {
             e.printStackTrace();
+            fail(e.getMessage());
         } finally {
             if (connection != null) {
                 connection.close();

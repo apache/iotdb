@@ -2,6 +2,9 @@ package cn.edu.tsinghua.iotdb.service;
 
 
 public class TestUtils {
+
+    static boolean testFlag = !true;
+
     static String count(String path) {
         return String.format("count(%s)", path);
     }

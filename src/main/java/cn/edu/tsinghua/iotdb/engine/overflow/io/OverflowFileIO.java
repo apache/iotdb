@@ -23,8 +23,8 @@ import org.slf4j.LoggerFactory;
 import cn.edu.tsinghua.iotdb.engine.overflow.utils.OverflowReadWriteThriftFormatUtils;
 import cn.edu.tsinghua.iotdb.engine.overflow.utils.TSFileMetaDataConverter;
 import cn.edu.tsinghua.tsfile.common.utils.BytesUtils;
-import cn.edu.tsinghua.tsfile.file.metadata.TSDigest;
 import cn.edu.tsinghua.tsfile.file.metadata.TimeSeriesChunkMetaData;
+import cn.edu.tsinghua.tsfile.file.metadata.TsDigest;
 import cn.edu.tsinghua.tsfile.file.metadata.VInTimeSeriesChunkMetaData;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.CompressionTypeName;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSChunkType;
@@ -208,7 +208,7 @@ public class OverflowFileIO {
 		byte[] max = statistics.getMaxBytes();
 		byte[] min = statistics.getMinBytes();
 		VInTimeSeriesChunkMetaData vInTimeSeriesChunkMetaData = new VInTimeSeriesChunkMetaData(tsDataType);
-		TSDigest tsDigest = new TSDigest(ByteBuffer.wrap(max, 0, max.length), ByteBuffer.wrap(min, 0, min.length));
+		TsDigest tsDigest = new TsDigest(ByteBuffer.wrap(max, 0, max.length), ByteBuffer.wrap(min, 0, min.length));
 		vInTimeSeriesChunkMetaData.setDigest(tsDigest);
 		currentSeries.setVInTimeSeriesChunkMetaData(vInTimeSeriesChunkMetaData);
 	}

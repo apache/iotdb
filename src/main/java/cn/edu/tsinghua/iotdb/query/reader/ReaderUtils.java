@@ -18,7 +18,7 @@ import java.util.List;
 
 
 /**
- * Move some methods which has long code in <code>OverflowValueReader</code>
+ * Move some methods which has long code in <code>OverflowBufferWriteProcessor</code>
  * to this as utils method.
  *
  * @author CGF

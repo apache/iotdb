@@ -14,6 +14,7 @@ import java.io.File;
 import java.sql.*;
 
 import static cn.edu.tsinghua.iotdb.service.TestUtils.*;
+import static org.junit.Assert.fail;
 
 /**
  * Multiple aggregation with filter test.
@@ -99,7 +100,7 @@ public class MultiAggreWithFilterTest {
 
     private Daemon deamon;
 
-    private boolean testFlag = false;
+    private boolean testFlag = TestUtils.testFlag;
 
     @Before
     public void setUp() throws Exception {
@@ -189,6 +190,7 @@ public class MultiAggreWithFilterTest {
             statement.close();
         } catch (Exception e) {
             e.printStackTrace();
+            fail(e.getMessage());
         } finally {
             if (connection != null) {
                 connection.close();
@@ -225,6 +227,7 @@ public class MultiAggreWithFilterTest {
             statement.close();
         } catch (Exception e) {
             e.printStackTrace();
+            fail(e.getMessage());
         } finally {
             if (connection != null) {
                 connection.close();
@@ -261,6 +264,7 @@ public class MultiAggreWithFilterTest {
             statement.close();
         } catch (Exception e) {
             e.printStackTrace();
+            fail(e.getMessage());
         } finally {
             if (connection != null) {
                 connection.close();
@@ -297,6 +301,7 @@ public class MultiAggreWithFilterTest {
             statement.close();
         } catch (Exception e) {
             e.printStackTrace();
+            fail(e.getMessage());
         } finally {
             if (connection != null) {
                 connection.close();
@@ -333,6 +338,7 @@ public class MultiAggreWithFilterTest {
             statement.close();
         } catch (Exception e) {
             e.printStackTrace();
+            fail(e.getMessage());
         } finally {
             if (connection != null) {
                 connection.close();
@@ -366,6 +372,7 @@ public class MultiAggreWithFilterTest {
             statement.close();
         } catch (Exception e) {
             e.printStackTrace();
+            fail(e.getMessage());
         } finally {
             if (connection != null) {
                 connection.close();
@@ -434,6 +441,7 @@ public class MultiAggreWithFilterTest {
             statement.close();
         } catch (Exception e) {
             e.printStackTrace();
+            fail(e.getMessage());
         } finally {
             if (connection != null) {
                 connection.close();
@@ -453,6 +461,7 @@ public class MultiAggreWithFilterTest {
             statement.close();
         } catch (Exception e) {
             e.printStackTrace();
+            fail(e.getMessage());
         } finally {
             if (connection != null) {
                 connection.close();

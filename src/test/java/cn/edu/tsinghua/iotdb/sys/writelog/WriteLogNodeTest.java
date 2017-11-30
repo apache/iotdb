@@ -17,18 +17,21 @@ import cn.edu.tsinghua.iotdb.qp.physical.crud.InsertPlan;
 import cn.edu.tsinghua.iotdb.qp.physical.crud.UpdatePlan;
 import cn.edu.tsinghua.tsfile.common.utils.Pair;
 import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * @author CGF.
  */
 public class WriteLogNodeTest {
 
+    private Logger logger = LoggerFactory.getLogger(WriteLogNodeTest.class);
+
     private static Path path = new Path("d1.s1");
     private static String fileNode = "root.vehicle.d1";
     private List<String> measurements = new ArrayList<>();
     private List<String> values = new ArrayList<>();
-    
-    
+
     @After
     public void tearDown(){
     	TsfileDBConfig dbConfig = TsfileDBDescriptor.getInstance().getConfig();
@@ -74,7 +77,7 @@ public class WriteLogNodeTest {
                 Assert.assertEquals(updatePlan.getValue(), "4.0");
             }
             cnt++;
-            output(plan);
+            // output(plan);
         }
         node.closeStreams();
         node.removeFiles();
@@ -148,7 +151,7 @@ public class WriteLogNodeTest {
         int cnt = 0;
         while ((plan = node.getPhysicalPlan()) != null) {
             cnt++;
-            output(plan);
+            //output(plan);
         }
         Assert.assertEquals(cnt, 0);
         node.readerReset();
@@ -303,19 +306,69 @@ public class WriteLogNodeTest {
     private void output(PhysicalPlan plan) {
         if (plan instanceof UpdatePlan) {
             UpdatePlan p = (UpdatePlan) plan;
-            System.out.println("Update: " + p.getPath());
+            logger.info("Update: " + p.getPath());
             for (Pair<Long,Long> pair : ((UpdatePlan) plan).getIntervals()) {
                 System.out.println(pair.left + "," + pair.right + " " + p.getValue());
             }
         } else if (plan instanceof DeletePlan) {
             DeletePlan p = (DeletePlan) plan;
-            System.out.println("Delete: " + p.getPaths().get(0) + " " + p.getDeleteTime());
+            logger.info("Delete: " + p.getPaths().get(0) + " " + p.getDeleteTime());
         } else if (plan instanceof InsertPlan) {
             InsertPlan InsertPlan = (InsertPlan) plan;
-            System.out.println("MultiInsert: " + InsertPlan.getDeltaObject() + " " + InsertPlan.getTime());
+            logger.info("MultiInsert: " + InsertPlan.getDeltaObject() + " " + InsertPlan.getTime());
             for (int i = 0; i < InsertPlan.getMeasurements().size(); i++) {
                 System.out.println(InsertPlan.getMeasurements().get(i) + " " + InsertPlan.getValues().get(i));
             }
         }
+    }
+
+    @Test
+    public void multiFlushStarEndTest() throws IOException {
+        // note that Overflow operation and Bufferwrite operation must have meanings
+        WriteLogNode node = new WriteLogNode(fileNode);
+        measurements.clear();
+        measurements.add("s1");
+        values.add("1.0");
+        node.write(new InsertPlan(1,"d1", 506L, measurements, values));
+        node.bufferFlushStart();
+        node.write(new InsertPlan(1,"d1", 600L, measurements, values));
+        node.bufferFlushEnd();
+        values.clear();
+
+        values.add("4.0");
+        node.write(new InsertPlan(1, "d1", 1101L, measurements, values));
+        node.bufferFlushStart();
+        node.bufferFlushEnd();
+        int cnt = 0;
+        PhysicalPlan plan;
+        while ((plan = node.getPhysicalPlan()) != null) {
+            cnt++;
+            // output(plan);
+        }
+        Assert.assertEquals(0, cnt);
+        node.readerReset();
+
+        measurements.clear();
+        measurements.add("s1");
+        values.add("1.0");
+        node.write(new InsertPlan(2,"d1", 506L, measurements, values));
+        node.overflowFlushStart();
+        node.write(new InsertPlan(2,"d1", 600L, measurements, values));
+        node.overflowFlushEnd();
+        values.clear();
+
+        values.add("4.0");
+        node.write(new InsertPlan(2, "d1", 1101L, measurements, values));
+        node.overflowFlushStart();
+        node.overflowFlushEnd();
+        cnt = 0;
+        while ((plan = node.getPhysicalPlan()) != null) {
+            cnt++;
+            // output(plan);
+        }
+        Assert.assertEquals(0, cnt);
+
+        node.closeStreams();
+        node.removeFiles();
     }
 }
