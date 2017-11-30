@@ -33,7 +33,13 @@ This short guide will walk you through the basic process of using IoTDB. For a m
 
 ## Build
 
-You can build IoTDB using Maven:
+If you are not the first time that building IoTDB, remember deleting the following files:
+```
+rm -rf iotdb/data/
+rm -rf iotdb/lib/
+```
+
+Then you can build IoTDB using Maven:
 
 ```
 mvn clean package -Dmaven.test.skip=true
