@@ -41,7 +41,7 @@ public class MergeTest {
 
 	private IoTDB deamon;
 
-	private boolean testFlag = false;
+	private boolean testFlag = TestUtils.testFlag;
 
 	@Before
 	public void setUp() throws Exception {
@@ -123,7 +123,7 @@ public class MergeTest {
 	}
 
 	private void selectAllSQLTest() throws ClassNotFoundException, SQLException {
-		String[] retArray = new String[] { "1,null,1,null", "10,1,null,null", };
+		String[] retArray = new String[] { "1,null,1,null", "10,1,null,1", };
 
 		Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);
 		Connection connection = null;
@@ -138,9 +138,10 @@ public class MergeTest {
 					String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d3s1) + ","
 							+ resultSet.getString(d3s2) + "," + resultSet.getString(d2s2);
 					System.out.println(ans);
+					Assert.assertEquals(retArray[cnt], ans);
 					cnt++;
 				}
-				// Assert.assertEquals(17, cnt);
+				 Assert.assertEquals(2, cnt);
 			}
 			statement.close();
 		} catch (Exception e) {

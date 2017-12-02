@@ -494,7 +494,7 @@ public class DaemonTest {
                 ResultSet resultSet = statement.getResultSet();
                 int cnt = 0;
                 while (resultSet.next()) {
-                    String ans = resultSet.getString(1);
+                    String ans = resultSet.getString(TestUtils.max_value(d0s3));
                     // System.out.println("=====" + ans);
                     Assert.assertEquals(retArray[0], ans);
                     cnt++;
@@ -509,7 +509,7 @@ public class DaemonTest {
                 ResultSet resultSet = statement.getResultSet();
                 int cnt = 0;
                 while (resultSet.next()) {
-                    String ans = resultSet.getString(1);
+                    String ans = resultSet.getString(TestUtils.min_value(d0s3));
                     // System.out.println("=====" + ans);
                     Assert.assertEquals(ans, "aaaaa");
                     cnt++;
@@ -524,8 +524,8 @@ public class DaemonTest {
                 ResultSet resultSet = statement.getResultSet();
                 int cnt = 0;
                 while (resultSet.next()) {
-                    int ans1 = resultSet.getInt(1);
-                    int ans2 = resultSet.getInt(2);
+                    int ans1 = resultSet.getInt(TestUtils.min_value(d0s0));
+                    int ans2 = resultSet.getInt(TestUtils.min_value(d1s0));
                     Assert.assertEquals(ans1, 99);
                     Assert.assertEquals(ans2, 888);
                     cnt++;
@@ -534,6 +534,7 @@ public class DaemonTest {
             }
             statement.close();
         } catch (Exception e) {
+        	System.out.println(e.getMessage());
             e.printStackTrace();
             fail(e.getMessage());
         } finally {

@@ -73,6 +73,8 @@ public abstract class AbstractClient {
 	protected static final String IMPORT_CMD = "import";
 	protected static final String EXPORT_CMD = "export";
 	
+	private static final String NEED_NOT_TO_PRINT_TIMESTAMP = "AGGREGATION";
+	
 	protected static String host;
 	protected static String port;
 	protected static String username;
@@ -97,7 +99,10 @@ public abstract class AbstractClient {
 		int cnt = 0;
 		ResultSetMetaData resultSetMetaData = res.getMetaData();
 		int colCount = resultSetMetaData.getColumnCount();
-		boolean printTimestamp = res.getMetaData().getColumnTypeName(0) == null ? true : false; 
+		boolean printTimestamp = true;
+		if (res.getMetaData().getColumnTypeName(0) != null) {
+			printTimestamp = !res.getMetaData().getColumnTypeName(0).toUpperCase().equals(NEED_NOT_TO_PRINT_TIMESTAMP);
+		}
 		boolean printHeader = false;
 
 		// Output values
@@ -117,7 +122,7 @@ public abstract class AbstractClient {
 				}
 			}
 
-			for (int i = 1; i < colCount; i++) {
+			for (int i = 2; i <= colCount; i++) {
 				if (printToConsole && cnt < maxPrintRowCount) {
 				    	if(resultSetMetaData.getColumnLabel(i).indexOf(TIME_KEY_WORD) != -1){
 				    		try {
@@ -261,8 +266,8 @@ public abstract class AbstractClient {
 		if (printTimestamp) {
 			System.out.printf(formatTime, TIMESTAMP_STR);
 		}
-		for (int i = 0; i < colCount - 1; i++) {
-			System.out.printf(formatValue, res.getMetaData().getColumnLabel(i + 1));
+		for (int i = 2; i <= colCount; i++) {
+			System.out.printf(formatValue, res.getMetaData().getColumnLabel(i));
 		}
 		System.out.printf("\n");
 	}

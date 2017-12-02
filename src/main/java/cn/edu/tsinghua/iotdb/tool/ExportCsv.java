@@ -223,37 +223,37 @@ public class ExportCsv extends AbstractCsvTool{
 		try {
 			int count = metadata.getColumnCount();
 			// write data in csv file
-			for (int i = 0; i < count; i++) {
-				if (i < count - 1) {
+			for (int i = 1; i <= count; i++) {
+				if (i < count) {
 					writer.write(metadata.getColumnLabel(i) + ",");
 				} else {
 					writer.write(metadata.getColumnLabel(i) + "\n");
 				}
 			}
 			while (rs.next()) {
-				if (rs.getString(0).equals("null")) {
+				if (rs.getString(1) == null || rs.getString(1).toLowerCase().equals("null")) {
 					writer.write(",");
 				} else {
 					DateTime dateTime;
 					switch (timeFormat) {
 						case DEFAULT_TIME_FORMAT:
 						case "default":
-							dateTime = new DateTime(rs.getLong(0), timeZone);
+							dateTime = new DateTime(rs.getLong(1), timeZone);
 							writer.write(dateTime.toString(ISODateTimeFormat.dateHourMinuteSecondMillis())+",");
 							break;
 						case "timestamp":
 						case "long":
 						case "nubmer":
-							writer.write(rs.getLong(0) + ",");
+							writer.write(rs.getLong(1) + ",");
 							break;
 						default:
-							dateTime = new DateTime(rs.getLong(0), timeZone);
+							dateTime = new DateTime(rs.getLong(1), timeZone);
 							writer.write(dateTime.toString(timeFormat)+",");
 							break;
 					}
 
-					for (int j = 1; j < count; j++) {
-						if (j < count - 1) {
+					for (int j = 2; j <= count; j++) {
+						if (j < count) {
 							if (rs.getString(j).equals("null")) {
 								writer.write(",");
 							} else {
