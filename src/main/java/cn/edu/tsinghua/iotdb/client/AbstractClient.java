@@ -425,9 +425,9 @@ public abstract class AbstractClient {
 			}
 			System.out.println("execute successfully.");
 		} catch (SQLException e) {
-			System.out.println("statement error: " + e.getMessage());
+			System.out.println("error: " + e.getMessage());
 		} catch (Exception e) {
-			System.out.println("connection error: " + e.getMessage());
+			System.out.println("error: " + e.getMessage());
 		} finally {
 		    	if(statement != null){
 			    	try {
