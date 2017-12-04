@@ -73,6 +73,8 @@ public abstract class AbstractClient {
 	protected static final String IMPORT_CMD = "import";
 	protected static final String EXPORT_CMD = "export";
 	
+	private static final String NEED_NOT_TO_PRINT_TIMESTAMP = "AGGREGATION";
+	
 	protected static String host;
 	protected static String port;
 	protected static String username;
@@ -97,7 +99,10 @@ public abstract class AbstractClient {
 		int cnt = 0;
 		ResultSetMetaData resultSetMetaData = res.getMetaData();
 		int colCount = resultSetMetaData.getColumnCount();
-		boolean printTimestamp = res.getMetaData().getColumnTypeName(0) == null ? true : false; 
+		boolean printTimestamp = true;
+		if (res.getMetaData().getColumnTypeName(0) != null) {
+			printTimestamp = !res.getMetaData().getColumnTypeName(0).toUpperCase().equals(NEED_NOT_TO_PRINT_TIMESTAMP);
+		}
 		boolean printHeader = false;
 
 		// Output values
@@ -117,7 +122,7 @@ public abstract class AbstractClient {
 				}
 			}
 
-			for (int i = 1; i < colCount; i++) {
+			for (int i = 2; i <= colCount; i++) {
 				if (printToConsole && cnt < maxPrintRowCount) {
 				    	if(resultSetMetaData.getColumnLabel(i).indexOf(TIME_KEY_WORD) != -1){
 				    		try {
@@ -239,8 +244,8 @@ public abstract class AbstractClient {
 	protected static void printBlockLine(boolean printTimestamp, int colCount, ResultSet res) throws SQLException {
 		StringBuilder blockLine = new StringBuilder();
 		int tmp = Integer.MIN_VALUE;
-		for (int i = 0; i < colCount - 1; i++) {
-			int len = res.getMetaData().getColumnLabel(i + 1).length();
+		for (int i = 1; i <= colCount; i++) {
+			int len = res.getMetaData().getColumnLabel(i).length();
 			tmp = tmp > len ? tmp : len;
 		}
 		maxValueLength = tmp;
@@ -261,8 +266,8 @@ public abstract class AbstractClient {
 		if (printTimestamp) {
 			System.out.printf(formatTime, TIMESTAMP_STR);
 		}
-		for (int i = 0; i < colCount - 1; i++) {
-			System.out.printf(formatValue, res.getMetaData().getColumnLabel(i + 1));
+		for (int i = 2; i <= colCount; i++) {
+			System.out.printf(formatValue, res.getMetaData().getColumnLabel(i));
 		}
 		System.out.printf("\n");
 	}
@@ -394,7 +399,7 @@ public abstract class AbstractClient {
 		if(specialCmd.startsWith(IMPORT_CMD)){
 			String[] values = specialCmd.split(" ");
 			if(values.length != 2){
-				System.out.println(String.format("please input file path like /User/myfile"));
+				System.out.println(String.format("Please input like: import /User/myfile. Noted that your file path cannot contain any space character)"));
 				return OPERATION_RESULT.CONTINUE_OPER;
 			}
 			try {
@@ -403,7 +408,7 @@ public abstract class AbstractClient {
 			} catch (SQLException e) {
 				System.out.println(String.format("Failed to import from %s because %s", cmd.split(" ")[1], e.getMessage()));
 			} catch (TException e) {
-				System.out.println("Cannot get current time zone");
+				System.out.println("Cannot connect to server");
 			}
 			return OPERATION_RESULT.CONTINUE_OPER;
 		}
@@ -420,9 +425,9 @@ public abstract class AbstractClient {
 			}
 			System.out.println("execute successfully.");
 		} catch (SQLException e) {
-			System.out.println("statement error: " + e.getMessage());
+			System.out.println("error: " + e.getMessage());
 		} catch (Exception e) {
-			System.out.println("connection error: " + e.getMessage());
+			System.out.println("error: " + e.getMessage());
 		} finally {
 		    	if(statement != null){
 			    	try {

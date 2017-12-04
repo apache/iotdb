@@ -14,7 +14,7 @@ IoTDB's features are as following:
 6. Easy to get start. IoTDB supports SQL-Like language, JDBC standard API and import/export tools which is easy to use.
 7. Intense integration with Open Source Ecosystem. IoTDB supports Hadoop, Spark, etc. analysis ecosystems and Grafana visualization tool.
 
-For the latest information about Hadoop, please visit our [IoTDB official website](http://tsfile.org/index).
+For the latest information about IoTDB, please visit our [IoTDB official website](http://tsfile.org/index).
 
 # Prerequisites
 
@@ -22,8 +22,8 @@ To use IoTDB, you need to have:
 
 1. Java >= 1.8
 2. Maven >= 3.0 (If you want to compile and install IoTDB from source code)
-3. TsFile >= 0.2.0 (TsFile Github page: [https://github.com/thulab/tsfile](https://github.com/thulab/tsfile))
-4. IoTDB-JDBC >= 0.1.2 (IoTDB-JDBC Github page: [https://github.com/thulab/iotdb-jdbc](https://github.com/thulab/iotdb-jdbc))
+3. TsFile >= 0.3.0 (TsFile Github page: [https://github.com/thulab/tsfile](https://github.com/thulab/tsfile))
+4. IoTDB-JDBC >= 0.3.0 (IoTDB-JDBC Github page: [https://github.com/thulab/iotdb-jdbc](https://github.com/thulab/iotdb-jdbc))
 
 TODO: TsFile and IoTDB-JDBC dependencies will be removed after Jialin Qiao re-structured the Project.
 
@@ -33,7 +33,13 @@ This short guide will walk you through the basic process of using IoTDB. For a m
 
 ## Build
 
-You can build IoTDB using Maven:
+If you are not the first time that building IoTDB, remember deleting the following files:
+```
+rm -rf iotdb/data/
+rm -rf iotdb/lib/
+```
+
+Then you can build IoTDB using Maven:
 
 ```
 mvn clean package -Dmaven.test.skip=true
@@ -119,7 +125,7 @@ The command line client is interactive so if everything is ready you should see 
   | |   .--.|_/ | | \_|  | | `. \ | |_) |
   | | / .'`\ \  | |      | |  | | |  __'.
  _| |_| \__. | _| |_    _| |_.' /_| |__) |
-|_____|'.__.' |_____|  |______.'|_______/  version 0.0.1
+|_____|'.__.' |_____|  |______.'|_______/  version 0.3.0
 
 
 IoTDB> login successfully

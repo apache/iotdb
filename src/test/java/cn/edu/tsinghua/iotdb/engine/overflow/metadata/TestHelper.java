@@ -6,8 +6,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import cn.edu.tsinghua.tsfile.file.metadata.TInTimeSeriesChunkMetaData;
-import cn.edu.tsinghua.tsfile.file.metadata.TSDigest;
 import cn.edu.tsinghua.tsfile.file.metadata.TimeSeriesChunkMetaData;
+import cn.edu.tsinghua.tsfile.file.metadata.TsDigest;
 import cn.edu.tsinghua.tsfile.file.metadata.VInTimeSeriesChunkMetaData;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.CompressionTypeName;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSChunkType;
@@ -40,7 +40,7 @@ public class TestHelper {
     metaData.setTInTimeSeriesChunkMetaData(TestHelper.createT2inTSF(TSDataType.BOOLEAN,
         TSFreqType.IRREGULAR_FREQ, null, TInTimeSeriesChunkMetaDataTest.startTime, TInTimeSeriesChunkMetaDataTest.endTime));
     metaData.setVInTimeSeriesChunkMetaData(
-        TestHelper.createSimpleV2InTSF(TSDataType.BOOLEAN, new TSDigest(), VInTimeSeriesChunkMetaDataTest.maxString, VInTimeSeriesChunkMetaDataTest.minString));
+        TestHelper.createSimpleV2InTSF(TSDataType.BOOLEAN, new TsDigest(), VInTimeSeriesChunkMetaDataTest.maxString, VInTimeSeriesChunkMetaDataTest.minString));
     return metaData;
   }
 
@@ -162,8 +162,8 @@ public class TestHelper {
     List<VInTimeSeriesChunkMetaData> list = new ArrayList<VInTimeSeriesChunkMetaData>();
     for (TSDataType dataType : TSDataType.values()) {
       list.add(TestHelper.createSimpleV1InTSF(dataType, null));
-      list.add(TestHelper.createSimpleV1InTSF(dataType, new TSDigest()));
-      list.add(TestHelper.createSimpleV2InTSF(dataType, new TSDigest(),
+      list.add(TestHelper.createSimpleV1InTSF(dataType, new TsDigest()));
+      list.add(TestHelper.createSimpleV2InTSF(dataType, new TsDigest(),
           VInTimeSeriesChunkMetaDataTest.maxString, VInTimeSeriesChunkMetaDataTest.minString));
     }
     return list;
@@ -209,7 +209,7 @@ public class TestHelper {
     return metaData;
   }
 
-  public static VInTimeSeriesChunkMetaData createSimpleV2InTSF(TSDataType dataType, TSDigest digest,
+  public static VInTimeSeriesChunkMetaData createSimpleV2InTSF(TSDataType dataType, TsDigest digest,
       String maxString, String minString) throws UnsupportedEncodingException {
     VInTimeSeriesChunkMetaData metaData = new VInTimeSeriesChunkMetaData(dataType);
     metaData.setMaxError(VInTimeSeriesChunkMetaDataTest.MAX_ERROR);
@@ -228,7 +228,7 @@ public class TestHelper {
     return metaData;
   }
 
-  public static VInTimeSeriesChunkMetaData createSimpleV1InTSF(TSDataType dataType, TSDigest digest)
+  public static VInTimeSeriesChunkMetaData createSimpleV1InTSF(TSDataType dataType, TsDigest digest)
       throws UnsupportedEncodingException {
     VInTimeSeriesChunkMetaData metaData = new VInTimeSeriesChunkMetaData(dataType);
     metaData.setMaxError(VInTimeSeriesChunkMetaDataTest.MAX_ERROR);

@@ -9,22 +9,24 @@ import org.slf4j.LoggerFactory;
 import cn.edu.tsinghua.tsfile.common.utils.ITsRandomAccessFileReader;
 import cn.edu.tsinghua.tsfile.timeseries.read.TsRandomAccessLocalFileReader;
 
-
+/**
+ * This class is useless.
+ */
 public class FileStreamManager {
 	private static final Logger logger = LoggerFactory.getLogger(FileStreamManager.class);
 	private static FileStreamManager instance = new FileStreamManager();
-	
+
 	private FileStreamManager(){
 	}
-	
+
 	public ITsRandomAccessFileReader getLocalRandomAccessFileReader(String path) throws FileNotFoundException{
 		return new TsRandomAccessLocalFileReader(path);
 	}
-	
+
 	public void closeLocalRandomAccessFileReader(TsRandomAccessLocalFileReader localFileInput) throws IOException{
 		localFileInput.close();
 	}
-	
+
 	public static FileStreamManager getInstance(){
 		if(instance == null){
 			instance = new FileStreamManager();

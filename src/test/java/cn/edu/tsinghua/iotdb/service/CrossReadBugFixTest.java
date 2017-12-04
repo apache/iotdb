@@ -14,6 +14,8 @@ import org.junit.Test;
 import java.io.File;
 import java.sql.*;
 
+import static org.junit.Assert.fail;
+
 /**
  *
  */
@@ -82,9 +84,9 @@ public class CrossReadBugFixTest {
     private String metadataDirPre;
     private String derbyHomePre;
 
-    private Daemon deamon;
+    private IoTDB deamon;
 
-    private boolean testFlag = false;
+    private boolean testFlag = TestUtils.testFlag;
 
     @Before
     public void setUp() throws Exception {
@@ -105,7 +107,7 @@ public class CrossReadBugFixTest {
             config.bufferWriteDir = FOLDER_HEADER + "/data/delta";
             config.metadataDir = FOLDER_HEADER + "/data/metadata";
             config.derbyHome = FOLDER_HEADER + "/data/derby";
-            deamon = new Daemon();
+            deamon = new IoTDB();
             deamon.active();
         }
     }
@@ -133,16 +135,19 @@ public class CrossReadBugFixTest {
     }
 
     @Test
-    public void test() throws ClassNotFoundException, SQLException, InterruptedException {
+    public void test() {
         if (testFlag) {
-            Thread.sleep(5000);
-            insertSQL();
+            try {
+                Thread.sleep(5000);
+                insertSQL();
 
-            Connection connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
-            System.out.println(connection.getMetaData());
-            selectWildTest();
-            crossReadTest();
-            connection.close();
+                Connection connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
+                selectWildTest();
+                crossReadTest();
+                connection.close();
+            } catch (ClassNotFoundException | SQLException | InterruptedException e) {
+                fail(e.getMessage());
+            }
         }
     }
 
@@ -208,6 +213,7 @@ public class CrossReadBugFixTest {
             statement.close();
         } catch (Exception e) {
             e.printStackTrace();
+            fail(e.getMessage());
         } finally {
             if (connection != null) {
                 connection.close();
@@ -254,6 +260,7 @@ public class CrossReadBugFixTest {
             statement.close();
         } catch (Exception e) {
             e.printStackTrace();
+            fail(e.getMessage());
         } finally {
             if (connection != null) {
                 connection.close();

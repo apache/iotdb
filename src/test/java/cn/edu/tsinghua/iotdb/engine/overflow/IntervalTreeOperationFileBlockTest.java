@@ -37,7 +37,7 @@ public class IntervalTreeOperationFileBlockTest {
 
     private static double delta = 0.000001;
 
-    // private static final Logger LOG = LoggerFactory.getLogger(IntervalTreeOperationFileBlockTest.class);
+    // private static final logger LOG = LoggerFactory.getLogger(IntervalTreeOperationFileBlockTest.class);
 
     @Test
     public void intMixTest() throws IOException {

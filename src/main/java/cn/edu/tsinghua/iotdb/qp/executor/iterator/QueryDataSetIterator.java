@@ -90,7 +90,7 @@ public class QueryDataSetIterator implements Iterator<QueryDataSet> {
                         break;
                 }
             } catch (Exception e) {
-                throw new RuntimeException("meet error in hasNext" + Arrays.toString(e.getStackTrace()));
+                throw new RuntimeException("meet error in hasNext because " + e.getMessage());
             }
         if (data == null) {
             throw new RuntimeException("data is null! parameters: paths:" + paths);

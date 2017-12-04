@@ -8,6 +8,7 @@ import java.util.List;
 import cn.edu.tsinghua.iotdb.query.visitorImpl.PageAllSatisfiedVisitor;
 import cn.edu.tsinghua.tsfile.common.utils.ITsRandomAccessFileReader;
 import cn.edu.tsinghua.tsfile.common.utils.Pair;
+import cn.edu.tsinghua.tsfile.file.metadata.TsDigest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -16,9 +17,7 @@ import cn.edu.tsinghua.iotdb.query.aggregation.AggregationResult;
 import cn.edu.tsinghua.iotdb.query.dataset.InsertDynamicData;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 import cn.edu.tsinghua.tsfile.common.utils.Binary;
-import cn.edu.tsinghua.tsfile.common.utils.ITsRandomAccessFileReader;
 import cn.edu.tsinghua.tsfile.encoding.decoder.Decoder;
-import cn.edu.tsinghua.tsfile.file.metadata.TSDigest;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.CompressionTypeName;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
 import cn.edu.tsinghua.tsfile.format.Digest;
@@ -31,23 +30,24 @@ import cn.edu.tsinghua.tsfile.timeseries.read.PageReader;
 import cn.edu.tsinghua.tsfile.timeseries.read.ValueReader;
 import cn.edu.tsinghua.tsfile.timeseries.read.query.DynamicOneColumnData;
 
-public class OverflowValueReader extends ValueReader {
+public class OverflowBufferWriteProcessor{
 
-    private static final Logger LOG = LoggerFactory.getLogger(OverflowValueReader.class);
-    
-    OverflowValueReader(long offset, long totalSize, TSDataType dataType, TSDigest digest,
-                               ITsRandomAccessFileReader raf, List<String> enumValues, CompressionTypeName compressionTypeName,
-                               long rowNums) {
-        super(offset, totalSize, dataType, digest, raf, enumValues, compressionTypeName, rowNums);
-    }
+    private static final Logger LOG = LoggerFactory.getLogger(OverflowBufferWriteProcessor.class);
 
-    private ByteArrayInputStream initBAISForOnePage(long pageOffset) throws IOException {
-        int length = (int) (this.totalSize - (pageOffset - fileOffset));
+    // private
+//    OverflowBufferWriteProcessor(long offset, long totalSize, TSDataType dataType, TsDigest digest,
+//                                 ITsRandomAccessFileReader raf, List<String> enumValues, CompressionTypeName compressionTypeName,
+//                                 long rowNums) {
+//        super(offset, totalSize, dataType, digest, raf, enumValues, compressionTypeName, rowNums);
+//    }
+
+    private ByteArrayInputStream initBAISForOnePage(ValueReader valueReader, long pageOffset) throws IOException {
+        int length = (int) (valueReader.totalSize - (pageOffset - valueReader.fileOffset));
         // int length = (int) (this.totalSize + fileOffset - valueOffset);
         byte[] buf = new byte[length]; // warning
         int readSize = 0;
-        raf.seek(pageOffset);
-        readSize = raf.read(buf, 0, length);
+        valueReader.raf.seek(pageOffset);
+        readSize = valueReader.raf.read(buf, 0, length);
         if (readSize != length) {
             throw new IOException("Expect byte size : " + length + ". Read size : " + readSize);
         }
@@ -55,42 +55,31 @@ public class OverflowValueReader extends ValueReader {
         return new ByteArrayInputStream(buf);
     }
 
-    @Deprecated
-    public void setFreqDecoderByDataType() {
+    static DynamicOneColumnData getValuesWithOverFlow(ValueReader valueReader, DynamicOneColumnData updateTrueData, DynamicOneColumnData updateFalseData,
+                                               InsertDynamicData insertMemoryData, SingleSeriesFilterExpression timeFilter,
+                                               SingleSeriesFilterExpression freqFilter, SingleSeriesFilterExpression valueFilter,
+                                               DynamicOneColumnData res, int fetchSize) throws IOException {
 
-    }
-
-    @Deprecated
-    public void initFrequenceValue(InputStream page) throws IOException {
-        //
-    }
-
-    @Deprecated
-    public boolean frequencySatisfy(SingleSeriesFilterExpression freqFilter) {
-        return true;
-    }
-
-
-
-    DynamicOneColumnData getValuesWithOverFlow(DynamicOneColumnData updateTrueData, DynamicOneColumnData updateFalseData,
-                                               InsertDynamicData insertMemoryData, SingleSeriesFilterExpression timeFilter, SingleSeriesFilterExpression freqFilter,
-                                               SingleSeriesFilterExpression valueFilter, DynamicOneColumnData res, int fetchSize) throws IOException {
+        TSDataType dataType = valueReader.getDataType();
+        CompressionTypeName compressionTypeName = valueReader.compressionTypeName;
 
         if (res == null) {
-            res = new DynamicOneColumnData(getDataType(), true);
-            res.pageOffset = this.fileOffset;
-            res.leftSize = this.totalSize;
+            res = new DynamicOneColumnData(dataType, true);
+            res.pageOffset = valueReader.getFileOffset();
+            res.leftSize = valueReader.getTotalSize();
             res.insertTrueIndex = 0;
+            LOG.debug("first time : " + res.pageOffset);
         }
 
+        LOG.debug("not first time : " + res.pageOffset);
         // IMPORTANT!!
         if (res.pageOffset == -1) {
-            res.pageOffset = this.fileOffset;
+            res.pageOffset = valueReader.getFileOffset();
         }
 
-        TSDigest digest = getDigest();
-        DigestForFilter digestFF = new DigestForFilter(digest.min, digest.max, getDataType());
-        LOG.info("read one series normally, digest min and max is: " + digestFF.getMinValue() + " --- " + digestFF.getMaxValue());
+        TsDigest digest = valueReader.getDigest();
+        DigestForFilter digestFF = new DigestForFilter(digest.min, digest.max, dataType);
+        LOG.debug("read one series normally, digest min and max is: " + digestFF.getMinValue() + " --- " + digestFF.getMaxValue());
         DigestVisitor digestVisitor = new DigestVisitor();
         // If not satisfied, return res with size equal to 0
 
@@ -100,6 +89,8 @@ public class OverflowValueReader extends ValueReader {
 
         if (updateTrueData.valueLength == 0 && !insertMemoryData.hasInsertData() && valueFilter != null
                 && !digestVisitor.satisfy(digestFF, valueFilter)) {
+            LOG.debug("column digest does not satisfy value filter ");
+            res.plusRowGroupIndexAndInitPageOffset();
             return res;
         }
 
@@ -111,7 +102,7 @@ public class OverflowValueReader extends ValueReader {
         int mode = ReaderUtils.getNextMode(updateIdx[0], updateIdx[1], updateTrueData, updateFalseData);
 
         // initial one page from file
-        ByteArrayInputStream bis = initBAISForOnePage(res.pageOffset);
+        ByteArrayInputStream bis = valueReader.initBAISForOnePage(res.pageOffset);
         PageReader pageReader = new PageReader(bis, compressionTypeName);
         int pageCount = 0;
         // let resCount be the sum of records in last read
@@ -121,7 +112,7 @@ public class OverflowValueReader extends ValueReader {
         // some variables for frequency calculation with overflow
         boolean hasOverflowDataInThisPage = false;
 
-        while ((res.pageOffset - fileOffset) < totalSize && resCount < fetchSize) {
+        while ((res.pageOffset - valueReader.fileOffset) < valueReader.totalSize && resCount < fetchSize) {
             // To help to record byte size in this process of read.
             int lastAvailable = bis.available();
             pageCount++;
@@ -131,7 +122,7 @@ public class OverflowValueReader extends ValueReader {
             // construct valueFilter
             // System.out.println(res.pageOffset + "|" + fileOffset + "|" + totalSize);
             Digest pageDigest = pageHeader.data_page_header.getDigest();
-            DigestForFilter valueDigestFF = new DigestForFilter(pageDigest.min, pageDigest.max, getDataType());
+            DigestForFilter valueDigestFF = new DigestForFilter(pageDigest.min, pageDigest.max, dataType);
 
             // construct timeFilter
             long mint = pageHeader.data_page_header.min_timestamp;
@@ -170,16 +161,12 @@ public class OverflowValueReader extends ValueReader {
             // update current res's pageOffset to the start of next page.
             res.pageOffset += lastAvailable - bis.available();
 
-            initFrequenceValue(page);
             hasOverflowDataInThisPage = checkDataChanged(mint, maxt, updateTrueData, updateIdx[0], updateFalseData, updateIdx[1],
                     insertMemoryData, timeFilter);
-            if (!hasOverflowDataInThisPage && !frequencySatisfy(freqFilter)) {
-                continue;
-            }
 
-            long[] timeValues = initTimeValue(page, pageHeader.data_page_header.num_rows, false);
+            long[] timeValues = valueReader.initTimeValue(page, pageHeader.data_page_header.num_rows, false);
 
-            setDecoder(Decoder.getDecoderByType(pageHeader.getData_page_header().getEncoding(), getDataType()));
+            valueReader.setDecoder(Decoder.getDecoderByType(pageHeader.getData_page_header().getEncoding(), dataType));
 
             // record the length of this res before the new records in this page
             // were put in.
@@ -187,18 +174,18 @@ public class OverflowValueReader extends ValueReader {
 
             SingleValueVisitor<?> timeVisitor = null;
             if (timeFilter != null) {
-                timeVisitor = getSingleValueVisitorByDataType(TSDataType.INT64, timeFilter);
+                timeVisitor = valueReader.getSingleValueVisitorByDataType(TSDataType.INT64, timeFilter);
             }
             SingleValueVisitor<?> valueVisitor = null;
             if (valueFilter != null) {
-                valueVisitor = getSingleValueVisitorByDataType(getDataType(), valueFilter);
+                valueVisitor = valueReader.getSingleValueVisitorByDataType(dataType, valueFilter);
             }
 
             try {
                 int timeIdx = 0;
                 switch (dataType) {
                     case INT32:
-                        while (decoder.hasNext(page)) {
+                        while (valueReader.decoder.hasNext(page)) {
                             // put insert points that less than or equals to current
                             // timestamp in page.
                             while (insertMemoryData.hasInsertData() && timeIdx < timeValues.length
@@ -211,18 +198,18 @@ public class OverflowValueReader extends ValueReader {
                                 if (insertMemoryData.getCurrentMinTime() == timeValues[timeIdx]) {
                                     insertMemoryData.removeCurrentValue();
                                     timeIdx++;
-                                    decoder.readInt(page);
-                                    if (!decoder.hasNext(page)) {
+                                    valueReader.decoder.readInt(page);
+                                    if (!valueReader.decoder.hasNext(page)) {
                                         break;
                                     }
                                 } else {
                                     insertMemoryData.removeCurrentValue();
                                 }
                             }
-                            if (!decoder.hasNext(page)) {
+                            if (!valueReader.decoder.hasNext(page)) {
                                 break;
                             }
-                            int v = decoder.readInt(page);
+                            int v = valueReader.decoder.readInt(page);
                             if (mode == -1) {
                                 if ((valueFilter == null && timeFilter == null)
                                         || (valueFilter != null && timeFilter == null
@@ -293,7 +280,7 @@ public class OverflowValueReader extends ValueReader {
                         }
                         break;
                     case BOOLEAN:
-                        while (decoder.hasNext(page)) {
+                        while (valueReader.decoder.hasNext(page)) {
                             // put insert points
                             while (insertMemoryData.hasInsertData() && timeIdx < timeValues.length
                                     && insertMemoryData.getCurrentMinTime() <= timeValues[timeIdx]) {
@@ -305,18 +292,18 @@ public class OverflowValueReader extends ValueReader {
                                 if (insertMemoryData.getCurrentMinTime() == timeValues[timeIdx]) {
                                     insertMemoryData.removeCurrentValue();
                                     timeIdx++;
-                                    decoder.readBoolean(page);
-                                    if (!decoder.hasNext(page)) {
+                                    valueReader.decoder.readBoolean(page);
+                                    if (!valueReader.decoder.hasNext(page)) {
                                         break;
                                     }
                                 } else {
                                     insertMemoryData.removeCurrentValue();
                                 }
                             }
-                            if (!decoder.hasNext(page)) {
+                            if (!valueReader.decoder.hasNext(page)) {
                                 break;
                             }
-                            boolean v = decoder.readBoolean(page);
+                            boolean v = valueReader.decoder.readBoolean(page);
                             if (mode == -1) {
                                 if ((valueFilter == null && timeFilter == null)
                                         || (valueFilter != null && timeFilter == null
@@ -387,7 +374,7 @@ public class OverflowValueReader extends ValueReader {
                         }
                         break;
                     case INT64:
-                        while (decoder.hasNext(page)) {
+                        while (valueReader.decoder.hasNext(page)) {
                             // put insert points
                             while (insertMemoryData.hasInsertData() && timeIdx < timeValues.length
                                     && insertMemoryData.getCurrentMinTime() <= timeValues[timeIdx]) {
@@ -399,8 +386,8 @@ public class OverflowValueReader extends ValueReader {
                                 if (insertMemoryData.getCurrentMinTime() == timeValues[timeIdx]) {
                                     insertMemoryData.removeCurrentValue();
                                     timeIdx++;
-                                    decoder.readLong(page);
-                                    if (!decoder.hasNext(page)) {
+                                    valueReader.decoder.readLong(page);
+                                    if (!valueReader.decoder.hasNext(page)) {
                                         break;
                                     }
                                 } else {
@@ -408,10 +395,10 @@ public class OverflowValueReader extends ValueReader {
                                 }
                             }
 
-                            if (!decoder.hasNext(page)) {
+                            if (!valueReader.decoder.hasNext(page)) {
                                 break;
                             }
-                            long v = decoder.readLong(page);
+                            long v = valueReader.decoder.readLong(page);
                             if (mode == -1) {
                                 if ((valueFilter == null && timeFilter == null)
                                         || (valueFilter != null && timeFilter == null
@@ -480,7 +467,7 @@ public class OverflowValueReader extends ValueReader {
                         }
                         break;
                     case FLOAT:
-                        while (decoder.hasNext(page)) {
+                        while (valueReader.decoder.hasNext(page)) {
                             // put insert points
                             while (insertMemoryData.hasInsertData() && timeIdx < timeValues.length
                                     && insertMemoryData.getCurrentMinTime() <= timeValues[timeIdx]) {
@@ -492,8 +479,8 @@ public class OverflowValueReader extends ValueReader {
                                 if (insertMemoryData.getCurrentMinTime() == timeValues[timeIdx]) {
                                     insertMemoryData.removeCurrentValue();
                                     timeIdx++;
-                                    decoder.readFloat(page);
-                                    if (!decoder.hasNext(page)) {
+                                    valueReader.decoder.readFloat(page);
+                                    if (!valueReader.decoder.hasNext(page)) {
                                         break;
                                     }
                                 } else {
@@ -501,10 +488,10 @@ public class OverflowValueReader extends ValueReader {
                                 }
                             }
 
-                            if (!decoder.hasNext(page)) {
+                            if (!valueReader.decoder.hasNext(page)) {
                                 break;
                             }
-                            float v = decoder.readFloat(page);
+                            float v = valueReader.decoder.readFloat(page);
                             if (mode == -1) {
                                 if ((valueFilter == null && timeFilter == null)
                                         || (valueFilter != null && timeFilter == null
@@ -573,7 +560,7 @@ public class OverflowValueReader extends ValueReader {
                         }
                         break;
                     case DOUBLE:
-                        while (decoder.hasNext(page)) {
+                        while (valueReader.decoder.hasNext(page)) {
                             // put insert points
                             while (insertMemoryData.hasInsertData() && timeIdx < timeValues.length
                                     && insertMemoryData.getCurrentMinTime() <= timeValues[timeIdx]) {
@@ -585,8 +572,8 @@ public class OverflowValueReader extends ValueReader {
                                 if (insertMemoryData.getCurrentMinTime() == timeValues[timeIdx]) {
                                     insertMemoryData.removeCurrentValue();
                                     timeIdx++;
-                                    decoder.readDouble(page);
-                                    if (!decoder.hasNext(page)) {
+                                    valueReader.decoder.readDouble(page);
+                                    if (!valueReader.decoder.hasNext(page)) {
                                         break;
                                     }
                                 } else {
@@ -594,10 +581,10 @@ public class OverflowValueReader extends ValueReader {
                                 }
                             }
 
-                            if (!decoder.hasNext(page)) {
+                            if (!valueReader.decoder.hasNext(page)) {
                                 break;
                             }
-                            double v = decoder.readDouble(page);
+                            double v = valueReader.decoder.readDouble(page);
                             if (mode == -1) {
                                 if ((valueFilter == null && timeFilter == null)
                                         || (valueFilter != null && timeFilter == null
@@ -666,7 +653,7 @@ public class OverflowValueReader extends ValueReader {
                         }
                         break;
                     case TEXT:
-                        while (decoder.hasNext(page)) {
+                        while (valueReader.decoder.hasNext(page)) {
                             // put insert points
                             while (insertMemoryData.hasInsertData() && timeIdx < timeValues.length
                                     && insertMemoryData.getCurrentMinTime() <= timeValues[timeIdx]) {
@@ -678,8 +665,8 @@ public class OverflowValueReader extends ValueReader {
                                 if (insertMemoryData.getCurrentMinTime() == timeValues[timeIdx]) {
                                     insertMemoryData.removeCurrentValue();
                                     timeIdx++;
-                                    decoder.readBinary(page);
-                                    if (!decoder.hasNext(page)) {
+                                    valueReader.decoder.readBinary(page);
+                                    if (!valueReader.decoder.hasNext(page)) {
                                         break;
                                     }
                                 } else {
@@ -687,10 +674,10 @@ public class OverflowValueReader extends ValueReader {
                                 }
                             }
 
-                            if (!decoder.hasNext(page)) {
+                            if (!valueReader.decoder.hasNext(page)) {
                                 break;
                             }
-                            Binary v = decoder.readBinary(page);
+                            Binary v = valueReader.decoder.readBinary(page);
                             if (mode == -1) {
                                 if ((valueFilter == null && timeFilter == null)
                                         || (valueFilter != null && timeFilter == null
@@ -777,7 +764,7 @@ public class OverflowValueReader extends ValueReader {
             }
         }
         // represents current column has been read all.
-        if ((res.pageOffset - fileOffset) >= totalSize) {
+        if ((res.pageOffset - valueReader.fileOffset) >= valueReader.totalSize) {
             res.plusRowGroupIndexAndInitPageOffset();
         }
 
@@ -787,16 +774,19 @@ public class OverflowValueReader extends ValueReader {
         return res;
     }
 
-    AggregationResult aggregate(AggregateFunction func, InsertDynamicData insertMemoryData,
+    static AggregationResult aggregate(ValueReader valueReader, AggregateFunction func, InsertDynamicData insertMemoryData,
                                 DynamicOneColumnData updateTrue, DynamicOneColumnData updateFalse, SingleSeriesFilterExpression timeFilter,
-                                SingleSeriesFilterExpression freqFilter, SingleSeriesFilterExpression valueFilter) throws IOException, ProcessorException {
+                                SingleSeriesFilterExpression freqFilter, SingleSeriesFilterExpression valueFilter)
+            throws IOException, ProcessorException {
+
+        TSDataType dataType = valueReader.dataType;
 
         DynamicOneColumnData res = new DynamicOneColumnData(dataType, true);
-        res.pageOffset = this.fileOffset;
+        res.pageOffset = valueReader.fileOffset;
 
         // get column digest
-        TSDigest digest = getDigest();
-        DigestForFilter digestFF = new DigestForFilter(digest.min, digest.max, getDataType());
+        TsDigest digest = valueReader.getDigest();
+        DigestForFilter digestFF = new DigestForFilter(digest.min, digest.max, dataType);
         LOG.debug("Aggretation : Column Digest min and max is: " + digestFF.getMinValue() + " --- " + digestFF.getMaxValue());
         DigestVisitor digestVisitor = new DigestVisitor();
 
@@ -815,11 +805,11 @@ public class OverflowValueReader extends ValueReader {
         update[1] = updateFalse;
         int[] updateIdx = new int[]{updateTrue.curIdx, updateFalse.curIdx};
 
-        ByteArrayInputStream bis = initBAISForOnePage(res.pageOffset);
-        PageReader pageReader = new PageReader(bis, compressionTypeName);
+        ByteArrayInputStream bis = valueReader.initBAISForOnePage(res.pageOffset);
+        PageReader pageReader = new PageReader(bis, valueReader.compressionTypeName);
         int pageCount = 0;
 
-        while ((res.pageOffset - fileOffset) < totalSize) {
+        while ((res.pageOffset - valueReader.fileOffset) < valueReader.totalSize) {
             int lastAvailable = bis.available();
             pageCount++;
             LOG.debug("read page {}, offset : {}", pageCount, res.pageOffset);
@@ -827,7 +817,7 @@ public class OverflowValueReader extends ValueReader {
             PageHeader pageHeader = pageReader.getNextPageHeader();
             // construct value and time digest for this page
             Digest pageDigest = pageHeader.data_page_header.getDigest();
-            DigestForFilter valueDigestFF = new DigestForFilter(pageDigest.min, pageDigest.max, getDataType());
+            DigestForFilter valueDigestFF = new DigestForFilter(pageDigest.min, pageDigest.max, dataType);
             long mint = pageHeader.data_page_header.min_timestamp;
             long maxt = pageHeader.data_page_header.max_timestamp;
             DigestForFilter timeDigestFF = new DigestForFilter(mint, maxt);
@@ -866,7 +856,6 @@ public class OverflowValueReader extends ValueReader {
             InputStream page = pageReader.getNextPage();
             // update current res's pageOffset to the start of next page.
             res.pageOffset += lastAvailable - bis.available();
-            initFrequenceValue(page);
             boolean hasOverflowDataInThisPage = checkDataChangedForAggregation(mint, maxt, valueDigestFF
                     , updateTrue, updateIdx[0], updateFalse, updateIdx[1], insertMemoryData
                     , timeFilter, freqFilter, valueFilter);
@@ -877,13 +866,13 @@ public class OverflowValueReader extends ValueReader {
                 func.calculateValueFromPageHeader(pageHeader);
             } else {
                 // get all time values in this page
-                long[] timeValues = initTimeValue(page, pageHeader.data_page_header.num_rows, false);
+                long[] timeValues = valueReader.initTimeValue(page, pageHeader.data_page_header.num_rows, false);
                 // set Decoder for current page
-                setDecoder(Decoder.getDecoderByType(pageHeader.getData_page_header().getEncoding(), getDataType()));
+                valueReader.setDecoder(Decoder.getDecoderByType(pageHeader.getData_page_header().getEncoding(), dataType));
 
                 // clear data in res to make the res only store the data in current page;
                 // TODO max, min value could be optimized
-                res = ReaderUtils.readOnePage(dataType, timeValues, decoder, page, res,
+                res = ReaderUtils.readOnePage(dataType, timeValues, valueReader.decoder, page, res,
                         timeFilter, freqFilter, valueFilter, insertMemoryData, update, updateIdx);
                 func.calculateValueFromDataPage(res);
                 res.clearData();
@@ -914,10 +903,12 @@ public class OverflowValueReader extends ValueReader {
      * @throws IOException TsFile read error
      * @throws ProcessorException get read info error
      */
-    int aggregateUsingTimestamps(AggregateFunction func, InsertDynamicData insertMemoryData,
+    static int aggregateUsingTimestamps(ValueReader valueReader, AggregateFunction func, InsertDynamicData insertMemoryData,
                                  DynamicOneColumnData updateTrue, DynamicOneColumnData updateFalse, SingleSeriesFilterExpression timeFilter,
                                  SingleSeriesFilterExpression freqFilter, List<Long> timestamps,
                                  DynamicOneColumnData lastAggreData) throws IOException, ProcessorException {
+        TSDataType dataType = valueReader.dataType;
+
         // to ensure that updateTrue and updateFalse is not null
         updateTrue = (updateTrue == null ? new DynamicOneColumnData(dataType, true) : updateTrue);
         updateFalse = (updateFalse == null ? new DynamicOneColumnData(dataType, true) : updateFalse);
@@ -934,7 +925,7 @@ public class OverflowValueReader extends ValueReader {
             int pageTimeIndex = (int) func.maps.get("pageTimeIndex");
             InputStream page = (InputStream) func.maps.get("page");
             Pair<DynamicOneColumnData, Integer> ans = ReaderUtils.readOnePage(
-                    dataType, pageTimeValues, pageTimeIndex, decoder, page,
+                    dataType, pageTimeValues, pageTimeIndex, valueReader.decoder, page,
                     timeFilter, freqFilter, timestamps, 0, insertMemoryData, update, updateIdx, func);
             if (ans.left != null && ans.left.valueLength > 0)
                 func.calculateValueFromDataPage(ans.left);
@@ -948,22 +939,22 @@ public class OverflowValueReader extends ValueReader {
         if (lastAggreData == null) {
             lastAggreData = new DynamicOneColumnData(dataType, true);
         }
-        lastAggreData.pageOffset = this.fileOffset;
+        lastAggreData.pageOffset = valueReader.fileOffset;
 
 
         // get column digest
-        TSDigest digest = getDigest();
-        DigestForFilter digestFF = new DigestForFilter(digest.min, digest.max, getDataType());
+        TsDigest digest = valueReader.getDigest();
+        DigestForFilter digestFF = new DigestForFilter(digest.min, digest.max, valueReader.getDataType());
         LOG.debug("aggregate using given timestamps, column Digest min and max is: "
                 + digestFF.getMinValue() + " --- " + digestFF.getMaxValue());
         DigestVisitor digestVisitor = new DigestVisitor();
 
-        ByteArrayInputStream bis = initBAISForOnePage(lastAggreData.pageOffset);
-        PageReader pageReader = new PageReader(bis, compressionTypeName);
+        ByteArrayInputStream bis = valueReader.initBAISForOnePage(lastAggreData.pageOffset);
+        PageReader pageReader = new PageReader(bis, valueReader.compressionTypeName);
         int pageCount = 0;
 
         // (lastAggreData.pageOffset - fileOffset) < totalSize : still has unread data
-        while ((lastAggreData.pageOffset - fileOffset) < totalSize) {
+        while ((lastAggreData.pageOffset - valueReader.fileOffset) < valueReader.totalSize) {
             int lastAvailable = bis.available();
             pageCount++;
             LOG.debug("aggregate using given timestamps, read page {}, offset : {}", pageCount, lastAggreData.pageOffset);
@@ -995,12 +986,12 @@ public class OverflowValueReader extends ValueReader {
             lastAggreData.pageOffset += lastAvailable - bis.available();
 
             // get all time values in this page
-            long[] pageTimeValues = initTimeValue(page, pageHeader.data_page_header.num_rows, false);
+            long[] pageTimeValues = valueReader.initTimeValue(page, pageHeader.data_page_header.num_rows, false);
             // set Decoder for current page
-            setDecoder(Decoder.getDecoderByType(pageHeader.getData_page_header().getEncoding(), getDataType()));
+            valueReader.setDecoder(Decoder.getDecoderByType(pageHeader.getData_page_header().getEncoding(), valueReader.getDataType()));
 
             Pair<DynamicOneColumnData, Integer> ans = ReaderUtils.readOnePage(
-                    dataType, pageTimeValues, 0, decoder, page,
+                    dataType, pageTimeValues, 0, valueReader.decoder, page,
                     timeFilter, freqFilter, timestamps, timeIndex, insertMemoryData, update, updateIdx, func);
             if (ans.left != null && ans.left.valueLength > 0)
                 func.calculateValueFromDataPage(ans.left);
@@ -1018,7 +1009,7 @@ public class OverflowValueReader extends ValueReader {
     }
 
     // TODO bug: not consider delete operation, maybe no need to consider.
-    private boolean checkDataChanged(long mint, long maxt, DynamicOneColumnData updateTrueData, int updateTrueIdx,
+    private static boolean checkDataChanged(long mint, long maxt, DynamicOneColumnData updateTrueData, int updateTrueIdx,
                                      DynamicOneColumnData updateFalseData, int updateFalseIdx, InsertDynamicData insertMemoryData,
                                      SingleSeriesFilterExpression timeFilter) throws IOException {
         // Judge whether updateTrue has value for this page.
@@ -1052,7 +1043,7 @@ public class OverflowValueReader extends ValueReader {
     }
 
     // TODO bug: not consider delete operation, maybe no need to consider.
-    private boolean checkDataChangedForAggregation(long mint, long maxt, DigestForFilter pageDigest, DynamicOneColumnData updateTrue, int idx0,
+    private static boolean checkDataChangedForAggregation(long mint, long maxt, DigestForFilter pageDigest, DynamicOneColumnData updateTrue, int idx0,
                                                    DynamicOneColumnData updateFalse, int idx1, InsertDynamicData insertMemoryData,
                                                    SingleSeriesFilterExpression timeFilter, SingleSeriesFilterExpression freqFilter, SingleSeriesFilterExpression valueFilter) throws IOException {
 

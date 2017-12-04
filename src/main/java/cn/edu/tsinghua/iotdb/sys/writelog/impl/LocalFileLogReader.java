@@ -1,6 +1,7 @@
 package cn.edu.tsinghua.iotdb.sys.writelog.impl;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.ArrayList;
@@ -61,25 +62,37 @@ public class LocalFileLogReader implements WriteLogReadable {
             int opeType = (int) opeTypeBytes[0];
 
             if (opeType == SystemLogOperator.OVERFLOWFLUSHEND) {
-                overflowVis = 1;
+                // only when overflow has no end and no start,
+                // overflowVis would be set to 1
+                if (overflowVis == -1) {
+                    overflowVis = 1;
+                }
                 i -= (4 + opeContentLength);
                 continue;
             } else if (opeType == SystemLogOperator.OVERFLOWFLUSHSTART) {
-                if (overflowVis == 1)
+                if (overflowVis == 1) {
                     overflowVis = 2;
-                else
+                } else if (overflowVis != 2) {
+                    // crash occurs when buffer write flush
                     overflowVis = 3;
+                }
                 i -= (4 + opeContentLength);
                 continue;
             } else if (opeType == SystemLogOperator.BUFFERFLUSHEND) {
-                bufferVis = 1;
+                // only when bufferWrite has no end and no start,
+                // bufferVis would be set to 1
+                if (bufferVis == -1) {
+                    bufferVis = 1;
+                }
                 i -= (4 + opeContentLength);
                 continue;
             } else if (opeType == SystemLogOperator.BUFFERFLUSHSTART) {
-                if (bufferVis == 1)
+                if (bufferVis == 1) {
                     bufferVis = 2;
-                else
+                } else if (bufferVis != 2) {
+                    // crash occurs when buffer write flush
                     bufferVis = 3;
+                }
                 i -= (4 + opeContentLength);
                 continue;
             }
@@ -176,25 +189,37 @@ public class LocalFileLogReader implements WriteLogReadable {
             int opeType = (int) opeTypeBytes[0];
 
             if (opeType == SystemLogOperator.OVERFLOWFLUSHEND) {
-                overflowVis = 1;
+                // only when overflow has no end and no start,
+                // overflowVis would be set to 1
+                if (overflowVis == -1) {
+                    overflowVis = 1;
+                }
                 i -= (4 + opeContentLength);
                 continue;
             } else if (opeType == SystemLogOperator.OVERFLOWFLUSHSTART) {
-                if (overflowVis == 1)
+                if (overflowVis == 1) {
                     overflowVis = 2;
-                else
+                } else if (overflowVis != 2) {
+                    // crash occurs when buffer write flush
                     overflowVis = 3;
+                }
                 i -= (4 + opeContentLength);
                 continue;
             } else if (opeType == SystemLogOperator.BUFFERFLUSHEND) {
-                bufferVis = 1;
+                // only when bufferWrite has no end and no start,
+                // bufferVis would be set to 1
+                if (bufferVis == -1) {
+                    bufferVis = 1;
+                }
                 i -= (4 + opeContentLength);
                 continue;
             } else if (opeType == SystemLogOperator.BUFFERFLUSHSTART) {
-                if (bufferVis == 1)
+                if (bufferVis == 1) {
                     bufferVis = 2;
-                else
+                } else if (bufferVis != 2) {
+                    // crash occurs when buffer write flush
                     bufferVis = 3;
+                }
                 i -= (4 + opeContentLength);
                 continue;
             }
@@ -247,5 +272,95 @@ public class LocalFileLogReader implements WriteLogReadable {
             lraf.close();
             lraf = null;
         }
+    }
+
+    public void outputAllValidLog() throws IOException {
+        tailPos = 0;
+        lraf = new RandomAccessFile(fileName, "rw");
+        int i = (int) lraf.length();
+        // -1 : no end, no start
+        // 1 : has end
+        // 2 : has start and end
+        // 3 : only has start
+        int overflowVis = -1;
+        int bufferVis = -1;
+
+        while (i > 0) {
+            lraf.seek(i - 4);
+            byte[] opeContentLengthBytes = new byte[4];
+            lraf.read(opeContentLengthBytes);
+            int opeContentLength = BytesUtils.bytesToInt(opeContentLengthBytes);
+
+            byte[] opeTypeBytes = new byte[1];
+            lraf.seek(i - 4 - opeContentLength);
+            lraf.read(opeTypeBytes);
+            int opeType = (int) opeTypeBytes[0];
+
+            if (opeType == SystemLogOperator.OVERFLOWFLUSHEND) {
+                System.out.println("OVERFLOWFLUSHEND");
+                // only when overflow has no end and no start,
+                // overflowVis would be set to 1
+                if (overflowVis == -1) {
+                    overflowVis = 1;
+                }
+                i -= (4 + opeContentLength);
+                continue;
+            } else if (opeType == SystemLogOperator.OVERFLOWFLUSHSTART) {
+                System.out.println("OVERFLOWFLUSHSTART");
+                if (overflowVis == 1) {
+                    overflowVis = 2;
+                } else if (overflowVis != 2) {
+                    // crash occurs when buffer write flush
+                    overflowVis = 3;
+                }
+                i -= (4 + opeContentLength);
+                continue;
+            } else if (opeType == SystemLogOperator.BUFFERFLUSHEND) {
+                System.out.println("BUFFERFLUSHEND");
+                // only when bufferWrite has no end and no start,
+                // bufferVis would be set to 1
+                if (bufferVis == -1) {
+                    bufferVis = 1;
+                }
+                i -= (4 + opeContentLength);
+                continue;
+            } else if (opeType == SystemLogOperator.BUFFERFLUSHSTART) {
+                System.out.println("BUFFERFLUSHSTART");
+                if (bufferVis == 1) {
+                    bufferVis = 2;
+                } else if (bufferVis != 2) {
+                    // crash occurs when buffer write flush
+                    bufferVis = 3;
+                }
+                i -= (4 + opeContentLength);
+                continue;
+            }
+
+            if (bufferVis == 2 && overflowVis == 2) {
+                break;
+            }
+
+            if (opeType == SystemLogOperator.INSERT) {
+                byte[] insertTypeBytes = new byte[1];
+                lraf.read(insertTypeBytes);
+                int insertType = (int) insertTypeBytes[0];
+                if (insertType == 1  && bufferVis != 2) {  // bufferwrite insert
+                    bufferStartList.add(i - 4 - opeContentLength);
+                    bufferLengthList.add(opeContentLength);
+                    bufferTailCount++;
+                } else if (insertType == 2  && overflowVis != 2) {     // overflow insert
+                    overflowStartList.add(i - 4 - opeContentLength);
+                    overflowLengthList.add(opeContentLength);
+                    overflowTailCount++;
+                }
+            } else if (overflowVis != 2) { // overflow update/delete
+                overflowStartList.add(i - 4 - opeContentLength);
+                overflowLengthList.add(opeContentLength);
+                overflowTailCount++;
+            }
+            i -= (4 + opeContentLength);
+        }
+
+        System.out.println("==" + overflowTailCount + "===" + bufferTailCount + "====" + overflowTailCount);
     }
 }
