@@ -18,6 +18,7 @@ import static cn.edu.tsinghua.iotdb.service.TestUtils.max_value;
 import static cn.edu.tsinghua.iotdb.service.TestUtils.min_value;
 import static cn.edu.tsinghua.iotdb.service.TestUtils.max_time;
 import static cn.edu.tsinghua.iotdb.service.TestUtils.min_time;
+import static org.junit.Assert.fail;
 
 /**
  * This junit test is used for ```Group By``` function test.
@@ -107,14 +108,14 @@ public class GroupBySmallDataTest {
     private String metadataDirPre;
     private String derbyHomePre;
 
-    private Daemon deamon;
+    private IoTDB deamon;
 
-    private boolean testFlag = false;
+    private boolean testFlag = TestUtils.testFlag;
 
     @Before
     public void setUp() throws Exception {
         if (testFlag) {
-            AggregateEngine.batchSize = 4000;
+            AggregateEngine.aggregateFetchSize = 4000;
             TsfileDBConfig config = TsfileDBDescriptor.getInstance().getConfig();
             overflowDataDirPre = config.overflowDataDir;
             fileNodeDirPre = config.fileNodeDir;
@@ -127,7 +128,7 @@ public class GroupBySmallDataTest {
             config.bufferWriteDir = FOLDER_HEADER + "/data/delta";
             config.metadataDir = FOLDER_HEADER + "/data/metadata";
             config.derbyHome = FOLDER_HEADER + "/data/derby";
-            deamon = new Daemon();
+            deamon = new IoTDB();
             deamon.active();
         }
     }
@@ -165,11 +166,22 @@ public class GroupBySmallDataTest {
             // selectAllSQLTest();
             groupByNoFilterOneIntervalTest();
             groupByWithFilterCountOneIntervalTest();
-            groupByWithFilterMaxValueOneIntervalTest();
-            groupByWithFilterMinValueOneIntervalTest();
+            groupByWithFilterMaxMinValueOneIntervalTest();
             groupByWithFilterMaxTimeOneIntervalTest();
             groupByWithFilterMinTimeOneIntervalTest();
+            groupByNoValidIntervalTest();
+            groupByMultiResultWithFilterTest();
             groupByWithFilterCountManyIntervalTest();
+            threadLocalTest();
+            groupByMultiAggregationFunctionTest();
+            groupBySelectMultiDeltaObjectTest();
+
+
+            // no need to test for output too much
+
+            // groupByMultiResultNoFilterTest();
+            // bugSelectClauseTest();
+
             connection.close();
         }
     }
@@ -215,6 +227,7 @@ public class GroupBySmallDataTest {
             statement.close();
         } catch (Exception e) {
             e.printStackTrace();
+            fail(e.getMessage());
         } finally {
             if (connection != null) {
                 connection.close();
@@ -222,7 +235,7 @@ public class GroupBySmallDataTest {
         }
     }
 
-    private void groupByWithFilterMaxValueOneIntervalTest() throws ClassNotFoundException, SQLException {
+    private void groupByWithFilterMaxMinValueOneIntervalTest() throws ClassNotFoundException, SQLException {
 
         Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);
         Connection connection = null;
@@ -263,24 +276,11 @@ public class GroupBySmallDataTest {
             }
 
             statement.close();
-        } catch (Exception e) {
-            e.printStackTrace();
-        } finally {
-            if (connection != null) {
-                connection.close();
-            }
-        }
-    }
 
-    private void groupByWithFilterMinValueOneIntervalTest() throws ClassNotFoundException, SQLException {
-
-        Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);
-        Connection connection = null;
-        try {
-            connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
-            Statement statement = connection.createStatement();
-            boolean hasResultSet = statement.execute("select min_value(s0),min_value(s1),min_value(s2),min_value(s3) " +
+            statement = connection.createStatement();
+            hasResultSet = statement.execute("select min_value(s0),min_value(s1),min_value(s2),min_value(s3) " +
                     "from root.vehicle.d0 where s1 > 190 or s2 < 10.0 group by(10ms, 0, [3,10000])");
+            Assert.assertTrue(hasResultSet);
             if (hasResultSet) {
                 ResultSet resultSet = statement.getResultSet();
                 int cnt = 1;
@@ -310,9 +310,9 @@ public class GroupBySmallDataTest {
                 Assert.assertEquals(1002, cnt);
             }
 
-            statement.close();
         } catch (Exception e) {
             e.printStackTrace();
+            fail(e.getMessage());
         } finally {
             if (connection != null) {
                 connection.close();
@@ -363,6 +363,7 @@ public class GroupBySmallDataTest {
             statement.close();
         } catch (Exception e) {
             e.printStackTrace();
+            fail(e.getMessage());
         } finally {
             if (connection != null) {
                 connection.close();
@@ -411,6 +412,7 @@ public class GroupBySmallDataTest {
             statement.close();
         } catch (Exception e) {
             e.printStackTrace();
+            fail(e.getMessage());
         } finally {
             if (connection != null) {
                 connection.close();
@@ -464,12 +466,245 @@ public class GroupBySmallDataTest {
             statement.close();
         } catch (Exception e) {
             e.printStackTrace();
+            fail(e.getMessage());
         } finally {
             if (connection != null) {
                 connection.close();
             }
         }
     }
+
+    private void groupByMultiAggregationFunctionTest() throws ClassNotFoundException, SQLException {
+
+        Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);
+        Connection connection = null;
+        try {
+            connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
+            Statement statement = connection.createStatement();
+            boolean hasResultSet = statement.execute("select count(s0),min_value(s1),max_value(s2),min_time(s3) " +
+                    "from root.vehicle.d0 where s1 > 190 or s2 < 10.0 group by(10ms, 0, [3,103], [998,1002])");
+            if (hasResultSet) {
+                ResultSet resultSet = statement.getResultSet();
+                int cnt = 1;
+                while (resultSet.next()) {
+                    String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(count(d0s0))
+                            + "," + resultSet.getString(min_value(d0s1)) + "," + resultSet.getString(max_value(d0s2))
+                            + "," + resultSet.getString(min_time(d0s3));
+                    // System.out.println(ans);
+                    switch (cnt) {
+                        case 1:
+                            Assert.assertEquals("3,null,null,4.44,null", ans);
+                            break;
+                        case 6:
+                            Assert.assertEquals("50,null,50000,null,null", ans);
+                            break;
+                        case 11:
+                            Assert.assertEquals("100,null,199,null,101", ans);
+                            break;
+                        case 13:
+                            Assert.assertEquals("1000,1,55555,1000.11,null", ans);
+                            break;
+                        default:
+                            Assert.assertEquals(resultSet.getString(TIMESTAMP_STR) + ",null,null,null,null", ans);
+                    }
+                    cnt++;
+                }
+                Assert.assertEquals(14, cnt);
+            }
+
+            statement.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+            fail(e.getMessage());
+        } finally {
+            if (connection != null) {
+                connection.close();
+            }
+        }
+    }
+
+    private void groupByNoValidIntervalTest() throws ClassNotFoundException, SQLException {
+
+        Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);
+        Connection connection = null;
+        try {
+            connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
+            Statement statement = connection.createStatement();
+            boolean hasResultSet = statement.execute("select count(s0),min_value(s1),max_value(s2),min_time(s3) " +
+                    "from root.vehicle.d0 group by(10ms, 0, [300,103], [998,1002])");
+            if (hasResultSet) {
+                ResultSet resultSet = statement.getResultSet();
+                int cnt = 1;
+                while (resultSet.next()) {
+                    String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(count(d0s0))
+                            + "," + resultSet.getString(min_value(d0s1)) + "," + resultSet.getString(max_value(d0s2))
+                            + "," + resultSet.getString(min_time(d0s3));
+                    // System.out.println(ans);
+                    switch (cnt) {
+                        case 2:
+                            Assert.assertEquals("1000,1,55555,1000.11,null", ans);
+                            break;
+                        default:
+                            Assert.assertEquals(resultSet.getString(TIMESTAMP_STR) + ",null,null,null,null", ans);
+                    }
+                    cnt++;
+                }
+                Assert.assertEquals(3, cnt);
+            }
+
+            statement.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+            fail(e.getMessage());
+        } finally {
+            if (connection != null) {
+                connection.close();
+            }
+        }
+    }
+
+    private void groupByMultiResultNoFilterTest() throws ClassNotFoundException, SQLException {
+
+        Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);
+        Connection connection = null;
+        try {
+            connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
+            Statement statement = connection.createStatement();
+//            boolean hasResultSet = statement.execute("select count(s0),min_value(s1),max_value(s2),min_time(s3) " +
+//                    "from root.vehicle.d0 group by(1ms, 0, [0,10000000])");
+
+            String sql = "select count(s0),min_value(s0),max_value(s0),min_time(s0) from root.vehicle.d0 group by(10ms, 0, [2010-01-01T00:00:00.000,2010-01-08T16:43:15.000])";
+            boolean hasResultSet = statement.execute(sql);
+            if (hasResultSet) {
+                ResultSet resultSet = statement.getResultSet();
+                int cnt = 1;
+                while (resultSet.next()) {
+                    cnt++;
+                }
+                System.out.println("--------" + cnt);
+                //Assert.assertEquals(10000002, cnt);
+            }
+
+            statement.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+            fail(e.getMessage());
+        } finally {
+            if (connection != null) {
+                connection.close();
+            }
+        }
+    }
+
+    private void groupByMultiResultWithFilterTest() throws ClassNotFoundException, SQLException {
+
+        Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);
+        Connection connection = null;
+        try {
+            connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
+            Statement statement = connection.createStatement();
+            boolean hasResultSet = statement.execute("select count(s0),min_value(s1),max_value(s2),min_time(s3) " +
+                    "from root.vehicle.d0 where s0 != 0 group by(1ms, 0, [0,10000000])");
+            if (hasResultSet) {
+                ResultSet resultSet = statement.getResultSet();
+                int cnt = 1;
+                while (resultSet.next()) {
+                    cnt++;
+                }
+                Assert.assertEquals(10000002, cnt);
+            }
+
+            statement.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+            fail(e.getMessage());
+        } finally {
+            if (connection != null) {
+                connection.close();
+            }
+        }
+    }
+
+    private void groupBySelectMultiDeltaObjectTest() throws ClassNotFoundException, SQLException {
+
+        Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);
+        Connection connection = null;
+        try {
+            connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
+            Statement statement = connection.createStatement();
+            boolean hasResultSet = statement.execute("select count(s0),min_value(s1),max_value(s2),min_time(s3) " +
+                    "from root.vehicle.d0,root.vehicle.d1 group by(100ms, 0, [0,1500])");
+            if (hasResultSet) {
+                ResultSet resultSet = statement.getResultSet();
+                int cnt = 1;
+                while (resultSet.next()) {
+                    String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(count(d0s0))
+                            + "," + resultSet.getString(min_value(d0s1)) + "," + resultSet.getString(max_value(d0s2))
+                            + "," + resultSet.getString(min_time(d0s3)) + "," + resultSet.getString(min_time(d0s3));
+                    System.out.println(ans);
+
+                    cnt++;
+                }
+                Assert.assertEquals(17, cnt);
+            }
+
+            statement.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+            fail(e.getMessage());
+        } finally {
+            if (connection != null) {
+                connection.close();
+            }
+        }
+    }
+
+    private void threadLocalTest() throws ClassNotFoundException, SQLException {
+
+        Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);
+        Connection connection = null;
+        try {
+            connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
+            Statement statement = connection.createStatement();
+            boolean hasResultSet = statement.execute("select count(s0),min_value(s1)" +
+                    "from root.vehicle.d0 group by(100ms, 0, [0,1500])");
+            if (hasResultSet) {
+                ResultSet resultSet = statement.getResultSet();
+                int cnt = 1;
+                while (resultSet.next()) {
+                    String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(count(d0s0))
+                            + "," + resultSet.getString(min_value(d0s1));
+                    System.out.println(ans);
+                    cnt++;
+                }
+            }
+            statement.close();
+
+            statement = connection.createStatement();
+            hasResultSet = statement.execute("select count(s0),min_value(s1)" +
+                    "from root.vehicle.d0 group by(10ms, 0, [1600,1700])");
+            if (hasResultSet) {
+                ResultSet resultSet = statement.getResultSet();
+                int cnt = 1;
+                while (resultSet.next()) {
+                    String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(count(d0s0))
+                            + "," + resultSet.getString(min_value(d0s1)) + "," + resultSet.getString(min_value(d0s1));
+                    System.out.println(ans);
+                    cnt++;
+                }
+            }
+            statement.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+            fail(e.getMessage());
+        } finally {
+            if (connection != null) {
+                connection.close();
+            }
+        }
+    }
+
+    // no need to test for output too much
 
     private void groupByWithFilterCountManyIntervalTest() throws ClassNotFoundException, SQLException {
 
@@ -512,6 +747,41 @@ public class GroupBySmallDataTest {
             statement.close();
         } catch (Exception e) {
             e.printStackTrace();
+            fail(e.getMessage());
+        } finally {
+            if (connection != null) {
+                connection.close();
+            }
+        }
+    }
+
+    private void bugSelectClauseTest() throws ClassNotFoundException, SQLException {
+
+        Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);
+        Connection connection = null;
+        try {
+            connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
+            Statement statement = connection.createStatement();
+            boolean hasResultSet = statement.execute("select s0 " +
+                    "from root.vehicle.d0 where (time > 0) or (time < 2000) and (s1 > 0)");
+            if (hasResultSet) {
+                ResultSet resultSet = statement.getResultSet();
+                int cnt = 1;
+                while (resultSet.next()) {
+                    String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(count(d0s0))
+                            + "," + resultSet.getString(min_value(d0s1)) + "," + resultSet.getString(max_value(d0s2))
+                            + "," + resultSet.getString(min_time(d0s3)) + "," + resultSet.getString(min_time(d0s3));
+                    System.out.println(ans);
+
+                    cnt++;
+                }
+                Assert.assertEquals(17, cnt);
+            }
+
+            statement.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+            fail(e.getMessage());
         } finally {
             if (connection != null) {
                 connection.close();

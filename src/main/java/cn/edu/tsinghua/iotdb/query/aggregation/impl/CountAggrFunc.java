@@ -18,6 +18,14 @@ public class CountAggrFunc extends AggregateFunction {
     }
 
     @Override
+    public void putDefaultValue() {
+        if (result.data.timeLength == 0) {
+            result.data.putTime(0);
+            result.data.putLong(0);
+        }
+    }
+
+    @Override
     public void calculateValueFromPageHeader(PageHeader pageHeader) {
         if (result.data.timeLength == 0) {
             result.data.putTime(0);

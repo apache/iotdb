@@ -9,7 +9,7 @@ import java.sql.SQLException;
 public class JDBCClientTest {
 
 	public static void main(String[] args) throws ClassNotFoundException, SQLException {
-		Class.forName("cn.edu.thu.tsfiledb.jdbc.TsfileDriver");
+		Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);
 		Connection connection = null;
 		try {
 			connection =  DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");

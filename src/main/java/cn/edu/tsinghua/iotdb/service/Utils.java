@@ -13,12 +13,17 @@ import cn.edu.tsinghua.iotdb.jdbc.thrift.TSQueryDataSet;
 import cn.edu.tsinghua.tsfile.common.exception.UnSupportedDataTypeException;
 import cn.edu.tsinghua.tsfile.timeseries.read.query.DynamicOneColumnData;
 import cn.edu.tsinghua.tsfile.timeseries.read.query.QueryDataSet;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Utils to convert between thrift format and TsFile format
  *
  */
 public class Utils {
+
+	private static final Logger LOG = LoggerFactory.getLogger(Utils.class);
+
 	public static Map<String, List<TSColumnSchema>> convertAllSchema(Map<String, List<ColumnSchema>> allSchema){
 		if(allSchema == null){
 			return null;
@@ -60,6 +65,9 @@ public class Utils {
 	
 	
 	private static TSDynamicOneColumnData convertDynamicOneColumnData(DynamicOneColumnData dynamicOneColumnData){
+
+		//LOG.info("DynamicOneColumnData convert size : " +  dynamicOneColumnData.timeLength + "," + dynamicOneColumnData.emptyTimeLength);
+
 		List<Long> timeRetList = new ArrayList<Long>();
 		for(int i = 0 ; i < dynamicOneColumnData.timeLength; i ++){
 				timeRetList.add(dynamicOneColumnData.getTime(i));

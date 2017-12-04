@@ -14,6 +14,7 @@ import java.io.File;
 import java.sql.*;
 
 import static cn.edu.tsinghua.iotdb.service.TestUtils.*;
+import static org.junit.Assert.fail;
 
 /**
  * Multiple aggregation with filter test.
@@ -97,14 +98,14 @@ public class MultiAggreWithFilterTest {
     private String metadataDirPre;
     private String derbyHomePre;
 
-    private Daemon deamon;
+    private IoTDB deamon;
 
-    private boolean testFlag = false;
+    private boolean testFlag = TestUtils.testFlag;
 
     @Before
     public void setUp() throws Exception {
         if (testFlag) {
-            AggregateEngine.batchSize = 2;
+            AggregateEngine.aggregateFetchSize = 2;
             TsfileDBConfig config = TsfileDBDescriptor.getInstance().getConfig();
             overflowDataDirPre = config.overflowDataDir;
             fileNodeDirPre = config.fileNodeDir;
@@ -117,7 +118,7 @@ public class MultiAggreWithFilterTest {
             config.bufferWriteDir = FOLDER_HEADER + "/data/delta";
             config.metadataDir = FOLDER_HEADER + "/data/metadata";
             config.derbyHome = FOLDER_HEADER + "/data/derby";
-            deamon = new Daemon();
+            deamon = new IoTDB();
             deamon.active();
         }
     }
@@ -189,6 +190,7 @@ public class MultiAggreWithFilterTest {
             statement.close();
         } catch (Exception e) {
             e.printStackTrace();
+            fail(e.getMessage());
         } finally {
             if (connection != null) {
                 connection.close();
@@ -225,6 +227,7 @@ public class MultiAggreWithFilterTest {
             statement.close();
         } catch (Exception e) {
             e.printStackTrace();
+            fail(e.getMessage());
         } finally {
             if (connection != null) {
                 connection.close();
@@ -261,6 +264,7 @@ public class MultiAggreWithFilterTest {
             statement.close();
         } catch (Exception e) {
             e.printStackTrace();
+            fail(e.getMessage());
         } finally {
             if (connection != null) {
                 connection.close();
@@ -297,6 +301,7 @@ public class MultiAggreWithFilterTest {
             statement.close();
         } catch (Exception e) {
             e.printStackTrace();
+            fail(e.getMessage());
         } finally {
             if (connection != null) {
                 connection.close();
@@ -333,6 +338,7 @@ public class MultiAggreWithFilterTest {
             statement.close();
         } catch (Exception e) {
             e.printStackTrace();
+            fail(e.getMessage());
         } finally {
             if (connection != null) {
                 connection.close();
@@ -366,6 +372,7 @@ public class MultiAggreWithFilterTest {
             statement.close();
         } catch (Exception e) {
             e.printStackTrace();
+            fail(e.getMessage());
         } finally {
             if (connection != null) {
                 connection.close();
@@ -434,6 +441,7 @@ public class MultiAggreWithFilterTest {
             statement.close();
         } catch (Exception e) {
             e.printStackTrace();
+            fail(e.getMessage());
         } finally {
             if (connection != null) {
                 connection.close();
@@ -453,6 +461,7 @@ public class MultiAggreWithFilterTest {
             statement.close();
         } catch (Exception e) {
             e.printStackTrace();
+            fail(e.getMessage());
         } finally {
             if (connection != null) {
                 connection.close();

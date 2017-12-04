@@ -814,7 +814,7 @@ public class InsertDynamicData extends DynamicOneColumnData {
                     break;
                 default:
                     LOG.error("Aggregation Error!");
-                    throw new UnSupportedDataTypeException("UnSupported" + dataType);
+                    throw new UnSupportedDataTypeException(dataType.toString());
             }
         }
 

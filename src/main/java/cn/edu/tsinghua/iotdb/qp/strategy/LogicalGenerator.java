@@ -80,7 +80,6 @@ public class LogicalGenerator {
 	 */
 	private void analyze(ASTNode astNode) throws QueryProcessorException, ArgsErrorException {
 		Token token = astNode.getToken();
-		System.out.println(astNode.dump());
 		if (token == null)
 			throw new QueryProcessorException("given token is null");
 		int tokenIntType = token.getType();
@@ -796,7 +795,7 @@ public class LogicalGenerator {
 		}
 		switch (tsDataType) {
 		case BOOLEAN:
-			if (!encoding.equals(PLAIN)) {
+			if (!encoding.equals(PLAIN) && !encoding.equals(RLE)) {
 				throw new MetadataArgsErrorException(
 						String.format("encoding %s does not support %s", encoding, dataType));
 			}
@@ -825,12 +824,12 @@ public class LogicalGenerator {
 						String.format("encoding %s does not support %s", encoding, dataType));
 			}
 			break;
-		case ENUMS:
-			if ((!encoding.equals(PLAIN) && !encoding.equals(BITMAP))) {
-				throw new MetadataArgsErrorException(
-						String.format("encoding %s does not support %s", encoding, dataType));
-			}
-			break;
+//		case ENUMS:
+//			if ((!encoding.equals(PLAIN) && !encoding.equals(BITMAP))) {
+//				throw new MetadataArgsErrorException(
+//						String.format("encoding %s does not support %s", encoding, dataType));
+//			}
+//			break;
 		case TEXT:
 			if (!encoding.equals(PLAIN)) {
 				throw new MetadataArgsErrorException(

@@ -23,4 +23,5 @@ public class AggregationResult {
 	AggregationResult(TSDataType dataType, boolean hasEmptyTime){
 		data = new DynamicOneColumnData(dataType, true, hasEmptyTime);
 	}
+
 }

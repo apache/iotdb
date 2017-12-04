@@ -49,8 +49,8 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 	private static final String restoreFileName = "fileNodeManager.restore";
 	private final String fileNodeManagerStoreFile;
 
-	private Set<String> overflowNameSpaceSet;
-	private Set<String> backUpOverflowNameSpaceSet;
+	private volatile Set<String> overflowNameSpaceSet;
+	private volatile Set<String> backUpOverflowNameSpaceSet;
 
 	private static class FileNodeManagerHolder {
 		private static final FileNodeManager INSTANCE = new FileNodeManager(TsFileDBConf.maxOpenFolder,

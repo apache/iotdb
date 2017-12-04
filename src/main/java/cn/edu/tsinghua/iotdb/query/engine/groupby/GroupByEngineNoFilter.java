@@ -17,6 +17,8 @@ import cn.edu.tsinghua.tsfile.timeseries.filter.verifier.FilterVerifier;
 import cn.edu.tsinghua.tsfile.timeseries.read.query.DynamicOneColumnData;
 import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
 import cn.edu.tsinghua.tsfile.timeseries.read.query.QueryDataSet;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.*;
@@ -26,6 +28,8 @@ import java.util.*;
  */
 public class GroupByEngineNoFilter {
 
+    private static final Logger LOG = LoggerFactory.getLogger(GroupByEngineNoFilter.class);
+
     /** formNumber is set to -1 default **/
     private int formNumber = -1;
 
@@ -33,50 +37,81 @@ public class GroupByEngineNoFilter {
      * the rightness of iterative readOneColumnWithoutFilter **/
     private int queryFetchSize = 10000;
 
-    /**
-     * TODO in current version, fetchSize is not implemented
-     *
-     * @param aggregations
-     * @param unit
-     * @param origin
-     * @param intervals
-     * @param fetchSize
-     * @return
-     * @throws IOException
-     * @throws ProcessorException
-     * @throws PathErrorException
+    /** all the group by Path ans its AggregateFunction **/
+    private List<Pair<Path, AggregateFunction>> aggregations;
+
+    /** group by origin **/
+    private long origin;
+
+    /** group by unit **/
+    private long unit;
+
+    /** SingleSeriesFilterExpression intervals is transformed to longInterval, all the split time intervals **/
+    private LongInterval longInterval;
+
+    /** represent the usage count of longInterval **/
+    private int intervalIndex;
+
+    /** group by partition fetch size, when result size is reach to partitionSize, the current
+     *  calculation will be terminated
      */
-    public QueryDataSet groupBy(List<Pair<Path, AggregateFunction>> aggregations,
-                                       long unit, long origin, SingleSeriesFilterExpression intervals, int fetchSize)
-            throws IOException, ProcessorException, PathErrorException {
+    private int partitionFetchSize;
 
-        QueryDataSet groupByResult = new QueryDataSet();
+    /** HashMap to record the query result of each aggregation Path **/
+    private Map<String, DynamicOneColumnData> queryPathResult = new HashMap<>();
 
-        // all the split time intervals
-        LongInterval longInterval = (LongInterval) FilterVerifier.create(TSDataType.INT64).getInterval(intervals);
-        if (longInterval.count == 0) {
-            return new QueryDataSet();
-        }
+    /** represent duplicated path index **/
+    private Set<Integer> duplicatedPaths = new HashSet<>();
 
-        long partitionStart = origin; // partition start time
-        long partitionEnd = origin + unit - 1; // partition end time
-        int intervalIndex = 0;
-        long intervalStart = longInterval.flag[0] ? longInterval.v[0] : longInterval.v[0] + 1; // interval start time
-        long intervalEnd = longInterval.flag[1] ? longInterval.v[1] : longInterval.v[1] - 1; // interval end time
+    private QueryDataSet groupByResult = new QueryDataSet();
 
-        // HashMap to record the query result of each aggregation Path
-        Map<String, DynamicOneColumnData> queryPathResult = new HashMap<>();
-        // HashSet to record the duplicated queries
-        Set<Integer> duplicatedPaths = new HashSet<>();
+    private SingleSeriesFilterExpression timeFilter;
+
+    public GroupByEngineNoFilter() {
+    }
+
+    public GroupByEngineNoFilter(List<Pair<Path, AggregateFunction>> aggregations,
+                                  long origin, long unit, SingleSeriesFilterExpression intervals, int partitionFetchSize) {
+
+        this.aggregations = aggregations;
+        this.queryPathResult = new HashMap<>();
         for (int i = 0; i < aggregations.size(); i++) {
             String aggregateKey = aggregationKey(aggregations.get(i).left, aggregations.get(i).right);
             if (!groupByResult.mapRet.containsKey(aggregateKey)) {
-                groupByResult.mapRet.put(aggregateKey, new DynamicOneColumnData(aggregations.get(i).right.dataType, true, true));
+                groupByResult.mapRet.put(aggregateKey,
+                        new DynamicOneColumnData(aggregations.get(i).right.dataType, true, true));
                 queryPathResult.put(aggregateKey, null);
             } else {
                 duplicatedPaths.add(i);
             }
         }
+
+        this.origin = origin;
+        this.unit = unit;
+        this.partitionFetchSize = partitionFetchSize;
+        // TODO set small value to test
+        // this.partitionFetchSize = 2;
+
+        this.longInterval = (LongInterval) FilterVerifier.create(TSDataType.INT64).getInterval(intervals);
+        this.intervalIndex = 0;
+    }
+
+    public QueryDataSet groupBy()
+            throws IOException, ProcessorException, PathErrorException {
+
+        groupByResult.clear();
+        int partitionBatchCount = 0;
+
+        // all the interval has been calculated
+        if (intervalIndex >= longInterval.count) {
+            groupByResult.clear();
+            return groupByResult;
+        }
+
+        long partitionStart = origin; // partition start time
+        long partitionEnd = origin + unit - 1; // partition end time
+        long intervalStart = longInterval.flag[intervalIndex] ? longInterval.v[intervalIndex] : longInterval.v[intervalIndex] + 1; // interval start time
+        long intervalEnd = longInterval.flag[intervalIndex+1] ? longInterval.v[intervalIndex+1] : longInterval.v[intervalIndex+1] - 1; // interval end time
 
         // this process is on the basis of the traverse of partition variable
         // in each [partitionStart, partitionEnd], [intervalStart, intervalEnd] would be considered
@@ -112,7 +147,7 @@ public class GroupByEngineNoFilter {
                     String aggregationKey = aggregationKey(path, aggregateFunction);
                     DynamicOneColumnData data = queryPathResult.get(aggregationKey);
                     if (data == null || (data.curIdx >= data.timeLength && !data.hasReadAll)) {
-                        data = queryOnePath(path, data);
+                        data = readOneColumnWithoutFilter(path, data, null);
                         queryPathResult.put(aggregationKey, data);
                     }
 
@@ -122,7 +157,7 @@ public class GroupByEngineNoFilter {
                             break;
                         }
                         if (data.curIdx >= data.timeLength && data.timeLength != 0) {
-                            data = queryOnePath(path, data);
+                            data = readOneColumnWithoutFilter(path, data, null);
                         }
                         if (data.timeLength == 0 || data.curIdx >= data.timeLength) {
                             break;
@@ -146,6 +181,11 @@ public class GroupByEngineNoFilter {
 
             partitionStart = partitionEnd + 1;
             partitionEnd = partitionStart + unit - 1;
+            partitionBatchCount += 1;
+            if (partitionBatchCount >= partitionFetchSize) {
+                origin = partitionStart;
+                break;
+            }
         }
 
         int cnt = 0;
@@ -156,19 +196,16 @@ public class GroupByEngineNoFilter {
             AggregateFunction aggregateFunction = pair.right;
             groupByResult.mapRet.put(aggregationKey(path, aggregateFunction), aggregateFunction.result.data);
         }
-        return groupByResult;
-    }
 
-    private DynamicOneColumnData queryOnePath(Path path, DynamicOneColumnData data)
-            throws PathErrorException, IOException, ProcessorException {
-        return readOneColumnWithoutFilter(path, data, null);
+        LOG.info("current group by function with no filter is over.");
+        return groupByResult;
     }
 
     private DynamicOneColumnData readOneColumnWithoutFilter(Path path, DynamicOneColumnData res, Integer readLock)
             throws ProcessorException, IOException, PathErrorException {
 
         // this read process is batch read
-        // every time the ```fetchSize``` data size will be return
+        // every time the ```partitionFetchSize``` data size will be return
 
         String deltaObjectID = path.getDeltaObjectToString();
         String measurementID = path.getMeasurementToString();

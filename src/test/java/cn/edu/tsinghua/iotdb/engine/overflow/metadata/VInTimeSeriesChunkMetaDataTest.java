@@ -12,7 +12,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import cn.edu.tsinghua.tsfile.common.utils.TsRandomAccessFileWriter;
-import cn.edu.tsinghua.tsfile.file.metadata.TSDigest;
+import cn.edu.tsinghua.tsfile.file.metadata.TsDigest;
 import cn.edu.tsinghua.tsfile.file.metadata.VInTimeSeriesChunkMetaData;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
 import cn.edu.tsinghua.tsfile.format.DataType;
@@ -40,7 +40,7 @@ public class VInTimeSeriesChunkMetaDataTest {
   @Test
   public void testWriteIntoFile() throws IOException {
     VInTimeSeriesChunkMetaData metaData =
-        TestHelper.createSimpleV2InTSF(TSDataType.TEXT, new TSDigest(), maxString, minString);
+        TestHelper.createSimpleV2InTSF(TSDataType.TEXT, new TsDigest(), maxString, minString);
     
     File file = new File(PATH);
     if (file.exists())
@@ -71,7 +71,7 @@ public class VInTimeSeriesChunkMetaDataTest {
 
       ByteBuffer max = ByteBuffer.wrap(maxString.getBytes("UTF-8"));
       ByteBuffer min = ByteBuffer.wrap(minString.getBytes("UTF-8"));
-      TSDigest digest = new TSDigest();
+      TsDigest digest = new TsDigest();
       metaData.setDigest(digest);
       Utils.isVSeriesChunkMetadataEqual(metaData, metaData.convertToThrift());
       digest.max = max;

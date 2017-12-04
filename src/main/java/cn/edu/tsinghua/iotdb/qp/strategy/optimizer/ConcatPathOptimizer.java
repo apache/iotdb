@@ -67,7 +67,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
             throw new LogicalOptimizeException("given SFWOperator doesn't have suffix paths, cannot concat path");
         }
         if(selectOperator.getAggregations().size() != 0 && selectOperator.getSuffixPaths().size() != selectOperator.getAggregations().size())
-            throw new LogicalOptimizeException("Common queries and aggregated queries are not allow to appear at the same time");
+            throw new LogicalOptimizeException("Common queries and aggregated queries are not allowed to appear at the same time");
 
         List<Path> allPaths = new ArrayList<>();
         List<String> originAggregations = selectOperator.getAggregations();
