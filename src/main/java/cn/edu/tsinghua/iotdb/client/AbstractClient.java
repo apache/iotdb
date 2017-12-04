@@ -244,8 +244,8 @@ public abstract class AbstractClient {
 	protected static void printBlockLine(boolean printTimestamp, int colCount, ResultSet res) throws SQLException {
 		StringBuilder blockLine = new StringBuilder();
 		int tmp = Integer.MIN_VALUE;
-		for (int i = 0; i < colCount - 1; i++) {
-			int len = res.getMetaData().getColumnLabel(i + 1).length();
+		for (int i = 1; i <= colCount; i++) {
+			int len = res.getMetaData().getColumnLabel(i).length();
 			tmp = tmp > len ? tmp : len;
 		}
 		maxValueLength = tmp;
@@ -399,7 +399,7 @@ public abstract class AbstractClient {
 		if(specialCmd.startsWith(IMPORT_CMD)){
 			String[] values = specialCmd.split(" ");
 			if(values.length != 2){
-				System.out.println(String.format("please input file path like /User/myfile"));
+				System.out.println(String.format("Please input like: import /User/myfile. Noted that your file path cannot contain any space character)"));
 				return OPERATION_RESULT.CONTINUE_OPER;
 			}
 			try {
@@ -408,7 +408,7 @@ public abstract class AbstractClient {
 			} catch (SQLException e) {
 				System.out.println(String.format("Failed to import from %s because %s", cmd.split(" ")[1], e.getMessage()));
 			} catch (TException e) {
-				System.out.println("Cannot get current time zone");
+				System.out.println("Cannot connect to server");
 			}
 			return OPERATION_RESULT.CONTINUE_OPER;
 		}
