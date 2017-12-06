@@ -125,21 +125,11 @@ public class RecordReaderFactory {
 
 	}
 
-	//TODO this just close the RecordReader but never remove it from cache?
-	public void closeOneRecordReader(RecordReader recordReader) throws ProcessorException {
-//		try {
-//			recordReader.close();
-//		} catch (IOException e) {
-//			logger.error("Error in closing RecordReader : {}", e.getMessage());
-//			e.printStackTrace();
-//		}
-	}
-
 	public static RecordReaderFactory getInstance() {
 		return instance;
 	}
 
-	// TODO this method is used only in test case and KV-match index
+	// TODO this method is only used in test case and KV-match index
 	public void removeRecordReader(String deltaObjectId, String measurementId) throws IOException, ProcessorException {
 		if (readLockManager.recordReaderCache.containsRecordReader(deltaObjectId, measurementId)) {
 			// close the RecordReader read stream.

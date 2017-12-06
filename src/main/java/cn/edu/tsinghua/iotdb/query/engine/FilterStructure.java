@@ -19,6 +19,7 @@ public class FilterStructure {
             LOGGER.error("Time filter is not single!");
             return;
         }
+
         this.timeFilter = (SingleSeriesFilterExpression) timeFilter;
         this.valueFilter = valueFilter;
         this.frequencyFilter = frequencyFilter;
@@ -37,6 +38,10 @@ public class FilterStructure {
     }
 
     public boolean noFilter() {
-        return timeFilter == null && frequencyFilter == null && valueFilter == null;
+        return frequencyFilter == null && valueFilter == null && timeFilter == null;
+    }
+
+    public boolean onlyHasTimeFilter() {
+        return this.timeFilter != null && this.valueFilter == null && this.frequencyFilter == null;
     }
 }

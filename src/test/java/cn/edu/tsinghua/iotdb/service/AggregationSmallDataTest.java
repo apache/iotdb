@@ -19,7 +19,7 @@ import static org.junit.Assert.fail;
 /**
  * Multiple aggregation with filter test.
  */
-public class MultiAggreWithFilterTest {
+public class AggregationSmallDataTest {
     private final String FOLDER_HEADER = "src/test/resources";
     private static final String TIMESTAMP_STR = "Time";
     private final String d0s0 = "root.vehicle.d0.s0";
@@ -31,12 +31,15 @@ public class MultiAggreWithFilterTest {
     private final String d1s1 = "root.vehicle.d1.s1";
 
     private static String[] sqls = new String[]{
+
             "SET STORAGE GROUP TO root.vehicle",
             "CREATE TIMESERIES root.vehicle.d1.s0 WITH DATATYPE=INT32, ENCODING=RLE",
-            "CREATE TIMESERIES root.vehicle.d0.s2 WITH DATATYPE=FLOAT, ENCODING=RLE",
-            "CREATE TIMESERIES root.vehicle.d0.s3 WITH DATATYPE=TEXT, ENCODING=PLAIN",
+            "CREATE TIMESERIES root.vehicle.d1.s1 WITH DATATYPE=INT64, ENCODING=RLE",
+
             "CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE",
             "CREATE TIMESERIES root.vehicle.d0.s1 WITH DATATYPE=INT64, ENCODING=RLE",
+            "CREATE TIMESERIES root.vehicle.d0.s2 WITH DATATYPE=FLOAT, ENCODING=RLE",
+            "CREATE TIMESERIES root.vehicle.d0.s3 WITH DATATYPE=TEXT, ENCODING=PLAIN",
             "CREATE TIMESERIES root.vehicle.d0.s4 WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
 
 
@@ -152,12 +155,14 @@ public class MultiAggreWithFilterTest {
             insertSQL();
 
             Connection connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
-            // selectAllSQLTest();
             countAggreWithSingleFilterTest();
-//            minTimeAggreWithSingleFilterTest();
-//            maxTimeAggreWithSingleFilterTest();
-//            minValueAggreWithSingleFilterTest();
-//            maxValueAggreWithSingleFilterTest();
+            minTimeAggreWithSingleFilterTest();
+            maxTimeAggreWithSingleFilterTest();
+            minValueAggreWithSingleFilterTest();
+            maxValueAggreWithSingleFilterTest();
+
+            countOnlyTimeFilterTest();
+
             connection.close();
         }
     }
@@ -174,19 +179,18 @@ public class MultiAggreWithFilterTest {
             Statement statement = connection.createStatement();
             boolean hasResultSet = statement.execute("select count(s0),count(s1),count(s2),count(s3),count(s4) from root.vehicle.d0 where s2 >= 3.33");
             // System.out.println(hasResultSet + "...");
-            if (hasResultSet) {
-                ResultSet resultSet = statement.getResultSet();
-                int cnt = 0;
-                while (resultSet.next()) {
-                    String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(count(d0s0))
-                            + "," + resultSet.getString(count(d0s1)) + "," + resultSet.getString(count(d0s2))
-                            + "," + resultSet.getString(count(d0s3)) + "," + resultSet.getString(count(d0s4));
-                    // System.out.println("============ " + ans);
-                    Assert.assertEquals(ans, retArray[cnt]);
-                    cnt++;
-                }
-                Assert.assertEquals(1, cnt);
+            Assert.assertTrue(hasResultSet);
+            ResultSet resultSet = statement.getResultSet();
+            int cnt = 0;
+            while (resultSet.next()) {
+                String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(count(d0s0))
+                        + "," + resultSet.getString(count(d0s1)) + "," + resultSet.getString(count(d0s2))
+                        + "," + resultSet.getString(count(d0s3)) + "," + resultSet.getString(count(d0s4));
+                // System.out.println("============ " + ans);
+                Assert.assertEquals(ans, retArray[cnt]);
+                cnt++;
             }
+            Assert.assertEquals(1, cnt);
             statement.close();
         } catch (Exception e) {
             e.printStackTrace();
@@ -211,17 +215,16 @@ public class MultiAggreWithFilterTest {
             boolean hasResultSet = statement.execute("select min_time(s0),min_time(s1),min_time(s2),min_time(s3),min_time(s4) from root.vehicle.d0 " +
                     "where s1 < 50000 and s1 != 100");
 
-            if (hasResultSet) {
-                ResultSet resultSet = statement.getResultSet();
-                int cnt = 0;
-                while (resultSet.next()) {
-                    String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(min_time(d0s0))
-                            + "," + resultSet.getString(min_time(d0s1)) + "," + resultSet.getString(min_time(d0s2))
-                            + "," + resultSet.getString(min_time(d0s3)) + "," + resultSet.getString(min_time(d0s4));
-                    // System.out.println("============ " + ans);
-                    Assert.assertEquals(ans, retArray[cnt]);
-                    cnt++;
-                }
+            Assert.assertTrue(hasResultSet);
+            ResultSet resultSet = statement.getResultSet();
+            int cnt = 0;
+            while (resultSet.next()) {
+                String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(min_time(d0s0))
+                        + "," + resultSet.getString(min_time(d0s1)) + "," + resultSet.getString(min_time(d0s2))
+                        + "," + resultSet.getString(min_time(d0s3)) + "," + resultSet.getString(min_time(d0s4));
+                // System.out.println("============ " + ans);
+                Assert.assertEquals(ans, retArray[cnt]);
+                cnt++;
                 Assert.assertEquals(1, cnt);
             }
             statement.close();
@@ -248,19 +251,18 @@ public class MultiAggreWithFilterTest {
             boolean hasResultSet = statement.execute("select max_time(s0),max_time(s1),max_time(s2),max_time(s3),max_time(s4) from root.vehicle.d0 " +
                     "where s1 < 50000 and s1 != 100");
 
-            if (hasResultSet) {
-                ResultSet resultSet = statement.getResultSet();
-                int cnt = 0;
-                while (resultSet.next()) {
-                    String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(max_time(d0s0))
-                            + "," + resultSet.getString(max_time(d0s1)) + "," + resultSet.getString(max_time(d0s2))
-                            + "," + resultSet.getString(max_time(d0s3)) + "," + resultSet.getString(max_time(d0s4));
-                    // System.out.println("============ " + ans);
-                    Assert.assertEquals(ans, retArray[cnt]);
-                    cnt++;
-                }
-                Assert.assertEquals(1, cnt);
+            Assert.assertTrue(hasResultSet);
+            ResultSet resultSet = statement.getResultSet();
+            int cnt = 0;
+            while (resultSet.next()) {
+                String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(max_time(d0s0))
+                        + "," + resultSet.getString(max_time(d0s1)) + "," + resultSet.getString(max_time(d0s2))
+                        + "," + resultSet.getString(max_time(d0s3)) + "," + resultSet.getString(max_time(d0s4));
+                // System.out.println("============ " + ans);
+                Assert.assertEquals(ans, retArray[cnt]);
+                cnt++;
             }
+            Assert.assertEquals(1, cnt);
             statement.close();
         } catch (Exception e) {
             e.printStackTrace();
@@ -284,20 +286,20 @@ public class MultiAggreWithFilterTest {
             Statement statement = connection.createStatement();
             boolean hasResultSet = statement.execute("select min_value(s0),min_value(s1),min_value(s2),min_value(s3),min_value(s4) from root.vehicle.d0 " +
                     "where s1 < 50000 and s1 != 100");
+            Assert.assertTrue(hasResultSet);
 
-            if (hasResultSet) {
-                ResultSet resultSet = statement.getResultSet();
-                int cnt = 0;
-                while (resultSet.next()) {
-                    String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(min_value(d0s0))
-                            + "," + resultSet.getString(min_value(d0s1)) + "," + resultSet.getString(min_value(d0s2))
-                            + "," + resultSet.getString(min_value(d0s3)) + "," + resultSet.getString(min_value(d0s4));
-                    // System.out.println("============ " + ans);
-                    Assert.assertEquals(ans, retArray[cnt]);
-                    cnt++;
-                }
-                Assert.assertEquals(1, cnt);
+            ResultSet resultSet = statement.getResultSet();
+            int cnt = 0;
+            while (resultSet.next()) {
+                String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(min_value(d0s0))
+                        + "," + resultSet.getString(min_value(d0s1)) + "," + resultSet.getString(min_value(d0s2))
+                        + "," + resultSet.getString(min_value(d0s3)) + "," + resultSet.getString(min_value(d0s4));
+                // System.out.println("============ " + ans);
+                Assert.assertEquals(ans, retArray[cnt]);
+                cnt++;
             }
+            Assert.assertEquals(1, cnt);
+
             statement.close();
         } catch (Exception e) {
             e.printStackTrace();
@@ -322,19 +324,18 @@ public class MultiAggreWithFilterTest {
             boolean hasResultSet = statement.execute("select max_value(s0),max_value(s1),max_value(s2),max_value(s3),max_value(s4) from root.vehicle.d0 " +
                     "where s1 < 50000 and s1 != 100");
 
-            if (hasResultSet) {
-                ResultSet resultSet = statement.getResultSet();
-                int cnt = 0;
-                while (resultSet.next()) {
-                    String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(max_value(d0s0))
-                            + "," + resultSet.getString(max_value(d0s1)) + "," + resultSet.getString(max_value(d0s2))
-                            + "," + resultSet.getString(max_value(d0s3)) + "," + resultSet.getString(max_value(d0s4));
-                    System.out.println("============ " + ans);
-                    //Assert.assertEquals(ans, retArray[cnt]);
-                    cnt++;
-                }
-                Assert.assertEquals(1, cnt);
+            Assert.assertTrue(hasResultSet);
+            ResultSet resultSet = statement.getResultSet();
+            int cnt = 0;
+            while (resultSet.next()) {
+                String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(max_value(d0s0))
+                        + "," + resultSet.getString(max_value(d0s1)) + "," + resultSet.getString(max_value(d0s2))
+                        + "," + resultSet.getString(max_value(d0s3)) + "," + resultSet.getString(max_value(d0s4));
+                //System.out.println("============ " + ans);
+                //Assert.assertEquals(ans, retArray[cnt]);
+                cnt++;
             }
+            Assert.assertEquals(1, cnt);
             statement.close();
         } catch (Exception e) {
             e.printStackTrace();
@@ -358,17 +359,16 @@ public class MultiAggreWithFilterTest {
             Statement statement = connection.createStatement();
             boolean hasResultSet = statement.execute("select count(s0) from root.vehicle.d0 where s2 >= 3.33");
             // System.out.println(hasResultSet + "...");
-            if (hasResultSet) {
-                ResultSet resultSet = statement.getResultSet();
-                int cnt = 0;
-                while (resultSet.next()) {
-                    String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(count(d0s0));
-                    //System.out.println("============ " + ans);
-                    Assert.assertEquals(ans, retArray[cnt]);
-                    cnt++;
-                }
-                Assert.assertEquals(1, cnt);
+            Assert.assertTrue(hasResultSet);
+            ResultSet resultSet = statement.getResultSet();
+            int cnt = 0;
+            while (resultSet.next()) {
+                String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(count(d0s0));
+                //System.out.println("============ " + ans);
+                Assert.assertEquals(ans, retArray[cnt]);
+                cnt++;
             }
+            Assert.assertEquals(1, cnt);
             statement.close();
         } catch (Exception e) {
             e.printStackTrace();
@@ -414,7 +414,7 @@ public class MultiAggreWithFilterTest {
                 int cnt = 0;
                 while (resultSet.next()) {
                     String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s0) + "," + resultSet.getString(d0s1)
-                            +","+resultSet.getString(d0s2)+","+resultSet.getString(d0s3)+","+resultSet.getString(d1s0);
+                            + "," + resultSet.getString(d0s2) + "," + resultSet.getString(d0s3) + "," + resultSet.getString(d1s0);
                     // System.out.println(ans);
                     Assert.assertEquals(ans, retArray[cnt]);
                     cnt++;
@@ -438,6 +438,41 @@ public class MultiAggreWithFilterTest {
                 }
                 Assert.assertEquals(1, cnt);
             }
+            statement.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+            fail(e.getMessage());
+        } finally {
+            if (connection != null) {
+                connection.close();
+            }
+        }
+    }
+
+    private void countOnlyTimeFilterTest() throws ClassNotFoundException, SQLException {
+        String[] retArray = new String[]{
+                "0,3,7,4,5,1"
+        };
+
+        Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);
+        Connection connection = null;
+        try {
+            connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
+            Statement statement = connection.createStatement();
+            boolean hasResultSet = statement.execute("select count(s0),count(s1),count(s2),count(s3),count(s4) " +
+                    "from root.vehicle.d0 where time >= 3 and time <= 106");
+
+            Assert.assertTrue(hasResultSet);
+            ResultSet resultSet = statement.getResultSet();
+            int cnt = 0;
+            while (resultSet.next()) {
+                String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(count(d0s0))
+                        + "," + resultSet.getString(count(d0s1)) + "," + resultSet.getString(count(d0s2))
+                        + "," + resultSet.getString(count(d0s3)) + "," + resultSet.getString(count(d0s4));
+                Assert.assertEquals(retArray[cnt], ans);
+                cnt++;
+            }
+            Assert.assertEquals(1, cnt);
             statement.close();
         } catch (Exception e) {
             e.printStackTrace();

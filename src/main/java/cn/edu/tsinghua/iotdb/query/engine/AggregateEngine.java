@@ -6,7 +6,6 @@ import java.util.*;
 import cn.edu.tsinghua.iotdb.exception.PathErrorException;
 import cn.edu.tsinghua.iotdb.metadata.MManager;
 import cn.edu.tsinghua.iotdb.query.aggregation.AggregateFunction;
-import cn.edu.tsinghua.iotdb.query.aggregation.AggregationResult;
 import cn.edu.tsinghua.iotdb.query.dataset.InsertDynamicData;
 import cn.edu.tsinghua.iotdb.query.management.RecordReaderFactory;
 import cn.edu.tsinghua.iotdb.query.reader.RecordReader;
@@ -20,6 +19,7 @@ import cn.edu.tsinghua.tsfile.timeseries.read.query.QueryDataSet;
 import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import static cn.edu.tsinghua.iotdb.query.engine.EngineUtils.*;
 
 public class AggregateEngine {
 
@@ -28,37 +28,55 @@ public class AggregateEngine {
     /** aggregation batch calculation size **/
     public static int aggregateFetchSize = 50000;
 
+    /** cross read query fetch size **/
+    public static int crossQueryFetchSize = 50000;
+
     /**
      * <p>Public invoking method of multiple aggregation.
      *
-     * @param aggres           aggregation pairs
+     * @param aggregations           aggregation pairs
      * @param filterStructures list of <code>FilterStructure</code>
-     * @return QueryDataSet result of multi aggregation
      * @throws ProcessorException read or write lock error etc
      * @throws IOException        read TsFile error
      * @throws PathErrorException path resolving error
      */
-    public static QueryDataSet multiAggregate(List<Pair<Path, AggregateFunction>> aggres, List<FilterStructure> filterStructures)
+    public static void multiAggregate(List<Pair<Path, AggregateFunction>> aggregations, List<FilterStructure> filterStructures)
+            throws IOException, PathErrorException, ProcessorException {
+        if (noFilterOrOnlyHasTimeFilter(filterStructures)) {
+            if (filterStructures != null && filterStructures.size() == 1 && filterStructures.get(0).onlyHasTimeFilter()) {
+                multiAggregateWithoutFilter(aggregations, filterStructures.get(0).getTimeFilter());
+            } else {
+                multiAggregateWithoutFilter(aggregations, null);
+            }
+        } else {
+            multiAggregateWithFilter(aggregations, filterStructures);
+        }
+    }
+
+    private static void multiAggregateWithFilter(List<Pair<Path, AggregateFunction>> aggregations, List<FilterStructure> filterStructures)
             throws IOException, PathErrorException, ProcessorException {
 
-        logger.debug("multiple aggregation calculation");
+        // stores the query QueryDataSet of each FilterStructure in filterStructures
+        List<QueryDataSet> fsDataSets = new ArrayList<>();
 
-        if (filterStructures == null || filterStructures.size() == 0 || (filterStructures.size() == 1 && filterStructures.get(0).noFilter())) {
-            return multiAggregateWithoutFilter(aggres);
-        }
+        // stores calculated common timestamps of each FilterStructure answer
+        List<long[]> fsTimeList = new ArrayList<>();
 
-        QueryDataSet ansQueryDataSet = new QueryDataSet();
-        List<AggregateFunction> aggregateFunctionAns = new ArrayList<>();
+        // stores used index of each fsTimeList
+        List<Integer> fsTimeIndexList = new ArrayList<>();
 
-        List<QueryDataSet> fsDataSets = new ArrayList<>(); // stores the query QueryDataSet of each FilterStructure in filterStructures
-        List<long[]> fsTimeList = new ArrayList<>(); // stores calculated common timestamps of each FilterStructure answer
-        List<Integer> fsTimeIndexList = new ArrayList<>(); // stores used index of each timeArray
-        List<Boolean> fsHasUnReadDataList = new ArrayList<>(); // represents whether this FilterStructure answer still has unread data
+        // represents whether this FilterStructure answer still has unread data
+        List<Boolean> fsHasUnReadDataList = new ArrayList<>();
+
+        // represents that whether the 'key' ordinal aggregation still has unread data
+        Map<Integer, Boolean> aggregationHasUnReadDataMap = new HashMap<>();
+
         for (int idx = 0; idx < filterStructures.size(); idx++) {
             FilterStructure filterStructure = filterStructures.get(idx);
             QueryDataSet queryDataSet = new QueryDataSet();
+
             queryDataSet.crossQueryTimeGenerator = new CrossQueryTimeGenerator(filterStructure.getTimeFilter(),
-                    filterStructure.getFrequencyFilter(), filterStructure.getValueFilter(), 10000) {
+                    filterStructure.getFrequencyFilter(), filterStructure.getValueFilter(), crossQueryFetchSize) {
                 @Override
                 public DynamicOneColumnData getDataInNextBatch(DynamicOneColumnData res, int fetchSize,
                                                                SingleSeriesFilterExpression valueFilter, int valueFilterNumber)
@@ -92,9 +110,6 @@ public class AggregateEngine {
                 priorityQueue.add(fsTimeList.get(i)[fsTimeIndexList.get(i)]);
             }
         }
-
-        // represents that whether the 'key' ordinal aggregation still has unread data
-        Map<Integer, Boolean> hasUnReadDataMap = new HashMap<>();
 
         // if there still has any uncompleted read data, hasAnyUnReadDataFlag is true
         boolean hasAnyUnReadDataFlag = true;
@@ -132,37 +147,36 @@ public class AggregateEngine {
                 }
             }
 
-            logger.debug("common timestamps in multiple aggregation process : " + aggregateTimestamps.toString());
+            logger.debug(String.format("common timestamps in multiple aggregation process, timestamps size : %s, timestamps: %s",
+                    String.valueOf(aggregateTimestamps.size()), aggregateTimestamps.toString()));
+
             if (aggregateTimestamps.size() == 0)
                 break;
 
             //TODO optimize it using multi process
 
             hasAnyUnReadDataFlag = false;
-            Set<String> aggrePathSet = new HashSet<>();
-            int aggregationOrdinal = 0;
-            for (Pair<Path, AggregateFunction> pair : aggres) {
+            int aggregationPathOrdinal = 0;
+            for (Pair<Path, AggregateFunction> pair : aggregations) {
                 Path path = pair.left;
                 AggregateFunction aggregateFunction = pair.right;
                 String deltaObjectUID = path.getDeltaObjectToString();
                 String measurementUID = path.getMeasurementToString();
                 TSDataType dataType = MManager.getInstance().getSeriesType(path.getFullPath());
-                String aggregationKey = aggregateFunction.name + "(" + path.getFullPath() + ")";
-                if (aggrePathSet.contains(aggregationKey)) {
-                    continue;
-                } else {
-                    aggrePathSet.add(aggregationKey);
-                    aggregationOrdinal++;
-                }
-                if (hasUnReadDataMap.containsKey(aggregationOrdinal) && !hasUnReadDataMap.get(aggregationOrdinal)) {
+                aggregationPathOrdinal++;
+
+                // current aggregation has no un read data
+                if (aggregationHasUnReadDataMap.containsKey(aggregationPathOrdinal) && !aggregationHasUnReadDataMap.get(aggregationPathOrdinal)) {
                     continue;
                 }
 
-                aggregateFunctionAns.add(aggregateFunction);
+                // the query prefix here must not be confilct with method querySeriesForCross()
                 RecordReader recordReader = RecordReaderFactory.getInstance().getRecordReader(deltaObjectUID, measurementUID,
-                        null, null, null, null, ReadCachePrefix.addQueryPrefix(aggregationOrdinal));
+                        null, null, null, null,
+                        ReadCachePrefix.addQueryPrefix("AggQuery", aggregationPathOrdinal));
 
                 if (recordReader.insertAllData == null) {
+
                     // get overflow params merged with bufferwrite insert data
                     List<Object> params = EngineUtils.getOverflowInfoAndFilterDataInMem(null, null, null, null,
                             recordReader.insertPageInMemory, recordReader.overflowInfo);
@@ -177,54 +191,44 @@ public class AggregateEngine {
 
                     Pair<AggregateFunction, Boolean> aggrPair = recordReader.aggregateUsingTimestamps(deltaObjectUID, measurementUID, aggregateFunction,
                             recordReader.insertAllData.updateTrue, recordReader.insertAllData.updateFalse, recordReader.insertAllData,
-                            newTimeFilter, null, null, aggregateTimestamps, null);
-                    AggregateFunction function = aggrPair.left;
+                            newTimeFilter, null, aggregateTimestamps);
+
                     boolean hasUnReadDataFlag = aggrPair.right;
-                    hasUnReadDataMap.put(aggregationOrdinal, hasUnReadDataFlag);
+                    aggregationHasUnReadDataMap.put(aggregationPathOrdinal, hasUnReadDataFlag);
                     if (hasUnReadDataFlag) {
                         hasAnyUnReadDataFlag = true;
                     }
-//                    if (function.result.data.timeLength == 0) {
-//                        function.putDefaultValue();
-//                    }
-                    ansQueryDataSet.mapRet.put(aggregationKey, function.result.data);
+
                 } else {
-                    /*
-                     * ansQueryDataSet.mapRet.get(aggregationKey) stores the aggregation result,
-                     * not the lastAggreData.
-                     */
                     Pair<AggregateFunction, Boolean> aggrPair = recordReader.aggregateUsingTimestamps(deltaObjectUID, measurementUID, aggregateFunction,
                             recordReader.insertAllData.updateTrue, recordReader.insertAllData.updateFalse, recordReader.insertAllData,
-                            recordReader.insertAllData.timeFilter, null, null, aggregateTimestamps, null);
-                    AggregateFunction function = aggrPair.left;
+                            recordReader.insertAllData.timeFilter, null, aggregateTimestamps);
                     boolean hasUnReadDataFlag = aggrPair.right;
-                    hasUnReadDataMap.put(aggregationOrdinal, hasUnReadDataFlag);
+                    aggregationHasUnReadDataMap.put(aggregationPathOrdinal, hasUnReadDataFlag);
                     if (hasUnReadDataFlag) {
                         hasAnyUnReadDataFlag = true;
                     }
-                    ansQueryDataSet.mapRet.put(aggregationKey, function.result.data);
                 }
             }
 
             // current batch timestamps has been used all
             aggregateTimestamps.clear();
         }
-
-        int cnt = 0;
-        for (Map.Entry<String, DynamicOneColumnData> map :ansQueryDataSet.mapRet.entrySet()) {
-            if (map.getValue().timeLength == 0) {
-                aggregateFunctionAns.get(cnt).putDefaultValue();
-                map.setValue(aggregateFunctionAns.get(cnt).result.data);
-            }
-            cnt++;
-        }
-        return ansQueryDataSet;
     }
 
-    private static QueryDataSet multiAggregateWithoutFilter(List<Pair<Path, AggregateFunction>> aggres)
+    /**
+     * Calculate the aggregation without filter is easy,
+     * we don't need to consider the common aggregation timestamps.
+     *
+     * @param aggres
+     * @return
+     * @throws PathErrorException
+     * @throws ProcessorException
+     * @throws IOException
+     */
+    private static void multiAggregateWithoutFilter(List<Pair<Path, AggregateFunction>> aggres,
+                                                            SingleSeriesFilterExpression timeFilter)
             throws PathErrorException, ProcessorException, IOException {
-
-        QueryDataSet ansQueryDataSet = new QueryDataSet();
 
         int aggreNumber = 0;
         for (Pair<Path, AggregateFunction> pair : aggres) {
@@ -234,17 +238,13 @@ public class AggregateEngine {
             String deltaObjectUID = path.getDeltaObjectToString();
             String measurementUID = path.getMeasurementToString();
             TSDataType dataType = MManager.getInstance().getSeriesType(path.getFullPath());
-            String aggregationKey = aggregateFunction.name + "(" + path.getFullPath() + ")";
-            if (ansQueryDataSet.mapRet.size() > 0 && ansQueryDataSet.mapRet.containsKey(aggregationKey)) {
-                continue;
-            }
 
             RecordReader recordReader = RecordReaderFactory.getInstance().getRecordReader(deltaObjectUID, measurementUID,
-                    null, null, null, null, ReadCachePrefix.addQueryPrefix(aggreNumber));
+                    timeFilter, null, null, null, ReadCachePrefix.addQueryPrefix(aggreNumber));
 
             if (recordReader.insertAllData == null) {
                 // get overflow params merged with bufferwrite insert data
-                List<Object> params = EngineUtils.getOverflowInfoAndFilterDataInMem(null, null, null, null,
+                List<Object> params = EngineUtils.getOverflowInfoAndFilterDataInMem(timeFilter, null, null, null,
                         recordReader.insertPageInMemory, recordReader.overflowInfo);
                 DynamicOneColumnData insertTrue = (DynamicOneColumnData) params.get(0);
                 DynamicOneColumnData updateTrue = (DynamicOneColumnData) params.get(1);
@@ -255,19 +255,16 @@ public class AggregateEngine {
                         insertTrue, updateTrue, updateFalse,
                         newTimeFilter, null, null, dataType);
 
-                AggregationResult aggrRet = recordReader.aggregate(deltaObjectUID, measurementUID, aggregateFunction,
+                recordReader.aggregate(deltaObjectUID, measurementUID, aggregateFunction,
                         updateTrue, updateFalse, recordReader.insertAllData, newTimeFilter, null, null);
-                ansQueryDataSet.mapRet.put(aggregationKey, aggrRet.data);
+
             } else {
-                DynamicOneColumnData aggData = ansQueryDataSet.mapRet.get(aggregationKey);
+                DynamicOneColumnData aggData = aggregateFunction.resultData;
                 if (aggData != null) {
                     aggData.clearData();
                 }
-                ansQueryDataSet.mapRet.put(aggregationKey, aggData);
             }
         }
-
-        return ansQueryDataSet;
     }
 
     /**
@@ -286,8 +283,9 @@ public class AggregateEngine {
 
         String deltaObjectUID = ((SingleSeriesFilterExpression) valueFilter).getFilterSeries().getDeltaObjectUID();
         String measurementUID = ((SingleSeriesFilterExpression) valueFilter).getFilterSeries().getMeasurementUID();
-        //TODO may has dnf conflict
-        String valueFilterPrefix = ReadCachePrefix.addFilterPrefix(valueFilterNumber);
+
+        // query prefix here must not be conflict with query in multiAggregate method
+        String valueFilterPrefix = ReadCachePrefix.addFilterPrefix("AggFilterStructure", valueFilterNumber);
 
         RecordReader recordReader = RecordReaderFactory.getInstance().getRecordReader(deltaObjectUID, measurementUID,
                 null, freqFilter, valueFilter, null, valueFilterPrefix);
@@ -305,14 +303,15 @@ public class AggregateEngine {
             recordReader.insertAllData = new InsertDynamicData(recordReader.bufferWritePageList, recordReader.compressionTypeName,
                     insertTrue, updateTrue, updateFalse,
                     newTimeFilter, valueFilter, null, MManager.getInstance().getSeriesType(deltaObjectUID + "." + measurementUID));
-            res = recordReader.getValueInOneColumnWithOverflow(deltaObjectUID, measurementUID,
+            res = recordReader.queryOneSeries(deltaObjectUID, measurementUID,
                     updateTrue, updateFalse, recordReader.insertAllData, newTimeFilter, valueFilter, res, fetchSize);
             res.putOverflowInfo(insertTrue, updateTrue, updateFalse, newTimeFilter);
         } else {
-            res = recordReader.getValueInOneColumnWithOverflow(deltaObjectUID, measurementUID,
+            res = recordReader.queryOneSeries(deltaObjectUID, measurementUID,
                     res.updateTrue, res.updateFalse, recordReader.insertAllData, res.timeFilter, valueFilter, res, fetchSize);
         }
 
         return res;
     }
+
 }

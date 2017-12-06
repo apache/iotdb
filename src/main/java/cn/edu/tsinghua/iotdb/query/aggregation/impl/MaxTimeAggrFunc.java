@@ -16,18 +16,18 @@ public class MaxTimeAggrFunc extends AggregateFunction {
     private boolean hasSetValue = false;
 
     public MaxTimeAggrFunc() {
-        super(AggregationConstant.MAX_TIME, TSDataType.INT64, true);
+        super(AggregationConstant.MAX_TIME, TSDataType.INT64);
     }
 
     @Override
     public void putDefaultValue() {
-        result.data.putEmptyTime(0);
+        resultData.putEmptyTime(0);
     }
 
     @Override
     public void calculateValueFromPageHeader(PageHeader pageHeader) {
-        if (result.data.timeLength == 0) {
-            result.data.putTime(0);
+        if (resultData.timeLength == 0) {
+            resultData.putTime(0);
         }
 
         long timestamp = pageHeader.data_page_header.max_timestamp;
@@ -36,8 +36,8 @@ public class MaxTimeAggrFunc extends AggregateFunction {
 
     @Override
     public void calculateValueFromDataPage(DynamicOneColumnData dataInThisPage) throws IOException, ProcessorException {
-        if (result.data.timeLength == 0) {
-            result.data.putTime(0);
+        if (resultData.timeLength == 0) {
+            resultData.putTime(0);
         }
 
         if (dataInThisPage.valueLength == 0) {
@@ -54,8 +54,8 @@ public class MaxTimeAggrFunc extends AggregateFunction {
 
     @Override
     public void calculateValueFromLeftMemoryData(InsertDynamicData insertMemoryData) throws IOException, ProcessorException {
-        if (result.data.timeLength == 0) {
-            result.data.putTime(0);
+        if (resultData.timeLength == 0) {
+            resultData.putTime(0);
         }
 
         Object max_time = insertMemoryData.calcAggregation(AggregationConstant.MAX_TIME);
@@ -68,8 +68,8 @@ public class MaxTimeAggrFunc extends AggregateFunction {
     @Override
     public boolean calcAggregationUsingTimestamps(InsertDynamicData insertMemoryData, List<Long> timestamps, int timeIndex)
             throws IOException, ProcessorException {
-        if (result.data.timeLength == 0) {
-            result.data.putTime(0);
+        if (resultData.timeLength == 0) {
+            resultData.putTime(0);
         }
 
         while (timeIndex < timestamps.size()) {
@@ -94,17 +94,17 @@ public class MaxTimeAggrFunc extends AggregateFunction {
     @Override
     public void calcGroupByAggregation(long partitionStart, long partitionEnd, long intervalStart, long intervalEnd,
                                        DynamicOneColumnData data) {
-        if (result.data.emptyTimeLength == 0) {
-            if (result.data.timeLength == 0) {
-                result.data.putEmptyTime(partitionStart);
-            } else if (result.data.getTime(result.data.timeLength - 1) != partitionStart) {
-                result.data.putEmptyTime(partitionStart);
+        if (resultData.emptyTimeLength == 0) {
+            if (resultData.timeLength == 0) {
+                resultData.putEmptyTime(partitionStart);
+            } else if (resultData.getTime(resultData.timeLength - 1) != partitionStart) {
+                resultData.putEmptyTime(partitionStart);
             }
         } else {
-            if ((result.data.getEmptyTime(result.data.emptyTimeLength - 1) != partitionStart)
-                    && (result.data.timeLength == 0 ||
-                    (result.data.timeLength > 0 && result.data.getTime(result.data.timeLength - 1) != partitionStart)))
-                result.data.putEmptyTime(partitionStart);
+            if ((resultData.getEmptyTime(resultData.emptyTimeLength - 1) != partitionStart)
+                    && (resultData.timeLength == 0 ||
+                    (resultData.timeLength > 0 && resultData.getTime(resultData.timeLength - 1) != partitionStart)))
+                resultData.putEmptyTime(partitionStart);
         }
 
         long maxTime = -1;
@@ -123,13 +123,13 @@ public class MaxTimeAggrFunc extends AggregateFunction {
         }
 
         if (maxTime != -1) {
-            if (result.data.emptyTimeLength > 0 && result.data.getEmptyTime(result.data.emptyTimeLength - 1) == partitionStart) {
-                result.data.removeLastEmptyTime();
-                result.data.putTime(partitionStart);
-                result.data.putLong(maxTime);
+            if (resultData.emptyTimeLength > 0 && resultData.getEmptyTime(resultData.emptyTimeLength - 1) == partitionStart) {
+                resultData.removeLastEmptyTime();
+                resultData.putTime(partitionStart);
+                resultData.putLong(maxTime);
             } else {
-                if (maxTime > result.data.getLong(result.data.valueLength - 1)) {
-                    result.data.setLong(result.data.valueLength - 1, maxTime);
+                if (maxTime > resultData.getLong(resultData.valueLength - 1)) {
+                    resultData.setLong(resultData.valueLength - 1, maxTime);
                 }
             }
         }
@@ -137,12 +137,12 @@ public class MaxTimeAggrFunc extends AggregateFunction {
 
     private void updateMaxTime(long timestamp) {
         if (!hasSetValue) {
-            result.data.putLong(timestamp);
+            resultData.putLong(timestamp);
             hasSetValue = true;
         } else {
-            long maxt = result.data.getLong(0);
+            long maxt = resultData.getLong(0);
             maxt = maxt > timestamp ? maxt : timestamp;
-            result.data.setLong(0, maxt);
+            resultData.setLong(0, maxt);
         }
     }
 }

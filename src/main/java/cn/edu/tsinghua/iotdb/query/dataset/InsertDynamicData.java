@@ -30,6 +30,8 @@ import cn.edu.tsinghua.tsfile.timeseries.read.query.DynamicOneColumnData;
 /**
  * A new DynamicOneColumnData which replaces insertTrue and contains unsealed PageList.
  *
+ * // TODO the structure between page and overflow is not clear
+ *
  * @author CGF
  */
 public class InsertDynamicData extends DynamicOneColumnData {
@@ -40,7 +42,7 @@ public class InsertDynamicData extends DynamicOneColumnData {
     private CompressionTypeName compressionTypeName;
     private TSDataType dataType;
     private Decoder timeDecoder = new DeltaBinaryDecoder.LongDeltaDecoder(), valueDecoder, freDecoder;
-    private long currentSatisfiedTime = -1; // timestamp for page list
+    private long currentSatisfiedPageTime = -1; // timestamp for page list
     public SingleSeriesFilterExpression timeFilter, valueFilter, frequencyFilter;
 
     private int curSatisfiedIntValue;
@@ -93,16 +95,26 @@ public class InsertDynamicData extends DynamicOneColumnData {
     }
 
     public long getCurrentMinTime() {
-        return currentSatisfiedTime;
+        if (currentSatisfiedPageTime == -1) {
+            return insertTrue.getTime(insertTrue.insertTrueIndex);
+        }
+
+        if (insertTrue.insertTrueIndex < insertTrue.valueLength && insertTrue.getTime(insertTrue.insertTrueIndex) <= currentSatisfiedPageTime) {
+            return insertTrue.getTime(insertTrue.insertTrueIndex);
+        }
+
+        return currentSatisfiedPageTime;
     }
 
     public int getCurrentIntValue() {
-        // will not exist: currentSatisfiedTime = -1 (page list has been read all), but insertTrue still has unread timestamp
-        if (currentSatisfiedTime == -1) {
-            LOG.error("UnReachable!");    
+
+        // will not exist: currentSatisfiedPageTime = -1 (page list has been read all), but insertTrue still has unread timestamp
+        // insert time is ok
+        if (currentSatisfiedPageTime == -1) {
+            return insertTrue.getInt(insertTrue.insertTrueIndex);
         }
-        
-        if (insertTrue.insertTrueIndex < insertTrue.valueLength && insertTrue.getTime(insertTrue.insertTrueIndex) <= currentSatisfiedTime) {
+
+        if (insertTrue.insertTrueIndex < insertTrue.valueLength && insertTrue.getTime(insertTrue.insertTrueIndex) <= currentSatisfiedPageTime) {
             return insertTrue.getInt(insertTrue.insertTrueIndex);
         } else {
             return curSatisfiedIntValue;
@@ -110,7 +122,11 @@ public class InsertDynamicData extends DynamicOneColumnData {
     }
     
     public boolean getCurrentBooleanValue() {
-        if (insertTrue.insertTrueIndex < insertTrue.valueLength && insertTrue.getTime(insertTrue.insertTrueIndex) <= currentSatisfiedTime) {
+        if (currentSatisfiedPageTime == -1) {
+            return insertTrue.getBoolean(insertTrue.insertTrueIndex);
+        }
+
+        if (insertTrue.insertTrueIndex < insertTrue.valueLength && insertTrue.getTime(insertTrue.insertTrueIndex) <= currentSatisfiedPageTime) {
             return insertTrue.getBoolean(insertTrue.insertTrueIndex);
         } else {
             return curSatisfiedBooleanValue;
@@ -118,7 +134,11 @@ public class InsertDynamicData extends DynamicOneColumnData {
     }
 
     public long getCurrentLongValue() {
-        if (insertTrue.insertTrueIndex < insertTrue.valueLength && insertTrue.getTime(insertTrue.insertTrueIndex) <= currentSatisfiedTime) {
+        if (currentSatisfiedPageTime == -1) {
+            return insertTrue.getLong(insertTrue.insertTrueIndex);
+        }
+
+        if (insertTrue.insertTrueIndex < insertTrue.valueLength && insertTrue.getTime(insertTrue.insertTrueIndex) <= currentSatisfiedPageTime) {
             return insertTrue.getLong(insertTrue.insertTrueIndex);
         } else {
             return curSatisfiedLongValue;
@@ -126,7 +146,11 @@ public class InsertDynamicData extends DynamicOneColumnData {
     }
 
     public float getCurrentFloatValue() {
-        if (insertTrue.insertTrueIndex < insertTrue.valueLength && insertTrue.getTime(insertTrue.insertTrueIndex) <= currentSatisfiedTime) {
+        if (currentSatisfiedPageTime == -1) {
+            return insertTrue.getFloat(insertTrue.insertTrueIndex);
+        }
+
+        if (insertTrue.insertTrueIndex < insertTrue.valueLength && insertTrue.getTime(insertTrue.insertTrueIndex) <= currentSatisfiedPageTime) {
             return insertTrue.getFloat(insertTrue.insertTrueIndex);
         } else {
             return curSatisfiedFloatValue;
@@ -134,7 +158,11 @@ public class InsertDynamicData extends DynamicOneColumnData {
     }
 
     public double getCurrentDoubleValue() {
-        if (insertTrue.insertTrueIndex < insertTrue.valueLength && insertTrue.getTime(insertTrue.insertTrueIndex) <= currentSatisfiedTime) {
+        if (currentSatisfiedPageTime == -1) {
+            return insertTrue.getDouble(insertTrue.insertTrueIndex);
+        }
+
+        if (insertTrue.insertTrueIndex < insertTrue.valueLength && insertTrue.getTime(insertTrue.insertTrueIndex) <= currentSatisfiedPageTime) {
             return insertTrue.getDouble(insertTrue.insertTrueIndex);
         } else {
             return curSatisfiedDoubleValue;
@@ -142,7 +170,11 @@ public class InsertDynamicData extends DynamicOneColumnData {
     }
 
     public Binary getCurrentBinaryValue() {
-        if (insertTrue.insertTrueIndex < insertTrue.valueLength && insertTrue.getTime(insertTrue.insertTrueIndex) <= currentSatisfiedTime) {
+        if (currentSatisfiedPageTime == -1) {
+            return insertTrue.getBinary(insertTrue.insertTrueIndex);
+        }
+
+        if (insertTrue.insertTrueIndex < insertTrue.valueLength && insertTrue.getTime(insertTrue.insertTrueIndex) <= currentSatisfiedPageTime) {
             return insertTrue.getBinary(insertTrue.insertTrueIndex);
         } else {
             return curSatisfiedBinaryValue;
@@ -173,8 +205,12 @@ public class InsertDynamicData extends DynamicOneColumnData {
      * Must exist current time and value.
      */
     public void removeCurrentValue() throws IOException {
-        if (insertTrue.insertTrueIndex < insertTrue.valueLength && insertTrue.getTime(insertTrue.insertTrueIndex) <= currentSatisfiedTime) {
-            if (insertTrue.getTime(insertTrue.insertTrueIndex) < currentSatisfiedTime) {
+        if (currentSatisfiedPageTime == -1) {
+            insertTrue.insertTrueIndex++;
+        }
+
+        if (insertTrue.insertTrueIndex < insertTrue.valueLength && insertTrue.getTime(insertTrue.insertTrueIndex) <= currentSatisfiedPageTime) {
+            if (insertTrue.getTime(insertTrue.insertTrueIndex) < currentSatisfiedPageTime) {
                 insertTrue.insertTrueIndex++;
                 return;
             } else {
@@ -183,7 +219,7 @@ public class InsertDynamicData extends DynamicOneColumnData {
         }
 
         // remove page time
-        currentSatisfiedTime = -1;
+        currentSatisfiedPageTime = -1;
         curTimeIndex++;
         if (timeValues != null && curTimeIndex >= timeValues.length) {
             pageIndex++;
@@ -197,7 +233,7 @@ public class InsertDynamicData extends DynamicOneColumnData {
      * Only when the current page data has been read completely, this method could be invoked.
      */
     private boolean findNext() throws IOException {
-        if (currentSatisfiedTime != -1)
+        if (currentSatisfiedPageTime != -1)
             return true;
 
         boolean pageFindFlag = false;
@@ -260,7 +296,8 @@ public class InsertDynamicData extends DynamicOneColumnData {
                 this.valueDecoder = Decoder.getDecoderByType(pageHeader.getData_page_header().getEncoding(), dataType);
             }
 
-            if (pageReader != null) {
+            if (pageReader != null && currentSatisfiedPageTime == -1) {
+
                 int unValidTimeCount = 0;
 
                 //TODO consider time filter
@@ -272,7 +309,7 @@ public class InsertDynamicData extends DynamicOneColumnData {
                 // all of remain time data are not satisfied with the time filter.
                 if (curTimeIndex == timeValues.length) {
                     pageReader = null; // pageReader reset
-                    currentSatisfiedTime = -1;
+                    currentSatisfiedPageTime = -1;
                     pageIndex++;
                     continue;
                 }
@@ -297,30 +334,30 @@ public class InsertDynamicData extends DynamicOneColumnData {
 
                                 // updateTrue.valueLength*2 - 1
                                 if (updateTrue != null && updateTrue.curIdx < updateTrue.valueLength && updateTrue.getTime(updateTrue.curIdx*2) <= timeValues[curTimeIndex]) {
-                                    currentSatisfiedTime = timeValues[curTimeIndex];
+                                    currentSatisfiedPageTime = timeValues[curTimeIndex];
                                     curSatisfiedIntValue = updateTrue.getInt(updateTrue.curIdx);
                                     pageFindFlag = true;
                                     break;
                                 } else if (updateFalse != null && updateFalse.curIdx < updateFalse.valueLength && updateFalse.getTime(updateFalse.curIdx*2) <= timeValues[curTimeIndex]) {
-                                    currentSatisfiedTime = -1;
+                                    currentSatisfiedPageTime = -1;
                                     curTimeIndex++;
                                 } else {
                                     if (valueFilter == null || singleValueVisitor.satisfyObject(curSatisfiedIntValue, valueFilter)) {
-                                        currentSatisfiedTime = timeValues[curTimeIndex];
+                                        currentSatisfiedPageTime = timeValues[curTimeIndex];
                                         pageFindFlag = true;
                                         break;
                                     } else {
-                                        currentSatisfiedTime = -1;
+                                        currentSatisfiedPageTime = -1;
                                         curTimeIndex++;
                                     }
                                 }
                             } else {
-                                currentSatisfiedTime = -1;
+                                currentSatisfiedPageTime = -1;
                                 curTimeIndex++;
                             }
 
                             // for removeCurrentValue function pageIndex++
-                            if (currentSatisfiedTime == -1 && !valueDecoder.hasNext(page)) {
+                            if (currentSatisfiedPageTime == -1 && !valueDecoder.hasNext(page)) {
                                 pageReaderReset();
                                 break;
                             }
@@ -344,30 +381,30 @@ public class InsertDynamicData extends DynamicOneColumnData {
 
                                 // updateTrue.valueLength*2 - 1
                                 if (updateTrue != null && updateTrue.curIdx < updateTrue.valueLength && updateTrue.getTime(updateTrue.curIdx*2) <= timeValues[curTimeIndex]) {
-                                    currentSatisfiedTime = timeValues[curTimeIndex];
+                                    currentSatisfiedPageTime = timeValues[curTimeIndex];
                                     curSatisfiedLongValue = updateTrue.getLong(updateTrue.curIdx);
                                     pageFindFlag = true;
                                     break;
                                 } else if (updateFalse != null && updateFalse.curIdx < updateFalse.valueLength && updateFalse.getTime(updateFalse.curIdx*2) <= timeValues[curTimeIndex]) {
-                                    currentSatisfiedTime = -1;
+                                    currentSatisfiedPageTime = -1;
                                     curTimeIndex++;
                                 } else {
                                     if (valueFilter == null || singleValueVisitor.satisfyObject(curSatisfiedLongValue, valueFilter)) {
-                                        currentSatisfiedTime = timeValues[curTimeIndex];
+                                        currentSatisfiedPageTime = timeValues[curTimeIndex];
                                         pageFindFlag = true;
                                         break;
                                     } else {
-                                        currentSatisfiedTime = -1;
+                                        currentSatisfiedPageTime = -1;
                                         curTimeIndex++;
                                     }
                                 }
                             } else {
-                                currentSatisfiedTime = -1;
+                                currentSatisfiedPageTime = -1;
                                 curTimeIndex++;
                             }
 
                             // for removeCurrentValue function pageIndex++
-                            if (currentSatisfiedTime == -1 && !valueDecoder.hasNext(page)) {
+                            if (currentSatisfiedPageTime == -1 && !valueDecoder.hasNext(page)) {
                                 pageReaderReset();
                                 break;
                             }
@@ -391,30 +428,30 @@ public class InsertDynamicData extends DynamicOneColumnData {
 
                                 // updateTrue.valueLength*2 - 1
                                 if (updateTrue != null && updateTrue.curIdx < updateTrue.valueLength && updateTrue.getTime(updateTrue.curIdx*2) <= timeValues[curTimeIndex]) {
-                                    currentSatisfiedTime = timeValues[curTimeIndex];
+                                    currentSatisfiedPageTime = timeValues[curTimeIndex];
                                     curSatisfiedFloatValue = updateTrue.getFloat(updateTrue.curIdx);
                                     pageFindFlag = true;
                                     break;
                                 } else if (updateFalse != null && updateFalse.curIdx < updateFalse.valueLength && updateFalse.getTime(updateFalse.curIdx*2) <= timeValues[curTimeIndex]) {
-                                    currentSatisfiedTime = -1;
+                                    currentSatisfiedPageTime = -1;
                                     curTimeIndex++;
                                 } else {
                                     if (valueFilter == null || singleValueVisitor.satisfyObject(curSatisfiedFloatValue, valueFilter)) {
-                                        currentSatisfiedTime = timeValues[curTimeIndex];
+                                        currentSatisfiedPageTime = timeValues[curTimeIndex];
                                         pageFindFlag = true;
                                         break;
                                     } else {
-                                        currentSatisfiedTime = -1;
+                                        currentSatisfiedPageTime = -1;
                                         curTimeIndex++;
                                     }
                                 }
                             } else {
-                                currentSatisfiedTime = -1;
+                                currentSatisfiedPageTime = -1;
                                 curTimeIndex++;
                             }
 
                             // for removeCurrentValue function pageIndex++
-                            if (currentSatisfiedTime == -1 && !valueDecoder.hasNext(page)) {
+                            if (currentSatisfiedPageTime == -1 && !valueDecoder.hasNext(page)) {
                                 pageReaderReset();
                                 break;
                             }
@@ -438,30 +475,30 @@ public class InsertDynamicData extends DynamicOneColumnData {
 
                                 // updateTrue.valueLength*2 - 1
                                 if (updateTrue != null && updateTrue.curIdx < updateTrue.valueLength && updateTrue.getTime(updateTrue.curIdx*2) <= timeValues[curTimeIndex]) {
-                                    currentSatisfiedTime = timeValues[curTimeIndex];
+                                    currentSatisfiedPageTime = timeValues[curTimeIndex];
                                     curSatisfiedDoubleValue = updateTrue.getDouble(updateTrue.curIdx);
                                     pageFindFlag = true;
                                     break;
                                 } else if (updateFalse != null && updateFalse.curIdx < updateFalse.valueLength && updateFalse.getTime(updateFalse.curIdx*2) <= timeValues[curTimeIndex]) {
-                                    currentSatisfiedTime = -1;
+                                    currentSatisfiedPageTime = -1;
                                     curTimeIndex++;
                                 } else {
                                     if (valueFilter == null || singleValueVisitor.satisfyObject(curSatisfiedDoubleValue, valueFilter)) {
-                                        currentSatisfiedTime = timeValues[curTimeIndex];
+                                        currentSatisfiedPageTime = timeValues[curTimeIndex];
                                         pageFindFlag = true;
                                         break;
                                     } else {
-                                        currentSatisfiedTime = -1;
+                                        currentSatisfiedPageTime = -1;
                                         curTimeIndex++;
                                     }
                                 }
                             } else {
-                                currentSatisfiedTime = -1;
+                                currentSatisfiedPageTime = -1;
                                 curTimeIndex++;
                             }
 
                             // for removeCurrentValue function pageIndex++
-                            if (currentSatisfiedTime == -1 && !valueDecoder.hasNext(page)) {
+                            if (currentSatisfiedPageTime == -1 && !valueDecoder.hasNext(page)) {
                                 pageReaderReset();
                                 break;
                             }
@@ -485,30 +522,30 @@ public class InsertDynamicData extends DynamicOneColumnData {
 
                                 // updateTrue.valueLength*2 - 1
                                 if (updateTrue != null && updateTrue.curIdx < updateTrue.valueLength && updateTrue.getTime(updateTrue.curIdx*2) <= timeValues[curTimeIndex]) {
-                                    currentSatisfiedTime = timeValues[curTimeIndex];
+                                    currentSatisfiedPageTime = timeValues[curTimeIndex];
                                     curSatisfiedBooleanValue = updateTrue.getBoolean(updateTrue.curIdx);
                                     pageFindFlag = true;
                                     break;
                                 } else if (updateFalse != null && updateFalse.curIdx < updateFalse.valueLength && updateFalse.getTime(updateFalse.curIdx*2) <= timeValues[curTimeIndex]) {
-                                    currentSatisfiedTime = -1;
+                                    currentSatisfiedPageTime = -1;
                                     curTimeIndex++;
                                 } else {
                                     if (valueFilter == null || singleValueVisitor.satisfyObject(curSatisfiedBooleanValue, valueFilter)) {
-                                        currentSatisfiedTime = timeValues[curTimeIndex];
+                                        currentSatisfiedPageTime = timeValues[curTimeIndex];
                                         pageFindFlag = true;
                                         break;
                                     } else {
-                                        currentSatisfiedTime = -1;
+                                        currentSatisfiedPageTime = -1;
                                         curTimeIndex++;
                                     }
                                 }
                             } else {
-                                currentSatisfiedTime = -1;
+                                currentSatisfiedPageTime = -1;
                                 curTimeIndex++;
                             }
 
                             // for removeCurrentValue function pageIndex++
-                            if (currentSatisfiedTime == -1 && !valueDecoder.hasNext(page)) {
+                            if (currentSatisfiedPageTime == -1 && !valueDecoder.hasNext(page)) {
                                 pageReaderReset();
                                 break;
                             }
@@ -532,30 +569,30 @@ public class InsertDynamicData extends DynamicOneColumnData {
 
                                 // updateTrue.valueLength*2 - 1
                                 if (updateTrue != null && updateTrue.curIdx < updateTrue.valueLength && updateTrue.getTime(updateTrue.curIdx*2) <= timeValues[curTimeIndex]) {
-                                    currentSatisfiedTime = timeValues[curTimeIndex];
+                                    currentSatisfiedPageTime = timeValues[curTimeIndex];
                                     curSatisfiedBinaryValue = updateTrue.getBinary(updateTrue.curIdx);
                                     pageFindFlag = true;
                                     break;
                                 } else if (updateFalse != null && updateFalse.curIdx < updateFalse.valueLength && updateFalse.getTime(updateFalse.curIdx*2) <= timeValues[curTimeIndex]) {
-                                    currentSatisfiedTime = -1;
+                                    currentSatisfiedPageTime = -1;
                                     curTimeIndex++;
                                 } else {
                                     if (valueFilter == null || singleValueVisitor.satisfyObject(curSatisfiedBinaryValue, valueFilter)) {
-                                        currentSatisfiedTime = timeValues[curTimeIndex];
+                                        currentSatisfiedPageTime = timeValues[curTimeIndex];
                                         pageFindFlag = true;
                                         break;
                                     } else {
-                                        currentSatisfiedTime = -1;
+                                        currentSatisfiedPageTime = -1;
                                         curTimeIndex++;
                                     }
                                 }
                             } else {
-                                currentSatisfiedTime = -1;
+                                currentSatisfiedPageTime = -1;
                                 curTimeIndex++;
                             }
 
                             // for removeCurrentValue function pageIndex++
-                            if (currentSatisfiedTime == -1 && !valueDecoder.hasNext(page)) {
+                            if (currentSatisfiedPageTime == -1 && !valueDecoder.hasNext(page)) {
                                 pageReaderReset();
                                 break;
                             }
@@ -575,26 +612,31 @@ public class InsertDynamicData extends DynamicOneColumnData {
                 updateFalse.curIdx += 1;
 
             if (updateTrue != null && updateTrue.curIdx < updateTrue.valueLength && updateTrue.getTime(updateTrue.curIdx*2) <= insertTrue.getTime(insertTrue.insertTrueIndex)) {
-                currentSatisfiedTime = insertTrue.getTime(insertTrue.insertTrueIndex);
+                // currentSatisfiedPageTime = insertTrue.getTime(insertTrue.insertTrueIndex);
                 updateNewValue();
                 return true;
-            } else if (updateFalse != null && updateFalse.curIdx < updateFalse.valueLength && updateFalse.getTime(updateFalse.curIdx*2) <= insertTrue.getTime(insertTrue.insertTrueIndex)) {
+            }
+
+            if (updateFalse != null && updateFalse.curIdx < updateFalse.valueLength && updateFalse.getTime(updateFalse.curIdx*2) <= insertTrue.getTime(insertTrue.insertTrueIndex)) {
                 insertTrue.insertTrueIndex ++;
+            }
+
+            if (valueFilter == null || insertValueSatisfied()) {
+
+                // no page time, or overflow insert time is smaller than page time
+//                if (currentSatisfiedPageTime == -1 || insertTrue.getTime(insertTrue.insertTrueIndex) < currentSatisfiedPageTime)
+//                    currentSatisfiedPageTime = insertTrue.getTime(insertTrue.insertTrueIndex);
+
+                return true;
             } else {
-                if (valueFilter == null || valueSatisfied()) {
-                    if (currentSatisfiedTime == -1)
-                        currentSatisfiedTime = insertTrue.getTime(insertTrue.insertTrueIndex);
-                    return true;
-                } else {
-                    insertTrue.insertTrueIndex ++;
-                }
+                insertTrue.insertTrueIndex++;
             }
         }
 
         return pageFindFlag;
     }
 
-    private boolean valueSatisfied() {
+    private boolean insertValueSatisfied() {
         switch (dataType) {
             case INT32:
                 return singleValueVisitor.satisfyObject(insertTrue.getInt(insertTrue.insertTrueIndex), valueFilter);
@@ -606,6 +648,8 @@ public class InsertDynamicData extends DynamicOneColumnData {
                 return singleValueVisitor.satisfyObject(insertTrue.getDouble(insertTrue.insertTrueIndex), valueFilter);
             case TEXT:
                 return singleValueVisitor.satisfyObject(insertTrue.getBinary(insertTrue.insertTrueIndex), valueFilter);
+            case BOOLEAN:
+                return singleValueVisitor.satisfyObject(insertTrue.getBoolean(insertTrue.insertTrueIndex), valueFilter);
             default:
                 throw new UnSupportedDataTypeException("UnSupport Aggregation DataType:" + dataType);
         }
@@ -614,11 +658,11 @@ public class InsertDynamicData extends DynamicOneColumnData {
     public void pageReaderReset() {
         pageIndex++;
         pageReader = null;
-        currentSatisfiedTime = -1;
+        currentSatisfiedPageTime = -1;
     }
 
     private void curTimeReset() {
-        currentSatisfiedTime = -1;
+        currentSatisfiedPageTime = -1;
         curTimeIndex++;
     }
 
@@ -640,7 +684,7 @@ public class InsertDynamicData extends DynamicOneColumnData {
         pageIndex = 0;
         pageReader = null;
         curTimeIndex = 0;
-        currentSatisfiedTime = -1;
+        currentSatisfiedPageTime = -1;
     }
 
     /**
@@ -667,6 +711,10 @@ public class InsertDynamicData extends DynamicOneColumnData {
             case TEXT:
                 curSatisfiedBinaryValue = updateTrue.getBinary(updateTrue.curIdx);
                 insertTrue.setBinary(insertTrue.insertTrueIndex, curSatisfiedBinaryValue);
+                break;
+            case BOOLEAN:
+                curSatisfiedBooleanValue = updateTrue.getBoolean(updateTrue.curIdx);
+                insertTrue.setBoolean(insertTrue.insertTrueIndex, curSatisfiedBooleanValue);
                 break;
             default:
                 throw new UnSupportedDataTypeException("UnSupport Aggregation DataType:" + dataType);
@@ -723,6 +771,7 @@ public class InsertDynamicData extends DynamicOneColumnData {
     private float minFloatValue = Float.MAX_VALUE, maxFloatValue = Float.MIN_VALUE;
     private double minDoubleValue = Double.MIN_VALUE, maxDoubleValue = Double.MIN_VALUE;
     private Binary minBinaryValue = null, maxBinaryValue = null;
+    private boolean minBooleanValue = true, maxBooleanValue = false;
 
     private void calcIntAggregation() {
         minTime = Math.min(minTime, getCurrentMinTime());
@@ -769,6 +818,17 @@ public class InsertDynamicData extends DynamicOneColumnData {
         }
     }
 
+    private void calcBooleanAggregation() {
+        minTime = Math.min(minTime, getCurrentMinTime());
+        maxTime = Math.max(maxTime, getCurrentMinTime());
+        if (minBooleanValue) {
+            minBooleanValue = getCurrentBooleanValue();
+        }
+        if (!maxBooleanValue) {
+            maxBooleanValue = getCurrentBooleanValue();
+        }
+    }
+
     public Object calcAggregation(String aggType) throws IOException, ProcessorException {
         readStatusReset();
         rowNum = 0;
@@ -812,6 +872,11 @@ public class InsertDynamicData extends DynamicOneColumnData {
                     calcTextAggregation();
                     removeCurrentValue();
                     break;
+                case BOOLEAN:
+                    rowNum++;
+                    calcBooleanAggregation();
+                    removeCurrentValue();
+                    break;
                 default:
                     LOG.error("Aggregation Error!");
                     throw new UnSupportedDataTypeException(dataType.toString());
@@ -837,6 +902,8 @@ public class InsertDynamicData extends DynamicOneColumnData {
                         return rowNum == 0 ? null : minDoubleValue;
                     case TEXT:
                         return rowNum == 0 ? null : minBinaryValue;
+                    case BOOLEAN:
+                        return rowNum == 0 ? null : minBooleanValue;
                     default:
                         LOG.error("Aggregation Error!");
                         throw new UnSupportedDataTypeException("UnSupported datatype: " + dataType);
@@ -854,6 +921,8 @@ public class InsertDynamicData extends DynamicOneColumnData {
                         return rowNum == 0 ? null : maxDoubleValue;
                     case TEXT:
                         return rowNum == 0 ? null : maxBinaryValue;
+                    case BOOLEAN:
+                        return rowNum == 0 ? null : maxBooleanValue;
                     default:
                         LOG.error("Aggregation Error!");
                         throw new UnSupportedDataTypeException("UnSupported datatype: " + dataType);
