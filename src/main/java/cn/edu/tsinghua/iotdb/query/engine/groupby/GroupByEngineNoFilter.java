@@ -53,7 +53,8 @@ public class GroupByEngineNoFilter {
     private int intervalIndex;
 
     /** group by partition fetch size, when result size is reach to partitionSize, the current
-     *  calculation will be terminated
+     *  calculation will be terminated.
+     *  this variable could be set small to test
      */
     private int partitionFetchSize;
 
@@ -67,19 +68,15 @@ public class GroupByEngineNoFilter {
 
     private SingleSeriesFilterExpression timeFilter;
 
-    public GroupByEngineNoFilter() {
-    }
-
-    public GroupByEngineNoFilter(List<Pair<Path, AggregateFunction>> aggregations,
+    public GroupByEngineNoFilter(List<Pair<Path, AggregateFunction>> aggregations, SingleSeriesFilterExpression timeFilter,
                                   long origin, long unit, SingleSeriesFilterExpression intervals, int partitionFetchSize) {
-
         this.aggregations = aggregations;
+        this.timeFilter = timeFilter;
         this.queryPathResult = new HashMap<>();
         for (int i = 0; i < aggregations.size(); i++) {
             String aggregateKey = aggregationKey(aggregations.get(i).left, aggregations.get(i).right);
             if (!groupByResult.mapRet.containsKey(aggregateKey)) {
-                groupByResult.mapRet.put(aggregateKey,
-                        new DynamicOneColumnData(aggregations.get(i).right.dataType, true, true));
+                groupByResult.mapRet.put(aggregateKey, new DynamicOneColumnData(aggregations.get(i).right.dataType, true, true));
                 queryPathResult.put(aggregateKey, null);
             } else {
                 duplicatedPaths.add(i);
@@ -89,8 +86,6 @@ public class GroupByEngineNoFilter {
         this.origin = origin;
         this.unit = unit;
         this.partitionFetchSize = partitionFetchSize;
-        // TODO set small value to test
-        // this.partitionFetchSize = 2;
 
         this.longInterval = (LongInterval) FilterVerifier.create(TSDataType.INT64).getInterval(intervals);
         this.intervalIndex = 0;
@@ -194,10 +189,10 @@ public class GroupByEngineNoFilter {
                 cnt++;
             Path path = pair.left;
             AggregateFunction aggregateFunction = pair.right;
-            groupByResult.mapRet.put(aggregationKey(path, aggregateFunction), aggregateFunction.result.data);
+            groupByResult.mapRet.put(aggregationKey(path, aggregateFunction), aggregateFunction.resultData);
         }
 
-        LOG.info("current group by function with no filter is over.");
+        //LOG.debug("current group by function with no filter is over.");
         return groupByResult;
     }
 
@@ -212,11 +207,12 @@ public class GroupByEngineNoFilter {
         String recordReaderPrefix = ReadCachePrefix.addQueryPrefix(formNumber);
 
         RecordReader recordReader = RecordReaderFactory.getInstance().getRecordReader(deltaObjectID, measurementID,
-                null, null, null, readLock, recordReaderPrefix);
+                timeFilter, null, null, readLock, recordReaderPrefix);
 
         if (res == null) {
+
             // get overflow params merged with bufferwrite insert data
-            List<Object> params = EngineUtils.getOverflowInfoAndFilterDataInMem(null, null, null,
+            List<Object> params = EngineUtils.getOverflowInfoAndFilterDataInMem(timeFilter, null, null,
                     res, recordReader.insertPageInMemory, recordReader.overflowInfo);
 
             DynamicOneColumnData insertTrue = (DynamicOneColumnData) params.get(0);
@@ -227,12 +223,12 @@ public class GroupByEngineNoFilter {
             recordReader.insertAllData = new InsertDynamicData(recordReader.bufferWritePageList, recordReader.compressionTypeName,
                     insertTrue, updateTrue, updateFalse,
                     newTimeFilter, null, null, MManager.getInstance().getSeriesType(path.getFullPath()));
-            res = recordReader.getValueInOneColumnWithOverflow(deltaObjectID, measurementID,
+            res = recordReader.queryOneSeries(deltaObjectID, measurementID,
                     updateTrue, updateFalse, recordReader.insertAllData, newTimeFilter, null, res, queryFetchSize);
             res.putOverflowInfo(insertTrue, updateTrue, updateFalse, newTimeFilter);
         } else {
             res.clearData();
-            res = recordReader.getValueInOneColumnWithOverflow(deltaObjectID, measurementID,
+            res = recordReader.queryOneSeries(deltaObjectID, measurementID,
                     res.updateTrue, res.updateFalse, recordReader.insertAllData, res.timeFilter, null, res, queryFetchSize);
         }
 

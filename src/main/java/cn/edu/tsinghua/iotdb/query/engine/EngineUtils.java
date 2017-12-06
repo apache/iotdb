@@ -3,6 +3,7 @@ package cn.edu.tsinghua.iotdb.query.engine;
 import java.util.ArrayList;
 import java.util.List;
 
+import cn.edu.tsinghua.iotdb.query.aggregation.AggregateFunction;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 import cn.edu.tsinghua.tsfile.common.exception.UnSupportedDataTypeException;
 import cn.edu.tsinghua.tsfile.common.utils.Binary;
@@ -40,11 +41,11 @@ public class EngineUtils {
     }
 
     /**
-     *  Merge the overflow params with the bufferwrite insert data.
+     *  Merge the overflow insert data with the bufferwrite insert data.
      */
     public static List<Object> getOverflowInfoAndFilterDataInMem(SingleSeriesFilterExpression timeFilter,
-                                                                 SingleSeriesFilterExpression freqFilter, SingleSeriesFilterExpression valueFilter
-            , DynamicOneColumnData res, DynamicOneColumnData insertDataInMemory, List<Object> overflowParams) {
+                  SingleSeriesFilterExpression freqFilter, SingleSeriesFilterExpression valueFilter,
+                  DynamicOneColumnData res, DynamicOneColumnData insertDataInMemory, List<Object> overflowParams) {
 
         List<Object> paramList = new ArrayList<>();
 
@@ -107,12 +108,11 @@ public class EngineUtils {
             case BOOLEAN:
                 for (int i = 0; i < oneColData.valueLength; i++) {
                     boolean v = oneColData.getBoolean(i);
-                    if ((valueFilter == null && timeFilter == null) ||
-                            (valueFilter != null && timeFilter == null && valueVisitor.satisfyObject(v, valueFilter)) ||
-                            (valueFilter == null && timeFilter != null && timeVisitor.verify(oneColData.getTime(i))) ||
-                            (valueFilter != null && timeFilter != null &&
-                                    valueVisitor.satisfyObject(v, valueFilter) &&
-                                    timeVisitor.verify(oneColData.getTime(i)))) {
+                    if ((valueFilter == null && timeFilter == null)
+                            || (valueFilter != null && timeFilter == null && valueVisitor.satisfyObject(v, valueFilter))
+                            || (valueFilter == null && timeFilter != null && timeVisitor.verify(oneColData.getTime(i)))
+                            || (valueFilter != null && timeFilter != null && valueVisitor.satisfyObject(v, valueFilter)
+                            && timeVisitor.verify(oneColData.getTime(i)))) {
                         res.putBoolean(v);
                         res.putTime(oneColData.getTime(i));
                     }
@@ -121,12 +121,11 @@ public class EngineUtils {
             case DOUBLE:
                 for (int i = 0; i < oneColData.valueLength; i++) {
                     double v = oneColData.getDouble(i);
-                    if ((valueFilter == null && timeFilter == null) ||
-                            (valueFilter != null && timeFilter == null && valueVisitor.verify(v)) ||
-                            (valueFilter == null && timeFilter != null && timeVisitor.verify(oneColData.getTime(i))) ||
-                            (valueFilter != null && timeFilter != null &&
-                                    valueVisitor.verify(v) &&
-                                    timeVisitor.verify(oneColData.getTime(i)))) {
+                    if ((valueFilter == null && timeFilter == null)
+                            || (valueFilter != null && timeFilter == null && valueVisitor.verify(v))
+                            || (valueFilter == null && timeFilter != null && timeVisitor.verify(oneColData.getTime(i)))
+                            || (valueFilter != null && timeFilter != null && valueVisitor.verify(v)
+                            && timeVisitor.verify(oneColData.getTime(i)))) {
                         res.putDouble(v);
                         res.putTime(oneColData.getTime(i));
                     }
@@ -135,12 +134,11 @@ public class EngineUtils {
             case FLOAT:
                 for (int i = 0; i < oneColData.valueLength; i++) {
                     float v = oneColData.getFloat(i);
-                    if ((valueFilter == null && timeFilter == null) ||
-                            (valueFilter != null && timeFilter == null && valueVisitor.verify(v)) ||
-                            (valueFilter == null && timeFilter != null && timeVisitor.verify(oneColData.getTime(i))) ||
-                            (valueFilter != null && timeFilter != null &&
-                                    valueVisitor.verify(v) &&
-                                    timeVisitor.verify(oneColData.getTime(i)))) {
+                    if ((valueFilter == null && timeFilter == null)
+                            || (valueFilter != null && timeFilter == null && valueVisitor.verify(v))
+                            || (valueFilter == null && timeFilter != null && timeVisitor.verify(oneColData.getTime(i)))
+                            || (valueFilter != null && timeFilter != null && valueVisitor.verify(v)
+                            && timeVisitor.verify(oneColData.getTime(i)))) {
                         res.putFloat(v);
                         res.putTime(oneColData.getTime(i));
                     }
@@ -149,12 +147,11 @@ public class EngineUtils {
             case INT32:
                 for (int i = 0; i < oneColData.valueLength; i++) {
                     int v = oneColData.getInt(i);
-                    if ((valueFilter == null && timeFilter == null) ||
-                            (valueFilter != null && timeFilter == null && valueVisitor.verify(v)) ||
-                            (valueFilter == null && timeFilter != null && timeVisitor.verify(oneColData.getTime(i))) ||
-                            (valueFilter != null && timeFilter != null &&
-                                    valueVisitor.verify(v) &&
-                                    timeVisitor.verify(oneColData.getTime(i)))) {
+                    if ((valueFilter == null && timeFilter == null)
+                            || (valueFilter != null && timeFilter == null && valueVisitor.verify(v))
+                            || (valueFilter == null && timeFilter != null && timeVisitor.verify(oneColData.getTime(i)))
+                            || (valueFilter != null && timeFilter != null && valueVisitor.verify(v)
+                            && timeVisitor.verify(oneColData.getTime(i)))) {
                         res.putInt(v);
                         res.putTime(oneColData.getTime(i));
                     }
@@ -163,12 +160,11 @@ public class EngineUtils {
             case INT64:
                 for (int i = 0; i < oneColData.valueLength; i++) {
                     long v = oneColData.getLong(i);
-                    if ((valueFilter == null && timeFilter == null) ||
-                            (valueFilter != null && timeFilter == null && valueVisitor.verify(v)) ||
-                            (valueFilter == null && timeFilter != null && timeVisitor.verify(oneColData.getTime(i))) ||
-                            (valueFilter != null && timeFilter != null &&
-                                    valueVisitor.verify(v) &&
-                                    timeVisitor.verify(oneColData.getTime(i)))) {
+                    if ((valueFilter == null && timeFilter == null)
+                            || (valueFilter != null && timeFilter == null && valueVisitor.verify(v))
+                            || (valueFilter == null && timeFilter != null && timeVisitor.verify(oneColData.getTime(i)))
+                            || (valueFilter != null && timeFilter != null && valueVisitor.verify(v)
+                            && timeVisitor.verify(oneColData.getTime(i)))) {
                         res.putLong(v);
                         res.putTime(oneColData.getTime(i));
                     }
@@ -177,12 +173,11 @@ public class EngineUtils {
             case TEXT:
                 for (int i = 0; i < oneColData.valueLength; i++) {
                     Binary v = oneColData.getBinary(i);
-                    if ((valueFilter == null && timeFilter == null) ||
-                            (valueFilter != null && timeFilter == null && valueVisitor.satisfyObject(v, valueFilter)) ||
-                            (valueFilter == null && timeFilter != null && timeVisitor.verify(oneColData.getTime(i))) ||
-                            (valueFilter != null && timeFilter != null &&
-                                    valueVisitor.satisfyObject(v, valueFilter) &&
-                                    timeVisitor.verify(oneColData.getTime(i)))) {
+                    if ((valueFilter == null && timeFilter == null)
+                            || (valueFilter != null && timeFilter == null && valueVisitor.satisfyObject(v, valueFilter))
+                            || (valueFilter == null && timeFilter != null && timeVisitor.verify(oneColData.getTime(i)))
+                            || (valueFilter != null && timeFilter != null && valueVisitor.satisfyObject(v, valueFilter)
+                            && timeVisitor.verify(oneColData.getTime(i)))) {
                         res.putBinary(v);
                         res.putTime(oneColData.getTime(i));
                     }
@@ -311,5 +306,18 @@ public class EngineUtils {
         }
 
         return res;
+    }
+
+    public static String aggregationKey(AggregateFunction aggregateFunction, Path path) {
+        return aggregateFunction.name + "(" + path.getFullPath() + ")";
+    }
+
+    public static boolean noFilterOrOnlyHasTimeFilter(List<FilterStructure> filterStructures) {
+        if (filterStructures == null || filterStructures.size() == 0
+                || (filterStructures.size() == 1 && filterStructures.get(0).noFilter())
+                || (filterStructures.size() == 1 && filterStructures.get(0).onlyHasTimeFilter())) {
+            return true;
+        }
+        return false;
     }
 }

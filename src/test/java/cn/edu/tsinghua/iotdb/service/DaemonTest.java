@@ -13,6 +13,8 @@ import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
 import org.junit.Before;
 import org.junit.Test;
 
+import static cn.edu.tsinghua.iotdb.service.TestUtils.max_value;
+import static cn.edu.tsinghua.iotdb.service.TestUtils.min_value;
 import static org.junit.Assert.fail;
 
 /**
@@ -154,7 +156,7 @@ public class DaemonTest {
                 insertSQL();
 
                 Connection connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
-                //System.out.println(connection.getMetaData());
+
                 selectAllSQLTest();
                 dnfErrorSQLTest();
                 selectWildCardSQLTest();
@@ -163,6 +165,8 @@ public class DaemonTest {
                 aggregationTest();
                 selectOneColumnWithFilterTest();
                 multiAggregationTest();
+                crossReadTest();
+
                 connection.close();
             } catch (ClassNotFoundException | SQLException | InterruptedException e) {
                 fail(e.getMessage());
@@ -200,18 +204,18 @@ public class DaemonTest {
             connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
             Statement statement = connection.createStatement();
             boolean hasResultSet = statement.execute("select count(s1),count(s2),count(s3) from root.vehicle.d0");
-            if (hasResultSet) {
-                ResultSet resultSet = statement.getResultSet();
-                int cnt = 0;
-                while (resultSet.next()) {
-                    String ans = resultSet.getString("count(" + d0s1 + ")") + ","
-                            + resultSet.getString("count(" + d0s2 + ")") + ","
-                            + resultSet.getString("count(" + d0s3 + ")");
-                    Assert.assertEquals(ans, retArray[cnt]);
-                    cnt++;
-                }
-                Assert.assertEquals(1, cnt);
+            Assert.assertTrue(hasResultSet);
+
+            ResultSet resultSet = statement.getResultSet();
+            int cnt = 0;
+            while (resultSet.next()) {
+                String ans = resultSet.getString("count(" + d0s1 + ")") + ","
+                        + resultSet.getString("count(" + d0s2 + ")") + ","
+                        + resultSet.getString("count(" + d0s3 + ")");
+                Assert.assertEquals(ans, retArray[cnt]);
+                cnt++;
             }
+            Assert.assertEquals(1, cnt);
             statement.close();
 
             // the statement has same columns and same aggregation
@@ -220,20 +224,19 @@ public class DaemonTest {
             };
             statement = connection.createStatement();
             hasResultSet = statement.execute("select count(s1),count(s1),count(s3),max_value(s2) from root.vehicle.d0");
-            if (hasResultSet) {
-                ResultSet resultSet = statement.getResultSet();
-                int cnt = 0;
-                while (resultSet.next()) {
-                    String ans = resultSet.getString("count(" + d0s1 + ")") + ","
-                             + resultSet.getString("count(" + d0s1 + ")") + ","
-                            + resultSet.getString("count(" + d0s3 + ")") + ","
-                            + resultSet.getString("max_value(" + d0s2 + ")");
-                    //System.out.println("!!" + ans);
-                    Assert.assertEquals(retArray[cnt], ans);
-                    cnt++;
-                }
-                Assert.assertEquals(1, cnt);
+            Assert.assertTrue(hasResultSet);
+            resultSet = statement.getResultSet();
+            cnt = 0;
+            while (resultSet.next()) {
+                String ans = resultSet.getString("count(" + d0s1 + ")") + ","
+                        + resultSet.getString("count(" + d0s1 + ")") + ","
+                        + resultSet.getString("count(" + d0s3 + ")") + ","
+                        + resultSet.getString("max_value(" + d0s2 + ")");
+                //System.out.println("!!" + ans);
+                Assert.assertEquals(retArray[cnt], ans);
+                cnt++;
             }
+            Assert.assertEquals(1, cnt);
             statement.close();
 
             // the statement has same columns and different aggregation
@@ -242,20 +245,20 @@ public class DaemonTest {
             };
             statement = connection.createStatement();
             hasResultSet = statement.execute("select count(s1),max_value(s1),max_time(s1),count(s3) from root.vehicle.d0");
-            if (hasResultSet) {
-                ResultSet resultSet = statement.getResultSet();
-                int cnt = 0;
-                while (resultSet.next()) {
-                    String ans = resultSet.getString(count(d0s1)) + ","
-                            + resultSet.getString("max_value(" + d0s1 + ")") + ","
-                            + resultSet.getString("max_time(" + d0s1 + ")") + ","
-                            + resultSet.getString("count(" + d0s3 + ")");
-                    //System.out.println("==" + ans);
-                    Assert.assertEquals(ans, retArray[cnt]);
-                    cnt++;
-                }
-                Assert.assertEquals(1, cnt);
+            Assert.assertTrue(hasResultSet);
+
+            resultSet = statement.getResultSet();
+            cnt = 0;
+            while (resultSet.next()) {
+                String ans = resultSet.getString(count(d0s1)) + ","
+                        + resultSet.getString("max_value(" + d0s1 + ")") + ","
+                        + resultSet.getString("max_time(" + d0s1 + ")") + ","
+                        + resultSet.getString("count(" + d0s3 + ")");
+                //System.out.println("==" + ans);
+                Assert.assertEquals(ans, retArray[cnt]);
+                cnt++;
             }
+            Assert.assertEquals(1, cnt);
             statement.close();
         } catch (Exception e) {
             fail(e.getMessage());
@@ -294,19 +297,17 @@ public class DaemonTest {
             connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
             Statement statement = connection.createStatement();
             boolean hasResultSet = statement.execute("select * from root");
-            // System.out.println(hasResultSet + "...");
-            if (hasResultSet) {
-                ResultSet resultSet = statement.getResultSet();
-                int cnt = 0;
-                while (resultSet.next()) {
-                    String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s0) + "," + resultSet.getString(d0s1)
-                            +","+resultSet.getString(d0s2)+","+resultSet.getString(d0s3)+","+resultSet.getString(d1s0);
-                    // System.out.println(ans);
-                    Assert.assertEquals(ans, retArray[cnt]);
-                    cnt++;
-                }
-                Assert.assertEquals(17, cnt);
+            Assert.assertTrue(hasResultSet);
+
+            ResultSet resultSet = statement.getResultSet();
+            int cnt = 0;
+            while (resultSet.next()) {
+                String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s0) + "," + resultSet.getString(d0s1)
+                        + "," + resultSet.getString(d0s2) + "," + resultSet.getString(d0s3) + "," + resultSet.getString(d1s0);
+                Assert.assertEquals(ans, retArray[cnt]);
+                cnt++;
             }
+            Assert.assertEquals(17, cnt);
             statement.close();
 
             retArray = new String[]{
@@ -314,17 +315,16 @@ public class DaemonTest {
             };
             statement = connection.createStatement();
             hasResultSet = statement.execute("select s4 from root.vehicle.d0");
-            if (hasResultSet) {
-                ResultSet resultSet = statement.getResultSet();
-                int cnt = 0;
-                while (resultSet.next()) {
-                    String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s4);
-                    //System.out.println("======" + ans);
-                    Assert.assertEquals(ans, retArray[cnt]);
-                    cnt++;
-                }
-                Assert.assertEquals(1, cnt);
+            Assert.assertTrue(hasResultSet);
+
+            resultSet = statement.getResultSet();
+            cnt = 0;
+            while (resultSet.next()) {
+                String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s4);
+                Assert.assertEquals(ans, retArray[cnt]);
+                cnt++;
             }
+            Assert.assertEquals(1, cnt);
             statement.close();
         } catch (Exception e) {
             e.printStackTrace();
@@ -351,17 +351,17 @@ public class DaemonTest {
             connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
             Statement statement = connection.createStatement();
             boolean hasResultSet = statement.execute("select s0,s1 from root.vehicle.d0 where time < 106 and (s0 >= 60 or s1 <= 200)");
-            if (hasResultSet) {
-                ResultSet resultSet = statement.getResultSet();
-                int cnt = 0;
-                while (resultSet.next()) {
-                    String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s0) + "," + resultSet.getString(d0s1);
-                    Assert.assertEquals(ans, retArray[cnt]);
-                    cnt++;
-                    // AbstractClient.output(resultSet, true, "select statement");
-                }
-                Assert.assertEquals(6, cnt);
+            Assert.assertTrue(hasResultSet);
+
+            ResultSet resultSet = statement.getResultSet();
+            int cnt = 0;
+            while (resultSet.next()) {
+                String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s0) + "," + resultSet.getString(d0s1);
+                Assert.assertEquals(ans, retArray[cnt]);
+                cnt++;
             }
+            Assert.assertEquals(6, cnt);
+
             statement.close();
         } catch (Exception e) {
             e.printStackTrace();
@@ -388,18 +388,17 @@ public class DaemonTest {
             connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
             Statement statement = connection.createStatement();
             boolean hasResultSet = statement.execute("select s2 from root.vehicle.*");
-            if (hasResultSet) {
-                ResultSet resultSet = statement.getResultSet();
-                int cnt = 0;
-                while (resultSet.next()) {
-                    String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s2);
-                    // System.out.println(ans);
-                    Assert.assertEquals(ans, retArray[cnt]);
-                    cnt++;
-                    // AbstractClient.output(resultSet, true, "select statement");
-                }
-                Assert.assertEquals(6, cnt);
+            Assert.assertTrue(hasResultSet);
+
+            ResultSet resultSet = statement.getResultSet();
+            int cnt = 0;
+            while (resultSet.next()) {
+                String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s2);
+                Assert.assertEquals(ans, retArray[cnt]);
+                cnt++;
             }
+            Assert.assertEquals(6, cnt);
+
             statement.close();
         } catch (Exception e) {
             e.printStackTrace();
@@ -422,19 +421,16 @@ public class DaemonTest {
             Statement statement = connection.createStatement();
             //TODO  select s0,s1 from root.vehicle.d0 where time > 106 and root.vehicle.d1.s0 > 100;
             boolean hasResultSet = statement.execute("select s0,s1 from root.vehicle.d0,root.vehicle.d1 where time > 106 and root.vehicle.d0.s0 > 100");
-            if (hasResultSet) {
-                ResultSet resultSet = statement.getResultSet();
-                int cnt = 0;
-                while (resultSet.next()) {
-                    String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s0)+","+resultSet.getString(d0s1)+","
-                            +resultSet.getString(d1s0);
-                    // System.out.println(ans);
-                    Assert.assertEquals(ans, retArray[cnt]);
-                    cnt++;
-                    // AbstractClient.output(resultSet, true, "select statement");
-                }
-                Assert.assertEquals(1,cnt);
+            Assert.assertTrue(hasResultSet);
+            ResultSet resultSet = statement.getResultSet();
+            int cnt = 0;
+            while (resultSet.next()) {
+                String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s0) + "," + resultSet.getString(d0s1) + ","
+                        + resultSet.getString(d1s0);
+                Assert.assertEquals(ans, retArray[cnt]);
+                cnt++;
             }
+            Assert.assertEquals(1, cnt);
             statement.close();
         } catch (Exception e) {
             e.printStackTrace();
@@ -456,18 +452,15 @@ public class DaemonTest {
             connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
             Statement statement = connection.createStatement();
             boolean hasResultSet = statement.execute("select s0,s1 from root.vehicle.d0 where time > 106 and root.vehicle.d1.s0 > 100");
-            if (hasResultSet) {
-                ResultSet resultSet = statement.getResultSet();
-                int cnt = 0;
-                while (resultSet.next()) {
-                    String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s0)+","+resultSet.getString(d0s1);
-                    // System.out.println(ans);
-                    Assert.assertEquals(ans, retArray[cnt]);
-                    cnt++;
-                    //AbstractClient.output(resultSet, true, "select statement");
-                }
-                Assert.assertEquals(1, cnt);
+            Assert.assertTrue(hasResultSet);
+            ResultSet resultSet = statement.getResultSet();
+            int cnt = 0;
+            while (resultSet.next()) {
+                String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s0) + "," + resultSet.getString(d0s1);
+                Assert.assertEquals(ans, retArray[cnt]);
+                cnt++;
             }
+            Assert.assertEquals(1, cnt);
             statement.close();
         } catch (Exception e) {
             e.printStackTrace();
@@ -490,48 +483,48 @@ public class DaemonTest {
             connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
             Statement statement = connection.createStatement();
             boolean hasTextMaxResultSet = statement.execute("select max_value(s3) from root.vehicle.d0");
-            if (hasTextMaxResultSet) {
-                ResultSet resultSet = statement.getResultSet();
-                int cnt = 0;
-                while (resultSet.next()) {
-                    String ans = resultSet.getString(TestUtils.max_value(d0s3));
-                    // System.out.println("=====" + ans);
-                    Assert.assertEquals(retArray[0], ans);
-                    cnt++;
-                }
-                Assert.assertEquals(1, cnt);
+            Assert.assertTrue(hasTextMaxResultSet);
+
+            ResultSet resultSet = statement.getResultSet();
+            int cnt = 0;
+            while (resultSet.next()) {
+                String ans = resultSet.getString(max_value(d0s3));
+                Assert.assertEquals(retArray[0], ans);
+                cnt++;
             }
+            Assert.assertEquals(1, cnt);
+
             statement.close();
 
             statement = connection.createStatement();
             boolean hasTextMinResultSet = statement.execute("select min_value(s3) from root.vehicle.d0");
-            if (hasTextMinResultSet) {
-                ResultSet resultSet = statement.getResultSet();
-                int cnt = 0;
-                while (resultSet.next()) {
-                    String ans = resultSet.getString(TestUtils.min_value(d0s3));
-                    // System.out.println("=====" + ans);
-                    Assert.assertEquals(ans, "aaaaa");
-                    cnt++;
-                }
-                Assert.assertEquals(cnt, 1);
+            Assert.assertTrue(hasTextMinResultSet);
+            resultSet = statement.getResultSet();
+            cnt = 0;
+            while (resultSet.next()) {
+                String ans = resultSet.getString(min_value(d0s3));
+                // System.out.println("=====" + ans);
+                Assert.assertEquals("aaaaa", ans);
+                cnt++;
             }
+            Assert.assertEquals(cnt, 1);
             statement.close();
 
             statement = connection.createStatement();
             boolean hasMultiAggreResult = statement.execute("select min_value(s0) from root.vehicle.d0,root.vehicle.d1");
-            if (hasMultiAggreResult) {
-                ResultSet resultSet = statement.getResultSet();
-                int cnt = 0;
-                while (resultSet.next()) {
-                    int ans1 = resultSet.getInt(TestUtils.min_value(d0s0));
-                    int ans2 = resultSet.getInt(TestUtils.min_value(d1s0));
-                    Assert.assertEquals(ans1, 99);
-                    Assert.assertEquals(ans2, 888);
-                    cnt++;
-                }
-                Assert.assertEquals(cnt, 1);
+            Assert.assertTrue(hasMultiAggreResult);
+
+            resultSet = statement.getResultSet();
+            cnt = 0;
+            while (resultSet.next()) {
+                int ans1 = resultSet.getInt(2);
+                int ans2 = resultSet.getInt(3);
+                Assert.assertEquals(99, ans1);
+                Assert.assertEquals(888, ans2);
+                cnt++;
             }
+            Assert.assertEquals(cnt, 1);
+
             statement.close();
         } catch (Exception e) {
         	System.out.println(e.getMessage());
@@ -558,17 +551,104 @@ public class DaemonTest {
             Statement statement = connection.createStatement();
 
             boolean hasTextMaxResultSet = statement.execute("select s1 from root.vehicle.d0 where s1 < 199");
-            if (hasTextMaxResultSet) {
-                ResultSet resultSet = statement.getResultSet();
-                int cnt = 0;
-                while (resultSet.next()) {
-                    String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s1);
-                    //System.out.println("=====" + ans);
-                    Assert.assertEquals(ans, retArray[cnt++]);
-                    //AbstractClient.output(resultSet, true, "select statement");
-                }
-                Assert.assertEquals(cnt, 3);
+            Assert.assertTrue(hasTextMaxResultSet);
+            ResultSet resultSet = statement.getResultSet();
+            int cnt = 0;
+            while (resultSet.next()) {
+                String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s1);
+                Assert.assertEquals(ans, retArray[cnt++]);
             }
+            Assert.assertEquals(cnt, 3);
+
+            statement.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+            fail(e.getMessage());
+        } finally {
+            if (connection != null) {
+                connection.close();
+            }
+        }
+    }
+
+    private void crossReadTest() throws ClassNotFoundException, SQLException {
+        String[] retArray = new String[]{
+                "1,101,1101,7.0",
+                "2,198,198,8.0",
+                "3,null,null,3.33",
+                "4,null,null,4.44",
+                "100,300,199,19.0",
+                "101,99,199,10.0",
+                "102,80,180,18.0",
+                "103,99,199,12.0",
+                "104,90,190,13.0",
+                "105,99,199,14.0"
+        };
+
+        String[] sqls = new String[]{
+                "insert into root.vehicle.d0(timestamp,s0) values(1,101)",
+                "insert into root.vehicle.d0(timestamp,s0) values(2,198)",
+                "insert into root.vehicle.d0(timestamp,s0) values(100,300)",
+                "insert into root.vehicle.d0(timestamp,s0) values(101,99)",
+                "insert into root.vehicle.d0(timestamp,s0) values(102,80)",
+                "insert into root.vehicle.d0(timestamp,s0) values(103,99)",
+                "insert into root.vehicle.d0(timestamp,s0) values(104,90)",
+                "insert into root.vehicle.d0(timestamp,s0) values(105,99)",
+                "insert into root.vehicle.d0(timestamp,s0) values(106,99)",
+
+                "insert into root.vehicle.d0(timestamp,s1) values(1,1101)",
+                "insert into root.vehicle.d0(timestamp,s1) values(2,198)",
+                "insert into root.vehicle.d0(timestamp,s1) values(100,199)",
+                "insert into root.vehicle.d0(timestamp,s1) values(101,199)",
+                "insert into root.vehicle.d0(timestamp,s1) values(102,180)",
+                "insert into root.vehicle.d0(timestamp,s1) values(103,199)",
+                "insert into root.vehicle.d0(timestamp,s1) values(104,190)",
+                "insert into root.vehicle.d0(timestamp,s1) values(105,199)",
+
+                "insert into root.vehicle.d0(timestamp,s1) values(51,51)",
+                "insert into root.vehicle.d0(timestamp,s1) values(52,52)",
+                "insert into root.vehicle.d0(timestamp,s1) values(53,53)",
+                "insert into root.vehicle.d0(timestamp,s1) values(54,54)",
+                "insert into root.vehicle.d0(timestamp,s1) values(55,55)",
+                "insert into root.vehicle.d0(timestamp,s1) values(56,56)",
+                "insert into root.vehicle.d0(timestamp,s1) values(57,57)",
+                "insert into root.vehicle.d0(timestamp,s1) values(58,58)",
+
+                "insert into root.vehicle.d0(timestamp,s2) values(1,7.0)",
+                "insert into root.vehicle.d0(timestamp,s2) values(2,8.0)",
+                "insert into root.vehicle.d0(timestamp,s2) values(100,19.0)",
+                "insert into root.vehicle.d0(timestamp,s2) values(101,10.0)",
+                "insert into root.vehicle.d0(timestamp,s2) values(102,18.0)",
+                "insert into root.vehicle.d0(timestamp,s2) values(103,12.0)",
+                "insert into root.vehicle.d0(timestamp,s2) values(104,13.0)",
+                "insert into root.vehicle.d0(timestamp,s2) values(105,14.0)",
+        };
+
+        Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);
+        Connection connection = null;
+        try {
+            connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
+            Statement statement = connection.createStatement();
+            for (String sql : sqls) {
+                statement.execute(sql);
+            }
+            statement.close();
+
+            statement = connection.createStatement();
+            boolean hasResultSet = statement.execute("select s0,s1,s2 from root.vehicle.d0 where (time < 104 and s0 < 99) or (s2 < 16.0) or (s0 = 300)");
+            // boolean hasResultSet = statement.execute("select s1 from root.vehicle.d0 where time < 104 and (s0 < 99 or s2 < 16.0)");
+            // boolean hasResultSet = statement.execute("select s1 from root.vehicle.d0 where time < 104 and s0 < 99 and s2 < 16.0");
+            Assert.assertTrue(hasResultSet);
+
+            ResultSet resultSet = statement.getResultSet();
+            int cnt = 0;
+            while (resultSet.next()) {
+                String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s0) + "," + resultSet.getString(d0s1) + "," + resultSet.getString(d0s2);
+                //System.out.println("====" + ans);
+                Assert.assertEquals(retArray[cnt], ans);
+                cnt++;
+            }
+            //Assert.assertEquals(cnt, 8);
             statement.close();
         } catch (Exception e) {
             e.printStackTrace();
@@ -594,17 +674,16 @@ public class DaemonTest {
             Statement statement = connection.createStatement();
 
             boolean hasTextMaxResultSet = statement.execute("select s1,s2,s3 from root.vehicle.d0 where s3 = 'tomorrow is another day' or s3 = 'good'");
-            if (hasTextMaxResultSet) {
-                ResultSet resultSet = statement.getResultSet();
-                int cnt = 0;
-                while (resultSet.next()) {
-                    String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s1) + "," +
-                            resultSet.getString(d0s2) + "," + resultSet.getString(d0s3);
-                    //System.out.println("=====" + ans);
-                    Assert.assertEquals(ans, retArray[cnt++]);
-                }
-                Assert.assertEquals(cnt, 3);
+            Assert.assertTrue(hasTextMaxResultSet);
+            ResultSet resultSet = statement.getResultSet();
+            int cnt = 0;
+            while (resultSet.next()) {
+                String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s1) + "," +
+                        resultSet.getString(d0s2) + "," + resultSet.getString(d0s3);
+                //System.out.println("=====" + ans);
+                Assert.assertEquals(ans, retArray[cnt++]);
             }
+            Assert.assertEquals(cnt, 3);
             statement.close();
         } catch (Exception e) {
             e.printStackTrace();

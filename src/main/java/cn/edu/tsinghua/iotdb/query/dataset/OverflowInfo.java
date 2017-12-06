@@ -4,7 +4,7 @@ import cn.edu.tsinghua.tsfile.timeseries.filter.definition.SingleSeriesFilterExp
 import cn.edu.tsinghua.tsfile.timeseries.read.query.DynamicOneColumnData;
 
 /**
- * .
+ * Never used
  */
 public class OverflowInfo {
     public DynamicOneColumnData insertTrue;

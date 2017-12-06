@@ -1,10 +1,7 @@
 package cn.edu.tsinghua.iotdb.query.reader;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import cn.edu.tsinghua.iotdb.engine.cache.RowGroupBlockMetaDataCache;
 import cn.edu.tsinghua.iotdb.engine.cache.TsFileMetaDataCache;
@@ -17,7 +14,7 @@ import cn.edu.tsinghua.tsfile.timeseries.read.RowGroupReader;
 import cn.edu.tsinghua.tsfile.timeseries.read.TsRandomAccessLocalFileReader;
 
 /**
- *
+ * This class is an adapter between <code>RecordReader</code> and <code>RowGroupReader</code> .
  */
 public class ReaderManager {
 
@@ -30,7 +27,7 @@ public class ReaderManager {
     private List<RowGroupMetaData> unSealedRowGroupMetadataList = null;
 
     /** key: deltaObjectUID **/
-    private Map<String, List<RowGroupReader>> rowGroupReaderMap = new HashMap<>();
+    private Map<String, List<RowGroupReader>> rowGroupReaderMap = new LinkedHashMap<>();
 
     /**
      *

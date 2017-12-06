@@ -4,7 +4,6 @@ import cn.edu.tsinghua.iotdb.exception.PathErrorException;
 import cn.edu.tsinghua.iotdb.metadata.MManager;
 import cn.edu.tsinghua.iotdb.query.aggregation.AggreFuncFactory;
 import cn.edu.tsinghua.iotdb.query.aggregation.AggregateFunction;
-import cn.edu.tsinghua.iotdb.query.aggregation.AggregationResult;
 import cn.edu.tsinghua.iotdb.query.dataset.InsertDynamicData;
 import cn.edu.tsinghua.iotdb.query.engine.groupby.GroupByEngineNoFilter;
 import cn.edu.tsinghua.iotdb.query.engine.groupby.GroupByEngineWithFilter;
@@ -25,36 +24,34 @@ import cn.edu.tsinghua.tsfile.timeseries.read.query.CrossQueryTimeGenerator;
 import cn.edu.tsinghua.tsfile.timeseries.read.query.DynamicOneColumnData;
 import cn.edu.tsinghua.tsfile.timeseries.read.query.QueryDataSet;
 import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
+import static cn.edu.tsinghua.iotdb.query.engine.EngineUtils.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 
 public class OverflowQueryEngine {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(OverflowQueryEngine.class);
-    private MManager mManager;
+
+    /** the formNumber represents the ordinal of disjunctive normal form of each query part **/
     private int formNumber = -1;
+
     /**
-     * this variable represents that whether it is
-     * the second execution of aggregation method.
+     * this variable represents that whether it is the second execution of aggregation method.
+     * aggregation method must be executed once when a aggregation query.
      */
-    private static ThreadLocal<Boolean> aggregateThreadLocal = new ThreadLocal<>();
+    private static ThreadLocal<QueryDataSet> aggregateThreadLocal = new ThreadLocal<>();
 
     public OverflowQueryEngine() {
-        mManager = MManager.getInstance();
-    }
-
-    private TSDataType getDataTypeByPath(Path path) throws PathErrorException {
-        return mManager.getSeriesType(path.getFullPath());
     }
 
     /**
      * <p>
      * Basic query method.
+     * This method may be invoked many times due to the restriction of fetchSize.
      *
      * @param formNumber   a complex query will be taken out to some disjunctive normal forms in query process,
      *                     the formNumber represent the number of normal form.
@@ -73,12 +70,12 @@ public class OverflowQueryEngine {
             queryDataSet.clear();
         }
         if (timeFilter == null && freqFilter == null && valueFilter == null) {
-            return readWithoutFilter(paths, queryDataSet, fetchSize, null);
+            return querySeriesWithoutFilter(paths, queryDataSet, fetchSize, null);
         } else if (valueFilter != null && valueFilter instanceof CrossSeriesFilterExpression) {
-            return crossColumnQuery(paths, (SingleSeriesFilterExpression) timeFilter, (SingleSeriesFilterExpression) freqFilter,
+            return crossSeriesQuery(paths, (SingleSeriesFilterExpression) timeFilter, (SingleSeriesFilterExpression) freqFilter,
                     (CrossSeriesFilterExpression) valueFilter, queryDataSet, fetchSize);
         } else {
-            return readOneColumnUseFilter(paths, (SingleSeriesFilterExpression) timeFilter, (SingleSeriesFilterExpression) freqFilter,
+            return querySeriesUsingFilter(paths, (SingleSeriesFilterExpression) timeFilter, (SingleSeriesFilterExpression) freqFilter,
                     (SingleSeriesFilterExpression) valueFilter, queryDataSet, fetchSize, null);
         }
     }
@@ -97,45 +94,58 @@ public class OverflowQueryEngine {
      */
     public QueryDataSet aggregate(List<Pair<Path, String>> aggres, List<FilterStructure> filterStructures)
             throws ProcessorException, IOException, PathErrorException {
-        LOGGER.info("Aggregation content: {}", aggres.toString());
-        List<Pair<Path, AggregateFunction>> aggregations = new ArrayList<>();
-        for (Pair<Path, String> pair : aggres) {
-            TSDataType dataType = MManager.getInstance().getSeriesType(pair.left.getFullPath());
-            AggregateFunction func = AggreFuncFactory.getAggrFuncByName(pair.right, dataType);
-            aggregations.add(new Pair<>(pair.left, func));
-        }
+        
+        try {
+            LOGGER.debug("Aggregation content: {}", aggres.toString());
 
-        if (aggregateThreadLocal.get() != null && aggregateThreadLocal.get()) {
-            aggregateThreadLocal.remove();
-            QueryDataSet ansQueryDataSet = new QueryDataSet();
-            for (Pair<Path, AggregateFunction> pair : aggregations) {
-                Path path = pair.left;
-                AggregateFunction aggregateFunction = pair.right;
-                TSDataType dataType = MManager.getInstance().getSeriesType(path.getFullPath());
-                String aggregationKey = aggregateFunction.name + "(" + path.getFullPath() + ")";
-                if (ansQueryDataSet.mapRet.size() > 0 && ansQueryDataSet.mapRet.containsKey(aggregationKey)) {
+            List<Pair<Path, AggregateFunction>> aggregations = new ArrayList<>();
+
+            // to remove duplicate queries, such as select count(s0),count(s0).
+            Set<String> duplicatedAggregations = new HashSet<>();
+            for (Pair<Path, String> pair : aggres) {
+                TSDataType dataType = MManager.getInstance().getSeriesType(pair.left.getFullPath());
+                AggregateFunction aggregateFunction = AggreFuncFactory.getAggrFuncByName(pair.right, dataType);
+                if (duplicatedAggregations.contains(EngineUtils.aggregationKey(aggregateFunction, pair.left))) {
                     continue;
                 }
-
-                ansQueryDataSet.mapRet.put(aggregationKey, new DynamicOneColumnData(dataType, true));
+                duplicatedAggregations.add(EngineUtils.aggregationKey(aggregateFunction, pair.left));
+                aggregations.add(new Pair<>(pair.left, aggregateFunction));
             }
-            return ansQueryDataSet;
-        }
 
-        aggregateThreadLocal.set(true);
-        return AggregateEngine.multiAggregate(aggregations, filterStructures);
+            if (aggregateThreadLocal.get() != null) {
+                QueryDataSet ans = aggregateThreadLocal.get();
+                ans.clear();
+                aggregateThreadLocal.remove();
+                return ans;
+            }
+
+            AggregateEngine.multiAggregate(aggregations, filterStructures);
+            QueryDataSet ansQueryDataSet = new QueryDataSet();
+            for (Pair<Path, AggregateFunction> pair : aggregations) {
+                AggregateFunction aggregateFunction = pair.right;
+                if (aggregateFunction.resultData.timeLength == 0) {
+                    aggregateFunction.putDefaultValue();
+                }
+                ansQueryDataSet.mapRet.put(EngineUtils.aggregationKey(aggregateFunction, pair.left), aggregateFunction.resultData);
+            }
+            aggregateThreadLocal.set(ansQueryDataSet);
+            return ansQueryDataSet;
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 
     /**
-     * Group by feature implementation.
+     * Group by function implementation.
      *
-     * @param aggres
-     * @param filterStructures
+     * @param aggres aggregation path and corresponding function
+     * @param filterStructures all filters in where clause
      * @param unit
      * @param origin
      * @param intervals
      * @param fetchSize
-     * @return
+     * @return QueryDataSet
      * @throws ProcessorException
      * @throws PathErrorException
      * @throws IOException
@@ -144,12 +154,14 @@ public class OverflowQueryEngine {
                                 long unit, long origin, List<Pair<Long, Long>> intervals, int fetchSize) {
 
         ThreadLocal<Integer> groupByCalcTime = ReadLockManager.getInstance().getGroupByCalcCalcTime();
-        ThreadLocal<GroupByEngineNoFilter> groupByEngineNoFilterLocal = ReadLockManager.getInstance().getGroupByEngineNoFilterLocal();
+        ThreadLocal<GroupByEngineNoFilter>  groupByEngineNoFilterLocal = ReadLockManager.getInstance().getGroupByEngineNoFilterLocal();
         ThreadLocal<GroupByEngineWithFilter> groupByEngineWithFilterLocal = ReadLockManager.getInstance().getGroupByEngineWithFilterLocal();
 
         if (groupByCalcTime.get() == null) {
+
             LOGGER.info("calculate aggregations the 1 time");
             groupByCalcTime.set(2);
+
             SingleSeriesFilterExpression intervalFilter = null;
             for (Pair<Long, Long> pair : intervals) {
                 if (intervalFilter == null) {
@@ -159,7 +171,7 @@ public class OverflowQueryEngine {
                 } else {
                     SingleSeriesFilterExpression left = FilterFactory.gtEq(FilterFactory.timeFilterSeries(), pair.left, true);
                     SingleSeriesFilterExpression right = FilterFactory.ltEq(FilterFactory.timeFilterSeries(), pair.right, true);
-                    intervalFilter = (Or) FilterFactory.or(intervalFilter, (And) FilterFactory.and(left, right));
+                    intervalFilter = (Or) FilterFactory.or(intervalFilter, FilterFactory.and(left, right));
                 }
             }
 
@@ -171,8 +183,12 @@ public class OverflowQueryEngine {
                     aggregations.add(new Pair<>(pair.left, func));
                 }
 
-                if (filterStructures == null || filterStructures.size() == 0 || (filterStructures.size() == 1 && filterStructures.get(0).noFilter())) {
-                    GroupByEngineNoFilter groupByEngineNoFilter = new GroupByEngineNoFilter(aggregations, origin, unit, intervalFilter, fetchSize);
+                if (noFilterOrOnlyHasTimeFilter(filterStructures)) {
+                    SingleSeriesFilterExpression timeFilter = null;
+                    if (filterStructures != null && filterStructures.size() == 1 && filterStructures.get(0).onlyHasTimeFilter()) {
+                        timeFilter = filterStructures.get(0).getTimeFilter();
+                    }
+                    GroupByEngineNoFilter groupByEngineNoFilter = new GroupByEngineNoFilter(aggregations, timeFilter, origin, unit, intervalFilter, fetchSize);
                     groupByEngineNoFilterLocal.set(groupByEngineNoFilter);
                     return groupByEngineNoFilter.groupBy();
                 }  else {
@@ -184,16 +200,18 @@ public class OverflowQueryEngine {
                 e.printStackTrace();
             }
         } else {
+
             LOGGER.info(String.format("calculate group by result function the %s time", String.valueOf(groupByCalcTime.get())));
+
             groupByCalcTime.set(groupByCalcTime.get() + 1);
             try {
-                if (filterStructures == null || filterStructures.size() == 0 || (filterStructures.size() == 1 && filterStructures.get(0).noFilter())) {
+                if (noFilterOrOnlyHasTimeFilter(filterStructures)) {
                     QueryDataSet ans = groupByEngineNoFilterLocal.get().groupBy();
                     if (!ans.hasNextRecord()) {
                         groupByCalcTime.remove();
                         groupByEngineNoFilterLocal.remove();
                         groupByEngineWithFilterLocal.remove();
-                        LOGGER.info("group by function without filter has no result");
+                        LOGGER.debug("group by function without filter has no result");
                     }
                     return ans;
                 } else {
@@ -202,7 +220,7 @@ public class OverflowQueryEngine {
                         groupByCalcTime.remove();
                         groupByEngineNoFilterLocal.remove();
                         groupByEngineWithFilterLocal.remove();
-                        LOGGER.info("group by function with filter has no result");
+                        LOGGER.debug("group by function with filter has no result");
                     }
                     return ans;
                 }
@@ -214,9 +232,9 @@ public class OverflowQueryEngine {
     }
 
     /**
-     * Query type 1: read without filter.
+     * Query type 1: query without filter.
      */
-    private QueryDataSet readWithoutFilter(List<Path> paths, QueryDataSet queryDataSet, int fetchSize, Integer readLock)
+    private QueryDataSet querySeriesWithoutFilter(List<Path> paths, QueryDataSet queryDataSet, int fetchSize, Integer readLock)
             throws ProcessorException, IOException {
         if (queryDataSet == null) {
             queryDataSet = new QueryDataSet();
@@ -224,7 +242,7 @@ public class OverflowQueryEngine {
                 @Override
                 public DynamicOneColumnData getMoreRecordsForOneColumn(Path p, DynamicOneColumnData res) throws ProcessorException, IOException {
                     try {
-                        return readOneColumnWithoutFilter(p, res, fetchSize, readLock);
+                        return queryOneSeriesWithoutFilter(p, res, fetchSize, readLock);
                     } catch (PathErrorException e) {
                         e.printStackTrace();
                         return null;
@@ -237,12 +255,10 @@ public class OverflowQueryEngine {
         queryDataSet.clear();
         queryDataSet.getBatchReadGenerator().calculateRecord();
         EngineUtils.putRecordFromBatchReadGenerator(queryDataSet);
-        // remove RecordReader cache of paths here is not collect, because of batch read,
-        // must store the position offset status in RecordReader.
         return queryDataSet;
     }
 
-    private DynamicOneColumnData readOneColumnWithoutFilter(Path path, DynamicOneColumnData res, int fetchSize, Integer readLock)
+    private DynamicOneColumnData queryOneSeriesWithoutFilter(Path path, DynamicOneColumnData res, int fetchSize, Integer readLock)
             throws ProcessorException, IOException, PathErrorException {
 
         String deltaObjectID = path.getDeltaObjectToString();
@@ -253,6 +269,7 @@ public class OverflowQueryEngine {
                 null, null, null, readLock, recordReaderPrefix);
 
         if (res == null) {
+
             // get overflow params merged with bufferwrite insert data
             List<Object> params = EngineUtils.getOverflowInfoAndFilterDataInMem(null, null, null,
                     res, recordReader.insertPageInMemory, recordReader.overflowInfo);
@@ -265,23 +282,21 @@ public class OverflowQueryEngine {
             recordReader.insertAllData = new InsertDynamicData(recordReader.bufferWritePageList, recordReader.compressionTypeName,
                     insertTrue, updateTrue, updateFalse,
                     newTimeFilter, null, null, getDataTypeByPath(path));
-            res = recordReader.getValueInOneColumnWithOverflow(deltaObjectID, measurementID,
+            res = recordReader.queryOneSeries(deltaObjectID, measurementID,
                     updateTrue, updateFalse, recordReader.insertAllData, newTimeFilter, null, res, fetchSize);
             res.putOverflowInfo(insertTrue, updateTrue, updateFalse, newTimeFilter);
         } else {
-            res = recordReader.getValueInOneColumnWithOverflow(deltaObjectID, measurementID,
+            res = recordReader.queryOneSeries(deltaObjectID, measurementID,
                     res.updateTrue, res.updateFalse, recordReader.insertAllData, res.timeFilter, null, res, fetchSize);
         }
 
-        // close current recordReader
-        // recordReader.closeFromFactory();
         return res;
     }
 
     /**
-     * Query type 2: read one series with filter.
+     * Query type 2: query with filter.
      */
-    private QueryDataSet readOneColumnUseFilter(List<Path> paths, SingleSeriesFilterExpression timeFilter,
+    private QueryDataSet querySeriesUsingFilter(List<Path> paths, SingleSeriesFilterExpression timeFilter,
                                                 SingleSeriesFilterExpression freqFilter, SingleSeriesFilterExpression valueFilter,
                                                 QueryDataSet queryDataSet, int fetchSize,
                                                 Integer readLock) throws ProcessorException, IOException {
@@ -291,7 +306,7 @@ public class OverflowQueryEngine {
                 @Override
                 public DynamicOneColumnData getMoreRecordsForOneColumn(Path p, DynamicOneColumnData res) throws ProcessorException, IOException {
                     try {
-                        return readOneColumnUseFilter(p, timeFilter, freqFilter, valueFilter, res, fetchSize, readLock);
+                        return queryOneSeriesUsingFilter(p, timeFilter, freqFilter, valueFilter, res, fetchSize, readLock);
                     } catch (PathErrorException e) {
                         e.printStackTrace();
                         return null;
@@ -308,9 +323,9 @@ public class OverflowQueryEngine {
         return queryDataSet;
     }
 
-    private DynamicOneColumnData readOneColumnUseFilter(Path path, SingleSeriesFilterExpression timeFilter,
-                                                        SingleSeriesFilterExpression freqFilter, SingleSeriesFilterExpression valueFilter,
-                                                        DynamicOneColumnData res, int fetchSize, Integer readLock)
+    private DynamicOneColumnData queryOneSeriesUsingFilter(Path path, SingleSeriesFilterExpression timeFilter,
+                                                           SingleSeriesFilterExpression freqFilter, SingleSeriesFilterExpression valueFilter,
+                                                           DynamicOneColumnData res, int fetchSize, Integer readLock)
             throws ProcessorException, IOException, PathErrorException {
 
         String deltaObjectId = path.getDeltaObjectToString();
@@ -321,6 +336,7 @@ public class OverflowQueryEngine {
                 timeFilter, freqFilter, valueFilter, readLock, recordReaderPrefix);
 
         if (res == null) {
+
             // get overflow params merged with bufferwrite insert data
             List<Object> params = EngineUtils.getOverflowInfoAndFilterDataInMem(timeFilter, freqFilter, valueFilter,
                     res, recordReader.insertPageInMemory, recordReader.overflowInfo);
@@ -333,11 +349,11 @@ public class OverflowQueryEngine {
             recordReader.insertAllData = new InsertDynamicData(recordReader.bufferWritePageList, recordReader.compressionTypeName,
                     insertTrue, updateTrue, updateFalse,
                     newTimeFilter, valueFilter, null, getDataTypeByPath(path));
-            res = recordReader.getValueInOneColumnWithOverflow(deltaObjectId, measurementId,
+            res = recordReader.queryOneSeries(deltaObjectId, measurementId,
                     updateTrue, updateFalse, recordReader.insertAllData, newTimeFilter, valueFilter, res, fetchSize);
             res.putOverflowInfo(insertTrue, updateTrue, updateFalse, newTimeFilter);
         } else {
-            res = recordReader.getValueInOneColumnWithOverflow(deltaObjectId, measurementId,
+            res = recordReader.queryOneSeries(deltaObjectId, measurementId,
                     res.updateTrue, res.updateFalse, recordReader.insertAllData, res.timeFilter, valueFilter, res, fetchSize);
         }
 
@@ -347,7 +363,7 @@ public class OverflowQueryEngine {
     /**
      * Query type 3: cross series read.
      */
-    private QueryDataSet crossColumnQuery(List<Path> paths,
+    private QueryDataSet crossSeriesQuery(List<Path> paths,
                                           SingleSeriesFilterExpression timeFilter, SingleSeriesFilterExpression freqFilter,
                                           CrossSeriesFilterExpression valueFilter,
                                           QueryDataSet queryDataSet, int fetchSize)
@@ -356,9 +372,8 @@ public class OverflowQueryEngine {
         if (queryDataSet != null) {
             queryDataSet.clear();
         }
+
         if (queryDataSet == null) {
-            // reset status of RecordReader used ValueFilter
-            // resetRecordStatusUsingValueFilter(valueFilter, new HashSet<>());
             queryDataSet = new QueryDataSet();
             queryDataSet.crossQueryTimeGenerator = new CrossQueryTimeGenerator(timeFilter, freqFilter, valueFilter, fetchSize) {
                 @Override
@@ -367,7 +382,7 @@ public class OverflowQueryEngine {
                         throws ProcessorException, IOException {
 
                     try {
-                        return getDataUseSingleValueFilter(valueFilter, freqFilter, res, fetchSize, valueFilterNumber);
+                        return querySeriesForCross(valueFilter, freqFilter, res, fetchSize, valueFilterNumber);
                     } catch (PathErrorException e) {
                         e.printStackTrace();
                         return null;
@@ -393,6 +408,7 @@ public class OverflowQueryEngine {
 
             // valueFilter is null, determine the common timeRet used valueFilter firstly.
             if (recordReader.insertAllData == null) {
+
                 // get overflow params merged with bufferwrite insert data
                 List<Object> params = EngineUtils.getOverflowInfoAndFilterDataInMem(null, null, null,
                         null, recordReader.insertPageInMemory, recordReader.overflowInfo);
@@ -404,21 +420,16 @@ public class OverflowQueryEngine {
                 recordReader.insertAllData = new InsertDynamicData(recordReader.bufferWritePageList, recordReader.compressionTypeName,
                         insertTrue, updateTrue, updateFalse,
                         newTimeFilter, null, freqFilter, getDataTypeByPath(path));
-                DynamicOneColumnData queryResult = recordReader.getValuesUseTimestampsWithOverflow(deltaObjectId, measurementId,
-                        timestamps, updateTrue, recordReader.insertAllData, newTimeFilter);
+
+                DynamicOneColumnData queryResult = recordReader.queryUsingTimestamps(
+                        deltaObjectId, measurementId, newTimeFilter, timestamps, recordReader.insertAllData);
                 queryResult.putOverflowInfo(insertTrue, updateTrue, updateFalse, newTimeFilter);
                 ret.mapRet.put(queryKey, queryResult);
             } else {
-                // reset the insertMemory read status
-                // recordReader.insertAllData.readStatusReset();
-                // recordReader.insertAllData.setCurrentPageBuffer(insertTrue);
-                DynamicOneColumnData oneColDataList = ret.mapRet.get(queryKey);
-                oneColDataList = recordReader.getValuesUseTimestampsWithOverflow(deltaObjectId, measurementId,
-                        timestamps, oneColDataList.updateTrue, recordReader.insertAllData, oneColDataList.timeFilter);
-                ret.mapRet.put(queryKey, oneColDataList);
+                DynamicOneColumnData queryAnswer = recordReader.queryUsingTimestamps(
+                        deltaObjectId, measurementId, recordReader.insertAllData.timeFilter, timestamps, recordReader.insertAllData);
+                ret.mapRet.put(queryKey, queryAnswer);
             }
-
-            // recordReader.closeFromFactory();
         }
 
         return ret;
@@ -434,8 +445,8 @@ public class OverflowQueryEngine {
      * <code>RecordReaderCache</code>, if the composition of CrossFilterExpression exist same SingleFilterExpression,
      * we must guarantee that the <code>RecordReaderCache</code> doesn't cause conflict to the same SingleFilterExpression.
      */
-    public DynamicOneColumnData getDataUseSingleValueFilter(SingleSeriesFilterExpression valueFilter, SingleSeriesFilterExpression freqFilter,
-                                                            DynamicOneColumnData res, int fetchSize, int valueFilterNumber)
+    public DynamicOneColumnData querySeriesForCross(SingleSeriesFilterExpression valueFilter, SingleSeriesFilterExpression freqFilter,
+                                                    DynamicOneColumnData res, int fetchSize, int valueFilterNumber)
             throws ProcessorException, IOException, PathErrorException {
 
         // form.V.valueFilterNumber.deltaObjectId.measurementId
@@ -447,6 +458,7 @@ public class OverflowQueryEngine {
                 null, freqFilter, valueFilter, null, valueFilterPrefix);
 
         if (res == null) {
+
             // get four overflow params
             List<Object> params = EngineUtils.getOverflowInfoAndFilterDataInMem(null, freqFilter, valueFilter,
                     res, recordReader.insertPageInMemory, recordReader.overflowInfo);
@@ -458,15 +470,20 @@ public class OverflowQueryEngine {
 
             recordReader.insertAllData = new InsertDynamicData(recordReader.bufferWritePageList, recordReader.compressionTypeName,
                     insertTrue, updateTrue, updateFalse,
-                    newTimeFilter, valueFilter, null, mManager.getSeriesType(deltaObjectUID + "." + measurementUID));
-            res = recordReader.getValueInOneColumnWithOverflow(deltaObjectUID, measurementUID,
+                    newTimeFilter, valueFilter, null, MManager.getInstance().getSeriesType(deltaObjectUID + "." + measurementUID));
+            res = recordReader.queryOneSeries(deltaObjectUID, measurementUID,
                     updateTrue, updateFalse, recordReader.insertAllData, newTimeFilter, valueFilter, res, fetchSize);
             res.putOverflowInfo(insertTrue, updateTrue, updateFalse, newTimeFilter);
         } else {
-            res = recordReader.getValueInOneColumnWithOverflow(deltaObjectUID, measurementUID,
+            res = recordReader.queryOneSeries(deltaObjectUID, measurementUID,
                     res.updateTrue, res.updateFalse, recordReader.insertAllData, res.timeFilter, valueFilter, res, fetchSize);
         }
 
         return res;
     }
+
+    private TSDataType getDataTypeByPath(Path path) throws PathErrorException {
+        return MManager.getInstance().getSeriesType(path.getFullPath());
+    }
+
 }

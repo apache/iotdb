@@ -216,11 +216,7 @@ public class GroupByEngineWithFilter {
                 }
             }
 
-            LOG.debug("common timestamps calculated in GroupBy process : " + aggregateTimestamps.toString());
-
-//            if (partitionStart >= 98) {
-//                System.out.println("..");
-//            }
+            //LOG.debug("common timestamps calculated in GroupBy process : " + aggregateTimestamps.toString());
 
             if (queryCalcFlag) {
                 calcPathQueryData();
@@ -332,9 +328,9 @@ public class GroupByEngineWithFilter {
             cnt++;
             Path path = pair.left;
             AggregateFunction aggregateFunction = pair.right;
-            groupByResult.mapRet.put(aggregationKey(path, aggregateFunction), aggregateFunction.result.data);
+            groupByResult.mapRet.put(aggregationKey(path, aggregateFunction), aggregateFunction.resultData);
         }
-        LOG.info("calculate group by result successfully.");
+        //LOG.debug("calculate group by result successfully.");
         return groupByResult;
     }
 
@@ -380,13 +376,13 @@ public class GroupByEngineWithFilter {
                 recordReader.insertAllData = new InsertDynamicData(recordReader.bufferWritePageList, recordReader.compressionTypeName,
                         insertTrue, updateTrue, updateFalse,
                         newTimeFilter, null, null, MManager.getInstance().getSeriesType(path.getFullPath()));
-                data = recordReader.getValuesUseTimestampsWithOverflow(deltaObjectId, measurementId,
-                        aggregateTimestamps.stream().mapToLong(i->i).toArray(), updateTrue, recordReader.insertAllData, newTimeFilter);
+                data = recordReader.queryUsingTimestamps(deltaObjectId, measurementId,
+                        recordReader.insertAllData.timeFilter, aggregateTimestamps.stream().mapToLong(i->i).toArray(), recordReader.insertAllData);
                 data.putOverflowInfo(insertTrue, updateTrue, updateFalse, newTimeFilter);
                 queryPathResult.put(aggregationKey, data);
             } else {
-                data = recordReader.getValuesUseTimestampsWithOverflow(deltaObjectId, measurementId,
-                        aggregateTimestamps.stream().mapToLong(i->i).toArray(), data.updateTrue, recordReader.insertAllData, data.timeFilter);
+                data = recordReader.queryUsingTimestamps(deltaObjectId, measurementId,
+                        recordReader.insertAllData.timeFilter, aggregateTimestamps.stream().mapToLong(i->i).toArray(), recordReader.insertAllData);
                 queryPathResult.put(aggregationKey, data);
             }
         }
@@ -427,11 +423,11 @@ public class GroupByEngineWithFilter {
             recordReader.insertAllData = new InsertDynamicData(recordReader.bufferWritePageList, recordReader.compressionTypeName,
                     insertTrue, updateTrue, updateFalse,
                     newTimeFilter, valueFilter, null, MManager.getInstance().getSeriesType(deltaObjectUID + "." + measurementUID));
-            res = recordReader.getValueInOneColumnWithOverflow(deltaObjectUID, measurementUID,
+            res = recordReader.queryOneSeries(deltaObjectUID, measurementUID,
                     updateTrue, updateFalse, recordReader.insertAllData, newTimeFilter, valueFilter, res, fetchSize);
             res.putOverflowInfo(insertTrue, updateTrue, updateFalse, newTimeFilter);
         } else {
-            res = recordReader.getValueInOneColumnWithOverflow(deltaObjectUID, measurementUID,
+            res = recordReader.queryOneSeries(deltaObjectUID, measurementUID,
                     res.updateTrue, res.updateFalse, recordReader.insertAllData, res.timeFilter, valueFilter, res, fetchSize);
         }
 

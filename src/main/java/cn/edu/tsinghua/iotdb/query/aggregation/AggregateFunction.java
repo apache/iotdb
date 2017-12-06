@@ -14,23 +14,13 @@ import cn.edu.tsinghua.tsfile.timeseries.read.query.DynamicOneColumnData;
 public abstract class AggregateFunction {
 
     public String name;
-    public AggregationResult result;
+    public DynamicOneColumnData resultData;
     public TSDataType dataType;
-    /**
-     * storage some necessary object for batch read, such as incompletely read Page
-     */
-    public Map<String, Object> maps = new HashMap<>();
 
     public AggregateFunction(String name, TSDataType dataType) {
         this.name = name;
         this.dataType = dataType;
-        result = new AggregationResult(dataType);
-    }
-
-    public AggregateFunction(String name, TSDataType dataType, boolean hasEmptyTime) {
-        this.name = name;
-        this.dataType = dataType;
-        result = new AggregationResult(dataType, true);
+        resultData = new DynamicOneColumnData(dataType, true, true);
     }
 
     public abstract void putDefaultValue();
@@ -93,7 +83,17 @@ public abstract class AggregateFunction {
     public abstract boolean calcAggregationUsingTimestamps(InsertDynamicData insertMemoryData, List<Long> timestamps, int timeIndex)
             throws IOException, ProcessorException;
 
-
+    /**
+     * <p>
+     * This method is calculate the group by function.
+     * </p>
+     *
+     * @param partitionStart
+     * @param partitionEnd
+     * @param intervalStart
+     * @param intervalEnd
+     * @param data
+     */
     public abstract void calcGroupByAggregation(long partitionStart, long partitionEnd, long intervalStart, long intervalEnd,
                                                 DynamicOneColumnData data);
 }

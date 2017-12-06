@@ -6,14 +6,12 @@ import java.io.InputStream;
 import java.util.List;
 
 import cn.edu.tsinghua.iotdb.query.visitorImpl.PageAllSatisfiedVisitor;
-import cn.edu.tsinghua.tsfile.common.utils.ITsRandomAccessFileReader;
 import cn.edu.tsinghua.tsfile.common.utils.Pair;
 import cn.edu.tsinghua.tsfile.file.metadata.TsDigest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import cn.edu.tsinghua.iotdb.query.aggregation.AggregateFunction;
-import cn.edu.tsinghua.iotdb.query.aggregation.AggregationResult;
 import cn.edu.tsinghua.iotdb.query.dataset.InsertDynamicData;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 import cn.edu.tsinghua.tsfile.common.utils.Binary;
@@ -30,30 +28,9 @@ import cn.edu.tsinghua.tsfile.timeseries.read.PageReader;
 import cn.edu.tsinghua.tsfile.timeseries.read.ValueReader;
 import cn.edu.tsinghua.tsfile.timeseries.read.query.DynamicOneColumnData;
 
-public class OverflowBufferWriteProcessor{
+public class ValueReaderProcessor {
 
-    private static final Logger LOG = LoggerFactory.getLogger(OverflowBufferWriteProcessor.class);
-
-    // private
-//    OverflowBufferWriteProcessor(long offset, long totalSize, TSDataType dataType, TsDigest digest,
-//                                 ITsRandomAccessFileReader raf, List<String> enumValues, CompressionTypeName compressionTypeName,
-//                                 long rowNums) {
-//        super(offset, totalSize, dataType, digest, raf, enumValues, compressionTypeName, rowNums);
-//    }
-
-    private ByteArrayInputStream initBAISForOnePage(ValueReader valueReader, long pageOffset) throws IOException {
-        int length = (int) (valueReader.totalSize - (pageOffset - valueReader.fileOffset));
-        // int length = (int) (this.totalSize + fileOffset - valueOffset);
-        byte[] buf = new byte[length]; // warning
-        int readSize = 0;
-        valueReader.raf.seek(pageOffset);
-        readSize = valueReader.raf.read(buf, 0, length);
-        if (readSize != length) {
-            throw new IOException("Expect byte size : " + length + ". Read size : " + readSize);
-        }
-
-        return new ByteArrayInputStream(buf);
-    }
+    private static final Logger LOG = LoggerFactory.getLogger(ValueReaderProcessor.class);
 
     static DynamicOneColumnData getValuesWithOverFlow(ValueReader valueReader, DynamicOneColumnData updateTrueData, DynamicOneColumnData updateFalseData,
                                                InsertDynamicData insertMemoryData, SingleSeriesFilterExpression timeFilter,
@@ -68,20 +45,17 @@ public class OverflowBufferWriteProcessor{
             res.pageOffset = valueReader.getFileOffset();
             res.leftSize = valueReader.getTotalSize();
             res.insertTrueIndex = 0;
-            LOG.debug("first time : " + res.pageOffset);
         }
 
-        LOG.debug("not first time : " + res.pageOffset);
-        // IMPORTANT!!
+        // new series read
         if (res.pageOffset == -1) {
             res.pageOffset = valueReader.getFileOffset();
         }
 
         TsDigest digest = valueReader.getDigest();
         DigestForFilter digestFF = new DigestForFilter(digest.min, digest.max, dataType);
-        LOG.debug("read one series normally, digest min and max is: " + digestFF.getMinValue() + " --- " + digestFF.getMaxValue());
+        LOG.debug("read one series digest normally, digest min and max is: " + digestFF.getMinValue() + " --- " + digestFF.getMaxValue());
         DigestVisitor digestVisitor = new DigestVisitor();
-        // If not satisfied, return res with size equal to 0
 
         // TODO: optimize
         updateTrueData = (updateTrueData == null ? new DynamicOneColumnData(dataType, true) : updateTrueData);
@@ -116,7 +90,7 @@ public class OverflowBufferWriteProcessor{
             // To help to record byte size in this process of read.
             int lastAvailable = bis.available();
             pageCount++;
-            LOG.debug("read page {}, offset : {}", pageCount, res.pageOffset);
+            //LOG.debug("read page {}, offset : {}", pageCount, res.pageOffset);
             PageHeader pageHeader = pageReader.getNextPageHeader();
 
             // construct valueFilter
@@ -212,13 +186,9 @@ public class OverflowBufferWriteProcessor{
                             int v = valueReader.decoder.readInt(page);
                             if (mode == -1) {
                                 if ((valueFilter == null && timeFilter == null)
-                                        || (valueFilter != null && timeFilter == null
-                                        && valueVisitor.verify(v))
-                                        || (valueFilter == null && timeFilter != null
-                                        && timeVisitor.verify(timeValues[timeIdx]))
-                                        || (valueFilter != null && timeFilter != null
-                                        && valueVisitor.verify(v)
-                                        && timeVisitor.verify(timeValues[timeIdx]))) {
+                                        || (valueFilter != null && timeFilter == null && valueVisitor.verify(v))
+                                        || (valueFilter == null && timeFilter != null && timeVisitor.verify(timeValues[timeIdx]))
+                                        || (valueFilter != null && timeFilter != null && valueVisitor.verify(v) && timeVisitor.verify(timeValues[timeIdx]))) {
                                     res.putInt(v);
                                     res.putTime(timeValues[timeIdx]);
                                     resCount++;
@@ -230,20 +200,15 @@ public class OverflowBufferWriteProcessor{
                                 if (updateData[0].getTime(updateIdx[0]) <= timeValues[timeIdx]
                                         && timeValues[timeIdx] <= updateData[0].getTime(updateIdx[0] + 1)) {
                                     // update the value
-                                    if (timeFilter == null
-                                            || timeVisitor.verify(timeValues[timeIdx])) {
+                                    if (timeFilter == null || timeVisitor.verify(timeValues[timeIdx])) {
                                         res.putInt(updateData[0].getInt(updateIdx[0] / 2));
                                         res.putTime(timeValues[timeIdx]);
                                         resCount++;
                                     }
                                 } else if ((valueFilter == null && timeFilter == null)
-                                        || (valueFilter != null && timeFilter == null
-                                        && valueVisitor.verify(v))
-                                        || (valueFilter == null && timeFilter != null
-                                        && timeVisitor.verify(timeValues[timeIdx]))
-                                        || (valueFilter != null && timeFilter != null
-                                        && valueVisitor.verify(v)
-                                        && timeVisitor.verify(timeValues[timeIdx]))) {
+                                        || (valueFilter != null && timeFilter == null && valueVisitor.verify(v))
+                                        || (valueFilter == null && timeFilter != null && timeVisitor.verify(timeValues[timeIdx]))
+                                        || (valueFilter != null && timeFilter != null && valueVisitor.verify(v) && timeVisitor.verify(timeValues[timeIdx]))) {
                                     res.putInt(v);
                                     res.putTime(timeValues[timeIdx]);
                                     resCount++;
@@ -256,13 +221,9 @@ public class OverflowBufferWriteProcessor{
                                         && timeValues[timeIdx] <= updateData[1].getTime(updateIdx[1] + 1)) {
                                     // do nothing
                                 } else if ((valueFilter == null && timeFilter == null)
-                                        || (valueFilter != null && timeFilter == null
-                                        && valueVisitor.verify(v))
-                                        || (valueFilter == null && timeFilter != null
-                                        && timeVisitor.verify(timeValues[timeIdx]))
-                                        || (valueFilter != null && timeFilter != null
-                                        && valueVisitor.verify(v)
-                                        && timeVisitor.verify(timeValues[timeIdx]))) {
+                                        || (valueFilter != null && timeFilter == null && valueVisitor.verify(v))
+                                        || (valueFilter == null && timeFilter != null && timeVisitor.verify(timeValues[timeIdx]))
+                                        || (valueFilter != null && timeFilter != null && valueVisitor.verify(v) && timeVisitor.verify(timeValues[timeIdx]))) {
                                     res.putInt(v);
                                     res.putTime(timeValues[timeIdx]);
                                     resCount++;
@@ -306,13 +267,9 @@ public class OverflowBufferWriteProcessor{
                             boolean v = valueReader.decoder.readBoolean(page);
                             if (mode == -1) {
                                 if ((valueFilter == null && timeFilter == null)
-                                        || (valueFilter != null && timeFilter == null
-                                        && valueVisitor.satisfyObject(v, valueFilter))
-                                        || (valueFilter == null && timeFilter != null
-                                        && timeVisitor.verify(timeValues[timeIdx]))
-                                        || (valueFilter != null && timeFilter != null
-                                        && valueVisitor.satisfyObject(v, valueFilter)
-                                        && timeVisitor.verify(timeValues[timeIdx]))) {
+                                        || (valueFilter != null && timeFilter == null && valueVisitor.satisfyObject(v, valueFilter))
+                                        || (valueFilter == null && timeFilter != null && timeVisitor.verify(timeValues[timeIdx]))
+                                        || (valueFilter != null && timeFilter != null && valueVisitor.satisfyObject(v, valueFilter) && timeVisitor.verify(timeValues[timeIdx]))) {
                                     res.putBoolean(v);
                                     res.putTime(timeValues[timeIdx]);
                                     resCount++;
@@ -324,20 +281,15 @@ public class OverflowBufferWriteProcessor{
                                 if (updateData[0].getTime(updateIdx[0]) <= timeValues[timeIdx]
                                         && timeValues[timeIdx] <= updateData[0].getTime(updateIdx[0] + 1)) {
                                     // update the value
-                                    if (timeFilter == null
-                                            || timeVisitor.verify(timeValues[timeIdx])) {
+                                    if (timeFilter == null || timeVisitor.verify(timeValues[timeIdx])) {
                                         res.putInt(updateData[0].getInt(updateIdx[0] / 2));
                                         res.putTime(timeValues[timeIdx]);
                                         resCount++;
                                     }
                                 } else if ((valueFilter == null && timeFilter == null)
-                                        || (valueFilter != null && timeFilter == null
-                                        && valueVisitor.satisfyObject(v, valueFilter))
-                                        || (valueFilter == null && timeFilter != null
-                                        && timeVisitor.verify(timeValues[timeIdx]))
-                                        || (valueFilter != null && timeFilter != null
-                                        && valueVisitor.satisfyObject(v, valueFilter)
-                                        && timeVisitor.verify(timeValues[timeIdx]))) {
+                                        || (valueFilter != null && timeFilter == null && valueVisitor.satisfyObject(v, valueFilter))
+                                        || (valueFilter == null && timeFilter != null && timeVisitor.verify(timeValues[timeIdx]))
+                                        || (valueFilter != null && timeFilter != null && valueVisitor.satisfyObject(v, valueFilter) && timeVisitor.verify(timeValues[timeIdx]))) {
                                     res.putBoolean(v);
                                     res.putTime(timeValues[timeIdx]);
                                     resCount++;
@@ -350,13 +302,9 @@ public class OverflowBufferWriteProcessor{
                                         && timeValues[timeIdx] <= updateData[1].getTime(updateIdx[1] + 1)) {
                                     // do nothing
                                 } else if ((valueFilter == null && timeFilter == null)
-                                        || (valueFilter != null && timeFilter == null
-                                        && valueVisitor.satisfyObject(v, valueFilter))
-                                        || (valueFilter == null && timeFilter != null
-                                        && timeVisitor.verify(timeValues[timeIdx]))
-                                        || (valueFilter != null && timeFilter != null
-                                        && valueVisitor.satisfyObject(v, valueFilter)
-                                        && timeVisitor.verify(timeValues[timeIdx]))) {
+                                        || (valueFilter != null && timeFilter == null && valueVisitor.satisfyObject(v, valueFilter))
+                                        || (valueFilter == null && timeFilter != null && timeVisitor.verify(timeValues[timeIdx]))
+                                        || (valueFilter != null && timeFilter != null && valueVisitor.satisfyObject(v, valueFilter) && timeVisitor.verify(timeValues[timeIdx]))) {
                                     res.putBoolean(v);
                                     res.putTime(timeValues[timeIdx]);
                                     resCount++;
@@ -401,13 +349,9 @@ public class OverflowBufferWriteProcessor{
                             long v = valueReader.decoder.readLong(page);
                             if (mode == -1) {
                                 if ((valueFilter == null && timeFilter == null)
-                                        || (valueFilter != null && timeFilter == null
-                                        && valueVisitor.verify(v))
-                                        || (valueFilter == null && timeFilter != null
-                                        && timeVisitor.verify(timeValues[timeIdx]))
-                                        || (valueFilter != null && timeFilter != null
-                                        && valueVisitor.verify(v)
-                                        && timeVisitor.verify(timeValues[timeIdx]))) {
+                                        || (valueFilter != null && timeFilter == null && valueVisitor.verify(v))
+                                        || (valueFilter == null && timeFilter != null && timeVisitor.verify(timeValues[timeIdx]))
+                                        || (valueFilter != null && timeFilter != null && valueVisitor.verify(v) && timeVisitor.verify(timeValues[timeIdx]))) {
                                     res.putLong(v);
                                     res.putTime(timeValues[timeIdx]);
                                     resCount++;
@@ -419,20 +363,15 @@ public class OverflowBufferWriteProcessor{
                                 if (updateData[0].getTime(updateIdx[0]) <= timeValues[timeIdx]
                                         && timeValues[timeIdx] <= updateData[0].getTime(updateIdx[0] + 1)) {
                                     //TODO update the value, need discuss the logic with gaofei
-                                    if (timeFilter == null
-                                            || timeVisitor.verify(timeValues[timeIdx])) {
+                                    if (timeFilter == null || timeVisitor.verify(timeValues[timeIdx])) {
                                         res.putLong(updateData[0].getLong(updateIdx[0] / 2));
                                         res.putTime(timeValues[timeIdx]);
                                         resCount++;
                                     }
                                 } else if ((valueFilter == null && timeFilter == null)
-                                        || (valueFilter != null && timeFilter == null
-                                        && valueVisitor.verify(v))
-                                        || (valueFilter == null && timeFilter != null
-                                        && timeVisitor.verify(timeValues[timeIdx]))
-                                        || (valueFilter != null && timeFilter != null
-                                        && valueVisitor.verify(v)
-                                        && timeVisitor.verify(timeValues[timeIdx]))) {
+                                        || (valueFilter != null && timeFilter == null && valueVisitor.verify(v))
+                                        || (valueFilter == null && timeFilter != null && timeVisitor.verify(timeValues[timeIdx]))
+                                        || (valueFilter != null && timeFilter != null && valueVisitor.verify(v) && timeVisitor.verify(timeValues[timeIdx]))) {
                                     res.putLong(v);
                                     res.putTime(timeValues[timeIdx]);
                                     resCount++;
@@ -445,13 +384,9 @@ public class OverflowBufferWriteProcessor{
                                         && timeValues[timeIdx] <= updateData[1].getTime(updateIdx[1] + 1)) {
                                     // do nothing
                                 } else if ((valueFilter == null && timeFilter == null)
-                                        || (valueFilter != null && timeFilter == null
-                                        && valueVisitor.verify(v))
-                                        || (valueFilter == null && timeFilter != null
-                                        && timeVisitor.verify(timeValues[timeIdx]))
-                                        || (valueFilter != null && timeFilter != null
-                                        && valueVisitor.verify(v)
-                                        && timeVisitor.verify(timeValues[timeIdx]))) {
+                                        || (valueFilter != null && timeFilter == null && valueVisitor.verify(v))
+                                        || (valueFilter == null && timeFilter != null && timeVisitor.verify(timeValues[timeIdx]))
+                                        || (valueFilter != null && timeFilter != null && valueVisitor.verify(v) && timeVisitor.verify(timeValues[timeIdx]))) {
                                     res.putLong(v);
                                     res.putTime(timeValues[timeIdx]);
                                     resCount++;
@@ -494,13 +429,9 @@ public class OverflowBufferWriteProcessor{
                             float v = valueReader.decoder.readFloat(page);
                             if (mode == -1) {
                                 if ((valueFilter == null && timeFilter == null)
-                                        || (valueFilter != null && timeFilter == null
-                                        && valueVisitor.verify(v))
-                                        || (valueFilter == null && timeFilter != null
-                                        && timeVisitor.verify(timeValues[timeIdx]))
-                                        || (valueFilter != null && timeFilter != null
-                                        && valueVisitor.verify(v)
-                                        && timeVisitor.verify(timeValues[timeIdx]))) {
+                                        || (valueFilter != null && timeFilter == null && valueVisitor.verify(v))
+                                        || (valueFilter == null && timeFilter != null && timeVisitor.verify(timeValues[timeIdx]))
+                                        || (valueFilter != null && timeFilter != null && valueVisitor.verify(v) && timeVisitor.verify(timeValues[timeIdx]))) {
                                     res.putFloat(v);
                                     res.putTime(timeValues[timeIdx]);
                                     resCount++;
@@ -512,20 +443,15 @@ public class OverflowBufferWriteProcessor{
                                 if (updateData[0].getTime(updateIdx[0]) <= timeValues[timeIdx]
                                         && timeValues[timeIdx] <= updateData[0].getTime(updateIdx[0] + 1)) {
                                     // update the value
-                                    if (timeFilter == null
-                                            || timeVisitor.verify(timeValues[timeIdx])) {
+                                    if (timeFilter == null || timeVisitor.verify(timeValues[timeIdx])) {
                                         res.putFloat(updateData[0].getFloat(updateIdx[0] / 2));
                                         res.putTime(timeValues[timeIdx]);
                                         resCount++;
                                     }
                                 } else if ((valueFilter == null && timeFilter == null)
-                                        || (valueFilter != null && timeFilter == null
-                                        && valueVisitor.verify(v))
-                                        || (valueFilter == null && timeFilter != null
-                                        && timeVisitor.verify(timeValues[timeIdx]))
-                                        || (valueFilter != null && timeFilter != null
-                                        && valueVisitor.verify(v)
-                                        && timeVisitor.verify(timeValues[timeIdx]))) {
+                                        || (valueFilter != null && timeFilter == null && valueVisitor.verify(v))
+                                        || (valueFilter == null && timeFilter != null && timeVisitor.verify(timeValues[timeIdx]))
+                                        || (valueFilter != null && timeFilter != null && valueVisitor.verify(v) && timeVisitor.verify(timeValues[timeIdx]))) {
                                     res.putFloat(v);
                                     res.putTime(timeValues[timeIdx]);
                                     resCount++;
@@ -538,12 +464,9 @@ public class OverflowBufferWriteProcessor{
                                         && timeValues[timeIdx] <= updateData[1].getTime(updateIdx[1] + 1)) {
                                     // do nothing
                                 } else if ((valueFilter == null && timeFilter == null)
-                                        || (valueFilter != null && timeFilter == null
-                                        && valueVisitor.verify(v))
-                                        || (valueFilter == null && timeFilter != null
-                                        && timeVisitor.verify(timeValues[timeIdx]))
-                                        || (valueFilter != null && timeFilter != null
-                                        && valueVisitor.verify(v)
+                                        || (valueFilter != null && timeFilter == null && valueVisitor.verify(v))
+                                        || (valueFilter == null && timeFilter != null && timeVisitor.verify(timeValues[timeIdx]))
+                                        || (valueFilter != null && timeFilter != null && valueVisitor.verify(v)
                                         && timeVisitor.verify(timeValues[timeIdx]))) {
                                     res.putFloat(v);
                                     res.putTime(timeValues[timeIdx]);
@@ -587,13 +510,9 @@ public class OverflowBufferWriteProcessor{
                             double v = valueReader.decoder.readDouble(page);
                             if (mode == -1) {
                                 if ((valueFilter == null && timeFilter == null)
-                                        || (valueFilter != null && timeFilter == null
-                                        && valueVisitor.verify(v))
-                                        || (valueFilter == null && timeFilter != null
-                                        && timeVisitor.verify(timeValues[timeIdx]))
-                                        || (valueFilter != null && timeFilter != null
-                                        && valueVisitor.verify(v)
-                                        && timeVisitor.verify(timeValues[timeIdx]))) {
+                                        || (valueFilter != null && timeFilter == null && valueVisitor.verify(v))
+                                        || (valueFilter == null && timeFilter != null && timeVisitor.verify(timeValues[timeIdx]))
+                                        || (valueFilter != null && timeFilter != null && valueVisitor.verify(v) && timeVisitor.verify(timeValues[timeIdx]))) {
                                     res.putDouble(v);
                                     res.putTime(timeValues[timeIdx]);
                                     resCount++;
@@ -605,19 +524,15 @@ public class OverflowBufferWriteProcessor{
                                 if (updateData[0].getTime(updateIdx[0]) <= timeValues[timeIdx]
                                         && timeValues[timeIdx] <= updateData[0].getTime(updateIdx[0] + 1)) {
                                     // update the value
-                                    if (timeFilter == null
-                                            || timeVisitor.verify(timeValues[timeIdx])) {
+                                    if (timeFilter == null || timeVisitor.verify(timeValues[timeIdx])) {
                                         res.putDouble(updateData[0].getDouble(updateIdx[0] / 2));
                                         res.putTime(timeValues[timeIdx]);
                                         resCount++;
                                     }
                                 } else if ((valueFilter == null && timeFilter == null)
-                                        || (valueFilter != null && timeFilter == null
-                                        && valueVisitor.verify(v))
-                                        || (valueFilter == null && timeFilter != null
-                                        && timeVisitor.verify(timeValues[timeIdx]))
-                                        || (valueFilter != null && timeFilter != null
-                                        && valueVisitor.verify(v)
+                                        || (valueFilter != null && timeFilter == null && valueVisitor.verify(v))
+                                        || (valueFilter == null && timeFilter != null && timeVisitor.verify(timeValues[timeIdx]))
+                                        || (valueFilter != null && timeFilter != null && valueVisitor.verify(v)
                                         && timeVisitor.verify(timeValues[timeIdx]))) {
                                     res.putDouble(v);
                                     res.putTime(timeValues[timeIdx]);
@@ -631,13 +546,9 @@ public class OverflowBufferWriteProcessor{
                                         && timeValues[timeIdx] <= updateData[1].getTime(updateIdx[1] + 1)) {
                                     // do nothing
                                 } else if ((valueFilter == null && timeFilter == null)
-                                        || (valueFilter != null && timeFilter == null
-                                        && valueVisitor.verify(v))
-                                        || (valueFilter == null && timeFilter != null
-                                        && timeVisitor.verify(timeValues[timeIdx]))
-                                        || (valueFilter != null && timeFilter != null
-                                        && valueVisitor.verify(v)
-                                        && timeVisitor.verify(timeValues[timeIdx]))) {
+                                        || (valueFilter != null && timeFilter == null && valueVisitor.verify(v))
+                                        || (valueFilter == null && timeFilter != null && timeVisitor.verify(timeValues[timeIdx]))
+                                        || (valueFilter != null && timeFilter != null && valueVisitor.verify(v) && timeVisitor.verify(timeValues[timeIdx]))) {
                                     res.putDouble(v);
                                     res.putTime(timeValues[timeIdx]);
                                     resCount++;
@@ -680,13 +591,9 @@ public class OverflowBufferWriteProcessor{
                             Binary v = valueReader.decoder.readBinary(page);
                             if (mode == -1) {
                                 if ((valueFilter == null && timeFilter == null)
-                                        || (valueFilter != null && timeFilter == null
-                                        && valueVisitor.satisfyObject(v, valueFilter))
-                                        || (valueFilter == null && timeFilter != null
-                                        && timeVisitor.verify(timeValues[timeIdx]))
-                                        || (valueFilter != null && timeFilter != null
-                                        && valueVisitor.satisfyObject(v, valueFilter)
-                                        && timeVisitor.verify(timeValues[timeIdx]))) {
+                                        || (valueFilter != null && timeFilter == null && valueVisitor.satisfyObject(v, valueFilter))
+                                        || (valueFilter == null && timeFilter != null && timeVisitor.verify(timeValues[timeIdx]))
+                                        || (valueFilter != null && timeFilter != null && valueVisitor.satisfyObject(v, valueFilter) && timeVisitor.verify(timeValues[timeIdx]))) {
                                     res.putBinary(v);
                                     res.putTime(timeValues[timeIdx]);
                                     resCount++;
@@ -698,20 +605,15 @@ public class OverflowBufferWriteProcessor{
                                 if (updateData[0].getTime(updateIdx[0]) <= timeValues[timeIdx]
                                         && timeValues[timeIdx] <= updateData[0].getTime(updateIdx[0] + 1)) {
                                     // update the value
-                                    if (timeFilter == null
-                                            || timeVisitor.verify(timeValues[timeIdx])) {
+                                    if (timeFilter == null || timeVisitor.verify(timeValues[timeIdx])) {
                                         res.putBinary(updateData[0].getBinary(updateIdx[0] / 2));
                                         res.putTime(timeValues[timeIdx]);
                                         resCount++;
                                     }
                                 } else if ((valueFilter == null && timeFilter == null)
-                                        || (valueFilter != null && timeFilter == null
-                                        && valueVisitor.satisfyObject(v, valueFilter))
-                                        || (valueFilter == null && timeFilter != null
-                                        && timeVisitor.verify(timeValues[timeIdx]))
-                                        || (valueFilter != null && timeFilter != null
-                                        && valueVisitor.satisfyObject(v, valueFilter)
-                                        && timeVisitor.verify(timeValues[timeIdx]))) {
+                                        || (valueFilter != null && timeFilter == null && valueVisitor.satisfyObject(v, valueFilter))
+                                        || (valueFilter == null && timeFilter != null && timeVisitor.verify(timeValues[timeIdx]))
+                                        || (valueFilter != null && timeFilter != null && valueVisitor.satisfyObject(v, valueFilter) && timeVisitor.verify(timeValues[timeIdx]))) {
                                     res.putBinary(v);
                                     res.putTime(timeValues[timeIdx]);
                                     resCount++;
@@ -724,13 +626,9 @@ public class OverflowBufferWriteProcessor{
                                         && timeValues[timeIdx] <= updateData[1].getTime(updateIdx[1] + 1)) {
                                     // do nothing
                                 } else if ((valueFilter == null && timeFilter == null)
-                                        || (valueFilter != null && timeFilter == null
-                                        && valueVisitor.satisfyObject(v, valueFilter))
-                                        || (valueFilter == null && timeFilter != null
-                                        && timeVisitor.verify(timeValues[timeIdx]))
-                                        || (valueFilter != null && timeFilter != null
-                                        && valueVisitor.satisfyObject(v, valueFilter)
-                                        && timeVisitor.verify(timeValues[timeIdx]))) {
+                                        || (valueFilter != null && timeFilter == null && valueVisitor.satisfyObject(v, valueFilter))
+                                        || (valueFilter == null && timeFilter != null && timeVisitor.verify(timeValues[timeIdx]))
+                                        || (valueFilter != null && timeFilter != null && valueVisitor.satisfyObject(v, valueFilter) && timeVisitor.verify(timeValues[timeIdx]))) {
                                     res.putBinary(v);
                                     res.putTime(timeValues[timeIdx]);
                                     resCount++;
@@ -774,7 +672,7 @@ public class OverflowBufferWriteProcessor{
         return res;
     }
 
-    static AggregationResult aggregate(ValueReader valueReader, AggregateFunction func, InsertDynamicData insertMemoryData,
+    static void aggregate(ValueReader valueReader, AggregateFunction func, InsertDynamicData insertMemoryData,
                                 DynamicOneColumnData updateTrue, DynamicOneColumnData updateFalse, SingleSeriesFilterExpression timeFilter,
                                 SingleSeriesFilterExpression freqFilter, SingleSeriesFilterExpression valueFilter)
             throws IOException, ProcessorException {
@@ -787,7 +685,7 @@ public class OverflowBufferWriteProcessor{
         // get column digest
         TsDigest digest = valueReader.getDigest();
         DigestForFilter digestFF = new DigestForFilter(digest.min, digest.max, dataType);
-        LOG.debug("Aggretation : Column Digest min and max is: " + digestFF.getMinValue() + " --- " + digestFF.getMaxValue());
+        LOG.debug("Calculate aggregation : Column Digest min and max is: " + digestFF.getMinValue() + " --- " + digestFF.getMaxValue());
         DigestVisitor digestVisitor = new DigestVisitor();
 
         // to ensure that updateTrue and updateFalse is not null
@@ -797,7 +695,8 @@ public class OverflowBufferWriteProcessor{
         // if this column is not satisfied to the filter, then return.
         if (updateTrue.valueLength == 0 && insertMemoryData == null && valueFilter != null
                 && !digestVisitor.satisfy(digestFF, valueFilter)) {
-            return func.result;
+            //return func.result;
+            return;
         }
 
         DynamicOneColumnData[] update = new DynamicOneColumnData[2];
@@ -812,7 +711,7 @@ public class OverflowBufferWriteProcessor{
         while ((res.pageOffset - valueReader.fileOffset) < valueReader.totalSize) {
             int lastAvailable = bis.available();
             pageCount++;
-            LOG.debug("read page {}, offset : {}", pageCount, res.pageOffset);
+            //LOG.debug("read page {}, offset : {}", pageCount, res.pageOffset);
 
             PageHeader pageHeader = pageReader.getNextPageHeader();
             // construct value and time digest for this page
@@ -882,8 +781,6 @@ public class OverflowBufferWriteProcessor{
         // record the current index for overflow info
         updateTrue.curIdx = updateIdx[0];
         updateFalse.curIdx = updateIdx[1];
-
-        return func.result;
     }
 
     /**
@@ -891,22 +788,20 @@ public class OverflowBufferWriteProcessor{
      * An aggregation method implementation for the ValueReader aspect.
      * The aggregation will be calculated using the calculated common timestamps.
      *
-     * @param func aggregation function
+     * @param aggregateFunction aggregation function
      * @param insertMemoryData bufferwrite memory insert data with overflow operation
      * @param updateTrue overflow update operation which satisfy the filter
      * @param updateFalse overflow update operation which doesn't satisfy the filter
-     * @param timeFilter time filter
+     * @param overflowTimeFilter time filter
      * @param freqFilter frequency filter
-     * @param timestamps the timestamps which aggregation must satisfy
-     * @param lastAggreData last aggregation result, this variable is used for batch read
+     * @param aggregationTimestamps the timestamps which aggregation must satisfy
      * @return an int value, represents the read time index of timestamps
      * @throws IOException TsFile read error
      * @throws ProcessorException get read info error
      */
-    static int aggregateUsingTimestamps(ValueReader valueReader, AggregateFunction func, InsertDynamicData insertMemoryData,
-                                 DynamicOneColumnData updateTrue, DynamicOneColumnData updateFalse, SingleSeriesFilterExpression timeFilter,
-                                 SingleSeriesFilterExpression freqFilter, List<Long> timestamps,
-                                 DynamicOneColumnData lastAggreData) throws IOException, ProcessorException {
+    static int aggregateUsingTimestamps(ValueReader valueReader, AggregateFunction aggregateFunction, InsertDynamicData insertMemoryData,
+                                 DynamicOneColumnData updateTrue, DynamicOneColumnData updateFalse, SingleSeriesFilterExpression overflowTimeFilter,
+                                 SingleSeriesFilterExpression freqFilter, List<Long> aggregationTimestamps) throws IOException, ProcessorException {
         TSDataType dataType = valueReader.dataType;
 
         // to ensure that updateTrue and updateFalse is not null
@@ -917,47 +812,32 @@ public class OverflowBufferWriteProcessor{
         update[0] = updateTrue;
         update[1] = updateFalse;
         int[] updateIdx = new int[]{updateTrue.curIdx, updateFalse.curIdx};
-        int timeIndex = 0;
 
-        // for batch read
-        while (func.maps.containsKey("pageTimeValues")) {
-            long[] pageTimeValues = (long[]) func.maps.get("pageTimeValues");
-            int pageTimeIndex = (int) func.maps.get("pageTimeIndex");
-            InputStream page = (InputStream) func.maps.get("page");
-            Pair<DynamicOneColumnData, Integer> ans = ReaderUtils.readOnePage(
-                    dataType, pageTimeValues, pageTimeIndex, valueReader.decoder, page,
-                    timeFilter, freqFilter, timestamps, 0, insertMemoryData, update, updateIdx, func);
-            if (ans.left != null && ans.left.valueLength > 0)
-                func.calculateValueFromDataPage(ans.left);
-            timeIndex = ans.right;
-            if (timeIndex >= timestamps.size()) {
-                return timeIndex;
-            }
+        // the used count of aggregationTimestamps,
+        // if all the time of aggregationTimestamps has been read, timestampsUsedIndex >= aggregationTimestamps.size()
+        int timestampsUsedIndex = 0;
+
+        // lastAggregationResult records some information such as file page offset
+        DynamicOneColumnData lastAggregationResult = aggregateFunction.resultData;
+        if (lastAggregationResult.pageOffset == -1) {
+            lastAggregationResult.pageOffset = valueReader.fileOffset;
         }
-
-        // value filter is always null
-        if (lastAggreData == null) {
-            lastAggreData = new DynamicOneColumnData(dataType, true);
-        }
-        lastAggreData.pageOffset = valueReader.fileOffset;
-
 
         // get column digest
         TsDigest digest = valueReader.getDigest();
         DigestForFilter digestFF = new DigestForFilter(digest.min, digest.max, valueReader.getDataType());
-        LOG.debug("aggregate using given timestamps, column Digest min and max is: "
-                + digestFF.getMinValue() + " --- " + digestFF.getMaxValue());
-        DigestVisitor digestVisitor = new DigestVisitor();
+        LOG.debug("calculate aggregation using given common timestamps, series Digest min and max is: " + digestFF.getMinValue() + " --- " + digestFF.getMaxValue());
 
-        ByteArrayInputStream bis = valueReader.initBAISForOnePage(lastAggreData.pageOffset);
+        DigestVisitor digestVisitor = new DigestVisitor();
+        ByteArrayInputStream bis = valueReader.initBAISForOnePage(lastAggregationResult.pageOffset);
         PageReader pageReader = new PageReader(bis, valueReader.compressionTypeName);
         int pageCount = 0;
 
-        // (lastAggreData.pageOffset - fileOffset) < totalSize : still has unread data
-        while ((lastAggreData.pageOffset - valueReader.fileOffset) < valueReader.totalSize) {
+        // still has unread data
+        while ((lastAggregationResult.pageOffset - valueReader.fileOffset) < valueReader.totalSize) {
             int lastAvailable = bis.available();
             pageCount++;
-            LOG.debug("aggregate using given timestamps, read page {}, offset : {}", pageCount, lastAggreData.pageOffset);
+            LOG.debug("calculate aggregation using given common timestamps, read page {}, offset : {}", pageCount, lastAggregationResult.pageOffset);
 
             PageHeader pageHeader = pageReader.getNextPageHeader();
             Digest pageDigest = pageHeader.data_page_header.getDigest();
@@ -966,53 +846,59 @@ public class OverflowBufferWriteProcessor{
             DigestForFilter timeDigestFF = new DigestForFilter(mint, maxt);
 
             // the min value of common timestamps is greater than max time in this series
-            if (timestamps.get(timeIndex) > maxt) {
+            if (aggregationTimestamps.get(timestampsUsedIndex) > maxt) {
                 pageReader.skipCurrentPage();
-                lastAggreData.pageOffset += lastAvailable - bis.available();
+                lastAggregationResult.pageOffset += lastAvailable - bis.available();
                 continue;
             }
 
             // if the current page doesn't satisfy the time filter
-            if (timeFilter != null && !digestVisitor.satisfy(timeDigestFF, timeFilter))  {
+            if (overflowTimeFilter != null && !digestVisitor.satisfy(timeDigestFF, overflowTimeFilter))  {
                 pageReader.skipCurrentPage();
-                lastAggreData.pageOffset += lastAvailable - bis.available();
-                // TODO adjust index of timestamps to fit pageReader.skipCurrentPage()
+                lastAggregationResult.pageOffset += lastAvailable - bis.available();
                 continue;
             }
 
             // get the InputStream for this page
             InputStream page = pageReader.getNextPage();
-            // update lastAggreData's pageOffset to the start of next page.
-            lastAggreData.pageOffset += lastAvailable - bis.available();
 
             // get all time values in this page
             long[] pageTimeValues = valueReader.initTimeValue(page, pageHeader.data_page_header.num_rows, false);
+
             // set Decoder for current page
             valueReader.setDecoder(Decoder.getDecoderByType(pageHeader.getData_page_header().getEncoding(), valueReader.getDataType()));
 
-            Pair<DynamicOneColumnData, Integer> ans = ReaderUtils.readOnePage(
-                    dataType, pageTimeValues, 0, valueReader.decoder, page,
-                    timeFilter, freqFilter, timestamps, timeIndex, insertMemoryData, update, updateIdx, func);
-            if (ans.left != null && ans.left.valueLength > 0)
-                func.calculateValueFromDataPage(ans.left);
-            lastAggreData.clearData();
-            timeIndex = ans.right;
-            if (timeIndex >= timestamps.size())
+            Pair<DynamicOneColumnData, Integer> pageData = ReaderUtils.readOnePage(
+                    dataType, pageTimeValues, valueReader.decoder, page,
+                    overflowTimeFilter, freqFilter, aggregationTimestamps, timestampsUsedIndex, insertMemoryData, update, updateIdx);
+
+            if (pageData.left != null && pageData.left.valueLength > 0)
+                aggregateFunction.calculateValueFromDataPage(pageData.left);
+
+            timestampsUsedIndex = pageData.right;
+            if (timestampsUsedIndex >= aggregationTimestamps.size())
                 break;
+
+            // update lastAggregationResult's pageOffset to the start of next page.
+            lastAggregationResult.pageOffset += lastAvailable - bis.available();
         }
 
-        // record the current updateTrue,updateFalse index for overflow info
+        if (timestampsUsedIndex < aggregationTimestamps.size())
+            lastAggregationResult.plusRowGroupIndexAndInitPageOffset();
+
+        // record the current updateTrue, updateFalse index for overflow info
         updateTrue.curIdx = updateIdx[0];
         updateFalse.curIdx = updateIdx[1];
 
-        return timeIndex;
+        return timestampsUsedIndex;
     }
 
     // TODO bug: not consider delete operation, maybe no need to consider.
     private static boolean checkDataChanged(long mint, long maxt, DynamicOneColumnData updateTrueData, int updateTrueIdx,
                                      DynamicOneColumnData updateFalseData, int updateFalseIdx, InsertDynamicData insertMemoryData,
                                      SingleSeriesFilterExpression timeFilter) throws IOException {
-        // Judge whether updateTrue has value for this page.
+
+        // judge whether updateTrue has value for this page.
         while (updateTrueIdx <= updateTrueData.timeLength - 2) {
             if (!((updateTrueData.getTime(updateTrueIdx + 1) < mint) || (updateTrueData.getTime(updateTrueIdx) > maxt))) {
                 return true;

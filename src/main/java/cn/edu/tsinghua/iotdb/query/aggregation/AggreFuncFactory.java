@@ -13,6 +13,7 @@ import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
  *
  */
 public class AggreFuncFactory {
+
     public static AggregateFunction getAggrFuncByName(String aggrFuncName, TSDataType dataType) throws ProcessorException {
         if (aggrFuncName == null) {
             throw new ProcessorException("AggregateFunction Name must not be null");
