@@ -25,6 +25,8 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.*;
 
+import static cn.edu.tsinghua.iotdb.query.engine.EngineUtils.aggregationKey;
+
 /**
  * Group by aggregation implementation with <code>FilterStructure</code>.
  */
@@ -109,7 +111,7 @@ public class GroupByEngineWithFilter {
 
         this.queryPathResult = new HashMap<>();
         for (int i = 0; i < aggregations.size(); i++) {
-            String aggregateKey = aggregationKey(aggregations.get(i).left, aggregations.get(i).right);
+            String aggregateKey = aggregationKey(aggregations.get(i).right, aggregations.get(i).left);
             if (!groupByResult.mapRet.containsKey(aggregateKey)) {
                 groupByResult.mapRet.put(aggregateKey,
                         new DynamicOneColumnData(aggregations.get(i).right.dataType, true, true));
@@ -251,7 +253,7 @@ public class GroupByEngineWithFilter {
                         cnt++;
                         Path path = pair.left;
                         AggregateFunction aggregateFunction = pair.right;
-                        String aggregationKey = aggregationKey(path, aggregateFunction);
+                        String aggregationKey = aggregationKey(aggregateFunction, path);
                         DynamicOneColumnData data = queryPathResult.get(aggregationKey);
 
                         aggregateFunction.calcGroupByAggregation(partitionStart, partitionEnd, intervalStart, intervalEnd, data);
@@ -325,7 +327,7 @@ public class GroupByEngineWithFilter {
             cnt++;
             Path path = pair.left;
             AggregateFunction aggregateFunction = pair.right;
-            groupByResult.mapRet.put(aggregationKey(path, aggregateFunction), aggregateFunction.resultData);
+            groupByResult.mapRet.put(aggregationKey(aggregateFunction, path), aggregateFunction.resultData);
         }
         //LOG.debug("calculate group by result successfully.");
         return groupByResult;
@@ -336,7 +338,7 @@ public class GroupByEngineWithFilter {
         for (Pair<Path, AggregateFunction> pair : aggregations) {
             Path path = pair.left;
             AggregateFunction aggregateFunction = pair.right;
-            String aggregationKey = aggregationKey(path, aggregateFunction);
+            String aggregationKey = aggregationKey(aggregateFunction, path);
             if (duplicatedPaths.contains(aggregationOrdinal)) {
                 continue;
             }
@@ -429,9 +431,5 @@ public class GroupByEngineWithFilter {
         }
 
         return res;
-    }
-
-    private String aggregationKey(Path path, AggregateFunction aggregateFunction) {
-        return aggregateFunction.name + "(" + path.getFullPath() + ")";
     }
 }
