@@ -30,12 +30,9 @@ public class GroupByEngineNoFilter {
 
     private static final Logger LOG = LoggerFactory.getLogger(GroupByEngineNoFilter.class);
 
-    /** formNumber is set to -1 default **/
-    private int formNumber = -1;
-
     /** queryFetchSize is sed to read one column data, this variable is mainly used to debug to verify
      * the rightness of iterative readOneColumnWithoutFilter **/
-    private int queryFetchSize = 10000;
+    private int queryFetchSize = 100000;
 
     /** all the group by Path ans its AggregateFunction **/
     private List<Pair<Path, AggregateFunction>> aggregations;
@@ -132,17 +129,18 @@ public class GroupByEngineNoFilter {
             }
 
             while (true) {
-                int cnt = 0;
+                int aggregationOrdinal = 0;
                 for (Pair<Path, AggregateFunction> pair : aggregations) {
-                    if (duplicatedPaths.contains(cnt))
+                    if (duplicatedPaths.contains(aggregationOrdinal))
                         continue;
+                    aggregationOrdinal++;
 
                     Path path = pair.left;
                     AggregateFunction aggregateFunction = pair.right;
                     String aggregationKey = aggregationKey(path, aggregateFunction);
                     DynamicOneColumnData data = queryPathResult.get(aggregationKey);
                     if (data == null || (data.curIdx >= data.timeLength && !data.hasReadAll)) {
-                        data = readOneColumnWithoutFilter(path, data, null);
+                        data = readOneColumnWithoutFilter(path, data, null, aggregationOrdinal);
                         queryPathResult.put(aggregationKey, data);
                     }
 
@@ -152,7 +150,7 @@ public class GroupByEngineNoFilter {
                             break;
                         }
                         if (data.curIdx >= data.timeLength && data.timeLength != 0) {
-                            data = readOneColumnWithoutFilter(path, data, null);
+                            data = readOneColumnWithoutFilter(path, data, null, aggregationOrdinal);
                         }
                         if (data.timeLength == 0 || data.curIdx >= data.timeLength) {
                             break;
@@ -196,7 +194,7 @@ public class GroupByEngineNoFilter {
         return groupByResult;
     }
 
-    private DynamicOneColumnData readOneColumnWithoutFilter(Path path, DynamicOneColumnData res, Integer readLock)
+    private DynamicOneColumnData readOneColumnWithoutFilter(Path path, DynamicOneColumnData res, Integer readLock, int aggregationOrdinal)
             throws ProcessorException, IOException, PathErrorException {
 
         // this read process is batch read
@@ -204,7 +202,7 @@ public class GroupByEngineNoFilter {
 
         String deltaObjectID = path.getDeltaObjectToString();
         String measurementID = path.getMeasurementToString();
-        String recordReaderPrefix = ReadCachePrefix.addQueryPrefix(formNumber);
+        String recordReaderPrefix = ReadCachePrefix.addQueryPrefix(aggregationOrdinal);
 
         RecordReader recordReader = RecordReaderFactory.getInstance().getRecordReader(deltaObjectID, measurementID,
                 timeFilter, null, null, readLock, recordReaderPrefix);

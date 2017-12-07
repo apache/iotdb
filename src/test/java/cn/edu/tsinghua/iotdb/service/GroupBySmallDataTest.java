@@ -9,15 +9,9 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-
 import java.io.File;
 import java.sql.*;
-
-import static cn.edu.tsinghua.iotdb.service.TestUtils.count;
-import static cn.edu.tsinghua.iotdb.service.TestUtils.max_value;
-import static cn.edu.tsinghua.iotdb.service.TestUtils.min_value;
-import static cn.edu.tsinghua.iotdb.service.TestUtils.max_time;
-import static cn.edu.tsinghua.iotdb.service.TestUtils.min_time;
+import static cn.edu.tsinghua.iotdb.service.TestUtils.*;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -113,7 +107,7 @@ public class GroupBySmallDataTest {
             groupByNoValidIntervalTest();
             groupByMultiResultWithFilterTest();
             groupByWithFilterCountManyIntervalTest();
-            threadLocalTest();
+            fixBigGroupByClassFormNumberTest();
             groupByMultiAggregationFunctionTest();
             groupBySelectMultiDeltaObjectTest();
             groupByOnlyHasTimeFilterTest();
@@ -583,37 +577,38 @@ public class GroupBySmallDataTest {
         }
     }
 
-    private void threadLocalTest() throws ClassNotFoundException, SQLException {
+    private void fixBigGroupByClassFormNumberTest() throws ClassNotFoundException, SQLException {
+
+        // remove formNumber in GroupByEngineNoFilter and GroupByEngineWithFilter
 
         Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);
         Connection connection = null;
         try {
             connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
             Statement statement = connection.createStatement();
-            boolean hasResultSet = statement.execute("select count(s0),min_value(s1)" +
-                    "from root.vehicle.d0 group by(100ms, 0, [0,1500])");
+            boolean hasResultSet = statement.execute("select min_value(s0),max_value(s0),max_time(s0),min_time(s0),count(s0)"
+                    + "from root.vehicle.d0 group by(100ms, 0, [0,300])");
             if (hasResultSet) {
                 ResultSet resultSet = statement.getResultSet();
                 int cnt = 1;
                 while (resultSet.next()) {
                     String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(count(d0s0))
-                            + "," + resultSet.getString(min_value(d0s1));
-                    //System.out.println(ans);
+                            + "," + resultSet.getString(max_value(d0s0))  + "," + resultSet.getString(min_value(d0s0))
+                    + "," + resultSet.getString(max_time(d0s0))  + "," + resultSet.getString(min_time(d0s0));
+                    System.out.println(ans);
                     cnt++;
                 }
             }
             statement.close();
 
             statement = connection.createStatement();
-            hasResultSet = statement.execute("select count(s0),min_value(s1)" +
-                    "from root.vehicle.d0 group by(10ms, 0, [1600,1700])");
+            hasResultSet = statement.execute("select count(s0)" + "from root.vehicle.d0 group by(100ms, 0, [0,300])");
             assertTrue(hasResultSet);
             ResultSet resultSet = statement.getResultSet();
             int cnt = 1;
             while (resultSet.next()) {
-                String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(count(d0s0))
-                        + "," + resultSet.getString(min_value(d0s1)) + "," + resultSet.getString(min_value(d0s1));
-                //System.out.println(ans);
+                String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(count(d0s0));
+                System.out.println(ans);
                 cnt++;
             }
             statement.close();
