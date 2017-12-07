@@ -90,10 +90,6 @@ public class InsertDynamicData extends DynamicOneColumnData {
         return this.dataType;
     }
 
-    public boolean hasInsertData() throws IOException {
-        return findNext();
-    }
-
     public long getCurrentMinTime() {
         if (currentSatisfiedPageTime == -1) {
             return insertTrue.getTime(insertTrue.insertTrueIndex);
@@ -232,7 +228,7 @@ public class InsertDynamicData extends DynamicOneColumnData {
     /**
      * Only when the current page data has been read completely, this method could be invoked.
      */
-    private boolean findNext() throws IOException {
+    public boolean hasInsertData() throws IOException {
         if (currentSatisfiedPageTime != -1)
             return true;
 
@@ -272,7 +268,7 @@ public class InsertDynamicData extends DynamicOneColumnData {
                 } else {
                     // no updateTrue and updateFalse, not satisfied with valueFilter
                     if (updateTrue != null && updateTrue.curIdx >= updateTrue.valueLength && updateFalse != null && updateFalse.curIdx >= updateFalse.valueLength
-                                    && valueFilter != null && !digestVisitor.satisfy(valueDigest, valueFilter)) {
+                            && valueFilter != null && !digestVisitor.satisfy(valueDigest, valueFilter)) {
                         pageReaderReset();
                         continue;
                     }
@@ -599,7 +595,7 @@ public class InsertDynamicData extends DynamicOneColumnData {
                         }
                         break;
                     default:
-                            throw new UnSupportedDataTypeException("UnSupport Aggregation DataType:" + dataType);
+                        throw new UnSupportedDataTypeException("UnSupport Aggregation DataType:" + dataType);
                 }
             }
         }
