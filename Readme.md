@@ -125,7 +125,7 @@ The command line client is interactive so if everything is ready you should see 
   | |   .--.|_/ | | \_|  | | `. \ | |_) |
   | | / .'`\ \  | |      | |  | | |  __'.
  _| |_| \__. | _| |_    _| |_.' /_| |__) |
-|_____|'.__.' |_____|  |______.'|_______/  version 0.3.0
+|_____|'.__.' |_____|  |______.'|_______/  version 0.3.1
 
 
 IoTDB> login successfully
