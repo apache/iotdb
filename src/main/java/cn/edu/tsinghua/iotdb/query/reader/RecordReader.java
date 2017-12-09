@@ -171,7 +171,8 @@ public class RecordReader {
             }
         }
 
-        // add left insert values
+        // consider left insert values
+        // all timestamp of these values are greater than timestamp in List<RowGroupReader>
         if (insertMemoryData != null && insertMemoryData.hasInsertData()) {
             aggregateFunction.calculateValueFromLeftMemoryData(insertMemoryData);
         }

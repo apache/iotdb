@@ -23,6 +23,8 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.*;
 
+import static cn.edu.tsinghua.iotdb.query.engine.EngineUtils.aggregationKey;
+
 /**
  * Group by aggregation implementation without <code>FilterStructure</code>.
  */
@@ -71,7 +73,7 @@ public class GroupByEngineNoFilter {
         this.timeFilter = timeFilter;
         this.queryPathResult = new HashMap<>();
         for (int i = 0; i < aggregations.size(); i++) {
-            String aggregateKey = aggregationKey(aggregations.get(i).left, aggregations.get(i).right);
+            String aggregateKey = aggregationKey(aggregations.get(i).right, aggregations.get(i).left);
             if (!groupByResult.mapRet.containsKey(aggregateKey)) {
                 groupByResult.mapRet.put(aggregateKey, new DynamicOneColumnData(aggregations.get(i).right.dataType, true, true));
                 queryPathResult.put(aggregateKey, null);
@@ -137,7 +139,7 @@ public class GroupByEngineNoFilter {
 
                     Path path = pair.left;
                     AggregateFunction aggregateFunction = pair.right;
-                    String aggregationKey = aggregationKey(path, aggregateFunction);
+                    String aggregationKey = aggregationKey(aggregateFunction, path);
                     DynamicOneColumnData data = queryPathResult.get(aggregationKey);
                     if (data == null || (data.curIdx >= data.timeLength && !data.hasReadAll)) {
                         data = readOneColumnWithoutFilter(path, data, null, aggregationOrdinal);
@@ -187,7 +189,7 @@ public class GroupByEngineNoFilter {
                 cnt++;
             Path path = pair.left;
             AggregateFunction aggregateFunction = pair.right;
-            groupByResult.mapRet.put(aggregationKey(path, aggregateFunction), aggregateFunction.resultData);
+            groupByResult.mapRet.put(aggregationKey(aggregateFunction, path), aggregateFunction.resultData);
         }
 
         //LOG.debug("current group by function with no filter is over.");
@@ -231,9 +233,5 @@ public class GroupByEngineNoFilter {
         }
 
         return res;
-    }
-
-    private String aggregationKey(Path path, AggregateFunction aggregateFunction) {
-        return aggregateFunction.name + "(" + path.getFullPath() + ")";
     }
 }
