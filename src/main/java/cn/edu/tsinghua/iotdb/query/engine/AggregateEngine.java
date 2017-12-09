@@ -177,7 +177,7 @@ public class AggregateEngine {
 
                 if (recordReader.insertAllData == null) {
 
-                    // get overflow params merged with bufferwrite insert data
+                    // TODO the parameter there could be optimized using aggregateTimestamps
                     List<Object> params = EngineUtils.getOverflowInfoAndFilterDataInMem(null, null, null, null,
                             recordReader.insertPageInMemory, recordReader.overflowInfo);
                     DynamicOneColumnData insertTrue = (DynamicOneColumnData) params.get(0);
@@ -226,8 +226,7 @@ public class AggregateEngine {
      * @throws ProcessorException
      * @throws IOException
      */
-    private static void multiAggregateWithoutFilter(List<Pair<Path, AggregateFunction>> aggres,
-                                                            SingleSeriesFilterExpression timeFilter)
+    private static void multiAggregateWithoutFilter(List<Pair<Path, AggregateFunction>> aggres, SingleSeriesFilterExpression timeFilter)
             throws PathErrorException, ProcessorException, IOException {
 
         int aggreNumber = 0;

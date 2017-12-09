@@ -83,9 +83,6 @@ public class ValueReaderProcessor {
         // in BatchReadRecordGenerator, The ResCount needed equals to (res.valueLength - res.curIdx)??
         int resCount = res.valueLength - res.curIdx;
 
-        // some variables for frequency calculation with overflow
-        boolean hasOverflowDataInThisPage = false;
-
         while ((res.pageOffset - valueReader.fileOffset) < valueReader.totalSize && resCount < fetchSize) {
             // To help to record byte size in this process of read.
             int lastAvailable = bis.available();
@@ -134,9 +131,6 @@ public class ValueReaderProcessor {
             InputStream page = pageReader.getNextPage();
             // update current res's pageOffset to the start of next page.
             res.pageOffset += lastAvailable - bis.available();
-
-            hasOverflowDataInThisPage = checkDataChanged(mint, maxt, updateTrueData, updateIdx[0], updateFalseData, updateIdx[1],
-                    insertMemoryData, timeFilter);
 
             long[] timeValues = valueReader.initTimeValue(page, pageHeader.data_page_header.num_rows, false);
 
@@ -649,19 +643,9 @@ public class ValueReaderProcessor {
             } catch (IOException e) {
                 e.printStackTrace();
             }
-
-            // check where new records were put into res and whether the
-            // frequency need to be recalculated.
-            int resCurrentLength = res.valueLength;
-            if (hasOverflowDataInThisPage && freqFilter != null) {
-                boolean satisfied = true;
-                if (!satisfied) {
-                    res.rollBack(resCurrentLength - resPreviousLength);
-                    resCount -= (resCurrentLength - resPreviousLength);
-                }
-            }
         }
-        // represents current column has been read all.
+
+        // represents that current series has been read all.
         if ((res.pageOffset - valueReader.fileOffset) >= valueReader.totalSize) {
             res.plusRowGroupIndexAndInitPageOffset();
         }
@@ -692,10 +676,9 @@ public class ValueReaderProcessor {
         updateTrue = (updateTrue == null ? new DynamicOneColumnData(dataType, true) : updateTrue);
         updateFalse = (updateFalse == null ? new DynamicOneColumnData(dataType, true) : updateFalse);
 
-        // if this column is not satisfied to the filter, then return.
+        // if this series is not satisfied to the filter, then return.
         if (updateTrue.valueLength == 0 && insertMemoryData == null && valueFilter != null
                 && !digestVisitor.satisfy(digestFF, valueFilter)) {
-            //return func.result;
             return;
         }
 
@@ -714,7 +697,6 @@ public class ValueReaderProcessor {
             //LOG.debug("read page {}, offset : {}", pageCount, res.pageOffset);
 
             PageHeader pageHeader = pageReader.getNextPageHeader();
-            // construct value and time digest for this page
             Digest pageDigest = pageHeader.data_page_header.getDigest();
             DigestForFilter valueDigestFF = new DigestForFilter(pageDigest.min, pageDigest.max, dataType);
             long mint = pageHeader.data_page_header.min_timestamp;
@@ -755,10 +737,8 @@ public class ValueReaderProcessor {
             InputStream page = pageReader.getNextPage();
             // update current res's pageOffset to the start of next page.
             res.pageOffset += lastAvailable - bis.available();
-            boolean hasOverflowDataInThisPage = checkDataChangedForAggregation(mint, maxt, valueDigestFF
-                    , updateTrue, updateIdx[0], updateFalse, updateIdx[1], insertMemoryData
-                    , timeFilter, freqFilter, valueFilter);
-            LOG.debug("Having Overflow info in this page : {}", hasOverflowDataInThisPage);
+            // whether this page is changed by overflow info
+            boolean hasOverflowDataInThisPage = checkDataChanged(mint, maxt, updateTrue, updateIdx[0], updateFalse, updateIdx[1], insertMemoryData);
 
             // there is no overflow data in this page
             if (!hasOverflowDataInThisPage) {
@@ -769,8 +749,6 @@ public class ValueReaderProcessor {
                 // set Decoder for current page
                 valueReader.setDecoder(Decoder.getDecoderByType(pageHeader.getData_page_header().getEncoding(), dataType));
 
-                // clear data in res to make the res only store the data in current page;
-                // TODO max, min value could be optimized
                 res = ReaderUtils.readOnePage(dataType, timeValues, valueReader.decoder, page, res,
                         timeFilter, freqFilter, valueFilter, insertMemoryData, update, updateIdx);
                 func.calculateValueFromDataPage(res);
@@ -893,12 +871,11 @@ public class ValueReaderProcessor {
         return timestampsUsedIndex;
     }
 
-    // TODO bug: not consider delete operation, maybe no need to consider.
     private static boolean checkDataChanged(long mint, long maxt, DynamicOneColumnData updateTrueData, int updateTrueIdx,
-                                     DynamicOneColumnData updateFalseData, int updateFalseIdx, InsertDynamicData insertMemoryData,
-                                     SingleSeriesFilterExpression timeFilter) throws IOException {
+                                            DynamicOneColumnData updateFalseData, int updateFalseIdx, InsertDynamicData insertMemoryData)
+            throws IOException {
 
-        // judge whether updateTrue has value for this page.
+        // updateTrue has changed the value of this page
         while (updateTrueIdx <= updateTrueData.timeLength - 2) {
             if (!((updateTrueData.getTime(updateTrueIdx + 1) < mint) || (updateTrueData.getTime(updateTrueIdx) > maxt))) {
                 return true;
@@ -906,6 +883,7 @@ public class ValueReaderProcessor {
             updateTrueIdx += 2;
         }
 
+        // updateFalse has changed the value of this page
         while (updateFalseIdx <= updateFalseData.timeLength - 2) {
             if (!((updateFalseData.getTime(updateFalseIdx + 1) < mint) || (updateFalseData.getTime(updateFalseIdx) > maxt))) {
                 return true;
@@ -913,36 +891,13 @@ public class ValueReaderProcessor {
             updateFalseIdx += 2;
         }
 
-        while (insertMemoryData.hasInsertData()) {
+        if (insertMemoryData.hasInsertData()) {
             if (mint <= insertMemoryData.getCurrentMinTime() && insertMemoryData.getCurrentMinTime() <= maxt) {
                 return true;
             }
             if (maxt < insertMemoryData.getCurrentMinTime()) {
-                break;
+                return false;
             }
-            if (insertMemoryData.hasInsertData() && mint > insertMemoryData.getCurrentMinTime()) {
-                break;
-            }
-            insertMemoryData.removeCurrentValue();
-        }
-        return false;
-    }
-
-    // TODO bug: not consider delete operation, maybe no need to consider.
-    private static boolean checkDataChangedForAggregation(long mint, long maxt, DigestForFilter pageDigest, DynamicOneColumnData updateTrue, int idx0,
-                                                   DynamicOneColumnData updateFalse, int idx1, InsertDynamicData insertMemoryData,
-                                                   SingleSeriesFilterExpression timeFilter, SingleSeriesFilterExpression freqFilter, SingleSeriesFilterExpression valueFilter) throws IOException {
-
-        if (checkDataChanged(mint, maxt, updateTrue, idx0, updateFalse, idx1, insertMemoryData, timeFilter)) {
-            return true;
-        }
-
-        DigestForFilter timeDigest = new DigestForFilter(mint, maxt);
-        PageAllSatisfiedVisitor visitor = new PageAllSatisfiedVisitor();
-        if (timeFilter != null && !visitor.satisfy(timeDigest, timeFilter)) {
-            return true;
-        }
-        if (valueFilter != null && !visitor.satisfy(pageDigest, valueFilter)) {
             return true;
         }
         return false;
