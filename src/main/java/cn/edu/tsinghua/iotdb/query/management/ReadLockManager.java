@@ -7,6 +7,7 @@ import cn.edu.tsinghua.iotdb.exception.FileNodeManagerException;
 import cn.edu.tsinghua.iotdb.query.engine.groupby.GroupByEngineNoFilter;
 import cn.edu.tsinghua.iotdb.query.engine.groupby.GroupByEngineWithFilter;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
+import cn.edu.tsinghua.tsfile.timeseries.read.query.QueryDataSet;
 
 
 public class ReadLockManager {
@@ -21,14 +22,20 @@ public class ReadLockManager {
     /** this is no need to set as ThreadLocal, RecordReaderCache has ThreadLocal variable**/
     public RecordReaderCache recordReaderCache = new RecordReaderCache();
 
-    /** if this variable equals true, represent that the group by method is executed the first time**/
-    private ThreadLocal<Integer> groupByCalcCalcTime;
+    /** represents the execute time of group by method**/
+    private ThreadLocal<Integer> groupByCalcTime;
 
     /** ThreadLocal, due to the usage of OverflowQPExecutor **/
     private ThreadLocal<GroupByEngineNoFilter> groupByEngineNoFilterLocal;
 
     /** ThreadLocal, due to the usage of OverflowQPExecutor **/
     private ThreadLocal<GroupByEngineWithFilter> groupByEngineWithFilterLocal;
+
+    /**
+     * this variable represents that whether it is the second execution of aggregation method.
+     * aggregation method must be executed once when a aggregation query.
+     */
+    private ThreadLocal<QueryDataSet> aggregateThreadLocal;
 
     private ReadLockManager() {
     }
@@ -73,8 +80,12 @@ public class ReadLockManager {
         locksMap.remove();
         recordReaderCache.clear();
 
-        if (groupByCalcCalcTime != null && groupByCalcCalcTime.get() != null) {
-            groupByCalcCalcTime.remove();
+        if (aggregateThreadLocal != null && aggregateThreadLocal.get() != null) {
+            aggregateThreadLocal.remove();
+        }
+
+        if (groupByCalcTime != null && groupByCalcTime.get() != null) {
+            groupByCalcTime.remove();
         }
         if (groupByEngineNoFilterLocal != null && groupByEngineNoFilterLocal.get() != null) {
             groupByEngineNoFilterLocal.remove();
@@ -103,15 +114,15 @@ public class ReadLockManager {
         }
     }
 
-    public ThreadLocal<Integer> getGroupByCalcCalcTime() {
-        if (groupByCalcCalcTime == null) {
-            groupByCalcCalcTime = new ThreadLocal<>();
+    public ThreadLocal<Integer> getGroupByCalcTime() {
+        if (groupByCalcTime == null) {
+            groupByCalcTime = new ThreadLocal<>();
         }
-        return this.groupByCalcCalcTime;
+        return this.groupByCalcTime;
     }
 
-    public void setGroupByCalcCalcTime(ThreadLocal<Integer> t) {
-        this.groupByCalcCalcTime = t;
+    public void setGroupByCalcTime(ThreadLocal<Integer> t) {
+        this.groupByCalcTime = t;
     }
 
     public ThreadLocal<GroupByEngineNoFilter> getGroupByEngineNoFilterLocal() {
@@ -134,5 +145,12 @@ public class ReadLockManager {
 
     public void setGroupByEngineWithFilterLocal(ThreadLocal<GroupByEngineWithFilter> t) {
         this.groupByEngineWithFilterLocal = t;
+    }
+
+    public ThreadLocal<QueryDataSet> getAggregateThreadLocal() {
+        if (this.aggregateThreadLocal == null) {
+            this.aggregateThreadLocal = new ThreadLocal<>();
+        }
+        return this.aggregateThreadLocal;
     }
 }
