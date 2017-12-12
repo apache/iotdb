@@ -5,6 +5,8 @@ import cn.edu.tsinghua.iotdb.exception.ArgsErrorException;
 import cn.edu.tsinghua.iotdb.tool.ImportCsv;
 
 import cn.edu.tsinghua.iotdb.jdbc.TsfileConnection;
+import cn.edu.tsinghua.iotdb.query.aggregation.AggregationConstant;
+
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
@@ -20,7 +22,9 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 public abstract class AbstractClient {
@@ -40,7 +44,8 @@ public abstract class AbstractClient {
 
 	protected static final String ISO8601_ARGS = "disableISO8601";
 	protected static String timeFormat = "default";
-	protected static final String TIME_KEY_WORD = "time";
+//	protected static final String TIME_KEY_WORD = "time";
+	protected static final List<String> AGGREGRATE_TIME_LIST = new ArrayList<>();
 	
 	protected static final String MAX_PRINT_ROW_COUNT_ARGS = "maxPRC";
 	protected static final String MAX_PRINT_ROW_COUNT_NAME = "maxPrintRowCount";
@@ -93,6 +98,8 @@ public abstract class AbstractClient {
 		keywordSet.add("-"+ISO8601_ARGS);
 		keywordSet.add("-"+MAX_PRINT_ROW_COUNT_ARGS);
 		
+		AGGREGRATE_TIME_LIST.add(AggregationConstant.MAX_TIME);
+		AGGREGRATE_TIME_LIST.add(AggregationConstant.MIN_TIME);
 	}
 	
 	public static void output(ResultSet res, boolean printToConsole, String statement, DateTimeZone timeZone) throws SQLException {
@@ -124,7 +131,14 @@ public abstract class AbstractClient {
 
 			for (int i = 2; i <= colCount; i++) {
 				if (printToConsole && cnt < maxPrintRowCount) {
-				    	if(resultSetMetaData.getColumnLabel(i).indexOf(TIME_KEY_WORD) != -1){
+					boolean flag = false;
+					for(String timeStr : AGGREGRATE_TIME_LIST) {
+					 	if(resultSetMetaData.getColumnLabel(i).toUpperCase().indexOf(timeStr) != -1){
+					 		flag = true;
+					 		break;
+					 	}
+					}
+				    	if(flag){
 				    		try {
 				    			System.out.printf(formatValue, formatDatetime(res.getLong(i), timeZone));
 						} catch (Exception e) {
