@@ -38,7 +38,6 @@ done
 
 MAIN_CLASS=cn.edu.tsinghua.iotdb.service.IoTDB
 
-"$JAVA" -DIOTDB_HOME=${IOTDB_HOME} -Dlogback.configurationFile=${IOTDB_CONF}/logback.xml $IOTDB_DERBY_OPTS $IOTDB_JMX_OPTS -Dname=iotdb\.IoTDB -cp "$CLASSPATH" "$MAIN_CLASS" 
-
+"$JAVA" -DIOTDB_HOME=${IOTDB_HOME} -DIOTDB_CONF=${IOTDB_CONF} -Dlogback.configurationFile=${IOTDB_CONF}/logback.xml $IOTDB_DERBY_OPTS $IOTDB_JMX_OPTS -Dname=iotdb\.IoTDB -cp "$CLASSPATH" "$MAIN_CLASS" 
 
 exit $?
