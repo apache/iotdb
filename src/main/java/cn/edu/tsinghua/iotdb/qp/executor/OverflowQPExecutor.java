@@ -1,5 +1,15 @@
 package cn.edu.tsinghua.iotdb.qp.executor;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import cn.edu.tsinghua.iotdb.auth.AuthException;
 import cn.edu.tsinghua.iotdb.auth.dao.Authorizer;
 import cn.edu.tsinghua.iotdb.engine.filenode.FileNodeManager;
@@ -31,14 +41,6 @@ import cn.edu.tsinghua.tsfile.timeseries.read.query.QueryDataSet;
 import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
 import cn.edu.tsinghua.tsfile.timeseries.write.record.DataPoint;
 import cn.edu.tsinghua.tsfile.timeseries.write.record.TSRecord;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
 
 public class OverflowQPExecutor extends QueryProcessExecutor {
 
@@ -113,10 +115,9 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 		return queryEngine.aggregate(aggres, filterStructures);
 	}
 
-
 	@Override
-	public QueryDataSet groupBy(List<Pair<Path, String>> aggres, List<FilterStructure> filterStructures,
-								long unit, long origin, List<Pair<Long, Long>> intervals, int fetchSize)
+	public QueryDataSet groupBy(List<Pair<Path, String>> aggres, List<FilterStructure> filterStructures, long unit,
+			long origin, List<Pair<Long, Long>> intervals, int fetchSize)
 			throws ProcessorException, IOException, PathErrorException {
 
 		return queryEngine.groupBy(aggres, filterStructures, unit, origin, intervals, fetchSize);
@@ -236,8 +237,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 			} else if (SQLConstant.BOOLEAN_TRUE_NUM.equals(value)) {
 				value = "true";
 			} else if (!SQLConstant.BOOLEN_TRUE.equals(value) && !SQLConstant.BOOLEN_FALSE.equals(value)) {
-				throw new ProcessorException(
-						String.format("The BOOLEAN data type should be true/TRUE or false/FALSE"));
+				throw new ProcessorException(String.format("The BOOLEAN data type should be true/TRUE or false/FALSE"));
 			}
 		} else if (dataType == TSDataType.TEXT) {
 			if ((value.startsWith(SQLConstant.QUOTE) && value.endsWith(SQLConstant.QUOTE))
@@ -325,31 +325,48 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 				if (!mManager.checkFileNameByPath(path.getFullPath())) {
 					throw new ProcessorException("Storage group should be created first");
 				}
+				/**
+				 * optimize the speed of adding timeseries
+				 */
 				String fileNodePath = mManager.getFileNameByPath(path.getFullPath());
-				ArrayList<ColumnSchema> columnSchemas = mManager.getSchemaForFileName(fileNodePath);
+				/**
+				 * the two map is stored in the storage group node
+				 */
+				Map<String, ColumnSchema> schemaMap = mManager.getSchemaMapForOneFileNode(fileNodePath);
+				Map<String, Integer> numSchemaMap = mManager.getNumSchemaMapForOneFileNode(fileNodePath);
 				String lastNode = path.getMeasurementToString();
 				boolean isNewMeasurement = true;
-				for (ColumnSchema columnSchema : columnSchemas) {
-					if (columnSchema.getName().equals(lastNode)) {
+				/**
+				 * Thread safety: just one thread can access/modify the
+				 * schemaMap
+				 */
+				synchronized (schemaMap) {
+					if (schemaMap.containsKey(lastNode)) {
 						isNewMeasurement = false;
+						ColumnSchema columnSchema = schemaMap.get(lastNode);
 						if (!columnSchema.geTsDataType().toString().equals(dataType)
 								|| !columnSchema.getEncoding().toString().equals(encoding)) {
 							throw new ProcessorException(String.format(
 									"The dataType or encoding of the last node %s is conflicting in the storage group %s",
 									lastNode, fileNodePath));
 						}
+						mManager.addPathToMTree(path.getFullPath(), dataType, encoding, encodingArgs);
+						numSchemaMap.put(lastNode, numSchemaMap.get(lastNode) + 1);
+					} else {
+						mManager.addPathToMTree(path.getFullPath(), dataType, encoding, encodingArgs);
+						ColumnSchema columnSchema = mManager.getSchemaForOnePath(path.toString());
+						schemaMap.put(lastNode, columnSchema);
+						numSchemaMap.put(lastNode, 1);
 					}
-				}
-				mManager.addPathToMTree(path.getFullPath(), dataType, encoding, encodingArgs);
-				try {
-					String namespacePath = mManager.getFileNameByPath(path.getFullPath());
-					if (isNewMeasurement) {
-						// add time series to schema
-						fileNodeManager.addTimeSeries(path, dataType, encoding, encodingArgs);
+					try {
+						if (isNewMeasurement) {
+							// add time series to schema
+							fileNodeManager.addTimeSeries(path, dataType, encoding, encodingArgs);
+						}
+						// fileNodeManager.closeOneFileNode(namespacePath);
+					} catch (FileNodeManagerException e) {
+						throw new ProcessorException(e);
 					}
-					// fileNodeManager.closeOneFileNode(namespacePath);
-				} catch (PathErrorException | FileNodeManagerException e) {
-					throw new ProcessorException(e);
 				}
 				break;
 			case DELETE_PATH:
@@ -376,6 +393,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 					} catch (ProcessorException e) {
 						throw new ProcessorException(e);
 					}
+
 					for (String p : fullPath) {
 						String nameSpacePath = null;
 						try {
@@ -383,26 +401,45 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 						} catch (PathErrorException e) {
 							throw new ProcessorException(e);
 						}
-						// TODO: don't delete the storage group path recursively
-						String deleteNameSpacePath = mManager.deletePathFromMTree(p);
-						if (deleteNameSpacePath != null) {
-							// TODO: should we delete the filenode in the disk
-							// delete this filenode
-							try {
-								// clear filenode
-								fileNodeManager.clearOneFileNode(deleteNameSpacePath);
-								// close processor
-								fileNodeManager.deleteOneFileNode(deleteNameSpacePath);
-							} catch (FileNodeManagerException e) {
-								throw new ProcessorException(e);
+						/**
+						 * the two map is stored in the storage group node
+						 */
+						schemaMap = mManager.getSchemaMapForOneFileNode(nameSpacePath);
+						numSchemaMap = mManager.getNumSchemaMapForOneFileNode(nameSpacePath);
+						/**
+						 * Thread safety: just one thread can access/modify the
+						 * schemaMap
+						 */
+						synchronized (schemaMap) {
+							// TODO: don't delete the storage group path recursively
+							path = new Path(p);
+							String measurementId = path.getMeasurementToString();
+							if(numSchemaMap.get(measurementId)==1){
+								numSchemaMap.remove(measurementId);
+								schemaMap.remove(measurementId);
+							}else{
+								numSchemaMap.put(measurementId,numSchemaMap.get(measurementId)-1);
 							}
-						} else if (nameSpacePath != null) {
-							// TODO: should we must close the filenode
-							// close this filenode
-							try {
-								fileNodeManager.closeOneFileNode(nameSpacePath);
-							} catch (FileNodeManagerException e) {
-								throw new ProcessorException(e);
+							String deleteNameSpacePath = mManager.deletePathFromMTree(p);
+							if (deleteNameSpacePath != null) {
+								// TODO: should we delete the filenode in the disk
+								// delete this filenode
+								try {
+									// clear filenode
+									fileNodeManager.clearOneFileNode(deleteNameSpacePath);
+									// close processor
+									fileNodeManager.deleteOneFileNode(deleteNameSpacePath);
+								} catch (FileNodeManagerException e) {
+									throw new ProcessorException(e);
+								}
+							} else if (nameSpacePath != null) {
+								// TODO: should we must close the filenode
+								// close this filenode
+								try {
+									fileNodeManager.closeOneFileNode(nameSpacePath);
+								} catch (FileNodeManagerException e) {
+									throw new ProcessorException(e);
+								}
 							}
 						}
 					}

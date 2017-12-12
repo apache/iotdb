@@ -205,6 +205,14 @@ public class MGraph implements Serializable {
 	public ArrayList<ColumnSchema> getSchemaForOneFileNode(String path){
 		return mTree.getSchemaForOneFileNode(path);
 	}
+	
+	public Map<String, ColumnSchema> getSchemaMapForOneFileNode(String path){
+		return mTree.getSchemaMapForOneFileNode(path);
+	}
+	
+	public Map<String, Integer> getNumSchemaMapForOneFileNode(String path){
+		return mTree.getNumSchemaMapForOneFileNode(path);
+	}
 
 	/**
 	 * Calculate the count of storage-level nodes included in given path
