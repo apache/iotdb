@@ -1,7 +1,9 @@
 package cn.edu.tsinghua.iotdb.metadata;
 
 import java.io.Serializable;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.Map;
 
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSEncoding;
@@ -24,6 +26,9 @@ public class MNode implements Serializable {
 	private boolean isLeaf;
 	// Whether current node is Storage Level in the Metadata Tree
 	private boolean isStorageLevel;
+	// Map for the schema in this storage group
+	private Map<String, ColumnSchema> schemaMap;
+	private Map<String, Integer> numSchemaMap;
 	// Corresponding data file name for current node
 	private String dataFileName;
 	// Column's Schema for one timeseries represented by current node if current
@@ -53,6 +58,21 @@ public class MNode implements Serializable {
 
 	public void setStorageLevel(boolean b) {
 		this.isStorageLevel = b;
+		if(b){
+			schemaMap = new HashMap<>();
+			numSchemaMap = new HashMap<>();
+		}else{
+			numSchemaMap = null;
+			schemaMap = null;
+		}
+	}
+	
+	public Map<String, ColumnSchema> getSchemaMap() {
+		return schemaMap;
+	}
+
+	public Map<String, Integer> getNumSchemaMap() {
+		return numSchemaMap;
 	}
 
 	public boolean isLeaf() {

@@ -397,6 +397,7 @@ public class MManager {
 	 * @return a list contains all column schema
 	 * @throws PathErrorException
 	 */
+	@Deprecated
 	public ArrayList<ColumnSchema> getSchemaForOneType(String path) throws PathErrorException {
 
 		lock.readLock().lock();
@@ -421,6 +422,27 @@ public class MManager {
 			lock.readLock().unlock();
 		}
 	}
+	public Map<String, ColumnSchema> getSchemaMapForOneFileNode(String path){
+		
+		lock.readLock().lock();
+		try{
+			return mGraph.getSchemaMapForOneFileNode(path);
+		}finally {
+			lock.readLock().unlock();
+		}
+	}
+	
+	public Map<String,Integer> getNumSchemaMapForOneFileNode(String path){
+		
+		lock.readLock().lock();
+		try{
+			return mGraph.getNumSchemaMapForOneFileNode(path);
+		}finally {
+			lock.readLock().unlock();
+		}
+	}
+	
+	
 
 	/**
 	 * Calculate the count of storage-level nodes included in given path

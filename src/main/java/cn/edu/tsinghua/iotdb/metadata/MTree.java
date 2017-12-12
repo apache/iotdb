@@ -3,6 +3,7 @@ package cn.edu.tsinghua.iotdb.metadata;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Map;
 
 import cn.edu.tsinghua.iotdb.exception.PathErrorException;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
@@ -498,11 +499,33 @@ public class MTree implements Serializable {
 		for(int i = 1;i<nodes.length;i++){
 			cur = cur.getChild(nodes[i]);
 		}
+		// cur is the storage group node
 		putLeafToLeafMap(cur, leafMap);
 		ArrayList<ColumnSchema> res = new ArrayList<>();
 		res.addAll(leafMap.values());
 		return res;
 	}
+	
+	public Map<String, ColumnSchema> getSchemaMapForOneFileNode(String path){
+		String nodes[] = path.split(separator);
+		HashMap<String, ColumnSchema> leafMap = new HashMap<>();
+		MNode cur = getRoot();
+		for(int i = 1;i<nodes.length;i++){
+			cur = cur.getChild(nodes[i]);
+		}
+		return cur.getSchemaMap();
+	}
+	
+	public Map<String, Integer> getNumSchemaMapForOneFileNode(String path){
+		String nodes[] = path.split(separator);
+		HashMap<String, ColumnSchema> leafMap = new HashMap<>();
+		MNode cur = getRoot();
+		for(int i = 1;i<nodes.length;i++){
+			cur = cur.getChild(nodes[i]);
+		}
+		return cur.getNumSchemaMap();
+	}
+	
 
 	private void putLeafToLeafMap(MNode node, HashMap<String, ColumnSchema> leafMap) {
 		if (node.isLeaf()) {
