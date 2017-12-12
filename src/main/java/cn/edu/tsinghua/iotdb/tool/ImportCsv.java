@@ -30,8 +30,8 @@ import org.apache.commons.cli.ParseException;
 import org.apache.commons.io.FileUtils;
 import org.apache.thrift.TException;
 
+import cn.edu.tsinghua.iotdb.conf.TsFileDBConstant;
 import cn.edu.tsinghua.iotdb.exception.ArgsErrorException;
-import cn.edu.tsinghua.tsfile.common.constant.SystemConstant;
 import jline.console.ConsoleReader;
 
 /**
@@ -329,10 +329,10 @@ public class ImportCsv extends AbstractCsvTool{
 	}
 
     public static void importCsvFromFile(String ip,String port, String username, String password, String filename, String timeZone) throws SQLException{
-        if (System.getProperty(SystemConstant.TSFILE_HOME) == null) {
+        if (System.getProperty(TsFileDBConstant.IOTDB_HOME) == null) {
             errorInsertInfo = "src/test/resources/csvInsertError.error";
         } else {
-            errorInsertInfo = System.getProperty(SystemConstant.TSFILE_HOME) + "/csvInsertError.error";
+            errorInsertInfo = System.getProperty(TsFileDBConstant.IOTDB_HOME) + "/csvInsertError.error";
         }
     		try {
     			Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);

@@ -41,7 +41,7 @@ public class TsfileDBConfig {
 	/**
 	 * Data directory
 	 */
-	public String dataDir = "data";
+	public String dataDir = null;
 	/**
 	 * Data directory of Overflow data
 	 */
@@ -109,6 +109,16 @@ public class TsfileDBConfig {
 	public TsfileDBConfig() {}
 
 	public void updateDataPath() {
+		if(dataDir == null){
+			dataDir = System.getProperty(TsFileDBConstant.IOTDB_HOME, null);
+			if(dataDir == null){
+				dataDir = "data";
+			} else {
+				if (dataDir.length() > 0 && !dataDir.endsWith(File.separator)) {
+					dataDir = dataDir + File.separatorChar + "data";
+				}
+			}
+		}
 		// filenode dir
 		if (dataDir.length() > 0 && !dataDir.endsWith(File.separator)) {
 			dataDir = dataDir + File.separatorChar;
