@@ -8,6 +8,7 @@ import java.util.List;
 import cn.edu.tsinghua.iotdb.query.visitorImpl.PageAllSatisfiedVisitor;
 import cn.edu.tsinghua.tsfile.common.utils.Pair;
 import cn.edu.tsinghua.tsfile.file.metadata.TsDigest;
+import cn.edu.tsinghua.tsfile.timeseries.filter.visitorImpl.IntervalTimeVisitor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -64,10 +65,18 @@ public class ValueReaderProcessor {
 
         if (updateTrueData.valueLength == 0 && !insertMemoryData.hasInsertData() && valueFilter != null
                 && !valueDigestVisitor.satisfy(valueDigest, valueFilter)) {
-            LOG.debug("series value digest does not satisfy value filter ");
+            LOG.debug("series value digest does not satisfy value filter");
             res.plusRowGroupIndexAndInitPageOffset();
             return res;
         }
+
+//        IntervalTimeVisitor seriesTimeVisitor = new IntervalTimeVisitor();
+//        // TODO has multithreading problem
+//        if (!seriesTimeVisitor.satisfy(timeFilter, valueReader.getStartTime(), valueReader.getEndTime())) {
+//            LOG.debug("series time digest does not satisfy time filter");
+//            res.plusRowGroupIndexAndInitPageOffset();
+//            return res;
+//        }
 
         DynamicOneColumnData[] updateData = new DynamicOneColumnData[2];
         updateData[0] = updateTrueData;
@@ -80,8 +89,8 @@ public class ValueReaderProcessor {
         ByteArrayInputStream bis = valueReader.initBAISForOnePage(res.pageOffset);
         PageReader pageReader = new PageReader(bis, compressionTypeName);
         // let resCount be the sum of records in last read
-        // in BatchReadRecordGenerator, The ResCount needed equals to (res.valueLength - res.insertTrueIndex)??
-        int resCount = res.valueLength - res.insertTrueIndex;
+        // in BatchReadRecordGenerator, The ResCount needed equals to (res.valueLength - res.curIdx)??
+        int resCount = res.valueLength - res.curIdx;
 
         while ((res.pageOffset - valueReader.fileOffset) < valueReader.totalSize && resCount < fetchSize) {
             // To help to record byte size in this process of read.
@@ -667,14 +676,14 @@ public class ValueReaderProcessor {
         // get column digest
         TsDigest digest = valueReader.getDigest();
         DigestForFilter digestFF = new DigestForFilter(digest.min, digest.max, dataType);
-        LOG.debug("Calculate aggregation : Column Digest min and max is: " + digestFF.getMinValue() + " --- " + digestFF.getMaxValue());
+        LOG.debug("calculate aggregation : column Digest min and max is: " + digestFF.getMinValue() + " --- " + digestFF.getMaxValue());
         DigestVisitor digestVisitor = new DigestVisitor();
 
         // to ensure that updateTrue and updateFalse is not null
         updateTrue = (updateTrue == null ? new DynamicOneColumnData(dataType, true) : updateTrue);
         updateFalse = (updateFalse == null ? new DynamicOneColumnData(dataType, true) : updateFalse);
 
-        // if this series is not satisfied to the filter, then return.
+        // if this series is not satisfied to the value filter, then return.
         if (updateTrue.valueLength == 0 && insertMemoryData == null && valueFilter != null
                 && !digestVisitor.satisfy(digestFF, valueFilter)) {
             return;
