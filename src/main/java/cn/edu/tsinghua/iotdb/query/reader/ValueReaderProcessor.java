@@ -44,7 +44,7 @@ public class ValueReaderProcessor {
             res = new DynamicOneColumnData(dataType, true);
             res.pageOffset = valueReader.getFileOffset();
             res.leftSize = valueReader.getTotalSize();
-            res.curIdx = 0;
+            res.insertTrueIndex = 0;
         }
 
         // new series read
@@ -80,8 +80,8 @@ public class ValueReaderProcessor {
         ByteArrayInputStream bis = valueReader.initBAISForOnePage(res.pageOffset);
         PageReader pageReader = new PageReader(bis, compressionTypeName);
         // let resCount be the sum of records in last read
-        // in BatchReadRecordGenerator, The ResCount needed equals to (res.valueLength - res.curIdx)??
-        int resCount = res.valueLength - res.curIdx;
+        // in BatchReadRecordGenerator, The ResCount needed equals to (res.valueLength - res.insertTrueIndex)??
+        int resCount = res.valueLength - res.insertTrueIndex;
 
         while ((res.pageOffset - valueReader.fileOffset) < valueReader.totalSize && resCount < fetchSize) {
             // To help to record byte size in this process of read.
@@ -158,7 +158,7 @@ public class ValueReaderProcessor {
                                     && insertMemoryData.getCurrentMinTime() <= timeValues[timeIdx]) {
                                 res.putTime(insertMemoryData.getCurrentMinTime());
                                 res.putInt(insertMemoryData.getCurrentIntValue());
-                                res.curIdx++;
+                                res.insertTrueIndex++;
                                 resCount++;
 
                                 if (insertMemoryData.getCurrentMinTime() == timeValues[timeIdx]) {
@@ -239,7 +239,7 @@ public class ValueReaderProcessor {
                                     && insertMemoryData.getCurrentMinTime() <= timeValues[timeIdx]) {
                                 res.putTime(insertMemoryData.getCurrentMinTime());
                                 res.putBoolean(insertMemoryData.getCurrentBooleanValue());
-                                res.curIdx++;
+                                res.insertTrueIndex++;
                                 resCount++;
 
                                 if (insertMemoryData.getCurrentMinTime() == timeValues[timeIdx]) {
@@ -320,7 +320,7 @@ public class ValueReaderProcessor {
                                     && insertMemoryData.getCurrentMinTime() <= timeValues[timeIdx]) {
                                 res.putTime(insertMemoryData.getCurrentMinTime());
                                 res.putLong(insertMemoryData.getCurrentLongValue());
-                                res.curIdx++;
+                                res.insertTrueIndex++;
                                 resCount++;
 
                                 if (insertMemoryData.getCurrentMinTime() == timeValues[timeIdx]) {
@@ -400,7 +400,7 @@ public class ValueReaderProcessor {
                                     && insertMemoryData.getCurrentMinTime() <= timeValues[timeIdx]) {
                                 res.putTime(insertMemoryData.getCurrentMinTime());
                                 res.putFloat(insertMemoryData.getCurrentFloatValue());
-                                res.curIdx++;
+                                res.insertTrueIndex++;
                                 resCount++;
 
                                 if (insertMemoryData.getCurrentMinTime() == timeValues[timeIdx]) {
@@ -481,7 +481,7 @@ public class ValueReaderProcessor {
                                     && insertMemoryData.getCurrentMinTime() <= timeValues[timeIdx]) {
                                 res.putTime(insertMemoryData.getCurrentMinTime());
                                 res.putDouble(insertMemoryData.getCurrentDoubleValue());
-                                res.curIdx++;
+                                res.insertTrueIndex++;
                                 resCount++;
 
                                 if (insertMemoryData.getCurrentMinTime() == timeValues[timeIdx]) {
@@ -562,7 +562,7 @@ public class ValueReaderProcessor {
                                     && insertMemoryData.getCurrentMinTime() <= timeValues[timeIdx]) {
                                 res.putTime(insertMemoryData.getCurrentMinTime());
                                 res.putBinary(insertMemoryData.getCurrentBinaryValue());
-                                res.curIdx++;
+                                res.insertTrueIndex++;
                                 resCount++;
 
                                 if (insertMemoryData.getCurrentMinTime() == timeValues[timeIdx]) {
