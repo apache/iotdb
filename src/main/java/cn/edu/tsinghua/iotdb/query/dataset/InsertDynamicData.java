@@ -116,7 +116,7 @@ public class InsertDynamicData extends DynamicOneColumnData {
             return curSatisfiedIntValue;
         }
     }
-    
+
     public boolean getCurrentBooleanValue() {
         if (currentSatisfiedPageTime == -1) {
             return insertTrue.getBoolean(insertTrue.insertTrueIndex);
