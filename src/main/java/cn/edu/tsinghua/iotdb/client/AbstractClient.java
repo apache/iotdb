@@ -133,7 +133,7 @@ public abstract class AbstractClient {
 				if (printToConsole && cnt < maxPrintRowCount) {
 					boolean flag = false;
 					for(String timeStr : AGGREGRATE_TIME_LIST) {
-					 	if(resultSetMetaData.getColumnLabel(i).toUpperCase().indexOf(timeStr) != -1){
+						if(resultSetMetaData.getColumnLabel(i).toUpperCase().indexOf(timeStr.toUpperCase()) != -1){
 					 		flag = true;
 					 		break;
 					 	}
