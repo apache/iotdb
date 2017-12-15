@@ -585,7 +585,9 @@ public class LogicalGenerator {
 			DateTime datetime = DateTime.parse(timestampStr, DateTimeFormat.forPattern(SQLConstant.determineDateFormat(timestampStr)).withZone(timeZone));
 			return datetime.getMillis();
 		} catch (Exception e) {
-			throw new LogicalOperatorException(e.getMessage());
+			throw new LogicalOperatorException(String.format("Input time format %s error. "
+					+ "Input like yyyy-MM-dd HH:mm:ss, yyyy-MM-ddTHH:mm:ss or "
+					+ "refer to user document for more info.", timestampStr));
 		}
 
 	}
