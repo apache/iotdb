@@ -8,6 +8,7 @@ import java.util.List;
 import cn.edu.tsinghua.iotdb.query.visitorImpl.PageAllSatisfiedVisitor;
 import cn.edu.tsinghua.tsfile.common.utils.Pair;
 import cn.edu.tsinghua.tsfile.file.metadata.TsDigest;
+import cn.edu.tsinghua.tsfile.timeseries.filter.visitorImpl.IntervalTimeVisitor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -52,18 +53,27 @@ public class ValueReaderProcessor {
             res.pageOffset = valueReader.getFileOffset();
         }
 
-        TsDigest digest = valueReader.getDigest();
-        DigestForFilter digestFF = new DigestForFilter(digest.min, digest.max, dataType);
-        LOG.debug("read one series digest normally, digest min and max is: " + digestFF.getMinValue() + " --- " + digestFF.getMaxValue());
-        DigestVisitor digestVisitor = new DigestVisitor();
-
-        // TODO: optimize
+        // TODO: maybe new updateTrueData and updateFalseData is redundant
         updateTrueData = (updateTrueData == null ? new DynamicOneColumnData(dataType, true) : updateTrueData);
         updateFalseData = (updateFalseData == null ? new DynamicOneColumnData(dataType, true) : updateFalseData);
+        
+        TsDigest digest = valueReader.getDigest();
+        DigestForFilter valueDigest = new DigestForFilter(digest.min, digest.max, dataType);
+        LOG.debug(String.format("read one series digest normally, time range is [%s,%s], value range is [%s,%s]",
+                valueReader.getStartTime(), valueReader.getEndTime(), valueDigest.getMinValue(), valueDigest.getMaxValue()));
+        DigestVisitor valueDigestVisitor = new DigestVisitor();
 
         if (updateTrueData.valueLength == 0 && !insertMemoryData.hasInsertData() && valueFilter != null
-                && !digestVisitor.satisfy(digestFF, valueFilter)) {
-            LOG.debug("column digest does not satisfy value filter ");
+                && !valueDigestVisitor.satisfy(valueDigest, valueFilter)) {
+            LOG.debug("series value digest does not satisfy value filter");
+            res.plusRowGroupIndexAndInitPageOffset();
+            return res;
+        }
+
+        IntervalTimeVisitor seriesTimeVisitor = new IntervalTimeVisitor();
+        // TODO seriesTimeVisitor has multithreading problem
+        if (!seriesTimeVisitor.satisfy(timeFilter, valueReader.getStartTime(), valueReader.getEndTime())) {
+            LOG.debug("series time digest does not satisfy time filter");
             res.plusRowGroupIndexAndInitPageOffset();
             return res;
         }
@@ -78,7 +88,6 @@ public class ValueReaderProcessor {
         // initial one page from file
         ByteArrayInputStream bis = valueReader.initBAISForOnePage(res.pageOffset);
         PageReader pageReader = new PageReader(bis, compressionTypeName);
-        int pageCount = 0;
         // let resCount be the sum of records in last read
         // in BatchReadRecordGenerator, The ResCount needed equals to (res.valueLength - res.curIdx)??
         int resCount = res.valueLength - res.curIdx;
@@ -86,8 +95,6 @@ public class ValueReaderProcessor {
         while ((res.pageOffset - valueReader.fileOffset) < valueReader.totalSize && resCount < fetchSize) {
             // To help to record byte size in this process of read.
             int lastAvailable = bis.available();
-            pageCount++;
-            //LOG.debug("read page {}, offset : {}", pageCount, res.pageOffset);
             PageHeader pageHeader = pageReader.getNextPageHeader();
 
             // construct valueFilter
@@ -106,22 +113,22 @@ public class ValueReaderProcessor {
                 mode = ReaderUtils.getNextMode(updateIdx[0], updateIdx[1], updateTrueData, updateFalseData);
             }
 
-            if (mode == -1 && ((valueFilter != null && !digestVisitor.satisfy(valueDigestFF, valueFilter))
-                    || (timeFilter != null && !digestVisitor.satisfy(timeDigestFF, timeFilter)))) {
+            if (mode == -1 && ((valueFilter != null && !valueDigestVisitor.satisfy(valueDigestFF, valueFilter))
+                    || (timeFilter != null && !valueDigestVisitor.satisfy(timeDigestFF, timeFilter)))) {
                 pageReader.skipCurrentPage();
                 res.pageOffset += lastAvailable - bis.available();
                 continue;
             }
             if (mode == 0 && updateData[0].getTime(updateIdx[0]) > maxt
-                    && ((valueFilter != null && !digestVisitor.satisfy(valueDigestFF, valueFilter))
-                    || (timeFilter != null && !digestVisitor.satisfy(timeDigestFF, timeFilter)))) {
+                    && ((valueFilter != null && !valueDigestVisitor.satisfy(valueDigestFF, valueFilter))
+                    || (timeFilter != null && !valueDigestVisitor.satisfy(timeDigestFF, timeFilter)))) {
                 pageReader.skipCurrentPage();
                 res.pageOffset += lastAvailable - bis.available();
                 continue;
             }
             if (mode == 1 && ((updateData[1].getTime(updateIdx[1]) <= mint && updateData[1].getTime(updateIdx[1] + 1) >= maxt)
-                    || ((valueFilter != null && !digestVisitor.satisfy(valueDigestFF, valueFilter))
-                    || (timeFilter != null && !digestVisitor.satisfy(timeDigestFF, timeFilter))))) {
+                    || ((valueFilter != null && !valueDigestVisitor.satisfy(valueDigestFF, valueFilter))
+                    || (timeFilter != null && !valueDigestVisitor.satisfy(timeDigestFF, timeFilter))))) {
                 pageReader.skipCurrentPage();
                 res.pageOffset += lastAvailable - bis.available();
                 continue;
@@ -669,14 +676,14 @@ public class ValueReaderProcessor {
         // get column digest
         TsDigest digest = valueReader.getDigest();
         DigestForFilter digestFF = new DigestForFilter(digest.min, digest.max, dataType);
-        LOG.debug("Calculate aggregation : Column Digest min and max is: " + digestFF.getMinValue() + " --- " + digestFF.getMaxValue());
+        LOG.debug("calculate aggregation : column Digest min and max is: " + digestFF.getMinValue() + " --- " + digestFF.getMaxValue());
         DigestVisitor digestVisitor = new DigestVisitor();
 
         // to ensure that updateTrue and updateFalse is not null
         updateTrue = (updateTrue == null ? new DynamicOneColumnData(dataType, true) : updateTrue);
         updateFalse = (updateFalse == null ? new DynamicOneColumnData(dataType, true) : updateFalse);
 
-        // if this series is not satisfied to the filter, then return.
+        // if this series is not satisfied to the value filter, then return.
         if (updateTrue.valueLength == 0 && insertMemoryData == null && valueFilter != null
                 && !digestVisitor.satisfy(digestFF, valueFilter)) {
             return;

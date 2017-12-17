@@ -9,7 +9,7 @@ import cn.edu.tsinghua.tsfile.file.metadata.RowGroupMetaData;
 import cn.edu.tsinghua.tsfile.file.metadata.TsFileMetaData;
 import cn.edu.tsinghua.tsfile.file.metadata.TsRowGroupBlockMetaData;
 import cn.edu.tsinghua.tsfile.timeseries.filter.definition.SingleSeriesFilterExpression;
-import cn.edu.tsinghua.tsfile.timeseries.filter.visitorImpl.IntervalTimeFilter;
+import cn.edu.tsinghua.tsfile.timeseries.filter.visitorImpl.IntervalTimeVisitor;
 import cn.edu.tsinghua.tsfile.timeseries.read.RowGroupReader;
 import cn.edu.tsinghua.tsfile.timeseries.read.TsRandomAccessLocalFileReader;
 
@@ -64,7 +64,7 @@ public class ReaderManager {
                 if (tsFileMetaData.containsDeltaObject(deltaObjectUID)) {
 
                     // to filter some file whose (startTime, endTime) is not satisfied with the timeFilter
-                    IntervalTimeFilter metaFilter = new IntervalTimeFilter();
+                    IntervalTimeVisitor metaFilter = new IntervalTimeVisitor();
                     if (timeFilter != null && !metaFilter.satisfy(timeFilter, tsFileMetaData.getDeltaObject(deltaObjectUID).startTime,
                             tsFileMetaData.getDeltaObject(deltaObjectUID).endTime))
                         continue;
