@@ -70,13 +70,13 @@ public class ValueReaderProcessor {
             return res;
         }
 
-//        IntervalTimeVisitor seriesTimeVisitor = new IntervalTimeVisitor();
-//        // TODO has multithreading problem
-//        if (!seriesTimeVisitor.satisfy(timeFilter, valueReader.getStartTime(), valueReader.getEndTime())) {
-//            LOG.debug("series time digest does not satisfy time filter");
-//            res.plusRowGroupIndexAndInitPageOffset();
-//            return res;
-//        }
+        IntervalTimeVisitor seriesTimeVisitor = new IntervalTimeVisitor();
+        // TODO seriesTimeVisitor has multithreading problem
+        if (!seriesTimeVisitor.satisfy(timeFilter, valueReader.getStartTime(), valueReader.getEndTime())) {
+            LOG.debug("series time digest does not satisfy time filter");
+            res.plusRowGroupIndexAndInitPageOffset();
+            return res;
+        }
 
         DynamicOneColumnData[] updateData = new DynamicOneColumnData[2];
         updateData[0] = updateTrueData;
