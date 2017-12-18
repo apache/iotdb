@@ -508,7 +508,6 @@ public class MTree implements Serializable {
 	
 	public Map<String, ColumnSchema> getSchemaMapForOneFileNode(String path){
 		String nodes[] = path.split(separator);
-		HashMap<String, ColumnSchema> leafMap = new HashMap<>();
 		MNode cur = getRoot();
 		for(int i = 1;i<nodes.length;i++){
 			cur = cur.getChild(nodes[i]);
@@ -518,7 +517,6 @@ public class MTree implements Serializable {
 	
 	public Map<String, Integer> getNumSchemaMapForOneFileNode(String path){
 		String nodes[] = path.split(separator);
-		HashMap<String, ColumnSchema> leafMap = new HashMap<>();
 		MNode cur = getRoot();
 		for(int i = 1;i<nodes.length;i++){
 			cur = cur.getChild(nodes[i]);

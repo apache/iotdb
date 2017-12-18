@@ -4,7 +4,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 import java.io.ByteArrayInputStream;
-import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
@@ -20,14 +19,14 @@ import cn.edu.tsinghua.iotdb.engine.bufferwrite.Action;
 import cn.edu.tsinghua.iotdb.engine.bufferwrite.BufferWriteProcessor;
 import cn.edu.tsinghua.iotdb.engine.bufferwrite.FileNodeConstants;
 import cn.edu.tsinghua.iotdb.engine.lru.MetadataManagerHelper;
-import cn.edu.tsinghua.iotdb.engine.overflow.io.EngineTestHelper;
 import cn.edu.tsinghua.iotdb.engine.overflow.io.OverflowProcessor;
 import cn.edu.tsinghua.iotdb.exception.BufferWriteProcessorException;
 import cn.edu.tsinghua.iotdb.exception.FileNodeProcessorException;
 import cn.edu.tsinghua.iotdb.exception.OverflowProcessorException;
 import cn.edu.tsinghua.iotdb.exception.PathErrorException;
 import cn.edu.tsinghua.iotdb.metadata.MManager;
-import cn.edu.tsinghua.iotdb.sys.writelog.WriteLogManager;
+import cn.edu.tsinghua.iotdb.service.IoTDB;
+import cn.edu.tsinghua.iotdb.utils.EnvironmentUtils;
 import cn.edu.tsinghua.tsfile.common.conf.TSFileConfig;
 import cn.edu.tsinghua.tsfile.common.conf.TSFileDescriptor;
 import cn.edu.tsinghua.tsfile.common.utils.Pair;
@@ -75,27 +74,22 @@ public class FileNodeLastUpdateMulTest {
 			System.out.println("Manager overflow flush");
 		}
 	};
-	
-	private String FileNodeDir;
-	private String BufferWriteDir;
-	private String overflowDataDir;
+
 	private int rowGroupSize;
-	private int pageCheckSizeThreshold = tsconfig.pageCheckSizeThreshold;
-	private int defaultMaxStringLength = tsconfig.maxStringLength;
-	private boolean cachePageData = tsconfig.duplicateIncompletedPage;
-	private int pageSize = tsconfig.pageSizeInByte;
+	private int pageCheckSizeThreshold;
+	private int defaultMaxStringLength;
+	private boolean cachePageData;
+	private int pageSize;
 
 	@Before
 	public void setUp() throws Exception {
-		FileNodeDir = tsdbconfig.fileNodeDir;
-		BufferWriteDir = tsdbconfig.bufferWriteDir;
-		overflowDataDir = tsdbconfig.overflowDataDir;
-
-		tsdbconfig.fileNodeDir = "filenode" + File.separatorChar;
-		tsdbconfig.bufferWriteDir = "bufferwrite";
-		tsdbconfig.overflowDataDir = "overflow";
-		tsdbconfig.metadataDir = "metadata";
-		// set rowgroupsize
+		// origin value
+		rowGroupSize = tsconfig.groupSizeInByte;
+		pageCheckSizeThreshold = tsconfig.pageCheckSizeThreshold;
+		defaultMaxStringLength = tsconfig.maxStringLength;
+		cachePageData = tsconfig.duplicateIncompletedPage;
+		pageSize = tsconfig.pageSizeInByte;
+		// new value
 		tsconfig.groupSizeInByte = 10000;
 		tsconfig.pageCheckSizeThreshold = 3;
 		tsconfig.pageSizeInByte = 100;
@@ -105,32 +99,15 @@ public class FileNodeLastUpdateMulTest {
 		parameters = new HashMap<>();
 		parameters.put(FileNodeConstants.OVERFLOW_BACKUP_MANAGER_ACTION, overflowBackUpAction);
 		parameters.put(FileNodeConstants.OVERFLOW_FLUSH_MANAGER_ACTION, overflowFlushAction);
-		EngineTestHelper.delete(tsdbconfig.fileNodeDir);
-		EngineTestHelper.delete(tsdbconfig.bufferWriteDir);
-		EngineTestHelper.delete(tsdbconfig.overflowDataDir);
-		EngineTestHelper.delete(tsdbconfig.metadataDir);
-		EngineTestHelper.delete(tsdbconfig.walFolder);
 		MetadataManagerHelper.initMetadata2();
 		nameSpacePath = MManager.getInstance().getFileNameByPath(deltaObjectId0);
-		WriteLogManager.getInstance().close();
 	}
 
 	@After
 	public void tearDown() throws Exception {
+		Thread.sleep(2000);
+		EnvironmentUtils.cleanEnv();
 
-		WriteLogManager.getInstance().close();
-		MManager.getInstance().flushObjectToFile();
-		
-		EngineTestHelper.delete(tsdbconfig.fileNodeDir);
-		EngineTestHelper.delete(tsdbconfig.bufferWriteDir);
-		EngineTestHelper.delete(tsdbconfig.overflowDataDir);
-		EngineTestHelper.delete(tsdbconfig.metadataDir);
-		EngineTestHelper.delete(tsdbconfig.walFolder);
-		
-		tsdbconfig.fileNodeDir = FileNodeDir;
-		tsdbconfig.overflowDataDir = overflowDataDir;
-		tsdbconfig.bufferWriteDir = BufferWriteDir;
-		
 		tsconfig.groupSizeInByte = rowGroupSize;
 		tsconfig.pageCheckSizeThreshold = pageCheckSizeThreshold;
 		tsconfig.pageSizeInByte = pageSize;
@@ -462,7 +439,7 @@ public class FileNodeLastUpdateMulTest {
 	 * 
 	 * @param begin
 	 * @param end
-	 * @throws Exception 
+	 * @throws Exception
 	 */
 	private void createBufferwriteFile(long begin, long end, String... deltaObjectIds) throws Exception {
 

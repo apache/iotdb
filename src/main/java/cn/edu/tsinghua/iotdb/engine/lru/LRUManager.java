@@ -35,11 +35,9 @@ public abstract class LRUManager<T extends LRUProcessor> {
 	private Map<String, T> processorMap;
 
 	private int maxLRUNodeNumber;
-	protected final MManager mManager;
 	protected final String normalDataDir;
 
-	protected LRUManager(int maxLRUNumber, MManager mManager, String normalDataDir) {
-		this.mManager = mManager;
+	protected LRUManager(int maxLRUNumber, String normalDataDir) {
 		this.maxLRUNodeNumber = maxLRUNumber;
 		LOGGER.info("The max of LRUProcessor number is {}", maxLRUNumber);
 		processorLRUList = new LinkedList<>();
@@ -110,7 +108,7 @@ public abstract class LRUManager<T extends LRUProcessor> {
 		String nsPath;
 		try {
 			// ensure thread securely by ZJR
-			nsPath = mManager.getFileNameByPath(path);
+			nsPath = MManager.getInstance().getFileNameByPath(path);
 		} catch (PathErrorException e) {
 			LOGGER.error("MManager get nameSpacePath error, path is {}", path);
 			throw new LRUManagerException(e);

@@ -1,32 +1,29 @@
 package cn.edu.tsinghua.iotdb.metadata;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 
-import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
-import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
-import cn.edu.tsinghua.iotdb.engine.overflow.io.EngineTestHelper;
-import cn.edu.tsinghua.iotdb.exception.PathErrorException;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-public class MTreeTest {
+import cn.edu.tsinghua.iotdb.exception.PathErrorException;
+import cn.edu.tsinghua.iotdb.utils.EnvironmentUtils;
 
-	private static TsfileDBConfig dbconfig = TsfileDBDescriptor.getInstance().getConfig();
+public class MTreeTest {
 
 	@Before
 	public void setUp() throws Exception {
-		MManager.getInstance().clear();
 	}
 
 	@After
 	public void tearDown() throws Exception {
-		MManager.getInstance().flushObjectToFile();
-		EngineTestHelper.delete(dbconfig.metadataDir);
+		EnvironmentUtils.cleanEnv();
 	}
 
 	@Test

@@ -7,15 +7,12 @@ import java.io.File;
 import java.io.IOException;
 import java.util.List;
 
-import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
-import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
-import cn.edu.tsinghua.iotdb.metadata.MManager;
-import cn.edu.tsinghua.iotdb.sys.writelog.WriteLogManager;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import cn.edu.tsinghua.iotdb.utils.EnvironmentUtils;
 import cn.edu.tsinghua.tsfile.common.utils.BytesUtils;
 import cn.edu.tsinghua.tsfile.compress.Compressor;
 import cn.edu.tsinghua.tsfile.file.metadata.TimeSeriesChunkMetaData;
@@ -38,25 +35,17 @@ public class OverflowSeriesImplTest {
 	private OverflowSeriesImpl seriesimpl = null;
 	private OverflowSeriesImpl mergeseriesimpl = null;
 	private String measurementId = "s0";
-	private TsfileDBConfig tsFileDBConfig = TsfileDBDescriptor.getInstance().getConfig();
+	//private TsfileDBConfig tsFileDBConfig = TsfileDBDescriptor.getInstance().getConfig();
 
 	@Before
 	public void setUp() throws Exception {
-		EngineTestHelper.delete(mergeFilePath);
-		EngineTestHelper.delete(filePath);
-		EngineTestHelper.delete(tsFileDBConfig.walFolder);
-		EngineTestHelper.delete(tsFileDBConfig.metadataDir);
-		WriteLogManager.getInstance().close();
 	}
 
 	@After
 	public void tearDown() throws Exception {
-		MManager.getInstance().flushObjectToFile();
-		WriteLogManager.getInstance().close();
-		EngineTestHelper.delete(filePath);
-		EngineTestHelper.delete(mergeFilePath);
-		EngineTestHelper.delete(tsFileDBConfig.walFolder);
-		EngineTestHelper.delete(tsFileDBConfig.metadataDir);
+		EnvironmentUtils.cleanDir(filePath);
+		EnvironmentUtils.cleanDir(mergeFilePath);
+		EnvironmentUtils.cleanEnv();
 	}
 
 	@Test

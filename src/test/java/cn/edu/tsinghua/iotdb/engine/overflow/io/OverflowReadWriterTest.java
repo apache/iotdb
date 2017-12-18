@@ -1,20 +1,17 @@
 package cn.edu.tsinghua.iotdb.engine.overflow.io;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
-import static org.junit.Assert.assertArrayEquals;
 
 import java.io.File;
 import java.io.IOException;
 
-import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
-import cn.edu.tsinghua.iotdb.metadata.MManager;
-import cn.edu.tsinghua.iotdb.sys.writelog.WriteLogManager;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
+import cn.edu.tsinghua.iotdb.utils.EnvironmentUtils;
 
 /**
  * @author liukun
@@ -26,26 +23,18 @@ public class OverflowReadWriterTest {
 	private String backupFilePath = filePath+".backup";
 	private OverflowReadWriter ofIO = null;
 	
-	private TsfileDBConfig tsdbconfig = TsfileDBDescriptor.getInstance().getConfig();
+	//private TsfileDBConfig tsdbconfig = TsfileDBDescriptor.getInstance().getConfig();
 	
 
 	@Before
 	public void setUp() throws Exception {
-		EngineTestHelper.delete(filePath);
-		EngineTestHelper.delete(backupFilePath);
-		EngineTestHelper.delete(tsdbconfig.walFolder);
-		EngineTestHelper.delete(tsdbconfig.metadataDir);
-		WriteLogManager.getInstance().close();
 	}
 
 	@After
 	public void tearDown() throws Exception {
-		MManager.getInstance().flushObjectToFile();
-		WriteLogManager.getInstance().close();
-		EngineTestHelper.delete(filePath);
-		EngineTestHelper.delete(backupFilePath);
-		EngineTestHelper.delete(tsdbconfig.walFolder);
-		EngineTestHelper.delete(tsdbconfig.metadataDir);
+		EnvironmentUtils.cleanDir(filePath);
+		EnvironmentUtils.cleanDir(backupFilePath);
+		EnvironmentUtils.cleanEnv();
 	}
 
 	@Test

@@ -50,9 +50,7 @@ public class SingleQueryPlan extends PhysicalPlan {
         this.timeFilterOperator = timeFilter;
         this.freqFilterOperator = freqFilter;
         this.valueFilterOperator = valueFilter;
-        LOG.debug(Arrays.toString(paths.toArray()));
         checkPaths(executor);
-        LOG.debug(Arrays.toString(paths.toArray()));
         filterExpressions = transformToFilterExpressions(executor);
         this.aggregations = aggregations;
     }

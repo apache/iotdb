@@ -7,24 +7,20 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
-import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
-import cn.edu.tsinghua.iotdb.engine.overflow.io.EngineTestHelper;
 import org.junit.After;
 import org.junit.Before;
 
-import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
 import cn.edu.tsinghua.iotdb.exception.PathErrorException;
+import cn.edu.tsinghua.iotdb.utils.EnvironmentUtils;
 
 public class MManagerAdvancedTest {
 
 	private static MManager mmanager = null;
-	private TsfileDBConfig dbconfig = TsfileDBDescriptor.getInstance().getConfig();
 
 	@Before
 	public void setUp() throws Exception {
 		
 		mmanager = MManager.getInstance();
-		mmanager.clear();
 		
 		mmanager.setStorageLevelToMTree("root.vehicle.d1");
 		mmanager.setStorageLevelToMTree("root.vehicle.d0");
@@ -49,8 +45,7 @@ public class MManagerAdvancedTest {
 
 	@After
 	public void tearDown() throws Exception {
-		MManager.getInstance().flushObjectToFile();
-		EngineTestHelper.delete(dbconfig.dataDir);
+		EnvironmentUtils.cleanEnv();
 	}
 
 	@org.junit.Test

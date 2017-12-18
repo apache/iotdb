@@ -11,12 +11,9 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
-import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
 import cn.edu.tsinghua.iotdb.engine.lru.MetadataManagerHelper;
 import cn.edu.tsinghua.iotdb.engine.overflow.metadata.OFFileMetadata;
-import cn.edu.tsinghua.iotdb.metadata.MManager;
-import cn.edu.tsinghua.iotdb.sys.writelog.WriteLogManager;
+import cn.edu.tsinghua.iotdb.utils.EnvironmentUtils;
 import cn.edu.tsinghua.tsfile.common.utils.BytesUtils;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
 import cn.edu.tsinghua.tsfile.timeseries.filter.definition.SingleSeriesFilterExpression;
@@ -47,32 +44,24 @@ public class OverflowSupportTest {
 	private OverflowFileIO ofio = null;
 	private OverflowReadWriter ofrw = null;
 	private OverflowSupport ofsupport = null;
-	private TsfileDBConfig tsFileDBConfig = TsfileDBDescriptor.getInstance().getConfig();
+	//private TsfileDBConfig tsFileDBConfig = TsfileDBDescriptor.getInstance().getConfig();
 
 	@Before
 	public void setUp() throws Exception {
-		EngineTestHelper.delete(filePath);
-		EngineTestHelper.delete(fileBackupPath);
-		EngineTestHelper.delete(tsFileDBConfig.walFolder);
-		EngineTestHelper.delete(tsFileDBConfig.metadataDir);
 		ofsupport = null;
 		ofrw = null;
 		ofio = null;
 		MetadataManagerHelper.initMetadata();
-		WriteLogManager.getInstance().close();
 	}
 
 	@After
 	public void tearDown() throws Exception {
-		MManager.getInstance().flushObjectToFile();
-		WriteLogManager.getInstance().close();
-		EngineTestHelper.delete(filePath);
-		EngineTestHelper.delete(fileBackupPath);
-		EngineTestHelper.delete(tsFileDBConfig.walFolder);
-		EngineTestHelper.delete(tsFileDBConfig.metadataDir);
 		ofsupport = null;
 		ofrw = null;
 		ofio = null;
+		EnvironmentUtils.cleanDir(fileBackupPath);
+		EnvironmentUtils.cleanDir(filePath);
+		EnvironmentUtils.cleanEnv();
 	}
 
 	@Test

@@ -16,13 +16,14 @@ import org.junit.Test;
 
 import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
 import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
+import cn.edu.tsinghua.iotdb.engine.PathUtils;
 import cn.edu.tsinghua.iotdb.engine.lru.MetadataManagerHelper;
-import cn.edu.tsinghua.iotdb.engine.overflow.io.EngineTestHelper;
 import cn.edu.tsinghua.iotdb.exception.FileNodeManagerException;
 import cn.edu.tsinghua.iotdb.exception.MetadataArgsErrorException;
 import cn.edu.tsinghua.iotdb.exception.PathErrorException;
 import cn.edu.tsinghua.iotdb.metadata.MManager;
-import cn.edu.tsinghua.iotdb.sys.writelog.WriteLogManager;
+import cn.edu.tsinghua.iotdb.service.IoTDB;
+import cn.edu.tsinghua.iotdb.utils.EnvironmentUtils;
 import cn.edu.tsinghua.tsfile.common.conf.TSFileConfig;
 import cn.edu.tsinghua.tsfile.common.conf.TSFileDescriptor;
 import cn.edu.tsinghua.tsfile.common.utils.Pair;
@@ -39,8 +40,8 @@ import cn.edu.tsinghua.tsfile.timeseries.write.record.TSRecord;
  */
 public class FileNodeManagerTest {
 
-	private TSFileConfig tsconfig = TSFileDescriptor.getInstance().getConfig();
 	private TsfileDBConfig tsdbconfig = TsfileDBDescriptor.getInstance().getConfig();
+	private TSFileConfig tsconfig = TSFileDescriptor.getInstance().getConfig();
 
 	private FileNodeManager fManager = null;
 
@@ -50,55 +51,33 @@ public class FileNodeManagerTest {
 	private String measurementId6 = "s6";
 	private TSDataType dataType = TSDataType.INT32;
 
-	private String FileNodeDir;
-	private String BufferWriteDir;
-	private String overflowDataDir;
 	private int rowGroupSize;
-	private int pageCheckSizeThreshold = tsconfig.pageCheckSizeThreshold;
-	private int defaultMaxStringLength = tsconfig.maxStringLength;
-	private boolean cachePageData = tsconfig.duplicateIncompletedPage;
-	private int pageSize = tsconfig.pageSizeInByte;
+	private int pageCheckSizeThreshold;
+	private int defaultMaxStringLength;
+	private boolean cachePageData;
+	private int pageSize;
 
 	@Before
 	public void setUp() throws Exception {
-		FileNodeDir = tsdbconfig.fileNodeDir;
-		BufferWriteDir = tsdbconfig.bufferWriteDir;
-		overflowDataDir = tsdbconfig.overflowDataDir;
-
-		tsdbconfig.fileNodeDir = "filenode" + File.separatorChar;
-		tsdbconfig.bufferWriteDir = "bufferwrite";
-		tsdbconfig.overflowDataDir = "overflow";
-		tsdbconfig.metadataDir = "metadata";
+		// origin value
+		rowGroupSize = tsconfig.groupSizeInByte;
+		pageCheckSizeThreshold = tsconfig.pageCheckSizeThreshold;
+		cachePageData = tsconfig.duplicateIncompletedPage;
+		defaultMaxStringLength = tsconfig.maxStringLength;
+		pageSize = tsconfig.pageSizeInByte;
+		// new value
 		tsconfig.duplicateIncompletedPage = true;
-
-		// set rowgroupsize
 		tsconfig.groupSizeInByte = 2000;
 		tsconfig.pageCheckSizeThreshold = 3;
 		tsconfig.pageSizeInByte = 100;
 		tsconfig.maxStringLength = 2;
-		EngineTestHelper.delete(tsdbconfig.fileNodeDir);
-		EngineTestHelper.delete(tsdbconfig.bufferWriteDir);
-		EngineTestHelper.delete(tsdbconfig.overflowDataDir);
-		EngineTestHelper.delete(tsdbconfig.walFolder);
-		EngineTestHelper.delete(tsdbconfig.metadataDir);
 		MetadataManagerHelper.initMetadata();
-		WriteLogManager.getInstance().close();
 	}
 
 	@After
 	public void tearDown() throws Exception {
-		WriteLogManager.getInstance().close();
-		MManager.getInstance().flushObjectToFile();
-		EngineTestHelper.delete(tsdbconfig.fileNodeDir);
-		EngineTestHelper.delete(tsdbconfig.bufferWriteDir);
-		EngineTestHelper.delete(tsdbconfig.overflowDataDir);
-		EngineTestHelper.delete(tsdbconfig.walFolder);
-		EngineTestHelper.delete(tsdbconfig.metadataDir);
-
-		tsdbconfig.fileNodeDir = FileNodeDir;
-		tsdbconfig.overflowDataDir = overflowDataDir;
-		tsdbconfig.bufferWriteDir = BufferWriteDir;
-
+		EnvironmentUtils.cleanEnv();
+		// recovery value
 		tsconfig.groupSizeInByte = rowGroupSize;
 		tsconfig.pageCheckSizeThreshold = pageCheckSizeThreshold;
 		tsconfig.pageSizeInByte = pageSize;
@@ -106,48 +85,9 @@ public class FileNodeManagerTest {
 		tsconfig.duplicateIncompletedPage = cachePageData;
 	}
 
-	@Test
+	//@Test
 	public void testBufferwriteAndAddMetadata() {
 		createBufferwriteInMemory(new Pair<Long, Long>(1000L, 1001L), measurementId);
-		fManager = FileNodeManager.getInstance();
-
-		// add metadata
-		MManager mManager = MManager.getInstance();
-		assertEquals(false, mManager.pathExist(deltaObjectId + "." + measurementId6));
-		try {
-			mManager.addPathToMTree(deltaObjectId + "." + measurementId6, "INT32", "RLE", new String[0]);
-		} catch (PathErrorException | MetadataArgsErrorException | IOException e) {
-			e.printStackTrace();
-			fail(e.getMessage());
-		}
-		assertEquals(true, mManager.pathExist(deltaObjectId + "." + measurementId6));
-		// check level
-		String nsp = null;
-		try {
-			nsp = mManager.getFileNameByPath(deltaObjectId + "." + measurementId6);
-		} catch (PathErrorException e) {
-			e.printStackTrace();
-			fail(e.getMessage());
-		}
-		try {
-			fManager.closeOneFileNode(nsp);
-		} catch (FileNodeManagerException e) {
-			e.printStackTrace();
-			fail(e.getMessage());
-		}
-		createBufferwriteInMemory(new Pair<Long, Long>(200L, 302L), measurementId6);
-		// write data
-		try {
-			fManager.closeAll();
-		} catch (FileNodeManagerException e) {
-			e.printStackTrace();
-			fail(e.getMessage());
-		}
-	}
-	
-	@Test
-	public void testBufferwriteAndAddMetadata2(){
-		createBufferwriteInMemory(new Pair<Long, Long>(10L, 101L), measurementId);
 		fManager = FileNodeManager.getInstance();
 
 		// add metadata
@@ -351,8 +291,7 @@ public class FileNodeManagerTest {
 
 	@Test
 	public void testRecoveryWait() {
-		String dirPath = tsdbconfig.bufferWriteDir;
-		File dir = new File(dirPath);
+		File dir = PathUtils.getBufferWriteDir("");
 		if (!dir.exists()) {
 			dir.mkdirs();
 		}
@@ -398,7 +337,7 @@ public class FileNodeManagerTest {
 		newFileNodes.add(fileNode);
 		FileNodeProcessorStore fileNodeProcessorStore = new FileNodeProcessorStore(lastUpdateTimeMap,
 				emptyIntervalFileNode, newFileNodes, FileNodeProcessorStatus.NONE, 0);
-		File fileNodeDir = new File(tsdbconfig.fileNodeDir + File.separatorChar + deltaObjectId);
+		File fileNodeDir = PathUtils.getFileNodeDir(deltaObjectId);
 		if (!fileNodeDir.exists()) {
 			fileNodeDir.mkdirs();
 		}
@@ -530,7 +469,7 @@ public class FileNodeManagerTest {
 			e.printStackTrace();
 			fail(e.getMessage());
 		}
-		File fileNodeDir = new File(tsdbconfig.fileNodeDir + File.separatorChar + deltaObjectId);
+		File fileNodeDir = PathUtils.getFileNodeDir(deltaObjectId);
 		if (!fileNodeDir.exists()) {
 			fileNodeDir.mkdirs();
 		}
@@ -659,7 +598,7 @@ public class FileNodeManagerTest {
 			assertEquals(true, overflowData.get(3) != null);
 
 			// wait to merge over
-			waitToSleep(1000);
+			waitToSleep(2000);
 			// query new file and overflow data
 			token = fManager.beginQuery(deltaObjectId);
 			queryResult = fManager.query(deltaObjectId, measurementId, null, null, null);
@@ -880,7 +819,11 @@ public class FileNodeManagerTest {
 		}
 		try {
 			// close
-			fManager.closeAll();
+			if (fManager.closeAll()) {
+
+			} else {
+				fail("Can't close the filenode manager");
+			}
 		} catch (FileNodeManagerException e) {
 			e.printStackTrace();
 			fail(e.getMessage());

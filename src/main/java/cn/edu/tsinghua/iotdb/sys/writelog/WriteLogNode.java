@@ -246,7 +246,11 @@ public class WriteLogNode {
         return plan;
     }
 
-
+    /**
+     * Close all the read and write streams in WAL.
+     *
+     * @throws IOException stream could not be closed
+     */
     public void closeStreams() throws IOException {
         closeReadStream();
         closeWriteStream();

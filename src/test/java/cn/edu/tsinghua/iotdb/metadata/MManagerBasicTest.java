@@ -1,6 +1,7 @@
 package cn.edu.tsinghua.iotdb.metadata;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -10,25 +11,20 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
-import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
-import cn.edu.tsinghua.iotdb.engine.overflow.io.EngineTestHelper;
 import cn.edu.tsinghua.iotdb.exception.MetadataArgsErrorException;
 import cn.edu.tsinghua.iotdb.exception.PathErrorException;
+import cn.edu.tsinghua.iotdb.utils.EnvironmentUtils;
 import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
 
 public class MManagerBasicTest {
 
-	private static TsfileDBConfig dbconfig = TsfileDBDescriptor.getInstance().getConfig();
 	@Before
 	public void setUp() throws Exception {
-		MManager.getInstance().clear();
 	}
 
 	@After
 	public void tearDown() throws Exception {
-		MManager.getInstance().flushObjectToFile();
-		EngineTestHelper.delete(dbconfig.metadataDir);
+		EnvironmentUtils.cleanEnv();
 	}
 
 	@Test

@@ -1,6 +1,7 @@
 package cn.edu.tsinghua.iotdb.engine.filenode;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 import java.io.File;
 import java.io.IOException;
@@ -11,10 +12,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import cn.edu.tsinghua.iotdb.engine.overflow.io.EngineTestHelper;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+
+import cn.edu.tsinghua.iotdb.utils.EnvironmentUtils;
 
 /**
  * @author liukun
@@ -26,13 +28,13 @@ public class SerializeUtilTest {
 
 	@Before
 	public void setUp() throws Exception {
-		EngineTestHelper.delete(filePath);
+		EnvironmentUtils.cleanDir(filePath);
 
 	}
 
 	@After
 	public void tearDown() throws Exception {
-		EngineTestHelper.delete(filePath);
+		EnvironmentUtils.cleanDir(filePath);
 	}
 
 	@Test

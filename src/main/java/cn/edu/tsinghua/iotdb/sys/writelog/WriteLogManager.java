@@ -17,9 +17,11 @@ import cn.edu.tsinghua.iotdb.metadata.MManager;
 //import org.slf4j.LoggerFactory;
 import cn.edu.tsinghua.iotdb.qp.physical.PhysicalPlan;
 import cn.edu.tsinghua.tsfile.timeseries.write.record.TSRecord;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class WriteLogManager {
-
+    private static final Logger LOGGER = LoggerFactory.getLogger(WriteLogManager.class);
     // to determine whether system is in recovering process
     public static boolean isRecovering = false;
     // 0 represents BUFFERWRITE insert operation, 1 represents OVERFLOW insert operation
@@ -31,15 +33,17 @@ public class WriteLogManager {
     }
     private static ConcurrentHashMap<String, WriteLogNode> logNodeMaps = new ConcurrentHashMap<>();
 
+    /** timing thread to execute wal task periodically */
+    private ScheduledExecutorService timingService;
 
     private WriteLogManager() {
         if (TsfileDBDescriptor.getInstance().getConfig().enableWal) {
             logNodeMaps = new ConcurrentHashMap<>();
             // system log timing merge task
-            ScheduledExecutorService service = Executors.newScheduledThreadPool(1);
+            timingService = Executors.newScheduledThreadPool(1);
             long delay = 0;
             long interval = TsfileDBDescriptor.getInstance().getConfig().flushWalPeriodInMs;
-            service.scheduleAtFixedRate(new LogMergeTimingTask(), delay, interval, TimeUnit.SECONDS);
+            timingService.scheduleAtFixedRate(new LogMergeTimingTask(), delay, interval, TimeUnit.SECONDS);
         }
     }
 
@@ -149,9 +153,25 @@ public class WriteLogManager {
         return null;
     }
 
+    /**
+     * Close the file streams of WAL and shutdown the timing thread.
+     *
+     * @throws IOException file close error
+     */
     public void close() throws IOException {
         for (Map.Entry<String, WriteLogNode> entry : logNodeMaps.entrySet()) {
             entry.getValue().closeStreams();
+        }
+        if(timingService.isShutdown()){
+        	return;
+        }
+        timingService.shutdown();
+        
+        try {
+            timingService.awaitTermination(10, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            LOGGER.error("wal manager timing service could not be shutdown");
+            // e.printStackTrace();
         }
     }
 }

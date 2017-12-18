@@ -335,4 +335,10 @@ public class AuthDaoWrap {
         
         return userDao.getUser(statement, userName, password);
     }
+    /**
+     * just for unit test
+     */
+    public void reset(){
+    	statement = DBDao.getStatement();
+    }
 }

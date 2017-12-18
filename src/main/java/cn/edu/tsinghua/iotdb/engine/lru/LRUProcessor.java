@@ -44,8 +44,6 @@ public abstract class LRUProcessor {
 	 * Release the read lock
 	 */
 	public void readUnlock() {
-		LOGGER.debug("{}: lru read unlock-Thread id {}", this.getClass().getSimpleName(),
-				Thread.currentThread().getId());
 		lock.readLock().unlock();
 	}
 
@@ -53,7 +51,6 @@ public abstract class LRUProcessor {
 	 * Acquire the read lock
 	 */
 	public void readLock() {
-		LOGGER.debug("{}: lru read lock-Thread id {}", this.getClass().getSimpleName(), Thread.currentThread().getId());
 		lock.readLock().lock();
 	}
 
@@ -61,8 +58,6 @@ public abstract class LRUProcessor {
 	 * Acquire the write lock
 	 */
 	public void writeLock() {
-		LOGGER.debug("{}: lru write lock-Thread id {}", this.getClass().getSimpleName(),
-				Thread.currentThread().getId());
 		lock.writeLock().lock();
 	}
 
@@ -70,8 +65,6 @@ public abstract class LRUProcessor {
 	 * Release the write lock
 	 */
 	public void writeUnlock() {
-		LOGGER.debug("{}: lru write unlock-Thread id {}", this.getClass().getSimpleName(),
-				Thread.currentThread().getId());
 		lock.writeLock().unlock();
 	}
 
@@ -81,26 +74,19 @@ public abstract class LRUProcessor {
 	 */
 	public void lock(boolean isWriteLock) {
 		if (isWriteLock) {
-			LOGGER.debug("{}: lru write lock-Thread id {}", this.getClass().getSimpleName(),
-					Thread.currentThread().getId());
 			lock.writeLock().lock();
 		} else {
-			LOGGER.debug("{}: lru read lock-Thread id {}", this.getClass().getSimpleName(),
-					Thread.currentThread().getId());
 			lock.readLock().lock();
 		}
 	}
 
-	public boolean tryLock(boolean isWriteLock){
+	public boolean tryLock(boolean isWriteLock) {
 		if (isWriteLock) {
-			LOGGER.debug("{}: lru write lock-Thread id {}",this.getClass().getSimpleName(),Thread.currentThread().getId());
 			return tryWriteLock();
-		}else{
-			LOGGER.debug("{}: lru read lock-Thread id {}",this.getClass().getSimpleName(),Thread.currentThread().getId());
+		} else {
 			return tryReadLock();
 		}
 	}
-	
 
 	/**
 	 * @param isWriteUnlock
@@ -108,12 +94,8 @@ public abstract class LRUProcessor {
 	 */
 	public void unlock(boolean isWriteUnlock) {
 		if (isWriteUnlock) {
-			LOGGER.debug("{}: lru write unlock-Thread id {}", this.getClass().getSimpleName(),
-					Thread.currentThread().getId());
 			writeUnlock();
 		} else {
-			LOGGER.debug("{}: lru read unlock-Thread id {}", this.getClass().getSimpleName(),
-					Thread.currentThread().getId());
 			readUnlock();
 		}
 	}
