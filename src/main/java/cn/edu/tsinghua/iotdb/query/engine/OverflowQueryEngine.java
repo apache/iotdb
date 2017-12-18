@@ -149,7 +149,7 @@ public class OverflowQueryEngine {
 
         if (groupByCalcTime.get() == null) {
 
-            LOGGER.info("calculate aggregations the 1 time");
+            LOGGER.debug("calculate aggregations the 1 time");
             groupByCalcTime.set(2);
 
             SingleSeriesFilterExpression intervalFilter = null;
@@ -191,7 +191,7 @@ public class OverflowQueryEngine {
             }
         } else {
 
-            LOGGER.info(String.format("calculate group by result function the %s time", String.valueOf(groupByCalcTime.get())));
+            LOGGER.debug(String.format("calculate group by result function the %s time", String.valueOf(groupByCalcTime.get())));
 
             groupByCalcTime.set(groupByCalcTime.get() + 1);
             try {

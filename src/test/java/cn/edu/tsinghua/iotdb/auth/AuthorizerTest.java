@@ -5,30 +5,30 @@ import static org.junit.Assert.fail;
 
 import java.util.Set;
 
-import cn.edu.tsinghua.iotdb.auth.dao.Authorizer;
-import cn.edu.tsinghua.iotdb.auth.dao.DBDao;
-import cn.edu.tsinghua.iotdb.auth.model.User;
-import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
-import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import cn.edu.tsinghua.iotdb.auth.dao.Authorizer;
+import cn.edu.tsinghua.iotdb.auth.dao.DBDao;
+import cn.edu.tsinghua.iotdb.auth.model.User;
+import cn.edu.tsinghua.iotdb.utils.EnvironmentUtils;
+
 public class AuthorizerTest {
 
 	private DBDao dbdao = null;
-	private TsfileDBConfig dbconfig = TsfileDBDescriptor.getInstance().getConfig();
 
 	@Before
 	public void setUp() throws Exception {
-		dbconfig.derbyHome = "";
 		dbdao = new DBDao();
 		dbdao.open();
+		EnvironmentUtils.envSetUp();
 	}
 
 	@After
 	public void tearDown() throws Exception {
 		dbdao.close();
+		EnvironmentUtils.cleanEnv();
 	}
 
 	@Test

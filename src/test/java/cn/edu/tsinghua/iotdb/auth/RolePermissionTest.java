@@ -6,18 +6,17 @@ import static org.junit.Assert.assertNull;
 
 import java.sql.Statement;
 
-import cn.edu.tsinghua.iotdb.auth.dao.DBDao;
-import cn.edu.tsinghua.iotdb.auth.dao.RoleDao;
-import cn.edu.tsinghua.iotdb.auth.model.Permission;
-import cn.edu.tsinghua.iotdb.auth.model.RolePermission;
-import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
-import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import cn.edu.tsinghua.iotdb.auth.dao.DBDao;
+import cn.edu.tsinghua.iotdb.auth.dao.RoleDao;
 import cn.edu.tsinghua.iotdb.auth.dao.RolePermissionDao;
+import cn.edu.tsinghua.iotdb.auth.model.Permission;
 import cn.edu.tsinghua.iotdb.auth.model.Role;
+import cn.edu.tsinghua.iotdb.auth.model.RolePermission;
+import cn.edu.tsinghua.iotdb.utils.EnvironmentUtils;
 
 public class RolePermissionTest {
 
@@ -31,17 +30,16 @@ public class RolePermissionTest {
 	private String newNodeName = "newNodeName";
 	private int permissionId;
 	private RolePermission rolePermission = null;
-	private TsfileDBConfig dbconfig = TsfileDBDescriptor.getInstance().getConfig();
 
 	@Before
 	public void setUp() throws Exception {
-		dbconfig.derbyHome = "";
 		dbDao = new DBDao();
 		roleDao = new RoleDao();
 		rolePermissionDao = new RolePermissionDao();
 		permissionId = Permission.CREATE;
 
 		dbDao.open();
+		EnvironmentUtils.envSetUp();
 		statement = DBDao.getStatement();
 
 		// if role not exist, create role
@@ -56,6 +54,7 @@ public class RolePermissionTest {
 	public void tearDown() throws Exception {
 		roleDao.deleteRole(statement, role.getRoleName());
 		dbDao.close();
+		EnvironmentUtils.cleanEnv();
 	}
 
 	@Test

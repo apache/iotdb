@@ -12,14 +12,12 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
-import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
+import cn.edu.tsinghua.iotdb.engine.PathUtils;
 import cn.edu.tsinghua.iotdb.engine.bufferwrite.Action;
 import cn.edu.tsinghua.iotdb.engine.bufferwrite.FileNodeConstants;
 import cn.edu.tsinghua.iotdb.engine.filenode.FilterUtilsForOverflow;
 import cn.edu.tsinghua.iotdb.exception.OverflowProcessorException;
-import cn.edu.tsinghua.iotdb.metadata.MManager;
-import cn.edu.tsinghua.iotdb.sys.writelog.WriteLogManager;
+import cn.edu.tsinghua.iotdb.utils.EnvironmentUtils;
 import cn.edu.tsinghua.tsfile.common.conf.TSFileConfig;
 import cn.edu.tsinghua.tsfile.common.conf.TSFileDescriptor;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
@@ -38,7 +36,7 @@ public class BigDataForOverflowTest {
 	private String overflowmergefilePath = null;
 	private Map<String, Object> parameters = null;
 	private OverflowProcessor ofprocessor = null;
-	private TsfileDBConfig tsdbconfig = TsfileDBDescriptor.getInstance().getConfig();
+	//private TsfileDBConfig tsdbconfig = TsfileDBDescriptor.getInstance().getConfig();
 	private TSFileConfig tsconfig = TSFileDescriptor.getInstance().getConfig();
 	private String deltaObjectId = "root.vehicle.d0";
 	private String measurementId = "s0";
@@ -75,39 +73,33 @@ public class BigDataForOverflowTest {
 		}
 	};
 
-	private String overflowDataDir = null;
+	//private String overflowDataDir = null;
 	private int rowGroupSize;
 
 	@Before
 	public void setUp() throws Exception {
 
-		EngineTestHelper.delete(nameSpacePath);
-		EngineTestHelper.delete(tsdbconfig.walFolder);
 		parameters = new HashMap<String, Object>();
 		parameters.put(FileNodeConstants.OVERFLOW_FLUSH_ACTION, overflowflushaction);
 		parameters.put(FileNodeConstants.FILENODE_PROCESSOR_FLUSH_ACTION, filenodeflushaction);
 		parameters.put(FileNodeConstants.OVERFLOW_BACKUP_MANAGER_ACTION, filenodemanagerbackupaction);
 		parameters.put(FileNodeConstants.OVERFLOW_FLUSH_MANAGER_ACTION, filenodemanagerflushaction);
-		overflowDataDir = tsdbconfig.overflowDataDir;
+		
+		//origin value
 		rowGroupSize = tsconfig.groupSizeInByte;
-		tsdbconfig.overflowDataDir = "";
+		//new value
 		tsconfig.groupSizeInByte = 1024 * 1024 * 10;
-		overflowfilePath = tsdbconfig.overflowDataDir + nameSpacePath + File.separatorChar + nameSpacePath
-				+ ".overflow";
+		
+		overflowfilePath = new File(PathUtils.getOverflowWriteDir(nameSpacePath),nameSpacePath+".overflow").getPath();
 		overflowrestorefilePath = overflowfilePath + ".restore";
 		overflowmergefilePath = overflowfilePath + ".merge";
-		WriteLogManager.getInstance().close();
-
 	}
 
 	@After
 	public void tearDown() throws Exception {
-		WriteLogManager.getInstance().close();
-		MManager.getInstance().flushObjectToFile();
-		EngineTestHelper.delete(nameSpacePath);
-		EngineTestHelper.delete(tsdbconfig.walFolder);
-		tsdbconfig.overflowDataDir = overflowDataDir;
+		//recovery value
 		tsconfig.groupSizeInByte = rowGroupSize;
+		EnvironmentUtils.cleanEnv();
 	}
 
 	@Test

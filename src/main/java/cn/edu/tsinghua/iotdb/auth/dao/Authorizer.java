@@ -236,5 +236,11 @@ public class Authorizer {
         status = authDaoWrap.checkUserPermission(username, nodeName, permissionId);
         return status;
     }
+    /**
+     * just for unit test
+     */
+    public static void reset(){
+    	authDaoWrap.reset();
+    }
 
 }

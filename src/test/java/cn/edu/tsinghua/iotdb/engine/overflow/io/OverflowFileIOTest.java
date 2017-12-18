@@ -7,18 +7,15 @@ import static org.junit.Assert.fail;
 import java.io.File;
 import java.io.IOException;
 
-import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
-import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
-import cn.edu.tsinghua.iotdb.engine.bufferwrite.FileNodeConstants;
-import cn.edu.tsinghua.iotdb.engine.overflow.metadata.OFFileMetadata;
-import cn.edu.tsinghua.iotdb.engine.overflow.metadata.OFRowGroupListMetadata;
-import cn.edu.tsinghua.iotdb.engine.overflow.metadata.OFSeriesListMetadata;
-import cn.edu.tsinghua.iotdb.metadata.MManager;
-import cn.edu.tsinghua.iotdb.sys.writelog.WriteLogManager;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import cn.edu.tsinghua.iotdb.engine.bufferwrite.FileNodeConstants;
+import cn.edu.tsinghua.iotdb.engine.overflow.metadata.OFFileMetadata;
+import cn.edu.tsinghua.iotdb.engine.overflow.metadata.OFRowGroupListMetadata;
+import cn.edu.tsinghua.iotdb.engine.overflow.metadata.OFSeriesListMetadata;
+import cn.edu.tsinghua.iotdb.utils.EnvironmentUtils;
 import cn.edu.tsinghua.tsfile.file.metadata.TimeSeriesChunkMetaData;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.CompressionTypeName;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
@@ -58,28 +55,19 @@ public class OverflowFileIOTest {
 	private int numofserieschunk = 4;
 	private int numoffile = 3;
 	private long lastFileOffset = 0;
-	private TsfileDBConfig tsfileDBConfig = TsfileDBDescriptor.getInstance().getConfig();
 
 	@Before
 	public void setUp() throws Exception {
-		EngineTestHelper.delete(filePath);
-		EngineTestHelper.delete(mergeFilePath);
-		EngineTestHelper.delete(tsfileDBConfig.walFolder);
-		EngineTestHelper.delete(tsfileDBConfig.metadataDir);
 		ofSeriesMetadata = new OFSeriesListMetadata();
 		ofRowGroupMetadata = new OFRowGroupListMetadata();
 		ofFileMetadata = new OFFileMetadata();
-		WriteLogManager.getInstance().close();
 	}
 
 	@After
 	public void tearDown() throws Exception {
-		MManager.getInstance().flushObjectToFile();
-		WriteLogManager.getInstance().close();
-		EngineTestHelper.delete(filePath);
-		EngineTestHelper.delete(mergeFilePath);
-		EngineTestHelper.delete(tsfileDBConfig.walFolder);
-		EngineTestHelper.delete(tsfileDBConfig.metadataDir);
+		EnvironmentUtils.cleanDir(filePath);
+		EnvironmentUtils.cleanDir(mergeFilePath);
+		EnvironmentUtils.cleanEnv();
 	}
 
 	@Test

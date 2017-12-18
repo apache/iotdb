@@ -11,12 +11,10 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
-import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
 import cn.edu.tsinghua.iotdb.engine.bufferwrite.Action;
-import cn.edu.tsinghua.iotdb.engine.overflow.io.EngineTestHelper;
 import cn.edu.tsinghua.iotdb.exception.LRUManagerException;
 import cn.edu.tsinghua.iotdb.metadata.MManager;
+import cn.edu.tsinghua.iotdb.utils.EnvironmentUtils;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 
 /**
@@ -47,8 +45,8 @@ public class LRUManagerTest {
 
 	class TestLRUManager extends LRUManager<TestLRUProcessor> {
 
-		protected TestLRUManager(int maxLRUNumber, MManager mManager, String normalDataDir) {
-			super(maxLRUNumber, mManager, normalDataDir);
+		protected TestLRUManager(int maxLRUNumber, String normalDataDir) {
+			super(maxLRUNumber, normalDataDir);
 		}
 
 		@Override
@@ -65,31 +63,22 @@ public class LRUManagerTest {
 
 	private TestLRUManager manager = null;
 	private String dirPath = "managerdir";
-	
-	private TsfileDBConfig dbconfig = TsfileDBDescriptor.getInstance().getConfig();
-	private String metadataPath;
 
 	@Before
 	public void setUp() throws Exception {
-		metadataPath = dbconfig.metadataDir;
-		dbconfig.metadataDir = "metadata";
-		EngineTestHelper.delete(dbconfig.metadataDir);
-		EngineTestHelper.delete(dirPath);
 		MetadataManagerHelper.initMetadata();
 	}
 
 	@After
 	public void tearDown() throws Exception {
-		MManager.getInstance().flushObjectToFile();
-		EngineTestHelper.delete(dbconfig.metadataDir);
-		EngineTestHelper.delete(dirPath);
-		dbconfig.metadataDir = metadataPath;
+		EnvironmentUtils.cleanEnv();
+		EnvironmentUtils.cleanDir(dirPath);
 	}
 
 	@Test
 	public void test() throws LRUManagerException, InterruptedException {
 
-		manager = new TestLRUManager(1, MManager.getInstance(), dirPath);
+		manager = new TestLRUManager(1, dirPath);
 		File dirFile = new File(dirPath);
 		assertEquals(true, dirFile.exists());
 		assertEquals(true, dirFile.isDirectory());
@@ -149,7 +138,7 @@ public class LRUManagerTest {
 	@Test
 	public void testCloseMultiProcessor() {
 
-		manager = new TestLRUManager(10, MManager.getInstance(), dirPath);
+		manager = new TestLRUManager(10, dirPath);
 		File dirFile = new File(dirPath);
 		assertEquals(true, dirFile.exists());
 		assertEquals(true, dirFile.isDirectory());

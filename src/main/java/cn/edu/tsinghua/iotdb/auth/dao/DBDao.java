@@ -10,7 +10,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 
-import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,6 +17,7 @@ import org.slf4j.LoggerFactory;
 import cn.edu.tsinghua.iotdb.auth.AuthException;
 import cn.edu.tsinghua.iotdb.auth.AuthRuntimeException;
 import cn.edu.tsinghua.iotdb.conf.TsFileDBConstant;
+import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
 
 /**
  * @author liukun
@@ -31,7 +31,7 @@ public class DBDao {
 	private String protocal = "jdbc:derby:";
 	private String DBLocalPath;
 	private String createOrNot = ";create=true";
-	private String shutdown = ";shutdown=True";
+	private String shutdown = ";shutdown=true";
 
 	private static Connection connection = null;
 	private static Statement statement = null;
@@ -42,12 +42,12 @@ public class DBDao {
 		if (derbyDirPath.length() > 0 && derbyDirPath.charAt(derbyDirPath.length() - 1) != File.separatorChar) {
 			derbyDirPath = derbyDirPath + File.separatorChar;
 		}
-		String path = derbyDirPath + dBName;
+		String path = derbyDirPath;
 		this.DBLocalPath = path;
 	}
 
 	public DBDao() {
-		this("derby-tsfile-db");
+		this("EmbeddedDB");
 	}
 
 	private void initDriver() throws ClassNotFoundException {
@@ -190,6 +190,11 @@ public class DBDao {
 			closeConnection();
 		} catch (SQLException | AuthException e) {
 			throw new AuthRuntimeException(e);
+		}
+		String url = protocal + DBLocalPath + shutdown;
+		try {
+			DriverManager.getConnection(url);
+		} catch (SQLException e) {
 		}
 	}
 

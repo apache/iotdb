@@ -3,14 +3,11 @@ package cn.edu.tsinghua.iotdb.engine.lru;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 
-import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
-import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
-import cn.edu.tsinghua.iotdb.engine.overflow.io.EngineTestHelper;
-import cn.edu.tsinghua.iotdb.metadata.MManager;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import cn.edu.tsinghua.iotdb.utils.EnvironmentUtils;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 
 /**
@@ -42,12 +39,8 @@ public class LRUProcessorTest {
 	TestLRUProcessor processor2;
 	TestLRUProcessor processor3;
 	
-	private TsfileDBConfig dbconfig = TsfileDBDescriptor.getInstance().getConfig();
-	
 	@Before
 	public void setUp() throws Exception {
-		dbconfig.metadataDir = "metadata";
-		EngineTestHelper.delete(dbconfig.metadataDir);
 		processor1 = new TestLRUProcessor("ns1");
 		processor2 = new TestLRUProcessor("ns2");
 		processor3 = new TestLRUProcessor("ns1");
@@ -55,8 +48,7 @@ public class LRUProcessorTest {
 
 	@After
 	public void tearDown() throws Exception {
-		MManager.getInstance().flushObjectToFile();
-		EngineTestHelper.delete(dbconfig.metadataDir);
+		EnvironmentUtils.cleanEnv();
 	}
 
 	@Test

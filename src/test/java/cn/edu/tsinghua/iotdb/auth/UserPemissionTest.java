@@ -4,18 +4,17 @@ import static org.junit.Assert.assertEquals;
 
 import java.sql.Statement;
 
-import cn.edu.tsinghua.iotdb.auth.dao.DBDao;
-import cn.edu.tsinghua.iotdb.auth.model.Permission;
-import cn.edu.tsinghua.iotdb.auth.model.User;
-import cn.edu.tsinghua.iotdb.auth.model.UserPermission;
-import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
-import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import cn.edu.tsinghua.iotdb.auth.dao.DBDao;
 import cn.edu.tsinghua.iotdb.auth.dao.UserDao;
 import cn.edu.tsinghua.iotdb.auth.dao.UserPermissionDao;
+import cn.edu.tsinghua.iotdb.auth.model.Permission;
+import cn.edu.tsinghua.iotdb.auth.model.User;
+import cn.edu.tsinghua.iotdb.auth.model.UserPermission;
+import cn.edu.tsinghua.iotdb.utils.EnvironmentUtils;
 
 public class UserPemissionTest {
 
@@ -29,14 +28,13 @@ public class UserPemissionTest {
 	private int permission;
 	private User user = new User("user1", "user1");
 
-	private TsfileDBConfig config = TsfileDBDescriptor.getInstance().getConfig();
 	
 	@Before
 	public void setUp() throws Exception {
-		config.derbyHome = "";
 		permission = Permission.CREATE;
 		DBdao = new DBDao();
 		DBdao.open();
+		EnvironmentUtils.envSetUp();
 		statement = DBDao.getStatement();
 		userDao = new UserDao();
 		UserPermissionDao = new UserPermissionDao();
@@ -51,6 +49,7 @@ public class UserPemissionTest {
 	public void tearDown() throws Exception {
 		userDao.deleteUser(statement, user.getUserName());
 		DBdao.close();
+		EnvironmentUtils.cleanEnv();
 	}
 
 	@Test

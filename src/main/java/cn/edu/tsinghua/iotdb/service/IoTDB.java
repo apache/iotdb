@@ -5,6 +5,7 @@ import java.lang.management.ManagementFactory;
 import java.sql.SQLException;
 
 import javax.management.InstanceAlreadyExistsException;
+import javax.management.InstanceNotFoundException;
 import javax.management.MBeanRegistrationException;
 import javax.management.MBeanServer;
 import javax.management.MalformedObjectNameException;
@@ -39,7 +40,11 @@ public class IoTDB {
     private DBDao dBdao;
     private JDBCServerMBean jdbcMBean;
     private MonitorMBean monitorMBean;
-
+    private final String IOTDB_PACKAGE = "cn.edu.tsinghua.iotdb.service";
+    private final String JMX_TYPE = "type";
+    private final String JDBC_SERVER_STR = "JDBCServer";
+    private final String MONITOR_STR = "Monitor";
+    
     public IoTDB() {
         mbs = ManagementFactory.getPlatformMBeanServer();
     }
@@ -114,15 +119,19 @@ public class IoTDB {
     private void registJDBCServer() throws TTransportException, MalformedObjectNameException, InstanceAlreadyExistsException, MBeanRegistrationException, NotCompliantMBeanException {
         jdbcMBean = new JDBCServer();
         jdbcMBean.startServer();
-        ObjectName mBeanName = new ObjectName("cn.edu.thu.tsfiledb.service", "type", "JDBCServer");
-        mbs.registerMBean(jdbcMBean, mBeanName);
+        ObjectName mBeanName = new ObjectName(IOTDB_PACKAGE, JMX_TYPE, JDBC_SERVER_STR);
+        if(!mbs.isRegistered(mBeanName)) {
+            mbs.registerMBean(jdbcMBean, mBeanName);
+        }
     }
-    
-	private void registMonitor() throws MalformedObjectNameException, InstanceAlreadyExistsException, MBeanRegistrationException, NotCompliantMBeanException {
-		monitorMBean = new Monitor();
-		ObjectName mBeanName = new ObjectName("cn.edu.thu.tsfiledb.service", "type", "Monitor");
-		mbs.registerMBean(monitorMBean, mBeanName);
-	}
+
+    private void registMonitor() throws MalformedObjectNameException, InstanceAlreadyExistsException, MBeanRegistrationException, NotCompliantMBeanException {
+        monitorMBean = new Monitor();
+        ObjectName mBeanName = new ObjectName(IOTDB_PACKAGE, JMX_TYPE, MONITOR_STR);
+        if(!mbs.isRegistered(mBeanName)) {
+            mbs.registerMBean(monitorMBean, mBeanName);
+        }
+    }
 
     private void initDBDao() throws ClassNotFoundException, SQLException, DBDaoInitException {
         dBdao = new DBDao();
@@ -183,6 +192,8 @@ public class IoTDB {
 
         FileNodeManager.getInstance().closeAll();
 
+        WriteLogManager.getInstance().close();
+
         if (jdbcMBean != null) {
             jdbcMBean.stopServer();
         }
@@ -190,13 +201,32 @@ public class IoTDB {
         if (jmxServer != null) {
             jmxServer.stop();
         }
+        
+        try {
+            ObjectName montiorBeanName = new ObjectName(IOTDB_PACKAGE, JMX_TYPE, MONITOR_STR);
+            if(mbs.isRegistered(montiorBeanName)) {
+                mbs.unregisterMBean(montiorBeanName);
+            }
+        } catch (MalformedObjectNameException | MBeanRegistrationException | InstanceNotFoundException e) {
+            LOGGER.error("Failed to unregisterMBean {}:{}={}", IOTDB_PACKAGE, JMX_TYPE, MONITOR_STR, e);
+        }
+
+        try {
+            ObjectName jdbcBeanName = new ObjectName(IOTDB_PACKAGE, JMX_TYPE, JDBC_SERVER_STR);
+            if(mbs.isRegistered(jdbcBeanName)) {
+                mbs.unregisterMBean(jdbcBeanName);
+            }
+        } catch (MalformedObjectNameException | MBeanRegistrationException | InstanceNotFoundException e) {
+            LOGGER.error("Failed to unregisterMBean {}:{}={}", IOTDB_PACKAGE, JMX_TYPE, JDBC_SERVER_STR, e);
+        }
+        
         CloseMergeServer.getInstance().closeServer();
     }
 
     public static void main(String[] args) {
         IoTDB daemon = new IoTDB();
         daemon.active();
-	    
+
     }
 
 }

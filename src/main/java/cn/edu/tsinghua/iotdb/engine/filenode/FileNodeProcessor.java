@@ -183,6 +183,10 @@ public class FileNodeProcessor extends LRUProcessor {
 			throws FileNodeProcessorException {
 		super(nameSpacePath);
 		this.parameters = parameters;
+		if (fileNodeDirPath.length() > 0
+				&& fileNodeDirPath.charAt(fileNodeDirPath.length() - 1) != File.separatorChar) {
+			fileNodeDirPath = fileNodeDirPath + File.separatorChar;
+		}
 		String dataDirPath = fileNodeDirPath + nameSpacePath;
 		File dataDir = new File(dataDirPath);
 		if (!dataDir.exists()) {
@@ -735,7 +739,8 @@ public class FileNodeProcessor extends LRUProcessor {
 				}
 			}
 		} else {
-			throw new FileNodeProcessorException("No file was changed when merging");
+			LOGGER.error("No file was changed when mergin, the filenode is {}",nameSpacePath);
+			throw new FileNodeProcessorException("No file was changed when merging, the filenode is "+nameSpacePath);
 		}
 		return result;
 	}

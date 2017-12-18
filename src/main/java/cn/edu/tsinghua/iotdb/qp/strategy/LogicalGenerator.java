@@ -83,7 +83,6 @@ public class LogicalGenerator {
 		if (token == null)
 			throw new QueryProcessorException("given token is null");
 		int tokenIntType = token.getType();
-		LOG.debug("analyze token: {}", token.getText());
 		switch (tokenIntType) {
 			case TSParser.TOK_INSERT:
 				analyzeInsert(astNode);

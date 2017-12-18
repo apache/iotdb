@@ -12,14 +12,12 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
-import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
+import cn.edu.tsinghua.iotdb.engine.PathUtils;
 import cn.edu.tsinghua.iotdb.engine.bufferwrite.Action;
 import cn.edu.tsinghua.iotdb.engine.bufferwrite.FileNodeConstants;
 import cn.edu.tsinghua.iotdb.engine.lru.MetadataManagerHelper;
 import cn.edu.tsinghua.iotdb.exception.OverflowProcessorException;
-import cn.edu.tsinghua.iotdb.metadata.MManager;
-import cn.edu.tsinghua.iotdb.sys.writelog.WriteLogManager;
+import cn.edu.tsinghua.iotdb.utils.EnvironmentUtils;
 import cn.edu.tsinghua.tsfile.common.conf.TSFileConfig;
 import cn.edu.tsinghua.tsfile.common.conf.TSFileDescriptor;
 import cn.edu.tsinghua.tsfile.common.utils.TsRandomAccessFileWriter;
@@ -38,7 +36,6 @@ public class OverflowProcessorTest {
 	private String overflowmergefilePath = null;
 	private Map<String, Object> parameters = null;
 	private OverflowProcessor ofprocessor = null;
-	private TsfileDBConfig tsdbconfig = TsfileDBDescriptor.getInstance().getConfig();
 	private TSFileConfig tsconfig = TSFileDescriptor.getInstance().getConfig();
 	private String deltaObjectId = "root.vehicle.d0";
 	private String[] measurementIds = { "s0", "s1", "s2", "s3", "s4", "s5" };
@@ -77,39 +74,24 @@ public class OverflowProcessorTest {
 		}
 	};
 
-	private String overflowDataDir;
-
 	@Before
 	public void setUp() throws Exception {
-		EngineTestHelper.delete(nameSpacePath);
-		EngineTestHelper.delete(tsdbconfig.metadataDir);
-		EngineTestHelper.delete(tsdbconfig.walFolder);
 		parameters = new HashMap<String, Object>();
 		parameters.put(FileNodeConstants.OVERFLOW_FLUSH_ACTION, overflowflushaction);
 		parameters.put(FileNodeConstants.FILENODE_PROCESSOR_FLUSH_ACTION, filenodeflushaction);
 		parameters.put(FileNodeConstants.OVERFLOW_BACKUP_MANAGER_ACTION, filenodemanagerbackupaction);
 		parameters.put(FileNodeConstants.OVERFLOW_FLUSH_MANAGER_ACTION, filenodemanagerflushaction);
 
-		// set overflow data dir is ""
-		overflowDataDir = tsdbconfig.overflowDataDir;
-		tsdbconfig.overflowDataDir = "";
-		overflowfilePath = tsdbconfig.overflowDataDir + nameSpacePath + File.separatorChar + nameSpacePath
-				+ ".overflow";
+		overflowfilePath = new File(PathUtils.getOverflowWriteDir(nameSpacePath), nameSpacePath + ".overflow")
+				.getPath();
 		overflowrestorefilePath = overflowfilePath + ".restore";
 		overflowmergefilePath = overflowfilePath + ".merge";
 		MetadataManagerHelper.initMetadata();
-		WriteLogManager.getInstance().close();
 	}
 
 	@After
 	public void tearDown() throws Exception {
-		MManager.getInstance().flushObjectToFile();
-		WriteLogManager.getInstance().close();
-		EngineTestHelper.delete(nameSpacePath);
-		EngineTestHelper.delete(tsdbconfig.metadataDir);
-		EngineTestHelper.delete(tsdbconfig.walFolder);
-		tsdbconfig.overflowDataDir = overflowDataDir;
-
+		EnvironmentUtils.cleanEnv();
 	}
 
 	@Test
@@ -253,6 +235,7 @@ public class OverflowProcessorTest {
 	@Test
 	public void testFlush() {
 		// set the tsfile tsdbconfig
+		int groupSizeInByte = tsconfig.groupSizeInByte;
 		tsconfig.groupSizeInByte = 500;
 		try {
 			ofprocessor = new OverflowProcessor(nameSpacePath, parameters);
@@ -276,11 +259,13 @@ public class OverflowProcessorTest {
 			e.printStackTrace();
 			fail(e.getMessage());
 		}
+		tsconfig.groupSizeInByte = groupSizeInByte;
 	}
 
 	@Test
 	public void testMerge() {
 		// insert data
+		int groupSizeInByte = tsconfig.groupSizeInByte;
 		tsconfig.groupSizeInByte = 500;
 		try {
 			ofprocessor = new OverflowProcessor(nameSpacePath, parameters);
@@ -330,6 +315,7 @@ public class OverflowProcessorTest {
 			e.printStackTrace();
 			fail(e.getMessage());
 		}
+		tsconfig.groupSizeInByte = groupSizeInByte;
 	}
 
 	@Test
