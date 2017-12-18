@@ -9,6 +9,7 @@ package cn.edu.tsinghua.iotdb.sql.parse;
 
 KW_PRIVILEGES : 'PRIVILEGES';
 KW_TIMESERIES : 'TIMESERIES';
+KW_TIME : 'TIME';
 KW_ROLE : 'ROLE';
 KW_GRANT: 'GRANT';
 KW_REVOKE: 'REVOKE';
