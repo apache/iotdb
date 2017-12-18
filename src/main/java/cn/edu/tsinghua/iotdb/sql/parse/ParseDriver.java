@@ -178,9 +178,9 @@ public class ParseDriver {
    */
   public ASTNode parse(String command) throws ParseException
     {	  
-    if (LOG.isDebugEnabled()) {
-      LOG.debug("TSParsing command: " + command);
-    }
+//    if (LOG.isDebugEnabled()) {
+//      LOG.debug("TSParsing command: " + command);
+//    }
 
     TSLexerX lexer = new TSLexerX(new ANTLRNoCaseStringStream(command));
     TokenRewriteStream tokens = new TokenRewriteStream(lexer);
@@ -199,7 +199,7 @@ public class ParseDriver {
     }
 
     if (lexer.getErrors().size() == 0 && parser.errors.size() == 0) {
-    	LOG.debug("Parse Completed");
+//    	LOG.debug("Parse Completed");
     } else if (lexer.getErrors().size() != 0) {
       throw new ParseException(lexer.getErrors());
     } else {
