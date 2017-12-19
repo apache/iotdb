@@ -57,20 +57,20 @@ public class OverflowQueryEngine {
      * @throws IOException        TsFile read error
      */
     public QueryDataSet query(int formNumber, List<Path> paths, FilterExpression timeFilter, FilterExpression freqFilter,
-                              FilterExpression valueFilter, QueryDataSet queryDataSet, int fetchSize, Integer readLock)
+                              FilterExpression valueFilter, QueryDataSet queryDataSet, int fetchSize)
             throws ProcessorException, IOException, PathErrorException {
         this.formNumber = formNumber;
         if (queryDataSet != null) {
             queryDataSet.clear();
         }
         if (timeFilter == null && freqFilter == null && valueFilter == null) {
-            return querySeriesWithoutFilter(paths, queryDataSet, fetchSize, readLock);
+            return querySeriesWithoutFilter(paths, queryDataSet, fetchSize, null);
         } else if (valueFilter != null && valueFilter instanceof CrossSeriesFilterExpression) {
             return crossSeriesQuery(paths, (SingleSeriesFilterExpression) timeFilter, (SingleSeriesFilterExpression) freqFilter,
                     (CrossSeriesFilterExpression) valueFilter, queryDataSet, fetchSize);
         } else {
             return querySeriesUsingFilter(paths, (SingleSeriesFilterExpression) timeFilter, (SingleSeriesFilterExpression) freqFilter,
-                    (SingleSeriesFilterExpression) valueFilter, queryDataSet, fetchSize, readLock);
+                    (SingleSeriesFilterExpression) valueFilter, queryDataSet, fetchSize, null);
         }
     }
 

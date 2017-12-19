@@ -8,7 +8,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
-import cn.edu.tsinghua.iotdb.qp.physical.crud.IndexQueryPlan;
 import cn.edu.tsinghua.iotdb.qp.physical.crud.MultiQueryPlan;
 import org.apache.thrift.TException;
 import org.apache.thrift.server.ServerContext;
@@ -66,8 +65,6 @@ import cn.edu.tsinghua.iotdb.sys.writelog.WriteLogManager;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
 import cn.edu.tsinghua.tsfile.timeseries.read.query.QueryDataSet;
-
-import static cn.edu.tsinghua.iotdb.qp.logical.Operator.OperatorType.INDEXQUERY;
 
 /**
  * Thrift RPC implementation at server side
@@ -370,10 +367,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 			List<String> columns = new ArrayList<>();
 			// Restore column header of aggregate to func(column_name), only
 			// support single aggregate function for now
-			if (plan.getOperatorType() == INDEXQUERY) {
-				columns = ((IndexQueryPlan)plan).getColumnHeader();
-			}
-			else if (((MultiQueryPlan)plan).getType() == MultiQueryPlan.QueryType.QUERY) {
+
+			if (((MultiQueryPlan)plan).getType() == MultiQueryPlan.QueryType.QUERY) {
 				for (Path p : paths) {
 					columns.add(p.getFullPath());
 				}
@@ -389,11 +384,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 					columns.add(aggregations.get(i) + "(" + paths.get(i).getFullPath() + ")");
 				}
 			}
-			if (plan.getOperatorType() == INDEXQUERY) {
-				resp.setOperationType(INDEXQUERY.toString());
-			} else {
-				resp.setOperationType(((MultiQueryPlan) plan).getType().toString());
-			}
+			resp.setOperationType(((MultiQueryPlan)plan).getType().toString());
 			TSHandleIdentifier operationId = new TSHandleIdentifier(ByteBuffer.wrap(username.get().getBytes()),
 					ByteBuffer.wrap(("PASS".getBytes())));
 			TSOperationHandle operationHandle;

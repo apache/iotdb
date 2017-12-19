@@ -1,14 +1,11 @@
 package cn.edu.tsinghua.iotdb.qp.executor;
 
 import cn.edu.tsinghua.iotdb.exception.PathErrorException;
-import cn.edu.tsinghua.iotdb.index.kvmatch.KvMatchQueryRequest;
 import cn.edu.tsinghua.iotdb.metadata.MManager;
 import cn.edu.tsinghua.iotdb.qp.exception.QueryProcessorException;
 import cn.edu.tsinghua.iotdb.qp.executor.iterator.MergeQuerySetIterator;
-import cn.edu.tsinghua.iotdb.qp.executor.iterator.PatternQueryDataSetIterator;
 import cn.edu.tsinghua.iotdb.qp.executor.iterator.QueryDataSetIterator;
 import cn.edu.tsinghua.iotdb.qp.physical.PhysicalPlan;
-import cn.edu.tsinghua.iotdb.qp.physical.crud.IndexQueryPlan;
 import cn.edu.tsinghua.iotdb.qp.physical.crud.MultiQueryPlan;
 import cn.edu.tsinghua.iotdb.qp.physical.crud.SingleQueryPlan;
 import cn.edu.tsinghua.iotdb.query.engine.FilterStructure;
@@ -39,9 +36,6 @@ public abstract class QueryProcessExecutor {
 
 	//process MultiQueryPlan
 	public Iterator<QueryDataSet> processQuery(PhysicalPlan plan) throws QueryProcessorException {
-		if(plan instanceof IndexQueryPlan){
-			return ((IndexQueryPlan) plan).fetchQueryDateSet(getFetchSize());
-		}
 		MultiQueryPlan mergeQuery = (MultiQueryPlan) plan;
 		List<SingleQueryPlan> selectPlans = mergeQuery.getSingleQueryPlans();
 		switch (mergeQuery.getType()) {
