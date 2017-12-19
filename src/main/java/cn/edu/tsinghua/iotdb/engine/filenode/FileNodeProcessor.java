@@ -3,8 +3,14 @@ package cn.edu.tsinghua.iotdb.engine.filenode;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -409,7 +415,8 @@ public class FileNodeProcessor extends LRUProcessor {
 	 */
 	public void changeTypeToChanged(String deltaObjectId, long timestamp) {
 		if (!InvertedindexOfFiles.containsKey(deltaObjectId)) {
-			LOGGER.warn("No any interval node to be changed overflow type");
+			LOGGER.warn("No any interval node to be changed overflow type: deltaObjectId {}, time {}", deltaObjectId,
+					timestamp);
 			emptyIntervalFileNode.setStartTime(deltaObjectId, 0L);
 			emptyIntervalFileNode.setEndTime(deltaObjectId, getLastUpdateTime(deltaObjectId));
 			emptyIntervalFileNode.changeTypeToChanged(isMerging);
@@ -431,7 +438,9 @@ public class FileNodeProcessor extends LRUProcessor {
 	 */
 	public void changeTypeToChanged(String deltaObjectId, long startTime, long endTime) {
 		if (!InvertedindexOfFiles.containsKey(deltaObjectId)) {
-			LOGGER.warn("No any interval node to be changed overflow type");
+			LOGGER.warn(
+					"No any interval node to be changed overflow type: deltaObjectId {}, start time {}, end time {}",
+					deltaObjectId, startTime, endTime);
 			emptyIntervalFileNode.setStartTime(deltaObjectId, 0L);
 			emptyIntervalFileNode.setEndTime(deltaObjectId, getLastUpdateTime(deltaObjectId));
 			emptyIntervalFileNode.changeTypeToChanged(isMerging);
@@ -455,7 +464,8 @@ public class FileNodeProcessor extends LRUProcessor {
 	 */
 	public void changeTypeToChangedForDelete(String deltaObjectId, long timestamp) {
 		if (!InvertedindexOfFiles.containsKey(deltaObjectId)) {
-			LOGGER.warn("No any interval node to be changed overflow type");
+			LOGGER.warn("No any interval node to be changed overflow type: deltaObject {}, time {}", deltaObjectId,
+					timestamp);
 			emptyIntervalFileNode.setStartTime(deltaObjectId, 0L);
 			emptyIntervalFileNode.setEndTime(deltaObjectId, getLastUpdateTime(deltaObjectId));
 			emptyIntervalFileNode.changeTypeToChanged(isMerging);
@@ -576,7 +586,8 @@ public class FileNodeProcessor extends LRUProcessor {
 
 	public void merge() throws FileNodeProcessorException {
 
-		LOGGER.debug("Merge: the nameSpacePath {} is begining to merge.", nameSpacePath);
+		LOGGER.debug("begin to merge: the filenode is {}, the thread id is {}", nameSpacePath,
+				Thread.currentThread().getId());
 		//
 		// change status from work to merge
 		//
@@ -656,9 +667,8 @@ public class FileNodeProcessor extends LRUProcessor {
 			throw new FileNodeProcessorException(e);
 		}
 		// unlock this filenode
-		LOGGER.debug("Merge: the nameSpacePath {}, status from work to merge.", nameSpacePath);
+		LOGGER.debug("Merge: the filenode is {}, status from work to merge.", nameSpacePath);
 		writeUnlock();
-		LOGGER.debug("Merge: the nameSpacePath {}, unlock the filenode write lock.", nameSpacePath);
 
 		// query buffer data and overflow data, and merge them
 		for (IntervalFileNode backupIntervalFile : backupIntervalFiles) {
@@ -739,23 +749,23 @@ public class FileNodeProcessor extends LRUProcessor {
 				}
 			}
 		} else {
-			LOGGER.error("No file was changed when mergin, the filenode is {}",nameSpacePath);
-			throw new FileNodeProcessorException("No file was changed when merging, the filenode is "+nameSpacePath);
+			LOGGER.error("No file was changed when mergin, the filenode is {}", nameSpacePath);
+			throw new FileNodeProcessorException("No file was changed when merging, the filenode is " + nameSpacePath);
 		}
 		return result;
 	}
 
 	private void switchMergeToWaitingv2(List<IntervalFileNode> backupIntervalFiles, boolean needEmpty)
 			throws FileNodeProcessorException {
-		LOGGER.debug("Merge: switch merge to wait, the backupIntervalFiles is {}", backupIntervalFiles);
+		LOGGER.debug("Merge: the filenode is {}, switch merge to wait, the backupIntervalFiles is {}", nameSpacePath,
+				backupIntervalFiles);
 		writeLock();
 		try {
 			oldMultiPassTokenSet = newMultiPassTokenSet;
 			oldMultiPassLock = newMultiPassLock;
 			newMultiPassTokenSet = new HashSet<>();
 			newMultiPassLock = new ReentrantReadWriteLock(false);
-
-			LOGGER.info(
+			LOGGER.debug(
 					"Merge: switch merge to wait, the overflowChangeType of emptyIntervalFileNode is {}, the newFileNodes is {}",
 					emptyIntervalFileNode.overflowChangeType, newFileNodes);
 			List<IntervalFileNode> result = new ArrayList<>();
@@ -833,7 +843,8 @@ public class FileNodeProcessor extends LRUProcessor {
 	private void switchWaitingToWorkingv2(List<IntervalFileNode> backupIntervalFiles)
 			throws FileNodeProcessorException {
 
-		LOGGER.debug("Merge: switch wait to work, newIntervalFileNodes is {}", newFileNodes);
+		LOGGER.debug("Merge: the filenode is {}, switch wait to work, newIntervalFileNodes is {}", nameSpacePath,
+				newFileNodes);
 
 		if (oldMultiPassLock != null) {
 			LOGGER.info("The old Multiple Pass Token set is {}, the old Multiple Pass Lock is {}", oldMultiPassTokenSet,
@@ -937,16 +948,14 @@ public class FileNodeProcessor extends LRUProcessor {
 
 			FilterExpression timeFilter = FilterUtilsForOverflow.construct(null, null, "0",
 					"(>=" + startTime + ")&" + "(<=" + endTime + ")");
-			LOGGER.info("Merge query and merge: deltaObjectId {}, time filter {}", deltaObjectId, timeFilter);
+			LOGGER.debug("Merge query: deltaObjectId {}, time filter {}", deltaObjectId, timeFilter);
 			startTime = -1;
 			endTime = -1;
 
 			QueryForMerge queryer = new QueryForMerge(pathList, (SingleSeriesFilterExpression) timeFilter);
-			int queryCount = 0;
 			if (!queryer.hasNextRecord()) {
 				LOGGER.warn("Merge query: deltaObjectId {}, time filter {}, no query data", deltaObjectId, timeFilter);
 			} else {
-				queryCount++;
 				RowRecord firstRecord = queryer.getNextRecord();
 
 				if (recordWriter == null) {
@@ -961,7 +970,6 @@ public class FileNodeProcessor extends LRUProcessor {
 				startTime = endTime = firstRecord.getTime();
 
 				while (queryer.hasNextRecord()) {
-					queryCount++;
 					RowRecord row = queryer.getNextRecord();
 					filledRecord = removeNullTSRecord(row);
 					endTime = filledRecord.time;
@@ -975,8 +983,6 @@ public class FileNodeProcessor extends LRUProcessor {
 				}
 				startTimeMap.put(deltaObjectId, startTime);
 				endTimeMap.put(deltaObjectId, endTime);
-				LOGGER.debug("Merge query: deltaObjectId {}, time filter {}, filepath {} successfully", deltaObjectId,
-						timeFilter, outputPath);
 			}
 		}
 		if (recordWriter != null) {
