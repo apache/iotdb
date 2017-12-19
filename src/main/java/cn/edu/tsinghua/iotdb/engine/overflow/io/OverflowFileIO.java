@@ -179,7 +179,6 @@ public class OverflowFileIO {
 				off = off + num;
 				len = len - num;
 			}
-			LOGGER.info("Read series chunk: offset:{}, chunkSize {}.", offset, chunkSize);
 			return new ByteArrayInputStream(chunk);
 		} catch (IOException e) {
 			LOGGER.error("Read series chunk failed, reason is {}", e.getMessage());
@@ -199,7 +198,7 @@ public class OverflowFileIO {
 	 */
 	public void startSeries(int valueCount, String measurementId, CompressionTypeName compressionCodecName,
 			TSDataType tsDataType, Statistics<?> statistics) throws IOException {
-		LOGGER.info(
+		LOGGER.debug(
 				"Start overflow series chunk meatadata: measurementId: {}, valueCount: {}, compressionName: {}, TSdatatype: {}.",
 				measurementId, valueCount, compressionCodecName, tsDataType);
 		currentSeries = new TimeSeriesChunkMetaData(measurementId, TSChunkType.VALUE, raf.getPos(),
@@ -222,7 +221,7 @@ public class OverflowFileIO {
 	}
 
 	public TimeSeriesChunkMetaData endSeries(long size) throws IOException {
-		LOGGER.info("End overflow series chunk meatadata: {}, size: {}.", currentSeries, size);
+		LOGGER.debug("End overflow series chunk meatadata: {}, size: {}.", currentSeries, size);
 		currentSeries.setTotalByteSize(size);
 		return currentSeries;
 	}
@@ -237,18 +236,16 @@ public class OverflowFileIO {
 		long footerBeginOffset = raf.toTail();
 		OverflowReadWriteThriftFormatUtils.writeOFFileMetaData(
 				metadataConverter.toThriftOFFileMetadata(OVERFLOW_VERSION, footer), raf.getOutputStream());
-		LOGGER.info("Serialize the overflow footer, footer length:{}, last overflow file offset: {}.",
+		LOGGER.debug("Serialize the overflow footer, footer length:{}, last overflow file offset: {}.",
 				raf.getPos() - footerBeginOffset, footer.getLastFooterOffset());
-		LOGGER.info("Serialize the footer finished, file pos:{}.", raf.getPos());
+		LOGGER.debug("Serialize the footer finished, file pos:{}.", raf.getPos());
 		raf.write(BytesUtils.intToBytes((int) (raf.getPos() - footerBeginOffset)));
 		long len = raf.getPos();
-		LOGGER.info(
+		LOGGER.debug(
 				"Write overflow file block, last overflow file offset: {}, this overflow filemeta length: {},this end pos: {}.",
 				footer.getLastFooterOffset(), len - footerBeginOffset - FOOTER_LENGTH, len);
 		// close the stream
 		close();
-		LOGGER.info("Overflow output stream is closed.");
-		LOGGER.info("Overflow error output stream is closed.");
 		return len;
 	}
 
