@@ -73,6 +73,11 @@ public class TsfileDBConfig {
 	public String walFolder = "wals";
 
 	/**
+	 * Data directory for index files (KV-match indexes)
+	 */
+	public String indexFileDir = "index";
+
+	/**
 	 * The maximum concurrent thread number for merging overflow
 	 */
 	public int mergeConcurrentThreads = 10;
@@ -129,5 +134,6 @@ public class TsfileDBConfig {
 		metadataDir = dataDir + metadataDir;
 		derbyHome = dataDir + derbyHome;
 		walFolder = dataDir + walFolder;
+		indexFileDir = dataDir + indexFileDir;
 	}
 }

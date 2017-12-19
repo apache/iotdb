@@ -16,6 +16,9 @@ import cn.edu.tsinghua.iotdb.engine.filenode.FileNodeManager;
 import cn.edu.tsinghua.iotdb.exception.ArgsErrorException;
 import cn.edu.tsinghua.iotdb.exception.FileNodeManagerException;
 import cn.edu.tsinghua.iotdb.exception.PathErrorException;
+import cn.edu.tsinghua.iotdb.index.IndexManager;
+import cn.edu.tsinghua.iotdb.index.IoTIndex;
+import cn.edu.tsinghua.iotdb.index.common.IndexManagerException;
 import cn.edu.tsinghua.iotdb.metadata.ColumnSchema;
 import cn.edu.tsinghua.iotdb.metadata.MManager;
 import cn.edu.tsinghua.iotdb.qp.constant.SQLConstant;
@@ -24,6 +27,7 @@ import cn.edu.tsinghua.iotdb.qp.logical.sys.MetadataOperator;
 import cn.edu.tsinghua.iotdb.qp.logical.sys.PropertyOperator;
 import cn.edu.tsinghua.iotdb.qp.physical.PhysicalPlan;
 import cn.edu.tsinghua.iotdb.qp.physical.crud.DeletePlan;
+import cn.edu.tsinghua.iotdb.qp.physical.crud.IndexPlan;
 import cn.edu.tsinghua.iotdb.qp.physical.crud.InsertPlan;
 import cn.edu.tsinghua.iotdb.qp.physical.crud.UpdatePlan;
 import cn.edu.tsinghua.iotdb.qp.physical.sys.AuthorPlan;
@@ -49,6 +53,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 	private OverflowQueryEngine queryEngine;
 	private FileNodeManager fileNodeManager;
 	private MManager mManager = MManager.getInstance();
+//	private KvMatchIndex kvMatchIndex = KvMatchIndex.getInstance();
 
 	public OverflowQPExecutor() {
 		queryEngine = new OverflowQueryEngine();
@@ -87,10 +92,70 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 		case PROPERTY:
 			PropertyPlan property = (PropertyPlan) plan;
 			return operateProperty(property);
+		case INDEX:
+			IndexPlan indexPlan = (IndexPlan) plan;
+			return operateIndex(indexPlan);
 		default:
 			throw new UnsupportedOperationException(
 					String.format("operation %s does not support", plan.getOperatorType()));
 		}
+	}
+
+	private boolean operateIndex(IndexPlan indexPlan) throws ProcessorException {
+		switch (indexPlan.getIndexOperatorType()) {
+			case CREATE_INDEX:
+				try {
+					String path = indexPlan.getPaths().get(0).getFullPath();
+					// check path
+					if(!mManager.pathExist(path)){
+						throw new ProcessorException(String.format("The timeseries %s does not exist.", path));
+					}
+					// check storage group
+					mManager.getFileNameByPath(path);
+					// check index
+					if (mManager.checkPathIndex(path, indexPlan.getIndexType())) {
+						throw new ProcessorException(String.format("The timeseries %s has already been indexed.", path));
+					}
+					// create index
+					IoTIndex index = IndexManager.getIndexInstance(indexPlan.getIndexType());
+					if(index == null)
+						throw new IndexManagerException(indexPlan.getIndexType()+" doesn't support");
+					Path indexPath = indexPlan.getPaths().get(0);
+					if (index.build(indexPath, new ArrayList<>(), indexPlan.getParameters())) {
+						mManager.addIndexForOneTimeseries(path,indexPlan.getIndexType());
+					}
+				} catch (IndexManagerException | PathErrorException | IOException e) {
+					e.printStackTrace();
+					throw new ProcessorException(e.getMessage());
+				}
+				break;
+			case DROP_INDEX:
+				try {
+					String path = indexPlan.getPaths().get(0).getFullPath();
+					// check path
+					if(!mManager.pathExist(path)){
+						throw new ProcessorException(String.format("The timeseries %s does not exist.", path));
+					}
+					// check index
+					if (!mManager.checkPathIndex(path, indexPlan.getIndexType())) {
+						throw new ProcessorException(String.format("The timeseries %s hasn't been indexed.", path));
+					}
+					IoTIndex index = IndexManager.getIndexInstance(indexPlan.getIndexType());
+					if(index == null)
+						throw new IndexManagerException(indexPlan.getIndexType()+" doesn't support");
+					Path indexPath = indexPlan.getPaths().get(0);
+					if (index.drop(indexPath)) {
+						mManager.deleteIndexForOneTimeseries(path, indexPlan.getIndexType());
+					}
+				} catch (IndexManagerException | PathErrorException | IOException e) {
+					e.printStackTrace();
+					throw new ProcessorException(e.getMessage());
+				}
+				break;
+			default:
+				throw new ProcessorException(String.format("Not support the index operation %s", indexPlan.getIndexType()));
+		}
+		return true;
 	}
 
 	@Override
@@ -129,7 +194,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 			throws ProcessorException {
 
 		try {
-			return queryEngine.query(formNumber, paths, timeFilter, freqFilter, valueFilter, lastData, fetchSize);
+			return queryEngine.query(formNumber, paths, timeFilter, freqFilter, valueFilter, lastData, fetchSize, null);
 		} catch (Exception e) {
 			throw new ProcessorException(e.getMessage());
 		}
