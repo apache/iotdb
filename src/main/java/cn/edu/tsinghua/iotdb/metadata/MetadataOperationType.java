@@ -9,6 +9,4 @@ public class MetadataOperationType {
 	public final static String DELETE_PATH_FROM_PTREE = "5";
 	public final static String LINK_MNODE_TO_PTREE = "6";
 	public final static String UNLINK_MNODE_FROM_PTREE = "7";
-	public final static String ADD_INDEX_TO_PATH = "8";
-	public final static String DELETE_INDEX_FROM_PATH = "9";
 }

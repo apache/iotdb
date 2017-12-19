@@ -9,12 +9,10 @@ import cn.edu.tsinghua.iotdb.qp.logical.Operator;
 import cn.edu.tsinghua.iotdb.qp.logical.crud.DeleteOperator;
 import cn.edu.tsinghua.iotdb.qp.logical.crud.FilterOperator;
 import cn.edu.tsinghua.iotdb.qp.logical.crud.IndexOperator;
-import cn.edu.tsinghua.iotdb.qp.logical.crud.IndexQueryOperator;
 import cn.edu.tsinghua.iotdb.qp.logical.crud.InsertOperator;
 import cn.edu.tsinghua.iotdb.qp.logical.crud.QueryOperator;
 import cn.edu.tsinghua.iotdb.qp.logical.crud.SelectOperator;
 import cn.edu.tsinghua.iotdb.qp.logical.crud.UpdateOperator;
-import cn.edu.tsinghua.iotdb.qp.logical.index.KvMatchIndexQueryOperator;
 import cn.edu.tsinghua.iotdb.qp.logical.sys.AuthorOperator;
 import cn.edu.tsinghua.iotdb.qp.logical.sys.LoadDataOperator;
 import cn.edu.tsinghua.iotdb.qp.logical.sys.MetadataOperator;
@@ -22,12 +20,10 @@ import cn.edu.tsinghua.iotdb.qp.logical.sys.PropertyOperator;
 import cn.edu.tsinghua.iotdb.qp.physical.PhysicalPlan;
 import cn.edu.tsinghua.iotdb.qp.physical.crud.DeletePlan;
 import cn.edu.tsinghua.iotdb.qp.physical.crud.IndexPlan;
-import cn.edu.tsinghua.iotdb.qp.physical.crud.IndexQueryPlan;
 import cn.edu.tsinghua.iotdb.qp.physical.crud.InsertPlan;
 import cn.edu.tsinghua.iotdb.qp.physical.crud.MultiQueryPlan;
 import cn.edu.tsinghua.iotdb.qp.physical.crud.SingleQueryPlan;
 import cn.edu.tsinghua.iotdb.qp.physical.crud.UpdatePlan;
-import cn.edu.tsinghua.iotdb.qp.physical.index.KvMatchIndexQueryPlan;
 import cn.edu.tsinghua.iotdb.qp.physical.sys.AuthorPlan;
 import cn.edu.tsinghua.iotdb.qp.physical.sys.LoadDataPlan;
 import cn.edu.tsinghua.iotdb.qp.physical.sys.MetadataPlan;
@@ -111,73 +107,11 @@ public class PhysicalGenerator {
 			return transformQuery(query);
 		case INDEX:
 			IndexOperator indexOperator = (IndexOperator) operator;
-			return new IndexPlan(indexOperator.getPath(), indexOperator.getParameters(),
-					indexOperator.getStartTime(), indexOperator.getIndexOperatorType(), indexOperator.getIndexType());
-		case INDEXQUERY:
-			switch (((IndexQueryOperator) operator).getIndexType()){
-				case KvIndex:
-					KvMatchIndexQueryOperator indexQueryOperator = (KvMatchIndexQueryOperator) operator;
-					KvMatchIndexQueryPlan indexQueryPlan = new KvMatchIndexQueryPlan(indexQueryOperator.getPath(),
-							indexQueryOperator.getPatternPath(), indexQueryOperator.getEpsilon(),
-							indexQueryOperator.getStartTime(), indexQueryOperator.getEndTime());
-					indexQueryPlan.setAlpha(indexQueryOperator.getAlpha());
-					indexQueryPlan.setBeta(indexQueryOperator.getBeta());
-					parseIndexTimeFilter(indexQueryOperator, indexQueryPlan);
-					return indexQueryPlan;
-				default:
-					throw new LogicalOperatorException("not support index type:" + ((IndexQueryOperator) operator).getIndexType());
-			}
+			IndexPlan indexPlan = new IndexPlan(indexOperator.getPath(), indexOperator.getParameters(),
+					indexOperator.getStartTime());
+			return indexPlan;
 		default:
 			throw new LogicalOperatorException("not supported operator type: " + operator.getType());
-		}
-	}
-
-	private void parseIndexTimeFilter(IndexQueryOperator indexQueryOperator, IndexQueryPlan indexQueryPlan)
-			throws LogicalOperatorException {
-		FilterOperator filterOperator = indexQueryOperator.getFilterOperator();
-		if (filterOperator == null) {
-			indexQueryPlan.setStartTime(0);
-			indexQueryPlan.setEndTime(Long.MAX_VALUE);
-			return;
-		}
-		if (!filterOperator.isSingle() || !filterOperator.getSinglePath().equals(RESERVED_TIME)) {
-			throw new LogicalOperatorException("For index query statement, non-time condition is not allowed in the where clause.");
-		}
-		FilterExpression timeFilter;
-		try {
-			timeFilter = filterOperator.transformToFilterExpression(executor, FilterSeriesType.TIME_FILTER);
-		} catch (QueryProcessorException e) {
-			e.printStackTrace();
-			throw new LogicalOperatorException(e.getMessage());
-		}
-		LongFilterVerifier filterVerifier = (LongFilterVerifier) FilterVerifier.create(TSDataType.INT64);
-		LongInterval longInterval = filterVerifier.getInterval((SingleSeriesFilterExpression) timeFilter);
-		long startTime;
-		long endTime;
-		if (longInterval.count != 2) {
-			throw new LogicalOperatorException("For index query statement, the time filter must be an interval.");
-		}
-		if (longInterval.flag[0]) {
-			startTime = longInterval.v[0];
-		} else {
-			startTime = longInterval.v[0] + 1;
-		}
-		if (longInterval.flag[1]) {
-			endTime = longInterval.v[1];
-		} else {
-			endTime = longInterval.v[1] - 1;
-		}
-		if ((startTime <= 0 && startTime != Long.MIN_VALUE) || endTime <= 0) {
-			throw new LogicalOperatorException("The time of index query must be greater than 0.");
-		}
-		if (startTime == Long.MIN_VALUE) {
-			startTime = 0;
-		}
-		if (endTime >= startTime) {
-			indexQueryPlan.setStartTime(startTime);
-			indexQueryPlan.setEndTime(endTime);
-		} else {
-			throw new LogicalOperatorException("For index query statement, the start time should be greater than end time.");
 		}
 	}
 
@@ -245,7 +179,8 @@ public class PhysicalGenerator {
 			List<FilterOperator> parts = splitFilter(filterOperator);
 			for (FilterOperator filter : parts) {
 				SingleQueryPlan plan = constructSelectPlan(filter, paths, executor);
-				subPlans.add(plan);
+				if (plan != null)
+					subPlans.add(plan);
 			}
 		}
 

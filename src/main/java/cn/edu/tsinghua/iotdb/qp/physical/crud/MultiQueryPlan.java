@@ -106,6 +106,6 @@ public class MultiQueryPlan extends PhysicalPlan {
     }
 
     public enum QueryType {
-        QUERY, AGGREGATION, GROUPBY, INDEXQUERY
+        QUERY, AGGREGATION, GROUPBY
     }
 }

@@ -152,7 +152,7 @@ ArrayList<ParseError> errors = new ArrayList<ParseError>();
         xlateMap.put("COLON", ":");
         xlateMap.put("COMMA", ",");
         xlateMap.put("SEMICOLON", ");");
-
+		
         xlateMap.put("LPAREN", "(");
         xlateMap.put("RPAREN", ")");
         xlateMap.put("LSQUARE", "[");
@@ -229,7 +229,7 @@ ArrayList<ParseError> errors = new ArrayList<ParseError>();
                 + input.LT(1) != null ? " " + getTokenErrorDisplay(input.LT(1)) : ""
                 + input.LT(1) != null ? " " + getTokenErrorDisplay(input.LT(1)) : ""
                 + input.LT(3) != null ? " " + getTokenErrorDisplay(input.LT(3)) : "";
-
+                        
         } else if (e instanceof MismatchedTokenException) {
             MismatchedTokenException mte = (MismatchedTokenException) e;
             msg = super.getErrorMessage(e, xlateNames) + (input.LT(-1) == null ? "":" near '" + input.LT(-1).getText()) + "'"
@@ -278,7 +278,7 @@ numberOrString // identifier is string or integer
     ;
 
 numberOrStringWidely
-    : number
+    : number 
     | StringLiteral
     ;
 
@@ -606,8 +606,8 @@ indexWithEqualExpression
 
 
 dropIndexStatement
-    : KW_DROP KW_INDEX func=Identifier KW_ON p=timeseries
-    -> ^(TOK_DROP ^(TOK_INDEX $p ^(TOK_FUNC $func)))
+    : KW_DROP KW_INDEX KW_ON prefixPath
+    -> ^(TOK_DROP ^(TOK_INDEX prefixPath))
     ;
 
 /*
@@ -632,8 +632,8 @@ identifier
 //    ;
 
 selectClause
-    : KW_SELECT KW_INDEX func=Identifier LPAREN p1=timeseries COMMA p2=timeseries COMMA n1=dateFormatWithNumber COMMA n2=dateFormatWithNumber COMMA epsilon=Float (COMMA alpha=Float COMMA beta=Float)? RPAREN (fromClause)?
-    -> ^(TOK_SELECT_INDEX $func $p1 $p2 $n1 $n2 $epsilon ($alpha $beta)?) fromClause?
+    : KW_SELECT KW_INDEX func=Identifier LPAREN p=prefixPath COMMA file=StringLiteral COMMA epsilon=Float (COMMA alpha=Float COMMA beta=Float)? RPAREN (fromClause)?
+    -> ^(TOK_SELECT_INDEX $func $p $file $epsilon ($alpha $beta)?) fromClause?
     | KW_SELECT clusteredPath (COMMA clusteredPath)* fromClause
     -> ^(TOK_SELECT clusteredPath+) fromClause
     ;
