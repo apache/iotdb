@@ -69,7 +69,7 @@ public class DeleteCreateSameSeriesTest {
     @Before
     public void setUp() throws Exception {
         if (testFlag) {
-            deamon = new IoTDB();
+            deamon = IoTDB.getInstance();
             deamon.active();
             EnvironmentUtils.envSetUp();
         }

@@ -109,7 +109,7 @@ public class AggregationSmallDataTest {
     public void setUp() throws Exception {
         if (testFlag) {
             AggregateEngine.aggregateFetchSize = 2;
-            deamon = new IoTDB();
+            deamon = IoTDB.getInstance();
             deamon.active();
             EnvironmentUtils.envSetUp();
         }

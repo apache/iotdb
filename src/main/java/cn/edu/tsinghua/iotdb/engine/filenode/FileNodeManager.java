@@ -636,6 +636,7 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 	 * @throws FileNodeManagerException
 	 */
 	public synchronized boolean closeAll() throws FileNodeManagerException {
+		LOGGER.info("start closing file node manager");
 		if (fileNodeManagerStatus == FileNodeManagerStatus.NONE) {
 			fileNodeManagerStatus = FileNodeManagerStatus.CLOSE;
 			try {
@@ -643,9 +644,11 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 			} catch (LRUManagerException e) {
 				throw new FileNodeManagerException(e);
 			} finally {
+				LOGGER.info("shutdown file node manager successfully");
 				fileNodeManagerStatus = FileNodeManagerStatus.NONE;
 			}
 		} else {
+			LOGGER.info("failed to shutdown file node manager because of merge operation");
 			return false;
 		}
 	}

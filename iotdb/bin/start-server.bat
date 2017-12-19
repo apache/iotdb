@@ -26,6 +26,7 @@ if NOT DEFINED JAVA_HOME goto :err
 set JAVA_OPTS=-ea^
  -Dlogback.configurationFile="%IOTDB_CONF%\logback.xml"^
  -DIOTDB_HOME=%IOTDB_HOME%^
+ -DTSFILE_HOME=%IOTDB_HOME%^
  -DIOTDB_CONF=%IOTDB_CONF%
 
 @REM ***** CLASSPATH library setting *****
