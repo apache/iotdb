@@ -59,13 +59,14 @@ public class CloseMergeServer {
 	public void closeServer() {
 
 		if (isStart) {
-			LOGGER.info("shutdown the close and merge server");
+			LOGGER.info("prepare to shutdown the close and merge server");
 			isStart = false;
 			synchronized (service) {
 				service.shutdown();
 				service.notify();
 			}
 			SERVER = null;
+			LOGGER.info("shutdown close and merge server successfully");
 		} else {
 			LOGGER.warn("the close and merge daemon is not running now");
 		}

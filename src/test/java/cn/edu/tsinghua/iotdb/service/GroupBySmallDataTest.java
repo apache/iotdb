@@ -53,7 +53,7 @@ public class GroupBySmallDataTest {
 	public void setUp() throws Exception {
 		if (testFlag) {
 			AggregateEngine.aggregateFetchSize = 4000;
-			deamon = new IoTDB();
+            deamon = IoTDB.getInstance();
 			deamon.active();
 			EnvironmentUtils.envSetUp();
 		}

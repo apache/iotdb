@@ -169,6 +169,7 @@ public class WriteLogManager {
         
         try {
             timingService.awaitTermination(10, TimeUnit.SECONDS);
+            LOGGER.info("shutdown wal server successfully");
         } catch (InterruptedException e) {
             LOGGER.error("wal manager timing service could not be shutdown");
             // e.printStackTrace();

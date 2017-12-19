@@ -69,7 +69,7 @@ public class LargeDataTest {
             tsFileConfig.pageSizeInByte = 1024 * 1024 * 15;
             tsFileConfig.groupSizeInByte = 1024 * 1024 * 100;
 
-            deamon = new IoTDB();
+            deamon = IoTDB.getInstance();
             deamon.active();
             EnvironmentUtils.envSetUp();
         }
