@@ -29,7 +29,6 @@ public class DaemonTest {
     private final String d0s3 = "root.vehicle.d0.s3";
     private final String d0s4 = "root.vehicle.d0.s4";
     private final String d1s0 = "root.vehicle.d1.s0";
-    private final String d1s1 = "root.vehicle.d1.s1";
 
     private String count(String path) {
         return String.format("count(%s)", path);

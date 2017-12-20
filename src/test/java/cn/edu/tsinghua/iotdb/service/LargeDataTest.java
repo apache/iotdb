@@ -34,11 +34,13 @@ public class LargeDataTest {
     private static final String TIMESTAMP_STR = "Time";
     private final String d0s0 = "root.vehicle.d0.s0";
     private final String d0s1 = "root.vehicle.d0.s1";
+    private final String d1s0 = "root.vehicle.d1.s0";
+
     private final String d0s2 = "root.vehicle.d0.s2";
     private final String d0s3 = "root.vehicle.d0.s3";
     private final String d0s4 = "root.vehicle.d0.s4";
-    private final String d1s0 = "root.vehicle.d1.s0";
     private final String d1s1 = "root.vehicle.d1.s1";
+    
     private static String[] stringValue = new String[]{"A", "B", "C", "D", "E"};
 
     private static String[] create_sql = new String[]{
@@ -57,6 +59,10 @@ public class LargeDataTest {
     private IoTDB deamon;
 
     private boolean testFlag = TestUtils.testFlag;
+    TSFileConfig tsFileConfig = TSFileDescriptor.getInstance().getConfig();
+    private int maxNumberOfPointsInPage;
+    private int pageSizeInByte;
+    private int groupSizeInByte;
 
     @Before
     public void setUp() throws Exception {
@@ -64,7 +70,11 @@ public class LargeDataTest {
             AggregateEngine.aggregateFetchSize = 4000;
 
             // use small page setting
-            TSFileConfig tsFileConfig = TSFileDescriptor.getInstance().getConfig();
+            // origin value
+            maxNumberOfPointsInPage = tsFileConfig.maxNumberOfPointsInPage;
+            pageSizeInByte = tsFileConfig.pageSizeInByte;
+            groupSizeInByte = tsFileConfig.groupSizeInByte;
+            // new value
             tsFileConfig.maxNumberOfPointsInPage = 100;
             tsFileConfig.pageSizeInByte = 1024 * 1024 * 15;
             tsFileConfig.groupSizeInByte = 1024 * 1024 * 100;
@@ -80,6 +90,10 @@ public class LargeDataTest {
         if (testFlag) {
             deamon.stop();
             Thread.sleep(5000);
+            //recovery value
+            tsFileConfig.maxNumberOfPointsInPage = maxNumberOfPointsInPage;
+            tsFileConfig.pageSizeInByte = pageSizeInByte;
+            tsFileConfig.groupSizeInByte = groupSizeInByte;
             EnvironmentUtils.cleanEnv();
         }
     }
