@@ -106,6 +106,7 @@ public class QueryProcessor {
             case LOADDATA:
             case INSERT:
             case INDEX:
+            case INDEXQUERY:
                 return operator;
             case QUERY:
             case UPDATE:
@@ -113,7 +114,7 @@ public class QueryProcessor {
                 SFWOperator root = (SFWOperator) operator;
                 return optimizeSFWOperator(root, executor);
             default:
-                throw new LogicalOperatorException("unknown operator type:{}" + operator.getType());
+                throw new LogicalOperatorException("unknown operator type:" + operator.getType());
         }
     }
 
