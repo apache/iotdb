@@ -10,6 +10,7 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import cn.edu.tsinghua.iotdb.index.IndexManager;
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,6 +29,7 @@ import cn.edu.tsinghua.iotdb.exception.FileNodeProcessorException;
 import cn.edu.tsinghua.iotdb.exception.LRUManagerException;
 import cn.edu.tsinghua.iotdb.exception.OverflowProcessorException;
 import cn.edu.tsinghua.iotdb.exception.PathErrorException;
+import cn.edu.tsinghua.iotdb.index.common.DataFileInfo;
 import cn.edu.tsinghua.iotdb.metadata.MManager;
 import cn.edu.tsinghua.iotdb.qp.physical.crud.DeletePlan;
 import cn.edu.tsinghua.iotdb.qp.physical.crud.UpdatePlan;
@@ -131,6 +133,8 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 				} else {
 					fileNodeProcessor.writeUnlock();
 				}
+				//add index check sum
+				fileNodeProcessor.rebuildIndex();
 			}
 		} catch (PathErrorException | LRUManagerException | FileNodeProcessorException e) {
 			LOGGER.error("Restore all FileNode failed, the reason is {}", e.getMessage());
@@ -452,6 +456,35 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 		} catch (LRUManagerException e) {
 			throw new FileNodeManagerException(e);
 		} catch (FileNodeProcessorException e) {
+			throw new FileNodeManagerException(e);
+		} finally {
+			if (fileNodeProcessor != null) {
+				fileNodeProcessor.readUnlock();
+			}
+		}
+	}
+
+	/**
+	 *
+	 *
+	 * @param path : the column path
+	 * @param startTime : the startTime of index
+	 * @param endTime : the endTime of index
+	 *
+	 * @throws FileNodeManagerException
+	 */
+	public List<DataFileInfo> indexBuildQuery(Path path, long startTime, long endTime) throws FileNodeManagerException {
+		FileNodeProcessor fileNodeProcessor = null;
+		String deltaObjectId = path.getDeltaObjectToString();
+		try {
+			do {
+				fileNodeProcessor = getProcessorWithDeltaObjectIdByLRU(deltaObjectId, false);
+			} while (fileNodeProcessor == null);
+			LOGGER.debug("Get the FileNodeProcessor: {}, query.", fileNodeProcessor.getNameSpacePath());
+
+			return fileNodeProcessor.indexQuery(deltaObjectId, startTime, endTime);
+		} catch (LRUManagerException e) {
+			e.printStackTrace();
 			throw new FileNodeManagerException(e);
 		} finally {
 			if (fileNodeProcessor != null) {
