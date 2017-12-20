@@ -29,8 +29,6 @@ public class AggregationLargeDataTest {
     private final String d0s2 = "root.vehicle.d0.s2";
     private final String d0s3 = "root.vehicle.d0.s3";
     private final String d0s4 = "root.vehicle.d0.s4";
-    private final String d1s0 = "root.vehicle.d1.s0";
-    private final String d1s1 = "root.vehicle.d1.s1";
 
     private static String[] createSql = new String[]{
             "SET STORAGE GROUP TO root.vehicle",
