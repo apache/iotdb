@@ -109,6 +109,11 @@ public class TsfileDBConfig {
 	 */
 	public long periodTimeForMerge = 7200;
 
+	/**
+	 * How many thread can concurrently flush. When <= 0, use CPU core number.
+	 */
+	public int concurrentFlushThread = Runtime.getRuntime().availableProcessors();
+
 	public DateTimeZone timeZone = DateTimeZone.getDefault();
 
 	public TsfileDBConfig() {}

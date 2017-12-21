@@ -16,6 +16,9 @@ import java.util.Set;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+import cn.edu.tsinghua.iotdb.engine.flushthread.FlushManager;
+import cn.edu.tsinghua.tsfile.format.RowGroupBlockMetaData;
+
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.slf4j.Logger;
@@ -672,8 +675,7 @@ public class BufferWriteProcessor extends LRUProcessor {
 							convertBufferLock.writeLock().unlock();
 						}
 					};
-					Thread flush = new Thread(flushThread);
-					flush.start();
+					FlushManager.getInstance().submit(flushThread);
 				}
 			}
 		}

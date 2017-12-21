@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
+import cn.edu.tsinghua.iotdb.engine.flushthread.FlushManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -429,9 +430,7 @@ public class OverflowProcessor extends LRUProcessor {
 			} else {
 				// flush overflow row group asynchronously
 				flushState.setFlushing();
-				Thread AsynflushThread = new Thread() {
-					@Override
-					public void run() {
+				Runnable AsynflushThread = () -> {
 						try {
 							// flush overflow rowgroup data
 							ofSupport.flushRowGroupToStore();
@@ -459,9 +458,8 @@ public class OverflowProcessor extends LRUProcessor {
 								flushState.notify();
 							}
 						}
-					}
 				};
-				AsynflushThread.start();
+				FlushManager.getInstance().submit(AsynflushThread);
 			}
 		}
 	}

@@ -84,7 +84,11 @@ public class TsfileDBDescriptor {
 			
 			conf.periodTimeForFlush = Long.parseLong(properties.getProperty("period_time_for_flush_in_second", conf.periodTimeForFlush+"").trim());
 			conf.periodTimeForMerge = Long.parseLong(properties.getProperty("period_time_for_merge_in_second", conf.periodTimeForMerge+"").trim());
-			
+
+			conf.concurrentFlushThread  = Integer.parseInt(properties.getProperty("concurrent_flush_thread", conf.concurrentFlushThread + ""));
+			if(conf.concurrentFlushThread <= 0)
+				conf.concurrentFlushThread = Runtime.getRuntime().availableProcessors();
+
 			String tmpTimeZone = properties.getProperty("time_zone", conf.timeZone.getID());
 			try {
 				conf.timeZone = DateTimeZone.forID(tmpTimeZone.trim());
