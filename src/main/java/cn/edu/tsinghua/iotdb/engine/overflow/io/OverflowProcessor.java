@@ -9,6 +9,8 @@ import java.util.List;
 import java.util.Map;
 
 import cn.edu.tsinghua.iotdb.engine.flushthread.FlushManager;
+
+import org.joda.time.DateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -55,6 +57,7 @@ public class OverflowProcessor extends LRUProcessor {
 	private Action filenodeFlushAction = null;
 	private Action filenodeManagerBackUpAction = null;
 	private Action filenodeManagerFlushAction = null;
+	private long lastFlushTime = -1;
 
 	public OverflowProcessor(String nameSpacePath, Map<String, Object> parameters) throws OverflowProcessorException {
 		super(nameSpacePath);
@@ -362,6 +365,14 @@ public class OverflowProcessor extends LRUProcessor {
 	}
 
 	private void flushRowGroupToStore(boolean synchronize) throws OverflowProcessorException {
+		if (lastFlushTime > 0) {
+			long thisFLushTime = System.currentTimeMillis();
+			DateTime lastDateTime = new DateTime(lastFlushTime, TsfileDBDescriptor.getInstance().getConfig().timeZone);
+			DateTime thisDateTime = new DateTime(thisFLushTime, TsfileDBDescriptor.getInstance().getConfig().timeZone);
+			LOGGER.info("Last flush time is {}, this flush time is {}, flush time interval is {}", lastDateTime,
+					thisDateTime, thisFLushTime - lastFlushTime);
+			lastFlushTime = thisFLushTime;
+		}
 		if (recordCount > 0) {
 			synchronized (flushState) {
 				while (flushState.isFlushing()) {
@@ -431,33 +442,33 @@ public class OverflowProcessor extends LRUProcessor {
 				// flush overflow row group asynchronously
 				flushState.setFlushing();
 				Runnable AsynflushThread = () -> {
-						try {
-							// flush overflow rowgroup data
-							ofSupport.flushRowGroupToStore();
-							// store the rowgorup metadata to file
-							writeStoreToDisk(-1, false);
-							// call filenode function to update intervalFile
-							// list
-							filenodeFlushAction.act();
-							// call filenode manager function to flush overflow
-							// nameSpacePath set
-							filenodeManagerFlushAction.act();
-							if (TsfileDBDescriptor.getInstance().getConfig().enableWal) {
-								WriteLogManager.getInstance().endOverflowFlush(nameSpacePath);
-							}
-						} catch (IOException e) {
-							LOGGER.error("Flush overflow rowgroup to file error in asynchronously.", e);
-						} catch (OverflowProcessorException e) {
-							LOGGER.error("Flush overflow rowgroup restore failed.", e);
-							System.exit(0);
-						} catch (Exception e) {
-							LOGGER.error("filenodeFlushAction action failed.", e);
-						} finally {
-							synchronized (flushState) {
-								flushState.setUnFlushing();
-								flushState.notify();
-							}
+					try {
+						// flush overflow rowgroup data
+						ofSupport.flushRowGroupToStore();
+						// store the rowgorup metadata to file
+						writeStoreToDisk(-1, false);
+						// call filenode function to update intervalFile
+						// list
+						filenodeFlushAction.act();
+						// call filenode manager function to flush overflow
+						// nameSpacePath set
+						filenodeManagerFlushAction.act();
+						if (TsfileDBDescriptor.getInstance().getConfig().enableWal) {
+							WriteLogManager.getInstance().endOverflowFlush(nameSpacePath);
 						}
+					} catch (IOException e) {
+						LOGGER.error("Flush overflow rowgroup to file error in asynchronously.", e);
+					} catch (OverflowProcessorException e) {
+						LOGGER.error("Flush overflow rowgroup restore failed.", e);
+						System.exit(0);
+					} catch (Exception e) {
+						LOGGER.error("filenodeFlushAction action failed.", e);
+					} finally {
+						synchronized (flushState) {
+							flushState.setUnFlushing();
+							flushState.notify();
+						}
+					}
 				};
 				FlushManager.getInstance().submit(AsynflushThread);
 			}
