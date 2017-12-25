@@ -377,8 +377,7 @@ public class CompleteTest {
                         "4,4,4,\n" +
                         "8,1,1,\n",
                 "SELECT COUNT(s0), MAX_VALUE(s1) FROM root.vehicle.d0 WHERE time < 7 GROUP BY(3ms,2,[1,5])",
-                "2,3,104,\n" +
-                        "5,1,105,\n",
+                "1,1,101,\n" + "2,3,104,\n" + "5,1,105,\n",
                 "SELECT MIN_VALUE(s0), MAX_TIME(s1) FROM root.vehicle.d0 WHERE s1 > 102 and time < 9 GROUP BY(3ms,1,[1,4],[6,9])",
                 "1,108,3,\n" +
                         "4,105,6,\n" +
