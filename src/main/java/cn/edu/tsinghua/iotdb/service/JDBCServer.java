@@ -17,6 +17,7 @@ import cn.edu.tsinghua.iotdb.conf.TsFileDBConstant;
 import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
 import cn.edu.tsinghua.iotdb.jdbc.thrift.TSIService;
 import cn.edu.tsinghua.iotdb.jdbc.thrift.TSIService.Processor;
+import cn.edu.tsinghua.iotdb.utils.IoTDBThreadPoolFactory;
 
 /**
  * A server to handle jdbc request from client.
@@ -59,6 +60,7 @@ public class JDBCServer implements JDBCServerMBean {
 
         try {
             jdbcServerThread = new Thread(new JDBCServerThread());
+            jdbcServerThread.setName("JDBC-Server");
         } catch (IOException e) {
             LOGGER.error("{}: failed to start jdbc server. {}",TsFileDBConstant.GLOBAL_DB_NAME, e.getMessage());
             return;
@@ -114,6 +116,7 @@ public class JDBCServer implements JDBCServerMBean {
             try {
         		serverTransport = new TServerSocket(TsfileDBDescriptor.getInstance().getConfig().rpcPort);
                 poolArgs = new TThreadPoolServer.Args(serverTransport);
+                poolArgs.executorService = IoTDBThreadPoolFactory.createJDBCClientThreadPool(poolArgs, "JDBC-Client");
                 poolArgs.processor(processor);
                 poolArgs.protocolFactory(protocolFactory);
                 poolServer = new TThreadPoolServer(poolArgs);

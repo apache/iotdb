@@ -16,6 +16,7 @@ import cn.edu.tsinghua.iotdb.exception.PathErrorException;
 import cn.edu.tsinghua.iotdb.metadata.MManager;
 //import org.slf4j.LoggerFactory;
 import cn.edu.tsinghua.iotdb.qp.physical.PhysicalPlan;
+import cn.edu.tsinghua.iotdb.utils.IoTDBThreadPoolFactory;
 import cn.edu.tsinghua.tsfile.timeseries.write.record.TSRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,7 +41,7 @@ public class WriteLogManager {
         if (TsfileDBDescriptor.getInstance().getConfig().enableWal) {
             logNodeMaps = new ConcurrentHashMap<>();
             // system log timing merge task
-            timingService = Executors.newScheduledThreadPool(1);
+            timingService = IoTDBThreadPoolFactory.newScheduledThreadPool(1,"WALFlush");
             long delay = 0;
             long interval = TsfileDBDescriptor.getInstance().getConfig().flushWalPeriodInMs;
             timingService.scheduleAtFixedRate(new LogMergeTimingTask(), delay, interval, TimeUnit.SECONDS);
