@@ -72,7 +72,7 @@ public class ValueReaderProcessor {
 
         IntervalTimeVisitor seriesTimeVisitor = new IntervalTimeVisitor();
         // TODO seriesTimeVisitor has multithreading problem
-        if (!seriesTimeVisitor.satisfy(timeFilter, valueReader.getStartTime(), valueReader.getEndTime())) {
+        if (timeFilter != null && !seriesTimeVisitor.satisfy(timeFilter, valueReader.getStartTime(), valueReader.getEndTime())) {
             LOG.debug("series time digest does not satisfy time filter");
             res.plusRowGroupIndexAndInitPageOffset();
             return res;

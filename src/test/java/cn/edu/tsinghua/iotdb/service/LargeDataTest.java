@@ -109,7 +109,7 @@ public class LargeDataTest {
 
             Connection connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
 
-            selectAllTest();
+            selectOneSeriesWithValueFilterTest();
             aggregationTest();
             groupByTest();
             allNullSeriesAggregationTest();
@@ -126,7 +126,7 @@ public class LargeDataTest {
         }
     }
 
-    private void selectAllTest() throws ClassNotFoundException, SQLException, FileNotFoundException {
+    private void selectOneSeriesWithValueFilterTest() throws ClassNotFoundException, SQLException, FileNotFoundException {
 
         String selectSql = "select s0 from root.vehicle.d0 where s0 >= 20";
 

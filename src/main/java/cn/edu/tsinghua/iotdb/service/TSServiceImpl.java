@@ -448,6 +448,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 			resp.setQueryDataSet(tsQueryDataSet);
 			return resp;
 		} catch (Exception e) {
+			//e.printStackTrace();
 			LOGGER.error("{}: Internal server error: {}",TsFileDBConstant.GLOBAL_DB_NAME, e.getMessage());
 			return getTSFetchResultsResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
 		}
