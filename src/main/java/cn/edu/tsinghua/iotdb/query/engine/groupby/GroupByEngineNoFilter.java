@@ -88,6 +88,11 @@ public class GroupByEngineNoFilter {
 
         this.longInterval = (LongInterval) FilterVerifier.create(TSDataType.INT64).getInterval(intervals);
         this.intervalIndex = 0;
+
+        if (longInterval.count > 0 && origin > longInterval.v[0]) {
+            long intervalStart = longInterval.flag[0] ? longInterval.v[0] : longInterval.v[0] + 1;
+            this.origin = origin - (long)Math.ceil((double)(origin-intervalStart) / unit) * unit;
+        }
     }
 
     public QueryDataSet groupBy()

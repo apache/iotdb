@@ -88,6 +88,8 @@ public class GroupBySmallDataTest {
 			groupByOnlyHasTimeFilterTest();
 			groupByMultiResultTest();
 
+			originBiggerThanIntervalTest();
+
 			// bugSelectClauseTest();
 			connection.close();
 		}
@@ -714,15 +716,54 @@ public class GroupBySmallDataTest {
 				case 11:
 					Assert.assertEquals("100,3,6,2,2", ans);
 					break;
-				// case 101:
-				// Assert.assertEquals("1000,1,1,1,null", ans);
-				// break;
 				default:
 					Assert.assertEquals(resultSet.getString(TIMESTAMP_STR) + ",null,null,null,null", ans);
 				}
 				cnt++;
 			}
 			Assert.assertEquals(1002, cnt);
+			statement.close();
+		} catch (Exception e) {
+			e.printStackTrace();
+			fail(e.getMessage());
+		} finally {
+			if (connection != null) {
+				connection.close();
+			}
+		}
+	}
+
+	// eg : origin = 100, interval is [50, 200], the range in [50, 100] also should be calculated
+	private void originBiggerThanIntervalTest() throws ClassNotFoundException, SQLException {
+		Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);
+		Connection connection = null;
+		try {
+			connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
+			Statement statement = connection.createStatement();
+			boolean hasResultSet = statement.execute("select count(s0),count(s1),count(s2),count(s3) "
+					+ "from root.vehicle.d0 where time < 1000 group by(10ms, 111, [100,1000])");
+			assertTrue(hasResultSet);
+			ResultSet resultSet = statement.getResultSet();
+			int cnt = 1;
+			while (resultSet.next()) {
+				String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(count(d0s0)) + ","
+						+ resultSet.getString(count(d0s1)) + "," + resultSet.getString(count(d0s2)) + ","
+						+ resultSet.getString(count(d0s3));
+				System.out.println(ans);
+				switch (cnt) {
+					case 1:
+						Assert.assertEquals("100,null,1,null,null", ans);
+						break;
+					case 2:
+						Assert.assertEquals("101,3,5,2,2", ans);
+						break;
+					default:
+						Assert.assertEquals(resultSet.getString(TIMESTAMP_STR) + ",null,null,null,null", ans);
+				}
+				cnt++;
+			}
+			//System.out.println("===" + cnt);
+			Assert.assertEquals(92, cnt);
 			statement.close();
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -750,8 +791,6 @@ public class GroupBySmallDataTest {
 			while (resultSet.next()) {
 				String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(count(d1s1)) + ","
 						+ resultSet.getString(max_value(d1s1));
-				// + "," + resultSet.getString(max_value(d1s1));
-				// System.out.println(ans);
 				cnt++;
 			}
 			// Assert.assertEquals(1002, cnt);
