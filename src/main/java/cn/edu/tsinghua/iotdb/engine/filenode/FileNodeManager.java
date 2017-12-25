@@ -34,6 +34,7 @@ import cn.edu.tsinghua.iotdb.metadata.MManager;
 import cn.edu.tsinghua.iotdb.qp.physical.crud.DeletePlan;
 import cn.edu.tsinghua.iotdb.qp.physical.crud.UpdatePlan;
 import cn.edu.tsinghua.iotdb.sys.writelog.WriteLogManager;
+import cn.edu.tsinghua.iotdb.utils.IoTDBThreadPoolFactory;
 import cn.edu.tsinghua.tsfile.common.conf.TSFileConfig;
 import cn.edu.tsinghua.tsfile.common.conf.TSFileDescriptor;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
@@ -133,7 +134,7 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 				} else {
 					fileNodeProcessor.writeUnlock();
 				}
-				//add index check sum
+				// add index check sum
 				fileNodeProcessor.rebuildIndex();
 			}
 		} catch (PathErrorException | LRUManagerException | FileNodeProcessorException e) {
@@ -467,9 +468,12 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 	/**
 	 *
 	 *
-	 * @param path : the column path
-	 * @param startTime : the startTime of index
-	 * @param endTime : the endTime of index
+	 * @param path
+	 *            : the column path
+	 * @param startTime
+	 *            : the startTime of index
+	 * @param endTime
+	 *            : the endTime of index
 	 *
 	 * @throws FileNodeManagerException
 	 */
@@ -733,7 +737,8 @@ public class FileNodeManager extends LRUManager<FileNodeProcessor> {
 
 		@Override
 		public void run() {
-			ExecutorService mergeExecutorPool = Executors.newFixedThreadPool(TsFileDBConf.mergeConcurrentThreads);
+			ExecutorService mergeExecutorPool = IoTDBThreadPoolFactory
+					.newFixedThreadPool(TsFileDBConf.mergeConcurrentThreads, "Merge");
 			for (String fileNodeNamespacePath : allChangedFileNodes) {
 				MergeOneProcessor mergeOneProcessorThread = new MergeOneProcessor(fileNodeNamespacePath);
 				mergeExecutorPool.execute(mergeOneProcessorThread);

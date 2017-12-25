@@ -1,6 +1,6 @@
 package cn.edu.tsinghua.iotdb.service;
 
-import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
 import cn.edu.tsinghua.iotdb.engine.filenode.FileNodeManager;
 import cn.edu.tsinghua.iotdb.exception.FileNodeManagerException;
+import cn.edu.tsinghua.iotdb.utils.IoTDBThreadPoolFactory;
 
 /**
  * This is one server for close and merge regularly
@@ -22,7 +23,7 @@ public class CloseMergeServer {
 
 	private MergeServerThread mergeServer = new MergeServerThread();
 	private CloseServerThread closeServer = new CloseServerThread();
-	private ScheduledThreadPoolExecutor service;
+	private ScheduledExecutorService service;
 	private CloseAndMergeDaemon closeAndMergeDaemon = new CloseAndMergeDaemon();
 
 	private static final long mergeDelay = TsfileDBDescriptor.getInstance().getConfig().periodTimeForMerge;
@@ -42,7 +43,7 @@ public class CloseMergeServer {
 	}
 
 	private CloseMergeServer() {
-		service = new ScheduledThreadPoolExecutor(2);
+		service = IoTDBThreadPoolFactory.newScheduledThreadPool(2, "CloseAndMerge");
 	}
 
 	public void startServer() {
