@@ -53,7 +53,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 	private OverflowQueryEngine queryEngine;
 	private FileNodeManager fileNodeManager;
 	private MManager mManager = MManager.getInstance();
-//	private KvMatchIndex kvMatchIndex = KvMatchIndex.getInstance();
+	// private KvMatchIndex kvMatchIndex = KvMatchIndex.getInstance();
 
 	public OverflowQPExecutor() {
 		queryEngine = new OverflowQueryEngine();
@@ -103,57 +103,57 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 
 	private boolean operateIndex(IndexPlan indexPlan) throws ProcessorException {
 		switch (indexPlan.getIndexOperatorType()) {
-			case CREATE_INDEX:
-				try {
-					String path = indexPlan.getPaths().get(0).getFullPath();
-					// check path
-					if(!mManager.pathExist(path)){
-						throw new ProcessorException(String.format("The timeseries %s does not exist.", path));
-					}
-					// check storage group
-					mManager.getFileNameByPath(path);
-					// check index
-					if (mManager.checkPathIndex(path, indexPlan.getIndexType())) {
-						throw new ProcessorException(String.format("The timeseries %s has already been indexed.", path));
-					}
-					// create index
-					IoTIndex index = IndexManager.getIndexInstance(indexPlan.getIndexType());
-					if(index == null)
-						throw new IndexManagerException(indexPlan.getIndexType()+" doesn't support");
-					Path indexPath = indexPlan.getPaths().get(0);
-					if (index.build(indexPath, new ArrayList<>(), indexPlan.getParameters())) {
-						mManager.addIndexForOneTimeseries(path,indexPlan.getIndexType());
-					}
-				} catch (IndexManagerException | PathErrorException | IOException e) {
-					e.printStackTrace();
-					throw new ProcessorException(e.getMessage());
+		case CREATE_INDEX:
+			try {
+				String path = indexPlan.getPaths().get(0).getFullPath();
+				// check path
+				if (!mManager.pathExist(path)) {
+					throw new ProcessorException(String.format("The timeseries %s does not exist.", path));
 				}
-				break;
-			case DROP_INDEX:
-				try {
-					String path = indexPlan.getPaths().get(0).getFullPath();
-					// check path
-					if(!mManager.pathExist(path)){
-						throw new ProcessorException(String.format("The timeseries %s does not exist.", path));
-					}
-					// check index
-					if (!mManager.checkPathIndex(path, indexPlan.getIndexType())) {
-						throw new ProcessorException(String.format("The timeseries %s hasn't been indexed.", path));
-					}
-					IoTIndex index = IndexManager.getIndexInstance(indexPlan.getIndexType());
-					if(index == null)
-						throw new IndexManagerException(indexPlan.getIndexType()+" doesn't support");
-					Path indexPath = indexPlan.getPaths().get(0);
-					if (index.drop(indexPath)) {
-						mManager.deleteIndexForOneTimeseries(path, indexPlan.getIndexType());
-					}
-				} catch (IndexManagerException | PathErrorException | IOException e) {
-					e.printStackTrace();
-					throw new ProcessorException(e.getMessage());
+				// check storage group
+				mManager.getFileNameByPath(path);
+				// check index
+				if (mManager.checkPathIndex(path, indexPlan.getIndexType())) {
+					throw new ProcessorException(String.format("The timeseries %s has already been indexed.", path));
 				}
-				break;
-			default:
-				throw new ProcessorException(String.format("Not support the index operation %s", indexPlan.getIndexType()));
+				// create index
+				IoTIndex index = IndexManager.getIndexInstance(indexPlan.getIndexType());
+				if (index == null)
+					throw new IndexManagerException(indexPlan.getIndexType() + " doesn't support");
+				Path indexPath = indexPlan.getPaths().get(0);
+				if (index.build(indexPath, new ArrayList<>(), indexPlan.getParameters())) {
+					mManager.addIndexForOneTimeseries(path, indexPlan.getIndexType());
+				}
+			} catch (IndexManagerException | PathErrorException | IOException e) {
+				e.printStackTrace();
+				throw new ProcessorException(e.getMessage());
+			}
+			break;
+		case DROP_INDEX:
+			try {
+				String path = indexPlan.getPaths().get(0).getFullPath();
+				// check path
+				if (!mManager.pathExist(path)) {
+					throw new ProcessorException(String.format("The timeseries %s does not exist.", path));
+				}
+				// check index
+				if (!mManager.checkPathIndex(path, indexPlan.getIndexType())) {
+					throw new ProcessorException(String.format("The timeseries %s hasn't been indexed.", path));
+				}
+				IoTIndex index = IndexManager.getIndexInstance(indexPlan.getIndexType());
+				if (index == null)
+					throw new IndexManagerException(indexPlan.getIndexType() + " doesn't support");
+				Path indexPath = indexPlan.getPaths().get(0);
+				if (index.drop(indexPath)) {
+					mManager.deleteIndexForOneTimeseries(path, indexPlan.getIndexType());
+				}
+			} catch (IndexManagerException | PathErrorException | IOException e) {
+				e.printStackTrace();
+				throw new ProcessorException(e.getMessage());
+			}
+			break;
+		default:
+			throw new ProcessorException(String.format("Not support the index operation %s", indexPlan.getIndexType()));
 		}
 		return true;
 	}
@@ -458,7 +458,8 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 					} catch (ProcessorException e) {
 						throw new ProcessorException(e);
 					}
-
+					Set<String> closeFileNodes = new HashSet<>();
+					Set<String> deleteFielNodes = new HashSet<>();
 					for (String p : fullPath) {
 						String nameSpacePath = null;
 						try {
@@ -466,6 +467,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 						} catch (PathErrorException e) {
 							throw new ProcessorException(e);
 						}
+						closeFileNodes.add(nameSpacePath);
 						/**
 						 * the two map is stored in the storage group node
 						 */
@@ -476,37 +478,31 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 						 * schemaMap
 						 */
 						synchronized (schemaMap) {
-							// TODO: don't delete the storage group path recursively
+							// TODO: don't delete the storage group path
+							// recursively
 							path = new Path(p);
 							String measurementId = path.getMeasurementToString();
-							if(numSchemaMap.get(measurementId)==1){
+							if (numSchemaMap.get(measurementId) == 1) {
 								numSchemaMap.remove(measurementId);
 								schemaMap.remove(measurementId);
-							}else{
-								numSchemaMap.put(measurementId,numSchemaMap.get(measurementId)-1);
+							} else {
+								numSchemaMap.put(measurementId, numSchemaMap.get(measurementId) - 1);
 							}
 							String deleteNameSpacePath = mManager.deletePathFromMTree(p);
 							if (deleteNameSpacePath != null) {
-								// TODO: should we delete the filenode in the disk
-								// delete this filenode
-								try {
-									// clear filenode
-									fileNodeManager.clearOneFileNode(deleteNameSpacePath);
-									// close processor
-									fileNodeManager.deleteOneFileNode(deleteNameSpacePath);
-								} catch (FileNodeManagerException e) {
-									throw new ProcessorException(e);
-								}
-							} else if (nameSpacePath != null) {
-								// TODO: should we must close the filenode
-								// close this filenode
-								try {
-									fileNodeManager.closeOneFileNode(nameSpacePath);
-								} catch (FileNodeManagerException e) {
-									throw new ProcessorException(e);
-								}
+								deleteFielNodes.add(deleteNameSpacePath);
 							}
 						}
+					}
+					closeFileNodes.removeAll(deleteFielNodes);
+					for (String deleteFileNode : deleteFielNodes) {
+						// clear filenode
+						fileNodeManager.clearOneFileNode(deleteFileNode);
+						// close processor
+						fileNodeManager.deleteOneFileNode(deleteFileNode);
+					}
+					for (String closeFileNode : closeFileNodes) {
+						fileNodeManager.closeOneFileNode(closeFileNode);
 					}
 				}
 				break;
@@ -516,7 +512,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 			default:
 				throw new ProcessorException("unknown namespace type:" + namespaceType);
 			}
-		} catch (PathErrorException | IOException | ArgsErrorException e) {
+		} catch (PathErrorException | IOException | ArgsErrorException | FileNodeManagerException e) {
 			throw new ProcessorException(e.getMessage());
 		}
 		return true;
