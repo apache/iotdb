@@ -108,4 +108,8 @@ public class OFRowGroupListMetadata implements IConverter<cn.edu.tsinghua.iotdb.
 			throw e;
 		}
 	}
+
+	public List<OFSeriesListMetadata> getSeriesLists() {
+		return this.seriesLists;
+	}
 }

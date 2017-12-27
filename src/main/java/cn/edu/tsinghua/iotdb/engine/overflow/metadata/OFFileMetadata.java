@@ -109,4 +109,7 @@ public class OFFileMetadata implements IConverter<cn.edu.tsinghua.iotdb.engine.o
 		this.lastFooterOffset = lastFooterOffset;
 	}
 
+	public List<OFRowGroupListMetadata> getRowGroupLists() {
+		return this.rowGroupLists;
+	}
 }
