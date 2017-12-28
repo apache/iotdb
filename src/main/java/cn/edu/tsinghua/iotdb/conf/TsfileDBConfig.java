@@ -80,7 +80,7 @@ public class TsfileDBConfig {
 	/**
 	 * The maximum concurrent thread number for merging overflow
 	 */
-	public int mergeConcurrentThreads = 10;
+	public int mergeConcurrentThreads = Runtime.getRuntime().availableProcessors();
 
 	/**
 	 * Maximum number of folders open at the same time

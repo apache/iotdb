@@ -24,8 +24,8 @@ import org.slf4j.LoggerFactory;
 
 import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
 import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
+import cn.edu.tsinghua.iotdb.engine.Processor;
 import cn.edu.tsinghua.iotdb.engine.flushthread.FlushManager;
-import cn.edu.tsinghua.iotdb.engine.lru.LRUProcessor;
 import cn.edu.tsinghua.iotdb.engine.utils.FlushState;
 import cn.edu.tsinghua.iotdb.exception.BufferWriteProcessorException;
 import cn.edu.tsinghua.iotdb.exception.PathErrorException;
@@ -52,7 +52,7 @@ import cn.edu.tsinghua.tsfile.timeseries.write.record.TSRecord;
 import cn.edu.tsinghua.tsfile.timeseries.write.schema.FileSchema;
 import cn.edu.tsinghua.tsfile.timeseries.write.series.IRowGroupWriter;
 
-public class BufferWriteProcessor extends LRUProcessor {
+public class BufferWriteProcessor extends Processor {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(BufferWriteProcessor.class);
 	private static final TSFileConfig TsFileConf = TSFileDescriptor.getInstance().getConfig();
@@ -76,6 +76,7 @@ public class BufferWriteProcessor extends LRUProcessor {
 	// this is the bufferwrite file absolute path
 	private String bufferwriteRestoreFilePath;
 	private String bufferwriteOutputFilePath;
+	private String bufferwriterelativePath;
 
 	private boolean isNewProcessor = false;
 
@@ -83,9 +84,9 @@ public class BufferWriteProcessor extends LRUProcessor {
 	private Action bufferwriteCloseAction = null;
 	private Action filenodeFlushAction = null;
 
-	public BufferWriteProcessor(String nameSpacePath, String fileName, Map<String, Object> parameters)
+	public BufferWriteProcessor(String processorName, String fileName, Map<String, Object> parameters)
 			throws BufferWriteProcessorException {
-		super(nameSpacePath);
+		super(processorName);
 
 		this.fileName = fileName;
 		String restoreFileName = fileName + restoreFile;
@@ -95,7 +96,7 @@ public class BufferWriteProcessor extends LRUProcessor {
 				&& bufferwriteDirPath.charAt(bufferwriteDirPath.length() - 1) != File.separatorChar) {
 			bufferwriteDirPath = bufferwriteDirPath + File.separatorChar;
 		}
-		String dataDirPath = bufferwriteDirPath + nameSpacePath;
+		String dataDirPath = bufferwriteDirPath + processorName;
 		File dataDir = new File(dataDirPath);
 		if (!dataDir.exists()) {
 			dataDir.mkdirs();
@@ -103,13 +104,14 @@ public class BufferWriteProcessor extends LRUProcessor {
 		}
 		File outputFile = new File(dataDir, fileName);
 		File restoreFile = new File(dataDir, restoreFileName);
-		bufferwriteRestoreFilePath = restoreFile.getAbsolutePath();
-		bufferwriteOutputFilePath = outputFile.getAbsolutePath();
+		bufferwriteRestoreFilePath = restoreFile.getPath();
+		bufferwriteOutputFilePath = outputFile.getPath();
+		bufferwriterelativePath = processorName + File.separatorChar + fileName;
 		// get the fileschema
 		try {
-			fileSchema = constructFileSchema(nameSpacePath);
+			fileSchema = constructFileSchema(processorName);
 		} catch (PathErrorException | WriteProcessException e) {
-			LOGGER.error("Get the FileSchema error, the nameSpacePath is {}.", nameSpacePath);
+			LOGGER.error("Get the FileSchema error, the bufferwrite is {}.", processorName);
 			throw new BufferWriteProcessorException(e);
 		}
 		//
@@ -126,14 +128,14 @@ public class BufferWriteProcessor extends LRUProcessor {
 				outputWriter = new TsRandomAccessFileWriter(outputFile);
 			} catch (IOException e) {
 				LOGGER.error("Construct the TSRandomAccessFileWriter error, the absolutePath is {}.",
-						outputFile.getAbsolutePath());
+						outputFile.getPath());
 				throw new BufferWriteProcessorException(e);
 			}
 
 			try {
 				bufferIOWriter = new BufferWriteIOWriter(outputWriter);
 			} catch (IOException e) {
-				LOGGER.error("Get the BufferWriteIOWriter error, the nameSpacePath is {}.", nameSpacePath);
+				LOGGER.error("Get the BufferWriteIOWriter error, the bufferwrite is {}.", processorName);
 				throw new BufferWriteProcessorException(e);
 			}
 
@@ -199,7 +201,7 @@ public class BufferWriteProcessor extends LRUProcessor {
 			// API of kr
 			bufferIOWriter = new BufferWriteIOWriter(output, lastPosition, pair.right);
 		} catch (IOException e) {
-			LOGGER.error("Can't get the bufferwrite io when recovery, the nameSpacePath is {}.", nameSpacePath);
+			LOGGER.error("Can't get the bufferwrite io when recovery, the bufferwrite is {}.", getProcessorName());
 			throw new BufferWriteProcessorException(e);
 		}
 		try {
@@ -385,13 +387,13 @@ public class BufferWriteProcessor extends LRUProcessor {
 		return result;
 	}
 
-	private FileSchema constructFileSchema(String nameSpacePath) throws PathErrorException, WriteProcessException {
+	private FileSchema constructFileSchema(String processorName) throws PathErrorException, WriteProcessException {
 		List<ColumnSchema> columnSchemaList;
 
-		columnSchemaList = mManager.getSchemaForFileName(nameSpacePath);
+		columnSchemaList = mManager.getSchemaForFileName(processorName);
 		FileSchema fileSchema = null;
 		try {
-			fileSchema = getFileSchemaFromColumnSchema(columnSchemaList, nameSpacePath);
+			fileSchema = getFileSchemaFromColumnSchema(columnSchemaList, processorName);
 		} catch (WriteProcessException e) {
 			LOGGER.error("Get the FileSchema error, the list of ColumnSchema is {}.", columnSchemaList);
 			throw e;
@@ -399,7 +401,7 @@ public class BufferWriteProcessor extends LRUProcessor {
 		return fileSchema;
 	}
 
-	private FileSchema getFileSchemaFromColumnSchema(List<ColumnSchema> schemaList, String nameSpacePath)
+	private FileSchema getFileSchemaFromColumnSchema(List<ColumnSchema> schemaList, String processorName)
 			throws WriteProcessException {
 		JSONArray rowGroup = new JSONArray();
 		for (ColumnSchema col : schemaList) {
@@ -407,7 +409,7 @@ public class BufferWriteProcessor extends LRUProcessor {
 		}
 		JSONObject jsonSchema = new JSONObject();
 		jsonSchema.put(JsonFormatConstant.JSON_SCHEMA, rowGroup);
-		jsonSchema.put(JsonFormatConstant.DELTA_TYPE, nameSpacePath);
+		jsonSchema.put(JsonFormatConstant.DELTA_TYPE, processorName);
 		return new FileSchema(jsonSchema);
 	}
 
@@ -430,8 +432,8 @@ public class BufferWriteProcessor extends LRUProcessor {
 		return fileName;
 	}
 
-	public String getFileAbsolutePath() {
-		return bufferwriteOutputFilePath;
+	public String getFileRelativePath() {
+		return bufferwriterelativePath;
 	}
 
 	public boolean isNewProcessor() {
@@ -472,7 +474,8 @@ public class BufferWriteProcessor extends LRUProcessor {
 		try {
 			recordWriter.write(tsRecord);
 		} catch (IOException | WriteProcessException e) {
-			LOGGER.error("Write TSRecord error, the TSRecord is {}, the nameSpacePath is {}.", tsRecord, nameSpacePath);
+			LOGGER.error("Write TSRecord error, the TSRecord is {}, the bufferwrite is {}.", tsRecord,
+					getProcessorName());
 			throw new BufferWriteProcessorException(e);
 		}
 	}
@@ -503,12 +506,12 @@ public class BufferWriteProcessor extends LRUProcessor {
 
 	@Override
 	public boolean canBeClosed() {
-		LOGGER.info("Check nameSpacePath {} can be closed or not.", nameSpacePath);
+		LOGGER.info("Check bufferwrite {} can be closed or not.", getProcessorName());
 		if (flushState.isFlushing()) {
-			LOGGER.info("The nameSpacePath {} can't be closed.", nameSpacePath);
+			LOGGER.info("The bufferwrite {} can't be closed.", getProcessorName());
 			return false;
 		} else {
-			LOGGER.info("The nameSpacePath {} can be closed.", nameSpacePath);
+			LOGGER.info("The bufferwrite {} can be closed.", getProcessorName());
 			return true;
 		}
 	}
@@ -525,7 +528,7 @@ public class BufferWriteProcessor extends LRUProcessor {
 			// delete the restore for this bufferwrite processor
 			deleteRestoreFile();
 		} catch (IOException e) {
-			LOGGER.error("Close the bufferwrite processor error, the nameSpacePath is {}.", nameSpacePath);
+			LOGGER.error("Close the bufferwrite processor error, the bufferwrite is {}.", getProcessorName());
 			throw new BufferWriteProcessorException(e);
 		} catch (Exception e) {
 			LOGGER.error("Close the bufferwrite processor failed, when call the action function.");
@@ -600,7 +603,8 @@ public class BufferWriteProcessor extends LRUProcessor {
 						try {
 							flushState.wait();
 						} catch (InterruptedException e) {
-							LOGGER.error("Interrupt error when waitting to flush, the processor:{}.", nameSpacePath, e);
+							LOGGER.error("Interrupt error when waitting to flush, the processor:{}.",
+									getProcessorName(), e);
 						}
 					}
 				}
@@ -614,7 +618,7 @@ public class BufferWriteProcessor extends LRUProcessor {
 
 				if (TsfileDBDescriptor.getInstance().getConfig().enableWal) {
 					// For WAL
-					WriteLogManager.getInstance().startBufferWriteFlush(nameSpacePath);
+					WriteLogManager.getInstance().startBufferWriteFlush(getProcessorName());
 				}
 
 				// flush bufferwrite data
@@ -624,10 +628,10 @@ public class BufferWriteProcessor extends LRUProcessor {
 						writeStoreToDisk();
 						filenodeFlushAction.act();
 						if (TsfileDBDescriptor.getInstance().getConfig().enableWal) {
-							WriteLogManager.getInstance().endBufferWriteFlush(nameSpacePath);
+							WriteLogManager.getInstance().endBufferWriteFlush(getProcessorName());
 						}
 					} catch (IOException e) {
-						LOGGER.error("Flush row group to store failed, processor:{}.", nameSpacePath);
+						LOGGER.error("Flush row group to store failed, processor:{}.", getProcessorName());
 						throw e;
 					} catch (BufferWriteProcessorException e) {
 						// write restore error
@@ -646,14 +650,14 @@ public class BufferWriteProcessor extends LRUProcessor {
 
 					Runnable flushThread;
 					flushThread = () -> {
-						LOGGER.info("{} synchronous flush start,-Thread id {}.", nameSpacePath,
+						LOGGER.info("{} synchronous flush start,-Thread id {}.", getProcessorName(),
 								Thread.currentThread().getId());
 						try {
 							asyncFlushRowGroupToStore();
 							writeStoreToDisk();
 							filenodeFlushAction.act();
 							if (TsfileDBDescriptor.getInstance().getConfig().enableWal) {
-								WriteLogManager.getInstance().endBufferWriteFlush(nameSpacePath);
+								WriteLogManager.getInstance().endBufferWriteFlush(getProcessorName());
 							}
 						} catch (IOException e) {
 							/*
@@ -661,7 +665,7 @@ public class BufferWriteProcessor extends LRUProcessor {
 							 * exception
 							 */
 							LOGGER.error(String.format("%s Asynchronous flush error, sleep this thread-%s.",
-									nameSpacePath, Thread.currentThread().getId()), e);
+									getProcessorName(), Thread.currentThread().getId()), e);
 							// TODO
 						} catch (BufferWriteProcessorException e) {
 							LOGGER.error("Write bufferwrite information to disk failed.", e);
@@ -678,7 +682,7 @@ public class BufferWriteProcessor extends LRUProcessor {
 						try {
 							synchronized (flushState) {
 								switchIndexFromFlushToWork();
-								LOGGER.info("{} synchronous flush end,-Thread is {}.", nameSpacePath,
+								LOGGER.info("{} synchronous flush end,-Thread is {}.", getProcessorName(),
 										Thread.currentThread().getId());
 								flushState.setUnFlushing();
 								flushState.notify();
@@ -713,7 +717,7 @@ public class BufferWriteProcessor extends LRUProcessor {
 				// fillInRowGroupSize(actualTotalRowGroupSize);
 				LOGGER.info(
 						"{} asynchronous flush total row group size:{}, actual:{}, less:{}, time consume:{} ms, flush rate:{} bytes/ms",
-						nameSpacePath, primaryRowGroupSize, actualTotalRowGroupSize,
+						getProcessorName(), primaryRowGroupSize, actualTotalRowGroupSize,
 						primaryRowGroupSize - actualTotalRowGroupSize, timeInterval,
 						actualTotalRowGroupSize / timeInterval);
 			}

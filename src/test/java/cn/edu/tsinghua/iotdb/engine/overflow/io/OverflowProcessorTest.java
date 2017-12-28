@@ -12,10 +12,10 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import cn.edu.tsinghua.iotdb.engine.MetadataManagerHelper;
 import cn.edu.tsinghua.iotdb.engine.PathUtils;
 import cn.edu.tsinghua.iotdb.engine.bufferwrite.Action;
 import cn.edu.tsinghua.iotdb.engine.bufferwrite.FileNodeConstants;
-import cn.edu.tsinghua.iotdb.engine.lru.MetadataManagerHelper;
 import cn.edu.tsinghua.iotdb.exception.OverflowProcessorException;
 import cn.edu.tsinghua.iotdb.utils.EnvironmentUtils;
 import cn.edu.tsinghua.tsfile.common.conf.TSFileConfig;

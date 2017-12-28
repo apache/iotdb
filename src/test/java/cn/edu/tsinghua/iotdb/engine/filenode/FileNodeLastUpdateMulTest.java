@@ -15,17 +15,16 @@ import org.junit.Test;
 
 import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
 import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
+import cn.edu.tsinghua.iotdb.engine.MetadataManagerHelper;
 import cn.edu.tsinghua.iotdb.engine.bufferwrite.Action;
 import cn.edu.tsinghua.iotdb.engine.bufferwrite.BufferWriteProcessor;
 import cn.edu.tsinghua.iotdb.engine.bufferwrite.FileNodeConstants;
-import cn.edu.tsinghua.iotdb.engine.lru.MetadataManagerHelper;
 import cn.edu.tsinghua.iotdb.engine.overflow.io.OverflowProcessor;
 import cn.edu.tsinghua.iotdb.exception.BufferWriteProcessorException;
 import cn.edu.tsinghua.iotdb.exception.FileNodeProcessorException;
 import cn.edu.tsinghua.iotdb.exception.OverflowProcessorException;
 import cn.edu.tsinghua.iotdb.exception.PathErrorException;
 import cn.edu.tsinghua.iotdb.metadata.MManager;
-import cn.edu.tsinghua.iotdb.service.IoTDB;
 import cn.edu.tsinghua.iotdb.utils.EnvironmentUtils;
 import cn.edu.tsinghua.tsfile.common.conf.TSFileConfig;
 import cn.edu.tsinghua.tsfile.common.conf.TSFileDescriptor;
@@ -355,7 +354,7 @@ public class FileNodeLastUpdateMulTest {
 						// file 2: [200,400...)
 						BufferWriteProcessor bfProcessor = processor.getBufferWriteProcessor(nameSpacePath, 200);
 						bfProcessor.write(deltaObjectId2, measurementId, 200, TSDataType.INT32, String.valueOf(200));
-						processor.addIntervalFileNode(200, bfProcessor.getFileAbsolutePath());
+						processor.addIntervalFileNode(200, bfProcessor.getFileRelativePath());
 						processor.setIntervalFileNodeStartTime(deltaObjectId2, 200);
 						processor.setLastUpdateTime(deltaObjectId2, 200);
 						bfProcessor.write(deltaObjectId2, measurementId, 400, TSDataType.INT32, String.valueOf(400));
@@ -452,7 +451,7 @@ public class FileNodeLastUpdateMulTest {
 					assertEquals(true, bfProcessor.isNewProcessor());
 					bfProcessor.write(deltaObjectId, measurementId, begin, TSDataType.INT32, String.valueOf(begin));
 					bfProcessor.setNewProcessor(false);
-					processor.addIntervalFileNode(begin, bfProcessor.getFileAbsolutePath());
+					processor.addIntervalFileNode(begin, bfProcessor.getFileRelativePath());
 					processor.setIntervalFileNodeStartTime(deltaObjectId, begin);
 					processor.setLastUpdateTime(deltaObjectId, begin);
 				} catch (FileNodeProcessorException e) {

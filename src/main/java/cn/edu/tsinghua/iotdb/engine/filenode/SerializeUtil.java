@@ -29,7 +29,7 @@ public class SerializeUtil<T> {
 			oos.writeObject(obj);
 			oos.flush();
 		} catch (IOException e) {
-			LOGGER.error("Serizelize the object failed, object {}.", obj);
+			LOGGER.error("Serizelize the object failed.", e);
 			throw e;
 		} finally {
 			if (oos != null) {
@@ -50,7 +50,7 @@ public class SerializeUtil<T> {
 			result = (T) ois.readObject();
 			ois.close();
 		} catch (Exception e) {
-			LOGGER.error("Deserialize the object error.");
+			LOGGER.error("Deserialize the object error.", e);
 			if (ois != null) {
 				ois.close();
 			}

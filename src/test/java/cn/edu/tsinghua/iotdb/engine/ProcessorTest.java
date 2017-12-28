@@ -1,4 +1,4 @@
-package cn.edu.tsinghua.iotdb.engine.lru;
+package cn.edu.tsinghua.iotdb.engine;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -7,6 +7,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import cn.edu.tsinghua.iotdb.engine.Processor;
 import cn.edu.tsinghua.iotdb.utils.EnvironmentUtils;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 
@@ -14,10 +15,10 @@ import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
  * @author liukun
  *
  */
-public class LRUProcessorTest {
+public class ProcessorTest {
 	
 	
-	class TestLRUProcessor extends LRUProcessor{
+	class TestLRUProcessor extends Processor{
 
 		public TestLRUProcessor(String nameSpacePath) {
 			super(nameSpacePath);
