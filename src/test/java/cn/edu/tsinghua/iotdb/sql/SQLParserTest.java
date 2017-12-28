@@ -26,7 +26,7 @@ public class SQLParserTest {
                 "dft_rate", "0.4", "TOK_CLAUSE", "write_encoding", "False"));
         ArrayList<String> rec = new ArrayList<>();
         ASTNode astTree = ParseGenerator.generateAST("create timeseries root.laptop.d0.s2 with datatype=FLOAT" +
-                ",encoding=RLE,freq_encoding=DFT,write_main_freq=true,dft_pack_length=300,dft_rate=0.4,write_encoding=False");
+                ",encoding=RLE,freq_encoding=DFT,write_main_freq=true,dft_pack_length=300,dft_rate=0.4,write_encoding=False;");
         astTree = ParseUtils.findRootNonNullToken(astTree);
         recursivePrintSon(astTree, rec);
 
@@ -55,11 +55,27 @@ public class SQLParserTest {
     }
 
     @Test
-    public void setStorageGroup() throws ParseException {
+    public void setStorageGroup1() throws ParseException {
         // template for test case
         ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_SET", "TOK_STORAGEGROUP", "TOK_PATH","TOK_ROOT", "a", "b","c"));
         ArrayList<String> rec = new ArrayList<>();
         ASTNode astTree = ParseGenerator.generateAST("set storage group to root.a.b.c");
+        astTree = ParseUtils.findRootNonNullToken(astTree);
+        recursivePrintSon(astTree, rec);
+
+        int i = 0;
+        while (i <= rec.size() - 1) {
+            assertEquals(rec.get(i), ans.get(i));
+            i++;
+        }
+    }
+    
+    @Test
+    public void setStorageGroup2() throws ParseException {
+        // template for test case
+        ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_SET", "TOK_STORAGEGROUP", "TOK_PATH","TOK_ROOT", "a", "b","c"));
+        ArrayList<String> rec = new ArrayList<>();
+        ASTNode astTree = ParseGenerator.generateAST("set storage group to root.a.b.c;");
         astTree = ParseUtils.findRootNonNullToken(astTree);
         recursivePrintSon(astTree, rec);
 
@@ -93,7 +109,7 @@ public class SQLParserTest {
         ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_INSERT", "TOK_PATH","TOK_ROOT", "vehicle", "d0",
                 "TOK_MULT_IDENTIFIER", "TOK_TIME", "s0","s1" ,"TOK_MULT_VALUE","TOK_DATETIME" ,"now", "-1011.666", "1231"));
         ArrayList<String> rec = new ArrayList<>();
-        ASTNode astTree = ParseGenerator.generateAST("insert into root.vehicle.d0 (timestamp, s0, s1)  values(now() , -1011.666, 1231)");
+        ASTNode astTree = ParseGenerator.generateAST("insert into root.vehicle.d0 (timestamp, s0, s1)  values(now() , -1011.666, 1231);");
         astTree = ParseUtils.findRootNonNullToken(astTree);
         recursivePrintSon(astTree, rec);
 
@@ -150,7 +166,7 @@ public class SQLParserTest {
         		"TOK_VALUE", "TOK_PATH", "mac", "d1", "s2", "'string'",
         		"TOK_WHERE", "<", "TOK_PATH", "time", "100"));
         ArrayList<String> rec = new ArrayList<>();
-        ASTNode astTree = ParseGenerator.generateAST("UPDATE root.laptop.* SET d1.s1 = -33000, mac.d1.s2 = 'string' WHERE time < 100");
+        ASTNode astTree = ParseGenerator.generateAST("UPDATE root.laptop.* SET d1.s1 = -33000, mac.d1.s2 = 'string' WHERE time < 100;");
         astTree = ParseUtils.findRootNonNullToken(astTree);
         recursivePrintSon(astTree, rec);
 
@@ -190,7 +206,7 @@ public class SQLParserTest {
         		"TOK_VALUE", "TOK_PATH", "mac", "d1", "s2", "FALSE",
         		"TOK_WHERE", "and", "not", "<=", "TOK_PATH",  "time", "1", "=", "TOK_PATH", "d1", "s2", "TRUE"));
         ArrayList<String> rec = new ArrayList<>();
-        ASTNode astTree = ParseGenerator.generateAST("UPDATE root.laptop SET d1.s1 = -33.54, mac.d1.s2 = FALSE WHERE not(time <= 1) and  d1.s2 = TRUE");
+        ASTNode astTree = ParseGenerator.generateAST("UPDATE root.laptop SET d1.s1 = -33.54, mac.d1.s2 = FALSE WHERE not(time <= 1) and  d1.s2 = TRUE;");
         astTree = ParseUtils.findRootNonNullToken(astTree);
         recursivePrintSon(astTree, rec);
 
@@ -223,7 +239,7 @@ public class SQLParserTest {
         ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_DELETE", "TOK_PATH","TOK_ROOT", "d1", "s1", "TOK_WHERE", "<",
                 "TOK_PATH", "time", "TOK_DATETIME", "now"));
         ArrayList<String> rec = new ArrayList<>();
-        ASTNode astTree = ParseGenerator.generateAST("delete from root.d1.s1 where time < now()");
+        ASTNode astTree = ParseGenerator.generateAST("delete from root.d1.s1 where time < now();");
         astTree = ParseUtils.findRootNonNullToken(astTree);
         recursivePrintSon(astTree, rec);
 
@@ -257,7 +273,7 @@ public class SQLParserTest {
         ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_DELETE", "TOK_PATH", "TOK_ROOT","d1", "s1", "TOK_PATH", "TOK_ROOT","d2", "s3", "TOK_WHERE", "<",
                 "TOK_PATH", "time", "TOK_DATETIME", "now"));
         ArrayList<String> rec = new ArrayList<>();
-        ASTNode astTree = ParseGenerator.generateAST("delete from root.d1.s1,root.d2.s3 where time < now()");
+        ASTNode astTree = ParseGenerator.generateAST("delete from root.d1.s1,root.d2.s3 where time < now();");
         astTree = ParseUtils.findRootNonNullToken(astTree);
         recursivePrintSon(astTree, rec);
 
@@ -309,7 +325,7 @@ public class SQLParserTest {
         ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_DELETE", "TOK_TIMESERIES", 
         		"TOK_PATH", "TOK_ROOT", "dt", "a", "b", "d1", "s1"));
         ArrayList<String> rec = new ArrayList<>();
-        ASTNode astTree = ParseGenerator.generateAST("delete timeseries root.dt.a.b.d1.s1");
+        ASTNode astTree = ParseGenerator.generateAST("delete timeseries root.dt.a.b.d1.s1;");
         astTree = ParseUtils.findRootNonNullToken(astTree);
         recursivePrintSon(astTree, rec);
 
@@ -344,7 +360,7 @@ public class SQLParserTest {
         		"TOK_PATH", "TOK_ROOT", "dt", "a", "b",
         		"TOK_PATH", "TOK_ROOT", "*"));
         ArrayList<String> rec = new ArrayList<>();
-        ASTNode astTree = ParseGenerator.generateAST("delete timeseries root.dt.a.b,root.*");
+        ASTNode astTree = ParseGenerator.generateAST("delete timeseries root.dt.a.b,root.*;");
         astTree = ParseUtils.findRootNonNullToken(astTree);
         recursivePrintSon(astTree, rec);
 
@@ -388,7 +404,7 @@ public class SQLParserTest {
                 "<", "TOK_PATH", "TOK_ROOT", "laptop", "device_1", "sensor_1", "-2.2E10",
                 ">", "TOK_PATH", "time", "TOK_DATETIME" ,"now"));
         ArrayList<String> rec = new ArrayList<>();
-        ASTNode astTree = ParseGenerator.generateAST("SELECT device_1.sensor_1,device_2.sensor_2 FROM root.vehicle WHERE root.laptop.device_1.sensor_1 < -2.2E10 && time > now()");
+        ASTNode astTree = ParseGenerator.generateAST("SELECT device_1.sensor_1,device_2.sensor_2 FROM root.vehicle WHERE root.laptop.device_1.sensor_1 < -2.2E10 && time > now();");
         astTree = ParseUtils.findRootNonNullToken(astTree);
         recursivePrintSon(astTree, rec);
 
@@ -431,7 +447,7 @@ public class SQLParserTest {
                 "<", "TOK_PATH", "time", "1234567",
                 ">", "TOK_PATH", "time", "TOK_DATETIME" ,"2017-6-2T12:00:12+07:00"));
         ArrayList<String> rec = new ArrayList<>();
-        ASTNode astTree = ParseGenerator.generateAST("SELECT * FROM root.vehicle WHERE time < 1234567 || time > 2017-6-2T12:00:12+07:00");
+        ASTNode astTree = ParseGenerator.generateAST("SELECT * FROM root.vehicle WHERE time < 1234567 || time > 2017-6-2T12:00:12+07:00;");
         astTree = ParseUtils.findRootNonNullToken(astTree);
         recursivePrintSon(astTree, rec);
 
@@ -476,7 +492,7 @@ public class SQLParserTest {
         		"<", "TOK_PATH", "s1", "2000",
         		">=", "TOK_PATH", "time", "1234567"));
         ArrayList<String> rec = new ArrayList<>();
-        ASTNode astTree = ParseGenerator.generateAST("select sum(s2) FROM root.vehicle.d1 WHERE s1 < 2000 or time >= 1234567");
+        ASTNode astTree = ParseGenerator.generateAST("select sum(s2) FROM root.vehicle.d1 WHERE s1 < 2000 or time >= 1234567;");
         astTree = ParseUtils.findRootNonNullToken(astTree);
         recursivePrintSon(astTree, rec);
 
@@ -564,7 +580,7 @@ public class SQLParserTest {
         		"select sum(s2) "
         		+ "FROM root.vehicle.d1 "
         		+ "WHERE s1 < 2000 or time >= 1234567 "
-        		+ "group by(111ms, [123,2017-6-2T12:00:12+07:00], [55555, now()])");
+        		+ "group by(111ms, [123,2017-6-2T12:00:12+07:00], [55555, now()]);");
         astTree = ParseUtils.findRootNonNullToken(astTree);
         recursivePrintSon(astTree, rec);
 
@@ -614,7 +630,7 @@ public class SQLParserTest {
         // template for test case
         ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_CREATE", "TOK_USER", "myname", "TOK_PASSWORD", "mypwd"));
         ArrayList<String> rec = new ArrayList<>();
-        ASTNode astTree = ParseGenerator.generateAST("create user myname mypwd");
+        ASTNode astTree = ParseGenerator.generateAST("create user myname mypwd;");
         astTree = ParseUtils.findRootNonNullToken(astTree);
         recursivePrintSon(astTree, rec);
 
@@ -646,7 +662,7 @@ public class SQLParserTest {
         // template for test case
         ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_UPDATE", "TOK_UPDATE_PSWD", "myname", "newpassword"));
         ArrayList<String> rec = new ArrayList<>();
-        ASTNode astTree = ParseGenerator.generateAST("update user myname set password newpassword");
+        ASTNode astTree = ParseGenerator.generateAST("update user myname set password newpassword;");
         astTree = ParseUtils.findRootNonNullToken(astTree);
         recursivePrintSon(astTree, rec);
 
@@ -678,7 +694,7 @@ public class SQLParserTest {
         // template for test case
         ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_DROP", "TOK_ROLE", "admin"));
         ArrayList<String> rec = new ArrayList<>();
-        ASTNode astTree = ParseGenerator.generateAST("drop role admin");
+        ASTNode astTree = ParseGenerator.generateAST("drop role admin;");
         astTree = ParseUtils.findRootNonNullToken(astTree);
         recursivePrintSon(astTree, rec);
 
@@ -710,7 +726,7 @@ public class SQLParserTest {
         // template for test case
         ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_GRANT", "TOK_ROLE", "admin", "TOK_PRIVILEGES", "'create'", "'delete'","TOK_PATH","TOK_ROOT", "laptop", "d1", "s1"));
         ArrayList<String> rec = new ArrayList<>();
-        ASTNode astTree = ParseGenerator.generateAST("grant role admin privileges 'create','delete' on root.laptop.d1.s1");
+        ASTNode astTree = ParseGenerator.generateAST("grant role admin privileges 'create','delete' on root.laptop.d1.s1;");
         astTree = ParseUtils.findRootNonNullToken(astTree);
         recursivePrintSon(astTree, rec);
 
@@ -742,7 +758,7 @@ public class SQLParserTest {
         // template for test case
         ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_REVOKE", "TOK_ROLE", "admin", "TOK_PRIVILEGES", "'create'", "'delete'", "TOK_PATH", "TOK_ROOT", "laptop", "d1", "s1"));
         ArrayList<String> rec = new ArrayList<>();
-        ASTNode astTree = ParseGenerator.generateAST("revoke role admin privileges 'create','delete' on root.laptop.d1.s1");
+        ASTNode astTree = ParseGenerator.generateAST("revoke role admin privileges 'create','delete' on root.laptop.d1.s1;");
         astTree = ParseUtils.findRootNonNullToken(astTree);
         recursivePrintSon(astTree, rec);
 
@@ -774,7 +790,7 @@ public class SQLParserTest {
         // template for test case
         ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_REVOKE", "TOK_ROLE", "admin", "TOK_USER", "Tom"));
         ArrayList<String> rec = new ArrayList<>();
-        ASTNode astTree = ParseGenerator.generateAST("revoke admin from Tom");
+        ASTNode astTree = ParseGenerator.generateAST("revoke admin from Tom;");
         astTree = ParseUtils.findRootNonNullToken(astTree);
         recursivePrintSon(astTree, rec);
 
@@ -823,7 +839,7 @@ public class SQLParserTest {
         // template for test case
         ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_ADD", "TOK_LABEL", "myLabel", "TOK_PROPERTY", "myProp"));
         ArrayList<String> rec = new ArrayList<>();
-        ASTNode astTree = ParseGenerator.generateAST("ADD LABEL myLabel TO PROPERTY myProp");
+        ASTNode astTree = ParseGenerator.generateAST("ADD LABEL myLabel TO PROPERTY myProp;");
         astTree = ParseUtils.findRootNonNullToken(astTree);
         recursivePrintSon(astTree, rec);
 
@@ -855,7 +871,7 @@ public class SQLParserTest {
         // template for test case
         ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_LINK", "TOK_PATH", "TOK_ROOT", "a", "b", "c", "TOK_LABEL", "myLabel", "TOK_PROPERTY", "myProp"));
         ArrayList<String> rec = new ArrayList<>();
-        ASTNode astTree = ParseGenerator.generateAST("link root.a.b.c to myProp.myLabel");
+        ASTNode astTree = ParseGenerator.generateAST("link root.a.b.c to myProp.myLabel;");
         astTree = ParseUtils.findRootNonNullToken(astTree);
         recursivePrintSon(astTree, rec);
 
@@ -888,7 +904,7 @@ public class SQLParserTest {
         // template for test case
         ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_SHOW_METADATA"));
         ArrayList<String> rec = new ArrayList<>();
-        ASTNode astTree = ParseGenerator.generateAST("show metadata");
+        ASTNode astTree = ParseGenerator.generateAST("show metadata;");
         astTree = ParseUtils.findRootNonNullToken(astTree);
         recursivePrintSon(astTree, rec);
 
@@ -943,7 +959,7 @@ public class SQLParserTest {
                 "TOK_WITH", "TOK_INDEX_KV", "xxx", "50", "TOK_INDEX_KV", "xxx", "123",
                 "TOK_WHERE", ">", "TOK_PATH", "time" ,"TOK_DATETIME", "now"));
         ArrayList<String> rec = new ArrayList<>();
-        ASTNode astTree = ParseGenerator.generateAST("create index on root.a.b.c using kv-match2 with xxx=50,xxx=123 where time > now()");
+        ASTNode astTree = ParseGenerator.generateAST("create index on root.a.b.c using kv-match2 with xxx=50,xxx=123 where time > now();");
         astTree = ParseUtils.findRootNonNullToken(astTree);
         recursivePrintSon(astTree, rec);
 
@@ -984,7 +1000,7 @@ public class SQLParserTest {
                 "TOK_FROM", "TOK_PATH", "TOK_ROOT", "a", "b"));
         ArrayList<String> rec = new ArrayList<>();
 //        ASTNode astTree = ParseGenerator.generateAST("select index kvindex(root.vehicle.d0.s0, root.vehicle.d0.s0, 1, 3, 0.0, 1.0, 0.0) from root.vehicle.d0.s0");
-        ASTNode astTree = ParseGenerator.generateAST("select index subsequence_matching(root.a.b.c, root.a.b.c, 123, 132 , 123.1, 0.123, 0.5) from root.a.b");
+        ASTNode astTree = ParseGenerator.generateAST("select index subsequence_matching(root.a.b.c, root.a.b.c, 123, 132 , 123.1, 0.123, 0.5) from root.a.b;");
         astTree = ParseUtils.findRootNonNullToken(astTree);
         recursivePrintSon(astTree, rec);
 
