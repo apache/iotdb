@@ -1,6 +1,6 @@
 package cn.edu.tsinghua.iotdb.exception;
 
-public class FileNodeManagerException extends LRUManagerException {
+public class FileNodeManagerException extends Exception {
 
 	private static final long serialVersionUID = 9001649171768311032L;
 

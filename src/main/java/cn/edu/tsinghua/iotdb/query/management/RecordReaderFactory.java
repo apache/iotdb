@@ -89,10 +89,10 @@ public class RecordReaderFactory {
 		try {
 			for (int i = 0; i < fileNodes.size() - 1; i++) {
 				IntervalFileNode fileNode = fileNodes.get(i);
-				filePathList.add(fileNode.filePath);
+				filePathList.add(fileNode.getFilePath());
 			}
 			if (hasUnEnvelopedFile) {
-				String unsealedFilePath = fileNodes.get(fileNodes.size() - 1).filePath;
+				String unsealedFilePath = fileNodes.get(fileNodes.size() - 1).getFilePath();
 
 				// if currentPage is null, both currentPage and pageList must both are null
 				if (queryStructure.getCurrentPage() == null) {
@@ -106,7 +106,7 @@ public class RecordReaderFactory {
 				}
 			} else {
 				if (fileNodes.size() > 0) {
-					filePathList.add(fileNodes.get(fileNodes.size() - 1).filePath);
+					filePathList.add(fileNodes.get(fileNodes.size() - 1).getFilePath());
 				}
 				if (queryStructure.getCurrentPage() == null) {
 					recordReader = new RecordReader(filePathList, deltaObjectUID, measurementID, token,

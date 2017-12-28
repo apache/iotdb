@@ -1,6 +1,5 @@
 package cn.edu.tsinghua.iotdb.engine.filenode;
 
-
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
@@ -22,10 +21,10 @@ import org.slf4j.LoggerFactory;
 
 import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
 import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
+import cn.edu.tsinghua.iotdb.engine.Processor;
 import cn.edu.tsinghua.iotdb.engine.bufferwrite.Action;
 import cn.edu.tsinghua.iotdb.engine.bufferwrite.BufferWriteProcessor;
 import cn.edu.tsinghua.iotdb.engine.bufferwrite.FileNodeConstants;
-import cn.edu.tsinghua.iotdb.engine.lru.LRUProcessor;
 import cn.edu.tsinghua.iotdb.engine.overflow.io.OverflowProcessor;
 import cn.edu.tsinghua.iotdb.exception.BufferWriteProcessorException;
 import cn.edu.tsinghua.iotdb.exception.FileNodeProcessorException;
@@ -57,7 +56,7 @@ import cn.edu.tsinghua.tsfile.timeseries.write.record.DataPoint;
 import cn.edu.tsinghua.tsfile.timeseries.write.record.TSRecord;
 import cn.edu.tsinghua.tsfile.timeseries.write.schema.FileSchema;
 
-public class FileNodeProcessor extends LRUProcessor {
+public class FileNodeProcessor extends Processor {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(FileNodeProcessor.class);
 	private static final TSFileConfig TsFileConf = TSFileDescriptor.getInstance().getConfig();
@@ -80,6 +79,7 @@ public class FileNodeProcessor extends LRUProcessor {
 
 	private static final String restoreFile = ".restore";
 	private String fileNodeRestoreFilePath = null;
+	private String baseDirPath;
 
 	private BufferWriteProcessor bufferWriteProcessor = null;
 	private OverflowProcessor overflowProcessor = null;
@@ -190,25 +190,25 @@ public class FileNodeProcessor extends LRUProcessor {
 		fileNodeProcessorStore.setEmptyIntervalFileNode(emptyIntervalFileNode);
 	}
 
-	public FileNodeProcessor(String fileNodeDirPath, String nameSpacePath, Map<String, Object> parameters)
+	public FileNodeProcessor(String fileNodeDirPath, String processorName, Map<String, Object> parameters)
 			throws FileNodeProcessorException {
-		super(nameSpacePath);
+		super(processorName);
 		this.parameters = parameters;
 		if (fileNodeDirPath.length() > 0
 				&& fileNodeDirPath.charAt(fileNodeDirPath.length() - 1) != File.separatorChar) {
 			fileNodeDirPath = fileNodeDirPath + File.separatorChar;
 		}
-		String dataDirPath = fileNodeDirPath + nameSpacePath;
-		File dataDir = new File(dataDirPath);
+		this.baseDirPath = fileNodeDirPath + processorName;
+		File dataDir = new File(this.baseDirPath);
 		if (!dataDir.exists()) {
 			dataDir.mkdirs();
-			LOGGER.warn("The filenode processor data dir doesn't exists, and mkdir the dir {}", dataDirPath);
+			LOGGER.warn("The filenode processor data dir doesn't exists, and mkdir the dir {}", baseDirPath);
 		}
-		fileNodeRestoreFilePath = new File(dataDir, nameSpacePath + restoreFile).getAbsolutePath();
+		fileNodeRestoreFilePath = new File(dataDir, processorName + restoreFile).getPath();
 		try {
 			fileNodeProcessorStore = readStoreToDisk();
 		} catch (FileNodeProcessorException e) {
-			LOGGER.error("Restore the FileNodeProcessor information error, the nameSpacePath is {}", nameSpacePath);
+			LOGGER.error("Restore the FileNodeProcessor information error, the filenode is {}", processorName);
 			throw new FileNodeProcessorException(e);
 		}
 		// TODO deep clone
@@ -261,15 +261,15 @@ public class FileNodeProcessor extends LRUProcessor {
 			currentIntervalFileNode = newFileNodes.get(newFileNodes.size() - 1);
 
 			// this bufferwrite file is not close by normal operation
-			String damagedFilePath = newFileNodes.get(newFileNodes.size() - 1).filePath;
+			String damagedFilePath = newFileNodes.get(newFileNodes.size() - 1).getFilePath();
 			String[] fileNames = damagedFilePath.split("\\" + File.separator);
 			// all information to recovery the damaged file.
-			// contains file path, action parameters and nameSpacePath
+			// contains file path, action parameters and processorName
 			parameters.put(FileNodeConstants.BUFFERWRITE_FLUSH_ACTION, bufferwriteFlushAction);
 			parameters.put(FileNodeConstants.BUFFERWRITE_CLOSE_ACTION, bufferwriteCloseAction);
 			parameters.put(FileNodeConstants.FILENODE_PROCESSOR_FLUSH_ACTION, flushFileNodeProcessorAction);
 			try {
-				bufferWriteProcessor = new BufferWriteProcessor(nameSpacePath, fileNames[fileNames.length - 1],
+				bufferWriteProcessor = new BufferWriteProcessor(getProcessorName(), fileNames[fileNames.length - 1],
 						parameters);
 			} catch (BufferWriteProcessorException e) {
 				// unlock
@@ -282,7 +282,7 @@ public class FileNodeProcessor extends LRUProcessor {
 		parameters.put(FileNodeConstants.OVERFLOW_FLUSH_ACTION, overflowFlushAction);
 		parameters.put(FileNodeConstants.FILENODE_PROCESSOR_FLUSH_ACTION, flushFileNodeProcessorAction);
 		try {
-			overflowProcessor = new OverflowProcessor(nameSpacePath, parameters);
+			overflowProcessor = new OverflowProcessor(getProcessorName(), parameters);
 		} catch (OverflowProcessorException e) {
 			// unlock
 			writeUnlock();
@@ -325,7 +325,7 @@ public class FileNodeProcessor extends LRUProcessor {
 		addALLFileIntoIndex(newFileNodes);
 	}
 
-	public BufferWriteProcessor getBufferWriteProcessor(String namespacePath, long insertTime)
+	public BufferWriteProcessor getBufferWriteProcessor(String processorName, long insertTime)
 			throws FileNodeProcessorException {
 		if (bufferWriteProcessor == null) {
 			Map<String, Object> parameters = new HashMap<>();
@@ -334,11 +334,12 @@ public class FileNodeProcessor extends LRUProcessor {
 			parameters.put(FileNodeConstants.FILENODE_PROCESSOR_FLUSH_ACTION, flushFileNodeProcessorAction);
 			// construct processor or restore
 			try {
-				bufferWriteProcessor = new BufferWriteProcessor(namespacePath,
+				bufferWriteProcessor = new BufferWriteProcessor(processorName,
 						insertTime + FileNodeConstants.BUFFERWRITE_FILE_SEPARATOR + System.currentTimeMillis(),
 						parameters);
 			} catch (BufferWriteProcessorException e) {
-				LOGGER.error("Get the bufferwrite processor instance failed, the nameSpacePath is {}.", namespacePath);
+				LOGGER.error("Get the bufferwrite processor instance failed, the bufferwrite processor is {}.",
+						processorName);
 				throw new FileNodeProcessorException(e);
 			}
 			;
@@ -354,17 +355,17 @@ public class FileNodeProcessor extends LRUProcessor {
 		return bufferWriteProcessor;
 	}
 
-	public OverflowProcessor getOverflowProcessor(String nameSpacePath, Map<String, Object> parameters)
+	public OverflowProcessor getOverflowProcessor(String processorName, Map<String, Object> parameters)
 			throws FileNodeProcessorException {
 		if (overflowProcessor == null) {
 			// construct processor or restore
 			parameters.put(FileNodeConstants.OVERFLOW_FLUSH_ACTION, overflowFlushAction);
 			parameters.put(FileNodeConstants.FILENODE_PROCESSOR_FLUSH_ACTION, flushFileNodeProcessorAction);
 			try {
-				overflowProcessor = new OverflowProcessor(nameSpacePath, parameters);
+				overflowProcessor = new OverflowProcessor(processorName, parameters);
 			} catch (OverflowProcessorException e) {
-				LOGGER.error("Get the overflow processor instance failed, the nameSpacePath is {}, reason is {}",
-						nameSpacePath, e);
+				LOGGER.error("Get the overflow processor instance failed, the overflow processor is {}, reason is {}",
+						processorName, e);
 				throw new FileNodeProcessorException(e);
 			}
 		}
@@ -516,7 +517,7 @@ public class FileNodeProcessor extends LRUProcessor {
 			multiPassLockToken++;
 		}
 		newMultiPassTokenSet.add(multiPassLockToken);
-		LOGGER.debug("Add multi token:{}, nsPath:{}.", multiPassLockToken, nameSpacePath);
+		LOGGER.debug("Add multi token:{}, nsPath:{}.", multiPassLockToken, getProcessorName());
 		return multiPassLockToken;
 	}
 
@@ -524,7 +525,7 @@ public class FileNodeProcessor extends LRUProcessor {
 		if (newMultiPassTokenSet.contains(token)) {
 			newMultiPassLock.readLock().unlock();
 			newMultiPassTokenSet.remove(token);
-			LOGGER.debug("Remove multi token:{}, nspath:{}, new set:{}, lock:{}", token, nameSpacePath,
+			LOGGER.debug("Remove multi token:{}, nspath:{}, new set:{}, lock:{}", token, getProcessorName(),
 					newMultiPassTokenSet, newMultiPassLock);
 			return true;
 		} else if (oldMultiPassTokenSet != null && oldMultiPassTokenSet.contains(token)) {
@@ -596,7 +597,7 @@ public class FileNodeProcessor extends LRUProcessor {
 				long s1 = intervalFileNode.getStartTime(deltaObjectId);
 				long e1 = intervalFileNode.getEndTime(deltaObjectId);
 				if (e1 >= startTime && (s1 <= endTime || endTime == -1)) {
-					DataFileInfo dataFileInfo = new DataFileInfo(s1, e1, intervalFileNode.filePath);
+					DataFileInfo dataFileInfo = new DataFileInfo(s1, e1, intervalFileNode.getFilePath());
 					dataFileInfos.add(dataFileInfo);
 				}
 			}
@@ -606,7 +607,7 @@ public class FileNodeProcessor extends LRUProcessor {
 
 	public void merge() throws FileNodeProcessorException {
 
-		LOGGER.debug("begin to merge: the filenode is {}, the thread id is {}", nameSpacePath,
+		LOGGER.debug("begin to merge: the filenode is {}, the thread id is {}", getProcessorName(),
 				Thread.currentThread().getId());
 		//
 		// change status from work to merge
@@ -658,8 +659,8 @@ public class FileNodeProcessor extends LRUProcessor {
 			try {
 				writeStoreToDisk(fileNodeProcessorStore);
 			} catch (FileNodeProcessorException e) {
-				LOGGER.error("Merge: write filenode information to revocery file failed, the nameSpacePath is {}.",
-						nameSpacePath);
+				LOGGER.error("Merge: write filenode information to revocery file failed, the filenode is {}.",
+						getProcessorName());
 				writeUnlock();
 				throw new FileNodeProcessorException(e);
 			}
@@ -687,7 +688,7 @@ public class FileNodeProcessor extends LRUProcessor {
 			throw new FileNodeProcessorException(e);
 		}
 		// unlock this filenode
-		LOGGER.debug("Merge: the filenode is {}, status from work to merge.", nameSpacePath);
+		LOGGER.debug("Merge: the filenode is {}, status from work to merge.", getProcessorName());
 		writeUnlock();
 
 		// query buffer data and overflow data, and merge them
@@ -773,39 +774,39 @@ public class FileNodeProcessor extends LRUProcessor {
 						}
 					}
 					IntervalFileNode node = new IntervalFileNode(startTimeMap, endTimeMap,
-							intervalFileNode.overflowChangeType, intervalFileNode.filePath);
+							intervalFileNode.overflowChangeType, intervalFileNode.getRelativePath());
 					result.add(node);
 				}
 			}
 		} else {
-			LOGGER.error("No file was changed when mergin, the filenode is {}", nameSpacePath);
-			throw new FileNodeProcessorException("No file was changed when merging, the filenode is " + nameSpacePath);
+			LOGGER.error("No file was changed when mergin, the filenode is {}", getProcessorName());
+			throw new FileNodeProcessorException(
+					"No file was changed when merging, the filenode is " + getProcessorName());
 		}
 		return result;
 	}
 
-    private List<DataFileInfo> getDataFileInfoForIndex(Path path, List<IntervalFileNode> sourceFileNodes) {
-        String deltaObjectId = path.getDeltaObjectToString();
-        List<DataFileInfo> dataFileInfos = new ArrayList<>();
-        for (IntervalFileNode intervalFileNode : sourceFileNodes) {
-            if (intervalFileNode.isClosed()) {
-                if (intervalFileNode.getStartTime(deltaObjectId) != -1) {
-                    DataFileInfo dataFileInfo = new DataFileInfo(intervalFileNode.getStartTime
-                            (deltaObjectId),
-                            intervalFileNode.getEndTime(deltaObjectId), intervalFileNode.filePath);
-                    dataFileInfos.add(dataFileInfo);
-                }
-            }
-        }
-        return dataFileInfos;
-    }
+	private List<DataFileInfo> getDataFileInfoForIndex(Path path, List<IntervalFileNode> sourceFileNodes) {
+		String deltaObjectId = path.getDeltaObjectToString();
+		List<DataFileInfo> dataFileInfos = new ArrayList<>();
+		for (IntervalFileNode intervalFileNode : sourceFileNodes) {
+			if (intervalFileNode.isClosed()) {
+				if (intervalFileNode.getStartTime(deltaObjectId) != -1) {
+					DataFileInfo dataFileInfo = new DataFileInfo(intervalFileNode.getStartTime(deltaObjectId),
+							intervalFileNode.getEndTime(deltaObjectId), intervalFileNode.getFilePath());
+					dataFileInfos.add(dataFileInfo);
+				}
+			}
+		}
+		return dataFileInfos;
+	}
 
 	private void mergeIndex() throws FileNodeProcessorException {
 		try {
-			Map<String, Set<IndexType>> allIndexSeries = mManager.getAllIndexPaths(nameSpacePath);
+			Map<String, Set<IndexType>> allIndexSeries = mManager.getAllIndexPaths(getProcessorName());
 			if (!allIndexSeries.isEmpty()) {
 				LOGGER.info("merge all file and modify index file, the nameSpacePath is {}, the index path is {}",
-						nameSpacePath, allIndexSeries);
+						getProcessorName(), allIndexSeries);
 				for (Entry<String, Set<IndexType>> entry : allIndexSeries.entrySet()) {
 					String series = entry.getKey();
 					Path path = new Path(series);
@@ -829,10 +830,10 @@ public class FileNodeProcessor extends LRUProcessor {
 
 	private void switchMergeIndex() throws FileNodeProcessorException {
 		try {
-			Map<String, Set<IndexType>> allIndexSeries = mManager.getAllIndexPaths(nameSpacePath);
+			Map<String, Set<IndexType>> allIndexSeries = mManager.getAllIndexPaths(getProcessorName());
 			if (!allIndexSeries.isEmpty()) {
 				LOGGER.info("mergeswith all file and modify index file, the nameSpacePath is {}, the index path is {}",
-						nameSpacePath, allIndexSeries);
+						getProcessorName(), allIndexSeries);
 				for (Entry<String, Set<IndexType>> entry : allIndexSeries.entrySet()) {
 					String series = entry.getKey();
 					Path path = new Path(series);
@@ -856,8 +857,8 @@ public class FileNodeProcessor extends LRUProcessor {
 
 	private void switchMergeToWaitingv2(List<IntervalFileNode> backupIntervalFiles, boolean needEmpty)
 			throws FileNodeProcessorException {
-		LOGGER.debug("Merge: the filenode is {}, switch merge to wait, the backupIntervalFiles is {}", nameSpacePath,
-				backupIntervalFiles);
+		LOGGER.debug("Merge: the filenode is {}, switch merge to wait, the backupIntervalFiles is {}",
+				getProcessorName(), backupIntervalFiles);
 		writeLock();
 		try {
 			oldMultiPassTokenSet = newMultiPassTokenSet;
@@ -927,11 +928,11 @@ public class FileNodeProcessor extends LRUProcessor {
 				try {
 					writeStoreToDisk(fileNodeProcessorStore);
 				} catch (FileNodeProcessorException e) {
-					LOGGER.error("Merge: write filenode information to revocery file failed, the nameSpacePath is {}.",
-							nameSpacePath);
+					LOGGER.error("Merge: write filenode information to revocery file failed, the filenode is {}.",
+							getProcessorName());
 					throw new FileNodeProcessorException(
-							"Merge: write filenode information to revocery file failed, the nameSpacePath is "
-									+ nameSpacePath);
+							"Merge: write filenode information to revocery file failed, the filenode is "
+									+ getProcessorName());
 				}
 			}
 		} finally {
@@ -942,7 +943,7 @@ public class FileNodeProcessor extends LRUProcessor {
 	private void switchWaitingToWorkingv2(List<IntervalFileNode> backupIntervalFiles)
 			throws FileNodeProcessorException {
 
-		LOGGER.debug("Merge: the filenode is {}, switch wait to work, newIntervalFileNodes is {}", nameSpacePath,
+		LOGGER.debug("Merge: the filenode is {}, switch wait to work, newIntervalFileNodes is {}", getProcessorName(),
 				newFileNodes);
 
 		if (oldMultiPassLock != null) {
@@ -961,7 +962,7 @@ public class FileNodeProcessor extends LRUProcessor {
 						&& bufferwriteDirPath.charAt(bufferwriteDirPath.length() - 1) != File.separatorChar) {
 					bufferwriteDirPath = bufferwriteDirPath + File.separatorChar;
 				}
-				bufferwriteDirPath = bufferwriteDirPath + nameSpacePath;
+				bufferwriteDirPath = bufferwriteDirPath + getProcessorName();
 				File bufferwriteDir = new File(bufferwriteDirPath);
 				if (!bufferwriteDir.exists()) {
 					bufferwriteDir.mkdirs();
@@ -969,20 +970,20 @@ public class FileNodeProcessor extends LRUProcessor {
 
 				Set<String> bufferFiles = new HashSet<>();
 				for (IntervalFileNode bufferFileNode : newFileNodes) {
-					String bufferFilePath = bufferFileNode.filePath;
+					String bufferFilePath = bufferFileNode.getFilePath();
 					if (bufferFilePath != null) {
 						bufferFiles.add(bufferFilePath);
 					}
 				}
 				// add the restore file, if the last file is not closed
 				if (!newFileNodes.isEmpty() && !newFileNodes.get(newFileNodes.size() - 1).isClosed()) {
-					String bufferFileRestorePath = newFileNodes.get(newFileNodes.size() - 1).filePath + ".restore";
+					String bufferFileRestorePath = newFileNodes.get(newFileNodes.size() - 1).getFilePath() + ".restore";
 					File bufferRestoreFile = new File(bufferwriteDir, bufferFileRestorePath);
-					bufferFiles.add(bufferRestoreFile.getAbsolutePath());
+					bufferFiles.add(bufferRestoreFile.getPath());
 				}
 
 				for (File file : bufferwriteDir.listFiles()) {
-					if (!bufferFiles.contains(file.getAbsolutePath())) {
+					if (!bufferFiles.contains(file.getPath())) {
 						file.delete();
 					}
 				}
@@ -1029,6 +1030,7 @@ public class FileNodeProcessor extends LRUProcessor {
 
 		TsFileWriter recordWriter = null;
 		String outputPath = null;
+		String fileName = null;
 		for (String deltaObjectId : backupIntervalFile.getStartTimeMap().keySet()) {
 			// query one deltaObjectId
 			long startTime = backupIntervalFile.getStartTime(deltaObjectId);
@@ -1060,11 +1062,12 @@ public class FileNodeProcessor extends LRUProcessor {
 				LOGGER.warn("Merge query: deltaObjectId {}, time filter {}, no query data", deltaObjectId, timeFilter);
 			} else {
 				RowRecord firstRecord = queryer.getNextRecord();
-
 				if (recordWriter == null) {
-					outputPath = constructOutputFilePath(nameSpacePath, firstRecord.timestamp
-							+ FileNodeConstants.BUFFERWRITE_FILE_SEPARATOR + System.currentTimeMillis());
-					FileSchema fileSchema = constructFileSchema(nameSpacePath);
+					fileName = String.valueOf(firstRecord.timestamp + FileNodeConstants.BUFFERWRITE_FILE_SEPARATOR
+							+ System.currentTimeMillis());
+					outputPath = constructOutputFilePath(getProcessorName(), fileName);
+					fileName = getProcessorName() + File.separatorChar + fileName;
+					FileSchema fileSchema = constructFileSchema(getProcessorName());
 					recordWriter = new TsFileWriter(new File(outputPath), fileSchema, TsFileConf);
 				}
 
@@ -1091,17 +1094,17 @@ public class FileNodeProcessor extends LRUProcessor {
 		if (recordWriter != null) {
 			recordWriter.close();
 		}
-		backupIntervalFile.filePath = outputPath;
+		backupIntervalFile.setRelativePath(fileName);
 		backupIntervalFile.overflowChangeType = OverflowChangeType.NO_CHANGE;
 		backupIntervalFile.setStartTimeMap(startTimeMap);
 		backupIntervalFile.setEndTimeMap(endTimeMap);
 	}
 
-	private String constructOutputFilePath(String nameSpacePath, String fileName) {
+	private String constructOutputFilePath(String processorName, String fileName) {
 
 		String dataDirPath = TsFileDBConf.bufferWriteDir;
 		if (dataDirPath.charAt(dataDirPath.length() - 1) != File.separatorChar) {
-			dataDirPath = dataDirPath + File.separatorChar + nameSpacePath;
+			dataDirPath = dataDirPath + File.separatorChar + processorName;
 		}
 		File dataDir = new File(dataDirPath);
 		if (!dataDir.exists()) {
@@ -1109,17 +1112,17 @@ public class FileNodeProcessor extends LRUProcessor {
 			dataDir.mkdirs();
 		}
 		File outputFile = new File(dataDir, fileName);
-		return outputFile.getAbsolutePath();
+		return outputFile.getPath();
 	}
 
-	private FileSchema constructFileSchema(String nameSpacePath) throws WriteProcessException {
+	private FileSchema constructFileSchema(String processorName) throws WriteProcessException {
 
 		List<ColumnSchema> columnSchemaList;
-		columnSchemaList = mManager.getSchemaForFileName(nameSpacePath);
+		columnSchemaList = mManager.getSchemaForFileName(processorName);
 
 		FileSchema fileSchema = null;
 		try {
-			fileSchema = getFileSchemaFromColumnSchema(columnSchemaList, nameSpacePath);
+			fileSchema = getFileSchemaFromColumnSchema(columnSchemaList, processorName);
 		} catch (WriteProcessException e) {
 			LOGGER.error("Get the FileSchema error, the list of ColumnSchema is {}", columnSchemaList);
 			throw e;
@@ -1210,25 +1213,28 @@ public class FileNodeProcessor extends LRUProcessor {
 				/*
 				 * add index for close
 				 */
-                Map<String, Set<IndexType>> allIndexSeries = mManager.getAllIndexPaths(nameSpacePath);
+				Map<String, Set<IndexType>> allIndexSeries = mManager.getAllIndexPaths(getProcessorName());
 
-                if (!allIndexSeries.isEmpty()) {
-                    LOGGER.info("Close buffer write file and append index file, the nameSpacePath is {}, the index " +
-                                    "type is {}, the index path is {}",
-                            nameSpacePath, "kvindex", allIndexSeries);
+				if (!allIndexSeries.isEmpty()) {
+					LOGGER.info(
+							"Close buffer write file and append index file, the nameSpacePath is {}, the index "
+									+ "type is {}, the index path is {}",
+							getProcessorName(), "kvindex", allIndexSeries);
 					for (Entry<String, Set<IndexType>> entry : allIndexSeries.entrySet()) {
-                        Path path = new Path(entry.getKey());
-                        String deltaObjectId = path.getDeltaObjectToString();
+						Path path = new Path(entry.getKey());
+						String deltaObjectId = path.getDeltaObjectToString();
 						if (currentIntervalFileNode.getStartTime(deltaObjectId) != -1) {
-							DataFileInfo dataFileInfo = new DataFileInfo(currentIntervalFileNode.getStartTime(deltaObjectId),
-									currentIntervalFileNode.getEndTime(deltaObjectId), currentIntervalFileNode.filePath);
+							DataFileInfo dataFileInfo = new DataFileInfo(
+									currentIntervalFileNode.getStartTime(deltaObjectId),
+									currentIntervalFileNode.getEndTime(deltaObjectId),
+									currentIntervalFileNode.getFilePath());
 							for (IndexType indexType : entry.getValue())
 								IndexManager.getIndexInstance(indexType).build(path, dataFileInfo, null);
 						}
-                    }
+					}
 				}
 
-			} catch (BufferWriteProcessorException | PathErrorException | IndexManagerException  e) {
+			} catch (BufferWriteProcessorException | PathErrorException | IndexManagerException e) {
 				e.printStackTrace();
 				throw new FileNodeProcessorException(e);
 			}

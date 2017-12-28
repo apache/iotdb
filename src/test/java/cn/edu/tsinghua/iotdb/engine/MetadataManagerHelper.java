@@ -1,4 +1,4 @@
-package cn.edu.tsinghua.iotdb.engine.lru;
+package cn.edu.tsinghua.iotdb.engine;
 
 import cn.edu.tsinghua.iotdb.metadata.MManager;
 

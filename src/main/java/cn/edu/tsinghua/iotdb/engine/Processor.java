@@ -1,20 +1,17 @@
-package cn.edu.tsinghua.iotdb.engine.lru;
+package cn.edu.tsinghua.iotdb.engine;
 
 import java.io.IOException;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import cn.edu.tsinghua.iotdb.engine.bufferwrite.BufferWriteProcessor;
-import cn.edu.tsinghua.iotdb.engine.overflow.io.OverflowProcessor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import cn.edu.tsinghua.iotdb.engine.filenode.FileNodeProcessor;
+import cn.edu.tsinghua.iotdb.engine.overflow.io.OverflowProcessor;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 
 /**
  * <p>
- * LRUProcessor is used for implementing different processor with different
+ * Processor is used for implementing different processor with different
  * operation.<br>
  * 
  * @see BufferWriteProcessor
@@ -25,9 +22,8 @@ import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
  * @author kangrong
  *
  */
-public abstract class LRUProcessor {
-	private final static Logger LOGGER = LoggerFactory.getLogger(LRUProcessor.class);
-	protected String nameSpacePath;
+public abstract class Processor {
+	private String processorName;
 	private final ReadWriteLock lock;
 
 	/**
@@ -35,8 +31,8 @@ public abstract class LRUProcessor {
 	 * 
 	 * @param nameSpacePath
 	 */
-	public LRUProcessor(String nameSpacePath) {
-		this.nameSpacePath = nameSpacePath;
+	public Processor(String processorName) {
+		this.processorName = processorName;
 		this.lock = new ReentrantReadWriteLock();
 	}
 
@@ -105,8 +101,8 @@ public abstract class LRUProcessor {
 	 * 
 	 * @return
 	 */
-	public String getNameSpacePath() {
-		return nameSpacePath;
+	public String getProcessorName() {
+		return processorName;
 	}
 
 	/**
@@ -131,7 +127,7 @@ public abstract class LRUProcessor {
 	public int hashCode() {
 		final int prime = 31;
 		int result = 1;
-		result = prime * result + ((nameSpacePath == null) ? 0 : nameSpacePath.hashCode());
+		result = prime * result + ((processorName == null) ? 0 : processorName.hashCode());
 		return result;
 	}
 
@@ -143,11 +139,11 @@ public abstract class LRUProcessor {
 			return false;
 		if (getClass() != obj.getClass())
 			return false;
-		LRUProcessor other = (LRUProcessor) obj;
-		if (nameSpacePath == null) {
-			if (other.nameSpacePath != null)
+		Processor other = (Processor) obj;
+		if (processorName == null) {
+			if (other.processorName != null)
 				return false;
-		} else if (!nameSpacePath.equals(other.nameSpacePath))
+		} else if (!processorName.equals(other.processorName))
 			return false;
 		return true;
 	}

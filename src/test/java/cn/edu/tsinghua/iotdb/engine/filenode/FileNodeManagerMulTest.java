@@ -11,12 +11,9 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
-import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
-import cn.edu.tsinghua.iotdb.engine.lru.MetadataManagerHelper;
+import cn.edu.tsinghua.iotdb.engine.MetadataManagerHelper;
 import cn.edu.tsinghua.iotdb.exception.FileNodeManagerException;
 import cn.edu.tsinghua.iotdb.exception.PathErrorException;
-import cn.edu.tsinghua.iotdb.service.IoTDB;
 import cn.edu.tsinghua.iotdb.utils.EnvironmentUtils;
 import cn.edu.tsinghua.tsfile.common.conf.TSFileConfig;
 import cn.edu.tsinghua.tsfile.common.conf.TSFileDescriptor;
@@ -32,10 +29,8 @@ import cn.edu.tsinghua.tsfile.timeseries.write.record.TSRecord;
 public class FileNodeManagerMulTest {
 
 	private TSFileConfig tsconfig = TSFileDescriptor.getInstance().getConfig();
-	private TsfileDBConfig tsdbconfig = TsfileDBDescriptor.getInstance().getConfig();
 
 	private String deltaObjectId0 = "root.vehicle.d0";
-
 	private String deltaObjectId2 = "root.vehicle.d2";
 
 	private String deltaObjectId1 = "root.vehicle.d1";

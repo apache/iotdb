@@ -14,15 +14,12 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
-import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
+import cn.edu.tsinghua.iotdb.engine.MetadataManagerHelper;
 import cn.edu.tsinghua.iotdb.engine.PathUtils;
-import cn.edu.tsinghua.iotdb.engine.lru.MetadataManagerHelper;
 import cn.edu.tsinghua.iotdb.exception.FileNodeManagerException;
 import cn.edu.tsinghua.iotdb.exception.MetadataArgsErrorException;
 import cn.edu.tsinghua.iotdb.exception.PathErrorException;
 import cn.edu.tsinghua.iotdb.metadata.MManager;
-import cn.edu.tsinghua.iotdb.service.IoTDB;
 import cn.edu.tsinghua.iotdb.utils.EnvironmentUtils;
 import cn.edu.tsinghua.tsfile.common.conf.TSFileConfig;
 import cn.edu.tsinghua.tsfile.common.conf.TSFileDescriptor;
@@ -40,7 +37,6 @@ import cn.edu.tsinghua.tsfile.timeseries.write.record.TSRecord;
  */
 public class FileNodeManagerTest {
 
-	private TsfileDBConfig tsdbconfig = TsfileDBDescriptor.getInstance().getConfig();
 	private TSFileConfig tsconfig = TSFileDescriptor.getInstance().getConfig();
 
 	private FileNodeManager fManager = null;
@@ -352,7 +348,7 @@ public class FileNodeManagerTest {
 		}
 
 		FileNodeManager fileNodeManager = FileNodeManager.getInstance();
-		fileNodeManager.managerRecovery();
+		fileNodeManager.recovery();
 		try {
 			QueryStructure queryStructure = fileNodeManager.query(deltaObjectId, measurementId, null, null, null);
 			assertEquals(null, queryStructure.getCurrentPage());
@@ -387,7 +383,7 @@ public class FileNodeManagerTest {
 		File file3 = new File(dir, file3Name);
 		file0.mkdir();
 		fileNode = new IntervalFileNode(startTimeMap, endTimeMap, OverflowChangeType.NO_CHANGE,
-				file3.getAbsolutePath());
+				file3Name);
 		newFileNodes.clear();
 		newFileNodes.add(fileNode);
 		fileNodeProcessorStore = new FileNodeProcessorStore(lastUpdateTimeMap, emptyIntervalFileNode, newFileNodes,
@@ -398,7 +394,7 @@ public class FileNodeManagerTest {
 			e.printStackTrace();
 			fail(e.getMessage());
 		}
-		fileNodeManager.managerRecovery();
+		fileNodeManager.recovery();
 		try {
 			QueryStructure queryStructure = fileNodeManager.query(deltaObjectId, measurementId, null, null, null);
 			assertEquals(null, queryStructure.getCurrentPage());
@@ -406,7 +402,7 @@ public class FileNodeManagerTest {
 			assertEquals(null, queryStructure.getBufferwriteDataInDisk());
 			assertEquals(1, queryStructure.getBufferwriteDataInFiles().size());
 			IntervalFileNode temp = queryStructure.getBufferwriteDataInFiles().get(0);
-			assertEquals(file3.getAbsolutePath(), temp.filePath);
+			assertEquals(file3.getPath(), temp.getFilePath());
 			fileNodeManager.closeAll();
 		} catch (FileNodeManagerException e) {
 			e.printStackTrace();
@@ -488,7 +484,7 @@ public class FileNodeManagerTest {
 			e.printStackTrace();
 			fail(e.getMessage());
 		}
-		fileNodeManager.managerRecovery();
+		fileNodeManager.recovery();
 		try {
 			Thread.sleep(2000);
 		} catch (InterruptedException e1) {
@@ -664,7 +660,7 @@ public class FileNodeManagerTest {
 			queryStructure = fileNodeManager.query(deltaObjectId, measurementId, null, null, null);
 			fileNodeManager.endQuery(deltaObjectId, token);
 			assertEquals(1, queryStructure.getBufferwriteDataInFiles().size());
-			originFilePath = queryStructure.getBufferwriteDataInFiles().get(0).filePath;
+			originFilePath = queryStructure.getBufferwriteDataInFiles().get(0).getFilePath();
 			IntervalFileNode temp = queryStructure.getBufferwriteDataInFiles().get(0);
 			assertEquals(OverflowChangeType.CHANGED, temp.overflowChangeType);
 			assertEquals(100, temp.getStartTime(deltaObjectId));
