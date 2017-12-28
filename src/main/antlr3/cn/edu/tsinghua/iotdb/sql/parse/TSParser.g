@@ -266,7 +266,7 @@ catch (RecognitionException e) {
 
 // starting rule
 statement
-	: execStatement EOF
+	: execStatement (SEMICOLON)? EOF
 	;
 
 number
