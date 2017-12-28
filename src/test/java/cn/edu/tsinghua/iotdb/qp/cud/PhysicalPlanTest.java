@@ -4,6 +4,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 import cn.edu.tsinghua.iotdb.qp.physical.crud.MultiQueryPlan;
+import cn.edu.tsinghua.iotdb.qp.physical.crud.SingleQueryPlan;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -30,7 +31,22 @@ public class PhysicalPlanTest {
                 new Path(new StringContainer(
                         new String[] {"root", "vehicle", "d1", "s1"},
                         SystemConstant.PATH_SEPARATOR));
+        Path path2 =
+                new Path(new StringContainer(
+                        new String[] {"root", "vehicle", "d2", "s1"},
+                        SystemConstant.PATH_SEPARATOR));
+        Path path3 =
+                new Path(new StringContainer(
+                        new String[] {"root", "vehicle", "d3", "s1"},
+                        SystemConstant.PATH_SEPARATOR));
+        Path path4 =
+                new Path(new StringContainer(
+                        new String[] {"root", "vehicle", "d4", "s1"},
+                        SystemConstant.PATH_SEPARATOR));
         processor.getExecutor().insert(path1, 10, "10");
+        processor.getExecutor().insert(path2, 10, "10");
+        processor.getExecutor().insert(path3, 10, "10");
+        processor.getExecutor().insert(path4, 10, "10");
     }
 
     @Test
@@ -107,6 +123,18 @@ public class PhysicalPlanTest {
             fail();
         MultiQueryPlan mergePlan = (MultiQueryPlan) plan;
         assertEquals(111, mergePlan.getUnit());
+    }
+
+    @Test
+    public void testConcatStarPathWithFilter() throws QueryProcessorException, ArgsErrorException {
+        String sqlStr =
+                "select s1 from root.vehicle.d1,root.vehicle.d2,root.vehicle.d3,root.vehicle.d4 where s1 < 20";
+        PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
+        if (!plan.isQuery())
+            fail();
+        MultiQueryPlan mergePlan = (MultiQueryPlan) plan;
+        SingleQueryPlan singleQueryPlan = mergePlan.getSingleQueryPlans().get(0);
+        assertEquals(4, singleQueryPlan.getValueFilterOperator().getChildren().size());
     }
 
 }

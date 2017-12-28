@@ -130,7 +130,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
         FilterOperator filterTwoFolkTree = new FilterOperator(SQLConstant.KW_AND);
         FilterOperator currentNode = filterTwoFolkTree;
         for (int i = 0; i < noStarPaths.size(); i++) {
-            if ((i & 1) == 1 && i != noStarPaths.size() - 1) {
+            if (i > 0 && i < noStarPaths.size() - 1) {
                 FilterOperator newInnerNode = new FilterOperator(SQLConstant.KW_AND);
                 currentNode.addChildOperator(newInnerNode);
                 currentNode = newInnerNode;

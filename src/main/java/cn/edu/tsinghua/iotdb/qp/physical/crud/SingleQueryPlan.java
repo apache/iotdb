@@ -63,6 +63,10 @@ public class SingleQueryPlan extends PhysicalPlan {
         return aggregations;
     }
 
+    public FilterOperator getValueFilterOperator() {
+        return valueFilterOperator;
+    }
+
     /**
      * filterExpressions include three FilterExpression: TIME_FILTER, FREQUENCY_FILTER, VALUE_FILTER
      * These filters is for querying data in TsFile
