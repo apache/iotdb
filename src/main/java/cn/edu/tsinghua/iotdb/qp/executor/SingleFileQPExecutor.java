@@ -47,7 +47,12 @@ public class SingleFileQPExecutor extends QueryProcessExecutor {
 	public boolean judgePathExists(Path path) {
 		if (SQLConstant.isReservedPath(path))
 			return true;
-		return queryEngine.pathExist(path);
+		try {
+			return queryEngine.pathExist(path);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		return false;
 	}
 
 	@Override
