@@ -155,6 +155,8 @@ public abstract class Processor {
 	 */
 	public abstract boolean canBeClosed();
 
+	public abstract void flush() throws IOException;
+
 	/**
 	 * Close the processor.<br>
 	 * Notice: Thread is not safe
@@ -163,4 +165,6 @@ public abstract class Processor {
 	 * @throws ProcessorException
 	 */
 	public abstract void close() throws ProcessorException;
+	
+	public abstract long memoryUsage();
 }

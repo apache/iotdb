@@ -8,6 +8,11 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
+
+import cn.edu.tsinghua.iotdb.engine.memcontrol.BasicMemController;
+import cn.edu.tsinghua.iotdb.utils.MemUtils;
+import cn.edu.tsinghua.tsfile.timeseries.write.record.DataPoint;
+import cn.edu.tsinghua.tsfile.timeseries.write.record.TSRecord;
 import cn.edu.tsinghua.iotdb.engine.flushthread.FlushManager;
 
 import org.joda.time.DateTime;
@@ -41,6 +46,7 @@ public class OverflowProcessor extends Processor {
 	private static final int MAXIMUM_RECORD_COUNT_FOR_CHECK = 10000;
 	private long recordCount = 0;
 	private long recordCountForNextMemCheck = MINIMUM_RECORD_COUNT_FOR_CHECK;
+	private long memUsed = 0;
 
 	private OverflowSupport ofSupport;
 	private final int memoryBlockSize = TSFileDescriptor.getInstance().getConfig().groupSizeInByte;
@@ -275,6 +281,35 @@ public class OverflowProcessor extends Processor {
 		insert(deltaObjectId, measurementId, timestamp, type, convertStringToBytes(type, v));
 	}
 
+	// to unify with Methods in BufferWriteProcessor
+	public void insert(String deltaObjectId, TSRecord record) throws OverflowProcessorException {
+		long newUsage = memUsed;
+		BasicMemController.UsageLevel level = BasicMemController.getInstance().reportUse(this, newUsage);
+		switch (level) {
+			case SAFE:
+				for (DataPoint dataPoint : record.dataPointList) {
+					insert(deltaObjectId, dataPoint.getMeasurementId(), record.time,
+							dataPoint.getType(), dataPoint.getValue().toString());
+				}
+				memUsed += newUsage;
+				break;
+			case WARNING:
+				LOGGER.debug("Memory usage will exceed warning threshold, current : {}." ,
+						MemUtils.bytesCntToStr(BasicMemController.getInstance().getTotalUsage()));
+				for (DataPoint dataPoint : record.dataPointList) {
+					insert(deltaObjectId, dataPoint.getMeasurementId(), record.time,
+							dataPoint.getType(), dataPoint.getValue().toString());
+				}
+				memUsed += newUsage;
+				break;
+			case DANGEROUS:
+				LOGGER.warn("Memory usage will exceed dangerous threshold, current : {}." ,
+						MemUtils.bytesCntToStr(BasicMemController.getInstance().getTotalUsage()));
+				throw new OverflowProcessorException("Memory usage exceeded dangerous threshold.");
+			default:
+		}
+	}
+
 	private void insert(String deltaObjectId, String measurementId, long timestamp, TSDataType type, byte[] v)
 			throws OverflowProcessorException {
 		if (ofSupport.insert(deltaObjectId, measurementId, timestamp, type, v)) {
@@ -384,7 +419,8 @@ public class OverflowProcessor extends Processor {
 					}
 				}
 			}
-
+			long oldMemUsage = memUsed;
+			memUsed = 0;
 			if (TsfileDBDescriptor.getInstance().getConfig().enableWal) {
 				try {
 					WriteLogManager.getInstance().startOverflowFlush(getProcessorName());
@@ -438,6 +474,8 @@ public class OverflowProcessor extends Processor {
 						flushState.notify();
 					}
 				}
+				BasicMemController.getInstance().reportFree(this, oldMemUsage);
+				checkSize();
 			} else {
 				// flush overflow row group asynchronously
 				flushState.setFlushing();
@@ -468,6 +506,8 @@ public class OverflowProcessor extends Processor {
 							flushState.setUnFlushing();
 							flushState.notify();
 						}
+						BasicMemController.getInstance().reportFree(this, oldMemUsage);
+						checkSize();
 					}
 				};
 				FlushManager.getInstance().submit(AsynflushThread);
@@ -484,6 +524,16 @@ public class OverflowProcessor extends Processor {
 		return !isMerging && !flushState.isFlushing();
 	}
 
+	@Override
+	public void flush() throws IOException{
+		try {
+			flushRowGroupToStore(false);
+		} catch (OverflowProcessorException e) {
+			e.printStackTrace();
+			throw new IOException(e);
+		}
+	}
+	
 	@Override
 	public void close() throws OverflowProcessorException {
 		LOGGER.info("Start to close overflow processor, the overflow is {}", getProcessorName());
@@ -505,6 +555,12 @@ public class OverflowProcessor extends Processor {
 		} else {
 			LOGGER.warn("Close the overflow processor, but no overflow metadata was flush");
 		}
+	}
+	
+	@Override
+	public long memoryUsage(){
+		
+		return  ofSupport.calculateMemSize();
 	}
 
 	public void switchWorkingToMerge() throws OverflowProcessorException {
@@ -573,6 +629,47 @@ public class OverflowProcessor extends Processor {
 			this.lastOverflowFilePosition = lastOverflowFilePosition;
 			this.lastOverflowRowGroupPosition = lastOverflowRowGroupPosition;
 			this.ofFileMetadata = ofFileMetadata;
+		}
+	}
+
+	/**
+	 * @return The sum of all timeseries's metadata size within this file.
+	 */
+	public long getMetaSize() {
+		// TODO : [MemControl] implement this
+		return 0;
+	}
+
+	/**
+	 * @return The file size of the OverflowFile corresponding to this processor.
+	 */
+	public long getFileSize() {
+		// TODO : save this variable to avoid object creation?
+		File file = new File(overflowOutputFilePath);
+		return file.length();
+	}
+
+	/**
+	 * Close current OverflowFile and open a new one for future writes.
+	 * Block new writes and wait until current writes finish.
+	 */
+	public void rollToNewFile() {
+		// TODO : [MemControl] implement this
+	}
+
+	/**
+	 * Check if this OverflowFile has too big metadata or file.
+	 * If true, close current file and open a new one.
+	 */
+	private void checkSize() {
+		TsfileDBConfig config = TsfileDBDescriptor.getInstance().getConfig();
+		long metaSize = getMetaSize();
+		long fileSize = getFileSize();
+		if(metaSize >= config.bufferwriteMetaSizeThreshold ||
+				fileSize >= config.bufferwriteFileSizeThreshold) {
+			LOGGER.info("{} size reaches threshold, closing. meta size is {}, file size is {}",
+					this.fileName, MemUtils.bytesCntToStr(metaSize), MemUtils.bytesCntToStr(fileSize));
+			rollToNewFile();
 		}
 	}
 }

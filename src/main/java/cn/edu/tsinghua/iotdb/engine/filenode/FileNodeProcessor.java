@@ -1261,6 +1261,16 @@ public class FileNodeProcessor extends Processor implements IStatistic{
 		}
 		return false;
 	}
+	
+	@Override
+	public void flush() throws IOException{
+		if(bufferWriteProcessor!=null){
+			bufferWriteProcessor.flush();
+		}
+		if(overflowProcessor!=null){
+			overflowProcessor.flush();
+		}
+	}
 
 	@Override
 	public void close() throws FileNodeProcessorException {
@@ -1329,6 +1339,18 @@ public class FileNodeProcessor extends Processor implements IStatistic{
 				throw new FileNodeProcessorException(e);
 			}
 		}
+	}
+	
+	@Override
+	public long memoryUsage(){
+		long memSize = 0;
+		if(bufferWriteProcessor!=null){
+			memSize += bufferWriteProcessor.memoryUsage();
+		}
+		if(overflowProcessor!=null){
+			memSize += overflowProcessor.memoryUsage();
+		}
+		return memSize;
 	}
 
 	private void writeStoreToDisk(FileNodeProcessorStore fileNodeProcessorStore) throws FileNodeProcessorException {

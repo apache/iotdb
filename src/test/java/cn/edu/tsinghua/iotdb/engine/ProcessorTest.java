@@ -3,6 +3,7 @@ package cn.edu.tsinghua.iotdb.engine;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -10,6 +11,8 @@ import org.junit.Test;
 import cn.edu.tsinghua.iotdb.engine.Processor;
 import cn.edu.tsinghua.iotdb.utils.EnvironmentUtils;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
+
+import java.io.IOException;
 
 /**
  * @author liukun
@@ -32,6 +35,17 @@ public class ProcessorTest {
 		@Override
 		public void close() throws ProcessorException {
 			
+		}
+
+		@Override
+		public void flush() throws IOException {
+			// TODO Auto-generated method stub
+			
+		}
+		
+		@Override
+		public long memoryUsage(){
+			return 0;
 		}
 		
 	}

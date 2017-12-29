@@ -117,6 +117,50 @@ public class TsfileDBConfig {
 	public DateTimeZone timeZone = DateTimeZone.getDefault();
 
 	/**
+	 *  BufferWriteProcessor and OverflowProcessor will immediately flush if this threshold is reached.
+	 */
+	public long memThresholdWarning = (long) (0.8 * Runtime.getRuntime().maxMemory());
+
+	/**
+	 * No more insert is allowed if this threshold is reached.
+	 */
+	public long memThresholdDangerous = (long) (0.9 * Runtime.getRuntime().maxMemory());
+
+	/**
+	 * MemMonitorThread will check every such interval. If memThresholdWarning is reached, MemMonitorThread
+	 * will inform FileNodeManager to flush.
+	 */
+	public long memMonitorInterval = 1000;  // in ms
+
+	/**
+	 * Decide how to control memory used by inserting data.
+	 * 0 is RecordMemController, which count the size of every record (tuple).
+	 * 1 is JVMMemController, which use JVM heap memory as threshold.
+	 */
+	public int memControllerType = 1;
+
+	/**
+	 * When a bufferwrite's metadata size (in byte) exceed this, the bufferwrite is forced closed.
+	 */
+	public long bufferwriteMetaSizeThreshold = 200 * 1024 * 1024L;
+
+	/**
+	 * When a bufferwrite's file size (in byte) exceed this, the bufferwrite is forced closed.
+	 */
+	public long bufferwriteFileSizeThreshold = 2 * 1024 * 1024 * 1024L;
+
+	/**
+	 * When a overflow's metadata size (in byte) exceed this, the overflow is forced closed.
+	 */
+	public long overflowMetaSizeThreshold = 200 * 1024 * 1024L;
+
+	/**
+	 * When a overflow's file size (in byte) exceed this, the overflow is forced closed.
+	 */
+	public long overflowFileSizeThreshold = 2 * 1024 * 1024 * 1024L;
+
+
+	/*
 	 * The statMonitor's BackLoop period, 5s is enough
 	 */
 	public int backLoopPeriod = 5;
@@ -128,6 +172,7 @@ public class TsfileDBConfig {
 	/**
 	 * the maximum number of writing instances existing in same time.
 	 */
+
 
 	public TsfileDBConfig() {}
 

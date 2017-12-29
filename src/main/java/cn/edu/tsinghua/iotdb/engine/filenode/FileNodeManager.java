@@ -3,6 +3,10 @@ package cn.edu.tsinghua.iotdb.engine.filenode;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+
+import java.util.Collections;
+import java.util.Comparator;
+
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -26,6 +30,8 @@ import cn.edu.tsinghua.iotdb.engine.Processor;
 import cn.edu.tsinghua.iotdb.engine.bufferwrite.Action;
 import cn.edu.tsinghua.iotdb.engine.bufferwrite.BufferWriteProcessor;
 import cn.edu.tsinghua.iotdb.engine.bufferwrite.FileNodeConstants;
+import cn.edu.tsinghua.iotdb.engine.flushthread.FlushManager;
+import cn.edu.tsinghua.iotdb.engine.memcontrol.BasicMemController;
 import cn.edu.tsinghua.iotdb.engine.overflow.io.OverflowProcessor;
 import cn.edu.tsinghua.iotdb.exception.BufferWriteProcessorException;
 import cn.edu.tsinghua.iotdb.exception.ErrorDebugException;
@@ -163,6 +169,7 @@ public class FileNodeManager implements IStatistic {
 	public synchronized void resetFileNodeManager() {
 		this.backUpOverflowedFileNodeName = new HashSet<>();
 		this.overflowedFileNodeName = new HashSet<>();
+
 		for(String key:statParamsHashMap.keySet()){
 			statParamsHashMap.put(key, new AtomicLong());
 		}
@@ -267,6 +274,7 @@ public class FileNodeManager implements IStatistic {
 
 		FileNodeProcessor fileNodeProcessor = getProcessor(deltaObjectId, true);
 		int insertType = 0;
+
 		try {
 			long lastUpdateTime = fileNodeProcessor.getLastUpdateTime(deltaObjectId);
 			String filenodeName = fileNodeProcessor.getProcessorName();
@@ -951,5 +959,77 @@ public class FileNodeManager implements IStatistic {
 
 	private enum FileNodeManagerStatus {
 		NONE, MERGE, CLOSE;
+	}
+
+	public void forceFlush(BasicMemController.UsageLevel level) {
+		// TODO : for each FileNodeProcessor, call its forceFlush()
+		// you may add some delicate process like below
+		// or you could provide multiple methods for different urgency
+		switch (level) {
+		case WARNING:
+			// only select the most urgent (most active or biggest in size)
+			// processors to flush
+			// only select top 10% active memory user to flush
+			try {
+				flushTop(0.1f);
+			} catch (IOException e) {
+				LOGGER.error("force flush memory data error", e.getMessage());
+				e.printStackTrace();
+			}
+			break;
+		case DANGEROUS:
+			// force all processors to flush
+			try {
+				flushAll();
+			} catch (IOException e) {
+				LOGGER.error("force flush memory data error:{}", e.getMessage());
+				e.printStackTrace();
+			}
+			break;
+		case SAFE:
+			// if the flush thread pool is not full ( or half full), start a new
+			// flush task
+			if (FlushManager.getInstance().getActiveCnt() < 0.5 * FlushManager.getInstance().getThreadCnt()) {
+				try {
+					flushTop(0.01f);
+				} catch (IOException e) {
+					LOGGER.error("force flush memory data error:{}", e.getMessage());
+					e.printStackTrace();
+				}
+			}
+			break;
+		}
+	}
+
+	private void flushAll() throws IOException {
+		for (FileNodeProcessor processor : processorMap.values()) {
+			processor.tryLock(true);
+			try {
+				processor.flush();
+			} finally {
+				processor.unlock(true);
+			}
+		}
+	}
+
+	private void flushTop(float percentage) throws IOException {
+		List<FileNodeProcessor> tempProcessors = new ArrayList<>(processorMap.values());
+		// sort the tempProcessors as descending order
+		Collections.sort(tempProcessors, new Comparator<FileNodeProcessor>() {
+			@Override
+			public int compare(FileNodeProcessor o1, FileNodeProcessor o2) {
+				return (int) (o2.memoryUsage() - o1.memoryUsage());
+			}
+		});
+		int flushNum = (int) (tempProcessors.size() * percentage) > 1 ? (int) (tempProcessors.size() * percentage) : 1;
+		for (int i = 0; i < flushNum && i < tempProcessors.size(); i++) {
+			FileNodeProcessor processor = tempProcessors.get(i);
+			processor.writeLock();
+			try {
+				processor.flush();
+			} finally {
+				processor.writeUnlock();
+			}
+		}
 	}
 }
