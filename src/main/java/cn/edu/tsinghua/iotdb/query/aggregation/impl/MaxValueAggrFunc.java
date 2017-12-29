@@ -13,6 +13,7 @@ import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
 import cn.edu.tsinghua.tsfile.format.Digest;
 import cn.edu.tsinghua.tsfile.format.PageHeader;
 import cn.edu.tsinghua.tsfile.timeseries.filter.utils.DigestForFilter;
+import cn.edu.tsinghua.tsfile.timeseries.filter.utils.StrDigestForFilter;
 import cn.edu.tsinghua.tsfile.timeseries.read.query.DynamicOneColumnData;
 
 public class MaxValueAggrFunc extends AggregateFunction {
@@ -35,7 +36,8 @@ public class MaxValueAggrFunc extends AggregateFunction {
         }
 
         Digest pageDigest = pageHeader.data_page_header.getDigest();
-        DigestForFilter digest = new DigestForFilter(pageDigest.min, pageDigest.max, dataType);
+        DigestForFilter digest = new StrDigestForFilter(pageDigest.getStatistics().get(AggregationConstant.MIN_VALUE),
+                pageDigest.getStatistics().get(AggregationConstant.MAX_VALUE), dataType);
         Comparable<?> maxv = digest.getMaxValue();
         updateMaxValue(maxv);
     }

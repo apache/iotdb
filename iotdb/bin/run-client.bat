@@ -1,0 +1,1 @@
+.\start-client.bat -h localhost -p 6667 -u root -pw root

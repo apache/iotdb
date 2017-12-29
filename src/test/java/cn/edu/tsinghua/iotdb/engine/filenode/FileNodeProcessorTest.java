@@ -255,7 +255,7 @@ public class FileNodeProcessorTest {
 			bufferwritedataindisk = queryResult.getBufferwriteDataInDisk();
 			bufferwritedatainfiles = queryResult.getBufferwriteDataInFiles();
 			overflowResult = queryResult.getAllOverflowData();
-			assertEquals(3, bufferwritedataindisk.size());
+			assertEquals(4, bufferwritedataindisk.size());
 			assertEquals(1, bufferwritedatainfiles.size());
 			assertEquals(false, bufferwritedatainfiles.get(0).isClosed());
 			assertEquals(null, overflowResult.get(0));
@@ -292,7 +292,7 @@ public class FileNodeProcessorTest {
 			bufferwritedataindisk = queryResult.getBufferwriteDataInDisk();
 			bufferwritedatainfiles = queryResult.getBufferwriteDataInFiles();
 			overflowResult = queryResult.getAllOverflowData();
-			assertEquals(3, bufferwritedataindisk.size());
+			assertEquals(4, bufferwritedataindisk.size());
 			assertEquals(2, bufferwritedatainfiles.size());
 			IntervalFileNode intervalFileNode = bufferwritedatainfiles.get(0);
 			assertEquals(true, intervalFileNode.isClosed());
@@ -450,7 +450,7 @@ public class FileNodeProcessorTest {
 			List<RowGroupMetaData> bufferwritedataindisk = queryResult.getBufferwriteDataInDisk();
 			List<IntervalFileNode> bufferwritedatainfiles = queryResult.getBufferwriteDataInFiles();
 			List<Object> overflowResult = queryResult.getAllOverflowData();
-			assertEquals(3, bufferwritedataindisk.size());
+			assertEquals(4, bufferwritedataindisk.size());
 			assertEquals(1, bufferwritedatainfiles.size());
 			assertEquals(false, bufferwritedatainfiles.get(0).isClosed());
 			assertEquals(null, overflowResult.get(0));
@@ -469,7 +469,7 @@ public class FileNodeProcessorTest {
 			bufferwritedataindisk = queryResult.getBufferwriteDataInDisk();
 			bufferwritedatainfiles = queryResult.getBufferwriteDataInFiles();
 			overflowResult = queryResult.getAllOverflowData();
-			assertEquals(3, bufferwritedataindisk.size());
+			assertEquals(4, bufferwritedataindisk.size());
 			assertEquals(1, bufferwritedatainfiles.size());
 			assertEquals(false, bufferwritedatainfiles.get(0).isClosed());
 			assertEquals(null, overflowResult.get(0));

@@ -202,6 +202,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 		try {
 			return queryEngine.query(formNumber, paths, timeFilter, freqFilter, valueFilter, lastData, fetchSize, null);
 		} catch (Exception e) {
+			e.printStackTrace();
 			throw new ProcessorException(e.getMessage());
 		}
 	}

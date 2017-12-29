@@ -5,9 +5,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
 
+import cn.edu.tsinghua.iotdb.query.aggregation.AggregationConstant;
 import cn.edu.tsinghua.iotdb.query.visitorImpl.PageAllSatisfiedVisitor;
 import cn.edu.tsinghua.tsfile.common.utils.Pair;
 import cn.edu.tsinghua.tsfile.file.metadata.TsDigest;
+import cn.edu.tsinghua.tsfile.timeseries.filter.utils.StrDigestForFilter;
 import cn.edu.tsinghua.tsfile.timeseries.filter.visitorImpl.IntervalTimeVisitor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -52,17 +54,20 @@ public class ValueReaderProcessor {
         if (res.pageOffset == -1) {
             res.pageOffset = valueReader.getFileOffset();
         }
-
-        // TODO: optimize
+        
+        // TODO: new updateTrueData and updateFalseData is redundant
         updateTrueData = (updateTrueData == null ? new DynamicOneColumnData(dataType, true) : updateTrueData);
         updateFalseData = (updateFalseData == null ? new DynamicOneColumnData(dataType, true) : updateFalseData);
 
+        // TODO: optimize by jt ?
+
         TsDigest digest = valueReader.getDigest();
-        DigestForFilter valueDigest = new DigestForFilter(digest.min, digest.max, dataType);
+        DigestForFilter valueDigest = new StrDigestForFilter(digest.getStatistics().get(AggregationConstant.MIN_VALUE),
+                digest.getStatistics().get(AggregationConstant.MAX_VALUE), dataType);
         LOG.debug(String.format("read one series digest normally, time range is [%s,%s], value range is [%s,%s]",
                 valueReader.getStartTime(), valueReader.getEndTime(), valueDigest.getMinValue(), valueDigest.getMaxValue()));
-        DigestVisitor valueDigestVisitor = new DigestVisitor();
 
+        DigestVisitor valueDigestVisitor = new DigestVisitor();
         if (updateTrueData.valueLength == 0 && !insertMemoryData.hasInsertData() && valueFilter != null
                 && !valueDigestVisitor.satisfy(valueDigest, valueFilter)) {
             LOG.debug("series value digest does not satisfy value filter");
@@ -100,7 +105,8 @@ public class ValueReaderProcessor {
             // construct valueFilter
             // System.out.println(res.pageOffset + "|" + fileOffset + "|" + totalSize);
             Digest pageDigest = pageHeader.data_page_header.getDigest();
-            DigestForFilter valueDigestFF = new DigestForFilter(pageDigest.min, pageDigest.max, dataType);
+            DigestForFilter valueDigestFF = new StrDigestForFilter(digest.getStatistics().get(AggregationConstant.MIN_VALUE),
+                    digest.getStatistics().get(AggregationConstant.MAX_VALUE), dataType);
 
             // construct timeFilter
             long mint = pageHeader.data_page_header.min_timestamp;
@@ -675,8 +681,9 @@ public class ValueReaderProcessor {
 
         // get column digest
         TsDigest digest = valueReader.getDigest();
-        DigestForFilter digestFF = new DigestForFilter(digest.min, digest.max, dataType);
-        LOG.debug("calculate aggregation : column Digest min and max is: " + digestFF.getMinValue() + " --- " + digestFF.getMaxValue());
+        DigestForFilter digestFF = new StrDigestForFilter(digest.getStatistics().get(AggregationConstant.MIN_VALUE),
+                digest.getStatistics().get(AggregationConstant.MAX_VALUE), dataType);
+        LOG.debug("Calculate aggregation : Column Digest min and max is: " + digestFF.getMinValue() + " --- " + digestFF.getMaxValue());
         DigestVisitor digestVisitor = new DigestVisitor();
 
         // to ensure that updateTrue and updateFalse is not null
@@ -705,7 +712,8 @@ public class ValueReaderProcessor {
 
             PageHeader pageHeader = pageReader.getNextPageHeader();
             Digest pageDigest = pageHeader.data_page_header.getDigest();
-            DigestForFilter valueDigestFF = new DigestForFilter(pageDigest.min, pageDigest.max, dataType);
+            DigestForFilter valueDigestFF = new StrDigestForFilter(digest.getStatistics().get(AggregationConstant.MIN_VALUE),
+                    digest.getStatistics().get(AggregationConstant.MAX_VALUE), dataType);
             long mint = pageHeader.data_page_header.min_timestamp;
             long maxt = pageHeader.data_page_header.max_timestamp;
             DigestForFilter timeDigestFF = new DigestForFilter(mint, maxt);
@@ -810,8 +818,11 @@ public class ValueReaderProcessor {
 
         // get column digest
         TsDigest digest = valueReader.getDigest();
-        DigestForFilter digestFF = new DigestForFilter(digest.min, digest.max, valueReader.getDataType());
-        LOG.debug("calculate aggregation using given common timestamps, series Digest min and max is: " + digestFF.getMinValue() + " --- " + digestFF.getMaxValue());
+        DigestForFilter digestFF = new StrDigestForFilter(digest.getStatistics().get(AggregationConstant.MIN_VALUE),
+                digest.getStatistics().get(AggregationConstant.MAX_VALUE), dataType);
+        LOG.debug("calculate aggregation using given common timestamps, series Digest min and max is: "
+                + digestFF.getMinValue() + " --- " + digestFF.getMaxValue()
+        + "min, max time is : " + valueReader.getStartTime() + "--" + valueReader.getEndTime());
 
         DigestVisitor digestVisitor = new DigestVisitor();
         ByteArrayInputStream bis = valueReader.initBAISForOnePage(lastAggregationResult.pageOffset);

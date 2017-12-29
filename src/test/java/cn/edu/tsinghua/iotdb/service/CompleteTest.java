@@ -339,7 +339,7 @@ public class CompleteTest {
                 "INSERT INTO root.vehicle.d0(timestamp,s0) values(NOW(),5)",
                 "SELECT * FROM root.vehicle.d0",
                 "NOW(),5,\n",
-                "UPDATE root.vehicle.d0 SET s0 = 10 WHERE time < NOW()",
+                "UPDATE root.vehicle.d0 SET s0 = 10 WHERE time <= NOW()",
                 "SELECT * FROM root.vehicle.d0",
                 "NOW(),10,\n",
                 "DELETE FROM root.vehicle.d0.s0 WHERE time <= NOW()",

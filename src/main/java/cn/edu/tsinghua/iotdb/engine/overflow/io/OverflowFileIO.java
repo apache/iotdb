@@ -17,6 +17,7 @@ import cn.edu.tsinghua.iotdb.engine.overflow.IIntervalTreeOperator;
 import cn.edu.tsinghua.iotdb.engine.overflow.metadata.OFFileMetadata;
 import cn.edu.tsinghua.iotdb.engine.overflow.metadata.OFRowGroupListMetadata;
 import cn.edu.tsinghua.iotdb.engine.overflow.metadata.OFSeriesListMetadata;
+import cn.edu.tsinghua.iotdb.query.aggregation.AggregationConstant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -207,7 +208,10 @@ public class OverflowFileIO {
 		byte[] max = statistics.getMaxBytes();
 		byte[] min = statistics.getMinBytes();
 		VInTimeSeriesChunkMetaData vInTimeSeriesChunkMetaData = new VInTimeSeriesChunkMetaData(tsDataType);
-		TsDigest tsDigest = new TsDigest(ByteBuffer.wrap(max, 0, max.length), ByteBuffer.wrap(min, 0, min.length));
+		Map<String, String> minMaxMap = new HashMap<>();
+		minMaxMap.put(AggregationConstant.MIN_VALUE, new String(min));
+		minMaxMap.put(AggregationConstant.MAX_VALUE, new String(max));
+		TsDigest tsDigest = new TsDigest(minMaxMap);
 		vInTimeSeriesChunkMetaData.setDigest(tsDigest);
 		currentSeries.setVInTimeSeriesChunkMetaData(vInTimeSeriesChunkMetaData);
 	}

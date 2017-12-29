@@ -5,7 +5,6 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
-import java.nio.ByteBuffer;
 
 import org.junit.After;
 import org.junit.Before;
@@ -15,6 +14,7 @@ import cn.edu.tsinghua.tsfile.common.utils.TsRandomAccessFileWriter;
 import cn.edu.tsinghua.tsfile.file.metadata.TsDigest;
 import cn.edu.tsinghua.tsfile.file.metadata.VInTimeSeriesChunkMetaData;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
+import cn.edu.tsinghua.tsfile.file.utils.ReadWriteThriftFormatUtils;
 import cn.edu.tsinghua.tsfile.format.DataType;
 import cn.edu.tsinghua.tsfile.format.Digest;
 import cn.edu.tsinghua.tsfile.format.ValueInTimeSeriesChunkMetaData;
@@ -39,15 +39,14 @@ public class VInTimeSeriesChunkMetaDataTest {
 
   @Test
   public void testWriteIntoFile() throws IOException {
-    VInTimeSeriesChunkMetaData metaData =
-        TestHelper.createSimpleV2InTSF(TSDataType.TEXT, new TsDigest(), maxString, minString);
+    VInTimeSeriesChunkMetaData metaData = TestHelper.createSimpleV2InTSF(TSDataType.TEXT, new TsDigest());
     
     File file = new File(PATH);
     if (file.exists())
       file.delete();
     FileOutputStream fos = new FileOutputStream(file);
     TsRandomAccessFileWriter out = new TsRandomAccessFileWriter(file, "rw");
-    Utils.write(metaData.convertToThrift(), out.getOutputStream());
+    ReadWriteThriftFormatUtils.write(metaData.convertToThrift(), out.getOutputStream());
 
     out.close();
     fos.close();
@@ -55,8 +54,9 @@ public class VInTimeSeriesChunkMetaDataTest {
     FileInputStream fis = new FileInputStream(new File(PATH));
     Utils.isVSeriesChunkMetadataEqual(metaData, metaData.convertToThrift());
     Utils.isVSeriesChunkMetadataEqual(metaData,
-        Utils.read(fis, new ValueInTimeSeriesChunkMetaData()));
+    		ReadWriteThriftFormatUtils.read(fis, new ValueInTimeSeriesChunkMetaData()));
   }
+
 
   @Test
   public void testConvertToThrift() throws UnsupportedEncodingException {
@@ -69,14 +69,11 @@ public class VInTimeSeriesChunkMetaDataTest {
       metaData.setMaxError(-11);
       Utils.isVSeriesChunkMetadataEqual(metaData, metaData.convertToThrift());
 
-      ByteBuffer max = ByteBuffer.wrap(maxString.getBytes("UTF-8"));
-      ByteBuffer min = ByteBuffer.wrap(minString.getBytes("UTF-8"));
       TsDigest digest = new TsDigest();
       metaData.setDigest(digest);
       Utils.isVSeriesChunkMetadataEqual(metaData, metaData.convertToThrift());
-      digest.max = max;
-      digest.min = min;
-      metaData.setDigest(digest);
+
+      metaData.setDigest(TestHelper.createSimpleTsDigest());
       Utils.isVSeriesChunkMetadataEqual(metaData, metaData.convertToThrift());
     }
   }
@@ -97,16 +94,11 @@ public class VInTimeSeriesChunkMetaDataTest {
       metaData.convertToTSF(valueInTimeSeriesChunkMetaData);
       Utils.isVSeriesChunkMetadataEqual(metaData, valueInTimeSeriesChunkMetaData);
 
-      ByteBuffer max = ByteBuffer.wrap(maxString.getBytes("UTF-8"));
-      ByteBuffer min = ByteBuffer.wrap(minString.getBytes("UTF-8"));
-      Digest digest = new Digest();
-      valueInTimeSeriesChunkMetaData.setDigest(digest);
+      valueInTimeSeriesChunkMetaData.setDigest(new Digest());
       metaData.convertToTSF(valueInTimeSeriesChunkMetaData);
       Utils.isVSeriesChunkMetadataEqual(metaData, valueInTimeSeriesChunkMetaData);
-
-      digest.max = max;
-      digest.min = min;
-      valueInTimeSeriesChunkMetaData.setDigest(digest);
+      
+      valueInTimeSeriesChunkMetaData.setDigest(TestHelper.createSimpleDigest());
       metaData.convertToTSF(valueInTimeSeriesChunkMetaData);
       Utils.isVSeriesChunkMetadataEqual(metaData, valueInTimeSeriesChunkMetaData);
     }
