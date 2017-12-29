@@ -1,6 +1,7 @@
 package cn.edu.tsinghua.iotdb.qp.utils;
 
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -62,7 +63,7 @@ public class MemIntQpExecutorTest {
     }
 
     @Test
-    public void testQueryWithFilter1() throws ProcessorException {
+    public void testQueryWithFilter1() throws ProcessorException, IOException {
 
         List<Path> pathList = new ArrayList<Path>();
         pathList.add(path2);
@@ -85,7 +86,7 @@ public class MemIntQpExecutorTest {
     }
 
     @Test
-    public void testQueryWithFilter2() throws ProcessorException {
+    public void testQueryWithFilter2() throws ProcessorException, IOException {
         List<Path> pathList = new ArrayList<Path>();
         // pathList.add(path1);
         pathList.add(path2);
