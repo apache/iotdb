@@ -1,10 +1,6 @@
 package cn.edu.tsinghua.iotdb.query.aggregation;
 
-import cn.edu.tsinghua.iotdb.query.aggregation.impl.CountAggrFunc;
-import cn.edu.tsinghua.iotdb.query.aggregation.impl.MaxTimeAggrFunc;
-import cn.edu.tsinghua.iotdb.query.aggregation.impl.MaxValueAggrFunc;
-import cn.edu.tsinghua.iotdb.query.aggregation.impl.MinTimeAggrFunc;
-import cn.edu.tsinghua.iotdb.query.aggregation.impl.MinValueAggrFunc;
+import cn.edu.tsinghua.iotdb.query.aggregation.impl.*;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
 
@@ -30,6 +26,12 @@ public class AggreFuncFactory {
                 return new MaxValueAggrFunc(dataType);
             case AggregationConstant.COUNT:
                 return new CountAggrFunc();
+            case AggregationConstant.MEAN:
+                return new MeanAggrFunc();
+            case AggregationConstant.FIRST:
+                return new FirstAggrFunc(dataType);
+            case AggregationConstant.SUM:
+                return new SumAggrFunc();
             default:
                 throw new ProcessorException("aggregate does not support " + aggrFuncName + " function.");
         }

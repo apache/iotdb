@@ -1,10 +1,7 @@
 package cn.edu.tsinghua.iotdb.service;
 
 
-import static cn.edu.tsinghua.iotdb.service.TestUtils.count;
-import static cn.edu.tsinghua.iotdb.service.TestUtils.max_time;
-import static cn.edu.tsinghua.iotdb.service.TestUtils.max_value;
-import static cn.edu.tsinghua.iotdb.service.TestUtils.min_value;
+import static cn.edu.tsinghua.iotdb.service.TestUtils.*;
 import static org.junit.Assert.fail;
 
 import java.sql.Connection;
@@ -106,6 +103,7 @@ public class AggregationLargeDataTest {
             EnvironmentUtils.closeStatMonitor();
             AggregateEngine.aggregateFetchSize = 4000;
             deamon = IoTDB.getInstance();
+            deamon.stop();
             deamon.active();
             EnvironmentUtils.envSetUp();
         }
@@ -127,7 +125,10 @@ public class AggregationLargeDataTest {
             insertSQL();
 
             Connection connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
-//            selectAllSQLTest();
+            selectAllSQLTest();
+            meanAggreWithSingleFilterTest();
+            sumAggreWithSingleFilterTest();
+            firstAggreWithSingleFilterTest();
             countAggreWithSingleFilterTest();
             minMaxTimeAggreWithSingleFilterTest();
             minValueAggreWithSingleFilterTest();
@@ -137,13 +138,16 @@ public class AggregationLargeDataTest {
             maxTimeAggreWithMultiFilterTest();
             minValueAggreWithMultiFilterTest();
             maxValueAggreWithMultiFilterTest();
+            meanAggreWithMultiFilterTest();
+            sumAggreWithMultiFilterTest();
+            firstAggreWithMultiFilterTest();
             connection.close();
         }
     }
 
-    private void countAggreWithSingleFilterTest() throws ClassNotFoundException, SQLException {
+    private void sumAggreWithSingleFilterTest() throws ClassNotFoundException, SQLException {
         String[] retArray = new String[]{
-                "0,733,740,734,482,1"
+                "0,121538.0,156752.0,20254.43998503685"
         };
 
         Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);
@@ -151,15 +155,101 @@ public class AggregationLargeDataTest {
         try {
             connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
             Statement statement = connection.createStatement();
-            boolean hasResultSet = statement.execute("select count(s0),count(s1),count(s2),count(s3),count(s4) from root.vehicle.d0 where s1 >= 0");
+            boolean hasResultSet = statement.execute("select sum(s0),sum(s1),sum(s2)" +
+                    " from root.vehicle.d0 where s1 >= 0");
+            Assert.assertTrue(hasResultSet);
+            ResultSet resultSet = statement.getResultSet();
+            int cnt = 0;
+            while (resultSet.next()) {
+                String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(TestUtils.sum(d0s0)) + ","
+                        + resultSet.getString(TestUtils.sum(d0s1)) + "," + resultSet.getString(TestUtils.sum(d0s2));
+                Assert.assertEquals(ans, retArray[cnt]);
+                cnt++;
+            }
+            Assert.assertEquals(1, cnt);
+            statement.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+            fail(e.getMessage());
+        } finally {
+            if (connection != null) {
+                connection.close();
+            }
+        }
+    }
+    
+    private void firstAggreWithSingleFilterTest() throws ClassNotFoundException, SQLException {
+        String[] retArray = new String[]{
+                "0,33333,1101,2.22,tomorrow is another day,true"
+        };
+
+        Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);
+        Connection connection = null;
+        try {
+            connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
+            Statement statement = connection.createStatement();
+            boolean hasResultSet = statement.execute("select first(s0),first(s1),first(s2),first(s3),first(s4)" +
+                    " from root.vehicle.d0 where s1 >= 0");
+            Assert.assertTrue(hasResultSet);
+            ResultSet resultSet = statement.getResultSet();
+            int cnt = 0;
+            while (resultSet.next()) {
+                String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(TestUtils.first(d0s0)) + ","
+                        + resultSet.getString(TestUtils.first(d0s1)) + "," + resultSet.getString(TestUtils.first(d0s2))
+                        + "," + resultSet.getString(TestUtils.first(d0s3)) + "," + resultSet.getString(TestUtils.first(d0s4));
+                Assert.assertEquals(ans, retArray[cnt]);
+                cnt++;
+            }
+            Assert.assertEquals(1, cnt);
+            statement.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+            fail(e.getMessage());
+        } finally {
+            if (connection != null) {
+                connection.close();
+            }
+        }
+    }
+
+    private void meanAggreWithSingleFilterTest() throws ClassNotFoundException, SQLException {
+        String[] retArray = new String[]{
+                "0,165.80900409276944,211.82702702702701,27.59460488424639"
+        };
+        Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);
+        Connection connection = null;
+        try {
+            connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
+            Statement statement = connection.createStatement();
+            boolean hasResultSet = statement.execute("select s0,s1,s2 from root.vehicle.d0 where s1 >= 0");
+            //boolean hasResultSet = statement.execute("select count(s3) from root.vehicle.d0 where s1 >= 0");
+            Assert.assertTrue(hasResultSet);
+            ResultSet resultSet = statement.getResultSet();
+            while (resultSet.next()) {
+                String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s0)
+                        + "," + resultSet.getString(d0s1) + "," + resultSet.getString(d0s2);
+                //System.out.println(ans);
+            }
+            statement.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+            fail(e.getMessage());
+        } finally {
+            if (connection != null) {
+                connection.close();
+            }
+        }
+        try {
+            connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
+            Statement statement = connection.createStatement();
+            boolean hasResultSet = statement.execute("select mean(s0),mean(s1),mean(s2) from root.vehicle.d0 where s1 >= 0");
             //boolean hasResultSet = statement.execute("select count(s3) from root.vehicle.d0 where s1 >= 0");
             Assert.assertTrue(hasResultSet);
             ResultSet resultSet = statement.getResultSet();
             int cnt = 0;
             while (resultSet.next()) {
-                String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(count(d0s0))
-                        + "," + resultSet.getString(count(d0s1)) + "," + resultSet.getString(count(d0s2))
-                        + "," + resultSet.getString(count(d0s3)) + "," + resultSet.getString(count(d0s4));
+                String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(mean(d0s0))
+                        + "," + resultSet.getString(mean(d0s1)) + "," + resultSet.getString(mean(d0s2));
                 //System.out.println("!!!!!============ " + ans);
                 Assert.assertEquals(retArray[cnt], ans);
                 cnt++;
@@ -167,6 +257,40 @@ public class AggregationLargeDataTest {
             Assert.assertEquals(1, cnt);
             statement.close();
         } catch (Exception e) {
+            e.printStackTrace();
+            fail(e.getMessage());
+        } finally {
+            if (connection != null) {
+                connection.close();
+            }
+        }
+    }
+
+    private void countAggreWithSingleFilterTest() throws ClassNotFoundException, SQLException {
+        String[] retArray = new String[]{
+                "0,733,740,734"
+        };
+
+        Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);
+        Connection connection = null;
+        try {
+            connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
+            Statement statement = connection.createStatement();
+            boolean hasResultSet = statement.execute("select count(s0),count(s1),count(s2) from root.vehicle.d0 where s1 >= 0");
+            //boolean hasResultSet = statement.execute("select count(s3) from root.vehicle.d0 where s1 >= 0");
+            Assert.assertTrue(hasResultSet);
+            ResultSet resultSet = statement.getResultSet();
+            int cnt = 0;
+            while (resultSet.next()) {
+                String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(count(d0s0))
+                        + "," + resultSet.getString(count(d0s1)) + "," + resultSet.getString(count(d0s2));
+                //System.out.println("!!!!!============ " + ans);
+                Assert.assertEquals(retArray[cnt], ans);
+                cnt++;
+            }
+            Assert.assertEquals(1, cnt);
+            statement.close();
+        }catch (Exception e) {
             e.printStackTrace();
             fail(e.getMessage());
         } finally {
@@ -293,6 +417,112 @@ public class AggregationLargeDataTest {
                 }
                 Assert.assertEquals(1, cnt);
             }
+            statement.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+            fail(e.getMessage());
+        } finally {
+            if (connection != null) {
+                connection.close();
+            }
+        }
+    }
+
+    private void meanAggreWithMultiFilterTest() throws ClassNotFoundException, SQLException {
+        String[] retArray = new String[]{
+                "0,121538.0,733,165.80900409276944,211.82702702702701,27.530176610078502"
+        };
+
+        Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);
+        Connection connection = null;
+        try {
+            connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
+            Statement statement = connection.createStatement();
+            boolean hasResultSet = statement.execute("select sum(s0),count(s0),mean(s0),mean(s1),mean(s2) from root.vehicle.d0 " +
+                    "where s1 >= 0 or s2 < 10");
+            Assert.assertTrue(hasResultSet);
+            ResultSet resultSet = statement.getResultSet();
+            int cnt = 0;
+            while (resultSet.next()) {
+                String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(sum(d0s0)) + "," + resultSet.getString(count(d0s0))
+                        + "," + resultSet.getString(mean(d0s0))
+                        + "," + resultSet.getString(mean(d0s1)) + "," + resultSet.getString(mean(d0s2));
+                System.out.println("!!!!!============ " + ans);
+                Assert.assertEquals(retArray[cnt], ans);
+                cnt++;
+            }
+            Assert.assertEquals(1, cnt);
+            statement.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+            fail(e.getMessage());
+        } finally {
+            if (connection != null) {
+                connection.close();
+            }
+        }
+    }
+
+    private void sumAggreWithMultiFilterTest() throws ClassNotFoundException, SQLException {
+        String[] retArray = new String[]{
+                "0,121538.0,156752.0,20262.209985017776"
+        };
+
+        Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);
+        Connection connection = null;
+        try {
+            connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
+            Statement statement = connection.createStatement();
+            boolean hasResultSet = statement.execute("select sum(s0),sum(s1),sum(s2) from root.vehicle.d0 " +
+                    "where s1 >= 0 or s2 < 10");
+            Assert.assertTrue(hasResultSet);
+            ResultSet resultSet = statement.getResultSet();
+            int cnt = 0;
+            while (resultSet.next()) {
+                String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(sum(d0s0))
+                        + "," + resultSet.getString(sum(d0s1)) + "," + resultSet.getString(sum(d0s2));
+                //String ans = resultSet.getString(sum(d0s3));
+                //System.out.println("!!!!!============ " + ans);
+                Assert.assertEquals(retArray[cnt], ans);
+                cnt++;
+            }
+            Assert.assertEquals(1, cnt);
+            statement.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+            fail(e.getMessage());
+        } finally {
+            if (connection != null) {
+                connection.close();
+            }
+        }
+    }
+
+    private void firstAggreWithMultiFilterTest() throws ClassNotFoundException, SQLException {
+        String[] retArray = new String[]{
+                "0,33333,1101,2.22,tomorrow is another day,true"
+        };
+
+        Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);
+        Connection connection = null;
+        try {
+            connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
+            Statement statement = connection.createStatement();
+            boolean hasResultSet = statement.execute("select first(s0),first(s1),first(s2),first(s3),first(s4) from root.vehicle.d0 " +
+                    "where s1 >= 0 or s2 < 10");
+            Assert.assertTrue(hasResultSet);
+            ResultSet resultSet = statement.getResultSet();
+            int cnt = 0;
+            while (resultSet.next()) {
+                String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(first(d0s0))
+                        + "," + resultSet.getString(first(d0s1)) + "," + resultSet.getString(first(d0s2))
+                        + "," + resultSet.getString(first(d0s3)) + "," + resultSet.getString(first(d0s4));
+                //String ans = resultSet.getString(first(d0s3));
+                //System.out.println("!!!!!============ " + ans);
+                Assert.assertEquals(retArray[cnt], ans);
+                cnt++;
+            }
+            Assert.assertEquals(1, cnt);
             statement.close();
         } catch (Exception e) {
             e.printStackTrace();

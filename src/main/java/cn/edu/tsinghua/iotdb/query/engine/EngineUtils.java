@@ -325,4 +325,50 @@ public class EngineUtils {
         }
         return false;
     }
+
+    public static DynamicOneColumnData copy(DynamicOneColumnData data) {
+        if (data == null) {
+            return null;
+        }
+        DynamicOneColumnData ans = new DynamicOneColumnData(data.dataType, true);
+        for (int i = 0;i < data.timeLength;i ++) {
+            ans.putTime(data.getTime(i));
+        }
+        switch (data.dataType) {
+            case INT32:
+                for (int i = 0;i < data.valueLength;i++) {
+                    ans.putInt(data.getInt(i));
+                }
+                break;
+            case INT64:
+                for (int i = 0;i < data.valueLength;i++) {
+                    ans.putLong(data.getLong(i));
+                }
+                break;
+            case FLOAT:
+                for (int i = 0;i < data.valueLength;i++) {
+                    ans.putFloat(data.getFloat(i));
+                }
+                break;
+            case DOUBLE:
+                for (int i = 0;i < data.valueLength;i++) {
+                    ans.putDouble(data.getDouble(i));
+                }
+                break;
+            case BOOLEAN:
+                for (int i = 0;i < data.valueLength;i++) {
+                    ans.putBoolean(data.getBoolean(i));
+                }
+                break;
+            case TEXT:
+                for (int i = 0;i < data.valueLength;i++) {
+                    ans.putBinary(data.getBinary(i));
+                }
+                break;
+            default:
+                break;
+        }
+
+        return ans;
+    }
 }

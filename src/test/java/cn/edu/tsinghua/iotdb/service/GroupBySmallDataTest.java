@@ -19,6 +19,13 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import java.io.File;
+import java.sql.*;
+
+import static cn.edu.tsinghua.iotdb.service.TestUtils.*;
+
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import cn.edu.tsinghua.iotdb.jdbc.TsfileJDBCConfig;
 import cn.edu.tsinghua.iotdb.query.engine.AggregateEngine;
@@ -34,6 +41,7 @@ import cn.edu.tsinghua.iotdb.utils.EnvironmentUtils;
  * should be set very small
  */
 public class GroupBySmallDataTest {
+
 	private static final String TIMESTAMP_STR = "Time";
 	private final String d0s0 = "root.vehicle.d0.s0";
 	private final String d0s1 = "root.vehicle.d0.s1";
@@ -41,7 +49,6 @@ public class GroupBySmallDataTest {
 	private final String d0s3 = "root.vehicle.d0.s3";
 
 	private final String d1s1 = "root.vehicle.d1.s1";
-
 
 	private IoTDB deamon;
 
@@ -75,20 +82,20 @@ public class GroupBySmallDataTest {
 
 			Connection connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
 
-			allNullSeriesTest();
-//			groupByNoFilterOneIntervalTest();
-//			groupByWithFilterCountOneIntervalTest();
-//			groupByWithFilterMaxMinValueOneIntervalTest();
-//			groupByWithFilterMaxTimeOneIntervalTest();
-//			groupByWithFilterMinTimeOneIntervalTest();
-//			groupByNoValidIntervalTest();
-//			groupByMultiResultWithFilterTest();
-//			groupByWithFilterCountManyIntervalTest();
-//			fixBigGroupByClassFormNumberTest();
-//			groupByMultiAggregationFunctionTest();
-//			groupBySelectMultiDeltaObjectTest();
-//			groupByOnlyHasTimeFilterTest();
-//			groupByMultiResultTest();
+			groupByWithFilterCountOneIntervalTest();
+            allNullSeriesTest();
+            groupByNoFilterOneIntervalTest();
+			groupByWithFilterMaxMinValueOneIntervalTest();
+			groupByWithFilterMaxTimeOneIntervalTest();
+			groupByWithFilterMinTimeOneIntervalTest();
+			groupByNoValidIntervalTest();
+			groupByMultiResultWithFilterTest();
+			groupByWithFilterCountManyIntervalTest();
+			fixBigGroupByClassFormNumberTest();
+			groupByMultiAggregationFunctionTest();
+			groupBySelectMultiDeltaObjectTest();
+			groupByOnlyHasTimeFilterTest();
+			groupByMultiResultTest();
 
 			originBiggerThanIntervalTest();
 
@@ -104,7 +111,7 @@ public class GroupBySmallDataTest {
 		try {
 			connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
 			Statement statement = connection.createStatement();
-			boolean hasResultSet = statement.execute("select count(s0),count(s1),count(s2),count(s3) "
+			boolean hasResultSet = statement.execute("select count(s0),count(s1),count(s2),count(s3),mean(s0),sum(s1),first(s2)"
 					+ "from root.vehicle.d0 where s1 > 190 or s2 < 10.0 group by(10ms, 0, [3,10000])");
 			Assert.assertTrue(hasResultSet);
 			ResultSet resultSet = statement.getResultSet();

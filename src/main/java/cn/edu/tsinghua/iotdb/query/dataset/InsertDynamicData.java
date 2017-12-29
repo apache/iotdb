@@ -6,6 +6,7 @@ import java.io.InputStream;
 import java.util.List;
 
 import cn.edu.tsinghua.iotdb.query.aggregation.AggregationConstant;
+import cn.edu.tsinghua.tsfile.timeseries.filter.utils.StrDigestForFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -245,13 +246,14 @@ public class InsertDynamicData extends DynamicOneColumnData {
                 Digest pageDigest = pageHeader.data_page_header.getDigest();
 
                 // construct value filter digest
-                DigestForFilter valueDigest = new DigestForFilter(pageDigest.min, pageDigest.max, dataType);
+                DigestForFilter valueDigest = new StrDigestForFilter(pageDigest.getStatistics().get(AggregationConstant.MIN_VALUE),
+                        pageDigest.getStatistics().get(AggregationConstant.MAX_VALUE), dataType);
                 // construct time filter digest
                 long mint = pageHeader.data_page_header.min_timestamp;
                 long maxt = pageHeader.data_page_header.max_timestamp;
                 DigestForFilter timeDigest = new DigestForFilter(mint, maxt);
                 LOG.debug("Page min time:{}, max time:{}, min value:{}, max value:{}", String.valueOf(mint),
-                        String.valueOf(maxt), String.valueOf(pageDigest.bufferForMax()), pageDigest.bufferForMax().toString());
+                        String.valueOf(maxt), pageDigest.getStatistics().get(AggregationConstant.MIN_VALUE), pageDigest.getStatistics().get(AggregationConstant.MAX_VALUE));
 
                 while (updateTrue != null && updateTrue.curIdx < updateTrue.valueLength && updateTrue.getTime(updateTrue.curIdx*2+1) < mint) {
                     updateTrue.curIdx ++;
