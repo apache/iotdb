@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Properties;
 
+import cn.edu.tsinghua.iotdb.engine.memcontrol.BasicMemController;
 import org.joda.time.DateTimeZone;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -86,6 +87,25 @@ public class TsfileDBDescriptor {
 			
 			conf.periodTimeForFlush = Long.parseLong(properties.getProperty("period_time_for_flush_in_second", conf.periodTimeForFlush+"").trim());
 			conf.periodTimeForMerge = Long.parseLong(properties.getProperty("period_time_for_merge_in_second", conf.periodTimeForMerge+"").trim());
+
+			conf.memThresholdWarning = (long) (Runtime.getRuntime().maxMemory() * Double.parseDouble(properties.getProperty("mem_threshold_warning", conf.memThresholdWarning+"").trim()) );
+			conf.memThresholdDangerous = (long) (Runtime.getRuntime().maxMemory() * Double.parseDouble(properties.getProperty("mem_threshold_dangerous", conf.memThresholdDangerous+"").trim()));
+
+			conf.memMonitorInterval = Long.parseLong(properties.getProperty("mem_monitor_interval", conf.memMonitorInterval+"").trim());
+
+			conf.memControllerType = Integer.parseInt(properties.getProperty("mem_controller_type", conf.memControllerType+"").trim());
+			conf.memControllerType = conf.memControllerType >= BasicMemController.CONTROLLER_TYPE.values().length ? 0 : conf.memControllerType;
+
+			conf.bufferwriteMetaSizeThreshold = Long.parseLong(properties.getProperty("bufferwrite_meta_size_threshold", conf.bufferwriteMetaSizeThreshold + "").trim());
+			conf.bufferwriteFileSizeThreshold = Long.parseLong(properties.getProperty("bufferwrite_file_size_threshold", conf.bufferwriteFileSizeThreshold + "").trim());
+
+			conf.overflowMetaSizeThreshold = Long.parseLong(properties.getProperty("overflow_meta_size_threshold", conf.overflowMetaSizeThreshold + "").trim());
+			conf.overflowFileSizeThreshold = Long.parseLong(properties.getProperty("overflow_file_size_threshold", conf.overflowFileSizeThreshold + "").trim());
+
+			if(conf.memThresholdWarning <= 0)
+				conf.memThresholdWarning = TsFileDBConstant.MEM_THRESHOLD_WARNING_DEFAULT;
+			if(conf.memThresholdDangerous < conf.memThresholdWarning)
+				conf.memThresholdDangerous = Math.max(conf.memThresholdWarning, TsFileDBConstant.MEM_THRESHOLD_DANGEROUS_DEFAULT);
 
 			conf.concurrentFlushThread  = Integer.parseInt(properties.getProperty("concurrent_flush_thread", conf.concurrentFlushThread + ""));
 			if(conf.concurrentFlushThread <= 0)

@@ -1,37 +1,18 @@
 package cn.edu.tsinghua.iotdb.engine.bufferwrite;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.RandomAccessFile;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
-
-import org.joda.time.DateTime;
-import org.json.JSONArray;
-import org.json.JSONObject;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
 import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
 import cn.edu.tsinghua.iotdb.engine.Processor;
 import cn.edu.tsinghua.iotdb.engine.flushthread.FlushManager;
+import cn.edu.tsinghua.iotdb.engine.memcontrol.BasicMemController;
 import cn.edu.tsinghua.iotdb.engine.utils.FlushState;
 import cn.edu.tsinghua.iotdb.exception.BufferWriteProcessorException;
 import cn.edu.tsinghua.iotdb.exception.PathErrorException;
 import cn.edu.tsinghua.iotdb.metadata.ColumnSchema;
 import cn.edu.tsinghua.iotdb.metadata.MManager;
 import cn.edu.tsinghua.iotdb.sys.writelog.WriteLogManager;
+import cn.edu.tsinghua.iotdb.utils.MemUtils;
 import cn.edu.tsinghua.tsfile.common.conf.TSFileConfig;
 import cn.edu.tsinghua.tsfile.common.conf.TSFileDescriptor;
 import cn.edu.tsinghua.tsfile.common.constant.JsonFormatConstant;
@@ -51,6 +32,17 @@ import cn.edu.tsinghua.tsfile.timeseries.write.record.DataPoint;
 import cn.edu.tsinghua.tsfile.timeseries.write.record.TSRecord;
 import cn.edu.tsinghua.tsfile.timeseries.write.schema.FileSchema;
 import cn.edu.tsinghua.tsfile.timeseries.write.series.IRowGroupWriter;
+import org.joda.time.DateTime;
+import org.json.JSONArray;
+import org.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.*;
+import java.util.*;
+import java.util.Map.Entry;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class BufferWriteProcessor extends Processor {
 
@@ -83,6 +75,8 @@ public class BufferWriteProcessor extends Processor {
 	private Action bufferwriteFlushAction = null;
 	private Action bufferwriteCloseAction = null;
 	private Action filenodeFlushAction = null;
+
+	private long memUsed = 0;
 
 	public BufferWriteProcessor(String processorName, String fileName, Map<String, Object> parameters)
 			throws BufferWriteProcessorException {
@@ -472,7 +466,25 @@ public class BufferWriteProcessor extends Processor {
 	public void write(TSRecord tsRecord) throws BufferWriteProcessorException {
 
 		try {
-			recordWriter.write(tsRecord);
+			long newMemUsage = MemUtils.getTsRecordMemBufferwrite(tsRecord);
+			BasicMemController.UsageLevel level = BasicMemController.getInstance().reportUse(this, newMemUsage);
+			switch (level) {
+				case SAFE:
+					recordWriter.write(tsRecord);
+					memUsed += newMemUsage;
+					break;
+				case WARNING:
+					LOGGER.debug("Memory usage will exceed warning threshold, current : {}." ,
+							MemUtils.bytesCntToStr(BasicMemController.getInstance().getTotalUsage()));
+					recordWriter.write(tsRecord);
+					memUsed += newMemUsage;
+					break;
+				case DANGEROUS:
+				default:
+					LOGGER.warn("Memory usage will exceed dangerous threshold, current : {}.",
+							MemUtils.bytesCntToStr(BasicMemController.getInstance().getTotalUsage()));
+					throw new BufferWriteProcessorException("Memory usage exceeded dangerous threshold.");
+			}
 		} catch (IOException | WriteProcessException e) {
 			LOGGER.error("Write TSRecord error, the TSRecord is {}, the bufferwrite is {}.", tsRecord,
 					getProcessorName());
@@ -517,6 +529,11 @@ public class BufferWriteProcessor extends Processor {
 	}
 
 	@Override
+	public void flush() throws IOException{
+		recordWriter.flushRowGroup(false);
+	}
+	
+	@Override
 	public void close() throws BufferWriteProcessorException {
 		isFlushingSync = true;
 		try {
@@ -536,7 +553,11 @@ public class BufferWriteProcessor extends Processor {
 		} finally {
 			isFlushingSync = false;
 		}
-
+	}
+	
+	@Override
+	public long memoryUsage(){
+		return recordWriter.calculateMemSizeForAllGroup();
 	}
 
 	public void addTimeSeries(String measurementToString, String dataType, String encoding, String[] encodingArgs)
@@ -608,6 +629,8 @@ public class BufferWriteProcessor extends Processor {
 						}
 					}
 				}
+				long oldMemUsage = memUsed;
+				memUsed = 0;
 				// update the lastUpdatetime
 				try {
 					bufferwriteFlushAction.act();
@@ -643,6 +666,8 @@ public class BufferWriteProcessor extends Processor {
 						// handle
 						throw new IOException(e);
 					}
+					BasicMemController.getInstance().reportFree(BufferWriteProcessor.this, oldMemUsage);
+					checkSize();
 				} else {
 					flushState.setFlushing();
 					switchIndexFromWorkToFlush();
@@ -690,6 +715,8 @@ public class BufferWriteProcessor extends Processor {
 						} finally {
 							convertBufferLock.writeLock().unlock();
 						}
+						BasicMemController.getInstance().reportFree(BufferWriteProcessor.this, oldMemUsage);
+						checkSize();
 					};
 					FlushManager.getInstance().submit(flushThread);
 				}
@@ -742,6 +769,10 @@ public class BufferWriteProcessor extends Processor {
 			flushingRowGroupWriters = null;
 			flushingRecordCount = -1;
 		}
+		
+		public long calculateMemSizeForAllGroup(){
+			return super.calculateMemSizeForAllGroup();
+		}
 	}
 
 	private void switchIndexFromWorkToFlush() {
@@ -752,4 +783,44 @@ public class BufferWriteProcessor extends Processor {
 		bufferIOWriter.addNewRowGroupMetaDataToBackUp();
 	}
 
-}
+	/**
+	 * @return The sum of all timeseries's metadata size within this file.
+	 */
+	public long getMetaSize() {
+		// TODO : [MemControl] implement this
+		return 0;
+	}
+
+	/**
+	 * @return The file size of the TsFile corresponding to this processor.
+	 */
+	public long getFileSize() {
+		// TODO : save this variable to avoid object creation?
+		File file = new File(bufferwriteOutputFilePath);
+		return file.length();
+	}
+
+	/**
+	 * Close current TsFile and open a new one for future writes.
+	 * Block new writes and wait until current writes finish.
+	 */
+	public void rollToNewFile() {
+		// TODO : [MemControl] implement this
+	}
+
+	/**
+	 * Check if this TsFile has too big metadata or file.
+	 * If true, close current file and open a new one.
+	 */
+	private void checkSize() {
+		TsfileDBConfig config = TsfileDBDescriptor.getInstance().getConfig();
+		long metaSize = getMetaSize();
+		long fileSize = getFileSize();
+		if(metaSize >= config.bufferwriteMetaSizeThreshold ||
+				fileSize >= config.bufferwriteFileSizeThreshold) {
+			LOGGER.info("{} size reaches threshold, closing. meta size is {}, file size is {}",
+					this.fileName, MemUtils.bytesCntToStr(metaSize), MemUtils.bytesCntToStr(fileSize));
+			rollToNewFile();
+		}
+	}
+ }

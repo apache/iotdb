@@ -7,6 +7,7 @@ import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 public class FlushManager {
@@ -14,6 +15,7 @@ public class FlushManager {
     private static final int EXIT_WAIT_TIME = 60 * 1000;
 
     private ExecutorService pool;
+    private int threadCnt;
 
     private static class InstanceHolder {
         private static FlushManager instance = new FlushManager();
@@ -21,7 +23,8 @@ public class FlushManager {
 
     private FlushManager() {
         TsfileDBConfig config = TsfileDBDescriptor.getInstance().getConfig();
-        pool = IoTDBThreadPoolFactory.newFixedThreadPool(config.concurrentFlushThread, "Flush");
+        this.threadCnt = config.concurrentFlushThread;
+        pool = IoTDBThreadPoolFactory.newFixedThreadPool(threadCnt, "Flush");
     }
 
     static public FlushManager getInstance(){
@@ -78,4 +81,11 @@ public class FlushManager {
         pool.execute(task);
     }
 
+    public int getActiveCnt() {
+        return ((ThreadPoolExecutor) pool).getActiveCount();
+    }
+
+    public int getThreadCnt() {
+        return threadCnt;
+    }
 }
