@@ -85,6 +85,7 @@ public class FileNodeProcessorTest {
 	@Before
 	public void setUp() throws Exception {
 		// origin value
+		EnvironmentUtils.closeStatMonitor();
 		rowGroupSize = tsconfig.groupSizeInByte;
 		pageCheckSizeThreshold = tsconfig.pageCheckSizeThreshold;
 		defaultMaxStringLength = tsconfig.maxStringLength;

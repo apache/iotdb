@@ -47,6 +47,7 @@ public class FileNodeManagerMulTest {
 
 	@Before
 	public void setUp() throws Exception {
+		EnvironmentUtils.closeStatMonitor();
 		pageCheckSizeThreshold = tsconfig.pageCheckSizeThreshold;
 		defaultMaxStringLength = tsconfig.maxStringLength;
 		cachePageData = tsconfig.duplicateIncompletedPage;

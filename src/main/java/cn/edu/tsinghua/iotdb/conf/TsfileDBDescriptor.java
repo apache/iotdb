@@ -66,6 +66,8 @@ public class TsfileDBDescriptor {
 		Properties properties = new Properties();
 		try {
 			properties.load(inputStream);
+			conf.enableStatMonitor = Boolean.parseBoolean(properties.getProperty("enable_stat_monitor", conf.enableStatMonitor + ""));
+			conf.backLoopPeriod = Integer.parseInt(properties.getProperty("back_loop_period", conf.backLoopPeriod + ""));
 			conf.rpcPort = Integer.parseInt(properties.getProperty("rpc_port",conf.rpcPort+""));
 			
 			conf.enableWal = Boolean.parseBoolean(properties.getProperty("enable_wal", conf.enableWal+""));

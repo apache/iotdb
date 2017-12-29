@@ -12,6 +12,8 @@ import javax.management.MalformedObjectNameException;
 import javax.management.NotCompliantMBeanException;
 import javax.management.ObjectName;
 
+import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
+import cn.edu.tsinghua.iotdb.monitor.StatMonitor;
 import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,7 +44,7 @@ public class IoTDB implements IoTDBMBean {
 	private final String JDBC_SERVER_STR = "JDBCServer";
 	private final String MONITOR_STR = "Monitor";
 	private final String IOTDB_STR = "IoTDB";
-
+    private StatMonitor statMonitor;
 	private static class IoTDBHolder {
 		private static final IoTDB INSTANCE = new IoTDB();
 	}
@@ -84,7 +86,7 @@ public class IoTDB implements IoTDBMBean {
 		}
 
 		initFileNodeManager();
-
+        enableStatMonitor();
 		systemDataRecovery();
 
 		maybeInitJmx();
@@ -134,6 +136,12 @@ public class IoTDB implements IoTDBMBean {
 		FileNodeManager.getInstance().recovery();
 	}
 
+    private void enableStatMonitor() {
+        if (TsfileDBDescriptor.getInstance().getConfig().enableStatMonitor){
+            statMonitor = StatMonitor.getInstance();
+            statMonitor.activate();
+        }
+    }
 	/**
 	 * Recover data using system log.
 	 *
@@ -174,6 +182,11 @@ public class IoTDB implements IoTDBMBean {
 		// TODO Auto-generated method stub
 		if (dBdao != null) {
 			dBdao.close();
+		}
+
+		if (TsfileDBDescriptor.getInstance().getConfig().enableStatMonitor){
+			statMonitor = StatMonitor.getInstance();
+			statMonitor.close();
 		}
 
 		FileNodeManager.getInstance().closeAll();

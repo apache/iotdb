@@ -3,6 +3,7 @@ package cn.edu.tsinghua.iotdb.utils;
 import java.io.File;
 import java.io.IOException;
 
+import cn.edu.tsinghua.iotdb.monitor.StatMonitor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,6 +46,7 @@ public class EnvironmentUtils {
 		} catch (FileNodeManagerException e) {
 			throw new IOException(e);
 		}
+		StatMonitor.getInstance().close();
 		FileNodeManager.getInstance().resetFileNodeManager();
 		// clean wal
 		WriteLogManager.getInstance().close();
@@ -93,10 +95,14 @@ public class EnvironmentUtils {
 			}
 		}
 	}
-	
+
+	public static void closeStatMonitor() {
+		config.enableStatMonitor = false;
+	}
+
 	public static void envSetUp(){
 		Authorizer.reset();
-		//tsFileConfig.duplicateIncompletedPage = true;
+		config.enableStatMonitor = false;
 		FileNodeManager.getInstance().resetFileNodeManager();
 	}
 }
