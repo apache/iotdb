@@ -6,6 +6,7 @@ import cn.edu.tsinghua.iotdb.qp.exception.LogicalOperatorException;
 import cn.edu.tsinghua.iotdb.qp.exception.QueryProcessorException;
 import cn.edu.tsinghua.iotdb.qp.executor.QueryProcessExecutor;
 import cn.edu.tsinghua.iotdb.qp.logical.Operator;
+import cn.edu.tsinghua.iotdb.qp.logical.crud.BasicFunctionOperator;
 import cn.edu.tsinghua.iotdb.qp.logical.crud.DeleteOperator;
 import cn.edu.tsinghua.iotdb.qp.logical.crud.FilterOperator;
 import cn.edu.tsinghua.iotdb.qp.logical.crud.IndexOperator;
@@ -256,6 +257,16 @@ public class PhysicalGenerator {
 			multiQueryPlan.setUnit(queryOperator.getUnit());
 			multiQueryPlan.setOrigin(queryOperator.getOrigin());
 			multiQueryPlan.setIntervals(queryOperator.getIntervals());
+		}
+
+		if(queryOperator.isFill()) {
+			multiQueryPlan.setType(MultiQueryPlan.QueryType.FILL);
+			FilterOperator timeFilter = queryOperator.getFilterOperator();
+			if(!timeFilter.isSingle())
+				throw new QueryProcessorException("Slice query must select a single time point");
+			long time = Long.parseLong(((BasicFunctionOperator) timeFilter).getValue());
+			multiQueryPlan.setQueryTime(time);
+			multiQueryPlan.setFillType(queryOperator.getFillTypes());
 		}
 
 		return multiQueryPlan;

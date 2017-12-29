@@ -5,8 +5,10 @@ import java.io.IOException;
 import java.util.List;
 
 import cn.edu.tsinghua.iotdb.exception.PathErrorException;
+import cn.edu.tsinghua.iotdb.exception.UnSupportedFillTypeException;
 import cn.edu.tsinghua.iotdb.metadata.MManager;
 import cn.edu.tsinghua.iotdb.query.aggregation.AggregateFunction;
+import cn.edu.tsinghua.iotdb.query.fill.FillProcessor;
 import cn.edu.tsinghua.iotdb.query.management.ReadLockManager;
 import cn.edu.tsinghua.tsfile.common.utils.Pair;
 import cn.edu.tsinghua.tsfile.timeseries.read.RowGroupReader;
@@ -22,6 +24,8 @@ import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
 import cn.edu.tsinghua.tsfile.timeseries.filter.definition.SingleSeriesFilterExpression;
 import cn.edu.tsinghua.tsfile.timeseries.filter.visitorImpl.SingleValueVisitor;
 import cn.edu.tsinghua.tsfile.timeseries.read.query.DynamicOneColumnData;
+
+import static cn.edu.tsinghua.tsfile.timeseries.filter.definition.FilterFactory.*;
 
 /**
  * This class implements several read methods which can read data in different ways.<br>
@@ -50,7 +54,7 @@ public class RecordReader {
     /** bufferwrite data, the unsealed page **/
     public List<ByteArrayInputStream> bufferWritePageList;
 
-    /** insertPageInMemory + bufferWritePageList; **/
+    /** insertPageInMemory + bufferWritePageList + overflow **/
     public InsertDynamicData insertAllData;
 
     /** overflow data **/
@@ -131,6 +135,7 @@ public class RecordReader {
 
         // add left insert values
         if (insertMemoryData.hasInsertData()) {
+            // TODO the timeFilter, updateTrue, updateFalse in addLeftInsertValue method is unnecessary?
             res.hasReadAll = addLeftInsertValue(res, insertMemoryData, fetchSize, timeFilter, updateTrue, updateFalse);
         } else {
             res.hasReadAll = true;
@@ -401,6 +406,144 @@ public class RecordReader {
     }
 
     /**
+     * Get the time which is smaller than queryTime and is biggest and its value.
+     *
+     * @param deltaObjectId
+     * @param measurementId
+     * @param updateTrue
+     * @param insertMemoryData
+     * @param beforeTime
+     * @param queryTime
+     * @param result
+     * @throws PathErrorException
+     * @throws IOException
+     */
+    public void getPreviousFillResult(DynamicOneColumnData result, String deltaObjectId, String measurementId,
+                                      DynamicOneColumnData updateTrue, InsertDynamicData insertMemoryData,
+                                      SingleSeriesFilterExpression overflowTimeFilter, long beforeTime, long queryTime) throws PathErrorException, IOException {
+
+        SingleSeriesFilterExpression leftFilter = gtEq(timeFilterSeries(), beforeTime, true);
+        SingleSeriesFilterExpression rightFilter = ltEq(timeFilterSeries(), queryTime, true);
+        SingleSeriesFilterExpression fillTimeFilter = (SingleSeriesFilterExpression) and(leftFilter, rightFilter);
+
+        List<RowGroupReader> rowGroupReaderList = readerManager.getRowGroupReaderListByDeltaObject(deltaObjectId, fillTimeFilter);
+        TSDataType dataType = MManager.getInstance().getSeriesType(deltaObjectId + "." + measurementId);
+
+        for (RowGroupReader rowGroupReader : rowGroupReaderList) {
+            if (rowGroupReader.getValueReaders().containsKey(measurementId) &&
+                    rowGroupReader.getValueReaders().get(measurementId).getDataType().equals(dataType)) {
+                // get fill result in ValueReader
+                if (FillProcessor.getPreviousFillResultInFile(result, rowGroupReader.getValueReaders().get(measurementId),
+                        beforeTime, queryTime, overflowTimeFilter, updateTrue)) {
+                    break;
+                }
+            }
+        }
+
+        // get fill result in InsertMemoryData
+        FillProcessor.getPreviousFillResultInMemory(result, insertMemoryData, beforeTime, queryTime);
+
+        if (result.valueLength == 0) {
+            result.putEmptyTime(queryTime);
+        } else {
+            result.setTime(0, queryTime);
+        }
+    }
+
+    /**
+     * Get the time which is smaller than queryTime and is biggest and its value.
+     *
+     * @param deltaObjectId
+     * @param measurementId
+     * @param updateTrue
+     * @param insertMemoryData
+     * @param beforeTime
+     * @param queryTime
+     * @param result
+     * @throws PathErrorException
+     * @throws IOException
+     */
+    public void getLinearFillResult(DynamicOneColumnData result, String deltaObjectId, String measurementId,
+                                      DynamicOneColumnData updateTrue, InsertDynamicData insertMemoryData,
+                                      SingleSeriesFilterExpression overflowTimeFilter, long beforeTime, long queryTime, long afterTime)
+            throws PathErrorException, IOException {
+
+        SingleSeriesFilterExpression leftFilter = gtEq(timeFilterSeries(), beforeTime, true);
+        SingleSeriesFilterExpression rightFilter = ltEq(timeFilterSeries(), afterTime, true);
+        SingleSeriesFilterExpression fillTimeFilter = (SingleSeriesFilterExpression) and(leftFilter, rightFilter);
+
+        List<RowGroupReader> rowGroupReaderList = readerManager.getRowGroupReaderListByDeltaObject(deltaObjectId, fillTimeFilter);
+        TSDataType dataType = MManager.getInstance().getSeriesType(deltaObjectId + "." + measurementId);
+
+        for (RowGroupReader rowGroupReader : rowGroupReaderList) {
+            if (rowGroupReader.getValueReaders().containsKey(measurementId) &&
+                    rowGroupReader.getValueReaders().get(measurementId).getDataType().equals(dataType)) {
+                // has get fill result in ValueReader
+                if (FillProcessor.getLinearFillResultInFile(result, rowGroupReader.getValueReaders().get(measurementId), beforeTime, queryTime, afterTime,
+                        overflowTimeFilter, updateTrue)) {
+                    break;
+                }
+            }
+        }
+
+        // get fill result in InsertMemoryData
+        FillProcessor.getLinearFillResultInMemory(result, insertMemoryData, beforeTime, queryTime, afterTime);
+
+        if (result.timeLength == 0) {
+            result.putEmptyTime(queryTime);
+        } else if (result.valueLength == 1) {
+            // only has previous or after time
+            if (result.getTime(0) != queryTime) {
+                result.timeLength = result.valueLength = 0;
+                result.putEmptyTime(queryTime);
+            }
+        } else {
+            // startTime and endTime will not be equals to queryTime
+            long startTime = result.getTime(0);
+            long endTime = result.getTime(1);
+
+            switch (result.dataType) {
+                case INT32:
+                    int startIntValue = result.getInt(0);
+                    int endIntValue = result.getInt(1);
+                    result.timeLength = result.valueLength = 1;
+                    result.setTime(0, queryTime);
+                    int fillIntValue = startIntValue + (int)((double)(endIntValue-startIntValue)/(double)(endTime-startTime)*(double)(queryTime-startTime));
+                    result.setInt(0, fillIntValue);
+                    break;
+                case INT64:
+                    long startLongValue = result.getLong(0);
+                    long endLongValue = result.getLong(1);
+                    result.timeLength = result.valueLength = 1;
+                    result.setTime(0, queryTime);
+                    long fillLongValue = startLongValue + (long)((double)(endLongValue-startLongValue)/(double)(endTime-startTime)*(double)(queryTime-startTime));
+                    result.setLong(0, fillLongValue);
+                    break;
+                case FLOAT:
+                    float startFloatValue = result.getFloat(0);
+                    float endFloatValue = result.getFloat(1);
+                    result.timeLength = result.valueLength = 1;
+                    result.setTime(0, queryTime);
+                    float fillFloatValue = startFloatValue + (float)((endFloatValue-startFloatValue)/(endTime-startTime)*(queryTime-startTime));
+                    result.setFloat(0, fillFloatValue);
+                    break;
+                case DOUBLE:
+                    double startDoubleValue = result.getDouble(0);
+                    double endDoubleValue = result.getDouble(1);
+                    result.timeLength = result.valueLength = 1;
+                    result.setTime(0, queryTime);
+                    double fillDoubleValue = startDoubleValue + (double)((endDoubleValue-startDoubleValue)/(endTime-startTime)*(queryTime-startTime));
+                    result.setDouble(0, fillDoubleValue);
+                    break;
+                default:
+                    throw new UnSupportedFillTypeException("Unsupported linear fill data type : " + result.dataType);
+
+            }
+
+        }
+    }
+
+    /**
      * Close current RecordReader.
      *
      * @throws IOException
@@ -408,7 +551,5 @@ public class RecordReader {
      */
     public void close() throws IOException, ProcessorException {
         readerManager.close();
-        // unlock for one subQuery
-        ReadLockManager.getInstance().unlockForSubQuery(deltaObjectUID, measurementID, lockToken);
     }
 }

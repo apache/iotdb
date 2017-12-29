@@ -27,6 +27,9 @@ import cn.edu.tsinghua.iotdb.qp.logical.sys.LoadDataOperator;
 import cn.edu.tsinghua.iotdb.qp.logical.sys.MetadataOperator;
 import cn.edu.tsinghua.iotdb.qp.logical.sys.PropertyOperator;
 import cn.edu.tsinghua.iotdb.qp.logical.sys.PropertyOperator.PropertyType;
+import cn.edu.tsinghua.iotdb.query.fill.IFill;
+import cn.edu.tsinghua.iotdb.query.fill.LinearFill;
+import cn.edu.tsinghua.iotdb.query.fill.PreviousFill;
 import cn.edu.tsinghua.iotdb.sql.parse.ASTNode;
 import cn.edu.tsinghua.iotdb.sql.parse.Node;
 import cn.edu.tsinghua.iotdb.sql.parse.TSParser;
@@ -47,10 +50,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static cn.edu.tsinghua.iotdb.qp.constant.SQLConstant.GREATERTHAN;
-import static cn.edu.tsinghua.iotdb.qp.constant.SQLConstant.GREATERTHANOREQUALTO;
-import static cn.edu.tsinghua.iotdb.qp.constant.SQLConstant.LESSTHAN;
-import static cn.edu.tsinghua.iotdb.qp.constant.SQLConstant.LESSTHANOREQUALTO;
+import static cn.edu.tsinghua.iotdb.qp.constant.SQLConstant.*;
 
 /**
  * This class receives an ASTNode and transform it to an operator which is a
@@ -58,14 +58,14 @@ import static cn.edu.tsinghua.iotdb.qp.constant.SQLConstant.LESSTHANOREQUALTO;
  *
  * @author kangrong
  * @author qiaojialin
- *
  */
 public class LogicalGenerator {
     private Logger LOG = LoggerFactory.getLogger(LogicalGenerator.class);
     private RootOperator initializedOperator = null;
     private DateTimeZone timeZone;
 
-    public LogicalGenerator(DateTimeZone timeZone){
+    public LogicalGenerator(DateTimeZone timeZone) {
+
         this.timeZone = timeZone;
     }
 
@@ -78,6 +78,7 @@ public class LogicalGenerator {
      * input an astNode parsing by {@code antlr} and analyze it.
      *
      * @throws QueryProcessorException exception in query process
+
      * @throws ArgsErrorException args error
      *
      */
@@ -101,6 +102,9 @@ public class LogicalGenerator {
                 return;
             case TSParser.TOK_GROUPBY:
                 analyzeGroupBy(astNode);
+                return;
+            case TSParser.TOK_FILL:
+                analyzeFill(astNode);
                 return;
             case TSParser.TOK_UPDATE:
                 if (astNode.getChild(0).getType() == TSParser.TOK_UPDATE_PSWD) {
@@ -333,7 +337,6 @@ public class LogicalGenerator {
         analyzeWhere(astNode.getChild(2));
     }
 
-
     private void analyzeDelete(ASTNode astNode) throws LogicalOperatorException {
         initializedOperator = new DeleteOperator(SQLConstant.TOK_DELETE);
         SelectOperator selectOp = new SelectOperator(TSParser.TOK_SELECT);
@@ -380,8 +383,7 @@ public class LogicalGenerator {
     /**
      * for delete command, time should only have an end time.
      *
-     * @param operator
-     *            delete logical plan
+     * @param operator delete logical plan
      */
     private long parseDeleteTimeFilter(DeleteOperator operator) throws LogicalOperatorException {
         FilterOperator filterOperator = operator.getFilterOperator();
@@ -394,8 +396,8 @@ public class LogicalGenerator {
                     "For delete command, time filter must be less than or less than or equal to");
         }
         long time = Long.valueOf(((BasicFunctionOperator) filterOperator).getValue());
-        if(filterOperator.getTokenIntType()==LESSTHAN){
-            time = time -1;
+        if (filterOperator.getTokenIntType() == LESSTHAN) {
+            time = time - 1;
         }
         // time must greater than 0 now
         if (time <= 0) {
@@ -502,6 +504,7 @@ public class LogicalGenerator {
 
     private void analyzeGroupBy(ASTNode astNode) throws LogicalOperatorException {
         SelectOperator selectOp = ((QueryOperator) initializedOperator).getSelectOperator();
+
         if(selectOp.getSuffixPaths().size() != selectOp.getAggregations().size())
             throw new LogicalOperatorException("Group by must bind each path with an aggregation function");
         ((QueryOperator) initializedOperator).setGroupBy(true);
@@ -509,18 +512,7 @@ public class LogicalGenerator {
 
         //parse timeUnit
         ASTNode unit = astNode.getChild(0);
-        long value = Long.valueOf(unit.getChild(0).getText());
-        if(value <= 0)
-            throw new LogicalOperatorException("Interval must more than 0.");
-        String granu = unit.getChild(1).getText();
-        switch (granu) {
-            case "w": value *= 7;
-            case "d": value *= 24;
-            case "h": value *= 60;
-            case "m": value *= 60;
-            case "s": value *= 1000;
-            default: break;
-        }
+        long value = parseTimeUnit(unit);
         ((QueryOperator) initializedOperator).setUnit(value);
 
         //parse show intervals
@@ -530,7 +522,7 @@ public class LogicalGenerator {
         ASTNode intervalNode;
         long startTime;
         long endTime;
-        for(int i = 0; i < intervalCount; i++) {
+        for (int i = 0; i < intervalCount; i++) {
             intervalNode = intervalsNode.getChild(i);
             ASTNode startNode = intervalNode.getChild(0);
             if (startNode.getType() == TSParser.TOK_DATETIME) {
@@ -562,6 +554,120 @@ public class LogicalGenerator {
             originTime = parseTimeFormat(SQLConstant.START_TIME_STR); 
         }
         ((QueryOperator) initializedOperator).setOrigin(originTime);
+    }
+
+    /**
+     * analyze fill type clause
+     * <p>
+     * PreviousClause : PREVIOUS COMMA <ValidPreviousTime>
+     * LinearClause : LINEAR COMMA <ValidPreviousTime> COMMA <ValidBehindTime>
+     *
+     * @param node
+     * @throws LogicalOperatorException
+     */
+    private void analyzeFill(ASTNode node) throws LogicalOperatorException {
+        Map<TSDataType, IFill> fillTypes = new HashMap<>();
+        int childNum = node.getChildCount();
+        for (int i = 0; i < childNum; i++) {
+            ASTNode childNode = node.getChild(i);
+            TSDataType dataType = parseTypeNode(childNode.getChild(0));
+            ASTNode fillTypeNode = childNode.getChild(1);
+            switch (fillTypeNode.getType()) {
+                case TSParser.TOK_LINEAR:
+                    checkTypeFill(dataType, TSParser.TOK_LINEAR);
+                    if (fillTypeNode.getChildCount() == 2) {
+                        long beforeRange = parseTimeUnit(fillTypeNode.getChild(0));
+                        long afterRange = parseTimeUnit(fillTypeNode.getChild(1));
+                        fillTypes.put(dataType, new LinearFill(beforeRange, afterRange));
+                    } else if (fillTypeNode.getChildCount() == 0){
+                        fillTypes.put(dataType, new LinearFill(-1, -1));
+                    } else {
+                        throw new LogicalOperatorException("Linear fill type must have 0 or 2 valid time ranges");
+                    }
+                    break;
+                case TSParser.TOK_PREVIOUS:
+                    checkTypeFill(dataType, TSParser.TOK_PREVIOUS);
+                    if (fillTypeNode.getChildCount() == 1) {
+                        long preRange = parseTimeUnit(fillTypeNode.getChild(0));
+                        fillTypes.put(dataType, new PreviousFill(preRange));
+                    } else if (fillTypeNode.getChildCount() == 0){
+                        fillTypes.put(dataType, new PreviousFill(-1));
+                    } else {
+                        throw new LogicalOperatorException("Previous fill type must have 0 or 1 valid time range");
+                    }
+                    break;
+            }
+        }
+
+        ((QueryOperator) initializedOperator).setFillTypes(fillTypes);
+        ((QueryOperator) initializedOperator).setFill(true);
+    }
+
+
+    private void checkTypeFill(TSDataType dataType, int type) throws LogicalOperatorException {
+        switch (dataType) {
+            case INT32:
+            case INT64:
+            case FLOAT:
+            case DOUBLE:
+                if (type != TSParser.TOK_LINEAR && type != TSParser.TOK_PREVIOUS)
+                    throw new LogicalOperatorException(String.format("type %s cannot use %s fill function", dataType, TSParser.tokenNames[type]));
+                return;
+            case BOOLEAN:
+            case TEXT:
+                if (type != TSParser.TOK_PREVIOUS)
+                    throw new LogicalOperatorException(String.format("type %s cannot use %s fill function", dataType, TSParser.tokenNames[type]));
+        }
+    }
+
+    /**
+     * parse datatype node
+     *
+     * @param typeNode
+     * @return TSDataType
+     * @throws LogicalOperatorException
+     */
+    private TSDataType parseTypeNode(ASTNode typeNode) throws LogicalOperatorException {
+        String type = typeNode.getText().toLowerCase();
+        switch (type) {
+            case "int32":
+                return TSDataType.INT32;
+            case "int64":
+                return TSDataType.INT64;
+            case "float":
+                return TSDataType.FLOAT;
+            case "double":
+                return TSDataType.DOUBLE;
+            case "boolean":
+                return TSDataType.BOOLEAN;
+            case "text":
+                return TSDataType.TEXT;
+            default:
+                throw new LogicalOperatorException("not a valid fill type : " + type);
+        }
+    }
+
+
+    private long parseTimeUnit(ASTNode node) throws LogicalOperatorException {
+        long timeInterval = Long.valueOf(node.getChild(0).getText());
+        if (timeInterval <= 0)
+            throw new LogicalOperatorException("Interval must more than 0.");
+        String granu = node.getChild(1).getText();
+        switch (granu) {
+            case "w":
+                timeInterval *= 7;
+            case "d":
+                timeInterval *= 24;
+            case "h":
+                timeInterval *= 60;
+            case "m":
+                timeInterval *= 60;
+            case "s":
+                timeInterval *= 1000;
+            default:
+                break;
+        }
+        return timeInterval;
     }
 
 
@@ -614,6 +720,7 @@ public class LogicalGenerator {
     private Path parsePath(ASTNode node) {
         int childCount = node.getChildCount();
         String[] path;
+
         if(childCount == 1 && node.getChild(0).getType() == TSParser.TOK_ROOT){
             ASTNode childNode = node.getChild(0);
             childCount = childNode.getChildCount();
@@ -862,6 +969,7 @@ public class LogicalGenerator {
         }
     }
 
+
     private Map<String, Integer> parseIndexWithParameters(ASTNode astNode) {
         Map<String, Integer> indexParameters = new HashMap<String, Integer>();
         for (int i = 0; i < astNode.getChildCount(); i++) {
@@ -872,7 +980,6 @@ public class LogicalGenerator {
         }
         return indexParameters;
     }
-
 
     private void analyzeIndexCreate(ASTNode astNode) throws LogicalOperatorException {
         ASTNode indexNode = astNode.getChild(0);
@@ -904,7 +1011,7 @@ public class LogicalGenerator {
                 }
             }
         }
-
+        
         //further process index operator
         switch (indexType) {
             case KvIndex:
@@ -976,7 +1083,6 @@ public class LogicalGenerator {
                 throw new LogicalOperatorException(String.format(
                         "Not support the index query %s, only support subsequence_matching(subm).", indexQueryName));
         }
-
     }
 
 }

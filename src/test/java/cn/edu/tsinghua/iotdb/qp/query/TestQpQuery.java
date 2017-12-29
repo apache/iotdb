@@ -140,7 +140,6 @@ public class TestQpQuery {
                 if (i == result.length)
                     fail();
                 String actual = set.getNextRecord().toString();
-                System.out.println(actual);
                 assertEquals(result[i++], actual);
             }
         }

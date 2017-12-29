@@ -621,8 +621,144 @@ public class SQLParserTest {
             assertEquals(rec.get(i), ans.get(i));
             i++;
         }
-    }    
+    }
     
+    @Test
+    public void fill1() throws ParseException{
+    	// template for test case
+        ArrayList<String> ans = new ArrayList<>(Arrays.asList(
+        		"TOK_QUERY", "TOK_SELECT",
+        		"TOK_PATH", "s1",
+        		"TOK_FROM", "TOK_PATH", "TOK_ROOT", "vehicle", "d1",
+        		"TOK_WHERE", "=", "TOK_PATH", "time", "1234567",
+    			"TOK_FILL",
+        		"TOK_TYPE", "float", "TOK_PREVIOUS", "TOK_TIMEUNIT", "11", "h"));
+        ArrayList<String> rec = new ArrayList<>();
+        ASTNode astTree = ParseGenerator.generateAST(
+        		  "select s1 "
+        		+ "FROM root.vehicle.d1 "
+        		+ "WHERE time = 1234567 "
+        		+ "fill(float[previous, 11h])");
+        astTree = ParseUtils.findRootNonNullToken(astTree);
+        recursivePrintSon(astTree, rec);
+
+        int i = 0;
+        while (i <= rec.size() - 1) {
+            assertEquals(rec.get(i), ans.get(i));
+            i++;
+        }
+    }
+
+    @Test
+    public void fill2() throws ParseException{
+    	// template for test case
+        ArrayList<String> ans = new ArrayList<>(Arrays.asList(
+        		"TOK_QUERY", "TOK_SELECT",
+        		"TOK_PATH", "s1",
+        		"TOK_FROM", "TOK_PATH", "TOK_ROOT", "vehicle", "d1",
+        		"TOK_WHERE", "=", "TOK_PATH", "time", "1234567",
+    			"TOK_FILL",
+        		"TOK_TYPE", "float", "TOK_PREVIOUS"));
+        ArrayList<String> rec = new ArrayList<>();
+        ASTNode astTree = ParseGenerator.generateAST(
+        		  "select s1 "
+        		+ "FROM root.vehicle.d1 "
+        		+ "WHERE time = 1234567 "
+        		+ "fill(float[previous])");
+        astTree = ParseUtils.findRootNonNullToken(astTree);
+        recursivePrintSon(astTree, rec);
+
+        int i = 0;
+        while (i <= rec.size() - 1) {
+            assertEquals(rec.get(i), ans.get(i));
+            i++;
+        }
+    }
+    
+    @Test
+    public void fill3() throws ParseException{
+    	// template for test case
+        ArrayList<String> ans = new ArrayList<>(Arrays.asList(
+        		"TOK_QUERY", "TOK_SELECT",
+        		"TOK_PATH", "s1",
+        		"TOK_FROM", "TOK_PATH", "TOK_ROOT", "vehicle", "d1",
+        		"TOK_WHERE", "=", "TOK_PATH", "time", "1234567",
+    			"TOK_FILL",
+        		"TOK_TYPE", "boolean", 
+        		"TOK_LINEAR", "TOK_TIMEUNIT", "31", "s", "TOK_TIMEUNIT", "123", "d"));
+        ArrayList<String> rec = new ArrayList<>();
+        ASTNode astTree = ParseGenerator.generateAST(
+        		  "select s1 "
+        		+ "FROM root.vehicle.d1 "
+        		+ "WHERE time = 1234567 "
+        		+ "fill(boolean[linear, 31s, 123d])");
+        astTree = ParseUtils.findRootNonNullToken(astTree);
+        recursivePrintSon(astTree, rec);
+
+        int i = 0;
+        while (i <= rec.size() - 1) {
+            assertEquals(rec.get(i), ans.get(i));
+            i++;
+        }
+    }
+
+    @Test
+    public void fill4() throws ParseException{
+    	// template for test case
+        ArrayList<String> ans = new ArrayList<>(Arrays.asList(
+        		"TOK_QUERY", "TOK_SELECT",
+        		"TOK_PATH", "s1",
+        		"TOK_FROM", "TOK_PATH", "TOK_ROOT", "vehicle", "d1",
+        		"TOK_WHERE", "=", "TOK_PATH", "time", "1234567",
+    			"TOK_FILL",
+        		"TOK_TYPE", "boolean", 
+        		"TOK_LINEAR"));
+        ArrayList<String> rec = new ArrayList<>();
+        ASTNode astTree = ParseGenerator.generateAST(
+        		  "select s1 "
+        		+ "FROM root.vehicle.d1 "
+        		+ "WHERE time = 1234567 "
+        		+ "fill(boolean[linear])");
+        astTree = ParseUtils.findRootNonNullToken(astTree);
+        recursivePrintSon(astTree, rec);
+
+        int i = 0;
+        while (i <= rec.size() - 1) {
+            assertEquals(rec.get(i), ans.get(i));
+            i++;
+        }
+    }
+    
+    @Test
+    public void fill5() throws ParseException{
+    	// template for test case
+        ArrayList<String> ans = new ArrayList<>(Arrays.asList(
+        		"TOK_QUERY", "TOK_SELECT",
+        		"TOK_PATH", "s1",
+        		"TOK_PATH", "s2",
+        		"TOK_FROM", "TOK_PATH", "TOK_ROOT", "vehicle", "d1",
+        		"TOK_WHERE", "=", "TOK_PATH", "time", "1234567",
+    			"TOK_FILL",
+        		"TOK_TYPE", "int", "TOK_LINEAR", "TOK_TIMEUNIT", "5", "ms", "TOK_TIMEUNIT", "7", "d",
+        		"TOK_TYPE", "float", "TOK_PREVIOUS",
+        		"TOK_TYPE", "boolean", "TOK_LINEAR",
+        		"TOK_TYPE", "text", "TOK_PREVIOUS", "TOK_TIMEUNIT", "66", "w"
+        		));
+        ArrayList<String> rec = new ArrayList<>();
+        ASTNode astTree = ParseGenerator.generateAST(
+        		  "select s1,s2 "
+        		+ "FROM root.vehicle.d1 "
+        		+ "WHERE time = 1234567 "
+        		+ "fill(int[linear, 5ms, 7d], float[previous], boolean[linear], text[previous, 66w])");
+        astTree = ParseUtils.findRootNonNullToken(astTree);
+        recursivePrintSon(astTree, rec);
+
+        int i = 0;
+        while (i <= rec.size() - 1) {
+            assertEquals(rec.get(i), ans.get(i));
+            i++;
+        }
+    }
     
     // Authority Operation
     @Test

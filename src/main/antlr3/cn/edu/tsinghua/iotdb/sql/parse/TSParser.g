@@ -29,6 +29,10 @@ TOK_INSERT;
 TOK_QUERY;
 TOK_SELECT;
 TOK_GROUPBY;
+TOK_FILL;
+TOK_TYPE;
+TOK_LINEAR;
+TOK_PREVIOUS;
 TOK_TIMEUNIT;
 TOK_TIMEORIGIN;
 TOK_TIMEINTERVAL;
@@ -103,6 +107,9 @@ ArrayList<ParseError> errors = new ArrayList<ParseError>();
 
         xlateMap.put("KW_BY", "BY");
         xlateMap.put("KW_GROUP", "GROUP");
+        xlateMap.put("KW_FILL", "FILL");
+        xlateMap.put("KW_LINEAR", "LINEAR");
+        xlateMap.put("KW_PREVIOUS", "PREVIOUS");
         xlateMap.put("KW_WHERE", "WHERE");
         xlateMap.put("KW_FROM", "FROM");
 
@@ -429,9 +436,14 @@ queryStatement
    :
    selectClause
    whereClause?
-   groupbyClause?
-   -> ^(TOK_QUERY selectClause whereClause? groupbyClause?)
+   specialClause?
+   -> ^(TOK_QUERY selectClause whereClause? specialClause?)
    ;
+
+specialClause
+    :
+    groupbyClause | fillClause
+    ;
 
 authorStatement
     : createUser
@@ -661,6 +673,28 @@ groupbyClause
     KW_GROUP KW_BY LPAREN value=Integer unit=Identifier (COMMA timeOrigin=dateFormatWithNumber)? COMMA timeInterval (COMMA timeInterval)* RPAREN
     -> ^(TOK_GROUPBY ^(TOK_TIMEUNIT $value $unit) ^(TOK_TIMEORIGIN $timeOrigin)? ^(TOK_TIMEINTERVAL timeInterval+))
     ;
+
+fillClause
+    :
+    KW_FILL LPAREN typeClause (COMMA typeClause)* RPAREN
+    -> ^(TOK_FILL typeClause+)
+    ;
+
+typeClause
+    : type=Identifier LSQUARE c=interTypeClause RSQUARE
+    -> ^(TOK_TYPE $type $c)
+    ;
+
+interTypeClause
+    :
+    KW_LINEAR (COMMA value1=Integer unit1=Identifier COMMA value2=Integer unit2=Identifier)?
+    -> ^(TOK_LINEAR (^(TOK_TIMEUNIT $value1 $unit1) ^(TOK_TIMEUNIT $value2 $unit2))?)
+    |
+    KW_PREVIOUS (COMMA value1=Integer unit1=Identifier)?
+    -> ^(TOK_PREVIOUS ^(TOK_TIMEUNIT $value1 $unit1)?)
+    ;
+
+
 
 timeInterval
     :

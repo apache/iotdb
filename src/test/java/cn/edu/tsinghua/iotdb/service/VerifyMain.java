@@ -102,7 +102,7 @@ public class VerifyMain {
         // SELECT max_value(s_76) FROM root.performf.group_4.d_41 WHERE root.performf.group_4.d_41.s_76 > 0.0
         // GROUP BY(250000ms, 1262275200000,[2010-01-02 02:59:59,2010-01-02 03:16:39])
 
-        String sql_1 = "﻿select max_value(s_92) from root.performf.group_3.d_33 where time < 2010-01-01 04:26:39";
+        String sql_1 = "﻿SELECT max_value(s_25) FROM root.performf.group_5.d_57 WHERE time > 2010-01-01 00:00:00 AND time < 2010-01-01 00:30:00";
 
         String sql_2 = "select count(s_92) from root.performf.group_3.d_33 where time > 2010-01-01 04:09:59 and time < 2010-01-01 04:26:39";
 
@@ -112,7 +112,7 @@ public class VerifyMain {
         Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);
         Connection connection = null;
         try {
-            connection = DriverManager.getConnection("jdbc:tsfile://192.168.130.9:6667/", "root", "root");
+            connection = DriverManager.getConnection("jdbc:tsfile://192.168.130.23:6667/", "root", "root");
             Statement statement = connection.createStatement();
             boolean hasResultSet = statement.execute(sql_1);
             Assert.assertTrue(hasResultSet);
@@ -120,10 +120,11 @@ public class VerifyMain {
             int cnt = 0;
             while (resultSet.next()) {
                 String ans = resultSet.getString(TIMESTAMP_STR) + ","
-                        + resultSet.getString(max_value("root.performf.group_3.d_33.s_92"));
-                cnt++;
+                        + resultSet.getString(2);
+                System.out.println(ans);
+                //cnt++;
             }
-            Assert.assertEquals(1, cnt);
+            //Assert.assertEquals(1, cnt);
             statement.close();
 
         } catch (Exception e) {

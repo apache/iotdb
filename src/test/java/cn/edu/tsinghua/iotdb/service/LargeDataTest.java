@@ -34,14 +34,16 @@ public class LargeDataTest {
     private static final String TIMESTAMP_STR = "Time";
     private final String d0s0 = "root.vehicle.d0.s0";
     private final String d0s1 = "root.vehicle.d0.s1";
-    private final String d1s0 = "root.vehicle.d1.s0";
-
     private final String d0s2 = "root.vehicle.d0.s2";
     private final String d0s3 = "root.vehicle.d0.s3";
     private final String d0s4 = "root.vehicle.d0.s4";
+    private final String d0s5 = "root.vehicle.d0.s5";
+
+    private final String d1s0 = "root.vehicle.d1.s0";
     private final String d1s1 = "root.vehicle.d1.s1";
     
     private static String[] stringValue = new String[]{"A", "B", "C", "D", "E"};
+    private static String[] booleanValue = new String[]{"true", "false"};
 
     private static String[] create_sql = new String[]{
             "SET STORAGE GROUP TO root.vehicle",
@@ -51,6 +53,7 @@ public class LargeDataTest {
             "CREATE TIMESERIES root.vehicle.d0.s2 WITH DATATYPE=FLOAT, ENCODING=RLE",
             "CREATE TIMESERIES root.vehicle.d0.s3 WITH DATATYPE=TEXT, ENCODING=PLAIN",
             "CREATE TIMESERIES root.vehicle.d0.s4 WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
+            "CREATE TIMESERIES root.vehicle.d0.s5 WITH DATATYPE=DOUBLE, ENCODING=RLE",
 
             "CREATE TIMESERIES root.vehicle.d1.s0 WITH DATATYPE=INT32, ENCODING=RLE",
             "CREATE TIMESERIES root.vehicle.d1.s1 WITH DATATYPE=INT64, ENCODING=RLE",
@@ -122,6 +125,10 @@ public class LargeDataTest {
 
             seriesTimeDigestTest();
 
+            previousFillTest();
+
+            linearFillTest();
+
             connection.close();
         }
     }
@@ -144,7 +151,7 @@ public class LargeDataTest {
                 cnt++;
             }
             //System.out.println("select ====== " + cnt);
-            assertEquals(16340, cnt);
+            assertEquals(16440, cnt);
             statement.close();
 
         } catch (Exception e) {
@@ -172,7 +179,7 @@ public class LargeDataTest {
             int cnt = 0;
             while (resultSet.next()) {
                 String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(count(d0s0));
-                assertEquals("16340", resultSet.getString(count(d0s0)));
+                assertEquals("16440", resultSet.getString(count(d0s0)));
                 cnt++;
             }
             assertEquals(1, cnt);
@@ -497,6 +504,185 @@ public class LargeDataTest {
         }
     }
 
+    private void previousFillTest() throws SQLException, ClassNotFoundException {
+        Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);
+        Connection connection = null;
+        try {
+            connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
+            Statement statement = connection.createStatement();
+            boolean hasResultSet;
+            ResultSet resultSet;
+            int cnt;
+
+            // null test
+            hasResultSet = statement.execute("select s0,s1,s2,s3,s4 from root.vehicle.d0 where time = 199 fill(int32[previous, 5m])");
+            Assert.assertTrue(hasResultSet);
+            resultSet = statement.getResultSet();
+            cnt = 0;
+            while (resultSet.next()) {
+                String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s0) + "," + resultSet.getString(d0s1)
+                        + "," + resultSet.getString(d0s2) + "," + resultSet.getString(d0s3) + "," + resultSet.getString(d0s4);
+                assertEquals("199,null,null,null,null,null", ans);
+                cnt ++;
+            }
+            Assert.assertEquals(1, cnt);
+            statement.close();
+
+            // has value in queryTime
+            statement = connection.createStatement();
+            hasResultSet = statement.execute("select s0,s1,s2,s3,s4 from root.vehicle.d0 where time = 12000 fill(int32[previous, 5m])");
+            Assert.assertTrue(hasResultSet);
+            resultSet = statement.getResultSet();
+            cnt = 0;
+            while (resultSet.next()) {
+                String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s0) + "," + resultSet.getString(d0s1)
+                        + "," + resultSet.getString(d0s2) + "," + resultSet.getString(d0s3) + "," + resultSet.getString(d0s4);
+                assertEquals("12000,0,15,10.0,A,true", ans);
+                //System.out.println("=====" + ans);
+                cnt ++;
+            }
+            Assert.assertEquals(1, cnt);
+            statement.close();
+
+            // test series,page index and update data
+            statement = connection.createStatement();
+            hasResultSet = statement.execute("select s0,s1,s2,s3,s4,s5 from root.vehicle.d0 where time = 99999 " +
+                    "fill(int32[previous, 90000ms], int64[previous, 90000ms], float[previous, 90000ms], double[previous, 90000ms], " +
+                    "boolean[previous,90000ms], text[previous, 90000ms])");
+            Assert.assertTrue(hasResultSet);
+            resultSet = statement.getResultSet();
+            cnt = 0;
+            while (resultSet.next()) {
+                String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s0) + "," + resultSet.getString(d0s1)
+                        + "," + resultSet.getString(d0s2) + "," + resultSet.getString(d0s3) + "," + resultSet.getString(d0s4)
+                        + "," + resultSet.getString(d0s5);
+                assertEquals("99999,59,11111111,14.0,E,false,13599.0", ans);
+                cnt ++;
+            }
+            Assert.assertEquals(1, cnt);
+            statement.close();
+
+            // overflow insert
+            statement = connection.createStatement();
+            hasResultSet = statement.execute("select s0,s1,s2,s3,s4,s5 from root.vehicle.d0 where time = 202000 " +
+                    "fill(int32[previous, 90000ms], int64[previous, 90000ms], float[previous, 90000ms], double[previous, 90000ms], " +
+                    "boolean[previous,90000ms], text[previous, 90000ms])");
+            Assert.assertTrue(hasResultSet);
+            resultSet = statement.getResultSet();
+            cnt = 0;
+            while (resultSet.next()) {
+                String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s0) + "," + resultSet.getString(d0s1)
+                        + "," + resultSet.getString(d0s2) + "," + resultSet.getString(d0s3) + "," + resultSet.getString(d0s4)
+                        + "," + resultSet.getString(d0s5);
+                assertEquals("202000,6666,7777,8888.0,goodman,false,9999.0", ans);
+                //System.out.println("====" + ans);
+                cnt ++;
+            }
+            Assert.assertEquals(1, cnt);
+            statement.close();
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            fail(e.getMessage());
+        } finally {
+            if (connection != null) {
+                connection.close();
+            }
+        }
+    }
+
+    private void linearFillTest() throws SQLException, ClassNotFoundException {
+        Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);
+        Connection connection = null;
+        try {
+            connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
+            Statement statement = connection.createStatement();
+            boolean hasResultSet;
+            ResultSet resultSet;
+            int cnt;
+
+            // doesn't have value in queryTime, but have value in [beforeTime, afterTime]
+            statement = connection.createStatement();
+            hasResultSet = statement.execute("select s0,s1,s2,s3,s4 from root.vehicle.d0 " +
+                    "where time = 24001 fill(int32[previous, 5m], int64[linear, 100ms, 100ms]," +
+                    "float[linear, 100ms, 10m], double[previous, 10m])");
+            Assert.assertTrue(hasResultSet);
+            resultSet = statement.getResultSet();
+            cnt = 0;
+            while (resultSet.next()) {
+                String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s0) + "," + resultSet.getString(d0s1)
+                        + "," + resultSet.getString(d0s2) + "," + resultSet.getString(d0s3) + "," + resultSet.getString(d0s4);
+                assertEquals("24001,59,null,14.001053,null,null", ans);
+                //System.out.println("=====" + ans);
+                cnt ++;
+            }
+            Assert.assertEquals(1, cnt);
+            statement.close();
+
+            // overflow insert
+            statement = connection.createStatement();
+            hasResultSet = statement.execute("select s0,s1,s2,s3,s4 from root.vehicle.d0 " +
+                    "where time = 2300 fill(int32[linear, 5m, 5m], int64[linear, 100ms, 100ms]," +
+                    "float[linear, 100ms, 10m], double[linear])");
+            Assert.assertTrue(hasResultSet);
+            resultSet = statement.getResultSet();
+            cnt = 0;
+            while (resultSet.next()) {
+                String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s0) + "," + resultSet.getString(d0s1)
+                        + "," + resultSet.getString(d0s2) + "," + resultSet.getString(d0s3) + "," + resultSet.getString(d0s4);
+                assertEquals("2300,2300,2301,2302.0,A,null", ans);
+                //System.out.println("=====" + ans);
+                cnt ++;
+            }
+            Assert.assertEquals(1, cnt);
+            statement.close();
+
+            // overflow insert, file data added into result firstly
+            statement = connection.createStatement();
+            hasResultSet = statement.execute("select s0,s1,s2,s3,s4 from root.vehicle.d0 " +
+                    "where time = 2600 fill(int32[linear], int64[linear]," +
+                    "float[linear], double[linear])");
+            Assert.assertTrue(hasResultSet);
+            resultSet = statement.getResultSet();
+            cnt = 0;
+            while (resultSet.next()) {
+                String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s0) + "," + resultSet.getString(d0s1)
+                        + "," + resultSet.getString(d0s2) + "," + resultSet.getString(d0s3) + "," + resultSet.getString(d0s4);
+                assertEquals("2600,1996,2141,1998.4192,null,null", ans);
+                //System.out.println("=====" + ans);
+                cnt ++;
+            }
+            Assert.assertEquals(1, cnt);
+            statement.close();
+
+            // overflow insert, file data added into result firstly
+            statement = connection.createStatement();
+            hasResultSet = statement.execute("select s0,s1,s2,s3,s4 from root.vehicle.d0 " +
+                    "where time = 50000 fill(int32[linear], int64[linear]," +
+                    "float[linear], double[linear])");
+            Assert.assertTrue(hasResultSet);
+            resultSet = statement.getResultSet();
+            cnt = 0;
+            while (resultSet.next()) {
+                String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s0) + "," + resultSet.getString(d0s1)
+                        + "," + resultSet.getString(d0s2) + "," + resultSet.getString(d0s3) + "," + resultSet.getString(d0s4);
+                assertEquals("50000,39,11111111,27.684555,null,null", ans);
+                //System.out.println("=====" + ans);
+                cnt ++;
+            }
+            Assert.assertEquals(1, cnt);
+            statement.close();
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            fail(e.getMessage());
+        } finally {
+            if (connection != null) {
+                connection.close();
+            }
+        }
+    }
+
     private void insertSQL() throws ClassNotFoundException, SQLException {
         Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);
         Connection connection = null;
@@ -519,11 +705,15 @@ public class LargeDataTest {
                 statement.execute(sql);
                 sql = String.format("insert into root.vehicle.d0(timestamp,s3) values(%s,'%s')", time, stringValue[time % 5]);
                 statement.execute(sql);
+                sql = String.format("insert into root.vehicle.d0(timestamp,s4) values(%s, %s)", time, booleanValue[time % 2]);
+                statement.execute(sql);
+                sql = String.format("insert into root.vehicle.d0(timestamp,s5) values(%s, %s)", time, time);
+                statement.execute(sql);
             }
 
             statement.execute("flush");
 
-            // insert large amount of data    time range : 13700 ~ 24000
+            // insert large amount of data time range : 13700 ~ 24000
             for (int time = 13700; time < 24000; time++) {
 
                 String sql = String.format("insert into root.vehicle.d0(timestamp,s0) values(%s,%s)", time, time % 70);
@@ -575,6 +765,23 @@ public class LargeDataTest {
                 sql = String.format("insert into root.vehicle.d0(timestamp,s2) values(%s,%s)", time, time + 2);
                 statement.execute(sql);
                 sql = String.format("insert into root.vehicle.d0(timestamp,s3) values(%s,'%s')", time, stringValue[time % 5]);
+                statement.execute(sql);
+            }
+
+            // overflow insert, time > 200000
+            for (int time = 200900; time < 201000; time++) {
+
+                String sql = String.format("insert into root.vehicle.d0(timestamp,s0) values(%s,%s)", time, 6666);
+                statement.execute(sql);
+                sql = String.format("insert into root.vehicle.d0(timestamp,s1) values(%s,%s)", time, 7777);
+                statement.execute(sql);
+                sql = String.format("insert into root.vehicle.d0(timestamp,s2) values(%s,%s)", time, 8888);
+                statement.execute(sql);
+                sql = String.format("insert into root.vehicle.d0(timestamp,s3) values(%s,'%s')", time, "goodman");
+                statement.execute(sql);
+                sql = String.format("insert into root.vehicle.d0(timestamp,s4) values(%s, %s)", time, booleanValue[time % 2]);
+                statement.execute(sql);
+                sql = String.format("insert into root.vehicle.d0(timestamp,s5) values(%s, %s)", time, 9999);
                 statement.execute(sql);
             }
 
