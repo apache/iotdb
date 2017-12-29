@@ -116,6 +116,19 @@ public class TsfileDBConfig {
 
 	public DateTimeZone timeZone = DateTimeZone.getDefault();
 
+	/**
+	 * The statMonitor's BackLoop period, 5s is enough
+	 */
+	public int backLoopPeriod = 5;
+
+	/**
+	 * Set whether to enable statistics service
+	 */
+	public boolean enableStatMonitor = true;
+	/**
+	 * the maximum number of writing instances existing in same time.
+	 */
+
 	public TsfileDBConfig() {}
 
 	public void updateDataPath() {

@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -36,6 +37,9 @@ import cn.edu.tsinghua.iotdb.index.common.DataFileInfo;
 import cn.edu.tsinghua.iotdb.index.common.IndexManagerException;
 import cn.edu.tsinghua.iotdb.metadata.ColumnSchema;
 import cn.edu.tsinghua.iotdb.metadata.MManager;
+import cn.edu.tsinghua.iotdb.monitor.IStatistic;
+import cn.edu.tsinghua.iotdb.monitor.MonitorConstants;
+import cn.edu.tsinghua.iotdb.monitor.StatMonitor;
 import cn.edu.tsinghua.iotdb.query.engine.QueryForMerge;
 import cn.edu.tsinghua.tsfile.common.conf.TSFileConfig;
 import cn.edu.tsinghua.tsfile.common.conf.TSFileDescriptor;
@@ -54,9 +58,10 @@ import cn.edu.tsinghua.tsfile.timeseries.write.TsFileWriter;
 import cn.edu.tsinghua.tsfile.timeseries.write.exception.WriteProcessException;
 import cn.edu.tsinghua.tsfile.timeseries.write.record.DataPoint;
 import cn.edu.tsinghua.tsfile.timeseries.write.record.TSRecord;
+import cn.edu.tsinghua.tsfile.timeseries.write.record.datapoint.LongDataPoint;
 import cn.edu.tsinghua.tsfile.timeseries.write.schema.FileSchema;
 
-public class FileNodeProcessor extends Processor {
+public class FileNodeProcessor extends Processor implements IStatistic{
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(FileNodeProcessor.class);
 	private static final TSFileConfig TsFileConf = TSFileDescriptor.getInstance().getConfig();
@@ -93,6 +98,58 @@ public class FileNodeProcessor extends Processor {
 
 	private Map<String, Object> parameters = null;
 
+	private final String statStorageDeltaName;
+
+	private final HashMap<String, AtomicLong> statParamsHashMap = new HashMap<String, AtomicLong>(){
+		{
+			for (MonitorConstants.FileNodeProcessorStatConstants statConstant:
+					MonitorConstants.FileNodeProcessorStatConstants.values()){
+				put(statConstant.name(), new AtomicLong(0));
+			}
+		}
+	};
+
+	public HashMap<String, AtomicLong> getStatParamsHashMap() {
+		return statParamsHashMap;
+	}
+
+
+	@Override
+	public void registStatMetadata() {
+		HashMap<String, String> hashMap = new HashMap<String, String> (){{
+			for (MonitorConstants.FileNodeProcessorStatConstants statConstant :
+					MonitorConstants.FileNodeProcessorStatConstants.values()) {
+				put(statStorageDeltaName + MonitorConstants.MONITOR_PATH_SEPERATOR + statConstant.name(), MonitorConstants.DataType);
+			}
+		}};
+		StatMonitor.getInstance().registStatStorageGroup(hashMap);
+	}
+
+	@Override
+	public List<String> getAllPathForStatistic() {
+		List<String> list = new ArrayList<>();
+		for (MonitorConstants.FileNodeProcessorStatConstants statConstant :
+				MonitorConstants.FileNodeProcessorStatConstants.values()) {
+			list.add(statStorageDeltaName + MonitorConstants.MONITOR_PATH_SEPERATOR + statConstant.name());
+		}
+		return list;
+	}
+
+	@Override
+	public HashMap<String, TSRecord> getAllStatisticsValue() {
+		Long curTime = System.currentTimeMillis();
+		HashMap<String, TSRecord> tsRecordHashMap = new HashMap<>();
+		TSRecord tsRecord = new TSRecord(curTime, statStorageDeltaName);
+		HashMap<String, AtomicLong> hashMap = getStatParamsHashMap();
+		tsRecord.dataPointList = new ArrayList<DataPoint>() {{
+			for (Map.Entry<String, AtomicLong> entry : hashMap.entrySet()) {
+				add(new LongDataPoint(entry.getKey(), entry.getValue().get()));
+			}
+		}};
+		tsRecordHashMap.put(statStorageDeltaName, tsRecord);
+		return tsRecordHashMap;
+	}
+
 	private Action flushFileNodeProcessorAction = new Action() {
 
 		@Override
@@ -120,9 +177,8 @@ public class FileNodeProcessor extends Processor {
 
 		@Override
 		public void act() throws Exception {
-
-			// update the lastUpdatetime, newIntervalList and Notice: thread
-			// safe
+			
+			// update the lastUpdatetime, newIntervalList and Notice: thread safe
 			synchronized (fileNodeProcessorStore) {
 				fileNodeProcessorStore.setLastUpdateTimeMap(lastUpdateTimeMap);
 				addLastTimeToIntervalFile();
@@ -193,6 +249,12 @@ public class FileNodeProcessor extends Processor {
 	public FileNodeProcessor(String fileNodeDirPath, String processorName, Map<String, Object> parameters)
 			throws FileNodeProcessorException {
 		super(processorName);
+		statStorageDeltaName = MonitorConstants.statStorageGroupPrefix
+				+ MonitorConstants.MONITOR_PATH_SEPERATOR
+				+ MonitorConstants.fileNodePath
+				+ MonitorConstants.MONITOR_PATH_SEPERATOR
+				+ processorName.replaceAll("\\.", "_");
+
 		this.parameters = parameters;
 		if (fileNodeDirPath.length() > 0
 				&& fileNodeDirPath.charAt(fileNodeDirPath.length() - 1) != File.separatorChar) {
@@ -225,6 +287,15 @@ public class FileNodeProcessor extends Processor {
 		} else {
 			// add file into the index of file
 			addALLFileIntoIndex(newFileNodes);
+		}
+		//RegistStatService
+		if (TsFileDBConf.enableStatMonitor) {
+			StatMonitor statMonitor = StatMonitor.getInstance();
+			registStatMetadata();
+			statMonitor.registStatistics(
+					statStorageDeltaName,
+					this
+			);
 		}
 	}
 
@@ -416,7 +487,7 @@ public class FileNodeProcessor extends Processor {
 
 	/**
 	 * For insert overflow
-	 * 
+	 *
 	 * @param timestamp
 	 */
 	public void changeTypeToChanged(String deltaObjectId, long timestamp) {
@@ -438,7 +509,7 @@ public class FileNodeProcessor extends Processor {
 
 	/**
 	 * For update overflow
-	 * 
+	 *
 	 * @param startTime
 	 * @param endTime
 	 */
@@ -465,7 +536,7 @@ public class FileNodeProcessor extends Processor {
 
 	/**
 	 * For delete overflow
-	 * 
+	 *
 	 * @param timestamp
 	 */
 	public void changeTypeToChangedForDelete(String deltaObjectId, long timestamp) {
@@ -489,7 +560,7 @@ public class FileNodeProcessor extends Processor {
 
 	/**
 	 * Search the index of the interval by the timestamp
-	 * 
+	 *
 	 * @param deltaObjectId
 	 * @param timestamp
 	 * @param fileList
@@ -1193,6 +1264,8 @@ public class FileNodeProcessor extends Processor {
 
 	@Override
 	public void close() throws FileNodeProcessorException {
+		LOGGER.debug("Deregister the filenode processor: {}",getProcessorName());
+		StatMonitor.getInstance().deregistStatistics(statStorageDeltaName);
 		// close bufferwrite
 		synchronized (fileNodeProcessorStore) {
 			fileNodeProcessorStore.setLastUpdateTimeMap(lastUpdateTimeMap);
@@ -1210,7 +1283,7 @@ public class FileNodeProcessor extends Processor {
 				}
 				bufferWriteProcessor.close();
 				bufferWriteProcessor = null;
-				/*
+				/**
 				 * add index for close
 				 */
 				Map<String, Set<IndexType>> allIndexSeries = mManager.getAllIndexPaths(getProcessorName());

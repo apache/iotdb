@@ -28,6 +28,7 @@ public class SerializeUtilTest {
 
 	@Before
 	public void setUp() throws Exception {
+		EnvironmentUtils.closeStatMonitor();
 		EnvironmentUtils.cleanDir(filePath);
 
 	}
