@@ -167,4 +167,15 @@ public class PhysicalPlanTest {
         }
     }
 
+    @Test
+    public void testFill4() throws QueryProcessorException, ArgsErrorException {
+        String sqlStr =
+                "SELECT s1 FROM root.vehicle.d1 WHERE time > 5000 Fill(int32[linear], boolean[previous])";
+        try {
+            PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
+        } catch (Exception e) {
+            assertEquals("Only \"=\" can be used in fill function", e.getMessage().toString());
+        }
+    }
+
 }

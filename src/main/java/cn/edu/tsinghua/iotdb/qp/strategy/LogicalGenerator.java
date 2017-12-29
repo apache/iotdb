@@ -566,6 +566,10 @@ public class LogicalGenerator {
      * @throws LogicalOperatorException
      */
     private void analyzeFill(ASTNode node) throws LogicalOperatorException {
+        FilterOperator filterOperator = ((SFWOperator) initializedOperator).getFilterOperator();
+        if(!filterOperator.isLeaf() || filterOperator.getTokenIntType() != SQLConstant.EQUAL)
+            throw new LogicalOperatorException("Only \"=\" can be used in fill function");
+
         Map<TSDataType, IFill> fillTypes = new HashMap<>();
         int childNum = node.getChildCount();
         for (int i = 0; i < childNum; i++) {
