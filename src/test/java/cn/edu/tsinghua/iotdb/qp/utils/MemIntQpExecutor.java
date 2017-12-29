@@ -8,6 +8,7 @@ import cn.edu.tsinghua.iotdb.qp.physical.crud.DeletePlan;
 import cn.edu.tsinghua.iotdb.qp.physical.crud.InsertPlan;
 import cn.edu.tsinghua.iotdb.qp.physical.crud.UpdatePlan;
 import cn.edu.tsinghua.iotdb.query.engine.FilterStructure;
+import cn.edu.tsinghua.iotdb.query.fill.IFill;
 import cn.edu.tsinghua.tsfile.common.constant.SystemConstant;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 import cn.edu.tsinghua.tsfile.common.utils.Pair;
@@ -181,6 +182,12 @@ public class MemIntQpExecutor extends QueryProcessExecutor {
     @Override
     public QueryDataSet groupBy(List<Pair<Path, String>> aggres, List<FilterStructure> filterStructures,
                                 long unit, long origin, List<Pair<Long, Long>> intervals, int fetchSize)
+            throws ProcessorException, IOException, PathErrorException {
+        throw new ProcessorException("Do not support");
+    }
+
+    @Override
+    public QueryDataSet fill(List<Path> fillPaths, long queryTime, Map<TSDataType, IFill> fillType)
             throws ProcessorException, IOException, PathErrorException {
         throw new ProcessorException("Do not support");
     }

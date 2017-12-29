@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import cn.edu.tsinghua.iotdb.query.fill.IFill;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -186,6 +187,11 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 			throws ProcessorException, IOException, PathErrorException {
 
 		return queryEngine.groupBy(aggres, filterStructures, unit, origin, intervals, fetchSize);
+	}
+
+	@Override
+	public QueryDataSet fill(List<Path> fillPaths, long queryTime, Map<TSDataType, IFill> fillTypes) throws ProcessorException, IOException, PathErrorException {
+		return queryEngine.fill(fillPaths, queryTime, fillTypes);
 	}
 
 	@Override

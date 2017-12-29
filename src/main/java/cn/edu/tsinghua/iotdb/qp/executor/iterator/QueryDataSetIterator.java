@@ -3,15 +3,14 @@ package cn.edu.tsinghua.iotdb.qp.executor.iterator;
 import cn.edu.tsinghua.iotdb.qp.executor.QueryProcessExecutor;
 import cn.edu.tsinghua.iotdb.qp.physical.crud.MultiQueryPlan;
 import cn.edu.tsinghua.iotdb.query.engine.FilterStructure;
+import cn.edu.tsinghua.iotdb.query.fill.IFill;
 import cn.edu.tsinghua.tsfile.common.utils.Pair;
+import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
 import cn.edu.tsinghua.tsfile.timeseries.filter.definition.FilterExpression;
 import cn.edu.tsinghua.tsfile.timeseries.read.query.QueryDataSet;
 import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
 
 
 public class QueryDataSetIterator implements Iterator<QueryDataSet> {
@@ -24,9 +23,16 @@ public class QueryDataSetIterator implements Iterator<QueryDataSet> {
     private List<Path> paths;
     private List<String> aggregations;
     private List<FilterStructure> filterStructures = new ArrayList<>();
+
+    //group by
     private long unit;
     private long origin;
     private List<Pair<Long, Long>> intervals;
+
+    //fill
+    private long queryTime;
+    private Map<TSDataType, IFill> fillType;
+
     private MultiQueryPlan.QueryType type = MultiQueryPlan.QueryType.QUERY;
 
     //single query
@@ -67,6 +73,17 @@ public class QueryDataSetIterator implements Iterator<QueryDataSet> {
         this.type = MultiQueryPlan.QueryType.GROUPBY;
     }
 
+    //slice query fill
+    public QueryDataSetIterator(List<Path> paths, int fetchSize, long queryTime, Map<TSDataType, IFill> fillType,
+                                QueryProcessExecutor executor) {
+        this.paths = paths;
+        this.fetchSize = fetchSize;
+        this.queryTime = queryTime;
+        this.executor = executor;
+        this.fillType = fillType;
+        this.type = MultiQueryPlan.QueryType.FILL;
+    }
+
     @Override
     public boolean hasNext() {
         if (usedData != null) {
@@ -84,9 +101,14 @@ public class QueryDataSetIterator implements Iterator<QueryDataSet> {
                         break;
                     case AGGREGATION:
                         data = executor.aggregate(getAggrePair(), filterStructures);
+                        noNext = true;
                         break;
                     case GROUPBY:
                         data = executor.groupBy(getAggrePair(), filterStructures, unit, origin, intervals, fetchSize);
+                        break;
+                    case FILL:
+                        data = executor.fill(paths, queryTime, fillType);
+                        noNext = true;
                         break;
                 }
             } catch (Exception e) {

@@ -53,10 +53,10 @@ public class ValueReaderProcessor {
             res.pageOffset = valueReader.getFileOffset();
         }
 
-        // TODO: maybe new updateTrueData and updateFalseData is redundant
+        // TODO: optimize
         updateTrueData = (updateTrueData == null ? new DynamicOneColumnData(dataType, true) : updateTrueData);
         updateFalseData = (updateFalseData == null ? new DynamicOneColumnData(dataType, true) : updateFalseData);
-        
+
         TsDigest digest = valueReader.getDigest();
         DigestForFilter valueDigest = new DigestForFilter(digest.min, digest.max, dataType);
         LOG.debug(String.format("read one series digest normally, time range is [%s,%s], value range is [%s,%s]",
@@ -822,7 +822,7 @@ public class ValueReaderProcessor {
         while ((lastAggregationResult.pageOffset - valueReader.fileOffset) < valueReader.totalSize) {
             int lastAvailable = bis.available();
             pageCount++;
-            LOG.debug("calculate aggregation using given common timestamps, read page {}, offset : {}", pageCount, lastAggregationResult.pageOffset);
+            //LOG.debug("calculate aggregation using given common timestamps, read page {}, offset : {}", pageCount, lastAggregationResult.pageOffset);
 
             PageHeader pageHeader = pageReader.getNextPageHeader();
             Digest pageDigest = pageHeader.data_page_header.getDigest();

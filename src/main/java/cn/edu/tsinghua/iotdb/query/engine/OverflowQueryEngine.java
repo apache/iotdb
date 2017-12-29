@@ -7,6 +7,9 @@ import cn.edu.tsinghua.iotdb.query.aggregation.AggregateFunction;
 import cn.edu.tsinghua.iotdb.query.dataset.InsertDynamicData;
 import cn.edu.tsinghua.iotdb.query.engine.groupby.GroupByEngineNoFilter;
 import cn.edu.tsinghua.iotdb.query.engine.groupby.GroupByEngineWithFilter;
+import cn.edu.tsinghua.iotdb.query.fill.IFill;
+import cn.edu.tsinghua.iotdb.query.fill.LinearFill;
+import cn.edu.tsinghua.iotdb.query.fill.PreviousFill;
 import cn.edu.tsinghua.iotdb.query.management.ReadLockManager;
 import cn.edu.tsinghua.iotdb.query.management.RecordReaderFactory;
 import cn.edu.tsinghua.iotdb.query.reader.RecordReader;
@@ -43,8 +46,7 @@ public class OverflowQueryEngine {
     }
 
     /**
-     * <p>
-     * Basic query method.
+     * <p> Basic query method.
      * This method may be invoked many times due to the restriction of fetchSize.
      *
      * @param formNumber   a complex query will be taken out to some disjunctive normal forms in query process,
@@ -75,9 +77,11 @@ public class OverflowQueryEngine {
     }
 
     /**
-     * <p>
-     * Basic aggregation method,
+     * <p> Basic aggregation method,
      * both single aggregation method or multi aggregation method is implemented here.
+     *
+     * <p> Notice that: this method is invoked only once by <code>QueryProcessExecutor</code>
+     * in an aggregation query.
      *
      * @param aggres           a list of aggregations and corresponding path
      * @param filterStructures see <code>FilterStructure</code>, a list of all conjunction form
@@ -88,16 +92,6 @@ public class OverflowQueryEngine {
      */
     public QueryDataSet aggregate(List<Pair<Path, String>> aggres, List<FilterStructure> filterStructures)
             throws ProcessorException, IOException, PathErrorException {
-
-        ThreadLocal<QueryDataSet> aggregateThreadLocal = ReadLockManager.getInstance().getAggregateThreadLocal();
-
-        // the aggregation method will only be executed once
-        if (aggregateThreadLocal.get() != null) {
-            QueryDataSet ans = aggregateThreadLocal.get();
-            ans.clear();
-            aggregateThreadLocal.remove();
-            return ans;
-        }
 
         List<Pair<Path, AggregateFunction>> aggregations = new ArrayList<>();
 
@@ -122,7 +116,7 @@ public class OverflowQueryEngine {
             }
             ansQueryDataSet.mapRet.put(EngineUtils.aggregationKey(aggregateFunction, pair.left), aggregateFunction.resultData);
         }
-        aggregateThreadLocal.set(ansQueryDataSet);
+        // aggregateThreadLocal.set(ansQueryDataSet);
         return ansQueryDataSet;
     }
 
@@ -221,6 +215,46 @@ public class OverflowQueryEngine {
         return null;
     }
 
+    public QueryDataSet fill(List<Path> fillPaths, long queryTime, Map<TSDataType, IFill> fillType) {
+        QueryDataSet result = new QueryDataSet();
+
+        try {
+            for (Path path : fillPaths) {
+
+                TSDataType dataType = getDataTypeByPath(path);
+                if (!fillType.containsKey(dataType)) {
+                    switch (dataType) {
+                        case INT32:
+                        case INT64:
+                        case FLOAT:
+                        case DOUBLE:
+                            result.mapRet.put(path.getFullPath(),
+                                    new LinearFill(path, dataType, queryTime, 0, 0).getFillResult());
+                            break;
+                        default:
+                            result.mapRet.put(path.getFullPath(),
+                                    new PreviousFill(path, dataType, queryTime, 0).getFillResult());
+                            break;
+                    }
+                    continue;
+                }
+
+                IFill fill = fillType.get(dataType);
+                if (fill instanceof PreviousFill) {
+                    PreviousFill previousFill = (PreviousFill) fill;
+                    result.mapRet.put(path.getFullPath(), new PreviousFill(path, dataType, queryTime, previousFill.getBeforeRange()).getFillResult());
+                } else {
+                    LinearFill linearFill = (LinearFill) fill;
+                    result.mapRet.put(path.getFullPath(), new LinearFill(path, dataType, queryTime,
+                            linearFill.getBeforeRange(), linearFill.getAfterRange()).getFillResult());
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return result;
+    }
+
     /**
      * Query type 1: query without filter.
      */
@@ -306,6 +340,7 @@ public class OverflowQueryEngine {
             queryDataSet.setBatchReadGenerator(batchReaderRetGenerator);
         }
 
+        //BatchReadRecordGenerator is used to return exactly right ```fetchSize``` size of result
         queryDataSet.clear();
         queryDataSet.getBatchReadGenerator().calculateRecord();
         EngineUtils.putRecordFromBatchReadGenerator(queryDataSet);
@@ -331,6 +366,7 @@ public class OverflowQueryEngine {
             List<Object> params = EngineUtils.getOverflowInfoAndFilterDataInMem(timeFilter, freqFilter, valueFilter,
                     res, recordReader.insertPageInMemory, recordReader.overflowInfo);
 
+            // TODO updateTrue and updateFalse could be replaced by recordReader.overflowInfo?
             DynamicOneColumnData insertTrue = (DynamicOneColumnData) params.get(0);
             DynamicOneColumnData updateTrue = (DynamicOneColumnData) params.get(1);
             DynamicOneColumnData updateFalse = (DynamicOneColumnData) params.get(2);
@@ -393,6 +429,7 @@ public class OverflowQueryEngine {
             String recordReaderPrefix = ReadCachePrefix.addQueryPrefix(formNumber);
             String queryKey = String.format("%s.%s", deltaObjectId, measurementId);
 
+            //TODO an optimization : timeFilter could be [minTime, maxTime of timestamps]
             RecordReader recordReader = RecordReaderFactory.getInstance().getRecordReader(deltaObjectId, measurementId,
                     null, null, null, null, recordReaderPrefix);
 
@@ -435,7 +472,7 @@ public class OverflowQueryEngine {
      * <code>RecordReaderCache</code>, if the composition of CrossFilterExpression exist same SingleFilterExpression,
      * we must guarantee that the <code>RecordReaderCache</code> doesn't cause conflict to the same SingleFilterExpression.
      */
-    public DynamicOneColumnData querySeriesForCross(SingleSeriesFilterExpression valueFilter, SingleSeriesFilterExpression freqFilter,
+    private DynamicOneColumnData querySeriesForCross(SingleSeriesFilterExpression valueFilter, SingleSeriesFilterExpression freqFilter,
                                                     DynamicOneColumnData res, int fetchSize, int valueFilterNumber)
             throws ProcessorException, IOException, PathErrorException {
 

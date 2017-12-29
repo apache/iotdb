@@ -12,6 +12,7 @@ import cn.edu.tsinghua.iotdb.qp.physical.crud.IndexQueryPlan;
 import cn.edu.tsinghua.iotdb.qp.physical.crud.MultiQueryPlan;
 import cn.edu.tsinghua.iotdb.qp.physical.crud.SingleQueryPlan;
 import cn.edu.tsinghua.iotdb.query.engine.FilterStructure;
+import cn.edu.tsinghua.iotdb.query.fill.IFill;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 import cn.edu.tsinghua.tsfile.common.utils.Pair;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
@@ -20,11 +21,7 @@ import cn.edu.tsinghua.tsfile.timeseries.read.query.QueryDataSet;
 import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 public abstract class QueryProcessExecutor {
 
@@ -62,6 +59,9 @@ public abstract class QueryProcessExecutor {
 				return new QueryDataSetIterator(mergeQuery.getPaths(), getFetchSize(),
 						mergeQuery.getAggregations(), getFilterStructure(selectPlans),
 						mergeQuery.getUnit(), mergeQuery.getOrigin(), mergeQuery.getIntervals(), this);
+			case FILL:
+				return new QueryDataSetIterator(mergeQuery.getPaths(), getFetchSize(), mergeQuery.getQueryTime(),
+						 mergeQuery.getFillType(), this);
 			default:
 				throw new UnsupportedOperationException();
 		}
@@ -97,6 +97,9 @@ public abstract class QueryProcessExecutor {
 
 	public abstract QueryDataSet groupBy(List<Pair<Path, String>> aggres, List<FilterStructure> filterStructures,
 										 long unit, long origin, List<Pair<Long, Long>> intervals, int fetchSize)
+			throws ProcessorException, IOException, PathErrorException;
+
+	public abstract QueryDataSet fill(List<Path> fillPaths, long queryTime, Map<TSDataType, IFill> fillType)
 			throws ProcessorException, IOException, PathErrorException;
 
 	public abstract QueryDataSet query(int formNumber, List<Path> paths, FilterExpression timeFilter, FilterExpression freqFilter,

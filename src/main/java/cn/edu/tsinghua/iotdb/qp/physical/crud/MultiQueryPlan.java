@@ -2,7 +2,9 @@ package cn.edu.tsinghua.iotdb.qp.physical.crud;
 
 import cn.edu.tsinghua.iotdb.qp.logical.Operator;
 import cn.edu.tsinghua.iotdb.qp.physical.PhysicalPlan;
+import cn.edu.tsinghua.iotdb.query.fill.IFill;
 import cn.edu.tsinghua.tsfile.common.utils.Pair;
+import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
 import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
 import cn.edu.tsinghua.tsfile.timeseries.utils.StringContainer;
 import org.slf4j.Logger;
@@ -10,6 +12,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * {@code MultiQueryPlan} is used in multi-pass SingleQueryPlan. Multi-pass means it's a disjunction
@@ -25,9 +28,34 @@ public class MultiQueryPlan extends PhysicalPlan {
     private static Logger LOG = LoggerFactory.getLogger(MultiQueryPlan.class);
     private List<SingleQueryPlan> singleQueryPlans;
     private List<String> aggregations = new ArrayList<>();
+
+    private QueryType type;
+
+    //group by
     private long unit;
     private long origin;
-    private List<Pair<Long, Long>> intervals;
+    private List<Pair<Long, Long>> intervals; // show intervals
+
+    //fill
+    private long queryTime;
+    private Map<TSDataType, IFill> fillType;
+
+
+    public Map<TSDataType, IFill> getFillType() {
+        return fillType;
+    }
+
+    public void setFillType(Map<TSDataType, IFill> fillType) {
+        this.fillType = fillType;
+    }
+
+    public long getQueryTime() {
+        return queryTime;
+    }
+
+    public void setQueryTime(long queryTime) {
+        this.queryTime = queryTime;
+    }
 
     public QueryType getType() {
         return type;
@@ -36,8 +64,6 @@ public class MultiQueryPlan extends PhysicalPlan {
     public void setType(QueryType type) {
         this.type = type;
     }
-
-    private QueryType type;
 
     public List<SingleQueryPlan> getSingleQueryPlans() {
         return singleQueryPlans;
@@ -106,6 +132,6 @@ public class MultiQueryPlan extends PhysicalPlan {
     }
 
     public enum QueryType {
-        QUERY, AGGREGATION, GROUPBY, INDEXQUERY
+        QUERY, AGGREGATION, GROUPBY, INDEXQUERY, FILL
     }
 }
