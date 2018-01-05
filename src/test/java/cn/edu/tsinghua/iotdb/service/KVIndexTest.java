@@ -117,6 +117,7 @@ public class KVIndexTest {
     public void setUp() throws Exception {
         if (testFlag) {
             EnvironmentUtils.closeStatMonitor();
+            EnvironmentUtils.closeMemControl();
             TsfileDBConfig config = TsfileDBDescriptor.getInstance().getConfig();
             maxOpenFolderPre = config.maxOpenFolder;
             config.maxOpenFolder = 1;

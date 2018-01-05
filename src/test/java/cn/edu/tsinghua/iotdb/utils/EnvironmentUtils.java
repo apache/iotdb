@@ -29,14 +29,13 @@ import cn.edu.tsinghua.tsfile.common.conf.TSFileDescriptor;
  *
  */
 public class EnvironmentUtils {
-	
+
 	private static final Logger LOGGER = LoggerFactory.getLogger(EnvironmentUtils.class);
 
 	private static TsfileDBConfig config = TsfileDBDescriptor.getInstance().getConfig();
-	private static TSFileConfig tsFileConfig = TSFileDescriptor.getInstance().getConfig();
 
 	public static void cleanEnv() throws IOException {
-		//tsFileConfig.duplicateIncompletedPage = false;
+		// tsFileConfig.duplicateIncompletedPage = false;
 		// clean filenode manager
 		try {
 			if (!FileNodeManager.getInstance().closeAll()) {
@@ -58,7 +57,7 @@ public class EnvironmentUtils {
 		MManager.getInstance().flushObjectToFile();
 		// delete all directory
 		cleanAllDir();
-		//FileNodeManager.getInstance().reset();
+		// FileNodeManager.getInstance().reset();
 	}
 
 	private static void cleanAllDir() throws IOException {
@@ -79,7 +78,7 @@ public class EnvironmentUtils {
 		// delte data
 		cleanDir("data");
 		// delte derby log
-		//cleanDir("derby.log");
+		// cleanDir("derby.log");
 	}
 
 	public static void cleanDir(String dir) throws IOException {
@@ -96,13 +95,28 @@ public class EnvironmentUtils {
 		}
 	}
 
+	/**
+	 * disable the system monitor</br>
+	 * this function should be called before all code in the setup
+	 */
 	public static void closeStatMonitor() {
 		config.enableStatMonitor = false;
 	}
+	
+	/**
+	 * disable memory control</br>
+	 * this function should be called before all code in the setup
+	 */
+	public static void closeMemControl() {
+		config.enableMemMonitor = false;
+	}
 
-	public static void envSetUp(){
-		Authorizer.reset();
+	public static void envSetUp() {
+		// disable the memory control
+		config.enableMemMonitor = false;
+		// disable the system monitor
 		config.enableStatMonitor = false;
+		Authorizer.reset();
 		FileNodeManager.getInstance().resetFileNodeManager();
 	}
 }

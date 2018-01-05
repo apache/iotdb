@@ -107,6 +107,7 @@ public class DaemonTest {
     public void setUp() throws Exception {
         if (testFlag) {
             EnvironmentUtils.closeStatMonitor();
+            EnvironmentUtils.closeMemControl();
             deamon = IoTDB.getInstance();
             deamon.active();
             EnvironmentUtils.envSetUp();

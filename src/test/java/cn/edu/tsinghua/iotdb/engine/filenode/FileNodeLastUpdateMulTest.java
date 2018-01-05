@@ -101,6 +101,7 @@ public class FileNodeLastUpdateMulTest {
 		parameters.put(FileNodeConstants.OVERFLOW_FLUSH_MANAGER_ACTION, overflowFlushAction);
 		MetadataManagerHelper.initMetadata2();
 		nameSpacePath = MManager.getInstance().getFileNameByPath(deltaObjectId0);
+		EnvironmentUtils.envSetUp();
 	}
 
 	@After

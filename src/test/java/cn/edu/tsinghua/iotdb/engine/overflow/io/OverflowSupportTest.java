@@ -52,6 +52,7 @@ public class OverflowSupportTest {
 		ofrw = null;
 		ofio = null;
 		MetadataManagerHelper.initMetadata();
+		EnvironmentUtils.envSetUp();
 	}
 
 	@After

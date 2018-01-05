@@ -69,6 +69,7 @@ public class FileNodeManagerTest {
 		tsconfig.pageSizeInByte = 100;
 		tsconfig.maxStringLength = 2;
 		MetadataManagerHelper.initMetadata();
+		EnvironmentUtils.envSetUp();
 	}
 
 	@After

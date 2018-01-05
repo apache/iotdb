@@ -105,6 +105,7 @@ public class FileNodeProcessorTest {
 		MetadataManagerHelper.initMetadata();
 
 		nameSpacePath = MManager.getInstance().getFileNameByPath(deltaObjectId);
+		EnvironmentUtils.envSetUp();
 	}
 
 	@After

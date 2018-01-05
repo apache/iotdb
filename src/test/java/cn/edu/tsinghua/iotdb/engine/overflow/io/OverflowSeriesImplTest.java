@@ -39,6 +39,7 @@ public class OverflowSeriesImplTest {
 
 	@Before
 	public void setUp() throws Exception {
+		EnvironmentUtils.envSetUp();
 	}
 
 	@After
