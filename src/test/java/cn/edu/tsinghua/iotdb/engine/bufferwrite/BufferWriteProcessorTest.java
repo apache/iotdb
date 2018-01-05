@@ -81,6 +81,7 @@ public class BufferWriteProcessorTest {
 		TsFileConf.maxStringLength = 2;
 		// init metadata
 		MetadataManagerHelper.initMetadata();
+		EnvironmentUtils.envSetUp();
 	}
 
 	@After

@@ -61,6 +61,7 @@ public class OverflowFileIOTest {
 		ofSeriesMetadata = new OFSeriesListMetadata();
 		ofRowGroupMetadata = new OFRowGroupListMetadata();
 		ofFileMetadata = new OFFileMetadata();
+		EnvironmentUtils.envSetUp();
 	}
 
 	@After

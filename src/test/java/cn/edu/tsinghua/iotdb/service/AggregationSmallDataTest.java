@@ -104,6 +104,7 @@ public class AggregationSmallDataTest {
     public void setUp() throws Exception {
         if (testFlag) {
             EnvironmentUtils.closeStatMonitor();
+            EnvironmentUtils.closeMemControl();
             AggregateEngine.aggregateFetchSize = 2;
             deamon = IoTDB.getInstance();
             deamon.active();

@@ -93,6 +93,7 @@ public class BigDataForOverflowTest {
 		overflowfilePath = new File(PathUtils.getOverflowWriteDir(nameSpacePath),nameSpacePath+".overflow").getPath();
 		overflowrestorefilePath = overflowfilePath + ".restore";
 		overflowmergefilePath = overflowfilePath + ".merge";
+		EnvironmentUtils.envSetUp();
 	}
 
 	@After

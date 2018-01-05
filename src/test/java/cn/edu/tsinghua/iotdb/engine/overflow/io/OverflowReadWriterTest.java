@@ -28,6 +28,7 @@ public class OverflowReadWriterTest {
 
 	@Before
 	public void setUp() throws Exception {
+		EnvironmentUtils.envSetUp();
 	}
 
 	@After

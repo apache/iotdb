@@ -60,6 +60,7 @@ public class FileNodeManagerMulTest {
 		tsconfig.maxStringLength = 2;
 		tsconfig.duplicateIncompletedPage = true;
 		MetadataManagerHelper.initMetadata2();
+		EnvironmentUtils.envSetUp();
 	}
 
 	@After

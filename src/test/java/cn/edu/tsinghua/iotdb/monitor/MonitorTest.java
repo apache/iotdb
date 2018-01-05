@@ -36,6 +36,7 @@ public class MonitorTest {
     public void setUp() throws Exception {
         // origin value
         // modify stat parameter
+    	EnvironmentUtils.closeMemControl();
         EnvironmentUtils.envSetUp();
         tsdbconfig.enableStatMonitor = true;
         tsdbconfig.backLoopPeriod = 1;

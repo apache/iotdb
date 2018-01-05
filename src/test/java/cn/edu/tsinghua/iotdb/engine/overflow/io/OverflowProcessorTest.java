@@ -87,6 +87,7 @@ public class OverflowProcessorTest {
 		overflowrestorefilePath = overflowfilePath + ".restore";
 		overflowmergefilePath = overflowfilePath + ".merge";
 		MetadataManagerHelper.initMetadata();
+		EnvironmentUtils.envSetUp();
 	}
 
 	@After
