@@ -28,7 +28,7 @@ public class TsFileMetadataUtils {
 	private static final int FOOTER_LENGTH = 4;
 	private static final int MAGIC_LENGTH = TsFileIOWriter.magicStringBytes.length;
 
-	public static TsFileMetaData getTsFileMetaData(String filePath) {
+	public static TsFileMetaData getTsFileMetaData(String filePath) throws IOException {
 		ITsRandomAccessFileReader randomAccessFileReader = null;
 		try {
 			randomAccessFileReader = new TsRandomAccessLocalFileReader(filePath);
@@ -43,9 +43,11 @@ public class TsFileMetadataUtils {
 					.toTsFileMetadata(ReadWriteThriftFormatUtils.readFileMetaData(bais));
 			return fileMetaData;
 		} catch (FileNotFoundException e) {
-			LOGGER.error("Can't open the tsfile, {}", e.getMessage());
+			LOGGER.error("Can't open the tsfile {}, {}", filePath, e.getMessage());
+			throw new IOException(e);
 		} catch (IOException e) {
-			LOGGER.error("Read the tsfile error, {}", e.getMessage());
+			LOGGER.error("Read the tsfile {} error, {}", filePath, e.getMessage());
+			throw e;
 		} finally {
 			if (randomAccessFileReader != null) {
 				try {
@@ -55,11 +57,10 @@ public class TsFileMetadataUtils {
 				}
 			}
 		}
-		return null;
 	}
 
 	public static TsRowGroupBlockMetaData getTsRowGroupBlockMetaData(String filePath, String deltaObjectId,
-			TsFileMetaData fileMetaData) {
+			TsFileMetaData fileMetaData) throws IOException {
 		if (!fileMetaData.containsDeltaObject(deltaObjectId)) {
 			return null;
 		} else {
@@ -73,9 +74,11 @@ public class TsFileMetadataUtils {
 						ReadWriteThriftFormatUtils.readRowGroupBlockMetaData(randomAccessFileReader, offset, size));
 				return blockMeta;
 			} catch (FileNotFoundException e) {
-				LOGGER.error("Can't open the tsfile, {}", e.getMessage());
+				LOGGER.error("Can't open the tsfile {}, {}", filePath, e.getMessage());
+				throw new IOException(e);
 			} catch (IOException e) {
-				LOGGER.error("Read the tsfile error, {}", e.getMessage());
+				LOGGER.error("Read the tsfile {} error, {}", filePath, e.getMessage());
+				throw e;
 			} finally {
 				if (randomAccessFileReader != null) {
 					try {
@@ -85,7 +88,6 @@ public class TsFileMetadataUtils {
 					}
 				}
 			}
-			return null;
 		}
 	}
 }

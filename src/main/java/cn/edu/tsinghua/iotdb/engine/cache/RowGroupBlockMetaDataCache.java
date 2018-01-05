@@ -1,5 +1,6 @@
 package cn.edu.tsinghua.iotdb.engine.cache;
 
+import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
@@ -65,7 +66,7 @@ public class RowGroupBlockMetaDataCache {
 		LRUCache = new LRULinkedHashMap(cacheSize, true);
 	}
 
-	public TsRowGroupBlockMetaData get(String filePath, String deltaObjectId, TsFileMetaData fileMetaData) {
+	public TsRowGroupBlockMetaData get(String filePath, String deltaObjectId, TsFileMetaData fileMetaData) throws IOException {
 		/** The key(the tsfile path and deltaObjectId) for the LRUCahe */
 		String jointPath = filePath + deltaObjectId;
 		jointPath = jointPath.intern();

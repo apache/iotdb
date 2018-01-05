@@ -1,5 +1,6 @@
 package cn.edu.tsinghua.iotdb.engine.cache;
 
+import java.io.IOException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -37,7 +38,7 @@ public class TsFileMetaDataCache {
 		return TsFileMetaDataCacheHolder.INSTANCE;
 	}
 
-	public TsFileMetaData get(String path) {
+	public TsFileMetaData get(String path) throws IOException {
 
 		path = path.intern();
 		synchronized (path) {
