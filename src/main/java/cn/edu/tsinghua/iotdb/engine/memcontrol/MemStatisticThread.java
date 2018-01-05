@@ -21,6 +21,10 @@ public class MemStatisticThread extends Thread{
     // log statistic every so many intervals
     private int reportCycle = 60;
 
+    public MemStatisticThread() {
+        this.setName("IoTDB-MemStatistic-thread");
+    }
+
     @Override
     public void run() {
         logger.info("MemStatisticThread started");

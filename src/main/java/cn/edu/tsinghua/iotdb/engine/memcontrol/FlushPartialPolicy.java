@@ -1,5 +1,6 @@
 package cn.edu.tsinghua.iotdb.engine.memcontrol;
 
+import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
 import cn.edu.tsinghua.iotdb.engine.filenode.FileNodeManager;
 import cn.edu.tsinghua.iotdb.utils.MemUtils;
 import org.slf4j.Logger;
@@ -11,6 +12,7 @@ import org.slf4j.LoggerFactory;
 public class FlushPartialPolicy implements Policy{
     private Logger logger = LoggerFactory.getLogger(FlushPartialPolicy.class);
     private Thread workerThread;
+    private long sleepInterval = TsfileDBDescriptor.getInstance().getConfig().smallFlushInterval;
 
     @Override
     public void execute() {
@@ -20,19 +22,25 @@ public class FlushPartialPolicy implements Policy{
                 MemUtils.bytesCntToStr(Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()));
         // use a thread to avoid blocking
         if (workerThread == null) {
-            workerThread = new Thread(() -> {
-                FileNodeManager.getInstance().forceFlush(BasicMemController.UsageLevel.SAFE);
-            });
+            workerThread = createWorkerThread();
             workerThread.start();
         } else {
             if (workerThread.isAlive()) {
                 logger.info("Last flush is ongoing...");
             } else {
-                workerThread = new Thread(() -> {
-                    FileNodeManager.getInstance().forceFlush(BasicMemController.UsageLevel.SAFE);
-                });
+                workerThread = createWorkerThread();
                 workerThread.start();
             }
         }
+    }
+
+    private Thread createWorkerThread() {
+        return new Thread(() -> {
+            FileNodeManager.getInstance().forceFlush(BasicMemController.UsageLevel.SAFE);
+            try {
+                Thread.sleep(sleepInterval);
+            } catch (InterruptedException ignored) {
+            }
+        },"IoTDB-FlushPartialPolicy-Thread");
     }
 }

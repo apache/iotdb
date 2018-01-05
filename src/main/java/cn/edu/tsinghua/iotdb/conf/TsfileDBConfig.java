@@ -160,6 +160,21 @@ public class TsfileDBConfig {
 	public long overflowFileSizeThreshold = 2 * 1024 * 1024 * 1024L;
 
 
+	/**
+	 * When set to false, MemMonitorThread and MemStatisticThread will not be created.
+	 */
+	public boolean enableMemMonitor = true;
+
+	/**
+	 * When set to true, small flush will be triggered periodically even if memory threshold is not exceeded.
+	 */
+	public boolean enableSmallFlush = false;
+
+	/**
+	 * The interval of small flush in ms.
+	 */
+	public long smallFlushInterval = 60 * 1000;
+
 	/*
 	 * The statMonitor's BackLoop period, 5s is enough
 	 */

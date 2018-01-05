@@ -17,21 +17,22 @@ public class ForceFLushAllPolicy implements Policy {
                 MemUtils.bytesCntToStr(Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()));
         // use a thread to avoid blocking
         if (workerThread == null) {
-            workerThread = new Thread(() -> {
-                FileNodeManager.getInstance().forceFlush(BasicMemController.UsageLevel.DANGEROUS);
-                System.gc();
-            });
+            workerThread = createWorkerThread();
             workerThread.start();
         } else {
             if (workerThread.isAlive()) {
                 logger.info("Last flush is ongoing...");
             } else {
-                workerThread = new Thread(() -> {
-                    FileNodeManager.getInstance().forceFlush(BasicMemController.UsageLevel.DANGEROUS);
-                    System.gc();
-                });
+                workerThread = createWorkerThread();
                 workerThread.start();
             }
         }
+    }
+
+    private Thread createWorkerThread() {
+        return new Thread(() -> {
+            FileNodeManager.getInstance().forceFlush(BasicMemController.UsageLevel.DANGEROUS);
+            System.gc();
+        },"IoTDB-ForceFlushAllPolicy-thread");
     }
 }
