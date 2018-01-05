@@ -1,5 +1,6 @@
 package cn.edu.tsinghua.iotdb.engine.memcontrol;
 
+import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
 import cn.edu.tsinghua.iotdb.engine.filenode.FileNodeManager;
 import cn.edu.tsinghua.iotdb.utils.MemUtils;
 import org.slf4j.Logger;
@@ -15,9 +16,14 @@ public class MemMonitorThread extends Thread {
     private Policy warningPolicy;
     private Policy dangerousPolicy;
 
-    public MemMonitorThread(long checkInterval) {
+    public MemMonitorThread(TsfileDBConfig config) {
+        this.setName("IoTDB-MemMonitor-thread");
+        long checkInterval = config.memMonitorInterval;
         this.checkInterval = checkInterval > 0 ? checkInterval : this.checkInterval;
-        this.safePolicy = new FlushPartialPolicy();
+        if(config.enableSmallFlush)
+            this.safePolicy = new FlushPartialPolicy();
+        else
+            this.safePolicy = new NoActPolicy();
         this.warningPolicy = new ForceFLushAllPolicy();
         this.dangerousPolicy = new ForceFLushAllPolicy();
     }

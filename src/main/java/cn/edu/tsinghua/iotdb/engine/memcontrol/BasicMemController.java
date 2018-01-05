@@ -22,10 +22,12 @@ public abstract class BasicMemController {
     BasicMemController(TsfileDBConfig config) {
         warningThreshold = config.memThresholdWarning;
         dangerouseThreshold = config.memThresholdDangerous;
-        monitorThread = new MemMonitorThread(config.memMonitorInterval);
-        monitorThread.start();
-        memStatisticThread = new MemStatisticThread();
-        memStatisticThread.start();
+        if(config.enableMemMonitor) {
+            monitorThread = new MemMonitorThread(config);
+            monitorThread.start();
+            memStatisticThread = new MemStatisticThread();
+            memStatisticThread.start();
+        }
     }
 
     // change instance here
@@ -48,7 +50,8 @@ public abstract class BasicMemController {
     }
 
     public void setCheckInterval(long checkInterval) {
-        this.monitorThread.setCheckInterval(checkInterval);
+        if(this.monitorThread != null)
+            this.monitorThread.setCheckInterval(checkInterval);
     }
 
     public abstract long getTotalUsage();
