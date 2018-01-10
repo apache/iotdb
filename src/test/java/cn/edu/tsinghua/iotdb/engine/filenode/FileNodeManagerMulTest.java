@@ -210,7 +210,7 @@ public class FileNodeManagerMulTest {
 		DataPoint dataPoint = DataPoint.getDataPoint(dataType, measurementId, String.valueOf(5));
 		record.addTuple(dataPoint);
 		try {
-			fileNodeManager.insert(record);
+			fileNodeManager.insert(record, false);
 		} catch (FileNodeManagerException e) {
 			fail(e.getMessage());
 			e.printStackTrace();
@@ -219,7 +219,7 @@ public class FileNodeManagerMulTest {
 		record = new TSRecord(5, deltaObjectId2);
 		record.addTuple(dataPoint);
 		try {
-			fileNodeManager.insert(record);
+			fileNodeManager.insert(record, false);
 		} catch (FileNodeManagerException e) {
 			e.printStackTrace();
 			fail(e.getMessage());
@@ -229,7 +229,7 @@ public class FileNodeManagerMulTest {
 		record = new TSRecord(65, deltaObjectId1);
 		record.addTuple(dataPoint);
 		try {
-			fileNodeManager.insert(record);
+			fileNodeManager.insert(record, false);
 		} catch (FileNodeManagerException e) {
 			e.printStackTrace();
 			fail(e.getMessage());
@@ -394,13 +394,13 @@ public class FileNodeManagerMulTest {
 		DataPoint dataPoint = DataPoint.getDataPoint(dataType, measurementId, String.valueOf(5));
 		record.addTuple(dataPoint);
 		try {
-			fileNodeManager.insert(record);
+			fileNodeManager.insert(record, false);
 			record = new TSRecord(5, deltaObjectId1);
 			record.addTuple(dataPoint);
-			fileNodeManager.insert(record);
+			fileNodeManager.insert(record, false);
 			record = new TSRecord(10, deltaObjectId2);
 			record.addTuple(dataPoint);
-			fileNodeManager.insert(record);
+			fileNodeManager.insert(record, false);
 			// query check
 			QueryStructure queryStructure = fileNodeManager.query(deltaObjectId2, measurementId, null, null, null);
 			DynamicOneColumnData insert = (DynamicOneColumnData) queryStructure.getAllOverflowData().get(0);
@@ -476,13 +476,13 @@ public class FileNodeManagerMulTest {
 		DataPoint dataPoint = DataPoint.getDataPoint(dataType, measurementId, String.valueOf(5));
 		record.addTuple(dataPoint);
 		try {
-			fileNodeManager.insert(record);
+			fileNodeManager.insert(record, false);
 			record = new TSRecord(5, deltaObjectId1);
 			record.addTuple(dataPoint);
-			fileNodeManager.insert(record);
+			fileNodeManager.insert(record, false);
 			record = new TSRecord(10, deltaObjectId2);
 			record.addTuple(dataPoint);
-			fileNodeManager.insert(record);
+			fileNodeManager.insert(record, false);
 			// query check
 			QueryStructure queryStructure = fileNodeManager.query(deltaObjectId2, measurementId, null, null, null);
 			DynamicOneColumnData insert = (DynamicOneColumnData) queryStructure.getAllOverflowData().get(0);
@@ -497,7 +497,7 @@ public class FileNodeManagerMulTest {
 		record = new TSRecord(20, deltaObjectId2);
 		record.addTuple(dataPoint);
 		try {
-			fileNodeManager.insert(record);
+			fileNodeManager.insert(record, false);
 		} catch (FileNodeManagerException e1) {
 			e1.printStackTrace();
 			fail(e1.getMessage());
@@ -590,7 +590,7 @@ public class FileNodeManagerMulTest {
 		DataPoint dataPoint = DataPoint.getDataPoint(dataType, measurementId, String.valueOf(5));
 		record.addTuple(dataPoint);
 		try {
-			fileNodeManager.insert(record);
+			fileNodeManager.insert(record, false);
 		} catch (FileNodeManagerException e) {
 			e.printStackTrace();
 			fail(e.getMessage());
@@ -602,8 +602,8 @@ public class FileNodeManagerMulTest {
 		// merge data
 		try {
 			fileNodeManager.mergeAll();
-			fileNodeManager.insert(record);
-			fileNodeManager.insert(overflow);
+			fileNodeManager.insert(record, false);
+			fileNodeManager.insert(overflow, false);
 			// wait end of merge
 			while (!fileNodeManager.closeAll()) {
 				System.out.println("wait to merge end, 1000ms...");
@@ -731,7 +731,7 @@ public class FileNodeManagerMulTest {
 		DataPoint dataPoint = DataPoint.getDataPoint(dataType, measurementId, String.valueOf(5));
 		record.addTuple(dataPoint);
 		try {
-			fileNodeManager.insert(record);
+			fileNodeManager.insert(record, false);
 		} catch (FileNodeManagerException e) {
 			e.printStackTrace();
 			fail(e.getMessage());
@@ -748,8 +748,8 @@ public class FileNodeManagerMulTest {
 				System.out.println("wait to merge end, 1000ms...");
 				Thread.sleep(1000);
 			}
-			fileNodeManager.insert(record);
-			fileNodeManager.insert(overflow);
+			fileNodeManager.insert(record, false);
+			fileNodeManager.insert(overflow, false);
 			fileNodeManager.mergeAll();
 			// wait end of merge
 			while (!fileNodeManager.closeAll()) {
@@ -902,7 +902,7 @@ public class FileNodeManagerMulTest {
 						TSRecord record = new TSRecord(15, deltaObjectId0);
 						DataPoint dataPoint = DataPoint.getDataPoint(dataType, measurementId, String.valueOf(15));
 						record.addTuple(dataPoint);
-						fileNodeManager.insert(record);
+						fileNodeManager.insert(record, false);
 						queryStructure = fileNodeManager.query(deltaObjectId0, measurementId, null, null, null);
 						assertEquals(6, queryStructure.getBufferwriteDataInFiles().size());
 						assertEquals(OverflowChangeType.MERGING_CHANGE,
@@ -950,7 +950,7 @@ public class FileNodeManagerMulTest {
 				DataPoint dataPoint = DataPoint.getDataPoint(dataType, measurementId, String.valueOf(i));
 				record.addTuple(dataPoint);
 				try {
-					fileNodeManager.insert(record);
+					fileNodeManager.insert(record, false);
 				} catch (FileNodeManagerException e) {
 					e.printStackTrace();
 					fail(e.getMessage());

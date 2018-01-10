@@ -86,7 +86,10 @@ public class IoTDB implements IoTDBMBean {
 		}
 
 		initFileNodeManager();
-        enableStatMonitor();
+
+		// When registering statMonitor, we should start recovering some statistics with latest values stored
+		// Warn: registMonitor() method should be called before systemDataRecovery()
+		registStatMonitor();
 		systemDataRecovery();
 
 		maybeInitJmx();
@@ -94,6 +97,8 @@ public class IoTDB implements IoTDBMBean {
 		registMonitor();
 		registIoTDBServer();
 		startCloseAndMergeServer();
+		// StatMonitor should start at the end
+		enableStatMonitor();
 	}
 
 	private void maybeInitJmx() {
@@ -107,6 +112,13 @@ public class IoTDB implements IoTDBMBean {
 		ObjectName mBeanName = new ObjectName(IOTDB_PACKAGE, JMX_TYPE, JDBC_SERVER_STR);
 		if (!mbs.isRegistered(mBeanName)) {
 			mbs.registerMBean(jdbcMBean, mBeanName);
+		}
+	}
+
+	private void registStatMonitor() {
+		if (TsfileDBDescriptor.getInstance().getConfig().enableStatMonitor){
+			statMonitor = StatMonitor.getInstance();
+			statMonitor.recovery();
 		}
 	}
 

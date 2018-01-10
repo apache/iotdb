@@ -706,11 +706,11 @@ public class FileNodeManagerTest {
 		DataPoint dataPoint = DataPoint.getDataPoint(dataType, measurementId, String.valueOf(5));
 		record.addTuple(dataPoint);
 		try {
-			fileNodeManager.insert(record);
+			fileNodeManager.insert(record, false);
 			record = new TSRecord(10, deltaObjectId);
 			dataPoint = DataPoint.getDataPoint(dataType, measurementId, String.valueOf(10));
 			record.addTuple(dataPoint);
-			fileNodeManager.insert(record);
+			fileNodeManager.insert(record, false);
 		} catch (FileNodeManagerException e) {
 			e.printStackTrace();
 			fail(e.getMessage());
@@ -809,7 +809,7 @@ public class FileNodeManagerTest {
 			DataPoint dataPoint = DataPoint.getDataPoint(dataType, measurementId, String.valueOf(i));
 			record.addTuple(dataPoint);
 			try {
-				fManager.insert(record);
+				fManager.insert(record, false);
 			} catch (FileNodeManagerException e) {
 				e.printStackTrace();
 				fail(e.getMessage());
@@ -838,7 +838,7 @@ public class FileNodeManagerTest {
 			DataPoint dataPoint = DataPoint.getDataPoint(dataType, measurementId, String.valueOf(i));
 			record.addTuple(dataPoint);
 			try {
-				fManager.insert(record);
+				fManager.insert(record, false);
 			} catch (FileNodeManagerException e) {
 				e.printStackTrace();
 				fail(e.getMessage());
@@ -853,7 +853,7 @@ public class FileNodeManagerTest {
 			DataPoint dataPoint = DataPoint.getDataPoint(dataType, measurementId, String.valueOf((int) time));
 			record.addTuple(dataPoint);
 			try {
-				fManager.insert(record);
+				fManager.insert(record, false);
 			} catch (FileNodeManagerException e) {
 				e.printStackTrace();
 				fail(e.getMessage());
