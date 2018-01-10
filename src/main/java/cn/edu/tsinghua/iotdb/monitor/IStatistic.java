@@ -4,6 +4,7 @@ import cn.edu.tsinghua.tsfile.timeseries.write.record.TSRecord;
 
 import java.util.HashMap;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
 
 
 public interface IStatistic {
@@ -27,4 +28,10 @@ public interface IStatistic {
      * the name is the statistics name need to store
      */
     List<String> getAllPathForStatistic();
+
+    /**
+     *
+     * @return a HashMap contains the name and values of the statistics parameters
+     */
+    HashMap<String, AtomicLong> getStatParamsHashMap();
 }

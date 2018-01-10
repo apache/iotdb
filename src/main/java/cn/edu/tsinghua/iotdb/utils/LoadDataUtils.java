@@ -130,7 +130,7 @@ public class LoadDataUtils {
         }
         // appeared before, insert directly
         try {
-            fileNodeManager.insert(record);
+            fileNodeManager.insert(record, false);
         } catch (FileNodeManagerException e) {
             LOG.error("failed when insert into fileNodeManager, record:{}, reason:{}", line, e.getMessage());
 		}

@@ -7,6 +7,8 @@ import cn.edu.tsinghua.iotdb.exception.FileNodeManagerException;
 import cn.edu.tsinghua.iotdb.exception.MetadataArgsErrorException;
 import cn.edu.tsinghua.iotdb.exception.PathErrorException;
 import cn.edu.tsinghua.iotdb.metadata.MManager;
+import cn.edu.tsinghua.iotdb.utils.IoTDBThreadPoolFactory;
+import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
 import cn.edu.tsinghua.tsfile.timeseries.write.record.DataPoint;
 import cn.edu.tsinghua.tsfile.timeseries.write.record.TSRecord;
 import cn.edu.tsinghua.tsfile.timeseries.write.record.datapoint.LongDataPoint;
@@ -14,8 +16,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.*;
-import java.util.concurrent.Executors;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
@@ -25,11 +28,16 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public class StatMonitor {
     private static final Logger LOGGER = LoggerFactory.getLogger(StatMonitor.class);
-    private final int backLoopPeriod;
 
-    // key is the store path like FileNodeProcessor.root_stats_xxx.xxx,
-    // or simple name like:FileNodeManager. And value is interface implement
-    // statistics function
+    private long runningTimeMillis = System.currentTimeMillis();
+    private final int backLoopPeriod;
+    private final int statMonitorDetectFreqSec;
+    private final int statMonitorRetainIntervalSec;
+
+    /**
+     * key: is the statistics store path
+     * Value: is an interface that implements statistics function
+     */
     private HashMap<String, IStatistic> statisticMap;
     private ScheduledExecutorService service;
 
@@ -45,7 +53,9 @@ public class StatMonitor {
         MManager mManager = MManager.getInstance();
         statisticMap = new HashMap<>();
         TsfileDBConfig config = TsfileDBDescriptor.getInstance().getConfig();
-        backLoopPeriod = config.backLoopPeriod;
+        statMonitorDetectFreqSec = config.statMonitorDetectFreqSec;
+        statMonitorRetainIntervalSec = config.statMonitorRetainIntervalSec;
+        backLoopPeriod = config.backLoopPeriodSec;
         try {
             String prefix = MonitorConstants.statStorageGroupPrefix;
 
@@ -102,8 +112,14 @@ public class StatMonitor {
         }
     }
 
+    public void recovery() {
+        // TODO: restore the FildeNode Manager TOTAL_POINTS statistics info
+
+    }
+
     public void activate() {
-        service = Executors.newScheduledThreadPool(1);
+
+        service = IoTDBThreadPoolFactory.newScheduledThreadPool(1, "StatMonitorService");
         service.scheduleAtFixedRate(new StatMonitor.statBackLoop(),
                 1, backLoopPeriod, TimeUnit.SECONDS
         );
@@ -213,7 +229,7 @@ public class StatMonitor {
         int pointNum;
         for (Map.Entry<String, TSRecord> entry : tsRecordHashMap.entrySet()) {
             try {
-                fManager.insert(entry.getValue());
+                fManager.insert(entry.getValue(), true);
                 numInsert.incrementAndGet();
                 pointNum = entry.getValue().dataPointList.size();
                 numPointsInsert.addAndGet(pointNum);
@@ -245,6 +261,27 @@ public class StatMonitor {
 
     class statBackLoop implements Runnable {
         public void run() {
+            long currentTimeMillis = System.currentTimeMillis();
+            long seconds = (currentTimeMillis - runningTimeMillis)/1000;
+            if (seconds - statMonitorDetectFreqSec >= 0) {
+                runningTimeMillis = currentTimeMillis;
+                // delete time-series data
+                FileNodeManager fManager = FileNodeManager.getInstance();
+                try {
+                    for (Map.Entry<String, IStatistic> entry : statisticMap.entrySet()) {
+                        for (String statParamName : entry.getValue().getStatParamsHashMap().keySet()) {
+                            fManager.delete(entry.getKey(),
+                                    statParamName,
+                                    currentTimeMillis - statMonitorRetainIntervalSec * 1000,
+                                    TSDataType.INT64
+                            );
+                        }
+                    }
+                }catch (FileNodeManagerException e) {
+                    LOGGER.error("Error when delete Statistics information periodically, ", e);
+                    e.printStackTrace();
+                }
+            }
             HashMap<String, TSRecord> tsRecordHashMap = gatherStatistics();
             insert(tsRecordHashMap);
             numBackLoop.incrementAndGet();

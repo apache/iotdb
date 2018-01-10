@@ -257,7 +257,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 			TSRecord tsRecord = new TSRecord(timestamp, deltaObjectId);
 			DataPoint dataPoint = DataPoint.getDataPoint(type, measurementId, value);
 			tsRecord.addTuple(dataPoint);
-			return fileNodeManager.insert(tsRecord);
+			return fileNodeManager.insert(tsRecord, false);
 
 		} catch (PathErrorException e) {
 			throw new ProcessorException("Error in insert: " + e.getMessage());
@@ -286,7 +286,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 				DataPoint dataPoint = DataPoint.getDataPoint(dataType, measurementList.get(i), value);
 				tsRecord.addTuple(dataPoint);
 			}
-			return fileNodeManager.insert(tsRecord);
+			return fileNodeManager.insert(tsRecord, false);
 
 		} catch (PathErrorException | FileNodeManagerException e) {
 			throw new ProcessorException(e.getMessage());

@@ -16,8 +16,6 @@ import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
 import cn.edu.tsinghua.iotdb.engine.filenode.FileNodeManager;
 import cn.edu.tsinghua.iotdb.exception.FileNodeManagerException;
 import cn.edu.tsinghua.iotdb.metadata.MManager;
-import cn.edu.tsinghua.iotdb.monitor.MonitorConstants;
-import cn.edu.tsinghua.iotdb.monitor.StatMonitor;
 import cn.edu.tsinghua.iotdb.utils.EnvironmentUtils;
 import cn.edu.tsinghua.tsfile.timeseries.write.record.DataPoint;
 import cn.edu.tsinghua.tsfile.timeseries.write.record.TSRecord;
@@ -39,7 +37,7 @@ public class MonitorTest {
     	EnvironmentUtils.closeMemControl();
         EnvironmentUtils.envSetUp();
         tsdbconfig.enableStatMonitor = true;
-        tsdbconfig.backLoopPeriod = 1;
+        tsdbconfig.backLoopPeriodSec = 1;
     }
 
     @After
@@ -82,9 +80,6 @@ public class MonitorTest {
         // Get stat data and test right
 
         HashMap<String, TSRecord> statHashMap = fManager.getAllStatisticsValue();
-        Long numInsert = statMonitor.getNumInsert();
-        Long numPointsInsert = statMonitor.getNumPointsInsert();
-        long numInsertError = statMonitor.getNumInsertError();
 
         String path = fManager.getAllPathForStatistic().get(0);
         int pos = path.lastIndexOf('.');
@@ -94,16 +89,16 @@ public class MonitorTest {
         for (DataPoint dataPoint : fTSRecord.dataPointList) {
             String m = dataPoint.getMeasurementId();
             Long v = (Long) dataPoint.getValue();
-            System.out.println( m + " measurement,  value:" + v);
-            if (m == "TOTAL_REQ_SUCCESS") {
-                assertEquals(v, numInsert);
+
+            if (m.equals("TOTAL_REQ_SUCCESS")) {
+                assertEquals(v, new Long(0));
             }
             if (m.contains("FAIL")) {
                 assertEquals(v, new Long(0));
             } else if (m.contains("POINTS")) {
-                assertEquals(v, numPointsInsert);
+                assertEquals(v, new Long(0));
             } else {
-                assertEquals(v, numInsert);
+                assertEquals(v, new Long(0));
             }
         }
 

@@ -1,11 +1,13 @@
 package cn.edu.tsinghua.iotdb.service;
 
 import java.util.List;
+import java.util.logging.Logger;
 
 import cn.edu.tsinghua.iotdb.engine.filenode.FileNodeManager;
 import cn.edu.tsinghua.iotdb.exception.FileNodeManagerException;
 import cn.edu.tsinghua.iotdb.exception.PathErrorException;
 import cn.edu.tsinghua.iotdb.metadata.MManager;
+import cn.edu.tsinghua.iotdb.monitor.MonitorConstants;
 import cn.edu.tsinghua.iotdb.qp.physical.crud.DeletePlan;
 import cn.edu.tsinghua.iotdb.qp.physical.crud.InsertPlan;
 import cn.edu.tsinghua.iotdb.qp.physical.crud.UpdatePlan;
@@ -40,7 +42,15 @@ class WriteLogRecovery {
             DataPoint dataPoint = DataPoint.getDataPoint(dataType, measurementList.get(i), value);
             tsRecord.addTuple(dataPoint);
         }
-        FileNodeManager.getInstance().insert(tsRecord);
+        String fileName = MManager.getInstance().getFileNameByPath(deltaObject);
+        // When Wal restores the statistics info, need to set isMonitor true for the insert method to stop
+        // collecting statistics data of storage group whose name is  "root.stats". Because system will not
+        // Record statistics data for "root.stats" storage group
+        if (MonitorConstants.statStorageGroupPrefix.equals(fileName)) {
+            FileNodeManager.getInstance().insert(tsRecord, true);
+        } else {
+            FileNodeManager.getInstance().insert(tsRecord, false);
+        }
     }
 
     static void update(UpdatePlan updatePlan) throws FileNodeManagerException, PathErrorException {
