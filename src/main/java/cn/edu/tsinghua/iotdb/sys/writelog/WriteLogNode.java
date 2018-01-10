@@ -106,7 +106,7 @@ public class WriteLogNode {
         flushStart[0] = (byte) SystemLogOperator.OVERFLOWFLUSHSTART;
         writer.write(flushStart);
         writer.write(BytesUtils.intToBytes(flushStart.length)); // 2 bytes to represent the content size
-        LOG.info("Write overflow log start.");
+        LOG.info("Write overflow {} log start.",fileNodePrefix);
     }
 
     synchronized void overflowFlushEnd() throws IOException {
@@ -120,7 +120,7 @@ public class WriteLogNode {
         writer.write(flushEnd);
         writer.write(BytesUtils.intToBytes(flushEnd.length));
         hasOverflowFlush = true;
-        LOG.info("Write overflow log end.");
+        LOG.info("Write overflow {} log end.",fileNodePrefix);
         checkLogsCompactFileSize(false);
     }
 
@@ -134,7 +134,7 @@ public class WriteLogNode {
         flushStart[0] = (byte) SystemLogOperator.BUFFERFLUSHSTART;
         writer.write(flushStart);
         writer.write(BytesUtils.intToBytes(flushStart.length));
-        LOG.info("Write bufferwrite log start.");
+        LOG.info("Write bufferwrite {} log start.",fileNodePrefix);
     }
 
     synchronized void bufferFlushEnd() throws IOException {
@@ -147,7 +147,7 @@ public class WriteLogNode {
         flushEnd[0] = (byte) SystemLogOperator.BUFFERFLUSHEND;
         writer.write(flushEnd);
         writer.write(BytesUtils.intToBytes(flushEnd.length));
-        LOG.info("Write bufferwrite log end.");
+        LOG.info("Write bufferwrite {} log end.",fileNodePrefix);
         hasBufferWriteFlush = true;
         checkLogsCompactFileSize(false);
     }
