@@ -1,6 +1,5 @@
 package cn.edu.tsinghua.iotdb.engine.bufferwrite;
 
-
 import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
 import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
 import cn.edu.tsinghua.iotdb.engine.Processor;
@@ -164,7 +163,7 @@ public class BufferWriteProcessor extends Processor {
 		try {
 			pair = ReadStoreFromDisk();
 		} catch (IOException e) {
-			LOGGER.error("Read bufferwrite restore file failed.");
+			LOGGER.error("Read bufferwrite {} restore file failed.", getProcessorName());
 			throw new BufferWriteProcessorException(e);
 		}
 		ITsRandomAccessFileWriter output;
@@ -302,7 +301,7 @@ public class BufferWriteProcessor extends Processor {
 			// number
 			byte[] lastPositionBytes = BytesUtils.longToBytes(lastPosition);
 			out.write(lastPositionBytes);
-			LOGGER.info("Write restore information to the restore file.");
+			LOGGER.info("Bufferwrite {} write restore information to the restore file.", getProcessorName());
 		} catch (IOException e) {
 			LOGGER.error("Serialize the TSFileMetaData error.");
 			throw new BufferWriteProcessorException(e);
@@ -469,21 +468,21 @@ public class BufferWriteProcessor extends Processor {
 			long newMemUsage = MemUtils.getTsRecordMemBufferwrite(tsRecord);
 			BasicMemController.UsageLevel level = BasicMemController.getInstance().reportUse(this, newMemUsage);
 			switch (level) {
-				case SAFE:
-					recordWriter.write(tsRecord);
-					memUsed += newMemUsage;
-					break;
-				case WARNING:
-					LOGGER.debug("Memory usage will exceed warning threshold, current : {}." ,
-							MemUtils.bytesCntToStr(BasicMemController.getInstance().getTotalUsage()));
-					recordWriter.write(tsRecord);
-					memUsed += newMemUsage;
-					break;
-				case DANGEROUS:
-				default:
-					LOGGER.warn("Memory usage will exceed dangerous threshold, current : {}.",
-							MemUtils.bytesCntToStr(BasicMemController.getInstance().getTotalUsage()));
-					throw new BufferWriteProcessorException("Memory usage exceeded dangerous threshold.");
+			case SAFE:
+				recordWriter.write(tsRecord);
+				memUsed += newMemUsage;
+				break;
+			case WARNING:
+				LOGGER.debug("Memory usage will exceed warning threshold, current : {}.",
+						MemUtils.bytesCntToStr(BasicMemController.getInstance().getTotalUsage()));
+				recordWriter.write(tsRecord);
+				memUsed += newMemUsage;
+				break;
+			case DANGEROUS:
+			default:
+				LOGGER.warn("Memory usage will exceed dangerous threshold, current : {}.",
+						MemUtils.bytesCntToStr(BasicMemController.getInstance().getTotalUsage()));
+				throw new BufferWriteProcessorException("Memory usage exceeded dangerous threshold.");
 			}
 		} catch (IOException | WriteProcessException e) {
 			LOGGER.error("Write TSRecord error, the TSRecord is {}, the bufferwrite is {}.", tsRecord,
@@ -529,10 +528,10 @@ public class BufferWriteProcessor extends Processor {
 	}
 
 	@Override
-	public void flush() throws IOException{
+	public void flush() throws IOException {
 		recordWriter.flushRowGroup(false);
 	}
-	
+
 	@Override
 	public void close() throws BufferWriteProcessorException {
 		isFlushingSync = true;
@@ -554,10 +553,10 @@ public class BufferWriteProcessor extends Processor {
 			isFlushingSync = false;
 		}
 	}
-	
+
 	@Override
-	public long memoryUsage(){
-		return recordWriter.calculateMemSizeForAllGroup();
+	public long memoryUsage() {
+		return recordWriter.getMemoryUsage();
 	}
 
 	public void addTimeSeries(String measurementToString, String dataType, String encoding, String[] encodingArgs)
@@ -647,12 +646,16 @@ public class BufferWriteProcessor extends Processor {
 				// flush bufferwrite data
 				if (isFlushingSync) {
 					try {
+						LOGGER.info("{} bufferwrite start to flush synchronously,-Thread id {}.", getProcessorName(),
+								Thread.currentThread().getName());
 						super.flushRowGroup(false);
 						writeStoreToDisk();
 						filenodeFlushAction.act();
 						if (TsfileDBDescriptor.getInstance().getConfig().enableWal) {
 							WriteLogManager.getInstance().endBufferWriteFlush(getProcessorName());
 						}
+						LOGGER.info("{} bufferwrite end to flush synchronously,-Thread id {}.", getProcessorName(),
+								Thread.currentThread().getName());
 					} catch (IOException e) {
 						LOGGER.error("Flush row group to store failed, processor:{}.", getProcessorName());
 						throw e;
@@ -675,8 +678,8 @@ public class BufferWriteProcessor extends Processor {
 
 					Runnable flushThread;
 					flushThread = () -> {
-						LOGGER.info("{} synchronous flush start,-Thread id {}.", getProcessorName(),
-								Thread.currentThread().getId());
+						LOGGER.info("{} bufferwrite start to flush asynchronously,-Thread id {}.", getProcessorName(),
+								Thread.currentThread().getName());
 						try {
 							asyncFlushRowGroupToStore();
 							writeStoreToDisk();
@@ -689,8 +692,8 @@ public class BufferWriteProcessor extends Processor {
 							 * There should be added system log by CGF and throw
 							 * exception
 							 */
-							LOGGER.error(String.format("%s Asynchronous flush error, sleep this thread-%s.",
-									getProcessorName(), Thread.currentThread().getId()), e);
+							LOGGER.error(String.format("%s asynchronous flush error, sleep this thread-%s.",
+									getProcessorName(), Thread.currentThread().getName()), e);
 							// TODO
 						} catch (BufferWriteProcessorException e) {
 							LOGGER.error("Write bufferwrite information to disk failed.", e);
@@ -707,10 +710,10 @@ public class BufferWriteProcessor extends Processor {
 						try {
 							synchronized (flushState) {
 								switchIndexFromFlushToWork();
-								LOGGER.info("{} synchronous flush end,-Thread is {}.", getProcessorName(),
-										Thread.currentThread().getId());
 								flushState.setUnFlushing();
 								flushState.notify();
+								LOGGER.info("{} bufferwrite end to flush asynchronously,-Thread id {}.",
+										getProcessorName(), Thread.currentThread().getName());
 							}
 						} finally {
 							convertBufferLock.writeLock().unlock();
@@ -769,10 +772,6 @@ public class BufferWriteProcessor extends Processor {
 			flushingRowGroupWriters = null;
 			flushingRecordCount = -1;
 		}
-		
-		public long calculateMemSizeForAllGroup(){
-			return super.calculateMemSizeForAllGroup();
-		}
 	}
 
 	private void switchIndexFromWorkToFlush() {
@@ -801,26 +800,25 @@ public class BufferWriteProcessor extends Processor {
 	}
 
 	/**
-	 * Close current TsFile and open a new one for future writes.
-	 * Block new writes and wait until current writes finish.
+	 * Close current TsFile and open a new one for future writes. Block new
+	 * writes and wait until current writes finish.
 	 */
 	public void rollToNewFile() {
 		// TODO : [MemControl] implement this
 	}
 
 	/**
-	 * Check if this TsFile has too big metadata or file.
-	 * If true, close current file and open a new one.
+	 * Check if this TsFile has too big metadata or file. If true, close current
+	 * file and open a new one.
 	 */
 	private void checkSize() {
 		TsfileDBConfig config = TsfileDBDescriptor.getInstance().getConfig();
 		long metaSize = getMetaSize();
 		long fileSize = getFileSize();
-		if(metaSize >= config.bufferwriteMetaSizeThreshold ||
-				fileSize >= config.bufferwriteFileSizeThreshold) {
-			LOGGER.info("{} size reaches threshold, closing. meta size is {}, file size is {}",
-					this.fileName, MemUtils.bytesCntToStr(metaSize), MemUtils.bytesCntToStr(fileSize));
+		if (metaSize >= config.bufferwriteMetaSizeThreshold || fileSize >= config.bufferwriteFileSizeThreshold) {
+			LOGGER.info("{} size reaches threshold, closing. meta size is {}, file size is {}", this.fileName,
+					MemUtils.bytesCntToStr(metaSize), MemUtils.bytesCntToStr(fileSize));
 			rollToNewFile();
 		}
 	}
- }
+}

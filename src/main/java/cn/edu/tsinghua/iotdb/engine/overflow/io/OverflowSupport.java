@@ -13,8 +13,6 @@ import org.slf4j.LoggerFactory;
 import cn.edu.tsinghua.iotdb.engine.overflow.metadata.OFFileMetadata;
 import cn.edu.tsinghua.iotdb.engine.overflow.metadata.OFRowGroupListMetadata;
 import cn.edu.tsinghua.iotdb.engine.overflow.metadata.OFSeriesListMetadata;
-import cn.edu.tsinghua.iotdb.exception.PathErrorException;
-import cn.edu.tsinghua.iotdb.metadata.MManager;
 import cn.edu.tsinghua.tsfile.common.conf.TSFileConfig;
 import cn.edu.tsinghua.tsfile.common.conf.TSFileDescriptor;
 import cn.edu.tsinghua.tsfile.compress.Compressor;
@@ -36,6 +34,7 @@ public class OverflowSupport {
 	private Map<String, Map<String, OverflowSeriesImpl>> overflowMap;
 	private OverflowFileIO fileWriter;
 	private Compressor compressor;
+	private volatile long memUsage;
 
 	private TSFileConfig conf = TSFileDescriptor.getInstance().getConfig();
 
@@ -197,7 +196,17 @@ public class OverflowSupport {
 				memSize += measurementWrite.getMemorySize();
 			}
 		}
+		memUsage = memSize;
 		return memSize;
+	}
+
+	/**
+	 * get the memory usage which is just an estimated result.
+	 * 
+	 * @return estimated memory usage.
+	 */
+	public long getMemoryUsage() {
+		return memUsage;
 	}
 
 	/**
@@ -300,7 +309,7 @@ public class OverflowSupport {
 	 * 
 	 * @throws IOException
 	 */
-	public void flushRowGroupToStore() throws IOException {
+	public void flushRowGroupToStore(String processorName) throws IOException {
 		// seek to tail of overflowFileIO
 		fileWriter.toTail();
 		long lastPos = fileWriter.getPos();
@@ -317,8 +326,9 @@ public class OverflowSupport {
 			timeInterval = 1;
 		}
 		long flushSize = fileWriter.getPos() - lastPos;
-		LOGGER.info("Asynchronous flush overflow rowgroup, actual:{}, time consume:{} ms, flush rate:{} bytes/ms",
-				flushSize, timeInterval, flushSize / timeInterval);
+		LOGGER.info("flush overflow rowgroup, actual:{}, time consume:{} ms, flush rate:{} bytes/ms", flushSize,
+				timeInterval, flushSize / timeInterval);
+		LOGGER.info("{} overflow end to flush,-Thread id {}.", processorName, Thread.currentThread().getName());
 	}
 
 	/**

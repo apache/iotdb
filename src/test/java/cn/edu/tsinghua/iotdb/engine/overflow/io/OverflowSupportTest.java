@@ -122,7 +122,7 @@ public class OverflowSupportTest {
 		ofSupport.insert(deltaObjectId, measurementId, timestamp, TSDataType.INT32, BytesUtils.intToBytes(value));
 		ofSupport.switchWorkToFlush();
 		try {
-			ofSupport.flushRowGroupToStore();
+			ofSupport.flushRowGroupToStore(deltaObjectId);
 		} catch (IOException e) {
 			e.printStackTrace();
 			fail(e.getMessage());
@@ -135,7 +135,7 @@ public class OverflowSupportTest {
 				BytesUtils.intToBytes(value));
 		ofSupport.switchWorkToFlush();
 		try {
-			ofSupport.flushRowGroupToStore();
+			ofSupport.flushRowGroupToStore(deltaObjectId);
 		} catch (IOException e) {
 			e.printStackTrace();
 			fail(e.getMessage());
@@ -222,7 +222,7 @@ public class OverflowSupportTest {
 
 		ofsupport.switchWorkToFlush();
 		try {
-			ofsupport.flushRowGroupToStore();
+			ofsupport.flushRowGroupToStore(deltaObjectId);
 		} catch (IOException e) {
 			e.printStackTrace();
 			fail("flush rowgroup to store failed");
@@ -312,7 +312,7 @@ public class OverflowSupportTest {
 
 		ofsupport.switchWorkToFlush();
 		try {
-			ofsupport.flushRowGroupToStore();
+			ofsupport.flushRowGroupToStore(deltaObjectId);
 			ofsupport.endFile();
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -436,7 +436,7 @@ public class OverflowSupportTest {
 		// test flush
 		ofsupport.switchWorkToFlush();
 		try {
-			ofsupport.flushRowGroupToStore();
+			ofsupport.flushRowGroupToStore(deltaObjectId);
 		} catch (IOException e) {
 			e.printStackTrace();
 			fail("Flush rowgroup to store failed, the reason is " + e.getMessage());
