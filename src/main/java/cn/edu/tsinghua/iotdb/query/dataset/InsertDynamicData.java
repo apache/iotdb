@@ -246,7 +246,7 @@ public class InsertDynamicData extends DynamicOneColumnData {
                 Digest pageDigest = pageHeader.data_page_header.getDigest();
 
                 // construct value filter digest
-                DigestForFilter valueDigest = new StrDigestForFilter(pageDigest.getStatistics().get(AggregationConstant.MIN_VALUE),
+                DigestForFilter valueDigest = new DigestForFilter(pageDigest.getStatistics().get(AggregationConstant.MIN_VALUE),
                         pageDigest.getStatistics().get(AggregationConstant.MAX_VALUE), dataType);
                 // construct time filter digest
                 long mint = pageHeader.data_page_header.min_timestamp;

@@ -14,6 +14,10 @@ public class TestUtils {
         return String.format("first(%s)", path);
     }
 
+    public static String last(String path) {
+        return String.format("last(%s)", path);
+    }
+
     public static String sum(String path) {
         return String.format("sum(%s)", path);
     }

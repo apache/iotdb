@@ -32,6 +32,8 @@ public class AggreFuncFactory {
                 return new FirstAggrFunc(dataType);
             case AggregationConstant.SUM:
                 return new SumAggrFunc();
+            case AggregationConstant.LAST:
+                return new LastAggrFunc(dataType);
             default:
                 throw new ProcessorException("aggregate does not support " + aggrFuncName + " function.");
         }

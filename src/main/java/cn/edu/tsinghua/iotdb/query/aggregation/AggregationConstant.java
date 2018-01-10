@@ -14,6 +14,7 @@ public class AggregationConstant {
     public static final String COUNT = StatisticConstant.COUNT;
 
     public static final String FIRST = StatisticConstant.FIRST;
+    public static final String LAST = StatisticConstant.LAST;
 
     public static final String MEAN = StatisticConstant.MEAN;
     public static final String SUM = StatisticConstant.SUM;

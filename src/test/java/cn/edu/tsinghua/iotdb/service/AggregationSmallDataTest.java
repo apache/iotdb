@@ -136,10 +136,43 @@ public class AggregationSmallDataTest {
             meanAggreWithSingleFilterTest();
             sumAggreWithSingleFilterTest();
             firstAggreWithSingleFilterTest();
+            lastAggreWithSingleFilterTest();
 
             countOnlyTimeFilterTest();
 
             connection.close();
+        }
+    }
+
+    private void lastAggreWithSingleFilterTest() throws ClassNotFoundException, SQLException {
+        String[] retArray = new String[]{
+                "0,22222,55555"
+        };
+        Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);
+        Connection connection = null;
+        try {
+            connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
+            Statement statement = connection.createStatement();
+            boolean hasResultSet = statement.execute("select last(s0),last(s1) from root.vehicle.d0 where s2 >= 3.33");
+            //boolean hasResultSet = statement.execute("select count(s3) from root.vehicle.d0 where s1 >= 0");
+            Assert.assertTrue(hasResultSet);
+            ResultSet resultSet = statement.getResultSet();
+            int cnt = 0;
+            while (resultSet.next()) {
+                String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(last(d0s0))+ "," + resultSet.getString(last(d0s1));
+                //System.out.println("!!!!!============ " + ans);
+                Assert.assertEquals(retArray[cnt], ans);
+                cnt++;
+            }
+            Assert.assertEquals(1, cnt);
+            statement.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+            fail(e.getMessage());
+        } finally {
+            if (connection != null) {
+                connection.close();
+            }
         }
     }
 
