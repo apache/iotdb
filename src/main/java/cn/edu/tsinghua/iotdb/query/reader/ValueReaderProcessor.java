@@ -1,24 +1,13 @@
 package cn.edu.tsinghua.iotdb.query.reader;
 
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.List;
-
-import cn.edu.tsinghua.iotdb.query.aggregation.AggregationConstant;
-import cn.edu.tsinghua.iotdb.query.visitorImpl.PageAllSatisfiedVisitor;
-import cn.edu.tsinghua.tsfile.common.utils.Pair;
-import cn.edu.tsinghua.tsfile.file.metadata.TsDigest;
-import cn.edu.tsinghua.tsfile.timeseries.filter.utils.StrDigestForFilter;
-import cn.edu.tsinghua.tsfile.timeseries.filter.visitorImpl.IntervalTimeVisitor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import cn.edu.tsinghua.iotdb.query.aggregation.AggregateFunction;
+import cn.edu.tsinghua.iotdb.query.aggregation.AggregationConstant;
 import cn.edu.tsinghua.iotdb.query.dataset.InsertDynamicData;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 import cn.edu.tsinghua.tsfile.common.utils.Binary;
+import cn.edu.tsinghua.tsfile.common.utils.Pair;
 import cn.edu.tsinghua.tsfile.encoding.decoder.Decoder;
+import cn.edu.tsinghua.tsfile.file.metadata.TsDigest;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.CompressionTypeName;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
 import cn.edu.tsinghua.tsfile.format.Digest;
@@ -26,10 +15,18 @@ import cn.edu.tsinghua.tsfile.format.PageHeader;
 import cn.edu.tsinghua.tsfile.timeseries.filter.definition.SingleSeriesFilterExpression;
 import cn.edu.tsinghua.tsfile.timeseries.filter.utils.DigestForFilter;
 import cn.edu.tsinghua.tsfile.timeseries.filter.visitorImpl.DigestVisitor;
+import cn.edu.tsinghua.tsfile.timeseries.filter.visitorImpl.IntervalTimeVisitor;
 import cn.edu.tsinghua.tsfile.timeseries.filter.visitorImpl.SingleValueVisitor;
 import cn.edu.tsinghua.tsfile.timeseries.read.PageReader;
 import cn.edu.tsinghua.tsfile.timeseries.read.ValueReader;
 import cn.edu.tsinghua.tsfile.timeseries.read.query.DynamicOneColumnData;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.List;
 
 public class ValueReaderProcessor {
 
@@ -62,7 +59,7 @@ public class ValueReaderProcessor {
         // TODO: optimize by jt ?
 
         TsDigest digest = valueReader.getDigest();
-        DigestForFilter valueDigest = new StrDigestForFilter(digest.getStatistics().get(AggregationConstant.MIN_VALUE),
+        DigestForFilter valueDigest = new DigestForFilter(digest.getStatistics().get(AggregationConstant.MIN_VALUE),
                 digest.getStatistics().get(AggregationConstant.MAX_VALUE), dataType);
         LOG.debug(String.format("read one series digest normally, time range is [%s,%s], value range is [%s,%s]",
                 valueReader.getStartTime(), valueReader.getEndTime(), valueDigest.getMinValue(), valueDigest.getMaxValue()));
@@ -105,7 +102,7 @@ public class ValueReaderProcessor {
             // construct valueFilter
             // System.out.println(res.pageOffset + "|" + fileOffset + "|" + totalSize);
             Digest pageDigest = pageHeader.data_page_header.getDigest();
-            DigestForFilter valueDigestFF = new StrDigestForFilter(digest.getStatistics().get(AggregationConstant.MIN_VALUE),
+            DigestForFilter valueDigestFF = new DigestForFilter(digest.getStatistics().get(AggregationConstant.MIN_VALUE),
                     digest.getStatistics().get(AggregationConstant.MAX_VALUE), dataType);
 
             // construct timeFilter
@@ -681,7 +678,7 @@ public class ValueReaderProcessor {
 
         // get column digest
         TsDigest digest = valueReader.getDigest();
-        DigestForFilter digestFF = new StrDigestForFilter(digest.getStatistics().get(AggregationConstant.MIN_VALUE),
+        DigestForFilter digestFF = new DigestForFilter(digest.getStatistics().get(AggregationConstant.MIN_VALUE),
                 digest.getStatistics().get(AggregationConstant.MAX_VALUE), dataType);
         LOG.debug("Calculate aggregation : Column Digest min and max is: " + digestFF.getMinValue() + " --- " + digestFF.getMaxValue());
         DigestVisitor digestVisitor = new DigestVisitor();
@@ -712,7 +709,7 @@ public class ValueReaderProcessor {
 
             PageHeader pageHeader = pageReader.getNextPageHeader();
             Digest pageDigest = pageHeader.data_page_header.getDigest();
-            DigestForFilter valueDigestFF = new StrDigestForFilter(digest.getStatistics().get(AggregationConstant.MIN_VALUE),
+            DigestForFilter valueDigestFF = new DigestForFilter(digest.getStatistics().get(AggregationConstant.MIN_VALUE),
                     digest.getStatistics().get(AggregationConstant.MAX_VALUE), dataType);
             long mint = pageHeader.data_page_header.min_timestamp;
             long maxt = pageHeader.data_page_header.max_timestamp;
@@ -818,7 +815,7 @@ public class ValueReaderProcessor {
 
         // get column digest
         TsDigest digest = valueReader.getDigest();
-        DigestForFilter digestFF = new StrDigestForFilter(digest.getStatistics().get(AggregationConstant.MIN_VALUE),
+        DigestForFilter digestFF = new DigestForFilter(digest.getStatistics().get(AggregationConstant.MIN_VALUE),
                 digest.getStatistics().get(AggregationConstant.MAX_VALUE), dataType);
         LOG.debug("calculate aggregation using given common timestamps, series Digest min and max is: "
                 + digestFF.getMinValue() + " --- " + digestFF.getMaxValue()

@@ -6,16 +6,16 @@ import cn.edu.tsinghua.iotdb.query.dataset.InsertDynamicData;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
 import cn.edu.tsinghua.tsfile.format.PageHeader;
+import cn.edu.tsinghua.tsfile.timeseries.filter.utils.DigestForFilter;
 import cn.edu.tsinghua.tsfile.timeseries.read.query.DynamicOneColumnData;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.List;
 
 public class FirstAggrFunc extends AggregateFunction{
-
-    private static Logger logger = LoggerFactory.getLogger(FirstAggrFunc.class);
 
     public FirstAggrFunc(TSDataType dataType) {
         super(AggregationConstant.FIRST, dataType);
@@ -33,11 +33,12 @@ public class FirstAggrFunc extends AggregateFunction{
         if (resultData.getTime(0) != -1) {
             return;
         }
-        String firstValStr = pageHeader.data_page_header.digest.getStatistics().get(AggregationConstant.FIRST);
-        if(firstValStr == null)
+        ByteBuffer firstVal = pageHeader.data_page_header.digest.getStatistics().get(AggregationConstant.FIRST);
+        if(firstVal == null)
             throw new ProcessorException("PageHeader contains no FIRST value");
         resultData.setTime(0, 0);
-        putValueFromStr(firstValStr);
+        DigestForFilter digestForFilter = new DigestForFilter(firstVal, firstVal, dataType);
+        resultData.putAnObject(digestForFilter.getMaxValue());
     }
 
     @Override

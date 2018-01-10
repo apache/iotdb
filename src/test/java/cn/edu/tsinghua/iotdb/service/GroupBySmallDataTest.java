@@ -112,7 +112,7 @@ public class GroupBySmallDataTest {
 		try {
 			connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
 			Statement statement = connection.createStatement();
-			boolean hasResultSet = statement.execute("select count(s0),count(s1),count(s2),count(s3),mean(s0),sum(s1),first(s2)"
+			boolean hasResultSet = statement.execute("select count(s0),count(s1),count(s2),count(s3),mean(s0),sum(s1),first(s2),last(s0)"
 					+ "from root.vehicle.d0 where s1 > 190 or s2 < 10.0 group by(10ms, 0, [3,10000])");
 			Assert.assertTrue(hasResultSet);
 			ResultSet resultSet = statement.getResultSet();
@@ -120,23 +120,23 @@ public class GroupBySmallDataTest {
 			while (resultSet.next()) {
 				String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(count(d0s0)) + ","
 						+ resultSet.getString(count(d0s1)) + "," + resultSet.getString(count(d0s2)) + ","
-						+ resultSet.getString(count(d0s3));
+						+ resultSet.getString(count(d0s3)) + "," + resultSet.getString(last(d0s0));
 				// System.out.println(ans);
 				switch (cnt) {
 				case 1:
-					Assert.assertEquals("3,null,null,2,null", ans);
+					Assert.assertEquals("3,null,null,2,null,null", ans);
 					break;
 				case 6:
-					Assert.assertEquals("50,null,1,null,null", ans);
+					Assert.assertEquals("50,null,1,null,null,null", ans);
 					break;
 				case 11:
-					Assert.assertEquals("100,1,4,1,1", ans);
+					Assert.assertEquals("100,1,4,1,1,33333", ans);
 					break;
 				case 101:
-					Assert.assertEquals("1000,1,1,1,null", ans);
+					Assert.assertEquals("1000,1,1,1,null,22222", ans);
 					break;
 				default:
-					Assert.assertEquals(resultSet.getString(TIMESTAMP_STR) + ",null,null,null,null", ans);
+					Assert.assertEquals(resultSet.getString(TIMESTAMP_STR) + ",null,null,null,null,null", ans);
 				}
 				cnt++;
 			}
@@ -338,7 +338,7 @@ public class GroupBySmallDataTest {
 		try {
 			connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
 			Statement statement = connection.createStatement();
-			boolean hasResultSet = statement.execute("select count(s0),count(s1),count(s2),count(s3) "
+			boolean hasResultSet = statement.execute("select count(s0),count(s1),count(s2),count(s3),last(s0) "
 					+ "from root.vehicle.d0 group by(10ms, 0, [3,10000])");
 
 			Assert.assertTrue(hasResultSet);
@@ -347,28 +347,28 @@ public class GroupBySmallDataTest {
 			while (resultSet.next()) {
 				String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(count(d0s0)) + ","
 						+ resultSet.getString(count(d0s1)) + "," + resultSet.getString(count(d0s2)) + ","
-						+ resultSet.getString(count(d0s3));
+						+ resultSet.getString(count(d0s3)) + "," + resultSet.getString(last(d0s0));
 				// System.out.println(ans);
 				switch (cnt) {
 				case 1:
-					Assert.assertEquals("3,null,null,2,null", ans);
+					Assert.assertEquals("3,null,null,2,null,null", ans);
 					break;
 				case 6:
-					Assert.assertEquals("50,null,1,null,null", ans);
+					Assert.assertEquals("50,null,1,null,null,null", ans);
 					break;
 				case 7:
 				case 8:
 				case 9:
-					Assert.assertEquals(resultSet.getString(TIMESTAMP_STR) + ",null,null,null,1", ans);
+					Assert.assertEquals(resultSet.getString(TIMESTAMP_STR) + ",null,null,null,1,null", ans);
 					break;
 				case 11:
-					Assert.assertEquals("100,3,6,2,2", ans);
+					Assert.assertEquals("100,3,6,2,2,99", ans);
 					break;
 				case 101:
-					Assert.assertEquals("1000,1,1,1,null", ans);
+					Assert.assertEquals("1000,1,1,1,null,22222", ans);
 					break;
 				default:
-					Assert.assertEquals(resultSet.getString(TIMESTAMP_STR) + ",null,null,null,null", ans);
+					Assert.assertEquals(resultSet.getString(TIMESTAMP_STR) + ",null,null,null,null,null", ans);
 				}
 				cnt++;
 			}
@@ -391,7 +391,7 @@ public class GroupBySmallDataTest {
 		try {
 			connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
 			Statement statement = connection.createStatement();
-			boolean hasResultSet = statement.execute("select count(s0),min_value(s1),max_value(s2),min_time(s3) "
+			boolean hasResultSet = statement.execute("select count(s0),min_value(s1),max_value(s2),min_time(s3),last(s0) "
 					+ "from root.vehicle.d0 where s1 > 190 or s2 < 10.0 group by(10ms, 0, [3,103], [998,1002])");
 			assertTrue(hasResultSet);
 			ResultSet resultSet = statement.getResultSet();
@@ -399,23 +399,23 @@ public class GroupBySmallDataTest {
 			while (resultSet.next()) {
 				String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(count(d0s0)) + ","
 						+ resultSet.getString(min_value(d0s1)) + "," + resultSet.getString(max_value(d0s2)) + ","
-						+ resultSet.getString(min_time(d0s3));
+						+ resultSet.getString(min_time(d0s3)) + "," + resultSet.getString(last(d0s0));
 				// System.out.println(ans);
 				switch (cnt) {
 				case 1:
-					Assert.assertEquals("3,null,null,4.44,null", ans);
+					Assert.assertEquals("3,null,null,4.44,null,null", ans);
 					break;
 				case 6:
-					Assert.assertEquals("50,null,50000,null,null", ans);
+					Assert.assertEquals("50,null,50000,null,null,null", ans);
 					break;
 				case 11:
-					Assert.assertEquals("100,null,199,null,101", ans);
+					Assert.assertEquals("100,null,199,null,101,null", ans);
 					break;
 				case 13:
-					Assert.assertEquals("1000,1,55555,1000.11,null", ans);
+					Assert.assertEquals("1000,1,55555,1000.11,null,22222", ans);
 					break;
 				default:
-					Assert.assertEquals(resultSet.getString(TIMESTAMP_STR) + ",null,null,null,null", ans);
+					Assert.assertEquals(resultSet.getString(TIMESTAMP_STR) + ",null,null,null,null,null", ans);
 				}
 				cnt++;
 			}
@@ -439,7 +439,7 @@ public class GroupBySmallDataTest {
 		try {
 			connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
 			Statement statement = connection.createStatement();
-			boolean hasResultSet = statement.execute("select count(s0),min_value(s1),max_value(s2),min_time(s3) "
+			boolean hasResultSet = statement.execute("select count(s0),min_value(s1),max_value(s2),min_time(s3),last(s0) "
 					+ "from root.vehicle.d0 group by(10ms, 0, [300,103], [998,1002])");
 			assertTrue(hasResultSet);
 			ResultSet resultSet = statement.getResultSet();
@@ -447,14 +447,14 @@ public class GroupBySmallDataTest {
 			while (resultSet.next()) {
 				String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(count(d0s0)) + ","
 						+ resultSet.getString(min_value(d0s1)) + "," + resultSet.getString(max_value(d0s2)) + ","
-						+ resultSet.getString(min_time(d0s3));
+						+ resultSet.getString(min_time(d0s3)) + "," + resultSet.getString(last(d0s0));
 				// System.out.println(ans);
 				switch (cnt) {
 				case 2:
-					Assert.assertEquals("1000,1,55555,1000.11,null", ans);
+					Assert.assertEquals("1000,1,55555,1000.11,null,22222", ans);
 					break;
 				default:
-					Assert.assertEquals(resultSet.getString(TIMESTAMP_STR) + ",null,null,null,null", ans);
+					Assert.assertEquals(resultSet.getString(TIMESTAMP_STR) + ",null,null,null,null,null", ans);
 				}
 				cnt++;
 			}
@@ -482,7 +482,7 @@ public class GroupBySmallDataTest {
 			// count(s0),min_value(s1),max_value(s2),min_time(s3) " +
 			// "from root.vehicle.d0 group by(1ms, 0, [0,10000000])");
 
-			String sql = "select count(s0),min_value(s0),max_value(s0),min_time(s0) from root.vehicle.d0 group by(1s, 0, [2010-01-01T00:00:00.000,2010-01-08T16:43:15.000])";
+			String sql = "select count(s0),min_value(s0),max_value(s0),min_time(s0),last(s0) from root.vehicle.d0 group by(1s, 0, [2010-01-01T00:00:00.000,2010-01-08T16:43:15.000])";
 			boolean hasResultSet = statement.execute(sql);
 			assertTrue(hasResultSet);
 			ResultSet resultSet = statement.getResultSet();
@@ -511,7 +511,7 @@ public class GroupBySmallDataTest {
 		try {
 			connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
 			Statement statement = connection.createStatement();
-			boolean hasResultSet = statement.execute("select count(s0),min_value(s1),max_value(s2),min_time(s3) "
+			boolean hasResultSet = statement.execute("select count(s0),min_value(s1),max_value(s2),min_time(s3),last(s0) "
 					+ "from root.vehicle.d0 where s0 != 0 group by(1m, 0, [0,10000000])");
 			assertTrue(hasResultSet);
 			ResultSet resultSet = statement.getResultSet();
@@ -539,7 +539,7 @@ public class GroupBySmallDataTest {
 		try {
 			connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
 			Statement statement = connection.createStatement();
-			boolean hasResultSet = statement.execute("select count(s0),min_value(s1),max_value(s2),min_time(s3) "
+			boolean hasResultSet = statement.execute("select count(s0),min_value(s1),max_value(s2),min_time(s3),last(s0) "
 					+ "from root.vehicle.d0,root.vehicle.d1 group by(100ms, 0, [0,1500])");
 			assertTrue(hasResultSet);
 			ResultSet resultSet = statement.getResultSet();
@@ -547,7 +547,8 @@ public class GroupBySmallDataTest {
 			while (resultSet.next()) {
 				String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(count(d0s0)) + ","
 						+ resultSet.getString(min_value(d0s1)) + "," + resultSet.getString(max_value(d0s2)) + ","
-						+ resultSet.getString(min_time(d0s3)) + "," + resultSet.getString(min_time(d0s3));
+						+ resultSet.getString(min_time(d0s3)) + "," + resultSet.getString(min_time(d0s3)) + ","
+						+ resultSet.getString(last(d0s0));
 				// System.out.println(ans);
 
 				cnt++;
@@ -576,7 +577,7 @@ public class GroupBySmallDataTest {
 			connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
 			Statement statement = connection.createStatement();
 			boolean hasResultSet = statement
-					.execute("select min_value(s0),max_value(s0),max_time(s0),min_time(s0),count(s0)"
+					.execute("select min_value(s0),max_value(s0),max_time(s0),min_time(s0),count(s0),last(s0)"
 							+ "from root.vehicle.d0 group by(100ms, 0, [0,300])");
 			if (hasResultSet) {
 				ResultSet resultSet = statement.getResultSet();
@@ -584,7 +585,8 @@ public class GroupBySmallDataTest {
 				while (resultSet.next()) {
 					String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(count(d0s0)) + ","
 							+ resultSet.getString(max_value(d0s0)) + "," + resultSet.getString(min_value(d0s0)) + ","
-							+ resultSet.getString(max_time(d0s0)) + "," + resultSet.getString(min_time(d0s0));
+							+ resultSet.getString(max_time(d0s0)) + "," + resultSet.getString(min_time(d0s0)) + ","
+							+ resultSet.getString(last(d0s0));
 					System.out.println(ans);
 					cnt++;
 				}
@@ -792,16 +794,16 @@ public class GroupBySmallDataTest {
 			connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
 			Statement statement = connection.createStatement();
 			boolean hasResultSet = statement
-					.execute("select count(s1),max_value(s1) from root.vehicle.d1 group by(10ms, 0, [3,100])");
+					.execute("select count(s1),max_value(s1),last(s1) from root.vehicle.d1 group by(10ms, 0, [3,100])");
 
 			Assert.assertTrue(hasResultSet);
 			ResultSet resultSet = statement.getResultSet();
 			int cnt = 1;
 			while (resultSet.next()) {
 				String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(count(d1s1)) + ","
-						+ resultSet.getString(max_value(d1s1));
+						+ resultSet.getString(max_value(d1s1)) + "," + resultSet.getString(last(d1s1));
 				//System.out.println("===" + ans);
-				assertEquals(resultSet.getString(TIMESTAMP_STR) + ",null,null", ans);
+				assertEquals(resultSet.getString(TIMESTAMP_STR) + ",null,null,null", ans);
 				cnt++;
 			}
 			// Assert.assertEquals(1002, cnt);

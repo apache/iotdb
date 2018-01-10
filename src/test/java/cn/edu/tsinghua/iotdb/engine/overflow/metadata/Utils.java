@@ -7,6 +7,7 @@ import static org.junit.Assert.fail;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
 
@@ -40,7 +41,7 @@ public class Utils {
 		}
 	}
 
-	public static void isMapEqual(Map<String, String> mapA, Map<String, String> mapB, String name) {
+	public static void isMapEqual(Map<String, ByteBuffer> mapA, Map<String, ByteBuffer> mapB, String name) {
 		if ((mapA == null) ^ (mapB == null)) {
 			System.out.println("error");
 			fail(String.format("one of %s is null", name));

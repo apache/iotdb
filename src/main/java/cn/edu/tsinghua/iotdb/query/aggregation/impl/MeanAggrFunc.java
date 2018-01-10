@@ -4,6 +4,7 @@ import cn.edu.tsinghua.iotdb.query.aggregation.AggregateFunction;
 import cn.edu.tsinghua.iotdb.query.aggregation.AggregationConstant;
 import cn.edu.tsinghua.iotdb.query.dataset.InsertDynamicData;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
+import cn.edu.tsinghua.tsfile.common.utils.BytesUtils;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
 import cn.edu.tsinghua.tsfile.format.PageHeader;
 import cn.edu.tsinghua.tsfile.timeseries.read.query.DynamicOneColumnData;
@@ -11,11 +12,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.List;
 
 public class MeanAggrFunc extends AggregateFunction{
-
-    private static Logger logger = LoggerFactory.getLogger(MeanAggrFunc.class);
 
     private double sum = 0.0;
     private int cnt = 0;
@@ -35,15 +35,11 @@ public class MeanAggrFunc extends AggregateFunction{
     public void calculateValueFromPageHeader(PageHeader pageHeader) throws ProcessorException {
         if (resultData.timeLength == 0)
             resultData.putTime(0);
-        String sumValStr = pageHeader.data_page_header.digest.getStatistics().get(AggregationConstant.SUM);
-        if (sumValStr == null)
-            throw new ProcessorException("PageHeader contains no SUM value");
+        ByteBuffer sumVal = pageHeader.data_page_header.digest.getStatistics().get(AggregationConstant.SUM);
+        if (sumVal == null)
+            throw new ProcessorException("In aggregation MEAN : PageHeader contains no SUM value.");
         double pageSum;
-        try {
-            pageSum = Double.parseDouble(sumValStr);
-        } catch (NumberFormatException e) {
-            throw new ProcessorException("Sum in page header is not a double! " + e.getMessage());
-        }
+        pageSum = BytesUtils.bytesToDouble(sumVal.array());
         int pageCnt = pageHeader.data_page_header.num_rows;
 
         sum += pageSum;
@@ -155,7 +151,6 @@ public class MeanAggrFunc extends AggregateFunction{
      * @throws ProcessorException
      */
     private void updateMean(DynamicOneColumnData data) throws ProcessorException {
-        logger.debug("Receiving a page of {}, size is {}", data.dataType, data.timeLength);
         switch (data.dataType) {
             case INT32:
                 for(; data.curIdx < data.timeLength; data.curIdx++) {
@@ -194,7 +189,6 @@ public class MeanAggrFunc extends AggregateFunction{
     }
 
     private void updateMean(InsertDynamicData data) throws ProcessorException {
-        logger.debug("Receiving a page of {}, size is {}", data.getDataType(), data.timeLength);
         switch (data.getDataType()) {
             case INT32:
                 try {

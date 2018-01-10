@@ -1,6 +1,7 @@
 package cn.edu.tsinghua.iotdb.engine.overflow.metadata;
 
 import java.io.UnsupportedEncodingException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -226,21 +227,23 @@ public class TestHelper {
 	  
 	  public static TsDigest createSimpleTsDigest() {
 		  TsDigest digest = new TsDigest();
-		  digest.addStatistics("max", "123");
-		  digest.addStatistics("min", "12");
-		  digest.addStatistics("sum", "123456789");
-		  digest.addStatistics("first", "1");
+		  digest.addStatistics("max", ByteBuffer.wrap("123".getBytes()));
+		  digest.addStatistics("min", ByteBuffer.wrap("12".getBytes()));
+		  digest.addStatistics("sum", ByteBuffer.wrap("123456789".getBytes()));
+		  digest.addStatistics("first", ByteBuffer.wrap("1".getBytes()));
+		  digest.addStatistics("last", ByteBuffer.wrap("1234".getBytes()));
 		  return digest;
 	  }
 	  
 	  public static Digest createSimpleDigest() {
 		  Digest digest = new Digest();
-		  Map<String, String> statistics = new HashMap<>();
+		  Map<String, ByteBuffer> statistics = new HashMap<>();
 		  digest.setStatistics(statistics);
-		  digest.getStatistics().put("max", "123");
-		  digest.getStatistics().put("min", "12");
-		  digest.getStatistics().put("sum", "123456789");
-		  digest.getStatistics().put("first", "1");
+		  digest.getStatistics().put("max", ByteBuffer.wrap("123".getBytes()));
+		  digest.getStatistics().put("min", ByteBuffer.wrap("12".getBytes()));
+		  digest.getStatistics().put("sum", ByteBuffer.wrap("123456789".getBytes()));
+		  digest.getStatistics().put("first", ByteBuffer.wrap("1".getBytes()));
+		  digest.getStatistics().put("last", ByteBuffer.wrap("1234".getBytes()));
 		  return digest;
 	  }
 

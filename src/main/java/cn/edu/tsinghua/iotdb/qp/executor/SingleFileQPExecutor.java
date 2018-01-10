@@ -49,7 +49,7 @@ public class SingleFileQPExecutor extends QueryProcessExecutor {
 			return true;
 		try {
 			return queryEngine.pathExist(path);
-		} catch (IOException e) {
+		} catch (Exception e) {
 			e.printStackTrace();
 		}
 		return false;

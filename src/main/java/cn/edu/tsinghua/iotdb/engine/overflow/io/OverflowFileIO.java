@@ -208,9 +208,9 @@ public class OverflowFileIO {
 		byte[] max = statistics.getMaxBytes();
 		byte[] min = statistics.getMinBytes();
 		VInTimeSeriesChunkMetaData vInTimeSeriesChunkMetaData = new VInTimeSeriesChunkMetaData(tsDataType);
-		Map<String, String> minMaxMap = new HashMap<>();
-		minMaxMap.put(AggregationConstant.MIN_VALUE, new String(min));
-		minMaxMap.put(AggregationConstant.MAX_VALUE, new String(max));
+		Map<String, ByteBuffer> minMaxMap = new HashMap<>();
+		minMaxMap.put(AggregationConstant.MIN_VALUE, ByteBuffer.wrap(min));
+		minMaxMap.put(AggregationConstant.MAX_VALUE, ByteBuffer.wrap(max));
 		TsDigest tsDigest = new TsDigest(minMaxMap);
 		vInTimeSeriesChunkMetaData.setDigest(tsDigest);
 		currentSeries.setVInTimeSeriesChunkMetaData(vInTimeSeriesChunkMetaData);

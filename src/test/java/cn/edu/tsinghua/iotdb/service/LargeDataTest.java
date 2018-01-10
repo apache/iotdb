@@ -110,16 +110,16 @@ public class LargeDataTest {
 
             Connection connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
 
-            /*selectOneSeriesWithValueFilterTest();
+            selectOneSeriesWithValueFilterTest();
             aggregationTest();
             groupByTest();
             allNullSeriesAggregationTest();
 
-            allNullSeriesGroupByTest();*/
+            allNullSeriesGroupByTest();
 
             negativeValueTest();
 
-           /* fixBigGroupByClassFormNumberTest();
+            fixBigGroupByClassFormNumberTest();
 
             seriesTimeDigestTest();
 
@@ -127,7 +127,7 @@ public class LargeDataTest {
 
             linearFillTest();
 
-            connection.close();*/
+            connection.close();
         }
     }
 
@@ -164,7 +164,7 @@ public class LargeDataTest {
 
     private void aggregationTest() throws ClassNotFoundException, SQLException, FileNotFoundException {
 
-        String countSql = "select count(s0),mean(s0),first(s0),sum(s0) from root.vehicle.d0 where s0 >= 20";
+        String countSql = "select count(s0),mean(s0),first(s0),sum(s0),last(s0) from root.vehicle.d0 where s0 >= 20";
 
         Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);
         Connection connection = null;
@@ -178,8 +178,8 @@ public class LargeDataTest {
             while (resultSet.next()) {
                 String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(count(d0s0))
                         + "," + resultSet.getString(mean(d0s0)) + "," + resultSet.getString(first(d0s0))
-                        + "," + resultSet.getString(sum(d0s0));
-                assertEquals("0,16440,159.58211678832117,2000,2623530.0", ans);
+                        + "," + resultSet.getString(sum(d0s0)) + "," + resultSet.getString(last(d0s0));
+                assertEquals("0,16440,159.58211678832117,2000,2623530.0,6666", ans);
                 cnt++;
             }
             assertEquals(1, cnt);
@@ -205,25 +205,25 @@ public class LargeDataTest {
 
             // (1). group by only with time filter
             String[] retArray = new String[]{
-                    "2000,null,null,null,null",
-                    "2100,null,null,null,null",
-                    "2200,null,null,null,null",
-                    "2300,49,2375.0,2351,116375.0",
-                    "2400,100,2449.5,2400,244950.0",
-                    "2500,null,null,null,null",
-                    "3000,100,49.5,0,4950.0",
-                    "3100,100,49.5,0,4950.0",
-                    "3200,100,49.5,0,4950.0",
-                    "3300,100,49.5,0,4950.0",
-                    "3400,null,null,null,null",
-                    "3500,null,null,null,null",
-                    "3600,null,null,null,null",
-                    "3700,null,null,null,null",
-                    "3800,null,null,null,null",
-                    "3900,null,null,null,null",
-                    "4000,null,null,null,null",
+                    "2000,null,null,null,null,null",
+                    "2100,null,null,null,null,null",
+                    "2200,null,null,null,null,null",
+                    "2300,49,2375.0,2351,116375.0,2399",
+                    "2400,100,2449.5,2400,244950.0,2499",
+                    "2500,null,null,null,null,null",
+                    "3000,100,49.5,0,4950.0,99",
+                    "3100,100,49.5,0,4950.0,99",
+                    "3200,100,49.5,0,4950.0,99",
+                    "3300,100,49.5,0,4950.0,99",
+                    "3400,null,null,null,null,null",
+                    "3500,null,null,null,null,null",
+                    "3600,null,null,null,null,null",
+                    "3700,null,null,null,null,null",
+                    "3800,null,null,null,null,null",
+                    "3900,null,null,null,null,null",
+                    "4000,null,null,null,null,null",
             };
-            String countSql = "select count(s0),mean(s0),first(s0),sum(s0) from root.vehicle.d0 where time < 3400 and time > 2350 " +
+            String countSql = "select count(s0),mean(s0),first(s0),sum(s0),last(s0) from root.vehicle.d0 where time < 3400 and time > 2350 " +
                     "group by (100ms, 2000, [2000,2500], [3000, 4000])";
             boolean hasResultSet = statement.execute(countSql);
             Assert.assertTrue(hasResultSet);
@@ -232,7 +232,7 @@ public class LargeDataTest {
             while (resultSet.next()) {
                 String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(count(d0s0))
                         + "," + resultSet.getString(mean(d0s0)) + "," + resultSet.getString(first(d0s0))
-                        + "," + resultSet.getString(sum(d0s0));
+                        + "," + resultSet.getString(sum(d0s0)) + "," + resultSet.getString(last(d0s0));
                 assertEquals(retArray[cnt], ans);
                 //System.out.println("============ " + ans);
                 cnt++;
@@ -242,26 +242,26 @@ public class LargeDataTest {
 
             // (2). group by only with time filter and value filter
             retArray = new String[]{
-                    "2000,null,null,null,null",
-                    "2100,null,null,null,null",
-                    "2200,null,null,null,null",
-                    "2300,49,2375.0,2351,116375.0",
-                    "2400,100,2449.5,2400,244950.0",
-                    "2500,null,null,null,null",
-                    "3000,28,51.214285714285715,8,1434.0",
-                    "3100,26,49.42307692307692,0,1285.0",
-                    "3200,30,52.5,6,1575.0",
-                    "3300,24,51.5,16,1236.0",
-                    "3400,null,null,null,null",
-                    "3500,null,null,null,null",
-                    "3600,null,null,null,null",
-                    "3700,null,null,null,null",
-                    "3800,null,null,null,null",
-                    "3900,null,null,null,null",
-                    "4000,null,null,null,null",
+                    "2000,null,null,null,null,null",
+                    "2100,null,null,null,null,null",
+                    "2200,null,null,null,null,null",
+                    "2300,49,2375.0,2351,116375.0,2399",
+                    "2400,100,2449.5,2400,244950.0,2499",
+                    "2500,null,null,null,null,null",
+                    "3000,28,51.214285714285715,8,1434.0,99",
+                    "3100,26,49.42307692307692,0,1285.0,89",
+                    "3200,30,52.5,6,1575.0,99",
+                    "3300,24,51.5,16,1236.0,87",
+                    "3400,null,null,null,null,null",
+                    "3500,null,null,null,null,null",
+                    "3600,null,null,null,null,null",
+                    "3700,null,null,null,null,null",
+                    "3800,null,null,null,null,null",
+                    "3900,null,null,null,null,null",
+                    "4000,null,null,null,null,null",
             };
             statement = connection.createStatement();
-            countSql = "select count(s0),mean(s0),first(s0),sum(s0) from root.vehicle.d0 where time < 3400 and time > 2350 and s2 > 15 " +
+            countSql = "select count(s0),mean(s0),first(s0),sum(s0),last(s0) from root.vehicle.d0 where time < 3400 and time > 2350 and s2 > 15 " +
                     "group by (100ms, 2000, [2000,2500], [3000, 4000])";
             hasResultSet = statement.execute(countSql);
             Assert.assertTrue(hasResultSet);
@@ -270,7 +270,7 @@ public class LargeDataTest {
             while (resultSet.next()) {
                 String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(count(d0s0))
                         + "," + resultSet.getString(mean(d0s0)) + "," + resultSet.getString(first(d0s0))
-                        + "," + resultSet.getString(sum(d0s0));
+                        + "," + resultSet.getString(sum(d0s0)) + "," + resultSet.getString(last(d0s0));
                 assertEquals(retArray[cnt], ans);
                 //System.out.println("============ " + ans);
                 cnt++;
@@ -302,7 +302,7 @@ public class LargeDataTest {
             String[] retArray = new String[]{};
 
             // (1). aggregation test : there is no value in series d1.s0 and no filter
-            sql = "select count(s0),max_value(s0),min_value(s0),max_time(s0),min_time(s0),mean(s0),first(s0),sum(s0) from root.vehicle.d1";
+            sql = "select count(s0),max_value(s0),min_value(s0),max_time(s0),min_time(s0),mean(s0),first(s0),sum(s0),last(s0) from root.vehicle.d1";
             hasResultSet = statement.execute(sql);
             Assert.assertTrue(hasResultSet);
             resultSet = statement.getResultSet();
@@ -312,8 +312,8 @@ public class LargeDataTest {
                         + "," + resultSet.getString(max_value(d1s0)) + "," + resultSet.getString(min_value(d1s0))
                         + "," + resultSet.getString(max_time(d1s0)) + "," + resultSet.getString(min_time(d1s0))
                         + "," + resultSet.getString(mean(d1s0)) + "," + resultSet.getString(first(d1s0))
-                        + "," + resultSet.getString(sum(d1s0));
-                assertEquals("0,0,null,null,null,null,null,null,null", ans);
+                        + "," + resultSet.getString(sum(d1s0)) + "," + resultSet.getString(last(d1s0));
+                assertEquals("0,0,null,null,null,null,null,null,null,null", ans);
                 //System.out.println("============ " + ans);
                 cnt++;
             }
@@ -321,7 +321,7 @@ public class LargeDataTest {
             statement.close();
 
             // (2). aggregation test : there is no value in series d1.s0 and have filter
-            sql = "select count(s0),max_value(s0),min_value(s0),max_time(s0),min_time(s0),mean(s0),first(s0),sum(s0) from root.vehicle.d1 where s0 > 1000000";
+            sql = "select count(s0),max_value(s0),min_value(s0),max_time(s0),min_time(s0),mean(s0),first(s0),sum(s0),last(s0) from root.vehicle.d1 where s0 > 1000000";
             statement = connection.createStatement();
             hasResultSet = statement.execute(sql);
             Assert.assertTrue(hasResultSet);
@@ -332,8 +332,8 @@ public class LargeDataTest {
                         + "," + resultSet.getString(max_value(d1s0)) + "," + resultSet.getString(min_value(d1s0))
                         + "," + resultSet.getString(max_time(d1s0)) + "," + resultSet.getString(min_time(d1s0))
                         + "," + resultSet.getString(mean(d1s0)) + "," + resultSet.getString(first(d1s0))
-                        + "," + resultSet.getString(sum(d1s0));
-                assertEquals("0,0,null,null,null,null,null,null,null", ans);
+                        + "," + resultSet.getString(sum(d1s0)) + "," + resultSet.getString(last(d1s0));;
+                assertEquals("0,0,null,null,null,null,null,null,null,null", ans);
                 //System.out.println("0,0,null,null,null,null" + ans);
                 cnt++;
             }
@@ -364,7 +364,7 @@ public class LargeDataTest {
             String[] retArray = new String[]{};
 
             // (1). group by test : the result is all null value
-            sql = "select count(s0),max_value(s1),mean(s0),first(s1),sum(s0) from root.vehicle.d0 where s2 > 1000000 " +
+            sql = "select count(s0),max_value(s1),mean(s0),first(s1),sum(s0),last(s1) from root.vehicle.d0 where s2 > 1000000 " +
                     "group by (1000ms, 2000, [3500, 25000])";
             hasResultSet = statement.execute(sql);
             Assert.assertTrue(hasResultSet);
@@ -372,8 +372,9 @@ public class LargeDataTest {
             cnt = 0;
             while (resultSet.next()) {
                 String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(count(d0s0)) + "," + resultSet.getString(max_value(d0s1))
-                        + "," + resultSet.getString(mean(d0s0)) + "," + resultSet.getString(first(d0s1)) + "," + resultSet.getString(sum(d0s0));
-                Assert.assertEquals(resultSet.getString(TIMESTAMP_STR) + ",null,null,null,null,null", ans);
+                        + "," + resultSet.getString(mean(d0s0)) + "," + resultSet.getString(first(d0s1)) + "," + resultSet.getString(sum(d0s0)) + ","
+                        + resultSet.getString(last(d0s1));
+                Assert.assertEquals(resultSet.getString(TIMESTAMP_STR) + ",null,null,null,null,null,null", ans);
                 // System.out.println("============ " + ans);
                 cnt++;
             }
@@ -392,7 +393,7 @@ public class LargeDataTest {
 
     private void negativeValueTest() throws ClassNotFoundException, SQLException, FileNotFoundException {
 
-        String countSql = "select count(s0),sum(s0),mean(s0),first(s0) from root.vehicle.d0 where s0 < 0";
+        String countSql = "select count(s0),sum(s0),mean(s0),first(s0),last(s0) from root.vehicle.d0 where s0 < 0";
         //String countSql = "select s0 from root.vehicle.d0 where s0 < 0";
 
         Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);
