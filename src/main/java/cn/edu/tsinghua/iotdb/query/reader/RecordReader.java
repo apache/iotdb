@@ -140,13 +140,11 @@ public class RecordReader {
     /**
      * Read one series with overflow and bufferwrite, no filter.
      *
-     * @throws ProcessorException
      * @throws IOException
      */
     public DynamicOneColumnData queryOneSeries(String deltaObjectId, String measurementId,
                                                SingleSeriesFilterExpression queryTimeFilter, SingleSeriesFilterExpression queryValueFilter,
-                                               DynamicOneColumnData res, int fetchSize)
-            throws ProcessorException, IOException, PathErrorException {
+                                               DynamicOneColumnData res, int fetchSize) throws IOException {
 
         SingleSeriesFilterExpression mergeTimeFilter = mergeTimeFilter(overflowTimeFilter, queryTimeFilter);
         List<RowGroupReader> rowGroupReaderList = tsFileReaderManager.getRowGroupReaderListByDeltaObject(deltaObjectId, mergeTimeFilter);
@@ -199,7 +197,7 @@ public class RecordReader {
      */
     public AggregateFunction aggregate(String deltaObjectId, String measurementId, AggregateFunction aggregateFunction,
                                        SingleSeriesFilterExpression queryTimeFilter, SingleSeriesFilterExpression valueFilter
-    ) throws ProcessorException, IOException, PathErrorException {
+    ) throws ProcessorException, IOException {
 
         SingleSeriesFilterExpression mergeTimeFilter = mergeTimeFilter(queryTimeFilter, overflowTimeFilter);
 
@@ -240,7 +238,7 @@ public class RecordReader {
     public Pair<AggregateFunction, Boolean> aggregateUsingTimestamps(
             String deltaObjectId, String measurementId, AggregateFunction aggregateFunction,
             SingleSeriesFilterExpression queryTimeFilter, List<Long> timestamps)
-            throws ProcessorException, IOException, PathErrorException {
+            throws ProcessorException, IOException {
 
         boolean stillHasUnReadData;
 
@@ -349,8 +347,7 @@ public class RecordReader {
     }
 
     private DynamicOneColumnData queryOriginalDataUsingTimestamps(String deltaObjectId, String measurementId,
-                                                                  SingleSeriesFilterExpression overflowTimeFilter, long[] timestamps)
-            throws IOException, PathErrorException {
+                                                                  SingleSeriesFilterExpression overflowTimeFilter, long[] timestamps) throws IOException{
 
         DynamicOneColumnData res = null;
 
@@ -466,12 +463,10 @@ public class RecordReader {
      * @param beforeTime
      * @param queryTime
      * @param result
-     * @throws PathErrorException
      * @throws IOException
      */
     public void getPreviousFillResult(DynamicOneColumnData result, String deltaObjectId, String measurementId,
-                                      SingleSeriesFilterExpression fillTimeFilter, long beforeTime, long queryTime)
-            throws PathErrorException, IOException {
+                                      SingleSeriesFilterExpression fillTimeFilter, long beforeTime, long queryTime) throws IOException {
 
         SingleSeriesFilterExpression mergeTimeFilter = mergeTimeFilter(overflowTimeFilter, fillTimeFilter);
 
@@ -506,12 +501,10 @@ public class RecordReader {
      * @param beforeTime
      * @param queryTime
      * @param result
-     * @throws PathErrorException
      * @throws IOException
      */
     public void getLinearFillResult(DynamicOneColumnData result, String deltaObjectId, String measurementId,
-                                      SingleSeriesFilterExpression fillTimeFilter, long beforeTime, long queryTime, long afterTime)
-            throws PathErrorException, IOException {
+                                      SingleSeriesFilterExpression fillTimeFilter, long beforeTime, long queryTime, long afterTime) throws IOException {
 
         SingleSeriesFilterExpression mergeTimeFilter = mergeTimeFilter(overflowTimeFilter, fillTimeFilter);
 
@@ -603,9 +596,8 @@ public class RecordReader {
      * Close current RecordReader.
      *
      * @throws IOException
-     * @throws ProcessorException
      */
-    public void close() throws IOException, ProcessorException {
+    public void close() throws IOException {
         tsFileReaderManager.close();
     }
 }

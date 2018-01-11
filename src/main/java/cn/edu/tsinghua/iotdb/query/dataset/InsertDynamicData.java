@@ -14,11 +14,9 @@ import cn.edu.tsinghua.tsfile.format.Digest;
 import cn.edu.tsinghua.tsfile.format.PageHeader;
 import cn.edu.tsinghua.tsfile.timeseries.filter.definition.SingleSeriesFilterExpression;
 import cn.edu.tsinghua.tsfile.timeseries.filter.utils.DigestForFilter;
-import cn.edu.tsinghua.tsfile.timeseries.filter.utils.StrDigestForFilter;
 import cn.edu.tsinghua.tsfile.timeseries.filter.visitorImpl.DigestVisitor;
 import cn.edu.tsinghua.tsfile.timeseries.filter.visitorImpl.IntervalTimeVisitor;
 import cn.edu.tsinghua.tsfile.timeseries.filter.visitorImpl.SingleValueVisitor;
-import cn.edu.tsinghua.tsfile.timeseries.filter.visitorImpl.SingleValueVisitorFactory;
 import cn.edu.tsinghua.tsfile.timeseries.read.PageReader;
 import cn.edu.tsinghua.tsfile.timeseries.read.query.DynamicOneColumnData;
 import org.slf4j.Logger;
@@ -218,21 +216,9 @@ public class InsertDynamicData {
                     pageIndex ++;
             }
 
-//<<<<<<< HEAD
             if (pageIndex >= pageList.size()) {
                 return false;
             }
-//=======
-//                // construct value filter digest
-//                DigestForFilter valueDigest = new DigestForFilter(pageDigest.getStatistics().get(AggregationConstant.MIN_VALUE),
-//                        pageDigest.getStatistics().get(AggregationConstant.MAX_VALUE), dataType);
-//                // construct time filter digest
-//                long mint = pageHeader.data_page_header.min_timestamp;
-//                long maxt = pageHeader.data_page_header.max_timestamp;
-//                DigestForFilter timeDigest = new DigestForFilter(mint, maxt);
-//                LOG.debug("Page min time:{}, max time:{}, min value:{}, max value:{}", String.valueOf(mint),
-//                        String.valueOf(maxt), pageDigest.getStatistics().get(AggregationConstant.MIN_VALUE), pageDigest.getStatistics().get(AggregationConstant.MAX_VALUE));
-//>>>>>>> master
 
             // construct time and value digest
             pageReader = new PageReader(pageList.get(pageIndex), compressionTypeName);
@@ -282,7 +268,7 @@ public class InsertDynamicData {
         return false;
     }
 
-    private boolean getSatisfiedTimeAndValue() throws IOException {
+    private boolean getSatisfiedTimeAndValue() {
         while (pageTimeIndex < pageTimes.length) {
 
             // get all the overflow insert time which is less than page time
