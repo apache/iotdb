@@ -5,10 +5,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class NoActPolicy implements Policy {
-    private Logger logger = LoggerFactory.getLogger(NoActPolicy.class);
+    private static final Logger logger = LoggerFactory.getLogger(NoActPolicy.class);
     @Override
     public void execute() {
-        logger.info("Memory check is safe, current usage {}, JVM memory {}" ,
+        logger.debug("Memory check is safe, current usage {}, JVM memory {}" ,
                 MemUtils.bytesCntToStr(BasicMemController.getInstance().getTotalUsage()),
                 MemUtils.bytesCntToStr(Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()));
     }
