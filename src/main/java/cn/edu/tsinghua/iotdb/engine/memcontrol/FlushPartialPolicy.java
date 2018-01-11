@@ -10,13 +10,13 @@ import org.slf4j.LoggerFactory;
  * This class only gives a hint to FilenodeManager that it may flush some data to avoid rush hour.
  */
 public class FlushPartialPolicy implements Policy{
-    private Logger logger = LoggerFactory.getLogger(FlushPartialPolicy.class);
+    private static final Logger logger = LoggerFactory.getLogger(FlushPartialPolicy.class);
     private Thread workerThread;
     private long sleepInterval = TsfileDBDescriptor.getInstance().getConfig().smallFlushInterval;
 
     @Override
     public void execute() {
-        logger.info("Memory reachs {}, current memory size {}, JVM memory {}, flushing.",
+        logger.debug("Memory reachs {}, current memory size {}, JVM memory {}, flushing.",
                 BasicMemController.getInstance().getCurrLevel(),
                 MemUtils.bytesCntToStr(BasicMemController.getInstance().getTotalUsage()),
                 MemUtils.bytesCntToStr(Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()));
@@ -26,7 +26,7 @@ public class FlushPartialPolicy implements Policy{
             workerThread.start();
         } else {
             if (workerThread.isAlive()) {
-                logger.info("Last flush is ongoing...");
+                logger.debug("Last flush is ongoing...");
             } else {
                 workerThread = createWorkerThread();
                 workerThread.start();

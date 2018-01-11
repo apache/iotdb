@@ -6,7 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class ForceFLushAllPolicy implements Policy {
-    private Logger logger = LoggerFactory.getLogger(ForceFLushAllPolicy.class);
+    private static final Logger logger = LoggerFactory.getLogger(ForceFLushAllPolicy.class);
     private Thread workerThread;
 
     @Override
