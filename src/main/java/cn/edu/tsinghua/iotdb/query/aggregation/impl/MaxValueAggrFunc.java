@@ -66,9 +66,9 @@ public class MaxValueAggrFunc extends AggregateFunction {
             resultData.putTime(0);
         }
 
-        Object max_value = insertMemoryData.calcAggregation(AggregationConstant.MAX_VALUE);
-        if (max_value != null) {
-            updateMaxValue((Comparable<?>)max_value);
+        while (insertMemoryData.hasInsertData()) {
+            updateMaxValue((Comparable<?>) insertMemoryData.getCurrentObjectValue());
+            insertMemoryData.removeCurrentValue();
         }
     }
 

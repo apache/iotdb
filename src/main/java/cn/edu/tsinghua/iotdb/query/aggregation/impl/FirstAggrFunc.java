@@ -64,7 +64,7 @@ public class FirstAggrFunc extends AggregateFunction{
         //logger.error("Using memory to aggregate");
         if(resultData.timeLength == 0)
             initFirst();
-        if (resultData.getTime(0) != -1 || insertMemoryData.timeLength == 0) {
+        if (resultData.getTime(0) != -1 || !insertMemoryData.hasInsertData()) {
             return;
         }
 

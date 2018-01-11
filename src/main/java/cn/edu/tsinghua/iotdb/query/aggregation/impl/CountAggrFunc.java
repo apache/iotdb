@@ -32,6 +32,8 @@ public class CountAggrFunc extends AggregateFunction {
             resultData.putLong(0);
         }
 
+//        System.out.println("PageHeader>>>>>>>>>>>>" + pageHeader.data_page_header.num_rows + " " + pageHeader.data_page_header.min_timestamp
+//        + "," + pageHeader.data_page_header.max_timestamp);
         long preValue = resultData.getLong(0);
         preValue += pageHeader.data_page_header.num_rows;
         resultData.setLong(0, preValue);
@@ -63,8 +65,10 @@ public class CountAggrFunc extends AggregateFunction {
         }
 
         long preValue = resultData.getLong(0);
-        Object count = insertMemoryData.calcAggregation(AggregationConstant.COUNT);
-        preValue += (long) count;
+        while (insertMemoryData.hasInsertData()) {
+            preValue += 1;
+            insertMemoryData.removeCurrentValue();
+        }
         resultData.setLong(0, preValue);
     }
 
@@ -78,9 +82,6 @@ public class CountAggrFunc extends AggregateFunction {
 
         while (timeIndex < timestamps.size()) {
             if (insertMemoryData.hasInsertData()) {
-                if (insertMemoryData.getCurrentMinTime() >= 2495) {
-                    //System.out.println("...");
-                }
                 if (timestamps.get(timeIndex) == insertMemoryData.getCurrentMinTime()) {
                     long preValue = resultData.getLong(0);
                     preValue += 1;

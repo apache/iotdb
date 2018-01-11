@@ -1,12 +1,9 @@
 package cn.edu.tsinghua.iotdb.query.engine;
 
-import java.io.IOException;
-import java.util.*;
-
+import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
 import cn.edu.tsinghua.iotdb.exception.PathErrorException;
 import cn.edu.tsinghua.iotdb.metadata.MManager;
 import cn.edu.tsinghua.iotdb.query.aggregation.AggregateFunction;
-import cn.edu.tsinghua.iotdb.query.dataset.InsertDynamicData;
 import cn.edu.tsinghua.iotdb.query.management.RecordReaderFactory;
 import cn.edu.tsinghua.iotdb.query.reader.RecordReader;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
@@ -19,17 +16,23 @@ import cn.edu.tsinghua.tsfile.timeseries.read.query.QueryDataSet;
 import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import static cn.edu.tsinghua.iotdb.query.engine.EngineUtils.*;
+
+import java.io.IOException;
+import java.util.*;
+
+import static cn.edu.tsinghua.iotdb.query.engine.EngineUtils.noFilterOrOnlyHasTimeFilter;
 
 public class AggregateEngine {
 
     private static final Logger logger = LoggerFactory.getLogger(AggregateEngine.class);
 
     /** aggregation batch calculation size **/
-    public static int aggregateFetchSize = 50000;
+    private int aggregateFetchSize =
+            TsfileDBDescriptor.getInstance().getConfig().fetchSize;
 
     /** cross read query fetch size **/
-    public static int crossQueryFetchSize = 50000;
+    private int crossQueryFetchSize =
+            TsfileDBDescriptor.getInstance().getConfig().fetchSize;
 
     /**
      * <p>Public invoking method of multiple aggregation.
@@ -40,7 +43,7 @@ public class AggregateEngine {
      * @throws IOException        read TsFile error
      * @throws PathErrorException path resolving error
      */
-    public static void multiAggregate(List<Pair<Path, AggregateFunction>> aggregations, List<FilterStructure> filterStructures)
+    public void multiAggregate(List<Pair<Path, AggregateFunction>> aggregations, List<FilterStructure> filterStructures)
             throws IOException, PathErrorException, ProcessorException {
         if (noFilterOrOnlyHasTimeFilter(filterStructures)) {
             if (filterStructures != null && filterStructures.size() == 1 && filterStructures.get(0).onlyHasTimeFilter()) {
@@ -53,7 +56,7 @@ public class AggregateEngine {
         }
     }
 
-    private static void multiAggregateWithFilter(List<Pair<Path, AggregateFunction>> aggregations, List<FilterStructure> filterStructures)
+    private void multiAggregateWithFilter(List<Pair<Path, AggregateFunction>> aggregations, List<FilterStructure> filterStructures)
             throws IOException, PathErrorException, ProcessorException {
 
         // stores the query QueryDataSet of each FilterStructure in filterStructures
@@ -137,8 +140,9 @@ public class AggregateEngine {
                         } else {
                             long[] newTimeStamps = fsDataSets.get(i).crossQueryTimeGenerator.generateTimes();
                             if (newTimeStamps.length > 0) {
+                                priorityQueue.add(newTimeStamps[0]);
                                 fsTimeList.set(i, newTimeStamps);
-                                fsTimeIndexList.set(i, 0);
+                                fsTimeIndexList.set(i, 1);
                             } else {
                                 fsHasUnReadDataList.set(i, false);
                             }
@@ -175,22 +179,11 @@ public class AggregateEngine {
                         null, null, null, null,
                         ReadCachePrefix.addQueryPrefix("AggQuery", aggregationPathOrdinal));
 
-                if (recordReader.insertAllData == null) {
+                if (recordReader.insertMemoryData == null) {
+                    recordReader.buildInsertMemoryData(null, null);
 
-                    // TODO the parameter there could be optimized using aggregateTimestamps
-                    List<Object> params = EngineUtils.getOverflowInfoAndFilterDataInMem(null, null, null, null,
-                            recordReader.insertPageInMemory, recordReader.overflowInfo);
-                    DynamicOneColumnData insertTrue = (DynamicOneColumnData) params.get(0);
-                    DynamicOneColumnData updateTrue = (DynamicOneColumnData) params.get(1);
-                    DynamicOneColumnData updateFalse = (DynamicOneColumnData) params.get(2);
-                    SingleSeriesFilterExpression newTimeFilter = (SingleSeriesFilterExpression) params.get(3);
-                    recordReader.insertAllData = new InsertDynamicData(recordReader.bufferWritePageList, recordReader.compressionTypeName,
-                            insertTrue, updateTrue, updateFalse,
-                            newTimeFilter, null, null, dataType);
-
-                    Pair<AggregateFunction, Boolean> aggrPair = recordReader.aggregateUsingTimestamps(deltaObjectUID, measurementUID, aggregateFunction,
-                            recordReader.insertAllData.updateTrue, recordReader.insertAllData.updateFalse, recordReader.insertAllData,
-                            newTimeFilter, null, aggregateTimestamps);
+                    Pair<AggregateFunction, Boolean> aggrPair = recordReader.aggregateUsingTimestamps(deltaObjectUID, measurementUID,
+                            aggregateFunction, null,  aggregateTimestamps);
 
                     boolean hasUnReadDataFlag = aggrPair.right;
                     aggregationHasUnReadDataMap.put(aggregationPathOrdinal, hasUnReadDataFlag);
@@ -199,9 +192,8 @@ public class AggregateEngine {
                     }
 
                 } else {
-                    Pair<AggregateFunction, Boolean> aggrPair = recordReader.aggregateUsingTimestamps(deltaObjectUID, measurementUID, aggregateFunction,
-                            recordReader.insertAllData.updateTrue, recordReader.insertAllData.updateFalse, recordReader.insertAllData,
-                            recordReader.insertAllData.timeFilter, null, aggregateTimestamps);
+                    Pair<AggregateFunction, Boolean> aggrPair = recordReader.aggregateUsingTimestamps(deltaObjectUID, measurementUID,
+                            aggregateFunction, null, aggregateTimestamps);
                     boolean hasUnReadDataFlag = aggrPair.right;
                     aggregationHasUnReadDataMap.put(aggregationPathOrdinal, hasUnReadDataFlag);
                     if (hasUnReadDataFlag) {
@@ -225,7 +217,7 @@ public class AggregateEngine {
      * @throws ProcessorException
      * @throws IOException
      */
-    private static void multiAggregateWithoutFilter(List<Pair<Path, AggregateFunction>> aggres, SingleSeriesFilterExpression timeFilter)
+    private void multiAggregateWithoutFilter(List<Pair<Path, AggregateFunction>> aggres, SingleSeriesFilterExpression queryTimeFilter)
             throws PathErrorException, ProcessorException, IOException {
 
         int aggreNumber = 0;
@@ -238,23 +230,12 @@ public class AggregateEngine {
             TSDataType dataType = MManager.getInstance().getSeriesType(path.getFullPath());
 
             RecordReader recordReader = RecordReaderFactory.getInstance().getRecordReader(deltaObjectUID, measurementUID,
-                    timeFilter, null, null, null, ReadCachePrefix.addQueryPrefix(aggreNumber));
+                    queryTimeFilter, null, null, null, ReadCachePrefix.addQueryPrefix(aggreNumber));
 
-            if (recordReader.insertAllData == null) {
-                // get overflow params merged with bufferwrite insert data
-                List<Object> params = EngineUtils.getOverflowInfoAndFilterDataInMem(timeFilter, null, null, null,
-                        recordReader.insertPageInMemory, recordReader.overflowInfo);
-                DynamicOneColumnData insertTrue = (DynamicOneColumnData) params.get(0);
-                DynamicOneColumnData updateTrue = (DynamicOneColumnData) params.get(1);
-                DynamicOneColumnData updateFalse = (DynamicOneColumnData) params.get(2);
-                SingleSeriesFilterExpression newTimeFilter = (SingleSeriesFilterExpression) params.get(3);
+            if (recordReader.insertMemoryData == null) {
+                recordReader.buildInsertMemoryData(queryTimeFilter, null);
 
-                recordReader.insertAllData = new InsertDynamicData(recordReader.bufferWritePageList, recordReader.compressionTypeName,
-                        insertTrue, updateTrue, updateFalse,
-                        newTimeFilter, null, null, dataType);
-
-                recordReader.aggregate(deltaObjectUID, measurementUID, aggregateFunction,
-                        updateTrue, updateFalse, recordReader.insertAllData, newTimeFilter, null, null);
+                recordReader.aggregate(deltaObjectUID, measurementUID, aggregateFunction, queryTimeFilter,  null);
 
             } else {
                 DynamicOneColumnData aggData = aggregateFunction.resultData;
@@ -275,41 +256,25 @@ public class AggregateEngine {
      * <code>RecordReaderCache</code>, if the composition of CrossFilterExpression exist same SingleFilterExpression,
      * we must guarantee that the <code>RecordReaderCache</code> doesn't cause conflict to the same SingleFilterExpression.
      */
-    private static DynamicOneColumnData getDataUseSingleValueFilter(SingleSeriesFilterExpression valueFilter, SingleSeriesFilterExpression freqFilter,
+    private DynamicOneColumnData getDataUseSingleValueFilter(SingleSeriesFilterExpression queryValueFilter, SingleSeriesFilterExpression freqFilter,
                                                                     DynamicOneColumnData res, int fetchSize, int valueFilterNumber)
             throws ProcessorException, IOException, PathErrorException {
 
-        String deltaObjectUID = ((SingleSeriesFilterExpression) valueFilter).getFilterSeries().getDeltaObjectUID();
-        String measurementUID = ((SingleSeriesFilterExpression) valueFilter).getFilterSeries().getMeasurementUID();
+        String deltaObjectUID = ((SingleSeriesFilterExpression) queryValueFilter).getFilterSeries().getDeltaObjectUID();
+        String measurementUID = ((SingleSeriesFilterExpression) queryValueFilter).getFilterSeries().getMeasurementUID();
 
         // query prefix here must not be conflict with query in multiAggregate method
         String valueFilterPrefix = ReadCachePrefix.addFilterPrefix("AggFilterStructure", valueFilterNumber);
 
         RecordReader recordReader = RecordReaderFactory.getInstance().getRecordReader(deltaObjectUID, measurementUID,
-                null, freqFilter, valueFilter, null, valueFilterPrefix);
+                null, freqFilter, queryValueFilter, null, valueFilterPrefix);
 
         if (res == null) {
-            // get four overflow params
-            List<Object> params = EngineUtils.getOverflowInfoAndFilterDataInMem(null, freqFilter, valueFilter,
-                    res, recordReader.insertPageInMemory, recordReader.overflowInfo);
+            recordReader.buildInsertMemoryData(null, queryValueFilter);
 
-            DynamicOneColumnData insertTrue = (DynamicOneColumnData) params.get(0);
-            DynamicOneColumnData updateTrue = (DynamicOneColumnData) params.get(1);
-            DynamicOneColumnData updateTrue2 = copy(updateTrue);
-            DynamicOneColumnData updateFalse = (DynamicOneColumnData) params.get(2);
-            DynamicOneColumnData updateFalse2 = copy(updateFalse);
-            SingleSeriesFilterExpression newTimeFilter = (SingleSeriesFilterExpression) params.get(3);
-
-            recordReader.insertAllData = new InsertDynamicData(recordReader.bufferWritePageList, recordReader.compressionTypeName,
-                    insertTrue, updateTrue, updateFalse,
-                    newTimeFilter, valueFilter, null, MManager.getInstance().getSeriesType(deltaObjectUID + "." + measurementUID));
-
-            res = recordReader.queryOneSeries(deltaObjectUID, measurementUID,
-                    updateTrue2, updateFalse2, recordReader.insertAllData, newTimeFilter, valueFilter, res, fetchSize);
-            res.putOverflowInfo(insertTrue, updateTrue, updateFalse, newTimeFilter);
+            res = recordReader.queryOneSeries(deltaObjectUID, measurementUID, null, queryValueFilter, null, fetchSize);
         } else {
-            res = recordReader.queryOneSeries(deltaObjectUID, measurementUID,
-                    res.updateTrue, res.updateFalse, recordReader.insertAllData, res.timeFilter, valueFilter, res, fetchSize);
+            res = recordReader.queryOneSeries(deltaObjectUID, measurementUID, null, queryValueFilter, res, fetchSize);
         }
 
         return res;

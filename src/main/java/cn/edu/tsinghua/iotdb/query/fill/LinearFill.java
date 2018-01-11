@@ -13,7 +13,6 @@ import cn.edu.tsinghua.tsfile.timeseries.read.query.DynamicOneColumnData;
 import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
 
 import java.io.IOException;
-import java.util.List;
 
 import static cn.edu.tsinghua.tsfile.timeseries.filter.definition.FilterFactory.*;
 
@@ -85,22 +84,10 @@ public class LinearFill extends IFill{
         RecordReader recordReader = RecordReaderFactory.getInstance().getRecordReader(deltaObjectId, measurementId,
                 fillTimeFilter, null, null, null, recordReaderPrefix);
 
-        List<Object> params = EngineUtils.getOverflowInfoAndFilterDataInMem(fillTimeFilter, null, null,
-                null, recordReader.insertPageInMemory, recordReader.overflowInfo);
+        recordReader.buildInsertMemoryData(fillTimeFilter, null);
 
-        DynamicOneColumnData insertTrue = (DynamicOneColumnData) params.get(0);
-        DynamicOneColumnData updateTrue = (DynamicOneColumnData) params.get(1);
-        if (updateTrue == null) {
-            updateTrue = new DynamicOneColumnData(dataType, true);
-        }
-        SingleSeriesFilterExpression overflowTimeFilter = (SingleSeriesFilterExpression) params.get(3);
-
-        recordReader.insertAllData = new InsertDynamicData(recordReader.bufferWritePageList, recordReader.compressionTypeName,
-                insertTrue, updateTrue, null,
-                overflowTimeFilter, null, null, dataType);
-
-        recordReader.getLinearFillResult(result, deltaObjectId, measurementId,
-                updateTrue, recordReader.insertAllData, overflowTimeFilter, beforeTime, queryTime, afterTime);
+        // updateFalse is useless because there is no value filter
+        recordReader.getLinearFillResult(result, deltaObjectId, measurementId, fillTimeFilter, beforeTime, queryTime, afterTime);
 
         return result;
     }

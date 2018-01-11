@@ -1,16 +1,8 @@
 package cn.edu.tsinghua.iotdb.query.dataset;
 
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.List;
-
 import cn.edu.tsinghua.iotdb.query.aggregation.AggregationConstant;
-import cn.edu.tsinghua.tsfile.timeseries.filter.utils.StrDigestForFilter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
+import cn.edu.tsinghua.iotdb.query.reader.InsertOperation;
+import cn.edu.tsinghua.iotdb.query.reader.UpdateOperation;
 import cn.edu.tsinghua.tsfile.common.exception.UnSupportedDataTypeException;
 import cn.edu.tsinghua.tsfile.common.utils.Binary;
 import cn.edu.tsinghua.tsfile.common.utils.ReadWriteStreamUtils;
@@ -22,69 +14,120 @@ import cn.edu.tsinghua.tsfile.format.Digest;
 import cn.edu.tsinghua.tsfile.format.PageHeader;
 import cn.edu.tsinghua.tsfile.timeseries.filter.definition.SingleSeriesFilterExpression;
 import cn.edu.tsinghua.tsfile.timeseries.filter.utils.DigestForFilter;
+import cn.edu.tsinghua.tsfile.timeseries.filter.utils.StrDigestForFilter;
 import cn.edu.tsinghua.tsfile.timeseries.filter.visitorImpl.DigestVisitor;
+import cn.edu.tsinghua.tsfile.timeseries.filter.visitorImpl.IntervalTimeVisitor;
 import cn.edu.tsinghua.tsfile.timeseries.filter.visitorImpl.SingleValueVisitor;
 import cn.edu.tsinghua.tsfile.timeseries.filter.visitorImpl.SingleValueVisitorFactory;
 import cn.edu.tsinghua.tsfile.timeseries.read.PageReader;
 import cn.edu.tsinghua.tsfile.timeseries.read.query.DynamicOneColumnData;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.List;
+
+import static cn.edu.tsinghua.iotdb.query.reader.ReaderUtils.getSingleValueVisitorByDataType;
 
 /**
- * A new DynamicOneColumnData which replaces insertTrue and contains unsealed PageList.
- *
- * // TODO the structure between page and overflow is not clear
+ * InsertDynamicData is encapsulating class for page list, last page and overflow data.
+ * A hasNext and removeCurrentValue method is recommended.
  *
  * @author CGF
  */
-public class InsertDynamicData extends DynamicOneColumnData {
+public class InsertDynamicData {
+
     private static final Logger LOG = LoggerFactory.getLogger(InsertDynamicData.class);
-    public List<ByteArrayInputStream> pageList;
-    private int pageIndex = 0;
-    private PageReader pageReader = null;
-    private CompressionTypeName compressionTypeName;
     private TSDataType dataType;
-    private Decoder timeDecoder = new DeltaBinaryDecoder.LongDeltaDecoder(), valueDecoder, freDecoder;
-    private long currentSatisfiedPageTime = -1; // timestamp for page list
-    public SingleSeriesFilterExpression timeFilter, valueFilter, frequencyFilter;
+    private CompressionTypeName compressionTypeName;
+    private boolean hasNext = false;
+
+    /** unsealed page list **/
+    private List<ByteArrayInputStream> pageList;
+
+    /** used page index of pageList **/
+    private int pageIndex = 0;
+
+    /** page reader **/
+    private PageReader pageReader = null;
+
+    /** value inputstream for current read page, this variable is not null **/
+    private InputStream page = null;
+
+    /** time for current read page **/
+    private long[] pageTimes;
+
+    /** used time index for pageTimes**/
+    private int pageTimeIndex = -1;
+
+    /** last page data in memory **/
+    private InsertOperation lastPageData;
+
+    /** overflow insert data, this variable is not null **/
+    private InsertOperation overflowInsertData;
+
+    /** overflow update data which is satisfied with filter, this variable is not null **/
+    private UpdateOperation overflowUpdateTrue;
+
+    /** overflow update data which is not satisfied with filter, this variable is not null**/
+    private UpdateOperation overflowUpdateFalse;
+
+    /** time decoder **/
+    private Decoder timeDecoder = new DeltaBinaryDecoder.LongDeltaDecoder();
+
+    /** value decoder **/
+    private Decoder valueDecoder;
+
+    /** current satisfied time **/
+    private long currentSatisfiedTime = -1;
+
+    /** time filter for this series **/
+    public SingleSeriesFilterExpression timeFilter;
+
+    /** value filter for this series **/
+    public SingleSeriesFilterExpression valueFilter;
+
+    /** IntervalTimeVisitor for page time digest **/
+    private IntervalTimeVisitor intervalTimeVisitor = new IntervalTimeVisitor();
 
     private int curSatisfiedIntValue;
+    private int[] pageIntValues;
     private boolean curSatisfiedBooleanValue;
+    private boolean[] pageBooleanValues;
     private long curSatisfiedLongValue;
+    private long[] pageLongValues;
     private float curSatisfiedFloatValue;
+    private float[] pageFloatValues;
     private double curSatisfiedDoubleValue;
+    private double[] pageDoubleValues;
     private Binary curSatisfiedBinaryValue;
-    private int curTimeIndex = -1;
-    private long[] timeValues; // time for current read page
-    private InputStream page = null; // value inputstream for current read page
+    private Binary[] pageBinaryValues;
 
     private DigestVisitor digestVisitor = new DigestVisitor();
     private SingleValueVisitor singleValueVisitor;
     private SingleValueVisitor singleTimeVisitor;
 
-    public InsertDynamicData(List<ByteArrayInputStream> pageList, CompressionTypeName compressionName,
-                             DynamicOneColumnData insertTrue, DynamicOneColumnData updateTrue, DynamicOneColumnData updateFalse,
-                             SingleSeriesFilterExpression timeFilter, SingleSeriesFilterExpression valueFilter, SingleSeriesFilterExpression frequencyFilter,
-                             TSDataType dataType) {
-        this.pageList = pageList;
+    public InsertDynamicData(TSDataType dataType, CompressionTypeName compressionName,
+                             List<ByteArrayInputStream> pageList, DynamicOneColumnData lastPageData,
+                             DynamicOneColumnData overflowInsertData, DynamicOneColumnData overflowUpdateTrue, DynamicOneColumnData overflowUpdateFalse,
+                             SingleSeriesFilterExpression timeFilter, SingleSeriesFilterExpression valueFilter) {
+        this.dataType = dataType;
         this.compressionTypeName = compressionName;
-        this.insertTrue = insertTrue;
-        this.updateTrue = updateTrue;
-        this.updateFalse = updateFalse;
+
+        this.pageList = pageList == null ? new ArrayList<>() : pageList;
+        this.lastPageData = new InsertOperation(dataType, lastPageData);
+
+        this.overflowInsertData = new InsertOperation(dataType, overflowInsertData);
+        this.overflowUpdateTrue = new UpdateOperation(dataType, overflowUpdateTrue);
+        this.overflowUpdateFalse = new UpdateOperation(dataType, overflowUpdateFalse);
+
         this.timeFilter = timeFilter;
         this.valueFilter = valueFilter;
-        this.frequencyFilter = frequencyFilter;
-        this.dataType = dataType;
-        if (valueFilter != null)
-            this.singleValueVisitor = getSingleValueVisitorByDataType(dataType, valueFilter);
-        if (timeFilter != null)
-            this.singleTimeVisitor = getSingleValueVisitorByDataType(TSDataType.INT64, timeFilter);
-    }
-
-    public void setBufferWritePageList(List<ByteArrayInputStream> pageList) {
-        this.pageList = pageList;
-    }
-
-    public void setCurrentPageBuffer(DynamicOneColumnData pageBuffer) {
-        this.insertTrue = pageBuffer;
+        this.singleTimeVisitor = getSingleValueVisitorByDataType(TSDataType.INT64, timeFilter);
+        this.singleValueVisitor = getSingleValueVisitorByDataType(dataType, valueFilter);
     }
 
     public TSDataType getDataType() {
@@ -92,90 +135,31 @@ public class InsertDynamicData extends DynamicOneColumnData {
     }
 
     public long getCurrentMinTime() {
-        if (currentSatisfiedPageTime == -1) {
-            return insertTrue.getTime(insertTrue.insertTrueIndex);
-        }
-
-        if (insertTrue.insertTrueIndex < insertTrue.valueLength && insertTrue.getTime(insertTrue.insertTrueIndex) <= currentSatisfiedPageTime) {
-            return insertTrue.getTime(insertTrue.insertTrueIndex);
-        }
-
-        return currentSatisfiedPageTime;
+        return currentSatisfiedTime;
     }
 
     public int getCurrentIntValue() {
-
-        // will not exist: currentSatisfiedPageTime = -1 (page list has been read all), but insertTrue still has unread timestamp
-        // insert time is ok
-        if (currentSatisfiedPageTime == -1) {
-            return insertTrue.getInt(insertTrue.insertTrueIndex);
-        }
-
-        if (insertTrue.insertTrueIndex < insertTrue.valueLength && insertTrue.getTime(insertTrue.insertTrueIndex) <= currentSatisfiedPageTime) {
-            return insertTrue.getInt(insertTrue.insertTrueIndex);
-        } else {
-            return curSatisfiedIntValue;
-        }
+        return curSatisfiedIntValue;
     }
 
     public boolean getCurrentBooleanValue() {
-        if (currentSatisfiedPageTime == -1) {
-            return insertTrue.getBoolean(insertTrue.insertTrueIndex);
-        }
-
-        if (insertTrue.insertTrueIndex < insertTrue.valueLength && insertTrue.getTime(insertTrue.insertTrueIndex) <= currentSatisfiedPageTime) {
-            return insertTrue.getBoolean(insertTrue.insertTrueIndex);
-        } else {
-            return curSatisfiedBooleanValue;
-        }
+        return curSatisfiedBooleanValue;
     }
 
     public long getCurrentLongValue() {
-        if (currentSatisfiedPageTime == -1) {
-            return insertTrue.getLong(insertTrue.insertTrueIndex);
-        }
-
-        if (insertTrue.insertTrueIndex < insertTrue.valueLength && insertTrue.getTime(insertTrue.insertTrueIndex) <= currentSatisfiedPageTime) {
-            return insertTrue.getLong(insertTrue.insertTrueIndex);
-        } else {
-            return curSatisfiedLongValue;
-        }
+        return curSatisfiedLongValue;
     }
 
     public float getCurrentFloatValue() {
-        if (currentSatisfiedPageTime == -1) {
-            return insertTrue.getFloat(insertTrue.insertTrueIndex);
-        }
-
-        if (insertTrue.insertTrueIndex < insertTrue.valueLength && insertTrue.getTime(insertTrue.insertTrueIndex) <= currentSatisfiedPageTime) {
-            return insertTrue.getFloat(insertTrue.insertTrueIndex);
-        } else {
-            return curSatisfiedFloatValue;
-        }
+        return curSatisfiedFloatValue;
     }
 
     public double getCurrentDoubleValue() {
-        if (currentSatisfiedPageTime == -1) {
-            return insertTrue.getDouble(insertTrue.insertTrueIndex);
-        }
-
-        if (insertTrue.insertTrueIndex < insertTrue.valueLength && insertTrue.getTime(insertTrue.insertTrueIndex) <= currentSatisfiedPageTime) {
-            return insertTrue.getDouble(insertTrue.insertTrueIndex);
-        } else {
-            return curSatisfiedDoubleValue;
-        }
+        return curSatisfiedDoubleValue;
     }
 
     public Binary getCurrentBinaryValue() {
-        if (currentSatisfiedPageTime == -1) {
-            return insertTrue.getBinary(insertTrue.insertTrueIndex);
-        }
-
-        if (insertTrue.insertTrueIndex < insertTrue.valueLength && insertTrue.getTime(insertTrue.insertTrueIndex) <= currentSatisfiedPageTime) {
-            return insertTrue.getBinary(insertTrue.insertTrueIndex);
-        } else {
-            return curSatisfiedBinaryValue;
-        }
+        return curSatisfiedBinaryValue;
     }
 
     public Object getCurrentObjectValue() {
@@ -197,736 +181,522 @@ public class InsertDynamicData extends DynamicOneColumnData {
         }
     }
 
-    /**
-     * Remove current time and value, to get next time and value satisfied with the filters.
-     * Must exist current time and value.
-     */
-    public void removeCurrentValue() throws IOException {
-        if (currentSatisfiedPageTime == -1) {
-            insertTrue.insertTrueIndex++;
-        }
-
-        if (insertTrue.insertTrueIndex < insertTrue.valueLength && insertTrue.getTime(insertTrue.insertTrueIndex) <= currentSatisfiedPageTime) {
-            if (insertTrue.getTime(insertTrue.insertTrueIndex) < currentSatisfiedPageTime) {
-                insertTrue.insertTrueIndex++;
-                return;
-            } else {
-                insertTrue.insertTrueIndex++;
-            }
-        }
-
-        // remove page time
-        currentSatisfiedPageTime = -1;
-        curTimeIndex++;
-        if (timeValues != null && curTimeIndex >= timeValues.length) {
-            pageIndex++;
-            pageReader = null;
-            page = null;
-            curTimeIndex = 0;
-        }
+    public void removeCurrentValue() {
+        hasNext = false;
     }
 
-    /**
-     * Only when the current page data has been read completely, this method could be invoked.
-     */
     public boolean hasInsertData() throws IOException {
-        if (currentSatisfiedPageTime != -1)
+        if (hasNext)
             return true;
 
-        boolean pageFindFlag = false;
+        if (pageIndex < pageList.size()) {
+            hasNext = readPageList();
+            if (hasNext)
+                return true;
+        }
 
-        // to get next page which has satisfied data
-        while (!pageFindFlag) {
-            if (pageList == null || (pageReader == null && pageIndex >= pageList.size()))
-                break;
+        hasNext = readLastPage();
+        if (hasNext)
+            return true;
 
-            if (pageReader == null) {
-                pageReader = new PageReader(pageList.get(pageIndex), compressionTypeName);
-                PageHeader pageHeader = pageReader.getNextPageHeader();
-                Digest pageDigest = pageHeader.data_page_header.getDigest();
+        if (overflowInsertData.hasNext() && examineOverflowInsert()) {
+            hasNext = true;
+            overflowInsertData.next();
+            return true;
+        }
 
-                // construct value filter digest
-                DigestForFilter valueDigest = new DigestForFilter(pageDigest.getStatistics().get(AggregationConstant.MIN_VALUE),
-                        pageDigest.getStatistics().get(AggregationConstant.MAX_VALUE), dataType);
-                // construct time filter digest
-                long mint = pageHeader.data_page_header.min_timestamp;
-                long maxt = pageHeader.data_page_header.max_timestamp;
-                DigestForFilter timeDigest = new DigestForFilter(mint, maxt);
-                LOG.debug("Page min time:{}, max time:{}, min value:{}, max value:{}", String.valueOf(mint),
-                        String.valueOf(maxt), pageDigest.getStatistics().get(AggregationConstant.MIN_VALUE), pageDigest.getStatistics().get(AggregationConstant.MAX_VALUE));
+        return false;
+    }
 
-                while (updateTrue != null && updateTrue.curIdx < updateTrue.valueLength && updateTrue.getTime(updateTrue.curIdx*2+1) < mint) {
-                    updateTrue.curIdx ++;
-                }
+    private boolean readPageList() throws IOException {
+        while (pageIndex < pageList.size()) {
+            if (pageTimes != null) {
+                boolean getNext = getSatisfiedTimeAndValue();
+                if (getNext)
+                    return true;
+                else
+                    pageIndex ++;
+            }
 
-                while (updateFalse != null && updateFalse.curIdx < updateFalse.valueLength && updateFalse.getTime(updateFalse.curIdx*2+1) < mint) {
-                    updateFalse.curIdx ++;
-                }
+//<<<<<<< HEAD
+            if (pageIndex >= pageList.size()) {
+                return false;
+            }
+//=======
+//                // construct value filter digest
+//                DigestForFilter valueDigest = new DigestForFilter(pageDigest.getStatistics().get(AggregationConstant.MIN_VALUE),
+//                        pageDigest.getStatistics().get(AggregationConstant.MAX_VALUE), dataType);
+//                // construct time filter digest
+//                long mint = pageHeader.data_page_header.min_timestamp;
+//                long maxt = pageHeader.data_page_header.max_timestamp;
+//                DigestForFilter timeDigest = new DigestForFilter(mint, maxt);
+//                LOG.debug("Page min time:{}, max time:{}, min value:{}, max value:{}", String.valueOf(mint),
+//                        String.valueOf(maxt), pageDigest.getStatistics().get(AggregationConstant.MIN_VALUE), pageDigest.getStatistics().get(AggregationConstant.MAX_VALUE));
+//>>>>>>> master
 
-                // not satisfied with time filter.
-                if ((timeFilter != null && !digestVisitor.satisfy(timeDigest, timeFilter))) {
+            // construct time and value digest
+            pageReader = new PageReader(pageList.get(pageIndex), compressionTypeName);
+            PageHeader pageHeader = pageReader.getNextPageHeader();
+            Digest pageDigest = pageHeader.data_page_header.getDigest();
+            DigestForFilter valueDigest = new DigestForFilter(pageDigest.getStatistics().get(AggregationConstant.MIN_VALUE),
+                    pageDigest.getStatistics().get(AggregationConstant.MAX_VALUE), dataType);
+            long mint = pageHeader.data_page_header.min_timestamp;
+            long maxt = pageHeader.data_page_header.max_timestamp;
+            DigestForFilter timeDigest = new DigestForFilter(mint, maxt);
+            LOG.debug("Page min time:{}, max time:{}, min value:{}, max value:{}",
+                    String.valueOf(mint), String.valueOf(maxt),
+                    pageDigest.getStatistics().get(AggregationConstant.MIN_VALUE),
+                    pageDigest.getStatistics().get(AggregationConstant.MAX_VALUE));
+
+            while (overflowUpdateTrue.hasNext() && overflowUpdateTrue.getUpdateStartTime() < mint) {
+                overflowUpdateTrue.next();
+            }
+
+            while (overflowUpdateFalse.hasNext() && overflowUpdateFalse.getUpdateStartTime() < mint) {
+                overflowUpdateFalse.next();
+            }
+
+            // not satisfied with time filter.
+            if (!digestVisitor.satisfy(timeDigest, timeFilter)) {
+                pageReaderReset();
+                continue;
+            } else {
+                if (!overflowUpdateTrue.hasNext() && !overflowUpdateFalse.hasNext() && !digestVisitor.satisfy(valueDigest, valueFilter)) {
+                    // no overflowUpdateTrue and overflowUpdateFalse, not satisfied with value filter
                     pageReaderReset();
                     continue;
-                } else {
-                    // no updateTrue and updateFalse, not satisfied with valueFilter
-                    if (updateTrue != null && updateTrue.curIdx >= updateTrue.valueLength && updateFalse != null && updateFalse.curIdx >= updateFalse.valueLength
-                            && valueFilter != null && !digestVisitor.satisfy(valueDigest, valueFilter)) {
-                        pageReaderReset();
-                        continue;
-                    }
-                    // has updateTrue, updateTrue not update this page and not satisfied with valueFilter
-                    else if (updateTrue != null && updateTrue.curIdx < updateTrue.valueLength && updateTrue.getTime(updateTrue.curIdx*2) >= maxt &&
-                            valueFilter != null && !digestVisitor.satisfy(valueDigest, valueFilter)) {
-                        pageReaderReset();
-                        continue;
-                    }
-                    // has updateFalse and updateFalse update this page all
-                    else if (updateTrue != null && updateFalse != null && updateFalse.curIdx < updateFalse.valueLength &&
-                            updateFalse.getTime(updateFalse.curIdx*2) >= mint && updateFalse.getTime(updateFalse.curIdx*2+1) <= maxt) {
-                        pageReaderReset();
-                        continue;
-                    }
-                }
-
-                page = pageReader.getNextPage();
-                timeValues = initTimeValue(page, pageHeader.data_page_header.num_rows, false);
-                curTimeIndex = 0;
-                this.valueDecoder = Decoder.getDecoderByType(pageHeader.getData_page_header().getEncoding(), dataType);
-            }
-
-            if (pageReader != null && currentSatisfiedPageTime == -1) {
-
-                int unValidTimeCount = 0;
-
-                //TODO consider time filter
-                while (timeFilter != null && (curTimeIndex<timeValues.length && !singleTimeVisitor.verify(timeValues[curTimeIndex]))) {
-                    curTimeIndex++;
-                    unValidTimeCount++;
-                }
-
-                // all of remain time data are not satisfied with the time filter.
-                if (curTimeIndex == timeValues.length) {
-                    pageReader = null; // pageReader reset
-                    currentSatisfiedPageTime = -1;
-                    pageIndex++;
+                } else if (overflowUpdateTrue.hasNext() && overflowUpdateTrue.getUpdateEndTime() > maxt && !digestVisitor.satisfy(valueDigest, valueFilter)) {
+                    // has overflowUpdateTrue, overflowUpdateTrue not update this page and not satisfied with value filter
+                    pageReaderReset();
+                    continue;
+                } else if (overflowUpdateFalse.hasNext() && overflowUpdateFalse.getUpdateStartTime() >= mint && overflowUpdateFalse.getUpdateEndTime() <= maxt) {
+                    // has overflowUpdateFalse and overflowUpdateFalse update this page all
+                    pageReaderReset();
                     continue;
                 }
+            }
 
-                int cnt;
-                switch (dataType) {
-                    case INT32:
-                        cnt = 0;
-                        while (valueDecoder.hasNext(page)) {
-                            while (cnt < unValidTimeCount) {
-                                curSatisfiedIntValue = valueDecoder.readInt(page);
-                                cnt++;
-                            }
+            getCurrentPageTimeAndValues(pageHeader);
+        }
 
-                            curSatisfiedIntValue = valueDecoder.readInt(page);
+        return false;
+    }
 
-                            if (timeFilter == null || singleTimeVisitor.verify(timeValues[curTimeIndex])) {
-                                while (updateTrue != null && updateTrue.curIdx < updateTrue.valueLength && updateTrue.getTime(updateTrue.curIdx*2+1) < timeValues[curTimeIndex])
-                                    updateTrue.curIdx ++;
-                                while (updateFalse != null && updateFalse.curIdx < updateFalse.valueLength && updateFalse.getTime(updateFalse.curIdx*2+1) < timeValues[curTimeIndex])
-                                    updateFalse.curIdx ++;
+    private boolean getSatisfiedTimeAndValue() throws IOException {
+        while (pageTimeIndex < pageTimes.length) {
 
-                                // updateTrue.valueLength*2 - 1
-                                if (updateTrue != null && updateTrue.curIdx < updateTrue.valueLength && updateTrue.getTime(updateTrue.curIdx*2) <= timeValues[curTimeIndex]) {
-                                    currentSatisfiedPageTime = timeValues[curTimeIndex];
-                                    curSatisfiedIntValue = updateTrue.getInt(updateTrue.curIdx);
-                                    pageFindFlag = true;
-                                    break;
-                                } else if (updateFalse != null && updateFalse.curIdx < updateFalse.valueLength && updateFalse.getTime(updateFalse.curIdx*2) <= timeValues[curTimeIndex]) {
-                                    currentSatisfiedPageTime = -1;
-                                    curTimeIndex++;
-                                } else {
-                                    if (valueFilter == null || singleValueVisitor.satisfyObject(curSatisfiedIntValue, valueFilter)) {
-                                        currentSatisfiedPageTime = timeValues[curTimeIndex];
-                                        pageFindFlag = true;
-                                        break;
-                                    } else {
-                                        currentSatisfiedPageTime = -1;
-                                        curTimeIndex++;
-                                    }
-                                }
-                            } else {
-                                currentSatisfiedPageTime = -1;
-                                curTimeIndex++;
-                            }
+            // get all the overflow insert time which is less than page time
+            while (overflowInsertData.hasNext() && overflowInsertData.getInsertTime() <= pageTimes[pageTimeIndex]) {
+                if (overflowInsertData.getInsertTime() < pageTimes[pageTimeIndex]) {
+                    if (examineOverflowInsert()) {
+                        overflowInsertData.next();
+                        return true;
+                    }
+                } else {
+                    // overflow insert time equals to page time
+                    if (examineOverflowInsert()) {
+                        overflowInsertData.next();
+                        pageTimeIndex ++;
+                        return true;
+                    }
+                }
+            }
 
-                            // for removeCurrentValue function pageIndex++
-                            if (currentSatisfiedPageTime == -1 && !valueDecoder.hasNext(page)) {
-                                pageReaderReset();
-                                break;
-                            }
-                        }
-                        break;
-                    case INT64:
-                        cnt = 0;
-                        while (valueDecoder.hasNext(page)) {
-                            while (cnt < unValidTimeCount) {
-                                curSatisfiedLongValue = valueDecoder.readLong(page);
-                                cnt++;
-                            }
+            while (pageTimeIndex < pageTimes.length && timeFilter != null && !singleTimeVisitor.verify(pageTimes[pageTimeIndex])) {
+                pageTimeIndex++;
+            }
 
-                            curSatisfiedLongValue = valueDecoder.readLong(page);
+            if (pageTimeIndex >= pageTimes.length) {
+                pageReaderReset();
+                return false;
+            }
 
-                            if (timeFilter == null || singleTimeVisitor.verify(timeValues[curTimeIndex])) {
-                                while (updateTrue != null && updateTrue.curIdx < updateTrue.valueLength && updateTrue.getTime(updateTrue.curIdx*2+1) < timeValues[curTimeIndex])
-                                    updateTrue.curIdx ++;
-                                while (updateFalse != null && updateFalse.curIdx < updateFalse.valueLength && updateFalse.getTime(updateFalse.curIdx*2+1) < timeValues[curTimeIndex])
-                                    updateFalse.curIdx ++;
+            if (examinePageValue()) {
+                pageTimeIndex ++;
+                return true;
+            } else {
+                pageTimeIndex ++;
+            }
+        }
 
-                                // updateTrue.valueLength*2 - 1
-                                if (updateTrue != null && updateTrue.curIdx < updateTrue.valueLength && updateTrue.getTime(updateTrue.curIdx*2) <= timeValues[curTimeIndex]) {
-                                    currentSatisfiedPageTime = timeValues[curTimeIndex];
-                                    curSatisfiedLongValue = updateTrue.getLong(updateTrue.curIdx);
-                                    pageFindFlag = true;
-                                    break;
-                                } else if (updateFalse != null && updateFalse.curIdx < updateFalse.valueLength && updateFalse.getTime(updateFalse.curIdx*2) <= timeValues[curTimeIndex]) {
-                                    currentSatisfiedPageTime = -1;
-                                    curTimeIndex++;
-                                } else {
-                                    if (valueFilter == null || singleValueVisitor.satisfyObject(curSatisfiedLongValue, valueFilter)) {
-                                        currentSatisfiedPageTime = timeValues[curTimeIndex];
-                                        pageFindFlag = true;
-                                        break;
-                                    } else {
-                                        currentSatisfiedPageTime = -1;
-                                        curTimeIndex++;
-                                    }
-                                }
-                            } else {
-                                currentSatisfiedPageTime = -1;
-                                curTimeIndex++;
-                            }
+        return false;
+    }
 
-                            // for removeCurrentValue function pageIndex++
-                            if (currentSatisfiedPageTime == -1 && !valueDecoder.hasNext(page)) {
-                                pageReaderReset();
-                                break;
-                            }
-                        }
-                        break;
-                    case FLOAT:
-                        cnt = 0;
-                        while (valueDecoder.hasNext(page)) {
-                            while (cnt < unValidTimeCount) {
-                                curSatisfiedFloatValue = valueDecoder.readFloat(page);
-                                cnt++;
-                            }
+    private boolean examineOverflowInsert() {
 
-                            curSatisfiedFloatValue = valueDecoder.readFloat(page);
+        //In current overflow implementation version, overflow insert data must be satisfied with time filter.
+        //data may be inserted after deleting.
 
-                            if (timeFilter == null || singleTimeVisitor.verify(timeValues[curTimeIndex])) {
-                                while (updateTrue != null && updateTrue.curIdx < updateTrue.valueLength && updateTrue.getTime(updateTrue.curIdx*2+1) < timeValues[curTimeIndex])
-                                    updateTrue.curIdx ++;
-                                while (updateFalse != null && updateFalse.curIdx < updateFalse.valueLength && updateFalse.getTime(updateFalse.curIdx*2+1) < timeValues[curTimeIndex])
-                                    updateFalse.curIdx ++;
+        //if (overflowTimeFilter != null && singleTimeVisitor.verify(overflowInsertData.getInsertTime()))
+        //    return false;
 
-                                // updateTrue.valueLength*2 - 1
-                                if (updateTrue != null && updateTrue.curIdx < updateTrue.valueLength && updateTrue.getTime(updateTrue.curIdx*2) <= timeValues[curTimeIndex]) {
-                                    currentSatisfiedPageTime = timeValues[curTimeIndex];
-                                    curSatisfiedFloatValue = updateTrue.getFloat(updateTrue.curIdx);
-                                    pageFindFlag = true;
-                                    break;
-                                } else if (updateFalse != null && updateFalse.curIdx < updateFalse.valueLength && updateFalse.getTime(updateFalse.curIdx*2) <= timeValues[curTimeIndex]) {
-                                    currentSatisfiedPageTime = -1;
-                                    curTimeIndex++;
-                                } else {
-                                    if (valueFilter == null || singleValueVisitor.satisfyObject(curSatisfiedFloatValue, valueFilter)) {
-                                        currentSatisfiedPageTime = timeValues[curTimeIndex];
-                                        pageFindFlag = true;
-                                        break;
-                                    } else {
-                                        currentSatisfiedPageTime = -1;
-                                        curTimeIndex++;
-                                    }
-                                }
-                            } else {
-                                currentSatisfiedPageTime = -1;
-                                curTimeIndex++;
-                            }
+        // TODO
+        // Notice that : in later overflow batch read version (insert and update operation are different apart),
+        // we must consider the overflow insert value is updated by update operation.
+        // updateOverflowInsertValue();
 
-                            // for removeCurrentValue function pageIndex++
-                            if (currentSatisfiedPageTime == -1 && !valueDecoder.hasNext(page)) {
-                                pageReaderReset();
-                                break;
-                            }
-                        }
-                        break;
-                    case DOUBLE:
-                        cnt = 0;
-                        while (valueDecoder.hasNext(page)) {
-                            while (cnt < unValidTimeCount) {
-                                curSatisfiedDoubleValue = valueDecoder.readDouble(page);
-                                cnt++;
-                            }
+        long time = overflowInsertData.getInsertTime();;
 
-                            curSatisfiedDoubleValue = valueDecoder.readDouble(page);
+        switch (dataType) {
+            case INT32:
+                if (singleValueVisitor.satisfyObject(overflowInsertData.getInt(), valueFilter)) {
+                    currentSatisfiedTime = time;
+                    curSatisfiedIntValue = overflowInsertData.getInt();
+                    return true;
+                }
+                return false;
+            case INT64:
+                if (singleValueVisitor.satisfyObject(overflowInsertData.getLong(), valueFilter)) {
+                    currentSatisfiedTime = time;
+                    curSatisfiedLongValue = overflowInsertData.getLong();
+                    return true;
+                }
+                return false;
+            case FLOAT:
+                if (singleValueVisitor.satisfyObject(overflowInsertData.getFloat(), valueFilter)) {
+                    currentSatisfiedTime = time;
+                    curSatisfiedFloatValue = overflowInsertData.getFloat();
+                    return true;
+                }
+                return false;
+            case DOUBLE:
+                if (singleValueVisitor.satisfyObject(overflowInsertData.getDouble(), valueFilter)) {
+                    currentSatisfiedTime = time;
+                    curSatisfiedDoubleValue = overflowInsertData.getDouble();
+                    return true;
+                }
+                return false;
+            case TEXT:
+                if (singleValueVisitor.satisfyObject(overflowInsertData.getText(), valueFilter)) {
+                    currentSatisfiedTime = time;
+                    curSatisfiedBinaryValue = overflowInsertData.getText();
+                    return true;
+                }
+                return false;
+            case BOOLEAN:
+                if (singleValueVisitor.satisfyObject(overflowInsertData.getBoolean(), valueFilter)) {
+                    currentSatisfiedTime = time;
+                    curSatisfiedBooleanValue = overflowInsertData.getBoolean();
+                    return true;
+                }
+                return false;
+            default:
+                throw new UnSupportedDataTypeException("UnSupport Aggregation DataType:" + dataType);
+        }
+    }
 
-                            if (timeFilter == null || singleTimeVisitor.verify(timeValues[curTimeIndex])) {
-                                while (updateTrue != null && updateTrue.curIdx < updateTrue.valueLength && updateTrue.getTime(updateTrue.curIdx*2+1) < timeValues[curTimeIndex])
-                                    updateTrue.curIdx ++;
-                                while (updateFalse != null && updateFalse.curIdx < updateFalse.valueLength && updateFalse.getTime(updateFalse.curIdx*2+1) < timeValues[curTimeIndex])
-                                    updateFalse.curIdx ++;
+    private boolean examinePageValue() {
+        long time = pageTimes[pageTimeIndex];
+        if (timeFilter != null && !singleTimeVisitor.verify(time))
+            return false;
 
-                                // updateTrue.valueLength*2 - 1
-                                if (updateTrue != null && updateTrue.curIdx < updateTrue.valueLength && updateTrue.getTime(updateTrue.curIdx*2) <= timeValues[curTimeIndex]) {
-                                    currentSatisfiedPageTime = timeValues[curTimeIndex];
-                                    curSatisfiedDoubleValue = updateTrue.getDouble(updateTrue.curIdx);
-                                    pageFindFlag = true;
-                                    break;
-                                } else if (updateFalse != null && updateFalse.curIdx < updateFalse.valueLength && updateFalse.getTime(updateFalse.curIdx*2) <= timeValues[curTimeIndex]) {
-                                    currentSatisfiedPageTime = -1;
-                                    curTimeIndex++;
-                                } else {
-                                    if (valueFilter == null || singleValueVisitor.satisfyObject(curSatisfiedDoubleValue, valueFilter)) {
-                                        currentSatisfiedPageTime = timeValues[curTimeIndex];
-                                        pageFindFlag = true;
-                                        break;
-                                    } else {
-                                        currentSatisfiedPageTime = -1;
-                                        curTimeIndex++;
-                                    }
-                                }
-                            } else {
-                                currentSatisfiedPageTime = -1;
-                                curTimeIndex++;
-                            }
+        // TODO
+        // Notice that, in later version, there will only exist one update operation
+        while (overflowUpdateTrue.hasNext() && overflowUpdateTrue.getUpdateEndTime() < time)
+            overflowUpdateTrue.next();
+        while (overflowUpdateFalse.hasNext() && overflowUpdateFalse.getUpdateEndTime() < time)
+            overflowUpdateFalse.next();
 
-                            // for removeCurrentValue function pageIndex++
-                            if (currentSatisfiedPageTime == -1 && !valueDecoder.hasNext(page)) {
-                                pageReaderReset();
-                                break;
-                            }
-                        }
-                        break;
-                    case BOOLEAN:
-                        cnt = 0;
-                        while (valueDecoder.hasNext(page)) {
-                            while (cnt < unValidTimeCount) {
-                                curSatisfiedBooleanValue = valueDecoder.readBoolean(page);
-                                cnt++;
-                            }
 
-                            curSatisfiedBooleanValue = valueDecoder.readBoolean(page);
+        switch (dataType) {
+            case INT32:
+                if (overflowUpdateTrue.verify(time)){
+                    currentSatisfiedTime = time;
+                    curSatisfiedIntValue = overflowUpdateTrue.getInt();
+                    return true;
+                } else if (overflowUpdateFalse.verify(time)){
+                    return false;
+                }
+                if (singleValueVisitor.satisfyObject(pageIntValues[pageTimeIndex], valueFilter)) {
+                    currentSatisfiedTime = time;
+                    curSatisfiedIntValue = pageIntValues[pageTimeIndex];
+                    return true;
+                }
+                return false;
+            case INT64:
+                if (overflowUpdateTrue.verify(time)){
+                    currentSatisfiedTime = time;
+                    curSatisfiedLongValue = overflowUpdateTrue.getLong();
+                    return true;
+                } else if (overflowUpdateFalse.verify(time)){
+                    return false;
+                }
+                if (singleValueVisitor.satisfyObject(pageLongValues[pageTimeIndex], valueFilter)) {
+                    currentSatisfiedTime = time;
+                    curSatisfiedLongValue = pageLongValues[pageTimeIndex];
+                    return true;
+                }
+                return false;
+            case FLOAT:
+                if (overflowUpdateTrue.verify(time)){
+                    currentSatisfiedTime = pageTimes[pageTimeIndex];
+                    curSatisfiedFloatValue = overflowUpdateTrue.getFloat();
+                    return true;
+                } else if (overflowUpdateFalse.verify(time)){
+                    return false;
+                }
+                if (singleValueVisitor.satisfyObject(pageFloatValues[pageTimeIndex], valueFilter)) {
+                    currentSatisfiedTime = time;
+                    curSatisfiedFloatValue = pageFloatValues[pageTimeIndex];
+                    return true;
+                }
+                return false;
+            case DOUBLE:
+                if (overflowUpdateTrue.verify(time)){
+                    currentSatisfiedTime = time;
+                    curSatisfiedDoubleValue = overflowUpdateTrue.getDouble();
+                    return true;
+                } else if (overflowUpdateFalse.verify(time)){
+                    return false;
+                }
+                if (singleValueVisitor.satisfyObject(pageDoubleValues[pageTimeIndex], valueFilter)) {
+                    currentSatisfiedTime = time;
+                    curSatisfiedDoubleValue = pageDoubleValues[pageTimeIndex];
+                    return true;
+                }
+                return false;
+            case TEXT:
+                if (overflowUpdateTrue.verify(time)){
+                    currentSatisfiedTime = time;
+                    curSatisfiedBinaryValue = overflowUpdateTrue.getText();
+                    return true;
+                } else if (overflowUpdateFalse.verify(time)){
+                    return false;
+                }
+                if (singleValueVisitor.satisfyObject(pageBinaryValues[pageTimeIndex], valueFilter)) {
+                    currentSatisfiedTime = time;
+                    curSatisfiedBinaryValue = pageBinaryValues[pageTimeIndex];
+                    return true;
+                }
+                return false;
+            case BOOLEAN:
+                if (overflowUpdateTrue.verify(time)){
+                    currentSatisfiedTime = time;
+                    curSatisfiedBooleanValue = overflowUpdateTrue.getBoolean();
+                    return true;
+                } else if (overflowUpdateFalse.verify(time)){
+                    return false;
+                }
+                if (singleValueVisitor.satisfyObject(pageBooleanValues[pageTimeIndex], valueFilter)) {
+                    currentSatisfiedTime = time;
+                    curSatisfiedBooleanValue = pageBooleanValues[pageTimeIndex];
+                    return true;
+                }
+                return false;
+            default:
+                throw new UnSupportedDataTypeException("UnSupport Aggregation DataType:" + dataType);
+        }
+    }
 
-                            if (timeFilter == null || singleTimeVisitor.verify(timeValues[curTimeIndex])) {
-                                while (updateTrue != null && updateTrue.curIdx < updateTrue.valueLength && updateTrue.getTime(updateTrue.curIdx*2+1) < timeValues[curTimeIndex])
-                                    updateTrue.curIdx ++;
-                                while (updateFalse != null && updateFalse.curIdx < updateFalse.valueLength && updateFalse.getTime(updateFalse.curIdx*2+1) < timeValues[curTimeIndex])
-                                    updateFalse.curIdx ++;
+    private void getCurrentPageTimeAndValues(PageHeader pageHeader) throws IOException {
+        page = pageReader.getNextPage();
+        pageTimes = initTimeValue(page, pageHeader.data_page_header.num_rows);
+        pageTimeIndex = 0;
 
-                                // updateTrue.valueLength*2 - 1
-                                if (updateTrue != null && updateTrue.curIdx < updateTrue.valueLength && updateTrue.getTime(updateTrue.curIdx*2) <= timeValues[curTimeIndex]) {
-                                    currentSatisfiedPageTime = timeValues[curTimeIndex];
-                                    curSatisfiedBooleanValue = updateTrue.getBoolean(updateTrue.curIdx);
-                                    pageFindFlag = true;
-                                    break;
-                                } else if (updateFalse != null && updateFalse.curIdx < updateFalse.valueLength && updateFalse.getTime(updateFalse.curIdx*2) <= timeValues[curTimeIndex]) {
-                                    currentSatisfiedPageTime = -1;
-                                    curTimeIndex++;
-                                } else {
-                                    if (valueFilter == null || singleValueVisitor.satisfyObject(curSatisfiedBooleanValue, valueFilter)) {
-                                        currentSatisfiedPageTime = timeValues[curTimeIndex];
-                                        pageFindFlag = true;
-                                        break;
-                                    } else {
-                                        currentSatisfiedPageTime = -1;
-                                        curTimeIndex++;
-                                    }
-                                }
-                            } else {
-                                currentSatisfiedPageTime = -1;
-                                curTimeIndex++;
-                            }
+        valueDecoder = Decoder.getDecoderByType(pageHeader.getData_page_header().getEncoding(), dataType);
+        int cnt = 0;
+        switch (dataType) {
+            case INT32:
+                pageIntValues = new int[pageHeader.data_page_header.num_rows];
+                while (valueDecoder.hasNext(page)) {
+                    pageIntValues[cnt++] = valueDecoder.readInt(page);
+                }
+                break;
+            case INT64:
+                pageLongValues = new long[pageHeader.data_page_header.num_rows];
+                while (valueDecoder.hasNext(page)) {
+                    pageLongValues[cnt++] = valueDecoder.readLong(page);
+                }
+                break;
+            case FLOAT:
+                pageFloatValues = new float[pageHeader.data_page_header.num_rows];
+                while (valueDecoder.hasNext(page)) {
+                    pageFloatValues[cnt++] = valueDecoder.readFloat(page);
+                }
+                break;
+            case DOUBLE:
+                pageDoubleValues = new double[pageHeader.data_page_header.num_rows];
+                while (valueDecoder.hasNext(page)) {
+                    pageDoubleValues[cnt++] = valueDecoder.readDouble(page);
+                }
+                break;
+            case BOOLEAN:
+                pageBooleanValues = new boolean[pageHeader.data_page_header.num_rows];
+                while (valueDecoder.hasNext(page)) {
+                    pageBooleanValues[cnt++] = valueDecoder.readBoolean(page);
+                }
+                break;
+            case TEXT:
+                pageBinaryValues = new Binary[pageHeader.data_page_header.num_rows];
+                while (valueDecoder.hasNext(page)) {
+                    pageBinaryValues[cnt++] = valueDecoder.readBinary(page);
+                }
+                break;
+            default:
+                throw new UnSupportedDataTypeException("UnSupport Aggregation DataType:" + dataType);
+        }
+    }
 
-                            // for removeCurrentValue function pageIndex++
-                            if (currentSatisfiedPageTime == -1 && !valueDecoder.hasNext(page)) {
-                                pageReaderReset();
-                                break;
-                            }
-                        }
-                        break;
-                    case TEXT:
-                        cnt = 0;
-                        while (valueDecoder.hasNext(page)) {
-                            while (cnt < unValidTimeCount) {
-                                curSatisfiedBinaryValue = valueDecoder.readBinary(page);
-                                cnt++;
-                            }
+    private boolean readLastPage() {
 
-                            curSatisfiedBinaryValue = valueDecoder.readBinary(page);
+        // get all the overflow insert time which is less than page time
+        while (lastPageData.hasNext()) {
+            while (overflowInsertData.hasNext() && overflowInsertData.getInsertTime() <= lastPageData.getInsertTime()) {
+                if (overflowInsertData.getInsertTime() < lastPageData.getInsertTime()) {
+                    if (examineOverflowInsert()) {
+                        overflowInsertData.next();
+                        return true;
+                    } else {
+                        overflowInsertData.next();
+                    }
 
-                            if (timeFilter == null || singleTimeVisitor.verify(timeValues[curTimeIndex])) {
-                                while (updateTrue != null && updateTrue.curIdx < updateTrue.valueLength && updateTrue.getTime(updateTrue.curIdx*2+1) < timeValues[curTimeIndex])
-                                    updateTrue.curIdx ++;
-                                while (updateFalse != null && updateFalse.curIdx < updateFalse.valueLength && updateFalse.getTime(updateFalse.curIdx*2+1) < timeValues[curTimeIndex])
-                                    updateFalse.curIdx ++;
+                } else {
+                    // overflow insert time equals to page time
+                    if (examineOverflowInsert()) {
+                        overflowInsertData.next();
+                        lastPageData.next();
+                        return true;
+                    } else {
+                        overflowInsertData.next();
+                    }
+                }
+            }
 
-                                // updateTrue.valueLength*2 - 1
-                                if (updateTrue != null && updateTrue.curIdx < updateTrue.valueLength && updateTrue.getTime(updateTrue.curIdx*2) <= timeValues[curTimeIndex]) {
-                                    currentSatisfiedPageTime = timeValues[curTimeIndex];
-                                    curSatisfiedBinaryValue = updateTrue.getBinary(updateTrue.curIdx);
-                                    pageFindFlag = true;
-                                    break;
-                                } else if (updateFalse != null && updateFalse.curIdx < updateFalse.valueLength && updateFalse.getTime(updateFalse.curIdx*2) <= timeValues[curTimeIndex]) {
-                                    currentSatisfiedPageTime = -1;
-                                    curTimeIndex++;
-                                } else {
-                                    if (valueFilter == null || singleValueVisitor.satisfyObject(curSatisfiedBinaryValue, valueFilter)) {
-                                        currentSatisfiedPageTime = timeValues[curTimeIndex];
-                                        pageFindFlag = true;
-                                        break;
-                                    } else {
-                                        currentSatisfiedPageTime = -1;
-                                        curTimeIndex++;
-                                    }
-                                }
-                            } else {
-                                currentSatisfiedPageTime = -1;
-                                curTimeIndex++;
-                            }
-
-                            // for removeCurrentValue function pageIndex++
-                            if (currentSatisfiedPageTime == -1 && !valueDecoder.hasNext(page)) {
-                                pageReaderReset();
-                                break;
-                            }
-                        }
-                        break;
-                    default:
-                        throw new UnSupportedDataTypeException("UnSupport Aggregation DataType:" + dataType);
+            if (lastPageData.hasNext()) {
+                if (examineLastPage()) {
+                    lastPageData.next();
+                    return true;
+                } else {
+                    lastPageData.next();
                 }
             }
         }
 
-        // insertTrue value already satisfy the time filter
-        while (insertTrue != null && insertTrue.insertTrueIndex < insertTrue.valueLength) {
-            while (updateTrue != null && updateTrue.curIdx < updateTrue.valueLength && updateTrue.getTime(updateTrue.curIdx*2+1) < insertTrue.getTime(insertTrue.insertTrueIndex))
-                updateTrue.curIdx += 1;
-            while (updateFalse != null && updateFalse.curIdx < updateFalse.valueLength && updateFalse.getTime(updateFalse.curIdx*2+1) < insertTrue.getTime(insertTrue.insertTrueIndex))
-                updateFalse.curIdx += 1;
-
-            if (updateTrue != null && updateTrue.curIdx < updateTrue.valueLength && updateTrue.getTime(updateTrue.curIdx*2) <= insertTrue.getTime(insertTrue.insertTrueIndex)) {
-                // currentSatisfiedPageTime = insertTrue.getTime(insertTrue.insertTrueIndex);
-                updateNewValue();
-                return true;
-            }
-
-            if (updateFalse != null && updateFalse.curIdx < updateFalse.valueLength && updateFalse.getTime(updateFalse.curIdx*2) <= insertTrue.getTime(insertTrue.insertTrueIndex)) {
-                insertTrue.insertTrueIndex ++;
-            }
-
-            if (valueFilter == null || insertValueSatisfied()) {
-
-                // no page time, or overflow insert time is smaller than page time
-//                if (currentSatisfiedPageTime == -1 || insertTrue.getTime(insertTrue.insertTrueIndex) < currentSatisfiedPageTime)
-//                    currentSatisfiedPageTime = insertTrue.getTime(insertTrue.insertTrueIndex);
-
-                return true;
-            } else {
-                insertTrue.insertTrueIndex++;
-            }
-        }
-
-        return pageFindFlag;
+        return false;
     }
 
-    private boolean insertValueSatisfied() {
+    private boolean examineLastPage() {
+        long time = lastPageData.getInsertTime();
+
+        if (timeFilter != null && !singleTimeVisitor.verify(time))
+            return false;
+
+        // TODO
+        // Notice that, in later version, there will only exist one update operation
+        while (overflowUpdateTrue.hasNext() && overflowUpdateTrue.getUpdateEndTime() < time)
+            overflowUpdateTrue.next();
+        while (overflowUpdateFalse.hasNext() && overflowUpdateFalse.getUpdateEndTime() < time)
+            overflowUpdateFalse.next();
+
+        if (overflowUpdateFalse.verify(time)) {
+            return false;
+        }
+
         switch (dataType) {
             case INT32:
-                return singleValueVisitor.satisfyObject(insertTrue.getInt(insertTrue.insertTrueIndex), valueFilter);
+                if (overflowUpdateTrue.verify(time)){
+                    currentSatisfiedTime = time;
+                    curSatisfiedIntValue = overflowUpdateTrue.getInt();
+                    return true;
+                }
+                if (singleValueVisitor.satisfyObject(lastPageData.getInt(), valueFilter)) {
+                    currentSatisfiedTime = time;
+                    curSatisfiedIntValue = lastPageData.getInt();
+                    return true;
+                }
+                return false;
             case INT64:
-                return singleValueVisitor.satisfyObject(insertTrue.getLong(insertTrue.insertTrueIndex), valueFilter);
+                if (overflowUpdateTrue.verify(time)){
+                    currentSatisfiedTime = time;
+                    curSatisfiedLongValue = overflowUpdateTrue.getLong();
+                    return true;
+                }
+                if (singleValueVisitor.satisfyObject(lastPageData.getLong(), valueFilter)) {
+                    currentSatisfiedTime = time;
+                    curSatisfiedLongValue = lastPageData.getLong();
+                    return true;
+                }
+                return false;
             case FLOAT:
-                return singleValueVisitor.satisfyObject(insertTrue.getFloat(insertTrue.insertTrueIndex), valueFilter);
+                if (overflowUpdateTrue.verify(time)){
+                    currentSatisfiedTime = time;
+                    curSatisfiedFloatValue = overflowUpdateTrue.getFloat();
+                    return true;
+                }
+                if (singleValueVisitor.satisfyObject(lastPageData.getFloat(), valueFilter)) {
+                    currentSatisfiedTime = time;
+                    curSatisfiedFloatValue = lastPageData.getFloat();
+                    return true;
+                }
+                return false;
             case DOUBLE:
-                return singleValueVisitor.satisfyObject(insertTrue.getDouble(insertTrue.insertTrueIndex), valueFilter);
+                if (overflowUpdateTrue.verify(time)){
+                    currentSatisfiedTime = time;
+                    curSatisfiedDoubleValue = overflowUpdateTrue.getDouble();
+                    return true;
+                }
+                if (singleValueVisitor.satisfyObject(lastPageData.getDouble(), valueFilter)) {
+                    currentSatisfiedTime = time;
+                    curSatisfiedDoubleValue = lastPageData.getDouble();
+                    return true;
+                }
+                return false;
             case TEXT:
-                return singleValueVisitor.satisfyObject(insertTrue.getBinary(insertTrue.insertTrueIndex), valueFilter);
+                if (overflowUpdateTrue.verify(time)){
+                    currentSatisfiedTime = time;
+                    curSatisfiedBinaryValue = overflowUpdateTrue.getText();
+                    return true;
+                }
+                if (singleValueVisitor.satisfyObject(lastPageData.getText(), valueFilter)) {
+                    currentSatisfiedTime = time;
+                    curSatisfiedBinaryValue = lastPageData.getText();
+                    return true;
+                }
+                return false;
             case BOOLEAN:
-                return singleValueVisitor.satisfyObject(insertTrue.getBoolean(insertTrue.insertTrueIndex), valueFilter);
+                if (overflowUpdateTrue.verify(time)){
+                    currentSatisfiedTime = time;
+                    curSatisfiedBooleanValue = overflowUpdateTrue.getBoolean();
+                    return true;
+                }
+                if (singleValueVisitor.satisfyObject(lastPageData.getBoolean(), valueFilter)) {
+                    currentSatisfiedTime = time;
+                    curSatisfiedBooleanValue = lastPageData.getBoolean();
+                    return true;
+                }
+                return false;
             default:
                 throw new UnSupportedDataTypeException("UnSupport Aggregation DataType:" + dataType);
         }
     }
 
-    public void pageReaderReset() {
+    private void pageReaderReset() {
         pageIndex++;
         pageReader = null;
-        currentSatisfiedPageTime = -1;
-    }
-
-    private void curTimeReset() {
-        currentSatisfiedPageTime = -1;
-        curTimeIndex++;
-    }
-
-    /**
-     * Reset the read status, streaming
-     */
-    public void readStatusReset() {
-        if (pageList != null) {
-            for (ByteArrayInputStream stream : pageList) {
-                stream.reset();
-            }
-        }
-        if (insertTrue != null)
-            insertTrue.insertTrueIndex = 0;
-        if (updateTrue != null)
-            updateTrue.curIdx = 0;
-        if (updateFalse != null)
-            updateFalse.curIdx = 0;
-        pageIndex = 0;
-        pageReader = null;
-        curTimeIndex = 0;
-        currentSatisfiedPageTime = -1;
-    }
-
-    /**
-     * update the value of insertTrue used updateData.
-     */
-    private void updateNewValue() {
-        switch (dataType) {
-            case INT32:
-                curSatisfiedIntValue = updateTrue.getInt(updateTrue.curIdx);
-                insertTrue.setInt(insertTrue.insertTrueIndex, curSatisfiedIntValue);
-                break;
-            case INT64:
-                curSatisfiedLongValue = updateTrue.getLong(updateTrue.curIdx);
-                insertTrue.setLong(insertTrue.insertTrueIndex, curSatisfiedLongValue);
-                break;
-            case FLOAT:
-                curSatisfiedFloatValue = updateTrue.getFloat(updateTrue.curIdx);
-                insertTrue.setFloat(insertTrue.insertTrueIndex, curSatisfiedFloatValue);
-                break;
-            case DOUBLE:
-                curSatisfiedDoubleValue = updateTrue.getDouble(updateTrue.curIdx);
-                insertTrue.setDouble(insertTrue.insertTrueIndex, curSatisfiedDoubleValue);
-                break;
-            case TEXT:
-                curSatisfiedBinaryValue = updateTrue.getBinary(updateTrue.curIdx);
-                insertTrue.setBinary(insertTrue.insertTrueIndex, curSatisfiedBinaryValue);
-                break;
-            case BOOLEAN:
-                curSatisfiedBooleanValue = updateTrue.getBoolean(updateTrue.curIdx);
-                insertTrue.setBoolean(insertTrue.insertTrueIndex, curSatisfiedBooleanValue);
-                break;
-            default:
-                throw new UnSupportedDataTypeException("UnSupport Aggregation DataType:" + dataType);
-        }
-    }
-
-    private SingleValueVisitor<?> getSingleValueVisitorByDataType(TSDataType type, SingleSeriesFilterExpression filter) {
-        switch (type) {
-            case INT32:
-                return new SingleValueVisitor<Integer>(filter);
-            case INT64:
-                return new SingleValueVisitor<Long>(filter);
-            case FLOAT:
-                return new SingleValueVisitor<Float>(filter);
-            case DOUBLE:
-                return new SingleValueVisitor<Double>(filter);
-            default:
-                return SingleValueVisitorFactory.getSingleValueVisitor(type);
-        }
+        currentSatisfiedTime = -1;
     }
 
     /**
      * Read time value from the page and return them.
      *
-     * @param page data page inputstream
-     * @param size data page inputstream size
-     * @param skip If skip is true, then return long[] which is null.
+     * @param page data page input stream
+     * @param size data page input stream size
      * @throws IOException read page error
      */
-    private long[] initTimeValue(InputStream page, int size, boolean skip) throws IOException {
-        long[] res = null;
+    private long[] initTimeValue(InputStream page, int size) throws IOException {
+        long[] res;
         int idx = 0;
 
         int length = ReadWriteStreamUtils.readUnsignedVarInt(page);
         byte[] buf = new byte[length];
         int readSize = page.read(buf, 0, length);
 
-        if (!skip) {
-            ByteArrayInputStream bis = new ByteArrayInputStream(buf);
-            res = new long[size];
-            while (timeDecoder.hasNext(bis)) {
-                res[idx++] = timeDecoder.readLong(bis);
-            }
+        ByteArrayInputStream bis = new ByteArrayInputStream(buf);
+        res = new long[size];
+        while (timeDecoder.hasNext(bis)) {
+            res[idx++] = timeDecoder.readLong(bis);
         }
 
         return res;
-    }
-
-    // Below are used for aggregate function
-    private long rowNum = 0;
-    private long minTime = Long.MAX_VALUE, maxTime = Long.MIN_VALUE;
-    private int minIntValue = Integer.MAX_VALUE, maxIntValue = Integer.MIN_VALUE;
-    private long minLongValue = Long.MAX_VALUE, maxLongValue = Long.MIN_VALUE;
-    private float minFloatValue = Float.MAX_VALUE, maxFloatValue = Float.MIN_VALUE;
-    private double minDoubleValue = Double.MIN_VALUE, maxDoubleValue = Double.MIN_VALUE;
-    private Binary minBinaryValue = null, maxBinaryValue = null;
-    private boolean minBooleanValue = true, maxBooleanValue = false;
-
-    private void calcIntAggregation() {
-        minTime = Math.min(minTime, getCurrentMinTime());
-        maxTime = Math.max(maxTime, getCurrentMinTime());
-        minIntValue = Math.min(minIntValue, getCurrentIntValue());
-        maxIntValue = Math.max(maxIntValue, getCurrentIntValue());
-    }
-
-    private void calcLongAggregation() {
-        minTime = Math.min(minTime, getCurrentMinTime());
-        maxTime = Math.max(maxTime, getCurrentMinTime());
-        minLongValue = Math.min(minLongValue, getCurrentLongValue());
-        maxLongValue = Math.max(maxLongValue, getCurrentLongValue());
-    }
-
-    private void calcFloatAggregation() {
-        minTime = Math.min(minTime, getCurrentMinTime());
-        maxTime = Math.max(maxTime, getCurrentMinTime());
-        minFloatValue = Math.min(minFloatValue, getCurrentFloatValue());
-        maxFloatValue = Math.max(maxFloatValue, getCurrentFloatValue());
-    }
-
-    private void calcDoubleAggregation() {
-        minTime = Math.min(minTime, getCurrentMinTime());
-        maxTime = Math.max(maxTime, getCurrentMinTime());
-        minDoubleValue = Math.min(minDoubleValue, getCurrentDoubleValue());
-        maxDoubleValue = Math.max(maxDoubleValue, getCurrentDoubleValue());
-    }
-
-    private void calcTextAggregation() {
-        minTime = Math.min(minTime, getCurrentMinTime());
-        maxTime = Math.max(maxTime, getCurrentMinTime());
-        if (minBinaryValue == null) {
-            minBinaryValue = getCurrentBinaryValue();
-        }
-        if (maxBinaryValue == null) {
-            maxBinaryValue = getCurrentBinaryValue();
-        }
-        if (getCurrentBinaryValue().compareTo(minBinaryValue) < 0) {
-            minBinaryValue = getCurrentBinaryValue();
-        }
-        if (getCurrentBinaryValue().compareTo(maxBinaryValue) > 0) {
-            maxBinaryValue = getCurrentBinaryValue();
-        }
-    }
-
-    private void calcBooleanAggregation() {
-        minTime = Math.min(minTime, getCurrentMinTime());
-        maxTime = Math.max(maxTime, getCurrentMinTime());
-        if (minBooleanValue) {
-            minBooleanValue = getCurrentBooleanValue();
-        }
-        if (!maxBooleanValue) {
-            maxBooleanValue = getCurrentBooleanValue();
-        }
-    }
-
-    public Object calcAggregation(String aggType) throws IOException, ProcessorException {
-        readStatusReset();
-        rowNum = 0;
-        minTime = Long.MAX_VALUE;
-        maxTime = Long.MIN_VALUE;
-        minIntValue = Integer.MAX_VALUE;
-        maxIntValue = Integer.MIN_VALUE;
-        minLongValue = Long.MAX_VALUE;
-        maxLongValue = Long.MIN_VALUE;
-        minFloatValue = Float.MAX_VALUE;
-        maxFloatValue = Float.MIN_VALUE;
-        minDoubleValue = Double.MIN_VALUE;
-        maxDoubleValue = Double.MIN_VALUE;
-        minBinaryValue = null;
-        maxBinaryValue = null;
-
-        while (hasInsertData()) {
-            switch (dataType) {
-                case INT32:
-                    rowNum++;
-                    calcIntAggregation();
-                    removeCurrentValue();
-                    break;
-                case INT64:
-                    rowNum++;
-                    calcLongAggregation();
-                    removeCurrentValue();
-                    break;
-                case FLOAT:
-                    rowNum++;
-                    calcFloatAggregation();
-                    removeCurrentValue();
-                    break;
-                case DOUBLE:
-                    rowNum++;
-                    calcDoubleAggregation();
-                    removeCurrentValue();
-                    break;
-                case TEXT:
-                    rowNum++;
-                    calcTextAggregation();
-                    removeCurrentValue();
-                    break;
-                case BOOLEAN:
-                    rowNum++;
-                    calcBooleanAggregation();
-                    removeCurrentValue();
-                    break;
-                default:
-                    LOG.error("Aggregation Error!");
-                    throw new UnSupportedDataTypeException(dataType.toString());
-            }
-        }
-
-        switch (aggType) {
-            case AggregationConstant.COUNT:
-                return rowNum == 0 ? null : rowNum;
-            case AggregationConstant.MIN_TIME:
-                return rowNum == 0 ? null : minTime;
-            case AggregationConstant.MAX_TIME:
-                return rowNum == 0 ? null : maxTime;
-            case AggregationConstant.MIN_VALUE:
-                switch (dataType) {
-                    case INT32:
-                        return rowNum == 0 ? null : minIntValue;
-                    case INT64:
-                        return rowNum == 0 ? null : minLongValue;
-                    case FLOAT:
-                        return rowNum == 0 ? null : minFloatValue;
-                    case DOUBLE:
-                        return rowNum == 0 ? null : minDoubleValue;
-                    case TEXT:
-                        return rowNum == 0 ? null : minBinaryValue;
-                    case BOOLEAN:
-                        return rowNum == 0 ? null : minBooleanValue;
-                    default:
-                        LOG.error("Aggregation Error!");
-                        throw new UnSupportedDataTypeException("UnSupported datatype: " + dataType);
-
-                }
-            case AggregationConstant.MAX_VALUE:
-                switch (dataType) {
-                    case INT32:
-                        return rowNum == 0 ? null : maxIntValue;
-                    case INT64:
-                        return rowNum == 0 ? null : maxLongValue;
-                    case FLOAT:
-                        return rowNum == 0 ? null : maxFloatValue;
-                    case DOUBLE:
-                        return rowNum == 0 ? null : maxDoubleValue;
-                    case TEXT:
-                        return rowNum == 0 ? null : maxBinaryValue;
-                    case BOOLEAN:
-                        return rowNum == 0 ? null : maxBooleanValue;
-                    default:
-                        LOG.error("Aggregation Error!");
-                        throw new UnSupportedDataTypeException("UnSupported datatype: " + dataType);
-                }
-            default:
-                throw new ProcessorException("AggregateFunction not support. Name:" + aggType);
-        }
     }
 }

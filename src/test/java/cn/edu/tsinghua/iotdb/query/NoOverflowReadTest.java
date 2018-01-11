@@ -52,7 +52,6 @@ public class NoOverflowReadTest {
 
     @Before
     public void setUp() throws Exception {
-        AggregateEngine.aggregateFetchSize = 4000;
         EnvironmentUtils.closeStatMonitor();
         deamon = IoTDB.getInstance();
         deamon.active();

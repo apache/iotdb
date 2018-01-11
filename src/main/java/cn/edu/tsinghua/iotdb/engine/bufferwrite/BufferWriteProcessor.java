@@ -614,8 +614,8 @@ public class BufferWriteProcessor extends Processor {
 						TsfileDBDescriptor.getInstance().getConfig().timeZone);
 				LOGGER.info("Last flush time is {}, this flush time is {}, flush time interval is {}", lastDateTime,
 						thisDateTime, flushTimeInterval);
-				lastFlushTime = thisFlushTime;
 			}
+			lastFlushTime = System.currentTimeMillis();
 			if (recordCount > 0) {
 				synchronized (flushState) {
 					// This thread wait until the subThread flush finished

@@ -83,7 +83,7 @@ public class AggregationSmallDataTest {
             "insert into root.vehicle.d0(timestamp,s3) values(80,'ccccc')",
             "insert into root.vehicle.d0(timestamp,s3) values(101,'ddddd')",
             "insert into root.vehicle.d0(timestamp,s3) values(102,'fffff')",
-            "UPDATE root.vehicle.d0 SET s3 = 'tomorrow is another day' WHERE time >100 and time < 103",
+            "UPDATE root.vehicle.d0 SET s3 = 'tomorrow is another day' WHERE time > 100 and time < 103",
 
             "insert into root.vehicle.d1(timestamp,s0) values(1,999)",
             "insert into root.vehicle.d1(timestamp,s0) values(1000,888)",
@@ -105,7 +105,6 @@ public class AggregationSmallDataTest {
         if (testFlag) {
             EnvironmentUtils.closeStatMonitor();
             EnvironmentUtils.closeMemControl();
-            AggregateEngine.aggregateFetchSize = 2;
             deamon = IoTDB.getInstance();
             deamon.active();
             EnvironmentUtils.envSetUp();

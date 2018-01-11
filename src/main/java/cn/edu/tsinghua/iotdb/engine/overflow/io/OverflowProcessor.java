@@ -406,8 +406,8 @@ public class OverflowProcessor extends Processor {
 			DateTime thisDateTime = new DateTime(thisFLushTime, TsfileDBDescriptor.getInstance().getConfig().timeZone);
 			LOGGER.info("Last flush time is {}, this flush time is {}, flush time interval is {}", lastDateTime,
 					thisDateTime, thisFLushTime - lastFlushTime);
-			lastFlushTime = thisFLushTime;
 		}
+		lastFlushTime = System.currentTimeMillis();
 		if (recordCount > 0) {
 			synchronized (flushState) {
 				while (flushState.isFlushing()) {

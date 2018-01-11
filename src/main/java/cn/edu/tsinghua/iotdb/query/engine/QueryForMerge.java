@@ -13,6 +13,9 @@ import cn.edu.tsinghua.tsfile.timeseries.read.query.QueryDataSet;
 import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
 import cn.edu.tsinghua.tsfile.timeseries.read.support.RowRecord;
 
+/**
+ * This class is used to query the data in file merging between tsfile and overflow data.
+ */
 public class QueryForMerge {
 
 	private List<Path> pathList;
