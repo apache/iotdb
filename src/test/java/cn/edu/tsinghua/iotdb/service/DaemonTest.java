@@ -36,7 +36,8 @@ public class DaemonTest {
     }
 
     private String[] sqls = new String[]{
-            "SET STORAGE GROUP TO root.vehicle",
+            "SET STORAGE GROUP TO root.vehicle.d0",
+            "SET STORAGE GROUP TO root.vehicle.d1",
 
             "CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE",
             "CREATE TIMESERIES root.vehicle.d0.s1 WITH DATATYPE=INT64, ENCODING=RLE",
@@ -132,19 +133,24 @@ public class DaemonTest {
 
                 Connection connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
 
+                // select test
                 selectAllSQLTest();
-                dnfErrorSQLTest();
                 selectWildCardSQLTest();
+                dnfErrorSQLTest();
                 selectAndOperatorTest();
                 selectAndOpeCrossTest();
                 selectOneColumnWithFilterTest();
                 textDataTypeTest();
 
+
+                // aggregation test
                 aggregationTest();
                 multiAggregationTest();
 
+                // fill test
                 fillTest();
 
+                // insert new data test
                 crossReadTest();
                 connection.close();
             } catch (ClassNotFoundException | SQLException | InterruptedException e) {
@@ -238,76 +244,36 @@ public class DaemonTest {
         }
     }
 
-    private void multiAggregationTest() throws ClassNotFoundException, SQLException {
+    private void selectWildCardSQLTest() throws ClassNotFoundException, SQLException {
         String[] retArray = new String[]{
-                "11,6,6"
-        };
+                "2,2.22",
+                "3,3.33",
+                "4,4.44",
+                "102,10.0",
+                "105,11.11",
+                "1000,1000.11"};
 
         Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);
         Connection connection = null;
         try {
             connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
             Statement statement = connection.createStatement();
-            boolean hasResultSet = statement.execute("select count(s1),count(s2),count(s3) from root.vehicle.d0");
+            boolean hasResultSet = statement.execute("select s2 from root.vehicle.*");
             Assert.assertTrue(hasResultSet);
 
             ResultSet resultSet = statement.getResultSet();
             int cnt = 0;
             while (resultSet.next()) {
-                String ans = resultSet.getString("count(" + d0s1 + ")") + ","
-                        + resultSet.getString("count(" + d0s2 + ")") + ","
-                        + resultSet.getString("count(" + d0s3 + ")");
+                String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s2);
                 Assert.assertEquals(ans, retArray[cnt]);
                 cnt++;
             }
-            Assert.assertEquals(1, cnt);
-            statement.close();
+            Assert.assertEquals(6, cnt);
 
-            // the statement has same columns and same aggregation
-            retArray = new String[]{
-                    "11,11,6,1000.11"
-            };
-            statement = connection.createStatement();
-            hasResultSet = statement.execute("select count(s1),count(s1),count(s3),max_value(s2) from root.vehicle.d0");
-            Assert.assertTrue(hasResultSet);
-            resultSet = statement.getResultSet();
-            cnt = 0;
-            while (resultSet.next()) {
-                String ans = resultSet.getString("count(" + d0s1 + ")") + ","
-                        + resultSet.getString("count(" + d0s1 + ")") + ","
-                        + resultSet.getString("count(" + d0s3 + ")") + ","
-                        + resultSet.getString("max_value(" + d0s2 + ")");
-                //System.out.println("!!" + ans);
-                Assert.assertEquals(retArray[cnt], ans);
-                cnt++;
-            }
-            Assert.assertEquals(1, cnt);
-            statement.close();
-
-            // the statement has same columns and different aggregation
-            retArray = new String[]{
-                    "11,55555,946684800000,6"
-            };
-            statement = connection.createStatement();
-            hasResultSet = statement.execute("select count(s1),max_value(s1),max_time(s1),count(s3) from root.vehicle.d0");
-            Assert.assertTrue(hasResultSet);
-
-            resultSet = statement.getResultSet();
-            cnt = 0;
-            while (resultSet.next()) {
-                String ans = resultSet.getString(count(d0s1)) + ","
-                        + resultSet.getString("max_value(" + d0s1 + ")") + ","
-                        + resultSet.getString("max_time(" + d0s1 + ")") + ","
-                        + resultSet.getString("count(" + d0s3 + ")");
-                //System.out.println("==" + ans);
-                Assert.assertEquals(ans, retArray[cnt]);
-                cnt++;
-            }
-            Assert.assertEquals(1, cnt);
             statement.close();
         } catch (Exception e) {
-            fail(e.getMessage());
             e.printStackTrace();
+            fail(e.getMessage());
         } finally {
             if (connection != null) {
                 connection.close();
@@ -336,44 +302,7 @@ public class DaemonTest {
             int cnt = 0;
             while (resultSet.next()) {
                 String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s0) + "," + resultSet.getString(d0s1);
-                Assert.assertEquals(ans, retArray[cnt]);
-                cnt++;
-            }
-            Assert.assertEquals(6, cnt);
-
-            statement.close();
-        } catch (Exception e) {
-            e.printStackTrace();
-            fail(e.getMessage());
-        } finally {
-            if (connection != null) {
-                connection.close();
-            }
-        }
-    }
-
-    private void selectWildCardSQLTest() throws ClassNotFoundException, SQLException {
-        String[] retArray = new String[]{
-                "2,2.22",
-                "3,3.33",
-                "4,4.44",
-                "102,10.0",
-                "105,11.11",
-                "1000,1000.11"};
-
-        Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);
-        Connection connection = null;
-        try {
-            connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
-            Statement statement = connection.createStatement();
-            boolean hasResultSet = statement.execute("select s2 from root.vehicle.*");
-            Assert.assertTrue(hasResultSet);
-
-            ResultSet resultSet = statement.getResultSet();
-            int cnt = 0;
-            while (resultSet.next()) {
-                String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s2);
-                Assert.assertEquals(ans, retArray[cnt]);
+                Assert.assertEquals(retArray[cnt], ans);
                 cnt++;
             }
             Assert.assertEquals(6, cnt);
@@ -451,71 +380,6 @@ public class DaemonTest {
         }
     }
 
-    private void aggregationTest() throws ClassNotFoundException, SQLException {
-        String[] retArray = new String[]{
-                "tomorrow is another day",
-        };
-
-        Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);
-        Connection connection = null;
-        try {
-            connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
-            Statement statement = connection.createStatement();
-            boolean hasTextMaxResultSet = statement.execute("select max_value(s3) from root.vehicle.d0");
-            Assert.assertTrue(hasTextMaxResultSet);
-
-            ResultSet resultSet = statement.getResultSet();
-            int cnt = 0;
-            while (resultSet.next()) {
-                String ans = resultSet.getString(max_value(d0s3));
-                Assert.assertEquals(retArray[0], ans);
-                cnt++;
-            }
-            Assert.assertEquals(1, cnt);
-
-            statement.close();
-
-            statement = connection.createStatement();
-            boolean hasTextMinResultSet = statement.execute("select min_value(s3) from root.vehicle.d0");
-            Assert.assertTrue(hasTextMinResultSet);
-            resultSet = statement.getResultSet();
-            cnt = 0;
-            while (resultSet.next()) {
-                String ans = resultSet.getString(min_value(d0s3));
-                // System.out.println("=====" + ans);
-                Assert.assertEquals("aaaaa", ans);
-                cnt++;
-            }
-            Assert.assertEquals(1, cnt);
-            statement.close();
-
-            statement = connection.createStatement();
-            boolean hasMultiAggreResult = statement.execute("select min_value(s0) from root.vehicle.d0,root.vehicle.d1");
-            Assert.assertTrue(hasMultiAggreResult);
-
-            resultSet = statement.getResultSet();
-            cnt = 0;
-            while (resultSet.next()) {
-                String ans1 = resultSet.getString(min_value(d0s0));
-                String ans2 = resultSet.getString(min_value(d1s0));
-                Assert.assertEquals("99", ans1);
-                Assert.assertEquals("888", ans2);
-                cnt++;
-            }
-            Assert.assertEquals(1, cnt);
-
-            statement.close();
-        } catch (Exception e) {
-        	System.out.println(e.getMessage());
-            e.printStackTrace();
-            fail(e.getMessage());
-        } finally {
-            if (connection != null) {
-                connection.close();
-            }
-        }
-    }
-
     private void selectOneColumnWithFilterTest() throws ClassNotFoundException, SQLException {
         String[] retArray = new String[]{
                 "102,180",
@@ -575,6 +439,137 @@ public class DaemonTest {
             Assert.assertEquals(3, cnt);
             statement.close();
         } catch (Exception e) {
+            e.printStackTrace();
+            fail(e.getMessage());
+        } finally {
+            if (connection != null) {
+                connection.close();
+            }
+        }
+    }
+
+    // notice the insert data in crossReadTest
+    private void multiAggregationTest() throws ClassNotFoundException, SQLException {
+
+        String[] retArray = new String[]{
+                "11,6,6"
+        };
+
+        Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);
+        Connection connection = null;
+        try {
+            connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
+            Statement statement = connection.createStatement();
+            boolean hasResultSet = statement.execute("select count(s1),count(s2),count(s3) from root.vehicle.d0");
+            Assert.assertTrue(hasResultSet);
+
+            ResultSet resultSet = statement.getResultSet();
+            int cnt = 0;
+            while (resultSet.next()) {
+                String ans = resultSet.getString(count(d0s1)) + ","
+                        + resultSet.getString(count(d0s2)) + ","
+                        + resultSet.getString(count(d0s3));
+                Assert.assertEquals(ans, retArray[cnt]);
+                cnt++;
+            }
+            Assert.assertEquals(1, cnt);
+            statement.close();
+
+            // the statement has same columns and same aggregation
+            retArray = new String[]{
+                    "11,11,6,1000.11"
+            };
+            statement = connection.createStatement();
+            hasResultSet = statement.execute("select count(s1),count(s1),count(s3),max_value(s2) from root.vehicle.d0");
+            Assert.assertTrue(hasResultSet);
+            resultSet = statement.getResultSet();
+            cnt = 0;
+            while (resultSet.next()) {
+                String ans = resultSet.getString(count(d0s1)) + ","
+                        + resultSet.getString("count(" + d0s1 + ")") + ","
+                        + resultSet.getString("count(" + d0s3 + ")") + ","
+                        + resultSet.getString("max_value(" + d0s2 + ")");
+                //System.out.println("!!" + ans);
+                Assert.assertEquals(retArray[cnt], ans);
+                cnt++;
+            }
+            Assert.assertEquals(1, cnt);
+            statement.close();
+
+            // the statement has same columns and different aggregation
+            retArray = new String[]{
+                    "11,55555,946684800000,6"
+            };
+            statement = connection.createStatement();
+            hasResultSet = statement.execute("select count(s1),max_value(s1),max_time(s1),count(s3) from root.vehicle.d0");
+            Assert.assertTrue(hasResultSet);
+
+            resultSet = statement.getResultSet();
+            cnt = 0;
+            while (resultSet.next()) {
+                String ans = resultSet.getString(count(d0s1)) + ","
+                        + resultSet.getString("max_value(" + d0s1 + ")") + ","
+                        + resultSet.getString("max_time(" + d0s1 + ")") + ","
+                        + resultSet.getString("count(" + d0s3 + ")");
+                //System.out.println("==" + ans);
+                Assert.assertEquals(ans, retArray[cnt]);
+                cnt++;
+            }
+            Assert.assertEquals(1, cnt);
+            statement.close();
+        } catch (Exception e) {
+            fail(e.getMessage());
+            e.printStackTrace();
+        } finally {
+            if (connection != null) {
+                connection.close();
+            }
+        }
+    }
+
+    // notice the insert data in crossReadTest
+    private void aggregationTest() throws ClassNotFoundException, SQLException {
+        String[] retArray = new String[]{
+                "tomorrow is another day,aaaaa",
+        };
+
+        Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);
+        Connection connection = null;
+        try {
+            connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
+            Statement statement = connection.createStatement();
+            boolean hasTextMaxResultSet = statement.execute("select max_value(s3),min_value(s3) from root.vehicle.d0");
+            Assert.assertTrue(hasTextMaxResultSet);
+
+            ResultSet resultSet = statement.getResultSet();
+            int cnt = 0;
+            while (resultSet.next()) {
+                String ans = resultSet.getString(max_value(d0s3)) + "," + resultSet.getString(min_value(d0s3));
+                Assert.assertEquals(retArray[0], ans);
+                cnt++;
+            }
+            Assert.assertEquals(1, cnt);
+            statement.close();
+
+            statement = connection.createStatement();
+            boolean hasMultiAggreResult = statement.execute("select min_value(s0) from root.vehicle.d0,root.vehicle.d1");
+            Assert.assertTrue(hasMultiAggreResult);
+
+            // the min insert value of s0 is 88
+            resultSet = statement.getResultSet();
+            cnt = 0;
+            while (resultSet.next()) {
+                String ans1 = resultSet.getString(min_value(d0s0));
+                String ans2 = resultSet.getString(min_value(d1s0));
+                Assert.assertEquals("99", ans1);
+                Assert.assertEquals("888", ans2);
+                cnt++;
+            }
+            Assert.assertEquals(1, cnt);
+
+            statement.close();
+        } catch (Exception e) {
+        	System.out.println(e.getMessage());
             e.printStackTrace();
             fail(e.getMessage());
         } finally {
@@ -739,7 +734,7 @@ public class DaemonTest {
             statement.close();
 
             statement = connection.createStatement();
-            boolean hasResultSet = statement.execute("select s0,s1,s2 from root.vehicle.d0 where (time < 104 and s0 < 99) or (s2 < 16.0) or (s0 = 300)");
+            boolean hasResultSet = statement.execute("select s0,s1,s2,s3 from root.vehicle.d0 where (time < 104 and s0 < 99) or (s2 < 16.0) or (s0 = 300)");
             // boolean hasResultSet = statement.execute("select s1 from root.vehicle.d0 where time < 104 and (s0 < 99 or s2 < 16.0)");
             // boolean hasResultSet = statement.execute("select s1 from root.vehicle.d0 where time < 104 and s0 < 99 and s2 < 16.0");
             Assert.assertTrue(hasResultSet);
@@ -747,10 +742,10 @@ public class DaemonTest {
             ResultSet resultSet = statement.getResultSet();
             int cnt = 0;
             while (resultSet.next()) {
-                String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s0) + "," + resultSet.getString(d0s1) + "," + resultSet.getString(d0s2);
+                String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s0) + "," + resultSet.getString(d0s1) + ","
+                        + resultSet.getString(d0s2);
                 //System.out.println("====" + ans);
-                Assert.assertEquals(retArray[cnt], ans);
-                cnt++;
+                Assert.assertEquals(retArray[cnt++], ans);
             }
             //Assert.assertEquals(cnt, 8);
             statement.close();
@@ -763,4 +758,5 @@ public class DaemonTest {
             }
         }
     }
+
 }

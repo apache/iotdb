@@ -59,10 +59,10 @@ public class MinTimeAggrFunc extends AggregateFunction {
             resultData.putTime(0);
         }
 
-        Object min_time = insertMemoryData.calcAggregation(AggregationConstant.MIN_TIME);
-        if (min_time != null) {
-            long timestamp = (long) min_time;
-            updateMinTime(timestamp);
+        while (insertMemoryData.hasInsertData()) {
+            long time = insertMemoryData.getCurrentMinTime();
+            updateMinTime(time);
+            insertMemoryData.removeCurrentValue();
         }
     }
 

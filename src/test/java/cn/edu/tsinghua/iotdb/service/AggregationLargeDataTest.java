@@ -102,7 +102,6 @@ public class AggregationLargeDataTest {
         if (testFlag) {
             EnvironmentUtils.closeStatMonitor();
             EnvironmentUtils.closeMemControl();
-            AggregateEngine.aggregateFetchSize = 4000;
             deamon = IoTDB.getInstance();
             deamon.stop();
             deamon.active();

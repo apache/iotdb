@@ -33,6 +33,7 @@ public class EnvironmentUtils {
 	private static final Logger LOGGER = LoggerFactory.getLogger(EnvironmentUtils.class);
 
 	private static TsfileDBConfig config = TsfileDBDescriptor.getInstance().getConfig();
+	private static TSFileConfig tsfileConfig = TSFileDescriptor.getInstance().getConfig();
 
 	public static void cleanEnv() throws IOException {
 		// tsFileConfig.duplicateIncompletedPage = false;
@@ -112,6 +113,7 @@ public class EnvironmentUtils {
 	}
 
 	public static void envSetUp() {
+		tsfileConfig.duplicateIncompletedPage = true;
 		// disable the memory control
 		config.enableMemMonitor = false;
 		// disable the system monitor

@@ -58,10 +58,10 @@ public class MaxTimeAggrFunc extends AggregateFunction {
             resultData.putTime(0);
         }
 
-        Object max_time = insertMemoryData.calcAggregation(AggregationConstant.MAX_TIME);
-        if (max_time != null) {
-            long timestamp = (long) max_time;
-            updateMaxTime(timestamp);
+        while (insertMemoryData.hasInsertData()) {
+            long time = insertMemoryData.getCurrentMinTime();
+            updateMaxTime(time);
+            insertMemoryData.removeCurrentValue();
         }
     }
 

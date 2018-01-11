@@ -67,9 +67,9 @@ public class MinValueAggrFunc extends AggregateFunction {
             resultData.putTime(0);
         }
 
-        Object min_value = insertMemoryData.calcAggregation(AggregationConstant.MIN_VALUE);
-        if (min_value != null) {
-            updateMinValue((Comparable<?>) min_value);
+        while (insertMemoryData.hasInsertData()) {
+            updateMinValue((Comparable<?>) insertMemoryData.getCurrentObjectValue());
+            insertMemoryData.removeCurrentValue();
         }
     }
 
