@@ -152,12 +152,12 @@ public class TsfileDBConfig {
 	/**
 	 * When a overflow's metadata size (in byte) exceed this, the overflow is forced closed.
 	 */
-	public long overflowMetaSizeThreshold = 200 * 1024 * 1024L;
+	public long overflowMetaSizeThreshold = 20 * 1024 * 1024L;
 
 	/**
 	 * When a overflow's file size (in byte) exceed this, the overflow is forced closed.
 	 */
-	public long overflowFileSizeThreshold = 2 * 1024 * 1024 * 1024L;
+	public long overflowFileSizeThreshold = 200 * 1024 * 1024L;
 
 
 	/**

@@ -18,6 +18,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -124,7 +125,13 @@ public class BufferwriteFileSizeControlTest {
             processor.write(nsp, "s1", i * i, TSDataType.INT64, i + "");
             processor.write(nsp2, "s1", i * i, TSDataType.INT64, i + "");
             if(i % 100000 == 0)
-                System.out.println(i + "," + MemUtils.bytesCntToStr(processor.getFileSize()));
+				try {
+					System.out.println(i + "," + MemUtils.bytesCntToStr(processor.getFileSize()));
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+					fail(e.getMessage());
+				}
         }
         // wait to flush end
         try {
@@ -133,7 +140,12 @@ public class BufferwriteFileSizeControlTest {
             e.printStackTrace();
         }
         processor.close();
-        assertTrue(processor.getFileSize() < dbConfig.bufferwriteFileSizeThreshold);
+        try {
+			assertTrue(processor.getFileSize() < dbConfig.bufferwriteFileSizeThreshold);
+		} catch (IOException e) {
+			e.printStackTrace();
+			fail(e.getMessage());
+		}
         fail("Method unimplemented");
     }
 }

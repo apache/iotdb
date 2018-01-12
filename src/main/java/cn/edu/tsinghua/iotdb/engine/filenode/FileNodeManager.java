@@ -386,8 +386,9 @@ public class FileNodeManager implements IStatistic {
 					throw new FileNodeManagerException(e);
 				}
 				// Write data
+				boolean shouldClose = false;
 				try {
-					bufferWriteProcessor.write(tsRecord);
+					shouldClose = bufferWriteProcessor.write(tsRecord);
 				} catch (BufferWriteProcessorException e) {
 					if (!isMonitor) {
 						updateStatHashMapWhenFail(tsRecord);
@@ -397,7 +398,15 @@ public class FileNodeManager implements IStatistic {
 				fileNodeProcessor.setIntervalFileNodeStartTime(deltaObjectId, timestamp);
 				fileNodeProcessor.setLastUpdateTime(deltaObjectId, timestamp);
 				insertType = 2;
+				if (shouldClose) {
+					fileNodeProcessor.closeBufferWrite();
+				}
 			}
+		} catch (FileNodeProcessorException e) {
+			LOGGER.error(
+					String.format("close the buffer write processor %s error.", fileNodeProcessor.getProcessorName()),
+					e);
+			e.printStackTrace();
 		} finally {
 			fileNodeProcessor.writeUnlock();
 		}
