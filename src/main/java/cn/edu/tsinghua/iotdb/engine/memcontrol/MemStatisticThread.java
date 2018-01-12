@@ -19,7 +19,7 @@ public class MemStatisticThread extends Thread{
     private double meanJVMUsage = 0.0;
     private int cnt = 0;
     // log statistic every so many intervals
-    private int reportCycle = 60;
+    private int reportCycle = 6000;
 
     public MemStatisticThread() {
         this.setName("IoTDB-MemStatistic-thread");
@@ -52,7 +52,7 @@ public class MemStatisticThread extends Thread{
             meanJVMUsage = meanJVMUsage * (doubleCnt / (doubleCnt + 1.0)) + jvmUsage / (doubleCnt + 1.0);
 
             if(++cnt % reportCycle == 0)
-                logger.info("Monitored memory usage, min {}, max {}, mean {} \n" +
+                logger.debug("Monitored memory usage, min {}, max {}, mean {} \n" +
                         "JVM memory usage, min {}, max {}, mean {}",
                         MemUtils.bytesCntToStr(minMemUsage), MemUtils.bytesCntToStr(maxMemUsage), MemUtils.bytesCntToStr(new Double(meanMemUsage).longValue()),
                         MemUtils.bytesCntToStr(minJVMUsage), MemUtils.bytesCntToStr(maxJVMUsage), MemUtils.bytesCntToStr(new Double(meanJVMUsage).longValue()));
