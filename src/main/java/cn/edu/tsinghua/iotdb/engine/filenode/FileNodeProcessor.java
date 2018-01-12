@@ -1271,17 +1271,11 @@ public class FileNodeProcessor extends Processor implements IStatistic{
 			overflowProcessor.flush();
 		}
 	}
-
-	@Override
-	public void close() throws FileNodeProcessorException {
-		LOGGER.debug("Deregister the filenode processor: {}",getProcessorName());
-		StatMonitor.getInstance().deregistStatistics(statStorageDeltaName);
-		// close bufferwrite
-		synchronized (fileNodeProcessorStore) {
-			fileNodeProcessorStore.setLastUpdateTimeMap(lastUpdateTimeMap);
-			writeStoreToDisk(fileNodeProcessorStore);
-		}
-
+	/**
+	 * Close the bufferwrite processor
+	 * @throws FileNodeProcessorException
+	 */
+	public void closeBufferWrite() throws FileNodeProcessorException{
 		if (bufferWriteProcessor != null) {
 			try {
 				while (!bufferWriteProcessor.canBeClosed()) {
@@ -1322,6 +1316,12 @@ public class FileNodeProcessor extends Processor implements IStatistic{
 				throw new FileNodeProcessorException(e);
 			}
 		}
+	}
+	/**
+	 * Close the overflow processor
+	 * @throws FileNodeProcessorException
+	 */
+	public void closeOverflow() throws FileNodeProcessorException{
 		// close overflow
 		if (overflowProcessor != null) {
 			try {
@@ -1339,6 +1339,19 @@ public class FileNodeProcessor extends Processor implements IStatistic{
 				throw new FileNodeProcessorException(e);
 			}
 		}
+	}
+
+	@Override
+	public void close() throws FileNodeProcessorException {
+		LOGGER.debug("Deregister the filenode processor: {}",getProcessorName());
+		StatMonitor.getInstance().deregistStatistics(statStorageDeltaName);
+		// close bufferwrite
+		synchronized (fileNodeProcessorStore) {
+			fileNodeProcessorStore.setLastUpdateTimeMap(lastUpdateTimeMap);
+			writeStoreToDisk(fileNodeProcessorStore);
+		}
+		closeBufferWrite();
+		closeOverflow();
 	}
 	
 	@Override
