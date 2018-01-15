@@ -7,8 +7,16 @@ import cn.edu.tsinghua.iotdb.exception.FileNodeManagerException;
 import cn.edu.tsinghua.iotdb.exception.MetadataArgsErrorException;
 import cn.edu.tsinghua.iotdb.exception.PathErrorException;
 import cn.edu.tsinghua.iotdb.metadata.MManager;
+import cn.edu.tsinghua.iotdb.query.engine.OverflowQueryEngine;
+import cn.edu.tsinghua.iotdb.query.management.ReadLockManager;
 import cn.edu.tsinghua.iotdb.utils.IoTDBThreadPoolFactory;
+import cn.edu.tsinghua.tsfile.common.constant.StatisticConstant;
+import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
+import cn.edu.tsinghua.tsfile.common.utils.Pair;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
+import cn.edu.tsinghua.tsfile.timeseries.read.query.DynamicOneColumnData;
+import cn.edu.tsinghua.tsfile.timeseries.read.query.QueryDataSet;
+import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
 import cn.edu.tsinghua.tsfile.timeseries.write.record.DataPoint;
 import cn.edu.tsinghua.tsfile.timeseries.write.record.TSRecord;
 import cn.edu.tsinghua.tsfile.timeseries.write.record.datapoint.LongDataPoint;
@@ -19,6 +27,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.List;
+import java.util.LinkedHashMap;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
@@ -115,6 +125,39 @@ public class StatMonitor {
 
     public void recovery() {
         // TODO: restore the FildeNode Manager TOTAL_POINTS statistics info
+        OverflowQueryEngine overflowQueryEngine = new OverflowQueryEngine();
+        List<Pair<Path, String>> pairList = new ArrayList<>();
+        List<String> stringList = FileNodeManager.getInstance().getAllPathForStatistic();
+        for (String string : stringList) {
+            Path path = new Path(string);
+            pairList.add(new Pair<>(path, StatisticConstant.LAST));
+        }
+        try {
+            QueryDataSet queryDataSet;
+            queryDataSet = overflowQueryEngine.aggregate(pairList, null);
+            ReadLockManager.getInstance().unlockForOneRequest();
+            if (queryDataSet.hasNextRecord()) {
+                queryDataSet.next();
+                LinkedHashMap<String, DynamicOneColumnData> linkedHashMap = queryDataSet.mapRet;
+                FileNodeManager fManager = FileNodeManager.getInstance();
+                HashMap<String, AtomicLong> statParamsHashMap = fManager.getStatParamsHashMap();
+                for (Map.Entry<String, DynamicOneColumnData> entry : linkedHashMap.entrySet()) {
+                    String[] statMeasurements = entry.getKey().substring(StatisticConstant.LAST.length() + 1, entry.getKey().length() - 1).split("\\.");
+                    String statMeasurement = statMeasurements[statMeasurements.length - 1];
+                    if (statParamsHashMap.containsKey(statMeasurement)) {
+                        DynamicOneColumnData dynamicOneColumnData = entry.getValue();
+                        long lastValue = dynamicOneColumnData.getLong(dynamicOneColumnData.valueLength - 1);
+                        statParamsHashMap.put(statMeasurement, new AtomicLong(lastValue));
+                    }
+                }
+            }
+        } catch (ProcessorException e) {
+            LOGGER.error("Can't get the processor when recovering statistics of FileNodeManager,", e);
+        } catch (PathErrorException e) {
+            LOGGER.error("When recovering statistics of FileNodeManager, timeseries path not exist,", e);
+        } catch (IOException e) {
+            LOGGER.error("IO Error occurs when recovering statistics of FileNodeManager,", e);
+        }
     }
 
     public void activate() {
