@@ -72,6 +72,7 @@ public class LastAggrFunc extends AggregateFunction {
         while(insertMemoryData.hasInsertData()) {
             time = insertMemoryData.getCurrentMinTime();
             val = insertMemoryData.getCurrentObjectValue();
+            insertMemoryData.removeCurrentValue();
         }
         if(time > 0) {
             updateLast((Comparable<?>)val);
