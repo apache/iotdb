@@ -2,6 +2,7 @@ package cn.edu.tsinghua.iotdb.service;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -271,6 +272,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 			}
 			List<String> statements = req.getStatements();
 			List<Integer> result = new ArrayList<>();
+			boolean isAllSuccessful = true;
+			String batchErrorMessage = "";
+			
 			for (String statement : statements) {
 				try {
 					PhysicalPlan physicalPlan = processor.parseSQLToPhysicalPlan(statement, timeZone.get());
@@ -280,17 +284,26 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 					}
 					TSExecuteStatementResp resp = ExecuteUpdateStatement(physicalPlan);
 					if(resp.getStatus().getStatusCode().equals(TS_StatusCode.SUCCESS_STATUS)){
-						result.add(1);
+						result.add(Statement.SUCCESS_NO_INFO);
 					} 
 					else{
-						result.add(-1);
+						result.add(Statement.EXECUTE_FAILED);
+						isAllSuccessful = false;
+						batchErrorMessage = resp.getStatus().getErrorMessage();
 					}
 				} catch (Exception e) {
-					LOGGER.error("Fail to generate physcial plan and execute for statement {}", statement);
-					result.add(-1);
+					String errMessage = String.format("Fail to generate physcial plan and execute for statement %s beacuse %s", statement, e.getMessage());
+					LOGGER.error(errMessage);
+					result.add(Statement.EXECUTE_FAILED);
+					isAllSuccessful = false;
+					batchErrorMessage = errMessage;
 				}
 			}
-			return getTSBathExecuteStatementResp(TS_StatusCode.SUCCESS_STATUS, "Execute batch statements successfully", result);
+			if(isAllSuccessful) {
+				return getTSBathExecuteStatementResp(TS_StatusCode.SUCCESS_STATUS, "Execute batch statements successfully", result);
+			} else {
+				return getTSBathExecuteStatementResp(TS_StatusCode.ERROR_STATUS, batchErrorMessage, result);
+			}
 		} catch (Exception e) {
 			LOGGER.error("{}: error occurs when executing statements",TsFileDBConstant.GLOBAL_DB_NAME, e);
 			return getTSBathExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage(), null);
