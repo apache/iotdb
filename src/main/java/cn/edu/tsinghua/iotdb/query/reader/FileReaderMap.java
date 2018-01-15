@@ -10,6 +10,14 @@ public class FileReaderMap {
     /** map to store opened file stream **/
     private static ThreadLocal<Map<String, TsRandomAccessLocalFileReader>> fileReaderMap = new ThreadLocal<>();
 
+    private static class ReaderHolder {
+        private static final FileReaderMap INSTANCE = new FileReaderMap();
+    }
+
+    public static FileReaderMap getInstance() {
+        return ReaderHolder.INSTANCE;
+    }
+
     public static TsRandomAccessLocalFileReader get(String path) throws IOException {
         if (fileReaderMap.get() == null) {
             fileReaderMap.set(new HashMap<>());
@@ -32,9 +40,11 @@ public class FileReaderMap {
                 TsRandomAccessLocalFileReader reader = entry.getValue();
                 reader.close();
             }
+
+            fileReaderMap.get().clear();
         }
 
-        fileReaderMap.get().clear();
-        fileReaderMap.remove();
+
+        //fileReaderMap.remove();
     }
 }

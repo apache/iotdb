@@ -59,7 +59,7 @@ public class QueryForMerge {
 	private void unlockForCurrentQuery() {
 		try {
 			ReadLockManager.getInstance().unlockForOneRequest();
-		} catch (ProcessorException e) {
+		} catch (ProcessorException | IOException e) {
 			e.printStackTrace();
 		}
 	}

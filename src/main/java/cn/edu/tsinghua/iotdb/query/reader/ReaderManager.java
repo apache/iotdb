@@ -95,12 +95,7 @@ public class ReaderManager {
         }
     }
 
-    public void close() throws IOException {
-        for (Map.Entry<String, List<RowGroupReader>> entry : rowGroupReaderMap.entrySet()) {
-            List<RowGroupReader> rowGroupReaderList = entry.getValue();
-            for (RowGroupReader reader : rowGroupReaderList) {
-                reader.close();
-            }
-        }
+    public void close() {
+        rowGroupReaderMap.clear();
     }
 }
