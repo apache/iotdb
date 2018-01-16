@@ -18,7 +18,7 @@ public class FileReaderMap {
         return ReaderHolder.INSTANCE;
     }
 
-    public static TsRandomAccessLocalFileReader get(String path) throws IOException {
+    public TsRandomAccessLocalFileReader get(String path) throws IOException {
         if (fileReaderMap.get() == null) {
             fileReaderMap.set(new HashMap<>());
         }
@@ -34,7 +34,7 @@ public class FileReaderMap {
         return fileReader;
     }
 
-    public static void close() throws IOException {
+    public void close() throws IOException {
         if (fileReaderMap.get() != null) {
             for (Map.Entry<String, TsRandomAccessLocalFileReader> entry : fileReaderMap.get().entrySet()) {
                 TsRandomAccessLocalFileReader reader = entry.getValue();
@@ -43,7 +43,6 @@ public class FileReaderMap {
 
             fileReaderMap.get().clear();
         }
-
 
         //fileReaderMap.remove();
     }
