@@ -85,7 +85,7 @@ public class ReadLockManager {
             groupByEngineWithFilterLocal.remove();
         }
 
-        FileReaderMap.close();
+        FileReaderMap.getInstance().close();
     }
 
     private void unlockForQuery(String deltaObjectUID, int token) throws ProcessorException {

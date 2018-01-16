@@ -59,7 +59,7 @@ public class ReaderManager {
 
             // to examine whether sealed file has data
             for (String path : sealedFilePathList) {
-                TsRandomAccessLocalFileReader fileReader = FileReaderMap.get(path);
+                TsRandomAccessLocalFileReader fileReader = FileReaderMap.getInstance().get(path);
                 TsFileMetaData tsFileMetaData = TsFileMetaDataCache.getInstance().get(path);
                 if (tsFileMetaData.containsDeltaObject(deltaObjectUID)) {
 
@@ -80,7 +80,7 @@ public class ReaderManager {
             }
 
             if (unSealedFilePath != null) {
-                TsRandomAccessLocalFileReader fileReader = FileReaderMap.get(unSealedFilePath);
+                TsRandomAccessLocalFileReader fileReader = FileReaderMap.getInstance().get(unSealedFilePath);
                 // TsRandomAccessLocalFileReader fileReader = new TsRandomAccessLocalFileReader(unSealedFilePath);
                 for (RowGroupMetaData meta : unSealedRowGroupMetadataList) {
                     //TODO parallelism could be used to speed up
