@@ -159,7 +159,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 		try {
 			ReadLockManager.getInstance().unlockForOneRequest();
 			clearAllStatusForCurrentRequest();
-		} catch (ProcessorException e) {
+		} catch (ProcessorException | IOException e) {
 			LOGGER.error("Error in closeOperation : {}", e.getMessage());
 		}
 		return new TSCloseOperationResp(new TS_Status(TS_StatusCode.SUCCESS_STATUS));
