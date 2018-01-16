@@ -12,11 +12,15 @@ import cn.edu.tsinghua.tsfile.timeseries.filter.definition.SingleSeriesFilterExp
 import cn.edu.tsinghua.tsfile.timeseries.read.query.QueryDataSet;
 import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
 import cn.edu.tsinghua.tsfile.timeseries.read.support.RowRecord;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * This class is used to query the data in file merging between tsfile and overflow data.
  */
 public class QueryForMerge {
+
+	private static final Logger LOGGER = LoggerFactory.getLogger(QueryForMerge.class);
 
 	private List<Path> pathList;
 	private SingleSeriesFilterExpression timeFilter;
@@ -59,7 +63,8 @@ public class QueryForMerge {
 	private void unlockForCurrentQuery() {
 		try {
 			ReadLockManager.getInstance().unlockForOneRequest();
-		} catch (ProcessorException e) {
+		} catch (ProcessorException | IOException e) {
+			LOGGER.error("meet error in jdbc close operation, because of {}", e.getMessage());
 			e.printStackTrace();
 		}
 	}

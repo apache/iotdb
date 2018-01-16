@@ -1,11 +1,13 @@
 package cn.edu.tsinghua.iotdb.query.management;
 
+import java.io.IOException;
 import java.util.HashMap;
 
 import cn.edu.tsinghua.iotdb.engine.filenode.FileNodeManager;
 import cn.edu.tsinghua.iotdb.exception.FileNodeManagerException;
 import cn.edu.tsinghua.iotdb.query.engine.groupby.GroupByEngineNoFilter;
 import cn.edu.tsinghua.iotdb.query.engine.groupby.GroupByEngineWithFilter;
+import cn.edu.tsinghua.iotdb.query.reader.FileReaderMap;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 
 
@@ -62,7 +64,7 @@ public class ReadLockManager {
      *
      * @throws ProcessorException
      */
-    public void unlockForOneRequest() throws ProcessorException {
+    public void unlockForOneRequest() throws ProcessorException, IOException {
         if (locksMap.get() == null) {
             return;
         }
@@ -82,6 +84,8 @@ public class ReadLockManager {
         if (groupByEngineWithFilterLocal != null && groupByEngineWithFilterLocal.get() != null) {
             groupByEngineWithFilterLocal.remove();
         }
+
+        FileReaderMap.getInstance().close();
     }
 
     private void unlockForQuery(String deltaObjectUID, int token) throws ProcessorException {
