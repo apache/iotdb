@@ -73,7 +73,7 @@ public class ReadLockManager {
             unlockForQuery(key, locks.get(key));
         }
         locksMap.remove();
-        recordReaderCache.clear();
+
 
         if (groupByCalcTime != null && groupByCalcTime.get() != null) {
             groupByCalcTime.remove();
@@ -85,6 +85,7 @@ public class ReadLockManager {
             groupByEngineWithFilterLocal.remove();
         }
 
+        recordReaderCache.clear();
         FileReaderMap.getInstance().close();
     }
 

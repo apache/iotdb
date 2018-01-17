@@ -12,11 +12,14 @@ import cn.edu.tsinghua.tsfile.timeseries.filter.definition.SingleSeriesFilterExp
 import cn.edu.tsinghua.tsfile.timeseries.filter.visitorImpl.IntervalTimeVisitor;
 import cn.edu.tsinghua.tsfile.timeseries.read.RowGroupReader;
 import cn.edu.tsinghua.tsfile.timeseries.read.TsRandomAccessLocalFileReader;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * This class is an adapter between <code>RecordReader</code> and <code>RowGroupReader</code> .
  */
 public class ReaderManager {
+    private static final Logger logger = LoggerFactory.getLogger(ReaderManager.class);
 
     /** file has been serialized, sealed **/
     private List<String> sealedFilePathList;
@@ -95,7 +98,16 @@ public class ReaderManager {
         }
     }
 
-    public void close() {
+    public void closeFileStream() {
+        try {
+            FileReaderMap.getInstance().close();
+        } catch (IOException e) {
+            logger.error("Can not close file for one ReaderManager", e);
+            e.printStackTrace();
+        }
+    }
+
+    public void clearReaderMaps() {
         rowGroupReaderMap.clear();
     }
 }
