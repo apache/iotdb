@@ -211,8 +211,8 @@ public class KVIndexTest {
                         Assert.assertEquals(retArray.length, cnt);
                 }
             } catch (TsfileSQLException e) {
-                Assert.assertEquals(e.getMessage(),"The timeseries root.vehicle.d0.s0 hasn't been indexed.");
-                Assert.assertEquals(querySQL, "select index kvindex(root.vehicle.d0.s0, root.vehicle.d0.s0, 6, 9, 0.0, 1.0, 0.0) from root.vehicle.d0.s0");
+                Assert.assertEquals("The timeseries root.vehicle.d0.s0 hasn't been indexed.", e.getMessage());
+                Assert.assertEquals("select index kvindex(root.vehicle.d0.s0, root.vehicle.d0.s0, 6, 9, 0.0, 1.0, 0.0) from root.vehicle.d0.s0", querySQL);
             }
         } catch (Exception e) {
             e.printStackTrace();

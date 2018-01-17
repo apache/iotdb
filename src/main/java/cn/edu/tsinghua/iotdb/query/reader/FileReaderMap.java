@@ -42,8 +42,7 @@ public class FileReaderMap {
             }
 
             fileReaderMap.get().clear();
+            fileReaderMap.remove();
         }
-
-        //fileReaderMap.remove();
     }
 }

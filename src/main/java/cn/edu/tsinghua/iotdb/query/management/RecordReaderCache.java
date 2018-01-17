@@ -36,7 +36,7 @@ public class RecordReaderCache {
     public void clear() throws ProcessorException {
         for (RecordReader reader : cache.get().values()) {
             try {
-                reader.close();
+                reader.clearReaderMaps();
             } catch (IOException e) {
                 e.printStackTrace();
                 throw new ProcessorException(e);

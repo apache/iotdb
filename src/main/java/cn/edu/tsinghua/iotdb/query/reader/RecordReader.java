@@ -592,12 +592,11 @@ public class RecordReader {
         }
     }
 
-    /**
-     * Close current RecordReader.
-     *
-     * @throws IOException
-     */
-    public void close() throws IOException {
-        tsFileReaderManager.close();
+    public void closeFileStream() throws IOException {
+        tsFileReaderManager.closeFileStream();
+    }
+
+    public void clearReaderMaps() throws IOException {
+        tsFileReaderManager.clearReaderMaps();
     }
 }
