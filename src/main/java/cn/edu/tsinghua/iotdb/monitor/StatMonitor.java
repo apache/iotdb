@@ -14,9 +14,10 @@ import cn.edu.tsinghua.tsfile.common.constant.StatisticConstant;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 import cn.edu.tsinghua.tsfile.common.utils.Pair;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
-import cn.edu.tsinghua.tsfile.timeseries.read.query.DynamicOneColumnData;
 import cn.edu.tsinghua.tsfile.timeseries.read.query.QueryDataSet;
+import cn.edu.tsinghua.tsfile.timeseries.read.support.Field;
 import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
+import cn.edu.tsinghua.tsfile.timeseries.read.support.RowRecord;
 import cn.edu.tsinghua.tsfile.timeseries.write.record.DataPoint;
 import cn.edu.tsinghua.tsfile.timeseries.write.record.TSRecord;
 import cn.edu.tsinghua.tsfile.timeseries.write.record.datapoint.LongDataPoint;
@@ -26,9 +27,8 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Map;
 import java.util.List;
-import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
@@ -124,7 +124,7 @@ public class StatMonitor {
     }
 
     public void recovery() {
-        // TODO: restore the FildeNode Manager TOTAL_POINTS statistics info
+        // restore the FildeNode Manager TOTAL_POINTS statistics info
         OverflowQueryEngine overflowQueryEngine = new OverflowQueryEngine();
         List<Pair<Path, String>> pairList = new ArrayList<>();
         List<String> stringList = FileNodeManager.getInstance().getAllPathForStatistic();
@@ -136,17 +136,19 @@ public class StatMonitor {
             QueryDataSet queryDataSet;
             queryDataSet = overflowQueryEngine.aggregate(pairList, null);
             ReadLockManager.getInstance().unlockForOneRequest();
-            if (queryDataSet.hasNextRecord()) {
-                queryDataSet.next();
-                LinkedHashMap<String, DynamicOneColumnData> linkedHashMap = queryDataSet.mapRet;
+            RowRecord rowRecord = queryDataSet.getNextRecord();
+
+            if (rowRecord!=null) {
                 FileNodeManager fManager = FileNodeManager.getInstance();
                 HashMap<String, AtomicLong> statParamsHashMap = fManager.getStatParamsHashMap();
-                for (Map.Entry<String, DynamicOneColumnData> entry : linkedHashMap.entrySet()) {
-                    String[] statMeasurements = entry.getKey().substring(StatisticConstant.LAST.length() + 1, entry.getKey().length() - 1).split("\\.");
-                    String statMeasurement = statMeasurements[statMeasurements.length - 1];
+                List<Field> list = rowRecord.fields;
+                for (Field field: list) {
+                    String statMeasurement = field.measurementId.substring(0,field.measurementId.length() - 1);
                     if (statParamsHashMap.containsKey(statMeasurement)) {
-                        DynamicOneColumnData dynamicOneColumnData = entry.getValue();
-                        long lastValue = dynamicOneColumnData.getLong(dynamicOneColumnData.valueLength - 1);
+                        if (field.isNull()) {
+                            continue;
+                        }
+                        long lastValue = field.getLongV();
                         statParamsHashMap.put(statMeasurement, new AtomicLong(lastValue));
                     }
                 }
