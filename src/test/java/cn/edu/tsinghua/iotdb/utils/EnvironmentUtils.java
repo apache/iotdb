@@ -40,7 +40,7 @@ public class EnvironmentUtils {
 		// clean filenode manager
 		try {
 			if (!FileNodeManager.getInstance().closeAll()) {
-				LOGGER.error("Can't close the filenode manager");
+				LOGGER.error("Can't close the filenode manager in EnvironmentUtils");
 				System.exit(1);
 			}
 		} catch (FileNodeManagerException e) {

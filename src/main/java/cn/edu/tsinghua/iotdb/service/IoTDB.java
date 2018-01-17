@@ -14,6 +14,7 @@ import javax.management.ObjectName;
 
 import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
 import cn.edu.tsinghua.iotdb.monitor.StatMonitor;
+
 import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -78,6 +79,7 @@ public class IoTDB implements IoTDBMBean {
 
 	private void setUp() throws MalformedObjectNameException, InstanceAlreadyExistsException, MBeanRegistrationException,
 			NotCompliantMBeanException, TTransportException, IOException, FileNodeManagerException, PathErrorException {
+		setUncaughtExceptionHandler();
 		try {
 			initDBDao();
 		} catch (ClassNotFoundException | SQLException | DBDaoInitException e) {
@@ -249,10 +251,17 @@ public class IoTDB implements IoTDBMBean {
 		CloseMergeServer.getInstance().startServer();
 	}
 
+	private void setUncaughtExceptionHandler(){
+		Thread.setDefaultUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler() {
+	            public void uncaughtException(Thread t, Throwable e) {
+	            	LOGGER.error("Exception in thread {}-{}", t.getName(), t.getId(), e);
+	            }
+		});
+	}
+
 	public static void main(String[] args) {
 		IoTDB daemon = new IoTDB();
 		daemon.active();
-
 	}
 
 }
