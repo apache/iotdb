@@ -102,7 +102,8 @@ public class TsfileDBDescriptor {
 			
 			conf.periodTimeForFlush = Long.parseLong(properties.getProperty("period_time_for_flush_in_second", conf.periodTimeForFlush+"").trim());
 			conf.periodTimeForMerge = Long.parseLong(properties.getProperty("period_time_for_merge_in_second", conf.periodTimeForMerge+"").trim());
-
+			conf.enableTimingCloseAndMerge = Boolean.parseBoolean(properties.getProperty("enable_timing_close_and_Merge", conf.enableTimingCloseAndMerge+"").trim());
+			
 			conf.memThresholdWarning = (long) (Runtime.getRuntime().maxMemory() * Double.parseDouble(properties.getProperty("mem_threshold_warning", conf.memThresholdWarning+"").trim()) );
 			conf.memThresholdDangerous = (long) (Runtime.getRuntime().maxMemory() * Double.parseDouble(properties.getProperty("mem_threshold_dangerous", conf.memThresholdDangerous+"").trim()));
 

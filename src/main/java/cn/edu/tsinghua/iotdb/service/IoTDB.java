@@ -203,16 +203,16 @@ public class IoTDB implements IoTDBMBean {
 			statMonitor.close();
 		}
 
-		FileNodeManager.getInstance().closeAll();
-
-		WriteLogManager.getInstance().close();
-
 		if (jdbcMBean != null) {
 			jdbcMBean.stopServer();
 		}
 
 		JMXServer.getInstance().stop();
 
+		FileNodeManager.getInstance().deleteAll();
+
+		WriteLogManager.getInstance().close();
+		
 		try {
 			ObjectName montiorBeanName = new ObjectName(IOTDB_PACKAGE, JMX_TYPE, MONITOR_STR);
 			if (mbs.isRegistered(montiorBeanName)) {

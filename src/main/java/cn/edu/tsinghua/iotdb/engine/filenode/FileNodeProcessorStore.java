@@ -20,19 +20,37 @@ public class FileNodeProcessorStore implements Serializable {
 
 	private static final long serialVersionUID = -54525372941897565L;
 
+	private boolean isOverflowed;
 	private Map<String, Long> lastUpdateTimeMap;
 	private IntervalFileNode emptyIntervalFileNode;
 	private List<IntervalFileNode> newFileNodes;
 	private int numOfMergeFile;
 	private FileNodeProcessorStatus fileNodeProcessorStatus;
 
-	public FileNodeProcessorStore(Map<String, Long> lastUpdateTimeMap, IntervalFileNode emptyIntervalFileNode,
+	public FileNodeProcessorStore(boolean isOverflowed,Map<String, Long> lastUpdateTimeMap, IntervalFileNode emptyIntervalFileNode,
 			List<IntervalFileNode> newFileNodes, FileNodeProcessorStatus fileNodeProcessorStatus, int numOfMergeFile) {
+		this.isOverflowed =  isOverflowed;
 		this.lastUpdateTimeMap = lastUpdateTimeMap;
 		this.emptyIntervalFileNode = emptyIntervalFileNode;
 		this.newFileNodes = newFileNodes;
 		this.fileNodeProcessorStatus = fileNodeProcessorStatus;
 		this.numOfMergeFile = numOfMergeFile;
+	}
+	
+	public boolean isOverflowed() {
+		return isOverflowed;
+	}
+
+	public void setOverflowed(boolean isOverflowed) {
+		this.isOverflowed = isOverflowed;
+	}
+
+	public FileNodeProcessorStatus getFileNodeProcessorStatus() {
+		return fileNodeProcessorStatus;
+	}
+
+	public void setFileNodeProcessorStatus(FileNodeProcessorStatus fileNodeProcessorStatus) {
+		this.fileNodeProcessorStatus = fileNodeProcessorStatus;
 	}
 
 	public Map<String, Long> getLastUpdateTimeMap() {
@@ -51,10 +69,6 @@ public class FileNodeProcessorStore implements Serializable {
 		return newFileNodes;
 	}
 
-	public FileNodeProcessorStatus getFileNodeProcessorState() {
-		return fileNodeProcessorStatus;
-	}
-
 	public int getNumOfMergeFile() {
 		return numOfMergeFile;
 	}
@@ -70,9 +84,4 @@ public class FileNodeProcessorStore implements Serializable {
 	public void setNumOfMergeFile(int numOfMergeFile) {
 		this.numOfMergeFile = numOfMergeFile;
 	}
-
-	public void setFileNodeProcessorState(FileNodeProcessorStatus fileNodeProcessorState) {
-		this.fileNodeProcessorStatus = fileNodeProcessorState;
-	}
-
 }

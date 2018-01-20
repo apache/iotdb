@@ -4,6 +4,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -12,6 +13,8 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
+import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
 import cn.edu.tsinghua.iotdb.engine.PathUtils;
 import cn.edu.tsinghua.iotdb.engine.bufferwrite.Action;
 import cn.edu.tsinghua.iotdb.engine.bufferwrite.FileNodeConstants;
@@ -23,6 +26,9 @@ import cn.edu.tsinghua.tsfile.common.conf.TSFileDescriptor;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
 import cn.edu.tsinghua.tsfile.timeseries.filter.definition.SingleSeriesFilterExpression;
 import cn.edu.tsinghua.tsfile.timeseries.read.query.DynamicOneColumnData;
+import cn.edu.tsinghua.tsfile.timeseries.write.record.DataPoint;
+import cn.edu.tsinghua.tsfile.timeseries.write.record.TSRecord;
+import cn.edu.tsinghua.tsfile.timeseries.write.series.ISeriesWriter;
 
 /**
  * @author liukun
@@ -38,6 +44,7 @@ public class BigDataForOverflowTest {
 	private OverflowProcessor ofprocessor = null;
 	//private TsfileDBConfig tsdbconfig = TsfileDBDescriptor.getInstance().getConfig();
 	private TSFileConfig tsconfig = TSFileDescriptor.getInstance().getConfig();
+	private TsfileDBConfig tsfileDBConfig = TsfileDBDescriptor.getInstance().getConfig();
 	private String deltaObjectId = "root.vehicle.d0";
 	private String measurementId = "s0";
 
@@ -75,20 +82,22 @@ public class BigDataForOverflowTest {
 
 	//private String overflowDataDir = null;
 	private int rowGroupSize;
-
+	private long overflowFlushThreshold;
+	
 	@Before
 	public void setUp() throws Exception {
 
 		parameters = new HashMap<String, Object>();
 		parameters.put(FileNodeConstants.OVERFLOW_FLUSH_ACTION, overflowflushaction);
 		parameters.put(FileNodeConstants.FILENODE_PROCESSOR_FLUSH_ACTION, filenodeflushaction);
-		parameters.put(FileNodeConstants.OVERFLOW_BACKUP_MANAGER_ACTION, filenodemanagerbackupaction);
-		parameters.put(FileNodeConstants.OVERFLOW_FLUSH_MANAGER_ACTION, filenodemanagerflushaction);
 		
 		//origin value
 		rowGroupSize = tsconfig.groupSizeInByte;
+		overflowFlushThreshold = tsfileDBConfig.overflowFileSizeThreshold;
 		//new value
 		tsconfig.groupSizeInByte = 1024 * 1024 * 10;
+		tsfileDBConfig.overflowMetaSizeThreshold = 1024*1024;
+		
 		
 		overflowfilePath = new File(PathUtils.getOverflowWriteDir(nameSpacePath),nameSpacePath+".overflow").getPath();
 		overflowrestorefilePath = overflowfilePath + ".restore";
@@ -100,6 +109,7 @@ public class BigDataForOverflowTest {
 	public void tearDown() throws Exception {
 		//recovery value
 		tsconfig.groupSizeInByte = rowGroupSize;
+		tsfileDBConfig.overflowFileSizeThreshold = overflowFlushThreshold;
 		EnvironmentUtils.cleanEnv();
 	}
 
@@ -120,7 +130,9 @@ public class BigDataForOverflowTest {
 				System.out.println(i / pass + " pass");
 			}
 			try {
-				ofprocessor.insert(deltaObjectId, measurementId, i, TSDataType.INT64, String.valueOf(i));
+				TSRecord record = new TSRecord(i, deltaObjectId);
+				record.addTuple(DataPoint.getDataPoint(TSDataType.INT64, measurementId, String.valueOf(i)));
+				ofprocessor.insert(record);
 			} catch (OverflowProcessorException e) {
 				e.printStackTrace();
 				fail(e.getMessage());

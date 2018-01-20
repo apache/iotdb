@@ -78,7 +78,8 @@ public class TsfileDBConfig {
 	public String indexFileDir = "index";
 
 	/**
-	 * The maximum concurrent thread number for merging overflow
+	 * The maximum concurrent thread number for merging overflow.
+	 * When the value<=0 or > CPU core number, use the CPU core number.
 	 */
 	public int mergeConcurrentThreads = Runtime.getRuntime().availableProcessors();
 
@@ -108,14 +109,20 @@ public class TsfileDBConfig {
 	 * second.
 	 */
 	public long periodTimeForMerge = 7200;
-
+	
 	/**
-	 * How many thread can concurrently flush. When <= 0, use CPU core number.
+	 * When set true, start timing flush and merge service. False, stop timing flush and merge service.
+	 * Default is true.
+	 */
+	public boolean enableTimingCloseAndMerge = true;
+	
+	/**
+	 * How many threads can concurrently flush. When <= 0, use CPU core number.
 	 */
 	public int concurrentFlushThread = Runtime.getRuntime().availableProcessors();
 
 	public DateTimeZone timeZone = DateTimeZone.getDefault();
-
+	
 	/**
 	 *  BufferWriteProcessor and OverflowProcessor will immediately flush if this threshold is reached.
 	 */
@@ -161,9 +168,9 @@ public class TsfileDBConfig {
 
 
 	/**
-	 * When set to false, MemMonitorThread and MemStatisticThread will not be created.
+	 * If set false, MemMonitorThread and MemStatisticThread will not be created.
 	 */
-	public boolean enableMemMonitor = true;
+	public boolean enableMemMonitor = false;
 
 	/**
 	 * When set to true, small flush will be triggered periodically even if memory threshold is not exceeded.

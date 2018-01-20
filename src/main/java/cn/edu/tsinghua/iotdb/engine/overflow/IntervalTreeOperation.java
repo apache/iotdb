@@ -383,7 +383,9 @@ public class IntervalTreeOperation implements IIntervalTreeOperator {
                             // relation == CrossRelation.LCOVERSR) : newerTimePair covers oldTimePair, newTimePair width must > 1, impossible
                             // relation == CrossRelation.LFIRSTCROSS) :  newTimePair first cross, impossible
                             // relation == CrossRelation.RFIRSTCROSS) :  oldTimePair first cross, impossible
-                            LOG.error("unreachable method");
+
+                            LOG.error("unreachable method, new time pair:" + newTimePair.toString() + ". old time pair"
+                            + oldTimePair.toString());
                         }
                     }
                 }

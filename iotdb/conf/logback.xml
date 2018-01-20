@@ -12,7 +12,7 @@
    		</rollingPolicy>
 		<append>true</append>
 		<encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
-			<pattern>%d %-5p %C:%L - %m %n</pattern>
+			<pattern>%d [%t] %-5p %C:%L - %m %n</pattern>
 			<charset>utf-8</charset>
 		</encoder>
 		<filter class="ch.qos.logback.classic.filter.LevelFilter">
@@ -32,7 +32,7 @@
    		</rollingPolicy>
 		<append>true</append>
 		<encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
-            <pattern>%d %-5p %C:%L - %m %n</pattern>
+            <pattern>%d [%t] %-5p %C:%L - %m %n</pattern>
 			<charset>utf-8</charset>
 		</encoder>
 		<filter class="ch.qos.logback.classic.filter.LevelFilter">
@@ -52,7 +52,7 @@
    		</rollingPolicy>
 		<append>true</append>
 		<encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
-            <pattern>%d %-5p %C:%L - %m %n</pattern>
+            <pattern>%d [%t] %-5p %C:%L - %m %n</pattern>
 			<charset>utf-8</charset>
 		</encoder>
 		<filter class="ch.qos.logback.classic.filter.LevelFilter">
@@ -73,7 +73,7 @@
    		</rollingPolicy>
 		<append>true</append>
 		<encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
-            <pattern>%d %-5p %C:%L - %m %n</pattern>
+            <pattern>%d [%t] %-5p %C:%L - %m %n</pattern>
 			<charset>utf-8</charset>
 		</encoder>
 		<filter class="ch.qos.logback.classic.filter.LevelFilter">
@@ -86,7 +86,7 @@
 	<appender name="stdout" class="ch.qos.logback.core.ConsoleAppender">
 		<Target>System.out</Target>
 		<encoder>
-            <pattern>%d %-5p %C:%L - %m %n</pattern>
+            <pattern>%d [%t] %-5p %C:%L - %m %n</pattern>
 			<charset>utf-8</charset>
 		</encoder>
 		<filter class="ch.qos.logback.classic.filter.ThresholdFilter">

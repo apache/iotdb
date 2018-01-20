@@ -13,8 +13,6 @@ public class FileNodeConstants {
 	public static final String FILE_NODE = "FILE_NODE";
 	public static final String CLOSE_ACTION = "CLOSE_ACTION";
 
-	public static final String OVERFLOW_FLUSH_MANAGER_ACTION = "OVERFLOW_FLUSH_MANAGER_ACTION";
-	public static final String OVERFLOW_BACKUP_MANAGER_ACTION = "OVERFLOW_BACKUP_MANAGER_ACTION";
 	public static final String OVERFLOW_FLUSH_ACTION = "OVERFLOW_FLUSH_ACTION";
 	public static final String BUFFERWRITE_FLUSH_ACTION = "BUFFERWRITE_FLUSH_ACTION";
 	public static final String BUFFERWRITE_CLOSE_ACTION = "BUFFERWRITE_CLOSE_ACTION";

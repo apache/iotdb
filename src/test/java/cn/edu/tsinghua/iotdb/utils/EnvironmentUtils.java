@@ -39,7 +39,7 @@ public class EnvironmentUtils {
 		// tsFileConfig.duplicateIncompletedPage = false;
 		// clean filenode manager
 		try {
-			if (!FileNodeManager.getInstance().closeAll()) {
+			if (!FileNodeManager.getInstance().deleteAll()) {
 				LOGGER.error("Can't close the filenode manager in EnvironmentUtils");
 				System.exit(1);
 			}

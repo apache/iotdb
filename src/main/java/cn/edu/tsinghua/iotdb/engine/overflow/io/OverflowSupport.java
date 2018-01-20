@@ -35,11 +35,13 @@ public class OverflowSupport {
 	private OverflowFileIO fileWriter;
 	private Compressor compressor;
 	private volatile long memUsage;
+	private String processorName;
 
 	private TSFileConfig conf = TSFileDescriptor.getInstance().getConfig();
 
 	@Deprecated
-	public OverflowSupport(OverflowFileIO fileWriter) throws IOException {
+	public OverflowSupport(OverflowFileIO fileWriter, String processorName) throws IOException {
+		this.processorName = processorName;
 		try {
 			lastFileOffset = fileWriter.getTail();
 		} catch (IOException e) {
@@ -55,7 +57,9 @@ public class OverflowSupport {
 		}
 	}
 
-	public OverflowSupport(OverflowFileIO fileWriter, OFFileMetadata ofFileMetadata) throws IOException {
+	public OverflowSupport(OverflowFileIO fileWriter, OFFileMetadata ofFileMetadata, String processorName)
+			throws IOException {
+		this.processorName = processorName;
 		this.fileWriter = fileWriter;
 		if (ofFileMetadata == null) {
 			// recovery from file level
@@ -326,9 +330,8 @@ public class OverflowSupport {
 			timeInterval = 1;
 		}
 		long flushSize = fileWriter.getPos() - lastPos;
-		LOGGER.info("flush overflow rowgroup, actual:{}, time consume:{} ms, flush rate:{} bytes/ms", flushSize,
-				timeInterval, flushSize / timeInterval);
-		LOGGER.info("{} overflow end to flush,-Thread id {}.", processorName, Thread.currentThread().getName());
+		LOGGER.info("Overflow support {} flushes overflow rowgroup, actual:{} bytes, time consumption:{} ms, flush rate:{} bytes/ms",
+				processorName, flushSize, timeInterval, flushSize / timeInterval);
 	}
 
 	/**
@@ -348,7 +351,7 @@ public class OverflowSupport {
 
 		// get the the overflowMap from overflow.merge file
 		OverflowFileIO mergeOverflowFileIO = fileWriter.getOverflowIOForMerge();
-		OverflowSupport mergeOverflowSupport = new OverflowSupport(mergeOverflowFileIO);
+		OverflowSupport mergeOverflowSupport = new OverflowSupport(mergeOverflowFileIO, processorName);
 		Map<String, Map<String, OverflowSeriesImpl>> mergeOverflowMap = mergeOverflowSupport.overflowMap;
 
 		for (Entry<String, Map<String, OverflowSeriesImpl>> rowGroupWriterEntry : mergeOverflowMap.entrySet()) {
