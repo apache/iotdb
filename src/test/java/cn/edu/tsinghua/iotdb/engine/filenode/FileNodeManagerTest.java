@@ -83,7 +83,7 @@ public class FileNodeManagerTest {
 		tsconfig.duplicateIncompletedPage = cachePageData;
 	}
 
-	//@Test
+	// @Test
 	public void testBufferwriteAndAddMetadata() {
 		createBufferwriteInMemory(new Pair<Long, Long>(1000L, 1001L), measurementId);
 		fManager = FileNodeManager.getInstance();
@@ -115,7 +115,7 @@ public class FileNodeManagerTest {
 		createBufferwriteInMemory(new Pair<Long, Long>(200L, 302L), measurementId6);
 		// write data
 		try {
-			fManager.closeAll();
+			fManager.deleteAll();
 		} catch (FileNodeManagerException e) {
 			e.printStackTrace();
 			fail(e.getMessage());
@@ -161,7 +161,7 @@ public class FileNodeManagerTest {
 			assertEquals(null, overflowResult.get(2));
 			assertEquals(null, overflowResult.get(3));
 			fManager.endQuery(deltaObjectId, token);
-			fManager.closeAll();
+			fManager.deleteAll();
 			// waitToSleep();
 		} catch (FileNodeManagerException e) {
 			e.printStackTrace();
@@ -194,9 +194,9 @@ public class FileNodeManagerTest {
 				assertEquals(overflowInsert1[i], insertData.getTime(i));
 				assertEquals(overflowInsert1[i], insertData.getInt(i));
 			}
-			assertEquals(false, fManager.closeAll());
+			assertEquals(false, fManager.deleteAll());
 			fManager.endQuery(deltaObjectId, token);
-			fManager.closeAll();
+			fManager.deleteAll();
 		} catch (FileNodeManagerException e) {
 			e.printStackTrace();
 			fail(e.getMessage());
@@ -218,7 +218,7 @@ public class FileNodeManagerTest {
 				assertEquals(overflowInsert2[i - overflowInsert1.length], insertData.getInt(i));
 			}
 			fManager.endQuery(deltaObjectId, token);
-			fManager.closeAll();
+			fManager.deleteAll();
 		} catch (FileNodeManagerException e) {
 			e.printStackTrace();
 			fail(e.getMessage());
@@ -252,7 +252,7 @@ public class FileNodeManagerTest {
 			assertEquals(170, updateData.getTime(1));
 			assertEquals((150 + 170) / 2, updateData.getInt(0));
 			fManager.endQuery(deltaObjectId, token);
-			fManager.closeAll();
+			fManager.deleteAll();
 		} catch (FileNodeManagerException e) {
 			e.printStackTrace();
 			fail(e.getMessage());
@@ -279,7 +279,7 @@ public class FileNodeManagerTest {
 			List<Object> overflowResult = queryResult.getAllOverflowData();
 			SingleSeriesFilterExpression timeFilter = (SingleSeriesFilterExpression) overflowResult.get(3);
 			System.out.println(timeFilter);
-			fManager.closeAll();
+			fManager.deleteAll();
 
 		} catch (FileNodeManagerException e) {
 			e.printStackTrace();
@@ -333,7 +333,7 @@ public class FileNodeManagerTest {
 		fileNode = new IntervalFileNode(startTimeMap, endTimeMap, OverflowChangeType.NO_CHANGE,
 				file2.getAbsolutePath());
 		newFileNodes.add(fileNode);
-		FileNodeProcessorStore fileNodeProcessorStore = new FileNodeProcessorStore(lastUpdateTimeMap,
+		FileNodeProcessorStore fileNodeProcessorStore = new FileNodeProcessorStore(false, lastUpdateTimeMap,
 				emptyIntervalFileNode, newFileNodes, FileNodeProcessorStatus.NONE, 0);
 		File fileNodeDir = PathUtils.getFileNodeDir(deltaObjectId);
 		if (!fileNodeDir.exists()) {
@@ -374,7 +374,7 @@ public class FileNodeManagerTest {
 			fail(e.getMessage());
 		}
 		try {
-			fileNodeManager.closeAll();
+			fileNodeManager.deleteAll();
 		} catch (FileNodeManagerException e) {
 			e.printStackTrace();
 			fail(e.getMessage());
@@ -384,12 +384,11 @@ public class FileNodeManagerTest {
 		String file3Name = "file3";
 		File file3 = new File(dir, file3Name);
 		file0.mkdir();
-		fileNode = new IntervalFileNode(startTimeMap, endTimeMap, OverflowChangeType.NO_CHANGE,
-				file3Name);
+		fileNode = new IntervalFileNode(startTimeMap, endTimeMap, OverflowChangeType.NO_CHANGE, file3Name);
 		newFileNodes.clear();
 		newFileNodes.add(fileNode);
-		fileNodeProcessorStore = new FileNodeProcessorStore(lastUpdateTimeMap, emptyIntervalFileNode, newFileNodes,
-				FileNodeProcessorStatus.WAITING, 0);
+		fileNodeProcessorStore = new FileNodeProcessorStore(true, lastUpdateTimeMap, emptyIntervalFileNode,
+				newFileNodes, FileNodeProcessorStatus.WAITING, 0);
 		try {
 			serializeUtil.serialize(fileNodeProcessorStore, fileNodeStatusPath);
 		} catch (IOException e) {
@@ -405,7 +404,7 @@ public class FileNodeManagerTest {
 			assertEquals(1, queryStructure.getBufferwriteDataInFiles().size());
 			IntervalFileNode temp = queryStructure.getBufferwriteDataInFiles().get(0);
 			assertEquals(file3.getPath(), temp.getFilePath());
-			fileNodeManager.closeAll();
+			fileNodeManager.deleteAll();
 		} catch (FileNodeManagerException e) {
 			e.printStackTrace();
 			fail(e.getMessage());
@@ -442,7 +441,7 @@ public class FileNodeManagerTest {
 			assertEquals(100, temp.getStartTime(deltaObjectId));
 			assertEquals(-1, temp.getStartTime(deltaObjectId2));
 			assertEquals(200, temp.getEndTime(deltaObjectId));
-			// range 2: 202-400
+			// range 2: 300-400
 			temp = bufferwriteFiles.get(1);
 			assertEquals(OverflowChangeType.NO_CHANGE, temp.overflowChangeType);
 			assertEquals(300, temp.getStartTime(deltaObjectId));
@@ -462,7 +461,7 @@ public class FileNodeManagerTest {
 			assertEquals(true, overflowData.get(1) != null);
 			assertEquals(true, overflowData.get(2) != null);
 			assertEquals(true, overflowData.get(3) != null);
-			fileNodeManager.closeAll();
+			fileNodeManager.deleteAll();
 		} catch (FileNodeManagerException e) {
 			e.printStackTrace();
 			fail(e.getMessage());
@@ -478,7 +477,7 @@ public class FileNodeManagerTest {
 		lastUpdateTimeMap.put(deltaObjectId, 1000L);
 		IntervalFileNode emptyIntervalFileNode = new IntervalFileNode(OverflowChangeType.NO_CHANGE, null);
 		List<IntervalFileNode> newFileNodes = queryStructure.getBufferwriteDataInFiles();
-		FileNodeProcessorStore fileNodeProcessorStore = new FileNodeProcessorStore(lastUpdateTimeMap,
+		FileNodeProcessorStore fileNodeProcessorStore = new FileNodeProcessorStore(false,lastUpdateTimeMap,
 				emptyIntervalFileNode, newFileNodes, FileNodeProcessorStatus.MERGING_WRITE, 0);
 		try {
 			serializeUtil.serialize(fileNodeProcessorStore, fileNodeStatusPath);
@@ -502,7 +501,6 @@ public class FileNodeManagerTest {
 			List<IntervalFileNode> bufferwriteFiles = queryStructure.getBufferwriteDataInFiles();
 			assertEquals(pairList.size(), bufferwriteFiles.size());
 			IntervalFileNode temp = bufferwriteFiles.get(0);
-			// range 1: 2-208
 			assertEquals(OverflowChangeType.NO_CHANGE, temp.overflowChangeType);
 			assertEquals(2, temp.getStartTime(deltaObjectId));
 			assertEquals(208, temp.getEndTime(deltaObjectId));
@@ -526,7 +524,7 @@ public class FileNodeManagerTest {
 			assertEquals(null, overflowData.get(1));
 			assertEquals(null, overflowData.get(2));
 			assertEquals(null, overflowData.get(3));
-			fileNodeManager.closeAll();
+			fileNodeManager.deleteAll();
 		} catch (FileNodeManagerException e) {
 			e.printStackTrace();
 			fail(e.getMessage());
@@ -570,10 +568,10 @@ public class FileNodeManagerTest {
 			assertEquals(pairList.size(), bufferwriteFiles.size());
 			IntervalFileNode temp = bufferwriteFiles.get(0);
 			// range 1: 2-208
-			assertEquals(OverflowChangeType.CHANGED, temp.overflowChangeType);
-			assertEquals(100, temp.getStartTime(deltaObjectId));
+			assertEquals(OverflowChangeType.NO_CHANGE, temp.overflowChangeType);
+			assertEquals(2, temp.getStartTime(deltaObjectId));
 			assertEquals(-1, temp.getStartTime(deltaObjectId2));
-			assertEquals(200, temp.getEndTime(deltaObjectId));
+			assertEquals(208, temp.getEndTime(deltaObjectId));
 			// range 2: 202-400
 			temp = bufferwriteFiles.get(1);
 			assertEquals(OverflowChangeType.NO_CHANGE, temp.overflowChangeType);
@@ -590,10 +588,10 @@ public class FileNodeManagerTest {
 			assertEquals(700, temp.getStartTime(deltaObjectId));
 			assertEquals(800, temp.getEndTime(deltaObjectId));
 			List<Object> overflowData = queryResult.getAllOverflowData();
-			assertEquals(true, overflowData.get(0) != null);
-			assertEquals(true, overflowData.get(1) != null);
-			assertEquals(true, overflowData.get(2) != null);
-			assertEquals(true, overflowData.get(3) != null);
+			assertEquals(false, overflowData.get(0) != null);
+			assertEquals(false, overflowData.get(1) != null);
+			assertEquals(false, overflowData.get(2) != null);
+			assertEquals(false, overflowData.get(3) != null);
 
 			// wait to merge over
 			waitToSleep(2000);
@@ -634,7 +632,7 @@ public class FileNodeManagerTest {
 			assertEquals(null, overflowData.get(3));
 
 			waitToSleep(2000);
-			fManager.closeAll();
+			fManager.deleteAll();
 		} catch (FileNodeManagerException e) {
 			e.printStackTrace();
 			fail(e.getMessage());
@@ -775,7 +773,7 @@ public class FileNodeManagerTest {
 			fail(e1.getMessage());
 		}
 		try {
-			assertEquals(true, fileNodeManager.closeAll());
+			assertEquals(true, fileNodeManager.deleteAll());
 		} catch (FileNodeManagerException e) {
 			e.printStackTrace();
 			fail(e.getMessage());
@@ -817,7 +815,7 @@ public class FileNodeManagerTest {
 		}
 		try {
 			// close
-			if (fManager.closeAll()) {
+			if (fManager.deleteAll()) {
 
 			} else {
 				fail("Can't close the filenode manager");

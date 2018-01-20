@@ -21,7 +21,6 @@ import cn.edu.tsinghua.iotdb.engine.MetadataManagerHelper;
 import cn.edu.tsinghua.iotdb.engine.PathUtils;
 import cn.edu.tsinghua.iotdb.engine.bufferwrite.Action;
 import cn.edu.tsinghua.iotdb.engine.bufferwrite.BufferWriteProcessor;
-import cn.edu.tsinghua.iotdb.engine.bufferwrite.FileNodeConstants;
 import cn.edu.tsinghua.iotdb.engine.overflow.io.OverflowProcessor;
 import cn.edu.tsinghua.iotdb.exception.BufferWriteProcessorException;
 import cn.edu.tsinghua.iotdb.exception.FileNodeProcessorException;
@@ -99,8 +98,6 @@ public class FileNodeProcessorTest {
 		tsconfig.duplicateIncompletedPage = true;
 
 		parameters = new HashMap<>();
-		parameters.put(FileNodeConstants.OVERFLOW_BACKUP_MANAGER_ACTION, overflowBackUpAction);
-		parameters.put(FileNodeConstants.OVERFLOW_FLUSH_MANAGER_ACTION, overflowFlushAction);
 
 		MetadataManagerHelper.initMetadata();
 
@@ -517,7 +514,7 @@ public class FileNodeProcessorTest {
 		FileNodeProcessorStatus fileNodeProcessorState = FileNodeProcessorStatus.WAITING;
 		Map<String, Long> lastUpdateTimeMap = new HashMap<>();
 		lastUpdateTimeMap.put(deltaObjectId, (long) 500);
-		fileNodeProcessorStore = new FileNodeProcessorStore(lastUpdateTimeMap, emptyIntervalFileNode, newFilenodes,
+		fileNodeProcessorStore = new FileNodeProcessorStore(false,lastUpdateTimeMap, emptyIntervalFileNode, newFilenodes,
 				fileNodeProcessorState, 0);
 
 		File file = PathUtils.getFileNodeDir(deltaObjectId);
@@ -547,7 +544,7 @@ public class FileNodeProcessorTest {
 			assertEquals(fileNodeProcessorStore.getLastUpdateTimeMap(), store.getLastUpdateTimeMap());
 			assertEquals(fileNodeProcessorStore.getEmptyIntervalFileNode(), store.getEmptyIntervalFileNode());
 			assertEquals(fileNodeProcessorStore.getNewFileNodes(), store.getNewFileNodes());
-			assertEquals(FileNodeProcessorStatus.NONE, store.getFileNodeProcessorState());
+			assertEquals(FileNodeProcessorStatus.NONE, store.getFileNodeProcessorStatus());
 			assertEquals(0, store.getNumOfMergeFile());
 
 			// check file

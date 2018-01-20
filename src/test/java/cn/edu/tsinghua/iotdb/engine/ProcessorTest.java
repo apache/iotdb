@@ -38,9 +38,9 @@ public class ProcessorTest {
 		}
 
 		@Override
-		public void flush() throws IOException {
+		public boolean flush() throws IOException {
 			// TODO Auto-generated method stub
-			
+			return false;
 		}
 		
 		@Override

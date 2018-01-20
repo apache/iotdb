@@ -44,7 +44,6 @@ public class OverflowSupportTest {
 	private OverflowFileIO ofio = null;
 	private OverflowReadWriter ofrw = null;
 	private OverflowSupport ofsupport = null;
-	//private TsfileDBConfig tsFileDBConfig = TsfileDBDescriptor.getInstance().getConfig();
 
 	@Before
 	public void setUp() throws Exception {
@@ -265,7 +264,7 @@ public class OverflowSupportTest {
 		try {
 			ofrw = new OverflowReadWriter(filePath);
 			ofio = new OverflowFileIO(ofrw, filePath, lastRowgroupPosition);
-			ofsupport = new OverflowSupport(ofio, ofFileMetadata);
+			ofsupport = new OverflowSupport(ofio, ofFileMetadata, deltaObjectId);
 		} catch (IOException e) {
 			e.printStackTrace();
 			fail("Restore overflow support from offilemedata failed, the reason is " + e.getMessage());

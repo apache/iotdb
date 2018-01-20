@@ -8,6 +8,8 @@ import java.util.List;
 import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
 import cn.edu.tsinghua.iotdb.qp.physical.crud.InsertPlan;
 import cn.edu.tsinghua.iotdb.sys.writelog.transfer.SystemLogOperator;
+
+import org.joda.time.DateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -160,7 +162,10 @@ public class WriteLogNode {
     synchronized private void checkLogsCompactFileSize(boolean forceCompact) throws IOException {
         if (logSize >= LogCompactSize && hasBufferWriteFlush ||
                 (logSize >= LogCompactSize && hasOverflowFlush) || forceCompact) {
-            LOG.info("Log Compact Process Begin.");
+        	long startTime = System.currentTimeMillis();
+        	DateTime startDateTime = new DateTime(startTime,
+					TsfileDBDescriptor.getInstance().getConfig().timeZone);
+            LOG.info("Write ahead log {} compact process begins, start time is {}",fileNodePrefix,startDateTime);
             LocalFileLogWriter writerV2 = new LocalFileLogWriter(backFilePath);
             LocalFileLogReader oldReader = new LocalFileLogReader(filePath);
             writerV2.write(oldReader.getFileCompactData());
@@ -183,7 +188,12 @@ public class WriteLogNode {
             logSize = 0;
             hasBufferWriteFlush = false;
             hasOverflowFlush = false;
-            LOG.info("Log Compact Process End.");
+            long endTime = System.currentTimeMillis();
+            DateTime endDateTime = new DateTime(endTime,
+					TsfileDBDescriptor.getInstance().getConfig().timeZone);
+            LOG.info("Write ahead log {} compact process ends, end time is {}", fileNodePrefix, endDateTime);
+            LOG.info("Write ahead log {} compact process, start time is {}, end time is {}, time consume is {}s",
+					fileNodePrefix, startDateTime, endDateTime, (endTime - startTime)/1000);
         }
     }
 

@@ -126,9 +126,9 @@ public class BufferWriteProcessorTest {
 			e.printStackTrace();
 		}
 		// query
-		Pair<List<Object>, List<RowGroupMetaData>> pair = processor.getIndexAndRowGroupList(nsp, "s0");
+		Pair<List<Object>, List<RowGroupMetaData>> pair = processor.queryBufferwriteData(nsp, "s0");
 		int size = pair.right.size();
-		pair = processor.getIndexAndRowGroupList(nps2, "s0");
+		pair = processor.queryBufferwriteData(nps2, "s0");
 		assertEquals(size, pair.right.size());
 		processor.close();
 	}
@@ -182,7 +182,7 @@ public class BufferWriteProcessorTest {
 		assertEquals(true, restorefile.exists());
 		processor = new BufferWriteProcessor(nsp, filename, parameters);
 		bufferWriteProcessor2 = processor;
-		Pair<List<Object>, List<RowGroupMetaData>> pair = processor.getIndexAndRowGroupList(nsp, "s0");
+		Pair<List<Object>, List<RowGroupMetaData>> pair = processor.queryBufferwriteData(nsp, "s0");
 		DynamicOneColumnData columnData = (DynamicOneColumnData) pair.left.get(0);
 		Pair<List<ByteArrayInputStream>, CompressionTypeName> right = (Pair<List<ByteArrayInputStream>, CompressionTypeName>) pair.left
 				.get(1);
@@ -201,7 +201,7 @@ public class BufferWriteProcessorTest {
 		} catch (InterruptedException e) {
 			e.printStackTrace();
 		}
-		pair = processor.getIndexAndRowGroupList(nsp, "s0");
+		pair = processor.queryBufferwriteData(nsp, "s0");
 		columnData = (DynamicOneColumnData) pair.left.get(0);
 		right = (Pair<List<ByteArrayInputStream>, CompressionTypeName>) pair.left.get(1);
 		assertEquals(false, columnData == null);
@@ -209,7 +209,7 @@ public class BufferWriteProcessorTest {
 		System.out.println(columnData.valueLength);
 		System.out.println(right.left.size() + " " + right.right);
 		processor = new BufferWriteProcessor(nsp, filename, parameters);
-		pair = processor.getIndexAndRowGroupList(nsp, "s0");
+		pair = processor.queryBufferwriteData(nsp, "s0");
 		// assert the number of rowgroup
 		assertEquals(lastRowGroupNum * 2, pair.right.size());
 		processor.write(nsp, "s0", 100, TSDataType.INT32, 100 + "");

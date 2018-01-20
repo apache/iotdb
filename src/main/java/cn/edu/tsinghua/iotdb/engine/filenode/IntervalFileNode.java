@@ -219,7 +219,7 @@ public class IntervalFileNode implements Serializable {
 
 	@Override
 	public String toString() {
-		
+
 		return String.format(
 				"IntervalFileNode [relativePath=%s,overflowChangeType=%s, startTimeMap=%s, endTimeMap=%s, mergeChanged=%s]",
 				relativePath, overflowChangeType, startTimeMap, endTimeMap, mergeChanged);

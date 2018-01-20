@@ -103,7 +103,7 @@ public class MonitorTest {
         }
 
         try {
-            fManager.closeAll();
+            fManager.deleteAll();
         } catch (FileNodeManagerException e) {
             e.printStackTrace();
             fail(e.getMessage());

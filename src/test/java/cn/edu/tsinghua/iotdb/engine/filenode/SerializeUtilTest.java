@@ -79,10 +79,10 @@ public class SerializeUtilTest {
 			newFilenodes.add(node);
 		}
 		FileNodeProcessorStatus fileNodeProcessorState = FileNodeProcessorStatus.WAITING;
-		Map<String,Long> lastUpdateTimeMap = new HashMap<>();
+		Map<String, Long> lastUpdateTimeMap = new HashMap<>();
 		lastUpdateTimeMap.put(deltaObjectId, (long) 500);
-		FileNodeProcessorStore fileNodeProcessorStore = new FileNodeProcessorStore(lastUpdateTimeMap, emptyIntervalFileNode,
-				newFilenodes, fileNodeProcessorState, 0);
+		FileNodeProcessorStore fileNodeProcessorStore = new FileNodeProcessorStore(false, lastUpdateTimeMap,
+				emptyIntervalFileNode, newFilenodes, fileNodeProcessorState, 0);
 
 		SerializeUtil<FileNodeProcessorStore> serializeUtil = new SerializeUtil<>();
 
@@ -95,16 +95,16 @@ public class SerializeUtilTest {
 		assertEquals(true, new File(filePath).exists());
 		try {
 			FileNodeProcessorStore fileNodeProcessorStore2 = serializeUtil.deserialize(filePath)
-					.orElse(new FileNodeProcessorStore(new HashMap<>(),
-							new IntervalFileNode(OverflowChangeType.NO_CHANGE, null),
-							new ArrayList<IntervalFileNode>(), FileNodeProcessorStatus.NONE, 0));
+					.orElse(new FileNodeProcessorStore(false, new HashMap<>(),
+							new IntervalFileNode(OverflowChangeType.NO_CHANGE, null), new ArrayList<IntervalFileNode>(),
+							FileNodeProcessorStatus.NONE, 0));
 			assertEquals(fileNodeProcessorStore.getLastUpdateTimeMap(), fileNodeProcessorStore2.getLastUpdateTimeMap());
 			assertEquals(fileNodeProcessorStore.getEmptyIntervalFileNode(),
 					fileNodeProcessorStore2.getEmptyIntervalFileNode());
 			assertEquals(fileNodeProcessorStore.getNewFileNodes(), fileNodeProcessorStore2.getNewFileNodes());
 			assertEquals(fileNodeProcessorStore.getNumOfMergeFile(), fileNodeProcessorStore2.getNumOfMergeFile());
-			assertEquals(fileNodeProcessorStore.getFileNodeProcessorState(),
-					fileNodeProcessorStore2.getFileNodeProcessorState());
+			assertEquals(fileNodeProcessorStore.getFileNodeProcessorStatus(),
+					fileNodeProcessorStore2.getFileNodeProcessorStatus());
 		} catch (IOException e) {
 			e.printStackTrace();
 			fail(e.getMessage());

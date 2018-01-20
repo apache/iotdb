@@ -186,7 +186,7 @@ public class FileNodeManagerMulTest {
 			assertEquals(-1, temp.getEndTime(deltaObjectId2));
 			assertEquals(OverflowChangeType.NO_CHANGE, temp.overflowChangeType);
 
-			assertEquals(true, fileNodeManager.closeAll());
+			assertEquals(true, fileNodeManager.deleteAll());
 		} catch (FileNodeManagerException e) {
 			e.printStackTrace();
 			fail(e.getMessage());
@@ -316,7 +316,7 @@ public class FileNodeManagerMulTest {
 			assertEquals(80, temp.getEndTime(deltaObjectId2));
 			assertEquals(OverflowChangeType.NO_CHANGE, temp.overflowChangeType);
 
-			assertEquals(true, fileNodeManager.closeAll());
+			assertEquals(true, fileNodeManager.deleteAll());
 		} catch (FileNodeManagerException e) {
 			e.printStackTrace();
 			fail(e.getMessage());
@@ -346,7 +346,7 @@ public class FileNodeManagerMulTest {
 			assertEquals(100, temp.getEndTime(deltaObjectId1));
 			assertEquals(100, temp.getStartTime(deltaObjectId2));
 			assertEquals(100, temp.getEndTime(deltaObjectId2));
-			fileNodeManager.closeAll();
+			fileNodeManager.deleteAll();
 		} catch (FileNodeManagerException e) {
 			e.printStackTrace();
 			fail(e.getMessage());
@@ -363,7 +363,7 @@ public class FileNodeManagerMulTest {
 		// merge
 		try {
 			fileNodeManager.mergeAll();
-			while (!fileNodeManager.closeAll()) {
+			while (!fileNodeManager.deleteAll()) {
 				Thread.sleep(1000);
 			}
 		} catch (FileNodeManagerException e) {
@@ -415,7 +415,7 @@ public class FileNodeManagerMulTest {
 		try {
 			fileNodeManager.mergeAll();
 			Thread.sleep(5000);
-			while (!fileNodeManager.closeAll()) {
+			while (!fileNodeManager.deleteAll()) {
 				Thread.sleep(1000);
 			}
 			QueryStructure queryStructure = fileNodeManager.query(deltaObjectId0, measurementId, null, null, null);
@@ -427,7 +427,7 @@ public class FileNodeManagerMulTest {
 			assertEquals(5, temp.getEndTime(deltaObjectId1));
 			assertEquals(10, temp.getStartTime(deltaObjectId2));
 			assertEquals(10, temp.getEndTime(deltaObjectId2));
-			assertEquals(true, fileNodeManager.closeAll());
+			assertEquals(true, fileNodeManager.deleteAll());
 		} catch (FileNodeManagerException e) {
 			e.printStackTrace();
 			fail(e.getMessage());
@@ -455,7 +455,7 @@ public class FileNodeManagerMulTest {
 		// merge
 		try {
 			fileNodeManager.mergeAll();
-			while (!fileNodeManager.closeAll()) {
+			while (!fileNodeManager.deleteAll()) {
 				Thread.sleep(1000);
 			}
 		} catch (FileNodeManagerException e) {
@@ -505,7 +505,7 @@ public class FileNodeManagerMulTest {
 		// merge
 		try {
 			fileNodeManager.mergeAll();
-			while (!fileNodeManager.closeAll()) {
+			while (!fileNodeManager.deleteAll()) {
 				Thread.sleep(3000);
 			}
 			QueryStructure queryStructure = fileNodeManager.query(deltaObjectId0, measurementId, null, null, null);
@@ -517,7 +517,7 @@ public class FileNodeManagerMulTest {
 			assertEquals(5, temp.getEndTime(deltaObjectId1));
 			assertEquals(10, temp.getStartTime(deltaObjectId2));
 			assertEquals(20, temp.getEndTime(deltaObjectId2));
-			assertEquals(true, fileNodeManager.closeAll());
+			assertEquals(true, fileNodeManager.deleteAll());
 		} catch (FileNodeManagerException e) {
 			e.printStackTrace();
 			fail(e.getMessage());
@@ -548,7 +548,7 @@ public class FileNodeManagerMulTest {
 			fail(e.getMessage());
 		}
 		try {
-			while (!fileNodeManager.closeAll()) {
+			while (!fileNodeManager.deleteAll()) {
 				System.out.println("wait to merge");
 				Thread.sleep(1000);
 			}
@@ -605,7 +605,7 @@ public class FileNodeManagerMulTest {
 			fileNodeManager.insert(record, false);
 			fileNodeManager.insert(overflow, false);
 			// wait end of merge
-			while (!fileNodeManager.closeAll()) {
+			while (!fileNodeManager.deleteAll()) {
 				System.out.println("wait to merge end, 1000ms...");
 				Thread.sleep(1000);
 			}
@@ -636,7 +636,7 @@ public class FileNodeManagerMulTest {
 				fail("Error");
 			}
 			fileNodeManager.mergeAll();
-			while (!fileNodeManager.closeAll()) {
+			while (!fileNodeManager.deleteAll()) {
 				System.out.println("Wait to merge.....");
 				Thread.sleep(1000);
 			}
@@ -658,7 +658,7 @@ public class FileNodeManagerMulTest {
 			} else {
 				fail("Error");
 			}
-			fileNodeManager.closeAll();
+			fileNodeManager.deleteAll();
 		} catch (FileNodeManagerException e) {
 			e.printStackTrace();
 			fail(e.getMessage());
@@ -689,7 +689,7 @@ public class FileNodeManagerMulTest {
 			fail(e.getMessage());
 		}
 		try {
-			while (!fileNodeManager.closeAll()) {
+			while (!fileNodeManager.deleteAll()) {
 				System.out.println("wait to merge");
 				Thread.sleep(1000);
 			}
@@ -744,7 +744,7 @@ public class FileNodeManagerMulTest {
 		try {
 			fileNodeManager.mergeAll();
 			// wait end of merge
-			while (!fileNodeManager.closeAll()) {
+			while (!fileNodeManager.deleteAll()) {
 				System.out.println("wait to merge end, 1000ms...");
 				Thread.sleep(1000);
 			}
@@ -752,7 +752,7 @@ public class FileNodeManagerMulTest {
 			fileNodeManager.insert(overflow, false);
 			fileNodeManager.mergeAll();
 			// wait end of merge
-			while (!fileNodeManager.closeAll()) {
+			while (!fileNodeManager.deleteAll()) {
 				System.out.println("wait to merge end, 1000ms...");
 				Thread.sleep(1000);
 			}
@@ -773,7 +773,7 @@ public class FileNodeManagerMulTest {
 				fail("Error");
 			}
 			fileNodeManager.mergeAll();
-			while (!fileNodeManager.closeAll()) {
+			while (!fileNodeManager.deleteAll()) {
 				System.out.println("Wait to merge.....");
 				Thread.sleep(1000);
 			}
@@ -795,7 +795,7 @@ public class FileNodeManagerMulTest {
 			} else {
 				fail("Error");
 			}
-			assertEquals(true, fileNodeManager.closeAll());
+			assertEquals(true, fileNodeManager.deleteAll());
 		} catch (FileNodeManagerException e) {
 			e.printStackTrace();
 			fail(e.getMessage());
@@ -852,7 +852,7 @@ public class FileNodeManagerMulTest {
 			// wait the thread start before the merge
 			Thread.sleep(100);
 			fileNodeManager.mergeAll();
-			while (!fileNodeManager.closeAll()) {
+			while (!fileNodeManager.deleteAll()) {
 				System.out.println("Wait to merge over");
 				Thread.sleep(1000);
 			}
@@ -860,7 +860,7 @@ public class FileNodeManagerMulTest {
 			assertEquals(5, queryStructure.getBufferwriteDataInFiles().size());
 			assertEquals(OverflowChangeType.NO_CHANGE,
 					queryStructure.getBufferwriteDataInFiles().get(3).overflowChangeType);
-			assertEquals(true, fileNodeManager.closeAll());
+			assertEquals(true, fileNodeManager.deleteAll());
 		} catch (FileNodeManagerException e) {
 			e.printStackTrace();
 			fail(e.getMessage());
@@ -924,7 +924,7 @@ public class FileNodeManagerMulTest {
 			// wait the thread start before the merge
 			Thread.sleep(100);
 			fileNodeManager.mergeAll();
-			while (!fileNodeManager.closeAll()) {
+			while (!fileNodeManager.deleteAll()) {
 				System.out.println("Wait to merge over");
 				Thread.sleep(1000);
 			}
@@ -932,7 +932,7 @@ public class FileNodeManagerMulTest {
 			assertEquals(5, queryStructure.getBufferwriteDataInFiles().size());
 			assertEquals(OverflowChangeType.NO_CHANGE,
 					queryStructure.getBufferwriteDataInFiles().get(3).overflowChangeType);
-			fileNodeManager.closeAll();
+			fileNodeManager.deleteAll();
 		} catch (FileNodeManagerException e) {
 			e.printStackTrace();
 			fail(e.getMessage());
@@ -962,7 +962,7 @@ public class FileNodeManagerMulTest {
 	private void closeBufferwrite() {
 		FileNodeManager fileNodeManager = FileNodeManager.getInstance();
 		try {
-			fileNodeManager.closeAll();
+			fileNodeManager.deleteAll();
 		} catch (FileNodeManagerException e) {
 			e.printStackTrace();
 			fail(e.getMessage());

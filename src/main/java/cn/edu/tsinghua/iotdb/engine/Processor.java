@@ -154,8 +154,8 @@ public abstract class Processor {
 	 * @return true if subclass doesn't have other implementation.
 	 */
 	public abstract boolean canBeClosed();
-
-	public abstract void flush() throws IOException;
+	
+	public abstract boolean flush() throws IOException;
 
 	/**
 	 * Close the processor.<br>

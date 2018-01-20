@@ -7,11 +7,11 @@ package cn.edu.tsinghua.iotdb.engine.utils;
  * 
  * @author liukun
  */
-public class FlushState {
+public class FlushStatus {
 
 	private volatile boolean isFlushing;
 
-	public FlushState() {
+	public FlushStatus() {
 		this.isFlushing = false;
 	}
 

@@ -79,8 +79,6 @@ public class OverflowProcessorTest {
 		parameters = new HashMap<String, Object>();
 		parameters.put(FileNodeConstants.OVERFLOW_FLUSH_ACTION, overflowflushaction);
 		parameters.put(FileNodeConstants.FILENODE_PROCESSOR_FLUSH_ACTION, filenodeflushaction);
-		parameters.put(FileNodeConstants.OVERFLOW_BACKUP_MANAGER_ACTION, filenodemanagerbackupaction);
-		parameters.put(FileNodeConstants.OVERFLOW_FLUSH_MANAGER_ACTION, filenodemanagerflushaction);
 
 		overflowfilePath = new File(PathUtils.getOverflowWriteDir(nameSpacePath), nameSpacePath + ".overflow")
 				.getPath();

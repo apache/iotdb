@@ -125,13 +125,7 @@ public class BufferwriteFileSizeControlTest {
             processor.write(nsp, "s1", i * i, TSDataType.INT64, i + "");
             processor.write(nsp2, "s1", i * i, TSDataType.INT64, i + "");
             if(i % 100000 == 0)
-				try {
-					System.out.println(i + "," + MemUtils.bytesCntToStr(processor.getFileSize()));
-				} catch (IOException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-					fail(e.getMessage());
-				}
+				System.out.println(i + "," + MemUtils.bytesCntToStr(processor.getFileSize()));
         }
         // wait to flush end
         try {
@@ -140,12 +134,7 @@ public class BufferwriteFileSizeControlTest {
             e.printStackTrace();
         }
         processor.close();
-        try {
-			assertTrue(processor.getFileSize() < dbConfig.bufferwriteFileSizeThreshold);
-		} catch (IOException e) {
-			e.printStackTrace();
-			fail(e.getMessage());
-		}
+        assertTrue(processor.getFileSize() < dbConfig.bufferwriteFileSizeThreshold);
         fail("Method unimplemented");
     }
 }
