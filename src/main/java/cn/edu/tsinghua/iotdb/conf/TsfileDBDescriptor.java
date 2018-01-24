@@ -88,7 +88,6 @@ public class TsfileDBDescriptor {
 			
 			conf.enableWal = Boolean.parseBoolean(properties.getProperty("enable_wal", conf.enableWal+""));
 
-			conf.walCleanupThreshold = Integer.parseInt(properties.getProperty("wal_cleanup_threshold", conf.walCleanupThreshold+""));
 			conf.flushWalThreshold = Integer.parseInt(properties.getProperty("flush_wal_threshold", conf.flushWalThreshold+""));
 			conf.flushWalPeriodInMs = Integer.parseInt(properties.getProperty("flush_wal_period_in_ms", conf.flushWalPeriodInMs+""));
 			
@@ -132,6 +131,9 @@ public class TsfileDBDescriptor {
 			conf.enableMemMonitor = Boolean.parseBoolean(properties.getProperty("enable_mem_monitor", conf.enableMemMonitor + "").trim());
 			conf.enableSmallFlush = Boolean.parseBoolean(properties.getProperty("enable_small_flush", conf.enableSmallFlush + "").trim());
 			conf.smallFlushInterval = Long.parseLong(properties.getProperty("small_flush_interval", conf.smallFlushInterval + "").trim());
+
+			int maxLogEntrySize = Integer.parseInt(properties.getProperty("max_log_entry_size", conf.maxLogEntrySize + "").trim());
+			conf.maxLogEntrySize = maxLogEntrySize > 0 ? maxLogEntrySize : conf.maxLogEntrySize;
 
 			String tmpTimeZone = properties.getProperty("time_zone", conf.timeZone.getID());
 			try {

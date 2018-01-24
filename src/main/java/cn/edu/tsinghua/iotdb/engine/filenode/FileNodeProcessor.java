@@ -87,8 +87,8 @@ public class FileNodeProcessor extends Processor implements IStatistic {
 	// this is used when work->merge operation
 	private int numOfMergeFile = 0;
 	private FileNodeProcessorStore fileNodeProcessorStore = null;
-	// file path
-	private static final String restoreFile = ".restore";
+
+	public static final String RESTORE_FILE_SUFFIX = ".restore";
 	private String fileNodeRestoreFilePath = null;
 	private String baseDirPath;
 	// last merge time
@@ -277,7 +277,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
 			LOGGER.info("The data directory of the filenode processor {} doesn't exist. Create new directory {}",
 					getProcessorName(), baseDirPath);
 		}
-		fileNodeRestoreFilePath = new File(dataDir, processorName + restoreFile).getPath();
+		fileNodeRestoreFilePath = new File(dataDir, processorName + RESTORE_FILE_SUFFIX).getPath();
 		try {
 			fileNodeProcessorStore = readStoreToDisk();
 		} catch (FileNodeProcessorException e) {

@@ -1,12 +1,12 @@
-package cn.edu.tsinghua.iotdb.sys.writelog.transfer;
-
-import java.io.IOException;
+package cn.edu.tsinghua.iotdb.writelog.transfer;
 
 import cn.edu.tsinghua.iotdb.qp.physical.PhysicalPlan;
 
+import java.io.IOException;
+
 interface Codec<T extends PhysicalPlan> {
 
-	byte[] encode(T t) throws IOException;
+	byte[] encode(T t);
 
 	T decode(byte[] bytes) throws IOException;
 }

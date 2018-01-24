@@ -1,4 +1,4 @@
-package cn.edu.tsinghua.iotdb.sys.writelog.transfer;
+package cn.edu.tsinghua.iotdb.writelog.transfer;
 
 /**
  *  To avoid conflict with cn.edu.thu.tsfiledb.qp.constant.SQLConstant.Operator.
