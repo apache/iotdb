@@ -2,6 +2,7 @@ package cn.edu.tsinghua.iotdb.qp.physical.crud;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 import cn.edu.tsinghua.iotdb.qp.physical.PhysicalPlan;
 import cn.edu.tsinghua.iotdb.qp.logical.Operator;
@@ -80,5 +81,15 @@ public class UpdatePlan extends PhysicalPlan {
         sc.addTail(preSpace, "filter: ", lineFeedSignal);
         intervals.forEach(p->sc.addTail(preSpace, preSpace, p.left,p.right, lineFeedSignal));
         return sc.toString();
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        UpdatePlan that = (UpdatePlan) o;
+        return Objects.equals(intervals, that.intervals) &&
+                Objects.equals(value, that.value) &&
+                Objects.equals(path, that.path);
     }
 }

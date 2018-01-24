@@ -19,14 +19,6 @@ public class TsfileDBConfig {
 	public boolean enableWal = true;
 
 	/**
-	 * When the total number of write ahead log in the file and memory reaches
-	 * the specified size, all the logs are compressed and the unused logs are
-	 * removed Increase this value, it will lead to short write pause. Decrease
-	 * this value, it will increase IO and CPU consumption
-	 */
-	public int walCleanupThreshold = 500000;
-
-	/**
 	 * When a certain amount of write ahead log is reached, it will be flushed to
 	 * disk. It is possible to lose at most flush_wal_threshold operations
 	 */
@@ -37,7 +29,7 @@ public class TsfileDBConfig {
 	 * milliseconds) It is possible to lose at most flush_wal_period_in_ms ms
 	 * operations
 	 */
-	public long flushWalPeriodInMs = 10;
+	public long flushWalPeriodInMs = 10000;
 	/**
 	 * Data directory
 	 */
@@ -204,6 +196,10 @@ public class TsfileDBConfig {
 	 */
 	public int statMonitorRetainIntervalSec = 60 * 10;
 
+	/**
+	 * The maximum size of a single log in byte. If a log exceeds this size, it cannot be written to WAL file.
+	 */
+	public int maxLogEntrySize = 4 * 1024 * 1024;
 
 	public TsfileDBConfig() {}
 

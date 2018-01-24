@@ -2,6 +2,7 @@ package cn.edu.tsinghua.iotdb.qp.physical.crud;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 import cn.edu.tsinghua.iotdb.qp.physical.PhysicalPlan;
 import cn.edu.tsinghua.iotdb.qp.logical.Operator;
@@ -87,4 +88,16 @@ public class InsertPlan extends PhysicalPlan {
     public void setValues(List<String> values) {
         this.values = values;
     }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        InsertPlan that = (InsertPlan) o;
+        return time == that.time &&
+                Objects.equals(deltaObject, that.deltaObject) &&
+                Objects.equals(measurements, that.measurements) &&
+                Objects.equals(values, that.values);
+    }
+
 }

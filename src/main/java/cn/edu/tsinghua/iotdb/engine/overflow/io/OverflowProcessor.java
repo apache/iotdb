@@ -1,40 +1,36 @@
 package cn.edu.tsinghua.iotdb.engine.overflow.io;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.util.List;
-import java.util.Map;
-
-import org.joda.time.DateTime;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
+import cn.edu.tsinghua.iotdb.conf.TsFileDBConstant;
 import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
 import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
 import cn.edu.tsinghua.iotdb.engine.Processor;
 import cn.edu.tsinghua.iotdb.engine.bufferwrite.Action;
 import cn.edu.tsinghua.iotdb.engine.bufferwrite.FileNodeConstants;
+import cn.edu.tsinghua.iotdb.engine.filenode.FileNodeManager;
 import cn.edu.tsinghua.iotdb.engine.flushthread.FlushManager;
-import cn.edu.tsinghua.iotdb.engine.flushthread.MergePool;
 import cn.edu.tsinghua.iotdb.engine.memcontrol.BasicMemController;
 import cn.edu.tsinghua.iotdb.engine.overflow.metadata.OFFileMetadata;
 import cn.edu.tsinghua.iotdb.engine.overflow.utils.OverflowReadWriteThriftFormatUtils;
 import cn.edu.tsinghua.iotdb.engine.overflow.utils.TSFileMetaDataConverter;
-import cn.edu.tsinghua.iotdb.engine.overflow.utils.TimePair;
 import cn.edu.tsinghua.iotdb.engine.utils.FlushStatus;
 import cn.edu.tsinghua.iotdb.exception.OverflowProcessorException;
-import cn.edu.tsinghua.iotdb.sys.writelog.WriteLogManager;
+import cn.edu.tsinghua.iotdb.writelog.manager.MultiFileLogNodeManager;
+import cn.edu.tsinghua.iotdb.writelog.node.WriteLogNode;
 import cn.edu.tsinghua.iotdb.utils.MemUtils;
 import cn.edu.tsinghua.tsfile.common.conf.TSFileDescriptor;
-import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 import cn.edu.tsinghua.tsfile.common.utils.BytesUtils;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
 import cn.edu.tsinghua.tsfile.timeseries.filter.definition.SingleSeriesFilterExpression;
 import cn.edu.tsinghua.tsfile.timeseries.write.record.DataPoint;
 import cn.edu.tsinghua.tsfile.timeseries.write.record.TSRecord;
+import org.joda.time.DateTime;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.*;
+import java.util.List;
+import java.util.Map;
+
 
 public class OverflowProcessor extends Processor {
 
@@ -53,14 +49,16 @@ public class OverflowProcessor extends Processor {
 	private volatile boolean isMerging = false;
 	private volatile FlushStatus flushStatus = new FlushStatus();
 
-	private static final String storeFileName = ".overflow";
-	private static final String restoreFileName = ".restore";
+	private static final String STORE_FILE_SUFFIX = ".overflow";
+	private static final String RESTORE_FILE_SUFFIX = ".restore";
 	private String fileName;
-	private String overflowRetoreFilePath;
+	private String overflowRestoreFilePath;
 	private String overflowOutputFilePath;
 	private Action overflowFlushAction = null;
 	private Action filenodeFlushAction = null;
 	private long lastFlushTime = -1;
+
+	private WriteLogNode logNode;
 
 	public OverflowProcessor(String processorName, Map<String, Object> parameters) throws OverflowProcessorException {
 		super(processorName);
@@ -78,9 +76,9 @@ public class OverflowProcessor extends Processor {
 		}
 		// overflow file name in the overflow data dir with the special
 		// processorName.overflow
-		fileName = processorName + storeFileName;
+		fileName = processorName + STORE_FILE_SUFFIX;
 		overflowOutputFilePath = new File(dataDir, fileName).getPath();
-		overflowRetoreFilePath = overflowOutputFilePath + restoreFileName;
+		overflowRestoreFilePath = overflowOutputFilePath + RESTORE_FILE_SUFFIX;
 
 		// read information from overflow restore file
 		OverflowStoreStruct overflowStoreStruct = readStoreFromDisk();
@@ -94,7 +92,7 @@ public class OverflowProcessor extends Processor {
 		try {
 			raf = new OverflowReadWriter(overflowOutputFilePath);
 		} catch (IOException e) {
-			LOGGER.error("Can't get the overflowReadWrite, the overflow processor is {}", processorName, e);
+			LOGGER.error("Can't get the overflowReadWrite, the overflow processor is {}, because {}", processorName, e.getMessage());
 			throw new OverflowProcessorException(e);
 		}
 		long lastUpdateOffset = 0;
@@ -128,6 +126,18 @@ public class OverflowProcessor extends Processor {
 
 		overflowFlushAction = (Action) parameters.get(FileNodeConstants.OVERFLOW_FLUSH_ACTION);
 		filenodeFlushAction = (Action) parameters.get(FileNodeConstants.FILENODE_PROCESSOR_FLUSH_ACTION);
+
+		try {
+			logNode = MultiFileLogNodeManager.getInstance().getNode(getProcessorName() + TsFileDBConstant.OVERFLOW_LOG_NODE_SUFFIX, overflowRestoreFilePath,
+					FileNodeManager.getInstance().getFileNodeRestoreFileName(processorName));
+		} catch (IOException e) {
+			LOGGER.error("Cannot create wal node for overflow processor {}, because {}", processorName, e.getMessage());
+			throw new OverflowProcessorException(e);
+		}
+	}
+
+	public WriteLogNode getLogNode() {
+		return logNode;
 	}
 
 	/**
@@ -138,14 +148,14 @@ public class OverflowProcessor extends Processor {
 	 * @throws OverflowProcessorException
 	 */
 	private void writeStoreToDisk(long lastOverflowFilePostion, boolean isClose) throws OverflowProcessorException {
-		synchronized (overflowRetoreFilePath) {
+		synchronized (overflowRestoreFilePath) {
 
 			FileOutputStream fileOutputStream = null;
 			OFFileMetadata fileMetadata = new OFFileMetadata();
 			long lastOverflowRowGroupPostion = -1;
 			try {
 				// the stream is closed, and can't get the position and metadata
-				fileOutputStream = new FileOutputStream(overflowRetoreFilePath);
+				fileOutputStream = new FileOutputStream(overflowRestoreFilePath);
 				fileOutputStream.write(BytesUtils.longToBytes(lastOverflowFilePostion));
 				if (!isClose) {
 					fileMetadata = ofSupport.getOFFileMetadata();
@@ -181,9 +191,9 @@ public class OverflowProcessor extends Processor {
 	 * @throws OverflowProcessorException
 	 */
 	private OverflowStoreStruct readStoreFromDisk() throws OverflowProcessorException {
-		synchronized (overflowRetoreFilePath) {
+		synchronized (overflowRestoreFilePath) {
 
-			File overflowRestoreFile = new File(overflowRetoreFilePath);
+			File overflowRestoreFile = new File(overflowRestoreFilePath);
 			if (!overflowRestoreFile.exists()) {
 				return new OverflowStoreStruct(0, -1, null);
 			}
@@ -192,8 +202,9 @@ public class OverflowProcessor extends Processor {
 			try {
 				fileInputStream = new FileInputStream(overflowRestoreFile);
 			} catch (FileNotFoundException e) {
+
 				LOGGER.error("The restore file of overflow processor {} is not found, the file path is {}",
-						getProcessorName(), overflowRetoreFilePath, e);
+						getProcessorName(), overflowRestoreFilePath, e);
 				throw new OverflowProcessorException(e);
 			}
 			int off = 0;
@@ -424,7 +435,7 @@ public class OverflowProcessor extends Processor {
 			memUsed = 0;
 			if (TsfileDBDescriptor.getInstance().getConfig().enableWal) {
 				try {
-					WriteLogManager.getInstance().startOverflowFlush(getProcessorName());
+					logNode.notifyStartFlush();
 				} catch (IOException e1) {
 					throw new OverflowProcessorException(e1);
 				}
@@ -455,7 +466,7 @@ public class OverflowProcessor extends Processor {
 					// call filenode function to update intervalFile list
 					filenodeFlushAction.act();
 					if (TsfileDBDescriptor.getInstance().getConfig().enableWal) {
-						WriteLogManager.getInstance().endOverflowFlush(getProcessorName());
+						logNode.notifyEndFlush(null);
 					}
 				} catch (IOException e) {
 					LOGGER.error(
@@ -494,7 +505,7 @@ public class OverflowProcessor extends Processor {
 						// list
 						filenodeFlushAction.act();
 						if (TsfileDBDescriptor.getInstance().getConfig().enableWal) {
-							WriteLogManager.getInstance().endOverflowFlush(getProcessorName());
+							logNode.notifyEndFlush(null);
 						}
 					} catch (IOException e) {
 						LOGGER.error("Flush overflow rowgroup to file error in asynchronously. Thread {} exits.",
