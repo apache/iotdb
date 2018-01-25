@@ -28,7 +28,7 @@ import java.util.List;
 import java.util.Set;
 
 public abstract class AbstractClient {
-    	protected static final String HOST_ARGS = "h";
+	protected static final String HOST_ARGS = "h";
 	protected static final String HOST_NAME = "host";
 
 	protected static final String HELP_ARGS = "help";
@@ -101,9 +101,10 @@ public abstract class AbstractClient {
 		AGGREGRATE_TIME_LIST.add(AggregationConstant.MAX_TIME);
 		AGGREGRATE_TIME_LIST.add(AggregationConstant.MIN_TIME);
 	}
-	
+
 	public static void output(ResultSet res, boolean printToConsole, String statement, DateTimeZone timeZone) throws SQLException {
 		int cnt = 0;
+		int displayCnt = 0;
 		ResultSetMetaData resultSetMetaData = res.getMetaData();
 		int colCount = resultSetMetaData.getColumnCount();
 		boolean printTimestamp = true;
@@ -138,21 +139,21 @@ public abstract class AbstractClient {
 					 		break;
 					 	}
 					}
-				    	if(flag){
-				    		try {
-				    			System.out.printf(formatValue, formatDatetime(res.getLong(i), timeZone));
+					if (flag) {
+						try {
+							System.out.printf(formatValue, formatDatetime(res.getLong(i), timeZone));
 						} catch (Exception e) {
 							System.out.printf(formatValue, "null");
 						}
-				    	    	
-				    	} else{
+					} else {
 						System.out.printf(formatValue, String.valueOf(res.getString(i)));
-				    	}
+					}
 				}
 			}
 
 			if (printToConsole && cnt < maxPrintRowCount) {
 				System.out.printf("\n");
+				displayCnt++;
 			}
 			cnt++;
 
@@ -166,7 +167,9 @@ public abstract class AbstractClient {
 			printBlockLine(printTimestamp, colCount, res);
 		}
 		printBlockLine(printTimestamp, colCount, res);
-		System.out.println("record number = " + cnt);
+		System.out.println(String.format("Display the first %s lines", displayCnt));
+		System.out.println(StringUtils.repeat('-', 40));
+		System.out.println("Total line number = " + cnt);
 	}
 
 	protected static Options createOptions() {
