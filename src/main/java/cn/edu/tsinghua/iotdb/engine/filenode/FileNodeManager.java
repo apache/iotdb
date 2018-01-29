@@ -5,10 +5,15 @@ import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
 import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
 import cn.edu.tsinghua.iotdb.engine.Processor;
 import cn.edu.tsinghua.iotdb.engine.bufferwrite.BufferWriteProcessor;
-import cn.edu.tsinghua.iotdb.engine.flushthread.FlushManager;
 import cn.edu.tsinghua.iotdb.engine.memcontrol.BasicMemController;
 import cn.edu.tsinghua.iotdb.engine.overflow.io.OverflowProcessor;
-import cn.edu.tsinghua.iotdb.exception.*;
+import cn.edu.tsinghua.iotdb.engine.pool.FlushManager;
+import cn.edu.tsinghua.iotdb.exception.BufferWriteProcessorException;
+import cn.edu.tsinghua.iotdb.exception.FileNodeManagerException;
+import cn.edu.tsinghua.iotdb.exception.FileNodeProcessorException;
+import cn.edu.tsinghua.iotdb.exception.OverflowProcessorException;
+import cn.edu.tsinghua.iotdb.exception.PathErrorException;
+import cn.edu.tsinghua.iotdb.exception.StartupException;
 import cn.edu.tsinghua.iotdb.index.common.DataFileInfo;
 import cn.edu.tsinghua.iotdb.metadata.MManager;
 import cn.edu.tsinghua.iotdb.monitor.IStatistic;
@@ -18,6 +23,8 @@ import cn.edu.tsinghua.iotdb.writelog.manager.MultiFileLogNodeManager;
 import cn.edu.tsinghua.iotdb.qp.physical.crud.DeletePlan;
 import cn.edu.tsinghua.iotdb.qp.physical.crud.InsertPlan;
 import cn.edu.tsinghua.iotdb.qp.physical.crud.UpdatePlan;
+import cn.edu.tsinghua.iotdb.service.IService;
+import cn.edu.tsinghua.iotdb.service.ServiceType;
 import cn.edu.tsinghua.tsfile.common.conf.TSFileConfig;
 import cn.edu.tsinghua.tsfile.common.conf.TSFileDescriptor;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
@@ -39,7 +46,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
-public class FileNodeManager implements IStatistic {
+public class FileNodeManager implements IStatistic, IService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(FileNodeManager.class);
     private static final TSFileConfig TsFileConf = TSFileDescriptor.getInstance().getConfig();
@@ -407,7 +414,7 @@ public class FileNodeManager implements IStatistic {
 
             long lastUpdateTime = fileNodeProcessor.getLastUpdateTime(deltaObjectId);
             if (startTime > lastUpdateTime) {
-                LOGGER.warn("The update range is error, startTime {} is great than lastUpdateTime {}", startTime,
+                LOGGER.warn("The update range is error, startTime {} is greater than lastUpdateTime {}", startTime,
                         lastUpdateTime);
                 return;
             }
@@ -602,7 +609,6 @@ public class FileNodeManager implements IStatistic {
                 allFileNodeNames = MManager.getInstance().getAllFileNames();
             } catch (PathErrorException e) {
                 LOGGER.error("Get all storage group path error,", e);
-                e.printStackTrace();
                 throw new FileNodeManagerException(e);
             }
             List<Future<?>> futureTasks = new ArrayList<>();
@@ -624,9 +630,7 @@ public class FileNodeManager implements IStatistic {
                 int time = 2;
                 while (!task.isDone()) {
                     try {
-                        LOGGER.info(
-                                "Waiting for the end of merge, already waiting for {}s, continue to wait anothor {}s",
-                                totalTime, time);
+                        LOGGER.info("Waiting for the end of merge, already waiting for {}s, continue to wait anothor {}s", totalTime, time);
                         TimeUnit.SECONDS.sleep(time);
                         totalTime += time;
                         if (time < 32) {
@@ -641,8 +645,7 @@ public class FileNodeManager implements IStatistic {
             }
             fileNodeManagerStatus = FileNodeManagerStatus.NONE;
         } else {
-            LOGGER.warn("Failed to merge all overflowed filenode, because filenode manager status is {}",
-                    fileNodeManagerStatus);
+            LOGGER.warn("Failed to merge all overflowed filenode, because filenode manager status is {}", fileNodeManagerStatus);
         }
     }
 
@@ -1016,4 +1019,22 @@ public class FileNodeManager implements IStatistic {
     public String getFileNodeRestoreFileName(String filenodeName) {
         return baseDir + File.separator + filenodeName + File.separator + filenodeName + FileNodeProcessor.RESTORE_FILE_SUFFIX;
     }
+
+	@Override
+	public void start() throws StartupException{
+	}
+
+	@Override
+	public void stop() {
+		try {
+			closeAll();
+		} catch (FileNodeManagerException e) {
+			LOGGER.error("Failed to close file node manager because {}.", e.getMessage());
+		}
+	}
+
+	@Override
+	public ServiceType getID() {
+		return ServiceType.FILE_NODE_SERVICE;
+	}
 }

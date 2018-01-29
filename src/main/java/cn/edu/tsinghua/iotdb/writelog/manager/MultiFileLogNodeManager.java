@@ -1,24 +1,29 @@
 package cn.edu.tsinghua.iotdb.writelog.manager;
 
+import cn.edu.tsinghua.iotdb.concurrent.ThreadName;
 import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
 import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
 import cn.edu.tsinghua.iotdb.exception.RecoverException;
+import cn.edu.tsinghua.iotdb.exception.StartupException;
+import cn.edu.tsinghua.iotdb.service.IService;
+import cn.edu.tsinghua.iotdb.service.ServiceType;
 import cn.edu.tsinghua.iotdb.writelog.node.ExclusiveWriteLogNode;
 import cn.edu.tsinghua.iotdb.writelog.node.WriteLogNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.*;
-import java.util.concurrent.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
-public class MultiFileLogNodeManager implements WriteLogNodeManager {
+public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
 
     private static final Logger logger = LoggerFactory.getLogger(MultiFileLogNodeManager.class);
     private Map<String, WriteLogNode> nodeMap;
 
     private Thread syncThread;
-    private final String syncThreadName = "IoTDB-MultiFileLogNodeManager-Sync-Thread";
     private TsfileDBConfig config = TsfileDBDescriptor.getInstance().getConfig();
 
     private static class InstanceHolder {
@@ -54,17 +59,9 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager {
 
     private MultiFileLogNodeManager() {
         nodeMap = new ConcurrentHashMap<>();
-        syncThread = new Thread(syncTask, syncThreadName);
-        syncThread.start();
     }
 
     static public MultiFileLogNodeManager getInstance() {
-        if(!InstanceHolder.instance.syncThread.isAlive()) {
-            synchronized (logger) {
-                InstanceHolder.instance.syncThread = new Thread(InstanceHolder.instance.syncTask, "IoTDB-MultiFileLogNodeManager-Sync-Thread");
-                InstanceHolder.instance.syncThread.start();
-            }
-        }
         return InstanceHolder.instance;
     }
 
@@ -108,6 +105,11 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager {
 
     @Override
     public void close() {
+        if(syncThread == null || !syncThread.isAlive()) {
+            logger.error("MultiFileLogNodeManager has not yet started");
+            return;
+        }
+        
         logger.info("LogNodeManager starts closing..");
         syncThread.interrupt();
         logger.info("Waiting for sync thread to stop");
@@ -125,5 +127,34 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager {
         nodeMap.clear();
         logger.info("LogNodeManager closed.");
     }
+
+	@Override
+	public void start() throws StartupException {
+		try {
+			if(!config.enableWal)
+	            return;
+	        if(syncThread == null || !syncThread.isAlive()) {
+	            InstanceHolder.instance.syncThread = new Thread(InstanceHolder.instance.syncTask, ThreadName.WAL_DAEMON.getName());
+	            InstanceHolder.instance.syncThread.start();
+	        } else {
+	            logger.warn("MultiFileLogNodeManager has already started");
+	        }
+		} catch (Exception e) {
+			String errorMessage = String.format("Failed to start %s because of %s", this.getID().getName(), e.getMessage());
+			throw new StartupException(errorMessage);
+		}
+	}
+
+	@Override
+	public void stop() {
+        if(!config.enableWal)
+            return;
+        close();
+	}
+
+	@Override
+	public ServiceType getID() {
+		return ServiceType.WAL_SERVICE;
+	}
 
 }

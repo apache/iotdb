@@ -7,11 +7,12 @@ import org.joda.time.DateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import cn.edu.tsinghua.iotdb.concurrent.IoTDBThreadPoolFactory;
+import cn.edu.tsinghua.iotdb.concurrent.ThreadName;
 import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
 import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
 import cn.edu.tsinghua.iotdb.engine.filenode.FileNodeManager;
-import cn.edu.tsinghua.iotdb.exception.FileNodeManagerException;
-import cn.edu.tsinghua.iotdb.utils.IoTDBThreadPoolFactory;
+import cn.edu.tsinghua.iotdb.exception.StartupException;
 
 /**
  * A service that triggers close and merge operation regularly
@@ -19,12 +20,12 @@ import cn.edu.tsinghua.iotdb.utils.IoTDBThreadPoolFactory;
  * @author liukun
  *
  */
-public class CloseMergeServer {
+public class CloseMergeService implements IService{
 
-	private static final Logger LOGGER = LoggerFactory.getLogger(CloseMergeServer.class);
+	private static final Logger LOGGER = LoggerFactory.getLogger(CloseMergeService.class);
 
-	private MergeServerThread mergeService = new MergeServerThread();
-	private CloseServerThread closeService = new CloseServerThread();
+	private MergeServiceThread mergeService = new MergeServiceThread();
+	private CloseServiceThread closeService = new CloseServiceThread();
 	private ScheduledExecutorService service;
 	private CloseAndMergeDaemon closeAndMergeDaemon = new CloseAndMergeDaemon();
 	private static TsfileDBConfig dbConfig = TsfileDBDescriptor.getInstance().getConfig(); 
@@ -37,48 +38,48 @@ public class CloseMergeServer {
 	private long closeAllLastTime;
 	private long mergeAllLastTime;
 
-	private static CloseMergeServer SERVER = new CloseMergeServer();
+	private static CloseMergeService CLOSE_MERGE_SERVICE = new CloseMergeService();
 
-	public synchronized static CloseMergeServer getInstance() {
-		if (SERVER == null) {
-			SERVER = new CloseMergeServer();
+	public synchronized static CloseMergeService getInstance() {
+		if (CLOSE_MERGE_SERVICE == null) {
+			CLOSE_MERGE_SERVICE = new CloseMergeService();
 		}
-		return SERVER;
+		return CLOSE_MERGE_SERVICE;
 	}
 
-	private CloseMergeServer() {
-		service = IoTDBThreadPoolFactory.newScheduledThreadPool(2, "CloseAndMerge");
+	private CloseMergeService() {
+		service = IoTDBThreadPoolFactory.newScheduledThreadPool(2, ThreadName.CLOSE_MERGE_SERVICE.getName());
 	}
 
-	public void startServer() {
+	public void startService() {
 		if (dbConfig.enableTimingCloseAndMerge) {
 			if (!isStart) {
-				LOGGER.info("Start the close and merge server");
+				LOGGER.info("Start the close and merge service");
 				closeAndMergeDaemon.start();
 				isStart = true;
 				closeAllLastTime = System.currentTimeMillis();
 				mergeAllLastTime = System.currentTimeMillis();
 			} else {
-				LOGGER.warn("The close and merge server has been already running");
+				LOGGER.warn("The close and merge service has been already running.");
 			}
 		} else {
-			LOGGER.info("The close and merge server can't be started, it is disabled by configuration.");
+			LOGGER.info("Cannot start close and merge service, it is disabled by configuration.");
 		}
 	}
 
-	public void closeServer() {
+	public void closeService() {
 		if (dbConfig.enableTimingCloseAndMerge) {
 			if (isStart) {
-				LOGGER.info("Prepare to shutdown the close and merge server");
+				LOGGER.info("Prepare to shutdown the close and merge service.");
 				isStart = false;
 				synchronized (service) {
 					service.shutdown();
 					service.notify();
 				}
-				SERVER = null;
-				LOGGER.info("Shutdown close and merge server successfully");
+				CLOSE_MERGE_SERVICE = null;
+				LOGGER.info("Shutdown close and merge service successfully.");
 			} else {
-				LOGGER.warn("The close and merge server is not running now");
+				LOGGER.warn("The close and merge service is not running now.");
 			}
 		}
 	}
@@ -86,7 +87,7 @@ public class CloseMergeServer {
 	private class CloseAndMergeDaemon extends Thread {
 
 		public CloseAndMergeDaemon() {
-			super("MergeAndCloseServer");
+			super(ThreadName.CLOSE_MERGE_DAEMON.getName());
 		}
 
 		@Override
@@ -105,10 +106,10 @@ public class CloseMergeServer {
 		}
 	}
 
-	private class MergeServerThread extends Thread {
+	private class MergeServiceThread extends Thread {
 
-		public MergeServerThread() {
-			super("merge_server_thread");
+		public MergeServiceThread() {
+			super(ThreadName.MERGE_DAEMON.getName());
 		}
 
 		@Override
@@ -122,17 +123,16 @@ public class CloseMergeServer {
 			mergeAllLastTime = System.currentTimeMillis();
 			try {
 				FileNodeManager.getInstance().mergeAll();
-			} catch (FileNodeManagerException e) {
-				e.printStackTrace();
+			} catch (Exception e) {
 				LOGGER.error("Merge all error.", e);
 			}
 		}
 	}
 
-	private class CloseServerThread extends Thread {
+	private class CloseServiceThread extends Thread {
 
-		public CloseServerThread() {
-			super("close_server_thread");
+		public CloseServiceThread() {
+			super(ThreadName.CLOSE_DAEMON.getName());
 		}
 
 		@Override
@@ -146,10 +146,29 @@ public class CloseMergeServer {
 			closeAllLastTime = System.currentTimeMillis();
 			try {
 				FileNodeManager.getInstance().closeAll();
-			} catch (FileNodeManagerException e) {
-				e.printStackTrace();
+			} catch (Exception e) {
 				LOGGER.error("close all error.", e);
 			}
 		}
+	}
+
+	@Override
+	public void start() throws StartupException {
+		try {
+			startService();
+		} catch (Exception e) {
+			String errorMessage = String.format("Failed to start %s because of %s", this.getID().getName(), e.getMessage());
+			throw new StartupException(errorMessage);
+		}
+	}
+
+	@Override
+	public void stop() {
+		closeService();
+	}
+
+	@Override
+	public ServiceType getID() {
+		return ServiceType.CLOSE_MERGE_SERVICE;
 	}
 }

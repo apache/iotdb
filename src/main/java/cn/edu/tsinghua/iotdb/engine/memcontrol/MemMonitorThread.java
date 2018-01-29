@@ -1,8 +1,7 @@
 package cn.edu.tsinghua.iotdb.engine.memcontrol;
 
+import cn.edu.tsinghua.iotdb.concurrent.ThreadName;
 import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
-import cn.edu.tsinghua.iotdb.engine.filenode.FileNodeManager;
-import cn.edu.tsinghua.iotdb.utils.MemUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -17,7 +16,7 @@ public class MemMonitorThread extends Thread {
     private Policy dangerousPolicy;
 
     public MemMonitorThread(TsfileDBConfig config) {
-        this.setName("IoTDB-MemMonitor-thread");
+        this.setName(ThreadName.MEMORY_MONITOR.getName());
         long checkInterval = config.memMonitorInterval;
         this.checkInterval = checkInterval > 0 ? checkInterval : this.checkInterval;
         if(config.enableSmallFlush)
@@ -34,11 +33,11 @@ public class MemMonitorThread extends Thread {
 
     @Override
     public void run() {
-        logger.info("MemMonitorThread started");
+        logger.info("{} started", this.getClass().getSimpleName());
         super.run();
         while (true) {
             if(this.isInterrupted()) {
-                logger.info("MemMonitorThread exiting...");
+                logger.info("{} exiting...", this.getClass().getSimpleName());
                 return;
             }
             BasicMemController.UsageLevel level = BasicMemController.getInstance().getCurrLevel();
@@ -58,7 +57,7 @@ public class MemMonitorThread extends Thread {
             try {
                 Thread.sleep(checkInterval);
             } catch (InterruptedException e) {
-                logger.info("MemMonitorThread exiting...");
+                logger.info("{} exiting...", this.getClass().getSimpleName());
                 return;
             }
         }

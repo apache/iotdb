@@ -17,6 +17,7 @@ import cn.edu.tsinghua.iotdb.engine.cache.RowGroupBlockMetaDataCache;
 import cn.edu.tsinghua.iotdb.engine.cache.TsFileMetaDataCache;
 import cn.edu.tsinghua.iotdb.engine.filenode.FileNodeManager;
 import cn.edu.tsinghua.iotdb.exception.FileNodeManagerException;
+import cn.edu.tsinghua.iotdb.exception.StartupException;
 import cn.edu.tsinghua.iotdb.metadata.MManager;
 
 /**
@@ -49,7 +50,7 @@ public class EnvironmentUtils {
 		StatMonitor.getInstance().close();
 		FileNodeManager.getInstance().resetFileNodeManager();
 		// clean wal
-		MultiFileLogNodeManager.getInstance().close();
+		MultiFileLogNodeManager.getInstance().stop();
 		// clean cache
 		TsFileMetaDataCache.getInstance().clear();
 		RowGroupBlockMetaDataCache.getInstance().clear();
@@ -112,7 +113,7 @@ public class EnvironmentUtils {
 		config.enableMemMonitor = false;
 	}
 
-	public static void envSetUp() {
+	public static void envSetUp() throws StartupException {
 		tsfileConfig.duplicateIncompletedPage = true;
 		// disable the memory control
 		config.enableMemMonitor = false;
@@ -120,5 +121,6 @@ public class EnvironmentUtils {
 		config.enableStatMonitor = false;
 		Authorizer.reset();
 		FileNodeManager.getInstance().resetFileNodeManager();
+		MultiFileLogNodeManager.getInstance().start();
 	}
 }

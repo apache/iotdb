@@ -1,4 +1,4 @@
-package cn.edu.tsinghua.iotdb.engine.flushthread;
+package cn.edu.tsinghua.iotdb.engine.pool;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -6,27 +6,28 @@ import java.util.concurrent.Future;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
+import cn.edu.tsinghua.iotdb.concurrent.IoTDBThreadPoolFactory;
+import cn.edu.tsinghua.iotdb.concurrent.ThreadName;
 import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
 import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
-import cn.edu.tsinghua.iotdb.utils.IoTDBThreadPoolFactory;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 
-public class MergePool {
+public class MergeManager {
 
 	private ExecutorService pool;
 	private int threadCnt;
 
 	private static class InstanceHolder {
-		private static MergePool instance = new MergePool();
+		private static MergeManager instance = new MergeManager();
 	}
 
-	private MergePool() {
+	private MergeManager() {
 		TsfileDBConfig config = TsfileDBDescriptor.getInstance().getConfig();
 		this.threadCnt = config.mergeConcurrentThreads;
-		pool = IoTDBThreadPoolFactory.newFixedThreadPool(threadCnt, "Merge");
+		pool = IoTDBThreadPoolFactory.newFixedThreadPool(threadCnt, ThreadName.MERGE_SERVICE.getName());
 	}
 
-	static public MergePool getInstance() {
+	static public MergeManager getInstance() {
 		return InstanceHolder.instance;
 	}
 

@@ -1,6 +1,8 @@
 package cn.edu.tsinghua.iotdb.engine.memcontrol;
 
+import cn.edu.tsinghua.iotdb.concurrent.ThreadName;
 import cn.edu.tsinghua.iotdb.utils.MemUtils;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -22,23 +24,23 @@ public class MemStatisticThread extends Thread{
     private int reportCycle = 6000;
 
     public MemStatisticThread() {
-        this.setName("IoTDB-MemStatistic-thread");
+        this.setName(ThreadName.MEMORY_STATISTICS.getName());
     }
 
     @Override
     public void run() {
-        logger.info("MemStatisticThread started");
+        logger.info("{} started", this.getClass().getSimpleName());
         try {
             // wait 3 mins for system to setup
             Thread.sleep( 3 * 60 * 1000);
         } catch (InterruptedException e) {
-            logger.info("MemStatisticThread exiting...");
+            logger.info("{} exiting...", this.getClass().getSimpleName());
             return;
         }
         super.run();
         while (true) {
             if(this.isInterrupted()) {
-                logger.info("MemStatisticThread exiting...");
+                logger.info("{} exiting...", this.getClass().getSimpleName());
                 return;
             }
             long memUsage = BasicMemController.getInstance().getTotalUsage();
@@ -64,4 +66,5 @@ public class MemStatisticThread extends Thread{
             }
         }
     }
+    
 }
