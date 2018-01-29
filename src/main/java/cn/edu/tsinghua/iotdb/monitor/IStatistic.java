@@ -9,29 +9,26 @@ import java.util.concurrent.atomic.AtomicLong;
 
 public interface IStatistic {
     /**
-     * @return An HashMap that contains the Module path like: root.stats.write.global,
-     * and its value as TSRecord format contains all the statistics measurement
+     * @return A HashMap that contains the module path like: root.stats.write.global,
+     * and its value is TSRecord format contains all statistics measurement
      */
     HashMap<String, TSRecord> getAllStatisticsValue();
 
     /**
-     * A method need to provide an HashMap to statMonitor to register statistics info params
-     * HashMap key is the param storage path like "root.stats.xxx.statisticsParams", value is
-     * its dataType: MonitorConstants.DataType
+     * A method to register statistics info
      */
     void registStatMetadata();
 
     /**
-     * Get all the Module's statistics params time-series path
+     * Get all module's statistics parameters as time-series path
      *
      * @return a list of string like "root.stats.xxx.statisticsParams",
-     * the name is the statistics name need to store
      */
     List<String> getAllPathForStatistic();
 
     /**
      *
-     * @return a HashMap contains the name and values of the statistics parameters
+     * @return a HashMap contains the names and values of the statistics parameters
      */
     HashMap<String, AtomicLong> getStatParamsHashMap();
 }

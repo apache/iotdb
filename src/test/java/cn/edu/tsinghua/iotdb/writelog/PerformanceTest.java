@@ -131,6 +131,8 @@ public class PerformanceTest {
 
     @Test
     public void encodeDecodeTest() throws IOException {
+        if (skip)
+            return;
         long time = System.currentTimeMillis();
         byte[] bytes3 = null;
         byte[] bytes2 = null;

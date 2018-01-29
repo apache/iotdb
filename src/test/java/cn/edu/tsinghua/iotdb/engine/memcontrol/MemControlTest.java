@@ -27,6 +27,7 @@ import java.sql.Statement;
 
 import static junit.framework.TestCase.assertEquals;
 
+@Deprecated
 public class MemControlTest {
     private final String FOLDER_HEADER = "src/test/resources";
     private static final String TIMESTAMP_STR = "Time";
@@ -68,7 +69,7 @@ public class MemControlTest {
     public void setUp() throws Exception {
         if (testFlag) {
             deamon = IoTDB.getInstance();
-            EnvironmentUtils.envSetUp();
+            
 
             config.memThresholdWarning = 3 * TsFileDBConstant.MB;
             config.memThresholdDangerous = 5 * TsFileDBConstant.MB;
@@ -78,6 +79,7 @@ public class MemControlTest {
             BasicMemController.getInstance().setWarningThreshold(config.memThresholdWarning);
 
             deamon.active();
+            EnvironmentUtils.envSetUp();
             insertSQL();
         }
     }

@@ -1,5 +1,6 @@
 package cn.edu.tsinghua.iotdb.engine.memcontrol;
 
+import cn.edu.tsinghua.iotdb.concurrent.ThreadName;
 import cn.edu.tsinghua.iotdb.engine.filenode.FileNodeManager;
 import cn.edu.tsinghua.iotdb.utils.MemUtils;
 import org.slf4j.Logger;
@@ -11,7 +12,7 @@ public class ForceFLushAllPolicy implements Policy {
 
     @Override
     public void execute() {
-        logger.info("Memory reachs {}, current memory size {}, JVM memory {}, flushing.",
+        logger.info("Memory reaches {}, current memory size is {}, JVM memory is {}, flushing.",
                 BasicMemController.getInstance().getCurrLevel(),
                 MemUtils.bytesCntToStr(BasicMemController.getInstance().getTotalUsage()),
                 MemUtils.bytesCntToStr(Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()));
@@ -33,6 +34,6 @@ public class ForceFLushAllPolicy implements Policy {
         return new Thread(() -> {
             FileNodeManager.getInstance().forceFlush(BasicMemController.UsageLevel.DANGEROUS);
             System.gc();
-        },"IoTDB-ForceFlushAllPolicy-thread");
+        }, ThreadName.FORCE_FLUSH_ALL_POLICY.getName());
     }
 }
