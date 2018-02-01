@@ -10,4 +10,13 @@ public interface MonitorMBean {
 	
 	String getBaseDirectory();
 	boolean getWriteAheadLogStatus();
+
+	int getTotalOpenFileNum();
+	int getDataOpenFileNum();
+	int getWalOpenFileNum();
+	int getDeltaOpenFileNum();
+	int getDigestOpenFileNum();
+	int getOverflowOpenFileNum();
+	int getMetadataOpenFileNum();
+	int getSocketOpenFileNum();
 }
