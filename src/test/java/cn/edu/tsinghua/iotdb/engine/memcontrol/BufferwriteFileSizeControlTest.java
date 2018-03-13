@@ -8,11 +8,19 @@ import cn.edu.tsinghua.iotdb.engine.bufferwrite.Action;
 import cn.edu.tsinghua.iotdb.engine.bufferwrite.BufferWriteProcessor;
 import cn.edu.tsinghua.iotdb.engine.bufferwrite.FileNodeConstants;
 import cn.edu.tsinghua.iotdb.exception.BufferWriteProcessorException;
+import cn.edu.tsinghua.iotdb.metadata.ColumnSchema;
+import cn.edu.tsinghua.iotdb.metadata.MManager;
 import cn.edu.tsinghua.iotdb.utils.EnvironmentUtils;
 import cn.edu.tsinghua.iotdb.utils.MemUtils;
 import cn.edu.tsinghua.tsfile.common.conf.TSFileConfig;
 import cn.edu.tsinghua.tsfile.common.conf.TSFileDescriptor;
+import cn.edu.tsinghua.tsfile.common.constant.JsonFormatConstant;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
+import cn.edu.tsinghua.tsfile.timeseries.write.exception.WriteProcessException;
+import cn.edu.tsinghua.tsfile.timeseries.write.schema.FileSchema;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -20,7 +28,9 @@ import org.junit.Test;
 import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 
 import static org.junit.Assert.*;
 
@@ -68,7 +78,6 @@ public class BufferwriteFileSizeControlTest {
     @Before
     public void setUp() throws Exception {
         //origin value
-        cachePageData = TsFileConf.duplicateIncompletedPage;
         groupSizeInByte = TsFileConf.groupSizeInByte;
         pageCheckSizeThreshold = TsFileConf.pageCheckSizeThreshold;
         pageSizeInByte = TsFileConf.pageSizeInByte;
@@ -76,7 +85,6 @@ public class BufferwriteFileSizeControlTest {
         fileSizeThreshold = dbConfig.bufferwriteFileSizeThreshold;
         memMonitorInterval = dbConfig.memMonitorInterval;
         //new value
-        TsFileConf.duplicateIncompletedPage = true;
         TsFileConf.groupSizeInByte = 200000;
         TsFileConf.pageCheckSizeThreshold = 3;
         TsFileConf.pageSizeInByte = 10000;
@@ -90,7 +98,6 @@ public class BufferwriteFileSizeControlTest {
     @After
     public void tearDown() throws Exception {
         //recovery value
-        TsFileConf.duplicateIncompletedPage = cachePageData;
         TsFileConf.groupSizeInByte = groupSizeInByte;
         TsFileConf.pageCheckSizeThreshold = pageCheckSizeThreshold;
         TsFileConf.pageSizeInByte = pageSizeInByte;
@@ -102,7 +109,7 @@ public class BufferwriteFileSizeControlTest {
     }
 
     @Test
-    public void test() throws BufferWriteProcessorException {
+    public void test() throws BufferWriteProcessorException, WriteProcessException {
         if(skip)
             return;
         String filename = "bufferwritetest";
@@ -114,7 +121,7 @@ public class BufferwriteFileSizeControlTest {
         parameters.put(FileNodeConstants.FILENODE_PROCESSOR_FLUSH_ACTION, fnflushaction);
 
         try {
-            processor = new BufferWriteProcessor(nsp, filename, parameters);
+            processor = new BufferWriteProcessor(nsp, filename, parameters,constructFileSchema(nsp));
         } catch (BufferWriteProcessorException e) {
             e.printStackTrace();
             fail(e.getMessage());
@@ -137,4 +144,44 @@ public class BufferwriteFileSizeControlTest {
         assertTrue(processor.getFileSize() < dbConfig.bufferwriteFileSizeThreshold);
         fail("Method unimplemented");
     }
+    
+
+	private FileSchema constructFileSchema(String processorName) throws WriteProcessException {
+
+		List<ColumnSchema> columnSchemaList;
+		columnSchemaList = MManager.getInstance().getSchemaForFileName(processorName);
+
+		FileSchema fileSchema = null;
+		try {
+			fileSchema = getFileSchemaFromColumnSchema(columnSchemaList, processorName);
+		} catch (WriteProcessException e) {
+			throw e;
+		}
+		return fileSchema;
+
+	}
+
+	private FileSchema getFileSchemaFromColumnSchema(List<ColumnSchema> schemaList, String deltaObjectType)
+			throws WriteProcessException {
+		JSONArray rowGroup = new JSONArray();
+
+		for (ColumnSchema col : schemaList) {
+			JSONObject measurement = new JSONObject();
+			measurement.put(JsonFormatConstant.MEASUREMENT_UID, col.name);
+			measurement.put(JsonFormatConstant.DATA_TYPE, col.dataType.toString());
+			measurement.put(JsonFormatConstant.MEASUREMENT_ENCODING, col.encoding.toString());
+			for (Entry<String, String> entry : col.getArgsMap().entrySet()) {
+				if (JsonFormatConstant.ENUM_VALUES.equals(entry.getKey())) {
+					String[] valueArray = entry.getValue().split(",");
+					measurement.put(JsonFormatConstant.ENUM_VALUES, new JSONArray(valueArray));
+				} else
+					measurement.put(entry.getKey(), entry.getValue().toString());
+			}
+			rowGroup.put(measurement);
+		}
+		JSONObject jsonSchema = new JSONObject();
+		jsonSchema.put(JsonFormatConstant.JSON_SCHEMA, rowGroup);
+		jsonSchema.put(JsonFormatConstant.DELTA_TYPE, deltaObjectType);
+		return new FileSchema(jsonSchema);
+	}
 }

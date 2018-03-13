@@ -2,16 +2,13 @@ package cn.edu.tsinghua.iotdb.query.aggregation.impl;
 
 import cn.edu.tsinghua.iotdb.query.aggregation.AggregateFunction;
 import cn.edu.tsinghua.iotdb.query.aggregation.AggregationConstant;
-import cn.edu.tsinghua.iotdb.query.dataset.InsertDynamicData;
+import cn.edu.tsinghua.iotdb.query.reader.InsertDynamicData;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
 import cn.edu.tsinghua.tsfile.format.Digest;
 import cn.edu.tsinghua.tsfile.format.PageHeader;
 import cn.edu.tsinghua.tsfile.timeseries.filter.utils.DigestForFilter;
-import cn.edu.tsinghua.tsfile.timeseries.filter.utils.StrDigestForFilter;
 import cn.edu.tsinghua.tsfile.timeseries.read.query.DynamicOneColumnData;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.List;
@@ -57,11 +54,6 @@ public class LastAggrFunc extends AggregateFunction {
     }
 
     @Override
-    public int calculateValueFromDataPage(DynamicOneColumnData dataInThisPage, List<Long> timestamps, int timeIndex) {
-        return 0;
-    }
-
-    @Override
     public void calculateValueFromLeftMemoryData(InsertDynamicData insertMemoryData) throws IOException, ProcessorException {
         if (resultData.timeLength == 0) {
             resultData.putTime(0);
@@ -69,7 +61,7 @@ public class LastAggrFunc extends AggregateFunction {
         long time = -1;
         Object val = null;
         // TODO : is there easier way to get the last value ?
-        while(insertMemoryData.hasInsertData()) {
+        while(insertMemoryData.hasNext()) {
             time = insertMemoryData.getCurrentMinTime();
             val = insertMemoryData.getCurrentObjectValue();
             insertMemoryData.removeCurrentValue();
@@ -88,7 +80,7 @@ public class LastAggrFunc extends AggregateFunction {
 
         // TODO : can I traverse from the end ?
         while (timeIndex < timestamps.size()) {
-            if (insertMemoryData.hasInsertData()) {
+            if (insertMemoryData.hasNext()) {
                 if (timestamps.get(timeIndex) == insertMemoryData.getCurrentMinTime()) {
                     Object value = insertMemoryData.getCurrentObjectValue();
                     updateLast((Comparable<?>)value);
@@ -104,7 +96,7 @@ public class LastAggrFunc extends AggregateFunction {
             }
         }
 
-        return insertMemoryData.hasInsertData();
+        return insertMemoryData.hasNext();
     }
 
     @Override

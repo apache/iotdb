@@ -1,15 +1,15 @@
 package cn.edu.tsinghua.iotdb.query.aggregation.impl;
 
-import java.io.IOException;
-import java.util.List;
-
 import cn.edu.tsinghua.iotdb.query.aggregation.AggregateFunction;
 import cn.edu.tsinghua.iotdb.query.aggregation.AggregationConstant;
-import cn.edu.tsinghua.iotdb.query.dataset.InsertDynamicData;
+import cn.edu.tsinghua.iotdb.query.reader.InsertDynamicData;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
 import cn.edu.tsinghua.tsfile.format.PageHeader;
 import cn.edu.tsinghua.tsfile.timeseries.read.query.DynamicOneColumnData;
+
+import java.io.IOException;
+import java.util.List;
 
 public class MinTimeAggrFunc extends AggregateFunction {
 
@@ -47,11 +47,7 @@ public class MinTimeAggrFunc extends AggregateFunction {
         long timestamp = dataInThisPage.getTime(0);
         updateMinTime(timestamp);
     }
-
-    @Override
-    public int calculateValueFromDataPage(DynamicOneColumnData dataInThisPage, List<Long> timestamps, int timeIndex) {
-        return 0;
-    }
+    
 
     @Override
     public void calculateValueFromLeftMemoryData(InsertDynamicData insertMemoryData) throws IOException, ProcessorException {
@@ -59,7 +55,7 @@ public class MinTimeAggrFunc extends AggregateFunction {
             resultData.putTime(0);
         }
 
-        while (insertMemoryData.hasInsertData()) {
+        while (insertMemoryData.hasNext()) {
             long time = insertMemoryData.getCurrentMinTime();
             updateMinTime(time);
             insertMemoryData.removeCurrentValue();
@@ -74,7 +70,7 @@ public class MinTimeAggrFunc extends AggregateFunction {
         }
 
         while (timeIndex < timestamps.size()) {
-            if (insertMemoryData.hasInsertData()) {
+            if (insertMemoryData.hasNext()) {
                 if (timestamps.get(timeIndex) == insertMemoryData.getCurrentMinTime()) {
                     updateMinTime(timestamps.get(timeIndex));
                     return false;
@@ -88,7 +84,7 @@ public class MinTimeAggrFunc extends AggregateFunction {
             }
         }
 
-        return insertMemoryData.hasInsertData();
+        return insertMemoryData.hasNext();
     }
 
     @Override

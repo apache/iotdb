@@ -1,12 +1,8 @@
 package cn.edu.tsinghua.iotdb.query;
 
 import cn.edu.tsinghua.iotdb.jdbc.TsfileJDBCConfig;
-import cn.edu.tsinghua.iotdb.query.engine.AggregateEngine;
 import cn.edu.tsinghua.iotdb.service.IoTDB;
-import cn.edu.tsinghua.iotdb.service.TestUtils;
 import cn.edu.tsinghua.iotdb.utils.EnvironmentUtils;
-import cn.edu.tsinghua.tsfile.common.conf.TSFileConfig;
-import cn.edu.tsinghua.tsfile.common.conf.TSFileDescriptor;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -43,24 +39,21 @@ public class NoOverflowReadTest {
             "CREATE TIMESERIES root.vehicle.d1.s1 WITH DATATYPE=INT64, ENCODING=RLE",
     };
 
-    private IoTDB deamon;
-
-    TSFileConfig tsFileConfig = TSFileDescriptor.getInstance().getConfig();
-    private int maxNumberOfPointsInPage;
-    private int pageSizeInByte;
-    private int groupSizeInByte;
+    private IoTDB daemon;
 
     @Before
     public void setUp() throws Exception {
         EnvironmentUtils.closeStatMonitor();
-        deamon = IoTDB.getInstance();
-        deamon.active();
+        EnvironmentUtils.closeMemControl();
+        daemon = IoTDB.getInstance();
+        daemon.stop();
+        daemon.active();
         EnvironmentUtils.envSetUp();
     }
 
     @After
     public void tearDown() throws Exception {
-        deamon.stop();
+        daemon.stop();
         Thread.sleep(5000);
         EnvironmentUtils.cleanEnv();
     }

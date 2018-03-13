@@ -16,7 +16,7 @@ public class TsfileDBConfig {
 	/**
 	 * Is write ahead log enable
 	 */
-	public boolean enableWal = true;
+	public boolean enableWal = false;
 
 	/**
 	 * When a certain amount of write ahead log is reached, it will be flushed to
@@ -70,6 +70,11 @@ public class TsfileDBConfig {
 	public String indexFileDir = "index";
 
 	/**
+	 * Temporary directory for temporary files of read (External Sort).
+	 */
+	public String readTmpFileDir = "readTmp";
+
+	/**
 	 * The maximum concurrent thread number for merging overflow.
 	 * When the value<=0 or > CPU core number, use the CPU core number.
 	 */
@@ -118,12 +123,12 @@ public class TsfileDBConfig {
 	/**
 	 *  BufferWriteProcessor and OverflowProcessor will immediately flush if this threshold is reached.
 	 */
-	public long memThresholdWarning = (long) (0.8 * Runtime.getRuntime().maxMemory());
+	public long memThresholdWarning = (long) (0.5 * Runtime.getRuntime().maxMemory());
 
 	/**
 	 * No more insert is allowed if this threshold is reached.
 	 */
-	public long memThresholdDangerous = (long) (0.9 * Runtime.getRuntime().maxMemory());
+	public long memThresholdDangerous = (long) (0.6 * Runtime.getRuntime().maxMemory());
 
 	/**
 	 * MemMonitorThread will check every such interval. If memThresholdWarning is reached, MemMonitorThread
@@ -184,7 +189,7 @@ public class TsfileDBConfig {
 	 * Set true to enable statistics monitor service,
      * false to disable statistics service
 	 */
-	public boolean enableStatMonitor = true;
+	public boolean enableStatMonitor = false;
 
 	/**
 	 * Set the time interval when StatMonitor performs delete detection, default value is 600s,
@@ -195,6 +200,17 @@ public class TsfileDBConfig {
 	 * Set the maximum time to keep monitor statistics information in IoTDB, default value is 600s
 	 */
 	public int statMonitorRetainIntervalSec = 60 * 10;
+
+	/**
+	 * Threshold for external sort. When using multi-line merging sort, if the count of lines exceed {@code externalSortThreshold}, it will
+	 * trigger external sort.
+	 */
+	public int externalSortThreshold = 50;
+
+	/**
+	 * Cache size of {@code checkAndGetDataTypeCache} in {@link cn.edu.tsinghua.iotdb.metadata.MManager}
+	 */
+	public int mManagerCacheSize = 400000;
 
 	/**
 	 * The maximum size of a single log in byte. If a log exceeds this size, it cannot be written to WAL file.
@@ -225,5 +241,6 @@ public class TsfileDBConfig {
 		derbyHome = dataDir + derbyHome;
 		walFolder = dataDir + walFolder;
 		indexFileDir = dataDir + indexFileDir;
+		readTmpFileDir = dataDir + readTmpFileDir;
 	}
 }

@@ -86,7 +86,7 @@ public class DeleteCreateSameSeriesTest {
         }
     }
 
-    @Test
+    //@Test
     public void test() throws ClassNotFoundException, SQLException, InterruptedException {
         if (testFlag) {
             Thread.sleep(5000);

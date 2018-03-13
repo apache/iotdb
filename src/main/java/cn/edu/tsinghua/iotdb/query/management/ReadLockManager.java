@@ -7,10 +7,16 @@ import cn.edu.tsinghua.iotdb.engine.filenode.FileNodeManager;
 import cn.edu.tsinghua.iotdb.exception.FileNodeManagerException;
 import cn.edu.tsinghua.iotdb.query.engine.groupby.GroupByEngineNoFilter;
 import cn.edu.tsinghua.iotdb.query.engine.groupby.GroupByEngineWithFilter;
-import cn.edu.tsinghua.iotdb.query.reader.FileReaderMap;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 
-
+/**
+ * <p>
+ * Read process lock manager and ThreadLocal variable manager.
+ * When a query process is over or quit abnormally, the <code>unlockForOneRequest</code> method will
+ * be invoked to clear the thread level variable.
+ * </p>
+ *
+ */
 public class ReadLockManager {
 
     private static ReadLockManager instance = new ReadLockManager();
@@ -31,12 +37,6 @@ public class ReadLockManager {
 
     /** ThreadLocal, due to the usage of OverflowQPExecutor **/
     private ThreadLocal<GroupByEngineWithFilter> groupByEngineWithFilterLocal;
-
-    /**
-     * this variable represents that whether it is the second execution of aggregation method.
-     * aggregation method must be executed once when a aggregation query.
-     */
-    // private ThreadLocal<QueryDataSet> aggregateThreadLocal;
 
     private ReadLockManager() {
     }

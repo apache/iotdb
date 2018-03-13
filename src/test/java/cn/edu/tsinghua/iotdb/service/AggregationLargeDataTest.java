@@ -519,7 +519,7 @@ public class AggregationLargeDataTest {
                 String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(sum(d0s0)) + "," + resultSet.getString(count(d0s0))
                         + "," + resultSet.getString(mean(d0s0))
                         + "," + resultSet.getString(mean(d0s1)) + "," + resultSet.getString(mean(d0s2));
-                System.out.println("!!!!!============ " + ans);
+                //System.out.println("!!!!!============ " + ans);
                 Assert.assertEquals(retArray[cnt], ans);
                 cnt++;
             }
@@ -882,7 +882,7 @@ public class AggregationLargeDataTest {
                 //Assert.assertEquals(ans, retArray[cnt]);
                 cnt++;
             }
-            System.out.println("----" + cnt);
+            //System.out.println("----" + cnt);
             // Assert.assertEquals(17, cnt);
             statement.close();
         } catch (Exception e) {

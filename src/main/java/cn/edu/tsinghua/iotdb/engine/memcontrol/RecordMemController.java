@@ -103,10 +103,13 @@ public class RecordMemController extends BasicMemController{
         else if (freeSize > usage) {
             logger.error("Request to free {} bytes while it only registered {} bytes", freeSize, usage);
             totalMemUsed.addAndGet(-usage);
-            memMap.put(user, 0L);
+            memMap.remove(user);
         } else {
             long newTotalMemUsage = totalMemUsed.addAndGet(-freeSize);
-            memMap.put(user, usage - freeSize);
+            if(usage - freeSize > 0)
+                memMap.put(user, usage - freeSize);
+            else
+                memMap.remove(user);
             logger.info("{} freed from {}, it is using {}, total usage {}", MemUtils.bytesCntToStr(freeSize)
                     ,user.getClass()
                     , MemUtils.bytesCntToStr(usage - freeSize)

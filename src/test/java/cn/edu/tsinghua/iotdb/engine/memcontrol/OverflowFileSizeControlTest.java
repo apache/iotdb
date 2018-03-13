@@ -5,17 +5,23 @@ import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
 import cn.edu.tsinghua.iotdb.engine.MetadataManagerHelper;
 import cn.edu.tsinghua.iotdb.engine.bufferwrite.Action;
 import cn.edu.tsinghua.iotdb.engine.bufferwrite.FileNodeConstants;
-import cn.edu.tsinghua.iotdb.engine.overflow.io.OverflowProcessor;
+import cn.edu.tsinghua.iotdb.engine.overflow.ioV2.OverflowProcessor;
 import cn.edu.tsinghua.iotdb.exception.OverflowProcessorException;
 import cn.edu.tsinghua.iotdb.utils.EnvironmentUtils;
+import cn.edu.tsinghua.iotdb.utils.FileSchemaUtils;
 import cn.edu.tsinghua.iotdb.utils.MemUtils;
 import cn.edu.tsinghua.tsfile.common.conf.TSFileConfig;
 import cn.edu.tsinghua.tsfile.common.conf.TSFileDescriptor;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
+import cn.edu.tsinghua.tsfile.timeseries.write.exception.WriteProcessException;
+import cn.edu.tsinghua.tsfile.timeseries.write.record.DataPoint;
+import cn.edu.tsinghua.tsfile.timeseries.write.record.TSRecord;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -88,14 +94,15 @@ public class OverflowFileSizeControlTest {
     }
 
     @Test
-    public void testInsert() throws InterruptedException {
+    public void testInsert() throws InterruptedException, IOException, WriteProcessException {
         if(skip)
             return;
         // insert one point: int
         try {
-            ofprocessor = new OverflowProcessor(nameSpacePath, parameters);
+            ofprocessor = new OverflowProcessor(nameSpacePath, parameters,FileSchemaUtils.constructFileSchema(deltaObjectId));
             for (int i = 1; i < 1000000; i++) {
-                ofprocessor.insert(deltaObjectId, measurementIds[0], i, dataTypes[0], Integer.toString(i));
+            	TSRecord record = new TSRecord(i, deltaObjectId);
+            	record.addTuple(DataPoint.getDataPoint(dataTypes[0], measurementIds[0], String.valueOf(i)));
                 if(i % 100000 == 0)
                     System.out.println(i + "," + MemUtils.bytesCntToStr(ofprocessor.getFileSize()));
             }

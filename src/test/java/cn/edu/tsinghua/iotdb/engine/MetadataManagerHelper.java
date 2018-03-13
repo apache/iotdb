@@ -7,7 +7,7 @@ import cn.edu.tsinghua.iotdb.metadata.MManager;
  *
  */
 public class MetadataManagerHelper {
-
+	
 	private static MManager mmanager = null;
 	
 	public static void initMetadata() {

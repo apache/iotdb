@@ -1,11 +1,8 @@
 package cn.edu.tsinghua.iotdb.query.aggregation.impl;
 
-import java.io.IOException;
-import java.util.List;
-
 import cn.edu.tsinghua.iotdb.query.aggregation.AggregateFunction;
 import cn.edu.tsinghua.iotdb.query.aggregation.AggregationConstant;
-import cn.edu.tsinghua.iotdb.query.dataset.InsertDynamicData;
+import cn.edu.tsinghua.iotdb.query.reader.InsertDynamicData;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 import cn.edu.tsinghua.tsfile.common.exception.UnSupportedDataTypeException;
 import cn.edu.tsinghua.tsfile.common.utils.Binary;
@@ -13,9 +10,10 @@ import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
 import cn.edu.tsinghua.tsfile.format.Digest;
 import cn.edu.tsinghua.tsfile.format.PageHeader;
 import cn.edu.tsinghua.tsfile.timeseries.filter.utils.DigestForFilter;
-import cn.edu.tsinghua.tsfile.timeseries.filter.utils.StrDigestForFilter;
 import cn.edu.tsinghua.tsfile.timeseries.read.query.DynamicOneColumnData;
 
+import java.io.IOException;
+import java.util.List;
 
 public class MinValueAggrFunc extends AggregateFunction {
 
@@ -57,17 +55,12 @@ public class MinValueAggrFunc extends AggregateFunction {
     }
 
     @Override
-    public int calculateValueFromDataPage(DynamicOneColumnData dataInThisPage, List<Long> timestamps, int timeIndex) {
-        return 0;
-    }
-
-    @Override
     public void calculateValueFromLeftMemoryData(InsertDynamicData insertMemoryData) throws IOException, ProcessorException {
         if (resultData.timeLength == 0) {
             resultData.putTime(0);
         }
 
-        while (insertMemoryData.hasInsertData()) {
+        while (insertMemoryData.hasNext()) {
             updateMinValue((Comparable<?>) insertMemoryData.getCurrentObjectValue());
             insertMemoryData.removeCurrentValue();
         }
@@ -81,7 +74,7 @@ public class MinValueAggrFunc extends AggregateFunction {
         }
 
         while (timeIndex < timestamps.size()) {
-            if (insertMemoryData.hasInsertData()) {
+            if (insertMemoryData.hasNext()) {
                 if (timestamps.get(timeIndex) == insertMemoryData.getCurrentMinTime()) {
                     Object value = insertMemoryData.getCurrentObjectValue();
                     updateMinValue((Comparable<?>) value);
@@ -97,7 +90,7 @@ public class MinValueAggrFunc extends AggregateFunction {
             }
         }
 
-        return insertMemoryData.hasInsertData();
+        return insertMemoryData.hasNext();
     }
 
     @Override

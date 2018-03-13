@@ -2,7 +2,7 @@ package cn.edu.tsinghua.iotdb.qp.executor.iterator;
 
 import cn.edu.tsinghua.iotdb.qp.executor.QueryProcessExecutor;
 import cn.edu.tsinghua.iotdb.qp.physical.crud.MultiQueryPlan;
-import cn.edu.tsinghua.iotdb.query.engine.FilterStructure;
+import cn.edu.tsinghua.iotdb.query.management.FilterStructure;
 import cn.edu.tsinghua.iotdb.query.fill.IFill;
 import cn.edu.tsinghua.tsfile.common.utils.Pair;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;

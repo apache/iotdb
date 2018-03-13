@@ -289,7 +289,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 					}
 				} catch (Exception e) {
 					String errMessage = String.format("Fail to generate physcial plan and execute for statement %s beacuse %s", statement, e.getMessage());
-					LOGGER.error(errMessage);
+					//LOGGER.error(errMessage);
 					result.add(Statement.EXECUTE_FAILED);
 					isAllSuccessful = false;
 					batchErrorMessage = errMessage;

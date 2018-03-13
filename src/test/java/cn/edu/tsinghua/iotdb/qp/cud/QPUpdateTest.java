@@ -13,17 +13,15 @@ import java.util.List;
 import java.util.Map;
 
 import cn.edu.tsinghua.iotdb.exception.ArgsErrorException;
-import cn.edu.tsinghua.iotdb.qp.executor.OverflowQPExecutor;
 import cn.edu.tsinghua.iotdb.qp.utils.MemIntQpExecutor;
 import org.junit.After;
 
 import cn.edu.tsinghua.iotdb.qp.QueryProcessor;
 import cn.edu.tsinghua.iotdb.qp.exception.QueryProcessorException;
 import cn.edu.tsinghua.iotdb.qp.physical.PhysicalPlan;
-import cn.edu.tsinghua.iotdb.query.management.RecordReaderFactory;
+import cn.edu.tsinghua.iotdb.query.reader.RecordReaderFactory;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 import cn.edu.tsinghua.tsfile.timeseries.read.query.QueryDataSet;
-import org.junit.Before;
 import org.junit.Test;
 
 public class QPUpdateTest {

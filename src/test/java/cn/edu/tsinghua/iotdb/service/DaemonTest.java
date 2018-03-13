@@ -142,7 +142,6 @@ public class DaemonTest {
                 selectOneColumnWithFilterTest();
                 textDataTypeTest();
 
-
                 // aggregation test
                 aggregationTest();
                 multiAggregationTest();
@@ -150,8 +149,8 @@ public class DaemonTest {
                 // fill test
                 fillTest();
 
-                // insert new data test
-                crossReadTest();
+                //insert new data test
+                //crossReadTest();
                 connection.close();
             } catch (ClassNotFoundException | SQLException | InterruptedException e) {
                 fail(e.getMessage());

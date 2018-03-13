@@ -2,7 +2,7 @@ package cn.edu.tsinghua.iotdb.query.aggregation.impl;
 
 import cn.edu.tsinghua.iotdb.query.aggregation.AggregateFunction;
 import cn.edu.tsinghua.iotdb.query.aggregation.AggregationConstant;
-import cn.edu.tsinghua.iotdb.query.dataset.InsertDynamicData;
+import cn.edu.tsinghua.iotdb.query.reader.InsertDynamicData;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 import cn.edu.tsinghua.tsfile.common.utils.BytesUtils;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
@@ -53,11 +53,6 @@ public class SumAggrFunc extends AggregateFunction {
     }
 
     @Override
-    public int calculateValueFromDataPage(DynamicOneColumnData dataInThisPage, List<Long> timestamps, int timeIndex) {
-        return 0;
-    }
-
-    @Override
     public void calculateValueFromLeftMemoryData(InsertDynamicData insertMemoryData) throws IOException, ProcessorException {
         if (resultData.timeLength == 0) {
             resultData.putTime(0);
@@ -94,7 +89,7 @@ public class SumAggrFunc extends AggregateFunction {
                 throw new ProcessorException("Unsupported data type in aggregation MEAN : " + insertMemoryData.getDataType());
         }
 
-        return insertMemoryData.hasInsertData();
+        return insertMemoryData.hasNext();
     }
 
     @Override
@@ -187,7 +182,7 @@ public class SumAggrFunc extends AggregateFunction {
         switch (data.getDataType()) {
             case INT32:
                 try {
-                    while (data.hasInsertData()) {
+                    while (data.hasNext()) {
                         sum += data.getCurrentIntValue();
                         data.removeCurrentValue();
                         hasValue = true;
@@ -198,7 +193,7 @@ public class SumAggrFunc extends AggregateFunction {
                 break;
             case INT64:
                 try {
-                    while (data.hasInsertData()) {
+                    while (data.hasNext()) {
                         sum += data.getCurrentLongValue();
                         data.removeCurrentValue();
                         hasValue = true;
@@ -209,7 +204,7 @@ public class SumAggrFunc extends AggregateFunction {
                 break;
             case FLOAT:
                 try {
-                    while (data.hasInsertData()) {
+                    while (data.hasNext()) {
                         sum += data.getCurrentFloatValue();
                         data.removeCurrentValue();
                         hasValue = true;
@@ -220,7 +215,7 @@ public class SumAggrFunc extends AggregateFunction {
                 break;
             case DOUBLE:
                 try {
-                    while (data.hasInsertData()) {
+                    while (data.hasNext()) {
                         sum += data.getCurrentDoubleValue();
                         data.removeCurrentValue();
                         hasValue = true;
@@ -252,7 +247,7 @@ public class SumAggrFunc extends AggregateFunction {
      */
     private void updateSumWithInt(InsertDynamicData insertMemoryData, List<Long> timestamps, int timeIndex) throws IOException {
         while (timeIndex < timestamps.size()) {
-            if (insertMemoryData.hasInsertData()) {
+            if (insertMemoryData.hasNext()) {
                 if (timestamps.get(timeIndex) == insertMemoryData.getCurrentMinTime()) {
                     //System.out.println(">>>> dy >> " + insertMemoryData.getCurrentMinTime() + " " + insertMemoryData.getCurrentIntValue());
                     int val = insertMemoryData.getCurrentIntValue();
@@ -274,7 +269,7 @@ public class SumAggrFunc extends AggregateFunction {
 
     private void updateSumWithLong(InsertDynamicData insertMemoryData, List<Long> timestamps, int timeIndex) throws IOException {
         while (timeIndex < timestamps.size()) {
-            if (insertMemoryData.hasInsertData()) {
+            if (insertMemoryData.hasNext()) {
                 if (timestamps.get(timeIndex) == insertMemoryData.getCurrentMinTime()) {
                     Long val = insertMemoryData.getCurrentLongValue();
                     sum += val;
@@ -295,7 +290,7 @@ public class SumAggrFunc extends AggregateFunction {
 
     private void updateSumWithFloat(InsertDynamicData insertMemoryData, List<Long> timestamps, int timeIndex) throws IOException {
         while (timeIndex < timestamps.size()) {
-            if (insertMemoryData.hasInsertData()) {
+            if (insertMemoryData.hasNext()) {
                 if (timestamps.get(timeIndex) == insertMemoryData.getCurrentMinTime()) {
                     float val = insertMemoryData.getCurrentFloatValue();
                     sum += val;
@@ -316,7 +311,7 @@ public class SumAggrFunc extends AggregateFunction {
 
     private void updateSumWithDouble(InsertDynamicData insertMemoryData, List<Long> timestamps, int timeIndex) throws IOException {
         while (timeIndex < timestamps.size()) {
-            if (insertMemoryData.hasInsertData()) {
+            if (insertMemoryData.hasNext()) {
                 if (timestamps.get(timeIndex) == insertMemoryData.getCurrentMinTime()) {
                     double val = insertMemoryData.getCurrentDoubleValue();
                     sum += val;
