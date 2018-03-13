@@ -9,9 +9,12 @@ import cn.edu.tsinghua.iotdb.query.engine.groupby.GroupByEngineWithFilter;
 import cn.edu.tsinghua.iotdb.query.fill.IFill;
 import cn.edu.tsinghua.iotdb.query.fill.LinearFill;
 import cn.edu.tsinghua.iotdb.query.fill.PreviousFill;
+import cn.edu.tsinghua.iotdb.query.management.FilterStructure;
+import cn.edu.tsinghua.iotdb.query.management.ReadCachePrefix;
 import cn.edu.tsinghua.iotdb.query.management.ReadLockManager;
-import cn.edu.tsinghua.iotdb.query.management.RecordReaderFactory;
-import cn.edu.tsinghua.iotdb.query.reader.RecordReader;
+import cn.edu.tsinghua.iotdb.query.reader.QueryRecordReader;
+import cn.edu.tsinghua.iotdb.query.reader.ReaderType;
+import cn.edu.tsinghua.iotdb.query.reader.RecordReaderFactory;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 import cn.edu.tsinghua.tsfile.common.utils.Pair;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
@@ -131,9 +134,6 @@ public class OverflowQueryEngine {
      * @param intervals
      * @param fetchSize
      * @return QueryDataSet
-     * @throws ProcessorException
-     * @throws PathErrorException
-     * @throws IOException
      */
     public QueryDataSet groupBy(List<Pair<Path, String>> aggres, List<FilterStructure> filterStructures,
                                 long unit, long origin, List<Pair<Long, Long>> intervals, int fetchSize) {
@@ -260,7 +260,7 @@ public class OverflowQueryEngine {
      * Query type 1: query without filter.
      */
     private QueryDataSet querySeriesWithoutFilter(List<Path> paths, QueryDataSet queryDataSet, int fetchSize, Integer readLock)
-            throws ProcessorException, IOException {
+            throws ProcessorException, IOException, PathErrorException {
         if (queryDataSet == null) {
             queryDataSet = new QueryDataSet();
             BatchReadRecordGenerator batchReaderRetGenerator = new BatchReadRecordGenerator(paths, fetchSize) {
@@ -280,6 +280,7 @@ public class OverflowQueryEngine {
         queryDataSet.clear();
         queryDataSet.getBatchReadGenerator().calculateRecord();
         EngineUtils.putRecordFromBatchReadGenerator(queryDataSet);
+
         return queryDataSet;
     }
 
@@ -290,14 +291,14 @@ public class OverflowQueryEngine {
         String measurementID = path.getMeasurementToString();
         String recordReaderPrefix = ReadCachePrefix.addQueryPrefix(formNumber);
 
-        RecordReader recordReader = RecordReaderFactory.getInstance().getRecordReader(deltaObjectID, measurementID,
-                null, null, null, readLock, recordReaderPrefix);
+        QueryRecordReader recordReader = (QueryRecordReader)
+                RecordReaderFactory.getInstance().getRecordReader(deltaObjectID, measurementID,
+                null,  null, readLock, recordReaderPrefix, ReaderType.QUERY);
 
         if (res == null) {
-            recordReader.buildInsertMemoryData(null, null);
-            res = recordReader.queryOneSeries(deltaObjectID, measurementID, null, null, null, fetchSize);
+            res = recordReader.queryOneSeries(null, null, null, fetchSize);
         } else {
-            res = recordReader.queryOneSeries(deltaObjectID, measurementID, null, null, res, fetchSize);
+            res = recordReader.queryOneSeries(null, null, res, fetchSize);
         }
 
         return res;
@@ -315,7 +316,7 @@ public class OverflowQueryEngine {
                 @Override
                 public DynamicOneColumnData getMoreRecordsForOneColumn(Path p, DynamicOneColumnData res) throws ProcessorException, IOException {
                     try {
-                        return queryOneSeriesUsingFilter(p, timeFilter, freqFilter, valueFilter, res, fetchSize, readLock);
+                        return queryOneSeriesUsingFilter(p, timeFilter, valueFilter, res, fetchSize, readLock);
                     } catch (PathErrorException e) {
                         e.printStackTrace();
                         return null;
@@ -333,8 +334,8 @@ public class OverflowQueryEngine {
         return queryDataSet;
     }
 
-    private DynamicOneColumnData queryOneSeriesUsingFilter(Path path, SingleSeriesFilterExpression queryTimeFilter,
-                                                           SingleSeriesFilterExpression queryFreqFilter, SingleSeriesFilterExpression queryValueFilter,
+    private DynamicOneColumnData queryOneSeriesUsingFilter(Path path,
+                                                           SingleSeriesFilterExpression queryTimeFilter, SingleSeriesFilterExpression queryValueFilter,
                                                            DynamicOneColumnData res, int fetchSize, Integer readLock)
             throws ProcessorException, IOException, PathErrorException {
 
@@ -342,14 +343,14 @@ public class OverflowQueryEngine {
         String measurementId = path.getMeasurementToString();
         String recordReaderPrefix = ReadCachePrefix.addQueryPrefix(formNumber);
 
-        RecordReader recordReader = RecordReaderFactory.getInstance().getRecordReader(deltaObjectId, measurementId,
-                queryTimeFilter, queryFreqFilter, queryValueFilter, readLock, recordReaderPrefix);
+        QueryRecordReader recordReader = (QueryRecordReader)
+                RecordReaderFactory.getInstance().getRecordReader(deltaObjectId, measurementId,
+                queryTimeFilter, queryValueFilter, readLock, recordReaderPrefix, ReaderType.QUERY);
 
         if (res == null) {
-            recordReader.buildInsertMemoryData(queryTimeFilter, queryValueFilter);
-            res = recordReader.queryOneSeries(deltaObjectId, measurementId, queryTimeFilter, queryValueFilter, null, fetchSize);
+            res = recordReader.queryOneSeries(queryTimeFilter, queryValueFilter, null, fetchSize);
         } else {
-            res = recordReader.queryOneSeries(deltaObjectId, measurementId, queryTimeFilter, queryValueFilter, res, fetchSize);
+            res = recordReader.queryOneSeries(queryTimeFilter, queryValueFilter, res, fetchSize);
         }
 
         return res;
@@ -373,7 +374,7 @@ public class OverflowQueryEngine {
                 public DynamicOneColumnData getDataInNextBatch(DynamicOneColumnData res, int fetchSize, SingleSeriesFilterExpression valueFilter,
                                                                int valueFilterNumber) throws ProcessorException, IOException {
                     try {
-                        return querySeriesForCross(valueFilter, freqFilter, res, fetchSize, valueFilterNumber);
+                        return querySeriesForCross(valueFilter, res, fetchSize, valueFilterNumber);
                     } catch (PathErrorException e) {
                         e.printStackTrace();
                         return null;
@@ -394,15 +395,14 @@ public class OverflowQueryEngine {
             String recordReaderPrefix = ReadCachePrefix.addQueryPrefix("CrossQuery", formNumber);
             String queryKey = String.format("%s.%s", deltaObjectId, measurementId);
 
-            RecordReader recordReader = RecordReaderFactory.getInstance().getRecordReader(deltaObjectId, measurementId,
-                    null, null, null, null, recordReaderPrefix);
+            QueryRecordReader recordReader = (QueryRecordReader) RecordReaderFactory.getInstance().getRecordReader(deltaObjectId, measurementId,
+                    null,  null, null, recordReaderPrefix, ReaderType.QUERY);
 
-            if (recordReader.insertMemoryData == null) {
-                recordReader.buildInsertMemoryData(queryTimeFilter, null);
-                DynamicOneColumnData queryResult = recordReader.queryUsingTimestamps(deltaObjectId, measurementId, timestamps);
+            if (recordReader.getInsertMemoryData() == null) {
+                DynamicOneColumnData queryResult = recordReader.queryUsingTimestamps(timestamps);
                 ret.mapRet.put(queryKey, queryResult);
             } else {
-                DynamicOneColumnData queryAnswer = recordReader.queryUsingTimestamps(deltaObjectId, measurementId, timestamps);
+                DynamicOneColumnData queryAnswer = recordReader.queryUsingTimestamps(timestamps);
                 ret.mapRet.put(queryKey, queryAnswer);
             }
         }
@@ -420,7 +420,7 @@ public class OverflowQueryEngine {
      * <code>RecordReaderCache</code>, if the composition of CrossFilterExpression exist same SingleFilterExpression,
      * we must guarantee that the <code>RecordReaderCache</code> doesn't cause conflict to the same SingleFilterExpression.
      */
-    private DynamicOneColumnData querySeriesForCross(SingleSeriesFilterExpression queryValueFilter, SingleSeriesFilterExpression queryFreqFilter,
+    private DynamicOneColumnData querySeriesForCross(SingleSeriesFilterExpression queryValueFilter,
                                                     DynamicOneColumnData res, int fetchSize, int valueFilterNumber)
             throws ProcessorException, IOException, PathErrorException {
 
@@ -429,14 +429,14 @@ public class OverflowQueryEngine {
         String measurementUID = ((SingleSeriesFilterExpression) queryValueFilter).getFilterSeries().getMeasurementUID();
         String valueFilterPrefix = ReadCachePrefix.addFilterPrefix(ReadCachePrefix.addFilterPrefix(valueFilterNumber), formNumber);
 
-        RecordReader recordReader = RecordReaderFactory.getInstance().getRecordReader(deltaObjectUID, measurementUID,
-                null, queryFreqFilter, queryValueFilter, null, valueFilterPrefix);
+        QueryRecordReader recordReader = (QueryRecordReader)
+                RecordReaderFactory.getInstance().getRecordReader(deltaObjectUID, measurementUID,
+                null, queryValueFilter, null, valueFilterPrefix, ReaderType.QUERY);
 
         if (res == null) {
-            recordReader.buildInsertMemoryData(null, queryValueFilter);
-            res = recordReader.queryOneSeries(deltaObjectUID, measurementUID, null, queryValueFilter, null, fetchSize);
+            res = recordReader.queryOneSeries(null, queryValueFilter, null, fetchSize);
         } else {
-            res = recordReader.queryOneSeries(deltaObjectUID, measurementUID, null, queryValueFilter, res, fetchSize);
+            res = recordReader.queryOneSeries( null, queryValueFilter, res, fetchSize);
         }
 
         return res;

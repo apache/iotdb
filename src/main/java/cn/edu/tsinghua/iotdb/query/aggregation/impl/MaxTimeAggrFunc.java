@@ -1,15 +1,15 @@
 package cn.edu.tsinghua.iotdb.query.aggregation.impl;
 
-import java.io.IOException;
-import java.util.List;
-
 import cn.edu.tsinghua.iotdb.query.aggregation.AggregateFunction;
 import cn.edu.tsinghua.iotdb.query.aggregation.AggregationConstant;
-import cn.edu.tsinghua.iotdb.query.dataset.InsertDynamicData;
+import cn.edu.tsinghua.iotdb.query.reader.InsertDynamicData;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
 import cn.edu.tsinghua.tsfile.format.PageHeader;
 import cn.edu.tsinghua.tsfile.timeseries.read.query.DynamicOneColumnData;
+
+import java.io.IOException;
+import java.util.List;
 
 public class MaxTimeAggrFunc extends AggregateFunction {
 
@@ -48,17 +48,12 @@ public class MaxTimeAggrFunc extends AggregateFunction {
     }
 
     @Override
-    public int calculateValueFromDataPage(DynamicOneColumnData dataInThisPage, List<Long> timestamps, int timeIndex) {
-        return 0;
-    }
-
-    @Override
     public void calculateValueFromLeftMemoryData(InsertDynamicData insertMemoryData) throws IOException, ProcessorException {
         if (resultData.timeLength == 0) {
             resultData.putTime(0);
         }
 
-        while (insertMemoryData.hasInsertData()) {
+        while (insertMemoryData.hasNext()) {
             long time = insertMemoryData.getCurrentMinTime();
             updateMaxTime(time);
             insertMemoryData.removeCurrentValue();
@@ -73,7 +68,7 @@ public class MaxTimeAggrFunc extends AggregateFunction {
         }
 
         while (timeIndex < timestamps.size()) {
-            if (insertMemoryData.hasInsertData()) {
+            if (insertMemoryData.hasNext()) {
                 if (timestamps.get(timeIndex) == insertMemoryData.getCurrentMinTime()) {
                     updateMaxTime(timestamps.get(timeIndex));
                     timeIndex ++;
@@ -88,7 +83,7 @@ public class MaxTimeAggrFunc extends AggregateFunction {
             }
         }
 
-        return insertMemoryData.hasInsertData();
+        return insertMemoryData.hasNext();
     }
 
     @Override

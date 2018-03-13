@@ -2,14 +2,12 @@ package cn.edu.tsinghua.iotdb.query.aggregation.impl;
 
 import cn.edu.tsinghua.iotdb.query.aggregation.AggregateFunction;
 import cn.edu.tsinghua.iotdb.query.aggregation.AggregationConstant;
-import cn.edu.tsinghua.iotdb.query.dataset.InsertDynamicData;
+import cn.edu.tsinghua.iotdb.query.reader.InsertDynamicData;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
 import cn.edu.tsinghua.tsfile.format.PageHeader;
 import cn.edu.tsinghua.tsfile.timeseries.filter.utils.DigestForFilter;
 import cn.edu.tsinghua.tsfile.timeseries.read.query.DynamicOneColumnData;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -55,16 +53,11 @@ public class FirstAggrFunc extends AggregateFunction{
     }
 
     @Override
-    public int calculateValueFromDataPage(DynamicOneColumnData dataInThisPage, List<Long> timestamps, int timeIndex) {
-        return 0;
-    }
-
-    @Override
     public void calculateValueFromLeftMemoryData(InsertDynamicData insertMemoryData) throws IOException, ProcessorException {
         //logger.error("Using memory to aggregate");
         if(resultData.timeLength == 0)
             initFirst();
-        if (resultData.getTime(0) != -1 || !insertMemoryData.hasInsertData()) {
+        if (resultData.getTime(0) != -1 || !insertMemoryData.hasNext()) {
             return;
         }
 
@@ -78,16 +71,16 @@ public class FirstAggrFunc extends AggregateFunction{
         if(resultData.timeLength == 0)
             initFirst();
         if (resultData.getTime(0) != -1) {
-            return insertMemoryData.hasInsertData();
+            return insertMemoryData.hasNext();
         }
         //logger.error("Finding points with timestamps");
         while (timeIndex < timestamps.size()) {
-            if (insertMemoryData.hasInsertData()) {
+            if (insertMemoryData.hasNext()) {
                 if (timestamps.get(timeIndex) == insertMemoryData.getCurrentMinTime()) {
                     resultData.setTime(0, 0);
                     resultData.putAnObject(insertMemoryData.getCurrentObjectValue());
                     insertMemoryData.removeCurrentValue();
-                    return insertMemoryData.hasInsertData();
+                    return insertMemoryData.hasNext();
                 } else if (timestamps.get(timeIndex) > insertMemoryData.getCurrentMinTime()) {
                     insertMemoryData.removeCurrentValue();
                 } else {
@@ -97,7 +90,7 @@ public class FirstAggrFunc extends AggregateFunction{
                 break;
             }
         }
-        return insertMemoryData.hasInsertData();
+        return insertMemoryData.hasNext();
     }
 
     @Override

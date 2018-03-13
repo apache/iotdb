@@ -96,12 +96,14 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
     @Override
     public void close() throws IOException {
         sync();
+        lockForOther();
         try {
             this.currentFileWriter.close();
             logger.debug("Log node {} closed successfully", identifier);
         } catch (IOException e) {
             logger.error("Cannot close log node {} because {}", identifier, e.getMessage());
         }
+        unlockForOther();
     }
 
     @Override
@@ -145,10 +147,15 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
 
     @Override
     public void delete() throws IOException {
-        logCache.clear();
-        if(currentFileWriter != null)
-            currentFileWriter.close();
-        FileUtils.deleteDirectory(new File(logDirectory));
+        lockForOther();
+        try {
+            logCache.clear();
+            if(currentFileWriter != null)
+                currentFileWriter.close();
+            FileUtils.deleteDirectory(new File(logDirectory));
+        } finally {
+            unlockForOther();
+        }
     }
 
     private void lockForWrite(){

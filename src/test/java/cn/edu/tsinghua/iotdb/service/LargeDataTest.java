@@ -121,6 +121,9 @@ public class LargeDataTest {
             previousFillTest();
             linearFillTest();
 
+            // verify the rightness of overflow insert and after merge operation
+            //newInsertAggTest();
+
             connection.close();
         }
     }
@@ -138,6 +141,9 @@ public class LargeDataTest {
             ResultSet resultSet = statement.getResultSet();
             int cnt = 0;
             while (resultSet.next()) {
+                String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s0) + "," + resultSet.getString(d0s1)
+                        + "," + resultSet.getString(d0s2) + "," + resultSet.getString(d0s3);
+                //System.out.println("===" + ans);
                 cnt++;
             }
             //System.out.println("cnt ::" + cnt);
@@ -239,6 +245,7 @@ public class LargeDataTest {
                 long time = Long.valueOf(resultSet.getString(TIMESTAMP_STR));
                 String value = resultSet.getString(d0s1);
                 if (time > 23000 && time < 100100) {
+                    //System.out.println("~~~~" + time + "," + value);
                     assertEquals("11111111", value);
                 }
                 //String ans = resultSet.getString(d0s1);
@@ -278,7 +285,7 @@ public class LargeDataTest {
                         + "," + resultSet.getString(sum(d0s1)) + "," + resultSet.getString(mean(d0s1))
                         + "," + resultSet.getString(first(d0s1));
                 // 0,23400,2672550.0,114.21153846153847,2000,23200,1.2213278715E10,526434.4273706897,4
-                assertEquals("0,23400,2672550.0,114.21153846153847,2000,23200,1.2213278715E10,526434.4273706897,2001", ans);
+                assertEquals("0,23400,2672550.0,114.21153846153847,2000,22700,1.2212153465E10,537980.3288546256,4", ans);
                 cnt++;
             }
             assertEquals(1, cnt);
@@ -393,9 +400,10 @@ public class LargeDataTest {
         }
     }
 
-    private void negativeValueAggTest() throws ClassNotFoundException, SQLException, FileNotFoundException {
+    private void negativeValueAggTest() throws ClassNotFoundException, SQLException {
 
         String sql = "select count(s0),sum(s0),mean(s0),first(s0) from root.vehicle.d0 where s0 < 0";
+        String selectSql = "select s0 from root.vehicle.d0 where s0 < 0";
 
         Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);
         Connection connection = null;
@@ -411,14 +419,13 @@ public class LargeDataTest {
                 String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(count(d0s0))
                         + "," + resultSet.getString(mean(d0s0)) + "," + resultSet.getString(first(d0s0))
                         + "," + resultSet.getString(sum(d0s0));
-                //System.out.println("0,855,-10.0,-1,-8550.0" + ans);
+                //System.out.println("====" + ans);
                 Assert.assertEquals("0,855,-10.0,-1,-8550.0", ans);
                 //sum += Double.valueOf(resultSet.getString(d0s0));
                 cnt++;
             }
             assertEquals(1, cnt);
             statement.close();
-
         } catch (Exception e) {
             e.printStackTrace();
             fail(e.getMessage());
@@ -742,7 +749,7 @@ public class LargeDataTest {
             while (resultSet.next()) {
                 String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s0) + "," + resultSet.getString(d0s1)
                         + "," + resultSet.getString(d0s2) + "," + resultSet.getString(d0s3) + "," + resultSet.getString(d0s4);
-                assertEquals("2300,2300,2301,2302.0,A,null", ans);
+                assertEquals("2300,2300,null,2302.0,A,null", ans);
                 //System.out.println("=====" + ans);
                 cnt ++;
             }
@@ -760,7 +767,7 @@ public class LargeDataTest {
             while (resultSet.next()) {
                 String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s0) + "," + resultSet.getString(d0s1)
                         + "," + resultSet.getString(d0s2) + "," + resultSet.getString(d0s3) + "," + resultSet.getString(d0s4);
-                assertEquals("2600,1996,2141,1998.4192,null,null", ans);
+                assertEquals("2600,1996,null,1998.4192,null,null", ans);
                 //System.out.println("=====" + ans);
                 cnt ++;
             }
@@ -808,7 +815,7 @@ public class LargeDataTest {
 
             // insert large amount of data    time range : 3000 ~ 13600
             for (int time = 3000; time < 13600; time++) {
-
+                //System.out.println("===" + time);
                 String sql = String.format("insert into root.vehicle.d0(timestamp,s0) values(%s,%s)", time, time % 100);
                 statement.execute(sql);
                 sql = String.format("insert into root.vehicle.d0(timestamp,s1) values(%s,%s)", time, time % 17);
@@ -864,9 +871,6 @@ public class LargeDataTest {
                 statement.execute(sql);
             }
 
-            // overflow delete
-            statement.execute("DELETE FROM root.vehicle.d0.s1 WHERE time < 3200");
-
             // overflow insert, time < 3000
             for (int time = 2000; time < 2500; time++) {
 
@@ -897,10 +901,96 @@ public class LargeDataTest {
                 statement.execute(sql);
             }
 
+            // overflow delete
+            statement.execute("DELETE FROM root.vehicle.d0.s1 WHERE time < 3200");
+
             // overflow update
             statement.execute("UPDATE root.vehicle SET d0.s1 = 11111111 WHERE time > 23000 and time < 100100");
 
+            statement.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+            fail(e.getMessage());
+        } finally {
+            if (connection != null) {
+                connection.close();
+            }
+        }
+    }
 
+    public void newInsertAggTest() throws ClassNotFoundException, SQLException {
+        Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);
+        Connection connection = null;
+
+        try {
+            connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
+            Statement statement = connection.createStatement();
+            String sql;
+            boolean hasResultSet;
+            ResultSet resultSet;
+            int cnt;
+            String[] retArray = new String[]{};
+            sql = "select count(s0),count(s1),count(s2),count(s3),count(s4)" +
+                    "from root.vehicle.d0";
+            hasResultSet = statement.execute(sql);
+            Assert.assertTrue(hasResultSet);
+            resultSet = statement.getResultSet();
+            cnt = 0;
+            while (resultSet.next()) {
+                String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(count(d0s0))
+                        + "," + resultSet.getString(count(d0s1)) + "," + resultSet.getString(count(d0s2))
+                        + "," + resultSet.getString(count(d0s3)) + "," + resultSet.getString(count(d0s4));
+                //assertEquals("0,0,null,null,null,null,null,null,null,null", ans);
+                System.out.println("(1) ============ " + ans);
+                cnt++;
+            }
+            statement.close();
+
+            statement = connection.createStatement();
+            for (int time = 10000; time < 60000; time++) {
+                sql = String.format("insert into root.vehicle.d0(timestamp,s0) values(%s,%s)", time, time % 20);
+                statement.execute(sql);
+                sql = String.format("insert into root.vehicle.d0(timestamp,s1) values(%s,%s)", time, time % 30);
+                statement.execute(sql);
+                sql = String.format("insert into root.vehicle.d0(timestamp,s2) values(%s,%s)", time, time % 77);
+                statement.execute(sql);
+            }
+            statement.close();
+
+            sql = "select count(s0),count(s1),count(s2),count(s3),count(s4)" +
+                    "from root.vehicle.d0";
+            statement = connection.createStatement();
+            hasResultSet = statement.execute(sql);
+            Assert.assertTrue(hasResultSet);
+            resultSet = statement.getResultSet();
+            cnt = 0;
+            while (resultSet.next()) {
+                String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(count(d0s0))
+                        + "," + resultSet.getString(count(d0s1)) + "," + resultSet.getString(count(d0s2))
+                        + "," + resultSet.getString(count(d0s3)) + "," + resultSet.getString(count(d0s4));
+                //assertEquals("0,0,null,null,null,null,null,null,null,null", ans);
+                System.out.println("(2) ============ " + ans);
+                cnt++;
+            }
+            statement.close();
+
+            statement = connection.createStatement();
+            statement.execute("merge");
+            statement.close();
+
+            statement = connection.createStatement();
+            hasResultSet = statement.execute(sql);
+            Assert.assertTrue(hasResultSet);
+            resultSet = statement.getResultSet();
+            cnt = 0;
+            while (resultSet.next()) {
+                String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(count(d0s0))
+                        + "," + resultSet.getString(count(d0s1)) + "," + resultSet.getString(count(d0s2))
+                        + "," + resultSet.getString(count(d0s3)) + "," + resultSet.getString(count(d0s4));
+                //assertEquals("0,0,null,null,null,null,null,null,null,null", ans);
+                System.out.println("(3) ============ " + ans);
+                cnt++;
+            }
             statement.close();
         } catch (Exception e) {
             e.printStackTrace();

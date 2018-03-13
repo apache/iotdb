@@ -1,16 +1,14 @@
 package cn.edu.tsinghua.iotdb.query.aggregation;
 
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-import cn.edu.tsinghua.iotdb.query.dataset.InsertDynamicData;
+import cn.edu.tsinghua.iotdb.query.reader.InsertDynamicData;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 import cn.edu.tsinghua.tsfile.common.utils.Binary;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
 import cn.edu.tsinghua.tsfile.format.PageHeader;
 import cn.edu.tsinghua.tsfile.timeseries.read.query.DynamicOneColumnData;
+
+import java.io.IOException;
+import java.util.List;
 
 public abstract class AggregateFunction {
 
@@ -46,18 +44,6 @@ public abstract class AggregateFunction {
      * @throws ProcessorException wrong aggregation method parameter
      */
     public abstract void calculateValueFromDataPage(DynamicOneColumnData dataInThisPage) throws IOException, ProcessorException;
-
-    /**
-     * <p>
-     * Calculate the aggregation using <code>PageHeader</code> along with given timestamps.
-     * </p>
-     *
-     * @param dataInThisPage Page data after overflow/bufferwrite operation
-     * @param timestamps     given timestamps, must consider in aggregation calculate
-     * @param timeIndex      represents the read index of timestamps
-     * @return the index of read of timestamps after executing this method
-     */
-    public abstract int calculateValueFromDataPage(DynamicOneColumnData dataInThisPage, List<Long> timestamps, int timeIndex);
 
     /**
      * <p>

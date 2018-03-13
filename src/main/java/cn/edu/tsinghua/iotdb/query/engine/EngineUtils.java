@@ -1,20 +1,13 @@
 package cn.edu.tsinghua.iotdb.query.engine;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import cn.edu.tsinghua.iotdb.query.aggregation.AggregateFunction;
-import cn.edu.tsinghua.tsfile.common.exception.UnSupportedDataTypeException;
-import cn.edu.tsinghua.tsfile.common.utils.Binary;
+import cn.edu.tsinghua.iotdb.query.management.FilterStructure;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
-import cn.edu.tsinghua.tsfile.timeseries.filter.definition.SingleSeriesFilterExpression;
-import cn.edu.tsinghua.tsfile.timeseries.filter.visitorImpl.SingleValueVisitor;
-import cn.edu.tsinghua.tsfile.timeseries.filter.visitorImpl.SingleValueVisitorFactory;
-import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
 import cn.edu.tsinghua.tsfile.timeseries.read.query.DynamicOneColumnData;
 import cn.edu.tsinghua.tsfile.timeseries.read.query.QueryDataSet;
+import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
 
-import static cn.edu.tsinghua.tsfile.timeseries.filter.definition.FilterFactory.and;
+import java.util.List;
 
 /**
  * Take out some common methods used for QueryEngine.
@@ -32,7 +25,7 @@ public class EngineUtils {
             DynamicOneColumnData leftData = batchReadData.sub(batchReadData.curIdx);
 
             // copy batch read info from oneColRet to leftRet
-            batchReadData.copyFetchInfoTo(leftData);
+            // batchReadData.copyFetchInfoTo(leftData);
             dataSet.getBatchReadGenerator().retMap.put(path, leftData);
             batchReadData.rollBack(batchReadData.valueLength - batchReadData.curIdx);
             dataSet.mapRet.put(path.getFullPath(), batchReadData);

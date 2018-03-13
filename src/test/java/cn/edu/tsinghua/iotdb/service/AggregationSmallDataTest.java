@@ -293,7 +293,7 @@ public class AggregationSmallDataTest {
                         + "," + resultSet.getString(count(d0s1)) + "," + resultSet.getString(count(d0s2))
                         + "," + resultSet.getString(count(d0s3)) + "," + resultSet.getString(count(d0s4));
                 // System.out.println("============ " + ans);
-                Assert.assertEquals(ans, retArray[cnt]);
+                Assert.assertEquals(retArray[cnt], ans);
                 cnt++;
             }
             Assert.assertEquals(1, cnt);

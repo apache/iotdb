@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.util.HashMap;
 
 import cn.edu.tsinghua.iotdb.query.reader.RecordReader;
-import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 
 /**
  * Used for read process, put the query structure in the cache for one query process.
@@ -33,14 +32,9 @@ public class RecordReaderCache {
         return cache.get().remove(getKey(deltaObjectUID, measurementID));
     }
 
-    public void clear() throws ProcessorException {
+    public void clear() throws IOException {
         for (RecordReader reader : cache.get().values()) {
-            try {
-                reader.clearReaderMaps();
-            } catch (IOException e) {
-                e.printStackTrace();
-                throw new ProcessorException(e);
-            }
+            reader.closeFileStreamForOneRequest();
         }
         cache.remove();
     }

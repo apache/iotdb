@@ -1,18 +1,15 @@
 package cn.edu.tsinghua.iotdb.query.fill;
 
 import cn.edu.tsinghua.iotdb.exception.UnSupportedFillTypeException;
-import cn.edu.tsinghua.iotdb.query.dataset.InsertDynamicData;
-import cn.edu.tsinghua.iotdb.query.reader.ReaderUtils;
+import cn.edu.tsinghua.iotdb.query.reader.InsertDynamicData;
+import cn.edu.tsinghua.iotdb.queryV2.engine.overflow.OverflowOperation;
+import cn.edu.tsinghua.iotdb.queryV2.engine.overflow.OverflowOperationReader;
 import cn.edu.tsinghua.tsfile.common.utils.Binary;
 import cn.edu.tsinghua.tsfile.encoding.decoder.Decoder;
-import cn.edu.tsinghua.tsfile.file.metadata.TsDigest;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.CompressionTypeName;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
-import cn.edu.tsinghua.tsfile.format.Digest;
 import cn.edu.tsinghua.tsfile.format.PageHeader;
 import cn.edu.tsinghua.tsfile.timeseries.filter.definition.SingleSeriesFilterExpression;
-import cn.edu.tsinghua.tsfile.timeseries.filter.utils.DigestForFilter;
-import cn.edu.tsinghua.tsfile.timeseries.filter.visitorImpl.DigestVisitor;
 import cn.edu.tsinghua.tsfile.timeseries.filter.visitorImpl.IntervalTimeVisitor;
 import cn.edu.tsinghua.tsfile.timeseries.filter.visitorImpl.SingleValueVisitor;
 import cn.edu.tsinghua.tsfile.timeseries.read.PageReader;
@@ -40,13 +37,14 @@ public class FillProcessor {
      * @param beforeTime before time
      * @param queryTime query time
      * @param timeFilter time filter
-     * @param updateTrue overflow update operation
+     * @param updateOperationReader overflow update operation
+     *
      * @return false if we haven't get the correct previous value before queryTime.
      * @throws IOException TsFile read error
      */
     public static boolean getPreviousFillResultInFile(DynamicOneColumnData result, ValueReader valueReader,
                                                       long beforeTime, long queryTime, SingleSeriesFilterExpression timeFilter,
-                                                      DynamicOneColumnData updateTrue)
+                                                      OverflowOperationReader updateOperationReader)
             throws IOException {
 
         if (beforeTime > valueReader.getEndTime()) {
@@ -105,12 +103,13 @@ public class FillProcessor {
 
                         if (curTime >= beforeTime && curTime <= queryTime) {
 
-                            while (updateTrue.curIdx < updateTrue.valueLength && updateTrue.getTime(updateTrue.curIdx*2 + 1) < curTime) {
-                                updateTrue.curIdx ++;
+                            while (updateOperationReader.hasNext() && updateOperationReader.getCurrentOperation().getRightBound() < curTime) {
+                                updateOperationReader.next();
                             }
-                            if (updateTrue.curIdx < updateTrue.valueLength && updateTrue.getTime(updateTrue.curIdx*2) <= curTime
-                                    && updateTrue.getTime(updateTrue.curIdx*2+1) >= curTime) {
-                                v = updateTrue.getInt(updateTrue.curIdx);
+                            if (updateOperationReader.hasNext() && updateOperationReader.getCurrentOperation().verifyTime(curTime)) {
+                                if (updateOperationReader.getCurrentOperation().getType() == OverflowOperation.OperationType.DELETE)
+                                    continue;
+                                v = updateOperationReader.getCurrentOperation().getValue().getInt();
                             }
 
                             if (result.timeLength == 0) {
@@ -142,12 +141,13 @@ public class FillProcessor {
 
                         if (curTime >= beforeTime && curTime <= queryTime) {
 
-                            while (updateTrue.curIdx < updateTrue.valueLength && updateTrue.getTime(updateTrue.curIdx*2 + 1) < curTime) {
-                                updateTrue.curIdx ++;
+                            while (updateOperationReader.hasNext() && updateOperationReader.getCurrentOperation().getRightBound() < curTime) {
+                                updateOperationReader.next();
                             }
-                            if (updateTrue.curIdx < updateTrue.valueLength && updateTrue.getTime(updateTrue.curIdx*2) <= curTime
-                                    && updateTrue.getTime(updateTrue.curIdx*2+1) >= curTime) {
-                                v = updateTrue.getLong(updateTrue.curIdx);
+                            if (updateOperationReader.hasNext() && updateOperationReader.getCurrentOperation().verifyTime(curTime)) {
+                                if (updateOperationReader.getCurrentOperation().getType() == OverflowOperation.OperationType.DELETE)
+                                    continue;
+                                v = updateOperationReader.getCurrentOperation().getValue().getLong();
                             }
 
                             if (result.timeLength == 0) {
@@ -179,12 +179,13 @@ public class FillProcessor {
 
                         if (curTime >= beforeTime && curTime <= queryTime) {
 
-                            while (updateTrue.curIdx < updateTrue.valueLength && updateTrue.getTime(updateTrue.curIdx*2 + 1) < curTime) {
-                                updateTrue.curIdx ++;
+                            while (updateOperationReader.hasNext() && updateOperationReader.getCurrentOperation().getRightBound() < curTime) {
+                                updateOperationReader.next();
                             }
-                            if (updateTrue.curIdx < updateTrue.valueLength && updateTrue.getTime(updateTrue.curIdx*2) <= curTime
-                                    && updateTrue.getTime(updateTrue.curIdx*2+1) >= curTime) {
-                                v = updateTrue.getFloat(updateTrue.curIdx);
+                            if (updateOperationReader.hasNext() && updateOperationReader.getCurrentOperation().verifyTime(curTime)) {
+                                if (updateOperationReader.getCurrentOperation().getType() == OverflowOperation.OperationType.DELETE)
+                                    continue;
+                                v = updateOperationReader.getCurrentOperation().getValue().getFloat();
                             }
 
                             if (result.timeLength == 0) {
@@ -216,12 +217,13 @@ public class FillProcessor {
 
                         if (curTime >= beforeTime && curTime <= queryTime) {
 
-                            while (updateTrue.curIdx < updateTrue.valueLength && updateTrue.getTime(updateTrue.curIdx*2 + 1) < curTime) {
-                                updateTrue.curIdx ++;
+                            while (updateOperationReader.hasNext() && updateOperationReader.getCurrentOperation().getRightBound() < curTime) {
+                                updateOperationReader.next();
                             }
-                            if (updateTrue.curIdx < updateTrue.valueLength && updateTrue.getTime(updateTrue.curIdx*2) <= curTime
-                                    && updateTrue.getTime(updateTrue.curIdx*2+1) >= curTime) {
-                                v = updateTrue.getDouble(updateTrue.curIdx);
+                            if (updateOperationReader.hasNext() && updateOperationReader.getCurrentOperation().verifyTime(curTime)) {
+                                if (updateOperationReader.getCurrentOperation().getType() == OverflowOperation.OperationType.DELETE)
+                                    continue;
+                                v = updateOperationReader.getCurrentOperation().getValue().getDouble();
                             }
 
                             if (result.timeLength == 0) {
@@ -253,12 +255,13 @@ public class FillProcessor {
 
                         if (curTime >= beforeTime && curTime <= queryTime) {
 
-                            while (updateTrue.curIdx < updateTrue.valueLength && updateTrue.getTime(updateTrue.curIdx*2 + 1) < curTime) {
-                                updateTrue.curIdx ++;
+                            while (updateOperationReader.hasNext() && updateOperationReader.getCurrentOperation().getRightBound() < curTime) {
+                                updateOperationReader.next();
                             }
-                            if (updateTrue.curIdx < updateTrue.valueLength && updateTrue.getTime(updateTrue.curIdx*2) <= curTime
-                                    && updateTrue.getTime(updateTrue.curIdx*2+1) >= curTime) {
-                                v = updateTrue.getBoolean(updateTrue.curIdx);
+                            if (updateOperationReader.hasNext() && updateOperationReader.getCurrentOperation().verifyTime(curTime)) {
+                                if (updateOperationReader.getCurrentOperation().getType() == OverflowOperation.OperationType.DELETE)
+                                    continue;
+                                v = updateOperationReader.getCurrentOperation().getValue().getBoolean();
                             }
 
                             if (result.timeLength == 0) {
@@ -290,12 +293,13 @@ public class FillProcessor {
 
                         if (curTime >= beforeTime && curTime <= queryTime) {
 
-                            while (updateTrue.curIdx < updateTrue.valueLength && updateTrue.getTime(updateTrue.curIdx*2 + 1) < curTime) {
-                                updateTrue.curIdx ++;
+                            while (updateOperationReader.hasNext() && updateOperationReader.getCurrentOperation().getRightBound() < curTime) {
+                                updateOperationReader.next();
                             }
-                            if (updateTrue.curIdx < updateTrue.valueLength && updateTrue.getTime(updateTrue.curIdx*2) <= curTime
-                                    && updateTrue.getTime(updateTrue.curIdx*2+1) >= curTime) {
-                                v = updateTrue.getBinary(updateTrue.curIdx);
+                            if (updateOperationReader.hasNext() && updateOperationReader.getCurrentOperation().verifyTime(curTime)) {
+                                if (updateOperationReader.getCurrentOperation().getType() == OverflowOperation.OperationType.DELETE)
+                                    continue;
+                                v = updateOperationReader.getCurrentOperation().getValue().getBinary();
                             }
 
                             if (result.timeLength == 0) {
@@ -334,10 +338,9 @@ public class FillProcessor {
      * @throws IOException file stream read error
      */
     public static void getPreviousFillResultInMemory(DynamicOneColumnData result, InsertDynamicData insertMemoryData,
-                                                        long beforeTime, long queryTime)
-            throws IOException {
+                                                        long beforeTime, long queryTime) throws IOException {
 
-        while (insertMemoryData.hasInsertData()) {
+        while (insertMemoryData.hasNext()) {
             long currentTime = insertMemoryData.getCurrentMinTime();
             if (currentTime > queryTime) {
                 break;
@@ -440,13 +443,13 @@ public class FillProcessor {
      * @param queryTime linear fill begin time
      * @param afterTime linear fill begin time
      * @param timeFilter time filter
-     * @param updateTrue overflow update operation
+     * @param updateOperationReader overflow update operation
      * @return see above
      * @throws IOException TsFile read error
      */
     public static boolean getLinearFillResultInFile(DynamicOneColumnData result, ValueReader valueReader,
                                                     long beforeTime, long queryTime, long afterTime, SingleSeriesFilterExpression timeFilter,
-                                                    DynamicOneColumnData updateTrue)
+                                                    OverflowOperationReader updateOperationReader)
             throws IOException {
 
         if (beforeTime > valueReader.getEndTime()) {
@@ -511,12 +514,13 @@ public class FillProcessor {
 
                         if (currentTime >= beforeTime && currentTime <= queryTime) {
                             // TODO this branch need to be covered by test case
-                            while (updateTrue.curIdx < updateTrue.valueLength && updateTrue.getTime(updateTrue.curIdx*2 + 1) < currentTime) {
-                                updateTrue.curIdx ++;
+                            while (updateOperationReader.hasNext() && updateOperationReader.getCurrentOperation().getRightBound() < currentTime) {
+                                updateOperationReader.next();
                             }
-                            if (updateTrue.curIdx < updateTrue.valueLength && updateTrue.getTime(updateTrue.curIdx*2) <= currentTime
-                                    && updateTrue.getTime(updateTrue.curIdx*2+1) >= currentTime) {
-                                v = updateTrue.getInt(updateTrue.curIdx);
+                            if (updateOperationReader.hasNext() && updateOperationReader.getCurrentOperation().verifyTime(currentTime)) {
+                                if (updateOperationReader.getCurrentOperation().getType() == OverflowOperation.OperationType.DELETE)
+                                    continue;
+                                v = updateOperationReader.getCurrentOperation().getValue().getInt();
                             }
 
                             if (result.timeLength == 0) {
@@ -532,12 +536,13 @@ public class FillProcessor {
                             }
                         } else if (currentTime > queryTime){
                             // TODO this branch need to be covered by test case
-                            while (updateTrue.curIdx < updateTrue.valueLength && updateTrue.getTime(updateTrue.curIdx*2 + 1) < currentTime) {
-                                updateTrue.curIdx ++;
+                            while (updateOperationReader.hasNext() && updateOperationReader.getCurrentOperation().getRightBound() < currentTime) {
+                                updateOperationReader.next();
                             }
-                            if (updateTrue.curIdx < updateTrue.valueLength && updateTrue.getTime(updateTrue.curIdx*2) <= currentTime
-                                    && updateTrue.getTime(updateTrue.curIdx*2+1) >= currentTime) {
-                                v = updateTrue.getInt(updateTrue.curIdx);
+                            if (updateOperationReader.hasNext() && updateOperationReader.getCurrentOperation().verifyTime(currentTime)) {
+                                if (updateOperationReader.getCurrentOperation().getType() == OverflowOperation.OperationType.DELETE)
+                                    continue;
+                                v = updateOperationReader.getCurrentOperation().getValue().getInt();
                             }
 
                             if (result.timeLength <= 1) {
@@ -562,12 +567,13 @@ public class FillProcessor {
                         }
 
                         if (currentTime >= beforeTime && currentTime <= queryTime) {
-                            while (updateTrue.curIdx < updateTrue.valueLength && updateTrue.getTime(updateTrue.curIdx*2 + 1) < currentTime) {
-                                updateTrue.curIdx ++;
+                            while (updateOperationReader.hasNext() && updateOperationReader.getCurrentOperation().getRightBound() < currentTime) {
+                                updateOperationReader.next();
                             }
-                            if (updateTrue.curIdx < updateTrue.valueLength && updateTrue.getTime(updateTrue.curIdx*2) <= currentTime
-                                    && updateTrue.getTime(updateTrue.curIdx*2+1) >= currentTime) {
-                                v = updateTrue.getLong(updateTrue.curIdx);
+                            if (updateOperationReader.hasNext() && updateOperationReader.getCurrentOperation().verifyTime(currentTime)) {
+                                if (updateOperationReader.getCurrentOperation().getType() == OverflowOperation.OperationType.DELETE)
+                                    continue;
+                                v = updateOperationReader.getCurrentOperation().getValue().getLong();
                             }
                             if (result.timeLength == 0) {
                                 result.putTime(currentTime);
@@ -581,12 +587,13 @@ public class FillProcessor {
                                 return true;
                             }
                         } else if (currentTime > queryTime){
-                            while (updateTrue.curIdx < updateTrue.valueLength && updateTrue.getTime(updateTrue.curIdx*2 + 1) < currentTime) {
-                                updateTrue.curIdx ++;
+                            while (updateOperationReader.hasNext() && updateOperationReader.getCurrentOperation().getRightBound() < currentTime) {
+                                updateOperationReader.next();
                             }
-                            if (updateTrue.curIdx < updateTrue.valueLength && updateTrue.getTime(updateTrue.curIdx*2) <= currentTime
-                                    && updateTrue.getTime(updateTrue.curIdx*2+1) >= currentTime) {
-                                v = updateTrue.getLong(updateTrue.curIdx);
+                            if (updateOperationReader.hasNext() && updateOperationReader.getCurrentOperation().verifyTime(currentTime)) {
+                                if (updateOperationReader.getCurrentOperation().getType() == OverflowOperation.OperationType.DELETE)
+                                    continue;
+                                v = updateOperationReader.getCurrentOperation().getValue().getLong();
                             }
 
                             if (result.timeLength <= 1) {
@@ -611,12 +618,13 @@ public class FillProcessor {
                         }
 
                         if (currentTime >= beforeTime && currentTime <= queryTime) {
-                            while (updateTrue.curIdx < updateTrue.valueLength && updateTrue.getTime(updateTrue.curIdx*2 + 1) < currentTime) {
-                                updateTrue.curIdx ++;
+                            while (updateOperationReader.hasNext() && updateOperationReader.getCurrentOperation().getRightBound() < currentTime) {
+                                updateOperationReader.next();
                             }
-                            if (updateTrue.curIdx < updateTrue.valueLength && updateTrue.getTime(updateTrue.curIdx*2) <= currentTime
-                                    && updateTrue.getTime(updateTrue.curIdx*2+1) >= currentTime) {
-                                v = updateTrue.getFloat(updateTrue.curIdx);
+                            if (updateOperationReader.hasNext() && updateOperationReader.getCurrentOperation().verifyTime(currentTime)) {
+                                if (updateOperationReader.getCurrentOperation().getType() == OverflowOperation.OperationType.DELETE)
+                                    continue;
+                                v = updateOperationReader.getCurrentOperation().getValue().getFloat();
                             }
                             if (result.timeLength == 0) {
                                 result.putTime(currentTime);
@@ -630,12 +638,13 @@ public class FillProcessor {
                                 return true;
                             }
                         } else if (currentTime > queryTime){
-                            while (updateTrue.curIdx < updateTrue.valueLength && updateTrue.getTime(updateTrue.curIdx*2 + 1) < currentTime) {
-                                updateTrue.curIdx ++;
+                            while (updateOperationReader.hasNext() && updateOperationReader.getCurrentOperation().getRightBound() < currentTime) {
+                                updateOperationReader.next();
                             }
-                            if (updateTrue.curIdx < updateTrue.valueLength && updateTrue.getTime(updateTrue.curIdx*2) <= currentTime
-                                    && updateTrue.getTime(updateTrue.curIdx*2+1) >= currentTime) {
-                                v = updateTrue.getFloat(updateTrue.curIdx);
+                            if (updateOperationReader.hasNext() && updateOperationReader.getCurrentOperation().verifyTime(currentTime)) {
+                                if (updateOperationReader.getCurrentOperation().getType() == OverflowOperation.OperationType.DELETE)
+                                    continue;
+                                v = updateOperationReader.getCurrentOperation().getValue().getFloat();
                             }
 
                             if (result.timeLength <= 1) {
@@ -660,12 +669,13 @@ public class FillProcessor {
                         }
 
                         if (currentTime >= beforeTime && currentTime <= queryTime) {
-                            while (updateTrue.curIdx < updateTrue.valueLength && updateTrue.getTime(updateTrue.curIdx*2 + 1) < currentTime) {
-                                updateTrue.curIdx ++;
+                            while (updateOperationReader.hasNext() && updateOperationReader.getCurrentOperation().getRightBound() < currentTime) {
+                                updateOperationReader.next();
                             }
-                            if (updateTrue.curIdx < updateTrue.valueLength && updateTrue.getTime(updateTrue.curIdx*2) <= currentTime
-                                    && updateTrue.getTime(updateTrue.curIdx*2+1) >= currentTime) {
-                                v = updateTrue.getDouble(updateTrue.curIdx);
+                            if (updateOperationReader.hasNext() && updateOperationReader.getCurrentOperation().verifyTime(currentTime)) {
+                                if (updateOperationReader.getCurrentOperation().getType() == OverflowOperation.OperationType.DELETE)
+                                    continue;
+                                v = updateOperationReader.getCurrentOperation().getValue().getDouble();
                             }
                             if (result.timeLength == 0) {
                                 result.putTime(currentTime);
@@ -679,12 +689,13 @@ public class FillProcessor {
                                 return true;
                             }
                         } else if (currentTime > queryTime){
-                            while (updateTrue.curIdx < updateTrue.valueLength && updateTrue.getTime(updateTrue.curIdx*2 + 1) < currentTime) {
-                                updateTrue.curIdx ++;
+                            while (updateOperationReader.hasNext() && updateOperationReader.getCurrentOperation().getRightBound() < currentTime) {
+                                updateOperationReader.next();
                             }
-                            if (updateTrue.curIdx < updateTrue.valueLength && updateTrue.getTime(updateTrue.curIdx*2) <= currentTime
-                                    && updateTrue.getTime(updateTrue.curIdx*2+1) >= currentTime) {
-                                v = updateTrue.getDouble(updateTrue.curIdx);
+                            if (updateOperationReader.hasNext() && updateOperationReader.getCurrentOperation().verifyTime(currentTime)) {
+                                if (updateOperationReader.getCurrentOperation().getType() == OverflowOperation.OperationType.DELETE)
+                                    continue;
+                                v = updateOperationReader.getCurrentOperation().getValue().getDouble();
                             }
 
                             if (result.timeLength <= 1) {
@@ -721,7 +732,7 @@ public class FillProcessor {
                                                         long beforeTime, long queryTime, long afterTime)
             throws IOException {
 
-        while (insertMemoryData.hasInsertData()) {
+        while (insertMemoryData.hasNext()) {
             long currentTime = insertMemoryData.getCurrentMinTime();
 
             if (currentTime > afterTime) {

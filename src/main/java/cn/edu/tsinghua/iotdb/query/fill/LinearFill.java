@@ -1,11 +1,10 @@
 package cn.edu.tsinghua.iotdb.query.fill;
 
 import cn.edu.tsinghua.iotdb.exception.PathErrorException;
-import cn.edu.tsinghua.iotdb.query.dataset.InsertDynamicData;
-import cn.edu.tsinghua.iotdb.query.engine.EngineUtils;
-import cn.edu.tsinghua.iotdb.query.engine.ReadCachePrefix;
-import cn.edu.tsinghua.iotdb.query.management.RecordReaderFactory;
-import cn.edu.tsinghua.iotdb.query.reader.RecordReader;
+import cn.edu.tsinghua.iotdb.query.management.ReadCachePrefix;
+import cn.edu.tsinghua.iotdb.query.reader.FillRecordReader;
+import cn.edu.tsinghua.iotdb.query.reader.ReaderType;
+import cn.edu.tsinghua.iotdb.query.reader.RecordReaderFactory;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
 import cn.edu.tsinghua.tsfile.timeseries.filter.definition.SingleSeriesFilterExpression;
@@ -81,13 +80,10 @@ public class LinearFill extends IFill{
         String measurementId = path.getMeasurementToString();
         String recordReaderPrefix = ReadCachePrefix.addQueryPrefix("LinearFill", -1);
 
-        RecordReader recordReader = RecordReaderFactory.getInstance().getRecordReader(deltaObjectId, measurementId,
-                fillTimeFilter, null, null, null, recordReaderPrefix);
+        FillRecordReader recordReader = (FillRecordReader) RecordReaderFactory.getInstance().getRecordReader(deltaObjectId, measurementId,
+                fillTimeFilter, null, null, recordReaderPrefix, ReaderType.FILL);
 
-        recordReader.buildInsertMemoryData(fillTimeFilter, null);
-
-        // updateFalse is useless because there is no value filter
-        recordReader.getLinearFillResult(result, deltaObjectId, measurementId, fillTimeFilter, beforeTime, queryTime, afterTime);
+        recordReader.getLinearFillResult(result, fillTimeFilter, beforeTime, queryTime, afterTime);
 
         return result;
     }

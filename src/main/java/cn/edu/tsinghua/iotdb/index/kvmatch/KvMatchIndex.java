@@ -21,18 +21,18 @@ import cn.edu.tsinghua.iotdb.index.common.OverflowBufferWriteInfo;
 import cn.edu.tsinghua.iotdb.index.common.QueryDataSetIterator;
 import cn.edu.tsinghua.iotdb.index.utils.IndexFileUtils;
 import cn.edu.tsinghua.iotdb.query.engine.OverflowQueryEngine;
-import cn.edu.tsinghua.iotdb.query.engine.ReadCachePrefix;
+import cn.edu.tsinghua.iotdb.query.management.ReadCachePrefix;
+import cn.edu.tsinghua.iotdb.query.reader.ReaderType;
 import cn.edu.tsinghua.iotdb.query.reader.RecordReader;
-import cn.edu.tsinghua.iotdb.query.management.RecordReaderFactory;
+import cn.edu.tsinghua.iotdb.queryV2.engine.overflow.OverflowOperation;
+import cn.edu.tsinghua.iotdb.queryV2.engine.overflow.OverflowOperationReader;
+import cn.edu.tsinghua.iotdb.queryV2.engine.reader.series.OverflowInsertDataReader;
+import cn.edu.tsinghua.iotdb.query.reader.RecordReaderFactory;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 import cn.edu.tsinghua.tsfile.common.utils.Pair;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
-import cn.edu.tsinghua.tsfile.format.PageHeader;
 import cn.edu.tsinghua.tsfile.timeseries.basis.TsFile;
-import cn.edu.tsinghua.tsfile.timeseries.filter.definition.SingleSeriesFilterExpression;
 import cn.edu.tsinghua.tsfile.timeseries.filter.utils.LongInterval;
-import cn.edu.tsinghua.tsfile.timeseries.filter.verifier.FilterVerifier;
-import cn.edu.tsinghua.tsfile.timeseries.read.PageReader;
 import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
 import cn.edu.tsinghua.tsfile.timeseries.read.query.DynamicOneColumnData;
 import cn.edu.tsinghua.tsfile.timeseries.read.query.QueryDataSet;
@@ -608,40 +608,41 @@ public class KvMatchIndex  implements IoTIndex {
      * @throws IOException
      * @throws ProcessorException
      */
-    public OverflowBufferWriteInfo getDataInBufferWriteSeparateWithOverflow(Path path, int readToken) throws PathErrorException, IOException, ProcessorException {
+    public OverflowBufferWriteInfo getDataInBufferWriteSeparateWithOverflow(Path path, int readToken)
+            throws PathErrorException, IOException, ProcessorException {
         String deltaObjectUID = path.getDeltaObjectToString();
         String measurementUID = path.getMeasurementToString();
         String recordReaderPrefix = ReadCachePrefix.addQueryPrefix(0);
 
         RecordReader recordReader = RecordReaderFactory.getInstance().
-                getRecordReader(deltaObjectUID, measurementUID, null, null, null, readToken, recordReaderPrefix);
-
-        long bufferWriteBeginTime = Long.MAX_VALUE;
-        if (recordReader.bufferWritePageList != null && recordReader.bufferWritePageList.size() > 0) {
-            PageReader pageReader = new PageReader(recordReader.bufferWritePageList.get(0), recordReader.compressionTypeName);
-            PageHeader pageHeader = pageReader.getNextPageHeader();
-            bufferWriteBeginTime = pageHeader.data_page_header.min_timestamp;
-        } else if (recordReader.lastPageInMemory != null && recordReader.lastPageInMemory.timeLength > 0) {
-            bufferWriteBeginTime = recordReader.lastPageInMemory.getTime(0);
-        }
-
-        DynamicOneColumnData insert = recordReader.overflowInsertData;
-        DynamicOneColumnData update = recordReader.overflowUpdateTrue;
-        SingleSeriesFilterExpression deleteFilter = recordReader.overflowTimeFilter;
-        long maxDeleteTime = 0;
-        if (deleteFilter != null) {
-            LongInterval interval = (LongInterval) FilterVerifier.create(TSDataType.INT64).getInterval(deleteFilter);
-            if (interval.count > 0) {
-                if (interval.flag[0] && interval.v[0] > 0) {
-                    maxDeleteTime = interval.v[0] - 1;
-                } else {
-                    maxDeleteTime = interval.v[0];
-                }
+                getRecordReader(deltaObjectUID, measurementUID, null,  null, readToken, recordReaderPrefix, ReaderType.QUERY);
+        OverflowInsertDataReader overflowSeriesInsertReader = recordReader.getOverflowSeriesInsertReader();
+        OverflowOperationReader overflowOperationReader = recordReader.getOverflowOperationReader();
+        List<Pair<Long, Long>> insertIntervals = new ArrayList<>();
+        long earliestInsert = Long.MAX_VALUE;
+        if (overflowSeriesInsertReader != null) {
+            while(overflowSeriesInsertReader.hasNext()){
+                long t = overflowSeriesInsertReader.next().getTimestamp();
+                insertIntervals.add(new Pair<>(t, t));
+                if(t < earliestInsert)
+                    earliestInsert = t;
             }
         }
-
+        insertIntervals = IntervalUtils.sortAndMergePair(insertIntervals);
+        long maxDeleteTime = Long.MAX_VALUE;
+        List<Pair<Long, Long>> updateIntervals = new ArrayList<>();
+        if (overflowOperationReader != null) {
+            while(overflowOperationReader.hasNext()){
+                OverflowOperation op = overflowOperationReader.next();
+                insertIntervals.add(new Pair<>(op.getLeftBound(), op.getRightBound()));
+                if(op.getType() == OverflowOperation.OperationType.DELETE && op.verifyTime(maxDeleteTime))
+                    maxDeleteTime = op.getRightBound();
+            }
+        }
+        insertIntervals =  IntervalUtils.union(insertIntervals, updateIntervals);
+        insertIntervals = IntervalUtils.sortAndMergePair(insertIntervals);
         RecordReaderFactory.getInstance().removeRecordReader(recordReaderPrefix + deltaObjectUID, measurementUID);
-        return new OverflowBufferWriteInfo(insert, update, maxDeleteTime < 0 ? 0L : maxDeleteTime, bufferWriteBeginTime);
+        return new OverflowBufferWriteInfo(insertIntervals, maxDeleteTime);
     }
 
     /**

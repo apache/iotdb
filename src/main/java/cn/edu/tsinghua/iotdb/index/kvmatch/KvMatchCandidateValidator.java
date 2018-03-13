@@ -2,14 +2,13 @@ package cn.edu.tsinghua.iotdb.index.kvmatch;
 
 import cn.edu.fudan.dsm.kvmatch.iotdb.common.QueryConfig;
 import cn.edu.fudan.dsm.kvmatch.iotdb.utils.SeriesUtils;
-import cn.edu.tsinghua.iotdb.query.engine.ReadCachePrefix;
+import cn.edu.tsinghua.iotdb.query.management.ReadCachePrefix;
 import cn.edu.tsinghua.tsfile.common.utils.Pair;
-import cn.edu.tsinghua.tsfile.timeseries.read.query.QueryDataSet;
 import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
 import cn.edu.tsinghua.tsfile.timeseries.read.support.RowRecord;
 import cn.edu.tsinghua.iotdb.index.common.QueryDataSetIterator;
 import cn.edu.tsinghua.iotdb.query.engine.OverflowQueryEngine;
-import cn.edu.tsinghua.iotdb.query.management.RecordReaderFactory;
+import cn.edu.tsinghua.iotdb.query.reader.RecordReaderFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

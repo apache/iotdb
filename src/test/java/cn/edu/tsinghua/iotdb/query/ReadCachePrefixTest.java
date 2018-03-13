@@ -1,7 +1,7 @@
 package cn.edu.tsinghua.iotdb.query;
 
 
-import cn.edu.tsinghua.iotdb.query.engine.ReadCachePrefix;
+import cn.edu.tsinghua.iotdb.query.management.ReadCachePrefix;
 import org.junit.Assert;
 import org.junit.Test;
 
