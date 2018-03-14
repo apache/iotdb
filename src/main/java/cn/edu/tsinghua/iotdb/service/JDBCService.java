@@ -169,9 +169,4 @@ public class JDBCService implements JDBCServiceMBean, IService {
             }
         }
     }
-
-    public static void main(String[] args) throws StartupException {
-        JDBCService server = JDBCService.getInstance();
-        server.start();
-    }
 }
