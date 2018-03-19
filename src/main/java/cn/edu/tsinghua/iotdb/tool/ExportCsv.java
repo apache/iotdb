@@ -269,7 +269,7 @@ public class ExportCsv extends AbstractCsvTool{
 					}
 				}
 			}
-			System.out.println(String.format("[INFO] Statement %s dump to file %s successfully! It costs %dms", sql, path, (System.currentTimeMillis() - startTime)));
+			System.out.println(String.format("[INFO] Statement [%s] has dumped to file %s successfully! It costs %d ms.", sql, path, (System.currentTimeMillis() - startTime)));
 		} catch (IOException e) {
 			System.out.println(e.getMessage());
 		} finally {

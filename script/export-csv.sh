@@ -1,7 +1,7 @@
 #!/bin/sh
 
-if [ -z "${TSFILE_HOME}" ]; then
-    export TSFILE_HOME="$(cd "`dirname "$0"`"/..; pwd)"
+if [ -z "${IOTDB_HOME}" ]; then
+    export IOTDB_HOME="$(cd "`dirname "$0"`"/..; pwd)"
 fi
 
 if [ -n "$JAVA_HOME" ]; then
@@ -21,11 +21,11 @@ if [ -z $JAVA ] ; then
 fi
 
 CLASSPATH=""
-for f in ${TSFILE_HOME}/lib/*.jar; do
+for f in ${IOTDB_HOME}/lib/*.jar; do
     CLASSPATH=${CLASSPATH}":"$f
 done
 
 MAIN_CLASS=cn.edu.tsinghua.iotdb.tool.ExportCsv
 
-"$JAVA" -DTSFILE_HOME=${TSFILE_HOME} -cp "$CLASSPATH" "$MAIN_CLASS" "$@"
+"$JAVA" -DIOTDB_HOME=${IOTDB_HOME} -cp "$CLASSPATH" "$MAIN_CLASS" "$@"
 exit $?

@@ -45,6 +45,7 @@ public class ImportCsv extends AbstractCsvTool{
     private static final String FILE_SUFFIX = "csv";
 
     private static final String TSFILEDB_CLI_PREFIX = "ImportCsv";
+    private static final String ERROR_INFO_STR = "csvInsertError.error";
 
     private static final String STRING_DATA_TYPE = "TEXT";
     private static final int BATCH_EXECUTE_COUNT = 10;
@@ -125,7 +126,7 @@ public class ImportCsv extends AbstractCsvTool{
             for (int i = 1; i < strHeadInfo.length; i++) {
                 ResultSet resultSet = databaseMetaData.getColumns(null, null, strHeadInfo[i], null);
                 if (resultSet.next()) {
-                    timeseriesDataType.put(resultSet.getString(0), resultSet.getString(1));
+                    timeseriesDataType.put(resultSet.getString(1), resultSet.getString(2));
                 } else {
                 		String errorInfo = String.format("[ERROR] Database cannot find %s in %s, stop import!", strHeadInfo[i], file.getAbsolutePath());
                     System.out.println(errorInfo);
@@ -164,7 +165,7 @@ public class ImportCsv extends AbstractCsvTool{
                         if (count == BATCH_EXECUTE_COUNT) {
                             int[] result = statement.executeBatch();
                             for(int i = 0; i < result.length;i++){
-                            		if(result[i] < 0 && i < tmp.size()){
+                            		if(result[i] != Statement.SUCCESS_NO_INFO && i < tmp.size()){
                             			bw.write(tmp.get(i));
                             			bw.newLine();
                             			errorFlag = false;
@@ -184,7 +185,7 @@ public class ImportCsv extends AbstractCsvTool{
             try {
             		int[] result = statement.executeBatch();
             		for(int i = 0; i < result.length;i++){
-                		if(result[i] < 0 && i < tmp.size()){
+                		if(result[i] != Statement.SUCCESS_NO_INFO && i < tmp.size()){
                 			bw.write(tmp.get(i));
                 			bw.newLine();
                 			errorFlag = false;
@@ -330,9 +331,9 @@ public class ImportCsv extends AbstractCsvTool{
 
     public static void importCsvFromFile(String ip,String port, String username, String password, String filename, String timeZone) throws SQLException{
         if (System.getProperty(TsFileDBConstant.IOTDB_HOME) == null) {
-            errorInsertInfo = "src/test/resources/csvInsertError.error";
+            errorInsertInfo = ERROR_INFO_STR;
         } else {
-            errorInsertInfo = System.getProperty(TsFileDBConstant.IOTDB_HOME) + "/csvInsertError.error";
+            errorInsertInfo = System.getProperty(TsFileDBConstant.IOTDB_HOME) + File.separatorChar + ERROR_INFO_STR;
         }
     		try {
     			Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);
@@ -363,6 +364,8 @@ public class ImportCsv extends AbstractCsvTool{
 			System.out.println("[ERROR] Failed to dump data because cannot find TsFile JDBC Driver, please check whether you have imported driver or not");		
 		} catch (TException e) {
 			System.out.println(String.format("[ERROR] Encounter an error when connecting to server, because %s", e.getMessage()));
+		} catch (Exception e) {
+			System.out.println(String.format("[ERROR] Encounter an error, because %s", e.getMessage()));
 		} finally {
 			if (connection != null){
 				connection.close();
