@@ -1,6 +1,7 @@
 package cn.edu.tsinghua.iotdb.writelog.manager;
 
 import cn.edu.tsinghua.iotdb.concurrent.ThreadName;
+import cn.edu.tsinghua.iotdb.conf.TsFileDBConstant;
 import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
 import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
 import cn.edu.tsinghua.iotdb.exception.RecoverException;
@@ -12,6 +13,8 @@ import cn.edu.tsinghua.iotdb.writelog.node.WriteLogNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
+import java.io.FilenameFilter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -128,7 +131,32 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
         logger.info("LogNodeManager closed.");
     }
 
-	@Override
+    @Override
+    public boolean hasWAL(String fileNodeName) {
+        return hasBufferWriteWAL(fileNodeName) || hasOverflowWAL(fileNodeName);
+    }
+
+    private boolean hasBufferWriteWAL(String fileNodeName) {
+        File bufferWriteWALDir = new File(bufferWriteWALPath(fileNodeName));
+        String[] files = bufferWriteWALDir.list();
+        return files != null && files.length > 0;
+    }
+
+    private String bufferWriteWALPath(String fileNodeName) {
+        return config.walFolder + File.separator + fileNodeName + TsFileDBConstant.BUFFERWRITE_LOG_NODE_SUFFIX;
+    }
+
+    private boolean hasOverflowWAL(String fileNodeName) {
+        File overflowWALDir = new File(overflowWALPath(fileNodeName));
+        String[] files = overflowWALDir.list();
+        return files != null && files.length > 0;
+    }
+
+    private String overflowWALPath(String fileNodeName) {
+        return config.walFolder + File.separator + fileNodeName + TsFileDBConstant.OVERFLOW_LOG_NODE_SUFFIX;
+    }
+
+    @Override
 	public void start() throws StartupException {
 		try {
 			if(!config.enableWal)

@@ -36,4 +36,11 @@ public interface WriteLogNodeManager {
      * Close all nodes.
      */
     void close();
+
+    /**
+     *
+     * @param fileNodeName
+     * @return Whether WAL files exist for certain fileNode/
+     */
+    boolean hasWAL(String fileNodeName);
 }
