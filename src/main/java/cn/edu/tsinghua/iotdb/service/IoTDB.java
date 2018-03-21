@@ -1,7 +1,11 @@
 package cn.edu.tsinghua.iotdb.service;
 
 import java.io.IOException;
+import java.util.List;
 
+import cn.edu.tsinghua.iotdb.engine.filenode.FileNodeProcessor;
+import cn.edu.tsinghua.iotdb.exception.*;
+import cn.edu.tsinghua.iotdb.metadata.MManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -12,8 +16,6 @@ import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
 import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
 import cn.edu.tsinghua.iotdb.engine.filenode.FileNodeManager;
 import cn.edu.tsinghua.iotdb.engine.memcontrol.BasicMemController;
-import cn.edu.tsinghua.iotdb.exception.RecoverException;
-import cn.edu.tsinghua.iotdb.exception.StartupException;
 import cn.edu.tsinghua.iotdb.monitor.StatMonitor;
 
 import cn.edu.tsinghua.iotdb.writelog.manager.MultiFileLogNodeManager;
@@ -105,6 +107,21 @@ public class IoTDB implements IoTDBMBean{
 		LOGGER.info("{}: start checking write log...", TsFileDBConstant.GLOBAL_DB_NAME);
 		// QueryProcessor processor = new QueryProcessor(new OverflowQPExecutor());
 		WriteLogNodeManager writeLogManager = MultiFileLogNodeManager.getInstance();
+		List<String> filenodeNames = null;
+		try {
+			filenodeNames = MManager.getInstance().getAllFileNames();
+		} catch (PathErrorException e) {
+			throw new RecoverException(e);
+		}
+		for (String filenodeName : filenodeNames) {
+			if(writeLogManager.hasWAL(filenodeName)){
+				try {
+					FileNodeManager.getInstance().recoverFileNode(filenodeName);
+				} catch (FileNodeProcessorException | FileNodeManagerException e) {
+					throw new RecoverException(e);
+				}
+			}
+		}
 		TsfileDBConfig config = TsfileDBDescriptor.getInstance().getConfig();
 		boolean enableWal = config.enableWal;
 		config.enableWal = false;
