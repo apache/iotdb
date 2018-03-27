@@ -442,10 +442,8 @@ public abstract class AbstractClient {
 				output(resultSet, printToConsole, cmd.trim(), timeZone);
 			}
 			System.out.println("Execute successfully.");
-		} catch (SQLException e) {
-			System.out.println("Error: " + e.getMessage());
 		} catch (Exception e) {
-			System.out.println("Error: " + e.getMessage());
+			System.out.println("Msg: " + e.getMessage());
 		} finally {
 			if (statement != null) {
 				try {

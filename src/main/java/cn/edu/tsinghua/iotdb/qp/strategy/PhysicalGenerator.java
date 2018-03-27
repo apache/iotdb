@@ -1,5 +1,6 @@
 package cn.edu.tsinghua.iotdb.qp.strategy;
 
+import cn.edu.tsinghua.iotdb.auth.AuthException;
 import cn.edu.tsinghua.iotdb.qp.constant.SQLConstant;
 import cn.edu.tsinghua.iotdb.qp.exception.GeneratePhysicalPlanException;
 import cn.edu.tsinghua.iotdb.qp.exception.LogicalOperatorException;
@@ -65,11 +66,17 @@ public class PhysicalGenerator {
 		switch (operator.getType()) {
 		case AUTHOR:
 			AuthorOperator author = (AuthorOperator) operator;
-			return new AuthorPlan(author.getAuthorType(), author.getUserName(), author.getRoleName(),
-					author.getPassWord(), author.getNewPassword(), author.getPrivilegeList(), author.getNodeName());
+			try {
+				return new AuthorPlan(author.getAuthorType(), author.getUserName(), author.getRoleName(),
+                        author.getPassWord(), author.getNewPassword(), author.getPrivilegeList(), author.getNodeName());
+			} catch (AuthException e) {
+				throw new QueryProcessorException(e.getMessage());
+			}
 		case LOADDATA:
 			LoadDataOperator loadData = (LoadDataOperator) operator;
 			return new LoadDataPlan(loadData.getInputFilePath(), loadData.getMeasureType());
+		case SET_STORAGE_GROUP:
+		case DELETE_TIMESERIES:
 		case METADATA:
 			MetadataOperator metadata = (MetadataOperator) operator;
 			return new MetadataPlan(metadata.getNamespaceType(), metadata.getPath(), metadata.getDataType(),

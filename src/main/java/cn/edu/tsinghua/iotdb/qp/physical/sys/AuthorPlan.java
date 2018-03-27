@@ -5,6 +5,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import cn.edu.tsinghua.iotdb.auth.AuthException;
+import cn.edu.tsinghua.iotdb.auth.entity.PrivilegeType;
 import cn.edu.tsinghua.iotdb.qp.logical.sys.AuthorOperator.AuthorType;
 import cn.edu.tsinghua.iotdb.qp.physical.PhysicalPlan;
 import cn.edu.tsinghua.iotdb.qp.logical.Operator;
@@ -24,7 +26,7 @@ public class AuthorPlan extends PhysicalPlan {
 	private Path nodeName;
 
 	public AuthorPlan(AuthorType authorType, String userName, String roleName, String password, String newPassword,
-			String[] authorizationList, Path nodeName) {
+			String[] authorizationList, Path nodeName) throws AuthException {
 		super(false, Operator.OperatorType.AUTHOR);
 		this.authorType = authorType;
 		this.userName = userName;
@@ -33,7 +35,59 @@ public class AuthorPlan extends PhysicalPlan {
 		this.newPassword = newPassword;
 		this.permissions = strToPermissions(authorizationList);
 		this.nodeName = nodeName;
-
+		switch (authorType) {
+			case DROP_ROLE:
+				this.setOperatorType(Operator.OperatorType.DELETE_ROLE);
+				break;
+			case DROP_USER:
+				this.setOperatorType(Operator.OperatorType.DELETE_USER);
+				break;
+			case GRANT_ROLE:
+				this.setOperatorType(Operator.OperatorType.GRANT_ROLE_PRIVILEGE);
+				break;
+			case GRANT_USER:
+				this.setOperatorType(Operator.OperatorType.GRANT_USER_PRIVILEGE);
+				break;
+			case CREATE_ROLE:
+				this.setOperatorType(Operator.OperatorType.CREATE_ROLE);
+				break;
+			case CREATE_USER:
+				this.setOperatorType(Operator.OperatorType.CREATE_USER);
+				break;
+			case REVOKE_ROLE:
+				this.setOperatorType(Operator.OperatorType.REVOKE_ROLE_PRIVILEGE);
+				break;
+			case REVOKE_USER:
+				this.setOperatorType(Operator.OperatorType.REVOKE_USER_PRIVILEGE);
+				break;
+			case UPDATE_USER:
+				this.setOperatorType(Operator.OperatorType.MODIFY_PASSWORD);
+				break;
+			case GRANT_ROLE_TO_USER:
+				this.setOperatorType(Operator.OperatorType.GRANT_ROLE_PRIVILEGE);
+				break;
+			case REVOKE_ROLE_FROM_USER:
+				this.setOperatorType(Operator.OperatorType.REVOKE_USER_ROLE);
+				break;
+			case LIST_USER_PRIVILEGE:
+				this.setOperatorType(Operator.OperatorType.LIST_USER_PRIVILEGE);
+				break;
+			case LIST_ROLE_PRIVILEGE:
+				this.setOperatorType(Operator.OperatorType.LIST_ROLE_PRIVILEGE);
+				break;
+			case LIST_USER_ROLES:
+				this.setOperatorType(Operator.OperatorType.LIST_USER_ROLES);
+				break;
+			case LIST_ROLE_USERS:
+				this.setOperatorType(Operator.OperatorType.LIST_ROLE_USERS);
+				break;
+			case LIST_USER:
+				this.setOperatorType(Operator.OperatorType.LIST_USER);
+				break;
+			case LIST_ROLE:
+				this.setOperatorType(Operator.OperatorType.LIST_ROLE);
+				break;
+		}
 	}
 
 	public AuthorType getAuthorType() {
@@ -64,30 +118,22 @@ public class AuthorPlan extends PhysicalPlan {
 		return nodeName;
 	}
 
-	private Set<Integer> strToPermissions(String[] authorizationList) {
+	private Set<Integer> strToPermissions(String[] authorizationList) throws AuthException {
 		Set<Integer> result = new HashSet<>();
 		if (authorizationList == null)
 			return result;
 		for (String s : authorizationList) {
-			s = s.toUpperCase();
-			switch (s) {
-			case "CREATE":
-				result.add(0);
-				break;
-			case "INSERT":
-				result.add(1);
-				break;
-			case "MODIFY":
-				result.add(2);
-				break;
-			case "READ":
-				result.add(3);
-				break;
-			case "DELETE":
-				result.add(4);
-				break;
-			default:
-				break;
+			PrivilegeType[] types = PrivilegeType.values();
+			boolean legal = false;
+			for(PrivilegeType privilegeType : types) {
+				if(s.equalsIgnoreCase(privilegeType.name())) {
+					result.add(privilegeType.ordinal());
+					legal = true;
+					break;
+				}
+			}
+			if(!legal) {
+				throw new AuthException("No such privilege " + s);
 			}
 		}
 		return result;

@@ -1,25 +1,9 @@
 package cn.edu.tsinghua.iotdb.service;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.sql.Statement;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-
-import cn.edu.tsinghua.iotdb.qp.physical.crud.IndexQueryPlan;
-import cn.edu.tsinghua.iotdb.qp.physical.crud.MultiQueryPlan;
-import org.apache.thrift.TException;
-import org.apache.thrift.server.ServerContext;
-import org.joda.time.DateTimeZone;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import cn.edu.tsinghua.iotdb.auth.AuthException;
 import cn.edu.tsinghua.iotdb.auth.AuthorityChecker;
-import cn.edu.tsinghua.iotdb.auth.dao.Authorizer;
+import cn.edu.tsinghua.iotdb.auth.authorizer.IAuthorizer;
+import cn.edu.tsinghua.iotdb.auth.authorizer.LocalFileAuthorizer;
 import cn.edu.tsinghua.iotdb.conf.TsFileDBConstant;
 import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
 import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
@@ -27,33 +11,7 @@ import cn.edu.tsinghua.iotdb.engine.filenode.FileNodeManager;
 import cn.edu.tsinghua.iotdb.exception.ArgsErrorException;
 import cn.edu.tsinghua.iotdb.exception.FileNodeManagerException;
 import cn.edu.tsinghua.iotdb.exception.PathErrorException;
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TSCancelOperationReq;
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TSCancelOperationResp;
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TSCloseOperationReq;
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TSCloseOperationResp;
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TSCloseSessionReq;
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TSCloseSessionResp;
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TSExecuteBatchStatementReq;
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TSExecuteBatchStatementResp;
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TSExecuteStatementReq;
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TSExecuteStatementResp;
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TSFetchMetadataReq;
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TSFetchMetadataResp;
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TSFetchResultsReq;
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TSFetchResultsResp;
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TSGetTimeZoneResp;
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TSHandleIdentifier;
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TSIService;
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TSOpenSessionReq;
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TSOpenSessionResp;
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TSOperationHandle;
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TSProtocolVersion;
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TSQueryDataSet;
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TSSetTimeZoneReq;
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TSSetTimeZoneResp;
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TS_SessionHandle;
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TS_Status;
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TS_StatusCode;
+import cn.edu.tsinghua.iotdb.jdbc.thrift.*;
 import cn.edu.tsinghua.iotdb.metadata.MManager;
 import cn.edu.tsinghua.iotdb.metadata.Metadata;
 import cn.edu.tsinghua.iotdb.qp.QueryProcessor;
@@ -62,10 +20,23 @@ import cn.edu.tsinghua.iotdb.qp.exception.QueryProcessorException;
 import cn.edu.tsinghua.iotdb.qp.executor.OverflowQPExecutor;
 import cn.edu.tsinghua.iotdb.qp.logical.Operator;
 import cn.edu.tsinghua.iotdb.qp.physical.PhysicalPlan;
+import cn.edu.tsinghua.iotdb.qp.physical.crud.IndexQueryPlan;
+import cn.edu.tsinghua.iotdb.qp.physical.crud.MultiQueryPlan;
+import cn.edu.tsinghua.iotdb.qp.physical.sys.AuthorPlan;
 import cn.edu.tsinghua.iotdb.query.management.ReadLockManager;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
-import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
 import cn.edu.tsinghua.tsfile.timeseries.read.query.QueryDataSet;
+import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
+import org.apache.thrift.TException;
+import org.apache.thrift.server.ServerContext;
+import org.joda.time.DateTimeZone;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.sql.Statement;
+import java.util.*;
 
 import static cn.edu.tsinghua.iotdb.qp.logical.Operator.OperatorType.INDEXQUERY;
 
@@ -95,8 +66,14 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 		LOGGER.info("{}: receive open session request from username {}",TsFileDBConstant.GLOBAL_DB_NAME, req.getUsername());
 
 		boolean status;
+		IAuthorizer authorizer = null;
 		try {
-			status = Authorizer.login(req.getUsername(), req.getPassword());
+			authorizer = LocalFileAuthorizer.getInstance();
+		} catch (AuthException e) {
+			throw new TException(e);
+		}
+		try {
+			status = authorizer.login(req.getUsername(), req.getPassword());
 		} catch (AuthException e) {
 			status = false;
 		}
@@ -274,6 +251,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 			for (String statement : statements) {
 				try {
 					PhysicalPlan physicalPlan = processor.parseSQLToPhysicalPlan(statement, timeZone.get());
+					physicalPlan.setProposer(username.get());
 					if (physicalPlan.isQuery()) {
 						return getTSBathExecuteStatementResp(TS_StatusCode.ERROR_STATUS, "statement is query :" + statement,
 								result);
@@ -327,6 +305,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 			PhysicalPlan physicalPlan;
 			try {
 				physicalPlan = processor.parseSQLToPhysicalPlan(statement, timeZone.get());
+				physicalPlan.setProposer(username.get());
 			} catch (IllegalASTFormatException e) {
 				return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS,
 						"Statement format is not right:" + e.getMessage());
@@ -354,6 +333,10 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
 			String statement = req.getStatement();
 			PhysicalPlan plan = processor.parseSQLToPhysicalPlan(statement, timeZone.get());
+			plan.setProposer(username.get());
+			String targetUser = null;
+			if(plan instanceof AuthorPlan)
+				targetUser = ((AuthorPlan) plan).getUserName();
 
 			List<Path> paths;
 			paths = plan.getPaths();
@@ -371,7 +354,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 			}
 
 			// check permissions
-			if (!checkAuthorization(paths, plan.getOperatorType())) {
+			if (!checkAuthorization(paths, plan)) {
 				return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, "No permissions for this query.");
 			}
 
@@ -492,8 +475,12 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 	private TSExecuteStatementResp ExecuteUpdateStatement(PhysicalPlan plan) throws TException {
 		List<Path> paths = plan.getPaths();
 
-		if (!checkAuthorization(paths, plan.getOperatorType())) {
-			return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, "No permissions for this operation");
+		try {
+			if (!checkAuthorization(paths, plan)) {
+                return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, "No permissions for this operation " + plan.getOperatorType());
+            }
+		} catch (AuthException e) {
+			return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, "Uninitialized authorizer " + e.getMessage());
 		}
 		// TODO
 		// In current version, we only return OK/ERROR
@@ -525,6 +512,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 		PhysicalPlan physicalPlan;
 		try {
 			physicalPlan = processor.parseSQLToPhysicalPlan(statement, timeZone.get());
+			physicalPlan.setProposer(username.get());
 		} catch (QueryProcessorException | ArgsErrorException e) {
 			e.printStackTrace();
 			return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
@@ -537,9 +525,13 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 		// if operation belongs to add/delete/update
 		List<Path> paths = physicalPlan.getPaths();
 
-		if (!checkAuthorization(paths, physicalPlan.getOperatorType())) {
-			return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, "No permissions for this operation");
-		}
+		try {
+			if (!checkAuthorization(paths, physicalPlan)) {
+                return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, "No permissions for this operation " + physicalPlan.getOperatorType());
+            }
+		} catch (AuthException e) {
+			return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, "Uninitialized authorizer : " + e.getMessage());
+	}
 
 		// TODO
 		// In current version, we only return OK/ERROR
@@ -595,8 +587,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 		return username.get() != null;
 	}
 
-	private boolean checkAuthorization(List<Path> paths, Operator.OperatorType type) {
-		return AuthorityChecker.check(username.get(), paths, type);
+	private boolean checkAuthorization(List<Path> paths, PhysicalPlan plan) throws AuthException {
+		String targetUser = null;
+		if(plan instanceof AuthorPlan)
+			targetUser = ((AuthorPlan) plan).getUserName();
+		return AuthorityChecker.check(username.get(), paths, plan.getOperatorType(), targetUser);
 	}
 
 	private TSExecuteStatementResp getTSExecuteStatementResp(TS_StatusCode code, String msg) {

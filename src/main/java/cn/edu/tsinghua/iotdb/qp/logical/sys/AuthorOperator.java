@@ -1,5 +1,6 @@
 package cn.edu.tsinghua.iotdb.qp.logical.sys;
 
+import cn.edu.tsinghua.iotdb.qp.logical.Operator;
 import cn.edu.tsinghua.iotdb.qp.logical.RootOperator;
 import cn.edu.tsinghua.tsfile.common.constant.SystemConstant;
 import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
@@ -25,6 +26,12 @@ public class AuthorOperator extends RootOperator {
         super(tokenIntType);
         authorType = type;
         operatorType = OperatorType.AUTHOR;
+    }
+
+    public AuthorOperator(int tokenIntType, OperatorType type) {
+        super(tokenIntType);
+        authorType = null;
+        operatorType = type;
     }
 
     public AuthorType getAuthorType() {
@@ -80,6 +87,7 @@ public class AuthorOperator extends RootOperator {
     }
 
     public enum AuthorType {
-        CREATE_USER, CREATE_ROLE, DROP_USER, DROP_ROLE, GRANT_ROLE, GRANT_USER, GRANT_ROLE_TO_USER, REVOKE_USER, REVOKE_ROLE, REVOKE_ROLE_FROM_USER,UPDATE_USER
+        CREATE_USER, CREATE_ROLE, DROP_USER, DROP_ROLE, GRANT_ROLE, GRANT_USER, GRANT_ROLE_TO_USER, REVOKE_USER, REVOKE_ROLE, REVOKE_ROLE_FROM_USER,UPDATE_USER,
+        LIST_USER, LIST_ROLE, LIST_USER_PRIVILEGE, LIST_ROLE_PRIVILEGE, LIST_USER_ROLES, LIST_ROLE_USERS
     }
 }

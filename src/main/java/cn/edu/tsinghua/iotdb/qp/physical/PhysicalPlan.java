@@ -15,6 +15,11 @@ public abstract class PhysicalPlan {
     private boolean isQuery;
     private Operator.OperatorType operatorType;
 
+    /**
+     * The name of the user who proposed this operation.
+     */
+    private String proposer;
+
     protected PhysicalPlan(boolean isQuery, Operator.OperatorType operatorType) {
         this.isQuery = isQuery;
         this.operatorType = operatorType;
@@ -40,5 +45,13 @@ public abstract class PhysicalPlan {
 
     public List<String> getAggregations(){
         return null;
+    }
+
+    public String getProposer() {
+        return proposer;
+    }
+
+    public void setProposer(String proposer) {
+        this.proposer = proposer;
     }
 }
