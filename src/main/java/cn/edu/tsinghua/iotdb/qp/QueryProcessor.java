@@ -85,6 +85,7 @@ public class QueryProcessor {
         try {
             astTree = ParseGenerator.generateAST(sqlStr);
         } catch (ParseException e) {
+            //e.printStackTrace();
             throw new IllegalASTFormatException("parsing error,statement: " + sqlStr + " .message:" + e.getMessage());
         }
         return ParseUtils.findRootNonNullToken(astTree);
@@ -102,6 +103,8 @@ public class QueryProcessor {
         switch (operator.getType()) {
             case AUTHOR:
             case METADATA:
+            case SET_STORAGE_GROUP:
+            case DELETE_TIMESERIES:
             case PROPERTY:
             case LOADDATA:
             case INSERT:

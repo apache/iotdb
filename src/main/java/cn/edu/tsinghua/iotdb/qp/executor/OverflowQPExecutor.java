@@ -1,7 +1,12 @@
 package cn.edu.tsinghua.iotdb.qp.executor;
 
 import cn.edu.tsinghua.iotdb.auth.AuthException;
-import cn.edu.tsinghua.iotdb.auth.dao.Authorizer;
+import cn.edu.tsinghua.iotdb.auth.authorizer.IAuthorizer;
+import cn.edu.tsinghua.iotdb.auth.authorizer.LocalFileAuthorizer;
+import cn.edu.tsinghua.iotdb.auth.entity.PathPrivilege;
+import cn.edu.tsinghua.iotdb.auth.entity.PrivilegeType;
+import cn.edu.tsinghua.iotdb.auth.entity.Role;
+import cn.edu.tsinghua.iotdb.auth.entity.User;
 import cn.edu.tsinghua.iotdb.engine.filenode.FileNodeManager;
 import cn.edu.tsinghua.iotdb.exception.ArgsErrorException;
 import cn.edu.tsinghua.iotdb.exception.FileNodeManagerException;
@@ -26,9 +31,10 @@ import cn.edu.tsinghua.iotdb.qp.physical.sys.AuthorPlan;
 import cn.edu.tsinghua.iotdb.qp.physical.sys.LoadDataPlan;
 import cn.edu.tsinghua.iotdb.qp.physical.sys.MetadataPlan;
 import cn.edu.tsinghua.iotdb.qp.physical.sys.PropertyPlan;
-import cn.edu.tsinghua.iotdb.query.management.FilterStructure;
 import cn.edu.tsinghua.iotdb.query.engine.OverflowQueryEngine;
 import cn.edu.tsinghua.iotdb.query.fill.IFill;
+import cn.edu.tsinghua.iotdb.query.management.FilterStructure;
+import cn.edu.tsinghua.iotdb.utils.AuthUtils;
 import cn.edu.tsinghua.iotdb.utils.LoadDataUtils;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 import cn.edu.tsinghua.tsfile.common.utils.Pair;
@@ -76,7 +82,23 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
                 int result = multiInsert(insert.getDeltaObject(), insert.getTime(), insert.getMeasurements(),
                         insert.getValues());
                 return result > 0;
-            case AUTHOR:
+            case CREATE_ROLE:
+            case DELETE_ROLE:
+            case CREATE_USER:
+            case REVOKE_USER_ROLE:
+            case REVOKE_ROLE_PRIVILEGE:
+            case REVOKE_USER_PRIVILEGE:
+            case GRANT_ROLE_PRIVILEGE:
+            case GRANT_USER_PRIVILEGE:
+            case GRANT_USER_ROLE:
+            case MODIFY_PASSWORD:
+            case DELETE_USER:
+            case LIST_ROLE:
+            case LIST_USER:
+            case LIST_ROLE_PRIVILEGE:
+            case LIST_ROLE_USERS:
+            case LIST_USER_PRIVILEGE:
+            case LIST_USER_ROLES:
                 AuthorPlan author = (AuthorPlan) plan;
                 return operateAuthor(author);
             case LOADDATA:
@@ -84,6 +106,8 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
                 LoadDataUtils load = new LoadDataUtils();
                 load.loadLocalDataMultiPass(loadData.getInputFilePath(), loadData.getMeasureType(), MManager.getInstance());
                 return true;
+            case DELETE_TIMESERIES:
+            case SET_STORAGE_GROUP:
             case METADATA:
                 MetadataPlan metadata = (MetadataPlan) plan;
                 return operateMetadata(metadata);
@@ -331,55 +355,154 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
         String newPassword = author.getNewPassword();
         Set<Integer> permissions = author.getPermissions();
         Path nodeName = author.getNodeName();
+        IAuthorizer authorizer = null;
         try {
-            boolean flag = true;
+            authorizer = LocalFileAuthorizer.getInstance();
+        } catch (AuthException e) {
+            throw new ProcessorException(e);
+        }
+        StringBuilder msg;
+        List<String> roleList;
+        List<String> userList;
+        try {
             switch (authorType) {
                 case UPDATE_USER:
-                    Authorizer.updateUserPassword(userName, newPassword);
+                    if(!authorizer.updateUserPassword(userName, newPassword))
+                        throw new ProcessorException("password " + newPassword + " is illegal");
+                    return true;
                 case CREATE_USER:
-                    Authorizer.createUser(userName, password);
+                    if(!authorizer.createUser(userName, password))
+                        throw new ProcessorException("User " + userName + " already exists");
+                    return true;
                 case CREATE_ROLE:
-                    Authorizer.createRole(roleName);
+                    if(!authorizer.createRole(roleName))
+                        throw new ProcessorException("Role " + roleName + " already exists");
+                    return true;
                 case DROP_USER:
-                    return Authorizer.deleteUser(userName);
+                    if(!authorizer.deleteUser(userName))
+                        throw new ProcessorException("User " + userName + " does not exist");
+                    return true;
                 case DROP_ROLE:
-                    return Authorizer.deleteRole(roleName);
+                    if(!authorizer.deleteRole(roleName))
+                        throw new ProcessorException("Role " + roleName + " does not exist");
+                    return true;
                 case GRANT_ROLE:
                     for (int i : permissions) {
-                        if (!Authorizer.addPmsToRole(roleName, nodeName.getFullPath(), i))
-                            flag = false;
+                        if (!authorizer.grantPrivilegeToRole(roleName, nodeName.getFullPath(), i)) {
+                            throw new ProcessorException("Role " + roleName + " already has " + PrivilegeType.values()[i] + " on " + nodeName.getFullPath());
+                        }
                     }
-                    return flag;
+                    return true;
                 case GRANT_USER:
                     for (int i : permissions) {
-                        if (!Authorizer.addPmsToUser(userName, nodeName.getFullPath(), i))
-                            flag = false;
+                        if (!authorizer.grantPrivilegeToUser(userName, nodeName.getFullPath(), i))
+                            throw new ProcessorException("User " + userName + " already has " + PrivilegeType.values()[i] + " on " + nodeName.getFullPath());
                     }
-                    return flag;
+                    return true;
                 case GRANT_ROLE_TO_USER:
-                    return Authorizer.grantRoleToUser(roleName, userName);
+                    if(!authorizer.grantRoleToUser(roleName, userName))
+                        throw new ProcessorException("User " + userName + " already has role " + roleName);
+                    return true;
                 case REVOKE_USER:
                     for (int i : permissions) {
-                        if (!Authorizer.removePmsFromUser(userName, nodeName.getFullPath(), i))
-                            flag = false;
+                        if (!authorizer.revokePrivilegeFromUser(userName, nodeName.getFullPath(), i))
+                            throw new ProcessorException("User " + userName + " does not have " + PrivilegeType.values()[i] + " on " + nodeName);
                     }
-                    return flag;
+                    return true;
                 case REVOKE_ROLE:
                     for (int i : permissions) {
-                        if (!Authorizer.removePmsFromRole(roleName, nodeName.getFullPath(), i))
-                            flag = false;
+                        if (!authorizer.revokePrivilegeFromRole(roleName, nodeName.getFullPath(), i))
+                            throw new ProcessorException("Role " + roleName + " does not have " + PrivilegeType.values()[i] + " on " + nodeName);
                     }
-                    return flag;
+                    return true;
                 case REVOKE_ROLE_FROM_USER:
-                    return Authorizer.revokeRoleFromUser(roleName, userName);
+                    if(!authorizer.revokeRoleFromUser(roleName, userName))
+                        throw new ProcessorException("User " + userName + " does not have role " + roleName);
+                    return true;
+                case LIST_ROLE:
+                    roleList = authorizer.listAllRoles();
+                    msg = new StringBuilder("Roles are : [ \n");
+                    for(String role : roleList)
+                        msg.append(role).append("\n");
+                    msg.append("]");
+                    // TODO : use a more elegant way to pass message.
+                    throw new ProcessorException(msg.toString());
+                case LIST_USER:
+                    userList = authorizer.listAllUsers();
+                    msg = new StringBuilder("Users are : [ \n");
+                    for(String user : userList)
+                        msg.append(user).append("\n");
+                    msg.append("]");
+                    throw new ProcessorException(msg.toString());
+                case LIST_ROLE_USERS:
+                    Role role = authorizer.getRole(roleName);
+                    if(role == null) {
+                        throw new ProcessorException("No such role : " + roleName);
+                    }
+                    userList = authorizer.listAllUsers();
+                    msg = new StringBuilder("Users are : [ \n");
+                    for(String userN : userList) {
+                        User userObj = authorizer.getUser(userN);
+                        if(userObj != null && userObj.hasRole(roleName))
+                            msg.append(userN).append("\n");
+                    }
+                    msg.append("]");
+                    throw new ProcessorException(msg.toString());
+                case LIST_USER_ROLES:
+                    msg = new StringBuilder("Roles are : [ \n");
+                    User user = authorizer.getUser(userName);
+                    if(user != null) {
+                        for(String roleN : user.roleList) {
+                            msg.append(roleN).append("\n");
+                        }
+                    } else {
+                        throw new ProcessorException("No such user : " + userName);
+                    }
+                    msg.append("]");
+                    throw new ProcessorException(msg.toString());
+                case LIST_ROLE_PRIVILEGE:
+                    msg = new StringBuilder("Privileges are : [ \n");
+                    role = authorizer.getRole(roleName);
+                    if(role != null) {
+                        for(PathPrivilege pathPrivilege : role.privilegeList) {
+                            if(nodeName == null || AuthUtils.pathBelongsTo(nodeName.getFullPath(), pathPrivilege.path))
+                                msg.append(pathPrivilege.toString());
+                        }
+                    } else {
+                        throw new ProcessorException("No such role : " + roleName);
+                    }
+                    msg.append("]");
+                    throw new ProcessorException(msg.toString());
+                case LIST_USER_PRIVILEGE:
+                    user = authorizer.getUser(userName);
+                    if(user == null)
+                        throw new ProcessorException("No such user : " + userName);
+                    msg = new StringBuilder("Privileges are : [ \n");
+                    msg.append("From itself : {\n");
+                    for(PathPrivilege pathPrivilege : user.privilegeList) {
+                        if(nodeName == null || AuthUtils.pathBelongsTo(nodeName.getFullPath(), pathPrivilege.path))
+                            msg.append(pathPrivilege.toString());
+                    }
+                    msg.append("}\n");
+                    for(String roleN : user.roleList) {
+                        role = authorizer.getRole(roleN);
+                        if(role != null) {
+                            msg.append("From role ").append(roleN).append(" : {\n");
+                            for(PathPrivilege pathPrivilege : role.privilegeList) {
+                                if(nodeName == null || AuthUtils.pathBelongsTo(nodeName.getFullPath(), pathPrivilege.path))
+                                    msg.append(pathPrivilege.toString());
+                            }
+                            msg.append("}\n");
+                        }
+                    }
+                    msg.append("]");
+                    throw new ProcessorException(msg.toString());
                 default:
-                    break;
-
+                   throw new ProcessorException("Unsupported operation " + authorType);
             }
         } catch (AuthException e) {
             throw new ProcessorException(e.getMessage());
         }
-        return false;
     }
 
     private boolean operateMetadata(MetadataPlan metadataPlan) throws ProcessorException {
@@ -580,9 +703,4 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
         }
         return true;
     }
-
-    public Set<Integer> getPermissionsOfUser(String username, String nodeName) throws AuthException {
-        return Authorizer.getPermission(username, nodeName);
-    }
-
 }

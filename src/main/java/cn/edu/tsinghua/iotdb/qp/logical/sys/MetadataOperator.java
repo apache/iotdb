@@ -16,7 +16,15 @@ public class MetadataOperator extends RootOperator {
     public MetadataOperator(int tokenIntType, NamespaceType type) {
         super(tokenIntType);
         namespaceType = type;
-        operatorType = OperatorType.METADATA;
+        switch (type) {
+            case SET_FILE_LEVEL:
+            case ADD_PATH:
+                operatorType = OperatorType.SET_STORAGE_GROUP;
+                break;
+            case DELETE_PATH:
+                operatorType = OperatorType.DELETE_TIMESERIES;
+                break;
+        }
     }
 
     private final NamespaceType namespaceType;

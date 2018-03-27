@@ -117,6 +117,8 @@ public class SQLConstant {
     public static final int TOK_PROPERTY_LINK = 57;
     public static final int TOK_PROPERTY_UNLINK = 58;
 
+    public static final int TOK_LIST = 59;
+
 
     public static Map<Integer, String> tokenSymbol = new HashMap<>();
     public static Map<Integer, String> tokenNames = new HashMap<>();
@@ -171,6 +173,7 @@ public class SQLConstant {
         tokenNames.put(TOK_PROPERTY_LINK, "TOK_PROPERTY_LINK");
         tokenNames.put(TOK_PROPERTY_UNLINK, "TOK_PROPERTY_UNLINK");
 
+        tokenNames.put(TOK_LIST, "TOK_LIST");
     }
 
     static {

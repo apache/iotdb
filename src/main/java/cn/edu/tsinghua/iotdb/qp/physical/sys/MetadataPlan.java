@@ -67,6 +67,15 @@ public class MetadataPlan extends PhysicalPlan {
 		this.encoding = encoding;
 		this.encodingArgs = encodingArgs;
 		this.deletePathList = deletePathList;
+		switch (namespaceType){
+			case SET_FILE_LEVEL:
+			case ADD_PATH:
+				setOperatorType(Operator.OperatorType.SET_STORAGE_GROUP);
+				break;
+			case DELETE_PATH:
+				setOperatorType(Operator.OperatorType.DELETE_TIMESERIES);
+				break;
+		}
 	}
 
 	@Override

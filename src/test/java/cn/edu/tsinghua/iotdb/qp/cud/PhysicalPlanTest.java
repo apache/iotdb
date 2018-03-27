@@ -66,7 +66,7 @@ public class PhysicalPlanTest {
 
     @Test
     public void testAuthor() throws QueryProcessorException, ArgsErrorException {
-        String sql = "grant role xm privileges 'create','delete' on root.vehicle.d1.s1";
+        String sql = "grant role xm privileges 'SET_STORAGE_GROUP','DELETE_TIMESERIES' on root.vehicle.d1.s1";
         QueryProcessor processor = new QueryProcessor(new MemIntQpExecutor());
         AuthorPlan plan = (AuthorPlan) processor.parseSQLToPhysicalPlan(sql);
         assertEquals("userName: null\n" +
