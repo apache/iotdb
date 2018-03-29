@@ -1,13 +1,16 @@
 package cn.edu.tsinghua.iotdb.conf;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.joda.time.DateTimeZone;
 
 public class TsfileDBConfig {
 
 	public static final String CONFIG_NAME = "iotdb-engine.properties";
-	
+	public static final String default_data_dir = "data";
+	public static final String default_sys_dir = "system";
 	/**
 	 * Port which JDBC server listens to
 	 */
@@ -35,6 +38,14 @@ public class TsfileDBConfig {
 	 */
 	public String dataDir = null;
 	/**
+	 * System directory
+	 */
+	public String sysDir = null;
+	/**
+	 * Wal directory
+	 */
+	public String walDir = null;
+	/**
 	 * Data directory of Overflow data
 	 */
 	public String overflowDataDir = "overflow";
@@ -47,22 +58,22 @@ public class TsfileDBConfig {
 	/**
 	 * Data directory of bufferWrite data
 	 */
-	public String bufferWriteDir = "delta";
+	public String bufferWriteDir = "info";
 
 	/**
 	 * Data directory of metadata data
 	 */
-	public String metadataDir = "metadata";
+	public String metadataDir = "settled";
 
 	/**
 	 * Data directory of derby data
 	 */
-	public String derbyHome = "derby";
+	public String derbyHome = "schema";
 
 	/**
 	 * Data directory of Write ahead log folder.
 	 */
-	public String walFolder = "wals";
+	public String walFolder = "wal";
 
 	/**
 	 * Data directory for index files (KV-match indexes)
@@ -219,28 +230,105 @@ public class TsfileDBConfig {
 
 	public TsfileDBConfig() {}
 
-	public void updateDataPath() {
-		if(dataDir == null){
-			dataDir = System.getProperty(TsFileDBConstant.IOTDB_HOME, null);
-			if(dataDir == null){
-				dataDir = "data";
-			} else {
-				if (dataDir.length() > 0 && !dataDir.endsWith(File.separator)) {
-					dataDir = dataDir + File.separatorChar + "data";
-				}
-			}
-		}
-		// filenode dir
+	public void updatePath() {
+		preUpdatePath();
+
+		// update the paths of subdirectories in the dataDir
 		if (dataDir.length() > 0 && !dataDir.endsWith(File.separator)) {
 			dataDir = dataDir + File.separatorChar;
 		}
-		fileNodeDir = dataDir + fileNodeDir;
 		bufferWriteDir = dataDir + bufferWriteDir;
 		overflowDataDir = dataDir + overflowDataDir;
-		metadataDir = dataDir + metadataDir;
-		derbyHome = dataDir + derbyHome;
-		walFolder = dataDir + walFolder;
+
+		// update the paths of subdirectories in the sysDir
+		if (sysDir.length() > 0 && !sysDir.endsWith(File.separator)) {
+			sysDir = sysDir + File.separatorChar;
+		}
+		fileNodeDir = sysDir + fileNodeDir;
+		metadataDir = sysDir + metadataDir;
+
+		// update the paths of subdirectories in the walDir
+		if (walDir.length() > 0 && !walDir.endsWith(File.separator)) {
+			walDir = walDir + File.separatorChar;
+		}
+		walFolder = walDir + walFolder;
+
+		derbyHome = sysDir + derbyHome;
 		indexFileDir = dataDir + indexFileDir;
-		readTmpFileDir = dataDir + readTmpFileDir;
+	}
+
+    /*
+     First, if dataDir is null, dataDir will be assigned the default value(i.e.,"data"+File.separatorChar+"data".
+     Then, if dataDir is absolute, leave dataDir as it is. If dataDir is relative,
+     dataDir will be converted to the complete version using non-empty %IOTDB_HOME%.
+     e.g. for windows platform,
+     |    IOTDB_HOME   |   dataDir before   |       dataDir  after      |
+     |-----------------|--------------------|---------------------------|
+     | D:\\iotdb\iotdb | null               | D:\\iotdb\iotdb\data\data |
+     | D:\\iotdb\iotdb | dataDir            | D:\\iotdb\iotdb\dataDir   |
+     | D:\\iotdb\iotdb | C:\\dataDir        | C:\\dataDir               |
+     | D:\\iotdb\iotdb | ""                 | D:\\iotdb\iotdb\          |
+
+     First, if sysDir is null, sysDir will be assigned the default value(i.e.,"data"+File.separatorChar+"system".
+     Then, if sysDir is absolute, leave sysDir as it is. If sysDir is relative,
+     sysDir will be converted to the complete version using non-empty %IOTDB_HOME%.
+     e.g. for windows platform,
+     |    IOTDB_HOME   |   sysDir before    |       sysDir  after         |
+     |-----------------|--------------------|-----------------------------|
+     | D:\\iotdb\iotdb | null               | D:\\iotdb\iotdb\data\system |
+     | D:\\iotdb\iotdb | sysDir             | D:\\iotdb\iotdb\sysDir      |
+     | D:\\iotdb\iotdb | C:\\sysDir         | C:\\sysDir                  |
+     | D:\\iotdb\iotdb | ""                 | D:\\iotdb\iotdb\            |
+
+     First, if walDir is null, walDir will be assigned the default value(i.e.,"data"+File.separatorChar+"data".
+     Then, if walDir is absolute, leave walDir as it is. If walDir is relative,
+     walDir will be converted to the complete version using non-empty %IOTDB_HOME%.
+     e.g. for windows platform,
+     |    IOTDB_HOME   |   walDir before    |       walDir  after         |
+     |-----------------|--------------------|-----------------------------|
+     | D:\\iotdb\iotdb | null               | D:\\iotdb\iotdb\data\wal    |
+     | D:\\iotdb\iotdb | walDir             | D:\\iotdb\iotdb\walDir      |
+     | D:\\iotdb\iotdb | C:\\walDir         | C:\\walDir                  |
+     | D:\\iotdb\iotdb | ""                 | D:\\iotdb\iotdb\            |
+
+     */
+
+	public void preUpdatePath() {
+		if (dataDir == null) {
+			dataDir = default_data_dir + File.separatorChar + default_data_dir;
+		}
+		if (sysDir == null) {
+			sysDir = default_data_dir + File.separatorChar + default_sys_dir;
+		}
+		if (walDir == null) {
+			walDir = default_data_dir;
+		}
+
+		List<String> dirs = new ArrayList<>();
+		dirs.add(dataDir);
+		dirs.add(sysDir);
+		dirs.add(walDir);
+		List<String> newdirs = new ArrayList<>();
+		String homeDir = System.getProperty(TsFileDBConstant.IOTDB_HOME, null);
+		for (int i = 0; i < 3; i++) {
+			String dir = dirs.get(i);
+			if (new File(dir).isAbsolute()) {
+				continue;
+			} else {
+				if (homeDir != null) {
+					if (homeDir.length() > 0) {
+						if (!homeDir.endsWith(File.separator)) {
+							dir = homeDir + File.separatorChar + dir;
+						} else {
+							dir = homeDir + dir;
+						}
+						dirs.set(i, dir);
+					}
+				}
+			}
+		}
+		dataDir = dirs.get(0);
+		sysDir = dirs.get(1);
+		walDir = dirs.get(2);
 	}
 }
