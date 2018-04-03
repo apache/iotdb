@@ -4,7 +4,7 @@
 
 	<groupId>cn.edu.tsinghua</groupId>
 	<artifactId>IoTDB</artifactId>
-	<version>0.4.0</version>
+	<version>0.5.0-SNAPSHOT</version>
 	<packaging>jar</packaging>
 
 	<name>IoTDB</name>
@@ -23,7 +23,7 @@
 		<dependency>
 			<groupId>cn.edu.tsinghua</groupId>
 			<artifactId>iotdb-jdbc</artifactId>
-			<version>0.4.0</version>
+			<version>0.5.0-SNAPSHOT</version>
 		</dependency>
 		<dependency>
 			<groupId>cn.edu.fudan.dsm</groupId>
@@ -67,11 +67,6 @@
 			<groupId>org.apache.commons</groupId>
 			<artifactId>commons-collections4</artifactId>
 			<version>4.0</version>
-		</dependency>
-		<dependency>
-			<groupId>org.apache.derby</groupId>
-			<artifactId>derby</artifactId>
-			<version>${derby.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.antlr</groupId>
