@@ -121,7 +121,8 @@ public class IoTDBThreadPoolFactoryTest {
 		args.stopTimeoutVal = 10;
 		args.stopTimeoutUnit = TimeUnit.SECONDS;
 		Thread.UncaughtExceptionHandler handler = new TestExceptionHandler(reason);
-		int threadCount = 500;
+		int threadCount = 50;
+		
 		ExecutorService exec = IoTDBThreadPoolFactory.createJDBCClientThreadPool(args, POOL_NAME, handler);
 		for(int i = 0; i < threadCount; i++){
 			Runnable task = new TestThread(reason);
