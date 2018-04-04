@@ -50,7 +50,6 @@ rem echo CLASSPATH: %CLASSPATH%
 "%JAVA_HOME%\bin\java" %JAVA_OPTS% %IOTDB_HEAP_OPTS% -cp %CLASSPATH% %IOTDB_DERBY_OPTS% %IOTDB_JMX_OPTS% %MAIN_CLASS%
 goto finally
 
-
 :err
 echo JAVA_HOME environment variable must be set!
 pause
