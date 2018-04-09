@@ -31,6 +31,11 @@ KW_GROUP : 'GROUP';
 KW_FILL : 'FILL';
 KW_BY : 'BY';
 
+KW_LIMIT : 'LIMIT';
+KW_OFFSET : 'OFFSET';
+KW_SLIMIT : 'SLIMIT';
+KW_SOFFSET : 'SOFFSET';
+
 KW_WHERE : 'WHERE';
 KW_FROM : 'FROM';
 KW_SELECT : 'SELECT';
@@ -126,20 +131,25 @@ DATETIME
     : Digit+ (MINUS | DIVIDE | DOT) Digit+ (MINUS | DIVIDE | DOT) Digit+ ('T' | WS) Digit+ COLON Digit+ COLON Digit+ (DOT Digit+)? ((PLUS | MINUS) Digit+ COLON Digit+)?
     ;
 
-Integer
-	:
-	('-' | '+')? Digit+
-	;
+NegativeInteger
+    :
+    '-' Digit+
+    ;
+
+NonNegativeInteger
+    :
+    ('+')? Digit+
+    ;
 
 Float
 	:
-	Integer DOT Digit+ (('e' | 'E') Integer)?
+	('+'|'-')? Digit+ DOT Digit+ (('e' | 'E') ('+'|'-')? Digit+)?
 	;
 
 Boolean
     :
-    ('T' | 't') ('R' | 'r') ('U' | 'u') ('E' | 'e') 
-    | ('F' | 'f') ('A' | 'a') ('L' | 'l') ('S' | 's') ('E' | 'e') 
+    ('T' | 't') ('R' | 'r') ('U' | 'u') ('E' | 'e')
+    | ('F' | 'f') ('A' | 'a') ('L' | 'l') ('S' | 's') ('E' | 'e')
     ;
 
 Identifier
@@ -148,6 +158,6 @@ Identifier
     ;
 
 WS
-    :  
+    :
     (' '|'\r'|'\t'|'\n') { $channel=HIDDEN; }
     ;

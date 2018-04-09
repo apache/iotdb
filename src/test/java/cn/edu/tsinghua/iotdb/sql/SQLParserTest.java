@@ -759,6 +759,259 @@ public class SQLParserTest {
             i++;
         }
     }
+
+    /*
+     Seven tests for LIMIT & SLIMIT.
+
+     Test 1: when 'specialClause' = limitClause without offset.
+     Test 2: when 'specialClause' = limitClause with offset.
+     Test 3: when 'specialClause' = slimitClause without soffset.
+     Test 4: when 'specialClause' = slimitClause with soffset.
+     Test 5: when 'specialClause' contains both limitClause and slimitClause.
+     Test 6: when 'specialClause' contains groupbyClause, limitClause and slimitClause.
+     Test 7: when 'specialClause' contains fillClause and slimitClause.
+
+   */
+    /*
+      Test 1: when 'specialClause' = limitClause without offset.
+
+      Testing purpose: N in 'LIMIT N' should be NonNegativeInteger.
+
+     */
+    @Test
+    public void limit1() throws ParseException {
+        // template for test case
+        ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_QUERY", "TOK_SELECT",
+                "TOK_PATH", "device_1", "sensor_1",
+                "TOK_PATH", "device_2", "sensor_2",
+                "TOK_FROM", "TOK_PATH", "TOK_ROOT", "vehicle",
+                "TOK_WHERE", "and",
+                "not", "<", "TOK_PATH", "TOK_ROOT", "laptop", "device_1", "sensor_1", "2000",
+                ">", "TOK_PATH", "TOK_ROOT", "laptop", "device_2", "sensor_2", "1000"));
+        ArrayList<String> rec = new ArrayList<>();
+        ASTNode astTree = ParseGenerator.generateAST("SELECT device_1.sensor_1,device_2.sensor_2 FROM root.vehicle WHERE not(root.laptop.device_1.sensor_1 < 2000) " +
+                "and root.laptop.device_2.sensor_2 > 1000 LIMIT 0");
+        astTree = ParseUtils.findRootNonNullToken(astTree);
+        recursivePrintSon(astTree, rec);
+
+        int i = 0;
+        while (i <= rec.size() - 1) {
+            assertEquals(rec.get(i), ans.get(i));
+            //System.out.println(rec.get(i));
+            i++;
+        }
+    }
+
+    /*
+      Test 2: when 'specialClause' = limitClause with offset.
+
+      Testing purposes:
+      1. N, OFFSETValue in 'LIMIT N OFFSET OFFSETValue' should both be NonNegativeInteger.
+      2. offsetClause is invalid if without limitClause.
+
+      */
+    @Test
+    public void limit2() throws ParseException {
+        // template for test case
+        ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_QUERY", "TOK_SELECT",
+                "TOK_PATH", "device_1", "sensor_1",
+                "TOK_PATH", "device_2", "sensor_2",
+                "TOK_FROM", "TOK_PATH", "TOK_ROOT", "vehicle",
+                "TOK_WHERE", "and",
+                "not", "<", "TOK_PATH", "TOK_ROOT", "laptop", "device_1", "sensor_1", "2000",
+                ">", "TOK_PATH", "TOK_ROOT", "laptop", "device_2", "sensor_2", "1000"));
+        ArrayList<String> rec = new ArrayList<>();
+        ASTNode astTree = ParseGenerator.generateAST("SELECT device_1.sensor_1,device_2.sensor_2 FROM root.vehicle WHERE not(root.laptop.device_1.sensor_1 < 2000) " +
+                "and root.laptop.device_2.sensor_2 > 1000 LIMIT 10 OFFSET 2");
+        astTree = ParseUtils.findRootNonNullToken(astTree);
+        recursivePrintSon(astTree, rec);
+
+        int i = 0;
+        while (i <= rec.size() - 1) {
+            assertEquals(rec.get(i), ans.get(i));
+            i++;
+        }
+    }
+
+    /*
+      Test 3: when 'specialClause' = slimitClause without soffset.
+
+      Testing purposes:
+      1. SN in 'SLIMIT SN' should be NonNegativeInteger.
+      2. slimitClause is invalid if there is no 'star' in the query paths.
+
+     */
+    @Test
+    public void limit3() throws ParseException {
+        // template for test case
+        ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_QUERY", "TOK_SELECT",
+                "TOK_PATH", "device_1", "sensor_1",
+                "TOK_PATH", "device_2", "*",
+                "TOK_FROM", "TOK_PATH", "TOK_ROOT", "vehicle",
+                "TOK_WHERE", "&&",
+                "<", "TOK_PATH", "TOK_ROOT", "laptop", "device_1", "sensor_1", "-2.2E10",
+                ">", "TOK_PATH", "time", "TOK_DATETIME", "now",
+                "TOK_SLIMIT"));
+        ArrayList<String> rec = new ArrayList<>();
+        ASTNode astTree = ParseGenerator.generateAST("SELECT device_1.sensor_1,device_2.* FROM root.vehicle " +
+                "WHERE root.laptop.device_1.sensor_1 < -2.2E10 && time > now() SLIMIT 10");
+        astTree = ParseUtils.findRootNonNullToken(astTree);
+        recursivePrintSon(astTree, rec);
+
+        int i = 0;
+        while (i <= rec.size() - 1) {
+            assertEquals(rec.get(i), ans.get(i));
+            i++;
+        }
+    }
+
+    /*
+      Test 4: when 'specialClause' = slimitClause with soffset.
+
+      Testing purposes:
+      1. SN, SOFFSETValue in 'SLIMIT SN SOFFSET SOFFSETValue' should both be NonNegativeInteger.
+      2. slimitClause is invalid if there is no 'star' in the query paths.
+      3. soffsetClause is invalid if without slimitClause.
+
+     */
+    @Test
+    public void limit4() throws ParseException {
+        // template for test case
+        ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_QUERY", "TOK_SELECT",
+                "TOK_PATH", "device_1", "sensor_1",
+                "TOK_PATH", "device_2", "sensor_2",
+                "TOK_FROM", "TOK_PATH", "TOK_ROOT", "*",
+                "TOK_WHERE", "&&",
+                "<", "TOK_PATH", "TOK_ROOT", "laptop", "device_1", "sensor_1", "-2.2E10",
+                ">", "TOK_PATH", "time", "TOK_DATETIME", "now",
+                "TOK_SLIMIT"));
+        ArrayList<String> rec = new ArrayList<>();
+        ASTNode astTree = ParseGenerator.generateAST("SELECT device_1.sensor_1,device_2.sensor_2 FROM root.* " +
+                "WHERE root.laptop.device_1.sensor_1 < -2.2E10 && time > now() SLIMIT 10 SOFFSET 3");
+        astTree = ParseUtils.findRootNonNullToken(astTree);
+        recursivePrintSon(astTree, rec);
+
+        int i = 0;
+        while (i <= rec.size() - 1) {
+            assertEquals(rec.get(i), ans.get(i));
+            i++;
+        }
+    }
+
+    /*
+      Test 5: when 'specialClause' contains both limitClause and slimitClause.
+
+      Testing purposes:
+      1. NonNegativeInteger
+      2. slimitClause is invalid if there is no 'star' in the query paths.
+      3. offsetClause is invalid if without limitClause. soffsetClause is invalid if without slimitClause.
+      4. The sequence of limitClause and slimitClause should not affect the correctness of the parse.
+
+     */
+    @Test
+    public void limit5() throws ParseException {
+        // template for test case
+        ArrayList<String> ans = new ArrayList<>(Arrays.asList("TOK_QUERY", "TOK_SELECT",
+                "TOK_PATH", "device_1", "*",
+                "TOK_PATH", "device_2", "*",
+                "TOK_FROM", "TOK_PATH", "TOK_ROOT", "vehicle",
+                "TOK_WHERE", "&&",
+                "<", "TOK_PATH", "TOK_ROOT", "laptop", "device_1", "sensor_1", "-2.2E10",
+                ">", "TOK_PATH", "time", "TOK_DATETIME", "now",
+                "TOK_SLIMIT"));
+        ArrayList<String> rec = new ArrayList<>();
+        ASTNode astTree = ParseGenerator.generateAST("SELECT device_1.*,device_2.* FROM root.vehicle " +
+                "WHERE root.laptop.device_1.sensor_1 < -2.2E10 && time > now() LIMIT 100 OFFSET 1 SLIMIT 10 SOFFSET 3");
+        astTree = ParseUtils.findRootNonNullToken(astTree);
+        recursivePrintSon(astTree, rec);
+
+        int i = 0;
+        while (i <= rec.size() - 1) {
+            assertEquals(rec.get(i), ans.get(i));
+            i++;
+        }
+    }
+
+    /*
+      Test 6: when 'specialClause' contains groupbyClause, limitClause and slimitClause.
+
+      Testing purpose:
+      Test the correctness of the parse when groupbyClause, limitClause and slimitClause coexist.
+
+     */
+    @Test
+    public void limit6() throws ParseException, RecognitionException {
+        // template for test case
+        ArrayList<String> ans = new ArrayList<>(Arrays.asList(
+                "TOK_QUERY", "TOK_SELECT",
+                "TOK_PATH", "TOK_CLUSTER", "TOK_PATH", "s1", "count",
+                "TOK_PATH", "TOK_CLUSTER", "TOK_PATH", "s2", "max_time",
+                "TOK_FROM", "TOK_PATH", "TOK_ROOT", "vehicle", "*",
+                "TOK_WHERE", "and",
+                "<", "TOK_PATH", "TOK_ROOT", "vehicle", "d1", "s1", "0.32e6",
+                "<=", "TOK_PATH", "time", "TOK_DATETIME", "now",
+                "TOK_GROUPBY",
+                "TOK_TIMEUNIT", "10", "w",
+                "TOK_TIMEORIGIN", "44",
+                "TOK_TIMEINTERVAL",
+                "TOK_TIMEINTERVALPAIR", "1", "3",
+                "TOK_TIMEINTERVALPAIR", "4", "5",
+                "TOK_SLIMIT"));
+        ArrayList<String> rec = new ArrayList<>();
+        ASTNode astTree = ParseGenerator.generateAST(
+                "select count(s1),max_time(s2) "
+                        + "from root.vehicle.* "
+                        + "where root.vehicle.d1.s1 < 0.32e6 and time <= now() "
+                        + "group by(10w, 44, [1,3], [4,5])"
+                        + "slimit 1"
+                        + "soffset 1"
+                        + "limit 11"
+                        + "offset 3");
+        astTree = ParseUtils.findRootNonNullToken(astTree);
+        recursivePrintSon(astTree, rec);
+
+        int i = 0;
+        while (i <= rec.size() - 1) {
+            assertEquals(rec.get(i), ans.get(i));
+            i++;
+        }
+    }
+
+    /*
+      Test 7: when 'specialClause' contains fillClause and slimitClause.
+
+      Testing purpose:
+      Test the correctness of the parse when fillClause and slimitClause coexist.
+
+     */
+    @Test
+    public void limit7() throws ParseException {
+        // template for test case
+        ArrayList<String> ans = new ArrayList<>(Arrays.asList(
+                "TOK_QUERY", "TOK_SELECT",
+                "TOK_PATH", "*",
+                "TOK_FROM", "TOK_PATH", "TOK_ROOT", "vehicle", "d1",
+                "TOK_WHERE", "=", "TOK_PATH", "time", "1234567",
+                "TOK_FILL",
+                "TOK_TYPE", "float", "TOK_PREVIOUS", "TOK_TIMEUNIT", "11", "h",
+                "TOK_SLIMIT"));
+        ArrayList<String> rec = new ArrayList<>();
+        ASTNode astTree = ParseGenerator.generateAST(
+                "select * "
+                        + "FROM root.vehicle.d1 "
+                        + "WHERE time = 1234567 "
+                        + "fill(float[previous, 11h])"
+                        + "slimit 15"
+                        + "soffset 50");
+        astTree = ParseUtils.findRootNonNullToken(astTree);
+        recursivePrintSon(astTree, rec);
+
+        int i = 0;
+        while (i <= rec.size() - 1) {
+            assertEquals(rec.get(i), ans.get(i));
+            i++;
+        }
+    }
     
     // Authority Operation
     @Test
