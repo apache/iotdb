@@ -3,6 +3,7 @@ echo ````````````````````````
 echo Starting IoTDB
 echo ````````````````````````
 
+
 if "%OS%" == "Windows_NT" setlocal
 
 pushd %~dp0..
