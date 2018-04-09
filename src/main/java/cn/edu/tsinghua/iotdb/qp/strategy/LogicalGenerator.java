@@ -190,6 +190,9 @@ public class LogicalGenerator {
             case TSParser.TOK_LIST:
                 analyzeList(astNode);
                 return;
+            case TSParser.TOK_SLIMIT:
+                ((SFWOperator) initializedOperator).setSlimit(true);
+                return;
             default:
                 throw new QueryProcessorException("Not supported TSParser type" + tokenIntType);
         }
