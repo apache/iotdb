@@ -61,6 +61,7 @@ public class TsfileDBConfig {
 	 */
 	public String bufferWriteDir = "settled";
 	private String[] bufferWriteDirs = {"settled1", "settled2", "settled3"};
+//	private String[] bufferWriteDirs = {"settled4", "settled5", "settled6"};
 
 	/**
 	 * Data directory of metadata data
