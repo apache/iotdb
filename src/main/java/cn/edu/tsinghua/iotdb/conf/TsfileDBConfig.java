@@ -11,6 +11,7 @@ public class TsfileDBConfig {
 	public static final String CONFIG_NAME = "iotdb-engine.properties";
 	public static final String default_data_dir = "data";
 	public static final String default_sys_dir = "system";
+	public static final String default_tsfiel_dir = "settled";
 	/**
 	 * Port which JDBC server listens to
 	 */
@@ -53,22 +54,23 @@ public class TsfileDBConfig {
 	/**
 	 * Data directory of fileNode data
 	 */
-	public String fileNodeDir = "digest";
+	public String fileNodeDir = "info";
 
 	/**
 	 * Data directory of bufferWrite data
 	 */
-	public String bufferWriteDir = "info";
+	public String bufferWriteDir = "settled";
+	private String[] bufferWriteDirs = {"settled1", "settled2", "settled3"};
 
 	/**
 	 * Data directory of metadata data
 	 */
-	public String metadataDir = "settled";
+	public String metadataDir = "schema";
 
 	/**
 	 * Data directory of derby data
 	 */
-	public String derbyHome = "schema";
+	public String derbyHome = "derby";
 
 	/**
 	 * Data directory of Write ahead log folder.
@@ -240,6 +242,15 @@ public class TsfileDBConfig {
 		bufferWriteDir = dataDir + bufferWriteDir;
 		overflowDataDir = dataDir + overflowDataDir;
 
+		if(bufferWriteDirs == null || bufferWriteDirs.length == 0){
+			bufferWriteDirs = new String[]{default_tsfiel_dir};
+		}
+		for(int i = 0;i < bufferWriteDirs.length;i++){
+			if(new File(bufferWriteDirs[i]).isAbsolute())continue;
+
+			bufferWriteDirs[i] = dataDir + bufferWriteDirs[i];
+		}
+
 		// update the paths of subdirectories in the sysDir
 		if (sysDir.length() > 0 && !sysDir.endsWith(File.separator)) {
 			sysDir = sysDir + File.separatorChar;
@@ -331,4 +342,6 @@ public class TsfileDBConfig {
 		sysDir = dirs.get(1);
 		walDir = dirs.get(2);
 	}
+
+	public String[] getBufferWriteDirs(){return bufferWriteDirs;}
 }
