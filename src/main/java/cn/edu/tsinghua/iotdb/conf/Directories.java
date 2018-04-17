@@ -23,6 +23,7 @@ public class Directories {
         if(currentIndex >= tsfileFolders.size())currentIndex = 0;
     }
 
+    // only used by test
     public String getFolderForTest(){
         return getTsFileFolder(0);
     }
