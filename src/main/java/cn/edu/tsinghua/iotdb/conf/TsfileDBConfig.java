@@ -53,22 +53,22 @@ public class TsfileDBConfig {
 	/**
 	 * Data directory of fileNode data
 	 */
-	public String fileNodeDir = "digest";
+	public String fileNodeDir = "info";
 
 	/**
 	 * Data directory of bufferWrite data
 	 */
-	public String bufferWriteDir = "info";
+	public String bufferWriteDir = "settled";
 
 	/**
 	 * Data directory of metadata data
 	 */
-	public String metadataDir = "settled";
+	public String metadataDir = "schema";
 
 	/**
 	 * Data directory of derby data
 	 */
-	public String derbyHome = "schema";
+	public String derbyHome = "derby";
 
 	/**
 	 * Data directory of Write ahead log folder.
@@ -280,13 +280,13 @@ public class TsfileDBConfig {
      | D:\\iotdb\iotdb | C:\\sysDir         | C:\\sysDir                  |
      | D:\\iotdb\iotdb | ""                 | D:\\iotdb\iotdb\            |
 
-     First, if walDir is null, walDir will be assigned the default value(i.e.,"data"+File.separatorChar+"data".
+     First, if walDir is null, walDir will be assigned the default value(i.e.,"data".
      Then, if walDir is absolute, leave walDir as it is. If walDir is relative,
      walDir will be converted to the complete version using non-empty %IOTDB_HOME%.
      e.g. for windows platform,
      |    IOTDB_HOME   |   walDir before    |       walDir  after         |
      |-----------------|--------------------|-----------------------------|
-     | D:\\iotdb\iotdb | null               | D:\\iotdb\iotdb\data\wal    |
+     | D:\\iotdb\iotdb | null               | D:\\iotdb\iotdb\data        |
      | D:\\iotdb\iotdb | walDir             | D:\\iotdb\iotdb\walDir      |
      | D:\\iotdb\iotdb | C:\\walDir         | C:\\walDir                  |
      | D:\\iotdb\iotdb | ""                 | D:\\iotdb\iotdb\            |
