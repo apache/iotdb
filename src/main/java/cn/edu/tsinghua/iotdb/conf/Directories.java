@@ -5,15 +5,11 @@ import java.util.*;
 public class Directories {
     private List<String> tsfileFolders;
 
-    private Map<String, Integer> tsfileLocations;
-
     private int currentIndex;
 
     private Directories(){
         tsfileFolders = new ArrayList<String>(
                 Arrays.asList(TsfileDBDescriptor.getInstance().getConfig().getBufferWriteDirs()));
-
-        tsfileLocations = new HashMap<>();
 
         currentIndex = 0;
     }
@@ -37,11 +33,6 @@ public class Directories {
         updateIndex();
 
         return index;
-    }
-
-    public String getTsFileFolder(String filename){
-        int index = tsfileLocations.get(filename);
-        return getTsFileFolder(index);
     }
 
     public String getTsFileFolder(int index){
