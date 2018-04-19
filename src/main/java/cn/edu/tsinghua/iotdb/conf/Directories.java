@@ -24,6 +24,11 @@ public class Directories {
         return getTsFileFolder(0);
     }
 
+    // only used by test
+    public void setFolderForTest(String path){
+        tsfileFolders.set(0, path);
+    }
+
     public String getNextFolderForTsfile(){
         return getTsFileFolder(getNextFolderIndexForTsFile());
     }

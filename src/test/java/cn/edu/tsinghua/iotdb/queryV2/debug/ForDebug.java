@@ -1,5 +1,6 @@
 package cn.edu.tsinghua.iotdb.queryV2.debug;
 
+import cn.edu.tsinghua.iotdb.conf.Directories;
 import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
 import cn.edu.tsinghua.iotdb.engine.filenode.IntervalFileNode;
 import cn.edu.tsinghua.iotdb.engine.overflow.ioV2.OverflowIO;
@@ -74,7 +75,7 @@ public class ForDebug {
 //        PriorityTimeValuePairReader reader2 = new PriorityTimeValuePairReader(overflowInsertDataReader, new PriorityTimeValuePairReader.Priority(1));
 //        TimeValuePairReader reader = new PriorityMergeSortTimeValuePairReader(reader1);
 
-        TsfileDBDescriptor.getInstance().getConfig().bufferWriteDir = "";
+//        Directories.getInstance().setFolderForTest("");
 //        Filter<?> filter = FilterFactory.and(TimeFilter.gtEq(startTime), TimeFilter.ltEq(endTime));
         Filter<?> filter = TimeFilter.gtEq(0L);
         SeriesFilter<?> seriesFilter = new SeriesFilter<>(path, filter);

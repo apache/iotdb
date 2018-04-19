@@ -59,7 +59,6 @@ public class TsfileDBConfig {
 	/**
 	 * Data directory of bufferWrite data
 	 */
-	public String bufferWriteDir = "settled";
 	private String[] bufferWriteDirs = {"settled1", "settled2", "settled3"};
 //	private String[] bufferWriteDirs = {"settled4", "settled5", "settled6"};
 
@@ -240,7 +239,6 @@ public class TsfileDBConfig {
 		if (dataDir.length() > 0 && !dataDir.endsWith(File.separator)) {
 			dataDir = dataDir + File.separatorChar;
 		}
-		bufferWriteDir = dataDir + bufferWriteDir;
 		overflowDataDir = dataDir + overflowDataDir;
 
 		if(bufferWriteDirs == null || bufferWriteDirs.length == 0){
