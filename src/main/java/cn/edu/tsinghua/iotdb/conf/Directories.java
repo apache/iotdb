@@ -4,7 +4,6 @@ import java.util.*;
 
 public class Directories {
     private List<String> tsfileFolders;
-
     private int currentIndex;
 
     private Directories(){
