@@ -1,10 +1,15 @@
 package cn.edu.tsinghua.iotdb.queryV2.engine.control;
 
+import sun.nio.ch.DirectBuffer;
+
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.nio.MappedByteBuffer;
+import java.nio.channels.FileChannel;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Manager all file streams opened by overflow. Every overflow's read job has a unique ID which is saved in corresponding
@@ -15,8 +20,44 @@ public class OverflowFileStreamManager {
 
     private ConcurrentHashMap<Long, Map<String, RandomAccessFile>> fileStreamStore;
 
+    private ConcurrentHashMap<String, MappedByteBuffer> memoryStreamStore = new ConcurrentHashMap<>();
+
+    private AtomicInteger mappedByteBufferUsage = new AtomicInteger();
+
     private OverflowFileStreamManager() {
         fileStreamStore = new ConcurrentHashMap<>();
+    }
+
+    // Using MMap to replace RandomAccessFile
+    public synchronized MappedByteBuffer get(String path) throws IOException {
+        if (!memoryStreamStore.containsKey(path)) {
+            RandomAccessFile randomAccessFile = new RandomAccessFile(path, "r");
+            MappedByteBuffer mappedByteBuffer = randomAccessFile.getChannel().map(FileChannel.MapMode.READ_ONLY, 0, randomAccessFile.length());
+            memoryStreamStore.put(path, mappedByteBuffer);
+            mappedByteBufferUsage.set(mappedByteBufferUsage.get() + (int)randomAccessFile.length());
+        }
+        return memoryStreamStore.get(path);
+    }
+
+    public boolean contains(String path) {
+        return memoryStreamStore.containsKey(path);
+    }
+
+    /**
+     * Remove the MMap usage of given path.
+     *
+     * @param path
+     */
+    public synchronized void removeMappedByteBuffer(String path) {
+        if (memoryStreamStore.containsKey(path)) {
+            MappedByteBuffer buffer = memoryStreamStore.get(path);
+            mappedByteBufferUsage.set(mappedByteBufferUsage.get() - buffer.limit());
+            ((DirectBuffer) buffer).cleaner().clean();
+        }
+    }
+
+    public AtomicInteger getMappedByteBufferUsage() {
+        return this.mappedByteBufferUsage;
     }
 
     public RandomAccessFile get(Long jobId, String path) throws IOException {
