@@ -4,6 +4,7 @@ import cn.edu.tsinghua.iotdb.engine.filenode.IntervalFileNode;
 import cn.edu.tsinghua.iotdb.engine.querycontext.OverflowSeriesDataSource;
 import cn.edu.tsinghua.iotdb.queryV2.engine.externalsort.ExternalSortJobEngine;
 import cn.edu.tsinghua.iotdb.queryV2.engine.externalsort.SimpleExternalSortEngine;
+import cn.edu.tsinghua.iotdb.queryV2.engine.overflow.OverflowOperationReaderImpl;
 import cn.edu.tsinghua.iotdb.queryV2.engine.reader.PriorityMergeSortTimeValuePairReader;
 import cn.edu.tsinghua.iotdb.queryV2.engine.reader.PriorityTimeValuePairReader;
 import cn.edu.tsinghua.iotdb.queryV2.engine.reader.series.OverflowInsertDataReader;
@@ -130,8 +131,14 @@ public class SeriesReaderFactory {
                 new PriorityTimeValuePairReader.Priority(2));
         PriorityMergeSortTimeValuePairReader mergeSeriesReader = new PriorityMergeSortTimeValuePairReader(
                 priorityTimeValuePairReaderForTsFile, priorityTimeValuePairReaderForOverflow);
-        SeriesWithUpdateOpReader seriesWithUpdateOpReader = new SeriesWithUpdateOpReader(mergeSeriesReader,
-                overflowSeriesDataSource.getUpdateDeleteInfoOfOneSeries().getOverflowUpdateOperationReader());
+
+        SeriesWithUpdateOpReader seriesWithUpdateOpReader;
+        if (overflowSeriesDataSource.getUpdateDeleteInfoOfOneSeries() != null) {
+            seriesWithUpdateOpReader = new SeriesWithUpdateOpReader(mergeSeriesReader,
+                    overflowSeriesDataSource.getUpdateDeleteInfoOfOneSeries().getOverflowUpdateOperationReader());
+        } else {
+            seriesWithUpdateOpReader = new SeriesWithUpdateOpReader(mergeSeriesReader, new OverflowOperationReaderImpl(new ArrayList<>()));
+        }
         return seriesWithUpdateOpReader;
     }
 
