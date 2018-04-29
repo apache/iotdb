@@ -3,7 +3,7 @@ package cn.edu.tsinghua.iotdb.utils;
 import cn.edu.tsinghua.iotdb.auth.AuthException;
 import cn.edu.tsinghua.iotdb.auth.authorizer.IAuthorizer;
 import cn.edu.tsinghua.iotdb.auth.authorizer.LocalFileAuthorizer;
-import cn.edu.tsinghua.iotdb.conf.Directories;
+import cn.edu.tsinghua.iotdb.conf.directories.Directories;
 import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
 import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
 import cn.edu.tsinghua.iotdb.engine.cache.RowGroupBlockMetaDataCache;

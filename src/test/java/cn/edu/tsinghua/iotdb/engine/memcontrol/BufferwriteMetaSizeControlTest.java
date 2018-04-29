@@ -1,6 +1,6 @@
 package cn.edu.tsinghua.iotdb.engine.memcontrol;
 
-import cn.edu.tsinghua.iotdb.conf.Directories;
+import cn.edu.tsinghua.iotdb.conf.directories.Directories;
 import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
 import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
 import cn.edu.tsinghua.iotdb.engine.MetadataManagerHelper;

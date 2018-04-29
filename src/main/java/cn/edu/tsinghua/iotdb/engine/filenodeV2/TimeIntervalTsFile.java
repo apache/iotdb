@@ -7,8 +7,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-import cn.edu.tsinghua.iotdb.conf.Directories;
-import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
+import cn.edu.tsinghua.iotdb.conf.directories.Directories;
 import cn.edu.tsinghua.iotdb.engine.filenode.FileNodeProcessorStatus;
 import cn.edu.tsinghua.iotdb.engine.filenode.OverflowChangeType;
 

@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-import cn.edu.tsinghua.iotdb.conf.Directories;
+import cn.edu.tsinghua.iotdb.conf.directories.Directories;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
