@@ -1,7 +1,5 @@
 package cn.edu.tsinghua.iotdb.queryV2.debug;
 
-import cn.edu.tsinghua.iotdb.conf.Directories;
-import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
 import cn.edu.tsinghua.iotdb.engine.filenode.IntervalFileNode;
 import cn.edu.tsinghua.iotdb.engine.overflow.ioV2.OverflowIO;
 import cn.edu.tsinghua.iotdb.engine.querycontext.OverflowInsertFile;

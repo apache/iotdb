@@ -1,27 +1,36 @@
-package cn.edu.tsinghua.iotdb.conf;
+package cn.edu.tsinghua.iotdb.conf.directories;
+
+import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
+import cn.edu.tsinghua.iotdb.conf.directories.strategy.DirectoryStrategy;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.*;
 
 public class Directories {
-    private List<String> tsfileFolders;
+    private static final Logger LOGGER = LoggerFactory.getLogger(Directories.class);
 
-    private int currentIndex;
+    private List<String> tsfileFolders;
+    DirectoryStrategy strategy;
 
     private Directories(){
         tsfileFolders = new ArrayList<String>(
                 Arrays.asList(TsfileDBDescriptor.getInstance().getConfig().getBufferWriteDirs()));
 
-        currentIndex = 0;
-    }
-
-    private void updateIndex(){
-        currentIndex++;
-        if(currentIndex >= tsfileFolders.size())currentIndex = 0;
+        String strategy_name = "";
+        try {
+            strategy_name = TsfileDBDescriptor.getInstance().getConfig().multDirStrategyClassName;
+            Class<?> clazz = Class.forName(strategy_name);
+            strategy = (DirectoryStrategy) clazz.newInstance();
+            strategy.init(tsfileFolders);
+        } catch (Exception e) {
+            LOGGER.error(String.format("can't find strategy %s for mult-directories.", strategy_name));
+        }
     }
 
     // only used by test
     public String getFolderForTest(){
-        return getTsFileFolder(0);
+        return tsfileFolders.get(0);
     }
 
     // only used by test
@@ -34,10 +43,7 @@ public class Directories {
     }
 
     public int getNextFolderIndexForTsFile(){
-        int index = currentIndex;
-        updateIndex();
-
-        return index;
+        return strategy.nextFolderIndex();
     }
 
     public String getTsFileFolder(int index){

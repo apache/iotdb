@@ -1,12 +1,11 @@
 package cn.edu.tsinghua.iotdb.index.utils;
 
-import cn.edu.tsinghua.iotdb.conf.Directories;
+import cn.edu.tsinghua.iotdb.conf.directories.Directories;
 import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
 import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
 import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
 
 import java.io.File;
-import java.util.ArrayList;
 import java.util.List;
 
 public class IndexFileUtils {
