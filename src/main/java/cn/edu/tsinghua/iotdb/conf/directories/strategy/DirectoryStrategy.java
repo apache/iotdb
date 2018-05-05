@@ -4,9 +4,22 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+/**
+ * The basic class of all the strategies of multiple directories.
+ * If a user wants to define his own strategy, his strategy has to
+ * extend this class and implement the abstract method.
+ * @author East
+ */
 public abstract class DirectoryStrategy {
+    /**
+     * All the folders of data files, should be init once the subclass is created.
+     */
     protected List<String> folders;
 
+    /**
+     * To init folders.
+     * @param folders
+     */
     public void init(List<String> folders){
         this.folders = folders;
     }

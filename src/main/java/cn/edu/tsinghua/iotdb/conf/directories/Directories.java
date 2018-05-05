@@ -7,6 +7,10 @@ import org.slf4j.LoggerFactory;
 
 import java.util.*;
 
+/**
+ * The main class of multiple directories. Used to allocate folders to data files.
+ * @author East
+ */
 public class Directories {
     private static final Logger LOGGER = LoggerFactory.getLogger(Directories.class);
 
