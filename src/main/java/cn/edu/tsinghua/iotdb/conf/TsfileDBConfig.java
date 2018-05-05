@@ -62,6 +62,9 @@ public class TsfileDBConfig {
 	private String[] bufferWriteDirs = {"settled1", "settled2", "settled3"};
 //	private String[] bufferWriteDirs = {"settled4", "settled5", "settled6"};
 
+	/**
+	 * Strategy of multiple directories
+	 */
 	public String multDirStrategyClassName = "cn.edu.tsinghua.iotdb.conf.directories.strategy.MinDirOccupiedSpaceFirstStrategy";
 
 	/**
