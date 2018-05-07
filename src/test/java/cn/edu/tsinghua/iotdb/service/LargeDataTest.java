@@ -109,6 +109,7 @@ public class LargeDataTest {
             // aggregation test
             aggregationWithoutFilterTest();
             aggregationTest();
+            aggregationWithFilterOptimizationTest();
             allNullSeriesAggregationTest();
             negativeValueAggTest();
 
@@ -122,7 +123,7 @@ public class LargeDataTest {
             linearFillTest();
 
             // verify the rightness of overflow insert and after merge operation
-            //newInsertAggTest();
+            newInsertAggTest();
 
             connection.close();
         }
@@ -321,6 +322,40 @@ public class LargeDataTest {
                         + "," + resultSet.getString(mean(d0s0)) + "," + resultSet.getString(first(d0s0))
                         + "," + resultSet.getString(sum(d0s0)) + "," + resultSet.getString(last(d0s0));
                 assertEquals("0,16440,159.58211678832117,2000,2623530.0,6666", ans);
+                cnt++;
+            }
+            assertEquals(1, cnt);
+            statement.close();
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            fail(e.getMessage());
+        } finally {
+            if (connection != null) {
+                connection.close();
+            }
+        }
+    }
+
+    private void aggregationWithFilterOptimizationTest() throws ClassNotFoundException, SQLException {
+
+        // all the page data of d0.s0 are eligible for the time filter
+        String sql = "select count(s0),mean(s0),first(s0),sum(s0),last(s0) from root.vehicle.d0 where time < 1600000";
+        Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);
+        Connection connection = null;
+        try {
+            connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
+            Statement statement = connection.createStatement();
+            boolean hasResultSet = statement.execute(sql);
+            Assert.assertTrue(hasResultSet);
+            ResultSet resultSet = statement.getResultSet();
+            int cnt = 0;
+            while (resultSet.next()) {
+                String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(count(d0s0))
+                        + "," + resultSet.getString(sum(d0s0)) + "," + resultSet.getString(mean(d0s0))
+                         + "," + resultSet.getString(first(d0s0)) + "," + resultSet.getString(last(d0s0));
+                //System.out.println("===" + ans);
+                assertEquals("0,23400,2672550.0,114.21153846153847,2000,6666", ans);
                 cnt++;
             }
             assertEquals(1, cnt);
@@ -941,7 +976,7 @@ public class LargeDataTest {
                         + "," + resultSet.getString(count(d0s1)) + "," + resultSet.getString(count(d0s2))
                         + "," + resultSet.getString(count(d0s3)) + "," + resultSet.getString(count(d0s4));
                 //assertEquals("0,0,null,null,null,null,null,null,null,null", ans);
-                System.out.println("(1) ============ " + ans);
+                //System.out.println("(1) ============ " + ans);
                 cnt++;
             }
             statement.close();

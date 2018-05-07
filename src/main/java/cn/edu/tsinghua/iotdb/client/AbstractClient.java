@@ -62,7 +62,8 @@ public abstract class AbstractClient {
 	protected static final String SHOW_FETCH_SIZE = "show fetch_size";
 	protected static int fetchSize = 10000;
 	
-	protected static final String TSFILEDB_CLI_PREFIX = "IoTDB";
+	protected static final String IOTDB_CLI_PREFIX = "IoTDB";
+	protected static final String SCRIPT_HINT = "./start-client.sh(start-client.bat if Windows)";
 	private static final String QUIT_COMMAND = "quit";
 	private static final String EXIT_COMMAND = "exit";
 	private static final String SHOW_METADATA_COMMAND = "show timeseries";
@@ -80,8 +81,8 @@ public abstract class AbstractClient {
 	
 	private static final String NEED_NOT_TO_PRINT_TIMESTAMP = "AGGREGATION";
 	
-	protected static String host;
-	protected static String port;
+	protected static String host = "127.0.0.1";
+	protected static String port = "6667";
 	protected static String username;
 	protected static String password;
 
@@ -174,21 +175,21 @@ public abstract class AbstractClient {
 
 	protected static Options createOptions() {
 		Options options = new Options();
-		Option help = new Option(HELP_ARGS, false, "Display help information");
+		Option help = new Option(HELP_ARGS, false, "Display help information(optional)");
 		help.setRequired(false);
 		options.addOption(help);
 
-		Option timeFormat = new Option(ISO8601_ARGS, false, "Display timestamp in number");
+		Option timeFormat = new Option(ISO8601_ARGS, false, "Display timestamp in number(optional)");
 		timeFormat.setRequired(false);
 		options.addOption(timeFormat);
 
-		Option host = Option.builder(HOST_ARGS).argName(HOST_NAME).hasArg().desc("Host Name (required)").build();
+		Option host = Option.builder(HOST_ARGS).argName(HOST_NAME).hasArg().desc("Host Name (optional, default 127.0.0.1)").build();
 		options.addOption(host);
 
-		Option port = Option.builder(PORT_ARGS).argName(PORT_NAME).hasArg().desc("Port (required)").build();
+		Option port = Option.builder(PORT_ARGS).argName(PORT_NAME).hasArg().desc("Port (optional, default 6667)").build();
 		options.addOption(port);
 
-		Option username = Option.builder(USERNAME_ARGS).argName(USERNAME_NAME).hasArg().desc("User name (required)").build();
+		Option username = Option.builder(USERNAME_ARGS).argName(USERNAME_NAME).hasArg().desc("User name (required)").required().build();
 		options.addOption(username);
 
 		Option password = Option.builder(PASSWORD_ARGS).argName(PASSWORD_NAME).hasArg().desc("password (optional)").build();
@@ -213,13 +214,20 @@ public abstract class AbstractClient {
 		}
 	}
 
-	protected static String checkRequiredArg(String arg, String name, CommandLine commandLine) throws ArgsErrorException {
+	protected static String checkRequiredArg(String arg, String name, CommandLine commandLine, boolean isRequired, String defaultValue) throws ArgsErrorException {
 		String str = commandLine.getOptionValue(arg);
 		if (str == null) {
-			String msg = String.format("%s: Required values for option '%s' not provided", TSFILEDB_CLI_PREFIX, name);
-			System.out.println(msg);
-			System.out.println("Use -help for more information");
-			throw new ArgsErrorException(msg);
+			if(isRequired) {
+				String msg = String.format("%s: Required values for option '%s' not provided", IOTDB_CLI_PREFIX, name);
+				System.out.println(msg);
+				System.out.println("Use -help for more information");
+				throw new ArgsErrorException(msg);
+			} else if (defaultValue == null){
+				String msg = String.format("%s: Required values for option '%s' is null", IOTDB_CLI_PREFIX, name);
+				throw new ArgsErrorException(msg);
+			} else {
+				return defaultValue;
+			}
 		}
 		return str;
 	}

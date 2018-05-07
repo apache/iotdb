@@ -29,7 +29,7 @@ public class WinClient extends AbstractClient {
 
 		if (args == null || args.length == 0) {
 			System.out.println("Require more params input, please check the following hint.");
-			hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
+			hf.printHelp(IOTDB_CLI_PREFIX, options, true);
 			return;
 		}
 		
@@ -40,7 +40,7 @@ public class WinClient extends AbstractClient {
 		try {
 			commandLine = parser.parse(options, args);
 			if (commandLine.hasOption(HELP_ARGS)) {
-				hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
+				hf.printHelp(IOTDB_CLI_PREFIX, options, true);
 				return;
 			}
 			if (commandLine.hasOption(ISO8601_ARGS)) {
@@ -53,14 +53,13 @@ public class WinClient extends AbstractClient {
 						maxPrintRowCount = Integer.MAX_VALUE;
 					}
 				} catch (NumberFormatException e) {
-					System.out.println(
-							TSFILEDB_CLI_PREFIX + "> error format of max print row count, it should be number");
+					System.out.println(IOTDB_CLI_PREFIX + "> error format of max print row count, it should be number");
 					return;
 				}
 			}
 		} catch (ParseException e) {
 			System.out.println("Require more params input, please check the following hint.");
-			hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
+			hf.printHelp(IOTDB_CLI_PREFIX, options, true);
 			return;
 		}
 		Scanner scanner = null;
@@ -68,9 +67,9 @@ public class WinClient extends AbstractClient {
 			String s;
 
 			try {
-				host = checkRequiredArg(HOST_ARGS, HOST_NAME, commandLine);
-				port = checkRequiredArg(PORT_ARGS, PORT_NAME, commandLine);
-				username = checkRequiredArg(USERNAME_ARGS, USERNAME_NAME, commandLine);
+				host = checkRequiredArg(HOST_ARGS, HOST_NAME, commandLine, false, host);
+				port = checkRequiredArg(PORT_ARGS, PORT_NAME, commandLine, false, port);
+				username = checkRequiredArg(USERNAME_ARGS, USERNAME_NAME, commandLine, true, null);
 
 				password = commandLine.getOptionValue(PASSWORD_ARGS);
 				if (password == null) {
@@ -80,7 +79,7 @@ public class WinClient extends AbstractClient {
 					connection = (TsfileConnection) DriverManager.getConnection("jdbc:tsfile://" + host + ":" + port + "/", username,
 							password);
 				} catch (SQLException e) {
-					System.out.println(TSFILEDB_CLI_PREFIX + "> " + e.getMessage());
+					System.out.println(IOTDB_CLI_PREFIX + "> " + e.getMessage());
 					return;
 				}
 			} catch (ArgsErrorException e) {
@@ -90,10 +89,10 @@ public class WinClient extends AbstractClient {
 
 			displayLogo();
 
-			System.out.println(TSFILEDB_CLI_PREFIX + "> login successfully");
+			System.out.println(IOTDB_CLI_PREFIX + "> login successfully");
 			scanner = new Scanner(System.in);
 			while (true) {
-				System.out.print(TSFILEDB_CLI_PREFIX + "> ");
+				System.out.print(IOTDB_CLI_PREFIX + "> ");
 				s = scanner.nextLine();
 				if (s == null) {
 					continue;
@@ -116,7 +115,7 @@ public class WinClient extends AbstractClient {
 				}
 			}
 		} catch (Exception e) {
-			System.out.println(TSFILEDB_CLI_PREFIX + "> exit client with error " + e.getMessage());
+			System.out.println(IOTDB_CLI_PREFIX + "> exit client with error " + e.getMessage());
 		} finally {
 			if (scanner != null) {
 				scanner.close();
@@ -130,11 +129,11 @@ public class WinClient extends AbstractClient {
 	private static String readPassword() {
 		Console c = System.console();
 		if (c == null) { // IN ECLIPSE IDE
-			System.out.print(TSFILEDB_CLI_PREFIX + "> please input password: ");
+			System.out.print(IOTDB_CLI_PREFIX + "> please input password: ");
 			Scanner scanner = new Scanner(System.in);
 			return scanner.nextLine();
 		} else { // Outside Eclipse IDE
-			return new String(c.readPassword(TSFILEDB_CLI_PREFIX + "> please input password: "));
+			return new String(c.readPassword(IOTDB_CLI_PREFIX + "> please input password: "));
 		}
 	}
 }

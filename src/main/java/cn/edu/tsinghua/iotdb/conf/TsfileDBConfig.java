@@ -60,7 +60,6 @@ public class TsfileDBConfig {
 	 * Data directory of bufferWrite data
 	 */
 	private String[] bufferWriteDirs = {"settled1", "settled2", "settled3"};
-//	private String[] bufferWriteDirs = {"settled4", "settled5", "settled6"};
 
 	/**
 	 * Strategy of multiple directories

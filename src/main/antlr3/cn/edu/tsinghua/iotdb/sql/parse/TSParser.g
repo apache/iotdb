@@ -55,6 +55,7 @@ TOK_FUNC;
 TOK_SELECT_INDEX;
 TOK_LIST;
 TOK_ALL;
+TOK_SLIMIT;
 
 /*
   BELOW IS THE METADATA TOKEN
@@ -117,6 +118,11 @@ ArrayList<ParseError> errors = new ArrayList<ParseError>();
 
         xlateMap.put("KW_SELECT", "SELECT");
         xlateMap.put("KW_INSERT", "INSERT");
+
+        xlateMap.put("KW_LIMIT","LIMIT");
+        xlateMap.put("KW_OFFSET","OFFSET");
+        xlateMap.put("KW_SLIMIT","SLIMIT");
+        xlateMap.put("KW_SOFFSET","SOFFSET");
 
         xlateMap.put("KW_ON", "ON");
         xlateMap.put("KW_ROOT", "ROOT");
@@ -280,8 +286,13 @@ statement
 	: execStatement (SEMICOLON)? EOF
 	;
 
+integer
+    : NegativeInteger
+    | NonNegativeInteger
+    ;
+
 number
-    : Integer | Float | Boolean
+    : integer | Float | Boolean
     ;
 
 numberOrString // identifier is string or integer
@@ -316,7 +327,7 @@ dateFormat
 
 dateFormatWithNumber
     : dateFormat -> dateFormat
-    | Integer -> Integer
+    | integer -> integer
     ;
 
 
@@ -447,7 +458,12 @@ queryStatement
 
 specialClause
     :
-    groupbyClause | fillClause
+    limitClause slimitClause? -> slimitClause?
+    |slimitClause limitClause? -> slimitClause
+    |(groupbyClause limitClause)=>groupbyClause limitClause slimitClause? -> groupbyClause slimitClause?
+    |(groupbyClause slimitClause)=>groupbyClause slimitClause limitClause? -> groupbyClause slimitClause
+    |groupbyClause -> groupbyClause
+    |fillClause slimitClause? -> fillClause slimitClause?
     ;
 
 authorStatement
@@ -629,7 +645,7 @@ indexWithClause
     ;
 
 indexWithEqualExpression
-    : k=Identifier EQUAL v=Integer
+    : k=Identifier EQUAL v=integer
     -> ^(TOK_INDEX_KV $k $v)
     ;
 
@@ -655,7 +671,7 @@ Basic Blocks
 
 identifier
     :
-    Identifier | Integer
+    Identifier | integer
     ;
 
 //selectClause
@@ -692,7 +708,7 @@ whereClause
 
 groupbyClause
     :
-    KW_GROUP KW_BY LPAREN value=Integer unit=Identifier (COMMA timeOrigin=dateFormatWithNumber)? COMMA timeInterval (COMMA timeInterval)* RPAREN
+    KW_GROUP KW_BY LPAREN value=integer unit=Identifier (COMMA timeOrigin=dateFormatWithNumber)? COMMA timeInterval (COMMA timeInterval)* RPAREN
     -> ^(TOK_GROUPBY ^(TOK_TIMEUNIT $value $unit) ^(TOK_TIMEORIGIN $timeOrigin)? ^(TOK_TIMEINTERVAL timeInterval+))
     ;
 
@@ -702,6 +718,27 @@ fillClause
     -> ^(TOK_FILL typeClause+)
     ;
 
+limitClause
+    :
+    KW_LIMIT N=NonNegativeInteger offsetClause?
+    ;
+
+offsetClause
+    :
+    KW_OFFSET OFFSETValue=NonNegativeInteger
+    ;
+
+slimitClause
+    :
+    KW_SLIMIT SN=NonNegativeInteger soffsetClause?
+    -> ^(TOK_SLIMIT)
+    ;
+
+soffsetClause
+    :
+    KW_SOFFSET SOFFSETValue=NonNegativeInteger
+    ;
+
 typeClause
     : type=Identifier LSQUARE c=interTypeClause RSQUARE
     -> ^(TOK_TYPE $type $c)
@@ -709,10 +746,10 @@ typeClause
 
 interTypeClause
     :
-    KW_LINEAR (COMMA value1=Integer unit1=Identifier COMMA value2=Integer unit2=Identifier)?
+    KW_LINEAR (COMMA value1=integer unit1=Identifier COMMA value2=integer unit2=Identifier)?
     -> ^(TOK_LINEAR (^(TOK_TIMEUNIT $value1 $unit1) ^(TOK_TIMEUNIT $value2 $unit2))?)
     |
-    KW_PREVIOUS (COMMA value1=Integer unit1=Identifier)?
+    KW_PREVIOUS (COMMA value1=integer unit1=Identifier)?
     -> ^(TOK_PREVIOUS ^(TOK_TIMEUNIT $value1 $unit1)?)
     ;
 

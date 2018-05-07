@@ -121,8 +121,8 @@ public class ReaderUtils {
                         } else {
                             res.putInt(pageIntValues[timeIdx]);
                         }
-                        timeIdx ++;
                     }
+                    timeIdx ++;
                 }
                 break;
             case BOOLEAN:
@@ -167,8 +167,8 @@ public class ReaderUtils {
                         } else {
                             res.putBoolean(pageBooleanValues[timeIdx]);
                         }
-                        timeIdx ++;
                     }
+                    timeIdx ++;
                 }
                 break;
             case INT64:
@@ -213,8 +213,8 @@ public class ReaderUtils {
                         } else {
                             res.putLong(pageLongValues[timeIdx]);
                         }
-                        timeIdx ++;
                     }
+                    timeIdx ++;
                 }
                 break;
             case FLOAT:
@@ -258,8 +258,8 @@ public class ReaderUtils {
                         } else {
                             res.putFloat(pageFloatValues[timeIdx]);
                         }
-                        timeIdx ++;
                     }
+                    timeIdx ++;
                 }
                 break;
             case DOUBLE:
@@ -304,8 +304,9 @@ public class ReaderUtils {
                         } else {
                             res.putDouble(pageDoubleValues[timeIdx]);
                         }
-                        timeIdx ++;
                     }
+                    timeIdx ++;
+
                 }
                 break;
             case TEXT:
@@ -349,8 +350,8 @@ public class ReaderUtils {
                         } else {
                             res.putBinary(pageTextValues[timeIdx]);
                         }
-                        timeIdx ++;
                     }
+                    timeIdx ++;
                 }
                 break;
             default:
