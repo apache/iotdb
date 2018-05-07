@@ -139,7 +139,7 @@ public class WriteAnalysis {
                                     TimeValuePair tp = reader.next();
                                     //count ++;
                                     // calc time consuming of writing
-                                    TSRecord record = constructTsRecord(tp, tsFileEntry.getKey(), timeSeriesMetadata.getMeasurementUID());
+                                    TSRecord record = constructTsRecord(tp, tsFileDeltaObjectId, timeSeriesMetadata.getMeasurementUID());
                                     fileWriter.write(record);
                                 }
 
