@@ -1,6 +1,10 @@
 package cn.edu.tsinghua.iotdb.conf.directories.strategy;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
@@ -8,23 +12,20 @@ import java.util.Random;
 public class MinDirOccupiedSpaceFirstStrategy extends DirectoryStrategy {
 
     // directory space is measured by MB
-    private long DATA_SIZE_SHIFT = 1024 * 1024;
+    private final long DATA_SIZE_SHIFT = 1024 * 1024;
 
     @Override
-    public int nextFolderIndex() {
+    public int nextFolderIndex() throws IOException {
         return getMinOccupiedSpaceFolder();
     }
 
-    public int getMinOccupiedSpaceFolder(){
+    public int getMinOccupiedSpaceFolder() throws IOException {
         List<Integer> candidates = new ArrayList<>();
         long min = 0;
-        for(int i = 0;i < folders.size();i++){
-            if(candidates.isEmpty()){
-                candidates.add(i);
-                min = getOccupiedSpace(folders.get(i));
-                continue;
-            }
 
+        candidates.add(0);
+        min = getOccupiedSpace(folders.get(0));
+        for(int i = 1;i < folders.size();i++){
             long current = getOccupiedSpace(folders.get(i));
             if(min > current){
                 candidates.clear();
@@ -42,30 +43,14 @@ public class MinDirOccupiedSpaceFirstStrategy extends DirectoryStrategy {
         return candidates.get(index);
     }
 
-    private long getOccupiedSpace(String path){
-        File dir = new File(path);
-        File[] children = dir.listFiles();
-        long total = 0;
-        if (children != null)
-            for (File child : children)
-                total += getOccupiedSpace(child);
-        return total;
-    }
+    private long getOccupiedSpace(String path) throws IOException {
+        Path folder = Paths.get(path);
+        long size = Files.walk(folder)
+                .filter(p -> p.toFile().isFile())
+                .mapToLong(p -> p.toFile().length())
+                .sum();
 
-    private long getOccupiedSpace(File file){
-        long res = 0;
-        if (file.isFile())
-            res = file.length();
-        else {
-            File[] children = file.listFiles();
-            long total = 0;
-            if (children != null)
-                for (File child : children)
-                    total += getOccupiedSpace(child);
-            res = total;
-        }
-
-        return res / DATA_SIZE_SHIFT;
+        return size / DATA_SIZE_SHIFT;
     }
 }
 

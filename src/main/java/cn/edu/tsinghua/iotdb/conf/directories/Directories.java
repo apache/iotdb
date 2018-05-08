@@ -5,6 +5,8 @@ import cn.edu.tsinghua.iotdb.conf.directories.strategy.DirectoryStrategy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.*;
 
 /**
@@ -15,20 +17,28 @@ public class Directories {
     private static final Logger LOGGER = LoggerFactory.getLogger(Directories.class);
 
     private List<String> tsfileFolders;
-    DirectoryStrategy strategy;
+    private DirectoryStrategy strategy;
 
     private Directories(){
         tsfileFolders = new ArrayList<String>(
                 Arrays.asList(TsfileDBDescriptor.getInstance().getConfig().getBufferWriteDirs()));
+        initFolers();
 
-        String strategy_name = "";
+        String strategyName = "";
         try {
-            strategy_name = TsfileDBDescriptor.getInstance().getConfig().multDirStrategyClassName;
-            Class<?> clazz = Class.forName(strategy_name);
+            strategyName = TsfileDBDescriptor.getInstance().getConfig().multDirStrategyClassName;
+            Class<?> clazz = Class.forName(strategyName);
             strategy = (DirectoryStrategy) clazz.newInstance();
             strategy.init(tsfileFolders);
         } catch (Exception e) {
-            LOGGER.error(String.format("can't find strategy %s for mult-directories.", strategy_name));
+            LOGGER.error("can't find strategy {} for mult-directories.", strategyName);
+        }
+    }
+
+    private void initFolers(){
+        for(String folder : tsfileFolders){
+            File file = new File(folder);
+            if(!file.exists())file.mkdir();
         }
     }
 
@@ -47,7 +57,13 @@ public class Directories {
     }
 
     public int getNextFolderIndexForTsFile(){
-        return strategy.nextFolderIndex();
+        int index = 0;
+        try {
+            index = strategy.nextFolderIndex();
+        } catch (IOException e) {
+            LOGGER.error("some paths in tsfileFolders does not exist.");
+        }
+        return index;
     }
 
     public String getTsFileFolder(int index){

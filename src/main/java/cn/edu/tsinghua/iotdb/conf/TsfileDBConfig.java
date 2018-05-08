@@ -11,7 +11,7 @@ public class TsfileDBConfig {
 	public static final String CONFIG_NAME = "iotdb-engine.properties";
 	public static final String default_data_dir = "data";
 	public static final String default_sys_dir = "system";
-	public static final String default_tsfiel_dir = "settled";
+	public static final String default_tsfile_dir = "settled";
 	/**
 	 * Port which JDBC server listens to
 	 */
@@ -246,7 +246,7 @@ public class TsfileDBConfig {
 		overflowDataDir = dataDir + overflowDataDir;
 
 		if(bufferWriteDirs == null || bufferWriteDirs.length == 0){
-			bufferWriteDirs = new String[]{default_tsfiel_dir};
+			bufferWriteDirs = new String[]{default_tsfile_dir};
 		}
 		for(int i = 0;i < bufferWriteDirs.length;i++){
 			if(new File(bufferWriteDirs[i]).isAbsolute())continue;
