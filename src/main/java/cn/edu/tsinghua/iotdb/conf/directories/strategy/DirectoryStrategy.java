@@ -1,5 +1,6 @@
 package cn.edu.tsinghua.iotdb.conf.directories.strategy;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -29,7 +30,7 @@ public abstract class DirectoryStrategy {
      * his own strategy.
      * @return the index of folder that will be allocated
      */
-    public abstract int nextFolderIndex();
+    public abstract int nextFolderIndex() throws IOException;
 
     /**
      * Return the actual string value of a folder by its index.
