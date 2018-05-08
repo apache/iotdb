@@ -22,6 +22,7 @@ public class Directories {
     private Directories(){
         tsfileFolders = new ArrayList<String>(
                 Arrays.asList(TsfileDBDescriptor.getInstance().getConfig().getBufferWriteDirs()));
+        initFolders();
 
         String strategyName = "";
         try {
@@ -31,6 +32,15 @@ public class Directories {
             strategy.init(tsfileFolders);
         } catch (Exception e) {
             LOGGER.error("can't find strategy {} for mult-directories.", strategyName);
+        }
+    }
+
+    private void initFolders(){
+        for(String folder : tsfileFolders){
+            File file = new File(folder);
+            if (file.mkdirs()) {
+                LOGGER.info("folder {} in tsfileFolders doesn't exist, create it", file.getPath());
+            }
         }
     }
 
@@ -49,8 +59,12 @@ public class Directories {
     }
 
     public int getNextFolderIndexForTsFile(){
-        int index;
-        index = strategy.nextFolderIndex();
+        int index = 0;
+        try {
+            index = strategy.nextFolderIndex();
+        } catch (IOException e) {
+            LOGGER.error("some paths in tsfileFolders does not exist.");
+        }
         return index;
     }
 
