@@ -30,7 +30,7 @@ public abstract class DirectoryStrategy {
      * his own strategy.
      * @return the index of folder that will be allocated
      */
-    public abstract int nextFolderIndex() throws IOException;
+    public abstract int nextFolderIndex();
 
     /**
      * Return the actual string value of a folder by its index.
