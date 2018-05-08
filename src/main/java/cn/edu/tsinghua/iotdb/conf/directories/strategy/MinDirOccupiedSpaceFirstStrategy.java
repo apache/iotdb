@@ -2,12 +2,12 @@ package cn.edu.tsinghua.iotdb.conf.directories.strategy;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.*;
-import java.nio.file.attribute.BasicFileAttributes;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
-import java.util.concurrent.atomic.AtomicLong;
 
 public class MinDirOccupiedSpaceFirstStrategy extends DirectoryStrategy {
 
@@ -15,11 +15,11 @@ public class MinDirOccupiedSpaceFirstStrategy extends DirectoryStrategy {
     private final long DATA_SIZE_SHIFT = 1024 * 1024;
 
     @Override
-    public int nextFolderIndex(){
+    public int nextFolderIndex() throws IOException {
         return getMinOccupiedSpaceFolder();
     }
 
-    private int getMinOccupiedSpaceFolder(){
+    private int getMinOccupiedSpaceFolder() throws IOException {
         List<Integer> candidates = new ArrayList<>();
         long min = 0;
 
@@ -43,18 +43,12 @@ public class MinDirOccupiedSpaceFirstStrategy extends DirectoryStrategy {
         return candidates.get(index);
     }
 
-    private long getOccupiedSpace(String path){
+    private long getOccupiedSpace(String path) throws IOException {
         Path folder = Paths.get(path);
-        long size = 0;
-        try {
-            size = Files.walk(folder)
-                    .filter(p -> p.toFile().isFile())
-                    .mapToLong(p -> p.toFile().length())
-                    .sum();
-        } catch (IOException e) {
-            if(Files.notExists(folder))
-                folder.toFile().mkdir();
-        }
+        long size = Files.walk(folder)
+                .filter(p -> p.toFile().isFile())
+                .mapToLong(p -> p.toFile().length())
+                .sum();
 
         return size / DATA_SIZE_SHIFT;
     }
