@@ -33,22 +33,14 @@ public class RecordReaderFactory {
     /**
      * Construct a RecordReader which contains QueryStructure and read lock token.
      *
-     * @param readLock if readLock is not null, the read lock of file node has been created,<br>
-     *                 else a new read lock token should be applied.
      * @param prefix   for the exist of <code>RecordReaderCache</code> and batch read, we need a prefix to
      *                 represent the uniqueness.
      * @return <code>RecordReader</code>
      */
     public RecordReader getRecordReader(String deltaObjectUID, String measurementID,
                                         SingleSeriesFilterExpression timeFilter, SingleSeriesFilterExpression valueFilter,
-                                        Integer readLock, String prefix, ReaderType readerType)
+                                        String prefix, ReaderType readerType)
             throws ProcessorException, PathErrorException, IOException {
-        int token = 0;
-        if (readLock == null) {
-            token = readLockManager.lock(deltaObjectUID);
-        } else {
-            token = readLock;
-        }
         String cacheDeltaKey = prefix + deltaObjectUID;
         if (readLockManager.recordReaderCache.containsRecordReader(cacheDeltaKey, measurementID)) {
             return readLockManager.recordReaderCache.get(cacheDeltaKey, measurementID);
