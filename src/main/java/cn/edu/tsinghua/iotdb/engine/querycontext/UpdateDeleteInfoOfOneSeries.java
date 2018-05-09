@@ -25,7 +25,11 @@ public class UpdateDeleteInfoOfOneSeries {
         }
         return overflowUpdateOperationReader;
     }
-    
+
+	public OverflowOperationReader getOverflowUpdateOperationReaderNewInstance() {
+		return new OverflowOperationReaderImpl(overflowUpdateInMem, overflowUpdateFileList, dataType);
+	}
+
     public void setDataType(TSDataType dataType) {
 		this.dataType = dataType;
 	}
