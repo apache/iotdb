@@ -60,11 +60,7 @@ public class Directories {
 
     public int getNextFolderIndexForTsFile(){
         int index = 0;
-        try {
-            index = strategy.nextFolderIndex();
-        } catch (IOException e) {
-            LOGGER.error("some paths in tsfileFolders does not exist.");
-        }
+        index = strategy.nextFolderIndex();
         return index;
     }
 

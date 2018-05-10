@@ -1,5 +1,8 @@
 package cn.edu.tsinghua.iotdb.conf.directories.strategy;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -12,6 +15,9 @@ import java.util.List;
  * @author East
  */
 public abstract class DirectoryStrategy {
+
+    protected static final Logger LOGGER = LoggerFactory.getLogger(DirectoryStrategy.class);
+
     /**
      * All the folders of data files, should be init once the subclass is created.
      */
@@ -30,7 +36,7 @@ public abstract class DirectoryStrategy {
      * his own strategy.
      * @return the index of folder that will be allocated
      */
-    public abstract int nextFolderIndex() throws IOException;
+    public abstract int nextFolderIndex();
 
     /**
      * Return the actual string value of a folder by its index.
