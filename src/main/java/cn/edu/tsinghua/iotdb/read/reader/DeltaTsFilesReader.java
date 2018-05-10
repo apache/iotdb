@@ -40,6 +40,8 @@ public class DeltaTsFilesReader implements SeriesReader {
         for (TimeSeriesChunkMetaData timeSeriesChunkMetaData : sortedSeriesDataSource.getUnsealedTsFile().getTimeSeriesChunkMetaDatas()) {
             encodedSeriesChunkDescriptorList.add(generateSeriesChunkDescriptorByMetadata(timeSeriesChunkMetaData, unsealedTsFile.getFilePath()));
         }
+
+        // TODO unSealedSeriesChunkReader need to be constructed correctly
         ITsRandomAccessFileReader randomAccessFileReader = new TsRandomAccessLocalFileReader(unsealedTsFile.getFilePath());
         SeriesChunkLoader seriesChunkLoader = new SeriesChunkLoaderImpl(randomAccessFileReader);
 
