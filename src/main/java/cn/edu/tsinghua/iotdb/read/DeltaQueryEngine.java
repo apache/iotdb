@@ -1,7 +1,7 @@
 package cn.edu.tsinghua.iotdb.read;
 
 import cn.edu.tsinghua.iotdb.read.executor.DeltaQueryWithGlobalTimeFilterExecutorImpl;
-import cn.edu.tsinghua.iotdb.read.executor.DeltaQueryWithQueryFilterExecutorImpl;
+import cn.edu.tsinghua.iotdb.read.executor.DeltaQueryWithFilterExecutorImpl;
 import cn.edu.tsinghua.iotdb.read.executor.DeltaQueryWithoutFilterExecutorImpl;
 import cn.edu.tsinghua.tsfile.timeseries.filterV2.exception.QueryFilterOptimizationException;
 import cn.edu.tsinghua.tsfile.timeseries.filterV2.expression.QueryFilter;
@@ -31,7 +31,7 @@ public class DeltaQueryEngine {
                 if (regularQueryFilter instanceof GlobalTimeFilter) {
                     return new DeltaQueryWithGlobalTimeFilterExecutorImpl().execute(queryExpression);
                 } else {
-                    return new DeltaQueryWithQueryFilterExecutorImpl().execute(queryExpression);
+                    return new DeltaQueryWithFilterExecutorImpl().execute(queryExpression);
                 }
             } catch (QueryFilterOptimizationException e) {
                 throw new IOException(e);
