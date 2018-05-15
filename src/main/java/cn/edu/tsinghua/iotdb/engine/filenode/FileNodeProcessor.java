@@ -686,7 +686,8 @@ public class FileNodeProcessor extends Processor implements IStatistic {
 		// bufferwrite data
 		UnsealedTsFile unsealedTsFile = null;
 
-		if (!newFileNodes.isEmpty() && !newFileNodes.get(newFileNodes.size() - 1).isClosed()) {
+		if (!newFileNodes.isEmpty() && !newFileNodes.get(newFileNodes.size() - 1).isClosed()
+				&& !newFileNodes.get(newFileNodes.size() - 1).getStartTimeMap().isEmpty()) {
 			unsealedTsFile = new UnsealedTsFile();
 			unsealedTsFile.setFilePath(newFileNodes.get(newFileNodes.size() - 1).getFilePath());
 			if (bufferWriteProcessor == null) {
