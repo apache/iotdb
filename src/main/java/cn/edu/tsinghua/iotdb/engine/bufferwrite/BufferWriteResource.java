@@ -1,4 +1,4 @@
-package cn.edu.tsinghua.iotdb.engine.bufferwriteV2;
+package cn.edu.tsinghua.iotdb.engine.bufferwrite;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
