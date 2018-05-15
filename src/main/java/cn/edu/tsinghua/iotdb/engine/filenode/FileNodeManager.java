@@ -26,7 +26,7 @@ import org.slf4j.LoggerFactory;
 import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
 import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
 import cn.edu.tsinghua.iotdb.engine.Processor;
-import cn.edu.tsinghua.iotdb.engine.bufferwrite.BufferWriteProcessor;
+import cn.edu.tsinghua.iotdb.engine.bufferwriteV2.BufferWriteProcessor;
 import cn.edu.tsinghua.iotdb.engine.memcontrol.BasicMemController;
 import cn.edu.tsinghua.iotdb.engine.overflow.ioV2.OverflowProcessor;
 import cn.edu.tsinghua.iotdb.engine.pool.FlushManager;
