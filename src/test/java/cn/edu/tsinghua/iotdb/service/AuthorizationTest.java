@@ -39,6 +39,32 @@ public class AuthorizationTest {
     }
 
     @Test
+    public void updatePasswordTest() throws ClassNotFoundException, SQLException {
+        Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);
+        Connection adminCon = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
+        Statement adminStmt = adminCon.createStatement();
+
+        adminStmt.execute("CREATE USER tempuser temppw");
+        Connection userCon = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "tempuser", "temppw");
+        userCon.close();
+
+        adminStmt.execute("UPDATE USER tempuser SET PASSWORD newpw");
+
+        boolean caught = false;
+        try {
+            userCon = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "tempuser", "temppw");
+        } catch (SQLException e) {
+            caught = true;
+        }
+        assertTrue(caught);
+
+        userCon = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "tempuser", "newpw");
+
+        userCon.close();
+        adminCon.close();
+    }
+
+    @Test
     public void illegalGrantRevokeUserTest() throws ClassNotFoundException, SQLException {
         Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);
         Connection adminCon = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
@@ -171,6 +197,9 @@ public class AuthorizationTest {
         assertTrue(caught);
         adminStmt.execute("GRANT USER tempuser PRIVILEGES 'REVOKE_USER_PRIVILEGE' on root");
         userStmt.execute("REVOKE USER tempuser PRIVILEGES 'DELETE_TIMESERIES' on root");
+
+        userCon.close();
+        adminCon.close();
     }
 
     @Test

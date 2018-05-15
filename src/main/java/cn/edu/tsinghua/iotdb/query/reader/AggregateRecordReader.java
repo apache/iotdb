@@ -231,7 +231,8 @@ public class AggregateRecordReader extends RecordReader {
                 valueReader.setDecoder(Decoder.getDecoderByType(pageHeader.getData_page_header().getEncoding(), dataType));
                 result = ReaderUtils.readOnePage(dataType, timestamps, valueReader.decoder, page, result,
                         queryTimeFilter, queryValueFilter, insertMemoryData, overflowOperationReaderCopy);
-                func.calculateValueFromDataPage(result);
+                if (result.valueLength > 0)
+                    func.calculateValueFromDataPage(result);
                 result.clearData();
             }
         }
