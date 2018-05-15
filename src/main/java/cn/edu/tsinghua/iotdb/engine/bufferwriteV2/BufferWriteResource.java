@@ -45,6 +45,8 @@ public class BufferWriteResource {
 	private String restoreFilePath;
 	private String processorName;
 
+	private boolean isNewResource = false;
+
 	public BufferWriteResource(String processorName, String insertFilePath) throws IOException {
 		this.insertFilePath = insertFilePath;
 		this.restoreFilePath = insertFilePath + restoreSuffix;
@@ -69,14 +71,17 @@ public class BufferWriteResource {
 			//cutOffFile(position);
 			// recovery the BufferWriteIO
 			bufferWriteIO = new BufferIO(new TsRandomAccessFileWriter(insertFile), position, metadatas);
+
 			recoverMetadata(metadatas);
 			LOGGER.info(
 					"Recover the bufferwrite processor {}, the tsfile path is {}, the position of last flush is {}, the size of rowGroupMetadata is {}",
 					processorName, insertFilePath, position, metadatas.size());
+			isNewResource = false;
 		} else {
 			insertFile.delete();
 			restoreFile.delete();
 			bufferWriteIO = new BufferIO(new TsRandomAccessFileWriter(insertFile), 0, new ArrayList<>());
+			isNewResource = true;
 			writeRestoreInfo();
 		}
 	}
@@ -227,6 +232,14 @@ public class BufferWriteResource {
 
 	public String getRestoreFilePath() {
 		return restoreFilePath;
+	}
+
+	public boolean isNewResource() {
+		return isNewResource;
+	}
+
+	public void setNewResource(boolean isNewResource) {
+		this.isNewResource = isNewResource;
 	}
 
 	public void flush(FileSchema fileSchema, IMemTable iMemTable) throws IOException {

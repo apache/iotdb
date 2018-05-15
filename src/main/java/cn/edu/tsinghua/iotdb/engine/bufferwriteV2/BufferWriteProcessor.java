@@ -65,6 +65,7 @@ public class BufferWriteProcessor extends Processor {
 	private String baseDir;
 	private String fileName;
 	private String insertFilePath;
+	private String bufferwriterelativePath;
 
 	private WriteLogNode logNode;
 
@@ -85,11 +86,14 @@ public class BufferWriteProcessor extends Processor {
 			LOGGER.debug("The bufferwrite processor data dir doesn't exists, create new directory {}.", dataDirPath);
 		}
 		this.insertFilePath = new File(dataDir, fileName).getPath();
+		bufferwriterelativePath = processorName + File.separatorChar + fileName;
 		try {
 			bufferWriteResource = new BufferWriteResource(processorName, insertFilePath);
 		} catch (IOException e) {
 			throw new BufferWriteProcessorException(e);
 		}
+
+
 		bufferwriteFlushAction = (Action) parameters.get(FileNodeConstants.BUFFERWRITE_FLUSH_ACTION);
 		bufferwriteCloseAction = (Action) parameters.get(FileNodeConstants.BUFFERWRITE_CLOSE_ACTION);
 		filenodeFlushAction = (Action) parameters.get(FileNodeConstants.FILENODE_PROCESSOR_FLUSH_ACTION);
@@ -321,7 +325,7 @@ public class BufferWriteProcessor extends Processor {
 	}
 
 	@Override
-	public void close() throws ProcessorException {
+	public void close() throws BufferWriteProcessorException {
 		try {
 			long closeStartTime = System.currentTimeMillis();
 			// flush data
@@ -404,8 +408,29 @@ public class BufferWriteProcessor extends Processor {
 		return false;
 	}
 
+	public String getBaseDir() { return baseDir; }
+
+	public String getFileName() {
+		return fileName;
+	}
+
+	public String getFileRelativePath() {
+		return bufferwriterelativePath;
+	}
+
 	private String getBufferwriteRestoreFilePath() {
 		return bufferWriteResource.getRestoreFilePath();
 	}
 
+	public boolean isNewProcessor() {
+		return bufferWriteResource.isNewResource();
+	}
+
+	public void setNewProcessor(boolean isNewProcessor) {
+		bufferWriteResource.setNewResource(isNewProcessor);
+	}
+
+	public WriteLogNode getLogNode() {
+		return logNode;
+	}
 }
