@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
+import cn.edu.tsinghua.iotdb.conf.directories.Directories;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -59,6 +60,7 @@ public class BufferWriteProcessorTest {
 	private TSFileConfig TsFileConf = TSFileDescriptor.getInstance().getConfig();
 	private Map<String, Object> parameters = new HashMap<>();
 	private BufferWriteProcessor bufferwrite;
+	private Directories directories = Directories.getInstance();
 	private String deltaObjectId = "root.vehicle.d0";
 	private String measurementId = "s0";
 	private TSDataType dataType = TSDataType.INT32;
@@ -91,7 +93,7 @@ public class BufferWriteProcessorTest {
 	@Test
 	public void testWriteAndAbnormalRecover()
 			throws WriteProcessException, InterruptedException, IOException, ProcessorException {
-		bufferwrite = new BufferWriteProcessor(deltaObjectId, insertPath, parameters,
+		bufferwrite = new BufferWriteProcessor(directories.getFolderForTest(), deltaObjectId, insertPath, parameters,
 				FileSchemaUtils.constructFileSchema(deltaObjectId));
 		for (int i = 1; i < 100; i++) {
 			bufferwrite.write(deltaObjectId, measurementId, i, dataType, String.valueOf(i));
@@ -114,7 +116,7 @@ public class BufferWriteProcessorTest {
 		restoreFile.renameTo(file);
 		bufferwrite.close();
 		file.renameTo(restoreFile);
-		BufferWriteProcessor bufferWriteProcessor = new BufferWriteProcessor(deltaObjectId, insertPath, parameters,
+		BufferWriteProcessor bufferWriteProcessor = new BufferWriteProcessor(directories.getFolderForTest(), deltaObjectId, insertPath, parameters,
 				FileSchemaUtils.constructFileSchema(deltaObjectId));
 		assertEquals(true, insertFile.exists());
 		assertEquals(insertFileLength, insertFile.length());
@@ -131,7 +133,7 @@ public class BufferWriteProcessorTest {
 
 	@Test
 	public void testWriteAndNormalRecover() throws WriteProcessException, ProcessorException, InterruptedException {
-		bufferwrite = new BufferWriteProcessor(deltaObjectId, insertPath, parameters,
+		bufferwrite = new BufferWriteProcessor(directories.getFolderForTest(), deltaObjectId, insertPath, parameters,
 				FileSchemaUtils.constructFileSchema(deltaObjectId));
 		for (int i = 1; i < 100; i++) {
 			bufferwrite.write(deltaObjectId, measurementId, i, dataType, String.valueOf(i));
@@ -143,7 +145,7 @@ public class BufferWriteProcessorTest {
 		String restoreFilePath = insertPath + ".restore";
 		File restoreFile = new File(dataFile, restoreFilePath);
 		assertEquals(true, restoreFile.exists());
-		BufferWriteProcessor bufferWriteProcessor = new BufferWriteProcessor(deltaObjectId, insertPath, parameters,
+		BufferWriteProcessor bufferWriteProcessor = new BufferWriteProcessor(directories.getFolderForTest(), deltaObjectId, insertPath, parameters,
 				FileSchemaUtils.constructFileSchema(deltaObjectId));
 		Pair<RawSeriesChunk, List<TimeSeriesChunkMetaData>> pair = bufferWriteProcessor
 				.queryBufferwriteData(deltaObjectId, measurementId, dataType);
@@ -159,7 +161,7 @@ public class BufferWriteProcessorTest {
 
 	@Test
 	public void testWriteAndQuery() throws WriteProcessException, InterruptedException, ProcessorException {
-		bufferwrite = new BufferWriteProcessor(deltaObjectId, insertPath, parameters,
+		bufferwrite = new BufferWriteProcessor(directories.getFolderForTest(), deltaObjectId, insertPath, parameters,
 				FileSchemaUtils.constructFileSchema(deltaObjectId));
 		assertEquals(false, bufferwrite.isFlush());
 		assertEquals(true, bufferwrite.canBeClosed());
