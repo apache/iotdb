@@ -9,9 +9,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * This class stores information of each user in a separate file within a directory, and cache them in memory when a user is accessed.
@@ -120,11 +118,12 @@ public abstract class BasicUserManager implements IUserManager {
             if(user.hasPrivilege(path, privilegeId)) {
                 return false;
             }
+            Set<Integer> privilegesCopy = new HashSet<>(user.getPrivileges(path));
             user.addPrivilege(path, privilegeId);
             try {
                 accessor.saveUser(user);
             } catch (IOException e) {
-                user.removePrivilege(path, privilegeId);
+                user.setPrivileges(path, privilegesCopy);
                 throw new AuthException(e);
             }
             return true;

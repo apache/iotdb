@@ -31,6 +31,13 @@ public class Role {
         AuthUtils.removePrivilege(path, privilgeId, privilegeList);
     }
 
+    public void setPrivileges(String path, Set<Integer> privileges) {
+        for (PathPrivilege pathPrivilege : privilegeList) {
+            if (pathPrivilege.path.equals(path))
+                pathPrivilege.privileges = privileges;
+        }
+    }
+
     public Set<Integer> getPrivileges(String path) {
         return AuthUtils.getPrivileges(path, privilegeList);
     }
