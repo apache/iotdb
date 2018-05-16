@@ -1,8 +1,8 @@
 package cn.edu.tsinghua.iotdb.read.executor;
 
 import cn.edu.tsinghua.iotdb.engine.querycontext.QueryDataSource;
-import cn.edu.tsinghua.iotdb.read.DeltaQueryDataSourceExecutor;
-import cn.edu.tsinghua.iotdb.read.reader.DeltaQueryWithoutFilterReader;
+import cn.edu.tsinghua.iotdb.read.IoTDBQueryDataSourceExecutor;
+import cn.edu.tsinghua.iotdb.read.reader.IoTDBQueryWithoutFilterReader;
 import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
 import cn.edu.tsinghua.tsfile.timeseries.readV2.query.QueryDataSet;
 import cn.edu.tsinghua.tsfile.timeseries.readV2.query.QueryExecutor;
@@ -14,11 +14,9 @@ import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.List;
 
-public class DeltaQueryWithoutFilterExecutorImpl implements QueryExecutor{
+public class IoTDBQueryWithoutFilterExecutorImpl implements QueryExecutor{
 
-
-
-    public DeltaQueryWithoutFilterExecutorImpl() {
+    public IoTDBQueryWithoutFilterExecutorImpl() {
     }
 
     @Override
@@ -31,8 +29,8 @@ public class DeltaQueryWithoutFilterExecutorImpl implements QueryExecutor{
     private void initReadersOfSelectedSeries(LinkedHashMap<Path, SeriesReader> readersOfSelectedSeries,
                                              List<Path> selectedSeries) throws IOException {
         for (Path path : selectedSeries) {
-            QueryDataSource queryDataSource = DeltaQueryDataSourceExecutor.getQueryDataSource(path);
-            SeriesReader seriesReader = new DeltaQueryWithoutFilterReader(path, queryDataSource);
+            QueryDataSource queryDataSource = IoTDBQueryDataSourceExecutor.getQueryDataSource(path);
+            SeriesReader seriesReader = new IoTDBQueryWithoutFilterReader(path, queryDataSource);
             readersOfSelectedSeries.put(path, seriesReader);
         }
     }

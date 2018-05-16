@@ -10,16 +10,15 @@ import cn.edu.tsinghua.tsfile.timeseries.readV2.reader.SeriesReader;
 
 import java.io.IOException;
 
-public class DeltaQueryWithoutFilterReader implements SeriesReader{
+public class IoTDBQueryWithoutFilterReader implements SeriesReader{
 
     private Path seriesPath;
-    private SeriesReader tsFilesReader;
+    private TsFilesReader tsFilesReader;
     private OverflowInsertDataReader overflowInsertDataReader;
-    private UpdateDeleteInfoOfOneSeries updateDeleteInfoOfOneSeries;
 
-    public DeltaQueryWithoutFilterReader(Path seriesPath, QueryDataSource queryDataSource) throws IOException {
+    public IoTDBQueryWithoutFilterReader(Path seriesPath, QueryDataSource queryDataSource) throws IOException {
         this.seriesPath = seriesPath;
-        this.tsFilesReader = new DeltaTsFilesReader(queryDataSource.getSeriesDataSource(),
+        this.tsFilesReader = new TsFilesReader(queryDataSource.getSeriesDataSource(),
                 queryDataSource.getOverflowSeriesDataSource().getUpdateDeleteInfoOfOneSeries().getOverflowUpdateOperationReaderNewInstance());
         this.overflowInsertDataReader = SeriesReaderFactory.getInstance().
                 createSeriesReaderForOverflowInsert(queryDataSource.getOverflowSeriesDataSource());

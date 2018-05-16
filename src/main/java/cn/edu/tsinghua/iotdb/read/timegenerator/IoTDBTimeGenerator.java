@@ -10,18 +10,18 @@ import java.io.IOException;
  * IoTDB level timestamp generator for query with filter.
  * e.g. "select s1, s2 form root where s3 < 0 and time > 100"
  */
-public class DeltaTimeGenerator implements TimestampGenerator {
+public class IoTDBTimeGenerator implements TimestampGenerator {
 
     private QueryFilter queryFilter;
     private Node operatorNode;
 
-    public DeltaTimeGenerator(QueryFilter queryFilter) throws IOException {
+    public IoTDBTimeGenerator(QueryFilter queryFilter) throws IOException {
         this.queryFilter = queryFilter;
     }
 
     private void initNode() throws IOException {
-        DeltaNodeConstructor deltaNodeConstructor = new DeltaNodeConstructor();
-        this.operatorNode = deltaNodeConstructor.construct(queryFilter);
+        IoTDBNodeConstructor nodeConstructor = new IoTDBNodeConstructor();
+        this.operatorNode = nodeConstructor.construct(queryFilter);
     }
 
     @Override
