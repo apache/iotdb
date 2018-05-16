@@ -16,6 +16,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+import cn.edu.tsinghua.iotdb.conf.directories.Directories;
 import org.joda.time.DateTime;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -65,7 +66,6 @@ import cn.edu.tsinghua.tsfile.timeseries.filterV2.basic.Filter;
 import cn.edu.tsinghua.tsfile.timeseries.filterV2.expression.impl.SeriesFilter;
 import cn.edu.tsinghua.tsfile.timeseries.filterV2.factory.FilterFactory;
 import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
-import cn.edu.tsinghua.tsfile.timeseries.read.support.RowRecord;
 import cn.edu.tsinghua.tsfile.timeseries.readV2.datatype.TimeValuePair;
 import cn.edu.tsinghua.tsfile.timeseries.readV2.reader.SeriesReader;
 import cn.edu.tsinghua.tsfile.timeseries.write.TsFileWriter;
@@ -82,6 +82,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
 	private static final TSFileConfig TsFileConf = TSFileDescriptor.getInstance().getConfig();
 	private static final TsfileDBConfig TsFileDBConf = TsfileDBDescriptor.getInstance().getConfig();
 	private static final MManager mManager = MManager.getInstance();
+	private static final Directories directories = Directories.getInstance();
 
 	/**
 	 * Used to keep the oldest timestamp for each deltaObjectId. The key is
@@ -227,9 +228,9 @@ public class FileNodeProcessor extends Processor implements IStatistic {
 		}
 	}
 
-	public void addIntervalFileNode(long startTime, String fileName) throws Exception {
+	public void addIntervalFileNode(long startTime, String baseDir, String fileName) throws Exception {
 
-		IntervalFileNode intervalFileNode = new IntervalFileNode(OverflowChangeType.NO_CHANGE, fileName);
+		IntervalFileNode intervalFileNode = new IntervalFileNode(OverflowChangeType.NO_CHANGE, baseDir, fileName);
 		this.currentIntervalFileNode = intervalFileNode;
 		newFileNodes.add(intervalFileNode);
 		fileNodeProcessorStore.setNewFileNodes(newFileNodes);
@@ -388,10 +389,11 @@ public class FileNodeProcessor extends Processor implements IStatistic {
 			parameters.put(FileNodeConstants.BUFFERWRITE_FLUSH_ACTION, bufferwriteFlushAction);
 			parameters.put(FileNodeConstants.BUFFERWRITE_CLOSE_ACTION, bufferwriteCloseAction);
 			parameters.put(FileNodeConstants.FILENODE_PROCESSOR_FLUSH_ACTION, flushFileNodeProcessorAction);
+			String baseDir = directories.getTsFileFolder(newFileNodes.get(newFileNodes.size() - 1).getBaseDirIndex());
 			LOGGER.info("The filenode processor {} will recovery the bufferwrite processor, the bufferwrite file is {}",
 					getProcessorName(), fileNames[fileNames.length - 1]);
 			try {
-				bufferWriteProcessor = new BufferWriteProcessor(getProcessorName(), fileNames[fileNames.length - 1],
+				bufferWriteProcessor = new BufferWriteProcessor(baseDir, getProcessorName(), fileNames[fileNames.length - 1],
 						parameters, fileSchema);
 			} catch (BufferWriteProcessorException e) {
 				// unlock
@@ -442,9 +444,11 @@ public class FileNodeProcessor extends Processor implements IStatistic {
 			parameters.put(FileNodeConstants.BUFFERWRITE_FLUSH_ACTION, bufferwriteFlushAction);
 			parameters.put(FileNodeConstants.BUFFERWRITE_CLOSE_ACTION, bufferwriteCloseAction);
 			parameters.put(FileNodeConstants.FILENODE_PROCESSOR_FLUSH_ACTION, flushFileNodeProcessorAction);
+			String baseDir = directories.getNextFolderForTsfile();
+			LOGGER.info("Allocate folder {} for the new bufferwrite processor.", baseDir);
 			// construct processor or restore
 			try {
-				bufferWriteProcessor = new BufferWriteProcessor(processorName,
+				bufferWriteProcessor = new BufferWriteProcessor(baseDir, processorName,
 						insertTime + FileNodeConstants.BUFFERWRITE_FILE_SEPARATOR + System.currentTimeMillis(),
 						parameters, fileSchema);
 			} catch (BufferWriteProcessorException e) {
@@ -1074,7 +1078,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
 						}
 					}
 					IntervalFileNode node = new IntervalFileNode(startTimeMap, endTimeMap,
-							intervalFileNode.overflowChangeType, intervalFileNode.getRelativePath());
+							intervalFileNode.overflowChangeType, intervalFileNode.getBaseDirIndex(), intervalFileNode.getRelativePath());
 					result.add(node);
 				}
 			}
@@ -1259,15 +1263,19 @@ public class FileNodeProcessor extends Processor implements IStatistic {
 				// delete the all files which are in the newFileNodes
 				// notice: the last restore file of the interval file
 
-				String bufferwriteDirPath = TsFileDBConf.bufferWriteDir;
-				if (bufferwriteDirPath.length() > 0
-						&& bufferwriteDirPath.charAt(bufferwriteDirPath.length() - 1) != File.separatorChar) {
-					bufferwriteDirPath = bufferwriteDirPath + File.separatorChar;
-				}
-				bufferwriteDirPath = bufferwriteDirPath + getProcessorName();
-				File bufferwriteDir = new File(bufferwriteDirPath);
-				if (!bufferwriteDir.exists()) {
-					bufferwriteDir.mkdirs();
+				List<String> bufferwriteDirPathList = directories.getAllTsFileFolders();
+				List<File> bufferwriteDirList = new ArrayList<>();
+				for(String bufferwriteDirPath : bufferwriteDirPathList) {
+					if (bufferwriteDirPath.length() > 0
+							&& bufferwriteDirPath.charAt(bufferwriteDirPath.length() - 1) != File.separatorChar) {
+						bufferwriteDirPath = bufferwriteDirPath + File.separatorChar;
+					}
+					bufferwriteDirPath = bufferwriteDirPath + getProcessorName();
+					File bufferwriteDir = new File(bufferwriteDirPath);
+					bufferwriteDirList.add(bufferwriteDir);
+					if (!bufferwriteDir.exists()) {
+						bufferwriteDir.mkdirs();
+					}
 				}
 
 				Set<String> bufferFiles = new HashSet<>();
@@ -1283,9 +1291,11 @@ public class FileNodeProcessor extends Processor implements IStatistic {
 					bufferFiles.add(bufferFileRestorePath);
 				}
 
-				for (File file : bufferwriteDir.listFiles()) {
-					if (!bufferFiles.contains(file.getPath())) {
-						file.delete();
+				for(File bufferwriteDir : bufferwriteDirList) {
+					for (File file : bufferwriteDir.listFiles()) {
+						if (!bufferFiles.contains(file.getPath())) {
+							file.delete();
+						}
 					}
 				}
 
@@ -1338,6 +1348,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
 
 		TsFileWriter recordWriter = null;
 		String outputPath = null;
+		String baseDir = null;
 		String fileName = null;
 		for (String deltaObjectId : backupIntervalFile.getStartTimeMap().keySet()) {
 			// query one deltaObjectId
@@ -1374,9 +1385,10 @@ public class FileNodeProcessor extends Processor implements IStatistic {
 					} else {
 						TimeValuePair timeValuePair = seriesReader.next();
 						if (recordWriter == null) {
+							baseDir = directories.getNextFolderForTsfile();
 							fileName = String.valueOf(timeValuePair.getTimestamp()
 									+ FileNodeConstants.BUFFERWRITE_FILE_SEPARATOR + System.currentTimeMillis());
-							outputPath = constructOutputFilePath(getProcessorName(), fileName);
+							outputPath = constructOutputFilePath(baseDir, getProcessorName(), fileName);
 							fileName = getProcessorName() + File.separatorChar + fileName;
 							recordWriter = new TsFileWriter(new File(outputPath), fileSchema, TsFileConf);
 						}
@@ -1408,6 +1420,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
 		if (recordWriter != null) {
 			recordWriter.close();
 		}
+		backupIntervalFile.setBaseDirIndex(directories.getTsFileFolderIndex(baseDir));
 		backupIntervalFile.setRelativePath(fileName);
 		backupIntervalFile.overflowChangeType = OverflowChangeType.NO_CHANGE;
 		backupIntervalFile.setStartTimeMap(startTimeMap);
@@ -1415,15 +1428,14 @@ public class FileNodeProcessor extends Processor implements IStatistic {
 		return fileName;
 	}
 
-	private String constructOutputFilePath(String processorName, String fileName) {
+	private String constructOutputFilePath(String baseDir, String processorName, String fileName) {
 
-		String dataDirPath = TsFileDBConf.bufferWriteDir;
-		if (dataDirPath.charAt(dataDirPath.length() - 1) != File.separatorChar) {
-			dataDirPath = dataDirPath + File.separatorChar + processorName;
+		if (baseDir.charAt(baseDir.length() - 1) != File.separatorChar) {
+			baseDir = baseDir + File.separatorChar + processorName;
 		}
-		File dataDir = new File(dataDirPath);
+		File dataDir = new File(baseDir);
 		if (!dataDir.exists()) {
-			LOGGER.warn("The bufferwrite processor data dir doesn't exists, create new directory {}", dataDirPath);
+			LOGGER.warn("The bufferwrite processor data dir doesn't exists, create new directory {}", baseDir);
 			dataDir.mkdirs();
 		}
 		File outputFile = new File(dataDir, fileName);

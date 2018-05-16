@@ -75,6 +75,7 @@ public class BufferWriteProcessor extends Processor {
 	private int lastRowgroupSize = 0;
 
 	// this just the bufferwrite file name
+	private String baseDir;
 	private String fileName;
 	private static final String restoreFile = ".restore";
 	// this is the bufferwrite file absolute path
@@ -97,19 +98,19 @@ public class BufferWriteProcessor extends Processor {
 
 	private WriteLogNode logNode;
 
-	public BufferWriteProcessor(String processorName, String fileName, Map<String, Object> parameters,
+	public BufferWriteProcessor(String baseDir, String processorName, String fileName, Map<String, Object> parameters,
 			FileSchema fileSchema) throws BufferWriteProcessorException {
 		super(processorName);
 
 		this.fileName = fileName;
 		String restoreFileName = fileName + restoreFile;
 
-		String bufferwriteDirPath = TsFileDBConf.bufferWriteDir;
-		if (bufferwriteDirPath.length() > 0
-				&& bufferwriteDirPath.charAt(bufferwriteDirPath.length() - 1) != File.separatorChar) {
-			bufferwriteDirPath = bufferwriteDirPath + File.separatorChar;
+		this.baseDir = baseDir;
+		if (baseDir.length() > 0
+				&& baseDir.charAt(baseDir.length() - 1) != File.separatorChar) {
+			baseDir = baseDir + File.separatorChar;
 		}
-		String dataDirPath = bufferwriteDirPath + processorName;
+		String dataDirPath = baseDir + processorName;
 		File dataDir = new File(dataDirPath);
 		if (!dataDir.exists()) {
 			dataDir.mkdirs();
@@ -404,6 +405,8 @@ public class BufferWriteProcessor extends Processor {
 	public String getFileName() {
 		return fileName;
 	}
+
+	public String getBaseDir() { return baseDir; }
 
 	public String getFileRelativePath() {
 		return bufferwriterelativePath;

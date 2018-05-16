@@ -1,5 +1,6 @@
 package cn.edu.tsinghua.iotdb.utils;
 
+import cn.edu.tsinghua.iotdb.conf.directories.Directories;
 import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
 import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
 import org.slf4j.Logger;
@@ -9,7 +10,9 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.sql.SQLException;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 
 /**
  * @author liurui
@@ -19,6 +22,7 @@ import java.util.HashMap;
 public class OpenFileNumUtil {
     private static Logger log = LoggerFactory.getLogger(OpenFileNumUtil.class);
     private static TsfileDBConfig config;
+    private static Directories directories;
     private int pid = -1;
     private String processName;
     private final int PID_ERROR_CODE = -1;
@@ -34,17 +38,17 @@ public class OpenFileNumUtil {
 
     public enum OpenFileNumStatistics {
         TOTAL_OPEN_FILE_NUM(null),
-        DATA_OPEN_FILE_NUM(config.dataDir),
-        DELTA_OPEN_FILE_NUM(config.bufferWriteDir),
-        OVERFLOW_OPEN_FILE_NUM(config.overflowDataDir),
-        WAL_OPEN_FILE_NUM(config.walFolder),
-        METADATA_OPEN_FILE_NUM(config.metadataDir),
-        DIGEST_OPEN_FILE_NUM(config.fileNodeDir),
+        DATA_OPEN_FILE_NUM(Arrays.asList(config.dataDir)),
+        DELTA_OPEN_FILE_NUM(directories.getAllTsFileFolders()),
+        OVERFLOW_OPEN_FILE_NUM(Arrays.asList(config.overflowDataDir)),
+        WAL_OPEN_FILE_NUM(Arrays.asList(config.walFolder)),
+        METADATA_OPEN_FILE_NUM(Arrays.asList(config.metadataDir)),
+        DIGEST_OPEN_FILE_NUM(Arrays.asList(config.fileNodeDir)),
         SOCKET_OPEN_FILE_NUM(null);
 
-        private String path;
+        private List<String> path;
 
-        OpenFileNumStatistics(String path){
+        OpenFileNumStatistics(List<String> path){
             this.path = path;
         }
     }
@@ -58,6 +62,7 @@ public class OpenFileNumUtil {
      */
     private OpenFileNumUtil() {
         config = TsfileDBDescriptor.getInstance().getConfig();
+        directories = Directories.getInstance();
         processName = IOTDB_PROCESS_KEY_WORD;
         pid = getPID();
     }
@@ -174,9 +179,11 @@ public class OpenFileNumUtil {
                     resultMap.put(OpenFileNumStatistics.TOTAL_OPEN_FILE_NUM, oldValue + 1);
                     for(OpenFileNumStatistics openFileNumStatistics: OpenFileNumStatistics.values()){
                         if(openFileNumStatistics.path!=null){
-                            if(temp[8].contains(openFileNumStatistics.path)){
-                                oldValue = resultMap.get(openFileNumStatistics);
-                                resultMap.put(openFileNumStatistics, oldValue + 1);
+                            for(String path : openFileNumStatistics.path) {
+                                if (temp[8].contains(path)) {
+                                    oldValue = resultMap.get(openFileNumStatistics);
+                                    resultMap.put(openFileNumStatistics, oldValue + 1);
+                                }
                             }
                         }
                     }

@@ -7,7 +7,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
+import cn.edu.tsinghua.iotdb.conf.directories.Directories;
 import cn.edu.tsinghua.iotdb.engine.filenode.FileNodeProcessorStatus;
 import cn.edu.tsinghua.iotdb.engine.filenode.OverflowChangeType;
 
@@ -20,18 +20,19 @@ import cn.edu.tsinghua.iotdb.engine.filenode.OverflowChangeType;
 public class TimeIntervalTsFile implements Serializable {
 
 	private static final long serialVersionUID = -4309683416067212549L;
+	private int baseDirIndex;
 	private String relativePath;
 	public OverflowChangeType overflowChangeType;
 
 	private Map<String, Long> startTimeMap;
 	private Map<String, Long> endTimeMap;
 	private Set<String> mergeChanged = new HashSet<>();
-	private static String baseDir = TsfileDBDescriptor.getInstance().getConfig().bufferWriteDir;
 
 	public TimeIntervalTsFile(Map<String, Long> startTimeMap, Map<String, Long> endTimeMap, OverflowChangeType type,
-			String relativePath) {
+			int baseDirIndex, String relativePath) {
 
 		this.overflowChangeType = type;
+		this.baseDirIndex = baseDirIndex;
 		this.relativePath = relativePath;
 
 		this.startTimeMap = startTimeMap;
@@ -112,7 +113,7 @@ public class TimeIntervalTsFile implements Serializable {
 		if (relativePath == null) {
 			return relativePath;
 		}
-		return new File(baseDir, relativePath).getPath();
+		return new File(Directories.getInstance().getTsFileFolder(baseDirIndex), relativePath).getPath();
 	}
 
 	public void setRelativePath(String relativePath) {
@@ -173,7 +174,7 @@ public class TimeIntervalTsFile implements Serializable {
 
 		Map<String, Long> startTimeMap = new HashMap<>(this.startTimeMap);
 		Map<String, Long> endTimeMap = new HashMap<>(this.endTimeMap);
-		return new TimeIntervalTsFile(startTimeMap, endTimeMap, overflowChangeType, relativePath);
+		return new TimeIntervalTsFile(startTimeMap, endTimeMap, overflowChangeType, baseDirIndex, relativePath);
 	}
 
 	@Override
