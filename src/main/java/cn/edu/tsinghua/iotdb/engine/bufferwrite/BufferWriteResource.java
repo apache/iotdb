@@ -39,7 +39,7 @@ public class BufferWriteResource {
 	private static final String restoreSuffix = ".restore";
 	private static final String DEFAULT_MODE = "rw";
 	private Map<String, Map<String, List<TimeSeriesChunkMetaData>>> metadatas;
-	private List<RowGroupMetaData> appendRowGroupMetadats;
+	private List<RowGroupMetaData> appendRowGroupMetadatas;
 	private BufferIO bufferWriteIO;
 	private String insertFilePath;
 	private String restoreFilePath;
@@ -52,7 +52,7 @@ public class BufferWriteResource {
 		this.restoreFilePath = insertFilePath + restoreSuffix;
 		this.processorName = processorName;
 		this.metadatas = new HashMap<>();
-		this.appendRowGroupMetadats = new ArrayList<>();
+		this.appendRowGroupMetadatas = new ArrayList<>();
 		recover();
 	}
 
@@ -257,19 +257,19 @@ public class BufferWriteResource {
 					"Bufferwrite processor {} flushes insert data, actual:{}, time consumption:{} ms, flush rate:{}/s",
 					processorName, MemUtils.bytesCntToStr(insertSize), timeInterval,
 					MemUtils.bytesCntToStr(insertSize / timeInterval * 1000));
-			appendRowGroupMetadats.addAll(bufferWriteIO.getAppendedRowGroupMetadata());
+			appendRowGroupMetadatas.addAll(bufferWriteIO.getAppendedRowGroupMetadata());
 		}
 	}
 
 	public void appendMetadata() {
-		if (!appendRowGroupMetadats.isEmpty()) {
-			for (RowGroupMetaData rowGroupMetaData : appendRowGroupMetadats) {
+		if (!appendRowGroupMetadatas.isEmpty()) {
+			for (RowGroupMetaData rowGroupMetaData : appendRowGroupMetadatas) {
 				for (TimeSeriesChunkMetaData chunkMetaData : rowGroupMetaData.getTimeSeriesChunkMetaDataList()) {
 					addInsertMetadata(rowGroupMetaData.getDeltaObjectID(),
 							chunkMetaData.getProperties().getMeasurementUID(), chunkMetaData);
 				}
 			}
-			appendRowGroupMetadats.clear();
+			appendRowGroupMetadatas.clear();
 		}
 	}
 
