@@ -5,6 +5,8 @@ import cn.edu.tsinghua.iotdb.engine.querycontext.OverflowSeriesDataSource;
 import cn.edu.tsinghua.iotdb.exception.PathErrorException;
 import cn.edu.tsinghua.iotdb.query.aggregation.AggregationConstant;
 import cn.edu.tsinghua.iotdb.query.aggregation.AggregateFunction;
+import cn.edu.tsinghua.iotdb.query.aggregation.impl.LastAggrFunc;
+import cn.edu.tsinghua.iotdb.query.aggregation.impl.MaxTimeAggrFunc;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 import cn.edu.tsinghua.tsfile.common.utils.Pair;
 import cn.edu.tsinghua.tsfile.encoding.decoder.Decoder;
@@ -63,8 +65,31 @@ public class AggregateRecordReader extends RecordReader {
      */
     public AggregateFunction aggregate(AggregateFunction aggregateFunction) throws ProcessorException, IOException {
 
-        List<RowGroupReader> rowGroupReaderList = tsFileReaderManager.getRowGroupReaderListByDeltaObject(deltaObjectId, queryTimeFilter);
+        // "max_time" and "last" aggregation optimization
+        if (aggregateFunction instanceof MaxTimeAggrFunc || aggregateFunction instanceof LastAggrFunc) {
+            if (valueReaders.size() > 0 && valueReaders.get(valueReaders.size() - 1).getDataType().equals(dataType)) {
+                aggregate(valueReaders.get(valueReaders.size() - 1), aggregateFunction);
+            } else {
+                List<RowGroupReader> rowGroupReaderList = tsFileReaderManager.getRowGroupReaderListByDeltaObject(deltaObjectId, queryTimeFilter);
+                for (int i = rowGroupReaderList.size() - 1; i >= 0; i--) {
+                    RowGroupReader rowGroupReader = rowGroupReaderList.get(i);
+                    if (rowGroupReader.getValueReaders().containsKey(measurementId)
+                            && rowGroupReader.getValueReaders().get(measurementId).getDataType().equals(dataType)) {
+                        aggregate(rowGroupReader.getValueReaders().get(measurementId), aggregateFunction);
+                        break;
+                    }
+                }
+            }
 
+            if (insertMemoryData != null && insertMemoryData.hasNext()) {
+                aggregateFunction.calculateValueFromLeftMemoryData(insertMemoryData);
+            }
+
+            return aggregateFunction;
+        }
+
+        // aggregation calculation except for "max_time" and "last"
+        List<RowGroupReader> rowGroupReaderList = tsFileReaderManager.getRowGroupReaderListByDeltaObject(deltaObjectId, queryTimeFilter);
         for (RowGroupReader rowGroupReader : rowGroupReaderList) {
             if (rowGroupReader.getValueReaders().containsKey(measurementId) &&
                     rowGroupReader.getValueReaders().get(measurementId).getDataType().equals(dataType)) {

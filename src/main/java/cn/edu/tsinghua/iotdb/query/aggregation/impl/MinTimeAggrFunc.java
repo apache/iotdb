@@ -13,8 +13,6 @@ import java.util.List;
 
 public class MinTimeAggrFunc extends AggregateFunction {
 
-    private boolean hasSetValue = false;
-
     public MinTimeAggrFunc() {
         super(AggregationConstant.MIN_TIME, TSDataType.INT64);
     }
