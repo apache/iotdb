@@ -20,30 +20,18 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-public class DeltaTsFilesReader implements SeriesReader {
+public class TsFilesReader implements SeriesReader {
 
-    private List<IntervalFileNode> sealedTsFiles;
-    private UnsealedTsFile unsealedTsFile;
-    private SeriesChunkReader unSealedSeriesChunkReader;
+    private SealedTsFileReader sealedTsFileReader;
+    private UnSealedTsFileReader unSealedTsFileReader;
     private RawSeriesChunk rawSeriesChunk;
 
     private OverflowOperationReader overflowOperationReader;
 
-    public DeltaTsFilesReader(GlobalSortedSeriesDataSource sortedSeriesDataSource, OverflowOperationReader overflowOperationReader)
+    public TsFilesReader(GlobalSortedSeriesDataSource sortedSeriesDataSource, OverflowOperationReader overflowOperationReader)
             throws FileNotFoundException {
-        this.sealedTsFiles = sortedSeriesDataSource.getSealedTsFiles();
-        this.unsealedTsFile = sortedSeriesDataSource.getUnsealedTsFile();
+
         this.rawSeriesChunk = sortedSeriesDataSource.getRawSeriesChunk();
-
-        // add unsealed file TimeSeriesChunkMetadata
-        List<EncodedSeriesChunkDescriptor> encodedSeriesChunkDescriptorList = new ArrayList<>();
-        for (TimeSeriesChunkMetaData timeSeriesChunkMetaData : sortedSeriesDataSource.getUnsealedTsFile().getTimeSeriesChunkMetaDatas()) {
-            encodedSeriesChunkDescriptorList.add(generateSeriesChunkDescriptorByMetadata(timeSeriesChunkMetaData, unsealedTsFile.getFilePath()));
-        }
-
-        // TODO unSealedSeriesChunkReader need to be constructed correctly
-        ITsRandomAccessFileReader randomAccessFileReader = new TsRandomAccessLocalFileReader(unsealedTsFile.getFilePath());
-        SeriesChunkLoader seriesChunkLoader = new SeriesChunkLoaderImpl(randomAccessFileReader);
 
         this.overflowOperationReader = overflowOperationReader;
     }
@@ -80,5 +68,75 @@ public class DeltaTsFilesReader implements SeriesReader {
                 timeSeriesChunkMetaData.getNumRows(),
                 timeSeriesChunkMetaData.getVInTimeSeriesChunkMetaData().getEnumValues());
         return encodedSeriesChunkDescriptor;
+    }
+
+    private class SealedTsFileReader implements SeriesReader{
+
+        private List<IntervalFileNode> sealedTsFiles;
+        private int usedIntervalFileIndex;
+        private SeriesReader singleTsFileReader;
+
+        public SealedTsFileReader(List<IntervalFileNode> sealedTsFiles) {
+            this.sealedTsFiles = sealedTsFiles;
+        }
+
+        @Override
+        public boolean hasNext() throws IOException {
+            return false;
+        }
+
+        @Override
+        public TimeValuePair next() throws IOException {
+            return null;
+        }
+
+        @Override
+        public void skipCurrentTimeValuePair() throws IOException {
+
+        }
+
+        @Override
+        public void close() throws IOException {
+
+        }
+    }
+
+    private class UnSealedTsFileReader implements SeriesReader{
+        private UnsealedTsFile unsealedTsFile;
+        private SeriesChunkReader unSealedSeriesChunkReader;
+
+        public UnSealedTsFileReader(UnsealedTsFile unsealedTsFile) throws FileNotFoundException {
+            this.unsealedTsFile = unsealedTsFile;
+
+            // add unsealed file TimeSeriesChunkMetadata
+            List<EncodedSeriesChunkDescriptor> encodedSeriesChunkDescriptorList = new ArrayList<>();
+            for (TimeSeriesChunkMetaData timeSeriesChunkMetaData : unsealedTsFile.getTimeSeriesChunkMetaDatas()) {
+                encodedSeriesChunkDescriptorList.add(generateSeriesChunkDescriptorByMetadata(timeSeriesChunkMetaData, unsealedTsFile.getFilePath()));
+            }
+
+            // TODO unSealedSeriesChunkReader need to be constructed correctly
+            ITsRandomAccessFileReader randomAccessFileReader = new TsRandomAccessLocalFileReader(unsealedTsFile.getFilePath());
+            SeriesChunkLoader seriesChunkLoader = new SeriesChunkLoaderImpl(randomAccessFileReader);
+        }
+
+        @Override
+        public boolean hasNext() throws IOException {
+            return false;
+        }
+
+        @Override
+        public TimeValuePair next() throws IOException {
+            return null;
+        }
+
+        @Override
+        public void skipCurrentTimeValuePair() throws IOException {
+
+        }
+
+        @Override
+        public void close() throws IOException {
+
+        }
     }
 }

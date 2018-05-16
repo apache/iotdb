@@ -17,12 +17,9 @@ import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.List;
 
-public class DeltaQueryWithGlobalTimeFilterExecutorImpl implements QueryExecutor{
+public class IoTDBQueryWithGlobalTimeFilterExecutorImpl implements QueryExecutor{
 
-    private SeriesChunkLoader seriesChunkLoader;
-    private MetadataQuerier metadataQuerier;
-
-    public DeltaQueryWithGlobalTimeFilterExecutorImpl() {
+    public IoTDBQueryWithGlobalTimeFilterExecutorImpl() {
     }
 
     @Override
@@ -36,9 +33,7 @@ public class DeltaQueryWithGlobalTimeFilterExecutorImpl implements QueryExecutor
     private void initReadersOfSelectedSeries(LinkedHashMap<Path, SeriesReader> readersOfSelectedSeries,
                                              List<Path> selectedSeries, Filter<Long> timeFilter) throws IOException {
         for (Path path : selectedSeries) {
-            List<EncodedSeriesChunkDescriptor> encodedSeriesChunkDescriptorList = metadataQuerier.getSeriesChunkDescriptorList(path);
-            SeriesReader seriesReader = new SeriesReaderFromSingleFileWithFilterImpl(seriesChunkLoader, encodedSeriesChunkDescriptorList, timeFilter);
-            readersOfSelectedSeries.put(path, seriesReader);
+
         }
     }
 

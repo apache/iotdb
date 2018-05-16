@@ -1,6 +1,6 @@
 package cn.edu.tsinghua.iotdb.read.executor;
 
-import cn.edu.tsinghua.iotdb.read.timegenerator.DeltaTimeGenerator;
+import cn.edu.tsinghua.iotdb.read.timegenerator.IoTDBTimeGenerator;
 import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
 import cn.edu.tsinghua.tsfile.timeseries.readV2.query.QueryDataSet;
 import cn.edu.tsinghua.tsfile.timeseries.readV2.query.QueryExecutor;
@@ -13,15 +13,15 @@ import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.List;
 
-public class DeltaQueryWithFilterExecutorImpl implements QueryExecutor {
+public class IoTDBQueryWithFilterExecutorImpl implements QueryExecutor {
 
-    public DeltaQueryWithFilterExecutorImpl() {}
+    public IoTDBQueryWithFilterExecutorImpl() {}
 
     @Override
     public QueryDataSet execute(QueryExpression queryExpression) throws IOException {
 
 
-        TimestampGenerator timestampGenerator = new DeltaTimeGenerator(queryExpression.getQueryFilter());
+        TimestampGenerator timestampGenerator = new IoTDBTimeGenerator(queryExpression.getQueryFilter());
 
         // TODO SeriesReaderFromSingleFileByTimestampImpl need to be replaced with DeltaSeriesReaderWithFilter, and compatibility is needed
         LinkedHashMap<Path, SeriesReaderFromSingleFileByTimestampImpl> readersOfSelectedSeries = new LinkedHashMap<>();

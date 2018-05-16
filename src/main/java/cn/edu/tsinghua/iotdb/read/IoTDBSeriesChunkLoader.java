@@ -1,4 +1,4 @@
 package cn.edu.tsinghua.iotdb.read;
 
-public class DeltaSeriesChunkLoader {
+public class IoTDBSeriesChunkLoader {
 }

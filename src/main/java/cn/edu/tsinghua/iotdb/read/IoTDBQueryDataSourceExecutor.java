@@ -4,7 +4,7 @@ import cn.edu.tsinghua.iotdb.engine.querycontext.QueryDataSource;
 import cn.edu.tsinghua.tsfile.timeseries.filterV2.expression.impl.SeriesFilter;
 import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
 
-public class DeltaQueryDataSourceExecutor {
+public class IoTDBQueryDataSourceExecutor {
 
     public static QueryDataSource getQueryDataSource(SeriesFilter<?> seriesFilter) {
         return null;

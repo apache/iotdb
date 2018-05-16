@@ -9,17 +9,17 @@ import cn.edu.tsinghua.tsfile.timeseries.readV2.reader.impl.SeriesReaderFromSing
 import java.io.IOException;
 import java.util.List;
 
-public class DeltaQueryWithTimestampsReader extends SeriesReaderFromSingleFileByTimestampImpl {
+public class IoTDBQueryWithTimestampsReader extends SeriesReaderFromSingleFileByTimestampImpl {
 
-    public DeltaQueryWithTimestampsReader(SeriesChunkLoader seriesChunkLoader, List<EncodedSeriesChunkDescriptor> encodedSeriesChunkDescriptorList) {
+    public IoTDBQueryWithTimestampsReader(SeriesChunkLoader seriesChunkLoader, List<EncodedSeriesChunkDescriptor> encodedSeriesChunkDescriptorList) {
         super(seriesChunkLoader, encodedSeriesChunkDescriptorList);
     }
 
-    public DeltaQueryWithTimestampsReader(ITsRandomAccessFileReader randomAccessFileReader, Path path) throws IOException {
+    public IoTDBQueryWithTimestampsReader(ITsRandomAccessFileReader randomAccessFileReader, Path path) throws IOException {
         super(randomAccessFileReader, path);
     }
 
-    public DeltaQueryWithTimestampsReader(ITsRandomAccessFileReader randomAccessFileReader, SeriesChunkLoader seriesChunkLoader, List<EncodedSeriesChunkDescriptor> encodedSeriesChunkDescriptorList) {
+    public IoTDBQueryWithTimestampsReader(ITsRandomAccessFileReader randomAccessFileReader, SeriesChunkLoader seriesChunkLoader, List<EncodedSeriesChunkDescriptor> encodedSeriesChunkDescriptorList) {
         super(randomAccessFileReader, seriesChunkLoader, encodedSeriesChunkDescriptorList);
     }
 
