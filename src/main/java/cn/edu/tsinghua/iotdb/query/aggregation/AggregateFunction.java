@@ -15,6 +15,7 @@ public abstract class AggregateFunction {
     public String name;
     public DynamicOneColumnData resultData;
     public TSDataType dataType;
+    public boolean hasSetValue;
 
     public AggregateFunction(String name, TSDataType dataType) {
         this.name = name;

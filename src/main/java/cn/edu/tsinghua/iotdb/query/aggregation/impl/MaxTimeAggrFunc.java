@@ -13,8 +13,6 @@ import java.util.List;
 
 public class MaxTimeAggrFunc extends AggregateFunction {
 
-    private boolean hasSetValue = false;
-
     public MaxTimeAggrFunc() {
         super(AggregationConstant.MAX_TIME, TSDataType.INT64);
     }
@@ -53,10 +51,14 @@ public class MaxTimeAggrFunc extends AggregateFunction {
             resultData.putTime(0);
         }
 
+        long time = -1;
         while (insertMemoryData.hasNext()) {
-            long time = insertMemoryData.getCurrentMinTime();
-            updateMaxTime(time);
+            time = insertMemoryData.getCurrentMinTime();
             insertMemoryData.removeCurrentValue();
+        }
+
+        if (time != -1) {
+            updateMaxTime(time);
         }
     }
 
