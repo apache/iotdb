@@ -18,8 +18,6 @@ public class MeanAggrFunc extends AggregateFunction{
     private double sum = 0.0;
     private int cnt = 0;
 
-    private boolean isResultSet = false;
-
     public MeanAggrFunc() {
         super(AggregationConstant.MEAN, TSDataType.DOUBLE);
     }
@@ -411,10 +409,10 @@ public class MeanAggrFunc extends AggregateFunction{
 
     private void updateMean() {
         if(cnt > 0) {
-            if(isResultSet)
+            if(hasSetValue)
                 resultData.setDouble(0, sum / cnt);
             else {
-                isResultSet = true;
+                hasSetValue = true;
                 resultData.putDouble(sum / cnt);
             }
         }

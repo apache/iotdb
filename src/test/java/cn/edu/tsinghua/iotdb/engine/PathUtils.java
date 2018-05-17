@@ -2,15 +2,17 @@ package cn.edu.tsinghua.iotdb.engine;
 
 import java.io.File;
 
+import cn.edu.tsinghua.iotdb.conf.directories.Directories;
 import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
 import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
 
 public class PathUtils {
 
 	private static TsfileDBConfig config = TsfileDBDescriptor.getInstance().getConfig();
+	private static Directories directories = Directories.getInstance();
 
 	public static File getBufferWriteDir(String nameSpacePath) {
-		String bufferwriteDirPath = config.bufferWriteDir;
+		String bufferwriteDirPath = directories.getFolderForTest();
 		if (bufferwriteDirPath.length() > 0
 				&& bufferwriteDirPath.charAt(bufferwriteDirPath.length() - 1) != File.separatorChar) {
 			bufferwriteDirPath = bufferwriteDirPath + File.separatorChar;

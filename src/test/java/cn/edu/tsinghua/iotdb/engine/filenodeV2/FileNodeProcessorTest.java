@@ -7,6 +7,7 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
+import cn.edu.tsinghua.iotdb.conf.directories.Directories;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -22,7 +23,6 @@ import cn.edu.tsinghua.iotdb.engine.querycontext.OverflowSeriesDataSource;
 import cn.edu.tsinghua.iotdb.engine.querycontext.QueryDataSource;
 import cn.edu.tsinghua.iotdb.engine.querycontext.RawSeriesChunk;
 import cn.edu.tsinghua.iotdb.engine.querycontext.UpdateDeleteInfoOfOneSeries;
-import cn.edu.tsinghua.iotdb.exception.FileNodeManagerException;
 import cn.edu.tsinghua.iotdb.exception.FileNodeProcessorException;
 import cn.edu.tsinghua.iotdb.utils.EnvironmentUtils;
 import cn.edu.tsinghua.tsfile.common.conf.TSFileConfig;
@@ -80,7 +80,7 @@ public class FileNodeProcessorTest {
 				if (bufferWriteProcessor.isNewProcessor()) {
 					bufferWriteProcessor.setNewProcessor(false);
 					String bufferwriteRelativePath = bufferWriteProcessor.getFileRelativePath();
-					fileNodeProcessor.addIntervalFileNode(i, bufferwriteRelativePath);
+					fileNodeProcessor.addIntervalFileNode(i, Directories.getInstance().getFolderForTest(), bufferwriteRelativePath);
 				}
 				bufferWriteProcessor.write(processorName, measurementId, i, dataType, String.valueOf(i));
 				fileNodeProcessor.setIntervalFileNodeStartTime(processorName);
