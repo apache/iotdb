@@ -66,9 +66,9 @@ public class LargeDataTest {
             pageSizeInByte = tsFileConfig.pageSizeInByte;
             groupSizeInByte = tsFileConfig.groupSizeInByte;
             // new value
-            tsFileConfig.maxNumberOfPointsInPage = 100;
-            tsFileConfig.pageSizeInByte = 1024 * 1024 * 15;
-            tsFileConfig.groupSizeInByte = 1024 * 1024 * 100;
+            tsFileConfig.maxNumberOfPointsInPage = 1000;
+            tsFileConfig.pageSizeInByte = 1024 * 1024 * 150;
+            tsFileConfig.groupSizeInByte = 1024 * 1024 * 1000;
 
             deamon = IoTDB.getInstance();
             deamon.active();
@@ -420,6 +420,24 @@ public class LargeDataTest {
                         + "," + resultSet.getString(sum(d1s0)) + "," + resultSet.getString(last(d1s0));
                 assertEquals("0,0,null,null,null,null,null,null,null,null", ans);
                 //System.out.println("0,0,null,null,null,null" + ans);
+                cnt++;
+            }
+            assertEquals(1, cnt);
+            statement.close();
+
+            // (3). aggregation test : there is no value in series d1.s0 in the given time range
+            sql = "select max_value(s0),min_value(s0)" +
+                    "from root.vehicle.d0 where time > 13601 and time < 13602";
+            statement = connection.createStatement();
+            hasResultSet = statement.execute(sql);
+            Assert.assertTrue(hasResultSet);
+            resultSet = statement.getResultSet();
+            cnt = 0;
+            while (resultSet.next()) {
+                String ans = resultSet.getString(TIMESTAMP_STR)
+                        + "," + resultSet.getString(max_value(d0s0)) + "," + resultSet.getString(min_value(d0s0));
+                assertEquals("0,null,null", ans);
+                //System.out.println(".." + ans);
                 cnt++;
             }
             assertEquals(1, cnt);
@@ -865,7 +883,7 @@ public class LargeDataTest {
                 statement.execute(sql);
             }
 
-            statement.execute("flush");
+            // statement.execute("flush");
 
             // insert large amount of data time range : 13700 ~ 24000
             for (int time = 13700; time < 24000; time++) {

@@ -7,7 +7,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
+import cn.edu.tsinghua.iotdb.conf.directories.Directories;
 
 /**
  * This class is used to store one bufferwrite file status.<br>
@@ -19,18 +19,20 @@ import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
 public class IntervalFileNode implements Serializable {
 
 	private static final long serialVersionUID = -4309683416067212549L;
+
+	private int baseDirIndex;
 	private String relativePath;
 	public OverflowChangeType overflowChangeType;
 
 	private Map<String, Long> startTimeMap;
 	private Map<String, Long> endTimeMap;
 	private Set<String> mergeChanged = new HashSet<>();
-	private static String baseDir = TsfileDBDescriptor.getInstance().getConfig().bufferWriteDir;
 
 	public IntervalFileNode(Map<String, Long> startTimeMap, Map<String, Long> endTimeMap, OverflowChangeType type,
-			String relativePath) {
+			int baseDirIndex, String relativePath) {
 
 		this.overflowChangeType = type;
+		this.baseDirIndex = baseDirIndex;
 		this.relativePath = relativePath;
 
 		this.startTimeMap = startTimeMap;
@@ -44,13 +46,29 @@ public class IntervalFileNode implements Serializable {
 	 * @param type
 	 * @param relativePath
 	 */
-	public IntervalFileNode(OverflowChangeType type, String relativePath) {
+	public IntervalFileNode(OverflowChangeType type, int baseDirIndex, String relativePath) {
 
 		this.overflowChangeType = type;
+		this.baseDirIndex = baseDirIndex;
 		this.relativePath = relativePath;
 
 		startTimeMap = new HashMap<>();
 		endTimeMap = new HashMap<>();
+	}
+
+	public IntervalFileNode(OverflowChangeType type, String baseDir, String relativePath) {
+
+		this.overflowChangeType = type;
+		this.baseDirIndex = Directories.getInstance().getTsFileFolderIndex(baseDir);
+		this.relativePath = relativePath;
+
+		startTimeMap = new HashMap<>();
+		endTimeMap = new HashMap<>();
+	}
+
+	public IntervalFileNode(OverflowChangeType type, String relativePath) {
+
+		this(type, 0, relativePath);
 	}
 
 	public void setStartTime(String deltaObjectId, long startTime) {
@@ -111,8 +129,14 @@ public class IntervalFileNode implements Serializable {
 		if (relativePath == null) {
 			return relativePath;
 		}
-		return new File(baseDir, relativePath).getPath();
+		return new File(Directories.getInstance().getTsFileFolder(baseDirIndex), relativePath).getPath();
 	}
+
+	public void setBaseDirIndex(int baseDirIndex) {
+		this.baseDirIndex = baseDirIndex;
+	}
+
+	public int getBaseDirIndex() { return baseDirIndex; }
 
 	public void setRelativePath(String relativePath) {
 
@@ -172,7 +196,7 @@ public class IntervalFileNode implements Serializable {
 
 		Map<String, Long> startTimeMap = new HashMap<>(this.startTimeMap);
 		Map<String, Long> endTimeMap = new HashMap<>(this.endTimeMap);
-		return new IntervalFileNode(startTimeMap, endTimeMap, overflowChangeType, relativePath);
+		return new IntervalFileNode(startTimeMap, endTimeMap, overflowChangeType, baseDirIndex, relativePath);
 	}
 
 	@Override

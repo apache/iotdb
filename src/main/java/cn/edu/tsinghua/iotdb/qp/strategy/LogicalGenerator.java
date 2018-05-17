@@ -856,13 +856,13 @@ public class LogicalGenerator {
         if (childCount == 1) {
             authorOperator = new AuthorOperator(SQLConstant.TOK_AUTHOR_UPDATE_USER, AuthorType.UPDATE_USER);
             ASTNode user = astNode.getChild(0);
-            if (user.getChildCount() != 3) {
-                throw new IllegalASTFormatException("illegal ast tree in grant author command, please check you SQL statement");
+            if (user.getChildCount() != 2) {
+                throw new IllegalASTFormatException("illegal ast tree in update password command, please check you SQL statement");
             }
-            authorOperator.setUserName(parseStringWithQuoto(user.getChild(0).getText()));
-            authorOperator.setNewPassword(parseStringWithQuoto(user.getChild(1).getText()));
+            authorOperator.setUserName(user.getChild(0).getText());
+            authorOperator.setNewPassword(user.getChild(1).getText());
         } else {
-            throw new IllegalASTFormatException("illegal ast tree in grant author command, please check you SQL statement");
+            throw new IllegalASTFormatException("illegal ast tree in update password command, please check you SQL statement");
         }
         initializedOperator = authorOperator;
     }
