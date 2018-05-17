@@ -58,7 +58,7 @@ public class ReaderCreator {
     public static TimeValuePairReader createReaderForMerge(String tsfilePath, String unseqTsFilePath,
                                                            Path path, long startTime, long endTime) throws IOException {
         OverflowSeriesDataSource overflowSeriesDataSource = genDataSource(unseqTsFilePath, path);
-        TsfileDBDescriptor.getInstance().getConfig().bufferWriteDir = "";
+        TsfileDBDescriptor.getInstance().getConfig().bufferWriteDirs = new String[] {""};
         Filter<?> filter = FilterFactory.and(TimeFilter.gtEq(startTime), TimeFilter.ltEq(endTime));
         SeriesFilter<?> seriesFilter = new SeriesFilter<>(path, filter);
         IntervalFileNode intervalFileNode = new IntervalFileNode(null, tsfilePath);
@@ -70,7 +70,7 @@ public class ReaderCreator {
     public static TimeValuePairReader createReaderOnlyForOverflowInsert(String unseqTsFilePath,
                                                                         Path path, long startTime, long endTime) throws IOException {
         OverflowSeriesDataSource overflowSeriesDataSource = genDataSource(unseqTsFilePath, path);
-        TsfileDBDescriptor.getInstance().getConfig().bufferWriteDir = "";
+        TsfileDBDescriptor.getInstance().getConfig().bufferWriteDirs = new String[] {""};
         Filter<?> filter = FilterFactory.and(TimeFilter.gtEq(startTime), TimeFilter.ltEq(endTime));
         SeriesFilter<?> seriesFilter = new SeriesFilter<>(path, filter);
         TimeValuePairReader reader = SeriesReaderFactory.getInstance().createSeriesReaderForOverflowInsert(overflowSeriesDataSource,
