@@ -12,6 +12,9 @@ public class TsfileDBConfig {
 	public static final String default_data_dir = "data";
 	public static final String default_sys_dir = "system";
 	public static final String default_tsfile_dir = "settled";
+	public static final String mult_dir_strategy_prefix = "cn.edu.tsinghua.iotdb.conf.directories.strategy.";
+	public static final String default_mult_dir_strategy = "MaxDiskUsableSpaceFirstStrategy";
+
 	/**
 	 * Port which JDBC server listens to
 	 */
@@ -64,7 +67,7 @@ public class TsfileDBConfig {
 	/**
 	 * Strategy of multiple directories
 	 */
-	public String multDirStrategyClassName = "cn.edu.tsinghua.iotdb.conf.directories.strategy.MinDirOccupiedSpaceFirstStrategy";
+	public String multDirStrategyClassName = null;
 
 	/**
 	 * Data directory of metadata data
@@ -237,6 +240,8 @@ public class TsfileDBConfig {
 	public TsfileDBConfig() {}
 
 	public void updatePath() {
+		confirmMultDirStrategy();
+
 		preUpdatePath();
 
 		// update the paths of subdirectories in the dataDir
@@ -344,6 +349,21 @@ public class TsfileDBConfig {
 		dataDir = dirs.get(0);
 		sysDir = dirs.get(1);
 		walDir = dirs.get(2);
+	}
+
+	public void confirmMultDirStrategy(){
+		if(multDirStrategyClassName == null){
+			multDirStrategyClassName = default_mult_dir_strategy;
+		}
+		if(!multDirStrategyClassName.contains(".")){
+			multDirStrategyClassName = mult_dir_strategy_prefix + multDirStrategyClassName;
+		}
+
+		try {
+			Class.forName(multDirStrategyClassName);
+		} catch (ClassNotFoundException e) {
+			multDirStrategyClassName = mult_dir_strategy_prefix + default_mult_dir_strategy;
+		}
 	}
 
 	public String[] getBufferWriteDirs(){return bufferWriteDirs;}

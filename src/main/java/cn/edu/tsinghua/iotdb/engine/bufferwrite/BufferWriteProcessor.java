@@ -72,6 +72,7 @@ public class BufferWriteProcessor extends Processor {
 		this.fileSchema = fileSchema;
 		this.baseDir = baseDir;
 		this.fileName = fileName;
+
 		if (baseDir.length() > 0
 				&& baseDir.charAt(baseDir.length() - 1) != File.separatorChar) {
 			baseDir = baseDir + File.separatorChar;

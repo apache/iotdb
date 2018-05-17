@@ -96,6 +96,8 @@ public class TsfileDBDescriptor {
 			conf.sysDir = properties.getProperty("sys_dir", conf.sysDir);
 			conf.walDir = properties.getProperty("wal_dir", conf.walDir);
 
+			conf.multDirStrategyClassName = properties.getProperty("mult_dir_strategy", conf.multDirStrategyClassName);
+
 			conf.maxOpenFolder = Integer.parseInt(properties.getProperty("max_opened_folder", conf.maxOpenFolder + ""));
 			conf.mergeConcurrentThreads = Integer.parseInt(properties.getProperty("merge_concurrent_threads", conf.mergeConcurrentThreads + ""));
 			if (conf.mergeConcurrentThreads <= 0
