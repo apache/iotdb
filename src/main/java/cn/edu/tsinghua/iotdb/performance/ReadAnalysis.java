@@ -154,13 +154,6 @@ public class ReadAnalysis {
         System.out.println(String.format("All file merge time consuming : %dms", allFileMergeEndTime - allFileMergeStartTime));
     }
 
-    private TSRecord constructTsRecord(TimeValuePair timeValuePair, String deltaObjectId, String measurementId) {
-        TSRecord record = new TSRecord(timeValuePair.getTimestamp(), deltaObjectId);
-        record.addTuple(DataPoint.getDataPoint(timeValuePair.getValue().getDataType(), measurementId,
-                timeValuePair.getValue().getValue().toString()));
-        return record;
-    }
-
     private TSEncoding getEncodingByDataType(TSDataType dataType) {
         switch (dataType) {
             case TEXT:
