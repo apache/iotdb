@@ -3,7 +3,6 @@ package cn.edu.tsinghua.iotdb.service;
 import java.io.IOException;
 import java.util.List;
 
-import cn.edu.tsinghua.iotdb.engine.filenode.FileNodeProcessor;
 import cn.edu.tsinghua.iotdb.exception.*;
 import cn.edu.tsinghua.iotdb.metadata.MManager;
 import org.slf4j.Logger;
