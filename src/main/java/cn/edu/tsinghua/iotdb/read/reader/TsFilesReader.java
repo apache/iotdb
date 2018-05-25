@@ -2,58 +2,54 @@ package cn.edu.tsinghua.iotdb.read.reader;
 
 import cn.edu.tsinghua.iotdb.engine.filenode.IntervalFileNode;
 import cn.edu.tsinghua.iotdb.engine.querycontext.GlobalSortedSeriesDataSource;
-import cn.edu.tsinghua.iotdb.engine.querycontext.RawSeriesChunk;
 import cn.edu.tsinghua.iotdb.engine.querycontext.UnsealedTsFile;
-import cn.edu.tsinghua.iotdb.queryV2.engine.overflow.OverflowOperationReader;
+import cn.edu.tsinghua.iotdb.queryV2.engine.reader.PriorityMergeSortTimeValuePairReader;
 import cn.edu.tsinghua.tsfile.common.utils.ITsRandomAccessFileReader;
 import cn.edu.tsinghua.tsfile.file.metadata.TimeSeriesChunkMetaData;
 import cn.edu.tsinghua.tsfile.timeseries.read.TsRandomAccessLocalFileReader;
+import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
 import cn.edu.tsinghua.tsfile.timeseries.readV2.common.EncodedSeriesChunkDescriptor;
 import cn.edu.tsinghua.tsfile.timeseries.readV2.controller.SeriesChunkLoader;
 import cn.edu.tsinghua.tsfile.timeseries.readV2.controller.SeriesChunkLoaderImpl;
 import cn.edu.tsinghua.tsfile.timeseries.readV2.datatype.TimeValuePair;
 import cn.edu.tsinghua.tsfile.timeseries.readV2.reader.SeriesReader;
-import cn.edu.tsinghua.tsfile.timeseries.readV2.reader.impl.SeriesChunkReader;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-public class TsFilesReader implements SeriesReader {
+/**
+ * A reader for sequentially inserts data，including a list of sealedTsFile, unSealedTsFile, data in MemTable.
+ * */
+public abstract class TsFilesReader implements SeriesReader {
 
-    private SealedTsFileReader sealedTsFileReader;
-    private UnSealedTsFileReader unSealedTsFileReader;
-    private RawSeriesChunk rawSeriesChunk;
+    protected PriorityMergeSortTimeValuePairReader seriesReader;
+    protected Path path;
 
-    private OverflowOperationReader overflowOperationReader;
 
-    public TsFilesReader(GlobalSortedSeriesDataSource sortedSeriesDataSource, OverflowOperationReader overflowOperationReader)
-            throws FileNotFoundException {
-
-        this.rawSeriesChunk = sortedSeriesDataSource.getRawSeriesChunk();
-
-        this.overflowOperationReader = overflowOperationReader;
+    public TsFilesReader(GlobalSortedSeriesDataSource sortedSeriesDataSource){
+        path = sortedSeriesDataSource.getSeriesPath();
     }
 
     @Override
     public boolean hasNext() throws IOException {
-        return false;
+        return seriesReader.hasNext();
     }
 
     @Override
     public TimeValuePair next() throws IOException {
-        return null;
+        return seriesReader.next();
     }
 
     @Override
     public void skipCurrentTimeValuePair() throws IOException {
-
+        seriesReader.skipCurrentTimeValuePair();
     }
 
     @Override
     public void close() throws IOException {
-
+        seriesReader.close();
     }
 
     private EncodedSeriesChunkDescriptor generateSeriesChunkDescriptorByMetadata(TimeSeriesChunkMetaData timeSeriesChunkMetaData, String filePath) {
@@ -70,40 +66,72 @@ public class TsFilesReader implements SeriesReader {
         return encodedSeriesChunkDescriptor;
     }
 
-    private class SealedTsFileReader implements SeriesReader{
+    protected abstract class SealedTsFileReader implements SeriesReader{
 
-        private List<IntervalFileNode> sealedTsFiles;
-        private int usedIntervalFileIndex;
-        private SeriesReader singleTsFileReader;
+        protected List<IntervalFileNode> sealedTsFiles;
+        protected int usedIntervalFileIndex;
+        protected SeriesReader singleTsFileReader;
+        protected boolean singleTsFileReaderInitialized;
 
         public SealedTsFileReader(List<IntervalFileNode> sealedTsFiles) {
             this.sealedTsFiles = sealedTsFiles;
+            this.usedIntervalFileIndex = -1;
+            this.singleTsFileReader = null;
+            this.singleTsFileReaderInitialized = false;
         }
 
         @Override
         public boolean hasNext() throws IOException {
+            if(singleTsFileReaderInitialized && singleTsFileReader.hasNext()){
+                return true;
+            }
+            while ((usedIntervalFileIndex + 1) < sealedTsFiles.size()){
+                if(!singleTsFileReaderInitialized){
+                    IntervalFileNode fileNode = sealedTsFiles.get(++usedIntervalFileIndex);
+                    if(singleTsFileSatisfied(fileNode)) {
+                        initSingleTsFileReader(fileNode);
+                        singleTsFileReaderInitialized = true;
+                    }
+                    else {
+                        continue;
+                    }
+                }
+                if(singleTsFileReader.hasNext()){
+                    return true;
+                }
+                else{
+                    singleTsFileReaderInitialized = false;
+                }
+            }
             return false;
         }
 
         @Override
         public TimeValuePair next() throws IOException {
-            return null;
+            return singleTsFileReader.next();
         }
 
         @Override
         public void skipCurrentTimeValuePair() throws IOException {
-
+            next();
         }
 
         @Override
         public void close() throws IOException {
-
+            if (singleTsFileReader != null) {
+                singleTsFileReader.close();
+            }
         }
+
+        protected abstract boolean singleTsFileSatisfied(IntervalFileNode fileNode);
+
+        protected abstract void initSingleTsFileReader(IntervalFileNode fileNode) throws IOException;
     }
 
-    private class UnSealedTsFileReader implements SeriesReader{
-        private UnsealedTsFile unsealedTsFile;
-        private SeriesChunkReader unSealedSeriesChunkReader;
+    protected abstract class UnSealedTsFileReader implements SeriesReader{
+        protected UnsealedTsFile unsealedTsFile;
+        protected SeriesReader singleTsFileReader;
+
 
         public UnSealedTsFileReader(UnsealedTsFile unsealedTsFile) throws FileNotFoundException {
             this.unsealedTsFile = unsealedTsFile;
@@ -117,26 +145,32 @@ public class TsFilesReader implements SeriesReader {
             // TODO unSealedSeriesChunkReader need to be constructed correctly
             ITsRandomAccessFileReader randomAccessFileReader = new TsRandomAccessLocalFileReader(unsealedTsFile.getFilePath());
             SeriesChunkLoader seriesChunkLoader = new SeriesChunkLoaderImpl(randomAccessFileReader);
+
+            initSingleTsFileReader(randomAccessFileReader, seriesChunkLoader, encodedSeriesChunkDescriptorList);
         }
 
         @Override
         public boolean hasNext() throws IOException {
-            return false;
+            return singleTsFileReader.hasNext();
         }
 
         @Override
         public TimeValuePair next() throws IOException {
-            return null;
+            return singleTsFileReader.next();
         }
 
         @Override
         public void skipCurrentTimeValuePair() throws IOException {
-
+            singleTsFileReader.skipCurrentTimeValuePair();
         }
 
         @Override
         public void close() throws IOException {
-
+            if(singleTsFileReader!=null){
+                singleTsFileReader.close();
+            }
         }
+
+        protected abstract void initSingleTsFileReader(ITsRandomAccessFileReader randomAccessFileReader, SeriesChunkLoader seriesChunkLoader, List<EncodedSeriesChunkDescriptor> encodedSeriesChunkDescriptorList);
     }
 }

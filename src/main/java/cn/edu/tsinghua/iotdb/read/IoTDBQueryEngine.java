@@ -1,5 +1,6 @@
 package cn.edu.tsinghua.iotdb.read;
 
+import cn.edu.tsinghua.iotdb.exception.FileNodeManagerException;
 import cn.edu.tsinghua.iotdb.read.executor.IoTDBQueryWithGlobalTimeFilterExecutorImpl;
 import cn.edu.tsinghua.iotdb.read.executor.IoTDBQueryWithFilterExecutorImpl;
 import cn.edu.tsinghua.iotdb.read.executor.IoTDBQueryWithoutFilterExecutorImpl;
@@ -20,9 +21,7 @@ public class IoTDBQueryEngine {
     private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBQueryEngine.class);
     private QueryExecutor queryExecutor;
 
-    public IoTDBQueryEngine() {}
-
-    public QueryDataSet query(QueryExpression queryExpression) throws IOException {
+    public QueryDataSet query(QueryExpression queryExpression) throws IOException, FileNodeManagerException {
         if (queryExpression.hasQueryFilter()) {
             try {
                 QueryFilter queryFilter = queryExpression.getQueryFilter();

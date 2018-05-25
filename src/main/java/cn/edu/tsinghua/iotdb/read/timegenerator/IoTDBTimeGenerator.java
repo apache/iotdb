@@ -17,6 +17,7 @@ public class IoTDBTimeGenerator implements TimestampGenerator {
 
     public IoTDBTimeGenerator(QueryFilter queryFilter) throws IOException {
         this.queryFilter = queryFilter;
+        initNode();
     }
 
     private void initNode() throws IOException {

@@ -11,8 +11,8 @@ import java.io.IOException;
  */
 public class PriorityTimeValuePairReader implements TimeValuePairReader {
 
-    private TimeValuePairReader seriesReader;
-    private Priority priority;
+    protected TimeValuePairReader seriesReader;
+    protected Priority priority;
 
     public PriorityTimeValuePairReader(TimeValuePairReader seriesReader, Priority priority) {
         this.seriesReader = seriesReader;
