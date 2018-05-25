@@ -1413,7 +1413,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
 								pageSizeThreshold);
 						// write the series data
 						recordCount += writeOneSeries(deltaObjectId, measurementId, seriesWriterImpl, dataType,
-								seriesReader, startTimeMap, endTimeMap);
+								seriesReader, startTimeMap, endTimeMap, timeValuePair);
 						// flush the series data
 						seriesWriterImpl.writeToFileWriter(fileIOWriter);
 					}
@@ -1440,9 +1440,8 @@ public class FileNodeProcessor extends Processor implements IStatistic {
 
 	private int writeOneSeries(String deltaObjectId, String measurement, SeriesWriterImpl seriesWriterImpl,
 			TSDataType dataType, SeriesReader seriesReader, Map<String, Long> startTimeMap,
-			Map<String, Long> endTimeMap) throws IOException {
+			Map<String, Long> endTimeMap, TimeValuePair timeValuePair) throws IOException {
 		int count = 0;
-		TimeValuePair timeValuePair = seriesReader.next();
 		long startTime = -1;
 		long endTime = -1;
 		switch (dataType) {
