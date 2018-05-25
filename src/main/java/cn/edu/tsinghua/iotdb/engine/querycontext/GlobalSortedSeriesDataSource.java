@@ -26,6 +26,10 @@ public class GlobalSortedSeriesDataSource {
         return unsealedTsFile != null;
     }
 
+    public boolean hasRawSeriesChunk() {
+        return rawSeriesChunk != null;
+    }
+
     public List<IntervalFileNode> getSealedTsFiles() {
         return sealedTsFiles;
     }

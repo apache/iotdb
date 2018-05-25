@@ -1,7 +1,9 @@
 package cn.edu.tsinghua.iotdb.read.executor;
 
 import cn.edu.tsinghua.iotdb.engine.querycontext.QueryDataSource;
+import cn.edu.tsinghua.iotdb.exception.FileNodeManagerException;
 import cn.edu.tsinghua.iotdb.read.IoTDBQueryDataSourceExecutor;
+import cn.edu.tsinghua.iotdb.read.IoTDBQueryExecutor;
 import cn.edu.tsinghua.iotdb.read.reader.IoTDBQueryWithoutFilterReader;
 import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
 import cn.edu.tsinghua.tsfile.timeseries.readV2.query.QueryDataSet;
@@ -14,23 +16,26 @@ import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.List;
 
-public class IoTDBQueryWithoutFilterExecutorImpl implements QueryExecutor{
+/**
+ * IoTDB query executor without filter
+ * */
+public class IoTDBQueryWithoutFilterExecutorImpl implements IoTDBQueryExecutor {
 
     public IoTDBQueryWithoutFilterExecutorImpl() {
     }
 
     @Override
-    public QueryDataSet execute(QueryExpression queryExpression) throws IOException {
+    public QueryDataSet execute(QueryExpression queryExpression) throws IOException, FileNodeManagerException {
         LinkedHashMap<Path, SeriesReader> readersOfSelectedSeries = new LinkedHashMap<>();
         initReadersOfSelectedSeries(readersOfSelectedSeries, queryExpression.getSelectedSeries());
         return new MergeQueryDataSet(readersOfSelectedSeries);
     }
 
     private void initReadersOfSelectedSeries(LinkedHashMap<Path, SeriesReader> readersOfSelectedSeries,
-                                             List<Path> selectedSeries) throws IOException {
+                                             List<Path> selectedSeries) throws IOException, FileNodeManagerException {
         for (Path path : selectedSeries) {
             QueryDataSource queryDataSource = IoTDBQueryDataSourceExecutor.getQueryDataSource(path);
-            SeriesReader seriesReader = new IoTDBQueryWithoutFilterReader(path, queryDataSource);
+            SeriesReader seriesReader = new IoTDBQueryWithoutFilterReader(queryDataSource);
             readersOfSelectedSeries.put(path, seriesReader);
         }
     }

@@ -6,11 +6,10 @@ import cn.edu.tsinghua.iotdb.queryV2.engine.externalsort.ExternalSortJobEngine;
 import cn.edu.tsinghua.iotdb.queryV2.engine.externalsort.SimpleExternalSortEngine;
 import cn.edu.tsinghua.iotdb.queryV2.engine.overflow.OverflowOperationReaderImpl;
 import cn.edu.tsinghua.iotdb.queryV2.engine.reader.PriorityMergeSortTimeValuePairReader;
+import cn.edu.tsinghua.iotdb.queryV2.engine.reader.PriorityMergeSortTimeValuePairReaderByTimestamp;
 import cn.edu.tsinghua.iotdb.queryV2.engine.reader.PriorityTimeValuePairReader;
-import cn.edu.tsinghua.iotdb.queryV2.engine.reader.series.OverflowInsertDataReader;
-import cn.edu.tsinghua.iotdb.queryV2.engine.reader.series.RawSeriesChunkReaderWithFilter;
-import cn.edu.tsinghua.iotdb.queryV2.engine.reader.series.RawSeriesChunkReaderWithoutFilter;
-import cn.edu.tsinghua.iotdb.queryV2.engine.reader.series.SeriesWithUpdateOpReader;
+import cn.edu.tsinghua.iotdb.queryV2.engine.reader.PriorityTimeValuePairReaderByTimestamp;
+import cn.edu.tsinghua.iotdb.queryV2.engine.reader.series.*;
 import cn.edu.tsinghua.tsfile.common.constant.StatisticConstant;
 import cn.edu.tsinghua.tsfile.common.utils.ITsRandomAccessFileReader;
 import cn.edu.tsinghua.tsfile.timeseries.filter.utils.DigestForFilter;
@@ -24,14 +23,11 @@ import cn.edu.tsinghua.tsfile.timeseries.readV2.common.SeriesChunkDescriptor;
 import cn.edu.tsinghua.tsfile.timeseries.readV2.controller.MetadataQuerier;
 import cn.edu.tsinghua.tsfile.timeseries.readV2.controller.SeriesChunkLoaderImpl;
 import cn.edu.tsinghua.tsfile.timeseries.readV2.reader.SeriesReader;
-import cn.edu.tsinghua.tsfile.timeseries.readV2.reader.impl.SeriesChunkReader;
-import cn.edu.tsinghua.tsfile.timeseries.readV2.reader.impl.SeriesChunkReaderWithFilterImpl;
-import cn.edu.tsinghua.tsfile.timeseries.readV2.reader.impl.SeriesChunkReaderWithoutFilterImpl;
-import cn.edu.tsinghua.tsfile.timeseries.readV2.reader.impl.SeriesReaderFromSingleFileWithFilterImpl;
+import cn.edu.tsinghua.tsfile.timeseries.readV2.reader.SeriesReaderByTimeStamp;
+import cn.edu.tsinghua.tsfile.timeseries.readV2.reader.impl.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -82,6 +78,30 @@ public class SeriesReaderFactory {
         //Add External Sort
         timeValuePairReaders = externalSortJobEngine.execute(timeValuePairReaders);
         return new OverflowInsertDataReader(jobId, new PriorityMergeSortTimeValuePairReader(timeValuePairReaders));
+    }
+
+    public OverflowInsertDataReaderByTimeStamp createSeriesReaderForOverflowInsertByTimestamp(OverflowSeriesDataSource overflowSeriesDataSource) throws IOException {
+        long jobId = getNextJobId();
+        List<EncodedSeriesChunkDescriptor> seriesChunkDescriptorList = SeriesDescriptorGenerator.genSeriesChunkDescriptorList(overflowSeriesDataSource.getOverflowInsertFileList());
+        int priorityValue = 1;
+        List<PriorityTimeValuePairReaderByTimestamp> timeValuePairReaders = new ArrayList<>();
+        for (EncodedSeriesChunkDescriptor seriesChunkDescriptor : seriesChunkDescriptorList) {
+            SeriesChunk seriesChunk = overflowSeriesChunkLoader.getMemSeriesChunk(jobId, seriesChunkDescriptor);
+            SeriesReaderByTimeStamp seriesChunkReader = new SeriesChunkReaderByTimestampImpl(seriesChunk.getSeriesChunkBodyStream(),
+                    seriesChunkDescriptor.getDataType(), seriesChunkDescriptor.getCompressionTypeName());
+            PriorityTimeValuePairReaderByTimestamp priorityTimeValuePairReader = new PriorityTimeValuePairReaderByTimestamp(seriesChunkReader,
+                    new PriorityTimeValuePairReader.Priority(priorityValue));
+            timeValuePairReaders.add(priorityTimeValuePairReader);
+            priorityValue++;
+
+        }
+        //Add SeriesChunkReader in MemTable
+        if (overflowSeriesDataSource.hasRawSeriesChunk()) {
+            timeValuePairReaders.add(new PriorityTimeValuePairReaderByTimestamp(new RawSeriesChunkReaderByTimestamp(
+                    overflowSeriesDataSource.getRawSeriesChunk()), new PriorityTimeValuePairReader.Priority(priorityValue++)));
+        }
+
+        return new OverflowInsertDataReaderByTimeStamp(jobId, new PriorityMergeSortTimeValuePairReaderByTimestamp(timeValuePairReaders));
     }
 
     private boolean seriesChunkSatisfied(SeriesChunkDescriptor seriesChunkDescriptor, Filter<?> filter) {
