@@ -652,8 +652,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
 		}
 	}
 
-	public QueryDataSource query(String deltaObjectId, String measurementId, SingleSeriesFilterExpression timeFilter,
-								 SingleSeriesFilterExpression freqFilter, SingleSeriesFilterExpression valueFilter)
+	public <T extends Comparable<T>> QueryDataSource query(String deltaObjectId, String measurementId, Filter<T> filter)
 			throws FileNodeProcessorException {
 		// query overflow data
 		TSDataType dataType = null;
@@ -664,8 +663,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
 		}
 		OverflowSeriesDataSource overflowSeriesDataSource;
 		try {
-			overflowSeriesDataSource = overflowProcessor.query(deltaObjectId, measurementId, timeFilter, freqFilter,
-					valueFilter, dataType);
+			overflowSeriesDataSource = overflowProcessor.query(deltaObjectId, measurementId, filter, dataType);
 		} catch (IOException e) {
 			e.printStackTrace();
 			throw new FileNodeProcessorException(e);
@@ -1020,7 +1018,8 @@ public class FileNodeProcessor extends Processor implements IStatistic {
 			}
 		}
 
-		OverflowFileStreamManager.getInstance().removeMappedByteBuffer(overflowProcessor.getWorkResource().getInsertFilePath());
+		OverflowFileStreamManager.getInstance()
+				.removeMappedByteBuffer(overflowProcessor.getWorkResource().getInsertFilePath());
 		//
 		// change status from merge to wait
 		//
