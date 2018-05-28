@@ -2,6 +2,7 @@ package cn.edu.tsinghua.iotdb.client;
 
 import cn.edu.tsinghua.iotdb.conf.TsFileDBConstant;
 import cn.edu.tsinghua.iotdb.exception.ArgsErrorException;
+import cn.edu.tsinghua.iotdb.jdbc.TsfileMetadataResultSet;
 import cn.edu.tsinghua.iotdb.tool.ImportCsv;
 
 import cn.edu.tsinghua.iotdb.jdbc.TsfileConnection;
@@ -106,71 +107,99 @@ public abstract class AbstractClient {
 	public static void output(ResultSet res, boolean printToConsole, String statement, DateTimeZone timeZone) throws SQLException {
 		int cnt = 0;
 		int displayCnt = 0;
-		ResultSetMetaData resultSetMetaData = res.getMetaData();
-		int colCount = resultSetMetaData.getColumnCount();
 		boolean printTimestamp = true;
-		if (res.getMetaData().getColumnTypeName(0) != null) {
-			printTimestamp = !res.getMetaData().getColumnTypeName(0).toUpperCase().equals(NEED_NOT_TO_PRINT_TIMESTAMP);
-		}
 		boolean printHeader = false;
+		ResultSetMetaData resultSetMetaData = null;
+		int colCount;
+
+		boolean isShow = res instanceof TsfileMetadataResultSet;
+		if (isShow) { // show timeseries or storage group
+			colCount = ((TsfileMetadataResultSet) res).getColCount();
+		} else { // query
+			resultSetMetaData = res.getMetaData();
+			colCount = resultSetMetaData.getColumnCount();
+			if (res.getMetaData().getColumnTypeName(0) != null) {
+				printTimestamp = !res.getMetaData().getColumnTypeName(0).toUpperCase().equals(NEED_NOT_TO_PRINT_TIMESTAMP);
+			}
+		}
 
 		// Output values
 		while (res.next()) {
-
 			// Output Labels
-			if (!printHeader) {
-				printBlockLine(printTimestamp, colCount, res);
-				printName(printTimestamp, colCount, res);
-				printBlockLine(printTimestamp, colCount, res);
-				printHeader = true;
-			}
-			if (cnt < maxPrintRowCount) {
-				System.out.print("|");
-				if (printTimestamp) {
-					System.out.printf(formatTime, formatDatetime(res.getLong(TIMESTAMP_STR), timeZone));
+			if (printToConsole) {
+				if (!printHeader) {
+					printBlockLine(printTimestamp, colCount, res, isShow);
+					printName(printTimestamp, colCount, res, isShow);
+					printBlockLine(printTimestamp, colCount, res, isShow);
+					printHeader = true;
 				}
-			}
-
-			for (int i = 2; i <= colCount; i++) {
-				if (printToConsole && cnt < maxPrintRowCount) {
-					boolean flag = false;
-					for(String timeStr : AGGREGRATE_TIME_LIST) {
-						if(resultSetMetaData.getColumnLabel(i).toUpperCase().indexOf(timeStr.toUpperCase()) != -1){
-					 		flag = true;
-					 		break;
-					 	}
-					}
-					if (flag) {
-						try {
-							System.out.printf(formatValue, formatDatetime(res.getLong(i), timeZone));
-						} catch (Exception e) {
-							System.out.printf(formatValue, "null");
-						}
-					} else {
+				System.out.print("|");
+				if (isShow) {
+					for (int i = 1; i <= colCount; i++) {
+						formatValue = "%" + ((TsfileMetadataResultSet) res).getMaxValueLength(i) + "s|";
 						System.out.printf(formatValue, String.valueOf(res.getString(i)));
 					}
+				} else {
+					if (displayCnt < maxPrintRowCount) {
+						if (printTimestamp) {
+							System.out.printf(formatTime, formatDatetime(res.getLong(TIMESTAMP_STR), timeZone));
+						}
+						for (int i = 2; i <= colCount; i++) {
+							boolean flag = false;
+							for (String timeStr : AGGREGRATE_TIME_LIST) {
+								if (resultSetMetaData.getColumnLabel(i).toUpperCase().contains(timeStr.toUpperCase())) {
+									flag = true;
+									break;
+								}
+							}
+							if (flag) {
+								try {
+									System.out.printf(formatValue, formatDatetime(res.getLong(i), timeZone));
+								} catch (Exception e) {
+									System.out.printf(formatValue, "null");
+								}
+							} else {
+								System.out.printf(formatValue, String.valueOf(res.getString(i)));
+							}
+						}
+					}
+					displayCnt++;
 				}
+				System.out.printf("\n");
 			}
 
-			if (printToConsole && cnt < maxPrintRowCount) {
-				System.out.printf("\n");
-				displayCnt++;
-			}
 			cnt++;
 
 			if (!printToConsole && cnt % 10000 == 0) {
 				System.out.println(cnt);
 			}
 		}
-		if (!printHeader) {
-			printBlockLine(printTimestamp, colCount, res);
-			printName(printTimestamp, colCount, res);
-			printBlockLine(printTimestamp, colCount, res);
+
+		if (printToConsole) {
+			if (!printHeader) {
+				printBlockLine(printTimestamp, colCount, res, isShow);
+				printName(printTimestamp, colCount, res, isShow);
+				printBlockLine(printTimestamp, colCount, res, isShow);
+			} else {
+				printBlockLine(printTimestamp, colCount, res, isShow);
+			}
+
+			if (displayCnt == maxPrintRowCount) {
+				System.out.println(String.format("Reach maxPrintRowCount = %s lines", maxPrintRowCount));
+			}
 		}
-		printBlockLine(printTimestamp, colCount, res);
-		System.out.println(String.format("Display the first %s lines", displayCnt));
+
 		System.out.println(StringUtils.repeat('-', 40));
-		System.out.println("Total line number = " + cnt);
+		if (isShow) {
+			int type = ((TsfileMetadataResultSet) res).getType();
+			if (type == 0) { // storage group
+				System.out.println("storage group number = " + cnt);
+			} else if (type == 2) { // show timeseries
+				System.out.println("timeseries number = " + cnt);
+			}
+		} else {
+			System.out.println("Total line number = " + cnt);
+		}
 	}
 
 	protected static Options createOptions() {
@@ -266,33 +295,48 @@ public abstract class AbstractClient {
 		}
 	}
 
-	protected static void printBlockLine(boolean printTimestamp, int colCount, ResultSet res) throws SQLException {
+	protected static void printBlockLine(boolean printTimestamp, int colCount, ResultSet res, boolean isShowTs) throws SQLException {
 		StringBuilder blockLine = new StringBuilder();
-		int tmp = Integer.MIN_VALUE;
-		for (int i = 1; i <= colCount; i++) {
-			int len = res.getMetaData().getColumnLabel(i).length();
-			tmp = tmp > len ? tmp : len;
-		}
-		maxValueLength = tmp;
-		if (printTimestamp) {
-			blockLine.append("+").append(StringUtils.repeat('-', maxTimeLength)).append("+");
-		} else {
+		if (isShowTs) {
 			blockLine.append("+");
-		}
-		for (int i = 0; i < colCount - 1; i++) {
-			blockLine.append(StringUtils.repeat('-', maxValueLength)).append("+");
+			for (int i = 1; i <= colCount; i++) {
+				blockLine.append(StringUtils.repeat('-', ((TsfileMetadataResultSet) res).getMaxValueLength(i))).append("+");
+			}
+		} else {
+			int tmp = Integer.MIN_VALUE;
+			for (int i = 1; i <= colCount; i++) {
+				int len = res.getMetaData().getColumnLabel(i).length();
+				tmp = tmp > len ? tmp : len;
+			}
+			maxValueLength = tmp;
+			if (printTimestamp) {
+				blockLine.append("+").append(StringUtils.repeat('-', maxTimeLength)).append("+");
+			} else {
+				blockLine.append("+");
+			}
+			for (int i = 0; i < colCount - 1; i++) {
+				blockLine.append(StringUtils.repeat('-', maxValueLength)).append("+");
+			}
 		}
 		System.out.println(blockLine);
 	}
 
-	protected static void printName(boolean printTimestamp, int colCount, ResultSet res) throws SQLException {
+	protected static void printName(boolean printTimestamp, int colCount, ResultSet res, boolean isShowTs) throws SQLException {
 		System.out.print("|");
-		formatValue = "%" + maxValueLength + "s|";
-		if (printTimestamp) {
-			System.out.printf(formatTime, TIMESTAMP_STR);
-		}
-		for (int i = 2; i <= colCount; i++) {
-			System.out.printf(formatValue, res.getMetaData().getColumnLabel(i));
+		if (isShowTs) {
+			TsfileMetadataResultSet metaRes = (TsfileMetadataResultSet) res;
+			for (int i = 1; i <= colCount; i++) {
+				formatValue = "%" + metaRes.getMaxValueLength(i) + "s|";
+				System.out.printf(formatValue, metaRes.getShowLabels()[i - 1]);
+			}
+		} else {
+			formatValue = "%" + maxValueLength + "s|";
+			if (printTimestamp) {
+				System.out.printf(formatTime, TIMESTAMP_STR);
+			}
+			for (int i = 2; i <= colCount; i++) {
+				System.out.printf(formatValue, res.getMetaData().getColumnLabel(i));
+			}
 		}
 		System.out.printf("\n");
 	}

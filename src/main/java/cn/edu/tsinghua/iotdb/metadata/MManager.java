@@ -441,6 +441,22 @@ public class MManager {
     }
 
     /**
+     * Get the full storage group info.
+     *
+     * @return A HashSet instance which stores all storage group info
+     * @throws PathErrorException
+     */
+    public HashSet<String> getAllStorageGroup() throws PathErrorException {
+
+        lock.readLock().lock();
+        try {
+            return mGraph.getAllStorageGroup();
+        } finally {
+            lock.readLock().unlock();
+        }
+    }
+
+    /**
      * Get all ColumnSchemas for given delta object type
      *
      * @param path A path represented one Delta object
