@@ -12,7 +12,9 @@ import cn.edu.tsinghua.iotdb.exception.ArgsErrorException;
 import cn.edu.tsinghua.iotdb.exception.FileNodeManagerException;
 import cn.edu.tsinghua.iotdb.exception.PathErrorException;
 import cn.edu.tsinghua.iotdb.jdbc.thrift.*;
+import cn.edu.tsinghua.iotdb.metadata.ColumnSchema;
 import cn.edu.tsinghua.iotdb.metadata.MManager;
+import cn.edu.tsinghua.iotdb.metadata.MNode;
 import cn.edu.tsinghua.iotdb.metadata.Metadata;
 import cn.edu.tsinghua.iotdb.qp.QueryProcessor;
 import cn.edu.tsinghua.iotdb.qp.exception.IllegalASTFormatException;
@@ -158,38 +160,86 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 		}
 		TSFetchMetadataResp resp = new TSFetchMetadataResp();
 		switch (req.getType()) {
-		case "METADATA_IN_JSON":
-			String metadataInJson = MManager.getInstance().getMetadataInString();
-			resp.setMetadataInJson(metadataInJson);
-			status = new TS_Status(TS_StatusCode.SUCCESS_STATUS);
-			break;
-		case "DELTA_OBEJECT":
-			Metadata metadata;
-			try {
-				metadata = MManager.getInstance().getMetadata();
-				Map<String, List<String>> deltaObjectMap = metadata.getDeltaObjectMap();
-				resp.setDeltaObjectMap(deltaObjectMap);
-			} catch (PathErrorException e) {
-				//LOGGER.error("cannot get delta object map", e);
-			}
-			status = new TS_Status(TS_StatusCode.SUCCESS_STATUS);
-			break;
-		case "COLUMN":
-			try {
-				resp.setDataType(MManager.getInstance().getSeriesType(req.getColumnPath()).toString());
-			} catch (PathErrorException e) { }
-			status = new TS_Status(TS_StatusCode.SUCCESS_STATUS);
-			break;
-		case "ALL_COLUMNS":
-		    	try {
-				resp.setAllColumns(MManager.getInstance().getPaths(req.getColumnPath()));
-		    	} catch (PathErrorException e) {}
-		    	status = new TS_Status(TS_StatusCode.SUCCESS_STATUS);
-		    	break;
-		default:
-			status = new TS_Status(TS_StatusCode.ERROR_STATUS);
-			status.setErrorMessage(String.format("Unsuport fetch metadata operation %s", req.getType()));
-			break;
+			case "SHOW_TIMESERIES":
+				String path = req.getColumnPath();
+				List<List<String>> showTimeseriesList = new ArrayList<>();
+				try {
+					List<String> paths = MManager.getInstance().getPaths(path);
+					if(paths.size()==0) { // check path exists
+						status = new TS_Status(TS_StatusCode.ERROR_STATUS);
+						status.setErrorMessage(String.format("Failed to fetch timeseries %s's metadata because: Timeseries does not exist.", req.getColumnPath()));
+						resp.setStatus(status);
+						return resp;
+					}
+					for (int i = 0; i < paths.size(); i++) {
+						String apath = paths.get(i);
+//						// get [name,storage group,dataType,encoding]
+						List<String> tsRow = new ArrayList<>(4);
+						tsRow.add(apath);
+						MNode leafNode = MManager.getInstance().getNodeByPath(apath);
+						if (leafNode.isLeaf()) {
+							ColumnSchema columnSchema = leafNode.getSchema();
+							tsRow.add(leafNode.getDataFileName());
+							tsRow.add(columnSchema.dataType.toString());
+							tsRow.add(columnSchema.encoding.toString());
+						}
+						showTimeseriesList.add(tsRow);
+					}
+					resp.setShowTimeseriesList(showTimeseriesList);
+				} catch (PathErrorException e) {
+					status = new TS_Status(TS_StatusCode.ERROR_STATUS);
+					status.setErrorMessage(String.format("Failed to fetch timeseries %s's metadata because: %s", req.getColumnPath(), e));
+					resp.setStatus(status);
+					return resp;
+				}
+				status = new TS_Status(TS_StatusCode.SUCCESS_STATUS);
+				break;
+			case "SHOW_STORAGE_GROUP":
+				try {
+					HashSet<String> storageGroups = MManager.getInstance().getAllStorageGroup();
+					resp.setShowStorageGroups(storageGroups);
+				} catch (PathErrorException e) {
+					status = new TS_Status(TS_StatusCode.ERROR_STATUS);
+					status.setErrorMessage(String.format("Failed to fetch storage groups' metadata because: %s", e));
+					resp.setStatus(status);
+					return resp;
+				}
+				status = new TS_Status(TS_StatusCode.SUCCESS_STATUS);
+				break;
+			case "METADATA_IN_JSON":
+				String metadataInJson = MManager.getInstance().getMetadataInString();
+				resp.setMetadataInJson(metadataInJson);
+				status = new TS_Status(TS_StatusCode.SUCCESS_STATUS);
+				break;
+			case "DELTA_OBEJECT":
+				Metadata metadata;
+				try {
+					metadata = MManager.getInstance().getMetadata();
+					Map<String, List<String>> deltaObjectMap = metadata.getDeltaObjectMap();
+					resp.setDeltaObjectMap(deltaObjectMap);
+				} catch (PathErrorException e) {
+					//LOGGER.error("cannot get delta object map", e);
+				}
+				status = new TS_Status(TS_StatusCode.SUCCESS_STATUS);
+				break;
+			case "COLUMN":
+				try {
+					resp.setDataType(MManager.getInstance().getSeriesType(req.getColumnPath()).toString());
+				} catch (PathErrorException e) {
+				}
+				status = new TS_Status(TS_StatusCode.SUCCESS_STATUS);
+				break;
+			case "ALL_COLUMNS":
+				try {
+					resp.setAllColumns(MManager.getInstance().getPaths(req.getColumnPath()));
+				} catch (PathErrorException e) {
+				}
+				status = new TS_Status(TS_StatusCode.SUCCESS_STATUS);
+				break;
+			default:
+				status = new TS_Status(TS_StatusCode.ERROR_STATUS);
+				status.setErrorMessage(String.format("Unsuport fetch metadata operation %s", req.getType()));
+				break;
 		}
 		resp.setStatus(status);
 		return resp;

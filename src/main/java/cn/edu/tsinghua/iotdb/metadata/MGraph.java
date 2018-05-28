@@ -1,10 +1,7 @@
 package cn.edu.tsinghua.iotdb.metadata;
 
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import cn.edu.tsinghua.iotdb.exception.MetadataArgsErrorException;
 import cn.edu.tsinghua.iotdb.exception.PathErrorException;
@@ -186,6 +183,10 @@ public class MGraph implements Serializable {
 		Map<String, List<String>> deltaObjectMap = getDeltaObjectForAllType();
 		Metadata metadata = new Metadata(seriesMap, deltaObjectMap);
 		return metadata;
+	}
+
+	public HashSet<String> getAllStorageGroup() throws PathErrorException {
+		return mTree.getAllStorageGroup();
 	}
 
 	public List<String> getLeafNodePathInNextLevel(String path) throws PathErrorException {
