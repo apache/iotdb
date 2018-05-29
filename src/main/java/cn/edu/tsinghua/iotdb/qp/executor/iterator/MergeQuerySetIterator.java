@@ -11,7 +11,7 @@ import cn.edu.tsinghua.tsfile.common.exception.UnSupportedDataTypeException;
 import cn.edu.tsinghua.tsfile.timeseries.read.query.DynamicOneColumnData;
 import cn.edu.tsinghua.tsfile.timeseries.read.query.OnePassQueryDataSet;
 import cn.edu.tsinghua.tsfile.timeseries.read.support.Field;
-import cn.edu.tsinghua.tsfile.timeseries.read.support.RowRecord;
+import cn.edu.tsinghua.tsfile.timeseries.read.support.OldRowRecord;
 
 /**
  * This class implements the interface {@code Iterator<OnePassQueryDataSet>}. It is the result of
@@ -25,7 +25,7 @@ import cn.edu.tsinghua.tsfile.timeseries.read.support.RowRecord;
  */
 public class MergeQuerySetIterator implements Iterator<OnePassQueryDataSet> {
     private final int mergeFetchSize;
-    private Iterator<RowRecord>[] recordIters;
+    private Iterator<OldRowRecord>[] recordIters;
     private Node[] nodes;
     // it's actually number of series iterators which has next record;
     private int heapSize;
@@ -103,10 +103,10 @@ public class MergeQuerySetIterator implements Iterator<OnePassQueryDataSet> {
     }
 
     private class Node {
-        public RowRecord rowRecord;
-        public Iterator<RowRecord> iter;
+        public OldRowRecord rowRecord;
+        public Iterator<OldRowRecord> iter;
 
-        public Node(RowRecord rowRecord, Iterator<RowRecord> iter) {
+        public Node(OldRowRecord rowRecord, Iterator<OldRowRecord> iter) {
             this.rowRecord = rowRecord;
             this.iter = iter;
         }
@@ -121,7 +121,7 @@ public class MergeQuerySetIterator implements Iterator<OnePassQueryDataSet> {
         }
     }
 
-    private void addNewRecordToOnePassQueryDataSet(OnePassQueryDataSet dataSet, RowRecord record) {
+    private void addNewRecordToOnePassQueryDataSet(OnePassQueryDataSet dataSet, OldRowRecord record) {
         for (Field f : record.fields) {
             StringBuilder sb = new StringBuilder();
             sb.append(f.deltaObjectId);
