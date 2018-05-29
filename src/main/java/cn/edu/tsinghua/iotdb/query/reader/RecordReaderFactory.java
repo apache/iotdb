@@ -54,14 +54,15 @@ public class RecordReaderFactory {
             return readLockManager.recordReaderCache.get(cacheDeltaKey, measurementID);
         } else {
             QueryDataSource queryDataSource;
-            try {
-                queryDataSource = fileNodeManager.query(deltaObjectUID, measurementID, timeFilter, null, valueFilter);
-            } catch (FileNodeManagerException e) {
-                throw new ProcessorException(e.getMessage());
-            }
-            RecordReader recordReader = createANewRecordReader(deltaObjectUID, measurementID, timeFilter, valueFilter, queryDataSource, readerType);
-            readLockManager.recordReaderCache.put(cacheDeltaKey, measurementID, recordReader);
-            return recordReader;
+//            try {
+//                queryDataSource = fileNodeManager.query(deltaObjectUID, measurementID, timeFilter, null, valueFilter);
+//            } catch (FileNodeManagerException e) {
+//                throw new ProcessorException(e.getMessage());
+//            }
+//            RecordReader recordReader = createANewRecordReader(deltaObjectUID, measurementID, timeFilter, valueFilter, queryDataSource, readerType);
+//            readLockManager.recordReaderCache.put(cacheDeltaKey, measurementID, recordReader);
+//            return recordReader;
+            return null;
         }
     }
 

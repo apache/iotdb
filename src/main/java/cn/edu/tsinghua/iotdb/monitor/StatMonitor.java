@@ -18,7 +18,7 @@ import cn.edu.tsinghua.tsfile.common.constant.StatisticConstant;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 import cn.edu.tsinghua.tsfile.common.utils.Pair;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
-import cn.edu.tsinghua.tsfile.timeseries.read.query.QueryDataSet;
+import cn.edu.tsinghua.tsfile.timeseries.read.query.OnePassQueryDataSet;
 import cn.edu.tsinghua.tsfile.timeseries.read.support.Field;
 import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
 import cn.edu.tsinghua.tsfile.timeseries.read.support.RowRecord;
@@ -137,7 +137,7 @@ public class StatMonitor implements IService{
             pairList.add(new Pair<>(path, StatisticConstant.LAST));
         }
         try {
-            QueryDataSet queryDataSet;
+            OnePassQueryDataSet queryDataSet;
             queryDataSet = overflowQueryEngine.aggregate(pairList, null);
             ReadLockManager.getInstance().unlockForOneRequest();
             RowRecord rowRecord = queryDataSet.getNextRecord();

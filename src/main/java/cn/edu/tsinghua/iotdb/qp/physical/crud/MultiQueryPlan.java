@@ -16,7 +16,7 @@ import java.util.Map;
 
 /**
  * {@code MultiQueryPlan} is used in multi-pass SingleQueryPlan. Multi-pass means it's a disjunction
- * among a list of SeriesSelectPlans. {@code MultiQueryPlan} return a {@code Iterator<QueryDataSet>}
+ * among a list of SeriesSelectPlans. {@code MultiQueryPlan} return a {@code Iterator<OnePassQueryDataSet>}
  * provided by {@code SingleQueryPlan} for one-pass SingleQueryPlan, or a {@code MergeQuerySetIterator} for
  * multi-pass SeriesSelectPlans.
  *

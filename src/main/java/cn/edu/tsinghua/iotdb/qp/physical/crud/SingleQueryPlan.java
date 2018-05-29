@@ -13,7 +13,7 @@ import cn.edu.tsinghua.tsfile.timeseries.filter.definition.SingleSeriesFilterExp
 import cn.edu.tsinghua.tsfile.timeseries.filter.definition.filterseries.FilterSeries;
 import cn.edu.tsinghua.tsfile.timeseries.filter.definition.filterseries.FilterSeriesType;
 import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
-import cn.edu.tsinghua.tsfile.timeseries.read.query.QueryDataSet;
+import cn.edu.tsinghua.tsfile.timeseries.read.query.OnePassQueryDataSet;
 import cn.edu.tsinghua.tsfile.timeseries.read.support.RowRecord;
 import cn.edu.tsinghua.tsfile.timeseries.utils.StringContainer;
 import org.slf4j.Logger;
@@ -27,7 +27,7 @@ import cn.edu.tsinghua.iotdb.qp.physical.PhysicalPlan;
  * Up to now, Single Query that {@code TsFile reading API} supports is a conjunction among time
  * filter, frequency filter and value filter. <br>
  * This class provide two public function. If the whole SingleQueryPlan has exactly one single path,
- * {@code SingleQueryPlan} return a {@code Iterator<QueryDataSet>} directly. Otherwise
+ * {@code SingleQueryPlan} return a {@code Iterator<OnePassQueryDataSet>} directly. Otherwise
  * {@code SingleQueryPlan} is regard as a portion of {@code MultiQueryPlan}. This class provide
  * a {@code Iterator<RowRecord>}in the latter case.
  *
@@ -162,7 +162,7 @@ public class SingleQueryPlan extends PhysicalPlan {
         private List<Path> paths;
         private final int fetchSize;
         private final QueryProcessExecutor executor;
-        private QueryDataSet data = null;
+        private OnePassQueryDataSet data = null;
         private FilterExpression timeFilter;
         private FilterExpression freqFilter;
         private FilterExpression valueFilter;
