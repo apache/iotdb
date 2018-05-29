@@ -99,7 +99,7 @@ public class FileNodeProcessorTest {
 				// query result contains the flushed result.
 				fileNodeProcessor.getOverflowProcessor(processorName);
 				assertEquals(true, fileNodeProcessor.hasBufferwriteProcessor());
-				QueryDataSource dataSource = fileNodeProcessor.query(processorName, measurementId, null, null, null);
+				QueryDataSource dataSource = fileNodeProcessor.query(processorName, measurementId, null);
 				// overflow data | no overflow data
 				OverflowSeriesDataSource overflowSeriesDataSource = dataSource.getOverflowSeriesDataSource();
 				assertEquals(processorName + "." + measurementId,
@@ -155,8 +155,7 @@ public class FileNodeProcessorTest {
 				if (i == 86) {
 					if (i >= flushLastUpdateTime) {
 						// query and insert time = 86
-						QueryDataSource dataSource = fileNodeProcessor.query(processorName, measurementId1, null, null,
-								null);
+						QueryDataSource dataSource = fileNodeProcessor.query(processorName, measurementId1, null);
 						// insert overflow data
 						RawSeriesChunk rawSeriesChunk = dataSource.getOverflowSeriesDataSource().getRawSeriesChunk();
 						assertEquals(false, rawSeriesChunk.isEmpty());
@@ -188,15 +187,14 @@ public class FileNodeProcessorTest {
 						// waiting the end of overflow flush.
 						// TimeUnit.SECONDS.sleep(2);
 						// query data
-						QueryDataSource dataSource = fileNodeProcessor.query(processorName, measurementId1, null, null,
-								null);
+						QueryDataSource dataSource = fileNodeProcessor.query(processorName, measurementId1, null);
 						RawSeriesChunk rawSeriesChunk = dataSource.getOverflowSeriesDataSource().getRawSeriesChunk();
 						assertEquals(false, rawSeriesChunk.isEmpty());
 						assertEquals(1, dataSource.getOverflowSeriesDataSource().getOverflowInsertFileList().size());
 						assertEquals(1, dataSource.getOverflowSeriesDataSource().getOverflowInsertFileList().get(0)
 								.getTimeSeriesChunkMetaDatas().size());
 						// bufferwrite data
-						dataSource = fileNodeProcessor.query(processorName, measurementId, null, null, null);
+						dataSource = fileNodeProcessor.query(processorName, measurementId, null);
 						rawSeriesChunk = dataSource.getSeriesDataSource().getRawSeriesChunk();
 						assertEquals(false, rawSeriesChunk.isEmpty());
 						Iterator<TimeValuePair> iterator = rawSeriesChunk.getIterator();
@@ -211,7 +209,7 @@ public class FileNodeProcessorTest {
 
 			}
 		}
-		QueryDataSource dataSource = fileNodeProcessor.query(processorName, measurementId1, null, null, null);
+		QueryDataSource dataSource = fileNodeProcessor.query(processorName, measurementId1, null);
 		GlobalSortedSeriesDataSource globalSortedSeriesDataSource = dataSource.getSeriesDataSource();
 		RawSeriesChunk rawSeriesChunk = globalSortedSeriesDataSource.getRawSeriesChunk();
 		assertEquals(true, rawSeriesChunk.isEmpty());
