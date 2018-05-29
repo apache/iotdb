@@ -58,6 +58,7 @@ public class Utils {
             for (int i = 0; i < fetchsize; i++) {
                 if (queryDataSet.hasNext()) {
                     RowRecord rowRecord = queryDataSet.next();
+                    System.out.println(rowRecord.toString());
                 } else {
                     hasNextResult = false;
                 }
