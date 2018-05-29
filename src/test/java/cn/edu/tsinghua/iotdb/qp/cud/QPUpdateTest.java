@@ -14,6 +14,7 @@ import java.util.Map;
 
 import cn.edu.tsinghua.iotdb.exception.ArgsErrorException;
 import cn.edu.tsinghua.iotdb.qp.utils.MemIntQpExecutor;
+import cn.edu.tsinghua.tsfile.timeseries.readV2.query.QueryDataSet;
 import org.junit.After;
 
 import cn.edu.tsinghua.iotdb.qp.QueryProcessor;
@@ -21,7 +22,7 @@ import cn.edu.tsinghua.iotdb.qp.exception.QueryProcessorException;
 import cn.edu.tsinghua.iotdb.qp.physical.PhysicalPlan;
 import cn.edu.tsinghua.iotdb.query.reader.RecordReaderFactory;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
-import cn.edu.tsinghua.tsfile.timeseries.read.query.QueryDataSet;
+import cn.edu.tsinghua.tsfile.timeseries.read.query.OnePassQueryDataSet;
 import org.junit.Test;
 
 public class QPUpdateTest {
@@ -87,7 +88,7 @@ public class QPUpdateTest {
 
 	}
 
-	private void testUpdate() throws QueryProcessorException, ArgsErrorException, ProcessorException {
+	private void testUpdate() throws QueryProcessorException, ArgsErrorException, ProcessorException, IOException {
 		String sqlStr = "update root.qp_update_test.device_1.sensor_1 set value = 33000 where time >= 10 and time <= 10";
 		PhysicalPlan plan1 = processor.parseSQLToPhysicalPlan(sqlStr);
 		boolean upRet = processor.getExecutor().processNonQuery(plan1);
@@ -96,15 +97,12 @@ public class QPUpdateTest {
 		// query to assert
 		sqlStr = "select sensor_1,sensor_2 from root.qp_update_test.device_1";
 		PhysicalPlan plan2 = processor.parseSQLToPhysicalPlan(sqlStr);
-		Iterator<QueryDataSet> iter = processor.getExecutor().processQuery(plan2);
+		QueryDataSet queryDataSet = processor.getExecutor().processQuery(plan2);
 		String[] expect = { "10	33000	null",
 				"20	null	10" };
 		int i = 0;
-		while (iter.hasNext()) {
-			QueryDataSet set = iter.next();
-			while (set.hasNextRecord()) {
-				assertEquals(set.getNextRecord().toString(), expect[i++]);
-			}
+		while (queryDataSet.hasNext()) {
+			assertEquals(queryDataSet.next().toString(), expect[i++]);
 		}
 		assertEquals(expect.length, i);
 	}
@@ -120,15 +118,12 @@ public class QPUpdateTest {
 		PhysicalPlan plan2 = processor.parseSQLToPhysicalPlan(sqlStr);
 		RecordReaderFactory.getInstance().removeRecordReader("root.qp_update_test.device_1", "sensor_1");
 		RecordReaderFactory.getInstance().removeRecordReader("root.qp_update_test.device_1", "sensor_2");
-		Iterator<QueryDataSet> iter = processor.getExecutor().processQuery(plan2);
+		QueryDataSet queryDataSet = processor.getExecutor().processQuery(plan2);
 
 		String[] expect = { "20	null	10" };
 		int i = 0;
-		while (iter.hasNext()) {
-			QueryDataSet set = iter.next();
-			while (set.hasNextRecord()) {
-				assertEquals(expect[i++], set.getNextRecord().toString());
-			}
+		while (queryDataSet.hasNext()) {
+			assertEquals(queryDataSet.next().toString(), expect[i++]);
 		}
 		assertEquals(expect.length, i);
 	}
@@ -144,15 +139,12 @@ public class QPUpdateTest {
 		PhysicalPlan plan2 = processor.parseSQLToPhysicalPlan(sqlStr);
 		RecordReaderFactory.getInstance().removeRecordReader("root.qp_update_test.device_1", "sensor_1");
 		RecordReaderFactory.getInstance().removeRecordReader("root.qp_update_test.device_1", "sensor_2");
-		Iterator<QueryDataSet> iter = processor.getExecutor().processQuery(plan2);
+		QueryDataSet queryDataSet = processor.getExecutor().processQuery(plan2);
 
 		String[] expect = { "20	null	10" };
 		int i = 0;
-		while (iter.hasNext()) {
-			QueryDataSet set = iter.next();
-			while (set.hasNextRecord()) {
-				assertEquals(expect[i++], set.getNextRecord().toString());
-			}
+		while (queryDataSet.hasNext()) {
+			assertEquals(queryDataSet.next().toString(), expect[i++]);
 		}
 		assertEquals(expect.length, i);
 	}
@@ -170,18 +162,14 @@ public class QPUpdateTest {
 		// query to assert
 		sqlStr = "select sensor_1,sensor_2 from root.qp_update_test.device_1";
 		PhysicalPlan plan2 = processor.parseSQLToPhysicalPlan(sqlStr);
-		Iterator<QueryDataSet> iter = processor.getExecutor().processQuery(plan2);
+		QueryDataSet queryDataSet = processor.getExecutor().processQuery(plan2);
 
 		String[] expect = { 
 				"13	50	40",
 				"20	null	10" };
 		int i = 0;
-		while (iter.hasNext()) {
-			QueryDataSet set = iter.next();
-			while (set.hasNextRecord()) {
-				String result = set.getNextRecord().toString();
-				assertEquals(expect[i++], result);
-			}
+		while (queryDataSet.hasNext()) {
+			assertEquals(queryDataSet.next().toString(), expect[i++]);
 		}
 		assertEquals(expect.length, i);
 	}

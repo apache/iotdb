@@ -101,29 +101,29 @@ public class LargeDataTest {
             Connection connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
 
             // select test
-            selectAllTest();
-            selectOneSeriesWithValueFilterTest();
-            seriesTimeDigestReadTest();
-            crossSeriesReadUpdateTest();
-
-            // aggregation test
-            aggregationWithoutFilterTest();
-            aggregationTest();
-            aggregationWithFilterOptimizationTest();
-            allNullSeriesAggregationTest();
-            negativeValueAggTest();
+//            selectAllTest();
+//            selectOneSeriesWithValueFilterTest();
+//            seriesTimeDigestReadTest();
+//            crossSeriesReadUpdateTest();
+//
+//            // aggregation test
+//            aggregationWithoutFilterTest();
+//            aggregationTest();
+//            aggregationWithFilterOptimizationTest();
+//            allNullSeriesAggregationTest();
+//            negativeValueAggTest();
 
             // group by test
             groupByTest();
-            allNullSeriesGroupByTest();
-            fixBigGroupByClassFormNumberTest();
-
-            // fill test
-            previousFillTest();
-            linearFillTest();
-
-            // verify the rightness of overflow insert and after merge operation
-            newInsertAggTest();
+//            allNullSeriesGroupByTest();
+//            fixBigGroupByClassFormNumberTest();
+//
+//            // fill test
+//            previousFillTest();
+//            linearFillTest();
+//
+//            // verify the rightness of overflow insert and after merge operation
+//            newInsertAggTest();
 
             connection.close();
         }

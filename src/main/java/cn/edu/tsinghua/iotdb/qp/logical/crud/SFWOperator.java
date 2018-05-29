@@ -2,6 +2,7 @@ package cn.edu.tsinghua.iotdb.qp.logical.crud;
 
 import cn.edu.tsinghua.iotdb.qp.exception.LogicalOperatorException;
 import cn.edu.tsinghua.iotdb.qp.logical.RootOperator;
+import cn.edu.tsinghua.tsfile.timeseries.filterV2.expression.QueryFilter;
 import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
 
 import java.util.List;
@@ -69,4 +70,5 @@ public abstract class SFWOperator extends RootOperator {
             suffixPaths = selectOperator.getSuffixPaths();
         return suffixPaths;
     }
+
 }

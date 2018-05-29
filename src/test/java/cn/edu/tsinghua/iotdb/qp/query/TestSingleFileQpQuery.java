@@ -9,6 +9,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Iterator;
 
+import cn.edu.tsinghua.tsfile.timeseries.readV2.query.QueryDataSet;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -22,13 +23,12 @@ import cn.edu.tsinghua.iotdb.qp.executor.QueryProcessExecutor;
 import cn.edu.tsinghua.iotdb.qp.executor.SingleFileQPExecutor;
 import cn.edu.tsinghua.iotdb.qp.physical.PhysicalPlan;
 import cn.edu.tsinghua.tsfile.timeseries.read.TsRandomAccessLocalFileReader;
-import cn.edu.tsinghua.tsfile.timeseries.read.query.QueryDataSet;
+import cn.edu.tsinghua.tsfile.timeseries.read.query.OnePassQueryDataSet;
 
 /**
  * test query operation
- * 
- * @author kangrong
  *
+ * @author kangrong
  */
 @RunWith(Parameterized.class)
 public class TestSingleFileQpQuery {
@@ -38,7 +38,7 @@ public class TestSingleFileQpQuery {
     @Before
     public void before() throws IOException {
         File file = new File("src/test/resources/testMultiDeviceMerge.tsfile");
-        if(!file.exists())
+        if (!file.exists())
             exec = null;
         else {
             exec = new SingleFileQPExecutor(new TsRandomAccessLocalFileReader("src/test/resources/testMultiDeviceMerge.tsfile"));
@@ -50,10 +50,10 @@ public class TestSingleFileQpQuery {
     public static Collection<Object[]> data() {
         return Arrays.asList(new Object[][]{
                 {
-                "select root.laptop.d0.s0,root.laptop.d0.s1,root.laptop.d0.s2 where time > 0 and root.laptop.d0.s1 > 0",
-                new String[] {"20, <device_1.sensor_1,21> <device_1.sensor_2,null> ",
-                        "50, <device_1.sensor_1,null> <device_1.sensor_2,52> ",
-                        "100, <device_1.sensor_1,101> <device_1.sensor_2,102> "}
+                        "select root.laptop.d0.s0,root.laptop.d0.s1,root.laptop.d0.s2 where time > 0 and root.laptop.d0.s1 > 0",
+                        new String[]{"20, <device_1.sensor_1,21> <device_1.sensor_2,null> ",
+                                "50, <device_1.sensor_1,null> <device_1.sensor_2,52> ",
+                                "100, <device_1.sensor_1,101> <device_1.sensor_2,102> "}
                 }
         });
     }
@@ -67,22 +67,20 @@ public class TestSingleFileQpQuery {
     }
 
     @Test
-    public void testQueryBasic() throws QueryProcessorException, ArgsErrorException {
-        if(exec == null)
+    public void testQueryBasic() throws QueryProcessorException, ArgsErrorException, IOException {
+        if (exec == null)
             return;
         PhysicalPlan physicalPlan = processor.parseSQLToPhysicalPlan(inputSQL);
         if (!physicalPlan.isQuery())
             fail();
-        Iterator<QueryDataSet> iter = processor.getExecutor().processQuery(physicalPlan);
+        QueryDataSet queryDataSet = processor.getExecutor().processQuery(physicalPlan);
         int i = 0;
-        while (iter.hasNext()) {
-            QueryDataSet set = iter.next();
-            while (set.hasNextRecord()) {
-                if (i == result.length)
-                    fail();
-                String actual = set.getNextRecord().toString();
-                assertEquals(result[i++], actual);
-            }
+        while (queryDataSet.hasNext()) {
+            if (i == result.length)
+                fail();
+            String actual = queryDataSet.next().toString();
+            assertEquals(result[i++], actual);
         }
     }
+
 }

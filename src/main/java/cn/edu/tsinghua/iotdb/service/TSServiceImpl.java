@@ -25,8 +25,10 @@ import cn.edu.tsinghua.iotdb.qp.physical.crud.MultiQueryPlan;
 import cn.edu.tsinghua.iotdb.qp.physical.sys.AuthorPlan;
 import cn.edu.tsinghua.iotdb.query.management.ReadLockManager;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
-import cn.edu.tsinghua.tsfile.timeseries.read.query.QueryDataSet;
+import cn.edu.tsinghua.tsfile.timeseries.read.query.OnePassQueryDataSet;
 import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
+import cn.edu.tsinghua.tsfile.timeseries.readV2.query.QueryDataSet;
+import javafx.util.Pair;
 import org.apache.thrift.TException;
 import org.apache.thrift.server.ServerContext;
 import org.joda.time.DateTimeZone;
@@ -51,7 +53,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 	// login is failed.
 	private ThreadLocal<String> username = new ThreadLocal<>();
 	private ThreadLocal<HashMap<String, PhysicalPlan>> queryStatus = new ThreadLocal<>();
-	private ThreadLocal<HashMap<String, Iterator<QueryDataSet>>> queryRet = new ThreadLocal<>();
+	private ThreadLocal<HashMap<String, QueryDataSet>> queryRet = new ThreadLocal<>();
 	private ThreadLocal<DateTimeZone> timeZone = new ThreadLocal<>();
 	private TsfileDBConfig config = TsfileDBDescriptor.getInstance().getConfig();
 
@@ -422,30 +424,27 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 			}
 
 			int fetchSize = req.getFetch_size();
-			Iterator<QueryDataSet> queryDataSetIterator;
+			QueryDataSet queryDataSet;
 			if (!queryRet.get().containsKey(statement)) {
 				PhysicalPlan physicalPlan = queryStatus.get().get(statement);
 				processor.getExecutor().setFetchSize(fetchSize);
-				queryDataSetIterator = processor.getExecutor().processQuery(physicalPlan);
-				queryRet.get().put(statement, queryDataSetIterator);
+				queryDataSet = processor.getExecutor().processQuery(physicalPlan);
+				queryRet.get().put(statement, queryDataSet);
 			} else {
-				queryDataSetIterator = queryRet.get().get(statement);
+				queryDataSet = queryRet.get().get(statement);
 			}
 
-			boolean hasResultSet;
-			QueryDataSet res = new QueryDataSet();
-			if (queryDataSetIterator.hasNext()) {
-				res = queryDataSetIterator.next();
-				hasResultSet = true;
-			} else {
-				hasResultSet = false;
+
+			Pair<TSQueryDataSet, Boolean> currentPassResult = Utils.convertQueryDataSetByFetchSize(queryDataSet, fetchSize);
+			boolean hasResultSet = currentPassResult.getValue();
+			TSQueryDataSet tsQueryDataSet = currentPassResult.getKey();
+
+			if(!hasResultSet)
 				queryRet.get().remove(statement);
-			}
-			TSQueryDataSet tsQueryDataSet = Utils.convertQueryDataSet(res);
 
 			TSFetchResultsResp resp = getTSFetchResultsResp(TS_StatusCode.SUCCESS_STATUS,
 					"FetchResult successfully. Has more result: " + hasResultSet);
-			resp.setHasResultSet(hasResultSet);
+			resp.setHasResultSet(currentPassResult.getValue());
 			resp.setQueryDataSet(tsQueryDataSet);
 			return resp;
 		} catch (Exception e) {

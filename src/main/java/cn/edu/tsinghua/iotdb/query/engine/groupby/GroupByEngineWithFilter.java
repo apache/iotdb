@@ -16,7 +16,7 @@ import cn.edu.tsinghua.tsfile.timeseries.filter.utils.LongInterval;
 import cn.edu.tsinghua.tsfile.timeseries.filter.verifier.FilterVerifier;
 import cn.edu.tsinghua.tsfile.timeseries.read.query.CrossQueryTimeGenerator;
 import cn.edu.tsinghua.tsfile.timeseries.read.query.DynamicOneColumnData;
-import cn.edu.tsinghua.tsfile.timeseries.read.query.QueryDataSet;
+import cn.edu.tsinghua.tsfile.timeseries.read.query.OnePassQueryDataSet;
 import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -71,12 +71,12 @@ public class GroupByEngineWithFilter {
     private Set<Integer> duplicatedPaths = new HashSet<>();
 
     /** group by result **/
-    private QueryDataSet groupByResult = new QueryDataSet();
+    private OnePassQueryDataSet groupByResult = new OnePassQueryDataSet();
 
     // variables below are used to calculate the common timestamps of FilterStructures
 
-    /** stores the query QueryDataSet of each FilterStructure in filterStructures **/
-    private List<QueryDataSet> fsDataSets = new ArrayList<>();
+    /** stores the query OnePassQueryDataSet of each FilterStructure in filterStructures **/
+    private List<OnePassQueryDataSet> fsDataSets = new ArrayList<>();
 
     /** stores calculated common timestamps of each FilterStructure**/
     private List<long[]> fsTimeList = new ArrayList<>();
@@ -127,7 +127,7 @@ public class GroupByEngineWithFilter {
 
         for (int idx = 0; idx < filterStructures.size(); idx++) {
             FilterStructure filterStructure = filterStructures.get(idx);
-            QueryDataSet queryDataSet = new QueryDataSet();
+            OnePassQueryDataSet queryDataSet = new OnePassQueryDataSet();
             queryDataSet.crossQueryTimeGenerator = new CrossQueryTimeGenerator(filterStructure.getTimeFilter(),
                     filterStructure.getFrequencyFilter(), filterStructure.getValueFilter(), crossQueryFetchSize) {
                 @Override
@@ -161,7 +161,7 @@ public class GroupByEngineWithFilter {
      * @throws IOException
      * @throws ProcessorException
      */
-    public QueryDataSet groupBy() throws IOException, ProcessorException, PathErrorException {
+    public OnePassQueryDataSet groupBy() throws IOException, ProcessorException, PathErrorException {
 
         groupByResult.clear();
         int partitionBatchCount = 0;

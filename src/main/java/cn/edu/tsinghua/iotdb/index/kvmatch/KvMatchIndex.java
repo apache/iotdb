@@ -35,9 +35,9 @@ import cn.edu.tsinghua.tsfile.timeseries.basis.TsFile;
 import cn.edu.tsinghua.tsfile.timeseries.filter.utils.LongInterval;
 import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
 import cn.edu.tsinghua.tsfile.timeseries.read.query.DynamicOneColumnData;
-import cn.edu.tsinghua.tsfile.timeseries.read.query.QueryDataSet;
+import cn.edu.tsinghua.tsfile.timeseries.read.query.OnePassQueryDataSet;
 import cn.edu.tsinghua.tsfile.timeseries.read.TsRandomAccessLocalFileReader;
-import cn.edu.tsinghua.tsfile.timeseries.read.support.RowRecord;
+import cn.edu.tsinghua.tsfile.timeseries.read.support.OldRowRecord;
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -165,19 +165,19 @@ public class KvMatchIndex  implements IoTIndex {
                 }
 
 				Map<String,Object> map = getDataInTsFile(path, fileInfo.getFilePath());
-                QueryDataSet dataSet = (QueryDataSet)(map.get("data"));
-                Future<Boolean> result = executor.submit(new KvMatchIndexBuilder(indexConfig, path, dataSet, indexFile));
+                OnePassQueryDataSet dataSet = (OnePassQueryDataSet)(map.get("data"));
+//                Future<Boolean> result = executor.submit(new KvMatchIndexBuilder(indexConfig, path, dataSet, indexFile));
 				
-                indexFls.add(indexFile);
-				try {
-					Boolean rs = result.get();
-					if (!rs) {
-						overall = false;
-						break;
-					}
-				} catch (Exception e) {
-					logger.error("Error occurred when building index because of {}", e.getMessage());
-				}
+//                indexFls.add(indexFile);
+//				try {
+//					Boolean rs = result.get();
+//					if (!rs) {
+//						overall = false;
+//						break;
+//					}
+//				} catch (Exception e) {
+//					logger.error("Error occurred when building index because of {}", e.getMessage());
+//				}
 				
 				TsFile tsfile = (TsFile)(map.get("tsfile"));
 				tsfile.close();
@@ -260,13 +260,13 @@ public class KvMatchIndex  implements IoTIndex {
 
             // 1. build index asynchronously
 			Map<String,Object> map = getDataInTsFile(path, newFile.getFilePath());
-            QueryDataSet dataSet = (QueryDataSet)(map.get("data"));
-            Future<Boolean> result = executor.submit(new KvMatchIndexBuilder(indexConfig, path, dataSet, indexFile));
-            try {
-                result.get();
-            } catch (Exception e) {
-                logger.error("Error occurred when building index because of {}", e.getMessage());
-            }
+            OnePassQueryDataSet dataSet = (OnePassQueryDataSet)(map.get("data"));
+//            Future<Boolean> result = executor.submit(new KvMatchIndexBuilder(indexConfig, path, dataSet, indexFile));
+//            try {
+//                result.get();
+//            } catch (Exception e) {
+//                logger.error("Error occurred when building index because of {}", e.getMessage());
+//            }
 
             TsFile tsfile = (TsFile)(map.get("tsfile"));
 			tsfile.close();
@@ -517,7 +517,7 @@ public class KvMatchIndex  implements IoTIndex {
             answers.sort(Comparator.comparingDouble(o -> o.right));
             logger.trace("Answers: {}", answers);
 
-            return constructQueryDataSet(answers, limitSize);
+            return constructOnePassQueryDataSet(answers, limitSize);
         } catch (FileNodeManagerException | InterruptedException | ExecutionException | ProcessorException | IOException | PathErrorException | IllegalArgumentException e) {
             logger.error("failed to query index" + e.getMessage(), e.getCause());
             throw new IndexManagerException(e);
@@ -542,7 +542,7 @@ public class KvMatchIndex  implements IoTIndex {
         QueryDataSetIterator queryDataSetIterator = new QueryDataSetIterator(overflowQueryEngine, path, timeInterval, readToken);
         List<Pair<Long, Double>> keyPoints = new ArrayList<>();
         while (queryDataSetIterator.hasNext()) {
-            RowRecord row = queryDataSetIterator.getRowRecord();
+            OldRowRecord row = queryDataSetIterator.getRowRecord();
             keyPoints.add(new Pair<>(row.getTime(), SeriesUtils.getValue(row.getFields().get(0))));
         }
         String prefix = ReadCachePrefix.addQueryPrefix(0);
@@ -578,8 +578,8 @@ public class KvMatchIndex  implements IoTIndex {
         return overallResult;
     }
 
-    private QueryDataSet constructQueryDataSet(List<Pair<Pair<Long, Long>, Double>> answers, int limitSize) throws IOException, ProcessorException {
-        QueryDataSet dataSet = new QueryDataSet();
+    private OnePassQueryDataSet constructOnePassQueryDataSet(List<Pair<Pair<Long, Long>, Double>> answers, int limitSize) throws IOException, ProcessorException {
+        OnePassQueryDataSet dataSet = new OnePassQueryDataSet();
         DynamicOneColumnData startTime = new DynamicOneColumnData(TSDataType.INT64, true);
         DynamicOneColumnData endTime = new DynamicOneColumnData(TSDataType.INT64, true);
         DynamicOneColumnData distance = new DynamicOneColumnData(TSDataType.DOUBLE, true);
