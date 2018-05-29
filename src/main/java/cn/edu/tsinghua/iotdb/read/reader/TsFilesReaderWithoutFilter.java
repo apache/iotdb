@@ -46,7 +46,8 @@ public class TsFilesReaderWithoutFilter extends TsFilesReader{
         }
 
         protected boolean singleTsFileSatisfied(IntervalFileNode fileNode){
-            return true;
+            //check if this filenode contains the record of this deltaobject
+            return fileNode.getStartTime(path.getDeltaObjectToString()) != -1;
         }
 
         protected void initSingleTsFileReader(IntervalFileNode fileNode)throws IOException{
