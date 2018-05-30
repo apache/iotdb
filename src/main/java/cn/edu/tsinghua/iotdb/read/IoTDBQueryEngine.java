@@ -6,6 +6,7 @@ import cn.edu.tsinghua.iotdb.read.executor.IoTDBQueryWithFilterExecutorImpl;
 import cn.edu.tsinghua.iotdb.read.executor.IoTDBQueryWithoutFilterExecutorImpl;
 import cn.edu.tsinghua.tsfile.timeseries.filterV2.exception.QueryFilterOptimizationException;
 import cn.edu.tsinghua.tsfile.timeseries.filterV2.expression.QueryFilter;
+import cn.edu.tsinghua.tsfile.timeseries.filterV2.expression.QueryFilterType;
 import cn.edu.tsinghua.tsfile.timeseries.filterV2.expression.impl.GlobalTimeFilter;
 import cn.edu.tsinghua.tsfile.timeseries.filterV2.expression.util.QueryFilterOptimizer;
 import cn.edu.tsinghua.tsfile.timeseries.readV2.query.QueryDataSet;
@@ -27,7 +28,7 @@ public class IoTDBQueryEngine {
                 QueryFilter queryFilter = queryExpression.getQueryFilter();
                 QueryFilter regularQueryFilter = QueryFilterOptimizer.getInstance().convertGlobalTimeFilter(queryFilter, queryExpression.getSelectedSeries());
                 queryExpression.setQueryFilter(regularQueryFilter);
-                if (regularQueryFilter instanceof GlobalTimeFilter) {
+                if (regularQueryFilter.getType() == QueryFilterType.GLOBAL_TIME) {
                     return new IoTDBQueryWithGlobalTimeFilterExecutorImpl().execute(queryExpression);
                 } else {
                     return new IoTDBQueryWithFilterExecutorImpl().execute(queryExpression);

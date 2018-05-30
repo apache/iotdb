@@ -2,6 +2,7 @@ package cn.edu.tsinghua.iotdb.queryV2.engine.reader;
 
 import cn.edu.tsinghua.tsfile.timeseries.readV2.datatype.TimeValuePair;
 import cn.edu.tsinghua.tsfile.timeseries.readV2.reader.SeriesReader;
+import cn.edu.tsinghua.tsfile.timeseries.readV2.reader.SeriesReaderByTimeStamp;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -10,7 +11,7 @@ import java.util.List;
 
 import static java.util.Collections.sort;
 
-public class PriorityMergeSortTimeValuePairReaderByTimestamp implements SeriesReader {
+public class PriorityMergeSortTimeValuePairReaderByTimestamp implements SeriesReaderByTimeStamp {
 
     private List<PriorityTimeValuePairReaderByTimestamp> readerList;
     private PriorityTimeValuePairReader timeValuePairReader;
@@ -24,18 +25,19 @@ public class PriorityMergeSortTimeValuePairReaderByTimestamp implements SeriesRe
         sort(readerList, Collections.reverseOrder());
     }
 
-    public PriorityMergeSortTimeValuePairReaderByTimestamp(List<PriorityTimeValuePairReaderByTimestamp> readerList){
+    public PriorityMergeSortTimeValuePairReaderByTimestamp(List<PriorityTimeValuePairReaderByTimestamp> readers){
         readerList = new ArrayList<>();
-        for (int i = 0; i < readerList.size(); i++) {
-            readerList.add(readerList.get(i));
+        for (int i = 0; i < readers.size(); i++) {
+            readerList.add(readers.get(i));
         }
         sort(readerList, Collections.reverseOrder());
     }
 
-    public void setCurrentTime(long timestamp) {
-        readerList.forEach(priorityTimeValuePairReaderByTimestamp -> {
+    @Override
+    public void setCurrentTimestamp(long timestamp) {
+        for (PriorityTimeValuePairReaderByTimestamp priorityTimeValuePairReaderByTimestamp : readerList) {
             priorityTimeValuePairReaderByTimestamp.setCurrentTimestamp(timestamp);
-        });
+        }
     }
 
 
@@ -67,4 +69,5 @@ public class PriorityMergeSortTimeValuePairReaderByTimestamp implements SeriesRe
             priorityTimeValuePairReaderByTimestamp.close();
         }
     }
+
 }

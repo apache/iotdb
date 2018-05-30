@@ -37,10 +37,14 @@ public class TsFilesReaderWithFilter extends TsFilesReader {
         int priorityValue = 1;
 
         //add data in sealedTsFiles and unSealedTsFile
-        TsFilesReaderWithFilter.SealedTsFileWithFilterReader sealedTsFileWithFilterReader = new TsFilesReaderWithFilter.SealedTsFileWithFilterReader(sortedSeriesDataSource.getSealedTsFiles());
-        TsFilesReaderWithFilter.UnSealedTsFileWithFilterReader unSealedTsFileWithFilterReader = new TsFilesReaderWithFilter.UnSealedTsFileWithFilterReader(sortedSeriesDataSource.getUnsealedTsFile());
-        timeValuePairReaders.add(new PriorityTimeValuePairReader(sealedTsFileWithFilterReader, new PriorityTimeValuePairReader.Priority(priorityValue++)));
-        timeValuePairReaders.add(new PriorityTimeValuePairReader(unSealedTsFileWithFilterReader, new PriorityTimeValuePairReader.Priority(priorityValue++)));
+        if(sortedSeriesDataSource.getSealedTsFiles() != null){
+            TsFilesReaderWithFilter.SealedTsFileWithFilterReader sealedTsFileWithFilterReader = new TsFilesReaderWithFilter.SealedTsFileWithFilterReader(sortedSeriesDataSource.getSealedTsFiles());
+            timeValuePairReaders.add(new PriorityTimeValuePairReader(sealedTsFileWithFilterReader, new PriorityTimeValuePairReader.Priority(priorityValue++)));
+        }
+        if(sortedSeriesDataSource.getUnsealedTsFile() != null){
+            TsFilesReaderWithFilter.UnSealedTsFileWithFilterReader unSealedTsFileWithFilterReader = new TsFilesReaderWithFilter.UnSealedTsFileWithFilterReader(sortedSeriesDataSource.getUnsealedTsFile());
+            timeValuePairReaders.add(new PriorityTimeValuePairReader(unSealedTsFileWithFilterReader, new PriorityTimeValuePairReader.Priority(priorityValue++)));
+        }
 
         //add data in memTable
         if(sortedSeriesDataSource.hasRawSeriesChunk()) {
@@ -59,6 +63,9 @@ public class TsFilesReaderWithFilter extends TsFilesReader {
         }
 
         protected boolean singleTsFileSatisfied(IntervalFileNode fileNode){
+            if(fileNode.getStartTime(path.getDeltaObjectToString()) == -1){
+                return false;
+            }
 
             if(filter.getType() == QueryFilterType.GLOBAL_TIME){//filter time
                 DigestFilterVisitor digestFilterVisitor = new DigestFilterVisitor();

@@ -17,7 +17,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 public class TsFilesReaderWithoutFilter extends TsFilesReader{
-
     public TsFilesReaderWithoutFilter(GlobalSortedSeriesDataSource sortedSeriesDataSource)
             throws IOException {
         super(sortedSeriesDataSource);
@@ -26,10 +25,14 @@ public class TsFilesReaderWithoutFilter extends TsFilesReader{
         int priorityValue = 1;
 
         //add data in sealedTsFiles and unSealedTsFile
-        SealedTsFileWithoutFilterReader sealedTsFileWithoutFilterReader = new SealedTsFileWithoutFilterReader(sortedSeriesDataSource.getSealedTsFiles());
-        UnSealedTsFileWithoutFilterReader unSealedTsFileWithoutFilterReader = new UnSealedTsFileWithoutFilterReader(sortedSeriesDataSource.getUnsealedTsFile());
-        timeValuePairReaders.add(new PriorityTimeValuePairReader(sealedTsFileWithoutFilterReader, new PriorityTimeValuePairReader.Priority(priorityValue++)));
-        timeValuePairReaders.add(new PriorityTimeValuePairReader(unSealedTsFileWithoutFilterReader, new PriorityTimeValuePairReader.Priority(priorityValue++)));
+        if(sortedSeriesDataSource.getSealedTsFiles() != null){
+            SealedTsFileWithoutFilterReader sealedTsFileWithoutFilterReader = new SealedTsFileWithoutFilterReader(sortedSeriesDataSource.getSealedTsFiles());
+            timeValuePairReaders.add(new PriorityTimeValuePairReader(sealedTsFileWithoutFilterReader, new PriorityTimeValuePairReader.Priority(priorityValue++)));
+        }
+        if(sortedSeriesDataSource.getUnsealedTsFile() != null){
+            UnSealedTsFileWithoutFilterReader unSealedTsFileWithoutFilterReader = new UnSealedTsFileWithoutFilterReader(sortedSeriesDataSource.getUnsealedTsFile());
+            timeValuePairReaders.add(new PriorityTimeValuePairReader(unSealedTsFileWithoutFilterReader, new PriorityTimeValuePairReader.Priority(priorityValue++)));
+        }
 
         //add data in memTable
         if(sortedSeriesDataSource.hasRawSeriesChunk()) {
