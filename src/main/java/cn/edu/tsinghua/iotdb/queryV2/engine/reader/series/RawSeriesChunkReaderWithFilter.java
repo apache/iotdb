@@ -46,10 +46,12 @@ public class RawSeriesChunkReaderWithFilter implements TimeValuePairReader {
 
     @Override
     public TimeValuePair next() throws IOException {
-        if (hasNext()) {
+        if(hasCachedTimeValuePair){
+            hasCachedTimeValuePair = false;
             return cachedTimeValuePair;
-        } else {
-            return null;
+        }
+        else {
+            return timeValuePairIterator.next();
         }
     }
 

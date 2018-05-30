@@ -3,7 +3,9 @@ package cn.edu.tsinghua.iotdb.read.reader;
 import cn.edu.tsinghua.iotdb.engine.querycontext.QueryDataSource;
 import cn.edu.tsinghua.iotdb.queryV2.engine.overflow.OverflowOperationReader;
 import cn.edu.tsinghua.iotdb.queryV2.engine.reader.PriorityMergeSortTimeValuePairReader;
+import cn.edu.tsinghua.iotdb.queryV2.engine.reader.PriorityMergeSortTimeValuePairReaderByTimestamp;
 import cn.edu.tsinghua.iotdb.queryV2.engine.reader.PriorityTimeValuePairReader;
+import cn.edu.tsinghua.iotdb.queryV2.engine.reader.PriorityTimeValuePairReaderByTimestamp;
 import cn.edu.tsinghua.iotdb.queryV2.engine.reader.series.OverflowInsertDataReader;
 import cn.edu.tsinghua.iotdb.queryV2.engine.reader.series.OverflowInsertDataReaderByTimeStamp;
 import cn.edu.tsinghua.iotdb.queryV2.engine.reader.series.SeriesWithOverflowOpReader;
@@ -32,19 +34,19 @@ public class IoTDBQueryWithTimestampsReader implements SeriesReaderByTimeStamp {
         int priority = 1;
         //sequence insert data
         TsFilesReaderWithTimeStamp tsFilesReader = new TsFilesReaderWithTimeStamp(queryDataSource.getSeriesDataSource());
-        PriorityTimeValuePairReader tsFilesReaderWithPriority = new PriorityTimeValuePairReader(
+        PriorityTimeValuePairReaderByTimestamp tsFilesReaderWithPriority = new PriorityTimeValuePairReaderByTimestamp(
                 tsFilesReader, new PriorityTimeValuePairReader.Priority(priority++));
 
         //overflow insert data
         OverflowInsertDataReaderByTimeStamp overflowInsertDataReader = SeriesReaderFactory.getInstance().
                 createSeriesReaderForOverflowInsertByTimestamp(queryDataSource.getOverflowSeriesDataSource());
-        PriorityTimeValuePairReader overflowInsertDataReaderWithPriority = new PriorityTimeValuePairReader(
+        PriorityTimeValuePairReaderByTimestamp overflowInsertDataReaderWithPriority = new PriorityTimeValuePairReaderByTimestamp(
                 overflowInsertDataReader, new PriorityTimeValuePairReader.Priority(priority++));
 
         //operation of update and delete
         OverflowOperationReader overflowOperationReader = queryDataSource.getOverflowSeriesDataSource().getUpdateDeleteInfoOfOneSeries().getOverflowUpdateOperationReaderNewInstance();
 
-        PriorityMergeSortTimeValuePairReader insertDataReader = new PriorityMergeSortTimeValuePairReader(tsFilesReaderWithPriority, overflowInsertDataReaderWithPriority);
+        PriorityMergeSortTimeValuePairReaderByTimestamp insertDataReader = new PriorityMergeSortTimeValuePairReaderByTimestamp(tsFilesReaderWithPriority, overflowInsertDataReaderWithPriority);
         seriesWithOverflowOpReader = new SeriesWithOverflowOpReader(insertDataReader, overflowOperationReader);
     }
 

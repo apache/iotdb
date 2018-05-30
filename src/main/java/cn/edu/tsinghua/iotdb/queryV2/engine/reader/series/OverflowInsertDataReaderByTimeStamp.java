@@ -19,7 +19,7 @@ public class OverflowInsertDataReaderByTimeStamp implements SeriesReaderByTimeSt
 
     @Override
     public void setCurrentTimestamp(long timestamp) {
-        seriesReader.setCurrentTime(timestamp);
+        seriesReader.setCurrentTimestamp(timestamp);
     }
 
     @Override

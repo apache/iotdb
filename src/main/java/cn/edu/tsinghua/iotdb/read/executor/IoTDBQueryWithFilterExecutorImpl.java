@@ -51,10 +51,10 @@ public class IoTDBQueryWithFilterExecutorImpl implements IoTDBQueryExecutor {
         for (Path path : selectedSeries) {
              QueryDataSource queryDataSource = null;
              if(path2SeriesFilter.containsKey(path)){
-                 queryDataSource = IoTDBQueryDataSourceExecutor.getQueryDataSource(path);
+                 queryDataSource = IoTDBQueryDataSourceExecutor.getQueryDataSource(path2SeriesFilter.get(path));
              }
              else {
-                 queryDataSource = IoTDBQueryDataSourceExecutor.getQueryDataSource(path2SeriesFilter.get(path));
+                 queryDataSource = IoTDBQueryDataSourceExecutor.getQueryDataSource(path);
              }
              SeriesReaderByTimeStamp seriesReader = new IoTDBQueryWithTimestampsReader(queryDataSource);
              readersOfSelectedSeries.put(path, seriesReader);
@@ -70,12 +70,12 @@ public class IoTDBQueryWithFilterExecutorImpl implements IoTDBQueryExecutor {
     private void traverse(QueryFilter queryFilter, LinkedHashMap path2SeriesFilter){
         if(queryFilter.getType() == QueryFilterType.SERIES){
             SeriesFilter seriesFilter = (SeriesFilter) queryFilter;
-            path2SeriesFilter.put(seriesFilter.getSeriesPath(), seriesFilter.getFilter());
+            path2SeriesFilter.put(seriesFilter.getSeriesPath(), seriesFilter);
         }
         else{
             BinaryQueryFilter binaryQueryFilter = (BinaryQueryFilter) queryFilter;
             traverse(binaryQueryFilter.getLeft(), path2SeriesFilter);
-            traverse(binaryQueryFilter.getLeft(), path2SeriesFilter);
+            traverse(binaryQueryFilter.getRight(), path2SeriesFilter);
         }
     }
 }

@@ -12,6 +12,7 @@ import cn.edu.tsinghua.tsfile.timeseries.readV2.common.EncodedSeriesChunkDescrip
 import cn.edu.tsinghua.tsfile.timeseries.readV2.controller.SeriesChunkLoader;
 import cn.edu.tsinghua.tsfile.timeseries.readV2.datatype.TimeValuePair;
 import cn.edu.tsinghua.tsfile.timeseries.readV2.datatype.TsPrimitiveType;
+import cn.edu.tsinghua.tsfile.timeseries.readV2.reader.SeriesReaderByTimeStamp;
 import cn.edu.tsinghua.tsfile.timeseries.readV2.reader.impl.SeriesReaderFromSingleFileByTimestampImpl;
 
 import java.io.FileNotFoundException;
@@ -19,7 +20,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-public class TsFilesReaderWithTimeStamp extends TsFilesReader{
+public class TsFilesReaderWithTimeStamp extends TsFilesReader implements SeriesReaderByTimeStamp {
 
     private long currentTimestamp;
     private RawSeriesChunkReaderByTimestamp rawSeriesChunkReaderByTimestamp;
@@ -32,10 +33,16 @@ public class TsFilesReaderWithTimeStamp extends TsFilesReader{
         int priorityValue = 1;
 
         //data in sealedTsFiles and unSealedTsFile
-        TsFilesReaderWithTimeStamp.SealedTsFileWithTimeStampReader sealedTsFileWithTimeStampReader = new TsFilesReaderWithTimeStamp.SealedTsFileWithTimeStampReader(sortedSeriesDataSource.getSealedTsFiles());
-        TsFilesReaderWithTimeStamp.UnSealedTsFileWithTimeStampReader unSealedTsFileWithTimeStampReader = new TsFilesReaderWithTimeStamp.UnSealedTsFileWithTimeStampReader(sortedSeriesDataSource.getUnsealedTsFile());
-        timeValuePairReaders.add(new PriorityTimeValuePairReader(sealedTsFileWithTimeStampReader, new PriorityTimeValuePairReader.Priority(priorityValue++)));
-        timeValuePairReaders.add(new PriorityTimeValuePairReader(unSealedTsFileWithTimeStampReader, new PriorityTimeValuePairReader.Priority(priorityValue++)));
+        if(sortedSeriesDataSource.getSealedTsFiles() != null){
+            TsFilesReaderWithTimeStamp.SealedTsFileWithTimeStampReader sealedTsFileWithTimeStampReader = new TsFilesReaderWithTimeStamp.SealedTsFileWithTimeStampReader(sortedSeriesDataSource.getSealedTsFiles());
+            timeValuePairReaders.add(new PriorityTimeValuePairReader(sealedTsFileWithTimeStampReader, new PriorityTimeValuePairReader.Priority(priorityValue++)));
+        }
+        if(sortedSeriesDataSource.getUnsealedTsFile() != null){
+            TsFilesReaderWithTimeStamp.UnSealedTsFileWithTimeStampReader unSealedTsFileWithTimeStampReader = new TsFilesReaderWithTimeStamp.UnSealedTsFileWithTimeStampReader(sortedSeriesDataSource.getUnsealedTsFile());
+            timeValuePairReaders.add(new PriorityTimeValuePairReader(unSealedTsFileWithTimeStampReader, new PriorityTimeValuePairReader.Priority(priorityValue++)));
+        }
+
+
 
         //data in memTable
         if(sortedSeriesDataSource.hasRawSeriesChunk()) {
@@ -83,6 +90,7 @@ public class TsFilesReaderWithTimeStamp extends TsFilesReader{
         return null;
     }
 
+    @Override
     public void setCurrentTimestamp(long currentTimestamp) {
         this.currentTimestamp = currentTimestamp;
         rawSeriesChunkReaderByTimestamp.setCurrentTimestamp(currentTimestamp);
@@ -102,7 +110,7 @@ public class TsFilesReaderWithTimeStamp extends TsFilesReader{
                     return true;
                 }
             }
-            while (usedIntervalFileIndex < sealedTsFiles.size()) {
+            while ((usedIntervalFileIndex + 1)< sealedTsFiles.size()) {
                 if (!singleTsFileReaderInitialized) {
                     IntervalFileNode fileNode = sealedTsFiles.get(++usedIntervalFileIndex);
                     if (singleTsFileSatisfied(fileNode)) {
@@ -130,6 +138,10 @@ public class TsFilesReaderWithTimeStamp extends TsFilesReader{
         }
 
         protected boolean singleTsFileSatisfied(IntervalFileNode fileNode){
+
+            if(fileNode.getStartTime(path.getDeltaObjectToString()) == -1){
+                return false;
+            }
             long minTime = fileNode.getStartTime(path.getDeltaObjectToString());
             long maxTime = fileNode.getEndTime(path.getDeltaObjectToString());
             return currentTimestamp >= minTime && currentTimestamp <= maxTime;
