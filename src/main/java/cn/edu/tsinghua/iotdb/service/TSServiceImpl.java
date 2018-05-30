@@ -22,13 +22,12 @@ import cn.edu.tsinghua.iotdb.qp.logical.Operator;
 import cn.edu.tsinghua.iotdb.qp.physical.PhysicalPlan;
 import cn.edu.tsinghua.iotdb.qp.physical.crud.IndexQueryPlan;
 import cn.edu.tsinghua.iotdb.qp.physical.crud.MultiQueryPlan;
+import cn.edu.tsinghua.iotdb.qp.physical.crud.QueryPlan;
 import cn.edu.tsinghua.iotdb.qp.physical.sys.AuthorPlan;
 import cn.edu.tsinghua.iotdb.query.management.ReadLockManager;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
-import cn.edu.tsinghua.tsfile.timeseries.read.query.OnePassQueryDataSet;
 import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
 import cn.edu.tsinghua.tsfile.timeseries.readV2.query.QueryDataSet;
-import javafx.util.Pair;
 import org.apache.thrift.TException;
 import org.apache.thrift.server.ServerContext;
 import org.joda.time.DateTimeZone;
@@ -41,6 +40,7 @@ import java.sql.Statement;
 import java.util.*;
 
 import static cn.edu.tsinghua.iotdb.qp.logical.Operator.OperatorType.INDEXQUERY;
+import static cn.edu.tsinghua.iotdb.qp.logical.Operator.OperatorType.QUERY;
 
 /**
  * Thrift RPC implementation at server side
@@ -366,36 +366,60 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 			// support single aggregate function for now
 			if (plan.getOperatorType() == INDEXQUERY){
 				columns = ((IndexQueryPlan)plan).getColumnHeader();
-			} else{
+			} else if(plan instanceof MultiQueryPlan) {
 				switch (((MultiQueryPlan) plan).getType()) {
-				case QUERY:
-				case FILL:
-					for (Path p : paths) {
-						columns.add(p.getFullPath());
-					}
-					break;
-				case GROUPBY:
-				case AGGREGATION:
-					List<String> aggregations = plan.getAggregations();
-					if (aggregations.size() != paths.size()) {
-						for (int i = 1; i < paths.size(); i++) {
-							aggregations.add(aggregations.get(0));
+					case FILL:
+						for (Path p : paths) {
+							columns.add(p.getFullPath());
 						}
-					}
-					for (int i = 0; i < paths.size(); i++) {
-						columns.add(aggregations.get(i) + "(" + paths.get(i).getFullPath() + ")");
-					}
-					break;
-				default:
-					throw new TException("unsupported query type: " + ((MultiQueryPlan) plan).getType());
+						break;
+					case GROUPBY:
+					case AGGREGATION:
+						List<String> aggregations = plan.getAggregations();
+						if (aggregations.size() != paths.size()) {
+							for (int i = 1; i < paths.size(); i++) {
+								aggregations.add(aggregations.get(0));
+							}
+						}
+						for (int i = 0; i < paths.size(); i++) {
+							columns.add(aggregations.get(i) + "(" + paths.get(i).getFullPath() + ")");
+						}
+						break;
+					default:
+						throw new TException("unsupported query type: " + ((MultiQueryPlan) plan).getType());
+				}
+			} else {
+				Operator.OperatorType type = plan.getOperatorType();
+				switch (type) {
+					case QUERY:
+					case FILL:
+						for (Path p : paths) {
+							columns.add(p.getFullPath());
+						}
+						break;
+					case AGGREGATION:
+					case GROUPBY:
+						List<String> aggregations = plan.getAggregations();
+						if (aggregations.size() != paths.size()) {
+							for (int i = 1; i < paths.size(); i++) {
+								aggregations.add(aggregations.get(0));
+							}
+						}
+						for (int i = 0; i < paths.size(); i++) {
+							columns.add(aggregations.get(i) + "(" + paths.get(i).getFullPath() + ")");
+						}
+						break;
+					default:
+						throw new RuntimeException("not support " + type + " in new read process");
 				}
 			}
-
 				
 			if (plan.getOperatorType() == INDEXQUERY) {
 				resp.setOperationType(INDEXQUERY.toString());
-			} else {
+			} else if(plan instanceof MultiQueryPlan){
 				resp.setOperationType(((MultiQueryPlan) plan).getType().toString());
+			} else {
+				resp.setOperationType(plan.getOperatorType().toString());
 			}
 			TSHandleIdentifier operationId = new TSHandleIdentifier(ByteBuffer.wrap(username.get().getBytes()),
 					ByteBuffer.wrap(("PASS".getBytes())));
@@ -433,26 +457,19 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 			} else {
 				queryDataSet = queryRet.get().get(statement);
 			}
-
-
-			Pair<TSQueryDataSet, Boolean> currentPassResult = Utils.convertQueryDataSetByFetchSize(queryDataSet, fetchSize);
-			boolean hasResultSet = currentPassResult.getValue();
-			TSQueryDataSet tsQueryDataSet = currentPassResult.getKey();
-
-			if(!hasResultSet)
+			TSQueryDataSet result = Utils.convertQueryDataSetByFetchSize(queryDataSet, fetchSize);
+			boolean hasResultSet = result.getRecords().size() > 0;
+			if(!hasResultSet && queryRet.get() != null) {
 				queryRet.get().remove(statement);
-
-			TSFetchResultsResp resp = getTSFetchResultsResp(TS_StatusCode.SUCCESS_STATUS,
-					"FetchResult successfully. Has more result: " + hasResultSet);
-			resp.setHasResultSet(currentPassResult.getValue());
-			resp.setQueryDataSet(tsQueryDataSet);
+			}
+			TSFetchResultsResp resp = getTSFetchResultsResp(TS_StatusCode.SUCCESS_STATUS, "FetchResult successfully. Has more result: " + hasResultSet);
+			resp.setHasResultSet(hasResultSet);
+			resp.setQueryDataSet(result);
 			return resp;
 		} catch (Exception e) {
-			//e.printStackTrace();
 			LOGGER.error("{}: Internal server error: {}",TsFileDBConstant.GLOBAL_DB_NAME, e.getMessage());
 			return getTSFetchResultsResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
 		}
-
 	}
 
 	@Override

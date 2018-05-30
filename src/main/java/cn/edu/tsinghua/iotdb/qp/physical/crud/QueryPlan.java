@@ -16,6 +16,7 @@ public class QueryPlan extends PhysicalPlan{
 
     public QueryPlan() {
         super(true);
+        setOperatorType(Operator.OperatorType.QUERY);
     }
 
     public QueryPlan(boolean isQuery, Operator.OperatorType operatorType) {
@@ -42,7 +43,7 @@ public class QueryPlan extends PhysicalPlan{
 
     @Override
     public List<Path> getPaths() {
-        return null;
+        return paths;
     }
 
     public void setPaths(List<Path> paths) {

@@ -245,8 +245,7 @@ public class PhysicalGenerator {
         }
         MultiQueryPlan multiQueryPlan =  new MultiQueryPlan(subPlans, aggregations);
 
-        //old group by
-        if (queryOperator.isGroupBy()) {
+        if (queryOperator.isGroupBy()) {   //old group by
             multiQueryPlan.setType(MultiQueryPlan.QueryType.GROUPBY);
             multiQueryPlan.setUnit(queryOperator.getUnit());
             multiQueryPlan.setOrigin(queryOperator.getOrigin());
@@ -292,8 +291,11 @@ public class PhysicalGenerator {
 
         List<Path> paths = queryOperator.getSelectedPaths();
         queryPlan.setPaths(paths);
-        List<FilterOperator> parts = splitFilter(queryOperator.getFilterOperator());
-        queryPlan.setQueryFilter(convertDNF2QueryFilter(parts));
+        FilterOperator filterOperator = queryOperator.getFilterOperator();
+        if(filterOperator != null) {
+            List<FilterOperator> parts = splitFilter(queryOperator.getFilterOperator());
+            queryPlan.setQueryFilter(convertDNF2QueryFilter(parts));
+        }
 
         queryPlan.checkPaths(executor);
         return queryPlan;
