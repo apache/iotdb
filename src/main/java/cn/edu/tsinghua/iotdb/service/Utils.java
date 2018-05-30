@@ -54,11 +54,13 @@ public class Utils {
     public static Pair<TSQueryDataSet, Boolean> convertQueryDataSetByFetchSize(QueryDataSet queryDataSet, int fetchsize) {
         boolean hasNextResult = true;
         TSQueryDataSet tsQueryDataSet = new TSQueryDataSet();
+        int totalnum = 0;
         try {
             for (int i = 0; i < fetchsize; i++) {
                 if (queryDataSet.hasNext()) {
                     RowRecord rowRecord = queryDataSet.next();
                     System.out.println(rowRecord.toString());
+                    totalnum ++;
                 } else {
                     hasNextResult = false;
                 }
@@ -67,6 +69,7 @@ public class Utils {
             e.printStackTrace();
         }
 
+        System.out.println("total: " + totalnum);
         return new Pair<>(tsQueryDataSet, hasNextResult);
     }
 

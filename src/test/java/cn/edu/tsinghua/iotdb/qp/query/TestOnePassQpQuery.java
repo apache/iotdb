@@ -9,6 +9,7 @@ import java.util.Collection;
 import java.util.Iterator;
 
 import cn.edu.tsinghua.iotdb.exception.ArgsErrorException;
+import cn.edu.tsinghua.iotdb.exception.FileNodeManagerException;
 import cn.edu.tsinghua.iotdb.qp.QueryProcessor;
 import cn.edu.tsinghua.iotdb.qp.exception.QueryProcessorException;
 import cn.edu.tsinghua.tsfile.timeseries.readV2.query.QueryDataSet;
@@ -91,7 +92,7 @@ public class TestOnePassQpQuery {
     }
 
     @Test
-    public void testQueryBasic() throws QueryProcessorException, ArgsErrorException, IOException {
+    public void testQueryBasic() throws QueryProcessorException, ArgsErrorException, IOException, FileNodeManagerException {
         PhysicalPlan plan = processor.parseSQLToPhysicalPlan(inputSQL);
         if (!plan.isQuery())
             fail();
