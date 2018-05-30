@@ -7,15 +7,7 @@ import cn.edu.tsinghua.iotdb.qp.exception.LogicalOperatorException;
 import cn.edu.tsinghua.iotdb.qp.exception.QueryProcessorException;
 import cn.edu.tsinghua.iotdb.qp.executor.QueryProcessExecutor;
 import cn.edu.tsinghua.iotdb.qp.logical.Operator;
-import cn.edu.tsinghua.iotdb.qp.logical.crud.BasicFunctionOperator;
-import cn.edu.tsinghua.iotdb.qp.logical.crud.DeleteOperator;
-import cn.edu.tsinghua.iotdb.qp.logical.crud.FilterOperator;
-import cn.edu.tsinghua.iotdb.qp.logical.crud.IndexOperator;
-import cn.edu.tsinghua.iotdb.qp.logical.crud.IndexQueryOperator;
-import cn.edu.tsinghua.iotdb.qp.logical.crud.InsertOperator;
-import cn.edu.tsinghua.iotdb.qp.logical.crud.QueryOperator;
-import cn.edu.tsinghua.iotdb.qp.logical.crud.SelectOperator;
-import cn.edu.tsinghua.iotdb.qp.logical.crud.UpdateOperator;
+import cn.edu.tsinghua.iotdb.qp.logical.crud.*;
 import cn.edu.tsinghua.iotdb.qp.logical.index.KvMatchIndexQueryOperator;
 import cn.edu.tsinghua.iotdb.qp.logical.sys.AuthorOperator;
 import cn.edu.tsinghua.iotdb.qp.logical.sys.LoadDataOperator;
@@ -37,6 +29,7 @@ import cn.edu.tsinghua.tsfile.timeseries.filter.utils.LongInterval;
 import cn.edu.tsinghua.tsfile.timeseries.filter.verifier.FilterVerifier;
 import cn.edu.tsinghua.tsfile.timeseries.filter.verifier.LongFilterVerifier;
 import cn.edu.tsinghua.tsfile.timeseries.filterV2.expression.QueryFilter;
+import cn.edu.tsinghua.tsfile.timeseries.filterV2.expression.impl.QueryFilterFactory;
 import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
 
 import java.util.ArrayList;
@@ -300,17 +293,53 @@ public class PhysicalGenerator {
         List<Path> paths = queryOperator.getSelectedPaths();
         queryPlan.setPaths(paths);
         List<FilterOperator> parts = splitFilter(queryOperator.getFilterOperator());
-        queryPlan.setQueryFilter(constructQueryFilter(parts));
+        queryPlan.setQueryFilter(convertDNF2QueryFilter(parts));
 
         queryPlan.checkPaths(executor);
         return queryPlan;
     }
 
 
-    private QueryFilter constructQueryFilter(List<FilterOperator> parts) {
+    private QueryFilter convertDNF2QueryFilter(List<FilterOperator> parts) throws LogicalOperatorException {
+        QueryFilter ret = null;
+        List<QueryFilter> queryFilters = new ArrayList<>();
         for (FilterOperator filter : parts) {
-            System.out.println(filter);
+            queryFilters.add(convertCNF2QueryFilter(filter));
         }
+
+        for(QueryFilter queryFilter: queryFilters) {
+            if(ret == null) {
+                ret = queryFilter;
+            } else {
+                ret = QueryFilterFactory.or(ret, queryFilter);
+            }
+        }
+        return ret;
+    }
+
+    private QueryFilter convertCNF2QueryFilter(FilterOperator operator) throws LogicalOperatorException {
+        if(operator.isSingle() && operator.getSinglePath().toString().equalsIgnoreCase(SQLConstant.RESERVED_TIME)) {
+            BasicOperatorType basicOperatorType = BasicOperatorType.getBasicOpBySymbol(operator.getTokenIntType());
+
+        }
+        return null;
+    }
+
+    private QueryFilter convertOperatorNode(FilterOperator node) throws LogicalOperatorException {
+//        if(node.isLeaf()) {
+//            BasicFunctionOperator basicOperator = (BasicFunctionOperator) node;
+//            basicOperator.getValue();
+//            BasicOperatorType basicOperatorType = BasicOperatorType.getBasicOpBySymbol(basicOperator.getTokenIntType());
+//            switch (basicOperatorType) {
+//                case EQ:
+//                case GT:
+//                case LT:
+//                case GTEQ:
+//                case LTEQ:
+//                case NOTEQUAL:
+//                default:
+//            }
+//        }
         return null;
     }
 
