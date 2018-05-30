@@ -19,6 +19,7 @@ public abstract class SFWOperator extends RootOperator {
     private SelectOperator selectOperator;
     private FromOperator fromOperator;
     private FilterOperator filterOperator;
+    private boolean hasAggregation = false;
     private boolean isSlimit = false;
 
     public SFWOperator(int tokenIntType) {
@@ -36,6 +37,8 @@ public abstract class SFWOperator extends RootOperator {
 
     public void setSelectOperator(SelectOperator sel) {
         this.selectOperator = sel;
+        if(!sel.getAggregations().isEmpty())
+            hasAggregation = true;
     }
 
     public void setFromOperator(FromOperator from) {
@@ -71,4 +74,7 @@ public abstract class SFWOperator extends RootOperator {
         return suffixPaths;
     }
 
+    public boolean hasAggregation() {
+        return hasAggregation;
+    }
 }
