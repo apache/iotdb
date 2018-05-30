@@ -1,6 +1,7 @@
 package cn.edu.tsinghua.iotdb.qp.strategy;
 
 import cn.edu.tsinghua.iotdb.auth.AuthException;
+import cn.edu.tsinghua.iotdb.exception.PathErrorException;
 import cn.edu.tsinghua.iotdb.qp.constant.SQLConstant;
 import cn.edu.tsinghua.iotdb.qp.exception.GeneratePhysicalPlanException;
 import cn.edu.tsinghua.iotdb.qp.exception.LogicalOperatorException;
@@ -20,6 +21,7 @@ import cn.edu.tsinghua.iotdb.qp.physical.sys.AuthorPlan;
 import cn.edu.tsinghua.iotdb.qp.physical.sys.LoadDataPlan;
 import cn.edu.tsinghua.iotdb.qp.physical.sys.MetadataPlan;
 import cn.edu.tsinghua.iotdb.qp.physical.sys.PropertyPlan;
+import cn.edu.tsinghua.tsfile.common.utils.Binary;
 import cn.edu.tsinghua.tsfile.common.utils.Pair;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
 import cn.edu.tsinghua.tsfile.timeseries.filter.definition.FilterExpression;
@@ -28,8 +30,12 @@ import cn.edu.tsinghua.tsfile.timeseries.filter.definition.filterseries.FilterSe
 import cn.edu.tsinghua.tsfile.timeseries.filter.utils.LongInterval;
 import cn.edu.tsinghua.tsfile.timeseries.filter.verifier.FilterVerifier;
 import cn.edu.tsinghua.tsfile.timeseries.filter.verifier.LongFilterVerifier;
+import cn.edu.tsinghua.tsfile.timeseries.filterV2.basic.Filter;
 import cn.edu.tsinghua.tsfile.timeseries.filterV2.expression.QueryFilter;
+import cn.edu.tsinghua.tsfile.timeseries.filterV2.expression.impl.GlobalTimeFilter;
 import cn.edu.tsinghua.tsfile.timeseries.filterV2.expression.impl.QueryFilterFactory;
+import cn.edu.tsinghua.tsfile.timeseries.filterV2.expression.impl.SeriesFilter;
+import cn.edu.tsinghua.tsfile.timeseries.filterV2.factory.FilterFactory;
 import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
 
 import java.util.ArrayList;
@@ -302,7 +308,7 @@ public class PhysicalGenerator {
     }
 
 
-    private QueryFilter convertDNF2QueryFilter(List<FilterOperator> parts) throws LogicalOperatorException {
+    private QueryFilter convertDNF2QueryFilter(List<FilterOperator> parts) throws LogicalOperatorException, PathErrorException, GeneratePhysicalPlanException {
         QueryFilter ret = null;
         List<QueryFilter> queryFilters = new ArrayList<>();
         for (FilterOperator filter : parts) {
@@ -319,30 +325,96 @@ public class PhysicalGenerator {
         return ret;
     }
 
-    private QueryFilter convertCNF2QueryFilter(FilterOperator operator) throws LogicalOperatorException {
+    private QueryFilter convertCNF2QueryFilter(FilterOperator operator) throws LogicalOperatorException, PathErrorException, GeneratePhysicalPlanException {
+
         if(operator.isSingle() && operator.getSinglePath().toString().equalsIgnoreCase(SQLConstant.RESERVED_TIME)) {
-            BasicOperatorType basicOperatorType = BasicOperatorType.getBasicOpBySymbol(operator.getTokenIntType());
+            return new GlobalTimeFilter(convertSingleFilterNode(operator));
+        } else {
+            List<FilterOperator> children = operator.getChildren();
+            List<SeriesFilter> seriesFilters = new ArrayList<>();
+            Filter timeFilter = null;
+            List<Pair<Path, Filter>> series2Filters = new ArrayList<>();
+            for (FilterOperator child : children) {
+                if (!child.isSingle()) {
+                    throw new GeneratePhysicalPlanException(
+                            "in format:[(a) and () and ()] or [] or [], a is not single! a:" + child);
+                }
+                Filter currentFilter = convertSingleFilterNode(child);
+                if(child.getSinglePath().toString().equalsIgnoreCase(SQLConstant.RESERVED_TIME)) {
+                    if (timeFilter != null) {
+                        throw new GeneratePhysicalPlanException("time filter has been specified more than once");
+                    }
+                    timeFilter = currentFilter;
+                } else {
+                   series2Filters.add(new Pair<>(child.getSinglePath(), currentFilter));
+                }
+            }
+
+            if(timeFilter == null) {
+                for(Pair<Path, Filter> pair: series2Filters) {
+                    seriesFilters.add(new SeriesFilter(pair.left, pair.right));
+                }
+            } else {
+                for(Pair<Path, Filter> pair: series2Filters) {
+                    seriesFilters.add(new SeriesFilter(pair.left, FilterFactory.and(timeFilter, pair.right)));
+                }
+            }
+
+            QueryFilter ret = null;
+            for(SeriesFilter seriesFilter: seriesFilters) {
+                if(ret == null) {
+                    ret = seriesFilter;
+                } else {
+                    ret = QueryFilterFactory.and(ret, seriesFilter);
+                }
+            }
+            return ret;
 
         }
-        return null;
     }
 
-    private QueryFilter convertOperatorNode(FilterOperator node) throws LogicalOperatorException {
-//        if(node.isLeaf()) {
-//            BasicFunctionOperator basicOperator = (BasicFunctionOperator) node;
-//            basicOperator.getValue();
-//            BasicOperatorType basicOperatorType = BasicOperatorType.getBasicOpBySymbol(basicOperator.getTokenIntType());
-//            switch (basicOperatorType) {
-//                case EQ:
-//                case GT:
-//                case LT:
-//                case GTEQ:
-//                case LTEQ:
-//                case NOTEQUAL:
-//                default:
-//            }
-//        }
-        return null;
+    private Filter convertSingleFilterNode(FilterOperator node) throws LogicalOperatorException, PathErrorException {
+        if(node.isLeaf()) {
+            Path path = node.getSinglePath();
+            TSDataType type = executor.getSeriesType(path);
+            if (type == null) {
+                throw new PathErrorException("given path:{" + path.getFullPath() + "} don't exist in metadata");
+            }
+
+            BasicFunctionOperator basicOperator = (BasicFunctionOperator) node;
+            BasicOperatorType funcToken = BasicOperatorType.getBasicOpBySymbol(node.getTokenIntType());
+            boolean isTime = path.equals(SQLConstant.RESERVED_TIME);
+
+            switch (type) {
+                case BOOLEAN:
+                    return funcToken.getFilter(Boolean.valueOf(basicOperator.getValue()));
+                case INT32:
+                    return funcToken.getFilter(Integer.valueOf(basicOperator.getValue()));
+                case INT64:
+                    return isTime? funcToken.getTimeFilter(Long.valueOf(basicOperator.getValue())) : funcToken.getFilter(Long.valueOf(basicOperator.getValue()));
+                case FLOAT:
+                    return funcToken.getFilter(Float.valueOf(basicOperator.getValue()));
+                case DOUBLE:
+                    return funcToken.getFilter(Double.valueOf(basicOperator.getValue()));
+                case TEXT:
+                    return funcToken.getFilter(new Binary(basicOperator.getValue()));
+                default:
+                        throw new LogicalOperatorException("not supported type: " + type);
+            }
+        } else {
+            int tokenIntType = node.getTokenIntType();
+            List<FilterOperator> children = node.getChildren();
+            switch (tokenIntType) {
+                case KW_AND:
+                    return FilterFactory.and(convertSingleFilterNode(children.get(0)), convertSingleFilterNode(children.get(1)));
+                case KW_OR:
+                    return FilterFactory.or(convertSingleFilterNode(children.get(0)), convertSingleFilterNode(children.get(1)));
+                default:
+                    throw new LogicalOperatorException("unknown binary tokenIntType:"
+                            + tokenIntType + ",maybe it means "
+                            + SQLConstant.tokenNames.get(tokenIntType));
+            }
+        }
     }
 
 

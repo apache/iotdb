@@ -78,14 +78,8 @@ public class FilterOperator extends Operator implements Comparable<FilterOperato
         this.isSingle = b;
     }
 
-    /**
-     * if this node's singlePath is set, this.isLeaf will be set true in same time
-     *
-     * @param path operator path
-     */
     public void setSinglePath(Path path) {
         this.singlePath = path;
-        this.isLeaf = true;
     }
 
     public Path getSinglePath() {
