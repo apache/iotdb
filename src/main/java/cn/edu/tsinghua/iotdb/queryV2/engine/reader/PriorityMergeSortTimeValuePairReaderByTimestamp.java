@@ -18,24 +18,35 @@ public class PriorityMergeSortTimeValuePairReaderByTimestamp implements SeriesRe
 
     public PriorityMergeSortTimeValuePairReaderByTimestamp(PriorityTimeValuePairReaderByTimestamp... readers){
         readerList = new ArrayList<>();
+
+        int size = readers.length;
+        if(size < 1){
+            return;
+        }
         //sort readers by priority using PriorityQueue
         Queue<PriorityTimeValuePairReaderByTimestamp> priorityQueue = new PriorityQueue<>(readers.length);
-        for (int i = 0; i < readers.length; i++) {
+        for (int i = 0; i < size; i++) {
             priorityQueue.add(readers[i]);
         }
-        for(int i = 0; i < readers.length; i++){
+        for(int i = 0; i < size; i++){
             readerList.add(priorityQueue.poll());
         }
     }
 
     public PriorityMergeSortTimeValuePairReaderByTimestamp(List<PriorityTimeValuePairReaderByTimestamp> readers){
         readerList = new ArrayList<>();
+
+        int size = readers.size();
+        if(size < 1){
+            return;
+        }
+
         //sort readers by priority using PriorityQueue
         Queue<PriorityTimeValuePairReaderByTimestamp> priorityQueue = new PriorityQueue<>(readers.size());
-        for (int i = 0; i < readers.size(); i++) {
+        for (int i = 0; i < size; i++) {
             priorityQueue.add(readers.get(i));
         }
-        for(int i = 0; i < readers.size(); i++){
+        for(int i = 0; i < size; i++){
             readerList.add(priorityQueue.poll());
         }
     }

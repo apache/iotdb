@@ -17,12 +17,9 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 public class TsFilesReaderWithoutFilter extends TsFilesReader{
-
     public TsFilesReaderWithoutFilter(GlobalSortedSeriesDataSource sortedSeriesDataSource)
             throws IOException {
         super(sortedSeriesDataSource);
-
-        int priorityValue = 1;
 
         //add data in sealedTsFiles and unSealedTsFile
         if(sortedSeriesDataSource.getSealedTsFiles() != null){

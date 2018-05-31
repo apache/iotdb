@@ -52,6 +52,9 @@ public class TsFilesReaderWithFilter extends TsFilesReader {
         }
 
         protected boolean singleTsFileSatisfied(IntervalFileNode fileNode){
+            if(fileNode.getStartTime(path.getDeltaObjectToString()) == -1){
+                return false;
+            }
 
             if(filter.getType() == QueryFilterType.GLOBAL_TIME){//filter time
                 DigestFilterVisitor digestFilterVisitor = new DigestFilterVisitor();

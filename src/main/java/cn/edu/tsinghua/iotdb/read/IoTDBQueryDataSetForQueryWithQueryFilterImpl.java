@@ -30,13 +30,7 @@ public class IoTDBQueryDataSetForQueryWithQueryFilterImpl implements QueryDataSe
         RowRecord rowRecord = new RowRecord(timestamp);
         for (Path path : readersOfSelectedSeries.keySet()) {
             SeriesReaderByTimeStamp seriesReaderByTimestamp = readersOfSelectedSeries.get(path);
-            seriesReaderByTimestamp.setCurrentTimestamp(timestamp);
-            if(seriesReaderByTimestamp.hasNext()){
-                rowRecord.putField(path, seriesReaderByTimestamp.next().getValue());
-            }
-            else {
-                rowRecord.putField(path, null);
-            }
+            rowRecord.putField(path, seriesReaderByTimestamp.getValueInTimestamp(timestamp));
         }
         return rowRecord;
     }

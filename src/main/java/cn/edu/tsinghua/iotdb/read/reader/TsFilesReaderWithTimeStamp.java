@@ -3,8 +3,6 @@ package cn.edu.tsinghua.iotdb.read.reader;
 import cn.edu.tsinghua.iotdb.engine.filenode.IntervalFileNode;
 import cn.edu.tsinghua.iotdb.engine.querycontext.GlobalSortedSeriesDataSource;
 import cn.edu.tsinghua.iotdb.engine.querycontext.UnsealedTsFile;
-import cn.edu.tsinghua.iotdb.queryV2.engine.reader.PriorityMergeSortTimeValuePairReader;
-import cn.edu.tsinghua.iotdb.queryV2.engine.reader.PriorityTimeValuePairReader;
 import cn.edu.tsinghua.iotdb.queryV2.engine.reader.series.RawSeriesChunkReaderByTimestamp;
 import cn.edu.tsinghua.tsfile.common.utils.ITsRandomAccessFileReader;
 import cn.edu.tsinghua.tsfile.timeseries.read.TsRandomAccessLocalFileReader;
@@ -12,13 +10,11 @@ import cn.edu.tsinghua.tsfile.timeseries.readV2.common.EncodedSeriesChunkDescrip
 import cn.edu.tsinghua.tsfile.timeseries.readV2.controller.SeriesChunkLoader;
 import cn.edu.tsinghua.tsfile.timeseries.readV2.datatype.TimeValuePair;
 import cn.edu.tsinghua.tsfile.timeseries.readV2.datatype.TsPrimitiveType;
-import cn.edu.tsinghua.tsfile.timeseries.readV2.reader.SeriesReader;
 import cn.edu.tsinghua.tsfile.timeseries.readV2.reader.SeriesReaderByTimeStamp;
 import cn.edu.tsinghua.tsfile.timeseries.readV2.reader.impl.SeriesReaderFromSingleFileByTimestampImpl;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 
 public class TsFilesReaderWithTimeStamp extends TsFilesReader implements SeriesReaderByTimeStamp{
@@ -39,7 +35,6 @@ public class TsFilesReaderWithTimeStamp extends TsFilesReader implements SeriesR
         if(sortedSeriesDataSource.getUnsealedTsFile() != null){
             seriesReaders.add(new TsFilesReaderWithTimeStamp.UnSealedTsFileWithTimeStampReader(sortedSeriesDataSource.getUnsealedTsFile()));
         }
-
         //data in memTable
         if(sortedSeriesDataSource.hasRawSeriesChunk()) {
             seriesReaders.add(new RawSeriesChunkReaderByTimestamp(sortedSeriesDataSource.getRawSeriesChunk()));
@@ -70,6 +65,7 @@ public class TsFilesReaderWithTimeStamp extends TsFilesReader implements SeriesR
         while (nextSeriesReaderByTimestampIndex < seriesReaders.size()){
             if(!hasSeriesReaderByTimestampInitialized){
                 currentSeriesByTimestampReader = (SeriesReaderByTimeStamp) seriesReaders.get(nextSeriesReaderByTimestampIndex++);
+                hasSeriesReaderByTimestampInitialized = true;
             }
             value = currentSeriesByTimestampReader.getValueInTimestamp(timestamp);
             if(value != null){
@@ -81,6 +77,7 @@ public class TsFilesReaderWithTimeStamp extends TsFilesReader implements SeriesR
         }
         return value;
     }
+
 
     public void setCurrentTimestamp(long currentTimestamp) {
         this.currentTimestamp = currentTimestamp;
@@ -160,6 +157,10 @@ public class TsFilesReaderWithTimeStamp extends TsFilesReader implements SeriesR
         }
 
         protected boolean singleTsFileSatisfied(IntervalFileNode fileNode){
+
+            if(fileNode.getStartTime(path.getDeltaObjectToString()) == -1){
+                return false;
+            }
             long minTime = fileNode.getStartTime(path.getDeltaObjectToString());
             long maxTime = fileNode.getEndTime(path.getDeltaObjectToString());
             return currentTimestamp >= minTime && currentTimestamp <= maxTime;

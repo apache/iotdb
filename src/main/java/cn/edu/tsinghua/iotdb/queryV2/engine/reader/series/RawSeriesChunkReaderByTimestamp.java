@@ -12,7 +12,6 @@ public class RawSeriesChunkReaderByTimestamp implements SeriesReaderByTimeStamp 
     private Iterator<TimeValuePair> timeValuePairIterator;
     private boolean hasCachedTimeValuePair;
     private TimeValuePair cachedTimeValuePair;
-    //private long currentTimeStamp;
 
     public RawSeriesChunkReaderByTimestamp(RawSeriesChunk rawSeriesChunk) {
         timeValuePairIterator = rawSeriesChunk.getIterator();
@@ -25,12 +24,6 @@ public class RawSeriesChunkReaderByTimestamp implements SeriesReaderByTimeStamp 
         }
         return timeValuePairIterator.hasNext();
     }
-
-
-//    public void setCurrentTimestamp(long currentTimeStamp) {
-//        this.currentTimeStamp = currentTimeStamp;
-//    }
-
 
     @Override
     public TimeValuePair next() throws IOException {
@@ -54,7 +47,6 @@ public class RawSeriesChunkReaderByTimestamp implements SeriesReaderByTimeStamp 
 
     @Override
     public TsPrimitiveType getValueInTimestamp(long timestamp) throws IOException {
-       // currentTimeStamp = timestamp;
         while(hasNext()){
             TimeValuePair timeValuePair = next();
             long time = timeValuePair.getTimestamp();
