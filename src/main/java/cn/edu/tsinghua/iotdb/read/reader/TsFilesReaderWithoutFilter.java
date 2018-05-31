@@ -22,22 +22,20 @@ public class TsFilesReaderWithoutFilter extends TsFilesReader{
             throws IOException {
         super(sortedSeriesDataSource);
 
-        List<PriorityTimeValuePairReader> timeValuePairReaders = new ArrayList<>();
         int priorityValue = 1;
 
         //add data in sealedTsFiles and unSealedTsFile
-        SealedTsFileWithoutFilterReader sealedTsFileWithoutFilterReader = new SealedTsFileWithoutFilterReader(sortedSeriesDataSource.getSealedTsFiles());
-        UnSealedTsFileWithoutFilterReader unSealedTsFileWithoutFilterReader = new UnSealedTsFileWithoutFilterReader(sortedSeriesDataSource.getUnsealedTsFile());
-        timeValuePairReaders.add(new PriorityTimeValuePairReader(sealedTsFileWithoutFilterReader, new PriorityTimeValuePairReader.Priority(priorityValue++)));
-        timeValuePairReaders.add(new PriorityTimeValuePairReader(unSealedTsFileWithoutFilterReader, new PriorityTimeValuePairReader.Priority(priorityValue++)));
+        if(sortedSeriesDataSource.getSealedTsFiles() != null){
+            seriesReaders.add(new SealedTsFileWithoutFilterReader(sortedSeriesDataSource.getSealedTsFiles()));
+        }
+        if(sortedSeriesDataSource.getUnsealedTsFile() != null){
+            seriesReaders.add(new UnSealedTsFileWithoutFilterReader(sortedSeriesDataSource.getUnsealedTsFile()));
+        }
 
         //add data in memTable
         if(sortedSeriesDataSource.hasRawSeriesChunk()) {
-            timeValuePairReaders.add(new PriorityTimeValuePairReader(new RawSeriesChunkReaderWithoutFilter(
-                    sortedSeriesDataSource.getRawSeriesChunk()), new PriorityTimeValuePairReader.Priority(priorityValue++)));
+            seriesReaders.add(new RawSeriesChunkReaderWithoutFilter(sortedSeriesDataSource.getRawSeriesChunk()));
         }
-
-        this.seriesReader = new PriorityMergeSortTimeValuePairReader(timeValuePairReaders);
     }
 
     protected class SealedTsFileWithoutFilterReader extends TsFilesReader.SealedTsFileReader{

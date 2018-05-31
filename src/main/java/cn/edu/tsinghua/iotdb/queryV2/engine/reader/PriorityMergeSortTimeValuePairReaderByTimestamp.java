@@ -1,41 +1,43 @@
 package cn.edu.tsinghua.iotdb.queryV2.engine.reader;
 
 import cn.edu.tsinghua.tsfile.timeseries.readV2.datatype.TimeValuePair;
+import cn.edu.tsinghua.tsfile.timeseries.readV2.datatype.TsPrimitiveType;
 import cn.edu.tsinghua.tsfile.timeseries.readV2.reader.SeriesReader;
+import cn.edu.tsinghua.tsfile.timeseries.readV2.reader.SeriesReaderByTimeStamp;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 
 import static java.util.Collections.sort;
 
-public class PriorityMergeSortTimeValuePairReaderByTimestamp implements SeriesReader {
+public class PriorityMergeSortTimeValuePairReaderByTimestamp implements SeriesReaderByTimeStamp {
 
     private List<PriorityTimeValuePairReaderByTimestamp> readerList;
-    private PriorityTimeValuePairReader timeValuePairReader;
+    private SeriesReaderByTimeStamp currentTimeValuePairReader;
 
 
     public PriorityMergeSortTimeValuePairReaderByTimestamp(PriorityTimeValuePairReaderByTimestamp... readers){
         readerList = new ArrayList<>();
+        //sort readers by priority using PriorityQueue
+        Queue<PriorityTimeValuePairReaderByTimestamp> priorityQueue = new PriorityQueue<>(readers.length);
         for (int i = 0; i < readers.length; i++) {
-            readerList.add(readers[i]);
+            priorityQueue.add(readers[i]);
         }
-        sort(readerList, Collections.reverseOrder());
+        for(int i = 0; i < readers.length; i++){
+            readerList.add(priorityQueue.poll());
+        }
     }
 
-    public PriorityMergeSortTimeValuePairReaderByTimestamp(List<PriorityTimeValuePairReaderByTimestamp> readerList){
+    public PriorityMergeSortTimeValuePairReaderByTimestamp(List<PriorityTimeValuePairReaderByTimestamp> readers){
         readerList = new ArrayList<>();
-        for (int i = 0; i < readerList.size(); i++) {
-            readerList.add(readerList.get(i));
+        //sort readers by priority using PriorityQueue
+        Queue<PriorityTimeValuePairReaderByTimestamp> priorityQueue = new PriorityQueue<>(readers.size());
+        for (int i = 0; i < readers.size(); i++) {
+            priorityQueue.add(readers.get(i));
         }
-        sort(readerList, Collections.reverseOrder());
-    }
-
-    public void setCurrentTime(long timestamp) {
-        readerList.forEach(priorityTimeValuePairReaderByTimestamp -> {
-            priorityTimeValuePairReaderByTimestamp.setCurrentTimestamp(timestamp);
-        });
+        for(int i = 0; i < readers.size(); i++){
+            readerList.add(priorityQueue.poll());
+        }
     }
 
 
@@ -43,17 +45,16 @@ public class PriorityMergeSortTimeValuePairReaderByTimestamp implements SeriesRe
     public boolean hasNext() throws IOException {
         for (PriorityTimeValuePairReaderByTimestamp priorityTimeValuePairReaderByTimestamp : readerList) {
             if(priorityTimeValuePairReaderByTimestamp.hasNext()){
-                timeValuePairReader = priorityTimeValuePairReaderByTimestamp;
+                currentTimeValuePairReader = priorityTimeValuePairReaderByTimestamp;
                 return true;
             }
-
         }
         return false;
     }
 
     @Override
     public TimeValuePair next() throws IOException {
-        return timeValuePairReader.next();
+        return currentTimeValuePairReader.next();
     }
 
     @Override
@@ -66,5 +67,18 @@ public class PriorityMergeSortTimeValuePairReaderByTimestamp implements SeriesRe
         for (PriorityTimeValuePairReaderByTimestamp priorityTimeValuePairReaderByTimestamp : readerList) {
             priorityTimeValuePairReaderByTimestamp.close();
         }
+    }
+
+    @Override
+    public TsPrimitiveType getValueInTimestamp(long timestamp) throws IOException {
+        TsPrimitiveType value = null;
+        for (PriorityTimeValuePairReaderByTimestamp priorityTimeValuePairReaderByTimestamp : readerList) {
+            value = priorityTimeValuePairReaderByTimestamp.getValueInTimestamp(timestamp);
+            if(value != null){
+                break;
+            }
+
+        }
+        return value;
     }
 }

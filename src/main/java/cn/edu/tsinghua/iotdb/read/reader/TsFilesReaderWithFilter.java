@@ -8,9 +8,7 @@ import cn.edu.tsinghua.iotdb.queryV2.engine.reader.PriorityTimeValuePairReader;
 import cn.edu.tsinghua.iotdb.queryV2.engine.reader.series.RawSeriesChunkReaderWithFilter;
 import cn.edu.tsinghua.tsfile.common.utils.ITsRandomAccessFileReader;
 import cn.edu.tsinghua.tsfile.timeseries.filter.utils.DigestForFilter;
-import cn.edu.tsinghua.tsfile.timeseries.filterV2.basic.Filter;
 import cn.edu.tsinghua.tsfile.timeseries.filterV2.expression.QueryFilterType;
-import cn.edu.tsinghua.tsfile.timeseries.filterV2.expression.impl.GlobalTimeFilter;
 import cn.edu.tsinghua.tsfile.timeseries.filterV2.expression.impl.SeriesFilter;
 import cn.edu.tsinghua.tsfile.timeseries.filterV2.visitor.impl.DigestFilterVisitor;
 import cn.edu.tsinghua.tsfile.timeseries.read.TsRandomAccessLocalFileReader;
@@ -32,23 +30,18 @@ public class TsFilesReaderWithFilter extends TsFilesReader {
         super(sortedSeriesDataSource);
 
         this.filter = filter;
-
-        List<PriorityTimeValuePairReader> timeValuePairReaders = new ArrayList<>();
-        int priorityValue = 1;
-
         //add data in sealedTsFiles and unSealedTsFile
-        TsFilesReaderWithFilter.SealedTsFileWithFilterReader sealedTsFileWithFilterReader = new TsFilesReaderWithFilter.SealedTsFileWithFilterReader(sortedSeriesDataSource.getSealedTsFiles());
-        TsFilesReaderWithFilter.UnSealedTsFileWithFilterReader unSealedTsFileWithFilterReader = new TsFilesReaderWithFilter.UnSealedTsFileWithFilterReader(sortedSeriesDataSource.getUnsealedTsFile());
-        timeValuePairReaders.add(new PriorityTimeValuePairReader(sealedTsFileWithFilterReader, new PriorityTimeValuePairReader.Priority(priorityValue++)));
-        timeValuePairReaders.add(new PriorityTimeValuePairReader(unSealedTsFileWithFilterReader, new PriorityTimeValuePairReader.Priority(priorityValue++)));
+        if(sortedSeriesDataSource.getSealedTsFiles() != null){
+            seriesReaders.add(new TsFilesReaderWithFilter.SealedTsFileWithFilterReader(sortedSeriesDataSource.getSealedTsFiles()));
+        }
+        if(sortedSeriesDataSource.getUnsealedTsFile() != null){
+            seriesReaders.add(new TsFilesReaderWithFilter.UnSealedTsFileWithFilterReader(sortedSeriesDataSource.getUnsealedTsFile()));
+        }
 
         //add data in memTable
         if(sortedSeriesDataSource.hasRawSeriesChunk()) {
-            timeValuePairReaders.add(new PriorityTimeValuePairReader(new RawSeriesChunkReaderWithFilter(
-                    sortedSeriesDataSource.getRawSeriesChunk(), filter.getFilter()), new PriorityTimeValuePairReader.Priority(priorityValue++)));
+            seriesReaders.add(new RawSeriesChunkReaderWithFilter(sortedSeriesDataSource.getRawSeriesChunk(), filter.getFilter()));
         }
-
-        this.seriesReader = new PriorityMergeSortTimeValuePairReader(timeValuePairReaders);
     }
 
     protected class SealedTsFileWithFilterReader extends TsFilesReader.SealedTsFileReader{
@@ -63,7 +56,7 @@ public class TsFilesReaderWithFilter extends TsFilesReader {
             if(filter.getType() == QueryFilterType.GLOBAL_TIME){//filter time
                 DigestFilterVisitor digestFilterVisitor = new DigestFilterVisitor();
                 DigestForFilter timeDigest = new DigestForFilter(fileNode.getStartTime(path.getDeltaObjectToString()),
-                        fileNode.getStartTime(path.getDeltaObjectToString()));
+                        fileNode.getEndTime(path.getDeltaObjectToString()));
                 return digestFilterVisitor.satisfy(timeDigest, null, filter.getFilter());
             }
             else{//fileNode doesn't hold the value scope for series
