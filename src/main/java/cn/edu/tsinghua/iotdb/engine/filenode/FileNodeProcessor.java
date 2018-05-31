@@ -2,6 +2,8 @@ package cn.edu.tsinghua.iotdb.engine.filenode;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.FileSystems;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -360,8 +362,8 @@ public class FileNodeProcessor extends Processor implements IStatistic {
 	}
 
 	/**
-	 * if overflow insert, update and delete write into this filenode processor,
-	 * set <code>isOverflowed</code> to true,
+	 * if overflow insert, update and delete write into this filenode processor, set
+	 * <code>isOverflowed</code> to true,
 	 */
 	public void setOverflowed(boolean isOverflowed) {
 		if (this.isOverflowed != isOverflowed) {
@@ -738,6 +740,9 @@ public class FileNodeProcessor extends Processor implements IStatistic {
 	 */
 	public void appendFile(IntervalFileNode appendFile, String appendFilePath) throws FileNodeProcessorException {
 		try {
+			if (!new File(appendFile.getFilePath()).getParentFile().exists()) {
+				new File(appendFile.getFilePath()).getParentFile().mkdirs();
+			}
 			// move file
 			File originFile = new File(appendFilePath);
 			File targetFile = new File(appendFile.getFilePath());
@@ -765,6 +770,45 @@ public class FileNodeProcessor extends Processor implements IStatistic {
 			LOGGER.error("Failed to append the tsfile {} to filenode processor {}.", appendFile, getProcessorName(), e);
 			throw new FileNodeProcessorException(e);
 		}
+	}
+
+	/**
+	 * get overlap tsfiles which are conflict with the appendFile
+	 * 
+	 * @param appendFile
+	 *            the appended tsfile information
+	 * @throws FileNodeProcessorException
+	 */
+	public List<String> getOverlapFiles(IntervalFileNode appendFile, String uuid)
+			throws FileNodeProcessorException {
+		List<String> overlapFiles = new ArrayList<>();
+		try {
+			for (IntervalFileNode intervalFileNode : newFileNodes) {
+				for (Entry<String, Long> entry : appendFile.getStartTimeMap().entrySet()) {
+					if (!intervalFileNode.getStartTimeMap().containsKey(entry.getKey())) {
+						continue;
+					}
+					if (intervalFileNode.getEndTime(entry.getKey()) >= entry.getValue() && intervalFileNode.getStartTime(entry.getKey()) <= appendFile
+								.getEndTime(entry.getKey())) {
+						String relativeFilePath = "postback" + File.separator + uuid + File.separator + "backup" + File.separator + intervalFileNode.getRelativePath();
+						File newFile = new File(Directories.getInstance().getTsFileFolder(intervalFileNode.getBaseDirIndex()), relativeFilePath);
+						if (!newFile.getParentFile().exists()) {
+							newFile.getParentFile().mkdirs();
+						}
+						java.nio.file.Path link = FileSystems.getDefault().getPath(newFile.getPath());
+						java.nio.file.Path target = FileSystems.getDefault()
+								.getPath(intervalFileNode.getFilePath());
+						Files.createLink(link, target);
+						overlapFiles.add(newFile.getPath());
+						break;
+					}
+				}
+			}
+		} catch (IOException e) {
+			LOGGER.error("Failed to get overlap tsfiles which conflict with the appendFile.");
+			throw new FileNodeProcessorException(e);
+		}
+		return overlapFiles;
 	}
 
 	public void addTimeSeries(String measurementToString, String dataType, String encoding, String[] encodingArgs) {

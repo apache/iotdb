@@ -16,6 +16,9 @@ import cn.edu.tsinghua.iotdb.engine.filenode.FileNodeManager;
 import cn.edu.tsinghua.iotdb.engine.memcontrol.BasicMemController;
 import cn.edu.tsinghua.iotdb.monitor.StatMonitor;
 
+import cn.edu.tsinghua.iotdb.monitor.StatMonitor;
+import cn.edu.tsinghua.iotdb.postback.conf.PostBackSenderDescriptor;
+import cn.edu.tsinghua.iotdb.postback.receiver.ServerManager;
 import cn.edu.tsinghua.iotdb.writelog.manager.MultiFileLogNodeManager;
 import cn.edu.tsinghua.iotdb.writelog.manager.WriteLogNodeManager;
 
@@ -24,6 +27,8 @@ public class IoTDB implements IoTDBMBean{
 	private RegisterManager registerManager = new RegisterManager();
     private final String MBEAN_NAME = String.format("%s:%s=%s", TsFileDBConstant.IOTDB_PACKAGE, TsFileDBConstant.JMX_TYPE, "IoTDB");
 
+	private ServerManager serverManager = ServerManager.getInstance();
+	
     private static class IoTDBHolder {
 		private static final IoTDB INSTANCE = new IoTDB();
 	}
@@ -77,9 +82,12 @@ public class IoTDB implements IoTDBMBean{
 		registerManager.register(BasicMemController.getInstance());
 		
 		JMXService.registerMBean(getInstance(), MBEAN_NAME);
+		
+		serverManager.startServer();
 	}
 
 	public void deactivate(){
+		serverManager.closeServer();
 		registerManager.deregisterAll();
 		JMXService.deregisterMBean(MBEAN_NAME);
 	}
