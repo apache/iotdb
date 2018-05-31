@@ -1,15 +1,15 @@
 package cn.edu.tsinghua.iotdb.service;
 
 public enum ServiceType {
-	FILE_NODE_SERVICE("File Node Service",""),
-	JMX_SERVICE("JMX Service","JMX Service"),
-	JDBC_SERVICE("JDBC Service","JDBCService"),
-	MONITOR_SERVICE("Monitor Service","Monitor"),
-	STAT_MONITOR_SERVICE("Statistics Service",""),
-	WAL_SERVICE("WAL Service",""),
-	CLOSE_MERGE_SERVICE("Close&Merge Service",""),
+	FILE_NODE_SERVICE("File Node ServerService",""),
+	JMX_SERVICE("JMX ServerService","JMX ServerService"),
+	JDBC_SERVICE("JDBC ServerService","JDBCService"),
+	MONITOR_SERVICE("Monitor ServerService","Monitor"),
+	STAT_MONITOR_SERVICE("Statistics ServerService",""),
+	WAL_SERVICE("WAL ServerService",""),
+	CLOSE_MERGE_SERVICE("Close&Merge ServerService",""),
 	JVM_MEM_CONTROL_SERVICE("Memory Controller",""),
-	AUTHORIZATION_SERVICE("Authorization Service", "");
+	AUTHORIZATION_SERVICE("Authorization ServerService", "");
 	
 	private String name;  
 	private String jmxName;

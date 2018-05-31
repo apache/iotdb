@@ -236,6 +236,25 @@ public class TsfileDBConfig {
 	 */
 	public int maxLogEntrySize = 4 * 1024 * 1024;
 
+	/**
+	 * IoTDB is a receiver of postback or not
+	 */
+	public boolean isPostbackEnable = true;
+
+	/**
+	 * If IoTDB is a receiver of postback, set the server port
+	 */
+	public int postbackServerPort = 5555;
+
+	/**
+	 * Choose a postBack strategy of merging historical data: 1. It's more likely to
+	 * update historical data, choose "true". 2. It's more likely not to update
+	 * historical data or you don't know exactly, choose "false".
+	 */
+	public boolean update_historical_data_possibility = false;
+
+	public String ipWhiteList = "0.0.0.0/0";
+
 	public TsfileDBConfig() {}
 
 	public void updatePath() {

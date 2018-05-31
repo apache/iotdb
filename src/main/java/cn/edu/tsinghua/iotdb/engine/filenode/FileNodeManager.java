@@ -627,6 +627,30 @@ public class FileNodeManager implements IStatistic, IService {
 		return true;
 	}
 
+	/**
+	 * get all overlap tsfiles which are conflict with the appendFile
+	 * 
+	 * @param fileNodeName
+	 *            the path of storage group
+	 * @param appendFile
+	 *            the appended tsfile information
+	 * @return
+	 * @throws FileNodeManagerException
+	 */
+	public List<String> getOverlapFilesFromFileNode(String fileNodeName, IntervalFileNode appendFile, String uuid)
+			throws FileNodeManagerException {
+		FileNodeProcessor fileNodeProcessor = getProcessor(fileNodeName, true);
+		List<String> overlapFiles = new ArrayList<>();
+		try {
+			overlapFiles = fileNodeProcessor.getOverlapFiles(appendFile, uuid);
+		} catch (FileNodeProcessorException e) {
+			throw new FileNodeManagerException(e);
+		} finally {
+			fileNodeProcessor.writeUnlock();
+		}
+		return overlapFiles;
+	}
+
 	public void mergeAll() throws FileNodeManagerException {
 		if (fileNodeManagerStatus == FileNodeManagerStatus.NONE) {
 			fileNodeManagerStatus = FileNodeManagerStatus.MERGE;
