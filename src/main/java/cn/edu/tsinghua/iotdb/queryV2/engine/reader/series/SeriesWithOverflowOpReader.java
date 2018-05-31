@@ -3,6 +3,7 @@ package cn.edu.tsinghua.iotdb.queryV2.engine.reader.series;
 import cn.edu.tsinghua.iotdb.queryV2.engine.overflow.OverflowOperation;
 import cn.edu.tsinghua.iotdb.queryV2.engine.overflow.OverflowOperationReader;
 import cn.edu.tsinghua.tsfile.timeseries.readV2.datatype.TimeValuePair;
+import cn.edu.tsinghua.tsfile.timeseries.readV2.datatype.TsPrimitiveType;
 import cn.edu.tsinghua.tsfile.timeseries.readV2.reader.SeriesReader;
 import cn.edu.tsinghua.tsfile.timeseries.readV2.reader.SeriesReaderByTimeStamp;
 import cn.edu.tsinghua.tsfile.timeseries.readV2.reader.TimeValuePairReader;
@@ -106,9 +107,26 @@ public class SeriesWithOverflowOpReader implements SeriesReader {
         seriesReader.close();
     }
 
-    public void setCurrentTimeStamp(long timeStamp){
-        if(seriesReader instanceof SeriesReaderByTimeStamp){
-            ((SeriesReaderByTimeStamp)seriesReader).setCurrentTimestamp(timeStamp);
+    public TsPrimitiveType getValueInTimestamp(long timestamp) throws IOException {
+        TsPrimitiveType value = ((SeriesReaderByTimeStamp)seriesReader).getValueInTimestamp(timestamp);
+        if(value == null){
+            return null;
+        }
+        if (hasOverflowOperation) {
+            hasOverflowOperation = moveToNextOperation(timestamp);
+            if (satisfiedOperation(timestamp)) {
+                if (overflowOperation.getType() == OverflowOperation.OperationType.UPDATE) {
+                    return overflowOperation.getValue();
+                } else if (overflowOperation.getType() == OverflowOperation.OperationType.DELETE) {
+                    return null;
+                } else {
+                    throw new UnsupportedOperationException("Unsupported overflow operation type:" + overflowOperation.getType());
+                }
+            } else {
+                return value;
+            }
+        } else {
+            return value;
         }
     }
 }

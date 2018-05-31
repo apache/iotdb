@@ -32,6 +32,7 @@ public abstract class TsFilesReader implements SeriesReader {
 
     public TsFilesReader(GlobalSortedSeriesDataSource sortedSeriesDataSource){
         path = sortedSeriesDataSource.getSeriesPath();
+        seriesReaders = new ArrayList<SeriesReader>();
         hasSeriesReaderInitialized = false;
         nextSeriesReaderIndex = 0;
     }
@@ -48,6 +49,7 @@ public abstract class TsFilesReader implements SeriesReader {
         while (nextSeriesReaderIndex < seriesReaders.size()){
             if(!hasSeriesReaderInitialized){
                 currentSeriesReader = seriesReaders.get(nextSeriesReaderIndex++);
+                hasSeriesReaderInitialized = true;
             }
             if(currentSeriesReader.hasNext()){
                 return true;
