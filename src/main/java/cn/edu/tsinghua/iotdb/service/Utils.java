@@ -61,21 +61,9 @@ public class Utils {
 				System.out.println(rowRecord);
 				tsQueryDataSet.getRecords().add(convertToTSRecord(rowRecord));
 			} else {
-//				break;
+				break;
 			}
 		}
-		System.out.println();
-
-//		for (int i = 0; i < fetchsize; i++) {
-//			if (queryDataSet.hasNext()) {
-//				RowRecord rowRecord = queryDataSet.next();
-//				System.out.println(rowRecord);
-//				tsQueryDataSet.getRecords().add(convertToTSRecord(rowRecord));
-//			} else {
-//				break;
-//			}
-//		}
-
 		return tsQueryDataSet;
 	}
 

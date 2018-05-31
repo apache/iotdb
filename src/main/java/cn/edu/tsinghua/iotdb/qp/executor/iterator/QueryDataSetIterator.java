@@ -20,6 +20,7 @@ public class QueryDataSetIterator implements QueryDataSet {
     private List<Path> paths;
     private List<String> aggregations;
     private List<FilterStructure> filterStructures = new ArrayList<>();
+    private boolean hasNext = true;
 
     //group by
     private long unit;
@@ -44,10 +45,17 @@ public class QueryDataSetIterator implements QueryDataSet {
 
     @Override
     public boolean hasNext() {
+        if(!hasNext)
+            return false;
         if (data == null || !data.hasNextRecord()) {
             try {
                 data = executor.groupBy(getAggrePair(), filterStructures, unit, origin, intervals, fetchSize);
-                return data.hasNextRecord();
+                if(data.hasNextRecord()) {
+                    return true;
+                } else {
+                    hasNext = false;
+                    return false;
+                }
             } catch (Exception e) {
                 e.printStackTrace();
                 throw new RuntimeException("meet error in hasNext because " + e.getMessage());
