@@ -4,9 +4,14 @@ import cn.edu.tsinghua.iotdb.exception.ArgsErrorException;
 import cn.edu.tsinghua.iotdb.qp.QueryProcessor;
 import cn.edu.tsinghua.iotdb.qp.exception.QueryProcessorException;
 import cn.edu.tsinghua.iotdb.qp.physical.PhysicalPlan;
+import cn.edu.tsinghua.iotdb.qp.physical.crud.QueryPlan;
 import cn.edu.tsinghua.iotdb.qp.utils.MemIntQpExecutor;
 import cn.edu.tsinghua.iotdb.qp.strategy.optimizer.ConcatPathOptimizer;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
+import cn.edu.tsinghua.tsfile.timeseries.filterV2.ValueFilter;
+import cn.edu.tsinghua.tsfile.timeseries.filterV2.expression.QueryFilter;
+import cn.edu.tsinghua.tsfile.timeseries.filterV2.expression.impl.SeriesFilter;
+import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
 import org.antlr.runtime.RecognitionException;
 import org.junit.Before;
 import org.junit.Test;
@@ -27,18 +32,10 @@ import static org.junit.Assert.assertEquals;
  *
  * @author kangrong
  */
-@RunWith(Parameterized.class)
 public class TestConcatOptimizer {
     private static final Logger LOG = LoggerFactory.getLogger(TestConcatOptimizer.class);
     private QueryProcessor processor;
 
-    private final String inputSQL;
-    private final String retPlan;
-
-    public TestConcatOptimizer(String inputSQL, String retPlan) {
-        this.inputSQL = inputSQL;
-        this.retPlan = retPlan;
-    }
 
     @Before
     public void before() throws ProcessorException {
@@ -79,80 +76,30 @@ public class TestConcatOptimizer {
         processor = new QueryProcessor(memProcessor);
     }
 
-    @Parameters
-    public static Collection<Object[]> data() {
-        return Arrays
-                .asList(new Object[][]{
-                        {
-                                "select s1 from root.laptop.* where s2 > 5",
-                                "MultiQueryPlan:\n" +
-                                        "SingleQueryPlan:\n" +
-                                        "  paths:  [root.laptop.d1.s1, root.laptop.d2.s1, root.laptop.d3.s1]\n" +
-                                        "  null\n" +
-                                        "  null\n" +
-                                        "  [and [root.laptop.d1.s2>5][root.laptop.d2.s2>5][root.laptop.d3.s2>5]]\n"
-                        },
-                        {
-                                "select s1 from root.laptop.*, root.laptop.d2 where s2 > 5 and time < 5 and (time > 3" +
-                                        " or s1 > 10)",
-                                "MultiQueryPlan:\n" +
-                                        "SingleQueryPlan:\n" +
-                                        "  paths:  [root.laptop.d1.s1, root.laptop.d2.s1, root.laptop.d3.s1, root" +
-                                        ".laptop.d2.s1]\n" +
-                                        "  [and[single:time] [time<5][time>3]]\n" +
-                                        "  null\n" +
-                                        "  [and [root.laptop.d1.s2>5][root.laptop.d2.s2>5][root.laptop.d3.s2>5]]\n" +
-                                        "\n" +
-                                        "SingleQueryPlan:\n" +
-                                        "  paths:  [root.laptop.d1.s1, root.laptop.d2.s1, root.laptop.d3.s1, root" +
-                                        ".laptop.d2.s1]\n" +
-                                        "  [time<5]\n" +
-                                        "  null\n" +
-                                        "  [and [root.laptop.d1.s1>10][root.laptop.d1.s2>5][root.laptop" +
-                                        ".d2.s1>10][root.laptop.d2.s2>5][root.laptop.d3.s1>10][root.laptop.d3.s2>5]]\n"
-                        },
-                        {
-                                "select s1 from root.laptop.d1, root.laptop.d2 where s1 > 5",
-                                "MultiQueryPlan:\n" +
-                                        "SingleQueryPlan:\n" +
-                                        "  paths:  [root.laptop.d1.s1, root.laptop.d2.s1]\n" +
-                                        "  null\n" +
-                                        "  null\n" +
-                                        "  [and [root.laptop.d1.s1>5][root.laptop.d2.s1>5]]\n"
-                        },
-                        {
-                                "select s1 from root.laptop.d1, root.laptop.d2 where root.laptop.d2.s2 > 10",
-                                "MultiQueryPlan:\n" +
-                                        "SingleQueryPlan:\n" +
-                                        "  paths:  [root.laptop.d1.s1, root.laptop.d2.s1]\n" +
-                                        "  null\n" +
-                                        "  null\n" +
-                                        "  [root.laptop.d2.s2>10]\n"
-                        },
-                        {
-                                "select s1 from root.laptop.d1, root.laptop.d2 where s1 > 5 and time > 5 or s2 < 10",
-                                "MultiQueryPlan:\n" +
-                                        "SingleQueryPlan:\n" +
-                                        "  paths:  [root.laptop.d1.s1, root.laptop.d2.s1]\n" +
-                                        "  [time>5]\n" +
-                                        "  null\n" +
-                                        "  [and [root.laptop.d1.s1>5][root.laptop.d2.s1>5]]\n" +
-                                        "\n" +
-                                        "SingleQueryPlan:\n" +
-                                        "  paths:  [root.laptop.d1.s1, root.laptop.d2.s1]\n" +
-                                        "  null\n" +
-                                        "  null\n" +
-                                        "  [and [root.laptop.d1.s2<10][root.laptop.d2.s2<10]]\n"
-                        },
-                });
+
+
+    @Test
+    public void testConcat1() throws QueryProcessorException, RecognitionException, ArgsErrorException {
+        String inputSQL = "select s1 from root.laptop.d1";
+        PhysicalPlan plan = processor.parseSQLToPhysicalPlan(inputSQL);
+        assertEquals("root.laptop.d1.s1", plan.getPaths().get(0).toString());
     }
 
     @Test
-    public void testQueryBasic() throws QueryProcessorException, RecognitionException, ArgsErrorException {
-        LOG.info("input SQL String:{}", inputSQL);
+    public void testConcat2() throws QueryProcessorException, RecognitionException, ArgsErrorException {
+        String inputSQL = "select s1 from root.laptop.*";
         PhysicalPlan plan = processor.parseSQLToPhysicalPlan(inputSQL);
-        System.out.println(plan.printQueryPlan());
-        assertEquals(retPlan, plan.printQueryPlan());
+        assertEquals("root.laptop.d1.s1", plan.getPaths().get(0).toString());
+        assertEquals("root.laptop.d2.s1", plan.getPaths().get(1).toString());
+        assertEquals("root.laptop.d3.s1", plan.getPaths().get(2).toString());
+    }
+
+    @Test
+    public void testConcat3() throws QueryProcessorException, RecognitionException, ArgsErrorException {
+        String inputSQL = "select s1 from root.laptop.d1 where s1 < 10";
+        PhysicalPlan plan = processor.parseSQLToPhysicalPlan(inputSQL);
+        SeriesFilter seriesFilter = new SeriesFilter(new Path("root.laptop.d1.s1"), ValueFilter.lt(10));
+        assertEquals(seriesFilter.toString(), ((QueryPlan)plan).getQueryFilter().toString());
     }
 
 }
