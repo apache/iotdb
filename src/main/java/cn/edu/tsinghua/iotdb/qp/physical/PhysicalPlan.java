@@ -20,6 +20,10 @@ public abstract class PhysicalPlan {
      */
     private String proposer;
 
+    protected PhysicalPlan(boolean isQuery) {
+        this.isQuery = isQuery;
+    }
+
     protected PhysicalPlan(boolean isQuery, Operator.OperatorType operatorType) {
         this.isQuery = isQuery;
         this.operatorType = operatorType;

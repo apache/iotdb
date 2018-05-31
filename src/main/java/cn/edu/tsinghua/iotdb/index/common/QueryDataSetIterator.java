@@ -10,8 +10,8 @@ import cn.edu.tsinghua.tsfile.timeseries.filter.definition.operators.And;
 import cn.edu.tsinghua.tsfile.timeseries.filter.definition.operators.GtEq;
 import cn.edu.tsinghua.tsfile.timeseries.filter.definition.operators.LtEq;
 import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
-import cn.edu.tsinghua.tsfile.timeseries.read.query.QueryDataSet;
-import cn.edu.tsinghua.tsfile.timeseries.read.support.RowRecord;
+import cn.edu.tsinghua.tsfile.timeseries.read.query.OnePassQueryDataSet;
+import cn.edu.tsinghua.tsfile.timeseries.read.support.OldRowRecord;
 import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
 import cn.edu.tsinghua.iotdb.exception.PathErrorException;
 import cn.edu.tsinghua.iotdb.query.engine.OverflowQueryEngine;
@@ -29,7 +29,7 @@ public class QueryDataSetIterator {
 
     private OverflowQueryEngine overflowQueryEngine;
 
-    private QueryDataSet queryDataSet;
+    private OnePassQueryDataSet queryDataSet;
 
     private List<Path> pathList;
 
@@ -62,17 +62,17 @@ public class QueryDataSetIterator {
     }
 
     public boolean hasNext() throws IOException, PathErrorException, ProcessorException {
-        if (queryDataSet.next()) {
+        if (queryDataSet.hasNextRecord()) {
             return true;
         } else {
             queryDataSet = overflowQueryEngine.query(0, pathList, (SingleSeriesFilterExpression) filterExpression, null, null,
                     queryDataSet, TsfileDBDescriptor.getInstance().getConfig().fetchSize, readToken);
 //            formNumber++;
-            return queryDataSet.next();
+            return queryDataSet.hasNextRecord();
         }
     }
 
-    public RowRecord getRowRecord() {
+    public OldRowRecord getRowRecord() {
         return queryDataSet.getCurrentRecord();
     }
 

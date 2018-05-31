@@ -14,7 +14,7 @@ import cn.edu.tsinghua.tsfile.timeseries.filter.definition.SingleSeriesFilterExp
 import cn.edu.tsinghua.tsfile.timeseries.filter.utils.LongInterval;
 import cn.edu.tsinghua.tsfile.timeseries.filter.verifier.FilterVerifier;
 import cn.edu.tsinghua.tsfile.timeseries.read.query.DynamicOneColumnData;
-import cn.edu.tsinghua.tsfile.timeseries.read.query.QueryDataSet;
+import cn.edu.tsinghua.tsfile.timeseries.read.query.OnePassQueryDataSet;
 import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -62,7 +62,7 @@ public class  GroupByEngineNoFilter {
     /** represent duplicated path index **/
     private Set<Integer> duplicatedPaths = new HashSet<>();
 
-    private QueryDataSet groupByResult = new QueryDataSet();
+    private OnePassQueryDataSet groupByResult = new OnePassQueryDataSet();
 
     private SingleSeriesFilterExpression queryTimeFilter;
 
@@ -94,7 +94,7 @@ public class  GroupByEngineNoFilter {
         }
     }
 
-    public QueryDataSet groupBy()
+    public OnePassQueryDataSet groupBy()
             throws IOException, ProcessorException, PathErrorException {
 
         groupByResult.clear();
