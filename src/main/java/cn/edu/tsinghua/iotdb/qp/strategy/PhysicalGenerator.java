@@ -266,8 +266,11 @@ public class PhysicalGenerator {
             multiQueryPlan.setQueryTime(time);
             multiQueryPlan.setFillType(queryOperator.getFillTypes());
             return multiQueryPlan;
+        } else if(queryOperator.hasAggregation()) { //old aggregation
+            return multiQueryPlan;
         } else { //ordinary query
-            return transformQueryV2(queryOperator);
+                return transformQueryV2(queryOperator);
+
         }
     }
 
