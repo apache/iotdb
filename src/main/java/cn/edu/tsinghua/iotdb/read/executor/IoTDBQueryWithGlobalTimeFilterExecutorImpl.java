@@ -33,15 +33,12 @@ import java.util.List;
  * IoTDB query executor with  global time filter
  * */
 public class IoTDBQueryWithGlobalTimeFilterExecutorImpl implements IoTDBQueryExecutor {
-    IoTDBTimeGenerator timestampGenerator;
 
     public IoTDBQueryWithGlobalTimeFilterExecutorImpl() {
     }
 
     @Override
     public QueryDataSet execute(QueryExpression queryExpression) throws IOException, FileNodeManagerException {
-
-        this.timestampGenerator = new IoTDBTimeGenerator(queryExpression.getQueryFilter());
 
         LinkedHashMap<Path, SeriesReader> readersOfSelectedSeries = new LinkedHashMap<>();
         Filter<Long> timeFilter = ((GlobalTimeFilter) queryExpression.getQueryFilter()).getFilter();
