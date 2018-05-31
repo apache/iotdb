@@ -3,7 +3,6 @@ package cn.edu.tsinghua.iotdb.read.reader;
 import cn.edu.tsinghua.iotdb.engine.filenode.IntervalFileNode;
 import cn.edu.tsinghua.iotdb.engine.querycontext.GlobalSortedSeriesDataSource;
 import cn.edu.tsinghua.iotdb.engine.querycontext.UnsealedTsFile;
-import cn.edu.tsinghua.iotdb.queryV2.engine.reader.PriorityMergeSortTimeValuePairReader;
 import cn.edu.tsinghua.tsfile.common.utils.ITsRandomAccessFileReader;
 import cn.edu.tsinghua.tsfile.file.metadata.TimeSeriesChunkMetaData;
 import cn.edu.tsinghua.tsfile.timeseries.read.TsRandomAccessLocalFileReader;
@@ -24,32 +23,57 @@ import java.util.List;
  * */
 public abstract class TsFilesReader implements SeriesReader {
 
-    protected PriorityMergeSortTimeValuePairReader seriesReader;
+    protected List<SeriesReader> seriesReaders;
     protected Path path;
 
+    private boolean hasSeriesReaderInitialized;
+    private int nextSeriesReaderIndex;
+    private SeriesReader currentSeriesReader;
 
     public TsFilesReader(GlobalSortedSeriesDataSource sortedSeriesDataSource){
         path = sortedSeriesDataSource.getSeriesPath();
+        hasSeriesReaderInitialized = false;
+        nextSeriesReaderIndex = 0;
     }
 
     @Override
     public boolean hasNext() throws IOException {
-        return seriesReader.hasNext();
+        if(hasSeriesReaderInitialized && currentSeriesReader.hasNext()){
+            return true;
+        }
+        else {
+            hasSeriesReaderInitialized = false;
+        }
+
+        while (nextSeriesReaderIndex < seriesReaders.size()){
+            if(!hasSeriesReaderInitialized){
+                currentSeriesReader = seriesReaders.get(nextSeriesReaderIndex++);
+            }
+            if(currentSeriesReader.hasNext()){
+                return true;
+            }
+            else {
+                hasSeriesReaderInitialized = false;
+            }
+        }
+        return false;
     }
 
     @Override
     public TimeValuePair next() throws IOException {
-        return seriesReader.next();
+        return currentSeriesReader.next();
     }
 
     @Override
     public void skipCurrentTimeValuePair() throws IOException {
-        seriesReader.skipCurrentTimeValuePair();
+        next();
     }
 
     @Override
     public void close() throws IOException {
-        seriesReader.close();
+        for (SeriesReader seriesReader: seriesReaders){
+            seriesReader.close();
+        }
     }
 
     private EncodedSeriesChunkDescriptor generateSeriesChunkDescriptorByMetadata(TimeSeriesChunkMetaData timeSeriesChunkMetaData, String filePath) {

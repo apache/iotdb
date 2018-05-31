@@ -141,7 +141,7 @@ public class SeriesReaderFactory {
     public SeriesReader createSeriesReaderForMerge(
             IntervalFileNode intervalFileNode, OverflowSeriesDataSource overflowSeriesDataSource, SeriesFilter<?> seriesFilter)
             throws IOException {
-        logger.debug("create seriesReader for merge. SeriesFilter = {}. TsFilePath = {}", seriesFilter, intervalFileNode.getFilePath());
+        logger.debug("create seriesReaders for merge. SeriesFilter = {}. TsFilePath = {}", seriesFilter, intervalFileNode.getFilePath());
         SeriesReader seriesInTsFileReader = genTsFileSeriesReader(intervalFileNode.getFilePath(), seriesFilter);
 
         SeriesReader overflowInsertDataReader = createSeriesReaderForOverflowInsert(overflowSeriesDataSource, seriesFilter.getFilter());
