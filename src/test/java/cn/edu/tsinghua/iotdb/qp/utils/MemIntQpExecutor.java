@@ -17,10 +17,10 @@ import cn.edu.tsinghua.tsfile.timeseries.filter.definition.CrossSeriesFilterExpr
 import cn.edu.tsinghua.tsfile.timeseries.filter.definition.FilterExpression;
 import cn.edu.tsinghua.tsfile.timeseries.filter.definition.SingleSeriesFilterExpression;
 import cn.edu.tsinghua.tsfile.timeseries.filter.visitorImpl.SingleValueVisitor;
-import cn.edu.tsinghua.tsfile.timeseries.read.query.QueryDataSet;
+import cn.edu.tsinghua.tsfile.timeseries.read.query.OnePassQueryDataSet;
 import cn.edu.tsinghua.tsfile.timeseries.read.support.Field;
 import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
-import cn.edu.tsinghua.tsfile.timeseries.read.support.RowRecord;
+import cn.edu.tsinghua.tsfile.timeseries.read.support.OldRowRecord;
 import cn.edu.tsinghua.tsfile.timeseries.utils.StringContainer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -174,20 +174,20 @@ public class MemIntQpExecutor extends QueryProcessExecutor {
 
 
     @Override
-    public QueryDataSet aggregate(List<Pair<Path, String>> aggres, List<FilterStructure> filterStructures)
+    public OnePassQueryDataSet aggregate(List<Pair<Path, String>> aggres, List<FilterStructure> filterStructures)
             throws ProcessorException, IOException, PathErrorException {
         throw new ProcessorException("Do not support");
     }
 
     @Override
-    public QueryDataSet groupBy(List<Pair<Path, String>> aggres, List<FilterStructure> filterStructures,
+    public OnePassQueryDataSet groupBy(List<Pair<Path, String>> aggres, List<FilterStructure> filterStructures,
                                 long unit, long origin, List<Pair<Long, Long>> intervals, int fetchSize)
             throws ProcessorException, IOException, PathErrorException {
         throw new ProcessorException("Do not support");
     }
 
     @Override
-    public QueryDataSet fill(List<Path> fillPaths, long queryTime, Map<TSDataType, IFill> fillType)
+    public OnePassQueryDataSet fill(List<Path> fillPaths, long queryTime, Map<TSDataType, IFill> fillType)
             throws ProcessorException, IOException, PathErrorException {
         throw new ProcessorException("Do not support");
     }
@@ -197,16 +197,16 @@ public class MemIntQpExecutor extends QueryProcessExecutor {
      * doesn't support frequency filter.
      */
     @Override
-    public QueryDataSet query(int formNumber, List<Path> paths, FilterExpression timeFilter,
+    public OnePassQueryDataSet query(int formNumber, List<Path> paths, FilterExpression timeFilter,
                               FilterExpression freqFilter, FilterExpression valueFilter,
-                              int fetchSize, QueryDataSet lastData) {
+                              int fetchSize, OnePassQueryDataSet lastData) {
         if (fetchSize == 0) {
             LOG.error("cannot specify fetchSize to zero,exit");
             System.exit(0);
         }
-        TestOutputQueryDataSet ret = new TestOutputQueryDataSet(fetchSize);
+        TestOutputOnePassQueryDataSet ret = new TestOutputOnePassQueryDataSet(fetchSize);
         long lastGetTimeStamp =
-                (lastData == null) ? -1 : ((TestOutputQueryDataSet) lastData)
+                (lastData == null) ? -1 : ((TestOutputOnePassQueryDataSet) lastData)
                         .getLastRowRecordTimeStamp();
         int haveSize = 0;
 
@@ -299,9 +299,9 @@ public class MemIntQpExecutor extends QueryProcessExecutor {
         return 0;
     }
 
-    private class TestOutputQueryDataSet extends OutputQueryDataSet {
+    private class TestOutputOnePassQueryDataSet extends OutputOnePassQueryDataSet {
 
-        public TestOutputQueryDataSet(int fetchSize) {
+        public TestOutputOnePassQueryDataSet(int fetchSize) {
             super(fetchSize);
         }
 
@@ -325,7 +325,7 @@ public class MemIntQpExecutor extends QueryProcessExecutor {
      *
      * @author kangrong
      */
-    private class TestIntegerRowRecord extends RowRecord {
+    private class TestIntegerRowRecord extends OldRowRecord {
         //pair<path, value>
         public List<Pair<String, String>> measurementData = new ArrayList<>();
 
@@ -338,7 +338,7 @@ public class MemIntQpExecutor extends QueryProcessExecutor {
             measurementData.add(new Pair<>(path, value));
         }
 
-        public void putARowRecord(RowRecord record) {
+        public void putARowRecord(OldRowRecord record) {
             TestIntegerRowRecord tmpRecord = (TestIntegerRowRecord) record;
             for (Pair<String, String> pair : tmpRecord.getMeasureMentData()) {
                 this.addSensor(pair.left, pair.right);

@@ -3,13 +3,16 @@ package cn.edu.tsinghua.iotdb.qp.query;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Iterator;
 
 import cn.edu.tsinghua.iotdb.exception.ArgsErrorException;
+import cn.edu.tsinghua.iotdb.exception.FileNodeManagerException;
 import cn.edu.tsinghua.iotdb.qp.QueryProcessor;
 import cn.edu.tsinghua.iotdb.qp.exception.QueryProcessorException;
+import cn.edu.tsinghua.tsfile.timeseries.readV2.query.QueryDataSet;
 import org.antlr.runtime.RecognitionException;
 import org.junit.Before;
 import org.junit.Test;
@@ -24,7 +27,7 @@ import cn.edu.tsinghua.iotdb.qp.utils.MemIntQpExecutor;
 import cn.edu.tsinghua.tsfile.common.constant.SystemConstant;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
-import cn.edu.tsinghua.tsfile.timeseries.read.query.QueryDataSet;
+import cn.edu.tsinghua.tsfile.timeseries.read.query.OnePassQueryDataSet;
 import cn.edu.tsinghua.tsfile.timeseries.utils.StringContainer;
 
 
@@ -126,23 +129,21 @@ public class TestQpQuery {
     }
 
     @Test
-    public void testQueryBasic() throws QueryProcessorException, RecognitionException, ArgsErrorException {
+    public void testQueryBasic() throws QueryProcessorException, RecognitionException, ArgsErrorException, IOException, FileNodeManagerException {
         LOG.info("input SQL String:{}", inputSQL);
         PhysicalPlan plan = processor.parseSQLToPhysicalPlan(inputSQL);
         if (!plan.isQuery())
             fail();
-        Iterator<QueryDataSet> iter = processor.getExecutor().processQuery(plan);
-        LOG.info("query result:");
+
+        QueryDataSet queryDataSet = processor.getExecutor().processQuery(plan);
         int i = 0;
-        while (iter.hasNext()) {
-            QueryDataSet set = iter.next();
-            while (set.hasNextRecord()) {
-                if (i == result.length)
-                    fail();
-                String actual = set.getNextRecord().toString();
-                assertEquals(result[i++], actual);
-            }
+        while (queryDataSet.hasNext()) {
+            if (i == result.length)
+                fail();
+            String actual = queryDataSet.next().toString();
+            assertEquals(result[i++], actual);
         }
+
         assertEquals(result.length, i);
         LOG.info("Query processing complete\n");
     }

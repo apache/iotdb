@@ -24,7 +24,7 @@ public interface QueryEngine {
     /**
      *
      * @param queryJob
-     * @return null if there is NOT corresponding QueryDataSet for given queryJob
+     * @return null if there is NOT corresponding OnePassQueryDataSet for given queryJob
      */
     QueryDataSet retrieveQueryDataSet(QueryJob queryJob);
 }

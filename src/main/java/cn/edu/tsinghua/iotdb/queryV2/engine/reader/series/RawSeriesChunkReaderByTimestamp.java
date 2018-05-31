@@ -56,6 +56,7 @@ public class RawSeriesChunkReaderByTimestamp implements SeriesReaderByTimeStamp 
             else if(time > timestamp){
                 hasCachedTimeValuePair = true;
                 cachedTimeValuePair = timeValuePair;
+                break;
             }
         }
         return null;

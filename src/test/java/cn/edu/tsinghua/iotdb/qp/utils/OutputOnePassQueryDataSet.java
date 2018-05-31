@@ -1,26 +1,26 @@
 package cn.edu.tsinghua.iotdb.qp.utils;
 
-import cn.edu.tsinghua.tsfile.timeseries.read.query.QueryDataSet;
-import cn.edu.tsinghua.tsfile.timeseries.read.support.RowRecord;
+import cn.edu.tsinghua.tsfile.timeseries.read.query.OnePassQueryDataSet;
+import cn.edu.tsinghua.tsfile.timeseries.read.support.OldRowRecord;
 
 /**
- * This getIndex data set is used for getIndex processing. getIndex processing merges a list of QueryDataSet
- * and construct a new OutputQueryDataSet by adding {@code RowRecord}. This class provides two
+ * This getIndex data set is used for getIndex processing. getIndex processing merges a list of OnePassQueryDataSet
+ * and construct a new OutputOnePassQueryDataSet by adding {@code RowRecord}. This class provides two
  * methods for caller {@code getNextRecord} and {@code hasNextRecord} just same as
- * {@code QueryDataSet}.
+ * {@code OnePassQueryDataSet}.
  * 
  * @author kangrong
  *
  */
-public class OutputQueryDataSet extends QueryDataSet {
+public class OutputOnePassQueryDataSet extends OnePassQueryDataSet {
     protected final int fetchSize;
-    protected RowRecord[] data;
+    protected OldRowRecord[] data;
     protected int size;
     protected int index;
 
-    public OutputQueryDataSet(int fetchSize) {
+    public OutputOnePassQueryDataSet(int fetchSize) {
         this.fetchSize = fetchSize;
-        data = new RowRecord[fetchSize];
+        data = new OldRowRecord[fetchSize];
         size = 0;
         index = 0;
     }
@@ -32,7 +32,7 @@ public class OutputQueryDataSet extends QueryDataSet {
      * @return if amount of exist record equals to fetchSize, return false, otherwise return true.
      * 
      */
-    public boolean addRowRecord(RowRecord r) {
+    public boolean addRowRecord(OldRowRecord r) {
         if (size < fetchSize) {
             data[size++] = r;
             return true;
@@ -45,7 +45,7 @@ public class OutputQueryDataSet extends QueryDataSet {
      * {@code hasNextRecord} before calling this method.
      */
     @Override
-    public RowRecord getNextRecord() {
+    public OldRowRecord getNextRecord() {
         return data[index++];
     }
 
