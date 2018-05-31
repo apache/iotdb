@@ -19,13 +19,13 @@ import cn.edu.tsinghua.tsfile.timeseries.readV2.datatype.TsPrimitiveType;
 public enum BasicOperatorType {
     EQ {
         @Override
-        public <T extends Comparable<T>, C extends FilterSeries<T>> SingleSeriesFilterExpression getFilter(
+        public <T extends Comparable<T>, C extends FilterSeries<T>> SingleSeriesFilterExpression getValueFilter(
                 C column, T value) {
             return FilterFactory.eq(column, value);
         }
 
         @Override
-        public <T extends Comparable<T>> Filter getFilter(T value) {
+        public <T extends Comparable<T>> Filter getValueFilter(T value) {
             return ValueFilter.eq(value);
         }
 
@@ -36,13 +36,13 @@ public enum BasicOperatorType {
     },
     LTEQ {
         @Override
-        public <T extends Comparable<T>, C extends FilterSeries<T>> SingleSeriesFilterExpression getFilter(
+        public <T extends Comparable<T>, C extends FilterSeries<T>> SingleSeriesFilterExpression getValueFilter(
                 C column, T value) {
             return FilterFactory.ltEq(column, value, true);
         }
 
         @Override
-        public <T extends Comparable<T>> Filter getFilter(T value) {
+        public <T extends Comparable<T>> Filter getValueFilter(T value) {
             return ValueFilter.ltEq(value);
         }
 
@@ -53,13 +53,13 @@ public enum BasicOperatorType {
     },
     LT {
         @Override
-        public <T extends Comparable<T>, C extends FilterSeries<T>> SingleSeriesFilterExpression getFilter(
+        public <T extends Comparable<T>, C extends FilterSeries<T>> SingleSeriesFilterExpression getValueFilter(
                 C column, T value) {
             return FilterFactory.ltEq(column, value, false);
         }
 
         @Override
-        public <T extends Comparable<T>> Filter getFilter(T value) {
+        public <T extends Comparable<T>> Filter getValueFilter(T value) {
             return ValueFilter.lt(value);
         }
 
@@ -70,13 +70,13 @@ public enum BasicOperatorType {
     },
     GTEQ {
         @Override
-        public <T extends Comparable<T>, C extends FilterSeries<T>> SingleSeriesFilterExpression getFilter(
+        public <T extends Comparable<T>, C extends FilterSeries<T>> SingleSeriesFilterExpression getValueFilter(
                 C column, T value) {
             return FilterFactory.gtEq(column, value, true);
         }
 
         @Override
-        public <T extends Comparable<T>> Filter getFilter(T value) {
+        public <T extends Comparable<T>> Filter getValueFilter(T value) {
             return ValueFilter.gtEq(value);
         }
 
@@ -87,13 +87,13 @@ public enum BasicOperatorType {
     },
     GT {
         @Override
-        public <T extends Comparable<T>, C extends FilterSeries<T>> SingleSeriesFilterExpression getFilter(
+        public <T extends Comparable<T>, C extends FilterSeries<T>> SingleSeriesFilterExpression getValueFilter(
                 C column, T value) {
             return FilterFactory.gtEq(column, value, false);
         }
 
         @Override
-        public <T extends Comparable<T>> Filter getFilter(T value) {
+        public <T extends Comparable<T>> Filter getValueFilter(T value) {
             return ValueFilter.gt(value);
         }
 
@@ -104,13 +104,13 @@ public enum BasicOperatorType {
     },
     NOTEQUAL {
         @Override
-        public <T extends Comparable<T>, C extends FilterSeries<T>> SingleSeriesFilterExpression getFilter(
+        public <T extends Comparable<T>, C extends FilterSeries<T>> SingleSeriesFilterExpression getValueFilter(
                 C column, T value) {
             return FilterFactory.noteq(column, value);
         }
 
         @Override
-        public <T extends Comparable<T>> Filter getFilter(T value) {
+        public <T extends Comparable<T>> Filter getValueFilter(T value) {
             return ValueFilter.notEq(value);
         }
 
@@ -141,10 +141,10 @@ public enum BasicOperatorType {
         }
     }
 
-    public abstract <T extends Comparable<T>, C extends FilterSeries<T>> SingleSeriesFilterExpression getFilter(
+    public abstract <T extends Comparable<T>, C extends FilterSeries<T>> SingleSeriesFilterExpression getValueFilter(
             C column, T value);
 
-    public abstract <T extends Comparable<T>> Filter getFilter(T tsPrimitiveType);
+    public abstract <T extends Comparable<T>> Filter getValueFilter(T tsPrimitiveType);
 
     public abstract Filter getTimeFilter(long value);
 }

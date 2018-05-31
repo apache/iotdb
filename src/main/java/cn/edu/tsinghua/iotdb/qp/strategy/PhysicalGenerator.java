@@ -327,9 +327,15 @@ public class PhysicalGenerator {
 
     private QueryFilter convertCNF2QueryFilter(FilterOperator operator) throws LogicalOperatorException, PathErrorException, GeneratePhysicalPlanException {
 
+        // e.g. time < 10 and time > 5 ,   time > 10
         if(operator.isSingle() && operator.getSinglePath().toString().equalsIgnoreCase(SQLConstant.RESERVED_TIME)) {
             return new GlobalTimeFilter(convertSingleFilterNode(operator));
         } else {
+            if(operator.isLeaf()) {  // e.g. s1 > 0
+                return new SeriesFilter<>(operator.getSinglePath(), convertSingleFilterNode(operator));
+            }
+
+            // e.g. (time>10) and (s1>10) and (s2>5) and (s1<20)
             List<FilterOperator> children = operator.getChildren();
             List<SeriesFilter> seriesFilters = new ArrayList<>();
             Filter timeFilter = null;
@@ -387,17 +393,17 @@ public class PhysicalGenerator {
 
             switch (type) {
                 case BOOLEAN:
-                    return funcToken.getFilter(Boolean.valueOf(basicOperator.getValue()));
+                    return funcToken.getValueFilter(Boolean.valueOf(basicOperator.getValue()));
                 case INT32:
-                    return funcToken.getFilter(Integer.valueOf(basicOperator.getValue()));
+                    return funcToken.getValueFilter(Integer.valueOf(basicOperator.getValue()));
                 case INT64:
-                    return isTime? funcToken.getTimeFilter(Long.valueOf(basicOperator.getValue())) : funcToken.getFilter(Long.valueOf(basicOperator.getValue()));
+                    return isTime? funcToken.getTimeFilter(Long.valueOf(basicOperator.getValue())) : funcToken.getValueFilter(Long.valueOf(basicOperator.getValue()));
                 case FLOAT:
-                    return funcToken.getFilter(Float.valueOf(basicOperator.getValue()));
+                    return funcToken.getValueFilter(Float.valueOf(basicOperator.getValue()));
                 case DOUBLE:
-                    return funcToken.getFilter(Double.valueOf(basicOperator.getValue()));
+                    return funcToken.getValueFilter(Double.valueOf(basicOperator.getValue()));
                 case TEXT:
-                    return funcToken.getFilter(new Binary(basicOperator.getValue()));
+                    return funcToken.getValueFilter(new Binary(basicOperator.getValue()));
                 default:
                         throw new LogicalOperatorException("not supported type: " + type);
             }
