@@ -3,6 +3,10 @@ package cn.edu.tsinghua.iotdb.read.reader;
 import cn.edu.tsinghua.iotdb.engine.filenode.IntervalFileNode;
 import cn.edu.tsinghua.iotdb.engine.querycontext.GlobalSortedSeriesDataSource;
 import cn.edu.tsinghua.iotdb.engine.querycontext.UnsealedTsFile;
+import cn.edu.tsinghua.iotdb.queryV2.engine.reader.PriorityMergeSortTimeValuePairReader;
+import cn.edu.tsinghua.iotdb.queryV2.engine.reader.PriorityMergeSortTimeValuePairReaderByTimestamp;
+import cn.edu.tsinghua.iotdb.queryV2.engine.reader.PriorityTimeValuePairReader;
+import cn.edu.tsinghua.iotdb.queryV2.engine.reader.PriorityTimeValuePairReaderByTimestamp;
 import cn.edu.tsinghua.iotdb.queryV2.engine.reader.series.RawSeriesChunkReaderByTimestamp;
 import cn.edu.tsinghua.tsfile.common.utils.ITsRandomAccessFileReader;
 import cn.edu.tsinghua.tsfile.timeseries.read.TsRandomAccessLocalFileReader;
@@ -15,33 +19,48 @@ import cn.edu.tsinghua.tsfile.timeseries.readV2.reader.impl.SeriesReaderFromSing
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 public class TsFilesReaderWithTimeStamp extends TsFilesReader implements SeriesReaderByTimeStamp{
 
     private long currentTimestamp;
-    private boolean hasSeriesReaderByTimestampInitialized;
-    private int nextSeriesReaderByTimestampIndex;
-    private SeriesReaderByTimeStamp currentSeriesByTimestampReader;
+    private PriorityMergeSortTimeValuePairReaderByTimestamp priorityMergeSortTimeValuePairReader;
 
     public TsFilesReaderWithTimeStamp(GlobalSortedSeriesDataSource sortedSeriesDataSource)
             throws IOException {
         super(sortedSeriesDataSource);
 
+        List< PriorityTimeValuePairReaderByTimestamp> priorityTimeValuePairReaderByTimestamps = new ArrayList<>();
+        int priority = 1;
+
         //data in sealedTsFiles and unSealedTsFile
         if(sortedSeriesDataSource.getSealedTsFiles() != null){
-            seriesReaders.add(new TsFilesReaderWithTimeStamp.SealedTsFileWithTimeStampReader(sortedSeriesDataSource.getSealedTsFiles()));
+            SealedTsFileWithTimeStampReader sealedTsFileWithTimeStampReader = new SealedTsFileWithTimeStampReader(sortedSeriesDataSource.getSealedTsFiles());
+            priorityTimeValuePairReaderByTimestamps.add(new PriorityTimeValuePairReaderByTimestamp(sealedTsFileWithTimeStampReader, new PriorityTimeValuePairReader.Priority(priority++)));
         }
         if(sortedSeriesDataSource.getUnsealedTsFile() != null){
-            seriesReaders.add(new TsFilesReaderWithTimeStamp.UnSealedTsFileWithTimeStampReader(sortedSeriesDataSource.getUnsealedTsFile()));
+            UnSealedTsFileWithTimeStampReader unSealedTsFileWithTimeStampReader = new UnSealedTsFileWithTimeStampReader(sortedSeriesDataSource.getUnsealedTsFile());
+            priorityTimeValuePairReaderByTimestamps.add(new PriorityTimeValuePairReaderByTimestamp(unSealedTsFileWithTimeStampReader, new PriorityTimeValuePairReader.Priority(priority++)));
         }
         //data in memTable
         if(sortedSeriesDataSource.hasRawSeriesChunk()) {
-            seriesReaders.add(new RawSeriesChunkReaderByTimestamp(sortedSeriesDataSource.getRawSeriesChunk()));
+            RawSeriesChunkReaderByTimestamp rawSeriesChunkReaderByTimestamp = new RawSeriesChunkReaderByTimestamp(sortedSeriesDataSource.getRawSeriesChunk());
+            priorityTimeValuePairReaderByTimestamps.add(new PriorityTimeValuePairReaderByTimestamp(rawSeriesChunkReaderByTimestamp, new PriorityTimeValuePairReader.Priority(priority++)));
         }
 
-        hasSeriesReaderByTimestampInitialized = false;
-        nextSeriesReaderByTimestampIndex = 0;
+        priorityMergeSortTimeValuePairReader = new PriorityMergeSortTimeValuePairReaderByTimestamp(priorityTimeValuePairReaderByTimestamps);
+        currentTimestamp = Long.MIN_VALUE;
+    }
+
+    @Override
+    public boolean hasNext() throws IOException {
+        return priorityMergeSortTimeValuePairReader.hasNext();
+    }
+
+    @Override
+    public TimeValuePair next() throws IOException {
+        return priorityMergeSortTimeValuePairReader.next();
     }
 
     /**
@@ -52,30 +71,7 @@ public class TsFilesReaderWithTimeStamp extends TsFilesReader implements SeriesR
     @Override
     public TsPrimitiveType getValueInTimestamp(long timestamp) throws IOException {
         setCurrentTimestamp(timestamp);
-        TsPrimitiveType value = null;
-        if(hasSeriesReaderByTimestampInitialized){
-            value = currentSeriesByTimestampReader.getValueInTimestamp(timestamp);
-            if(value != null){
-                return value;
-            }
-            else {
-                hasSeriesReaderByTimestampInitialized = false;
-            }
-        }
-        while (nextSeriesReaderByTimestampIndex < seriesReaders.size()){
-            if(!hasSeriesReaderByTimestampInitialized){
-                currentSeriesByTimestampReader = (SeriesReaderByTimeStamp) seriesReaders.get(nextSeriesReaderByTimestampIndex++);
-                hasSeriesReaderByTimestampInitialized = true;
-            }
-            value = currentSeriesByTimestampReader.getValueInTimestamp(timestamp);
-            if(value != null){
-                return value;
-            }
-            else {
-                hasSeriesReaderByTimestampInitialized = false;
-            }
-        }
-        return value;
+        return priorityMergeSortTimeValuePairReader.getValueInTimestamp(timestamp);
     }
 
 
@@ -96,7 +92,7 @@ public class TsFilesReaderWithTimeStamp extends TsFilesReader implements SeriesR
         @Override
         public boolean hasNext() throws IOException {
             //hasCached
-            if(hasCacheLastTimeValuePair && cachedTimeValuePair.getTimestamp() == currentTimestamp){
+            if(hasCacheLastTimeValuePair && cachedTimeValuePair.getTimestamp() >= currentTimestamp){
                 return true;
             }
             //singleTsFileReader has initialized
@@ -108,27 +104,25 @@ public class TsFilesReaderWithTimeStamp extends TsFilesReader implements SeriesR
                     return true;
                 }
                 else {
-                    singleTsFileReaderInitialized = false;
+                    if(singleTsFileReader.hasNext()){
+                        return true;
+                    }
+                    else {
+                        singleTsFileReaderInitialized = false;
+                    }
                 }
             }
 
             while ((usedIntervalFileIndex + 1) < sealedTsFiles.size()) {
                 if (!singleTsFileReaderInitialized) {
                     IntervalFileNode fileNode = sealedTsFiles.get(++usedIntervalFileIndex);
-                    //minTimestamp<=currentTimestamp<=maxTimestamp
+                    //currentTimestamp<=maxTimestamp
                     if (singleTsFileSatisfied(fileNode)) {
                         initSingleTsFileReader(fileNode);
                         singleTsFileReaderInitialized = true;
                     }
                     else {
-                        long minTimestamp = fileNode.getStartTime(path.getDeltaObjectToString());
-                        long maxTimestamp = fileNode.getEndTime(path.getDeltaObjectToString());
-                        if (maxTimestamp < currentTimestamp) {
-                            continue;
-                        }
-                        else if (minTimestamp > currentTimestamp) {
-                            return false;
-                        }
+                        continue;
                     }
                 }
                 //singleTsFileReader has already initialized
@@ -139,7 +133,12 @@ public class TsFilesReaderWithTimeStamp extends TsFilesReader implements SeriesR
                     return true;
                 }
                 else {
-                    singleTsFileReaderInitialized = false;
+                    if(singleTsFileReader.hasNext()){
+                        return true;
+                    }
+                    else {
+                        singleTsFileReaderInitialized = false;
+                    }
                 }
             }
             return false;
@@ -147,12 +146,12 @@ public class TsFilesReaderWithTimeStamp extends TsFilesReader implements SeriesR
 
         @Override
         public TimeValuePair next() throws IOException {
-            if(hasNext()){
+            if(hasCacheLastTimeValuePair){
                 hasCacheLastTimeValuePair = false;
                 return cachedTimeValuePair;
             }
             else {
-                return null;
+                return singleTsFileReader.next();
             }
         }
 
@@ -161,9 +160,8 @@ public class TsFilesReaderWithTimeStamp extends TsFilesReader implements SeriesR
             if(fileNode.getStartTime(path.getDeltaObjectToString()) == -1){
                 return false;
             }
-            long minTime = fileNode.getStartTime(path.getDeltaObjectToString());
             long maxTime = fileNode.getEndTime(path.getDeltaObjectToString());
-            return currentTimestamp >= minTime && currentTimestamp <= maxTime;
+            return currentTimestamp <= maxTime;
         }
 
         protected void initSingleTsFileReader(IntervalFileNode fileNode)throws IOException {
@@ -173,45 +171,32 @@ public class TsFilesReaderWithTimeStamp extends TsFilesReader implements SeriesR
 
         @Override
         public TsPrimitiveType getValueInTimestamp(long timestamp) throws IOException {
-            currentTimestamp = timestamp;
             if(hasNext()){
-                return next().getValue();
+                cachedTimeValuePair = next();
+                if(cachedTimeValuePair.getTimestamp() == timestamp){
+                    return cachedTimeValuePair.getValue();
+                }
+                else {
+                    hasCacheLastTimeValuePair = true;
+                }
             }
             return null;
         }
     }
 
     protected class UnSealedTsFileWithTimeStampReader extends TsFilesReader.UnSealedTsFileReader implements SeriesReaderByTimeStamp{
-        private boolean hasCacheLastTimeValuePair;
-        private TimeValuePair cachedTimeValuePair;
 
         public UnSealedTsFileWithTimeStampReader(UnsealedTsFile unsealedTsFile) throws FileNotFoundException {
             super(unsealedTsFile);
-            hasCacheLastTimeValuePair = false;
         }
 
         @Override
         public boolean hasNext() throws IOException {
-            //hasCached
-            if(hasCacheLastTimeValuePair && cachedTimeValuePair.getTimestamp() == currentTimestamp){
-                return true;
-            }
-
-            TsPrimitiveType value = ((SeriesReaderFromSingleFileByTimestampImpl)singleTsFileReader).getValueInTimestamp(currentTimestamp);
-            if(value != null){
-                hasCacheLastTimeValuePair = true;
-                cachedTimeValuePair = new TimeValuePair(currentTimestamp,value);
-                return true;
-            }
-            return false;
+            return singleTsFileReader.hasNext();
         }
         @Override
         public TimeValuePair next() throws IOException {
-            if(hasNext()){
-                hasCacheLastTimeValuePair = false;
-                return cachedTimeValuePair;
-            }
-            return null;
+            return singleTsFileReader.next();
         }
         protected void initSingleTsFileReader(ITsRandomAccessFileReader randomAccessFileReader,
                                               SeriesChunkLoader seriesChunkLoader, List<EncodedSeriesChunkDescriptor> encodedSeriesChunkDescriptorList){
@@ -220,10 +205,7 @@ public class TsFilesReaderWithTimeStamp extends TsFilesReader implements SeriesR
 
         @Override
         public TsPrimitiveType getValueInTimestamp(long timestamp) throws IOException {
-            if(hasNext()){
-                return next().getValue();
-            }
-            return null;
+            return ((SeriesReaderByTimeStamp)singleTsFileReader).getValueInTimestamp(timestamp);
         }
     }
 
