@@ -21,6 +21,7 @@ import cn.edu.tsinghua.iotdb.qp.physical.sys.AuthorPlan;
 import cn.edu.tsinghua.iotdb.qp.physical.sys.LoadDataPlan;
 import cn.edu.tsinghua.iotdb.qp.physical.sys.MetadataPlan;
 import cn.edu.tsinghua.iotdb.qp.physical.sys.PropertyPlan;
+import cn.edu.tsinghua.iotdb.sql.parse.TSParser;
 import cn.edu.tsinghua.tsfile.common.utils.Binary;
 import cn.edu.tsinghua.tsfile.common.utils.Pair;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
@@ -334,11 +335,15 @@ public class PhysicalGenerator {
         if(operator.isSingle() && operator.getSinglePath().toString().equalsIgnoreCase(SQLConstant.RESERVED_TIME)) {
             return new GlobalTimeFilter(convertSingleFilterNode(operator));
         } else {
-            if(operator.isLeaf()) {  // e.g. s1 > 0
+            if(operator.isSingle()) {  // e.g. s1 > 0 or s1 < 10
                 return new SeriesFilter<>(operator.getSinglePath(), convertSingleFilterNode(operator));
             }
 
             // e.g. (time>10) and (s1>10) and (s2>5) and (s1<20)
+//            if(operator.getTokenIntType() == KW_OR) {
+
+//            }
+
             List<FilterOperator> children = operator.getChildren();
             List<SeriesFilter> seriesFilters = new ArrayList<>();
             Filter timeFilter = null;
