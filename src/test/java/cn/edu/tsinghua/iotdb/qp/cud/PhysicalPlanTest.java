@@ -231,4 +231,26 @@ public class PhysicalPlanTest {
         assertEquals(path, plan.getPaths().get(0));
     }
 
+    @Test
+    public void testQuery5() throws QueryProcessorException, ArgsErrorException {
+        String sqlStr =
+                "SELECT s1 FROM root.vehicle.d1 WHERE s1 > 20 or s1 < 10";
+        PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
+        QueryFilter queryFilter = ((QueryPlan) plan).getQueryFilter();
+        QueryFilter expect = new SeriesFilter<>(new Path("root.vehicle.d1.s1"), FilterFactory.or(ValueFilter.gt(20), ValueFilter.lt(10)));
+        assertEquals(expect.toString(), queryFilter.toString());
+
+    }
+
+    @Test
+    public void testQuery6() throws QueryProcessorException, ArgsErrorException {
+        String sqlStr =
+                "SELECT s1 FROM root.vehicle.d1 WHERE time > 20 or time < 10";
+        PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
+        QueryFilter queryFilter = ((QueryPlan) plan).getQueryFilter();
+        QueryFilter expect = new GlobalTimeFilter(FilterFactory.or(TimeFilter.gt(20L), TimeFilter.lt(10L)));
+        assertEquals(expect.toString(), queryFilter.toString());
+
+    }
+
 }
