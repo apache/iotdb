@@ -10,53 +10,36 @@ import java.util.*;
 
 import static java.util.Collections.sort;
 
-public class PriorityMergeSortTimeValuePairReaderByTimestamp implements SeriesReaderByTimeStamp {
+public class PriorityMergeSortTimeValuePairReaderByTimestamp extends PriorityMergeSortTimeValuePairReader<PriorityTimeValuePairReaderByTimestamp>
+        implements SeriesReaderByTimeStamp {
 
-    private List<PriorityTimeValuePairReaderByTimestamp> readerList;
-    private SeriesReaderByTimeStamp currentTimeValuePairReader;
+    private long currentTimestamp;
+    private boolean hasCachedTimeValuePair;
+    private TimeValuePair cachedTimeValuePair;
 
-
-    public PriorityMergeSortTimeValuePairReaderByTimestamp(PriorityTimeValuePairReaderByTimestamp... readers){
-        readerList = new ArrayList<>();
-
-        int size = readers.length;
-        if(size < 1){
-            return;
-        }
-        //sort readers by priority using PriorityQueue
-        Queue<PriorityTimeValuePairReaderByTimestamp> priorityQueue = new PriorityQueue<>(readers.length);
-        for (int i = 0; i < size; i++) {
-            priorityQueue.add(readers[i]);
-        }
-        for(int i = 0; i < size; i++){
-            readerList.add(priorityQueue.poll());
-        }
+    public PriorityMergeSortTimeValuePairReaderByTimestamp(PriorityTimeValuePairReaderByTimestamp... readers) throws IOException {
+       super(readers);
+       currentTimestamp = Long.MIN_VALUE;
+       hasCachedTimeValuePair = false;
     }
 
-    public PriorityMergeSortTimeValuePairReaderByTimestamp(List<PriorityTimeValuePairReaderByTimestamp> readers){
-        readerList = new ArrayList<>();
-
-        int size = readers.size();
-        if(size < 1){
-            return;
-        }
-
-        //sort readers by priority using PriorityQueue
-        Queue<PriorityTimeValuePairReaderByTimestamp> priorityQueue = new PriorityQueue<>(readers.size());
-        for (int i = 0; i < size; i++) {
-            priorityQueue.add(readers.get(i));
-        }
-        for(int i = 0; i < size; i++){
-            readerList.add(priorityQueue.poll());
-        }
+    public PriorityMergeSortTimeValuePairReaderByTimestamp(List<PriorityTimeValuePairReaderByTimestamp> readers) throws IOException {
+        super(readers);
+        currentTimestamp = Long.MIN_VALUE;
+        hasCachedTimeValuePair = false;
     }
-
 
     @Override
     public boolean hasNext() throws IOException {
-        for (PriorityTimeValuePairReaderByTimestamp priorityTimeValuePairReaderByTimestamp : readerList) {
-            if(priorityTimeValuePairReaderByTimestamp.hasNext()){
-                currentTimeValuePairReader = priorityTimeValuePairReaderByTimestamp;
+        if(hasCachedTimeValuePair && cachedTimeValuePair.getTimestamp() >= currentTimestamp){
+            return true;
+        }
+        while (heap.size()>0){
+            Element top = heap.peek();
+            updateHeap(top);
+            if(top.timeValuePair.getTimestamp() >= currentTimestamp){
+                hasCachedTimeValuePair = true;
+                cachedTimeValuePair = top.timeValuePair;
                 return true;
             }
         }
@@ -65,31 +48,53 @@ public class PriorityMergeSortTimeValuePairReaderByTimestamp implements SeriesRe
 
     @Override
     public TimeValuePair next() throws IOException {
-        return currentTimeValuePairReader.next();
+        if(hasCachedTimeValuePair){
+            hasCachedTimeValuePair = false;
+            return cachedTimeValuePair;
+        }
+
+        Element top = heap.peek();
+        updateHeap(top);
+        return top.timeValuePair;
     }
 
-    @Override
-    public void skipCurrentTimeValuePair() throws IOException {
-        next();
-    }
+    private void updateHeap(Element top) throws IOException {
+        while (heap.size() > 0 && heap.peek().timeValuePair.getTimestamp() == top.timeValuePair.getTimestamp()) {
+            Element e = heap.poll();
+            PriorityTimeValuePairReaderByTimestamp priorityTimeValuePairReader = readerList.get(e.index);
 
-    @Override
-    public void close() throws IOException {
-        for (PriorityTimeValuePairReaderByTimestamp priorityTimeValuePairReaderByTimestamp : readerList) {
-            priorityTimeValuePairReaderByTimestamp.close();
+            if(currentTimestamp > top.timeValuePair.getTimestamp()){
+                TsPrimitiveType value = priorityTimeValuePairReader.getValueInTimestamp(currentTimestamp);
+                if(value != null){
+                    heap.add(new Element(e.index, new TimeValuePair(currentTimestamp, value), priorityTimeValuePairReader.getPriority()));
+                }
+                else {
+                    //judge if priorityTimeValuePairReader has a timeValuePair whose time > currentTimestamp when it doesn't has a timeValuePair in currentTimestamp
+                    if (priorityTimeValuePairReader.hasNext()) {
+                        heap.add(new Element(e.index, priorityTimeValuePairReader.next(), priorityTimeValuePairReader.getPriority()));
+                    }
+                }
+            }
+            else {
+                if (priorityTimeValuePairReader.hasNext()) {
+                    heap.add(new Element(e.index, priorityTimeValuePairReader.next(), priorityTimeValuePairReader.getPriority()));
+                }
+            }
         }
     }
 
     @Override
     public TsPrimitiveType getValueInTimestamp(long timestamp) throws IOException {
-        TsPrimitiveType value = null;
-        for (PriorityTimeValuePairReaderByTimestamp priorityTimeValuePairReaderByTimestamp : readerList) {
-            value = priorityTimeValuePairReaderByTimestamp.getValueInTimestamp(timestamp);
-            if(value != null){
-                break;
+        currentTimestamp = timestamp;
+        if(hasNext()){
+            cachedTimeValuePair = next();
+            if(cachedTimeValuePair.getTimestamp() == timestamp){
+                return cachedTimeValuePair.getValue();
             }
-
+            else if(cachedTimeValuePair.getTimestamp() > timestamp){
+                hasCachedTimeValuePair = true;
+            }
         }
-        return value;
+        return null;
     }
 }
