@@ -10,6 +10,7 @@ import java.util.Collection;
 import java.util.Iterator;
 
 import cn.edu.tsinghua.iotdb.exception.FileNodeManagerException;
+import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 import cn.edu.tsinghua.tsfile.timeseries.readV2.query.QueryDataSet;
 import org.junit.Before;
 import org.junit.Test;
@@ -68,7 +69,7 @@ public class TestSingleFileQpQuery {
     }
 
     @Test
-    public void testQueryBasic() throws QueryProcessorException, ArgsErrorException, IOException, FileNodeManagerException {
+    public void testQueryBasic() throws QueryProcessorException, ArgsErrorException, IOException, FileNodeManagerException, ProcessorException {
         if (exec == null)
             return;
         PhysicalPlan physicalPlan = processor.parseSQLToPhysicalPlan(inputSQL);

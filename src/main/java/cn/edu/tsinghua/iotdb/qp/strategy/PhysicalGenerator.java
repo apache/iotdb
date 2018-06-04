@@ -2,10 +2,12 @@ package cn.edu.tsinghua.iotdb.qp.strategy;
 
 import cn.edu.tsinghua.iotdb.auth.AuthException;
 import cn.edu.tsinghua.iotdb.exception.PathErrorException;
+import cn.edu.tsinghua.iotdb.metadata.MManager;
 import cn.edu.tsinghua.iotdb.qp.constant.SQLConstant;
 import cn.edu.tsinghua.iotdb.qp.exception.GeneratePhysicalPlanException;
 import cn.edu.tsinghua.iotdb.qp.exception.LogicalOperatorException;
 import cn.edu.tsinghua.iotdb.qp.exception.QueryProcessorException;
+import cn.edu.tsinghua.iotdb.qp.executor.OverflowQPExecutor;
 import cn.edu.tsinghua.iotdb.qp.executor.QueryProcessExecutor;
 import cn.edu.tsinghua.iotdb.qp.logical.Operator;
 import cn.edu.tsinghua.iotdb.qp.logical.crud.*;
@@ -22,6 +24,7 @@ import cn.edu.tsinghua.iotdb.qp.physical.sys.LoadDataPlan;
 import cn.edu.tsinghua.iotdb.qp.physical.sys.MetadataPlan;
 import cn.edu.tsinghua.iotdb.qp.physical.sys.PropertyPlan;
 import cn.edu.tsinghua.iotdb.sql.parse.TSParser;
+import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 import cn.edu.tsinghua.tsfile.common.utils.Binary;
 import cn.edu.tsinghua.tsfile.common.utils.Pair;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
@@ -56,7 +59,7 @@ public class PhysicalGenerator {
         this.executor = executor;
     }
 
-    public PhysicalPlan transformToPhysicalPlan(Operator operator) throws QueryProcessorException {
+    public PhysicalPlan transformToPhysicalPlan(Operator operator) throws QueryProcessorException, ProcessorException {
         List<Path> paths;
         switch (operator.getType()) {
             case AUTHOR:
@@ -234,7 +237,7 @@ public class PhysicalGenerator {
         }
     }
 
-    private PhysicalPlan transformQuery(QueryOperator queryOperator) throws QueryProcessorException {
+    private PhysicalPlan transformQuery(QueryOperator queryOperator) throws QueryProcessorException, ProcessorException {
 
         List<Path> paths = queryOperator.getSelectedPaths();
         List<String> aggregations = queryOperator.getSelectOperator().getAggregations();
@@ -275,7 +278,7 @@ public class PhysicalGenerator {
         }
     }
 
-    private PhysicalPlan transformQueryV2(QueryOperator queryOperator) throws QueryProcessorException {
+    private PhysicalPlan transformQueryV2(QueryOperator queryOperator) throws QueryProcessorException, ProcessorException {
 
         QueryPlan queryPlan;
 
@@ -312,7 +315,7 @@ public class PhysicalGenerator {
     }
 
 
-    private QueryFilter convertDNF2QueryFilter(List<FilterOperator> parts) throws LogicalOperatorException, PathErrorException, GeneratePhysicalPlanException {
+    private QueryFilter convertDNF2QueryFilter(List<FilterOperator> parts) throws LogicalOperatorException, PathErrorException, GeneratePhysicalPlanException, ProcessorException {
         QueryFilter ret = null;
         List<QueryFilter> queryFilters = new ArrayList<>();
         for (FilterOperator filter : parts) {
@@ -329,7 +332,7 @@ public class PhysicalGenerator {
         return ret;
     }
 
-    private QueryFilter convertCNF2QueryFilter(FilterOperator operator) throws LogicalOperatorException, PathErrorException, GeneratePhysicalPlanException {
+    private QueryFilter convertCNF2QueryFilter(FilterOperator operator) throws LogicalOperatorException, PathErrorException, GeneratePhysicalPlanException, ProcessorException {
 
         // e.g. time < 10 and time > 5 ,   time > 10
         if(operator.isSingle() && operator.getSinglePath().toString().equalsIgnoreCase(SQLConstant.RESERVED_TIME)) {
@@ -387,7 +390,7 @@ public class PhysicalGenerator {
         }
     }
 
-    private Filter convertSingleFilterNode(FilterOperator node) throws LogicalOperatorException, PathErrorException {
+    private Filter convertSingleFilterNode(FilterOperator node) throws LogicalOperatorException, PathErrorException, ProcessorException {
         if(node.isLeaf()) {
             Path path = node.getSinglePath();
             TSDataType type = executor.getSeriesType(path);
@@ -399,19 +402,24 @@ public class PhysicalGenerator {
             BasicOperatorType funcToken = BasicOperatorType.getBasicOpBySymbol(node.getTokenIntType());
             boolean isTime = path.equals(SQLConstant.RESERVED_TIME);
 
+            // check value
+            TSDataType dataType = MManager.getInstance().getSeriesType(path.getFullPath());
+            String value = basicOperator.getValue();
+            value = OverflowQPExecutor.checkValue(dataType, value);
+
             switch (type) {
                 case BOOLEAN:
-                    return funcToken.getValueFilter(Boolean.valueOf(basicOperator.getValue()));
+                    return funcToken.getValueFilter(Boolean.valueOf(value));
                 case INT32:
-                    return funcToken.getValueFilter(Integer.valueOf(basicOperator.getValue()));
+                    return funcToken.getValueFilter(Integer.valueOf(value));
                 case INT64:
-                    return isTime? funcToken.getTimeFilter(Long.valueOf(basicOperator.getValue())) : funcToken.getValueFilter(Long.valueOf(basicOperator.getValue()));
+                    return isTime? funcToken.getTimeFilter(Long.valueOf(value)) : funcToken.getValueFilter(Long.valueOf(value));
                 case FLOAT:
-                    return funcToken.getValueFilter(Float.valueOf(basicOperator.getValue()));
+                    return funcToken.getValueFilter(Float.valueOf(value));
                 case DOUBLE:
-                    return funcToken.getValueFilter(Double.valueOf(basicOperator.getValue()));
+                    return funcToken.getValueFilter(Double.valueOf(value));
                 case TEXT:
-                    return funcToken.getValueFilter(new Binary(basicOperator.getValue()));
+                    return funcToken.getValueFilter(new Binary(value));
                 default:
                         throw new LogicalOperatorException("not supported type: " + type);
             }

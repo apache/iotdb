@@ -23,6 +23,7 @@ import cn.edu.tsinghua.iotdb.sql.ParseGenerator;
 import cn.edu.tsinghua.iotdb.sql.parse.ASTNode;
 import cn.edu.tsinghua.iotdb.sql.parse.ParseException;
 import cn.edu.tsinghua.iotdb.sql.parse.ParseUtils;
+import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 import org.joda.time.DateTimeZone;
 
 /**
@@ -44,13 +45,13 @@ public class QueryProcessor {
     }
 
     public PhysicalPlan parseSQLToPhysicalPlan(String sqlStr)
-            throws QueryProcessorException, ArgsErrorException {
+            throws QueryProcessorException, ArgsErrorException, ProcessorException {
     		TsfileDBConfig config = TsfileDBDescriptor.getInstance().getConfig();
         return parseSQLToPhysicalPlan(sqlStr, config.timeZone);
     }
     
     public PhysicalPlan parseSQLToPhysicalPlan(String sqlStr, DateTimeZone timeZone)
-            throws QueryProcessorException, ArgsErrorException {
+            throws QueryProcessorException, ArgsErrorException, ProcessorException {
         ASTNode astNode = parseSQLToAST(sqlStr);
         Operator operator = parseASTToOperator(astNode, timeZone);
         operator = logicalOptimize(operator, executor);

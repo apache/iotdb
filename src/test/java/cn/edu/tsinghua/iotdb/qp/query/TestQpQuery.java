@@ -129,7 +129,7 @@ public class TestQpQuery {
     }
 
     @Test
-    public void testQueryBasic() throws QueryProcessorException, RecognitionException, ArgsErrorException, IOException, FileNodeManagerException {
+    public void testQueryBasic() throws QueryProcessorException, RecognitionException, ArgsErrorException, IOException, FileNodeManagerException, ProcessorException {
         LOG.info("input SQL String:{}", inputSQL);
         PhysicalPlan plan = processor.parseSQLToPhysicalPlan(inputSQL);
         if (!plan.isQuery())

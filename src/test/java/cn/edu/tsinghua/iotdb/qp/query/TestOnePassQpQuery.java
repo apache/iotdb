@@ -92,7 +92,7 @@ public class TestOnePassQpQuery {
     }
 
     @Test
-    public void testQueryBasic() throws QueryProcessorException, ArgsErrorException, IOException, FileNodeManagerException {
+    public void testQueryBasic() throws QueryProcessorException, ArgsErrorException, IOException, FileNodeManagerException, ProcessorException {
         PhysicalPlan plan = processor.parseSQLToPhysicalPlan(inputSQL);
         if (!plan.isQuery())
             fail();
