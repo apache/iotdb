@@ -342,11 +342,6 @@ public class PhysicalGenerator {
                 return new SeriesFilter<>(operator.getSinglePath(), convertSingleFilterNode(operator));
             }
 
-            // e.g. (time>10) and (s1>10) and (s2>5) and (s1<20)
-//            if(operator.getTokenIntType() == KW_OR) {
-
-//            }
-
             List<FilterOperator> children = operator.getChildren();
             List<SeriesFilter> seriesFilters = new ArrayList<>();
             Filter timeFilter = null;
@@ -403,9 +398,11 @@ public class PhysicalGenerator {
             boolean isTime = path.equals(SQLConstant.RESERVED_TIME);
 
             // check value
-            TSDataType dataType = MManager.getInstance().getSeriesType(path.getFullPath());
             String value = basicOperator.getValue();
-            value = OverflowQPExecutor.checkValue(dataType, value);
+            if(!path.toString().equalsIgnoreCase(SQLConstant.RESERVED_TIME)) {
+                TSDataType dataType = executor.getSeriesType(path);
+                value = OverflowQPExecutor.checkValue(dataType, value);
+            }
 
             switch (type) {
                 case BOOLEAN:
