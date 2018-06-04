@@ -13,20 +13,21 @@ import java.util.PriorityQueue;
 /**
  * Created by zhangjinrui on 2018/1/11.
  */
-public class PriorityMergeSortTimeValuePairReader implements TimeValuePairReader, SeriesReader {
+public class PriorityMergeSortTimeValuePairReader <T extends PriorityTimeValuePairReader>
+        implements TimeValuePairReader, SeriesReader {
 
-    private List<PriorityTimeValuePairReader> readerList;
-    private PriorityQueue<Element> heap;
+    protected List<T> readerList;
+    protected PriorityQueue<Element> heap;
 
-    public PriorityMergeSortTimeValuePairReader(PriorityTimeValuePairReader... readers) throws IOException {
-        readerList = new ArrayList<>();
+    public PriorityMergeSortTimeValuePairReader(T... readers) throws IOException {
+        readerList = new ArrayList<T>();
         for (int i = 0; i < readers.length; i++) {
             readerList.add(readers[i]);
         }
         init();
     }
 
-    public PriorityMergeSortTimeValuePairReader(List<PriorityTimeValuePairReader> readerList) throws IOException {
+    public PriorityMergeSortTimeValuePairReader(List<T> readerList) throws IOException {
         this.readerList = readerList;
         init();
     }
@@ -76,7 +77,7 @@ public class PriorityMergeSortTimeValuePairReader implements TimeValuePairReader
         }
     }
 
-    private class Element implements Comparable<Element> {
+    protected class Element implements Comparable<Element> {
         int index;
         TimeValuePair timeValuePair;
         Priority priority;
