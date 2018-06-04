@@ -7,6 +7,7 @@ import java.util.Arrays;
 import java.util.Collection;
 
 import cn.edu.tsinghua.iotdb.exception.ArgsErrorException;
+import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -66,7 +67,7 @@ public class TSPlanContextPropertyTest {
     }
 
     @Test
-    public void testanalyzeMetadata() throws QueryProcessorException, ArgsErrorException {
+    public void testanalyzeMetadata() throws QueryProcessorException, ArgsErrorException, ProcessorException {
         QueryProcessor processor = new QueryProcessor(new MemIntQpExecutor());
         PropertyPlan plan = (PropertyPlan) processor.parseSQLToPhysicalPlan(inputSQL);
         assertEquals(propertyType, plan.getPropertyType());

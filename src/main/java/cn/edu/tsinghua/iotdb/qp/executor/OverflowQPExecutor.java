@@ -326,7 +326,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
         return MManager.getInstance().getPaths(originPath);
     }
 
-    private String checkValue(TSDataType dataType, String value) throws ProcessorException {
+    public static String checkValue(TSDataType dataType, String value) throws ProcessorException {
         if (dataType == TSDataType.BOOLEAN) {
             value = value.toLowerCase();
             if (SQLConstant.BOOLEAN_FALSE_NUM.equals(value)) {

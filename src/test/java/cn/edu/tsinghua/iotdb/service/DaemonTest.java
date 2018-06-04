@@ -134,12 +134,12 @@ public class DaemonTest {
                 Connection connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
 
                 // select test
-                selectAllSQLTest();
-                selectWildCardSQLTest();
-                dnfErrorSQLTest();
-                selectAndOperatorTest();
-                selectAndOpeCrossTest();
-                selectOneColumnWithFilterTest();
+//                selectAllSQLTest();
+//                selectWildCardSQLTest();
+//                dnfErrorSQLTest();
+//                selectAndOperatorTest();
+//                selectAndOpeCrossTest();
+//                selectOneColumnWithFilterTest();
                 textDataTypeTest();
 
                 // aggregation test
