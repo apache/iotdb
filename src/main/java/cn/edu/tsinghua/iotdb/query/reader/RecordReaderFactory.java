@@ -39,15 +39,15 @@ public class RecordReaderFactory {
      *                 represent the uniqueness.
      * @return <code>RecordReader</code>
      */
-    public RecordReader getRecordReader(String deltaObjectUID, String measurementID,
+    public synchronized RecordReader getRecordReader(String deltaObjectUID, String measurementID,
                                         SingleSeriesFilterExpression timeFilter, SingleSeriesFilterExpression valueFilter,
                                         Integer readLock, String prefix, ReaderType readerType)
             throws ProcessorException, PathErrorException, IOException {
-        int token = 0;
+        int readToken = 0;
         if (readLock == null) {
-            token = readLockManager.lock(deltaObjectUID);
+            readToken = readLockManager.lock(deltaObjectUID);
         } else {
-            token = readLock;
+            readToken = readLock;
         }
         String cacheDeltaKey = prefix + deltaObjectUID;
         if (readLockManager.recordReaderCache.containsRecordReader(cacheDeltaKey, measurementID)) {
@@ -59,7 +59,7 @@ public class RecordReaderFactory {
             } catch (FileNodeManagerException e) {
                 throw new ProcessorException(e.getMessage());
             }
-            RecordReader recordReader = createANewRecordReader(deltaObjectUID, measurementID, timeFilter, valueFilter, queryDataSource, readerType);
+            RecordReader recordReader = createANewRecordReader(deltaObjectUID, measurementID, timeFilter, valueFilter, queryDataSource, readerType, readToken);
             readLockManager.recordReaderCache.put(cacheDeltaKey, measurementID, recordReader);
             return recordReader;
         }
@@ -67,20 +67,20 @@ public class RecordReaderFactory {
 
     private RecordReader createANewRecordReader(String deltaObjectUID, String measurementID,
                                                 SingleSeriesFilterExpression queryTimeFilter, SingleSeriesFilterExpression queryValueFilter,
-                                                QueryDataSource queryDataSource, ReaderType readerType) throws PathErrorException, IOException {
+                                                QueryDataSource queryDataSource, ReaderType readerType, int readToken) throws PathErrorException, IOException {
         switch (readerType) {
             case QUERY:
                 return new QueryRecordReader(queryDataSource.getSeriesDataSource(), queryDataSource.getOverflowSeriesDataSource(),
-                        deltaObjectUID, measurementID, queryTimeFilter, queryValueFilter);
+                        deltaObjectUID, measurementID, queryTimeFilter, queryValueFilter, readToken);
             case AGGREGATE:
                 return new AggregateRecordReader(queryDataSource.getSeriesDataSource(), queryDataSource.getOverflowSeriesDataSource(),
-                        deltaObjectUID, measurementID, queryTimeFilter, queryValueFilter);
+                        deltaObjectUID, measurementID, queryTimeFilter, queryValueFilter, readToken);
             case FILL:
                 return new FillRecordReader(queryDataSource.getSeriesDataSource(), queryDataSource.getOverflowSeriesDataSource(),
-                        deltaObjectUID, measurementID, queryTimeFilter, queryValueFilter);
+                        deltaObjectUID, measurementID, queryTimeFilter, queryValueFilter, readToken);
             case GROUPBY:
                 return new QueryRecordReader(queryDataSource.getSeriesDataSource(), queryDataSource.getOverflowSeriesDataSource(),
-                        deltaObjectUID, measurementID, queryTimeFilter, queryValueFilter);
+                        deltaObjectUID, measurementID, queryTimeFilter, queryValueFilter, readToken);
         }
 
         return null;

@@ -81,9 +81,11 @@ public class RecordReader {
     /** memRawSeriesChunk + overflowSeriesInsertReader + overflowOperationReader **/
     protected InsertDynamicData insertMemoryData;
 
+    protected int readToken;
+
     public RecordReader(GlobalSortedSeriesDataSource globalSortedSeriesDataSource, OverflowSeriesDataSource overflowSeriesDataSource,
                         String deltaObjectId, String measurementId,
-                        SingleSeriesFilterExpression queryTimeFilter, SingleSeriesFilterExpression queryValueFilter)
+                        SingleSeriesFilterExpression queryTimeFilter, SingleSeriesFilterExpression queryValueFilter, int readToken)
             throws PathErrorException, IOException {
 
         List<String> sealedFilePathList = new ArrayList<>();
@@ -130,6 +132,8 @@ public class RecordReader {
         if (queryValueFilter != null) {
             singleValueVisitor = getSingleValueVisitorByDataType(dataType, queryValueFilter);
         }
+
+        this.readToken = readToken;
     }
 
     public void closeFileStream() {
@@ -143,5 +147,9 @@ public class RecordReader {
 
     public InsertDynamicData getInsertMemoryData() {
         return this.insertMemoryData;
+    }
+
+    public int getReadToken() {
+        return this.readToken;
     }
 }

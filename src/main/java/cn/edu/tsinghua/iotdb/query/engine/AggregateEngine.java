@@ -1,6 +1,8 @@
 package cn.edu.tsinghua.iotdb.query.engine;
 
 import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
+import cn.edu.tsinghua.iotdb.engine.filenode.FileNodeManager;
+import cn.edu.tsinghua.iotdb.exception.FileNodeManagerException;
 import cn.edu.tsinghua.iotdb.exception.PathErrorException;
 import cn.edu.tsinghua.iotdb.metadata.MManager;
 import cn.edu.tsinghua.iotdb.query.aggregation.AggregateFunction;
@@ -23,6 +25,9 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import static cn.edu.tsinghua.iotdb.query.engine.EngineUtils.noFilterOrOnlyHasTimeFilter;
 
@@ -222,18 +227,55 @@ public class AggregateEngine {
             throws PathErrorException, ProcessorException, IOException {
 
         int aggreNumber = 0;
+        CountDownLatch latch = new CountDownLatch(aggres.size());
+        ExecutorService service = Executors.newFixedThreadPool(aggres.size());
         for (Pair<Path, AggregateFunction> pair : aggres) {
             aggreNumber++;
             Path path = pair.left;
             AggregateFunction aggregateFunction = pair.right;
-            String deltaObjectUID = path.getDeltaObjectToString();
-            String measurementUID = path.getMeasurementToString();
 
-            AggregateRecordReader recordReader = (AggregateRecordReader)
-                    RecordReaderFactory.getInstance().getRecordReader(deltaObjectUID, measurementUID,
-                    queryTimeFilter, null, null, ReadCachePrefix.addQueryPrefix(aggreNumber), ReaderType.AGGREGATE);
+            service.execute(new AggregateThread(path, queryTimeFilter, aggregateFunction, aggreNumber, latch));
+            //new Thread(new AggregateThread(path, queryTimeFilter, aggregateFunction, aggreNumber, latch)).start();
+        }
 
-            recordReader.aggregate(aggregateFunction);
+        try {
+            latch.await();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private class AggregateThread implements Runnable {
+
+        private Path path;
+        private AggregateFunction aggregateFunction;
+        private CountDownLatch latch;
+        private SingleSeriesFilterExpression queryTimeFilter;
+        private int aggreNumber;
+
+        public AggregateThread(Path path, SingleSeriesFilterExpression queryTimeFilter, AggregateFunction aggregateFunction, int aggreNumber, CountDownLatch latch) {
+            this.path = path;
+            this.queryTimeFilter = queryTimeFilter;
+            this.aggregateFunction = aggregateFunction;
+            this.aggreNumber = aggreNumber;
+            this.latch = latch;
+        }
+
+        @Override
+        public void run() {
+            try {
+                String deltaObjectUID = path.getDeltaObjectToString();
+                String measurementUID = path.getMeasurementToString();
+                AggregateRecordReader recordReader = (AggregateRecordReader)
+                        RecordReaderFactory.getInstance().getRecordReader(deltaObjectUID, measurementUID,
+                                queryTimeFilter, null, null, ReadCachePrefix.addQueryPrefix(aggreNumber), ReaderType.AGGREGATE);
+
+                recordReader.aggregate(aggregateFunction);
+                FileNodeManager.getInstance().endQuery(deltaObjectUID, recordReader.getReadToken());
+                latch.countDown();
+            } catch (ProcessorException | IOException | FileNodeManagerException | PathErrorException e) {
+                e.printStackTrace();
+            }
         }
     }
 
