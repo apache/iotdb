@@ -118,8 +118,8 @@ public class OverflowQueryEngine {
             if (aggregateFunction.resultData.timeLength == 0) {
                 aggregateFunction.putDefaultValue();
             }
-            LOGGER.debug(String.format("key %s, data length %s, empty data length %s", EngineUtils.aggregationKey(aggregateFunction, pair.left),
-                    aggregateFunction.resultData.timeLength, aggregateFunction.resultData.emptyTimeLength));
+            LOGGER.debug(String.format("key %s, data time length %s, data value length %s, empty data time length %s", EngineUtils.aggregationKey(aggregateFunction, pair.left),
+                    aggregateFunction.resultData.timeLength, aggregateFunction.resultData.valueLength, aggregateFunction.resultData.emptyTimeLength));
             ansQueryDataSet.mapRet.put(EngineUtils.aggregationKey(aggregateFunction, pair.left), aggregateFunction.resultData);
         }
         // aggregateThreadLocal.set(ansQueryDataSet);
