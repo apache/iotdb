@@ -110,8 +110,8 @@ public class OverflowQueryEngine {
             aggregations.add(new Pair<>(pair.left, aggregateFunction));
         }
 
-        AggregateEngine aggregateEngine = new AggregateEngine();
-        aggregateEngine.multiAggregate(aggregations, filterStructures);
+
+        AggregateEngine.getInstance().multiAggregate(aggregations, filterStructures);
         QueryDataSet ansQueryDataSet = new QueryDataSet();
         for (Pair<Path, AggregateFunction> pair : aggregations) {
             AggregateFunction aggregateFunction = pair.right;
