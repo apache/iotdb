@@ -1,5 +1,7 @@
 package cn.edu.tsinghua.iotdb.query.engine;
 
+import cn.edu.tsinghua.iotdb.concurrent.IoTDBThreadPoolFactory;
+import cn.edu.tsinghua.iotdb.concurrent.IoTThreadFactory;
 import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
 import cn.edu.tsinghua.iotdb.engine.filenode.FileNodeManager;
 import cn.edu.tsinghua.iotdb.exception.FileNodeManagerException;
@@ -42,6 +44,17 @@ public class AggregateEngine {
     /** cross read query fetch size **/
     private int crossQueryFetchSize =
             TsfileDBDescriptor.getInstance().getConfig().fetchSize;
+
+    //private ExecutorService aggregateThreadPool;
+
+    private static class AggregateEngineHolder {
+        private static AggregateEngine INSTANCE = new AggregateEngine();
+
+    }
+
+    public static AggregateEngine getInstance() {
+        return AggregateEngineHolder.INSTANCE;
+    }
 
     /**
      * <p>Public invoking method of multiple aggregation.
@@ -228,14 +241,15 @@ public class AggregateEngine {
 
         int aggreNumber = 0;
         CountDownLatch latch = new CountDownLatch(aggres.size());
-        ExecutorService service = Executors.newFixedThreadPool(aggres.size());
+        ExecutorService aggregateThreadPool = IoTDBThreadPoolFactory.newFixedThreadPool(Runtime.getRuntime().availableProcessors() - 1,
+                "AggregateThread");
+
         for (Pair<Path, AggregateFunction> pair : aggres) {
             aggreNumber++;
             Path path = pair.left;
             AggregateFunction aggregateFunction = pair.right;
 
-            service.execute(new AggregateThread(path, queryTimeFilter, aggregateFunction, aggreNumber, latch));
-            //new Thread(new AggregateThread(path, queryTimeFilter, aggregateFunction, aggreNumber, latch)).start();
+            aggregateThreadPool.submit(new AggregateThread(path, queryTimeFilter, aggregateFunction, aggreNumber, latch));
         }
 
         try {
@@ -243,6 +257,8 @@ public class AggregateEngine {
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
+
+        aggregateThreadPool.shutdown();
     }
 
     private class AggregateThread implements Runnable {
