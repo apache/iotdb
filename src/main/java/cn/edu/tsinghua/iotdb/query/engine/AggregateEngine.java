@@ -46,15 +46,17 @@ public class AggregateEngine {
             TsfileDBDescriptor.getInstance().getConfig().fetchSize;
 
     //private ExecutorService aggregateThreadPool;
+//    private AggregateEngine() {
+//    }
 
-    private static class AggregateEngineHolder {
-        private static AggregateEngine INSTANCE = new AggregateEngine();
-
-    }
-
-    public static AggregateEngine getInstance() {
-        return AggregateEngineHolder.INSTANCE;
-    }
+//    private static class AggregateEngineHolder {
+//        private static final AggregateEngine INSTANCE = new AggregateEngine();
+//
+//    }
+//
+//    public static final AggregateEngine getInstance() {
+//        return AggregateEngineHolder.INSTANCE;
+//    }
 
     /**
      * <p>Public invoking method of multiple aggregation.
@@ -241,15 +243,16 @@ public class AggregateEngine {
 
         int aggreNumber = 0;
         CountDownLatch latch = new CountDownLatch(aggres.size());
-        ExecutorService aggregateThreadPool = IoTDBThreadPoolFactory.newFixedThreadPool(Runtime.getRuntime().availableProcessors() - 1,
+        ExecutorService service = IoTDBThreadPoolFactory.newFixedThreadPool(Runtime.getRuntime().availableProcessors() - 1,
                 "AggregateThread");
+        //ExecutorService service = Executors.newFixedThreadPool(aggres.size());
 
         for (Pair<Path, AggregateFunction> pair : aggres) {
             aggreNumber++;
             Path path = pair.left;
             AggregateFunction aggregateFunction = pair.right;
 
-            aggregateThreadPool.submit(new AggregateThread(path, queryTimeFilter, aggregateFunction, aggreNumber, latch));
+            service.submit(new AggregateThread(path, queryTimeFilter, aggregateFunction, aggreNumber, latch));
         }
 
         try {
@@ -258,7 +261,7 @@ public class AggregateEngine {
             e.printStackTrace();
         }
 
-        aggregateThreadPool.shutdown();
+        service.shutdown();
     }
 
     private class AggregateThread implements Runnable {
