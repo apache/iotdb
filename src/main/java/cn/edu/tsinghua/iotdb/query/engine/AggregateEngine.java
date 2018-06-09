@@ -7,6 +7,7 @@ import cn.edu.tsinghua.iotdb.exception.FileNodeManagerException;
 import cn.edu.tsinghua.iotdb.exception.PathErrorException;
 import cn.edu.tsinghua.iotdb.metadata.MManager;
 import cn.edu.tsinghua.iotdb.query.aggregation.AggregateFunction;
+import cn.edu.tsinghua.iotdb.query.management.FileReaderMap;
 import cn.edu.tsinghua.iotdb.query.management.FilterStructure;
 import cn.edu.tsinghua.iotdb.query.management.ReadCachePrefix;
 import cn.edu.tsinghua.iotdb.query.management.ReadCacheManager;
@@ -251,7 +252,12 @@ public class AggregateEngine {
             Path path = pair.left;
             AggregateFunction aggregateFunction = pair.right;
 
-            service.submit(new AggregateThread(path, queryTimeFilter, aggregateFunction, aggreNumber, latch));
+            String deltaObjectUID = path.getDeltaObjectToString();
+            String measurementUID = path.getMeasurementToString();
+            AggregateRecordReader recordReader = (AggregateRecordReader)
+                    RecordReaderFactory.getInstance().getRecordReader(deltaObjectUID, measurementUID,
+                            queryTimeFilter, null, null, ReadCachePrefix.addQueryPrefix(aggreNumber), ReaderType.AGGREGATE);
+            service.submit(new AggregateThread(recordReader, aggregateFunction, latch));
         }
 
         try {
@@ -265,34 +271,25 @@ public class AggregateEngine {
 
     private class AggregateThread implements Runnable {
 
-        private Path path;
+        private AggregateRecordReader aggregateRecordReader;
         private AggregateFunction aggregateFunction;
         private CountDownLatch latch;
-        private SingleSeriesFilterExpression queryTimeFilter;
-        private int aggreNumber;
 
-        public AggregateThread(Path path, SingleSeriesFilterExpression queryTimeFilter, AggregateFunction aggregateFunction, int aggreNumber, CountDownLatch latch) {
-            this.path = path;
-            this.queryTimeFilter = queryTimeFilter;
+        public AggregateThread(AggregateRecordReader aggregateRecordReader, AggregateFunction aggregateFunction, CountDownLatch latch) {
+            this.aggregateRecordReader = aggregateRecordReader;
             this.aggregateFunction = aggregateFunction;
-            this.aggreNumber = aggreNumber;
             this.latch = latch;
         }
 
         @Override
         public void run() {
             try {
-                String deltaObjectUID = path.getDeltaObjectToString();
-                String measurementUID = path.getMeasurementToString();
-                AggregateRecordReader recordReader = (AggregateRecordReader)
-                        RecordReaderFactory.getInstance().getRecordReader(deltaObjectUID, measurementUID,
-                                queryTimeFilter, null, null, ReadCachePrefix.addQueryPrefix(aggreNumber), ReaderType.AGGREGATE);
-
-                recordReader.aggregate(aggregateFunction);
-                FileNodeManager.getInstance().endQuery(deltaObjectUID, recordReader.getReadToken());
-                ReadCacheManager.getInstance().removeReadToken(deltaObjectUID, recordReader.getReadToken());
+                aggregateRecordReader .aggregate(aggregateFunction);
+//                FileNodeManager.getInstance().endQuery(deltaObjectUID, recordReader.getReadToken());
+//                ReadCacheManager.getInstance().removeReadToken(deltaObjectUID, recordReader.getReadToken());
+//                FileReaderMap.getInstance().close();
                 latch.countDown();
-            } catch (ProcessorException | IOException | FileNodeManagerException | PathErrorException e) {
+            } catch (ProcessorException | IOException  e) {
                 e.printStackTrace();
             }
         }

@@ -111,8 +111,6 @@ public class ReadCacheManager {
         }
     }
 
-
-
     private void checkLocksMap() {
         if (locksMap.get() == null) {
             locksMap.set(new HashMap<>());
