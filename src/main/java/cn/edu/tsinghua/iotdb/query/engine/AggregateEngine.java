@@ -1,7 +1,6 @@
 package cn.edu.tsinghua.iotdb.query.engine;
 
 import cn.edu.tsinghua.iotdb.concurrent.IoTDBThreadPoolFactory;
-import cn.edu.tsinghua.iotdb.concurrent.IoTThreadFactory;
 import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
 import cn.edu.tsinghua.iotdb.engine.filenode.FileNodeManager;
 import cn.edu.tsinghua.iotdb.exception.FileNodeManagerException;
@@ -10,7 +9,7 @@ import cn.edu.tsinghua.iotdb.metadata.MManager;
 import cn.edu.tsinghua.iotdb.query.aggregation.AggregateFunction;
 import cn.edu.tsinghua.iotdb.query.management.FilterStructure;
 import cn.edu.tsinghua.iotdb.query.management.ReadCachePrefix;
-import cn.edu.tsinghua.iotdb.query.management.ReadLockManager;
+import cn.edu.tsinghua.iotdb.query.management.ReadCacheManager;
 import cn.edu.tsinghua.iotdb.query.reader.AggregateRecordReader;
 import cn.edu.tsinghua.iotdb.query.reader.QueryRecordReader;
 import cn.edu.tsinghua.iotdb.query.reader.ReaderType;
@@ -30,7 +29,6 @@ import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 import static cn.edu.tsinghua.iotdb.query.engine.EngineUtils.noFilterOrOnlyHasTimeFilter;
 
@@ -292,7 +290,7 @@ public class AggregateEngine {
 
                 recordReader.aggregate(aggregateFunction);
                 FileNodeManager.getInstance().endQuery(deltaObjectUID, recordReader.getReadToken());
-                ReadLockManager.getInstance().removeReadToken(deltaObjectUID, recordReader.getReadToken());
+                ReadCacheManager.getInstance().removeReadToken(deltaObjectUID, recordReader.getReadToken());
                 latch.countDown();
             } catch (ProcessorException | IOException | FileNodeManagerException | PathErrorException e) {
                 e.printStackTrace();
@@ -307,8 +305,8 @@ public class AggregateEngine {
      * once for querying d1.s1, once for querying d2.s1.
      * <p>
      * When this method is invoked, need add the filter index as a new parameter, for the reason of exist of
-     * <code>RecordReaderCache</code>, if the composition of CrossFilterExpression exist same SingleFilterExpression,
-     * we must guarantee that the <code>RecordReaderCache</code> doesn't cause conflict to the same SingleFilterExpression.
+     * <code>RecordReaderCacheManager</code>, if the composition of CrossFilterExpression exist same SingleFilterExpression,
+     * we must guarantee that the <code>RecordReaderCacheManager</code> doesn't cause conflict to the same SingleFilterExpression.
      */
     private DynamicOneColumnData getDataUseSingleValueFilter(SingleSeriesFilterExpression queryValueFilter,
                                                              DynamicOneColumnData res, int fetchSize, int valueFilterNumber)

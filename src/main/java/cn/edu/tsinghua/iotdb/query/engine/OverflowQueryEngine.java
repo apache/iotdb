@@ -11,7 +11,7 @@ import cn.edu.tsinghua.iotdb.query.fill.LinearFill;
 import cn.edu.tsinghua.iotdb.query.fill.PreviousFill;
 import cn.edu.tsinghua.iotdb.query.management.FilterStructure;
 import cn.edu.tsinghua.iotdb.query.management.ReadCachePrefix;
-import cn.edu.tsinghua.iotdb.query.management.ReadLockManager;
+import cn.edu.tsinghua.iotdb.query.management.ReadCacheManager;
 import cn.edu.tsinghua.iotdb.query.reader.QueryRecordReader;
 import cn.edu.tsinghua.iotdb.query.reader.ReaderType;
 import cn.edu.tsinghua.iotdb.query.reader.RecordReaderFactory;
@@ -140,9 +140,9 @@ public class OverflowQueryEngine {
     public QueryDataSet groupBy(List<Pair<Path, String>> aggres, List<FilterStructure> filterStructures,
                                 long unit, long origin, List<Pair<Long, Long>> intervals, int fetchSize) {
 
-        ThreadLocal<Integer> groupByCalcTime = ReadLockManager.getInstance().getGroupByCalcTime();
-        ThreadLocal<GroupByEngineNoFilter>  groupByEngineNoFilterLocal = ReadLockManager.getInstance().getGroupByEngineNoFilterLocal();
-        ThreadLocal<GroupByEngineWithFilter> groupByEngineWithFilterLocal = ReadLockManager.getInstance().getGroupByEngineWithFilterLocal();
+        ThreadLocal<Integer> groupByCalcTime = ReadCacheManager.getInstance().getGroupByCalcTime();
+        ThreadLocal<GroupByEngineNoFilter>  groupByEngineNoFilterLocal = ReadCacheManager.getInstance().getGroupByEngineNoFilterLocal();
+        ThreadLocal<GroupByEngineWithFilter> groupByEngineWithFilterLocal = ReadCacheManager.getInstance().getGroupByEngineWithFilterLocal();
 
         if (groupByCalcTime.get() == null) {
 
@@ -419,8 +419,8 @@ public class OverflowQueryEngine {
      * once for querying d1.s1, once for querying d2.s1.
      * <p>
      * When this method is invoked, need add the filter index as a new parameter, for the reason of exist of
-     * <code>RecordReaderCache</code>, if the composition of CrossFilterExpression exist same SingleFilterExpression,
-     * we must guarantee that the <code>RecordReaderCache</code> doesn't cause conflict to the same SingleFilterExpression.
+     * <code>RecordReaderCacheManager</code>, if the composition of CrossFilterExpression exist same SingleFilterExpression,
+     * we must guarantee that the <code>RecordReaderCacheManager</code> doesn't cause conflict to the same SingleFilterExpression.
      */
     private DynamicOneColumnData querySeriesForCross(SingleSeriesFilterExpression queryValueFilter,
                                                     DynamicOneColumnData res, int fetchSize, int valueFilterNumber)
