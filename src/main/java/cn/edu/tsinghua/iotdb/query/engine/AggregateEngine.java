@@ -10,6 +10,7 @@ import cn.edu.tsinghua.iotdb.metadata.MManager;
 import cn.edu.tsinghua.iotdb.query.aggregation.AggregateFunction;
 import cn.edu.tsinghua.iotdb.query.management.FilterStructure;
 import cn.edu.tsinghua.iotdb.query.management.ReadCachePrefix;
+import cn.edu.tsinghua.iotdb.query.management.ReadLockManager;
 import cn.edu.tsinghua.iotdb.query.reader.AggregateRecordReader;
 import cn.edu.tsinghua.iotdb.query.reader.QueryRecordReader;
 import cn.edu.tsinghua.iotdb.query.reader.ReaderType;
@@ -291,6 +292,7 @@ public class AggregateEngine {
 
                 recordReader.aggregate(aggregateFunction);
                 FileNodeManager.getInstance().endQuery(deltaObjectUID, recordReader.getReadToken());
+                ReadLockManager.getInstance().removeReadToken(deltaObjectUID, recordReader.getReadToken());
                 latch.countDown();
             } catch (ProcessorException | IOException | FileNodeManagerException | PathErrorException e) {
                 e.printStackTrace();
