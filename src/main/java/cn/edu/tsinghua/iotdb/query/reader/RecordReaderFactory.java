@@ -4,7 +4,7 @@ import cn.edu.tsinghua.iotdb.engine.filenode.FileNodeManager;
 import cn.edu.tsinghua.iotdb.engine.querycontext.QueryDataSource;
 import cn.edu.tsinghua.iotdb.exception.FileNodeManagerException;
 import cn.edu.tsinghua.iotdb.exception.PathErrorException;
-import cn.edu.tsinghua.iotdb.query.management.ReadLockManager;
+import cn.edu.tsinghua.iotdb.query.management.ReadCacheManager;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 import cn.edu.tsinghua.tsfile.timeseries.filter.definition.SingleSeriesFilterExpression;
 import org.slf4j.Logger;
@@ -23,11 +23,11 @@ public class RecordReaderFactory {
     private static RecordReaderFactory instance = new RecordReaderFactory();
 
     private FileNodeManager fileNodeManager;
-    private ReadLockManager readLockManager;
+    private ReadCacheManager readCacheManager;
 
     private RecordReaderFactory() {
         fileNodeManager = FileNodeManager.getInstance();
-        readLockManager = ReadLockManager.getInstance();
+        readCacheManager = ReadCacheManager.getInstance();
     }
 
     /**
@@ -35,7 +35,7 @@ public class RecordReaderFactory {
      *
      * @param readLock if readLock is not null, the read lock of file node has been created,<br>
      *                 else a new read lock token should be applied.
-     * @param prefix   for the exist of <code>RecordReaderCache</code> and batch read, we need a prefix to
+     * @param prefix   for the exist of <code>RecordReaderCacheManager</code> and batch read, we need a prefix to
      *                 represent the uniqueness.
      * @return <code>RecordReader</code>
      */
@@ -45,13 +45,13 @@ public class RecordReaderFactory {
             throws ProcessorException, PathErrorException, IOException {
         int readToken = 0;
         if (readLock == null) {
-            readToken = readLockManager.lock(deltaObjectUID);
+            readToken = readCacheManager.lock(deltaObjectUID);
         } else {
             readToken = readLock;
         }
         String cacheDeltaKey = prefix + deltaObjectUID;
-        if (readLockManager.recordReaderCache.containsRecordReader(cacheDeltaKey, measurementID)) {
-            return readLockManager.recordReaderCache.get(cacheDeltaKey, measurementID);
+        if (readCacheManager.getRecordReaderCacheManager().containsRecordReader(cacheDeltaKey, measurementID)) {
+            return readCacheManager.getRecordReaderCacheManager().get(cacheDeltaKey, measurementID);
         } else {
             QueryDataSource queryDataSource;
             try {
@@ -60,7 +60,7 @@ public class RecordReaderFactory {
                 throw new ProcessorException(e.getMessage());
             }
             RecordReader recordReader = createANewRecordReader(deltaObjectUID, measurementID, timeFilter, valueFilter, queryDataSource, readerType, readToken);
-            readLockManager.recordReaderCache.put(cacheDeltaKey, measurementID, recordReader);
+            readCacheManager.getRecordReaderCacheManager().put(cacheDeltaKey, measurementID, recordReader);
             return recordReader;
         }
     }
@@ -92,11 +92,11 @@ public class RecordReaderFactory {
 
     // TODO this method is only used in test case and KV-match index
     public void removeRecordReader(String deltaObjectId, String measurementId) throws IOException {
-        if (readLockManager.recordReaderCache.containsRecordReader(deltaObjectId, measurementId)) {
+        if (readCacheManager.getRecordReaderCacheManager().containsRecordReader(deltaObjectId, measurementId)) {
             // close the RecordReader read stream.
-            readLockManager.recordReaderCache.get(deltaObjectId, measurementId).closeFileStream();
-            readLockManager.recordReaderCache.get(deltaObjectId, measurementId).closeFileStreamForOneRequest();
-            readLockManager.recordReaderCache.remove(deltaObjectId, measurementId);
+            readCacheManager.getRecordReaderCacheManager().get(deltaObjectId, measurementId).closeFileStream();
+            readCacheManager.getRecordReaderCacheManager().get(deltaObjectId, measurementId).closeFileStreamForOneRequest();
+            readCacheManager.getRecordReaderCacheManager().remove(deltaObjectId, measurementId);
         }
     }
 }
