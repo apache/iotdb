@@ -2,11 +2,13 @@ package cn.edu.tsinghua.iotdb.query.management;
 
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.Map;
 
 import cn.edu.tsinghua.iotdb.engine.filenode.FileNodeManager;
 import cn.edu.tsinghua.iotdb.exception.FileNodeManagerException;
 import cn.edu.tsinghua.iotdb.query.engine.groupby.GroupByEngineNoFilter;
 import cn.edu.tsinghua.iotdb.query.engine.groupby.GroupByEngineWithFilter;
+import cn.edu.tsinghua.iotdb.query.reader.RecordReader;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 
 /**
@@ -19,7 +21,17 @@ import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
  */
 public class ReadLockManager {
 
-    private static ReadLockManager instance = new ReadLockManager();
+    private static final class ReadLockManagerHolder {
+        private static final ReadLockManager INSTANCE = new ReadLockManager();
+    }
+
+    private ReadLockManager() {
+    }
+
+    public static ReadLockManager getInstance() {
+        return ReadLockManagerHolder.INSTANCE;
+    }
+
 
     private FileNodeManager fileNodeManager = FileNodeManager.getInstance();
 
@@ -29,6 +41,8 @@ public class ReadLockManager {
     /** this is no need to set as ThreadLocal, RecordReaderCache has ThreadLocal variable**/
     public RecordReaderCache recordReaderCache = new RecordReaderCache();
 
+    //private ThreadLocal<HashMap<String, RecordReader>> readerCache = new ThreadLocal<>();
+
     /** represents the execute time of group by method**/
     private ThreadLocal<Integer> groupByCalcTime;
 
@@ -37,9 +51,6 @@ public class ReadLockManager {
 
     /** ThreadLocal, due to the usage of OverflowQPExecutor **/
     private ThreadLocal<GroupByEngineWithFilter> groupByEngineWithFilterLocal;
-
-    private ReadLockManager() {
-    }
 
     public int lock(String deltaObjectUID) throws ProcessorException {
         checkLocksMap();
@@ -58,6 +69,10 @@ public class ReadLockManager {
         return token;
     }
 
+    public void removeReadToken(String deltaObjectId, int readToken) {
+        locksMap.get().remove(deltaObjectId, readToken);
+    }
+
     /**
      * When jdbc connection is closed normally or quit abnormally, this method should be invoked.<br>
      * All read cache in this request should be released.
@@ -68,7 +83,8 @@ public class ReadLockManager {
         if (locksMap.get() == null) {
             return;
         }
-        HashMap<String, Integer> locks = locksMap.get();
+
+        Map<String, Integer> locks = locksMap.get();
         for (String key : locks.keySet()) {
             unlockForQuery(key, locks.get(key));
         }
@@ -85,7 +101,12 @@ public class ReadLockManager {
             groupByEngineWithFilterLocal.remove();
         }
 
+//        for (RecordReader reader : readerCache.get().values()) {
+//            reader.closeFileStreamForOneRequest();
+//        }
+//        readerCache.remove();
         recordReaderCache.clear();
+
         FileReaderMap.getInstance().close();
     }
 
@@ -98,9 +119,7 @@ public class ReadLockManager {
         }
     }
 
-    public static ReadLockManager getInstance() {
-        return instance;
-    }
+
 
     private void checkLocksMap() {
         if (locksMap.get() == null) {
@@ -115,10 +134,6 @@ public class ReadLockManager {
         return this.groupByCalcTime;
     }
 
-    public void setGroupByCalcTime(ThreadLocal<Integer> t) {
-        this.groupByCalcTime = t;
-    }
-
     public ThreadLocal<GroupByEngineNoFilter> getGroupByEngineNoFilterLocal() {
         if (groupByEngineNoFilterLocal == null) {
             groupByEngineNoFilterLocal = new ThreadLocal<>();
@@ -126,19 +141,11 @@ public class ReadLockManager {
         return this.groupByEngineNoFilterLocal;
     }
 
-    public void setGroupByEngineNoFilterLocal(ThreadLocal<GroupByEngineNoFilter> t) {
-        this.groupByEngineNoFilterLocal = t;
-    }
-
     public ThreadLocal<GroupByEngineWithFilter> getGroupByEngineWithFilterLocal() {
         if (groupByEngineWithFilterLocal == null) {
             groupByEngineWithFilterLocal = new ThreadLocal<>();
         }
         return this.groupByEngineWithFilterLocal;
-    }
-
-    public void setGroupByEngineWithFilterLocal(ThreadLocal<GroupByEngineWithFilter> t) {
-        this.groupByEngineWithFilterLocal = t;
     }
 
 }
