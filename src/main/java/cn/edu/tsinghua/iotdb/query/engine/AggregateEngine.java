@@ -287,7 +287,7 @@ public class AggregateEngine {
                 aggregateRecordReader .aggregate(aggregateFunction);
 //                FileNodeManager.getInstance().endQuery(deltaObjectUID, recordReader.getReadToken());
 //                ReadCacheManager.getInstance().removeReadToken(deltaObjectUID, recordReader.getReadToken());
-//                FileReaderMap.getInstance().close();
+                FileReaderMap.getInstance().close();
                 latch.countDown();
             } catch (ProcessorException | IOException  e) {
                 e.printStackTrace();
