@@ -381,8 +381,8 @@ public class GroupByEngineWithFilter {
      * once for querying d1.s1, once for querying d2.s1.
      * <p>
      * When this method is invoked, need add the filter index as a new parameter, for the reason of exist of
-     * <code>RecordReaderCache</code>, if the composition of CrossFilterExpression exist same SingleFilterExpression,
-     * we must guarantee that the <code>RecordReaderCache</code> doesn't cause conflict to the same SingleFilterExpression.
+     * <code>RecordReaderCacheManager</code>, if the composition of CrossFilterExpression exist same SingleFilterExpression,
+     * we must guarantee that the <code>RecordReaderCacheManager</code> doesn't cause conflict to the same SingleFilterExpression.
      */
     private static DynamicOneColumnData getDataUseSingleValueFilter(SingleSeriesFilterExpression queryValueFilter,
                                                                     DynamicOneColumnData res, int fetchSize, int valueFilterNumber)
