@@ -8,7 +8,7 @@ import cn.edu.tsinghua.iotdb.query.reader.RecordReader;
 /**
  * Used for read process, put the query structure in the cache for one query process.
  */
-public class RecordReaderCache {
+public class RecordReaderCacheManager {
 
     private ThreadLocal<HashMap<String, RecordReader>> cache = new ThreadLocal<>();
 

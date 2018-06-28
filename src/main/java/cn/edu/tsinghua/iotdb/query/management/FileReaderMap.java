@@ -11,12 +11,12 @@ public class FileReaderMap {
     /** map to store opened file stream **/
     private static ThreadLocal<Map<String, TsRandomAccessLocalFileReader>> fileReaderMap = new ThreadLocal<>();
 
-    private static class ReaderHolder {
+    private static class FileReaderMapHolder {
         private static final FileReaderMap INSTANCE = new FileReaderMap();
     }
 
     public static FileReaderMap getInstance() {
-        return ReaderHolder.INSTANCE;
+        return FileReaderMapHolder.INSTANCE;
     }
 
     public TsRandomAccessLocalFileReader get(String path) throws IOException {

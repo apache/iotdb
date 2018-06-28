@@ -1,11 +1,16 @@
 package cn.edu.tsinghua.iotdb.query.engine;
 
+import cn.edu.tsinghua.iotdb.concurrent.IoTDBThreadPoolFactory;
 import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
+import cn.edu.tsinghua.iotdb.engine.filenode.FileNodeManager;
+import cn.edu.tsinghua.iotdb.exception.FileNodeManagerException;
 import cn.edu.tsinghua.iotdb.exception.PathErrorException;
 import cn.edu.tsinghua.iotdb.metadata.MManager;
 import cn.edu.tsinghua.iotdb.query.aggregation.AggregateFunction;
+import cn.edu.tsinghua.iotdb.query.management.FileReaderMap;
 import cn.edu.tsinghua.iotdb.query.management.FilterStructure;
 import cn.edu.tsinghua.iotdb.query.management.ReadCachePrefix;
+import cn.edu.tsinghua.iotdb.query.management.ReadCacheManager;
 import cn.edu.tsinghua.iotdb.query.reader.AggregateRecordReader;
 import cn.edu.tsinghua.iotdb.query.reader.QueryRecordReader;
 import cn.edu.tsinghua.iotdb.query.reader.ReaderType;
@@ -23,6 +28,8 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
 
 import static cn.edu.tsinghua.iotdb.query.engine.EngineUtils.noFilterOrOnlyHasTimeFilter;
 
@@ -37,6 +44,19 @@ public class AggregateEngine {
     /** cross read query fetch size **/
     private int crossQueryFetchSize =
             TsfileDBDescriptor.getInstance().getConfig().fetchSize;
+
+    //private ExecutorService aggregateThreadPool;
+//    private AggregateEngine() {
+//    }
+
+//    private static class AggregateEngineHolder {
+//        private static final AggregateEngine INSTANCE = new AggregateEngine();
+//
+//    }
+//
+//    public static final AggregateEngine getInstance() {
+//        return AggregateEngineHolder.INSTANCE;
+//    }
 
     /**
      * <p>Public invoking method of multiple aggregation.
@@ -222,18 +242,56 @@ public class AggregateEngine {
             throws PathErrorException, ProcessorException, IOException {
 
         int aggreNumber = 0;
+        CountDownLatch latch = new CountDownLatch(aggres.size());
+        ExecutorService service = IoTDBThreadPoolFactory.newFixedThreadPool(Runtime.getRuntime().availableProcessors() - 1,
+                "AggregateThread");
+        //ExecutorService service = Executors.newFixedThreadPool(aggres.size());
+
         for (Pair<Path, AggregateFunction> pair : aggres) {
             aggreNumber++;
             Path path = pair.left;
             AggregateFunction aggregateFunction = pair.right;
+
             String deltaObjectUID = path.getDeltaObjectToString();
             String measurementUID = path.getMeasurementToString();
-
             AggregateRecordReader recordReader = (AggregateRecordReader)
                     RecordReaderFactory.getInstance().getRecordReader(deltaObjectUID, measurementUID,
-                    queryTimeFilter, null, null, ReadCachePrefix.addQueryPrefix(aggreNumber), ReaderType.AGGREGATE);
+                            queryTimeFilter, null, null, ReadCachePrefix.addQueryPrefix(aggreNumber), ReaderType.AGGREGATE);
+            service.submit(new AggregateThread(recordReader, aggregateFunction, latch));
+        }
 
-            recordReader.aggregate(aggregateFunction);
+        try {
+            latch.await();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        service.shutdown();
+    }
+
+    private class AggregateThread implements Runnable {
+
+        private AggregateRecordReader aggregateRecordReader;
+        private AggregateFunction aggregateFunction;
+        private CountDownLatch latch;
+
+        public AggregateThread(AggregateRecordReader aggregateRecordReader, AggregateFunction aggregateFunction, CountDownLatch latch) {
+            this.aggregateRecordReader = aggregateRecordReader;
+            this.aggregateFunction = aggregateFunction;
+            this.latch = latch;
+        }
+
+        @Override
+        public void run() {
+            try {
+                aggregateRecordReader .aggregate(aggregateFunction);
+//                FileNodeManager.getInstance().endQuery(deltaObjectUID, recordReader.getReadToken());
+//                ReadCacheManager.getInstance().removeReadToken(deltaObjectUID, recordReader.getReadToken());
+                FileReaderMap.getInstance().close();
+                latch.countDown();
+            } catch (ProcessorException | IOException  e) {
+                e.printStackTrace();
+            }
         }
     }
 
@@ -244,8 +302,8 @@ public class AggregateEngine {
      * once for querying d1.s1, once for querying d2.s1.
      * <p>
      * When this method is invoked, need add the filter index as a new parameter, for the reason of exist of
-     * <code>RecordReaderCache</code>, if the composition of CrossFilterExpression exist same SingleFilterExpression,
-     * we must guarantee that the <code>RecordReaderCache</code> doesn't cause conflict to the same SingleFilterExpression.
+     * <code>RecordReaderCacheManager</code>, if the composition of CrossFilterExpression exist same SingleFilterExpression,
+     * we must guarantee that the <code>RecordReaderCacheManager</code> doesn't cause conflict to the same SingleFilterExpression.
      */
     private DynamicOneColumnData getDataUseSingleValueFilter(SingleSeriesFilterExpression queryValueFilter,
                                                              DynamicOneColumnData res, int fetchSize, int valueFilterNumber)
