@@ -246,6 +246,11 @@ public class TsfileDBConfig {
 	 */
 	public int postbackServerPort = 5555;
 
+	/*
+	* Set the language version when loading file including error information, default value is "EN"
+	* */
+	public String languageVersion = "EN";
+
 	/**
 	 * Choose a postBack strategy of merging historical data: 1. It's more likely to
 	 * update historical data, choose "true". 2. It's more likely not to update

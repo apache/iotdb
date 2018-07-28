@@ -149,6 +149,8 @@ public class TsfileDBDescriptor {
 			int maxLogEntrySize = Integer.parseInt(properties.getProperty("max_log_entry_size", conf.maxLogEntrySize + "").trim());
 			conf.maxLogEntrySize = maxLogEntrySize > 0 ? maxLogEntrySize : conf.maxLogEntrySize;
 
+			conf.languageVersion = properties.getProperty("language_version", conf.languageVersion).trim();
+
 			String tmpTimeZone = properties.getProperty("time_zone", conf.timeZone.getID());
 			try {
 				conf.timeZone = DateTimeZone.forID(tmpTimeZone.trim());
