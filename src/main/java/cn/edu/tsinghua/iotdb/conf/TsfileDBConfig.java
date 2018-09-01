@@ -14,6 +14,7 @@ public class TsfileDBConfig {
 	public static final String default_tsfile_dir = "settled";
 	public static final String mult_dir_strategy_prefix = "cn.edu.tsinghua.iotdb.conf.directories.strategy.";
 	public static final String default_mult_dir_strategy = "MaxDiskUsableSpaceFirstStrategy";
+
 	/**
 	 * Port which JDBC server listens to
 	 */
