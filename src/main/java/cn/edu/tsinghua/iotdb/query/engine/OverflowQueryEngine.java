@@ -262,7 +262,7 @@ public class OverflowQueryEngine {
      * Query type 1: query without filter.
      */
     private QueryDataSet querySeriesWithoutFilter(List<Path> paths, QueryDataSet queryDataSet, int fetchSize, Integer readLock)
-            throws ProcessorException, IOException, PathErrorException {
+            throws ProcessorException, IOException {
         if (queryDataSet == null) {
             queryDataSet = new QueryDataSet();
             BatchReadRecordGenerator batchReaderRetGenerator = new BatchReadRecordGenerator(paths, fetchSize) {

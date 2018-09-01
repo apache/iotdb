@@ -5,7 +5,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.RandomAccessFile;
 import java.nio.MappedByteBuffer;
-import java.nio.channels.FileChannel;
 
 /**
  * <p>
@@ -16,31 +15,41 @@ import java.nio.channels.FileChannel;
  * </p>
  * Created by zhangjinrui on 2018/1/14.
  */
-public class SegmentInputStream extends InputStream {
+public class SegmentInputStreamWithMMap extends SegmentInputStream {
+
     private RandomAccessFile randomAccessFile;
     private long offset;
     private long position;
     private long size;
     private long mark;
 
-    public SegmentInputStream() {}
+    // NIO MMAP
+    private MappedByteBuffer mmap;
+    private ByteArrayInputStream byteArrayInputStream;
 
-    public SegmentInputStream(RandomAccessFile randomAccessFile, long offset, long size) throws IOException {
+    public SegmentInputStreamWithMMap(RandomAccessFile randomAccessFile, long offset, long size) throws IOException {
         this.randomAccessFile = randomAccessFile;
+        //mmap = this.randomAccessFile.getChannel().map(FileChannel.MapMode.READ_ONLY, offset, size);
         this.offset = offset;
         this.size = size;
         this.position = offset;
         this.mark = offset;
     }
 
+    public SegmentInputStreamWithMMap(MappedByteBuffer mmap, long offset, long size) throws IOException {
+        this.mmap = mmap;
+        this.offset = offset;
+        this.size = size;
+        this.position = offset;
+        this.mark = offset;
+    }
 
     @Override
     public int read() throws IOException {
         if (position >= offset + size) {
             return -1;
         }
-        randomAccessFile.seek(position);
-        int b = randomAccessFile.read();
+        int b = mmap.get((int)position);
         position += 1;
         return b;
     }
@@ -49,9 +58,21 @@ public class SegmentInputStream extends InputStream {
     public int read(byte[] b, int offset, int length) throws IOException {
         checkPosition();
 
-        int total = randomAccessFile.read(b, offset, length);
-        position += total;
-        return total;
+        for (int i = 0; i < length; i++) {
+            b[i] = mmap.get((int) position + offset + i);
+        }
+
+        if (mmap.hasRemaining()) {
+            position += length;
+            return length;
+        }
+        return -1;
+
+//        checkPosition();
+//
+//        int total = randomAccessFile.read(b, offset, length);
+//        position += total;
+//        return total;
     }
 
     public long skip(long n) {
@@ -89,7 +110,5 @@ public class SegmentInputStream extends InputStream {
         if (position >= offset + size) {
             throw new IOException("no available byte in current stream");
         }
-
-        randomAccessFile.seek(position);
     }
 }
