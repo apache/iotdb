@@ -1,4 +1,4 @@
-package cn.edu.tsinghua.iotdb.engine.bufferwriteV2;
+package cn.edu.tsinghua.iotdb.engine.bufferwrite;
 
 import java.io.IOException;
 import java.util.ArrayList;

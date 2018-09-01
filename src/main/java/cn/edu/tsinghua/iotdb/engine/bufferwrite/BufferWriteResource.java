@@ -1,4 +1,4 @@
-package cn.edu.tsinghua.iotdb.engine.bufferwriteV2;
+package cn.edu.tsinghua.iotdb.engine.bufferwrite;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -39,18 +39,20 @@ public class BufferWriteResource {
 	private static final String restoreSuffix = ".restore";
 	private static final String DEFAULT_MODE = "rw";
 	private Map<String, Map<String, List<TimeSeriesChunkMetaData>>> metadatas;
-	private List<RowGroupMetaData> appendRowGroupMetadats;
+	private List<RowGroupMetaData> appendRowGroupMetadatas;
 	private BufferIO bufferWriteIO;
 	private String insertFilePath;
 	private String restoreFilePath;
 	private String processorName;
+
+	private boolean isNewResource = false;
 
 	public BufferWriteResource(String processorName, String insertFilePath) throws IOException {
 		this.insertFilePath = insertFilePath;
 		this.restoreFilePath = insertFilePath + restoreSuffix;
 		this.processorName = processorName;
 		this.metadatas = new HashMap<>();
-		this.appendRowGroupMetadats = new ArrayList<>();
+		this.appendRowGroupMetadatas = new ArrayList<>();
 		recover();
 	}
 
@@ -69,14 +71,17 @@ public class BufferWriteResource {
 			//cutOffFile(position);
 			// recovery the BufferWriteIO
 			bufferWriteIO = new BufferIO(new TsRandomAccessFileWriter(insertFile), position, metadatas);
+
 			recoverMetadata(metadatas);
 			LOGGER.info(
 					"Recover the bufferwrite processor {}, the tsfile path is {}, the position of last flush is {}, the size of rowGroupMetadata is {}",
 					processorName, insertFilePath, position, metadatas.size());
+			isNewResource = false;
 		} else {
 			insertFile.delete();
 			restoreFile.delete();
 			bufferWriteIO = new BufferIO(new TsRandomAccessFileWriter(insertFile), 0, new ArrayList<>());
+			isNewResource = true;
 			writeRestoreInfo();
 		}
 	}
@@ -229,6 +234,14 @@ public class BufferWriteResource {
 		return restoreFilePath;
 	}
 
+	public boolean isNewResource() {
+		return isNewResource;
+	}
+
+	public void setNewResource(boolean isNewResource) {
+		this.isNewResource = isNewResource;
+	}
+
 	public void flush(FileSchema fileSchema, IMemTable iMemTable) throws IOException {
 		if (iMemTable != null && !iMemTable.isEmpty()) {
 			long startPos = bufferWriteIO.getPos();
@@ -244,19 +257,19 @@ public class BufferWriteResource {
 					"Bufferwrite processor {} flushes insert data, actual:{}, time consumption:{} ms, flush rate:{}/s",
 					processorName, MemUtils.bytesCntToStr(insertSize), timeInterval,
 					MemUtils.bytesCntToStr(insertSize / timeInterval * 1000));
-			appendRowGroupMetadats.addAll(bufferWriteIO.getAppendedRowGroupMetadata());
+			appendRowGroupMetadatas.addAll(bufferWriteIO.getAppendedRowGroupMetadata());
 		}
 	}
 
 	public void appendMetadata() {
-		if (!appendRowGroupMetadats.isEmpty()) {
-			for (RowGroupMetaData rowGroupMetaData : appendRowGroupMetadats) {
+		if (!appendRowGroupMetadatas.isEmpty()) {
+			for (RowGroupMetaData rowGroupMetaData : appendRowGroupMetadatas) {
 				for (TimeSeriesChunkMetaData chunkMetaData : rowGroupMetaData.getTimeSeriesChunkMetaDataList()) {
 					addInsertMetadata(rowGroupMetaData.getDeltaObjectID(),
 							chunkMetaData.getProperties().getMeasurementUID(), chunkMetaData);
 				}
 			}
-			appendRowGroupMetadats.clear();
+			appendRowGroupMetadatas.clear();
 		}
 	}
 
