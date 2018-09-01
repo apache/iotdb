@@ -39,11 +39,11 @@ public class AggregateEngine {
 
     /** aggregation batch calculation size **/
     private int aggregateFetchSize =
-            TsfileDBDescriptor.getInstance().getConfig().fetchSize;
+            10 * TsfileDBDescriptor.getInstance().getConfig().fetchSize;
 
     /** cross read query fetch size **/
     private int crossQueryFetchSize =
-            TsfileDBDescriptor.getInstance().getConfig().fetchSize;
+            10 * TsfileDBDescriptor.getInstance().getConfig().fetchSize;
 
     //private ExecutorService aggregateThreadPool;
 //    private AggregateEngine() {
