@@ -46,7 +46,7 @@ public class MinFolderOccupiedSpaceFirstStrategy extends DirectoryStrategy {
 
     private long getOccupiedSpace(String path) {
         Path folder = Paths.get(path);
-        long size = 0;
+        long size = Long.MAX_VALUE;
         try {
             size = Files.walk(folder)
                     .filter(p -> p.toFile().isFile())
