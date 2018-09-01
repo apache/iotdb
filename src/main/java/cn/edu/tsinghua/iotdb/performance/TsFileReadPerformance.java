@@ -21,7 +21,7 @@ import static cn.edu.tsinghua.iotdb.performance.ReaderCreator.getTsFileMetadata;
 
 public class TsFileReadPerformance {
 
-    private static final String inputFilePath = "/Users/beyyes/Desktop/root.ln.wf632814.type4/1514676100617-1520943086803";
+    private static final String inputFilePath = "";
 
     public static void main(String[] args) throws IOException {
         long startTime = System.currentTimeMillis();

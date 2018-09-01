@@ -57,13 +57,15 @@ public class WriteAnalysis {
     private static String mergeOutPutFolder;
     private static String fileFolderName;
     private static String unSeqFilePath;
-    private static String singleTsFilePath = "/Users/beyyes/Desktop/root.ln.wf632814.type4/1514676100617-1520943086803";
 
     private static Map<String, Map<String, List<TimeSeriesChunkMetaData>>> unSeqFileMetaData;
     private static Map<String, Pair<Long, Long>> unSeqFileDeltaObjectTimeRangeMap;
 
     private static long max = -1;
 
+    /**
+     * @param args merge test fileFolderName
+     */
     public static void main(String args[]) throws WriteProcessException, IOException {
         fileFolderName = args[0];
         mergeOutPutFolder = fileFolderName + "/merge/";
