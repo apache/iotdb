@@ -13,7 +13,7 @@ public class CreatorUtils {
     private static final Logger LOGGER = LoggerFactory.getLogger(CreatorUtils.class);
 
     // unsequence overflow file
-    static final String unseqTsFilePathName = "unseqTsFilec";
+    static final String unseqTsFilePathName = "unSeqTsFile";
 
     // restore file of this storage group
     static final String restoreFilePathName = ".restore";
