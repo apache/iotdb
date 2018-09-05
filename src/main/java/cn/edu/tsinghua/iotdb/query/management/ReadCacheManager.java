@@ -2,6 +2,7 @@ package cn.edu.tsinghua.iotdb.query.management;
 
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.Map;
 
 import cn.edu.tsinghua.iotdb.engine.filenode.FileNodeManager;
 import cn.edu.tsinghua.iotdb.exception.FileNodeManagerException;
@@ -11,23 +12,33 @@ import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 
 /**
  * <p>
- * Read process lock manager and ThreadLocal variable manager.
+ * Read lock manager, ThreadLocal variable and RecordReaderCacheManager manager.
  * When a query process is over or quit abnormally, the <code>unlockForOneRequest</code> method will
  * be invoked to clear the thread level variable.
  * </p>
  *
  */
-public class ReadLockManager {
+public class ReadCacheManager {
 
-    private static ReadLockManager instance = new ReadLockManager();
+    private static final class ReadCacheManagerHolder {
+        private static final ReadCacheManager INSTANCE = new ReadCacheManager();
+    }
+
+    private ReadCacheManager() {
+    }
+
+    public static ReadCacheManager getInstance() {
+        return ReadCacheManagerHolder.INSTANCE;
+    }
+
 
     private FileNodeManager fileNodeManager = FileNodeManager.getInstance();
 
     /** storage deltaObjectId and its read lock **/
     private ThreadLocal<HashMap<String, Integer>> locksMap = new ThreadLocal<>();
 
-    /** this is no need to set as ThreadLocal, RecordReaderCache has ThreadLocal variable**/
-    public RecordReaderCache recordReaderCache = new RecordReaderCache();
+    /** this is no need to set as ThreadLocal, RecordReaderCacheManager has ThreadLocal variable**/
+    private RecordReaderCacheManager recordReaderCacheManager = new RecordReaderCacheManager();
 
     /** represents the execute time of group by method**/
     private ThreadLocal<Integer> groupByCalcTime;
@@ -37,9 +48,6 @@ public class ReadLockManager {
 
     /** ThreadLocal, due to the usage of OverflowQPExecutor **/
     private ThreadLocal<GroupByEngineWithFilter> groupByEngineWithFilterLocal;
-
-    private ReadLockManager() {
-    }
 
     public int lock(String deltaObjectUID) throws ProcessorException {
         checkLocksMap();
@@ -58,6 +66,10 @@ public class ReadLockManager {
         return token;
     }
 
+    public void removeReadToken(String deltaObjectId, int readToken) {
+        locksMap.get().remove(deltaObjectId, readToken);
+    }
+
     /**
      * When jdbc connection is closed normally or quit abnormally, this method should be invoked.<br>
      * All read cache in this request should be released.
@@ -68,7 +80,8 @@ public class ReadLockManager {
         if (locksMap.get() == null) {
             return;
         }
-        HashMap<String, Integer> locks = locksMap.get();
+
+        Map<String, Integer> locks = locksMap.get();
         for (String key : locks.keySet()) {
             unlockForQuery(key, locks.get(key));
         }
@@ -85,7 +98,7 @@ public class ReadLockManager {
             groupByEngineWithFilterLocal.remove();
         }
 
-        recordReaderCache.clear();
+        recordReaderCacheManager.clear();
         FileReaderMap.getInstance().close();
     }
 
@@ -96,10 +109,6 @@ public class ReadLockManager {
             e.printStackTrace();
             throw new ProcessorException(e.getMessage());
         }
-    }
-
-    public static ReadLockManager getInstance() {
-        return instance;
     }
 
     private void checkLocksMap() {
@@ -115,19 +124,11 @@ public class ReadLockManager {
         return this.groupByCalcTime;
     }
 
-    public void setGroupByCalcTime(ThreadLocal<Integer> t) {
-        this.groupByCalcTime = t;
-    }
-
     public ThreadLocal<GroupByEngineNoFilter> getGroupByEngineNoFilterLocal() {
         if (groupByEngineNoFilterLocal == null) {
             groupByEngineNoFilterLocal = new ThreadLocal<>();
         }
         return this.groupByEngineNoFilterLocal;
-    }
-
-    public void setGroupByEngineNoFilterLocal(ThreadLocal<GroupByEngineNoFilter> t) {
-        this.groupByEngineNoFilterLocal = t;
     }
 
     public ThreadLocal<GroupByEngineWithFilter> getGroupByEngineWithFilterLocal() {
@@ -137,8 +138,7 @@ public class ReadLockManager {
         return this.groupByEngineWithFilterLocal;
     }
 
-    public void setGroupByEngineWithFilterLocal(ThreadLocal<GroupByEngineWithFilter> t) {
-        this.groupByEngineWithFilterLocal = t;
+    public RecordReaderCacheManager getRecordReaderCacheManager() {
+        return recordReaderCacheManager;
     }
-
 }

@@ -22,8 +22,8 @@ To use IoTDB, you need to have:
 
 1. Java >= 1.8
 2. Maven >= 3.0 (If you want to compile and install IoTDB from source code)
-3. TsFile >= 0.6.0 (TsFile Github page: [https://github.com/thulab/tsfile](https://github.com/thulab/tsfile))
-4. IoTDB-JDBC >= 0.6.0 (IoTDB-JDBC Github page: [https://github.com/thulab/iotdb-jdbc](https://github.com/thulab/iotdb-jdbc))
+3. TsFile >= 0.7.0 (TsFile Github page: [https://github.com/thulab/tsfile](https://github.com/thulab/tsfile))
+4. IoTDB-JDBC >= 0.7.0 (IoTDB-JDBC Github page: [https://github.com/thulab/iotdb-jdbc](https://github.com/thulab/iotdb-jdbc))
 
 TODO: TsFile and IoTDB-JDBC dependencies will be removed after Jialin Qiao re-structured the Project.
 
@@ -125,7 +125,7 @@ The command line client is interactive so if everything is ready you should see 
   | |   .--.|_/ | | \_|  | | `. \ | |_) |
   | | / .'`\ \  | |      | |  | | |  __'.
  _| |_| \__. | _| |_    _| |_.' /_| |__) |
-|_____|'.__.' |_____|  |______.'|_______/  version 0.6.0
+|_____|'.__.' |_____|  |______.'|_______/  version 0.7.0
 
 
 IoTDB> login successfully

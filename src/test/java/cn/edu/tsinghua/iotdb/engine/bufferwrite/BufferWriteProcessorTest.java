@@ -18,7 +18,6 @@ import org.junit.Test;
 
 import cn.edu.tsinghua.iotdb.engine.MetadataManagerHelper;
 import cn.edu.tsinghua.iotdb.engine.PathUtils;
-import cn.edu.tsinghua.iotdb.engine.bufferwriteV2.BufferWriteProcessor;
 import cn.edu.tsinghua.iotdb.engine.querycontext.RawSeriesChunk;
 import cn.edu.tsinghua.iotdb.utils.EnvironmentUtils;
 import cn.edu.tsinghua.iotdb.utils.FileSchemaUtils;

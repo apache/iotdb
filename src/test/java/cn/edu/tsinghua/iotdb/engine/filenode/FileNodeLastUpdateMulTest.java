@@ -16,7 +16,7 @@
 //import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
 //import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
 //import cn.edu.tsinghua.iotdb.engine.MetadataManagerHelper;
-//import cn.edu.tsinghua.iotdb.engine.bufferwrite.Action;
+//import cn.edu.tsinghua.iotdb.engine.bufferwriteV2.Action;
 //import cn.edu.tsinghua.iotdb.engine.bufferwrite.BufferWriteProcessor;
 //import cn.edu.tsinghua.iotdb.engine.overflow.io.OverflowProcessor;
 //import cn.edu.tsinghua.iotdb.exception.BufferWriteProcessorException;

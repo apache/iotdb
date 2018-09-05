@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.Random;
 import java.util.logging.Logger;
 
-public class MinFolderOccupiedSpaceFirstStrategy extends DirectoryStrategy {
+public class MinDirOccupiedSpaceFirstStrategy extends DirectoryStrategy {
 
     // directory space is measured by MB
     private final long DATA_SIZE_SHIFT = 1024 * 1024;
@@ -46,7 +46,7 @@ public class MinFolderOccupiedSpaceFirstStrategy extends DirectoryStrategy {
 
     private long getOccupiedSpace(String path) {
         Path folder = Paths.get(path);
-        long size = Long.MAX_VALUE;
+        long size = 0;
         try {
             size = Files.walk(folder)
                     .filter(p -> p.toFile().isFile())
