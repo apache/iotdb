@@ -22,6 +22,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.Map.Entry;
 
+import cn.edu.tsinghua.tsfile.timeseries.read.query.OnePassQueryDataSet;
+import cn.edu.tsinghua.tsfile.timeseries.read.support.OldRowRecord;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,10 +47,10 @@ import cn.edu.tsinghua.tsfile.file.utils.ReadWriteThriftFormatUtils;
 import cn.edu.tsinghua.tsfile.timeseries.basis.TsFile;
 import cn.edu.tsinghua.tsfile.timeseries.read.FileReader;
 import cn.edu.tsinghua.tsfile.timeseries.read.TsRandomAccessLocalFileReader;
-import cn.edu.tsinghua.tsfile.timeseries.read.query.QueryDataSet;
+
 import cn.edu.tsinghua.tsfile.timeseries.read.support.Field;
 import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
-import cn.edu.tsinghua.tsfile.timeseries.read.support.RowRecord;
+
 
 /**
  * @author lta
@@ -384,9 +386,9 @@ public class ServerServiceImpl implements ServerService.Iface {
                 for (String timesery : timeseries) {
                     paths.add(new Path(timesery));
                 }
-                QueryDataSet queryDataSet = readTsFile.query(paths, null, null);
+                OnePassQueryDataSet queryDataSet = readTsFile.query(paths, null, null);
                 while (queryDataSet.hasNextRecord()) {
-                    RowRecord record = queryDataSet.getNextRecord();
+                    OldRowRecord record = queryDataSet.getNextRecord();
                     List<Field> fields = record.getFields();
                     String sql_front = null;
                     for (Field field : fields) {
@@ -492,9 +494,9 @@ public class ServerServiceImpl implements ServerService.Iface {
                     Map<String, String> originDataPoint = new HashMap<>();
                     Map<String, String> newDataPoint = new HashMap<>();
                     String sqlFormat = "insert into %s(timestamp,%s) values(%s,%s)";
-                    QueryDataSet queryDataSet = readTsFile.query(paths, null, null);
+                    OnePassQueryDataSet queryDataSet = readTsFile.query(paths, null, null);
                     while (queryDataSet.hasNextRecord()) {
-                        RowRecord record = queryDataSet.getNextRecord();
+                        OldRowRecord record = queryDataSet.getNextRecord();
                         List<Field> fields = record.getFields();
                         String sql;
                         for (Field field : fields) { // get all data with the timesery in the postback file
@@ -516,9 +518,9 @@ public class ServerServiceImpl implements ServerService.Iface {
                         try {
                             inputOverlap = new TsRandomAccessLocalFileReader(overlapFile);
                             TsFile readTsFileOverlap = new TsFile(inputOverlap);
-                            QueryDataSet queryDataSetOverlap = readTsFileOverlap.query(paths, null, null);
+                            OnePassQueryDataSet queryDataSetOverlap = readTsFileOverlap.query(paths, null, null);
                             while (queryDataSetOverlap.hasNextRecord()) {
-                                RowRecord recordOverlap = queryDataSetOverlap.getNextRecord();
+                                OldRowRecord recordOverlap = queryDataSetOverlap.getNextRecord();
                                 List<Field> fields = recordOverlap.getFields();
                                 String sql;
                                 for (Field field : fields) {

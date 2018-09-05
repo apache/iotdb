@@ -1609,6 +1609,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
 			if (!endTimeMap.containsKey(deltaObjectId) || endTimeMap.get(deltaObjectId) < endTime) {
 				endTimeMap.put(deltaObjectId, endTime);
 			}
+			break;
 		default:
 			LOGGER.error("Not support data type: {}", dataType);
 			break;

@@ -34,10 +34,10 @@ public class AggregateRecordReader extends RecordReader {
 
     public AggregateRecordReader(GlobalSortedSeriesDataSource globalSortedSeriesDataSource, OverflowSeriesDataSource overflowSeriesDataSource,
                                  String deltaObjectId, String measurementId,
-                                 SingleSeriesFilterExpression queryTimeFilter, SingleSeriesFilterExpression queryValueFilter)
+                                 SingleSeriesFilterExpression queryTimeFilter, SingleSeriesFilterExpression queryValueFilter, int readToken)
             throws PathErrorException, IOException {
         super(globalSortedSeriesDataSource, overflowSeriesDataSource, deltaObjectId, measurementId,
-                queryTimeFilter, queryValueFilter);
+                queryTimeFilter, queryValueFilter, readToken);
     }
 
     /**

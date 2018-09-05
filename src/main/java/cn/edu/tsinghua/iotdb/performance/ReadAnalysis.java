@@ -32,21 +32,20 @@ import static cn.edu.tsinghua.iotdb.performance.CreatorUtils.*;
 import static cn.edu.tsinghua.iotdb.performance.ReaderCreator.getTsFileMetadata;
 import static cn.edu.tsinghua.iotdb.performance.ReaderCreator.getUnSeqFileMetaData;
 
-/**
- * Created by zhangjinrui on 2018/3/13.
- */
 public class ReadAnalysis {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ReadAnalysis.class);
 
-    private static String mergeOutPutFolder;
     private static String fileFolderName;
     private static String unSeqFilePath;
-
+    private static String mergeOutPutFolder;
 
     private static Map<String, Map<String, List<TimeSeriesChunkMetaData>>> unSeqFileMetaData;
     private static Map<String, Pair<Long, Long>> unSeqFileDeltaObjectTimeRangeMap;
 
+    /**
+     * @param args merge test fileFolderName
+     */
     public static void main(String args[]) throws WriteProcessException, IOException, InterruptedException {
         fileFolderName = args[0];
         mergeOutPutFolder = fileFolderName + "/merge/";
@@ -152,13 +151,6 @@ public class ReadAnalysis {
 
         long allFileMergeEndTime = System.currentTimeMillis();
         System.out.println(String.format("All file merge time consuming : %dms", allFileMergeEndTime - allFileMergeStartTime));
-    }
-
-    private TSRecord constructTsRecord(TimeValuePair timeValuePair, String deltaObjectId, String measurementId) {
-        TSRecord record = new TSRecord(timeValuePair.getTimestamp(), deltaObjectId);
-        record.addTuple(DataPoint.getDataPoint(timeValuePair.getValue().getDataType(), measurementId,
-                timeValuePair.getValue().getValue().toString()));
-        return record;
     }
 
     private TSEncoding getEncodingByDataType(TSDataType dataType) {

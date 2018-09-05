@@ -11,7 +11,7 @@ import cn.edu.tsinghua.iotdb.exception.PathErrorException;
 import cn.edu.tsinghua.iotdb.exception.StartupException;
 import cn.edu.tsinghua.iotdb.metadata.MManager;
 import cn.edu.tsinghua.iotdb.query.engine.OverflowQueryEngine;
-import cn.edu.tsinghua.iotdb.query.management.ReadLockManager;
+import cn.edu.tsinghua.iotdb.query.management.ReadCacheManager;
 import cn.edu.tsinghua.iotdb.service.IService;
 import cn.edu.tsinghua.iotdb.service.ServiceType;
 import cn.edu.tsinghua.tsfile.common.constant.StatisticConstant;
@@ -139,9 +139,8 @@ public class StatMonitor implements IService{
         try {
             OnePassQueryDataSet queryDataSet;
             queryDataSet = overflowQueryEngine.aggregate(pairList, null);
-            ReadLockManager.getInstance().unlockForOneRequest();
+            ReadCacheManager.getInstance().unlockForOneRequest();
             OldRowRecord rowRecord = queryDataSet.getNextRecord();
-
             if (rowRecord!=null) {
                 FileNodeManager fManager = FileNodeManager.getInstance();
                 HashMap<String, AtomicLong> statParamsHashMap = fManager.getStatParamsHashMap();

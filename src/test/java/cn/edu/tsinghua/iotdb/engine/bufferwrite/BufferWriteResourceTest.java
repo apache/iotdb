@@ -13,7 +13,6 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import cn.edu.tsinghua.iotdb.engine.bufferwriteV2.BufferWriteResource;
 import cn.edu.tsinghua.iotdb.engine.memtable.IMemTable;
 import cn.edu.tsinghua.iotdb.engine.memtable.MemTableTestUtils;
 import cn.edu.tsinghua.iotdb.engine.memtable.TreeSetMemTable;
