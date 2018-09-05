@@ -15,8 +15,6 @@ import java.util.List;
 
 public class LastAggrFunc extends AggregateFunction {
 
-    private boolean hasSetValue = false;
-
     public LastAggrFunc(TSDataType dataType) {
         super(AggregationConstant.LAST, dataType);
     }
@@ -61,13 +59,13 @@ public class LastAggrFunc extends AggregateFunction {
         long time = -1;
         Object val = null;
         // TODO : is there easier way to get the last value ?
-        while(insertMemoryData.hasNext()) {
+        while (insertMemoryData.hasNext()) {
             time = insertMemoryData.getCurrentMinTime();
             val = insertMemoryData.getCurrentObjectValue();
             insertMemoryData.removeCurrentValue();
         }
-        if(time > 0) {
-            updateLast((Comparable<?>)val);
+        if (time > 0) {
+            updateLast((Comparable<?>) val);
         }
     }
 
@@ -83,8 +81,8 @@ public class LastAggrFunc extends AggregateFunction {
             if (insertMemoryData.hasNext()) {
                 if (timestamps.get(timeIndex) == insertMemoryData.getCurrentMinTime()) {
                     Object value = insertMemoryData.getCurrentObjectValue();
-                    updateLast((Comparable<?>)value);
-                    timeIndex ++;
+                    updateLast((Comparable<?>) value);
+                    timeIndex++;
                     insertMemoryData.removeCurrentValue();
                 } else if (timestamps.get(timeIndex) > insertMemoryData.getCurrentMinTime()) {
                     insertMemoryData.removeCurrentValue();
@@ -95,7 +93,6 @@ public class LastAggrFunc extends AggregateFunction {
                 break;
             }
         }
-
         return insertMemoryData.hasNext();
     }
 
@@ -124,7 +121,7 @@ public class LastAggrFunc extends AggregateFunction {
             } else if (time < intervalStart || time < partitionStart) {
                 data.curIdx++;
             } else if (time >= intervalStart && time <= intervalEnd && time >= partitionStart && time <= partitionEnd) {
-                if(time > lastTime) {
+                if (time > lastTime) {
                     lastValue = data.getAnObject(data.curIdx);
                     lastTime = time;
                 }
@@ -147,7 +144,7 @@ public class LastAggrFunc extends AggregateFunction {
         if (!hasSetValue) {
             resultData.putAnObject(lastVal);
             hasSetValue = true;
-        } else  {
+        } else {
             resultData.setAnObject(0, lastVal);
         }
     }

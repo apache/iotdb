@@ -1,5 +1,6 @@
 package cn.edu.tsinghua.iotdb.engine.memcontrol;
 
+import cn.edu.tsinghua.iotdb.conf.directories.Directories;
 import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
 import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
 import cn.edu.tsinghua.iotdb.engine.MetadataManagerHelper;
@@ -119,7 +120,7 @@ public class BufferwriteMetaSizeControlTest {
         parameters.put(FileNodeConstants.FILENODE_PROCESSOR_FLUSH_ACTION, fnflushaction);
         
         try {
-            processor = new BufferWriteProcessor(nsp, filename, parameters,constructFileSchema(nsp));
+            processor = new BufferWriteProcessor(Directories.getInstance().getFolderForTest(), nsp, filename, parameters,constructFileSchema(nsp));
         } catch (BufferWriteProcessorException e) {
             e.printStackTrace();
             fail(e.getMessage());

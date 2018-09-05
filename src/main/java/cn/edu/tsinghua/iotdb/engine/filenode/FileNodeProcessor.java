@@ -2,6 +2,8 @@ package cn.edu.tsinghua.iotdb.engine.filenode;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.FileSystems;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -25,6 +27,7 @@ import org.slf4j.LoggerFactory;
 
 import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
 import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
+import cn.edu.tsinghua.iotdb.conf.directories.Directories;
 import cn.edu.tsinghua.iotdb.engine.Processor;
 import cn.edu.tsinghua.iotdb.engine.bufferwrite.Action;
 import cn.edu.tsinghua.iotdb.engine.bufferwrite.BufferWriteProcessor;
@@ -67,13 +70,17 @@ import cn.edu.tsinghua.tsfile.timeseries.filterV2.factory.FilterFactory;
 import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
 import cn.edu.tsinghua.tsfile.timeseries.readV2.datatype.TimeValuePair;
 import cn.edu.tsinghua.tsfile.timeseries.readV2.reader.SeriesReader;
-import cn.edu.tsinghua.tsfile.timeseries.write.TsFileWriter;
+import cn.edu.tsinghua.tsfile.timeseries.write.desc.MeasurementDescriptor;
 import cn.edu.tsinghua.tsfile.timeseries.write.exception.WriteProcessException;
+import cn.edu.tsinghua.tsfile.timeseries.write.io.TsFileIOWriter;
+import cn.edu.tsinghua.tsfile.timeseries.write.page.IPageWriter;
+import cn.edu.tsinghua.tsfile.timeseries.write.page.PageWriterImpl;
 import cn.edu.tsinghua.tsfile.timeseries.write.record.DataPoint;
 import cn.edu.tsinghua.tsfile.timeseries.write.record.TSRecord;
 import cn.edu.tsinghua.tsfile.timeseries.write.record.datapoint.LongDataPoint;
 import cn.edu.tsinghua.tsfile.timeseries.write.schema.FileSchema;
 import cn.edu.tsinghua.tsfile.timeseries.write.schema.converter.JsonConverter;
+import cn.edu.tsinghua.tsfile.timeseries.write.series.SeriesWriterImpl;
 
 public class FileNodeProcessor extends Processor implements IStatistic {
 
@@ -81,6 +88,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
 	private static final TSFileConfig TsFileConf = TSFileDescriptor.getInstance().getConfig();
 	private static final TsfileDBConfig TsFileDBConf = TsfileDBDescriptor.getInstance().getConfig();
 	private static final MManager mManager = MManager.getInstance();
+	private static final Directories directories = Directories.getInstance();
 
 	/**
 	 * Used to keep the oldest timestamp for each deltaObjectId. The key is
@@ -226,9 +234,9 @@ public class FileNodeProcessor extends Processor implements IStatistic {
 		}
 	}
 
-	public void addIntervalFileNode(long startTime, String fileName) throws Exception {
+	public void addIntervalFileNode(long startTime, String baseDir, String fileName) throws Exception {
 
-		IntervalFileNode intervalFileNode = new IntervalFileNode(OverflowChangeType.NO_CHANGE, fileName);
+		IntervalFileNode intervalFileNode = new IntervalFileNode(OverflowChangeType.NO_CHANGE, baseDir, fileName);
 		this.currentIntervalFileNode = intervalFileNode;
 		newFileNodes.add(intervalFileNode);
 		fileNodeProcessorStore.setNewFileNodes(newFileNodes);
@@ -354,8 +362,8 @@ public class FileNodeProcessor extends Processor implements IStatistic {
 	}
 
 	/**
-	 * if overflow insert, update and delete write into this filenode processor,
-	 * set <code>isOverflowed</code> to true,
+	 * if overflow insert, update and delete write into this filenode processor, set
+	 * <code>isOverflowed</code> to true,
 	 */
 	public void setOverflowed(boolean isOverflowed) {
 		if (this.isOverflowed != isOverflowed) {
@@ -387,11 +395,12 @@ public class FileNodeProcessor extends Processor implements IStatistic {
 			parameters.put(FileNodeConstants.BUFFERWRITE_FLUSH_ACTION, bufferwriteFlushAction);
 			parameters.put(FileNodeConstants.BUFFERWRITE_CLOSE_ACTION, bufferwriteCloseAction);
 			parameters.put(FileNodeConstants.FILENODE_PROCESSOR_FLUSH_ACTION, flushFileNodeProcessorAction);
+			String baseDir = directories.getTsFileFolder(newFileNodes.get(newFileNodes.size() - 1).getBaseDirIndex());
 			LOGGER.info("The filenode processor {} will recovery the bufferwrite processor, the bufferwrite file is {}",
 					getProcessorName(), fileNames[fileNames.length - 1]);
 			try {
-				bufferWriteProcessor = new BufferWriteProcessor(getProcessorName(), fileNames[fileNames.length - 1],
-						parameters, fileSchema);
+				bufferWriteProcessor = new BufferWriteProcessor(baseDir, getProcessorName(),
+						fileNames[fileNames.length - 1], parameters, fileSchema);
 			} catch (BufferWriteProcessorException e) {
 				// unlock
 				writeUnlock();
@@ -441,9 +450,11 @@ public class FileNodeProcessor extends Processor implements IStatistic {
 			parameters.put(FileNodeConstants.BUFFERWRITE_FLUSH_ACTION, bufferwriteFlushAction);
 			parameters.put(FileNodeConstants.BUFFERWRITE_CLOSE_ACTION, bufferwriteCloseAction);
 			parameters.put(FileNodeConstants.FILENODE_PROCESSOR_FLUSH_ACTION, flushFileNodeProcessorAction);
+			String baseDir = directories.getNextFolderForTsfile();
+			LOGGER.info("Allocate folder {} for the new bufferwrite processor.", baseDir);
 			// construct processor or restore
 			try {
-				bufferWriteProcessor = new BufferWriteProcessor(processorName,
+				bufferWriteProcessor = new BufferWriteProcessor(baseDir, processorName,
 						insertTime + FileNodeConstants.BUFFERWRITE_FILE_SEPARATOR + System.currentTimeMillis(),
 						parameters, fileSchema);
 			} catch (BufferWriteProcessorException e) {
@@ -727,6 +738,9 @@ public class FileNodeProcessor extends Processor implements IStatistic {
 	 */
 	public void appendFile(IntervalFileNode appendFile, String appendFilePath) throws FileNodeProcessorException {
 		try {
+			if (!new File(appendFile.getFilePath()).getParentFile().exists()) {
+				new File(appendFile.getFilePath()).getParentFile().mkdirs();
+			}
 			// move file
 			File originFile = new File(appendFilePath);
 			File targetFile = new File(appendFile.getFilePath());
@@ -754,6 +768,45 @@ public class FileNodeProcessor extends Processor implements IStatistic {
 			LOGGER.error("Failed to append the tsfile {} to filenode processor {}.", appendFile, getProcessorName(), e);
 			throw new FileNodeProcessorException(e);
 		}
+	}
+
+	/**
+	 * get overlap tsfiles which are conflict with the appendFile
+	 * 
+	 * @param appendFile
+	 *            the appended tsfile information
+	 * @throws FileNodeProcessorException
+	 */
+	public List<String> getOverlapFiles(IntervalFileNode appendFile, String uuid)
+			throws FileNodeProcessorException {
+		List<String> overlapFiles = new ArrayList<>();
+		try {
+			for (IntervalFileNode intervalFileNode : newFileNodes) {
+				for (Entry<String, Long> entry : appendFile.getStartTimeMap().entrySet()) {
+					if (!intervalFileNode.getStartTimeMap().containsKey(entry.getKey())) {
+						continue;
+					}
+					if (intervalFileNode.getEndTime(entry.getKey()) >= entry.getValue() && intervalFileNode.getStartTime(entry.getKey()) <= appendFile
+								.getEndTime(entry.getKey())) {
+						String relativeFilePath = "postback" + File.separator + uuid + File.separator + "backup" + File.separator + intervalFileNode.getRelativePath();
+						File newFile = new File(Directories.getInstance().getTsFileFolder(intervalFileNode.getBaseDirIndex()), relativeFilePath);
+						if (!newFile.getParentFile().exists()) {
+							newFile.getParentFile().mkdirs();
+						}
+						java.nio.file.Path link = FileSystems.getDefault().getPath(newFile.getPath());
+						java.nio.file.Path target = FileSystems.getDefault()
+								.getPath(intervalFileNode.getFilePath());
+						Files.createLink(link, target);
+						overlapFiles.add(newFile.getPath());
+						break;
+					}
+				}
+			}
+		} catch (IOException e) {
+			LOGGER.error("Failed to get overlap tsfiles which conflict with the appendFile.");
+			throw new FileNodeProcessorException(e);
+		}
+		return overlapFiles;
 	}
 
 	public void addTimeSeries(String measurementToString, String dataType, String encoding, String[] encodingArgs) {
@@ -1074,7 +1127,8 @@ public class FileNodeProcessor extends Processor implements IStatistic {
 						}
 					}
 					IntervalFileNode node = new IntervalFileNode(startTimeMap, endTimeMap,
-							intervalFileNode.overflowChangeType, intervalFileNode.getRelativePath());
+							intervalFileNode.overflowChangeType, intervalFileNode.getBaseDirIndex(),
+							intervalFileNode.getRelativePath());
 					result.add(node);
 				}
 			}
@@ -1259,15 +1313,19 @@ public class FileNodeProcessor extends Processor implements IStatistic {
 				// delete the all files which are in the newFileNodes
 				// notice: the last restore file of the interval file
 
-				String bufferwriteDirPath = TsFileDBConf.bufferWriteDir;
-				if (bufferwriteDirPath.length() > 0
-						&& bufferwriteDirPath.charAt(bufferwriteDirPath.length() - 1) != File.separatorChar) {
-					bufferwriteDirPath = bufferwriteDirPath + File.separatorChar;
-				}
-				bufferwriteDirPath = bufferwriteDirPath + getProcessorName();
-				File bufferwriteDir = new File(bufferwriteDirPath);
-				if (!bufferwriteDir.exists()) {
-					bufferwriteDir.mkdirs();
+				List<String> bufferwriteDirPathList = directories.getAllTsFileFolders();
+				List<File> bufferwriteDirList = new ArrayList<>();
+				for (String bufferwriteDirPath : bufferwriteDirPathList) {
+					if (bufferwriteDirPath.length() > 0
+							&& bufferwriteDirPath.charAt(bufferwriteDirPath.length() - 1) != File.separatorChar) {
+						bufferwriteDirPath = bufferwriteDirPath + File.separatorChar;
+					}
+					bufferwriteDirPath = bufferwriteDirPath + getProcessorName();
+					File bufferwriteDir = new File(bufferwriteDirPath);
+					bufferwriteDirList.add(bufferwriteDir);
+					if (!bufferwriteDir.exists()) {
+						bufferwriteDir.mkdirs();
+					}
 				}
 
 				Set<String> bufferFiles = new HashSet<>();
@@ -1283,9 +1341,11 @@ public class FileNodeProcessor extends Processor implements IStatistic {
 					bufferFiles.add(bufferFileRestorePath);
 				}
 
-				for (File file : bufferwriteDir.listFiles()) {
-					if (!bufferFiles.contains(file.getPath())) {
-						file.delete();
+				for (File bufferwriteDir : bufferwriteDirList) {
+					for (File file : bufferwriteDir.listFiles()) {
+						if (!bufferFiles.contains(file.getPath())) {
+							file.delete();
+						}
 					}
 				}
 
@@ -1336,12 +1396,16 @@ public class FileNodeProcessor extends Processor implements IStatistic {
 		Map<String, Long> startTimeMap = new HashMap<>();
 		Map<String, Long> endTimeMap = new HashMap<>();
 
-		TsFileWriter recordWriter = null;
+		TsFileIOWriter fileIOWriter = null;
 		String outputPath = null;
+		String baseDir = null;
 		String fileName = null;
 		for (String deltaObjectId : backupIntervalFile.getStartTimeMap().keySet()) {
 			// query one deltaObjectId
 			List<Path> pathList = new ArrayList<>();
+			boolean isRowGroupHasData = false;
+			long startPos = -1;
+			int recordCount = 0;
 			try {
 				List<String> pathStrings = mManager.getLeafNodePathInNextLevel(deltaObjectId);
 				for (String string : pathStrings) {
@@ -1354,13 +1418,12 @@ public class FileNodeProcessor extends Processor implements IStatistic {
 			if (pathList.isEmpty()) {
 				continue;
 			}
-			long startTime = -1;
-			long endTime = -1;
 			for (Path path : pathList) {
 				// query one measurenment in the special deltaObjectId
+				String measurementId = path.getMeasurementToString();
 				TSDataType dataType = mManager.getSeriesType(path.getFullPath());
 				OverflowSeriesDataSource overflowSeriesDataSource = overflowProcessor.queryMerge(deltaObjectId,
-						path.getMeasurementToString(), dataType, true);
+						measurementId, dataType, true);
 				Filter<Long> timeFilter = FilterFactory.and(
 						TimeFilter.gtEq(backupIntervalFile.getStartTime(deltaObjectId)),
 						TimeFilter.ltEq(backupIntervalFile.getEndTime(deltaObjectId)));
@@ -1373,41 +1436,46 @@ public class FileNodeProcessor extends Processor implements IStatistic {
 								path, seriesFilter, getProcessorName());
 					} else {
 						TimeValuePair timeValuePair = seriesReader.next();
-						if (recordWriter == null) {
+						if (fileIOWriter == null) {
+							baseDir = directories.getNextFolderForTsfile();
 							fileName = String.valueOf(timeValuePair.getTimestamp()
 									+ FileNodeConstants.BUFFERWRITE_FILE_SEPARATOR + System.currentTimeMillis());
-							outputPath = constructOutputFilePath(getProcessorName(), fileName);
+							outputPath = constructOutputFilePath(baseDir, getProcessorName(), fileName);
 							fileName = getProcessorName() + File.separatorChar + fileName;
-							recordWriter = new TsFileWriter(new File(outputPath), fileSchema, TsFileConf);
+							fileIOWriter = new TsFileIOWriter(new File(outputPath));
 						}
-						TSRecord record = constructTsRecord(timeValuePair, deltaObjectId,
-								path.getMeasurementToString());
-						recordWriter.write(record);
-						startTime = endTime = timeValuePair.getTimestamp();
-						if (!startTimeMap.containsKey(deltaObjectId) || startTimeMap.get(deltaObjectId) > startTime) {
-							startTimeMap.put(deltaObjectId, startTime);
+						if (!isRowGroupHasData) {
+							// start a new rowGroupMetadata
+							isRowGroupHasData = true;
+							fileIOWriter.startRowGroup(deltaObjectId);
+							startPos = fileIOWriter.getPos();
 						}
-						if (!endTimeMap.containsKey(deltaObjectId) || endTimeMap.get(deltaObjectId) < endTime) {
-							endTimeMap.put(deltaObjectId, endTime);
-						}
-						while (seriesReader.hasNext()) {
-							record = constructTsRecord(seriesReader.next(), deltaObjectId,
-									path.getMeasurementToString());
-							endTime = record.time;
-							recordWriter.write(record);
-						}
-						if (!endTimeMap.containsKey(deltaObjectId) || endTimeMap.get(deltaObjectId) < endTime) {
-							endTimeMap.put(deltaObjectId, endTime);
-						}
+						// init the serieswWriteImpl
+						MeasurementDescriptor desc = fileSchema.getMeasurementDescriptor(measurementId);
+						IPageWriter pageWriter = new PageWriterImpl(desc);
+						int pageSizeThreshold = TsFileConf.pageSizeInByte;
+						SeriesWriterImpl seriesWriterImpl = new SeriesWriterImpl(deltaObjectId, desc, pageWriter,
+								pageSizeThreshold);
+						// write the series data
+						recordCount += writeOneSeries(deltaObjectId, measurementId, seriesWriterImpl, dataType,
+								seriesReader, startTimeMap, endTimeMap, timeValuePair);
+						// flush the series data
+						seriesWriterImpl.writeToFileWriter(fileIOWriter);
 					}
 				} finally {
 					seriesReader.close();
 				}
 			}
+			if (isRowGroupHasData) {
+				// end the new rowGroupMetadata
+				long memSize = fileIOWriter.getPos() - startPos;
+				fileIOWriter.endRowGroup(memSize, recordCount);
+			}
 		}
-		if (recordWriter != null) {
-			recordWriter.close();
+		if (fileIOWriter != null) {
+			fileIOWriter.endFile(fileSchema);
 		}
+		backupIntervalFile.setBaseDirIndex(directories.getTsFileFolderIndex(baseDir));
 		backupIntervalFile.setRelativePath(fileName);
 		backupIntervalFile.overflowChangeType = OverflowChangeType.NO_CHANGE;
 		backupIntervalFile.setStartTimeMap(startTimeMap);
@@ -1415,15 +1483,147 @@ public class FileNodeProcessor extends Processor implements IStatistic {
 		return fileName;
 	}
 
-	private String constructOutputFilePath(String processorName, String fileName) {
-
-		String dataDirPath = TsFileDBConf.bufferWriteDir;
-		if (dataDirPath.charAt(dataDirPath.length() - 1) != File.separatorChar) {
-			dataDirPath = dataDirPath + File.separatorChar + processorName;
+	private int writeOneSeries(String deltaObjectId, String measurement, SeriesWriterImpl seriesWriterImpl,
+			TSDataType dataType, SeriesReader seriesReader, Map<String, Long> startTimeMap,
+			Map<String, Long> endTimeMap, TimeValuePair timeValuePair) throws IOException {
+		int count = 0;
+		long startTime = -1;
+		long endTime = -1;
+		switch (dataType) {
+		case BOOLEAN:
+			seriesWriterImpl.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getBoolean());
+			count++;
+			startTime = endTime = timeValuePair.getTimestamp();
+			if (!startTimeMap.containsKey(deltaObjectId) || startTimeMap.get(deltaObjectId) > startTime) {
+				startTimeMap.put(deltaObjectId, startTime);
+			}
+			if (!endTimeMap.containsKey(deltaObjectId) || endTimeMap.get(deltaObjectId) < endTime) {
+				endTimeMap.put(deltaObjectId, endTime);
+			}
+			while (seriesReader.hasNext()) {
+				count++;
+				timeValuePair = seriesReader.next();
+				endTime = timeValuePair.getTimestamp();
+				seriesWriterImpl.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getBoolean());
+			}
+			if (!endTimeMap.containsKey(deltaObjectId) || endTimeMap.get(deltaObjectId) < endTime) {
+				endTimeMap.put(deltaObjectId, endTime);
+			}
+			break;
+		case INT32:
+			seriesWriterImpl.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getInt());
+			count++;
+			startTime = endTime = timeValuePair.getTimestamp();
+			if (!startTimeMap.containsKey(deltaObjectId) || startTimeMap.get(deltaObjectId) > startTime) {
+				startTimeMap.put(deltaObjectId, startTime);
+			}
+			if (!endTimeMap.containsKey(deltaObjectId) || endTimeMap.get(deltaObjectId) < endTime) {
+				endTimeMap.put(deltaObjectId, endTime);
+			}
+			while (seriesReader.hasNext()) {
+				count++;
+				timeValuePair = seriesReader.next();
+				endTime = timeValuePair.getTimestamp();
+				seriesWriterImpl.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getInt());
+			}
+			if (!endTimeMap.containsKey(deltaObjectId) || endTimeMap.get(deltaObjectId) < endTime) {
+				endTimeMap.put(deltaObjectId, endTime);
+			}
+			break;
+		case INT64:
+			seriesWriterImpl.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getLong());
+			count++;
+			startTime = endTime = timeValuePair.getTimestamp();
+			if (!startTimeMap.containsKey(deltaObjectId) || startTimeMap.get(deltaObjectId) > startTime) {
+				startTimeMap.put(deltaObjectId, startTime);
+			}
+			if (!endTimeMap.containsKey(deltaObjectId) || endTimeMap.get(deltaObjectId) < endTime) {
+				endTimeMap.put(deltaObjectId, endTime);
+			}
+			while (seriesReader.hasNext()) {
+				count++;
+				timeValuePair = seriesReader.next();
+				endTime = timeValuePair.getTimestamp();
+				seriesWriterImpl.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getLong());
+			}
+			if (!endTimeMap.containsKey(deltaObjectId) || endTimeMap.get(deltaObjectId) < endTime) {
+				endTimeMap.put(deltaObjectId, endTime);
+			}
+			break;
+		case FLOAT:
+			seriesWriterImpl.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getFloat());
+			count++;
+			startTime = endTime = timeValuePair.getTimestamp();
+			if (!startTimeMap.containsKey(deltaObjectId) || startTimeMap.get(deltaObjectId) > startTime) {
+				startTimeMap.put(deltaObjectId, startTime);
+			}
+			if (!endTimeMap.containsKey(deltaObjectId) || endTimeMap.get(deltaObjectId) < endTime) {
+				endTimeMap.put(deltaObjectId, endTime);
+			}
+			while (seriesReader.hasNext()) {
+				count++;
+				timeValuePair = seriesReader.next();
+				endTime = timeValuePair.getTimestamp();
+				seriesWriterImpl.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getFloat());
+			}
+			if (!endTimeMap.containsKey(deltaObjectId) || endTimeMap.get(deltaObjectId) < endTime) {
+				endTimeMap.put(deltaObjectId, endTime);
+			}
+			break;
+		case DOUBLE:
+			seriesWriterImpl.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getDouble());
+			count++;
+			startTime = endTime = timeValuePair.getTimestamp();
+			if (!startTimeMap.containsKey(deltaObjectId) || startTimeMap.get(deltaObjectId) > startTime) {
+				startTimeMap.put(deltaObjectId, startTime);
+			}
+			if (!endTimeMap.containsKey(deltaObjectId) || endTimeMap.get(deltaObjectId) < endTime) {
+				endTimeMap.put(deltaObjectId, endTime);
+			}
+			while (seriesReader.hasNext()) {
+				count++;
+				timeValuePair = seriesReader.next();
+				endTime = timeValuePair.getTimestamp();
+				seriesWriterImpl.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getDouble());
+			}
+			if (!endTimeMap.containsKey(deltaObjectId) || endTimeMap.get(deltaObjectId) < endTime) {
+				endTimeMap.put(deltaObjectId, endTime);
+			}
+			break;
+		case TEXT:
+			seriesWriterImpl.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getBinary());
+			count++;
+			startTime = endTime = timeValuePair.getTimestamp();
+			if (!startTimeMap.containsKey(deltaObjectId) || startTimeMap.get(deltaObjectId) > startTime) {
+				startTimeMap.put(deltaObjectId, startTime);
+			}
+			if (!endTimeMap.containsKey(deltaObjectId) || endTimeMap.get(deltaObjectId) < endTime) {
+				endTimeMap.put(deltaObjectId, endTime);
+			}
+			while (seriesReader.hasNext()) {
+				count++;
+				timeValuePair = seriesReader.next();
+				endTime = timeValuePair.getTimestamp();
+				seriesWriterImpl.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getBinary());
+			}
+			if (!endTimeMap.containsKey(deltaObjectId) || endTimeMap.get(deltaObjectId) < endTime) {
+				endTimeMap.put(deltaObjectId, endTime);
+			}
+		default:
+			LOGGER.error("Not support data type: {}", dataType);
+			break;
 		}
-		File dataDir = new File(dataDirPath);
+		return count;
+	}
+
+	private String constructOutputFilePath(String baseDir, String processorName, String fileName) {
+
+		if (baseDir.charAt(baseDir.length() - 1) != File.separatorChar) {
+			baseDir = baseDir + File.separatorChar + processorName;
+		}
+		File dataDir = new File(baseDir);
 		if (!dataDir.exists()) {
-			LOGGER.warn("The bufferwrite processor data dir doesn't exists, create new directory {}", dataDirPath);
+			LOGGER.warn("The bufferwrite processor data dir doesn't exists, create new directory {}", baseDir);
 			dataDir.mkdirs();
 		}
 		File outputFile = new File(dataDir, fileName);

@@ -3,18 +3,17 @@ echo ````````````````````````
 echo Starting IoTDB
 echo ````````````````````````
 
-
 if "%OS%" == "Windows_NT" setlocal
 
 pushd %~dp0..
-if NOT DEFINED IOTDB_HOME set IOTDB_HOME=%CD%
+if NOT DEFINED IOTDB_HOME set IOTDB_HOME=%cd%
 popd
 
 set IOTDB_CONF=%IOTDB_HOME%\conf
 set IOTDB_LOGS=%IOTDB_HOME%\logs
 
-IF EXIST %IOTDB_CONF%\iotdb-env.bat (
-    CALL %IOTDB_CONF%\iotdb-env.bat
+IF EXIST "%IOTDB_CONF%\iotdb-env.bat" (
+    CALL "%IOTDB_CONF%\iotdb-env.bat"
     ) ELSE (
     echo "can't find %IOTDB_CONF%\iotdb-env.bat"
     )
@@ -26,9 +25,9 @@ if NOT DEFINED JAVA_HOME goto :err
 @REM JVM Opts we'll use in legacy run or installation
 set JAVA_OPTS=-ea^
  -Dlogback.configurationFile="%IOTDB_CONF%\logback.xml"^
- -DIOTDB_HOME=%IOTDB_HOME%^
- -DTSFILE_HOME=%IOTDB_HOME%^
- -DIOTDB_CONF=%IOTDB_CONF%
+ -DIOTDB_HOME="%IOTDB_HOME%"^
+ -DTSFILE_HOME="%IOTDB_HOME%"^
+ -DIOTDB_CONF="%IOTDB_CONF%"
 
 @REM ***** CLASSPATH library setting *****
 @REM Ensure that any user defined CLASSPATH variables are not used on startup
@@ -48,7 +47,7 @@ REM ----------------------------------------------------------------------------
 
 rem echo CLASSPATH: %CLASSPATH%
 
-"%JAVA_HOME%\bin\java" %JAVA_OPTS% %IOTDB_HEAP_OPTS% -cp %CLASSPATH% %IOTDB_DERBY_OPTS% %IOTDB_JMX_OPTS% %MAIN_CLASS%
+"%JAVA_HOME%\bin\java" %JAVA_OPTS% %IOTDB_HEAP_OPTS% -cp %CLASSPATH% %IOTDB_JMX_OPTS% %MAIN_CLASS%
 goto finally
 
 :err

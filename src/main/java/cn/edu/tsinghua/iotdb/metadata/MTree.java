@@ -1,10 +1,7 @@
 package cn.edu.tsinghua.iotdb.metadata;
 
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import cn.edu.tsinghua.iotdb.exception.PathErrorException;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
@@ -645,6 +642,30 @@ public class MTree implements Serializable {
 		}
 		return res;
 	}
+
+	/**
+	 * Get all storage groups in current Metadata Tree
+	 *
+	 * @return a list contains all distinct storage groups
+	 */
+	public HashSet<String> getAllStorageGroup() {
+		HashSet<String> res = new HashSet<>();
+		MNode root;
+		if ((root = getRoot()) != null) {
+			findStorageGroup(root, "root", res);
+		}
+		return res;
+	}
+
+    private void findStorageGroup(MNode node, String path, HashSet<String> res) {
+        if (node.isStorageLevel()) {
+            res.add(path);
+            return;
+        }
+        for (MNode childNode : node.getChildren().values()) {
+            findStorageGroup(childNode, path + "." + childNode.toString(), res);
+        }
+    }
 
 	/**
 	 * Get all delta objects for given type

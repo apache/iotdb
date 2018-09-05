@@ -138,6 +138,27 @@ public class SQLParserTest {
     }  
     
     @Test
+    public void multiInsert4() throws ParseException {
+        // template for test case
+        ArrayList<String> ans = new ArrayList<>(Arrays.asList(
+        		"TOK_INSERT", "TOK_PATH","TOK_ROOT", "vehicle", "d0",
+                "TOK_MULT_IDENTIFIER", "TOK_TIME", "s0","s1" ,"TOK_MULT_VALUE",
+                "TOK_DATETIME" ,"2016-02-01 11:12:35", 
+                "\'12\"3a\\'bc\'", "\"12\\\"3abc\""));
+        ArrayList<String> rec = new ArrayList<>();
+        ASTNode astTree = ParseGenerator.generateAST("insert into root.vehicle.d0 (timestamp, s0, s1) "
+        		+ "values(2016-02-01 11:12:35, \'12\"3a\\'bc\', \"12\\\"3abc\")");
+        astTree = ParseUtils.findRootNonNullToken(astTree);
+        recursivePrintSon(astTree, rec);
+
+        int i = 0;
+        while (i <= rec.size() - 1) {
+            assertEquals(rec.get(i), ans.get(i));
+            i++;
+        }
+    }
+
+    @Test
     public void updateValueWithTimeFilter1() throws ParseException {
         // template for test case
         ArrayList<String> ans = new ArrayList<>(Arrays.asList(

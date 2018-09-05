@@ -11,6 +11,9 @@ public class TsfileDBConfig {
 	public static final String CONFIG_NAME = "iotdb-engine.properties";
 	public static final String default_data_dir = "data";
 	public static final String default_sys_dir = "system";
+	public static final String default_tsfile_dir = "settled";
+	public static final String mult_dir_strategy_prefix = "cn.edu.tsinghua.iotdb.conf.directories.strategy.";
+	public static final String default_mult_dir_strategy = "MaxDiskUsableSpaceFirstStrategy";
 	/**
 	 * Port which JDBC server listens to
 	 */
@@ -58,7 +61,12 @@ public class TsfileDBConfig {
 	/**
 	 * Data directory of bufferWrite data
 	 */
-	public String bufferWriteDir = "settled";
+	public String[] bufferWriteDirs = {"settled1", "settled2", "settled3"};
+
+	/**
+	 * Strategy of multiple directories
+	 */
+	public String multDirStrategyClassName = null;
 
 	/**
 	 * Data directory of metadata data
@@ -228,17 +236,46 @@ public class TsfileDBConfig {
 	 */
 	public int maxLogEntrySize = 4 * 1024 * 1024;
 
+	/**
+	 * IoTDB is a receiver of postback or not
+	 */
+	public boolean isPostbackEnable = true;
+
+	/**
+	 * If IoTDB is a receiver of postback, set the server port
+	 */
+	public int postbackServerPort = 5555;
+
+	/**
+	 * Choose a postBack strategy of merging historical data: 1. It's more likely to
+	 * update historical data, choose "true". 2. It's more likely not to update
+	 * historical data or you don't know exactly, choose "false".
+	 */
+	public boolean update_historical_data_possibility = false;
+
+	public String ipWhiteList = "0.0.0.0/0";
+
 	public TsfileDBConfig() {}
 
 	public void updatePath() {
+		confirmMultDirStrategy();
+
 		preUpdatePath();
 
 		// update the paths of subdirectories in the dataDir
 		if (dataDir.length() > 0 && !dataDir.endsWith(File.separator)) {
 			dataDir = dataDir + File.separatorChar;
 		}
-		bufferWriteDir = dataDir + bufferWriteDir;
 		overflowDataDir = dataDir + overflowDataDir;
+
+		if(bufferWriteDirs == null || bufferWriteDirs.length == 0){
+			bufferWriteDirs = new String[]{default_tsfile_dir};
+		}
+		for(int i = 0;i < bufferWriteDirs.length;i++){
+			if(new File(bufferWriteDirs[i]).isAbsolute())continue;
+
+			bufferWriteDirs[i] = dataDir + bufferWriteDirs[i];
+		}
 
 		// update the paths of subdirectories in the sysDir
 		if (sysDir.length() > 0 && !sysDir.endsWith(File.separator)) {
@@ -280,13 +317,13 @@ public class TsfileDBConfig {
      | D:\\iotdb\iotdb | C:\\sysDir         | C:\\sysDir                  |
      | D:\\iotdb\iotdb | ""                 | D:\\iotdb\iotdb\            |
 
-     First, if walDir is null, walDir will be assigned the default value(i.e.,"data".
+     First, if walDir is null, walDir will be assigned the default value(i.e.,"data"+File.separatorChar+"data".
      Then, if walDir is absolute, leave walDir as it is. If walDir is relative,
      walDir will be converted to the complete version using non-empty %IOTDB_HOME%.
      e.g. for windows platform,
      |    IOTDB_HOME   |   walDir before    |       walDir  after         |
      |-----------------|--------------------|-----------------------------|
-     | D:\\iotdb\iotdb | null               | D:\\iotdb\iotdb\data        |
+     | D:\\iotdb\iotdb | null               | D:\\iotdb\iotdb\data\wal    |
      | D:\\iotdb\iotdb | walDir             | D:\\iotdb\iotdb\walDir      |
      | D:\\iotdb\iotdb | C:\\walDir         | C:\\walDir                  |
      | D:\\iotdb\iotdb | ""                 | D:\\iotdb\iotdb\            |
@@ -331,4 +368,21 @@ public class TsfileDBConfig {
 		sysDir = dirs.get(1);
 		walDir = dirs.get(2);
 	}
+
+	public void confirmMultDirStrategy(){
+		if(multDirStrategyClassName == null){
+			multDirStrategyClassName = default_mult_dir_strategy;
+		}
+		if(!multDirStrategyClassName.contains(".")){
+			multDirStrategyClassName = mult_dir_strategy_prefix + multDirStrategyClassName;
+		}
+
+		try {
+			Class.forName(multDirStrategyClassName);
+		} catch (ClassNotFoundException e) {
+			multDirStrategyClassName = mult_dir_strategy_prefix + default_mult_dir_strategy;
+		}
+	}
+
+	public String[] getBufferWriteDirs(){return bufferWriteDirs;}
 }

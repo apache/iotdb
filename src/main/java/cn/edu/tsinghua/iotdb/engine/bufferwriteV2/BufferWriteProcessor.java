@@ -62,22 +62,23 @@ public class BufferWriteProcessor extends Processor {
 	private long lastFlushTime = -1;
 	private long valueCount = 0;
 
+	private String baseDir;
 	private String fileName;
 	private String insertFilePath;
 
 	private WriteLogNode logNode;
 
-	public BufferWriteProcessor(String processorName, String fileName, Map<String, Object> parameters,
+	public BufferWriteProcessor(String baseDir, String processorName, String fileName, Map<String, Object> parameters,
 			FileSchema fileSchema) throws BufferWriteProcessorException {
 		super(processorName);
 		this.fileSchema = fileSchema;
+		this.baseDir = baseDir;
 		this.fileName = fileName;
-		String bufferwriteDirPath = TsfileDBDescriptor.getInstance().getConfig().bufferWriteDir;
-		if (bufferwriteDirPath.length() > 0
-				&& bufferwriteDirPath.charAt(bufferwriteDirPath.length() - 1) != File.separatorChar) {
-			bufferwriteDirPath = bufferwriteDirPath + File.separatorChar;
+		if (baseDir.length() > 0
+				&& baseDir.charAt(baseDir.length() - 1) != File.separatorChar) {
+			baseDir = baseDir + File.separatorChar;
 		}
-		String dataDirPath = bufferwriteDirPath + processorName;
+		String dataDirPath = baseDir + processorName;
 		File dataDir = new File(dataDirPath);
 		if (!dataDir.exists()) {
 			dataDir.mkdirs();
