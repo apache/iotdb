@@ -17,8 +17,6 @@ import java.util.List;
 
 public class MinValueAggrFunc extends AggregateFunction {
 
-    private boolean hasSetValue = false;
-
     public MinValueAggrFunc(TSDataType dataType) {
         super(AggregationConstant.MIN_VALUE, dataType);
     }

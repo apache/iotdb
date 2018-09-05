@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
+import cn.edu.tsinghua.iotdb.conf.directories.Directories;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -74,8 +75,8 @@ public class BufferWriteProcessorNewTest {
 	@Test
 	public void testWriteAndFlush()
 			throws BufferWriteProcessorException, WriteProcessException, IOException, InterruptedException {
-		bufferwrite = new BufferWriteProcessor(processorName, filename, parameters,
-				FileSchemaUtils.constructFileSchema(processorName));
+		bufferwrite = new BufferWriteProcessor(Directories.getInstance().getFolderForTest(),
+				processorName, filename, parameters, FileSchemaUtils.constructFileSchema(processorName));
 		assertEquals(filename, bufferwrite.getFileName());
 		assertEquals(processorName + File.separator + filename, bufferwrite.getFileRelativePath());
 		assertEquals(true, bufferwrite.isNewProcessor());
@@ -120,8 +121,8 @@ public class BufferWriteProcessorNewTest {
 		assertEquals(dataType, right.get(0).getVInTimeSeriesChunkMetaData().getDataType());
 
 		// test recovery
-		BufferWriteProcessor bufferWriteProcessor = new BufferWriteProcessor(processorName, filename, parameters,
-				FileSchemaUtils.constructFileSchema(processorName));
+		BufferWriteProcessor bufferWriteProcessor = new BufferWriteProcessor(Directories.getInstance().getFolderForTest(),
+				processorName, filename, parameters, FileSchemaUtils.constructFileSchema(processorName));
 		pair = bufferWriteProcessor.queryBufferwriteData(processorName, measurementId, dataType);
 		left = pair.left;
 		right = pair.right;

@@ -34,7 +34,6 @@ public class NoOverflowReadTest {
             "CREATE TIMESERIES root.vehicle.d0.s2 WITH DATATYPE=FLOAT, ENCODING=RLE",
             "CREATE TIMESERIES root.vehicle.d0.s3 WITH DATATYPE=TEXT, ENCODING=PLAIN",
             "CREATE TIMESERIES root.vehicle.d0.s4 WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
-
             "CREATE TIMESERIES root.vehicle.d1.s0 WITH DATATYPE=INT32, ENCODING=RLE",
             "CREATE TIMESERIES root.vehicle.d1.s1 WITH DATATYPE=INT64, ENCODING=RLE",
     };
@@ -46,7 +45,6 @@ public class NoOverflowReadTest {
         EnvironmentUtils.closeStatMonitor();
         EnvironmentUtils.closeMemControl();
         daemon = IoTDB.getInstance();
-        daemon.stop();
         daemon.active();
         EnvironmentUtils.envSetUp();
     }

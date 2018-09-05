@@ -150,12 +150,20 @@ public class AuthUtils {
     public static void addPrivilege(String path, int privilgeId, List<PathPrivilege> privilegeList) {
         for(PathPrivilege pathPrivilege : privilegeList) {
             if(pathPrivilege.path.equals(path)) {
-                pathPrivilege.privileges.add(privilgeId);
+                if (privilgeId != PrivilegeType.ALL.ordinal())
+                    pathPrivilege.privileges.add(privilgeId);
+                else
+                    for (PrivilegeType privilegeType : PrivilegeType.values())
+                        pathPrivilege.privileges.add(privilegeType.ordinal());
                 return;
             }
         }
         PathPrivilege pathPrivilege = new PathPrivilege(path);
-        pathPrivilege.privileges.add(privilgeId);
+        if (privilgeId != PrivilegeType.ALL.ordinal())
+            pathPrivilege.privileges.add(privilgeId);
+        else
+            for (PrivilegeType privilegeType : PrivilegeType.values())
+                pathPrivilege.privileges.add(privilegeType.ordinal());
         privilegeList.add(pathPrivilege);
     }
 
@@ -163,7 +171,12 @@ public class AuthUtils {
         PathPrivilege emptyPrivilege = null;
         for(PathPrivilege pathPrivilege : privilegeList) {
             if(pathPrivilege.path.equals(path)) {
-                pathPrivilege.privileges.remove(privilgeId);
+                if (privilgeId != PrivilegeType.ALL.ordinal())
+                    pathPrivilege.privileges.remove(privilgeId);
+                else {
+                    privilegeList.remove(pathPrivilege);
+                    return;
+                }
                 if(pathPrivilege.privileges.size() == 0)
                     emptyPrivilege = pathPrivilege;
                 break;

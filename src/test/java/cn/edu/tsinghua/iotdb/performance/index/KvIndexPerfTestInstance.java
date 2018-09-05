@@ -1,5 +1,6 @@
 package cn.edu.tsinghua.iotdb.performance.index;
 
+import cn.edu.tsinghua.iotdb.conf.directories.Directories;
 import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
 import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
 import cn.edu.tsinghua.iotdb.jdbc.TsfileJDBCConfig;
@@ -12,13 +13,11 @@ import org.apache.commons.io.FileUtils;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.Random;
 
 //unused
 public class KvIndexPerfTestInstance {
@@ -53,10 +52,11 @@ public class KvIndexPerfTestInstance {
 
     public static void setUp() throws Exception {
         TsfileDBConfig config = TsfileDBDescriptor.getInstance().getConfig();
+        Directories directories = Directories.getInstance();
 //        clearDir(config);
         overflowDataDirPre = config.overflowDataDir;
         fileNodeDirPre = config.fileNodeDir;
-        bufferWriteDirPre = config.bufferWriteDir;
+        bufferWriteDirPre = directories.getFolderForTest();
         metadataDirPre = config.metadataDir;
         derbyHomePre = config.derbyHome;
         maxOpenFolderPre = config.maxOpenFolder;
@@ -65,7 +65,7 @@ public class KvIndexPerfTestInstance {
 
         config.overflowDataDir = FOLDER_HEADER + "/data/overflow";
         config.fileNodeDir = FOLDER_HEADER + "/data/digest";
-        config.bufferWriteDir = FOLDER_HEADER + "/data/delta";
+        directories.setFolderForTest(FOLDER_HEADER + "/data/delta");
         config.metadataDir = FOLDER_HEADER + "/data/metadata";
         config.derbyHome = FOLDER_HEADER + "/data/derby";
         config.walFolder = FOLDER_HEADER + "/data/wals";
@@ -77,14 +77,14 @@ public class KvIndexPerfTestInstance {
         deamon = IoTDB.getInstance();
         deamon.active();
 
-        File ff = new File(config.bufferWriteDir);
+        File ff = new File(directories.getFolderForTest());
         prepareIoTData(ff.exists());
     }
 
     private static void clearDir(TsfileDBConfig config) throws IOException {
         FileUtils.deleteDirectory(new File(config.overflowDataDir));
         FileUtils.deleteDirectory(new File(config.fileNodeDir));
-        FileUtils.deleteDirectory(new File(config.bufferWriteDir));
+        FileUtils.deleteDirectory(new File(Directories.getInstance().getFolderForTest()));
         FileUtils.deleteDirectory(new File(config.metadataDir));
         FileUtils.deleteDirectory(new File(config.derbyHome));
         FileUtils.deleteDirectory(new File(config.walFolder));
@@ -160,12 +160,12 @@ public class KvIndexPerfTestInstance {
                 connection.close();
             }
         }
-        TsfileDBConfig config = TsfileDBDescriptor.getInstance().getConfig();
+        Directories directories = Directories.getInstance();
         String[][] sensors = new String[][]{
                 {"s5"}, {"s1"}, {"s5","s0"},{"s5","s0","s1"}, {"s5","s0","s1","s2"}
         };
         for (int i = 0;i < 2;i++) {
-            File dir = new File(config.bufferWriteDir + "/root.vehicle.d" + i);
+            File dir = new File(directories.getFolderForTest() + "/root.vehicle.d" + i);
             File[] files = dir.listFiles();
             if (files.length == 0)
                 continue;
@@ -186,10 +186,11 @@ public class KvIndexPerfTestInstance {
         Thread.sleep(5000);
 
         TsfileDBConfig config = TsfileDBDescriptor.getInstance().getConfig();
+        Directories directories = Directories.getInstance();
 //        clearDir(config);
         config.overflowDataDir = overflowDataDirPre;
         config.fileNodeDir = fileNodeDirPre;
-        config.bufferWriteDir = bufferWriteDirPre;
+        directories.setFolderForTest(bufferWriteDirPre);
         config.metadataDir = metadataDirPre;
         config.derbyHome = derbyHomePre;
         config.maxOpenFolder = maxOpenFolderPre;

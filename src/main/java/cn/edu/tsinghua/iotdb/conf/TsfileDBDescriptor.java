@@ -92,8 +92,11 @@ public class TsfileDBDescriptor {
 			conf.flushWalPeriodInMs = Integer.parseInt(properties.getProperty("flush_wal_period_in_ms", conf.flushWalPeriodInMs+""));
 			
 			conf.dataDir = properties.getProperty("data_dir", conf.dataDir);
+			conf.bufferWriteDirs = properties.getProperty("tsfile_dir", conf.default_tsfile_dir).split(",");
 			conf.sysDir = properties.getProperty("sys_dir", conf.sysDir);
 			conf.walDir = properties.getProperty("wal_dir", conf.walDir);
+
+			conf.multDirStrategyClassName = properties.getProperty("mult_dir_strategy", conf.multDirStrategyClassName);
 
 			conf.maxOpenFolder = Integer.parseInt(properties.getProperty("max_opened_folder", conf.maxOpenFolder + ""));
 			conf.mergeConcurrentThreads = Integer.parseInt(properties.getProperty("merge_concurrent_threads", conf.mergeConcurrentThreads + ""));
@@ -121,13 +124,20 @@ public class TsfileDBDescriptor {
 			conf.overflowMetaSizeThreshold = Long.parseLong(properties.getProperty("overflow_meta_size_threshold", conf.overflowMetaSizeThreshold + "").trim());
 			conf.overflowFileSizeThreshold = Long.parseLong(properties.getProperty("overflow_file_size_threshold", conf.overflowFileSizeThreshold + "").trim());
 
-			if(conf.memThresholdWarning <= 0)
-				conf.memThresholdWarning = TsFileDBConstant.MEM_THRESHOLD_WARNING_DEFAULT;
-			if(conf.memThresholdDangerous < conf.memThresholdWarning)
-				conf.memThresholdDangerous = Math.max(conf.memThresholdWarning, TsFileDBConstant.MEM_THRESHOLD_DANGEROUS_DEFAULT);
+			conf.isPostbackEnable = Boolean.parseBoolean(properties.getProperty("is_postback_enable", conf.isPostbackEnable + ""));
+			conf.postbackServerPort = Integer.parseInt(properties.getProperty("postback_server_port", conf.postbackServerPort + "").trim());
+			conf.update_historical_data_possibility = Boolean.parseBoolean(properties.getProperty("update_historical_data_possibility", conf.isPostbackEnable + ""));
+			conf.ipWhiteList = properties.getProperty("IP_white_list", conf.ipWhiteList);
 
-			conf.concurrentFlushThread  = Integer.parseInt(properties.getProperty("concurrent_flush_thread", conf.concurrentFlushThread + ""));
-			if(conf.concurrentFlushThread <= 0)
+			if (conf.memThresholdWarning <= 0)
+				conf.memThresholdWarning = TsFileDBConstant.MEM_THRESHOLD_WARNING_DEFAULT;
+			if (conf.memThresholdDangerous < conf.memThresholdWarning)
+				conf.memThresholdDangerous = Math.max(conf.memThresholdWarning,
+						TsFileDBConstant.MEM_THRESHOLD_DANGEROUS_DEFAULT);
+
+			conf.concurrentFlushThread = Integer
+					.parseInt(properties.getProperty("concurrent_flush_thread", conf.concurrentFlushThread + ""));
+			if (conf.concurrentFlushThread <= 0)
 				conf.concurrentFlushThread = Runtime.getRuntime().availableProcessors();
 
 			conf.enableMemMonitor = Boolean.parseBoolean(properties.getProperty("enable_mem_monitor", conf.enableMemMonitor + "").trim());
@@ -154,12 +164,12 @@ public class TsfileDBDescriptor {
 		} finally {
 			// update all data path
 			conf.updatePath();
-		}
-		if (inputStream != null) {
-			try {
-				inputStream.close();
-			} catch (IOException e) {
-				LOGGER.error("Fail to close config file input stream because {}", e.getMessage());
+			if (inputStream != null) {
+				try {
+					inputStream.close();
+				} catch (IOException e) {
+					LOGGER.error("Fail to close config file input stream because {}", e.getMessage());
+				}
 			}
 		}
 	}

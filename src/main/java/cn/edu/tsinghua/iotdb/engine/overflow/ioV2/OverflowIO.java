@@ -202,7 +202,8 @@ public class OverflowIO extends TsFileIOWriter {
 
 		@Override
 		public int read(byte[] b, int off, int len) throws IOException {
-			return raf.read(b, off, len);
+			raf.readFully(b, off, len);
+			return len;
 		}
 
 		@Override

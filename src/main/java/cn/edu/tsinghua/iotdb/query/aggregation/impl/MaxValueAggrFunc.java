@@ -17,8 +17,6 @@ import java.util.List;
 
 public class MaxValueAggrFunc extends AggregateFunction {
 
-    private boolean hasSetValue = false;
-
     public MaxValueAggrFunc(TSDataType dataType) {
         super(AggregationConstant.MAX_VALUE, dataType);
     }

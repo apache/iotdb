@@ -6,9 +6,7 @@ import cn.edu.tsinghua.iotdb.concurrent.HashLock;
 import cn.edu.tsinghua.iotdb.utils.AuthUtils;
 
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * This class reads roles from local files through LocalFileRoleAccessor and manages them in a hash map.
@@ -91,11 +89,12 @@ public abstract class BasicRoleManager implements IRoleManager{
             if(role.hasPrivilege(path, privilegeId)) {
                 return false;
             }
+            Set<Integer> privilegesCopy = new HashSet<>(role.getPrivileges(path));
             role.addPrivilege(path, privilegeId);
             try {
                 accessor.saveRole(role);
             } catch (IOException e) {
-                role.removePrivilege(path, privilegeId);
+                role.setPrivileges(path, privilegesCopy);
                 throw new AuthException(e);
             }
             return true;

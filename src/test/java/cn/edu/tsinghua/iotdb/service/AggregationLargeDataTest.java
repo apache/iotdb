@@ -103,7 +103,6 @@ public class AggregationLargeDataTest {
             EnvironmentUtils.closeStatMonitor();
             EnvironmentUtils.closeMemControl();
             deamon = IoTDB.getInstance();
-            deamon.stop();
             deamon.active();
             EnvironmentUtils.envSetUp();
         }
