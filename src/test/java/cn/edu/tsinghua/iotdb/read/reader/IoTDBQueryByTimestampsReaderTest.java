@@ -112,28 +112,28 @@ public class IoTDBQueryByTimestampsReaderTest {
 
     private void skipReadTimestampTest() throws IOException, FileNodeManagerException {
         Path pd0s0 = new Path(d0s0);
-        IoTDBQueryWithTimestampsReader ioTDBQueryWithTimestampsReaderd0s0 = new IoTDBQueryWithTimestampsReader(IoTDBQueryDataSourceExecutor.getQueryDataSource(pd0s0));
+        IoTDBQueryByTimestampsReader ioTDBQueryByTimestampsReaderd0S0 = new IoTDBQueryByTimestampsReader(IoTDBQueryDataSourceExecutor.getQueryDataSource(pd0s0));
         for(int time = 100; time < 1500; time+=5){
             //System.out.println("TIME = "+time);
             if(time % 2 == 0){
-                assertNull(ioTDBQueryWithTimestampsReaderd0s0.getValueInTimestamp(time));
+                assertNull(ioTDBQueryByTimestampsReaderd0S0.getValueInTimestamp(time));
             }
             else if((time>=300 && time<1000)|| (time>=1200 && time<1500)||(time>=100 && time<200 && time%5==0)){
-                assertEquals(time%17, ioTDBQueryWithTimestampsReaderd0s0.getValueInTimestamp(time).getInt());
+                assertEquals(time%17, ioTDBQueryByTimestampsReaderd0S0.getValueInTimestamp(time).getInt());
             }
         }
     }
 
     private void readNotExistenceAndExistenceTimestampTest() throws IOException, FileNodeManagerException{
         Path pd0s0 = new Path(d0s0);
-        IoTDBQueryWithTimestampsReader ioTDBQueryWithTimestampsReaderd0s0 = new IoTDBQueryWithTimestampsReader(IoTDBQueryDataSourceExecutor.getQueryDataSource(pd0s0));
+        IoTDBQueryByTimestampsReader ioTDBQueryByTimestampsReaderd0S0 = new IoTDBQueryByTimestampsReader(IoTDBQueryDataSourceExecutor.getQueryDataSource(pd0s0));
         for(int time = 0; time < 2500; time+=5){
 //            System.out.println("TIME = "+time);
             if(time % 2 == 0 || time < 100 || time > 1499){
-                assertNull(ioTDBQueryWithTimestampsReaderd0s0.getValueInTimestamp(time));
+                assertNull(ioTDBQueryByTimestampsReaderd0S0.getValueInTimestamp(time));
             }
             else if((time>=300 && time<1000)|| (time>=1200 && time<1500)||(time>=100 && time<200 && time%5==0)){
-                assertEquals(time%17, ioTDBQueryWithTimestampsReaderd0s0.getValueInTimestamp(time).getInt());
+                assertEquals(time%17, ioTDBQueryByTimestampsReaderd0S0.getValueInTimestamp(time).getInt());
             }
         }
     }

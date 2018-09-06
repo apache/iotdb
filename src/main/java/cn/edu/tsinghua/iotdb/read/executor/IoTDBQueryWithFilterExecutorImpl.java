@@ -5,7 +5,7 @@ import cn.edu.tsinghua.iotdb.exception.FileNodeManagerException;
 import cn.edu.tsinghua.iotdb.read.IoTDBQueryDataSetForQueryWithQueryFilterImpl;
 import cn.edu.tsinghua.iotdb.read.IoTDBQueryDataSourceExecutor;
 import cn.edu.tsinghua.iotdb.read.IoTDBQueryExecutor;
-import cn.edu.tsinghua.iotdb.read.reader.IoTDBQueryWithTimestampsReader;
+import cn.edu.tsinghua.iotdb.read.reader.IoTDBQueryByTimestampsReader;
 import cn.edu.tsinghua.iotdb.read.timegenerator.IoTDBTimeGenerator;
 import cn.edu.tsinghua.tsfile.timeseries.filterV2.expression.BinaryQueryFilter;
 import cn.edu.tsinghua.tsfile.timeseries.filterV2.expression.QueryFilter;
@@ -14,7 +14,6 @@ import cn.edu.tsinghua.tsfile.timeseries.filterV2.expression.impl.SeriesFilter;
 import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
 import cn.edu.tsinghua.tsfile.timeseries.readV2.query.QueryDataSet;
 import cn.edu.tsinghua.tsfile.timeseries.readV2.query.QueryExpression;
-import cn.edu.tsinghua.tsfile.timeseries.readV2.query.impl.QueryDataSetForQueryWithQueryFilterImpl;
 import cn.edu.tsinghua.tsfile.timeseries.readV2.query.timegenerator.TimestampGenerator;
 import cn.edu.tsinghua.tsfile.timeseries.readV2.reader.SeriesReaderByTimeStamp;
 
@@ -54,7 +53,7 @@ public class IoTDBQueryWithFilterExecutorImpl implements IoTDBQueryExecutor {
              else {
                  queryDataSource = IoTDBQueryDataSourceExecutor.getQueryDataSource(path);
              }
-             SeriesReaderByTimeStamp seriesReader = new IoTDBQueryWithTimestampsReader(queryDataSource);
+             SeriesReaderByTimeStamp seriesReader = new IoTDBQueryByTimestampsReader(queryDataSource);
              readersOfSelectedSeries.put(path, seriesReader);
         }
     }
