@@ -8,12 +8,15 @@ import cn.edu.tsinghua.tsfile.timeseries.read.support.OldRowRecord;
 import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
 import cn.edu.tsinghua.tsfile.timeseries.readV2.datatype.RowRecord;
 import cn.edu.tsinghua.tsfile.timeseries.readV2.query.QueryDataSet;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.*;
 
 
 public class QueryDataSetIterator implements QueryDataSet {
 
+    private static final Logger logger = LoggerFactory.getLogger(QueryDataSetIterator.class);
     private final int fetchSize;
     private final QueryProcessExecutor executor;
     private OnePassQueryDataSet data = null;
@@ -57,8 +60,7 @@ public class QueryDataSetIterator implements QueryDataSet {
                     return false;
                 }
             } catch (Exception e) {
-                e.printStackTrace();
-                throw new RuntimeException("meet error in hasNext because " + e.getMessage());
+                logger.error("meet error in hasNext because: "+ e.getMessage());
             }
         }
         return true;

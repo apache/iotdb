@@ -5,6 +5,7 @@ import cn.edu.tsinghua.iotdb.index.IndexManager.IndexType;
 import cn.edu.tsinghua.iotdb.qp.exception.QueryProcessorException;
 import cn.edu.tsinghua.iotdb.qp.logical.Operator;
 import cn.edu.tsinghua.iotdb.qp.physical.PhysicalPlan;
+import cn.edu.tsinghua.tsfile.common.utils.Pair;
 import cn.edu.tsinghua.tsfile.timeseries.read.query.OnePassQueryDataSet;
 import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
 
@@ -45,6 +46,11 @@ public abstract class IndexQueryPlan extends PhysicalPlan {
 
 	public void setStartTime(long startTime) {
 		this.startTime = startTime;
+	}
+
+	public void setInterval(Pair<Long, Long> interval) {
+		setStartTime(interval.left);
+		setEndTime(interval.right);
 	}
 
 	public long getEndTime() {
