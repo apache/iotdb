@@ -2,39 +2,32 @@ package cn.edu.tsinghua.iotdb.read.reader;
 
 import cn.edu.tsinghua.iotdb.engine.querycontext.QueryDataSource;
 import cn.edu.tsinghua.iotdb.queryV2.engine.overflow.OverflowOperationReader;
-import cn.edu.tsinghua.iotdb.queryV2.engine.reader.PriorityMergeSortTimeValuePairReader;
 import cn.edu.tsinghua.iotdb.queryV2.engine.reader.PriorityMergeSortTimeValuePairReaderByTimestamp;
 import cn.edu.tsinghua.iotdb.queryV2.engine.reader.PriorityTimeValuePairReader;
 import cn.edu.tsinghua.iotdb.queryV2.engine.reader.PriorityTimeValuePairReaderByTimestamp;
-import cn.edu.tsinghua.iotdb.queryV2.engine.reader.series.OverflowInsertDataReader;
 import cn.edu.tsinghua.iotdb.queryV2.engine.reader.series.OverflowInsertDataReaderByTimeStamp;
 import cn.edu.tsinghua.iotdb.queryV2.engine.reader.series.SeriesWithOverflowOpReader;
 import cn.edu.tsinghua.iotdb.queryV2.factory.SeriesReaderFactory;
-import cn.edu.tsinghua.tsfile.common.utils.ITsRandomAccessFileReader;
-import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
-import cn.edu.tsinghua.tsfile.timeseries.readV2.common.EncodedSeriesChunkDescriptor;
-import cn.edu.tsinghua.tsfile.timeseries.readV2.controller.SeriesChunkLoader;
 import cn.edu.tsinghua.tsfile.timeseries.readV2.datatype.TimeValuePair;
 import cn.edu.tsinghua.tsfile.timeseries.readV2.datatype.TsPrimitiveType;
-import cn.edu.tsinghua.tsfile.timeseries.readV2.reader.SeriesReader;
 import cn.edu.tsinghua.tsfile.timeseries.readV2.reader.SeriesReaderByTimeStamp;
-import cn.edu.tsinghua.tsfile.timeseries.readV2.reader.impl.SeriesReaderFromSingleFileByTimestampImpl;
 
 import java.io.IOException;
-import java.util.List;
+
 /**
- * A single series data reader which can return time-value pair at a time instant.
- * First use func setCurrentTimestamp() to set the time point. Then func hasNext() can judge the existences, and func next() fetch the time-pair pair in that point.
- * It has considered sequence insert data, overflow data, updata and delete operation.
+ * A reader that can get the corresponding value of the specified time point.
+ * It has considered sequence insert data, overflow data.
+ *
+ * TODO: updata and delete operation.
  * */
-public class IoTDBQueryWithTimestampsReader implements SeriesReaderByTimeStamp {
+public class IoTDBQueryByTimestampsReader implements SeriesReaderByTimeStamp {
 
     private SeriesWithOverflowOpReader seriesWithOverflowOpReader;
 
-    public IoTDBQueryWithTimestampsReader(QueryDataSource queryDataSource) throws IOException {
+    public IoTDBQueryByTimestampsReader(QueryDataSource queryDataSource) throws IOException {
         int priority = 1;
         //sequence insert data
-        TsFilesReaderWithTimeStamp tsFilesReader = new TsFilesReaderWithTimeStamp(queryDataSource.getSeriesDataSource());
+        TsFilesReaderByTimeStamp tsFilesReader = new TsFilesReaderByTimeStamp(queryDataSource.getSeriesDataSource());
         PriorityTimeValuePairReaderByTimestamp tsFilesReaderWithPriority = new PriorityTimeValuePairReaderByTimestamp(
                 tsFilesReader, new PriorityTimeValuePairReader.Priority(priority++));
 

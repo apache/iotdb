@@ -22,12 +22,15 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-public class TsFilesReaderWithTimeStamp extends TsFilesReader implements SeriesReaderByTimeStamp{
+/**
+ * A reader for sequence insert data which can get the corresponding value of the specified time point.
+ * */
+public class TsFilesReaderByTimeStamp extends TsFilesReader implements SeriesReaderByTimeStamp{
 
     private long currentTimestamp;
     private PriorityMergeSortTimeValuePairReaderByTimestamp priorityMergeSortTimeValuePairReader;
 
-    public TsFilesReaderWithTimeStamp(GlobalSortedSeriesDataSource sortedSeriesDataSource)
+    public TsFilesReaderByTimeStamp(GlobalSortedSeriesDataSource sortedSeriesDataSource)
             throws IOException {
         super(sortedSeriesDataSource);
 

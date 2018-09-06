@@ -15,7 +15,7 @@ import cn.edu.tsinghua.tsfile.timeseries.readV2.reader.SeriesReader;
 import java.io.IOException;
 
 /**
- * A single series data reader without filter, which has considered sequence insert data, overflow data, updata and delete operation.
+ * A reader which queries a single time series without a filter condition
  * */
 public class IoTDBQueryWithoutFilterReader implements SeriesReader{
 
