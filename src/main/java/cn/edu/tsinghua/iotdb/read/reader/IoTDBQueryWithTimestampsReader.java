@@ -23,8 +23,8 @@ import cn.edu.tsinghua.tsfile.timeseries.readV2.reader.impl.SeriesReaderFromSing
 import java.io.IOException;
 import java.util.List;
 /**
- * A single series data reader witch can return time-value pair in a time point.
- * First use func setCurrentTimestamp() set the time point. Then func hasNext() can judge the existences, and func next() fetch the time-pair pair in that point.
+ * A single series data reader which can return time-value pair at a time instant.
+ * First use func setCurrentTimestamp() to set the time point. Then func hasNext() can judge the existences, and func next() fetch the time-pair pair in that point.
  * It has considered sequence insert data, overflow data, updata and delete operation.
  * */
 public class IoTDBQueryWithTimestampsReader implements SeriesReaderByTimeStamp {

@@ -433,7 +433,7 @@ public class DaemonTest {
             while (resultSet.next()) {
                 String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s1) + "," +
                         resultSet.getString(d0s2) + "," + resultSet.getString(d0s3);
-                Assert.assertEquals(ans, retArray[cnt++]);
+                Assert.assertEquals(retArray[cnt++], ans);
             }
             Assert.assertEquals(3, cnt);
             statement.close();

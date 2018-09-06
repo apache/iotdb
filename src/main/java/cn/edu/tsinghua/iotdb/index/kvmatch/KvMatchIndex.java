@@ -1,6 +1,5 @@
 package cn.edu.tsinghua.iotdb.index.kvmatch;
 
-import cn.edu.fudan.dsm.kvmatch.iotdb.KvMatchIndexBuilder;
 import cn.edu.fudan.dsm.kvmatch.iotdb.KvMatchQueryExecutor;
 import cn.edu.fudan.dsm.kvmatch.iotdb.common.IndexConfig;
 import cn.edu.fudan.dsm.kvmatch.iotdb.common.QueryConfig;

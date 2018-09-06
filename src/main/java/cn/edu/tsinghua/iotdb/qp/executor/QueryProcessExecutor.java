@@ -30,6 +30,7 @@ import java.util.*;
 public abstract class QueryProcessExecutor {
 
 	protected ThreadLocal<Integer> fetchSize = new ThreadLocal<>();
+	private IoTDBQueryEngine ioTDBQueryEngine = new IoTDBQueryEngine();
 
 	public QueryProcessExecutor() {
 	}
@@ -59,13 +60,13 @@ public abstract class QueryProcessExecutor {
 					try {
 						return aggregate(getAggrePair(mergeQuery.getPaths(), mergeQuery.getAggregations()), getFilterStructure(selectPlans));
 					} catch (Exception e) {
-						throw new RuntimeException("meet error in get QueryDataSet because " + e.getMessage());
+						throw new QueryProcessorException("meet error in get QueryDataSet because " + e.getMessage());
 					}
 				case FILL:
 					try {
 						return fill(mergeQuery.getPaths(), mergeQuery.getQueryTime(), mergeQuery.getFillType());
 					} catch (Exception e) {
-						throw new RuntimeException("meet error in get QueryDataSet because " + e.getMessage());
+						throw new QueryProcessorException("meet error in get QueryDataSet because " + e.getMessage());
 					}
 				default:
 					throw new UnsupportedOperationException();
@@ -82,10 +83,11 @@ public abstract class QueryProcessExecutor {
 				.setSelectSeries(queryPlan.getPaths())
 				.setQueryFilter(queryPlan.getQueryFilter());
 
-		return new IoTDBQueryEngine().query(queryExpression);
+		return ioTDBQueryEngine.query(queryExpression);
 	}
 
 
+	//TODO 改 aggres 的结构
 	private List<Pair<Path, String>> getAggrePair(List<Path> paths, List<String> aggregations) {
 		List<Pair<Path, String>> aggres = new ArrayList<>();
 		for(int i = 0; i < paths.size(); i++) {

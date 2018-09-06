@@ -2,7 +2,6 @@ package cn.edu.tsinghua.iotdb.qp.strategy;
 
 import cn.edu.tsinghua.iotdb.auth.AuthException;
 import cn.edu.tsinghua.iotdb.exception.PathErrorException;
-import cn.edu.tsinghua.iotdb.metadata.MManager;
 import cn.edu.tsinghua.iotdb.qp.constant.SQLConstant;
 import cn.edu.tsinghua.iotdb.qp.exception.GeneratePhysicalPlanException;
 import cn.edu.tsinghua.iotdb.qp.exception.LogicalOperatorException;
@@ -23,7 +22,6 @@ import cn.edu.tsinghua.iotdb.qp.physical.sys.AuthorPlan;
 import cn.edu.tsinghua.iotdb.qp.physical.sys.LoadDataPlan;
 import cn.edu.tsinghua.iotdb.qp.physical.sys.MetadataPlan;
 import cn.edu.tsinghua.iotdb.qp.physical.sys.PropertyPlan;
-import cn.edu.tsinghua.iotdb.sql.parse.TSParser;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 import cn.edu.tsinghua.tsfile.common.utils.Binary;
 import cn.edu.tsinghua.tsfile.common.utils.Pair;
@@ -41,6 +39,8 @@ import cn.edu.tsinghua.tsfile.timeseries.filterV2.expression.impl.QueryFilterFac
 import cn.edu.tsinghua.tsfile.timeseries.filterV2.expression.impl.SeriesFilter;
 import cn.edu.tsinghua.tsfile.timeseries.filterV2.factory.FilterFactory;
 import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -54,6 +54,7 @@ import static cn.edu.tsinghua.iotdb.qp.constant.SQLConstant.RESERVED_TIME;
  */
 public class PhysicalGenerator {
     private QueryProcessExecutor executor;
+    private static final Logger logger = LoggerFactory.getLogger(PhysicalGenerator.class);
 
     public PhysicalGenerator(QueryProcessExecutor executor) {
         this.executor = executor;
@@ -142,49 +143,15 @@ public class PhysicalGenerator {
             throws LogicalOperatorException {
         FilterOperator filterOperator = indexQueryOperator.getFilterOperator();
         if (filterOperator == null) {
-            indexQueryPlan.setStartTime(0);
-            indexQueryPlan.setEndTime(Long.MAX_VALUE);
+            indexQueryPlan.setInterval(new Pair<>(0L, Long.MAX_VALUE));
             return;
         }
-        if (!filterOperator.isSingle() || !filterOperator.getSinglePath().equals(RESERVED_TIME)) {
-            throw new LogicalOperatorException("For index query statement, non-time condition is not allowed in the where clause.");
+
+        List<Pair<Long, Long>> intervals = extractTimeIntervals(filterOperator);
+        if (intervals.size() != 1) {
+            throw new LogicalOperatorException("For index query statement, the time filter must be an interval and start time must be less than ene time.");
         }
-        FilterExpression timeFilter;
-        try {
-            timeFilter = filterOperator.transformToFilterExpression(executor, FilterSeriesType.TIME_FILTER);
-        } catch (QueryProcessorException e) {
-            e.printStackTrace();
-            throw new LogicalOperatorException(e.getMessage());
-        }
-        LongFilterVerifier filterVerifier = (LongFilterVerifier) FilterVerifier.create(TSDataType.INT64);
-        LongInterval longInterval = filterVerifier.getInterval((SingleSeriesFilterExpression) timeFilter);
-        long startTime;
-        long endTime;
-        if (longInterval.count != 2) {
-            throw new LogicalOperatorException("For index query statement, the time filter must be an interval.");
-        }
-        if (longInterval.flag[0]) {
-            startTime = longInterval.v[0];
-        } else {
-            startTime = longInterval.v[0] + 1;
-        }
-        if (longInterval.flag[1]) {
-            endTime = longInterval.v[1];
-        } else {
-            endTime = longInterval.v[1] - 1;
-        }
-        if ((startTime <= 0 && startTime != Long.MIN_VALUE) || endTime <= 0) {
-            throw new LogicalOperatorException("The time of index query must be greater than 0.");
-        }
-        if (startTime == Long.MIN_VALUE) {
-            startTime = 0;
-        }
-        if (endTime >= startTime) {
-            indexQueryPlan.setStartTime(startTime);
-            indexQueryPlan.setEndTime(endTime);
-        } else {
-            throw new LogicalOperatorException("For index query statement, the start time should be greater than end time.");
-        }
+        indexQueryPlan.setInterval(intervals.get(0));
     }
 
     /**
@@ -193,9 +160,23 @@ public class PhysicalGenerator {
      * @param updateOperator update logical plan
      */
     private void parseUpdateTimeFilter(UpdateOperator updateOperator, UpdatePlan plan) throws LogicalOperatorException {
-        FilterOperator filterOperator = updateOperator.getFilterOperator();
+        List<Pair<Long, Long>> intervals = extractTimeIntervals(updateOperator.getFilterOperator());
+        plan.addIntervals(intervals);
+        if (plan.getIntervals().isEmpty()) {
+            throw new LogicalOperatorException("For update command, time filter is invalid");
+        }
+    }
+
+    /**
+     * extract time intervals from filterOperator
+     *
+     * @return valid time intervals
+     * @throws LogicalOperatorException
+     */
+    private List<Pair<Long, Long>> extractTimeIntervals(FilterOperator filterOperator) throws LogicalOperatorException {
+        List<Pair<Long, Long>> intervals = new ArrayList<>();
         if (!filterOperator.isSingle() || !filterOperator.getSinglePath().equals(RESERVED_TIME)) {
-            throw new LogicalOperatorException("for update command, it has non-time condition in where clause");
+            throw new LogicalOperatorException("filter Operator must be a time filter");
         }
         // transfer the filter operator to FilterExpression
         FilterExpression timeFilter;
@@ -205,10 +186,8 @@ public class PhysicalGenerator {
             e.printStackTrace();
             throw new LogicalOperatorException(e.getMessage());
         }
-        LongFilterVerifier filterVerifier = (LongFilterVerifier) FilterVerifier
-                .create(TSDataType.INT64);
-        LongInterval longInterval = filterVerifier
-                .getInterval((SingleSeriesFilterExpression) timeFilter);
+        LongFilterVerifier filterVerifier = (LongFilterVerifier) FilterVerifier.create(TSDataType.INT64);
+        LongInterval longInterval = filterVerifier.getInterval((SingleSeriesFilterExpression) timeFilter);
         long startTime;
         long endTime;
         for (int i = 0; i < longInterval.count; i = i + 2) {
@@ -223,18 +202,16 @@ public class PhysicalGenerator {
                 endTime = longInterval.v[i + 1] - 1;
             }
             if ((startTime <= 0 && startTime != Long.MIN_VALUE) || endTime <= 0) {
-                throw new LogicalOperatorException("update time must be greater than 0.");
+                throw new LogicalOperatorException("start and end time must be greater than 0.");
             }
             if (startTime == Long.MIN_VALUE) {
                 startTime = 1;
             }
 
             if (endTime >= startTime)
-                plan.addInterval(new Pair<>(startTime, endTime));
+                intervals.add(new Pair<>(startTime, endTime));
         }
-        if (plan.getIntervals().isEmpty()) {
-            throw new LogicalOperatorException("For update command, time filter is invalid");
-        }
+        return intervals;
     }
 
     private PhysicalPlan transformQuery(QueryOperator queryOperator) throws QueryProcessorException, ProcessorException {
@@ -253,7 +230,7 @@ public class PhysicalGenerator {
                 subPlans.add(plan);
             }
         }
-        MultiQueryPlan multiQueryPlan =  new MultiQueryPlan(subPlans, aggregations);
+        MultiQueryPlan multiQueryPlan = new MultiQueryPlan(subPlans, aggregations);
 
         if (queryOperator.isGroupBy()) {   //old group by
             multiQueryPlan.setType(MultiQueryPlan.QueryType.GROUPBY);
@@ -270,14 +247,14 @@ public class PhysicalGenerator {
             multiQueryPlan.setQueryTime(time);
             multiQueryPlan.setFillType(queryOperator.getFillTypes());
             return multiQueryPlan;
-        } else if(queryOperator.hasAggregation()) { //old aggregation
+        } else if (queryOperator.hasAggregation()) { //old aggregation
             return multiQueryPlan;
         } else { //ordinary query
-                return transformQueryV2(queryOperator);
-
+            return transformQueryV2(queryOperator);
         }
     }
 
+    //TODO group by， fill， aggregation 重构完，直接用这个方法替换 transformQuery
     private PhysicalPlan transformQueryV2(QueryOperator queryOperator) throws QueryProcessorException, ProcessorException {
 
         QueryPlan queryPlan;
@@ -305,7 +282,7 @@ public class PhysicalGenerator {
         List<Path> paths = queryOperator.getSelectedPaths();
         queryPlan.setPaths(paths);
         FilterOperator filterOperator = queryOperator.getFilterOperator();
-        if(filterOperator != null) {
+        if (filterOperator != null) {
             List<FilterOperator> parts = splitFilter(queryOperator.getFilterOperator());
             queryPlan.setQueryFilter(convertDNF2QueryFilter(parts));
         }
@@ -322,8 +299,8 @@ public class PhysicalGenerator {
             queryFilters.add(convertCNF2QueryFilter(filter));
         }
 
-        for(QueryFilter queryFilter: queryFilters) {
-            if(ret == null) {
+        for (QueryFilter queryFilter : queryFilters) {
+            if (ret == null) {
                 ret = queryFilter;
             } else {
                 ret = QueryFilterFactory.or(ret, queryFilter);
@@ -335,10 +312,10 @@ public class PhysicalGenerator {
     private QueryFilter convertCNF2QueryFilter(FilterOperator operator) throws LogicalOperatorException, PathErrorException, GeneratePhysicalPlanException, ProcessorException {
 
         // e.g. time < 10 and time > 5 ,   time > 10
-        if(operator.isSingle() && operator.getSinglePath().toString().equalsIgnoreCase(SQLConstant.RESERVED_TIME)) {
+        if (operator.isSingle() && operator.getSinglePath().toString().equalsIgnoreCase(SQLConstant.RESERVED_TIME)) {
             return new GlobalTimeFilter(convertSingleFilterNode(operator));
         } else {
-            if(operator.isSingle()) {  // e.g. s1 > 0 or s1 < 10
+            if (operator.isSingle()) {  // e.g. s1 > 0 or s1 < 10
                 return new SeriesFilter<>(operator.getSinglePath(), convertSingleFilterNode(operator));
             }
 
@@ -352,29 +329,29 @@ public class PhysicalGenerator {
                             "in format:[(a) and () and ()] or [] or [], a is not single! a:" + child);
                 }
                 Filter currentFilter = convertSingleFilterNode(child);
-                if(child.getSinglePath().toString().equalsIgnoreCase(SQLConstant.RESERVED_TIME)) {
+                if (child.getSinglePath().toString().equalsIgnoreCase(SQLConstant.RESERVED_TIME)) {
                     if (timeFilter != null) {
                         throw new GeneratePhysicalPlanException("time filter has been specified more than once");
                     }
                     timeFilter = currentFilter;
                 } else {
-                   series2Filters.add(new Pair<>(child.getSinglePath(), currentFilter));
+                    series2Filters.add(new Pair<>(child.getSinglePath(), currentFilter));
                 }
             }
 
-            if(timeFilter == null) {
-                for(Pair<Path, Filter> pair: series2Filters) {
+            if (timeFilter == null) {
+                for (Pair<Path, Filter> pair : series2Filters) {
                     seriesFilters.add(new SeriesFilter(pair.left, pair.right));
                 }
             } else {
-                for(Pair<Path, Filter> pair: series2Filters) {
+                for (Pair<Path, Filter> pair : series2Filters) {
                     seriesFilters.add(new SeriesFilter(pair.left, FilterFactory.and(timeFilter, pair.right)));
                 }
             }
 
             QueryFilter ret = null;
-            for(SeriesFilter seriesFilter: seriesFilters) {
-                if(ret == null) {
+            for (SeriesFilter seriesFilter : seriesFilters) {
+                if (ret == null) {
                     ret = seriesFilter;
                 } else {
                     ret = QueryFilterFactory.and(ret, seriesFilter);
@@ -386,11 +363,11 @@ public class PhysicalGenerator {
     }
 
     private Filter convertSingleFilterNode(FilterOperator node) throws LogicalOperatorException, PathErrorException, ProcessorException {
-        if(node.isLeaf()) {
+        if (node.isLeaf()) {
             Path path = node.getSinglePath();
             TSDataType type = executor.getSeriesType(path);
             if (type == null) {
-                throw new PathErrorException("given path:{" + path.getFullPath() + "} don't exist in metadata");
+                throw new PathErrorException("given path:{" + path.getFullPath() + "} doesn't exist in metadata");
             }
 
             BasicFunctionOperator basicOperator = (BasicFunctionOperator) node;
@@ -399,7 +376,7 @@ public class PhysicalGenerator {
 
             // check value
             String value = basicOperator.getValue();
-            if(!path.toString().equalsIgnoreCase(SQLConstant.RESERVED_TIME)) {
+            if (!path.toString().equalsIgnoreCase(SQLConstant.RESERVED_TIME)) {
                 TSDataType dataType = executor.getSeriesType(path);
                 value = OverflowQPExecutor.checkValue(dataType, value);
             }
@@ -410,7 +387,7 @@ public class PhysicalGenerator {
                 case INT32:
                     return funcToken.getValueFilter(Integer.valueOf(value));
                 case INT64:
-                    return isTime? funcToken.getTimeFilter(Long.valueOf(value)) : funcToken.getValueFilter(Long.valueOf(value));
+                    return isTime ? funcToken.getTimeFilter(Long.valueOf(value)) : funcToken.getValueFilter(Long.valueOf(value));
                 case FLOAT:
                     return funcToken.getValueFilter(Float.valueOf(value));
                 case DOUBLE:
@@ -418,7 +395,7 @@ public class PhysicalGenerator {
                 case TEXT:
                     return funcToken.getValueFilter(new Binary(value));
                 default:
-                        throw new LogicalOperatorException("not supported type: " + type);
+                    throw new LogicalOperatorException("not supported type: " + type);
             }
         } else {
             int tokenIntType = node.getTokenIntType();
@@ -451,7 +428,7 @@ public class PhysicalGenerator {
             // same path have been merged to one node
             singleFilterList = filterOperator.getChildren();
         } else {
-            throw new GeneratePhysicalPlanException("for one tasks, filter cannot be OR if it's not single");
+            throw new GeneratePhysicalPlanException("for one task, filter cannot be OR if it's not single");
         }
         List<FilterOperator> valueList = new ArrayList<>();
         for (FilterOperator child : singleFilterList) {
