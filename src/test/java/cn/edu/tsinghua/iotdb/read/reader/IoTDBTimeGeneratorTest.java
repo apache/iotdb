@@ -130,7 +130,7 @@ public class IoTDBTimeGeneratorTest {
         int cnt = 0;
         while(timeGenerator.hasNext()){
             long time = timeGenerator.next();
-            assertTrue(satisfiedValueGteq14AndTimeGt500(time));
+            assertTrue(satisfyTimeFilter1(time));
             cnt++;
             System.out.println("cnt ="+cnt+"; time = "+time);
         }
@@ -150,7 +150,7 @@ public class IoTDBTimeGeneratorTest {
         int cnt = 0;
         while(timeGenerator.hasNext()){
             long time = timeGenerator.next();
-            assertTrue(satisfiedValueGteq14AndTimeGt500(time));
+            assertTrue(satisfyTimeFilter1(time));
             cnt++;
             System.out.println("cnt ="+cnt+"; time = "+time);
         }
@@ -177,7 +177,7 @@ public class IoTDBTimeGeneratorTest {
         int cnt = 0;
         while(timeGenerator.hasNext()){
             long time = timeGenerator.next();
-            assertTrue(satisfiedd0s0Gteq5Andd0s2Gteq11OrTimeGt900(time));
+            assertTrue(satisfyTimeFilter2(time));
             cnt++;
             System.out.println("cnt ="+cnt+"; time = "+time);
         }
@@ -207,11 +207,11 @@ public class IoTDBTimeGeneratorTest {
                 sql = String.format("insert into root.vehicle.d0(timestamp,s3) values(%s,'%s')", time, stringValue[(int)time % 5]);
                 statement.execute(sql);
 
-                if(satisfiedValueGteq14AndTimeGt500(time)){
+                if(satisfyTimeFilter1(time)){
                     count++;
                 }
 
-                if(satisfiedd0s0Gteq5Andd0s2Gteq11OrTimeGt900(time)){
+                if(satisfyTimeFilter2(time)){
                     count2++;
                 }
             }
@@ -226,7 +226,7 @@ public class IoTDBTimeGeneratorTest {
                     statement.execute(sql);
                     sql = String.format("insert into root.vehicle.d0(timestamp,s1) values(%s,%s)", time, time % 29);
                     statement.execute(sql);
-                    if(satisfiedValueGteq14AndTimeGt500(time)){
+                    if(satisfyTimeFilter1(time)){
                         count++;
                     }
                 }
@@ -251,14 +251,14 @@ public class IoTDBTimeGeneratorTest {
     /**
      * value >= 14 && time > 500
      * */
-    private boolean satisfiedValueGteq14AndTimeGt500(long time){
+    private boolean satisfyTimeFilter1(long time){
         return time % 17 >= 14 && time > 500;
     }
 
     /**
      * root.vehicle.d0.s0 >= 5 && root.vehicle.d0.s2 >= 11 || time > 900
      * */
-    private boolean satisfiedd0s0Gteq5Andd0s2Gteq11OrTimeGt900(long time){
+    private boolean satisfyTimeFilter2(long time){
         return (time % 17 >= 5 || time > 900) && (time % 31 >= 11.5 || time > 900);
     }
 }

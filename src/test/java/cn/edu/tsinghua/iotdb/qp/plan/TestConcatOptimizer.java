@@ -1,4 +1,4 @@
-package cn.edu.tsinghua.iotdb.qp.query;
+package cn.edu.tsinghua.iotdb.qp.plan;
 
 import cn.edu.tsinghua.iotdb.exception.ArgsErrorException;
 import cn.edu.tsinghua.iotdb.qp.QueryProcessor;
@@ -9,15 +9,11 @@ import cn.edu.tsinghua.iotdb.qp.utils.MemIntQpExecutor;
 import cn.edu.tsinghua.iotdb.qp.strategy.optimizer.ConcatPathOptimizer;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 import cn.edu.tsinghua.tsfile.timeseries.filterV2.ValueFilter;
-import cn.edu.tsinghua.tsfile.timeseries.filterV2.expression.QueryFilter;
 import cn.edu.tsinghua.tsfile.timeseries.filterV2.expression.impl.SeriesFilter;
 import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
 import org.antlr.runtime.RecognitionException;
 import org.junit.Before;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
