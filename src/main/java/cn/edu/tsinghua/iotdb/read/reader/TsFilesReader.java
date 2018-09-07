@@ -3,6 +3,8 @@ package cn.edu.tsinghua.iotdb.read.reader;
 import cn.edu.tsinghua.iotdb.engine.filenode.IntervalFileNode;
 import cn.edu.tsinghua.iotdb.engine.querycontext.GlobalSortedSeriesDataSource;
 import cn.edu.tsinghua.iotdb.engine.querycontext.UnsealedTsFile;
+import cn.edu.tsinghua.iotdb.queryV2.engine.control.OverflowFileStreamManager;
+import cn.edu.tsinghua.iotdb.queryV2.engine.control.QueryJobManager;
 import cn.edu.tsinghua.tsfile.common.utils.ITsRandomAccessFileReader;
 import cn.edu.tsinghua.tsfile.file.metadata.TimeSeriesChunkMetaData;
 import cn.edu.tsinghua.tsfile.timeseries.read.TsRandomAccessLocalFileReader;
@@ -15,6 +17,7 @@ import cn.edu.tsinghua.tsfile.timeseries.readV2.reader.SeriesReader;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -25,6 +28,7 @@ public abstract class TsFilesReader implements SeriesReader {
 
     protected List<SeriesReader> seriesReaders;
     protected Path path;
+    protected long jobId;
 
     private boolean hasSeriesReaderInitialized;
     private int nextSeriesReaderIndex;
@@ -33,6 +37,8 @@ public abstract class TsFilesReader implements SeriesReader {
     public TsFilesReader(GlobalSortedSeriesDataSource sortedSeriesDataSource){
         path = sortedSeriesDataSource.getSeriesPath();
         seriesReaders = new ArrayList<SeriesReader>();
+        jobId = QueryJobManager.getInstance().addJobForOneQuery();
+
         hasSeriesReaderInitialized = false;
         nextSeriesReaderIndex = 0;
     }
@@ -159,7 +165,7 @@ public abstract class TsFilesReader implements SeriesReader {
         protected SeriesReader singleTsFileReader;
 
 
-        public UnSealedTsFileReader(UnsealedTsFile unsealedTsFile) throws FileNotFoundException {
+        public UnSealedTsFileReader(UnsealedTsFile unsealedTsFile) throws IOException {
             this.unsealedTsFile = unsealedTsFile;
 
             // add unsealed file TimeSeriesChunkMetadata
@@ -169,7 +175,8 @@ public abstract class TsFilesReader implements SeriesReader {
             }
 
             // TODO unSealedSeriesChunkReader need to be constructed correctly
-            ITsRandomAccessFileReader randomAccessFileReader = new TsRandomAccessLocalFileReader(unsealedTsFile.getFilePath());
+            RandomAccessFile raf = OverflowFileStreamManager.getInstance().get(jobId, unsealedTsFile.getFilePath());
+            ITsRandomAccessFileReader randomAccessFileReader = new TsRandomAccessLocalFileReader(raf);
             SeriesChunkLoader seriesChunkLoader = new SeriesChunkLoaderImpl(randomAccessFileReader);
 
             initSingleTsFileReader(randomAccessFileReader, seriesChunkLoader, encodedSeriesChunkDescriptorList);
