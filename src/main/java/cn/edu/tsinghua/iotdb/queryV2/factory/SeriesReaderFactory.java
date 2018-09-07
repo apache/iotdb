@@ -2,6 +2,7 @@ package cn.edu.tsinghua.iotdb.queryV2.factory;
 
 import cn.edu.tsinghua.iotdb.engine.filenode.IntervalFileNode;
 import cn.edu.tsinghua.iotdb.engine.querycontext.OverflowSeriesDataSource;
+import cn.edu.tsinghua.iotdb.queryV2.engine.control.QueryJobManager;
 import cn.edu.tsinghua.iotdb.queryV2.engine.externalsort.ExternalSortJobEngine;
 import cn.edu.tsinghua.iotdb.queryV2.engine.externalsort.SimpleExternalSortEngine;
 import cn.edu.tsinghua.iotdb.queryV2.engine.overflow.OverflowOperationReaderImpl;
@@ -31,30 +32,29 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Created by zhangjinrui on 2018/1/18.
  */
 public class SeriesReaderFactory {
     private static final Logger logger = LoggerFactory.getLogger(SeriesReaderFactory.class);
-    private AtomicLong jobId;
     private OverflowSeriesChunkLoader overflowSeriesChunkLoader;
     private DigestFilterVisitor digestFilterVisitor;
     private ExternalSortJobEngine externalSortJobEngine;
+    private QueryJobManager queryJobManager;
 
     private ThreadLocal<SimpleMetadataQuerierForMerge> metadataQuerierForMerge;
 
     private SeriesReaderFactory() {
-        jobId = new AtomicLong(0L);
         overflowSeriesChunkLoader = new OverflowSeriesChunkLoader();
         digestFilterVisitor = new DigestFilterVisitor();
         externalSortJobEngine = SimpleExternalSortEngine.getInstance();
         metadataQuerierForMerge = new ThreadLocal<>();
+        queryJobManager = QueryJobManager.getInstance();
     }
 
     public OverflowInsertDataReader createSeriesReaderForOverflowInsert(OverflowSeriesDataSource overflowSeriesDataSource, Filter<?> filter) throws IOException {
-        long jobId = getNextJobId();
+        long jobId = queryJobManager.addJobForOneQuery();
         List<EncodedSeriesChunkDescriptor> seriesChunkDescriptorList = SeriesDescriptorGenerator.genSeriesChunkDescriptorList(overflowSeriesDataSource.getOverflowInsertFileList());
         int priorityValue = 1;
         List<PriorityTimeValuePairReader> timeValuePairReaders = new ArrayList<>();
@@ -81,7 +81,7 @@ public class SeriesReaderFactory {
     }
 
     public OverflowInsertDataReaderByTimeStamp createSeriesReaderForOverflowInsertByTimestamp(OverflowSeriesDataSource overflowSeriesDataSource) throws IOException {
-        long jobId = getNextJobId();
+        long jobId = queryJobManager.addJobForOneQuery();
         List<EncodedSeriesChunkDescriptor> seriesChunkDescriptorList = SeriesDescriptorGenerator.genSeriesChunkDescriptorList(overflowSeriesDataSource.getOverflowInsertFileList());
         int priorityValue = 1;
         List<PriorityTimeValuePairReaderByTimestamp> timeValuePairReaders = new ArrayList<>();
@@ -115,7 +115,7 @@ public class SeriesReaderFactory {
     }
 
     public OverflowInsertDataReader createSeriesReaderForOverflowInsert(OverflowSeriesDataSource overflowSeriesDataSource) throws IOException {
-        long jobId = getNextJobId();
+        long jobId = queryJobManager.addJobForOneQuery();
         List<EncodedSeriesChunkDescriptor> seriesChunkDescriptorList = SeriesDescriptorGenerator.genSeriesChunkDescriptorList(overflowSeriesDataSource.getOverflowInsertFileList());
         int priorityValue = 1;
         List<PriorityTimeValuePairReader> timeValuePairReaders = new ArrayList<>();
@@ -176,10 +176,6 @@ public class SeriesReaderFactory {
             metadataQuerierForMerge.set(new SimpleMetadataQuerierForMerge(filePath));
         }
         return metadataQuerierForMerge.get();
-    }
-
-    private synchronized long getNextJobId() {
-        return jobId.incrementAndGet();
     }
 
     private static class SeriesReaderFactoryHelper {

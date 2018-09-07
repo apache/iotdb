@@ -26,6 +26,7 @@ import cn.edu.tsinghua.iotdb.qp.physical.crud.IndexQueryPlan;
 import cn.edu.tsinghua.iotdb.qp.physical.crud.MultiQueryPlan;
 import cn.edu.tsinghua.iotdb.qp.physical.sys.AuthorPlan;
 import cn.edu.tsinghua.iotdb.query.management.ReadCacheManager;
+import cn.edu.tsinghua.iotdb.queryV2.engine.control.QueryJobManager;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
 import cn.edu.tsinghua.tsfile.timeseries.readV2.query.QueryDataSet;
@@ -134,6 +135,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 		LOGGER.info("{}: receive close operation",TsFileDBConstant.GLOBAL_DB_NAME);
 		try {
 			ReadCacheManager.getInstance().unlockForOneRequest();
+			QueryJobManager.getInstance().closeAllJobForOneQuery();
 			clearAllStatusForCurrentRequest();
 		} catch (ProcessorException | IOException e) {
 			LOGGER.error("Error in closeOperation : {}", e.getMessage());

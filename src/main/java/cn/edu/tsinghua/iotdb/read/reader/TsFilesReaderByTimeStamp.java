@@ -3,7 +3,7 @@ package cn.edu.tsinghua.iotdb.read.reader;
 import cn.edu.tsinghua.iotdb.engine.filenode.IntervalFileNode;
 import cn.edu.tsinghua.iotdb.engine.querycontext.GlobalSortedSeriesDataSource;
 import cn.edu.tsinghua.iotdb.engine.querycontext.UnsealedTsFile;
-import cn.edu.tsinghua.iotdb.queryV2.engine.reader.PriorityMergeSortTimeValuePairReader;
+import cn.edu.tsinghua.iotdb.queryV2.engine.control.OverflowFileStreamManager;
 import cn.edu.tsinghua.iotdb.queryV2.engine.reader.PriorityMergeSortTimeValuePairReaderByTimestamp;
 import cn.edu.tsinghua.iotdb.queryV2.engine.reader.PriorityTimeValuePairReader;
 import cn.edu.tsinghua.iotdb.queryV2.engine.reader.PriorityTimeValuePairReaderByTimestamp;
@@ -17,8 +17,8 @@ import cn.edu.tsinghua.tsfile.timeseries.readV2.datatype.TsPrimitiveType;
 import cn.edu.tsinghua.tsfile.timeseries.readV2.reader.SeriesReaderByTimeStamp;
 import cn.edu.tsinghua.tsfile.timeseries.readV2.reader.impl.SeriesReaderFromSingleFileByTimestampImpl;
 
-import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -168,7 +168,8 @@ public class TsFilesReaderByTimeStamp extends TsFilesReader implements SeriesRea
         }
 
         protected void initSingleTsFileReader(IntervalFileNode fileNode)throws IOException {
-            ITsRandomAccessFileReader randomAccessFileReader = new TsRandomAccessLocalFileReader(fileNode.getFilePath());
+            RandomAccessFile raf = OverflowFileStreamManager.getInstance().get(jobId, fileNode.getFilePath());
+            ITsRandomAccessFileReader randomAccessFileReader = new TsRandomAccessLocalFileReader(raf);
             singleTsFileReader = new SeriesReaderFromSingleFileByTimestampImpl(randomAccessFileReader, path);
         }
 
@@ -189,7 +190,7 @@ public class TsFilesReaderByTimeStamp extends TsFilesReader implements SeriesRea
 
     protected class UnSealedTsFileWithTimeStampReader extends TsFilesReader.UnSealedTsFileReader implements SeriesReaderByTimeStamp{
 
-        public UnSealedTsFileWithTimeStampReader(UnsealedTsFile unsealedTsFile) throws FileNotFoundException {
+        public UnSealedTsFileWithTimeStampReader(UnsealedTsFile unsealedTsFile) throws IOException {
             super(unsealedTsFile);
         }
 
