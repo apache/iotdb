@@ -32,6 +32,7 @@ public abstract class AbstractMemTable implements IMemTable{
                 memTableMap.get(deltaObject).containsKey(measurement);
     }
 
+    //0910:考虑改一个更准确的函数名，类似createIfNotExistAndGet
     private IMemSeries addSeriesIfNone(String deltaObject, String measurement, TSDataType dataType) {
         if(!memTableMap.containsKey(deltaObject)) {
             memTableMap.put(deltaObject, new HashMap<>());

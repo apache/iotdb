@@ -10,6 +10,7 @@ import java.util.Iterator;
 /**
  * Created by zhangjinrui on 2018/1/21.
  */
+//0910:考虑删除该类
 public class SeriesChunkInMemTable implements RawSeriesChunk {
 	
 	private long maxTime;

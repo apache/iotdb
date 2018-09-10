@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.TreeMap;
 
+//0910: 可以刪除的类
 public class TreeMapMemSeries implements IMemSeries{
     private static final Logger logger = LoggerFactory.getLogger(TreeMapMemSeries.class);
 

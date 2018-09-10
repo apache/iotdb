@@ -11,9 +11,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.TreeSet;
 
+//0910: 只在测试中使用到该类
 public class TreeSetMemSeries implements IMemSeries {
     private static final Logger logger = LoggerFactory.getLogger(TreeSetMemSeries.class);
 
+    //0910:建议把<>中的改为TimeValuePairInMemTable，扩展了comparable接口
     private final TreeSet<TimeValuePair> treeSet;
     private final TSDataType dataType;
 
@@ -28,6 +30,7 @@ public class TreeSetMemSeries implements IMemSeries {
             case TEXT:
                 treeSet = new TreeSet<>();
                 break;
+                //0910:考虑去掉下面这些数据类型@Tsfile
             case FIXED_LEN_BYTE_ARRAY:
             case ENUMS:
             case INT96:
@@ -111,6 +114,7 @@ public class TreeSetMemSeries implements IMemSeries {
             case TEXT:
                 putBinary(insertTime, Binary.valueOf(insertValue));
                 break;
+            //0910:考虑去掉下面这些数据类型@Tsfile
             case FIXED_LEN_BYTE_ARRAY:
             case ENUMS:
             case INT96:
@@ -138,6 +142,7 @@ public class TreeSetMemSeries implements IMemSeries {
     @Override
     public int size() {
         //TODO: this implement just returns the number of data points in the tree set.
+        //0910:考虑删除TODO，改成一般注释；size意义混淆？
         return treeSet.size();
     }
 }

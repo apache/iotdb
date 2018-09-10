@@ -9,6 +9,10 @@ package cn.edu.tsinghua.iotdb.engine.utils;
  */
 public class FlushStatus {
 
+	/*
+	0910: 了解volatile(https://www.cnblogs.com/dolphin0520/p/3920373.html)，
+	考虑用锁保证多线程原子性？
+	 */
 	private volatile boolean isFlushing;
 
 	public FlushStatus() {

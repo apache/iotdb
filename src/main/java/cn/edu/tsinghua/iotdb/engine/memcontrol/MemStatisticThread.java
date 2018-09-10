@@ -5,7 +5,7 @@ import cn.edu.tsinghua.iotdb.utils.MemUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
+//0910:统计内存使用，每三分钟
 public class MemStatisticThread extends Thread{
 
     private static Logger logger = LoggerFactory.getLogger(MemStatisticThread.class);

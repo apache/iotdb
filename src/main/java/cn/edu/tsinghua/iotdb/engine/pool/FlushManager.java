@@ -50,6 +50,8 @@ public class FlushManager {
      */
     public void forceClose(boolean block, long timeOut) throws ProcessorException {
         pool.shutdownNow();
+        //0910: 可以看看与close函数中shutdown的区别
+        //0910: 考虑是否简化forceClose与close函数中的重复代码
         if(block) {
             try {
                 if(!pool.awaitTermination(timeOut, TimeUnit.MILLISECONDS))
