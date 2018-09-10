@@ -25,6 +25,7 @@ public class PrimitiveMemSeries implements IMemSeries {
     }
 
     @Override
+    //0910: 传入的dataType参数和该类的dataType属性成员是否冗余
     public void write(TSDataType dataType, long insertTime, String insertValue) {
         switch (dataType) {
             case BOOLEAN:
@@ -86,6 +87,7 @@ public class PrimitiveMemSeries implements IMemSeries {
     }
 
     @Override
+    //0910: 考虑和TreeSetMemseries的实现区别；以及内存占用
     public List<TimeValuePair> getSortedTimeValuePairList() {
         int length = list.size();
         TreeMap<Long, TsPrimitiveType> treeMap = new TreeMap<>();

@@ -9,6 +9,7 @@ import cn.edu.tsinghua.iotdb.service.ServiceType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+//0910:该类中启动monitor&statistic thread
 public abstract class BasicMemController implements IService{
 
     private static final Logger logger = LoggerFactory.getLogger(BasicMemController.class);

@@ -6,6 +6,7 @@ import cn.edu.tsinghua.tsfile.timeseries.readV2.datatype.TsPrimitiveType;
 /**
  * Created by zhangjinrui on 2018/1/26.
  */
+//0910:实现了时间戳的比较
 public class TimeValuePairInMemTable extends TimeValuePair implements Comparable<TimeValuePairInMemTable> {
 
     public TimeValuePairInMemTable(long timestamp, TsPrimitiveType value) {

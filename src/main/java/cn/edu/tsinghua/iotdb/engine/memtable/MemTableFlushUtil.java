@@ -16,6 +16,7 @@ import cn.edu.tsinghua.tsfile.timeseries.write.page.PageWriterImpl;
 import cn.edu.tsinghua.tsfile.timeseries.write.schema.FileSchema;
 import cn.edu.tsinghua.tsfile.timeseries.write.series.SeriesWriterImpl;
 
+//0910: 把memtable的flush到tsfile作为一个rowGroup
 public class MemTableFlushUtil {
 	private static final Logger logger = LoggerFactory.getLogger(MemTableFlushUtil.class);
 	private static final int pageSizeThreshold = TSFileDescriptor.getInstance().getConfig().pageSizeInByte;

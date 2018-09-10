@@ -13,6 +13,7 @@ import java.util.TreeMap;
 /**
  * Created by zhangjinrui on 2018/1/26.
  */
+//0910: 该类可以放到测试类中
 public class PrimitiveMemSeriesLazyIterable implements Iterable<TimeValuePair>{
 
     private TSDataType dataType;

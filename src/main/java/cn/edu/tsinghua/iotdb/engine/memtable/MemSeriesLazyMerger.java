@@ -28,6 +28,7 @@ public class MemSeriesLazyMerger implements TimeValuePairSorter{
      * any timestamps of the IMemSeries already added in.
      * @param series
      */
+    //0910: 上层如何保证传入同一类series
     public void addMemSeries(IMemSeries series) {
         memSeriesList.add(series);
     }

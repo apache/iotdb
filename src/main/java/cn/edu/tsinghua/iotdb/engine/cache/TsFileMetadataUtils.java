@@ -28,6 +28,7 @@ public class TsFileMetadataUtils {
 	private static final int FOOTER_LENGTH = 4;
 	private static final int MAGIC_LENGTH = TsFileIOWriter.magicStringBytes.length;
 
+	//0910: 读文件尾部的metadata
 	public static TsFileMetaData getTsFileMetaData(String filePath) throws IOException {
 		ITsRandomAccessFileReader randomAccessFileReader = null;
 		try {

@@ -16,12 +16,14 @@ import java.util.Map;
 public interface IMemTable {
     Map<String, Map<String, IMemSeries>> getMemTableMap();
 
+    //0910:可以删除public
     public void write(String deltaObject, String measurement, TSDataType dataType, long insertTime, String insertValue);
 
     int size();
 
     IMemSeries query(String deltaObject, String measurement,TSDataType dataType);
 
+    //0910:是否删除该无用接口
     void resetMemSeries(String deltaObject, String measurement);
     
     void clear();

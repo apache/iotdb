@@ -13,6 +13,7 @@ import java.util.concurrent.atomic.AtomicLong;
 /**
  * This class hold global memory usage of MemUsers. This only counts record(tuple) sizes.
  */
+//0910:每写入一个tsfile，把占用的内存写入到totalMemUsed中去
 public class RecordMemController extends BasicMemController{
 
     private static Logger logger = LoggerFactory.getLogger(RecordMemController.class);
