@@ -56,7 +56,7 @@ public class QueryDataSetIterator {
 
         this.overflowQueryEngine = overflowQueryEngine;
         this.readToken = readToken;
-        this.queryDataSet = this.overflowQueryEngine.query(0, pathList, (SingleSeriesFilterExpression) filterExpression, null, null,
+        this.queryDataSet = this.overflowQueryEngine.query(0, pathList, filterExpression, null, null,
                 null, TsfileDBDescriptor.getInstance().getConfig().fetchSize, readToken);
 //        formNumber++;
     }
@@ -65,7 +65,7 @@ public class QueryDataSetIterator {
         if (queryDataSet.hasNextRecord()) {
             return true;
         } else {
-            queryDataSet = overflowQueryEngine.query(0, pathList, (SingleSeriesFilterExpression) filterExpression, null, null,
+            queryDataSet = overflowQueryEngine.query(0, pathList, filterExpression, null, null,
                     queryDataSet, TsfileDBDescriptor.getInstance().getConfig().fetchSize, readToken);
 //            formNumber++;
             return queryDataSet.hasNextRecord();

@@ -220,9 +220,6 @@ public class OverflowProcessor extends Processor {
 	 *
 	 * @param deltaObjectId
 	 * @param measurementId
-	 * @param timeFilter
-	 * @param freqFilter
-	 * @param valueFilter
 	 * @param dataType
 	 * @return OverflowSeriesDataSource
 	 * @throws IOException
@@ -233,8 +230,7 @@ public class OverflowProcessor extends Processor {
 		try {
 			// query insert data in memory and unseqTsFiles
 			// memory
-			RawSeriesChunk insertInMem = queryOverflowInsertInMemory(deltaObjectId, measurementId, null, null, null,
-					dataType);
+			RawSeriesChunk insertInMem = queryOverflowInsertInMemory(deltaObjectId, measurementId, dataType);
 
 			List<OverflowInsertFile> overflowInsertFileList = new ArrayList<>();
 			// work file
@@ -252,8 +248,7 @@ public class OverflowProcessor extends Processor {
 			// query update/delete data in memory and overflowFiles
 			UpdateDeleteInfoOfOneSeries updateDeleteInfoOfOneSeries = new UpdateDeleteInfoOfOneSeries();
 			// memory
-			DynamicOneColumnData updateDataInMem = queryOverflowUpdateInMemory(deltaObjectId, measurementId, null, null,
-					null, dataType);
+			DynamicOneColumnData updateDataInMem = queryOverflowUpdateInMemory(deltaObjectId, measurementId, dataType);
 			updateDeleteInfoOfOneSeries.setOverflowUpdateInMem(updateDataInMem);
 			List<OverflowUpdateDeleteFile> overflowUpdateFileList = new ArrayList<>();
 			// work file
@@ -285,15 +280,10 @@ public class OverflowProcessor extends Processor {
 	 *
 	 * @param deltaObjectId
 	 * @param measurementId
-	 * @param timeFilter
-	 * @param freqFilter
-	 * @param valueFilter
 	 * @param dataType
 	 * @return insert data in SeriesChunkInMemTable
 	 */
-	private RawSeriesChunk queryOverflowInsertInMemory(String deltaObjectId, String measurementId,
-			SingleSeriesFilterExpression timeFilter, SingleSeriesFilterExpression freqFilter,
-			SingleSeriesFilterExpression valueFilter, TSDataType dataType) {
+	private RawSeriesChunk queryOverflowInsertInMemory(String deltaObjectId, String measurementId, TSDataType dataType) {
 
 		MemSeriesLazyMerger memSeriesLazyMerger = new MemSeriesLazyMerger();
 		if (flushStatus.isFlushing()) {
@@ -311,20 +301,13 @@ public class OverflowProcessor extends Processor {
 	 *
 	 * @param deltaObjectId
 	 * @param measurementId
-	 * @param timeFilter
-	 * @param freqFilter
-	 * @param valueFilter
 	 * @param dataType
 	 * @return update/delete result in DynamicOneColumnData
 	 */
-	private DynamicOneColumnData queryOverflowUpdateInMemory(String deltaObjectId, String measurementId,
-			SingleSeriesFilterExpression timeFilter, SingleSeriesFilterExpression freqFilter,
-			SingleSeriesFilterExpression valueFilter, TSDataType dataType) {
-		DynamicOneColumnData columnData = workSupport.queryOverflowUpdateInMemory(deltaObjectId, measurementId,
-				timeFilter, freqFilter, valueFilter, dataType, null);
+	private DynamicOneColumnData queryOverflowUpdateInMemory(String deltaObjectId, String measurementId, TSDataType dataType) {
+		DynamicOneColumnData columnData = workSupport.queryOverflowUpdateInMemory(deltaObjectId, measurementId, dataType, null);
 		if (flushStatus.isFlushing()) {
-			columnData = flushSupport.queryOverflowUpdateInMemory(deltaObjectId, measurementId, timeFilter, freqFilter,
-					valueFilter, dataType, columnData);
+			columnData = flushSupport.queryOverflowUpdateInMemory(deltaObjectId, measurementId, dataType, columnData);
 		}
 		return columnData;
 	}

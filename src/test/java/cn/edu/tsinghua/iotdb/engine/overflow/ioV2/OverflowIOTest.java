@@ -55,7 +55,7 @@ public class OverflowIOTest {
 		index.update(4, 20, BytesUtils.intToBytes(20));
 		index.update(30, 40, BytesUtils.intToBytes(30));
 		index.update(50, 60, BytesUtils.intToBytes(40));
-		DynamicOneColumnData originData = index.query(null, null, null, null, null);
+		DynamicOneColumnData originData = index.query(null);
 		assertEquals(2, originData.getTime(0));
 		assertEquals(3, originData.getTime(1));
 		assertEquals(4, originData.getTime(2));

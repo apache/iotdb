@@ -229,57 +229,58 @@ public class KvMatchIndex  implements IoTIndex {
     @Override
     public boolean build(Path path, DataFileInfo newFile, Map<String, Object> parameters)
             throws IndexManagerException {
-        try {
-            // 0. construct index configurations
-            IndexConfig indexConfig = new IndexConfig();
-            if (parameters == null) {
-                indexConfig = indexConfigStore.getOrDefault(path.getFullPath(), new IndexConfig());
-            }
-            else {
-                indexConfig.setWindowLength((int) parameters.getOrDefault(IndexConfig.PARAM_WINDOW_LENGTH, IndexConfig.DEFAULT_WINDOW_LENGTH));
-                indexConfig.setSinceTime((long) parameters.getOrDefault(IndexConfig.PARAM_SINCE_TIME, IndexConfig.DEFAULT_SINCE_TIME));
-            }
-
-            long startTime = indexConfig.getSinceTime();
-
-            if (startTime > newFile.getEndTime()) {
-                return true;
-            }
-
-            String indexFile = IndexFileUtils.getIndexFilePath(path, newFile.getFilePath());
-            File indexFl = new File(indexFile);
-            if (indexFl.exists()) {
-                return true;
-            }
-
-            File buildFl = new File(indexFile + buildingStatus);
-            if (buildFl.delete()) {
-                logger.warn("{} delete failed", buildFl.getAbsolutePath());
-            }
-
-            // 1. build index asynchronously
-			Map<String,Object> map = getDataInTsFile(path, newFile.getFilePath());
-            OnePassQueryDataSet dataSet = (OnePassQueryDataSet)(map.get("data"));
-//            Future<Boolean> result = executor.submit(new KvMatchIndexBuilder(indexConfig, path, dataSet, indexFile));
-//            try {
-//                result.get();
-//            } catch (Exception e) {
-//                logger.error("Error occurred when building index because of {}", e.getMessage());
+        throw new IndexManagerException("do not support this method");
+//        try {
+//            // 0. construct index configurations
+//            IndexConfig indexConfig = new IndexConfig();
+//            if (parameters == null) {
+//                indexConfig = indexConfigStore.getOrDefault(path.getFullPath(), new IndexConfig());
 //            }
-
-            TsFile tsfile = (TsFile)(map.get("tsfile"));
-			tsfile.close();
-//            KvMatchIndexBuilder rs = new KvMatchIndexBuilder(indexConfig, path, dataSet, IndexFileUtils.getIndexFilePath(path, newFile.getFilePath()));
-//            Boolean rr = rs.call();
-            return true;
-        } catch (IOException e) {
-            logger.error("failed to build index file while closing" + e.getMessage(), e.getCause());
-            throw new IndexManagerException(e);
-        } catch (Exception e) {
-            e.printStackTrace();
-            logger.error("failed to build index file while closing" + e.getMessage(), e.getCause());
-            throw new IndexManagerException(e);
-        }
+//            else {
+//                indexConfig.setWindowLength((int) parameters.getOrDefault(IndexConfig.PARAM_WINDOW_LENGTH, IndexConfig.DEFAULT_WINDOW_LENGTH));
+//                indexConfig.setSinceTime((long) parameters.getOrDefault(IndexConfig.PARAM_SINCE_TIME, IndexConfig.DEFAULT_SINCE_TIME));
+//            }
+//
+//            long startTime = indexConfig.getSinceTime();
+//
+//            if (startTime > newFile.getEndTime()) {
+//                return true;
+//            }
+//
+//            String indexFile = IndexFileUtils.getIndexFilePath(path, newFile.getFilePath());
+//            File indexFl = new File(indexFile);
+//            if (indexFl.exists()) {
+//                return true;
+//            }
+//
+//            File buildFl = new File(indexFile + buildingStatus);
+//            if (buildFl.delete()) {
+//                logger.warn("{} delete failed", buildFl.getAbsolutePath());
+//            }
+//
+//            // 1. build index asynchronously
+//			Map<String,Object> map = getDataInTsFile(path, newFile.getFilePath());
+//            OnePassQueryDataSet dataSet = (OnePassQueryDataSet)(map.get("data"));
+////            Future<Boolean> result = executor.submit(new KvMatchIndexBuilder(indexConfig, path, dataSet, indexFile));
+////            try {
+////                result.get();
+////            } catch (Exception e) {
+////                logger.error("Error occurred when building index because of {}", e.getMessage());
+////            }
+//
+//            TsFile tsfile = (TsFile)(map.get("tsfile"));
+//			tsfile.close();
+////            KvMatchIndexBuilder rs = new KvMatchIndexBuilder(indexConfig, path, dataSet, IndexFileUtils.getIndexFilePath(path, newFile.getFilePath()));
+////            Boolean rr = rs.call();
+//            return true;
+//        } catch (IOException e) {
+//            logger.error("failed to build index file while closing" + e.getMessage(), e.getCause());
+//            throw new IndexManagerException(e);
+//        } catch (Exception e) {
+//            e.printStackTrace();
+//            logger.error("failed to build index file while closing" + e.getMessage(), e.getCause());
+//            throw new IndexManagerException(e);
+//        }
     }
 
     /**
