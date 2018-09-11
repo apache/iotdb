@@ -39,14 +39,10 @@ public interface IIntervalTreeOperator {
      * <em>newerMemoryData</em>. This function merges current index into <em>newerMemoryData</em> and return the
      * merged result.
      *
-     * @param timeFilter      - timeFilter is specified by user.
-     * @param valueFilter     - valueFilter is specified by user.
-     * @param freqFilter      - freqFilter is specified by user.
      * @param newerMemoryData - newer overflow data.
      * @return merged result.
      */
-    DynamicOneColumnData queryMemory(SingleSeriesFilterExpression timeFilter,
-                                     SingleSeriesFilterExpression valueFilter, SingleSeriesFilterExpression freqFilter, DynamicOneColumnData newerMemoryData);
+    DynamicOneColumnData queryMemory(DynamicOneColumnData newerMemoryData);
 
     /**
      * This function merges the older data which deserialized from given parameter <em>in</em> into <em>newerData</em>
