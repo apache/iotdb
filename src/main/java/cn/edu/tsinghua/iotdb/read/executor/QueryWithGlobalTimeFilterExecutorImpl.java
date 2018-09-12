@@ -2,8 +2,8 @@ package cn.edu.tsinghua.iotdb.read.executor;
 
 import cn.edu.tsinghua.iotdb.engine.querycontext.QueryDataSource;
 import cn.edu.tsinghua.iotdb.exception.FileNodeManagerException;
-import cn.edu.tsinghua.iotdb.read.IoTDBQueryDataSourceExecutor;
-import cn.edu.tsinghua.iotdb.read.reader.IoTDBQueryWithFilterReader;
+import cn.edu.tsinghua.iotdb.read.QueryDataSourceExecutor;
+import cn.edu.tsinghua.iotdb.read.reader.QueryWithOrWithOutFilterReader;
 import cn.edu.tsinghua.tsfile.timeseries.filterV2.basic.Filter;
 import cn.edu.tsinghua.tsfile.timeseries.filterV2.expression.impl.GlobalTimeFilter;
 import cn.edu.tsinghua.tsfile.timeseries.filterV2.expression.impl.SeriesFilter;
@@ -20,9 +20,9 @@ import java.util.List;
 /**
  * IoTDB query executor with  global time filter
  * */
-public class IoTDBQueryWithGlobalTimeFilterExecutorImpl{
+public class QueryWithGlobalTimeFilterExecutorImpl {
 
-    public IoTDBQueryWithGlobalTimeFilterExecutorImpl() {
+    public QueryWithGlobalTimeFilterExecutorImpl() {
     }
 
     public static QueryDataSet execute(QueryExpression queryExpression) throws IOException, FileNodeManagerException {
@@ -37,8 +37,8 @@ public class IoTDBQueryWithGlobalTimeFilterExecutorImpl{
                                              List<Path> selectedSeries, Filter<Long> timeFilter) throws IOException, FileNodeManagerException {
         for (Path path : selectedSeries) {
             SeriesFilter<Long> seriesFilter = new SeriesFilter<Long>(path, timeFilter);
-            QueryDataSource queryDataSource = IoTDBQueryDataSourceExecutor.getQueryDataSource(seriesFilter);
-            SeriesReader seriesReader = new IoTDBQueryWithFilterReader(queryDataSource, seriesFilter);
+            QueryDataSource queryDataSource = QueryDataSourceExecutor.getQueryDataSource(seriesFilter);
+            SeriesReader seriesReader = new QueryWithOrWithOutFilterReader(queryDataSource, seriesFilter);
             readersOfSelectedSeries.put(path, seriesReader);
         }
     }

@@ -6,6 +6,6 @@ import cn.edu.tsinghua.tsfile.timeseries.readV2.query.QueryExpression;
 
 import java.io.IOException;
 
-public interface IoTDBQueryExecutor {
+public interface QueryExecutor {
     QueryDataSet execute(QueryExpression queryExpression) throws IOException, FileNodeManagerException;
 }

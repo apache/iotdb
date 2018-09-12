@@ -4,16 +4,14 @@ import cn.edu.tsinghua.iotdb.exception.FileNodeManagerException;
 import cn.edu.tsinghua.iotdb.exception.PathErrorException;
 import cn.edu.tsinghua.iotdb.metadata.MManager;
 import cn.edu.tsinghua.iotdb.qp.exception.QueryProcessorException;
-import cn.edu.tsinghua.iotdb.qp.executor.iterator.MergeQuerySetIterator;
 import cn.edu.tsinghua.iotdb.qp.executor.iterator.QueryDataSetIterator;
 import cn.edu.tsinghua.iotdb.qp.physical.PhysicalPlan;
-import cn.edu.tsinghua.iotdb.qp.physical.crud.IndexQueryPlan;
 import cn.edu.tsinghua.iotdb.qp.physical.crud.MultiQueryPlan;
 import cn.edu.tsinghua.iotdb.qp.physical.crud.QueryPlan;
 import cn.edu.tsinghua.iotdb.qp.physical.crud.SingleQueryPlan;
 import cn.edu.tsinghua.iotdb.query.management.FilterStructure;
 import cn.edu.tsinghua.iotdb.query.fill.IFill;
-import cn.edu.tsinghua.iotdb.read.IoTDBQueryEngine;
+import cn.edu.tsinghua.iotdb.read.QueryEngine;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 import cn.edu.tsinghua.tsfile.common.utils.Pair;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
@@ -30,7 +28,7 @@ import java.util.*;
 public abstract class QueryProcessExecutor {
 
 	protected ThreadLocal<Integer> fetchSize = new ThreadLocal<>();
-	private IoTDBQueryEngine ioTDBQueryEngine = new IoTDBQueryEngine();
+	private QueryEngine queryEngine = new QueryEngine();
 
 	public QueryProcessExecutor() {
 	}
@@ -83,7 +81,7 @@ public abstract class QueryProcessExecutor {
 				.setSelectSeries(queryPlan.getPaths())
 				.setQueryFilter(queryPlan.getQueryFilter());
 
-		return ioTDBQueryEngine.query(queryExpression);
+		return queryEngine.query(queryExpression);
 	}
 
 

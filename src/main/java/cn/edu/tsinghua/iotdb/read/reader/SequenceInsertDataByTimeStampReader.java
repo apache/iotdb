@@ -25,12 +25,12 @@ import java.util.List;
 /**
  * A reader for sequence insert data which can get the corresponding value of the specified time point.
  * */
-public class TsFilesReaderByTimeStamp extends TsFilesReader implements SeriesReaderByTimeStamp{
+public class SequenceInsertDataByTimeStampReader extends SequenceInsertDataReader implements SeriesReaderByTimeStamp{
 
     private long currentTimestamp;
     private PriorityMergeSortTimeValuePairReaderByTimestamp priorityMergeSortTimeValuePairReader;
 
-    public TsFilesReaderByTimeStamp(GlobalSortedSeriesDataSource sortedSeriesDataSource)
+    public SequenceInsertDataByTimeStampReader(GlobalSortedSeriesDataSource sortedSeriesDataSource)
             throws IOException {
         super(sortedSeriesDataSource);
 
@@ -82,7 +82,7 @@ public class TsFilesReaderByTimeStamp extends TsFilesReader implements SeriesRea
         this.currentTimestamp = currentTimestamp;
     }
 
-    private class SealedTsFileWithTimeStampReader extends TsFilesReader.SealedTsFileReader implements SeriesReaderByTimeStamp {
+    private class SealedTsFileWithTimeStampReader extends SequenceInsertDataReader.SealedTsFileReader implements SeriesReaderByTimeStamp {
 
         private boolean hasCacheLastTimeValuePair;
         private TimeValuePair cachedTimeValuePair;
@@ -188,7 +188,7 @@ public class TsFilesReaderByTimeStamp extends TsFilesReader implements SeriesRea
         }
     }
 
-    protected class UnSealedTsFileWithTimeStampReader extends TsFilesReader.UnSealedTsFileReader implements SeriesReaderByTimeStamp{
+    protected class UnSealedTsFileWithTimeStampReader extends SequenceInsertDataReader.UnSealedTsFileReader implements SeriesReaderByTimeStamp{
 
         public UnSealedTsFileWithTimeStampReader(UnsealedTsFile unsealedTsFile) throws IOException {
             super(unsealedTsFile);

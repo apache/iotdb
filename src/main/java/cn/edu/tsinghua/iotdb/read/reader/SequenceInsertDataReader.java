@@ -24,7 +24,7 @@ import java.util.List;
 /**
  * A reader for sequentially inserts data，including a list of sealedTsFile, unSealedTsFile, data in MemTable.
  * */
-public abstract class TsFilesReader implements SeriesReader {
+public abstract class SequenceInsertDataReader implements SeriesReader {
 
     protected List<SeriesReader> seriesReaders;
     protected Path path;
@@ -34,7 +34,7 @@ public abstract class TsFilesReader implements SeriesReader {
     private int nextSeriesReaderIndex;
     private SeriesReader currentSeriesReader;
 
-    public TsFilesReader(GlobalSortedSeriesDataSource sortedSeriesDataSource){
+    public SequenceInsertDataReader(GlobalSortedSeriesDataSource sortedSeriesDataSource){
         path = sortedSeriesDataSource.getSeriesPath();
         seriesReaders = new ArrayList<SeriesReader>();
         jobId = QueryJobManager.getInstance().addJobForOneQuery();

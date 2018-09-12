@@ -20,14 +20,14 @@ import java.io.IOException;
  *
  * TODO: updata and delete operation.
  * */
-public class IoTDBQueryByTimestampsReader implements SeriesReaderByTimeStamp {
+public class QueryByTimestampsReader implements SeriesReaderByTimeStamp {
 
     private SeriesWithOverflowOpReader seriesWithOverflowOpReader;
 
-    public IoTDBQueryByTimestampsReader(QueryDataSource queryDataSource) throws IOException {
+    public QueryByTimestampsReader(QueryDataSource queryDataSource) throws IOException {
         int priority = 1;
         //sequence insert data
-        TsFilesReaderByTimeStamp tsFilesReader = new TsFilesReaderByTimeStamp(queryDataSource.getSeriesDataSource());
+        SequenceInsertDataByTimeStampReader tsFilesReader = new SequenceInsertDataByTimeStampReader(queryDataSource.getSeriesDataSource());
         PriorityTimeValuePairReaderByTimestamp tsFilesReaderWithPriority = new PriorityTimeValuePairReaderByTimestamp(
                 tsFilesReader, new PriorityTimeValuePairReader.Priority(priority++));
 

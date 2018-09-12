@@ -2,8 +2,8 @@ package cn.edu.tsinghua.iotdb.read.timegenerator;
 
 import cn.edu.tsinghua.iotdb.engine.querycontext.QueryDataSource;
 import cn.edu.tsinghua.iotdb.exception.FileNodeManagerException;
-import cn.edu.tsinghua.iotdb.read.IoTDBQueryDataSourceExecutor;
-import cn.edu.tsinghua.iotdb.read.reader.IoTDBQueryWithFilterReader;
+import cn.edu.tsinghua.iotdb.read.QueryDataSourceExecutor;
+import cn.edu.tsinghua.iotdb.read.reader.QueryWithOrWithOutFilterReader;
 import cn.edu.tsinghua.tsfile.common.exception.UnSupportedDataTypeException;
 import cn.edu.tsinghua.tsfile.timeseries.filterV2.expression.BinaryQueryFilter;
 import cn.edu.tsinghua.tsfile.timeseries.filterV2.expression.QueryFilter;
@@ -18,9 +18,9 @@ import cn.edu.tsinghua.tsfile.timeseries.readV2.reader.SeriesReader;
 
 import java.io.IOException;
 
-public class IoTDBNodeConstructor {
+public class NodeConstructor {
 
-    public IoTDBNodeConstructor() {
+    public NodeConstructor() {
     }
 
     public Node construct(QueryFilter queryFilter) throws IOException, FileNodeManagerException {
@@ -44,8 +44,8 @@ public class IoTDBNodeConstructor {
     }
 
     public SeriesReader generateSeriesReader(SeriesFilter<?> seriesFilter) throws IOException, FileNodeManagerException {
-        QueryDataSource queryDataSource = IoTDBQueryDataSourceExecutor.getQueryDataSource(seriesFilter);
-        return new IoTDBQueryWithFilterReader(queryDataSource, seriesFilter);
+        QueryDataSource queryDataSource = QueryDataSourceExecutor.getQueryDataSource(seriesFilter);
+        return new QueryWithOrWithOutFilterReader(queryDataSource, seriesFilter);
     }
 
 
