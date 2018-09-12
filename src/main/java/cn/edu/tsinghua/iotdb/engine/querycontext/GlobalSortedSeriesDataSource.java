@@ -12,6 +12,7 @@ public class GlobalSortedSeriesDataSource {
     private Path seriesPath;
     private List<IntervalFileNode> sealedTsFiles;
     private UnsealedTsFile unsealedTsFile;
+    //0910: RawSeriesChunk考虑改名，chunk似乎范围过大
     private RawSeriesChunk rawSeriesChunk;
 
     public GlobalSortedSeriesDataSource(Path seriesPath, List<IntervalFileNode> sealedTsFiles,
@@ -19,6 +20,7 @@ public class GlobalSortedSeriesDataSource {
         this.seriesPath = seriesPath;
         this.sealedTsFiles = sealedTsFiles;
         this.unsealedTsFile = unsealedTsFile;
+
         this.rawSeriesChunk = rawSeriesChunk;
     }
 

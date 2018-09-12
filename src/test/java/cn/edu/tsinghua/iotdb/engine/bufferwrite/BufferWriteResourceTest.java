@@ -125,11 +125,22 @@ public class BufferWriteResourceTest {
 		bufferwriteResource.appendMetadata();
 		assertEquals(1, bufferwriteResource.getInsertMetadatas(MemTableTestUtils.deltaObjectId0,
 				MemTableTestUtils.measurementId0, MemTableTestUtils.dataType0).size());
+
+		// 0910: 下面这三句没有flush，考虑改成注释中的，否则体现不出metadatas的更新
 		MemTableTestUtils.produceData(memTable, 200, 300, MemTableTestUtils.deltaObjectId0,
 				MemTableTestUtils.measurementId0, MemTableTestUtils.dataType0);
 		bufferwriteResource.appendMetadata();
 		assertEquals(1, bufferwriteResource.getInsertMetadatas(MemTableTestUtils.deltaObjectId0,
 				MemTableTestUtils.measurementId0, MemTableTestUtils.dataType0).size());
+//		MemTableTestUtils.produceData(memTable, 200, 300, MemTableTestUtils.deltaObjectId0,
+//				MemTableTestUtils.measurementId0, MemTableTestUtils.dataType0);
+//		bufferwriteResource.flush(MemTableTestUtils.getFileSchema(), memTable);
+//		assertEquals(1, bufferwriteResource.getInsertMetadatas(MemTableTestUtils.deltaObjectId0,
+//				MemTableTestUtils.measurementId0, MemTableTestUtils.dataType0).size());
+//		bufferwriteResource.appendMetadata();
+//		assertEquals(2, bufferwriteResource.getInsertMetadatas(MemTableTestUtils.deltaObjectId0,
+//				MemTableTestUtils.measurementId0, MemTableTestUtils.dataType0).size());
+
 		bufferwriteResource.close(MemTableTestUtils.getFileSchema());
 	}
 
