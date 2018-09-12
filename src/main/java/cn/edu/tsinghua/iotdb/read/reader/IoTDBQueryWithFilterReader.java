@@ -42,6 +42,26 @@ public class IoTDBQueryWithFilterReader implements SeriesReader {
         seriesWithOverflowOpReader = new SeriesWithOverflowOpReader(insertDataReader, overflowOperationReader);
     }
 
+    public IoTDBQueryWithFilterReader(QueryDataSource queryDataSource) throws IOException {
+        int priority = 1;
+        //sequence insert data
+        TsFilesReaderWithFilter tsFilesReader = new TsFilesReaderWithFilter(queryDataSource.getSeriesDataSource(), null);
+        PriorityTimeValuePairReader tsFilesReaderWithPriority = new PriorityTimeValuePairReader(
+                tsFilesReader, new PriorityTimeValuePairReader.Priority(priority++));
+
+        //overflow insert data
+        OverflowInsertDataReader overflowInsertDataReader = SeriesReaderFactory.getInstance().
+                createSeriesReaderForOverflowInsert(queryDataSource.getOverflowSeriesDataSource());
+        PriorityTimeValuePairReader overflowInsertDataReaderWithPriority = new PriorityTimeValuePairReader(
+                overflowInsertDataReader, new PriorityTimeValuePairReader.Priority(priority++));
+
+        //operation of update and delete
+        OverflowOperationReader overflowOperationReader = queryDataSource.getOverflowSeriesDataSource().getUpdateDeleteInfoOfOneSeries().getOverflowUpdateOperationReaderNewInstance();
+
+        PriorityMergeSortTimeValuePairReader insertDataReader = new PriorityMergeSortTimeValuePairReader(tsFilesReaderWithPriority, overflowInsertDataReaderWithPriority);
+        seriesWithOverflowOpReader = new SeriesWithOverflowOpReader(insertDataReader, overflowOperationReader);
+    }
+
     @Override
     public boolean hasNext() throws IOException {
         return seriesWithOverflowOpReader.hasNext();

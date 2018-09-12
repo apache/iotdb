@@ -54,8 +54,7 @@ public class OverflowSupportTest {
 	@Test
 	public void testOverflowUpdate() {
 		// assert d1 s1
-		DynamicOneColumnData d1s1 = support.queryOverflowUpdateInMemory(deltaObjectId1, measurementId1, null, null,
-				null, dataType1, null);
+		DynamicOneColumnData d1s1 = support.queryOverflowUpdateInMemory(deltaObjectId1, measurementId1, dataType1, null);
 		assertEquals(2, d1s1.getTime(0));
 		assertEquals(10, d1s1.getTime(1));
 		assertEquals(20, d1s1.getTime(2));
@@ -65,8 +64,7 @@ public class OverflowSupportTest {
 		assertEquals(20, d1s1.getInt(1));
 
 		// assert d1 s2
-		DynamicOneColumnData d1s2 = support.queryOverflowUpdateInMemory(deltaObjectId1, measurementId2, null, null,
-				null, dataType1, null);
+		DynamicOneColumnData d1s2 = support.queryOverflowUpdateInMemory(deltaObjectId1, measurementId2, dataType1, null);
 		assertEquals(0, d1s2.getTime(0));
 		assertEquals(-10, d1s2.getTime(1));
 		assertEquals(20, d1s2.getTime(2));
@@ -76,8 +74,7 @@ public class OverflowSupportTest {
 		assertEquals(20, d1s2.getInt(1));
 
 		// assert d2 s1
-		DynamicOneColumnData d2s1 = support.queryOverflowUpdateInMemory(deltaObjectId2, measurementId1, null, null,
-				null, dataType2, null);
+		DynamicOneColumnData d2s1 = support.queryOverflowUpdateInMemory(deltaObjectId2, measurementId1, dataType2, null);
 		assertEquals(10, d2s1.getTime(0));
 		assertEquals(14, d2s1.getTime(1));
 		assertEquals(15, d2s1.getTime(2));
@@ -87,8 +84,7 @@ public class OverflowSupportTest {
 		assertEquals(20.5f, d2s1.getFloat(1), error);
 
 		// assert d2 s2
-		DynamicOneColumnData d2s2 = support.queryOverflowUpdateInMemory(deltaObjectId2, measurementId2, null, null,
-				null, dataType2, null);
+		DynamicOneColumnData d2s2 = support.queryOverflowUpdateInMemory(deltaObjectId2, measurementId2, dataType2, null);
 		assertEquals(0, d2s2.getTime(0));
 		assertEquals(-20, d2s2.getTime(1));
 

@@ -4,7 +4,6 @@ import cn.edu.tsinghua.iotdb.engine.querycontext.QueryDataSource;
 import cn.edu.tsinghua.iotdb.exception.FileNodeManagerException;
 import cn.edu.tsinghua.iotdb.read.IoTDBQueryDataSetForQueryWithQueryFilterImpl;
 import cn.edu.tsinghua.iotdb.read.IoTDBQueryDataSourceExecutor;
-import cn.edu.tsinghua.iotdb.read.IoTDBQueryExecutor;
 import cn.edu.tsinghua.iotdb.read.reader.IoTDBQueryByTimestampsReader;
 import cn.edu.tsinghua.iotdb.read.timegenerator.IoTDBTimeGenerator;
 import cn.edu.tsinghua.tsfile.timeseries.filterV2.expression.BinaryQueryFilter;
@@ -24,23 +23,20 @@ import java.util.List;
 /**
  * IoTDB query executor with filter
  * */
-public class IoTDBQueryWithFilterExecutorImpl implements IoTDBQueryExecutor {
-
-    private TimestampGenerator timestampGenerator;
+public class IoTDBQueryWithFilterExecutorImpl{
 
     public IoTDBQueryWithFilterExecutorImpl() {}
 
-    @Override
-    public QueryDataSet execute(QueryExpression queryExpression) throws IOException, FileNodeManagerException {
+    public static QueryDataSet execute(QueryExpression queryExpression) throws IOException, FileNodeManagerException {
 
-        this.timestampGenerator = new IoTDBTimeGenerator(queryExpression.getQueryFilter());
+        TimestampGenerator  timestampGenerator = new IoTDBTimeGenerator(queryExpression.getQueryFilter());
 
         LinkedHashMap<Path, SeriesReaderByTimeStamp> readersOfSelectedSeries = new LinkedHashMap<>();
         initReadersOfSelectedSeries(readersOfSelectedSeries, queryExpression.getSelectedSeries(), queryExpression.getQueryFilter());
         return new IoTDBQueryDataSetForQueryWithQueryFilterImpl(timestampGenerator, readersOfSelectedSeries);
     }
 
-    private void initReadersOfSelectedSeries(LinkedHashMap<Path, SeriesReaderByTimeStamp> readersOfSelectedSeries,
+    private static void initReadersOfSelectedSeries(LinkedHashMap<Path, SeriesReaderByTimeStamp> readersOfSelectedSeries,
                                              List<Path> selectedSeries, QueryFilter queryFilter) throws IOException, FileNodeManagerException {
 
         LinkedHashMap<Path, SeriesFilter> path2SeriesFilter = parseSeriesFilter(queryFilter);
@@ -58,13 +54,13 @@ public class IoTDBQueryWithFilterExecutorImpl implements IoTDBQueryExecutor {
         }
     }
 
-    private LinkedHashMap parseSeriesFilter(QueryFilter queryFilter){
+    private static LinkedHashMap parseSeriesFilter(QueryFilter queryFilter){
         LinkedHashMap<Path, SeriesFilter> path2SeriesFilter = new LinkedHashMap<Path, SeriesFilter>();
         traverse(queryFilter, path2SeriesFilter);
         return path2SeriesFilter;
     }
 
-    private void traverse(QueryFilter queryFilter, LinkedHashMap path2SeriesFilter){
+    private static void traverse(QueryFilter queryFilter, LinkedHashMap path2SeriesFilter){
         if(queryFilter.getType() == QueryFilterType.SERIES){
             SeriesFilter seriesFilter = (SeriesFilter) queryFilter;
             path2SeriesFilter.put(seriesFilter.getSeriesPath(), seriesFilter);
