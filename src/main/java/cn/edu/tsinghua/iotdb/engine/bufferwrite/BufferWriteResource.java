@@ -29,7 +29,7 @@ import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
 import cn.edu.tsinghua.tsfile.file.utils.ReadWriteThriftFormatUtils;
 import cn.edu.tsinghua.tsfile.format.RowGroupBlockMetaData;
 import cn.edu.tsinghua.tsfile.timeseries.write.schema.FileSchema;
-
+//0910: 换一个更准确的类名？resource意义不明，recover、restore...
 public class BufferWriteResource {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(BufferWriteResource.class);
@@ -152,6 +152,10 @@ public class BufferWriteResource {
 		lastPosition = bufferWriteIO.getPos();
 		List<RowGroupMetaData> appendRowGroupMetaDatas = bufferWriteIO.getAppendedRowGroupMetadata();
 		TsRowGroupBlockMetaData tsRowGroupBlockMetaData = new TsRowGroupBlockMetaData();
+		/*
+		0910: TsRowGroupBlockMetaData类内维护的deltaObjectID在这里没有意义。
+		此处并不保证appendRowGroupMetaDatas属于同一个deltaObjectID
+		 */
 		tsRowGroupBlockMetaData.setRowGroups(appendRowGroupMetaDatas);
 		RandomAccessFile out = null;
 		out = new RandomAccessFile(restoreFilePath, DEFAULT_MODE);
@@ -200,7 +204,9 @@ public class BufferWriteResource {
 			}
 			// read the tsfile position information using byte[8] which is
 			// present one long number.
+			//0910: is present one long number语法问题
 			randomAccessFile.read(lastPostionBytes);
+			//0910: lastPosition拼写
 			long lastPostion = BytesUtils.bytesToLong(lastPostionBytes);
 			Pair<Long, List<RowGroupMetaData>> result = new Pair<Long, List<RowGroupMetaData>>(lastPostion,
 					groupMetaDatas);
@@ -250,6 +256,7 @@ public class BufferWriteResource {
 			MemTableFlushUtil.flushMemTable(fileSchema, bufferWriteIO, iMemTable);
 			writeRestoreInfo();
 			// write restore information
+			//0910: 上面这句注释建议上移一行对应
 			long timeInterval = System.currentTimeMillis() - startTime;
 			timeInterval = timeInterval == 0 ? 1 : timeInterval;
 			long insertSize = bufferWriteIO.getPos() - startPos;
@@ -261,6 +268,7 @@ public class BufferWriteResource {
 		}
 	}
 
+	//0910: 与OverflowResource:appendMetadatas函数的部分代码完全一致
 	public void appendMetadata() {
 		if (!appendRowGroupMetadatas.isEmpty()) {
 			for (RowGroupMetaData rowGroupMetaData : appendRowGroupMetadatas) {

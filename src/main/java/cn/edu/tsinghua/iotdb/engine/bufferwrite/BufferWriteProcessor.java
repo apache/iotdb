@@ -62,6 +62,7 @@ public class BufferWriteProcessor extends Processor {
 	private String baseDir;
 	private String fileName;
 	private String insertFilePath;
+	//0910: 名字修改bufferWriteRelativePath可读性
 	private String bufferwriterelativePath;
 
 	private WriteLogNode logNode;
@@ -129,6 +130,7 @@ public class BufferWriteProcessor extends Processor {
 	}
 
 	public boolean write(TSRecord tsRecord) throws BufferWriteProcessorException {
+		//0910: memUsage拼写
 		long memUage = MemUtils.getRecordSize(tsRecord);
 		BasicMemController.UsageLevel level = BasicMemController.getInstance().reportUse(this, memUage);
 		for (DataPoint dataPoint : tsRecord.dataPointList) {
@@ -179,6 +181,7 @@ public class BufferWriteProcessor extends Processor {
 
 	public Pair<RawSeriesChunk, List<TimeSeriesChunkMetaData>> queryBufferwriteData(String deltaObjectId,
 			String measurementId, TSDataType dataType) {
+		//0910: 以下三个函数关于这个lock
 		flushQueryLock.lock();
 		try {
 			MemSeriesLazyMerger memSeriesLazyMerger = new MemSeriesLazyMerger();
@@ -207,6 +210,7 @@ public class BufferWriteProcessor extends Processor {
 		}
 	}
 
+	//0910: switch拼写
 	private void swithFlushToWork() {
 		flushQueryLock.lock();
 		try {
@@ -219,10 +223,15 @@ public class BufferWriteProcessor extends Processor {
 		}
 	}
 
+	//0910:建议改成枚举变量
 	private void flushOperation(String flushFunction) {
 		long flushStartTime = System.currentTimeMillis();
 		LOGGER.info("The bufferwrite processor {} starts flushing {}.", getProcessorName(), flushFunction);
 		try {
+			/*
+			0910: 把memtable的flush放到bufferWriteProcessor中，
+			bufferWriteResource建议只与restore文件相关，改成例如restoreManager
+			 */
 			bufferWriteResource.flush(fileSchema, flushMemTable);
 			filenodeFlushAction.act();
 			if (TsfileDBDescriptor.getInstance().getConfig().enableWal) {
@@ -278,6 +287,7 @@ public class BufferWriteProcessor extends Processor {
 			}
 			// update the lastUpdatetime, prepare for flush
 			try {
+				//0910: @FileNodeProcessor
 				bufferwriteFlushAction.act();
 			} catch (Exception e) {
 				LOGGER.error("Failed to flush bufferwrite row group when calling the action function.");
@@ -330,6 +340,7 @@ public class BufferWriteProcessor extends Processor {
 			flush(true);
 			// end file
 			bufferWriteResource.close(fileSchema);
+			//0910: interval file分开写
 			// update the intervalfile for interval list
 			bufferwriteCloseAction.act();
 			// flush the changed information for filenode
