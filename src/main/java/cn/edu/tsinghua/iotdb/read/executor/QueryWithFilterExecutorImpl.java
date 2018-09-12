@@ -2,10 +2,10 @@ package cn.edu.tsinghua.iotdb.read.executor;
 
 import cn.edu.tsinghua.iotdb.engine.querycontext.QueryDataSource;
 import cn.edu.tsinghua.iotdb.exception.FileNodeManagerException;
-import cn.edu.tsinghua.iotdb.read.IoTDBQueryDataSetForQueryWithQueryFilterImpl;
-import cn.edu.tsinghua.iotdb.read.IoTDBQueryDataSourceExecutor;
-import cn.edu.tsinghua.iotdb.read.reader.IoTDBQueryByTimestampsReader;
-import cn.edu.tsinghua.iotdb.read.timegenerator.IoTDBTimeGenerator;
+import cn.edu.tsinghua.iotdb.read.QueryDataSetForQueryWithQueryFilterImpl;
+import cn.edu.tsinghua.iotdb.read.QueryDataSourceExecutor;
+import cn.edu.tsinghua.iotdb.read.reader.QueryByTimestampsReader;
+import cn.edu.tsinghua.iotdb.read.timegenerator.TimeGenerator;
 import cn.edu.tsinghua.tsfile.timeseries.filterV2.expression.BinaryQueryFilter;
 import cn.edu.tsinghua.tsfile.timeseries.filterV2.expression.QueryFilter;
 import cn.edu.tsinghua.tsfile.timeseries.filterV2.expression.QueryFilterType;
@@ -23,17 +23,17 @@ import java.util.List;
 /**
  * IoTDB query executor with filter
  * */
-public class IoTDBQueryWithFilterExecutorImpl{
+public class QueryWithFilterExecutorImpl {
 
-    public IoTDBQueryWithFilterExecutorImpl() {}
+    public QueryWithFilterExecutorImpl() {}
 
     public static QueryDataSet execute(QueryExpression queryExpression) throws IOException, FileNodeManagerException {
 
-        TimestampGenerator  timestampGenerator = new IoTDBTimeGenerator(queryExpression.getQueryFilter());
+        TimestampGenerator  timestampGenerator = new TimeGenerator(queryExpression.getQueryFilter());
 
         LinkedHashMap<Path, SeriesReaderByTimeStamp> readersOfSelectedSeries = new LinkedHashMap<>();
         initReadersOfSelectedSeries(readersOfSelectedSeries, queryExpression.getSelectedSeries(), queryExpression.getQueryFilter());
-        return new IoTDBQueryDataSetForQueryWithQueryFilterImpl(timestampGenerator, readersOfSelectedSeries);
+        return new QueryDataSetForQueryWithQueryFilterImpl(timestampGenerator, readersOfSelectedSeries);
     }
 
     private static void initReadersOfSelectedSeries(LinkedHashMap<Path, SeriesReaderByTimeStamp> readersOfSelectedSeries,
@@ -44,12 +44,12 @@ public class IoTDBQueryWithFilterExecutorImpl{
         for (Path path : selectedSeries) {
              QueryDataSource queryDataSource = null;
              if(path2SeriesFilter.containsKey(path)){
-                 queryDataSource = IoTDBQueryDataSourceExecutor.getQueryDataSource(path2SeriesFilter.get(path));
+                 queryDataSource = QueryDataSourceExecutor.getQueryDataSource(path2SeriesFilter.get(path));
              }
              else {
-                 queryDataSource = IoTDBQueryDataSourceExecutor.getQueryDataSource(path);
+                 queryDataSource = QueryDataSourceExecutor.getQueryDataSource(path);
              }
-             SeriesReaderByTimeStamp seriesReader = new IoTDBQueryByTimestampsReader(queryDataSource);
+             SeriesReaderByTimeStamp seriesReader = new QueryByTimestampsReader(queryDataSource);
              readersOfSelectedSeries.put(path, seriesReader);
         }
     }

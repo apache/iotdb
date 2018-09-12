@@ -7,7 +7,7 @@ import cn.edu.tsinghua.tsfile.timeseries.filterV2.expression.impl.SeriesFilter;
 import cn.edu.tsinghua.tsfile.timeseries.filterV2.operator.NoRestriction;
 import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
 
-public class IoTDBQueryDataSourceExecutor {
+public class QueryDataSourceExecutor {
     private static FileNodeManager fileNodeManager = FileNodeManager.getInstance();
 
     public static QueryDataSource getQueryDataSource(SeriesFilter<?> seriesFilter) throws FileNodeManagerException {

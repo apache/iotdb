@@ -2,7 +2,7 @@ package cn.edu.tsinghua.iotdb.read.reader;
 
 import cn.edu.tsinghua.iotdb.exception.FileNodeManagerException;
 import cn.edu.tsinghua.iotdb.jdbc.TsfileJDBCConfig;
-import cn.edu.tsinghua.iotdb.read.IoTDBQueryEngine;
+import cn.edu.tsinghua.iotdb.read.QueryEngine;
 import cn.edu.tsinghua.iotdb.service.IoTDB;
 import cn.edu.tsinghua.iotdb.service.TestUtils;
 import cn.edu.tsinghua.iotdb.utils.EnvironmentUtils;
@@ -16,14 +16,12 @@ import cn.edu.tsinghua.tsfile.timeseries.readV2.datatype.RowRecord;
 import cn.edu.tsinghua.tsfile.timeseries.readV2.query.QueryDataSet;
 import cn.edu.tsinghua.tsfile.timeseries.readV2.query.QueryExpression;
 import org.junit.After;
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
 import java.sql.*;
 
-import static cn.edu.tsinghua.iotdb.service.TestUtils.count;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
@@ -123,7 +121,7 @@ public class IoTDBQueryReaderTest {
         String selectSql = "select * from root";
         System.out.println("selectAllTest===" + selectSql);
 
-        IoTDBQueryEngine ioTDBQueryEngine = new IoTDBQueryEngine();
+        QueryEngine queryEngine = new QueryEngine();
         QueryExpression queryExpression = QueryExpression.create();
         queryExpression.addSelectedPath(new Path("root.vehicle.d0.s0"));
         queryExpression.addSelectedPath(new Path("root.vehicle.d0.s1"));
@@ -135,7 +133,7 @@ public class IoTDBQueryReaderTest {
         queryExpression.addSelectedPath(new Path("root.vehicle.d1.s1"));
         queryExpression.setQueryFilter(null);
 
-        QueryDataSet queryDataSet = ioTDBQueryEngine.query(queryExpression);
+        QueryDataSet queryDataSet = queryEngine.query(queryExpression);
 
         int cnt = 0;
         while (queryDataSet.hasNext()){
@@ -152,14 +150,14 @@ public class IoTDBQueryReaderTest {
         String selectSql = "select s0 from root.vehicle.d0 where s0 >= 20";
         System.out.println("selectOneSeriesWithValueFilterTest===" + selectSql);
 
-        IoTDBQueryEngine ioTDBQueryEngine = new IoTDBQueryEngine();
+        QueryEngine queryEngine = new QueryEngine();
         QueryExpression queryExpression = QueryExpression.create();
         Path p = new Path("root.vehicle.d0.s0");
         queryExpression.addSelectedPath(p);
         SeriesFilter seriesFilter = new SeriesFilter(p, ValueFilter.gtEq(20));
         queryExpression.setQueryFilter(seriesFilter);
 
-        QueryDataSet queryDataSet = ioTDBQueryEngine.query(queryExpression);
+        QueryDataSet queryDataSet = queryEngine.query(queryExpression);
 
         int cnt = 0;
         while (queryDataSet.hasNext()){
@@ -179,14 +177,14 @@ public class IoTDBQueryReaderTest {
 
         // [3000, 13599] , [13700,23999]
 
-        IoTDBQueryEngine ioTDBQueryEngine = new IoTDBQueryEngine();
+        QueryEngine queryEngine = new QueryEngine();
         QueryExpression queryExpression = QueryExpression.create();
         Path p = new Path("root.vehicle.d0.s0");
         queryExpression.addSelectedPath(p);
         SeriesFilter seriesFilter = new SeriesFilter(p, TimeFilter.gt((long)22987));
         queryExpression.setQueryFilter(seriesFilter);
 
-        QueryDataSet queryDataSet = ioTDBQueryEngine.query(queryExpression);
+        QueryDataSet queryDataSet = queryEngine.query(queryExpression);
 
         int cnt = 0;
         while (queryDataSet.hasNext()){
@@ -201,7 +199,7 @@ public class IoTDBQueryReaderTest {
 
     private void crossSeriesReadUpdateTest() throws IOException, FileNodeManagerException {
         System.out.println("select s1 from root.vehicle.d0 where s0 < 111");
-        IoTDBQueryEngine ioTDBQueryEngine = new IoTDBQueryEngine();
+        QueryEngine queryEngine = new QueryEngine();
         QueryExpression queryExpression = QueryExpression.create();
         Path p0 = new Path("root.vehicle.d0.s0");
         Path p1 = new Path("root.vehicle.d0.s1");
@@ -209,7 +207,7 @@ public class IoTDBQueryReaderTest {
         SeriesFilter seriesFilter = new SeriesFilter(p0, ValueFilter.lt(111));
         queryExpression.setQueryFilter(seriesFilter);
 
-        QueryDataSet queryDataSet = ioTDBQueryEngine.query(queryExpression);
+        QueryDataSet queryDataSet = queryEngine.query(queryExpression);
 
         int cnt = 0;
         while (queryDataSet.hasNext()){

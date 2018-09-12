@@ -9,12 +9,12 @@ import cn.edu.tsinghua.tsfile.timeseries.readV2.reader.SeriesReaderByTimeStamp;
 import java.io.IOException;
 import java.util.LinkedHashMap;
 
-public class IoTDBQueryDataSetForQueryWithQueryFilterImpl implements QueryDataSet {
+public class QueryDataSetForQueryWithQueryFilterImpl implements QueryDataSet {
 
     private TimestampGenerator timestampGenerator;
     private LinkedHashMap<Path, SeriesReaderByTimeStamp> readersOfSelectedSeries;
 
-    public IoTDBQueryDataSetForQueryWithQueryFilterImpl(TimestampGenerator timestampGenerator, LinkedHashMap<Path, SeriesReaderByTimeStamp> readersOfSelectedSeries){
+    public QueryDataSetForQueryWithQueryFilterImpl(TimestampGenerator timestampGenerator, LinkedHashMap<Path, SeriesReaderByTimeStamp> readersOfSelectedSeries){
         this.timestampGenerator = timestampGenerator;
         this.readersOfSelectedSeries = readersOfSelectedSeries;
     }

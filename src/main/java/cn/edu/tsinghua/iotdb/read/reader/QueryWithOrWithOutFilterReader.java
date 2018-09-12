@@ -7,9 +7,7 @@ import cn.edu.tsinghua.iotdb.queryV2.engine.reader.PriorityTimeValuePairReader;
 import cn.edu.tsinghua.iotdb.queryV2.engine.reader.series.OverflowInsertDataReader;
 import cn.edu.tsinghua.iotdb.queryV2.engine.reader.series.SeriesWithOverflowOpReader;
 import cn.edu.tsinghua.iotdb.queryV2.factory.SeriesReaderFactory;
-import cn.edu.tsinghua.tsfile.timeseries.filterV2.basic.Filter;
 import cn.edu.tsinghua.tsfile.timeseries.filterV2.expression.impl.SeriesFilter;
-import cn.edu.tsinghua.tsfile.timeseries.filterV2.visitor.impl.DigestFilterVisitor;
 import cn.edu.tsinghua.tsfile.timeseries.readV2.datatype.TimeValuePair;
 import cn.edu.tsinghua.tsfile.timeseries.readV2.reader.SeriesReader;
 
@@ -18,14 +16,14 @@ import java.io.IOException;
 /**
  * A single series data reader with seriesFilter, which has considered sequence insert data, overflow data, updata and delete operation.
  * */
-public class IoTDBQueryWithFilterReader implements SeriesReader {
+public class QueryWithOrWithOutFilterReader implements SeriesReader {
 
     private SeriesWithOverflowOpReader seriesWithOverflowOpReader;
 
-    public IoTDBQueryWithFilterReader(QueryDataSource queryDataSource, SeriesFilter<?> filter) throws IOException {
+    public QueryWithOrWithOutFilterReader(QueryDataSource queryDataSource, SeriesFilter<?> filter) throws IOException {
         int priority = 1;
         //sequence insert data
-        TsFilesReaderWithFilter tsFilesReader = new TsFilesReaderWithFilter(queryDataSource.getSeriesDataSource(), filter);
+        SequenceInsertDataWithOrWithOutFilterReader tsFilesReader = new SequenceInsertDataWithOrWithOutFilterReader(queryDataSource.getSeriesDataSource(), filter);
         PriorityTimeValuePairReader tsFilesReaderWithPriority = new PriorityTimeValuePairReader(
                 tsFilesReader, new PriorityTimeValuePairReader.Priority(priority++));
 
@@ -42,10 +40,10 @@ public class IoTDBQueryWithFilterReader implements SeriesReader {
         seriesWithOverflowOpReader = new SeriesWithOverflowOpReader(insertDataReader, overflowOperationReader);
     }
 
-    public IoTDBQueryWithFilterReader(QueryDataSource queryDataSource) throws IOException {
+    public QueryWithOrWithOutFilterReader(QueryDataSource queryDataSource) throws IOException {
         int priority = 1;
         //sequence insert data
-        TsFilesReaderWithFilter tsFilesReader = new TsFilesReaderWithFilter(queryDataSource.getSeriesDataSource(), null);
+        SequenceInsertDataWithOrWithOutFilterReader tsFilesReader = new SequenceInsertDataWithOrWithOutFilterReader(queryDataSource.getSeriesDataSource(), null);
         PriorityTimeValuePairReader tsFilesReaderWithPriority = new PriorityTimeValuePairReader(
                 tsFilesReader, new PriorityTimeValuePairReader.Priority(priority++));
 

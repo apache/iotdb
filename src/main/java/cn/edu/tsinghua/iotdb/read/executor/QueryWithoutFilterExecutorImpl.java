@@ -2,8 +2,8 @@ package cn.edu.tsinghua.iotdb.read.executor;
 
 import cn.edu.tsinghua.iotdb.engine.querycontext.QueryDataSource;
 import cn.edu.tsinghua.iotdb.exception.FileNodeManagerException;
-import cn.edu.tsinghua.iotdb.read.IoTDBQueryDataSourceExecutor;
-import cn.edu.tsinghua.iotdb.read.reader.IoTDBQueryWithFilterReader;
+import cn.edu.tsinghua.iotdb.read.QueryDataSourceExecutor;
+import cn.edu.tsinghua.iotdb.read.reader.QueryWithOrWithOutFilterReader;
 import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
 import cn.edu.tsinghua.tsfile.timeseries.readV2.query.QueryDataSet;
 import cn.edu.tsinghua.tsfile.timeseries.readV2.query.QueryExpression;
@@ -17,9 +17,9 @@ import java.util.List;
 /**
  * IoTDB query executor without filter
  * */
-public class IoTDBQueryWithoutFilterExecutorImpl{
+public class QueryWithoutFilterExecutorImpl {
 
-    public IoTDBQueryWithoutFilterExecutorImpl() {
+    public QueryWithoutFilterExecutorImpl() {
     }
 
     public static QueryDataSet execute(QueryExpression queryExpression) throws IOException, FileNodeManagerException {
@@ -31,8 +31,8 @@ public class IoTDBQueryWithoutFilterExecutorImpl{
     private static void initReadersOfSelectedSeries(LinkedHashMap<Path, SeriesReader> readersOfSelectedSeries,
                                              List<Path> selectedSeries) throws IOException, FileNodeManagerException {
         for (Path path : selectedSeries) {
-            QueryDataSource queryDataSource = IoTDBQueryDataSourceExecutor.getQueryDataSource(path);
-            SeriesReader seriesReader = new IoTDBQueryWithFilterReader(queryDataSource);
+            QueryDataSource queryDataSource = QueryDataSourceExecutor.getQueryDataSource(path);
+            SeriesReader seriesReader = new QueryWithOrWithOutFilterReader(queryDataSource);
             readersOfSelectedSeries.put(path, seriesReader);
         }
     }

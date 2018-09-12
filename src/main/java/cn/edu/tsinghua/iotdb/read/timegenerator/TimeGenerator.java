@@ -12,18 +12,18 @@ import java.io.IOException;
  * e.g. For query clause "select s1, s2 form root where s3 < 0 and time > 100"，
  * this class can iterate back to every timestamp of the query.
  */
-public class IoTDBTimeGenerator implements TimestampGenerator {
+public class TimeGenerator implements TimestampGenerator {
 
     private QueryFilter queryFilter;
     private Node operatorNode;
 
-    public IoTDBTimeGenerator(QueryFilter queryFilter) throws IOException, FileNodeManagerException {
+    public TimeGenerator(QueryFilter queryFilter) throws IOException, FileNodeManagerException {
         this.queryFilter = queryFilter;
         initNode();
     }
 
     private void initNode() throws IOException, FileNodeManagerException {
-        IoTDBNodeConstructor nodeConstructor = new IoTDBNodeConstructor();
+        NodeConstructor nodeConstructor = new NodeConstructor();
         this.operatorNode = nodeConstructor.construct(queryFilter);
     }
 

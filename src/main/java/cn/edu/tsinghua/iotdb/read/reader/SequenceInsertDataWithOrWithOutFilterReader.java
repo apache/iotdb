@@ -8,7 +8,6 @@ import cn.edu.tsinghua.iotdb.queryV2.engine.reader.series.RawSeriesChunkReaderWi
 import cn.edu.tsinghua.iotdb.queryV2.engine.reader.series.RawSeriesChunkReaderWithoutFilter;
 import cn.edu.tsinghua.tsfile.common.utils.ITsRandomAccessFileReader;
 import cn.edu.tsinghua.tsfile.timeseries.filter.utils.DigestForFilter;
-import cn.edu.tsinghua.tsfile.timeseries.filter.utils.FilterUtils;
 import cn.edu.tsinghua.tsfile.timeseries.filterV2.expression.QueryFilterType;
 import cn.edu.tsinghua.tsfile.timeseries.filterV2.expression.impl.SeriesFilter;
 import cn.edu.tsinghua.tsfile.timeseries.filterV2.visitor.impl.DigestFilterVisitor;
@@ -23,20 +22,20 @@ import java.io.RandomAccessFile;
 import java.util.List;
 
 /***/
-public class TsFilesReaderWithFilter extends TsFilesReader {
+public class SequenceInsertDataWithOrWithOutFilterReader extends SequenceInsertDataReader {
     private SeriesFilter<?> filter;
 
-    public TsFilesReaderWithFilter(GlobalSortedSeriesDataSource sortedSeriesDataSource, SeriesFilter<?> filter)
+    public SequenceInsertDataWithOrWithOutFilterReader(GlobalSortedSeriesDataSource sortedSeriesDataSource, SeriesFilter<?> filter)
             throws IOException {
         super(sortedSeriesDataSource);
 
         this.filter = filter;
         //add data in sealedTsFiles and unSealedTsFile
         if(sortedSeriesDataSource.getSealedTsFiles() != null){
-            seriesReaders.add(new TsFilesReaderWithFilter.SealedTsFileWithFilterReader(sortedSeriesDataSource.getSealedTsFiles()));
+            seriesReaders.add(new SequenceInsertDataWithOrWithOutFilterReader.SealedTsFileWithFilterReader(sortedSeriesDataSource.getSealedTsFiles()));
         }
         if(sortedSeriesDataSource.getUnsealedTsFile() != null){
-            seriesReaders.add(new TsFilesReaderWithFilter.UnSealedTsFileWithFilterReader(sortedSeriesDataSource.getUnsealedTsFile()));
+            seriesReaders.add(new SequenceInsertDataWithOrWithOutFilterReader.UnSealedTsFileWithFilterReader(sortedSeriesDataSource.getUnsealedTsFile()));
         }
 
         //add data in memTable
@@ -48,7 +47,7 @@ public class TsFilesReaderWithFilter extends TsFilesReader {
         }
     }
 
-    protected class SealedTsFileWithFilterReader extends TsFilesReader.SealedTsFileReader{
+    protected class SealedTsFileWithFilterReader extends SequenceInsertDataReader.SealedTsFileReader{
 
 
         public SealedTsFileWithFilterReader(List<IntervalFileNode> sealedTsFiles){
@@ -89,7 +88,7 @@ public class TsFilesReaderWithFilter extends TsFilesReader {
         }
     }
 
-    protected class UnSealedTsFileWithFilterReader extends TsFilesReader.UnSealedTsFileReader{
+    protected class UnSealedTsFileWithFilterReader extends SequenceInsertDataReader.UnSealedTsFileReader{
         public UnSealedTsFileWithFilterReader(UnsealedTsFile unsealedTsFile) throws IOException {
             super(unsealedTsFile);
         }
