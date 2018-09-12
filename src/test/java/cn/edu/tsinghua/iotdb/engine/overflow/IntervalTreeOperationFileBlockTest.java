@@ -98,7 +98,7 @@ public class IntervalTreeOperationFileBlockTest {
         tree.insert(1463369845095L, b5);
 
         //  calc
-        DynamicOneColumnData d = tree.queryMemory(null, null, null, null);
+        DynamicOneColumnData d = tree.queryMemory(null);
 
         for (int i = 4; i >= 1; i--) {
             d = tree.queryFileBlock(null, null, null, ins[i], d);
@@ -185,7 +185,7 @@ public class IntervalTreeOperationFileBlockTest {
         // old : [1, 10]
         // new : [5, 10]
         tree.update(5L, 10L, l2);
-        DynamicOneColumnData memoryData = tree.queryMemory(null, null, null, null);
+        DynamicOneColumnData memoryData = tree.queryMemory(null);
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         writeTimePair(outputStream, 1L, 10L, l1);
         outputStream.flush();
@@ -213,7 +213,7 @@ public class IntervalTreeOperationFileBlockTest {
         // old : [1, 10]
         // new : [5, 10]
         tree.update(5L, 10L, f2);
-        DynamicOneColumnData memoryData = tree.queryMemory(null, null, null, null);
+        DynamicOneColumnData memoryData = tree.queryMemory(null);
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         writeTimePair(outputStream, 1L, 10L, f1);
         outputStream.flush();
@@ -241,7 +241,7 @@ public class IntervalTreeOperationFileBlockTest {
         // old : [1, 10]
         // new : [5, 10]
         tree.update(5L, 10L, d2);
-        DynamicOneColumnData memoryData = tree.queryMemory(null, null, null, null);
+        DynamicOneColumnData memoryData = tree.queryMemory(null);
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         writeTimePair(outputStream, 1L, 10L, d1);
         outputStream.flush();
@@ -269,7 +269,7 @@ public class IntervalTreeOperationFileBlockTest {
         // old : [1, 10] "s1"
         // new : [5, 10] "s2"
         newTree.update(5L, 10L, s2);
-        DynamicOneColumnData memoryData = newTree.queryMemory(null, null, null, null);
+        DynamicOneColumnData memoryData = newTree.queryMemory(null);
 
         IntervalTreeOperation oldTree = new IntervalTreeOperation(TSDataType.TEXT);
         oldTree.update(1L, 10L, s1);
@@ -310,7 +310,7 @@ public class IntervalTreeOperationFileBlockTest {
         // new : [1, 10]
         IntervalTreeOperation tree = new IntervalTreeOperation(TSDataType.INT32);
         tree.update(5L, 10L, i2);
-        DynamicOneColumnData memoryData = tree.queryMemory(null, null, null, null);
+        DynamicOneColumnData memoryData = tree.queryMemory(null);
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         writeTimePair(outputStream, 1L, 10L, i1);
         outputStream.flush();
@@ -334,7 +334,7 @@ public class IntervalTreeOperationFileBlockTest {
         // new : [5, 5] UPDATE
         tree.reset();
         tree.update(5L, 5L, i2);
-        memoryData = tree.queryMemory(null, null, null, null);
+        memoryData = tree.queryMemory(null);
         outputStream = new ByteArrayOutputStream();
         writeTimePair(outputStream, 5L, -5L, i1);
         outputStream.flush();
@@ -354,7 +354,7 @@ public class IntervalTreeOperationFileBlockTest {
         // RFIRSTCORSS
         tree.reset();
         tree.update(5L, 15L, i2);
-        memoryData = tree.queryMemory(null, null, null, null);
+        memoryData = tree.queryMemory(null);
         outputStream = new ByteArrayOutputStream();
         writeTimePair(outputStream, 0L, -10L); // DELETE Operation don't store value bytes.
         outputStream.flush();
@@ -380,7 +380,7 @@ public class IntervalTreeOperationFileBlockTest {
         // RFIRSTCORSS
         tree.reset();
         tree.update(0L, 10L, i2);
-        memoryData = tree.queryMemory(null, null, null, null);
+        memoryData = tree.queryMemory(null);
         outputStream = new ByteArrayOutputStream();
         writeTimePair(outputStream, 0L, -10L); // DELETE Operation don't store value bytes.
         outputStream.flush();
@@ -398,7 +398,7 @@ public class IntervalTreeOperationFileBlockTest {
         // LCOVERSR
         tree.reset();
         tree.update(1L, 10L, i2);
-        memoryData = tree.queryMemory(null, null, null, null);
+        memoryData = tree.queryMemory(null);
         outputStream = new ByteArrayOutputStream();
         writeTimePair(outputStream, -5L, -10L); // DELETE Operation don't store value bytes.
         outputStream.flush();
@@ -416,7 +416,7 @@ public class IntervalTreeOperationFileBlockTest {
         // LCOVERSR
         tree.reset();
         tree.update(1L, 15L, i2);
-        memoryData = tree.queryMemory(null, null, null, null);
+        memoryData = tree.queryMemory(null);
         outputStream = new ByteArrayOutputStream();
         writeTimePair(outputStream, -5L, -10L); // DELETE Operation don't store value bytes.
         outputStream.flush();
@@ -441,7 +441,7 @@ public class IntervalTreeOperationFileBlockTest {
         // old COVERS new
         tree.reset();
         tree.update(0L, 10L, i2);
-        memoryData = tree.queryMemory(null, null, null,  null);
+        memoryData = tree.queryMemory(null);
         outputStream = new ByteArrayOutputStream();
         writeTimePair(outputStream, 0L, -20L); // DELETE Operation don't store value bytes.
         outputStream.flush();
@@ -467,7 +467,7 @@ public class IntervalTreeOperationFileBlockTest {
         // old COVERS new
         tree.reset();
         tree.update(5L, 20L, i2);
-        memoryData = tree.queryMemory(null, null, null,  null);
+        memoryData = tree.queryMemory(null);
         outputStream = new ByteArrayOutputStream();
         writeTimePair(outputStream, 0L, -20L); // DELETE Operation don't store value bytes.
         outputStream.flush();
@@ -489,7 +489,7 @@ public class IntervalTreeOperationFileBlockTest {
         // old COVERS new
         tree.reset();
         tree.insert(5L, i2);
-        memoryData = tree.queryMemory(null, null, null, null);
+        memoryData = tree.queryMemory(null);
         outputStream = new ByteArrayOutputStream();
         writeTimePair(outputStream, 1L, 5L, i1); // DELETE Operation don't store value bytes.
         outputStream.flush();
@@ -515,7 +515,7 @@ public class IntervalTreeOperationFileBlockTest {
         // new COVERS old
         tree.reset();
         tree.update(1L, 5L, i2);
-        memoryData = tree.queryMemory(null, null, null, null);
+        memoryData = tree.queryMemory(null);
         outputStream = new ByteArrayOutputStream();
         writeTimePair(outputStream, 1L, -1L, i1); // DELETE Operation don't store value bytes.
         outputStream.flush();
@@ -541,7 +541,7 @@ public class IntervalTreeOperationFileBlockTest {
         // new equals old
         tree.reset();
         tree.update(1L, 5L, i2);
-        memoryData = tree.queryMemory(null, null, null, null);
+        memoryData = tree.queryMemory(null);
         outputStream = new ByteArrayOutputStream();
         writeTimePair(outputStream, 1L, 5L, i1); // DELETE Operation don't store value bytes.
         outputStream.flush();
@@ -562,7 +562,7 @@ public class IntervalTreeOperationFileBlockTest {
         // old covers new
         tree.reset();
         tree.update(2L, 4L, i2);
-        memoryData = tree.queryMemory(null, null, null,null);
+        memoryData = tree.queryMemory(null);
         outputStream = new ByteArrayOutputStream();
         writeTimePair(outputStream, 1L, 5L, i1); // DELETE Operation don't store value bytes.
         outputStream.flush();
@@ -592,7 +592,7 @@ public class IntervalTreeOperationFileBlockTest {
         // old covers new
         tree.reset();
         tree.update(2L, 4L, i2);
-        memoryData = tree.queryMemory(null, null, null,  null);
+        memoryData = tree.queryMemory(null);
         outputStream = new ByteArrayOutputStream();
         writeTimePair(outputStream, 1L, 5L, i1); // DELETE Operation don't store value bytes.
         writeTimePair(outputStream, 6L, 7L, i3);
@@ -685,7 +685,7 @@ public class IntervalTreeOperationFileBlockTest {
         tree.insert(1463369845095L, b5);
 
         //  calc
-        DynamicOneColumnData doc = tree.queryMemory(null, null, null,  null);
+        DynamicOneColumnData doc = tree.queryMemory(null);
 
         for (int i = 4; i >= 1; i--) {
             doc = tree.queryFileBlock(null, null, null, ins[i], doc);
