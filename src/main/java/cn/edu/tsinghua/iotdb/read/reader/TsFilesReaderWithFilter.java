@@ -5,8 +5,10 @@ import cn.edu.tsinghua.iotdb.engine.querycontext.GlobalSortedSeriesDataSource;
 import cn.edu.tsinghua.iotdb.engine.querycontext.UnsealedTsFile;
 import cn.edu.tsinghua.iotdb.queryV2.engine.control.OverflowFileStreamManager;
 import cn.edu.tsinghua.iotdb.queryV2.engine.reader.series.RawSeriesChunkReaderWithFilter;
+import cn.edu.tsinghua.iotdb.queryV2.engine.reader.series.RawSeriesChunkReaderWithoutFilter;
 import cn.edu.tsinghua.tsfile.common.utils.ITsRandomAccessFileReader;
 import cn.edu.tsinghua.tsfile.timeseries.filter.utils.DigestForFilter;
+import cn.edu.tsinghua.tsfile.timeseries.filter.utils.FilterUtils;
 import cn.edu.tsinghua.tsfile.timeseries.filterV2.expression.QueryFilterType;
 import cn.edu.tsinghua.tsfile.timeseries.filterV2.expression.impl.SeriesFilter;
 import cn.edu.tsinghua.tsfile.timeseries.filterV2.visitor.impl.DigestFilterVisitor;
@@ -14,6 +16,7 @@ import cn.edu.tsinghua.tsfile.timeseries.read.TsRandomAccessLocalFileReader;
 import cn.edu.tsinghua.tsfile.timeseries.readV2.common.EncodedSeriesChunkDescriptor;
 import cn.edu.tsinghua.tsfile.timeseries.readV2.controller.SeriesChunkLoader;
 import cn.edu.tsinghua.tsfile.timeseries.readV2.reader.impl.SeriesReaderFromSingleFileWithFilterImpl;
+import cn.edu.tsinghua.tsfile.timeseries.readV2.reader.impl.SeriesReaderFromSingleFileWithoutFilterImpl;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -37,7 +40,10 @@ public class TsFilesReaderWithFilter extends TsFilesReader {
         }
 
         //add data in memTable
-        if(sortedSeriesDataSource.hasRawSeriesChunk()) {
+        if(sortedSeriesDataSource.hasRawSeriesChunk() && filter == null) {
+            seriesReaders.add(new RawSeriesChunkReaderWithoutFilter(sortedSeriesDataSource.getRawSeriesChunk()));
+        }
+        if(sortedSeriesDataSource.hasRawSeriesChunk() && filter != null) {
             seriesReaders.add(new RawSeriesChunkReaderWithFilter(sortedSeriesDataSource.getRawSeriesChunk(), filter.getFilter()));
         }
     }
@@ -52,6 +58,10 @@ public class TsFilesReaderWithFilter extends TsFilesReader {
         protected boolean singleTsFileSatisfied(IntervalFileNode fileNode){
             if(fileNode.getStartTime(path.getDeltaObjectToString()) == -1){
                 return false;
+            }
+            //no filter
+            if(filter == null){
+                return true;
             }
 
             if(filter.getType() == QueryFilterType.GLOBAL_TIME){//filter time
@@ -68,7 +78,14 @@ public class TsFilesReaderWithFilter extends TsFilesReader {
         protected void initSingleTsFileReader(IntervalFileNode fileNode)throws IOException {
             RandomAccessFile raf = OverflowFileStreamManager.getInstance().get(jobId, fileNode.getFilePath());
             ITsRandomAccessFileReader randomAccessFileReader = new TsRandomAccessLocalFileReader(raf);
-            singleTsFileReader = new SeriesReaderFromSingleFileWithFilterImpl(randomAccessFileReader, path, filter.getFilter());
+
+            if(filter == null){
+                singleTsFileReader = new SeriesReaderFromSingleFileWithoutFilterImpl(randomAccessFileReader, path);
+            }
+            else{
+                singleTsFileReader = new SeriesReaderFromSingleFileWithFilterImpl(randomAccessFileReader, path, filter.getFilter());
+            }
+
         }
     }
 
@@ -79,7 +96,12 @@ public class TsFilesReaderWithFilter extends TsFilesReader {
 
         protected void initSingleTsFileReader(ITsRandomAccessFileReader randomAccessFileReader,
                                               SeriesChunkLoader seriesChunkLoader, List<EncodedSeriesChunkDescriptor> encodedSeriesChunkDescriptorList){
-            singleTsFileReader = new SeriesReaderFromSingleFileWithFilterImpl(randomAccessFileReader, seriesChunkLoader, encodedSeriesChunkDescriptorList, filter.getFilter());
+            if(filter == null){
+                singleTsFileReader = new SeriesReaderFromSingleFileWithoutFilterImpl(randomAccessFileReader, seriesChunkLoader, encodedSeriesChunkDescriptorList);
+            }
+            else{
+                singleTsFileReader = new SeriesReaderFromSingleFileWithFilterImpl(randomAccessFileReader, seriesChunkLoader, encodedSeriesChunkDescriptorList, filter.getFilter());
+            }
         }
     }
 }

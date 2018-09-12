@@ -45,6 +45,7 @@ public class RawSeriesChunkReaderByTimestamp implements SeriesReaderByTimeStamp 
 
     }
 
+    //TODO 可以考虑将成员变量timeValuePairIterator更改为list形式，然后将顺序查找改为二分查找
     @Override
     public TsPrimitiveType getValueInTimestamp(long timestamp) throws IOException {
         while(hasNext()){

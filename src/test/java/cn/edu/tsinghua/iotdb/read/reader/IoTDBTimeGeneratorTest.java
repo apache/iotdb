@@ -1,5 +1,6 @@
 package cn.edu.tsinghua.iotdb.read.reader;
 
+import cn.edu.tsinghua.iotdb.exception.FileNodeManagerException;
 import cn.edu.tsinghua.iotdb.jdbc.TsfileJDBCConfig;
 import cn.edu.tsinghua.iotdb.read.timegenerator.IoTDBTimeGenerator;
 import cn.edu.tsinghua.iotdb.service.IoTDB;
@@ -101,7 +102,7 @@ public class IoTDBTimeGeneratorTest {
     }
 
     @Test
-    public void test() throws InterruptedException, SQLException, ClassNotFoundException, IOException {
+    public void test() throws InterruptedException, SQLException, ClassNotFoundException, IOException, FileNodeManagerException {
         if (testFlag) {
             Thread.sleep(5000);
             insertData();
@@ -119,7 +120,7 @@ public class IoTDBTimeGeneratorTest {
     /**
      * value >= 14 && time > 500
      * */
-    private void testOneSeriesWithValueAndTimeFilter() throws IOException {
+    private void testOneSeriesWithValueAndTimeFilter() throws IOException, FileNodeManagerException {
         Path pd0s0 = new Path("root.vehicle.d0.s0");
         ValueFilter.ValueGtEq  valueGtEq = ValueFilter.gtEq(14);
         TimeFilter.TimeGt timeGt = TimeFilter.gt((long)500);
@@ -140,7 +141,7 @@ public class IoTDBTimeGeneratorTest {
     /**
      * root.vehicle.d1.s0 >= 5
      * */
-    public void testEmptySeriesWithValueFilter() throws IOException {
+    public void testEmptySeriesWithValueFilter() throws IOException, FileNodeManagerException {
         Path pd1s0 = new Path("root.vehicle.d1.s0");
         ValueFilter.ValueGtEq  valueGtEq = ValueFilter.gtEq(5);
 
@@ -160,7 +161,7 @@ public class IoTDBTimeGeneratorTest {
     /**
      * root.vehicle.d0.s0 >= 5 && root.vehicle.d0.s2 >= 11.5 || time > 900
      * */
-    public void testMultiSeriesesWithValueFilterAndTimeFilter() throws IOException {
+    public void testMultiSeriesesWithValueFilterAndTimeFilter() throws IOException, FileNodeManagerException {
         Path pd0s0 = new Path("root.vehicle.d0.s0");
         Path pd0s2 = new Path("root.vehicle.d0.s2");
 
