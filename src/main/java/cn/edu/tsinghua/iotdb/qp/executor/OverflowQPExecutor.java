@@ -40,7 +40,7 @@ import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 import cn.edu.tsinghua.tsfile.common.utils.Pair;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
 import cn.edu.tsinghua.tsfile.timeseries.filter.definition.FilterExpression;
-import cn.edu.tsinghua.tsfile.timeseries.read.query.QueryDataSet;
+import cn.edu.tsinghua.tsfile.timeseries.read.query.OnePassQueryDataSet;
 import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
 import cn.edu.tsinghua.tsfile.timeseries.write.record.DataPoint;
 import cn.edu.tsinghua.tsfile.timeseries.write.record.TSRecord;
@@ -197,13 +197,13 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
     }
 
     @Override
-    public QueryDataSet aggregate(List<Pair<Path, String>> aggres, List<FilterStructure> filterStructures)
+    public OnePassQueryDataSet aggregate(List<Pair<Path, String>> aggres, List<FilterStructure> filterStructures)
             throws ProcessorException, IOException, PathErrorException {
         return queryEngine.aggregate(aggres, filterStructures);
     }
 
     @Override
-    public QueryDataSet groupBy(List<Pair<Path, String>> aggres, List<FilterStructure> filterStructures, long unit,
+    public OnePassQueryDataSet groupBy(List<Pair<Path, String>> aggres, List<FilterStructure> filterStructures, long unit,
                                 long origin, List<Pair<Long, Long>> intervals, int fetchSize)
             throws ProcessorException, IOException, PathErrorException {
 
@@ -211,13 +211,13 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
     }
 
     @Override
-    public QueryDataSet fill(List<Path> fillPaths, long queryTime, Map<TSDataType, IFill> fillTypes) throws ProcessorException, IOException, PathErrorException {
+    public OnePassQueryDataSet fill(List<Path> fillPaths, long queryTime, Map<TSDataType, IFill> fillTypes) throws ProcessorException, IOException, PathErrorException {
         return queryEngine.fill(fillPaths, queryTime, fillTypes);
     }
 
     @Override
-    public QueryDataSet query(int formNumber, List<Path> paths, FilterExpression timeFilter,
-                              FilterExpression freqFilter, FilterExpression valueFilter, int fetchSize, QueryDataSet lastData)
+    public OnePassQueryDataSet query(int formNumber, List<Path> paths, FilterExpression timeFilter,
+                              FilterExpression freqFilter, FilterExpression valueFilter, int fetchSize, OnePassQueryDataSet lastData)
             throws ProcessorException {
 
         try {
@@ -326,7 +326,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
         return MManager.getInstance().getPaths(originPath);
     }
 
-    private String checkValue(TSDataType dataType, String value) throws ProcessorException {
+    public static String checkValue(TSDataType dataType, String value) throws ProcessorException {
         if (dataType == TSDataType.BOOLEAN) {
             value = value.toLowerCase();
             if (SQLConstant.BOOLEAN_FALSE_NUM.equals(value)) {

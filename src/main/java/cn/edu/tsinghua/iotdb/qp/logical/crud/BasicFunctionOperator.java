@@ -75,7 +75,7 @@ public class BasicFunctionOperator extends FunctionOperator {
         SingleSeriesFilterExpression ret;
         switch (type) {
             case INT32:
-                ret = funcToken.getSingleSeriesFilterExpression(
+                ret = funcToken.getValueFilter(
                         FilterFactory.intFilterSeries(
                                 path.getDeltaObjectToString(),
                                 path.getMeasurementToString(),
@@ -83,7 +83,7 @@ public class BasicFunctionOperator extends FunctionOperator {
                         Integer.valueOf(value));
                 break;
             case INT64:
-                ret = funcToken.getSingleSeriesFilterExpression(
+                ret = funcToken.getValueFilter(
                         FilterFactory.longFilterSeries(
                                 path.getDeltaObjectToString(),
                                 path.getMeasurementToString(),
@@ -91,7 +91,7 @@ public class BasicFunctionOperator extends FunctionOperator {
                         Long.valueOf(value));
                 break;
             case BOOLEAN:
-                ret = funcToken.getSingleSeriesFilterExpression(
+                ret = funcToken.getValueFilter(
                         FilterFactory.booleanFilterSeries(
                                 path.getDeltaObjectToString(),
                                 path.getMeasurementToString(),
@@ -99,7 +99,7 @@ public class BasicFunctionOperator extends FunctionOperator {
                         Boolean.valueOf(value));
                 break;
             case FLOAT:
-                ret = funcToken.getSingleSeriesFilterExpression(
+                ret = funcToken.getValueFilter(
                         FilterFactory.floatFilterSeries(
                                 path.getDeltaObjectToString(),
                                 path.getMeasurementToString(),
@@ -107,7 +107,7 @@ public class BasicFunctionOperator extends FunctionOperator {
                         Float.valueOf(value));
                 break;
             case DOUBLE:
-                ret = funcToken.getSingleSeriesFilterExpression(
+                ret = funcToken.getValueFilter(
                         FilterFactory.doubleFilterSeries(
                                 path.getDeltaObjectToString(),
                                 path.getMeasurementToString(),
@@ -115,7 +115,7 @@ public class BasicFunctionOperator extends FunctionOperator {
                         Double.valueOf(value));
                 break;
             case TEXT:
-            		ret = funcToken.getSingleSeriesFilterExpression(
+            		ret = funcToken.getValueFilter(
             				FilterFactory.stringFilterSeries(
             						path.getDeltaObjectToString(),
             						path.getMeasurementToString(), 

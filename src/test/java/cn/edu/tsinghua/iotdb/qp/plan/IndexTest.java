@@ -1,4 +1,4 @@
-package cn.edu.tsinghua.iotdb.qp.cud;
+package cn.edu.tsinghua.iotdb.qp.plan;
 
 import static org.junit.Assert.assertEquals;
 
@@ -8,6 +8,7 @@ import cn.edu.tsinghua.iotdb.exception.ArgsErrorException;
 import cn.edu.tsinghua.iotdb.qp.QueryProcessor;
 import cn.edu.tsinghua.iotdb.qp.exception.QueryProcessorException;
 import cn.edu.tsinghua.iotdb.qp.physical.crud.IndexPlan;
+import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -26,7 +27,7 @@ public class IndexTest {
 	}
 
 	@Test
-	public void testCreateIndex() throws QueryProcessorException, ArgsErrorException {
+	public void testCreateIndex() throws QueryProcessorException, ArgsErrorException, ProcessorException {
 		
 		String createIndex = "create index on root.laptop.d1.s1 using kvindex";
 		QueryProcessor processor = new QueryProcessor(new MemIntQpExecutor());
@@ -37,7 +38,7 @@ public class IndexTest {
 	}
 	
 	@Test
-	public void testCreateIndex2() throws QueryProcessorException, ArgsErrorException{
+	public void testCreateIndex2() throws QueryProcessorException, ArgsErrorException, ProcessorException {
 		String createIndex = "create index on root.laptop.d1.s1 using kvindex with b=20,a=50 where time>=100";
 		QueryProcessor processor = new QueryProcessor(new MemIntQpExecutor());
 		IndexPlan indexPlan = (IndexPlan) processor.parseSQLToPhysicalPlan(createIndex);

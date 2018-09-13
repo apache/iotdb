@@ -547,14 +547,12 @@ public class IntervalTreeOperation implements IIntervalTreeOperator {
     }
 
     @Override
-    public DynamicOneColumnData queryMemory(SingleSeriesFilterExpression timeFilter,
-                                            SingleSeriesFilterExpression valueFilter, SingleSeriesFilterExpression freqFilter
-            , DynamicOneColumnData newerMemoryData) {
+    public DynamicOneColumnData queryMemory(DynamicOneColumnData newerMemoryData) {
         if (newerMemoryData == null) {
-            return index.dynamicQuery(timeFilter, dataType);
+            return index.dynamicQuery(null, dataType);
         }
         DynamicOneColumnData ans = new DynamicOneColumnData(dataType, true);
-        DynamicOneColumnData oldData = index.dynamicQuery(timeFilter, dataType);
+        DynamicOneColumnData oldData = index.dynamicQuery(null, dataType);
 
         int i = 0, j = 0; // i represents newMemoryData, j represents oldMemoryData
         TimePair oldTimePair = new TimePair(-1, -1, MergeStatus.DONE);

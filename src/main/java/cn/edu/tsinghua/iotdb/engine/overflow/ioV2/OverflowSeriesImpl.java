@@ -48,9 +48,8 @@ public class OverflowSeriesImpl {
 		valueCount++;
 	}
 
-	public DynamicOneColumnData query(SingleSeriesFilterExpression timeFilter, SingleSeriesFilterExpression freqFilter,
-			SingleSeriesFilterExpression valueFilter, TSDataType dataType, DynamicOneColumnData data) {
-		return overflowIndex.queryMemory(timeFilter, valueFilter, freqFilter, data);
+	public DynamicOneColumnData query(DynamicOneColumnData data) {
+		return overflowIndex.queryMemory(data);
 	}
 
 	public long getSize() {

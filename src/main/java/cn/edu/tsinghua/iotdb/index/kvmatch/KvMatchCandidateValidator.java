@@ -5,7 +5,7 @@ import cn.edu.fudan.dsm.kvmatch.iotdb.utils.SeriesUtils;
 import cn.edu.tsinghua.iotdb.query.management.ReadCachePrefix;
 import cn.edu.tsinghua.tsfile.common.utils.Pair;
 import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
-import cn.edu.tsinghua.tsfile.timeseries.read.support.RowRecord;
+import cn.edu.tsinghua.tsfile.timeseries.read.support.OldRowRecord;
 import cn.edu.tsinghua.iotdb.index.common.QueryDataSetIterator;
 import cn.edu.tsinghua.iotdb.query.engine.OverflowQueryEngine;
 import cn.edu.tsinghua.iotdb.query.reader.RecordReaderFactory;
@@ -51,7 +51,7 @@ public class KvMatchCandidateValidator implements Callable<List<Pair<Pair<Long, 
         for (Pair<Long, Long> scanInterval : scanIntervals) {
             List<Pair<Long, Double>> keyPoints = new ArrayList<>();
             while (queryDataSetIterator.hasNext()) {
-                RowRecord row = queryDataSetIterator.getRowRecord();
+                OldRowRecord row = queryDataSetIterator.getRowRecord();
                 double value = SeriesUtils.getValue(row.getFields().get(0));  // one column only
                 if (keyPoints.isEmpty() && row.getTime() > scanInterval.left) {
                     if (lastKeyPoint == null) {

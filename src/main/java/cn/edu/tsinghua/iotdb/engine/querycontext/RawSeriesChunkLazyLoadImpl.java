@@ -89,6 +89,7 @@ public class RawSeriesChunkLazyLoadImpl implements RawSeriesChunk {
 
     @Override
     public Iterator<TimeValuePair> getIterator() {
+        checkInitialized();
         return sortedTimeValuePairList.iterator();
     }
 
