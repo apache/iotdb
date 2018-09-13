@@ -9,12 +9,12 @@ import cn.edu.tsinghua.iotdb.qp.executor.QueryProcessExecutor;
 import cn.edu.tsinghua.iotdb.qp.physical.crud.SingleQueryPlan;
 import cn.edu.tsinghua.tsfile.common.exception.UnSupportedDataTypeException;
 import cn.edu.tsinghua.tsfile.timeseries.read.query.DynamicOneColumnData;
-import cn.edu.tsinghua.tsfile.timeseries.read.query.QueryDataSet;
+import cn.edu.tsinghua.tsfile.timeseries.read.query.OnePassQueryDataSet;
 import cn.edu.tsinghua.tsfile.timeseries.read.support.Field;
-import cn.edu.tsinghua.tsfile.timeseries.read.support.RowRecord;
+import cn.edu.tsinghua.tsfile.timeseries.read.support.OldRowRecord;
 
 /**
- * This class implements the interface {@code Iterator<QueryDataSet>}. It is the result of
+ * This class implements the interface {@code Iterator<OnePassQueryDataSet>}. It is the result of
  * {@code MultiQueryPlan}(for multi-pass getIndex). {@code MultiQueryPlan} provides it with a
  * list of {@code SingleQueryPlan}.<br>
  * This class merge row record data set from a list of {@code Iterator<RowRecord>} provided by
@@ -23,9 +23,9 @@ import cn.edu.tsinghua.tsfile.timeseries.read.support.RowRecord;
  * @author kangrong
  *
  */
-public class MergeQuerySetIterator implements Iterator<QueryDataSet> {
+public class MergeQuerySetIterator implements Iterator<OnePassQueryDataSet> {
     private final int mergeFetchSize;
-    private Iterator<RowRecord>[] recordIters;
+    private Iterator<OldRowRecord>[] recordIters;
     private Node[] nodes;
     // it's actually number of series iterators which has next record;
     private int heapSize;
@@ -63,8 +63,8 @@ public class MergeQuerySetIterator implements Iterator<QueryDataSet> {
     }
 
     @Override
-    public QueryDataSet next() {
-        QueryDataSet ret = new QueryDataSet();
+    public OnePassQueryDataSet next() {
+        OnePassQueryDataSet ret = new OnePassQueryDataSet();
         int i = 0;
         while (i < mergeFetchSize && heapSize > 0) {
             Node minNode = nodes[1];
@@ -72,7 +72,7 @@ public class MergeQuerySetIterator implements Iterator<QueryDataSet> {
                 lastRowTime = minNode.rowRecord.timestamp;
                 i++;
                 // ret.putARowRecord(minNode.r);
-                addNewRecordToQueryDataSet(ret, minNode.rowRecord);
+                addNewRecordToOnePassQueryDataSet(ret, minNode.rowRecord);
             }
             if (minNode.iter.hasNext()) {
                 nodes[1].rowRecord = nodes[1].iter.next();
@@ -103,10 +103,10 @@ public class MergeQuerySetIterator implements Iterator<QueryDataSet> {
     }
 
     private class Node {
-        public RowRecord rowRecord;
-        public Iterator<RowRecord> iter;
+        public OldRowRecord rowRecord;
+        public Iterator<OldRowRecord> iter;
 
-        public Node(RowRecord rowRecord, Iterator<RowRecord> iter) {
+        public Node(OldRowRecord rowRecord, Iterator<OldRowRecord> iter) {
             this.rowRecord = rowRecord;
             this.iter = iter;
         }
@@ -121,7 +121,7 @@ public class MergeQuerySetIterator implements Iterator<QueryDataSet> {
         }
     }
 
-    private void addNewRecordToQueryDataSet(QueryDataSet dataSet, RowRecord record) {
+    private void addNewRecordToOnePassQueryDataSet(OnePassQueryDataSet dataSet, OldRowRecord record) {
         for (Field f : record.fields) {
             StringBuilder sb = new StringBuilder();
             sb.append(f.deltaObjectId);

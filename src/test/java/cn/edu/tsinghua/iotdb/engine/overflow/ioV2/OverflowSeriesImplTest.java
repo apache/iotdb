@@ -36,7 +36,7 @@ public class OverflowSeriesImplTest {
 		index.update(4, 20, BytesUtils.intToBytes(20));
 		index.update(30, 40, BytesUtils.intToBytes(30));
 		index.update(50, 60, BytesUtils.intToBytes(40));
-		DynamicOneColumnData one = index.query(null, null, null, null, null);
+		DynamicOneColumnData one = index.query(null);
 		assertEquals(4, index.getValueCount());
 		// assert time
 		assertEquals(2, one.getTime(0));
@@ -63,7 +63,7 @@ public class OverflowSeriesImplTest {
 		index.update(4, 20, BytesUtils.longToBytes(20));
 		index.update(30, 40, BytesUtils.longToBytes(30));
 		index.update(50, 60, BytesUtils.longToBytes(40));
-		DynamicOneColumnData one = index.query(null, null, null, null, null);
+		DynamicOneColumnData one = index.query(null);
 		// assert time
 		assertEquals(0, one.getTime(0));
 		assertEquals(-20, one.getTime(1));
@@ -83,7 +83,7 @@ public class OverflowSeriesImplTest {
 		index.update(4, 20, BytesUtils.floatToBytes(20.5f));
 		index.update(30, 40, BytesUtils.floatToBytes(30.5f));
 		index.update(50, 60, BytesUtils.floatToBytes(40.7f));
-		DynamicOneColumnData one = index.query(null, null, null, null, null);
+		DynamicOneColumnData one = index.query(null);
 		assertEquals(4, index.getValueCount());
 		// assert time
 		assertEquals(2, one.getTime(0));
@@ -107,7 +107,7 @@ public class OverflowSeriesImplTest {
 		index.update(4, 20, BytesUtils.doubleToBytes(20.5d));
 		index.update(30, 40, BytesUtils.doubleToBytes(30.5d));
 		index.update(50, 60, BytesUtils.doubleToBytes(40.7d));
-		DynamicOneColumnData one = index.query(null, null, null, null, null);
+		DynamicOneColumnData one = index.query(null);
 		assertEquals(4, index.getValueCount());
 		// assert time
 		assertEquals(2, one.getTime(0));

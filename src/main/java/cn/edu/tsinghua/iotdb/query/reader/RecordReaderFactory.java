@@ -7,6 +7,10 @@ import cn.edu.tsinghua.iotdb.exception.PathErrorException;
 import cn.edu.tsinghua.iotdb.query.management.ReadCacheManager;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 import cn.edu.tsinghua.tsfile.timeseries.filter.definition.SingleSeriesFilterExpression;
+import cn.edu.tsinghua.tsfile.timeseries.filterV2.expression.impl.QueryFilterFactory;
+import cn.edu.tsinghua.tsfile.timeseries.filterV2.expression.impl.SeriesFilter;
+import cn.edu.tsinghua.tsfile.timeseries.filterV2.operator.NoRestriction;
+import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -55,10 +59,12 @@ public class RecordReaderFactory {
         } else {
             QueryDataSource queryDataSource;
             try {
-                queryDataSource = fileNodeManager.query(deltaObjectUID, measurementID, timeFilter, null, valueFilter);
+                SeriesFilter seriesFilter = new SeriesFilter<>(new Path(deltaObjectUID+"."+measurementID), new NoRestriction());
+                queryDataSource = fileNodeManager.query(seriesFilter);
             } catch (FileNodeManagerException e) {
                 throw new ProcessorException(e.getMessage());
             }
+
             RecordReader recordReader = createANewRecordReader(deltaObjectUID, measurementID, timeFilter, valueFilter, queryDataSource, readerType, readToken);
             readCacheManager.getRecordReaderCacheManager().put(cacheDeltaKey, measurementID, recordReader);
             return recordReader;

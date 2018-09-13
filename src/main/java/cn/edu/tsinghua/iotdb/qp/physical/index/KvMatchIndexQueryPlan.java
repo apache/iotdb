@@ -7,10 +7,8 @@ import cn.edu.tsinghua.iotdb.index.kvmatch.KvMatchQueryRequest;
 import cn.edu.tsinghua.iotdb.metadata.MManager;
 import cn.edu.tsinghua.iotdb.qp.exception.QueryProcessorException;
 import cn.edu.tsinghua.iotdb.qp.executor.iterator.PatternQueryDataSetIterator;
-import cn.edu.tsinghua.iotdb.qp.logical.Operator;
-import cn.edu.tsinghua.iotdb.qp.physical.PhysicalPlan;
 import cn.edu.tsinghua.iotdb.qp.physical.crud.IndexQueryPlan;
-import cn.edu.tsinghua.tsfile.timeseries.read.query.QueryDataSet;
+import cn.edu.tsinghua.tsfile.timeseries.read.query.OnePassQueryDataSet;
 import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
 
 import java.util.ArrayList;
@@ -77,7 +75,7 @@ public class KvMatchIndexQueryPlan extends IndexQueryPlan {
 	}
 
 	@Override
-	public Iterator<QueryDataSet> fetchQueryDateSet(int fetchSize) throws QueryProcessorException {
+	public Iterator<OnePassQueryDataSet> fetchQueryDateSet(int fetchSize) throws QueryProcessorException {
         MManager mManager = MManager.getInstance();
         // check path and storage group
         Path path = paths.get(0);

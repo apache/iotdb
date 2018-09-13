@@ -14,8 +14,8 @@ import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 import cn.edu.tsinghua.tsfile.timeseries.filter.definition.SingleSeriesFilterExpression;
 import cn.edu.tsinghua.tsfile.timeseries.filter.utils.FilterUtils;
 import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
-import cn.edu.tsinghua.tsfile.timeseries.read.query.QueryDataSet;
-import cn.edu.tsinghua.tsfile.timeseries.read.support.RowRecord;
+import cn.edu.tsinghua.tsfile.timeseries.read.query.OnePassQueryDataSet;
+import cn.edu.tsinghua.tsfile.timeseries.read.support.OldRowRecord;
 import cn.edu.tsinghua.tsfile.timeseries.utils.StringContainer;
 
 /**
@@ -48,14 +48,14 @@ public class MemIntQpExecutorTest {
         List<Path> pathList = new ArrayList<Path>();
         pathList.add(path1);
         pathList.add(path2);
-        QueryDataSet ret = null;
+        OnePassQueryDataSet ret = null;
 
         while (true) {
             ret = processor.getExecutor().query(0, pathList, null, null, null, 1, ret);
             if (!ret.hasNextRecord())
                 break;
             while (ret.hasNextRecord()) {
-                RowRecord r = ret.getNextRecord();
+                OldRowRecord r = ret.getNextRecord();
                 System.out.println(r);
             }
         }
@@ -69,7 +69,7 @@ public class MemIntQpExecutorTest {
         pathList.add(path2);
         pathList.add(path1);
 
-        QueryDataSet ret = null;
+        OnePassQueryDataSet ret = null;
         String filterString = "2,device_1.sensor_1,(>=80)&(<=110)";
         // default filter type is integer
         SingleSeriesFilterExpression valueFilter = FilterUtils.construct(filterString, null);
@@ -78,7 +78,7 @@ public class MemIntQpExecutorTest {
             if (!ret.hasNextRecord())
                 break;
             while (ret.hasNextRecord()) {
-                RowRecord r = ret.getNextRecord();
+                OldRowRecord r = ret.getNextRecord();
                 System.out.println(r);
             }
         }
@@ -90,7 +90,7 @@ public class MemIntQpExecutorTest {
         List<Path> pathList = new ArrayList<Path>();
         // pathList.add(path1);
         pathList.add(path2);
-        QueryDataSet ret = null;
+        OnePassQueryDataSet ret = null;
         String filterString = "2,device_1.sensor_2,((>=100)&(<=200))";
         // default filter type is integer
         SingleSeriesFilterExpression valueFilter = FilterUtils.construct(filterString, null);
@@ -99,7 +99,7 @@ public class MemIntQpExecutorTest {
             if (!ret.hasNextRecord())
                 break;
             while (ret.hasNextRecord()) {
-                RowRecord r = ret.getNextRecord();
+                OldRowRecord r = ret.getNextRecord();
                 System.out.println(r);
             }
         }

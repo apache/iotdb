@@ -47,6 +47,10 @@ public class UpdatePlan extends PhysicalPlan {
         this.intervals.add(interval);
     }
 
+    public void addIntervals(List<Pair<Long, Long>> intervals) {
+        this.intervals.addAll(intervals);
+    }
+
     public String getValue() {
         return value;
     }

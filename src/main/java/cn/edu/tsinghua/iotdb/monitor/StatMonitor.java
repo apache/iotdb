@@ -18,10 +18,10 @@ import cn.edu.tsinghua.tsfile.common.constant.StatisticConstant;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 import cn.edu.tsinghua.tsfile.common.utils.Pair;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
-import cn.edu.tsinghua.tsfile.timeseries.read.query.QueryDataSet;
+import cn.edu.tsinghua.tsfile.timeseries.read.query.OnePassQueryDataSet;
 import cn.edu.tsinghua.tsfile.timeseries.read.support.Field;
 import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
-import cn.edu.tsinghua.tsfile.timeseries.read.support.RowRecord;
+import cn.edu.tsinghua.tsfile.timeseries.read.support.OldRowRecord;
 import cn.edu.tsinghua.tsfile.timeseries.write.record.DataPoint;
 import cn.edu.tsinghua.tsfile.timeseries.write.record.TSRecord;
 import cn.edu.tsinghua.tsfile.timeseries.write.record.datapoint.LongDataPoint;
@@ -137,11 +137,10 @@ public class StatMonitor implements IService{
             pairList.add(new Pair<>(path, StatisticConstant.LAST));
         }
         try {
-            QueryDataSet queryDataSet;
+            OnePassQueryDataSet queryDataSet;
             queryDataSet = overflowQueryEngine.aggregate(pairList, null);
             ReadCacheManager.getInstance().unlockForOneRequest();
-            RowRecord rowRecord = queryDataSet.getNextRecord();
-
+            OldRowRecord rowRecord = queryDataSet.getNextRecord();
             if (rowRecord!=null) {
                 FileNodeManager fManager = FileNodeManager.getInstance();
                 HashMap<String, AtomicLong> statParamsHashMap = fManager.getStatParamsHashMap();

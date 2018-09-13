@@ -1,13 +1,21 @@
-package cn.edu.tsinghua.iotdb.qp.cud;
+package cn.edu.tsinghua.iotdb.qp.plan;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import cn.edu.tsinghua.iotdb.qp.physical.crud.MultiQueryPlan;
+import cn.edu.tsinghua.iotdb.qp.physical.crud.QueryPlan;
 import cn.edu.tsinghua.iotdb.query.fill.LinearFill;
 import cn.edu.tsinghua.iotdb.query.fill.PreviousFill;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
+import cn.edu.tsinghua.tsfile.timeseries.filterV2.TimeFilter;
+import cn.edu.tsinghua.tsfile.timeseries.filterV2.ValueFilter;
+import cn.edu.tsinghua.tsfile.timeseries.filterV2.expression.QueryFilter;
+import cn.edu.tsinghua.tsfile.timeseries.filterV2.expression.impl.GlobalTimeFilter;
+import cn.edu.tsinghua.tsfile.timeseries.filterV2.expression.impl.QueryFilterFactory;
+import cn.edu.tsinghua.tsfile.timeseries.filterV2.expression.impl.SeriesFilter;
+import cn.edu.tsinghua.tsfile.timeseries.filterV2.factory.FilterFactory;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -53,7 +61,7 @@ public class PhysicalPlanTest {
     }
 
     @Test
-    public void testMetadata() throws QueryProcessorException, ArgsErrorException {
+    public void testMetadata() throws QueryProcessorException, ArgsErrorException, ProcessorException {
         String metadata = "create timeseries root.vehicle.d1.s1 with datatype=INT32,encoding=RLE";
         QueryProcessor processor = new QueryProcessor(new MemIntQpExecutor());
         MetadataPlan plan = (MetadataPlan)processor.parseSQLToPhysicalPlan(metadata);
@@ -65,7 +73,7 @@ public class PhysicalPlanTest {
     }
 
     @Test
-    public void testAuthor() throws QueryProcessorException, ArgsErrorException {
+    public void testAuthor() throws QueryProcessorException, ArgsErrorException, ProcessorException {
         String sql = "grant role xm privileges 'SET_STORAGE_GROUP','DELETE_TIMESERIES' on root.vehicle.d1.s1";
         QueryProcessor processor = new QueryProcessor(new MemIntQpExecutor());
         AuthorPlan plan = (AuthorPlan) processor.parseSQLToPhysicalPlan(sql);
@@ -79,7 +87,7 @@ public class PhysicalPlanTest {
     }
 
     @Test
-    public void testProperty() throws QueryProcessorException, ArgsErrorException {
+    public void testProperty() throws QueryProcessorException, ArgsErrorException, ProcessorException {
         String sql = "add label label1021 to property propropro";
         QueryProcessor processor = new QueryProcessor(new MemIntQpExecutor());
         PropertyPlan plan = (PropertyPlan) processor.parseSQLToPhysicalPlan(sql);
@@ -89,7 +97,7 @@ public class PhysicalPlanTest {
     }
 
     @Test
-    public void testAggregation() throws QueryProcessorException, ArgsErrorException {
+    public void testAggregation() throws QueryProcessorException, ArgsErrorException, ProcessorException {
         String sqlStr =
                 "select sum(d1.s1) " + "from root.vehicle "
                         + "where time <= 51 or !(time != 100 and time < 460)";
@@ -101,7 +109,7 @@ public class PhysicalPlanTest {
     }
 
     @Test
-    public void testGroupBy1() throws QueryProcessorException, ArgsErrorException {
+    public void testGroupBy1() throws QueryProcessorException, ArgsErrorException, ProcessorException {
         String sqlStr =
                 "select count(s1) "
                         + "from root.vehicle.d1 "
@@ -115,7 +123,7 @@ public class PhysicalPlanTest {
     }
 
     @Test
-    public void testGroupBy2() throws QueryProcessorException, ArgsErrorException {
+    public void testGroupBy2() throws QueryProcessorException, ArgsErrorException, ProcessorException {
         String sqlStr =
                 "select count(s1) "
                         + "from root.vehicle.d1 "
@@ -129,7 +137,7 @@ public class PhysicalPlanTest {
     }
 
     @Test
-    public void testFill1() throws QueryProcessorException, ArgsErrorException {
+    public void testFill1() throws QueryProcessorException, ArgsErrorException, ProcessorException {
         String sqlStr =
                 "SELECT s1 FROM root.vehicle.d1 WHERE time = 5000 Fill(int32[linear, 5m, 5m], boolean[previous, 5m])";
         PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
@@ -143,7 +151,7 @@ public class PhysicalPlanTest {
     }
 
     @Test
-    public void testFill2() throws QueryProcessorException, ArgsErrorException {
+    public void testFill2() throws QueryProcessorException, ArgsErrorException, ProcessorException {
         String sqlStr =
                 "SELECT s1 FROM root.vehicle.d1 WHERE time = 5000 Fill(int32[linear], boolean[previous])";
         PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
@@ -176,6 +184,73 @@ public class PhysicalPlanTest {
         } catch (Exception e) {
             assertEquals("Only \"=\" can be used in fill function", e.getMessage().toString());
         }
+    }
+
+    @Test
+    public void testQuery1() throws QueryProcessorException, ArgsErrorException, ProcessorException {
+        String sqlStr =
+                "SELECT s1 FROM root.vehicle.d1 WHERE time > 5000";
+        PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
+        QueryFilter queryFilter = ((QueryPlan) plan).getQueryFilter();
+        QueryFilter expect = new GlobalTimeFilter(TimeFilter.gt(5000L));
+        assertEquals(expect.toString(), queryFilter.toString());
+    }
+
+    @Test
+    public void testQuery2() throws QueryProcessorException, ArgsErrorException, ProcessorException {
+        String sqlStr =
+                "SELECT s1 FROM root.vehicle.d1 WHERE time > 50 and time <= 100";
+        PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
+        QueryFilter queryFilter = ((QueryPlan) plan).getQueryFilter();
+        QueryFilter expect = new GlobalTimeFilter(FilterFactory.and(TimeFilter.gt(50L), TimeFilter.ltEq(100L)));
+        assertEquals(expect.toString(), queryFilter.toString());
+
+    }
+
+    @Test
+    public void testQuery3() throws QueryProcessorException, ArgsErrorException, ProcessorException {
+        String sqlStr =
+                "SELECT s1 FROM root.vehicle.d1 WHERE time > 50 and time <= 100 or s1 < 10";
+        PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
+        QueryFilter queryFilter = ((QueryPlan) plan).getQueryFilter();
+        QueryFilter expect = new GlobalTimeFilter(FilterFactory.and(TimeFilter.gt(50L), TimeFilter.ltEq(100L)));
+        expect = QueryFilterFactory.or(expect, new SeriesFilter<>(new Path("root.vehicle.d1.s1"), ValueFilter.lt(10)));
+        assertEquals(expect.toString(), queryFilter.toString());
+    }
+
+    @Test
+    public void testQuery4() throws QueryProcessorException, ArgsErrorException, ProcessorException {
+        String sqlStr =
+                "SELECT s1 FROM root.vehicle.d1 WHERE time > 50 and time <= 100 and s1 < 10";
+        PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
+        QueryFilter queryFilter = ((QueryPlan) plan).getQueryFilter();
+        QueryFilter expect = new SeriesFilter<>(new Path("root.vehicle.d1.s1"), FilterFactory.and(FilterFactory.and(TimeFilter.gt(50L), TimeFilter.ltEq(100L)), ValueFilter.lt(10)));
+        assertEquals(expect.toString(), queryFilter.toString());
+
+        Path path = new Path("root.vehicle.d1.s1");
+        assertEquals(path, plan.getPaths().get(0));
+    }
+
+    @Test
+    public void testQuery5() throws QueryProcessorException, ArgsErrorException, ProcessorException {
+        String sqlStr =
+                "SELECT s1 FROM root.vehicle.d1 WHERE s1 > 20 or s1 < 10";
+        PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
+        QueryFilter queryFilter = ((QueryPlan) plan).getQueryFilter();
+        QueryFilter expect = new SeriesFilter<>(new Path("root.vehicle.d1.s1"), FilterFactory.or(ValueFilter.gt(20), ValueFilter.lt(10)));
+        assertEquals(expect.toString(), queryFilter.toString());
+
+    }
+
+    @Test
+    public void testQuery6() throws QueryProcessorException, ArgsErrorException, ProcessorException {
+        String sqlStr =
+                "SELECT s1 FROM root.vehicle.d1 WHERE time > 20 or time < 10";
+        PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
+        QueryFilter queryFilter = ((QueryPlan) plan).getQueryFilter();
+        QueryFilter expect = new GlobalTimeFilter(FilterFactory.or(TimeFilter.gt(20L), TimeFilter.lt(10L)));
+        assertEquals(expect.toString(), queryFilter.toString());
+
     }
 
 }

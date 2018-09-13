@@ -13,8 +13,8 @@ import cn.edu.tsinghua.tsfile.timeseries.filter.definition.SingleSeriesFilterExp
 import cn.edu.tsinghua.tsfile.timeseries.filter.definition.filterseries.FilterSeries;
 import cn.edu.tsinghua.tsfile.timeseries.filter.definition.filterseries.FilterSeriesType;
 import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
-import cn.edu.tsinghua.tsfile.timeseries.read.query.QueryDataSet;
-import cn.edu.tsinghua.tsfile.timeseries.read.support.RowRecord;
+import cn.edu.tsinghua.tsfile.timeseries.read.query.OnePassQueryDataSet;
+import cn.edu.tsinghua.tsfile.timeseries.read.support.OldRowRecord;
 import cn.edu.tsinghua.tsfile.timeseries.utils.StringContainer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,7 +27,7 @@ import cn.edu.tsinghua.iotdb.qp.physical.PhysicalPlan;
  * Up to now, Single Query that {@code TsFile reading API} supports is a conjunction among time
  * filter, frequency filter and value filter. <br>
  * This class provide two public function. If the whole SingleQueryPlan has exactly one single path,
- * {@code SingleQueryPlan} return a {@code Iterator<QueryDataSet>} directly. Otherwise
+ * {@code SingleQueryPlan} return a {@code Iterator<OnePassQueryDataSet>} directly. Otherwise
  * {@code SingleQueryPlan} is regard as a portion of {@code MultiQueryPlan}. This class provide
  * a {@code Iterator<RowRecord>}in the latter case.
  *
@@ -42,6 +42,7 @@ public class SingleQueryPlan extends PhysicalPlan {
     private FilterOperator valueFilterOperator;
     private FilterExpression[] filterExpressions;
 
+    //TODO 合并多种 filter
     public SingleQueryPlan(List<Path> paths, FilterOperator timeFilter,
                            FilterOperator freqFilter, FilterOperator valueFilter,
                            QueryProcessExecutor executor, List<String> aggregations) throws QueryProcessorException {
@@ -122,15 +123,15 @@ public class SingleQueryPlan extends PhysicalPlan {
      * @param executor query process executor
      * @return Iterator<RowRecord>
      */
-    private Iterator<RowRecord> getRecordIterator(QueryProcessExecutor executor, int formNumber) throws QueryProcessorException {
+    private Iterator<OldRowRecord> getRecordIterator(QueryProcessExecutor executor, int formNumber) throws QueryProcessorException {
 
         return new RowRecordIterator(formNumber,paths, executor.getFetchSize(), executor, filterExpressions[0], filterExpressions[1], filterExpressions[2]);
     }
 
 
-    public static Iterator<RowRecord>[] getRecordIteratorArray(List<SingleQueryPlan> plans,
+    public static Iterator<OldRowRecord>[] getRecordIteratorArray(List<SingleQueryPlan> plans,
                                                                QueryProcessExecutor conf) throws QueryProcessorException {
-        Iterator<RowRecord>[] ret = new RowRecordIterator[plans.size()];
+        Iterator<OldRowRecord>[] ret = new RowRecordIterator[plans.size()];
         for (int i = 0; i < plans.size(); i++) {
             ret[i] = plans.get(i).getRecordIterator(conf, i);
         }
@@ -157,12 +158,12 @@ public class SingleQueryPlan extends PhysicalPlan {
         return paths;
     }
 
-    private class RowRecordIterator implements Iterator<RowRecord> {
+    private class RowRecordIterator implements Iterator<OldRowRecord> {
         private boolean noNext = false;
         private List<Path> paths;
         private final int fetchSize;
         private final QueryProcessExecutor executor;
-        private QueryDataSet data = null;
+        private OnePassQueryDataSet data = null;
         private FilterExpression timeFilter;
         private FilterExpression freqFilter;
         private FilterExpression valueFilter;
@@ -199,7 +200,7 @@ public class SingleQueryPlan extends PhysicalPlan {
         }
 
         @Override
-        public RowRecord next() {
+        public OldRowRecord next() {
             return data.getNextRecord();
         }
 

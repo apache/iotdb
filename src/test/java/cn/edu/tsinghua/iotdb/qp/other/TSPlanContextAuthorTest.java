@@ -11,6 +11,7 @@ import cn.edu.tsinghua.iotdb.qp.QueryProcessor;
 import cn.edu.tsinghua.iotdb.qp.exception.QueryProcessorException;
 import cn.edu.tsinghua.iotdb.qp.physical.sys.AuthorPlan;
 import cn.edu.tsinghua.iotdb.qp.utils.MemIntQpExecutor;
+import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -54,7 +55,7 @@ public class TSPlanContextAuthorTest {
     }
 
     @Test
-    public void testAnalyzeAuthor() throws QueryProcessorException, ArgsErrorException {
+    public void testAnalyzeAuthor() throws QueryProcessorException, ArgsErrorException, ProcessorException {
         QueryProcessor processor = new QueryProcessor(new MemIntQpExecutor());
         AuthorPlan author = (AuthorPlan) processor.parseSQLToPhysicalPlan(inputSQL);
         if (author == null)

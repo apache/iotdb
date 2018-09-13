@@ -122,8 +122,9 @@ public class LimitSlimitTest {
                         "50,50000,\n",
 
                 "SELECT s0 FROM root.vehicle.d0 WHERE s1 > 190 limit 3",
-                "105,33333,\n" +
-                        "1000,22222,\n",
+                "1,null,\n" +
+                        "2,null,\n" +
+                        "50,null,\n",
 
                 "SELECT s1,s2 FROM root.vehicle.d0 where s1>190 or s2<10.0 limit 3 offset 2",
                 "3,null,3.33,\n" +

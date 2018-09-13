@@ -42,7 +42,7 @@ public class ReaderCreator {
 
     private static final int FOOTER_LENGTH = 4;
     private static final int POS_LENGTH = 8;
-    private static final int MAGIC_LENGTH = TsFileIOWriter.magicStringBytes.length;
+    private static final int MAGIC_LENGTH = TsFileIOWriter.magicStringBytes.length; 
 
     private static Map<String, Map<String, List<TimeSeriesChunkMetaData>>> unSeqFileMetaData;
 

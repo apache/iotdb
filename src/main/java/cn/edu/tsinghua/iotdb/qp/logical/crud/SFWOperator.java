@@ -2,6 +2,7 @@ package cn.edu.tsinghua.iotdb.qp.logical.crud;
 
 import cn.edu.tsinghua.iotdb.qp.exception.LogicalOperatorException;
 import cn.edu.tsinghua.iotdb.qp.logical.RootOperator;
+import cn.edu.tsinghua.tsfile.timeseries.filterV2.expression.QueryFilter;
 import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
 
 import java.util.List;
@@ -18,6 +19,7 @@ public abstract class SFWOperator extends RootOperator {
     private SelectOperator selectOperator;
     private FromOperator fromOperator;
     private FilterOperator filterOperator;
+    private boolean hasAggregation = false;
     private boolean isSlimit = false;
 
     public SFWOperator(int tokenIntType) {
@@ -35,6 +37,8 @@ public abstract class SFWOperator extends RootOperator {
 
     public void setSelectOperator(SelectOperator sel) {
         this.selectOperator = sel;
+        if(!sel.getAggregations().isEmpty())
+            hasAggregation = true;
     }
 
     public void setFromOperator(FromOperator from) {
@@ -68,5 +72,9 @@ public abstract class SFWOperator extends RootOperator {
         if (selectOperator != null)
             suffixPaths = selectOperator.getSuffixPaths();
         return suffixPaths;
+    }
+
+    public boolean hasAggregation() {
+        return hasAggregation;
     }
 }

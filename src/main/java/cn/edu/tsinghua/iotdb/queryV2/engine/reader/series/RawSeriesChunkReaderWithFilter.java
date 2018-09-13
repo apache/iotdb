@@ -4,6 +4,7 @@ import cn.edu.tsinghua.iotdb.engine.querycontext.RawSeriesChunk;
 import cn.edu.tsinghua.tsfile.timeseries.filterV2.basic.Filter;
 import cn.edu.tsinghua.tsfile.timeseries.filterV2.visitor.impl.TimeValuePairFilterVisitorImpl;
 import cn.edu.tsinghua.tsfile.timeseries.readV2.datatype.TimeValuePair;
+import cn.edu.tsinghua.tsfile.timeseries.readV2.reader.SeriesReader;
 import cn.edu.tsinghua.tsfile.timeseries.readV2.reader.TimeValuePairReader;
 
 import java.io.IOException;
@@ -12,7 +13,7 @@ import java.util.Iterator;
 /**
  * Created by zhangjinrui on 2018/1/23.
  */
-public class RawSeriesChunkReaderWithFilter implements TimeValuePairReader {
+public class RawSeriesChunkReaderWithFilter implements TimeValuePairReader, SeriesReader {
 
     private RawSeriesChunk rawSeriesChunk;
     private Iterator<TimeValuePair> timeValuePairIterator;
@@ -46,10 +47,12 @@ public class RawSeriesChunkReaderWithFilter implements TimeValuePairReader {
 
     @Override
     public TimeValuePair next() throws IOException {
-        if (hasNext()) {
+        if(hasCachedTimeValuePair){
+            hasCachedTimeValuePair = false;
             return cachedTimeValuePair;
-        } else {
-            return null;
+        }
+        else {
+            return timeValuePairIterator.next();
         }
     }
 

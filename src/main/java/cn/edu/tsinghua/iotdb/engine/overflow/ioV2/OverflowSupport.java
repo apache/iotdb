@@ -71,13 +71,11 @@ public class OverflowSupport {
 	}
 
 	public DynamicOneColumnData queryOverflowUpdateInMemory(String deltaObjectId, String measurementId,
-			SingleSeriesFilterExpression timeFilter, SingleSeriesFilterExpression freqFilter,
-			SingleSeriesFilterExpression valueFilter, TSDataType dataType, DynamicOneColumnData data) {
+															TSDataType dataType, DynamicOneColumnData data) {
 		if (indexTrees.containsKey(deltaObjectId)) {
 			if (indexTrees.get(deltaObjectId).containsKey(measurementId)
 					&& indexTrees.get(deltaObjectId).get(measurementId).getDataType().equals(dataType)) {
-				return indexTrees.get(deltaObjectId).get(measurementId).query(timeFilter, freqFilter, valueFilter,
-						dataType, data);
+				return indexTrees.get(deltaObjectId).get(measurementId).query(data);
 			}
 		}
 		return null;

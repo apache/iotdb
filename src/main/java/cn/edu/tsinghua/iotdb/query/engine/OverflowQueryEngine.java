@@ -27,7 +27,7 @@ import cn.edu.tsinghua.tsfile.timeseries.filter.definition.operators.Or;
 import cn.edu.tsinghua.tsfile.timeseries.read.query.BatchReadRecordGenerator;
 import cn.edu.tsinghua.tsfile.timeseries.read.query.CrossQueryTimeGenerator;
 import cn.edu.tsinghua.tsfile.timeseries.read.query.DynamicOneColumnData;
-import cn.edu.tsinghua.tsfile.timeseries.read.query.QueryDataSet;
+import cn.edu.tsinghua.tsfile.timeseries.read.query.OnePassQueryDataSet;
 import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -57,12 +57,12 @@ public class OverflowQueryEngine {
      * @param paths        query paths
      * @param queryDataSet query data set to return
      * @param fetchSize    fetch size for batch read
-     * @return basic QueryDataSet
+     * @return basic OnePassQueryDataSet
      * @throws ProcessorException series resolve error
      * @throws IOException        TsFile read error
      */
-    public QueryDataSet query(int formNumber, List<Path> paths, FilterExpression timeFilter, FilterExpression freqFilter,
-                              FilterExpression valueFilter, QueryDataSet queryDataSet, int fetchSize, Integer readLock)
+    public OnePassQueryDataSet query(int formNumber, List<Path> paths, FilterExpression timeFilter, FilterExpression freqFilter,
+                              FilterExpression valueFilter, OnePassQueryDataSet queryDataSet, int fetchSize, Integer readLock)
             throws ProcessorException, IOException, PathErrorException {
         this.formNumber = formNumber;
         if (queryDataSet != null) {
@@ -88,12 +88,12 @@ public class OverflowQueryEngine {
      *
      * @param aggres           a list of aggregations and corresponding path
      * @param filterStructures see <code>FilterStructure</code>, a list of all conjunction form
-     * @return result QueryDataSet
+     * @return result OnePassQueryDataSet
      * @throws ProcessorException series resolve error
      * @throws IOException        TsFile read error
      * @throws PathErrorException path resolve error
      */
-    public QueryDataSet aggregate(List<Pair<Path, String>> aggres, List<FilterStructure> filterStructures)
+    public OnePassQueryDataSet aggregate(List<Pair<Path, String>> aggres, List<FilterStructure> filterStructures)
             throws ProcessorException, IOException, PathErrorException {
 
         List<Pair<Path, AggregateFunction>> aggregations = new ArrayList<>();
@@ -110,9 +110,8 @@ public class OverflowQueryEngine {
             aggregations.add(new Pair<>(pair.left, aggregateFunction));
         }
 
-
         new AggregateEngine().multiAggregate(aggregations, filterStructures);
-        QueryDataSet ansQueryDataSet = new QueryDataSet();
+        OnePassQueryDataSet ansOnePassQueryDataSet = new OnePassQueryDataSet();
         for (Pair<Path, AggregateFunction> pair : aggregations) {
             AggregateFunction aggregateFunction = pair.right;
             if (aggregateFunction.resultData.timeLength == 0) {
@@ -120,10 +119,10 @@ public class OverflowQueryEngine {
             }
             LOGGER.debug(String.format("key %s, data time length %s, data value length %s, empty data time length %s", EngineUtils.aggregationKey(aggregateFunction, pair.left),
                     aggregateFunction.resultData.timeLength, aggregateFunction.resultData.valueLength, aggregateFunction.resultData.emptyTimeLength));
-            ansQueryDataSet.mapRet.put(EngineUtils.aggregationKey(aggregateFunction, pair.left), aggregateFunction.resultData);
+            ansOnePassQueryDataSet.mapRet.put(EngineUtils.aggregationKey(aggregateFunction, pair.left), aggregateFunction.resultData);
         }
-        // aggregateThreadLocal.set(ansQueryDataSet);
-        return ansQueryDataSet;
+        // aggregateThreadLocal.set(ansOnePassQueryDataSet);
+        return ansOnePassQueryDataSet;
     }
 
     /**
@@ -135,9 +134,9 @@ public class OverflowQueryEngine {
      * @param origin
      * @param intervals
      * @param fetchSize
-     * @return QueryDataSet
+     * @return OnePassQueryDataSet
      */
-    public QueryDataSet groupBy(List<Pair<Path, String>> aggres, List<FilterStructure> filterStructures,
+    public OnePassQueryDataSet groupBy(List<Pair<Path, String>> aggres, List<FilterStructure> filterStructures,
                                 long unit, long origin, List<Pair<Long, Long>> intervals, int fetchSize) {
 
         ThreadLocal<Integer> groupByCalcTime = ReadCacheManager.getInstance().getGroupByCalcTime();
@@ -193,7 +192,7 @@ public class OverflowQueryEngine {
             groupByCalcTime.set(groupByCalcTime.get() + 1);
             try {
                 if (noFilterOrOnlyHasTimeFilter(filterStructures)) {
-                    QueryDataSet ans = groupByEngineNoFilterLocal.get().groupBy();
+                    OnePassQueryDataSet ans = groupByEngineNoFilterLocal.get().groupBy();
                     if (!ans.hasNextRecord()) {
                         groupByCalcTime.remove();
                         groupByEngineNoFilterLocal.remove();
@@ -202,7 +201,7 @@ public class OverflowQueryEngine {
                     }
                     return ans;
                 } else {
-                    QueryDataSet ans = groupByEngineWithFilterLocal.get().groupBy();
+                    OnePassQueryDataSet ans = groupByEngineWithFilterLocal.get().groupBy();
                     if (!ans.hasNextRecord()) {
                         groupByCalcTime.remove();
                         groupByEngineNoFilterLocal.remove();
@@ -218,8 +217,8 @@ public class OverflowQueryEngine {
         return null;
     }
 
-    public QueryDataSet fill(List<Path> fillPaths, long queryTime, Map<TSDataType, IFill> fillType) {
-        QueryDataSet result = new QueryDataSet();
+    public OnePassQueryDataSet fill(List<Path> fillPaths, long queryTime, Map<TSDataType, IFill> fillType) {
+        OnePassQueryDataSet result = new OnePassQueryDataSet();
 
         try {
             for (Path path : fillPaths) {
@@ -261,10 +260,10 @@ public class OverflowQueryEngine {
     /**
      * Query type 1: query without filter.
      */
-    private QueryDataSet querySeriesWithoutFilter(List<Path> paths, QueryDataSet queryDataSet, int fetchSize, Integer readLock)
+    private OnePassQueryDataSet querySeriesWithoutFilter(List<Path> paths, OnePassQueryDataSet queryDataSet, int fetchSize, Integer readLock)
             throws ProcessorException, IOException {
         if (queryDataSet == null) {
-            queryDataSet = new QueryDataSet();
+            queryDataSet = new OnePassQueryDataSet();
             BatchReadRecordGenerator batchReaderRetGenerator = new BatchReadRecordGenerator(paths, fetchSize) {
                 @Override
                 public DynamicOneColumnData getMoreRecordsForOneColumn(Path p, DynamicOneColumnData res) throws ProcessorException, IOException {
@@ -309,11 +308,11 @@ public class OverflowQueryEngine {
     /**
      * Query type 2: query with filter.
      */
-    private QueryDataSet querySeriesUsingFilter(List<Path> paths, SingleSeriesFilterExpression timeFilter,
+    private OnePassQueryDataSet querySeriesUsingFilter(List<Path> paths, SingleSeriesFilterExpression timeFilter,
                                                 SingleSeriesFilterExpression freqFilter, SingleSeriesFilterExpression valueFilter,
-                                                QueryDataSet queryDataSet, int fetchSize, Integer readLock) throws ProcessorException, IOException {
+                                                OnePassQueryDataSet queryDataSet, int fetchSize, Integer readLock) throws ProcessorException, IOException {
         if (queryDataSet == null) {
-            queryDataSet = new QueryDataSet();
+            queryDataSet = new OnePassQueryDataSet();
             BatchReadRecordGenerator batchReaderRetGenerator = new BatchReadRecordGenerator(paths, fetchSize) {
                 @Override
                 public DynamicOneColumnData getMoreRecordsForOneColumn(Path p, DynamicOneColumnData res) throws ProcessorException, IOException {
@@ -361,8 +360,8 @@ public class OverflowQueryEngine {
     /**
      * Query type 3: cross series read.
      */
-    private QueryDataSet crossSeriesQuery(List<Path> paths, SingleSeriesFilterExpression queryTimeFilter, CrossSeriesFilterExpression queryValueFilter,
-                                          QueryDataSet queryDataSet, int fetchSize)
+    private OnePassQueryDataSet crossSeriesQuery(List<Path> paths, SingleSeriesFilterExpression queryTimeFilter, CrossSeriesFilterExpression queryValueFilter,
+                                          OnePassQueryDataSet queryDataSet, int fetchSize)
             throws ProcessorException, IOException, PathErrorException {
 
         if (queryDataSet != null) {
@@ -370,7 +369,7 @@ public class OverflowQueryEngine {
         }
 
         if (queryDataSet == null) {
-            queryDataSet = new QueryDataSet();
+            queryDataSet = new OnePassQueryDataSet();
             queryDataSet.crossQueryTimeGenerator = new CrossQueryTimeGenerator(queryTimeFilter, null, queryValueFilter, fetchSize) {
                 @Override
                 public DynamicOneColumnData getDataInNextBatch(DynamicOneColumnData res, int fetchSize, SingleSeriesFilterExpression valueFilter,
@@ -389,7 +388,7 @@ public class OverflowQueryEngine {
         long[] timestamps = queryDataSet.crossQueryTimeGenerator.generateTimes();
         LOGGER.debug("calculate common timestamps complete.");
 
-        QueryDataSet ret = queryDataSet;
+        OnePassQueryDataSet ret = queryDataSet;
         for (Path path : paths) {
 
             String deltaObjectId = path.getDeltaObjectToString();
