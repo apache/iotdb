@@ -9,13 +9,13 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+import cn.edu.tsinghua.iotdb.engine.memtable.PrimitiveMemTable;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
 import cn.edu.tsinghua.iotdb.engine.memtable.IMemTable;
 import cn.edu.tsinghua.iotdb.engine.memtable.MemTableTestUtils;
-import cn.edu.tsinghua.iotdb.engine.memtable.TreeSetMemTable;
 import cn.edu.tsinghua.iotdb.utils.EnvironmentUtils;
 import cn.edu.tsinghua.tsfile.common.utils.BytesUtils;
 import cn.edu.tsinghua.tsfile.common.utils.ITsRandomAccessFileWriter;
@@ -26,9 +26,9 @@ import cn.edu.tsinghua.tsfile.file.metadata.TsRowGroupBlockMetaData;
 import cn.edu.tsinghua.tsfile.file.utils.ReadWriteThriftFormatUtils;
 import cn.edu.tsinghua.tsfile.timeseries.write.schema.FileSchema;
 
-public class BufferWriteResourceTest {
+public class RestoreManagerTest {
 
-	private BufferWriteResource bufferwriteResource;
+	private RestoreManager bufferwriteResource;
 	private String processorName = "processor";
 	private String insertPath = "insertfile";
 	private String insertRestorePath = insertPath + ".restore";
@@ -46,7 +46,7 @@ public class BufferWriteResourceTest {
 
 	@Test
 	public void testInitResource() throws IOException {
-		bufferwriteResource = new BufferWriteResource(processorName, insertPath);
+		bufferwriteResource = new RestoreManager(processorName, insertPath);
 		Pair<Long, List<RowGroupMetaData>> pair = bufferwriteResource.readRestoreInfo();
 		assertEquals(true, new File(insertRestorePath).exists());
 		assertEquals(0, (long) pair.left);
@@ -58,7 +58,7 @@ public class BufferWriteResourceTest {
 	
 	@Test
 	public void testAbnormalRecover() throws IOException{
-		bufferwriteResource = new BufferWriteResource(processorName, insertPath);
+		bufferwriteResource = new RestoreManager(processorName, insertPath);
 		File insertFile = new File(insertPath);
 		File restoreFile = new File(insertPath+".restore");
 		FileOutputStream fileOutputStream = new FileOutputStream(insertFile);
@@ -76,7 +76,7 @@ public class BufferWriteResourceTest {
 		byte[] lastPositionBytes = BytesUtils.longToBytes(200);
 		out.write(lastPositionBytes);
 		out.close();
-		bufferwriteResource = new BufferWriteResource(processorName, insertPath);
+		bufferwriteResource = new RestoreManager(processorName, insertPath);
 		assertEquals(true, insertFile.exists());
 		assertEquals(200, insertFile.length());
 		assertEquals(insertPath, bufferwriteResource.getInsertFilePath());
@@ -86,7 +86,7 @@ public class BufferWriteResourceTest {
 
 	@Test
 	public void testRecover() throws IOException {
-		bufferwriteResource = new BufferWriteResource(processorName, insertPath);
+		bufferwriteResource = new RestoreManager(processorName, insertPath);
 		File insertFile = new File(insertPath);
 		File restoreFile = new File(insertPath+".restore");
 		FileOutputStream fileOutputStream = new FileOutputStream(insertFile);
@@ -102,7 +102,7 @@ public class BufferWriteResourceTest {
 		out.close();
 		assertEquals(true, insertFile.exists());
 		assertEquals(true, restoreFile.exists());
-		BufferWriteResource tempbufferwriteResource = new BufferWriteResource(processorName, insertPath);
+		RestoreManager tempbufferwriteResource = new RestoreManager(processorName, insertPath);
 		assertEquals(true, insertFile.exists());
 		assertEquals(200, insertFile.length());
 		assertEquals(insertPath, tempbufferwriteResource.getInsertFilePath());
@@ -113,10 +113,10 @@ public class BufferWriteResourceTest {
 
 	@Test
 	public void testFlushAndGetMetadata() throws IOException {
-		bufferwriteResource = new BufferWriteResource(processorName, insertPath);
+		bufferwriteResource = new RestoreManager(processorName, insertPath);
 		assertEquals(0, bufferwriteResource.getInsertMetadatas(MemTableTestUtils.deltaObjectId0,
 				MemTableTestUtils.measurementId0, MemTableTestUtils.dataType0).size());
-		IMemTable memTable = new TreeSetMemTable();
+		IMemTable memTable = new PrimitiveMemTable();
 		MemTableTestUtils.produceData(memTable, 10, 100, MemTableTestUtils.deltaObjectId0,
 				MemTableTestUtils.measurementId0, MemTableTestUtils.dataType0);
 		bufferwriteResource.flush(MemTableTestUtils.getFileSchema(), memTable);
@@ -125,11 +125,22 @@ public class BufferWriteResourceTest {
 		bufferwriteResource.appendMetadata();
 		assertEquals(1, bufferwriteResource.getInsertMetadatas(MemTableTestUtils.deltaObjectId0,
 				MemTableTestUtils.measurementId0, MemTableTestUtils.dataType0).size());
+
+		// TODO: 下面这三句没有flush，考虑改成注释中的，否则体现不出metadatas的更新
 		MemTableTestUtils.produceData(memTable, 200, 300, MemTableTestUtils.deltaObjectId0,
 				MemTableTestUtils.measurementId0, MemTableTestUtils.dataType0);
 		bufferwriteResource.appendMetadata();
 		assertEquals(1, bufferwriteResource.getInsertMetadatas(MemTableTestUtils.deltaObjectId0,
 				MemTableTestUtils.measurementId0, MemTableTestUtils.dataType0).size());
+//		MemTableTestUtils.produceData(memTable, 200, 300, MemTableTestUtils.deltaObjectId0,
+//				MemTableTestUtils.measurementId0, MemTableTestUtils.dataType0);
+//		bufferwriteResource.flush(MemTableTestUtils.getFileSchema(), memTable);
+//		assertEquals(1, bufferwriteResource.getInsertMetadatas(MemTableTestUtils.deltaObjectId0,
+//				MemTableTestUtils.measurementId0, MemTableTestUtils.dataType0).size());
+//		bufferwriteResource.appendMetadata();
+//		assertEquals(2, bufferwriteResource.getInsertMetadatas(MemTableTestUtils.deltaObjectId0,
+//				MemTableTestUtils.measurementId0, MemTableTestUtils.dataType0).size());
+
 		bufferwriteResource.close(MemTableTestUtils.getFileSchema());
 	}
 

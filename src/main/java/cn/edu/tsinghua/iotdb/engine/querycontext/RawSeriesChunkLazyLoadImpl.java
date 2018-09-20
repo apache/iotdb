@@ -11,18 +11,12 @@ import java.util.List;
 /**
  * Created by zhangjinrui on 2018/1/26.
  */
+//TODO: 建议该类与primitiveMemSeries合并
 public class RawSeriesChunkLazyLoadImpl implements RawSeriesChunk {
 
-    private Iterable<TimeValuePair> iterable;
     private boolean initialized;
 
-    private long maxTime;
-    private long minTime;
-    private TsPrimitiveType maxValue;
-    private TsPrimitiveType minValue;
     private TSDataType dataType;
-    private Iterable<TimeValuePair> values;
-    private boolean isEmpty;
     private TimeValuePairSorter memSeries;
     private List<TimeValuePair> sortedTimeValuePairList;
 
@@ -40,6 +34,7 @@ public class RawSeriesChunkLazyLoadImpl implements RawSeriesChunk {
 
     private void init() {
         sortedTimeValuePairList = memSeries.getSortedTimeValuePairList();
+        initialized = true;
     }
 
     @Override
@@ -68,7 +63,7 @@ public class RawSeriesChunkLazyLoadImpl implements RawSeriesChunk {
     }
 
     @Override
-    public TsPrimitiveType getMaxValue() {
+    public TsPrimitiveType getValueAtMaxTime() {
         checkInitialized();
         if (!isEmpty()) {
             return sortedTimeValuePairList.get(sortedTimeValuePairList.size() - 1).getValue();
@@ -78,7 +73,7 @@ public class RawSeriesChunkLazyLoadImpl implements RawSeriesChunk {
     }
 
     @Override
-    public TsPrimitiveType getMinValue() {
+    public TsPrimitiveType getValueAtMinTime() {
         checkInitialized();
         if (!isEmpty()) {
             return sortedTimeValuePairList.get(0).getValue();

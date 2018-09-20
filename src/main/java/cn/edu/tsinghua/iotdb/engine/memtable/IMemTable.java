@@ -16,16 +16,14 @@ import java.util.Map;
 public interface IMemTable {
     Map<String, Map<String, IMemSeries>> getMemTableMap();
 
-    public void write(String deltaObject, String measurement, TSDataType dataType, long insertTime, String insertValue);
+    void write(String deltaObject, String measurement, TSDataType dataType, long insertTime, String insertValue);
 
     int size();
 
     IMemSeries query(String deltaObject, String measurement,TSDataType dataType);
 
-    void resetMemSeries(String deltaObject, String measurement);
-    
     void clear();
-    
+
     boolean isEmpty();
 
 }

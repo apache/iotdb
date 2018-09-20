@@ -5,7 +5,6 @@ import cn.edu.tsinghua.iotdb.utils.MemUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 public class MemStatisticThread extends Thread{
 
     private static Logger logger = LoggerFactory.getLogger(MemStatisticThread.class);

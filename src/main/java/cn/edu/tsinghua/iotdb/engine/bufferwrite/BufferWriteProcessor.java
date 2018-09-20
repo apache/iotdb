@@ -41,7 +41,7 @@ public class BufferWriteProcessor extends Processor {
 	private static final Logger LOGGER = LoggerFactory.getLogger(BufferWriteProcessor.class);
 
 	private FileSchema fileSchema;
-	private BufferWriteResource bufferWriteResource;
+	private RestoreManager restoreManager;
 
 	private volatile FlushStatus flushStatus = new FlushStatus();
 	private volatile boolean isFlush;
@@ -62,7 +62,7 @@ public class BufferWriteProcessor extends Processor {
 	private String baseDir;
 	private String fileName;
 	private String insertFilePath;
-	private String bufferwriterelativePath;
+	private String bufferWriteRelativePath;
 
 	private WriteLogNode logNode;
 
@@ -84,9 +84,9 @@ public class BufferWriteProcessor extends Processor {
 			LOGGER.debug("The bufferwrite processor data dir doesn't exists, create new directory {}.", dataDirPath);
 		}
 		this.insertFilePath = new File(dataDir, fileName).getPath();
-		bufferwriterelativePath = processorName + File.separatorChar + fileName;
+		bufferWriteRelativePath = processorName + File.separatorChar + fileName;
 		try {
-			bufferWriteResource = new BufferWriteResource(processorName, insertFilePath);
+			restoreManager = new RestoreManager(processorName, insertFilePath);
 		} catch (IOException e) {
 			throw new BufferWriteProcessorException(e);
 		}
@@ -129,8 +129,8 @@ public class BufferWriteProcessor extends Processor {
 	}
 
 	public boolean write(TSRecord tsRecord) throws BufferWriteProcessorException {
-		long memUage = MemUtils.getRecordSize(tsRecord);
-		BasicMemController.UsageLevel level = BasicMemController.getInstance().reportUse(this, memUage);
+		long memUsage = MemUtils.getRecordSize(tsRecord);
+		BasicMemController.UsageLevel level = BasicMemController.getInstance().reportUse(this, memUsage);
 		for (DataPoint dataPoint : tsRecord.dataPointList) {
 			workMemTable.write(tsRecord.deltaObjectId, dataPoint.getMeasurementId(), dataPoint.getType(), tsRecord.time,
 					dataPoint.getValue().toString());
@@ -140,10 +140,10 @@ public class BufferWriteProcessor extends Processor {
 		case SAFE:
 			// memUsed += newMemUsage;
 			// memtable
-			memUage = memSize.addAndGet(memUage);
-			if (memUage > memThreshold) {
+			memUsage = memSize.addAndGet(memUsage);
+			if (memUsage > memThreshold) {
 				LOGGER.info("The usage of memory {} in bufferwrite processor {} reaches the threshold {}",
-						MemUtils.bytesCntToStr(memUage), getProcessorName(), MemUtils.bytesCntToStr(memThreshold));
+						MemUtils.bytesCntToStr(memUsage), getProcessorName(), MemUtils.bytesCntToStr(memThreshold));
 				try {
 					flush();
 				} catch (IOException e) {
@@ -157,10 +157,10 @@ public class BufferWriteProcessor extends Processor {
 					MemUtils.bytesCntToStr(BasicMemController.getInstance().getTotalUsage()));
 			// memUsed += newMemUsage;
 			// memtable
-			memUage = memSize.addAndGet(memUage);
-			if (memUage > memThreshold) {
+			memUsage = memSize.addAndGet(memUsage);
+			if (memUsage > memThreshold) {
 				LOGGER.info("The usage of memory {} in bufferwrite processor {} reaches the threshold {}",
-						MemUtils.bytesCntToStr(memUage), getProcessorName(), MemUtils.bytesCntToStr(memThreshold));
+						MemUtils.bytesCntToStr(memUsage), getProcessorName(), MemUtils.bytesCntToStr(memThreshold));
 				try {
 					flush();
 				} catch (IOException e) {
@@ -188,7 +188,7 @@ public class BufferWriteProcessor extends Processor {
 			memSeriesLazyMerger.addMemSeries(workMemTable.query(deltaObjectId, measurementId, dataType));
 			RawSeriesChunk rawSeriesChunk = new RawSeriesChunkLazyLoadImpl(dataType, memSeriesLazyMerger);
 			return new Pair<>(rawSeriesChunk,
-					bufferWriteResource.getInsertMetadatas(deltaObjectId, measurementId, dataType));
+					restoreManager.getInsertMetadatas(deltaObjectId, measurementId, dataType));
 		} finally {
 			flushQueryLock.unlock();
 		}
@@ -207,12 +207,12 @@ public class BufferWriteProcessor extends Processor {
 		}
 	}
 
-	private void swithFlushToWork() {
+	private void switchFlushToWork() {
 		flushQueryLock.lock();
 		try {
 			flushMemTable.clear();
 			flushMemTable = null;
-			bufferWriteResource.appendMetadata();
+			restoreManager.appendMetadata();
 		} finally {
 			isFlush = false;
 			flushQueryLock.unlock();
@@ -223,7 +223,7 @@ public class BufferWriteProcessor extends Processor {
 		long flushStartTime = System.currentTimeMillis();
 		LOGGER.info("The bufferwrite processor {} starts flushing {}.", getProcessorName(), flushFunction);
 		try {
-			bufferWriteResource.flush(fileSchema, flushMemTable);
+			restoreManager.flush(fileSchema, flushMemTable);
 			filenodeFlushAction.act();
 			if (TsfileDBDescriptor.getInstance().getConfig().enableWal) {
 				logNode.notifyEndFlush(null);
@@ -236,7 +236,7 @@ public class BufferWriteProcessor extends Processor {
 		} finally {
 			synchronized (flushStatus) {
 				flushStatus.setUnFlushing();
-				swithFlushToWork();
+				switchFlushToWork();
 				flushStatus.notify();
 				LOGGER.info("The bufferwrite processor {} ends flushing {}.", getProcessorName(), flushFunction);
 			}
@@ -329,8 +329,8 @@ public class BufferWriteProcessor extends Processor {
 			// flush data
 			flush(true);
 			// end file
-			bufferWriteResource.close(fileSchema);
-			// update the intervalfile for interval list
+			restoreManager.close(fileSchema);
+			// update the IntervalFile for interval list
 			bufferwriteCloseAction.act();
 			// flush the changed information for filenode
 			filenodeFlushAction.act();
@@ -413,19 +413,19 @@ public class BufferWriteProcessor extends Processor {
 	}
 
 	public String getFileRelativePath() {
-		return bufferwriterelativePath;
+		return bufferWriteRelativePath;
 	}
 
 	private String getBufferwriteRestoreFilePath() {
-		return bufferWriteResource.getRestoreFilePath();
+		return restoreManager.getRestoreFilePath();
 	}
 
 	public boolean isNewProcessor() {
-		return bufferWriteResource.isNewResource();
+		return restoreManager.isNewResource();
 	}
 
 	public void setNewProcessor(boolean isNewProcessor) {
-		bufferWriteResource.setNewResource(isNewProcessor);
+		restoreManager.setNewResource(isNewProcessor);
 	}
 
 	public WriteLogNode getLogNode() {
