@@ -122,8 +122,7 @@ public class RestoreManager {
             out.write(BytesUtils.intToBytes(metadataSize));
             // write metadata
             out.write(baos.toByteArray());
-            // write tsfile position using byte[8] which is present one long
-            // number
+            // write tsfile position using byte[8] which is a long
             byte[] lastPositionBytes = BytesUtils.longToBytes(lastPosition);
             out.write(lastPositionBytes);
         } finally {
