@@ -25,7 +25,7 @@ public class PrimitiveMemSeries implements IMemSeries {
     }
 
     @Override
-    public void write(TSDataType dataType, long insertTime, String insertValue) {
+    public void write(long insertTime, String insertValue) {
         switch (dataType) {
             case BOOLEAN:
                 putBoolean(insertTime, Boolean.valueOf(insertValue));
@@ -81,11 +81,7 @@ public class PrimitiveMemSeries implements IMemSeries {
     }
 
     @Override
-    public void sortAndDeduplicate() {
-
-    }
-
-    @Override
+    //TODO: 考虑使用数组进行排序去重
     public List<TimeValuePair> getSortedTimeValuePairList() {
         int length = list.size();
         TreeMap<Long, TsPrimitiveType> treeMap = new TreeMap<>();
@@ -105,15 +101,8 @@ public class PrimitiveMemSeries implements IMemSeries {
     }
 
     @Override
-    public int size() {
+    public int count() {
         return list.size();
     }
 
-    private TsPrimitiveType genTsPrimitiveType(TSDataType dataType, Object v) {
-        return TsPrimitiveType.getByType(dataType, v);
-    }
-
-    public PrimitiveArrayList cloneList() {
-        return list.clone();
-    }
 }

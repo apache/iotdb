@@ -95,12 +95,12 @@ public class InsertDynamicDataV2Test {
         }
 
         @Override
-        public TsPrimitiveType getMaxValue() {
+        public TsPrimitiveType getValueAtMaxTime() {
             return maxValue;
         }
 
         @Override
-        public TsPrimitiveType getMinValue() {
+        public TsPrimitiveType getValueAtMinTime() {
             return minValue;
         }
 

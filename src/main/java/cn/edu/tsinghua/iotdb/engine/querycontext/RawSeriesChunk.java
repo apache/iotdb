@@ -17,9 +17,9 @@ public interface RawSeriesChunk {
 
     long getMinTimestamp();
 
-    TsPrimitiveType getMaxValue();
+    TsPrimitiveType getValueAtMaxTime();
 
-    TsPrimitiveType getMinValue();
+    TsPrimitiveType getValueAtMinTime();
 
     Iterator<TimeValuePair> getIterator();
     

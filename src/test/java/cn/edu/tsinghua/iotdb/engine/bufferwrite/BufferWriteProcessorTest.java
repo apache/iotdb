@@ -193,9 +193,9 @@ public class BufferWriteProcessorTest {
 		RawSeriesChunk rawSeriesChunk = pair.left;
 		assertEquals(false, rawSeriesChunk.isEmpty());
 		assertEquals(87, rawSeriesChunk.getMinTimestamp());
-		assertEquals(87, rawSeriesChunk.getMinValue().getInt());
+		assertEquals(87, rawSeriesChunk.getValueAtMinTime().getInt());
 		assertEquals(100, rawSeriesChunk.getMaxTimestamp());
-		assertEquals(100, rawSeriesChunk.getMaxValue().getInt());
+		assertEquals(100, rawSeriesChunk.getValueAtMaxTime().getInt());
 		Iterator<TimeValuePair> iterator = rawSeriesChunk.getIterator();
 		for (int i = 87; i <= 100; i++) {
 			iterator.hasNext();
