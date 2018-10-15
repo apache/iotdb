@@ -29,9 +29,9 @@ import cn.edu.tsinghua.tsfile.file.utils.ReadWriteThriftFormatUtils;
 import cn.edu.tsinghua.tsfile.format.RowGroupBlockMetaData;
 import cn.edu.tsinghua.tsfile.timeseries.write.schema.FileSchema;
 
-public class RestoreManager {
+public class BufferWriteRestoreManager {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(RestoreManager.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(BufferWriteRestoreManager.class);
     private static final int TS_METADATA_BYTE_SIZE = 4;
     private static final int TS_POSITION_BYTE_SIZE = 8;
 
@@ -46,7 +46,7 @@ public class RestoreManager {
 
     private boolean isNewResource = false;
 
-    public RestoreManager(String processorName, String insertFilePath) throws IOException {
+    public BufferWriteRestoreManager(String processorName, String insertFilePath) throws IOException {
         this.insertFilePath = insertFilePath;
         this.restoreFilePath = insertFilePath + restoreSuffix;
         this.processorName = processorName;

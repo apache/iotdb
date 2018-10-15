@@ -20,7 +20,7 @@ import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
  * @author kangrong
  *
  */
-//TODO 去掉
+//TODO remove this class
 public abstract class Processor {
 	private String processorName;
 	private final ReadWriteLock lock;

@@ -26,9 +26,9 @@ import cn.edu.tsinghua.tsfile.file.metadata.TsRowGroupBlockMetaData;
 import cn.edu.tsinghua.tsfile.file.utils.ReadWriteThriftFormatUtils;
 import cn.edu.tsinghua.tsfile.timeseries.write.schema.FileSchema;
 
-public class RestoreManagerTest {
+public class BufferWriteRestoreManagerTest {
 
-	private RestoreManager bufferwriteResource;
+	private BufferWriteRestoreManager bufferwriteResource;
 	private String processorName = "processor";
 	private String insertPath = "insertfile";
 	private String insertRestorePath = insertPath + ".restore";
@@ -46,7 +46,7 @@ public class RestoreManagerTest {
 
 	@Test
 	public void testInitResource() throws IOException {
-		bufferwriteResource = new RestoreManager(processorName, insertPath);
+		bufferwriteResource = new BufferWriteRestoreManager(processorName, insertPath);
 		Pair<Long, List<RowGroupMetaData>> pair = bufferwriteResource.readRestoreInfo();
 		assertEquals(true, new File(insertRestorePath).exists());
 		assertEquals(0, (long) pair.left);
@@ -58,7 +58,7 @@ public class RestoreManagerTest {
 	
 	@Test
 	public void testAbnormalRecover() throws IOException{
-		bufferwriteResource = new RestoreManager(processorName, insertPath);
+		bufferwriteResource = new BufferWriteRestoreManager(processorName, insertPath);
 		File insertFile = new File(insertPath);
 		File restoreFile = new File(insertPath+".restore");
 		FileOutputStream fileOutputStream = new FileOutputStream(insertFile);
@@ -76,7 +76,7 @@ public class RestoreManagerTest {
 		byte[] lastPositionBytes = BytesUtils.longToBytes(200);
 		out.write(lastPositionBytes);
 		out.close();
-		bufferwriteResource = new RestoreManager(processorName, insertPath);
+		bufferwriteResource = new BufferWriteRestoreManager(processorName, insertPath);
 		assertEquals(true, insertFile.exists());
 		assertEquals(200, insertFile.length());
 		assertEquals(insertPath, bufferwriteResource.getInsertFilePath());
@@ -86,7 +86,7 @@ public class RestoreManagerTest {
 
 	@Test
 	public void testRecover() throws IOException {
-		bufferwriteResource = new RestoreManager(processorName, insertPath);
+		bufferwriteResource = new BufferWriteRestoreManager(processorName, insertPath);
 		File insertFile = new File(insertPath);
 		File restoreFile = new File(insertPath+".restore");
 		FileOutputStream fileOutputStream = new FileOutputStream(insertFile);
@@ -102,7 +102,7 @@ public class RestoreManagerTest {
 		out.close();
 		assertEquals(true, insertFile.exists());
 		assertEquals(true, restoreFile.exists());
-		RestoreManager tempbufferwriteResource = new RestoreManager(processorName, insertPath);
+		BufferWriteRestoreManager tempbufferwriteResource = new BufferWriteRestoreManager(processorName, insertPath);
 		assertEquals(true, insertFile.exists());
 		assertEquals(200, insertFile.length());
 		assertEquals(insertPath, tempbufferwriteResource.getInsertFilePath());
@@ -113,7 +113,7 @@ public class RestoreManagerTest {
 
 	@Test
 	public void testFlushAndGetMetadata() throws IOException {
-		bufferwriteResource = new RestoreManager(processorName, insertPath);
+		bufferwriteResource = new BufferWriteRestoreManager(processorName, insertPath);
 		assertEquals(0, bufferwriteResource.getInsertMetadatas(MemTableTestUtils.deltaObjectId0,
 				MemTableTestUtils.measurementId0, MemTableTestUtils.dataType0).size());
 		IMemTable memTable = new PrimitiveMemTable();
