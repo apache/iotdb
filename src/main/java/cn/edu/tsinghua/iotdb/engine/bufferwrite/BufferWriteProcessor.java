@@ -41,7 +41,7 @@ public class BufferWriteProcessor extends Processor {
 	private static final Logger LOGGER = LoggerFactory.getLogger(BufferWriteProcessor.class);
 
 	private FileSchema fileSchema;
-	private RestoreManager restoreManager;
+	private BufferWriteRestoreManager bufferWriteRestoreManager;
 
 	private volatile FlushStatus flushStatus = new FlushStatus();
 	private volatile boolean isFlush;
@@ -86,7 +86,7 @@ public class BufferWriteProcessor extends Processor {
 		this.insertFilePath = new File(dataDir, fileName).getPath();
 		bufferWriteRelativePath = processorName + File.separatorChar + fileName;
 		try {
-			restoreManager = new RestoreManager(processorName, insertFilePath);
+			bufferWriteRestoreManager = new BufferWriteRestoreManager(processorName, insertFilePath);
 		} catch (IOException e) {
 			throw new BufferWriteProcessorException(e);
 		}
@@ -188,7 +188,7 @@ public class BufferWriteProcessor extends Processor {
 			memSeriesLazyMerger.addMemSeries(workMemTable.query(deltaObjectId, measurementId, dataType));
 			RawSeriesChunk rawSeriesChunk = new RawSeriesChunkLazyLoadImpl(dataType, memSeriesLazyMerger);
 			return new Pair<>(rawSeriesChunk,
-					restoreManager.getInsertMetadatas(deltaObjectId, measurementId, dataType));
+					bufferWriteRestoreManager.getInsertMetadatas(deltaObjectId, measurementId, dataType));
 		} finally {
 			flushQueryLock.unlock();
 		}
@@ -212,7 +212,7 @@ public class BufferWriteProcessor extends Processor {
 		try {
 			flushMemTable.clear();
 			flushMemTable = null;
-			restoreManager.appendMetadata();
+			bufferWriteRestoreManager.appendMetadata();
 		} finally {
 			isFlush = false;
 			flushQueryLock.unlock();
@@ -223,7 +223,7 @@ public class BufferWriteProcessor extends Processor {
 		long flushStartTime = System.currentTimeMillis();
 		LOGGER.info("The bufferwrite processor {} starts flushing {}.", getProcessorName(), flushFunction);
 		try {
-			restoreManager.flush(fileSchema, flushMemTable);
+			bufferWriteRestoreManager.flush(fileSchema, flushMemTable);
 			filenodeFlushAction.act();
 			if (TsfileDBDescriptor.getInstance().getConfig().enableWal) {
 				logNode.notifyEndFlush(null);
@@ -329,7 +329,7 @@ public class BufferWriteProcessor extends Processor {
 			// flush data
 			flush(true);
 			// end file
-			restoreManager.close(fileSchema);
+			bufferWriteRestoreManager.close(fileSchema);
 			// update the IntervalFile for interval list
 			bufferwriteCloseAction.act();
 			// flush the changed information for filenode
@@ -417,15 +417,15 @@ public class BufferWriteProcessor extends Processor {
 	}
 
 	private String getBufferwriteRestoreFilePath() {
-		return restoreManager.getRestoreFilePath();
+		return bufferWriteRestoreManager.getRestoreFilePath();
 	}
 
 	public boolean isNewProcessor() {
-		return restoreManager.isNewResource();
+		return bufferWriteRestoreManager.isNewResource();
 	}
 
 	public void setNewProcessor(boolean isNewProcessor) {
-		restoreManager.setNewResource(isNewProcessor);
+		bufferWriteRestoreManager.setNewResource(isNewProcessor);
 	}
 
 	public WriteLogNode getLogNode() {
