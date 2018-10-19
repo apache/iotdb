@@ -702,7 +702,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
 						"The last of tsfile %s in filenode processor %s is not closed, but the bufferwrite processor is null.",
 						newFileNodes.get(newFileNodes.size() - 1).getRelativePath(), getProcessorName()));
 			}
-			bufferwritedata = bufferWriteProcessor.queryBufferwriteData(deltaObjectId, measurementId, dataType);
+			bufferwritedata = bufferWriteProcessor.queryBufferWriteData(deltaObjectId, measurementId, dataType);
 			unsealedTsFile.setTimeSeriesChunkMetaDatas(bufferwritedata.right);
 		}
 		GlobalSortedSeriesDataSource globalSortedSeriesDataSource = new GlobalSortedSeriesDataSource(

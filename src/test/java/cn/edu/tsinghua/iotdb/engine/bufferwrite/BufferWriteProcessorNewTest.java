@@ -82,7 +82,7 @@ public class BufferWriteProcessorNewTest {
 		assertEquals(true, bufferwrite.isNewProcessor());
 		bufferwrite.setNewProcessor(false);
 		assertEquals(false, bufferwrite.isNewProcessor());
-		Pair<RawSeriesChunk, List<TimeSeriesChunkMetaData>> pair = bufferwrite.queryBufferwriteData(processorName,
+		Pair<RawSeriesChunk, List<TimeSeriesChunkMetaData>> pair = bufferwrite.queryBufferWriteData(processorName,
 				measurementId, dataType);
 		RawSeriesChunk left = pair.left;
 		List<TimeSeriesChunkMetaData> right = pair.right;
@@ -92,7 +92,7 @@ public class BufferWriteProcessorNewTest {
 			bufferwrite.write(processorName, measurementId, i, dataType, String.valueOf(i));
 		}
 		// query data in memory
-		pair = bufferwrite.queryBufferwriteData(processorName, measurementId, dataType);
+		pair = bufferwrite.queryBufferWriteData(processorName, measurementId, dataType);
 		left = pair.left;
 		right = pair.right;
 		assertEquals(false, left.isEmpty());
@@ -112,7 +112,7 @@ public class BufferWriteProcessorNewTest {
 		// waiting for the end of flush.
 		TimeUnit.SECONDS.sleep(1);
 		assertEquals(false, bufferwrite.isFlush());
-		pair = bufferwrite.queryBufferwriteData(processorName, measurementId, dataType);
+		pair = bufferwrite.queryBufferWriteData(processorName, measurementId, dataType);
 		left = pair.left;
 		right = pair.right;
 		assertEquals(true, left.isEmpty());
@@ -123,7 +123,7 @@ public class BufferWriteProcessorNewTest {
 		// test recovery
 		BufferWriteProcessor bufferWriteProcessor = new BufferWriteProcessor(Directories.getInstance().getFolderForTest(),
 				processorName, filename, parameters, FileSchemaUtils.constructFileSchema(processorName));
-		pair = bufferWriteProcessor.queryBufferwriteData(processorName, measurementId, dataType);
+		pair = bufferWriteProcessor.queryBufferWriteData(processorName, measurementId, dataType);
 		left = pair.left;
 		right = pair.right;
 		assertEquals(true, left.isEmpty());
