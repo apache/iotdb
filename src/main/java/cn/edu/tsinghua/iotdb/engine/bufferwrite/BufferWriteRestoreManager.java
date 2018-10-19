@@ -106,7 +106,7 @@ public class BufferWriteRestoreManager {
         lastPosition = bufferWriteIO.getPos();
         List<RowGroupMetaData> appendRowGroupMetaDatas = bufferWriteIO.getAppendedRowGroupMetadata();
 
-        //TODO: 写restore文件时一个一个RowGroupMetadata写，不需要包装成blockMettadata，在close Tsfile时再整理包装
+        //TODO: no need to create a TsRowGroupBlockMetadata, flush RowGroupMetadata one by one is ok
         TsRowGroupBlockMetaData tsRowGroupBlockMetaData = new TsRowGroupBlockMetaData();
         tsRowGroupBlockMetaData.setRowGroups(appendRowGroupMetaDatas);
         RandomAccessFile out = null;
@@ -238,9 +238,9 @@ public class BufferWriteRestoreManager {
     }
 
     public void close(FileSchema fileSchema) throws IOException {
-        // call flush
+        // call flush and close TsFile
         bufferWriteIO.endFile(fileSchema);
-        // close the file and delete the restore file
+        // delete the restore file
         deleteRestoreFile();
     }
 
