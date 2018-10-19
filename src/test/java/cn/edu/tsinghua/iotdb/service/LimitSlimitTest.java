@@ -1,5 +1,6 @@
 package cn.edu.tsinghua.iotdb.service;
 
+import cn.edu.tsinghua.iotdb.jdbc.TsfileDatabaseMetadata;
 import cn.edu.tsinghua.iotdb.jdbc.TsfileJDBCConfig;
 import cn.edu.tsinghua.iotdb.utils.EnvironmentUtils;
 import org.junit.After;
@@ -250,14 +251,13 @@ public class LimitSlimitTest {
                     cmp = false;
                 } else if (sql.equals("SHOW TIMESERIES")) {
                     DatabaseMetaData data = connection.getMetaData();
-                    result = data.toString();
+                    result = ((TsfileDatabaseMetadata)data).getMetadataInJson();
                     cmp = true;
                 } else {
                     if (sql.contains("NOW()") && now_start == 0L) {
                         now_start = System.currentTimeMillis();
                     }
                     Statement statement = connection.createStatement();
-                    //System.out.println("!!!!" + sql);
                     statement.execute(sql);
                     if (sql.split(" ")[0].equals("SELECT") | sql.split(" ")[0].equals("select")) {
                         ResultSet resultSet = statement.getResultSet();
@@ -284,9 +284,7 @@ public class LimitSlimitTest {
                             }
                             result += '\n';
                         }
-                        //System.out.println(result);
                         cmp = true;
-//                Assert.assertEquals();
                     }
                     statement.close();
                 }
