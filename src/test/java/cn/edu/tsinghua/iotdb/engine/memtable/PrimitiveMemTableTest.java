@@ -23,7 +23,7 @@ public class PrimitiveMemTableTest {
         PrimitiveMemSeries series = new PrimitiveMemSeries(dataType);
         int count = 1000;
         for (int i = 0; i < count; i++) {
-            series.write(dataType, i, String.valueOf(i));
+            series.write(i, String.valueOf(i));
         }
         Iterator<TimeValuePair> it = series.getSortedTimeValuePairList().iterator();
         int i = 0;

@@ -23,11 +23,9 @@ public interface IMemSeries extends TimeValuePairSorter{
 
     void putBoolean(long t, boolean v);
 
-    void write(TSDataType dataType, long insertTime, String insertValue);
-
-    void sortAndDeduplicate();
+    void write(long insertTime, String insertValue);
 
     void reset();
 
-    int size();
+    int count();
 }

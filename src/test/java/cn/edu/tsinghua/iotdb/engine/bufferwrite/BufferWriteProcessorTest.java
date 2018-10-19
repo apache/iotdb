@@ -120,7 +120,7 @@ public class BufferWriteProcessorTest {
 		assertEquals(true, insertFile.exists());
 		assertEquals(insertFileLength, insertFile.length());
 		Pair<RawSeriesChunk, List<TimeSeriesChunkMetaData>> pair = bufferWriteProcessor
-				.queryBufferwriteData(deltaObjectId, measurementId, dataType);
+				.queryBufferWriteData(deltaObjectId, measurementId, dataType);
 		assertEquals(true, pair.left.isEmpty());
 		assertEquals(1, pair.right.size());
 		TimeSeriesChunkMetaData chunkMetaData = pair.right.get(0);
@@ -147,7 +147,7 @@ public class BufferWriteProcessorTest {
 		BufferWriteProcessor bufferWriteProcessor = new BufferWriteProcessor(directories.getFolderForTest(), deltaObjectId, insertPath, parameters,
 				FileSchemaUtils.constructFileSchema(deltaObjectId));
 		Pair<RawSeriesChunk, List<TimeSeriesChunkMetaData>> pair = bufferWriteProcessor
-				.queryBufferwriteData(deltaObjectId, measurementId, dataType);
+				.queryBufferWriteData(deltaObjectId, measurementId, dataType);
 		assertEquals(true, pair.left.isEmpty());
 		assertEquals(1, pair.right.size());
 		TimeSeriesChunkMetaData chunkMetaData = pair.right.get(0);
@@ -178,7 +178,7 @@ public class BufferWriteProcessorTest {
 		assertEquals(false, bufferwrite.isFlush());
 		assertEquals(0, bufferwrite.memoryUsage());
 		// query result
-		Pair<RawSeriesChunk, List<TimeSeriesChunkMetaData>> pair = bufferwrite.queryBufferwriteData(deltaObjectId,
+		Pair<RawSeriesChunk, List<TimeSeriesChunkMetaData>> pair = bufferwrite.queryBufferWriteData(deltaObjectId,
 				measurementId, dataType);
 		assertEquals(true, pair.left.isEmpty());
 		assertEquals(1, pair.right.size());
@@ -189,13 +189,13 @@ public class BufferWriteProcessorTest {
 			bufferwrite.write(deltaObjectId, measurementId, i, dataType, String.valueOf(i));
 			assertEquals((i - 86) * 12, bufferwrite.memoryUsage());
 		}
-		pair = bufferwrite.queryBufferwriteData(deltaObjectId, measurementId, dataType);
+		pair = bufferwrite.queryBufferWriteData(deltaObjectId, measurementId, dataType);
 		RawSeriesChunk rawSeriesChunk = pair.left;
 		assertEquals(false, rawSeriesChunk.isEmpty());
 		assertEquals(87, rawSeriesChunk.getMinTimestamp());
-		assertEquals(87, rawSeriesChunk.getMinValue().getInt());
+		assertEquals(87, rawSeriesChunk.getValueAtMinTime().getInt());
 		assertEquals(100, rawSeriesChunk.getMaxTimestamp());
-		assertEquals(100, rawSeriesChunk.getMaxValue().getInt());
+		assertEquals(100, rawSeriesChunk.getValueAtMaxTime().getInt());
 		Iterator<TimeValuePair> iterator = rawSeriesChunk.getIterator();
 		for (int i = 87; i <= 100; i++) {
 			iterator.hasNext();

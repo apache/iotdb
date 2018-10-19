@@ -19,6 +19,7 @@ public class GlobalSortedSeriesDataSource {
         this.seriesPath = seriesPath;
         this.sealedTsFiles = sealedTsFiles;
         this.unsealedTsFile = unsealedTsFile;
+
         this.rawSeriesChunk = rawSeriesChunk;
     }
 
