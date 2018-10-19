@@ -142,8 +142,18 @@ public class MGraph implements Serializable {
 			return pTree.getAllLinkedPath(path);
 		}
 		throw new PathErrorException("Timeseries's root is not Correct. RootName: " + rootName);
-	}	
-	
+	}
+
+    	public List<List<String>> getShowTimeseriesPath(String path) throws PathErrorException {
+			String rootName = path.trim().split(separator)[0];
+			if (mTree.getRoot().getName().equals(rootName)) {
+				return mTree.getShowTimeseriesPath(path);
+			} else if (pTreeMap.containsKey(rootName)) {
+				throw new PathErrorException("PTree is not involved in the execution of the sql 'show timeseries " + path + "'");
+			}
+			throw new PathErrorException("Timeseries's root is not Correct. RootName: " + rootName);
+		}
+
 	/**
 	 * Get all DeltaObject type in current Metadata Tree
 	 * @return a HashMap contains all distinct DeltaObject type separated by

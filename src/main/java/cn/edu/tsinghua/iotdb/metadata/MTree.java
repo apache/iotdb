@@ -575,6 +575,16 @@ public class MTree implements Serializable {
 		return paths;
 	}
 
+    	public List<List<String>> getShowTimeseriesPath(String pathReg) throws PathErrorException {
+			List<List<String>> res = new ArrayList<>();
+			String[] nodes = pathReg.split(separator);
+			if (nodes.length == 0 || !nodes[0].equals(getRoot().getName())) {
+				throw new PathErrorException(String.format("Timeseries %s is not correct", pathReg));
+			}
+			findPath(getRoot(), nodes, 1, "", res);
+			return res;
+		}
+
 	/**
 	 *
 	 * @param path
@@ -657,15 +667,15 @@ public class MTree implements Serializable {
 		return res;
 	}
 
-    private void findStorageGroup(MNode node, String path, HashSet<String> res) {
-        if (node.isStorageLevel()) {
-            res.add(path);
-            return;
-        }
-        for (MNode childNode : node.getChildren().values()) {
-            findStorageGroup(childNode, path + "." + childNode.toString(), res);
-        }
-    }
+    	private void findStorageGroup(MNode node, String path, HashSet<String> res) {
+        	if (node.isStorageLevel()) {
+            	res.add(path);
+            	return;
+        	}
+        	for (MNode childNode : node.getChildren().values()) {
+            		findStorageGroup(childNode, path + "." + childNode.toString(), res);
+        	}
+    	}
 
 	/**
 	 * Get all delta objects for given type
@@ -786,14 +796,49 @@ public class MTree implements Serializable {
 		}
 
 		if (!nodeReg.equals("*")) {
-			if (!node.hasChild(nodeReg)) {
-
-			} else {
+			if (node.hasChild(nodeReg)) {
 				findPath(node.getChild(nodeReg), nodes, idx + 1, parent + node.getName() + ".", paths);
 			}
 		} else {
 			for (MNode child : node.getChildren().values()) {
 				findPath(child, nodes, idx + 1, parent + node.getName() + ".", paths);
+			}
+		}
+		return;
+	}
+
+	/*
+		Iterate through MTree to fetch metadata info of all leaf nodes under the given path
+	 */
+	private void findPath(MNode node, String[] nodes, int idx, String parent,
+						  List<List<String>> res) {
+		if (node.isLeaf()) {
+			if (nodes.length <= idx) {
+				String nodePath = parent + node;
+				List<String> tsRow = new ArrayList<>(4);// get [name,storage group,dataType,encoding]
+				tsRow.add(nodePath);
+				ColumnSchema columnSchema = node.getSchema();
+				tsRow.add(node.getDataFileName());
+				tsRow.add(columnSchema.dataType.toString());
+				tsRow.add(columnSchema.encoding.toString());
+				res.add(tsRow);
+			}
+			return;
+		}
+		String nodeReg;
+		if (idx >= nodes.length) {
+			nodeReg = "*";
+		} else {
+			nodeReg = nodes[idx];
+		}
+
+		if (!nodeReg.equals("*")) {
+			if (node.hasChild(nodeReg)) {
+				findPath(node.getChild(nodeReg), nodes, idx + 1, parent + node.getName() + ".", res);
+			}
+		} else {
+			for (MNode child : node.getChildren().values()) {
+				findPath(child, nodes, idx + 1, parent + node.getName() + ".", res);
 			}
 		}
 		return;
