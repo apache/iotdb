@@ -602,7 +602,6 @@ public class MManager {
      * return a HashMap contains all the paths separated by File Name
      */
     public HashMap<String, ArrayList<String>> getAllPathGroupByFileName(String path) throws PathErrorException {
-
         lock.readLock().lock();
         try {
             return mGraph.getAllPathGroupByFilename(path);
@@ -612,8 +611,8 @@ public class MManager {
     }
 
     /**
-     * return all paths for given path if the path is abstract.Or return the
-     * path itself.
+     * Return all paths for given path if the path is abstract.
+     * Or return the path itself.
      */
     public ArrayList<String> getPaths(String path) throws PathErrorException {
 
@@ -625,6 +624,21 @@ public class MManager {
                 res.addAll(ps);
             }
             return res;
+        } finally {
+            lock.readLock().unlock();
+        }
+    }
+    
+    /**
+     *
+     * @param path
+     * @return metadata info of all timeseries under the given path
+     * @throws PathErrorException
+     */
+    public List<List<String>> getShowTimeseriesPath(String path) throws PathErrorException {
+        lock.readLock().lock();
+        try {
+            return mGraph.getShowTimeseriesPath(path);
         } finally {
             lock.readLock().unlock();
         }
