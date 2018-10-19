@@ -125,7 +125,7 @@ public class FileNodeProcessorTest {
 				assertEquals(false, globalSortedSeriesDataSource.getRawSeriesChunk().isEmpty());
 				assertEquals(87, globalSortedSeriesDataSource.getRawSeriesChunk().getMaxTimestamp());
 				assertEquals(87, globalSortedSeriesDataSource.getRawSeriesChunk().getMinTimestamp());
-				assertEquals(87, globalSortedSeriesDataSource.getRawSeriesChunk().getMaxValue().getInt());
+				assertEquals(87, globalSortedSeriesDataSource.getRawSeriesChunk().getValueAtMaxTime().getInt());
 			}
 		}
 		// the flush last update time is 87

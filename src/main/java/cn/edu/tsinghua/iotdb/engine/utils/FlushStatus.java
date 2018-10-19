@@ -2,14 +2,14 @@ package cn.edu.tsinghua.iotdb.engine.utils;
 
 /**
  * This class is used to represent the state of flush. It's can be used in the
- * bufferwrite flush{@code BufferWriteProcessor} and overflow
+ * bufferwrite flush{@code SequenceFileManager} and overflow
  * flush{@code OverFlowProcessor}.
- * 
+ *
  * @author liukun
  */
 public class FlushStatus {
 
-	private volatile boolean isFlushing;
+	private boolean isFlushing;
 
 	public FlushStatus() {
 		this.isFlushing = false;

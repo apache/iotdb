@@ -3,6 +3,7 @@ package cn.edu.tsinghua.iotdb.engine.memtable;
 import cn.edu.tsinghua.tsfile.timeseries.readV2.datatype.TimeValuePair;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -18,9 +19,7 @@ public class MemSeriesLazyMerger implements TimeValuePairSorter{
 
     public MemSeriesLazyMerger(IMemSeries... memSerieses) {
         this();
-        for (IMemSeries memSeries : memSerieses) {
-            memSeriesList.add(memSeries);
-        }
+        Collections.addAll(memSeriesList, memSerieses);
     }
 
     /**

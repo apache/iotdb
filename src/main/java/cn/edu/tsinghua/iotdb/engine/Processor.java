@@ -14,13 +14,13 @@ import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
  * operation.<br>
  * 
  * @see BufferWriteProcessor
- * @see OverflowProcessor
  * @see FileNodeProcessor
  * 
  * @author liukun
  * @author kangrong
  *
  */
+//TODO remove this class
 public abstract class Processor {
 	private String processorName;
 	private final ReadWriteLock lock;
@@ -28,7 +28,7 @@ public abstract class Processor {
 	/**
 	 * Construct processor using name space path
 	 * 
-	 * @param nameSpacePath
+	 * @param processorName
 	 */
 	public Processor(String processorName) {
 		this.processorName = processorName;
