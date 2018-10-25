@@ -6,7 +6,7 @@ import cn.edu.tsinghua.iotdb.exception.RecoverException;
 import cn.edu.tsinghua.iotdb.utils.MemUtils;
 import cn.edu.tsinghua.iotdb.writelog.LogPosition;
 import cn.edu.tsinghua.iotdb.writelog.io.ILogWriter;
-import cn.edu.tsinghua.iotdb.writelog.io.RAFLogWriter;
+import cn.edu.tsinghua.iotdb.writelog.io.LogWriter;
 import cn.edu.tsinghua.iotdb.writelog.recover.ExclusiveLogRecoverPerformer;
 import cn.edu.tsinghua.iotdb.writelog.recover.RecoverPerformer;
 import cn.edu.tsinghua.iotdb.writelog.transfer.PhysicalPlanLogTransfer;
@@ -56,7 +56,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
         new File(logDirectory).mkdirs();
 
         recoverPerformer = new ExclusiveLogRecoverPerformer(restoreFilePath, processorStoreFilePath, this);
-        currentFileWriter = new RAFLogWriter(logDirectory + File.separator + WAL_FILE_NAME);
+        currentFileWriter = new LogWriter(logDirectory + File.separator + WAL_FILE_NAME);
     }
 
     public void setRecoverPerformer(RecoverPerformer recoverPerformer) {
