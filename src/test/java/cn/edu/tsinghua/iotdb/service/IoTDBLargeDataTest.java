@@ -16,7 +16,7 @@ import static cn.edu.tsinghua.iotdb.service.TestUtils.*;
 import static org.junit.Assert.*;
 
 
-public class LargeDataTest {
+public class IoTDBLargeDataTest {
 
     private static final String TIMESTAMP_STR = "Time";
     private final String d0s0 = "root.vehicle.d0.s0";

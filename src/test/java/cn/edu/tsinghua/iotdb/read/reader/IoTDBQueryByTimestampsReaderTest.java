@@ -2,17 +2,12 @@ package cn.edu.tsinghua.iotdb.read.reader;
 
 import cn.edu.tsinghua.iotdb.exception.FileNodeManagerException;
 import cn.edu.tsinghua.iotdb.jdbc.TsfileJDBCConfig;
-import cn.edu.tsinghua.iotdb.read.timegenerator.TimeGenerator;
+import cn.edu.tsinghua.iotdb.read.QueryDataSourceExecutor;
 import cn.edu.tsinghua.iotdb.service.IoTDB;
 import cn.edu.tsinghua.iotdb.service.TestUtils;
 import cn.edu.tsinghua.iotdb.utils.EnvironmentUtils;
 import cn.edu.tsinghua.tsfile.common.conf.TSFileConfig;
 import cn.edu.tsinghua.tsfile.common.conf.TSFileDescriptor;
-import cn.edu.tsinghua.tsfile.timeseries.filterV2.TimeFilter;
-import cn.edu.tsinghua.tsfile.timeseries.filterV2.ValueFilter;
-import cn.edu.tsinghua.tsfile.timeseries.filterV2.expression.QueryFilter;
-import cn.edu.tsinghua.tsfile.timeseries.filterV2.expression.impl.QueryFilterFactory;
-import cn.edu.tsinghua.tsfile.timeseries.filterV2.expression.impl.SeriesFilter;
 import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
 import org.junit.After;
 import org.junit.Before;
@@ -25,10 +20,10 @@ import java.sql.SQLException;
 import java.sql.Statement;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
 
-public class TimeGeneratorTest {
+public class IoTDBQueryByTimestampsReaderTest {
     private static final String TIMESTAMP_STR = "Time";
     private final String d0s0 = "root.vehicle.d0.s0";
     private final String d0s1 = "root.vehicle.d0.s1";
@@ -62,8 +57,7 @@ public class TimeGeneratorTest {
     private int pageSizeInByte;
     private int groupSizeInByte;
 
-    private int count = 0;
-    private int count2 = 150;
+    private int countMod5 = 0;
 
     @Before
     public void setUp() throws Exception {
@@ -101,6 +95,7 @@ public class TimeGeneratorTest {
         }
     }
 
+
     @Test
     public void test() throws InterruptedException, SQLException, ClassNotFoundException, IOException, FileNodeManagerException {
         if (testFlag) {
@@ -108,81 +103,39 @@ public class TimeGeneratorTest {
             insertData();
             Connection connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
 
-            testOneSeriesWithValueAndTimeFilter();
-            testEmptySeriesWithValueFilter();
-            testMultiSeriesesWithValueFilterAndTimeFilter();
+            skipReadTimestampTest();
+            readNotExistenceAndExistenceTimestampTest();
 
             connection.close();
         }
     }
 
-
-    /**
-     * value >= 14 && time > 500
-     * */
-    private void testOneSeriesWithValueAndTimeFilter() throws IOException, FileNodeManagerException {
-        Path pd0s0 = new Path("root.vehicle.d0.s0");
-        ValueFilter.ValueGtEq  valueGtEq = ValueFilter.gtEq(14);
-        TimeFilter.TimeGt timeGt = TimeFilter.gt((long)500);
-
-        QueryFilter queryFilter = new SeriesFilter(pd0s0, new cn.edu.tsinghua.tsfile.timeseries.filterV2.operator.And( valueGtEq, timeGt));
-        TimeGenerator timeGenerator = new TimeGenerator(queryFilter);
-        System.out.println("root.vehicle.d0.s0 >= 14 && time > 500 ");
-        int cnt = 0;
-        while(timeGenerator.hasNext()){
-            long time = timeGenerator.next();
-            assertTrue(satisfyTimeFilter1(time));
-            cnt++;
-            System.out.println("cnt ="+cnt+"; time = "+time);
+    private void skipReadTimestampTest() throws IOException, FileNodeManagerException {
+        Path pd0s0 = new Path(d0s0);
+        QueryByTimestampsReader queryByTimestampsReaderd0S0 = new QueryByTimestampsReader(QueryDataSourceExecutor.getQueryDataSource(pd0s0));
+        for(int time = 100; time < 1500; time+=5){
+            //System.out.println("TIME = "+time);
+            if(time % 2 == 0){
+                assertNull(queryByTimestampsReaderd0S0.getValueInTimestamp(time));
+            }
+            else if((time>=300 && time<1000)|| (time>=1200 && time<1500)||(time>=100 && time<200 && time%5==0)){
+                assertEquals(time%17, queryByTimestampsReaderd0S0.getValueInTimestamp(time).getInt());
+            }
         }
-        assertEquals(count, cnt);
     }
 
-    /**
-     * root.vehicle.d1.s0 >= 5
-     * */
-    public void testEmptySeriesWithValueFilter() throws IOException, FileNodeManagerException {
-        Path pd1s0 = new Path("root.vehicle.d1.s0");
-        ValueFilter.ValueGtEq  valueGtEq = ValueFilter.gtEq(5);
-
-        QueryFilter queryFilter = new SeriesFilter(pd1s0, valueGtEq);
-        TimeGenerator timeGenerator = new TimeGenerator(queryFilter);
-        System.out.println("root.vehicle.d1.s0 >= 5");
-        int cnt = 0;
-        while(timeGenerator.hasNext()){
-            long time = timeGenerator.next();
-            assertTrue(satisfyTimeFilter1(time));
-            cnt++;
-            System.out.println("cnt ="+cnt+"; time = "+time);
+    private void readNotExistenceAndExistenceTimestampTest() throws IOException, FileNodeManagerException{
+        Path pd0s0 = new Path(d0s0);
+        QueryByTimestampsReader queryByTimestampsReaderd0S0 = new QueryByTimestampsReader(QueryDataSourceExecutor.getQueryDataSource(pd0s0));
+        for(int time = 0; time < 2500; time+=5){
+//            System.out.println("TIME = "+time);
+            if(time % 2 == 0 || time < 100 || time > 1499){
+                assertNull(queryByTimestampsReaderd0S0.getValueInTimestamp(time));
+            }
+            else if((time>=300 && time<1000)|| (time>=1200 && time<1500)||(time>=100 && time<200 && time%5==0)){
+                assertEquals(time%17, queryByTimestampsReaderd0S0.getValueInTimestamp(time).getInt());
+            }
         }
-        assertEquals(0, cnt);
-    }
-
-    /**
-     * root.vehicle.d0.s0 >= 5 && root.vehicle.d0.s2 >= 11.5 || time > 900
-     * */
-    public void testMultiSeriesesWithValueFilterAndTimeFilter() throws IOException, FileNodeManagerException {
-        Path pd0s0 = new Path("root.vehicle.d0.s0");
-        Path pd0s2 = new Path("root.vehicle.d0.s2");
-
-        ValueFilter.ValueGtEq  valueGtEq5 = ValueFilter.gtEq(5);
-        ValueFilter.ValueGtEq  valueGtEq11 = ValueFilter.gtEq((float) 11.5);
-        TimeFilter.TimeGt timeGt = TimeFilter.gt((long)900);
-
-        SeriesFilter seriesFilterd0s0 = new SeriesFilter(pd0s0, new cn.edu.tsinghua.tsfile.timeseries.filterV2.operator.Or( valueGtEq5, timeGt));
-        SeriesFilter seriesFilterd0s2 = new SeriesFilter(pd0s2, new cn.edu.tsinghua.tsfile.timeseries.filterV2.operator.Or( valueGtEq11, timeGt));
-
-        QueryFilter queryFilter = QueryFilterFactory.and(seriesFilterd0s0, seriesFilterd0s2);
-        TimeGenerator timeGenerator = new TimeGenerator(queryFilter);
-        System.out.println("root.vehicle.d0.s0 >= 5 && root.vehicle.d0.s2 >= 11.5 || time > 900");
-        int cnt = 0;
-        while(timeGenerator.hasNext()){
-            long time = timeGenerator.next();
-            assertTrue(satisfyTimeFilter2(time));
-            cnt++;
-            System.out.println("cnt ="+cnt+"; time = "+time);
-        }
-        assertEquals(count2, cnt);
     }
 
     public void insertData() throws ClassNotFoundException, SQLException {
@@ -199,6 +152,9 @@ public class TimeGeneratorTest {
 
             //insert data (time from 300-999)
             for(long time = 300; time < 1000; time++){
+                if(time % 2 == 0){
+                    continue;
+                }
                 String sql = String.format("insert into root.vehicle.d0(timestamp,s0) values(%s,%s)", time, time % 17);
                 statement.execute(sql);
                 sql = String.format("insert into root.vehicle.d0(timestamp,s1) values(%s,%s)", time, time % 29);
@@ -207,30 +163,37 @@ public class TimeGeneratorTest {
                 statement.execute(sql);
                 sql = String.format("insert into root.vehicle.d0(timestamp,s3) values(%s,'%s')", time, stringValue[(int)time % 5]);
                 statement.execute(sql);
-
-                if(satisfyTimeFilter1(time)){
-                    count++;
-                }
-
-                if(satisfyTimeFilter2(time)){
-                    count2++;
-                }
             }
 
             statement.execute("flush");
 
             //insert data (time from 1200-1499)
             for(long time = 1200; time < 1500; time++){
-                String sql = null;
                 if(time % 2 == 0){
+                    continue;
+                }
+                String sql = null;
+                if(time % 5 == 0){
                     sql = String.format("insert into root.vehicle.d0(timestamp,s0) values(%s,%s)", time, time % 17);
                     statement.execute(sql);
                     sql = String.format("insert into root.vehicle.d0(timestamp,s1) values(%s,%s)", time, time % 29);
                     statement.execute(sql);
-                    if(satisfyTimeFilter1(time)){
-                        count++;
-                    }
                 }
+                sql = String.format("insert into root.vehicle.d0(timestamp,s2) values(%s,%s)", time, time % 31);
+                statement.execute(sql);
+                sql = String.format("insert into root.vehicle.d0(timestamp,s3) values(%s,'%s')", time, stringValue[(int)time % 5]);
+                statement.execute(sql);
+            }
+
+            //insert data (time from 100-199)
+            for(long time = 100; time < 200; time++){
+                if(time % 2 == 0){
+                    continue;
+                }
+                String sql = String.format("insert into root.vehicle.d0(timestamp,s0) values(%s,%s)", time, time % 17);
+                statement.execute(sql);
+                sql = String.format("insert into root.vehicle.d0(timestamp,s1) values(%s,%s)", time, time % 29);
+                statement.execute(sql);
                 sql = String.format("insert into root.vehicle.d0(timestamp,s2) values(%s,%s)", time, time % 31);
                 statement.execute(sql);
                 sql = String.format("insert into root.vehicle.d0(timestamp,s3) values(%s,'%s')", time, stringValue[(int)time % 5]);
@@ -246,20 +209,5 @@ public class TimeGeneratorTest {
                 connection.close();
             }
         }
-    }
-
-
-    /**
-     * value >= 14 && time > 500
-     * */
-    private boolean satisfyTimeFilter1(long time){
-        return time % 17 >= 14 && time > 500;
-    }
-
-    /**
-     * root.vehicle.d0.s0 >= 5 && root.vehicle.d0.s2 >= 11 || time > 900
-     * */
-    private boolean satisfyTimeFilter2(long time){
-        return (time % 17 >= 5 || time > 900) && (time % 31 >= 11.5 || time > 900);
     }
 }

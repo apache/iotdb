@@ -30,7 +30,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
 
-public class SequenceDataQueryTest {
+public class IoTDBSequenceDataQueryTest {
     private static final String TIMESTAMP_STR = "Time";
     private final String d0s0 = "root.vehicle.d0.s0";
     private final String d0s1 = "root.vehicle.d0.s1";

@@ -16,7 +16,7 @@ import org.junit.Test;
 import cn.edu.tsinghua.iotdb.jdbc.TsfileJDBCConfig;
 import cn.edu.tsinghua.iotdb.utils.EnvironmentUtils;
 
-public class CompleteTest {
+public class IoTDBCompleteTest {
 
     private static final String TIMESTAMP_STR = "Time";
 

@@ -13,7 +13,7 @@ import java.sql.*;
 
 import static org.junit.Assert.fail;
 
-public class NoOverflowReadTest {
+public class IoTDBNoOverflowReadTest {
     private static final String TIMESTAMP_STR = "Time";
     private final String d0s0 = "root.vehicle.d0.s0";
     private final String d0s1 = "root.vehicle.d0.s1";

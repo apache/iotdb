@@ -13,7 +13,7 @@ import java.sql.*;
 
 import static org.junit.Assert.fail;
 
-public class MetadataFetchTest {
+public class IoTDBMetadataFetchTest {
     private IoTDB deamon;
 
     private DatabaseMetaData databaseMetaData;

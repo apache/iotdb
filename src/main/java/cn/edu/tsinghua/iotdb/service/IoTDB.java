@@ -17,8 +17,6 @@ import cn.edu.tsinghua.iotdb.engine.filenode.FileNodeManager;
 import cn.edu.tsinghua.iotdb.engine.memcontrol.BasicMemController;
 import cn.edu.tsinghua.iotdb.monitor.StatMonitor;
 
-import cn.edu.tsinghua.iotdb.monitor.StatMonitor;
-import cn.edu.tsinghua.iotdb.postback.conf.PostBackSenderDescriptor;
 import cn.edu.tsinghua.iotdb.postback.receiver.ServerManager;
 import cn.edu.tsinghua.iotdb.writelog.manager.MultiFileLogNodeManager;
 import cn.edu.tsinghua.iotdb.writelog.manager.WriteLogNodeManager;

@@ -12,7 +12,7 @@ import java.sql.*;
 
 import static org.junit.Assert.fail;
 
-public class LimitSlimitTest {
+public class IoTDBLimitSlimitTest {
     private static final String TIMESTAMP_STR = "Time";
 
     private static String[] insertSqls = new String[]{

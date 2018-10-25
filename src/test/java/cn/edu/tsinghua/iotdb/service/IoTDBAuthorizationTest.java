@@ -12,7 +12,7 @@ import java.sql.*;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-public class AuthorizationTest {
+public class IoTDBAuthorizationTest {
 
     private IoTDB deamon;
 
@@ -886,7 +886,7 @@ public class AuthorizationTest {
 
     public static void main(String[] args) throws Exception {
         for (int i = 0; i < 10; i++) {
-            AuthorizationTest test = new AuthorizationTest();
+            IoTDBAuthorizationTest test = new IoTDBAuthorizationTest();
             test.setUp();
             test.authPerformanceTest();
             test.tearDown();

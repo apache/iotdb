@@ -21,7 +21,7 @@ import cn.edu.tsinghua.iotdb.utils.EnvironmentUtils;
 /**
  * Multiple aggregation with filter test.
  */
-public class AggregationSmallDataTest {
+public class IoTDBAggregationSmallDataTest {
     private static final String TIMESTAMP_STR = "Time";
     private final String d0s0 = "root.vehicle.d0.s0";
     private final String d0s1 = "root.vehicle.d0.s1";
