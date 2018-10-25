@@ -2,7 +2,8 @@
 
 pwd
 rm -rf data
-# get tsfile
+
+# get tsfile and jdbc
 rm -rf tsfile
 git clone https://github.com/thulab/tsfile.git
 cd tsfile
