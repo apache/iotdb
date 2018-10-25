@@ -40,7 +40,7 @@ import cn.edu.tsinghua.iotdb.utils.EnvironmentUtils;
  * aggregateFetchSize parameter in class <code>GroupByEngineWithFilter</code>
  * should be set very small
  */
-public class GroupBySmallDataTest {
+public class IoTDBGroupBySmallDataTest {
 
 	private static final String TIMESTAMP_STR = "Time";
 	private final String d0s0 = "root.vehicle.d0.s0";
@@ -78,7 +78,7 @@ public class GroupBySmallDataTest {
 	public void test() throws ClassNotFoundException, SQLException, InterruptedException {
 		if (testFlag) {
 			Thread.sleep(5000);
-			AggregationSmallDataTest.insertSQL();
+			IoTDBAggregationSmallDataTest.insertSQL();
 
 			Connection connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
 

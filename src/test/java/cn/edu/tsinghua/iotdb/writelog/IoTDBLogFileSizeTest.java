@@ -22,7 +22,7 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
 
-public class LogFileSizeTest {
+public class IoTDBLogFileSizeTest {
     private IoTDB deamon;
 
     private TsfileDBConfig config = TsfileDBDescriptor.getInstance().getConfig();

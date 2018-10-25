@@ -1,22 +1,20 @@
 #!/bin/bash
 
-#get tsfile
+pwd
+rm -rf data
+# get tsfile
 rm -rf tsfile
 git clone https://github.com/thulab/tsfile.git
-cd tsfile 
-mvn install -DskipTests=true
-
-#get jdbc
+cd tsfile
+mvn clean install -Dmaven.test.skip=true
 cd ..
 rm -rf iotdb-jdbc
 git clone https://github.com/thulab/iotdb-jdbc.git
 cd iotdb-jdbc
-mvn install -DskipTests=true 
+mvn clean install -Dmaven.test.skip=true
 cd ..
 
 #begin ...
 rm -rf data
-rm -rf derby*
 mvn clean test
 rm -rf data
-rm -rf derby*

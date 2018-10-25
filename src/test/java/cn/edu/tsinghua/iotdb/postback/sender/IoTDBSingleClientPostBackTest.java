@@ -24,7 +24,7 @@ import cn.edu.tsinghua.iotdb.utils.EnvironmentUtils;
  * The test is to run a complete postback function
  * Before you run the test, make sure receiver has been cleaned up and inited.
  */
-public class SingleClientPostBackTest {
+public class IoTDBSingleClientPostBackTest {
 
 	private TsfileDBConfig conf = TsfileDBDescriptor.getInstance().getConfig();
 	
@@ -603,7 +603,7 @@ public class SingleClientPostBackTest {
 	}
 	
 	public static void main(String[] args) throws Exception {
-		SingleClientPostBackTest singleClientPostBackTest = new SingleClientPostBackTest();
+		IoTDBSingleClientPostBackTest singleClientPostBackTest = new IoTDBSingleClientPostBackTest();
 		singleClientPostBackTest.setUp();
 		singleClientPostBackTest.testPostback();
 		singleClientPostBackTest.tearDown();

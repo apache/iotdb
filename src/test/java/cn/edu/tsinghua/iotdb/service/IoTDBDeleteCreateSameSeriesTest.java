@@ -17,7 +17,7 @@ import org.junit.Test;
 import cn.edu.tsinghua.iotdb.jdbc.TsfileJDBCConfig;
 import cn.edu.tsinghua.iotdb.utils.EnvironmentUtils;
 
-public class DeleteCreateSameSeriesTest {
+public class IoTDBDeleteCreateSameSeriesTest {
 
     private static final String TIMESTAMP_STR = "Time";
     private final String d0s0 = "root.vehicle.d0.s0";

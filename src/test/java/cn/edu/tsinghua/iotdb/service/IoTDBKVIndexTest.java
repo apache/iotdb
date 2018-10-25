@@ -23,7 +23,7 @@ import java.sql.Statement;
 /**
  * Just used for integration test.
  */
-public class KVIndexTest {
+public class IoTDBKVIndexTest {
     private final String FOLDER_HEADER = "src/test/resources";
     private static final String TIMESTAMP_STR = "Time";
     private int maxOpenFolderPre;

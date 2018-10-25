@@ -20,7 +20,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 
 //unused
-public class KvIndexPerfTestInstance {
+public class IoTDBKvIndexPerfTestInstance {
     private static IoTDB deamon;
     //We insert all data into one path and create index.
     private static String path;

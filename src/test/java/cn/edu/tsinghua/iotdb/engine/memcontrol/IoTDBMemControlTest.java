@@ -28,7 +28,7 @@ import java.sql.Statement;
 import static junit.framework.TestCase.assertEquals;
 
 @Deprecated
-public class MemControlTest {
+public class IoTDBMemControlTest {
     private final String FOLDER_HEADER = "src/test/resources";
     private static final String TIMESTAMP_STR = "Time";
     private final String d0 = "root.vehicle.d0";
@@ -62,7 +62,7 @@ public class MemControlTest {
     private boolean testFlag = false;
     private boolean exceptionCaught = false;
 
-    public MemControlTest() {
+    public IoTDBMemControlTest() {
     }
 
     @Before
