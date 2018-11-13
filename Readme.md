@@ -1,4 +1,5 @@
 # IoTDB
+[![Build Status](http://166.111.80.119:10002/job/iotdb/badge/icon)](http://166.111.80.119:10002/job/iotdb/)
 [![codecov](https://codecov.io/gh/thulab/iotdb/branch/master/graph/badge.svg?token=tBhPhPC9EQ)](https://codecov.io/gh/thulab/iotdb)
 
 # Overview
