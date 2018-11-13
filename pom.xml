@@ -84,6 +84,7 @@
 
 	<build>
 		<plugins>
+
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
@@ -113,9 +114,16 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-surefire-plugin</artifactId>
-				<configuration>
-					<runOrder>alphabetical</runOrder>
-				</configuration>
+                <version>2.9</version>
+                <configuration>
+                    <runOrder>alphabetical</runOrder>
+                    <excludes>
+                        <exclude>${it.test.excludes}</exclude>
+                    </excludes>
+                    <includes>
+                        <include>${it.test.includes}</include>
+                    </includes>
+                </configuration>
 			</plugin>
 
 			<plugin>
@@ -138,6 +146,7 @@
 					</execution>
 				</executions>
 			</plugin>
+
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-antrun-plugin</artifactId>
@@ -173,6 +182,7 @@
 					</execution>
 				</executions>
 			</plugin>
+
 			<plugin>
 				<groupId>org.codehaus.mojo</groupId>
 				<artifactId>build-helper-maven-plugin</artifactId>
@@ -191,6 +201,7 @@
 					</execution>
 				</executions>
 			</plugin>
+
 			<plugin>
 			    <groupId>org.codehaus.mojo</groupId>
 			    <artifactId>cobertura-maven-plugin</artifactId>
@@ -212,20 +223,6 @@
 			                </goals>
 			        </execution>
 			    </executions>
-			</plugin>
-
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-surefire-plugin</artifactId>
-				<version>2.9</version>
-				<configuration>
-					<excludes>
-						<exclude>${it.test.excludes}</exclude>
-					</excludes>
-					<includes>
-						<include>${it.test.includes}</include>
-					</includes>
-				</configuration>
 			</plugin>
 		</plugins>
 	</build>
