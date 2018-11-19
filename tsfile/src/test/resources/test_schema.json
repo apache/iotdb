@@ -1,0 +1,38 @@
+{
+    "schema": [
+        {
+            "measurement_id": "s1",
+            "data_type": "INT32",
+            "encoding": "RLE"
+        },
+        {
+            "measurement_id": "s2",
+            "data_type": "INT64",
+            "encoding": "TS_2DIFF"
+        },
+        {
+            "measurement_id": "s3",
+            "data_type": "ENUMS",
+            "encoding": "BITMAP",
+            "compressor": "SNAPPY",
+            "enum_values":["MAN","WOMAN"],
+            "max_error":12,
+            "max_point_number":3
+        },
+        {
+            "measurement_id": "s4",
+            "data_type": "DOUBLE",
+            "encoding": "RLE",
+            "max_error":12
+        },
+        {
+            "measurement_id": "s5",
+            "data_type": "INT32",
+            "encoding": "TS_2DIFF"
+        }
+    ],
+    "properties":{
+        "k1":"v1",
+        "k2":"v2"
+    }
+}
