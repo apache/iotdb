@@ -3,6 +3,8 @@ package cn.edu.tsinghua.iotdb.queryV2.component;
 import cn.edu.tsinghua.iotdb.queryV2.SimpleFileWriter;
 import cn.edu.tsinghua.iotdb.queryV2.engine.reader.component.SegmentInputStream;
 import cn.edu.tsinghua.iotdb.queryV2.engine.reader.component.SegmentInputStreamWithMMap;
+import sun.nio.ch.DirectBuffer;
+
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -47,6 +49,7 @@ public class SegmentInputStreamWithMMapTest {
         testOneSegmentWithMMap(buffer1, 20, 1000);
         testOneSegmentWithMMap(buffer1, 30, 1000);
         testOneSegmentWithMMap(buffer1, 1000, 1000);
+        ((DirectBuffer) buffer1).cleaner().clean();
         randomAccessFile.close();
     }
 
