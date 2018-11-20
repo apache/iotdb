@@ -9,7 +9,6 @@
 	    <relativePath>../pom.xml</relativePath>
     </parent>
 
-
 	<groupId>cn.edu.tsinghua</groupId>
 	<artifactId>IoTDB</artifactId>
 	<packaging>jar</packaging>
@@ -21,6 +20,7 @@
 		<common.cli.version>1.3.1</common.cli.version>
 		<antlr3.version>3.5.2</antlr3.version>
 		<jline.version>2.14.5</jline.version>
+		<iotdb.test.skip>false</iotdb.test.skip>
 		<it.test.includes>**/*Test.java</it.test.includes>
 		<it.test.excludes>**/NoTest.java</it.test.excludes>
 	</properties>
@@ -115,6 +115,7 @@
                 <version>2.9</version>
                 <configuration>
                     <runOrder>alphabetical</runOrder>
+                    <skipTests>${iotdb.test.skip}</skipTests>
                     <excludes>
                         <exclude>${it.test.excludes}</exclude>
                     </excludes>
