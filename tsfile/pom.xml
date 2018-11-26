@@ -8,13 +8,12 @@
         <relativePath>../pom.xml</relativePath>
     </parent>
 
-    <groupId>cn.edu.tsinghua</groupId>
     <artifactId>tsfile</artifactId>
     <packaging>jar</packaging>
 
     <name>TsFile</name>
     <description>A columnar file format designed for time-series data</description>
-    <url>https://github.com/thulab/tsfile</url>
+    <url>https://github.com/thulab/iotdb/tree/master/tsfile</url>
 
     <licenses>
         <license>

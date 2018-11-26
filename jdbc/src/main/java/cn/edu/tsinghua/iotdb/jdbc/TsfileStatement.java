@@ -1,21 +1,21 @@
 package cn.edu.tsinghua.iotdb.jdbc;
 
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TSCancelOperationReq;
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TSCancelOperationResp;
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TSCloseOperationReq;
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TSCloseOperationResp;
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TSExecuteBatchStatementReq;
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TSExecuteBatchStatementResp;
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TSExecuteStatementReq;
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TSExecuteStatementResp;
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TSFetchMetadataReq;
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TSFetchMetadataResp;
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TSIService;
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TSOperationHandle;
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TS_SessionHandle;
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TS_StatusCode;
-
 import org.apache.thrift.TException;
+
+import cn.edu.tsinghua.service.rpc.thrift.TSCancelOperationReq;
+import cn.edu.tsinghua.service.rpc.thrift.TSCancelOperationResp;
+import cn.edu.tsinghua.service.rpc.thrift.TSCloseOperationReq;
+import cn.edu.tsinghua.service.rpc.thrift.TSCloseOperationResp;
+import cn.edu.tsinghua.service.rpc.thrift.TSExecuteBatchStatementReq;
+import cn.edu.tsinghua.service.rpc.thrift.TSExecuteBatchStatementResp;
+import cn.edu.tsinghua.service.rpc.thrift.TSExecuteStatementReq;
+import cn.edu.tsinghua.service.rpc.thrift.TSExecuteStatementResp;
+import cn.edu.tsinghua.service.rpc.thrift.TSFetchMetadataReq;
+import cn.edu.tsinghua.service.rpc.thrift.TSFetchMetadataResp;
+import cn.edu.tsinghua.service.rpc.thrift.TSIService;
+import cn.edu.tsinghua.service.rpc.thrift.TSOperationHandle;
+import cn.edu.tsinghua.service.rpc.thrift.TS_SessionHandle;
+import cn.edu.tsinghua.service.rpc.thrift.TS_StatusCode;
 
 import java.sql.*;
 import java.util.ArrayList;

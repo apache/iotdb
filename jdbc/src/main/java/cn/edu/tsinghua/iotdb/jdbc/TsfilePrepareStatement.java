@@ -27,8 +27,8 @@ import java.util.Map;
 
 import org.joda.time.DateTime;
 
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TSIService.Iface;
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TS_SessionHandle;
+import cn.edu.tsinghua.service.rpc.thrift.TS_SessionHandle;
+import cn.edu.tsinghua.service.rpc.thrift.TSIService.Iface;
 
 public class TsfilePrepareStatement extends TsfileStatement implements PreparedStatement {
 	private final String sql;

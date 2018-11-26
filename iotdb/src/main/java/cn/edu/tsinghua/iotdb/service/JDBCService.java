@@ -17,8 +17,8 @@ import cn.edu.tsinghua.iotdb.conf.TsFileDBConstant;
 import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
 import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
 import cn.edu.tsinghua.iotdb.exception.StartupException;
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TSIService;
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TSIService.Processor;
+import cn.edu.tsinghua.service.rpc.thrift.TSIService;
+import cn.edu.tsinghua.service.rpc.thrift.TSIService.Processor;
 
 /**
  * A service to handle jdbc request from client.

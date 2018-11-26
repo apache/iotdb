@@ -1,19 +1,20 @@
 package cn.edu.tsinghua.iotdb.jdbc;
 
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TSCloseSessionReq;
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TSGetTimeZoneResp;
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TSIService;
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TSOpenSessionReq;
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TSOpenSessionResp;
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TSProtocolVersion;
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TSSetTimeZoneReq;
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TSSetTimeZoneResp;
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TS_SessionHandle;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransportException;
 import org.joda.time.DateTimeZone;
+
+import cn.edu.tsinghua.service.rpc.thrift.TSCloseSessionReq;
+import cn.edu.tsinghua.service.rpc.thrift.TSGetTimeZoneResp;
+import cn.edu.tsinghua.service.rpc.thrift.TSIService;
+import cn.edu.tsinghua.service.rpc.thrift.TSOpenSessionReq;
+import cn.edu.tsinghua.service.rpc.thrift.TSOpenSessionResp;
+import cn.edu.tsinghua.service.rpc.thrift.TSProtocolVersion;
+import cn.edu.tsinghua.service.rpc.thrift.TSSetTimeZoneReq;
+import cn.edu.tsinghua.service.rpc.thrift.TSSetTimeZoneResp;
+import cn.edu.tsinghua.service.rpc.thrift.TS_SessionHandle;
 
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.InvocationTargetException;

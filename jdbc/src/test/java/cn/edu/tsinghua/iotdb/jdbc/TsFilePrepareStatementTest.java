@@ -8,21 +8,21 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
+import cn.edu.tsinghua.service.rpc.thrift.TSExecuteStatementReq;
+import cn.edu.tsinghua.service.rpc.thrift.TSExecuteStatementResp;
+import cn.edu.tsinghua.service.rpc.thrift.TSGetOperationStatusResp;
+import cn.edu.tsinghua.service.rpc.thrift.TSOperationHandle;
+import cn.edu.tsinghua.service.rpc.thrift.TS_SessionHandle;
+import cn.edu.tsinghua.service.rpc.thrift.TS_Status;
+import cn.edu.tsinghua.service.rpc.thrift.TS_StatusCode;
+import cn.edu.tsinghua.service.rpc.thrift.TSIService.Iface;
+
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.sql.SQLException;
 import java.sql.Timestamp;
-
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TSExecuteStatementReq;
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TSExecuteStatementResp;
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TSGetOperationStatusResp;
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TSIService.Iface;
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TSOperationHandle;
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TS_SessionHandle;
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TS_Status;
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TS_StatusCode;
 
 public class TsFilePrepareStatementTest {
 

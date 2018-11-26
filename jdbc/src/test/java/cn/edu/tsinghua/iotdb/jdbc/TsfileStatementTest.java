@@ -20,12 +20,12 @@ import org.junit.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TSFetchMetadataReq;
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TSFetchMetadataResp;
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TS_SessionHandle;
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TS_Status;
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TS_StatusCode;
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TSIService.Iface;
+import cn.edu.tsinghua.service.rpc.thrift.TSFetchMetadataReq;
+import cn.edu.tsinghua.service.rpc.thrift.TSFetchMetadataResp;
+import cn.edu.tsinghua.service.rpc.thrift.TS_SessionHandle;
+import cn.edu.tsinghua.service.rpc.thrift.TS_Status;
+import cn.edu.tsinghua.service.rpc.thrift.TS_StatusCode;
+import cn.edu.tsinghua.service.rpc.thrift.TSIService.Iface;
 
 public class TsfileStatementTest {
 	@Mock
