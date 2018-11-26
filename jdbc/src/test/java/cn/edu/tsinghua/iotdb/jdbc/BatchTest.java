@@ -18,12 +18,12 @@ import org.junit.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TSExecuteBatchStatementReq;
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TSExecuteBatchStatementResp;
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TSIService;
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TS_SessionHandle;
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TS_Status;
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TS_StatusCode;
+import cn.edu.tsinghua.service.rpc.thrift.TSExecuteBatchStatementReq;
+import cn.edu.tsinghua.service.rpc.thrift.TSExecuteBatchStatementResp;
+import cn.edu.tsinghua.service.rpc.thrift.TSIService;
+import cn.edu.tsinghua.service.rpc.thrift.TS_SessionHandle;
+import cn.edu.tsinghua.service.rpc.thrift.TS_Status;
+import cn.edu.tsinghua.service.rpc.thrift.TS_StatusCode;
 
 
 public class BatchTest {

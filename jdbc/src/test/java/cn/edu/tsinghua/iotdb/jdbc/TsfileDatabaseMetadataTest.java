@@ -2,12 +2,13 @@ package cn.edu.tsinghua.iotdb.jdbc;
 
 import static org.junit.Assert.*;
 
-import cn.edu.tsinghua.iotdb.jdbc.thrift.*;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+
+import cn.edu.tsinghua.service.rpc.thrift.*;
 
 import java.sql.*;
 import java.util.ArrayList;

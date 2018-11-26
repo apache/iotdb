@@ -9,9 +9,9 @@ import java.util.*;
 
 import org.apache.thrift.TException;
 
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TSIService;
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TSFetchMetadataReq;
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TSFetchMetadataResp;
+import cn.edu.tsinghua.service.rpc.thrift.TSFetchMetadataReq;
+import cn.edu.tsinghua.service.rpc.thrift.TSFetchMetadataResp;
+import cn.edu.tsinghua.service.rpc.thrift.TSIService;
 
 public class TsfileDatabaseMetadata implements DatabaseMetaData {
 	private TsfileConnection connection;

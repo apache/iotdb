@@ -1,6 +1,6 @@
 package cn.edu.tsinghua.iotdb.jdbc;
 
-import cn.edu.tsinghua.iotdb.jdbc.thrift.*;
+import cn.edu.tsinghua.service.rpc.thrift.*;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
 import org.junit.Assert;
 import org.junit.Before;

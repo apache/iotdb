@@ -9,11 +9,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TSQueryDataSet;
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TSRowRecord;
 import cn.edu.tsinghua.iotdb.metadata.ColumnSchema;
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TSColumnSchema;
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TSDataValue;
+import cn.edu.tsinghua.service.rpc.thrift.TSColumnSchema;
+import cn.edu.tsinghua.service.rpc.thrift.TSDataValue;
+import cn.edu.tsinghua.service.rpc.thrift.TSQueryDataSet;
+import cn.edu.tsinghua.service.rpc.thrift.TSRowRecord;
 import cn.edu.tsinghua.tsfile.common.exception.UnSupportedDataTypeException;
 import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
 import cn.edu.tsinghua.tsfile.timeseries.readV2.datatype.RowRecord;

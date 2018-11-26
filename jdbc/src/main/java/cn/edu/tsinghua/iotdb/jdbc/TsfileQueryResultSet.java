@@ -1,13 +1,13 @@
 package cn.edu.tsinghua.iotdb.jdbc;
 
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TSCloseOperationReq;
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TSCloseOperationResp;
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TSFetchResultsReq;
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TSFetchResultsResp;
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TSIService;
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TSOperationHandle;
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TSQueryDataSet;
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TS_SessionHandle;
+import cn.edu.tsinghua.service.rpc.thrift.TSCloseOperationReq;
+import cn.edu.tsinghua.service.rpc.thrift.TSCloseOperationResp;
+import cn.edu.tsinghua.service.rpc.thrift.TSFetchResultsReq;
+import cn.edu.tsinghua.service.rpc.thrift.TSFetchResultsResp;
+import cn.edu.tsinghua.service.rpc.thrift.TSIService;
+import cn.edu.tsinghua.service.rpc.thrift.TSOperationHandle;
+import cn.edu.tsinghua.service.rpc.thrift.TSQueryDataSet;
+import cn.edu.tsinghua.service.rpc.thrift.TS_SessionHandle;
 import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
 import cn.edu.tsinghua.tsfile.timeseries.readV2.datatype.RowRecord;
 import cn.edu.tsinghua.tsfile.timeseries.readV2.datatype.TsPrimitiveType;

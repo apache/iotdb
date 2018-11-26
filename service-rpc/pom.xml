@@ -9,12 +9,12 @@
 	    <relativePath>../pom.xml</relativePath>
     </parent>
 
-	<artifactId>iotdb-jdbc</artifactId>
+	<artifactId>service-rpc</artifactId>
 	<packaging>jar</packaging>
 
-	<name>IoTDB Jdbc</name>
-	<description>A jdbc driver for a time series database, IoTDB, which uses TsFile as its storage format on disk.</description>
-	<url>https://github.com/thulab/iotdb/tree/master/jdbc</url>
+	<name>Service-rpc</name>
+	<description>RPC framework for client and server.</description>
+	<url>https://github.com/thulab/iotdb/tree/master/service-rpc</url>
 
 	<licenses>
 		<license>
@@ -34,26 +34,22 @@
 		</repository>
 	</distributionManagement>
 
-	<properties>
-		<jdbc.test.skip>false</jdbc.test.skip>
-	</properties>
-
 	<dependencies>
-		<dependency>
-			<groupId>cn.edu.tsinghua</groupId>
-			<artifactId>tsfile</artifactId>
-			<version>${project.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>joda-time</groupId>
-			<artifactId>joda-time</artifactId>
-			<version>${joda.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>cn.edu.tsinghua</groupId>
-			<artifactId>service-rpc</artifactId>
-			<version>${project.version}</version>
-		</dependency>		
+        <dependency>
+            <groupId>org.apache.thrift</groupId>
+            <artifactId>libthrift</artifactId>
+            <version>${libthrift.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.apache.httpcomponents</groupId>
+                    <artifactId>httpclient</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.apache.httpcomponents</groupId>
+                    <artifactId>httpcore</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
 	</dependencies>
 
 	<build>
@@ -76,18 +72,39 @@
 					</execution>
 				</executions>
 			</plugin>
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-surefire-plugin</artifactId>
-				<version>2.18.1</version>
-				<configuration>
-					<skipTests>${jdbc.test.skip}</skipTests>
-				</configuration>
-			</plugin> 
+
 		</plugins>
 	</build>
 
 	<profiles>
+		<profile>
+			<id>thrift</id>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.apache.thrift.tools</groupId>
+						<artifactId>maven-thrift-plugin</artifactId>
+						<version>0.1.11</version>
+						<configuration>
+							<thriftSourceRoot>${basedir}/interface</thriftSourceRoot>
+						</configuration>
+						<executions>
+							<execution>
+								<id>thrift-sources</id>
+								<phase>generate-sources</phase>
+								<goals>
+									<goal>compile</goal>
+								</goals>
+								<configuration>
+									<generator>java</generator>
+									<outputDirectory>interface/thrift</outputDirectory>
+								</configuration>
+							</execution>
+						</executions>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
 		<profile>
 			<id>release</id>
 			<build>
@@ -121,6 +138,22 @@
 								<id>attach-sources</id>
 								<goals>
 									<goal>jar-no-fork</goal>
+								</goals>
+							</execution>
+						</executions>
+					</plugin>
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-javadoc-plugin</artifactId>
+						<version>2.9.1</version>
+						<configuration>
+							<excludePackageNames>*thrift*</excludePackageNames>
+						</configuration>
+						<executions>
+							<execution>
+								<id>attach-javadocs</id>
+								<goals>
+									<goal>jar</goal>
 								</goals>
 							</execution>
 						</executions>
@@ -170,6 +203,27 @@
 											</pluginExecutionFilter>
 											<action>
 												<ignore />
+											</action>
+										</pluginExecution>
+										<pluginExecution>
+											<pluginExecutionFilter>
+												<groupId>
+													org.apache.thrift.tools
+												</groupId>
+												<artifactId>
+													maven-thrift-plugin
+												</artifactId>
+												<versionRange>
+													[0.1.10,)
+												</versionRange>
+												<goals>
+													<goal>compile</goal>
+												</goals>
+											</pluginExecutionFilter>
+											<action>
+												<execute>
+													<runOnIncremental>false</runOnIncremental>
+												</execute>
 											</action>
 										</pluginExecution>
 									</pluginExecutions>

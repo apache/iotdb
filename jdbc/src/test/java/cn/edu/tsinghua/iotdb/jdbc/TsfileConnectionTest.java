@@ -8,12 +8,12 @@ import org.junit.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TSGetTimeZoneResp;
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TSIService;
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TSSetTimeZoneReq;
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TSSetTimeZoneResp;
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TS_Status;
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TS_StatusCode;
+import cn.edu.tsinghua.service.rpc.thrift.TSGetTimeZoneResp;
+import cn.edu.tsinghua.service.rpc.thrift.TSIService;
+import cn.edu.tsinghua.service.rpc.thrift.TSSetTimeZoneReq;
+import cn.edu.tsinghua.service.rpc.thrift.TSSetTimeZoneResp;
+import cn.edu.tsinghua.service.rpc.thrift.TS_Status;
+import cn.edu.tsinghua.service.rpc.thrift.TS_StatusCode;
 
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.when;

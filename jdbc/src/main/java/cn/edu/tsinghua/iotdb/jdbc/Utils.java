@@ -1,10 +1,10 @@
 package cn.edu.tsinghua.iotdb.jdbc;
 
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TSDataValue;
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TSQueryDataSet;
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TSRowRecord;
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TS_Status;
-import cn.edu.tsinghua.iotdb.jdbc.thrift.TS_StatusCode;
+import cn.edu.tsinghua.service.rpc.thrift.TSDataValue;
+import cn.edu.tsinghua.service.rpc.thrift.TSQueryDataSet;
+import cn.edu.tsinghua.service.rpc.thrift.TSRowRecord;
+import cn.edu.tsinghua.service.rpc.thrift.TS_Status;
+import cn.edu.tsinghua.service.rpc.thrift.TS_StatusCode;
 import cn.edu.tsinghua.tsfile.common.exception.UnSupportedDataTypeException;
 import cn.edu.tsinghua.tsfile.common.utils.Binary;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
