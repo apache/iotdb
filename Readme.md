@@ -4,7 +4,7 @@
 
 # Overview
 
-IoTDB(Internet of Things Database) is an integrated data management engine designed for timeseries data, which can provide users specific services for data collection, storage and analysis. Due to its light weight structure, high performance and usable features together with its intense integration with Hadoop and Spark ecology, IoTDB meets the requirements of massive dataset storage, high-speed data input and complex data analysis in the IoT industrial field.
+IoTDB(Internet of Things Database) is an integrated data management engine designed for time series data, which can provide users specific services for data collection, storage and analysis. Due to its light weight structure, high performance and usable features together with its intense integration with Hadoop and Spark ecology, IoTDB meets the requirements of massive dataset storage, high-speed data input and complex data analysis in the IoT industrial field.
 
 # Main Features
 
@@ -12,9 +12,9 @@ IoTDB's features are as following:
 
 1. Flexible deployment. IoTDB provides users one-click installation tool on the cloud, once-decompressed-used terminal tool and the bridge tool between cloud platform and terminal tool (Data Synchronization Tool).
 2. Low cost on hardware. IoTDB can reach a high compression ratio of disk storage (For one billion data storage, hard drive cost less than $0.23)
-3. Efficient directory structure. IoTDB supports efficient oganization for complex timeseries data structure from intelligent networking devices, oganization for timeseries data from devices of the same type, fuzzy searching strategy for massive and complex directory of timeseries data.
+3. Efficient directory structure. IoTDB supports efficient organization for complex time series data structure from intelligent networking devices, organization for time series data from devices of the same type, fuzzy searching strategy for massive and complex directory of time series data.
 4. High-throughput read and write. IoTDB supports millions of low-power devices' strong connection data access, high-speed data read and write for intelligent networking devices and mixed devices mentioned above.
-5. Rich query semantics. IoTDB supports time alignment for timeseries data accross devices and sensors, computation in timeseries field (frequency domain transformation) and rich aggregation function support in time dimension.
+5. Rich query semantics. IoTDB supports time alignment for time series data across devices and sensors, computation in time series field (frequency domain transformation) and rich aggregation function support in time dimension.
 6. Easy to get start. IoTDB supports SQL-Like language, JDBC standard API and import/export tools which is easy to use.
 7. Intense integration with Open Source Ecosystem. IoTDB supports Hadoop, Spark, etc. analysis ecosystems and Grafana visualization tool.
 
@@ -39,11 +39,11 @@ This short guide will walk you through the basic process of using IoTDB. For a m
 
 If you are not the first time that building IoTDB, remember deleting the following files:
 ```
-rm -rf iotdb/data/
-rm -rf iotdb/lib/
+rm -rf iotdb/iotdb/data/
+rm -rf iotdb/iotdb/lib/
 ```
 
-Then you can build IoTDB using Maven:
+Then you can build IoTDB using Maven in current folder:
 
 ```
 mvn clean package -Dmaven.test.skip=true
@@ -56,7 +56,7 @@ If successful, you will see the the following text in the terminal:
 ```
 Otherwise, you may need to check the error statements and fix the problems.
 
-After build, the IoTDB project will be at the subfolder named iotdb. The folder will include the following contents:
+After build, the IoTDB project will be at the folder "iotdb/iotdb". The folder will include the following contents:
 
 
 ```
@@ -113,10 +113,10 @@ Now let's trying to read and write some data from IoTDB using our Client. To sta
 
 ```
 # Unix/OS X
-> ./bin/start-client.sh -h <IP> -p <PORT> -u <USER_NAME>
+> ./bin/start-client.sh -h <ip> -p <port> -u <username> -pw <password>
 
 # Windows
-> bin\start-client.bat -h <IP> -p <PORT> -u <USER_NAME>
+> bin\start-client.bat -h <ip> -p <port> -u <username> -pw <password>
 ```
 
 > NOTE: In the system, we set a default user in IoTDB named 'root'. The default password for 'root' is 'root'. You can use this default user if you are making the first try or you didn't create users by yourself.
@@ -146,7 +146,7 @@ execute successfully.
 IoTDB> CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE
 execute successfully.
 ```
-Till now, we have already create a table called root.vehicle and add a colomn called d0.s0 in the table. Let's take a look at what we have done by 'SHOW TIMESERIES' command.
+Till now, we have already create a table called root.vehicle and add a column called d0.s0 in the table. Let's take a look at what we have done by 'SHOW TIMESERIES' command.
 
 ``` 
 IoTDB> SHOW TIMESERIES
@@ -165,7 +165,7 @@ root:{
     }
 }
 ```
-Insert timeseries data is the basic operation of IoTDB, you can use 'INSERT' command to finish this:
+Insert time series data is the basic operation of IoTDB, you can use 'INSERT' command to finish this:
 
 ```
 IoTDB> insert into root.vehicle.d0(timestamp,s0) values(1,101);
@@ -189,41 +189,40 @@ If your session looks similar to what’s above, congrats, your IoTDB is operati
 For more on what commands are supported by IoTDB SQL, see our website [document page](http://tsfile.org/document). The eighth chapter in User Guide Document will give you help.
 
 
-# TsFile 导入脚本使用说明
-## 使用方法
+# Usage of import-csv.sh
 
-###创建MetaData(自定义创建，样例为测试数据metadata)
+### Create metadata
 ```
+SET STORAGE GROUP TO root.fit.d1;
+SET STORAGE GROUP TO root.fit.d2;
+SET STORAGE GROUP TO root.fit.p;
 CREATE TIMESERIES root.fit.d1.s1 WITH DATATYPE=INT32,ENCODING=RLE;
 CREATE TIMESERIES root.fit.d1.s2 WITH DATATYPE=TEXT,ENCODING=PLAIN;
 CREATE TIMESERIES root.fit.d2.s1 WITH DATATYPE=INT32,ENCODING=RLE;
 CREATE TIMESERIES root.fit.d2.s3 WITH DATATYPE=INT32,ENCODING=RLE;
 CREATE TIMESERIES root.fit.p.s1 WITH DATATYPE=INT32,ENCODING=RLE;
-SET STORAGE GROUP TO root.fit.d1;
-SET STORAGE GROUP TO root.fit.d2;
-SET STORAGE GROUP TO root.fit.p;
 ```
-### 启动import脚本
+### Run import shell
 
 ```
 # Unix/OS X
-> ./bin/import-csv.sh -h xxx.xxx.xxx.xxx -p xxx -u xxx -pw xxx -f <载入文件路径>
+> ./bin/import-csv.sh -h <ip> -p <port> -u <username> -pw <password> -f <xxx.csv>
 
 # Windows
-> bin\import-csv.bat -h xxx.xxx.xxx.xxx -p xxx -u xxx -pw xxx -f <载入文件路径>
+> bin\import-csv.bat -h <ip> -p <port> -u <username> -pw <password> -f <xxx.csv>
 ```
 
-### 错误文件
-位于当前目录下的csvInsertError.error文件
+### Error data file
 
-# TsFile 导出脚本使用说明
-## 使用方法
+csvInsertError.error
 
-### 启动export脚本
+# Usage of export-csv.sh
+
+### Run export shell
 ```
 # Unix/OS X
-> ./bin/export-csv.sh -h xxx.xxx.xxx.xxx -p xxx -u xxx -td <导出文件路径> [-tf <时间格式>]
+> ./bin/export-csv.sh -h <ip> -p <port> -u <username> -pw <password> -td <xxx.csv> [-tf <time-format>]
 
 # Windows
-> bin\export-csv.bat -h xxx.xxx.xxx.xxx -p xxx -u xxx -td <导出文件路径> [-tf <时间格式>]
+> bin\export-csv.bat -h <ip> -p <port> -u <username> -pw <password> -td <xxx.csv> [-tf <time-format>]
 ```
