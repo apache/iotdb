@@ -126,34 +126,54 @@
     </dependencies>
 
     <build>
-        <plugins>
-            <plugin>
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>build-helper-maven-plugin</artifactId>
-                <version>3.0.0</version>
-                <executions>
-                    <execution>
-                        <phase>generate-sources</phase>
-                        <goals>
-                            <goal>add-source</goal>
-                        </goals>
-                        <configuration>
-                            <sources>
-                                <source>interface/thrift</source>
-                            </sources>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-		<plugin>
-			<groupId>org.apache.maven.plugins</groupId>
-			<artifactId>maven-surefire-plugin</artifactId>
-			<version>2.18.1</version>
-			<configuration>
-				<skipTests>${tsfile.test.skip}</skipTests>
-			</configuration>
-		</plugin>  
-        </plugins>
+		<plugins>
+		  <plugin>
+		    <groupId>org.codehaus.mojo</groupId>
+		    <artifactId>build-helper-maven-plugin</artifactId>
+		    <version>3.0.0</version>
+		    <executions>
+		      <execution>
+		        <phase>generate-sources</phase>
+		        <goals>
+		          <goal>add-source</goal>
+		        </goals>
+		        <configuration>
+		          <sources>
+		            <source>interface/thrift</source>
+		          </sources>
+		        </configuration>
+		      </execution>
+		    </executions>
+		  </plugin>
+		  <plugin>
+		    <groupId>org.apache.maven.plugins</groupId>
+		    <artifactId>maven-surefire-plugin</artifactId>
+		    <version>2.18.1</version>
+		    <configuration>
+		      <skipTests>${tsfile.test.skip}</skipTests>
+		    </configuration>
+		  </plugin>
+		  <plugin>
+		    <artifactId>maven-assembly-plugin</artifactId>
+		    <version>3.1.0</version>
+		    <configuration>
+		      <descriptorRefs>
+		        <descriptorRef>jar-with-dependencies</descriptorRef>
+		      </descriptorRefs>
+		    </configuration>
+		    <executions>
+		      <execution>
+		        <id>make-assembly</id>
+		        <!-- this is used for inheritance merges -->
+		        <phase>package</phase>
+		        <!-- bind to the packaging phase -->
+		        <goals>
+		          <goal>single</goal>
+		        </goals>
+		      </execution>
+		    </executions>
+		  </plugin>
+		</plugins>
     </build>
     <!-- use `mvn COMMAND -Pprifile_id` to enable desired profile-->
     <profiles>

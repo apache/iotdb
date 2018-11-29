@@ -6,6 +6,7 @@ import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransportException;
 import org.joda.time.DateTimeZone;
 
+import cn.edu.tsinghua.service.rpc.thrift.ServerProperties;
 import cn.edu.tsinghua.service.rpc.thrift.TSCloseSessionReq;
 import cn.edu.tsinghua.service.rpc.thrift.TSGetTimeZoneResp;
 import cn.edu.tsinghua.service.rpc.thrift.TSIService;
@@ -453,6 +454,10 @@ public class TsfileConnection implements Connection {
     	TSGetTimeZoneResp resp = client.getTimeZone();
     	Utils.verifySuccess(resp.getStatus());
     	return resp.getTimeZone();
+    }
+    
+    public ServerProperties getServerProperties() throws TException {
+    		return client.getProperties();
     }
     
     public static TSIService.Iface newSynchronizedClient(TSIService.Iface client) {
