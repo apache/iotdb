@@ -1,13 +1,11 @@
 package cn.edu.tsinghua.iotdb.client;
 
-import cn.edu.tsinghua.iotdb.conf.TsFileDBConstant;
 import cn.edu.tsinghua.iotdb.exception.ArgsErrorException;
 import cn.edu.tsinghua.iotdb.jdbc.TsfileDatabaseMetadata;
 import cn.edu.tsinghua.iotdb.jdbc.TsfileMetadataResultSet;
 import cn.edu.tsinghua.iotdb.tool.ImportCsv;
-
+import cn.edu.tsinghua.service.rpc.thrift.ServerProperties;
 import cn.edu.tsinghua.iotdb.jdbc.TsfileConnection;
-import cn.edu.tsinghua.iotdb.query.aggregation.AggregationConstant;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
@@ -66,16 +64,33 @@ public abstract class AbstractClient {
 
 	protected static final String IOTDB_CLI_PREFIX = "IoTDB";
 	protected static final String SCRIPT_HINT = "./start-client.sh(start-client.bat if Windows)";
-	private static final String QUIT_COMMAND = "quit";
-	private static final String EXIT_COMMAND = "exit";
-	private static final String SHOW_METADATA_COMMAND = "show timeseries";
+	protected static final String QUIT_COMMAND = "quit";
+	protected static final String EXIT_COMMAND = "exit";
+	protected static final String SHOW_METADATA_COMMAND = "show timeseries";
 	protected static final int MAX_HELP_CONSOLE_WIDTH = 88;
 
 	protected static final String TIMESTAMP_STR = "Time";
 	protected static final int ISO_DATETIME_LEN = 23;
 	protected static int maxTimeLength = ISO_DATETIME_LEN;
 	protected static int maxValueLength = 15;
-    	protected static int[] maxValueLengthForShow = new int[]{75, 45, 8, 8};// control the width of columns for 'show timeseries <path>' and 'show storage group'
+	/**
+	 * control the width of columns for 'show timeseries <path>' and 'show storage group'
+	 * <p> for 'show timeseries <path>':
+	 * <table>
+	 * <tr> <th>Timeseries (width:75)</th> <th>Storage Group (width:45)</th> <th>DataType width:8)</th> <th>Encoding (width:8)</th></tr>
+	 * <tr> <td>root.vehicle.d1.s1</td>    <td>root.vehicle</td>             <td>INT32</td>             <td>PLAIN</td></tr>
+	 * <tr> <td>...</td>                   <td>...</td>                      <td>...</td>               <td>...</td></tr>
+	 * </table>
+	 * </p>
+	 * <p> for show storage group <path>':
+	 * <table>
+	 * <tr> <th>STORAGE_GROUP (width:75)</th> </tr>
+	 * <tr> <td>root.vehicle</td>             </tr>
+	 * <tr> <td>...</td>                      </tr>
+	 * </table>
+	 * </p>
+	 */
+    protected static int[] maxValueLengthForShow = new int[]{75, 45, 8, 8};
 	protected static String formatTime = "%" + maxTimeLength + "s|";
 	protected static String formatValue = "%" + maxValueLength + "s|";
 
@@ -94,6 +109,8 @@ public abstract class AbstractClient {
 	protected static boolean printToConsole = true;
 
 	protected static Set<String> keywordSet = new HashSet<>();
+	
+	protected static ServerProperties properties = null;
 
 	protected static void init(){
 		keywordSet.add("-"+HOST_ARGS);
@@ -103,9 +120,6 @@ public abstract class AbstractClient {
 		keywordSet.add("-"+USERNAME_ARGS);
 		keywordSet.add("-"+ISO8601_ARGS);
 		keywordSet.add("-"+MAX_PRINT_ROW_COUNT_ARGS);
-
-		AGGREGRATE_TIME_LIST.add(AggregationConstant.MAX_TIME);
-		AGGREGRATE_TIME_LIST.add(AggregationConstant.MIN_TIME);
 	}
 
 	public static void output(ResultSet res, boolean printToConsole, String statement, DateTimeZone timeZone) throws SQLException {
@@ -253,7 +267,7 @@ public abstract class AbstractClient {
 				System.out.println("Use -help for more information");
 				throw new ArgsErrorException(msg);
 			} else if (defaultValue == null){
-				String msg = String.format("%s: Required values for option '%s' is null", IOTDB_CLI_PREFIX, name);
+				String msg = String.format("%s: Required values for option '%s' is null.", IOTDB_CLI_PREFIX, name);
 				throw new ArgsErrorException(msg);
 			} else {
 				return defaultValue;
@@ -286,13 +300,20 @@ public abstract class AbstractClient {
 	}
 
 	private static void setFetchSize(String fetchSizeString){
-		fetchSize = Integer.parseInt(fetchSizeString.trim());
+		long tmp = Long.parseLong(fetchSizeString.trim());
+		if(tmp > Integer.MAX_VALUE || tmp < 0) {
+			fetchSize = Integer.MAX_VALUE;
+		} else {
+			fetchSize = Integer.parseInt(fetchSizeString.trim());
+		}
 	}
 
 	protected static void setMaxDisplayNumber(String maxDisplayNum){
-		maxPrintRowCount = Integer.parseInt(maxDisplayNum.trim());
-		if (maxPrintRowCount < 0) {
+		long tmp = Long.parseLong(maxDisplayNum.trim());
+		if(tmp > Integer.MAX_VALUE || tmp < 0) {
 			maxPrintRowCount = Integer.MAX_VALUE;
+		} else {
+			maxPrintRowCount = Integer.parseInt(maxDisplayNum.trim());
 		}
 	}
 
@@ -341,7 +362,7 @@ public abstract class AbstractClient {
 		System.out.printf("\n");
 	}
 
-	protected static String[] checkPasswordArgs(String[] args) {
+	protected static String[] removePasswordArgs(String[] args) {
 		int index = -1;
 		for(int i = 0; i < args.length; i++){
 			if(args[i].equals("-"+PASSWORD_ARGS)){
@@ -349,7 +370,7 @@ public abstract class AbstractClient {
 				break;
 			}
 		}
-		if(index > 0){
+		if(index >= 0){
 			if((index+1 >= args.length) || (index+1 < args.length && keywordSet.contains(args[index+1]))){
 				return ArrayUtils.remove(args, index);
 			}
@@ -357,14 +378,14 @@ public abstract class AbstractClient {
 		return args;
 	}
 
-	protected static void displayLogo(){
+	protected static void displayLogo(String version){
 		System.out.println(
 				" _____       _________  ______   ______    \n" +
 				"|_   _|     |  _   _  ||_   _ `.|_   _ \\   \n" +
 				"  | |   .--.|_/ | | \\_|  | | `. \\ | |_) |  \n" +
 				"  | | / .'`\\ \\  | |      | |  | | |  __'.  \n" +
 				" _| |_| \\__. | _| |_    _| |_.' /_| |__) | \n" +
-				"|_____|'.__.' |_____|  |______.'|_______/  version "+TsFileDBConstant.VERSION+"\n" +
+				"|_____|'.__.' |_____|  |______.'|_______/  version "+version+"\n" +
 				"                                           \n");
 	}
 

@@ -66,7 +66,7 @@ public class Client extends AbstractClient {
 			return;
 		}
 		init();
-		args = checkPasswordArgs(args);
+		args = removePasswordArgs(args);
 		try {
 			commandLine = parser.parse(options, args);
 			if (commandLine.hasOption(HELP_ARGS)) {
@@ -111,6 +111,8 @@ public class Client extends AbstractClient {
 				}
 				try {
 					connection = (TsfileConnection) DriverManager.getConnection("jdbc:tsfile://" + host + ":" + port + "/", username, password);
+					properties = connection.getServerProperties();
+					AGGREGRATE_TIME_LIST.addAll(properties.getSupportedTimeAggregationOperations());
 				} catch (SQLException e) {
 					System.out.println(String.format("%s> %s. Host is %s, port is %s.", IOTDB_CLI_PREFIX, e.getMessage(), host, port));
 					return;
@@ -121,7 +123,7 @@ public class Client extends AbstractClient {
 				return;
 			}
 
-			displayLogo();
+			displayLogo(properties.getVersion());
 			System.out.println(IOTDB_CLI_PREFIX + "> login successfully");
 			
 			while (true) {

@@ -36,7 +36,6 @@ import cn.edu.tsinghua.iotdb.engine.filenode.FileNodeManager;
 import cn.edu.tsinghua.iotdb.engine.filenode.IntervalFileNode;
 import cn.edu.tsinghua.iotdb.engine.filenode.OverflowChangeType;
 import cn.edu.tsinghua.iotdb.exception.FileNodeManagerException;
-import cn.edu.tsinghua.iotdb.jdbc.TsfileJDBCConfig;
 import cn.edu.tsinghua.tsfile.file.metadata.RowGroupMetaData;
 import cn.edu.tsinghua.tsfile.file.metadata.TimeSeriesChunkMetaData;
 import cn.edu.tsinghua.tsfile.file.metadata.TimeSeriesChunkProperties;
@@ -56,7 +55,7 @@ import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
  * @author lta
  */
 public class ServerServiceImpl implements ServerService.Iface {
-
+	private final String JDBC_DRIVER_NAME = "cn.edu.tsinghua.iotdb.jdbc.TsfileDriver";
     private ThreadLocal<String> uuid = new ThreadLocal<String>();
     private ThreadLocal<Map<String, List<String>>> fileNodeMap = new ThreadLocal<>(); // String means Storage Group,
     // List means the set of new Files(AbsulutePath) in local IoTDB
@@ -191,7 +190,7 @@ public class ServerServiceImpl implements ServerService.Iface {
             Connection connection = null;
             Statement statement = null;
             try {
-                Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);
+                Class.forName(JDBC_DRIVER_NAME);
                 connection = DriverManager.getConnection("jdbc:tsfile://localhost:" + tsfileDBConfig.rpcPort + "/",
                         "root", "root");
                 statement = connection.createStatement();
@@ -349,7 +348,7 @@ public class ServerServiceImpl implements ServerService.Iface {
         Connection connection = null;
         Statement statement = null;
         try {
-            Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);
+            Class.forName(JDBC_DRIVER_NAME);
             connection = DriverManager.getConnection("jdbc:tsfile://localhost:" + tsfileDBConfig.rpcPort + "/", "root",
                     "root");
             statement = connection.createStatement();
@@ -455,7 +454,7 @@ public class ServerServiceImpl implements ServerService.Iface {
         Connection connection = null;
         Statement statement = null;
         try {
-            Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);
+            Class.forName(JDBC_DRIVER_NAME);
             connection = DriverManager.getConnection("jdbc:tsfile://localhost:" + tsfileDBConfig.rpcPort + "/", "root",
                     "root");
             statement = connection.createStatement();

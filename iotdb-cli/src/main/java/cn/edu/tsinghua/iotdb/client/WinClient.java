@@ -35,7 +35,7 @@ public class WinClient extends AbstractClient {
 		
 		init();
 		
-		args = checkPasswordArgs(args);
+		args = removePasswordArgs(args);
 
 		try {
 			commandLine = parser.parse(options, args);
@@ -78,6 +78,8 @@ public class WinClient extends AbstractClient {
 				try {
 					connection = (TsfileConnection) DriverManager.getConnection("jdbc:tsfile://" + host + ":" + port + "/", username,
 							password);
+					properties = connection.getServerProperties();
+					AGGREGRATE_TIME_LIST.addAll(properties.getSupportedTimeAggregationOperations());
 				} catch (SQLException e) {
 					System.out.println(IOTDB_CLI_PREFIX + "> " + e.getMessage());
 					return;
@@ -87,7 +89,7 @@ public class WinClient extends AbstractClient {
 				return;
 			}
 
-			displayLogo();
+			displayLogo(properties.getVersion());
 
 			System.out.println(IOTDB_CLI_PREFIX + "> login successfully");
 			scanner = new Scanner(System.in);

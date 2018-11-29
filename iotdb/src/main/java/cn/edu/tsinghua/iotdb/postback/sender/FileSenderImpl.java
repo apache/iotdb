@@ -45,7 +45,6 @@ import org.slf4j.LoggerFactory;
 import cn.edu.tsinghua.tsfile.file.metadata.TsDeltaObject;
 import cn.edu.tsinghua.tsfile.timeseries.read.TsRandomAccessLocalFileReader;
 import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
-import cn.edu.tsinghua.iotdb.jdbc.TsfileJDBCConfig;
 import cn.edu.tsinghua.iotdb.postback.conf.PostBackSenderConfig;
 import cn.edu.tsinghua.iotdb.postback.conf.PostBackSenderDescriptor;
 import cn.edu.tsinghua.iotdb.utils.PostbackUtils;
@@ -55,6 +54,7 @@ import cn.edu.tsinghua.iotdb.utils.PostbackUtils;
  * @author lta 
  */
 public class FileSenderImpl implements FileSender{
+	private final String JDBC_DRIVER_NAME = "cn.edu.tsinghua.iotdb.jdbc.TsfileDriver";
 
 	private TTransport transport;
 	private ServerService.Client clientOfServer;
@@ -310,7 +310,7 @@ public class FileSenderImpl implements FileSender{
 		TsRandomAccessLocalFileReader input = null;
 		String deleteFormat = "delete from %s.* where time <= %s";
 		try {
-			Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);
+            Class.forName(JDBC_DRIVER_NAME);
 			connection = DriverManager.getConnection(
 					"jdbc:tsfile://localhost:" + TsfileDBDescriptor.getInstance().getConfig().rpcPort + "/", "root",
 					"root");
