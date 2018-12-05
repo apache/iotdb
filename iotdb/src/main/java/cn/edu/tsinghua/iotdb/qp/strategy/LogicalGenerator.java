@@ -9,7 +9,6 @@ import cn.edu.tsinghua.iotdb.qp.constant.TSParserConstant;
 import cn.edu.tsinghua.iotdb.qp.exception.IllegalASTFormatException;
 import cn.edu.tsinghua.iotdb.qp.exception.LogicalOperatorException;
 import cn.edu.tsinghua.iotdb.qp.exception.QueryProcessorException;
-import cn.edu.tsinghua.iotdb.qp.logical.Operator;
 import cn.edu.tsinghua.iotdb.qp.logical.RootOperator;
 import cn.edu.tsinghua.iotdb.qp.logical.crud.BasicFunctionOperator;
 import cn.edu.tsinghua.iotdb.qp.logical.crud.DeleteOperator;
@@ -37,8 +36,6 @@ import cn.edu.tsinghua.iotdb.sql.parse.TSParser;
 import cn.edu.tsinghua.tsfile.common.constant.SystemConstant;
 import cn.edu.tsinghua.tsfile.common.utils.Pair;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
-import cn.edu.tsinghua.tsfile.timeseries.filterV2.expression.QueryFilter;
-import cn.edu.tsinghua.tsfile.timeseries.filterV2.factory.FilterFactory;
 import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
 import cn.edu.tsinghua.tsfile.timeseries.utils.StringContainer;
 import org.antlr.runtime.Token;
@@ -192,14 +189,61 @@ public class LogicalGenerator {
             case TSParser.TOK_LIST:
                 analyzeList(astNode);
                 return;
+            case TSParser.TOK_LIMIT:
+                analyzeLimit(astNode);
+                return;
             case TSParser.TOK_SLIMIT:
-                ((SFWOperator) initializedOperator).setSlimit(true);
+                analyzeSlimit(astNode);
+                return;
+            case TSParser.TOK_SOFFSET:
+                analyzeSoffset(astNode);
                 return;
             default:
                 throw new QueryProcessorException("Not supported TSParser type" + tokenIntType);
         }
         for (Node node : astNode.getChildren())
             analyze((ASTNode) node);
+    }
+
+    private void analyzeSlimit(ASTNode astNode) throws LogicalOperatorException {
+        ASTNode unit = astNode.getChild(0);
+        int seriesLimit;
+        try {
+            seriesLimit = Integer.parseInt(unit.getText().trim());
+        } catch (NumberFormatException e) {
+            throw new LogicalOperatorException("SLIMIT <SN>: SN should be Int32.");
+        }
+        if(seriesLimit <= 0) {
+            // seriesLimit is ensured to be a non negative integer after the lexical examination,
+            // and seriesLimit is further required to be a positive integer here.
+            throw new LogicalOperatorException("SLIMIT <SN>: SN must be a positive integer and can not be zero.");
+        }
+        ((QueryOperator) initializedOperator).setSeriesLimit(seriesLimit);
+    }
+
+    private void analyzeSoffset(ASTNode astNode) throws LogicalOperatorException {
+        ASTNode unit = astNode.getChild(0);
+        try {
+            // NOTE seriesOffset is ensured to be a non negative integer after the lexical examination.
+            ((QueryOperator) initializedOperator).setSeriesOffset(Integer.parseInt(unit.getText().trim()));
+        } catch (NumberFormatException e) {
+            throw new LogicalOperatorException("SOFFSET <SOFFSETValue>: SOFFSETValue should be Int32.");
+        }
+    }
+
+    private void analyzeLimit(ASTNode astNode) throws LogicalOperatorException {
+        ASTNode unit = astNode.getChild(0);
+        int rowsLimit;
+        try {
+            rowsLimit = Integer.parseInt(unit.getText().trim());
+        } catch (NumberFormatException e) {
+            throw new LogicalOperatorException("LIMIT <N>: N should be Int32.");
+        }
+        if(rowsLimit <= 0) {
+            // rowsLimit is ensured to be a non negative integer after the lexical examination,
+            // and rowsLimit is further required to be a positive integer here.
+            throw new LogicalOperatorException("LIMIT <N>: N must be a positive integer and can not be zero.");
+        }
     }
 
     private void  analyzeList(ASTNode astNode) {

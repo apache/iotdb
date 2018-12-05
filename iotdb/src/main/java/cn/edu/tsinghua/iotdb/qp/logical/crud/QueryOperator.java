@@ -27,6 +27,10 @@ public class QueryOperator extends SFWOperator {
     private Map<TSDataType, IFill> fillTypes;
     private boolean isFill = false;
 
+    private int seriesLimit;
+    private int seriesOffset;
+    private boolean hasSlimit = false; // false if sql does not contain SLIMIT clause
+
     public boolean isFill() {
         return isFill;
     }
@@ -49,6 +53,31 @@ public class QueryOperator extends SFWOperator {
 
     public boolean isGroupBy() {
         return isGroupBy;
+    }
+
+    public void setSeriesLimit(int seriesLimit) {
+        this.seriesLimit = seriesLimit;
+        this.hasSlimit = true;
+    }
+
+    public void setSeriesOffset(int seriesOffset) {
+        /*
+         Since soffset cannot be set alone without slimit,
+         `hasSlimit` only need to be set true in the `setSeriesLimit` function.
+         */
+        this.seriesOffset = seriesOffset;
+    }
+
+    public int getSeriesLimit() {
+        return seriesLimit;
+    }
+
+    public int getSeriesOffset() {
+        return seriesOffset;
+    }
+
+    public boolean hasSlimit() {
+        return hasSlimit;
     }
 
     public long getUnit() {

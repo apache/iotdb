@@ -56,6 +56,8 @@ TOK_SELECT_INDEX;
 TOK_LIST;
 TOK_ALL;
 TOK_SLIMIT;
+TOK_SOFFSET;
+TOK_LIMIT;
 
 /*
   BELOW IS THE METADATA TOKEN
@@ -458,10 +460,10 @@ queryStatement
 
 specialClause
     :
-    limitClause slimitClause? -> slimitClause?
-    |slimitClause limitClause? -> slimitClause
-    |(groupbyClause limitClause)=>groupbyClause limitClause slimitClause? -> groupbyClause slimitClause?
-    |(groupbyClause slimitClause)=>groupbyClause slimitClause limitClause? -> groupbyClause slimitClause
+    limitClause slimitClause? -> limitClause slimitClause?
+    |slimitClause limitClause? -> slimitClause limitClause?
+    |(groupbyClause limitClause)=>groupbyClause limitClause slimitClause? -> groupbyClause limitClause slimitClause?
+    |(groupbyClause slimitClause)=>groupbyClause slimitClause limitClause? -> groupbyClause slimitClause limitClause?
     |groupbyClause -> groupbyClause
     |fillClause slimitClause? -> fillClause slimitClause?
     ;
@@ -721,6 +723,7 @@ fillClause
 limitClause
     :
     KW_LIMIT N=NonNegativeInteger offsetClause?
+    -> ^(TOK_LIMIT $N)
     ;
 
 offsetClause
@@ -731,12 +734,13 @@ offsetClause
 slimitClause
     :
     KW_SLIMIT SN=NonNegativeInteger soffsetClause?
-    -> ^(TOK_SLIMIT)
+    -> ^(TOK_SLIMIT $SN) soffsetClause?
     ;
 
 soffsetClause
     :
     KW_SOFFSET SOFFSETValue=NonNegativeInteger
+    -> ^(TOK_SOFFSET $SOFFSETValue)
     ;
 
 typeClause

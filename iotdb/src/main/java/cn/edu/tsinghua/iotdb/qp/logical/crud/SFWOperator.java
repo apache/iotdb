@@ -20,19 +20,10 @@ public abstract class SFWOperator extends RootOperator {
     private FromOperator fromOperator;
     private FilterOperator filterOperator;
     private boolean hasAggregation = false;
-    private boolean isSlimit = false;
 
     public SFWOperator(int tokenIntType) {
         super(tokenIntType);
         operatorType = OperatorType.SFW;
-    }
-
-    public void setSlimit(boolean isSlimit) {
-        this.isSlimit = isSlimit;
-    }
-
-    public boolean isSlimit() {
-        return isSlimit;
     }
 
     public void setSelectOperator(SelectOperator sel) {

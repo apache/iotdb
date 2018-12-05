@@ -114,23 +114,19 @@ public class TsfileQueryResultSetTest {
             step 1: execute statement
          */
         List<String> columns = new ArrayList<>();
-        columns.add("root.vehicle.d0.s0");
-        columns.add("root.vehicle.d0.s1");
         columns.add("root.vehicle.d0.s2");
-
         columns.add("root.vehicle.d0.s1");
         columns.add("root.vehicle.d0.s0");
         columns.add("root.vehicle.d0.s2");
 
         when(execResp.getColumns()).thenReturn(columns);
         when(execResp.getOperationType()).thenReturn("QUERY");
-        doReturn("INT32").doReturn("INT64").doReturn("FLOAT")
-                .doReturn("INT64").doReturn("INT32").doReturn("FLOAT")
+        doReturn("FLOAT").doReturn("INT64").doReturn("INT32").doReturn("FLOAT")
                 .when(fetchMetadataResp).getDataType();
 
         boolean hasResultSet = statement.execute(testSql);
 
-        verify(fetchMetadataResp, times(6)).getDataType();
+        verify(fetchMetadataResp, times(4)).getDataType();
 
         /*
             step 2: fetch result
@@ -143,9 +139,9 @@ public class TsfileQueryResultSetTest {
             ResultSet resultSet = statement.getResultSet();
             // check columnInfoMap
             Assert.assertEquals(resultSet.findColumn("Time"), 1);
-            Assert.assertEquals(resultSet.findColumn("root.vehicle.d0.s0"), 2);
+            Assert.assertEquals(resultSet.findColumn("root.vehicle.d0.s2"), 2);
             Assert.assertEquals(resultSet.findColumn("root.vehicle.d0.s1"), 3);
-            Assert.assertEquals(resultSet.findColumn("root.vehicle.d0.s2"), 4);
+            Assert.assertEquals(resultSet.findColumn("root.vehicle.d0.s0"), 4);
 
             ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
             // check columnInfoList
@@ -196,63 +192,63 @@ public class TsfileQueryResultSetTest {
         Object[][] input = {
                 {
                         1L,
-                        "root.vehicle.d0.s0", TSDataType.INT32, null,
-                        "root.vehicle.d0.s1", TSDataType.INT64, 1101L,
                         "root.vehicle.d0.s2", TSDataType.FLOAT, null,
+                        "root.vehicle.d0.s1", TSDataType.INT64, 1101L,
+                        "root.vehicle.d0.s0", TSDataType.INT32, null,
                 },
                 {
                         2L,
-                        "root.vehicle.d0.s0", TSDataType.INT32, null,
-                        "root.vehicle.d0.s1", TSDataType.INT64, 40000L,
                         "root.vehicle.d0.s2", TSDataType.FLOAT, 2.22F,
+                        "root.vehicle.d0.s1", TSDataType.INT64, 40000L,
+                        "root.vehicle.d0.s0", TSDataType.INT32, null,
                 },
                 {
                         3L,
-                        "root.vehicle.d0.s0", TSDataType.INT32, null,
-                        "root.vehicle.d0.s1", TSDataType.INT64, null,
                         "root.vehicle.d0.s2", TSDataType.FLOAT, 3.33F,
+                        "root.vehicle.d0.s1", TSDataType.INT64, null,
+                        "root.vehicle.d0.s0", TSDataType.INT32, null,
                 },
                 {
                         4L,
-                        "root.vehicle.d0.s0", TSDataType.INT32, null,
-                        "root.vehicle.d0.s1", TSDataType.INT64, null,
                         "root.vehicle.d0.s2", TSDataType.FLOAT, 4.44F,
+                        "root.vehicle.d0.s1", TSDataType.INT64, null,
+                        "root.vehicle.d0.s0", TSDataType.INT32, null,
                 },
                 {
                         50L,
-                        "root.vehicle.d0.s0", TSDataType.INT32, null,
-                        "root.vehicle.d0.s1", TSDataType.INT64, 50000L,
                         "root.vehicle.d0.s2", TSDataType.FLOAT, null,
+                        "root.vehicle.d0.s1", TSDataType.INT64, 50000L,
+                        "root.vehicle.d0.s0", TSDataType.INT32, null,
                 },
                 {
                         100L,
-                        "root.vehicle.d0.s0", TSDataType.INT32, null,
-                        "root.vehicle.d0.s1", TSDataType.INT64, 199L,
                         "root.vehicle.d0.s2", TSDataType.FLOAT, null,
+                        "root.vehicle.d0.s1", TSDataType.INT64, 199L,
+                        "root.vehicle.d0.s0", TSDataType.INT32, null,
                 },
                 {
                         101L,
-                        "root.vehicle.d0.s0", TSDataType.INT32, null,
-                        "root.vehicle.d0.s1", TSDataType.INT64, 199L,
                         "root.vehicle.d0.s2", TSDataType.FLOAT, null,
+                        "root.vehicle.d0.s1", TSDataType.INT64, 199L,
+                        "root.vehicle.d0.s0", TSDataType.INT32, null,
                 },
                 {
                         103L,
-                        "root.vehicle.d0.s0", TSDataType.INT32, null,
-                        "root.vehicle.d0.s1", TSDataType.INT64, 199L,
                         "root.vehicle.d0.s2", TSDataType.FLOAT, null,
+                        "root.vehicle.d0.s1", TSDataType.INT64, 199L,
+                        "root.vehicle.d0.s0", TSDataType.INT32, null,
                 },
                 {
                         105L,
-                        "root.vehicle.d0.s0", TSDataType.INT32, 33333,
-                        "root.vehicle.d0.s1", TSDataType.INT64, 199L,
                         "root.vehicle.d0.s2", TSDataType.FLOAT, 11.11F,
+                        "root.vehicle.d0.s1", TSDataType.INT64, 199L,
+                        "root.vehicle.d0.s0", TSDataType.INT32, 33333,
                 },
                 {
                         1000L,
-                        "root.vehicle.d0.s0", TSDataType.INT32, 22222,
-                        "root.vehicle.d0.s1", TSDataType.INT64, 55555L,
                         "root.vehicle.d0.s2", TSDataType.FLOAT, 1000.11F,
+                        "root.vehicle.d0.s1", TSDataType.INT64, 55555L,
+                        "root.vehicle.d0.s0", TSDataType.INT32, 22222,
                 }
         };
         for (Object[] item : input) {
@@ -267,14 +263,14 @@ public class TsfileQueryResultSetTest {
                     value.setIs_empty(true);
                 } else {
                     if (i == 0) {
-                        value.setInt_val((int) item[3 * i + 3]);
-                        value.setType(((TSDataType) item[3 * i + 2]).toString());
+                        value.setFloat_val((float) item[3 * i + 3]);
+                        value.setType(item[3 * i + 2].toString());
                     } else if (i == 1) {
                         value.setLong_val((long) item[3 * i + 3]);
-                        value.setType(((TSDataType) item[3 * i + 2]).toString());
+                        value.setType(item[3 * i + 2].toString());
                     } else {
-                        value.setFloat_val((float) item[3 * i + 3]);
-                        value.setType(((TSDataType) item[3 * i + 2]).toString());
+                        value.setInt_val((int) item[3 * i + 3]);
+                        value.setType(item[3 * i + 2].toString());
                     }
                 }
                 values.add(value);

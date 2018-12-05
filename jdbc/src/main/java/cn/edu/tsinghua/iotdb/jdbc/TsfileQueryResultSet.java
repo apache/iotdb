@@ -52,22 +52,31 @@ public class TsfileQueryResultSet implements ResultSet {
 	private RowRecord record;
 	private Iterator<RowRecord> recordItr;
 	private int rowsFetched = 0;
-	private int maxRows;
+	private int maxRows; // defined in TsfileStatement
 	private int fetchSize;
 	private boolean emptyResultSet = false;
 	private String operationType;
 	private final String TIMESTAMP_STR = "Time";
-    private final String LIMIT_STR = "LIMIT";
-    private final String OFFSET_STR = "OFFSET";
-    private final String SLIMIT_STR = "SLIMIT";
-    private final String SOFFSET_STR = "SOFFSET";
+	private final String LIMIT_STR = "LIMIT";
+	private final String OFFSET_STR = "OFFSET";
+	private int rowsLimit = 0; // 0 means it is not constrained in sql
+	private int rowsOffset = 0; // 0 means it is not constrained in sql, or the offset position has been reached
 
-    private int rowsCount = 0;
-    private int rowsOffset = -1;
-    private int rowsLimit = -1;
+	/*
+	  Combine maxRows and the LIMIT constraints.
+	  maxRowsOrRowsLimit = 0 means that neither maxRows nor LIMIT is constrained.
+	  maxRowsOrRowsLimit > 0 means that maxRows and/or LIMIT are constrained.
 
-    private int seriesOffset = -1;
-    private int seriesLimit = -1;
+	  1) When neither maxRows nor LIMIT is constrained, i.e., maxRows=0 and rowsLimit=0,
+	  maxRowsOrRowsLimit = 0;
+	  2) When both maxRows and LIMIT are constrained, i.e., maxRows>0 and rowsLimit>0,
+	  maxRowsOrRowsLimit = min(maxRows, rowsLimit);
+	  3) When maxRows is constrained and LIMIT is NOT constrained, i.e., maxRows>0 and rowsLimit=0,
+	  maxRowsOrRowsLimit = maxRows;
+	  4) When maxRows is NOT constrained and LIMIT is constrained, i.e., maxRows=0 and rowsLimit>0,
+	  maxRowsOrRowsLimit = rowsLimit;
+	 */
+	private int maxRowsOrRowsLimit;
 
 	public TsfileQueryResultSet() {
 
@@ -77,77 +86,55 @@ public class TsfileQueryResultSet implements ResultSet {
 								TS_SessionHandle sessionHandle, TSOperationHandle operationHandle, String sql,
 								String aggregations, List<String> columnTypeList)
 			throws SQLException {
+		this.statement = statement;
+		this.maxRows = statement.getMaxRows();
+		this.fetchSize = statement.getFetchSize();
+		this.client = client;
+		this.operationHandle = operationHandle;
+		this.sql = sql;
+		this.operationType = aggregations;
+		this.columnTypeList = columnTypeList;
 
-        // first try to retrieve limit&offset&slimit&soffset parameters from sql
-        String[] splited = sql.toUpperCase().split("\\s+");
-        List<String> arraySplited = Arrays.asList(splited);
-        try {
-            int posLimit = arraySplited.indexOf(LIMIT_STR);
-            if (posLimit != -1) {
-                rowsLimit = Integer.parseInt(splited[posLimit + 1]);
-                int posOffset = arraySplited.indexOf(OFFSET_STR);
-                if (posOffset != -1) {
-                    rowsOffset = Integer.parseInt(splited[posOffset + 1]);
-                }
-            }
-            int posSLimit = arraySplited.indexOf(SLIMIT_STR);
-            if (posSLimit != -1) {
-                seriesLimit = Integer.parseInt(splited[posSLimit + 1]);
-                int posSOffset = arraySplited.indexOf(SOFFSET_STR);
-                if (posSOffset != -1) {
-                    seriesOffset = Integer.parseInt(splited[posSOffset + 1]);
-                }
-            }
-        } catch (NumberFormatException e) {
-            throw new TsfileSQLException("Out of range: LIMIT&SLIMIT parameter data type should be Int32.");
-        }
-
-        this.sql = sql;
-        this.statement = statement;
-        this.maxRows = statement.getMaxRows();
-        this.fetchSize = statement.getFetchSize();
-        this.client = client;
-        this.operationHandle = operationHandle;
-        this.operationType = aggregations;
-        this.columnInfoList = new ArrayList<>();
-        this.columnInfoMap = new HashMap<>();
-        this.columnTypeList = new ArrayList<>();
-
-        this.columnInfoList.add(TIMESTAMP_STR);
-        this.columnInfoMap.put(TIMESTAMP_STR, 1);
-        int index = 2;
-        int colCount = columnName.size();
-
-        if (seriesLimit == -1) { // if slimit is unset
-            seriesLimit = colCount;
-            seriesOffset = 0;
-        } else if (seriesOffset == -1) {// if slimit is set and soffset is unset
-            seriesOffset = 0;
-        } else if (seriesOffset >= colCount) { // if slimit and soffset are set, but soffset exceeds the upper boundary 'colCount'-1
-            // assign 0 to seriesLimit so next() will return 'false' instantly without needing to fetch data
-            // and the 'FOR' loop below will be skipped because seriesOffset equals 'seriesEnd' then.
-            seriesLimit = 0;
-        }
-        // else slimit and soffset are set and soffset is less than 'colCount',
-        // so there is no need to modify slimit or soffset.
-
-		// assign columnInfoMap
-		// Note: columnInfoMap must not be affected by slimit or soffset.
-		for (int i = 0; i < colCount; i++) {
-			String name = columnName.get(i);
+		this.columnInfoList = new ArrayList<>();
+		this.columnInfoList.add(TIMESTAMP_STR);
+		this.columnInfoMap = new HashMap<>();
+		this.columnInfoMap.put(TIMESTAMP_STR, 1);
+		int index = 2;
+		for (String name : columnName) {
+			columnInfoList.add(name);
 			if (!columnInfoMap.containsKey(name)) {
 				columnInfoMap.put(name, index++);
 			}
 		}
 
-		// assign columnInfoList and columnTypeList under the effect of slimit and soffset
-		int seriesEnd = seriesOffset + seriesLimit;
-		for (int i = seriesOffset; i < colCount && i < seriesEnd; i++) {
-			String name = columnName.get(i);
-			columnInfoList.add(name);
-			this.columnTypeList.add(columnTypeList.get(i));
-		}
+		maxRowsOrRowsLimit = maxRows;
 
+		// parse the LIMIT&OFFSET parameters from sql
+		String[] splited = sql.toUpperCase().split("\\s+");
+		List<String> arraySplited = Arrays.asList(splited);
+		try {
+			int posLimit = arraySplited.indexOf(LIMIT_STR);
+			if (posLimit != -1) {
+				rowsLimit = Integer.parseInt(splited[posLimit + 1]);
+
+				// NOTE that maxRows=0 in TsfileStatement means it is not constrained
+				// NOTE that LIMIT <N>: N is ensured to be a positive integer by the server side
+				if (maxRows == 0) {
+					maxRowsOrRowsLimit = rowsLimit;
+				} else {
+					maxRowsOrRowsLimit = (rowsLimit < maxRows) ? rowsLimit : maxRows;
+				}
+
+				// check if OFFSET is constrained after LIMIT has been constrained
+				int posOffset = arraySplited.indexOf(OFFSET_STR);
+				if (posOffset != -1) {
+					// NOTE that OFFSET <OFFSETValue>: OFFSETValue is ensured to be a non-negative integer by the server side
+					rowsOffset = Integer.parseInt(splited[posOffset + 1]);
+				}
+			}
+		} catch (NumberFormatException e) {
+			throw new TsfileSQLException("Out of range: LIMIT&SLIMIT parameter should be Int32.");
+		}
 	}
 
 	@Override
@@ -670,13 +657,8 @@ public class TsfileQueryResultSet implements ResultSet {
 		throw new SQLException("Method not supported");
 	}
 
-    // the next record rule without considering the LIMIT&SLIMIT constraints
-    private boolean nextWithoutLimit() throws SQLException {
-		if (maxRows > 0 && rowsFetched >= maxRows) {
-			System.out.println("Reach max rows " + maxRows);
-			return false;
-		}
-
+	// the next record rule without constraints
+	private boolean nextWithoutConstraints() throws SQLException {
 		if ((recordItr == null || !recordItr.hasNext()) && !emptyResultSet) {
 			TSFetchResultsReq req = new TSFetchResultsReq(sql, fetchSize);
 
@@ -698,50 +680,42 @@ public class TsfileQueryResultSet implements ResultSet {
 		if (emptyResultSet) {
 			return false;
 		}
+
 		record = recordItr.next();
-		// if(record.getDeltaObjectType() != null &&
-		// record.getDeltaObjectType().equals(AGGREGATION_STR)){
-		// if(columnInfo.containsKey(TIMESTAMP_STR)){
-		// columnInfo.remove(TIMESTAMP_STR);
-		// }
-		// }
-
-		rowsFetched++;
-        // maxRows is a constraint that exists in parallel with the LIMIT&SLIMIT constraints,
-        // so rowsFetched will increase whenever the row is fetched,
-        // regardless of whether the row satisfies the LIMIT&SLIMIT constraints or not.
-
 		return true;
 	}
 
 	@Override
-    // the next record rule with the LIMIT&SLIMIT constraints added
+	// the next record rule considering both the maxRows constraint and the LIMIT&OFFSET constraint
 	public boolean next() throws SQLException {
-        if (rowsLimit == 0 || seriesLimit == 0) {
-            return false;// indicating immediately that there is no next record
-        }
-
-        if (rowsLimit != -1) { // if LIMIT is set
-            if (rowsOffset != -1) { // if OFFSET is set and the initial offset move has not been done yet
-                for (int i = 0; i < rowsOffset; i++) { // try to move to the the next record position where OFFSET indicates
-                    if (!nextWithoutLimit()) {
-                        return false;// cannot move to the next record position where OFFSET indicates
-                    }
-                }
-                rowsOffset = -1; // indicating that the initial offset move has been finished
-            }
-
-            if (rowsCount >= rowsLimit) { // if the LIMIT constraint is met
-                return false;
-            }
-        }
-
-		boolean isNext = nextWithoutLimit();
-		if (isNext && rowsLimit != -1) {
-			rowsCount++;
+		if (maxRowsOrRowsLimit > 0 && rowsFetched >= maxRowsOrRowsLimit) {
+			if (rowsLimit == 0 || (maxRows > 0 && maxRows < rowsLimit)) { // The constraint of maxRows instead of rowsLimit is embodied
+				System.out.println("Reach max rows " + maxRows);
+			}
+			return false;
 		}
+
+		if (rowsOffset != 0) { // When rowsOffset is constrained and the offset position has NOT been reached
+			for (int i = 0; i < rowsOffset; i++) { // Try to move to the offset position
+				if (!nextWithoutConstraints()) {
+					return false; // No next record, i.e, fail to move to the offset position
+				}
+			}
+			rowsOffset = 0; // The offset position has been reached
+		}
+
+		boolean isNext = nextWithoutConstraints();
+
+		if (isNext) {
+			/*
+				Note that 'rowsFetched' is not increased in the nextWithoutConstraints(),
+				because 'rowsFetched' should not count the rows fetched before the OFFSET position
+			 */
+			rowsFetched++;
+		}
+
 		return isNext;
-}
+	}
 
 	@Override
 	public boolean previous() throws SQLException {

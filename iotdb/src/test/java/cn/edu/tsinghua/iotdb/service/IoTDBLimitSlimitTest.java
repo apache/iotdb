@@ -133,52 +133,26 @@ public class IoTDBLimitSlimitTest {
                         "50,50000,null,\n",
 
                 "select * from root.vehicle.d0 slimit 1",
-                "1,null,\n" +
-                        "2,null,\n" +
-                        "3,null,\n" +
-                        "4,null,\n" +
-                        "50,null,\n" +
-                        "100,null,\n" +
-                        "101,null,\n" +
-                        "102,null,\n" +
-                        "103,null,\n" +
-                        "104,33333,\n" +
+                "104,33333,\n" +
                         "105,33333,\n" +
                         "106,99,\n" +
-                        "1000,22222,\n" +
-                        "946684800000,null,\n",
+                        "1000,22222,\n",
 
                 "select * from root.vehicle.d0 slimit 1 soffset 2",
-                "1,null,\n" +
-                        "2,2.22,\n" +
+                "2,2.22,\n" +
                         "3,3.33,\n" +
                         "4,4.44,\n" +
-                        "50,null,\n" +
-                        "100,null,\n" +
-                        "101,null,\n" +
                         "102,10.0,\n" +
-                        "103,null,\n" +
-                        "104,null,\n" +
                         "105,11.11,\n" +
-                        "106,null,\n" +
-                        "1000,1000.11,\n" +
-                        "946684800000,null,\n",
+                        "1000,1000.11,\n",
 
                 "select d0 from root.vehicle slimit 1 soffset 2",
-                "1,null,\n" +
-                        "2,2.22,\n" +
+                "2,2.22,\n" +
                         "3,3.33,\n" +
                         "4,4.44,\n" +
-                        "50,null,\n" +
-                        "100,null,\n" +
-                        "101,null,\n" +
                         "102,10.0,\n" +
-                        "103,null,\n" +
-                        "104,null,\n" +
                         "105,11.11,\n" +
-                        "106,null,\n" +
-                        "1000,1000.11,\n" +
-                        "946684800000,null,\n",
+                        "1000,1000.11,\n",
 
                 "select * from root.vehicle.d0 where s1>190 or s2 < 10.0 limit 3 offset 1 slimit 1 soffset 2 ",
                 "2,2.22,\n" +
