@@ -14,14 +14,15 @@ IoTDB(Internet of Things Database) is an integrated data management engine desig
 IoTDB's features are as following:
 
 1. Flexible deployment. IoTDB provides users one-click installation tool on the cloud, once-decompressed-used terminal tool and the bridge tool between cloud platform and terminal tool (Data Synchronization Tool).
-2. Low cost on hardware. IoTDB can reach a high compression ratio of disk storage (For one billion data storage, hard drive cost less than $0.23)
+2. Low cost on hardware. IoTDB can reach a high compression ratio of disk storage
 3. Efficient directory structure. IoTDB supports efficient organization for complex time series data structure from intelligent networking devices, organization for time series data from devices of the same type, fuzzy searching strategy for massive and complex directory of time series data.
 4. High-throughput read and write. IoTDB supports millions of low-power devices' strong connection data access, high-speed data read and write for intelligent networking devices and mixed devices mentioned above.
 5. Rich query semantics. IoTDB supports time alignment for time series data across devices and sensors, computation in time series field (frequency domain transformation) and rich aggregation function support in time dimension.
 6. Easy to get start. IoTDB supports SQL-Like language, JDBC standard API and import/export tools which is easy to use.
 7. Intense integration with Open Source Ecosystem. IoTDB supports Hadoop, Spark, etc. analysis ecosystems and Grafana visualization tool.
 
-For the latest information about IoTDB, please visit our [IoTDB official website](http://tsfile.org/index).
+
+For the latest information about IoTDB, please visit our [IoTDB official website](http://tsfile.org/index) (will transfer to iotdb.apache.org in the future).
 
 # Prerequisites
 
@@ -29,10 +30,9 @@ To use IoTDB, you need to have:
 
 1. Java >= 1.8
 2. Maven >= 3.0 (If you want to compile and install IoTDB from source code)
-3. TsFile >= 0.7.0 (TsFile Github page: [https://github.com/thulab/tsfile](https://github.com/thulab/tsfile))
-4. IoTDB-JDBC >= 0.7.0 (IoTDB-JDBC Github page: [https://github.com/thulab/iotdb-jdbc](https://github.com/thulab/iotdb-jdbc))
 
-TODO: TsFile and IoTDB-JDBC dependencies will be removed after Jialin Qiao re-structured the Project.
+If you want to use Hadoop or Spark to analyze IoTDB data file (called as TsFile), you need to compile the hadoop and spark modules.
+
 
 # Quick Start
 
@@ -63,7 +63,7 @@ After build, the IoTDB project will be at the folder "iotdb/iotdb". The folder w
 
 
 ```
-iotdb/     <-- root path
+iotdb/iotdb/     <-- root path
 |
 +- bin/       <-- script files
 |
