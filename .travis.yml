@@ -1,0 +1,19 @@
+dist: trusty
+#sudo: required
+
+language: java
+
+jdk:
+  - oraclejdk8
+  - oraclejdk9
+  # - openjdk8
+
+before_install: true
+
+install: true
+
+script: 
+  - mvn clean test -pl jdbc -am -Dtsfile.test.skip=true
+
+after_success:
+
