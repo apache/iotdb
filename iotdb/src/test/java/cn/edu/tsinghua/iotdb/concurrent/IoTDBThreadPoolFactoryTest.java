@@ -2,6 +2,7 @@ package cn.edu.tsinghua.iotdb.concurrent;
 
 import static org.junit.Assert.*;
 
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
@@ -19,6 +20,7 @@ import org.junit.Test;
 public class IoTDBThreadPoolFactoryTest {
 	private final String POOL_NAME = "test";
 	private AtomicInteger count;
+	private CountDownLatch latch;
 	
 	@Before
 	public void setUp() throws Exception {
@@ -34,13 +36,18 @@ public class IoTDBThreadPoolFactoryTest {
 		String reason = "NewFixedThreadPool";
 		Thread.UncaughtExceptionHandler handler = new TestExceptionHandler(reason);
 		int threadCount = 5;
+		latch = new CountDownLatch(threadCount);
 		ExecutorService exec = IoTDBThreadPoolFactory.newFixedThreadPool(threadCount, POOL_NAME, handler);
 		for(int i = 0; i < threadCount;i++){
 			Runnable task = new TestThread(reason);
 			exec.execute(task);
 		}
-		Thread.sleep(100);
-		assertEquals(count.get(), threadCount);
+		try {
+			  latch.await();
+			  assertEquals(count.get(), threadCount);
+			} catch (InterruptedException E) {
+			   fail();
+		}		
 	}
 
 	@Test
@@ -48,13 +55,18 @@ public class IoTDBThreadPoolFactoryTest {
 		String reason = "NewSingleThreadExecutor";
 		Thread.UncaughtExceptionHandler handler = new TestExceptionHandler(reason);
 		int threadCount = 1;
+		latch = new CountDownLatch(threadCount);
 		ExecutorService exec = IoTDBThreadPoolFactory.newSingleThreadExecutor(POOL_NAME, handler);
 		for(int i = 0; i < threadCount;i++){
 			Runnable task = new TestThread(reason);
 			exec.execute(task);
 		}
-		Thread.sleep(100);
-		assertEquals(count.get(), threadCount);
+		try {
+			  latch.await();
+			  assertEquals(count.get(), threadCount);
+			} catch (InterruptedException E) {
+			   fail();
+		}	
 	}
 
 	@Test
@@ -62,13 +74,18 @@ public class IoTDBThreadPoolFactoryTest {
 		String reason = "NewCachedThreadPool";
 		Thread.UncaughtExceptionHandler handler = new TestExceptionHandler(reason);
 		int threadCount = 10;
+		latch = new CountDownLatch(threadCount);
 		ExecutorService exec = IoTDBThreadPoolFactory.newCachedThreadPool(POOL_NAME, handler);
 		for(int i = 0; i < threadCount;i++){
 			Runnable task = new TestThread(reason);
 			exec.execute(task);
 		}
-		Thread.sleep(100);
-		assertEquals(count.get(), threadCount);
+		try {
+			  latch.await();
+			  assertEquals(count.get(), threadCount);
+			} catch (InterruptedException E) {
+			   fail();
+		}	
 	}
 
 	@Test
@@ -76,6 +93,7 @@ public class IoTDBThreadPoolFactoryTest {
 		String reason = "NewSingleThreadScheduledExecutor";
 		Thread.UncaughtExceptionHandler handler = new TestExceptionHandler(reason);
 		int threadCount = 1;
+		latch = new CountDownLatch(threadCount);
 		ScheduledExecutorService exec = IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(POOL_NAME, handler);
 		for(int i = 0; i < threadCount;i++){
 			Runnable task = new TestThread(reason);
@@ -85,10 +103,15 @@ public class IoTDBThreadPoolFactoryTest {
 			} catch (ExecutionException e) {
 				assertEquals(reason, e.getCause().getMessage());
 				count.addAndGet(1);
+				latch.countDown();
 			}
 		}
-		Thread.sleep(100);
-		assertEquals(count.get(), threadCount);
+		try {
+			  latch.await();
+			  assertEquals(count.get(), threadCount);
+			} catch (InterruptedException E) {
+			   fail();
+		}	
 	}
 
 	@Test
@@ -96,6 +119,7 @@ public class IoTDBThreadPoolFactoryTest {
 		String reason = "NewScheduledThreadPool";
 		Thread.UncaughtExceptionHandler handler = new TestExceptionHandler(reason);
 		int threadCount = 10;
+		latch = new CountDownLatch(threadCount);
 		ScheduledExecutorService exec = IoTDBThreadPoolFactory.newScheduledThreadPool(threadCount, POOL_NAME, handler);
 		for(int i = 0; i < threadCount; i++){
 			Runnable task = new TestThread(reason);
@@ -105,11 +129,15 @@ public class IoTDBThreadPoolFactoryTest {
 			} catch (ExecutionException e) {
 				assertEquals(reason, e.getCause().getMessage());
 				count.addAndGet(1);
+				latch.countDown();
 			}
 		}
-		Thread.sleep(1000);
-		exec.shutdown();
-		assertEquals(count.get(), threadCount);
+		try {
+			  latch.await();
+			  assertEquals(count.get(), threadCount);
+			} catch (InterruptedException E) {
+			   fail();
+		}	
 	}
 
 	@Test
@@ -122,15 +150,18 @@ public class IoTDBThreadPoolFactoryTest {
 		args.stopTimeoutUnit = TimeUnit.SECONDS;
 		Thread.UncaughtExceptionHandler handler = new TestExceptionHandler(reason);
 		int threadCount = 50;
-		
+		latch = new CountDownLatch(threadCount);
 		ExecutorService exec = IoTDBThreadPoolFactory.createJDBCClientThreadPool(args, POOL_NAME, handler);
 		for(int i = 0; i < threadCount; i++){
 			Runnable task = new TestThread(reason);
 			exec.execute(task);
 		}
-		Thread.sleep(1000);
-		exec.shutdown();
-		assertEquals(count.get(), threadCount);
+		try {
+			  latch.await();
+			  assertEquals(count.get(), threadCount);
+			} catch (InterruptedException E) {
+			   fail();
+		}	
 	}
 	
 	class TestExceptionHandler implements Thread.UncaughtExceptionHandler {
@@ -145,6 +176,7 @@ public class IoTDBThreadPoolFactoryTest {
 		public void uncaughtException(Thread t, Throwable e) {
 			assertEquals(name, e.getMessage());
 			count.addAndGet(1);
+			latch.countDown();
 		}
 	}
 	

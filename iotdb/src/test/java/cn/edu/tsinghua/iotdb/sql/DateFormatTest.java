@@ -2,6 +2,7 @@ package cn.edu.tsinghua.iotdb.sql;
 
 import static org.junit.Assert.*;
 
+import java.time.ZonedDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -60,8 +61,11 @@ public class DateFormatTest {
 		return null;
 	}
 	
+	private String dateTimeZone;
+	
 	@Before
 	public void setUp() throws Exception {
+		dateTimeZone = String.format("%s", ZonedDateTime.now().getOffset());
 	}
 
 	@After
@@ -77,17 +81,17 @@ public class DateFormatTest {
 				"2016-02-01T11:12:35",
 				"2016/02/01T11:12:35",
 				"2016.02.01T11:12:35",
-				"2016-02-01 11:12:35+08:00",
-				"2016/02/01 11:12:35+08:00",
-				"2016.02.01 11:12:35+08:00",
-				"2016-02-01T11:12:35+08:00",
-				"2016/02/01T11:12:35+08:00",
-				"2016.02.01T11:12:35+08:00",
+				"2016-02-01 11:12:35" + dateTimeZone,
+				"2016/02/01 11:12:35" + dateTimeZone,
+				"2016.02.01 11:12:35" + dateTimeZone,
+				"2016-02-01T11:12:35" + dateTimeZone,
+				"2016/02/01T11:12:35" + dateTimeZone,
+				"2016.02.01T11:12:35" + dateTimeZone,
 		};
 		for(String t: timeFormatWithoutMs){
 			String format = determineDateFormat(t);
 			DateTime d = DateTime.parse(t, DateTimeFormat.forPattern(format));
-			assertEquals(d.toString(), "2016-02-01T11:12:35.000+08:00");
+			assertEquals(d.toString(), "2016-02-01T11:12:35.000" + dateTimeZone);
 		}
 
 		String[] timeFormatWithMs = new String[]{
@@ -97,16 +101,16 @@ public class DateFormatTest {
 				"2016-02-01T11:12:35.123",
 				"2016/02/01T11:12:35.123",
 				"2016.02.01T11:12:35.123",
-				"2016-02-01 11:12:35.123+08:00",
-				"2016/02/01 11:12:35.123+08:00",
-				"2016.02.01 11:12:35.123+08:00",
-				"2016-02-01T11:12:35.123+08:00",
-				"2016/02/01T11:12:35.123+08:00",
-				"2016.02.01T11:12:35.123+08:00",
+				"2016-02-01 11:12:35.123" + dateTimeZone,
+				"2016/02/01 11:12:35.123" + dateTimeZone,
+				"2016.02.01 11:12:35.123" + dateTimeZone,
+				"2016-02-01T11:12:35.123" + dateTimeZone,
+				"2016/02/01T11:12:35.123" + dateTimeZone,
+				"2016.02.01T11:12:35.123" + dateTimeZone,
 		};
 		for(String t: timeFormatWithMs){
 			DateTime d = DateTime.parse(t, DateTimeFormat.forPattern(determineDateFormat(t)));
-			assertEquals(d.toString(), "2016-02-01T11:12:35.123+08:00");
+			assertEquals(d.toString(), "2016-02-01T11:12:35.123" + dateTimeZone);
 		}
 	}
 	
