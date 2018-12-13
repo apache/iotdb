@@ -1,7 +1,6 @@
 # IoTDB
 [![Build Status](https://travis-ci.org/thulab/iotdb.svg?branch=master)](https://travis-ci.org/thulab/iotdb)
 [![codecov](https://codecov.io/gh/thulab/iotdb/branch/master/graph/badge.svg?token=tBhPhPC9EQ)](https://codecov.io/gh/thulab/iotdb)
-[![Codacy Badge](https://api.codacy.com/project/badge/Grade/c84ff77719ae434cac766414bfc7472b)](https://www.codacy.com/app/xuyithuss/iotdb?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=thulab/iotdb&amp;utm_campaign=Badge_Grade)
 [![GitHub release](https://img.shields.io/github/release/thulab/iotdb.svg)](https://github.com/thulab/iotdbc/releases)
 [![License](https://img.shields.io/badge/license-Apache%202-4EB1BA.svg)](https://www.apache.org/licenses/LICENSE-2.0.html)
 
