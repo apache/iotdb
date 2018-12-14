@@ -10,29 +10,9 @@
     </parent>
 
 	<artifactId>iotdb-jdbc</artifactId>
-	<packaging>jar</packaging>
 
 	<name>IoTDB Jdbc</name>
 	<description>A jdbc driver for a time series database, IoTDB, which uses TsFile as its storage format on disk.</description>
-	<url>https://github.com/thulab/iotdb/tree/master/jdbc</url>
-
-	<licenses>
-		<license>
-			<name>The Apache License, Version 2.0</name>
-			<url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
-		</license>
-	</licenses>
-
-	<distributionManagement>
-		<snapshotRepository>
-			<id>ossrh</id>
-			<url>https://oss.sonatype.org/content/repositories/snapshots</url>
-		</snapshotRepository>
-		<repository>
-			<id>ossrh</id>
-			<url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
-		</repository>
-	</distributionManagement>
 
 	<properties>
 		<jdbc.test.skip>false</jdbc.test.skip>
@@ -42,35 +22,17 @@
 		<dependency>
 			<groupId>cn.edu.tsinghua</groupId>
 			<artifactId>tsfile</artifactId>
-			<version>${project.version}</version>
+			<version>0.8.0-SNAPSHOT</version>
 		</dependency>
 		<dependency>
 			<groupId>cn.edu.tsinghua</groupId>
 			<artifactId>service-rpc</artifactId>
-			<version>${project.version}</version>
+			<version>0.8.0-SNAPSHOT</version>
 		</dependency>		
 	</dependencies>
 
 	<build>
 		<plugins>
-			<plugin>
-				<groupId>org.codehaus.mojo</groupId>
-				<artifactId>build-helper-maven-plugin</artifactId>
-				<version>3.0.0</version>
-				<executions>
-					<execution>
-						<phase>generate-sources</phase>
-						<goals>
-							<goal>add-source</goal>
-						</goals>
-						<configuration>
-							<sources>
-								<source>interface/thrift</source>
-							</sources>
-						</configuration>
-					</execution>
-				</executions>
-			</plugin>
 		      <plugin>
 		        <artifactId>maven-assembly-plugin</artifactId>
 		        <version>3.1.0</version>
@@ -94,7 +56,6 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-surefire-plugin</artifactId>
-				<version>2.18.1</version>
 				<configuration>
 					<skipTests>${jdbc.test.skip}</skipTests>
 				</configuration>
@@ -103,60 +64,6 @@
 	</build>
 
 	<profiles>
-		<profile>
-			<id>release</id>
-			<build>
-				<plugins>
-					<plugin>
-						<groupId>org.sonatype.plugins</groupId>
-						<artifactId>nexus-staging-maven-plugin</artifactId>
-						<version>1.6.7</version>
-						<extensions>true</extensions>
-						<configuration>
-							<serverId>ossrh</serverId>
-							<nexusUrl>https://oss.sonatype.org/</nexusUrl>
-							<autoReleaseAfterClose>true</autoReleaseAfterClose>
-						</configuration>
-					</plugin>
-					<plugin>
-						<groupId>org.apache.maven.plugins</groupId>
-						<artifactId>maven-compiler-plugin</artifactId>
-						<version>3.6.1</version>
-						<configuration>
-							<source>1.8</source>
-							<target>1.8</target>
-						</configuration>
-					</plugin>
-					<plugin>
-						<groupId>org.apache.maven.plugins</groupId>
-						<artifactId>maven-source-plugin</artifactId>
-						<version>2.2.1</version>
-						<executions>
-							<execution>
-								<id>attach-sources</id>
-								<goals>
-									<goal>jar-no-fork</goal>
-								</goals>
-							</execution>
-						</executions>
-					</plugin>
-					<plugin>
-						<groupId>org.apache.maven.plugins</groupId>
-						<artifactId>maven-gpg-plugin</artifactId>
-						<version>1.5</version>
-						<executions>
-							<execution>
-								<id>sign-artifacts</id>
-								<phase>verify</phase>
-								<goals>
-									<goal>sign</goal>
-								</goals>
-							</execution>
-						</executions>
-					</plugin>
-				</plugins>
-			</build>
-		</profile>
 		<profile>
 			<id>only-eclipse</id>
 			<activation>
