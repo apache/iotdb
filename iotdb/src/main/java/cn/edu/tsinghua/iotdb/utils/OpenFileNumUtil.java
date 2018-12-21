@@ -5,49 +5,45 @@ import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
 import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.sql.SQLException;
-import java.util.Arrays;
-import java.util.HashMap;
+import java.util.Collections;
 import java.util.List;
+import java.util.EnumMap;
 
 /**
  * @author liurui
  */
 
-// Notice : methods in this class may not be accurate because of limited user authority.
+// Notice : statistics in this class may not be accurate because of limited user authority.
 public class OpenFileNumUtil {
     private static Logger log = LoggerFactory.getLogger(OpenFileNumUtil.class);
-    private static TsfileDBConfig config;
-    private static Directories directories;
-    private int pid = -1;
+    private static TsfileDBConfig config = TsfileDBDescriptor.getInstance().getConfig();
+    private static Directories directories = Directories.getInstance();
+    private int pid;
     private String processName;
-    private final int PID_ERROR_CODE = -1;
-    private final int UNSUPPORTED_OS_ERROR_CODE = -2;
-    private final int UNKNOWN_STATISTICS_ERROR_CODE = -3;
-    private final String IOTDB_PROCESS_KEY_WORD = "iotdb.IoTDB";
-    private final String LINUX_OS_NAME = "linux";
-    private final String MAC_OS_NAME = "mac";
-    private final String SEARCH_PID_LINUX = "ps -aux | grep -i %s | grep -v grep";
-    private final String SEARCH_PID_MAC = "ps aux | grep -i %s | grep -v grep";
-    private final String SEARCH_OPEN_DATA_FILE_BY_PID = "lsof -p %d";
-    private final String cmds[] = {"/bin/bash", "-c", ""};
+    private static final int PID_ERROR_CODE = -1;
+    private static final int UNSUPPORTED_OS_ERROR_CODE = -2;
+    private static final int UNKNOWN_STATISTICS_ERROR_CODE = -3;
+    private static final String IOTDB_PROCESS_KEY_WORD = "iotdb.IoTDB";
+    private static final String LINUX_OS_NAME = "linux";
+    private static final String MAC_OS_NAME = "mac";
+    private static final String SEARCH_PID_LINUX = "ps -aux | grep -i %s | grep -v grep";
+    private static final String SEARCH_PID_MAC = "ps aux | grep -i %s | grep -v grep";
+    private static final String SEARCH_OPEN_DATA_FILE_BY_PID = "lsof -p %d";
+    private String[] cmds = {"/bin/bash", "-c", ""};
 
     public enum OpenFileNumStatistics {
         TOTAL_OPEN_FILE_NUM(null),
-        DATA_OPEN_FILE_NUM(Arrays.asList(config.dataDir)),
+        DATA_OPEN_FILE_NUM(Collections.singletonList(config.dataDir)),
         DELTA_OPEN_FILE_NUM(directories.getAllTsFileFolders()),
-        OVERFLOW_OPEN_FILE_NUM(Arrays.asList(config.overflowDataDir)),
-        WAL_OPEN_FILE_NUM(Arrays.asList(config.walFolder)),
-        METADATA_OPEN_FILE_NUM(Arrays.asList(config.metadataDir)),
-        DIGEST_OPEN_FILE_NUM(Arrays.asList(config.fileNodeDir)),
+        OVERFLOW_OPEN_FILE_NUM(Collections.singletonList(config.overflowDataDir)),
+        WAL_OPEN_FILE_NUM(Collections.singletonList(config.walFolder)),
+        METADATA_OPEN_FILE_NUM(Collections.singletonList(config.metadataDir)),
+        DIGEST_OPEN_FILE_NUM(Collections.singletonList(config.fileNodeDir)),
         SOCKET_OPEN_FILE_NUM(null);
-
         private List<String> path;
-
         OpenFileNumStatistics(List<String> path){
             this.path = path;
         }
@@ -58,21 +54,19 @@ public class OpenFileNumUtil {
     }
 
     /**
-     * constructor, default process key word is "IOTDB_HOME"
+     * constructor, process key word is defined by IOTDB_PROCESS_KEY_WORD
      */
     private OpenFileNumUtil() {
-        config = TsfileDBDescriptor.getInstance().getConfig();
-        directories = Directories.getInstance();
         processName = IOTDB_PROCESS_KEY_WORD;
         pid = getPID();
     }
 
     /**
-     * one instance
+     * singleton instance
      *
      * @return instance
      */
-    public static final OpenFileNumUtil getInstance() {
+    public static OpenFileNumUtil getInstance() {
         return OpenFileNumUtilHolder.INSTANCE;
     }
 
@@ -82,11 +76,10 @@ public class OpenFileNumUtil {
      * @return pid
      */
     private int getPID() {
-        int pid = -1;
+        int iotdbPid = -1;
         Process pro1;
         Runtime r = Runtime.getRuntime();
         String os = System.getProperty("os.name").toLowerCase();
-
         try {
             String command;
             if (os.startsWith(LINUX_OS_NAME)) {
@@ -97,35 +90,37 @@ public class OpenFileNumUtil {
             cmds[2] = command;
             pro1 = r.exec(cmds);
             BufferedReader in1 = new BufferedReader(new InputStreamReader(pro1.getInputStream()));
-            String line = null;
+            String line;
             while ((line = in1.readLine()) != null) {
                 line = line.trim();
                 String[] temp = line.split("\\s+");
                 if (temp.length > 1 && isNumeric(temp[1])) {
-                    pid = Integer.parseInt(temp[1]);
+                    iotdbPid = Integer.parseInt(temp[1]);
                     break;
                 }
             }
             in1.close();
             pro1.destroy();
         } catch (IOException e) {
-            log.error("Cannot get pid of IoTDB process because of {}" + e.getMessage());
+            log.error("Cannot get pid of IoTDB process because of {}", e.getMessage());
         }
-        return pid;
+        return iotdbPid;
     }
 
     /**
-     * set id
+     * set pid
+     *
+     * @param pid is the process ID of IoTDB service process
      */
-    public void setPid(int pid) {
+    void setPid(int pid) {
         this.pid = pid;
     }
 
     /**
-     * check if a string is numeric
+     * check if the string is numeric
      *
      * @param str string need to be checked
-     * @return
+     * @return whether the string is a number
      */
     private static boolean isNumeric(String str) {
         if (str == null || str.equals("")) {
@@ -144,25 +139,23 @@ public class OpenFileNumUtil {
     /**
      * return statistic Map，whose key belongs to enum OpenFileNumStatistics：
      * TOTAL_OPEN_FILE_NUM is the current total open file number of IoTDB service process
-     * DATA_OPEN_FILE_NUM is the current open file number under path '/data/delta' of IoTDB service process
-     * DELTA_OPEN_FILE_NUM is the current open file number under path '/data/delta' of IoTDB service process
-     * OVERFLOW_OPEN_FILE_NUM is the current open file number under path '/data/overflow' of IoTDB service process
-     * WAL_OPEN_FILE_NUM is the current open file number under path '/data/wals' of IoTDB service process
-     * METADATA_OPEN_FILE_NUM is the current open file number under path '/data/metadata' of IoTDB service process
-     * DIGEST_OPEN_FILE_NUM is the current open file number under path '/data/digest' of IoTDB service process
+     * DATA_OPEN_FILE_NUM is the current open file number under data directory
+     * DELTA_OPEN_FILE_NUM is the current open file number of tsfile
+     * OVERFLOW_OPEN_FILE_NUM is the current open file number of overflow file
+     * WAL_OPEN_FILE_NUM is the current open file number of WAL file
+     * METADATA_OPEN_FILE_NUM is the current open file number of metadata
+     * DIGEST_OPEN_FILE_NUM is the current open file number of fileNodeDir
      * SOCKET_OPEN_FILE_NUM is the current open socket connection of IoTDB service process
      *
      * @param pid : IoTDB service pid
      * @return list : statistics list
-     * @throws SQLException SQL Exception
      */
-    private HashMap<OpenFileNumStatistics, Integer> getOpenFile(int pid) {
-        HashMap<OpenFileNumStatistics, Integer> resultMap = new HashMap<>();
+    private EnumMap<OpenFileNumStatistics, Integer> getOpenFile(int pid) {
+        EnumMap<OpenFileNumStatistics, Integer> resultMap = new EnumMap<> (OpenFileNumStatistics.class);
         //initialize resultMap
         for (OpenFileNumStatistics openFileNumStatistics : OpenFileNumStatistics.values()) {
             resultMap.put(openFileNumStatistics, 0);
         }
-
         Process pro;
         Runtime r = Runtime.getRuntime();
         try {
@@ -170,7 +163,7 @@ public class OpenFileNumUtil {
             cmds[2] = command;
             pro = r.exec(cmds);
             BufferedReader in = new BufferedReader(new InputStreamReader(pro.getInputStream()));
-            String line = null;
+            String line;
             int oldValue;
             while ((line = in.readLine()) != null) {
                 String[] temp = line.split("\\s+");
@@ -204,11 +197,10 @@ public class OpenFileNumUtil {
     /**
      * Check if runtime OS is supported then return the result list.
      * If pid is abnormal then all statistics returns -1, if OS is not supported then all statistics returns -2
-     *
      * @return map
      */
-    private HashMap<OpenFileNumStatistics, Integer> getStatisticMap() {
-        HashMap<OpenFileNumStatistics, Integer> resultMap = new HashMap<>();
+    private EnumMap<OpenFileNumStatistics, Integer> getStatisticMap() {
+        EnumMap<OpenFileNumStatistics, Integer> resultMap = new EnumMap<>(OpenFileNumStatistics.class);
         String os = System.getProperty("os.name").toLowerCase();
         //get runtime OS name, currently only support Linux and MacOS
         if (os.startsWith(LINUX_OS_NAME) || os.startsWith(MAC_OS_NAME)) {
@@ -232,17 +224,12 @@ public class OpenFileNumUtil {
 
     /**
      * get statistics
-     *
      * @param statistics get what statistics of open file number
      * @return open file number
      */
     public int get(OpenFileNumStatistics statistics) {
-        HashMap<OpenFileNumStatistics, Integer> statisticsMap = getStatisticMap();
-        if (statisticsMap.containsKey(statistics)) {
-            return statisticsMap.get(statistics);
-        } else {
-            return UNKNOWN_STATISTICS_ERROR_CODE;
-        }
+        EnumMap<OpenFileNumStatistics, Integer> statisticsMap = getStatisticMap();
+        return statisticsMap.getOrDefault(statistics, UNKNOWN_STATISTICS_ERROR_CODE);
     }
 
 }
