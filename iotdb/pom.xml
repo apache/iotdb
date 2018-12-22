@@ -9,7 +9,7 @@
 	    <relativePath>../pom.xml</relativePath>
     </parent>
 
-	<artifactId>IoTDB</artifactId>
+	<artifactId>iotdb</artifactId>
 
 	<name>IoTDB</name>
 
