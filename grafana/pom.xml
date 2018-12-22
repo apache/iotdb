@@ -85,19 +85,6 @@
 					</configuration>
 				</plugin>
 				<plugin>
-					<groupId>org.apache.maven.plugins</groupId>
-					<artifactId>maven-war-plugin</artifactId>
-					<configuration>
-						<failOnMissingWebXml>false</failOnMissingWebXml>
-						<archive>
-							<manifest>
-								<mainClass>${start-class}</mainClass>
-								<addDefaultImplementationEntries>true</addDefaultImplementationEntries>
-							</manifest>
-						</archive>
-					</configuration>
-				</plugin>
-				<plugin>
 					<groupId>org.codehaus.mojo</groupId>
 					<artifactId>exec-maven-plugin</artifactId>
 					<configuration>

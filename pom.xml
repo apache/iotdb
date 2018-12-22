@@ -128,6 +128,13 @@
 					<artifactId>maven-javadoc-plugin</artifactId>
 					<configuration>
 						<excludePackageNames>*thrift*</excludePackageNames>
+						<!--
+                          This will suppress the generation of a hidden timestamp at the top of each generated html page
+                          and hopefully let the site generation nod to too big updates every time.
+                        -->
+						<notimestamp>true</notimestamp>
+						<!--Don't fail the build, just because there were issues in the JavaDoc generation.-->
+						<failOnError>false</failOnError>
 					</configuration>
 				</plugin>
 				<!--
@@ -139,22 +146,6 @@
 					<artifactId>maven-surefire-plugin</artifactId>
 					<configuration>
 						<argLine>-Xmx512m</argLine>
-					</configuration>
-				</plugin>
-
-				<plugin>
-					<groupId>org.apache.maven.plugins</groupId>
-					<artifactId>maven-javadoc-plugin</artifactId>
-					<configuration>
-						<!--
-                          This will suppress the generation of a hidden timestamp at the top of each generated html page
-                          and hopefully let the site generation nod to too big updates every time.
-                        -->
-						<notimestamp>true</notimestamp>
-						<!--
-                          Don't fail the build, just because there were issues in the JavaDoc generation.
-                        -->
-						<failOnError>false</failOnError>
 					</configuration>
 				</plugin>
 			</plugins>
