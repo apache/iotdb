@@ -9,7 +9,21 @@ coverage:
     changes: no
 
 ignore:
-  - "*/interface/thrift/**/*.java"  # ignore thrift-gen folders and all its contents
+#  - "*/interface/thrift/**/*.java"  # ignore thrift-gen folders and all its contents
+  - "**/generated-classes/**/*.java"
+  - "**/generated-sources/**/*.java"
   - "grafana/**/*.java"
   - "spark/**/*.java"
   - "hadoop/**/*.java"
+  - "**/pom.xml"
+  - "**/*.md"
+  - "**/*.sh"
+  - "**/*.cmd"
+  - "**/*.bat"
+  - "**/*.yml"
+  - ".mvn"
+  - "mvnw"
+  - "NOTICE"
+  - "NOTICE-binary"
+  - "License"
+  - "LICENSE-binary"
