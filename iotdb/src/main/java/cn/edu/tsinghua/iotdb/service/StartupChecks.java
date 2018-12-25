@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import cn.edu.tsinghua.iotdb.exception.StartupException;
+import cn.edu.tsinghua.iotdb.utils.CommonUtils;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -17,6 +19,7 @@ public class StartupChecks {
     
     public StartupChecks(){
 	DEFALUT_TESTS.add(checkJMXPort);
+	DEFALUT_TESTS.add(checkJDK);
     }
     
     public StartupChecks withDefaultTest(){
@@ -52,6 +55,19 @@ public class StartupChecks {
     		}else{
     		    LOGGER.info("JMX is enabled to receive remote connection on port {}", jmxPort);
     		}
+        }
+    };
+    
+    public static final StartupCheck checkJDK = new StartupCheck() {
+
+        @Override
+        public void execute() throws StartupException {
+        	int version = CommonUtils.getJDKVersion();
+        	if(version < TsFileDBConstant.minSupportedJDKVerion){
+        		throw new StartupException(String.format("Requires JDK version >= %d, current version is %d", TsFileDBConstant.minSupportedJDKVerion, version));
+        	} else{
+        		LOGGER.info("JDK veriosn is {}.", version);
+        	}
         }
     };
 }

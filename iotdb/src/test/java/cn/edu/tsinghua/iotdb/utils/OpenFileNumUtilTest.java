@@ -2,6 +2,7 @@ package cn.edu.tsinghua.iotdb.utils;
 
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.File;
@@ -55,8 +56,9 @@ public class OpenFileNumUtilTest {
         fileList.clear();
     }
 
-
-    @Test
+    // TODO: Currently these tests have bugs. See https://github.com/thulab/iotdb/issues/536.
+//    @Test
+    @Ignore
     public void testTotalOpenFileNumWhenCreateFile() {
         if(os.startsWith(MAC_OS_NAME) || os.startsWith(LINUX_OS_NAME)) {
             //get total open file number statistics of original state
@@ -74,7 +76,8 @@ public class OpenFileNumUtilTest {
         }
     }
 
-    @Test
+//    @Test
+    @Ignore
     public void testTotalOpenFileNumWhenCreateFileWriter() {
         if(os.startsWith(MAC_OS_NAME) || os.startsWith(LINUX_OS_NAME)) {
             for (int i = 0; i < testFileNum; i++) {
@@ -110,7 +113,8 @@ public class OpenFileNumUtilTest {
         }
     }
 
-    @Test
+//    @Test
+    @Ignore
     public void testTotalOpenFileNumWhenFileWriterWriting() {
         if(os.startsWith(MAC_OS_NAME) || os.startsWith(LINUX_OS_NAME)) {
             for (int i = 0; i < testFileNum; i++) {
@@ -153,7 +157,8 @@ public class OpenFileNumUtilTest {
         }
     }
 
-    @Test
+//    @Test
+    @Ignore
     public void testTotalOpenFileNumWhenFileWriterClose() {
         if(os.startsWith(MAC_OS_NAME) || os.startsWith(LINUX_OS_NAME)) {
             for (int i = 0; i < testFileNum; i++) {
