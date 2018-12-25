@@ -1,5 +1,9 @@
 #!/bin/sh
 
+echo ---------------------
+echo Starting IoTDB
+echo ---------------------
+
 if [ -z "${IOTDB_HOME}" ]; then
   export IOTDB_HOME="`dirname "$0"`/.."
 fi

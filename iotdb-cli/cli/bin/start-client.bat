@@ -28,7 +28,7 @@ goto :eof
 REM -----------------------------------------------------------------------------
 :okClasspath
 
-"%JAVA_HOME%\bin\java" %JAVA_OPTS% -cp %CLASSPATH% %MAIN_CLASS% %*
+"%JAVA_HOME%\bin\java" %JAVA_OPTS% -cp "%CLASSPATH%" %MAIN_CLASS% %*
 
 goto finally
 
