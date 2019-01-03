@@ -2,6 +2,9 @@
 
 <configuration>
 	<jmxConfigurator />
+	<!-- prevent logback from outputting its own status at the start of every log -->
+	<statusListener class="ch.qos.logback.core.status.NopStatusListener" />
+
 	<appender name="FILEERROR" class="ch.qos.logback.core.rolling.RollingFileAppender">
 		<file>${IOTDB_HOME}/logs/log_error.log</file>
    		<rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">

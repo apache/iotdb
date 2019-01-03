@@ -4,7 +4,7 @@ iotdb/iotdb/data/*
 iotdb/iotdb/derby.log
 iotdb/*.pid
 iotdb/iotdb/data/*
-iotdb/iotdb/gc.log
+iotdb/iotdb/gc.log*
 iotdb/iotdb/logs/*
 iotdb/iotdb/lib/*
 
@@ -78,7 +78,6 @@ grafana/logs/
 **/nbdist/
 **/.nb-gradle/
 grafana/data/
-
 
 
 **/.DS_Store

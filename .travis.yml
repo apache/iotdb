@@ -1,18 +1,28 @@
+# Since we don't have osx test environment, we use travis-ci to test on osx.
+# Free-plan of travis-ci offers limited resources, we only test whether iotdb can be packaged on jdk8 and jdk11.
+
 dist: trusty
 #sudo: required
 
 language: java
 
-jdk:
-  - oraclejdk8
-  - oraclejdk9
-  # - openjdk8
+matrix:
+  include:
+    - os: osx
+      osx_image: xcode10.1 # with JDK11.0.1+13 installed
+    - os: osx
+      osx_image: xcode9.3  # with JDK1.8.0_112-b16 installed
 
+# skip `before_install` stage
 before_install: true
 
+# skip `install` stage
 install: true
 
 script: 
+  - mvn clean package -Dmaven.test.skip=true
+  # For each test, travis-ci limits its output log. So we cannot test some sub-modules like tsfile, iotdb.
+  # We only test jdbc to ensure maven commands work correctly on travis-ci.
   - mvn clean test -pl jdbc -am -Dtsfile.test.skip=true
 
 after_success:

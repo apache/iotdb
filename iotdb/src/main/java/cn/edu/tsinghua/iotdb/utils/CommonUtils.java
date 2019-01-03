@@ -4,10 +4,8 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.nio.Buffer;
 import java.nio.ByteBuffer;
-
 import sun.nio.ch.DirectBuffer;
 
-@SuppressWarnings("restriction")
 public class CommonUtils {
 	public static int javaVersion = CommonUtils.getJDKVersion();
 	public static int getJDKVersion() {
