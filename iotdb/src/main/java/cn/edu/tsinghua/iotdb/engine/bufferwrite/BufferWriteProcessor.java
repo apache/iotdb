@@ -2,6 +2,8 @@ package cn.edu.tsinghua.iotdb.engine.bufferwrite;
 
 import java.io.File;
 import java.io.IOException;
+import java.time.Instant;
+import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Future;
@@ -9,14 +11,13 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
 
 import cn.edu.tsinghua.iotdb.conf.TsFileDBConstant;
+import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
 import cn.edu.tsinghua.iotdb.engine.filenode.FileNodeManager;
 import cn.edu.tsinghua.iotdb.writelog.manager.MultiFileLogNodeManager;
 import cn.edu.tsinghua.iotdb.writelog.node.WriteLogNode;
-import org.joda.time.DateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
 import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
 import cn.edu.tsinghua.iotdb.engine.Processor;
 import cn.edu.tsinghua.iotdb.engine.memcontrol.BasicMemController;
@@ -243,8 +244,8 @@ public class BufferWriteProcessor extends Processor {
         }
         long flushEndTime = System.currentTimeMillis();
         long flushInterval = flushEndTime - flushStartTime;
-        DateTime startDateTime = new DateTime(flushStartTime, TsfileDBDescriptor.getInstance().getConfig().timeZone);
-        DateTime endDateTime = new DateTime(flushEndTime, TsfileDBDescriptor.getInstance().getConfig().timeZone);
+        ZonedDateTime startDateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(flushStartTime), TsfileDBDescriptor.getInstance().getConfig().getZoneID());
+        ZonedDateTime endDateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(flushEndTime), TsfileDBDescriptor.getInstance().getConfig().getZoneID());
         LOGGER.info(
                 "The bufferwrite processor {} flush {}, start time is {}, flush end time is {}, flush time consumption is {}ms",
                 getProcessorName(), flushFunction, startDateTime, endDateTime, flushInterval);
@@ -255,8 +256,8 @@ public class BufferWriteProcessor extends Processor {
         if (lastFlushTime > 0) {
             long thisFlushTime = System.currentTimeMillis();
             long flushTimeInterval = thisFlushTime - lastFlushTime;
-            DateTime lastDateTime = new DateTime(lastFlushTime, TsfileDBDescriptor.getInstance().getConfig().timeZone);
-            DateTime thisDateTime = new DateTime(thisFlushTime, TsfileDBDescriptor.getInstance().getConfig().timeZone);
+            ZonedDateTime lastDateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(lastFlushTime), TsfileDBDescriptor.getInstance().getConfig().getZoneID());
+            ZonedDateTime thisDateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(thisFlushTime), TsfileDBDescriptor.getInstance().getConfig().getZoneID());
             LOGGER.info(
                     "The bufferwrite processor {}: last flush time is {}, this flush time is {}, flush time interval is {}s",
                     getProcessorName(), lastDateTime, thisDateTime, flushTimeInterval / 1000);
@@ -337,9 +338,8 @@ public class BufferWriteProcessor extends Processor {
             // delete the restore for this bufferwrite processor
             long closeEndTime = System.currentTimeMillis();
             long closeInterval = closeEndTime - closeStartTime;
-            DateTime startDateTime = new DateTime(closeStartTime,
-                    TsfileDBDescriptor.getInstance().getConfig().timeZone);
-            DateTime endDateTime = new DateTime(closeEndTime, TsfileDBDescriptor.getInstance().getConfig().timeZone);
+            ZonedDateTime startDateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(closeStartTime), TsfileDBDescriptor.getInstance().getConfig().getZoneID());
+            ZonedDateTime endDateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(closeEndTime), TsfileDBDescriptor.getInstance().getConfig().getZoneID());
             LOGGER.info(
                     "Close bufferwrite processor {}, the file name is {}, start time is {}, end time is {}, time consumption is {}ms",
                     getProcessorName(), fileName, startDateTime, endDateTime, closeInterval);

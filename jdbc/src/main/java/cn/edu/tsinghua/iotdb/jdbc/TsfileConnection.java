@@ -4,7 +4,6 @@ import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransportException;
-import org.joda.time.DateTimeZone;
 
 import cn.edu.tsinghua.service.rpc.thrift.ServerProperties;
 import cn.edu.tsinghua.service.rpc.thrift.TSCloseSessionReq;
@@ -37,6 +36,7 @@ import java.sql.SQLXML;
 import java.sql.Savepoint;
 import java.sql.Statement;
 import java.sql.Struct;
+import java.time.ZoneId;
 import java.sql.Array;
 import java.util.LinkedList;
 import java.util.List;
@@ -53,7 +53,7 @@ public class TsfileConnection implements Connection {
     public TS_SessionHandle sessionHandle = null;
     private final List<TSProtocolVersion> supportedProtocols = new LinkedList<TSProtocolVersion>();
     private TSProtocolVersion protocol;
-    private DateTimeZone timeZone;
+    private ZoneId zoneId;
     private boolean autoCommit;
 
     public TsfileConnection(){    
@@ -148,7 +148,7 @@ public class TsfileConnection implements Connection {
 	if (isClosed) {
 	    throw new SQLException("Cannot create statement because connection is closed");
 	}
-	return new TsfileStatement(this, client, sessionHandle);
+	return new TsfileStatement(this, client, sessionHandle, zoneId);
     }
 
     @Override
@@ -160,7 +160,7 @@ public class TsfileConnection implements Connection {
 	if (resultSetType == ResultSet.TYPE_SCROLL_SENSITIVE) {
 	    throw new SQLException(String.format("Statement with resultset type %d is not supported", resultSetType));
 	}
-	return new TsfileStatement(this, client, sessionHandle);
+	return new TsfileStatement(this, client, sessionHandle, zoneId);
     }
 
     @Override
@@ -269,7 +269,7 @@ public class TsfileConnection implements Connection {
 
     @Override
     public PreparedStatement prepareStatement(String sql) throws SQLException {
-		return new TsfilePrepareStatement(this, client, sessionHandle, sql);
+		return new TsfilePrepareStatement(this, client, sessionHandle, sql, zoneId);
     }
 
     @Override
@@ -403,10 +403,10 @@ public class TsfileConnection implements Connection {
 	    setProtocol(openResp.getServerProtocolVersion());
 	    sessionHandle = openResp.getSessionHandle();
 	    
-	    if(timeZone != null){
-	    		setTimeZone(timeZone.getID());
+	    if(zoneId != null){
+	    		setTimeZone(zoneId.toString());
 	    } else {
-	    		timeZone = DateTimeZone.forID(getTimeZone());
+	    	zoneId = ZoneId.of(getTimeZone());
 	    }
 	    
 	} catch (TException e) {
@@ -440,16 +440,15 @@ public class TsfileConnection implements Connection {
 	return flag;
     }
 
-    public void setTimeZone(String tz) throws TException, TsfileSQLException{
-    	TSSetTimeZoneReq req = new TSSetTimeZoneReq(tz);
+    public void setTimeZone(String zoneId) throws TException, TsfileSQLException{
+    	TSSetTimeZoneReq req = new TSSetTimeZoneReq(zoneId);
     	TSSetTimeZoneResp resp = client.setTimeZone(req);
     	Utils.verifySuccess(resp.getStatus());
-    	
-    	timeZone = DateTimeZone.forID(tz);
+    	this.zoneId = ZoneId.of(zoneId);
     }
     
     public String getTimeZone() throws TException, TsfileSQLException{
-    	if(timeZone != null) return timeZone.getID();
+    	if(zoneId != null) return zoneId.toString();
     	
     	TSGetTimeZoneResp resp = client.getTimeZone();
     	Utils.verifySuccess(resp.getStatus());

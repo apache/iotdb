@@ -18,6 +18,7 @@ import cn.edu.tsinghua.service.rpc.thrift.TS_SessionHandle;
 import cn.edu.tsinghua.service.rpc.thrift.TS_StatusCode;
 
 import java.sql.*;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -33,6 +34,7 @@ public class TsfileStatement implements Statement {
 	private List<String> batchSQLList;
 	private static final String SHOW_TIMESERIES_COMMAND_LOWERCASE = "show timeseries";
 	private static final String SHOW_STORAGE_GROUP_COMMAND_LOWERCASE = "show storage group";
+	ZoneId zoneId;
 	/**
 	 * Keep state so we can fail certain calls made after close().
 	 */
@@ -57,16 +59,17 @@ public class TsfileStatement implements Statement {
 	private SQLWarning warningChain = null;
 
 	public TsfileStatement(TsfileConnection connection, TSIService.Iface client, TS_SessionHandle sessionHandle,
-			int fetchSize) {
+			int fetchSize, ZoneId zoneId) {
 		this.connection = connection;
 		this.client = client;
 		this.sessionHandle = sessionHandle;
 		this.fetchSize = fetchSize;
 		this.batchSQLList = new ArrayList<>();
+		this.zoneId = zoneId;
 	}
 
-	public TsfileStatement(TsfileConnection connection, TSIService.Iface client, TS_SessionHandle sessionHandle) {
-		this(connection, client, sessionHandle, TsfileJDBCConfig.fetchSize);
+	public TsfileStatement(TsfileConnection connection, TSIService.Iface client, TS_SessionHandle sessionHandle, ZoneId zoneId) {
+		this(connection, client, sessionHandle, TsfileJDBCConfig.fetchSize, zoneId);
 	}
 
 	@Override

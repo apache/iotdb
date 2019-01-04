@@ -8,6 +8,7 @@ import static org.mockito.Mockito.when;
 import java.sql.BatchUpdateException;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -36,11 +37,11 @@ public class BatchTest {
     private TS_Status Status_SUCCESS = new TS_Status(TS_StatusCode.SUCCESS_STATUS);
     private TS_Status Status_ERROR = new TS_Status(TS_StatusCode.ERROR_STATUS);
     private TSExecuteBatchStatementResp resp;
-
+    private ZoneId zoneID = ZoneId.systemDefault();
 	@Before
 	public void setUp() throws Exception {
 		MockitoAnnotations.initMocks(this);
-		when(connection.createStatement()).thenReturn(new TsfileStatement(connection, client, sessHandle));
+		when(connection.createStatement()).thenReturn(new TsfileStatement(connection, client, sessHandle, zoneID));
 	}
 
 	@After

@@ -7,6 +7,7 @@ import static org.mockito.Matchers.any;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -41,6 +42,7 @@ public class TsfileStatementTest {
     private TSFetchMetadataResp fetchMetadataResp;
 
     private TS_Status Status_SUCCESS = new TS_Status(TS_StatusCode.SUCCESS_STATUS);
+    private ZoneId zoneID = ZoneId.systemDefault();
 
 	@Before
 	public void setUp() throws Exception {
@@ -58,14 +60,14 @@ public class TsfileStatementTest {
 	@SuppressWarnings("resource")
 	@Test(expected = SQLException.class)
 	public void testExecuteSQL1() throws SQLException {
-		TsfileStatement stmt = new TsfileStatement(connection, client, sessHandle);
+		TsfileStatement stmt = new TsfileStatement(connection, client, sessHandle, zoneID);
 		stmt.execute("show timeseries");
 	}
 	
 	@SuppressWarnings({ "resource", "serial" })
 	@Test
 	public void testExecuteSQL2() throws SQLException, TException {
-		TsfileStatement stmt = new TsfileStatement(connection, client, sessHandle);
+		TsfileStatement stmt = new TsfileStatement(connection, client, sessHandle, zoneID);
         List<List<String>> tslist = new ArrayList<>();
         tslist.add(new ArrayList<String>(4) {{
             add("root.vehicle.d0.s0");
@@ -116,7 +118,7 @@ public class TsfileStatementTest {
 	@SuppressWarnings({ "resource"})
 	@Test
 	public void testExecuteSQL3() throws SQLException, TException {
-		TsfileStatement stmt = new TsfileStatement(connection, client, sessHandle);
+		TsfileStatement stmt = new TsfileStatement(connection, client, sessHandle, zoneID);
 		Set<String> sgSet = new HashSet<>();
         sgSet.add("root.vehicle");
         when(fetchMetadataResp.getShowStorageGroups()).thenReturn(sgSet);
@@ -147,7 +149,7 @@ public class TsfileStatementTest {
 	@SuppressWarnings("resource")
 	@Test
 	public void testSetFetchSize1() throws SQLException {
-		TsfileStatement stmt = new TsfileStatement(connection, client, sessHandle);
+		TsfileStatement stmt = new TsfileStatement(connection, client, sessHandle, zoneID);
 	    stmt.setFetchSize(123);
 	    assertEquals(123, stmt.getFetchSize());
 	}
@@ -155,7 +157,7 @@ public class TsfileStatementTest {
 	@SuppressWarnings("resource")
 	@Test
 	public void testSetFetchSize2() throws SQLException {
-		TsfileStatement stmt = new TsfileStatement(connection, client, sessHandle);
+		TsfileStatement stmt = new TsfileStatement(connection, client, sessHandle, zoneID);
 	    int initial = stmt.getFetchSize();
 	    stmt.setFetchSize(0);
 	    assertEquals(initial, stmt.getFetchSize());
@@ -165,21 +167,21 @@ public class TsfileStatementTest {
 	@Test
 	public void testSetFetchSize3() throws SQLException {
 		final int fetchSize = 10000;
-		TsfileStatement stmt = new TsfileStatement(connection, client, sessHandle, fetchSize);
+		TsfileStatement stmt = new TsfileStatement(connection, client, sessHandle, fetchSize, zoneID);
 	    assertEquals(fetchSize, stmt.getFetchSize());
 	}
 
 	@SuppressWarnings("resource")
 	@Test(expected = SQLException.class)
 	public void testSetFetchSize4() throws SQLException {
-		TsfileStatement stmt = new TsfileStatement(connection, client, sessHandle);
+		TsfileStatement stmt = new TsfileStatement(connection, client, sessHandle, zoneID);
 	    stmt.setFetchSize(-1);
 	}
 
 	@SuppressWarnings("resource")
 	@Test
 	public void testSetMaxRows1() throws SQLException {
-		TsfileStatement stmt = new TsfileStatement(connection, client, sessHandle);
+		TsfileStatement stmt = new TsfileStatement(connection, client, sessHandle, zoneID);
 	    stmt.setMaxRows(123);
 	    assertEquals(123, stmt.getMaxRows());
 	}
@@ -187,7 +189,7 @@ public class TsfileStatementTest {
 	@SuppressWarnings("resource")
 	@Test(expected = SQLException.class)
 	public void testSetMaxRows2() throws SQLException {
-		TsfileStatement stmt = new TsfileStatement(connection, client, sessHandle);
+		TsfileStatement stmt = new TsfileStatement(connection, client, sessHandle, zoneID);
 		stmt.setMaxRows(-1);
 	}
 }

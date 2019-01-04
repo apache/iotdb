@@ -11,9 +11,7 @@ import cn.edu.tsinghua.iotdb.engine.filenode.FileNodeManager;
 import cn.edu.tsinghua.iotdb.exception.ArgsErrorException;
 import cn.edu.tsinghua.iotdb.exception.FileNodeManagerException;
 import cn.edu.tsinghua.iotdb.exception.PathErrorException;
-import cn.edu.tsinghua.iotdb.metadata.ColumnSchema;
 import cn.edu.tsinghua.iotdb.metadata.MManager;
-import cn.edu.tsinghua.iotdb.metadata.MNode;
 import cn.edu.tsinghua.iotdb.metadata.Metadata;
 import cn.edu.tsinghua.iotdb.qp.QueryProcessor;
 import cn.edu.tsinghua.iotdb.qp.exception.IllegalASTFormatException;
@@ -24,7 +22,6 @@ import cn.edu.tsinghua.iotdb.qp.physical.PhysicalPlan;
 import cn.edu.tsinghua.iotdb.qp.physical.crud.IndexQueryPlan;
 import cn.edu.tsinghua.iotdb.qp.physical.crud.MultiQueryPlan;
 import cn.edu.tsinghua.iotdb.qp.physical.sys.AuthorPlan;
-import cn.edu.tsinghua.iotdb.query.aggregation.AggregateFunction;
 import cn.edu.tsinghua.iotdb.query.aggregation.AggregationConstant;
 import cn.edu.tsinghua.iotdb.query.management.ReadCacheManager;
 import cn.edu.tsinghua.iotdb.queryV2.engine.control.QueryJobManager;
@@ -34,14 +31,18 @@ import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
 import cn.edu.tsinghua.tsfile.timeseries.readV2.query.QueryDataSet;
 import org.apache.thrift.TException;
 import org.apache.thrift.server.ServerContext;
-import org.joda.time.DateTimeZone;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.sql.Statement;
-import java.util.*;
+import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 
 import static cn.edu.tsinghua.iotdb.qp.logical.Operator.OperatorType.INDEXQUERY;
 import static cn.edu.tsinghua.iotdb.qp.logical.Operator.OperatorType.QUERY;
@@ -58,7 +59,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 	private ThreadLocal<String> username = new ThreadLocal<>();
 	private ThreadLocal<HashMap<String, PhysicalPlan>> queryStatus = new ThreadLocal<>();
 	private ThreadLocal<HashMap<String, QueryDataSet>> queryRet = new ThreadLocal<>();
-	private ThreadLocal<DateTimeZone> timeZone = new ThreadLocal<>();
+	private ThreadLocal<ZoneId> zoneIds = new ThreadLocal<>();
 	private TsfileDBConfig config = TsfileDBDescriptor.getInstance().getConfig();
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(TSServiceImpl.class);
@@ -88,7 +89,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 			ts_status = new TS_Status(TS_StatusCode.SUCCESS_STATUS);
 			ts_status.setErrorMessage("login successfully.");
 			username.set(req.getUsername());
-			timeZone.set(config.timeZone);
+			zoneIds.set(config.getZoneID());
 			initForOneSession();
 		} else {
 			ts_status = new TS_Status(TS_StatusCode.ERROR_STATUS);
@@ -114,14 +115,14 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 		if (username.get() == null) {
 			ts_status = new TS_Status(TS_StatusCode.ERROR_STATUS);
 			ts_status.setErrorMessage("Has not logged in");
-			if(timeZone.get() != null){
-				timeZone.remove();
+			if(zoneIds.get() != null){
+				zoneIds.remove();
 			}
 		} else {
 			ts_status = new TS_Status(TS_StatusCode.SUCCESS_STATUS);
 			username.remove();
-			if(timeZone.get() != null){
-				timeZone.remove();
+			if(zoneIds.get() != null){
+				zoneIds.remove();
 			}
 		}
 		return new TSCloseSessionResp(ts_status);
@@ -332,7 +333,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 			
 			for (String statement : statements) {
 				try {
-					PhysicalPlan physicalPlan = processor.parseSQLToPhysicalPlan(statement, timeZone.get());
+					PhysicalPlan physicalPlan = processor.parseSQLToPhysicalPlan(statement, zoneIds.get());
 					physicalPlan.setProposer(username.get());
 					if (physicalPlan.isQuery()) {
 						return getTSBathExecuteStatementResp(TS_StatusCode.ERROR_STATUS, "statement is query :" + statement,
@@ -386,7 +387,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
 			PhysicalPlan physicalPlan;
 			try {
-				physicalPlan = processor.parseSQLToPhysicalPlan(statement, timeZone.get());
+				physicalPlan = processor.parseSQLToPhysicalPlan(statement, zoneIds.get());
 				physicalPlan.setProposer(username.get());
 			} catch (IllegalASTFormatException e) {
 				return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS,
@@ -414,7 +415,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 			}
 
 			String statement = req.getStatement();
-			PhysicalPlan plan = processor.parseSQLToPhysicalPlan(statement, timeZone.get());
+			PhysicalPlan plan = processor.parseSQLToPhysicalPlan(statement, zoneIds.get());
 			plan.setProposer(username.get());
 			String targetUser = null;
 			if(plan instanceof AuthorPlan)
@@ -607,7 +608,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
 		PhysicalPlan physicalPlan;
 		try {
-			physicalPlan = processor.parseSQLToPhysicalPlan(statement, timeZone.get());
+			physicalPlan = processor.parseSQLToPhysicalPlan(statement, zoneIds.get());
 			physicalPlan.setProposer(username.get());
 		} catch (QueryProcessorException | ArgsErrorException e) {
 			e.printStackTrace();
@@ -731,7 +732,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 		TSGetTimeZoneResp resp = null;
 		try {
 			ts_status = new TS_Status(TS_StatusCode.SUCCESS_STATUS);
-			resp = new TSGetTimeZoneResp(ts_status, timeZone.get().getID());
+			resp = new TSGetTimeZoneResp(ts_status, zoneIds.get().toString());
 		} catch (Exception e) {
 			ts_status = new TS_Status(TS_StatusCode.ERROR_STATUS);
 			ts_status.setErrorMessage(e.getMessage());
@@ -745,7 +746,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 		TS_Status ts_status = null;
 		try {
 			String timeZoneID = req.getTimeZone();
-			timeZone.set(DateTimeZone.forID(timeZoneID.trim()));
+			zoneIds.set(ZoneId.of(timeZoneID));
 			ts_status = new TS_Status(TS_StatusCode.SUCCESS_STATUS);
 		} catch (Exception e) {
 			ts_status = new TS_Status(TS_StatusCode.ERROR_STATUS);
