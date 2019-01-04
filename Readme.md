@@ -3,6 +3,11 @@
 [![codecov](https://codecov.io/gh/thulab/iotdb/branch/master/graph/badge.svg?token=tBhPhPC9EQ)](https://codecov.io/gh/thulab/iotdb)
 [![GitHub release](https://img.shields.io/github/release/thulab/iotdb.svg)](https://github.com/thulab/iotdbc/releases)
 [![License](https://img.shields.io/badge/license-Apache%202-4EB1BA.svg)](https://www.apache.org/licenses/LICENSE-2.0.html)
+![](https://github-size-badge.herokuapp.com/thulab/iotdb.svg)
+![](https://img.shields.io/github/downloads/thulab/iotdb/total.svg)
+![](https://img.shields.io/badge/platform-win10%20%7C%20macox%20%7C%20linux-yellow.svg)
+![](https://img.shields.io/badge/java--language-1.8-blue.svg)
+[![IoTDB Website](https://img.shields.io/website-up-down-green-red/https/shields.io.svg?label=iotdb-website)](http://iotdb.apache.org/)
 
 # Overview
 
