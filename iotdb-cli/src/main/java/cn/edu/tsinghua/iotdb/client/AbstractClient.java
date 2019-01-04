@@ -13,15 +13,16 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.thrift.TException;
-import org.joda.time.DateTime;
-import org.joda.time.DateTimeZone;
-import org.joda.time.format.ISODateTimeFormat;
 
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.text.SimpleDateFormat;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -61,6 +62,7 @@ public abstract class AbstractClient {
 	protected static final String SET_FETCH_SIZE = "set fetch_size";
 	protected static final String SHOW_FETCH_SIZE = "show fetch_size";
 	protected static int fetchSize = 10000;
+	protected static final String HELP = "help";
 
 	protected static final String IOTDB_CLI_PREFIX = "IoTDB";
 	protected static final String SCRIPT_HINT = "./start-client.sh(start-client.bat if Windows)";
@@ -70,7 +72,7 @@ public abstract class AbstractClient {
 	protected static final int MAX_HELP_CONSOLE_WIDTH = 88;
 
 	protected static final String TIMESTAMP_STR = "Time";
-	protected static final int ISO_DATETIME_LEN = 23;
+	protected static final int ISO_DATETIME_LEN = 26;
 	protected static int maxTimeLength = ISO_DATETIME_LEN;
 	protected static int maxValueLength = 15;
 	/**
@@ -122,7 +124,7 @@ public abstract class AbstractClient {
 		keywordSet.add("-"+MAX_PRINT_ROW_COUNT_ARGS);
 	}
 
-	public static void output(ResultSet res, boolean printToConsole, String statement, DateTimeZone timeZone) throws SQLException {
+	public static void output(ResultSet res, boolean printToConsole, String statement, ZoneId zoneId) throws SQLException {
 		int cnt = 0;
 		int displayCnt = 0;
 		boolean printTimestamp = true;
@@ -158,7 +160,7 @@ public abstract class AbstractClient {
 			    		if (displayCnt < maxPrintRowCount) { // NOTE displayCnt only works on queried data results
 						System.out.print("|");
 						if (printTimestamp) {
-				    			System.out.printf(formatTime, formatDatetime(res.getLong(TIMESTAMP_STR), timeZone));
+				    			System.out.printf(formatTime, formatDatetime(res.getLong(TIMESTAMP_STR), zoneId));
 						}
 						for (int i = 2; i <= colCount; i++) {
 				    			boolean flag = false;
@@ -170,7 +172,7 @@ public abstract class AbstractClient {
 				    			}
 				    			if (flag) {
 								try {
-					    				System.out.printf(formatValue, formatDatetime(res.getLong(i), timeZone));
+					    				System.out.printf(formatValue, formatDatetime(res.getLong(i), zoneId));
 								} catch (Exception e) {
 					    				System.out.printf(formatValue, "null");
 								}
@@ -245,16 +247,19 @@ public abstract class AbstractClient {
 		return options;
 	}
 
-	private static String formatDatetime(long timestamp, DateTimeZone timeZone) {
+	private static String formatDatetime(long timestamp, ZoneId zoneId) {
+		ZonedDateTime dateTime;
 		switch (timeFormat) {
 		case "long":
 		case "number":
 			return timestamp+"";
 		case "default":
 		case "iso8601":
-			return new DateTime(timestamp, timeZone).toString(ISODateTimeFormat.dateHourMinuteSecondMillis());
+			dateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(timestamp), zoneId);
+			return dateTime.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
 		default:
-			return new DateTime(timestamp, timeZone).toString(timeFormat);
+			dateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(timestamp), zoneId);
+			return dateTime.format(DateTimeFormatter.ofPattern(timeFormat));
 		}
 	}
 
@@ -396,6 +401,18 @@ public abstract class AbstractClient {
 			System.out.println(specialCmd + " normally");
 			return OPERATION_RESULT.RETURN_OPER;
 		}
+		if(specialCmd.equals(HELP)) {
+			System.out.println(String.format("    <your-sql>\t\t\t execute your sql statment"));
+			System.out.println(String.format("    %s\t\t show how many timeseries are in iotdb", SHOW_METADATA_COMMAND));
+			System.out.println(String.format("    %s=xxx\t eg. long, default, ISO8601, yyyy-MM-dd HH:mm:ss.", SET_TIMESTAMP_DISPLAY));
+			System.out.println(String.format("    %s\t show time display type", SHOW_TIMESTAMP_DISPLAY));
+			System.out.println(String.format("    %s=xxx\t\t eg. +08:00, Asia/Shanghai.", SET_TIME_ZONE));
+			System.out.println(String.format("    %s\t\t show cli time zone", SHOW_TIMEZONE));
+			System.out.println(String.format("    %s=xxx\t\t set fetch size when querying data from server.", SET_FETCH_SIZE));
+			System.out.println(String.format("    %s\t\t show fetch size", SHOW_FETCH_SIZE));
+			System.out.println(String.format("    %s=xxx\t eg. set max lines for cli to ouput, -1 equals to unlimited.", SET_MAX_DISPLAY_NUM));
+			return OPERATION_RESULT.CONTINUE_OPER;
+		}
 		if (specialCmd.equals(SHOW_METADATA_COMMAND)) {
 			try {
 				System.out.println(((TsfileDatabaseMetadata)connection.getMetaData()).getMetadataInJson());
@@ -506,15 +523,15 @@ public abstract class AbstractClient {
 		Statement statement = null;
 		long startTime = System.currentTimeMillis();
 		try {
-			DateTimeZone timeZone = DateTimeZone.forID(connection.getTimeZone());
+			ZoneId zoneId =  ZoneId.of(connection.getTimeZone());
 			statement = connection.createStatement();
 			statement.setFetchSize(fetchSize);
 			boolean hasResultSet = statement.execute(cmd.trim());
 			if (hasResultSet) {
 				ResultSet resultSet = statement.getResultSet();
-				output(resultSet, printToConsole, cmd.trim(), timeZone);
+				output(resultSet, printToConsole, cmd.trim(), zoneId);
 			}
-			System.out.println("Execute successfully.");
+			System.out.println("Execute successfully. Type `help` to get more information.");
 		} catch (Exception e) {
 			System.out.println("Msg: " + e.getMessage());
 		} finally {

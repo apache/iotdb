@@ -1,5 +1,8 @@
 package cn.edu.tsinghua.iotdb.qp;
 
+import java.time.ZoneId;
+import java.time.ZoneOffset;
+
 import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
 import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
 import cn.edu.tsinghua.iotdb.exception.ArgsErrorException;
@@ -24,7 +27,6 @@ import cn.edu.tsinghua.iotdb.sql.parse.ASTNode;
 import cn.edu.tsinghua.iotdb.sql.parse.ParseException;
 import cn.edu.tsinghua.iotdb.sql.parse.ParseUtils;
 import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
-import org.joda.time.DateTimeZone;
 
 /**
  * provide a integration method for other user.
@@ -47,13 +49,13 @@ public class QueryProcessor {
     public PhysicalPlan parseSQLToPhysicalPlan(String sqlStr)
             throws QueryProcessorException, ArgsErrorException, ProcessorException {
     		TsfileDBConfig config = TsfileDBDescriptor.getInstance().getConfig();
-        return parseSQLToPhysicalPlan(sqlStr, config.timeZone);
+        return parseSQLToPhysicalPlan(sqlStr, config.getZoneID());
     }
     
-    public PhysicalPlan parseSQLToPhysicalPlan(String sqlStr, DateTimeZone timeZone)
+    public PhysicalPlan parseSQLToPhysicalPlan(String sqlStr, ZoneId zoneId)
             throws QueryProcessorException, ArgsErrorException, ProcessorException {
         ASTNode astNode = parseSQLToAST(sqlStr);
-        Operator operator = parseASTToOperator(astNode, timeZone);
+        Operator operator = parseASTToOperator(astNode, zoneId);
         operator = logicalOptimize(operator, executor);
         PhysicalGenerator physicalGenerator = new PhysicalGenerator(executor);
         return physicalGenerator.transformToPhysicalPlan(operator);
@@ -68,8 +70,8 @@ public class QueryProcessor {
      * @throws QueryProcessorException exception in converting sql to operator
      * @throws ArgsErrorException 
      */
-    private RootOperator parseASTToOperator(ASTNode astNode, DateTimeZone timeZone) throws QueryProcessorException, ArgsErrorException {
-        LogicalGenerator generator = new LogicalGenerator(timeZone);
+    private RootOperator parseASTToOperator(ASTNode astNode, ZoneId zoneId) throws QueryProcessorException, ArgsErrorException {
+        LogicalGenerator generator = new LogicalGenerator(zoneId);
         return generator.getLogicalPlan(astNode);
     }
 

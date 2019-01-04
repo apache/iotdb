@@ -1,9 +1,10 @@
 package cn.edu.tsinghua.iotdb.service;
 
+import java.time.Instant;
+import java.time.ZonedDateTime;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-import org.joda.time.DateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -115,8 +116,8 @@ public class CloseMergeService implements IService{
 		@Override
 		public void run() {
 			long thisMergeTime = System.currentTimeMillis();
-			DateTime startDateTime = new DateTime(mergeAllLastTime, TsfileDBDescriptor.getInstance().getConfig().timeZone);
-			DateTime endDateTime = new DateTime(thisMergeTime, TsfileDBDescriptor.getInstance().getConfig().timeZone);
+            ZonedDateTime startDateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(mergeAllLastTime), TsfileDBDescriptor.getInstance().getConfig().getZoneID());
+            ZonedDateTime endDateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(thisMergeTime), TsfileDBDescriptor.getInstance().getConfig().getZoneID());
 			long timeInterval = thisMergeTime - mergeAllLastTime;
 			LOGGER.info("Start the merge action regularly, last time is {}, this time is {}, time interval is {}s.",
 					startDateTime, endDateTime, timeInterval / 1000);
@@ -138,8 +139,8 @@ public class CloseMergeService implements IService{
 		@Override
 		public void run() {
 			long thisCloseTime = System.currentTimeMillis();
-			DateTime startDateTime = new DateTime(closeAllLastTime, TsfileDBDescriptor.getInstance().getConfig().timeZone);
-			DateTime endDateTime = new DateTime(thisCloseTime, TsfileDBDescriptor.getInstance().getConfig().timeZone);
+            ZonedDateTime startDateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(closeAllLastTime), TsfileDBDescriptor.getInstance().getConfig().getZoneID());
+            ZonedDateTime endDateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(thisCloseTime), TsfileDBDescriptor.getInstance().getConfig().getZoneID());
 			long timeInterval = thisCloseTime - closeAllLastTime;
 			LOGGER.info("Start the close action regularly, last time is {}, this time is {}, time interval is {}s.",
 					startDateTime, endDateTime, timeInterval / 1000);

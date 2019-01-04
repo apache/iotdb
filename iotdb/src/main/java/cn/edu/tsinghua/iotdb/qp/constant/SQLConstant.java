@@ -19,53 +19,6 @@ public class SQLConstant {
     public static final String NOW_FUNC = "now";
     public static final String START_TIME_STR = "1970-1-01T00:00:00";
 
-	private static final String TIME_FORMAT_PATTERN = "^\\d{4}%s\\d{1,2}%s\\d{1,2}%s\\d{1,2}:\\d{2}:\\d{2}%s$";
-	public static final Map<String, String> DATE_FORMAT_REGEXPS = new HashMap<String, String>() {
-		private static final long serialVersionUID = -1003441250297910762L;
-		{
-			put(String.format(TIME_FORMAT_PATTERN, "-", "-", "\\s", ""), "yyyy-MM-dd HH:mm:ss");
-			put(String.format(TIME_FORMAT_PATTERN, "/", "/", "\\s", ""), "yyyy/MM/dd HH:mm:ss");
-			put(String.format(TIME_FORMAT_PATTERN, "\\.", "\\.", "\\s", ""), "yyyy.MM.dd HH:mm:ss");
-			
-			put(String.format(TIME_FORMAT_PATTERN, "-", "-", "T", ""), "yyyy-MM-dd'T'HH:mm:ss");
-			put(String.format(TIME_FORMAT_PATTERN, "/", "/", "T", ""), "yyyy/MM/dd'T'HH:mm:ss");
-			put(String.format(TIME_FORMAT_PATTERN, "\\.", "\\.", "T", ""), "yyyy.MM.dd'T'HH:mm:ss");
-
-			put(String.format(TIME_FORMAT_PATTERN, "-", "-", "\\s", "(\\+|-)\\d{2}:\\d{2}"), "yyyy-MM-dd HH:mm:ssZZ");
-			put(String.format(TIME_FORMAT_PATTERN, "/", "/", "\\s", "(\\+|-)\\d{2}:\\d{2}"), "yyyy/MM/dd HH:mm:ssZZ");
-			put(String.format(TIME_FORMAT_PATTERN, "\\.", "\\.", "\\s", "(\\+|-)\\d{2}:\\d{2}"), "yyyy.MM.dd HH:mm:ssZZ");
-			
-			put(String.format(TIME_FORMAT_PATTERN, "-", "-", "T", "(\\+|-)\\d{2}:\\d{2}"), "yyyy-MM-dd'T'HH:mm:ssZZ");
-			put(String.format(TIME_FORMAT_PATTERN, "/", "/", "T", "(\\+|-)\\d{2}:\\d{2}"), "yyyy/MM/dd'T'HH:mm:ssZZ");
-			put(String.format(TIME_FORMAT_PATTERN, "\\.", "\\.", "T", "(\\+|-)\\d{2}:\\d{2}"), "yyyy.MM.dd'T'HH:mm:ssZZ");
-	
-			put(String.format(TIME_FORMAT_PATTERN, "/", "/", "\\s", "\\.\\d{3}"), "yyyy/MM/dd HH:mm:ss.SSS");
-			put(String.format(TIME_FORMAT_PATTERN, "-", "-", "\\s", "\\.\\d{3}"), "yyyy-MM-dd HH:mm:ss.SSS");
-			put(String.format(TIME_FORMAT_PATTERN, "\\.", "\\.", "\\s", "\\.\\d{3}"), "yyyy.MM.dd HH:mm:ss.SSS");
-			
-			put(String.format(TIME_FORMAT_PATTERN, "/", "/", "T", "\\.\\d{3}"), "yyyy/MM/dd'T'HH:mm:ss.SSS");
-			put(String.format(TIME_FORMAT_PATTERN, "-", "-", "T", "\\.\\d{3}"), "yyyy-MM-dd'T'HH:mm:ss.SSS");		
-			put(String.format(TIME_FORMAT_PATTERN, "\\.", "\\.", "T", "\\.\\d{3}"), "yyyy.MM.dd'T'HH:mm:ss.SSS");
-
-			put(String.format(TIME_FORMAT_PATTERN, "-", "-", "\\s", "\\.\\d{3}(\\+|-)\\d{2}:\\d{2}"), "yyyy-MM-dd HH:mm:ss.SSSZZ");
-			put(String.format(TIME_FORMAT_PATTERN, "/", "/", "\\s", "\\.\\d{3}(\\+|-)\\d{2}:\\d{2}"), "yyyy/MM/dd HH:mm:ss.SSSZZ");
-			put(String.format(TIME_FORMAT_PATTERN, "\\.", "\\.", "\\s", "\\.\\d{3}(\\+|-)\\d{2}:\\d{2}"), "yyyy.MM.dd HH:mm:ss.SSSZZ");
-			
-			put(String.format(TIME_FORMAT_PATTERN, "-", "-", "T", "\\.\\d{3}(\\+|-)\\d{2}:\\d{2}"), "yyyy-MM-dd'T'HH:mm:ss.SSSZZ");
-			put(String.format(TIME_FORMAT_PATTERN, "/", "/", "T", "\\.\\d{3}(\\+|-)\\d{2}:\\d{2}"), "yyyy/MM/dd'T'HH:mm:ss.SSSZZ");
-			put(String.format(TIME_FORMAT_PATTERN, "\\.", "\\.", "T", "\\.\\d{3}(\\+|-)\\d{2}:\\d{2}"), "yyyy.MM.dd'T'HH:mm:ss.SSSZZ");
-		}
-	};
-
-	public static String determineDateFormat(String dateString) {
-	    for (String regexp : SQLConstant.DATE_FORMAT_REGEXPS.keySet()) {
-	        if (dateString.matches(regexp)) {
-	            return SQLConstant.DATE_FORMAT_REGEXPS.get(regexp);
-	        }
-	    }
-		return null;
-	}
-
     public static final String lineFeedSignal = "\n";
     public static final String ROOT = "root";
     public static final String METADATA_PARAM_EQUAL = "=";
@@ -116,9 +69,7 @@ public class SQLConstant {
     public static final int TOK_PROPERTY_DELETE_LABEL = 56;
     public static final int TOK_PROPERTY_LINK = 57;
     public static final int TOK_PROPERTY_UNLINK = 58;
-
     public static final int TOK_LIST = 59;
-
 
     public static Map<Integer, String> tokenSymbol = new HashMap<>();
     public static Map<Integer, String> tokenNames = new HashMap<>();

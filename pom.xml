@@ -47,7 +47,6 @@
 		<json.version>20140107</json.version>
 		<joda.version>2.9.9</joda.version>
 		<spark.version>2.0.1</spark.version>
-		<json.version>20140107</json.version>
 		<common.io.version>2.5</common.io.version>
 		<commons.collections4>4.0</commons.collections4>
 
@@ -95,11 +94,6 @@
 			<artifactId>junit</artifactId>
 			<version>${junit.version}</version>
 			<scope>test</scope>
-		</dependency>
-		<dependency>
-			<groupId>joda-time</groupId>
-			<artifactId>joda-time</artifactId>
-			<version>${joda.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.mockito</groupId>

@@ -12,6 +12,7 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.Statement;
 import java.sql.Types;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -83,12 +84,13 @@ public class TsfileQueryResultSetTest {
     private TSFetchResultsResp fetchResultsResp;
 
     private TS_Status Status_SUCCESS = new TS_Status(TS_StatusCode.SUCCESS_STATUS);
+    private ZoneId zoneID = ZoneId.systemDefault();
 
     @Before
     public void before() throws Exception {
         MockitoAnnotations.initMocks(this);
 
-        statement = new TsfileStatement(connection, client, sessHandle);
+        statement = new TsfileStatement(connection, client, sessHandle, zoneID);
 
         when(connection.isClosed()).thenReturn(false);
         when(client.executeStatement(any(TSExecuteStatementReq.class))).thenReturn(execResp);

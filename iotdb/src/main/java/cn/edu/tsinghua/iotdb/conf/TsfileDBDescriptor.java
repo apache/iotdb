@@ -5,10 +5,11 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.Properties;
 
 import cn.edu.tsinghua.iotdb.engine.memcontrol.BasicMemController;
-import org.joda.time.DateTimeZone;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -151,12 +152,12 @@ public class TsfileDBDescriptor {
 
 			conf.languageVersion = properties.getProperty("language_version", conf.languageVersion).trim();
 
-			String tmpTimeZone = properties.getProperty("time_zone", conf.timeZone.getID());
+			String tmpTimeZone = properties.getProperty("time_zone", conf.zoneID.toString());
 			try {
-				conf.timeZone = DateTimeZone.forID(tmpTimeZone.trim());
-				LOGGER.info("Time zone has been set to {}", conf.timeZone);
+				conf.zoneID = ZoneId.of(tmpTimeZone.trim());
+				LOGGER.info("Time zone has been set to {}", conf.zoneID);
 			} catch (Exception e) {
-				LOGGER.error("Time zone foramt error {}, use default configuration {}", tmpTimeZone, conf.timeZone);
+				LOGGER.error("Time zone foramt error {}, use default configuration {}", tmpTimeZone, conf.zoneID);
 			}
 
 		} catch (IOException e) {
