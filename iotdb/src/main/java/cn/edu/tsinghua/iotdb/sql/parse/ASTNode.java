@@ -10,9 +10,7 @@ import java.util.List;
 import org.antlr.runtime.Token;
 import org.antlr.runtime.tree.CommonTree;
 import org.antlr.runtime.tree.Tree;
-
-import org.codehaus.plexus.util.StringUtils;
-
+import org.apache.commons.lang3.StringUtils;;
 
 public class ASTNode extends CommonTree implements Node, Serializable {
 	private static final long serialVersionUID = 1L;

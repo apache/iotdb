@@ -15,6 +15,7 @@
 
 	<properties>
 		<antlr3.version>3.5.2</antlr3.version>
+		<common.lang3.version>3.8.1</common.lang3.version>
 		<iotdb.test.skip>false</iotdb.test.skip>
 		<it.test.includes>**/*Test.java</it.test.includes>
 		<it.test.excludes>**/NoTest.java</it.test.excludes>
@@ -70,10 +71,17 @@
 			<artifactId>commons-collections4</artifactId>
 			<version>${commons.collections4}</version>
 		</dependency>
+		<!-- https://mvnrepository.com/artifact/org.antlr/antlr-runtime -->
 		<dependency>
-			<groupId>org.antlr</groupId>
-			<artifactId>antlr3-maven-plugin</artifactId>
-			<version>${antlr3.version}</version>
+		    <groupId>org.antlr</groupId>
+		    <artifactId>antlr-runtime</artifactId>
+		    <version>${antlr3.version}</version>
+		</dependency>
+		<!-- https://mvnrepository.com/artifact/org.apache.commons/commons-lang3 -->
+		<dependency>
+		    <groupId>org.apache.commons</groupId>
+		    <artifactId>commons-lang3</artifactId>
+		    <version>${common.lang3.version}</version>
 		</dependency>
 	</dependencies>
 
@@ -93,6 +101,7 @@
 					</filesets>
 				</configuration>
 			</plugin>
+
 
 			<plugin>
 				<groupId>org.antlr</groupId>
