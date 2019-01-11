@@ -115,7 +115,7 @@ public class RecordReader {
 
     /**
      * Read one path without filter from one specific
-     * <code>RowGroupReader</code> according to the indexList。
+     * <code>RowGroupReader</code> according to the indexList
      * @param res result
      * @param fetchSize fetch size
      * @param deltaObjectUID delta object id

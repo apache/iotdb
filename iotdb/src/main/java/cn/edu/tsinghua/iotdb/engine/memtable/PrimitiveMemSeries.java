@@ -81,7 +81,7 @@ public class PrimitiveMemSeries implements IMemSeries {
     }
 
     @Override
-    //TODO: 考虑使用数组进行排序去重
+    //TODO: Consider using arrays to sort and remove duplicates
     public List<TimeValuePair> getSortedTimeValuePairList() {
         int length = list.size();
         TreeMap<Long, TsPrimitiveType> treeMap = new TreeMap<>();

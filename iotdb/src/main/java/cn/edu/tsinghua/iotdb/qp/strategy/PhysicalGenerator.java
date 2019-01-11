@@ -254,7 +254,7 @@ public class PhysicalGenerator {
         }
     }
 
-    //TODO group by， fill， aggregation 重构完，直接用这个方法替换 transformQuery
+    //TODO after finishing refactoring group by, fill, and aggregation, substitute transformQuery with this method
     private PhysicalPlan transformQueryV2(QueryOperator queryOperator) throws QueryProcessorException, ProcessorException {
 
         QueryPlan queryPlan;

@@ -39,7 +39,7 @@ public class KafkaConsumer {
 		// ZooKeeper session timeout
 		props.put("zookeeper.session.timeout.ms", "400");
 
-		// a ZooKeeper ‘follower’ can be behind the master before an error
+		// a ZooKeeper 'follower' can be behind the master before an error
 		// occurs
 		props.put("zookeeper.sync.time.ms", "200");
 		props.put("rebalance.max.retries", "5");
@@ -73,7 +73,7 @@ public class KafkaConsumer {
 		StringDecoder valueDecoder = new StringDecoder(new VerifiableProperties());
 
 		Map<String, List<KafkaStream<String, String>>> consumerMap = consumer
-				.createMessageStreams(topicCountMap, keyDecoder, valueDecoder); // 三个String分别为TOPIC、Key、Value
+				.createMessageStreams(topicCountMap, keyDecoder, valueDecoder); // 3 Strings are TOPIC, Key, Value
 
 		// acquire data
 		List<KafkaStream<String, String>> streams = consumerMap.get(KafkaProducer.TOPIC);

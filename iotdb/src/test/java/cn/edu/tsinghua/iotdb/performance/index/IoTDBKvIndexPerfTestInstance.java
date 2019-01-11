@@ -355,7 +355,7 @@ public class IoTDBKvIndexPerfTestInstance {
             Connection connection = null;
             try {
                 System.out.println("testtest-sql\t" + sql);
-                //长度1，non-query语句
+                //length 1, non-query sql
                 connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
                 Statement statement = connection.createStatement();
                 statement.execute(sql);

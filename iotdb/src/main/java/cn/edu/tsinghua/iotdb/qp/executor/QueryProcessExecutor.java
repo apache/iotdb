@@ -85,7 +85,7 @@ public abstract class QueryProcessExecutor {
 	}
 
 
-	//TODO 改 aggres 的结构
+	//TODO modify the structure of aggres
 	private List<Pair<Path, String>> getAggrePair(List<Path> paths, List<String> aggregations) {
 		List<Pair<Path, String>> aggres = new ArrayList<>();
 		for(int i = 0; i < paths.size(); i++) {

@@ -38,7 +38,7 @@ public class SendDataToIotdb {
 		// get path set iterator
 		resultSet = databaseMetaData.getColumns(null, null, path, null);
 
-		// if path set iterator is null，then create path
+		// if path set iterator is null, then create path
 		if (!resultSet.next()) {
 			String epl = "CREATE TIMESERIES " + path + " WITH DATATYPE=TEXT, ENCODING=PLAIN";
 			statement.execute(epl);

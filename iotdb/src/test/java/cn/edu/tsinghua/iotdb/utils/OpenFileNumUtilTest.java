@@ -91,7 +91,7 @@ public class OpenFileNumUtilTest {
             for (int i = 0; i < testFileNum; i++) {
                 fileList.add(new File(currDir + testFileName + i));
             }
-            //create testFileNum File，then get total open file number statistics
+            //create testFileNum File, then get total open file number statistics
             totalOpenFileNumAfter = openFileNumUtil.get(OpenFileNumUtil.OpenFileNumStatistics.DATA_OPEN_FILE_NUM);
             totalOpenFileNumChange = totalOpenFileNumAfter - totalOpenFileNumBefore;
             //create test file shall not affect total open file number statistics

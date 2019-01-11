@@ -649,7 +649,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
 					newMultiPassTokenSet, newMultiPassLock);
 			return true;
 		} else if (oldMultiPassTokenSet != null && oldMultiPassTokenSet.contains(token)) {
-			// remove token first， then unlock
+			// remove token first, then unlock
 			oldMultiPassLock.readLock().unlock();
 			oldMultiPassTokenSet.remove(token);
 			LOGGER.debug("Remove multi token:{}, old set:{}, lock:{}", token, oldMultiPassTokenSet, oldMultiPassLock);

@@ -142,12 +142,15 @@ public class IoTDBDaemonTest {
                 selectOneColumnWithFilterTest();
 
                 /**
-                 * FIXME 目前查询的设计不支持:筛选条件可以筛选到更新后的值但原值不满足筛选条件的情况。
-                 * 如  "insert into root.vehicle.d0(timestamp,s1) values(1000,55555)"
+                 * FIXME current design has the following problem: original data value does not satisfy a certain query condition,
+                 * and the updated version satisfy the query condition, however the updated data still can't be obtained by the query condition.
+                 *
+                 * for example  "insert into root.vehicle.d0(timestamp,s1) values(1000,55555)"
                  *      "UPDATE root.vehicle SET d0.s1 = 0 WHERE time > 90"
                  *      select s1 from root.vehicle.d0 where s1 < 100;
-                 *      将不能够得到timestamp = 1000的那条记录
-                 *      （ps 单点值更新可以通过插入实现，后插入的值会覆盖先插入的值）
+                 *      currently we can't get the record of which timestamp = 1000
+                 *      (ps single point update can be implemented through ingestion,
+                 *      the latter ingested value will override previous value)
                  * */
                 //textDataTypeTest();
 

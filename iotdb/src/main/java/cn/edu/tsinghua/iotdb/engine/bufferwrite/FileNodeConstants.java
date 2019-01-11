@@ -1,7 +1,7 @@
 package cn.edu.tsinghua.iotdb.engine.bufferwrite;
 
 /**
- * Constants for using in bufferwrite，overflow and filenode
+ * Constants for using in bufferwrite, overflow and filenode
  * 
  * @author liukun
  *
