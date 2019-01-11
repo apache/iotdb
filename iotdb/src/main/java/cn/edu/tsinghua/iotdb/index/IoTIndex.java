@@ -96,7 +96,7 @@ public interface IoTIndex {
     void delete(Path path, long timestamp);
 
     /**
-     * todo。
+     * todo
      *
      * @return todo
      * @throws IndexManagerException

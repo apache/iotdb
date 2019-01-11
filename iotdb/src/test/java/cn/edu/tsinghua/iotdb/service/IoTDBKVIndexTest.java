@@ -37,35 +37,35 @@ public class IoTDBKVIndexTest {
             {"SET STORAGE GROUP TO root.vehicle.d1"},
             {"CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE"},
             {"CREATE TIMESERIES root.vehicle.d1.s0 WITH DATATYPE=INT32, ENCODING=RLE"},
-//          s0第一个文件
+//          s0 the first file
             {"insert into root.vehicle.d0(timestamp,s0) values(1,101)"},
             {"insert into root.vehicle.d0(timestamp,s0) values(2,102)"},
             {"insert into root.vehicle.d0(timestamp,s0) values(3,103)"},
             {"insert into root.vehicle.d0(timestamp,s0) values(4,104)"},
             {"insert into root.vehicle.d0(timestamp,s0) values(5,105)"},
-//          创建索引
+//          create index
             {"create index on root.vehicle.d0.s0 using kvindex with window_length=2, since_time=0"},
-//          强行切断d0.s0，生成d1.s0文件
+//          force to cut d0.s0, generate d1.s0 file
             {"insert into root.vehicle.d1(timestamp,s0) values(5,102)"},
-//          s0第二个文件
+//          s0 the second file
             {"insert into root.vehicle.d0(timestamp,s0) values(6,106)"},
             {"insert into root.vehicle.d0(timestamp,s0) values(7,107)"},
             {"insert into root.vehicle.d0(timestamp,s0) values(8,108)"},
             {"insert into root.vehicle.d0(timestamp,s0) values(9,109)"},
             {"insert into root.vehicle.d0(timestamp,s0) values(10,110)"},
 
-//          强行切断d0.s0，生成第二个d1.s0文件
+//          force to cut d0.s0, generate the second d1.s0 file
             {"insert into root.vehicle.d1(timestamp,s0) values(6,102)"},
-//          s0第三个文件，处于未关闭状态
+//          s0 the third file, in unclosed state
             {"insert into root.vehicle.d0(timestamp,s0) values(11,111)"},
             {"insert into root.vehicle.d0(timestamp,s0) values(12,112)"},
             {"insert into root.vehicle.d0(timestamp,s0) values(13,113)"},
             {"insert into root.vehicle.d0(timestamp,s0) values(14,114)"},
             {"insert into root.vehicle.d0(timestamp,s0) values(15,115)"},
-//          修改d2.s0，强行切断d0.s0，生成第三个d0.s0文件
+//          modify d2.s0, force to cut d0.s0, generate the third d0.s0 file
             {"update root.vehicle SET d0.s0 = 33333 WHERE time >= 6 and time <= 7"},
             {"insert into root.vehicle.d0(timestamp,s0) values(7,102)"},
-//          单文件索引查询
+//          single file index query
 //            {
 //                    "select index kvindex(root.vehicle.d0.s0, root.vehicle.d0.s0, 4, 7, 0.0, 1.0, 0.0) from root" +
 //                            ".vehicle.d0.s0",
@@ -80,11 +80,11 @@ public class IoTDBKVIndexTest {
                             ".indextest.d0.s0",
                     "0,1,4,0.0",
             },
-//          跨文件索引，涉及到Overflow的查询
+//          cross-file index, involve Overflow query
 
-//          merge操作
+//          merge operation
             {"merge"},
-//          单文件索引查询
+//          single file index query
             {
                     "select index kvindex(root.vehicle.d0.s0, root.vehicle.d0.s0, 2, 5, 0.0, 1.0, 0.0) from root.vehicle.d0.s0",
                     "0,2,5,0.0",
@@ -94,14 +94,14 @@ public class IoTDBKVIndexTest {
                     "0,3,5,0.0",
             },
 
-//          跨文件索引，涉及到Overflow的查询
+//          cross-file index, involve Overflow query
             {
                     "select index kvindex(root.vehicle.d0.s0, root.vehicle.d0.s0, 5, 8, 0.0, 1.0, 0.0) from root.vehicle.d0.s0",
                     "0,5,8,0.0",
             },
-//          删除索引
+//          delete index
             {"drop index kvindex on root.vehicle.d0.s0"},
-////          再次查询
+////        query again
             {
                     "select index kvindex(root.vehicle.d0.s0, root.vehicle.d0.s0, 6, 9, 0.0, 1.0, 0.0) from root.vehicle.d0.s0",
                     "0,1,4,0.0",
@@ -158,7 +158,7 @@ public class IoTDBKVIndexTest {
 //                if("select index kvindex(root.vehicle.d0.s0, root.vehicle.d0.s0, 1, 3, 0)".equals(sql))
 //                    System.out.println();
                 if (sqlRet.length == 1) {
-                    //长度1，non-query语句
+                    //length 1, non-query sql
                     connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
                     Statement statement = connection.createStatement();
                     statement.execute(sql);
@@ -168,7 +168,7 @@ public class IoTDBKVIndexTest {
                     }
                     statement.close();
                 } else {
-                    //长度2，query语句，第二项是结果
+                    //length 2, query sql, the second term is the result
 //                    String[] retArray = (String[]) sqlRet[1];
                     query(sql, sqlRet);
                 }

@@ -42,7 +42,7 @@ public class SingleQueryPlan extends PhysicalPlan {
     private FilterOperator valueFilterOperator;
     private FilterExpression[] filterExpressions;
 
-    //TODO 合并多种 filter
+    //TODO merge multiple kinds of filters
     public SingleQueryPlan(List<Path> paths, FilterOperator timeFilter,
                            FilterOperator freqFilter, FilterOperator valueFilter,
                            QueryProcessExecutor executor, List<String> aggregations) throws QueryProcessorException {

@@ -22,7 +22,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * A reader for sequentially inserts data，including a list of sealedTsFile, unSealedTsFile, data in MemTable.
+ * A reader for sequentially inserts data, including a list of sealedTsFile, unSealedTsFile, data in MemTable.
  * */
 public abstract class SequenceInsertDataReader implements SeriesReader {
 

@@ -22,13 +22,13 @@ import static org.mockito.Mockito.when;
 /**
  * This class is designed to test the function of databaseMetaData which is used to fetch metadata from IoTDB.
  * (1) get all columns' name under a given path,
- * e.g., databaseMetaData.getColumns(“col”, “root”, null, null);
+ * e.g., databaseMetaData.getColumns("col", "root", null, null);
  * (2) get all delta objects under a given column
- * e.g., databaseMetaData.getColumns(“delta”, “vehicle”, null, null);
+ * e.g., databaseMetaData.getColumns("delta", "vehicle", null, null);
  * (3) show timeseries path
- * e.g., databaseMetaData.getColumns(“ts”, “root.vehicle.d0.s0”, null, null);
+ * e.g., databaseMetaData.getColumns("ts", "root.vehicle.d0.s0", null, null);
  * (4) show storage group
- * databaseMetaData.getColumns(“sg”, null, null, null);
+ * databaseMetaData.getColumns("sg", null, null, null);
  * (5) show metadata in json
  * ((TsfileDatabaseMetadata)databaseMetaData).getMetadataInJson()
  * <p>

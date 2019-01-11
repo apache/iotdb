@@ -13,12 +13,12 @@ cp ./target/lib/*.jar ./lib/
 file_name=`find ./target -name "tsfile-?.?.?.jar"`
 version=${file_name#*tsfile-}
 version=${version%.jar}
-# 拷贝到lib目录下
+# copy to lib directory
 echo "Copy latest tsfile-jar to ./lib. version is : $version"
 cp ./target/tsfile-$version.jar ./lib/
 
 echo "Zip all jars..."
-# 压缩成一个zip
+# compress to a zip file
 cd ./lib
 zip tsfile-$version.zip ./*
 echo "Done. see ./lib/tsfile-$version.zip"

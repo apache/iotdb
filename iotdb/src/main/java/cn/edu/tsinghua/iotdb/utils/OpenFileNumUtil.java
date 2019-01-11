@@ -144,7 +144,7 @@ public class OpenFileNumUtil {
     }
 
     /**
-     * return statistic Map，whose key belongs to enum OpenFileNumStatistics：
+     * return statistic Map, whose key belongs to enum OpenFileNumStatistics:
      * TOTAL_OPEN_FILE_NUM is the current total open file number of IoTDB service process
      * DATA_OPEN_FILE_NUM is the current open file number under data directory
      * DELTA_OPEN_FILE_NUM is the current open file number of tsfile
@@ -211,7 +211,7 @@ public class OpenFileNumUtil {
         String os = System.getProperty("os.name").toLowerCase();
         //get runtime OS name, currently only support Linux and MacOS
         if (os.startsWith(LINUX_OS_NAME) || os.startsWith(MAC_OS_NAME)) {
-            //if pid is normal，then get statistics
+            //if pid is normal, then get statistics
             if (pid > 0) {
                 resultMap = getOpenFile(pid);
             } else {

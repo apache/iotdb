@@ -67,7 +67,6 @@ public class SerializeUtilTest {
 
 	@Test
 	public void testFileStore() {
-		// 空在使用的时候starttime如何计算？？Map？？
 		IntervalFileNode emptyIntervalFileNode = new IntervalFileNode(OverflowChangeType.NO_CHANGE, null);
 		List<IntervalFileNode> newFilenodes = new ArrayList<>();
 		String deltaObjectId = "d0.s0";
