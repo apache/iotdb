@@ -1,12 +1,10 @@
 package cn.edu.tsinghua.iotdb.utils;
 
-import cn.edu.tsinghua.tsfile.common.exception.UnSupportedDataTypeException;
-import cn.edu.tsinghua.tsfile.common.utils.Binary;
+import cn.edu.tsinghua.tsfile.exception.write.UnSupportedDataTypeException;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
+import cn.edu.tsinghua.tsfile.utils.Binary;
 
-/**
- * Created by zhangjinrui on 2018/1/25.
- */
+
 public class PrimitiveArrayListFactory {
 
     public static PrimitiveArrayList getByDataType(TSDataType dataType) {

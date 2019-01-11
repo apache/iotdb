@@ -2,9 +2,6 @@ package cn.edu.tsinghua.iotdb.qp.logical.crud;
 
 /**
  * this class extends {@code RootOperator} and process update statement
- * 
- * @author kangrong
- *
  */
 public final class UpdateOperator extends SFWOperator {
 

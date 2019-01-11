@@ -1,7 +1,7 @@
 package cn.edu.tsinghua.iotdb.writelog.node;
 
-import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
-import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
+import cn.edu.tsinghua.iotdb.conf.IoTDBConfig;
+import cn.edu.tsinghua.iotdb.conf.IoTDBDescriptor;
 import cn.edu.tsinghua.iotdb.exception.RecoverException;
 import cn.edu.tsinghua.iotdb.utils.MemUtils;
 import cn.edu.tsinghua.iotdb.writelog.LogPosition;
@@ -44,7 +44,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
 
     private RecoverPerformer recoverPerformer;
 
-    private TsfileDBConfig config = TsfileDBDescriptor.getInstance().getConfig();
+    private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
     private List<byte[]> logCache = new ArrayList<>(config.flushWalThreshold);
 

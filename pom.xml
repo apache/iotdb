@@ -15,6 +15,7 @@
 	<packaging>pom</packaging>
 
 	<name>IoTDB Root</name>
+
 	<description>
     	This is the top level project that builds, packages the tsfile, iotdb engine, jdbc, and integration libs.
   	</description>
@@ -29,7 +30,7 @@
 	<scm>
 		<connection>scm:git:git://github.com/thulab/iotdb.git</connection>
 		<developerConnection>scm:git:ssh://github.com:thulab/iotdb.git</developerConnection>
-		<url>http://github.com/thulab/iotdb/</url>
+		<url>http://github.com/thulab/iotdb/tree/master</url>
 		<tag>v0.8.0</tag>
 	</scm>
 
@@ -123,6 +124,7 @@
 		<!-- <module>hadoop</module> -->
 		<!-- <module>spark</module> -->
 	</modules>
+
 
 	<build>
 		<pluginManagement>

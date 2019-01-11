@@ -3,9 +3,9 @@ package cn.edu.tsinghua.iotdb.auth;
 import cn.edu.tsinghua.iotdb.auth.authorizer.IAuthorizer;
 import cn.edu.tsinghua.iotdb.auth.authorizer.LocalFileAuthorizer;
 import cn.edu.tsinghua.iotdb.auth.entity.PrivilegeType;
-import cn.edu.tsinghua.iotdb.conf.TsFileDBConstant;
+import cn.edu.tsinghua.iotdb.conf.IoTDBConstant;
 import cn.edu.tsinghua.iotdb.qp.logical.Operator;
-import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
+import cn.edu.tsinghua.tsfile.read.common.Path;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -13,7 +13,7 @@ import java.util.List;
 
 public class AuthorityChecker {
 
-    private static final String SUPER_USER = TsFileDBConstant.ADMIN_NAME;
+    private static final String SUPER_USER = IoTDBConstant.ADMIN_NAME;
     private static final Logger logger = LoggerFactory.getLogger(AuthorityChecker.class);
 
     public static boolean check(String username, List<Path> paths, Operator.OperatorType type, String targetUser) throws AuthException {
@@ -43,12 +43,12 @@ public class AuthorityChecker {
     private static boolean checkOnePath(String username, Path path, int permission) throws AuthException {
         IAuthorizer authorizer = LocalFileAuthorizer.getInstance();
         try {
-            String fullPath = path == null ? TsFileDBConstant.PATH_ROOT : path.getFullPath();
+            String fullPath = path == null ? IoTDBConstant.PATH_ROOT : path.getFullPath();
             if (authorizer.checkUserPrivileges(username, fullPath, permission)) {
                 return true;
             }
         } catch (AuthException e) {
-            logger.error("Error occurs when checking the path {} for user {}", path, username, e);
+            logger.error("Error occurs when checking the seriesPath {} for user {}", path, username, e);
         }
         return false;
     }

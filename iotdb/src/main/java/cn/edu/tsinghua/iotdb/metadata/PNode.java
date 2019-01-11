@@ -8,8 +8,6 @@ import cn.edu.tsinghua.iotdb.exception.PathErrorException;
 
 /**
  * PNode is the shorthand for "Property Node", which make up The {@code PTree}  
- * @author zhangjinrui
- *
  */
 public class PNode implements Serializable{
 	

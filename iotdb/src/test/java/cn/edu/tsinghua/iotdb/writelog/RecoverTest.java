@@ -1,8 +1,9 @@
 package cn.edu.tsinghua.iotdb.writelog;
 
-import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
-import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
+import cn.edu.tsinghua.iotdb.conf.IoTDBConfig;
+import cn.edu.tsinghua.iotdb.conf.IoTDBDescriptor;
 import cn.edu.tsinghua.iotdb.exception.PathErrorException;
+import cn.edu.tsinghua.iotdb.exception.ProcessorException;
 import cn.edu.tsinghua.iotdb.exception.RecoverException;
 import cn.edu.tsinghua.iotdb.metadata.MManager;
 import cn.edu.tsinghua.iotdb.writelog.recover.ExclusiveLogRecoverPerformer;
@@ -14,8 +15,7 @@ import cn.edu.tsinghua.iotdb.qp.physical.crud.DeletePlan;
 import cn.edu.tsinghua.iotdb.qp.physical.crud.InsertPlan;
 import cn.edu.tsinghua.iotdb.qp.physical.crud.UpdatePlan;
 import cn.edu.tsinghua.iotdb.utils.EnvironmentUtils;
-import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
-import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
+import cn.edu.tsinghua.tsfile.read.common.Path;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -34,7 +34,7 @@ import static org.junit.Assert.fail;
 
 public class RecoverTest {
 
-    private TsfileDBConfig config = TsfileDBDescriptor.getInstance().getConfig();
+    private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
     private boolean enableWal;
 

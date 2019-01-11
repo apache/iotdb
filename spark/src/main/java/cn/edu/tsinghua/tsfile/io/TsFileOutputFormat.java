@@ -1,8 +1,8 @@
 package cn.edu.tsinghua.tsfile.io;
 
-import cn.edu.tsinghua.tsfile.timeseries.write.exception.WriteProcessException;
-import cn.edu.tsinghua.tsfile.timeseries.write.record.TSRecord;
-import cn.edu.tsinghua.tsfile.timeseries.write.schema.FileSchema;
+import cn.edu.tsinghua.tsfile.write.exception.WriteProcessException;
+import cn.edu.tsinghua.tsfile.write.record.TSRecord;
+import cn.edu.tsinghua.tsfile.write.schema.FileSchema;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.mapreduce.RecordWriter;

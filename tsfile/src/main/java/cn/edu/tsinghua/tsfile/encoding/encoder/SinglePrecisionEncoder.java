@@ -1,9 +1,9 @@
 package cn.edu.tsinghua.tsfile.encoding.encoder;
 
+import cn.edu.tsinghua.tsfile.common.conf.TSFileConfig;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-
-import cn.edu.tsinghua.tsfile.common.conf.TSFileConfig;
 
 /**
  * Encoder for int value using gorilla encoding

@@ -13,14 +13,14 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 
 import cn.edu.tsinghua.iotdb.exception.ArgsErrorException;
-import cn.edu.tsinghua.iotdb.jdbc.TsfileConnection;
-import cn.edu.tsinghua.iotdb.jdbc.TsfileJDBCConfig;
+import cn.edu.tsinghua.iotdb.jdbc.IoTDBConnection;
+import cn.edu.tsinghua.iotdb.jdbc.Config;
 
 public class WinClient extends AbstractClient {
 
 	public static void main(String[] args) throws ClassNotFoundException, SQLException {
-		Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);
-		TsfileConnection connection = null;
+		Class.forName(Config.JDBC_DRIVER_NAME);
+		IoTDBConnection connection = null;
 		Options options = createOptions();
 		HelpFormatter hf = new HelpFormatter();
 		hf.setWidth(MAX_HELP_CONSOLE_WIDTH);
@@ -76,7 +76,7 @@ public class WinClient extends AbstractClient {
 					password = readPassword();
 				}
 				try {
-					connection = (TsfileConnection) DriverManager.getConnection("jdbc:tsfile://" + host + ":" + port + "/", username,
+					connection = (IoTDBConnection) DriverManager.getConnection(Config.IOTDB_URL_PREFIX + host + ":" + port + "/", username,
 							password);
 					properties = connection.getServerProperties();
 					AGGREGRATE_TIME_LIST.addAll(properties.getSupportedTimeAggregationOperations());

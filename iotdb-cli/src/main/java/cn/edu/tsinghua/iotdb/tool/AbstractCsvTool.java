@@ -4,8 +4,8 @@ import java.io.IOException;
 import java.time.ZoneId;
 
 import cn.edu.tsinghua.iotdb.exception.ArgsErrorException;
-import cn.edu.tsinghua.iotdb.jdbc.TsfileConnection;
-import cn.edu.tsinghua.iotdb.jdbc.TsfileSQLException;
+import cn.edu.tsinghua.iotdb.jdbc.IoTDBConnection;
+import cn.edu.tsinghua.iotdb.jdbc.IoTDBSQLException;
 import org.apache.commons.cli.CommandLine;
 import org.apache.thrift.TException;
 
@@ -76,7 +76,7 @@ public abstract class AbstractCsvTool {
 			"yyyy/MM/dd'T'HH:mm:ss.SSSZZ",
 	};
     
-    protected static TsfileConnection connection;
+    protected static IoTDBConnection connection;
 
 	protected static String checkRequiredArg(String arg, String name, CommandLine commandLine) throws ArgsErrorException {
 		String str = commandLine.getOptionValue(arg);
@@ -89,7 +89,7 @@ public abstract class AbstractCsvTool {
 		return str;
 	}
     
-	protected static void setTimeZone() throws TsfileSQLException, TException {
+	protected static void setTimeZone() throws IoTDBSQLException, TException {
 		if(timeZoneID != null){
 			connection.setTimeZone(timeZoneID);
 		}

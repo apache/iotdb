@@ -6,12 +6,9 @@ import java.util.Objects;
 
 import cn.edu.tsinghua.iotdb.qp.physical.PhysicalPlan;
 import cn.edu.tsinghua.iotdb.qp.logical.Operator;
-import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
+import cn.edu.tsinghua.tsfile.read.common.Path;
 
-/**
- * @author kangrong
- * @author qiaojialin
- */
+
 public class DeletePlan extends PhysicalPlan {
     private long deleteTime;
     private List<Path> paths = new ArrayList<>();
@@ -55,8 +52,12 @@ public class DeletePlan extends PhysicalPlan {
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
         DeletePlan that = (DeletePlan) o;
         return deleteTime == that.deleteTime &&
                 Objects.equals(paths, that.paths);

@@ -1,7 +1,7 @@
 package cn.edu.tsinghua.tsfile.encoding.encoder;
 
-import cn.edu.tsinghua.tsfile.common.exception.TSFileEncodingException;
-import cn.edu.tsinghua.tsfile.common.utils.Binary;
+import cn.edu.tsinghua.tsfile.exception.encoding.TSFileEncodingException;
+import cn.edu.tsinghua.tsfile.utils.Binary;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSEncoding;
 
 import java.io.ByteArrayOutputStream;
@@ -15,6 +15,8 @@ import java.math.BigDecimal;
  * @author Zhang Jinrui
  */
 public abstract class Encoder {
+    public static final String MAX_STRING_LENGTH = "max_string_length";
+    public static final String MAX_POINT_NUMBER = "max_point_number";
 
     public TSEncoding type;
 
@@ -54,10 +56,16 @@ public abstract class Encoder {
         throw new TSFileEncodingException("Method encode BigDecimal is not supported by Encoder");
     }
 
+    /**
+     * Write all values buffered in memory cache to OutputStream
+     *
+     * @param out - ByteArrayOutputStream
+     * @throws IOException cannot flush to OutputStream
+     */
     public abstract void flush(ByteArrayOutputStream out) throws IOException;
 
     /**
-     * return the maximal possible size of one data item.
+     * When encoder accepts a new incoming data point, the maximal possible size in byte it takes to store in memory.
      *
      * @return the maximal possible size of one data item encoded by this encoder
      */
@@ -66,8 +74,7 @@ public abstract class Encoder {
     }
 
     /**
-     * this function returns the maximal possible memory size occupied by current Encoder. This statistic is extra
-     * memory size for Encoder and doesn't involve OutputStream.
+     * The maximal possible memory size occupied by current Encoder. This statistic value doesn't involve OutputStream.
      *
      * @return the maximal size of possible memory occupied by current encoder
      */

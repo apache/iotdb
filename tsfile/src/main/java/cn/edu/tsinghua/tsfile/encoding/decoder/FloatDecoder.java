@@ -1,8 +1,8 @@
 package cn.edu.tsinghua.tsfile.encoding.decoder;
 
-import cn.edu.tsinghua.tsfile.common.exception.TSFileDecodingException;
-import cn.edu.tsinghua.tsfile.common.utils.Binary;
-import cn.edu.tsinghua.tsfile.common.utils.ReadWriteStreamUtils;
+import cn.edu.tsinghua.tsfile.exception.encoding.TSFileDecodingException;
+import cn.edu.tsinghua.tsfile.utils.Binary;
+import cn.edu.tsinghua.tsfile.utils.ReadWriteForEncodingUtils;
 import cn.edu.tsinghua.tsfile.encoding.common.EndianType;
 import cn.edu.tsinghua.tsfile.encoding.encoder.FloatEncoder;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
@@ -11,7 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.io.InputStream;
+import java.nio.ByteBuffer;
 
 /**
  * Decoder for float or double value using rle or two diff. For
@@ -64,67 +64,69 @@ public class FloatDecoder extends Decoder {
     }
 
     @Override
-    public float readFloat(InputStream in) {
-        readMaxPointValue(in);
-        int value = decoder.readInt(in);
+    public float readFloat(ByteBuffer buffer) {
+        readMaxPointValue(buffer);
+        int value = decoder.readInt(buffer);
         double result = value / maxPointValue;
         return (float) result;
     }
 
     @Override
-    public double readDouble(InputStream in) {
-        readMaxPointValue(in);
-        long value = decoder.readLong(in);
+    public double readDouble(ByteBuffer buffer) {
+        readMaxPointValue(buffer);
+        long value = decoder.readLong(buffer);
         double result = value / maxPointValue;
         return result;
     }
 
-    private void readMaxPointValue(InputStream in) {
-        try {
-            if (!isMaxPointNumberRead) {
-                int maxPointNumber = ReadWriteStreamUtils.readUnsignedVarInt(in);
-                if (maxPointNumber <= 0) {
-                    maxPointValue = 1;
-                } else {
-                    maxPointValue = Math.pow(10, maxPointNumber);
-                }
-                isMaxPointNumberRead = true;
+    private void readMaxPointValue(ByteBuffer buffer) {
+        if (!isMaxPointNumberRead) {
+            int maxPointNumber = ReadWriteForEncodingUtils.readUnsignedVarInt(buffer);
+            if (maxPointNumber <= 0) {
+                maxPointValue = 1;
+            } else {
+                maxPointValue = Math.pow(10, maxPointNumber);
             }
-        } catch (IOException e) {
-            LOGGER.error("tsfile-encoding FloatDecoder: error occurs when reading maxPointValue", e);
+            isMaxPointNumberRead = true;
         }
     }
 
     @Override
-    public boolean hasNext(InputStream in) throws IOException {
+    public boolean hasNext(ByteBuffer buffer) throws IOException {
         if (decoder == null) {
             return false;
         }
-        return decoder.hasNext(in);
+        return decoder.hasNext(buffer);
     }
 
     @Override
-    public Binary readBinary(InputStream in) {
+    public Binary readBinary(ByteBuffer buffer) {
         throw new TSFileDecodingException("Method readBinary is not supproted by FloatDecoder");
     }
 
     @Override
-    public boolean readBoolean(InputStream in) {
+    public boolean readBoolean(ByteBuffer buffer) {
         throw new TSFileDecodingException("Method readBoolean is not supproted by FloatDecoder");
     }
 
     @Override
-    public short readShort(InputStream in) {
+    public short readShort(ByteBuffer buffer) {
         throw new TSFileDecodingException("Method readShort is not supproted by FloatDecoder");
     }
 
     @Override
-    public int readInt(InputStream in) {
+    public int readInt(ByteBuffer buffer) {
         throw new TSFileDecodingException("Method readInt is not supproted by FloatDecoder");
     }
 
     @Override
-    public long readLong(InputStream in) {
+    public long readLong(ByteBuffer buffer) {
         throw new TSFileDecodingException("Method readLong is not supproted by FloatDecoder");
+    }
+
+    @Override
+    public void reset() {
+        this.decoder.reset();
+        this.isMaxPointNumberRead = false;
     }
 }

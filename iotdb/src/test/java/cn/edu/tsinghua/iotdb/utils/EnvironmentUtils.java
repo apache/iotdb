@@ -4,8 +4,8 @@ import cn.edu.tsinghua.iotdb.auth.AuthException;
 import cn.edu.tsinghua.iotdb.auth.authorizer.IAuthorizer;
 import cn.edu.tsinghua.iotdb.auth.authorizer.LocalFileAuthorizer;
 import cn.edu.tsinghua.iotdb.conf.directories.Directories;
-import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
-import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
+import cn.edu.tsinghua.iotdb.conf.IoTDBConfig;
+import cn.edu.tsinghua.iotdb.conf.IoTDBDescriptor;
 import cn.edu.tsinghua.iotdb.engine.cache.RowGroupBlockMetaDataCache;
 import cn.edu.tsinghua.iotdb.engine.cache.TsFileMetaDataCache;
 import cn.edu.tsinghua.iotdb.engine.filenode.FileNodeManager;
@@ -14,6 +14,8 @@ import cn.edu.tsinghua.iotdb.exception.FileNodeManagerException;
 import cn.edu.tsinghua.iotdb.exception.StartupException;
 import cn.edu.tsinghua.iotdb.metadata.MManager;
 import cn.edu.tsinghua.iotdb.monitor.StatMonitor;
+import cn.edu.tsinghua.iotdb.query.control.FileReaderManager;
+import cn.edu.tsinghua.iotdb.query.control.QueryTokenManager;
 import cn.edu.tsinghua.iotdb.writelog.manager.MultiFileLogNodeManager;
 import cn.edu.tsinghua.tsfile.common.conf.TSFileConfig;
 import cn.edu.tsinghua.tsfile.common.conf.TSFileDescriptor;
@@ -36,11 +38,17 @@ public class EnvironmentUtils {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(EnvironmentUtils.class);
 
-	private static TsfileDBConfig config = TsfileDBDescriptor.getInstance().getConfig();
+	private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 	private static Directories directories = Directories.getInstance();
 	private static TSFileConfig tsfileConfig = TSFileDescriptor.getInstance().getConfig();
 
-	public static void cleanEnv() throws IOException {
+	public static void cleanEnv() throws IOException, FileNodeManagerException {
+
+		QueryTokenManager.getInstance().endQueryForCurrentRequestThread();
+
+		// clear opened file streams
+		FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
+
 		// tsFileConfig.duplicateIncompletedPage = false;
 		// clean filenode manager
 		try {

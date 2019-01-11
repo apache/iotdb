@@ -9,7 +9,8 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.format.SignStyle;
 import java.time.temporal.ChronoField;
-import cn.edu.tsinghua.iotdb.qp.exception.LogicalOperatorException;
+
+import cn.edu.tsinghua.iotdb.exception.qp.LogicalOperatorException;
 
 public class DatetimeUtils {
 	
@@ -183,13 +184,13 @@ public class DatetimeUtils {
 			.appendOptional(ISO_OFFSET_DATE_TIME_WITH_DOT_WITH_SPACE)
 			.toFormatter();
 	
-	public static long convertDatetimeStrToLong(String str, ZoneId zoneId) throws LogicalOperatorException {
-		return convertDatetimeStrToLong(str, toZoneOffset(zoneId));
+	public static long convertDatetimeStrToMillisecond(String str, ZoneId zoneId) throws LogicalOperatorException {
+		return convertDatetimeStrToMillisecond(str, toZoneOffset(zoneId));
 	}
 	
-	public static long convertDatetimeStrToLong(String str, ZoneOffset offset) throws LogicalOperatorException {
+	public static long convertDatetimeStrToMillisecond(String str, ZoneOffset offset) throws LogicalOperatorException {
 		if(str.length() - str.lastIndexOf('+') != 6 && str.length() - str.lastIndexOf('-') != 6) {
-			return convertDatetimeStrToLong(str+offset, offset);
+			return convertDatetimeStrToMillisecond(str+offset, offset);
 		}else if(str.indexOf('[') > 0 || str.indexOf(']') > 0 ) {
 			throw new DateTimeException(String.format("%s with [time-region] at end is not supported now, "
 					+ "please input like 2011-12-03T10:15:30 or 2011-12-03T10:15:30+01:00",str));

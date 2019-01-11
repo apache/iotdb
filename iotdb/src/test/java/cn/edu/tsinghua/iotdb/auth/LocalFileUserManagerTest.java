@@ -3,7 +3,7 @@ package cn.edu.tsinghua.iotdb.auth;
 import cn.edu.tsinghua.iotdb.auth.entity.PathPrivilege;
 import cn.edu.tsinghua.iotdb.auth.entity.User;
 import cn.edu.tsinghua.iotdb.auth.user.LocalFileUserManager;
-import cn.edu.tsinghua.iotdb.conf.TsFileDBConstant;
+import cn.edu.tsinghua.iotdb.conf.IoTDBConstant;
 import cn.edu.tsinghua.iotdb.utils.EnvironmentUtils;
 import cn.edu.tsinghua.iotdb.utils.AuthUtils;
 import org.apache.commons.io.FileUtils;
@@ -170,7 +170,7 @@ public class LocalFileUserManagerTest {
         // list users
         List<String> usernames = manager.listAllUsers();
         usernames.sort(null);
-        assertEquals(TsFileDBConstant.ADMIN_NAME, usernames.get(0));
+        assertEquals(IoTDBConstant.ADMIN_NAME, usernames.get(0));
         for(int i = 0; i < users.length - 1; i++) {
             assertEquals(users[i].name, usernames.get(i + 1));
         }

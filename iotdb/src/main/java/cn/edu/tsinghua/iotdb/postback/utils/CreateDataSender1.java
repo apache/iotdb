@@ -1,6 +1,6 @@
 package cn.edu.tsinghua.iotdb.postback.utils;
 
-import cn.edu.tsinghua.iotdb.conf.TsFileDBConstant;
+import cn.edu.tsinghua.iotdb.conf.IoTDBConstant;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -97,7 +97,7 @@ public class CreateDataSender1 {
 
     public static void randomInsertData(Statement statement, Map<String, String> timeseriesMap) throws Exception {
 
-        String insertDataSql = "INSERT INTO <path> (timestamp, <sensor>) VALUES (<time>, <value>)";
+        String insertDataSql = "INSERT INTO <seriesPath> (timestamp, <sensor>) VALUES (<time>, <value>)";
         RandomNum r = new RandomNum();
         int abnormalCount = 0;
         int abnormalFlag = 1;
@@ -126,7 +126,7 @@ public class CreateDataSender1 {
                     } else {
                         value = r.getRandomInt(MIN_INT, MAX_INT);
                     }
-                    sql = insertDataSql.replace("<path>", path)
+                    sql = insertDataSql.replace("<seriesPath>", path)
                             .replace("<sensor>", sensor)
                             .replace("<time>", time + "")
                             .replace("<value>", value + "");
@@ -137,14 +137,14 @@ public class CreateDataSender1 {
                     } else {
                         value = r.getRandomFloat(MIN_FLOAT, MAX_FLOAT);
                     }
-                    sql = insertDataSql.replace("<path>", path)
+                    sql = insertDataSql.replace("<seriesPath>", path)
                             .replace("<sensor>", sensor)
                             .replace("<time>", time + "")
                             .replace("<value>", value + "");
                 } else if (type.equals("TEXT")) {
                     String value;
                     value = r.getRandomText(STRING_LENGTH);
-                    sql = insertDataSql.replace("<path>", path)
+                    sql = insertDataSql.replace("<seriesPath>", path)
                             .replace("<sensor>", sensor)
                             .replace("<time>", time + "")
                             .replace("<value>", "\"" + value + "\"");
@@ -178,7 +178,7 @@ public class CreateDataSender1 {
         Connection connection = null;
         Statement statement = null;
 
-        String path = new File(System.getProperty(TsFileDBConstant.IOTDB_HOME, null)).getParent() + File.separator + "src" + File.separator + "test" + File.separator + "resources" + File.separator + "CreateTimeseries1.txt";
+        String path = new File(System.getProperty(IoTDBConstant.IOTDB_HOME, null)).getParent() + File.separator + "src" + File.separator + "test" + File.separator + "resources" + File.separator + "CreateTimeseries1.txt";
         Map<String, String> timeseriesMap = generateTimeseriesMapFromFile(path);
 
         List<String> storageGroupList = new ArrayList<>();
@@ -189,7 +189,7 @@ public class CreateDataSender1 {
 
         try {
             Class.forName("cn.edu.tsinghua.iotdb.jdbc.TsfileDriver");
-            connection = DriverManager.getConnection("jdbc:tsfile://localhost:6667/", "root", "root");
+            connection = DriverManager.getConnection("jdbc:iotdb://localhost:6667/", "root", "root");
             statement = connection.createStatement();
 
             setStorageGroup(statement, storageGroupList);

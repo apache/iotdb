@@ -85,7 +85,7 @@ public class OpenFileNumUtilTest {
 
     @Test
     public void testDataOpenFileNumWhenCreateFile() {
-        if(os.startsWith(MAC_OS_NAME) || os.startsWith(LINUX_OS_NAME)) {
+        if (os.startsWith(MAC_OS_NAME) || os.startsWith(LINUX_OS_NAME)) {
             //get total open file number statistics of original state
             totalOpenFileNumBefore = openFileNumUtil.get(OpenFileNumUtil.OpenFileNumStatistics.DATA_OPEN_FILE_NUM);
             for (int i = 0; i < testFileNum; i++) {
@@ -96,14 +96,14 @@ public class OpenFileNumUtilTest {
             totalOpenFileNumChange = totalOpenFileNumAfter - totalOpenFileNumBefore;
             //create test file shall not affect total open file number statistics
             assertEquals(0, totalOpenFileNumChange);
-        }else {
+        } else {
             assertEquals(-2, openFileNumUtil.get(OpenFileNumUtil.OpenFileNumStatistics.DATA_OPEN_FILE_NUM));
         }
     }
 
     @Test
     public void testDataOpenFileNumWhenCreateFileWriter() {
-        if(os.startsWith(MAC_OS_NAME) || os.startsWith(LINUX_OS_NAME)) {
+        if (os.startsWith(MAC_OS_NAME) || os.startsWith(LINUX_OS_NAME)) {
             for (int i = 0; i < testFileNum; i++) {
                 fileList.add(new File(currDir + testFileName + i));
             }
@@ -142,7 +142,7 @@ public class OpenFileNumUtilTest {
 
     @Test
     public void testDataOpenFileNumWhenFileWriterWriting() {
-        if(os.startsWith(MAC_OS_NAME) || os.startsWith(LINUX_OS_NAME)) {
+        if (os.startsWith(MAC_OS_NAME) || os.startsWith(LINUX_OS_NAME)) {
             for (int i = 0; i < testFileNum; i++) {
                 fileList.add(new File(currDir + testFileName + i));
             }
@@ -187,7 +187,7 @@ public class OpenFileNumUtilTest {
 
     @Test
     public void testDataOpenFileNumWhenFileWriterClose() {
-        if(os.startsWith(MAC_OS_NAME) || os.startsWith(LINUX_OS_NAME)) {
+        if (os.startsWith(MAC_OS_NAME) || os.startsWith(LINUX_OS_NAME)) {
             for (int i = 0; i < testFileNum; i++) {
                 fileList.add(new File(currDir + testFileName + i));
             }

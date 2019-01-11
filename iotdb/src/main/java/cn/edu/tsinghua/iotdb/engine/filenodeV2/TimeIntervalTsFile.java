@@ -55,15 +55,15 @@ public class TimeIntervalTsFile implements Serializable {
 		endTimeMap = new HashMap<>();
 	}
 
-	public void setStartTime(String deltaObjectId, long startTime) {
+	public void setStartTime(String deviceId, long startTime) {
 
-		startTimeMap.put(deltaObjectId, startTime);
+		startTimeMap.put(deviceId, startTime);
 	}
 
-	public long getStartTime(String deltaObjectId) {
+	public long getStartTime(String deviceId) {
 
-		if (startTimeMap.containsKey(deltaObjectId)) {
-			return startTimeMap.get(deltaObjectId);
+		if (startTimeMap.containsKey(deviceId)) {
+			return startTimeMap.get(deviceId);
 		} else {
 			return -1;
 		}
@@ -84,17 +84,17 @@ public class TimeIntervalTsFile implements Serializable {
 		this.endTimeMap = endTimeMap;
 	}
 
-	public void setEndTime(String deltaObjectId, long timestamp) {
+	public void setEndTime(String deviceId, long timestamp) {
 
-		this.endTimeMap.put(deltaObjectId, timestamp);
+		this.endTimeMap.put(deviceId, timestamp);
 	}
 
-	public long getEndTime(String deltaObjectId) {
+	public long getEndTime(String deviceId) {
 
-		if (endTimeMap.get(deltaObjectId) == null) {
+		if (endTimeMap.get(deviceId) == null) {
 			return -1;
 		}
-		return endTimeMap.get(deltaObjectId);
+		return endTimeMap.get(deviceId);
 	}
 
 	public Map<String, Long> getEndTimeMap() {
@@ -102,10 +102,10 @@ public class TimeIntervalTsFile implements Serializable {
 		return endTimeMap;
 	}
 
-	public void removeTime(String deltaObjectId) {
+	public void removeTime(String deviceId) {
 
-		startTimeMap.remove(deltaObjectId);
-		endTimeMap.remove(deltaObjectId);
+		startTimeMap.remove(deviceId);
+		endTimeMap.remove(deviceId);
 	}
 
 	public String getFilePath() {
@@ -149,9 +149,9 @@ public class TimeIntervalTsFile implements Serializable {
 		}
 	}
 
-	public void addMergeChanged(String deltaObjectId) {
+	public void addMergeChanged(String deviceId) {
 
-		mergeChanged.add(deltaObjectId);
+		mergeChanged.add(deviceId);
 	}
 
 	public Set<String> getMergeChanged() {

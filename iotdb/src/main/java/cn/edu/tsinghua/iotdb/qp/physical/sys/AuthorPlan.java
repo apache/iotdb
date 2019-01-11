@@ -10,12 +10,9 @@ import cn.edu.tsinghua.iotdb.auth.entity.PrivilegeType;
 import cn.edu.tsinghua.iotdb.qp.logical.sys.AuthorOperator.AuthorType;
 import cn.edu.tsinghua.iotdb.qp.physical.PhysicalPlan;
 import cn.edu.tsinghua.iotdb.qp.logical.Operator;
-import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
+import cn.edu.tsinghua.tsfile.read.common.Path;
 
-/**
- * @author kangrong
- * @author qiaojialin
- */
+
 public class AuthorPlan extends PhysicalPlan {
 	private final AuthorType authorType;
 	private String userName;
@@ -120,8 +117,9 @@ public class AuthorPlan extends PhysicalPlan {
 
 	private Set<Integer> strToPermissions(String[] authorizationList) throws AuthException {
 		Set<Integer> result = new HashSet<>();
-		if (authorizationList == null)
-			return result;
+		if (authorizationList == null) {
+            return result;
+        }
 		for (String s : authorizationList) {
 			PrivilegeType[] types = PrivilegeType.values();
 			boolean legal = false;
@@ -153,8 +151,9 @@ public class AuthorPlan extends PhysicalPlan {
 	@Override
 	public List<Path> getPaths() {
 		List<Path> ret = new ArrayList<>();
-		if (nodeName != null)
-			ret.add(nodeName);
+		if (nodeName != null) {
+            ret.add(nodeName);
+        }
 		return ret;
 	}
 }

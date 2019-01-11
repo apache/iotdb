@@ -1,7 +1,7 @@
 package cn.edu.tsinghua.iotdb.engine.memcontrol;
 
 import cn.edu.tsinghua.iotdb.concurrent.ThreadName;
-import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
+import cn.edu.tsinghua.iotdb.conf.IoTDBDescriptor;
 import cn.edu.tsinghua.iotdb.engine.filenode.FileNodeManager;
 import cn.edu.tsinghua.iotdb.utils.MemUtils;
 import org.slf4j.Logger;
@@ -13,7 +13,7 @@ import org.slf4j.LoggerFactory;
 public class FlushPartialPolicy implements Policy{
     private static final Logger logger = LoggerFactory.getLogger(FlushPartialPolicy.class);
     private Thread workerThread;
-    private long sleepInterval = TsfileDBDescriptor.getInstance().getConfig().smallFlushInterval;
+    private long sleepInterval = IoTDBDescriptor.getInstance().getConfig().smallFlushInterval;
 
     @Override
     public void execute() {

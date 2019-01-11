@@ -9,8 +9,8 @@ import cn.edu.tsinghua.iotdb.postback.utils.RandomNum;
 import cn.edu.tsinghua.iotdb.utils.EnvironmentUtils;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSEncoding;
-import cn.edu.tsinghua.tsfile.timeseries.write.record.TSRecord;
-import cn.edu.tsinghua.tsfile.timeseries.write.record.datapoint.LongDataPoint;
+import cn.edu.tsinghua.tsfile.write.record.TSRecord;
+import cn.edu.tsinghua.tsfile.write.record.datapoint.LongDataPoint;
 
 import java.io.IOException;
 import java.util.concurrent.CountDownLatch;
@@ -53,11 +53,11 @@ public class FileNodeManagerBenchmark {
         }
     }
 
-    private static void tearDown() throws IOException {
+    private static void tearDown() throws IOException, FileNodeManagerException {
         EnvironmentUtils.cleanEnv();
     }
 
-    public static void main(String[] args) throws InterruptedException, IOException, MetadataArgsErrorException, PathErrorException {
+    public static void main(String[] args) throws InterruptedException, IOException, MetadataArgsErrorException, PathErrorException, FileNodeManagerException {
         tearDown();
         prepare();
         long startTime = System.currentTimeMillis();

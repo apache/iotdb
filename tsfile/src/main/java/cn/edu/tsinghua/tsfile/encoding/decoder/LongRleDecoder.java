@@ -1,14 +1,14 @@
 package cn.edu.tsinghua.tsfile.encoding.decoder;
 
-import cn.edu.tsinghua.tsfile.common.exception.TSFileDecodingException;
-import cn.edu.tsinghua.tsfile.common.utils.ReadWriteStreamUtils;
+import cn.edu.tsinghua.tsfile.exception.encoding.TSFileDecodingException;
+import cn.edu.tsinghua.tsfile.utils.ReadWriteForEncodingUtils;
 import cn.edu.tsinghua.tsfile.encoding.bitpacking.LongPacker;
 import cn.edu.tsinghua.tsfile.encoding.common.EndianType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.io.InputStream;
+import java.nio.ByteBuffer;
 
 /**
  * Decoder for long value using rle or bit-packing
@@ -39,18 +39,14 @@ public class LongRleDecoder extends RleDecoder {
     /**
      * read a long value from InputStream
      *
-     * @param in - InputStream
+     * @param buffer - InputStream
      * @return value - current valid value
      */
     @Override
-    public long readLong(InputStream in) {
+    public long readLong(ByteBuffer buffer) {
         if (!isLengthAndBitWidthReaded) {
             //start to read a new rle+bit-packing pattern
-            try {
-                readLengthAndBitWidth(in);
-            } catch (IOException e) {
-                LOGGER.error("tsfile-encoding IntRleDecoder: error occurs when reading length", e);
-            }
+            readLengthAndBitWidth(buffer);
         }
 
         if (currentCount == 0) {
@@ -86,7 +82,7 @@ public class LongRleDecoder extends RleDecoder {
 
     @Override
     protected void readNumberInRLE() throws IOException {
-        currentValue = ReadWriteStreamUtils.readLongLittleEndianPaddedOnBitWidth(byteCache, bitWidth);
+        currentValue = ReadWriteForEncodingUtils.readLongLittleEndianPaddedOnBitWidth(byteCache, bitWidth);
     }
 
     @Override
@@ -94,11 +90,15 @@ public class LongRleDecoder extends RleDecoder {
         currentBuffer = new long[bitPackedGroupCount * config.RLE_MIN_REPEATED_NUM];
         byte[] bytes = new byte[bitPackedGroupCount * bitWidth];
         int bytesToRead = bitPackedGroupCount * bitWidth;
-        bytesToRead = Math.min(bytesToRead, byteCache.available());
-//		new DataInputStream(byteCache).readFully(bytes, 0, bytesToRead);
-        byteCache.read(bytes, 0, bytesToRead);
+        bytesToRead = Math.min(bytesToRead, byteCache.remaining());
+        byteCache.get(bytes, 0, bytesToRead);
 
         // save all long values in currentBuffer
         packer.unpackAllValues(bytes, 0, bytesToRead, currentBuffer);
+    }
+
+    @Override
+    public void reset() {
+        super.reset();
     }
 }

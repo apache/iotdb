@@ -1,12 +1,12 @@
 package cn.edu.tsinghua.tsfile.encoding.common;
 
 /**
- * this class define several constant int variables used in encoding.
+ * This class defines several constants using in encoding algorithm.
  *
  * @author xuyi
  */
 public class EncodingConfig {
-    // if number n repeats more than 8(>= 8), use rle encoding, otherwise use bit-packing
+    // if number n repeats more than(>=) RLE_MAX_REPEATED_NUM times, use rle encoding, otherwise use bit-packing
     public static final int RLE_MAX_REPEATED_NUM = 8;
 
     // when to start a new bit-pacing group

@@ -2,16 +2,16 @@ package cn.edu.tsinghua.tsfile.encoding.decoder;
 
 import cn.edu.tsinghua.tsfile.common.conf.TSFileConfig;
 import cn.edu.tsinghua.tsfile.common.conf.TSFileDescriptor;
-import cn.edu.tsinghua.tsfile.common.exception.TSFileDecodingException;
-import cn.edu.tsinghua.tsfile.common.utils.Binary;
-import cn.edu.tsinghua.tsfile.common.utils.ReadWriteStreamUtils;
+import cn.edu.tsinghua.tsfile.exception.encoding.TSFileDecodingException;
+import cn.edu.tsinghua.tsfile.utils.Binary;
+import cn.edu.tsinghua.tsfile.utils.ReadWriteForEncodingUtils;
+import cn.edu.tsinghua.tsfile.utils.ReadWriteIOUtils;
 import cn.edu.tsinghua.tsfile.encoding.common.EndianType;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSEncoding;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.math.BigDecimal;
+import java.nio.ByteBuffer;
 
 /**
  * Abstract class for all rle decoder. Decoding values according to
@@ -19,7 +19,7 @@ import java.math.BigDecimal;
  * information about rle format, see RleEncoder
  */
 public abstract class RleDecoder extends Decoder {
-    // private static final Logger LOGGER = LoggerFactory.getLogger(RleDecoder.class);
+
     public EndianType endianType;
     protected TSFileConfig config = TSFileDescriptor.getInstance().getConfig();
     /**
@@ -49,7 +49,7 @@ public abstract class RleDecoder extends Decoder {
     /**
      * buffer to save data format like [{@code <bitwidth> <encoded-data>}] for decoder
      */
-    protected ByteArrayInputStream byteCache;
+    protected ByteBuffer byteCache;
     /**
      * number of bit-packing group in which is saved in header
      */
@@ -58,11 +58,15 @@ public abstract class RleDecoder extends Decoder {
     public RleDecoder(EndianType endianType) {
         super(TSEncoding.RLE);
         this.endianType = endianType;
+        reset();
+    }
+
+    @Override
+    public void reset() {
         currentCount = 0;
         isLengthAndBitWidthReaded = false;
         bitPackingNum = 0;
-        byteCache = new ByteArrayInputStream(new byte[0]);
-        // LOGGER.debug("tsfile-encoding RleDecoder: init rle decoder");
+        byteCache = ByteBuffer.allocate(0);
     }
 
     /**
@@ -72,7 +76,7 @@ public abstract class RleDecoder extends Decoder {
      * @throws IOException cannot get header
      */
     public int getHeader() throws IOException {
-        int header = ReadWriteStreamUtils.readUnsignedVarInt(byteCache);
+        int header = ReadWriteForEncodingUtils.readUnsignedVarInt(byteCache);
         mode = (header & 1) == 0 ? MODE.RLE : MODE.BIT_PACKED;
         return header;
     }
@@ -93,7 +97,7 @@ public abstract class RleDecoder extends Decoder {
                 int bitPackedGroupCount = header >> 1;
                 // in last bit-packing group, there may be some useless value,
                 // lastBitPackedNum indicates how many values is useful
-                int lastBitPackedNum = byteCache.read();
+                int lastBitPackedNum = ReadWriteIOUtils.read(byteCache);
                 if (bitPackedGroupCount > 0) {
 
                     currentCount = (bitPackedGroupCount - 1) * config.RLE_MIN_REPEATED_NUM + lastBitPackedNum;
@@ -113,35 +117,34 @@ public abstract class RleDecoder extends Decoder {
     /**
      * read length and bit width of current package before we decode number
      *
-     * @param in InputStream
-     * @throws IOException cannot read length and bit-width
+     * @param buffer ByteBuffer
      */
-    protected void readLengthAndBitWidth(InputStream in) throws IOException {
+    protected void readLengthAndBitWidth(ByteBuffer buffer) {
         // long st = System.currentTimeMillis();
-        length = ReadWriteStreamUtils.readUnsignedVarInt(in);
+        length = ReadWriteForEncodingUtils.readUnsignedVarInt(buffer);
         byte[] tmp = new byte[length];
-        in.read(tmp, 0, length);
-        byteCache = new ByteArrayInputStream(tmp);
+        buffer.get(tmp, 0, length);
+        byteCache = ByteBuffer.wrap(tmp);
         isLengthAndBitWidthReaded = true;
-        bitWidth = byteCache.read();
+        bitWidth = ReadWriteIOUtils.read(byteCache);
         initPacker();
-        // long et = System.currentTimeMillis();
     }
 
     /**
      * Check whether there is number left for reading
      *
-     * @param in decoded data saved in InputStream
+     * @param buffer decoded data saved in ByteBuffer
      * @return true or false to indicate whether there is number left
      * @throws IOException cannot check next value
      */
     @Override
-    public boolean hasNext(InputStream in) throws IOException {
-        if (currentCount > 0 || in.available() > 0 || hasNextPackage()) {
+    public boolean hasNext(ByteBuffer buffer) throws IOException {
+        if (currentCount > 0 || buffer.remaining() > 0 || hasNextPackage()) {
             return true;
         }
         return false;
     }
+
 
     /**
      * Check whether there is another pattern left for reading
@@ -149,7 +152,7 @@ public abstract class RleDecoder extends Decoder {
      * @return true or false to indicate whether there is another pattern left
      */
     protected boolean hasNextPackage() {
-        return currentCount > 0 || byteCache.available() > 0;
+        return currentCount > 0 || byteCache.remaining() > 0;
     }
 
     protected abstract void initPacker();
@@ -171,42 +174,42 @@ public abstract class RleDecoder extends Decoder {
     protected abstract void readBitPackingBuffer(int bitPackedGroupCount, int lastBitPackedNum) throws IOException;
 
     @Override
-    public boolean readBoolean(InputStream in) {
+    public boolean readBoolean(ByteBuffer buffer) {
         throw new TSFileDecodingException("Method readBoolean is not supproted by RleDecoder");
     }
 
     @Override
-    public short readShort(InputStream in) {
+    public short readShort(ByteBuffer buffer) {
         throw new TSFileDecodingException("Method readShort is not supproted by RleDecoder");
     }
 
     @Override
-    public int readInt(InputStream in) {
+    public int readInt(ByteBuffer buffer) {
         throw new TSFileDecodingException("Method readInt is not supproted by RleDecoder");
     }
 
     @Override
-    public long readLong(InputStream in) {
+    public long readLong(ByteBuffer buffer) {
         throw new TSFileDecodingException("Method readLong is not supproted by RleDecoder");
     }
 
     @Override
-    public float readFloat(InputStream in) {
+    public float readFloat(ByteBuffer buffer) {
         throw new TSFileDecodingException("Method readFloat is not supproted by RleDecoder");
     }
 
     @Override
-    public double readDouble(InputStream in) {
+    public double readDouble(ByteBuffer buffer) {
         throw new TSFileDecodingException("Method readDouble is not supproted by RleDecoder");
     }
 
     @Override
-    public Binary readBinary(InputStream in) {
+    public Binary readBinary(ByteBuffer buffer) {
         throw new TSFileDecodingException("Method readBinary is not supproted by RleDecoder");
     }
 
     @Override
-    public BigDecimal readBigDecimal(InputStream in) {
+    public BigDecimal readBigDecimal(ByteBuffer buffer) {
         throw new TSFileDecodingException("Method readBigDecimal is not supproted by RleDecoder");
     }
 

@@ -1,6 +1,6 @@
 package cn.edu.tsinghua.tsfile.encoding.encoder;
 
-import cn.edu.tsinghua.tsfile.common.utils.ReadWriteStreamUtils;
+import cn.edu.tsinghua.tsfile.utils.ReadWriteForEncodingUtils;
 import cn.edu.tsinghua.tsfile.encoding.bitpacking.IntPacker;
 import cn.edu.tsinghua.tsfile.encoding.common.EndianType;
 
@@ -49,7 +49,7 @@ public class IntRleEncoder extends RleEncoder<Integer> {
     @Override
     public void flush(ByteArrayOutputStream out) throws IOException {
         // we get bit width after receiving all data
-        this.bitWidth = ReadWriteStreamUtils.getIntMaxBitWidth(values);
+        this.bitWidth = ReadWriteForEncodingUtils.getIntMaxBitWidth(values);
         packer = new IntPacker(bitWidth);
         for (Integer value : values) {
             encodeValue(value);
@@ -70,8 +70,8 @@ public class IntRleEncoder extends RleEncoder<Integer> {
     @Override
     protected void writeRleRun() throws IOException {
         endPreviousBitPackedRun(config.RLE_MIN_REPEATED_NUM);
-        ReadWriteStreamUtils.writeUnsignedVarInt(repeatCount << 1, byteCache);
-        ReadWriteStreamUtils.writeIntLittleEndianPaddedOnBitWidth(preValue, byteCache, bitWidth);
+        ReadWriteForEncodingUtils.writeUnsignedVarInt(repeatCount << 1, byteCache);
+        ReadWriteForEncodingUtils.writeIntLittleEndianPaddedOnBitWidth(preValue, byteCache, bitWidth);
         repeatCount = 0;
         numBufferedValues = 0;
     }

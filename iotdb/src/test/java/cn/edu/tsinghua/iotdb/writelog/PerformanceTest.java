@@ -1,7 +1,7 @@
 package cn.edu.tsinghua.iotdb.writelog;
 
-import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
-import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
+import cn.edu.tsinghua.iotdb.conf.IoTDBConfig;
+import cn.edu.tsinghua.iotdb.conf.IoTDBDescriptor;
 import cn.edu.tsinghua.iotdb.exception.*;
 import cn.edu.tsinghua.iotdb.metadata.MManager;
 import cn.edu.tsinghua.iotdb.writelog.transfer.PhysicalPlanLogTransfer;
@@ -13,10 +13,10 @@ import cn.edu.tsinghua.iotdb.qp.physical.crud.UpdatePlan;
 import cn.edu.tsinghua.iotdb.utils.EnvironmentUtils;
 import cn.edu.tsinghua.tsfile.common.conf.TSFileConfig;
 import cn.edu.tsinghua.tsfile.common.conf.TSFileDescriptor;
-import cn.edu.tsinghua.tsfile.common.utils.Pair;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSEncoding;
-import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
+import cn.edu.tsinghua.tsfile.read.common.Path;
+import cn.edu.tsinghua.tsfile.utils.Pair;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -27,7 +27,7 @@ import java.util.Arrays;
 
 public class PerformanceTest {
 
-    private TsfileDBConfig config = TsfileDBDescriptor.getInstance().getConfig();
+    private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     private TSFileConfig fileConfig = TSFileDescriptor.getInstance().getConfig();
 
     private boolean enableWal;

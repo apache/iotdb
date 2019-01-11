@@ -174,10 +174,8 @@ struct TSDataValue{
 
 struct TSRowRecord{
   1: required i64 timestamp
-  // column names
-  2: required list<string> keys
   // column values
-  3: required list<TSDataValue> values
+  2: required list<TSDataValue> values
 }
 
 struct TSQueryDataSet{

@@ -6,16 +6,13 @@ import java.util.Objects;
 
 import cn.edu.tsinghua.iotdb.qp.physical.PhysicalPlan;
 import cn.edu.tsinghua.iotdb.qp.logical.Operator;
-import cn.edu.tsinghua.tsfile.common.utils.Pair;
-import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
-import cn.edu.tsinghua.tsfile.timeseries.utils.StringContainer;
+import cn.edu.tsinghua.tsfile.read.common.Path;
+import cn.edu.tsinghua.tsfile.utils.Pair;
+import cn.edu.tsinghua.tsfile.utils.StringContainer;
 
 import static cn.edu.tsinghua.iotdb.qp.constant.SQLConstant.lineFeedSignal;
 
-/**
- * @author kangrong
- * @author qiaojialin
- */
+
 public class UpdatePlan extends PhysicalPlan {
 	private List<Pair<Long, Long>> intervals = new ArrayList<>();
     private String value;
@@ -70,8 +67,9 @@ public class UpdatePlan extends PhysicalPlan {
     @Override
     public List<Path> getPaths() {
         List<Path> ret = new ArrayList<>();
-        if (path != null)
+        if (path != null) {
             ret.add(path);
+        }
         return ret;
     }
 
@@ -89,8 +87,12 @@ public class UpdatePlan extends PhysicalPlan {
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
         UpdatePlan that = (UpdatePlan) o;
         return Objects.equals(intervals, that.intervals) &&
                 Objects.equals(value, that.value) &&

@@ -5,8 +5,6 @@ import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
 
 /**
  * TimePair represents an overflow operation.
- *
- * @author CGF
  */
 
 public class TimePair {
@@ -65,6 +63,7 @@ public class TimePair {
         mergestatus = MergeStatus.DONE;
     }
 
+    @Override
     public String toString() {
         StringBuffer sb =  new StringBuffer().append(this.s).append(",").append(this.e);
         if (this.opType != null)

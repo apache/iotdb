@@ -25,7 +25,7 @@ import org.slf4j.LoggerFactory;
 
 import cn.edu.thu.tsfile.hadoop.io.HDFSInputStream;
 import cn.edu.tsinghua.tsfile.file.metadata.RowGroupMetaData;
-import cn.edu.tsinghua.tsfile.timeseries.read.FileReader;
+import cn.edu.tsinghua.tsfile.read.FileReader;
 
 /**
  * @author liukun

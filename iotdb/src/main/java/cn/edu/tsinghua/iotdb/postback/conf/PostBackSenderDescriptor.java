@@ -10,7 +10,7 @@ import java.util.Properties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import cn.edu.tsinghua.iotdb.conf.TsFileDBConstant;
+import cn.edu.tsinghua.iotdb.conf.IoTDBConstant;
 
 /**
  * @author lta
@@ -46,9 +46,9 @@ public class PostBackSenderDescriptor {
 	 */
 	private void loadProps() {
 		InputStream inputStream = null;
-		String url = System.getProperty(TsFileDBConstant.IOTDB_CONF, null);
+		String url = System.getProperty(IoTDBConstant.IOTDB_CONF, null);
 		if (url == null) {
-			url = System.getProperty(TsFileDBConstant.IOTDB_HOME, null);
+			url = System.getProperty(IoTDBConstant.IOTDB_HOME, null);
 			if (url != null) {
 				url = url + File.separatorChar + "conf" + File.separatorChar + PostBackSenderConfig.CONFIG_NAME;
 			} else {
@@ -63,7 +63,7 @@ public class PostBackSenderDescriptor {
 			inputStream = new FileInputStream(new File(url));
 		} catch (FileNotFoundException e) {
 			LOGGER.warn("Fail to find config file {}", url);
-			// update all data path
+			// update all data seriesPath
 			return;
 		}
 

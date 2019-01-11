@@ -13,7 +13,7 @@ public class StatementDemo {
 		Class.forName("cn.edu.tsinghua.iotdb.jdbc.TsfileDriver");
 		Connection connection = null;
 		try {
-			connection =  DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
+			connection =  DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
 			Statement statement = connection.createStatement();
 			statement.execute("SET STORAGE GROUP TO root.ln.wf01.wt01");
 			statement.execute("CREATE TIMESERIES root.ln.wf01.wt01.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN");

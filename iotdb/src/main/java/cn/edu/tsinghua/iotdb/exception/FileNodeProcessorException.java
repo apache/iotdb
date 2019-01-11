@@ -1,7 +1,5 @@
 package cn.edu.tsinghua.iotdb.exception;
 
-import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
-
 public class FileNodeProcessorException extends ProcessorException {
 
 	private static final long serialVersionUID = 7373978140952977661L;

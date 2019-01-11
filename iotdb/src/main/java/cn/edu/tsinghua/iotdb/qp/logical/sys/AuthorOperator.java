@@ -1,16 +1,12 @@
 package cn.edu.tsinghua.iotdb.qp.logical.sys;
 
-import cn.edu.tsinghua.iotdb.qp.logical.Operator;
 import cn.edu.tsinghua.iotdb.qp.logical.RootOperator;
 import cn.edu.tsinghua.tsfile.common.constant.SystemConstant;
-import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
-import cn.edu.tsinghua.tsfile.timeseries.utils.StringContainer;
+import cn.edu.tsinghua.tsfile.read.common.Path;
+import cn.edu.tsinghua.tsfile.utils.StringContainer;
 
 /**
  * this class maintains information in Author statement, including CREATE, DROP, GRANT and REVOKE
- * 
- * @author kangrong
- *
  */
 public class AuthorOperator extends RootOperator {
 

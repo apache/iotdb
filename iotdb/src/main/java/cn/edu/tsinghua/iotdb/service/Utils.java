@@ -4,24 +4,21 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 
 import cn.edu.tsinghua.iotdb.metadata.ColumnSchema;
 import cn.edu.tsinghua.service.rpc.thrift.TSColumnSchema;
 import cn.edu.tsinghua.service.rpc.thrift.TSDataValue;
 import cn.edu.tsinghua.service.rpc.thrift.TSQueryDataSet;
 import cn.edu.tsinghua.service.rpc.thrift.TSRowRecord;
-import cn.edu.tsinghua.tsfile.common.exception.UnSupportedDataTypeException;
-import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
-import cn.edu.tsinghua.tsfile.timeseries.readV2.datatype.RowRecord;
-import cn.edu.tsinghua.tsfile.timeseries.readV2.datatype.TsPrimitiveType;
-import cn.edu.tsinghua.tsfile.timeseries.readV2.query.QueryDataSet;
+import cn.edu.tsinghua.tsfile.exception.write.UnSupportedDataTypeException;
+import cn.edu.tsinghua.tsfile.read.common.Field;
+import cn.edu.tsinghua.tsfile.read.common.RowRecord;
+import cn.edu.tsinghua.tsfile.read.query.dataset.QueryDataSet;
 
 /**
- * Utils to convert between thrift format and TsFile format
+ * TimeValuePairUtils to convert between thrift format and TsFile format
  */
 public class Utils {
 
@@ -69,40 +66,36 @@ public class Utils {
 	public static TSRowRecord convertToTSRecord(RowRecord rowRecord) {
 		TSRowRecord tsRowRecord = new TSRowRecord();
 		tsRowRecord.setTimestamp(rowRecord.getTimestamp());
-		tsRowRecord.setKeys(new ArrayList<>());
 		tsRowRecord.setValues(new ArrayList<>());
-
-		LinkedHashMap<Path, TsPrimitiveType> fields = rowRecord.getFields();
-		for (Entry<Path, TsPrimitiveType> entry : fields.entrySet()) {
-			tsRowRecord.getKeys().add(entry.getKey().toString());
-			TsPrimitiveType type = entry.getValue();
+		List<Field> fields = rowRecord.getFields();
+		for (Field f: fields) {
 			TSDataValue value = new TSDataValue(false);
-			if (type == null) {
+			if (f.getDataType() == null) {
 				value.setIs_empty(true);
 			} else {
-				switch (type.getDataType()) {
+				switch (f.getDataType()) {
 				case BOOLEAN:
-					value.setBool_val(type.getBoolean());
+					value.setBool_val(f.getBoolV());
 					break;
 				case INT32:
-					value.setInt_val(type.getInt());
+					value.setInt_val(f.getIntV());
 					break;
 				case INT64:
-					value.setLong_val(type.getLong());
+					value.setLong_val(f.getLongV());
 					break;
 				case FLOAT:
-					value.setFloat_val(type.getFloat());
+					value.setFloat_val(f.getFloatV());
 					break;
 				case DOUBLE:
-					value.setDouble_val(type.getDouble());
+					value.setDouble_val(f.getDoubleV());
 					break;
 				case TEXT:
-					value.setBinary_val(ByteBuffer.wrap(type.getBinary().values));
+					value.setBinary_val(ByteBuffer.wrap(f.getBinaryV().values));
 					break;
 				default:
-					throw new UnSupportedDataTypeException(String.format("data type %s is not supported when convert data at server", type.getDataType().toString()));
+					throw new UnSupportedDataTypeException(String.format("data type %s is not supported when convert data at server", f.getDataType().toString()));
 				}
-				value.setType(type.getDataType().toString());
+				value.setType(f.getDataType().toString());
 			}
 			tsRowRecord.getValues().add(value);
 		}

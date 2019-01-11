@@ -1,6 +1,6 @@
 package cn.edu.tsinghua.tsfile.encoding.encoder;
 
-import cn.edu.tsinghua.tsfile.common.utils.BytesUtils;
+import cn.edu.tsinghua.tsfile.utils.BytesUtils;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSEncoding;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -123,6 +123,7 @@ abstract public class DeltaBinaryEncoder extends Encoder {
             reset();
         }
 
+        @Override
         protected int calculateBitWidthsForDeltaBlockBuffer() {
             int width = 0;
             for (int i = 0; i < writeIndex; i++) {
@@ -236,12 +237,12 @@ abstract public class DeltaBinaryEncoder extends Encoder {
 
         @Override
         protected void reset() {
-            firstValue = 0l;
-            previousValue = 0l;
+            firstValue = 0L;
+            previousValue = 0L;
             minDeltaBase = Long.MAX_VALUE;
             for (int i = 0; i < blockSize; i++) {
                 encodingBlockBuffer[i] = 0;
-                deltaBlockBuffer[i] = 0l;
+                deltaBlockBuffer[i] = 0L;
             }
         }
 
@@ -301,6 +302,7 @@ abstract public class DeltaBinaryEncoder extends Encoder {
             }
         }
 
+        @Override
         protected int calculateBitWidthsForDeltaBlockBuffer() {
             int width = 0;
             for (int i = 0; i < writeIndex; i++) {

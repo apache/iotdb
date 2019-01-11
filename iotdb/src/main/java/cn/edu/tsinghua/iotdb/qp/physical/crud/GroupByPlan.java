@@ -1,7 +1,7 @@
 package cn.edu.tsinghua.iotdb.qp.physical.crud;
 
 import cn.edu.tsinghua.iotdb.qp.logical.Operator;
-import cn.edu.tsinghua.tsfile.common.utils.Pair;
+import cn.edu.tsinghua.tsfile.utils.Pair;
 
 import java.util.List;
 

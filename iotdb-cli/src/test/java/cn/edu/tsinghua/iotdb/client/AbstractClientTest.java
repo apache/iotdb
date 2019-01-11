@@ -16,17 +16,17 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import cn.edu.tsinghua.iotdb.client.AbstractClient.OPERATION_RESULT;
 import cn.edu.tsinghua.iotdb.exception.ArgsErrorException;
-import cn.edu.tsinghua.iotdb.jdbc.TsfileConnection;
-import cn.edu.tsinghua.iotdb.jdbc.TsfileDatabaseMetadata;
+import cn.edu.tsinghua.iotdb.jdbc.IoTDBConnection;
+import cn.edu.tsinghua.iotdb.jdbc.IoTDBDatabaseMetadata;
 
 public class AbstractClientTest {
 	
 	
     @Mock
-    private TsfileConnection connection;
+    private IoTDBConnection connection;
     
     @Mock
-    private TsfileDatabaseMetadata databaseMetadata;
+    private IoTDBDatabaseMetadata databaseMetadata;
     
 	@Before
 	public void setUp() throws Exception {

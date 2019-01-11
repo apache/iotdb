@@ -3,15 +3,15 @@ package cn.edu.tsinghua.iotdb.auth.authorizer;
 import cn.edu.tsinghua.iotdb.auth.AuthException;
 import cn.edu.tsinghua.iotdb.auth.Role.LocalFileRoleManager;
 import cn.edu.tsinghua.iotdb.auth.user.LocalFileUserManager;
-import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
-import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
+import cn.edu.tsinghua.iotdb.conf.IoTDBConfig;
+import cn.edu.tsinghua.iotdb.conf.IoTDBDescriptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 
 public class LocalFileAuthorizer extends BasicAuthorizer {
-    private static TsfileDBConfig config = TsfileDBDescriptor.getInstance().getConfig();
+    private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     private static Logger logger = LoggerFactory.getLogger(LocalFileAuthorizer.class);
 
     private LocalFileAuthorizer() throws AuthException {

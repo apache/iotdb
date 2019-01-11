@@ -6,8 +6,9 @@ import static cn.edu.tsinghua.iotdb.qp.constant.SQLConstant.KW_OR;
 import java.util.ArrayList;
 import java.util.List;
 
-import cn.edu.tsinghua.iotdb.qp.exception.LogicalOptimizeException;
+import cn.edu.tsinghua.iotdb.exception.qp.LogicalOptimizeException;
 import cn.edu.tsinghua.iotdb.qp.logical.crud.FilterOperator;
+
 
 public class DNFFilterOptimizer implements IFilterOptimizer {
 
@@ -24,8 +25,9 @@ public class DNFFilterOptimizer implements IFilterOptimizer {
     }
 
     private FilterOperator getDNF(FilterOperator filter) throws LogicalOptimizeException {
-        if (filter.isLeaf())
+        if (filter.isLeaf()) {
             return filter;
+        }
         List<FilterOperator> childOperators = filter.getChildren();
         if (childOperators.size() != 2) {
             throw new LogicalOptimizeException("node :" + filter.getTokenName() + " has "
@@ -115,11 +117,11 @@ public class DNFFilterOptimizer implements IFilterOptimizer {
      */
     private void addChildOpInAnd(FilterOperator operator, List<FilterOperator> newChildrenList)
             throws LogicalOptimizeException {
-        if (operator.isLeaf())
+        if (operator.isLeaf()) {
             newChildrenList.add(operator);
-        else if (operator.getTokenIntType() == KW_AND)
+        } else if (operator.getTokenIntType() == KW_AND) {
             newChildrenList.addAll(operator.getChildren());
-        else {
+        } else {
             throw new LogicalOptimizeException(
                     "add all children of an OR operator to newChildrenList in AND");
         }
@@ -133,10 +135,11 @@ public class DNFFilterOptimizer implements IFilterOptimizer {
      * @param newChildrenList new children list
      */
     private void addChildOpInOr(FilterOperator operator, List<FilterOperator> newChildrenList) {
-        if (operator.isLeaf() || operator.getTokenIntType() == KW_AND)
+        if (operator.isLeaf() || operator.getTokenIntType() == KW_AND) {
             newChildrenList.add(operator);
-        else
+        } else {
             newChildrenList.addAll(operator.getChildren());
+        }
     }
 
 }

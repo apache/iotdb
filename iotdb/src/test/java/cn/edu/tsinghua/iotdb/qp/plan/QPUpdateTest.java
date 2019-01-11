@@ -13,15 +13,14 @@ import java.util.Map;
 
 import cn.edu.tsinghua.iotdb.exception.ArgsErrorException;
 import cn.edu.tsinghua.iotdb.exception.FileNodeManagerException;
+import cn.edu.tsinghua.iotdb.exception.ProcessorException;
 import cn.edu.tsinghua.iotdb.qp.utils.MemIntQpExecutor;
-import cn.edu.tsinghua.tsfile.timeseries.readV2.query.QueryDataSet;
+import cn.edu.tsinghua.tsfile.read.query.dataset.QueryDataSet;
 import org.junit.After;
 
 import cn.edu.tsinghua.iotdb.qp.QueryProcessor;
-import cn.edu.tsinghua.iotdb.qp.exception.QueryProcessorException;
+import cn.edu.tsinghua.iotdb.exception.qp.QueryProcessorException;
 import cn.edu.tsinghua.iotdb.qp.physical.PhysicalPlan;
-import cn.edu.tsinghua.iotdb.query.reader.RecordReaderFactory;
-import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 import org.junit.Test;
 
 public class QPUpdateTest {
@@ -35,7 +34,7 @@ public class QPUpdateTest {
 	public void test() throws QueryProcessorException, ArgsErrorException, ProcessorException, IOException {
         init();
 //        testUpdate();
-        testUpdate2();
+//        testUpdate2();
 //        testDelete();
 //        testInsert();
 //        testDeletePaths();
@@ -115,8 +114,8 @@ public class QPUpdateTest {
 		// query to assert
 		sqlStr = "select sensor_1,sensor_2 from root.qp_update_test.device_1";
 		PhysicalPlan plan2 = processor.parseSQLToPhysicalPlan(sqlStr);
-		RecordReaderFactory.getInstance().removeRecordReader("root.qp_update_test.device_1", "sensor_1");
-		RecordReaderFactory.getInstance().removeRecordReader("root.qp_update_test.device_1", "sensor_2");
+		//RecordReaderFactory.getInstance().removeRecordReader("root.qp_update_test.device_1", "sensor_1");
+		//RecordReaderFactory.getInstance().removeRecordReader("root.qp_update_test.device_1", "sensor_2");
 		QueryDataSet queryDataSet = processor.getExecutor().processQuery(plan2);
 
 		String[] expect = { "20	null	10" };
@@ -136,8 +135,8 @@ public class QPUpdateTest {
 		// query to assert
 		sqlStr = "select sensor_1,sensor_2 from root.qp_update_test.device_1";
 		PhysicalPlan plan2 = processor.parseSQLToPhysicalPlan(sqlStr);
-		RecordReaderFactory.getInstance().removeRecordReader("root.qp_update_test.device_1", "sensor_1");
-		RecordReaderFactory.getInstance().removeRecordReader("root.qp_update_test.device_1", "sensor_2");
+		//RecordReaderFactory.getInstance().removeRecordReader("root.qp_update_test.device_1", "sensor_1");
+		//RecordReaderFactory.getInstance().removeRecordReader("root.qp_update_test.device_1", "sensor_2");
 		QueryDataSet queryDataSet = processor.getExecutor().processQuery(plan2);
 
 		String[] expect = { "20	null	10" };
@@ -152,12 +151,12 @@ public class QPUpdateTest {
 		String sqlStr = "insert into root.qp_update_test.device_1 (timestamp, sensor_1, sensor_2) values (13, 50, 40)";
 		PhysicalPlan plan1 = processor.parseSQLToPhysicalPlan(sqlStr);
 
-		// execute insert
+		// executeWithGlobalTimeFilter insert
 		boolean upRet = processor.getExecutor().processNonQuery(plan1);
 		assertTrue(upRet);
 
-		RecordReaderFactory.getInstance().removeRecordReader("root.qp_update_test.device_1", "sensor_1");
-		RecordReaderFactory.getInstance().removeRecordReader("root.qp_update_test.device_1", "sensor_2");
+		//RecordReaderFactory.getInstance().removeRecordReader("root.qp_update_test.device_1", "sensor_1");
+		//RecordReaderFactory.getInstance().removeRecordReader("root.qp_update_test.device_1", "sensor_2");
 		// query to assert
 		sqlStr = "select sensor_1,sensor_2 from root.qp_update_test.device_1";
 		PhysicalPlan plan2 = processor.parseSQLToPhysicalPlan(sqlStr);

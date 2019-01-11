@@ -1,24 +1,18 @@
 package cn.edu.tsinghua.iotdb.engine.overflow.metadata;
 
 
+import cn.edu.tsinghua.tsfile.utils.ReadWriteIOUtils;
+import sun.reflect.generics.reflectiveObjects.NotImplementedException;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import cn.edu.tsinghua.tsfile.file.metadata.converter.IConverter;
-
-/**
- * This is the metadata for overflow file. More information see
- * {@code com.corp.delta.tsfile.format.OFFileMetadata}
- * 
- * @author liukun
- *
- */
-public class OFFileMetadata implements IConverter<cn.edu.tsinghua.iotdb.engine.overflow.thrift.OFFileMetadata> {
-	private static final Logger LOGGER = LoggerFactory.getLogger(OFFileMetadata.class);
+public class OFFileMetadata {
 
 	private long lastFooterOffset;
 	private List<OFRowGroupListMetadata> rowGroupLists;
@@ -44,61 +38,8 @@ public class OFFileMetadata implements IConverter<cn.edu.tsinghua.iotdb.engine.o
 		rowGroupLists.add(rowGroupListMetadata);
 	}
 
-	public List<OFRowGroupListMetadata> getMetaDatas() {
+	public List<OFRowGroupListMetadata> getRowGroupLists() {
 		return rowGroupLists == null ? null : Collections.unmodifiableList(rowGroupLists);
-	}
-
-	@Override
-	public cn.edu.tsinghua.iotdb.engine.overflow.thrift.OFFileMetadata convertToThrift() {
-		try {
-			List<cn.edu.tsinghua.iotdb.engine.overflow.thrift.OFRowGroupListMetadata> ofRowGroupList = null;
-			if (rowGroupLists != null) {
-				ofRowGroupList = new ArrayList<cn.edu.tsinghua.iotdb.engine.overflow.thrift.OFRowGroupListMetadata>();
-				for (OFRowGroupListMetadata rowGroupListMetaData : rowGroupLists) {
-					ofRowGroupList.add(rowGroupListMetaData.convertToThrift());
-				}
-			}
-			cn.edu.tsinghua.iotdb.engine.overflow.thrift.OFFileMetadata metaData = new cn.edu.tsinghua.iotdb.engine.overflow.thrift.OFFileMetadata(
-					ofRowGroupList, lastFooterOffset);
-			return metaData;
-		} catch (Exception e) {
-			LOGGER.error("failed to convert OFFileMetadata from TSF to thrift, RowGroup lists metadata:{}", toString(),
-					e);
-			throw e;
-		}
-	}
-
-	
-	@Override
-	public void convertToTSF(cn.edu.tsinghua.iotdb.engine.overflow.thrift.OFFileMetadata metadata) {
-		try {
-			lastFooterOffset = metadata.getLast_footer_offset();
-			List<cn.edu.tsinghua.iotdb.engine.overflow.thrift.OFRowGroupListMetadata> list = metadata.getDeltaObject_metadata();
-			if (list == null) {
-				rowGroupLists = null;
-			} else {
-				if (rowGroupLists == null) {
-					rowGroupLists = new ArrayList<OFRowGroupListMetadata>();
-				}
-				rowGroupLists.clear();
-				for (cn.edu.tsinghua.iotdb.engine.overflow.thrift.OFRowGroupListMetadata formatSeries : list) {
-					OFRowGroupListMetadata ofRowgroupListMetaData = new OFRowGroupListMetadata();
-					ofRowgroupListMetaData.convertToTSF(formatSeries);
-					rowGroupLists.add(ofRowgroupListMetaData);
-				}
-			}
-		} catch (Exception e) {
-			LOGGER.error("Failed to convert OFFileMetadata from thrift to TSF, RowGroup list metadata:{}",
-					metadata.toString(), e);
-			throw e;
-		}
-	}
-
-
-	@Override
-	public String toString() {
-		return String.format("OFFileMetadata{ last offset: %d, RowGroupLists: %s }", lastFooterOffset,
-				rowGroupLists.toString());
 	}
 
 	public long getLastFooterOffset() {
@@ -109,7 +50,39 @@ public class OFFileMetadata implements IConverter<cn.edu.tsinghua.iotdb.engine.o
 		this.lastFooterOffset = lastFooterOffset;
 	}
 
-	public List<OFRowGroupListMetadata> getRowGroupLists() {
-		return this.rowGroupLists;
+	@Override
+	public String toString() {
+		return String.format("OFFileMetadata{ last offset: %d, RowGroupLists: %s }", lastFooterOffset,
+				rowGroupLists.toString());
 	}
+
+	public int serializeTo(OutputStream outputStream) throws IOException {
+		int byteLen = 0;
+		byteLen += ReadWriteIOUtils.write(lastFooterOffset,outputStream);
+		int size = rowGroupLists.size();
+		byteLen += ReadWriteIOUtils.write(size,outputStream);
+		for(OFRowGroupListMetadata ofRowGroupListMetadata : rowGroupLists){
+			byteLen += ofRowGroupListMetadata.serializeTo(outputStream);
+		}
+		return byteLen;
+	}
+
+	public int serializeTo(ByteBuffer buffer) throws IOException {
+		throw new NotImplementedException();
+	}
+
+	public static OFFileMetadata deserializeFrom(InputStream inputStream) throws IOException {
+		long lastFooterOffset = ReadWriteIOUtils.readLong(inputStream);
+		int size = ReadWriteIOUtils.readInt(inputStream);
+		List<OFRowGroupListMetadata> list = new ArrayList<>();
+		for(int i = 0;i<size;i++){
+			list.add(OFRowGroupListMetadata.deserializeFrom(inputStream));
+		}
+		return new OFFileMetadata(lastFooterOffset,list);
+	}
+
+	public static OFFileMetadata deserializeFrom(ByteBuffer buffer) throws IOException {
+		throw new NotImplementedException();
+	}
+
 }

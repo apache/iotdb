@@ -1,10 +1,10 @@
 package cn.edu.tsinghua.iotdb.engine.memtable;
 
-import cn.edu.tsinghua.tsfile.common.exception.UnSupportedDataTypeException;
-import cn.edu.tsinghua.tsfile.common.utils.Binary;
+import cn.edu.tsinghua.iotdb.utils.TimeValuePair;
+import cn.edu.tsinghua.iotdb.utils.TsPrimitiveType;
+import cn.edu.tsinghua.tsfile.exception.write.UnSupportedDataTypeException;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
-import cn.edu.tsinghua.tsfile.timeseries.readV2.datatype.TimeValuePair;
-import cn.edu.tsinghua.tsfile.timeseries.readV2.datatype.TsPrimitiveType;
+import cn.edu.tsinghua.tsfile.utils.Binary;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -12,15 +12,13 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.Random;
 
-/**
- * Created by zhangjinrui on 2018/1/25.
- */
+
 public class PrimitiveMemTableTest {
 
     @Test
     public void memSeriesCloneTest() {
         TSDataType dataType = TSDataType.INT32;
-        PrimitiveMemSeries series = new PrimitiveMemSeries(dataType);
+        WritableMemChunk series = new WritableMemChunk(dataType);
         int count = 1000;
         for (int i = 0; i < count; i++) {
             series.write(i, String.valueOf(i));

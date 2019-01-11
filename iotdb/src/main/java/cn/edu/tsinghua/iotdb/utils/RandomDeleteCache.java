@@ -1,15 +1,12 @@
 package cn.edu.tsinghua.iotdb.utils;
 
-import cn.edu.tsinghua.tsfile.common.exception.cache.CacheException;
-import cn.edu.tsinghua.tsfile.timeseries.utils.cache.Cache;
+import cn.edu.tsinghua.tsfile.exception.cache.CacheException;
+import cn.edu.tsinghua.tsfile.common.cache.Cache;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-/**
- * Created by zhangjinrui on 2018/1/29.
- */
+
 public abstract class RandomDeleteCache<K, V> implements Cache<K, V> {
 
     private int cacheSize;

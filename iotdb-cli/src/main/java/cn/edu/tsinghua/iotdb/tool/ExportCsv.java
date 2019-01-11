@@ -1,8 +1,8 @@
 package cn.edu.tsinghua.iotdb.tool;
 
 import cn.edu.tsinghua.iotdb.exception.ArgsErrorException;
-import cn.edu.tsinghua.iotdb.jdbc.TsfileConnection;
-import cn.edu.tsinghua.iotdb.jdbc.TsfileJDBCConfig;
+import cn.edu.tsinghua.iotdb.jdbc.IoTDBConnection;
+import cn.edu.tsinghua.iotdb.jdbc.Config;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -80,12 +80,12 @@ public class ExportCsv extends AbstractCsvTool{
 			if(!checkTimeFormat()){
 				return;
 			}
-			Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);
+			Class.forName(Config.JDBC_DRIVER_NAME);
 
 			String sqlFile = commandLine.getOptionValue(SQL_FILE_ARGS);
 			String sql;
 			
-			connection = (TsfileConnection) DriverManager.getConnection("jdbc:tsfile://" + host + ":" + port + "/", username, password);
+			connection = (IoTDBConnection) DriverManager.getConnection(Config.IOTDB_URL_PREFIX + host + ":" + port + "/", username, password);
 			setTimeZone();
 			
 			if (sqlFile == null) {

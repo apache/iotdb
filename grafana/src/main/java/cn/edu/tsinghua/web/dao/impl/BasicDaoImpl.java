@@ -1,6 +1,6 @@
 package cn.edu.tsinghua.web.dao.impl;
 
-import cn.edu.tsinghua.tsfile.common.utils.Pair;
+import cn.edu.tsinghua.tsfile.utils.Pair;
 import cn.edu.tsinghua.web.bean.TimeValues;
 import cn.edu.tsinghua.web.dao.BasicDao;
 

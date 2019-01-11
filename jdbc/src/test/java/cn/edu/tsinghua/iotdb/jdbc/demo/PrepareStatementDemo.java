@@ -14,7 +14,7 @@ public class PrepareStatementDemo {
 		Class.forName("cn.edu.tsinghua.iotdb.jdbc.TsfileDriver");
 		Connection connection = null;
 		try {
-			connection =  DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
+			connection =  DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
 			PreparedStatement preparedStatement = connection.prepareStatement("insert into root.ln.wf01.wt01(timestamp,status,temperature) values(?,?,?)");
 			preparedStatement.setLong(1, 1509465600000L);
 			preparedStatement.setBoolean(2, true);

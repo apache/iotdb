@@ -7,7 +7,8 @@ iotdb/iotdb/data/*
 iotdb/iotdb/gc.log*
 iotdb/iotdb/logs/*
 iotdb/iotdb/lib/*
-
+iotdb/overflow/
+iotdb/testoverflowfile
 
 tsfile/src/test/resources/perTestInputData
 # Eclipse IDE files

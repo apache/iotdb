@@ -12,9 +12,6 @@ import cn.edu.tsinghua.tsfile.file.metadata.enums.TSEncoding;
  * This class is the implementation of Metadata Node where "MNode" is the
  * shorthand of "Metadata Node". One MNode instance represents one node in the
  * Metadata Tree
- * 
- * @author Jinrui Zhang
- *
  */
 public class MNode implements Serializable {
 

@@ -1,6 +1,23 @@
 package cn.edu.tsinghua.iotdb.engine.bufferwrite;
 
-import static org.junit.Assert.assertEquals;
+import cn.edu.tsinghua.iotdb.conf.directories.Directories;
+import cn.edu.tsinghua.iotdb.engine.MetadataManagerHelper;
+import cn.edu.tsinghua.iotdb.engine.PathUtils;
+import cn.edu.tsinghua.iotdb.engine.querycontext.ReadOnlyMemChunk;
+import cn.edu.tsinghua.iotdb.exception.ProcessorException;
+import cn.edu.tsinghua.iotdb.utils.EnvironmentUtils;
+import cn.edu.tsinghua.iotdb.utils.FileSchemaUtils;
+import cn.edu.tsinghua.iotdb.utils.TimeValuePair;
+import cn.edu.tsinghua.tsfile.common.conf.TSFileConfig;
+import cn.edu.tsinghua.tsfile.common.conf.TSFileDescriptor;
+import cn.edu.tsinghua.tsfile.exception.write.WriteProcessException;
+import cn.edu.tsinghua.tsfile.file.metadata.ChunkMetaData;
+import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
+import cn.edu.tsinghua.tsfile.utils.Pair;
+import cn.edu.tsinghua.tsfile.write.writer.TsFileIOWriter;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -11,24 +28,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-import cn.edu.tsinghua.iotdb.conf.directories.Directories;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-
-import cn.edu.tsinghua.iotdb.engine.MetadataManagerHelper;
-import cn.edu.tsinghua.iotdb.engine.PathUtils;
-import cn.edu.tsinghua.iotdb.engine.querycontext.RawSeriesChunk;
-import cn.edu.tsinghua.iotdb.utils.EnvironmentUtils;
-import cn.edu.tsinghua.iotdb.utils.FileSchemaUtils;
-import cn.edu.tsinghua.tsfile.common.conf.TSFileConfig;
-import cn.edu.tsinghua.tsfile.common.conf.TSFileDescriptor;
-import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
-import cn.edu.tsinghua.tsfile.common.utils.Pair;
-import cn.edu.tsinghua.tsfile.file.metadata.TimeSeriesChunkMetaData;
-import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
-import cn.edu.tsinghua.tsfile.timeseries.readV2.datatype.TimeValuePair;
-import cn.edu.tsinghua.tsfile.timeseries.write.exception.WriteProcessException;
+import static org.junit.Assert.assertEquals;
 
 public class BufferWriteProcessorTest {
 
@@ -57,10 +57,10 @@ public class BufferWriteProcessorTest {
 
 	private int groupSizeInByte;
 	private TSFileConfig TsFileConf = TSFileDescriptor.getInstance().getConfig();
-	private Map<String, Object> parameters = new HashMap<>();
+	private Map<String, Action> parameters = new HashMap<>();
 	private BufferWriteProcessor bufferwrite;
 	private Directories directories = Directories.getInstance();
-	private String deltaObjectId = "root.vehicle.d0";
+	private String deviceId = "root.vehicle.d0";
 	private String measurementId = "s0";
 	private TSDataType dataType = TSDataType.INT32;
 
@@ -92,14 +92,14 @@ public class BufferWriteProcessorTest {
 	@Test
 	public void testWriteAndAbnormalRecover()
 			throws WriteProcessException, InterruptedException, IOException, ProcessorException {
-		bufferwrite = new BufferWriteProcessor(directories.getFolderForTest(), deltaObjectId, insertPath, parameters,
-				FileSchemaUtils.constructFileSchema(deltaObjectId));
+		bufferwrite = new BufferWriteProcessor(directories.getFolderForTest(), deviceId, insertPath, parameters,
+				FileSchemaUtils.constructFileSchema(deviceId));
 		for (int i = 1; i < 100; i++) {
-			bufferwrite.write(deltaObjectId, measurementId, i, dataType, String.valueOf(i));
+			bufferwrite.write(deviceId, measurementId, i, dataType, String.valueOf(i));
 		}
 		// waiting for the end of flush
 		TimeUnit.SECONDS.sleep(2);
-		File dataFile = PathUtils.getBufferWriteDir(deltaObjectId);
+		File dataFile = PathUtils.getBufferWriteDir(deviceId);
 		// check file
 		String restoreFilePath = insertPath + ".restore";
 		File restoreFile = new File(dataFile, restoreFilePath);
@@ -115,44 +115,44 @@ public class BufferWriteProcessorTest {
 		restoreFile.renameTo(file);
 		bufferwrite.close();
 		file.renameTo(restoreFile);
-		BufferWriteProcessor bufferWriteProcessor = new BufferWriteProcessor(directories.getFolderForTest(), deltaObjectId, insertPath, parameters,
-				FileSchemaUtils.constructFileSchema(deltaObjectId));
+		BufferWriteProcessor bufferWriteProcessor = new BufferWriteProcessor(directories.getFolderForTest(), deviceId, insertPath, parameters,
+				FileSchemaUtils.constructFileSchema(deviceId));
 		assertEquals(true, insertFile.exists());
 		assertEquals(insertFileLength, insertFile.length());
-		Pair<RawSeriesChunk, List<TimeSeriesChunkMetaData>> pair = bufferWriteProcessor
-				.queryBufferWriteData(deltaObjectId, measurementId, dataType);
+		Pair<ReadOnlyMemChunk, List<ChunkMetaData>> pair = bufferWriteProcessor
+				.queryBufferWriteData(deviceId, measurementId, dataType);
 		assertEquals(true, pair.left.isEmpty());
 		assertEquals(1, pair.right.size());
-		TimeSeriesChunkMetaData chunkMetaData = pair.right.get(0);
-		assertEquals(measurementId, chunkMetaData.getProperties().getMeasurementUID());
-		assertEquals(dataType, chunkMetaData.getVInTimeSeriesChunkMetaData().getDataType());
+		ChunkMetaData chunkMetaData = pair.right.get(0);
+		assertEquals(measurementId, chunkMetaData.getMeasurementUID());
+		assertEquals(dataType, chunkMetaData.getTsDataType());
 		bufferWriteProcessor.close();
 		assertEquals(false, restoreFile.exists());
 	}
 
 	@Test
 	public void testWriteAndNormalRecover() throws WriteProcessException, ProcessorException, InterruptedException {
-		bufferwrite = new BufferWriteProcessor(directories.getFolderForTest(), deltaObjectId, insertPath, parameters,
-				FileSchemaUtils.constructFileSchema(deltaObjectId));
+		bufferwrite = new BufferWriteProcessor(directories.getFolderForTest(), deviceId, insertPath, parameters,
+				FileSchemaUtils.constructFileSchema(deviceId));
 		for (int i = 1; i < 100; i++) {
-			bufferwrite.write(deltaObjectId, measurementId, i, dataType, String.valueOf(i));
+			bufferwrite.write(deviceId, measurementId, i, dataType, String.valueOf(i));
 		}
 		// waiting for the end of flush
 		TimeUnit.SECONDS.sleep(2);
-		File dataFile = PathUtils.getBufferWriteDir(deltaObjectId);
+		File dataFile = PathUtils.getBufferWriteDir(deviceId);
 		// check file
 		String restoreFilePath = insertPath + ".restore";
 		File restoreFile = new File(dataFile, restoreFilePath);
 		assertEquals(true, restoreFile.exists());
-		BufferWriteProcessor bufferWriteProcessor = new BufferWriteProcessor(directories.getFolderForTest(), deltaObjectId, insertPath, parameters,
-				FileSchemaUtils.constructFileSchema(deltaObjectId));
-		Pair<RawSeriesChunk, List<TimeSeriesChunkMetaData>> pair = bufferWriteProcessor
-				.queryBufferWriteData(deltaObjectId, measurementId, dataType);
+		BufferWriteProcessor bufferWriteProcessor = new BufferWriteProcessor(directories.getFolderForTest(), deviceId, insertPath, parameters,
+				FileSchemaUtils.constructFileSchema(deviceId));
+		Pair<ReadOnlyMemChunk, List<ChunkMetaData>> pair = bufferWriteProcessor
+				.queryBufferWriteData(deviceId, measurementId, dataType);
 		assertEquals(true, pair.left.isEmpty());
 		assertEquals(1, pair.right.size());
-		TimeSeriesChunkMetaData chunkMetaData = pair.right.get(0);
-		assertEquals(measurementId, chunkMetaData.getProperties().getMeasurementUID());
-		assertEquals(dataType, chunkMetaData.getVInTimeSeriesChunkMetaData().getDataType());
+		ChunkMetaData chunkMetaData = pair.right.get(0);
+		assertEquals(measurementId, chunkMetaData.getMeasurementUID());
+		assertEquals(dataType, chunkMetaData.getTsDataType());
 		bufferWriteProcessor.close();
 		bufferwrite.close();
 		assertEquals(false, restoreFile.exists());
@@ -160,37 +160,37 @@ public class BufferWriteProcessorTest {
 
 	@Test
 	public void testWriteAndQuery() throws WriteProcessException, InterruptedException, ProcessorException {
-		bufferwrite = new BufferWriteProcessor(directories.getFolderForTest(), deltaObjectId, insertPath, parameters,
-				FileSchemaUtils.constructFileSchema(deltaObjectId));
+		bufferwrite = new BufferWriteProcessor(directories.getFolderForTest(), deviceId, insertPath, parameters,
+				FileSchemaUtils.constructFileSchema(deviceId));
 		assertEquals(false, bufferwrite.isFlush());
 		assertEquals(true, bufferwrite.canBeClosed());
 		assertEquals(0, bufferwrite.memoryUsage());
-		assertEquals(0, bufferwrite.getFileSize());
+		assertEquals(TsFileIOWriter.magicStringBytes.length, bufferwrite.getFileSize());
 		assertEquals(0, bufferwrite.getMetaSize());
 		for (int i = 1; i <= 85; i++) {
-			bufferwrite.write(deltaObjectId, measurementId, i, dataType, String.valueOf(i));
+			bufferwrite.write(deviceId, measurementId, i, dataType, String.valueOf(i));
 			assertEquals(i * 12, bufferwrite.memoryUsage());
 		}
-		bufferwrite.write(deltaObjectId, measurementId, 86, dataType, String.valueOf(86));
+		bufferwrite.write(deviceId, measurementId, 86, dataType, String.valueOf(86));
 		assertEquals(true, bufferwrite.isFlush());
 		// sleep to the end of flush
 		TimeUnit.SECONDS.sleep(2);
 		assertEquals(false, bufferwrite.isFlush());
 		assertEquals(0, bufferwrite.memoryUsage());
 		// query result
-		Pair<RawSeriesChunk, List<TimeSeriesChunkMetaData>> pair = bufferwrite.queryBufferWriteData(deltaObjectId,
+		Pair<ReadOnlyMemChunk, List<ChunkMetaData>> pair = bufferwrite.queryBufferWriteData(deviceId,
 				measurementId, dataType);
 		assertEquals(true, pair.left.isEmpty());
 		assertEquals(1, pair.right.size());
-		TimeSeriesChunkMetaData chunkMetaData = pair.right.get(0);
-		assertEquals(measurementId, chunkMetaData.getProperties().getMeasurementUID());
-		assertEquals(dataType, chunkMetaData.getVInTimeSeriesChunkMetaData().getDataType());
+		ChunkMetaData chunkMetaData = pair.right.get(0);
+		assertEquals(measurementId, chunkMetaData.getMeasurementUID());
+		assertEquals(dataType, chunkMetaData.getTsDataType());
 		for (int i = 87; i <= 100; i++) {
-			bufferwrite.write(deltaObjectId, measurementId, i, dataType, String.valueOf(i));
+			bufferwrite.write(deviceId, measurementId, i, dataType, String.valueOf(i));
 			assertEquals((i - 86) * 12, bufferwrite.memoryUsage());
 		}
-		pair = bufferwrite.queryBufferWriteData(deltaObjectId, measurementId, dataType);
-		RawSeriesChunk rawSeriesChunk = pair.left;
+		pair = bufferwrite.queryBufferWriteData(deviceId, measurementId, dataType);
+		ReadOnlyMemChunk rawSeriesChunk = (ReadOnlyMemChunk) pair.left;
 		assertEquals(false, rawSeriesChunk.isEmpty());
 		assertEquals(87, rawSeriesChunk.getMinTimestamp());
 		assertEquals(87, rawSeriesChunk.getValueAtMinTime().getInt());

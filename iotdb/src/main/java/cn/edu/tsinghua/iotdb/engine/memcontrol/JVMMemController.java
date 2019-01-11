@@ -1,7 +1,7 @@
 package cn.edu.tsinghua.iotdb.engine.memcontrol;
 
-import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
-import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
+import cn.edu.tsinghua.iotdb.conf.IoTDBConfig;
+import cn.edu.tsinghua.iotdb.conf.IoTDBDescriptor;
 import cn.edu.tsinghua.iotdb.utils.MemUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,14 +14,14 @@ public class JVMMemController extends BasicMemController {
     private long nonDataUsage = 0;
 
     private static class InstanceHolder {
-        private static final JVMMemController INSTANCE = new JVMMemController(TsfileDBDescriptor.getInstance().getConfig());
+        private static final JVMMemController INSTANCE = new JVMMemController(IoTDBDescriptor.getInstance().getConfig());
     }
 
     public static JVMMemController getInstance() {
         return InstanceHolder.INSTANCE;
     }
 
-    private JVMMemController(TsfileDBConfig config) {
+    private JVMMemController(IoTDBConfig config) {
         super(config);
     }
 

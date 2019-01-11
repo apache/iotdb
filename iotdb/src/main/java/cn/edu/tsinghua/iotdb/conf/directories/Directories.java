@@ -1,6 +1,6 @@
 package cn.edu.tsinghua.iotdb.conf.directories;
 
-import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
+import cn.edu.tsinghua.iotdb.conf.IoTDBDescriptor;
 import cn.edu.tsinghua.iotdb.conf.directories.strategy.DirectoryStrategy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,12 +21,12 @@ public class Directories {
 
     private Directories(){
         tsfileFolders = new ArrayList<String>(
-                Arrays.asList(TsfileDBDescriptor.getInstance().getConfig().getBufferWriteDirs()));
+                Arrays.asList(IoTDBDescriptor.getInstance().getConfig().getBufferWriteDirs()));
         initFolders();
 
         String strategyName = "";
         try {
-            strategyName = TsfileDBDescriptor.getInstance().getConfig().multDirStrategyClassName;
+            strategyName = IoTDBDescriptor.getInstance().getConfig().multDirStrategyClassName;
             Class<?> clazz = Class.forName(strategyName);
             strategy = (DirectoryStrategy) clazz.newInstance();
             strategy.init(tsfileFolders);

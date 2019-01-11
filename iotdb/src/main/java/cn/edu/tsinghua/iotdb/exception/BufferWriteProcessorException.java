@@ -1,6 +1,5 @@
 package cn.edu.tsinghua.iotdb.exception;
 
-import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 
 public class BufferWriteProcessorException extends ProcessorException {
 

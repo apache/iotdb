@@ -20,7 +20,7 @@ public class SendDataToIotdb {
 		// 1. load JDBC driver of IoTDB
 		Class.forName("cn.edu.tsinghua.iotdb.jdbc.TsfileDriver");
 		// 2. DriverManager connect to IoTDB
-		connection = DriverManager.getConnection("jdbc:tsfile://localhost:6667/", "root", "root");
+		connection = DriverManager.getConnection(Config.IOTDB_URL_PREFIX+"127.0.0.1:6667/", "root", "root");
 
 		statement = connection.createStatement();
 	}

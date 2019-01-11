@@ -1,38 +1,34 @@
 package cn.edu.tsinghua.iotdb.engine.querycontext;
 
-import cn.edu.tsinghua.tsfile.file.metadata.TimeSeriesChunkMetaData;
+import cn.edu.tsinghua.tsfile.file.metadata.ChunkMetaData;
 
 import java.util.List;
 
-/**
- * Created by zhangjinrui on 2018/1/18.
- */
+
 public class OverflowInsertFile {
-    private String path;  //Full path of current OverflowInsertFile
-    private List<TimeSeriesChunkMetaData> timeSeriesChunkMetaDatas; //seriesChunkMetadata of selected series
+
+    private String filePath;
+
+    // seriesChunkMetadata of selected series
+    private List<ChunkMetaData> timeSeriesChunkMetaData;
 
     public OverflowInsertFile() {
-
     }
 
-    public OverflowInsertFile(String path, List<TimeSeriesChunkMetaData> timeSeriesChunkMetaDatas) {
-        this.path = path;
-        this.timeSeriesChunkMetaDatas = timeSeriesChunkMetaDatas;
+    public OverflowInsertFile(String path, List<ChunkMetaData> timeSeriesChunkMetaData) {
+        this.filePath = path;
+        this.timeSeriesChunkMetaData = timeSeriesChunkMetaData;
     }
 
-    public String getPath() {
-        return path;
+    public String getFilePath() {
+        return filePath;
     }
 
-    public void setPath(String path) {
-        this.path = path;
+    public List<ChunkMetaData> getChunkMetaDataList() {
+        return timeSeriesChunkMetaData;
     }
 
-    public List<TimeSeriesChunkMetaData> getTimeSeriesChunkMetaDatas() {
-        return timeSeriesChunkMetaDatas;
-    }
-
-    public void setTimeSeriesChunkMetaDatas(List<TimeSeriesChunkMetaData> timeSeriesChunkMetaDatas) {
-        this.timeSeriesChunkMetaDatas = timeSeriesChunkMetaDatas;
+    public void setTimeSeriesChunkMetaData(List<ChunkMetaData> timeSeriesChunkMetaData) {
+        this.timeSeriesChunkMetaData = timeSeriesChunkMetaData;
     }
 }

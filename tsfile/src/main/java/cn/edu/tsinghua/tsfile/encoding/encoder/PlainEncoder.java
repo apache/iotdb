@@ -1,8 +1,8 @@
 package cn.edu.tsinghua.tsfile.encoding.encoder;
 
 import cn.edu.tsinghua.tsfile.common.conf.TSFileConfig;
-import cn.edu.tsinghua.tsfile.common.exception.TSFileEncodingException;
-import cn.edu.tsinghua.tsfile.common.utils.Binary;
+import cn.edu.tsinghua.tsfile.exception.encoding.TSFileEncodingException;
+import cn.edu.tsinghua.tsfile.utils.Binary;
 import cn.edu.tsinghua.tsfile.encoding.common.EndianType;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSEncoding;
@@ -140,10 +140,6 @@ public class PlainEncoder extends Encoder {
             case TEXT:
                 // refer to encode(Binary,ByteArrayOutputStream)
                 return 4 + TSFileConfig.BYTE_SIZE_PER_CHAR * maxStringLength;
-            case ENUMS:
-                return 4;
-            case BIGDECIMAL:
-                return 8;
             default:
                 throw new UnsupportedOperationException(dataType.toString());
         }

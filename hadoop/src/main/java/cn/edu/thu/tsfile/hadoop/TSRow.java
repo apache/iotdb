@@ -6,7 +6,7 @@ import java.io.IOException;
 
 import org.apache.hadoop.io.Writable;
 
-import cn.edu.tsinghua.tsfile.timeseries.write.record.TSRecord;
+import cn.edu.tsinghua.tsfile.write.record.TSRecord;
 
 public class TSRow implements Writable {
 	

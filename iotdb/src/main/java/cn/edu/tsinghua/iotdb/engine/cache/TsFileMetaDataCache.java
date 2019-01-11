@@ -18,7 +18,7 @@ import cn.edu.tsinghua.tsfile.file.metadata.TsFileMetaData;
 public class TsFileMetaDataCache {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(TsFileMetaDataCache.class);
-	/** key: The file path of tsfile */
+	/** key: The file seriesPath of tsfile */
 	private ConcurrentHashMap<String, TsFileMetaData> cache;
 	private AtomicLong cacheHintNum = new AtomicLong();
 	private AtomicLong cacheRequestNum = new AtomicLong();

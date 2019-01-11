@@ -1,16 +1,32 @@
 package cn.edu.tsinghua.iotdb.engine.memtable;
 
-import cn.edu.tsinghua.tsfile.timeseries.readV2.datatype.TimeValuePair;
+import cn.edu.tsinghua.iotdb.utils.TimeValuePair;
 
+import java.util.Iterator;
 import java.util.List;
 
-/**
- * Created by zhangjinrui on 2018/1/26.
- */
+
 public interface TimeValuePairSorter {
 
     /**
      * @return a List which contains all distinct {@link TimeValuePair}s in ascending order by timestamp.
      */
     List<TimeValuePair> getSortedTimeValuePairList();
+
+    /**
+     * notice, by default implementation, calling this method will cause calling getSortedTimeValuePairList().
+     * @return an iterator of data in this class.
+     */
+    default Iterator<TimeValuePair> getIterator(){
+        return getSortedTimeValuePairList().iterator();
+    }
+
+
+    /**
+     * notice, by default implementation, calling this method will cause calling getSortedTimeValuePairList().
+     * @return if there is no data in this sorter, return true.
+     */
+    default boolean isEmpty(){
+        return getSortedTimeValuePairList().isEmpty();
+    }
 }

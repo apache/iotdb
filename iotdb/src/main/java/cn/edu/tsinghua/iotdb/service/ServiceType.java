@@ -9,8 +9,8 @@ public enum ServiceType {
 	WAL_SERVICE("WAL ServerService",""),
 	CLOSE_MERGE_SERVICE("Close&Merge ServerService",""),
 	JVM_MEM_CONTROL_SERVICE("Memory Controller",""),
-	AUTHORIZATION_SERVICE("Authorization ServerService", "");
-	
+	AUTHORIZATION_SERVICE("Authorization ServerService", ""),
+	FILE_READER_MANAGER_SERVICE("File reader manager ServerService", "");
 	private String name;  
 	private String jmxName;
 

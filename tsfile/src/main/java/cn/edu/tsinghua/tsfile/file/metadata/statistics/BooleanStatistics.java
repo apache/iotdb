@@ -1,6 +1,11 @@
 package cn.edu.tsinghua.tsfile.file.metadata.statistics;
 
-import cn.edu.tsinghua.tsfile.common.utils.BytesUtils;
+import cn.edu.tsinghua.tsfile.utils.BytesUtils;
+import cn.edu.tsinghua.tsfile.utils.ReadWriteIOUtils;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.ByteBuffer;
 
 /**
  * @author CGF
@@ -66,6 +71,28 @@ public class BooleanStatistics extends Statistics<Boolean> {
 	}
 
 	@Override
+	public ByteBuffer getMaxBytebuffer() { return ReadWriteIOUtils.getByteBuffer(max); }
+
+	@Override
+	public ByteBuffer getMinBytebuffer() { return ReadWriteIOUtils.getByteBuffer(min); }
+
+	@Override
+	public ByteBuffer getFirstBytebuffer() {
+		return ReadWriteIOUtils.getByteBuffer(first);
+	}
+
+	@Override
+	public ByteBuffer getSumBytebuffer() {
+		return ReadWriteIOUtils.getByteBuffer(sum);
+	}
+
+	@Override
+	public ByteBuffer getLastBytebuffer() {
+		return ReadWriteIOUtils.getByteBuffer(last);
+	}
+
+
+	@Override
 	protected void mergeStatisticsValue(Statistics<?> stats) {
 		BooleanStatistics boolStats = (BooleanStatistics) stats;
 		if (isEmpty) {
@@ -110,8 +137,34 @@ public class BooleanStatistics extends Statistics<Boolean> {
 		return BytesUtils.boolToBytes(last);
 	}
 
+
+	@Override
+	public int sizeOfDatum() {
+		return 1;
+	}
+
 	@Override
 	public String toString() {
 		return "[max:" + max + ",min:" + min + ",first:" + first + ",sum:" + sum + ",last:" + last + "]";
 	}
+
+	@Override
+	void fill(InputStream inputStream) throws IOException {
+		this.min = ReadWriteIOUtils.readBool(inputStream);
+		this.max = ReadWriteIOUtils.readBool(inputStream);
+		this.first = ReadWriteIOUtils.readBool(inputStream);
+		this.last = ReadWriteIOUtils.readBool(inputStream);
+		this.sum = ReadWriteIOUtils.readDouble(inputStream);
+	}
+
+	@Override
+	void fill(ByteBuffer byteBuffer) throws IOException {
+		this.min = ReadWriteIOUtils.readBool(byteBuffer);
+		this.max = ReadWriteIOUtils.readBool(byteBuffer);
+		this.first = ReadWriteIOUtils.readBool(byteBuffer);
+		this.last = ReadWriteIOUtils.readBool(byteBuffer);
+		this.sum = ReadWriteIOUtils.readDouble(byteBuffer);
+	}
+
+
 }

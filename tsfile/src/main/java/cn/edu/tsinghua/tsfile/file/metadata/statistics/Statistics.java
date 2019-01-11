@@ -1,12 +1,17 @@
 package cn.edu.tsinghua.tsfile.file.metadata.statistics;
 
-import cn.edu.tsinghua.tsfile.common.exception.UnknownColumnTypeException;
-import cn.edu.tsinghua.tsfile.common.utils.Binary;
+import cn.edu.tsinghua.tsfile.exception.write.UnknownColumnTypeException;
+import cn.edu.tsinghua.tsfile.utils.Binary;
+import cn.edu.tsinghua.tsfile.utils.ReadWriteIOUtils;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.math.BigDecimal;
+import java.nio.ByteBuffer;
 
 /**
  * This class is used for recording statistic information of each measurement in a delta file.While
@@ -38,16 +43,12 @@ public abstract class Statistics<T> {
                 return new LongStatistics();
             case TEXT:
                 return new BinaryStatistics();
-            case ENUMS:
-                return new NoStatistics();
             case BOOLEAN:
                 return new BooleanStatistics();
             case DOUBLE:
                 return new DoubleStatistics();
             case FLOAT:
                 return new FloatStatistics();
-            case BIGDECIMAL:
-                return new BigDecimalStatistics();
             default:
                 throw new UnknownColumnTypeException(type.toString());
         }
@@ -64,6 +65,28 @@ public abstract class Statistics<T> {
     abstract public double getSum();
     
     abstract public T getLast();
+
+    abstract public byte[] getMaxBytes();
+
+    abstract public byte[] getMinBytes();
+
+    abstract public byte[] getFirstBytes();
+
+    abstract public byte[] getSumBytes();
+
+    abstract public byte[] getLastBytes();
+
+    abstract public ByteBuffer getMaxBytebuffer();
+
+    abstract public ByteBuffer getMinBytebuffer();
+
+    abstract public ByteBuffer getFirstBytebuffer();
+
+    abstract public ByteBuffer getSumBytebuffer();
+
+    abstract public ByteBuffer getLastBytebuffer();
+
+
 
     /**
      * merge parameter to this statistic. Including
@@ -138,13 +161,130 @@ public abstract class Statistics<T> {
     public void reset() {
     }
 
-    abstract public byte[] getMaxBytes();
 
-    abstract public byte[] getMinBytes();
-    
-    abstract public byte[] getFirstBytes();
-    
-    abstract public byte[] getSumBytes();
-    
-    abstract public byte[] getLastBytes();
+    /**
+     *
+     * @return the size of one field of this class.<br>
+     *     int, float - 4<br>
+     *     double, long, bigDecimal - 8 <br>
+     *     boolean - 1 <br>
+     *     No - 0 <br>
+     *     binary - -1 which means uncertainty
+     *     </>
+     */
+    abstract public int sizeOfDatum();
+
+    /**
+     * read data from the inputStream.
+     * @param inputStream
+     * @throws IOException
+     */
+    abstract void fill(InputStream inputStream) throws IOException;
+
+    abstract void fill(ByteBuffer byteBuffer) throws IOException;
+
+
+    public int getSerializedSize() {
+        if(sizeOfDatum()==0){
+            return 0;
+        }
+        else if(sizeOfDatum()!=-1) {
+            return sizeOfDatum() * 4 + 8;
+        }else{
+            return 4*Integer.BYTES + getMaxBytes().length + getMinBytes().length +getFirstBytes().length+getLastBytes().length +getSumBytes().length;
+        }
+    }
+
+    public int serialize(OutputStream outputStream) throws IOException {
+        int length=0;
+        if(sizeOfDatum()==0){
+            return 0;
+        }
+        else if(sizeOfDatum()!=-1) {
+            length = sizeOfDatum() * 4 + 8;
+            outputStream.write(getMinBytes());
+            outputStream.write(getMaxBytes());
+            outputStream.write(getFirstBytes());
+            outputStream.write(getLastBytes());
+            outputStream.write(getSumBytes());
+        }else{
+            byte[] tmp=getMinBytes();
+            length+=tmp.length;
+            length+=ReadWriteIOUtils.write(tmp.length,outputStream);
+            outputStream.write(tmp);
+            tmp=getMaxBytes();
+            length+=tmp.length;
+            length+=ReadWriteIOUtils.write(tmp.length,outputStream);
+            outputStream.write(tmp);
+            tmp=getFirstBytes();
+            length+=tmp.length;
+            length+=ReadWriteIOUtils.write(tmp.length,outputStream);
+            outputStream.write(tmp);
+            tmp=getLastBytes();
+            length+=tmp.length;
+            length+=ReadWriteIOUtils.write(tmp.length,outputStream);
+            outputStream.write(tmp);
+            outputStream.write(getSumBytes());
+            length+=8;
+        }
+        return length;
+    }
+
+    public static Statistics deserialize(InputStream inputStream, TSDataType dataType) throws IOException {
+        Statistics statistics=null;
+        switch (dataType) {
+            case INT32:
+                 statistics = new IntegerStatistics();
+                 break;
+            case INT64:
+                statistics = new LongStatistics();
+                break;
+            case TEXT:
+                statistics = new BinaryStatistics();
+                break;
+            case BOOLEAN:
+                statistics = new BooleanStatistics();
+                break;
+            case DOUBLE:
+                statistics = new DoubleStatistics();
+                break;
+            case FLOAT:
+                statistics = new FloatStatistics();
+                break;
+            default:
+                throw new UnknownColumnTypeException(dataType.toString());
+        }
+        statistics.fill(inputStream);
+        return statistics;
+    }
+
+    public static Statistics deserialize(ByteBuffer buffer, TSDataType dataType) throws IOException {
+        Statistics statistics=null;
+        switch (dataType) {
+            case INT32:
+                statistics = new IntegerStatistics();
+                break;
+            case INT64:
+                statistics = new LongStatistics();
+                break;
+            case TEXT:
+                statistics = new BinaryStatistics();
+                break;
+            case BOOLEAN:
+                statistics = new BooleanStatistics();
+                break;
+            case DOUBLE:
+                statistics = new DoubleStatistics();
+                break;
+            case FLOAT:
+                statistics = new FloatStatistics();
+                break;
+            default:
+                throw new UnknownColumnTypeException(dataType.toString());
+        }
+        statistics.fill(buffer);
+        return statistics;
+    }
+
+
 }

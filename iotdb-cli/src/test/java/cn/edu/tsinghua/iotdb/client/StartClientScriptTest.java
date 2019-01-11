@@ -6,6 +6,8 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.junit.After;
 import org.junit.Before;
@@ -65,17 +67,21 @@ public class StartClientScriptTest {
 		Process p = builder.start();
 		BufferedReader r = new BufferedReader(new InputStreamReader(p.getInputStream()));
 		String line;
-		int i = 0;
+		List<String> outputList = new ArrayList<>();
 		while (true) {
 			line = r.readLine();
 			if (line == null) {
 				break;
+			} else {
+				outputList.add(line);
 			}
-			assertEquals(output[i], line);
-			i++;
 		}
 		r.close();
 		p.destroy();
+
+		for(int i = 0; i < output.length;i++) {
+			assertEquals(output[output.length-1-i], outputList.get(outputList.size()-1-i));
+		}
 	}
 
 	private String getCurrentPath(String...command) throws IOException {

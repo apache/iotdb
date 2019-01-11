@@ -13,9 +13,9 @@ import org.slf4j.LoggerFactory;
 
 import cn.edu.tsinghua.iotdb.concurrent.IoTDBThreadPoolFactory;
 import cn.edu.tsinghua.iotdb.concurrent.ThreadName;
-import cn.edu.tsinghua.iotdb.conf.TsFileDBConstant;
-import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
-import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
+import cn.edu.tsinghua.iotdb.conf.IoTDBConstant;
+import cn.edu.tsinghua.iotdb.conf.IoTDBConfig;
+import cn.edu.tsinghua.iotdb.conf.IoTDBDescriptor;
 import cn.edu.tsinghua.iotdb.exception.StartupException;
 import cn.edu.tsinghua.service.rpc.thrift.TSIService;
 import cn.edu.tsinghua.service.rpc.thrift.TSIService.Processor;
@@ -38,7 +38,7 @@ public class JDBCService implements JDBCServiceMBean, IService {
     private final String STATUS_UP = "UP";
     private final String STATUS_DOWN = "DOWN";
     
-    private final String MBEAN_NAME = String.format("%s:%s=%s", TsFileDBConstant.IOTDB_PACKAGE, TsFileDBConstant.JMX_TYPE, getID().getJmxName());
+    private final String MBEAN_NAME = String.format("%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE, getID().getJmxName());
     
 	private static class JDBCServiceHolder{
 		private static final JDBCService INSTANCE = new JDBCService();
@@ -59,7 +59,7 @@ public class JDBCService implements JDBCServiceMBean, IService {
 	
 	@Override
 	public int getRPCPort() {
-		TsfileDBConfig config = TsfileDBDescriptor.getInstance().getConfig();
+		IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 		return config.rpcPort;
 	}
 	
@@ -89,10 +89,10 @@ public class JDBCService implements JDBCServiceMBean, IService {
     @Override
     public synchronized void startService() throws StartupException {
         if (isStart) {
-            LOGGER.info("{}: {} has been already running now", TsFileDBConstant.GLOBAL_DB_NAME, this.getID().getName());
+            LOGGER.info("{}: {} has been already running now", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
             return;
         }
-        LOGGER.info("{}: start {}...",TsFileDBConstant.GLOBAL_DB_NAME, this.getID().getName());
+        LOGGER.info("{}: start {}...",IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
 
         try {
         	jdbcServiceThread = new Thread(new JDBCServiceThread());
@@ -104,9 +104,9 @@ public class JDBCService implements JDBCServiceMBean, IService {
         jdbcServiceThread.start();
 
         LOGGER.info("{}: start {} successfully, listening on port {}",
-        		TsFileDBConstant.GLOBAL_DB_NAME, 
+        		IoTDBConstant.GLOBAL_DB_NAME, 
         		this.getID().getName(), 
-        		TsfileDBDescriptor.getInstance().getConfig().rpcPort);
+        		IoTDBDescriptor.getInstance().getConfig().rpcPort);
         isStart = true;
     }
 
@@ -119,12 +119,12 @@ public class JDBCService implements JDBCServiceMBean, IService {
     @Override
     public synchronized void stopService() {
         if (!isStart) {
-            LOGGER.info("{}: {} isn't running now",TsFileDBConstant.GLOBAL_DB_NAME, this.getID().getName());
+            LOGGER.info("{}: {} isn't running now",IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
             return;
         }
-        LOGGER.info("{}: closing {}...", TsFileDBConstant.GLOBAL_DB_NAME, this.getID().getName());
+        LOGGER.info("{}: closing {}...", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
         close();
-        LOGGER.info("{}: close {} successfully", TsFileDBConstant.GLOBAL_DB_NAME, this.getID().getName());
+        LOGGER.info("{}: close {} successfully", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
     }
 
     private synchronized void close() {
@@ -151,7 +151,7 @@ public class JDBCService implements JDBCServiceMBean, IService {
         @Override
         public void run() {
             try {
-                serverTransport = new TServerSocket(TsfileDBDescriptor.getInstance().getConfig().rpcPort);
+                serverTransport = new TServerSocket(IoTDBDescriptor.getInstance().getConfig().rpcPort);
                 poolArgs = new TThreadPoolServer.Args(serverTransport);
                 poolArgs.executorService = IoTDBThreadPoolFactory.createJDBCClientThreadPool(poolArgs, ThreadName.JDBC_CLIENT.getName());
                 poolArgs.processor(processor);
@@ -160,12 +160,12 @@ public class JDBCService implements JDBCServiceMBean, IService {
                 poolServer.setServerEventHandler(new JDBCServiceEventHandler(impl));
                 poolServer.serve();
             } catch (TTransportException e) {
-                LOGGER.error("{}: failed to start {}, because ",TsFileDBConstant.GLOBAL_DB_NAME, getID().getName(), e);
+                LOGGER.error("{}: failed to start {}, because ",IoTDBConstant.GLOBAL_DB_NAME, getID().getName(), e);
             } catch (Exception e) {
-                LOGGER.error("{}: {} exit, because ",TsFileDBConstant.GLOBAL_DB_NAME, getID().getName(), e);
+                LOGGER.error("{}: {} exit, because ",IoTDBConstant.GLOBAL_DB_NAME, getID().getName(), e);
             } finally {
                 close();
-                LOGGER.info("{}: close TThreadPoolServer and TServerSocket for {}",TsFileDBConstant.GLOBAL_DB_NAME, getID().getName());
+                LOGGER.info("{}: close TThreadPoolServer and TServerSocket for {}",IoTDBConstant.GLOBAL_DB_NAME, getID().getName());
             }
         }
     }

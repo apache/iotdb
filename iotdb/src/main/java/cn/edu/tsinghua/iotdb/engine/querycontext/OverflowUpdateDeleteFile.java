@@ -1,17 +1,15 @@
 package cn.edu.tsinghua.iotdb.engine.querycontext;
 
-import cn.edu.tsinghua.tsfile.file.metadata.TimeSeriesChunkMetaData;
+import cn.edu.tsinghua.tsfile.file.metadata.ChunkMetaData;
 
 import java.util.List;
 
-/**
- * Created by zhangjinrui on 2018/1/21.
- */
+
 public class OverflowUpdateDeleteFile {
     private String filePath;
-    private List<TimeSeriesChunkMetaData> timeSeriesChunkMetaDataList;
+    private List<ChunkMetaData> timeSeriesChunkMetaDataList;
 
-    public OverflowUpdateDeleteFile(String filePath, List<TimeSeriesChunkMetaData> timeSeriesChunkMetaDataList) {
+    public OverflowUpdateDeleteFile(String filePath, List<ChunkMetaData> timeSeriesChunkMetaDataList) {
         this.filePath = filePath;
         this.timeSeriesChunkMetaDataList = timeSeriesChunkMetaDataList;
     }
@@ -20,7 +18,7 @@ public class OverflowUpdateDeleteFile {
         return filePath;
     }
 
-    public List<TimeSeriesChunkMetaData> getTimeSeriesChunkMetaDataList() {
+    public List<ChunkMetaData> getTimeSeriesChunkMetaDataList() {
         return timeSeriesChunkMetaDataList;
     }
 }

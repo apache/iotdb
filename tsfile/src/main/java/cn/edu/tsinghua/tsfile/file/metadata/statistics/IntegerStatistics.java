@@ -1,6 +1,11 @@
 package cn.edu.tsinghua.tsfile.file.metadata.statistics;
 
-import cn.edu.tsinghua.tsfile.common.utils.BytesUtils;
+import cn.edu.tsinghua.tsfile.utils.BytesUtils;
+import cn.edu.tsinghua.tsfile.utils.ReadWriteIOUtils;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.ByteBuffer;
 
 /**
  * Statistics for int type
@@ -81,12 +86,35 @@ public class IntegerStatistics extends Statistics<Integer> {
 
 	}
 
-	private void initializeStats(int min, int max, int first, double sum, int last) {
+	void initializeStats(int min, int max, int first, double sum, int last) {
 		this.min = min;
 		this.max = max;
 		this.first = first;
 		this.sum = sum;
 		this.last = last;
+	}
+
+	@Override
+	public ByteBuffer getMaxBytebuffer() {
+		return ReadWriteIOUtils.getByteBuffer(max);
+	}
+
+	@Override
+	public ByteBuffer getMinBytebuffer() { return ReadWriteIOUtils.getByteBuffer(min); }
+
+	@Override
+	public ByteBuffer getFirstBytebuffer() {
+		return ReadWriteIOUtils.getByteBuffer(first);
+	}
+
+	@Override
+	public ByteBuffer getSumBytebuffer() {
+		return ReadWriteIOUtils.getByteBuffer(sum);
+	}
+
+	@Override
+	public ByteBuffer getLastBytebuffer() {
+		return ReadWriteIOUtils.getByteBuffer(last);
 	}
 
 	@Override
@@ -115,7 +143,30 @@ public class IntegerStatistics extends Statistics<Integer> {
 	}
 
 	@Override
+	public int sizeOfDatum() {
+		return 4;
+	}
+
+	@Override
 	public String toString() {
 		return "[max:" + max + ",min:" + min + ",first:" + first + ",sum:" + sum + ",last:" + last + "]";
+	}
+
+	@Override
+	void fill(InputStream inputStream) throws IOException {
+		this.min = ReadWriteIOUtils.readInt(inputStream);
+		this.max = ReadWriteIOUtils.readInt(inputStream);
+		this.first = ReadWriteIOUtils.readInt(inputStream);
+		this.last = ReadWriteIOUtils.readInt(inputStream);
+		this.sum = ReadWriteIOUtils.readDouble(inputStream);
+	}
+
+	@Override
+	void fill(ByteBuffer byteBuffer) throws IOException {
+		this.min = ReadWriteIOUtils.readInt(byteBuffer);
+		this.max = ReadWriteIOUtils.readInt(byteBuffer);
+		this.first = ReadWriteIOUtils.readInt(byteBuffer);
+		this.last = ReadWriteIOUtils.readInt(byteBuffer);
+		this.sum = ReadWriteIOUtils.readDouble(byteBuffer);
 	}
 }

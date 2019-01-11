@@ -10,8 +10,8 @@ import org.slf4j.LoggerFactory;
 
 import cn.edu.tsinghua.iotdb.concurrent.IoTDBThreadPoolFactory;
 import cn.edu.tsinghua.iotdb.concurrent.ThreadName;
-import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
-import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
+import cn.edu.tsinghua.iotdb.conf.IoTDBConfig;
+import cn.edu.tsinghua.iotdb.conf.IoTDBDescriptor;
 import cn.edu.tsinghua.iotdb.engine.filenode.FileNodeManager;
 import cn.edu.tsinghua.iotdb.exception.StartupException;
 
@@ -29,7 +29,7 @@ public class CloseMergeService implements IService{
 	private CloseServiceThread closeService = new CloseServiceThread();
 	private ScheduledExecutorService service;
 	private CloseAndMergeDaemon closeAndMergeDaemon = new CloseAndMergeDaemon();
-	private static TsfileDBConfig dbConfig = TsfileDBDescriptor.getInstance().getConfig(); 
+	private static IoTDBConfig dbConfig = IoTDBDescriptor.getInstance().getConfig(); 
 	private static final long mergeDelay = dbConfig.periodTimeForMerge;
 	private static final long closeDelay = dbConfig.periodTimeForFlush;
 	private static final long mergePeriod = dbConfig.periodTimeForMerge;
@@ -116,8 +116,8 @@ public class CloseMergeService implements IService{
 		@Override
 		public void run() {
 			long thisMergeTime = System.currentTimeMillis();
-            ZonedDateTime startDateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(mergeAllLastTime), TsfileDBDescriptor.getInstance().getConfig().getZoneID());
-            ZonedDateTime endDateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(thisMergeTime), TsfileDBDescriptor.getInstance().getConfig().getZoneID());
+            ZonedDateTime startDateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(mergeAllLastTime), IoTDBDescriptor.getInstance().getConfig().getZoneID());
+            ZonedDateTime endDateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(thisMergeTime), IoTDBDescriptor.getInstance().getConfig().getZoneID());
 			long timeInterval = thisMergeTime - mergeAllLastTime;
 			LOGGER.info("Start the merge action regularly, last time is {}, this time is {}, time interval is {}s.",
 					startDateTime, endDateTime, timeInterval / 1000);
@@ -139,8 +139,8 @@ public class CloseMergeService implements IService{
 		@Override
 		public void run() {
 			long thisCloseTime = System.currentTimeMillis();
-            ZonedDateTime startDateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(closeAllLastTime), TsfileDBDescriptor.getInstance().getConfig().getZoneID());
-            ZonedDateTime endDateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(thisCloseTime), TsfileDBDescriptor.getInstance().getConfig().getZoneID());
+            ZonedDateTime startDateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(closeAllLastTime), IoTDBDescriptor.getInstance().getConfig().getZoneID());
+            ZonedDateTime endDateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(thisCloseTime), IoTDBDescriptor.getInstance().getConfig().getZoneID());
 			long timeInterval = thisCloseTime - closeAllLastTime;
 			LOGGER.info("Start the close action regularly, last time is {}, this time is {}, time interval is {}s.",
 					startDateTime, endDateTime, timeInterval / 1000);

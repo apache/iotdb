@@ -11,9 +11,7 @@ import cn.edu.tsinghua.iotdb.engine.filenode.FileNodeManager;
 import cn.edu.tsinghua.iotdb.exception.ArgsErrorException;
 import cn.edu.tsinghua.iotdb.exception.FileNodeManagerException;
 import cn.edu.tsinghua.iotdb.exception.PathErrorException;
-import cn.edu.tsinghua.iotdb.index.IndexManager;
-import cn.edu.tsinghua.iotdb.index.IoTIndex;
-import cn.edu.tsinghua.iotdb.index.common.IndexManagerException;
+import cn.edu.tsinghua.iotdb.exception.ProcessorException;
 import cn.edu.tsinghua.iotdb.metadata.ColumnSchema;
 import cn.edu.tsinghua.iotdb.metadata.MManager;
 import cn.edu.tsinghua.iotdb.metadata.MNode;
@@ -24,26 +22,21 @@ import cn.edu.tsinghua.iotdb.qp.logical.sys.MetadataOperator;
 import cn.edu.tsinghua.iotdb.qp.logical.sys.PropertyOperator;
 import cn.edu.tsinghua.iotdb.qp.physical.PhysicalPlan;
 import cn.edu.tsinghua.iotdb.qp.physical.crud.DeletePlan;
-import cn.edu.tsinghua.iotdb.qp.physical.crud.IndexPlan;
 import cn.edu.tsinghua.iotdb.qp.physical.crud.InsertPlan;
 import cn.edu.tsinghua.iotdb.qp.physical.crud.UpdatePlan;
 import cn.edu.tsinghua.iotdb.qp.physical.sys.AuthorPlan;
 import cn.edu.tsinghua.iotdb.qp.physical.sys.LoadDataPlan;
 import cn.edu.tsinghua.iotdb.qp.physical.sys.MetadataPlan;
 import cn.edu.tsinghua.iotdb.qp.physical.sys.PropertyPlan;
-import cn.edu.tsinghua.iotdb.query.engine.OverflowQueryEngine;
-import cn.edu.tsinghua.iotdb.query.fill.IFill;
-import cn.edu.tsinghua.iotdb.query.management.FilterStructure;
 import cn.edu.tsinghua.iotdb.utils.AuthUtils;
 import cn.edu.tsinghua.iotdb.utils.LoadDataUtils;
-import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
-import cn.edu.tsinghua.tsfile.common.utils.Pair;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
-import cn.edu.tsinghua.tsfile.timeseries.filter.definition.FilterExpression;
-import cn.edu.tsinghua.tsfile.timeseries.read.query.OnePassQueryDataSet;
-import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
-import cn.edu.tsinghua.tsfile.timeseries.write.record.DataPoint;
-import cn.edu.tsinghua.tsfile.timeseries.write.record.TSRecord;
+import cn.edu.tsinghua.tsfile.read.common.Path;
+import cn.edu.tsinghua.tsfile.read.expression.IExpression;
+import cn.edu.tsinghua.tsfile.read.query.dataset.QueryDataSet;
+import cn.edu.tsinghua.tsfile.utils.Pair;
+import cn.edu.tsinghua.tsfile.write.record.datapoint.DataPoint;
+import cn.edu.tsinghua.tsfile.write.record.TSRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -54,13 +47,10 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 
     private static final Logger LOG = LoggerFactory.getLogger(OverflowQPExecutor.class);
 
-    private OverflowQueryEngine queryEngine;
     private FileNodeManager fileNodeManager;
     private MManager mManager = MManager.getInstance();
-    // private KvMatchIndex kvMatchIndex = KvMatchIndex.getInstance();
 
     public OverflowQPExecutor() {
-        queryEngine = new OverflowQueryEngine();
         fileNodeManager = FileNodeManager.getInstance();
     }
 
@@ -79,7 +69,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
                 return flag;
             case INSERT:
                 InsertPlan insert = (InsertPlan) plan;
-                int result = multiInsert(insert.getDeltaObject(), insert.getTime(), insert.getMeasurements(),
+                int result = multiInsert(insert.getDeviceId(), insert.getTime(), insert.getMeasurements(),
                         insert.getValues());
                 return result > 0;
             case CREATE_ROLE:
@@ -114,133 +104,64 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
             case PROPERTY:
                 PropertyPlan property = (PropertyPlan) plan;
                 return operateProperty(property);
-            case INDEX:
-                IndexPlan indexPlan = (IndexPlan) plan;
-                return operateIndex(indexPlan);
             default:
                 throw new UnsupportedOperationException(
                         String.format("operation %s does not support", plan.getOperatorType()));
         }
     }
 
-    private boolean operateIndex(IndexPlan indexPlan) throws ProcessorException {
-        switch (indexPlan.getIndexOperatorType()) {
-            case CREATE_INDEX:
-                try {
-                    String path = indexPlan.getPaths().get(0).getFullPath();
-                    // check path
-                    if (!mManager.pathExist(path)) {
-                        throw new ProcessorException(String.format("The timeseries %s does not exist.", path));
-                    }
-                    // check storage group
-                    mManager.getFileNameByPath(path);
-                    // check index
-                    if (mManager.checkPathIndex(path, indexPlan.getIndexType())) {
-                        throw new ProcessorException(String.format("The timeseries %s has already been indexed.", path));
-                    }
-                    // create index
-                    IoTIndex index = IndexManager.getIndexInstance(indexPlan.getIndexType());
-                    if (index == null)
-                        throw new IndexManagerException(indexPlan.getIndexType() + " doesn't support");
-                    Path indexPath = indexPlan.getPaths().get(0);
-                    if (index.build(indexPath, new ArrayList<>(), indexPlan.getParameters())) {
-                        mManager.addIndexForOneTimeseries(path, indexPlan.getIndexType());
-                    }
-                } catch (IndexManagerException | PathErrorException | IOException e) {
-                    e.printStackTrace();
-                    throw new ProcessorException(e.getMessage());
-                }
-                break;
-            case DROP_INDEX:
-                try {
-                    String path = indexPlan.getPaths().get(0).getFullPath();
-                    // check path
-                    if (!mManager.pathExist(path)) {
-                        throw new ProcessorException(String.format("The timeseries %s does not exist.", path));
-                    }
-                    // check index
-                    if (!mManager.checkPathIndex(path, indexPlan.getIndexType())) {
-                        throw new ProcessorException(String.format("The timeseries %s hasn't been indexed.", path));
-                    }
-                    IoTIndex index = IndexManager.getIndexInstance(indexPlan.getIndexType());
-                    if (index == null)
-                        throw new IndexManagerException(indexPlan.getIndexType() + " doesn't support");
-                    Path indexPath = indexPlan.getPaths().get(0);
-                    if (index.drop(indexPath)) {
-                        mManager.deleteIndexForOneTimeseries(path, indexPlan.getIndexType());
-                    }
-                } catch (IndexManagerException | PathErrorException | IOException e) {
-                    e.printStackTrace();
-                    throw new ProcessorException(e.getMessage());
-                }
-                break;
-            default:
-                throw new ProcessorException(String.format("Not support the index operation %s", indexPlan.getIndexType()));
-        }
-        return true;
-    }
 
     @Override
     public TSDataType getSeriesType(Path path) throws PathErrorException {
-        if (path.equals(SQLConstant.RESERVED_TIME))
+        if (path.equals(SQLConstant.RESERVED_TIME)) {
             return TSDataType.INT64;
-        if (path.equals(SQLConstant.RESERVED_FREQ))
+        }
+        if (path.equals(SQLConstant.RESERVED_FREQ)) {
             return TSDataType.FLOAT;
+        }
         return MManager.getInstance().getSeriesType(path.getFullPath());
     }
 
     @Override
     public boolean judgePathExists(Path path) {
-        if (SQLConstant.isReservedPath(path))
+        if (SQLConstant.isReservedPath(path)) {
             return true;
+        }
         return MManager.getInstance().pathExist(path.getFullPath());
     }
 
     @Override
-    public OnePassQueryDataSet aggregate(List<Pair<Path, String>> aggres, List<FilterStructure> filterStructures)
-            throws ProcessorException, IOException, PathErrorException {
-        return queryEngine.aggregate(aggres, filterStructures);
-    }
-
-    @Override
-    public OnePassQueryDataSet groupBy(List<Pair<Path, String>> aggres, List<FilterStructure> filterStructures, long unit,
-                                long origin, List<Pair<Long, Long>> intervals, int fetchSize)
-            throws ProcessorException, IOException, PathErrorException {
-
-        return queryEngine.groupBy(aggres, filterStructures, unit, origin, intervals, fetchSize);
-    }
-
-    @Override
-    public OnePassQueryDataSet fill(List<Path> fillPaths, long queryTime, Map<TSDataType, IFill> fillTypes) throws ProcessorException, IOException, PathErrorException {
-        return queryEngine.fill(fillPaths, queryTime, fillTypes);
-    }
-
-    @Override
-    public OnePassQueryDataSet query(int formNumber, List<Path> paths, FilterExpression timeFilter,
-                              FilterExpression freqFilter, FilterExpression valueFilter, int fetchSize, OnePassQueryDataSet lastData)
+    public QueryDataSet aggregate(List<Pair<Path, String>> aggres, IExpression expression)
             throws ProcessorException {
-
-        try {
-            return queryEngine.query(formNumber, paths, timeFilter, freqFilter, valueFilter, lastData, fetchSize, null);
-        } catch (Exception e) {
-            e.printStackTrace();
-            throw new ProcessorException(e.getMessage());
-        }
+        throw new ProcessorException("not support");
     }
+
+    @Override
+    public QueryDataSet groupBy(List<Pair<Path, String>> aggres, IExpression expression, long unit,
+                                long origin, List<Pair<Long, Long>> intervals, int fetchSize)
+            throws ProcessorException {
+        throw new ProcessorException("not support");
+    }
+
+//    @Override
+//    public QueryDataSet fill(List<Path> fillPaths, long queryTime, Map<TSDataType, IFill> fillTypes) throws ProcessorException, IOException, PathErrorException {
+//        return queryEngine.fill(fillPaths, queryTime, fillTypes);
+//    }
+
 
     @Override
     public boolean update(Path path, long startTime, long endTime, String value) throws ProcessorException {
-        String deltaObjectId = path.getDeltaObjectToString();
-        String measurementId = path.getMeasurementToString();
+        String deviceId = path.getDevice();
+        String measurementId = path.getMeasurement();
         try {
-            String fullPath = deltaObjectId + "." + measurementId;
+            String fullPath = deviceId + "." + measurementId;
             if (!mManager.pathExist(fullPath)) {
                 throw new ProcessorException(String.format("Timeseries %s does not exist.", fullPath));
             }
             mManager.getFileNameByPath(fullPath);
             TSDataType dataType = mManager.getSeriesType(fullPath);
             value = checkValue(dataType, value);
-            fileNodeManager.update(deltaObjectId, measurementId, startTime, endTime, dataType, value);
+            fileNodeManager.update(deviceId, measurementId, startTime, endTime, dataType, value);
             return true;
         } catch (PathErrorException e) {
             throw new ProcessorException(e.getMessage());
@@ -252,15 +173,15 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 
     @Override
     protected boolean delete(Path path, long timestamp) throws ProcessorException {
-        String deltaObjectId = path.getDeltaObjectToString();
-        String measurementId = path.getMeasurementToString();
+        String deviceId = path.getDevice();
+        String measurementId = path.getMeasurement();
         try {
             if (!mManager.pathExist(path.getFullPath())) {
                 throw new ProcessorException(String.format("Timeseries %s does not exist.", path.getFullPath()));
             }
             mManager.getFileNameByPath(path.getFullPath());
             TSDataType type = mManager.getSeriesType(path.getFullPath());
-            fileNodeManager.delete(deltaObjectId, measurementId, timestamp, type);
+            fileNodeManager.delete(deviceId, measurementId, timestamp, type);
             return true;
         } catch (PathErrorException e) {
             throw new ProcessorException(e.getMessage());
@@ -273,12 +194,12 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
     @Override
     // return 0: failed, 1: Overflow, 2:Bufferwrite
     public int insert(Path path, long timestamp, String value) throws ProcessorException {
-        String deltaObjectId = path.getDeltaObjectToString();
-        String measurementId = path.getMeasurementToString();
+        String deviceId = path.getDevice();
+        String measurementId = path.getMeasurement();
 
         try {
-            TSDataType type = mManager.getSeriesType(deltaObjectId + "," + measurementId);
-            TSRecord tsRecord = new TSRecord(timestamp, deltaObjectId);
+            TSDataType type = mManager.getSeriesType(deviceId + "," + measurementId);
+            TSRecord tsRecord = new TSRecord(timestamp, deviceId);
             DataPoint dataPoint = DataPoint.getDataPoint(type, measurementId, value);
             tsRecord.addTuple(dataPoint);
             return fileNodeManager.insert(tsRecord, false);
@@ -292,20 +213,20 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
     }
 
     @Override
-    public int multiInsert(String deltaObject, long insertTime, List<String> measurementList, List<String> insertValues)
+    public int multiInsert(String deviceId, long insertTime, List<String> measurementList, List<String> insertValues)
             throws ProcessorException {
         try {
-            TSRecord tsRecord = new TSRecord(insertTime, deltaObject);
+            TSRecord tsRecord = new TSRecord(insertTime, deviceId);
 
-            MNode node = mManager.getNodeByDeltaObjectIDFromCache(deltaObject);
+            MNode node = mManager.getNodeByDeviceIdFromCache(deviceId);
 
             for (int i = 0; i < measurementList.size(); i++) {
                 if (!node.hasChild(measurementList.get(i))) {
-                    throw new ProcessorException(String.format("Current deltaObjectId[%s] does not contains measurement:%s", deltaObject, measurementList.get(i)));
+                    throw new ProcessorException(String.format("Current deviceId[%s] does not contains measurement:%s", deviceId, measurementList.get(i)));
                 }
                 MNode measurementNode = node.getChild(measurementList.get(i));
                 if (!measurementNode.isLeaf()) {
-                    throw new ProcessorException(String.format("Current Path is not leaf node. %s.%s", deltaObject, measurementList.get(i)));
+                    throw new ProcessorException(String.format("Current Path is not leaf node. %s.%s", deviceId, measurementList.get(i)));
                 }
 
                 TSDataType dataType = measurementNode.getSchema().dataType;
@@ -334,14 +255,14 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
             } else if (SQLConstant.BOOLEAN_TRUE_NUM.equals(value)) {
                 value = "true";
             } else if (!SQLConstant.BOOLEN_TRUE.equals(value) && !SQLConstant.BOOLEN_FALSE.equals(value)) {
-                throw new ProcessorException(String.format("The BOOLEAN data type should be true/TRUE or false/FALSE"));
+                throw new ProcessorException("The BOOLEAN data type should be true/TRUE or false/FALSE");
             }
         } else if (dataType == TSDataType.TEXT) {
             if ((value.startsWith(SQLConstant.QUOTE) && value.endsWith(SQLConstant.QUOTE))
                     || (value.startsWith(SQLConstant.DQUOTE) && value.endsWith(SQLConstant.DQUOTE))) {
                 value = value.substring(1, value.length() - 1);
             } else {
-                throw new ProcessorException(String.format("The TEXT data type should be covered by \" or '"));
+                throw new ProcessorException("The TEXT data type should be covered by \" or '");
             }
         }
         return value;
@@ -367,24 +288,29 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
         try {
             switch (authorType) {
                 case UPDATE_USER:
-                    if(!authorizer.updateUserPassword(userName, newPassword))
+                    if (!authorizer.updateUserPassword(userName, newPassword)) {
                         throw new ProcessorException("password " + newPassword + " is illegal");
+                    }
                     return true;
                 case CREATE_USER:
-                    if(!authorizer.createUser(userName, password))
+                    if (!authorizer.createUser(userName, password)) {
                         throw new ProcessorException("User " + userName + " already exists");
+                    }
                     return true;
                 case CREATE_ROLE:
-                    if(!authorizer.createRole(roleName))
+                    if (!authorizer.createRole(roleName)) {
                         throw new ProcessorException("Role " + roleName + " already exists");
+                    }
                     return true;
                 case DROP_USER:
-                    if(!authorizer.deleteUser(userName))
+                    if (!authorizer.deleteUser(userName)) {
                         throw new ProcessorException("User " + userName + " does not exist");
+                    }
                     return true;
                 case DROP_ROLE:
-                    if(!authorizer.deleteRole(roleName))
+                    if (!authorizer.deleteRole(roleName)) {
                         throw new ProcessorException("Role " + roleName + " does not exist");
+                    }
                     return true;
                 case GRANT_ROLE:
                     for (int i : permissions) {
@@ -395,64 +321,72 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
                     return true;
                 case GRANT_USER:
                     for (int i : permissions) {
-                        if (!authorizer.grantPrivilegeToUser(userName, nodeName.getFullPath(), i))
+                        if (!authorizer.grantPrivilegeToUser(userName, nodeName.getFullPath(), i)) {
                             throw new ProcessorException("User " + userName + " already has " + PrivilegeType.values()[i] + " on " + nodeName.getFullPath());
+                        }
                     }
                     return true;
                 case GRANT_ROLE_TO_USER:
-                    if(!authorizer.grantRoleToUser(roleName, userName))
+                    if (!authorizer.grantRoleToUser(roleName, userName)) {
                         throw new ProcessorException("User " + userName + " already has role " + roleName);
+                    }
                     return true;
                 case REVOKE_USER:
                     for (int i : permissions) {
-                        if (!authorizer.revokePrivilegeFromUser(userName, nodeName.getFullPath(), i))
+                        if (!authorizer.revokePrivilegeFromUser(userName, nodeName.getFullPath(), i)) {
                             throw new ProcessorException("User " + userName + " does not have " + PrivilegeType.values()[i] + " on " + nodeName);
+                        }
                     }
                     return true;
                 case REVOKE_ROLE:
                     for (int i : permissions) {
-                        if (!authorizer.revokePrivilegeFromRole(roleName, nodeName.getFullPath(), i))
+                        if (!authorizer.revokePrivilegeFromRole(roleName, nodeName.getFullPath(), i)) {
                             throw new ProcessorException("Role " + roleName + " does not have " + PrivilegeType.values()[i] + " on " + nodeName);
+                        }
                     }
                     return true;
                 case REVOKE_ROLE_FROM_USER:
-                    if(!authorizer.revokeRoleFromUser(roleName, userName))
+                    if (!authorizer.revokeRoleFromUser(roleName, userName)) {
                         throw new ProcessorException("User " + userName + " does not have role " + roleName);
+                    }
                     return true;
                 case LIST_ROLE:
                     roleList = authorizer.listAllRoles();
                     msg = new StringBuilder("Roles are : [ \n");
-                    for(String role : roleList)
+                    for (String role : roleList) {
                         msg.append(role).append("\n");
+                    }
                     msg.append("]");
                     // TODO : use a more elegant way to pass message.
                     throw new ProcessorException(msg.toString());
                 case LIST_USER:
                     userList = authorizer.listAllUsers();
                     msg = new StringBuilder("Users are : [ \n");
-                    for(String user : userList)
+                    for (String user : userList) {
                         msg.append(user).append("\n");
+                    }
                     msg.append("]");
                     throw new ProcessorException(msg.toString());
                 case LIST_ROLE_USERS:
                     Role role = authorizer.getRole(roleName);
-                    if(role == null) {
+                    if (role == null) {
                         throw new ProcessorException("No such role : " + roleName);
                     }
                     userList = authorizer.listAllUsers();
                     msg = new StringBuilder("Users are : [ \n");
-                    for(String userN : userList) {
+                    for (String userN : userList) {
                         User userObj = authorizer.getUser(userN);
-                        if(userObj != null && userObj.hasRole(roleName))
+                        if (userObj != null && userObj.hasRole(roleName)) {
                             msg.append(userN).append("\n");
+                        }
                     }
                     msg.append("]");
                     throw new ProcessorException(msg.toString());
                 case LIST_USER_ROLES:
                     msg = new StringBuilder("Roles are : [ \n");
                     User user = authorizer.getUser(userName);
-                    if(user != null) {
-                        for(String roleN : user.roleList) {
+                    if (user != null) {
+                        for (String roleN : user.roleList) {
                             msg.append(roleN).append("\n");
                         }
                     } else {
@@ -463,10 +397,11 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
                 case LIST_ROLE_PRIVILEGE:
                     msg = new StringBuilder("Privileges are : [ \n");
                     role = authorizer.getRole(roleName);
-                    if(role != null) {
-                        for(PathPrivilege pathPrivilege : role.privilegeList) {
-                            if(nodeName == null || AuthUtils.pathBelongsTo(nodeName.getFullPath(), pathPrivilege.path))
+                    if (role != null) {
+                        for (PathPrivilege pathPrivilege : role.privilegeList) {
+                            if (nodeName == null || AuthUtils.pathBelongsTo(nodeName.getFullPath(), pathPrivilege.path)) {
                                 msg.append(pathPrivilege.toString());
+                            }
                         }
                     } else {
                         throw new ProcessorException("No such role : " + roleName);
@@ -475,22 +410,25 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
                     throw new ProcessorException(msg.toString());
                 case LIST_USER_PRIVILEGE:
                     user = authorizer.getUser(userName);
-                    if(user == null)
+                    if (user == null) {
                         throw new ProcessorException("No such user : " + userName);
+                    }
                     msg = new StringBuilder("Privileges are : [ \n");
                     msg.append("From itself : {\n");
-                    for(PathPrivilege pathPrivilege : user.privilegeList) {
-                        if(nodeName == null || AuthUtils.pathBelongsTo(nodeName.getFullPath(), pathPrivilege.path))
+                    for (PathPrivilege pathPrivilege : user.privilegeList) {
+                        if (nodeName == null || AuthUtils.pathBelongsTo(nodeName.getFullPath(), pathPrivilege.path)) {
                             msg.append(pathPrivilege.toString());
+                        }
                     }
                     msg.append("}\n");
-                    for(String roleN : user.roleList) {
+                    for (String roleN : user.roleList) {
                         role = authorizer.getRole(roleN);
-                        if(role != null) {
+                        if (role != null) {
                             msg.append("From role ").append(roleN).append(" : {\n");
-                            for(PathPrivilege pathPrivilege : role.privilegeList) {
-                                if(nodeName == null || AuthUtils.pathBelongsTo(nodeName.getFullPath(), pathPrivilege.path))
+                            for (PathPrivilege pathPrivilege : role.privilegeList) {
+                                if (nodeName == null || AuthUtils.pathBelongsTo(nodeName.getFullPath(), pathPrivilege.path)) {
                                     msg.append(pathPrivilege.toString());
+                                }
                             }
                             msg.append("}\n");
                         }
@@ -498,7 +436,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
                     msg.append("]");
                     throw new ProcessorException(msg.toString());
                 default:
-                   throw new ProcessorException("Unsupported operation " + authorType);
+                    throw new ProcessorException("Unsupported operation " + authorType);
             }
         } catch (AuthException e) {
             throw new ProcessorException(e.getMessage());
@@ -521,21 +459,14 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
                     if (!mManager.checkFileNameByPath(path.getFullPath())) {
                         throw new ProcessorException("Storage group should be created first");
                     }
-                    /**
-                     * optimize the speed of adding timeseries
-                     */
+                    // optimize the speed of adding timeseries
                     String fileNodePath = mManager.getFileNameByPath(path.getFullPath());
-                    /**
-                     * the two map is stored in the storage group node
-                     */
+                    // the two map is stored in the storage group node
                     Map<String, ColumnSchema> schemaMap = mManager.getSchemaMapForOneFileNode(fileNodePath);
                     Map<String, Integer> numSchemaMap = mManager.getNumSchemaMapForOneFileNode(fileNodePath);
-                    String lastNode = path.getMeasurementToString();
+                    String lastNode = path.getMeasurement();
                     boolean isNewMeasurement = true;
-                    /**
-                     * Thread safety: just one thread can access/modify the
-                     * schemaMap
-                     */
+                    // Thread safety: just one thread can access/modify the schemaMap
                     synchronized (schemaMap) {
                         if (schemaMap.containsKey(lastNode)) {
                             isNewMeasurement = false;
@@ -568,12 +499,12 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
                 case DELETE_PATH:
                     if (deletePathList != null && !deletePathList.isEmpty()) {
                         Set<String> pathSet = new HashSet<>();
-                        //Attention: Monitor storage group path is not allowed to be deleted
+                        // Attention: Monitor storage group seriesPath is not allowed to be deleted
                         for (Path p : deletePathList) {
                             ArrayList<String> subPaths = mManager.getPaths(p.getFullPath());
                             if (subPaths.isEmpty()) {
                                 throw new ProcessorException(
-                                        String.format("There are no timeseries in the prefix of %s path", p.getFullPath()));
+                                        String.format("There are no timeseries in the prefix of %s seriesPath", p.getFullPath()));
                             }
                             ArrayList<String> newSubPaths = new ArrayList<>();
                             for (String eachSubPath : subPaths) {
@@ -609,20 +540,15 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
                                 throw new ProcessorException(e);
                             }
                             closeFileNodes.add(nameSpacePath);
-                            /**
-                             * the two map is stored in the storage group node
-                             */
+                            // the two map is stored in the storage group node
                             schemaMap = mManager.getSchemaMapForOneFileNode(nameSpacePath);
                             numSchemaMap = mManager.getNumSchemaMapForOneFileNode(nameSpacePath);
-                            /**
-                             * Thread safety: just one thread can access/modify the
-                             * schemaMap
-                             */
+                            // Thread safety: just one thread can access/modify the schemaMap
                             synchronized (schemaMap) {
-                                // TODO: don't delete the storage group path
+                                // TODO: don't delete the storage group seriesPath
                                 // recursively
                                 path = new Path(p);
-                                String measurementId = path.getMeasurementToString();
+                                String measurementId = path.getMeasurement();
                                 if (numSchemaMap.get(measurementId) == 1) {
                                     numSchemaMap.remove(measurementId);
                                     schemaMap.remove(measurementId);
@@ -658,13 +584,11 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
     }
 
     /**
-     * Delete all data of timeseries in pathList.
+     * Delete all data of time series in pathList.
      *
      * @param pathList deleted paths
-     * @throws PathErrorException
-     * @throws ProcessorException
      */
-    private void deleteDataOfTimeSeries(List<String> pathList) throws PathErrorException, ProcessorException {
+    private void deleteDataOfTimeSeries(List<String> pathList) throws ProcessorException {
         for (String p : pathList) {
             DeletePlan deletePlan = new DeletePlan();
             deletePlan.addPath(new Path(p));

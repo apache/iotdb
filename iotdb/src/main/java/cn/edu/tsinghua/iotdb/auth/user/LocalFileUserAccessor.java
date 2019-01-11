@@ -2,7 +2,7 @@ package cn.edu.tsinghua.iotdb.auth.user;
 
 import cn.edu.tsinghua.iotdb.auth.entity.PathPrivilege;
 import cn.edu.tsinghua.iotdb.auth.entity.User;
-import cn.edu.tsinghua.iotdb.conf.TsFileDBConstant;
+import cn.edu.tsinghua.iotdb.conf.IoTDBConstant;
 import cn.edu.tsinghua.iotdb.utils.IOUtils;
 
 import java.io.*;
@@ -16,24 +16,24 @@ import java.util.*;
  *      Utf-8 username bytes
  *      Int32 Password bytes length
  *      Utf-8 password bytes
- *      Int32 path privilege number n
- *          Int32 path[1] length
- *          Utf-8 path[1] bytes
+ *      Int32 seriesPath privilege number n
+ *          Int32 seriesPath[1] length
+ *          Utf-8 seriesPath[1] bytes
  *          Int32 privilege num k1
  *              Int32 privilege[1][1]
  *              Int32 privilege[1][2]
  *              ...
  *              Int32 privilege[1][k1]
- *          Int32 path[2] length
- *          Utf-8 path[2] bytes
+ *          Int32 seriesPath[2] length
+ *          Utf-8 seriesPath[2] bytes
  *          Int32 privilege num k2
  *              Int32 privilege[2][1]
  *              Int32 privilege[2][2]
  *              ...
  *              Int32 privilege[2][k2]
  *          ...
- *          Int32 path[n] length
- *          Utf-8 path[n] bytes
+ *          Int32 seriesPath[n] length
+ *          Utf-8 seriesPath[n] bytes
  *          Int32 privilege num kn
  *              Int32 privilege[n][1]
  *              Int32 privilege[n][2]
@@ -71,10 +71,10 @@ public class LocalFileUserAccessor implements IUserAccessor{
      * @throws IOException
      */
     public User loadUser(String username) throws IOException{
-        File userProfile = new File(userDirPath + File.separator + username + TsFileDBConstant.PROFILE_SUFFIX);
+        File userProfile = new File(userDirPath + File.separator + username + IoTDBConstant.PROFILE_SUFFIX);
         if(!userProfile.exists() || !userProfile.isFile()) {
             // System may crush before a newer file is renamed.
-            File newProfile = new File(userDirPath + File.separator + username + TsFileDBConstant.PROFILE_SUFFIX + TEMP_SUFFIX);
+            File newProfile = new File(userDirPath + File.separator + username + IoTDBConstant.PROFILE_SUFFIX + TEMP_SUFFIX);
             if(newProfile.exists() && newProfile.isFile()) {
                 newProfile.renameTo(userProfile);
                 userProfile = newProfile;
@@ -114,7 +114,7 @@ public class LocalFileUserAccessor implements IUserAccessor{
      * @throws IOException
      */
     public void saveUser(User user) throws IOException{
-        File userProfile = new File(userDirPath + File.separator + user.name + TsFileDBConstant.PROFILE_SUFFIX + TEMP_SUFFIX);
+        File userProfile = new File(userDirPath + File.separator + user.name + IoTDBConstant.PROFILE_SUFFIX + TEMP_SUFFIX);
         BufferedOutputStream outputStream = new BufferedOutputStream(new FileOutputStream(userProfile));
         try {
             IOUtils.writeString(outputStream, user.name, STRING_ENCODING, encodingBufferLocal);
@@ -141,7 +141,7 @@ public class LocalFileUserAccessor implements IUserAccessor{
             outputStream.close();
         }
 
-        File oldFile = new File(userDirPath + File.separator + user.name + TsFileDBConstant.PROFILE_SUFFIX);
+        File oldFile = new File(userDirPath + File.separator + user.name + IoTDBConstant.PROFILE_SUFFIX);
         IOUtils.replaceFile(userProfile, oldFile);
     }
 
@@ -152,8 +152,8 @@ public class LocalFileUserAccessor implements IUserAccessor{
      * @throws IOException when the file cannot be deleted.
      */
     public boolean deleteUser(String username) throws IOException{
-        File userProfile = new File(userDirPath + File.separator + username + TsFileDBConstant.PROFILE_SUFFIX);
-        File backFile = new File(userDirPath + File.separator + username + TsFileDBConstant.PROFILE_SUFFIX + TEMP_SUFFIX);
+        File userProfile = new File(userDirPath + File.separator + username + IoTDBConstant.PROFILE_SUFFIX);
+        File backFile = new File(userDirPath + File.separator + username + IoTDBConstant.PROFILE_SUFFIX + TEMP_SUFFIX);
         if(!userProfile.exists() && !backFile.exists())
             return false;
         if((userProfile.exists() && !userProfile.delete()) || (backFile.exists() && !backFile.delete())) {
@@ -165,14 +165,14 @@ public class LocalFileUserAccessor implements IUserAccessor{
     @Override
     public List<String> listAllUsers() {
         File userDir = new File(userDirPath);
-        String[] names = userDir.list((dir, name) -> name.endsWith(TsFileDBConstant.PROFILE_SUFFIX) || name.endsWith(TEMP_SUFFIX));
+        String[] names = userDir.list((dir, name) -> name.endsWith(IoTDBConstant.PROFILE_SUFFIX) || name.endsWith(TEMP_SUFFIX));
         List<String> retList = new ArrayList<>();
         if(names != null) {
             // in very rare situations, normal file and backup file may exist at the same time
             // so a set is used to deduplicate
             Set<String> set = new HashSet<>();
             for(String fileName : names) {
-                set.add(fileName.replace(TsFileDBConstant.PROFILE_SUFFIX, "").replace(TEMP_SUFFIX, ""));
+                set.add(fileName.replace(IoTDBConstant.PROFILE_SUFFIX, "").replace(TEMP_SUFFIX, ""));
             }
             retList.addAll(set);
         }

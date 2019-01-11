@@ -2,9 +2,9 @@ package cn.edu.tsinghua.tsfile.encoding.decoder.delta;
 
 import static org.junit.Assert.assertEquals;
 
-import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Random;
 
 import cn.edu.tsinghua.tsfile.encoding.decoder.DeltaBinaryDecoder;
@@ -12,11 +12,7 @@ import cn.edu.tsinghua.tsfile.encoding.encoder.DeltaBinaryEncoder;
 import org.junit.Before;
 import org.junit.Test;
 
-/**
- * 
- * @author kangrong
- *
- */
+
 public class DeltaBinaryEncoderLongTest {
   private DeltaBinaryEncoder writer;
   private DeltaBinaryDecoder reader;
@@ -81,7 +77,7 @@ public class DeltaBinaryEncoderLongTest {
     writer.flush(out);
   }
 
-  private ByteArrayInputStream in;
+  private ByteBuffer buffer;
 
   private void shouldReadAndWrite(long[] data, int length) throws IOException {
     System.out.println("source data size:" + 4 * length + " byte");
@@ -89,10 +85,10 @@ public class DeltaBinaryEncoderLongTest {
     writeData(data, length);
     byte[] page = out.toByteArray();
     System.out.println("encoding data size:" + page.length + " byte");
-    in = new ByteArrayInputStream(page);
+    buffer = ByteBuffer.wrap(page);
     int i = 0;
-    while (reader.hasNext(in)) {
-      assertEquals(data[i++], reader.readLong(in));
+    while (reader.hasNext(buffer)) {
+      assertEquals(data[i++], reader.readLong(buffer));
     }
   }
 

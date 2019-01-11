@@ -1,8 +1,8 @@
 package cn.edu.tsinghua.tsfile.encoding.encoder;
 
-import java.io.ByteArrayOutputStream;
-
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSEncoding;
+
+import java.io.ByteArrayOutputStream;
 
 /**
  * Gorilla encoding. For more information about how it works, 

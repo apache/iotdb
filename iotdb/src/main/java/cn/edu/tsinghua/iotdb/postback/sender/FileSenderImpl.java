@@ -42,9 +42,7 @@ import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import cn.edu.tsinghua.tsfile.file.metadata.TsDeltaObject;
-import cn.edu.tsinghua.tsfile.timeseries.read.TsRandomAccessLocalFileReader;
-import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
+import cn.edu.tsinghua.iotdb.conf.IoTDBDescriptor;
 import cn.edu.tsinghua.iotdb.postback.conf.PostBackSenderConfig;
 import cn.edu.tsinghua.iotdb.postback.conf.PostBackSenderDescriptor;
 import cn.edu.tsinghua.iotdb.utils.PostbackUtils;
@@ -305,58 +303,58 @@ public class FileSenderImpl implements FileSender{
 	 */
 	private void deleteData(Set<String> snapshotFileList) {
 
-		Connection connection = null;
-		Statement statement = null;
-		TsRandomAccessLocalFileReader input = null;
-		String deleteFormat = "delete from %s.* where time <= %s";
-		try {
-            Class.forName(JDBC_DRIVER_NAME);
-			connection = DriverManager.getConnection(
-					"jdbc:tsfile://localhost:" + TsfileDBDescriptor.getInstance().getConfig().rpcPort + "/", "root",
-					"root");
-			statement = connection.createStatement();
-			int count = 0;
-
-			for (String filePath : snapshotFileList) {
-				input = new TsRandomAccessLocalFileReader(filePath);
-				cn.edu.tsinghua.tsfile.timeseries.read.FileReader reader = new cn.edu.tsinghua.tsfile.timeseries.read.FileReader(
-						input);
-				Map<String, TsDeltaObject> deltaObjectMap = reader.getFileMetaData().getDeltaObjectMap();
-				Iterator<String> it = deltaObjectMap.keySet().iterator();
-				while (it.hasNext()) {
-					String key = it.next(); // key represent device
-					TsDeltaObject deltaObj = deltaObjectMap.get(key);
-					String sql = String.format(deleteFormat, key, deltaObj.endTime);
-					statement.addBatch(sql);
-					count++;
-					if (count > 100) {
-						statement.executeBatch();
-						statement.clearBatch();
-						count = 0;
-					}
-				}
-			}
-			statement.executeBatch();
-			statement.clearBatch();
-		} catch (IOException e) {
-			LOGGER.error("IoTDB post bck sender can not parse tsfile into delete SQL because{}", e.getMessage());
-		} catch (SQLException | ClassNotFoundException e) {
-			LOGGER.error("IoTDB post back sender: jdbc cannot connect to IoTDB because {}", e.getMessage());
-		} finally {
-			try {
-				input.close();
-			} catch (IOException e) {
-				LOGGER.error("IoTDB post back sender : Cannot close file stream because {}", e.getMessage());
-			}
-			try {
-				if (statement != null)
-					statement.close();
-				if (connection != null)
-					connection.close();
-			} catch (SQLException e) {
-				LOGGER.error("IoTDB post back sender : Can not close JDBC connection because {}", e.getMessage());
-			}
-		}
+//		Connection connection = null;
+//		Statement statement = null;
+//		//TsRandomAccessLocalFileReader input = null;
+//		String deleteFormat = "delete from %s.* where time <= %s";
+//		try {
+//            Class.forName(JDBC_DRIVER_NAME);
+//			connection = DriverManager.getConnection(
+//					"jdbc:iotdb://localhost:" + TsfileDBDescriptor.getInstance().getConfig().rpcPort + "/", "root",
+//					"root");
+//			statement = connection.createStatement();
+//			int count = 0;
+//
+//			for (String filePath : snapshotFileList) {
+//				input = new TsRandomAccessLocalFileReader(filePath);
+//				cn.edu.tsinghua.tsfile.read.FileReader reader = new cn.edu.tsinghua.tsfile.read.FileReader(
+//						input);
+//				Map<String, TsDevice> deviceIdMap = reader.getFileMetaData().getDeviceMap();
+//				Iterator<String> it = deviceIdMap.keySet().iterator();
+//				while (it.hasNext()) {
+//					String key = it.next(); // key represent device
+//					TsDevice deltaObj = deviceIdMap.get(key);
+//					String sql = String.format(deleteFormat, key, deltaObj.endTime);
+//					statement.addBatch(sql);
+//					count++;
+//					if (count > 100) {
+//						statement.executeBatch();
+//						statement.clearBatch();
+//						count = 0;
+//					}
+//				}
+//			}
+//			statement.executeBatch();
+//			statement.clearBatch();
+//		} catch (IOException e) {
+//			LOGGER.error("IoTDB post bck sender can not parse tsfile into delete SQL because{}", e.getMessage());
+//		} catch (SQLException | ClassNotFoundException e) {
+//			LOGGER.error("IoTDB post back sender: jdbc cannot connect to IoTDB because {}", e.getMessage());
+//		} finally {
+//			try {
+//				input.close();
+//			} catch (IOException e) {
+//				LOGGER.error("IoTDB post back sender : Cannot close file stream because {}", e.getMessage());
+//			}
+//			try {
+//				if (statement != null)
+//					statement.close();
+//				if (connection != null)
+//					connection.close();
+//			} catch (SQLException e) {
+//				LOGGER.error("IoTDB post back sender : Can not close JDBC connection because {}", e.getMessage());
+//			}
+//		}
 	}
 
 	public List<String> getSchema() {

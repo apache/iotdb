@@ -1,9 +1,9 @@
 package cn.edu.tsinghua.tsfile.qp;
 
 import cn.edu.tsinghua.tsfile.common.utils.ITsRandomAccessFileReader;
-import cn.edu.tsinghua.tsfile.timeseries.read.query.QueryConfig;
-import cn.edu.tsinghua.tsfile.timeseries.read.query.QueryDataSet;
-import cn.edu.tsinghua.tsfile.timeseries.read.query.QueryEngine;
+import cn.edu.tsinghua.tsfile.read.query.QueryConfig;
+import cn.edu.tsinghua.tsfile.read.query.QueryDataSet;
+import cn.edu.tsinghua.tsfile.read.query.QueryEngine;
 
 import java.io.IOException;
 import java.util.ArrayList;

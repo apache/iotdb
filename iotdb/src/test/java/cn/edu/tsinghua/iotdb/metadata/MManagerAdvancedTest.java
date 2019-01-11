@@ -61,7 +61,7 @@ public class MManagerAdvancedTest {
             } else {
                 assertEquals(fileNames.get(1), "root.vehicle.d0");
             }
-            // test filename by path
+            // test filename by seriesPath
             assertEquals("root.vehicle.d0", mmanager.getFileNameByPath("root.vehicle.d0.s1"));
             HashMap<String, ArrayList<String>> map = mmanager.getAllPathGroupByFileName("root.vehicle.d1.*");
             assertEquals(1, map.keySet().size());
@@ -89,11 +89,11 @@ public class MManagerAdvancedTest {
         Assert.assertEquals(false, mmanager.checkPathStorageLevelAndGetDataType("root.vehicle.d0.s100").isSuccessfully());
         Assert.assertEquals(null, mmanager.checkPathStorageLevelAndGetDataType("root.vehicle.d0.s100").getDataType());
 
-        MNode node = mmanager.getNodeByDeltaObjectIDFromCache("root.vehicle.d0");
+        MNode node = mmanager.getNodeByDeviceIdFromCache("root.vehicle.d0");
         Assert.assertEquals(TSDataType.INT32, node.getChild("s0").getSchema().dataType);
 
         try {
-            MNode node1 = mmanager.getNodeByDeltaObjectIDFromCache("root.vehicle.d100");
+            MNode node1 = mmanager.getNodeByDeviceIdFromCache("root.vehicle.d100");
             fail();
         } catch (PathErrorException e) {
 

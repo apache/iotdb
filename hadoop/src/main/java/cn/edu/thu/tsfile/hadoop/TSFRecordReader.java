@@ -26,10 +26,10 @@ import org.slf4j.LoggerFactory;
 import cn.edu.thu.tsfile.hadoop.io.HDFSInputStream;
 import cn.edu.tsinghua.tsfile.file.metadata.RowGroupMetaData;
 import cn.edu.tsinghua.tsfile.file.metadata.TimeSeriesChunkMetaData;
-import cn.edu.tsinghua.tsfile.timeseries.read.query.HadoopQueryEngine;
-import cn.edu.tsinghua.tsfile.timeseries.read.query.QueryDataSet;
-import cn.edu.tsinghua.tsfile.timeseries.read.support.Field;
-import cn.edu.tsinghua.tsfile.timeseries.read.support.RowRecord;
+import cn.edu.tsinghua.tsfile.read.query.HadoopQueryEngine;
+import cn.edu.tsinghua.tsfile.read.query.QueryDataSet;
+import cn.edu.tsinghua.tsfile.read.support.Field;
+import cn.edu.tsinghua.tsfile.read.support.RowRecord;
 
 /**
  * @author liukun

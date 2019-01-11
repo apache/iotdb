@@ -29,7 +29,7 @@ import cn.edu.tsinghua.service.rpc.thrift.TS_StatusCode;
 
 public class BatchTest {
     @Mock
-    private TsfileConnection connection;
+    private IoTDBConnection connection;
     @Mock
     private TSIService.Iface client;
     @Mock
@@ -41,7 +41,7 @@ public class BatchTest {
 	@Before
 	public void setUp() throws Exception {
 		MockitoAnnotations.initMocks(this);
-		when(connection.createStatement()).thenReturn(new TsfileStatement(connection, client, sessHandle, zoneID));
+		when(connection.createStatement()).thenReturn(new IoTDBStatement(connection, client, sessHandle, zoneID));
 	}
 
 	@After

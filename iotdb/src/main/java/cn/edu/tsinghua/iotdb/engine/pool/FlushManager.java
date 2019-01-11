@@ -2,9 +2,9 @@ package cn.edu.tsinghua.iotdb.engine.pool;
 
 import cn.edu.tsinghua.iotdb.concurrent.IoTDBThreadPoolFactory;
 import cn.edu.tsinghua.iotdb.concurrent.ThreadName;
-import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
-import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
-import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
+import cn.edu.tsinghua.iotdb.conf.IoTDBConfig;
+import cn.edu.tsinghua.iotdb.conf.IoTDBDescriptor;
+import cn.edu.tsinghua.iotdb.exception.ProcessorException;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -23,7 +23,7 @@ public class FlushManager {
     }
 
     private FlushManager() {
-        TsfileDBConfig config = TsfileDBDescriptor.getInstance().getConfig();
+        IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
         this.threadCnt = config.concurrentFlushThread;
         pool = IoTDBThreadPoolFactory.newFixedThreadPool(threadCnt, ThreadName.FLUSH_SERVICE.getName());
     }
@@ -38,7 +38,7 @@ public class FlushManager {
     public void reopen() throws ProcessorException {
         if(!pool.isTerminated())
             throw new ProcessorException("Flush Pool is not terminated!");
-        TsfileDBConfig config = TsfileDBDescriptor.getInstance().getConfig();
+        IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
         pool = Executors.newFixedThreadPool(config.concurrentFlushThread);
     }
 

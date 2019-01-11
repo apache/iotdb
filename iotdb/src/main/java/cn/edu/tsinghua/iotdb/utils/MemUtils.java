@@ -1,10 +1,10 @@
 package cn.edu.tsinghua.iotdb.utils;
 
-import cn.edu.tsinghua.iotdb.conf.TsFileDBConstant;
-import cn.edu.tsinghua.tsfile.common.utils.Binary;
-import cn.edu.tsinghua.tsfile.timeseries.write.record.DataPoint;
-import cn.edu.tsinghua.tsfile.timeseries.write.record.TSRecord;
-import cn.edu.tsinghua.tsfile.timeseries.write.record.datapoint.*;
+import cn.edu.tsinghua.iotdb.conf.IoTDBConstant;
+import cn.edu.tsinghua.tsfile.utils.Binary;
+import cn.edu.tsinghua.tsfile.write.record.datapoint.DataPoint;
+import cn.edu.tsinghua.tsfile.write.record.TSRecord;
+import cn.edu.tsinghua.tsfile.write.record.datapoint.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -49,8 +49,8 @@ public class MemUtils {
 	 */
 	public static long getTsRecordMemBufferwrite(TSRecord record) {
 		long memUsed = 8; // time
-		memUsed += 8; // deltaObjectId reference
-		memUsed += getStringMem(record.deltaObjectId);
+		memUsed += 8; // deviceId reference
+		memUsed += getStringMem(record.deviceId);
 		for (DataPoint dataPoint : record.dataPointList) {
 			memUsed += 8; // dataPoint reference
 			memUsed += getDataPointMem(dataPoint);
@@ -92,8 +92,6 @@ public class MemUtils {
 			memUsed += 8;
 		} else if (dataPoint instanceof LongDataPoint) {
 			memUsed += 8;
-		} else if (dataPoint instanceof EnumDataPoint) {
-			memUsed += 4;
 		} else if (dataPoint instanceof StringDataPoint) {
 			StringDataPoint stringDataPoint = (StringDataPoint) dataPoint;
 			memUsed += 8 + 20; // array reference and array overhead
@@ -109,12 +107,12 @@ public class MemUtils {
 	}
 
 	public static String bytesCntToStr(long cnt) {
-		long GBs = cnt / TsFileDBConstant.GB;
-		cnt = cnt % TsFileDBConstant.GB;
-		long MBs = cnt / TsFileDBConstant.MB;
-		cnt = cnt % TsFileDBConstant.MB;
-		long KBs = cnt / TsFileDBConstant.KB;
-		cnt = cnt % TsFileDBConstant.KB;
+		long GBs = cnt / IoTDBConstant.GB;
+		cnt = cnt % IoTDBConstant.GB;
+		long MBs = cnt / IoTDBConstant.MB;
+		cnt = cnt % IoTDBConstant.MB;
+		long KBs = cnt / IoTDBConstant.KB;
+		cnt = cnt % IoTDBConstant.KB;
 		return GBs + " GB " + MBs + " MB " + KBs + " KB " + cnt + " B";
 	}
 }

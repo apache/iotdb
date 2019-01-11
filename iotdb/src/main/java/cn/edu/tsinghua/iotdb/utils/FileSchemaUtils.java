@@ -3,14 +3,14 @@ package cn.edu.tsinghua.iotdb.utils;
 import java.util.List;
 import java.util.Map.Entry;
 
+import cn.edu.tsinghua.tsfile.exception.write.WriteProcessException;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
 import cn.edu.tsinghua.iotdb.metadata.ColumnSchema;
 import cn.edu.tsinghua.iotdb.metadata.MManager;
 import cn.edu.tsinghua.tsfile.common.constant.JsonFormatConstant;
-import cn.edu.tsinghua.tsfile.timeseries.write.exception.WriteProcessException;
-import cn.edu.tsinghua.tsfile.timeseries.write.schema.FileSchema;
+import cn.edu.tsinghua.tsfile.write.schema.FileSchema;
 
 public class FileSchemaUtils {
 
@@ -29,7 +29,7 @@ public class FileSchemaUtils {
 
 	}
 
-	public static FileSchema getFileSchemaFromColumnSchema(List<ColumnSchema> schemaList, String deltaObjectType)
+	public static FileSchema getFileSchemaFromColumnSchema(List<ColumnSchema> schemaList, String deviceType)
 			throws WriteProcessException {
 		JSONArray rowGroup = new JSONArray();
 
@@ -49,7 +49,7 @@ public class FileSchemaUtils {
 		}
 		JSONObject jsonSchema = new JSONObject();
 		jsonSchema.put(JsonFormatConstant.JSON_SCHEMA, rowGroup);
-		jsonSchema.put(JsonFormatConstant.DELTA_TYPE, deltaObjectType);
+		jsonSchema.put(JsonFormatConstant.DELTA_TYPE, deviceType);
 		return new FileSchema(jsonSchema);
 	}
 

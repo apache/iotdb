@@ -15,7 +15,7 @@ public class PostbackUtils {
     private static String[] snapshotPaths = PostBackSenderDescriptor.getInstance().getConfig().snapshotPaths;
 
     /**
-     * This method is to get a snapshot file path according to a tsfile path.
+     * This method is to get a snapshot file seriesPath according to a tsfile seriesPath.
      * Due to multiple directories, it's necessary to make a snapshot in the same disk.
      * It's used by postback sender.
      *

@@ -1,7 +1,7 @@
 package cn.edu.tsinghua.iotdb.engine.memcontrol;
 
-import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
-import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
+import cn.edu.tsinghua.iotdb.conf.IoTDBConfig;
+import cn.edu.tsinghua.iotdb.conf.IoTDBDescriptor;
 import cn.edu.tsinghua.iotdb.engine.MetadataManagerHelper;
 import cn.edu.tsinghua.iotdb.engine.bufferwrite.Action;
 import cn.edu.tsinghua.iotdb.engine.bufferwrite.FileNodeConstants;
@@ -12,10 +12,10 @@ import cn.edu.tsinghua.iotdb.utils.FileSchemaUtils;
 import cn.edu.tsinghua.iotdb.utils.MemUtils;
 import cn.edu.tsinghua.tsfile.common.conf.TSFileConfig;
 import cn.edu.tsinghua.tsfile.common.conf.TSFileDescriptor;
+import cn.edu.tsinghua.tsfile.exception.write.WriteProcessException;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
-import cn.edu.tsinghua.tsfile.timeseries.write.exception.WriteProcessException;
-import cn.edu.tsinghua.tsfile.timeseries.write.record.DataPoint;
-import cn.edu.tsinghua.tsfile.timeseries.write.record.TSRecord;
+import cn.edu.tsinghua.tsfile.write.record.datapoint.DataPoint;
+import cn.edu.tsinghua.tsfile.write.record.TSRecord;
 
 import org.junit.After;
 import org.junit.Before;
@@ -30,15 +30,15 @@ import static org.junit.Assert.fail;
 
 public class OverflowMetaSizeControlTest {
 	private String nameSpacePath = "nsp";
-	private Map<String, Object> parameters = null;
+	private Map<String, Action> parameters = null;
 	private OverflowProcessor ofprocessor = null;
 	private TSFileConfig tsconfig = TSFileDescriptor.getInstance().getConfig();
-	private String deltaObjectId = "root.vehicle.d0";
+	private String deviceId = "root.vehicle.d0";
 	private String[] measurementIds = { "s0", "s1", "s2", "s3", "s4", "s5" };
 	private TSDataType[] dataTypes = { TSDataType.INT32, TSDataType.INT64, TSDataType.FLOAT, TSDataType.DOUBLE,
 			TSDataType.BOOLEAN, TSDataType.TEXT };
 
-	private TsfileDBConfig dbConfig = TsfileDBDescriptor.getInstance().getConfig();
+	private IoTDBConfig dbConfig = IoTDBDescriptor.getInstance().getConfig();
 	private long overflowFileSize;
 	private int groupSize;
 
@@ -74,7 +74,7 @@ public class OverflowMetaSizeControlTest {
 
 	@Before
 	public void setUp() throws Exception {
-		parameters = new HashMap<String, Object>();
+		parameters = new HashMap<String, Action>();
 		parameters.put(FileNodeConstants.OVERFLOW_FLUSH_ACTION, overflowflushaction);
 		parameters.put(FileNodeConstants.FILENODE_PROCESSOR_FLUSH_ACTION, filenodeflushaction);
 
@@ -99,10 +99,9 @@ public class OverflowMetaSizeControlTest {
 			return;
 		// insert one point: int
 		try {
-			ofprocessor = new OverflowProcessor(nameSpacePath, parameters,
-					FileSchemaUtils.constructFileSchema(deltaObjectId));
+			ofprocessor = new OverflowProcessor(nameSpacePath, parameters, FileSchemaUtils.constructFileSchema(deviceId));
 			for (int i = 1; i < 1000000; i++) {
-				TSRecord record = new TSRecord(i, deltaObjectId);
+				TSRecord record = new TSRecord(i, deviceId);
 				record.addTuple(DataPoint.getDataPoint(dataTypes[0], measurementIds[0], String.valueOf(i)));
 				ofprocessor.insert(record);
 				if (i % 100000 == 0)

@@ -6,7 +6,7 @@ import cn.edu.tsinghua.iotdb.auth.entity.PrivilegeType;
 import cn.edu.tsinghua.iotdb.auth.entity.Role;
 import cn.edu.tsinghua.iotdb.auth.entity.User;
 import cn.edu.tsinghua.iotdb.auth.user.IUserManager;
-import cn.edu.tsinghua.iotdb.conf.TsFileDBConstant;
+import cn.edu.tsinghua.iotdb.conf.IoTDBConstant;
 import cn.edu.tsinghua.iotdb.exception.StartupException;
 import cn.edu.tsinghua.iotdb.service.IService;
 import cn.edu.tsinghua.iotdb.service.ServiceType;
@@ -58,26 +58,26 @@ abstract public class BasicAuthorizer implements IAuthorizer,IService {
 
     @Override
     public boolean deleteUser(String username) throws AuthException {
-        if(TsFileDBConstant.ADMIN_NAME.equals(username))
+        if(IoTDBConstant.ADMIN_NAME.equals(username))
             throw new AuthException("Default administrator cannot be deleted");
         return userManager.deleteUser(username);
     }
 
     @Override
     public boolean grantPrivilegeToUser(String username, String path, int privilegeId) throws AuthException {
-        if(TsFileDBConstant.ADMIN_NAME.equals(username))
+        if(IoTDBConstant.ADMIN_NAME.equals(username))
             throw new AuthException("Invalid operation, administrator already has all privileges");
         if(!PrivilegeType.isPathRelevant(privilegeId))
-            path = TsFileDBConstant.PATH_ROOT;
+            path = IoTDBConstant.PATH_ROOT;
         return userManager.grantPrivilegeToUser(username, path, privilegeId);
     }
 
     @Override
     public boolean revokePrivilegeFromUser(String username, String path, int privilegeId) throws AuthException {
-        if(TsFileDBConstant.ADMIN_NAME.equals(username))
+        if(IoTDBConstant.ADMIN_NAME.equals(username))
             throw new AuthException("Invalid operation, administrator must have all privileges");
         if(!PrivilegeType.isPathRelevant(privilegeId))
-            path = TsFileDBConstant.PATH_ROOT;
+            path = IoTDBConstant.PATH_ROOT;
         return userManager.revokePrivilegeFromUser(username, path, privilegeId);
     }
 
@@ -108,14 +108,14 @@ abstract public class BasicAuthorizer implements IAuthorizer,IService {
     @Override
     public boolean grantPrivilegeToRole(String roleName, String path, int privilegeId) throws AuthException {
         if(!PrivilegeType.isPathRelevant(privilegeId))
-            path = TsFileDBConstant.PATH_ROOT;
+            path = IoTDBConstant.PATH_ROOT;
         return roleManager.grantPrivilegeToRole(roleName, path, privilegeId);
     }
 
     @Override
     public boolean revokePrivilegeFromRole(String roleName, String path, int privilegeId) throws AuthException {
         if(!PrivilegeType.isPathRelevant(privilegeId))
-            path = TsFileDBConstant.PATH_ROOT;
+            path = IoTDBConstant.PATH_ROOT;
         return roleManager.revokePrivilegeFromRole(roleName, path, privilegeId);
     }
 
@@ -148,7 +148,7 @@ abstract public class BasicAuthorizer implements IAuthorizer,IService {
 
     @Override
     public Set<Integer> getPrivileges(String username, String path) throws AuthException {
-        if(TsFileDBConstant.ADMIN_NAME.equals(username))
+        if(IoTDBConstant.ADMIN_NAME.equals(username))
             return ADMIN_PRIVILEGES;
         User user = userManager.getUser(username);
         if(user == null) {
@@ -173,7 +173,7 @@ abstract public class BasicAuthorizer implements IAuthorizer,IService {
 
     @Override
     public boolean checkUserPrivileges(String username, String path, int privilegeId) throws AuthException {
-        if(TsFileDBConstant.ADMIN_NAME.equals(username))
+        if(IoTDBConstant.ADMIN_NAME.equals(username))
             return true;
         User user = userManager.getUser(username);
         if(user == null) {

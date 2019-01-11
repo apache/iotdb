@@ -1,10 +1,6 @@
 package cn.edu.tsinghua.iotdb.postback.receiver;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
@@ -22,33 +18,20 @@ import java.util.Map;
 import java.util.Set;
 import java.util.Map.Entry;
 
-import cn.edu.tsinghua.tsfile.timeseries.read.query.OnePassQueryDataSet;
-import cn.edu.tsinghua.tsfile.timeseries.read.support.OldRowRecord;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import cn.edu.tsinghua.iotdb.utils.PostbackUtils;
-import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
-import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
+import cn.edu.tsinghua.iotdb.conf.IoTDBConfig;
+import cn.edu.tsinghua.iotdb.conf.IoTDBDescriptor;
 import cn.edu.tsinghua.iotdb.conf.directories.Directories;
 import cn.edu.tsinghua.iotdb.engine.filenode.FileNodeManager;
 import cn.edu.tsinghua.iotdb.engine.filenode.IntervalFileNode;
 import cn.edu.tsinghua.iotdb.engine.filenode.OverflowChangeType;
 import cn.edu.tsinghua.iotdb.exception.FileNodeManagerException;
-import cn.edu.tsinghua.tsfile.file.metadata.RowGroupMetaData;
-import cn.edu.tsinghua.tsfile.file.metadata.TimeSeriesChunkMetaData;
-import cn.edu.tsinghua.tsfile.file.metadata.TimeSeriesChunkProperties;
-import cn.edu.tsinghua.tsfile.file.metadata.TsDeltaObject;
-import cn.edu.tsinghua.tsfile.file.metadata.TsRowGroupBlockMetaData;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
-import cn.edu.tsinghua.tsfile.file.utils.ReadWriteThriftFormatUtils;
-import cn.edu.tsinghua.tsfile.timeseries.basis.TsFile;
-import cn.edu.tsinghua.tsfile.timeseries.read.FileReader;
-import cn.edu.tsinghua.tsfile.timeseries.read.TsRandomAccessLocalFileReader;
-
-import cn.edu.tsinghua.tsfile.timeseries.read.support.Field;
-import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
+import cn.edu.tsinghua.tsfile.read.common.Path;
 
 
 /**
@@ -67,11 +50,11 @@ public class ServerServiceImpl implements ServerService.Iface {
     // String2 means endTime
     private ThreadLocal<Integer> fileNum = new ThreadLocal<Integer>();
     private ThreadLocal<String> schemaFromSenderPath = new ThreadLocal<String>();
-    private TsfileDBConfig tsfileDBconfig = TsfileDBDescriptor.getInstance().getConfig();
+    private IoTDBConfig tsfileDBconfig = IoTDBDescriptor.getInstance().getConfig();
     private String postbackPath;
-    private String dataPath = new File(tsfileDBconfig.dataDir).getAbsolutePath() + File.separator; // Absolute path of IoTDB data directory
+    private String dataPath = new File(tsfileDBconfig.dataDir).getAbsolutePath() + File.separator; // Absolute seriesPath of IoTDB data directory
     private String[] bufferWritePaths = tsfileDBconfig.getBufferWriteDirs(); // Absolute paths of IoTDB bufferWrite directory
-    private TsfileDBConfig tsfileDBConfig = TsfileDBDescriptor.getInstance().getConfig();
+    private IoTDBConfig tsfileDBConfig = IoTDBDescriptor.getInstance().getConfig();
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ServerServiceImpl.class);
     private static final FileNodeManager fileNodeManager = FileNodeManager.getInstance();
@@ -191,7 +174,7 @@ public class ServerServiceImpl implements ServerService.Iface {
             Statement statement = null;
             try {
                 Class.forName(JDBC_DRIVER_NAME);
-                connection = DriverManager.getConnection("jdbc:tsfile://localhost:" + tsfileDBConfig.rpcPort + "/",
+                connection = DriverManager.getConnection("jdbc:iotdb://localhost:" + tsfileDBConfig.rpcPort + "/",
                         "root", "root");
                 statement = connection.createStatement();
 
@@ -295,47 +278,47 @@ public class ServerServiceImpl implements ServerService.Iface {
      */
     @Override
     public void getFileNodeInfo() throws TException {
-        String filePath = postbackPath + uuid.get() + File.separator + "data";
-        File root = new File(filePath);
-        File[] files = root.listFiles();
-        int num = 0;
-        for (File storageGroupPB : files) {
-            List<String> filesPath = new ArrayList<>();
-            File[] filesSG = storageGroupPB.listFiles();
-            for (File fileTF : filesSG) { // fileTF means TsFiles
-                Map<String, Long> startTimeMap = new HashMap<>();
-                Map<String, Long> endTimeMap = new HashMap<>();
-                TsRandomAccessLocalFileReader input = null;
-                try {
-                    input = new TsRandomAccessLocalFileReader(fileTF.getAbsolutePath());
-                    FileReader reader = new FileReader(input);
-                    Map<String, TsDeltaObject> deltaObjectMap = reader.getFileMetaData().getDeltaObjectMap();
-                    Iterator<String> it = deltaObjectMap.keySet().iterator();
-                    while (it.hasNext()) {
-                        String key = it.next().toString(); // key represent device
-                        TsDeltaObject deltaObj = deltaObjectMap.get(key);
-                        startTimeMap.put(key, deltaObj.startTime);
-                        endTimeMap.put(key, deltaObj.endTime);
-                    }
-                } catch (Exception e) {
-                    LOGGER.error("IoTDB post back receiver: unable to read tsfile {} because {}",
-                            fileTF.getAbsolutePath(), e.getMessage());
-                } finally {
-                    try {
-                        input.close();
-                    } catch (IOException e) {
-                        LOGGER.error("IoTDB receiver : Cannot close file stream {} because {}",
-                                fileTF.getAbsolutePath(), e.getMessage());
-                    }
-                }
-                fileNodeStartTime.get().put(fileTF.getAbsolutePath(), startTimeMap);
-                fileNodeEndTime.get().put(fileTF.getAbsolutePath(), endTimeMap);
-                filesPath.add(fileTF.getAbsolutePath());
-                num++;
-                LOGGER.info("IoTDB receiver : Getting FileNode Info has complete : " + num + "/" + fileNum.get());
-            }
-            fileNodeMap.get().put(storageGroupPB.getName(), filesPath);
-        }
+//        String filePath = postbackPath + uuid.get() + File.separator + "data";
+//        File root = new File(filePath);
+//        File[] files = root.listFiles();
+//        int num = 0;
+//        for (File storageGroupPB : files) {
+//            List<String> filesPath = new ArrayList<>();
+//            File[] filesSG = storageGroupPB.listFiles();
+//            for (File fileTF : filesSG) { // fileTF means TsFiles
+//                Map<String, Long> startTimeMap = new HashMap<>();
+//                Map<String, Long> endTimeMap = new HashMap<>();
+//                TsRandomAccessLocalFileReader input = null;
+//                try {
+//                    input = new TsRandomAccessLocalFileReader(fileTF.getAbsolutePath());
+//                    FileReader reader = new FileReader(input);
+//                    Map<String, TsDevice> deviceIdMap = reader.getFileMetaData().getDeviceMap();
+//                    Iterator<String> it = deviceIdMap.keySet().iterator();
+//                    while (it.hasNext()) {
+//                        String key = it.next().toString(); // key represent device
+//                        TsDevice deltaObj = deviceIdMap.get(key);
+//                        startTimeMap.put(key, deltaObj.startTime);
+//                        endTimeMap.put(key, deltaObj.endTime);
+//                    }
+//                } catch (Exception e) {
+//                    LOGGER.error("IoTDB post back receiver: unable to read tsfile {} because {}",
+//                            fileTF.getAbsolutePath(), e.getMessage());
+//                } finally {
+//                    try {
+//                        input.close();
+//                    } catch (IOException e) {
+//                        LOGGER.error("IoTDB receiver : Cannot close file stream {} because {}",
+//                                fileTF.getAbsolutePath(), e.getMessage());
+//                    }
+//                }
+//                fileNodeStartTime.get().put(fileTF.getAbsolutePath(), startTimeMap);
+//                fileNodeEndTime.get().put(fileTF.getAbsolutePath(), endTimeMap);
+//                filesPath.add(fileTF.getAbsolutePath());
+//                num++;
+//                LOGGER.info("IoTDB receiver : Getting FileNode Info has complete : " + num + "/" + fileNum.get());
+//            }
+//            fileNodeMap.get().put(storageGroupPB.getName(), filesPath);
+//        }
     }
 
     /**
@@ -343,102 +326,102 @@ public class ServerServiceImpl implements ServerService.Iface {
      */
     @Override
     public void mergeOldData(String filePath) throws TException {
-        Set<String> timeseries = new HashSet<>();
-        TsRandomAccessLocalFileReader input = null;
-        Connection connection = null;
-        Statement statement = null;
-        try {
-            Class.forName(JDBC_DRIVER_NAME);
-            connection = DriverManager.getConnection("jdbc:tsfile://localhost:" + tsfileDBConfig.rpcPort + "/", "root",
-                    "root");
-            statement = connection.createStatement();
-            int count = 0;
-
-            input = new TsRandomAccessLocalFileReader(filePath);
-            FileReader reader = new FileReader(input);
-            Map<String, TsDeltaObject> deltaObjectMap = reader.getFileMetaData().getDeltaObjectMap();
-            Iterator<String> it = deltaObjectMap.keySet().iterator();
-            while (it.hasNext()) {
-                String key = it.next().toString(); // key represent devices
-                TsDeltaObject deltaObj = deltaObjectMap.get(key);
-                TsRowGroupBlockMetaData blockMeta = new TsRowGroupBlockMetaData();
-                blockMeta.convertToTSF(ReadWriteThriftFormatUtils.readRowGroupBlockMetaData(input, deltaObj.offset,
-                        deltaObj.metadataBlockSize));
-                List<RowGroupMetaData> rowGroupMetadataList = blockMeta.getRowGroups();
-                timeseries.clear();
-                // firstly, get all timeseries in the same device
-                for (RowGroupMetaData rowGroupMetaData : rowGroupMetadataList) {
-                    List<TimeSeriesChunkMetaData> timeSeriesChunkMetaDataList = rowGroupMetaData
-                            .getTimeSeriesChunkMetaDataList();
-                    for (TimeSeriesChunkMetaData timeSeriesChunkMetaData : timeSeriesChunkMetaDataList) {
-                        TimeSeriesChunkProperties properties = timeSeriesChunkMetaData.getProperties();
-                        String measurementUID = properties.getMeasurementUID();
-                        measurementUID = key + "." + measurementUID;
-                        timeseries.add(measurementUID);
-                    }
-                }
-                // secondly, use tsFile Reader to form SQL
-
-                TsFile readTsFile = new TsFile(input);
-                ArrayList<Path> paths = new ArrayList<>();
-                paths.clear();
-                for (String timesery : timeseries) {
-                    paths.add(new Path(timesery));
-                }
-                OnePassQueryDataSet queryDataSet = readTsFile.query(paths, null, null);
-                while (queryDataSet.hasNextRecord()) {
-                    OldRowRecord record = queryDataSet.getNextRecord();
-                    List<Field> fields = record.getFields();
-                    String sql_front = null;
-                    for (Field field : fields) {
-                        if (field.toString() != "null") {
-                            sql_front = "insert into " + field.deltaObjectId + "(timestamp";
-                            break;
-                        }
-                    }
-                    String sql_rear = ") values(" + record.timestamp;
-                    for (Field field : fields) {
-                        if (field.toString() != "null") {
-                            sql_front = sql_front + "," + field.measurementId.toString();
-                            if (field.dataType == TSDataType.TEXT) {
-                                sql_rear = sql_rear + "," + "'" + field.toString() + "'";
-                            } else {
-                                sql_rear = sql_rear + "," + field.toString();
-                            }
-                        }
-                    }
-                    String sql = sql_front + sql_rear + ")";
-
-                    statement.addBatch(sql);
-                    count++;
-                    if (count > 10000) {
-                        statement.executeBatch();
-                        statement.clearBatch();
-                        count = 0;
-                    }
-                }
-            }
-            statement.executeBatch();
-            statement.clearBatch();
-        } catch (IOException e) {
-            LOGGER.error("IoTDB receiver can not parse tsfile into SQL because{}", e.getMessage());
-        } catch (SQLException | ClassNotFoundException e) {
-            LOGGER.error("IoTDB post back receiver: jdbc cannot connect to IoTDB because {}", e.getMessage());
-        } finally {
-            try {
-                input.close();
-            } catch (IOException e) {
-                LOGGER.error("IoTDB receiver : Cannot close file stream {} because {}", filePath);
-            }
-            try {
-                if (statement != null)
-                    statement.close();
-                if (connection != null)
-                    connection.close();
-            } catch (SQLException e) {
-                LOGGER.error("IoTDB receiver : Can not close JDBC connection because {}", e.getMessage());
-            }
-        }
+//        Set<String> timeseries = new HashSet<>();
+//        TsRandomAccessLocalFileReader input = null;
+//        Connection connection = null;
+//        Statement statement = null;
+//        try {
+//            Class.forName(JDBC_DRIVER_NAME);
+//            connection = DriverManager.getConnection("jdbc:iotdb://localhost:" + tsfileDBConfig.rpcPort + "/", "root",
+//                    "root");
+//            statement = connection.createStatement();
+//            int count = 0;
+//
+//            input = new TsRandomAccessLocalFileReader(filePath);
+//            FileReader reader = new FileReader(input);
+//            Map<String, TsdeviceId> deviceIdMap = reader.getFileMetaData().getDeviceMap();
+//            Iterator<String> it = deviceIdMap.keySet().iterator();
+//            while (it.hasNext()) {
+//                String key = it.next().toString(); // key represent devices
+//                TsdeviceId deltaObj = deviceIdMap.get(key);
+//                TsRowGroupBlockMetaData blockMeta = new TsRowGroupBlockMetaData();
+//                blockMeta.convertToTSF(ReadWriteThriftFormatUtils.readRowGroupBlockMetaData(input, deltaObj.offset,
+//                        deltaObj.metadataBlockSize));
+//                List<RowGroupMetaData> rowGroupMetadataList = blockMeta.getRowGroups();
+//                timeseries.clear();
+//                // firstly, get all timeseries in the same device
+//                for (RowGroupMetaData rowGroupMetaData : rowGroupMetadataList) {
+//                    List<TimeSeriesChunkMetaData> timeSeriesChunkMetaDataList = rowGroupMetaData
+//                            .getTimeSeriesChunkMetaDataList();
+//                    for (TimeSeriesChunkMetaData timeSeriesChunkMetaData : timeSeriesChunkMetaDataList) {
+//                        TimeSeriesChunkProperties properties = timeSeriesChunkMetaData.getProperties();
+//                        String measurementUID = properties.getMeasurementUID();
+//                        measurementUID = key + "." + measurementUID;
+//                        timeseries.add(measurementUID);
+//                    }
+//                }
+//                // secondly, use tsFile Reader to form SQL
+//
+//                TsFile readTsFile = new TsFile(input);
+//                ArrayList<Path> paths = new ArrayList<>();
+//                paths.clear();
+//                for (String timesery : timeseries) {
+//                    paths.add(new Path(timesery));
+//                }
+//                OnePassQueryDataSet queryDataSet = readTsFile.query(paths, null, null);
+//                while (queryDataSet.hasNextRecord()) {
+//                    OldRowRecord record = queryDataSet.getNextRecord();
+//                    List<Field> fields = record.getFields();
+//                    String sql_front = null;
+//                    for (Field field : fields) {
+//                        if (field.toString() != "null") {
+//                            sql_front = "insert into " + field.deviceId + "(timestamp";
+//                            break;
+//                        }
+//                    }
+//                    String sql_rear = ") values(" + record.timestamp;
+//                    for (Field field : fields) {
+//                        if (field.toString() != "null") {
+//                            sql_front = sql_front + "," + field.measurementId.toString();
+//                            if (field.dataType == TSDataType.TEXT) {
+//                                sql_rear = sql_rear + "," + "'" + field.toString() + "'";
+//                            } else {
+//                                sql_rear = sql_rear + "," + field.toString();
+//                            }
+//                        }
+//                    }
+//                    String sql = sql_front + sql_rear + ")";
+//
+//                    statement.addBatch(sql);
+//                    count++;
+//                    if (count > 10000) {
+//                        statement.executeBatch();
+//                        statement.clearBatch();
+//                        count = 0;
+//                    }
+//                }
+//            }
+//            statement.executeBatch();
+//            statement.clearBatch();
+//        } catch (IOException e) {
+//            LOGGER.error("IoTDB receiver can not parse tsfile into SQL because{}", e.getMessage());
+//        } catch (SQLException | ClassNotFoundException e) {
+//            LOGGER.error("IoTDB post back receiver: jdbc cannot connect to IoTDB because {}", e.getMessage());
+//        } finally {
+//            try {
+//                input.close();
+//            } catch (IOException e) {
+//                LOGGER.error("IoTDB receiver : Cannot close file stream {} because {}", filePath);
+//            }
+//            try {
+//                if (statement != null)
+//                    statement.close();
+//                if (connection != null)
+//                    connection.close();
+//            } catch (SQLException e) {
+//                LOGGER.error("IoTDB receiver : Can not close JDBC connection because {}", e.getMessage());
+//            }
+//        }
     }
 
     /**
@@ -449,154 +432,154 @@ public class ServerServiceImpl implements ServerService.Iface {
      * @throws TException
      */
     public void mergeOldData(String filePath, List<String> overlapFiles) throws TException {
-        Set<String> timeseries = new HashSet<>();
-        TsRandomAccessLocalFileReader input = null;
-        Connection connection = null;
-        Statement statement = null;
-        try {
-            Class.forName(JDBC_DRIVER_NAME);
-            connection = DriverManager.getConnection("jdbc:tsfile://localhost:" + tsfileDBConfig.rpcPort + "/", "root",
-                    "root");
-            statement = connection.createStatement();
-            int count = 0;
-
-            input = new TsRandomAccessLocalFileReader(filePath);
-            FileReader reader = new FileReader(input);
-            Map<String, TsDeltaObject> deltaObjectMap = reader.getFileMetaData().getDeltaObjectMap();
-            Iterator<String> it = deltaObjectMap.keySet().iterator();
-            while (it.hasNext()) {
-                String key = it.next().toString(); // key represent devices
-                TsDeltaObject deltaObj = deltaObjectMap.get(key);
-                TsRowGroupBlockMetaData blockMeta = new TsRowGroupBlockMetaData();
-                blockMeta.convertToTSF(ReadWriteThriftFormatUtils.readRowGroupBlockMetaData(input, deltaObj.offset,
-                        deltaObj.metadataBlockSize));
-                List<RowGroupMetaData> rowGroupMetadataList = blockMeta.getRowGroups();
-                timeseries.clear();
-                // firstly, get all timeseries in the same device
-                for (RowGroupMetaData rowGroupMetaData : rowGroupMetadataList) {
-                    List<TimeSeriesChunkMetaData> timeSeriesChunkMetaDataList = rowGroupMetaData
-                            .getTimeSeriesChunkMetaDataList();
-                    for (TimeSeriesChunkMetaData timeSeriesChunkMetaData : timeSeriesChunkMetaDataList) {
-                        TimeSeriesChunkProperties properties = timeSeriesChunkMetaData.getProperties();
-                        String measurementUID = properties.getMeasurementUID();
-                        measurementUID = key + "." + measurementUID;
-                        timeseries.add(measurementUID);
-                    }
-                }
-                // secondly, use tsFile Reader to form SQL
-
-                TsFile readTsFile = new TsFile(input);
-                ArrayList<Path> paths = new ArrayList<>();
-                for (String timesery : timeseries) { // compare data with one timesery in a round to get valid data
-                    paths.clear();
-                    paths.add(new Path(timesery));
-                    Map<String, String> originDataPoint = new HashMap<>();
-                    Map<String, String> newDataPoint = new HashMap<>();
-                    String sqlFormat = "insert into %s(timestamp,%s) values(%s,%s)";
-                    OnePassQueryDataSet queryDataSet = readTsFile.query(paths, null, null);
-                    while (queryDataSet.hasNextRecord()) {
-                        OldRowRecord record = queryDataSet.getNextRecord();
-                        List<Field> fields = record.getFields();
-                        String sql;
-                        for (Field field : fields) { // get all data with the timesery in the postback file
-                            if (field.toString() != "null") {
-                                sql = String.format(sqlFormat, field.deltaObjectId, field.measurementId.toString(),
-                                        record.timestamp, "%s");
-                                if (field.dataType == TSDataType.TEXT) {
-                                    newDataPoint.put(sql, "'" + field.toString() + "'");
-                                } else {
-                                    newDataPoint.put(sql, field.toString());
-                                }
-
-                            }
-                        }
-                    }
-                    for (String overlapFile : overlapFiles) // get all data with the timesery in all overlap files.
-                    {
-                        TsRandomAccessLocalFileReader inputOverlap = null;
-                        try {
-                            inputOverlap = new TsRandomAccessLocalFileReader(overlapFile);
-                            TsFile readTsFileOverlap = new TsFile(inputOverlap);
-                            OnePassQueryDataSet queryDataSetOverlap = readTsFileOverlap.query(paths, null, null);
-                            while (queryDataSetOverlap.hasNextRecord()) {
-                                OldRowRecord recordOverlap = queryDataSetOverlap.getNextRecord();
-                                List<Field> fields = recordOverlap.getFields();
-                                String sql;
-                                for (Field field : fields) {
-                                    if (field.toString() != "null") {
-                                        sql = String.format(sqlFormat, field.deltaObjectId,
-                                                field.measurementId.toString(), recordOverlap.timestamp, "%s");
-                                        if (field.dataType == TSDataType.TEXT) {
-                                            originDataPoint.put(sql, "'" + field.toString() + "'");
-                                        } else {
-                                            originDataPoint.put(sql, field.toString());
-                                        }
-                                    }
-                                }
-                            }
-                        } catch (IOException e) {
-                            LOGGER.error("IoTDB post back receiver: unable to read tsfile {} because {}", overlapFile,
-                                    e.getMessage());
-                        } finally {
-                            try {
-                                inputOverlap.close();
-                            } catch (IOException e) {
-                                LOGGER.error("IoTDB receiver : Cannot close file stream {} because {}", overlapFile,
-                                        e.getMessage());
-                            }
-                        }
-                    }
-                    if (originDataPoint.isEmpty()) { // If there has no overlap data with the timesery, inserting all
-                        // data in the postback file
-                        for (Entry<String, String> entry : newDataPoint.entrySet()) {
-                            String sql = String.format(entry.getKey(), entry.getValue());
-                            statement.addBatch(sql);
-                            count++;
-                            if (count > 10000) {
-                                statement.executeBatch();
-                                statement.clearBatch();
-                                count = 0;
-                            }
-                        }
-                    } else { // Compare every data to get valid data
-                        for (Entry<String, String> entry : newDataPoint.entrySet()) {
-                            if (!originDataPoint.containsKey(entry.getKey())
-                                    || (originDataPoint.containsKey(entry.getKey())
-                                    && !originDataPoint.get(entry.getKey()).equals(entry.getValue()))) {
-                                String sql = String.format(entry.getKey(), entry.getValue());
-                                statement.addBatch(sql);
-                                count++;
-                                if (count > 10000) {
-                                    statement.executeBatch();
-                                    statement.clearBatch();
-                                    count = 0;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            statement.executeBatch();
-            statement.clearBatch();
-        } catch (IOException e) {
-            LOGGER.error("IoTDB receiver can not parse tsfile into SQL because{}", e.getMessage());
-        } catch (SQLException | ClassNotFoundException e) {
-            LOGGER.error("IoTDB post back receiver: jdbc cannot connect to IoTDB because {}", e.getMessage());
-        } finally {
-            try {
-                input.close();
-            } catch (IOException e) {
-                LOGGER.error("IoTDB receiver : Cannot close file stream {} because {}", filePath, e.getMessage());
-            }
-            try {
-                if (statement != null)
-                    statement.close();
-                if (connection != null)
-                    connection.close();
-            } catch (SQLException e) {
-                LOGGER.error("IoTDB receiver : Can not close JDBC connection because {}", e.getMessage());
-            }
-        }
+//        Set<String> timeseries = new HashSet<>();
+//        TsRandomAccessLocalFileReader input = null;
+//        Connection connection = null;
+//        Statement statement = null;
+//        try {
+//            Class.forName(JDBC_DRIVER_NAME);
+//            connection = DriverManager.getConnection("jdbc:iotdb://localhost:" + tsfileDBConfig.rpcPort + "/", "root",
+//                    "root");
+//            statement = connection.createStatement();
+//            int count = 0;
+//
+//            input = new TsRandomAccessLocalFileReader(filePath);
+//            FileReader reader = new FileReader(input);
+//            Map<String, TsdeviceId> deviceIdMap = reader.getFileMetaData().getDeviceMap();
+//            Iterator<String> it = deviceIdMap.keySet().iterator();
+//            while (it.hasNext()) {
+//                String key = it.next().toString(); // key represent devices
+//                TsdeviceId deltaObj = deviceIdMap.get(key);
+//                TsRowGroupBlockMetaData blockMeta = new TsRowGroupBlockMetaData();
+//                blockMeta.convertToTSF(ReadWriteThriftFormatUtils.readRowGroupBlockMetaData(input, deltaObj.offset,
+//                        deltaObj.metadataBlockSize));
+//                List<RowGroupMetaData> rowGroupMetadataList = blockMeta.getRowGroups();
+//                timeseries.clear();
+//                // firstly, get all timeseries in the same device
+//                for (RowGroupMetaData rowGroupMetaData : rowGroupMetadataList) {
+//                    List<TimeSeriesChunkMetaData> timeSeriesChunkMetaDataList = rowGroupMetaData
+//                            .getTimeSeriesChunkMetaDataList();
+//                    for (TimeSeriesChunkMetaData timeSeriesChunkMetaData : timeSeriesChunkMetaDataList) {
+//                        TimeSeriesChunkProperties properties = timeSeriesChunkMetaData.getProperties();
+//                        String measurementUID = properties.getMeasurementUID();
+//                        measurementUID = key + "." + measurementUID;
+//                        timeseries.add(measurementUID);
+//                    }
+//                }
+//                // secondly, use tsFile Reader to form SQL
+//
+//                TsFile readTsFile = new TsFile(input);
+//                ArrayList<Path> paths = new ArrayList<>();
+//                for (String timesery : timeseries) { // compare data with one timesery in a round to get valid data
+//                    paths.clear();
+//                    paths.add(new Path(timesery));
+//                    Map<String, String> originDataPoint = new HashMap<>();
+//                    Map<String, String> newDataPoint = new HashMap<>();
+//                    String sqlFormat = "insert into %s(timestamp,%s) values(%s,%s)";
+//                    OnePassQueryDataSet queryDataSet = readTsFile.query(paths, null, null);
+//                    while (queryDataSet.hasNextRecord()) {
+//                        OldRowRecord record = queryDataSet.getNextRecord();
+//                        List<Field> fields = record.getFields();
+//                        String sql;
+//                        for (Field field : fields) { // get all data with the timesery in the postback file
+//                            if (field.toString() != "null") {
+//                                sql = String.format(sqlFormat, field.deviceId, field.measurementId.toString(),
+//                                        record.timestamp, "%s");
+//                                if (field.dataType == TSDataType.TEXT) {
+//                                    newDataPoint.put(sql, "'" + field.toString() + "'");
+//                                } else {
+//                                    newDataPoint.put(sql, field.toString());
+//                                }
+//
+//                            }
+//                        }
+//                    }
+//                    for (String overlapFile : overlapFiles) // get all data with the timesery in all overlap files.
+//                    {
+//                        TsRandomAccessLocalFileReader inputOverlap = null;
+//                        try {
+//                            inputOverlap = new TsRandomAccessLocalFileReader(overlapFile);
+//                            TsFile readTsFileOverlap = new TsFile(inputOverlap);
+//                            OnePassQueryDataSet queryDataSetOverlap = readTsFileOverlap.query(paths, null, null);
+//                            while (queryDataSetOverlap.hasNextRecord()) {
+//                                OldRowRecord recordOverlap = queryDataSetOverlap.getNextRecord();
+//                                List<Field> fields = recordOverlap.getFields();
+//                                String sql;
+//                                for (Field field : fields) {
+//                                    if (field.toString() != "null") {
+//                                        sql = String.format(sqlFormat, field.deviceId,
+//                                                field.measurementId.toString(), recordOverlap.timestamp, "%s");
+//                                        if (field.dataType == TSDataType.TEXT) {
+//                                            originDataPoint.put(sql, "'" + field.toString() + "'");
+//                                        } else {
+//                                            originDataPoint.put(sql, field.toString());
+//                                        }
+//                                    }
+//                                }
+//                            }
+//                        } catch (IOException e) {
+//                            LOGGER.error("IoTDB post back receiver: unable to read tsfile {} because {}", overlapFile,
+//                                    e.getMessage());
+//                        } finally {
+//                            try {
+//                                inputOverlap.close();
+//                            } catch (IOException e) {
+//                                LOGGER.error("IoTDB receiver : Cannot close file stream {} because {}", overlapFile,
+//                                        e.getMessage());
+//                            }
+//                        }
+//                    }
+//                    if (originDataPoint.isEmpty()) { // If there has no overlap data with the timesery, inserting all
+//                        // data in the postback file
+//                        for (Entry<String, String> entry : newDataPoint.entrySet()) {
+//                            String sql = String.format(entry.getKey(), entry.getValue());
+//                            statement.addBatch(sql);
+//                            count++;
+//                            if (count > 10000) {
+//                                statement.executeBatch();
+//                                statement.clearBatch();
+//                                count = 0;
+//                            }
+//                        }
+//                    } else { // Compare every data to get valid data
+//                        for (Entry<String, String> entry : newDataPoint.entrySet()) {
+//                            if (!originDataPoint.containsKey(entry.getKey())
+//                                    || (originDataPoint.containsKey(entry.getKey())
+//                                    && !originDataPoint.get(entry.getKey()).equals(entry.getValue()))) {
+//                                String sql = String.format(entry.getKey(), entry.getValue());
+//                                statement.addBatch(sql);
+//                                count++;
+//                                if (count > 10000) {
+//                                    statement.executeBatch();
+//                                    statement.clearBatch();
+//                                    count = 0;
+//                                }
+//                            }
+//                        }
+//                    }
+//                }
+//            }
+//            statement.executeBatch();
+//            statement.clearBatch();
+//        } catch (IOException e) {
+//            LOGGER.error("IoTDB receiver can not parse tsfile into SQL because{}", e.getMessage());
+//        } catch (SQLException | ClassNotFoundException e) {
+//            LOGGER.error("IoTDB post back receiver: jdbc cannot connect to IoTDB because {}", e.getMessage());
+//        } finally {
+//            try {
+//                input.close();
+//            } catch (IOException e) {
+//                LOGGER.error("IoTDB receiver : Cannot close file stream {} because {}", filePath, e.getMessage());
+//            }
+//            try {
+//                if (statement != null)
+//                    statement.close();
+//                if (connection != null)
+//                    connection.close();
+//            } catch (SQLException e) {
+//                LOGGER.error("IoTDB receiver : Can not close JDBC connection because {}", e.getMessage());
+//            }
+//        }
     }
 
     /**
@@ -617,9 +600,9 @@ public class ServerServiceImpl implements ServerService.Iface {
                     Map<String, Long> endTimeI = fileNodeStartTime.get().get(filesPath.get(i));
                     Map<String, Long> startTimeJ = fileNodeStartTime.get().get(filesPath.get(j));
                     Map<String, Long> endTimeJ = fileNodeStartTime.get().get(filesPath.get(j));
-                    for (String deltaObject : endTimeI.keySet()) {
-                        if (startTimeJ.containsKey(deltaObject)
-                                && startTimeI.get(deltaObject) > endTimeJ.get(deltaObject)) {
+                    for (String deviceId : endTimeI.keySet()) {
+                        if (startTimeJ.containsKey(deviceId)
+                                && startTimeI.get(deviceId) > endTimeJ.get(deviceId)) {
                             swapOrNot = true;
                             break;
                         }

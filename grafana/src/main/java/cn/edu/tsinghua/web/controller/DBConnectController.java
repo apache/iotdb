@@ -1,6 +1,6 @@
 package cn.edu.tsinghua.web.controller;
 
-import cn.edu.tsinghua.tsfile.common.utils.Pair;
+import cn.edu.tsinghua.tsfile.utils.Pair;
 import cn.edu.tsinghua.web.bean.TimeValues;
 import cn.edu.tsinghua.web.service.DBConnectService;
 

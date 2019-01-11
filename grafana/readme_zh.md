@@ -30,7 +30,7 @@ cd grafana
 
 将`application.properties`文件从`conf/`目录复制到`target`目录下，并编辑属性值
 ```
-spring.datasource.url = jdbc:tsfile://127.0.0.1:6667/
+spring.datasource.url = jdbc:iotdb://127.0.0.1:6667/
 spring.datasource.username = root
 spring.datasource.password = root
 spring.datasource.driver-class-name=cn.edu.tsinghua.iotdb.jdbc.TsfileDriver

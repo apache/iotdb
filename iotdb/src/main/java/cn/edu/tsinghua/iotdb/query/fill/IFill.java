@@ -1,43 +1,43 @@
 package cn.edu.tsinghua.iotdb.query.fill;
 
 import cn.edu.tsinghua.iotdb.exception.PathErrorException;
-import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
+import cn.edu.tsinghua.iotdb.exception.ProcessorException;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
-import cn.edu.tsinghua.tsfile.timeseries.read.query.DynamicOneColumnData;
-import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
+import cn.edu.tsinghua.tsfile.read.common.BatchData;
+import cn.edu.tsinghua.tsfile.read.common.Path;
 
 import java.io.IOException;
 
 public abstract class IFill {
 
-    long queryTime;
-    TSDataType dataType;
+  long queryTime;
+  TSDataType dataType;
 
-    public IFill(TSDataType dataType, long queryTime) {
-        this.dataType = dataType;
-        this.queryTime = queryTime;
-    }
+  public IFill(TSDataType dataType, long queryTime) {
+    this.dataType = dataType;
+    this.queryTime = queryTime;
+  }
 
-    public IFill() {
-    }
+  public IFill() {
+  }
 
-    public abstract IFill copy(Path path);
+  public abstract IFill copy(Path path);
 
-    public abstract DynamicOneColumnData getFillResult() throws ProcessorException, IOException, PathErrorException;
+  public abstract BatchData getFillResult() throws ProcessorException, IOException, PathErrorException;
 
-    public void setQueryTime(long queryTime) {
-        this.queryTime = queryTime;
-    }
+  public void setQueryTime(long queryTime) {
+    this.queryTime = queryTime;
+  }
 
-    public void setDataType(TSDataType dataType) {
-        this.dataType = dataType;
-    }
+  public void setDataType(TSDataType dataType) {
+    this.dataType = dataType;
+  }
 
-    public TSDataType getDataType() {
-        return this.dataType;
-    }
+  public TSDataType getDataType() {
+    return this.dataType;
+  }
 
-    public long getQueryTime() {
-        return this.queryTime;
-    }
+  public long getQueryTime() {
+    return this.queryTime;
+  }
 }

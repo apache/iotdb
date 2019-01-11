@@ -5,16 +5,11 @@ import cn.edu.tsinghua.iotdb.qp.physical.PhysicalPlan;
 import cn.edu.tsinghua.iotdb.qp.physical.crud.DeletePlan;
 import cn.edu.tsinghua.iotdb.qp.physical.crud.InsertPlan;
 import cn.edu.tsinghua.iotdb.qp.physical.crud.UpdatePlan;
-import cn.edu.tsinghua.iotdb.writelog.io.LogWriter;
-import cn.edu.tsinghua.iotdb.writelog.transfer.PhysicalPlanCodec;
 import cn.edu.tsinghua.iotdb.writelog.transfer.PhysicalPlanLogTransfer;
-import cn.edu.tsinghua.iotdb.writelog.transfer.SystemLogOperator;
-import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
-import org.junit.After;
+import cn.edu.tsinghua.tsfile.read.common.Path;
 import org.junit.Before;
 import org.junit.Test;
 import static org.junit.Assert.*;
-import static org.hamcrest.CoreMatchers.*;
 
 import java.io.File;
 import java.io.IOException;

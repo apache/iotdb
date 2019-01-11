@@ -1,7 +1,7 @@
 package cn.edu.tsinghua.iotdb.engine.memcontrol;
 
-import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
-import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
+import cn.edu.tsinghua.iotdb.conf.IoTDBConfig;
+import cn.edu.tsinghua.iotdb.conf.IoTDBDescriptor;
 import cn.edu.tsinghua.iotdb.exception.BufferWriteProcessorException;
 import org.junit.Test;
 
@@ -9,7 +9,7 @@ import static org.junit.Assert.assertEquals;
 
 public class MemControllerTest {
 
-    private TsfileDBConfig config = TsfileDBDescriptor.getInstance().getConfig();
+    private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
     private static long GB = 1024 * 1024 * 1024L;
     private static long MB = 1024 * 1024L;

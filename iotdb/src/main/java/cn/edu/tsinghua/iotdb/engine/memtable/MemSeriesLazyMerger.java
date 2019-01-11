@@ -1,36 +1,38 @@
 package cn.edu.tsinghua.iotdb.engine.memtable;
 
-import cn.edu.tsinghua.tsfile.timeseries.readV2.datatype.TimeValuePair;
+import cn.edu.tsinghua.iotdb.utils.TimeValuePair;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-/**
- * Created by zhangjinrui on 2018/1/26.
- */
+
 public class MemSeriesLazyMerger implements TimeValuePairSorter{
 
-    private List<IMemSeries> memSeriesList;
+    private List<TimeValuePairSorter> memSeriesList;
 
     public MemSeriesLazyMerger() {
         memSeriesList = new ArrayList<>();
     }
 
-    public MemSeriesLazyMerger(IMemSeries... memSerieses) {
+    /**
+     * @param memSerieses Please ensure that the  memSerieses are in ascending order by timestamp.
+     */
+    public MemSeriesLazyMerger(TimeValuePairSorter... memSerieses) {
         this();
         Collections.addAll(memSeriesList, memSerieses);
     }
 
     /**
-     * IMPORTANT: Please ensure that the minimum timestamp of added {@link IMemSeries} is larger than
-     * any timestamps of the IMemSeries already added in.
+     * IMPORTANT: Please ensure that the minimum timestamp of added {@link IWritableMemChunk} is larger than
+     * any timestamps of the IWritableMemChunk already added in.
      * @param series
      */
-    public void addMemSeries(IMemSeries series) {
+    public void addMemSeries(TimeValuePairSorter series) {
         memSeriesList.add(series);
     }
 
+    @Override
     public List<TimeValuePair> getSortedTimeValuePairList() {
         if (memSeriesList.size() == 0) {
             return new ArrayList<>();

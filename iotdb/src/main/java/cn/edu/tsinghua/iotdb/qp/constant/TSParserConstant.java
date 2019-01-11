@@ -31,8 +31,9 @@ public class TSParserConstant {
     }
     
     public static int getTSTokenIntType(int antlrIntType) {
-        if(!antlrQpMap.containsKey(antlrIntType))
+        if(!antlrQpMap.containsKey(antlrIntType)) {
             System.out.println(antlrIntType);
+        }
         return antlrQpMap.get(antlrIntType);
     }
     

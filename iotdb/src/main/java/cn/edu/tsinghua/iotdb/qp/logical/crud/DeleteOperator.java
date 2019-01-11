@@ -4,9 +4,6 @@ import cn.edu.tsinghua.iotdb.qp.logical.Operator;
 
 /**
  * this class extends {@code RootOperator} and process delete statement
- * 
- * @author kangrong
- *
  */
 public class DeleteOperator extends SFWOperator {
 

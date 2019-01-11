@@ -5,57 +5,54 @@ import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- * @author Rong Kang
- */
-public abstract class AbstractMemTable implements IMemTable{
+
+public abstract class AbstractMemTable implements IMemTable {
 
     @Override
-    public Map<String, Map<String, IMemSeries>> getMemTableMap() {
+    public Map<String, Map<String, IWritableMemChunk>> getMemTableMap() {
         return memTableMap;
     }
 
-    private final Map<String, Map<String, IMemSeries>> memTableMap;
+    private final Map<String, Map<String, IWritableMemChunk>> memTableMap;
 
     public AbstractMemTable() {
         this.memTableMap = new HashMap<>();
     }
 
     /**
-     * check whether the given path is within this memtable.
+     * check whether the given seriesPath is within this memtable.
      *
-     * @return true if path is within this memtable
-     *
+     * @return true if seriesPath is within this memtable
      */
-    private boolean checkPath(String deltaObject, String measurement) {
-        return memTableMap.containsKey(deltaObject) &&
-                memTableMap.get(deltaObject).containsKey(measurement);
+    private boolean checkPath(String deviceId, String measurement) {
+        return memTableMap.containsKey(deviceId) &&
+                memTableMap.get(deviceId).containsKey(measurement);
     }
 
-    private IMemSeries createIfNotExistAndGet(String deltaObject, String measurement, TSDataType dataType) {
-        if(!memTableMap.containsKey(deltaObject)) {
-            memTableMap.put(deltaObject, new HashMap<>());
+    private IWritableMemChunk createIfNotExistAndGet(String deviceId, String measurement, TSDataType dataType) {
+        if (!memTableMap.containsKey(deviceId)) {
+            memTableMap.put(deviceId, new HashMap<>());
         }
-        Map<String, IMemSeries> memSeries = memTableMap.get(deltaObject);
-        if(!memSeries.containsKey(measurement)) {
+        Map<String, IWritableMemChunk> memSeries = memTableMap.get(deviceId);
+        if (!memSeries.containsKey(measurement)) {
             memSeries.put(measurement, genMemSeries(dataType));
         }
         return memSeries.get(measurement);
     }
 
-    protected abstract IMemSeries genMemSeries(TSDataType dataType);
+    protected abstract IWritableMemChunk genMemSeries(TSDataType dataType);
 
     @Override
-    public void write(String deltaObject, String measurement, TSDataType dataType, long insertTime, String insertValue) {
-        IMemSeries memSeries = createIfNotExistAndGet(deltaObject, measurement, dataType);
-        memSeries.write(insertTime,insertValue);
+    public void write(String deviceId, String measurement, TSDataType dataType, long insertTime, String insertValue) {
+        IWritableMemChunk memSeries = createIfNotExistAndGet(deviceId, measurement, dataType);
+        memSeries.write(insertTime, insertValue);
     }
 
     @Override
     public int size() {
         int sum = 0;
-        for (Map<String, IMemSeries> seriesMap : memTableMap.values()) {
-            for (IMemSeries iMemSeries : seriesMap.values()) {
+        for (Map<String, IWritableMemChunk> seriesMap : memTableMap.values()) {
+            for (IWritableMemChunk iMemSeries : seriesMap.values()) {
                 sum += iMemSeries.count();
             }
         }
@@ -63,7 +60,7 @@ public abstract class AbstractMemTable implements IMemTable{
     }
 
     @Override
-    public void clear(){
+    public void clear() {
         memTableMap.clear();
     }
 
@@ -74,10 +71,10 @@ public abstract class AbstractMemTable implements IMemTable{
 
 
     @Override
-    public IMemSeries query(String deltaObject, String measurement, TSDataType dataType) {
-        if(!checkPath(deltaObject,measurement))
-            return new PrimitiveMemSeries(dataType);
-        return memTableMap.get(deltaObject).get(measurement);
+    public TimeValuePairSorter query(String deviceId, String measurement, TSDataType dataType) {
+        if (!checkPath(deviceId, measurement))
+            return new WritableMemChunk(dataType);
+        return memTableMap.get(deviceId).get(measurement);
     }
 
 }
