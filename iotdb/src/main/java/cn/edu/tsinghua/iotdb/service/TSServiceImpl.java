@@ -4,31 +4,29 @@ import cn.edu.tsinghua.iotdb.auth.AuthException;
 import cn.edu.tsinghua.iotdb.auth.AuthorityChecker;
 import cn.edu.tsinghua.iotdb.auth.authorizer.IAuthorizer;
 import cn.edu.tsinghua.iotdb.auth.authorizer.LocalFileAuthorizer;
-import cn.edu.tsinghua.iotdb.conf.TsFileDBConstant;
-import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
-import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
+import cn.edu.tsinghua.iotdb.conf.IoTDBConstant;
+import cn.edu.tsinghua.iotdb.conf.IoTDBConfig;
+import cn.edu.tsinghua.iotdb.conf.IoTDBDescriptor;
 import cn.edu.tsinghua.iotdb.engine.filenode.FileNodeManager;
 import cn.edu.tsinghua.iotdb.exception.ArgsErrorException;
 import cn.edu.tsinghua.iotdb.exception.FileNodeManagerException;
 import cn.edu.tsinghua.iotdb.exception.PathErrorException;
+import cn.edu.tsinghua.iotdb.exception.ProcessorException;
+import cn.edu.tsinghua.iotdb.exception.qp.IllegalASTFormatException;
+import cn.edu.tsinghua.iotdb.exception.qp.QueryProcessorException;
 import cn.edu.tsinghua.iotdb.metadata.MManager;
 import cn.edu.tsinghua.iotdb.metadata.Metadata;
 import cn.edu.tsinghua.iotdb.qp.QueryProcessor;
-import cn.edu.tsinghua.iotdb.qp.exception.IllegalASTFormatException;
-import cn.edu.tsinghua.iotdb.qp.exception.QueryProcessorException;
 import cn.edu.tsinghua.iotdb.qp.executor.OverflowQPExecutor;
 import cn.edu.tsinghua.iotdb.qp.logical.Operator;
 import cn.edu.tsinghua.iotdb.qp.physical.PhysicalPlan;
-import cn.edu.tsinghua.iotdb.qp.physical.crud.IndexQueryPlan;
-import cn.edu.tsinghua.iotdb.qp.physical.crud.MultiQueryPlan;
+import cn.edu.tsinghua.iotdb.qp.physical.crud.QueryPlan;
 import cn.edu.tsinghua.iotdb.qp.physical.sys.AuthorPlan;
-import cn.edu.tsinghua.iotdb.query.aggregation.AggregationConstant;
-import cn.edu.tsinghua.iotdb.query.management.ReadCacheManager;
-import cn.edu.tsinghua.iotdb.queryV2.engine.control.QueryJobManager;
+import cn.edu.tsinghua.iotdb.query.control.OpenedFilePathsManager;
+import cn.edu.tsinghua.iotdb.query.control.QueryTokenManager;
 import cn.edu.tsinghua.service.rpc.thrift.*;
-import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
-import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
-import cn.edu.tsinghua.tsfile.timeseries.readV2.query.QueryDataSet;
+import cn.edu.tsinghua.tsfile.read.common.Path;
+import cn.edu.tsinghua.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.thrift.TException;
 import org.apache.thrift.server.ServerContext;
 import org.slf4j.Logger;
@@ -44,9 +42,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
-import static cn.edu.tsinghua.iotdb.qp.logical.Operator.OperatorType.INDEXQUERY;
-import static cn.edu.tsinghua.iotdb.qp.logical.Operator.OperatorType.QUERY;
-
 /**
  * Thrift RPC implementation at server side
  */
@@ -60,7 +55,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 	private ThreadLocal<HashMap<String, PhysicalPlan>> queryStatus = new ThreadLocal<>();
 	private ThreadLocal<HashMap<String, QueryDataSet>> queryRet = new ThreadLocal<>();
 	private ThreadLocal<ZoneId> zoneIds = new ThreadLocal<>();
-	private TsfileDBConfig config = TsfileDBDescriptor.getInstance().getConfig();
+	private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(TSServiceImpl.class);
 
@@ -70,7 +65,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
 	@Override
 	public TSOpenSessionResp openSession(TSOpenSessionReq req) throws TException {
-		LOGGER.info("{}: receive open session request from username {}",TsFileDBConstant.GLOBAL_DB_NAME, req.getUsername());
+		LOGGER.info("{}: receive open session request from username {}",IoTDBConstant.GLOBAL_DB_NAME, req.getUsername());
 
 		boolean status;
 		IAuthorizer authorizer = null;
@@ -98,7 +93,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 		TSOpenSessionResp resp = new TSOpenSessionResp(ts_status, TSProtocolVersion.TSFILE_SERVICE_PROTOCOL_V1);
 		resp.setSessionHandle(new TS_SessionHandle(new TSHandleIdentifier(ByteBuffer.wrap(req.getUsername().getBytes()),
 				ByteBuffer.wrap((req.getPassword().getBytes())))));
-		LOGGER.info("{}: Login status: {}. User : {}",TsFileDBConstant.GLOBAL_DB_NAME, ts_status.getErrorMessage(), req.getUsername());
+		LOGGER.info("{}: Login status: {}. User : {}",IoTDBConstant.GLOBAL_DB_NAME, ts_status.getErrorMessage(), req.getUsername());
 
 		return resp;
 	}
@@ -110,7 +105,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
 	@Override
 	public TSCloseSessionResp closeSession(TSCloseSessionReq req) throws TException {
-		LOGGER.info("{}: receive close session",TsFileDBConstant.GLOBAL_DB_NAME);
+		LOGGER.info("{}: receive close session",IoTDBConstant.GLOBAL_DB_NAME);
 		TS_Status ts_status;
 		if (username.get() == null) {
 			ts_status = new TS_Status(TS_StatusCode.ERROR_STATUS);
@@ -135,12 +130,16 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
 	@Override
 	public TSCloseOperationResp closeOperation(TSCloseOperationReq req) throws TException {
-		LOGGER.info("{}: receive close operation",TsFileDBConstant.GLOBAL_DB_NAME);
+		LOGGER.info("{}: receive close operation",IoTDBConstant.GLOBAL_DB_NAME);
 		try {
-			ReadCacheManager.getInstance().unlockForOneRequest();
-			QueryJobManager.getInstance().closeAllJobForOneQuery();
+			// end query for all the query tokens created by current thread
+			QueryTokenManager.getInstance().endQueryForCurrentRequestThread();
+
+			// remove usage of opened file paths of current thread
+			OpenedFilePathsManager.getInstance().removeUsedFilesForCurrentRequestThread();
+
 			clearAllStatusForCurrentRequest();
-		} catch (ProcessorException | IOException e) {
+		} catch (FileNodeManagerException e) {
 			LOGGER.error("Error in closeOperation : {}", e.getMessage());
 		}
 		return new TSCloseOperationResp(new TS_Status(TS_StatusCode.SUCCESS_STATUS));
@@ -159,7 +158,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 	public TSFetchMetadataResp fetchMetadata(TSFetchMetadataReq req) throws TException {
 		TS_Status status;
 		if (!checkLogin()) {
-			LOGGER.info("{}: Not login.",TsFileDBConstant.GLOBAL_DB_NAME);
+			LOGGER.info("{}: Not login.",IoTDBConstant.GLOBAL_DB_NAME);
 			status = new TS_Status(TS_StatusCode.ERROR_STATUS);
 			status.setErrorMessage("Not login");
 			return new TSFetchMetadataResp(status);
@@ -222,11 +221,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 				try {
                     			String column = req.getColumnPath();
                     			metadata = MManager.getInstance().getMetadata();
-                    			Map<String, List<String>> deltaObjectMap = metadata.getDeltaObjectMap();
-                    			if (deltaObjectMap == null || !deltaObjectMap.containsKey(column)) {
+                    			Map<String, List<String>> deviceMap = metadata.getDeviceMap();
+                    			if (deviceMap == null || !deviceMap.containsKey(column)) {
                         			resp.setColumnsList(new ArrayList<>());
                     			} else {
-						resp.setColumnsList(deltaObjectMap.get(column));
+						resp.setColumnsList(deviceMap.get(column));
                     			}
                 		} catch (PathErrorException e) {
                     			LOGGER.error("cannot get delta object map", e);
@@ -245,7 +244,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 			case "COLUMN":
 				try {
                     			resp.setDataType(MManager.getInstance().getSeriesType(req.getColumnPath()).toString());
-                		} catch (PathErrorException e) { //TODO aggregate path e.g. last(root.ln.wf01.wt01.status)
+                		} catch (PathErrorException e) { //TODO aggregate seriesPath e.g. last(root.ln.wf01.wt01.status)
 			//                    status = new TS_Status(TS_StatusCode.ERROR_STATUS);
 			//                    status.setErrorMessage(String.format("Failed to fetch %s's data type because: %s", req.getColumnPath(), e));
 			//                    resp.setStatus(status);
@@ -262,7 +261,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
                     			resp.setStatus(status);
                     			return resp;
                 		} catch (OutOfMemoryError outOfMemoryError) { // TODO OOME
-                    			LOGGER.error("Failed to fetch path {}'s all columns", req.getColumnPath(), outOfMemoryError);
+                    			LOGGER.error("Failed to fetch seriesPath {}'s all columns", req.getColumnPath(), outOfMemoryError);
                     			status = new TS_Status(TS_StatusCode.ERROR_STATUS);
                     			status.setErrorMessage(String.format("Failed to fetch %s's all columns because: %s", req.getColumnPath(), outOfMemoryError));
                     			break;
@@ -279,7 +278,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 	}
 
 	/**
-	 * Judge whether the statement is ADMIN COMMAND and if true, execute it.
+	 * Judge whether the statement is ADMIN COMMAND and if true, executeWithGlobalTimeFilter it.
 	 *
 	 * @param statement
 	 *            command
@@ -323,7 +322,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 	public TSExecuteBatchStatementResp executeBatchStatement(TSExecuteBatchStatementReq req) throws TException {
 		try {
 			if (!checkLogin()) {
-				LOGGER.info("{}: Not login.",TsFileDBConstant.GLOBAL_DB_NAME);
+				LOGGER.info("{}: Not login.",IoTDBConstant.GLOBAL_DB_NAME);
 				return getTSBathExecuteStatementResp(TS_StatusCode.ERROR_STATUS, "Not login", null);
 			}
 			List<String> statements = req.getStatements();
@@ -349,7 +348,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 						batchErrorMessage = resp.getStatus().getErrorMessage();
 					}
 				} catch (Exception e) {
-					String errMessage = String.format("Fail to generate physcial plan and execute for statement %s beacuse %s", statement, e.getMessage());
+					String errMessage = String.format("Fail to generate physcial plan and executeWithGlobalTimeFilter for statement %s beacuse %s", statement, e.getMessage());
 					//LOGGER.error(errMessage);
 					result.add(Statement.EXECUTE_FAILED);
 					isAllSuccessful = false;
@@ -362,7 +361,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 				return getTSBathExecuteStatementResp(TS_StatusCode.ERROR_STATUS, batchErrorMessage, result);
 			}
 		} catch (Exception e) {
-			LOGGER.error("{}: error occurs when executing statements",TsFileDBConstant.GLOBAL_DB_NAME, e);
+			LOGGER.error("{}: error occurs when executing statements",IoTDBConstant.GLOBAL_DB_NAME, e);
 			return getTSBathExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage(), null);
 		}
 	}
@@ -371,7 +370,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 	public TSExecuteStatementResp executeStatement(TSExecuteStatementReq req) throws TException {
 		try {
 			if (!checkLogin()) {
-				LOGGER.info("{}: Not login.",TsFileDBConstant.GLOBAL_DB_NAME);
+				LOGGER.info("{}: Not login.",IoTDBConstant.GLOBAL_DB_NAME);
 				return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, "Not login");
 			}
 			String statement = req.getStatement();
@@ -410,7 +409,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
 		try {
 			if (!checkLogin()) {
-				LOGGER.info("{}: Not login.",TsFileDBConstant.GLOBAL_DB_NAME);
+				LOGGER.info("{}: Not login.",IoTDBConstant.GLOBAL_DB_NAME);
 				return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, "Not login");
 			}
 
@@ -424,7 +423,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 			List<Path> paths;
 			paths = plan.getPaths();
 
-			// check path exists
+			// check seriesPath exists
 			if (paths.size() == 0) {
 				return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, "Timeseries does not exist.");
 			}
@@ -445,17 +444,16 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 			List<String> columns = new ArrayList<>();
 			// Restore column header of aggregate to func(column_name), only
 			// support single aggregate function for now
-			if (plan.getOperatorType() == INDEXQUERY){
-				columns = ((IndexQueryPlan)plan).getColumnHeader();
-			} else if(plan instanceof MultiQueryPlan) {
-				switch (((MultiQueryPlan) plan).getType()) {
+			if(plan instanceof QueryPlan) {
+				switch (plan.getOperatorType()) {
+					case QUERY:
 					case FILL:
 						for (Path p : paths) {
 							columns.add(p.getFullPath());
 						}
 						break;
-					case GROUPBY:
 					case AGGREGATION:
+					case GROUPBY:
 						List<String> aggregations = plan.getAggregations();
 						if (aggregations.size() != paths.size()) {
 							for (int i = 1; i < paths.size(); i++) {
@@ -467,7 +465,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 						}
 						break;
 					default:
-						throw new TException("unsupported query type: " + ((MultiQueryPlan) plan).getType());
+						throw new TException("unsupported query type: " + plan.getOperatorType());
 				}
 			} else {
 				Operator.OperatorType type = plan.getOperatorType();
@@ -495,13 +493,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 				}
 			}
 				
-			if (plan.getOperatorType() == INDEXQUERY) {
-				resp.setOperationType(INDEXQUERY.toString());
-			} else if(plan instanceof MultiQueryPlan){
-				resp.setOperationType(((MultiQueryPlan) plan).getType().toString());
-			} else {
-				resp.setOperationType(plan.getOperatorType().toString());
-			}
+			resp.setOperationType(plan.getOperatorType().toString());
 			TSHandleIdentifier operationId = new TSHandleIdentifier(ByteBuffer.wrap(username.get().getBytes()),
 					ByteBuffer.wrap(("PASS".getBytes())));
 			TSOperationHandle operationHandle;
@@ -511,7 +503,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 			recordANewQuery(statement, plan);
 			return resp;
 		} catch (Exception e) {
-			LOGGER.error("{}: Internal server error: {}",TsFileDBConstant.GLOBAL_DB_NAME, e.getMessage());
+			LOGGER.error("{}: Internal server error: {}",IoTDBConstant.GLOBAL_DB_NAME, e.getMessage());
 			return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
 		}
 	}
@@ -548,7 +540,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 			resp.setQueryDataSet(result);
 			return resp;
 		} catch (Exception e) {
-			LOGGER.error("{}: Internal server error: {}",TsFileDBConstant.GLOBAL_DB_NAME, e.getMessage());
+			LOGGER.error("{}: Internal server error: {}",IoTDBConstant.GLOBAL_DB_NAME, e.getMessage());
 			return getTSFetchResultsResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
 		}
 	}
@@ -564,7 +556,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 		} catch (ProcessorException e) {
 			return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
 		} catch (Exception e) {
-			LOGGER.error("{}: server Internal Error: {}",TsFileDBConstant.GLOBAL_DB_NAME, e.getMessage());
+			LOGGER.error("{}: server Internal Error: {}",IoTDBConstant.GLOBAL_DB_NAME, e.getMessage());
 			return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
 		}
 	}
@@ -759,10 +751,10 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 	@Override
 	public ServerProperties getProperties() throws TException {
 		ServerProperties properties = new ServerProperties();
-		properties.setVersion(TsFileDBConstant.VERSION);
+		properties.setVersion(IoTDBConstant.VERSION);
 		properties.setSupportedTimeAggregationOperations(new ArrayList<>());
-		properties.getSupportedTimeAggregationOperations().add(AggregationConstant.MAX_TIME);
-		properties.getSupportedTimeAggregationOperations().add(AggregationConstant.MIN_TIME);
+		properties.getSupportedTimeAggregationOperations().add(IoTDBConstant.MAX_TIME);
+		properties.getSupportedTimeAggregationOperations().add(IoTDBConstant.MIN_TIME);
 		return properties;
 	}
 }

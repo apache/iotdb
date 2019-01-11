@@ -53,7 +53,7 @@ public class MinFolderOccupiedSpaceFirstStrategy extends DirectoryStrategy {
                     .mapToLong(p -> p.toFile().length())
                     .sum();
         } catch (IOException e) {
-            LOGGER.error("Cannot calculate occupied space for path {}.", path);
+            LOGGER.error("Cannot calculate occupied space for seriesPath {}.", path);
         }
 
         return size / DATA_SIZE_SHIFT;

@@ -1,7 +1,7 @@
 package cn.edu.tsinghua.tsfile.encoding.encoder;
 
-import cn.edu.tsinghua.tsfile.common.exception.TSFileEncodingException;
-import cn.edu.tsinghua.tsfile.common.utils.ReadWriteStreamUtils;
+import cn.edu.tsinghua.tsfile.exception.encoding.TSFileEncodingException;
+import cn.edu.tsinghua.tsfile.utils.ReadWriteForEncodingUtils;
 import cn.edu.tsinghua.tsfile.encoding.common.EndianType;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSEncoding;
@@ -49,10 +49,8 @@ public class FloatEncoder extends Encoder {
         if (encodingType == TSEncoding.RLE) {
             if (dataType == TSDataType.FLOAT) {
                 encoder = new IntRleEncoder(EndianType.LITTLE_ENDIAN);
-                LOGGER.debug("tsfile-encoding FloatEncoder: init encoder using int-rle and float");
             } else if (dataType == TSDataType.DOUBLE) {
                 encoder = new LongRleEncoder(EndianType.LITTLE_ENDIAN);
-                LOGGER.debug("tsfile-encoding FloatEncoder: init encoder using long-rle and double");
             } else {
                 throw new TSFileEncodingException(
                         String.format("data type %s is not supported by FloatEncoder", dataType));
@@ -60,10 +58,8 @@ public class FloatEncoder extends Encoder {
         } else if (encodingType == TSEncoding.TS_2DIFF) {
             if (dataType == TSDataType.FLOAT) {
                 encoder = new DeltaBinaryEncoder.IntDeltaEncoder();
-                LOGGER.debug("tsfile-encoding FloatEncoder: init encoder using int-delta and float");
             } else if (dataType == TSDataType.DOUBLE) {
                 encoder = new DeltaBinaryEncoder.LongDeltaEncoder();
-                LOGGER.debug("tsfile-encoding FloatEncoder: init encoder using long-delta and double");
             } else {
                 throw new TSFileEncodingException(
                         String.format("data type %s is not supported by FloatEncoder", dataType));
@@ -117,7 +113,7 @@ public class FloatEncoder extends Encoder {
 
     private void saveMaxPointNumber(ByteArrayOutputStream out) throws IOException {
         if (!isMaxPointNumberSaved) {
-            ReadWriteStreamUtils.writeUnsignedVarInt(maxPointNumber, out);
+            ReadWriteForEncodingUtils.writeUnsignedVarInt(maxPointNumber, out);
             isMaxPointNumberSaved = true;
         }
     }

@@ -2,9 +2,9 @@ package cn.edu.tsinghua.tsfile.encoding.decoder;
 
 import static org.junit.Assert.*;
 
-import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -79,17 +79,17 @@ public class GorillaDecoderTest {
 		encoder.encode(value - 2, baos);
 		encoder.encode(value - 4, baos);
 		encoder.flush(baos);
-		ByteArrayInputStream bais = new ByteArrayInputStream(baos.toByteArray());
+		ByteBuffer buffer = ByteBuffer.wrap(baos.toByteArray());
 		for(int i = 0; i < 2;i++){
 			Decoder decoder = new SinglePrecisionDecoder();
-			if(decoder.hasNext(bais)){
-				assertEquals(value, decoder.readFloat(bais), delta);
+			if(decoder.hasNext(buffer)){
+				assertEquals(value, decoder.readFloat(buffer), delta);
 			}
-			if(decoder.hasNext(bais)){
-				assertEquals(value-2, decoder.readFloat(bais), delta);
+			if(decoder.hasNext(buffer)){
+				assertEquals(value-2, decoder.readFloat(buffer), delta);
 			}
-			if(decoder.hasNext(bais)){
-				assertEquals(value-4, decoder.readFloat(bais), delta);
+			if(decoder.hasNext(buffer)){
+				assertEquals(value-4, decoder.readFloat(buffer), delta);
 			}
 		}
 	}
@@ -107,17 +107,17 @@ public class GorillaDecoderTest {
 		encoder.encode(value, baos);
 		encoder.encode(value, baos);
 		encoder.flush(baos);
-		ByteArrayInputStream bais = new ByteArrayInputStream(baos.toByteArray());
+		ByteBuffer buffer = ByteBuffer.wrap(baos.toByteArray());
 		for(int i = 0; i < 2;i++){
 			Decoder decoder = new DoublePrecisionDecoder();
-			if(decoder.hasNext(bais)){
-				assertEquals(value, decoder.readDouble(bais), delta);
+			if(decoder.hasNext(buffer)){
+				assertEquals(value, decoder.readDouble(buffer), delta);
 			}
-			if(decoder.hasNext(bais)){
-				assertEquals(value, decoder.readDouble(bais), delta);
+			if(decoder.hasNext(buffer)){
+				assertEquals(value, decoder.readDouble(buffer), delta);
 			}
-			if(decoder.hasNext(bais)){
-				assertEquals(value, decoder.readDouble(bais), delta);
+			if(decoder.hasNext(buffer)){
+				assertEquals(value, decoder.readDouble(buffer), delta);
 			}
 		}
 	}
@@ -146,11 +146,11 @@ public class GorillaDecoderTest {
 			encoder.encode(value + 2 * i, baos);
 		}
 		encoder.flush(baos);
-		ByteArrayInputStream bais = new ByteArrayInputStream(baos.toByteArray());
+		ByteBuffer buffer = ByteBuffer.wrap(baos.toByteArray());
 		Decoder decoder = new SinglePrecisionDecoder();
 		for(int i = 0; i < num;i++){
-			if(decoder.hasNext(bais)){
-				assertEquals(value + 2 * i, decoder.readFloat(bais), delta);
+			if(decoder.hasNext(buffer)){
+				assertEquals(value + 2 * i, decoder.readFloat(buffer), delta);
 				continue;
 			}
 			fail();
@@ -167,12 +167,12 @@ public class GorillaDecoderTest {
 			encoder.encode(value + 2 * i, baos);
 		}
 		encoder.flush(baos);
-		ByteArrayInputStream bais = new ByteArrayInputStream(baos.toByteArray());
+		ByteBuffer buffer = ByteBuffer.wrap(baos.toByteArray());
 		Decoder decoder = new DoublePrecisionDecoder();
 		for(int i = 0; i < num;i++){
-			if(decoder.hasNext(bais)){
+			if(decoder.hasNext(buffer)){
 //				System.out.println("turn "+i);
-				assertEquals(value + 2 * i, decoder.readDouble(bais), delta);
+				assertEquals(value + 2 * i, decoder.readDouble(buffer), delta);
 				continue;
 			}
 			fail();
@@ -188,14 +188,14 @@ public class GorillaDecoderTest {
 			}
 			encoder.flush(baos);
 		}
-		ByteArrayInputStream bais = new ByteArrayInputStream(baos.toByteArray());
+		ByteBuffer buffer = ByteBuffer.wrap(baos.toByteArray());
 		for (int i = 0; i < repeatCount; i++) {
 			
 			Decoder decoder = new SinglePrecisionDecoder();
 			for (float value : valueList) {
 //				System.out.println("Repeat: "+i+" value: "+value);
-				if(decoder.hasNext(bais)){
-					float value_ = decoder.readFloat(bais);
+				if(decoder.hasNext(buffer)){
+					float value_ = decoder.readFloat(buffer);
 					if (isDebug) {
 						LOGGER.debug("{} // {}", value_, value);
 					}
@@ -217,13 +217,13 @@ public class GorillaDecoderTest {
 			encoder.flush(baos);
 		}
 
-		ByteArrayInputStream bais = new ByteArrayInputStream(baos.toByteArray());
+		ByteBuffer buffer = ByteBuffer.wrap(baos.toByteArray());
 
 		for (int i = 0; i < repeatCount; i++) {
 			Decoder decoder = new DoublePrecisionDecoder();
 			for (double value : valueList) {
-				if(decoder.hasNext(bais)){
-					double value_ = decoder.readDouble(bais);
+				if(decoder.hasNext(buffer)){
+					double value_ = decoder.readDouble(buffer);
 					if (isDebug) {
 						LOGGER.debug("{} // {}", value_, value);
 					}

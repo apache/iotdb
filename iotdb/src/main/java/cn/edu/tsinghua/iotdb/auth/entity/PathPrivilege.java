@@ -7,7 +7,7 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * This class represents a privilege on a specific path. If the privilege is path-free, the path will be null.
+ * This class represents a privilege on a specific seriesPath. If the privilege is seriesPath-free, the seriesPath will be null.
  */
 public class PathPrivilege {
     public Set<Integer> privileges;

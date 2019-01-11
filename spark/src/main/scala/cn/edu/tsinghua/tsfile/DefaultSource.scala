@@ -6,7 +6,7 @@ import java.util
 
 import cn.edu.tsinghua.tsfile.common.constant.QueryConstant
 import cn.edu.tsinghua.tsfile.DefaultSource.SerializableConfiguration
-import cn.edu.tsinghua.tsfile.timeseries.read.query.QueryDataSet
+import cn.edu.tsinghua.tsfile.timeseries.read.query.dataset.QueryDataSet
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{FileStatus, Path}
 import org.apache.hadoop.mapreduce.Job

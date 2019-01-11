@@ -1,7 +1,7 @@
 package cn.edu.tsinghua.iotdb.engine.memcontrol;
 
 import cn.edu.tsinghua.iotdb.concurrent.ThreadName;
-import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
+import cn.edu.tsinghua.iotdb.conf.IoTDBConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -15,7 +15,7 @@ public class MemMonitorThread extends Thread {
     private Policy warningPolicy;
     private Policy dangerousPolicy;
 
-    public MemMonitorThread(TsfileDBConfig config) {
+    public MemMonitorThread(IoTDBConfig config) {
         this.setName(ThreadName.MEMORY_MONITOR.getName());
         long checkInterval = config.memMonitorInterval;
         this.checkInterval = checkInterval > 0 ? checkInterval : this.checkInterval;

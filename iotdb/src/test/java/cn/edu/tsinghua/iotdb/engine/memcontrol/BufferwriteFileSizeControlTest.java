@@ -1,8 +1,8 @@
 package cn.edu.tsinghua.iotdb.engine.memcontrol;
 
 import cn.edu.tsinghua.iotdb.conf.directories.Directories;
-import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
-import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
+import cn.edu.tsinghua.iotdb.conf.IoTDBConfig;
+import cn.edu.tsinghua.iotdb.conf.IoTDBDescriptor;
 import cn.edu.tsinghua.iotdb.engine.MetadataManagerHelper;
 import cn.edu.tsinghua.iotdb.engine.PathUtils;
 import cn.edu.tsinghua.iotdb.engine.bufferwrite.Action;
@@ -16,9 +16,9 @@ import cn.edu.tsinghua.iotdb.utils.MemUtils;
 import cn.edu.tsinghua.tsfile.common.conf.TSFileConfig;
 import cn.edu.tsinghua.tsfile.common.conf.TSFileDescriptor;
 import cn.edu.tsinghua.tsfile.common.constant.JsonFormatConstant;
+import cn.edu.tsinghua.tsfile.exception.write.WriteProcessException;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
-import cn.edu.tsinghua.tsfile.timeseries.write.exception.WriteProcessException;
-import cn.edu.tsinghua.tsfile.timeseries.write.schema.FileSchema;
+import cn.edu.tsinghua.tsfile.write.schema.FileSchema;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -71,7 +71,7 @@ public class BufferwriteFileSizeControlTest {
     private long fileSizeThreshold;
     private long memMonitorInterval;
     private TSFileConfig TsFileConf = TSFileDescriptor.getInstance().getConfig();
-    private TsfileDBConfig dbConfig = TsfileDBDescriptor.getInstance().getConfig();
+    private IoTDBConfig dbConfig = IoTDBDescriptor.getInstance().getConfig();
 
     private boolean skip = !false;
 
@@ -115,7 +115,7 @@ public class BufferwriteFileSizeControlTest {
         String filename = "bufferwritetest";
         new File(filename).delete();
 
-        Map<String, Object> parameters = new HashMap<>();
+        Map<String, Action> parameters = new HashMap<>();
         parameters.put(FileNodeConstants.BUFFERWRITE_FLUSH_ACTION, bfflushaction);
         parameters.put(FileNodeConstants.BUFFERWRITE_CLOSE_ACTION, bfcloseaction);
         parameters.put(FileNodeConstants.FILENODE_PROCESSOR_FLUSH_ACTION, fnflushaction);
@@ -161,7 +161,7 @@ public class BufferwriteFileSizeControlTest {
 
 	}
 
-	private FileSchema getFileSchemaFromColumnSchema(List<ColumnSchema> schemaList, String deltaObjectType)
+	private FileSchema getFileSchemaFromColumnSchema(List<ColumnSchema> schemaList, String deviceIdType)
 			throws WriteProcessException {
 		JSONArray rowGroup = new JSONArray();
 
@@ -181,7 +181,7 @@ public class BufferwriteFileSizeControlTest {
 		}
 		JSONObject jsonSchema = new JSONObject();
 		jsonSchema.put(JsonFormatConstant.JSON_SCHEMA, rowGroup);
-		jsonSchema.put(JsonFormatConstant.DELTA_TYPE, deltaObjectType);
+		jsonSchema.put(JsonFormatConstant.DELTA_TYPE, deviceIdType);
 		return new FileSchema(jsonSchema);
 	}
 }

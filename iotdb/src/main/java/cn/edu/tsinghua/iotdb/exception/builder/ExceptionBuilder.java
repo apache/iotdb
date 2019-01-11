@@ -1,8 +1,8 @@
 package cn.edu.tsinghua.iotdb.exception.builder;
 
-import cn.edu.tsinghua.iotdb.conf.TsFileDBConstant;
-import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
-import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
+import cn.edu.tsinghua.iotdb.conf.IoTDBConstant;
+import cn.edu.tsinghua.iotdb.conf.IoTDBConfig;
+import cn.edu.tsinghua.iotdb.conf.IoTDBDescriptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,7 +24,7 @@ public class ExceptionBuilder {
     public static final int CON_FAIL_ERR=20220;
 
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(TsfileDBDescriptor.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBDescriptor.class);
     public static final String CONFIG_NAME= "error_info_";
     public static final String FILE_SUFFIX=".properties";
     public static final String DEFAULT_FILEPATH="error_info_en.properties";
@@ -41,7 +41,7 @@ public class ExceptionBuilder {
             properties.load(new InputStreamReader(in,"utf-8"));
             in.close();
         } catch (IOException e) {
-            LOGGER.error("Read file error. File does not exist or file is broken. File path: {}.Because: {}.",filePath,e.getMessage());
+            LOGGER.error("Read file error. File does not exist or file is broken. File seriesPath: {}.Because: {}.",filePath,e.getMessage());
         } finally {
             if (in != null) {
                 try {
@@ -54,15 +54,15 @@ public class ExceptionBuilder {
     }
 
     public void loadInfo(){
-        String language = TsfileDBDescriptor.getInstance().getConfig().languageVersion.toLowerCase();
+        String language = IoTDBDescriptor.getInstance().getConfig().languageVersion.toLowerCase();
 
-        String url = System.getProperty(TsFileDBConstant.IOTDB_CONF, null);
+        String url = System.getProperty(IoTDBConstant.IOTDB_CONF, null);
         if (url == null) {
-            url = System.getProperty(TsFileDBConstant.IOTDB_HOME, null);
+            url = System.getProperty(IoTDBConstant.IOTDB_HOME, null);
             if (url != null) {
                     url = url + File.separatorChar + "conf" + File.separatorChar + ExceptionBuilder.CONFIG_NAME+language+FILE_SUFFIX;
             } else {
-                LOGGER.warn("Cannot find IOTDB_HOME or IOTDB_CONF environment variable when loading config file {}, use default configuration", TsfileDBConfig.CONFIG_NAME);
+                LOGGER.warn("Cannot find IOTDB_HOME or IOTDB_CONF environment variable when loading config file {}, use default configuration", IoTDBConfig.CONFIG_NAME);
                 return;
             }
         } else{

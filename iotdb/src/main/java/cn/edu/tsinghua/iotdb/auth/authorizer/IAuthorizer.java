@@ -40,24 +40,24 @@ public interface IAuthorizer {
     boolean deleteUser(String username) throws AuthException;
 
     /**
-     * Grant a privilege on a path to a user.
+     * Grant a privilege on a seriesPath to a user.
      *
      * @param username The username of the user to which the privilege should be added.
-     * @param path  The path on which the privilege takes effect. If the privilege is a path-free privilege, this should be "root".
+     * @param path  The seriesPath on which the privilege takes effect. If the privilege is a seriesPath-free privilege, this should be "root".
      * @param privilegeId An integer that represents a privilege.
      * @return True if the permission is successfully added, false if the permission already exists.
-     * @throws AuthException If the user does not exist or the privilege or the path is illegal.
+     * @throws AuthException If the user does not exist or the privilege or the seriesPath is illegal.
      */
     boolean grantPrivilegeToUser(String username, String path, int privilegeId) throws AuthException;
 
     /**
-     * Revoke a privilege on path from a user.
+     * Revoke a privilege on seriesPath from a user.
      *
      * @param username The username of the user from which the privilege should be removed.
-     * @param path The path on which the privilege takes effect. If the privilege is a path-free privilege, this should be "root".
+     * @param path The seriesPath on which the privilege takes effect. If the privilege is a seriesPath-free privilege, this should be "root".
      * @param privilegeId An integer that represents a privilege.
      * @return True if the permission is successfully revoked, false if the permission does not exists.
-     * @throws AuthException If the user does not exist or the privilege or the path is illegal.
+     * @throws AuthException If the user does not exist or the privilege or the seriesPath is illegal.
      */
     boolean revokePrivilegeFromUser(String username, String path, int privilegeId) throws AuthException;
 
@@ -80,24 +80,24 @@ public interface IAuthorizer {
      boolean deleteRole(String roleName) throws AuthException;
 
     /**
-     * Add a privilege on a path to a role.
+     * Add a privilege on a seriesPath to a role.
      *
      * @param roleName The name of the role to which the privilege is added.
-     * @param path The path on which the privilege takes effect. If the privilege is a path-free privilege, this should be "root".
+     * @param path The seriesPath on which the privilege takes effect. If the privilege is a seriesPath-free privilege, this should be "root".
      * @param privilegeId An integer that represents a privilege.
      * @return True if the privilege is successfully granted, false if the privilege already exists.
-     * @throws AuthException If the role does not exist or the privilege or the path is illegal.
+     * @throws AuthException If the role does not exist or the privilege or the seriesPath is illegal.
      */
      boolean grantPrivilegeToRole(String roleName, String path, int privilegeId) throws AuthException;
 
     /**
-     * Remove a privilege on a path from a role.
+     * Remove a privilege on a seriesPath from a role.
      *
      * @param roleName The name of the role from which the privilege is removed.
-     * @param path The path on which the privilege takes effect. If the privilege is a path-free privilege, this should be "root".
+     * @param path The seriesPath on which the privilege takes effect. If the privilege is a seriesPath-free privilege, this should be "root".
      * @param privilegeId An integer that represents a privilege.
      * @return True if the privilege is successfully revoked, false if the privilege does not exists.
-     * @throws AuthException If the role does not exist or the privilege or the path is illegal.
+     * @throws AuthException If the role does not exist or the privilege or the seriesPath is illegal.
      */
     boolean revokePrivilegeFromRole(String roleName, String path, int privilegeId) throws AuthException;
 
@@ -122,10 +122,10 @@ public interface IAuthorizer {
     boolean revokeRoleFromUser(String roleName, String username) throws AuthException;
 
     /**
-     * Get the all the privileges of a user on a path.
+     * Get the all the privileges of a user on a seriesPath.
      *
      * @param username The user whose privileges are to be queried.
-     * @param path The path on which the privileges take effect. If the privilege is a path-free privilege, this should be "root".
+     * @param path The seriesPath on which the privileges take effect. If the privilege is a seriesPath-free privilege, this should be "root".
      * @return A set of integers each present a privilege.
      * @throws AuthException
      */
@@ -142,13 +142,13 @@ public interface IAuthorizer {
      boolean updateUserPassword(String username, String newPassword) throws AuthException;
 
     /**
-     * Check if the user have the privilege on the path.
+     * Check if the user have the privilege on the seriesPath.
      *
      * @param username The name of the user whose privileges are checked.
-     * @param path The path on which the privilege takes effect. If the privilege is a path-free privilege, this should be "root".
+     * @param path The seriesPath on which the privilege takes effect. If the privilege is a seriesPath-free privilege, this should be "root".
      * @param privilegeId An integer that represents a privilege.
      * @return  True if the user has such privilege, false if the user does not have such privilege.
-     * @throws AuthException If the path or the privilege is illegal.
+     * @throws AuthException If the seriesPath or the privilege is illegal.
      */
     boolean checkUserPrivileges(String username, String path, int privilegeId) throws AuthException;
 

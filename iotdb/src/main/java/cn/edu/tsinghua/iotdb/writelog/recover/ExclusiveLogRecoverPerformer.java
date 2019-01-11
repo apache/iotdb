@@ -2,6 +2,7 @@ package cn.edu.tsinghua.iotdb.writelog.recover;
 
 import cn.edu.tsinghua.iotdb.engine.filenode.FileNodeManager;
 import cn.edu.tsinghua.iotdb.exception.FileNodeManagerException;
+import cn.edu.tsinghua.iotdb.exception.ProcessorException;
 import cn.edu.tsinghua.iotdb.exception.RecoverException;
 import cn.edu.tsinghua.iotdb.qp.physical.PhysicalPlan;
 import cn.edu.tsinghua.iotdb.writelog.RecoverStage;
@@ -9,7 +10,6 @@ import cn.edu.tsinghua.iotdb.writelog.replay.ConcreteLogReplayer;
 import cn.edu.tsinghua.iotdb.writelog.io.RAFLogReader;
 import cn.edu.tsinghua.iotdb.writelog.replay.LogReplayer;
 import cn.edu.tsinghua.iotdb.writelog.node.ExclusiveWriteLogNode;
-import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

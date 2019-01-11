@@ -1,16 +1,15 @@
 package cn.edu.tsinghua.iotdb.engine.overflow.ioV2;
 
-import java.util.HashMap;
-import java.util.Map;
-
-import cn.edu.tsinghua.iotdb.engine.memtable.IMemSeries;
 import cn.edu.tsinghua.iotdb.engine.memtable.IMemTable;
 import cn.edu.tsinghua.iotdb.engine.memtable.PrimitiveMemTable;
+import cn.edu.tsinghua.iotdb.engine.memtable.TimeValuePairSorter;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
-import cn.edu.tsinghua.tsfile.timeseries.filter.definition.SingleSeriesFilterExpression;
-import cn.edu.tsinghua.tsfile.timeseries.read.query.DynamicOneColumnData;
-import cn.edu.tsinghua.tsfile.timeseries.write.record.DataPoint;
-import cn.edu.tsinghua.tsfile.timeseries.write.record.TSRecord;
+import cn.edu.tsinghua.tsfile.read.common.BatchData;
+import cn.edu.tsinghua.tsfile.write.record.TSRecord;
+import cn.edu.tsinghua.tsfile.write.record.datapoint.DataPoint;
+
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * This class is used to store and query all overflow data in memory.<br>
@@ -39,43 +38,43 @@ public class OverflowSupport {
 
 	public void insert(TSRecord tsRecord) {
 		for (DataPoint dataPoint : tsRecord.dataPointList) {
-			memTable.write(tsRecord.deltaObjectId, dataPoint.getMeasurementId(), dataPoint.getType(), tsRecord.time,
+			memTable.write(tsRecord.deviceId, dataPoint.getMeasurementId(), dataPoint.getType(), tsRecord.time,
 					dataPoint.getValue().toString());
 		}
 	}
-
-	public void update(String deltaObjectId, String measurementId, long startTime, long endTime, TSDataType dataType,
+	@Deprecated
+	public void update(String deviceId, String measurementId, long startTime, long endTime, TSDataType dataType,
 			byte[] value) {
-		if (!indexTrees.containsKey(deltaObjectId)) {
-			indexTrees.put(deltaObjectId, new HashMap<>());
+		if (!indexTrees.containsKey(deviceId)) {
+			indexTrees.put(deviceId, new HashMap<>());
 		}
-		if (!indexTrees.get(deltaObjectId).containsKey(measurementId)) {
-			indexTrees.get(deltaObjectId).put(measurementId, new OverflowSeriesImpl(measurementId, dataType));
+		if (!indexTrees.get(deviceId).containsKey(measurementId)) {
+			indexTrees.get(deviceId).put(measurementId, new OverflowSeriesImpl(measurementId, dataType));
 		}
-		indexTrees.get(deltaObjectId).get(measurementId).update(startTime, endTime, value);
+		indexTrees.get(deviceId).get(measurementId).update(startTime, endTime, value);
+	}
+	@Deprecated
+	public void delete(String deviceId, String measurementId, long timestamp, TSDataType dataType) {
+		if (!indexTrees.containsKey(deviceId)) {
+			indexTrees.put(deviceId, new HashMap<>());
+		}
+		if (!indexTrees.get(deviceId).containsKey(measurementId)) {
+			indexTrees.get(deviceId).put(measurementId, new OverflowSeriesImpl(measurementId, dataType));
+		}
+		indexTrees.get(deviceId).get(measurementId).delete(timestamp);
 	}
 
-	public void delete(String deltaObjectId, String measurementId, long timestamp, TSDataType dataType) {
-		if (!indexTrees.containsKey(deltaObjectId)) {
-			indexTrees.put(deltaObjectId, new HashMap<>());
-		}
-		if (!indexTrees.get(deltaObjectId).containsKey(measurementId)) {
-			indexTrees.get(deltaObjectId).put(measurementId, new OverflowSeriesImpl(measurementId, dataType));
-		}
-		indexTrees.get(deltaObjectId).get(measurementId).delete(timestamp);
+	public TimeValuePairSorter queryOverflowInsertInMemory(String deviceId, String measurementId,
+														   TSDataType dataType) {
+		return memTable.query(deviceId, measurementId, dataType);
 	}
 
-	public IMemSeries queryOverflowInsertInMemory(String deltaObjectId, String measurementId,
-												  TSDataType dataType) {
-		return memTable.query(deltaObjectId, measurementId, dataType);
-	}
-
-	public DynamicOneColumnData queryOverflowUpdateInMemory(String deltaObjectId, String measurementId,
-															TSDataType dataType, DynamicOneColumnData data) {
-		if (indexTrees.containsKey(deltaObjectId)) {
-			if (indexTrees.get(deltaObjectId).containsKey(measurementId)
-					&& indexTrees.get(deltaObjectId).get(measurementId).getDataType().equals(dataType)) {
-				return indexTrees.get(deltaObjectId).get(measurementId).query(data);
+	public BatchData queryOverflowUpdateInMemory(String deviceId, String measurementId,
+												 TSDataType dataType, BatchData data) {
+		if (indexTrees.containsKey(deviceId)) {
+			if (indexTrees.get(deviceId).containsKey(measurementId)
+					&& indexTrees.get(deviceId).get(measurementId).getDataType().equals(dataType)) {
+				return indexTrees.get(deviceId).get(measurementId).query(data);
 			}
 		}
 		return null;

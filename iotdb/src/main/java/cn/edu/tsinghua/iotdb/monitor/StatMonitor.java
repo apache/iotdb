@@ -2,29 +2,22 @@ package cn.edu.tsinghua.iotdb.monitor;
 
 import cn.edu.tsinghua.iotdb.concurrent.IoTDBThreadPoolFactory;
 import cn.edu.tsinghua.iotdb.concurrent.ThreadName;
-import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
-import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
+import cn.edu.tsinghua.iotdb.conf.IoTDBConfig;
+import cn.edu.tsinghua.iotdb.conf.IoTDBDescriptor;
 import cn.edu.tsinghua.iotdb.engine.filenode.FileNodeManager;
-import cn.edu.tsinghua.iotdb.exception.FileNodeManagerException;
-import cn.edu.tsinghua.iotdb.exception.MetadataArgsErrorException;
-import cn.edu.tsinghua.iotdb.exception.PathErrorException;
-import cn.edu.tsinghua.iotdb.exception.StartupException;
+import cn.edu.tsinghua.iotdb.exception.*;
 import cn.edu.tsinghua.iotdb.metadata.MManager;
-import cn.edu.tsinghua.iotdb.query.engine.OverflowQueryEngine;
-import cn.edu.tsinghua.iotdb.query.management.ReadCacheManager;
 import cn.edu.tsinghua.iotdb.service.IService;
 import cn.edu.tsinghua.iotdb.service.ServiceType;
 import cn.edu.tsinghua.tsfile.common.constant.StatisticConstant;
-import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
-import cn.edu.tsinghua.tsfile.common.utils.Pair;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
-import cn.edu.tsinghua.tsfile.timeseries.read.query.OnePassQueryDataSet;
-import cn.edu.tsinghua.tsfile.timeseries.read.support.Field;
-import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
-import cn.edu.tsinghua.tsfile.timeseries.read.support.OldRowRecord;
-import cn.edu.tsinghua.tsfile.timeseries.write.record.DataPoint;
-import cn.edu.tsinghua.tsfile.timeseries.write.record.TSRecord;
-import cn.edu.tsinghua.tsfile.timeseries.write.record.datapoint.LongDataPoint;
+import cn.edu.tsinghua.tsfile.read.common.Field;
+import cn.edu.tsinghua.tsfile.read.common.Path;
+import cn.edu.tsinghua.tsfile.read.query.dataset.QueryDataSet;
+import cn.edu.tsinghua.tsfile.utils.Pair;
+import cn.edu.tsinghua.tsfile.write.record.datapoint.DataPoint;
+import cn.edu.tsinghua.tsfile.write.record.TSRecord;
+import cn.edu.tsinghua.tsfile.write.record.datapoint.LongDataPoint;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,9 +30,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
-/**
- * @author liliang
- */
+
 public class StatMonitor implements IService{
     private static final Logger LOGGER = LoggerFactory.getLogger(StatMonitor.class);
 
@@ -49,7 +40,7 @@ public class StatMonitor implements IService{
     private final int statMonitorRetainIntervalSec;
 
     /**
-     * key: is the statistics store path
+     * key: is the statistics store seriesPath
      * Value: is an interface that implements statistics function
      */
     private HashMap<String, IStatistic> statisticMap;
@@ -66,7 +57,7 @@ public class StatMonitor implements IService{
     private StatMonitor() {
         MManager mManager = MManager.getInstance();
         statisticMap = new HashMap<>();
-        TsfileDBConfig config = TsfileDBDescriptor.getInstance().getConfig();
+        IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
         statMonitorDetectFreqSec = config.statMonitorDetectFreqSec;
         statMonitorRetainIntervalSec = config.statMonitorRetainIntervalSec;
         backLoopPeriod = config.backLoopPeriodSec;
@@ -88,7 +79,7 @@ public class StatMonitor implements IService{
 
     /**
      * @param hashMap       key is statParams name, values is AtomicLong type
-     * @param statGroupDeltaName is the deltaObject path of this module
+     * @param statGroupDeltaName is the deviceId seriesPath of this module
      * @param curTime       TODO need to be fixed because it may contain overflow
      * @return TSRecord contains the DataPoints of a statGroupDeltaName
      */
@@ -128,41 +119,41 @@ public class StatMonitor implements IService{
     }
 
     public void recovery() {
-        // restore the FildeNode Manager TOTAL_POINTS statistics info
-        OverflowQueryEngine overflowQueryEngine = new OverflowQueryEngine();
-        List<Pair<Path, String>> pairList = new ArrayList<>();
-        List<String> stringList = FileNodeManager.getInstance().getAllPathForStatistic();
-        for (String string : stringList) {
-            Path path = new Path(string);
-            pairList.add(new Pair<>(path, StatisticConstant.LAST));
-        }
-        try {
-            OnePassQueryDataSet queryDataSet;
-            queryDataSet = overflowQueryEngine.aggregate(pairList, null);
-            ReadCacheManager.getInstance().unlockForOneRequest();
-            OldRowRecord rowRecord = queryDataSet.getNextRecord();
-            if (rowRecord!=null) {
-                FileNodeManager fManager = FileNodeManager.getInstance();
-                HashMap<String, AtomicLong> statParamsHashMap = fManager.getStatParamsHashMap();
-                List<Field> list = rowRecord.fields;
-                for (Field field: list) {
-                    String statMeasurement = field.measurementId.substring(0,field.measurementId.length() - 1);
-                    if (statParamsHashMap.containsKey(statMeasurement)) {
-                        if (field.isNull()) {
-                            continue;
-                        }
-                        long lastValue = field.getLongV();
-                        statParamsHashMap.put(statMeasurement, new AtomicLong(lastValue));
-                    }
-                }
-            }
-        } catch (ProcessorException e) {
-            LOGGER.error("Can't get the processor when recovering statistics of FileNodeManager,", e);
-        } catch (PathErrorException e) {
-            LOGGER.error("When recovering statistics of FileNodeManager, timeseries path does not exist,", e);
-        } catch (IOException e) {
-            LOGGER.error("IO Error occurs when recovering statistics of FileNodeManager,", e);
-        }
+//        // restore the FildeNode Manager TOTAL_POINTS statistics info
+//        OverflowQueryEngine overflowQueryEngine = new OverflowQueryEngine();
+//        List<Pair<Path, String>> pairList = new ArrayList<>();
+//        List<String> stringList = FileNodeManager.getInstance().getAllPathForStatistic();
+//        for (String string : stringList) {
+//            Path path = new Path(string);
+//            pairList.add(new Pair<>(path, StatisticConstant.LAST));
+//        }
+//        try {
+//            QueryDataSet queryDataSet;
+//            queryDataSet = overflowQueryEngine.aggregate(pairList, null);
+//            ReadCacheManager.getInstance().unlockForOneRequest();
+//            OldRowRecord rowRecord = queryDataSet.getNextRecord();
+//            if (rowRecord!=null) {
+//                FileNodeManager fManager = FileNodeManager.getInstance();
+//                HashMap<String, AtomicLong> statParamsHashMap = fManager.getStatParamsHashMap();
+//                List<Field> list = rowRecord.fields;
+//                for (Field field: list) {
+//                    String statMeasurement = field.measurementId.substring(0,field.measurementId.length() - 1);
+//                    if (statParamsHashMap.containsKey(statMeasurement)) {
+//                        if (field.isNull()) {
+//                            continue;
+//                        }
+//                        long lastValue = field.getLongV();
+//                        statParamsHashMap.put(statMeasurement, new AtomicLong(lastValue));
+//                    }
+//                }
+//            }
+//        } catch (ProcessorException e) {
+//            LOGGER.error("Can't get the processor when recovering statistics of FileNodeManager,", e);
+//        } catch (PathErrorException e) {
+//            LOGGER.error("When recovering statistics of FileNodeManager, timeseries seriesPath does not exist,", e);
+//        } catch (IOException e) {
+//            LOGGER.error("IO Error occurs when recovering statistics of FileNodeManager,", e);
+//        }
     }
 
     public void activate() {
@@ -222,7 +213,7 @@ public class StatMonitor implements IService{
      * @return TSRecord, query statistics params
      */
     public HashMap<String, TSRecord> getOneStatisticsValue(String key) {
-        // queryPath like fileNode path: root.stats.car1, or FileNodeManager path: FileNodeManager
+        // queryPath like fileNode seriesPath: root.stats.car1, or FileNodeManager seriesPath: FileNodeManager
         String queryPath;
         if (key.contains("\\.")) {
             queryPath = MonitorConstants.statStorageGroupPrefix
@@ -339,7 +330,7 @@ public class StatMonitor implements IService{
 	@Override
 	public void start() throws StartupException {
 		try {
-			if (TsfileDBDescriptor.getInstance().getConfig().enableStatMonitor){
+			if (IoTDBDescriptor.getInstance().getConfig().enableStatMonitor){
 				activate();
 			}
 		} catch (Exception e) {
@@ -350,7 +341,7 @@ public class StatMonitor implements IService{
 
 	@Override
 	public void stop() {
-		if (TsfileDBDescriptor.getInstance().getConfig().enableStatMonitor){
+		if (IoTDBDescriptor.getInstance().getConfig().enableStatMonitor){
 			close();
 		}
 	}

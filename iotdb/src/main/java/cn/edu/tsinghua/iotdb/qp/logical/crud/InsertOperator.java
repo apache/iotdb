@@ -4,9 +4,6 @@ import java.util.List;
 
 /**
  * this class extends {@code RootOperator} and process insert statement
- * 
- * @author kangrong
- *
  */
 public class InsertOperator extends SFWOperator {
     private long time;

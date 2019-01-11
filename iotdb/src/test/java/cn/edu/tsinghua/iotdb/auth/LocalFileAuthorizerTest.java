@@ -3,7 +3,7 @@ package cn.edu.tsinghua.iotdb.auth;
 import cn.edu.tsinghua.iotdb.auth.authorizer.IAuthorizer;
 import cn.edu.tsinghua.iotdb.auth.authorizer.LocalFileAuthorizer;
 import cn.edu.tsinghua.iotdb.auth.entity.User;
-import cn.edu.tsinghua.iotdb.conf.TsFileDBConstant;
+import cn.edu.tsinghua.iotdb.conf.IoTDBConstant;
 import cn.edu.tsinghua.iotdb.utils.EnvironmentUtils;
 import org.junit.After;
 import org.junit.Before;
@@ -278,7 +278,7 @@ public class LocalFileAuthorizerTest {
 		IAuthorizer authorizer = LocalFileAuthorizer.getInstance();
 		List<String> userList = authorizer.listAllUsers();
 		assertEquals(1, userList.size());
-		assertEquals(TsFileDBConstant.ADMIN_NAME, userList.get(0));
+		assertEquals(IoTDBConstant.ADMIN_NAME, userList.get(0));
 
 		int userCnt = 10;
 		for(int i = 0; i < userCnt; i++) {

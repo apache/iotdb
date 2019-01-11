@@ -2,8 +2,8 @@ package cn.edu.tsinghua.tsfile.encoding.decoder;
 
 import static org.junit.Assert.*;
 
-import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -17,11 +17,7 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * 
- * @author XuYi
- *
- */
+
 public class FloatDecoderTest {
   private static final Logger LOGGER = LoggerFactory.getLogger(FloatDecoderTest.class);
   private List<Float> floatList;
@@ -115,11 +111,11 @@ public class FloatDecoderTest {
     encoder.flush(baos);
     encoder.encode(value + 2, baos);
     encoder.flush(baos);
-    ByteArrayInputStream bais = new ByteArrayInputStream(baos.toByteArray());
+    ByteBuffer buffer = ByteBuffer.wrap(baos.toByteArray());
     Decoder decoder1 = new FloatDecoder(TSEncoding.RLE, TSDataType.FLOAT);
     Decoder decoder2 = new FloatDecoder(TSEncoding.RLE, TSDataType.FLOAT);
-    float value1_ = decoder1.readFloat(bais);
-    float value2_ = decoder2.readFloat(bais);
+    float value1_ = decoder1.readFloat(buffer);
+    float value2_ = decoder2.readFloat(buffer);
     assertEquals(value, value1_, delta);
     assertEquals(value+2, value2_, delta);
     LOGGER.debug("{} // {}", value, value1_);
@@ -137,12 +133,12 @@ public class FloatDecoderTest {
       encoder.flush(baos);
     }
 
-    ByteArrayInputStream bais = new ByteArrayInputStream(baos.toByteArray());
+    ByteBuffer buffer = ByteBuffer.wrap(baos.toByteArray());
 
     for (int i = 0; i < repeatCount; i++) {
       Decoder decoder = new FloatDecoder(encoding, TSDataType.FLOAT);
       for (float value : valueList) {
-        float value_ = decoder.readFloat(bais);
+        float value_ = decoder.readFloat(buffer);
         if (isDebug) {
           LOGGER.debug("{} // {}", value_, value);
         }
@@ -162,12 +158,12 @@ public class FloatDecoderTest {
       encoder.flush(baos);
     }
 
-    ByteArrayInputStream bais = new ByteArrayInputStream(baos.toByteArray());
+    ByteBuffer buffer = ByteBuffer.wrap(baos.toByteArray());
 
     for (int i = 0; i < repeatCount; i++) {
       Decoder decoder = new FloatDecoder(encoding, TSDataType.DOUBLE);
       for (double value : valueList) {
-        double value_ = decoder.readDouble(bais);
+        double value_ = decoder.readDouble(buffer);
         if (isDebug) {
           LOGGER.debug("{} // {}", value_, value);
         }

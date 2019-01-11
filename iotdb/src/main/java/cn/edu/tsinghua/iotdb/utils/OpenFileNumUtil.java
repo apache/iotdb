@@ -1,8 +1,8 @@
 package cn.edu.tsinghua.iotdb.utils;
 
 import cn.edu.tsinghua.iotdb.conf.directories.Directories;
-import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
-import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
+import cn.edu.tsinghua.iotdb.conf.IoTDBConfig;
+import cn.edu.tsinghua.iotdb.conf.IoTDBDescriptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.io.BufferedReader;
@@ -12,14 +12,12 @@ import java.util.Collections;
 import java.util.List;
 import java.util.EnumMap;
 
-/**
- * @author liurui
- */
+
 
 // Notice : statistics in this class may not be accurate because of limited user authority.
 public class OpenFileNumUtil {
     private static Logger log = LoggerFactory.getLogger(OpenFileNumUtil.class);
-    private static TsfileDBConfig config = TsfileDBDescriptor.getInstance().getConfig();
+    private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     private static Directories directories = Directories.getInstance();
     private int pid;
     private String processName;
@@ -32,7 +30,7 @@ public class OpenFileNumUtil {
     private static final String SEARCH_PID_LINUX = "ps -aux | grep -i %s | grep -v grep";
     private static final String SEARCH_PID_MAC = "ps aux | grep -i %s | grep -v grep";
     private static final String SEARCH_OPEN_DATA_FILE_BY_PID = "lsof -p %d";
-    private String[] cmds = {"/bin/bash", "-c", ""};
+    private final String[] cmds = {"/bin/bash", "-c", ""};
 
     public enum OpenFileNumStatistics {
         TOTAL_OPEN_FILE_NUM(null),
@@ -202,7 +200,7 @@ public class OpenFileNumUtil {
     }
 
     /**
-     * Check if runtime OS is supported then return the result list.
+     * Check if runtime OS is supported then return the result list.
      * If pid is abnormal then all statistics returns -1, if OS is not supported then all statistics returns -2
      * @return map
      */

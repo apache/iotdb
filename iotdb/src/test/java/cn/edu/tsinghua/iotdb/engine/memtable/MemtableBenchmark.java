@@ -14,13 +14,15 @@ public class MemtableBenchmark {
     private static int numOfPoint = 1000;
 
     private static String[] measurementId  = new String[numOfMeasurement];
+
     static {
         for(int i = 0;i< numOfMeasurement;i++){
-            measurementId[i] = String.valueOf("m"+i);
+            measurementId[i] = "m"+i;
         }
     }
 
     private static TSDataType tsDataType = TSDataType.INT64;
+
 
     public static void main(String[] args) {
         IMemTable memTable = new PrimitiveMemTable();
@@ -31,12 +33,7 @@ public class MemtableBenchmark {
                 memTable.write(deviceId,measurementId[j],tsDataType,System.nanoTime(),String.valueOf(System.currentTimeMillis()));
             }
         }
-//        cpu locality
-//        for(int j = 0;j<numOfMeasurement;j++){
-//            for(int i = 0;i<numOfPoint;i++){
-//                memTable.write(deviceId,measurementId[j],tsDataType,System.nanoTime(),String.valueOf(System.currentTimeMillis()));
-//            }
-//        }
+
         final long endTime = System.currentTimeMillis();
         System.out.println(String.format("Num of time series: %d, " +
                 "Num of points for each time series: %d, " +

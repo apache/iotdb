@@ -1,18 +1,16 @@
 package cn.edu.tsinghua.iotdb.sql;
 
-import static org.junit.Assert.*;
+import cn.edu.tsinghua.iotdb.exception.qp.LogicalOperatorException;
+import cn.edu.tsinghua.iotdb.qp.constant.DatetimeUtils;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
 
-import java.time.Instant;
-import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-import cn.edu.tsinghua.iotdb.qp.constant.DatetimeUtils;
-import cn.edu.tsinghua.iotdb.qp.exception.LogicalOperatorException;
+import static org.junit.Assert.assertEquals;
 
 public class DatetimeUtilsTest {
 	private ZoneOffset zoneOffset;
@@ -49,11 +47,11 @@ public class DatetimeUtilsTest {
 
 		long res = 1546413207000L;
 		for(String str : timeFormatWithoutMs) {
-			assertEquals(res, DatetimeUtils.convertDatetimeStrToLong(str, zoneOffset));
+			assertEquals(res, DatetimeUtils.convertDatetimeStrToMillisecond(str, zoneOffset));
 		}
 		
 		for(String str : timeFormatWithoutMs) {
-			assertEquals(res, DatetimeUtils.convertDatetimeStrToLong(str, zoneId));
+			assertEquals(res, DatetimeUtils.convertDatetimeStrToMillisecond(str, zoneId));
 		}
 		
 	}
@@ -79,11 +77,11 @@ public class DatetimeUtilsTest {
 
 		long res = 1546413207689L;
 		for(String str : timeFormatWithoutMs) {
-			assertEquals(res, DatetimeUtils.convertDatetimeStrToLong(str, zoneOffset));
+			assertEquals(res, DatetimeUtils.convertDatetimeStrToMillisecond(str, zoneOffset));
 		}
 		
 		for(String str : timeFormatWithoutMs) {
-			assertEquals(res, DatetimeUtils.convertDatetimeStrToLong(str, zoneId));
+			assertEquals(res, DatetimeUtils.convertDatetimeStrToMillisecond(str, zoneId));
 		}
 	}
 	
@@ -101,7 +99,7 @@ public class DatetimeUtilsTest {
 //		ZoneOffset zoneOffset = id.getRules().getOffset(instant);
 //		System.out.println(currentOffsetForMyZone);
 		
-//		DatetimeUtils.convertDatetimeStrToLong("2019.01.02T15:13:27.689[Asia/Shanghai]", zoneOffset);
+//		DatetimeUtils.convertDatetimeStrToMillisecond("2019.01.02T15:13:27.689[Asia/Shanghai]", zoneOffset);
 //		for(String string : ZoneId.getAvailableZoneIds()) {
 //			ZoneId id = ZoneId.of(string);
 //			Instant instant = Instant.now(); 
@@ -112,7 +110,7 @@ public class DatetimeUtilsTest {
 //		System.out.println(timestamp);
 //		LocalDateTime dateTime = LocalDateTime.ofInstant(Instant.ofEpochMilli(1546499858912L), ZoneId.systemDefault());
 //		System.out.println(dateTime);
-		System.out.println(DatetimeUtils.convertDatetimeStrToLong("2018-1-1T13:00:07", ZoneId.systemDefault()));
+		System.out.println(DatetimeUtils.convertDatetimeStrToMillisecond("2018-1-1T13:00:07", ZoneId.systemDefault()));
 	}
 }
 

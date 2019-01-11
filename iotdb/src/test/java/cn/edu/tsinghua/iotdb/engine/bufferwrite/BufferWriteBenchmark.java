@@ -3,10 +3,10 @@ package cn.edu.tsinghua.iotdb.engine.bufferwrite;
 import cn.edu.tsinghua.iotdb.exception.BufferWriteProcessorException;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSEncoding;
-import cn.edu.tsinghua.tsfile.timeseries.write.desc.MeasurementDescriptor;
-import cn.edu.tsinghua.tsfile.timeseries.write.record.TSRecord;
-import cn.edu.tsinghua.tsfile.timeseries.write.record.datapoint.LongDataPoint;
-import cn.edu.tsinghua.tsfile.timeseries.write.schema.FileSchema;
+import cn.edu.tsinghua.tsfile.write.record.TSRecord;
+import cn.edu.tsinghua.tsfile.write.record.datapoint.LongDataPoint;
+import cn.edu.tsinghua.tsfile.write.schema.FileSchema;
+import cn.edu.tsinghua.tsfile.write.schema.MeasurementSchema;
 import org.apache.commons.io.FileUtils;
 
 import java.io.File;
@@ -37,7 +37,7 @@ public class BufferWriteBenchmark {
     static {
         for(int i = 0;i< numOfMeasurement;i++){
             measurementIds[i] = String.valueOf("m"+i);
-            MeasurementDescriptor measurementDescriptor = new MeasurementDescriptor("m"+i,
+            MeasurementSchema measurementDescriptor = new MeasurementSchema("m"+i,
                     tsDataType, TSEncoding.PLAIN);
             assert measurementDescriptor.getCompressor()!=null;
             fileSchema.registerMeasurement(measurementDescriptor);
@@ -55,7 +55,7 @@ public class BufferWriteBenchmark {
 
     public static void main(String[] args) throws BufferWriteProcessorException, IOException {
         before();
-        Map<String,Object> parameters = new HashMap<>();
+        Map<String,Action> parameters = new HashMap<>();
         parameters.put(FileNodeConstants.BUFFERWRITE_FLUSH_ACTION, new Action() {
             @Override
             public void act() throws Exception {

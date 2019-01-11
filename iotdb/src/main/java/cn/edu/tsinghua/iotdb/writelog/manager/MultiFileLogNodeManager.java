@@ -1,9 +1,9 @@
 package cn.edu.tsinghua.iotdb.writelog.manager;
 
 import cn.edu.tsinghua.iotdb.concurrent.ThreadName;
-import cn.edu.tsinghua.iotdb.conf.TsFileDBConstant;
-import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
-import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
+import cn.edu.tsinghua.iotdb.conf.IoTDBConstant;
+import cn.edu.tsinghua.iotdb.conf.IoTDBConfig;
+import cn.edu.tsinghua.iotdb.conf.IoTDBDescriptor;
 import cn.edu.tsinghua.iotdb.exception.RecoverException;
 import cn.edu.tsinghua.iotdb.exception.StartupException;
 import cn.edu.tsinghua.iotdb.service.IService;
@@ -14,7 +14,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.io.FilenameFilter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -27,7 +26,7 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
     private Map<String, WriteLogNode> nodeMap;
 
     private Thread syncThread;
-    private TsfileDBConfig config = TsfileDBDescriptor.getInstance().getConfig();
+    private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
     private static class InstanceHolder {
         private static MultiFileLogNodeManager instance = new MultiFileLogNodeManager();
@@ -143,7 +142,7 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
     }
 
     private String bufferWriteWALPath(String fileNodeName) {
-        return config.walFolder + File.separator + fileNodeName + TsFileDBConstant.BUFFERWRITE_LOG_NODE_SUFFIX;
+        return config.walFolder + File.separator + fileNodeName + IoTDBConstant.BUFFERWRITE_LOG_NODE_SUFFIX;
     }
 
     private boolean hasOverflowWAL(String fileNodeName) {
@@ -153,7 +152,7 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
     }
 
     private String overflowWALPath(String fileNodeName) {
-        return config.walFolder + File.separator + fileNodeName + TsFileDBConstant.OVERFLOW_LOG_NODE_SUFFIX;
+        return config.walFolder + File.separator + fileNodeName + IoTDBConstant.OVERFLOW_LOG_NODE_SUFFIX;
     }
 
     @Override

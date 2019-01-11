@@ -10,9 +10,9 @@ public enum PrivilegeType {
     ALL;
 
     /**
-     * Some privileges need a path as parameter, while others do not. This method returns which privileges need a path.
+     * Some privileges need a seriesPath as parameter, while others do not. This method returns which privileges need a seriesPath.
      * @param type An integer that represents a privilege.
-     * @return Whether this privilege need a path or not.
+     * @return Whether this privilege need a seriesPath or not.
      */
     public static boolean isPathRelevant(int type) {
         return type <= DELETE_TIMESERIES.ordinal();

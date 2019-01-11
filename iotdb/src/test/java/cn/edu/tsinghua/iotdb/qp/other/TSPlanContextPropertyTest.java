@@ -7,18 +7,18 @@ import java.util.Arrays;
 import java.util.Collection;
 
 import cn.edu.tsinghua.iotdb.exception.ArgsErrorException;
-import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
+import cn.edu.tsinghua.iotdb.exception.ProcessorException;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 
 import cn.edu.tsinghua.iotdb.qp.QueryProcessor;
-import cn.edu.tsinghua.iotdb.qp.exception.QueryProcessorException;
+import cn.edu.tsinghua.iotdb.exception.qp.QueryProcessorException;
 import cn.edu.tsinghua.iotdb.qp.logical.sys.PropertyOperator.PropertyType;
 import cn.edu.tsinghua.iotdb.qp.physical.sys.PropertyPlan;
 import cn.edu.tsinghua.iotdb.qp.utils.MemIntQpExecutor;
-import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
+import cn.edu.tsinghua.tsfile.read.common.Path;
 
 /**
  * test ast node parsing on authorization
@@ -67,7 +67,7 @@ public class TSPlanContextPropertyTest {
     }
 
     @Test
-    public void testanalyzeMetadata() throws QueryProcessorException, ArgsErrorException, ProcessorException {
+    public void testAnalyzeMetadata() throws QueryProcessorException, ArgsErrorException, ProcessorException {
         QueryProcessor processor = new QueryProcessor(new MemIntQpExecutor());
         PropertyPlan plan = (PropertyPlan) processor.parseSQLToPhysicalPlan(inputSQL);
         assertEquals(propertyType, plan.getPropertyType());

@@ -1,7 +1,7 @@
 package cn.edu.tsinghua.iotdb.writelog;
 
-import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
-import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
+import cn.edu.tsinghua.iotdb.conf.IoTDBConfig;
+import cn.edu.tsinghua.iotdb.conf.IoTDBDescriptor;
 import cn.edu.tsinghua.iotdb.writelog.transfer.PhysicalPlanLogTransfer;
 import cn.edu.tsinghua.iotdb.writelog.node.ExclusiveWriteLogNode;
 import cn.edu.tsinghua.iotdb.writelog.node.WriteLogNode;
@@ -9,7 +9,7 @@ import cn.edu.tsinghua.iotdb.qp.physical.crud.DeletePlan;
 import cn.edu.tsinghua.iotdb.qp.physical.crud.InsertPlan;
 import cn.edu.tsinghua.iotdb.qp.physical.crud.UpdatePlan;
 import cn.edu.tsinghua.iotdb.utils.EnvironmentUtils;
-import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
+import cn.edu.tsinghua.tsfile.read.common.Path;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -25,7 +25,7 @@ import static junit.framework.TestCase.assertTrue;
 
 public class WriteLogNodeTest {
 
-    private TsfileDBConfig config = TsfileDBDescriptor.getInstance().getConfig();
+    private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
     private boolean enableWal;
 
@@ -83,7 +83,7 @@ public class WriteLogNodeTest {
         assertEquals(bwInsertPlan.getTime(), bwInsertPlan2.getTime());
         assertEquals(bwInsertPlan.getValues(), bwInsertPlan2.getValues());
         assertEquals(bwInsertPlan.getPaths(), bwInsertPlan2.getPaths());
-        assertEquals(bwInsertPlan.getDeltaObject(), bwInsertPlan2.getDeltaObject());
+        assertEquals(bwInsertPlan.getDeviceId(), bwInsertPlan2.getDeviceId());
 
         logSize = raf.readInt();
         checksum = raf.readLong();

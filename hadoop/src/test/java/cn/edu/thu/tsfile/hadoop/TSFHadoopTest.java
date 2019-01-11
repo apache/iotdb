@@ -24,7 +24,7 @@ import org.junit.Test;
 
 import cn.edu.tsinghua.tsfile.common.utils.ITsRandomAccessFileReader;
 import cn.edu.tsinghua.tsfile.timeseries.basis.TsFile;
-import cn.edu.tsinghua.tsfile.timeseries.read.TsRandomAccessLocalFileReader;
+import cn.edu.tsinghua.tsfile.read.TsRandomAccessLocalFileReader;
 
 public class TSFHadoopTest {
 

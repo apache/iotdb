@@ -1,6 +1,6 @@
 package cn.edu.tsinghua.tsfile.encoding.encoder;
 
-import cn.edu.tsinghua.tsfile.common.utils.ReadWriteStreamUtils;
+import cn.edu.tsinghua.tsfile.utils.ReadWriteForEncodingUtils;
 import cn.edu.tsinghua.tsfile.encoding.common.EndianType;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSEncoding;
 import org.slf4j.Logger;
@@ -27,6 +27,7 @@ import java.util.Set;
  * }
  * </pre>
  */
+@Deprecated
 public class BitmapEncoder extends Encoder {
     private static final Logger LOGGER = LoggerFactory.getLogger(BitmapEncoder.class);
 
@@ -89,12 +90,12 @@ public class BitmapEncoder extends Encoder {
                     buffer[index] |= ((byte) 1 << offset);
                 }
             }
-            ReadWriteStreamUtils.writeUnsignedVarInt(value, byteCache);
+            ReadWriteForEncodingUtils.writeUnsignedVarInt(value, byteCache);
             byteCache.write(buffer);
 //      LOGGER.debug("tsfile-encoding BitmapEncoder: encode value {}, bitmap index {}", value, buffer);
         }
-        ReadWriteStreamUtils.writeUnsignedVarInt(byteCache.size(), out);
-        ReadWriteStreamUtils.writeUnsignedVarInt(len, out);
+        ReadWriteForEncodingUtils.writeUnsignedVarInt(byteCache.size(), out);
+        ReadWriteForEncodingUtils.writeUnsignedVarInt(len, out);
         out.write(byteCache.toByteArray());
         reset();
     }
@@ -103,10 +104,12 @@ public class BitmapEncoder extends Encoder {
         values.clear();
     }
 
+    @Override
     public int getOneItemMaxSize() {
         return 1;
     }
 
+    @Override
     public long getMaxByteSize() {
         //byteCacheSize + byteDictSize + (byte array + array length) * byteDictSize
         return 4 + 4 + ((values.size() + 7) / 8 + 4) * values.size();

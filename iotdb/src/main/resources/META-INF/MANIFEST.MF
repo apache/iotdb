@@ -1,3 +1,0 @@
-Manifest-Version: 1.0
-Premain-Class: cn.edu.tsinghua.aop.CostClassFileTransformer
-Can-Redefine-Classes: true

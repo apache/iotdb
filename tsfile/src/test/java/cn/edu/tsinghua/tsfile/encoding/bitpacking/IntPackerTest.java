@@ -7,11 +7,7 @@ import java.util.Random;
 
 import org.junit.Test;
 
-/**
- * 
- * @author Zhang Jinrui
- *
- */
+
 public class IntPackerTest {
 
 	@Test

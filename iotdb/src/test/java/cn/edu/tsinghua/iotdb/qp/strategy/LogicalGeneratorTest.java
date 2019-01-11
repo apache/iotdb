@@ -1,18 +1,17 @@
 package cn.edu.tsinghua.iotdb.qp.strategy;
 
-import static org.junit.Assert.*;
+import cn.edu.tsinghua.iotdb.exception.qp.LogicalOperatorException;
+import cn.edu.tsinghua.iotdb.qp.constant.SQLConstant;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
 
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-
-import cn.edu.tsinghua.iotdb.qp.constant.SQLConstant;
-import cn.edu.tsinghua.iotdb.qp.exception.LogicalOperatorException;
+import static org.junit.Assert.assertEquals;
 
 public class LogicalGeneratorTest {
 	LogicalGenerator generator;

@@ -1,11 +1,12 @@
 package cn.edu.tsinghua.iotdb.engine.querycontext;
 
-/**
- * @author liukun
- */
+
 public class QueryDataSource {
 
+	// sequence data source
 	private GlobalSortedSeriesDataSource seriesDataSource;
+
+	// unSequence data source
 	private OverflowSeriesDataSource overflowSeriesDataSource;
 
 	public QueryDataSource(GlobalSortedSeriesDataSource seriesDataSource,
@@ -14,7 +15,7 @@ public class QueryDataSource {
 		this.overflowSeriesDataSource = overflowSeriesDataSource;
 	}
 
-	public GlobalSortedSeriesDataSource getSeriesDataSource() {
+	public GlobalSortedSeriesDataSource getSeqDataSource() {
 		return seriesDataSource;
 	}
 

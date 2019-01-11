@@ -1,18 +1,13 @@
 package cn.edu.tsinghua.iotdb.qp.logical.crud;
 
-import cn.edu.tsinghua.iotdb.qp.exception.LogicalOperatorException;
 import cn.edu.tsinghua.iotdb.qp.logical.RootOperator;
-import cn.edu.tsinghua.tsfile.timeseries.filterV2.expression.QueryFilter;
-import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
+import cn.edu.tsinghua.tsfile.read.common.Path;
 
 import java.util.List;
 
 /**
  * SFWOperator(select-from-where) includes four subclass: INSERT,DELETE,UPDATE,QUERY. All of these four statements has
  * three partition: select clause, from clause and filter clause(where clause).
- * 
- * @author kangrong
- *
  */
 public abstract class SFWOperator extends RootOperator {
 
@@ -28,8 +23,9 @@ public abstract class SFWOperator extends RootOperator {
 
     public void setSelectOperator(SelectOperator sel) {
         this.selectOperator = sel;
-        if(!sel.getAggregations().isEmpty())
+        if(!sel.getAggregations().isEmpty()) {
             hasAggregation = true;
+        }
     }
 
     public void setFromOperator(FromOperator from) {
@@ -55,13 +51,13 @@ public abstract class SFWOperator extends RootOperator {
     /**
      * get information from SelectOperator and FromOperator and generate all table paths.
      * 
-     * @return - a list of path
-     * @throws LogicalOperatorException
+     * @return - a list of seriesPath
      */
-    public List<Path> getSelectedPaths() throws LogicalOperatorException {
+    public List<Path> getSelectedPaths() {
         List<Path> suffixPaths = null;
-        if (selectOperator != null)
+        if (selectOperator != null) {
             suffixPaths = selectOperator.getSuffixPaths();
+        }
         return suffixPaths;
     }
 

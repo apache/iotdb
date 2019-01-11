@@ -2,8 +2,8 @@ package cn.edu.tsinghua.tsfile.qp.optimizer;
 
 import cn.edu.tsinghua.tsfile.common.utils.Pair;
 import cn.edu.tsinghua.tsfile.common.utils.ITsRandomAccessFileReader;
-import cn.edu.tsinghua.tsfile.timeseries.read.management.SeriesSchema;
-import cn.edu.tsinghua.tsfile.timeseries.read.query.QueryEngine;
+import cn.edu.tsinghua.tsfile.read.management.SeriesSchema;
+import cn.edu.tsinghua.tsfile.read.query.QueryEngine;
 import cn.edu.tsinghua.tsfile.qp.common.BasicOperator;
 import cn.edu.tsinghua.tsfile.qp.common.FilterOperator;
 import cn.edu.tsinghua.tsfile.qp.common.SQLConstant;

@@ -1,6 +1,6 @@
 package cn.edu.tsinghua.iotdb.exception;
 
-import cn.edu.tsinghua.iotdb.qp.exception.QueryProcessorException;
+import cn.edu.tsinghua.iotdb.exception.qp.QueryProcessorException;
 
 public class PathErrorException extends QueryProcessorException {
 

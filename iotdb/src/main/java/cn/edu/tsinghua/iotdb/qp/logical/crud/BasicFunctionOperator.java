@@ -1,26 +1,22 @@
 package cn.edu.tsinghua.iotdb.qp.logical.crud;
 
-import cn.edu.tsinghua.iotdb.qp.exception.LogicalOperatorException;
+import cn.edu.tsinghua.iotdb.exception.qp.LogicalOperatorException;
 import cn.edu.tsinghua.iotdb.qp.executor.QueryProcessExecutor;
 import cn.edu.tsinghua.iotdb.qp.logical.Operator;
+import cn.edu.tsinghua.tsfile.read.expression.IUnaryExpression;
+import cn.edu.tsinghua.tsfile.utils.Binary;
+import cn.edu.tsinghua.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import cn.edu.tsinghua.iotdb.exception.PathErrorException;
 import cn.edu.tsinghua.iotdb.qp.constant.SQLConstant;
-import cn.edu.tsinghua.tsfile.common.utils.Binary;
-import cn.edu.tsinghua.tsfile.common.utils.Pair;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
-import cn.edu.tsinghua.tsfile.timeseries.filter.definition.FilterFactory;
-import cn.edu.tsinghua.tsfile.timeseries.filter.definition.SingleSeriesFilterExpression;
-import cn.edu.tsinghua.tsfile.timeseries.filter.definition.filterseries.FilterSeriesType;
-import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
-import cn.edu.tsinghua.tsfile.timeseries.utils.StringContainer;
+import cn.edu.tsinghua.tsfile.read.common.Path;
+import cn.edu.tsinghua.tsfile.utils.StringContainer;
 
 /**
  * basic operator includes < > >= <= !=.
- *
- * @author kangrong
  */
 public class BasicFunctionOperator extends FunctionOperator {
     private Logger LOG = LoggerFactory.getLogger(BasicFunctionOperator.class);
@@ -60,72 +56,46 @@ public class BasicFunctionOperator extends FunctionOperator {
         return singlePath;
     }
 
+    @Override
     public void setSinglePath(Path singlePath) {
         this.path = this.singlePath = singlePath;
     }
 
     @Override
-    protected Pair<SingleSeriesFilterExpression, String> transformToSingleFilter(QueryProcessExecutor executor, FilterSeriesType filterType)
+    protected Pair<IUnaryExpression, String> transformToSingleQueryFilter(QueryProcessExecutor executor)
             throws LogicalOperatorException, PathErrorException {
         TSDataType type = executor.getSeriesType(path);
         if (type == null) {
-            throw new PathErrorException("given path:{" + path.getFullPath()
+            throw new PathErrorException("given seriesPath:{" + path.getFullPath()
                     + "} don't exist in metadata");
         }
-        SingleSeriesFilterExpression ret;
+        IUnaryExpression ret;
+
         switch (type) {
             case INT32:
-                ret = funcToken.getValueFilter(
-                        FilterFactory.intFilterSeries(
-                                path.getDeltaObjectToString(),
-                                path.getMeasurementToString(),
-                                filterType),
-                        Integer.valueOf(value));
+                ret = funcToken.getUnaryExpression(path, Integer.valueOf(value));
                 break;
             case INT64:
-                ret = funcToken.getValueFilter(
-                        FilterFactory.longFilterSeries(
-                                path.getDeltaObjectToString(),
-                                path.getMeasurementToString(),
-                                filterType),
-                        Long.valueOf(value));
+                ret = funcToken.getUnaryExpression(path, Long.valueOf(value));
                 break;
             case BOOLEAN:
-                ret = funcToken.getValueFilter(
-                        FilterFactory.booleanFilterSeries(
-                                path.getDeltaObjectToString(),
-                                path.getMeasurementToString(),
-                                filterType),
-                        Boolean.valueOf(value));
+                ret = funcToken.getUnaryExpression(path, Boolean.valueOf(value));
                 break;
             case FLOAT:
-                ret = funcToken.getValueFilter(
-                        FilterFactory.floatFilterSeries(
-                                path.getDeltaObjectToString(),
-                                path.getMeasurementToString(),
-                                filterType),
-                        Float.valueOf(value));
+                ret = funcToken.getUnaryExpression(path, Float.valueOf(value));
                 break;
             case DOUBLE:
-                ret = funcToken.getValueFilter(
-                        FilterFactory.doubleFilterSeries(
-                                path.getDeltaObjectToString(),
-                                path.getMeasurementToString(),
-                                filterType),
-                        Double.valueOf(value));
+                ret = funcToken.getUnaryExpression(path, Double.valueOf(value));
                 break;
             case TEXT:
-            		ret = funcToken.getValueFilter(
-            				FilterFactory.stringFilterSeries(
-            						path.getDeltaObjectToString(),
-            						path.getMeasurementToString(), 
-                                filterType),            
-            						(value.startsWith("'") && value.endsWith("'")) || (value.startsWith("\"") && value.endsWith("\"")) ?
-            							new Binary(value.substring(1, value.length()-1)) : new Binary(value));
-            		break;
+                ret = funcToken.getUnaryExpression(path,
+                        (value.startsWith("'") && value.endsWith("'")) || (value.startsWith("\"") && value.endsWith("\"")) ?
+                                new Binary(value.substring(1, value.length()-1)) : new Binary(value));
+                break;
             default:
                 throw new LogicalOperatorException("unsupported data type:" + type);
         }
+
         return new Pair<>(ret, path.getFullPath());
     }
 

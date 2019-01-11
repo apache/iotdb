@@ -3,12 +3,12 @@ package cn.edu.tsinghua.iotdb.engine;
 import java.io.File;
 
 import cn.edu.tsinghua.iotdb.conf.directories.Directories;
-import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
-import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
+import cn.edu.tsinghua.iotdb.conf.IoTDBConfig;
+import cn.edu.tsinghua.iotdb.conf.IoTDBDescriptor;
 
 public class PathUtils {
 
-	private static TsfileDBConfig config = TsfileDBDescriptor.getInstance().getConfig();
+	private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 	private static Directories directories = Directories.getInstance();
 
 	public static File getBufferWriteDir(String nameSpacePath) {

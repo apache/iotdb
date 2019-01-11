@@ -1,11 +1,11 @@
 package cn.edu.tsinghua.iotdb.client;
 
 import cn.edu.tsinghua.iotdb.exception.ArgsErrorException;
-import cn.edu.tsinghua.iotdb.jdbc.TsfileDatabaseMetadata;
-import cn.edu.tsinghua.iotdb.jdbc.TsfileMetadataResultSet;
+import cn.edu.tsinghua.iotdb.jdbc.IoTDBDatabaseMetadata;
+import cn.edu.tsinghua.iotdb.jdbc.IoTDBMetadataResultSet;
 import cn.edu.tsinghua.iotdb.tool.ImportCsv;
 import cn.edu.tsinghua.service.rpc.thrift.ServerProperties;
-import cn.edu.tsinghua.iotdb.jdbc.TsfileConnection;
+import cn.edu.tsinghua.iotdb.jdbc.IoTDBConnection;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
@@ -133,7 +133,7 @@ public abstract class AbstractClient {
 
 		int colCount = resultSetMetaData.getColumnCount();
 
-		boolean isShow = res instanceof TsfileMetadataResultSet;
+		boolean isShow = res instanceof IoTDBMetadataResultSet;
 		if (!isShow && resultSetMetaData.getColumnTypeName(0) != null) {
 			printTimestamp = !res.getMetaData().getColumnTypeName(0).toUpperCase().equals(NEED_NOT_TO_PRINT_TIMESTAMP);
 		}
@@ -209,9 +209,9 @@ public abstract class AbstractClient {
 		System.out.println(StringUtils.repeat('-', DIVIDING_LINE_LEN));
 		if (isShow) {
 			int type = res.getType();
-		    	if (type == TsfileMetadataResultSet.MetadataType.STORAGE_GROUP.ordinal()) { // storage group
+		    	if (type == IoTDBMetadataResultSet.MetadataType.STORAGE_GROUP.ordinal()) { // storage group
 				System.out.println("Total storage group number = " + cnt);
-		    	} else if (type == TsfileMetadataResultSet.MetadataType.TIMESERIES.ordinal()) { // show timeseries <path>
+		    	} else if (type == IoTDBMetadataResultSet.MetadataType.TIMESERIES.ordinal()) { // show timeseries <path>
 				System.out.println("Total timeseries number = " + cnt);
 		    	}
 		} else {
@@ -394,7 +394,7 @@ public abstract class AbstractClient {
 				"                                           \n");
 	}
 
-	protected static OPERATION_RESULT handleInputInputCmd(String cmd, TsfileConnection connection){
+	protected static OPERATION_RESULT handleInputInputCmd(String cmd, IoTDBConnection connection){
 		String specialCmd = cmd.toLowerCase().trim();
 
 		if (specialCmd.equals(QUIT_COMMAND) || specialCmd.equals(EXIT_COMMAND)) {
@@ -415,7 +415,7 @@ public abstract class AbstractClient {
 		}
 		if (specialCmd.equals(SHOW_METADATA_COMMAND)) {
 			try {
-				System.out.println(((TsfileDatabaseMetadata)connection.getMetaData()).getMetadataInJson());
+				System.out.println(((IoTDBDatabaseMetadata)connection.getMetaData()).getMetadataInJson());
 			} catch (SQLException e) {
 				System.out.println("Failed to show timeseries because: " + e.getMessage());
 			}

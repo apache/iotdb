@@ -130,7 +130,7 @@ public class MTreeTest {
 		try {
 			root.setStorageGroup("root.laptop");
 		} catch (PathErrorException e) {
-			assertEquals("The path of root.laptop already exist, it can't be set to the storage group", e.getMessage());
+			assertEquals("The seriesPath of root.laptop already exist, it can't be set to the storage group", e.getMessage());
 		}
 		// check timeseries
 		assertEquals(root.isPathExist("root.laptop.d1.s0"), false);

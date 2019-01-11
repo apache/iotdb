@@ -6,12 +6,10 @@ import java.util.List;
 import cn.edu.tsinghua.iotdb.qp.logical.sys.PropertyOperator.PropertyType;
 import cn.edu.tsinghua.iotdb.qp.physical.PhysicalPlan;
 import cn.edu.tsinghua.iotdb.qp.logical.Operator;
-import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
+import cn.edu.tsinghua.tsfile.read.common.Path;
 
 /**
  * Manipulate property plan
- * @author kangrong
- * @author qiaojialin
  */
 public class PropertyPlan extends PhysicalPlan {
     private final PropertyType propertyType;
@@ -48,10 +46,12 @@ public class PropertyPlan extends PhysicalPlan {
     @Override
     public List<Path> getPaths() {
         List<Path> ret = new ArrayList<>();
-        if (metadataPath != null)
+        if (metadataPath != null) {
             ret.add(metadataPath);
-        if (propertyPath != null)
+        }
+        if (propertyPath != null) {
             ret.add(propertyPath);
+        }
         return ret;
     }
 }

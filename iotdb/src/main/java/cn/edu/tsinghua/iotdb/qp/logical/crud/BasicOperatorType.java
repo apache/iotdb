@@ -1,27 +1,27 @@
 package cn.edu.tsinghua.iotdb.qp.logical.crud;
 
 import cn.edu.tsinghua.iotdb.qp.constant.SQLConstant;
-import cn.edu.tsinghua.iotdb.qp.exception.LogicalOperatorException;
-import cn.edu.tsinghua.tsfile.timeseries.filter.definition.FilterFactory;
-import cn.edu.tsinghua.tsfile.timeseries.filter.definition.SingleSeriesFilterExpression;
-import cn.edu.tsinghua.tsfile.timeseries.filter.definition.filterseries.FilterSeries;
-import cn.edu.tsinghua.tsfile.timeseries.filterV2.TimeFilter;
-import cn.edu.tsinghua.tsfile.timeseries.filterV2.ValueFilter;
-import cn.edu.tsinghua.tsfile.timeseries.filterV2.basic.Filter;
-import cn.edu.tsinghua.tsfile.timeseries.readV2.datatype.TsPrimitiveType;
+import cn.edu.tsinghua.iotdb.exception.qp.LogicalOperatorException;
+import cn.edu.tsinghua.tsfile.read.common.Path;
+import cn.edu.tsinghua.tsfile.read.expression.IUnaryExpression;
+import cn.edu.tsinghua.tsfile.read.expression.impl.GlobalTimeExpression;
+import cn.edu.tsinghua.tsfile.read.expression.impl.SingleSeriesExpression;
+import cn.edu.tsinghua.tsfile.read.filter.TimeFilter;
+import cn.edu.tsinghua.tsfile.read.filter.ValueFilter;
+import cn.edu.tsinghua.tsfile.read.filter.basic.Filter;
 
 /**
  * all basic operator in filter
- * 
- * @author kangrong
- *
  */
 public enum BasicOperatorType {
     EQ {
         @Override
-        public <T extends Comparable<T>, C extends FilterSeries<T>> SingleSeriesFilterExpression getValueFilter(
-                C column, T value) {
-            return FilterFactory.eq(column, value);
+        public <T extends Comparable<T>> IUnaryExpression getUnaryExpression(Path path, T value) {
+            if(path.equals("time")) {
+                return new GlobalTimeExpression(TimeFilter.eq((Long) value));
+            } else {
+                return new SingleSeriesExpression(path, ValueFilter.eq(value));
+            }
         }
 
         @Override
@@ -36,9 +36,12 @@ public enum BasicOperatorType {
     },
     LTEQ {
         @Override
-        public <T extends Comparable<T>, C extends FilterSeries<T>> SingleSeriesFilterExpression getValueFilter(
-                C column, T value) {
-            return FilterFactory.ltEq(column, value, true);
+        public <T extends Comparable<T>> IUnaryExpression getUnaryExpression(Path path, T value) {
+            if(path.equals("time")) {
+                return new GlobalTimeExpression(TimeFilter.ltEq((Long) value));
+            } else {
+                return new SingleSeriesExpression(path, ValueFilter.ltEq(value));
+            }
         }
 
         @Override
@@ -53,9 +56,12 @@ public enum BasicOperatorType {
     },
     LT {
         @Override
-        public <T extends Comparable<T>, C extends FilterSeries<T>> SingleSeriesFilterExpression getValueFilter(
-                C column, T value) {
-            return FilterFactory.ltEq(column, value, false);
+        public <T extends Comparable<T>> IUnaryExpression getUnaryExpression(Path path, T value) {
+            if(path.equals("time")) {
+                return new GlobalTimeExpression(TimeFilter.lt((Long) value));
+            } else {
+                return new SingleSeriesExpression(path, ValueFilter.lt(value));
+            }
         }
 
         @Override
@@ -70,9 +76,12 @@ public enum BasicOperatorType {
     },
     GTEQ {
         @Override
-        public <T extends Comparable<T>, C extends FilterSeries<T>> SingleSeriesFilterExpression getValueFilter(
-                C column, T value) {
-            return FilterFactory.gtEq(column, value, true);
+        public <T extends Comparable<T>> IUnaryExpression getUnaryExpression(Path path, T value) {
+            if(path.equals("time")) {
+                return new GlobalTimeExpression(TimeFilter.gtEq((Long) value));
+            } else {
+                return new SingleSeriesExpression(path, ValueFilter.gtEq(value));
+            }
         }
 
         @Override
@@ -87,9 +96,12 @@ public enum BasicOperatorType {
     },
     GT {
         @Override
-        public <T extends Comparable<T>, C extends FilterSeries<T>> SingleSeriesFilterExpression getValueFilter(
-                C column, T value) {
-            return FilterFactory.gtEq(column, value, false);
+        public <T extends Comparable<T>> IUnaryExpression getUnaryExpression(Path path, T value) {
+            if(path.equals("time")) {
+                return new GlobalTimeExpression(TimeFilter.gt((Long) value));
+            } else {
+                return new SingleSeriesExpression(path, ValueFilter.gt(value));
+            }
         }
 
         @Override
@@ -104,9 +116,12 @@ public enum BasicOperatorType {
     },
     NOTEQUAL {
         @Override
-        public <T extends Comparable<T>, C extends FilterSeries<T>> SingleSeriesFilterExpression getValueFilter(
-                C column, T value) {
-            return FilterFactory.noteq(column, value);
+        public <T extends Comparable<T>> IUnaryExpression getUnaryExpression(Path path, T value) {
+            if(path.equals("time")) {
+                return new GlobalTimeExpression(TimeFilter.notEq((Long) value));
+            } else {
+                return new SingleSeriesExpression(path, ValueFilter.notEq(value));
+            }
         }
 
         @Override
@@ -141,8 +156,7 @@ public enum BasicOperatorType {
         }
     }
 
-    public abstract <T extends Comparable<T>, C extends FilterSeries<T>> SingleSeriesFilterExpression getValueFilter(
-            C column, T value);
+    public abstract <T extends Comparable<T>> IUnaryExpression getUnaryExpression(Path path, T value);
 
     public abstract <T extends Comparable<T>> Filter getValueFilter(T tsPrimitiveType);
 

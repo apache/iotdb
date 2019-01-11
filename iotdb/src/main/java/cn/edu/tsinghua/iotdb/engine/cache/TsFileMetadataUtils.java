@@ -1,19 +1,15 @@
 package cn.edu.tsinghua.iotdb.engine.cache;
 
-import java.io.ByteArrayInputStream;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-
+import cn.edu.tsinghua.tsfile.file.metadata.TsDeviceMetadata;
+import cn.edu.tsinghua.tsfile.file.metadata.TsFileMetaData;
+import cn.edu.tsinghua.tsfile.read.TsFileSequenceReader;
+import cn.edu.tsinghua.tsfile.write.writer.TsFileIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import cn.edu.tsinghua.tsfile.common.utils.ITsRandomAccessFileReader;
-import cn.edu.tsinghua.tsfile.file.metadata.TsFileMetaData;
-import cn.edu.tsinghua.tsfile.file.metadata.TsRowGroupBlockMetaData;
-import cn.edu.tsinghua.tsfile.file.metadata.converter.TsFileMetaDataConverter;
-import cn.edu.tsinghua.tsfile.file.utils.ReadWriteThriftFormatUtils;
-import cn.edu.tsinghua.tsfile.timeseries.read.TsRandomAccessLocalFileReader;
-import cn.edu.tsinghua.tsfile.timeseries.write.io.TsFileIOWriter;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+
 
 /**
  * This class is used to read metadata(<code>TsFileMetaData</code> and
@@ -25,67 +21,36 @@ import cn.edu.tsinghua.tsfile.timeseries.write.io.TsFileIOWriter;
 public class TsFileMetadataUtils {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(TsFileMetadataUtils.class);
-	private static final int FOOTER_LENGTH = 4;
-	private static final int MAGIC_LENGTH = TsFileIOWriter.magicStringBytes.length;
 
 	public static TsFileMetaData getTsFileMetaData(String filePath) throws IOException {
-		ITsRandomAccessFileReader randomAccessFileReader = null;
+		TsFileSequenceReader reader = null;
 		try {
-			randomAccessFileReader = new TsRandomAccessLocalFileReader(filePath);
-			long l = randomAccessFileReader.length();
-			randomAccessFileReader.seek(l - MAGIC_LENGTH - FOOTER_LENGTH);
-			int fileMetaDataLength = randomAccessFileReader.readInt();
-			randomAccessFileReader.seek(l - MAGIC_LENGTH - FOOTER_LENGTH - fileMetaDataLength);
-			byte[] buf = new byte[fileMetaDataLength];
-			randomAccessFileReader.read(buf, 0, buf.length);
-			ByteArrayInputStream bais = new ByteArrayInputStream(buf);
-			TsFileMetaData fileMetaData = new TsFileMetaDataConverter()
-					.toTsFileMetadata(ReadWriteThriftFormatUtils.readFileMetaData(bais));
-			return fileMetaData;
-		} catch (FileNotFoundException e) {
-			LOGGER.error("Can't open the tsfile {}, {}", filePath, e.getMessage());
-			throw new IOException(e);
-		} catch (IOException e) {
-			LOGGER.error("Read the tsfile {} error, {}", filePath, e.getMessage());
-			throw e;
+			reader = new TsFileSequenceReader(filePath);
+			return reader.readFileMetadata();
 		} finally {
-			if (randomAccessFileReader != null) {
-				try {
-					randomAccessFileReader.close();
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
+			if (reader != null) {
+				reader.close();
 			}
 		}
 	}
 
-	public static TsRowGroupBlockMetaData getTsRowGroupBlockMetaData(String filePath, String deltaObjectId,
-			TsFileMetaData fileMetaData) throws IOException {
-		if (!fileMetaData.containsDeltaObject(deltaObjectId)) {
+	public static TsDeviceMetadata getTsRowGroupBlockMetaData(String filePath, String deviceId,
+															  TsFileMetaData fileMetaData) throws IOException {
+		if (!fileMetaData.getDeviceMap().containsKey(deviceId)) {
 			return null;
 		} else {
-			ITsRandomAccessFileReader randomAccessFileReader = null;
+			TsFileSequenceReader reader = null;
 			try {
-				randomAccessFileReader = new TsRandomAccessLocalFileReader(filePath);
-				TsRowGroupBlockMetaData blockMeta = new TsRowGroupBlockMetaData();
-				long offset = fileMetaData.getDeltaObject(deltaObjectId).offset;
-				int size = fileMetaData.getDeltaObject(deltaObjectId).metadataBlockSize;
-				blockMeta.convertToTSF(
-						ReadWriteThriftFormatUtils.readRowGroupBlockMetaData(randomAccessFileReader, offset, size));
-				return blockMeta;
-			} catch (FileNotFoundException e) {
-				LOGGER.error("Can't open the tsfile {}, {}", filePath, e.getMessage());
-				throw new IOException(e);
-			} catch (IOException e) {
-				LOGGER.error("Read the tsfile {} error, {}", filePath, e.getMessage());
-				throw e;
+				reader = new TsFileSequenceReader(filePath);
+				long offset = fileMetaData.getDeviceMap().get(deviceId).getOffset();
+				int size = fileMetaData.getDeviceMap().get(deviceId).getLen();
+				ByteBuffer data = ByteBuffer.allocate(size);
+				reader.readRaw(offset, size, data);
+				data.flip();
+				return TsDeviceMetadata.deserializeFrom(data);
 			} finally {
-				if (randomAccessFileReader != null) {
-					try {
-						randomAccessFileReader.close();
-					} catch (IOException e) {
-						e.printStackTrace();
-					}
+				if(reader != null) {
+					reader.close();
 				}
 			}
 		}

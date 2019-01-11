@@ -4,9 +4,7 @@ import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Created by zhangjinrui on 2018/1/25.
- */
+
 public class PrimitiveArrayList {
 
     private static final int MAX_SIZE_OF_ONE_ARRAY = 512;

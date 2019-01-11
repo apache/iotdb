@@ -2,8 +2,8 @@ package cn.edu.tsinghua.tsfile.encoding.decoder;
 
 import static org.junit.Assert.*;
 
-import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -16,11 +16,7 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * 
- * @author XuYi
- *
- */
+@Deprecated
 public class BitmapDecoderTest {
   private static final Logger LOGGER = LoggerFactory.getLogger(BitmapDecoderTest.class);
   
@@ -66,7 +62,7 @@ public class BitmapDecoderTest {
       encoder.flush(baos);
     }
 
-    ByteArrayInputStream bais = new ByteArrayInputStream(baos.toByteArray());
+    ByteBuffer bais = ByteBuffer.wrap(baos.toByteArray());
     Decoder decoder = new BitmapDecoder(EndianType.LITTLE_ENDIAN);
     for (int i = 0; i < repeatCount; i++) {
       for (int value : list) {

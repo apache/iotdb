@@ -15,8 +15,8 @@ import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
-import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
+import cn.edu.tsinghua.iotdb.conf.IoTDBConfig;
+import cn.edu.tsinghua.iotdb.conf.IoTDBDescriptor;
 import cn.edu.tsinghua.iotdb.postback.conf.PostBackSenderConfig;
 import cn.edu.tsinghua.iotdb.postback.conf.PostBackSenderDescriptor;
 
@@ -30,7 +30,7 @@ public class FileManager {
 	private Set<String> lastLocalFiles = new HashSet<>();
 	private Map<String, Set<String>> nowLocalFiles = new HashMap<>();
 	private PostBackSenderConfig postbackConfig = PostBackSenderDescriptor.getInstance().getConfig();
-	private TsfileDBConfig tsfileConfig = TsfileDBDescriptor.getInstance().getConfig();
+	private IoTDBConfig tsfileConfig = IoTDBDescriptor.getInstance().getConfig();
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(FileManager.class);
 

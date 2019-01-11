@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<configuration>
+<configuration  debug="false" >
 	<property name="LOG_PATH" value="logs" />
+	<!-- prevent logback from outputting its own status at the start of every log -->
+	<statusListener class="ch.qos.logback.core.status.NopStatusListener" />
 	<appender name="FILEERROR" class="ch.qos.logback.core.rolling.RollingFileAppender">
 		<file>${LOG_PATH}/log_error.log</file>
    		<rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
@@ -92,11 +94,9 @@
 		</filter>
 	</appender>
 
-	<root level="ERROR">
-		<appender-ref ref="FILEDEBUG" />
-		<appender-ref ref="FILEINFO" />
-		<appender-ref ref="FILEWARN" />
-		<appender-ref ref="FILEERROR" />
+	<!--<logger name="cn.edu.tsinghua.tsfile.write.chunk.ChunkWriterImpl level="debug" />-->
+
+	<root level="INFO">
 		<appender-ref ref="stdout" />
 	</root>
 </configuration>

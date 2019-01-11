@@ -1,7 +1,7 @@
 package cn.edu.tsinghua.tsfile.common.conf;
 
 import cn.edu.tsinghua.tsfile.common.constant.SystemConstant;
-import cn.edu.tsinghua.tsfile.timeseries.utils.Loader;
+import cn.edu.tsinghua.tsfile.utils.Loader;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

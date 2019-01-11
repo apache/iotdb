@@ -1,6 +1,6 @@
 package cn.edu.tsinghua.tsfile.file.metadata.statistics;
 
-import cn.edu.tsinghua.tsfile.common.utils.Binary;
+import cn.edu.tsinghua.tsfile.utils.Binary;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;

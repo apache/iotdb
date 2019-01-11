@@ -10,9 +10,6 @@ import cn.edu.tsinghua.iotdb.exception.PathErrorException;
 /**
  * "PTree" is the shorthand for "Property Tree". One {@code PTree} consists
  * several {@code PNode}
- * 
- * @author Jinrui Zhang
- *
  */
 public class PTree implements Serializable {
 	private static final long serialVersionUID = 2642766399323283900L;
@@ -35,7 +32,7 @@ public class PTree implements Serializable {
 	}
 
 	/**
-	 * Add a path to current PTree
+	 * Add a seriesPath to current PTree
 	 * @return The count of new added {@code PNode}
 	 * @throws PathErrorException
 	 */
@@ -46,7 +43,7 @@ public class PTree implements Serializable {
 		}
 		String[] nodes = path.trim().split("\\.");
 		if (nodes.length <= 1 || !nodes[0].equals(getRoot().getName())) {
-			throw new PathErrorException("Input path not exist. Path: " + path);
+			throw new PathErrorException("Input seriesPath not exist. Path: " + path);
 		}
 
 		PNode cur = getRoot();
@@ -69,7 +66,7 @@ public class PTree implements Serializable {
 	}
 
 	/**
-	 * Remove a path from current PTree
+	 * Remove a seriesPath from current PTree
 	 * @throws PathErrorException
 	 */
 	public void deletePath(String path) throws PathErrorException {
@@ -116,16 +113,16 @@ public class PTree implements Serializable {
 
 	private PNode getLeaf(PNode node, String[] nodes, int idx) throws PathErrorException {
 		if (idx >= nodes.length) {
-			throw new PathErrorException("PTree path not exist. ");
+			throw new PathErrorException("PTree seriesPath not exist. ");
 		}
 		if (node.isLeaf()) {
 			if (idx != nodes.length - 1 || !nodes[idx].equals(node.getName())) {
-				throw new PathErrorException("PTree path not exist. ");
+				throw new PathErrorException("PTree seriesPath not exist. ");
 			}
 			return node;
 		}else{
 			if (idx >= nodes.length - 1 || !node.hasChild(nodes[idx + 1])) {
-				throw new PathErrorException("PTree path not exist. ");
+				throw new PathErrorException("PTree seriesPath not exist. ");
 			}
 			return getLeaf(node.getChild(nodes[idx + 1]), nodes, idx + 1);
 		}
@@ -134,8 +131,8 @@ public class PTree implements Serializable {
 	/**
 	 * 
 	 * @param path
-	 *            a path in current {@code PTree} Get all linked path in MTree
-	 *            according to the given path in PTree
+	 *            a seriesPath in current {@code PTree} Get all linked seriesPath in MTree
+	 *            according to the given seriesPath in PTree
 	 * @return Paths will be separated by the {@code MNode.dataFileName} in the
 	 *         HashMap
 	 * @throws PathErrorException

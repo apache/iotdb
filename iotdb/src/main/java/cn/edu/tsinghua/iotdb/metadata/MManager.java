@@ -1,13 +1,12 @@
 package cn.edu.tsinghua.iotdb.metadata;
 
-import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
+import cn.edu.tsinghua.iotdb.conf.IoTDBDescriptor;
 import cn.edu.tsinghua.iotdb.exception.MetadataArgsErrorException;
 import cn.edu.tsinghua.iotdb.exception.PathErrorException;
-import cn.edu.tsinghua.iotdb.index.IndexManager.IndexType;
 import cn.edu.tsinghua.iotdb.utils.RandomDeleteCache;
-import cn.edu.tsinghua.tsfile.common.exception.cache.CacheException;
+import cn.edu.tsinghua.tsfile.exception.cache.CacheException;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
-import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
+import cn.edu.tsinghua.tsfile.read.common.Path;
 
 import java.io.*;
 import java.util.*;
@@ -28,7 +27,7 @@ public class MManager {
     private ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
     // The file storing the serialize info for metadata
     private String datafilePath;
-    // the log file path
+    // the log file seriesPath
     private String logFilePath;
     private MGraph mGraph;
     private BufferedWriter logWriter;
@@ -47,7 +46,7 @@ public class MManager {
     }
 
     private MManager() {
-        metadataDirPath = TsfileDBDescriptor.getInstance().getConfig().metadataDir;
+        metadataDirPath = IoTDBDescriptor.getInstance().getConfig().metadataDir;
         if (metadataDirPath.length() > 0
                 && metadataDirPath.charAt(metadataDirPath.length() - 1) != File.separatorChar) {
             metadataDirPath = metadataDirPath + File.separatorChar;
@@ -60,7 +59,7 @@ public class MManager {
         logFilePath = metadataDirPath + MetadataConstant.METADATA_LOG;
         writeToLog = false;
 
-        int cacheSize = TsfileDBDescriptor.getInstance().getConfig().mManagerCacheSize;
+        int cacheSize = IoTDBDescriptor.getInstance().getConfig().mManagerCacheSize;
         checkAndGetDataTypeCache = new RandomDeleteCache<String, PathCheckRet>(cacheSize) {
             @Override
             public void beforeRemove(PathCheckRet object) throws CacheException {
@@ -109,8 +108,7 @@ public class MManager {
                     // init the metadata from the operation log
                     mGraph = new MGraph(ROOT_NAME);
                     if (logFile.exists()) {
-                        FileReader fr;
-                        fr = new FileReader(logFile);
+                        FileReader fr = new FileReader(logFile);
                         BufferedReader br = new BufferedReader(fr);
                         String cmd;
                         while ((cmd = br.readLine()) != null) {
@@ -168,10 +166,6 @@ public class MManager {
             linkMNodeToPTree(args[1], args[2]);
         } else if (args[0].equals(MetadataOperationType.UNLINK_MNODE_FROM_PTREE)) {
             unlinkMNodeFromPTree(args[1], args[2]);
-        } else if (args[0].equals(MetadataOperationType.ADD_INDEX_TO_PATH)) {
-            addIndexForOneTimeseries(args[1], IndexType.valueOf(args[2]));
-        } else if (args[0].equals(MetadataOperationType.DELETE_INDEX_FROM_PATH)) {
-            deleteIndexForOneTimeseries(args[1], IndexType.valueOf(args[2]));
         }
     }
 
@@ -200,7 +194,7 @@ public class MManager {
      * <code>getFileNameByPath</code> method first to check timeseries.
      * </p>
      *
-     * @param path     the timeseries path
+     * @param path     the timeseries seriesPath
      * @param dataType the datetype {@code DataType} for the timeseries
      * @param encoding the encoding function {@code Encoding} for the timeseries
      * @param args
@@ -345,23 +339,23 @@ public class MManager {
     }
 
     /**
-     * Extract the DeltaObjectId from given path
+     * Extract the deviceId from given seriesPath
      *
      * @param path
-     * @return String represents the DeltaObjectId
+     * @return String represents the deviceId
      */
-    public String getDeltaObjectTypeByPath(String path) throws PathErrorException {
+    public String getDeviceTypeByPath(String path) throws PathErrorException {
 
         lock.readLock().lock();
         try {
-            return mGraph.getDeltaObjectTypeByPath(path);
+            return mGraph.getDeviceTypeByPath(path);
         } finally {
             lock.readLock().unlock();
         }
     }
 
     /**
-     * Get series type for given path
+     * Get series type for given seriesPath
      *
      * @param fullPath
      * @return TSDataType
@@ -408,10 +402,10 @@ public class MManager {
     }
 
     /**
-     * Get all DeltaObject type in current Metadata Tree
+     * Get all device type in current Metadata Tree
      *
-     * @return a HashMap contains all distinct DeltaObject type separated by
-     * DeltaObject Type
+     * @return a HashMap contains all distinct device type separated by
+     * device Type
      * @throws PathErrorException
      */
     public Map<String, List<ColumnSchema>> getSchemaForAllType() throws PathErrorException {
@@ -459,7 +453,7 @@ public class MManager {
     /**
      * Get all ColumnSchemas for given delta object type
      *
-     * @param path A path represented one Delta object
+     * @param path A seriesPath represented one Delta object
      * @return a list contains all column schema
      * @throws PathErrorException
      */
@@ -475,7 +469,7 @@ public class MManager {
     }
 
     /**
-     * <p>Get all ColumnSchemas for the filenode path</p>
+     * <p>Get all ColumnSchemas for the filenode seriesPath</p>
      *
      * @param path
      * @return ArrayList<ColumnSchema> The list of the schema
@@ -512,7 +506,7 @@ public class MManager {
 
 
     /**
-     * Calculate the count of storage-level nodes included in given path
+     * Calculate the count of storage-level nodes included in given seriesPath
      *
      * @param path
      * @return The total count of storage-level nodes.
@@ -529,8 +523,8 @@ public class MManager {
     }
 
     /**
-     * Get the file name for given path Notice: This method could be called if
-     * and only if the path includes one node whose {@code isStorageLevel} is
+     * Get the file name for given seriesPath Notice: This method could be called if
+     * and only if the seriesPath includes one node whose {@code isStorageLevel} is
      * true
      *
      * @param path
@@ -611,8 +605,8 @@ public class MManager {
     }
 
     /**
-     * Return all paths for given path if the path is abstract.
-     * Or return the path itself.
+     * Return all paths for given seriesPath if the seriesPath is abstract.
+     * Or return the seriesPath itself.
      */
     public ArrayList<String> getPaths(String path) throws PathErrorException {
 
@@ -632,7 +626,7 @@ public class MManager {
     /**
      *
      * @param path
-     * @return metadata info of all timeseries under the given path
+     * @return metadata info of all timeseries under the given seriesPath
      * @throws PathErrorException
      */
     public List<List<String>> getShowTimeseriesPath(String path) throws PathErrorException {
@@ -646,7 +640,7 @@ public class MManager {
 
     /**
      * @param path
-     * @return All leaf nodes' path(s) of given path.
+     * @return All leaf nodes' seriesPath(s) of given seriesPath.
      */
     public List<String> getLeafNodePathInNextLevel(String path) throws PathErrorException {
         lock.readLock().lock();
@@ -658,7 +652,7 @@ public class MManager {
     }
 
     /**
-     * Check whether the path given exists
+     * Check whether the seriesPath given exists
      */
     public boolean pathExist(String path) {
 
@@ -689,10 +683,10 @@ public class MManager {
         }
     }
 
-    public MNode getNodeByDeltaObjectIDFromCache(String deltaObjectID) throws PathErrorException {
+    public MNode getNodeByDeviceIdFromCache(String deviceId) throws PathErrorException {
         lock.readLock().lock();
         try {
-            return mNodeCache.get(deltaObjectID);
+            return mNodeCache.get(deviceId);
         } catch (CacheException e) {
             throw new PathErrorException(e);
         } finally {
@@ -710,7 +704,7 @@ public class MManager {
     }
 
     /**
-     * Get ColumnSchema for given path. Notice: Path must be a complete Path
+     * Get ColumnSchema for given seriesPath. Notice: Path must be a complete Path
      * from root to leaf node.
      */
     public ColumnSchema getSchemaForOnePath(String path) throws PathErrorException {
@@ -754,7 +748,7 @@ public class MManager {
     }
 
     /**
-     * Check whether given path contains a MNode whose
+     * Check whether given seriesPath contains a MNode whose
      * {@code MNode.isStorageLevel} is true
      */
     public boolean checkFileLevel(List<Path> path) throws PathErrorException {
@@ -846,119 +840,7 @@ public class MManager {
     }
 
     /**
-     * Get all timeseries path which have specified index
-     *
-     * @param path
-     * @return
-     * @throws PathErrorException
-     */
-    public List<String> getAllIndexPaths(String path, IndexType indexType) throws PathErrorException {
-        lock.readLock().lock();
-        try {
-            List<String> ret = new ArrayList<>();
-            ArrayList<String> paths = getPaths(path);
-            for (String timesereis : paths) {
-                if (getSchemaForOnePath(timesereis).isHasIndex(indexType)) {
-                    ret.add(timesereis);
-                }
-            }
-            return ret;
-        } finally {
-            lock.readLock().unlock();
-        }
-    }
-
-    /**
-     * Get all timeseries path which have any no-real-time index
-     *
-     * @param path
-     * @return
-     * @throws PathErrorException
-     */
-    public Map<String, Set<IndexType>> getAllIndexPaths(String path) throws PathErrorException {
-        lock.readLock().lock();
-        try {
-            Map<String, Set<IndexType>> ret = new HashMap<>();
-            ArrayList<String> paths = getPaths(path);
-            for (String timeseries : paths) {
-                Set<IndexType> indexes = getSchemaForOnePath(timeseries).getIndexSet();
-                if (!indexes.isEmpty()) {
-                    ret.put(timeseries, indexes);
-                }
-            }
-            return ret;
-        } finally {
-            lock.readLock().unlock();
-        }
-    }
-
-    /**
-     * check the timeseries has index or not
-     *
-     * @param path
-     * @param indexType
-     * @return
-     * @throws PathErrorException
-     */
-    public boolean checkPathIndex(String path, IndexType indexType) throws PathErrorException {
-        lock.readLock().lock();
-        try {
-            if (getSchemaForOnePath(path).isHasIndex(indexType)) {
-                return true;
-            } else {
-                return false;
-            }
-        } finally {
-            lock.readLock().unlock();
-        }
-    }
-
-    /**
-     * add index for one timeseries
-     *
-     * @param path
-     * @throws PathErrorException
-     * @throws IOException
-     */
-    public void addIndexForOneTimeseries(String path, IndexType indexType) throws PathErrorException, IOException {
-        lock.writeLock().lock();
-        try {
-            getSchemaForOnePath(path).setHasIndex(indexType);
-            if (writeToLog) {
-                initLogStream();
-                logWriter.write(MetadataOperationType.ADD_INDEX_TO_PATH + "," + path + "," + indexType);
-                logWriter.newLine();
-                logWriter.flush();
-            }
-        } finally {
-            lock.writeLock().unlock();
-        }
-    }
-
-    /**
-     * drop index for one timeseries
-     *
-     * @param path
-     * @throws PathErrorException
-     * @throws IOException
-     */
-    public void deleteIndexForOneTimeseries(String path, IndexType indexType) throws PathErrorException, IOException {
-        lock.writeLock().lock();
-        try {
-            getSchemaForOnePath(path).removeIndex(indexType);
-            if (writeToLog) {
-                initLogStream();
-                logWriter.write(MetadataOperationType.DELETE_INDEX_FROM_PATH + "," + path + "," + indexType);
-                logWriter.newLine();
-                logWriter.flush();
-            }
-        } finally {
-            lock.writeLock().unlock();
-        }
-    }
-
-    /**
-     * Check whether {@code path} exists and whether {@code path} has been set storage level.
+     * Check whether {@code seriesPath} exists and whether {@code seriesPath} has been set storage level.
      *
      * @param path
      * @return {@link PathCheckRet}

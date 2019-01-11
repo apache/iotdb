@@ -10,8 +10,8 @@ import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
-import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
+import cn.edu.tsinghua.iotdb.conf.IoTDBConfig;
+import cn.edu.tsinghua.iotdb.conf.IoTDBDescriptor;
 
 /**
  * @author lta
@@ -22,7 +22,7 @@ public class ServerManager {
 	private TProcessor processor;
 	private TThreadPoolServer.Args poolArgs;
 	private TServer poolServer;
-	private TsfileDBConfig conf = TsfileDBDescriptor.getInstance().getConfig();
+	private IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(ServerManager.class);
 

@@ -41,7 +41,7 @@ Copy `application.properties` from `conf/` directory to `target` directory.(Or j
 Edit `application.properties`
 ```
 # ip and port of IoTDB 
-spring.datasource.url = jdbc:tsfile://127.0.0.1:6667/
+spring.datasource.url = jdbc:iotdb://127.0.0.1:6667/
 spring.datasource.username = root
 spring.datasource.password = root
 spring.datasource.driver-class-name=cn.edu.tsinghua.iotdb.jdbc.TsfileDriver

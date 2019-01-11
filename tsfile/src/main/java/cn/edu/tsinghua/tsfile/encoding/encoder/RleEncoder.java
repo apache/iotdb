@@ -2,9 +2,9 @@ package cn.edu.tsinghua.tsfile.encoding.encoder;
 
 import cn.edu.tsinghua.tsfile.common.conf.TSFileConfig;
 import cn.edu.tsinghua.tsfile.common.conf.TSFileDescriptor;
-import cn.edu.tsinghua.tsfile.common.exception.TSFileEncodingException;
-import cn.edu.tsinghua.tsfile.common.utils.Binary;
-import cn.edu.tsinghua.tsfile.common.utils.ReadWriteStreamUtils;
+import cn.edu.tsinghua.tsfile.exception.encoding.TSFileEncodingException;
+import cn.edu.tsinghua.tsfile.utils.Binary;
+import cn.edu.tsinghua.tsfile.utils.ReadWriteForEncodingUtils;
 import cn.edu.tsinghua.tsfile.encoding.common.EndianType;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSEncoding;
 import org.slf4j.Logger;
@@ -144,8 +144,8 @@ public abstract class RleEncoder<T extends Comparable<T>> extends Encoder {
             endPreviousBitPackedRun(config.RLE_MIN_REPEATED_NUM);
         }
         //write length
-        ReadWriteStreamUtils.writeUnsignedVarInt(byteCache.size(), out);
-        out.write(byteCache.toByteArray());
+        ReadWriteForEncodingUtils.writeUnsignedVarInt(byteCache.size(), out);
+        byteCache.writeTo(out);
         reset();
     }
 

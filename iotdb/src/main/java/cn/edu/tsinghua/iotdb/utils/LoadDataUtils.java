@@ -12,22 +12,20 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import cn.edu.tsinghua.iotdb.exception.ProcessorException;
+import cn.edu.tsinghua.tsfile.exception.write.WriteProcessException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
-import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
+import cn.edu.tsinghua.iotdb.conf.IoTDBConfig;
+import cn.edu.tsinghua.iotdb.conf.IoTDBDescriptor;
 import cn.edu.tsinghua.iotdb.engine.filenode.FileNodeManager;
 import cn.edu.tsinghua.iotdb.exception.FileNodeManagerException;
 import cn.edu.tsinghua.iotdb.exception.PathErrorException;
 import cn.edu.tsinghua.iotdb.metadata.ColumnSchema;
 import cn.edu.tsinghua.iotdb.metadata.MManager;
-import cn.edu.tsinghua.tsfile.common.exception.ProcessorException;
-import cn.edu.tsinghua.tsfile.timeseries.utils.FileUtils;
-import cn.edu.tsinghua.tsfile.timeseries.utils.RecordUtils;
-import cn.edu.tsinghua.tsfile.timeseries.write.exception.WriteProcessException;
-import cn.edu.tsinghua.tsfile.timeseries.write.record.TSRecord;
-import cn.edu.tsinghua.tsfile.timeseries.write.schema.FileSchema;
+import cn.edu.tsinghua.tsfile.write.record.TSRecord;
+import cn.edu.tsinghua.tsfile.write.schema.FileSchema;
 
 /**
  * @author kangrong
@@ -43,7 +41,7 @@ public class LoadDataUtils {
 	private boolean hasExtra = false;
 	private long totalPointCount = 0;
 	private FileNodeManager fileNodeManager;
-	private TsfileDBConfig conf = TsfileDBDescriptor.getInstance().getConfig();
+	private IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
 
 	public LoadDataUtils() {
 		writeInstanceMap = new HashSet<>();
@@ -53,8 +51,8 @@ public class LoadDataUtils {
 
 	/**
 	 * @param inputCsvDataPath
-	 *            - path
-	 * @return - return extra data file in this circle as input csv path in next
+	 *            - seriesPath
+	 * @return - return extra data file in this circle as input csv seriesPath in next
 	 *         circle
 	 */
 	private String loadLocalDataOnePass(String inputCsvDataPath) {
@@ -113,9 +111,9 @@ public class LoadDataUtils {
 		totalPointCount += record.dataPointList.size();
 		String nsPath = null;
 		try {
-			nsPath = mManager.getFileNameByPath(record.deltaObjectId);
+			nsPath = mManager.getFileNameByPath(record.deviceId);
 		} catch (PathErrorException e) {
-			LOG.error("given path not found.{}", e.getMessage());
+			LOG.error("given seriesPath not found.{}", e.getMessage());
 		}
 		if (!writeInstanceMap.contains(nsPath)) {
 			if (writeInstanceMap.size() < writeInstanceThreshold) {
@@ -183,7 +181,7 @@ public class LoadDataUtils {
 			ArrayList<ColumnSchema> meaSchema = mManager.getSchemaForOneType(measureType);
 			fileSchema = FileSchemaUtils.getFileSchemaFromColumnSchema(meaSchema, measureType);
 		} catch (PathErrorException e) {
-			LOG.error("the path of input measurement schema meet error!", e);
+			LOG.error("the seriesPath of input measurement schema meet error!", e);
 			close();
 			return;
 		} catch (WriteProcessException e) {

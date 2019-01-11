@@ -1,30 +1,30 @@
 package cn.edu.tsinghua.iotdb.engine.querycontext;
 
+import cn.edu.tsinghua.iotdb.engine.memtable.TimeValuePairSorter;
 import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
-import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
+import cn.edu.tsinghua.tsfile.read.common.Path;
 
 import java.util.List;
 
-/**
- * Created by zhangjinrui on 2018/1/18.
- */
+
 public class OverflowSeriesDataSource {
+
     private Path seriesPath;
     private TSDataType dataType;
+    // overflow tsfile
     private List<OverflowInsertFile> overflowInsertFileList;
-    private RawSeriesChunk rawSeriesChunk;
-    private UpdateDeleteInfoOfOneSeries updateDeleteInfoOfOneSeries;
+    // unSeq mem-table
+    private TimeValuePairSorter readableMemChunk;
 
     public OverflowSeriesDataSource(Path seriesPath) {
         this.seriesPath = seriesPath;
     }
 
-    public OverflowSeriesDataSource(Path seriesPath, TSDataType dataType, List<OverflowInsertFile> overflowInsertFileList, RawSeriesChunk rawSeriesChunk, UpdateDeleteInfoOfOneSeries updateDeleteInfoOfOneSeries) {
+    public OverflowSeriesDataSource(Path seriesPath, TSDataType dataType, List<OverflowInsertFile> overflowInsertFileList, TimeValuePairSorter readableMemChunk) {
         this.seriesPath = seriesPath;
         this.dataType = dataType;
         this.overflowInsertFileList = overflowInsertFileList;
-        this.rawSeriesChunk = rawSeriesChunk;
-        this.updateDeleteInfoOfOneSeries = updateDeleteInfoOfOneSeries;
+        this.readableMemChunk = readableMemChunk;
     }
 
     public List<OverflowInsertFile> getOverflowInsertFileList() {
@@ -35,20 +35,12 @@ public class OverflowSeriesDataSource {
         this.overflowInsertFileList = overflowInsertFileList;
     }
 
-    public UpdateDeleteInfoOfOneSeries getUpdateDeleteInfoOfOneSeries() {
-        return updateDeleteInfoOfOneSeries;
+    public TimeValuePairSorter getReadableMemChunk() {
+        return readableMemChunk;
     }
 
-    public void setUpdateDeleteInfoOfOneSeries(UpdateDeleteInfoOfOneSeries updateDeleteInfoOfOneSeries) {
-        this.updateDeleteInfoOfOneSeries = updateDeleteInfoOfOneSeries;
-    }
-
-    public RawSeriesChunk getRawSeriesChunk() {
-        return rawSeriesChunk;
-    }
-
-    public void setRawSeriesChunk(RawSeriesChunk rawSeriesChunk) {
-        this.rawSeriesChunk = rawSeriesChunk;
+    public void setReadableMemChunk(TimeValuePairSorter rawChunk) {
+        this.readableMemChunk = rawChunk;
     }
 
     public Path getSeriesPath() {
@@ -63,7 +55,7 @@ public class OverflowSeriesDataSource {
         return dataType;
     }
 
-    public boolean hasRawSeriesChunk() {
-        return rawSeriesChunk != null && !rawSeriesChunk.isEmpty();
+    public boolean hasRawChunk() {
+        return readableMemChunk != null && !readableMemChunk.isEmpty();
     }
 }

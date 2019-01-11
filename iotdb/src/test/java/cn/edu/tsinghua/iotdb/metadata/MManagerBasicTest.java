@@ -14,7 +14,7 @@ import org.junit.Test;
 import cn.edu.tsinghua.iotdb.exception.MetadataArgsErrorException;
 import cn.edu.tsinghua.iotdb.exception.PathErrorException;
 import cn.edu.tsinghua.iotdb.utils.EnvironmentUtils;
-import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
+import cn.edu.tsinghua.tsfile.read.common.Path;
 
 public class MManagerBasicTest {
 
@@ -45,7 +45,7 @@ public class MManagerBasicTest {
 		try {
 			manager.setStorageLevelToMTree("root.laptop");
 		} catch (PathErrorException | IOException e) {
-			assertEquals("The path of root.laptop already exist, it can't be set to the storage group", e.getMessage());
+			assertEquals("The seriesPath of root.laptop already exist, it can't be set to the storage group", e.getMessage());
 		}
 		
 		try {
@@ -125,7 +125,7 @@ public class MManagerBasicTest {
 		try {
 			manager.setStorageLevelToMTree("root.laptop.d2");
 		} catch (PathErrorException | IOException e) {
-			assertEquals(String.format("The path of %s already exist, it can't be set to the storage group", "root.laptop.d2"),e.getMessage());
+			assertEquals(String.format("The seriesPath of %s already exist, it can't be set to the storage group", "root.laptop.d2"),e.getMessage());
 		}
 		/*
 		 * check file level

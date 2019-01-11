@@ -11,13 +11,13 @@ import java.sql.Statement;
 import java.util.HashSet;
 import java.util.Set;
 
-import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
-import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
-import cn.edu.tsinghua.iotdb.jdbc.TsfileJDBCConfig;
+import cn.edu.tsinghua.iotdb.conf.IoTDBConfig;
+import cn.edu.tsinghua.iotdb.conf.IoTDBDescriptor;
+import cn.edu.tsinghua.iotdb.jdbc.Config;
 import cn.edu.tsinghua.iotdb.postback.conf.PostBackSenderConfig;
 import cn.edu.tsinghua.iotdb.postback.conf.PostBackSenderDescriptor;
 import cn.edu.tsinghua.iotdb.service.IoTDB;
-import cn.edu.tsinghua.iotdb.service.TestUtils;
+import cn.edu.tsinghua.iotdb.integration.Constant;
 import cn.edu.tsinghua.iotdb.utils.EnvironmentUtils;
 
 /**
@@ -26,7 +26,7 @@ import cn.edu.tsinghua.iotdb.utils.EnvironmentUtils;
  */
 public class IoTDBSingleClientPostBackTest {
 
-	private TsfileDBConfig conf = TsfileDBDescriptor.getInstance().getConfig();
+	private IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
 	
 	private String serverIpTest = "192.168.130.17";
 	private PostBackSenderConfig config= PostBackSenderDescriptor.getInstance().getConfig();;
@@ -157,7 +157,7 @@ public class IoTDBSingleClientPostBackTest {
 			"flush",
 			};
 
-	private boolean testFlag = TestUtils.testFlag;
+	private boolean testFlag = Constant.testFlag;
 
 	public void setUp() throws Exception {
 		if (testFlag) {
@@ -189,10 +189,10 @@ public class IoTDBSingleClientPostBackTest {
 			System.out.println("It's the first time to post back!");
 			try {
 				Thread.sleep(2000);
-				Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);
+				Class.forName(Config.JDBC_DRIVER_NAME);
 				Connection connection = null;
 				try {
-					connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
+					connection = DriverManager.getConnection(Config.IOTDB_URL_PREFIX+"127.0.0.1:6667/", "root", "root");
 					Statement statement = connection.createStatement();
 					for (String sql : sqls1) {
 						statement.execute(sql);
@@ -216,10 +216,10 @@ public class IoTDBSingleClientPostBackTest {
 			dataSender.clear();
 			try {
 				Thread.sleep(2000);
-				Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);
+				Class.forName(Config.JDBC_DRIVER_NAME);
 				Connection connection = null;
 				try {
-					connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
+					connection = DriverManager.getConnection(Config.IOTDB_URL_PREFIX+"127.0.0.1:6667/", "root", "root");
 					Statement statement = connection.createStatement();
 					boolean hasResultSet = statement.execute("select * from root.vehicle");
 					if (hasResultSet) {
@@ -260,7 +260,7 @@ public class IoTDBSingleClientPostBackTest {
 			dataReceiver.clear();
 			try {
 				Thread.sleep(2000);
-				Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);
+				Class.forName(Config.JDBC_DRIVER_NAME);
 				Connection connection = null;
 				try {
 					connection = DriverManager.getConnection("jdbc:tsfile://192.168.130.17:6667/", "root", "root");
@@ -314,10 +314,10 @@ public class IoTDBSingleClientPostBackTest {
 			System.out.println("It's the second time to post back!");
 			try {
 				Thread.sleep(2000);
-				Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);
+				Class.forName(Config.JDBC_DRIVER_NAME);
 				Connection connection = null;
 				try {
-					connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
+					connection = DriverManager.getConnection(Config.IOTDB_URL_PREFIX+"127.0.0.1:6667/", "root", "root");
 					Statement statement = connection.createStatement();
 					for (String sql : sqls2) {
 						statement.execute(sql);
@@ -341,10 +341,10 @@ public class IoTDBSingleClientPostBackTest {
 			dataSender.clear();
 			try {
 				Thread.sleep(2000);
-				Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);
+				Class.forName(Config.JDBC_DRIVER_NAME);
 				Connection connection = null;
 				try {
-					connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
+					connection = DriverManager.getConnection(Config.IOTDB_URL_PREFIX+"127.0.0.1:6667/", "root", "root");
 					Statement statement = connection.createStatement();
 					boolean hasResultSet = statement.execute("select * from root.vehicle");
 					if (hasResultSet) {
@@ -385,7 +385,7 @@ public class IoTDBSingleClientPostBackTest {
 			dataReceiver.clear();
 			try {
 				Thread.sleep(2000);
-				Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);
+				Class.forName(Config.JDBC_DRIVER_NAME);
 				Connection connection = null;
 				try {
 					connection = DriverManager.getConnection("jdbc:tsfile://192.168.130.17:6667/", "root", "root");
@@ -438,10 +438,10 @@ public class IoTDBSingleClientPostBackTest {
 			System.out.println("It's the third time to post back!");
 			try {
 				Thread.sleep(2000);
-				Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);
+				Class.forName(Config.JDBC_DRIVER_NAME);
 				Connection connection = null;
 				try {
-					connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
+					connection = DriverManager.getConnection(Config.IOTDB_URL_PREFIX+"127.0.0.1:6667/", "root", "root");
 					Statement statement = connection.createStatement();
 					for (String sql : sqls3) {
 						statement.execute(sql);
@@ -465,10 +465,10 @@ public class IoTDBSingleClientPostBackTest {
 			dataSender.clear();
 			try {
 				Thread.sleep(2000);
-				Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);
+				Class.forName(Config.JDBC_DRIVER_NAME);
 				Connection connection = null;
 				try {
-					connection = DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
+					connection = DriverManager.getConnection(Config.IOTDB_URL_PREFIX+"127.0.0.1:6667/", "root", "root");
 					Statement statement = connection.createStatement();
 					boolean hasResultSet = statement.execute("select * from root.vehicle");
 					if (hasResultSet) {
@@ -530,7 +530,7 @@ public class IoTDBSingleClientPostBackTest {
 			dataReceiver.clear();
 			try {
 				Thread.sleep(2000);
-				Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);
+				Class.forName(Config.JDBC_DRIVER_NAME);
 				Connection connection = null;
 				try {
 					connection = DriverManager.getConnection("jdbc:tsfile://192.168.130.17:6667/", "root", "root");

@@ -4,14 +4,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 import cn.edu.tsinghua.iotdb.qp.logical.Operator;
-import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
+import cn.edu.tsinghua.tsfile.read.common.Path;
 
 /**
  * this class maintains information from select clause
- *
- * @author kangrong
- * @author qiaojialin
- *
  */
 public final class SelectOperator extends Operator {
 

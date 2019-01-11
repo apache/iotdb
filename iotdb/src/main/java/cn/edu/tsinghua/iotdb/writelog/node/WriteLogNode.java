@@ -4,7 +4,6 @@ import cn.edu.tsinghua.iotdb.exception.RecoverException;
 import cn.edu.tsinghua.iotdb.writelog.LogPosition;
 import cn.edu.tsinghua.iotdb.qp.physical.PhysicalPlan;
 
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.List;
 

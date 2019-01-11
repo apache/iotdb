@@ -9,7 +9,7 @@ import cn.edu.tsinghua.iotdb.utils.CommonUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import cn.edu.tsinghua.iotdb.conf.TsFileDBConstant;
+import cn.edu.tsinghua.iotdb.conf.IoTDBConstant;
 
 public class StartupChecks {
     private static final Logger LOGGER = LoggerFactory.getLogger(StartupChecks.class);
@@ -42,15 +42,15 @@ public class StartupChecks {
 
         @Override
         public void execute() throws StartupException {
-    		String jmxPort = System.getProperty(TsFileDBConstant.REMOTE_JMX_PORT_NAME);
+    		String jmxPort = System.getProperty(IoTDBConstant.REMOTE_JMX_PORT_NAME);
     		if(jmxPort == null){
     		    LOGGER.warn("JMX is not enabled to receive remote connection. "
     		    	+ "Please check conf/{}.sh(Unix or OS X, if you use Windows, check conf/{}.bat) for more info", 
-    		    	TsFileDBConstant.ENV_FILE_NAME,TsFileDBConstant.ENV_FILE_NAME);
-    		    jmxPort = System.getProperty(TsFileDBConstant.TSFILEDB_LOCAL_JMX_PORT_NAME);
+    		    	IoTDBConstant.ENV_FILE_NAME,IoTDBConstant.ENV_FILE_NAME);
+    		    jmxPort = System.getProperty(IoTDBConstant.TSFILEDB_LOCAL_JMX_PORT_NAME);
     		    if(jmxPort == null){
     			LOGGER.warn("{} missing from {}.sh(Unix or OS X, if you use Windows, check conf/{}.bat)", 
-    					TsFileDBConstant.TSFILEDB_LOCAL_JMX_PORT_NAME, TsFileDBConstant.ENV_FILE_NAME, TsFileDBConstant.ENV_FILE_NAME);
+    					IoTDBConstant.TSFILEDB_LOCAL_JMX_PORT_NAME, IoTDBConstant.ENV_FILE_NAME, IoTDBConstant.ENV_FILE_NAME);
     		    }
     		}else{
     		    LOGGER.info("JMX is enabled to receive remote connection on port {}", jmxPort);
@@ -63,8 +63,8 @@ public class StartupChecks {
         @Override
         public void execute() throws StartupException {
         	int version = CommonUtils.getJDKVersion();
-        	if(version < TsFileDBConstant.minSupportedJDKVerion){
-        		throw new StartupException(String.format("Requires JDK version >= %d, current version is %d", TsFileDBConstant.minSupportedJDKVerion, version));
+        	if(version < IoTDBConstant.minSupportedJDKVerion){
+        		throw new StartupException(String.format("Requires JDK version >= %d, current version is %d", IoTDBConstant.minSupportedJDKVerion, version));
         	} else{
         		LOGGER.info("JDK veriosn is {}.", version);
         	}

@@ -26,7 +26,7 @@ The example is to show how to write and read a TsFile File.
 
 ```
   The class is to show how to write Tsfile directly,it use the second interface: 
-            public void addMeasurement(MeasurementDescriptor measurementDescriptor) throws WriteProcessException
+            public void addMeasurement(MeasurementSchema measurementSchema) throws WriteProcessException
 ```
 
 ### Notice 
@@ -35,8 +35,8 @@ The example is to show how to write and read a TsFile File.
 ## Run TsFileRead.java
 
 ```
-  The class is to show how to read TsFile file named "test.ts".
-  The TsFile file "test.ts" is generated from class TsFileWrite1 or class TsFileWrite2, they generate the same TsFile file by two different ways
+  The class is to show how to read TsFile file named "test.tsfile".
+  The TsFile file "test.tsfile" is generated from class TsFileWrite1 or class TsFileWrite2, they generate the same TsFile file by two different ways
 ```
 
 ### Notice 

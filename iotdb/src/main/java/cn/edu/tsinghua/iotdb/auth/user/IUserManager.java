@@ -38,24 +38,24 @@ public interface IUserManager {
     boolean deleteUser(String username) throws AuthException;
 
     /**
-     * Grant a privilege on a path to a user.
+     * Grant a privilege on a seriesPath to a user.
      *
      * @param username The username of the user to which the privilege should be added.
-     * @param path  The path on which the privilege takes effect. If the privilege is a path-free privilege, this should be "root".
+     * @param path  The seriesPath on which the privilege takes effect. If the privilege is a seriesPath-free privilege, this should be "root".
      * @param privilegeId An integer that represents a privilege.
      * @return True if the permission is successfully added, false if the permission already exists.
-     * @throws AuthException If the user does not exist or the privilege or the path is illegal.
+     * @throws AuthException If the user does not exist or the privilege or the seriesPath is illegal.
      */
     boolean grantPrivilegeToUser(String username, String path, int privilegeId) throws AuthException;
 
     /**
-     * Revoke a privilege on path from a user.
+     * Revoke a privilege on seriesPath from a user.
      *
      * @param username The username of the user from which the privilege should be removed.
-     * @param path The path on which the privilege takes effect. If the privilege is a path-free privilege, this should be "root".
+     * @param path The seriesPath on which the privilege takes effect. If the privilege is a seriesPath-free privilege, this should be "root".
      * @param privilegeId An integer that represents a privilege.
      * @return True if the permission is successfully revoked, false if the permission does not exists.
-     * @throws AuthException If the user does not exist or the privilege or the path is illegal.
+     * @throws AuthException If the user does not exist or the privilege or the seriesPath is illegal.
      */
     boolean revokePrivilegeFromUser(String username, String path, int privilegeId) throws AuthException;
 

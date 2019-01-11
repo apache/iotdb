@@ -1,7 +1,12 @@
 package cn.edu.tsinghua.tsfile.file.metadata.statistics;
 
-import cn.edu.tsinghua.tsfile.common.utils.Binary;
-import cn.edu.tsinghua.tsfile.common.utils.BytesUtils;
+import cn.edu.tsinghua.tsfile.utils.Binary;
+import cn.edu.tsinghua.tsfile.utils.BytesUtils;
+import cn.edu.tsinghua.tsfile.utils.ReadWriteIOUtils;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.ByteBuffer;
 
 /**
  * Statistics for string type
@@ -12,7 +17,7 @@ public class BinaryStatistics extends Statistics<Binary> {
 	private Binary max = new Binary("");
 	private Binary min = new Binary("");
 	private Binary first = new Binary("");
-	private double sum;
+	private double sum;//FIXME sum is meaningless
 	private Binary last = new Binary("");
 
 	@Override
@@ -88,17 +93,17 @@ public class BinaryStatistics extends Statistics<Binary> {
 
 	@Override
 	public byte[] getMaxBytes() {
-		return BytesUtils.StringToBytes(max.getStringValue());
+		return  max.getValues();
 	}
 
 	@Override
 	public byte[] getMinBytes() {
-		return BytesUtils.StringToBytes(min.getStringValue());
+		return min.getValues();
 	}
 
 	@Override
 	public byte[] getFirstBytes() {
-		return BytesUtils.StringToBytes(first.getStringValue());
+		return first.getValues();
 	}
 
 	@Override
@@ -108,11 +113,56 @@ public class BinaryStatistics extends Statistics<Binary> {
 	
 	@Override
 	public byte[] getLastBytes(){
-		return BytesUtils.StringToBytes(last.getStringValue());
+		return last.getValues();
 	}
-	
+
+	@Override
+	public ByteBuffer getMaxBytebuffer() { return ByteBuffer.wrap(max.getValues()); }
+
+	@Override
+	public ByteBuffer getMinBytebuffer() { return ByteBuffer.wrap(min.getValues()); }
+
+	@Override
+	public ByteBuffer getFirstBytebuffer() {return ByteBuffer.wrap(first.getValues()); }
+
+	@Override
+	public ByteBuffer getSumBytebuffer() {
+		return ReadWriteIOUtils.getByteBuffer(sum);
+	}
+
+	@Override
+	public ByteBuffer getLastBytebuffer() {
+		 return ByteBuffer.wrap(last.getValues());
+	}
+
+
+
+
+	@Override
+	public int sizeOfDatum() {
+		return -1;
+	}
+
 	@Override
 	public String toString(){
 		return "[max:" + max + ",min:" + min + ",first:" + first + ",sum:" + sum + ",last:" + last + "]";
+	}
+
+	@Override
+	void fill(InputStream inputStream) throws IOException {
+		this.min = new Binary(ReadWriteIOUtils.readBytesWithSelfDescriptionLength(inputStream));
+		this.max = new Binary(ReadWriteIOUtils.readBytesWithSelfDescriptionLength(inputStream));
+		this.first = new Binary(ReadWriteIOUtils.readBytesWithSelfDescriptionLength(inputStream));
+		this.last = new Binary(ReadWriteIOUtils.readBytesWithSelfDescriptionLength(inputStream));
+		this.sum = ReadWriteIOUtils.readDouble(inputStream);
+	}
+
+	@Override
+	void fill(ByteBuffer byteBuffer) throws IOException {
+		this.min = new Binary(ReadWriteIOUtils.readByteBufferWithSelfDescriptionLength(byteBuffer).array());
+		this.max = new Binary(ReadWriteIOUtils.readByteBufferWithSelfDescriptionLength(byteBuffer).array());
+		this.first = new Binary(ReadWriteIOUtils.readByteBufferWithSelfDescriptionLength(byteBuffer).array());
+		this.last = new Binary(ReadWriteIOUtils.readByteBufferWithSelfDescriptionLength(byteBuffer).array());
+		this.sum = ReadWriteIOUtils.readDouble(byteBuffer);
 	}
 }

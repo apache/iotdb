@@ -18,8 +18,9 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
-import cn.edu.tsinghua.iotdb.jdbc.TsfileConnection;
-import cn.edu.tsinghua.iotdb.jdbc.TsfileJDBCConfig;
+import cn.edu.tsinghua.iotdb.jdbc.IoTDBConnection;
+import cn.edu.tsinghua.iotdb.jdbc.Config;
+import cn.edu.tsinghua.iotdb.jdbc.Constant;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -337,8 +338,8 @@ public class ImportCsv extends AbstractCsvTool{
 			errorInsertInfo = property + File.separatorChar + ERROR_INFO_STR;
 		}
     		try {
-    			Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);
-    			connection = (TsfileConnection) DriverManager.getConnection("jdbc:tsfile://" + ip + ":" + port + "/", username, password);
+    			Class.forName(Config.JDBC_DRIVER_NAME);
+    			connection = (IoTDBConnection) DriverManager.getConnection(Config.IOTDB_URL_PREFIX + ip + ":" + port + "/", username, password);
     			timeZoneID = timeZone;
     			setTimeZone();
     			

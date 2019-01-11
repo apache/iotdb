@@ -3905,7 +3905,7 @@ public class ServerService {
 				"mergeOldData_args");
 
 		private static final org.apache.thrift.protocol.TField PATH_FIELD_DESC = new org.apache.thrift.protocol.TField(
-				"path", org.apache.thrift.protocol.TType.STRING, (short) 1);
+				"seriesPath", org.apache.thrift.protocol.TType.STRING, (short) 1);
 
 		private static final Map<Class<? extends IScheme>, SchemeFactory> schemes = new HashMap<Class<? extends IScheme>, SchemeFactory>();
 		static {
@@ -3920,7 +3920,7 @@ public class ServerService {
 		 * finding and manipulating them.
 		 */
 		public enum _Fields implements org.apache.thrift.TFieldIdEnum {
-			PATH((short) 1, "path");
+			PATH((short) 1, "seriesPath");
 
 			private static final Map<String, _Fields> byName = new HashMap<String, _Fields>();
 
@@ -3982,7 +3982,7 @@ public class ServerService {
 		static {
 			Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> tmpMap = new EnumMap<_Fields, org.apache.thrift.meta_data.FieldMetaData>(
 					_Fields.class);
-			tmpMap.put(_Fields.PATH, new org.apache.thrift.meta_data.FieldMetaData("path",
+			tmpMap.put(_Fields.PATH, new org.apache.thrift.meta_data.FieldMetaData("seriesPath",
 					org.apache.thrift.TFieldRequirementType.DEFAULT,
 					new org.apache.thrift.meta_data.FieldValueMetaData(org.apache.thrift.protocol.TType.STRING)));
 			metaDataMap = Collections.unmodifiableMap(tmpMap);
@@ -4029,7 +4029,7 @@ public class ServerService {
 		}
 
 		/**
-		 * Returns true if field path is set (has been assigned a value) and false
+		 * Returns true if field seriesPath is set (has been assigned a value) and false
 		 * otherwise
 		 */
 		public boolean isSetPath() {
@@ -4148,7 +4148,7 @@ public class ServerService {
 			StringBuilder sb = new StringBuilder("mergeOldData_args(");
 			boolean first = true;
 
-			sb.append("path:");
+			sb.append("seriesPath:");
 			if (this.path == null) {
 				sb.append("null");
 			} else {

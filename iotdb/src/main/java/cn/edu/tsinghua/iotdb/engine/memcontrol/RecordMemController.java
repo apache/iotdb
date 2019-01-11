@@ -1,7 +1,7 @@
 package cn.edu.tsinghua.iotdb.engine.memcontrol;
 
-import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
-import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
+import cn.edu.tsinghua.iotdb.conf.IoTDBConfig;
+import cn.edu.tsinghua.iotdb.conf.IoTDBDescriptor;
 import cn.edu.tsinghua.iotdb.utils.MemUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,10 +22,10 @@ public class RecordMemController extends BasicMemController{
     private AtomicLong totalMemUsed;
 
     private static class InstanceHolder {
-        private static final RecordMemController INSTANCE = new RecordMemController(TsfileDBDescriptor.getInstance().getConfig());
+        private static final RecordMemController INSTANCE = new RecordMemController(IoTDBDescriptor.getInstance().getConfig());
     }
 
-    private RecordMemController(TsfileDBConfig config) {
+    private RecordMemController(IoTDBConfig config) {
         super(config);
         memMap = new HashMap<>();
         totalMemUsed = new AtomicLong(0);

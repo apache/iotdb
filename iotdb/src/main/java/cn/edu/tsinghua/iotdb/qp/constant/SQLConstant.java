@@ -1,6 +1,6 @@
 package cn.edu.tsinghua.iotdb.qp.constant;
 
-import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
+import cn.edu.tsinghua.tsfile.read.common.Path;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -8,9 +8,6 @@ import java.util.Map;
 
 /**
  * this class contains several constants used in SQL.
- * 
- * @author kangrong
- *
  */
 public class SQLConstant {
     public static final String RESERVED_TIME = "time";

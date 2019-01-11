@@ -4,9 +4,6 @@ import cn.edu.tsinghua.iotdb.qp.logical.RootOperator;
 
 /**
  * this class maintains information in Author statement, including CREATE, DROP, GRANT and REVOKE
- * 
- * @author kangrong
- *
  */
 public class LoadDataOperator extends RootOperator {
     private final String inputFilePath;

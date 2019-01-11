@@ -1,7 +1,7 @@
 package cn.edu.tsinghua.iotdb.engine.memcontrol;
 
-import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
-import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
+import cn.edu.tsinghua.iotdb.conf.IoTDBConfig;
+import cn.edu.tsinghua.iotdb.conf.IoTDBDescriptor;
 import cn.edu.tsinghua.iotdb.exception.StartupException;
 import cn.edu.tsinghua.iotdb.service.IService;
 import cn.edu.tsinghua.iotdb.service.ServiceType;
@@ -12,7 +12,7 @@ import org.slf4j.LoggerFactory;
 public abstract class BasicMemController implements IService{
 
     private static final Logger logger = LoggerFactory.getLogger(BasicMemController.class);
-    private TsfileDBConfig config;
+    private IoTDBConfig config;
 
     @Override
     public void start() throws StartupException {
@@ -64,7 +64,7 @@ public abstract class BasicMemController implements IService{
         SAFE, WARNING, DANGEROUS
     }
 
-    BasicMemController(TsfileDBConfig config) {
+    BasicMemController(IoTDBConfig config) {
         this.config = config;
         warningThreshold = config.memThresholdWarning;
         dangerouseThreshold = config.memThresholdDangerous;
@@ -72,7 +72,7 @@ public abstract class BasicMemController implements IService{
 
     // change instance here
     public static BasicMemController getInstance() {
-        switch (CONTROLLER_TYPE.values()[TsfileDBDescriptor.getInstance().getConfig().memControllerType]) {
+        switch (CONTROLLER_TYPE.values()[IoTDBDescriptor.getInstance().getConfig().memControllerType]) {
             case JVM:
                 return JVMMemController.getInstance();
             case RECORD:

@@ -17,7 +17,7 @@ public class TSFileConfig {
      */
     public int pageSizeInByte = 64 * 1024;
     /**
-     * The maximum number of data points in a page, defalut value is 1024 * 1024
+     * The maximum number of data points in a page, default value is 1024 * 1024
      */
     public int maxNumberOfPointsInPage = 1024 * 1024;
 
@@ -97,6 +97,7 @@ public class TSFileConfig {
     /**
      * Data compression method, TsFile supports UNCOMPRESSED or SNAPPY.
      * Default value is UNCOMPRESSED which means no compression
+     *
      */
     public String compressor = "UNCOMPRESSED";
 
@@ -127,11 +128,11 @@ public class TSFileConfig {
     public static final String CONFIG_FILE_NAME = "tsfile-format.properties";
 
     /**
-     * The default grow size of class DynamicOneColumnData
+     * The default grow size of class BatchData
      */
     public static int dynamicDataSize = 1000;
     
-    public static final String MAGIC_STRING = "TsFilev0.7.0";
+    public static final String MAGIC_STRING = "TsFilev0.8.0";
     /**
      * only can be used by TsFileDescriptor
      */

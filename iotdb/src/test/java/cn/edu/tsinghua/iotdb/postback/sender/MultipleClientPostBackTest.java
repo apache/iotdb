@@ -22,7 +22,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import cn.edu.tsinghua.iotdb.jdbc.TsfileJDBCConfig;
+import cn.edu.tsinghua.iotdb.jdbc.Config;
 
 public class MultipleClientPostBackTest {
 
@@ -93,8 +93,8 @@ public class MultipleClientPostBackTest {
 //						Statement statement1 = connection1.createStatement();
 //						String SQL = String.format(sqlFormat, timesery, storageGroup);
 //						System.out.println(SQL);
-//						boolean hasResultSet = statement.execute(SQL);
-//						boolean hasResultSet1 = statement1.execute(SQL);
+//						boolean hasResultSet = statement.executeWithGlobalTimeFilter(SQL);
+//						boolean hasResultSet1 = statement1.executeWithGlobalTimeFilter(SQL);
 //						if (hasResultSet) {
 //							ResultSet res = statement.getResultSet();
 //							while (res.next()) {
@@ -144,7 +144,7 @@ public class MultipleClientPostBackTest {
 				dataSender.clear();
 				dataReceiver.clear();
 				try {
-					Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);
+					Class.forName(Config.JDBC_DRIVER_NAME);
 					Connection connection = null;
 					Connection connection1 = null;
 					try {
@@ -205,7 +205,7 @@ public class MultipleClientPostBackTest {
         		dataSender.clear();
             	dataReceiver.clear();
         		try {
-					Class.forName(TsfileJDBCConfig.JDBC_DRIVER_NAME);
+					Class.forName(Config.JDBC_DRIVER_NAME);
 					Connection connection = null;
 					Connection connection1 = null;
 					try {

@@ -3,7 +3,7 @@ package cn.edu.tsinghua.iotdb.auth.user;
 import cn.edu.tsinghua.iotdb.auth.AuthException;
 import cn.edu.tsinghua.iotdb.auth.entity.User;
 import cn.edu.tsinghua.iotdb.concurrent.HashLock;
-import cn.edu.tsinghua.iotdb.conf.TsFileDBConstant;
+import cn.edu.tsinghua.iotdb.conf.IoTDBConstant;
 import cn.edu.tsinghua.iotdb.utils.AuthUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,14 +36,14 @@ public abstract class BasicUserManager implements IUserManager {
     private void initAdmin() throws AuthException {
         User admin;
         try {
-            admin = getUser(TsFileDBConstant.ADMIN_NAME);
+            admin = getUser(IoTDBConstant.ADMIN_NAME);
         } catch (AuthException e) {
             logger.warn("Cannot load admin because {}. Create a new one.", e.getMessage());
             admin = null;
         }
 
         if(admin == null) {
-            createUser(TsFileDBConstant.ADMIN_NAME, TsFileDBConstant.ADMIN_PW);
+            createUser(IoTDBConstant.ADMIN_NAME, IoTDBConstant.ADMIN_PW);
         }
         logger.info("Admin initialized");
     }

@@ -4,10 +4,6 @@ import cn.edu.tsinghua.iotdb.qp.constant.SQLConstant;
 
 /**
  * This class is a superclass of all operator.
- *
- * @author kangrong
- * @author qiaojialin
- *
  */
 public abstract class Operator {
 

@@ -5,12 +5,8 @@ import java.util.List;
 
 import cn.edu.tsinghua.iotdb.qp.physical.PhysicalPlan;
 import cn.edu.tsinghua.iotdb.qp.logical.Operator;
-import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
+import cn.edu.tsinghua.tsfile.read.common.Path;
 
-/**
- * @author kangrong
- * @author qiaojialin
- */
 public class LoadDataPlan extends PhysicalPlan {
     private final String inputFilePath;
     private final String measureType;
@@ -24,8 +20,9 @@ public class LoadDataPlan extends PhysicalPlan {
     @Override
     public List<Path> getPaths() {
         List<Path> ret = new ArrayList<>();
-        if (measureType != null)
+        if (measureType != null) {
             ret.add(new Path(measureType));
+        }
         return ret;
     }
 

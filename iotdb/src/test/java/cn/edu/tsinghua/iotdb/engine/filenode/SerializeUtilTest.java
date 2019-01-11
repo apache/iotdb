@@ -69,17 +69,17 @@ public class SerializeUtilTest {
 	public void testFileStore() {
 		IntervalFileNode emptyIntervalFileNode = new IntervalFileNode(OverflowChangeType.NO_CHANGE, null);
 		List<IntervalFileNode> newFilenodes = new ArrayList<>();
-		String deltaObjectId = "d0.s0";
+		String deviceId = "d0.s0";
 		for (int i = 1; i <= 3; i++) {
 			// i * 100, i * 100 + 99
 			IntervalFileNode node = new IntervalFileNode(OverflowChangeType.NO_CHANGE, "bufferfiletest" + i);
-			node.setStartTime(deltaObjectId, i * 100);
-			node.setEndTime(deltaObjectId, i * 100 + 99);
+			node.setStartTime(deviceId, i * 100);
+			node.setEndTime(deviceId, i * 100 + 99);
 			newFilenodes.add(node);
 		}
 		FileNodeProcessorStatus fileNodeProcessorState = FileNodeProcessorStatus.WAITING;
 		Map<String, Long> lastUpdateTimeMap = new HashMap<>();
-		lastUpdateTimeMap.put(deltaObjectId, (long) 500);
+		lastUpdateTimeMap.put(deviceId, (long) 500);
 		FileNodeProcessorStore fileNodeProcessorStore = new FileNodeProcessorStore(false, lastUpdateTimeMap,
 				emptyIntervalFileNode, newFilenodes, fileNodeProcessorState, 0);
 

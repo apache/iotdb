@@ -1,6 +1,6 @@
 package cn.edu.tsinghua.tsfile.qp.common;
 
-import cn.edu.tsinghua.tsfile.timeseries.utils.StringContainer;
+import cn.edu.tsinghua.tsfile.utils.StringContainer;
 
 import java.util.ArrayList;
 import java.util.List;

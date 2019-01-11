@@ -1,13 +1,13 @@
 package cn.edu.tsinghua.iotdb.writelog.transfer;
 
-import cn.edu.tsinghua.iotdb.conf.TsfileDBConfig;
-import cn.edu.tsinghua.iotdb.conf.TsfileDBDescriptor;
+import cn.edu.tsinghua.iotdb.conf.IoTDBConfig;
+import cn.edu.tsinghua.iotdb.conf.IoTDBDescriptor;
 import cn.edu.tsinghua.iotdb.qp.physical.crud.DeletePlan;
 import cn.edu.tsinghua.iotdb.qp.physical.crud.InsertPlan;
 import cn.edu.tsinghua.iotdb.qp.physical.crud.UpdatePlan;
-import cn.edu.tsinghua.tsfile.common.utils.BytesUtils;
-import cn.edu.tsinghua.tsfile.common.utils.Pair;
-import cn.edu.tsinghua.tsfile.timeseries.read.support.Path;
+import cn.edu.tsinghua.tsfile.read.common.Path;
+import cn.edu.tsinghua.tsfile.utils.BytesUtils;
+import cn.edu.tsinghua.tsfile.utils.Pair;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -22,7 +22,7 @@ public enum PhysicalPlanCodec {
     UPDATEPLAN(SystemLogOperator.UPDATE, codecInstances.updatePlanCodec),
     DELETEPLAN(SystemLogOperator.DELETE, codecInstances.deletePlanCodec);
 
-    private static TsfileDBConfig config = TsfileDBDescriptor.getInstance().getConfig();
+    private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
     public final int planCode;
     public final Codec<?> codec;
@@ -154,9 +154,9 @@ public enum PhysicalPlanCodec {
                 buffer.put((byte) plan.getInsertType());
                 buffer.putLong(plan.getTime());
 
-                byte[] deltaObjectBytes = BytesUtils.StringToBytes(plan.getDeltaObject());
-                buffer.putInt(deltaObjectBytes.length);
-                buffer.put(deltaObjectBytes);
+                byte[] deviceBytes = BytesUtils.StringToBytes(plan.getDeviceId());
+                buffer.putInt(deviceBytes.length);
+                buffer.put(deviceBytes);
 
                 List<String> measurementList = plan.getMeasurements();
                 buffer.putInt(measurementList.size());
@@ -188,7 +188,7 @@ public enum PhysicalPlanCodec {
                 int deltaObjLen = buffer.getInt();
                 byte[] deltaObjBytes = new byte[deltaObjLen];
                 buffer.get(deltaObjBytes);
-                String deltaObject = BytesUtils.bytesToString(deltaObjBytes);
+                String device = BytesUtils.bytesToString(deltaObjBytes);
 
                 int mmListLength = buffer.getInt();
                 List<String> measurementsList = new ArrayList<>(mmListLength);
@@ -208,7 +208,7 @@ public enum PhysicalPlanCodec {
                     valuesList.add(BytesUtils.bytesToString(valueBytes));
                 }
 
-                InsertPlan ans = new InsertPlan(deltaObject, time, measurementsList, valuesList);
+                InsertPlan ans = new InsertPlan(device, time, measurementsList, valuesList);
                 ans.setInsertType(insertType);
                 return ans;
             }
