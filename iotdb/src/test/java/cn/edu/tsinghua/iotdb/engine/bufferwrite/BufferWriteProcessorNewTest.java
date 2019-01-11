@@ -110,7 +110,7 @@ public class BufferWriteProcessorNewTest {
 		assertEquals(true, bufferwrite.isFlush());
 		assertEquals(true, bufferwrite.canBeClosed());
 		// waiting for the end of flush.
-		TimeUnit.SECONDS.sleep(1);
+		TimeUnit.SECONDS.sleep(10);
 		assertEquals(false, bufferwrite.isFlush());
 		pair = bufferwrite.queryBufferWriteData(processorName, measurementId, dataType);
 		left = pair.left;
