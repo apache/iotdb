@@ -92,7 +92,7 @@
 		</filter>
 	</appender>
 
-	<!--<logger name="cn.edu.tsinghua.tsfile.write.chunk.ChunkWriterImpl level="debug" />-->
+	<!--<logger name="org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl level="debug" />-->
 
 	<root level="ERROR">
 		<appender-ref ref="FILEERROR" />

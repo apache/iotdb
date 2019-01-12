@@ -1,0 +1,49 @@
+package org.apache.iotdb.db.qp.logical.crud;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.tsfile.read.common.Path;
+
+/**
+ * this class maintains information from select clause
+ */
+public final class SelectOperator extends Operator {
+
+    private List<Path> suffixList;
+    private List<String> aggregations;
+
+    public SelectOperator(int tokenIntType) {
+        super(tokenIntType);
+        operatorType = OperatorType.SELECT;
+        suffixList = new ArrayList<>();
+        aggregations = new ArrayList<>();
+    }
+
+    public void addSelectPath(Path suffixPath) {
+        suffixList.add(suffixPath);
+    }
+
+    public void addClusterPath(Path suffixPath, String aggregation) {
+        suffixList.add(suffixPath);
+        aggregations.add(aggregation);
+    }
+
+    public List<String> getAggregations(){
+        return this.aggregations;
+    }
+
+    public void setAggregations(List<String> aggregations) {
+        this.aggregations = aggregations;
+    }
+
+    public void setSuffixPathList(List<Path> suffixPaths) {
+        suffixList = suffixPaths;
+    }
+
+    public List<Path> getSuffixPaths() {
+        return suffixList;
+    }
+
+}

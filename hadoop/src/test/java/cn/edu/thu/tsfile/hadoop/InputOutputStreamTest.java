@@ -1,4 +1,4 @@
-package cn.edu.thu.tsfile.hadoop;
+package org.apache.iotdb.tsfile.hadoop;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
@@ -7,8 +7,8 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import cn.edu.thu.tsfile.hadoop.io.HDFSInputStream;
-import cn.edu.thu.tsfile.hadoop.io.HDFSOutputStream;
+import org.apache.iotdb.tsfile.hadoop.io.HDFSInputStream;
+import org.apache.iotdb.tsfile.hadoop.io.HDFSOutputStream;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;

@@ -3,17 +3,17 @@
  * The class use the second interface:
  * public void addMeasurement(MeasurementSchema MeasurementSchema) throws WriteProcessException
  */
-package cn.edu.tsinghua.tsfile;
+package org.apache.iotdb.tsfile;
 
 import java.io.File;
 
-import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
-import cn.edu.tsinghua.tsfile.file.metadata.enums.TSEncoding;
-import cn.edu.tsinghua.tsfile.write.TsFileWriter;
-import cn.edu.tsinghua.tsfile.write.schema.MeasurementSchema;
-import cn.edu.tsinghua.tsfile.write.record.datapoint.DataPoint;
-import cn.edu.tsinghua.tsfile.write.record.TSRecord;
-import cn.edu.tsinghua.tsfile.write.record.datapoint.*;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.write.TsFileWriter;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
+import org.apache.iotdb.tsfile.write.record.TSRecord;
+import org.apache.iotdb.tsfile.write.record.datapoint.*;
 
 /**
  * An example of writing data to TsFile

@@ -1,20 +1,20 @@
-package cn.edu.tsinghua.tsfile
+package org.apache.iotdb.tsfile
 
 import java.io.File
 import java.util
 
-import cn.edu.tsinghua.tsfile.common.utils.Binary
-import cn.edu.tsinghua.tsfile.file.metadata.enums.{TSDataType, TSEncoding}
-import cn.edu.tsinghua.tsfile.io.CreateTSFile
-import cn.edu.tsinghua.tsfile.qp.common.SQLConstant
-import cn.edu.tsinghua.tsfile.timeseries.read.TsRandomAccessLocalFileReader
-import cn.edu.tsinghua.tsfile.timeseries.read.management.SeriesSchema
-import cn.edu.tsinghua.tsfile.timeseries.read.query.QueryConfig
+import org.apache.iotdb.tsfile.common.utils.Binary
+import org.apache.iotdb.tsfile.file.metadata.enums.{TSDataType, TSEncoding}
+import org.apache.iotdb.tsfile.io.CreateTSFile
+import org.apache.iotdb.tsfile.qp.common.SQLConstant
+import org.apache.iotdb.tsfile.timeseries.read.TsRandomAccessLocalFileReader
+import org.apache.iotdb.tsfile.timeseries.read.management.SeriesSchema
+import org.apache.iotdb.tsfile.timeseries.read.query.QueryConfig
 import org.apache.spark.sql.sources.{Filter, GreaterThan, LessThan, Or}
 import org.apache.spark.sql.types._
 import org.junit.Assert
 import org.scalatest.{BeforeAndAfterAll, FunSuite}
-import cn.edu.tsinghua.tsfile.timeseries.read.support.Field
+import org.apache.iotdb.tsfile.timeseries.read.support.Field
 
 import scala.collection.mutable.{ArrayBuffer, ListBuffer}
 

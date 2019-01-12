@@ -38,7 +38,7 @@ IF EXIST "%IOTDB_CONF%\iotdb-env.bat" (
     echo "can't find %IOTDB_CONF%\iotdb-env.bat"
     )
 
-if NOT DEFINED MAIN_CLASS set MAIN_CLASS=cn.edu.tsinghua.iotdb.service.IoTDB
+if NOT DEFINED MAIN_CLASS set MAIN_CLASS=org.apache.iotdb.db.service.IoTDB
 if NOT DEFINED JAVA_HOME goto :err
 
 @REM -----------------------------------------------------------------------------

@@ -1,4 +1,4 @@
-namespace java cn.edu.tsinghua.service.rpc.thrift
+namespace java org.apache.iotdb.service.rpc.thrift
 
 
 // The return status code contained in each response.

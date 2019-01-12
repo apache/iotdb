@@ -1,4 +1,4 @@
-package cn.edu.tsinghua.tsfile
+package org.apache.iotdb.tsfile
 
 import java.io.File
 
@@ -6,8 +6,8 @@ import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.types._
 import org.junit.Assert
 import org.scalatest.{BeforeAndAfterAll, FunSuite}
-import cn.edu.tsinghua.tsfile.io.CreateTSFile
-import cn.edu.tsinghua.tsfile.qp.common.SQLConstant
+import org.apache.iotdb.tsfile.io.CreateTSFile
+import org.apache.iotdb.tsfile.qp.common.SQLConstant
 
 import scala.collection.mutable
 
@@ -167,7 +167,7 @@ class TSFileSuit extends FunSuite with BeforeAndAfterAll {
   }
 
   test("testQuerySchema") {
-    val df = spark.read.format("cn.edu.tsinghua.tsfile").load(tsfile1)
+    val df = spark.read.format("org.apache.iotdb.tsfile").load(tsfile1)
 
     val expected = StructType(Seq(
       StructField(SQLConstant.RESERVED_TIME, LongType, nullable = true),

@@ -56,6 +56,9 @@ Then you can build IoTDB using Maven in current folder:
 mvn clean package -Dmaven.test.skip=true
 ```
 
+(__NOTICE:__ Remember that you have to use -Dmaven.test.skip=true before you run tests, it is because some IT (integration test) requires jars in iotdb-cli/cli/lib/, and the folder is empty before you run `mvn package`. After that, you can run `mvn test` as long as you do not run `mvn clean`. For more details, see: [How to test IoTDB
+](https://github.com/thulab/iotdb/wiki/How-to-test-IoTDB) )
+
 If successful, you will see the the following text in the terminal:
 
 ```

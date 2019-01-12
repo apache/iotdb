@@ -9,7 +9,7 @@ if [ -z "${IOTDB_HOME}" ]; then
 fi
 
 
-MAIN_CLASS=cn.edu.tsinghua.iotdb.client.Client
+MAIN_CLASS=org.apache.iotdb.cli.client.Client
 
 
 CLASSPATH=""

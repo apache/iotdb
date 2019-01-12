@@ -4,7 +4,7 @@
 	<modelVersion>4.0.0</modelVersion>
 
 	<parent>
-		<groupId>cn.edu.tsinghua</groupId>
+		<groupId>org.apache.iotdb</groupId>
 		<artifactId>root</artifactId>
 		<version>0.8.0-SNAPSHOT</version>
 		<relativePath>../pom.xml</relativePath>
@@ -23,7 +23,7 @@
 	<description>Grafana data source connector for IoTDB</description>
 
 	<properties>
-		<start-class>cn.edu.tsinghua.web.TsfileWebDemoApplication</start-class>
+		<start-class>org.apache.iotdb.web.grafana.TsfileWebDemoApplication</start-class>
 
 		<spring-boot.version>1.5.4.RELEASE</spring-boot.version>
 		<spring.version>4.3.9.RELEASE</spring.version>
@@ -44,7 +44,7 @@
 
 	<dependencies>
 		<dependency>
-			<groupId>cn.edu.tsinghua</groupId>
+			<groupId>org.apache.iotdb</groupId>
 			<artifactId>iotdb-jdbc</artifactId>
 			<version>0.8.0-SNAPSHOT</version>
 		</dependency>

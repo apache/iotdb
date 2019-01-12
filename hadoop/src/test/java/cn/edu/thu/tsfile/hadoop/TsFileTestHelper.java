@@ -1,4 +1,4 @@
-package cn.edu.thu.tsfile.hadoop;
+package org.apache.iotdb.tsfile.hadoop;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -7,15 +7,15 @@ import java.io.IOException;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import cn.edu.tsinghua.tsfile.common.conf.TSFileConfig;
-import cn.edu.tsinghua.tsfile.common.conf.TSFileDescriptor;
-import cn.edu.tsinghua.tsfile.common.constant.JsonFormatConstant;
-import cn.edu.tsinghua.tsfile.common.utils.ITsRandomAccessFileWriter;
-import cn.edu.tsinghua.tsfile.common.utils.TsRandomAccessFileWriter;
-import cn.edu.tsinghua.tsfile.file.metadata.enums.TSDataType;
-import cn.edu.tsinghua.tsfile.timeseries.basis.TsFile;
-import cn.edu.tsinghua.tsfile.read.TsRandomAccessLocalFileReader;
-import cn.edu.tsinghua.tsfile.write.exception.WriteProcessException;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.common.constant.JsonFormatConstant;
+import org.apache.iotdb.tsfile.common.utils.ITsRandomAccessFileWriter;
+import org.apache.iotdb.tsfile.common.utils.TsRandomAccessFileWriter;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.timeseries.basis.TsFile;
+import org.apache.iotdb.tsfile.read.TsRandomAccessLocalFileReader;
+import org.apache.iotdb.tsfile.write.exception.WriteProcessException;
 
 public class TsFileTestHelper {
 	

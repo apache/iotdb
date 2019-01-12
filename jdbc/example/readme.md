@@ -13,7 +13,7 @@ The example is to show how to send data from localhost to IoTDB through Kafka.
     	<version>0.8.2.0</version>
     </dependency>
     <dependency>
-	    <groupId>cn.edu.tsinghua</groupId>
+	    <groupId>org.apache.iotdb</groupId>
 	    <artifactId>iotdb-jdbc</artifactId>
 	    <version>0.7.0</version>
     </dependency>

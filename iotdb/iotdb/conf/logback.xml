@@ -98,8 +98,8 @@
 	</appender>
 	
 
-	<logger name="cn.edu.tsinghua.iotdb.service" level="info" />
-	<logger name="cn.edu.tsinghua.iotdb.conf" level="info" />
+	<logger name="org.apache.iotdb.db.service" level="info" />
+	<logger name="org.apache.iotdb.db.conf" level="info" />
 	<root level="info">
 		<appender-ref ref="FILEDEBUG" />
 		<appender-ref ref="FILEINFO" />
