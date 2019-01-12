@@ -123,7 +123,7 @@ The path of 'test.tsfile' used in the following examples is "data/test.tsfile". 
 * **Example 1**
 
 	```scala
-	import cn.edu.tsinghua.tsfile._
+	import org.apache.iotdb.tsfile._
 	
 	//read data in TsFile and create a table
 	val df = spark.read.tsfile("/test.tsfile")
@@ -139,7 +139,7 @@ The path of 'test.tsfile' used in the following examples is "data/test.tsfile". 
 
 	```scala
 	val df = spark.read
-       .format("cn.edu.tsinghua.tsfile")
+       .format("org.apache.iotdb.tsfile")
        .load("/test.tsfile ")
 	df.filter("time < 10").show()
 	```
@@ -148,7 +148,7 @@ The path of 'test.tsfile' used in the following examples is "data/test.tsfile". 
 
 	```scala
 	//create a table in SparkSQL and build relation with a TsFile
-	spark.sql("create temporary view tsfile_table using cn.edu.tsinghua.tsfile options(path = \"test.ts\")")
+	spark.sql("create temporary view tsfile_table using org.apache.iotdb.tsfile options(path = \"test.ts\")")
 	
 	spark.sql("select * from tsfile_table where s1 > 1.2").show()
 	```
@@ -156,7 +156,7 @@ The path of 'test.tsfile' used in the following examples is "data/test.tsfile". 
 * **Example 4(using options to read)**
 
 	```scala
-	import cn.edu.tsinghua.tsfile._
+	import org.apache.iotdb.tsfile._
 	
 	val df = spark.read.option("delta_object_name", "root.device.turbine").tsfile("/test.tsfile")
 	     
@@ -169,7 +169,7 @@ The path of 'test.tsfile' used in the following examples is "data/test.tsfile". 
 * **Example 5(write)**
 
 	```scala
-	import cn.edu.tsinghua.tsfile._
+	import org.apache.iotdb.tsfile._
 	
 	val df = spark.read.tsfile("/test.tsfile").write.tsfile("/out")
 	```
@@ -177,7 +177,7 @@ The path of 'test.tsfile' used in the following examples is "data/test.tsfile". 
 * **Example 6(using options to write)**
 
 	```scala
-	import cn.edu.tsinghua.tsfile._
+	import org.apache.iotdb.tsfile._
 	
 	val df = spark.read.option("delta_object_name", "root.device.turbine").tsfile("/test.tsfile")
 	     

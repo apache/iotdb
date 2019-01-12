@@ -33,7 +33,7 @@ cd grafana
 spring.datasource.url = jdbc:iotdb://127.0.0.1:6667/
 spring.datasource.username = root
 spring.datasource.password = root
-spring.datasource.driver-class-name=cn.edu.tsinghua.iotdb.jdbc.TsfileDriver
+spring.datasource.driver-class-name=org.apache.iotdb.jdbc.TsfileDriver
 server.port = 8888
 ```
 

@@ -20,7 +20,7 @@ In root directory:
 ```
 <dependencies>
     <dependency>
-      <groupId>cn.edu.tsinghua</groupId>
+      <groupId>org.apache.iotdb</groupId>
       <artifactId>iotdb-jdbc</artifactId>
       <version>0.8.0-SNAPSHOT</version>
     </dependency>
@@ -28,7 +28,7 @@ In root directory:
 ```
 
 ## Example
-(for more detailes, please see example/src/main/java/cn/edu/tsinghua/jdbcDemo/SendDataToIotdb.java)
+(for more detailes, please see example/src/main/java/org/apache/iotdb/jdbc/jdbcDemo/SendDataToIotdb.java)
 ```Java
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -38,7 +38,7 @@ import java.sql.Statement;
 
 public class Example {
     public static void main(String[] args) throws ClassNotFoundException, SQLException {
-        Class.forName("cn.edu.tsinghua.iotdb.jdbc.TsfileDriver");
+        Class.forName("org.apache.iotdb.jdbc.TsfileDriver");
         Connection connection = null;
         Statement statement = null;
         try {

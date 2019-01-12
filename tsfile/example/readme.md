@@ -8,7 +8,7 @@ The example is to show how to write and read a TsFile File.
 ```
 <dependencies>
     <dependency>
-        <groupId>cn.edu.tsinghua</groupId>
+        <groupId>org.apache.iotdb</groupId>
         <artifactId>tsfile</artifactId>
      	  <version>0.7.0</version>
     </dependency>

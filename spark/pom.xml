@@ -3,13 +3,13 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>cn.edu.tsinghua</groupId>
+        <groupId>org.apache.iotdb</groupId>
         <artifactId>root</artifactId>
         <version>0.8.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
 
-    <groupId>cn.edu.tsinghua</groupId>
+    <groupId>org.apache.iotdb</groupId>
     <artifactId>tsfile-spark-connector</artifactId>
     <packaging>jar</packaging>
 
@@ -21,7 +21,7 @@
             <version>20170516</version>
         </dependency>
         <dependency>
-            <groupId>cn.edu.tsinghua</groupId>
+            <groupId>org.apache.iotdb</groupId>
             <artifactId>tsfile</artifactId>
             <version>${project.version}</version>
         </dependency>

@@ -3,14 +3,14 @@
 	<modelVersion>4.0.0</modelVersion>
 
     <parent>
-	    <groupId>cn.edu.tsinghua</groupId>
+	    <groupId>org.apache.iotdb</groupId>
 	    <artifactId>root</artifactId>
 	    <version>0.8.0-SNAPSHOT</version>
 	    <relativePath>../pom.xml</relativePath>
     </parent>
 
 
-	<groupId>cn.edu.thu.tsfile</groupId>
+	<groupId>org.apache.iotdb.tsfile</groupId>
 	<artifactId>hadoop</artifactId>
 	<packaging>jar</packaging>
 
@@ -23,7 +23,7 @@
 
 
 		<dependency>
-			<groupId>cn.edu.tsinghua</groupId>
+			<groupId>org.apache.iotdb</groupId>
 			<artifactId>tsfile</artifactId>
 			<version>${project.version}</version>
 		</dependency>

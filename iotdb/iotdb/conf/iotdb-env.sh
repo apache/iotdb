@@ -107,7 +107,7 @@ else
 	IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Dcom.sun.management.jmxremote.port=$JMX_PORT "
 fi
 
-IOTDB_DERBY_OPTS="-Dderby.stream.error.field=cn.edu.tsinghua.iotdb.auth.dao.DerbyUtil.DEV_NULL"
+IOTDB_DERBY_OPTS="-Dderby.stream.error.field=org.apache.iotdb.db.auth.dao.DerbyUtil.DEV_NULL"
 
 IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Xloggc:${IOTDB_HOME}/gc.log -XX:+PrintGCDateStamps -XX:+PrintGCDetails"
 

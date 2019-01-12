@@ -1,4 +1,4 @@
-package cn.edu.thu.tsfile.hadoop;
+package org.apache.iotdb.tsfile.hadoop;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
@@ -14,11 +14,11 @@ import org.apache.hadoop.io.DataOutputBuffer;
 import org.junit.Before;
 import org.junit.Test;
 
-import cn.edu.tsinghua.tsfile.file.metadata.RowGroupMetaData;
-import cn.edu.tsinghua.tsfile.file.metadata.TimeSeriesChunkMetaData;
+import org.apache.iotdb.tsfile.file.metadata.RowGroupMetaData;
+import org.apache.iotdb.tsfile.file.metadata.TimeSeriesChunkMetaData;
 
 /**
- * Test the {@link cn.edu.thu.tsfile.hadoop.TSFInputSplit}
+ * Test the {@link org.apache.iotdb.tsfile.hadoop.TSFInputSplit}
  * Assert the readFields function and write function is right
  *
  * @author liukun

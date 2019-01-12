@@ -10,7 +10,7 @@ set IOTDB_CONF=%IOTDB_HOME%\conf
 set IOTDB_LOGS=%IOTDB_HOME%\logs
 
 
-if NOT DEFINED MAIN_CLASS set MAIN_CLASS=cn.edu.tsinghua.iotdb.postback.sender.FileSenderImpl
+if NOT DEFINED MAIN_CLASS set MAIN_CLASS=org.apache.iotdb.db.postback.sender.FileSenderImpl
 if NOT DEFINED JAVA_HOME goto :err
 
 @REM -----------------------------------------------------------------------------

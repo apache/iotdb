@@ -1,4 +1,4 @@
-package cn.edu.thu.tsfile.hadoop;
+package org.apache.iotdb.tsfile.hadoop;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
@@ -22,9 +22,9 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import cn.edu.tsinghua.tsfile.common.utils.ITsRandomAccessFileReader;
-import cn.edu.tsinghua.tsfile.timeseries.basis.TsFile;
-import cn.edu.tsinghua.tsfile.read.TsRandomAccessLocalFileReader;
+import org.apache.iotdb.tsfile.common.utils.ITsRandomAccessFileReader;
+import org.apache.iotdb.tsfile.timeseries.basis.TsFile;
+import org.apache.iotdb.tsfile.read.TsRandomAccessLocalFileReader;
 
 public class TSFHadoopTest {
 

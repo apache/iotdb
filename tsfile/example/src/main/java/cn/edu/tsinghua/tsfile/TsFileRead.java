@@ -1,16 +1,16 @@
-package cn.edu.tsinghua.tsfile;
+package org.apache.iotdb.tsfile;
 
-import cn.edu.tsinghua.tsfile.read.expression.IExpression;
-import cn.edu.tsinghua.tsfile.read.expression.impl.GlobalTimeExpression;
-import cn.edu.tsinghua.tsfile.read.expression.impl.BinaryExpression;
-import cn.edu.tsinghua.tsfile.read.filter.TimeFilter;
-import cn.edu.tsinghua.tsfile.read.filter.ValueFilter;
-import cn.edu.tsinghua.tsfile.read.expression.impl.SingleSeriesExpression;
-import cn.edu.tsinghua.tsfile.read.TsFileSequenceReader;
-import cn.edu.tsinghua.tsfile.read.ReadOnlyTsFile;
-import cn.edu.tsinghua.tsfile.read.common.Path;
-import cn.edu.tsinghua.tsfile.read.query.dataset.QueryDataSet;
-import cn.edu.tsinghua.tsfile.read.expression.QueryExpression;
+import org.apache.iotdb.tsfile.read.expression.IExpression;
+import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
+import org.apache.iotdb.tsfile.read.expression.impl.BinaryExpression;
+import org.apache.iotdb.tsfile.read.filter.TimeFilter;
+import org.apache.iotdb.tsfile.read.filter.ValueFilter;
+import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
+import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
+import org.apache.iotdb.tsfile.read.ReadOnlyTsFile;
+import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+import org.apache.iotdb.tsfile.read.expression.QueryExpression;
 
 import java.io.IOException;
 import java.util.ArrayList;
