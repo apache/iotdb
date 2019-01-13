@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.db.auth.user;
 
 import org.apache.iotdb.db.auth.AuthException;
@@ -12,7 +27,8 @@ import java.io.IOException;
 import java.util.*;
 
 /**
- * This class stores information of each user in a separate file within a directory, and cache them in memory when a user is accessed.
+ * This class stores information of each user in a separate file within a directory, and cache them in memory when a
+ * user is accessed.
  */
 public abstract class BasicUserManager implements IUserManager {
 
@@ -42,21 +58,20 @@ public abstract class BasicUserManager implements IUserManager {
             admin = null;
         }
 
-        if(admin == null) {
+        if (admin == null) {
             createUser(IoTDBConstant.ADMIN_NAME, IoTDBConstant.ADMIN_PW);
         }
         logger.info("Admin initialized");
     }
-
 
     @Override
     public User getUser(String username) throws AuthException {
         lock.readLock(username);
         User user = userMap.get(username);
         try {
-            if(user == null) {
+            if (user == null) {
                 user = accessor.loadUser(username);
-                if(user != null)
+                if (user != null)
                     userMap.put(username, user);
             }
         } catch (IOException e) {
@@ -64,7 +79,7 @@ public abstract class BasicUserManager implements IUserManager {
         } finally {
             lock.readUnlock(username);
         }
-        if(user != null)
+        if (user != null)
             user.lastActiveTime = System.currentTimeMillis();
         return user;
     }
@@ -75,7 +90,7 @@ public abstract class BasicUserManager implements IUserManager {
         AuthUtils.validatePassword(password);
 
         User user = getUser(username);
-        if(user != null)
+        if (user != null)
             return false;
         lock.writeLock(username);
         try {
@@ -94,7 +109,7 @@ public abstract class BasicUserManager implements IUserManager {
     public boolean deleteUser(String username) throws AuthException {
         lock.writeLock(username);
         try {
-            if(accessor.deleteUser(username)) {
+            if (accessor.deleteUser(username)) {
                 userMap.remove(username);
                 return true;
             } else
@@ -112,10 +127,10 @@ public abstract class BasicUserManager implements IUserManager {
         lock.writeLock(username);
         try {
             User user = getUser(username);
-            if(user == null) {
+            if (user == null) {
                 throw new AuthException(String.format("No such user %s", username));
             }
-            if(user.hasPrivilege(path, privilegeId)) {
+            if (user.hasPrivilege(path, privilegeId)) {
                 return false;
             }
             Set<Integer> privilegesCopy = new HashSet<>(user.getPrivileges(path));
@@ -138,10 +153,10 @@ public abstract class BasicUserManager implements IUserManager {
         lock.writeLock(username);
         try {
             User user = getUser(username);
-            if(user == null) {
+            if (user == null) {
                 throw new AuthException(String.format("No such user %s", username));
             }
-            if(!user.hasPrivilege(path, privilegeId)) {
+            if (!user.hasPrivilege(path, privilegeId)) {
                 return false;
             }
             user.removePrivilege(path, privilegeId);
@@ -168,7 +183,7 @@ public abstract class BasicUserManager implements IUserManager {
         lock.writeLock(username);
         try {
             User user = getUser(username);
-            if(user == null) {
+            if (user == null) {
                 throw new AuthException(String.format("No such user %s", username));
             }
             String oldPassword = user.password;
@@ -190,10 +205,10 @@ public abstract class BasicUserManager implements IUserManager {
         lock.writeLock(username);
         try {
             User user = getUser(username);
-            if(user == null) {
+            if (user == null) {
                 throw new AuthException(String.format("No such user %s", username));
             }
-            if(user.hasRole(roleName)) {
+            if (user.hasRole(roleName)) {
                 return false;
             }
             user.roleList.add(roleName);
@@ -214,10 +229,10 @@ public abstract class BasicUserManager implements IUserManager {
         lock.writeLock(username);
         try {
             User user = getUser(username);
-            if(user == null) {
+            if (user == null) {
                 throw new AuthException(String.format("No such user %s", username));
             }
-            if(!user.hasRole(roleName)) {
+            if (!user.hasRole(roleName)) {
                 return false;
             }
             user.roleList.remove(roleName);

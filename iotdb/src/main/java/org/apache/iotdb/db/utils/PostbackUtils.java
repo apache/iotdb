@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.db.postback.conf.PostBackSenderDescriptor;
@@ -15,9 +30,8 @@ public class PostbackUtils {
     private static String[] snapshotPaths = PostBackSenderDescriptor.getInstance().getConfig().snapshotPaths;
 
     /**
-     * This method is to get a snapshot file seriesPath according to a tsfile seriesPath.
-     * Due to multiple directories, it's necessary to make a snapshot in the same disk.
-     * It's used by postback sender.
+     * This method is to get a snapshot file seriesPath according to a tsfile seriesPath. Due to multiple directories,
+     * it's necessary to make a snapshot in the same disk. It's used by postback sender.
      *
      * @param filePath
      * @return
@@ -47,8 +61,7 @@ public class PostbackUtils {
     }
 
     /**
-     * Verify sending list is empty or not
-     * It's used by postback sender.
+     * Verify sending list is empty or not It's used by postback sender.
      *
      * @param sendingFileList
      * @return
@@ -62,8 +75,7 @@ public class PostbackUtils {
     }
 
     /**
-     * Verify IP address with IP white list which contains more than one IP segment.
-     * It's used by postback sender.
+     * Verify IP address with IP white list which contains more than one IP segment. It's used by postback sender.
      *
      * @param IPwhiteList
      * @param IPaddress

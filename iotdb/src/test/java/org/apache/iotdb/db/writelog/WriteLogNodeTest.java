@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.db.writelog;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -56,12 +71,13 @@ public class WriteLogNodeTest {
         tempProcessorStore.createNewFile();
         CRC32 crc32 = new CRC32();
 
-        WriteLogNode logNode = new ExclusiveWriteLogNode("root.logTestDevice", tempRestore.getPath(), tempProcessorStore.getPath());
+        WriteLogNode logNode = new ExclusiveWriteLogNode("root.logTestDevice", tempRestore.getPath(),
+                tempProcessorStore.getPath());
 
         InsertPlan bwInsertPlan = new InsertPlan(1, "root.logTestDevice", 100, Arrays.asList("s1", "s2", "s3", "s4"),
                 Arrays.asList("1.0", "15", "str", "false"));
         UpdatePlan updatePlan = new UpdatePlan(0, 100, "2.0", new Path("root.logTestDevice.s1"));
-        DeletePlan deletePlan = new DeletePlan(50,  new Path("root.logTestDevice.s1"));
+        DeletePlan deletePlan = new DeletePlan(50, new Path("root.logTestDevice.s1"));
 
         logNode.write(bwInsertPlan);
         logNode.write(updatePlan);
@@ -79,7 +95,7 @@ public class WriteLogNodeTest {
         long checksum = raf.readLong();
         raf.read(buffer, 0, logSize);
         crc32.reset();
-        crc32.update(buffer, 0 , logSize);
+        crc32.update(buffer, 0, logSize);
         assertEquals(checksum, crc32.getValue());
         InsertPlan bwInsertPlan2 = (InsertPlan) PhysicalPlanLogTransfer.logToOperator(buffer);
         assertEquals(bwInsertPlan.getMeasurements(), bwInsertPlan2.getMeasurements());
@@ -92,7 +108,7 @@ public class WriteLogNodeTest {
         checksum = raf.readLong();
         raf.read(buffer, 0, logSize);
         crc32.reset();
-        crc32.update(buffer, 0 , logSize);
+        crc32.update(buffer, 0, logSize);
         assertEquals(checksum, crc32.getValue());
         UpdatePlan updatePlan2 = (UpdatePlan) PhysicalPlanLogTransfer.logToOperator(buffer);
         assertEquals(updatePlan.getPath(), updatePlan2.getPath());
@@ -104,7 +120,7 @@ public class WriteLogNodeTest {
         checksum = raf.readLong();
         raf.read(buffer, 0, logSize);
         crc32.reset();
-        crc32.update(buffer, 0 , logSize);
+        crc32.update(buffer, 0, logSize);
         assertEquals(checksum, crc32.getValue());
         DeletePlan deletePlan2 = (DeletePlan) PhysicalPlanLogTransfer.logToOperator(buffer);
         assertEquals(deletePlan.getDeleteTime(), deletePlan2.getDeleteTime());
@@ -127,12 +143,13 @@ public class WriteLogNodeTest {
         tempRestore.createNewFile();
         tempProcessorStore.createNewFile();
 
-        WriteLogNode logNode = new ExclusiveWriteLogNode("root.logTestDevice", tempRestore.getPath(), tempProcessorStore.getPath());
+        WriteLogNode logNode = new ExclusiveWriteLogNode("root.logTestDevice", tempRestore.getPath(),
+                tempProcessorStore.getPath());
 
         InsertPlan bwInsertPlan = new InsertPlan(1, "root.logTestDevice", 100, Arrays.asList("s1", "s2", "s3", "s4"),
                 Arrays.asList("1.0", "15", "str", "false"));
         UpdatePlan updatePlan = new UpdatePlan(0, 100, "2.0", new Path("root.logTestDevice.s1"));
-        DeletePlan deletePlan = new DeletePlan(50,  new Path("root.logTestDevice.s1"));
+        DeletePlan deletePlan = new DeletePlan(50, new Path("root.logTestDevice.s1"));
 
         logNode.write(bwInsertPlan);
         logNode.write(updatePlan);
@@ -144,7 +161,8 @@ public class WriteLogNodeTest {
         assertTrue(walFile.exists());
 
         logNode.notifyStartFlush();
-        File oldWalFile = new File(config.walFolder + File.separator + "root.logTestDevice" + File.separator + "wal-old");
+        File oldWalFile = new File(
+                config.walFolder + File.separator + "root.logTestDevice" + File.separator + "wal-old");
         assertTrue(oldWalFile.exists());
         assertTrue(oldWalFile.length() > 0);
 
@@ -169,12 +187,13 @@ public class WriteLogNodeTest {
         tempRestore.createNewFile();
         tempProcessorStore.createNewFile();
 
-        WriteLogNode logNode = new ExclusiveWriteLogNode("root.logTestDevice", tempRestore.getPath(), tempProcessorStore.getPath());
+        WriteLogNode logNode = new ExclusiveWriteLogNode("root.logTestDevice", tempRestore.getPath(),
+                tempProcessorStore.getPath());
 
         InsertPlan bwInsertPlan = new InsertPlan(1, "root.logTestDevice", 100, Arrays.asList("s1", "s2", "s3", "s4"),
                 Arrays.asList("1.0", "15", "str", "false"));
         UpdatePlan updatePlan = new UpdatePlan(0, 100, "2.0", new Path("root.logTestDevice.s1"));
-        DeletePlan deletePlan = new DeletePlan(50,  new Path("root.logTestDevice.s1"));
+        DeletePlan deletePlan = new DeletePlan(50, new Path("root.logTestDevice.s1"));
 
         logNode.write(bwInsertPlan);
         logNode.write(updatePlan);
@@ -202,12 +221,13 @@ public class WriteLogNodeTest {
         tempRestore.createNewFile();
         tempProcessorStore.createNewFile();
 
-        WriteLogNode logNode = new ExclusiveWriteLogNode("root.logTestDevice", tempRestore.getPath(), tempProcessorStore.getPath());
+        WriteLogNode logNode = new ExclusiveWriteLogNode("root.logTestDevice", tempRestore.getPath(),
+                tempProcessorStore.getPath());
 
         InsertPlan bwInsertPlan = new InsertPlan(1, "logTestDevice", 100, Arrays.asList("s1", "s2", "s3", "s4"),
                 Arrays.asList("1.0", "15", "str", "false"));
         UpdatePlan updatePlan = new UpdatePlan(0, 100, "2.0", new Path("root.logTestDevice.s1"));
-        DeletePlan deletePlan = new DeletePlan(50,  new Path("root.logTestDevice.s1"));
+        DeletePlan deletePlan = new DeletePlan(50, new Path("root.logTestDevice.s1"));
 
         logNode.write(bwInsertPlan);
         logNode.write(updatePlan);
@@ -236,9 +256,11 @@ public class WriteLogNodeTest {
         tempRestore.createNewFile();
         tempProcessorStore.createNewFile();
 
-        WriteLogNode logNode = new ExclusiveWriteLogNode("root.logTestDevice.oversize", tempRestore.getPath(), tempProcessorStore.getPath());
+        WriteLogNode logNode = new ExclusiveWriteLogNode("root.logTestDevice.oversize", tempRestore.getPath(),
+                tempProcessorStore.getPath());
 
-        InsertPlan bwInsertPlan = new InsertPlan(1, "root.logTestDevice.oversize", 100, Arrays.asList("s1", "s2", "s3", "s4"),
+        InsertPlan bwInsertPlan = new InsertPlan(1, "root.logTestDevice.oversize", 100,
+                Arrays.asList("s1", "s2", "s3", "s4"),
                 Arrays.asList("1.0", "15", new String(new char[4 * 1024 * 1024]), "false"));
 
         boolean caught = false;

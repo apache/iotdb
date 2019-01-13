@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.db.auth.authorizer;
 
 import org.apache.iotdb.db.auth.AuthException;
@@ -18,20 +33,19 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-abstract public class BasicAuthorizer implements IAuthorizer,IService {
+abstract public class BasicAuthorizer implements IAuthorizer, IService {
 
     private static final Logger logger = LoggerFactory.getLogger(BasicAuthorizer.class);
     private static final Set<Integer> ADMIN_PRIVILEGES;
 
     static {
         ADMIN_PRIVILEGES = new HashSet<>();
-        for(int i = 0; i < PrivilegeType.values().length; i++)
+        for (int i = 0; i < PrivilegeType.values().length; i++)
             ADMIN_PRIVILEGES.add(i);
     }
 
     private IUserManager userManager;
     private IRoleManager roleManager;
-
 
     BasicAuthorizer(IUserManager userManager, IRoleManager roleManager) throws AuthException {
         this.userManager = userManager;
@@ -58,25 +72,25 @@ abstract public class BasicAuthorizer implements IAuthorizer,IService {
 
     @Override
     public boolean deleteUser(String username) throws AuthException {
-        if(IoTDBConstant.ADMIN_NAME.equals(username))
+        if (IoTDBConstant.ADMIN_NAME.equals(username))
             throw new AuthException("Default administrator cannot be deleted");
         return userManager.deleteUser(username);
     }
 
     @Override
     public boolean grantPrivilegeToUser(String username, String path, int privilegeId) throws AuthException {
-        if(IoTDBConstant.ADMIN_NAME.equals(username))
+        if (IoTDBConstant.ADMIN_NAME.equals(username))
             throw new AuthException("Invalid operation, administrator already has all privileges");
-        if(!PrivilegeType.isPathRelevant(privilegeId))
+        if (!PrivilegeType.isPathRelevant(privilegeId))
             path = IoTDBConstant.PATH_ROOT;
         return userManager.grantPrivilegeToUser(username, path, privilegeId);
     }
 
     @Override
     public boolean revokePrivilegeFromUser(String username, String path, int privilegeId) throws AuthException {
-        if(IoTDBConstant.ADMIN_NAME.equals(username))
+        if (IoTDBConstant.ADMIN_NAME.equals(username))
             throw new AuthException("Invalid operation, administrator must have all privileges");
-        if(!PrivilegeType.isPathRelevant(privilegeId))
+        if (!PrivilegeType.isPathRelevant(privilegeId))
             path = IoTDBConstant.PATH_ROOT;
         return userManager.revokePrivilegeFromUser(username, path, privilegeId);
     }
@@ -89,16 +103,17 @@ abstract public class BasicAuthorizer implements IAuthorizer,IService {
     @Override
     public boolean deleteRole(String roleName) throws AuthException {
         boolean success = roleManager.deleteRole(roleName);
-        if(!success)
+        if (!success)
             return false;
         else {
             // proceed to revoke the role in all users
             List<String> users = userManager.listAllUsers();
-            for(String user : users) {
+            for (String user : users) {
                 try {
                     userManager.revokeRoleFromUser(roleName, user);
                 } catch (AuthException e) {
-                    logger.warn("Error encountered when revoking a role {} from user {} after deletion, because {}", roleName, user, e);
+                    logger.warn("Error encountered when revoking a role {} from user {} after deletion, because {}",
+                            roleName, user, e);
                 }
             }
         }
@@ -107,14 +122,14 @@ abstract public class BasicAuthorizer implements IAuthorizer,IService {
 
     @Override
     public boolean grantPrivilegeToRole(String roleName, String path, int privilegeId) throws AuthException {
-        if(!PrivilegeType.isPathRelevant(privilegeId))
+        if (!PrivilegeType.isPathRelevant(privilegeId))
             path = IoTDBConstant.PATH_ROOT;
         return roleManager.grantPrivilegeToRole(roleName, path, privilegeId);
     }
 
     @Override
     public boolean revokePrivilegeFromRole(String roleName, String path, int privilegeId) throws AuthException {
-        if(!PrivilegeType.isPathRelevant(privilegeId))
+        if (!PrivilegeType.isPathRelevant(privilegeId))
             path = IoTDBConstant.PATH_ROOT;
         return roleManager.revokePrivilegeFromRole(roleName, path, privilegeId);
     }
@@ -122,14 +137,14 @@ abstract public class BasicAuthorizer implements IAuthorizer,IService {
     @Override
     public boolean grantRoleToUser(String roleName, String username) throws AuthException {
         Role role = roleManager.getRole(roleName);
-        if(role == null) {
+        if (role == null) {
             throw new AuthException(String.format("No such role : %s", roleName));
         }
         // the role may be deleted before it ts granted to the user, so a double check is necessary.
         boolean success = userManager.grantRoleToUser(roleName, username);
-        if(success) {
+        if (success) {
             role = roleManager.getRole(roleName);
-            if(role == null) {
+            if (role == null) {
                 throw new AuthException(String.format("No such role : %s", roleName));
             } else
                 return true;
@@ -140,7 +155,7 @@ abstract public class BasicAuthorizer implements IAuthorizer,IService {
     @Override
     public boolean revokeRoleFromUser(String roleName, String username) throws AuthException {
         Role role = roleManager.getRole(roleName);
-        if(role == null) {
+        if (role == null) {
             throw new AuthException(String.format("No such role : %s", roleName));
         }
         return userManager.revokeRoleFromUser(roleName, username);
@@ -148,18 +163,18 @@ abstract public class BasicAuthorizer implements IAuthorizer,IService {
 
     @Override
     public Set<Integer> getPrivileges(String username, String path) throws AuthException {
-        if(IoTDBConstant.ADMIN_NAME.equals(username))
+        if (IoTDBConstant.ADMIN_NAME.equals(username))
             return ADMIN_PRIVILEGES;
         User user = userManager.getUser(username);
-        if(user == null) {
+        if (user == null) {
             throw new AuthException(String.format("No such user : %s", username));
         }
         // get privileges of the user
         Set<Integer> privileges = user.getPrivileges(path);
         // merge the privileges of the roles of the user
-        for(String roleName : user.roleList) {
+        for (String roleName : user.roleList) {
             Role role = roleManager.getRole(roleName);
-            if(role != null) {
+            if (role != null) {
                 privileges.addAll(role.getPrivileges(path));
             }
         }
@@ -173,20 +188,20 @@ abstract public class BasicAuthorizer implements IAuthorizer,IService {
 
     @Override
     public boolean checkUserPrivileges(String username, String path, int privilegeId) throws AuthException {
-        if(IoTDBConstant.ADMIN_NAME.equals(username))
+        if (IoTDBConstant.ADMIN_NAME.equals(username))
             return true;
         User user = userManager.getUser(username);
-        if(user == null) {
+        if (user == null) {
             throw new AuthException(String.format("No such user : %s", username));
         }
         // get privileges of the user
-        if(user.checkPrivilege(path, privilegeId))
+        if (user.checkPrivilege(path, privilegeId))
             return true;
         // merge the privileges of the roles of the user
-        for(String roleName : user.roleList) {
+        for (String roleName : user.roleList) {
             Role role = roleManager.getRole(roleName);
-            if(role.checkPrivilege(path, privilegeId)) {
-               return true;
+            if (role.checkPrivilege(path, privilegeId)) {
+                return true;
             }
         }
         return false;

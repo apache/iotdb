@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.tsfile.write;
 
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
@@ -28,7 +43,6 @@ public class TsFileReadWriteTest {
     private TsFileWriter tsFileWriter;
     private final double delta = 0.0000001;
 
-
     @Before
     public void setUp() throws Exception {
         f = new File(path);
@@ -48,13 +62,13 @@ public class TsFileReadWriteTest {
 
     @Test
     public void intTest() throws IOException, WriteProcessException {
-        int floatCount = 1024*1024*13+1023;
+        int floatCount = 1024 * 1024 * 13 + 1023;
         // add measurements into file schema
         tsFileWriter.addMeasurement(new MeasurementSchema("sensor_1", TSDataType.INT32, TSEncoding.RLE));
         for (long i = 1; i < floatCount; i++) {
             // construct TSRecord
             TSRecord tsRecord = new TSRecord(i, "device_1");
-            DataPoint dPoint1 = new IntDataPoint("sensor_1", (int)i);
+            DataPoint dPoint1 = new IntDataPoint("sensor_1", (int) i);
             tsRecord.addTuple(dPoint1);
             // write a TSRecord to TsFile
             tsFileWriter.write(tsRecord);
@@ -68,7 +82,7 @@ public class TsFileReadWriteTest {
         QueryExpression queryExpression = QueryExpression.create(paths, null);
 
         QueryDataSet queryDataSet = readTsFile.query(queryExpression);
-        for(int j = 0; j< paths.size(); j++) {
+        for (int j = 0; j < paths.size(); j++) {
             assertEquals(paths.get(j), queryDataSet.getPaths().get(j));
         }
 
@@ -84,7 +98,7 @@ public class TsFileReadWriteTest {
 
     @Test
     public void longTest() throws IOException, WriteProcessException {
-        int floatCount = 1024*1024*13+1023;
+        int floatCount = 1024 * 1024 * 13 + 1023;
         // add measurements into file schema
         tsFileWriter.addMeasurement(new MeasurementSchema("sensor_1", TSDataType.INT64, TSEncoding.RLE));
         for (long i = 1; i < floatCount; i++) {
@@ -104,7 +118,7 @@ public class TsFileReadWriteTest {
         QueryExpression queryExpression = QueryExpression.create(paths, null);
 
         QueryDataSet queryDataSet = readTsFile.query(queryExpression);
-        for(int j = 0; j< paths.size(); j++) {
+        for (int j = 0; j < paths.size(); j++) {
             assertEquals(paths.get(j), queryDataSet.getPaths().get(j));
         }
 
@@ -120,13 +134,13 @@ public class TsFileReadWriteTest {
 
     @Test
     public void floatTest() throws IOException, WriteProcessException {
-        int floatCount = 1024*1024*13+1023;
+        int floatCount = 1024 * 1024 * 13 + 1023;
         // add measurements into file schema
         tsFileWriter.addMeasurement(new MeasurementSchema("sensor_1", TSDataType.FLOAT, TSEncoding.RLE));
         for (long i = 1; i < floatCount; i++) {
             // construct TSRecord
             TSRecord tsRecord = new TSRecord(i, "device_1");
-            DataPoint dPoint1 = new FloatDataPoint("sensor_1", (float)i);
+            DataPoint dPoint1 = new FloatDataPoint("sensor_1", (float) i);
             tsRecord.addTuple(dPoint1);
             // write a TSRecord to TsFile
             tsFileWriter.write(tsRecord);
@@ -140,7 +154,7 @@ public class TsFileReadWriteTest {
         QueryExpression queryExpression = QueryExpression.create(paths, null);
 
         QueryDataSet queryDataSet = readTsFile.query(queryExpression);
-        for(int j = 0; j< paths.size(); j++) {
+        for (int j = 0; j < paths.size(); j++) {
             assertEquals(paths.get(j), queryDataSet.getPaths().get(j));
         }
 
@@ -157,13 +171,13 @@ public class TsFileReadWriteTest {
 
     @Test
     public void doubleTest() throws IOException, WriteProcessException {
-        int floatCount = 1024*1024*13+1023;
+        int floatCount = 1024 * 1024 * 13 + 1023;
         // add measurements into file schema
         tsFileWriter.addMeasurement(new MeasurementSchema("sensor_1", TSDataType.DOUBLE, TSEncoding.RLE));
         for (long i = 1; i < floatCount; i++) {
             // construct TSRecord
             TSRecord tsRecord = new TSRecord(i, "device_1");
-            DataPoint dPoint1 = new DoubleDataPoint("sensor_1", (double)i);
+            DataPoint dPoint1 = new DoubleDataPoint("sensor_1", (double) i);
             tsRecord.addTuple(dPoint1);
             // write a TSRecord to TsFile
             tsFileWriter.write(tsRecord);
@@ -177,7 +191,7 @@ public class TsFileReadWriteTest {
         QueryExpression queryExpression = QueryExpression.create(paths, null);
 
         QueryDataSet queryDataSet = readTsFile.query(queryExpression);
-        for(int j = 0; j< paths.size(); j++) {
+        for (int j = 0; j < paths.size(); j++) {
             assertEquals(paths.get(j), queryDataSet.getPaths().get(j));
         }
 

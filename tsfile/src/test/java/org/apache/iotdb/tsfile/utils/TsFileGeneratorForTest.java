@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.tsfile.utils;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
@@ -41,7 +56,8 @@ public class TsFileGeneratorForTest {
 
     public static final long START_TIMESTAMP = 1480562618000L;
 
-    public static void generateFile(int rowCount, int chunkGroupSize, int pageSize) throws IOException, InterruptedException, WriteProcessException {
+    public static void generateFile(int rowCount, int chunkGroupSize, int pageSize)
+            throws IOException, InterruptedException, WriteProcessException {
         TsFileGeneratorForTest.rowCount = rowCount;
         TsFileGeneratorForTest.chunkGroupSize = chunkGroupSize;
         TsFileGeneratorForTest.pageSize = pageSize;
@@ -103,9 +119,7 @@ public class TsFileGeneratorForTest {
             fw.write(d2 + "\r\n");
         }
         // write error
-        String d =
-                "d2,3," + (startTime + rowCount) + ",s2," + (rowCount * 10 + 2) + ",s3,"
-                        + (rowCount * 10 + 3);
+        String d = "d2,3," + (startTime + rowCount) + ",s2," + (rowCount * 10 + 2) + ",s3," + (rowCount * 10 + 3);
         fw.write(d + "\r\n");
         d = "d2," + (startTime + rowCount + 1) + ",2,s-1," + (rowCount * 10 + 2);
         fw.write(d + "\r\n");
@@ -120,8 +134,8 @@ public class TsFileGeneratorForTest {
         if (errorFile.exists())
             errorFile.delete();
 
-        //LOG.info(jsonSchema.toString());
-        //FileSchema schema = new FileSchema(jsonSchema);
+        // LOG.info(jsonSchema.toString());
+        // FileSchema schema = new FileSchema(jsonSchema);
         FileSchema schema = generateTestSchema();
 
         TSFileDescriptor.getInstance().getConfig().groupSizeInByte = chunkGroupSize;
@@ -142,38 +156,31 @@ public class TsFileGeneratorForTest {
         JSONObject s1 = new JSONObject();
         s1.put(JsonFormatConstant.MEASUREMENT_UID, "s1");
         s1.put(JsonFormatConstant.DATA_TYPE, TSDataType.INT32.toString());
-        s1.put(JsonFormatConstant.MEASUREMENT_ENCODING,
-                conf.valueEncoder);
+        s1.put(JsonFormatConstant.MEASUREMENT_ENCODING, conf.valueEncoder);
         JSONObject s2 = new JSONObject();
         s2.put(JsonFormatConstant.MEASUREMENT_UID, "s2");
         s2.put(JsonFormatConstant.DATA_TYPE, TSDataType.INT64.toString());
-        s2.put(JsonFormatConstant.MEASUREMENT_ENCODING,
-                conf.valueEncoder);
+        s2.put(JsonFormatConstant.MEASUREMENT_ENCODING, conf.valueEncoder);
         JSONObject s3 = new JSONObject();
         s3.put(JsonFormatConstant.MEASUREMENT_UID, "s3");
         s3.put(JsonFormatConstant.DATA_TYPE, TSDataType.INT64.toString());
-        s3.put(JsonFormatConstant.MEASUREMENT_ENCODING,
-                conf.valueEncoder);
+        s3.put(JsonFormatConstant.MEASUREMENT_ENCODING, conf.valueEncoder);
         JSONObject s4 = new JSONObject();
         s4.put(JsonFormatConstant.MEASUREMENT_UID, "s4");
         s4.put(JsonFormatConstant.DATA_TYPE, TSDataType.TEXT.toString());
-        s4.put(JsonFormatConstant.MEASUREMENT_ENCODING,
-                TSEncoding.PLAIN.toString());
+        s4.put(JsonFormatConstant.MEASUREMENT_ENCODING, TSEncoding.PLAIN.toString());
         JSONObject s5 = new JSONObject();
         s5.put(JsonFormatConstant.MEASUREMENT_UID, "s5");
         s5.put(JsonFormatConstant.DATA_TYPE, TSDataType.BOOLEAN.toString());
-        s5.put(JsonFormatConstant.MEASUREMENT_ENCODING,
-                TSEncoding.PLAIN.toString());
+        s5.put(JsonFormatConstant.MEASUREMENT_ENCODING, TSEncoding.PLAIN.toString());
         JSONObject s6 = new JSONObject();
         s6.put(JsonFormatConstant.MEASUREMENT_UID, "s6");
         s6.put(JsonFormatConstant.DATA_TYPE, TSDataType.FLOAT.toString());
-        s6.put(JsonFormatConstant.MEASUREMENT_ENCODING,
-                TSEncoding.RLE.toString());
+        s6.put(JsonFormatConstant.MEASUREMENT_ENCODING, TSEncoding.RLE.toString());
         JSONObject s7 = new JSONObject();
         s7.put(JsonFormatConstant.MEASUREMENT_UID, "s7");
         s7.put(JsonFormatConstant.DATA_TYPE, TSDataType.DOUBLE.toString());
-        s7.put(JsonFormatConstant.MEASUREMENT_ENCODING,
-                TSEncoding.RLE.toString());
+        s7.put(JsonFormatConstant.MEASUREMENT_ENCODING, TSEncoding.RLE.toString());
 
         JSONArray measureGroup1 = new JSONArray();
         measureGroup1.put(s1);
@@ -187,19 +194,20 @@ public class TsFileGeneratorForTest {
         JSONObject jsonSchema = new JSONObject();
         jsonSchema.put(JsonFormatConstant.DELTA_TYPE, "test_type");
         jsonSchema.put(JsonFormatConstant.JSON_SCHEMA, measureGroup1);
-        //System.out.println(jsonSchema);
+        // System.out.println(jsonSchema);
         return jsonSchema;
     }
-
 
     private static FileSchema generateTestSchema() {
         SchemaBuilder schemaBuilder = new SchemaBuilder();
         schemaBuilder.addSeries("s1", TSDataType.INT32, TSEncoding.RLE);
         schemaBuilder.addSeries("s2", TSDataType.INT64, TSEncoding.PLAIN);
         schemaBuilder.addSeries("s3", TSDataType.INT64, TSEncoding.TS_2DIFF);
-        schemaBuilder.addSeries("s4", TSDataType.TEXT, TSEncoding.PLAIN, CompressionType.UNCOMPRESSED, Collections.singletonMap(Encoder.MAX_STRING_LENGTH, "20"));
+        schemaBuilder.addSeries("s4", TSDataType.TEXT, TSEncoding.PLAIN, CompressionType.UNCOMPRESSED,
+                Collections.singletonMap(Encoder.MAX_STRING_LENGTH, "20"));
         schemaBuilder.addSeries("s5", TSDataType.BOOLEAN, TSEncoding.RLE);
-        schemaBuilder.addSeries("s6", TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY, Collections.singletonMap(Encoder.MAX_POINT_NUMBER, "5"));
+        schemaBuilder.addSeries("s6", TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY,
+                Collections.singletonMap(Encoder.MAX_POINT_NUMBER, "5"));
         schemaBuilder.addSeries("s7", TSDataType.DOUBLE, TSEncoding.GORILLA);
         return schemaBuilder.build();
     }

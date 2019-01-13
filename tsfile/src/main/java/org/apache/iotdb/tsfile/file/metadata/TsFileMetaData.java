@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.tsfile.file.metadata;
 
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -30,20 +45,22 @@ public class TsFileMetaData {
     private int currentVersion;
 
     /**
-     * String for application that wrote this file. This should be in the format <Application> version
-     * <App Version> (build <App Build Hash>). e.g. impala version 1.0 (build SHA-1_hash_code)
+     * String for application that wrote this file. This should be in the format <Application> version <App Version>
+     * (build <App Build Hash>). e.g. impala version 1.0 (build SHA-1_hash_code)
      */
     private String createdBy;
-
 
     public TsFileMetaData() {
     }
 
     /**
-     * @param measurementSchema - time series info list
-     * @param currentVersion    - current version
+     * @param measurementSchema
+     *            - time series info list
+     * @param currentVersion
+     *            - current version
      */
-    public TsFileMetaData(Map<String, TsDeviceMetadataIndex> deviceMap, Map<String, MeasurementSchema> measurementSchema, int currentVersion) {
+    public TsFileMetaData(Map<String, TsDeviceMetadataIndex> deviceMap,
+            Map<String, MeasurementSchema> measurementSchema, int currentVersion) {
         this.deviceIndexMap = deviceMap;
         this.measurementSchema = measurementSchema;
         this.currentVersion = currentVersion;
@@ -52,7 +69,8 @@ public class TsFileMetaData {
     /**
      * add time series metadata to list. THREAD NOT SAFE
      *
-     * @param measurementSchema series metadata to add
+     * @param measurementSchema
+     *            series metadata to add
      */
     public void addMeasurementSchema(MeasurementSchema measurementSchema) {
         this.measurementSchema.put(measurementSchema.getMeasurementId(), measurementSchema);
@@ -60,12 +78,8 @@ public class TsFileMetaData {
 
     @Override
     public String toString() {
-        return "TsFileMetaData{" +
-                "deviceIndexMap=" + deviceIndexMap +
-                ", measurementSchema=" + measurementSchema +
-                ", currentVersion=" + currentVersion +
-                ", createdBy='" + createdBy + '\'' +
-                '}';
+        return "TsFileMetaData{" + "deviceIndexMap=" + deviceIndexMap + ", measurementSchema=" + measurementSchema
+                + ", currentVersion=" + currentVersion + ", createdBy='" + createdBy + '\'' + '}';
     }
 
     public int getCurrentVersion() {
@@ -104,14 +118,12 @@ public class TsFileMetaData {
         return measurementSchema.containsKey(measurement);
     }
 
-
     public TSDataType getType(String measurement) {
         if (containsMeasurement(measurement))
             return measurementSchema.get(measurement).getType();
         else
             return null;
     }
-
 
     public Map<String, MeasurementSchema> getMeasurementSchema() {
         return measurementSchema;
@@ -135,7 +147,8 @@ public class TsFileMetaData {
         byteLen += ReadWriteIOUtils.write(currentVersion, outputStream);
 
         byteLen += ReadWriteIOUtils.writeIsNull(createdBy, outputStream);
-        if (createdBy != null) byteLen += ReadWriteIOUtils.write(createdBy, outputStream);
+        if (createdBy != null)
+            byteLen += ReadWriteIOUtils.write(createdBy, outputStream);
 
         return byteLen;
     }
@@ -158,7 +171,8 @@ public class TsFileMetaData {
         byteLen += ReadWriteIOUtils.write(currentVersion, buffer);
 
         byteLen += ReadWriteIOUtils.writeIsNull(createdBy, buffer);
-        if (createdBy != null) byteLen += ReadWriteIOUtils.write(createdBy, buffer);
+        if (createdBy != null)
+            byteLen += ReadWriteIOUtils.write(createdBy, buffer);
 
         return byteLen;
     }

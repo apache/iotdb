@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.tsfile.encoding.encoder;
 
 import org.apache.iotdb.tsfile.exception.encoding.TSFileEncodingException;
@@ -10,8 +25,8 @@ import java.io.IOException;
 import java.math.BigDecimal;
 
 /**
- * This class is the parent class of all Encoders. Every encoder has a specific
- * {@code <encoderType>} which represents the type of this encoder
+ * This class is the parent class of all Encoders. Every encoder has a specific {@code <encoderType>} which represents
+ * the type of this encoder
  *
  * @author Zhang Jinrui
  */
@@ -60,8 +75,10 @@ public abstract class Encoder {
     /**
      * Write all values buffered in memory cache to OutputStream
      *
-     * @param out - ByteArrayOutputStream
-     * @throws IOException cannot flush to OutputStream
+     * @param out
+     *            - ByteArrayOutputStream
+     * @throws IOException
+     *             cannot flush to OutputStream
      */
     public abstract void flush(ByteArrayOutputStream out) throws IOException;
 

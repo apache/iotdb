@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.db.qp.logical.crud;
 
 import org.apache.iotdb.db.exception.qp.LogicalOperatorException;
@@ -26,8 +41,7 @@ public class BasicFunctionOperator extends FunctionOperator {
     protected Path path;
     protected String value;
 
-    public BasicFunctionOperator(int tokenIntType, Path path, String value)
-            throws LogicalOperatorException {
+    public BasicFunctionOperator(int tokenIntType, Path path, String value) throws LogicalOperatorException {
         super(tokenIntType);
         operatorType = Operator.OperatorType.BASIC_FUNC;
         funcToken = BasicOperatorType.getBasicOpBySymbol(tokenIntType);
@@ -66,34 +80,33 @@ public class BasicFunctionOperator extends FunctionOperator {
             throws LogicalOperatorException, PathErrorException {
         TSDataType type = executor.getSeriesType(path);
         if (type == null) {
-            throw new PathErrorException("given seriesPath:{" + path.getFullPath()
-                    + "} don't exist in metadata");
+            throw new PathErrorException("given seriesPath:{" + path.getFullPath() + "} don't exist in metadata");
         }
         IUnaryExpression ret;
 
         switch (type) {
-            case INT32:
-                ret = funcToken.getUnaryExpression(path, Integer.valueOf(value));
-                break;
-            case INT64:
-                ret = funcToken.getUnaryExpression(path, Long.valueOf(value));
-                break;
-            case BOOLEAN:
-                ret = funcToken.getUnaryExpression(path, Boolean.valueOf(value));
-                break;
-            case FLOAT:
-                ret = funcToken.getUnaryExpression(path, Float.valueOf(value));
-                break;
-            case DOUBLE:
-                ret = funcToken.getUnaryExpression(path, Double.valueOf(value));
-                break;
-            case TEXT:
-                ret = funcToken.getUnaryExpression(path,
-                        (value.startsWith("'") && value.endsWith("'")) || (value.startsWith("\"") && value.endsWith("\"")) ?
-                                new Binary(value.substring(1, value.length()-1)) : new Binary(value));
-                break;
-            default:
-                throw new LogicalOperatorException("unsupported data type:" + type);
+        case INT32:
+            ret = funcToken.getUnaryExpression(path, Integer.valueOf(value));
+            break;
+        case INT64:
+            ret = funcToken.getUnaryExpression(path, Long.valueOf(value));
+            break;
+        case BOOLEAN:
+            ret = funcToken.getUnaryExpression(path, Boolean.valueOf(value));
+            break;
+        case FLOAT:
+            ret = funcToken.getUnaryExpression(path, Float.valueOf(value));
+            break;
+        case DOUBLE:
+            ret = funcToken.getUnaryExpression(path, Double.valueOf(value));
+            break;
+        case TEXT:
+            ret = funcToken.getUnaryExpression(path,
+                    (value.startsWith("'") && value.endsWith("'")) || (value.startsWith("\"") && value.endsWith("\""))
+                            ? new Binary(value.substring(1, value.length() - 1)) : new Binary(value));
+            break;
+        default:
+            throw new LogicalOperatorException("unsupported data type:" + type);
         }
 
         return new Pair<>(ret, path.getFullPath());

@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.db.qp.other;
 
 import static org.junit.Assert.assertArrayEquals;
@@ -39,27 +54,25 @@ public class TSPlanContextPropertyTest {
     private Path metadataPath;
     private Path[] paths;
 
-
     @Parameters
     public static Collection<Object[]> data() {
         return Arrays.asList(new Object[][] {
-                {"CREATE PROPERTY property1", PropertyType.ADD_TREE, defaultPropertyPath, null,
-                        new Path[] {defaultPropertyPath}},
-                {"ADD LABEL label1 TO PROPERTY property1", PropertyType.ADD_PROPERTY_LABEL,
-                        defaultPropertyLabelPath, null, new Path[] {defaultPropertyLabelPath}},
-                {"DELETE LABEL label1 FROM PROPERTY property1", PropertyType.DELETE_PROPERTY_LABEL,
-                        defaultPropertyLabelPath, null, new Path[] {defaultPropertyLabelPath}},
-                {"LINK root.m1.m2 TO property1.label1", PropertyType.ADD_PROPERTY_TO_METADATA,
+                { "CREATE PROPERTY property1", PropertyType.ADD_TREE, defaultPropertyPath, null,
+                        new Path[] { defaultPropertyPath } },
+                { "ADD LABEL label1 TO PROPERTY property1", PropertyType.ADD_PROPERTY_LABEL, defaultPropertyLabelPath,
+                        null, new Path[] { defaultPropertyLabelPath } },
+                { "DELETE LABEL label1 FROM PROPERTY property1", PropertyType.DELETE_PROPERTY_LABEL,
+                        defaultPropertyLabelPath, null, new Path[] { defaultPropertyLabelPath } },
+                { "LINK root.m1.m2 TO property1.label1", PropertyType.ADD_PROPERTY_TO_METADATA,
                         defaultPropertyLabelPath, defaultMetadataPath,
-                        new Path[] {defaultMetadataPath, defaultPropertyLabelPath}},
-                {"UNLINK root.m1.m2 FROM property1.label1",
-                        PropertyType.DEL_PROPERTY_FROM_METADATA, defaultPropertyLabelPath,
-                        defaultMetadataPath,
-                        new Path[] {defaultMetadataPath, defaultPropertyLabelPath}},});
+                        new Path[] { defaultMetadataPath, defaultPropertyLabelPath } },
+                { "UNLINK root.m1.m2 FROM property1.label1", PropertyType.DEL_PROPERTY_FROM_METADATA,
+                        defaultPropertyLabelPath, defaultMetadataPath,
+                        new Path[] { defaultMetadataPath, defaultPropertyLabelPath } }, });
     }
 
-    public TSPlanContextPropertyTest(String inputSQL, PropertyType propertyType, Path propertyPath,
-            Path metadataPath, Path[] paths) {
+    public TSPlanContextPropertyTest(String inputSQL, PropertyType propertyType, Path propertyPath, Path metadataPath,
+            Path[] paths) {
         this.inputSQL = inputSQL;
         this.propertyType = propertyType;
         this.propertyPath = propertyPath;

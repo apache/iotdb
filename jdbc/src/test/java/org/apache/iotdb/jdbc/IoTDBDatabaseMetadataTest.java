@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.jdbc;
 
 import static org.junit.Assert.*;
@@ -20,24 +35,17 @@ import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.when;
 
 /**
- * This class is designed to test the function of databaseMetaData which is used to fetch metadata from IoTDB.
- * (1) get all columns' name under a given path,
- * e.g., databaseMetaData.getColumns("col", "root", null, null);
- * (2) get all devices under a given column
- * e.g., databaseMetaData.getColumns("device", "vehicle", null, null);
- * (3) show timeseries path
- * e.g., databaseMetaData.getColumns("ts", "root.vehicle.d0.s0", null, null);
- * (4) show storage group
- * databaseMetaData.getColumns("sg", null, null, null);
- * (5) show metadata in json
+ * This class is designed to test the function of databaseMetaData which is used to fetch metadata from IoTDB. (1) get
+ * all columns' name under a given path, e.g., databaseMetaData.getColumns("col", "root", null, null); (2) get all
+ * devices under a given column e.g., databaseMetaData.getColumns("device", "vehicle", null, null); (3) show timeseries
+ * path e.g., databaseMetaData.getColumns("ts", "root.vehicle.d0.s0", null, null); (4) show storage group
+ * databaseMetaData.getColumns("sg", null, null, null); (5) show metadata in json
  * ((TsfileDatabaseMetadata)databaseMetaData).getMetadataInJson()
  * <p>
- * The tests utilize the mockito framework to mock responses from an IoTDB server.
- * The status of the IoTDB server mocked here is determined by the following four sql commands:
- * SET STORAGE GROUP TO root.vehicle;
- * CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE;
- * CREATE TIMESERIES root.vehicle.d0.s1 WITH DATATYPE=INT64, ENCODING=RLE;
- * CREATE TIMESERIES root.vehicle.d0.s2 WITH DATATYPE=FLOAT, ENCODING=RLE;
+ * The tests utilize the mockito framework to mock responses from an IoTDB server. The status of the IoTDB server mocked
+ * here is determined by the following four sql commands: SET STORAGE GROUP TO root.vehicle; CREATE TIMESERIES
+ * root.vehicle.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE; CREATE TIMESERIES root.vehicle.d0.s1 WITH DATATYPE=INT64,
+ * ENCODING=RLE; CREATE TIMESERIES root.vehicle.d0.s2 WITH DATATYPE=FLOAT, ENCODING=RLE;
  */
 
 public class IoTDBDatabaseMetadataTest {
@@ -78,10 +86,7 @@ public class IoTDBDatabaseMetadataTest {
 
         when(fetchMetadataResp.getColumnsList()).thenReturn(columnList);
 
-        String standard = "Column,\n" +
-                "root.vehicle.d0.s0,\n" +
-                "root.vehicle.d0.s1,\n" +
-                "root.vehicle.d0.s2,\n";
+        String standard = "Column,\n" + "root.vehicle.d0.s0,\n" + "root.vehicle.d0.s1,\n" + "root.vehicle.d0.s2,\n";
         try {
             ResultSet resultSet = databaseMetaData.getColumns(Constant.CatalogColumn, "root", null, null);
             ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
@@ -114,8 +119,7 @@ public class IoTDBDatabaseMetadataTest {
 
         when(fetchMetadataResp.getColumnsList()).thenReturn(columnList);
 
-        String standard = "Column,\n" +
-                "root.vehicle.d0,\n";
+        String standard = "Column,\n" + "root.vehicle.d0,\n";
         try {
             ResultSet resultSet = databaseMetaData.getColumns(Constant.CatalogDevice, "vehicle", null, null);
             ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
@@ -138,38 +142,42 @@ public class IoTDBDatabaseMetadataTest {
     }
 
     /**
-     * show timeseries <path>
-     * usage 1
+     * show timeseries <path> usage 1
      */
     @SuppressWarnings({ "resource", "serial" })
     @Test
     public void ShowTimeseriesPath1() throws Exception {
         List<List<String>> tslist = new ArrayList<>();
-        tslist.add(new ArrayList<String>(4) {{
-            add("root.vehicle.d0.s0");
-            add("root.vehicle");
-            add("INT32");
-            add("RLE");
-        }});
-        tslist.add(new ArrayList<String>(4) {{
-            add("root.vehicle.d0.s1");
-            add("root.vehicle");
-            add("INT64");
-            add("RLE");
-        }});
-        tslist.add(new ArrayList<String>(4) {{
-            add("root.vehicle.d0.s2");
-            add("root.vehicle");
-            add("FLOAT");
-            add("RLE");
-        }});
+        tslist.add(new ArrayList<String>(4) {
+            {
+                add("root.vehicle.d0.s0");
+                add("root.vehicle");
+                add("INT32");
+                add("RLE");
+            }
+        });
+        tslist.add(new ArrayList<String>(4) {
+            {
+                add("root.vehicle.d0.s1");
+                add("root.vehicle");
+                add("INT64");
+                add("RLE");
+            }
+        });
+        tslist.add(new ArrayList<String>(4) {
+            {
+                add("root.vehicle.d0.s2");
+                add("root.vehicle");
+                add("FLOAT");
+                add("RLE");
+            }
+        });
 
         when(fetchMetadataResp.getShowTimeseriesList()).thenReturn(tslist);
 
-        String standard = "Timeseries,Storage Group,DataType,Encoding,\n" +
-                "root.vehicle.d0.s0,root.vehicle,INT32,RLE,\n" +
-                "root.vehicle.d0.s1,root.vehicle,INT64,RLE,\n" +
-                "root.vehicle.d0.s2,root.vehicle,FLOAT,RLE,\n";
+        String standard = "Timeseries,Storage Group,DataType,Encoding,\n"
+                + "root.vehicle.d0.s0,root.vehicle,INT32,RLE,\n" + "root.vehicle.d0.s1,root.vehicle,INT64,RLE,\n"
+                + "root.vehicle.d0.s2,root.vehicle,FLOAT,RLE,\n";
         try {
             ResultSet resultSet = databaseMetaData.getColumns(Constant.CatalogTimeseries, "root", null, null);
             ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
@@ -192,31 +200,33 @@ public class IoTDBDatabaseMetadataTest {
     }
 
     /**
-     * show timeseries <path>
-     * usage 2: Get information about a specific column, e.g., DataType
+     * show timeseries <path> usage 2: Get information about a specific column, e.g., DataType
      */
     @SuppressWarnings({ "resource", "serial" })
     @Test
     public void ShowTimeseriesPath2() throws Exception {
         List<List<String>> tslist = new ArrayList<>();
-        tslist.add(new ArrayList<String>(4) {{
-            add("root.vehicle.d0.s0");
-            add("root.vehicle");
-            add("INT32");
-            add("RLE");
-        }});
+        tslist.add(new ArrayList<String>(4) {
+            {
+                add("root.vehicle.d0.s0");
+                add("root.vehicle");
+                add("INT32");
+                add("RLE");
+            }
+        });
 
         when(fetchMetadataResp.getShowTimeseriesList()).thenReturn(tslist);
 
-        String standard = "DataType,\n" +
-                "INT32,\n";
+        String standard = "DataType,\n" + "INT32,\n";
         try {
-            ResultSet resultSet = databaseMetaData.getColumns(Constant.CatalogTimeseries, "root.vehicle.d0.s0", null, null);
+            ResultSet resultSet = databaseMetaData.getColumns(Constant.CatalogTimeseries, "root.vehicle.d0.s0", null,
+                    null);
             ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
             StringBuilder resultStr = new StringBuilder();
             resultStr.append(resultSetMetaData.getColumnName(3)).append(",\n");
             while (resultSet.next()) {
-                resultStr.append(resultSet.getString(IoTDBMetadataResultSet.GET_STRING_TIMESERIES_DATATYPE)).append(",");
+                resultStr.append(resultSet.getString(IoTDBMetadataResultSet.GET_STRING_TIMESERIES_DATATYPE))
+                        .append(",");
                 resultStr.append("\n");
             }
             Assert.assertEquals(resultStr.toString(), standard);
@@ -235,8 +245,7 @@ public class IoTDBDatabaseMetadataTest {
         sgSet.add("root.vehicle");
         when(fetchMetadataResp.getShowStorageGroups()).thenReturn(sgSet);
 
-        String standard = "Storage Group,\n" +
-                "root.vehicle,\n";
+        String standard = "Storage Group,\n" + "root.vehicle,\n";
         try {
             ResultSet resultSet = databaseMetaData.getColumns(Constant.CatalogStorageGroup, null, null, null);
             ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
@@ -264,36 +273,18 @@ public class IoTDBDatabaseMetadataTest {
     @SuppressWarnings("resource")
     @Test
     public void ShowTimeseriesInJson() throws Exception {
-        String metadataInJson = "===  Timeseries Tree  ===\n" +
-                "\n" +
-                "root:{\n" +
-                "    vehicle:{\n" +
-                "        d0:{\n" +
-                "            s0:{\n" +
-                "                 DataType: INT32,\n" +
-                "                 Encoding: RLE,\n" +
-                "                 args: {},\n" +
-                "                 StorageGroup: root.vehicle \n" +
-                "            },\n" +
-                "            s1:{\n" +
-                "                 DataType: INT64,\n" +
-                "                 Encoding: RLE,\n" +
-                "                 args: {},\n" +
-                "                 StorageGroup: root.vehicle \n" +
-                "            },\n" +
-                "            s2:{\n" +
-                "                 DataType: FLOAT,\n" +
-                "                 Encoding: RLE,\n" +
-                "                 args: {},\n" +
-                "                 StorageGroup: root.vehicle \n" +
-                "            }\n" +
-                "        }\n" +
-                "    }\n" +
-                "}";
+        String metadataInJson = "===  Timeseries Tree  ===\n" + "\n" + "root:{\n" + "    vehicle:{\n" + "        d0:{\n"
+                + "            s0:{\n" + "                 DataType: INT32,\n" + "                 Encoding: RLE,\n"
+                + "                 args: {},\n" + "                 StorageGroup: root.vehicle \n" + "            },\n"
+                + "            s1:{\n" + "                 DataType: INT64,\n" + "                 Encoding: RLE,\n"
+                + "                 args: {},\n" + "                 StorageGroup: root.vehicle \n" + "            },\n"
+                + "            s2:{\n" + "                 DataType: FLOAT,\n" + "                 Encoding: RLE,\n"
+                + "                 args: {},\n" + "                 StorageGroup: root.vehicle \n" + "            }\n"
+                + "        }\n" + "    }\n" + "}";
 
         when(fetchMetadataResp.getMetadataInJson()).thenReturn(metadataInJson);
 
-        String res = ((IoTDBDatabaseMetadata)databaseMetaData).getMetadataInJson();
+        String res = ((IoTDBDatabaseMetadata) databaseMetaData).getMetadataInJson();
         assertEquals(metadataInJson, res);
     }
 }

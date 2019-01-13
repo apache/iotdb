@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.tsfile.encoding.decoder;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
@@ -16,18 +31,15 @@ import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 
 /**
- * Abstract class for all rle decoder. Decoding values according to
- * following grammar: {@code <length> <bitwidth> <encoded-data>}. For more
- * information about rle format, see RleEncoder
+ * Abstract class for all rle decoder. Decoding values according to following grammar:
+ * {@code <length> <bitwidth> <encoded-data>}. For more information about rle format, see RleEncoder
  */
 public abstract class RleDecoder extends Decoder {
 
     public EndianType endianType;
     protected TSFileConfig config = TSFileDescriptor.getInstance().getConfig();
     /**
-     * mode to indicate current encoding type
-     * 0 - RLE
-     * 1 - BIT_PACKED
+     * mode to indicate current encoding type 0 - RLE 1 - BIT_PACKED
      */
     protected MODE mode;
     /**
@@ -39,13 +51,12 @@ public abstract class RleDecoder extends Decoder {
      */
     protected int currentCount;
     /**
-     * how many bytes for all encoded data like [{@code <bitwidth> <encoded-data>}] in
-     * inputstream
+     * how many bytes for all encoded data like [{@code <bitwidth> <encoded-data>}] in inputstream
      */
     protected int length;
     /**
-     * a flag to indicate whether current pattern is end. false - need to start
-     * reading a new page true - current page isn't over
+     * a flag to indicate whether current pattern is end. false - need to start reading a new page true - current page
+     * isn't over
      */
     protected boolean isLengthAndBitWidthReaded;
     /**
@@ -72,10 +83,11 @@ public abstract class RleDecoder extends Decoder {
     }
 
     /**
-     * get header for both rle and bit-packing current encode mode which is
-     * saved in first bit of header
+     * get header for both rle and bit-packing current encode mode which is saved in first bit of header
+     * 
      * @return int value
-     * @throws IOException cannot get header
+     * @throws IOException
+     *             cannot get header
      */
     public int getHeader() throws IOException {
         int header = ReadWriteForEncodingUtils.readUnsignedVarInt(byteCache);
@@ -86,40 +98,42 @@ public abstract class RleDecoder extends Decoder {
     /**
      * get all encoded data according to mode
      *
-     * @throws IOException cannot read next value
+     * @throws IOException
+     *             cannot read next value
      */
     protected void readNext() throws IOException {
         int header = getHeader();
         switch (mode) {
-            case RLE:
-                currentCount = header >> 1;
-                readNumberInRLE();
-                break;
-            case BIT_PACKED:
-                int bitPackedGroupCount = header >> 1;
-                // in last bit-packing group, there may be some useless value,
-                // lastBitPackedNum indicates how many values is useful
-                int lastBitPackedNum = ReadWriteIOUtils.read(byteCache);
-                if (bitPackedGroupCount > 0) {
+        case RLE:
+            currentCount = header >> 1;
+            readNumberInRLE();
+            break;
+        case BIT_PACKED:
+            int bitPackedGroupCount = header >> 1;
+            // in last bit-packing group, there may be some useless value,
+            // lastBitPackedNum indicates how many values is useful
+            int lastBitPackedNum = ReadWriteIOUtils.read(byteCache);
+            if (bitPackedGroupCount > 0) {
 
-                    currentCount = (bitPackedGroupCount - 1) * config.RLE_MIN_REPEATED_NUM + lastBitPackedNum;
-                    bitPackingNum = currentCount;
-                } else {
-                    throw new TSFileDecodingException(String.format(
-                            "tsfile-encoding IntRleDecoder: bitPackedGroupCount %d, smaller than 1", bitPackedGroupCount));
-                }
-                readBitPackingBuffer(bitPackedGroupCount, lastBitPackedNum);
-                break;
-            default:
-                throw new TSFileDecodingException(
-                        String.format("tsfile-encoding IntRleDecoder: unknown encoding mode %s", mode));
+                currentCount = (bitPackedGroupCount - 1) * config.RLE_MIN_REPEATED_NUM + lastBitPackedNum;
+                bitPackingNum = currentCount;
+            } else {
+                throw new TSFileDecodingException(String.format(
+                        "tsfile-encoding IntRleDecoder: bitPackedGroupCount %d, smaller than 1", bitPackedGroupCount));
+            }
+            readBitPackingBuffer(bitPackedGroupCount, lastBitPackedNum);
+            break;
+        default:
+            throw new TSFileDecodingException(
+                    String.format("tsfile-encoding IntRleDecoder: unknown encoding mode %s", mode));
         }
     }
 
     /**
      * read length and bit width of current package before we decode number
      *
-     * @param buffer ByteBuffer
+     * @param buffer
+     *            ByteBuffer
      */
     protected void readLengthAndBitWidth(ByteBuffer buffer) {
         // long st = System.currentTimeMillis();
@@ -135,9 +149,11 @@ public abstract class RleDecoder extends Decoder {
     /**
      * Check whether there is number left for reading
      *
-     * @param buffer decoded data saved in ByteBuffer
+     * @param buffer
+     *            decoded data saved in ByteBuffer
      * @return true or false to indicate whether there is number left
-     * @throws IOException cannot check next value
+     * @throws IOException
+     *             cannot check next value
      */
     @Override
     public boolean hasNext(ByteBuffer buffer) throws IOException {
@@ -146,7 +162,6 @@ public abstract class RleDecoder extends Decoder {
         }
         return false;
     }
-
 
     /**
      * Check whether there is another pattern left for reading
@@ -162,16 +177,20 @@ public abstract class RleDecoder extends Decoder {
     /**
      * Read rle package and save them in buffer
      *
-     * @throws IOException cannot read number
+     * @throws IOException
+     *             cannot read number
      */
     protected abstract void readNumberInRLE() throws IOException;
 
     /**
      * Read bit-packing package and save them in buffer
      *
-     * @param bitPackedGroupCount number of group number
-     * @param lastBitPackedNum    number of useful value in last group
-     * @throws IOException cannot read bit pack
+     * @param bitPackedGroupCount
+     *            number of group number
+     * @param lastBitPackedNum
+     *            number of useful value in last group
+     * @throws IOException
+     *             cannot read bit pack
      */
     protected abstract void readBitPackingBuffer(int bitPackedGroupCount, int lastBitPackedNum) throws IOException;
 

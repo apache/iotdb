@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.web.grafana.controller;
 
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -47,23 +62,23 @@ public class DBConnectController {
 
     @RequestMapping(value = "/search")
     @ResponseBody
-	public String metricFindQuery(HttpServletRequest request, HttpServletResponse response) {
-		Map<Integer, String> target = new HashMap<>();
-		response.setStatus(200);
-		List<String> columnsName = new ArrayList<>();
-		try {
-			columnsName = DBConnectService.getMetaData();
-		} catch (Exception e) {
-			logger.error("Failed to get metadata", e);
-		}
-		Collections.sort(columnsName);
-		int cnt = 0;
-		for (String columnName : columnsName) {
-			target.put(cnt++, columnName);
-		}
-		JSONObject ojb = new JSONObject(target);
-		return ojb.toString();
-	}
+    public String metricFindQuery(HttpServletRequest request, HttpServletResponse response) {
+        Map<Integer, String> target = new HashMap<>();
+        response.setStatus(200);
+        List<String> columnsName = new ArrayList<>();
+        try {
+            columnsName = DBConnectService.getMetaData();
+        } catch (Exception e) {
+            logger.error("Failed to get metadata", e);
+        }
+        Collections.sort(columnsName);
+        int cnt = 0;
+        for (String columnName : columnsName) {
+            target.put(cnt++, columnName);
+        }
+        JSONObject ojb = new JSONObject(target);
+        return ojb.toString();
+    }
 
     @RequestMapping(value = "/query")
     @ResponseBody
@@ -72,11 +87,12 @@ public class DBConnectController {
         try {
             JSONObject jsonObject = getRequestBodyJSON(request);
             Pair<ZonedDateTime, ZonedDateTime> timeRange = getTimeFromAndTo(jsonObject);
-            JSONArray array = (JSONArray)jsonObject.get("targets"); //[]
+            JSONArray array = (JSONArray) jsonObject.get("targets"); // []
             JSONArray result = new JSONArray();
-            for (int i=0; i<array.length(); i++) {
-                JSONObject object = (JSONObject)array.get(i); //{}
-                if (object.isNull("target")) return "[]";
+            for (int i = 0; i < array.length(); i++) {
+                JSONObject object = (JSONObject) array.get(i); // {}
+                if (object.isNull("target"))
+                    return "[]";
                 String target = (String) object.get("target");
                 String type = getJSONType(jsonObject);
                 JSONObject obj = new JSONObject();
@@ -97,13 +113,14 @@ public class DBConnectController {
     }
 
     private Pair<ZonedDateTime, ZonedDateTime> getTimeFromAndTo(JSONObject jsonObject) throws JSONException {
-        JSONObject obj = (JSONObject)jsonObject.get("range");
-        Instant from = Instant.parse((String)obj.get("from"));
-        Instant to = Instant.parse((String)obj.get("to"));
+        JSONObject obj = (JSONObject) jsonObject.get("range");
+        Instant from = Instant.parse((String) obj.get("from"));
+        Instant to = Instant.parse((String) obj.get("to"));
         return new Pair<>(from.atZone(ZoneId.of("Asia/Shanghai")), to.atZone(ZoneId.of("Asia/Shanghai")));
     }
 
-    private void setJSONTable(JSONObject obj, String target, Pair<ZonedDateTime, ZonedDateTime> timeRange) throws JSONException {
+    private void setJSONTable(JSONObject obj, String target, Pair<ZonedDateTime, ZonedDateTime> timeRange)
+            throws JSONException {
         List<TimeValues> timeValues = DBConnectService.querySeries(target, timeRange);
         JSONArray columns = new JSONArray();
         JSONObject column = new JSONObject();
@@ -125,13 +142,14 @@ public class DBConnectController {
         obj.put("values", values);
     }
 
-    private void setJSONTimeseries(JSONObject obj, String target, Pair<ZonedDateTime, ZonedDateTime> timeRange) throws JSONException {
+    private void setJSONTimeseries(JSONObject obj, String target, Pair<ZonedDateTime, ZonedDateTime> timeRange)
+            throws JSONException {
         List<TimeValues> timeValues = DBConnectService.querySeries(target, timeRange);
         logger.info("query size: {}", timeValues.size());
         JSONArray dataPoints = new JSONArray();
         for (TimeValues tv : timeValues) {
             long time = tv.getTime();
-            float value =  tv.getValue();
+            float value = tv.getValue();
             JSONArray jsonArray = new JSONArray();
             jsonArray.put(value);
             jsonArray.put(time);
@@ -145,7 +163,7 @@ public class DBConnectController {
             BufferedReader br = request.getReader();
             StringBuilder sb = new StringBuilder();
             String line;
-            while((line = br.readLine()) != null) {
+            while ((line = br.readLine()) != null) {
                 sb.append(line);
             }
             return new JSONObject(sb.toString());
@@ -156,9 +174,9 @@ public class DBConnectController {
     }
 
     public String getJSONType(JSONObject jsonObject) throws JSONException {
-        JSONArray array = (JSONArray)jsonObject.get("targets"); //[]
-        JSONObject object = (JSONObject)array.get(0); //{}
-        return (String)object.get("type");
+        JSONArray array = (JSONArray) jsonObject.get("targets"); // []
+        JSONObject object = (JSONObject) array.get(0); // {}
+        return (String) object.get("type");
     }
 
 }

@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.tsfile.file.header;
 
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -28,24 +43,25 @@ public class ChunkHeader {
     private long maxTombstoneTime;
 
     /**
-     * The time when the ChunkGroup of this chunk is closed. This will not be written out and will only be set when read together
-     * with its ChunkGroup during querying.
+     * The time when the ChunkGroup of this chunk is closed. This will not be written out and will only be set when read
+     * together with its ChunkGroup during querying.
      */
-    private long writtenTime;//not serialized now.
+    private long writtenTime;// not serialized now.
 
-    //this field does not need to be serialized.
+    // this field does not need to be serialized.
     private int serializedSize;
 
     public int getSerializedSize() {
         return serializedSize;
     }
 
-
-    public ChunkHeader(String measurementID, int dataSize, TSDataType dataType, CompressionType compressionType, TSEncoding encoding, int numOfPages) {
+    public ChunkHeader(String measurementID, int dataSize, TSDataType dataType, CompressionType compressionType,
+            TSEncoding encoding, int numOfPages) {
         this(measurementID, dataSize, dataType, compressionType, encoding, numOfPages, 0);
     }
 
-    private ChunkHeader(String measurementID, int dataSize, TSDataType dataType, CompressionType compressionType, TSEncoding encoding, int numOfPages, long maxTombstoneTime) {
+    private ChunkHeader(String measurementID, int dataSize, TSDataType dataType, CompressionType compressionType,
+            TSEncoding encoding, int numOfPages, long maxTombstoneTime) {
         this.measurementID = measurementID;
         this.dataSize = dataSize;
         this.dataType = dataType;
@@ -55,7 +71,6 @@ public class ChunkHeader {
         this.serializedSize = getSerializedSize(measurementID);
         this.maxTombstoneTime = maxTombstoneTime;
     }
-
 
     public String getMeasurementID() {
         return measurementID;
@@ -99,7 +114,8 @@ public class ChunkHeader {
 
     /**
      * @param inputStream
-     * @param markerRead  Whether the marker of the ChunkHeader has been read
+     * @param markerRead
+     *            Whether the marker of the ChunkHeader has been read
      * @return
      * @throws IOException
      */
@@ -157,7 +173,6 @@ public class ChunkHeader {
         return new ChunkHeader(measurementID, dataSize, dataType, type, encoding, numOfPages, maxTombstoneTime);
     }
 
-
     public int getNumOfPages() {
         return numOfPages;
     }
@@ -189,14 +204,8 @@ public class ChunkHeader {
 
     @Override
     public String toString() {
-        return "ChunkHeader{" +
-                "measurementID='" + measurementID + '\'' +
-                ", dataSize=" + dataSize +
-                ", dataType=" + dataType +
-                ", compressionType=" + compressionType +
-                ", encodingType=" + encodingType +
-                ", numOfPages=" + numOfPages +
-                ", serializedSize=" + serializedSize +
-                '}';
+        return "ChunkHeader{" + "measurementID='" + measurementID + '\'' + ", dataSize=" + dataSize + ", dataType="
+                + dataType + ", compressionType=" + compressionType + ", encodingType=" + encodingType + ", numOfPages="
+                + numOfPages + ", serializedSize=" + serializedSize + '}';
     }
 }

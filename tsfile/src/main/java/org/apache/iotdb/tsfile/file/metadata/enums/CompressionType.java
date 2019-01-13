@@ -1,78 +1,114 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.tsfile.file.metadata.enums;
 
 import org.apache.iotdb.tsfile.exception.compress.CompressionTypeNotSupportedException;
 
 public enum CompressionType {
-        UNCOMPRESSED,
-        SNAPPY,
-        GZIP,
-        LZO,
-        SDT,
-        PAA,
-        PLA;
+    UNCOMPRESSED, SNAPPY, GZIP, LZO, SDT, PAA, PLA;
 
-        public static CompressionType deserialize(short i){
-            switch (i) {
-                case 0: return UNCOMPRESSED;
-                case 1: return SNAPPY;
-                case 2: return GZIP;
-                case 3: return LZO;
-                case 4: return SDT;
-                case 5: return PAA;
-                case 6: return PLA;
-                default: return UNCOMPRESSED;
-            }
+    public static CompressionType deserialize(short i) {
+        switch (i) {
+        case 0:
+            return UNCOMPRESSED;
+        case 1:
+            return SNAPPY;
+        case 2:
+            return GZIP;
+        case 3:
+            return LZO;
+        case 4:
+            return SDT;
+        case 5:
+            return PAA;
+        case 6:
+            return PLA;
+        default:
+            return UNCOMPRESSED;
         }
+    }
 
-        public short serialize(){
-            switch (this) {
-                case UNCOMPRESSED: return 0;
-                case SNAPPY: return 1;
-                case GZIP: return 2;
-                case LZO: return 3;
-                case SDT: return 4;
-                case PAA: return 5;
-                case PLA: return 6;
-                default: return 0;
-            }
+    public short serialize() {
+        switch (this) {
+        case UNCOMPRESSED:
+            return 0;
+        case SNAPPY:
+            return 1;
+        case GZIP:
+            return 2;
+        case LZO:
+            return 3;
+        case SDT:
+            return 4;
+        case PAA:
+            return 5;
+        case PLA:
+            return 6;
+        default:
+            return 0;
         }
+    }
 
-        public static int getSerializedSize(){ return Short.BYTES;}
+    public static int getSerializedSize() {
+        return Short.BYTES;
+    }
 
-        public static CompressionType findByShortName(String name){
-            if (name == null) {
-                return UNCOMPRESSED;
-            }
-            switch (name.trim().toUpperCase()) {
-                case "UNCOMPRESSED":
-                    return UNCOMPRESSED;
-                case "SNAPPY":
-                    return SNAPPY;
-                case "GZIP":
-                    return GZIP;
-                case "LZO":
-                    return LZO;
-                case "SDT":
-                    return SDT;
-                case "PAA":
-                    return PAA;
-                case "PLA":
-                    return PLA;
-                default:
-                    throw new CompressionTypeNotSupportedException(name);
-            }
+    public static CompressionType findByShortName(String name) {
+        if (name == null) {
+            return UNCOMPRESSED;
         }
-        public String getExtension(){
-            switch (this) {
-                case UNCOMPRESSED: return "";
-                case SNAPPY: return ".snappy";
-                case GZIP: return ".gz";
-                case LZO: return ".lzo";
-                case SDT: return ".sdt";
-                case PAA: return ".paa";
-                case PLA: return ".pla";
-                default: return "";
-            }
+        switch (name.trim().toUpperCase()) {
+        case "UNCOMPRESSED":
+            return UNCOMPRESSED;
+        case "SNAPPY":
+            return SNAPPY;
+        case "GZIP":
+            return GZIP;
+        case "LZO":
+            return LZO;
+        case "SDT":
+            return SDT;
+        case "PAA":
+            return PAA;
+        case "PLA":
+            return PLA;
+        default:
+            throw new CompressionTypeNotSupportedException(name);
         }
+    }
+
+    public String getExtension() {
+        switch (this) {
+        case UNCOMPRESSED:
+            return "";
+        case SNAPPY:
+            return ".snappy";
+        case GZIP:
+            return ".gz";
+        case LZO:
+            return ".lzo";
+        case SDT:
+            return ".sdt";
+        case PAA:
+            return ".paa";
+        case PLA:
+            return ".pla";
+        default:
+            return "";
+        }
+    }
 
 }

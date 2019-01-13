@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.tsfile.read.query.timegenerator;
 
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
@@ -13,13 +28,12 @@ import org.junit.Test;
 
 import java.io.IOException;
 
-
 public class NodeTest {
 
     @Test
     public void testLeafNode() throws IOException {
         int index = 0;
-        long[] timestamps = new long[]{1, 2, 3, 4, 5, 6, 7};
+        long[] timestamps = new long[] { 1, 2, 3, 4, 5, 6, 7 };
         FileSeriesReader seriesReader = new FakedFileSeriesReader(timestamps);
         Node leafNode = new LeafNode(seriesReader);
         while (leafNode.hasNext()) {
@@ -29,16 +43,16 @@ public class NodeTest {
 
     @Test
     public void testOrNode() throws IOException {
-        long[] ret = new long[]{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 20};
-        long[] left = new long[]{1, 3, 5, 7, 9, 10, 20};
-        long[] right = new long[]{2, 3, 4, 5, 6, 7, 8};
+        long[] ret = new long[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 20 };
+        long[] left = new long[] { 1, 3, 5, 7, 9, 10, 20 };
+        long[] right = new long[] { 2, 3, 4, 5, 6, 7, 8 };
         testOr(ret, left, right);
-        testOr(new long[]{}, new long[]{}, new long[]{});
-        testOr(new long[]{1}, new long[]{1}, new long[]{});
-        testOr(new long[]{1}, new long[]{1}, new long[]{1});
-        testOr(new long[]{1, 2}, new long[]{1}, new long[]{1, 2});
-        testOr(new long[]{1, 2}, new long[]{1, 2}, new long[]{1, 2});
-        testOr(new long[]{1, 2, 3}, new long[]{1, 2}, new long[]{1, 2, 3});
+        testOr(new long[] {}, new long[] {}, new long[] {});
+        testOr(new long[] { 1 }, new long[] { 1 }, new long[] {});
+        testOr(new long[] { 1 }, new long[] { 1 }, new long[] { 1 });
+        testOr(new long[] { 1, 2 }, new long[] { 1 }, new long[] { 1, 2 });
+        testOr(new long[] { 1, 2 }, new long[] { 1, 2 }, new long[] { 1, 2 });
+        testOr(new long[] { 1, 2, 3 }, new long[] { 1, 2 }, new long[] { 1, 2, 3 });
     }
 
     private void testOr(long[] ret, long[] left, long[] right) throws IOException {
@@ -54,11 +68,11 @@ public class NodeTest {
 
     @Test
     public void testAndNode() throws IOException {
-        testAnd(new long[]{}, new long[]{1, 2, 3, 4}, new long[]{});
-        testAnd(new long[]{}, new long[]{1, 2, 3, 4, 8}, new long[]{5, 6, 7});
-        testAnd(new long[]{2}, new long[]{1, 2, 3, 4}, new long[]{2, 5, 6});
-        testAnd(new long[]{1, 2, 3}, new long[]{1, 2, 3, 4}, new long[]{1, 2, 3});
-        testAnd(new long[]{1, 2, 3, 9}, new long[]{1, 2, 3, 4, 9}, new long[]{1, 2, 3, 8, 9});
+        testAnd(new long[] {}, new long[] { 1, 2, 3, 4 }, new long[] {});
+        testAnd(new long[] {}, new long[] { 1, 2, 3, 4, 8 }, new long[] { 5, 6, 7 });
+        testAnd(new long[] { 2 }, new long[] { 1, 2, 3, 4 }, new long[] { 2, 5, 6 });
+        testAnd(new long[] { 1, 2, 3 }, new long[] { 1, 2, 3, 4 }, new long[] { 1, 2, 3 });
+        testAnd(new long[] { 1, 2, 3, 9 }, new long[] { 1, 2, 3, 4, 9 }, new long[] { 1, 2, 3, 8, 9 });
     }
 
     private void testAnd(long[] ret, long[] left, long[] right) throws IOException {
@@ -71,7 +85,6 @@ public class NodeTest {
         }
         Assert.assertEquals(ret.length, index);
     }
-
 
     private static class FakedFileSeriesReader extends FileSeriesReader {
 

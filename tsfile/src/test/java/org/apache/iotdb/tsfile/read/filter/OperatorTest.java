@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.tsfile.read.filter;
 
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -5,7 +20,6 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.junit.Assert;
 import org.junit.Test;
-
 
 public class OperatorTest {
     private static final long EFFICIENCY_TEST_COUNT = 10000000;
@@ -46,12 +60,9 @@ public class OperatorTest {
     @Test
     public void testGtEq() {
         Filter timeGtEq = TimeFilter.gtEq(TESTED_TIMESTAMP);
-        Assert.assertEquals(true, timeGtEq.satisfy(
-                TESTED_TIMESTAMP + 1, 100));
-        Assert.assertEquals(true, timeGtEq.satisfy(
-                TESTED_TIMESTAMP, 100));
-        Assert.assertEquals(false, timeGtEq.satisfy(
-                TESTED_TIMESTAMP - 1, 100));
+        Assert.assertEquals(true, timeGtEq.satisfy(TESTED_TIMESTAMP + 1, 100));
+        Assert.assertEquals(true, timeGtEq.satisfy(TESTED_TIMESTAMP, 100));
+        Assert.assertEquals(false, timeGtEq.satisfy(TESTED_TIMESTAMP - 1, 100));
 
         Filter valueGtEq = ValueFilter.gtEq(0.01);
         Assert.assertEquals(true, valueGtEq.satisfy(TESTED_TIMESTAMP, 0.02));
@@ -85,7 +96,6 @@ public class OperatorTest {
         Assert.assertEquals(false, valueLtEq.satisfy(TESTED_TIMESTAMP, 101L));
     }
 
-
     @Test
     public void testNot() {
         Filter timeLt = TimeFilter.not(TimeFilter.lt(TESTED_TIMESTAMP));
@@ -94,27 +104,20 @@ public class OperatorTest {
         Assert.assertEquals(true, timeLt.satisfy(TESTED_TIMESTAMP + 1, 100));
 
         Filter valueLt = ValueFilter.not(ValueFilter.lt(100L));
-        Assert.assertEquals(false, valueLt.satisfy(
-                TESTED_TIMESTAMP, 99L));
-        Assert.assertEquals(true, valueLt.satisfy(
-                TESTED_TIMESTAMP, 100L));
-        Assert.assertEquals(true, valueLt.satisfy(
-                TESTED_TIMESTAMP, 101L));
+        Assert.assertEquals(false, valueLt.satisfy(TESTED_TIMESTAMP, 99L));
+        Assert.assertEquals(true, valueLt.satisfy(TESTED_TIMESTAMP, 100L));
+        Assert.assertEquals(true, valueLt.satisfy(TESTED_TIMESTAMP, 101L));
     }
 
     @Test
     public void testNotEq() {
         Filter timeNotEq = TimeFilter.notEq(100L);
-        Assert.assertEquals(false, timeNotEq.satisfy(
-                100, 100));
-        Assert.assertEquals(true, timeNotEq.satisfy(
-                101, 100));
+        Assert.assertEquals(false, timeNotEq.satisfy(100, 100));
+        Assert.assertEquals(true, timeNotEq.satisfy(101, 100));
 
         Filter valueNotEq = ValueFilter.notEq(50);
-        Assert.assertEquals(false, valueNotEq.satisfy(
-                100, 50));
-        Assert.assertEquals(true, valueNotEq.satisfy(
-                100, 51));
+        Assert.assertEquals(false, valueNotEq.satisfy(100, 50));
+        Assert.assertEquals(true, valueNotEq.satisfy(100, 51));
     }
 
     @Test
@@ -156,7 +159,7 @@ public class OperatorTest {
             orFilter.satisfy(i, i + 0.1);
         }
         long endTime = System.currentTimeMillis();
-        System.out.println("EfficiencyTest for Filter: \n\tFilter Expression = " + orFilter + "\n\tCOUNT = " + EFFICIENCY_TEST_COUNT +
-                "\n\tTotal Time = " + (endTime - startTime) + "ms.");
+        System.out.println("EfficiencyTest for Filter: \n\tFilter Expression = " + orFilter + "\n\tCOUNT = "
+                + EFFICIENCY_TEST_COUNT + "\n\tTotal Time = " + (endTime - startTime) + "ms.");
     }
 }

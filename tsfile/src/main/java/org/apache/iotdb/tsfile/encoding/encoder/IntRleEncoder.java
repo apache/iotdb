@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.tsfile.encoding.encoder;
 
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
@@ -8,7 +23,6 @@ import org.apache.iotdb.tsfile.encoding.bitpacking.IntPacker;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
-
 
 /**
  * Encoder for int value using rle or bit-packing
@@ -31,21 +45,23 @@ public class IntRleEncoder extends RleEncoder<Integer> {
     public void encode(int value, ByteArrayOutputStream out) {
         values.add(value);
     }
-    
-	@Override
-	public void encode(boolean value, ByteArrayOutputStream out) {
-		if (value) {
-			this.encode(1, out);
-		} else {
-			this.encode(0, out);
-		}
-	}
+
+    @Override
+    public void encode(boolean value, ByteArrayOutputStream out) {
+        if (value) {
+            this.encode(1, out);
+        } else {
+            this.encode(0, out);
+        }
+    }
 
     /**
      * write all values buffered in cache to OutputStream
      *
-     * @param out - byteArrayOutputStream
-     * @throws IOException cannot flush to OutputStream
+     * @param out
+     *            - byteArrayOutputStream
+     * @throws IOException
+     *             cannot flush to OutputStream
      */
     @Override
     public void flush(ByteArrayOutputStream out) throws IOException {
@@ -65,8 +81,7 @@ public class IntRleEncoder extends RleEncoder<Integer> {
     }
 
     /**
-     * write bytes to OutputStream using rle
-     * rle format: [header][value]
+     * write bytes to OutputStream using rle rle format: [header][value]
      */
     @Override
     protected void writeRleRun() throws IOException {

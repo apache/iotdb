@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.jdbc;
 
 import org.apache.iotdb.service.rpc.thrift.TSDataValue;
@@ -24,8 +39,7 @@ import java.util.regex.Pattern;
 public class Utils {
 
     /**
-     * Parse JDBC connection URL The only supported format of the URL is:
-     * jdbc:iotdb://localhost:6667/
+     * Parse JDBC connection URL The only supported format of the URL is: jdbc:iotdb://localhost:6667/
      */
     public static IoTDBConnectionParams parseURL(String url, Properties info) throws IoTDBURLException {
         IoTDBConnectionParams params = new IoTDBConnectionParams(url);
@@ -60,48 +74,50 @@ public class Utils {
             throw new IoTDBSQLException(status.errorMessage);
         }
     }
-    
+
     public static List<RowRecord> convertRowRecords(TSQueryDataSet tsQueryDataSet) {
-    		List<RowRecord> records = new ArrayList<>();
-    		for(TSRowRecord ts : tsQueryDataSet.getRecords()) {
-    			RowRecord r = new RowRecord(ts.getTimestamp());
-    			int l = ts.getValuesSize();
-    			for(int i = 0; i < l;i++) {
-    				TSDataValue value = ts.getValues().get(i);
-    				if(value.is_empty) {
-    					Field field = new Field(null);
-    					field.setNull();
-    					r.getFields().add(field);
-    				} else {
-    					TSDataType dataType = TSDataType.valueOf(value.getType());
-    					Field field = new Field(dataType);
-					switch (dataType) {
-					case BOOLEAN:
-						field.setBoolV(value.isBool_val());
-						break;
-					case INT32:
-						field.setIntV(value.getInt_val());
-						break;
-					case INT64:
-						field.setLongV(value.getLong_val());
-						break;
-					case FLOAT:
-						field.setFloatV((float)value.getFloat_val());
-						break;
-					case DOUBLE:
-						field.setDoubleV(value.getDouble_val());
-						break;
-					case TEXT:
-						field.setBinaryV(new Binary(value.getBinary_val()));;
-						break;
-					default:
-						throw new UnSupportedDataTypeException(String.format("data type %s is not supported when convert data at client", dataType));
-					}
-					r.getFields().add(field);
-    				}
-    			}
-    			records.add(r);
-    		}
-    		return records;
+        List<RowRecord> records = new ArrayList<>();
+        for (TSRowRecord ts : tsQueryDataSet.getRecords()) {
+            RowRecord r = new RowRecord(ts.getTimestamp());
+            int l = ts.getValuesSize();
+            for (int i = 0; i < l; i++) {
+                TSDataValue value = ts.getValues().get(i);
+                if (value.is_empty) {
+                    Field field = new Field(null);
+                    field.setNull();
+                    r.getFields().add(field);
+                } else {
+                    TSDataType dataType = TSDataType.valueOf(value.getType());
+                    Field field = new Field(dataType);
+                    switch (dataType) {
+                    case BOOLEAN:
+                        field.setBoolV(value.isBool_val());
+                        break;
+                    case INT32:
+                        field.setIntV(value.getInt_val());
+                        break;
+                    case INT64:
+                        field.setLongV(value.getLong_val());
+                        break;
+                    case FLOAT:
+                        field.setFloatV((float) value.getFloat_val());
+                        break;
+                    case DOUBLE:
+                        field.setDoubleV(value.getDouble_val());
+                        break;
+                    case TEXT:
+                        field.setBinaryV(new Binary(value.getBinary_val()));
+                        ;
+                        break;
+                    default:
+                        throw new UnSupportedDataTypeException(
+                                String.format("data type %s is not supported when convert data at client", dataType));
+                    }
+                    r.getFields().add(field);
+                }
+            }
+            records.add(r);
+        }
+        return records;
     }
 }

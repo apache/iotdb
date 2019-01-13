@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.tsfile.read.expression.util;
 
 import org.apache.iotdb.tsfile.read.expression.*;
@@ -29,11 +44,14 @@ public class ExpressionOptimizer {
     /**
      * try to remove GlobalTimeExpression
      *
-     * @param expression IExpression to be transferred
-     * @param selectedSeries selected series
+     * @param expression
+     *            IExpression to be transferred
+     * @param selectedSeries
+     *            selected series
      * @return an executable query filter, whether a GlobalTimeExpression or All leaf nodes are SingleSeriesExpression
      */
-    public IExpression optimize(IExpression expression, List<Path> selectedSeries) throws QueryFilterOptimizationException {
+    public IExpression optimize(IExpression expression, List<Path> selectedSeries)
+            throws QueryFilterOptimizationException {
         if (expression instanceof IUnaryExpression) {
             return expression;
         } else if (expression instanceof IBinaryExpression) {
@@ -41,7 +59,8 @@ public class ExpressionOptimizer {
             IExpression left = ((IBinaryExpression) expression).getLeft();
             IExpression right = ((IBinaryExpression) expression).getRight();
             if (left.getType() == ExpressionType.GLOBAL_TIME && right.getType() == ExpressionType.GLOBAL_TIME) {
-                return combineTwoGlobalTimeFilter((GlobalTimeExpression) left, (GlobalTimeExpression) right, expression.getType());
+                return combineTwoGlobalTimeFilter((GlobalTimeExpression) left, (GlobalTimeExpression) right,
+                        expression.getType());
             } else if (left.getType() == ExpressionType.GLOBAL_TIME && right.getType() != ExpressionType.GLOBAL_TIME) {
                 return handleOneGlobalTimeFilter((GlobalTimeExpression) left, right, selectedSeries, relation);
             } else if (left.getType() != ExpressionType.GLOBAL_TIME && right.getType() == ExpressionType.GLOBAL_TIME) {
@@ -57,7 +76,8 @@ public class ExpressionOptimizer {
                 } else {
                     throw new UnsupportedOperationException("unsupported IExpression type: " + relation);
                 }
-                if (midRet.getLeft().getType() == ExpressionType.GLOBAL_TIME || midRet.getRight().getType() == ExpressionType.GLOBAL_TIME) {
+                if (midRet.getLeft().getType() == ExpressionType.GLOBAL_TIME
+                        || midRet.getRight().getType() == ExpressionType.GLOBAL_TIME) {
                     return optimize(midRet, selectedSeries);
                 } else {
                     return midRet;
@@ -70,21 +90,22 @@ public class ExpressionOptimizer {
         throw new UnsupportedOperationException("unknown IExpression type: " + expression.getClass().getName());
     }
 
-    private IExpression handleOneGlobalTimeFilter(GlobalTimeExpression globalTimeExpression, IExpression expression
-            , List<Path> selectedSeries, ExpressionType relation) throws QueryFilterOptimizationException {
+    private IExpression handleOneGlobalTimeFilter(GlobalTimeExpression globalTimeExpression, IExpression expression,
+            List<Path> selectedSeries, ExpressionType relation) throws QueryFilterOptimizationException {
         IExpression regularRightIExpression = optimize(expression, selectedSeries);
         if (regularRightIExpression instanceof GlobalTimeExpression) {
-            return combineTwoGlobalTimeFilter(globalTimeExpression, (GlobalTimeExpression) regularRightIExpression, relation);
+            return combineTwoGlobalTimeFilter(globalTimeExpression, (GlobalTimeExpression) regularRightIExpression,
+                    relation);
         }
         if (relation == ExpressionType.AND) {
             addTimeFilterToQueryFilter((globalTimeExpression).getFilter(), regularRightIExpression);
             return regularRightIExpression;
         } else if (relation == ExpressionType.OR) {
-            return BinaryExpression.or(pushGlobalTimeFilterToAllSeries(globalTimeExpression, selectedSeries), regularRightIExpression);
+            return BinaryExpression.or(pushGlobalTimeFilterToAllSeries(globalTimeExpression, selectedSeries),
+                    regularRightIExpression);
         }
         throw new QueryFilterOptimizationException("unknown relation in IExpression:" + relation);
     }
-
 
     /**
      * Combine GlobalTimeExpression with all selected series
@@ -93,33 +114,27 @@ public class ExpressionOptimizer {
      *
      * input:
      *
-     * GlobalTimeExpression(timeFilter)
-     * Selected Series: path1, path2, path3
+     * GlobalTimeExpression(timeFilter) Selected Series: path1, path2, path3
      *
      * output:
      *
-     * QueryFilterOR(
-     *      QueryFilterOR(
-     *              SingleSeriesExpression(path1, timeFilter),
-     *              SingleSeriesExpression(path2, timeFilter)
-     *              ),
-     *      SingleSeriesExpression(path3, timeFilter)
-     * )
+     * QueryFilterOR( QueryFilterOR( SingleSeriesExpression(path1, timeFilter), SingleSeriesExpression(path2,
+     * timeFilter) ), SingleSeriesExpression(path3, timeFilter) )
      *
      * @return a DNF query filter without GlobalTimeExpression
      */
-    private IExpression pushGlobalTimeFilterToAllSeries(
-            GlobalTimeExpression timeFilter, List<Path> selectedSeries) throws QueryFilterOptimizationException {
+    private IExpression pushGlobalTimeFilterToAllSeries(GlobalTimeExpression timeFilter, List<Path> selectedSeries)
+            throws QueryFilterOptimizationException {
         if (selectedSeries.size() == 0) {
             throw new QueryFilterOptimizationException("size of selectSeries could not be 0");
         }
         IExpression IExpression = new SingleSeriesExpression(selectedSeries.get(0), timeFilter.getFilter());
         for (int i = 1; i < selectedSeries.size(); i++) {
-            IExpression = BinaryExpression.or(IExpression, new SingleSeriesExpression(selectedSeries.get(i), timeFilter.getFilter()));
+            IExpression = BinaryExpression.or(IExpression,
+                    new SingleSeriesExpression(selectedSeries.get(i), timeFilter.getFilter()));
         }
         return IExpression;
     }
-
 
     /**
      * Combine TimeFilter with all SeriesFilters in the expression
@@ -131,11 +146,11 @@ public class ExpressionOptimizer {
             addTimeFilterToQueryFilter(timeFilter, ((BinaryExpression) expression).getLeft());
             addTimeFilterToQueryFilter(timeFilter, ((BinaryExpression) expression).getRight());
         } else {
-            throw new UnsupportedOperationException("IExpression should contains only SingleSeriesExpression but other type is found:"
-                    + expression.getClass().getName());
+            throw new UnsupportedOperationException(
+                    "IExpression should contains only SingleSeriesExpression but other type is found:"
+                            + expression.getClass().getName());
         }
     }
-
 
     /**
      * Merge the timeFilter with the filter in SingleSeriesExpression with AndExpression
@@ -144,41 +159,31 @@ public class ExpressionOptimizer {
      *
      * input:
      *
-     * timeFilter
-     * SingleSeriesExpression(path, filter)
+     * timeFilter SingleSeriesExpression(path, filter)
      *
      * output:
      *
-     * SingleSeriesExpression(
-     *      path,
-     *      AndExpression(filter, timeFilter)
-     *      )
+     * SingleSeriesExpression( path, AndExpression(filter, timeFilter) )
      *
      */
     private void addTimeFilterToSeriesFilter(Filter timeFilter, SingleSeriesExpression singleSeriesExp) {
         singleSeriesExp.setFilter(FilterFactory.and(singleSeriesExp.getFilter(), timeFilter));
     }
 
-
     /**
      * combine two GlobalTimeExpression by merge the TimeFilter in each GlobalTimeExpression
      *
      * example:
      *
-     * input:
-     * QueryFilterAnd/OR(
-     *      GlobalTimeExpression(timeFilter1),
-     *      GlobalTimeExpression(timeFilter2)
-     *      )
+     * input: QueryFilterAnd/OR( GlobalTimeExpression(timeFilter1), GlobalTimeExpression(timeFilter2) )
      *
      * output:
      *
-     * GlobalTimeExpression(
-     *      AndExpression/OR(timeFilter1, timeFilter2)
-     *      )
+     * GlobalTimeExpression( AndExpression/OR(timeFilter1, timeFilter2) )
      *
      */
-    private GlobalTimeExpression combineTwoGlobalTimeFilter(GlobalTimeExpression left, GlobalTimeExpression right, ExpressionType type) {
+    private GlobalTimeExpression combineTwoGlobalTimeFilter(GlobalTimeExpression left, GlobalTimeExpression right,
+            ExpressionType type) {
         if (type == ExpressionType.AND) {
             return new GlobalTimeExpression(FilterFactory.and(left.getFilter(), right.getFilter()));
         } else if (type == ExpressionType.OR) {

@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.tsfile.read.reader;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -24,7 +39,6 @@ import org.junit.Test;
 
 import java.io.IOException;
 import java.util.List;
-
 
 public class ReaderTest {
 
@@ -57,7 +71,7 @@ public class ReaderTest {
         long startTime = TsFileGeneratorForTest.START_TIMESTAMP;
         BatchData data = null;
 
-        while(seriesReader.hasNextBatch()) {
+        while (seriesReader.hasNextBatch()) {
             data = seriesReader.nextBatch();
             while (data.hasNext()) {
                 Assert.assertEquals(startTime, data.currentTime());
@@ -72,11 +86,11 @@ public class ReaderTest {
         seriesReader = new FileSeriesReaderWithoutFilter(seriesChunkLoader, chunkMetaDataList);
         count = 0;
 
-        while(seriesReader.hasNextBatch()) {
+        while (seriesReader.hasNextBatch()) {
             data = seriesReader.nextBatch();
             while (data.hasNext()) {
                 data.next();
-                startTime ++;
+                startTime++;
                 count++;
             }
         }
@@ -91,13 +105,14 @@ public class ReaderTest {
                 FilterFactory.and(TimeFilter.gt(1480563570029L), TimeFilter.lt(1480563570033L)),
                 FilterFactory.and(ValueFilter.gtEq(9520331), ValueFilter.ltEq(9520361)));
         SingleSeriesExpression singleSeriesExp = new SingleSeriesExpression(new Path("d1.s1"), filter);
-        FileSeriesReader seriesReader = new FileSeriesReaderWithFilter(seriesChunkLoader, chunkMetaDataList, singleSeriesExp.getFilter());
+        FileSeriesReader seriesReader = new FileSeriesReaderWithFilter(seriesChunkLoader, chunkMetaDataList,
+                singleSeriesExp.getFilter());
 
         BatchData data;
 
         long aimedTimestamp = 1480563570030L;
 
-        while(seriesReader.hasNextBatch()) {
+        while (seriesReader.hasNextBatch()) {
             data = seriesReader.nextBatch();
             while (data.hasNext()) {
                 Assert.assertEquals(aimedTimestamp++, data.currentTime());

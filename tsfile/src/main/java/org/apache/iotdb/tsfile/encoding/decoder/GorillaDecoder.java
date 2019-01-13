@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.tsfile.encoding.decoder;
 
 import java.io.IOException;
@@ -22,10 +37,8 @@ public abstract class GorillaDecoder extends Decoder {
     // number of bits remaining in buffer
     protected int numberLeftInBuffer;
 
-
     protected boolean nextFlag1;
     protected boolean nextFlag2;
-
 
     public GorillaDecoder() {
         super(TSEncoding.GORILLA);
@@ -64,7 +77,8 @@ public abstract class GorillaDecoder extends Decoder {
     /**
      * read one byte and save in buffer
      *
-     * @param buffer ByteBuffer to read
+     * @param buffer
+     *            ByteBuffer to read
      */
     protected void fillBuffer(ByteBuffer buffer) {
         if (buffer.remaining() >= 1) {
@@ -81,10 +95,13 @@ public abstract class GorillaDecoder extends Decoder {
     /**
      * read some bits and convert them to a int value
      *
-     * @param buffer  stream to read
-     * @param len number of bit to read
+     * @param buffer
+     *            stream to read
+     * @param len
+     *            number of bit to read
      * @return converted int value
-     * @throws IOException cannot read from stream
+     * @throws IOException
+     *             cannot read from stream
      */
     protected int readIntFromStream(ByteBuffer buffer, int len) throws IOException {
         int num = 0;
@@ -98,10 +115,13 @@ public abstract class GorillaDecoder extends Decoder {
     /**
      * read some bits and convert them to a long value
      *
-     * @param buffer  stream to read
-     * @param len number of bit to read
+     * @param buffer
+     *            stream to read
+     * @param len
+     *            number of bit to read
      * @return converted long value
-     * @throws IOException cannot read from stream
+     * @throws IOException
+     *             cannot read from stream
      */
     protected long readLongFromStream(ByteBuffer buffer, int len) throws IOException {
         long num = 0;

@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.db.query.executor;
 
 import org.apache.iotdb.db.exception.FileNodeManagerException;
@@ -22,17 +37,18 @@ import java.util.concurrent.atomic.AtomicLong;
 import static org.apache.iotdb.tsfile.read.expression.ExpressionType.GLOBAL_TIME;
 
 /**
- * <p> Query entrance class of IoTDB query process.
- * All query clause will be transformed to physical plan, physical plan will be executed by EngineQueryRouter.
+ * <p>
+ * Query entrance class of IoTDB query process. All query clause will be transformed to physical plan, physical plan
+ * will be executed by EngineQueryRouter.
  */
 public class EngineQueryRouter {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(EngineQueryRouter.class);
 
     /**
-     * Each unique jdbc request(query, aggregation or others job) has an unique job id.
-     * This job id will always be maintained until the request is closed.
-     * In each job, the unique file will be only opened once to avoid too many opened files error.
+     * Each unique jdbc request(query, aggregation or others job) has an unique job id. This job id will always be
+     * maintained until the request is closed. In each job, the unique file will be only opened once to avoid too many
+     * opened files error.
      */
     private AtomicLong jobId = new AtomicLong();
 
@@ -44,15 +60,17 @@ public class EngineQueryRouter {
 
         if (queryExpression.hasQueryFilter()) {
             try {
-                IExpression optimizedExpression = ExpressionOptimizer.getInstance().
-                        optimize(queryExpression.getExpression(), queryExpression.getSelectedSeries());
+                IExpression optimizedExpression = ExpressionOptimizer.getInstance()
+                        .optimize(queryExpression.getExpression(), queryExpression.getSelectedSeries());
                 queryExpression.setExpression(optimizedExpression);
 
                 if (optimizedExpression.getType() == GLOBAL_TIME) {
-                    EngineExecutorWithoutTimeGenerator engineExecutor = new EngineExecutorWithoutTimeGenerator(jobId, queryExpression);
+                    EngineExecutorWithoutTimeGenerator engineExecutor = new EngineExecutorWithoutTimeGenerator(jobId,
+                            queryExpression);
                     return engineExecutor.executeWithGlobalTimeFilter();
                 } else {
-                    EngineExecutorWithTimeGenerator engineExecutor = new EngineExecutorWithTimeGenerator(jobId, queryExpression);
+                    EngineExecutorWithTimeGenerator engineExecutor = new EngineExecutorWithTimeGenerator(jobId,
+                            queryExpression);
                     return engineExecutor.execute();
                 }
 
@@ -61,7 +79,8 @@ public class EngineQueryRouter {
             }
         } else {
             try {
-                EngineExecutorWithoutTimeGenerator engineExecutor = new EngineExecutorWithoutTimeGenerator(jobId, queryExpression);
+                EngineExecutorWithoutTimeGenerator engineExecutor = new EngineExecutorWithoutTimeGenerator(jobId,
+                        queryExpression);
                 return engineExecutor.executeWithoutFilter();
             } catch (PathErrorException e) {
                 throw new IOException(e);

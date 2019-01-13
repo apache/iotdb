@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.db.integration;
 
 import org.apache.iotdb.db.exception.FileNodeManagerException;
@@ -30,8 +45,8 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 /**
- * Notice that, all test begins with "IoTDB" is integration test.
- * All test which will start the IoTDB server should be defined as integration test.
+ * Notice that, all test begins with "IoTDB" is integration test. All test which will start the IoTDB server should be
+ * defined as integration test.
  */
 public class IoTDBEngineTimeGeneratorTest {
 
@@ -67,7 +82,7 @@ public class IoTDBEngineTimeGeneratorTest {
 
         Thread.sleep(5000);
         insertData();
-        connection = DriverManager.getConnection(Config.IOTDB_URL_PREFIX+"127.0.0.1:6667/", "root", "root");
+        connection = DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
     }
 
     @AfterClass
@@ -77,14 +92,13 @@ public class IoTDBEngineTimeGeneratorTest {
         daemon.stop();
         Thread.sleep(5000);
 
-        //recovery value
+        // recovery value
         tsFileConfig.maxNumberOfPointsInPage = maxNumberOfPointsInPage;
         tsFileConfig.pageSizeInByte = pageSizeInByte;
         tsFileConfig.groupSizeInByte = groupSizeInByte;
 
         EnvironmentUtils.cleanEnv();
     }
-
 
     /**
      * value >= 14 && time > 500
@@ -97,7 +111,8 @@ public class IoTDBEngineTimeGeneratorTest {
         ValueFilter.ValueGtEq valueGtEq = ValueFilter.gtEq(14);
         TimeFilter.TimeGt timeGt = TimeFilter.gt(500);
 
-        SingleSeriesExpression singleSeriesExpression = new SingleSeriesExpression(pd0s0, FilterFactory.and(valueGtEq, timeGt));
+        SingleSeriesExpression singleSeriesExpression = new SingleSeriesExpression(pd0s0,
+                FilterFactory.and(valueGtEq, timeGt));
         OpenedFilePathsManager.getInstance().setJobIdForCurrentRequestThread(0);
         EngineTimeGenerator timeGenerator = new EngineTimeGenerator(0, singleSeriesExpression);
 
@@ -157,7 +172,7 @@ public class IoTDBEngineTimeGeneratorTest {
             long time = timeGenerator.next();
             assertTrue(satisfyTimeFilter2(time));
             cnt++;
-            //System.out.println("cnt =" + cnt + "; time = " + time);
+            // System.out.println("cnt =" + cnt + "; time = " + time);
         }
         assertEquals(count2, cnt);
     }
@@ -166,15 +181,15 @@ public class IoTDBEngineTimeGeneratorTest {
         Class.forName(Config.JDBC_DRIVER_NAME);
         Connection connection = null;
         try {
-            connection = DriverManager.getConnection(Config.IOTDB_URL_PREFIX+"127.0.0.1:6667/", "root", "root");
+            connection = DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
             Statement statement = connection.createStatement();
 
-            //create storage group and measurement
+            // create storage group and measurement
             for (String sql : Constant.create_sql) {
                 statement.execute(sql);
             }
 
-            //insert data (time from 300-999)
+            // insert data (time from 300-999)
             for (long time = 300; time < 1000; time++) {
                 String sql = String.format("insert into root.vehicle.d0(timestamp,s0) values(%s,%s)", time, time % 17);
                 statement.execute(sql);
@@ -182,7 +197,8 @@ public class IoTDBEngineTimeGeneratorTest {
                 statement.execute(sql);
                 sql = String.format("insert into root.vehicle.d0(timestamp,s2) values(%s,%s)", time, time % 31);
                 statement.execute(sql);
-                sql = String.format("insert into root.vehicle.d0(timestamp,s3) values(%s,'%s')", time, Constant.stringValue[(int) time % 5]);
+                sql = String.format("insert into root.vehicle.d0(timestamp,s3) values(%s,'%s')", time,
+                        Constant.stringValue[(int) time % 5]);
                 statement.execute(sql);
 
                 if (satisfyTimeFilter1(time)) {
@@ -196,7 +212,7 @@ public class IoTDBEngineTimeGeneratorTest {
 
             statement.execute("flush");
 
-            //insert data (time from 1200-1499)
+            // insert data (time from 1200-1499)
             for (long time = 1200; time < 1500; time++) {
                 String sql = null;
                 if (time % 2 == 0) {
@@ -210,7 +226,8 @@ public class IoTDBEngineTimeGeneratorTest {
                 }
                 sql = String.format("insert into root.vehicle.d0(timestamp,s2) values(%s,%s)", time, time % 31);
                 statement.execute(sql);
-                sql = String.format("insert into root.vehicle.d0(timestamp,s3) values(%s,'%s')", time, Constant.stringValue[(int) time % 5]);
+                sql = String.format("insert into root.vehicle.d0(timestamp,s3) values(%s,'%s')", time,
+                        Constant.stringValue[(int) time % 5]);
                 statement.execute(sql);
             }
 
@@ -224,7 +241,6 @@ public class IoTDBEngineTimeGeneratorTest {
             }
         }
     }
-
 
     /**
      * value >= 14 && time > 500

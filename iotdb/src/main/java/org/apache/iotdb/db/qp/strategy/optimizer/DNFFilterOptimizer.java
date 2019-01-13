@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.db.qp.strategy.optimizer;
 
 import static org.apache.iotdb.db.qp.constant.SQLConstant.KW_AND;
@@ -11,15 +26,15 @@ import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
 import org.apache.iotdb.db.exception.qp.LogicalOptimizeException;
 import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
 
-
 public class DNFFilterOptimizer implements IFilterOptimizer {
 
     /**
-     * get DNF(disjunctive normal form) for this filter operator tree. Before getDNF, this op tree
-     * must be binary, in another word, each non-leaf node has exactly two children.
+     * get DNF(disjunctive normal form) for this filter operator tree. Before getDNF, this op tree must be binary, in
+     * another word, each non-leaf node has exactly two children.
      * 
      * @return FilterOperator optimized operator
-     * @throws LogicalOptimizeException exception in DNF optimize
+     * @throws LogicalOptimizeException
+     *             exception in DNF optimize
      */
     @Override
     public FilterOperator optimize(FilterOperator filter) throws LogicalOptimizeException {
@@ -32,37 +47,36 @@ public class DNFFilterOptimizer implements IFilterOptimizer {
         }
         List<FilterOperator> childOperators = filter.getChildren();
         if (childOperators.size() != 2) {
-            throw new LogicalOptimizeException("node :" + filter.getTokenName() + " has "
-                    + childOperators.size() + " children");
+            throw new LogicalOptimizeException(
+                    "node :" + filter.getTokenName() + " has " + childOperators.size() + " children");
 
         }
         FilterOperator left = getDNF(childOperators.get(0));
         FilterOperator right = getDNF(childOperators.get(1));
         List<FilterOperator> newChildrenList = new ArrayList<>();
         switch (filter.getTokenIntType()) {
-            case KW_OR:
-                addChildOpInOr(left, newChildrenList);
-                addChildOpInOr(right, newChildrenList);
-                break;
-            case KW_AND:
-                if (left.getTokenIntType() != KW_OR && right.getTokenIntType() != KW_OR) {
-                    addChildOpInAnd(left, newChildrenList);
-                    addChildOpInAnd(right, newChildrenList);
-                } else {
-                    List<FilterOperator> leftAndChildren = getAndChild(left);
-                    List<FilterOperator> rightAndChildren = getAndChild(right);
-                    for (FilterOperator laChild : leftAndChildren) {
-                        for (FilterOperator raChild : rightAndChildren) {
-                            FilterOperator r = mergeToConjunction(laChild.clone(), raChild.clone());
-                            newChildrenList.add(r);
-                        }
+        case KW_OR:
+            addChildOpInOr(left, newChildrenList);
+            addChildOpInOr(right, newChildrenList);
+            break;
+        case KW_AND:
+            if (left.getTokenIntType() != KW_OR && right.getTokenIntType() != KW_OR) {
+                addChildOpInAnd(left, newChildrenList);
+                addChildOpInAnd(right, newChildrenList);
+            } else {
+                List<FilterOperator> leftAndChildren = getAndChild(left);
+                List<FilterOperator> rightAndChildren = getAndChild(right);
+                for (FilterOperator laChild : leftAndChildren) {
+                    for (FilterOperator raChild : rightAndChildren) {
+                        FilterOperator r = mergeToConjunction(laChild.clone(), raChild.clone());
+                        newChildrenList.add(r);
                     }
-                    filter.setTokenIntType(KW_OR);
                 }
-                break;
-            default:
-                throw new LogicalOptimizeException("get DNF failed, this tokenType is:"
-                        + filter.getTokenIntType());
+                filter.setTokenIntType(KW_OR);
+            }
+            break;
+        default:
+            throw new LogicalOptimizeException("get DNF failed, this tokenType is:" + filter.getTokenIntType());
         }
         filter.setChildren(newChildrenList);
         return filter;
@@ -70,14 +84,16 @@ public class DNFFilterOptimizer implements IFilterOptimizer {
 
     /**
      * used by getDNF. merge two conjunction filter operators into a conjunction.<br>
-     * conjunction operator consists of {@code FunctionOperator} and inner operator which token is
-     * KW_AND.<br>
+     * conjunction operator consists of {@code FunctionOperator} and inner operator which token is KW_AND.<br>
      * e.g. (a and b) merge (c) is (a and b and c)
      *
-     * @param operator1 To be merged operator
-     * @param operator2 To be merged operator
+     * @param operator1
+     *            To be merged operator
+     * @param operator2
+     *            To be merged operator
      * @return merged operator
-     * @throws LogicalOptimizeException exception in DNF optimizing
+     * @throws LogicalOptimizeException
+     *             exception in DNF optimizing
      */
     private FilterOperator mergeToConjunction(FilterOperator operator1, FilterOperator operator2)
             throws LogicalOptimizeException {
@@ -94,28 +110,31 @@ public class DNFFilterOptimizer implements IFilterOptimizer {
      * If child is basic function or AND node, return a list just containing this. <br>
      * If this child is OR, return children of OR.
      * 
-     * @param child operator
+     * @param child
+     *            operator
      * @return children operator
      */
     private List<FilterOperator> getAndChild(FilterOperator child) {
         switch (child.getTokenIntType()) {
-            case KW_OR:
-                return child.getChildren();
-            default:
-                // other token type means leaf node or and
-                List<FilterOperator> ret = new ArrayList<>();
-                ret.add(child);
-                return ret;
+        case KW_OR:
+            return child.getChildren();
+        default:
+            // other token type means leaf node or and
+            List<FilterOperator> ret = new ArrayList<>();
+            ret.add(child);
+            return ret;
         }
     }
 
     /**
-     * If operator is leaf, add it in newChildrenList.
-     * If operator is And, add its children to newChildrenList.
+     * If operator is leaf, add it in newChildrenList. If operator is And, add its children to newChildrenList.
      * 
-     * @param operator which children should be added in new children list
-     * @param newChildrenList new children list
-     * @throws LogicalOptimizeException exception in DNF optimizing
+     * @param operator
+     *            which children should be added in new children list
+     * @param newChildrenList
+     *            new children list
+     * @throws LogicalOptimizeException
+     *             exception in DNF optimizing
      */
     private void addChildOpInAnd(FilterOperator operator, List<FilterOperator> newChildrenList)
             throws LogicalOptimizeException {
@@ -124,17 +143,18 @@ public class DNFFilterOptimizer implements IFilterOptimizer {
         } else if (operator.getTokenIntType() == KW_AND) {
             newChildrenList.addAll(operator.getChildren());
         } else {
-            throw new LogicalOptimizeException(
-                    "add all children of an OR operator to newChildrenList in AND");
+            throw new LogicalOptimizeException("add all children of an OR operator to newChildrenList in AND");
         }
     }
 
     /**
-     * used by getDNF. If operator is leaf or And, add operator to newChildrenList.
-     * Else add operator's children to newChildrenList
+     * used by getDNF. If operator is leaf or And, add operator to newChildrenList. Else add operator's children to
+     * newChildrenList
      * 
-     * @param operator to be added in new children list
-     * @param newChildrenList new children list
+     * @param operator
+     *            to be added in new children list
+     * @param newChildrenList
+     *            new children list
      */
     private void addChildOpInOr(FilterOperator operator, List<FilterOperator> newChildrenList) {
         if (operator.isLeaf() || operator.getTokenIntType() == KW_AND) {

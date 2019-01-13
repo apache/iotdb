@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.db.query.dataset;
 
 import org.apache.iotdb.db.query.reader.IReader;
@@ -28,8 +43,8 @@ public class EngineDataSetWithoutTimeGenerator extends QueryDataSet {
 
     private Set<Long> timeSet;
 
-    public EngineDataSetWithoutTimeGenerator( List<Path> paths,
-                                             List<TSDataType> dataTypes, List<IReader> readers) throws IOException {
+    public EngineDataSetWithoutTimeGenerator(List<Path> paths, List<TSDataType> dataTypes, List<IReader> readers)
+            throws IOException {
         super(paths, dataTypes);
         this.readers = readers;
         initHeap();
@@ -49,7 +64,6 @@ public class EngineDataSetWithoutTimeGenerator extends QueryDataSet {
             }
         }
     }
-
 
     @Override
     public boolean hasNext() throws IOException {
@@ -82,34 +96,32 @@ public class EngineDataSetWithoutTimeGenerator extends QueryDataSet {
         return record;
     }
 
-
     private Field getField(TsPrimitiveType tsPrimitiveType, TSDataType dataType) {
         Field field = new Field(dataType);
         switch (dataType) {
-            case INT32:
-                field.setIntV(tsPrimitiveType.getInt());
-                break;
-            case INT64:
-                field.setLongV(tsPrimitiveType.getLong());
-                break;
-            case FLOAT:
-                field.setFloatV(tsPrimitiveType.getFloat());
-                break;
-            case DOUBLE:
-                field.setDoubleV(tsPrimitiveType.getDouble());
-                break;
-            case BOOLEAN:
-                field.setBoolV(tsPrimitiveType.getBoolean());
-                break;
-            case TEXT:
-                field.setBinaryV(tsPrimitiveType.getBinary());
-                break;
-            default:
-                throw new UnSupportedDataTypeException("UnSupported: " + dataType);
+        case INT32:
+            field.setIntV(tsPrimitiveType.getInt());
+            break;
+        case INT64:
+            field.setLongV(tsPrimitiveType.getLong());
+            break;
+        case FLOAT:
+            field.setFloatV(tsPrimitiveType.getFloat());
+            break;
+        case DOUBLE:
+            field.setDoubleV(tsPrimitiveType.getDouble());
+            break;
+        case BOOLEAN:
+            field.setBoolV(tsPrimitiveType.getBoolean());
+            break;
+        case TEXT:
+            field.setBinaryV(tsPrimitiveType.getBinary());
+            break;
+        default:
+            throw new UnSupportedDataTypeException("UnSupported: " + dataType);
         }
         return field;
     }
-
 
     /**
      * keep heap from storing duplicate time

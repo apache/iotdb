@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.tsfile.read.query.timegenerator;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
@@ -43,7 +58,8 @@ public class TsFileGeneratorForSeriesReaderByTimestamp {
     private static int preChunkGroupSize;
     private static int prePageSize;
 
-    public static void generateFile(int rc, int rs, int ps) throws IOException, InterruptedException, WriteProcessException {
+    public static void generateFile(int rc, int rs, int ps)
+            throws IOException, InterruptedException, WriteProcessException {
         rowCount = rc;
         chunkGroupSize = rs;
         pageSize = ps;
@@ -108,9 +124,7 @@ public class TsFileGeneratorForSeriesReaderByTimestamp {
             fw.write(d2 + "\r\n");
         }
         // write error
-        String d =
-                "d2,3," + (startTime + rowCount) + ",s2," + (rowCount * 10 + 2) + ",s3,"
-                        + (rowCount * 10 + 3);
+        String d = "d2,3," + (startTime + rowCount) + ",s2," + (rowCount * 10 + 2) + ",s3," + (rowCount * 10 + 3);
         fw.write(d + "\r\n");
         d = "d2," + (startTime + rowCount + 1) + ",2,s-1," + (rowCount * 10 + 2);
         fw.write(d + "\r\n");
@@ -125,7 +139,7 @@ public class TsFileGeneratorForSeriesReaderByTimestamp {
         if (errorFile.exists())
             errorFile.delete();
 
-        //LOG.info(jsonSchema.toString());
+        // LOG.info(jsonSchema.toString());
         FileSchema schema = new FileSchema(jsonSchema);
         preChunkGroupSize = TSFileDescriptor.getInstance().getConfig().groupSizeInByte;
         prePageSize = TSFileDescriptor.getInstance().getConfig().maxNumberOfPointsInPage;
@@ -147,44 +161,34 @@ public class TsFileGeneratorForSeriesReaderByTimestamp {
         JSONObject s1 = new JSONObject();
         s1.put(JsonFormatConstant.MEASUREMENT_UID, "s1");
         s1.put(JsonFormatConstant.DATA_TYPE, TSDataType.INT32.toString());
-        s1.put(JsonFormatConstant.MEASUREMENT_ENCODING,
-                conf.valueEncoder);
-        s1.put(JsonFormatConstant.COMPRESS_TYPE,
-                conf.compressor);
+        s1.put(JsonFormatConstant.MEASUREMENT_ENCODING, conf.valueEncoder);
+        s1.put(JsonFormatConstant.COMPRESS_TYPE, conf.compressor);
         JSONObject s2 = new JSONObject();
         s2.put(JsonFormatConstant.MEASUREMENT_UID, "s2");
         s2.put(JsonFormatConstant.DATA_TYPE, TSDataType.INT64.toString());
-        s2.put(JsonFormatConstant.MEASUREMENT_ENCODING,
-                conf.valueEncoder);
-        s2.put(JsonFormatConstant.COMPRESS_TYPE,
-                "SNAPPY");
+        s2.put(JsonFormatConstant.MEASUREMENT_ENCODING, conf.valueEncoder);
+        s2.put(JsonFormatConstant.COMPRESS_TYPE, "SNAPPY");
         JSONObject s3 = new JSONObject();
         s3.put(JsonFormatConstant.MEASUREMENT_UID, "s3");
         s3.put(JsonFormatConstant.DATA_TYPE, TSDataType.INT64.toString());
-        s3.put(JsonFormatConstant.MEASUREMENT_ENCODING,
-                conf.valueEncoder);
-        s2.put(JsonFormatConstant.COMPRESS_TYPE,
-                "UNCOMPRESSED");
+        s3.put(JsonFormatConstant.MEASUREMENT_ENCODING, conf.valueEncoder);
+        s2.put(JsonFormatConstant.COMPRESS_TYPE, "UNCOMPRESSED");
         JSONObject s4 = new JSONObject();
         s4.put(JsonFormatConstant.MEASUREMENT_UID, "s4");
         s4.put(JsonFormatConstant.DATA_TYPE, TSDataType.TEXT.toString());
-        s4.put(JsonFormatConstant.MEASUREMENT_ENCODING,
-                TSEncoding.PLAIN.toString());
+        s4.put(JsonFormatConstant.MEASUREMENT_ENCODING, TSEncoding.PLAIN.toString());
         JSONObject s5 = new JSONObject();
         s5.put(JsonFormatConstant.MEASUREMENT_UID, "s5");
         s5.put(JsonFormatConstant.DATA_TYPE, TSDataType.BOOLEAN.toString());
-        s5.put(JsonFormatConstant.MEASUREMENT_ENCODING,
-                TSEncoding.PLAIN.toString());
+        s5.put(JsonFormatConstant.MEASUREMENT_ENCODING, TSEncoding.PLAIN.toString());
         JSONObject s6 = new JSONObject();
         s6.put(JsonFormatConstant.MEASUREMENT_UID, "s6");
         s6.put(JsonFormatConstant.DATA_TYPE, TSDataType.FLOAT.toString());
-        s6.put(JsonFormatConstant.MEASUREMENT_ENCODING,
-                TSEncoding.RLE.toString());
+        s6.put(JsonFormatConstant.MEASUREMENT_ENCODING, TSEncoding.RLE.toString());
         JSONObject s7 = new JSONObject();
         s7.put(JsonFormatConstant.MEASUREMENT_UID, "s7");
         s7.put(JsonFormatConstant.DATA_TYPE, TSDataType.DOUBLE.toString());
-        s7.put(JsonFormatConstant.MEASUREMENT_ENCODING,
-                TSEncoding.RLE.toString());
+        s7.put(JsonFormatConstant.MEASUREMENT_ENCODING, TSEncoding.RLE.toString());
 
         JSONArray measureGroup1 = new JSONArray();
         measureGroup1.put(s1);
@@ -198,7 +202,7 @@ public class TsFileGeneratorForSeriesReaderByTimestamp {
         JSONObject jsonSchema = new JSONObject();
         jsonSchema.put(JsonFormatConstant.DELTA_TYPE, "test_type");
         jsonSchema.put(JsonFormatConstant.JSON_SCHEMA, measureGroup1);
-        //System.out.println(jsonSchema);
+        // System.out.println(jsonSchema);
         return jsonSchema;
     }
 

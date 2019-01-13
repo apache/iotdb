@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.db.query.executor;
 
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
@@ -31,7 +46,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * IoTDB query executor with  global time filter
+ * IoTDB query executor with global time filter
  */
 public class EngineExecutorWithoutTimeGenerator {
 
@@ -46,8 +61,7 @@ public class EngineExecutorWithoutTimeGenerator {
     /**
      * with global time filter
      */
-    public QueryDataSet executeWithGlobalTimeFilter()
-            throws IOException, FileNodeManagerException, PathErrorException {
+    public QueryDataSet executeWithGlobalTimeFilter() throws IOException, FileNodeManagerException, PathErrorException {
 
         Filter timeFilter = ((GlobalTimeExpression) queryExpression.getExpression()).getFilter();
 
@@ -70,22 +84,22 @@ public class EngineExecutorWithoutTimeGenerator {
             priorityReader.addReaderWithPriority(tsFilesReader, 1);
 
             // unseq reader for all chunk groups in unSeqFile
-            PriorityMergeReader unSeqMergeReader = SeriesReaderFactory.getInstance().
-                    createUnSeqMergeReader(queryDataSource.getOverflowSeriesDataSource(), timeFilter);
+            PriorityMergeReader unSeqMergeReader = SeriesReaderFactory.getInstance()
+                    .createUnSeqMergeReader(queryDataSource.getOverflowSeriesDataSource(), timeFilter);
             priorityReader.addReaderWithPriority(unSeqMergeReader, 2);
 
             readersOfSelectedSeries.add(priorityReader);
         }
 
-        return new EngineDataSetWithoutTimeGenerator(queryExpression.getSelectedSeries(), dataTypes, readersOfSelectedSeries);
+        return new EngineDataSetWithoutTimeGenerator(queryExpression.getSelectedSeries(), dataTypes,
+                readersOfSelectedSeries);
 
     }
 
     /**
      * without filter
      */
-    public QueryDataSet executeWithoutFilter()
-            throws IOException, FileNodeManagerException, PathErrorException {
+    public QueryDataSet executeWithoutFilter() throws IOException, FileNodeManagerException, PathErrorException {
 
         List<IReader> readersOfSelectedSeries = new ArrayList<>();
         List<TSDataType> dataTypes = new ArrayList<>();
@@ -106,14 +120,15 @@ public class EngineExecutorWithoutTimeGenerator {
             priorityReader.addReaderWithPriority(tsFilesReader, 1);
 
             // unseq insert data
-            PriorityMergeReader unSeqMergeReader = SeriesReaderFactory.getInstance().
-                    createUnSeqMergeReader(queryDataSource.getOverflowSeriesDataSource(), null);
+            PriorityMergeReader unSeqMergeReader = SeriesReaderFactory.getInstance()
+                    .createUnSeqMergeReader(queryDataSource.getOverflowSeriesDataSource(), null);
             priorityReader.addReaderWithPriority(unSeqMergeReader, 2);
 
             readersOfSelectedSeries.add(priorityReader);
         }
 
-        return new EngineDataSetWithoutTimeGenerator(queryExpression.getSelectedSeries(), dataTypes, readersOfSelectedSeries);
+        return new EngineDataSetWithoutTimeGenerator(queryExpression.getSelectedSeries(), dataTypes,
+                readersOfSelectedSeries);
     }
 
 }

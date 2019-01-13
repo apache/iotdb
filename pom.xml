@@ -1,4 +1,21 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+    Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+
+    Licensed under the Apache License, Version 2.0 (the "License");
+    you may not use this file except in compliance with the License.
+    You may obtain a copy of the License at
+
+        http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    See the License for the specific language governing permissions and
+    limitations under the License.
+
+-->
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
@@ -224,8 +241,26 @@
 				</executions>
 			</plugin>
 
+			<plugin>
+			    <groupId>net.revelc.code.formatter</groupId>
+			    <artifactId>formatter-maven-plugin</artifactId>
+			    <version>2.8.1</version>
+			    <executions>
+			        <execution>
+			        	<phase>verify</phase>
+			            <goals>
+			                <goal>format</goal>
+			            </goals>
+			            <configuration>
+			                <configFile>${project.basedir}/java-google-style.xml</configFile>
+			                <encoding>UTF-8</encoding>
+			            </configuration>
+			        </execution>
+			    </executions>
+			</plugin>
+
 			<!--for code style check -->
-			<!--plugin>
+			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-checkstyle-plugin</artifactId>
 				<version>2.16</version>
@@ -241,12 +276,47 @@
 						</configuration>
 					</execution>
 				</executions>
-			</plugin-->
-
+			</plugin>
+			<plugin>
+			    <groupId>com.mycila</groupId>
+			    <artifactId>license-maven-plugin</artifactId>
+			    <version>3.0</version>
+			    <configuration>
+			        <header>com/mycila/maven/plugin/license/templates/APACHE-2.txt</header>
+			        <properties>
+			            <owner>Apache IoTDB(incubating)</owner>
+			            <email>dev@iotdb.apache.org</email>
+			            <project.inceptionYear>2019</project.inceptionYear>
+			        </properties>
+			        <mapping>
+					    <g>DOUBLESLASH_STYLE</g>
+					    <thrift>SLASHSTAR_STYLE</thrift>
+					</mapping>
+			        <excludes>
+			            <exclude>**/README.md</exclude>
+			            <exclude>**/src/test/resources/**</exclude>
+			            <exclude>**/src/main/resources/**</exclude>
+			            <exclude>**/*.log</exclude>
+			            <exclude>licenses-binary/*</exclude>
+			            <exclude>.checkstyle</exclude>
+			            <exclude>NOTICE*</exclude>
+			            <exclude>LICENSE*</exclude>
+			            <exclude>License</exclude>
+			        </excludes>
+			    </configuration>
+			    <executions>
+			        <execution>
+			            <goals>
+			                <goal>check</goal>
+			            </goals>
+			        </execution>
+			    </executions>
+			</plugin>
 			<!--
 				Check if all files contain Apache headers in them.
+				Ignore this plugin, we use license-maven-plugin to check apache header.
 			-->
-			<plugin>
+<!-- 			<plugin>
 				<groupId>org.apache.rat</groupId>
 				<artifactId>apache-rat-plugin</artifactId>
 				<executions>
@@ -259,27 +329,29 @@
 					</execution>
 				</executions>
 				<configuration>
-					<!-- Should be enabled as soon as the headers are in position -->
+					Should be enabled as soon as the headers are in position
 					<skip>true</skip>
 					<excludes>
-						<!-- Git related files -->
+						Git related files
 						<exclude>**/.git/**</exclude>
 						<exclude>**/.gitignore</exclude>
 
-						<!-- Maven related files -->
+						Maven related files
 						<exclude>**/target/**</exclude>
 
-						<!-- Eclipse related files -->
+						Eclipse related files
 						<exclude>**/.project</exclude>
 						<exclude>**/.settings/**</exclude>
 						<exclude>**/.classpath</exclude>
 
-						<!-- IntelliJ related files -->
+						IntelliJ related files
 						<exclude>**/.idea/**</exclude>
 						<exclude>**/*.iml</exclude>
+						Runtime log
+						<exclude>**/*.log</exclude>
 					</excludes>
 				</configuration>
-			</plugin>
+			</plugin> -->
 
 			<!--use `mvn cobertura:cobertura` -->
 			<plugin>
@@ -332,13 +404,6 @@
 					</execution>
 				</executions>
 			</plugin>
-
-			<!-- temporary, we do not enable the following plugin -->
-			<!--<plugin> <groupId>net.revelc.code.formatter</groupId> <artifactId>formatter-maven-plugin</artifactId> 
-				<version>2.7.5</version> <executions> <execution> <goals> <goal>format</goal> 
-				</goals> <configuration> <encoding>UTF-8</encoding> <configFile>${project.basedir}/checkstyle.xml</configFile> 
-				</configuration> </execution> </executions> </plugin> -->
-
 		</plugins>
 	</build>
 

@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.tsfile.write.writer;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
@@ -43,8 +58,7 @@ import java.util.Map;
 import java.util.TreeMap;
 
 /**
- * TSFileIOWriter is used to construct metadata and write data stored in memory
- * to output stream.
+ * TSFileIOWriter is used to construct metadata and write data stored in memory to output stream.
  *
  * @author kangrong
  */
@@ -65,15 +79,17 @@ public class TsFileIOWriter {
     /**
      *
      */
-    protected TsFileIOWriter(){
+    protected TsFileIOWriter() {
 
     }
 
     /**
      * for writing a new tsfile.
      *
-     * @param file be used to output written data
-     * @throws IOException if I/O error occurs
+     * @param file
+     *            be used to output written data
+     * @throws IOException
+     *             if I/O error occurs
      */
     public TsFileIOWriter(File file) throws IOException {
         this.out = new DefaultTsFileOutput(file);
@@ -81,28 +97,32 @@ public class TsFileIOWriter {
     }
 
     /**
-     * for writing data into an existing and incomplete Tsfile. The caller need to guarantee existing data in the TsFileOutput matches the given metadata list
+     * for writing data into an existing and incomplete Tsfile. The caller need to guarantee existing data in the
+     * TsFileOutput matches the given metadata list
      *
-     * @param out the target output
-     * @param  chunkGroupMetaDataList existing chunkgroups' metadata
-     * @throws IOException if I/O error occurs
+     * @param out
+     *            the target output
+     * @param chunkGroupMetaDataList
+     *            existing chunkgroups' metadata
+     * @throws IOException
+     *             if I/O error occurs
      */
     public TsFileIOWriter(TsFileOutput out, List<ChunkGroupMetaData> chunkGroupMetaDataList) throws IOException {
         this.out = out;
         this.chunkGroupMetaDataList = chunkGroupMetaDataList;
-        if(chunkGroupMetaDataList.size() == 0) {
+        if (chunkGroupMetaDataList.size() == 0) {
             startFile();
         }
     }
 
-
     /**
-     * Writes given bytes to output stream.
-     * This method is called when total memory size exceeds the chunk group size
+     * Writes given bytes to output stream. This method is called when total memory size exceeds the chunk group size
      * threshold.
      *
-     * @param bytes - data of several pages which has been packed
-     * @throws IOException if an I/O error occurs.
+     * @param bytes
+     *            - data of several pages which has been packed
+     * @throws IOException
+     *             if an I/O error occurs.
      */
     public void writeBytesToStream(PublicBAOS bytes) throws IOException {
         bytes.writeTo(out.wrapAsStream());
@@ -115,7 +135,8 @@ public class TsFileIOWriter {
     /**
      * start a {@linkplain ChunkGroupMetaData ChunkGroupMetaData}.
      *
-     * @param deviceId device id
+     * @param deviceId
+     *            device id
      */
     public void startFlushChunkGroup(String deviceId) throws IOException {
         LOG.debug("start chunk group:{}, file position {}", deviceId, out.getPosition());
@@ -125,23 +146,34 @@ public class TsFileIOWriter {
     /**
      * start a {@linkplain ChunkMetaData ChunkMetaData}.
      *
-     * @param descriptor           - measurement of this time series
-     * @param compressionCodecName - compression name of this time series
-     * @param tsDataType           - data type
-     * @param statistics           - statistic of the whole series
-     * @param maxTime              - maximum timestamp of the whole series in this stage
-     * @param minTime              - minimum timestamp of the whole series in this stage
-     * @param datasize             -  the serialized size of all pages
+     * @param descriptor
+     *            - measurement of this time series
+     * @param compressionCodecName
+     *            - compression name of this time series
+     * @param tsDataType
+     *            - data type
+     * @param statistics
+     *            - statistic of the whole series
+     * @param maxTime
+     *            - maximum timestamp of the whole series in this stage
+     * @param minTime
+     *            - minimum timestamp of the whole series in this stage
+     * @param datasize
+     *            - the serialized size of all pages
      * @return the serialized size of CHunkHeader
-     * @throws IOException if I/O error occurs
+     * @throws IOException
+     *             if I/O error occurs
      */
     public int startFlushChunk(MeasurementSchema descriptor, CompressionType compressionCodecName,
-                               TSDataType tsDataType, TSEncoding encodingType, Statistics<?> statistics, long maxTime, long minTime, int datasize, int numOfPages) throws IOException {
+            TSDataType tsDataType, TSEncoding encodingType, Statistics<?> statistics, long maxTime, long minTime,
+            int datasize, int numOfPages) throws IOException {
         LOG.debug("start series chunk:{}, file position {}", descriptor, out.getPosition());
 
-        currentChunkMetaData = new ChunkMetaData(descriptor.getMeasurementId(), tsDataType, out.getPosition(), minTime, maxTime);
+        currentChunkMetaData = new ChunkMetaData(descriptor.getMeasurementId(), tsDataType, out.getPosition(), minTime,
+                maxTime);
 
-        ChunkHeader header = new ChunkHeader(descriptor.getMeasurementId(), datasize, tsDataType, compressionCodecName, encodingType, numOfPages);
+        ChunkHeader header = new ChunkHeader(descriptor.getMeasurementId(), datasize, tsDataType, compressionCodecName,
+                encodingType, numOfPages);
         header.serializeTo(out.wrapAsStream());
         LOG.debug("finish series chunk:{} header, file position {}", header, out.getPosition());
 
@@ -160,7 +192,6 @@ public class TsFileIOWriter {
         return header.getSerializedSize();
     }
 
-
     public void endChunk(long totalValueCount) {
         currentChunkMetaData.setNumOfPoints(totalValueCount);
         currentChunkGroupMetaData.addTimeSeriesChunkMetaData(currentChunkMetaData);
@@ -176,11 +207,12 @@ public class TsFileIOWriter {
     }
 
     /**
-     * write {@linkplain TsFileMetaData TSFileMetaData} to output stream and
-     * close it.
+     * write {@linkplain TsFileMetaData TSFileMetaData} to output stream and close it.
      *
-     * @param schema FileSchema
-     * @throws IOException if I/O error occurs
+     * @param schema
+     *            FileSchema
+     * @throws IOException
+     *             if I/O error occurs
      */
     public void endFile(FileSchema schema) throws IOException {
 
@@ -191,7 +223,8 @@ public class TsFileIOWriter {
         Map<String, MeasurementSchema> schemaDescriptors = schema.getAllMeasurementSchema();
         LOG.debug("get time series list:{}", schemaDescriptors);
 
-        Map<String, TsDeviceMetadataIndex> tsDeviceMetadataIndexMap = flushTsDeviceMetaDataAndGetIndex(this.chunkGroupMetaDataList);
+        Map<String, TsDeviceMetadataIndex> tsDeviceMetadataIndexMap = flushTsDeviceMetaDataAndGetIndex(
+                this.chunkGroupMetaDataList);
 
         TsFileMetaData tsFileMetaData = new TsFileMetaData(tsDeviceMetadataIndexMap, schemaDescriptors,
                 TSFileConfig.currentVersion);
@@ -204,7 +237,7 @@ public class TsFileIOWriter {
         LOG.debug("finish flushing the footer {}, file pos:{}", tsFileMetaData, out.getPosition());
 
         // write TsFileMetaData size
-        ReadWriteIOUtils.write(size, out.wrapAsStream());//write the size of the file metadata.
+        ReadWriteIOUtils.write(size, out.wrapAsStream());// write the size of the file metadata.
 
         // write magic string
         out.write(magicStringBytes);
@@ -214,20 +247,19 @@ public class TsFileIOWriter {
         LOG.info("output stream is closed");
     }
 
-
     /**
-     * 1. group chunkGroupMetaDataList to TsDeviceMetadata
-     * 2. flush TsDeviceMetadata
-     * 3. get TsDeviceMetadataIndex
+     * 1. group chunkGroupMetaDataList to TsDeviceMetadata 2. flush TsDeviceMetadata 3. get TsDeviceMetadataIndex
      *
-     * @param chunkGroupMetaDataList all chunk group metadata in memory
+     * @param chunkGroupMetaDataList
+     *            all chunk group metadata in memory
      * @return TsDeviceMetadataIndex in TsFileMetaData
      */
-    private Map<String, TsDeviceMetadataIndex> flushTsDeviceMetaDataAndGetIndex(List<ChunkGroupMetaData> chunkGroupMetaDataList) throws IOException {
+    private Map<String, TsDeviceMetadataIndex> flushTsDeviceMetaDataAndGetIndex(
+            List<ChunkGroupMetaData> chunkGroupMetaDataList) throws IOException {
 
         Map<String, TsDeviceMetadataIndex> tsDeviceMetadataIndexMap = new HashMap<>();
 
-        long offset; /*offset for the flushing TsDeviceMetadata*/
+        long offset; /* offset for the flushing TsDeviceMetadata */
 
         TsDeviceMetadata currentTsDeviceMetadata;
 
@@ -240,18 +272,19 @@ public class TsFileIOWriter {
             offset = out.getPosition();
             int size = currentTsDeviceMetadata.serializeTo(out.wrapAsStream());
 
-            TsDeviceMetadataIndex tsDeviceMetadataIndex = new TsDeviceMetadataIndex(offset, size, currentTsDeviceMetadata);
+            TsDeviceMetadataIndex tsDeviceMetadataIndex = new TsDeviceMetadataIndex(offset, size,
+                    currentTsDeviceMetadata);
             tsDeviceMetadataIndexMap.put(entry.getKey(), tsDeviceMetadataIndex);
         }
 
         return tsDeviceMetadataIndexMap;
     }
 
-
     /**
      * group all chunk group metadata by device
      *
-     * @param chunkGroupMetaDataList all chunk group metadata
+     * @param chunkGroupMetaDataList
+     *            all chunk group metadata
      * @return TsDeviceMetadata of all devices
      */
     private TreeMap<String, TsDeviceMetadata> getAllTsDeviceMetadata(List<ChunkGroupMetaData> chunkGroupMetaDataList) {
@@ -270,24 +303,24 @@ public class TsFileIOWriter {
         return tsDeviceMetadataMap;
     }
 
-
     /**
      * get the length of normal OutputStream.
      *
      * @return - length of normal OutputStream
-     * @throws IOException if I/O error occurs
+     * @throws IOException
+     *             if I/O error occurs
      */
     public long getPos() throws IOException {
         return out.getPosition();
     }
-    
+
     /**
      * get chunkGroupMetaDataList
      * 
      * @return - List of chunkGroupMetaData
      */
-    public List<ChunkGroupMetaData> getChunkGroupMetaDatas(){
-    	return chunkGroupMetaDataList;
+    public List<ChunkGroupMetaData> getChunkGroupMetaDatas() {
+        return chunkGroupMetaDataList;
     }
 
 }

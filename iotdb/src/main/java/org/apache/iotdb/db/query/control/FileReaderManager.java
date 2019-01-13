@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.db.query.control;
 
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
@@ -18,8 +33,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * <p> Singleton pattern, to manage all file reader.
- * Manage all opened file streams, to ensure that each file will be opened at most once.
+ * <p>
+ * Singleton pattern, to manage all file reader. Manage all opened file streams, to ensure that each file will be opened
+ * at most once.
  */
 public class FileReaderManager implements IService {
 
@@ -71,12 +87,11 @@ public class FileReaderManager implements IService {
                     }
                 }
             }
-        },0, examinePeriod, TimeUnit.MILLISECONDS);
+        }, 0, examinePeriod, TimeUnit.MILLISECONDS);
     }
 
     /**
-     * Given a file path, tsfile or unseq tsfile, return a <code>TsFileSequenceReader</code> which
-     * opened this file.
+     * Given a file path, tsfile or unseq tsfile, return a <code>TsFileSequenceReader</code> which opened this file.
      */
     public synchronized TsFileSequenceReader get(String filePath, boolean isUnClosed) throws IOException {
 
@@ -86,7 +101,8 @@ public class FileReaderManager implements IService {
                 LOGGER.warn("Query has opened {} files !", fileReaderMap.size());
             }
 
-            TsFileSequenceReader tsFileReader = isUnClosed ? new UnClosedTsFileReader(filePath) : new TsFileSequenceReader(filePath);
+            TsFileSequenceReader tsFileReader = isUnClosed ? new UnClosedTsFileReader(filePath)
+                    : new TsFileSequenceReader(filePath);
 
             fileReaderMap.put(filePath, tsFileReader);
             return tsFileReader;
@@ -96,17 +112,16 @@ public class FileReaderManager implements IService {
     }
 
     /**
-     * Increase the usage reference of given file path.
-     * Only when the reference of given file path equals to zero, the corresponding file reader can be closed and remove.
+     * Increase the usage reference of given file path. Only when the reference of given file path equals to zero, the
+     * corresponding file reader can be closed and remove.
      */
     public synchronized void increaseFileReaderReference(String filePath) {
         referenceMap.computeIfAbsent(filePath, k -> new AtomicInteger()).getAndIncrement();
     }
 
     /**
-     * Decrease the usage reference of given file path.
-     * This method doesn't need lock.
-     * Only when the reference of given file path equals to zero, the corresponding file reader can be closed and remove.
+     * Decrease the usage reference of given file path. This method doesn't need lock. Only when the reference of given
+     * file path equals to zero, the corresponding file reader can be closed and remove.
      */
     public synchronized void decreaseFileReaderReference(String filePath) {
         referenceMap.get(filePath).getAndDecrement();
@@ -125,8 +140,8 @@ public class FileReaderManager implements IService {
     }
 
     /**
-     * Only used for <code>EnvironmentUtils.cleanEnv</code> method.
-     * To make sure that unit test and integration test will not make conflict.
+     * Only used for <code>EnvironmentUtils.cleanEnv</code> method. To make sure that unit test and integration test
+     * will not make conflict.
      */
     public synchronized void closeAndRemoveAllOpenedReaders() throws IOException {
         for (Map.Entry<String, TsFileSequenceReader> entry : fileReaderMap.entrySet()) {

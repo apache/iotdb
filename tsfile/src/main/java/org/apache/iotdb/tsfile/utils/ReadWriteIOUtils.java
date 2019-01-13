@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.tsfile.utils;
 
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -30,17 +45,20 @@ public class ReadWriteIOUtils {
     private static int FLOAT_LEN = 4;
     private static int BOOLEAN_LEN = 1;
 
-
     public static int write(Boolean flag, OutputStream outputStream) throws IOException {
-        if (flag) outputStream.write(1);
-        else outputStream.write(0);
+        if (flag)
+            outputStream.write(1);
+        else
+            outputStream.write(0);
         return 1;
     }
 
     public static int write(Boolean flag, ByteBuffer buffer) {
         byte a;
-        if (flag) a = 1;
-        else a = 0;
+        if (flag)
+            a = 1;
+        else
+            a = 0;
 
         buffer.put(a);
         return 1;
@@ -281,7 +299,8 @@ public class ReadWriteIOUtils {
     }
 
     /**
-     * unlike InputStream.read(bytes), this method makes sure that you can read length bytes or reach to the end of the stream.
+     * unlike InputStream.read(bytes), this method makes sure that you can read length bytes or reach to the end of the
+     * stream.
      */
     public static byte[] readBytes(InputStream inputStream, int length) throws IOException {
         byte[] bytes = new byte[length];
@@ -294,13 +313,13 @@ public class ReadWriteIOUtils {
     }
 
     /**
-     * unlike InputStream.read(bytes), this method makes sure that you can read length bytes or reach to the end of the stream.
+     * unlike InputStream.read(bytes), this method makes sure that you can read length bytes or reach to the end of the
+     * stream.
      */
     public static byte[] readBytesWithSelfDescriptionLength(InputStream inputStream) throws IOException {
         int length = readInt(inputStream);
         return readBytes(inputStream, length);
     }
-
 
     public static ByteBuffer readByteBufferWithSelfDescriptionLength(InputStream inputStream) throws IOException {
         byte[] bytes = readBytesWithSelfDescriptionLength(inputStream);
@@ -319,7 +338,6 @@ public class ReadWriteIOUtils {
         byteBuffer.flip();
         return byteBuffer;
     }
-
 
     public static int readAsPossible(FileChannel channel, long position, ByteBuffer buffer) throws IOException {
         int length = 0;
@@ -373,7 +391,8 @@ public class ReadWriteIOUtils {
      */
     public static List<Integer> readIntegerList(InputStream inputStream) throws IOException {
         int size = readInt(inputStream);
-        if (size <= 0) return null;
+        if (size <= 0)
+            return null;
 
         List<Integer> list = new ArrayList<>();
         for (int i = 0; i < size; i++)
@@ -384,7 +403,8 @@ public class ReadWriteIOUtils {
 
     public static List<Integer> readIntegerList(ByteBuffer buffer) throws IOException {
         int size = readInt(buffer);
-        if (size <= 0) return null;
+        if (size <= 0)
+            return null;
 
         List<Integer> list = new ArrayList<>();
         for (int i = 0; i < size; i++)
@@ -404,7 +424,8 @@ public class ReadWriteIOUtils {
 
     public static List<String> readStringList(ByteBuffer buffer) throws IOException {
         int size = readInt(buffer);
-        if (size <= 0) return null;
+        if (size <= 0)
+            return null;
 
         List<String> list = new ArrayList<>();
         for (int i = 0; i < size; i++)
@@ -412,7 +433,6 @@ public class ReadWriteIOUtils {
 
         return list;
     }
-
 
     /**
      * CompressionType
@@ -437,7 +457,6 @@ public class ReadWriteIOUtils {
         return CompressionType.deserialize(n);
     }
 
-
     /**
      * TSDataType
      */
@@ -461,7 +480,6 @@ public class ReadWriteIOUtils {
         return TSDataType.deserialize(n);
     }
 
-
     /**
      * TSEncoding
      */
@@ -484,7 +502,6 @@ public class ReadWriteIOUtils {
         short n = readShort(buffer);
         return TSEncoding.deserialize(n);
     }
-
 
     /**
      * TSFreqType

@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.db.auth.AuthException;
@@ -41,8 +56,7 @@ import java.io.IOException;
 
 /**
  * <p>
- * This class is used for cleaning test environment in unit test and integration
- * test
+ * This class is used for cleaning test environment in unit test and integration test
  * </p>
  * 
  * @author liukun
@@ -50,121 +64,121 @@ import java.io.IOException;
  */
 public class EnvironmentUtils {
 
-	private static final Logger LOGGER = LoggerFactory.getLogger(EnvironmentUtils.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(EnvironmentUtils.class);
 
-	private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-	private static Directories directories = Directories.getInstance();
-	private static TSFileConfig tsfileConfig = TSFileDescriptor.getInstance().getConfig();
+    private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+    private static Directories directories = Directories.getInstance();
+    private static TSFileConfig tsfileConfig = TSFileDescriptor.getInstance().getConfig();
 
-	public static void cleanEnv() throws IOException, FileNodeManagerException {
+    public static void cleanEnv() throws IOException, FileNodeManagerException {
 
-		QueryTokenManager.getInstance().endQueryForCurrentRequestThread();
+        QueryTokenManager.getInstance().endQueryForCurrentRequestThread();
 
-		// clear opened file streams
-		FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
+        // clear opened file streams
+        FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
 
-		// tsFileConfig.duplicateIncompletedPage = false;
-		// clean filenode manager
-		try {
-			if (!FileNodeManager.getInstance().deleteAll()) {
-				LOGGER.error("Can't close the filenode manager in EnvironmentUtils");
-				System.exit(1);
-			}
-		} catch (FileNodeManagerException e) {
-			throw new IOException(e);
-		}
-		StatMonitor.getInstance().close();
-		FileNodeManager.getInstance().resetFileNodeManager();
-		// clean wal
-		MultiFileLogNodeManager.getInstance().stop();
-		// clean cache
-		TsFileMetaDataCache.getInstance().clear();
-		RowGroupBlockMetaDataCache.getInstance().clear();
-		// close metadata
-		MManager.getInstance().clear();
-		MManager.getInstance().flushObjectToFile();
-		// delete all directory
-		cleanAllDir();
-		// FileNodeManager.getInstance().reset();
-		// reset MemController
-		BasicMemController.getInstance().close();
-		try {
-			BasicMemController.getInstance().start();
-		} catch (StartupException e) {
-			LOGGER.error("",e);
-		}
-	}
+        // tsFileConfig.duplicateIncompletedPage = false;
+        // clean filenode manager
+        try {
+            if (!FileNodeManager.getInstance().deleteAll()) {
+                LOGGER.error("Can't close the filenode manager in EnvironmentUtils");
+                System.exit(1);
+            }
+        } catch (FileNodeManagerException e) {
+            throw new IOException(e);
+        }
+        StatMonitor.getInstance().close();
+        FileNodeManager.getInstance().resetFileNodeManager();
+        // clean wal
+        MultiFileLogNodeManager.getInstance().stop();
+        // clean cache
+        TsFileMetaDataCache.getInstance().clear();
+        RowGroupBlockMetaDataCache.getInstance().clear();
+        // close metadata
+        MManager.getInstance().clear();
+        MManager.getInstance().flushObjectToFile();
+        // delete all directory
+        cleanAllDir();
+        // FileNodeManager.getInstance().reset();
+        // reset MemController
+        BasicMemController.getInstance().close();
+        try {
+            BasicMemController.getInstance().start();
+        } catch (StartupException e) {
+            LOGGER.error("", e);
+        }
+    }
 
-	private static void cleanAllDir() throws IOException {
-		// delete bufferwrite
-		for(String path : directories.getAllTsFileFolders()){
-			cleanDir(path);
-		}
-		// delete overflow
-		cleanDir(config.overflowDataDir);
-		// delete filenode
-		cleanDir(config.fileNodeDir);
-		// delete metadata
-		cleanDir(config.metadataDir);
-		// delete wal
-		cleanDir(config.walFolder);
-		// delete derby
-		cleanDir(config.derbyHome);
-		// delete index
-		cleanDir(config.indexFileDir);
-		// delte data
-		cleanDir("data");
-		// delte derby log
-		// cleanDir("derby.log");
-	}
+    private static void cleanAllDir() throws IOException {
+        // delete bufferwrite
+        for (String path : directories.getAllTsFileFolders()) {
+            cleanDir(path);
+        }
+        // delete overflow
+        cleanDir(config.overflowDataDir);
+        // delete filenode
+        cleanDir(config.fileNodeDir);
+        // delete metadata
+        cleanDir(config.metadataDir);
+        // delete wal
+        cleanDir(config.walFolder);
+        // delete derby
+        cleanDir(config.derbyHome);
+        // delete index
+        cleanDir(config.indexFileDir);
+        // delte data
+        cleanDir("data");
+        // delte derby log
+        // cleanDir("derby.log");
+    }
 
-	public static void cleanDir(String dir) throws IOException {
-		File file = new File(dir);
-		if (file.exists()) {
-			if (file.isDirectory()) {
-				for (File subFile : file.listFiles()) {
-					cleanDir(subFile.getAbsolutePath());
-				}
-			}
-			if (!file.delete()) {
-				throw new IOException(String.format("The file %s can't be deleted", dir));
-			}
-		}
-	}
+    public static void cleanDir(String dir) throws IOException {
+        File file = new File(dir);
+        if (file.exists()) {
+            if (file.isDirectory()) {
+                for (File subFile : file.listFiles()) {
+                    cleanDir(subFile.getAbsolutePath());
+                }
+            }
+            if (!file.delete()) {
+                throw new IOException(String.format("The file %s can't be deleted", dir));
+            }
+        }
+    }
 
-	/**
-	 * disable the system monitor</br>
-	 * this function should be called before all code in the setup
-	 */
-	public static void closeStatMonitor() {
-		config.enableStatMonitor = false;
-	}
+    /**
+     * disable the system monitor</br>
+     * this function should be called before all code in the setup
+     */
+    public static void closeStatMonitor() {
+        config.enableStatMonitor = false;
+    }
 
-	/**
-	 * disable memory control</br>
-	 * this function should be called before all code in the setup
-	 */
-	public static void closeMemControl() {
-		config.enableMemMonitor = false;
-	}
+    /**
+     * disable memory control</br>
+     * this function should be called before all code in the setup
+     */
+    public static void closeMemControl() {
+        config.enableMemMonitor = false;
+    }
 
-	public static void envSetUp() throws StartupException {
-		// disable the memory control
-		config.enableMemMonitor = false;
-		// disable the system monitor
-		config.enableStatMonitor = false;
-		IAuthorizer authorizer = null;
-		try {
-			authorizer = LocalFileAuthorizer.getInstance();
-		} catch (AuthException e) {
-			throw new StartupException(e.getMessage());
-		}
-		try {
-			authorizer.reset();
-		} catch (AuthException e) {
-			throw new StartupException(e.getMessage());
-		}
-		FileNodeManager.getInstance().resetFileNodeManager();
-		MultiFileLogNodeManager.getInstance().start();
-	}
+    public static void envSetUp() throws StartupException {
+        // disable the memory control
+        config.enableMemMonitor = false;
+        // disable the system monitor
+        config.enableStatMonitor = false;
+        IAuthorizer authorizer = null;
+        try {
+            authorizer = LocalFileAuthorizer.getInstance();
+        } catch (AuthException e) {
+            throw new StartupException(e.getMessage());
+        }
+        try {
+            authorizer.reset();
+        } catch (AuthException e) {
+            throw new StartupException(e.getMessage());
+        }
+        FileNodeManager.getInstance().resetFileNodeManager();
+        MultiFileLogNodeManager.getInstance().start();
+    }
 }

@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.db.writelog.node;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -68,7 +83,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
     }
 
     /*
-    Return value is of no use in this implementation.
+     * Return value is of no use in this implementation.
      */
     @Override
     public LogPosition write(PhysicalPlan plan) throws IOException {
@@ -91,7 +106,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
         try {
             close();
         } catch (IOException e) {
-            logger.error("Cannot close write log {} node before recover! Because {}",identifier, e.getMessage());
+            logger.error("Cannot close write log {} node before recover! Because {}", identifier, e.getMessage());
             throw new RecoverException(String.format("Cannot close write log %s node before recover!", identifier));
         }
         recoverPerformer.recover();
@@ -116,23 +131,24 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
     }
 
     /*
-    Warning : caller must have lock.
+     * Warning : caller must have lock.
      */
     @Override
     public void notifyStartFlush() throws IOException {
         close();
         File oldLogFile = new File(logDirectory + File.separator + WAL_FILE_NAME);
         File newLogFile = new File(logDirectory + File.separator + WAL_FILE_NAME + OLD_SUFFIX);
-        if(!oldLogFile.exists())
+        if (!oldLogFile.exists())
             return;
-        if(!oldLogFile.renameTo(newLogFile))
+        if (!oldLogFile.renameTo(newLogFile))
             logger.error("Log node {} renaming log file failed!", identifier);
         else
-            logger.info("Log node {} renamed log file, file size is {}", identifier, MemUtils.bytesCntToStr(newLogFile.length()));
+            logger.info("Log node {} renamed log file, file size is {}", identifier,
+                    MemUtils.bytesCntToStr(newLogFile.length()));
     }
 
     /*
-    Warning : caller must have lock.
+     * Warning : caller must have lock.
      */
     @Override
     public void notifyEndFlush(List<LogPosition> logPositions) {
@@ -154,7 +170,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
         lockForOther();
         try {
             logCache.clear();
-            if(currentFileWriter != null)
+            if (currentFileWriter != null)
                 currentFileWriter.close();
             FileUtils.deleteDirectory(new File(logDirectory));
         } finally {
@@ -162,13 +178,13 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
         }
     }
 
-    private void lockForWrite(){
+    private void lockForWrite() {
         lock.writeLock().lock();
     }
 
     // other means sync and delete
     private void lockForOther() {
-       lock.writeLock().lock();
+        lock.writeLock().lock();
     }
 
     private void unlockForWrite() {
@@ -176,14 +192,14 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
     }
 
     private void unlockForOther() {
-       lock.writeLock().unlock();
+        lock.writeLock().unlock();
     }
 
     private void sync() {
         lockForOther();
         try {
             logger.debug("Log node {} starts sync, {} logs to be synced", identifier, logCache.size());
-            if(logCache.size() == 0) {
+            if (logCache.size() == 0) {
                 return;
             }
             try {
@@ -200,10 +216,10 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
 
     private void discard() {
         File oldLogFile = new File(logDirectory + File.separator + WAL_FILE_NAME + OLD_SUFFIX);
-        if(!oldLogFile.exists()) {
+        if (!oldLogFile.exists()) {
             logger.info("No old log to be deleted");
         } else {
-            if(!oldLogFile.delete())
+            if (!oldLogFile.delete())
                 logger.error("Old log file of {} cannot be deleted", identifier);
             else
                 logger.info("Log node {} cleaned old file", identifier);

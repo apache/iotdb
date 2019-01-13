@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.tsfile.file.metadata.utils;
 
 import org.apache.iotdb.tsfile.utils.BytesUtils;
@@ -23,7 +38,8 @@ public class TestHelper {
     private static final String LAST_VALUE = "222";
 
     public static TsFileMetaData createSimpleFileMetaData() {
-        TsFileMetaData metaData = new TsFileMetaData(generateDeviceIndexMetadataMap(), new HashMap<>(), TsFileMetaDataTest.VERSION);
+        TsFileMetaData metaData = new TsFileMetaData(generateDeviceIndexMetadataMap(), new HashMap<>(),
+                TsFileMetaDataTest.VERSION);
         metaData.addMeasurementSchema(TestHelper.createSimpleMeasurementSchema());
         metaData.addMeasurementSchema(TestHelper.createSimpleMeasurementSchema());
         metaData.setCreatedBy(TsFileMetaDataTest.CREATED_BY);
@@ -64,30 +80,32 @@ public class TestHelper {
         return metaData;
     }
 
-    public static ChunkGroupMetaData createEmptySeriesChunkGroupMetaData(){
-        ChunkGroupMetaData metaData = new ChunkGroupMetaData("d1",new ArrayList<>());
+    public static ChunkGroupMetaData createEmptySeriesChunkGroupMetaData() {
+        ChunkGroupMetaData metaData = new ChunkGroupMetaData("d1", new ArrayList<>());
         return metaData;
     }
 
     public static ChunkGroupMetaData createSimpleChunkGroupMetaData() {
-        ChunkGroupMetaData metaData = new ChunkGroupMetaData(ChunkGroupMetaDataTest.DELTA_OBJECT_UID, new ArrayList<>());
+        ChunkGroupMetaData metaData = new ChunkGroupMetaData(ChunkGroupMetaDataTest.DELTA_OBJECT_UID,
+                new ArrayList<>());
         metaData.addTimeSeriesChunkMetaData(TestHelper.createSimpleTimeSeriesChunkMetaData());
         metaData.addTimeSeriesChunkMetaData(TestHelper.createSimpleTimeSeriesChunkMetaData());
         return metaData;
     }
 
     public static ChunkMetaData createSimpleTimeSeriesChunkMetaData() {
-        ChunkMetaData metaData =
-                new ChunkMetaData(ChunkMetaDataTest.MEASUREMENT_UID, ChunkMetaDataTest.DATA_TYPE, ChunkMetaDataTest.FILE_OFFSET,
-                        ChunkMetaDataTest.START_TIME, ChunkMetaDataTest.END_TIME//, ChunkMetaDataTest.ENCODING_TYPE
-                );
+        ChunkMetaData metaData = new ChunkMetaData(ChunkMetaDataTest.MEASUREMENT_UID, ChunkMetaDataTest.DATA_TYPE,
+                ChunkMetaDataTest.FILE_OFFSET, ChunkMetaDataTest.START_TIME, ChunkMetaDataTest.END_TIME// ,
+                                                                                                       // ChunkMetaDataTest.ENCODING_TYPE
+        );
         metaData.setNumOfPoints(ChunkMetaDataTest.NUM_OF_POINTS);
         metaData.setDigest(new TsDigest());
         return metaData;
     }
 
     public static MeasurementSchema createSimpleMeasurementSchema() {
-        MeasurementSchema timeSeries = new MeasurementSchema(TimeSeriesMetadataTest.measurementUID, TSDataType.INT64, TSEncoding.RLE);
+        MeasurementSchema timeSeries = new MeasurementSchema(TimeSeriesMetadataTest.measurementUID, TSDataType.INT64,
+                TSEncoding.RLE);
         return timeSeries;
     }
 

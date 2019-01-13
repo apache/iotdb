@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.tsfile.write.schema;
 
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -12,112 +27,87 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * FileSchema stores the schema of registered measurements and devices that appeared in this
- * stage. All devices written to the same TSFile have the same schema. FileSchema takes the
- * JSON schema file as a parameter and registers measurement information. FileSchema also records
- * all appeared device IDs in this stage.
+ * FileSchema stores the schema of registered measurements and devices that appeared in this stage. All devices written
+ * to the same TSFile have the same schema. FileSchema takes the JSON schema file as a parameter and registers
+ * measurement information. FileSchema also records all appeared device IDs in this stage.
  *
  * @author kangrong
  */
 public class FileSchema {
-  static private final Logger LOG = LoggerFactory.getLogger(FileSchema.class);
+    static private final Logger LOG = LoggerFactory.getLogger(FileSchema.class);
 
-  /**
-   * {@code Map<measurementId, MeasurementSchema>}
-   */
-  private Map<String, MeasurementSchema> measurementSchema;
+    /**
+     * {@code Map<measurementId, MeasurementSchema>}
+     */
+    private Map<String, MeasurementSchema> measurementSchema;
 
-
-  /**
-   * init measurementSchema and additionalProperties as empty map
-   */
-  public FileSchema() {
-    this.measurementSchema = new HashMap<>();
-  }
-
-  /**
-   *   example:
-   *   {
-   *   "measurement_id": "sensor_cpu_50",
-   *   "data_type": "INT32",
-   *   "encoding": "RLE"
-   *   }
-   *
-   *   {"schema":
-   *    [
-   *     {
-   *      "measurement_id": "sensor_1",
-   *      "data_type": "FLOAT",
-   *      "encoding": "RLE"
-   *     },
-   *     {
-   *       "measurement_id": "sensor_2",
-   *       "data_type": "INT32",
-   *       "encoding": "TS_2DIFF"
-   *     },
-   *     {
-   *       "measurement_id": "sensor_3",
-   *       "data_type": "INT32",
-   *       "encoding": "TS_2DIFF"
-   *     }
-   *    ]
-   *   };
-   *
-   * @param jsonSchema file schema in json format
-   */
-  @Deprecated
-  public FileSchema(JSONObject jsonSchema) throws InvalidJsonSchemaException {
-    this(JsonConverter.converterJsonToMeasurementSchemas(jsonSchema));
-  }
-
-  /**
-   * init additionalProperties and register measurements
-   */
-  public FileSchema(Map<String, MeasurementSchema> measurements) {
-    this();
-    this.registerMeasurements(measurements);
-  }
-
-
-  public TSDataType getMeasurementDataTypes(String measurementUID) {
-    MeasurementSchema measurementSchema = this.measurementSchema.get(measurementUID);
-    if(measurementSchema == null) {
-      return null;
+    /**
+     * init measurementSchema and additionalProperties as empty map
+     */
+    public FileSchema() {
+        this.measurementSchema = new HashMap<>();
     }
-    return measurementSchema.getType();
 
-  }
+    /**
+     * example: { "measurement_id": "sensor_cpu_50", "data_type": "INT32", "encoding": "RLE" }
+     *
+     * {"schema": [ { "measurement_id": "sensor_1", "data_type": "FLOAT", "encoding": "RLE" }, { "measurement_id":
+     * "sensor_2", "data_type": "INT32", "encoding": "TS_2DIFF" }, { "measurement_id": "sensor_3", "data_type": "INT32",
+     * "encoding": "TS_2DIFF" } ] };
+     *
+     * @param jsonSchema
+     *            file schema in json format
+     */
+    @Deprecated
+    public FileSchema(JSONObject jsonSchema) throws InvalidJsonSchemaException {
+        this(JsonConverter.converterJsonToMeasurementSchemas(jsonSchema));
+    }
 
-  public MeasurementSchema getMeasurementSchema(String measurementUID){
-    return measurementSchema.get(measurementUID);
-  }
+    /**
+     * init additionalProperties and register measurements
+     */
+    public FileSchema(Map<String, MeasurementSchema> measurements) {
+        this();
+        this.registerMeasurements(measurements);
+    }
 
+    public TSDataType getMeasurementDataTypes(String measurementUID) {
+        MeasurementSchema measurementSchema = this.measurementSchema.get(measurementUID);
+        if (measurementSchema == null) {
+            return null;
+        }
+        return measurementSchema.getType();
 
-  public Map<String, MeasurementSchema> getAllMeasurementSchema() {
-    return measurementSchema;
-  }
+    }
 
+    public MeasurementSchema getMeasurementSchema(String measurementUID) {
+        return measurementSchema.get(measurementUID);
+    }
 
-  /**
-   * register a measurementSchema
-   */
-  public void registerMeasurement(MeasurementSchema descriptor) {
-    // add to measurementSchema as <measurementID, MeasurementSchema>
-    this.measurementSchema.put(descriptor.getMeasurementId(), descriptor);
-  }
+    public Map<String, MeasurementSchema> getAllMeasurementSchema() {
+        return measurementSchema;
+    }
 
-  /**
-   * register all measurementSchema in input map
-   */
-  private void registerMeasurements(Map<String, MeasurementSchema> measurements) {
-    measurements.forEach((id, md) -> registerMeasurement(md));
-  }
+    /**
+     * register a measurementSchema
+     */
+    public void registerMeasurement(MeasurementSchema descriptor) {
+        // add to measurementSchema as <measurementID, MeasurementSchema>
+        this.measurementSchema.put(descriptor.getMeasurementId(), descriptor);
+    }
 
-  /**
-   * check is this schema contains input measurementID
-   */
-  public boolean hasMeasurement(String measurementId) {
-    return measurementSchema.containsKey(measurementId);
-  }
+    /**
+     * register all measurementSchema in input map
+     */
+    private void registerMeasurements(Map<String, MeasurementSchema> measurements) {
+        measurements.forEach((id, md) -> registerMeasurement(md));
+    }
+
+    /**
+     * check is this schema contains input measurementID
+     */
+    public boolean hasMeasurement(String measurementId) {
+        return measurementSchema.containsKey(measurementId);
+    }
 
 }

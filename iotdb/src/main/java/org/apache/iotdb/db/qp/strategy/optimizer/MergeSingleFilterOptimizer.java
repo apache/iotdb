@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.db.qp.strategy.optimizer;
 
 import org.apache.iotdb.db.exception.qp.LogicalOptimizeException;
@@ -23,15 +38,16 @@ public class MergeSingleFilterOptimizer implements IFilterOptimizer {
     /**
      * 
      * merge and extract node with same Path recursively. <br>
-     * If a node has more than two children and some children has same paths, remove them from this
-     * node and merge them to a new single node, then add the new node to this children list.<br>
-     * if all recursive children of this node have same seriesPath, set this node to single node, and
-     * return the same seriesPath, otherwise, throw exception;
+     * If a node has more than two children and some children has same paths, remove them from this node and merge them
+     * to a new single node, then add the new node to this children list.<br>
+     * if all recursive children of this node have same seriesPath, set this node to single node, and return the same
+     * seriesPath, otherwise, throw exception;
      * 
-     * @param filter - children is not empty.
+     * @param filter
+     *            - children is not empty.
      * 
-     * @return - if all recursive children of this node have same seriesPath, set this node to single
-     *         node, and return the same seriesPath, otherwise, throw exception;
+     * @return - if all recursive children of this node have same seriesPath, set this node to single node, and return
+     *         the same seriesPath, otherwise, throw exception;
      */
     private Path mergeSamePathFilter(FilterOperator filter) throws LogicalOptimizeException {
         if (filter.isLeaf()) {
@@ -61,7 +77,7 @@ public class MergeSingleFilterOptimizer implements IFilterOptimizer {
         }
 
         // sort paths of BasicFunction by their single seriesPath. We don't sort children on non-leaf layer.
-        if(!children.isEmpty() && allIsBasic(children)) {
+        if (!children.isEmpty() && allIsBasic(children)) {
             children.sort(Comparator.comparing(o -> o.getSinglePath().getFullPath()));
         }
         List<FilterOperator> ret = new ArrayList<>();
@@ -132,8 +148,8 @@ public class MergeSingleFilterOptimizer implements IFilterOptimizer {
     }
 
     private boolean allIsBasic(List<FilterOperator> children) {
-        for(FilterOperator child: children) {
-            if(!(child instanceof BasicFunctionOperator)) {
+        for (FilterOperator child : children) {
+            if (!(child instanceof BasicFunctionOperator)) {
                 return false;
             }
         }

@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.tsfile.read.query.executor;
 
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
@@ -40,10 +55,9 @@ public class ExecutorWithTimeGenerator implements QueryExecutor {
         this.chunkLoader = chunkLoader;
     }
 
-
     /**
-     * All leaf nodes of queryFilter in queryExpression are SeriesFilters,
-     * We use a TimeGenerator to control query processing.
+     * All leaf nodes of queryFilter in queryExpression are SeriesFilters, We use a TimeGenerator to control query
+     * processing.
      *
      * for more information, see DataSetWithTimeGenerator
      *
@@ -63,12 +77,12 @@ public class ExecutorWithTimeGenerator implements QueryExecutor {
         List<SeriesReaderByTimestamp> readersOfSelectedSeries = new ArrayList<>();
         List<TSDataType> dataTypes = new ArrayList<>();
 
-        for(int i = 0; i < cached.size(); i++) {
+        for (int i = 0; i < cached.size(); i++) {
 
             List<ChunkMetaData> chunkMetaDataList = metadataQuerier.getChunkMetaDataList(selectedPathList.get(i));
             dataTypes.add(chunkMetaDataList.get(0).getTsDataType());
 
-            if(cached.get(i)) {
+            if (cached.get(i)) {
                 readersOfSelectedSeries.add(null);
                 continue;
             }
@@ -77,7 +91,8 @@ public class ExecutorWithTimeGenerator implements QueryExecutor {
             readersOfSelectedSeries.add(seriesReader);
         }
 
-        return new DataSetWithTimeGenerator(selectedPathList, cached, dataTypes, timeGenerator, readersOfSelectedSeries);
+        return new DataSetWithTimeGenerator(selectedPathList, cached, dataTypes, timeGenerator,
+                readersOfSelectedSeries);
     }
 
     private List<Boolean> removeFilteredPaths(IExpression IExpression, List<Path> selectedPaths) {

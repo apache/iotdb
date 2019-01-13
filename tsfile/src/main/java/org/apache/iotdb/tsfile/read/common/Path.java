@@ -1,12 +1,26 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.tsfile.read.common;
 
 import org.apache.iotdb.tsfile.common.constant.SystemConstant;
 import org.apache.iotdb.tsfile.utils.StringContainer;
 
 /**
- * This class define an Object named Path to represent a series in IoTDB.
- * AndExpression in batch read, this definition is also used in query processing.
- * Note that, Path is unmodified after a new object has been created.
+ * This class define an Object named Path to represent a series in IoTDB. AndExpression in batch read, this definition
+ * is also used in query processing. Note that, Path is unmodified after a new object has been created.
  *
  * @author Kangrong
  */
@@ -29,15 +43,15 @@ public class Path {
 
     public Path(String[] pathSc) {
         assert pathSc != null;
-        String[] splits =
-                new StringContainer(pathSc, SystemConstant.PATH_SEPARATOR).toString().split(
-                        SystemConstant.PATH_SEPARATER_NO_REGEX);
+        String[] splits = new StringContainer(pathSc, SystemConstant.PATH_SEPARATOR).toString()
+                .split(SystemConstant.PATH_SEPARATER_NO_REGEX);
         init(splits);
     }
 
     public Path(String device, String measurement) {
         assert device != null && measurement != null;
-        String[] splits = (device + SystemConstant.PATH_SEPARATOR + measurement).split(SystemConstant.PATH_SEPARATER_NO_REGEX);
+        String[] splits = (device + SystemConstant.PATH_SEPARATOR + measurement)
+                .split(SystemConstant.PATH_SEPARATER_NO_REGEX);
         init(splits);
     }
 
@@ -52,7 +66,6 @@ public class Path {
             fullPath = sc.toString();
         }
     }
-
 
     public String getFullPath() {
         return fullPath;
@@ -85,7 +98,6 @@ public class Path {
         return fullPath;
     }
 
-
     @Override
     public Path clone() {
         return new Path(fullPath);
@@ -94,7 +106,8 @@ public class Path {
     /**
      * if prefix is null, return false, else judge whether this.fullPath starts with prefix
      *
-     * @param prefix the prefix string to be tested.
+     * @param prefix
+     *            the prefix string to be tested.
      * @return True if fullPath starts with prefix
      */
     public boolean startWith(String prefix) {
@@ -104,7 +117,8 @@ public class Path {
     /**
      * if prefix is null, return false, else judge whether this.fullPath starts with prefix.fullPath
      *
-     * @param prefix the prefix path to be tested.
+     * @param prefix
+     *            the prefix path to be tested.
      * @return True if fullPath starts with prefix.fullPath
      */
     public boolean startWith(Path prefix) {
@@ -119,10 +133,12 @@ public class Path {
     }
 
     /**
-     * add {@code prefix}  as the prefix of {@code src}.
+     * add {@code prefix} as the prefix of {@code src}.
      *
-     * @param src    to be added.
-     * @param prefix the newly prefix
+     * @param src
+     *            to be added.
+     * @param prefix
+     *            the newly prefix
      * @return if this path start with prefix
      */
     public static Path addPrefixPath(Path src, String prefix) {
@@ -133,10 +149,12 @@ public class Path {
     }
 
     /**
-     * add {@code prefix}  as the prefix of {@code src}.
+     * add {@code prefix} as the prefix of {@code src}.
      *
-     * @param src    to be added.
-     * @param prefix the newly prefix
+     * @param src
+     *            to be added.
+     * @param prefix
+     *            the newly prefix
      * @return <code>Path</code>
      */
     public static Path addPrefixPath(Path src, Path prefix) {
@@ -144,14 +162,16 @@ public class Path {
     }
 
     /**
-     * replace prefix of descPrefix with given parameter {@code srcPrefix}.
-     * If the level of the path constructed by {@code srcPrefix} is larger than {@code descPrefix}, return {@code
+     * replace prefix of descPrefix with given parameter {@code srcPrefix}. If the level of the path constructed by
+     * {@code srcPrefix} is larger than {@code descPrefix}, return {@code
      * srcPrefix} directly.
      *
-     * @param srcPrefix  the prefix to replace descPrefix
-     * @param descPrefix to be replaced
+     * @param srcPrefix
+     *            the prefix to replace descPrefix
+     * @param descPrefix
+     *            to be replaced
      * @return If the level of the path constructed by {@code srcPrefix} is larger than {@code descPrefix}, return
-     * {@code srcPrefix} directly.
+     *         {@code srcPrefix} directly.
      */
     public static Path replace(String srcPrefix, Path descPrefix) {
         if ("".equals(srcPrefix) || descPrefix.startWith(srcPrefix))
@@ -169,11 +189,13 @@ public class Path {
     }
 
     /**
-     * replace prefix of {@code descPrefix} with given parameter {@code srcPrefix}.
-     * If the level of {@code srcPrefix} is larger than {@code descPrefix}, return {@code srcPrefix} directly.
+     * replace prefix of {@code descPrefix} with given parameter {@code srcPrefix}. If the level of {@code srcPrefix} is
+     * larger than {@code descPrefix}, return {@code srcPrefix} directly.
      *
-     * @param srcPrefix  the prefix to replace descPrefix
-     * @param descPrefix to be replaced
+     * @param srcPrefix
+     *            the prefix to replace descPrefix
+     * @param descPrefix
+     *            to be replaced
      * @return If the level of {@code srcPrefix} is larger than {@code descPrefix}, return {@code srcPrefix} directly.
      */
     public static Path replace(Path srcPrefix, Path descPrefix) {

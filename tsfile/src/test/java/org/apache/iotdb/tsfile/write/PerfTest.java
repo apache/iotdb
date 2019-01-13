@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.tsfile.write;
 
 import ch.qos.logback.classic.Level;
@@ -29,14 +44,13 @@ import java.util.Random;
 import java.util.Scanner;
 
 /**
- * This is used for performance test, no asserting. User could change {@code ROW_COUNT} for larger
- * data test.
+ * This is used for performance test, no asserting. User could change {@code ROW_COUNT} for larger data test.
  *
  * @author kangrong
  */
 public class PerfTest {
     private static final Logger LOG = LoggerFactory.getLogger(PerfTest.class);
-    public static final int ROW_COUNT = 1000;//0000;
+    public static final int ROW_COUNT = 1000;// 0000;
     public static TsFileWriter innerWriter;
     static public String inputDataFile;
     static public String outputDataFile;
@@ -46,9 +60,9 @@ public class PerfTest {
 
     @Before
     public void prepare() throws IOException {
-        LoggerContext loggerContext= (LoggerContext) LoggerFactory.getILoggerFactory();
-        //set global log level
-        ch.qos.logback.classic.Logger logger=loggerContext.getLogger("root");
+        LoggerContext loggerContext = (LoggerContext) LoggerFactory.getILoggerFactory();
+        // set global log level
+        ch.qos.logback.classic.Logger logger = loggerContext.getLogger("root");
         logger.setLevel(Level.toLevel("info"));
 
         inputDataFile = "src/test/resources/perTestInputData";
@@ -69,12 +83,12 @@ public class PerfTest {
         file = new File(errorOutputDataFile);
         if (file.exists())
             file.delete();
-        LoggerContext loggerContext= (LoggerContext) LoggerFactory.getILoggerFactory();
+        LoggerContext loggerContext = (LoggerContext) LoggerFactory.getILoggerFactory();
         // set global log level
-        ch.qos.logback.classic.Logger logger=loggerContext.getLogger("root");
+        ch.qos.logback.classic.Logger logger = loggerContext.getLogger("root");
         logger.setLevel(Level.toLevel("info"));
     }
-    
+
     static private void generateSampleInputDataFile() throws IOException {
         File file = new File(inputDataFile);
         if (file.exists())
@@ -107,9 +121,7 @@ public class PerfTest {
             fw.write(d2 + "\r\n");
         }
         // write error
-        String d =
-                "d2,3," + (startTime + ROW_COUNT) + ",s2," + (ROW_COUNT * 10 + 2) + ",s3,"
-                        + (ROW_COUNT * 10 + 3);
+        String d = "d2,3," + (startTime + ROW_COUNT) + ",s2," + (ROW_COUNT * 10 + 2) + ",s3," + (ROW_COUNT * 10 + 3);
         fw.write(d + "\r\n");
         d = "d2," + (startTime + ROW_COUNT + 1) + ",2,s-1," + (ROW_COUNT * 10 + 2);
         fw.write(d + "\r\n");
@@ -129,7 +141,7 @@ public class PerfTest {
         if (errorFile.exists())
             errorFile.delete();
 
-        //LOG.info(jsonSchema.toString());
+        // LOG.info(jsonSchema.toString());
         FileSchema schema = new FileSchema(jsonSchema);
 
         // TSFileDescriptor.conf.chunkGroupSize = 2000;
@@ -179,7 +191,7 @@ public class PerfTest {
         innerWriter.close();
         endTime = System.currentTimeMillis();
         LOG.info("write total:{},use time:{}s", lineCount, (endTime - startTime) / 1000);
-        LOG.info("write total:{},use time:{}ms", lineCount, (endTime - startTime) );
+        LOG.info("write total:{},use time:{}ms", lineCount, (endTime - startTime));
         LOG.info("src file size:{} GB", FileUtils.getLocalFileByte(inputDataFile, Unit.GB));
         LOG.info("tsfile size:{} MB", FileUtils.getLocalFileByte(outputDataFile, Unit.MB));
         LOG.info("tsfile size:{} B", FileUtils.getLocalFileByte(outputDataFile, Unit.B));
@@ -190,23 +202,19 @@ public class PerfTest {
         JSONObject s1 = new JSONObject();
         s1.put(JsonFormatConstant.MEASUREMENT_UID, "s1");
         s1.put(JsonFormatConstant.DATA_TYPE, TSDataType.INT64.toString());
-        s1.put(JsonFormatConstant.MEASUREMENT_ENCODING,
-                conf.valueEncoder);
+        s1.put(JsonFormatConstant.MEASUREMENT_ENCODING, conf.valueEncoder);
         JSONObject s2 = new JSONObject();
         s2.put(JsonFormatConstant.MEASUREMENT_UID, "s2");
         s2.put(JsonFormatConstant.DATA_TYPE, TSDataType.INT64.toString());
-        s2.put(JsonFormatConstant.MEASUREMENT_ENCODING,
-                conf.valueEncoder);
+        s2.put(JsonFormatConstant.MEASUREMENT_ENCODING, conf.valueEncoder);
         JSONObject s3 = new JSONObject();
         s3.put(JsonFormatConstant.MEASUREMENT_UID, "s3");
         s3.put(JsonFormatConstant.DATA_TYPE, TSDataType.INT64.toString());
-        s3.put(JsonFormatConstant.MEASUREMENT_ENCODING,
-                conf.valueEncoder);
+        s3.put(JsonFormatConstant.MEASUREMENT_ENCODING, conf.valueEncoder);
         JSONObject s4 = new JSONObject();
         s4.put(JsonFormatConstant.MEASUREMENT_UID, "s4");
         s4.put(JsonFormatConstant.DATA_TYPE, TSDataType.TEXT.toString());
-        s4.put(JsonFormatConstant.MEASUREMENT_ENCODING,
-                TSEncoding.PLAIN.toString());
+        s4.put(JsonFormatConstant.MEASUREMENT_ENCODING, TSEncoding.PLAIN.toString());
         JSONArray measureGroup1 = new JSONArray();
         measureGroup1.put(s1);
         measureGroup1.put(s2);

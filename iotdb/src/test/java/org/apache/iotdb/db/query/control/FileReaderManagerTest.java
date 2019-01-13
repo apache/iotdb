@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.db.query.control;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -12,7 +27,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 
 import static org.junit.Assert.fail;
-
 
 public class FileReaderManagerTest {
 
@@ -54,7 +68,6 @@ public class FileReaderManagerTest {
                     Assert.assertTrue(manager.contains(filePath + i));
                 }
 
-
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -92,16 +105,16 @@ public class FileReaderManagerTest {
 
         // the code below is not valid because the cacheFileReaderClearPeriod config in this class is not valid
 
-//        TimeUnit.SECONDS.sleep(5);
-//
-//        for (int i = 1; i <= MAX_FILE_SIZE; i++) {
-//
-//            if (i == 4 || i == 5 || i == 6) {
-//                Assert.assertTrue(manager.contains(filePath + i));
-//            } else {
-//                Assert.assertFalse(manager.contains(filePath + i));
-//            }
-//        }
+        // TimeUnit.SECONDS.sleep(5);
+        //
+        // for (int i = 1; i <= MAX_FILE_SIZE; i++) {
+        //
+        // if (i == 4 || i == 5 || i == 6) {
+        // Assert.assertTrue(manager.contains(filePath + i));
+        // } else {
+        // Assert.assertFalse(manager.contains(filePath + i));
+        // }
+        // }
 
         OpenedFilePathsManager.getInstance().removeUsedFilesForCurrentRequestThread();
         FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();

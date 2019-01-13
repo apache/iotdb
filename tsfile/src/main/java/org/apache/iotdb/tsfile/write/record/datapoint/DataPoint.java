@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.tsfile.write.record.datapoint;
 
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
@@ -10,10 +25,9 @@ import java.io.IOException;
 import java.math.BigDecimal;
 
 /**
- * This is a abstract class representing a data point. DataPoint consists of a
- * measurement id and a data type. subclass of DataPoint need override method
- * {@code write(long time, IChunkWriter writer)} .Every subclass has its data
- * type and overrides a setting method for its data type.
+ * This is a abstract class representing a data point. DataPoint consists of a measurement id and a data type. subclass
+ * of DataPoint need override method {@code write(long time, IChunkWriter writer)} .Every subclass has its data type and
+ * overrides a setting method for its data type.
  *
  * @author kangrong
  */
@@ -25,8 +39,11 @@ public abstract class DataPoint {
 
     /**
      * constructor of DataPoint
-     * @param type value type of this DataPoint
-     * @param measurementId measurementId of this DataPoint
+     * 
+     * @param type
+     *            value type of this DataPoint
+     * @param measurementId
+     *            measurementId of this DataPoint
      */
     public DataPoint(TSDataType type, String measurementId) {
         this.type = type;
@@ -36,34 +53,37 @@ public abstract class DataPoint {
     /**
      * Construct one data point with data type and value
      *
-     * @param dataType data type
-     * @param measurementId measurement id
-     * @param value value in string format
+     * @param dataType
+     *            data type
+     * @param measurementId
+     *            measurement id
+     * @param value
+     *            value in string format
      * @return data point class according to data type
      */
     public static DataPoint getDataPoint(TSDataType dataType, String measurementId, String value) {
         DataPoint dataPoint = null;
         switch (dataType) {
-            case INT32:
-                dataPoint = new IntDataPoint(measurementId, Integer.valueOf(value));
-                break;
-            case INT64:
-                dataPoint = new LongDataPoint(measurementId, Long.valueOf(value));
-                break;
-            case FLOAT:
-                dataPoint = new FloatDataPoint(measurementId, Float.valueOf(value));
-                break;
-            case DOUBLE:
-                dataPoint = new DoubleDataPoint(measurementId, Double.valueOf(value));
-                break;
-            case BOOLEAN:
-                dataPoint = new BooleanDataPoint(measurementId, Boolean.valueOf(value));
-                break;
-            case TEXT:
-                dataPoint = new StringDataPoint(measurementId, new Binary(value));
-                break;
-            default:
-                throw new UnSupportedDataTypeException("This data type is not supoort -" + dataType);
+        case INT32:
+            dataPoint = new IntDataPoint(measurementId, Integer.valueOf(value));
+            break;
+        case INT64:
+            dataPoint = new LongDataPoint(measurementId, Long.valueOf(value));
+            break;
+        case FLOAT:
+            dataPoint = new FloatDataPoint(measurementId, Float.valueOf(value));
+            break;
+        case DOUBLE:
+            dataPoint = new DoubleDataPoint(measurementId, Double.valueOf(value));
+            break;
+        case BOOLEAN:
+            dataPoint = new BooleanDataPoint(measurementId, Boolean.valueOf(value));
+            break;
+        case TEXT:
+            dataPoint = new StringDataPoint(measurementId, new Binary(value));
+            break;
+        default:
+            throw new UnSupportedDataTypeException("This data type is not supoort -" + dataType);
         }
         return dataPoint;
     }
@@ -71,9 +91,12 @@ public abstract class DataPoint {
     /**
      * write this DataPoint by a SeriesWriter
      *
-     * @param time timestamp
-     * @param writer writer
-     * @throws IOException exception in IO
+     * @param time
+     *            timestamp
+     * @param writer
+     *            writer
+     * @throws IOException
+     *             exception in IO
      */
     public abstract void writeTo(long time, IChunkWriter writer) throws IOException;
 

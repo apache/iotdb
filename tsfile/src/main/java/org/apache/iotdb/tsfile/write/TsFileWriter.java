@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.tsfile.write;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
@@ -36,11 +51,10 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * TsFileWriter is the entrance for writing processing. It receives a record and send it to
- * responding chunk group write. It checks memory size for all writing processing along its strategy
- * and flush data stored in memory to OutputStream. At the end of writing, user should call
- * {@code close()} method to flush the last data outside and close the normal outputStream and error
- * outputStream.
+ * TsFileWriter is the entrance for writing processing. It receives a record and send it to responding chunk group
+ * write. It checks memory size for all writing processing along its strategy and flush data stored in memory to
+ * OutputStream. At the end of writing, user should call {@code close()} method to flush the last data outside and close
+ * the normal outputStream and error outputStream.
  *
  * @author kangrong
  */
@@ -74,7 +88,8 @@ public class TsFileWriter {
     /**
      * init this TsFileWriter
      *
-     * @param file the File to be written by this TsFileWriter
+     * @param file
+     *            the File to be written by this TsFileWriter
      * @throws IOException
      */
     public TsFileWriter(File file) throws IOException {
@@ -84,8 +99,10 @@ public class TsFileWriter {
     /**
      * init this TsFileWriter
      *
-     * @param file   the File to be written by this TsFileWriter
-     * @param schema the schema of this TsFile
+     * @param file
+     *            the File to be written by this TsFileWriter
+     * @param schema
+     *            the schema of this TsFile
      * @throws IOException
      */
     public TsFileWriter(File file, FileSchema schema) throws IOException {
@@ -95,8 +112,10 @@ public class TsFileWriter {
     /**
      * init this TsFileWriter
      *
-     * @param file the File to be written by this TsFileWriter
-     * @param conf the configuration of this TsFile
+     * @param file
+     *            the File to be written by this TsFileWriter
+     * @param conf
+     *            the configuration of this TsFile
      * @throws IOException
      */
     public TsFileWriter(File file, TSFileConfig conf) throws IOException {
@@ -106,22 +125,27 @@ public class TsFileWriter {
     /**
      * init this TsFileWriter
      *
-     * @param file   the File to be written by this TsFileWriter
-     * @param schema the schema of this TsFile
-     * @param conf   the configuration of this TsFile
+     * @param file
+     *            the File to be written by this TsFileWriter
+     * @param schema
+     *            the schema of this TsFile
+     * @param conf
+     *            the configuration of this TsFile
      * @throws IOException
      */
-    public TsFileWriter(File file, FileSchema schema, TSFileConfig conf)
-            throws IOException {
+    public TsFileWriter(File file, FileSchema schema, TSFileConfig conf) throws IOException {
         this(new TsFileIOWriter(file), schema, conf);
     }
 
     /**
      * init this TsFileWriter
      *
-     * @param fileWriter the io writer of this TsFile
-     * @param schema       the schema of this TsFile
-     * @param conf         the configuration of this TsFile
+     * @param fileWriter
+     *            the io writer of this TsFile
+     * @param schema
+     *            the schema of this TsFile
+     * @param conf
+     *            the configuration of this TsFile
      */
     protected TsFileWriter(TsFileIOWriter fileWriter, FileSchema schema, TSFileConfig conf) {
         this.fileWriter = fileWriter;
@@ -133,37 +157,33 @@ public class TsFileWriter {
     /**
      * add a measurementSchema to this TsFile
      */
-    public void addMeasurement(MeasurementSchema measurementSchema)
-            throws WriteProcessException {
+    public void addMeasurement(MeasurementSchema measurementSchema) throws WriteProcessException {
         if (schema.hasMeasurement(measurementSchema.getMeasurementId()))
-            throw new WriteProcessException(
-                    "given measurement has exists! " + measurementSchema.getMeasurementId());
+            throw new WriteProcessException("given measurement has exists! " + measurementSchema.getMeasurementId());
         schema.registerMeasurement(measurementSchema);
     }
 
     /**
      * add a new measurement according to json string.
      *
-     * @param measurement example:
-     *                    {
-     *                    "measurement_id": "sensor_cpu_50",
-     *                    "data_type": "INT32",
-     *                    "encoding": "RLE"
-     *                    "compressor": "SNAPPY"
-     *                    }
-     * @throws WriteProcessException if the json is illegal or the measurement exists
+     * @param measurement
+     *            example: { "measurement_id": "sensor_cpu_50", "data_type": "INT32", "encoding": "RLE" "compressor":
+     *            "SNAPPY" }
+     * @throws WriteProcessException
+     *             if the json is illegal or the measurement exists
      */
     void addMeasurementByJson(JSONObject measurement) throws WriteProcessException {
         addMeasurement(JsonConverter.convertJsonToMeasurementSchema(measurement));
     }
 
-
     /**
      * Confirm whether the record is legal. If legal, add it into this RecordWriter.
      *
-     * @param record - a record responding a line
+     * @param record
+     *            - a record responding a line
      * @return - whether the record has been added into RecordWriter legally
-     * @throws WriteProcessException exception
+     * @throws WriteProcessException
+     *             exception
      */
     private boolean checkIsTimeSeriesExist(TSRecord record) throws WriteProcessException {
         IChunkGroupWriter groupWriter;
@@ -189,11 +209,13 @@ public class TsFileWriter {
     /**
      * write a record in type of T.
      *
-     * @param record - record responding a data line
-     * @return true -size of tsfile or metadata reaches the threshold.
-     * false - otherwise
-     * @throws IOException           exception in IO
-     * @throws WriteProcessException exception in write process
+     * @param record
+     *            - record responding a data line
+     * @return true -size of tsfile or metadata reaches the threshold. false - otherwise
+     * @throws IOException
+     *             exception in IO
+     * @throws WriteProcessException
+     *             exception in write process
      */
     public boolean write(TSRecord record) throws IOException, WriteProcessException {
 
@@ -221,14 +243,12 @@ public class TsFileWriter {
         return memTotalSize;
     }
 
-
     /**
-     * check occupied memory size, if it exceeds the chunkGroupSize threshold, flush them to given
-     * OutputStream.
+     * check occupied memory size, if it exceeds the chunkGroupSize threshold, flush them to given OutputStream.
      *
-     * @return true - size of tsfile or metadata reaches the threshold.
-     * false - otherwise
-     * @throws IOException exception in IO
+     * @return true - size of tsfile or metadata reaches the threshold. false - otherwise
+     * @throws IOException
+     *             exception in IO
      */
     private boolean checkMemorySizeAndMayFlushGroup() throws IOException {
         if (recordCount >= recordCountForNextMemCheck) {
@@ -248,13 +268,13 @@ public class TsFileWriter {
         return false;
     }
 
-
     /**
      * flush the data in all series writers of all rowgroup writers and their page writers to outputStream.
      *
-     * @return true - size of tsfile or metadata reaches the threshold.
-     * false - otherwise. But this function just return false, the Override of IoTDB may return true.
-     * @throws IOException exception in IO
+     * @return true - size of tsfile or metadata reaches the threshold. false - otherwise. But this function just return
+     *         false, the Override of IoTDB may return true.
+     * @throws IOException
+     *             exception in IO
      */
     private boolean flushAllChunkGroups() throws IOException {
         if (recordCount > 0) {
@@ -266,7 +286,8 @@ public class TsFileWriter {
                 fileWriter.startFlushChunkGroup(deviceId);
                 ChunkGroupFooter chunkGroupFooter = groupWriter.flushToFileWriter(fileWriter);
                 if (fileWriter.getPos() - pos != chunkGroupFooter.getDataSize())
-                    throw new IOException(String.format("Flushed data size is inconsistent with computation! Estimated: %d, Actuall: %d",
+                    throw new IOException(String.format(
+                            "Flushed data size is inconsistent with computation! Estimated: %d, Actuall: %d",
                             chunkGroupFooter.getDataSize(), fileWriter.getPos() - pos));
 
                 fileWriter.endChunkGroup(chunkGroupFooter);
@@ -280,16 +301,15 @@ public class TsFileWriter {
         return false;
     }
 
-
     private void reset() {
         groupWriters.clear();
     }
 
     /**
-     * calling this method to write the last data remaining in memory and close the normal and error
-     * OutputStream.
+     * calling this method to write the last data remaining in memory and close the normal and error OutputStream.
      *
-     * @throws IOException exception in IO
+     * @throws IOException
+     *             exception in IO
      */
     public void close() throws IOException {
         LOG.info("start close file");

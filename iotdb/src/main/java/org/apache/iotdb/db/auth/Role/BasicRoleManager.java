@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.db.auth.Role;
 
 import org.apache.iotdb.db.auth.AuthException;
@@ -11,7 +26,7 @@ import java.util.*;
 /**
  * This class reads roles from local files through LocalFileRoleAccessor and manages them in a hash map.
  */
-public abstract class BasicRoleManager implements IRoleManager{
+public abstract class BasicRoleManager implements IRoleManager {
 
     private Map<String, Role> roleMap;
     private IRoleAccessor accessor;
@@ -28,9 +43,9 @@ public abstract class BasicRoleManager implements IRoleManager{
         lock.readLock(rolename);
         Role role = roleMap.get(rolename);
         try {
-            if(role == null) {
+            if (role == null) {
                 role = accessor.loadRole(rolename);
-                if(role != null)
+                if (role != null)
                     roleMap.put(rolename, role);
             }
         } catch (IOException e) {
@@ -46,7 +61,7 @@ public abstract class BasicRoleManager implements IRoleManager{
         AuthUtils.validateRolename(rolename);
 
         Role role = getRole(rolename);
-        if(role != null)
+        if (role != null)
             return false;
         lock.writeLock(rolename);
         try {
@@ -65,7 +80,7 @@ public abstract class BasicRoleManager implements IRoleManager{
     public boolean deleteRole(String rolename) throws AuthException {
         lock.writeLock(rolename);
         try {
-            if(accessor.deleteRole(rolename)) {
+            if (accessor.deleteRole(rolename)) {
                 roleMap.remove(rolename);
                 return true;
             } else
@@ -83,10 +98,10 @@ public abstract class BasicRoleManager implements IRoleManager{
         lock.writeLock(rolename);
         try {
             Role role = getRole(rolename);
-            if(role == null) {
+            if (role == null) {
                 throw new AuthException(String.format("No such role %s", rolename));
             }
-            if(role.hasPrivilege(path, privilegeId)) {
+            if (role.hasPrivilege(path, privilegeId)) {
                 return false;
             }
             Set<Integer> privilegesCopy = new HashSet<>(role.getPrivileges(path));
@@ -109,10 +124,10 @@ public abstract class BasicRoleManager implements IRoleManager{
         lock.writeLock(rolename);
         try {
             Role role = getRole(rolename);
-            if(role == null) {
+            if (role == null) {
                 throw new AuthException(String.format("No such role %s", rolename));
             }
-            if(!role.hasPrivilege(path, privilegeId)) {
+            if (!role.hasPrivilege(path, privilegeId)) {
                 return false;
             }
             role.removePrivilege(path, privilegeId);

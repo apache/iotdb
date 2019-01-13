@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.db.query.control;
 
 import org.apache.iotdb.db.engine.filenode.IntervalFileNode;
@@ -12,9 +27,9 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * <p> Singleton pattern, to manage all query tokens.
- * Each jdbc request has an unique job id, in this jdbc request, OpenedFilePathsManager manage all the opened files,
- * and store in the set of current job id.
+ * <p>
+ * Singleton pattern, to manage all query tokens. Each jdbc request has an unique job id, in this jdbc request,
+ * OpenedFilePathsManager manage all the opened files, and store in the set of current job id.
  */
 public class OpenedFilePathsManager {
 
@@ -34,8 +49,7 @@ public class OpenedFilePathsManager {
     }
 
     /**
-     * Set job id for current request thread.
-     * When a query request is created firstly, this method must be invoked.
+     * Set job id for current request thread. When a query request is created firstly, this method must be invoked.
      */
     public void setJobIdForCurrentRequestThread(long jobId) {
         jobIdContainer.set(jobId);
@@ -56,15 +70,16 @@ public class OpenedFilePathsManager {
             addFilePathToMap(jobId, unSealedFilePath);
         }
 
-        for (OverflowInsertFile overflowInsertFile : dataSource.getOverflowSeriesDataSource().getOverflowInsertFileList()) {
+        for (OverflowInsertFile overflowInsertFile : dataSource.getOverflowSeriesDataSource()
+                .getOverflowInsertFileList()) {
             String overflowFilePath = overflowInsertFile.getFilePath();
             addFilePathToMap(jobId, overflowFilePath);
         }
     }
 
     /**
-     * Whenever the jdbc request is closed normally or abnormally, this method must be invoked.
-     * All file paths used by this jdbc request must be cleared and thus the usage reference must be decreased.
+     * Whenever the jdbc request is closed normally or abnormally, this method must be invoked. All file paths used by
+     * this jdbc request must be cleared and thus the usage reference must be decreased.
      */
     public void removeUsedFilesForCurrentRequestThread() {
         if (jobIdContainer.get() != null) {
@@ -79,9 +94,9 @@ public class OpenedFilePathsManager {
     }
 
     /**
-     * Increase the usage reference of filePath of job id.
-     * Before the invoking of this method, <code>this.setJobIdForCurrentRequestThread</code> has been invoked,
-     * so <code>filePathsMap.get(jobId)</code> must not return null.
+     * Increase the usage reference of filePath of job id. Before the invoking of this method,
+     * <code>this.setJobIdForCurrentRequestThread</code> has been invoked, so <code>filePathsMap.get(jobId)</code> must
+     * not return null.
      */
     public void addFilePathToMap(long jobId, String filePath) {
         if (!filePathsMap.get(jobId).contains(filePath)) {

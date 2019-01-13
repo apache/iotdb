@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.db.engine.memcontrol;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -18,7 +33,7 @@ public class MemControllerTest {
     @Test
     public void test() throws BufferWriteProcessorException {
         BasicMemController memController = BasicMemController.getInstance();
-        if(memController instanceof RecordMemController)
+        if (memController instanceof RecordMemController)
             testRecordMemController();
     }
 
@@ -29,29 +44,29 @@ public class MemControllerTest {
         memController.setDangerouseThreshold(16 * GB);
 
         Object[] dummyUser = new Object[20];
-        for(int i = 0; i < dummyUser.length; i++)
+        for (int i = 0; i < dummyUser.length; i++)
             dummyUser[i] = new Object();
 
         // every one request 1 GB, should get 7 safes, 8 warning and 5 dangerous
-        for(int i = 0; i < 7; i++) {
+        for (int i = 0; i < 7; i++) {
             BasicMemController.UsageLevel level = memController.reportUse(dummyUser[i], 1 * GB);
             assertEquals(BasicMemController.UsageLevel.SAFE, level);
         }
-        for(int i = 7; i < 15; i++) {
+        for (int i = 7; i < 15; i++) {
             BasicMemController.UsageLevel level = memController.reportUse(dummyUser[i], 1 * GB);
             assertEquals(BasicMemController.UsageLevel.WARNING, level);
         }
-        for(int i = 15; i < 20; i++) {
+        for (int i = 15; i < 20; i++) {
             BasicMemController.UsageLevel level = memController.reportUse(dummyUser[i], 1 * GB);
             assertEquals(BasicMemController.UsageLevel.DANGEROUS, level);
         }
         assertEquals(15 * GB, memController.getTotalUsage());
         // every one free its mem
-        for(int i = 0; i < 7; i++) {
+        for (int i = 0; i < 7; i++) {
             memController.reportFree(dummyUser[i], 1 * GB);
             assertEquals((14 - i) * GB, memController.getTotalUsage());
         }
-        for(int i = 7; i < 15; i++) {
+        for (int i = 7; i < 15; i++) {
             memController.reportFree(dummyUser[i], 2 * GB);
             assertEquals((14 - i) * GB, memController.getTotalUsage());
         }
@@ -59,15 +74,15 @@ public class MemControllerTest {
         BasicMemController.UsageLevel level = memController.reportUse(dummyUser[0], 100 * GB);
         assertEquals(BasicMemController.UsageLevel.DANGEROUS, level);
         // single user ask continuously
-        for(int i = 0; i < 8 * 1024 - 1; i++) {
+        for (int i = 0; i < 8 * 1024 - 1; i++) {
             level = memController.reportUse(dummyUser[0], 1 * MB);
             assertEquals(BasicMemController.UsageLevel.SAFE, level);
         }
-        for(int i = 8 * 1024 - 1; i < 16 * 1024 - 1; i++) {
+        for (int i = 8 * 1024 - 1; i < 16 * 1024 - 1; i++) {
             level = memController.reportUse(dummyUser[0], 1 * MB);
             assertEquals(BasicMemController.UsageLevel.WARNING, level);
         }
-        for(int i = 16 * 1024 - 1; i < 17 * 1024; i++) {
+        for (int i = 16 * 1024 - 1; i < 17 * 1024; i++) {
             level = memController.reportUse(dummyUser[0], 1 * MB);
             System.out.println(memController.getTotalUsage() / GB + " " + memController.getTotalUsage() / MB % 1024);
             assertEquals(BasicMemController.UsageLevel.DANGEROUS, level);

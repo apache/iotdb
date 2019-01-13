@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.tsfile.write.schema.converter;
 
 import static org.junit.Assert.*;
@@ -40,14 +55,11 @@ public class JsonConverterTest {
 
         FileSchema fileSchema = new FileSchema(obj);
         Collection<MeasurementSchema> measurements = fileSchema.getAllMeasurementSchema().values();
-        String[] measureDesStrings =
-                {
-                        "[s4,DOUBLE,RLE,{max_error=12},UNCOMPRESSED]",
-                        "[s5,INT32,TS_2DIFF,{},UNCOMPRESSED]",
-                        "[s1,INT32,RLE,{},UNCOMPRESSED]",
-                        "[s2,INT64,TS_2DIFF,{},UNCOMPRESSED]",
+        String[] measureDesStrings = { "[s4,DOUBLE,RLE,{max_error=12},UNCOMPRESSED]",
+                "[s5,INT32,TS_2DIFF,{},UNCOMPRESSED]", "[s1,INT32,RLE,{},UNCOMPRESSED]",
+                "[s2,INT64,TS_2DIFF,{},UNCOMPRESSED]",
 
-                };
+        };
         int i = 0;
         for (MeasurementSchema desc : measurements) {
             assertEquals(measureDesStrings[i++], desc.toString());
@@ -67,7 +79,7 @@ public class JsonConverterTest {
         }
         FileSchema fileSchema = new FileSchema(srcObj);
         JSONObject descObj = JsonConverter.converterFileSchemaToJson(fileSchema);
-        //check schema
+        // check schema
         assertTrue(descObj.has(JsonFormatConstant.JSON_SCHEMA));
         JSONArray srcSchemaArray = srcObj.getJSONArray(JsonFormatConstant.JSON_SCHEMA);
         JSONArray descSchemaArray = descObj.getJSONArray(JsonFormatConstant.JSON_SCHEMA);
@@ -89,12 +101,15 @@ public class JsonConverterTest {
 
     /**
      * check whether two given JSONObjects are equal.
-     * @param obj1 the first JSONObject
-     * @param obj2 the second JSONObject
+     * 
+     * @param obj1
+     *            the first JSONObject
+     * @param obj2
+     *            the second JSONObject
      */
-    private void checkJsonObjectEqual(JSONObject obj1, JSONObject obj2){
+    private void checkJsonObjectEqual(JSONObject obj1, JSONObject obj2) {
         assertEquals(obj1.keySet().size(), obj2.keySet().size());
-        obj1.keySet().forEach(k->{
+        obj1.keySet().forEach(k -> {
             String key = (String) k;
             assertTrue(obj2.has(key));
             assertTrue(obj2.has(key));

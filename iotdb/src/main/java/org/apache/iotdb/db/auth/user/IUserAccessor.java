@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.db.auth.user;
 
 import org.apache.iotdb.db.auth.entity.User;
@@ -13,7 +28,9 @@ public interface IUserAccessor {
 
     /**
      * Deserialize a user from lower storage.
-     * @param username The name of the user to be deserialized.
+     * 
+     * @param username
+     *            The name of the user to be deserialized.
      * @return The user object or null if no such user.
      * @throws IOException
      */
@@ -21,14 +38,18 @@ public interface IUserAccessor {
 
     /**
      * Serialize the user object to lower storage.
-     * @param user The user object that is to be saved.
+     * 
+     * @param user
+     *            The user object that is to be saved.
      * @throws IOException
      */
     void saveUser(User user) throws IOException;
 
     /**
      * Delete a user's from lower storage.
-     * @param username The name of the user to be deleted.
+     * 
+     * @param username
+     *            The name of the user to be deleted.
      * @return True if the user is successfully deleted, false if the user does not exists.
      * @throws IOException
      */

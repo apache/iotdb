@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.db.auth;
 
 import org.apache.iotdb.db.auth.Role.LocalFileRoleAccessor;
@@ -38,7 +53,7 @@ public class LocalFIleRoleAccessorTest {
         Role[] roles = new Role[5];
         for (int i = 0; i < roles.length; i++) {
             roles[i] = new Role("role" + i);
-            for(int j = 0; j <= i; j++) {
+            for (int j = 0; j <= i; j++) {
                 PathPrivilege pathPrivilege = new PathPrivilege("root.a.b.c" + j);
                 pathPrivilege.privileges.add(j);
                 roles[i].privilegeList.add(pathPrivilege);
@@ -46,12 +61,12 @@ public class LocalFIleRoleAccessorTest {
         }
 
         // save
-        for(Role role : roles) {
+        for (Role role : roles) {
             accessor.saveRole(role);
         }
 
         // load
-        for(Role role : roles) {
+        for (Role role : roles) {
             Role loadedRole = accessor.loadRole(role.name);
             assertEquals(role, loadedRole);
         }
@@ -65,7 +80,7 @@ public class LocalFIleRoleAccessorTest {
         // list
         List<String> roleNames = accessor.listAllRoles();
         roleNames.sort(null);
-        for(int i = 0; i < roleNames.size(); i++) {
+        for (int i = 0; i < roleNames.size(); i++) {
             assertEquals(roles[i].name, roleNames.get(i));
         }
     }

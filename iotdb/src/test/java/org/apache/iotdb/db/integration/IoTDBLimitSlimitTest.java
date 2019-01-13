@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.db.integration;
 
 import org.apache.iotdb.db.service.IoTDB;
@@ -20,8 +35,8 @@ import java.sql.Statement;
 import static org.junit.Assert.fail;
 
 /**
- * Notice that, all test begins with "IoTDB" is integration test.
- * All test which will start the IoTDB server should be defined as integration test.
+ * Notice that, all test begins with "IoTDB" is integration test. All test which will start the IoTDB server should be
+ * defined as integration test.
  */
 public class IoTDBLimitSlimitTest {
 
@@ -29,8 +44,7 @@ public class IoTDBLimitSlimitTest {
 
     private static boolean testFlag = Constant.testFlag;
 
-    private static String[] insertSqls = new String[]{
-            "SET STORAGE GROUP TO root.vehicle",
+    private static String[] insertSqls = new String[] { "SET STORAGE GROUP TO root.vehicle",
 
             "CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE",
             "CREATE TIMESERIES root.vehicle.d0.s1 WITH DATATYPE=INT64, ENCODING=RLE",
@@ -69,8 +83,7 @@ public class IoTDBLimitSlimitTest {
             "insert into root.vehicle.d0(timestamp,s2) values(105,11.11)",
             "insert into root.vehicle.d0(timestamp,s2) values(1000,1000.11)",
 
-            "insert into root.vehicle.d0(timestamp,s1) values(2000-01-01T08:00:00+08:00, 100)",
-    };
+            "insert into root.vehicle.d0(timestamp,s1) values(2000-01-01T08:00:00+08:00, 100)", };
 
     @BeforeClass
     public static void setUp() throws Exception {
@@ -95,56 +108,26 @@ public class IoTDBLimitSlimitTest {
     }
 
     public void SelectTest() throws ClassNotFoundException, SQLException {
-        String[] sqlS = {
-                "SELECT s1 FROM root.vehicle.d0 WHERE time<200 limit 3",
-                "1,1101,\n" +
-                        "2,40000,\n" +
-                        "50,50000,\n",
+        String[] sqlS = { "SELECT s1 FROM root.vehicle.d0 WHERE time<200 limit 3",
+                "1,1101,\n" + "2,40000,\n" + "50,50000,\n",
 
-                "SELECT s0 FROM root.vehicle.d0 WHERE s1 > 190 limit 3",
-                "1,101,\n" +
-                        "2,10000,\n" +
-                        "50,10000,\n",
+                "SELECT s0 FROM root.vehicle.d0 WHERE s1 > 190 limit 3", "1,101,\n" + "2,10000,\n" + "50,10000,\n",
 
                 "SELECT s1,s2 FROM root.vehicle.d0 where s1>190 or s2<10.0 limit 3 offset 2",
-                "3,null,3.33,\n" +
-                        "4,null,4.44,\n" +
-                        "50,50000,null,\n",
+                "3,null,3.33,\n" + "4,null,4.44,\n" + "50,50000,null,\n",
 
                 "select * from root.vehicle.d0 slimit 1",
-                "1,101,\n" +
-                        "2,10000,\n" +
-                        "50,10000,\n" +
-                        "100,99,\n" +
-                        "101,99,\n" +
-                        "102,80,\n" +
-                        "103,99,\n" +
-                        "104,90,\n" +
-                        "105,99,\n" +
-                        "106,99,\n" +
-                        "1000,22222,\n",
-
+                "1,101,\n" + "2,10000,\n" + "50,10000,\n" + "100,99,\n" + "101,99,\n" + "102,80,\n" + "103,99,\n"
+                        + "104,90,\n" + "105,99,\n" + "106,99,\n" + "1000,22222,\n",
 
                 "select * from root.vehicle.d0 slimit 1 soffset 2",
-                "2,2.22,\n" +
-                        "3,3.33,\n" +
-                        "4,4.44,\n" +
-                        "102,10.0,\n" +
-                        "105,11.11,\n" +
-                        "1000,1000.11,\n",
+                "2,2.22,\n" + "3,3.33,\n" + "4,4.44,\n" + "102,10.0,\n" + "105,11.11,\n" + "1000,1000.11,\n",
 
                 "select d0 from root.vehicle slimit 1 soffset 2",
-                "2,2.22,\n" +
-                        "3,3.33,\n" +
-                        "4,4.44,\n" +
-                        "102,10.0,\n" +
-                        "105,11.11,\n" +
-                        "1000,1000.11,\n",
+                "2,2.22,\n" + "3,3.33,\n" + "4,4.44,\n" + "102,10.0,\n" + "105,11.11,\n" + "1000,1000.11,\n",
 
                 "select * from root.vehicle.d0 where s1>190 or s2 < 10.0 limit 3 offset 1 slimit 1 soffset 2 ",
-                "2,2.22,\n" +
-                        "3,3.33,\n" +
-                        "4,4.44,\n"
+                "2,2.22,\n" + "3,3.33,\n" + "4,4.44,\n"
 
         };
         executeSQL(sqlS);
@@ -157,9 +140,9 @@ public class IoTDBLimitSlimitTest {
             String result = "";
             Long now_start = 0L;
             boolean cmp = false;
-            connection = DriverManager.getConnection(Config.IOTDB_URL_PREFIX+"127.0.0.1:6667/", "root", "root");
+            connection = DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
             for (String sql : sqls) {
-                //System.out.println("----" + sql);
+                // System.out.println("----" + sql);
                 if (cmp) {
                     Assert.assertEquals(sql, result);
                     cmp = false;
@@ -216,7 +199,7 @@ public class IoTDBLimitSlimitTest {
         Class.forName(Config.JDBC_DRIVER_NAME);
         Connection connection = null;
         try {
-            connection = DriverManager.getConnection(Config.IOTDB_URL_PREFIX+"127.0.0.1:6667/", "root", "root");
+            connection = DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
             Statement statement = connection.createStatement();
             for (String sql : insertSqls) {
                 statement.execute(sql);

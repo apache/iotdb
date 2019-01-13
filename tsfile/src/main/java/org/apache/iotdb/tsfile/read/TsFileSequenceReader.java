@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.tsfile.read;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
@@ -47,18 +62,18 @@ public class TsFileSequenceReader {
     private String file;
 
     /**
-     * Create a file reader of the given file.
-     * The reader will read the tail of the file to get the file metadata size.
-     * Then the reader will skip the first TSFileConfig.MAGIC_STRING.length() bytes of the file
-     * for preparing reading real data.
+     * Create a file reader of the given file. The reader will read the tail of the file to get the file metadata size.
+     * Then the reader will skip the first TSFileConfig.MAGIC_STRING.length() bytes of the file for preparing reading
+     * real data.
      *
-     * @param file the data file
-     * @throws IOException If some I/O error occurs
+     * @param file
+     *            the data file
+     * @throws IOException
+     *             If some I/O error occurs
      */
     public TsFileSequenceReader(String file) throws IOException {
         this(file, true);
     }
-
 
     public TsFileSequenceReader(String file, boolean loadMetadataSize) throws IOException {
         this.file = file;
@@ -72,20 +87,22 @@ public class TsFileSequenceReader {
         ByteBuffer metadataSize = ByteBuffer.allocate(Integer.BYTES);
         tsFileInput.read(metadataSize, tsFileInput.size() - TSFileConfig.MAGIC_STRING.length() - Integer.BYTES);
         metadataSize.flip();
-        //read file metadata size and position
+        // read file metadata size and position
         fileMetadataSize = ReadWriteIOUtils.readInt(metadataSize);
         fileMetadataPos = tsFileInput.size() - TSFileConfig.MAGIC_STRING.length() - Integer.BYTES - fileMetadataSize;
-        //skip the magic header
+        // skip the magic header
         tsFileInput.position(TSFileConfig.MAGIC_STRING.length());
     }
 
-
     /**
-     * @param input            the input of a tsfile. The current position should be a markder and then a chunk Header,
-     *                         rather than the magic number
-     * @param fileMetadataPos  the position of the file metadata in the TsFileInput
-     *                         from the beginning of the input to the current position
-     * @param fileMetadataSize the byte size of the file metadata in the input
+     * @param input
+     *            the input of a tsfile. The current position should be a markder and then a chunk Header, rather than
+     *            the magic number
+     * @param fileMetadataPos
+     *            the position of the file metadata in the TsFileInput from the beginning of the input to the current
+     *            position
+     * @param fileMetadataSize
+     *            the byte size of the file metadata in the input
      */
     public TsFileSequenceReader(TsFileInput input, long fileMetadataPos, int fileMetadataSize) {
         this.tsFileInput = input;
@@ -137,49 +154,60 @@ public class TsFileSequenceReader {
     }
 
     /**
-     * read data from current position of the input, and deserialize it to a ChunkGroupFooter.
-     * <br>This method is not threadsafe.</>
+     * read data from current position of the input, and deserialize it to a ChunkGroupFooter. <br>
+     * This method is not threadsafe.</>
+     * 
      * @return a ChunkGroupFooter
-     * @throws IOException io error
+     * @throws IOException
+     *             io error
      */
     public ChunkGroupFooter readChunkGroupFooter() throws IOException {
         return ChunkGroupFooter.deserializeFrom(tsFileInput.wrapAsInputStream(), true);
     }
+
     /**
      * read data from current position of the input, and deserialize it to a ChunkGroupFooter.
-     * @param position the offset of the chunk group footer in the file
-     * @param markerRead  true if the offset does not contains the marker , otherwise false
+     * 
+     * @param position
+     *            the offset of the chunk group footer in the file
+     * @param markerRead
+     *            true if the offset does not contains the marker , otherwise false
      * @return a ChunkGroupFooter
-     * @throws IOException io error
+     * @throws IOException
+     *             io error
      */
     public ChunkGroupFooter readChunkGroupFooter(long position, boolean markerRead) throws IOException {
         return ChunkGroupFooter.deserializeFrom(tsFileInput.wrapAsFileChannel(), position, markerRead);
     }
 
     /**
-     * After reading the footer of a ChunkGroup, call this method to set the file pointer to the start of the data of this
-     * ChunkGroup if you want to read its data next.
-     * <br>This method is not threadsafe.</>
-     * @param footer the chunkGroupFooter which you want to read data
+     * After reading the footer of a ChunkGroup, call this method to set the file pointer to the start of the data of
+     * this ChunkGroup if you want to read its data next. <br>
+     * This method is not threadsafe.</>
+     * 
+     * @param footer
+     *            the chunkGroupFooter which you want to read data
      */
     public void setPositionToAChunkGroup(ChunkGroupFooter footer) throws IOException {
         tsFileInput.position(tsFileInput.position() - footer.getDataSize() - footer.getSerializedSize());
     }
 
-
     /**
-     * read data from current position of the input, and deserialize it to a ChunkHeader.
-     * <br>This method is not threadsafe.</>
+     * read data from current position of the input, and deserialize it to a ChunkHeader. <br>
+     * This method is not threadsafe.</>
+     * 
      * @return a ChunkHeader
-     * @throws IOException io error
+     * @throws IOException
+     *             io error
      */
     public ChunkHeader readChunkHeader() throws IOException {
         return ChunkHeader.deserializeFrom(tsFileInput.wrapAsInputStream(), true);
     }
 
     /**
-     * notice, the position of the channel MUST be at the end of this header.
-     * <br>This method is not threadsafe.</>
+     * notice, the position of the channel MUST be at the end of this header. <br>
+     * This method is not threadsafe.</>
+     * 
      * @return the pages of this chunk
      */
     public ByteBuffer readChunk(ChunkHeader header) throws IOException {
@@ -188,7 +216,9 @@ public class TsFileSequenceReader {
 
     /**
      * notice, this function will modify channel's position.
-     * @param  position the offset of the chunk data
+     * 
+     * @param position
+     *            the offset of the chunk data
      * @return the pages of this chunk
      */
     public ByteBuffer readChunk(ChunkHeader header, long position) throws IOException {
@@ -197,13 +227,16 @@ public class TsFileSequenceReader {
 
     public Chunk readMemChunk(ChunkMetaData metaData) throws IOException {
         ChunkHeader header = readChunkHeader(metaData.getOffsetOfChunkHeader(), false);
-        ByteBuffer buffer = readChunk(metaData.getOffsetOfChunkHeader() + header.getSerializedSize(), header.getDataSize());
+        ByteBuffer buffer = readChunk(metaData.getOffsetOfChunkHeader() + header.getSerializedSize(),
+                header.getDataSize());
         return new Chunk(header, buffer);
     }
 
     /**
-     * @param position the file offset of this chunk's header
-     * @param markerRead true if the offset does not contains the marker , otherwise false
+     * @param position
+     *            the file offset of this chunk's header
+     * @param markerRead
+     *            true if the offset does not contains the marker , otherwise false
      */
     private ChunkHeader readChunkHeader(long position, boolean markerRead) throws IOException {
         return ChunkHeader.deserializeFrom(tsFileInput.wrapAsFileChannel(), position, markerRead);
@@ -211,8 +244,11 @@ public class TsFileSequenceReader {
 
     /**
      * notice, this function will modify channel's position.
-     * @param dataSize the size of chunkdata
-     * @param  position the offset of the chunk data
+     * 
+     * @param dataSize
+     *            the size of chunkdata
+     * @param position
+     *            the offset of the chunk data
      * @return the pages of this chunk
      */
     private ByteBuffer readChunk(long position, int dataSize) throws IOException {
@@ -221,6 +257,7 @@ public class TsFileSequenceReader {
 
     /**
      * not thread safe.
+     * 
      * @param type
      * @return
      * @throws IOException
@@ -232,7 +269,8 @@ public class TsFileSequenceReader {
     /**
      * notice, this function will modify channel's position.
      *
-     * @param position the file offset of this page header's header
+     * @param position
+     *            the file offset of this page header's header
      */
     private PageHeader readPageHeader(TSDataType type, long position) throws IOException {
         int size = PageHeader.calculatePageHeaderSize(type);
@@ -252,21 +290,21 @@ public class TsFileSequenceReader {
         ByteBuffer buffer = readData(position, header.getCompressedSize());
         UnCompressor unCompressor = UnCompressor.getUnCompressor(type);
         ByteBuffer uncompressedBuffer = ByteBuffer.allocate(header.getUncompressedSize());
-        //unCompressor.uncompress(buffer, uncompressedBuffer);
-        //uncompressedBuffer.flip();
+        // unCompressor.uncompress(buffer, uncompressedBuffer);
+        // uncompressedBuffer.flip();
         switch (type) {
-            case UNCOMPRESSED:
-                return buffer;
-            default:
-                unCompressor.uncompress(buffer.array(), buffer.position(), buffer.remaining(), uncompressedBuffer.array(), 0);//FIXME if the buffer is not array-impelmented.
-                return uncompressedBuffer;
+        case UNCOMPRESSED:
+            return buffer;
+        default:
+            unCompressor.uncompress(buffer.array(), buffer.position(), buffer.remaining(), uncompressedBuffer.array(),
+                    0);// FIXME if the buffer is not array-impelmented.
+            return uncompressedBuffer;
         }
     }
 
-
     /**
-     * read one byte from the input.
-     * <br> this method is not thread safe</>
+     * read one byte from the input. <br>
+     * this method is not thread safe</>
      */
     public byte readMarker() throws IOException {
         markerBuffer.clear();
@@ -288,11 +326,14 @@ public class TsFileSequenceReader {
     }
 
     /**
-     * read data from tsFileInput, from the current position (if position = -1), or the given position.
-     * <br> if position = -1, the tsFileInput's position will be changed to the current position + real data size that been read.
-     * Other wise, the tsFileInput's position is not changed.
-     * @param position the start position of data in the tsFileInput, or the current position if position = -1
-     * @param size the size of data that want to read
+     * read data from tsFileInput, from the current position (if position = -1), or the given position. <br>
+     * if position = -1, the tsFileInput's position will be changed to the current position + real data size that been
+     * read. Other wise, the tsFileInput's position is not changed.
+     * 
+     * @param position
+     *            the start position of data in the tsFileInput, or the current position if position = -1
+     * @param size
+     *            the size of data that want to read
      * @return data that been read.
      */
     private ByteBuffer readData(long position, int size) throws IOException {
