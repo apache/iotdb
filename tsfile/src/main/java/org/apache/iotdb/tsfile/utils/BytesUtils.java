@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.tsfile.utils;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
@@ -11,8 +26,8 @@ import java.io.UnsupportedEncodingException;
 import java.util.List;
 
 /**
- * BytesUtils is a utility class. It provide conversion among byte array and
- * other type including integer, long, float, boolean, double and string. <br>
+ * BytesUtils is a utility class. It provide conversion among byte array and other type including integer, long, float,
+ * boolean, double and string. <br>
  * It also provide other usable function as follow:<br>
  * reading function which receives InputStream. <br>
  * concat function to join a list of byte array to one.<br>
@@ -26,16 +41,13 @@ public class BytesUtils {
     /**
      * integer convert to byte[4]
      *
-     * @param i integer to convert
+     * @param i
+     *            integer to convert
      * @return byte[4] for integer
      */
     public static byte[] intToBytes(int i) {
-        return new byte[]{
-                (byte) ((i >> 24) & 0xFF),
-                (byte) ((i >> 16) & 0xFF),
-                (byte) ((i >> 8) & 0xFF),
-                (byte) (i & 0xFF)
-        };
+        return new byte[] { (byte) ((i >> 24) & 0xFF), (byte) ((i >> 16) & 0xFF), (byte) ((i >> 8) & 0xFF),
+                (byte) (i & 0xFF) };
     }
 
     public static byte[] intToTwoBytes(int i) {
@@ -56,12 +68,14 @@ public class BytesUtils {
     }
 
     /**
-     * integer convert to byte array, then write four bytes to parameter desc
-     * start from index:offset
+     * integer convert to byte array, then write four bytes to parameter desc start from index:offset
      *
-     * @param i      integer to convert
-     * @param desc   byte array be written
-     * @param offset position in desc byte array that conversion result should start
+     * @param i
+     *            integer to convert
+     * @param desc
+     *            byte array be written
+     * @param offset
+     *            position in desc byte array that conversion result should start
      * @return byte array
      */
     public static byte[] intToBytes(int i, byte[] desc, int offset) {
@@ -76,22 +90,21 @@ public class BytesUtils {
     /**
      * byte[4] convert to integer
      *
-     * @param bytes input byte[]
+     * @param bytes
+     *            input byte[]
      * @return integer
      */
     public static int bytesToInt(byte[] bytes) {
-        return bytes[3] & 0xFF |
-                (bytes[2] & 0xFF) << 8 |
-                (bytes[1] & 0xFF) << 16 |
-                (bytes[0] & 0xFF) << 24;
+        return bytes[3] & 0xFF | (bytes[2] & 0xFF) << 8 | (bytes[1] & 0xFF) << 16 | (bytes[0] & 0xFF) << 24;
     }
-
 
     /**
      * convert four-bytes byte array cut from parameters to integer.
      *
-     * @param bytes  source bytes which length should be greater than 4
-     * @param offset position in parameter byte array that conversion result should start
+     * @param bytes
+     *            source bytes which length should be greater than 4
+     * @param offset
+     *            position in parameter byte array that conversion result should start
      * @return integer
      */
     public static int bytesToInt(byte[] bytes, int offset) {
@@ -108,7 +121,8 @@ public class BytesUtils {
     /**
      * convert float to byte array
      *
-     * @param x float
+     * @param x
+     *            float
      * @return byte[4]
      */
     public static byte[] floatToBytes(float x) {
@@ -122,12 +136,14 @@ public class BytesUtils {
     }
 
     /**
-     * float convert to boolean, then write four bytes to parameter desc start
-     * from index:offset
+     * float convert to boolean, then write four bytes to parameter desc start from index:offset
      *
-     * @param x      float
-     * @param desc   byte array be written
-     * @param offset position in desc byte array that conversion result should start
+     * @param x
+     *            float
+     * @param desc
+     *            byte array be written
+     * @param offset
+     *            position in desc byte array that conversion result should start
      */
     public static void floatToBytes(float x, byte[] desc, int offset) {
         assert desc.length - offset >= 4;
@@ -141,7 +157,8 @@ public class BytesUtils {
     /**
      * convert byte[4] to float
      *
-     * @param b byte[4]
+     * @param b
+     *            byte[4]
      * @return float
      */
     public static float bytesToFloat(byte[] b) {
@@ -160,8 +177,10 @@ public class BytesUtils {
     /**
      * convert four-bytes byte array cut from parameters to float.
      *
-     * @param b      source bytes which length should be greater than 4
-     * @param offset position in parameter byte array that conversion result should start
+     * @param b
+     *            source bytes which length should be greater than 4
+     * @param offset
+     *            position in parameter byte array that conversion result should start
      * @return float
      */
     public static float bytesToFloat(byte[] b, int offset) {
@@ -180,7 +199,8 @@ public class BytesUtils {
     /**
      * convert double to byte array
      *
-     * @param data double
+     * @param data
+     *            double
      * @return byte[8]
      */
     public static byte[] doubleToBytes(double data) {
@@ -196,9 +216,12 @@ public class BytesUtils {
     /**
      * convert double to byte into the given byte array started from offset.
      *
-     * @param d      input double
-     * @param bytes  target byte[]
-     * @param offset start pos
+     * @param d
+     *            input double
+     * @param bytes
+     *            target byte[]
+     * @param offset
+     *            start pos
      */
     public static void doubleToBytes(double d, byte[] bytes, int offset) {
         assert bytes.length - offset >= 8;
@@ -212,7 +235,8 @@ public class BytesUtils {
     /**
      * convert byte array to double
      *
-     * @param bytes byte[8]
+     * @param bytes
+     *            byte[8]
      * @return double
      */
     public static double bytesToDouble(byte[] bytes) {
@@ -237,8 +261,10 @@ public class BytesUtils {
     /**
      * convert eight-bytes byte array cut from parameters to double.
      *
-     * @param bytes  source bytes which length should be greater than 8
-     * @param offset position in parameter byte array that conversion result should start
+     * @param bytes
+     *            source bytes which length should be greater than 8
+     * @param offset
+     *            position in parameter byte array that conversion result should start
      * @return double
      */
     public static double bytesToDouble(byte[] bytes, int offset) {
@@ -264,7 +290,8 @@ public class BytesUtils {
     /**
      * convert boolean to byte[1]
      *
-     * @param x boolean
+     * @param x
+     *            boolean
      * @return byte[]
      */
     public static byte[] boolToBytes(boolean x) {
@@ -277,12 +304,14 @@ public class BytesUtils {
     }
 
     /**
-     * boolean convert to byte array, then write four bytes to parameter desc
-     * start from index:offset
+     * boolean convert to byte array, then write four bytes to parameter desc start from index:offset
      *
-     * @param x      input boolean
-     * @param desc   byte array be written
-     * @param offset position in desc byte array that conversion result should start
+     * @param x
+     *            input boolean
+     * @param desc
+     *            byte array be written
+     * @param offset
+     *            position in desc byte array that conversion result should start
      * @return byte[1]
      */
     public static byte[] boolToBytes(boolean x, byte[] desc, int offset) {
@@ -296,7 +325,8 @@ public class BytesUtils {
     /**
      * byte array to boolean
      *
-     * @param b input byte[1]
+     * @param b
+     *            input byte[1]
      * @return boolean
      */
     public static boolean bytesToBool(byte[] b) {
@@ -310,8 +340,10 @@ public class BytesUtils {
     /**
      * convert one-bytes byte array cut from parameters to boolean.
      *
-     * @param b      source bytes which length should be greater than 1
-     * @param offset position in parameter byte array that conversion result should start
+     * @param b
+     *            source bytes which length should be greater than 1
+     * @param offset
+     *            position in parameter byte array that conversion result should start
      * @return boolean
      */
     public static boolean bytesToBool(byte[] b, int offset) {
@@ -323,10 +355,10 @@ public class BytesUtils {
     }
 
     /**
-     * long to byte array with default converting length 8. It means the length
-     * of result byte array is 8
+     * long to byte array with default converting length 8. It means the length of result byte array is 8
      *
-     * @param num long variable to be converted
+     * @param num
+     *            long variable to be converted
      * @return byte[8]
      */
     public static byte[] longToBytes(long num) {
@@ -334,16 +366,16 @@ public class BytesUtils {
     }
 
     /**
-     * specify the result array length. then, convert long to Big-Endian byte
-     * from low to high. <br>
+     * specify the result array length. then, convert long to Big-Endian byte from low to high. <br>
      * e.g.<br>
-     * the binary presentation of long number 1000L is {6 bytes equal 0000000}
-     * 00000011 11101000<br>
-     * if len = 2, it will return byte array :{00000011 11101000}(Big-Endian) if
-     * len = 1, it will return byte array :{11101000}
+     * the binary presentation of long number 1000L is {6 bytes equal 0000000} 00000011 11101000<br>
+     * if len = 2, it will return byte array :{00000011 11101000}(Big-Endian) if len = 1, it will return byte array
+     * :{11101000}
      *
-     * @param num long variable to be converted
-     * @param len length of result byte array
+     * @param num
+     *            long variable to be converted
+     * @param len
+     *            length of result byte array
      * @return byte array which length equals with parameter len
      */
     public static byte[] longToBytes(long num, int len) {
@@ -354,14 +386,15 @@ public class BytesUtils {
         return byteNum;
     }
 
-
     /**
-     * long convert to byte array, then write four bytes to parameter desc start
-     * from index:offset
+     * long convert to byte array, then write four bytes to parameter desc start from index:offset
      *
-     * @param num     input long variable
-     * @param desc    byte array be written
-     * @param offset_ position in desc byte array that conversion result should start
+     * @param num
+     *            input long variable
+     * @param desc
+     *            byte array be written
+     * @param offset_
+     *            position in desc byte array that conversion result should start
      * @return byte array
      */
     public static byte[] longToBytes(long num, byte[] desc, int offset_) {
@@ -375,7 +408,8 @@ public class BytesUtils {
     /**
      * convert byte array to long with default length 8. namely
      *
-     * @param byteNum input byte array
+     * @param byteNum
+     *            input byte array
      * @return long
      */
     public static long bytesToLong(byte[] byteNum) {
@@ -384,14 +418,15 @@ public class BytesUtils {
     }
 
     /**
-     * specify the input byte array length. then, convert byte array to long
-     * value from low to high. <br>
+     * specify the input byte array length. then, convert byte array to long value from low to high. <br>
      * e.g.<br>
-     * the input byte array is {00000011 11101000}. if len = 2, return 1000 if
-     * len = 1, return 232(only calculate the low byte)
+     * the input byte array is {00000011 11101000}. if len = 2, return 1000 if len = 1, return 232(only calculate the
+     * low byte)
      *
-     * @param byteNum byte array to be converted
-     * @param len     length of input byte array to be converted
+     * @param byteNum
+     *            byte array to be converted
+     * @param len
+     *            length of input byte array to be converted
      * @return long
      */
     public static long bytesToLong(byte[] byteNum, int len) {
@@ -406,9 +441,12 @@ public class BytesUtils {
     /**
      * convert eight-bytes byte array cut from parameters to long.
      *
-     * @param byteNum source bytes which length should be greater than 8
-     * @param len     length of input byte array to be converted
-     * @param offset  position in parameter byte array that conversion result should start
+     * @param byteNum
+     *            source bytes which length should be greater than 8
+     * @param len
+     *            length of input byte array to be converted
+     * @param offset
+     *            position in parameter byte array that conversion result should start
      * @return long
      */
     public static long bytesToLongFromOffset(byte[] byteNum, int len, int offset) {
@@ -424,7 +462,8 @@ public class BytesUtils {
     /**
      * convert string to byte array using UTF-8 encoding
      *
-     * @param str input string
+     * @param str
+     *            input string
      * @return byte array
      */
     public static byte[] StringToBytes(String str) {
@@ -448,8 +487,10 @@ public class BytesUtils {
     /**
      * join two byte arrays to one
      *
-     * @param a one of byte array
-     * @param b another byte array
+     * @param a
+     *            one of byte array
+     * @param b
+     *            another byte array
      * @return byte array after joining
      */
     public static byte[] concatByteArray(byte[] a, byte[] b) {
@@ -462,7 +503,8 @@ public class BytesUtils {
     /**
      * join a list of byte arrays into one array
      *
-     * @param list a list of byte array to join
+     * @param list
+     *            a list of byte array to join
      * @return byte array after joining
      */
     public static byte[] concatByteArrayList(List<byte[]> list) {
@@ -482,12 +524,14 @@ public class BytesUtils {
     }
 
     /**
-     * cut out specified length byte array from parameter start from input byte
-     * array src and return
+     * cut out specified length byte array from parameter start from input byte array src and return
      *
-     * @param src    input byte array
-     * @param start  start index of src
-     * @param length cut off length
+     * @param src
+     *            input byte array
+     * @param start
+     *            start index of src
+     * @param length
+     *            cut off length
      * @return byte array
      */
     public static byte[] subBytes(byte[] src, int start, int length) {
@@ -503,14 +547,15 @@ public class BytesUtils {
     }
 
     /**
-     * get one bit in input integer. the offset is from low to high and start
-     * with 0<br>
+     * get one bit in input integer. the offset is from low to high and start with 0<br>
      * e.g.<br>
-     * data:1000(00000000 00000000 00000011 11101000), if offset is 4, return
-     * 0(111 "0" 1000) if offset is 9, return 1(00000 "1" 1 11101000)
+     * data:1000(00000000 00000000 00000011 11101000), if offset is 4, return 0(111 "0" 1000) if offset is 9, return
+     * 1(00000 "1" 1 11101000)
      *
-     * @param data   input int variable
-     * @param offset bit offset
+     * @param data
+     *            input int variable
+     * @param offset
+     *            bit offset
      * @return 0 or 1
      */
     public static int getIntN(int data, int offset) {
@@ -522,17 +567,18 @@ public class BytesUtils {
     }
 
     /**
-     * set one bit in input integer. the offset is from low to high and start
-     * with index 0<br>
+     * set one bit in input integer. the offset is from low to high and start with index 0<br>
      * e.g.<br>
-     * data:1000({00000000 00000000 00000011 11101000}), if offset is 4, value
-     * is 1, return 1016({00000000 00000000 00000011 111 "1" 1000}) if offset is
-     * 9, value is 0 return 488({00000000 00000000 000000 "0" 1 11101000}) if
+     * data:1000({00000000 00000000 00000011 11101000}), if offset is 4, value is 1, return 1016({00000000 00000000
+     * 00000011 111 "1" 1000}) if offset is 9, value is 0 return 488({00000000 00000000 000000 "0" 1 11101000}) if
      * offset is 0, value is 0 return 1000(no change)
      *
-     * @param data   input int variable
-     * @param offset bit offset
-     * @param value  value to set
+     * @param data
+     *            input int variable
+     * @param offset
+     *            bit offset
+     * @param value
+     *            value to set
      * @return int variable
      */
     public static int setIntN(int data, int offset, int value) {
@@ -544,14 +590,14 @@ public class BytesUtils {
     }
 
     /**
-     * get one bit in input byte. the offset is from low to high and start with
-     * 0<br>
+     * get one bit in input byte. the offset is from low to high and start with 0<br>
      * e.g.<br>
-     * data:16(00010000), if offset is 4, return 1(000 "1" 0000) if offset is 7,
-     * return 0("0" 0010000)
+     * data:16(00010000), if offset is 4, return 1(000 "1" 0000) if offset is 7, return 0("0" 0010000)
      *
-     * @param data   input byte variable
-     * @param offset bit offset
+     * @param data
+     *            input byte variable
+     * @param offset
+     *            bit offset
      * @return 0/1
      */
     public static int getByteN(byte data, int offset) {
@@ -563,16 +609,17 @@ public class BytesUtils {
     }
 
     /**
-     * set one bit in input byte. the offset is from low to high and start with
-     * index 0<br>
+     * set one bit in input byte. the offset is from low to high and start with index 0<br>
      * e.g.<br>
-     * data:16(00010000), if offset is 4, value is 0, return 0({000 "0" 0000})
-     * if offset is 1, value is 1, return 18({00010010}) if offset is 0, value
-     * is 0, return 16(no change)
+     * data:16(00010000), if offset is 4, value is 0, return 0({000 "0" 0000}) if offset is 1, value is 1, return
+     * 18({00010010}) if offset is 0, value is 0, return 16(no change)
      *
-     * @param data   input byte variable
-     * @param offset bit offset
-     * @param value  value to set
+     * @param data
+     *            input byte variable
+     * @param offset
+     *            bit offset
+     * @param value
+     *            value to set
      * @return byte variable
      */
     public static byte setByteN(byte data, int offset, int value) {
@@ -584,11 +631,12 @@ public class BytesUtils {
     }
 
     /**
-     * get one bit in input long. the offset is from low to high and start with
-     * 0<br>
+     * get one bit in input long. the offset is from low to high and start with 0<br>
      *
-     * @param data   input long variable
-     * @param offset bit offset
+     * @param data
+     *            input long variable
+     * @param offset
+     *            bit offset
      * @return 0/1
      */
     public static int getLongN(long data, int offset) {
@@ -600,12 +648,14 @@ public class BytesUtils {
     }
 
     /**
-     * set one bit in input long. the offset is from low to high and start with
-     * index 0<br>
+     * set one bit in input long. the offset is from low to high and start with index 0<br>
      *
-     * @param data   input long variable
-     * @param offset bit offset
-     * @param value  value to set
+     * @param data
+     *            input long variable
+     * @param offset
+     *            bit offset
+     * @param value
+     *            value to set
      * @return long variable
      */
     public static long setLongN(long data, int offset, int value) {
@@ -617,12 +667,14 @@ public class BytesUtils {
     }
 
     /**
-     * given a byte array, read width bits from specified position bits and
-     * convert it to an integer
+     * given a byte array, read width bits from specified position bits and convert it to an integer
      *
-     * @param result input byte array
-     * @param pos    bit offset rather than byte offset
-     * @param width  bit-width
+     * @param result
+     *            input byte array
+     * @param pos
+     *            bit offset rather than byte offset
+     * @param width
+     *            bit-width
      * @return integer variable
      */
     public static int bytesToInt(byte[] result, int pos, int width) {
@@ -638,13 +690,16 @@ public class BytesUtils {
     }
 
     /**
-     * convert an integer to a byte array which length is width, then copy this
-     * array to the parameter result from pos
+     * convert an integer to a byte array which length is width, then copy this array to the parameter result from pos
      *
-     * @param srcNum input integer variable
-     * @param result byte array to convert
-     * @param pos    start position
-     * @param width  bit-width
+     * @param srcNum
+     *            input integer variable
+     * @param result
+     *            byte array to convert
+     * @param pos
+     *            start position
+     * @param width
+     *            bit-width
      */
     public static void intToBytes(int srcNum, byte[] result, int pos, int width) {
         int temp = 0;
@@ -661,13 +716,16 @@ public class BytesUtils {
     }
 
     /**
-     * convert an long to a byte array which length is width, then copy this
-     * array to the parameter result from pos
+     * convert an long to a byte array which length is width, then copy this array to the parameter result from pos
      *
-     * @param srcNum input long variable
-     * @param result byte array to convert
-     * @param pos    start position
-     * @param width  bit-width
+     * @param srcNum
+     *            input long variable
+     * @param result
+     *            byte array to convert
+     * @param pos
+     *            start position
+     * @param width
+     *            bit-width
      */
     public static void longToBytes(long srcNum, byte[] result, int pos, int width) {
         int temp = 0;
@@ -684,12 +742,14 @@ public class BytesUtils {
     }
 
     /**
-     * given a byte array, read width bits from specified pos bits and convert
-     * it to an long
+     * given a byte array, read width bits from specified pos bits and convert it to an long
      *
-     * @param result input byte array
-     * @param pos    bit offset rather than byte offset
-     * @param width  bit-width
+     * @param result
+     *            input byte array
+     * @param pos
+     *            bit offset rather than byte offset
+     * @param width
+     *            bit-width
      * @return long variable
      */
     public static long bytesToLong(byte[] result, int pos, int width) {
@@ -705,9 +765,11 @@ public class BytesUtils {
     /**
      * read 8-byte array from an InputStream and convert it to a double number
      *
-     * @param in InputStream
+     * @param in
+     *            InputStream
      * @return double
-     * @throws IOException cannot read double from InputStream
+     * @throws IOException
+     *             cannot read double from InputStream
      */
     public static double readDouble(InputStream in) throws IOException {
         byte[] b = safeReadInputStreamToBytes(8, in);
@@ -717,9 +779,11 @@ public class BytesUtils {
     /**
      * read 4-byte array from an InputStream and convert it to a float number
      *
-     * @param in InputStream
+     * @param in
+     *            InputStream
      * @return float
-     * @throws IOException cannot read float from InputStream
+     * @throws IOException
+     *             cannot read float from InputStream
      */
     public static float readFloat(InputStream in) throws IOException {
         byte[] b = safeReadInputStreamToBytes(4, in);
@@ -729,9 +793,11 @@ public class BytesUtils {
     /**
      * read 1-byte array from an InputStream and convert it to a integer number
      *
-     * @param in InputStream
+     * @param in
+     *            InputStream
      * @return boolean
-     * @throws IOException cannot read boolean from InputStream
+     * @throws IOException
+     *             cannot read boolean from InputStream
      */
     public static boolean readBool(InputStream in) throws IOException {
         byte[] b = safeReadInputStreamToBytes(1, in);
@@ -741,9 +807,11 @@ public class BytesUtils {
     /**
      * read 4-byte array from an InputStream and convert it to a integer number
      *
-     * @param in InputStream
+     * @param in
+     *            InputStream
      * @return integer
-     * @throws IOException cannot read int from InputStream
+     * @throws IOException
+     *             cannot read int from InputStream
      */
     public static int readInt(InputStream in) throws IOException {
         byte[] b = safeReadInputStreamToBytes(4, in);
@@ -753,9 +821,11 @@ public class BytesUtils {
     /**
      * read 8-byte array from an InputStream and convert it to a long number
      *
-     * @param in InputStream
+     * @param in
+     *            InputStream
      * @return long
-     * @throws IOException cannot read long from InputStream
+     * @throws IOException
+     *             cannot read long from InputStream
      */
     public static long readLong(InputStream in) throws IOException {
         byte[] b = safeReadInputStreamToBytes(8, in);
@@ -765,10 +835,13 @@ public class BytesUtils {
     /**
      * read bytes specified length from InputStream safely.
      *
-     * @param count number of byte to read
-     * @param in    InputStream
+     * @param count
+     *            number of byte to read
+     * @param in
+     *            InputStream
      * @return byte array
-     * @throws IOException cannot read from InputStream
+     * @throws IOException
+     *             cannot read from InputStream
      */
     public static byte[] safeReadInputStreamToBytes(int count, InputStream in) throws IOException {
         byte[] bytes = new byte[count];
@@ -779,8 +852,7 @@ public class BytesUtils {
         return bytes;
     }
 
-
-    //we modify the order of serialization for fitting ByteBuffer.putShort()
+    // we modify the order of serialization for fitting ByteBuffer.putShort()
     public static byte[] shortToBytes(short number) {
         int temp = number;
         byte[] b = new byte[2];
@@ -792,7 +864,7 @@ public class BytesUtils {
         return b;
     }
 
-    //we modify the order of serialization for fitting ByteBuffer.getShort()
+    // we modify the order of serialization for fitting ByteBuffer.getShort()
     public static short bytesToShort(byte[] b) {
         short s = 0;
         short s0 = (short) (b[1] & 0xff);
@@ -801,6 +873,5 @@ public class BytesUtils {
         s = (short) (s0 | s1);
         return s;
     }
-
 
 }

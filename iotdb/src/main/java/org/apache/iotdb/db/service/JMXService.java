@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.db.service;
 
 import java.io.IOException;
@@ -54,78 +69,81 @@ public class JMXService implements IService {
                 new JMXServiceURL("rmi", null, rmiPort), env, ManagementFactory.getPlatformMBeanServer());
         return jmxServer;
     }
-    
-    public static void registerMBean(Object mbean, String name){
-		try {
-			MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
-			ObjectName objectName = new ObjectName(name);
-			if (!mbs.isRegistered(objectName)) {
-				mbs.registerMBean(mbean, objectName);
-			}
-		} catch (MalformedObjectNameException | InstanceAlreadyExistsException | MBeanRegistrationException | NotCompliantMBeanException e) {
-			LOGGER.error("Failed to registerMBean {}", name, e);
-		}
-    }
-    
-    public static void deregisterMBean(String name){
-		try {
-			MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
-			ObjectName objectName = new ObjectName(name);
-			if (mbs.isRegistered(objectName)) {
-				mbs.unregisterMBean(objectName);
-			}
-		} catch (MalformedObjectNameException | MBeanRegistrationException | InstanceNotFoundException e) {
-			LOGGER.error("Failed to unregisterMBean {}", name, e);
-		}
+
+    public static void registerMBean(Object mbean, String name) {
+        try {
+            MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
+            ObjectName objectName = new ObjectName(name);
+            if (!mbs.isRegistered(objectName)) {
+                mbs.registerMBean(mbean, objectName);
+            }
+        } catch (MalformedObjectNameException | InstanceAlreadyExistsException | MBeanRegistrationException
+                | NotCompliantMBeanException e) {
+            LOGGER.error("Failed to registerMBean {}", name, e);
+        }
     }
 
-	@Override
-	public ServiceType getID() {
-		return ServiceType.JMX_SERVICE;
-	}
+    public static void deregisterMBean(String name) {
+        try {
+            MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
+            ObjectName objectName = new ObjectName(name);
+            if (mbs.isRegistered(objectName)) {
+                mbs.unregisterMBean(objectName);
+            }
+        } catch (MalformedObjectNameException | MBeanRegistrationException | InstanceNotFoundException e) {
+            LOGGER.error("Failed to unregisterMBean {}", name, e);
+        }
+    }
 
-	@Override
-	public void start() throws StartupException {
-		if (System.getProperty(IoTDBConstant.REMOTE_JMX_PORT_NAME) != null) {
-			LOGGER.warn("JMX settings in conf/{}.sh(Unix or OS X, if you use Windows, check conf/{}.bat) have been bypassed as the JMX connector server is "
-							+ "already initialized. Please refer to {}.sh/bat for JMX configuration info",
-					IoTDBConstant.ENV_FILE_NAME, IoTDBConstant.ENV_FILE_NAME, IoTDBConstant.ENV_FILE_NAME);
-			return;
-		}
-		System.setProperty(IoTDBConstant.SERVER_RMI_ID, "true");
-		boolean localOnly = false;
-		String jmxPort = System.getProperty(IoTDBConstant.TSFILEDB_REMOTE_JMX_PORT_NAME);
+    @Override
+    public ServiceType getID() {
+        return ServiceType.JMX_SERVICE;
+    }
 
-		if (jmxPort == null) {
-			localOnly = true;
-			jmxPort = System.getProperty(IoTDBConstant.TSFILEDB_LOCAL_JMX_PORT_NAME);
-		}
+    @Override
+    public void start() throws StartupException {
+        if (System.getProperty(IoTDBConstant.REMOTE_JMX_PORT_NAME) != null) {
+            LOGGER.warn(
+                    "JMX settings in conf/{}.sh(Unix or OS X, if you use Windows, check conf/{}.bat) have been bypassed as the JMX connector server is "
+                            + "already initialized. Please refer to {}.sh/bat for JMX configuration info",
+                    IoTDBConstant.ENV_FILE_NAME, IoTDBConstant.ENV_FILE_NAME, IoTDBConstant.ENV_FILE_NAME);
+            return;
+        }
+        System.setProperty(IoTDBConstant.SERVER_RMI_ID, "true");
+        boolean localOnly = false;
+        String jmxPort = System.getProperty(IoTDBConstant.TSFILEDB_REMOTE_JMX_PORT_NAME);
 
-		if (jmxPort == null) {
-			LOGGER.warn("Failed to start {} because JMX port is undefined", this.getID().getName());
-			return;
-		}
-		try {
-			jmxService = createJMXServer(Integer.parseInt(jmxPort), localOnly);
-			if (jmxService == null)
-				return;
-			jmxService.start();
-	        LOGGER.info("{}: start {} successfully.", IoTDBConstant.GLOBAL_DB_NAME,  this.getID().getName());
-		} catch (IOException e) {
-			String errorMessage = String.format("Failed to start %s because of %s", this.getID().getName(), e.getMessage());
-			throw new StartupException(errorMessage);
-		}
-	}
+        if (jmxPort == null) {
+            localOnly = true;
+            jmxPort = System.getProperty(IoTDBConstant.TSFILEDB_LOCAL_JMX_PORT_NAME);
+        }
 
-	@Override
-	public void stop() {
-		if(jmxService != null){
-			try {
-				jmxService.stop();
-				LOGGER.info("{}: close {} successfully", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
-			} catch (IOException e) {
-				LOGGER.error("Failed to stop {} because of {}",this.getID().getName(), e.getMessage());
-			}
-		}
-	}
+        if (jmxPort == null) {
+            LOGGER.warn("Failed to start {} because JMX port is undefined", this.getID().getName());
+            return;
+        }
+        try {
+            jmxService = createJMXServer(Integer.parseInt(jmxPort), localOnly);
+            if (jmxService == null)
+                return;
+            jmxService.start();
+            LOGGER.info("{}: start {} successfully.", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
+        } catch (IOException e) {
+            String errorMessage = String.format("Failed to start %s because of %s", this.getID().getName(),
+                    e.getMessage());
+            throw new StartupException(errorMessage);
+        }
+    }
+
+    @Override
+    public void stop() {
+        if (jmxService != null) {
+            try {
+                jmxService.stop();
+                LOGGER.info("{}: close {} successfully", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
+            } catch (IOException e) {
+                LOGGER.error("Failed to stop {} because of {}", this.getID().getName(), e.getMessage());
+            }
+        }
+    }
 }

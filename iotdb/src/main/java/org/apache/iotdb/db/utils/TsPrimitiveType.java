@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
@@ -51,7 +66,6 @@ public abstract class TsPrimitiveType implements Serializable {
     public boolean equals(Object object) {
         return (object instanceof TsPrimitiveType) && (((TsPrimitiveType) object).getValue().equals(getValue()));
     }
-
 
     public static class TsBoolean extends TsPrimitiveType {
 
@@ -254,20 +268,20 @@ public abstract class TsPrimitiveType implements Serializable {
 
     public static TsPrimitiveType getByType(TSDataType dataType, Object v) {
         switch (dataType) {
-            case BOOLEAN:
-                return new TsPrimitiveType.TsBoolean((boolean) v);
-            case INT32:
-                return new TsPrimitiveType.TsInt((int) v);
-            case INT64:
-                return new TsPrimitiveType.TsLong((long) v);
-            case FLOAT:
-                return new TsPrimitiveType.TsFloat((float) v);
-            case DOUBLE:
-                return new TsPrimitiveType.TsDouble((double) v);
-            case TEXT:
-                return new TsPrimitiveType.TsBinary((Binary) v);
-            default:
-                throw new UnSupportedDataTypeException("Unsupported data type:" + dataType);
+        case BOOLEAN:
+            return new TsPrimitiveType.TsBoolean((boolean) v);
+        case INT32:
+            return new TsPrimitiveType.TsInt((int) v);
+        case INT64:
+            return new TsPrimitiveType.TsLong((long) v);
+        case FLOAT:
+            return new TsPrimitiveType.TsFloat((float) v);
+        case DOUBLE:
+            return new TsPrimitiveType.TsDouble((double) v);
+        case TEXT:
+            return new TsPrimitiveType.TsBinary((Binary) v);
+        default:
+            throw new UnSupportedDataTypeException("Unsupported data type:" + dataType);
         }
     }
 }

@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.tsfile.read.reader.chunk;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -23,7 +38,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 
-
 public abstract class ChunkReader {
 
     ChunkHeader chunkHeader;
@@ -31,15 +45,14 @@ public abstract class ChunkReader {
 
     private UnCompressor unCompressor;
     private Decoder valueDecoder;
-    private Decoder timeDecoder = Decoder.getDecoderByType(TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().timeSeriesEncoder)
-            , TSDataType.INT64);
+    private Decoder timeDecoder = Decoder.getDecoderByType(
+            TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().timeSeriesEncoder), TSDataType.INT64);
 
     private Filter filter;
 
     private BatchData data;
 
     private long maxTombstoneTime;
-
 
     public ChunkReader(Chunk chunk) {
         this(chunk, null);
@@ -53,7 +66,6 @@ public abstract class ChunkReader {
         valueDecoder = Decoder.getDecoderByType(chunkHeader.getEncodingType(), chunkHeader.getDataType());
         data = new BatchData(chunkHeader.getDataType());
     }
-
 
     public boolean hasNextBatch() {
         return chunkDataBuffer.remaining() > 0;
@@ -91,9 +103,7 @@ public abstract class ChunkReader {
 
     public abstract boolean pageSatisfied(PageHeader pageHeader);
 
-
-    private PageReader constructPageReaderForNextPage(int compressedPageBodyLength)
-            throws IOException {
+    private PageReader constructPageReaderForNextPage(int compressedPageBodyLength) throws IOException {
         byte[] compressedPageBody = new byte[compressedPageBodyLength];
 
         // already in memory
@@ -103,8 +113,8 @@ public abstract class ChunkReader {
 
         chunkDataBuffer.get(compressedPageBody, 0, compressedPageBodyLength);
         valueDecoder.reset();
-        return new PageReader(ByteBuffer.wrap(unCompressor.uncompress(compressedPageBody)),
-                chunkHeader.getDataType(), valueDecoder, timeDecoder, filter);
+        return new PageReader(ByteBuffer.wrap(unCompressor.uncompress(compressedPageBody)), chunkHeader.getDataType(),
+                valueDecoder, timeDecoder, filter);
     }
 
     public void close() {
@@ -117,6 +127,5 @@ public abstract class ChunkReader {
     public long getMaxTombstoneTime() {
         return this.maxTombstoneTime;
     }
-
 
 }

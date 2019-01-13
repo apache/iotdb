@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.tsfile.encoding.encoder;
 
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
@@ -34,8 +49,10 @@ public class LongRleEncoder extends RleEncoder<Long> {
     /**
      * write all values buffered in cache to OutputStream
      *
-     * @param out - byteArrayOutputStream
-     * @throws IOException cannot flush to OutputStream
+     * @param out
+     *            - byteArrayOutputStream
+     * @throws IOException
+     *             cannot flush to OutputStream
      */
     @Override
     public void flush(ByteArrayOutputStream out) throws IOException {
@@ -56,7 +73,9 @@ public class LongRleEncoder extends RleEncoder<Long> {
 
     /**
      * write bytes to OutputStream using rle rle format: [header][value]
-     * @throws IOException cannot write rle run
+     * 
+     * @throws IOException
+     *             cannot write rle run
      */
     @Override
     protected void writeRleRun() throws IOException {

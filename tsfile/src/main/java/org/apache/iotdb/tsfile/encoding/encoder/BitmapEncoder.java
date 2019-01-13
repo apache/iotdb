@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.tsfile.encoding.encoder;
 
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
@@ -16,6 +31,7 @@ import java.util.Set;
 
 /**
  * Encodes values using bitmap, according to the following grammar:
+ * 
  * <pre>
  * {@code
  * bitmap-encoding: <length> <num> <encoded-data>
@@ -38,7 +54,8 @@ public class BitmapEncoder extends Encoder {
     private List<Integer> values;
 
     /**
-     * @param endianType deprecated
+     * @param endianType
+     *            deprecated
      */
     public BitmapEncoder(EndianType endianType) {
         super(TSEncoding.BITMAP);
@@ -46,15 +63,17 @@ public class BitmapEncoder extends Encoder {
         LOGGER.debug("tsfile-encoding BitmapEncoder: init bitmap encoder");
     }
 
-
     /**
-     * Each time encoder receives a value, encoder doesn't write it to OutputStream immediately.
-     * Encoder stores current value in a list. When all value is received, flush() method will be
-     * invoked. Encoder encodes all values and writes them to OutputStream
+     * Each time encoder receives a value, encoder doesn't write it to OutputStream immediately. Encoder stores current
+     * value in a list. When all value is received, flush() method will be invoked. Encoder encodes all values and
+     * writes them to OutputStream
      *
-     * @param value value to encode
-     * @param out   OutputStream to write encoded stream
-     * @throws IOException cannot encode value
+     * @param value
+     *            value to encode
+     * @param out
+     *            OutputStream to write encoded stream
+     * @throws IOException
+     *             cannot encode value
      * @see Encoder#encode(int, java.io.ByteArrayOutputStream)
      */
     @Override
@@ -65,8 +84,10 @@ public class BitmapEncoder extends Encoder {
     /**
      * When all data received, encoder now encodes values in list and write them to OutputStream
      *
-     * @param out OutputStream to write encoded stream
-     * @throws IOException cannot flush to OutputStream
+     * @param out
+     *            OutputStream to write encoded stream
+     * @throws IOException
+     *             cannot flush to OutputStream
      * @see Encoder#flush(java.io.ByteArrayOutputStream)
      */
     @Override
@@ -80,7 +101,7 @@ public class BitmapEncoder extends Encoder {
             return;
         }
         int len = values.size();
-//    LOGGER.debug("tsfile-encoding BitmapEncoder: number of data in list is {}", len);
+        // LOGGER.debug("tsfile-encoding BitmapEncoder: number of data in list is {}", len);
         for (int value : valueType) {
             byte[] buffer = new byte[byteNum];
             for (int i = 0; i < len; i++) {
@@ -93,7 +114,7 @@ public class BitmapEncoder extends Encoder {
             }
             ReadWriteForEncodingUtils.writeUnsignedVarInt(value, byteCache);
             byteCache.write(buffer);
-//      LOGGER.debug("tsfile-encoding BitmapEncoder: encode value {}, bitmap index {}", value, buffer);
+            // LOGGER.debug("tsfile-encoding BitmapEncoder: encode value {}, bitmap index {}", value, buffer);
         }
         ReadWriteForEncodingUtils.writeUnsignedVarInt(byteCache.size(), out);
         ReadWriteForEncodingUtils.writeUnsignedVarInt(len, out);
@@ -112,7 +133,7 @@ public class BitmapEncoder extends Encoder {
 
     @Override
     public long getMaxByteSize() {
-        //byteCacheSize + byteDictSize + (byte array + array length) * byteDictSize
+        // byteCacheSize + byteDictSize + (byte array + array length) * byteDictSize
         return 4 + 4 + ((values.size() + 7) / 8 + 4) * values.size();
     }
 }

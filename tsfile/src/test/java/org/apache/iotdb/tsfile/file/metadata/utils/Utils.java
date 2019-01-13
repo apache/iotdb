@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.tsfile.file.metadata.utils;
 
 import org.apache.iotdb.tsfile.file.metadata.*;
@@ -58,15 +73,14 @@ public class Utils {
         }
     }
 
-
     /**
      * when one of A and B is Null, A != B, so test case fails.
      *
      * @param objectA
      * @param objectB
      * @param name
-     * @return false - A and B both are NULL, so we do not need to check whether their members are equal
-     *         true - A and B both are not NULL, so we need to check their members
+     * @return false - A and B both are NULL, so we do not need to check whether their members are equal true - A and B
+     *         both are not NULL, so we need to check their members
      */
     public static boolean isTwoObjectsNotNULL(Object objectA, Object objectB, String name) {
         if ((objectA == null) && (objectB == null))
@@ -84,12 +98,9 @@ public class Utils {
         assertTrue(str1.toString().equals(str2.toString()));
     }
 
-
-    public static void isTimeSeriesChunkMetadataEqual(ChunkMetaData metadata1,
-                                                      ChunkMetaData metadata2) {
+    public static void isTimeSeriesChunkMetadataEqual(ChunkMetaData metadata1, ChunkMetaData metadata2) {
         if (Utils.isTwoObjectsNotNULL(metadata1, metadata2, "ChunkMetaData")) {
-            if (Utils.isTwoObjectsNotNULL(metadata1.getMeasurementUID(), metadata2.getMeasurementUID(),
-                    "sensorUID")) {
+            if (Utils.isTwoObjectsNotNULL(metadata1.getMeasurementUID(), metadata2.getMeasurementUID(), "sensorUID")) {
                 assertTrue(metadata1.getMeasurementUID().equals(metadata2.getMeasurementUID()));
             }
             assertTrue(metadata1.getOffsetOfChunkHeader() == metadata2.getOffsetOfChunkHeader());
@@ -97,7 +108,8 @@ public class Utils {
             assertTrue(metadata1.getStartTime() == metadata2.getStartTime());
             assertTrue(metadata1.getEndTime() == metadata2.getEndTime());
             if (Utils.isTwoObjectsNotNULL(metadata1.getDigest(), metadata2.getDigest(), "digest")) {
-                Utils.isMapBufferEqual(metadata1.getDigest().getStatistics(), metadata2.getDigest().getStatistics(), "statistics");
+                Utils.isMapBufferEqual(metadata1.getDigest().getStatistics(), metadata2.getDigest().getStatistics(),
+                        "statistics");
             }
         }
     }
@@ -124,8 +136,7 @@ public class Utils {
 
             if (Utils.isTwoObjectsNotNULL(metadata1.getChunkMetaDataList(), metadata2.getChunkMetaDataList(),
                     "Timeseries chunk metadata list")) {
-                assertEquals(metadata1.getChunkMetaDataList().size(),
-                        metadata2.getChunkMetaDataList().size());
+                assertEquals(metadata1.getChunkMetaDataList().size(), metadata2.getChunkMetaDataList().size());
                 for (int i = 0; i < metadata1.getChunkMetaDataList().size(); i++) {
                     Utils.isTimeSeriesChunkMetadataEqual(metadata1.getChunkMetaDataList().get(i),
                             metadata1.getChunkMetaDataList().get(i));

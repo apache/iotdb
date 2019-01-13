@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.db.writelog.manager;
 
 import org.apache.iotdb.db.concurrent.ThreadName;
@@ -38,13 +53,13 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
     private final Runnable syncTask = new Runnable() {
         @Override
         public void run() {
-            while(true) {
-                if(Thread.interrupted()){
+            while (true) {
+                if (Thread.interrupted()) {
                     logger.info("WAL sync thread exits.");
                     break;
                 }
                 logger.debug("Timed sync starts, {} nodes to be flushed", nodeMap.size());
-                for(WriteLogNode node : nodeMap.values()) {
+                for (WriteLogNode node : nodeMap.values()) {
                     try {
                         node.forceSync();
                     } catch (IOException e) {
@@ -71,12 +86,13 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
     }
 
     @Override
-    public WriteLogNode getNode(String identifier, String restoreFilePath, String processorStoreFilePath) throws IOException {
+    public WriteLogNode getNode(String identifier, String restoreFilePath, String processorStoreFilePath)
+            throws IOException {
         WriteLogNode node = nodeMap.get(identifier);
-        if(node == null && restoreFilePath != null && processorStoreFilePath != null) {
+        if (node == null && restoreFilePath != null && processorStoreFilePath != null) {
             node = new ExclusiveWriteLogNode(identifier, restoreFilePath, processorStoreFilePath);
             WriteLogNode oldNode = nodeMap.putIfAbsent(identifier, node);
-            if(oldNode != null)
+            if (oldNode != null)
                 return oldNode;
         }
         return node;
@@ -85,20 +101,20 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
     @Override
     public void deleteNode(String identifier) throws IOException {
         WriteLogNode node = nodeMap.remove(identifier);
-        if(node != null) {
+        if (node != null) {
             node.delete();
         }
     }
 
     /*
-    Warning : caller must guarantee thread safety.
+     * Warning : caller must guarantee thread safety.
      */
     @Override
     public void recover() throws RecoverException {
         List<WriteLogNode> nodeList = new ArrayList<>(nodeMap.size());
         nodeList.addAll(nodeMap.values());
         nodeList.sort(null);
-        for(WriteLogNode node : nodeList) {
+        for (WriteLogNode node : nodeList) {
             try {
                 node.recover();
             } catch (RecoverException e) {
@@ -110,19 +126,19 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
 
     @Override
     public void close() {
-        if(syncThread == null || !syncThread.isAlive()) {
+        if (syncThread == null || !syncThread.isAlive()) {
             logger.error("MultiFileLogNodeManager has not yet started");
             return;
         }
-        
+
         logger.info("LogNodeManager starts closing..");
         syncThread.interrupt();
         logger.info("Waiting for sync thread to stop");
-        while(syncThread.isAlive()) {
+        while (syncThread.isAlive()) {
             // wait
         }
         logger.info("{} nodes to be closed", nodeMap.size());
-        for(WriteLogNode node : nodeMap.values()) {
+        for (WriteLogNode node : nodeMap.values()) {
             try {
                 node.close();
             } catch (IOException e) {
@@ -159,32 +175,34 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
     }
 
     @Override
-	public void start() throws StartupException {
-		try {
-			if(!config.enableWal)
-	            return;
-	        if(syncThread == null || !syncThread.isAlive()) {
-	            InstanceHolder.instance.syncThread = new Thread(InstanceHolder.instance.syncTask, ThreadName.WAL_DAEMON.getName());
-	            InstanceHolder.instance.syncThread.start();
-	        } else {
-	            logger.warn("MultiFileLogNodeManager has already started");
-	        }
-		} catch (Exception e) {
-			String errorMessage = String.format("Failed to start %s because of %s", this.getID().getName(), e.getMessage());
-			throw new StartupException(errorMessage);
-		}
-	}
+    public void start() throws StartupException {
+        try {
+            if (!config.enableWal)
+                return;
+            if (syncThread == null || !syncThread.isAlive()) {
+                InstanceHolder.instance.syncThread = new Thread(InstanceHolder.instance.syncTask,
+                        ThreadName.WAL_DAEMON.getName());
+                InstanceHolder.instance.syncThread.start();
+            } else {
+                logger.warn("MultiFileLogNodeManager has already started");
+            }
+        } catch (Exception e) {
+            String errorMessage = String.format("Failed to start %s because of %s", this.getID().getName(),
+                    e.getMessage());
+            throw new StartupException(errorMessage);
+        }
+    }
 
-	@Override
-	public void stop() {
-        if(!config.enableWal)
+    @Override
+    public void stop() {
+        if (!config.enableWal)
             return;
         close();
-	}
+    }
 
-	@Override
-	public ServiceType getID() {
-		return ServiceType.WAL_SERVICE;
-	}
+    @Override
+    public ServiceType getID() {
+        return ServiceType.WAL_SERVICE;
+    }
 
 }

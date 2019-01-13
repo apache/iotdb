@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.db.auth;
 
 import org.apache.iotdb.db.auth.Role.LocalFileRoleManager;
@@ -37,7 +52,7 @@ public class LocalFileRoleManagerTest {
         Role[] roles = new Role[5];
         for (int i = 0; i < roles.length; i++) {
             roles[i] = new Role("role" + i);
-            for(int j = 0; j <= i; j++) {
+            for (int j = 0; j <= i; j++) {
                 PathPrivilege pathPrivilege = new PathPrivilege("root.a.b.c" + j);
                 pathPrivilege.privileges.add(j);
                 roles[i].privilegeList.add(pathPrivilege);
@@ -47,7 +62,8 @@ public class LocalFileRoleManagerTest {
         // create
         Role role = manager.getRole(roles[0].name);
         assertEquals(null, role);
-        for (Role role1 : roles) assertEquals(true, manager.createRole(role1.name));
+        for (Role role1 : roles)
+            assertEquals(true, manager.createRole(role1.name));
         for (Role role1 : roles) {
             role = manager.getRole(role1.name);
             assertEquals(role1.name, role.name);
@@ -64,9 +80,9 @@ public class LocalFileRoleManagerTest {
 
         // delete
         assertEquals(false, manager.deleteRole("not a role"));
-        assertEquals(true, manager.deleteRole(roles[roles.length-1].name));
-        assertEquals(null, manager.getRole(roles[roles.length-1].name));
-        assertEquals(false, manager.deleteRole(roles[roles.length-1].name));
+        assertEquals(true, manager.deleteRole(roles[roles.length - 1].name));
+        assertEquals(null, manager.getRole(roles[roles.length - 1].name));
+        assertEquals(false, manager.deleteRole(roles[roles.length - 1].name));
 
         // grant privilege
         role = manager.getRole(roles[0].name);
@@ -115,7 +131,7 @@ public class LocalFileRoleManagerTest {
         // list roles
         List<String> rolenames = manager.listAllRoles();
         rolenames.sort(null);
-        for(int i = 0; i < roles.length - 1; i++) {
+        for (int i = 0; i < roles.length - 1; i++) {
             assertEquals(roles[i].name, rolenames.get(i));
         }
     }

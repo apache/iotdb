@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.tsfile.write.page;
 
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -13,8 +28,8 @@ import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 
 /**
- * This function is used to write time-value into a page. It consists of a time encoder, a
- * value encoder and respective OutputStream.
+ * This function is used to write time-value into a page. It consists of a time encoder, a value encoder and respective
+ * OutputStream.
  *
  * @author kangrong
  */
@@ -27,14 +42,14 @@ public class PageWriter {
     private PublicBAOS valueOut;
 
     public PageWriter() {
-        this(null,null);
+        this(null, null);
     }
 
-    public PageWriter(MeasurementSchema measurementSchema){
-        this(measurementSchema.getTimeEncoder(),measurementSchema.getValueEncoder());
+    public PageWriter(MeasurementSchema measurementSchema) {
+        this(measurementSchema.getTimeEncoder(), measurementSchema.getValueEncoder());
     }
 
-    public PageWriter(Encoder timeEncoder,Encoder valueEncoder){
+    public PageWriter(Encoder timeEncoder, Encoder valueEncoder) {
         this.timeOut = new PublicBAOS();
         this.valueOut = new PublicBAOS();
         this.timeEncoder = timeEncoder;
@@ -113,9 +128,9 @@ public class PageWriter {
         valueEncoder.flush(valueOut);
     }
 
-
     /**
-     * getUncompressedBytes return data what it has been written in form of <code>size of time list, time list, value list</code>
+     * getUncompressedBytes return data what it has been written in form of
+     * <code>size of time list, time list, value list</code>
      *
      * @return a new readable ByteBuffer whose position is 0.
      */
@@ -129,10 +144,9 @@ public class PageWriter {
         return buffer;
     }
 
-
     /**
-     * calculate max possible memory size it occupies, including time outputStream and value outputStream,
-     * because size outputStream is never used until flushing.
+     * calculate max possible memory size it occupies, including time outputStream and value outputStream, because size
+     * outputStream is never used until flushing.
      *
      * @return allocated size in time, value and outputStream
      */

@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.db.auth.AuthException;
@@ -21,17 +36,17 @@ public class AuthUtils {
     private static final String STRING_ENCODING = "utf-8";
 
     public static void validatePassword(String password) throws AuthException {
-        if(password.length() < MIN_PASSWORD_LENGTH)
+        if (password.length() < MIN_PASSWORD_LENGTH)
             throw new AuthException("Password's length must be greater than or equal to " + MIN_USERNAME_LENGTH);
     }
 
     public static void validateUsername(String username) throws AuthException {
-        if(username.length() < MIN_USERNAME_LENGTH)
+        if (username.length() < MIN_USERNAME_LENGTH)
             throw new AuthException("Username's length must be greater than or equal to " + MIN_USERNAME_LENGTH);
     }
 
     public static void validateRolename(String rolename) throws AuthException {
-        if(rolename.length() < MIN_ROLENAME_LENGTH)
+        if (rolename.length() < MIN_ROLENAME_LENGTH)
             throw new AuthException("Role name's length must be greater than or equal to " + MIN_ROLENAME_LENGTH);
     }
 
@@ -42,35 +57,36 @@ public class AuthUtils {
     }
 
     public static void validatePath(String path) throws AuthException {
-        if(!path.startsWith(ROOT_PREFIX))
-            throw new AuthException(String.format("Illegal seriesPath %s, seriesPath should start with \"%s\"", path, ROOT_PREFIX));
+        if (!path.startsWith(ROOT_PREFIX))
+            throw new AuthException(
+                    String.format("Illegal seriesPath %s, seriesPath should start with \"%s\"", path, ROOT_PREFIX));
     }
 
     public static void validatePrivilegeOnPath(String path, int privilegeId) throws AuthException {
         validatePrivilege(privilegeId);
         PrivilegeType type = PrivilegeType.values()[privilegeId];
-        if(!path.equals(IoTDBConstant.PATH_ROOT)) {
+        if (!path.equals(IoTDBConstant.PATH_ROOT)) {
             validatePath(path);
             switch (type) {
-                case READ_TIMESERIES:
-                case SET_STORAGE_GROUP:
-                case DELETE_TIMESERIES:
-                case INSERT_TIMESERIES:
-                case UPDATE_TIMESERIES:
-                    return;
-                default:
-                    throw new AuthException(String.format("Illegal privilege %s on seriesPath %s", type.toString(), path));
+            case READ_TIMESERIES:
+            case SET_STORAGE_GROUP:
+            case DELETE_TIMESERIES:
+            case INSERT_TIMESERIES:
+            case UPDATE_TIMESERIES:
+                return;
+            default:
+                throw new AuthException(String.format("Illegal privilege %s on seriesPath %s", type.toString(), path));
             }
         } else {
             switch (type) {
-                case READ_TIMESERIES:
-                case SET_STORAGE_GROUP:
-                case DELETE_TIMESERIES:
-                case INSERT_TIMESERIES:
-                case UPDATE_TIMESERIES:
-                    validatePath(path);
-                default:
-                    return;
+            case READ_TIMESERIES:
+            case SET_STORAGE_GROUP:
+            case DELETE_TIMESERIES:
+            case INSERT_TIMESERIES:
+            case UPDATE_TIMESERIES:
+                validatePath(path);
+            default:
+                return;
             }
         }
     }
@@ -92,21 +108,22 @@ public class AuthUtils {
      * @return True if pathA == pathB, or pathA is an extension of pathB, e.g. pathA = "root.a.b.c" and pathB = "root.a"
      */
     public static boolean pathBelongsTo(String pathA, String pathB) {
-        return pathA.equals(pathB) || (pathA.startsWith(pathB) && pathA.charAt(pathB.length()) == IoTDBConstant.PATH_SEPARATER);
+        return pathA.equals(pathB)
+                || (pathA.startsWith(pathB) && pathA.charAt(pathB.length()) == IoTDBConstant.PATH_SEPARATER);
     }
 
     public static boolean checkPrivilege(String path, int privilegeId, List<PathPrivilege> privilegeList) {
-        if(privilegeList == null)
+        if (privilegeList == null)
             return false;
-        for(PathPrivilege pathPrivilege : privilegeList) {
-            if(path != null){
+        for (PathPrivilege pathPrivilege : privilegeList) {
+            if (path != null) {
                 if (pathPrivilege.path != null && AuthUtils.pathBelongsTo(path, pathPrivilege.path)) {
-                    if(pathPrivilege.privileges.contains(privilegeId))
+                    if (pathPrivilege.privileges.contains(privilegeId))
                         return true;
                 }
             } else {
                 if (pathPrivilege.path == null) {
-                    if(pathPrivilege.privileges.contains(privilegeId))
+                    if (pathPrivilege.privileges.contains(privilegeId))
                         return true;
                 }
             }
@@ -116,15 +133,17 @@ public class AuthUtils {
 
     /**
      *
-     * @param path The seriesPath on which the privileges take effect. If seriesPath-free privileges are desired, this should be null.
+     * @param path
+     *            The seriesPath on which the privileges take effect. If seriesPath-free privileges are desired, this
+     *            should be null.
      * @return The privileges granted to the role.
      */
     public static Set<Integer> getPrivileges(String path, List<PathPrivilege> privilegeList) {
-        if(privilegeList == null)
+        if (privilegeList == null)
             return null;
         Set<Integer> privileges = new HashSet<>();
-        for(PathPrivilege pathPrivilege : privilegeList) {
-            if(path != null){
+        for (PathPrivilege pathPrivilege : privilegeList) {
+            if (path != null) {
                 if (pathPrivilege.path != null && AuthUtils.pathBelongsTo(path, pathPrivilege.path)) {
                     privileges.addAll(pathPrivilege.privileges);
                 }
@@ -138,8 +157,8 @@ public class AuthUtils {
     }
 
     public static boolean hasPrivilege(String path, int privilegeId, List<PathPrivilege> privilegeList) {
-        for(PathPrivilege pathPrivilege : privilegeList) {
-            if(pathPrivilege.path.equals(path) && pathPrivilege.privileges.contains(privilegeId)) {
+        for (PathPrivilege pathPrivilege : privilegeList) {
+            if (pathPrivilege.path.equals(path) && pathPrivilege.privileges.contains(privilegeId)) {
                 pathPrivilege.referenceCnt.incrementAndGet();
                 return true;
             }
@@ -148,8 +167,8 @@ public class AuthUtils {
     }
 
     public static void addPrivilege(String path, int privilgeId, List<PathPrivilege> privilegeList) {
-        for(PathPrivilege pathPrivilege : privilegeList) {
-            if(pathPrivilege.path.equals(path)) {
+        for (PathPrivilege pathPrivilege : privilegeList) {
+            if (pathPrivilege.path.equals(path)) {
                 if (privilgeId != PrivilegeType.ALL.ordinal())
                     pathPrivilege.privileges.add(privilgeId);
                 else
@@ -169,20 +188,20 @@ public class AuthUtils {
 
     public static void removePrivilege(String path, int privilgeId, List<PathPrivilege> privilegeList) {
         PathPrivilege emptyPrivilege = null;
-        for(PathPrivilege pathPrivilege : privilegeList) {
-            if(pathPrivilege.path.equals(path)) {
+        for (PathPrivilege pathPrivilege : privilegeList) {
+            if (pathPrivilege.path.equals(path)) {
                 if (privilgeId != PrivilegeType.ALL.ordinal())
                     pathPrivilege.privileges.remove(privilgeId);
                 else {
                     privilegeList.remove(pathPrivilege);
                     return;
                 }
-                if(pathPrivilege.privileges.size() == 0)
+                if (pathPrivilege.privileges.size() == 0)
                     emptyPrivilege = pathPrivilege;
                 break;
             }
         }
-        if(emptyPrivilege != null)
+        if (emptyPrivilege != null)
             privilegeList.remove(emptyPrivilege);
     }
 

@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.tsfile.file.metadata;
 
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -20,8 +35,7 @@ public class ChunkMetaData {
     private String measurementUID;
 
     /**
-     * Byte offset of the corresponding data in the file
-     * Notice:  include the chunk header and marker
+     * Byte offset of the corresponding data in the file Notice: include the chunk header and marker
      */
     private long offsetOfChunkHeader;
 
@@ -41,17 +55,16 @@ public class ChunkMetaData {
 
     private TsDigest valuesStatistics;
 
-
-    public int getSerializedSize(){
-        return (Integer.BYTES + measurementUID.length()) +  // measurementUID
-                4 * Long.BYTES  + //4 long: offsetOfChunkHeader, numOfPoints, startTime, endTime
-                TSDataType.getSerializedSize() +  // TSDataType
-                (valuesStatistics==null? TsDigest.getNullDigestSize():valuesStatistics.getSerializedSize());
+    public int getSerializedSize() {
+        return (Integer.BYTES + measurementUID.length()) + // measurementUID
+                4 * Long.BYTES + // 4 long: offsetOfChunkHeader, numOfPoints, startTime, endTime
+                TSDataType.getSerializedSize() + // TSDataType
+                (valuesStatistics == null ? TsDigest.getNullDigestSize() : valuesStatistics.getSerializedSize());
 
     }
 
-
-    private ChunkMetaData(){}
+    private ChunkMetaData() {
+    }
 
     public ChunkMetaData(String measurementUID, TSDataType tsDataType, long fileOffset, long startTime, long endTime) {
         this.measurementUID = measurementUID;
@@ -128,10 +141,12 @@ public class ChunkMetaData {
         byteLen += ReadWriteIOUtils.write(endTime, outputStream);
         byteLen += ReadWriteIOUtils.write(tsDataType, outputStream);
 
-        if(valuesStatistics==null) byteLen += TsDigest.serializeNullTo(outputStream);
-        else byteLen += valuesStatistics.serializeTo(outputStream);
+        if (valuesStatistics == null)
+            byteLen += TsDigest.serializeNullTo(outputStream);
+        else
+            byteLen += valuesStatistics.serializeTo(outputStream);
 
-        assert  byteLen == getSerializedSize();
+        assert byteLen == getSerializedSize();
         return byteLen;
     }
 
@@ -145,10 +160,12 @@ public class ChunkMetaData {
         byteLen += ReadWriteIOUtils.write(endTime, buffer);
         byteLen += ReadWriteIOUtils.write(tsDataType, buffer);
 
-        if(valuesStatistics==null) byteLen += TsDigest.serializeNullTo(buffer);
-        else byteLen += valuesStatistics.serializeTo(buffer);
+        if (valuesStatistics == null)
+            byteLen += TsDigest.serializeNullTo(buffer);
+        else
+            byteLen += valuesStatistics.serializeTo(buffer);
 
-        assert  byteLen == getSerializedSize();
+        assert byteLen == getSerializedSize();
         return byteLen;
     }
 
@@ -159,7 +176,6 @@ public class ChunkMetaData {
 
         chunkMetaData.offsetOfChunkHeader = ReadWriteIOUtils.readLong(inputStream);
 
-
         chunkMetaData.numOfPoints = ReadWriteIOUtils.readLong(inputStream);
         chunkMetaData.startTime = ReadWriteIOUtils.readLong(inputStream);
         chunkMetaData.endTime = ReadWriteIOUtils.readLong(inputStream);
@@ -167,7 +183,6 @@ public class ChunkMetaData {
         chunkMetaData.tsDataType = ReadWriteIOUtils.readDataType(inputStream);
 
         chunkMetaData.valuesStatistics = TsDigest.deserializeFrom(inputStream);
-
 
         return chunkMetaData;
     }
@@ -183,7 +198,6 @@ public class ChunkMetaData {
         chunkMetaData.tsDataType = ReadWriteIOUtils.readDataType(buffer);
 
         chunkMetaData.valuesStatistics = TsDigest.deserializeFrom(buffer);
-
 
         return chunkMetaData;
     }

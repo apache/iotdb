@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.jdbc;
 
 import org.apache.iotdb.service.rpc.thrift.*;
@@ -109,11 +124,11 @@ public class IoTDBQueryResultSetTest {
     @Test
     public void testQuery() throws Exception {
 
-        String testSql = "select *,s1,s0,s2 from root.vehicle.d0 where s1 > 190 or s2 < 10.0 " +
-                "limit 20 offset 1 slimit 4 soffset 2";
+        String testSql = "select *,s1,s0,s2 from root.vehicle.d0 where s1 > 190 or s2 < 10.0 "
+                + "limit 20 offset 1 slimit 4 soffset 2";
 
         /*
-            step 1: execute statement
+         * step 1: execute statement
          */
         List<String> columns = new ArrayList<>();
         columns.add("root.vehicle.d0.s2");
@@ -123,15 +138,14 @@ public class IoTDBQueryResultSetTest {
 
         when(execResp.getColumns()).thenReturn(columns);
         when(execResp.getOperationType()).thenReturn("QUERY");
-        doReturn("FLOAT").doReturn("INT64").doReturn("INT32").doReturn("FLOAT")
-                .when(fetchMetadataResp).getDataType();
+        doReturn("FLOAT").doReturn("INT64").doReturn("INT32").doReturn("FLOAT").when(fetchMetadataResp).getDataType();
 
         boolean hasResultSet = statement.execute(testSql);
 
         verify(fetchMetadataResp, times(4)).getDataType();
 
         /*
-            step 2: fetch result
+         * step 2: fetch result
          */
         fetchResultsResp.hasResultSet = true; // at the first time to fetch
         TSQueryDataSet tsQueryDataSet = FakedFirstFetchResult();
@@ -173,16 +187,11 @@ public class IoTDBQueryResultSetTest {
 
                 fetchResultsResp.hasResultSet = false; // at the second time to fetch
             }
-            String standard = "Time,root.vehicle.d0.s2,root.vehicle.d0.s1,root.vehicle.d0.s0,root.vehicle.d0.s2,\n" +
-                    "2,2.22,40000,null,2.22,\n" +
-                    "3,3.33,null,null,3.33,\n" +
-                    "4,4.44,null,null,4.44,\n" +
-                    "50,null,50000,null,null,\n" +
-                    "100,null,199,null,null,\n" +
-                    "101,null,199,null,null,\n" +
-                    "103,null,199,null,null,\n" +
-                    "105,11.11,199,33333,11.11,\n" +
-                    "1000,1000.11,55555,22222,1000.11,\n";
+            String standard = "Time,root.vehicle.d0.s2,root.vehicle.d0.s1,root.vehicle.d0.s0,root.vehicle.d0.s2,\n"
+                    + "2,2.22,40000,null,2.22,\n" + "3,3.33,null,null,3.33,\n" + "4,4.44,null,null,4.44,\n"
+                    + "50,null,50000,null,null,\n" + "100,null,199,null,null,\n" + "101,null,199,null,null,\n"
+                    + "103,null,199,null,null,\n" + "105,11.11,199,33333,11.11,\n"
+                    + "1000,1000.11,55555,22222,1000.11,\n";
             Assert.assertEquals(resultStr.toString(), standard);
         }
     }
@@ -192,67 +201,26 @@ public class IoTDBQueryResultSetTest {
         TSQueryDataSet tsQueryDataSet = new TSQueryDataSet(new ArrayList<>());
         final int DATA_TYPE_NUM = 3;
         Object[][] input = {
-                {
-                        1L,
-                        "root.vehicle.d0.s2", TSDataType.FLOAT, null,
-                        "root.vehicle.d0.s1", TSDataType.INT64, 1101L,
-                        "root.vehicle.d0.s0", TSDataType.INT32, null,
-                },
-                {
-                        2L,
-                        "root.vehicle.d0.s2", TSDataType.FLOAT, 2.22F,
-                        "root.vehicle.d0.s1", TSDataType.INT64, 40000L,
-                        "root.vehicle.d0.s0", TSDataType.INT32, null,
-                },
-                {
-                        3L,
-                        "root.vehicle.d0.s2", TSDataType.FLOAT, 3.33F,
-                        "root.vehicle.d0.s1", TSDataType.INT64, null,
-                        "root.vehicle.d0.s0", TSDataType.INT32, null,
-                },
-                {
-                        4L,
-                        "root.vehicle.d0.s2", TSDataType.FLOAT, 4.44F,
-                        "root.vehicle.d0.s1", TSDataType.INT64, null,
-                        "root.vehicle.d0.s0", TSDataType.INT32, null,
-                },
-                {
-                        50L,
-                        "root.vehicle.d0.s2", TSDataType.FLOAT, null,
-                        "root.vehicle.d0.s1", TSDataType.INT64, 50000L,
-                        "root.vehicle.d0.s0", TSDataType.INT32, null,
-                },
-                {
-                        100L,
-                        "root.vehicle.d0.s2", TSDataType.FLOAT, null,
-                        "root.vehicle.d0.s1", TSDataType.INT64, 199L,
-                        "root.vehicle.d0.s0", TSDataType.INT32, null,
-                },
-                {
-                        101L,
-                        "root.vehicle.d0.s2", TSDataType.FLOAT, null,
-                        "root.vehicle.d0.s1", TSDataType.INT64, 199L,
-                        "root.vehicle.d0.s0", TSDataType.INT32, null,
-                },
-                {
-                        103L,
-                        "root.vehicle.d0.s2", TSDataType.FLOAT, null,
-                        "root.vehicle.d0.s1", TSDataType.INT64, 199L,
-                        "root.vehicle.d0.s0", TSDataType.INT32, null,
-                },
-                {
-                        105L,
-                        "root.vehicle.d0.s2", TSDataType.FLOAT, 11.11F,
-                        "root.vehicle.d0.s1", TSDataType.INT64, 199L,
-                        "root.vehicle.d0.s0", TSDataType.INT32, 33333,
-                },
-                {
-                        1000L,
-                        "root.vehicle.d0.s2", TSDataType.FLOAT, 1000.11F,
-                        "root.vehicle.d0.s1", TSDataType.INT64, 55555L,
-                        "root.vehicle.d0.s0", TSDataType.INT32, 22222,
-                }
-        };
+                { 1L, "root.vehicle.d0.s2", TSDataType.FLOAT, null, "root.vehicle.d0.s1", TSDataType.INT64, 1101L,
+                        "root.vehicle.d0.s0", TSDataType.INT32, null, },
+                { 2L, "root.vehicle.d0.s2", TSDataType.FLOAT, 2.22F, "root.vehicle.d0.s1", TSDataType.INT64, 40000L,
+                        "root.vehicle.d0.s0", TSDataType.INT32, null, },
+                { 3L, "root.vehicle.d0.s2", TSDataType.FLOAT, 3.33F, "root.vehicle.d0.s1", TSDataType.INT64, null,
+                        "root.vehicle.d0.s0", TSDataType.INT32, null, },
+                { 4L, "root.vehicle.d0.s2", TSDataType.FLOAT, 4.44F, "root.vehicle.d0.s1", TSDataType.INT64, null,
+                        "root.vehicle.d0.s0", TSDataType.INT32, null, },
+                { 50L, "root.vehicle.d0.s2", TSDataType.FLOAT, null, "root.vehicle.d0.s1", TSDataType.INT64, 50000L,
+                        "root.vehicle.d0.s0", TSDataType.INT32, null, },
+                { 100L, "root.vehicle.d0.s2", TSDataType.FLOAT, null, "root.vehicle.d0.s1", TSDataType.INT64, 199L,
+                        "root.vehicle.d0.s0", TSDataType.INT32, null, },
+                { 101L, "root.vehicle.d0.s2", TSDataType.FLOAT, null, "root.vehicle.d0.s1", TSDataType.INT64, 199L,
+                        "root.vehicle.d0.s0", TSDataType.INT32, null, },
+                { 103L, "root.vehicle.d0.s2", TSDataType.FLOAT, null, "root.vehicle.d0.s1", TSDataType.INT64, 199L,
+                        "root.vehicle.d0.s0", TSDataType.INT32, null, },
+                { 105L, "root.vehicle.d0.s2", TSDataType.FLOAT, 11.11F, "root.vehicle.d0.s1", TSDataType.INT64, 199L,
+                        "root.vehicle.d0.s0", TSDataType.INT32, 33333, },
+                { 1000L, "root.vehicle.d0.s2", TSDataType.FLOAT, 1000.11F, "root.vehicle.d0.s1", TSDataType.INT64,
+                        55555L, "root.vehicle.d0.s0", TSDataType.INT32, 22222, } };
         for (Object[] item : input) {
             TSRowRecord record = new TSRowRecord();
             record.setTimestamp((long) item[0]);

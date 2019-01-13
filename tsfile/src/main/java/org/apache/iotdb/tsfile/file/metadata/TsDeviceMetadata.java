@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.tsfile.file.metadata;
 
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -10,7 +25,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-public class TsDeviceMetadata{
+public class TsDeviceMetadata {
 
     /**
      * size of ChunkGroupMetadataBlock in byte
@@ -32,7 +47,6 @@ public class TsDeviceMetadata{
      */
     private List<ChunkGroupMetaData> chunkGroupMetadataList = new ArrayList<>();
 
-
     public int getSerializedSize() {
         return serializedSize;
     }
@@ -51,9 +65,10 @@ public class TsDeviceMetadata{
 
     /**
      * set the ChunkGroupMetadataList and recalculate serialized size.
+     * 
      * @param chunkGroupMetadataList
      */
-    public void setChunkGroupMetadataList(List<ChunkGroupMetaData> chunkGroupMetadataList){
+    public void setChunkGroupMetadataList(List<ChunkGroupMetaData> chunkGroupMetadataList) {
         this.chunkGroupMetadataList = chunkGroupMetadataList;
         reCalculateSerializedSize();
     }
@@ -61,7 +76,8 @@ public class TsDeviceMetadata{
     /**
      * add chunk group metadata to chunkGroups. THREAD NOT SAFE
      *
-     * @param chunkGroup - chunk group metadata to add
+     * @param chunkGroup
+     *            - chunk group metadata to add
      */
     public void addChunkGroupMetaData(ChunkGroupMetaData chunkGroup) {
         chunkGroupMetadataList.add(chunkGroup);
@@ -166,12 +182,8 @@ public class TsDeviceMetadata{
 
     @Override
     public String toString() {
-        return "TsDeviceMetadata{" +
-                "serializedSize=" + serializedSize +
-                ", startTime=" + startTime +
-                ", endTime=" + endTime +
-                ", chunkGroupMetadataList=" + chunkGroupMetadataList +
-                '}';
+        return "TsDeviceMetadata{" + "serializedSize=" + serializedSize + ", startTime=" + startTime + ", endTime="
+                + endTime + ", chunkGroupMetadataList=" + chunkGroupMetadataList + '}';
     }
 
 }

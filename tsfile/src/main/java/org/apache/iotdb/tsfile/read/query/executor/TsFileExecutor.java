@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.tsfile.read.query.executor;
 
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
@@ -35,7 +50,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-
 public class TsFileExecutor implements QueryExecutor {
 
     private MetadataQuerier metadataQuerier;
@@ -54,7 +68,8 @@ public class TsFileExecutor implements QueryExecutor {
         if (queryExpression.hasQueryFilter()) {
             try {
                 IExpression expression = queryExpression.getExpression();
-                IExpression regularIExpression = ExpressionOptimizer.getInstance().optimize(expression, queryExpression.getSelectedSeries());
+                IExpression regularIExpression = ExpressionOptimizer.getInstance().optimize(expression,
+                        queryExpression.getSelectedSeries());
                 queryExpression.setExpression(regularIExpression);
 
                 if (regularIExpression instanceof GlobalTimeExpression) {
@@ -70,11 +85,11 @@ public class TsFileExecutor implements QueryExecutor {
         }
     }
 
-
     /**
      * no filter, can use multi-way merge
      *
-     * @param selectedPathList all selected paths
+     * @param selectedPathList
+     *            all selected paths
      * @return DataSet without TimeGenerator
      */
     private QueryDataSet execute(List<Path> selectedPathList) throws IOException {
@@ -90,12 +105,13 @@ public class TsFileExecutor implements QueryExecutor {
         return new DataSetWithoutTimeGenerator(selectedPathList, dataTypes, readersOfSelectedSeries);
     }
 
-
     /**
      * has a GlobalTimeExpression, can use multi-way merge
      *
-     * @param selectedPathList all selected paths
-     * @param timeFilter       GlobalTimeExpression that takes effect to all selected paths
+     * @param selectedPathList
+     *            all selected paths
+     * @param timeFilter
+     *            GlobalTimeExpression that takes effect to all selected paths
      * @return DataSet without TimeGenerator
      */
     private QueryDataSet execute(List<Path> selectedPathList, GlobalTimeExpression timeFilter) throws IOException {
@@ -104,13 +120,13 @@ public class TsFileExecutor implements QueryExecutor {
 
         for (Path path : selectedPathList) {
             List<ChunkMetaData> chunkMetaDataList = metadataQuerier.getChunkMetaDataList(path);
-            FileSeriesReader seriesReader = new FileSeriesReaderWithFilter(chunkLoader, chunkMetaDataList, timeFilter.getFilter());
+            FileSeriesReader seriesReader = new FileSeriesReaderWithFilter(chunkLoader, chunkMetaDataList,
+                    timeFilter.getFilter());
             readersOfSelectedSeries.add(seriesReader);
             dataTypes.add(chunkMetaDataList.get(0).getTsDataType());
         }
 
         return new DataSetWithoutTimeGenerator(selectedPathList, dataTypes, readersOfSelectedSeries);
     }
-
 
 }

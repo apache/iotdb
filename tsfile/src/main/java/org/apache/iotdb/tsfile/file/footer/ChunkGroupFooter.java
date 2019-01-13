@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.tsfile.file.footer;
 
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -24,13 +39,12 @@ public class ChunkGroupFooter {
      */
     private long writtenTime;
 
-    //this field does not need to be serialized.
+    // this field does not need to be serialized.
     private int serializedSize;
 
     public int getSerializedSize() {
         return serializedSize;
     }
-
 
     public ChunkGroupFooter(String deviceID, long dataSize, int numberOfChunks) {
         this.deviceID = deviceID;
@@ -67,7 +81,8 @@ public class ChunkGroupFooter {
 
     /**
      * @param inputStream
-     * @param markerRead  Whether the marker of the ChunkGroupFooter is read ahead.
+     * @param markerRead
+     *            Whether the marker of the ChunkGroupFooter is read ahead.
      * @return
      * @throws IOException
      */
@@ -84,14 +99,15 @@ public class ChunkGroupFooter {
         return new ChunkGroupFooter(deviceID, dataSize, numOfChunks);
     }
 
-
     /**
      * @param channel
-     * @param markerRead Whether the marker of the ChunkGroupFooter is read ahead.
+     * @param markerRead
+     *            Whether the marker of the ChunkGroupFooter is read ahead.
      * @return
      * @throws IOException
      */
-    public static ChunkGroupFooter deserializeFrom(FileChannel channel, long offset, boolean markerRead) throws IOException {
+    public static ChunkGroupFooter deserializeFrom(FileChannel channel, long offset, boolean markerRead)
+            throws IOException {
         if (!markerRead) {
             offset++;
         }
@@ -109,7 +125,6 @@ public class ChunkGroupFooter {
         return new ChunkGroupFooter(deviceID, dataSize, numOfChunks);
     }
 
-
     public static int getSerializedSize(String deviceID) {
         return Byte.BYTES + Integer.BYTES + getSerializedSize(deviceID.length());
     }
@@ -120,11 +135,7 @@ public class ChunkGroupFooter {
 
     @Override
     public String toString() {
-        return "ChunkGroupFooter{" +
-                "deviceID='" + deviceID + '\'' +
-                ", dataSize=" + dataSize +
-                ", numberOfChunks=" + numberOfChunks +
-                ", serializedSize=" + serializedSize +
-                '}';
+        return "ChunkGroupFooter{" + "deviceID='" + deviceID + '\'' + ", dataSize=" + dataSize + ", numberOfChunks="
+                + numberOfChunks + ", serializedSize=" + serializedSize + '}';
     }
 }

@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.db.integration;
 
 import org.apache.iotdb.db.exception.FileNodeManagerException;
@@ -29,8 +44,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 /**
- * Notice that, all test begins with "IoTDB" is integration test.
- * All test which will start the IoTDB server should be defined as integration test.
+ * Notice that, all test begins with "IoTDB" is integration test. All test which will start the IoTDB server should be
+ * defined as integration test.
  */
 public class IoTDBSeriesReaderTest {
 
@@ -65,7 +80,7 @@ public class IoTDBSeriesReaderTest {
 
         Thread.sleep(5000);
         insertData();
-        connection = DriverManager.getConnection(Config.IOTDB_URL_PREFIX+"127.0.0.1:6667/", "root", "root");
+        connection = DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
 
     }
 
@@ -75,7 +90,7 @@ public class IoTDBSeriesReaderTest {
         deamon.stop();
         Thread.sleep(5000);
 
-        //recovery value
+        // recovery value
         tsFileConfig.maxNumberOfPointsInPage = maxNumberOfPointsInPage;
         tsFileConfig.pageSizeInByte = pageSizeInByte;
         tsFileConfig.groupSizeInByte = groupSizeInByte;
@@ -131,7 +146,7 @@ public class IoTDBSeriesReaderTest {
         while (queryDataSet.hasNext()) {
             RowRecord rowRecord = queryDataSet.next();
             String result = rowRecord.toString();
-            //System.out.println(result);
+            // System.out.println(result);
             cnt++;
         }
         assertEquals(16440, cnt);
@@ -157,7 +172,7 @@ public class IoTDBSeriesReaderTest {
         while (queryDataSet.hasNext()) {
             RowRecord rowRecord = queryDataSet.next();
             String result = rowRecord.toString();
-            //System.out.println(result);
+            // System.out.println(result);
             cnt++;
         }
         assertEquals(3012, cnt);
@@ -182,8 +197,8 @@ public class IoTDBSeriesReaderTest {
         int cnt = 0;
         while (queryDataSet.hasNext()) {
             RowRecord rowRecord = queryDataSet.next();
-            //long time = rowRecord.getTimestamp();
-            //String value = rowRecord.getFields().get(1).getStringValue();
+            // long time = rowRecord.getTimestamp();
+            // String value = rowRecord.getFields().get(1).getStringValue();
             cnt++;
         }
         assertEquals(22800, cnt);
@@ -195,25 +210,27 @@ public class IoTDBSeriesReaderTest {
         Class.forName(Config.JDBC_DRIVER_NAME);
         Connection connection = null;
         try {
-            connection = DriverManager.getConnection(Config.IOTDB_URL_PREFIX+"127.0.0.1:6667/", "root", "root");
+            connection = DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
             Statement statement = connection.createStatement();
 
             for (String sql : Constant.create_sql) {
                 statement.execute(sql);
             }
 
-            // insert large amount of data    time range : 3000 ~ 13600
+            // insert large amount of data time range : 3000 ~ 13600
             for (int time = 3000; time < 13600; time++) {
-                //System.out.println("===" + time);
+                // System.out.println("===" + time);
                 String sql = String.format("insert into root.vehicle.d0(timestamp,s0) values(%s,%s)", time, time % 100);
                 statement.execute(sql);
                 sql = String.format("insert into root.vehicle.d0(timestamp,s1) values(%s,%s)", time, time % 17);
                 statement.execute(sql);
                 sql = String.format("insert into root.vehicle.d0(timestamp,s2) values(%s,%s)", time, time % 22);
                 statement.execute(sql);
-                sql = String.format("insert into root.vehicle.d0(timestamp,s3) values(%s,'%s')", time, Constant.stringValue[time % 5]);
+                sql = String.format("insert into root.vehicle.d0(timestamp,s3) values(%s,'%s')", time,
+                        Constant.stringValue[time % 5]);
                 statement.execute(sql);
-                sql = String.format("insert into root.vehicle.d0(timestamp,s4) values(%s, %s)", time, Constant.booleanValue[time % 2]);
+                sql = String.format("insert into root.vehicle.d0(timestamp,s4) values(%s, %s)", time,
+                        Constant.booleanValue[time % 2]);
                 statement.execute(sql);
                 sql = String.format("insert into root.vehicle.d0(timestamp,s5) values(%s, %s)", time, time);
                 statement.execute(sql);
@@ -269,7 +286,8 @@ public class IoTDBSeriesReaderTest {
                 statement.execute(sql);
                 sql = String.format("insert into root.vehicle.d0(timestamp,s2) values(%s,%s)", time, time + 2);
                 statement.execute(sql);
-                sql = String.format("insert into root.vehicle.d0(timestamp,s3) values(%s,'%s')", time, Constant.stringValue[time % 5]);
+                sql = String.format("insert into root.vehicle.d0(timestamp,s3) values(%s,'%s')", time,
+                        Constant.stringValue[time % 5]);
                 statement.execute(sql);
             }
 
@@ -284,14 +302,15 @@ public class IoTDBSeriesReaderTest {
                 statement.execute(sql);
                 sql = String.format("insert into root.vehicle.d0(timestamp,s3) values(%s,'%s')", time, "goodman");
                 statement.execute(sql);
-                sql = String.format("insert into root.vehicle.d0(timestamp,s4) values(%s, %s)", time, Constant.booleanValue[time % 2]);
+                sql = String.format("insert into root.vehicle.d0(timestamp,s4) values(%s, %s)", time,
+                        Constant.booleanValue[time % 2]);
                 statement.execute(sql);
                 sql = String.format("insert into root.vehicle.d0(timestamp,s5) values(%s, %s)", time, 9999);
                 statement.execute(sql);
             }
 
             // overflow update
-            //statement.execute("UPDATE root.vehicle SET d0.s1 = 11111111 WHERE time > 23000 and time < 100100");
+            // statement.execute("UPDATE root.vehicle SET d0.s1 = 11111111 WHERE time > 23000 and time < 100100");
 
             statement.close();
         } catch (Exception e) {

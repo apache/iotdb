@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.tsfile.read.controller;
 
 import org.apache.iotdb.tsfile.file.metadata.*;
@@ -42,7 +57,6 @@ public class MetadataQuerierByFileImpl implements MetadataQuerier {
         return fileMetaData;
     }
 
-
     @Override
     public void loadChunkMetaDatas(List<Path> paths) throws IOException {
 
@@ -62,7 +76,8 @@ public class MetadataQuerierByFileImpl implements MetadataQuerier {
         // get all TsDeviceMetadataIndex by string order
         for (Map.Entry<String, Set<String>> device_measurements : device_measurementsMap.entrySet()) {
 
-            if (enough) break;
+            if (enough)
+                break;
 
             // d1
             String selectedDevice = device_measurements.getKey();
@@ -74,9 +89,11 @@ public class MetadataQuerierByFileImpl implements MetadataQuerier {
             TsDeviceMetadata tsDeviceMetadata = tsFileReader.readTsDeviceMetaData(index);
 
             // d1
-            for (ChunkGroupMetaData chunkGroupMetaData : tsDeviceMetadata.getChunkGroups()) {//TODO make this function better
+            for (ChunkGroupMetaData chunkGroupMetaData : tsDeviceMetadata.getChunkGroups()) {// TODO make this function
+                                                                                             // better
 
-                if (enough) break;
+                if (enough)
+                    break;
 
                 // s1, s2
                 for (ChunkMetaData chunkMetaData : chunkGroupMetaData.getChunkMetaDataList()) {
@@ -105,12 +122,10 @@ public class MetadataQuerierByFileImpl implements MetadataQuerier {
             }
         }
 
-
         for (Map.Entry<Path, List<ChunkMetaData>> entry : tempChunkMetaDatas.entrySet())
             chunkMetaDataCache.put(entry.getKey(), entry.getValue());
 
     }
-
 
     private List<ChunkMetaData> loadChunkMetadata(Path path) throws IOException {
 

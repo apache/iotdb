@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.db.integration;
 
 import org.apache.iotdb.db.service.IoTDB;
@@ -25,8 +40,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 /**
- * Notice that, all test begins with "IoTDB" is integration test.
- * All test which will start the IoTDB server should be defined as integration test.
+ * Notice that, all test begins with "IoTDB" is integration test. All test which will start the IoTDB server should be
+ * defined as integration test.
  */
 public class IoTDBDaemonTest {
 
@@ -34,10 +49,9 @@ public class IoTDBDaemonTest {
 
     private static Connection connection;
 
-    private static String[] sqls = new String[]{
+    private static String[] sqls = new String[] {
 
-            "SET STORAGE GROUP TO root.vehicle.d0",
-            "SET STORAGE GROUP TO root.vehicle.d1",
+            "SET STORAGE GROUP TO root.vehicle.d0", "SET STORAGE GROUP TO root.vehicle.d1",
 
             "CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE",
             "CREATE TIMESERIES root.vehicle.d0.s1 WITH DATATYPE=INT64, ENCODING=RLE",
@@ -93,8 +107,7 @@ public class IoTDBDaemonTest {
             "insert into root.vehicle.d0(timestamp,s3) values(2000-01-01T08:00:00+08:00, 'good')",
 
             "insert into root.vehicle.d0(timestamp,s4) values(100, false)",
-            "insert into root.vehicle.d0(timestamp,s4) values(100, true)",
-    };
+            "insert into root.vehicle.d0(timestamp,s4) values(100, true)", };
 
     @BeforeClass
     public static void setUp() throws Exception {
@@ -105,7 +118,7 @@ public class IoTDBDaemonTest {
         EnvironmentUtils.envSetUp();
 
         insertData();
-        connection = DriverManager.getConnection(Config.IOTDB_URL_PREFIX+"127.0.0.1:6667/", "root", "root");
+        connection = DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
     }
 
     @AfterClass
@@ -119,30 +132,18 @@ public class IoTDBDaemonTest {
 
     @Test
     public void selectAllSQLTest() throws ClassNotFoundException, SQLException {
-        String[] retArray = new String[]{
-                "1,101,1101,null,null,999",
-                "2,10000,40000,2.22,null,null",
-                "3,null,null,3.33,null,null",
-                "4,null,null,4.44,null,null",
-                "50,10000,50000,null,null,null",
-                "60,null,null,null,aaaaa,null",
-                "70,null,null,null,bbbbb,null",
-                "80,null,null,null,ccccc,null",
-                "100,99,199,null,null,null",
-                "101,99,199,null,ddddd,null",
-                "102,80,180,10.0,fffff,null",
-                "103,99,199,null,null,null",
-                "104,90,190,null,null,null",
-                "105,99,199,11.11,null,null",
-                "106,99,null,null,null,null",
-                "1000,22222,55555,1000.11,null,888",
-                "946684800000,null,100,null,good,null"
-        };
+        String[] retArray = new String[] { "1,101,1101,null,null,999", "2,10000,40000,2.22,null,null",
+                "3,null,null,3.33,null,null", "4,null,null,4.44,null,null", "50,10000,50000,null,null,null",
+                "60,null,null,null,aaaaa,null", "70,null,null,null,bbbbb,null", "80,null,null,null,ccccc,null",
+                "100,99,199,null,null,null", "101,99,199,null,ddddd,null", "102,80,180,10.0,fffff,null",
+                "103,99,199,null,null,null", "104,90,190,null,null,null", "105,99,199,11.11,null,null",
+                "106,99,null,null,null,null", "1000,22222,55555,1000.11,null,888",
+                "946684800000,null,100,null,good,null" };
 
         Class.forName(Config.JDBC_DRIVER_NAME);
         Connection connection = null;
         try {
-            connection = DriverManager.getConnection(Config.IOTDB_URL_PREFIX+"127.0.0.1:6667/", "root", "root");
+            connection = DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
             Statement statement = connection.createStatement();
             boolean hasResultSet = statement.execute("select * from root");
             Assert.assertTrue(hasResultSet);
@@ -150,17 +151,16 @@ public class IoTDBDaemonTest {
             ResultSet resultSet = statement.getResultSet();
             int cnt = 0;
             while (resultSet.next()) {
-                String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s0) + "," + resultSet.getString(d0s1)
-                        + "," + resultSet.getString(d0s2) + "," + resultSet.getString(d0s3) + "," + resultSet.getString(d1s0);
+                String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s0) + ","
+                        + resultSet.getString(d0s1) + "," + resultSet.getString(d0s2) + "," + resultSet.getString(d0s3)
+                        + "," + resultSet.getString(d1s0);
                 Assert.assertEquals(retArray[cnt], ans);
                 cnt++;
             }
             Assert.assertEquals(17, cnt);
             statement.close();
 
-            retArray = new String[]{
-                    "100,true"
-            };
+            retArray = new String[] { "100,true" };
             statement = connection.createStatement();
             hasResultSet = statement.execute("select s4 from root.vehicle.d0");
             Assert.assertTrue(hasResultSet);
@@ -186,18 +186,12 @@ public class IoTDBDaemonTest {
 
     @Test
     public void selectWildCardSQLTest() throws ClassNotFoundException, SQLException {
-        String[] retArray = new String[]{
-                "2,2.22",
-                "3,3.33",
-                "4,4.44",
-                "102,10.0",
-                "105,11.11",
-                "1000,1000.11"};
+        String[] retArray = new String[] { "2,2.22", "3,3.33", "4,4.44", "102,10.0", "105,11.11", "1000,1000.11" };
 
         Class.forName(Config.JDBC_DRIVER_NAME);
         Connection connection = null;
         try {
-            connection = DriverManager.getConnection(Config.IOTDB_URL_PREFIX+"127.0.0.1:6667/", "root", "root");
+            connection = DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
             Statement statement = connection.createStatement();
             boolean hasResultSet = statement.execute("select s2 from root.vehicle.*");
             Assert.assertTrue(hasResultSet);
@@ -224,30 +218,23 @@ public class IoTDBDaemonTest {
 
     @Test
     public void dnfErrorSQLTest() throws ClassNotFoundException, SQLException {
-        String[] retArray = new String[]{
-                "1,101,1101",
-                "2,10000,40000",
-                "50,10000,50000",
-                "100,99,199",
-                "101,99,199",
-                "102,80,180",
-                "103,99,199",
-                "104,90,190",
-                "105,99,199"
-        };
+        String[] retArray = new String[] { "1,101,1101", "2,10000,40000", "50,10000,50000", "100,99,199", "101,99,199",
+                "102,80,180", "103,99,199", "104,90,190", "105,99,199" };
 
         Class.forName(Config.JDBC_DRIVER_NAME);
         Connection connection = null;
         try {
-            connection = DriverManager.getConnection(Config.IOTDB_URL_PREFIX+"127.0.0.1:6667/", "root", "root");
+            connection = DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
             Statement statement = connection.createStatement();
-            boolean hasResultSet = statement.execute("select s0,s1 from root.vehicle.d0 where time < 106 and (s0 >= 60 or s1 <= 200)");
+            boolean hasResultSet = statement
+                    .execute("select s0,s1 from root.vehicle.d0 where time < 106 and (s0 >= 60 or s1 <= 200)");
             Assert.assertTrue(hasResultSet);
 
             ResultSet resultSet = statement.getResultSet();
             int cnt = 0;
             while (resultSet.next()) {
-                String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s0) + "," + resultSet.getString(d0s1);
+                String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s0) + ","
+                        + resultSet.getString(d0s1);
                 assertEquals(retArray[cnt], ans);
                 cnt++;
             }
@@ -266,24 +253,22 @@ public class IoTDBDaemonTest {
 
     @Test
     public void selectAndOperatorTest() throws ClassNotFoundException, SQLException {
-        String[] retArray = new String[]{
-                "1000,22222,55555,888"
-        };
+        String[] retArray = new String[] { "1000,22222,55555,888" };
 
         Class.forName(Config.JDBC_DRIVER_NAME);
         Connection connection = null;
         try {
-            connection = DriverManager.getConnection(Config.IOTDB_URL_PREFIX+"127.0.0.1:6667/", "root", "root");
+            connection = DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
             Statement statement = connection.createStatement();
-            //TODO  select s0,s1 from root.vehicle.d0 where time > 106 and root.vehicle.d1.s0 > 100;
+            // TODO select s0,s1 from root.vehicle.d0 where time > 106 and root.vehicle.d1.s0 > 100;
             boolean hasResultSet = statement.execute(
                     "select s0,s1 from root.vehicle.d0,root.vehicle.d1 where time > 106 and root.vehicle.d0.s0 > 100");
             Assert.assertTrue(hasResultSet);
             ResultSet resultSet = statement.getResultSet();
             int cnt = 0;
             while (resultSet.next()) {
-                String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s0) + "," + resultSet.getString(d0s1) + ","
-                        + resultSet.getString(d1s0);
+                String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s0) + ","
+                        + resultSet.getString(d0s1) + "," + resultSet.getString(d1s0);
                 Assert.assertEquals(ans, retArray[cnt]);
                 cnt++;
             }
@@ -301,20 +286,21 @@ public class IoTDBDaemonTest {
 
     @Test
     public void selectAndOpeCrossTest() throws ClassNotFoundException, SQLException {
-        String[] retArray = new String[]{
-                "1000,22222,55555"};
+        String[] retArray = new String[] { "1000,22222,55555" };
 
         Class.forName(Config.JDBC_DRIVER_NAME);
         Connection connection = null;
         try {
-            connection = DriverManager.getConnection(Config.IOTDB_URL_PREFIX+"127.0.0.1:6667/", "root", "root");
+            connection = DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
             Statement statement = connection.createStatement();
-            boolean hasResultSet = statement.execute("select s0,s1 from root.vehicle.d0 where time > 106 and root.vehicle.d1.s0 > 100");
+            boolean hasResultSet = statement
+                    .execute("select s0,s1 from root.vehicle.d0 where time > 106 and root.vehicle.d1.s0 > 100");
             Assert.assertTrue(hasResultSet);
             ResultSet resultSet = statement.getResultSet();
             int cnt = 0;
             while (resultSet.next()) {
-                String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s0) + "," + resultSet.getString(d0s1);
+                String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s0) + ","
+                        + resultSet.getString(d0s1);
                 Assert.assertEquals(ans, retArray[cnt]);
                 cnt++;
             }
@@ -332,16 +318,12 @@ public class IoTDBDaemonTest {
 
     @Test
     public void selectOneColumnWithFilterTest() throws ClassNotFoundException, SQLException {
-        String[] retArray = new String[]{
-                "102,180",
-                "104,190",
-                "946684800000,100"
-        };
+        String[] retArray = new String[] { "102,180", "104,190", "946684800000,100" };
 
         Class.forName(Config.JDBC_DRIVER_NAME);
         Connection connection = null;
         try {
-            connection = DriverManager.getConnection(Config.IOTDB_URL_PREFIX+"127.0.0.1:6667/", "root", "root");
+            connection = DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
             Statement statement = connection.createStatement();
 
             boolean hasTextMaxResultSet = statement.execute("select s1 from root.vehicle.d0 where s1 < 199");
@@ -369,7 +351,7 @@ public class IoTDBDaemonTest {
         Class.forName(Config.JDBC_DRIVER_NAME);
         Connection connection = null;
         try {
-            connection = DriverManager.getConnection(Config.IOTDB_URL_PREFIX+"127.0.0.1:6667/", "root", "root");
+            connection = DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
             Statement statement = connection.createStatement();
             for (String sql : sqls) {
                 statement.execute(sql);

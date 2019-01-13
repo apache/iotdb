@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.tsfile.read.common;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
@@ -11,9 +26,9 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import java.util.ArrayList;
 
 /**
- * <p> <code>BatchData</code> is a self-defined data structure
- * which is optimized for different type of values.
- * This class can be viewed as a collection which is more efficient than ArrayList.
+ * <p>
+ * <code>BatchData</code> is a self-defined data structure which is optimized for different type of values. This class
+ * can be viewed as a collection which is more efficient than ArrayList.
  */
 public class BatchData {
 
@@ -25,13 +40,13 @@ public class BatchData {
     private TSDataType dataType;
     private int curIdx;
 
-    private int timeArrayIdx;  // the number of ArrayList in timeRet
-    private int curTimeIdx;      // the index of current ArrayList in timeRet
-    private int timeLength;   // the insert timestamp number of timeRet
+    private int timeArrayIdx; // the number of ArrayList in timeRet
+    private int curTimeIdx; // the index of current ArrayList in timeRet
+    private int timeLength; // the insert timestamp number of timeRet
 
     private int valueArrayIdx;// the number of ArrayList in valueRet
-    private int curValueIdx;     // the index of current ArrayList in valueRet
-    private int valueLength;  // the insert value number of valueRet
+    private int curValueIdx; // the index of current ArrayList in valueRet
+    private int valueLength; // the insert value number of valueRet
 
     private ArrayList<long[]> timeRet;
     private ArrayList<long[]> emptyTimeRet;
@@ -51,8 +66,10 @@ public class BatchData {
     }
 
     /**
-     * @param type       Data type to record for this BatchData
-     * @param recordTime whether to record time value for this BatchData
+     * @param type
+     *            Data type to record for this BatchData
+     * @param recordTime
+     *            whether to record time value for this BatchData
      */
     public BatchData(TSDataType type, boolean recordTime) {
         init(type, recordTime, false);
@@ -77,20 +94,20 @@ public class BatchData {
 
     public Object currentValue() {
         switch (dataType) {
-            case INT32:
-                return getInt();
-            case INT64:
-                return getLong();
-            case FLOAT:
-                return getFloat();
-            case DOUBLE:
-                return getDouble();
-            case BOOLEAN:
-                return getBoolean();
-            case TEXT:
-                return getBinary();
-            default:
-                return null;
+        case INT32:
+            return getInt();
+        case INT64:
+            return getLong();
+        case FLOAT:
+            return getFloat();
+        case DOUBLE:
+            return getDouble();
+        case BOOLEAN:
+            return getBoolean();
+        case TEXT:
+            return getBinary();
+        default:
+            return null;
         }
     }
 
@@ -120,32 +137,32 @@ public class BatchData {
         }
 
         switch (dataType) {
-            case BOOLEAN:
-                booleanRet = new ArrayList<>();
-                booleanRet.add(new boolean[VALUE_CAPACITY]);
-                break;
-            case INT32:
-                intRet = new ArrayList<>();
-                intRet.add(new int[VALUE_CAPACITY]);
-                break;
-            case INT64:
-                longRet = new ArrayList<>();
-                longRet.add(new long[VALUE_CAPACITY]);
-                break;
-            case FLOAT:
-                floatRet = new ArrayList<>();
-                floatRet.add(new float[VALUE_CAPACITY]);
-                break;
-            case DOUBLE:
-                doubleRet = new ArrayList<>();
-                doubleRet.add(new double[VALUE_CAPACITY]);
-                break;
-            case TEXT:
-                binaryRet = new ArrayList<>();
-                binaryRet.add(new Binary[VALUE_CAPACITY]);
-                break;
-            default:
-                throw new UnSupportedDataTypeException(String.valueOf(dataType));
+        case BOOLEAN:
+            booleanRet = new ArrayList<>();
+            booleanRet.add(new boolean[VALUE_CAPACITY]);
+            break;
+        case INT32:
+            intRet = new ArrayList<>();
+            intRet.add(new int[VALUE_CAPACITY]);
+            break;
+        case INT64:
+            longRet = new ArrayList<>();
+            longRet.add(new long[VALUE_CAPACITY]);
+            break;
+        case FLOAT:
+            floatRet = new ArrayList<>();
+            floatRet.add(new float[VALUE_CAPACITY]);
+            break;
+        case DOUBLE:
+            doubleRet = new ArrayList<>();
+            doubleRet.add(new double[VALUE_CAPACITY]);
+            break;
+        case TEXT:
+            binaryRet = new ArrayList<>();
+            binaryRet.add(new Binary[VALUE_CAPACITY]);
+            break;
+        default:
+            throw new UnSupportedDataTypeException(String.valueOf(dataType));
         }
     }
 
@@ -281,28 +298,28 @@ public class BatchData {
     }
 
     /**
-     * Checks if the given index is in range.
-     * If not, throws an appropriate runtime exception.
+     * Checks if the given index is in range. If not, throws an appropriate runtime exception.
      */
     private void rangeCheck(int idx) {
         if (idx < 0) {
             throw new IndexOutOfBoundsException("BatchData value range check, Index is negative: " + idx);
         }
         if (idx >= valueLength) {
-            throw new IndexOutOfBoundsException("BatchData value range check, Index : " + idx + ". Length : " + valueLength);
+            throw new IndexOutOfBoundsException(
+                    "BatchData value range check, Index : " + idx + ". Length : " + valueLength);
         }
     }
 
     /**
-     * Checks if the given index is in range.
-     * If not, throws an appropriate runtime exception.
+     * Checks if the given index is in range. If not, throws an appropriate runtime exception.
      */
     private void rangeCheckForTime(int idx) {
         if (idx < 0) {
             throw new IndexOutOfBoundsException("BatchData time range check, Index is negative: " + idx);
         }
         if (idx >= timeLength) {
-            throw new IndexOutOfBoundsException("BatchData time range check, Index : " + idx + ". Length : " + timeLength);
+            throw new IndexOutOfBoundsException(
+                    "BatchData time range check, Index : " + idx + ". Length : " + timeLength);
         }
     }
 
@@ -371,7 +388,6 @@ public class BatchData {
         this.binaryRet.get(idx / TIME_CAPACITY)[idx % TIME_CAPACITY] = v;
     }
 
-
     public void setTime(int idx, long v) {
         rangeCheckForTime(idx);
         this.timeRet.get(idx / TIME_CAPACITY)[idx % TIME_CAPACITY] = v;
@@ -392,70 +408,70 @@ public class BatchData {
 
     public void putAnObject(Object v) {
         switch (dataType) {
-            case BOOLEAN:
-                putBoolean((boolean) v);
-                break;
-            case INT32:
-                putInt((int) v);
-                break;
-            case INT64:
-                putLong((long) v);
-                break;
-            case FLOAT:
-                putFloat((float) v);
-                break;
-            case DOUBLE:
-                putDouble((double) v);
-                break;
-            case TEXT:
-                putBinary((Binary) v);
-                break;
-            default:
-                throw new UnSupportedDataTypeException(String.valueOf(dataType));
+        case BOOLEAN:
+            putBoolean((boolean) v);
+            break;
+        case INT32:
+            putInt((int) v);
+            break;
+        case INT64:
+            putLong((long) v);
+            break;
+        case FLOAT:
+            putFloat((float) v);
+            break;
+        case DOUBLE:
+            putDouble((double) v);
+            break;
+        case TEXT:
+            putBinary((Binary) v);
+            break;
+        default:
+            throw new UnSupportedDataTypeException(String.valueOf(dataType));
         }
     }
 
     public Comparable<?> getAnObject() {
         switch (dataType) {
-            case BOOLEAN:
-                return getBoolean();
-            case DOUBLE:
-                return getDouble();
-            case TEXT:
-                return getBinary();
-            case FLOAT:
-                return getFloat();
-            case INT32:
-                return getInt();
-            case INT64:
-                return getLong();
-            default:
-                throw new UnSupportedDataTypeException(String.valueOf(dataType));
+        case BOOLEAN:
+            return getBoolean();
+        case DOUBLE:
+            return getDouble();
+        case TEXT:
+            return getBinary();
+        case FLOAT:
+            return getFloat();
+        case INT32:
+            return getInt();
+        case INT64:
+            return getLong();
+        default:
+            throw new UnSupportedDataTypeException(String.valueOf(dataType));
         }
     }
 
     public void setAnObject(int idx, Comparable<?> v) {
         switch (dataType) {
-            case BOOLEAN:
-                setBoolean(idx, (Boolean) v);
-                break;
-            case DOUBLE:
-                setDouble(idx, (Double) v);
-                break;
-            case TEXT:
-                setBinary(idx, (Binary) v);
-                break;
-            case FLOAT:
-                setFloat(idx, (Float) v);
-                break;
-            case INT32:
-                setInt(idx, (Integer) v);
-                break;
-            case INT64:
-                setLong(idx, (Long) v);
-                break;
-            default:
-                throw new UnSupportedDataTypeException(String.valueOf(dataType));
+        case BOOLEAN:
+            setBoolean(idx, (Boolean) v);
+            break;
+        case DOUBLE:
+            setDouble(idx, (Double) v);
+            break;
+        case TEXT:
+            setBinary(idx, (Binary) v);
+            break;
+        case FLOAT:
+            setFloat(idx, (Float) v);
+            break;
+        case INT32:
+            setInt(idx, (Integer) v);
+            break;
+        case INT64:
+            setLong(idx, (Long) v);
+            break;
+        default:
+            throw new UnSupportedDataTypeException(String.valueOf(dataType));
         }
     }
 

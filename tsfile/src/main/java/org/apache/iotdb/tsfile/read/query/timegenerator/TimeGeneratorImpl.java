@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.tsfile.read.query.timegenerator;
 
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
@@ -35,7 +50,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
-
 public class TimeGeneratorImpl implements TimeGenerator {
 
     private ChunkLoader chunkLoader;
@@ -44,8 +58,8 @@ public class TimeGeneratorImpl implements TimeGenerator {
 
     private HashMap<Path, List<LeafNode>> leafCache;
 
-    public TimeGeneratorImpl(IExpression IExpression, ChunkLoader chunkLoader
-            , MetadataQuerier metadataQuerier) throws IOException {
+    public TimeGeneratorImpl(IExpression IExpression, ChunkLoader chunkLoader, MetadataQuerier metadataQuerier)
+            throws IOException {
         this.chunkLoader = chunkLoader;
         this.metadataQuerier = metadataQuerier;
         this.leafCache = new HashMap<>();
@@ -67,14 +81,13 @@ public class TimeGeneratorImpl implements TimeGenerator {
     public Object getValue(Path path, long time) {
 
         for (LeafNode leafNode : leafCache.get(path)) {
-            if(!leafNode.currentTimeIs(time))
+            if (!leafNode.currentTimeIs(time))
                 continue;
             return leafNode.currentValue(time);
         }
 
         return null;
     }
-
 
     /**
      * construct the tree that generate timestamp
@@ -105,12 +118,12 @@ public class TimeGeneratorImpl implements TimeGenerator {
             Node rightChild = construct(((IBinaryExpression) expression).getRight());
             return new AndNode(leftChild, rightChild);
         }
-        throw new UnSupportedDataTypeException("Unsupported ExpressionType when construct OperatorNode: " + expression.getType());
+        throw new UnSupportedDataTypeException(
+                "Unsupported ExpressionType when construct OperatorNode: " + expression.getType());
     }
 
     private FileSeriesReader generateSeriesReader(SingleSeriesExpression singleSeriesExp) throws IOException {
-        List<ChunkMetaData> chunkMetaDataList = metadataQuerier.getChunkMetaDataList(
-                singleSeriesExp.getSeriesPath());
+        List<ChunkMetaData> chunkMetaDataList = metadataQuerier.getChunkMetaDataList(singleSeriesExp.getSeriesPath());
         return new FileSeriesReaderWithFilter(chunkLoader, chunkMetaDataList, singleSeriesExp.getFilter());
     }
 }

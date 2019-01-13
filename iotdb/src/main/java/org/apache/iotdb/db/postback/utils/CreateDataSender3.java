@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.db.postback.utils;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
@@ -15,9 +30,8 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * @author lta
- *         The class is to generate data of another half timeseries (simulating jilian scene) which is different to those
- *         in CreateDataSender2 to test stability of postback function.
+ * @author lta The class is to generate data of another half timeseries (simulating jilian scene) which is different to
+ *         those in CreateDataSender2 to test stability of postback function.
  */
 public class CreateDataSender3 {
 
@@ -55,7 +69,8 @@ public class CreateDataSender3 {
 
     }
 
-    public static void createTimeseries(Statement statement, Statement statement1, Map<String, String> timeseriesMap) throws SQLException {
+    public static void createTimeseries(Statement statement, Statement statement1, Map<String, String> timeseriesMap)
+            throws SQLException {
 
         try {
             String createTimeseriesSql = "CREATE TIMESERIES <timeseries> WITH DATATYPE=<datatype>, ENCODING=<encode>";
@@ -88,7 +103,8 @@ public class CreateDataSender3 {
         }
     }
 
-    public static void setStorageGroup(Statement statement, Statement statement1, List<String> storageGroupList) throws SQLException {
+    public static void setStorageGroup(Statement statement, Statement statement1, List<String> storageGroupList)
+            throws SQLException {
         try {
             String setStorageGroupSql = "SET STORAGE GROUP TO <prefixpath>";
             for (String str : storageGroupList) {
@@ -101,8 +117,8 @@ public class CreateDataSender3 {
         }
     }
 
-
-    public static void randomInsertData(Statement statement, Statement statement1, Map<String, String> timeseriesMap) throws Exception {
+    public static void randomInsertData(Statement statement, Statement statement1, Map<String, String> timeseriesMap)
+            throws Exception {
 
         String insertDataSql = "INSERT INTO <seriesPath> (timestamp, <sensor>) VALUES (<time>, <value>)";
         RandomNum r = new RandomNum();
@@ -133,10 +149,8 @@ public class CreateDataSender3 {
                     } else {
                         value = r.getRandomInt(MIN_INT, MAX_INT);
                     }
-                    sql = insertDataSql.replace("<seriesPath>", path)
-                            .replace("<sensor>", sensor)
-                            .replace("<time>", time + "")
-                            .replace("<value>", value + "");
+                    sql = insertDataSql.replace("<seriesPath>", path).replace("<sensor>", sensor)
+                            .replace("<time>", time + "").replace("<value>", value + "");
                 } else if (type.equals("FLOAT")) {
                     float value;
                     if (abnormalFlag == 0) {
@@ -144,20 +158,16 @@ public class CreateDataSender3 {
                     } else {
                         value = r.getRandomFloat(MIN_FLOAT, MAX_FLOAT);
                     }
-                    sql = insertDataSql.replace("<seriesPath>", path)
-                            .replace("<sensor>", sensor)
-                            .replace("<time>", time + "")
-                            .replace("<value>", value + "");
+                    sql = insertDataSql.replace("<seriesPath>", path).replace("<sensor>", sensor)
+                            .replace("<time>", time + "").replace("<value>", value + "");
                 } else if (type.equals("TEXT")) {
                     String value;
                     value = r.getRandomText(STRING_LENGTH);
-                    sql = insertDataSql.replace("<seriesPath>", path)
-                            .replace("<sensor>", sensor)
-                            .replace("<time>", time + "")
-                            .replace("<value>", "\"" + value + "\"");
+                    sql = insertDataSql.replace("<seriesPath>", path).replace("<sensor>", sensor)
+                            .replace("<time>", time + "").replace("<value>", "\"" + value + "\"");
                 }
 
-                //TODO: other data type
+                // TODO: other data type
                 statement.addBatch(sql);
                 statement1.addBatch(sql);
                 sqlCount++;
@@ -192,7 +202,8 @@ public class CreateDataSender3 {
         Connection connection1 = null;
         Statement statement1 = null;
 
-        String path = new File(System.getProperty(IoTDBConstant.IOTDB_HOME, null)).getParent() + File.separator + "src" + File.separator + "test" + File.separator + "resources" + File.separator + "CreateTimeseries3.txt";
+        String path = new File(System.getProperty(IoTDBConstant.IOTDB_HOME, null)).getParent() + File.separator + "src"
+                + File.separator + "test" + File.separator + "resources" + File.separator + "CreateTimeseries3.txt";
         Map<String, String> timeseriesMap = generateTimeseriesMapFromFile(path);
 
         List<String> storageGroupList = new ArrayList<>();

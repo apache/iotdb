@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.db.conf.directories.Directories;
@@ -11,8 +26,6 @@ import java.io.InputStreamReader;
 import java.util.Collections;
 import java.util.List;
 import java.util.EnumMap;
-
-
 
 // Notice : statistics in this class may not be accurate because of limited user authority.
 public class OpenFileNumUtil {
@@ -30,17 +43,16 @@ public class OpenFileNumUtil {
     private static final String SEARCH_PID_LINUX = "ps -aux | grep -i %s | grep -v grep";
     private static final String SEARCH_PID_MAC = "ps aux | grep -i %s | grep -v grep";
     private static final String SEARCH_OPEN_DATA_FILE_BY_PID = "lsof -p %d";
-    private final String[] cmds = {"/bin/bash", "-c", ""};
+    private final String[] cmds = { "/bin/bash", "-c", "" };
 
     public enum OpenFileNumStatistics {
-        TOTAL_OPEN_FILE_NUM(null),
-        DATA_OPEN_FILE_NUM(Collections.singletonList(config.dataDir)),
-        DELTA_OPEN_FILE_NUM(directories.getAllTsFileFolders()),
-        OVERFLOW_OPEN_FILE_NUM(Collections.singletonList(config.overflowDataDir)),
-        WAL_OPEN_FILE_NUM(Collections.singletonList(config.walFolder)),
-        METADATA_OPEN_FILE_NUM(Collections.singletonList(config.metadataDir)),
-        DIGEST_OPEN_FILE_NUM(Collections.singletonList(config.fileNodeDir)),
-        SOCKET_OPEN_FILE_NUM(null);
+        TOTAL_OPEN_FILE_NUM(null), DATA_OPEN_FILE_NUM(Collections.singletonList(config.dataDir)), DELTA_OPEN_FILE_NUM(
+                directories.getAllTsFileFolders()), OVERFLOW_OPEN_FILE_NUM(
+                        Collections.singletonList(config.overflowDataDir)), WAL_OPEN_FILE_NUM(
+                                Collections.singletonList(config.walFolder)), METADATA_OPEN_FILE_NUM(
+                                        Collections.singletonList(config.metadataDir)), DIGEST_OPEN_FILE_NUM(
+                                                Collections.singletonList(config.fileNodeDir)), SOCKET_OPEN_FILE_NUM(
+                                                        null);
 
         // path is a list of directory corresponding to the OpenFileNumStatistics enum element,
         // e.g. data/data/ for DATA_OPEN_FILE_NUM
@@ -50,7 +62,7 @@ public class OpenFileNumUtil {
             return path;
         }
 
-        OpenFileNumStatistics(List<String> path){
+        OpenFileNumStatistics(List<String> path) {
             this.path = path;
         }
     }
@@ -115,7 +127,9 @@ public class OpenFileNumUtil {
 
     /**
      * set pid
-     * @param pid is the process ID of IoTDB service process
+     * 
+     * @param pid
+     *            is the process ID of IoTDB service process
      */
     void setPid(int pid) {
         this.pid = pid;
@@ -124,14 +138,15 @@ public class OpenFileNumUtil {
     /**
      * check if the string is numeric
      *
-     * @param str string need to be checked
+     * @param str
+     *            string need to be checked
      * @return whether the string is a number
      */
     private static boolean isNumeric(String str) {
         if (str == null || str.equals("")) {
             return false;
         } else {
-            for (int i = str.length(); --i >= 0; ) {
+            for (int i = str.length(); --i >= 0;) {
                 if (!Character.isDigit(str.charAt(i))) {
                     return false;
                 }
@@ -142,22 +157,20 @@ public class OpenFileNumUtil {
     }
 
     /**
-     * return statistic Map, whose key belongs to enum OpenFileNumStatistics:
-     * TOTAL_OPEN_FILE_NUM is the current total open file number of IoTDB service process
-     * DATA_OPEN_FILE_NUM is the current open file number under data directory
-     * DELTA_OPEN_FILE_NUM is the current open file number of tsfile
-     * OVERFLOW_OPEN_FILE_NUM is the current open file number of overflow file
-     * WAL_OPEN_FILE_NUM is the current open file number of WAL file
-     * METADATA_OPEN_FILE_NUM is the current open file number of metadata
-     * DIGEST_OPEN_FILE_NUM is the current open file number of fileNodeDir
+     * return statistic Map, whose key belongs to enum OpenFileNumStatistics: TOTAL_OPEN_FILE_NUM is the current total
+     * open file number of IoTDB service process DATA_OPEN_FILE_NUM is the current open file number under data directory
+     * DELTA_OPEN_FILE_NUM is the current open file number of tsfile OVERFLOW_OPEN_FILE_NUM is the current open file
+     * number of overflow file WAL_OPEN_FILE_NUM is the current open file number of WAL file METADATA_OPEN_FILE_NUM is
+     * the current open file number of metadata DIGEST_OPEN_FILE_NUM is the current open file number of fileNodeDir
      * SOCKET_OPEN_FILE_NUM is the current open socket connection of IoTDB service process
      *
-     * @param pid : IoTDB service pid
+     * @param pid
+     *            : IoTDB service pid
      * @return list : statistics list
      */
     private EnumMap<OpenFileNumStatistics, Integer> getOpenFile(int pid) {
-        EnumMap<OpenFileNumStatistics, Integer> resultMap = new EnumMap<> (OpenFileNumStatistics.class);
-        //initialize resultMap
+        EnumMap<OpenFileNumStatistics, Integer> resultMap = new EnumMap<>(OpenFileNumStatistics.class);
+        // initialize resultMap
         for (OpenFileNumStatistics openFileNumStatistics : OpenFileNumStatistics.values()) {
             resultMap.put(openFileNumStatistics, 0);
         }
@@ -175,9 +188,9 @@ public class OpenFileNumUtil {
                 if (line.contains("" + pid) && temp.length > 8) {
                     oldValue = resultMap.get(OpenFileNumStatistics.TOTAL_OPEN_FILE_NUM);
                     resultMap.put(OpenFileNumStatistics.TOTAL_OPEN_FILE_NUM, oldValue + 1);
-                    for(OpenFileNumStatistics openFileNumStatistics: OpenFileNumStatistics.values()){
-                        if(openFileNumStatistics.path!=null){
-                            for(String path : openFileNumStatistics.path) {
+                    for (OpenFileNumStatistics openFileNumStatistics : OpenFileNumStatistics.values()) {
+                        if (openFileNumStatistics.path != null) {
+                            for (String path : openFileNumStatistics.path) {
                                 if (temp[8].contains(path)) {
                                     oldValue = resultMap.get(openFileNumStatistics);
                                     resultMap.put(openFileNumStatistics, oldValue + 1);
@@ -200,26 +213,27 @@ public class OpenFileNumUtil {
     }
 
     /**
-     * Check if runtime OS is supported then return the result list.
-     * If pid is abnormal then all statistics returns -1, if OS is not supported then all statistics returns -2
+     * Check if runtime OS is supported then return the result list. If pid is abnormal then all statistics returns -1,
+     * if OS is not supported then all statistics returns -2
+     * 
      * @return map
      */
     private EnumMap<OpenFileNumStatistics, Integer> getStatisticMap() {
         EnumMap<OpenFileNumStatistics, Integer> resultMap = new EnumMap<>(OpenFileNumStatistics.class);
         String os = System.getProperty("os.name").toLowerCase();
-        //get runtime OS name, currently only support Linux and MacOS
+        // get runtime OS name, currently only support Linux and MacOS
         if (os.startsWith(LINUX_OS_NAME) || os.startsWith(MAC_OS_NAME)) {
-            //if pid is normal, then get statistics
+            // if pid is normal, then get statistics
             if (pid > 0) {
                 resultMap = getOpenFile(pid);
             } else {
-                //pid is abnormal, give all statistics abnormal value -1
+                // pid is abnormal, give all statistics abnormal value -1
                 for (OpenFileNumStatistics statistics : OpenFileNumStatistics.values()) {
                     resultMap.put(statistics, PID_ERROR_CODE);
                 }
             }
         } else {
-            //operation system not supported, give all statistics abnormal value -2
+            // operation system not supported, give all statistics abnormal value -2
             for (OpenFileNumStatistics statistics : OpenFileNumStatistics.values()) {
                 resultMap.put(statistics, UNSUPPORTED_OS_ERROR_CODE);
             }
@@ -229,7 +243,9 @@ public class OpenFileNumUtil {
 
     /**
      * get statistics
-     * @param statistics get what statistics of open file number
+     * 
+     * @param statistics
+     *            get what statistics of open file number
      * @return open file number
      */
     public int get(OpenFileNumStatistics statistics) {

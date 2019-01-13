@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.db.postback.utils;
 
 import java.io.BufferedReader;
@@ -12,8 +27,8 @@ import java.util.*;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 
 /**
- * @author lta
- *         The class is to generate data of half timeseries (simulating jilian scene) to test stability of postback function.
+ * @author lta The class is to generate data of half timeseries (simulating jilian scene) to test stability of postback
+ *         function.
  */
 public class CreateDataSender2 {
 
@@ -92,7 +107,6 @@ public class CreateDataSender2 {
         }
     }
 
-
     public static void randomInsertData(Statement statement, Map<String, String> timeseriesMap) throws Exception {
 
         String insertDataSql = "INSERT INTO <seriesPath> (timestamp, <sensor>) VALUES (<time>, <value>)";
@@ -124,10 +138,8 @@ public class CreateDataSender2 {
                     } else {
                         value = r.getRandomInt(MIN_INT, MAX_INT);
                     }
-                    sql = insertDataSql.replace("<seriesPath>", path)
-                            .replace("<sensor>", sensor)
-                            .replace("<time>", time + "")
-                            .replace("<value>", value + "");
+                    sql = insertDataSql.replace("<seriesPath>", path).replace("<sensor>", sensor)
+                            .replace("<time>", time + "").replace("<value>", value + "");
                 } else if (type.equals("FLOAT")) {
                     float value;
                     if (abnormalFlag == 0) {
@@ -135,17 +147,13 @@ public class CreateDataSender2 {
                     } else {
                         value = r.getRandomFloat(MIN_FLOAT, MAX_FLOAT);
                     }
-                    sql = insertDataSql.replace("<seriesPath>", path)
-                            .replace("<sensor>", sensor)
-                            .replace("<time>", time + "")
-                            .replace("<value>", value + "");
+                    sql = insertDataSql.replace("<seriesPath>", path).replace("<sensor>", sensor)
+                            .replace("<time>", time + "").replace("<value>", value + "");
                 } else if (type.equals("TEXT")) {
                     String value;
                     value = r.getRandomText(STRING_LENGTH);
-                    sql = insertDataSql.replace("<seriesPath>", path)
-                            .replace("<sensor>", sensor)
-                            .replace("<time>", time + "")
-                            .replace("<value>", "\"" + value + "\"");
+                    sql = insertDataSql.replace("<seriesPath>", path).replace("<sensor>", sensor)
+                            .replace("<time>", time + "").replace("<value>", "\"" + value + "\"");
                 }
 
                 statement.addBatch(sql);
@@ -175,7 +183,8 @@ public class CreateDataSender2 {
         Connection connection = null;
         Statement statement = null;
 
-        String path = new File(System.getProperty(IoTDBConstant.IOTDB_HOME, null)).getParent() + File.separator + "src" + File.separator + "test" + File.separator + "resources" + File.separator + "CreateTimeseries2.txt";
+        String path = new File(System.getProperty(IoTDBConstant.IOTDB_HOME, null)).getParent() + File.separator + "src"
+                + File.separator + "test" + File.separator + "resources" + File.separator + "CreateTimeseries2.txt";
         Map<String, String> timeseriesMap = generateTimeseriesMapFromFile(path);
 
         List<String> storageGroupList = new ArrayList<>();

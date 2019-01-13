@@ -1,11 +1,25 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.tsfile.utils;
 
 import java.util.ArrayList;
 
 /**
- * this class is used to contact String effectively.It contains a StringBuider
- * and initialize it until {@code toString} is called.
- * Note:it's not thread safety
+ * this class is used to contact String effectively.It contains a StringBuider and initialize it until {@code toString}
+ * is called. Note:it's not thread safety
  *
  * @author kangrong
  */
@@ -81,7 +95,8 @@ public class StringContainer {
      * StringContainer this:["d","e","f"],<br>
      * result:this:["d","e","f","a","b","c"],<br>
      *
-     * @param strings - to be added
+     * @param strings
+     *            - to be added
      * @return - this object
      */
     public StringContainer addTail(String... strings) {
@@ -100,7 +115,8 @@ public class StringContainer {
      * this StringContainer :["d","e","f"],<br>
      * result:this:["d","e","f","a","b","c"],<br>
      *
-     * @param mContainer - to be added
+     * @param mContainer
+     *            - to be added
      * @return - this object
      */
     public StringContainer addTail(StringContainer mContainer) {
@@ -128,7 +144,8 @@ public class StringContainer {
      * StringContainer this:["d","e","f"],<br>
      * result:this:["a","b","c","d","e","f"],<br>
      *
-     * @param strings - to be added
+     * @param strings
+     *            - to be added
      * @return - this object
      */
     public StringContainer addHead(String... strings) {
@@ -147,7 +164,8 @@ public class StringContainer {
      * StringContainer this:["d","e","f"],<br>
      * result:this:["a","b","c","d","e","f"],<br>
      *
-     * @param mContainer - given StringContainer to be add in head
+     * @param mContainer
+     *            - given StringContainer to be add in head
      * @return - this object
      */
     public StringContainer addHead(StringContainer mContainer) {
@@ -192,17 +210,16 @@ public class StringContainer {
     }
 
     /**
-     * for all string in rev and seq, concat them with separator and return
-     * String
+     * for all string in rev and seq, concat them with separator and return String
      *
-     * @param separator separator of string
+     * @param separator
+     *            separator of string
      * @return - result joined in type of String with parameter
      */
     public String join(String separator) {
         if (totalLength <= 0)
             return "";
-        stringBuilder = new StringBuilder(totalLength + (count - 1)
-                * separator.length());
+        stringBuilder = new StringBuilder(totalLength + (count - 1) * separator.length());
         for (int i = reverseList.size() - 1; i >= 1; i--) {
             stringBuilder.append(reverseList.get(i));
             stringBuilder.append(separator);
@@ -224,17 +241,17 @@ public class StringContainer {
 
     /**
      * return a sub-string in this container.<br>
-     * e.g. this container is ["aa","bbb","cc","d","ee"]; this.getSubString(0) =
-     * "a";this.getSubString(2) = "c";this.getSubString(-1) = "ee";
+     * e.g. this container is ["aa","bbb","cc","d","ee"]; this.getSubString(0) = "a";this.getSubString(2) =
+     * "c";this.getSubString(-1) = "ee";
      *
-     * @param index - the index of wanted sub-string
+     * @param index
+     *            - the index of wanted sub-string
      * @return - substring result
      */
     public String getSubString(int index) {
         int realIndex = index >= 0 ? index : count + index;
         if (realIndex < 0 || realIndex >= count)
-            throw new IndexOutOfBoundsException("Index: " + index
-                    + ", Real Index: " + realIndex + ", Size: " + count);
+            throw new IndexOutOfBoundsException("Index: " + index + ", Real Index: " + realIndex + ", Size: " + count);
         if (realIndex < reverseList.size()) {
             return reverseList.get(reverseList.size() - 1 - realIndex);
         } else {
@@ -244,30 +261,30 @@ public class StringContainer {
 
     /**
      * /** return a sub-container consist of several continuous strings in this
-     * {@code container.If start <= end, return a empty container}
-     * e.g. this container is ["aa","bbb","cc","d","ee"];
+     * {@code container.If start <= end, return a empty container} e.g. this container is ["aa","bbb","cc","d","ee"];
      * this.getSubString(0,0) = ["aa"]<br>
      * this.getSubString(1,3) = ["bbb","cc","d"]<br>
      * this.getSubString(1,-1) = ["bbb","cc","d", "ee"]<br>
      *
-     * @param start - the start index of wanted sub-string
-     * @param end   - the end index of wanted sub-string
+     * @param start
+     *            - the start index of wanted sub-string
+     * @param end
+     *            - the end index of wanted sub-string
      * @return - substring result
      */
     public StringContainer getSubStringContainer(int start, int end) {
         int realStartIndex = start >= 0 ? start : count + start;
         int realEndIndex = end >= 0 ? end : count + end;
         if (realStartIndex < 0 || realStartIndex >= count)
-            throw new IndexOutOfBoundsException("start Index: " + start
-                    + ", Real start Index: " + realStartIndex + ", Size: "
-                    + count);
+            throw new IndexOutOfBoundsException(
+                    "start Index: " + start + ", Real start Index: " + realStartIndex + ", Size: " + count);
         if (realEndIndex < 0 || realEndIndex >= count)
-            throw new IndexOutOfBoundsException("end Index: " + end
-                    + ", Real end Index: " + realEndIndex + ", Size: " + count);
+            throw new IndexOutOfBoundsException(
+                    "end Index: " + end + ", Real end Index: " + realEndIndex + ", Size: " + count);
         StringContainer ret = new StringContainer(joinSeparator);
         if (realStartIndex < reverseList.size()) {
-            for (int i = reverseList.size() - 1 - realStartIndex; i >= Math
-                    .max(0, reverseList.size() - 1 - realEndIndex); i--) {
+            for (int i = reverseList.size() - 1 - realStartIndex; i >= Math.max(0,
+                    reverseList.size() - 1 - realEndIndex); i--) {
                 ret.addTail(this.reverseList.get(i));
             }
         }

@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.db.metadata;
 
 import org.apache.iotdb.db.exception.FileNodeManagerException;
@@ -30,7 +45,7 @@ public class MManagerImproveTest {
         mManager = MManager.getInstance();
         mManager.setStorageLevelToMTree("root.t1.v2");
 
-        for(int j = 0;j < DEVICE_NUM;j++) {
+        for (int j = 0; j < DEVICE_NUM; j++) {
             for (int i = 0; i < TIMESERIES_NUM; i++) {
                 String p = new StringBuilder().append("root.t1.v2.d").append(j).append(".s").append(i).toString();
                 mManager.addPathToMTree(p, "TEXT", "RLE", new String[0]);
@@ -46,7 +61,7 @@ public class MManagerImproveTest {
     }
 
     @Test
-    public void checkSetUp(){
+    public void checkSetUp() {
         mManager = MManager.getInstance();
 
         assertEquals(true, mManager.pathExist("root.t1.v2.d3.s5"));
@@ -66,7 +81,7 @@ public class MManagerImproveTest {
         String measurement = "s5";
 
         startTime = System.currentTimeMillis();
-        for(int i = 0;i < 100000;i++) {
+        for (int i = 0; i < 100000; i++) {
             String path = deviceId + "." + measurement;
         }
         endTime = System.currentTimeMillis();
@@ -74,14 +89,14 @@ public class MManagerImproveTest {
         String path = deviceId + "." + measurement;
 
         startTime = System.currentTimeMillis();
-        for(int i = 0;i < 100000;i++) {
+        for (int i = 0; i < 100000; i++) {
             assertEquals(true, mManager.pathExist(path));
         }
         endTime = System.currentTimeMillis();
         path_exist += endTime - startTime;
 
         startTime = System.currentTimeMillis();
-        for(int i = 0;i < 100000;i++) {
+        for (int i = 0; i < 100000; i++) {
             List<Path> paths = new ArrayList<>();
             paths.add(new Path(path));
         }
@@ -91,14 +106,14 @@ public class MManagerImproveTest {
         paths.add(new Path(path));
 
         startTime = System.currentTimeMillis();
-        for(int i = 0;i < 100000;i++) {
+        for (int i = 0; i < 100000; i++) {
             assertEquals(true, mManager.checkFileLevel(paths));
         }
         endTime = System.currentTimeMillis();
         check_filelevel += endTime - startTime;
 
         startTime = System.currentTimeMillis();
-        for(int i = 0;i < 100000;i++) {
+        for (int i = 0; i < 100000; i++) {
             TSDataType dataType = mManager.getSeriesType(path);
             assertEquals(TSDataType.TEXT, dataType);
         }
@@ -114,7 +129,7 @@ public class MManagerImproveTest {
 
     public void doOriginTest(String deviceId, List<String> measurementList)
             throws PathErrorException, ProcessorException {
-        for(String measurement : measurementList){
+        for (String measurement : measurementList) {
             String path = deviceId + "." + measurement;
             assertEquals(true, mManager.pathExist(path));
             List<Path> paths = new ArrayList<>();
@@ -127,7 +142,7 @@ public class MManagerImproveTest {
 
     public void doPathLoopOnceTest(String deviceId, List<String> measurementList)
             throws PathErrorException, ProcessorException {
-        for(String measurement : measurementList){
+        for (String measurement : measurementList) {
             String path = deviceId + "." + measurement;
             List<Path> paths = new ArrayList<>();
             paths.add(new Path(path));
@@ -142,18 +157,19 @@ public class MManagerImproveTest {
         boolean isFileLevelChecked;
         List<Path> tempList = new ArrayList<>();
         tempList.add(new Path(deviceId));
-        try{
+        try {
             isFileLevelChecked = mManager.checkFileLevel(tempList);
-        } catch (PathErrorException e){
+        } catch (PathErrorException e) {
             isFileLevelChecked = false;
         }
         MNode node = mManager.getNodeByPath(deviceId);
 
-        for(String measurement : measurementList){
+        for (String measurement : measurementList) {
             assertEquals(true, mManager.pathExist(node, measurement));
             List<Path> paths = new ArrayList<>();
             paths.add(new Path(measurement));
-            if(!isFileLevelChecked)isFileLevelChecked = mManager.checkFileLevel(node, paths);
+            if (!isFileLevelChecked)
+                isFileLevelChecked = mManager.checkFileLevel(node, paths);
             assertEquals(true, isFileLevelChecked);
             TSDataType dataType = mManager.getSeriesType(node, measurement);
             assertEquals(TSDataType.TEXT, dataType);
@@ -162,7 +178,7 @@ public class MManagerImproveTest {
 
     public void doRemoveListTest(String deviceId, List<String> measurementList)
             throws PathErrorException, ProcessorException {
-        for(String measurement : measurementList){
+        for (String measurement : measurementList) {
             String path = deviceId + "." + measurement;
             assertEquals(true, mManager.pathExist(path));
             assertEquals(true, mManager.checkFileLevel(path));
@@ -174,15 +190,16 @@ public class MManagerImproveTest {
     public void doAllImproveTest(String deviceId, List<String> measurementList)
             throws PathErrorException, ProcessorException {
         boolean isFileLevelChecked;
-        try{
+        try {
             isFileLevelChecked = mManager.checkFileLevel(deviceId);
-        } catch (PathErrorException e){
+        } catch (PathErrorException e) {
             isFileLevelChecked = false;
         }
         MNode node = mManager.getNodeByPathWithCheck(deviceId);
 
-        for(String measurement : measurementList){
-            if(!isFileLevelChecked)isFileLevelChecked = mManager.checkFileLevelWithCheck(node, measurement);
+        for (String measurement : measurementList) {
+            if (!isFileLevelChecked)
+                isFileLevelChecked = mManager.checkFileLevelWithCheck(node, measurement);
             assertEquals(true, isFileLevelChecked);
             TSDataType dataType = mManager.getSeriesTypeWithCheck(node, measurement);
             assertEquals(TSDataType.TEXT, dataType);
@@ -207,51 +224,51 @@ public class MManagerImproveTest {
 
         long startTime, endTime;
         String[] deviceIdList = new String[DEVICE_NUM];
-        for(int i = 0;i < DEVICE_NUM;i++){
+        for (int i = 0; i < DEVICE_NUM; i++) {
             deviceIdList[i] = "root.t1.v2.d" + i;
         }
         List<String> measurementList = new ArrayList<>();
-        for(int i = 0;i < TIMESERIES_NUM;i++){
+        for (int i = 0; i < TIMESERIES_NUM; i++) {
             measurementList.add("s" + i);
         }
 
         startTime = System.currentTimeMillis();
-        for(String deviceId : deviceIdList) {
+        for (String deviceId : deviceIdList) {
             doOriginTest(deviceId, measurementList);
         }
         endTime = System.currentTimeMillis();
         System.out.println("origin:\t" + (endTime - startTime));
 
         startTime = System.currentTimeMillis();
-        for(String deviceId : deviceIdList) {
+        for (String deviceId : deviceIdList) {
             doPathLoopOnceTest(deviceId, measurementList);
         }
         endTime = System.currentTimeMillis();
         System.out.println("seriesPath loop once:\t" + (endTime - startTime));
 
         startTime = System.currentTimeMillis();
-        for(String deviceId : deviceIdList) {
+        for (String deviceId : deviceIdList) {
             doDealdeviceIdOnceTest(deviceId, measurementList);
         }
         endTime = System.currentTimeMillis();
         System.out.println("deal deviceId once:\t" + (endTime - startTime));
 
         startTime = System.currentTimeMillis();
-        for(String deviceId : deviceIdList) {
+        for (String deviceId : deviceIdList) {
             doRemoveListTest(deviceId, measurementList);
         }
         endTime = System.currentTimeMillis();
         System.out.println("remove list:\t" + (endTime - startTime));
 
         startTime = System.currentTimeMillis();
-        for(String deviceId : deviceIdList) {
+        for (String deviceId : deviceIdList) {
             doAllImproveTest(deviceId, measurementList);
         }
         endTime = System.currentTimeMillis();
         System.out.println("improve all:\t" + (endTime - startTime));
 
         startTime = System.currentTimeMillis();
-        for(String deviceId : deviceIdList) {
+        for (String deviceId : deviceIdList) {
             doCacheTest(deviceId, measurementList);
         }
         endTime = System.currentTimeMillis();

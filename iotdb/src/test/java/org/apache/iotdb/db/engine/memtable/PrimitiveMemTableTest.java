@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.db.engine.memtable;
 
 import org.apache.iotdb.db.utils.TimeValuePair;
@@ -13,7 +28,6 @@ import org.junit.Test;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.Random;
-
 
 public class PrimitiveMemTableTest {
 
@@ -51,7 +65,8 @@ public class PrimitiveMemTableTest {
         for (int i = 0; i < dataSize; i++) {
             memTable.write(deviceId, measurementId[0], TSDataType.INT32, i, String.valueOf(i));
         }
-        Iterator<TimeValuePair> tvPair = memTable.query(deviceId, measurementId[0], TSDataType.INT32).getSortedTimeValuePairList().iterator();
+        Iterator<TimeValuePair> tvPair = memTable.query(deviceId, measurementId[0], TSDataType.INT32)
+                .getSortedTimeValuePairList().iterator();
         for (int i = 0; i < dataSize; i++) {
             TimeValuePair timeValuePair = tvPair.next();
             Assert.assertEquals(i, timeValuePair.getTimestamp());
@@ -66,7 +81,8 @@ public class PrimitiveMemTableTest {
         for (int i = 0; i < ret.length; i++) {
             memTable.write(deviceId, sensorId, dataType, ret[i].getTimestamp(), ret[i].getValue().getStringValue());
         }
-        Iterator<TimeValuePair> tvPair = memTable.query(deviceId, sensorId, dataType).getSortedTimeValuePairList().iterator();
+        Iterator<TimeValuePair> tvPair = memTable.query(deviceId, sensorId, dataType).getSortedTimeValuePairList()
+                .iterator();
         Arrays.sort(ret);
         TimeValuePair last = null;
         for (int i = 0; i < ret.length; i++) {
@@ -109,26 +125,31 @@ public class PrimitiveMemTableTest {
         Random rand = new Random();
         for (int i = 0; i < size; i++) {
             switch (dataType) {
-                case BOOLEAN:
-                    ret[i] = new TimeValuePairInMemTable(rand.nextLong(), TsPrimitiveType.getByType(dataType, true));
-                    break;
-                case INT32:
-                    ret[i] = new TimeValuePairInMemTable(rand.nextLong(), TsPrimitiveType.getByType(dataType, rand.nextInt()));
-                    break;
-                case INT64:
-                    ret[i] = new TimeValuePairInMemTable(rand.nextLong(), TsPrimitiveType.getByType(dataType, rand.nextLong()));
-                    break;
-                case FLOAT:
-                    ret[i] = new TimeValuePairInMemTable(rand.nextLong(), TsPrimitiveType.getByType(dataType, rand.nextFloat()));
-                    break;
-                case DOUBLE:
-                    ret[i] = new TimeValuePairInMemTable(rand.nextLong(), TsPrimitiveType.getByType(dataType, rand.nextDouble()));
-                    break;
-                case TEXT:
-                    ret[i] = new TimeValuePairInMemTable(rand.nextLong(), TsPrimitiveType.getByType(dataType, new Binary("a" + rand.nextDouble())));
-                    break;
-                default:
-                    throw new UnSupportedDataTypeException("Unsupported data type:" + dataType);
+            case BOOLEAN:
+                ret[i] = new TimeValuePairInMemTable(rand.nextLong(), TsPrimitiveType.getByType(dataType, true));
+                break;
+            case INT32:
+                ret[i] = new TimeValuePairInMemTable(rand.nextLong(),
+                        TsPrimitiveType.getByType(dataType, rand.nextInt()));
+                break;
+            case INT64:
+                ret[i] = new TimeValuePairInMemTable(rand.nextLong(),
+                        TsPrimitiveType.getByType(dataType, rand.nextLong()));
+                break;
+            case FLOAT:
+                ret[i] = new TimeValuePairInMemTable(rand.nextLong(),
+                        TsPrimitiveType.getByType(dataType, rand.nextFloat()));
+                break;
+            case DOUBLE:
+                ret[i] = new TimeValuePairInMemTable(rand.nextLong(),
+                        TsPrimitiveType.getByType(dataType, rand.nextDouble()));
+                break;
+            case TEXT:
+                ret[i] = new TimeValuePairInMemTable(rand.nextLong(),
+                        TsPrimitiveType.getByType(dataType, new Binary("a" + rand.nextDouble())));
+                break;
+            default:
+                throw new UnSupportedDataTypeException("Unsupported data type:" + dataType);
             }
         }
         return ret;

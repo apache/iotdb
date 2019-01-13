@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.tsfile.read.query.dataset;
 
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
@@ -10,7 +25,6 @@ import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReader;
 
 import java.io.IOException;
 import java.util.*;
-
 
 /**
  * multi-way merging data set ,no need to use TimeGenerator
@@ -28,7 +42,8 @@ public class DataSetWithoutTimeGenerator extends QueryDataSet {
 
     private Set<Long> timeSet;
 
-    public DataSetWithoutTimeGenerator(List<Path> paths, List<TSDataType> dataTypes, List<FileSeriesReader> readers) throws IOException {
+    public DataSetWithoutTimeGenerator(List<Path> paths, List<TSDataType> dataTypes, List<FileSeriesReader> readers)
+            throws IOException {
         super(paths, dataTypes);
         this.readers = readers;
         initHeap();
@@ -133,26 +148,26 @@ public class DataSetWithoutTimeGenerator extends QueryDataSet {
 
     private void putValueToField(BatchData col, Field field) {
         switch (col.getDataType()) {
-            case BOOLEAN:
-                field.setBoolV(col.getBoolean());
-                break;
-            case INT32:
-                field.setIntV(col.getInt());
-                break;
-            case INT64:
-                field.setLongV(col.getLong());
-                break;
-            case FLOAT:
-                field.setFloatV(col.getFloat());
-                break;
-            case DOUBLE:
-                field.setDoubleV(col.getDouble());
-                break;
-            case TEXT:
-                field.setBinaryV(col.getBinary());
-                break;
-            default:
-                throw new UnSupportedDataTypeException("UnSupported" + String.valueOf(col.getDataType()));
+        case BOOLEAN:
+            field.setBoolV(col.getBoolean());
+            break;
+        case INT32:
+            field.setIntV(col.getInt());
+            break;
+        case INT64:
+            field.setLongV(col.getLong());
+            break;
+        case FLOAT:
+            field.setFloatV(col.getFloat());
+            break;
+        case DOUBLE:
+            field.setDoubleV(col.getDouble());
+            break;
+        case TEXT:
+            field.setBinaryV(col.getBinary());
+            break;
+        default:
+            throw new UnSupportedDataTypeException("UnSupported" + String.valueOf(col.getDataType()));
         }
     }
 }

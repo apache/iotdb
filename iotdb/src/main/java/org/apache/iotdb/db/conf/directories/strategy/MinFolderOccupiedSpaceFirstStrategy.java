@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.db.conf.directories.strategy;
 
 import java.io.IOException;
@@ -24,14 +39,13 @@ public class MinFolderOccupiedSpaceFirstStrategy extends DirectoryStrategy {
 
         candidates.add(0);
         min = getOccupiedSpace(folders.get(0));
-        for(int i = 1;i < folders.size();i++){
+        for (int i = 1; i < folders.size(); i++) {
             long current = getOccupiedSpace(folders.get(i));
-            if(min > current){
+            if (min > current) {
                 candidates.clear();
                 candidates.add(i);
                 min = current;
-            }
-            else if(min == current){
+            } else if (min == current) {
                 candidates.add(i);
             }
         }
@@ -46,10 +60,7 @@ public class MinFolderOccupiedSpaceFirstStrategy extends DirectoryStrategy {
         Path folder = Paths.get(path);
         long size = Long.MAX_VALUE;
         try {
-            size = Files.walk(folder)
-                    .filter(p -> p.toFile().isFile())
-                    .mapToLong(p -> p.toFile().length())
-                    .sum();
+            size = Files.walk(folder).filter(p -> p.toFile().isFile()).mapToLong(p -> p.toFile().length()).sum();
         } catch (IOException e) {
             LOGGER.error("Cannot calculate occupied space for seriesPath {}.", path);
         }
@@ -57,4 +68,3 @@ public class MinFolderOccupiedSpaceFirstStrategy extends DirectoryStrategy {
         return size / DATA_SIZE_SHIFT;
     }
 }
-

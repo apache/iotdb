@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.tsfile.read.common;
 
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -55,10 +70,10 @@ public class PathTest {
         Path rep2 = new Path("d");
         Path rep3 = new Path("d.e.f");
         Path rep4 = new Path("d.e.f.g");
-        testPath(Path.replace(rep1,src), "a.b", "c", "a.b.c");
-        testPath(Path.replace(rep2,src), "d.b", "c", "d.b.c");
-        testPath(Path.replace(rep3,src), "d.e", "f", "d.e.f");
-        testPath(Path.replace(rep4,src), "d.e.f", "g", "d.e.f.g");
+        testPath(Path.replace(rep1, src), "a.b", "c", "a.b.c");
+        testPath(Path.replace(rep2, src), "d.b", "c", "d.b.c");
+        testPath(Path.replace(rep3, src), "d.e", "f", "d.e.f");
+        testPath(Path.replace(rep4, src), "d.e.f", "g", "d.e.f.g");
     }
 
 }

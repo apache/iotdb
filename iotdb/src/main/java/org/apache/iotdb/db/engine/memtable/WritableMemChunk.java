@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.db.engine.memtable;
 
 import org.apache.iotdb.db.utils.PrimitiveArrayList;
@@ -16,7 +31,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.TreeMap;
 
-
 public class WritableMemChunk implements IWritableMemChunk {
     private TSDataType dataType;
     private PrimitiveArrayList list;
@@ -29,26 +43,26 @@ public class WritableMemChunk implements IWritableMemChunk {
     @Override
     public void write(long insertTime, String insertValue) {
         switch (dataType) {
-            case BOOLEAN:
-                putBoolean(insertTime, Boolean.valueOf(insertValue));
-                break;
-            case INT32:
-                putInt(insertTime, Integer.valueOf(insertValue));
-                break;
-            case INT64:
-                putLong(insertTime, Long.valueOf(insertValue));
-                break;
-            case FLOAT:
-                putFloat(insertTime, Float.valueOf(insertValue));
-                break;
-            case DOUBLE:
-                putDouble(insertTime, Double.valueOf(insertValue));
-                break;
-            case TEXT:
-                putBinary(insertTime, Binary.valueOf(insertValue));
-                break;
-            default:
-                throw new UnSupportedDataTypeException("Unsupported data type:" + dataType);
+        case BOOLEAN:
+            putBoolean(insertTime, Boolean.valueOf(insertValue));
+            break;
+        case INT32:
+            putInt(insertTime, Integer.valueOf(insertValue));
+            break;
+        case INT64:
+            putLong(insertTime, Long.valueOf(insertValue));
+            break;
+        case FLOAT:
+            putFloat(insertTime, Float.valueOf(insertValue));
+            break;
+        case DOUBLE:
+            putDouble(insertTime, Double.valueOf(insertValue));
+            break;
+        case TEXT:
+            putBinary(insertTime, Binary.valueOf(insertValue));
+            break;
+        default:
+            throw new UnSupportedDataTypeException("Unsupported data type:" + dataType);
         }
     }
 
@@ -83,7 +97,7 @@ public class WritableMemChunk implements IWritableMemChunk {
     }
 
     @Override
-    //TODO: Consider using arrays to sort and remove duplicates
+    // TODO: Consider using arrays to sort and remove duplicates
     public List<TimeValuePair> getSortedTimeValuePairList() {
         int length = list.size();
         TreeMap<Long, TsPrimitiveType> treeMap = new TreeMap<>();

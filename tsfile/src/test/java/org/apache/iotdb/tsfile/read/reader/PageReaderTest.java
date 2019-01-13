@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.tsfile.read.reader;
 
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -14,7 +29,6 @@ import org.junit.Test;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-
 
 public class PageReaderTest {
 
@@ -103,9 +117,7 @@ public class PageReaderTest {
     public void testBinary() {
         LoopWriteReadTest test = new LoopWriteReadTest("Test Double",
                 new PlainEncoder(EndianType.LITTLE_ENDIAN, TSDataType.TEXT, 1000),
-                new PlainDecoder(EndianType.LITTLE_ENDIAN),
-                TSDataType.TEXT,
-                POINTS_COUNT_IN_ONE_PAGE) {
+                new PlainDecoder(EndianType.LITTLE_ENDIAN), TSDataType.TEXT, POINTS_COUNT_IN_ONE_PAGE) {
             @Override
             public Object generateValueByIndex(int i) {
                 return new Binary(new StringBuilder("TEST TEXT").append(i).toString());
@@ -139,12 +151,13 @@ public class PageReaderTest {
 
                 ByteBuffer page = ByteBuffer.wrap(pageWriter.getUncompressedBytes().array());
 
-                PageReader pageReader = new PageReader(page, dataType, decoder, new DeltaBinaryDecoder.LongDeltaDecoder());
+                PageReader pageReader = new PageReader(page, dataType, decoder,
+                        new DeltaBinaryDecoder.LongDeltaDecoder());
 
                 int index = 0;
                 long startTimestamp = System.currentTimeMillis();
                 BatchData data = null;
-                if(pageReader.hasNextBatch())
+                if (pageReader.hasNextBatch())
                     data = pageReader.nextBatch();
                 assert data != null;
 
@@ -155,8 +168,8 @@ public class PageReaderTest {
                     index++;
                 }
                 long endTimestamp = System.currentTimeMillis();
-                System.out.println("TestName: [" + name + "]\n\tTSDataType: " + dataType +
-                        "\tRead-Count:" + count + "\tTime-used:" + (endTimestamp - startTimestamp) + "ms");
+                System.out.println("TestName: [" + name + "]\n\tTSDataType: " + dataType + "\tRead-Count:" + count
+                        + "\tTime-used:" + (endTimestamp - startTimestamp) + "ms");
                 Assert.assertEquals(count, index);
             } catch (IOException e) {
                 e.printStackTrace();
@@ -167,24 +180,24 @@ public class PageReaderTest {
         private void writeData() throws IOException {
             for (int i = 0; i < count; i++) {
                 switch (dataType) {
-                    case BOOLEAN:
-                        pageWriter.write(Long.valueOf(i), (Boolean) generateValueByIndex(i));
-                        break;
-                    case INT32:
-                        pageWriter.write(Long.valueOf(i), (Integer) generateValueByIndex(i));
-                        break;
-                    case INT64:
-                        pageWriter.write(Long.valueOf(i), (Long) generateValueByIndex(i));
-                        break;
-                    case FLOAT:
-                        pageWriter.write(Long.valueOf(i), (Float) generateValueByIndex(i));
-                        break;
-                    case DOUBLE:
-                        pageWriter.write(Long.valueOf(i), (Double) generateValueByIndex(i));
-                        break;
-                    case TEXT:
-                        pageWriter.write(Long.valueOf(i), (Binary) generateValueByIndex(i));
-                        break;
+                case BOOLEAN:
+                    pageWriter.write(Long.valueOf(i), (Boolean) generateValueByIndex(i));
+                    break;
+                case INT32:
+                    pageWriter.write(Long.valueOf(i), (Integer) generateValueByIndex(i));
+                    break;
+                case INT64:
+                    pageWriter.write(Long.valueOf(i), (Long) generateValueByIndex(i));
+                    break;
+                case FLOAT:
+                    pageWriter.write(Long.valueOf(i), (Float) generateValueByIndex(i));
+                    break;
+                case DOUBLE:
+                    pageWriter.write(Long.valueOf(i), (Double) generateValueByIndex(i));
+                    break;
+                case TEXT:
+                    pageWriter.write(Long.valueOf(i), (Binary) generateValueByIndex(i));
+                    break;
 
                 }
             }

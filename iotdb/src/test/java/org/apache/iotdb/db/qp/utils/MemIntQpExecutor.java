@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.db.qp.utils;
 
 import org.apache.iotdb.db.exception.ProcessorException;
@@ -24,7 +39,7 @@ import java.util.Map.Entry;
 public class MemIntQpExecutor extends QueryProcessExecutor {
     private static Logger LOG = LoggerFactory.getLogger(MemIntQpExecutor.class);
 
-    //pathStr, TreeMap<time, value>
+    // pathStr, TreeMap<time, value>
     private Map<String, TestSeries> demoMemDataBase = new HashMap<>();
 
     private TreeSet<Long> timeStampUnion = new TreeSet<>();
@@ -55,23 +70,23 @@ public class MemIntQpExecutor extends QueryProcessExecutor {
     @Override
     public boolean processNonQuery(PhysicalPlan plan) throws ProcessorException {
         switch (plan.getOperatorType()) {
-            case DELETE:
-                DeletePlan delete = (DeletePlan) plan;
-                return delete(delete.getPaths(), delete.getDeleteTime());
-            case UPDATE:
-                UpdatePlan update = (UpdatePlan) plan;
-                boolean flag = true;
-                for (Pair<Long, Long> timePair : update.getIntervals()) {
-                    flag &= update(update.getPath(), timePair.left, timePair.right, update.getValue());
-                }
-                return flag;
-            case INSERT:
-                InsertPlan insert = (InsertPlan) plan;
-                int result = multiInsert(insert.getDeviceId(), insert.getTime(), insert.getMeasurements(), insert
-                        .getValues());
-                return result == 0;
-            default:
-                throw new UnsupportedOperationException();
+        case DELETE:
+            DeletePlan delete = (DeletePlan) plan;
+            return delete(delete.getPaths(), delete.getDeleteTime());
+        case UPDATE:
+            UpdatePlan update = (UpdatePlan) plan;
+            boolean flag = true;
+            for (Pair<Long, Long> timePair : update.getIntervals()) {
+                flag &= update(update.getPath(), timePair.left, timePair.right, update.getValue());
+            }
+            return flag;
+        case INSERT:
+            InsertPlan insert = (InsertPlan) plan;
+            int result = multiInsert(insert.getDeviceId(), insert.getTime(), insert.getMeasurements(),
+                    insert.getValues());
+            return result == 0;
+        default:
+            throw new UnsupportedOperationException();
         }
     }
 
@@ -82,7 +97,7 @@ public class MemIntQpExecutor extends QueryProcessExecutor {
 
     @Override
     public QueryDataSet groupBy(List<Pair<Path, String>> aggres, IExpression expression, long unit, long origin,
-                                List<Pair<Long, Long>> intervals, int fetchSize) {
+            List<Pair<Long, Long>> intervals, int fetchSize) {
         return null;
     }
 
@@ -143,15 +158,15 @@ public class MemIntQpExecutor extends QueryProcessExecutor {
 
     @Override
     public List<String> getAllPaths(String fullPath) {
-        return fakeAllPaths != null ? fakeAllPaths.get(fullPath) :
-                new ArrayList<String>() {{
-                    add(fullPath);
-                }};
+        return fakeAllPaths != null ? fakeAllPaths.get(fullPath) : new ArrayList<String>() {
+            {
+                add(fullPath);
+            }
+        };
     }
 
     @Override
-    public int multiInsert(String deviceId, long insertTime, List<String> measurementList, List<String>
-            insertValues) {
+    public int multiInsert(String deviceId, long insertTime, List<String> measurementList, List<String> insertValues) {
         return 0;
     }
 

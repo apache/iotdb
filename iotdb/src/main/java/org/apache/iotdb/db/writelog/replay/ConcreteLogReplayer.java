@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.db.writelog.replay;
 
 import org.apache.iotdb.db.engine.filenode.FileNodeManager;
@@ -34,12 +49,12 @@ public class ConcreteLogReplayer implements LogReplayer {
                 delete(deletePlan);
             }
         } catch (Exception e) {
-            throw new ProcessorException(String.format("Cannot replay log %s, because %s", plan.toString(), e.getMessage()));
+            throw new ProcessorException(
+                    String.format("Cannot replay log %s, because %s", plan.toString(), e.getMessage()));
         }
     }
 
-    private void multiInsert(InsertPlan insertPlan)
-            throws PathErrorException, FileNodeManagerException {
+    private void multiInsert(InsertPlan insertPlan) throws PathErrorException, FileNodeManagerException {
         String deviceId = insertPlan.getDeviceId();
         long insertTime = insertPlan.getTime();
         List<String> measurementList = insertPlan.getMeasurements();
@@ -53,22 +68,23 @@ public class ConcreteLogReplayer implements LogReplayer {
             DataPoint dataPoint = DataPoint.getDataPoint(dataType, measurementList.get(i), value);
             tsRecord.addTuple(dataPoint);
         }
-        FileNodeManager.getInstance().insert(tsRecord,true);
+        FileNodeManager.getInstance().insert(tsRecord, true);
     }
 
     private void update(UpdatePlan updatePlan) throws FileNodeManagerException, PathErrorException {
         TSDataType dataType = MManager.getInstance().getSeriesType(updatePlan.getPath().getFullPath());
         for (Pair<Long, Long> timePair : updatePlan.getIntervals()) {
-            FileNodeManager.getInstance().update(updatePlan.getPath().getDevice(), updatePlan.getPath().getMeasurement(),
-                    timePair.left, timePair.right, dataType, updatePlan.getValue());
+            FileNodeManager.getInstance().update(updatePlan.getPath().getDevice(),
+                    updatePlan.getPath().getMeasurement(), timePair.left, timePair.right, dataType,
+                    updatePlan.getValue());
         }
     }
 
     private void delete(DeletePlan deletePlan) throws FileNodeManagerException, PathErrorException {
         MManager mManager = MManager.getInstance();
         for (Path path : deletePlan.getPaths()) {
-            FileNodeManager.getInstance().delete(path.getDevice(), path.getMeasurement(),
-                    deletePlan.getDeleteTime(), mManager.getSeriesType(path.getFullPath()));
+            FileNodeManager.getInstance().delete(path.getDevice(), path.getMeasurement(), deletePlan.getDeleteTime(),
+                    mManager.getSeriesType(path.getFullPath()));
         }
     }
 }

@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.db.auth;
 
 import org.apache.iotdb.db.auth.entity.PathPrivilege;
@@ -40,7 +55,7 @@ public class LocalFileUserAccessorTest {
         User[] users = new User[5];
         for (int i = 0; i < users.length; i++) {
             users[i] = new User("user" + i, "password" + i);
-            for(int j = 0; j <= i; j++) {
+            for (int j = 0; j <= i; j++) {
                 PathPrivilege pathPrivilege = new PathPrivilege("root.a.b.c" + j);
                 pathPrivilege.privileges.add(j);
                 users[i].privilegeList.add(pathPrivilege);
@@ -71,7 +86,7 @@ public class LocalFileUserAccessorTest {
         // list
         List<String> usernames = accessor.listAllUsers();
         usernames.sort(null);
-        for(int i = 0; i < users.length; i++) {
+        for (int i = 0; i < users.length; i++) {
             assertEquals(users[i].name, usernames.get(i));
         }
 
@@ -81,7 +96,7 @@ public class LocalFileUserAccessorTest {
         usernames = accessor.listAllUsers();
         assertEquals(users.length - 1, usernames.size());
         usernames.sort(null);
-        for(int i = 0; i < users.length - 1; i++) {
+        for (int i = 0; i < users.length - 1; i++) {
             assertEquals(users[i].name, usernames.get(i));
         }
         User nullUser = accessor.loadUser(users[users.length - 1].name);

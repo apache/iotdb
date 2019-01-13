@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.tsfile.encoding.decoder;
 
 import org.apache.iotdb.tsfile.encoding.common.EndianType;
@@ -22,8 +37,8 @@ public abstract class Decoder {
         if (type == TSEncoding.PLAIN) {
             return new PlainDecoder(EndianType.LITTLE_ENDIAN);
         } else if (type == TSEncoding.RLE && dataType == TSDataType.BOOLEAN) {
-        	return new IntRleDecoder(EndianType.LITTLE_ENDIAN);
-		}  else if (type == TSEncoding.TS_2DIFF && dataType == TSDataType.INT32) {
+            return new IntRleDecoder(EndianType.LITTLE_ENDIAN);
+        } else if (type == TSEncoding.TS_2DIFF && dataType == TSDataType.INT32) {
             return new DeltaBinaryDecoder.IntDeltaDecoder();
         } else if (type == TSEncoding.TS_2DIFF && dataType == TSDataType.INT64) {
             return new DeltaBinaryDecoder.LongDeltaDecoder();
@@ -31,7 +46,8 @@ public abstract class Decoder {
             return new IntRleDecoder(EndianType.LITTLE_ENDIAN);
         } else if (type == TSEncoding.RLE && dataType == TSDataType.INT64) {
             return new LongRleDecoder(EndianType.LITTLE_ENDIAN);
-        } else if ((dataType == TSDataType.FLOAT || dataType == TSDataType.DOUBLE) && (type == TSEncoding.RLE || type == TSEncoding.TS_2DIFF) ) {
+        } else if ((dataType == TSDataType.FLOAT || dataType == TSDataType.DOUBLE)
+                && (type == TSEncoding.RLE || type == TSEncoding.TS_2DIFF)) {
             return new FloatDecoder(TSEncoding.valueOf(type.toString()), dataType);
         } else if (type == TSEncoding.GORILLA && dataType == TSDataType.FLOAT) {
             return new SinglePrecisionDecoder();

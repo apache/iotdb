@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.db.metadata;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -15,10 +30,9 @@ import java.util.*;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
- * This class takes the responsibility of serialization of all the metadata info
- * and persistent it into files. This class contains all the interfaces to
- * modify the metadata for delta system. All the operations will be write into
- * the logs temporary in case the downtime of the delta system.
+ * This class takes the responsibility of serialization of all the metadata info and persistent it into files. This
+ * class contains all the interfaces to modify the metadata for delta system. All the operations will be write into the
+ * logs temporary in case the downtime of the delta system.
  *
  * @author Jinrui Zhang
  */
@@ -76,7 +90,8 @@ public class MManager {
 
         mNodeCache = new RandomDeleteCache<String, MNode>(cacheSize) {
             @Override
-            public void beforeRemove(MNode object) throws CacheException {}
+            public void beforeRemove(MNode object) throws CacheException {
+            }
 
             @Override
             public MNode loadObjectByKey(String key) throws CacheException {
@@ -192,13 +207,16 @@ public class MManager {
 
     /**
      * <p>
-     * Add one timeseries to metadata. Must invoke the<code>pathExist</code> and
-     * <code>getFileNameByPath</code> method first to check timeseries.
+     * Add one timeseries to metadata. Must invoke the<code>pathExist</code> and <code>getFileNameByPath</code> method
+     * first to check timeseries.
      * </p>
      *
-     * @param path     the timeseries seriesPath
-     * @param dataType the datetype {@code DataType} for the timeseries
-     * @param encoding the encoding function {@code Encoding} for the timeseries
+     * @param path
+     *            the timeseries seriesPath
+     * @param dataType
+     *            the datetype {@code DataType} for the timeseries
+     * @param encoding
+     *            the encoding function {@code Encoding} for the timeseries
      * @param args
      * @throws PathErrorException
      * @throws IOException
@@ -406,8 +424,7 @@ public class MManager {
     /**
      * Get all device type in current Metadata Tree
      *
-     * @return a HashMap contains all distinct device type separated by
-     * device Type
+     * @return a HashMap contains all distinct device type separated by device Type
      * @throws PathErrorException
      */
     public Map<String, List<ColumnSchema>> getSchemaForAllType() throws PathErrorException {
@@ -455,7 +472,8 @@ public class MManager {
     /**
      * Get all ColumnSchemas for given delta object type
      *
-     * @param path A seriesPath represented one Delta object
+     * @param path
+     *            A seriesPath represented one Delta object
      * @return a list contains all column schema
      * @throws PathErrorException
      */
@@ -471,7 +489,9 @@ public class MManager {
     }
 
     /**
-     * <p>Get all ColumnSchemas for the filenode seriesPath</p>
+     * <p>
+     * Get all ColumnSchemas for the filenode seriesPath
+     * </p>
      *
      * @param path
      * @return ArrayList<ColumnSchema> The list of the schema
@@ -506,7 +526,6 @@ public class MManager {
         }
     }
 
-
     /**
      * Calculate the count of storage-level nodes included in given seriesPath
      *
@@ -525,9 +544,8 @@ public class MManager {
     }
 
     /**
-     * Get the file name for given seriesPath Notice: This method could be called if
-     * and only if the seriesPath includes one node whose {@code isStorageLevel} is
-     * true
+     * Get the file name for given seriesPath Notice: This method could be called if and only if the seriesPath includes
+     * one node whose {@code isStorageLevel} is true
      *
      * @param path
      * @return A String represented the file name
@@ -607,8 +625,7 @@ public class MManager {
     }
 
     /**
-     * Return all paths for given seriesPath if the seriesPath is abstract.
-     * Or return the seriesPath itself.
+     * Return all paths for given seriesPath if the seriesPath is abstract. Or return the seriesPath itself.
      */
     public ArrayList<String> getPaths(String path) throws PathErrorException {
 
@@ -624,7 +641,7 @@ public class MManager {
             lock.readLock().unlock();
         }
     }
-    
+
     /**
      *
      * @param path
@@ -646,9 +663,9 @@ public class MManager {
      */
     public List<String> getLeafNodePathInNextLevel(String path) throws PathErrorException {
         lock.readLock().lock();
-        try{
+        try {
             return mGraph.getLeafNodePathInNextLevel(path);
-        }finally {
+        } finally {
             lock.readLock().unlock();
         }
     }
@@ -706,8 +723,7 @@ public class MManager {
     }
 
     /**
-     * Get ColumnSchema for given seriesPath. Notice: Path must be a complete Path
-     * from root to leaf node.
+     * Get ColumnSchema for given seriesPath. Notice: Path must be a complete Path from root to leaf node.
      */
     public ColumnSchema getSchemaForOnePath(String path) throws PathErrorException {
 
@@ -750,8 +766,7 @@ public class MManager {
     }
 
     /**
-     * Check whether given seriesPath contains a MNode whose
-     * {@code MNode.isStorageLevel} is true
+     * Check whether given seriesPath contains a MNode whose {@code MNode.isStorageLevel} is true
      */
     public boolean checkFileLevel(List<Path> path) throws PathErrorException {
 
@@ -871,7 +886,7 @@ public class MManager {
         }
     }
 
-    public static class PathCheckRet{
+    public static class PathCheckRet {
         private boolean successfully;
         private TSDataType dataType;
 

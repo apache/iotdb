@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.db.engine.overflow.metadata;
 
 import org.junit.After;
@@ -8,19 +23,17 @@ import java.io.*;
 
 public class OFFileMetadataTest {
 
-
     private String path = "OFFileMetadataTest";
 
     @Before
     public void setUp() throws Exception {
-
 
     }
 
     @After
     public void tearDown() throws Exception {
         File file = new File(path);
-        if(file.exists()){
+        if (file.exists()) {
             file.delete();
         }
     }
@@ -31,7 +44,7 @@ public class OFFileMetadataTest {
         serialize(ofFileMetadata);
         OFFileMetadata deOFFileMetadata = deSerialize();
         // assert
-        OverflowUtils.isOFFileMetadataEqual(ofFileMetadata,deOFFileMetadata);
+        OverflowUtils.isOFFileMetadataEqual(ofFileMetadata, deOFFileMetadata);
     }
 
     private void serialize(OFFileMetadata ofFileMetadata) throws FileNotFoundException {
@@ -40,8 +53,8 @@ public class OFFileMetadataTest {
             ofFileMetadata.serializeTo(outputStream);
         } catch (IOException e) {
             e.printStackTrace();
-        }finally {
-            if (outputStream!=null){
+        } finally {
+            if (outputStream != null) {
                 try {
                     outputStream.close();
                 } catch (IOException e) {
@@ -52,13 +65,13 @@ public class OFFileMetadataTest {
     }
 
     private OFFileMetadata deSerialize() throws FileNotFoundException {
-        FileInputStream  inputStream = new FileInputStream(path);
+        FileInputStream inputStream = new FileInputStream(path);
         try {
             return OFFileMetadata.deserializeFrom(inputStream);
         } catch (IOException e) {
             e.printStackTrace();
-        }finally {
-            if(inputStream!=null){
+        } finally {
+            if (inputStream != null) {
                 try {
                     inputStream.close();
                 } catch (IOException e) {

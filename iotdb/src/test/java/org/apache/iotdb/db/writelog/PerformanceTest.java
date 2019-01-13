@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.db.writelog;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -56,7 +71,7 @@ public class PerformanceTest {
         // this test write 1000000 * 3 logs and report elapsed time
         if (skip)
             return;
-        int[] batchSizes = new int[]{100, 500, 1000, 5000, 10000};
+        int[] batchSizes = new int[] { 100, 500, 1000, 5000, 10000 };
         int oldBatchSize = config.flushWalThreshold;
         for (int j = 0; j < batchSizes.length; j++) {
             config.flushWalThreshold = batchSizes[j];
@@ -66,7 +81,8 @@ public class PerformanceTest {
             tempRestore.createNewFile();
             tempProcessorStore.createNewFile();
 
-            WriteLogNode logNode = new ExclusiveWriteLogNode("root.testLogNode", tempRestore.getPath(), tempProcessorStore.getPath());
+            WriteLogNode logNode = new ExclusiveWriteLogNode("root.testLogNode", tempRestore.getPath(),
+                    tempProcessorStore.getPath());
 
             long time = System.currentTimeMillis();
             for (int i = 0; i < 1000000; i++) {
@@ -80,7 +96,8 @@ public class PerformanceTest {
                 logNode.write(deletePlan);
             }
             logNode.forceSync();
-            System.out.println(3000000 + " logs use " + (System.currentTimeMillis() - time) + " ms at batch size " + batchSizes[j]);
+            System.out.println(3000000 + " logs use " + (System.currentTimeMillis() - time) + " ms at batch size "
+                    + batchSizes[j]);
 
             logNode.delete();
             tempRestore.delete();
@@ -91,7 +108,8 @@ public class PerformanceTest {
     }
 
     @Test
-    public void recoverTest() throws IOException, RecoverException, FileNodeManagerException, PathErrorException, MetadataArgsErrorException {
+    public void recoverTest() throws IOException, RecoverException, FileNodeManagerException, PathErrorException,
+            MetadataArgsErrorException {
         // this test write 1000000 * 3 logs , recover from them and report elapsed time
         if (skip)
             return;
@@ -105,15 +123,20 @@ public class PerformanceTest {
             MManager.getInstance().setStorageLevelToMTree("root.logTestDevice");
         } catch (PathErrorException ignored) {
         }
-        MManager.getInstance().addPathToMTree("root.logTestDevice.s1", TSDataType.DOUBLE.name(), TSEncoding.PLAIN.name(), new String[]{});
-        MManager.getInstance().addPathToMTree("root.logTestDevice.s2", TSDataType.INT32.name(), TSEncoding.PLAIN.name(), new String[]{});
-        MManager.getInstance().addPathToMTree("root.logTestDevice.s3", TSDataType.TEXT.name(), TSEncoding.PLAIN.name(), new String[]{});
-        MManager.getInstance().addPathToMTree("root.logTestDevice.s4", TSDataType.BOOLEAN.name(), TSEncoding.PLAIN.name(), new String[]{});
-        WriteLogNode logNode = new ExclusiveWriteLogNode("root.logTestDevice", tempRestore.getPath(), tempProcessorStore.getPath());
+        MManager.getInstance().addPathToMTree("root.logTestDevice.s1", TSDataType.DOUBLE.name(),
+                TSEncoding.PLAIN.name(), new String[] {});
+        MManager.getInstance().addPathToMTree("root.logTestDevice.s2", TSDataType.INT32.name(), TSEncoding.PLAIN.name(),
+                new String[] {});
+        MManager.getInstance().addPathToMTree("root.logTestDevice.s3", TSDataType.TEXT.name(), TSEncoding.PLAIN.name(),
+                new String[] {});
+        MManager.getInstance().addPathToMTree("root.logTestDevice.s4", TSDataType.BOOLEAN.name(),
+                TSEncoding.PLAIN.name(), new String[] {});
+        WriteLogNode logNode = new ExclusiveWriteLogNode("root.logTestDevice", tempRestore.getPath(),
+                tempProcessorStore.getPath());
 
         for (int i = 0; i < 1000000; i++) {
-            InsertPlan bwInsertPlan = new InsertPlan(1, "root.logTestDevice", 100, Arrays.asList("s1", "s2", "s3", "s4"),
-                    Arrays.asList("1.0", "15", "str", "false"));
+            InsertPlan bwInsertPlan = new InsertPlan(1, "root.logTestDevice", 100,
+                    Arrays.asList("s1", "s2", "s3", "s4"), Arrays.asList("1.0", "15", "str", "false"));
             UpdatePlan updatePlan = new UpdatePlan(0, 100, "2.0", new Path("root.logTestDevice.s1"));
             DeletePlan deletePlan = new DeletePlan(50, new Path("root.logTestDevice.s1"));
 
@@ -125,7 +148,7 @@ public class PerformanceTest {
             logNode.forceSync();
             long time = System.currentTimeMillis();
             logNode.recover();
-            System.out.println(3000000 + " logs use " + (System.currentTimeMillis() - time) + "ms when recovering " );
+            System.out.println(3000000 + " logs use " + (System.currentTimeMillis() - time) + "ms when recovering ");
         } finally {
             logNode.delete();
             tempRestore.delete();
@@ -153,7 +176,7 @@ public class PerformanceTest {
         DeletePlan deletePlan = new DeletePlan(50, new Path("root.logTestDevice.s1"));
         for (int i = 0; i < 1000000; i++) {
             bytes1 = PhysicalPlanLogTransfer.operatorToLog(bwInsertPlan);
-           bytes2 = PhysicalPlanLogTransfer.operatorToLog(updatePlan);
+            bytes2 = PhysicalPlanLogTransfer.operatorToLog(updatePlan);
             bytes3 = PhysicalPlanLogTransfer.operatorToLog(deletePlan);
         }
         System.out.println("3000000 logs encoding use " + (System.currentTimeMillis() - time) + "ms");

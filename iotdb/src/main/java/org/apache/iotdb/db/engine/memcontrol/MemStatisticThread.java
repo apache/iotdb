@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.db.engine.memcontrol;
 
 import org.apache.iotdb.db.concurrent.ThreadName;
@@ -6,7 +21,8 @@ import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.concurrent.ThreadName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-public class MemStatisticThread extends Thread{
+
+public class MemStatisticThread extends Thread {
 
     private static Logger logger = LoggerFactory.getLogger(MemStatisticThread.class);
 
@@ -32,14 +48,14 @@ public class MemStatisticThread extends Thread{
         logger.info("{} started", this.getClass().getSimpleName());
         try {
             // wait 3 mins for system to setup
-            Thread.sleep( 3 * 60 * 1000);
+            Thread.sleep(3 * 60 * 1000);
         } catch (InterruptedException e) {
             logger.info("{} exiting...", this.getClass().getSimpleName());
             return;
         }
         super.run();
         while (true) {
-            if(this.isInterrupted()) {
+            if (this.isInterrupted()) {
                 logger.info("{} exiting...", this.getClass().getSimpleName());
                 return;
             }
@@ -53,11 +69,14 @@ public class MemStatisticThread extends Thread{
             meanMemUsage = meanMemUsage * (doubleCnt / (doubleCnt + 1.0)) + memUsage / (doubleCnt + 1.0);
             meanJVMUsage = meanJVMUsage * (doubleCnt / (doubleCnt + 1.0)) + jvmUsage / (doubleCnt + 1.0);
 
-            if(++cnt % reportCycle == 0)
-                logger.debug("Monitored memory usage, min {}, max {}, mean {} \n" +
-                        "JVM memory usage, min {}, max {}, mean {}",
-                        MemUtils.bytesCntToStr(minMemUsage), MemUtils.bytesCntToStr(maxMemUsage), MemUtils.bytesCntToStr(new Double(meanMemUsage).longValue()),
-                        MemUtils.bytesCntToStr(minJVMUsage), MemUtils.bytesCntToStr(maxJVMUsage), MemUtils.bytesCntToStr(new Double(meanJVMUsage).longValue()));
+            if (++cnt % reportCycle == 0)
+                logger.debug(
+                        "Monitored memory usage, min {}, max {}, mean {} \n"
+                                + "JVM memory usage, min {}, max {}, mean {}",
+                        MemUtils.bytesCntToStr(minMemUsage), MemUtils.bytesCntToStr(maxMemUsage),
+                        MemUtils.bytesCntToStr(new Double(meanMemUsage).longValue()),
+                        MemUtils.bytesCntToStr(minJVMUsage), MemUtils.bytesCntToStr(maxJVMUsage),
+                        MemUtils.bytesCntToStr(new Double(meanJVMUsage).longValue()));
             try {
                 Thread.sleep(checkInterval);
             } catch (InterruptedException e) {
@@ -66,5 +85,5 @@ public class MemStatisticThread extends Thread{
             }
         }
     }
-    
+
 }

@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.tsfile.read;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -50,29 +65,23 @@ public class ReadOnlyTsFileTest {
         Filter filter2 = ValueFilter.gt(new Binary("dog"));
         Filter filter3 = FilterFactory.and(TimeFilter.gtEq(1480562618000L), TimeFilter.ltEq(1480562618100L));
 
-        IExpression IExpression = BinaryExpression.or(
-                BinaryExpression.and(
-                        new SingleSeriesExpression(new Path("d1.s1"), filter),
-                        new SingleSeriesExpression(new Path("d1.s4"), filter2)),
-                new GlobalTimeExpression(filter3)
-        );
+        IExpression IExpression = BinaryExpression
+                .or(BinaryExpression.and(new SingleSeriesExpression(new Path("d1.s1"), filter),
+                        new SingleSeriesExpression(new Path("d1.s4"), filter2)), new GlobalTimeExpression(filter3));
 
-        QueryExpression queryExpression = QueryExpression.create()
-                .addSelectedPath(new Path("d1.s1"))
-                .addSelectedPath(new Path("d1.s4"))
-                .setExpression(IExpression);
+        QueryExpression queryExpression = QueryExpression.create().addSelectedPath(new Path("d1.s1"))
+                .addSelectedPath(new Path("d1.s4")).setExpression(IExpression);
         QueryDataSet queryDataSet = tsFile.query(queryExpression);
         long aimedTimestamp = 1480562618000L;
         while (queryDataSet.hasNext()) {
-            //System.out.println("find next!");
+            // System.out.println("find next!");
             RowRecord rowRecord = queryDataSet.next();
-            //System.out.println("result datum: "+rowRecord.getTimestamp()+"," +rowRecord.getFields());
+            // System.out.println("result datum: "+rowRecord.getTimestamp()+"," +rowRecord.getFields());
             Assert.assertEquals(aimedTimestamp, rowRecord.getTimestamp());
             aimedTimestamp++;
         }
 
-        queryExpression = QueryExpression.create()
-                .addSelectedPath(new Path("d1.s1"))
+        queryExpression = QueryExpression.create().addSelectedPath(new Path("d1.s1"))
                 .addSelectedPath(new Path("d1.s4"));
         queryDataSet = tsFile.query(queryExpression);
         aimedTimestamp = 1480562618000L;
@@ -85,9 +94,7 @@ public class ReadOnlyTsFileTest {
         }
         Assert.assertEquals(rowCount, count);
 
-        queryExpression = QueryExpression.create()
-                .addSelectedPath(new Path("d1.s1"))
-                .addSelectedPath(new Path("d1.s4"))
+        queryExpression = QueryExpression.create().addSelectedPath(new Path("d1.s1")).addSelectedPath(new Path("d1.s4"))
                 .setExpression(new GlobalTimeExpression(filter3));
         queryDataSet = tsFile.query(queryExpression);
         aimedTimestamp = 1480562618000L;

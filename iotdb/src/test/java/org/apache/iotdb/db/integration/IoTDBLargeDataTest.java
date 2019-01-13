@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.db.integration;
 
 import org.apache.iotdb.db.service.IoTDB;
@@ -21,8 +36,8 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 /**
- * Notice that, all test begins with "IoTDB" is integration test.
- * All test which will start the IoTDB server should be defined as integration test.
+ * Notice that, all test begins with "IoTDB" is integration test. All test which will start the IoTDB server should be
+ * defined as integration test.
  */
 public class IoTDBLargeDataTest {
 
@@ -59,7 +74,7 @@ public class IoTDBLargeDataTest {
         Thread.sleep(5000);
         insertData();
 
-        connection = DriverManager.getConnection(Config.IOTDB_URL_PREFIX+"127.0.0.1:6667/", "root", "root");
+        connection = DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
 
     }
 
@@ -71,7 +86,7 @@ public class IoTDBLargeDataTest {
         deamon.stop();
         Thread.sleep(5000);
 
-        //recovery value
+        // recovery value
         tsFileConfig.maxNumberOfPointsInPage = maxNumberOfPointsInPage;
         tsFileConfig.pageSizeInByte = pageSizeInByte;
         tsFileConfig.groupSizeInByte = groupSizeInByte;
@@ -87,7 +102,7 @@ public class IoTDBLargeDataTest {
         Class.forName(Config.JDBC_DRIVER_NAME);
         Connection connection = null;
         try {
-            connection = DriverManager.getConnection(Config.IOTDB_URL_PREFIX+"127.0.0.1:6667/", "root", "root");
+            connection = DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
             Statement statement = connection.createStatement();
             boolean hasResultSet = statement.execute(selectSql);
             Assert.assertTrue(hasResultSet);
@@ -95,8 +110,9 @@ public class IoTDBLargeDataTest {
             int cnt = 0;
             while (resultSet.next()) {
                 String ans = resultSet.getString(Constant.TIMESTAMP_STR) + "," + resultSet.getString(Constant.d0s0)
-                        + "," + resultSet.getString(Constant.d0s1) + "," + resultSet.getString(Constant.d0s2) + "," + resultSet.getString(Constant.d0s3)
-                        + "," + resultSet.getString(Constant.d0s4) + "," + resultSet.getString(Constant.d0s5);
+                        + "," + resultSet.getString(Constant.d0s1) + "," + resultSet.getString(Constant.d0s2) + ","
+                        + resultSet.getString(Constant.d0s3) + "," + resultSet.getString(Constant.d0s4) + ","
+                        + resultSet.getString(Constant.d0s5);
                 cnt++;
             }
 
@@ -122,7 +138,7 @@ public class IoTDBLargeDataTest {
         Class.forName(Config.JDBC_DRIVER_NAME);
         Connection connection = null;
         try {
-            connection = DriverManager.getConnection(Config.IOTDB_URL_PREFIX+"127.0.0.1:6667/", "root", "root");
+            connection = DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
             Statement statement = connection.createStatement();
             boolean hasResultSet = statement.execute(selectSql);
             Assert.assertTrue(hasResultSet);
@@ -130,7 +146,7 @@ public class IoTDBLargeDataTest {
             int cnt = 0;
             while (resultSet.next()) {
                 String ans = resultSet.getString(Constant.TIMESTAMP_STR) + "," + resultSet.getString(Constant.d0s0);
-                //System.out.println("===" + ans);
+                // System.out.println("===" + ans);
                 cnt++;
             }
             assertEquals(16440, cnt);
@@ -151,12 +167,13 @@ public class IoTDBLargeDataTest {
     public void seriesGlobalTimeFilterTest() throws ClassNotFoundException, SQLException {
 
         Class.forName(Config.JDBC_DRIVER_NAME);
-        Connection connection = DriverManager.getConnection(Config.IOTDB_URL_PREFIX+"127.0.0.1:6667/", "root", "root");
+        Connection connection = DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
+                "root");
         boolean hasResultSet;
         Statement statement;
 
         try {
-            connection = DriverManager.getConnection(Config.IOTDB_URL_PREFIX+"127.0.0.1:6667/", "root", "root");
+            connection = DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
             statement = connection.createStatement();
             hasResultSet = statement.execute("select s0 from root.vehicle.d0 where time > 22987");
             assertTrue(hasResultSet);
@@ -164,7 +181,7 @@ public class IoTDBLargeDataTest {
             int cnt = 0;
             while (resultSet.next()) {
                 String ans = resultSet.getString(Constant.TIMESTAMP_STR) + "," + resultSet.getString(Constant.d0s0);
-                //System.out.println(ans);
+                // System.out.println(ans);
                 cnt++;
             }
 
@@ -185,12 +202,13 @@ public class IoTDBLargeDataTest {
     @Test
     public void crossSeriesReadUpdateTest() throws ClassNotFoundException, SQLException {
         Class.forName(Config.JDBC_DRIVER_NAME);
-        Connection connection = DriverManager.getConnection(Config.IOTDB_URL_PREFIX+"127.0.0.1:6667/", "root", "root");
+        Connection connection = DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
+                "root");
         boolean hasResultSet;
         Statement statement;
 
         try {
-            connection = DriverManager.getConnection(Config.IOTDB_URL_PREFIX+"127.0.0.1:6667/", "root", "root");
+            connection = DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
             statement = connection.createStatement();
             hasResultSet = statement.execute("select s1 from root.vehicle.d0 where s0 < 111");
             assertTrue(hasResultSet);
@@ -202,7 +220,7 @@ public class IoTDBLargeDataTest {
                 if (time > 200900) {
                     assertEquals("7777", value);
                 }
-                //String ans = resultSet.getString(d0s1);
+                // String ans = resultSet.getString(d0s1);
                 cnt++;
             }
             assertEquals(22800, cnt);
@@ -222,7 +240,7 @@ public class IoTDBLargeDataTest {
         Class.forName(Config.JDBC_DRIVER_NAME);
         Connection connection = null;
         try {
-            connection = DriverManager.getConnection(Config.IOTDB_URL_PREFIX+"127.0.0.1:6667/", "root", "root");
+            connection = DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
             Statement statement = connection.createStatement();
 
             for (String sql : Constant.create_sql) {
@@ -240,25 +258,27 @@ public class IoTDBLargeDataTest {
                 statement.execute(sql);
             }
 
-            // insert large amount of data    time range : 3000 ~ 13600
+            // insert large amount of data time range : 3000 ~ 13600
             for (int time = 3000; time < 13600; time++) {
-                //System.out.println("===" + time);
+                // System.out.println("===" + time);
                 String sql = String.format("insert into root.vehicle.d0(timestamp,s0) values(%s,%s)", time, time % 100);
                 statement.execute(sql);
                 sql = String.format("insert into root.vehicle.d0(timestamp,s1) values(%s,%s)", time, time % 17);
                 statement.execute(sql);
                 sql = String.format("insert into root.vehicle.d0(timestamp,s2) values(%s,%s)", time, time % 22);
                 statement.execute(sql);
-                sql = String.format("insert into root.vehicle.d0(timestamp,s3) values(%s,'%s')", time, Constant.stringValue[time % 5]);
+                sql = String.format("insert into root.vehicle.d0(timestamp,s3) values(%s,'%s')", time,
+                        Constant.stringValue[time % 5]);
                 statement.execute(sql);
-                sql = String.format("insert into root.vehicle.d0(timestamp,s4) values(%s, %s)", time, Constant.booleanValue[time % 2]);
+                sql = String.format("insert into root.vehicle.d0(timestamp,s4) values(%s, %s)", time,
+                        Constant.booleanValue[time % 2]);
                 statement.execute(sql);
                 sql = String.format("insert into root.vehicle.d0(timestamp,s5) values(%s, %s)", time, time);
                 statement.execute(sql);
             }
 
             statement.execute("flush");
-            //statement.execute("merge");
+            // statement.execute("merge");
 
             Thread.sleep(5000);
 
@@ -295,7 +315,8 @@ public class IoTDBLargeDataTest {
                 statement.execute(sql);
                 sql = String.format("insert into root.vehicle.d0(timestamp,s2) values(%s,%s)", time, time + 2);
                 statement.execute(sql);
-                sql = String.format("insert into root.vehicle.d0(timestamp,s3) values(%s,'%s')", time, Constant.stringValue[time % 5]);
+                sql = String.format("insert into root.vehicle.d0(timestamp,s3) values(%s,'%s')", time,
+                        Constant.stringValue[time % 5]);
                 statement.execute(sql);
             }
 
@@ -310,7 +331,8 @@ public class IoTDBLargeDataTest {
                 statement.execute(sql);
                 sql = String.format("insert into root.vehicle.d0(timestamp,s3) values(%s,'%s')", time, "goodman");
                 statement.execute(sql);
-                sql = String.format("insert into root.vehicle.d0(timestamp,s4) values(%s, %s)", time, Constant.booleanValue[time % 2]);
+                sql = String.format("insert into root.vehicle.d0(timestamp,s4) values(%s, %s)", time,
+                        Constant.booleanValue[time % 2]);
                 statement.execute(sql);
                 sql = String.format("insert into root.vehicle.d0(timestamp,s5) values(%s, %s)", time, 9999);
                 statement.execute(sql);

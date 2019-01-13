@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.db.engine.filenodeV2;
 
 import java.io.File;
@@ -19,211 +34,211 @@ import org.apache.iotdb.db.engine.filenode.OverflowChangeType;
  */
 public class TimeIntervalTsFile implements Serializable {
 
-	private static final long serialVersionUID = -4309683416067212549L;
-	private int baseDirIndex;
-	private String relativePath;
-	public OverflowChangeType overflowChangeType;
+    private static final long serialVersionUID = -4309683416067212549L;
+    private int baseDirIndex;
+    private String relativePath;
+    public OverflowChangeType overflowChangeType;
 
-	private Map<String, Long> startTimeMap;
-	private Map<String, Long> endTimeMap;
-	private Set<String> mergeChanged = new HashSet<>();
+    private Map<String, Long> startTimeMap;
+    private Map<String, Long> endTimeMap;
+    private Set<String> mergeChanged = new HashSet<>();
 
-	public TimeIntervalTsFile(Map<String, Long> startTimeMap, Map<String, Long> endTimeMap, OverflowChangeType type,
-			int baseDirIndex, String relativePath) {
+    public TimeIntervalTsFile(Map<String, Long> startTimeMap, Map<String, Long> endTimeMap, OverflowChangeType type,
+            int baseDirIndex, String relativePath) {
 
-		this.overflowChangeType = type;
-		this.baseDirIndex = baseDirIndex;
-		this.relativePath = relativePath;
+        this.overflowChangeType = type;
+        this.baseDirIndex = baseDirIndex;
+        this.relativePath = relativePath;
 
-		this.startTimeMap = startTimeMap;
-		this.endTimeMap = endTimeMap;
+        this.startTimeMap = startTimeMap;
+        this.endTimeMap = endTimeMap;
 
-	}
+    }
 
-	/**
-	 * This is just used to construct a new TsFile
-	 * 
-	 * @param type
-	 * @param relativePath
-	 */
-	public TimeIntervalTsFile(OverflowChangeType type, String relativePath) {
+    /**
+     * This is just used to construct a new TsFile
+     * 
+     * @param type
+     * @param relativePath
+     */
+    public TimeIntervalTsFile(OverflowChangeType type, String relativePath) {
 
-		this.overflowChangeType = type;
-		this.relativePath = relativePath;
+        this.overflowChangeType = type;
+        this.relativePath = relativePath;
 
-		startTimeMap = new HashMap<>();
-		endTimeMap = new HashMap<>();
-	}
+        startTimeMap = new HashMap<>();
+        endTimeMap = new HashMap<>();
+    }
 
-	public void setStartTime(String deviceId, long startTime) {
+    public void setStartTime(String deviceId, long startTime) {
 
-		startTimeMap.put(deviceId, startTime);
-	}
+        startTimeMap.put(deviceId, startTime);
+    }
 
-	public long getStartTime(String deviceId) {
+    public long getStartTime(String deviceId) {
 
-		if (startTimeMap.containsKey(deviceId)) {
-			return startTimeMap.get(deviceId);
-		} else {
-			return -1;
-		}
-	}
+        if (startTimeMap.containsKey(deviceId)) {
+            return startTimeMap.get(deviceId);
+        } else {
+            return -1;
+        }
+    }
 
-	public Map<String, Long> getStartTimeMap() {
+    public Map<String, Long> getStartTimeMap() {
 
-		return startTimeMap;
-	}
+        return startTimeMap;
+    }
 
-	public void setStartTimeMap(Map<String, Long> startTimeMap) {
+    public void setStartTimeMap(Map<String, Long> startTimeMap) {
 
-		this.startTimeMap = startTimeMap;
-	}
+        this.startTimeMap = startTimeMap;
+    }
 
-	public void setEndTimeMap(Map<String, Long> endTimeMap) {
+    public void setEndTimeMap(Map<String, Long> endTimeMap) {
 
-		this.endTimeMap = endTimeMap;
-	}
+        this.endTimeMap = endTimeMap;
+    }
 
-	public void setEndTime(String deviceId, long timestamp) {
+    public void setEndTime(String deviceId, long timestamp) {
 
-		this.endTimeMap.put(deviceId, timestamp);
-	}
+        this.endTimeMap.put(deviceId, timestamp);
+    }
 
-	public long getEndTime(String deviceId) {
+    public long getEndTime(String deviceId) {
 
-		if (endTimeMap.get(deviceId) == null) {
-			return -1;
-		}
-		return endTimeMap.get(deviceId);
-	}
+        if (endTimeMap.get(deviceId) == null) {
+            return -1;
+        }
+        return endTimeMap.get(deviceId);
+    }
 
-	public Map<String, Long> getEndTimeMap() {
+    public Map<String, Long> getEndTimeMap() {
 
-		return endTimeMap;
-	}
+        return endTimeMap;
+    }
 
-	public void removeTime(String deviceId) {
+    public void removeTime(String deviceId) {
 
-		startTimeMap.remove(deviceId);
-		endTimeMap.remove(deviceId);
-	}
+        startTimeMap.remove(deviceId);
+        endTimeMap.remove(deviceId);
+    }
 
-	public String getFilePath() {
+    public String getFilePath() {
 
-		if (relativePath == null) {
-			return relativePath;
-		}
-		return new File(Directories.getInstance().getTsFileFolder(baseDirIndex), relativePath).getPath();
-	}
+        if (relativePath == null) {
+            return relativePath;
+        }
+        return new File(Directories.getInstance().getTsFileFolder(baseDirIndex), relativePath).getPath();
+    }
 
-	public void setRelativePath(String relativePath) {
+    public void setRelativePath(String relativePath) {
 
-		this.relativePath = relativePath;
-	}
+        this.relativePath = relativePath;
+    }
 
-	public String getRelativePath() {
+    public String getRelativePath() {
 
-		return relativePath;
-	}
+        return relativePath;
+    }
 
-	public boolean checkEmpty() {
+    public boolean checkEmpty() {
 
-		return startTimeMap.isEmpty() && endTimeMap.isEmpty();
-	}
+        return startTimeMap.isEmpty() && endTimeMap.isEmpty();
+    }
 
-	public void clear() {
+    public void clear() {
 
-		startTimeMap.clear();
-		endTimeMap.clear();
-		mergeChanged.clear();
-		overflowChangeType = OverflowChangeType.NO_CHANGE;
-		relativePath = null;
-	}
+        startTimeMap.clear();
+        endTimeMap.clear();
+        mergeChanged.clear();
+        overflowChangeType = OverflowChangeType.NO_CHANGE;
+        relativePath = null;
+    }
 
-	public void changeTypeToChanged(FileNodeProcessorStatus fileNodeProcessorState) {
+    public void changeTypeToChanged(FileNodeProcessorStatus fileNodeProcessorState) {
 
-		if (fileNodeProcessorState == FileNodeProcessorStatus.MERGING_WRITE) {
-			overflowChangeType = OverflowChangeType.MERGING_CHANGE;
-		} else {
-			overflowChangeType = OverflowChangeType.CHANGED;
-		}
-	}
+        if (fileNodeProcessorState == FileNodeProcessorStatus.MERGING_WRITE) {
+            overflowChangeType = OverflowChangeType.MERGING_CHANGE;
+        } else {
+            overflowChangeType = OverflowChangeType.CHANGED;
+        }
+    }
 
-	public void addMergeChanged(String deviceId) {
+    public void addMergeChanged(String deviceId) {
 
-		mergeChanged.add(deviceId);
-	}
+        mergeChanged.add(deviceId);
+    }
 
-	public Set<String> getMergeChanged() {
+    public Set<String> getMergeChanged() {
 
-		return mergeChanged;
-	}
+        return mergeChanged;
+    }
 
-	public void clearMergeChanged() {
+    public void clearMergeChanged() {
 
-		mergeChanged.clear();
-	}
+        mergeChanged.clear();
+    }
 
-	public boolean isClosed() {
+    public boolean isClosed() {
 
-		return !endTimeMap.isEmpty();
+        return !endTimeMap.isEmpty();
 
-	}
+    }
 
-	public TimeIntervalTsFile backUp() {
+    public TimeIntervalTsFile backUp() {
 
-		Map<String, Long> startTimeMap = new HashMap<>(this.startTimeMap);
-		Map<String, Long> endTimeMap = new HashMap<>(this.endTimeMap);
-		return new TimeIntervalTsFile(startTimeMap, endTimeMap, overflowChangeType, baseDirIndex, relativePath);
-	}
+        Map<String, Long> startTimeMap = new HashMap<>(this.startTimeMap);
+        Map<String, Long> endTimeMap = new HashMap<>(this.endTimeMap);
+        return new TimeIntervalTsFile(startTimeMap, endTimeMap, overflowChangeType, baseDirIndex, relativePath);
+    }
 
-	@Override
-	public int hashCode() {
+    @Override
+    public int hashCode() {
 
-		final int prime = 31;
-		int result = 1;
-		result = prime * result + ((endTimeMap == null) ? 0 : endTimeMap.hashCode());
-		result = prime * result + ((relativePath == null) ? 0 : relativePath.hashCode());
-		result = prime * result + ((overflowChangeType == null) ? 0 : overflowChangeType.hashCode());
-		result = prime * result + ((startTimeMap == null) ? 0 : startTimeMap.hashCode());
-		return result;
-	}
+        final int prime = 31;
+        int result = 1;
+        result = prime * result + ((endTimeMap == null) ? 0 : endTimeMap.hashCode());
+        result = prime * result + ((relativePath == null) ? 0 : relativePath.hashCode());
+        result = prime * result + ((overflowChangeType == null) ? 0 : overflowChangeType.hashCode());
+        result = prime * result + ((startTimeMap == null) ? 0 : startTimeMap.hashCode());
+        return result;
+    }
 
-	@Override
-	public boolean equals(Object obj) {
+    @Override
+    public boolean equals(Object obj) {
 
-		if (this == obj)
-			return true;
-		if (obj == null)
-			return false;
-		if (getClass() != obj.getClass())
-			return false;
-		TimeIntervalTsFile other = (TimeIntervalTsFile) obj;
-		if (endTimeMap == null) {
-			if (other.endTimeMap != null)
-				return false;
-		} else if (!endTimeMap.equals(other.endTimeMap))
-			return false;
-		if (relativePath == null) {
-			if (other.relativePath != null)
-				return false;
-		} else if (!relativePath.equals(other.relativePath))
-			return false;
-		if (overflowChangeType != other.overflowChangeType)
-			return false;
-		if (startTimeMap == null) {
-			if (other.startTimeMap != null)
-				return false;
-		} else if (!startTimeMap.equals(other.startTimeMap))
-			return false;
-		return true;
-	}
+        if (this == obj)
+            return true;
+        if (obj == null)
+            return false;
+        if (getClass() != obj.getClass())
+            return false;
+        TimeIntervalTsFile other = (TimeIntervalTsFile) obj;
+        if (endTimeMap == null) {
+            if (other.endTimeMap != null)
+                return false;
+        } else if (!endTimeMap.equals(other.endTimeMap))
+            return false;
+        if (relativePath == null) {
+            if (other.relativePath != null)
+                return false;
+        } else if (!relativePath.equals(other.relativePath))
+            return false;
+        if (overflowChangeType != other.overflowChangeType)
+            return false;
+        if (startTimeMap == null) {
+            if (other.startTimeMap != null)
+                return false;
+        } else if (!startTimeMap.equals(other.startTimeMap))
+            return false;
+        return true;
+    }
 
-	@Override
-	public String toString() {
-		return "TimeIntervalTsFile [relativePath=" + relativePath + ", overflowChangeType=" + overflowChangeType
-				+ ", startTimeMap=" + startTimeMap + ", endTimeMap=" + endTimeMap + ", mergeChanged=" + mergeChanged
-				+ "]";
-	}
+    @Override
+    public String toString() {
+        return "TimeIntervalTsFile [relativePath=" + relativePath + ", overflowChangeType=" + overflowChangeType
+                + ", startTimeMap=" + startTimeMap + ", endTimeMap=" + endTimeMap + ", mergeChanged=" + mergeChanged
+                + "]";
+    }
 
 }

@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.db.qp.strategy.optimizer;
 
 import java.util.ArrayList;
@@ -76,21 +91,22 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     }
 
     /**
-     * Extract paths from select&from cql, expand them into complete versions, and reassign them to selectOperator's suffixPathList.
-     * Treat aggregations similarly.
+     * Extract paths from select&from cql, expand them into complete versions, and reassign them to selectOperator's
+     * suffixPathList. Treat aggregations similarly.
      *
      * @param fromPaths
      * @param selectOperator
      * @throws LogicalOptimizeException
      */
-    private void concatSelect(List<Path> fromPaths, SelectOperator selectOperator)
-            throws LogicalOptimizeException {
+    private void concatSelect(List<Path> fromPaths, SelectOperator selectOperator) throws LogicalOptimizeException {
         List<Path> suffixPaths;
         if (selectOperator == null || (suffixPaths = selectOperator.getSuffixPaths()).isEmpty()) {
             throw new LogicalOptimizeException("given SFWOperator doesn't have suffix paths, cannot concat seriesPath");
         }
-        if(selectOperator.getAggregations().size() != 0 && selectOperator.getSuffixPaths().size() != selectOperator.getAggregations().size()) {
-            throw new LogicalOptimizeException("Common queries and aggregated queries are not allowed to appear at the same time");
+        if (selectOperator.getAggregations().size() != 0
+                && selectOperator.getSuffixPaths().size() != selectOperator.getAggregations().size()) {
+            throw new LogicalOptimizeException(
+                    "Common queries and aggregated queries are not allowed to appear at the same time");
         }
 
         List<Path> allPaths = new ArrayList<>();
@@ -123,29 +139,28 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     /**
      * Check whether SLIMIT is wrongly used with complete paths and throw an exception if it is.
      *
-     * Considering a query seriesPath, there are three types:
-     * 1)complete seriesPath, 2)prefix seriesPath, 3)seriesPath with stars.
-     * And SLIMIT is designed to be used with 2) or 3). In another word, SLIMIT is not allowed to be used with 1).
+     * Considering a query seriesPath, there are three types: 1)complete seriesPath, 2)prefix seriesPath, 3)seriesPath
+     * with stars. And SLIMIT is designed to be used with 2) or 3). In another word, SLIMIT is not allowed to be used
+     * with 1).
      *
      * @param selectOperator
      * @param initialSuffixPaths
      * @param prefixPaths
      */
-    private void checkSlimitUsageConstraint(SelectOperator selectOperator,
-                                            List<Path> initialSuffixPaths, List<Path> prefixPaths)
-            throws LogicalOptimizeException {
+    private void checkSlimitUsageConstraint(SelectOperator selectOperator, List<Path> initialSuffixPaths,
+            List<Path> prefixPaths) throws LogicalOptimizeException {
         List<Path> transformedPaths = selectOperator.getSuffixPaths();
 
         boolean isWithStar = false;
         List<Path> fakePaths = new ArrayList<>();
-        for (Iterator<Path> iterSuffix = initialSuffixPaths.iterator(); iterSuffix.hasNext() && !isWithStar; ) {
+        for (Iterator<Path> iterSuffix = initialSuffixPaths.iterator(); iterSuffix.hasNext() && !isWithStar;) {
             // NOTE the traversal order should keep consistent with that of the `transformedPaths`
             Path suffixPath = iterSuffix.next();
             if (suffixPath.getFullPath().contains("*")) {
                 isWithStar = true; // the case of 3)seriesPath with stars
                 break;
             }
-            for (Iterator<Path> iterPrefix = prefixPaths.iterator(); iterPrefix.hasNext(); ) {
+            for (Iterator<Path> iterPrefix = prefixPaths.iterator(); iterPrefix.hasNext();) {
                 Path fakePath = new Path(iterPrefix.next() + "." + suffixPath);
                 if (fakePath.getFullPath().contains("*")) {
                     isWithStar = true; // the case of 3)seriesPath with stars
@@ -165,7 +180,8 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
                 }
 
                 if (i >= sz) { // the case of 1)complete seriesPath, i.e., SLIMIT is wrongly used with complete paths
-                    throw new LogicalOptimizeException("Wrong use of SLIMIT: SLIMIT is not allowed to be used with complete paths.");
+                    throw new LogicalOptimizeException(
+                            "Wrong use of SLIMIT: SLIMIT is not allowed to be used with complete paths.");
                 }
             }
         }
@@ -173,9 +189,12 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
 
     /**
      * Make 'SLIMIT&SOFFSET' take effect by trimming the suffixList and aggregations of the selectOperator
+     * 
      * @param select
-     * @param seriesLimit is ensured to be positive integer
-     * @param seriesOffset is ensured to be non-negative integer
+     * @param seriesLimit
+     *            is ensured to be positive integer
+     * @param seriesOffset
+     *            is ensured to be non-negative integer
      */
     public void slimitTrim(SelectOperator select, int seriesLimit, int seriesOffset) throws LogicalOptimizeException {
         List<Path> suffixList = select.getSuffixPaths();
@@ -183,11 +202,11 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
         int size = suffixList.size();
 
         // check parameter range
-        if(seriesOffset >= size) {
+        if (seriesOffset >= size) {
             throw new LogicalOptimizeException("SOFFSET <SOFFSETValue>: SOFFSETValue exceeds the range.");
         }
-        int endPosition =  seriesOffset+seriesLimit;
-        if(endPosition>size) {
+        int endPosition = seriesOffset + seriesLimit;
+        if (endPosition > size) {
             endPosition = size;
         }
 
@@ -202,8 +221,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
         }
     }
 
-    private FilterOperator concatFilter(List<Path> fromPaths, FilterOperator operator)
-            throws LogicalOptimizeException {
+    private FilterOperator concatFilter(List<Path> fromPaths, FilterOperator operator) throws LogicalOptimizeException {
         if (!operator.isLeaf()) {
             List<FilterOperator> newFilterList = new ArrayList<>();
             for (FilterOperator child : operator.getChildren()) {
@@ -246,8 +264,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
                 currentNode = newInnerNode;
             }
             try {
-                currentNode.addChildOperator(new BasicFunctionOperator(operator.getTokenIntType(), noStarPaths
-                        .get(i),
+                currentNode.addChildOperator(new BasicFunctionOperator(operator.getTokenIntType(), noStarPaths.get(i),
                         ((BasicFunctionOperator) operator).getValue()));
             } catch (LogicalOperatorException e) {
                 throw new LogicalOptimizeException(e.getMessage());
@@ -259,7 +276,8 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     /**
      * replace "*" by actual paths
      *
-     * @param paths list of paths which may contain stars
+     * @param paths
+     *            list of paths which may contain stars
      * @return a unique seriesPath list
      * @throws LogicalOptimizeException
      */
@@ -285,7 +303,8 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
         return retPaths;
     }
 
-    private void removeStarsInPath(List<Path> paths, List<String> afterConcatAggregations, SelectOperator selectOperator) throws LogicalOptimizeException {
+    private void removeStarsInPath(List<Path> paths, List<String> afterConcatAggregations,
+            SelectOperator selectOperator) throws LogicalOptimizeException {
         List<Path> retPaths = new ArrayList<>();
         List<String> newAggregations = new ArrayList<>();
         for (int i = 0; i < paths.size(); i++) {

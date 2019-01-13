@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.db.qp.other;
 
 import static org.junit.Assert.assertArrayEquals;
@@ -26,25 +41,25 @@ import org.apache.iotdb.tsfile.read.common.Path;
 @RunWith(Parameterized.class)
 public class TSPlanContextAuthorTest {
     private static Path[] emptyPaths = new Path[] {};
-    private static Path[] testPaths = new Path[] {new Path("root.node1.a.b")};
+    private static Path[] testPaths = new Path[] { new Path("root.node1.a.b") };
 
     private String inputSQL;
     private Path[] paths;
 
-
     @Parameters
     public static Collection<Object[]> data() {
-        return Arrays.asList(new Object[][] {
-                {"CREATE USER username1 password1", emptyPaths},
-                {"DROP USER username", emptyPaths},
-                {"CREATE ROLE rolename", emptyPaths},
-                {"DROP ROLE rolename", emptyPaths},
-                {"GRANT USER username PRIVILEGES 'SET_STORAGE_GROUP','INSERT_TIMESERIES' ON root.node1.a.b", testPaths},
-                {"REVOKE USER username PRIVILEGES 'SET_STORAGE_GROUP','INSERT_TIMESERIES' ON root.node1.a.b", testPaths},
-                {"GRANT ROLE rolename PRIVILEGES 'SET_STORAGE_GROUP','INSERT_TIMESERIES' ON root.node1.a.b", testPaths},
-                {"REVOKE ROLE rolename PRIVILEGES 'SET_STORAGE_GROUP','INSERT_TIMESERIES' ON root.node1.a.b", testPaths},
-                {"GRANT rolename TO username", emptyPaths},
-                {"REVOKE rolename FROM username", emptyPaths}});
+        return Arrays.asList(new Object[][] { { "CREATE USER username1 password1", emptyPaths },
+                { "DROP USER username", emptyPaths }, { "CREATE ROLE rolename", emptyPaths },
+                { "DROP ROLE rolename", emptyPaths },
+                { "GRANT USER username PRIVILEGES 'SET_STORAGE_GROUP','INSERT_TIMESERIES' ON root.node1.a.b",
+                        testPaths },
+                { "REVOKE USER username PRIVILEGES 'SET_STORAGE_GROUP','INSERT_TIMESERIES' ON root.node1.a.b",
+                        testPaths },
+                { "GRANT ROLE rolename PRIVILEGES 'SET_STORAGE_GROUP','INSERT_TIMESERIES' ON root.node1.a.b",
+                        testPaths },
+                { "REVOKE ROLE rolename PRIVILEGES 'SET_STORAGE_GROUP','INSERT_TIMESERIES' ON root.node1.a.b",
+                        testPaths },
+                { "GRANT rolename TO username", emptyPaths }, { "REVOKE rolename FROM username", emptyPaths } });
     }
 
     public TSPlanContextAuthorTest(String inputSQL, Path[] paths) {

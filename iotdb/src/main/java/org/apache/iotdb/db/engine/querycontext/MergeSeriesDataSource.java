@@ -1,15 +1,30 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.db.engine.querycontext;
 
 public class MergeSeriesDataSource {
-	
-	private OverflowInsertFile insertFile;
 
-	public MergeSeriesDataSource(OverflowInsertFile insertFile) {
-		this.insertFile = insertFile;
-	}
+    private OverflowInsertFile insertFile;
 
-	public OverflowInsertFile getInsertFile() {
-		return insertFile;
-	}
+    public MergeSeriesDataSource(OverflowInsertFile insertFile) {
+        this.insertFile = insertFile;
+    }
+
+    public OverflowInsertFile getInsertFile() {
+        return insertFile;
+    }
 
 }

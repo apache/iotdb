@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.db.engine.memcontrol;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -36,23 +51,20 @@ public class IoTDBMemControlTest {
     private final String s2 = "s2";
     private final String s3 = "s3";
 
-    private String[] sqls = new String[]{
-            "SET STORAGE GROUP TO root.vehicle",
-            "SET STORAGE GROUP TO root.house",
+    private String[] sqls = new String[] { "SET STORAGE GROUP TO root.vehicle", "SET STORAGE GROUP TO root.house",
             "CREATE TIMESERIES root.vehicle.d1.s0 WITH DATATYPE=INT32, ENCODING=RLE",
             "CREATE TIMESERIES root.vehicle.d0.s2 WITH DATATYPE=FLOAT, ENCODING=RLE",
             "CREATE TIMESERIES root.vehicle.d0.s3 WITH DATATYPE=TEXT, ENCODING=PLAIN",
             "CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE",
             "CREATE TIMESERIES root.vehicle.d0.s1 WITH DATATYPE=INT64, ENCODING=RLE",
             "CREATE TIMESERIES root.vehicle.d0.s4 WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
-            
+
             "CREATE TIMESERIES root.house.d1.s0 WITH DATATYPE=INT32, ENCODING=RLE",
             "CREATE TIMESERIES root.house.d0.s2 WITH DATATYPE=FLOAT, ENCODING=RLE",
             "CREATE TIMESERIES root.house.d0.s3 WITH DATATYPE=TEXT, ENCODING=PLAIN",
             "CREATE TIMESERIES root.house.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE",
             "CREATE TIMESERIES root.house.d0.s1 WITH DATATYPE=INT64, ENCODING=RLE",
-            "CREATE TIMESERIES root.house.d0.s4 WITH DATATYPE=BOOLEAN, ENCODING=PLAIN"
-    };
+            "CREATE TIMESERIES root.house.d0.s4 WITH DATATYPE=BOOLEAN, ENCODING=PLAIN" };
 
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     private IoTDB deamon;
@@ -67,13 +79,12 @@ public class IoTDBMemControlTest {
     public void setUp() throws Exception {
         if (testFlag) {
             deamon = IoTDB.getInstance();
-            
 
             config.memThresholdWarning = 3 * IoTDBConstant.MB;
             config.memThresholdDangerous = 5 * IoTDBConstant.MB;
 
             BasicMemController.getInstance().setCheckInterval(15 * 1000);
-            BasicMemController.getInstance().setDangerouseThreshold(config.memThresholdDangerous);  // force initialize
+            BasicMemController.getInstance().setDangerouseThreshold(config.memThresholdDangerous); // force initialize
             BasicMemController.getInstance().setWarningThreshold(config.memThresholdWarning);
 
             deamon.active();
@@ -94,7 +105,7 @@ public class IoTDBMemControlTest {
     @Test
     public void test() throws ClassNotFoundException, SQLException, InterruptedException {
         // test a huge amount of write causes block
-        if(!testFlag)
+        if (!testFlag)
             return;
         Thread t1 = new Thread(() -> insert(d0));
         Thread t2 = new Thread(() -> insert(d1));
@@ -121,25 +132,26 @@ public class IoTDBMemControlTest {
         record.addTuple(new IntDataPoint(s0, 0));
         record.addTuple(new LongDataPoint(s1, 0));
         record.addTuple(new FloatDataPoint(s2, 0.0f));
-        record.addTuple(new StringDataPoint(s3, new Binary("\"sadasgagfdhdshdhdfhdfhdhdhdfherherdfsdfbdfsherhedfjerjerdfshfdshxzcvenerhreherjnfdgntrnt" +
-                "ddfhdsf,joreinmoidnfh\"")));
+        record.addTuple(new StringDataPoint(s3,
+                new Binary("\"sadasgagfdhdshdhdfhdfhdhdhdfherherdfsdfbdfsherhedfjerjerdfshfdshxzcvenerhreherjnfdgntrnt"
+                        + "ddfhdsf,joreinmoidnfh\"")));
         long recordMemSize = MemUtils.getTsRecordMemBufferwrite(record);
         long insertCnt = config.memThresholdDangerous / recordMemSize * 2;
         System.out.println(Thread.currentThread().getId() + " to insert " + insertCnt);
         try {
-            connection = DriverManager.getConnection(Config.IOTDB_URL_PREFIX+"127.0.0.1:6667/", "root", "root");
+            connection = DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
             Statement statement = connection.createStatement();
             for (int i = 0; i < insertCnt; i++) {
                 record.time = i + 1;
                 statement.execute(Constant.recordToInsert(record));
-                if(i % 1000 == 0) {
+                if (i % 1000 == 0) {
                     System.out.println(Thread.currentThread().getId() + " inserting " + i);
                 }
             }
             statement.close();
         } catch (Exception e) {
             System.out.println(e.getMessage());
-            if(e.getMessage().contains("exceeded dangerous threshold"))
+            if (e.getMessage().contains("exceeded dangerous threshold"))
                 exceptionCaught = true;
         } finally {
             if (connection != null) {
@@ -156,7 +168,7 @@ public class IoTDBMemControlTest {
         Class.forName(Config.JDBC_DRIVER_NAME);
         Connection connection = null;
         try {
-            connection = DriverManager.getConnection(Config.IOTDB_URL_PREFIX+"127.0.0.1:6667/", "root", "root");
+            connection = DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
             Statement statement = connection.createStatement();
             for (String sql : sqls) {
                 statement.execute(sql);

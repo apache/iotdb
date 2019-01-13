@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.tsfile.encoding.decoder;
 
 import org.apache.iotdb.tsfile.utils.BytesUtils;
@@ -13,8 +28,8 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 
 /**
- * This class is a decoder for decoding the byte array that encoded by
- * {@code DeltaBinaryEncoder}.DeltaBinaryDecoder just supports integer and long values.<br>
+ * This class is a decoder for decoding the byte array that encoded by {@code DeltaBinaryEncoder}.DeltaBinaryDecoder
+ * just supports integer and long values.<br>
  *
  * @author kangrong
  * @see DeltaBinaryEncoder
@@ -56,19 +71,18 @@ public abstract class DeltaBinaryDecoder extends Decoder {
     /**
      * calculate the bytes length containing v bits
      *
-     * @param v - number of bits
+     * @param v
+     *            - number of bits
      * @return number of bytes
      */
     protected int ceil(int v) {
         return (int) Math.ceil((double) (v) / 8.0);
     }
 
-
     @Override
     public boolean hasNext(ByteBuffer buffer) throws IOException {
         return (nextReadIndex < readIntTotalCount) || buffer.remaining() > 0;
     }
-
 
     public static class IntDeltaDecoder extends DeltaBinaryDecoder {
         private int firstValue;
@@ -86,7 +100,8 @@ public abstract class DeltaBinaryDecoder extends Decoder {
         /**
          * if there's no decoded data left, decode next pack into {@code data}
          *
-         * @param buffer ByteBuffer
+         * @param buffer
+         *            ByteBuffer
          * @return int
          */
         protected int readT(ByteBuffer buffer) {
@@ -103,7 +118,8 @@ public abstract class DeltaBinaryDecoder extends Decoder {
         /**
          * if remaining data has been run out, load next pack from InputStream
          *
-         * @param buffer ByteBuffer
+         * @param buffer
+         *            ByteBuffer
          * @return int
          */
         protected int loadIntBatch(ByteBuffer buffer) {
@@ -169,7 +185,8 @@ public abstract class DeltaBinaryDecoder extends Decoder {
         /**
          * if there's no decoded data left, decode next pack into {@code data}
          *
-         * @param buffer ByteBuffer
+         * @param buffer
+         *            ByteBuffer
          * @return long value
          */
         protected long readT(ByteBuffer buffer) {
@@ -181,7 +198,8 @@ public abstract class DeltaBinaryDecoder extends Decoder {
         /***
          * if remaining data has been run out, load next pack from InputStream
          *
-         * @param buffer ByteBuffer
+         * @param buffer
+         *            ByteBuffer
          * @return long value
          */
         protected long loadIntBatch(ByteBuffer buffer) {
@@ -201,7 +219,6 @@ public abstract class DeltaBinaryDecoder extends Decoder {
             readPack();
             return firstValue;
         }
-
 
         private void readPack() {
             for (int i = 0; i < packNum; i++) {

@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.tsfile.encoding.decoder;
 
 import org.apache.iotdb.tsfile.exception.encoding.TSFileDecodingException;
@@ -19,8 +34,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Decoder switch or enums value using bitmap, bitmap-encoding:
- * {@code <length> <num> <encoded-data>}
+ * Decoder switch or enums value using bitmap, bitmap-encoding: {@code <length> <num> <encoded-data>}
  */
 @Deprecated
 public class BitmapDecoder extends Decoder {
@@ -52,7 +66,8 @@ public class BitmapDecoder extends Decoder {
     private Map<Integer, byte[]> buffer;
 
     /**
-     * @param endianType deprecated
+     * @param endianType
+     *            deprecated
      */
     public BitmapDecoder(EndianType endianType) {
         super(TSEncoding.BITMAP);
@@ -89,7 +104,7 @@ public class BitmapDecoder extends Decoder {
     private void getLengthAndNumber(ByteBuffer buffer) throws IOException {
         this.length = ReadWriteForEncodingUtils.readUnsignedVarInt(buffer);
         this.number = ReadWriteForEncodingUtils.readUnsignedVarInt(buffer);
-        //TODO maybe this.byteCache = buffer is faster, but not safe
+        // TODO maybe this.byteCache = buffer is faster, but not safe
         byte[] tmp = new byte[length];
         buffer.get(tmp, 0, length);
         this.byteCache = ByteBuffer.wrap(tmp);
@@ -129,8 +144,10 @@ public class BitmapDecoder extends Decoder {
     /**
      * For special value in page list, get its bitmap index
      *
-     * @param target   value to get its bitmap index
-     * @param pageList input page list
+     * @param target
+     *            value to get its bitmap index
+     * @param pageList
+     *            input page list
      * @return List(Pair of (length, bitmap index) )
      */
     public List<Pair<Integer, byte[]>> decodeAll(int target, List<ByteBuffer> pageList) {
@@ -152,8 +169,8 @@ public class BitmapDecoder extends Decoder {
                 }
 
                 resultList.add(new Pair<>(this.number, tmp));
-                LOGGER.debug("tsfile-encoding BitmapDecoder: number {} in current page, byte length {}",
-                        this.number, byteArrayLength);
+                LOGGER.debug("tsfile-encoding BitmapDecoder: number {} in current page, byte length {}", this.number,
+                        byteArrayLength);
             } catch (IOException e) {
                 LOGGER.error(
                         "tsfile-encoding BitmapDecoder: error occurs when decoding all numbers in page {}, number {}",
@@ -166,9 +183,11 @@ public class BitmapDecoder extends Decoder {
     /**
      * Check whether there is number left for reading
      *
-     * @param buffer : decoded data saved in InputStream
+     * @param buffer
+     *            : decoded data saved in InputStream
      * @return true or false to indicate whether there is number left
-     * @throws IOException cannot read next value
+     * @throws IOException
+     *             cannot read next value
      */
     @Override
     public boolean hasNext(ByteBuffer buffer) throws IOException {
@@ -181,8 +200,10 @@ public class BitmapDecoder extends Decoder {
     /**
      * In current version, boolean value is equal to Enums value in schema
      *
-     * @param buffer : decoded data saved in InputStream
-     * @throws TSFileDecodingException cannot read next value
+     * @param buffer
+     *            : decoded data saved in InputStream
+     * @throws TSFileDecodingException
+     *             cannot read next value
      */
     @Override
     public boolean readBoolean(ByteBuffer buffer) {

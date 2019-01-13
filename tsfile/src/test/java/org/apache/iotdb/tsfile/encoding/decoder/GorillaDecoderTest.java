@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.tsfile.encoding.decoder;
 
 import static org.junit.Assert.*;
@@ -22,219 +37,219 @@ import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
 import org.apache.iotdb.tsfile.encoding.encoder.SinglePrecisionEncoder;
 
 public class GorillaDecoderTest {
-	private static final Logger LOGGER = LoggerFactory.getLogger(GorillaDecoderTest.class);
-	private List<Float> floatList;
-	private List<Double> doubleList;
-	private final double delta = 0.0000001;
-	private final int floatMaxPointValue = 10000;
-	private final long doubleMaxPointValue = 1000000000000000L;
+    private static final Logger LOGGER = LoggerFactory.getLogger(GorillaDecoderTest.class);
+    private List<Float> floatList;
+    private List<Double> doubleList;
+    private final double delta = 0.0000001;
+    private final int floatMaxPointValue = 10000;
+    private final long doubleMaxPointValue = 1000000000000000L;
 
-	@Before
-	public void setUp() throws Exception {
-		floatList = new ArrayList<Float>();	
-		int hybridCount = 11;
-		int hybridNum = 50;
-		int hybridStart = 2000;
-		for (int i = 0; i < hybridNum; i++) {
-			for (int j = 0; j < hybridCount; j++) {
-				floatList.add((float) hybridStart / floatMaxPointValue);
-			}
-			for (int j = 0; j < hybridCount; j++) {
-				floatList.add((float) hybridStart / floatMaxPointValue);
-				hybridStart += 3;
-			}
+    @Before
+    public void setUp() throws Exception {
+        floatList = new ArrayList<Float>();
+        int hybridCount = 11;
+        int hybridNum = 50;
+        int hybridStart = 2000;
+        for (int i = 0; i < hybridNum; i++) {
+            for (int j = 0; j < hybridCount; j++) {
+                floatList.add((float) hybridStart / floatMaxPointValue);
+            }
+            for (int j = 0; j < hybridCount; j++) {
+                floatList.add((float) hybridStart / floatMaxPointValue);
+                hybridStart += 3;
+            }
 
-			hybridCount += 2;
-		}
+            hybridCount += 2;
+        }
 
-		doubleList = new ArrayList<Double>();
-		int hybridCountDouble = 11;
-		int hybridNumDouble = 50;
-		long hybridStartDouble = 2000;
+        doubleList = new ArrayList<Double>();
+        int hybridCountDouble = 11;
+        int hybridNumDouble = 50;
+        long hybridStartDouble = 2000;
 
-		for (int i = 0; i < hybridNumDouble; i++) {
-			for (int j = 0; j < hybridCountDouble; j++) {
-				doubleList.add((double) hybridStartDouble / doubleMaxPointValue);
-			}
-			for (int j = 0; j < hybridCountDouble; j++) {
-				doubleList.add((double) hybridStartDouble / doubleMaxPointValue);
-				hybridStart += 3;
-			}
+        for (int i = 0; i < hybridNumDouble; i++) {
+            for (int j = 0; j < hybridCountDouble; j++) {
+                doubleList.add((double) hybridStartDouble / doubleMaxPointValue);
+            }
+            for (int j = 0; j < hybridCountDouble; j++) {
+                doubleList.add((double) hybridStartDouble / doubleMaxPointValue);
+                hybridStart += 3;
+            }
 
-			hybridCountDouble += 2;
-		}
-	}
+            hybridCountDouble += 2;
+        }
+    }
 
-	@After
-	public void tearDown() throws Exception {
-	}
+    @After
+    public void tearDown() throws Exception {
+    }
 
-	@Test
-	public void testNegativeNumber() throws IOException {
-		Encoder encoder = new SinglePrecisionEncoder();
-		ByteArrayOutputStream baos = new ByteArrayOutputStream();
-		float value = -7.101f;
-		encoder.encode(value, baos);
-		encoder.encode(value - 2, baos);
-		encoder.encode(value - 4, baos);
-		encoder.flush(baos);		
-		encoder.encode(value, baos);
-		encoder.encode(value - 2, baos);
-		encoder.encode(value - 4, baos);
-		encoder.flush(baos);
-		ByteBuffer buffer = ByteBuffer.wrap(baos.toByteArray());
-		for(int i = 0; i < 2;i++){
-			Decoder decoder = new SinglePrecisionDecoder();
-			if(decoder.hasNext(buffer)){
-				assertEquals(value, decoder.readFloat(buffer), delta);
-			}
-			if(decoder.hasNext(buffer)){
-				assertEquals(value-2, decoder.readFloat(buffer), delta);
-			}
-			if(decoder.hasNext(buffer)){
-				assertEquals(value-4, decoder.readFloat(buffer), delta);
-			}
-		}
-	}
-	
-	@Test
-	public void testZeroNumber() throws IOException{
-		Encoder encoder = new DoublePrecisionEncoder();
-		ByteArrayOutputStream baos = new ByteArrayOutputStream();
-		double value = 0f;
-		encoder.encode(value, baos);
-		encoder.encode(value, baos);
-		encoder.encode(value, baos);
-		encoder.flush(baos);		
-		encoder.encode(value, baos);
-		encoder.encode(value, baos);
-		encoder.encode(value, baos);
-		encoder.flush(baos);
-		ByteBuffer buffer = ByteBuffer.wrap(baos.toByteArray());
-		for(int i = 0; i < 2;i++){
-			Decoder decoder = new DoublePrecisionDecoder();
-			if(decoder.hasNext(buffer)){
-				assertEquals(value, decoder.readDouble(buffer), delta);
-			}
-			if(decoder.hasNext(buffer)){
-				assertEquals(value, decoder.readDouble(buffer), delta);
-			}
-			if(decoder.hasNext(buffer)){
-				assertEquals(value, decoder.readDouble(buffer), delta);
-			}
-		}
-	}
-	
-	@Test
-	public void testFloatRepeat() throws Exception {
-		for (int i = 1; i <= 10; i++) {
-			testFloatLength(floatList, false, i);
-		}
-	}
+    @Test
+    public void testNegativeNumber() throws IOException {
+        Encoder encoder = new SinglePrecisionEncoder();
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        float value = -7.101f;
+        encoder.encode(value, baos);
+        encoder.encode(value - 2, baos);
+        encoder.encode(value - 4, baos);
+        encoder.flush(baos);
+        encoder.encode(value, baos);
+        encoder.encode(value - 2, baos);
+        encoder.encode(value - 4, baos);
+        encoder.flush(baos);
+        ByteBuffer buffer = ByteBuffer.wrap(baos.toByteArray());
+        for (int i = 0; i < 2; i++) {
+            Decoder decoder = new SinglePrecisionDecoder();
+            if (decoder.hasNext(buffer)) {
+                assertEquals(value, decoder.readFloat(buffer), delta);
+            }
+            if (decoder.hasNext(buffer)) {
+                assertEquals(value - 2, decoder.readFloat(buffer), delta);
+            }
+            if (decoder.hasNext(buffer)) {
+                assertEquals(value - 4, decoder.readFloat(buffer), delta);
+            }
+        }
+    }
 
-	@Test
-	public void testDoubleRepeat() throws Exception {
-		for (int i = 1; i <= 10; i++) {
-			testDoubleLength(doubleList, false, i);
-		}
-	}
-	
-	@Test
-	public void testFloat() throws IOException {
-		Encoder encoder = new SinglePrecisionEncoder();
-		ByteArrayOutputStream baos = new ByteArrayOutputStream();
-		float value = 7.101f;
-		int num = 10000;
-		for(int i = 0; i < num;i++){
-			encoder.encode(value + 2 * i, baos);
-		}
-		encoder.flush(baos);
-		ByteBuffer buffer = ByteBuffer.wrap(baos.toByteArray());
-		Decoder decoder = new SinglePrecisionDecoder();
-		for(int i = 0; i < num;i++){
-			if(decoder.hasNext(buffer)){
-				assertEquals(value + 2 * i, decoder.readFloat(buffer), delta);
-				continue;
-			}
-			fail();
-		}
-	}
-	
-	@Test
-	public void testDouble() throws IOException {
-		Encoder encoder = new DoublePrecisionEncoder();
-		ByteArrayOutputStream baos = new ByteArrayOutputStream();
-		double value = 7.101f;
-		int num = 1000;
-		for(int i = 0; i < num;i++){
-			encoder.encode(value + 2 * i, baos);
-		}
-		encoder.flush(baos);
-		ByteBuffer buffer = ByteBuffer.wrap(baos.toByteArray());
-		Decoder decoder = new DoublePrecisionDecoder();
-		for(int i = 0; i < num;i++){
-			if(decoder.hasNext(buffer)){
-//				System.out.println("turn "+i);
-				assertEquals(value + 2 * i, decoder.readDouble(buffer), delta);
-				continue;
-			}
-			fail();
-		}
-	}
+    @Test
+    public void testZeroNumber() throws IOException {
+        Encoder encoder = new DoublePrecisionEncoder();
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        double value = 0f;
+        encoder.encode(value, baos);
+        encoder.encode(value, baos);
+        encoder.encode(value, baos);
+        encoder.flush(baos);
+        encoder.encode(value, baos);
+        encoder.encode(value, baos);
+        encoder.encode(value, baos);
+        encoder.flush(baos);
+        ByteBuffer buffer = ByteBuffer.wrap(baos.toByteArray());
+        for (int i = 0; i < 2; i++) {
+            Decoder decoder = new DoublePrecisionDecoder();
+            if (decoder.hasNext(buffer)) {
+                assertEquals(value, decoder.readDouble(buffer), delta);
+            }
+            if (decoder.hasNext(buffer)) {
+                assertEquals(value, decoder.readDouble(buffer), delta);
+            }
+            if (decoder.hasNext(buffer)) {
+                assertEquals(value, decoder.readDouble(buffer), delta);
+            }
+        }
+    }
 
-	private void testFloatLength(List<Float> valueList, boolean isDebug, int repeatCount) throws Exception {
-		Encoder encoder = new SinglePrecisionEncoder();
-		ByteArrayOutputStream baos = new ByteArrayOutputStream();
-		for (int i = 0; i < repeatCount; i++) {
-			for (float value : valueList) {
-				encoder.encode(value, baos);
-			}
-			encoder.flush(baos);
-		}
-		ByteBuffer buffer = ByteBuffer.wrap(baos.toByteArray());
-		for (int i = 0; i < repeatCount; i++) {
-			
-			Decoder decoder = new SinglePrecisionDecoder();
-			for (float value : valueList) {
-//				System.out.println("Repeat: "+i+" value: "+value);
-				if(decoder.hasNext(buffer)){
-					float value_ = decoder.readFloat(buffer);
-					if (isDebug) {
-						LOGGER.debug("{} // {}", value_, value);
-					}
-					assertEquals(value, value_, delta);
-					continue;
-				}
-				fail();
-			}
-		}
-	}
+    @Test
+    public void testFloatRepeat() throws Exception {
+        for (int i = 1; i <= 10; i++) {
+            testFloatLength(floatList, false, i);
+        }
+    }
 
-	private void testDoubleLength(List<Double> valueList, boolean isDebug, int repeatCount) throws Exception {
-		Encoder encoder = new DoublePrecisionEncoder();
-		ByteArrayOutputStream baos = new ByteArrayOutputStream();
-		for (int i = 0; i < repeatCount; i++) {
-			for (double value : valueList) {
-				encoder.encode(value, baos);
-			}
-			encoder.flush(baos);
-		}
+    @Test
+    public void testDoubleRepeat() throws Exception {
+        for (int i = 1; i <= 10; i++) {
+            testDoubleLength(doubleList, false, i);
+        }
+    }
 
-		ByteBuffer buffer = ByteBuffer.wrap(baos.toByteArray());
+    @Test
+    public void testFloat() throws IOException {
+        Encoder encoder = new SinglePrecisionEncoder();
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        float value = 7.101f;
+        int num = 10000;
+        for (int i = 0; i < num; i++) {
+            encoder.encode(value + 2 * i, baos);
+        }
+        encoder.flush(baos);
+        ByteBuffer buffer = ByteBuffer.wrap(baos.toByteArray());
+        Decoder decoder = new SinglePrecisionDecoder();
+        for (int i = 0; i < num; i++) {
+            if (decoder.hasNext(buffer)) {
+                assertEquals(value + 2 * i, decoder.readFloat(buffer), delta);
+                continue;
+            }
+            fail();
+        }
+    }
 
-		for (int i = 0; i < repeatCount; i++) {
-			Decoder decoder = new DoublePrecisionDecoder();
-			for (double value : valueList) {
-				if(decoder.hasNext(buffer)){
-					double value_ = decoder.readDouble(buffer);
-					if (isDebug) {
-						LOGGER.debug("{} // {}", value_, value);
-					}
-					assertEquals(value, value_, delta);
-					continue;
-				}
-				fail();
-			}
-		}
-	}
+    @Test
+    public void testDouble() throws IOException {
+        Encoder encoder = new DoublePrecisionEncoder();
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        double value = 7.101f;
+        int num = 1000;
+        for (int i = 0; i < num; i++) {
+            encoder.encode(value + 2 * i, baos);
+        }
+        encoder.flush(baos);
+        ByteBuffer buffer = ByteBuffer.wrap(baos.toByteArray());
+        Decoder decoder = new DoublePrecisionDecoder();
+        for (int i = 0; i < num; i++) {
+            if (decoder.hasNext(buffer)) {
+                // System.out.println("turn "+i);
+                assertEquals(value + 2 * i, decoder.readDouble(buffer), delta);
+                continue;
+            }
+            fail();
+        }
+    }
+
+    private void testFloatLength(List<Float> valueList, boolean isDebug, int repeatCount) throws Exception {
+        Encoder encoder = new SinglePrecisionEncoder();
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        for (int i = 0; i < repeatCount; i++) {
+            for (float value : valueList) {
+                encoder.encode(value, baos);
+            }
+            encoder.flush(baos);
+        }
+        ByteBuffer buffer = ByteBuffer.wrap(baos.toByteArray());
+        for (int i = 0; i < repeatCount; i++) {
+
+            Decoder decoder = new SinglePrecisionDecoder();
+            for (float value : valueList) {
+                // System.out.println("Repeat: "+i+" value: "+value);
+                if (decoder.hasNext(buffer)) {
+                    float value_ = decoder.readFloat(buffer);
+                    if (isDebug) {
+                        LOGGER.debug("{} // {}", value_, value);
+                    }
+                    assertEquals(value, value_, delta);
+                    continue;
+                }
+                fail();
+            }
+        }
+    }
+
+    private void testDoubleLength(List<Double> valueList, boolean isDebug, int repeatCount) throws Exception {
+        Encoder encoder = new DoublePrecisionEncoder();
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        for (int i = 0; i < repeatCount; i++) {
+            for (double value : valueList) {
+                encoder.encode(value, baos);
+            }
+            encoder.flush(baos);
+        }
+
+        ByteBuffer buffer = ByteBuffer.wrap(baos.toByteArray());
+
+        for (int i = 0; i < repeatCount; i++) {
+            Decoder decoder = new DoublePrecisionDecoder();
+            for (double value : valueList) {
+                if (decoder.hasNext(buffer)) {
+                    double value_ = decoder.readDouble(buffer);
+                    if (isDebug) {
+                        LOGGER.debug("{} // {}", value_, value);
+                    }
+                    assertEquals(value, value_, delta);
+                    continue;
+                }
+                fail();
+            }
+        }
+    }
 }

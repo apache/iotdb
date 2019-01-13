@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.db.query.reader.sequence;
 
 import org.apache.iotdb.db.engine.querycontext.UnsealedTsFile;
@@ -27,13 +42,16 @@ public class UnSealedTsFileReader implements IReader {
 
     public UnSealedTsFileReader(UnsealedTsFile unsealedTsFile, Filter filter) throws IOException {
 
-        TsFileSequenceReader unClosedTsFileReader = FileReaderManager.getInstance().get(unsealedTsFile.getFilePath(), true);
+        TsFileSequenceReader unClosedTsFileReader = FileReaderManager.getInstance().get(unsealedTsFile.getFilePath(),
+                true);
         ChunkLoader chunkLoader = new ChunkLoaderImpl(unClosedTsFileReader);
 
         if (filter == null) {
-            unSealedTsFileReader = new FileSeriesReaderWithoutFilter(chunkLoader, unsealedTsFile.getChunkMetaDataList());
+            unSealedTsFileReader = new FileSeriesReaderWithoutFilter(chunkLoader,
+                    unsealedTsFile.getChunkMetaDataList());
         } else {
-            unSealedTsFileReader = new FileSeriesReaderWithFilter(chunkLoader, unsealedTsFile.getChunkMetaDataList(), filter);
+            unSealedTsFileReader = new FileSeriesReaderWithFilter(chunkLoader, unsealedTsFile.getChunkMetaDataList(),
+                    filter);
         }
 
     }

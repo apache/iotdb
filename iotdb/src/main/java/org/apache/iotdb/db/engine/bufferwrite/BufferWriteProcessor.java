@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.db.engine.bufferwrite;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
@@ -44,7 +59,7 @@ public class BufferWriteProcessor extends Processor {
     private static final Logger LOGGER = LoggerFactory.getLogger(BufferWriteProcessor.class);
 
     private FileSchema fileSchema;
-//    private RestorableTsFileIOWriter bufferWriteRestoreManager;
+    // private RestorableTsFileIOWriter bufferWriteRestoreManager;
 
     private volatile FlushStatus flushStatus = new FlushStatus();
     private volatile boolean isFlush;
@@ -70,17 +85,14 @@ public class BufferWriteProcessor extends Processor {
 
     private WriteLogNode logNode;
 
-
-
     public BufferWriteProcessor(String baseDir, String processorName, String fileName, Map<String, Action> parameters,
-                                FileSchema fileSchema) throws BufferWriteProcessorException {
+            FileSchema fileSchema) throws BufferWriteProcessorException {
         super(processorName);
         this.fileSchema = fileSchema;
         this.baseDir = baseDir;
         this.fileName = fileName;
 
-        if (baseDir.length() > 0
-                && baseDir.charAt(baseDir.length() - 1) != File.separatorChar) {
+        if (baseDir.length() > 0 && baseDir.charAt(baseDir.length() - 1) != File.separatorChar) {
             baseDir = baseDir + File.separatorChar;
         }
         String dataDirPath = baseDir + processorName;
@@ -96,7 +108,6 @@ public class BufferWriteProcessor extends Processor {
         } catch (IOException e) {
             throw new BufferWriteProcessorException(e);
         }
-
 
         bufferwriteFlushAction = parameters.get(FileNodeConstants.BUFFERWRITE_FLUSH_ACTION);
         bufferwriteCloseAction = parameters.get(FileNodeConstants.BUFFERWRITE_CLOSE_ACTION);
@@ -117,14 +128,19 @@ public class BufferWriteProcessor extends Processor {
     /**
      * write one data point to the bufferwrite
      *
-     * @param deviceId device name
-     * @param measurementId sensor name
-     * @param timestamp timestamp of the data point
-     * @param dataType the data type of the value
-     * @param value data point value
-     * @return true -the size of tsfile or metadata reaches to the threshold.
-     * false -otherwise
-     * @throws BufferWriteProcessorException  if a flushing operation occurs and failed.
+     * @param deviceId
+     *            device name
+     * @param measurementId
+     *            sensor name
+     * @param timestamp
+     *            timestamp of the data point
+     * @param dataType
+     *            the data type of the value
+     * @param value
+     *            data point value
+     * @return true -the size of tsfile or metadata reaches to the threshold. false -otherwise
+     * @throws BufferWriteProcessorException
+     *             if a flushing operation occurs and failed.
      */
     public boolean write(String deviceId, String measurementId, long timestamp, TSDataType dataType, String value)
             throws BufferWriteProcessorException {
@@ -135,10 +151,14 @@ public class BufferWriteProcessor extends Processor {
     }
 
     /**
-     * wrete a ts record into the memtable. If the memory usage is beyond the memThreshold, an async flushing operation will be called.
-     * @param tsRecord data to be written
+     * wrete a ts record into the memtable. If the memory usage is beyond the memThreshold, an async flushing operation
+     * will be called.
+     * 
+     * @param tsRecord
+     *            data to be written
      * @return FIXME what is the mean about the return value??
-     * @throws BufferWriteProcessorException if a flushing operation occurs and failed.
+     * @throws BufferWriteProcessorException
+     *             if a flushing operation occurs and failed.
      */
     public boolean write(TSRecord tsRecord) throws BufferWriteProcessorException {
         long memUsage = MemUtils.getRecordSize(tsRecord);
@@ -149,24 +169,24 @@ public class BufferWriteProcessor extends Processor {
         }
         valueCount++;
         switch (level) {
-            case SAFE:
-                checkMemThreshold4Flush(memUsage);
-                return true;
-            case WARNING:
-                LOGGER.warn("Memory usage will exceed warning threshold, current : {}.",
-                        MemUtils.bytesCntToStr(BasicMemController.getInstance().getTotalUsage()));
-                checkMemThreshold4Flush(memUsage);
-                return true;
-            case DANGEROUS:
-            default:
-                LOGGER.warn("Memory usage will exceed dangerous threshold, current : {}.",
-                        MemUtils.bytesCntToStr(BasicMemController.getInstance().getTotalUsage()));
-                //FIXME if it is dangerous, I think we need to reject comming insertions until the memory is safe.
-                return false;
+        case SAFE:
+            checkMemThreshold4Flush(memUsage);
+            return true;
+        case WARNING:
+            LOGGER.warn("Memory usage will exceed warning threshold, current : {}.",
+                    MemUtils.bytesCntToStr(BasicMemController.getInstance().getTotalUsage()));
+            checkMemThreshold4Flush(memUsage);
+            return true;
+        case DANGEROUS:
+        default:
+            LOGGER.warn("Memory usage will exceed dangerous threshold, current : {}.",
+                    MemUtils.bytesCntToStr(BasicMemController.getInstance().getTotalUsage()));
+            // FIXME if it is dangerous, I think we need to reject comming insertions until the memory is safe.
+            return false;
         }
     }
 
-    private void checkMemThreshold4Flush(long addedMemory) throws BufferWriteProcessorException{
+    private void checkMemThreshold4Flush(long addedMemory) throws BufferWriteProcessorException {
         addedMemory = memSize.addAndGet(addedMemory);
         if (addedMemory > memThreshold) {
             LOGGER.info("The usage of memory {} in bufferwrite processor {} reaches the threshold {}",
@@ -181,15 +201,19 @@ public class BufferWriteProcessor extends Processor {
     }
 
     /**
-     * get the one (or two) chunk(s) in the memtable ( and the other one in flushing status and then compact them into one TimeValuePairSorter).
-     * Then get its (or their) ChunkMetadata(s).
-     * @param deviceId device id
-     * @param measurementId sensor id
-     * @param dataType data type
+     * get the one (or two) chunk(s) in the memtable ( and the other one in flushing status and then compact them into
+     * one TimeValuePairSorter). Then get its (or their) ChunkMetadata(s).
+     * 
+     * @param deviceId
+     *            device id
+     * @param measurementId
+     *            sensor id
+     * @param dataType
+     *            data type
      * @return corresponding chunk data and chunk metadata in memory
      */
-    public Pair<ReadOnlyMemChunk, List<ChunkMetaData>> queryBufferWriteData(String deviceId,
-                                                                               String measurementId, TSDataType dataType) {
+    public Pair<ReadOnlyMemChunk, List<ChunkMetaData>> queryBufferWriteData(String deviceId, String measurementId,
+            TSDataType dataType) {
         flushQueryLock.lock();
         try {
             MemSeriesLazyMerger memSeriesLazyMerger = new MemSeriesLazyMerger();
@@ -198,8 +222,7 @@ public class BufferWriteProcessor extends Processor {
             }
             memSeriesLazyMerger.addMemSeries(workMemTable.query(deviceId, measurementId, dataType));
             ReadOnlyMemChunk timeValuePairSorter = new ReadOnlyMemChunk(dataType, memSeriesLazyMerger);
-            return new Pair<>(timeValuePairSorter,
-                    writer.getMetadatas(deviceId, measurementId, dataType));
+            return new Pair<>(timeValuePairSorter, writer.getMetadatas(deviceId, measurementId, dataType));
         } finally {
             flushQueryLock.unlock();
         }
@@ -223,7 +246,7 @@ public class BufferWriteProcessor extends Processor {
         try {
             flushMemTable.clear();
             flushMemTable = null;
-             writer.appendMetadata();
+            writer.appendMetadata();
         } finally {
             isFlush = false;
             flushQueryLock.unlock();
@@ -262,20 +285,24 @@ public class BufferWriteProcessor extends Processor {
         }
         long flushEndTime = System.currentTimeMillis();
         long flushInterval = flushEndTime - flushStartTime;
-        ZonedDateTime startDateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(flushStartTime), IoTDBDescriptor.getInstance().getConfig().getZoneID());
-        ZonedDateTime endDateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(flushEndTime), IoTDBDescriptor.getInstance().getConfig().getZoneID());
+        ZonedDateTime startDateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(flushStartTime),
+                IoTDBDescriptor.getInstance().getConfig().getZoneID());
+        ZonedDateTime endDateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(flushEndTime),
+                IoTDBDescriptor.getInstance().getConfig().getZoneID());
         LOGGER.info(
                 "The bufferwrite processor {} flush {}, start time is {}, flush end time is {}, flush time consumption is {}ms",
                 getProcessorName(), flushFunction, startDateTime, endDateTime, flushInterval);
     }
-    
+
     private Future<?> flush(boolean synchronization) throws IOException {
         // statistic information for flush
         if (lastFlushTime > 0) {
             long thisFlushTime = System.currentTimeMillis();
             long flushTimeInterval = thisFlushTime - lastFlushTime;
-            ZonedDateTime lastDateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(lastFlushTime), IoTDBDescriptor.getInstance().getConfig().getZoneID());
-            ZonedDateTime thisDateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(thisFlushTime), IoTDBDescriptor.getInstance().getConfig().getZoneID());
+            ZonedDateTime lastDateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(lastFlushTime),
+                    IoTDBDescriptor.getInstance().getConfig().getZoneID());
+            ZonedDateTime thisDateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(thisFlushTime),
+                    IoTDBDescriptor.getInstance().getConfig().getZoneID());
             LOGGER.info(
                     "The bufferwrite processor {}: last flush time is {}, this flush time is {}, flush time interval is {}s",
                     getProcessorName(), lastDateTime, thisDateTime, flushTimeInterval / 1000);
@@ -314,10 +341,10 @@ public class BufferWriteProcessor extends Processor {
             if (synchronization) {
                 flushOperation("synchronously");
             } else {
-                FlushManager.getInstance().submit( ()-> flushOperation("asynchronously"));
+                FlushManager.getInstance().submit(() -> flushOperation("asynchronously"));
             }
         }
-        return null;//TODO return a meaningful Future
+        return null;// TODO return a meaningful Future
     }
 
     public boolean isFlush() {
@@ -352,8 +379,10 @@ public class BufferWriteProcessor extends Processor {
             // delete the restore for this bufferwrite processor
             long closeEndTime = System.currentTimeMillis();
             long closeInterval = closeEndTime - closeStartTime;
-            ZonedDateTime startDateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(closeStartTime), IoTDBDescriptor.getInstance().getConfig().getZoneID());
-            ZonedDateTime endDateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(closeEndTime), IoTDBDescriptor.getInstance().getConfig().getZoneID());
+            ZonedDateTime startDateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(closeStartTime),
+                    IoTDBDescriptor.getInstance().getConfig().getZoneID());
+            ZonedDateTime endDateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(closeEndTime),
+                    IoTDBDescriptor.getInstance().getConfig().getZoneID());
             LOGGER.info(
                     "Close bufferwrite processor {}, the file name is {}, start time is {}, end time is {}, time consumption is {}ms",
                     getProcessorName(), fileName, startDateTime, endDateTime, closeInterval);
@@ -390,16 +419,14 @@ public class BufferWriteProcessor extends Processor {
     }
 
     /**
-     * Close current TsFile and open a new one for future writes. Block new
-     * writes and wait until current writes finish.
+     * Close current TsFile and open a new one for future writes. Block new writes and wait until current writes finish.
      */
     public void rollToNewFile() {
         // TODO : [MemControl] implement this
     }
 
     /**
-     * Check if this TsFile has too big metadata or file. If true, close current
-     * file and open a new one.
+     * Check if this TsFile has too big metadata or file. If true, close current file and open a new one.
      *
      * @throws IOException
      */

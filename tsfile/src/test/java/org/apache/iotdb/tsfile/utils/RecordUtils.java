@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.tsfile.utils;
 
 import org.apache.iotdb.tsfile.common.constant.JsonFormatConstant;
@@ -17,11 +32,12 @@ public class RecordUtils {
     private static final Logger LOG = LoggerFactory.getLogger(RecordUtils.class);
 
     /**
-     * support input format: {@code <deviceId>,<timestamp>,[<measurementId>,<value>,]}.CSV line
-     * is separated by ","
+     * support input format: {@code <deviceId>,<timestamp>,[<measurementId>,<value>,]}.CSV line is separated by ","
      *
-     * @param str    - input string
-     * @param schema - constructed file schema
+     * @param str
+     *            - input string
+     * @param schema
+     *            - constructed file schema
      * @return TSRecord constructed from str
      */
     public static TSRecord parseSimpleTupleRecord(String str, FileSchema schema) {
@@ -55,34 +71,28 @@ public class RecordUtils {
             if (!"".equals(value)) {
                 try {
                     switch (type) {
-                        case INT32:
-                            ret.addTuple(new IntDataPoint(measurementId, Integer
-                                    .valueOf(value)));
-                            break;
-                        case INT64:
-                            ret.addTuple(new LongDataPoint(measurementId, Long
-                                    .valueOf(value)));
-                            break;
-                        case FLOAT:
-                            ret.addTuple(new FloatDataPoint(measurementId, Float
-                                    .valueOf(value)));
-                            break;
-                        case DOUBLE:
-                            ret.addTuple(new DoubleDataPoint(measurementId, Double
-                                    .valueOf(value)));
-                            break;
-                        case BOOLEAN:
-                            ret.addTuple(new BooleanDataPoint(measurementId, Boolean
-                                    .valueOf(value)));
-                            break;
-                        case TEXT:
-                            ret.addTuple(new StringDataPoint(measurementId, Binary
-                                    .valueOf(items[i + 1])));
-                            break;
-                        default:
+                    case INT32:
+                        ret.addTuple(new IntDataPoint(measurementId, Integer.valueOf(value)));
+                        break;
+                    case INT64:
+                        ret.addTuple(new LongDataPoint(measurementId, Long.valueOf(value)));
+                        break;
+                    case FLOAT:
+                        ret.addTuple(new FloatDataPoint(measurementId, Float.valueOf(value)));
+                        break;
+                    case DOUBLE:
+                        ret.addTuple(new DoubleDataPoint(measurementId, Double.valueOf(value)));
+                        break;
+                    case BOOLEAN:
+                        ret.addTuple(new BooleanDataPoint(measurementId, Boolean.valueOf(value)));
+                        break;
+                    case TEXT:
+                        ret.addTuple(new StringDataPoint(measurementId, Binary.valueOf(items[i + 1])));
+                        break;
+                    default:
 
-                            LOG.warn("unsupported data type:{}", type);
-                            break;
+                        LOG.warn("unsupported data type:{}", type);
+                        break;
                     }
                 } catch (NumberFormatException e) {
                     LOG.warn("parsing measurement meets error, omit it", e.getMessage());

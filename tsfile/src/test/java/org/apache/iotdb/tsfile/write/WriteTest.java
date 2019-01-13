@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.tsfile.write;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
@@ -28,7 +43,6 @@ import java.util.Random;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
-
 
 /**
  * test writing processing correction combining writing process and reading process.
@@ -75,14 +89,10 @@ public class WriteTest {
             file.delete();
         if (errorFile.exists())
             errorFile.delete();
-        JSONObject emptySchema = new JSONObject(
-                "{\"delta_type\": \"test_type\",\"properties\": {\n" +
-                        "\"key1\": \"value1\",\n" +
-                        "\"key2\": \"value2\"\n" +
-                        "},\"schema\": [],}");
-        measurementArray =
-                new JSONObject(new JSONTokener(new FileReader(new File(schemaFile)))).getJSONArray(JsonFormatConstant
-                        .JSON_SCHEMA);
+        JSONObject emptySchema = new JSONObject("{\"delta_type\": \"test_type\",\"properties\": {\n"
+                + "\"key1\": \"value1\",\n" + "\"key2\": \"value2\"\n" + "},\"schema\": [],}");
+        measurementArray = new JSONObject(new JSONTokener(new FileReader(new File(schemaFile))))
+                .getJSONArray(JsonFormatConstant.JSON_SCHEMA);
         schema = new FileSchema(emptySchema);
         LOG.info(schema.toString());
         tsFileWriter = new TsFileWriter(file, schema, conf);
@@ -137,9 +147,7 @@ public class WriteTest {
             fw.write(d2 + "\r\n");
         }
         // write error
-        String d =
-                "d2,3," + (startTime + ROW_COUNT) + ",s2," + (ROW_COUNT * 10 + 2) + ",s3,"
-                        + (ROW_COUNT * 10 + 3);
+        String d = "d2,3," + (startTime + ROW_COUNT) + ",s2," + (ROW_COUNT * 10 + 2) + ",s3," + (ROW_COUNT * 10 + 3);
         fw.write(d + "\r\n");
         d = "d2," + (startTime + ROW_COUNT + 1) + ",2,s-1," + (ROW_COUNT * 10 + 2);
         fw.write(d + "\r\n");
@@ -157,11 +165,9 @@ public class WriteTest {
         TsFileSequenceReader reader = new TsFileSequenceReader(outputDataFile);
         TsFileMetaData metaData = reader.readFileMetadata();
 
-        Assert.assertEquals("{s3=[s3,DOUBLE,TS_2DIFF,{max_point_number=3},UNCOMPRESSED], " +
-                        "s4=[s4,BOOLEAN,PLAIN,{},UNCOMPRESSED], " +
-                        "s0=[s0,INT32,RLE,{},UNCOMPRESSED], " +
-                        "s1=[s1,INT64,TS_2DIFF,{},UNCOMPRESSED], " +
-                        "s2=[s2,FLOAT,RLE,{max_point_number=2},UNCOMPRESSED]}",
+        Assert.assertEquals("{s3=[s3,DOUBLE,TS_2DIFF,{max_point_number=3},UNCOMPRESSED], "
+                + "s4=[s4,BOOLEAN,PLAIN,{},UNCOMPRESSED], " + "s0=[s0,INT32,RLE,{},UNCOMPRESSED], "
+                + "s1=[s1,INT64,TS_2DIFF,{},UNCOMPRESSED], " + "s2=[s2,FLOAT,RLE,{max_point_number=2},UNCOMPRESSED]}",
                 metaData.getMeasurementSchema().toString());
     }
 
@@ -169,14 +175,13 @@ public class WriteTest {
         long lineCount = 0;
         long startTime = System.currentTimeMillis();
         String[] strings;
-        //add all measurement except the last one at before writing
+        // add all measurement except the last one at before writing
         for (int i = 0; i < measurementArray.length() - 1; i++) {
             tsFileWriter.addMeasurementByJson((JSONObject) measurementArray.get(i));
         }
         while (true) {
             if (lineCount % stageSize == 0) {
-                LOG.info("write line:{},use time:{}s", lineCount,
-                        (System.currentTimeMillis() - startTime) / 1000);
+                LOG.info("write line:{},use time:{}s", lineCount, (System.currentTimeMillis() - startTime) / 1000);
                 stageState++;
                 LOG.info("stage:" + stageState);
                 if (stageState == stageDeviceIds.length)
@@ -192,13 +197,13 @@ public class WriteTest {
             }
             lineCount++;
         }
-        //test duplicate measurement adding
+        // test duplicate measurement adding
         JSONObject dupMeasure = (JSONObject) measurementArray.get(measurementArray.length() - 1);
         try {
-          tsFileWriter.addMeasurementByJson(dupMeasure);
-        }catch (WriteProcessException e){
-            assertEquals("given measurement has exists! "+
-                    dupMeasure.getString(JsonFormatConstant.MEASUREMENT_UID), e.getMessage());
+            tsFileWriter.addMeasurementByJson(dupMeasure);
+        } catch (WriteProcessException e) {
+            assertEquals("given measurement has exists! " + dupMeasure.getString(JsonFormatConstant.MEASUREMENT_UID),
+                    e.getMessage());
         }
         try {
             tsFileWriter.close();
@@ -208,10 +213,10 @@ public class WriteTest {
         LOG.info("stage size: {}, write {} group data", stageSize, lineCount);
     }
 
-    private String[][] stageDeviceIds = {{"d1", "d2", "d3"}, {"d1"}, {"d2", "d3"}};
-    private String[] measurementIds = {"s0", "s1", "s2", "s3", "s4", "s5"};
+    private String[][] stageDeviceIds = { { "d1", "d2", "d3" }, { "d1" }, { "d2", "d3" } };
+    private String[] measurementIds = { "s0", "s1", "s2", "s3", "s4", "s5" };
     private long longBase = System.currentTimeMillis() * 1000;
-    private String[] enums = {"MAN", "WOMAN"};
+    private String[] enums = { "MAN", "WOMAN" };
 
     private String[] getNextRecord(long lineCount, int stage) {
 
@@ -219,9 +224,9 @@ public class WriteTest {
         for (int i = 0; i < ret.length; i++) {
             StringContainer sc = new StringContainer(JsonFormatConstant.TSRECORD_SEPARATOR);
             sc.addTail(stageDeviceIds[stage][i], lineCount);
-            sc.addTail(measurementIds[0], lineCount * 10 + i, measurementIds[1], longBase
-                            + lineCount * 20 + i, measurementIds[2], (lineCount * 30 + i) / 3.0,
-                    measurementIds[3], (longBase + lineCount * 40 + i) / 7.0);
+            sc.addTail(measurementIds[0], lineCount * 10 + i, measurementIds[1], longBase + lineCount * 20 + i,
+                    measurementIds[2], (lineCount * 30 + i) / 3.0, measurementIds[3],
+                    (longBase + lineCount * 40 + i) / 7.0);
             sc.addTail(measurementIds[4], ((lineCount + i) & 1) == 0);
             sc.addTail(measurementIds[5], enums[(int) (lineCount + i) % enums.length]);
             ret[i] = sc.toString();

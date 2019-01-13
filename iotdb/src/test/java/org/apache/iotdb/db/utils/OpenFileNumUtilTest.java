@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.db.utils;
 
 import org.junit.After;
@@ -43,7 +58,7 @@ public class OpenFileNumUtilTest {
         currDir = userDir + File.separator + testProcessID + File.separator + dataFilePath;
         File testDataDir = new File(currDir);
         testDataDirRoot = new File(userDir + File.separator + testProcessID);
-        if(!testDataDir.exists()) {
+        if (!testDataDir.exists()) {
             if (!testDataDir.isDirectory()) {
                 if (!testDataDir.mkdirs()) {
                     LOGGER.error("Create test file dir {} failed.", testDataDir.getPath());
@@ -55,7 +70,7 @@ public class OpenFileNumUtilTest {
 
     @After
     public void tearDown() {
-        //close FileWriter
+        // close FileWriter
         for (FileWriter fw : fileWriterList) {
             try {
                 fw.close();
@@ -64,7 +79,7 @@ public class OpenFileNumUtilTest {
             }
         }
 
-        //delete test files
+        // delete test files
         for (File file : fileList) {
             if (file.exists()) {
                 try {
@@ -86,15 +101,15 @@ public class OpenFileNumUtilTest {
     @Test
     public void testDataOpenFileNumWhenCreateFile() {
         if (os.startsWith(MAC_OS_NAME) || os.startsWith(LINUX_OS_NAME)) {
-            //get total open file number statistics of original state
+            // get total open file number statistics of original state
             totalOpenFileNumBefore = openFileNumUtil.get(OpenFileNumUtil.OpenFileNumStatistics.DATA_OPEN_FILE_NUM);
             for (int i = 0; i < testFileNum; i++) {
                 fileList.add(new File(currDir + testFileName + i));
             }
-            //create testFileNum File, then get total open file number statistics
+            // create testFileNum File, then get total open file number statistics
             totalOpenFileNumAfter = openFileNumUtil.get(OpenFileNumUtil.OpenFileNumStatistics.DATA_OPEN_FILE_NUM);
             totalOpenFileNumChange = totalOpenFileNumAfter - totalOpenFileNumBefore;
-            //create test file shall not affect total open file number statistics
+            // create test file shall not affect total open file number statistics
             assertEquals(0, totalOpenFileNumChange);
         } else {
             assertEquals(-2, openFileNumUtil.get(OpenFileNumUtil.OpenFileNumStatistics.DATA_OPEN_FILE_NUM));
@@ -118,8 +133,10 @@ public class OpenFileNumUtilTest {
                 } else {
                     try {
                         boolean flag = file.createNewFile();
-                        if(!flag){
-                            LOGGER.error("create test file {} failed when execute testTotalOpenFileNumWhenCreateFileWriter().", file.getPath());
+                        if (!flag) {
+                            LOGGER.error(
+                                    "create test file {} failed when execute testTotalOpenFileNumWhenCreateFileWriter().",
+                                    file.getPath());
                         }
                     } catch (IOException e) {
                         LOGGER.error(e.getMessage());
@@ -133,7 +150,7 @@ public class OpenFileNumUtilTest {
             }
             totalOpenFileNumAfter = openFileNumUtil.get(OpenFileNumUtil.OpenFileNumStatistics.DATA_OPEN_FILE_NUM);
             totalOpenFileNumChange = totalOpenFileNumAfter - totalOpenFileNumBefore;
-            //create FileWriter shall cause total open file number increase by testFileNum
+            // create FileWriter shall cause total open file number increase by testFileNum
             assertEquals(testFileNum, totalOpenFileNumChange);
         } else {
             assertEquals(-2, openFileNumUtil.get(OpenFileNumUtil.OpenFileNumStatistics.DATA_OPEN_FILE_NUM));
@@ -155,7 +172,7 @@ public class OpenFileNumUtilTest {
                     }
                 } else {
                     try {
-                        if(!file.createNewFile()){
+                        if (!file.createNewFile()) {
                             LOGGER.error("create test file {} failed.", file.getPath());
                         }
                     } catch (IOException e) {
@@ -178,7 +195,7 @@ public class OpenFileNumUtilTest {
             }
             totalOpenFileNumAfter = openFileNumUtil.get(OpenFileNumUtil.OpenFileNumStatistics.DATA_OPEN_FILE_NUM);
             totalOpenFileNumChange = totalOpenFileNumAfter - totalOpenFileNumBefore;
-            //writing test file shall not affect total open file number statistics
+            // writing test file shall not affect total open file number statistics
             assertEquals(0, totalOpenFileNumChange);
         } else {
             assertEquals(-2, openFileNumUtil.get(OpenFileNumUtil.OpenFileNumStatistics.DATA_OPEN_FILE_NUM));
@@ -200,8 +217,10 @@ public class OpenFileNumUtilTest {
                     }
                 } else {
                     try {
-                        if(!file.createNewFile()){
-                            LOGGER.error("create test file {} failed when execute testTotalOpenFileNumWhenFileWriterClose().", file.getPath());
+                        if (!file.createNewFile()) {
+                            LOGGER.error(
+                                    "create test file {} failed when execute testTotalOpenFileNumWhenFileWriterClose().",
+                                    file.getPath());
                         }
                     } catch (IOException e) {
                         LOGGER.error(e.getMessage());
@@ -230,13 +249,12 @@ public class OpenFileNumUtilTest {
             }
             totalOpenFileNumAfter = openFileNumUtil.get(OpenFileNumUtil.OpenFileNumStatistics.DATA_OPEN_FILE_NUM);
             totalOpenFileNumChange = totalOpenFileNumAfter - totalOpenFileNumBefore;
-            //close FileWriter shall cause total open file number decrease by testFileNum
+            // close FileWriter shall cause total open file number decrease by testFileNum
             assertEquals(-testFileNum, totalOpenFileNumChange);
         } else {
             assertEquals(-2, openFileNumUtil.get(OpenFileNumUtil.OpenFileNumStatistics.DATA_OPEN_FILE_NUM));
         }
     }
-
 
     private static int getProcessID() {
         RuntimeMXBean runtimeMXBean = ManagementFactory.getRuntimeMXBean();

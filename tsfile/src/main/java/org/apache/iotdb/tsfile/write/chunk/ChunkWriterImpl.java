@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.tsfile.write.chunk;
 
 import java.io.IOException;
@@ -24,8 +39,8 @@ import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 /**
  *
- * A implementation of {@code IChunkWriter}. {@code ChunkWriterImpl} consists
- * of a {@code ChunkBuffer}, a {@code PageWriter}, and two {@code Statistics}.
+ * A implementation of {@code IChunkWriter}. {@code ChunkWriterImpl} consists of a {@code ChunkBuffer}, a
+ * {@code PageWriter}, and two {@code Statistics}.
  *
  * @author kangrong
  * @see IChunkWriter IChunkWriter
@@ -52,8 +67,7 @@ public class ChunkWriterImpl implements IChunkWriter {
     private PageWriter dataPageWriter;
 
     /**
-     * value count in a page. It will be reset after calling
-     * {@code writePageHeaderAndDataIntoBuff()}
+     * value count in a page. It will be reset after calling {@code writePageHeaderAndDataIntoBuff()}
      */
     private int valueCountInOnePage;
     private int valueCountInOnePageForNextCheck;
@@ -62,8 +76,7 @@ public class ChunkWriterImpl implements IChunkWriter {
      */
     private Statistics<?> pageStatistics;
     /**
-     * statistic on a stage. It will be reset after calling
-     * {@code writeAllPagesOfSeriesToTsFile()}
+     * statistic on a stage. It will be reset after calling {@code writeAllPagesOfSeriesToTsFile()}
      */
     private Statistics<?> chunkStatistics;
     // time of the latest written time value pair
@@ -72,8 +85,7 @@ public class ChunkWriterImpl implements IChunkWriter {
 
     private MeasurementSchema measurementSchema;
 
-    public ChunkWriterImpl(MeasurementSchema measurementSchema, ChunkBuffer chunkBuffer,
-                           int pageSizeThreshold) {
+    public ChunkWriterImpl(MeasurementSchema measurementSchema, ChunkBuffer chunkBuffer, int pageSizeThreshold) {
         this.measurementSchema = measurementSchema;
         this.dataType = measurementSchema.getType();
         this.chunkBuffer = chunkBuffer;
@@ -178,17 +190,16 @@ public class ChunkWriterImpl implements IChunkWriter {
     }
 
     /**
-     * check occupied memory size, if it exceeds the PageSize threshold, flush
-     * them to given OutputStream.
+     * check occupied memory size, if it exceeds the PageSize threshold, flush them to given OutputStream.
      */
     private void checkPageSizeAndMayOpenANewPage() {
         if (valueCountInOnePage == pageCountUpperBound) {
             LOG.debug("current line count reaches the upper bound, write page {}", measurementSchema);
             writePage();
-        } else if (valueCountInOnePage >= valueCountInOnePageForNextCheck) {  // need to check memory size
+        } else if (valueCountInOnePage >= valueCountInOnePageForNextCheck) { // need to check memory size
             // not checking the memory used for every value
             long currentColumnSize = dataPageWriter.estimateMaxMemSize();
-            if (currentColumnSize > psThres) {  // memory size exceeds threshold
+            if (currentColumnSize > psThres) { // memory size exceeds threshold
                 // we will write the current page
                 LOG.debug("enough size, write page {}, psThres:{}, currentColumnSize:{}, valueCountInOnePage:{}",
                         measurementSchema.getMeasurementId(), psThres, currentColumnSize, valueCountInOnePage);
@@ -197,7 +208,8 @@ public class ChunkWriterImpl implements IChunkWriter {
             } else {
                 // reset the valueCountInOnePageForNextCheck for the next page
                 valueCountInOnePageForNextCheck = (int) (((float) psThres / currentColumnSize) * valueCountInOnePage);
-                LOG.debug("not enough size. {}, psThres:{}, currentColumnSize:{},  now valueCountInOnePage: {}, change to {}",
+                LOG.debug(
+                        "not enough size. {}, psThres:{}, currentColumnSize:{},  now valueCountInOnePage: {}, change to {}",
                         measurementSchema.getMeasurementId(), psThres, currentColumnSize, valueCountInOnePage,
                         valueCountInOnePageForNextCheck);
             }
@@ -210,14 +222,16 @@ public class ChunkWriterImpl implements IChunkWriter {
      */
     private void writePage() {
         try {
-            chunkBuffer.writePageHeaderAndDataIntoBuff(dataPageWriter.getUncompressedBytes(), valueCountInOnePage, pageStatistics, time, minTimestamp);
+            chunkBuffer.writePageHeaderAndDataIntoBuff(dataPageWriter.getUncompressedBytes(), valueCountInOnePage,
+                    pageStatistics, time, minTimestamp);
 
             // update statistics of this series
             this.chunkStatistics.mergeStatistics(this.pageStatistics);
         } catch (IOException e) {
             LOG.error("meet error in dataPageWriter.getUncompressedBytes(),ignore this page, {}", e.getMessage());
         } catch (PageException e) {
-            LOG.error("meet error in chunkBuffer.writePageHeaderAndDataIntoBuff,ignore this page, error message:{}", e.getMessage());
+            LOG.error("meet error in chunkBuffer.writePageHeaderAndDataIntoBuff,ignore this page, error message:{}",
+                    e.getMessage());
         } finally {
             // clear start time stamp for next initializing
             minTimestamp = -1;
@@ -241,10 +255,9 @@ public class ChunkWriterImpl implements IChunkWriter {
         return dataPageWriter.estimateMaxMemSize() + chunkBuffer.estimateMaxPageMemSize();
     }
 
-
     @Override
-    public long getCurrentChunkSize(){
-        //return the serialized size of the chunk header + all pages
+    public long getCurrentChunkSize() {
+        // return the serialized size of the chunk header + all pages
         return ChunkHeader.getSerializedSize(measurementSchema.getMeasurementId()) + chunkBuffer.getCurrentDataSize();
     }
 

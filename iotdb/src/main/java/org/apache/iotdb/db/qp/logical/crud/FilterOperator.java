@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.db.qp.logical.crud;
 
 import static org.apache.iotdb.db.qp.constant.SQLConstant.KW_AND;
@@ -20,10 +35,9 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.StringContainer;
 
 /**
- * This class is for filter operator and implements
- * {@link Operator} .<br>
- * it may consist of more than two child FilterOperator, but if it's not leaf operator, the relation
- * is same among all of its children.(AND or OR). It's identified by tokenType.
+ * This class is for filter operator and implements {@link Operator} .<br>
+ * it may consist of more than two child FilterOperator, but if it's not leaf operator, the relation is same among all
+ * of its children.(AND or OR). It's identified by tokenType.
  */
 public class FilterOperator extends Operator implements Comparable<FilterOperator> {
     // it is the symbol of token. e.g. AND is & and OR is |
@@ -94,44 +108,40 @@ public class FilterOperator extends Operator implements Comparable<FilterOperato
      *
      * @return QueryFilter in TsFile
      */
-    public IExpression transformToExpression(QueryProcessExecutor executor)
-            throws QueryProcessorException {
+    public IExpression transformToExpression(QueryProcessExecutor executor) throws QueryProcessorException {
         if (isSingle) {
             Pair<IUnaryExpression, String> ret = transformToSingleQueryFilter(executor);
             return ret.left;
         } else {
             if (childOperators.isEmpty()) {
-                throw new LogicalOperatorException("this filter is not leaf, but it's empty:"
-                        + tokenIntType);
+                throw new LogicalOperatorException("this filter is not leaf, but it's empty:" + tokenIntType);
             }
             IExpression retFilter = childOperators.get(0).transformToExpression(executor);
             IExpression currentFilter;
             for (int i = 1; i < childOperators.size(); i++) {
                 currentFilter = childOperators.get(i).transformToExpression(executor);
                 switch (tokenIntType) {
-                    case KW_AND:
-                        retFilter = BinaryExpression.and(retFilter, currentFilter);
-                        break;
-                    case KW_OR:
-                        retFilter = BinaryExpression.or(retFilter, currentFilter);
-                        break;
-                    default:
-                        throw new LogicalOperatorException("unknown binary tokenIntType:"
-                                + tokenIntType + ",maybe it means "
-                                + SQLConstant.tokenNames.get(tokenIntType));
+                case KW_AND:
+                    retFilter = BinaryExpression.and(retFilter, currentFilter);
+                    break;
+                case KW_OR:
+                    retFilter = BinaryExpression.or(retFilter, currentFilter);
+                    break;
+                default:
+                    throw new LogicalOperatorException("unknown binary tokenIntType:" + tokenIntType
+                            + ",maybe it means " + SQLConstant.tokenNames.get(tokenIntType));
                 }
             }
             return retFilter;
         }
     }
 
-
     /**
      * it will be used in BasicFunction Operator
      *
-     * @return - pair.left: UnaryQueryFilter constructed by its one child;
-     * - pair.right: Path represented by this child.
-     * @throws QueryProcessorException exception in filter transforming
+     * @return - pair.left: UnaryQueryFilter constructed by its one child; - pair.right: Path represented by this child.
+     * @throws QueryProcessorException
+     *             exception in filter transforming
      */
     protected Pair<IUnaryExpression, String> transformToSingleQueryFilter(QueryProcessExecutor executor)
             throws QueryProcessorException {
@@ -139,8 +149,7 @@ public class FilterOperator extends Operator implements Comparable<FilterOperato
             throw new LogicalOperatorException(
                     ("transformToSingleFilter: this filter is not leaf, but it's empty:{}" + tokenIntType));
         }
-        Pair<IUnaryExpression, String> currentPair =
-                childOperators.get(0).transformToSingleQueryFilter(executor);
+        Pair<IUnaryExpression, String> currentPair = childOperators.get(0).transformToSingleQueryFilter(executor);
 
         IUnaryExpression retFilter = currentPair.left;
         String path = currentPair.right;
@@ -149,20 +158,19 @@ public class FilterOperator extends Operator implements Comparable<FilterOperato
             currentPair = childOperators.get(i).transformToSingleQueryFilter(executor);
             if (!path.equals(currentPair.right)) {
                 throw new LogicalOperatorException(
-                        ("transformToSingleFilter: paths among children are not inconsistent: one is:"
-                                + path + ",another is:" + currentPair.right));
+                        ("transformToSingleFilter: paths among children are not inconsistent: one is:" + path
+                                + ",another is:" + currentPair.right));
             }
             switch (tokenIntType) {
-                case KW_AND:
-                    retFilter.setFilter(FilterFactory.and(retFilter.getFilter(), currentPair.left.getFilter()));
-                    break;
-                case KW_OR:
-                    retFilter.setFilter(FilterFactory.or(retFilter.getFilter(), currentPair.left.getFilter()));
-                    break;
-                default:
-                    throw new LogicalOperatorException("unknown binary tokenIntType:"
-                            + tokenIntType + ",maybe it means "
-                            + SQLConstant.tokenNames.get(tokenIntType));
+            case KW_AND:
+                retFilter.setFilter(FilterFactory.and(retFilter.getFilter(), currentPair.left.getFilter()));
+                break;
+            case KW_OR:
+                retFilter.setFilter(FilterFactory.or(retFilter.getFilter(), currentPair.left.getFilter()));
+                break;
+            default:
+                throw new LogicalOperatorException("unknown binary tokenIntType:" + tokenIntType + ",maybe it means "
+                        + SQLConstant.tokenNames.get(tokenIntType));
             }
         }
         return new Pair<>(retFilter, path);

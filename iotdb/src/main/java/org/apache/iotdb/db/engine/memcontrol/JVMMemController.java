@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.db.engine.memcontrol;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -14,7 +29,8 @@ public class JVMMemController extends BasicMemController {
     private long nonDataUsage = 0;
 
     private static class InstanceHolder {
-        private static final JVMMemController INSTANCE = new JVMMemController(IoTDBDescriptor.getInstance().getConfig());
+        private static final JVMMemController INSTANCE = new JVMMemController(
+                IoTDBDescriptor.getInstance().getConfig());
     }
 
     public static JVMMemController getInstance() {
@@ -56,20 +72,17 @@ public class JVMMemController extends BasicMemController {
     public UsageLevel reportUse(Object user, long usage) {
         long memUsage = getTotalUsage() + usage;
         if (memUsage < warningThreshold) {
-           /* logger.debug("Safe Threshold : {} allocated to {}, total usage {}",
-                    MemUtils.bytesCntToStr(usage),
-                    user.getClass(),
-                    MemUtils.bytesCntToStr(memUsage));*/
+            /*
+             * logger.debug("Safe Threshold : {} allocated to {}, total usage {}", MemUtils.bytesCntToStr(usage),
+             * user.getClass(), MemUtils.bytesCntToStr(memUsage));
+             */
             return UsageLevel.SAFE;
         } else if (memUsage < dangerouseThreshold) {
-            logger.debug("Warning Threshold : {} allocated to {}, total usage {}",
-                    MemUtils.bytesCntToStr(usage),
-                    user.getClass(),
-                    MemUtils.bytesCntToStr(memUsage));
+            logger.debug("Warning Threshold : {} allocated to {}, total usage {}", MemUtils.bytesCntToStr(usage),
+                    user.getClass(), MemUtils.bytesCntToStr(memUsage));
             return UsageLevel.WARNING;
         } else {
-            logger.warn("Memory request from {} is denied, memory usage : {}",
-                    user.getClass(),
+            logger.warn("Memory request from {} is denied, memory usage : {}", user.getClass(),
                     MemUtils.bytesCntToStr(memUsage));
             return UsageLevel.DANGEROUS;
         }
@@ -77,9 +90,8 @@ public class JVMMemController extends BasicMemController {
 
     @Override
     public void reportFree(Object user, long freeSize) {
-        logger.info("{} freed from {}, total usage {}", MemUtils.bytesCntToStr(freeSize)
-                ,user.getClass()
-                , MemUtils.bytesCntToStr(getTotalUsage()));
+        logger.info("{} freed from {}, total usage {}", MemUtils.bytesCntToStr(freeSize), user.getClass(),
+                MemUtils.bytesCntToStr(getTotalUsage()));
         System.gc();
     }
 }

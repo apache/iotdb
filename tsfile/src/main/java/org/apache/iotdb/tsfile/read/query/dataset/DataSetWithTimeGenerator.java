@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.tsfile.read.query.dataset;
 
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
@@ -19,13 +34,10 @@ import org.apache.iotdb.tsfile.read.reader.series.SeriesReaderByTimestamp;
 import java.io.IOException;
 import java.util.List;
 
-
 /**
  * query processing:
  *
- *   (1) generate time by series that has filter
- *   (2) get value of series that does not have filter
- *   (3) construct RowRecord
+ * (1) generate time by series that has filter (2) get value of series that does not have filter (3) construct RowRecord
  */
 public class DataSetWithTimeGenerator extends QueryDataSet {
 
@@ -33,19 +45,18 @@ public class DataSetWithTimeGenerator extends QueryDataSet {
     private List<SeriesReaderByTimestamp> readers;
     private List<Boolean> cached;
 
-    public DataSetWithTimeGenerator(List<Path> paths, List<Boolean> cached, List<TSDataType> dataTypes, TimeGenerator timeGenerator, List<SeriesReaderByTimestamp> readers) {
+    public DataSetWithTimeGenerator(List<Path> paths, List<Boolean> cached, List<TSDataType> dataTypes,
+            TimeGenerator timeGenerator, List<SeriesReaderByTimestamp> readers) {
         super(paths, dataTypes);
         this.cached = cached;
         this.timeGenerator = timeGenerator;
         this.readers = readers;
     }
 
-
     @Override
     public boolean hasNext() throws IOException {
         return timeGenerator.hasNext();
     }
-
 
     @Override
     public RowRecord next() throws IOException {
@@ -78,26 +89,26 @@ public class DataSetWithTimeGenerator extends QueryDataSet {
             return field;
         }
         switch (dataType) {
-            case DOUBLE:
-                field.setDoubleV((double) value);
-                break;
-            case FLOAT:
-                field.setFloatV((float) value);
-                break;
-            case INT64:
-                field.setLongV((long) value);
-                break;
-            case INT32:
-                field.setIntV((int) value);
-                break;
-            case BOOLEAN:
-                field.setBoolV((boolean) value);
-                break;
-            case TEXT:
-                field.setBinaryV((Binary) value);
-                break;
-            default:
-                throw new UnSupportedDataTypeException("UnSupported" + String.valueOf(dataType));
+        case DOUBLE:
+            field.setDoubleV((double) value);
+            break;
+        case FLOAT:
+            field.setFloatV((float) value);
+            break;
+        case INT64:
+            field.setLongV((long) value);
+            break;
+        case INT32:
+            field.setIntV((int) value);
+            break;
+        case BOOLEAN:
+            field.setBoolV((boolean) value);
+            break;
+        case TEXT:
+            field.setBinaryV((Binary) value);
+            break;
+        default:
+            throw new UnSupportedDataTypeException("UnSupported" + String.valueOf(dataType));
         }
         return field;
     }

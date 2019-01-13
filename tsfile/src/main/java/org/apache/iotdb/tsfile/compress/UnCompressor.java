@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.tsfile.compress;
 
 import org.apache.iotdb.tsfile.exception.compress.CompressionTypeNotSupportedException;
@@ -17,7 +32,9 @@ public abstract class UnCompressor {
 
     /**
      * get the UnCompressor based on the CompressionType
-     * @param name CompressionType
+     * 
+     * @param name
+     *            CompressionType
      * @return the UnCompressor of specified CompressionType
      */
     public static UnCompressor getUnCompressor(CompressionType name) {
@@ -25,12 +42,12 @@ public abstract class UnCompressor {
             throw new CompressionTypeNotSupportedException("NULL");
         }
         switch (name) {
-            case UNCOMPRESSED:
-                return new NoUnCompressor();
-            case SNAPPY:
-                return new SnappyUnCompressor();
-            default:
-                throw new CompressionTypeNotSupportedException(name.toString());
+        case UNCOMPRESSED:
+            return new NoUnCompressor();
+        case SNAPPY:
+            return new SnappyUnCompressor();
+        default:
+            throw new CompressionTypeNotSupportedException(name.toString());
         }
     }
 
@@ -38,7 +55,8 @@ public abstract class UnCompressor {
 
     /**
      *
-     * @param buffer MUST be DirectByteBuffer
+     * @param buffer
+     *            MUST be DirectByteBuffer
      * @return
      * @throws IOException
      */
@@ -46,7 +64,9 @@ public abstract class UnCompressor {
 
     /**
      * uncompress the byte array
-     * @param byteArray to be uncompressed bytes
+     * 
+     * @param byteArray
+     *            to be uncompressed bytes
      * @return bytes after uncompressed
      */
     public abstract byte[] uncompress(byte[] byteArray);
@@ -60,15 +80,19 @@ public abstract class UnCompressor {
      * @param outOffset
      * @return the valid length of the output array
      */
-    public abstract  int uncompress(byte[] byteArray, int offset, int length, byte[] output, int outOffset)  throws IOException ;
+    public abstract int uncompress(byte[] byteArray, int offset, int length, byte[] output, int outOffset)
+            throws IOException;
 
     /**
      * if the data is large, using this function is better.
-     * @param compressed MUST be DirectByteBuffer
-     * @param uncompressed MUST be DirectByteBuffer
+     * 
+     * @param compressed
+     *            MUST be DirectByteBuffer
+     * @param uncompressed
+     *            MUST be DirectByteBuffer
      * @return
      */
-    public abstract int uncompress(ByteBuffer compressed, ByteBuffer uncompressed)   throws IOException ;
+    public abstract int uncompress(ByteBuffer compressed, ByteBuffer uncompressed) throws IOException;
 
     public abstract CompressionType getCodecName();
 
@@ -90,12 +114,13 @@ public abstract class UnCompressor {
         }
 
         @Override
-        public int uncompress(byte[] byteArray, int offset, int length, byte[] output, int outOffset)  throws IOException {
+        public int uncompress(byte[] byteArray, int offset, int length, byte[] output, int outOffset)
+                throws IOException {
             throw new IOException("NoUnCompressor does not support this method.");
         }
 
         @Override
-        public int uncompress(ByteBuffer compressed, ByteBuffer uncompressed)   throws IOException {
+        public int uncompress(ByteBuffer compressed, ByteBuffer uncompressed) throws IOException {
             throw new IOException("NoUnCompressor does not support this method.");
         }
 
@@ -135,11 +160,11 @@ public abstract class UnCompressor {
         }
 
         @Override
-        public int uncompress(byte[] byteArray, int offset, int length, byte[] output, int outOffset) throws IOException {
+        public int uncompress(byte[] byteArray, int offset, int length, byte[] output, int outOffset)
+                throws IOException {
             Snappy.uncompressedLength(byteArray, offset, length);
             return Snappy.uncompress(byteArray, offset, length, output, outOffset);
         }
-
 
         @Override
         public int uncompress(ByteBuffer compressed, ByteBuffer uncompressed) {

@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.tsfile.compress;
 
 import org.apache.iotdb.tsfile.exception.compress.CompressionTypeNotSupportedException;
@@ -22,7 +37,9 @@ public abstract class Compressor {
 
     /**
      * get Compressor according to CompressionType
-     * @param name CompressionType
+     * 
+     * @param name
+     *            CompressionType
      * @return the Compressor of specified CompressionType
      */
     public static Compressor getCompressor(CompressionType name) {
@@ -30,12 +47,12 @@ public abstract class Compressor {
             throw new CompressionTypeNotSupportedException("NULL");
         }
         switch (name) {
-            case UNCOMPRESSED:
-                return new NoCompressor();
-            case SNAPPY:
-                return new SnappyCompressor();
-            default:
-                throw new CompressionTypeNotSupportedException(name.toString());
+        case UNCOMPRESSED:
+            return new NoCompressor();
+        case SNAPPY:
+            return new SnappyCompressor();
+        default:
+            throw new CompressionTypeNotSupportedException(name.toString());
         }
     }
 
@@ -50,18 +67,21 @@ public abstract class Compressor {
      * @return byte length of compressed data.
      * @throws IOException
      */
-    public abstract  int  compress(byte[] data, int offset, int length, byte[] compressed) throws IOException;
+    public abstract int compress(byte[] data, int offset, int length, byte[] compressed) throws IOException;
 
     /**
      * If the data is large, this function is better than byte[].
-     * @param data MUST be DirectByteBuffer  for Snappy.
-     * @param compressed MUST be DirectByteBuffer for Snappy.
+     * 
+     * @param data
+     *            MUST be DirectByteBuffer for Snappy.
+     * @param compressed
+     *            MUST be DirectByteBuffer for Snappy.
      * @return byte length of compressed data.
      * @throws IOException
      */
     public abstract int compress(ByteBuffer data, ByteBuffer compressed) throws IOException;
 
-    public abstract  int getMaxBytesForCompression(int uncompressedDataSize);
+    public abstract int getMaxBytesForCompression(int uncompressedDataSize);
 
     public abstract CompressionType getType();
 
@@ -114,7 +134,7 @@ public abstract class Compressor {
 
         @Override
         public int compress(ByteBuffer data, ByteBuffer compressed) throws IOException {
-             return Snappy.compress(data, compressed);
+            return Snappy.compress(data, compressed);
         }
 
         @Override

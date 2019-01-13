@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.db.service;
 
 import java.io.IOException;
@@ -50,56 +65,58 @@ public class Utils {
         return tsColumnSchema;
     }
 
-	public static TSQueryDataSet convertQueryDataSetByFetchSize(QueryDataSet queryDataSet, int fetchsize) throws IOException {
-		TSQueryDataSet tsQueryDataSet = new TSQueryDataSet();
-		tsQueryDataSet.setRecords(new ArrayList<>());
-		for (int i = 0; i < fetchsize; i++) {
-			if (queryDataSet.hasNext()) {
-				RowRecord rowRecord = queryDataSet.next();
-				tsQueryDataSet.getRecords().add(convertToTSRecord(rowRecord));
-			} else {
-				break;
-			}
-		}
-		return tsQueryDataSet;
-	}
+    public static TSQueryDataSet convertQueryDataSetByFetchSize(QueryDataSet queryDataSet, int fetchsize)
+            throws IOException {
+        TSQueryDataSet tsQueryDataSet = new TSQueryDataSet();
+        tsQueryDataSet.setRecords(new ArrayList<>());
+        for (int i = 0; i < fetchsize; i++) {
+            if (queryDataSet.hasNext()) {
+                RowRecord rowRecord = queryDataSet.next();
+                tsQueryDataSet.getRecords().add(convertToTSRecord(rowRecord));
+            } else {
+                break;
+            }
+        }
+        return tsQueryDataSet;
+    }
 
-	public static TSRowRecord convertToTSRecord(RowRecord rowRecord) {
-		TSRowRecord tsRowRecord = new TSRowRecord();
-		tsRowRecord.setTimestamp(rowRecord.getTimestamp());
-		tsRowRecord.setValues(new ArrayList<>());
-		List<Field> fields = rowRecord.getFields();
-		for (Field f: fields) {
-			TSDataValue value = new TSDataValue(false);
-			if (f.getDataType() == null) {
-				value.setIs_empty(true);
-			} else {
-				switch (f.getDataType()) {
-				case BOOLEAN:
-					value.setBool_val(f.getBoolV());
-					break;
-				case INT32:
-					value.setInt_val(f.getIntV());
-					break;
-				case INT64:
-					value.setLong_val(f.getLongV());
-					break;
-				case FLOAT:
-					value.setFloat_val(f.getFloatV());
-					break;
-				case DOUBLE:
-					value.setDouble_val(f.getDoubleV());
-					break;
-				case TEXT:
-					value.setBinary_val(ByteBuffer.wrap(f.getBinaryV().values));
-					break;
-				default:
-					throw new UnSupportedDataTypeException(String.format("data type %s is not supported when convert data at server", f.getDataType().toString()));
-				}
-				value.setType(f.getDataType().toString());
-			}
-			tsRowRecord.getValues().add(value);
-		}
-		return tsRowRecord;
-	}
+    public static TSRowRecord convertToTSRecord(RowRecord rowRecord) {
+        TSRowRecord tsRowRecord = new TSRowRecord();
+        tsRowRecord.setTimestamp(rowRecord.getTimestamp());
+        tsRowRecord.setValues(new ArrayList<>());
+        List<Field> fields = rowRecord.getFields();
+        for (Field f : fields) {
+            TSDataValue value = new TSDataValue(false);
+            if (f.getDataType() == null) {
+                value.setIs_empty(true);
+            } else {
+                switch (f.getDataType()) {
+                case BOOLEAN:
+                    value.setBool_val(f.getBoolV());
+                    break;
+                case INT32:
+                    value.setInt_val(f.getIntV());
+                    break;
+                case INT64:
+                    value.setLong_val(f.getLongV());
+                    break;
+                case FLOAT:
+                    value.setFloat_val(f.getFloatV());
+                    break;
+                case DOUBLE:
+                    value.setDouble_val(f.getDoubleV());
+                    break;
+                case TEXT:
+                    value.setBinary_val(ByteBuffer.wrap(f.getBinaryV().values));
+                    break;
+                default:
+                    throw new UnSupportedDataTypeException(String.format(
+                            "data type %s is not supported when convert data at server", f.getDataType().toString()));
+                }
+                value.setType(f.getDataType().toString());
+            }
+            tsRowRecord.getValues().add(value);
+        }
+        return tsRowRecord;
+    }
 }

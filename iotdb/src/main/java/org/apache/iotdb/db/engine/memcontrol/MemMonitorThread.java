@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.db.engine.memcontrol;
 
 import org.apache.iotdb.db.concurrent.ThreadName;
@@ -20,7 +35,7 @@ public class MemMonitorThread extends Thread {
         this.setName(ThreadName.MEMORY_MONITOR.getName());
         long checkInterval = config.memMonitorInterval;
         this.checkInterval = checkInterval > 0 ? checkInterval : this.checkInterval;
-        if(config.enableSmallFlush)
+        if (config.enableSmallFlush)
             this.safePolicy = new FlushPartialPolicy();
         else
             this.safePolicy = new NoActPolicy();
@@ -37,23 +52,23 @@ public class MemMonitorThread extends Thread {
         logger.info("{} started", this.getClass().getSimpleName());
         super.run();
         while (true) {
-            if(this.isInterrupted()) {
+            if (this.isInterrupted()) {
                 logger.info("{} exiting...", this.getClass().getSimpleName());
                 return;
             }
             BasicMemController.UsageLevel level = BasicMemController.getInstance().getCurrLevel();
             switch (level) {
-                case WARNING:
-                    warningPolicy.execute();
-                    break;
-                case DANGEROUS:
-                    dangerousPolicy.execute();
-                    break;
-                case SAFE:
-                    safePolicy.execute();
-                    break;
-                default:
-                    logger.error("Unknown usage level : {}", level);
+            case WARNING:
+                warningPolicy.execute();
+                break;
+            case DANGEROUS:
+                dangerousPolicy.execute();
+                break;
+            case SAFE:
+                safePolicy.execute();
+                break;
+            default:
+                logger.error("Unknown usage level : {}", level);
             }
             try {
                 Thread.sleep(checkInterval);

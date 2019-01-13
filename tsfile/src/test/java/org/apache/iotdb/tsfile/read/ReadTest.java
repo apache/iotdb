@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.tsfile.read;
 
 import org.apache.iotdb.tsfile.read.expression.IExpression;
@@ -29,7 +44,7 @@ public class ReadTest {
 
     @Before
     public void prepare() throws IOException, InterruptedException, WriteProcessException {
-        FileGenerator.generateFile(1000,100);
+        FileGenerator.generateFile(1000, 100);
         TsFileSequenceReader reader = new TsFileSequenceReader(fileName);
         roTsFile = new ReadOnlyTsFile(reader);
     }
@@ -127,7 +142,7 @@ public class ReadTest {
             }
 
             cnt++;
-            //System.out.println(record.toString());
+            // System.out.println(record.toString());
         }
     }
 
@@ -176,10 +191,7 @@ public class ReadTest {
         // time filter & value filter
         // verify d1.s1, d2.s1
         /**
-         1480562618950	9501	9502
-         1480562618954	9541	9542
-         1480562618955	9551	9552
-         1480562618956	9561	9562
+         * 1480562618950 9501 9502 1480562618954 9541 9542 1480562618955 9551 9552 1480562618956 9561 9562
          */
         int cnt = 1;
         while (dataSet.hasNext()) {
@@ -193,7 +205,7 @@ public class ReadTest {
             } else if (cnt == 4) {
                 assertEquals(r.getTimestamp(), 1480562618974L);
             }
-            //System.out.println(r);
+            // System.out.println(r);
             cnt++;
         }
         assertEquals(cnt, 5);

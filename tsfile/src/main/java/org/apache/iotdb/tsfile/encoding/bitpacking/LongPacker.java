@@ -1,23 +1,33 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.tsfile.encoding.bitpacking;
 
 /**
- * This class is used to encode(decode) Long in Java with specified bit-width.
- * User need to guarantee that the length of every given Long in binary mode
- * is less than or equal to the bit-width.
+ * This class is used to encode(decode) Long in Java with specified bit-width. User need to guarantee that the length of
+ * every given Long in binary mode is less than or equal to the bit-width.
  * <p>
  * e.g., if bit-width is 31, then Long '2147483648'(2^31) is not allowed but '2147483647'(2^31-1) is allowed.
  * <p>
- * For a full example,
- * Width: 3
- * Input: 5 4 7 3 0 1 3 2
+ * For a full example, Width: 3 Input: 5 4 7 3 0 1 3 2
  * <p>
  * Output:
  * <p>
- * +-----------------------+   +-----------------------+   +-----------------------+
- * |1 |0 |1 |1 |0 |0 |1 |1 |   |1 |0 |1 |1 |0 |0 |0 |0 |   |0 |1 |0 |1 |1 |0 |1 |0 |
- * +-----------------------+   +-----------------------+   +-----------------------+
- * +-----+  +-----+  +---------+  +-----+  +-----+  +---------+  +-----+  +-----+
- * 5        4          7          3        0          1          3        2
+ * +-----------------------+ +-----------------------+ +-----------------------+ |1 |0 |1 |1 |0 |0 |1 |1 | |1 |0 |1 |1
+ * |0 |0 |0 |0 | |0 |1 |0 |1 |1 |0 |1 |0 | +-----------------------+ +-----------------------+ +-----------------------+
+ * +-----+ +-----+ +---------+ +-----+ +-----+ +---------+ +-----+ +-----+ 5 4 7 3 0 1 3 2
  *
  * @author Zhang Jinrui
  */
@@ -39,21 +49,25 @@ public class LongPacker {
     /**
      * Encode 8 ({@link LongPacker#NUM_OF_LONGS}) Longs from the array 'values' with specified bit-width to bytes
      *
-     * @param values - array where '8 Longs' are in
-     * @param offset - the offset of first Long to be encoded
-     * @param buf    - encoded bytes, buf size must be equal to ({@link LongPacker#NUM_OF_LONGS}} * {@link IntPacker#width} / 8)
+     * @param values
+     *            - array where '8 Longs' are in
+     * @param offset
+     *            - the offset of first Long to be encoded
+     * @param buf
+     *            - encoded bytes, buf size must be equal to ({@link LongPacker#NUM_OF_LONGS}} * {@link IntPacker#width}
+     *            / 8)
      */
     public void pack8Values(long[] values, int offset, byte[] buf) {
 
         int bufIdx = 0;
         int valueIdx = offset;
-        //remaining bits for the current unfinished Integer
+        // remaining bits for the current unfinished Integer
         int leftBit = 0;
 
         while (valueIdx < NUM_OF_LONGS + offset) {
             // buffer is used for saving 64 bits as a part of result
             long buffer = 0;
-            //remaining size of bits in the 'buffer'
+            // remaining size of bits in the 'buffer'
             int leftSize = 64;
 
             // encode the left bits of current Long to 'buffer'
@@ -65,7 +79,7 @@ public class LongPacker {
             }
 
             while (leftSize >= width && valueIdx < NUM_OF_LONGS + offset) {
-                //encode one Long to the 'buffer'
+                // encode one Long to the 'buffer'
                 buffer |= (values[valueIdx] << (leftSize - width));
                 leftSize -= width;
                 valueIdx++;
@@ -92,37 +106,40 @@ public class LongPacker {
     /**
      * decode values from byte array.
      *
-     * @param buf    - array where bytes are in.
-     * @param offset - offset of first byte to be decoded in buf
-     * @param values - decoded result , the size of values should be 8
+     * @param buf
+     *            - array where bytes are in.
+     * @param offset
+     *            - offset of first byte to be decoded in buf
+     * @param values
+     *            - decoded result , the size of values should be 8
      */
     public void unpack8Values(byte[] buf, int offset, long[] values) {
         int byteIdx = offset;
         int valueIdx = 0;
-        //left bit(s) available for current byte in 'buf'
+        // left bit(s) available for current byte in 'buf'
         int leftBits = 8;
-        //bits that has been read for current long value which is to be decoded
+        // bits that has been read for current long value which is to be decoded
         int totalBits = 0;
 
-        //decode long value one by one
+        // decode long value one by one
         while (valueIdx < 8) {
-            //set all the 64 bits in current value to '0'
+            // set all the 64 bits in current value to '0'
             values[valueIdx] = 0;
-            //read until 'totalBits' is equal to width
+            // read until 'totalBits' is equal to width
             while (totalBits < width) {
-                //If 'leftBits' in current byte belongs to current long value
+                // If 'leftBits' in current byte belongs to current long value
                 if (width - totalBits >= leftBits) {
-                    //then put left bits in current byte to current long value
+                    // then put left bits in current byte to current long value
                     values[valueIdx] = values[valueIdx] << leftBits;
                     values[valueIdx] = (values[valueIdx] | ((((1L << leftBits) - 1)) & buf[byteIdx]));
                     totalBits += leftBits;
-                    //get next byte
+                    // get next byte
                     byteIdx++;
-                    //set 'leftBits' in next byte to 8 because the next byte has not been used
+                    // set 'leftBits' in next byte to 8 because the next byte has not been used
                     leftBits = 8;
-                    //Else take part of bits in 'leftBits' to current value.
+                    // Else take part of bits in 'leftBits' to current value.
                 } else {
-                    //numbers of bits to be take
+                    // numbers of bits to be take
                     int t = width - totalBits;
                     values[valueIdx] = values[valueIdx] << t;
                     values[valueIdx] = (values[valueIdx]
@@ -131,7 +148,7 @@ public class LongPacker {
                     totalBits += t;
                 }
             }
-            //Start to decode next long value
+            // Start to decode next long value
             valueIdx++;
             totalBits = 0;
         }
@@ -139,20 +156,24 @@ public class LongPacker {
     }
 
     /**
-     * decode all values from 'buf' with specified offset and length
-     * decoded result will be saved in array named 'values'.
+     * decode all values from 'buf' with specified offset and length decoded result will be saved in array named
+     * 'values'.
      *
-     * @param buf:    array where all bytes are in.
-     * @param offset: the offset of first byte to be decoded in buf.
-     * @param length: length of bytes to be decoded in buf.
-     * @param values: decoded result
+     * @param buf:
+     *            array where all bytes are in.
+     * @param offset:
+     *            the offset of first byte to be decoded in buf.
+     * @param length:
+     *            length of bytes to be decoded in buf.
+     * @param values:
+     *            decoded result
      */
     public void unpackAllValues(byte[] buf, int offset, int length, long[] values) {
         int idx = 0;
         int k = 0;
         while (idx < length) {
             long[] tv = new long[8];
-            //decode 8 values one time, current result will be saved in the array named 'tv'
+            // decode 8 values one time, current result will be saved in the array named 'tv'
             unpack8Values(buf, idx, tv);
             for (int i = 0; i < 8; i++) {
                 values[k + i] = tv[i];

@@ -1,3 +1,18 @@
+/**
+ * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.iotdb.db.engine.memcontrol;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -19,15 +34,15 @@ public abstract class BasicMemController implements IService {
 
     @Override
     public void start() throws StartupException {
-    	try {
-            if(config.enableMemMonitor) {
-                if(monitorThread == null) {
+        try {
+            if (config.enableMemMonitor) {
+                if (monitorThread == null) {
                     monitorThread = new MemMonitorThread(config);
                     monitorThread.start();
                 } else {
                     logger.error("Attempt to start MemController but it has already started");
                 }
-                if(memStatisticThread == null) {
+                if (memStatisticThread == null) {
                     memStatisticThread = new MemStatisticThread();
                     memStatisticThread.start();
                 } else {
@@ -35,10 +50,11 @@ public abstract class BasicMemController implements IService {
                 }
             }
             logger.info("MemController starts");
-		} catch (Exception e) {
-			String errorMessage = String.format("Failed to start %s because of %s", this.getID().getName(), e.getMessage());
-			throw new StartupException(errorMessage);
-		}
+        } catch (Exception e) {
+            String errorMessage = String.format("Failed to start %s because of %s", this.getID().getName(),
+                    e.getMessage());
+            throw new StartupException(errorMessage);
+        }
 
     }
 
@@ -76,11 +92,11 @@ public abstract class BasicMemController implements IService {
     // change instance here
     public static BasicMemController getInstance() {
         switch (CONTROLLER_TYPE.values()[IoTDBDescriptor.getInstance().getConfig().memControllerType]) {
-            case JVM:
-                return JVMMemController.getInstance();
-            case RECORD:
-            default:
-                return RecordMemController.getInstance();
+        case JVM:
+            return JVMMemController.getInstance();
+        case RECORD:
+        default:
+            return RecordMemController.getInstance();
         }
     }
 
@@ -93,7 +109,7 @@ public abstract class BasicMemController implements IService {
     }
 
     public void setCheckInterval(long checkInterval) {
-        if(this.monitorThread != null)
+        if (this.monitorThread != null)
             this.monitorThread.setCheckInterval(checkInterval);
     }
 
@@ -105,14 +121,14 @@ public abstract class BasicMemController implements IService {
 
     public void close() {
         logger.info("MemController exiting");
-        if(monitorThread != null) {
+        if (monitorThread != null) {
             monitorThread.interrupt();
             while (monitorThread.isAlive()) {
             }
             monitorThread = null;
         }
 
-        if(memStatisticThread != null) {
+        if (memStatisticThread != null) {
             memStatisticThread.interrupt();
             while (memStatisticThread.isAlive()) {
             }
