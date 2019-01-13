@@ -1,102 +1,96 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<configuration  debug="false" >
-	<property name="LOG_PATH" value="logs" />
-	<!-- prevent logback from outputting its own status at the start of every log -->
-	<statusListener class="ch.qos.logback.core.status.NopStatusListener" />
-	<appender name="FILEERROR" class="ch.qos.logback.core.rolling.RollingFileAppender">
-		<file>${LOG_PATH}/log_error.log</file>
-   		<rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-   			<fileNamePattern>${LOG_PATH}/log-error-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
-   			<timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
-       	 		<maxFileSize>2MB</maxFileSize>
-    		</timeBasedFileNamingAndTriggeringPolicy>
-   		</rollingPolicy>
-		<append>true</append>
-		<encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
-			<pattern>%-5p [%d] %C:%L - %m %n</pattern>
-			<charset>utf-8</charset>
-		</encoder>
-		<filter class="ch.qos.logback.classic.filter.LevelFilter">
-			<level>error</level>
-			<onMatch>ACCEPT</onMatch>
-      		<onMismatch>DENY</onMismatch>
-		</filter>
-	</appender>
-
-	<appender name="FILEWARN" class="ch.qos.logback.core.rolling.RollingFileAppender">
-		<file>${LOG_PATH}/log_warn.log</file>
-   		<rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-   			<fileNamePattern>${LOG_PATH}/log-warn-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
-   			<timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
-       	 		<maxFileSize>2MB</maxFileSize>
-    		</timeBasedFileNamingAndTriggeringPolicy>
-   		</rollingPolicy>
-		<append>true</append>
-		<encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
-			<pattern>%-5p [%d] %C:%L - %m %n</pattern>
-			<charset>utf-8</charset>
-		</encoder>
-		<filter class="ch.qos.logback.classic.filter.LevelFilter">
-			<level>WARN</level>
-			<onMatch>ACCEPT</onMatch>
-      		<onMismatch>DENY</onMismatch>
-		</filter>
-	</appender>
-
-	<appender name="FILEINFO" class="ch.qos.logback.core.rolling.RollingFileAppender">
-		<file>${LOG_PATH}/log_info.log</file>
-   		<rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-   			<fileNamePattern>${LOG_PATH}/log-info-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
-   			<timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
-       	 		<maxFileSize>2MB</maxFileSize>
-    		</timeBasedFileNamingAndTriggeringPolicy>
-   		</rollingPolicy>
-		<append>true</append>
-		<encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
-			<pattern>%-5p [%d] %C:%L - %m %n</pattern>
-			<charset>utf-8</charset>
-		</encoder>
-		<filter class="ch.qos.logback.classic.filter.LevelFilter">
-			<level>INFO</level>
-			<onMatch>ACCEPT</onMatch>
-      		<onMismatch>DENY</onMismatch>
-		</filter>
-	</appender>
-
-	<appender name="FILEDEBUG" class="ch.qos.logback.core.rolling.RollingFileAppender">
-		<file>${LOG_PATH}/log_debug.log</file>
-   		<rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-   			<fileNamePattern>${LOG_PATH}/log-debug-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
-   			<timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
-       	 		<maxFileSize>2MB</maxFileSize>
-    		</timeBasedFileNamingAndTriggeringPolicy>
-   		</rollingPolicy>
-		<append>true</append>
-		<encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
-			<pattern>%-5p [%d] %C:%L - %m %n</pattern>
-			<charset>utf-8</charset>
-		</encoder>
-		<filter class="ch.qos.logback.classic.filter.LevelFilter">
-			<level>DEBUG</level>
-			<onMatch>ACCEPT</onMatch>
-      		<onMismatch>DENY</onMismatch>
-		</filter>
-	</appender>
-
-	<appender name="stdout" class="ch.qos.logback.core.ConsoleAppender">
-		<Target>System.out</Target>
-		<encoder>
-			<pattern>%-5p [%d] [%thread] %C:%L - %m %n</pattern>
-			<charset>utf-8</charset>
-		</encoder>
-		<filter class="ch.qos.logback.classic.filter.ThresholdFilter">
-			<level>DEBUG</level>
-		</filter>
-	</appender>
-
-	<!--<logger name="org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl level="debug" />-->
-
-	<root level="INFO">
-		<appender-ref ref="stdout" />
-	</root>
+<configuration debug="false">
+    <property name="LOG_PATH" value="logs"/>
+    <!-- prevent logback from outputting its own status at the start of every log -->
+    <statusListener class="ch.qos.logback.core.status.NopStatusListener"/>
+    <appender name="FILEERROR" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_PATH}/log_error.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_PATH}/log-error-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
+                <maxFileSize>2MB</maxFileSize>
+            </timeBasedFileNamingAndTriggeringPolicy>
+        </rollingPolicy>
+        <append>true</append>
+        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+            <pattern>%-5p [%d] %C:%L - %m %n</pattern>
+            <charset>utf-8</charset>
+        </encoder>
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <level>error</level>
+            <onMatch>ACCEPT</onMatch>
+            <onMismatch>DENY</onMismatch>
+        </filter>
+    </appender>
+    <appender name="FILEWARN" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_PATH}/log_warn.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_PATH}/log-warn-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
+                <maxFileSize>2MB</maxFileSize>
+            </timeBasedFileNamingAndTriggeringPolicy>
+        </rollingPolicy>
+        <append>true</append>
+        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+            <pattern>%-5p [%d] %C:%L - %m %n</pattern>
+            <charset>utf-8</charset>
+        </encoder>
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <level>WARN</level>
+            <onMatch>ACCEPT</onMatch>
+            <onMismatch>DENY</onMismatch>
+        </filter>
+    </appender>
+    <appender name="FILEINFO" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_PATH}/log_info.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_PATH}/log-info-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
+                <maxFileSize>2MB</maxFileSize>
+            </timeBasedFileNamingAndTriggeringPolicy>
+        </rollingPolicy>
+        <append>true</append>
+        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+            <pattern>%-5p [%d] %C:%L - %m %n</pattern>
+            <charset>utf-8</charset>
+        </encoder>
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <level>INFO</level>
+            <onMatch>ACCEPT</onMatch>
+            <onMismatch>DENY</onMismatch>
+        </filter>
+    </appender>
+    <appender name="FILEDEBUG" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_PATH}/log_debug.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_PATH}/log-debug-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
+                <maxFileSize>2MB</maxFileSize>
+            </timeBasedFileNamingAndTriggeringPolicy>
+        </rollingPolicy>
+        <append>true</append>
+        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+            <pattern>%-5p [%d] %C:%L - %m %n</pattern>
+            <charset>utf-8</charset>
+        </encoder>
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <level>DEBUG</level>
+            <onMatch>ACCEPT</onMatch>
+            <onMismatch>DENY</onMismatch>
+        </filter>
+    </appender>
+    <appender name="stdout" class="ch.qos.logback.core.ConsoleAppender">
+        <Target>System.out</Target>
+        <encoder>
+            <pattern>%-5p [%d] [%thread] %C:%L - %m %n</pattern>
+            <charset>utf-8</charset>
+        </encoder>
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>DEBUG</level>
+        </filter>
+    </appender>
+    <!--<logger name="org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl level="debug" />-->
+    <root level="INFO">
+        <appender-ref ref="stdout"/>
+    </root>
 </configuration>

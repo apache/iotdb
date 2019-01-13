@@ -17,110 +17,102 @@
 
 -->
 <configuration>
-	<jmxConfigurator />
-	<!-- prevent logback from outputting its own status at the start of every log -->
-	<statusListener class="ch.qos.logback.core.status.NopStatusListener" />
-
-	<appender name="FILEERROR" class="ch.qos.logback.core.rolling.RollingFileAppender">
-		<file>${IOTDB_HOME}/logs/log_error.log</file>
-   		<rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-   			<fileNamePattern>${IOTDB_HOME}/logs/log-error-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
-   			<timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
-       	 		<maxFileSize>2MB</maxFileSize>
-    		</timeBasedFileNamingAndTriggeringPolicy>
-   		</rollingPolicy>
-		<append>true</append>
-		<encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
-			<pattern>%d [%t] %-5p %C:%L - %m %n</pattern>
-			<charset>utf-8</charset>
-		</encoder>
-		<filter class="ch.qos.logback.classic.filter.LevelFilter">
-			<level>error</level>
-			<onMatch>ACCEPT</onMatch>
-      		<onMismatch>DENY</onMismatch>
-		</filter>
-	</appender>
-
-	<appender name="FILEWARN" class="ch.qos.logback.core.rolling.RollingFileAppender">
-		<file>${IOTDB_HOME}/logs/log_warn.log</file>
-   		<rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-   			<fileNamePattern>${IOTDB_HOME}/logs/log-warn-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
-   			<timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
-       	 		<maxFileSize>2MB</maxFileSize>
-    		</timeBasedFileNamingAndTriggeringPolicy>
-   		</rollingPolicy>
-		<append>true</append>
-		<encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+    <jmxConfigurator/>
+    <!-- prevent logback from outputting its own status at the start of every log -->
+    <statusListener class="ch.qos.logback.core.status.NopStatusListener"/>
+    <appender name="FILEERROR" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${IOTDB_HOME}/logs/log_error.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${IOTDB_HOME}/logs/log-error-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
+                <maxFileSize>2MB</maxFileSize>
+            </timeBasedFileNamingAndTriggeringPolicy>
+        </rollingPolicy>
+        <append>true</append>
+        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
             <pattern>%d [%t] %-5p %C:%L - %m %n</pattern>
-			<charset>utf-8</charset>
-		</encoder>
-		<filter class="ch.qos.logback.classic.filter.LevelFilter">
-			<level>WARN</level>
-			<onMatch>ACCEPT</onMatch>
-      		<onMismatch>DENY</onMismatch>
-		</filter>
-	</appender>
-
-	<appender name="FILEINFO" class="ch.qos.logback.core.rolling.RollingFileAppender">
-		<file>${IOTDB_HOME}/logs/log_info.log</file>
-   		<rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-   			<fileNamePattern>${IOTDB_HOME}/logs/log-info-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
-   			<timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
-       	 		<maxFileSize>200MB</maxFileSize>
-    		</timeBasedFileNamingAndTriggeringPolicy>
-   		</rollingPolicy>
-		<append>true</append>
-		<encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+            <charset>utf-8</charset>
+        </encoder>
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <level>error</level>
+            <onMatch>ACCEPT</onMatch>
+            <onMismatch>DENY</onMismatch>
+        </filter>
+    </appender>
+    <appender name="FILEWARN" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${IOTDB_HOME}/logs/log_warn.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${IOTDB_HOME}/logs/log-warn-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
+                <maxFileSize>2MB</maxFileSize>
+            </timeBasedFileNamingAndTriggeringPolicy>
+        </rollingPolicy>
+        <append>true</append>
+        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
             <pattern>%d [%t] %-5p %C:%L - %m %n</pattern>
-			<charset>utf-8</charset>
-		</encoder>
-		<filter class="ch.qos.logback.classic.filter.LevelFilter">
-			<level>INFO</level>
-			<onMatch>ACCEPT</onMatch>
-      		<onMismatch>DENY</onMismatch>
-		</filter>
-	</appender>
-
-
-	<appender name="FILEDEBUG" class="ch.qos.logback.core.rolling.RollingFileAppender">
-		<file>${IOTDB_HOME}/logs/log_debug.log</file>
-   		<rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-   			<fileNamePattern>${IOTDB_HOME}/logs/log-debug-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
-   			<timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
-       	 		<maxFileSize>200MB</maxFileSize>
-    		</timeBasedFileNamingAndTriggeringPolicy>
-   		</rollingPolicy>
-		<append>true</append>
-		<encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+            <charset>utf-8</charset>
+        </encoder>
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <level>WARN</level>
+            <onMatch>ACCEPT</onMatch>
+            <onMismatch>DENY</onMismatch>
+        </filter>
+    </appender>
+    <appender name="FILEINFO" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${IOTDB_HOME}/logs/log_info.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${IOTDB_HOME}/logs/log-info-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
+                <maxFileSize>200MB</maxFileSize>
+            </timeBasedFileNamingAndTriggeringPolicy>
+        </rollingPolicy>
+        <append>true</append>
+        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
             <pattern>%d [%t] %-5p %C:%L - %m %n</pattern>
-			<charset>utf-8</charset>
-		</encoder>
-		<filter class="ch.qos.logback.classic.filter.LevelFilter">
-			<level>DEBUG</level>
-			<onMatch>ACCEPT</onMatch>
-      		<onMismatch>DENY</onMismatch>
-		</filter>
-	</appender>
-
-	<appender name="stdout" class="ch.qos.logback.core.ConsoleAppender">
-		<Target>System.out</Target>
-		<encoder>
+            <charset>utf-8</charset>
+        </encoder>
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <level>INFO</level>
+            <onMatch>ACCEPT</onMatch>
+            <onMismatch>DENY</onMismatch>
+        </filter>
+    </appender>
+    <appender name="FILEDEBUG" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${IOTDB_HOME}/logs/log_debug.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${IOTDB_HOME}/logs/log-debug-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
+                <maxFileSize>200MB</maxFileSize>
+            </timeBasedFileNamingAndTriggeringPolicy>
+        </rollingPolicy>
+        <append>true</append>
+        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
             <pattern>%d [%t] %-5p %C:%L - %m %n</pattern>
-			<charset>utf-8</charset>
-		</encoder>
-		<filter class="ch.qos.logback.classic.filter.ThresholdFilter">
-			<level>DEBUG</level>
-		</filter>
-	</appender>
-	
-
-	<logger name="org.apache.iotdb.db.service" level="info" />
-	<logger name="org.apache.iotdb.db.conf" level="info" />
-	<root level="info">
-		<appender-ref ref="FILEDEBUG" />
-		<appender-ref ref="FILEINFO" />
-		<appender-ref ref="FILEWARN" />
-		<appender-ref ref="FILEERROR" />
-		<appender-ref ref="stdout" />
-	</root>
+            <charset>utf-8</charset>
+        </encoder>
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <level>DEBUG</level>
+            <onMatch>ACCEPT</onMatch>
+            <onMismatch>DENY</onMismatch>
+        </filter>
+    </appender>
+    <appender name="stdout" class="ch.qos.logback.core.ConsoleAppender">
+        <Target>System.out</Target>
+        <encoder>
+            <pattern>%d [%t] %-5p %C:%L - %m %n</pattern>
+            <charset>utf-8</charset>
+        </encoder>
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>DEBUG</level>
+        </filter>
+    </appender>
+    <logger name="org.apache.iotdb.db.service" level="info"/>
+    <logger name="org.apache.iotdb.db.conf" level="info"/>
+    <root level="info">
+        <appender-ref ref="FILEDEBUG"/>
+        <appender-ref ref="FILEINFO"/>
+        <appender-ref ref="FILEWARN"/>
+        <appender-ref ref="FILEERROR"/>
+        <appender-ref ref="stdout"/>
+    </root>
 </configuration>

@@ -18,24 +18,19 @@
 -->
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
     <modelVersion>4.0.0</modelVersion>
-
     <parent>
         <groupId>org.apache.iotdb</groupId>
         <artifactId>root</artifactId>
         <version>0.8.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
-
     <artifactId>tsfile</artifactId>
-
     <name>TsFile</name>
     <description>A columnar file format designed for time-series data</description>
     <url>https://github.com/thulab/iotdb/tree/master/tsfile</url>
-
-	<properties>
-		<tsfile.test.skip>false</tsfile.test.skip>
-	</properties>
-
+    <properties>
+        <tsfile.test.skip>false</tsfile.test.skip>
+    </properties>
     <dependencies>
         <dependency>
             <groupId>ch.qos.logback</groupId>
@@ -57,7 +52,6 @@
             <artifactId>commons-io</artifactId>
             <version>${common.io.version}</version>
         </dependency>
-
         <!-- https://mvnrepository.com/artifact/io.netty/netty-buffer -->
         <dependency>
             <groupId>io.netty</groupId>
@@ -65,38 +59,36 @@
             <version>4.1.25.Final</version>
         </dependency>
     </dependencies>
-
     <build>
-		<plugins>
-		  <plugin>
-		    <groupId>org.apache.maven.plugins</groupId>
-		    <artifactId>maven-surefire-plugin</artifactId>
-		    <configuration>
-              <argLine>-Xmx1024m</argLine>
-		      <skipTests>${tsfile.test.skip}</skipTests>
-		    </configuration>
-		  </plugin>
-		  <plugin>
-		    <artifactId>maven-assembly-plugin</artifactId>
-		    <version>3.1.0</version>
-		    <configuration>
-		      <descriptorRefs>
-		        <descriptorRef>jar-with-dependencies</descriptorRef>
-		      </descriptorRefs>
-		    </configuration>
-		    <executions>
-		      <execution>
-		        <id>make-assembly</id>
-		        <!-- this is used for inheritance merges -->
-		        <phase>package</phase>
-		        <!-- bind to the packaging phase -->
-		        <goals>
-		          <goal>single</goal>
-		        </goals>
-		      </execution>
-		    </executions>
-		  </plugin>
-		</plugins>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <argLine>-Xmx1024m</argLine>
+                    <skipTests>${tsfile.test.skip}</skipTests>
+                </configuration>
+            </plugin>
+            <plugin>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <version>3.1.0</version>
+                <configuration>
+                    <descriptorRefs>
+                        <descriptorRef>jar-with-dependencies</descriptorRef>
+                    </descriptorRefs>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>make-assembly</id>
+                        <!-- this is used for inheritance merges -->
+                        <phase>package</phase>
+                        <!-- bind to the packaging phase -->
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
     </build>
-
 </project>
