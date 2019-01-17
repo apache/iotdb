@@ -1,9 +1,13 @@
 /**
  * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
@@ -16,131 +20,141 @@
 package org.apache.iotdb.db.service;
 
 import java.io.File;
-import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.utils.OpenFileNumUtil;
-import org.apache.iotdb.db.exception.StartupException;
 import org.apache.commons.io.FileUtils;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StartupException;
+import org.apache.iotdb.db.utils.OpenFileNumUtil;
 
 public class Monitor implements MonitorMBean, IService {
-    private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-    public static final Monitor INSTANCE = new Monitor();
-    private final String MBEAN_NAME = String.format("%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE,
-            getID().getJmxName());
 
-    @Override
-    public long getDataSizeInByte() {
-        try {
-            return FileUtils.sizeOfDirectory(new File(config.dataDir));
-        } catch (Exception e) {
-            return -1;
-        }
-    }
+  public static final Monitor INSTANCE = new Monitor();
+  private final String mbeanName = String
+      .format("%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE,
+          getID().getJmxName());
+  private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
-    @Override
-    public int getFileNodeNum() {
-        // TODO Auto-generated method stub
-        return 0;
+  @Override
+  public long getDataSizeInByte() {
+    try {
+      return FileUtils.sizeOfDirectory(new File(config.dataDir));
+    } catch (Exception e) {
+      return -1;
     }
+  }
 
-    @Override
-    public long getOverflowCacheSize() {
-        // TODO Auto-generated method stub
-        return 0;
-    }
+  @Override
+  public int getFileNodeNum() {
+    // TODO Auto-generated method stub
+    return 0;
+  }
 
-    @Override
-    public long getBufferWriteCacheSize() {
-        // TODO Auto-generated method stub
-        return 0;
-    }
+  @Override
+  public long getOverflowCacheSize() {
+    // TODO Auto-generated method stub
+    return 0;
+  }
 
-    @Override
-    public String getBaseDirectory() {
-        try {
-            File file = new File(config.dataDir);
-            return file.getAbsolutePath();
-        } catch (Exception e) {
-            return "Unavailable";
-        }
-    }
+  @Override
+  public long getBufferWriteCacheSize() {
+    // TODO Auto-generated method stub
+    return 0;
+  }
 
-    @Override
-    public boolean getWriteAheadLogStatus() {
-        return config.enableWal;
+  @Override
+  public String getBaseDirectory() {
+    try {
+      File file = new File(config.dataDir);
+      return file.getAbsolutePath();
+    } catch (Exception e) {
+      return "Unavailable";
     }
+  }
 
-    @Override
-    public int getTotalOpenFileNum() {
-        return OpenFileNumUtil.getInstance().get(OpenFileNumUtil.OpenFileNumStatistics.TOTAL_OPEN_FILE_NUM);
-    }
+  @Override
+  public boolean getWriteAheadLogStatus() {
+    return config.enableWal;
+  }
 
-    @Override
-    public int getDataOpenFileNum() {
-        return OpenFileNumUtil.getInstance().get(OpenFileNumUtil.OpenFileNumStatistics.DATA_OPEN_FILE_NUM);
-    }
+  @Override
+  public int getTotalOpenFileNum() {
+    return OpenFileNumUtil.getInstance()
+        .get(OpenFileNumUtil.OpenFileNumStatistics.TOTAL_OPEN_FILE_NUM);
+  }
 
-    @Override
-    public int getDeltaOpenFileNum() {
-        return OpenFileNumUtil.getInstance().get(OpenFileNumUtil.OpenFileNumStatistics.DELTA_OPEN_FILE_NUM);
-    }
+  @Override
+  public int getDataOpenFileNum() {
+    return OpenFileNumUtil.getInstance()
+        .get(OpenFileNumUtil.OpenFileNumStatistics.DATA_OPEN_FILE_NUM);
+  }
 
-    @Override
-    public int getOverflowOpenFileNum() {
-        return OpenFileNumUtil.getInstance().get(OpenFileNumUtil.OpenFileNumStatistics.OVERFLOW_OPEN_FILE_NUM);
-    }
+  @Override
+  public int getDeltaOpenFileNum() {
+    return OpenFileNumUtil.getInstance()
+        .get(OpenFileNumUtil.OpenFileNumStatistics.DELTA_OPEN_FILE_NUM);
+  }
 
-    @Override
-    public int getWalOpenFileNum() {
-        return OpenFileNumUtil.getInstance().get(OpenFileNumUtil.OpenFileNumStatistics.WAL_OPEN_FILE_NUM);
-    }
+  @Override
+  public int getOverflowOpenFileNum() {
+    return OpenFileNumUtil.getInstance()
+        .get(OpenFileNumUtil.OpenFileNumStatistics.OVERFLOW_OPEN_FILE_NUM);
+  }
 
-    @Override
-    public int getMetadataOpenFileNum() {
-        return OpenFileNumUtil.getInstance().get(OpenFileNumUtil.OpenFileNumStatistics.METADATA_OPEN_FILE_NUM);
-    }
+  @Override
+  public int getWalOpenFileNum() {
+    return OpenFileNumUtil.getInstance()
+        .get(OpenFileNumUtil.OpenFileNumStatistics.WAL_OPEN_FILE_NUM);
+  }
 
-    @Override
-    public int getDigestOpenFileNum() {
-        return OpenFileNumUtil.getInstance().get(OpenFileNumUtil.OpenFileNumStatistics.DIGEST_OPEN_FILE_NUM);
-    }
+  @Override
+  public int getMetadataOpenFileNum() {
+    return OpenFileNumUtil.getInstance()
+        .get(OpenFileNumUtil.OpenFileNumStatistics.METADATA_OPEN_FILE_NUM);
+  }
 
-    @Override
-    public int getSocketOpenFileNum() {
-        return OpenFileNumUtil.getInstance().get(OpenFileNumUtil.OpenFileNumStatistics.SOCKET_OPEN_FILE_NUM);
-    }
+  @Override
+  public int getDigestOpenFileNum() {
+    return OpenFileNumUtil.getInstance()
+        .get(OpenFileNumUtil.OpenFileNumStatistics.DIGEST_OPEN_FILE_NUM);
+  }
 
-    @Override
-    public long getMergePeriodInSecond() {
-        return config.periodTimeForMerge;
-    }
+  @Override
+  public int getSocketOpenFileNum() {
+    return OpenFileNumUtil.getInstance()
+        .get(OpenFileNumUtil.OpenFileNumStatistics.SOCKET_OPEN_FILE_NUM);
+  }
 
-    @Override
-    public long getClosePeriodInSecond() {
-        return config.periodTimeForFlush;
-    }
+  @Override
+  public long getMergePeriodInSecond() {
+    return config.periodTimeForMerge;
+  }
 
-    @Override
-    public void start() throws StartupException {
-        try {
-            JMXService.registerMBean(INSTANCE, MBEAN_NAME);
-        } catch (Exception e) {
-            String errorMessage = String.format("Failed to start %s because of %s", this.getID().getName(),
-                    e.getMessage());
-            throw new StartupException(errorMessage);
-        }
-    }
+  @Override
+  public long getClosePeriodInSecond() {
+    return config.periodTimeForFlush;
+  }
 
-    @Override
-    public void stop() {
-        JMXService.deregisterMBean(MBEAN_NAME);
+  @Override
+  public void start() throws StartupException {
+    try {
+      JMXService.registerMBean(INSTANCE, mbeanName);
+    } catch (Exception e) {
+      String errorMessage = String
+          .format("Failed to start %s because of %s", this.getID().getName(),
+              e.getMessage());
+      throw new StartupException(errorMessage);
     }
+  }
 
-    @Override
-    public ServiceType getID() {
-        return ServiceType.MONITOR_SERVICE;
-    }
+  @Override
+  public void stop() {
+    JMXService.deregisterMBean(mbeanName);
+  }
+
+  @Override
+  public ServiceType getID() {
+    return ServiceType.MONITOR_SERVICE;
+  }
 
 }

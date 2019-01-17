@@ -1,9 +1,13 @@
 /**
  * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
@@ -15,68 +19,70 @@
  */
 package org.apache.iotdb.db.qp.logical.crud;
 
+import java.util.List;
 import org.apache.iotdb.db.qp.logical.RootOperator;
 import org.apache.iotdb.tsfile.read.common.Path;
 
-import java.util.List;
-
 /**
- * SFWOperator(select-from-where) includes four subclass: INSERT,DELETE,UPDATE,QUERY. All of these four statements has
- * three partition: select clause, from clause and filter clause(where clause).
+ * SFWOperator(select-from-where) includes four subclass: INSERT,DELETE,UPDATE,QUERY. All of these
+ * four statements has three partition: select clause, from clause and filter clause(where clause).
  */
 public abstract class SFWOperator extends RootOperator {
 
-    private SelectOperator selectOperator;
-    private FromOperator fromOperator;
-    private FilterOperator filterOperator;
-    private boolean hasAggregation = false;
+  private SelectOperator selectOperator;
+  private FromOperator fromOperator;
+  private FilterOperator filterOperator;
+  private boolean hasAggregation = false;
 
-    public SFWOperator(int tokenIntType) {
-        super(tokenIntType);
-        operatorType = OperatorType.SFW;
-    }
+  public SFWOperator(int tokenIntType) {
+    super(tokenIntType);
+    operatorType = OperatorType.SFW;
+  }
 
-    public void setSelectOperator(SelectOperator sel) {
-        this.selectOperator = sel;
-        if (!sel.getAggregations().isEmpty()) {
-            hasAggregation = true;
-        }
-    }
+  public FromOperator getFromOperator() {
+    return fromOperator;
+  }
 
-    public void setFromOperator(FromOperator from) {
-        this.fromOperator = from;
-    }
+  public void setFromOperator(FromOperator from) {
+    this.fromOperator = from;
+  }
 
-    public void setFilterOperator(FilterOperator filter) {
-        this.filterOperator = filter;
-    }
+  public SelectOperator getSelectOperator() {
+    return selectOperator;
+  }
 
-    public FromOperator getFromOperator() {
-        return fromOperator;
+  /**
+   * set selectOperator, then init hasAggregation according to selectOperator.
+   */
+  public void setSelectOperator(SelectOperator sel) {
+    this.selectOperator = sel;
+    if (!sel.getAggregations().isEmpty()) {
+      hasAggregation = true;
     }
+  }
 
-    public SelectOperator getSelectOperator() {
-        return selectOperator;
-    }
+  public FilterOperator getFilterOperator() {
+    return filterOperator;
+  }
 
-    public FilterOperator getFilterOperator() {
-        return filterOperator;
-    }
+  public void setFilterOperator(FilterOperator filter) {
+    this.filterOperator = filter;
+  }
 
-    /**
-     * get information from SelectOperator and FromOperator and generate all table paths.
-     * 
-     * @return - a list of seriesPath
-     */
-    public List<Path> getSelectedPaths() {
-        List<Path> suffixPaths = null;
-        if (selectOperator != null) {
-            suffixPaths = selectOperator.getSuffixPaths();
-        }
-        return suffixPaths;
+  /**
+   * get information from SelectOperator and FromOperator and generate all table paths.
+   *
+   * @return - a list of seriesPath
+   */
+  public List<Path> getSelectedPaths() {
+    List<Path> suffixPaths = null;
+    if (selectOperator != null) {
+      suffixPaths = selectOperator.getSuffixPaths();
     }
+    return suffixPaths;
+  }
 
-    public boolean hasAggregation() {
-        return hasAggregation;
-    }
+  public boolean hasAggregation() {
+    return hasAggregation;
+  }
 }

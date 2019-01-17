@@ -1,9 +1,13 @@
 /**
  * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
@@ -19,27 +23,27 @@ import java.util.ArrayList;
 
 public class ParseException extends Exception {
 
-    private static final long serialVersionUID = 1L;
-    ArrayList<ParseError> errors;
+  private static final long serialVersionUID = 1L;
+  ArrayList<ParseError> errors;
 
-    public ParseException(ArrayList<ParseError> errors) {
-        super();
-        this.errors = errors;
+  public ParseException(ArrayList<ParseError> errors) {
+    super();
+    this.errors = errors;
+  }
+
+  @Override
+  public String getMessage() {
+
+    StringBuilder sb = new StringBuilder();
+
+    for (ParseError err : errors) {
+      if (sb.length() > 0) {
+        sb.append('\n');
+      }
+      sb.append(err.getMessage());
     }
 
-    @Override
-    public String getMessage() {
-
-        StringBuilder sb = new StringBuilder();
-
-        for (ParseError err : errors) {
-            if (sb.length() > 0) {
-                sb.append('\n');
-            }
-            sb.append(err.getMessage());
-        }
-
-        return sb.toString();
-    }
+    return sb.toString();
+  }
 
 }

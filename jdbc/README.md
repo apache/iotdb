@@ -38,11 +38,11 @@ import java.sql.Statement;
 
 public class Example {
     public static void main(String[] args) throws ClassNotFoundException, SQLException {
-        Class.forName("org.apache.iotdb.jdbc.TsfileDriver");
+        Class.forName("org.apache.iotdb.jdbc.IoTDBDriver");
         Connection connection = null;
         Statement statement = null;
         try {
-            connection =  DriverManager.getConnection("jdbc:tsfile://127.0.0.1:6667/", "root", "root");
+            connection =  DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
             statement = connection.createStatement();
             statement.execute("select s1 from root.laptop.d1");
             ResultSet resultSet = statement.getResultSet();

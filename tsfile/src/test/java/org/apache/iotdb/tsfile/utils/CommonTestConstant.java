@@ -1,9 +1,13 @@
 /**
  * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
@@ -19,12 +23,13 @@ import java.util.Random;
 
 /**
  * This class is used for Junit test to get some unified constant.
- * 
+ *
  * @author kangrong
  *
  */
 public class CommonTestConstant {
-    public static final float float_min_delta = 0.00001f;
-    public static final double double_min_delta = 0.00001d;
-    public static final Random random = new Random(System.currentTimeMillis());
+
+  public static final float float_min_delta = 0.00001f;
+  public static final double double_min_delta = 0.00001d;
+  public static final Random random = new Random(System.currentTimeMillis());
 }

@@ -1,9 +1,13 @@
 /**
  * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
@@ -16,9 +20,10 @@
 package org.apache.iotdb.tsfile.common.constant;
 
 public class SystemConstant {
-    public static final String TSFILE_HOME = "TSFILE_HOME";
-    public static final String TSFILE_CONF = "TSFILE_CONF";
-    public static final String PATH_SEPARATOR = ".";
-    public static final String PATH_SEPARATER_NO_REGEX = "\\.";
-    public static final String DEFAULT_DELTA_TYPE = "default_delta_type";
+
+  public static final String TSFILE_HOME = "TSFILE_HOME";
+  public static final String TSFILE_CONF = "TSFILE_CONF";
+  public static final String PATH_SEPARATOR = ".";
+  public static final String PATH_SEPARATER_NO_REGEX = "\\.";
+  public static final String DEFAULT_DELTA_TYPE = "default_delta_type";
 }

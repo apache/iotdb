@@ -1,9 +1,13 @@
 /**
  * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
@@ -16,7 +20,6 @@
 package org.apache.iotdb.db.qp.logical.sys;
 
 import java.util.List;
-
 import org.apache.iotdb.db.qp.logical.RootOperator;
 import org.apache.iotdb.tsfile.read.common.Path;
 
@@ -25,73 +28,77 @@ import org.apache.iotdb.tsfile.read.common.Path;
  */
 public class MetadataOperator extends RootOperator {
 
-    public MetadataOperator(int tokenIntType, NamespaceType type) {
-        super(tokenIntType);
-        namespaceType = type;
-        switch (type) {
-        case SET_FILE_LEVEL:
-        case ADD_PATH:
-            operatorType = OperatorType.SET_STORAGE_GROUP;
-            break;
-        case DELETE_PATH:
-            operatorType = OperatorType.DELETE_TIMESERIES;
-            break;
-        }
+  private final NamespaceType namespaceType;
+  private Path path;
+  private String dataType;
+  private String encoding;
+  private String[] encodingArgs;
+  private List<Path> deletePathList;
+
+  /**
+   * Constructor of MetadataOperator.
+   */
+  public MetadataOperator(int tokenIntType, NamespaceType type) {
+    super(tokenIntType);
+    namespaceType = type;
+    switch (type) {
+      case SET_FILE_LEVEL:
+      case ADD_PATH:
+        operatorType = OperatorType.SET_STORAGE_GROUP;
+        break;
+      case DELETE_PATH:
+        operatorType = OperatorType.DELETE_TIMESERIES;
+        break;
+      default:
+        break;
     }
+  }
 
-    private final NamespaceType namespaceType;
-    private Path path;
-    private String dataType;
-    private String encoding;
-    private String[] encodingArgs;
+  public Path getPath() {
+    return path;
+  }
 
-    private List<Path> deletePathList;
+  public void setPath(Path path) {
+    this.path = path;
+  }
 
-    public Path getPath() {
-        return path;
-    }
+  public String getDataType() {
+    return dataType;
+  }
 
-    public void setPath(Path path) {
-        this.path = path;
-    }
+  public void setDataType(String dataType) {
+    this.dataType = dataType;
+  }
 
-    public String getDataType() {
-        return dataType;
-    }
+  public String getEncoding() {
+    return encoding;
+  }
 
-    public void setDataType(String dataType) {
-        this.dataType = dataType;
-    }
+  public void setEncoding(String encoding) {
+    this.encoding = encoding;
+  }
 
-    public String getEncoding() {
-        return encoding;
-    }
+  public String[] getEncodingArgs() {
+    return encodingArgs;
+  }
 
-    public void setEncoding(String encoding) {
-        this.encoding = encoding;
-    }
+  public void setEncodingArgs(String[] encodingArgs) {
+    this.encodingArgs = encodingArgs;
+  }
 
-    public String[] getEncodingArgs() {
-        return encodingArgs;
-    }
+  public NamespaceType getNamespaceType() {
+    return namespaceType;
+  }
 
-    public void setEncodingArgs(String[] encodingArgs) {
-        this.encodingArgs = encodingArgs;
-    }
+  public List<Path> getDeletePathList() {
+    return deletePathList;
+  }
 
-    public NamespaceType getNamespaceType() {
-        return namespaceType;
-    }
+  public void setDeletePathList(List<Path> deletePathList) {
+    this.deletePathList = deletePathList;
+  }
 
-    public List<Path> getDeletePathList() {
-        return deletePathList;
-    }
-
-    public void setDeletePathList(List<Path> deletePathList) {
-        this.deletePathList = deletePathList;
-    }
-
-    public enum NamespaceType {
-        ADD_PATH, DELETE_PATH, SET_FILE_LEVEL
-    }
+  public enum NamespaceType {
+    ADD_PATH, DELETE_PATH, SET_FILE_LEVEL
+  }
 }

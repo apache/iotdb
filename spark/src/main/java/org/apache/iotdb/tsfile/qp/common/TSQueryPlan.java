@@ -1,9 +1,13 @@
 /**
  * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
@@ -23,35 +27,38 @@ import java.util.List;
  *
  */
 public class TSQueryPlan {
-    private List<String> paths = new ArrayList<>();
-    private FilterOperator timeFilterOperator;
-    private FilterOperator valueFilterOperator;
 
-    public TSQueryPlan(List<String> paths, FilterOperator timeFilter, FilterOperator valueFilter) {
-        this.paths = paths;
-        this.timeFilterOperator = timeFilter;
-        this.valueFilterOperator = valueFilter;
-    }
+  private List<String> paths = new ArrayList<>();
+  private FilterOperator timeFilterOperator;
+  private FilterOperator valueFilterOperator;
 
-    public List<String> getPaths() {
-        return paths;
-    }
+  public TSQueryPlan(List<String> paths, FilterOperator timeFilter, FilterOperator valueFilter) {
+    this.paths = paths;
+    this.timeFilterOperator = timeFilter;
+    this.valueFilterOperator = valueFilter;
+  }
 
-    public FilterOperator getTimeFilterOperator() {
-        return timeFilterOperator;
-    }
+  public List<String> getPaths() {
+    return paths;
+  }
 
-    public FilterOperator getValueFilterOperator() {
-        return valueFilterOperator;
-    }
+  public FilterOperator getTimeFilterOperator() {
+    return timeFilterOperator;
+  }
 
-    public String toString(){
-        String ret = "";
-        ret += paths.toString();
-        if(timeFilterOperator != null)
-            ret += timeFilterOperator.toString();
-        if(valueFilterOperator != null)
-            ret += valueFilterOperator.toString();
-        return ret;
+  public FilterOperator getValueFilterOperator() {
+    return valueFilterOperator;
+  }
+
+  public String toString() {
+    String ret = "";
+    ret += paths.toString();
+    if (timeFilterOperator != null) {
+      ret += timeFilterOperator.toString();
     }
+    if (valueFilterOperator != null) {
+      ret += valueFilterOperator.toString();
+    }
+    return ret;
+  }
 }

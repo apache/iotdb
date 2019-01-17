@@ -1,9 +1,13 @@
 /**
  * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
@@ -25,48 +29,48 @@ import org.apache.iotdb.tsfile.qp.exception.BasicOperatorException;
 
 public class BasicOperator extends FilterOperator {
 
-    private String seriesPath;
-    private String seriesValue;
+  private String seriesPath;
+  private String seriesValue;
 
-    public String getSeriesPath() {
-        return seriesPath;
-    }
+  public BasicOperator(int tokenIntType, String path, String value) {
+    super(tokenIntType);
+    this.seriesPath = this.singlePath = path;
+    this.seriesValue = value;
+    this.isLeaf = true;
+    this.isSingle = true;
+  }
 
-    public String getSeriesValue() {
-        return seriesValue;
-    }
+  public String getSeriesPath() {
+    return seriesPath;
+  }
 
-    public BasicOperator(int tokenIntType, String path, String value) {
-        super(tokenIntType);
-        this.seriesPath = this.singlePath = path;
-        this.seriesValue = value;
-        this.isLeaf = true;
-        this.isSingle = true;
-    }
+  public String getSeriesValue() {
+    return seriesValue;
+  }
 
-    public void setReversedTokenIntType() throws BasicOperatorException {
-        int intType = SQLConstant.reverseWords.get(tokenIntType);
-        setTokenIntType(intType);
-    }
+  public void setReversedTokenIntType() throws BasicOperatorException {
+    int intType = SQLConstant.reverseWords.get(tokenIntType);
+    setTokenIntType(intType);
+  }
 
-    @Override
-    public String getSinglePath() {
-        return singlePath;
-    }
+  @Override
+  public String getSinglePath() {
+    return singlePath;
+  }
 
 
-    @Override
-    public BasicOperator clone() {
-        BasicOperator ret;
-        ret = new BasicOperator(this.tokenIntType, seriesPath, seriesValue);
-        ret.tokenSymbol=tokenSymbol;
-        ret.isLeaf = isLeaf;
-        ret.isSingle = isSingle;
-        return ret;
-    }
-    
-    @Override
-    public String toString() {
-        return "[" + seriesPath + tokenSymbol + seriesValue + "]";
-    }
+  @Override
+  public BasicOperator clone() {
+    BasicOperator ret;
+    ret = new BasicOperator(this.tokenIntType, seriesPath, seriesValue);
+    ret.tokenSymbol = tokenSymbol;
+    ret.isLeaf = isLeaf;
+    ret.isSingle = isSingle;
+    return ret;
+  }
+
+  @Override
+  public String toString() {
+    return "[" + seriesPath + tokenSymbol + seriesValue + "]";
+  }
 }

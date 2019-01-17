@@ -1,9 +1,13 @@
 /**
  * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
@@ -19,74 +23,76 @@
 package org.apache.iotdb.jdbc.jdbcDemo;
 
 import java.sql.Connection;
+import java.sql.DatabaseMetaData;
 import java.sql.DriverManager;
+import java.sql.ResultSet;
 import java.sql.Statement;
 import java.text.SimpleDateFormat;
 import java.util.Date;
-import java.sql.ResultSet;
-import java.sql.DatabaseMetaData;
 
 public class SendDataToIotdb {
-	Connection connection = null;
-	Statement statement = null;
-	ResultSet resultSet = null;
 
-	public void connectToIotdb() throws Exception {
-		// 1. load JDBC driver of IoTDB
-		Class.forName("org.apache.iotdb.jdbc.TsfileDriver");
-		// 2. DriverManager connect to IoTDB
-		connection = DriverManager.getConnection(Config.IOTDB_URL_PREFIX+"127.0.0.1:6667/", "root", "root");
+  Connection connection = null;
+  Statement statement = null;
+  ResultSet resultSet = null;
 
-		statement = connection.createStatement();
-	}
+  public static void main(String[] args) throws Exception {
+    SendDataToIotdb sendDataToIotdb = new SendDataToIotdb();
+    sendDataToIotdb.connectToIotdb();
+    sendDataToIotdb.writeData("sensor1,2017/10/24 19:33:00,40 41 42");
+    sendDataToIotdb.writeData("sensor2,2017/10/24 19:33:00,140 141 142");
+    sendDataToIotdb.writeData("sensor3,2017/10/24 19:33:00,240 241 242");
+    sendDataToIotdb.writeData("sensor4,2017/10/24 19:33:00,340 341 342");
+    sendDataToIotdb.readData("root.vehicle.sensor.sensor4");
+  }
 
-	public void writeData(String out) throws Exception { // write data to IoTDB
+  public void connectToIotdb() throws Exception {
+    // 1. load JDBC driver of IoTDB
+    Class.forName("org.apache.iotdb.jdbc.IoTDBDriver");
+    // 2. DriverManager connect to IoTDB
+    connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
 
-		String item[] = out.split(",");
+    statement = connection.createStatement();
+  }
 
-		// get table structure information from IoTDB-JDBC
-		DatabaseMetaData databaseMetaData = connection.getMetaData();
+  public void writeData(String out) throws Exception { // write data to IoTDB
 
-		// String path is the path to insert
-		String path = "root.vehicle.sensor." + item[0];
+    String item[] = out.split(",");
 
-		// get path set iterator
-		resultSet = databaseMetaData.getColumns(null, null, path, null);
+    // get table structure information from IoTDB-JDBC
+    DatabaseMetaData databaseMetaData = connection.getMetaData();
 
-		// if path set iterator is null, then create path
-		if (!resultSet.next()) {
-			String epl = "CREATE TIMESERIES " + path + " WITH DATATYPE=TEXT, ENCODING=PLAIN";
-			statement.execute(epl);
-		}
-		// insert data to IoTDB
-		String template = "INSERT INTO root.vehicle.sensor(timestamp,%s) VALUES (%s,'%s')";
-		String epl = String.format(template, item[0], item[1], item[2]);
-		statement.execute(epl);
-	}
+    // String path is the path to insert
+    String path = "root.vehicle.sensor." + item[0];
 
-	public void readData(String path) throws Exception { // read data from IoTDB
+    // get path set iterator
+    resultSet = databaseMetaData.getColumns(null, null, path, null);
 
-		String sql = "select * from root.vehicle";
-		boolean hasResultSet = statement.execute(sql);
-		SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
-		if (hasResultSet) {
-			ResultSet res = statement.getResultSet();
-			System.out.println("                    Time" + "|" + path);
-			while (res.next()) {
-				long time = Long.parseLong(res.getString("Time"));
-				String dateTime = dateFormat.format(new Date(time));
-				System.out.println(dateTime + " | " + res.getString(path));
-			}
-		}
-	}
+    // if path set iterator is null, then create path
+    if (!resultSet.next()) {
+      String epl = "CREATE TIMESERIES " + path + " WITH DATATYPE=TEXT, ENCODING=PLAIN";
+      statement.execute(epl);
+    }
+    // insert data to IoTDB
+    String template = "INSERT INTO root.vehicle.sensor(timestamp,%s) VALUES (%s,'%s')";
+    String epl = String.format(template, item[0], item[1], item[2]);
+    statement.execute(epl);
+  }
 
-	public static void main(String[] args) throws Exception {
-		SendDataToIotdb sendDataToIotdb = new SendDataToIotdb();
-		sendDataToIotdb.connectToIotdb();
-		sendDataToIotdb.writeData("sensor1,2017/10/24 19:33:00,40 41 42");
-		sendDataToIotdb.writeData("sensor2,2017/10/24 19:33:00,140 141 142");
-		sendDataToIotdb.writeData("sensor3,2017/10/24 19:33:00,240 241 242");
-		sendDataToIotdb.writeData("sensor4,2017/10/24 19:33:00,340 341 342");
-		sendDataToIotdb.readData("root.vehicle.sensor.sensor4");
-	}
+  public void readData(String path) throws Exception { // read data from IoTDB
+
+    String sql = "select * from root.vehicle";
+    boolean hasResultSet = statement.execute(sql);
+    SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
+    if (hasResultSet) {
+      ResultSet res = statement.getResultSet();
+      System.out.println("                    Time" + "|" + path);
+      while (res.next()) {
+        long time = Long.parseLong(res.getString("Time"));
+        String dateTime = dateFormat.format(new Date(time));
+        System.out.println(dateTime + " | " + res.getString(path));
+      }
+    }
+  }
 }

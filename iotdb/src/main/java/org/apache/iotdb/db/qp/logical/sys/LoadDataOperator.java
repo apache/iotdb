@@ -1,9 +1,13 @@
 /**
  * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
@@ -18,24 +22,28 @@ package org.apache.iotdb.db.qp.logical.sys;
 import org.apache.iotdb.db.qp.logical.RootOperator;
 
 /**
- * this class maintains information in Author statement, including CREATE, DROP, GRANT and REVOKE
+ * this class maintains information in Author statement, including CREATE, DROP, GRANT and REVOKE.
  */
 public class LoadDataOperator extends RootOperator {
-    private final String inputFilePath;
-    private final String measureType;
 
-    public LoadDataOperator(int tokenIntType, String inputFilePath, String measureType) {
-        super(tokenIntType);
-        operatorType = OperatorType.LOADDATA;
-        this.inputFilePath = inputFilePath;
-        this.measureType = measureType;
-    }
+  private final String inputFilePath;
+  private final String measureType;
 
-    public String getInputFilePath() {
-        return inputFilePath;
-    }
+  /**
+   * Constructor of LoadDataOperator.
+   */
+  public LoadDataOperator(int tokenIntType, String inputFilePath, String measureType) {
+    super(tokenIntType);
+    operatorType = OperatorType.LOADDATA;
+    this.inputFilePath = inputFilePath;
+    this.measureType = measureType;
+  }
 
-    public String getMeasureType() {
-        return measureType;
-    }
+  public String getInputFilePath() {
+    return inputFilePath;
+  }
+
+  public String getMeasureType() {
+    return measureType;
+  }
 }

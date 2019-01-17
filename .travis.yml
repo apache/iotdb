@@ -35,7 +35,7 @@ before_install: true
 # skip `install` stage
 install: true
 
-script: 
+script:
   - mvn clean package -Dmaven.test.skip=true
   # For each test, travis-ci limits its output log. So we cannot test some sub-modules like tsfile, iotdb.
   # We only test jdbc to ensure maven commands work correctly on travis-ci.

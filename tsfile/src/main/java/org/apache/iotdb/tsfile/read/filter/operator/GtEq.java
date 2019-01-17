@@ -1,9 +1,13 @@
 /**
  * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
@@ -20,49 +24,49 @@ import org.apache.iotdb.tsfile.read.filter.basic.UnaryFilter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterType;
 
 /**
- * Greater than or Equals
+ * Greater than or Equals filter.
  *
  * @param <T>
  *            comparable data type
  */
 public class GtEq<T extends Comparable<T>> extends UnaryFilter<T> {
 
-    private static final long serialVersionUID = -2088181659871608986L;
+  private static final long serialVersionUID = -2088181659871608986L;
 
-    public GtEq(T value, FilterType filterType) {
-        super(value, filterType);
-    }
+  public GtEq(T value, FilterType filterType) {
+    super(value, filterType);
+  }
 
-    @Override
-    public boolean satisfy(DigestForFilter digest) {
-        if (filterType == FilterType.TIME_FILTER) {
-            return ((Long) value) <= digest.getMaxTime();
-        } else {
-            return value.compareTo(digest.getMaxValue()) <= 0;
-        }
+  @Override
+  public boolean satisfy(DigestForFilter digest) {
+    if (filterType == FilterType.TIME_FILTER) {
+      return ((Long) value) <= digest.getMaxTime();
+    } else {
+      return value.compareTo(digest.getMaxValue()) <= 0;
     }
+  }
 
-    @Override
-    public boolean satisfy(long time, Object value) {
-        Object v = filterType == FilterType.TIME_FILTER ? time : value;
-        return this.value.compareTo((T) v) <= 0;
-    }
+  @Override
+  public boolean satisfy(long time, Object value) {
+    Object v = filterType == FilterType.TIME_FILTER ? time : value;
+    return this.value.compareTo((T) v) <= 0;
+  }
 
-    @Override
-    public boolean satisfyStartEndTime(long startTime, long endTime) {
-        if (filterType == FilterType.TIME_FILTER) {
-            long time = (Long) value;
-            if (time > endTime) {
-                return false;
-            }
-            return true;
-        } else {
-            return true;
-        }
+  @Override
+  public boolean satisfyStartEndTime(long startTime, long endTime) {
+    if (filterType == FilterType.TIME_FILTER) {
+      long time = (Long) value;
+      if (time > endTime) {
+        return false;
+      }
+      return true;
+    } else {
+      return true;
     }
+  }
 
-    @Override
-    public String toString() {
-        return getFilterType() + " >= " + value;
-    }
+  @Override
+  public String toString() {
+    return getFilterType() + " >= " + value;
+  }
 }

@@ -1,9 +1,13 @@
 /**
  * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
@@ -19,30 +23,32 @@ import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
 public interface QueryJobFuture {
 
-    /**
-     * Wait until corresponding QueryJob is finished. This method is synchronized and invoking this method will block
-     * current thread. An InterruptedException will be thrown if current thread is interrupted.
-     */
-    void waitToFinished() throws InterruptedException;
+  /**
+   * Wait until corresponding QueryJob is finished. This method is synchronized and invoking this
+   * method will block current thread. An InterruptedException will be thrown if current thread is
+   * interrupted.
+   */
+  void waitToFinished() throws InterruptedException;
 
-    /**
-     * Terminate corresponding QueryJob. This method is synchronized and invoking will be blocked until corresponding
-     * QueryJob is terminated. This method is synchronized and invoking this method will block current thread. An
-     * InterruptedException will be thrown if current thread is interrupted.
-     */
-    void terminateCurrentJob() throws InterruptedException;
+  /**
+   * Terminate corresponding QueryJob. This method is synchronized and invoking will be blocked
+   * until corresponding QueryJob is terminated. This method is synchronized and invoking this
+   * method will block current thread. An InterruptedException will be thrown if current thread is
+   * interrupted.
+   */
+  void terminateCurrentJob() throws InterruptedException;
 
-    /**
-     * Get current status of corresponding QueryJob
-     * 
-     * @return status
-     */
-    QueryJobStatus getCurrentStatus();
+  /**
+   * Get current status of corresponding QueryJob.
+   *
+   * @return status
+   */
+  QueryJobStatus getCurrentStatus();
 
-    /**
-     * Retrieve OnePassQueryDataSet from EngineQueryRouter result pool.
-     * 
-     * @return null if the queryJob is not finished.
-     */
-    QueryDataSet retrieveQueryDataSet();
+  /**
+   * Retrieve OnePassQueryDataSet from EngineQueryRouter result pool.
+   *
+   * @return null if the queryJob is not finished.
+   */
+  QueryDataSet retrieveQueryDataSet();
 }

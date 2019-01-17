@@ -1,9 +1,13 @@
 /**
  * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
@@ -22,81 +26,84 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 /**
- * Metadata of overflow series list
+ * Metadata of overflow series list.
  */
 public class OFSeriesListMetadata {
 
-    private String measurementId;
-    private List<ChunkMetaData> timeSeriesList;
+  private String measurementId;
+  private List<ChunkMetaData> timeSeriesList;
 
-    private OFSeriesListMetadata() {
-    }
+  private OFSeriesListMetadata() {
+  }
 
-    public OFSeriesListMetadata(String measurementId, List<ChunkMetaData> timeSeriesList) {
-        this.measurementId = measurementId;
-        this.timeSeriesList = timeSeriesList;
-    }
+  public OFSeriesListMetadata(String measurementId, List<ChunkMetaData> timeSeriesList) {
+    this.measurementId = measurementId;
+    this.timeSeriesList = timeSeriesList;
+  }
 
-    /**
-     * add TimeSeriesChunkMetaData to timeSeriesList
-     * 
-     * @param timeSeries
-     */
-    public void addSeriesMetaData(ChunkMetaData timeSeries) {
-        if (timeSeriesList == null) {
-            timeSeriesList = new ArrayList<ChunkMetaData>();
-        }
-        timeSeriesList.add(timeSeries);
+  /**
+   * function for deserializing data from input stream.
+   */
+  public static OFSeriesListMetadata deserializeFrom(InputStream inputStream) throws IOException {
+    OFSeriesListMetadata ofSeriesListMetadata = new OFSeriesListMetadata();
+    ofSeriesListMetadata.measurementId = ReadWriteIOUtils.readString(inputStream);
+    int size = ReadWriteIOUtils.readInt(inputStream);
+    List<ChunkMetaData> list = new ArrayList<>();
+    for (int i = 0; i < size; i++) {
+      ChunkMetaData chunkMetaData = ChunkMetaData.deserializeFrom(inputStream);
+      list.add(chunkMetaData);
     }
+    ofSeriesListMetadata.timeSeriesList = list;
+    return ofSeriesListMetadata;
+  }
 
-    public List<ChunkMetaData> getMetaDatas() {
-        return timeSeriesList == null ? null : Collections.unmodifiableList(timeSeriesList);
-    }
+  public static OFSeriesListMetadata deserializeFrom(ByteBuffer buffer) throws IOException {
+    throw new NotImplementedException();
+  }
 
-    @Override
-    public String toString() {
-        return String.format("OFSeriesListMetadata{ measurementId id: %s, series: %s }", measurementId,
-                timeSeriesList.toString());
+  /**
+   * add TimeSeriesChunkMetaData to timeSeriesList.
+   */
+  public void addSeriesMetaData(ChunkMetaData timeSeries) {
+    if (timeSeriesList == null) {
+      timeSeriesList = new ArrayList<ChunkMetaData>();
     }
+    timeSeriesList.add(timeSeries);
+  }
 
-    public String getMeasurementId() {
-        return measurementId;
-    }
+  public List<ChunkMetaData> getMetaDatas() {
+    return timeSeriesList == null ? null : Collections.unmodifiableList(timeSeriesList);
+  }
 
-    public int serializeTo(OutputStream outputStream) throws IOException {
-        int byteLen = 0;
-        byteLen += ReadWriteIOUtils.write(measurementId, outputStream);
-        byteLen += ReadWriteIOUtils.write(timeSeriesList.size(), outputStream);
-        for (ChunkMetaData chunkMetaData : timeSeriesList) {
-            byteLen += chunkMetaData.serializeTo(outputStream);
-        }
-        return byteLen;
-    }
+  @Override
+  public String toString() {
+    return String.format("OFSeriesListMetadata{ measurementId id: %s, series: %s }", measurementId,
+        timeSeriesList.toString());
+  }
 
-    public int serializeTo(ByteBuffer buffer) throws IOException {
-        throw new NotImplementedException();
-    }
+  public String getMeasurementId() {
+    return measurementId;
+  }
 
-    public static OFSeriesListMetadata deserializeFrom(InputStream inputStream) throws IOException {
-        OFSeriesListMetadata ofSeriesListMetadata = new OFSeriesListMetadata();
-        ofSeriesListMetadata.measurementId = ReadWriteIOUtils.readString(inputStream);
-        int size = ReadWriteIOUtils.readInt(inputStream);
-        List<ChunkMetaData> list = new ArrayList<>();
-        for (int i = 0; i < size; i++) {
-            ChunkMetaData chunkMetaData = ChunkMetaData.deserializeFrom(inputStream);
-            list.add(chunkMetaData);
-        }
-        ofSeriesListMetadata.timeSeriesList = list;
-        return ofSeriesListMetadata;
+  /**
+   * function for serializing data to output stream.
+   */
+  public int serializeTo(OutputStream outputStream) throws IOException {
+    int byteLen = 0;
+    byteLen += ReadWriteIOUtils.write(measurementId, outputStream);
+    byteLen += ReadWriteIOUtils.write(timeSeriesList.size(), outputStream);
+    for (ChunkMetaData chunkMetaData : timeSeriesList) {
+      byteLen += chunkMetaData.serializeTo(outputStream);
     }
+    return byteLen;
+  }
 
-    public static OFSeriesListMetadata deserializeFrom(ByteBuffer buffer) throws IOException {
-        throw new NotImplementedException();
-    }
+  public int serializeTo(ByteBuffer buffer) throws IOException {
+    throw new NotImplementedException();
+  }
 }

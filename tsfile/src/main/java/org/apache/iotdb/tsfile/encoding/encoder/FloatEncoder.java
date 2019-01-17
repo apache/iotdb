@@ -1,9 +1,13 @@
 /**
  * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
@@ -15,22 +19,19 @@
  */
 package org.apache.iotdb.tsfile.encoding.encoder;
 
-import org.apache.iotdb.tsfile.exception.encoding.TSFileEncodingException;
-import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import org.apache.iotdb.tsfile.encoding.common.EndianType;
+import org.apache.iotdb.tsfile.exception.encoding.TsFileEncodingException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-
 /**
- * Encoder for float or double value using rle or two diff according to following grammar:
- * 
+ * Encoder for float or double value using rle or two-diff according to following grammar.
+ *
  * <pre>
  * {@code
  * float encoder: <maxPointvalue> <encoded-data>
@@ -40,109 +41,110 @@ import java.io.IOException;
  * </pre>
  */
 public class FloatEncoder extends Encoder {
-    private static final Logger LOGGER = LoggerFactory.getLogger(FloatEncoder.class);
-    private Encoder encoder;
 
-    /**
-     * number for accuracy of decimal places
-     */
-    private int maxPointNumber;
+  private static final Logger LOGGER = LoggerFactory.getLogger(FloatEncoder.class);
+  private Encoder encoder;
 
-    /**
-     * maxPointValue = 10^(maxPointNumber)
-     */
-    private double maxPointValue;
+  /**
+   * number for accuracy of decimal places.
+   */
+  private int maxPointNumber;
 
-    /**
-     * flag to check whether maxPointNumber is saved in stream
-     */
-    private boolean isMaxPointNumberSaved;
+  /**
+   * maxPointValue = 10^(maxPointNumber).
+   */
+  private double maxPointValue;
 
-    public FloatEncoder(TSEncoding encodingType, TSDataType dataType, int maxPointNumber) {
-        super(encodingType);
-        this.maxPointNumber = maxPointNumber;
-        calculateMaxPonitNum();
-        isMaxPointNumberSaved = false;
-        if (encodingType == TSEncoding.RLE) {
-            if (dataType == TSDataType.FLOAT) {
-                encoder = new IntRleEncoder(EndianType.LITTLE_ENDIAN);
-            } else if (dataType == TSDataType.DOUBLE) {
-                encoder = new LongRleEncoder(EndianType.LITTLE_ENDIAN);
-            } else {
-                throw new TSFileEncodingException(
-                        String.format("data type %s is not supported by FloatEncoder", dataType));
-            }
-        } else if (encodingType == TSEncoding.TS_2DIFF) {
-            if (dataType == TSDataType.FLOAT) {
-                encoder = new DeltaBinaryEncoder.IntDeltaEncoder();
-            } else if (dataType == TSDataType.DOUBLE) {
-                encoder = new DeltaBinaryEncoder.LongDeltaEncoder();
-            } else {
-                throw new TSFileEncodingException(
-                        String.format("data type %s is not supported by FloatEncoder", dataType));
-            }
-        } else {
-            throw new TSFileEncodingException(
-                    String.format("%s encoding is not supported by FloatEncoder", encodingType));
-        }
+  /**
+   * flag to check whether maxPointNumber is saved in the stream.
+   */
+  private boolean isMaxPointNumberSaved;
+
+  public FloatEncoder(TSEncoding encodingType, TSDataType dataType, int maxPointNumber) {
+    super(encodingType);
+    this.maxPointNumber = maxPointNumber;
+    calculateMaxPonitNum();
+    isMaxPointNumberSaved = false;
+    if (encodingType == TSEncoding.RLE) {
+      if (dataType == TSDataType.FLOAT) {
+        encoder = new IntRleEncoder(EndianType.LITTLE_ENDIAN);
+      } else if (dataType == TSDataType.DOUBLE) {
+        encoder = new LongRleEncoder(EndianType.LITTLE_ENDIAN);
+      } else {
+        throw new TsFileEncodingException(
+            String.format("data type %s is not supported by FloatEncoder", dataType));
+      }
+    } else if (encodingType == TSEncoding.TS_2DIFF) {
+      if (dataType == TSDataType.FLOAT) {
+        encoder = new DeltaBinaryEncoder.IntDeltaEncoder();
+      } else if (dataType == TSDataType.DOUBLE) {
+        encoder = new DeltaBinaryEncoder.LongDeltaEncoder();
+      } else {
+        throw new TsFileEncodingException(
+            String.format("data type %s is not supported by FloatEncoder", dataType));
+      }
+    } else {
+      throw new TsFileEncodingException(
+          String.format("%s encoding is not supported by FloatEncoder", encodingType));
     }
+  }
 
-    @Override
-    public void encode(float value, ByteArrayOutputStream out) throws IOException {
-        saveMaxPointNumber(out);
-        int valueInt = convertFloatToInt(value);
-        encoder.encode(valueInt, out);
-    }
+  @Override
+  public void encode(float value, ByteArrayOutputStream out) throws IOException {
+    saveMaxPointNumber(out);
+    int valueInt = convertFloatToInt(value);
+    encoder.encode(valueInt, out);
+  }
 
-    @Override
-    public void encode(double value, ByteArrayOutputStream out) throws IOException {
-        saveMaxPointNumber(out);
-        long valueLong = convertDoubleToLong(value);
-        encoder.encode(valueLong, out);
-    }
+  @Override
+  public void encode(double value, ByteArrayOutputStream out) throws IOException {
+    saveMaxPointNumber(out);
+    long valueLong = convertDoubleToLong(value);
+    encoder.encode(valueLong, out);
+  }
 
-    private void calculateMaxPonitNum() {
-        if (maxPointNumber <= 0) {
-            maxPointNumber = 0;
-            maxPointValue = 1;
-        } else {
-            maxPointValue = Math.pow(10, maxPointNumber);
-        }
+  private void calculateMaxPonitNum() {
+    if (maxPointNumber <= 0) {
+      maxPointNumber = 0;
+      maxPointValue = 1;
+    } else {
+      maxPointValue = Math.pow(10, maxPointNumber);
     }
+  }
 
-    private int convertFloatToInt(float value) {
-        return (int) Math.round(value * maxPointValue);
-    }
+  private int convertFloatToInt(float value) {
+    return (int) Math.round(value * maxPointValue);
+  }
 
-    private long convertDoubleToLong(double value) {
-        return Math.round(value * maxPointValue);
-    }
+  private long convertDoubleToLong(double value) {
+    return Math.round(value * maxPointValue);
+  }
 
-    @Override
-    public void flush(ByteArrayOutputStream out) throws IOException {
-        encoder.flush(out);
-        reset();
-    }
+  @Override
+  public void flush(ByteArrayOutputStream out) throws IOException {
+    encoder.flush(out);
+    reset();
+  }
 
-    private void reset() {
-        isMaxPointNumberSaved = false;
-    }
+  private void reset() {
+    isMaxPointNumberSaved = false;
+  }
 
-    private void saveMaxPointNumber(ByteArrayOutputStream out) throws IOException {
-        if (!isMaxPointNumberSaved) {
-            ReadWriteForEncodingUtils.writeUnsignedVarInt(maxPointNumber, out);
-            isMaxPointNumberSaved = true;
-        }
+  private void saveMaxPointNumber(ByteArrayOutputStream out) throws IOException {
+    if (!isMaxPointNumberSaved) {
+      ReadWriteForEncodingUtils.writeUnsignedVarInt(maxPointNumber, out);
+      isMaxPointNumberSaved = true;
     }
+  }
 
-    @Override
-    public int getOneItemMaxSize() {
-        return encoder.getOneItemMaxSize();
-    }
+  @Override
+  public int getOneItemMaxSize() {
+    return encoder.getOneItemMaxSize();
+  }
 
-    @Override
-    public long getMaxByteSize() {
-        return encoder.getMaxByteSize();
-    }
+  @Override
+  public long getMaxByteSize() {
+    return encoder.getMaxByteSize();
+  }
 
 }

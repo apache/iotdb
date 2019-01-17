@@ -1,9 +1,13 @@
 /**
  * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
@@ -17,49 +21,55 @@ package org.apache.iotdb.db.metadata;
 
 import java.util.List;
 import java.util.Map;
-
-import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
 
 /**
- * This class stores all the metadata info for every deviceId and every timeseries
+ * This class stores all the metadata info for every deviceId and every timeseries.
  */
 public class Metadata {
-    private Map<String, List<ColumnSchema>> seriesMap;
-    private Map<String, List<String>> deviceIdMap;
 
-    public Metadata(Map<String, List<ColumnSchema>> seriesMap, Map<String, List<String>> deviceIdMap) {
-        this.seriesMap = seriesMap;
-        this.deviceIdMap = deviceIdMap;
-    }
+  private Map<String, List<ColumnSchema>> seriesMap;
+  private Map<String, List<String>> deviceIdMap;
 
-    public List<ColumnSchema> getSeriesForOneType(String type) throws PathErrorException {
-        if (this.seriesMap.containsKey(type)) {
-            return seriesMap.get(type);
-        } else {
-            throw new PathErrorException("Input deviceIdType is not exist. " + type);
-        }
-    }
+  public Metadata(Map<String, List<ColumnSchema>> seriesMap,
+      Map<String, List<String>> deviceIdMap) {
+    this.seriesMap = seriesMap;
+    this.deviceIdMap = deviceIdMap;
+  }
 
-    public List<String> getDevicesForOneType(String type) throws PathErrorException {
-        if (this.seriesMap.containsKey(type)) {
-            return deviceIdMap.get(type);
-        } else {
-            throw new PathErrorException("Input deviceIdType is not exist. " + type);
-        }
+  /**
+   * function for getting series for one type.
+   */
+  public List<ColumnSchema> getSeriesForOneType(String type) throws PathErrorException {
+    if (this.seriesMap.containsKey(type)) {
+      return seriesMap.get(type);
+    } else {
+      throw new PathErrorException("Input deviceIdType is not exist. " + type);
     }
+  }
 
-    public Map<String, List<ColumnSchema>> getSeriesMap() {
-        return seriesMap;
+  /**
+   * function for getting devices for one type.
+   */
+  public List<String> getDevicesForOneType(String type) throws PathErrorException {
+    if (this.seriesMap.containsKey(type)) {
+      return deviceIdMap.get(type);
+    } else {
+      throw new PathErrorException("Input deviceIdType is not exist. " + type);
     }
+  }
 
-    public Map<String, List<String>> getDeviceMap() {
-        return deviceIdMap;
-    }
+  public Map<String, List<ColumnSchema>> getSeriesMap() {
+    return seriesMap;
+  }
 
-    @Override
-    public String toString() {
-        return seriesMap.toString() + "\n" + deviceIdMap.toString();
-    }
+  public Map<String, List<String>> getDeviceMap() {
+    return deviceIdMap;
+  }
+
+  @Override
+  public String toString() {
+    return seriesMap.toString() + "\n" + deviceIdMap.toString();
+  }
 
 }

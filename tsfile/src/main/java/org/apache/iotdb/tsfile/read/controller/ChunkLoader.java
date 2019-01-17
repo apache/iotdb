@@ -1,9 +1,13 @@
 /**
  * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
@@ -15,22 +19,20 @@
  */
 package org.apache.iotdb.tsfile.read.controller;
 
-import org.apache.iotdb.tsfile.read.common.Chunk;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
-
 import java.io.IOException;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
+import org.apache.iotdb.tsfile.read.common.Chunk;
 
 public interface ChunkLoader {
 
-    /**
-     * read all content of any chunk
-     */
-    Chunk getChunk(ChunkMetaData chunkMetaData) throws IOException;
+  /**
+   * read all content of any chunk.
+   */
+  Chunk getChunk(ChunkMetaData chunkMetaData) throws IOException;
 
-    /**
-     * close the file reader
-     */
-    void close() throws IOException;
+  /**
+   * close the file reader.
+   */
+  void close() throws IOException;
 
 }

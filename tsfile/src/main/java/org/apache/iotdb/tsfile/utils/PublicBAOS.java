@@ -1,9 +1,13 @@
 /**
  * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
@@ -25,31 +29,31 @@ import java.io.ByteArrayOutputStream;
  */
 public class PublicBAOS extends ByteArrayOutputStream {
 
-    public PublicBAOS(int size) {
-        super(size);
-    }
+  public PublicBAOS(int size) {
+    super(size);
+  }
 
-    public PublicBAOS() {
-        super();
-    }
+  public PublicBAOS() {
+    super();
+  }
 
-    /**
-     * get current all bytes data
-     *
-     * @return all bytes data
-     */
-    public byte[] getBuf() {
+  /**
+   * get current all bytes data
+   *
+   * @return all bytes data
+   */
+  public byte[] getBuf() {
 
-        return this.buf;
-    }
+    return this.buf;
+  }
 
-    /**
-     * Construct one {@link ByteArrayInputStream} from the buff data
-     *
-     * @return one {@link ByteArrayInputStream} have all buff data
-     */
-    public ByteArrayInputStream transformToInputStream() {
-        return new ByteArrayInputStream(this.buf, 0, size());
-    }
+  /**
+   * Construct one {@link ByteArrayInputStream} from the buff data
+   *
+   * @return one {@link ByteArrayInputStream} have all buff data
+   */
+  public ByteArrayInputStream transformToInputStream() {
+    return new ByteArrayInputStream(this.buf, 0, size());
+  }
 
 }

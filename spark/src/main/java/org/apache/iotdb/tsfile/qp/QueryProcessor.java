@@ -1,9 +1,13 @@
 /**
  * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
@@ -15,6 +19,9 @@
  */
 package org.apache.iotdb.tsfile.qp;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.iotdb.tsfile.common.utils.ITsRandomAccessFileReader;
 import org.apache.iotdb.tsfile.qp.common.FilterOperator;
 import org.apache.iotdb.tsfile.qp.common.SQLConstant;
@@ -26,9 +33,6 @@ import org.apache.iotdb.tsfile.qp.optimizer.DNFFilterOptimizer;
 import org.apache.iotdb.tsfile.qp.optimizer.MergeSingleFilterOptimizer;
 import org.apache.iotdb.tsfile.qp.optimizer.PhysicalOptimizer;
 import org.apache.iotdb.tsfile.qp.optimizer.RemoveNotOptimizer;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 
 
 /**
@@ -41,105 +45,110 @@ import java.util.List;
  */
 public class QueryProcessor {
 
-    //construct logical query plans first, then convert them to physical ones
-    public List<TSQueryPlan> generatePlans(FilterOperator filter, List<String> paths, List<String> columnNames,
-                                           ITsRandomAccessFileReader in, Long start, Long end) throws QueryProcessorException, IOException {
+  //construct logical query plans first, then convert them to physical ones
+  public List<TSQueryPlan> generatePlans(FilterOperator filter, List<String> paths,
+      List<String> columnNames,
+      ITsRandomAccessFileReader in, Long start, Long end)
+      throws QueryProcessorException, IOException {
 
-        List<TSQueryPlan> queryPlans = new ArrayList<>();
+    List<TSQueryPlan> queryPlans = new ArrayList<>();
 
-        if(filter != null) {
-            RemoveNotOptimizer removeNot = new RemoveNotOptimizer();
-            filter = removeNot.optimize(filter);
+    if (filter != null) {
+      RemoveNotOptimizer removeNot = new RemoveNotOptimizer();
+      filter = removeNot.optimize(filter);
 
-            DNFFilterOptimizer dnf = new DNFFilterOptimizer();
-            filter = dnf.optimize(filter);
+      DNFFilterOptimizer dnf = new DNFFilterOptimizer();
+      filter = dnf.optimize(filter);
 
-            MergeSingleFilterOptimizer merge = new MergeSingleFilterOptimizer();
-            filter = merge.optimize(filter);
+      MergeSingleFilterOptimizer merge = new MergeSingleFilterOptimizer();
+      filter = merge.optimize(filter);
 
-            List<FilterOperator> filterOperators = splitFilter(filter);
+      List<FilterOperator> filterOperators = splitFilter(filter);
 
-            for (FilterOperator filterOperator : filterOperators) {
-                SingleQuery singleQuery = constructSelectPlan(filterOperator, columnNames);
-                if (singleQuery != null) {
-                    queryPlans.addAll(new PhysicalOptimizer(columnNames).optimize(singleQuery, paths, in, start, end));
-                }
-            }
+      for (FilterOperator filterOperator : filterOperators) {
+        SingleQuery singleQuery = constructSelectPlan(filterOperator, columnNames);
+        if (singleQuery != null) {
+          queryPlans.addAll(
+              new PhysicalOptimizer(columnNames).optimize(singleQuery, paths, in, start, end));
+        }
+      }
+    } else {
+      queryPlans.addAll(new PhysicalOptimizer(columnNames).optimize(null, paths, in, start, end));
+    }
+    return queryPlans;
+  }
+
+  private List<FilterOperator> splitFilter(FilterOperator filterOperator) {
+    if (filterOperator.isSingle() || filterOperator.getTokenIntType() != SQLConstant.KW_OR) {
+      List<FilterOperator> ret = new ArrayList<>();
+      ret.add(filterOperator);
+      return ret;
+    }
+    // a list of conjunctions linked by or
+    return filterOperator.childOperators;
+  }
+
+  private SingleQuery constructSelectPlan(FilterOperator filterOperator, List<String> columnNames)
+      throws QueryOperatorException {
+    FilterOperator timeFilter = null;
+    FilterOperator valueFilter = null;
+    List<FilterOperator> columnFilterOperators = new ArrayList<>();
+
+    List<FilterOperator> singleFilterList = null;
+
+    if (filterOperator.isSingle()) {
+      singleFilterList = new ArrayList<>();
+      singleFilterList.add(filterOperator);
+
+    } else if (filterOperator.getTokenIntType() == SQLConstant.KW_AND) {
+      // original query plan has been dealt with merge optimizer, thus all nodes with same path have been
+      // merged to one node
+      singleFilterList = filterOperator.getChildren();
+    }
+
+    if (singleFilterList == null) {
+      return null;
+    }
+
+    List<FilterOperator> valueList = new ArrayList<>();
+    for (FilterOperator child : singleFilterList) {
+      if (!child.isSingle()) {
+        valueList.add(child);
+      } else {
+        String singlePath = child.getSinglePath();
+        if (columnNames.contains(singlePath)) {
+          if (!columnFilterOperators.contains(child)) {
+            columnFilterOperators.add(child);
+          } else {
+            throw new QueryOperatorException(
+                "The same key filter has been specified more than once: " + singlePath);
+          }
         } else {
-            queryPlans.addAll(new PhysicalOptimizer(columnNames).optimize(null, paths, in, start, end));
+          switch (child.getSinglePath()) {
+            case RESERVED_TIME:
+              if (timeFilter != null) {
+                throw new QueryOperatorException(
+                    "time filter has been specified more than once");
+              }
+              timeFilter = child;
+              break;
+            default:
+              valueList.add(child);
+              break;
+          }
         }
-        return queryPlans;
+      }
     }
 
-    private List<FilterOperator> splitFilter(FilterOperator filterOperator) {
-        if (filterOperator.isSingle() || filterOperator.getTokenIntType() != SQLConstant.KW_OR) {
-            List<FilterOperator> ret = new ArrayList<>();
-            ret.add(filterOperator);
-            return ret;
-        }
-        // a list of conjunctions linked by or
-        return filterOperator.childOperators;
+    if (valueList.size() == 1) {
+      valueFilter = valueList.get(0);
+
+    } else if (valueList.size() > 1) {
+      valueFilter = new FilterOperator(SQLConstant.KW_AND, false);
+      valueFilter.childOperators = valueList;
     }
 
-    private SingleQuery constructSelectPlan(FilterOperator filterOperator, List<String> columnNames) throws QueryOperatorException {
-        FilterOperator timeFilter = null;
-        FilterOperator valueFilter = null;
-        List<FilterOperator> columnFilterOperators = new ArrayList<>();
-
-        List<FilterOperator> singleFilterList = null;
-
-        if (filterOperator.isSingle()) {
-            singleFilterList = new ArrayList<>();
-            singleFilterList.add(filterOperator);
-
-        } else if (filterOperator.getTokenIntType() == SQLConstant.KW_AND) {
-            // original query plan has been dealt with merge optimizer, thus all nodes with same path have been
-            // merged to one node
-            singleFilterList = filterOperator.getChildren();
-        }
-
-        if(singleFilterList == null) {
-            return null;
-        }
-
-        List<FilterOperator> valueList = new ArrayList<>();
-        for (FilterOperator child : singleFilterList) {
-            if (!child.isSingle()) {
-                valueList.add(child);
-            } else {
-                String singlePath = child.getSinglePath();
-                if (columnNames.contains(singlePath)) {
-                    if(!columnFilterOperators.contains(child))
-                        columnFilterOperators.add(child);
-                    else
-                        throw new QueryOperatorException(
-                                "The same key filter has been specified more than once: " + singlePath);
-                } else {
-                    switch (child.getSinglePath()) {
-                        case RESERVED_TIME:
-                            if (timeFilter != null) {
-                                throw new QueryOperatorException(
-                                        "time filter has been specified more than once");
-                            }
-                            timeFilter = child;
-                            break;
-                        default:
-                            valueList.add(child);
-                            break;
-                    }
-                }
-            }
-        }
-
-        if (valueList.size() == 1) {
-            valueFilter = valueList.get(0);
-
-        } else if (valueList.size() > 1) {
-            valueFilter = new FilterOperator(SQLConstant.KW_AND, false);
-            valueFilter.childOperators = valueList;
-        }
-
-        return new SingleQuery(columnFilterOperators, timeFilter, valueFilter);
-    }
+    return new SingleQuery(columnFilterOperators, timeFilter, valueFilter);
+  }
 
 }
