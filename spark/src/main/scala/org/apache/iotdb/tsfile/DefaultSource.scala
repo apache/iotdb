@@ -1,9 +1,13 @@
 /**
  * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
@@ -13,44 +17,29 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+/**
+  * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+  *
+  * Licensed under the Apache License, Version 2.0 (the "License");
+  * you may not use this file except in compliance with the License.
+  * You may obtain a copy of the License at
+  *
+  * http://www.apache.org/licenses/LICENSE-2.0
+  *
+  * Unless required by applicable law or agreed to in writing, software
+  * distributed under the License is distributed on an "AS IS" BASIS,
+  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  * See the License for the specific language governing permissions and
+  * limitations under the License.
+  */
 package org.apache.iotdb.tsfile
 
-import java.io._
+import java.io.{ObjectInputStream, ObjectOutputStream, _}
 import java.net.URI
 import java.util
 
-import org.apache.iotdb.tsfile.common.constant.QueryConstant
-import org.apache.iotdb.tsfile.DefaultSource.SerializableConfiguration
-import org.apache.iotdb.tsfile.timeseries.read.query.dataset.QueryDataSet
-import org.apache.hadoop.conf.Configuration
-import org.apache.hadoop.fs.{FileStatus, Path}
-import org.apache.hadoop.mapreduce.Job
-import org.apache.spark.TaskContext
-import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.catalyst.InternalRow
-import org.apache.spark.sql.catalyst.encoders.RowEncoder
-import org.apache.spark.sql.catalyst.expressions.GenericRow
-import org.apache.spark.sql.execution.datasources.{FileFormat, OutputWriterFactory, PartitionedFile}
-import org.apache.spark.sql.sources.{DataSourceRegister, Filter}
-import org.apache.spark.sql.types.{StructField, StructType}
-import org.slf4j.LoggerFactory
-import java.io.{ObjectInputStream, ObjectOutputStream}
-import org.apache.iotdb.tsfile.timeseries.read.support.{Field, RowRecord}
-import org.apache.iotdb.tsfile.io.HDFSInputStream
-import org.apache.iotdb.tsfile.qp.Executor
-import org.apache.iotdb.tsfile.qp.common.SQLConstant
-
-import scala.collection.JavaConversions._
-import scala.collection.mutable
-import scala.collection.mutable.ArrayBuffer
-
 
 private[tsfile] class DefaultSource extends FileFormat with DataSourceRegister {
-
-  class TSFileDataSourceException(message: String, cause: Throwable)
-    extends Exception(message, cause) {
-    def this(message: String) = this(message, null)
-  }
 
   override def equals(other: Any): Boolean = other match {
     case _: DefaultSource => true
@@ -74,7 +63,7 @@ private[tsfile] class DefaultSource extends FileFormat with DataSourceRegister {
     //unfold delta_object
     if (options.contains(SQLConstant.DELTA_OBJECT_NAME)) {
       val columns = options(SQLConstant.DELTA_OBJECT_NAME).split(SQLConstant.REGEX_PATH_SEPARATOR)
-      columns.foreach( f => {
+      columns.foreach(f => {
         DefaultSource.columnNames += f
       })
     } else {
@@ -229,7 +218,7 @@ private[tsfile] class DefaultSource extends FileFormat with DataSourceRegister {
     //unfold delta_object
     if (options.contains(SQLConstant.DELTA_OBJECT_NAME)) {
       val columns = options(SQLConstant.DELTA_OBJECT_NAME).split(SQLConstant.REGEX_PATH_SEPARATOR)
-      columns.foreach( f => {
+      columns.foreach(f => {
         DefaultSource.columnNames += f
       })
     } else {
@@ -238,6 +227,11 @@ private[tsfile] class DefaultSource extends FileFormat with DataSourceRegister {
     }
 
     new TsFileWriterFactory(options, DefaultSource.columnNames)
+  }
+
+  class TSFileDataSourceException(message: String, cause: Throwable)
+    extends Exception(message, cause) {
+    def this(message: String) = this(message, null)
   }
 
 }

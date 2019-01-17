@@ -1,9 +1,13 @@
 /**
  * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
@@ -15,6 +19,12 @@
  */
 package org.apache.iotdb.db.writelog.transfer;
 
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
@@ -24,209 +34,207 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.tsfile.utils.Pair;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-
 public enum PhysicalPlanCodec {
 
-    MULTIINSERTPLAN(SystemLogOperator.INSERT, codecInstances.multiInsertPlanCodec), UPDATEPLAN(SystemLogOperator.UPDATE,
-            codecInstances.updatePlanCodec), DELETEPLAN(SystemLogOperator.DELETE, codecInstances.deletePlanCodec);
+  MULTIINSERTPLAN(SystemLogOperator.INSERT, codecInstances.multiInsertPlanCodec), UPDATEPLAN(
+      SystemLogOperator.UPDATE,
+      codecInstances.updatePlanCodec), DELETEPLAN(SystemLogOperator.DELETE,
+      codecInstances.deletePlanCodec);
 
-    private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final HashMap<Integer, PhysicalPlanCodec> codecMap = new HashMap<>();
+  private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
-    public final int planCode;
-    public final Codec<?> codec;
-
-    PhysicalPlanCodec(int planCode, Codec<?> codec) {
-        this.planCode = planCode;
-        this.codec = codec;
+  static {
+    for (PhysicalPlanCodec codec : PhysicalPlanCodec.values()) {
+      codecMap.put(codec.planCode, codec);
     }
+  }
 
-    private static final HashMap<Integer, PhysicalPlanCodec> codecMap = new HashMap<>();
+  public final int planCode;
+  public final Codec<?> codec;
 
-    static {
-        for (PhysicalPlanCodec codec : PhysicalPlanCodec.values()) {
-            codecMap.put(codec.planCode, codec);
+  PhysicalPlanCodec(int planCode, Codec<?> codec) {
+    this.planCode = planCode;
+    this.codec = codec;
+  }
+
+  public static PhysicalPlanCodec fromOpcode(int opcode) {
+    if (!codecMap.containsKey(opcode)) {
+      throw new UnsupportedOperationException(
+          "SystemLogOperator [" + opcode + "] is not supported. ");
+    }
+    return codecMap.get(opcode);
+  }
+
+  static class codecInstances {
+
+    static final Codec<DeletePlan> deletePlanCodec = new Codec<DeletePlan>() {
+      ThreadLocal<ByteBuffer> localBuffer = new ThreadLocal<>();
+
+      @Override
+      public byte[] encode(DeletePlan t) {
+        if (localBuffer.get() == null) {
+          localBuffer.set(ByteBuffer.allocate(config.maxLogEntrySize));
         }
-    }
 
-    public static PhysicalPlanCodec fromOpcode(int opcode) {
-        if (!codecMap.containsKey(opcode)) {
-            throw new UnsupportedOperationException("SystemLogOperator [" + opcode + "] is not supported. ");
+        int type = SystemLogOperator.DELETE;
+        ByteBuffer buffer = localBuffer.get();
+        buffer.clear();
+        buffer.put((byte) type);
+        buffer.putLong(t.getDeleteTime());
+        byte[] pathBytes = BytesUtils.stringToBytes(t.getPaths().get(0).getFullPath());
+        buffer.putInt(pathBytes.length);
+        buffer.put(pathBytes);
+
+        return Arrays.copyOfRange(buffer.array(), 0, buffer.position());
+      }
+
+      @Override
+      public DeletePlan decode(byte[] bytes) throws IOException {
+        ByteBuffer buffer = ByteBuffer.wrap(bytes);
+        int type = buffer.get();
+        long time = buffer.getLong();
+
+        int pathLength = buffer.getInt();
+        byte[] pathBytes = new byte[pathLength];
+        buffer.get(pathBytes, 0, pathLength);
+        String path = BytesUtils.bytesToString(pathBytes);
+
+        return new DeletePlan(time, new Path(path));
+      }
+    };
+
+    static final Codec<UpdatePlan> updatePlanCodec = new Codec<UpdatePlan>() {
+      ThreadLocal<ByteBuffer> localBuffer = new ThreadLocal<>();
+
+      @Override
+      public byte[] encode(UpdatePlan updatePlan) {
+        int type = SystemLogOperator.UPDATE;
+        if (localBuffer.get() == null) {
+          localBuffer.set(ByteBuffer.allocate(config.maxLogEntrySize));
         }
-        return codecMap.get(opcode);
-    }
 
-    static class codecInstances {
+        ByteBuffer buffer = localBuffer.get();
+        buffer.clear();
+        buffer.put((byte) type);
+        buffer.putInt(updatePlan.getIntervals().size());
+        for (Pair<Long, Long> pair : updatePlan.getIntervals()) {
+          buffer.putLong(pair.left);
+          buffer.putLong(pair.right);
+        }
 
-        static final Codec<DeletePlan> deletePlanCodec = new Codec<DeletePlan>() {
-            ThreadLocal<ByteBuffer> localBuffer = new ThreadLocal<>();
+        byte[] valueBytes = BytesUtils.stringToBytes(updatePlan.getValue());
+        buffer.putInt(valueBytes.length);
+        buffer.put(valueBytes);
 
-            @Override
-            public byte[] encode(DeletePlan t) {
-                if (localBuffer.get() == null)
-                    localBuffer.set(ByteBuffer.allocate(config.maxLogEntrySize));
+        byte[] pathBytes = BytesUtils.stringToBytes(updatePlan.getPath().getFullPath());
+        buffer.putInt(pathBytes.length);
+        buffer.put(pathBytes);
 
-                int type = SystemLogOperator.DELETE;
-                ByteBuffer buffer = localBuffer.get();
-                buffer.clear();
-                buffer.put((byte) type);
-                buffer.putLong(t.getDeleteTime());
-                byte[] pathBytes = BytesUtils.StringToBytes(t.getPaths().get(0).getFullPath());
-                buffer.putInt(pathBytes.length);
-                buffer.put(pathBytes);
+        return Arrays.copyOfRange(buffer.array(), 0, buffer.position());
+      }
 
-                return Arrays.copyOfRange(buffer.array(), 0, buffer.position());
-            }
+      @Override
+      public UpdatePlan decode(byte[] bytes) throws IOException {
+        ByteBuffer buffer = ByteBuffer.wrap(bytes);
+        int type = buffer.get();
 
-            @Override
-            public DeletePlan decode(byte[] bytes) throws IOException {
-                ByteBuffer buffer = ByteBuffer.wrap(bytes);
-                int type = buffer.get();
-                long time = buffer.getLong();
+        int timeListBytesLength = buffer.getInt();
+        List<Pair<Long, Long>> timeArrayList = new ArrayList<>(timeListBytesLength);
+        for (int i = 0; i < timeListBytesLength; i++) {
+          long startTime = buffer.getLong();
+          long endTime = buffer.getLong();
+          timeArrayList.add(new Pair<>(startTime, endTime));
+        }
 
-                int pathLength = buffer.getInt();
-                byte[] pathBytes = new byte[pathLength];
-                buffer.get(pathBytes, 0, pathLength);
-                String path = BytesUtils.bytesToString(pathBytes);
+        int valueLength = buffer.getInt();
+        byte[] valueBytes = new byte[valueLength];
+        buffer.get(valueBytes);
+        String value = BytesUtils.bytesToString(valueBytes);
 
-                return new DeletePlan(time, new Path(path));
-            }
-        };
+        int pathLength = buffer.getInt();
+        byte[] pathBytes = new byte[pathLength];
+        buffer.get(pathBytes);
+        String path = BytesUtils.bytesToString(pathBytes);
 
-        static final Codec<UpdatePlan> updatePlanCodec = new Codec<UpdatePlan>() {
-            ThreadLocal<ByteBuffer> localBuffer = new ThreadLocal<>();
+        return new UpdatePlan(timeArrayList, value, new Path(path));
+      }
+    };
 
-            @Override
-            public byte[] encode(UpdatePlan updatePlan) {
-                int type = SystemLogOperator.UPDATE;
-                if (localBuffer.get() == null)
-                    localBuffer.set(ByteBuffer.allocate(config.maxLogEntrySize));
+    static final Codec<InsertPlan> multiInsertPlanCodec = new Codec<InsertPlan>() {
+      ThreadLocal<ByteBuffer> localBuffer = new ThreadLocal<>();
 
-                ByteBuffer buffer = localBuffer.get();
-                buffer.clear();
-                buffer.put((byte) type);
-                buffer.putInt(updatePlan.getIntervals().size());
-                for (Pair<Long, Long> pair : updatePlan.getIntervals()) {
-                    buffer.putLong(pair.left);
-                    buffer.putLong(pair.right);
-                }
+      @Override
+      public byte[] encode(InsertPlan plan) {
+        int type = SystemLogOperator.INSERT;
+        if (localBuffer.get() == null) {
+          localBuffer.set(ByteBuffer.allocate(config.maxLogEntrySize));
+        }
+        ByteBuffer buffer = localBuffer.get();
+        buffer.clear();
+        buffer.put((byte) type);
+        buffer.put((byte) plan.getInsertType());
+        buffer.putLong(plan.getTime());
 
-                byte[] valueBytes = BytesUtils.StringToBytes(updatePlan.getValue());
-                buffer.putInt(valueBytes.length);
-                buffer.put(valueBytes);
+        byte[] deviceBytes = BytesUtils.stringToBytes(plan.getDeviceId());
+        buffer.putInt(deviceBytes.length);
+        buffer.put(deviceBytes);
 
-                byte[] pathBytes = BytesUtils.StringToBytes(updatePlan.getPath().getFullPath());
-                buffer.putInt(pathBytes.length);
-                buffer.put(pathBytes);
+        List<String> measurementList = plan.getMeasurements();
+        buffer.putInt(measurementList.size());
+        for (String m : measurementList) {
+          byte[] mBytes = BytesUtils.stringToBytes(m);
+          buffer.putInt(mBytes.length);
+          buffer.put(mBytes);
+        }
 
-                return Arrays.copyOfRange(buffer.array(), 0, buffer.position());
-            }
+        List<String> valueList = plan.getValues();
+        buffer.putInt(valueList.size());
+        for (String m : valueList) {
+          byte[] vBytes = BytesUtils.stringToBytes(m);
+          buffer.putInt(vBytes.length);
+          buffer.put(vBytes);
+        }
 
-            @Override
-            public UpdatePlan decode(byte[] bytes) throws IOException {
-                ByteBuffer buffer = ByteBuffer.wrap(bytes);
-                int type = buffer.get();
+        return Arrays.copyOfRange(buffer.array(), 0, buffer.position());
+      }
 
-                int timeListBytesLength = buffer.getInt();
-                List<Pair<Long, Long>> timeArrayList = new ArrayList<>(timeListBytesLength);
-                for (int i = 0; i < timeListBytesLength; i++) {
-                    long startTime = buffer.getLong();
-                    long endTime = buffer.getLong();
-                    timeArrayList.add(new Pair<>(startTime, endTime));
-                }
+      @Override
+      public InsertPlan decode(byte[] bytes) throws IOException {
+        ByteBuffer buffer = ByteBuffer.wrap(bytes);
 
-                int valueLength = buffer.getInt();
-                byte[] valueBytes = new byte[valueLength];
-                buffer.get(valueBytes);
-                String value = BytesUtils.bytesToString(valueBytes);
+        int type = buffer.get();
+        int insertType = buffer.get();
+        long time = buffer.getLong();
 
-                int pathLength = buffer.getInt();
-                byte[] pathBytes = new byte[pathLength];
-                buffer.get(pathBytes);
-                String path = BytesUtils.bytesToString(pathBytes);
+        int deltaObjLen = buffer.getInt();
+        byte[] deltaObjBytes = new byte[deltaObjLen];
+        buffer.get(deltaObjBytes);
+        String device = BytesUtils.bytesToString(deltaObjBytes);
 
-                return new UpdatePlan(timeArrayList, value, new Path(path));
-            }
-        };
+        int mmListLength = buffer.getInt();
+        List<String> measurementsList = new ArrayList<>(mmListLength);
+        for (int i = 0; i < mmListLength; i++) {
+          int mmLen = buffer.getInt();
+          byte[] mmBytes = new byte[mmLen];
+          buffer.get(mmBytes);
+          measurementsList.add(BytesUtils.bytesToString(mmBytes));
+        }
 
-        static final Codec<InsertPlan> multiInsertPlanCodec = new Codec<InsertPlan>() {
-            ThreadLocal<ByteBuffer> localBuffer = new ThreadLocal<>();
+        int valueListLength = buffer.getInt();
+        List<String> valuesList = new ArrayList<>(valueListLength);
+        for (int i = 0; i < valueListLength; i++) {
+          int valueLen = buffer.getInt();
+          byte[] valueBytes = new byte[valueLen];
+          buffer.get(valueBytes);
+          valuesList.add(BytesUtils.bytesToString(valueBytes));
+        }
 
-            @Override
-            public byte[] encode(InsertPlan plan) {
-                int type = SystemLogOperator.INSERT;
-                if (localBuffer.get() == null)
-                    localBuffer.set(ByteBuffer.allocate(config.maxLogEntrySize));
-                ByteBuffer buffer = localBuffer.get();
-                buffer.clear();
-                buffer.put((byte) type);
-                buffer.put((byte) plan.getInsertType());
-                buffer.putLong(plan.getTime());
+        InsertPlan ans = new InsertPlan(device, time, measurementsList, valuesList);
+        ans.setInsertType(insertType);
+        return ans;
+      }
+    };
 
-                byte[] deviceBytes = BytesUtils.StringToBytes(plan.getDeviceId());
-                buffer.putInt(deviceBytes.length);
-                buffer.put(deviceBytes);
-
-                List<String> measurementList = plan.getMeasurements();
-                buffer.putInt(measurementList.size());
-                for (String m : measurementList) {
-                    byte[] mBytes = BytesUtils.StringToBytes(m);
-                    buffer.putInt(mBytes.length);
-                    buffer.put(mBytes);
-                }
-
-                List<String> valueList = plan.getValues();
-                buffer.putInt(valueList.size());
-                for (String m : valueList) {
-                    byte[] vBytes = BytesUtils.StringToBytes(m);
-                    buffer.putInt(vBytes.length);
-                    buffer.put(vBytes);
-                }
-
-                return Arrays.copyOfRange(buffer.array(), 0, buffer.position());
-            }
-
-            @Override
-            public InsertPlan decode(byte[] bytes) throws IOException {
-                ByteBuffer buffer = ByteBuffer.wrap(bytes);
-
-                int type = buffer.get();
-                int insertType = buffer.get();
-                long time = buffer.getLong();
-
-                int deltaObjLen = buffer.getInt();
-                byte[] deltaObjBytes = new byte[deltaObjLen];
-                buffer.get(deltaObjBytes);
-                String device = BytesUtils.bytesToString(deltaObjBytes);
-
-                int mmListLength = buffer.getInt();
-                List<String> measurementsList = new ArrayList<>(mmListLength);
-                for (int i = 0; i < mmListLength; i++) {
-                    int mmLen = buffer.getInt();
-                    byte[] mmBytes = new byte[mmLen];
-                    buffer.get(mmBytes);
-                    measurementsList.add(BytesUtils.bytesToString(mmBytes));
-                }
-
-                int valueListLength = buffer.getInt();
-                List<String> valuesList = new ArrayList<>(valueListLength);
-                for (int i = 0; i < valueListLength; i++) {
-                    int valueLen = buffer.getInt();
-                    byte[] valueBytes = new byte[valueLen];
-                    buffer.get(valueBytes);
-                    valuesList.add(BytesUtils.bytesToString(valueBytes));
-                }
-
-                InsertPlan ans = new InsertPlan(device, time, measurementsList, valuesList);
-                ans.setInsertType(insertType);
-                return ans;
-            }
-        };
-
-    }
+  }
 }

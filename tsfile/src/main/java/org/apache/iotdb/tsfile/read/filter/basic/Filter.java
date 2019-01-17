@@ -1,9 +1,13 @@
 /**
  * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
@@ -23,31 +27,31 @@ import org.apache.iotdb.tsfile.read.filter.DigestForFilter;
  */
 public interface Filter {
 
-    /**
-     * To examine whether the digest is satisfied with the filter.
-     *
-     * @param digest
-     *            digest with min time, max time, min value, max value.
-     */
-    boolean satisfy(DigestForFilter digest);
+  /**
+   * To examine whether the digest is satisfied with the filter.
+   *
+   * @param digest
+   *            digest with min time, max time, min value, max value.
+   */
+  boolean satisfy(DigestForFilter digest);
 
-    /**
-     * To examine whether the single point(with time and value) is satisfied with the filter.
-     *
-     * @param time
-     *            single point time
-     * @param value
-     *            single point value
-     */
-    boolean satisfy(long time, Object value);
+  /**
+   * To examine whether the single point(with time and value) is satisfied with the filter.
+   *
+   * @param time
+   *            single point time
+   * @param value
+   *            single point value
+   */
+  boolean satisfy(long time, Object value);
 
-    /**
-     * To examine whether the min time and max time are satisfied with the filter.
-     *
-     * @param startTime
-     *            start time of a page, series or device
-     * @param endTime
-     *            end time of a page, series or device
-     */
-    boolean satisfyStartEndTime(long startTime, long endTime);
+  /**
+   * To examine whether the min time and max time are satisfied with the filter.
+   *
+   * @param startTime
+   *            start time of a page, series or device
+   * @param endTime
+   *            end time of a page, series or device
+   */
+  boolean satisfyStartEndTime(long startTime, long endTime);
 }

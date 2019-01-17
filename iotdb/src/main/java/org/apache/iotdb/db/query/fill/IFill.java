@@ -1,9 +1,13 @@
 /**
  * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
@@ -15,45 +19,44 @@
  */
 package org.apache.iotdb.db.query.fill;
 
+import java.io.IOException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.db.exception.PathErrorException;
-
-import java.io.IOException;
 
 public abstract class IFill {
 
-    long queryTime;
-    TSDataType dataType;
+  long queryTime;
+  TSDataType dataType;
 
-    public IFill(TSDataType dataType, long queryTime) {
-        this.dataType = dataType;
-        this.queryTime = queryTime;
-    }
+  public IFill(TSDataType dataType, long queryTime) {
+    this.dataType = dataType;
+    this.queryTime = queryTime;
+  }
 
-    public IFill() {
-    }
+  public IFill() {
+  }
 
-    public abstract IFill copy(Path path);
+  public abstract IFill copy(Path path);
 
-    public abstract BatchData getFillResult() throws ProcessorException, IOException, PathErrorException;
+  public abstract BatchData getFillResult() throws ProcessorException,
+      IOException, PathErrorException;
 
-    public void setQueryTime(long queryTime) {
-        this.queryTime = queryTime;
-    }
+  public TSDataType getDataType() {
+    return this.dataType;
+  }
 
-    public void setDataType(TSDataType dataType) {
-        this.dataType = dataType;
-    }
+  public void setDataType(TSDataType dataType) {
+    this.dataType = dataType;
+  }
 
-    public TSDataType getDataType() {
-        return this.dataType;
-    }
+  public long getQueryTime() {
+    return this.queryTime;
+  }
 
-    public long getQueryTime() {
-        return this.queryTime;
-    }
+  public void setQueryTime(long queryTime) {
+    this.queryTime = queryTime;
+  }
 }

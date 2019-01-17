@@ -1,9 +1,13 @@
 /**
  * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
@@ -20,27 +24,27 @@ package org.apache.iotdb.web.grafana.bean;
  */
 public class TimeValues {
 
-    private long time;
-    private float value;
+  private long time;
+  private float value;
 
-    @Override
-    public String toString() {
-        return "TimeValues{" + "time=" + time + ", values=" + value + '}';
-    }
+  @Override
+  public String toString() {
+    return "TimeValues{" + "time=" + time + ", values=" + value + '}';
+  }
 
-    public long getTime() {
-        return time;
-    }
+  public long getTime() {
+    return time;
+  }
 
-    public void setTime(long time) {
-        this.time = time;
-    }
+  public void setTime(long time) {
+    this.time = time;
+  }
 
-    public float getValue() {
-        return value;
-    }
+  public float getValue() {
+    return value;
+  }
 
-    public void setValue(float value) {
-        this.value = value;
-    }
+  public void setValue(float value) {
+    this.value = value;
+  }
 }

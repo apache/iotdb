@@ -1,9 +1,13 @@
 /**
  * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
@@ -18,51 +22,58 @@ package org.apache.iotdb.db.metadata;
 import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
-
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
 public class ColumnSchema implements Serializable {
-    private static final long serialVersionUID = -8257474930341487207L;
 
-    public String name;
-    public TSDataType dataType;
-    public TSEncoding encoding;
-    private Map<String, String> args;
+  private static final long serialVersionUID = -8257474930341487207L;
 
-    public ColumnSchema(String name, TSDataType dataType, TSEncoding encoding) {
-        this.name = name;
-        this.dataType = dataType;
-        this.encoding = encoding;
-        this.args = new HashMap<>();
-    }
+  public String name;
+  public TSDataType dataType;
+  public TSEncoding encoding;
+  private Map<String, String> args;
 
-    public void putKeyValueToArgs(String key, String value) {
-        this.args.put(key, value);
-    }
+  /**
+   * constructor of ColumnSchema.
+   *
+   * @param name name
+   * @param dataType time series data type
+   * @param encoding time series data encoding type
+   */
+  public ColumnSchema(String name, TSDataType dataType, TSEncoding encoding) {
+    this.name = name;
+    this.dataType = dataType;
+    this.encoding = encoding;
+    this.args = new HashMap<>();
+  }
 
-    public String getValueFromArgs(String key) {
-        return args.get(key);
-    }
+  public void putKeyValueToArgs(String key, String value) {
+    this.args.put(key, value);
+  }
 
-    public String getName() {
-        return name;
-    }
+  public String getValueFromArgs(String key) {
+    return args.get(key);
+  }
 
-    public TSDataType geTsDataType() {
-        return dataType;
-    }
+  public String getName() {
+    return name;
+  }
 
-    public TSEncoding getEncoding() {
-        return encoding;
-    }
+  public TSDataType geTsDataType() {
+    return dataType;
+  }
 
-    public Map<String, String> getArgsMap() {
-        return args;
-    }
+  public TSEncoding getEncoding() {
+    return encoding;
+  }
 
-    public void setArgsMap(Map<String, String> argsMap) {
-        this.args = argsMap;
-    }
+  public Map<String, String> getArgsMap() {
+    return args;
+  }
+
+  public void setArgsMap(Map<String, String> argsMap) {
+    this.args = argsMap;
+  }
 
 }

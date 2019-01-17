@@ -1,9 +1,13 @@
 /**
  * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
@@ -15,66 +19,68 @@
  */
 package org.apache.iotdb.tsfile.compress;
 
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.concurrent.ThreadLocalRandom;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.xerial.snappy.Snappy;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.concurrent.ThreadLocalRandom;
-
 /**
  * @author kangrong
  */
 public class SnappyTest {
-    private String randomString(int length) {
-        StringBuilder builder = new StringBuilder(length);
-        for (int i = 0; i < length; i++) {
-            builder.append((char) (ThreadLocalRandom.current().nextInt(33, 128)));
-        }
-        return builder.toString();
-    }
 
-    @Before
-    public void setUp() {
+  private String randomString(int length) {
+    StringBuilder builder = new StringBuilder(length);
+    for (int i = 0; i < length; i++) {
+      builder.append((char) (ThreadLocalRandom.current().nextInt(33, 128)));
     }
+    return builder.toString();
+  }
 
-    @After
-    public void tearDown() {
-    }
+  @Before
+  public void setUp() {
+  }
 
-    @Test
-    public void testBytes() throws IOException {
-        String input = randomString(50000);
-        byte[] uncom = input.getBytes("UTF-8");
-        long time = System.currentTimeMillis();
-        byte[] compressed = Snappy.compress(uncom);
-        System.out.println("compression time cost:" + (System.currentTimeMillis() - time));
-        time = System.currentTimeMillis();
-        byte[] uncompressed = Snappy.uncompress(compressed);
-        System.out.println("decompression time cost:" + (System.currentTimeMillis() - time));
-    }
+  @After
+  public void tearDown() {
+  }
 
-    @Test
-    public void testByteBuffer() throws IOException {
-        String input = randomString(5000);
-        ByteBuffer source = ByteBuffer.allocateDirect(input.getBytes().length);
-        source.put(input.getBytes());
-        source.flip();
+  @Test
+  public void testBytes() throws IOException {
+    String input = randomString(50000);
+    byte[] uncom = input.getBytes("UTF-8");
+    long time = System.currentTimeMillis();
+    byte[] compressed = Snappy.compress(uncom);
+    System.out.println("compression time cost:" + (System.currentTimeMillis() - time));
+    time = System.currentTimeMillis();
+    byte[] uncompressed = Snappy.uncompress(compressed);
+    System.out.println("decompression time cost:" + (System.currentTimeMillis() - time));
+  }
 
-        long time = System.currentTimeMillis();
-        ByteBuffer compressed = ByteBuffer.allocateDirect(Snappy.maxCompressedLength(source.remaining()));
-        Snappy.compress(source, compressed);
-        System.out.println("compression time cost:" + (System.currentTimeMillis() - time));
-        Snappy.uncompressedLength(compressed);
-        time = System.currentTimeMillis();
-        ByteBuffer uncompressedByteBuffer = ByteBuffer.allocateDirect(Snappy.uncompressedLength(compressed) + 1);
-        Snappy.uncompress(compressed, uncompressedByteBuffer);
-        System.out.println("decompression time cost:" + (System.currentTimeMillis() - time));
-        System.out.println(uncompressedByteBuffer.remaining());
-        assert input.equals(ReadWriteIOUtils.readStringFromDirectByteBuffer(uncompressedByteBuffer));
-    }
+  @Test
+  public void testByteBuffer() throws IOException {
+    String input = randomString(5000);
+    ByteBuffer source = ByteBuffer.allocateDirect(input.getBytes().length);
+    source.put(input.getBytes());
+    source.flip();
+
+    long time = System.currentTimeMillis();
+    ByteBuffer compressed = ByteBuffer
+        .allocateDirect(Snappy.maxCompressedLength(source.remaining()));
+    Snappy.compress(source, compressed);
+    System.out.println("compression time cost:" + (System.currentTimeMillis() - time));
+    Snappy.uncompressedLength(compressed);
+    time = System.currentTimeMillis();
+    ByteBuffer uncompressedByteBuffer = ByteBuffer
+        .allocateDirect(Snappy.uncompressedLength(compressed) + 1);
+    Snappy.uncompress(compressed, uncompressedByteBuffer);
+    System.out.println("decompression time cost:" + (System.currentTimeMillis() - time));
+    System.out.println(uncompressedByteBuffer.remaining());
+    assert input.equals(ReadWriteIOUtils.readStringFromDirectByteBuffer(uncompressedByteBuffer));
+  }
 
 }

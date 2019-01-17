@@ -1,9 +1,13 @@
 /**
  * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
@@ -15,41 +19,41 @@
  */
 package org.apache.iotdb.tsfile.read.filter.operator;
 
+import java.io.Serializable;
 import org.apache.iotdb.tsfile.read.filter.DigestForFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.BinaryFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-
-import java.io.Serializable;
 
 /**
  * Either of the left and right operators of AndExpression must satisfy the condition.
  */
 public class OrFilter extends BinaryFilter implements Serializable {
 
-    private static final long serialVersionUID = -968055896528472694L;
+  private static final long serialVersionUID = -968055896528472694L;
 
-    public OrFilter(Filter left, Filter right) {
-        super(left, right);
-    }
+  public OrFilter(Filter left, Filter right) {
+    super(left, right);
+  }
 
-    @Override
-    public String toString() {
-        return "(" + left + " || " + right + ")";
-    }
+  @Override
+  public String toString() {
+    return "(" + left + " || " + right + ")";
+  }
 
-    @Override
-    public boolean satisfy(DigestForFilter digest) {
-        return left.satisfy(digest) || right.satisfy(digest);
-    }
+  @Override
+  public boolean satisfy(DigestForFilter digest) {
+    return left.satisfy(digest) || right.satisfy(digest);
+  }
 
-    @Override
-    public boolean satisfy(long time, Object value) {
-        return left.satisfy(time, value) || right.satisfy(time, value);
-    }
+  @Override
+  public boolean satisfy(long time, Object value) {
+    return left.satisfy(time, value) || right.satisfy(time, value);
+  }
 
-    @Override
-    public boolean satisfyStartEndTime(long startTime, long endTime) {
-        return left.satisfyStartEndTime(startTime, endTime) || right.satisfyStartEndTime(startTime, endTime);
-    }
+  @Override
+  public boolean satisfyStartEndTime(long startTime, long endTime) {
+    return left.satisfyStartEndTime(startTime, endTime) || right
+        .satisfyStartEndTime(startTime, endTime);
+  }
 
 }

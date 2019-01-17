@@ -1,9 +1,13 @@
 /**
  * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
@@ -17,29 +21,29 @@ package org.apache.iotdb.db.qp.logical.crud;
 
 import java.util.ArrayList;
 import java.util.List;
-
 import org.apache.iotdb.db.exception.qp.LogicalOperatorException;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.tsfile.read.common.Path;
 
 /**
- * this class maintains information from {@code FROM} clause
+ * this class maintains information of {@code FROM} clause.
  */
 public class FromOperator extends Operator {
-    private List<Path> prefixList;
 
-    public FromOperator(int tokenIntType) {
-        super(tokenIntType);
-        operatorType = OperatorType.FROM;
-        prefixList = new ArrayList<>();
-    }
+  private List<Path> prefixList;
 
-    public void addPrefixTablePath(Path prefixPath) throws LogicalOperatorException {
-        prefixList.add(prefixPath);
-    }
+  public FromOperator(int tokenIntType) {
+    super(tokenIntType);
+    operatorType = OperatorType.FROM;
+    prefixList = new ArrayList<>();
+  }
 
-    public List<Path> getPrefixPaths() {
-        return prefixList;
-    }
+  public void addPrefixTablePath(Path prefixPath) throws LogicalOperatorException {
+    prefixList.add(prefixPath);
+  }
+
+  public List<Path> getPrefixPaths() {
+    return prefixList;
+  }
 
 }

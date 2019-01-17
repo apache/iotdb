@@ -1,9 +1,13 @@
 /**
  * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
@@ -22,26 +26,26 @@ import java.io.Serializable;
  */
 public abstract class BinaryFilter implements Filter, Serializable {
 
-    private static final long serialVersionUID = 1039585564327602465L;
+  private static final long serialVersionUID = 1039585564327602465L;
 
-    protected final Filter left;
-    protected final Filter right;
+  protected final Filter left;
+  protected final Filter right;
 
-    protected BinaryFilter(Filter left, Filter right) {
-        this.left = left;
-        this.right = right;
-    }
+  protected BinaryFilter(Filter left, Filter right) {
+    this.left = left;
+    this.right = right;
+  }
 
-    public Filter getLeft() {
-        return left;
-    }
+  public Filter getLeft() {
+    return left;
+  }
 
-    public Filter getRight() {
-        return right;
-    }
+  public Filter getRight() {
+    return right;
+  }
 
-    @Override
-    public String toString() {
-        return "( " + left + "," + right + " )";
-    }
+  @Override
+  public String toString() {
+    return "( " + left + "," + right + " )";
+  }
 }

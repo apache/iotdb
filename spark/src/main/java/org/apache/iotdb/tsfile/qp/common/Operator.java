@@ -1,9 +1,13 @@
 /**
  * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
@@ -20,24 +24,25 @@ package org.apache.iotdb.tsfile.qp.common;
  *
  */
 public abstract class Operator {
-    int tokenIntType;
-    String tokenSymbol;
 
-    Operator(int tokenIntType) {
-        this.tokenIntType = tokenIntType;
-        this.tokenSymbol = SQLConstant.tokenSymbol.get(tokenIntType);
-    }
+  int tokenIntType;
+  String tokenSymbol;
 
-    public int getTokenIntType() {
-        return tokenIntType;
-    }
-    
-    public String getTokenSymbol() {
-        return tokenSymbol;
-    }
+  Operator(int tokenIntType) {
+    this.tokenIntType = tokenIntType;
+    this.tokenSymbol = SQLConstant.tokenSymbol.get(tokenIntType);
+  }
 
-    @Override
-    public String toString() {
-        return tokenSymbol;
-    }
+  public int getTokenIntType() {
+    return tokenIntType;
+  }
+
+  public String getTokenSymbol() {
+    return tokenSymbol;
+  }
+
+  @Override
+  public String toString() {
+    return tokenSymbol;
+  }
 }

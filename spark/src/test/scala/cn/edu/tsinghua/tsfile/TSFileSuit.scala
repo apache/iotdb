@@ -1,9 +1,13 @@
 /**
  * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
@@ -13,18 +17,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+/**
+  * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
+  *
+  * Licensed under the Apache License, Version 2.0 (the "License");
+  * you may not use this file except in compliance with the License.
+  * You may obtain a copy of the License at
+  *
+  * http://www.apache.org/licenses/LICENSE-2.0
+  *
+  * Unless required by applicable law or agreed to in writing, software
+  * distributed under the License is distributed on an "AS IS" BASIS,
+  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  * See the License for the specific language governing permissions and
+  * limitations under the License.
+  */
 package org.apache.iotdb.tsfile
 
 import java.io.File
-
-import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.types._
-import org.junit.Assert
-import org.scalatest.{BeforeAndAfterAll, FunSuite}
-import org.apache.iotdb.tsfile.io.CreateTSFile
-import org.apache.iotdb.tsfile.qp.common.SQLConstant
-
-import scala.collection.mutable
 
 
 class TSFileSuit extends FunSuite with BeforeAndAfterAll {
@@ -38,6 +48,16 @@ class TSFileSuit extends FunSuite with BeforeAndAfterAll {
   private val outputPath2 = "src/test/resources/output2"
   private val outputPathFile2 = outputPath2 + "/part-m-00000"
   private var spark: SparkSession = _
+
+  def deleteDir(dir: File): Unit = {
+    if (dir.isDirectory) {
+      dir.list().foreach(f => {
+        deleteDir(new File(dir, f))
+      })
+    }
+    dir.delete()
+
+  }
 
   override protected def beforeAll(): Unit = {
     super.beforeAll()
@@ -74,16 +94,6 @@ class TSFileSuit extends FunSuite with BeforeAndAfterAll {
     }
   }
 
-  def deleteDir(dir: File): Unit = {
-    if(dir.isDirectory) {
-      dir.list().foreach(f => {
-        deleteDir(new File(dir, f))
-      })
-    }
-    dir.delete()
-
-  }
-
 
   test("writer") {
     val df = spark.read.tsfile(tsfile1)
@@ -96,7 +106,7 @@ class TSFileSuit extends FunSuite with BeforeAndAfterAll {
 
   test("test write options") {
     val df = spark.read.option("delta_object_name", "root.carId.deviceId").tsfile(tsfile1)
-    df.write.option("delta_object_name", "root.carId.deviceId")tsfile(outputPath2)
+    df.write.option("delta_object_name", "root.carId.deviceId") tsfile (outputPath2)
     val newDf = spark.read.option("delta_object_name", "root.carId.deviceId").tsfile(outputPathFile2)
     newDf.show()
     Assert.assertEquals(newDf.collectAsList(), df.collectAsList())

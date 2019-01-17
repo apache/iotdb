@@ -3,7 +3,7 @@
     <property name="LOG_PATH" value="logs"/>
     <!-- prevent logback from outputting its own status at the start of every log -->
     <statusListener class="ch.qos.logback.core.status.NopStatusListener"/>
-    <appender name="FILEERROR" class="ch.qos.logback.core.rolling.RollingFileAppender">
+    <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="FILEERROR">
         <file>${LOG_PATH}/log_error.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
             <fileNamePattern>${LOG_PATH}/log-error-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
@@ -22,7 +22,7 @@
             <onMismatch>DENY</onMismatch>
         </filter>
     </appender>
-    <appender name="FILEWARN" class="ch.qos.logback.core.rolling.RollingFileAppender">
+    <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="FILEWARN">
         <file>${LOG_PATH}/log_warn.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
             <fileNamePattern>${LOG_PATH}/log-warn-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
@@ -41,7 +41,7 @@
             <onMismatch>DENY</onMismatch>
         </filter>
     </appender>
-    <appender name="FILEINFO" class="ch.qos.logback.core.rolling.RollingFileAppender">
+    <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="FILEINFO">
         <file>${LOG_PATH}/log_info.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
             <fileNamePattern>${LOG_PATH}/log-info-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
@@ -60,7 +60,7 @@
             <onMismatch>DENY</onMismatch>
         </filter>
     </appender>
-    <appender name="FILEDEBUG" class="ch.qos.logback.core.rolling.RollingFileAppender">
+    <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="FILEDEBUG">
         <file>${LOG_PATH}/log_debug.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
             <fileNamePattern>${LOG_PATH}/log-debug-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
@@ -79,7 +79,7 @@
             <onMismatch>DENY</onMismatch>
         </filter>
     </appender>
-    <appender name="stdout" class="ch.qos.logback.core.ConsoleAppender">
+    <appender class="ch.qos.logback.core.ConsoleAppender" name="stdout">
         <Target>System.out</Target>
         <encoder>
             <pattern>%-5p [%d] [%thread] %C:%L - %m %n</pattern>

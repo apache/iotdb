@@ -1,9 +1,13 @@
 /**
  * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
@@ -19,63 +23,69 @@ import java.io.IOException;
 
 public class AndNode implements Node {
 
-    private Node leftChild;
-    private Node rightChild;
+  private Node leftChild;
+  private Node rightChild;
 
-    private long cachedValue;
-    private boolean hasCachedValue;
+  private long cachedValue;
+  private boolean hasCachedValue;
 
-    public AndNode(Node leftChild, Node rightChild) {
-        this.leftChild = leftChild;
-        this.rightChild = rightChild;
-        this.hasCachedValue = false;
+  /**
+   * Constructor of AndNode.
+   *
+   * @param leftChild left child
+   * @param rightChild right child
+   */
+  public AndNode(Node leftChild, Node rightChild) {
+    this.leftChild = leftChild;
+    this.rightChild = rightChild;
+    this.hasCachedValue = false;
+  }
+
+  @Override
+  public boolean hasNext() throws IOException {
+    if (hasCachedValue) {
+      return true;
     }
-
-    @Override
-    public boolean hasNext() throws IOException {
-        if (hasCachedValue) {
-            return true;
+    if (leftChild.hasNext() && rightChild.hasNext()) {
+      long leftValue = leftChild.next();
+      long rightValue = rightChild.next();
+      while (true) {
+        if (leftValue == rightValue) {
+          this.hasCachedValue = true;
+          this.cachedValue = leftValue;
+          return true;
+        } else if (leftValue > rightValue) {
+          if (rightChild.hasNext()) {
+            rightValue = rightChild.next();
+          } else {
+            return false;
+          }
+        } else { // leftValue < rightValue
+          if (leftChild.hasNext()) {
+            leftValue = leftChild.next();
+          } else {
+            return false;
+          }
         }
-        if (leftChild.hasNext() && rightChild.hasNext()) {
-            long leftValue = leftChild.next();
-            long rightValue = rightChild.next();
-            while (true) {
-                if (leftValue == rightValue) {
-                    this.hasCachedValue = true;
-                    this.cachedValue = leftValue;
-                    return true;
-                } else if (leftValue > rightValue) {
-                    if (rightChild.hasNext()) {
-                        rightValue = rightChild.next();
-                    } else {
-                        return false;
-                    }
-                } else { // leftValue < rightValue
-                    if (leftChild.hasNext()) {
-                        leftValue = leftChild.next();
-                    } else {
-                        return false;
-                    }
-                }
-            }
-        }
-        return false;
+      }
     }
+    return false;
+  }
 
-    /**
-     * If there is no value in current Node, -1 will be returned if {@code next()} is invoked
-     */
-    @Override
-    public long next() throws IOException {
-        if (hasNext()) {
-            hasCachedValue = false;
-            return cachedValue;
-        }
-        return -1;
+  /**
+   * If there is no value in current Node, -1 will be returned if {@code next()} is invoked.
+   */
+  @Override
+  public long next() throws IOException {
+    if (hasNext()) {
+      hasCachedValue = false;
+      return cachedValue;
     }
+    return -1;
+  }
 
-    @Override
-    public NodeType getType() {
-        return NodeType.AND;
-    }
+  @Override
+  public NodeType getType() {
+    return NodeType.AND;
+  }
 }

@@ -1,9 +1,13 @@
 /**
  * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
@@ -19,23 +23,25 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * This class presents series condition which is general(e.g. numerical comparison) or defined by user. Function is used
+ * This class presents series condition which is general(e.g. numerical comparison)
+ * or defined by user. Function is used
  * for bottom operator.<br>
  * FunctionOperator has a {@code seriesPath}, and other filter condition.
  */
 
 public class FunctionOperator extends FilterOperator {
-    private Logger LOG = LoggerFactory.getLogger(FunctionOperator.class);
 
-    public FunctionOperator(int tokenIntType) {
-        super(tokenIntType);
-        operatorType = OperatorType.FUNC;
-    }
+  private Logger LOG = LoggerFactory.getLogger(FunctionOperator.class);
 
-    @Override
-    public boolean addChildOperator(FilterOperator op) {
-        LOG.error("cannot add child to leaf FilterOperator, now it's FunctionOperator");
-        return false;
-    }
+  public FunctionOperator(int tokenIntType) {
+    super(tokenIntType);
+    operatorType = OperatorType.FUNC;
+  }
+
+  @Override
+  public boolean addChildOperator(FilterOperator op) {
+    LOG.error("cannot add child to leaf FilterOperator, now it's FunctionOperator");
+    return false;
+  }
 
 }

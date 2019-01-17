@@ -1,9 +1,13 @@
 /**
  * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
@@ -21,62 +25,62 @@ import java.util.Map;
 
 /**
  * This class is not thread safe.
- *
- * @param <K>
- * @param <T>
  */
 public abstract class LRUCache<K, T> implements Cache<K, T> {
 
-    private int cacheSize;
-    private Map<K, T> cache;
+  private int cacheSize;
+  private Map<K, T> cache;
 
-    public LRUCache(int cacheSize) {
-        this.cacheSize = cacheSize;
-        this.cache = new LinkedHashMap<>();
+  public LRUCache(int cacheSize) {
+    this.cacheSize = cacheSize;
+    this.cache = new LinkedHashMap<>();
+  }
+
+  @Override
+  public T get(K key) throws IOException {
+    if (cache.containsKey(key)) {
+      moveObjectToTail(key);
+    } else {
+      removeFirstObjectIfCacheIsFull();
+      cache.put(key, loadObjectByKey(key));
     }
+    return cache.get(key);
+  }
 
-    @Override
-    public T get(K key) throws IOException {
-        if (cache.containsKey(key)) {
-            moveObjectToTail(key);
-        } else {
-            removeFirstObjectIfCacheIsFull();
-            cache.put(key, loadObjectByKey(key));
-        }
-        return cache.get(key);
+  @Override
+  public void clear() {
+    this.cache.clear();
+  }
+
+  private void moveObjectToTail(K key) {
+    T value = cache.get(key);
+    cache.remove(key);
+    cache.put(key, value);
+  }
+
+  private void removeFirstObjectIfCacheIsFull() {
+    if (cache.size() == this.cacheSize) {
+      removeFirstObject();
     }
+  }
 
-    @Override
-    public void clear() {
-        this.cache.clear();
+  private void removeFirstObject() {
+    if (cache.size() == 0) {
+      return;
     }
+    K key = cache.keySet().iterator().next();
+    cache.remove(key);
+  }
 
-    private void moveObjectToTail(K key) {
-        T value = cache.get(key);
-        cache.remove(key);
-        cache.put(key, value);
-    }
+  /**
+   * function for putting a key-value pair.
+   */
+  public void put(K key, T value) {
+    cache.remove(key);
+    removeFirstObjectIfCacheIsFull();
+    cache.put(key, value);
+  }
 
-    private void removeFirstObjectIfCacheIsFull() {
-        if (cache.size() == this.cacheSize) {
-            removeFirstObject();
-        }
-    }
-
-    private void removeFirstObject() {
-        if (cache.size() == 0) {
-            return;
-        }
-        K key = cache.keySet().iterator().next();
-        cache.remove(key);
-    }
-
-    public void put(K key, T value) {
-        cache.remove(key);
-        removeFirstObjectIfCacheIsFull();
-        cache.put(key, value);
-    }
-
-    public abstract T loadObjectByKey(K key) throws IOException;
+  public abstract T loadObjectByKey(K key) throws IOException;
 
 }

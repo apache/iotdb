@@ -1,9 +1,13 @@
 /**
  * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
@@ -25,35 +29,36 @@ import java.util.List;
  */
 public class SingleQuery {
 
-    private List<FilterOperator> columnFilterOperators;
-    private FilterOperator timeFilterOperator;
-    private FilterOperator valueFilterOperator;
+  private List<FilterOperator> columnFilterOperators;
+  private FilterOperator timeFilterOperator;
+  private FilterOperator valueFilterOperator;
 
-    public SingleQuery(List<FilterOperator> columnFilterOperators,
-                       FilterOperator timeFilter, FilterOperator valueFilter) {
-        super();
-        this.columnFilterOperators = columnFilterOperators;
-        this.timeFilterOperator = timeFilter;
-        this.valueFilterOperator = valueFilter;
-    }
+  public SingleQuery(List<FilterOperator> columnFilterOperators,
+      FilterOperator timeFilter, FilterOperator valueFilter) {
+    super();
+    this.columnFilterOperators = columnFilterOperators;
+    this.timeFilterOperator = timeFilter;
+    this.valueFilterOperator = valueFilter;
+  }
 
-    public List<FilterOperator> getColumnFilterOperator() {
+  public List<FilterOperator> getColumnFilterOperator() {
 
-        return columnFilterOperators;
-    }
+    return columnFilterOperators;
+  }
 
-    public FilterOperator getTimeFilterOperator() {
-        return timeFilterOperator;
-    }
+  public FilterOperator getTimeFilterOperator() {
+    return timeFilterOperator;
+  }
 
-    public FilterOperator getValueFilterOperator() {
-        return valueFilterOperator;
-    }
+  public FilterOperator getValueFilterOperator() {
+    return valueFilterOperator;
+  }
 
-    @Override
-    public String toString() {
-        return "SingleQuery: \n" + columnFilterOperators + "\n" + timeFilterOperator + "\n" + valueFilterOperator;
-    }
+  @Override
+  public String toString() {
+    return "SingleQuery: \n" + columnFilterOperators + "\n" + timeFilterOperator + "\n"
+        + valueFilterOperator;
+  }
 
 
 }

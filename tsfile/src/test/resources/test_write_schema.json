@@ -1,31 +1,31 @@
 {
-    "schema": [
-        {
-            "measurement_id": "s0",
-            "data_type": "INT32",
-            "encoding": "RLE"
-        },
-        {
-            "measurement_id": "s1",
-            "data_type": "INT64",
-            "encoding": "TS_2DIFF"
-        },
-        {
-            "measurement_id": "s2",
-            "data_type": "FLOAT",
-            "encoding": "RLE",
-            "max_point_number": 2
-        },
-        {
-            "measurement_id": "s3",
-            "data_type": "DOUBLE",
-            "encoding": "TS_2DIFF",
-            "max_point_number": 3
-        },
-        {
-            "measurement_id": "s4",
-            "data_type": "BOOLEAN",
-            "encoding": "PLAIN"
-        }
-    ]
+  "schema": [
+    {
+      "measurement_id": "s0",
+      "data_type": "INT32",
+      "encoding": "RLE"
+    },
+    {
+      "measurement_id": "s1",
+      "data_type": "INT64",
+      "encoding": "TS_2DIFF"
+    },
+    {
+      "measurement_id": "s2",
+      "data_type": "FLOAT",
+      "encoding": "RLE",
+      "max_point_number": 2
+    },
+    {
+      "measurement_id": "s3",
+      "data_type": "DOUBLE",
+      "encoding": "TS_2DIFF",
+      "max_point_number": 3
+    },
+    {
+      "measurement_id": "s4",
+      "data_type": "BOOLEAN",
+      "encoding": "PLAIN"
+    }
+  ]
 }

@@ -1,9 +1,13 @@
 /**
  * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
@@ -15,67 +19,71 @@
  */
 package org.apache.iotdb.db.engine.overflow.metadata;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.io.*;
-
 public class OFSeriesListMetadataTest {
 
-    private final String path = "OFSeriesListMetadataTest";
+  private final String path = "OFSeriesListMetadataTest";
 
-    @Before
-    public void setUp() throws Exception {
+  @Before
+  public void setUp() throws Exception {
 
+  }
+
+  @After
+  public void tearDown() throws Exception {
+    File file = new File(path);
+    if (file.exists()) {
+      file.delete();
     }
+  }
 
-    @After
-    public void tearDown() throws Exception {
-        File file = new File(path);
-        if (file.exists()) {
-            file.delete();
-        }
-    }
+  @Test
+  public void testOfSeriesListMetadataSerDe() throws Exception {
+    OFSeriesListMetadata ofSeriesListMetadata = OverflowTestHelper.createOFSeriesListMetadata();
+    serialized(ofSeriesListMetadata);
+    OFSeriesListMetadata deOfSeriesListMetadata = deSerialized();
+    // assert
+    OverflowUtils.isOFSeriesListMetadataEqual(ofSeriesListMetadata, deOfSeriesListMetadata);
+  }
 
-    @Test
-    public void testOfSeriesListMetadataSerDe() throws Exception {
-        OFSeriesListMetadata ofSeriesListMetadata = OverflowTestHelper.createOFSeriesListMetadata();
-        serialized(ofSeriesListMetadata);
-        OFSeriesListMetadata deOfSeriesListMetadata = deSerialized();
-        // assert
-        OverflowUtils.isOFSeriesListMetadataEqual(ofSeriesListMetadata, deOfSeriesListMetadata);
+  private void serialized(OFSeriesListMetadata obj) throws FileNotFoundException {
+    FileOutputStream fileOutputStream = new FileOutputStream(path);
+    try {
+      obj.serializeTo(fileOutputStream);
+    } catch (IOException e) {
+      e.printStackTrace();
+    } finally {
+      try {
+        fileOutputStream.close();
+      } catch (IOException e) {
+        e.printStackTrace();
+      }
     }
+  }
 
-    private void serialized(OFSeriesListMetadata obj) throws FileNotFoundException {
-        FileOutputStream fileOutputStream = new FileOutputStream(path);
-        try {
-            obj.serializeTo(fileOutputStream);
-        } catch (IOException e) {
-            e.printStackTrace();
-        } finally {
-            try {
-                fileOutputStream.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
+  private OFSeriesListMetadata deSerialized() throws FileNotFoundException {
+    FileInputStream fileInputStream = new FileInputStream(path);
+    try {
+      OFSeriesListMetadata ofSeriesListMetadata = OFSeriesListMetadata
+          .deserializeFrom(fileInputStream);
+      return ofSeriesListMetadata;
+    } catch (IOException e) {
+      e.printStackTrace();
+    } finally {
+      try {
+        fileInputStream.close();
+      } catch (IOException e) {
+        e.printStackTrace();
+      }
     }
-
-    private OFSeriesListMetadata deSerialized() throws FileNotFoundException {
-        FileInputStream fileInputStream = new FileInputStream(path);
-        try {
-            OFSeriesListMetadata ofSeriesListMetadata = OFSeriesListMetadata.deserializeFrom(fileInputStream);
-            return ofSeriesListMetadata;
-        } catch (IOException e) {
-            e.printStackTrace();
-        } finally {
-            try {
-                fileInputStream.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-        return null;
-    }
+    return null;
+  }
 }

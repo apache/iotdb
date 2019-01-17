@@ -3,9 +3,13 @@
 
     Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
 
-    Licensed under the Apache License, Version 2.0 (the "License");
-    you may not use this file except in compliance with the License.
-    You may obtain a copy of the License at
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements.  See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership.  The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License.  You may obtain a copy of the License at
 
         http://www.apache.org/licenses/LICENSE-2.0
 
@@ -58,13 +62,13 @@
         <commons.collections4>4.0</commons.collections4>
         <thrift.version>0.9.3</thrift.version>
     </properties>
-    <!-- if we claim dependencies in dependencyManagement, then we do not claim 
-		their version in sub-project's pom, but we have to claim themselves again 
-		in sub-projects -->
+    <!-- if we claim dependencies in dependencyManagement, then we do not claim
+  their version in sub-project's pom, but we have to claim themselves again
+  in sub-projects -->
     <dependencyManagement>
         <dependencies>
-            <!-- in the subprojects, you have to claim logback again, because maybe 
-				someone in your dependences uses log4j lib. -->
+            <!-- in the subprojects, you have to claim logback again, because maybe
+  someone in your dependences uses log4j lib. -->
             <dependency>
                 <groupId>ch.qos.logback</groupId>
                 <artifactId>logback-classic</artifactId>
@@ -135,18 +139,18 @@
                     <configuration>
                         <excludePackageNames>*thrift*</excludePackageNames>
                         <!--
-                          This will suppress the generation of a hidden timestamp at the top of each generated html page
-                          and hopefully let the site generation nod to too big updates every time.
-                        -->
+              This will suppress the generation of a hidden timestamp at the top of each generated html page
+              and hopefully let the site generation nod to too big updates every time.
+            -->
                         <notimestamp>true</notimestamp>
                         <!--Don't fail the build, just because there were issues in the JavaDoc generation.-->
                         <failOnError>false</failOnError>
                     </configuration>
                 </plugin>
                 <!--
-					We need to increase the memory available to tests as we were
-					getting out-of-memory errors when building on windows machines.
-				-->
+  We need to increase the memory available to tests as we were
+  getting out-of-memory errors when building on windows machines.
+-->
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-surefire-plugin</artifactId>
@@ -158,10 +162,10 @@
         </pluginManagement>
         <plugins>
             <!--
-				Strange things usually happen if you run with a too low Java version.
-				This plugin not only checks the minimum java version of 1.8, but also
-				checks all dependencies (and transitive dependencies) for reported CVEs.
-			-->
+  Strange things usually happen if you run with a too low Java version.
+  This plugin not only checks the minimum java version of 1.8, but also
+  checks all dependencies (and transitive dependencies) for reported CVEs.
+-->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-enforcer-plugin</artifactId>
@@ -198,14 +202,14 @@
                 </dependencies>
             </plugin>
             <!--
-			  Even if Maven transitively pulls in dependencies, relying on these can
-			  quite often cause hard to find problems. So it's a good practice to make
-			  sure everything directly required is also directly added as a dependency.
-			  On the other side adding unused dependency only over-complicates the
-			  the dependency graph, so the maven-dependency-plugin checks we depend on
-			  what we need and only that and that runtime dependencies are correctly
-			  imported with runtime scope.
-			-->
+  Even if Maven transitively pulls in dependencies, relying on these can
+  quite often cause hard to find problems. So it's a good practice to make
+  sure everything directly required is also directly added as a dependency.
+  On the other side adding unused dependency only over-complicates the
+  the dependency graph, so the maven-dependency-plugin checks we depend on
+  what we need and only that and that runtime dependencies are correctly
+  imported with runtime scope.
+-->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-dependency-plugin</artifactId>
@@ -231,7 +235,14 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-checkstyle-plugin</artifactId>
-                <version>2.16</version>
+                <version>3.0.0</version>
+                <dependencies>
+                    <dependency>
+                        <groupId>com.puppycrawl.tools</groupId>
+                        <artifactId>checkstyle</artifactId>
+                        <version>8.16</version>
+                    </dependency>
+                </dependencies>
                 <executions>
                     <execution>
                         <id>validate</id>
@@ -244,13 +255,16 @@
                         </configuration>
                     </execution>
                 </executions>
+                <configuration>
+                    <configLocation>checkstyle.xml</configLocation>
+                </configuration>
             </plugin>
             <plugin>
                 <groupId>com.mycila</groupId>
                 <artifactId>license-maven-plugin</artifactId>
                 <version>3.0</version>
                 <configuration>
-                    <header>com/mycila/maven/plugin/license/templates/APACHE-2.txt</header>
+                    <header>asf.header</header>
                     <properties>
                         <owner>Apache IoTDB(incubating)</owner>
                         <email>dev@iotdb.apache.org</email>
@@ -270,6 +284,8 @@
                         <exclude>NOTICE*</exclude>
                         <exclude>LICENSE*</exclude>
                         <exclude>License</exclude>
+                        <exclude>asf.header</exclude>
+                        <exclude>**/iotdb/data/</exclude>
                     </excludes>
                 </configuration>
                 <executions>
@@ -281,45 +297,45 @@
                 </executions>
             </plugin>
             <!--
-				Check if all files contain Apache headers in them.
-				Ignore this plugin, we use license-maven-plugin to check apache header.
-			-->
+  Check if all files contain Apache headers in them.
+  Ignore this plugin, we use license-maven-plugin to check apache header.
+-->
             <!-- 			<plugin>
-				<groupId>org.apache.rat</groupId>
-				<artifactId>apache-rat-plugin</artifactId>
-				<executions>
-					<execution>
-						<id>license-check</id>
-						<phase>verify</phase>
-						<goals>
-							<goal>check</goal>
-						</goals>
-					</execution>
-				</executions>
-				<configuration>
-					Should be enabled as soon as the headers are in position
-					<skip>true</skip>
-					<excludes>
-						Git related files
-						<exclude>**/.git/**</exclude>
-						<exclude>**/.gitignore</exclude>
+  <groupId>org.apache.rat</groupId>
+  <artifactId>apache-rat-plugin</artifactId>
+  <executions>
+    <execution>
+      <id>license-check</id>
+      <phase>verify</phase>
+      <goals>
+        <goal>check</goal>
+      </goals>
+    </execution>
+  </executions>
+  <configuration>
+    Should be enabled as soon as the headers are in position
+    <skip>true</skip>
+    <excludes>
+      Git related files
+      <exclude>**/.git/**</exclude>
+      <exclude>**/.gitignore</exclude>
 
-						Maven related files
-						<exclude>**/target/**</exclude>
+      Maven related files
+      <exclude>**/target/**</exclude>
 
-						Eclipse related files
-						<exclude>**/.project</exclude>
-						<exclude>**/.settings/**</exclude>
-						<exclude>**/.classpath</exclude>
+      Eclipse related files
+      <exclude>**/.project</exclude>
+      <exclude>**/.settings/**</exclude>
+      <exclude>**/.classpath</exclude>
 
-						IntelliJ related files
-						<exclude>**/.idea/**</exclude>
-						<exclude>**/*.iml</exclude>
-						Runtime log
-						<exclude>**/*.log</exclude>
-					</excludes>
-				</configuration>
-			</plugin> -->
+      IntelliJ related files
+      <exclude>**/.idea/**</exclude>
+      <exclude>**/*.iml</exclude>
+      Runtime log
+      <exclude>**/*.log</exclude>
+    </excludes>
+  </configuration>
+</plugin> -->
             <!--use `mvn cobertura:cobertura` -->
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
@@ -364,8 +380,8 @@
                 </executions>
             </plugin>
             <!--
-				Generate the legally required text files in the jars
-			-->
+  Generate the legally required text files in the jars
+-->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-remote-resources-plugin</artifactId>
@@ -392,9 +408,9 @@
     </build>
     <profiles>
         <!--
-			A set of profiles defining the different properties needed to download and run thrift
-			They are automatically activated depending on the OS you are using.
-		-->
+  A set of profiles defining the different properties needed to download and run thrift
+  They are automatically activated depending on the OS you are using.
+-->
         <profile>
             <id>windows</id>
             <activation>
@@ -442,14 +458,14 @@
             </properties>
         </profile>
         <!--
-			Self activating profile, that activates itself as soon as a "src/main/thrift" directory is found.
-			The different plugins here download the thrift executable matching the current os, make that
-			executable (on mac and unix/linux) and run the code generation.
+  Self activating profile, that activates itself as soon as a "src/main/thrift" directory is found.
+  The different plugins here download the thrift executable matching the current os, make that
+  executable (on mac and unix/linux) and run the code generation.
 
-			Note to the Download: The download-maven-plugin checks if a resource is previously downloaded
-			and only downloads each file once. It caches downloaded files in:
-			{maven local repo}/.cache/download-maven-plugin
-		-->
+  Note to the Download: The download-maven-plugin checks if a resource is previously downloaded
+  and only downloads each file once. It caches downloaded files in:
+  {maven local repo}/.cache/download-maven-plugin
+-->
         <profile>
             <id>thrift-generation</id>
             <activation>

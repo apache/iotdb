@@ -1,9 +1,13 @@
 /**
  * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
@@ -16,13 +20,11 @@
 package org.apache.iotdb.tsfile.hadoop.io;
 
 import java.io.IOException;
-
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-
 import org.apache.iotdb.tsfile.common.utils.ITsRandomAccessFileReader;
 
 /**
@@ -33,78 +35,78 @@ import org.apache.iotdb.tsfile.common.utils.ITsRandomAccessFileReader;
  */
 public class HDFSInputStream implements ITsRandomAccessFileReader {
 
-	private FSDataInputStream fsDataInputStream;
-	private FileStatus fileStatus;
+  private FSDataInputStream fsDataInputStream;
+  private FileStatus fileStatus;
 
-	public HDFSInputStream(String filePath) throws IOException {
+  public HDFSInputStream(String filePath) throws IOException {
 
-		this(filePath, new Configuration());
-	}
+    this(filePath, new Configuration());
+  }
 
-	public HDFSInputStream(String filePath, Configuration configuration) throws IOException {
+  public HDFSInputStream(String filePath, Configuration configuration) throws IOException {
 
-		this(new Path(filePath), configuration);
-	}
+    this(new Path(filePath), configuration);
+  }
 
-	public HDFSInputStream(Path path, Configuration configuration) throws IOException {
+  public HDFSInputStream(Path path, Configuration configuration) throws IOException {
 
-		FileSystem fs = FileSystem.get(configuration);
-		fsDataInputStream = fs.open(path);
-		fileStatus = fs.getFileStatus(path);
-	}
+    FileSystem fs = FileSystem.get(configuration);
+    fsDataInputStream = fs.open(path);
+    fileStatus = fs.getFileStatus(path);
+  }
 
-	public void seek(long offset) throws IOException {
+  public void seek(long offset) throws IOException {
 
-		fsDataInputStream.seek(offset);
-	}
+    fsDataInputStream.seek(offset);
+  }
 
-	public int read() throws IOException {
+  public int read() throws IOException {
 
-		return fsDataInputStream.read();
-	}
+    return fsDataInputStream.read();
+  }
 
-	public long length() throws IOException {
+  public long length() throws IOException {
 
-		return fileStatus.getLen();
-	}
+    return fileStatus.getLen();
+  }
 
-	public int readInt() throws IOException {
+  public int readInt() throws IOException {
 
-		return fsDataInputStream.readInt();
-	}
+    return fsDataInputStream.readInt();
+  }
 
-	public void close() throws IOException {
+  public void close() throws IOException {
 
-		fsDataInputStream.close();
-	}
+    fsDataInputStream.close();
+  }
 
-	public long getPos() throws IOException {
+  public long getPos() throws IOException {
 
-		return fsDataInputStream.getPos();
-	}
+    return fsDataInputStream.getPos();
+  }
 
-	/**
-	 * Read the data into b, and the check the length
-	 *
-	 * @param b
-	 *            read the data into
-	 * @param off
-	 *            the begin offset to read into
-	 * @param len
-	 *            the length to read into
-	 */
-	public int read(byte[] b, int off, int len) throws IOException {
-		if (len < 0) {
-			throw new IndexOutOfBoundsException();
-		}
-		int n = 0;
-		while (n < len) {
-			int count = fsDataInputStream.read(b, off + n, len - n);
-			if (count < 0) {
-				throw new IOException("The read length is out of the length of inputstream");
-			}
-			n += count;
-		}
-		return n;
-	}
+  /**
+   * Read the data into b, and the check the length
+   *
+   * @param b
+   *            read the data into
+   * @param off
+   *            the begin offset to read into
+   * @param len
+   *            the length to read into
+   */
+  public int read(byte[] b, int off, int len) throws IOException {
+    if (len < 0) {
+      throw new IndexOutOfBoundsException();
+    }
+    int n = 0;
+    while (n < len) {
+      int count = fsDataInputStream.read(b, off + n, len - n);
+      if (count < 0) {
+        throw new IOException("The read length is out of the length of inputstream");
+      }
+      n += count;
+    }
+    return n;
+  }
 }

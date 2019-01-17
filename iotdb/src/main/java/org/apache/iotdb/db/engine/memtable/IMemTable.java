@@ -1,9 +1,13 @@
 /**
  * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
@@ -15,31 +19,32 @@
  */
 package org.apache.iotdb.db.engine.memtable;
 
+import java.util.Map;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-import java.util.Map;
-
 /**
- * IMemTable is designed to store data points which are not flushed into TsFile yet. An instance of IMemTable maintains
- * all series belonging to one StorageGroup, corresponding to one FileNodeProcessor.<br>
- * The concurrent control of IMemTable is based on the concurrent control of FileNodeProcessor, i.e., Writing and
- * querying operations have gotten writeLock and readLock respectively.<br>
+ * IMemTable is designed to store data points which are not flushed into TsFile yet. An instance of
+ * IMemTable maintains all series belonging to one StorageGroup,
+ * corresponding to one FileNodeProcessor.<br> The concurrent control of IMemTable
+ * is based on the concurrent control of FileNodeProcessor, i.e., Writing and
+ * querying operations must already have gotten writeLock and readLock respectively.<br>
  */
 public interface IMemTable {
 
-    Map<String, Map<String, IWritableMemChunk>> getMemTableMap();
+  Map<String, Map<String, IWritableMemChunk>> getMemTableMap();
 
-    void write(String deviceId, String measurement, TSDataType dataType, long insertTime, String insertValue);
+  void write(String deviceId, String measurement, TSDataType dataType,
+      long insertTime, String insertValue);
 
-    int size();
+  int size();
 
-    TimeValuePairSorter query(String deviceId, String measurement, TSDataType dataType);
+  TimeValuePairSorter query(String deviceId, String measurement, TSDataType dataType);
 
-    /**
-     * release all the memory resources
-     */
-    void clear();
+  /**
+   * release all the memory resources.
+   */
+  void clear();
 
-    boolean isEmpty();
+  boolean isEmpty();
 
 }

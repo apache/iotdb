@@ -1,9 +1,13 @@
 /**
  * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
@@ -18,47 +22,49 @@ package org.apache.iotdb.db.utils;
 import java.io.Serializable;
 
 public class TimeValuePair implements Serializable {
-    private long timestamp;
-    private TsPrimitiveType value;
 
-    public TimeValuePair(long timestamp, TsPrimitiveType value) {
-        this.timestamp = timestamp;
-        this.value = value;
-    }
+  private long timestamp;
+  private TsPrimitiveType value;
 
-    public long getTimestamp() {
-        return timestamp;
-    }
+  public TimeValuePair(long timestamp, TsPrimitiveType value) {
+    this.timestamp = timestamp;
+    this.value = value;
+  }
 
-    public void setTimestamp(long timestamp) {
-        this.timestamp = timestamp;
-    }
+  public long getTimestamp() {
+    return timestamp;
+  }
 
-    public TsPrimitiveType getValue() {
-        return value;
-    }
+  public void setTimestamp(long timestamp) {
+    this.timestamp = timestamp;
+  }
 
-    public void setValue(TsPrimitiveType value) {
-        this.value = value;
-    }
+  public TsPrimitiveType getValue() {
+    return value;
+  }
 
-    @Override
-    public String toString() {
-        StringBuilder stringBuilder = new StringBuilder();
-        stringBuilder.append(timestamp).append(" : ").append(getValue());
-        return stringBuilder.toString();
-    }
+  public void setValue(TsPrimitiveType value) {
+    this.value = value;
+  }
 
-    @Override
-    public boolean equals(Object object) {
-        if (object instanceof TimeValuePair) {
-            return ((TimeValuePair) object).getTimestamp() == timestamp && ((TimeValuePair) object).getValue() != null
-                    && ((TimeValuePair) object).getValue().equals(value);
-        }
-        return false;
-    }
+  @Override
+  public String toString() {
+    StringBuilder stringBuilder = new StringBuilder();
+    stringBuilder.append(timestamp).append(" : ").append(getValue());
+    return stringBuilder.toString();
+  }
 
-    public int getSize() {
-        return 8 + 8 + value.getSize();
+  @Override
+  public boolean equals(Object object) {
+    if (object instanceof TimeValuePair) {
+      return ((TimeValuePair) object).getTimestamp() == timestamp
+          && ((TimeValuePair) object).getValue() != null
+          && ((TimeValuePair) object).getValue().equals(value);
     }
+    return false;
+  }
+
+  public int getSize() {
+    return 8 + 8 + value.getSize();
+  }
 }

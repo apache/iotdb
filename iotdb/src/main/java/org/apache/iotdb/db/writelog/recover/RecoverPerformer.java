@@ -1,9 +1,13 @@
 /**
  * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
@@ -16,13 +20,13 @@
 package org.apache.iotdb.db.writelog.recover;
 
 import org.apache.iotdb.db.exception.RecoverException;
-import org.apache.iotdb.db.exception.RecoverException;
 
 public interface RecoverPerformer {
-    /**
-     * Start the recovery process of the module to which this object belongs.
-     * 
-     * @throws RecoverException
-     */
-    void recover() throws RecoverException;
+
+  /**
+   * Start the recovery process of the module to which this object belongs.
+   *
+   * @throws RecoverException -recover exception
+   */
+  void recover() throws RecoverException;
 }

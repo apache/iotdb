@@ -1,9 +1,13 @@
 /**
  * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
@@ -15,159 +19,173 @@
  */
 package org.apache.iotdb.tsfile.read.query.dataset;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.PriorityQueue;
+import java.util.Set;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
-import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReader;
 
-import java.io.IOException;
-import java.util.*;
-
 /**
- * multi-way merging data set ,no need to use TimeGenerator
+ * multi-way merging data set, no need to use TimeGenerator.
  */
 public class DataSetWithoutTimeGenerator extends QueryDataSet {
 
-    private List<FileSeriesReader> readers;
+  private List<FileSeriesReader> readers;
 
-    private List<BatchData> batchDataList;
+  private List<BatchData> batchDataList;
 
-    private List<Boolean> hasDataRemaining;
+  private List<Boolean> hasDataRemaining;
 
-    /** heap only need to store time **/
-    private PriorityQueue<Long> timeHeap;
+  /**
+   * heap only need to store time.
+   **/
+  private PriorityQueue<Long> timeHeap;
 
-    private Set<Long> timeSet;
+  private Set<Long> timeSet;
 
-    public DataSetWithoutTimeGenerator(List<Path> paths, List<TSDataType> dataTypes, List<FileSeriesReader> readers)
-            throws IOException {
-        super(paths, dataTypes);
-        this.readers = readers;
-        initHeap();
+  /**
+   * constructor of DataSetWithoutTimeGenerator.
+   *
+   * @param paths paths in List structure
+   * @param dataTypes TSDataTypes in List structure
+   * @param readers readers in List(SeriesReaderByTimestamp) structure
+   * @throws IOException IOException
+   */
+  public DataSetWithoutTimeGenerator(List<Path> paths, List<TSDataType> dataTypes,
+      List<FileSeriesReader> readers)
+      throws IOException {
+    super(paths, dataTypes);
+    this.readers = readers;
+    initHeap();
+  }
+
+  private void initHeap() throws IOException {
+    hasDataRemaining = new ArrayList<>();
+    batchDataList = new ArrayList<>();
+    timeHeap = new PriorityQueue<>();
+    timeSet = new HashSet<>();
+
+    for (int i = 0; i < paths.size(); i++) {
+      FileSeriesReader reader = readers.get(i);
+      if (!reader.hasNextBatch()) {
+        batchDataList.add(new BatchData());
+        hasDataRemaining.add(false);
+      } else {
+        batchDataList.add(reader.nextBatch());
+        hasDataRemaining.add(true);
+      }
     }
 
-    private void initHeap() throws IOException {
-        hasDataRemaining = new ArrayList<>();
-        batchDataList = new ArrayList<>();
-        timeHeap = new PriorityQueue<>();
-        timeSet = new HashSet<>();
+    for (BatchData data : batchDataList) {
+      if (data.hasNext()) {
+        timeHeapPut(data.currentTime());
+      }
+    }
+  }
 
-        for (int i = 0; i < paths.size(); i++) {
-            FileSeriesReader reader = readers.get(i);
-            if (!reader.hasNextBatch()) {
-                batchDataList.add(new BatchData());
-                hasDataRemaining.add(false);
-            } else {
-                batchDataList.add(reader.nextBatch());
-                hasDataRemaining.add(true);
-            }
-        }
+  @Override
+  public boolean hasNext() {
+    return timeHeap.size() > 0;
+  }
 
-        for (BatchData data : batchDataList) {
+  @Override
+  public RowRecord next() throws IOException {
+    long minTime = timeHeapGet();
+    if (minTime == 1480562618999L) {
+      System.out.println("debug");
+    }
+
+    RowRecord record = new RowRecord(minTime);
+
+    for (int i = 0; i < paths.size(); i++) {
+
+      Field field = new Field(dataTypes.get(i));
+
+      if (!hasDataRemaining.get(i)) {
+        field.setNull();
+        record.addField(field);
+        continue;
+      }
+
+      BatchData data = batchDataList.get(i);
+
+      if (data.currentTime() == minTime) {
+        putValueToField(data, field);
+        data.next();
+
+        if (!data.hasNext()) {
+          FileSeriesReader reader = readers.get(i);
+          if (reader.hasNextBatch()) {
+            data = reader.nextBatch();
             if (data.hasNext()) {
-                timeHeapPut(data.currentTime());
-            }
-        }
-    }
-
-    @Override
-    public boolean hasNext() {
-        return timeHeap.size() > 0;
-    }
-
-    @Override
-    public RowRecord next() throws IOException {
-        long minTime = timeHeapGet();
-        if (minTime == 1480562618999L) {
-            System.out.println("debug");
-        }
-
-        RowRecord record = new RowRecord(minTime);
-
-        for (int i = 0; i < paths.size(); i++) {
-
-            Field field = new Field(dataTypes.get(i));
-
-            if (!hasDataRemaining.get(i)) {
-                field.setNull();
-                record.addField(field);
-                continue;
-            }
-
-            BatchData data = batchDataList.get(i);
-
-            if (data.currentTime() == minTime) {
-                putValueToField(data, field);
-                data.next();
-
-                if (!data.hasNext()) {
-                    FileSeriesReader reader = readers.get(i);
-                    if (reader.hasNextBatch()) {
-                        data = reader.nextBatch();
-                        if (data.hasNext()) {
-                            batchDataList.set(i, data);
-                            timeHeapPut(data.currentTime());
-                        } else {
-                            hasDataRemaining.set(i, false);
-                        }
-                    } else {
-                        hasDataRemaining.set(i, false);
-                    }
-                } else {
-                    timeHeapPut(data.currentTime());
-                }
-
+              batchDataList.set(i, data);
+              timeHeapPut(data.currentTime());
             } else {
-                field.setNull();
+              hasDataRemaining.set(i, false);
             }
-
-            record.addField(field);
+          } else {
+            hasDataRemaining.set(i, false);
+          }
+        } else {
+          timeHeapPut(data.currentTime());
         }
 
-        return record;
+      } else {
+        field.setNull();
+      }
+
+      record.addField(field);
     }
 
-    /**
-     * keep heap from storing duplicate time
-     */
-    private void timeHeapPut(long time) {
-        if (!timeSet.contains(time)) {
-            timeSet.add(time);
-            timeHeap.add(time);
-        }
-    }
+    return record;
+  }
 
-    private Long timeHeapGet() {
-        Long t = timeHeap.poll();
-        timeSet.remove(t);
-        return t;
+  /**
+   * keep heap from storing duplicate time.
+   */
+  private void timeHeapPut(long time) {
+    if (!timeSet.contains(time)) {
+      timeSet.add(time);
+      timeHeap.add(time);
     }
+  }
 
-    private void putValueToField(BatchData col, Field field) {
-        switch (col.getDataType()) {
-        case BOOLEAN:
-            field.setBoolV(col.getBoolean());
-            break;
-        case INT32:
-            field.setIntV(col.getInt());
-            break;
-        case INT64:
-            field.setLongV(col.getLong());
-            break;
-        case FLOAT:
-            field.setFloatV(col.getFloat());
-            break;
-        case DOUBLE:
-            field.setDoubleV(col.getDouble());
-            break;
-        case TEXT:
-            field.setBinaryV(col.getBinary());
-            break;
-        default:
-            throw new UnSupportedDataTypeException("UnSupported" + String.valueOf(col.getDataType()));
-        }
+  private Long timeHeapGet() {
+    Long t = timeHeap.poll();
+    timeSet.remove(t);
+    return t;
+  }
+
+  private void putValueToField(BatchData col, Field field) {
+    switch (col.getDataType()) {
+      case BOOLEAN:
+        field.setBoolV(col.getBoolean());
+        break;
+      case INT32:
+        field.setIntV(col.getInt());
+        break;
+      case INT64:
+        field.setLongV(col.getLong());
+        break;
+      case FLOAT:
+        field.setFloatV(col.getFloat());
+        break;
+      case DOUBLE:
+        field.setDoubleV(col.getDouble());
+        break;
+      case TEXT:
+        field.setBinaryV(col.getBinary());
+        break;
+      default:
+        throw new UnSupportedDataTypeException("UnSupported" + String.valueOf(col.getDataType()));
     }
+  }
 }

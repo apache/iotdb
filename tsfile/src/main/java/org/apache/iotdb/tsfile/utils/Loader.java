@@ -1,9 +1,13 @@
 /**
  * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
@@ -22,28 +26,35 @@ import java.util.HashSet;
 import java.util.Set;
 
 public class Loader {
-    public static Set<URL> getResources(String resource, ClassLoader classLoader) throws IOException {
-        Set<URL> urlSet = new HashSet<>();
-        Enumeration<URL> urlEnum = classLoader.getResources(resource);
-        while (urlEnum.hasMoreElements()) {
-            urlSet.add(urlEnum.nextElement());
-        }
-        return urlSet;
-    }
 
-    public static URL getResource(String resource, ClassLoader classLoader) {
-        return classLoader.getResource(resource);
+  /**
+   * function for getting resources.
+   */
+  public static Set<URL> getResources(String resource, ClassLoader classLoader) throws IOException {
+    Set<URL> urlSet = new HashSet<>();
+    Enumeration<URL> urlEnum = classLoader.getResources(resource);
+    while (urlEnum.hasMoreElements()) {
+      urlSet.add(urlEnum.nextElement());
     }
+    return urlSet;
+  }
 
-    public static ClassLoader getClassLoaderOfObject(Object o) {
-        if (o == null) {
-            throw new NullPointerException("Input object cannot be null");
-        }
-        return getClassLoaderOfClass(o.getClass());
-    }
+  public static URL getResource(String resource, ClassLoader classLoader) {
+    return classLoader.getResource(resource);
+  }
 
-    public static ClassLoader getClassLoaderOfClass(final Class<?> clazz) {
-        ClassLoader classLoader = clazz.getClassLoader();
-        return classLoader == null ? ClassLoader.getSystemClassLoader() : classLoader;
+  /**
+   * function for getting the class loader of the given object.
+   */
+  public static ClassLoader getClassLoaderOfObject(Object o) {
+    if (o == null) {
+      throw new NullPointerException("Input object cannot be null");
     }
+    return getClassLoaderOfClass(o.getClass());
+  }
+
+  public static ClassLoader getClassLoaderOfClass(final Class<?> clazz) {
+    ClassLoader classLoader = clazz.getClassLoader();
+    return classLoader == null ? ClassLoader.getSystemClassLoader() : classLoader;
+  }
 }

@@ -1,9 +1,13 @@
 /**
  * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
@@ -15,14 +19,13 @@
  */
 package org.apache.iotdb.tsfile.io;
 
-import org.apache.iotdb.tsfile.common.utils.ITsRandomAccessFileWriter;
+import java.io.IOException;
+import java.io.OutputStream;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-
-import java.io.IOException;
-import java.io.OutputStream;
+import org.apache.iotdb.tsfile.common.utils.ITsRandomAccessFileWriter;
 
 
 /**
@@ -32,58 +35,60 @@ import java.io.OutputStream;
  */
 public class HDFSOutputStream implements ITsRandomAccessFileWriter {
 
-	private FSDataOutputStream fsDataOutputStream;
+  private FSDataOutputStream fsDataOutputStream;
 
-	public HDFSOutputStream(String filePath, boolean overwriter) throws IOException {
-		
-		this(filePath, new Configuration(), overwriter);
-	}
+  public HDFSOutputStream(String filePath, boolean overwriter) throws IOException {
 
-	
-	public HDFSOutputStream(String filePath, Configuration configuration, boolean overwriter) throws IOException {
-		
-		this(new Path(filePath),configuration,overwriter);
-	}
-	
-	public HDFSOutputStream(Path path,Configuration configuration,boolean overwriter) throws IOException{
-		
-		FileSystem fsFileSystem = FileSystem.get(configuration);
-		fsDataOutputStream = fsFileSystem.create(path, overwriter);
-	}
+    this(filePath, new Configuration(), overwriter);
+  }
 
-	@Override
-	public OutputStream getOutputStream() {
 
-		return fsDataOutputStream;
-	}
+  public HDFSOutputStream(String filePath, Configuration configuration, boolean overwriter)
+      throws IOException {
 
-	@Override
-	public long getPos() throws IOException {
+    this(new Path(filePath), configuration, overwriter);
+  }
 
-		return fsDataOutputStream.getPos();
-	}
+  public HDFSOutputStream(Path path, Configuration configuration, boolean overwriter)
+      throws IOException {
 
-	@Override
-	public void seek(long offset) throws IOException {
-		throw new IOException("Not support");
-	}
+    FileSystem fsFileSystem = FileSystem.get(configuration);
+    fsDataOutputStream = fsFileSystem.create(path, overwriter);
+  }
 
-	@Override
-	public void write(int b) throws IOException {
-		
-		fsDataOutputStream.write(b);
-	}
+  @Override
+  public OutputStream getOutputStream() {
 
-	@Override
-	public void write(byte[] b) throws IOException {
-		
-		fsDataOutputStream.write(b);
-	}
+    return fsDataOutputStream;
+  }
 
-	@Override
-	public void close() throws IOException {
-		
-		fsDataOutputStream.close();
-	}
+  @Override
+  public long getPos() throws IOException {
+
+    return fsDataOutputStream.getPos();
+  }
+
+  @Override
+  public void seek(long offset) throws IOException {
+    throw new IOException("Not support");
+  }
+
+  @Override
+  public void write(int b) throws IOException {
+
+    fsDataOutputStream.write(b);
+  }
+
+  @Override
+  public void write(byte[] b) throws IOException {
+
+    fsDataOutputStream.write(b);
+  }
+
+  @Override
+  public void close() throws IOException {
+
+    fsDataOutputStream.close();
+  }
 
 }

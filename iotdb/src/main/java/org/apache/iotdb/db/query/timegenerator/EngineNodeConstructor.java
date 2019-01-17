@@ -1,9 +1,13 @@
 /**
  * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
@@ -15,6 +19,11 @@
  */
 package org.apache.iotdb.db.query.timegenerator;
 
+import static org.apache.iotdb.tsfile.read.expression.ExpressionType.AND;
+import static org.apache.iotdb.tsfile.read.expression.ExpressionType.OR;
+import static org.apache.iotdb.tsfile.read.expression.ExpressionType.SERIES;
+
+import java.io.IOException;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.query.control.QueryDataSourceManager;
@@ -30,64 +39,65 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.query.timegenerator.node.AndNode;
 import org.apache.iotdb.tsfile.read.query.timegenerator.node.Node;
 import org.apache.iotdb.tsfile.read.query.timegenerator.node.OrNode;
-import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
-import org.apache.iotdb.db.exception.FileNodeManagerException;
-import org.apache.iotdb.db.query.control.QueryDataSourceManager;
-import org.apache.iotdb.db.query.factory.SeriesReaderFactory;
-
-import java.io.IOException;
-
-import static org.apache.iotdb.tsfile.read.expression.ExpressionType.*;
 
 public class EngineNodeConstructor {
 
-    private long jobId;
+  private long jobId;
 
-    public EngineNodeConstructor(long jobId) {
-        this.jobId = jobId;
+  public EngineNodeConstructor(long jobId) {
+    this.jobId = jobId;
+  }
+
+  /**
+   * construct expression node.
+   *
+   * @param expression expression
+   * @return Node object
+   * @throws IOException IOException
+   * @throws FileNodeManagerException FileNodeManagerException
+   */
+  public Node construct(IExpression expression) throws IOException, FileNodeManagerException {
+    if (expression.getType() == SERIES) {
+      return new EngineLeafNode(generateSeriesReader((SingleSeriesExpression) expression));
+    } else {
+      Node leftChild;
+      Node rightChild;
+      if (expression.getType() == OR) {
+        leftChild = this.construct(((IBinaryExpression) expression).getLeft());
+        rightChild = this.construct(((IBinaryExpression) expression).getRight());
+        return new OrNode(leftChild, rightChild);
+      } else if (expression.getType() == AND) {
+        leftChild = this.construct(((IBinaryExpression) expression).getLeft());
+        rightChild = this.construct(((IBinaryExpression) expression).getRight());
+        return new AndNode(leftChild, rightChild);
+      } else {
+        throw new UnSupportedDataTypeException(
+            "Unsupported QueryFilterType when construct OperatorNode: " + expression.getType());
+      }
     }
+  }
 
-    public Node construct(IExpression expression) throws IOException, FileNodeManagerException {
-        if (expression.getType() == SERIES) {
-            return new EngineLeafNode(generateSeriesReader((SingleSeriesExpression) expression));
-        } else {
-            Node leftChild;
-            Node rightChild;
-            if (expression.getType() == OR) {
-                leftChild = this.construct(((IBinaryExpression) expression).getLeft());
-                rightChild = this.construct(((IBinaryExpression) expression).getRight());
-                return new OrNode(leftChild, rightChild);
-            } else if (expression.getType() == AND) {
-                leftChild = this.construct(((IBinaryExpression) expression).getLeft());
-                rightChild = this.construct(((IBinaryExpression) expression).getRight());
-                return new AndNode(leftChild, rightChild);
-            } else {
-                throw new UnSupportedDataTypeException(
-                        "Unsupported QueryFilterType when construct OperatorNode: " + expression.getType());
-            }
-        }
-    }
+  private IReader generateSeriesReader(SingleSeriesExpression singleSeriesExpression)
+      throws IOException, FileNodeManagerException {
 
-    private IReader generateSeriesReader(SingleSeriesExpression singleSeriesExpression)
-            throws IOException, FileNodeManagerException {
+    QueryDataSource queryDataSource = QueryDataSourceManager.getQueryDataSource(jobId,
+        singleSeriesExpression.getSeriesPath());
 
-        QueryDataSource queryDataSource = QueryDataSourceManager.getQueryDataSource(jobId,
-                singleSeriesExpression.getSeriesPath());
+    Filter filter = singleSeriesExpression.getFilter();
 
-        Filter filter = singleSeriesExpression.getFilter();
+    PriorityMergeReader priorityReader = new PriorityMergeReader();
 
-        PriorityMergeReader priorityReader = new PriorityMergeReader();
+    // reader for all sequence data
+    SequenceDataReader tsFilesReader = new SequenceDataReader(queryDataSource.getSeqDataSource(),
+        filter);
+    priorityReader.addReaderWithPriority(tsFilesReader, 1);
 
-        // reader for all sequence data
-        SequenceDataReader tsFilesReader = new SequenceDataReader(queryDataSource.getSeqDataSource(), filter);
-        priorityReader.addReaderWithPriority(tsFilesReader, 1);
+    // reader for all unSequence data
+    PriorityMergeReader unSeqMergeReader = SeriesReaderFactory.getInstance()
+        .createUnSeqMergeReader(queryDataSource.getOverflowSeriesDataSource(), filter);
+    priorityReader.addReaderWithPriority(unSeqMergeReader, 2);
 
-        // reader for all unSequence data
-        PriorityMergeReader unSeqMergeReader = SeriesReaderFactory.getInstance()
-                .createUnSeqMergeReader(queryDataSource.getOverflowSeriesDataSource(), filter);
-        priorityReader.addReaderWithPriority(unSeqMergeReader, 2);
-
-        return priorityReader;
-    }
+    return priorityReader;
+  }
 
 }

@@ -1,9 +1,13 @@
 /**
  * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
@@ -15,8 +19,8 @@
  */
 package org.apache.iotdb.db.qp.logical.crud;
 
-import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.exception.qp.LogicalOperatorException;
+import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IUnaryExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
@@ -26,152 +30,161 @@ import org.apache.iotdb.tsfile.read.filter.ValueFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 /**
- * all basic operator in filter
+ * all basic operator in filter.
  */
 public enum BasicOperatorType {
-    EQ {
-        @Override
-        public <T extends Comparable<T>> IUnaryExpression getUnaryExpression(Path path, T value) {
-            if (path.equals("time")) {
-                return new GlobalTimeExpression(TimeFilter.eq((Long) value));
-            } else {
-                return new SingleSeriesExpression(path, ValueFilter.eq(value));
-            }
-        }
-
-        @Override
-        public <T extends Comparable<T>> Filter getValueFilter(T value) {
-            return ValueFilter.eq(value);
-        }
-
-        @Override
-        public Filter getTimeFilter(long value) {
-            return TimeFilter.eq(value);
-        }
-    },
-    LTEQ {
-        @Override
-        public <T extends Comparable<T>> IUnaryExpression getUnaryExpression(Path path, T value) {
-            if (path.equals("time")) {
-                return new GlobalTimeExpression(TimeFilter.ltEq((Long) value));
-            } else {
-                return new SingleSeriesExpression(path, ValueFilter.ltEq(value));
-            }
-        }
-
-        @Override
-        public <T extends Comparable<T>> Filter getValueFilter(T value) {
-            return ValueFilter.ltEq(value);
-        }
-
-        @Override
-        public Filter getTimeFilter(long value) {
-            return TimeFilter.ltEq(value);
-        }
-    },
-    LT {
-        @Override
-        public <T extends Comparable<T>> IUnaryExpression getUnaryExpression(Path path, T value) {
-            if (path.equals("time")) {
-                return new GlobalTimeExpression(TimeFilter.lt((Long) value));
-            } else {
-                return new SingleSeriesExpression(path, ValueFilter.lt(value));
-            }
-        }
-
-        @Override
-        public <T extends Comparable<T>> Filter getValueFilter(T value) {
-            return ValueFilter.lt(value);
-        }
-
-        @Override
-        public Filter getTimeFilter(long value) {
-            return TimeFilter.lt(value);
-        }
-    },
-    GTEQ {
-        @Override
-        public <T extends Comparable<T>> IUnaryExpression getUnaryExpression(Path path, T value) {
-            if (path.equals("time")) {
-                return new GlobalTimeExpression(TimeFilter.gtEq((Long) value));
-            } else {
-                return new SingleSeriesExpression(path, ValueFilter.gtEq(value));
-            }
-        }
-
-        @Override
-        public <T extends Comparable<T>> Filter getValueFilter(T value) {
-            return ValueFilter.gtEq(value);
-        }
-
-        @Override
-        public Filter getTimeFilter(long value) {
-            return TimeFilter.gtEq(value);
-        }
-    },
-    GT {
-        @Override
-        public <T extends Comparable<T>> IUnaryExpression getUnaryExpression(Path path, T value) {
-            if (path.equals("time")) {
-                return new GlobalTimeExpression(TimeFilter.gt((Long) value));
-            } else {
-                return new SingleSeriesExpression(path, ValueFilter.gt(value));
-            }
-        }
-
-        @Override
-        public <T extends Comparable<T>> Filter getValueFilter(T value) {
-            return ValueFilter.gt(value);
-        }
-
-        @Override
-        public Filter getTimeFilter(long value) {
-            return TimeFilter.gt(value);
-        }
-    },
-    NOTEQUAL {
-        @Override
-        public <T extends Comparable<T>> IUnaryExpression getUnaryExpression(Path path, T value) {
-            if (path.equals("time")) {
-                return new GlobalTimeExpression(TimeFilter.notEq((Long) value));
-            } else {
-                return new SingleSeriesExpression(path, ValueFilter.notEq(value));
-            }
-        }
-
-        @Override
-        public <T extends Comparable<T>> Filter getValueFilter(T value) {
-            return ValueFilter.notEq(value);
-        }
-
-        @Override
-        public Filter getTimeFilter(long value) {
-            return TimeFilter.notEq(value);
-        }
-    };
-
-    public static BasicOperatorType getBasicOpBySymbol(int tokenIntType) throws LogicalOperatorException {
-        switch (tokenIntType) {
-        case SQLConstant.EQUAL:
-            return EQ;
-        case SQLConstant.LESSTHANOREQUALTO:
-            return LTEQ;
-        case SQLConstant.LESSTHAN:
-            return LT;
-        case SQLConstant.GREATERTHANOREQUALTO:
-            return GTEQ;
-        case SQLConstant.GREATERTHAN:
-            return GT;
-        case SQLConstant.NOTEQUAL:
-            return NOTEQUAL;
-        default:
-            throw new LogicalOperatorException("unsupported type:{}" + SQLConstant.tokenNames.get(tokenIntType));
-        }
+  EQ {
+    @Override
+    public <T extends Comparable<T>> IUnaryExpression getUnaryExpression(Path path, T value) {
+      if (path.equals("time")) {
+        return new GlobalTimeExpression(TimeFilter.eq((Long) value));
+      } else {
+        return new SingleSeriesExpression(path, ValueFilter.eq(value));
+      }
     }
 
-    public abstract <T extends Comparable<T>> IUnaryExpression getUnaryExpression(Path path, T value);
+    @Override
+    public <T extends Comparable<T>> Filter getValueFilter(T value) {
+      return ValueFilter.eq(value);
+    }
 
-    public abstract <T extends Comparable<T>> Filter getValueFilter(T tsPrimitiveType);
+    @Override
+    public Filter getTimeFilter(long value) {
+      return TimeFilter.eq(value);
+    }
+  },
+  LTEQ {
+    @Override
+    public <T extends Comparable<T>> IUnaryExpression getUnaryExpression(Path path, T value) {
+      if (path.equals("time")) {
+        return new GlobalTimeExpression(TimeFilter.ltEq((Long) value));
+      } else {
+        return new SingleSeriesExpression(path, ValueFilter.ltEq(value));
+      }
+    }
 
-    public abstract Filter getTimeFilter(long value);
+    @Override
+    public <T extends Comparable<T>> Filter getValueFilter(T value) {
+      return ValueFilter.ltEq(value);
+    }
+
+    @Override
+    public Filter getTimeFilter(long value) {
+      return TimeFilter.ltEq(value);
+    }
+  },
+  LT {
+    @Override
+    public <T extends Comparable<T>> IUnaryExpression getUnaryExpression(Path path, T value) {
+      if (path.equals("time")) {
+        return new GlobalTimeExpression(TimeFilter.lt((Long) value));
+      } else {
+        return new SingleSeriesExpression(path, ValueFilter.lt(value));
+      }
+    }
+
+    @Override
+    public <T extends Comparable<T>> Filter getValueFilter(T value) {
+      return ValueFilter.lt(value);
+    }
+
+    @Override
+    public Filter getTimeFilter(long value) {
+      return TimeFilter.lt(value);
+    }
+  },
+  GTEQ {
+    @Override
+    public <T extends Comparable<T>> IUnaryExpression getUnaryExpression(Path path, T value) {
+      if (path.equals("time")) {
+        return new GlobalTimeExpression(TimeFilter.gtEq((Long) value));
+      } else {
+        return new SingleSeriesExpression(path, ValueFilter.gtEq(value));
+      }
+    }
+
+    @Override
+    public <T extends Comparable<T>> Filter getValueFilter(T value) {
+      return ValueFilter.gtEq(value);
+    }
+
+    @Override
+    public Filter getTimeFilter(long value) {
+      return TimeFilter.gtEq(value);
+    }
+  },
+  GT {
+    @Override
+    public <T extends Comparable<T>> IUnaryExpression getUnaryExpression(Path path, T value) {
+      if (path.equals("time")) {
+        return new GlobalTimeExpression(TimeFilter.gt((Long) value));
+      } else {
+        return new SingleSeriesExpression(path, ValueFilter.gt(value));
+      }
+    }
+
+    @Override
+    public <T extends Comparable<T>> Filter getValueFilter(T value) {
+      return ValueFilter.gt(value);
+    }
+
+    @Override
+    public Filter getTimeFilter(long value) {
+      return TimeFilter.gt(value);
+    }
+  },
+  NOTEQUAL {
+    @Override
+    public <T extends Comparable<T>> IUnaryExpression getUnaryExpression(Path path, T value) {
+      if (path.equals("time")) {
+        return new GlobalTimeExpression(TimeFilter.notEq((Long) value));
+      } else {
+        return new SingleSeriesExpression(path, ValueFilter.notEq(value));
+      }
+    }
+
+    @Override
+    public <T extends Comparable<T>> Filter getValueFilter(T value) {
+      return ValueFilter.notEq(value);
+    }
+
+    @Override
+    public Filter getTimeFilter(long value) {
+      return TimeFilter.notEq(value);
+    }
+  };
+
+  /**
+   * BasicOperatorType Constructor.
+   *
+   * @param tokenIntType token in Int Type
+   * @return basic operator type
+   * @throws LogicalOperatorException Logical Operator Exception
+   */
+  public static BasicOperatorType getBasicOpBySymbol(int tokenIntType)
+      throws LogicalOperatorException {
+    switch (tokenIntType) {
+      case SQLConstant.EQUAL:
+        return EQ;
+      case SQLConstant.LESSTHANOREQUALTO:
+        return LTEQ;
+      case SQLConstant.LESSTHAN:
+        return LT;
+      case SQLConstant.GREATERTHANOREQUALTO:
+        return GTEQ;
+      case SQLConstant.GREATERTHAN:
+        return GT;
+      case SQLConstant.NOTEQUAL:
+        return NOTEQUAL;
+      default:
+        throw new LogicalOperatorException(
+            "unsupported type:{}" + SQLConstant.tokenNames.get(tokenIntType));
+    }
+  }
+
+  public abstract <T extends Comparable<T>> IUnaryExpression getUnaryExpression(Path path, T value);
+
+  public abstract <T extends Comparable<T>> Filter getValueFilter(T tsPrimitiveType);
+
+  public abstract Filter getTimeFilter(long value);
 }

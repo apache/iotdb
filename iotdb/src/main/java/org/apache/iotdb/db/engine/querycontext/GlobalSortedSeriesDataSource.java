@@ -1,9 +1,13 @@
 /**
  * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
@@ -15,75 +19,76 @@
  */
 package org.apache.iotdb.db.engine.querycontext;
 
+import java.util.List;
 import org.apache.iotdb.db.engine.filenode.IntervalFileNode;
 import org.apache.iotdb.db.engine.memtable.TimeValuePairSorter;
 import org.apache.iotdb.tsfile.read.common.Path;
 
-import java.util.List;
-
 public class GlobalSortedSeriesDataSource {
-    private Path seriesPath;
 
-    // sealed tsfile
-    private List<IntervalFileNode> sealedTsFiles;
+  private Path seriesPath;
 
-    // unsealed tsfile
-    private UnsealedTsFile unsealedTsFile;
+  // sealed tsfile
+  private List<IntervalFileNode> sealedTsFiles;
 
-    // seq mem-table
-    private TimeValuePairSorter readableChunk;
+  // unsealed tsfile
+  private UnsealedTsFile unsealedTsFile;
 
-    public GlobalSortedSeriesDataSource(Path seriesPath, List<IntervalFileNode> sealedTsFiles,
-            UnsealedTsFile unsealedTsFile, TimeValuePairSorter readableChunk) {
-        this.seriesPath = seriesPath;
-        this.sealedTsFiles = sealedTsFiles;
-        this.unsealedTsFile = unsealedTsFile;
+  // seq mem-table
+  private TimeValuePairSorter readableChunk;
 
-        this.readableChunk = readableChunk;
-    }
+  public GlobalSortedSeriesDataSource(Path seriesPath, List<IntervalFileNode> sealedTsFiles,
+      UnsealedTsFile unsealedTsFile,
+      TimeValuePairSorter readableChunk) {
+    this.seriesPath = seriesPath;
+    this.sealedTsFiles = sealedTsFiles;
+    this.unsealedTsFile = unsealedTsFile;
 
-    public boolean hasSealedTsFiles() {
-        return sealedTsFiles != null && sealedTsFiles.size() > 0;
-    }
+    this.readableChunk = readableChunk;
+  }
 
-    public List<IntervalFileNode> getSealedTsFiles() {
-        return sealedTsFiles;
-    }
+  public boolean hasSealedTsFiles() {
+    return sealedTsFiles != null && sealedTsFiles.size() > 0;
+  }
 
-    public boolean hasUnsealedTsFile() {
-        return unsealedTsFile != null;
-    }
+  public List<IntervalFileNode> getSealedTsFiles() {
+    return sealedTsFiles;
+  }
 
-    public UnsealedTsFile getUnsealedTsFile() {
-        return unsealedTsFile;
-    }
+  public void setSealedTsFiles(List<IntervalFileNode> sealedTsFiles) {
+    this.sealedTsFiles = sealedTsFiles;
+  }
 
-    public boolean hasRawSeriesChunk() {
-        return readableChunk != null;
-    }
+  public boolean hasUnsealedTsFile() {
+    return unsealedTsFile != null;
+  }
 
-    public TimeValuePairSorter getReadableChunk() {
-        return readableChunk;
-    }
+  public UnsealedTsFile getUnsealedTsFile() {
+    return unsealedTsFile;
+  }
 
-    public void setSealedTsFiles(List<IntervalFileNode> sealedTsFiles) {
-        this.sealedTsFiles = sealedTsFiles;
-    }
+  public void setUnsealedTsFile(UnsealedTsFile unsealedTsFile) {
+    this.unsealedTsFile = unsealedTsFile;
+  }
 
-    public void setUnsealedTsFile(UnsealedTsFile unsealedTsFile) {
-        this.unsealedTsFile = unsealedTsFile;
-    }
+  public boolean hasRawSeriesChunk() {
+    return readableChunk != null;
+  }
 
-    public void setReadableChunk(TimeValuePairSorter readableChunk) {
-        this.readableChunk = readableChunk;
-    }
+  public TimeValuePairSorter getReadableChunk() {
+    return readableChunk;
+  }
 
-    public void setSeriesPath(Path seriesPath) {
-        this.seriesPath = seriesPath;
-    }
+  public void setReadableChunk(TimeValuePairSorter readableChunk) {
+    this.readableChunk = readableChunk;
+  }
 
-    public Path getSeriesPath() {
-        return seriesPath;
-    }
+  public Path getSeriesPath() {
+    return seriesPath;
+  }
+
+  public void setSeriesPath(Path seriesPath) {
+    this.seriesPath = seriesPath;
+  }
 
 }

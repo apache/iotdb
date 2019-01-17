@@ -1,9 +1,13 @@
 /**
  * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
@@ -21,22 +25,22 @@ import org.apache.iotdb.tsfile.utils.Binary;
 
 public class PrimitiveArrayListFactory {
 
-    public static PrimitiveArrayList getByDataType(TSDataType dataType) {
-        switch (dataType) {
-        case BOOLEAN:
-            return new PrimitiveArrayList(boolean.class);
-        case INT32:
-            return new PrimitiveArrayList(int.class);
-        case INT64:
-            return new PrimitiveArrayList(long.class);
-        case FLOAT:
-            return new PrimitiveArrayList(float.class);
-        case DOUBLE:
-            return new PrimitiveArrayList(double.class);
-        case TEXT:
-            return new PrimitiveArrayList(Binary.class);
-        default:
-            throw new UnSupportedDataTypeException("DataType: " + dataType);
-        }
+  public static PrimitiveArrayList getByDataType(TSDataType dataType) {
+    switch (dataType) {
+      case BOOLEAN:
+        return new PrimitiveArrayList(boolean.class);
+      case INT32:
+        return new PrimitiveArrayList(int.class);
+      case INT64:
+        return new PrimitiveArrayList(long.class);
+      case FLOAT:
+        return new PrimitiveArrayList(float.class);
+      case DOUBLE:
+        return new PrimitiveArrayList(double.class);
+      case TEXT:
+        return new PrimitiveArrayList(Binary.class);
+      default:
+        throw new UnSupportedDataTypeException("DataType: " + dataType);
     }
+  }
 }

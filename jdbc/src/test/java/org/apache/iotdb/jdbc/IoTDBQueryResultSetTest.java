@@ -1,9 +1,13 @@
 /**
  * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
@@ -15,13 +19,11 @@
  */
 package org.apache.iotdb.jdbc;
 
-import org.apache.iotdb.service.rpc.thrift.*;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
-import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import static org.mockito.Matchers.any;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
@@ -30,9 +32,26 @@ import java.sql.Types;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
-
-import static org.mockito.Matchers.any;
-import static org.mockito.Mockito.*;
+import org.apache.iotdb.service.rpc.thrift.TSDataValue;
+import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
+import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
+import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataReq;
+import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataResp;
+import org.apache.iotdb.service.rpc.thrift.TSFetchResultsReq;
+import org.apache.iotdb.service.rpc.thrift.TSFetchResultsResp;
+import org.apache.iotdb.service.rpc.thrift.TSIService;
+import org.apache.iotdb.service.rpc.thrift.TSOperationHandle;
+import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
+import org.apache.iotdb.service.rpc.thrift.TSRowRecord;
+import org.apache.iotdb.service.rpc.thrift.TS_SessionHandle;
+import org.apache.iotdb.service.rpc.thrift.TS_Status;
+import org.apache.iotdb.service.rpc.thrift.TS_StatusCode;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
 /*
     This class is designed to test the function of TsfileQueryResultSet.
@@ -81,173 +100,188 @@ import static org.mockito.Mockito.*;
  */
 
 public class IoTDBQueryResultSetTest {
-    @Mock
-    private IoTDBConnection connection;
-    @Mock
-    private TSIService.Iface client;
-    @Mock
-    private TS_SessionHandle sessHandle;
-    @Mock
-    private Statement statement;
-    @Mock
-    TSExecuteStatementResp execResp;
-    @Mock
-    TSOperationHandle operationHandle;
-    @Mock
-    private TSFetchMetadataResp fetchMetadataResp;
-    @Mock
-    private TSFetchResultsResp fetchResultsResp;
 
-    private TS_Status Status_SUCCESS = new TS_Status(TS_StatusCode.SUCCESS_STATUS);
-    private ZoneId zoneID = ZoneId.systemDefault();
+  @Mock
+  TSExecuteStatementResp execResp;
+  @Mock
+  TSOperationHandle operationHandle;
+  @Mock
+  private IoTDBConnection connection;
+  @Mock
+  private TSIService.Iface client;
+  @Mock
+  private TS_SessionHandle sessHandle;
+  @Mock
+  private Statement statement;
+  @Mock
+  private TSFetchMetadataResp fetchMetadataResp;
+  @Mock
+  private TSFetchResultsResp fetchResultsResp;
 
-    @Before
-    public void before() throws Exception {
-        MockitoAnnotations.initMocks(this);
+  private TS_Status Status_SUCCESS = new TS_Status(TS_StatusCode.SUCCESS_STATUS);
+  private ZoneId zoneID = ZoneId.systemDefault();
 
-        statement = new IoTDBStatement(connection, client, sessHandle, zoneID);
+  @Before
+  public void before() throws Exception {
+    MockitoAnnotations.initMocks(this);
 
-        when(connection.isClosed()).thenReturn(false);
-        when(client.executeStatement(any(TSExecuteStatementReq.class))).thenReturn(execResp);
-        operationHandle.hasResultSet = true;
-        when(execResp.getOperationHandle()).thenReturn(operationHandle);
-        when(execResp.getStatus()).thenReturn(Status_SUCCESS);
+    statement = new IoTDBStatement(connection, client, sessHandle, zoneID);
 
-        when(client.fetchMetadata(any(TSFetchMetadataReq.class))).thenReturn(fetchMetadataResp);
-        when(fetchMetadataResp.getStatus()).thenReturn(Status_SUCCESS);
+    when(connection.isClosed()).thenReturn(false);
+    when(client.executeStatement(any(TSExecuteStatementReq.class))).thenReturn(execResp);
+    operationHandle.hasResultSet = true;
+    when(execResp.getOperationHandle()).thenReturn(operationHandle);
+    when(execResp.getStatus()).thenReturn(Status_SUCCESS);
 
-        when(client.fetchResults(any(TSFetchResultsReq.class))).thenReturn(fetchResultsResp);
-        when(fetchResultsResp.getStatus()).thenReturn(Status_SUCCESS);
-    }
+    when(client.fetchMetadata(any(TSFetchMetadataReq.class))).thenReturn(fetchMetadataResp);
+    when(fetchMetadataResp.getStatus()).thenReturn(Status_SUCCESS);
 
-    @SuppressWarnings("resource")
-    @Test
-    public void testQuery() throws Exception {
+    when(client.fetchResults(any(TSFetchResultsReq.class))).thenReturn(fetchResultsResp);
+    when(fetchResultsResp.getStatus()).thenReturn(Status_SUCCESS);
+  }
 
-        String testSql = "select *,s1,s0,s2 from root.vehicle.d0 where s1 > 190 or s2 < 10.0 "
-                + "limit 20 offset 1 slimit 4 soffset 2";
+  @SuppressWarnings("resource")
+  @Test
+  public void testQuery() throws Exception {
 
-        /*
-         * step 1: execute statement
-         */
-        List<String> columns = new ArrayList<>();
-        columns.add("root.vehicle.d0.s2");
-        columns.add("root.vehicle.d0.s1");
-        columns.add("root.vehicle.d0.s0");
-        columns.add("root.vehicle.d0.s2");
+    String testSql = "select *,s1,s0,s2 from root.vehicle.d0 where s1 > 190 or s2 < 10.0 "
+        + "limit 20 offset 1 slimit 4 soffset 2";
 
-        when(execResp.getColumns()).thenReturn(columns);
-        when(execResp.getOperationType()).thenReturn("QUERY");
-        doReturn("FLOAT").doReturn("INT64").doReturn("INT32").doReturn("FLOAT").when(fetchMetadataResp).getDataType();
+    /*
+     * step 1: execute statement
+     */
+    List<String> columns = new ArrayList<>();
+    columns.add("root.vehicle.d0.s2");
+    columns.add("root.vehicle.d0.s1");
+    columns.add("root.vehicle.d0.s0");
+    columns.add("root.vehicle.d0.s2");
 
-        boolean hasResultSet = statement.execute(testSql);
+    when(execResp.getColumns()).thenReturn(columns);
+    when(execResp.getOperationType()).thenReturn("QUERY");
+    doReturn("FLOAT").doReturn("INT64").doReturn("INT32").doReturn("FLOAT").when(fetchMetadataResp)
+        .getDataType();
 
-        verify(fetchMetadataResp, times(4)).getDataType();
+    boolean hasResultSet = statement.execute(testSql);
 
-        /*
-         * step 2: fetch result
-         */
-        fetchResultsResp.hasResultSet = true; // at the first time to fetch
-        TSQueryDataSet tsQueryDataSet = FakedFirstFetchResult();
-        when(fetchResultsResp.getQueryDataSet()).thenReturn(tsQueryDataSet);
+    verify(fetchMetadataResp, times(4)).getDataType();
 
-        if (hasResultSet) {
-            ResultSet resultSet = statement.getResultSet();
-            // check columnInfoMap
-            Assert.assertEquals(resultSet.findColumn("Time"), 1);
-            Assert.assertEquals(resultSet.findColumn("root.vehicle.d0.s2"), 2);
-            Assert.assertEquals(resultSet.findColumn("root.vehicle.d0.s1"), 3);
-            Assert.assertEquals(resultSet.findColumn("root.vehicle.d0.s0"), 4);
+    /*
+     * step 2: fetch result
+     */
+    fetchResultsResp.hasResultSet = true; // at the first time to fetch
+    TSQueryDataSet tsQueryDataSet = FakedFirstFetchResult();
+    when(fetchResultsResp.getQueryDataSet()).thenReturn(tsQueryDataSet);
 
-            ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-            // check columnInfoList
-            Assert.assertEquals(resultSetMetaData.getColumnName(1), "Time");
-            Assert.assertEquals(resultSetMetaData.getColumnName(2), "root.vehicle.d0.s2");
-            Assert.assertEquals(resultSetMetaData.getColumnName(3), "root.vehicle.d0.s1");
-            Assert.assertEquals(resultSetMetaData.getColumnName(4), "root.vehicle.d0.s0");
-            Assert.assertEquals(resultSetMetaData.getColumnName(5), "root.vehicle.d0.s2");
-            // check columnTypeList
-            Assert.assertEquals(resultSetMetaData.getColumnType(1), Types.TIMESTAMP);
-            Assert.assertEquals(resultSetMetaData.getColumnType(2), Types.FLOAT);
-            Assert.assertEquals(resultSetMetaData.getColumnType(3), Types.BIGINT);
-            Assert.assertEquals(resultSetMetaData.getColumnType(4), Types.INTEGER);
-            Assert.assertEquals(resultSetMetaData.getColumnType(5), Types.FLOAT);
-            // check fetched result
-            int colCount = resultSetMetaData.getColumnCount();
-            StringBuilder resultStr = new StringBuilder();
-            for (int i = 1; i < colCount + 1; i++) { // meta title
-                resultStr.append(resultSetMetaData.getColumnName(i)).append(",");
-            }
-            resultStr.append("\n");
-            while (resultSet.next()) { // data
-                for (int i = 1; i <= colCount; i++) {
-                    resultStr.append(resultSet.getString(i)).append(",");
-                }
-                resultStr.append("\n");
+    if (hasResultSet) {
+      ResultSet resultSet = statement.getResultSet();
+      // check columnInfoMap
+      Assert.assertEquals(resultSet.findColumn("Time"), 1);
+      Assert.assertEquals(resultSet.findColumn("root.vehicle.d0.s2"), 2);
+      Assert.assertEquals(resultSet.findColumn("root.vehicle.d0.s1"), 3);
+      Assert.assertEquals(resultSet.findColumn("root.vehicle.d0.s0"), 4);
 
-                fetchResultsResp.hasResultSet = false; // at the second time to fetch
-            }
-            String standard = "Time,root.vehicle.d0.s2,root.vehicle.d0.s1,root.vehicle.d0.s0,root.vehicle.d0.s2,\n"
-                    + "2,2.22,40000,null,2.22,\n" + "3,3.33,null,null,3.33,\n" + "4,4.44,null,null,4.44,\n"
-                    + "50,null,50000,null,null,\n" + "100,null,199,null,null,\n" + "101,null,199,null,null,\n"
-                    + "103,null,199,null,null,\n" + "105,11.11,199,33333,11.11,\n"
-                    + "1000,1000.11,55555,22222,1000.11,\n";
-            Assert.assertEquals(resultStr.toString(), standard);
+      ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+      // check columnInfoList
+      Assert.assertEquals(resultSetMetaData.getColumnName(1), "Time");
+      Assert.assertEquals(resultSetMetaData.getColumnName(2), "root.vehicle.d0.s2");
+      Assert.assertEquals(resultSetMetaData.getColumnName(3), "root.vehicle.d0.s1");
+      Assert.assertEquals(resultSetMetaData.getColumnName(4), "root.vehicle.d0.s0");
+      Assert.assertEquals(resultSetMetaData.getColumnName(5), "root.vehicle.d0.s2");
+      // check columnTypeList
+      Assert.assertEquals(resultSetMetaData.getColumnType(1), Types.TIMESTAMP);
+      Assert.assertEquals(resultSetMetaData.getColumnType(2), Types.FLOAT);
+      Assert.assertEquals(resultSetMetaData.getColumnType(3), Types.BIGINT);
+      Assert.assertEquals(resultSetMetaData.getColumnType(4), Types.INTEGER);
+      Assert.assertEquals(resultSetMetaData.getColumnType(5), Types.FLOAT);
+      // check fetched result
+      int colCount = resultSetMetaData.getColumnCount();
+      StringBuilder resultStr = new StringBuilder();
+      for (int i = 1; i < colCount + 1; i++) { // meta title
+        resultStr.append(resultSetMetaData.getColumnName(i)).append(",");
+      }
+      resultStr.append("\n");
+      while (resultSet.next()) { // data
+        for (int i = 1; i <= colCount; i++) {
+          resultStr.append(resultSet.getString(i)).append(",");
         }
-    }
+        resultStr.append("\n");
 
-    // fake the first-time fetched result of 'testSql' from an IoTDB server
-    private TSQueryDataSet FakedFirstFetchResult() {
-        TSQueryDataSet tsQueryDataSet = new TSQueryDataSet(new ArrayList<>());
-        final int DATA_TYPE_NUM = 3;
-        Object[][] input = {
-                { 1L, "root.vehicle.d0.s2", TSDataType.FLOAT, null, "root.vehicle.d0.s1", TSDataType.INT64, 1101L,
-                        "root.vehicle.d0.s0", TSDataType.INT32, null, },
-                { 2L, "root.vehicle.d0.s2", TSDataType.FLOAT, 2.22F, "root.vehicle.d0.s1", TSDataType.INT64, 40000L,
-                        "root.vehicle.d0.s0", TSDataType.INT32, null, },
-                { 3L, "root.vehicle.d0.s2", TSDataType.FLOAT, 3.33F, "root.vehicle.d0.s1", TSDataType.INT64, null,
-                        "root.vehicle.d0.s0", TSDataType.INT32, null, },
-                { 4L, "root.vehicle.d0.s2", TSDataType.FLOAT, 4.44F, "root.vehicle.d0.s1", TSDataType.INT64, null,
-                        "root.vehicle.d0.s0", TSDataType.INT32, null, },
-                { 50L, "root.vehicle.d0.s2", TSDataType.FLOAT, null, "root.vehicle.d0.s1", TSDataType.INT64, 50000L,
-                        "root.vehicle.d0.s0", TSDataType.INT32, null, },
-                { 100L, "root.vehicle.d0.s2", TSDataType.FLOAT, null, "root.vehicle.d0.s1", TSDataType.INT64, 199L,
-                        "root.vehicle.d0.s0", TSDataType.INT32, null, },
-                { 101L, "root.vehicle.d0.s2", TSDataType.FLOAT, null, "root.vehicle.d0.s1", TSDataType.INT64, 199L,
-                        "root.vehicle.d0.s0", TSDataType.INT32, null, },
-                { 103L, "root.vehicle.d0.s2", TSDataType.FLOAT, null, "root.vehicle.d0.s1", TSDataType.INT64, 199L,
-                        "root.vehicle.d0.s0", TSDataType.INT32, null, },
-                { 105L, "root.vehicle.d0.s2", TSDataType.FLOAT, 11.11F, "root.vehicle.d0.s1", TSDataType.INT64, 199L,
-                        "root.vehicle.d0.s0", TSDataType.INT32, 33333, },
-                { 1000L, "root.vehicle.d0.s2", TSDataType.FLOAT, 1000.11F, "root.vehicle.d0.s1", TSDataType.INT64,
-                        55555L, "root.vehicle.d0.s0", TSDataType.INT32, 22222, } };
-        for (Object[] item : input) {
-            TSRowRecord record = new TSRowRecord();
-            record.setTimestamp((long) item[0]);
-            List<String> keys = new ArrayList<>();
-            List<TSDataValue> values = new ArrayList<>();
-            for (int i = 0; i < DATA_TYPE_NUM; i++) {
-                keys.add((String) item[3 * i + 1]);
-                TSDataValue value = new TSDataValue(false);
-                if (item[3 * i + 3] == null) {
-                    value.setIs_empty(true);
-                } else {
-                    if (i == 0) {
-                        value.setFloat_val((float) item[3 * i + 3]);
-                        value.setType(item[3 * i + 2].toString());
-                    } else if (i == 1) {
-                        value.setLong_val((long) item[3 * i + 3]);
-                        value.setType(item[3 * i + 2].toString());
-                    } else {
-                        value.setInt_val((int) item[3 * i + 3]);
-                        value.setType(item[3 * i + 2].toString());
-                    }
-                }
-                values.add(value);
-            }
-            record.setValues(values);
-            tsQueryDataSet.getRecords().add(record);
-        }
-        return tsQueryDataSet;
+        fetchResultsResp.hasResultSet = false; // at the second time to fetch
+      }
+      String standard =
+          "Time,root.vehicle.d0.s2,root.vehicle.d0.s1,root.vehicle.d0.s0,root.vehicle.d0.s2,\n"
+              + "2,2.22,40000,null,2.22,\n" + "3,3.33,null,null,3.33,\n"
+              + "4,4.44,null,null,4.44,\n"
+              + "50,null,50000,null,null,\n" + "100,null,199,null,null,\n"
+              + "101,null,199,null,null,\n"
+              + "103,null,199,null,null,\n" + "105,11.11,199,33333,11.11,\n"
+              + "1000,1000.11,55555,22222,1000.11,\n";
+      Assert.assertEquals(resultStr.toString(), standard);
     }
+  }
+
+  // fake the first-time fetched result of 'testSql' from an IoTDB server
+  private TSQueryDataSet FakedFirstFetchResult() {
+    TSQueryDataSet tsQueryDataSet = new TSQueryDataSet(new ArrayList<>());
+    final int DATA_TYPE_NUM = 3;
+    Object[][] input = {
+        {1L, "root.vehicle.d0.s2", TSDataType.FLOAT, null, "root.vehicle.d0.s1", TSDataType.INT64,
+            1101L,
+            "root.vehicle.d0.s0", TSDataType.INT32, null,},
+        {2L, "root.vehicle.d0.s2", TSDataType.FLOAT, 2.22F, "root.vehicle.d0.s1", TSDataType.INT64,
+            40000L,
+            "root.vehicle.d0.s0", TSDataType.INT32, null,},
+        {3L, "root.vehicle.d0.s2", TSDataType.FLOAT, 3.33F, "root.vehicle.d0.s1", TSDataType.INT64,
+            null,
+            "root.vehicle.d0.s0", TSDataType.INT32, null,},
+        {4L, "root.vehicle.d0.s2", TSDataType.FLOAT, 4.44F, "root.vehicle.d0.s1", TSDataType.INT64,
+            null,
+            "root.vehicle.d0.s0", TSDataType.INT32, null,},
+        {50L, "root.vehicle.d0.s2", TSDataType.FLOAT, null, "root.vehicle.d0.s1", TSDataType.INT64,
+            50000L,
+            "root.vehicle.d0.s0", TSDataType.INT32, null,},
+        {100L, "root.vehicle.d0.s2", TSDataType.FLOAT, null, "root.vehicle.d0.s1", TSDataType.INT64,
+            199L,
+            "root.vehicle.d0.s0", TSDataType.INT32, null,},
+        {101L, "root.vehicle.d0.s2", TSDataType.FLOAT, null, "root.vehicle.d0.s1", TSDataType.INT64,
+            199L,
+            "root.vehicle.d0.s0", TSDataType.INT32, null,},
+        {103L, "root.vehicle.d0.s2", TSDataType.FLOAT, null, "root.vehicle.d0.s1", TSDataType.INT64,
+            199L,
+            "root.vehicle.d0.s0", TSDataType.INT32, null,},
+        {105L, "root.vehicle.d0.s2", TSDataType.FLOAT, 11.11F, "root.vehicle.d0.s1",
+            TSDataType.INT64, 199L,
+            "root.vehicle.d0.s0", TSDataType.INT32, 33333,},
+        {1000L, "root.vehicle.d0.s2", TSDataType.FLOAT, 1000.11F, "root.vehicle.d0.s1",
+            TSDataType.INT64,
+            55555L, "root.vehicle.d0.s0", TSDataType.INT32, 22222,}};
+    for (Object[] item : input) {
+      TSRowRecord record = new TSRowRecord();
+      record.setTimestamp((long) item[0]);
+      List<String> keys = new ArrayList<>();
+      List<TSDataValue> values = new ArrayList<>();
+      for (int i = 0; i < DATA_TYPE_NUM; i++) {
+        keys.add((String) item[3 * i + 1]);
+        TSDataValue value = new TSDataValue(false);
+        if (item[3 * i + 3] == null) {
+          value.setIs_empty(true);
+        } else {
+          if (i == 0) {
+            value.setFloat_val((float) item[3 * i + 3]);
+            value.setType(item[3 * i + 2].toString());
+          } else if (i == 1) {
+            value.setLong_val((long) item[3 * i + 3]);
+            value.setType(item[3 * i + 2].toString());
+          } else {
+            value.setInt_val((int) item[3 * i + 3]);
+            value.setType(item[3 * i + 2].toString());
+          }
+        }
+        values.add(value);
+      }
+      record.setValues(values);
+      tsQueryDataSet.getRecords().add(record);
+    }
+    return tsQueryDataSet;
+  }
 }

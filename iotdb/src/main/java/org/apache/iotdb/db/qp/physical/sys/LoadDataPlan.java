@@ -1,9 +1,13 @@
 /**
  * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
@@ -17,36 +21,38 @@ package org.apache.iotdb.db.qp.physical.sys;
 
 import java.util.ArrayList;
 import java.util.List;
-
+import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.db.qp.logical.Operator;
 
 public class LoadDataPlan extends PhysicalPlan {
-    private final String inputFilePath;
-    private final String measureType;
 
-    public LoadDataPlan(String inputFilePath, String measureType) {
-        super(false, Operator.OperatorType.LOADDATA);
-        this.inputFilePath = inputFilePath;
-        this.measureType = measureType;
-    }
+  private final String inputFilePath;
+  private final String measureType;
 
-    @Override
-    public List<Path> getPaths() {
-        List<Path> ret = new ArrayList<>();
-        if (measureType != null) {
-            ret.add(new Path(measureType));
-        }
-        return ret;
-    }
+  /**
+   * Constructor of LoadDataPlan.
+   */
+  public LoadDataPlan(String inputFilePath, String measureType) {
+    super(false, Operator.OperatorType.LOADDATA);
+    this.inputFilePath = inputFilePath;
+    this.measureType = measureType;
+  }
 
-    public String getInputFilePath() {
-        return inputFilePath;
+  @Override
+  public List<Path> getPaths() {
+    List<Path> ret = new ArrayList<>();
+    if (measureType != null) {
+      ret.add(new Path(measureType));
     }
+    return ret;
+  }
 
-    public String getMeasureType() {
-        return measureType;
-    }
+  public String getInputFilePath() {
+    return inputFilePath;
+  }
+
+  public String getMeasureType() {
+    return measureType;
+  }
 }

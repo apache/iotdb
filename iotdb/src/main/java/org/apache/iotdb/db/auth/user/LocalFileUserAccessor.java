@@ -1,9 +1,13 @@
 /**
  * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
@@ -15,171 +19,185 @@
  */
 package org.apache.iotdb.db.auth.user;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
+import java.io.DataInputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import org.apache.iotdb.db.auth.entity.PathPrivilege;
 import org.apache.iotdb.db.auth.entity.User;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.utils.IOUtils;
-import org.apache.iotdb.db.auth.entity.PathPrivilege;
-import org.apache.iotdb.db.auth.entity.User;
-import org.apache.iotdb.db.utils.IOUtils;
-
-import java.io.*;
-import java.nio.ByteBuffer;
-import java.util.*;
 
 /**
- * This class loads a user's information from the corresponding file.The user file is a sequential file. User file
- * schema: Int32 username bytes length Utf-8 username bytes Int32 Password bytes length Utf-8 password bytes Int32
- * seriesPath privilege number n Int32 seriesPath[1] length Utf-8 seriesPath[1] bytes Int32 privilege num k1 Int32
- * privilege[1][1] Int32 privilege[1][2] ... Int32 privilege[1][k1] Int32 seriesPath[2] length Utf-8 seriesPath[2] bytes
- * Int32 privilege num k2 Int32 privilege[2][1] Int32 privilege[2][2] ... Int32 privilege[2][k2] ... Int32 seriesPath[n]
- * length Utf-8 seriesPath[n] bytes Int32 privilege num kn Int32 privilege[n][1] Int32 privilege[n][2] ... Int32
- * privilege[n][kn] Int32 user name number m Int32 user name[1] length Utf-8 user name[1] bytes Int32 user name[2]
- * length Utf-8 user name[2] bytes ... Int32 user name[m] length Utf-8 user name[m] bytes
+ * This class loads a user's information from the corresponding file.The user file is a sequential
+ * file. User file schema: Int32 username bytes length Utf-8 username bytes Int32 Password bytes
+ * length Utf-8 password bytes Int32 seriesPath privilege number n Int32 seriesPath[1] length Utf-8
+ * seriesPath[1] bytes Int32 privilege num k1 Int32 privilege[1][1] Int32 privilege[1][2] ... Int32
+ * privilege[1][k1] Int32 seriesPath[2] length Utf-8 seriesPath[2] bytes Int32 privilege num k2
+ * Int32 privilege[2][1] Int32 privilege[2][2] ... Int32 privilege[2][k2] ... Int32 seriesPath[n]
+ * length Utf-8 seriesPath[n] bytes Int32 privilege num kn Int32 privilege[n][1] Int32
+ * privilege[n][2] ... Int32 privilege[n][kn] Int32 user name number m Int32 user name[1] length
+ * Utf-8 user name[1] bytes Int32 user name[2] length Utf-8 user name[2] bytes ... Int32 user
+ * name[m] length Utf-8 user name[m] bytes
  */
 public class LocalFileUserAccessor implements IUserAccessor {
-    private static final String TEMP_SUFFIX = ".temp";
-    private static final String STRING_ENCODING = "utf-8";
 
-    private String userDirPath;
-    /**
-     * Reused buffer for primitive types encoding/decoding, which aim to reduce memory fragments. Use ThreadLocal for
-     * thread safety.
-     */
-    private ThreadLocal<ByteBuffer> encodingBufferLocal = new ThreadLocal<>();
-    private ThreadLocal<byte[]> strBufferLocal = new ThreadLocal<>();
+  private static final String TEMP_SUFFIX = ".temp";
+  private static final String STRING_ENCODING = "utf-8";
 
-    public LocalFileUserAccessor(String userDirPath) {
-        this.userDirPath = userDirPath;
+  private String userDirPath;
+  /**
+   * Reused buffer for primitive types encoding/decoding, which aim to reduce memory fragments. Use
+   * ThreadLocal for thread safety.
+   */
+  private ThreadLocal<ByteBuffer> encodingBufferLocal = new ThreadLocal<>();
+  private ThreadLocal<byte[]> strBufferLocal = new ThreadLocal<>();
+
+  public LocalFileUserAccessor(String userDirPath) {
+    this.userDirPath = userDirPath;
+  }
+
+  /**
+   * Deserialize a user from its user file.
+   *
+   * @param username The name of the user to be deserialized.
+   * @return The user object or null if no such user.
+   */
+  public User loadUser(String username) throws IOException {
+    File userProfile = new File(
+        userDirPath + File.separator + username + IoTDBConstant.PROFILE_SUFFIX);
+    if (!userProfile.exists() || !userProfile.isFile()) {
+      // System may crush before a newer file is renamed.
+      File newProfile = new File(
+          userDirPath + File.separator + username + IoTDBConstant.PROFILE_SUFFIX + TEMP_SUFFIX);
+      if (newProfile.exists() && newProfile.isFile()) {
+        newProfile.renameTo(userProfile);
+        userProfile = newProfile;
+      } else {
+        return null;
+      }
+    }
+    FileInputStream inputStream = new FileInputStream(userProfile);
+    try (DataInputStream dataInputStream = new DataInputStream(
+        new BufferedInputStream(inputStream))) {
+      User user = new User();
+      user.name = IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal);
+      user.password = IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal);
+
+      int privilegeNum = dataInputStream.readInt();
+      List<PathPrivilege> pathPrivilegeList = new ArrayList<>();
+      for (int i = 0; i < privilegeNum; i++) {
+        pathPrivilegeList
+            .add(IOUtils.readPathPrivilege(dataInputStream, STRING_ENCODING, strBufferLocal));
+      }
+      user.privilegeList = pathPrivilegeList;
+
+      int roleNum = dataInputStream.readInt();
+      List<String> roleList = new ArrayList<>();
+      for (int i = 0; i < roleNum; i++) {
+        String userName = IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal);
+        roleList.add(userName);
+      }
+      user.roleList = roleList;
+
+      return user;
+    } catch (Exception e) {
+      throw new IOException(e);
+    }
+  }
+
+  /**
+   * Serialize the user object to a temp file, then replace the old user file with the new file.
+   *
+   * @param user The user object that is to be saved.
+   */
+  public void saveUser(User user) throws IOException {
+    File userProfile = new File(
+        userDirPath + File.separator + user.name + IoTDBConstant.PROFILE_SUFFIX + TEMP_SUFFIX);
+    BufferedOutputStream outputStream = new BufferedOutputStream(new FileOutputStream(userProfile));
+    try {
+      IOUtils.writeString(outputStream, user.name, STRING_ENCODING, encodingBufferLocal);
+      IOUtils.writeString(outputStream, user.password, STRING_ENCODING, encodingBufferLocal);
+
+      user.privilegeList.sort(PathPrivilege.referenceDescentSorter);
+      int privilegeNum = user.privilegeList.size();
+      IOUtils.writeInt(outputStream, privilegeNum, encodingBufferLocal);
+      for (int i = 0; i < privilegeNum; i++) {
+        PathPrivilege pathPrivilege = user.privilegeList.get(i);
+        IOUtils
+            .writePathPrivilege(outputStream, pathPrivilege, STRING_ENCODING, encodingBufferLocal);
+      }
+
+      int userNum = user.roleList.size();
+      IOUtils.writeInt(outputStream, userNum, encodingBufferLocal);
+      for (int i = 0; i < userNum; i++) {
+        IOUtils
+            .writeString(outputStream, user.roleList.get(i), STRING_ENCODING, encodingBufferLocal);
+      }
+
+    } catch (Exception e) {
+      throw new IOException(e.getMessage());
+    } finally {
+      outputStream.flush();
+      outputStream.close();
     }
 
-    /**
-     * Deserialize a user from its user file.
-     * 
-     * @param username
-     *            The name of the user to be deserialized.
-     * @return The user object or null if no such user.
-     * @throws IOException
-     */
-    public User loadUser(String username) throws IOException {
-        File userProfile = new File(userDirPath + File.separator + username + IoTDBConstant.PROFILE_SUFFIX);
-        if (!userProfile.exists() || !userProfile.isFile()) {
-            // System may crush before a newer file is renamed.
-            File newProfile = new File(
-                    userDirPath + File.separator + username + IoTDBConstant.PROFILE_SUFFIX + TEMP_SUFFIX);
-            if (newProfile.exists() && newProfile.isFile()) {
-                newProfile.renameTo(userProfile);
-                userProfile = newProfile;
-            } else
-                return null;
-        }
-        FileInputStream inputStream = new FileInputStream(userProfile);
-        try (DataInputStream dataInputStream = new DataInputStream(new BufferedInputStream(inputStream))) {
-            User user = new User();
-            user.name = IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal);
-            user.password = IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal);
+    File oldFile = new File(
+        userDirPath + File.separator + user.name + IoTDBConstant.PROFILE_SUFFIX);
+    IOUtils.replaceFile(userProfile, oldFile);
+  }
 
-            int privilegeNum = dataInputStream.readInt();
-            List<PathPrivilege> pathPrivilegeList = new ArrayList<>();
-            for (int i = 0; i < privilegeNum; i++) {
-                pathPrivilegeList.add(IOUtils.readPathPrivilege(dataInputStream, STRING_ENCODING, strBufferLocal));
-            }
-            user.privilegeList = pathPrivilegeList;
-
-            int roleNum = dataInputStream.readInt();
-            List<String> roleList = new ArrayList<>();
-            for (int i = 0; i < roleNum; i++) {
-                String userName = IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal);
-                roleList.add(userName);
-            }
-            user.roleList = roleList;
-
-            return user;
-        } catch (Exception e) {
-            throw new IOException(e);
-        }
+  /**
+   * Delete a user's user file.
+   *
+   * @param username The name of the user to be deleted.
+   * @return True if the file is successfully deleted, false if the file does not exists.
+   * @throws IOException when the file cannot be deleted.
+   */
+  public boolean deleteUser(String username) throws IOException {
+    File userProfile = new File(
+        userDirPath + File.separator + username + IoTDBConstant.PROFILE_SUFFIX);
+    File backFile = new File(
+        userDirPath + File.separator + username + IoTDBConstant.PROFILE_SUFFIX + TEMP_SUFFIX);
+    if (!userProfile.exists() && !backFile.exists()) {
+      return false;
     }
-
-    /**
-     * Serialize the user object to a temp file, then replace the old user file with the new file.
-     * 
-     * @param user
-     *            The user object that is to be saved.
-     * @throws IOException
-     */
-    public void saveUser(User user) throws IOException {
-        File userProfile = new File(
-                userDirPath + File.separator + user.name + IoTDBConstant.PROFILE_SUFFIX + TEMP_SUFFIX);
-        BufferedOutputStream outputStream = new BufferedOutputStream(new FileOutputStream(userProfile));
-        try {
-            IOUtils.writeString(outputStream, user.name, STRING_ENCODING, encodingBufferLocal);
-            IOUtils.writeString(outputStream, user.password, STRING_ENCODING, encodingBufferLocal);
-
-            user.privilegeList.sort(PathPrivilege.referenceDescentSorter);
-            int privilegeNum = user.privilegeList.size();
-            IOUtils.writeInt(outputStream, privilegeNum, encodingBufferLocal);
-            for (int i = 0; i < privilegeNum; i++) {
-                PathPrivilege pathPrivilege = user.privilegeList.get(i);
-                IOUtils.writePathPrivilege(outputStream, pathPrivilege, STRING_ENCODING, encodingBufferLocal);
-            }
-
-            int userNum = user.roleList.size();
-            IOUtils.writeInt(outputStream, userNum, encodingBufferLocal);
-            for (int i = 0; i < userNum; i++) {
-                IOUtils.writeString(outputStream, user.roleList.get(i), STRING_ENCODING, encodingBufferLocal);
-            }
-
-        } catch (Exception e) {
-            throw new IOException(e.getMessage());
-        } finally {
-            outputStream.flush();
-            outputStream.close();
-        }
-
-        File oldFile = new File(userDirPath + File.separator + user.name + IoTDBConstant.PROFILE_SUFFIX);
-        IOUtils.replaceFile(userProfile, oldFile);
+    if ((userProfile.exists() && !userProfile.delete()) || (backFile.exists() && !backFile
+        .delete())) {
+      throw new IOException(String.format("Cannot delete user file of %s", username));
     }
+    return true;
+  }
 
-    /**
-     * Delete a user's user file.
-     * 
-     * @param username
-     *            The name of the user to be deleted.
-     * @return True if the file is successfully deleted, false if the file does not exists.
-     * @throws IOException
-     *             when the file cannot be deleted.
-     */
-    public boolean deleteUser(String username) throws IOException {
-        File userProfile = new File(userDirPath + File.separator + username + IoTDBConstant.PROFILE_SUFFIX);
-        File backFile = new File(userDirPath + File.separator + username + IoTDBConstant.PROFILE_SUFFIX + TEMP_SUFFIX);
-        if (!userProfile.exists() && !backFile.exists())
-            return false;
-        if ((userProfile.exists() && !userProfile.delete()) || (backFile.exists() && !backFile.delete())) {
-            throw new IOException(String.format("Cannot delete user file of %s", username));
-        }
-        return true;
+  @Override
+  public List<String> listAllUsers() {
+    File userDir = new File(userDirPath);
+    String[] names = userDir
+        .list((dir, name) -> name.endsWith(IoTDBConstant.PROFILE_SUFFIX) || name
+            .endsWith(TEMP_SUFFIX));
+    List<String> retList = new ArrayList<>();
+    if (names != null) {
+      // in very rare situations, normal file and backup file may exist at the same time
+      // so a set is used to deduplicate
+      Set<String> set = new HashSet<>();
+      for (String fileName : names) {
+        set.add(fileName.replace(IoTDBConstant.PROFILE_SUFFIX, "").replace(TEMP_SUFFIX, ""));
+      }
+      retList.addAll(set);
     }
+    return retList;
+  }
 
-    @Override
-    public List<String> listAllUsers() {
-        File userDir = new File(userDirPath);
-        String[] names = userDir
-                .list((dir, name) -> name.endsWith(IoTDBConstant.PROFILE_SUFFIX) || name.endsWith(TEMP_SUFFIX));
-        List<String> retList = new ArrayList<>();
-        if (names != null) {
-            // in very rare situations, normal file and backup file may exist at the same time
-            // so a set is used to deduplicate
-            Set<String> set = new HashSet<>();
-            for (String fileName : names) {
-                set.add(fileName.replace(IoTDBConstant.PROFILE_SUFFIX, "").replace(TEMP_SUFFIX, ""));
-            }
-            retList.addAll(set);
-        }
-        return retList;
-    }
-
-    @Override
-    public void reset() {
-        new File(userDirPath).mkdirs();
-    }
+  @Override
+  public void reset() {
+    new File(userDirPath).mkdirs();
+  }
 }

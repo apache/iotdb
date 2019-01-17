@@ -1,9 +1,13 @@
 /**
  * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
@@ -19,14 +23,16 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class IoTDBDefaultThreadExceptionHandler implements Thread.UncaughtExceptionHandler {
-    private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBDefaultThreadExceptionHandler.class);
 
-    public IoTDBDefaultThreadExceptionHandler() {
-    }
+  private static final Logger LOGGER = LoggerFactory
+      .getLogger(IoTDBDefaultThreadExceptionHandler.class);
 
-    @Override
-    public void uncaughtException(Thread t, Throwable e) {
-        LOGGER.error("Exception in thread {}-{}", t.getName(), t.getId(), e);
-    }
+  public IoTDBDefaultThreadExceptionHandler() {
+  }
+
+  @Override
+  public void uncaughtException(Thread t, Throwable e) {
+    LOGGER.error("Exception in thread {}-{}", t.getName(), t.getId(), e);
+  }
 
 }

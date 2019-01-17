@@ -1,9 +1,13 @@
 /**
  * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
@@ -17,20 +21,20 @@ package org.apache.iotdb.tsfile.common.constant;
 
 public class StatisticConstant {
 
-    // names of statistics (aggregations), shared with IoTDB
-    public static final String MIN_TIME = "min_time";
-    public static final String MAX_TIME = "max_time";
+  // names of statistics (aggregations), shared with IoTDB
+  public static final String MIN_TIME = "min_time";
+  public static final String MAX_TIME = "max_time";
 
-    public static final String MAX_VALUE = "max_value";
-    public static final String MIN_VALUE = "min_value";
+  public static final String MAX_VALUE = "max_value";
+  public static final String MIN_VALUE = "min_value";
 
-    public static final String COUNT = "count";
+  public static final String COUNT = "count";
 
-    public static final String FIRST = "first";
+  public static final String FIRST = "first";
 
-    public static final String MEAN = "mean";
+  public static final String MEAN = "mean";
 
-    public static final String SUM = "sum";
+  public static final String SUM = "sum";
 
-    public static final String LAST = "last";
+  public static final String LAST = "last";
 }

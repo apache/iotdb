@@ -1,9 +1,13 @@
 /**
  * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
@@ -15,38 +19,35 @@
  */
 package org.apache.iotdb.tsfile.read.filter.basic;
 
-import org.apache.iotdb.tsfile.read.filter.factory.FilterType;
-import org.apache.iotdb.tsfile.read.filter.factory.FilterType;
-
 import java.io.Serializable;
+import org.apache.iotdb.tsfile.read.filter.factory.FilterType;
 
 /**
- * Definition for unary filter operations
+ * Definition for unary filter operations.
  *
- * @param <T>
- *            comparable data type
+ * @param <T> comparable data type
  * @author CGF
  */
 public abstract class UnaryFilter<T extends Comparable<T>> implements Filter, Serializable {
 
-    private static final long serialVersionUID = 1431606024929453556L;
-    protected final T value;
+  private static final long serialVersionUID = 1431606024929453556L;
+  protected final T value;
 
-    protected FilterType filterType;
+  protected FilterType filterType;
 
-    protected UnaryFilter(T value, FilterType filterType) {
-        this.value = value;
-        this.filterType = filterType;
-    }
+  protected UnaryFilter(T value, FilterType filterType) {
+    this.value = value;
+    this.filterType = filterType;
+  }
 
-    public T getValue() {
-        return value;
-    }
+  public T getValue() {
+    return value;
+  }
 
-    public FilterType getFilterType() {
-        return filterType;
-    }
+  public FilterType getFilterType() {
+    return filterType;
+  }
 
-    @Override
-    public abstract String toString();
+  @Override
+  public abstract String toString();
 }

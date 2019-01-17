@@ -1,9 +1,13 @@
 /**
  * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
@@ -20,9 +24,6 @@ import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
-import org.apache.iotdb.db.engine.filenode.FileNodeManager;
-import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
-import org.apache.iotdb.db.exception.FileNodeManagerException;
 
 /**
  * <p>
@@ -30,16 +31,18 @@ import org.apache.iotdb.db.exception.FileNodeManagerException;
  */
 public class QueryDataSourceManager {
 
-    private static FileNodeManager fileNodeManager = FileNodeManager.getInstance();
+  private static FileNodeManager fileNodeManager = FileNodeManager.getInstance();
 
-    public static QueryDataSource getQueryDataSource(long jobId, Path selectedPath) throws FileNodeManagerException {
+  public static QueryDataSource getQueryDataSource(long jobId, Path selectedPath)
+      throws FileNodeManagerException {
 
-        SingleSeriesExpression singleSeriesExpression = new SingleSeriesExpression(selectedPath, null);
-        QueryDataSource queryDataSource = fileNodeManager.query(singleSeriesExpression);
+    SingleSeriesExpression singleSeriesExpression = new SingleSeriesExpression(selectedPath, null);
+    QueryDataSource queryDataSource = fileNodeManager.query(singleSeriesExpression);
 
-        // add used files to current thread request cached map
-        OpenedFilePathsManager.getInstance().addUsedFilesForCurrentRequestThread(jobId, queryDataSource);
+    // add used files to current thread request cached map
+    OpenedFilePathsManager.getInstance()
+        .addUsedFilesForCurrentRequestThread(jobId, queryDataSource);
 
-        return queryDataSource;
-    }
+    return queryDataSource;
+  }
 }

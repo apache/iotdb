@@ -1,9 +1,13 @@
 /**
  * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
@@ -18,15 +22,12 @@ package org.apache.iotdb.db.engine;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 
+import java.io.IOException;
 import org.apache.iotdb.db.exception.ProcessorException;
-import org.apache.iotdb.db.exception.ProcessorException;
+import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-
-import org.apache.iotdb.db.utils.EnvironmentUtils;
-
-import java.io.IOException;
 
 /**
  * @author liukun
@@ -34,118 +35,118 @@ import java.io.IOException;
  */
 public class ProcessorTest {
 
-    class TestLRUProcessor extends Processor {
+  TestLRUProcessor processor1;
+  TestLRUProcessor processor2;
+  TestLRUProcessor processor3;
 
-        public TestLRUProcessor(String nameSpacePath) {
-            super(nameSpacePath);
-        }
+  @Before
+  public void setUp() throws Exception {
+    processor1 = new TestLRUProcessor("ns1");
+    processor2 = new TestLRUProcessor("ns2");
+    processor3 = new TestLRUProcessor("ns1");
+  }
 
-        @Override
-        public boolean canBeClosed() {
-            return false;
-        }
+  @After
+  public void tearDown() throws Exception {
+    EnvironmentUtils.cleanEnv();
+  }
 
-        @Override
-        public void close() throws ProcessorException {
+  @Test
+  public void testEquals() {
+    assertEquals(processor1, processor3);
+    assertFalse(processor1.equals(processor2));
+  }
 
-        }
+  @Test
+  public void testLockAndUnlock() throws InterruptedException {
+    Thread thread = new Thread(new lockRunnable());
 
-        @Override
-        public boolean flush() throws IOException {
-            // TODO Auto-generated method stub
-            return false;
-        }
+    thread.start();
 
-        @Override
-        public long memoryUsage() {
-            return 0;
-        }
+    Thread.sleep(100);
+
+    assertEquals(false, processor1.tryReadLock());
+    assertEquals(false, processor1.tryLock(true));
+
+    Thread.sleep(2000);
+
+    assertEquals(true, processor1.tryLock(true));
+    assertEquals(true, processor1.tryLock(false));
+
+    processor1.readUnlock();
+    processor1.writeUnlock();
+
+    Thread thread2 = new Thread(new readLockRunable());
+    thread2.start();
+    Thread.sleep(100);
+
+    assertEquals(false, processor1.tryWriteLock());
+    assertEquals(true, processor1.tryReadLock());
+
+    Thread.sleep(1500);
+    assertEquals(false, processor1.tryWriteLock());
+    processor1.readUnlock();
+    assertEquals(true, processor1.tryWriteLock());
+    processor1.writeUnlock();
+  }
+
+  class TestLRUProcessor extends Processor {
+
+    public TestLRUProcessor(String nameSpacePath) {
+      super(nameSpacePath);
+    }
+
+    @Override
+    public boolean canBeClosed() {
+      return false;
+    }
+
+    @Override
+    public void close() throws ProcessorException {
 
     }
 
-    TestLRUProcessor processor1;
-    TestLRUProcessor processor2;
-    TestLRUProcessor processor3;
-
-    @Before
-    public void setUp() throws Exception {
-        processor1 = new TestLRUProcessor("ns1");
-        processor2 = new TestLRUProcessor("ns2");
-        processor3 = new TestLRUProcessor("ns1");
+    @Override
+    public boolean flush() throws IOException {
+      // TODO Auto-generated method stub
+      return false;
     }
 
-    @After
-    public void tearDown() throws Exception {
-        EnvironmentUtils.cleanEnv();
+    @Override
+    public long memoryUsage() {
+      return 0;
     }
 
-    @Test
-    public void testEquals() {
-        assertEquals(processor1, processor3);
-        assertFalse(processor1.equals(processor2));
+  }
+
+  class lockRunnable implements Runnable {
+
+    @Override
+    public void run() {
+      processor1.lock(true);
+      try {
+        Thread.sleep(1000);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
+
+      processor1.unlock(true);
+    }
+  }
+
+  class readLockRunable implements Runnable {
+
+    @Override
+    public void run() {
+      processor1.readLock();
+
+      try {
+        Thread.sleep(1000);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
+      processor1.readUnlock();
     }
 
-    @Test
-    public void testLockAndUnlock() throws InterruptedException {
-        Thread thread = new Thread(new lockRunnable());
-
-        thread.start();
-
-        Thread.sleep(100);
-
-        assertEquals(false, processor1.tryReadLock());
-        assertEquals(false, processor1.tryLock(true));
-
-        Thread.sleep(2000);
-
-        assertEquals(true, processor1.tryLock(true));
-        assertEquals(true, processor1.tryLock(false));
-
-        processor1.readUnlock();
-        processor1.writeUnlock();
-
-        Thread thread2 = new Thread(new readLockRunable());
-        thread2.start();
-        Thread.sleep(100);
-
-        assertEquals(false, processor1.tryWriteLock());
-        assertEquals(true, processor1.tryReadLock());
-
-        Thread.sleep(1500);
-        assertEquals(false, processor1.tryWriteLock());
-        processor1.readUnlock();
-        assertEquals(true, processor1.tryWriteLock());
-        processor1.writeUnlock();
-    }
-
-    class lockRunnable implements Runnable {
-
-        @Override
-        public void run() {
-            processor1.lock(true);
-            try {
-                Thread.sleep(1000);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-
-            processor1.unlock(true);
-        }
-    }
-
-    class readLockRunable implements Runnable {
-
-        @Override
-        public void run() {
-            processor1.readLock();
-
-            try {
-                Thread.sleep(1000);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-            processor1.readUnlock();
-        }
-
-    }
+  }
 }
