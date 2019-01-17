@@ -25,7 +25,7 @@
     <parent>
         <groupId>org.apache.iotdb</groupId>
         <artifactId>root</artifactId>
-        <version>0.8.0-SNAPSHOT</version>
+        <version>0.1.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <artifactId>iotdb-jdbc</artifactId>
