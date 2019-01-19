@@ -1,8 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
 
-    Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
-
     Licensed to the Apache Software Foundation (ASF) under one
     or more contributor license agreements.  See the NOTICE file
     distributed with this work for additional information
@@ -13,11 +11,12 @@
 
         http://www.apache.org/licenses/LICENSE-2.0
 
-    Unless required by applicable law or agreed to in writing, software
-    distributed under the License is distributed on an "AS IS" BASIS,
-    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-    See the License for the specific language governing permissions and
-    limitations under the License.
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, either express or implied.  See the License for the
+    specific language governing permissions and limitations
+    under the License.
 
 -->
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
@@ -275,6 +274,7 @@
                     <configLocation>checkstyle.xml</configLocation>
                 </configuration>
             </plugin>
+            <!-- use mvn license:remove to remove license header; mvn license:format -->
             <plugin>
                 <groupId>com.mycila</groupId>
                 <artifactId>license-maven-plugin</artifactId>
@@ -292,8 +292,9 @@
                     </mapping>
                     <excludes>
                         <exclude>**/README.md</exclude>
-                        <exclude>**/src/test/resources/**</exclude>
-                        <exclude>**/src/main/resources/**</exclude>
+                        <exclude>**/src/test/resources/*.json</exclude>
+                        <exclude>**/src/main/resources/*.json</exclude>
+                        <exclude>jdbc/example/data/*.csv</exclude>
                         <exclude>**/*.log</exclude>
                         <exclude>licenses-binary/*</exclude>
                         <exclude>.checkstyle</exclude>
@@ -316,7 +317,7 @@
               Check if all files contain Apache headers in them.
               Ignore this plugin, we use license-maven-plugin to check apache header.
             -->
-            <!-- 			<plugin>
+            <plugin>
               <groupId>org.apache.rat</groupId>
               <artifactId>apache-rat-plugin</artifactId>
               <executions>
@@ -329,29 +330,33 @@
                 </execution>
               </executions>
               <configuration>
-                Should be enabled as soon as the headers are in position
-                <skip>true</skip>
                 <excludes>
-                  Git related files
+                  <!-- Git related files -->
                   <exclude>**/.git/**</exclude>
                   <exclude>**/.gitignore</exclude>
 
-                  Maven related files
+                  <!-- Maven related files -->
                   <exclude>**/target/**</exclude>
 
-                  Eclipse related files
+                  <!-- Eclipse related files -->
                   <exclude>**/.project</exclude>
                   <exclude>**/.settings/**</exclude>
                   <exclude>**/.classpath</exclude>
 
-                  IntelliJ related files
+                  <!-- IntelliJ related files -->
                   <exclude>**/.idea/**</exclude>
                   <exclude>**/*.iml</exclude>
-                  Runtime log
+                  <!-- Runtime log -->
                   <exclude>**/*.log</exclude>
+                  <!-- licenses-binary -->
+                  <exclude>licenses-binary/*</exclude>
+                  <!-- MarkDown files -->
+                  <exclude>**/*.md</exclude>
+                  <!--Checkstyle files -->
+                  <exclude>.checkstyle</exclude>
                 </excludes>
               </configuration>
-            </plugin> -->
+            </plugin>
             <!--use `mvn cobertura:cobertura` -->
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
