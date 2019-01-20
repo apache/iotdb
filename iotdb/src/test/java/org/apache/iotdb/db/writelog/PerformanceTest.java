@@ -79,7 +79,7 @@ public class PerformanceTest {
     int oldBatchSize = config.flushWalThreshold;
     long oldForceCycle = config.forceWalPeriodInMs;
     for (int j = 0; j < batchSizes.length; j++) {
-      for(int k=0; k < forceCycle.length; k++) {
+      for (int k = 0; k < forceCycle.length; k++) {
         config.flushWalThreshold = batchSizes[j];
         config.forceWalPeriodInMs = forceCycle[k];
         File tempRestore = new File("testtemp", "restore");
@@ -88,7 +88,8 @@ public class PerformanceTest {
         tempRestore.createNewFile();
         tempProcessorStore.createNewFile();
 
-        WriteLogNode logNode = new ExclusiveWriteLogNode("root.testLogNode", tempRestore.getPath(),
+        WriteLogNode logNode = new ExclusiveWriteLogNode("root.testLogNode",
+            tempRestore.getPath(),
             tempProcessorStore.getPath());
 
         long time = System.currentTimeMillis();
@@ -96,8 +97,10 @@ public class PerformanceTest {
           InsertPlan bwInsertPlan = new InsertPlan(1, "logTestDevice", 100,
               Arrays.asList("s1", "s2", "s3", "s4"),
               Arrays.asList("1.0", "15", "str", "false"));
-          UpdatePlan updatePlan = new UpdatePlan(0, 100, "2.0", new Path("root.logTestDevice.s1"));
-          DeletePlan deletePlan = new DeletePlan(50, new Path("root.logTestDevice.s1"));
+          UpdatePlan updatePlan = new UpdatePlan(0, 100, "2.0",
+              new Path("root.logTestDevice.s1"));
+          DeletePlan deletePlan = new DeletePlan(50,
+              new Path("root.logTestDevice.s1"));
 
           logNode.write(bwInsertPlan);
           logNode.write(updatePlan);
@@ -137,23 +140,28 @@ public class PerformanceTest {
       MManager.getInstance().setStorageLevelToMTree("root.logTestDevice");
     } catch (PathErrorException ignored) {
     }
-    MManager.getInstance().addPathToMTree("root.logTestDevice.s1", TSDataType.DOUBLE.name(),
+    MManager.getInstance().addPathToMTree("root.logTestDevice.s1",
+        TSDataType.DOUBLE.name(),
         TSEncoding.PLAIN.name(), new String[]{});
     MManager.getInstance()
-        .addPathToMTree("root.logTestDevice.s2", TSDataType.INT32.name(), TSEncoding.PLAIN.name(),
+        .addPathToMTree("root.logTestDevice.s2", TSDataType.INT32.name(),
+            TSEncoding.PLAIN.name(),
             new String[]{});
     MManager.getInstance()
-        .addPathToMTree("root.logTestDevice.s3", TSDataType.TEXT.name(), TSEncoding.PLAIN.name(),
+        .addPathToMTree("root.logTestDevice.s3", TSDataType.TEXT.name(),
+            TSEncoding.PLAIN.name(),
             new String[]{});
     MManager.getInstance().addPathToMTree("root.logTestDevice.s4", TSDataType.BOOLEAN.name(),
         TSEncoding.PLAIN.name(), new String[]{});
-    WriteLogNode logNode = new ExclusiveWriteLogNode("root.logTestDevice", tempRestore.getPath(),
+    WriteLogNode logNode = new ExclusiveWriteLogNode("root.logTestDevice",
+        tempRestore.getPath(),
         tempProcessorStore.getPath());
 
     for (int i = 0; i < 1000000; i++) {
       InsertPlan bwInsertPlan = new InsertPlan(1, "root.logTestDevice", 100,
           Arrays.asList("s1", "s2", "s3", "s4"), Arrays.asList("1.0", "15", "str", "false"));
-      UpdatePlan updatePlan = new UpdatePlan(0, 100, "2.0", new Path("root.logTestDevice.s1"));
+      UpdatePlan updatePlan = new UpdatePlan(0, 100, "2.0",
+          new Path("root.logTestDevice.s1"));
       DeletePlan deletePlan = new DeletePlan(50, new Path("root.logTestDevice.s1"));
 
       logNode.write(bwInsertPlan);
@@ -187,7 +195,8 @@ public class PerformanceTest {
     InsertPlan bwInsertPlan = new InsertPlan(1, "root.logTestDevice", 100,
         Arrays.asList("s1", "s2", "s3", "s4"),
         Arrays.asList("1.0", "15", "str", "false"));
-    UpdatePlan updatePlan = new UpdatePlan(0, 100, "2.0", new Path("root.logTestDevice.s1"));
+    UpdatePlan updatePlan = new UpdatePlan(0, 100, "2.0",
+        new Path("root.logTestDevice.s1"));
     for (int i = 0; i < 20; i++) {
       updatePlan.addInterval(new Pair<Long, Long>(200l, 300l));
     }
@@ -211,7 +220,8 @@ public class PerformanceTest {
 
   @Test
   public void SQLEncodingComparisonTest() throws WALOverSizedException {
-    String sql = "INSERT INTO root.logTestDevice(time,s1,s2,s3,s4) VALUES (100,1.0,15,\"str\",false)";
+    String sql = "INSERT INTO root.logTestDevice(time,s1,s2,s3,s4) "
+        + "VALUES (100,1.0,15,\"str\",false)";
     InsertPlan bwInsertPlan = new InsertPlan(1, "root.logTestDevice", 100,
         Arrays.asList("s1", "s2", "s3", "s4"),
         Arrays.asList("1.0", "15", "str", "false"));
