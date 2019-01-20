@@ -80,8 +80,6 @@
                 <configuration>
                     <excludes>
                         <exclude>example/data/kafka_data.csv</exclude>
-                        <!-- MarkDown files -->
-                        <exclude>**/*.md</exclude>
                     </excludes>
                 </configuration>
             </plugin>

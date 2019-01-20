@@ -98,8 +98,6 @@
                 <configuration>
                     <excludes>
                         <exclude>src/test/resources/*.json</exclude>
-                        <!-- MarkDown files -->
-                        <exclude>**/*.md</exclude>
                     </excludes>
                 </configuration>
             </plugin>
