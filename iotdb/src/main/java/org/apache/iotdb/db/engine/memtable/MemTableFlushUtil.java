@@ -116,7 +116,7 @@ public class MemTableFlushUtil {
       }
       long memSize = tsFileIoWriter.getPos() - startPos;
       ChunkGroupFooter footer = new ChunkGroupFooter(deviceId, memSize, seriesNumber);
-      tsFileIoWriter.endChunkGroup(footer);
+      tsFileIoWriter.endChunkGroup(footer, version);
     }
   }
 }

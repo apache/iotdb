@@ -22,6 +22,7 @@ package org.apache.iotdb.db.engine.memtable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.TreeMap;
+
 import org.apache.iotdb.db.utils.PrimitiveArrayList;
 import org.apache.iotdb.db.utils.PrimitiveArrayListFactory;
 import org.apache.iotdb.db.utils.TimeValuePair;
@@ -119,6 +120,11 @@ public class WritableMemChunk implements IWritableMemChunk {
   @Override
   public int count() {
     return list.size();
+  }
+
+  @Override
+  public TSDataType getType() {
+    return dataType;
   }
 
 }

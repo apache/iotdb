@@ -30,19 +30,17 @@ import org.apache.iotdb.db.engine.modification.io.ModificationWriter;
  * Methods in this class are highly synchronized for concurrency safety.
  */
 public class ModificationFile {
+  public static final String FILE_SUFFIX = ".mods";
 
   private Collection<Modification> modifications;
-  private String filePath;
   private ModificationWriter writer;
   private ModificationReader reader;
 
   /**
    * Construct a ModificationFile using a file as its storage.
    * @param filePath the path of the storage file.
-   * @throws IOException when IOException raised when
    */
-  public ModificationFile(String filePath) throws IOException {
-    this.filePath = filePath;
+  public ModificationFile(String filePath) {
     LocalTextModificationAccessor accessor = new LocalTextModificationAccessor(filePath);
     this.writer = accessor;
     this.reader = accessor;
@@ -65,7 +63,7 @@ public class ModificationFile {
   }
 
   /**
-   * Release the resources such as streams and caches.
+   * Release resources such as streams and caches.
    */
   public void close() throws IOException {
     synchronized (this) {
@@ -90,7 +88,7 @@ public class ModificationFile {
 
   /**
    * Get all modifications stored in this file.
-   * @return
+   * @return an ArrayList of modifications.
    */
   public Collection<Modification> getModifications() throws IOException {
     synchronized (this) {

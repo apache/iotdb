@@ -25,7 +25,9 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+
 import org.apache.iotdb.db.conf.directories.Directories;
+import org.apache.iotdb.db.engine.modification.ModificationFile;
 
 /**
  * This class is used to store one bufferwrite file status.<br>
@@ -43,6 +45,7 @@ public class IntervalFileNode implements Serializable {
   private Map<String, Long> startTimeMap;
   private Map<String, Long> endTimeMap;
   private Set<String> mergeChanged = new HashSet<>();
+  private transient ModificationFile modFile;
 
   public IntervalFileNode(Map<String, Long> startTimeMap, Map<String, Long> endTimeMap,
       OverflowChangeType type, int baseDirIndex, String relativePath) {
@@ -53,7 +56,9 @@ public class IntervalFileNode implements Serializable {
 
     this.startTimeMap = startTimeMap;
     this.endTimeMap = endTimeMap;
-
+    this.modFile = new ModificationFile(
+            Directories.getInstance().getTsFileFolder(baseDirIndex) + File.separator
+                    + relativePath + ModificationFile.FILE_SUFFIX);
   }
 
   /**
@@ -70,6 +75,9 @@ public class IntervalFileNode implements Serializable {
 
     startTimeMap = new HashMap<>();
     endTimeMap = new HashMap<>();
+    this.modFile = new ModificationFile(
+            Directories.getInstance().getTsFileFolder(baseDirIndex) + File.separator
+                    + relativePath + ModificationFile.FILE_SUFFIX);
   }
 
   public IntervalFileNode(OverflowChangeType type, String baseDir, String relativePath) {
@@ -80,6 +88,9 @@ public class IntervalFileNode implements Serializable {
 
     startTimeMap = new HashMap<>();
     endTimeMap = new HashMap<>();
+    this.modFile = new ModificationFile(
+            Directories.getInstance().getTsFileFolder(baseDirIndex) + File.separator
+                    + relativePath + ModificationFile.FILE_SUFFIX);
   }
 
   public IntervalFileNode(OverflowChangeType type, String relativePath) {
@@ -279,4 +290,18 @@ public class IntervalFileNode implements Serializable {
             + " endTimeMap=%s, mergeChanged=%s]",
         relativePath, overflowChangeType, startTimeMap, endTimeMap, mergeChanged);
   }
+
+  public synchronized ModificationFile getModFile() {
+    if (modFile == null) {
+      modFile = new ModificationFile(
+              Directories.getInstance().getTsFileFolder(baseDirIndex) + File.separator
+                      + relativePath + ModificationFile.FILE_SUFFIX);
+    }
+    return modFile;
+  }
+
+  public boolean containsDevice(String deviceId) {
+    return endTimeMap.containsKey(deviceId);
+  }
+
 }

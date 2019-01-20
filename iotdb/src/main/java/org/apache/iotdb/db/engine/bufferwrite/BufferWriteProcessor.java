@@ -41,6 +41,7 @@ import org.apache.iotdb.db.engine.memtable.PrimitiveMemTable;
 import org.apache.iotdb.db.engine.pool.FlushManager;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.utils.FlushStatus;
+import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.BufferWriteProcessorException;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
@@ -81,6 +82,7 @@ public class BufferWriteProcessor extends Processor {
   private String bufferWriteRelativePath;
 
   private WriteLogNode logNode;
+  private VersionController versionController;
 
   /**
    * constructor of BufferWriteProcessor.
@@ -133,6 +135,7 @@ public class BufferWriteProcessor extends Processor {
         throw new BufferWriteProcessorException(e);
       }
     }
+    this.versionController = versionController;
   }
 
   /**
@@ -259,7 +262,7 @@ public class BufferWriteProcessor extends Processor {
     }
   }
 
-  private void flushOperation(String flushFunction) {
+  private void flushOperation(String flushFunction, long version) {
     long flushStartTime = System.currentTimeMillis();
     LOGGER.info("The bufferwrite processor {} starts flushing {}.", getProcessorName(),
         flushFunction);
@@ -268,7 +271,8 @@ public class BufferWriteProcessor extends Processor {
         long startPos = writer.getPos();
         long startTime = System.currentTimeMillis();
         // flush data
-        MemTableFlushUtil.flushMemTable(fileSchema, writer, flushMemTable);
+        MemTableFlushUtil.flushMemTable(fileSchema, writer, flushMemTable,
+                version);
         // write restore information
         writer.flush();
       }
@@ -348,13 +352,14 @@ public class BufferWriteProcessor extends Processor {
       valueCount = 0;
       flushStatus.setFlushing();
       switchWorkToFlush();
+      long version = versionController.nextVersion();
       BasicMemController.getInstance().reportFree(this, memSize.get());
       memSize.set(0);
       // switch
       if (synchronization) {
-        flushOperation("synchronously");
+        flushOperation("synchronously", version);
       } else {
-        FlushManager.getInstance().submit(() -> flushOperation("asynchronously"));
+        FlushManager.getInstance().submit(() -> flushOperation("asynchronously", version));
       }
     }
     // TODO return a meaningful Future
@@ -501,5 +506,21 @@ public class BufferWriteProcessor extends Processor {
 
   public WriteLogNode getLogNode() {
     return logNode;
+  }
+
+  /**
+   * Delete data whose timestamp <= 'timestamp' and belonging to timeseries deviceId.measurementId.
+   * Delete data in both working MemTable and flushing MemTable.
+   * @param deviceId the deviceId of the timeseries to be deleted.
+   * @param measurementId the measurementId of the timeseries to be deleted.
+   * @param timestamp the upper-bound of deletion time.
+   */
+  public void delete(String deviceId, String measurementId, long timestamp) {
+    workMemTable.delele(deviceId, measurementId, timestamp);
+    if (isFlush) {
+      // flushing MemTable cannot be directly modified since another thread is reading it
+      flushMemTable = flushMemTable.copy();
+      flushMemTable.delele(deviceId, measurementId, timestamp);
+    }
   }
 }

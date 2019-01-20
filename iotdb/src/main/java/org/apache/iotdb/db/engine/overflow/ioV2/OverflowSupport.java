@@ -21,6 +21,7 @@ package org.apache.iotdb.db.engine.overflow.ioV2;
 
 import java.util.HashMap;
 import java.util.Map;
+
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.PrimitiveMemTable;
 import org.apache.iotdb.db.engine.memtable.TimeValuePairSorter;
@@ -75,15 +76,13 @@ public class OverflowSupport {
     indexTrees.get(deviceId).get(measurementId).update(startTime, endTime, value);
   }
 
-  @Deprecated
-  public void delete(String deviceId, String measurementId, long timestamp, TSDataType dataType) {
-    if (!indexTrees.containsKey(deviceId)) {
-      indexTrees.put(deviceId, new HashMap<>());
+  public void delete(String deviceId, String measurementId, long timestamp, boolean isFlushing) {
+    if (isFlushing) {
+      memTable = memTable.copy();
+      memTable.delele(deviceId, measurementId, timestamp);
+    } else {
+      memTable.delele(deviceId, measurementId, timestamp);
     }
-    if (!indexTrees.get(deviceId).containsKey(measurementId)) {
-      indexTrees.get(deviceId).put(measurementId, new OverflowSeriesImpl(measurementId, dataType));
-    }
-    indexTrees.get(deviceId).get(measurementId).delete(timestamp);
   }
 
   public TimeValuePairSorter queryOverflowInsertInMemory(String deviceId, String measurementId,
@@ -92,8 +91,8 @@ public class OverflowSupport {
   }
 
   public BatchData queryOverflowUpdateInMemory(String deviceId, String measurementId,
-      TSDataType dataType,
-      BatchData data) {
+                                               TSDataType dataType,
+                                               BatchData data) {
     if (indexTrees.containsKey(deviceId)) {
       if (indexTrees.get(deviceId).containsKey(measurementId)
           && indexTrees.get(deviceId).get(measurementId).getDataType().equals(dataType)) {

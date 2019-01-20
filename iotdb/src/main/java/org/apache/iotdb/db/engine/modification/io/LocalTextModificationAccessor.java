@@ -44,17 +44,13 @@ public class LocalTextModificationAccessor implements ModificationReader, Modifi
   private BufferedWriter writer;
 
   /**
-   * Construct a LocalTextModificationAccessor using a file specified by filePath. Only a writer
-   * will be created because the reader will be created only if necessary(call of read()).
+   * Construct a LocalTextModificationAccessor using a file specified by filePath.
    *
    * @param filePath the path of the file that is used for storing modifications.
-   * @throws IOException if the writer cannot be created.
    */
-  public LocalTextModificationAccessor(String filePath) throws IOException {
+  public LocalTextModificationAccessor(String filePath) {
     this.filePath = filePath;
-    writer = new BufferedWriter(new FileWriter(filePath));
   }
-
   @Override
   public Collection<Modification> read() throws IOException {
     BufferedReader reader;
@@ -80,11 +76,16 @@ public class LocalTextModificationAccessor implements ModificationReader, Modifi
 
   @Override
   public void close() throws IOException {
-    writer.close();
+    if (writer != null) {
+      writer.close();
+    }
   }
 
   @Override
   public void write(Modification mod) throws IOException {
+    if (writer == null) {
+      writer = new BufferedWriter(new FileWriter(filePath, true));
+    }
     writer.write(encodeModification(mod));
     writer.newLine();
     writer.flush();

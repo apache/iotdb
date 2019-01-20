@@ -46,6 +46,7 @@ import org.apache.iotdb.db.engine.querycontext.OverflowInsertFile;
 import org.apache.iotdb.db.engine.querycontext.OverflowSeriesDataSource;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.utils.FlushStatus;
+import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.OverflowProcessorException;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
@@ -90,9 +91,10 @@ public class OverflowProcessor extends Processor {
   private AtomicLong memSize = new AtomicLong();
 
   private WriteLogNode logNode;
+  private VersionController versionController;
 
   public OverflowProcessor(String processorName, Map<String, Action> parameters,
-      FileSchema fileSchema)
+      FileSchema fileSchema, VersionController versionController)
       throws IOException {
     super(processorName);
     this.fileSchema = fileSchema;
@@ -119,18 +121,19 @@ public class OverflowProcessor extends Processor {
           processorName + IoTDBConstant.OVERFLOW_LOG_NODE_SUFFIX, getOverflowRestoreFile(),
           FileNodeManager.getInstance().getRestoreFilePath(processorName));
     }
+    this.versionController = versionController;
   }
 
   private void recovery(File parentFile) throws IOException {
     String[] subFilePaths = clearFile(parentFile.list());
     if (subFilePaths.length == 0) {
       workResource = new OverflowResource(parentPath,
-          String.valueOf(dataPahtCount.getAndIncrement()));
+          String.valueOf(dataPahtCount.getAndIncrement()), versionController);
       return;
     } else if (subFilePaths.length == 1) {
       long count = Long.valueOf(subFilePaths[0]);
       dataPahtCount.addAndGet(count + 1);
-      workResource = new OverflowResource(parentPath, String.valueOf(count));
+      workResource = new OverflowResource(parentPath, String.valueOf(count), versionController);
       LOGGER.info("The overflow processor {} recover from work status.", getProcessorName());
     } else {
       long count1 = Long.valueOf(subFilePaths[0]);
@@ -142,8 +145,8 @@ public class OverflowProcessor extends Processor {
       }
       dataPahtCount.addAndGet(count2 + 1);
       // work dir > merge dir
-      workResource = new OverflowResource(parentPath, String.valueOf(count2));
-      mergeResource = new OverflowResource(parentPath, String.valueOf(count1));
+      workResource = new OverflowResource(parentPath, String.valueOf(count2), versionController);
+      mergeResource = new OverflowResource(parentPath, String.valueOf(count1), versionController);
       LOGGER.info("The overflow processor {} recover from merge status.", getProcessorName());
     }
   }
@@ -231,17 +234,20 @@ public class OverflowProcessor extends Processor {
   }
 
   /**
-   * delete one time-series data which time range is from 0 to time-stamp.
+   * Delete data of a timeseries whose time ranges from 0 to timestamp.
    *
-   * @param deviceId
-   * @param measurementId
-   * @param timestamp
-   * @param type
+   * @param deviceId the deviceId of the timeseries.
+   * @param measurementId the measurementId of the timeseries.
+   * @param timestamp the upper-bound of deletion time.
+   * @param version the version number of this deletion.
    */
-  @Deprecated
-  public void delete(String deviceId, String measurementId, long timestamp, TSDataType type) {
-    workSupport.delete(deviceId, measurementId, timestamp, type);
-    valueCount++;
+  public void delete(String deviceId, String measurementId, long timestamp, long version) throws IOException {
+    workSupport.delete(deviceId, measurementId, timestamp, false);
+    workResource.delete(deviceId, measurementId, timestamp, version);
+    if (flushStatus.isFlushing()) {
+      flushSupport.delete(deviceId, measurementId, timestamp, true);
+      mergeResource.delete(deviceId, measurementId, timestamp, version);
+    }
   }
 
   /**
@@ -420,7 +426,7 @@ public class OverflowProcessor extends Processor {
       mergeResource = workResource;
       // TODO: NEW ONE workResource
       workResource = new OverflowResource(parentPath,
-          String.valueOf(dataPahtCount.getAndIncrement()));
+          String.valueOf(dataPahtCount.getAndIncrement()), versionController);
     }
     isMerge = true;
     LOGGER.info("The overflow processor {} switch from WORK to MERGE", getProcessorName());
@@ -613,8 +619,7 @@ public class OverflowProcessor extends Processor {
    * @return The size of overflow file corresponding to this processor.
    */
   public long getFileSize() {
-    return workResource.getInsertFile().length() + workResource.getUpdateDeleteFile().length()
-        + memoryUsage();
+    return workResource.getInsertFile().length() + memoryUsage();
   }
 
   /**

@@ -53,7 +53,6 @@ import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.monitor.IStatistic;
 import org.apache.iotdb.db.monitor.MonitorConstants;
 import org.apache.iotdb.db.monitor.StatMonitor;
-import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.UpdatePlan;
 import org.apache.iotdb.db.query.control.FileReaderManager;
@@ -497,66 +496,66 @@ public class FileNodeManager implements IStatistic, IService {
   /**
    * delete data.
    */
-  public void delete(String deviceId, String measurementId, long timestamp, TSDataType type)
-      throws FileNodeManagerException {
+  public void delete(String deviceId, String measurementId, long timestamp)
+          throws FileNodeManagerException {
 
     FileNodeProcessor fileNodeProcessor = getProcessor(deviceId, true);
     try {
       long lastUpdateTime = fileNodeProcessor.getLastUpdateTime(deviceId);
       // no tsfile data, the delete operation is invalid
       if (lastUpdateTime == -1) {
-        LOGGER.warn(
-            "The last update time is -1, delete overflow is invalid, the filenode processor is {}",
-            fileNodeProcessor.getProcessorName());
+        LOGGER.warn("The last update time is -1, delete overflow is invalid, "
+                        + "the filenode processor is {}",
+                fileNodeProcessor.getProcessorName());
       } else {
-        if (timestamp > lastUpdateTime) {
-          timestamp = lastUpdateTime;
-        }
-        String filenodeName = fileNodeProcessor.getProcessorName();
-        // get overflow processor
-        OverflowProcessor overflowProcessor;
         try {
-          overflowProcessor = fileNodeProcessor.getOverflowProcessor(filenodeName);
+          fileNodeProcessor.delete(deviceId, measurementId, timestamp);
         } catch (IOException e) {
-          LOGGER.error("Get the overflow processor failed, the filenode is {}, delete time is {}.",
-              filenodeName, timestamp);
           throw new FileNodeManagerException(e);
         }
-        overflowProcessor.delete(deviceId, measurementId, timestamp, type);
         // change the type of tsfile to overflowed
         fileNodeProcessor.changeTypeToChangedForDelete(deviceId, timestamp);
         fileNodeProcessor.setOverflowed(true);
-        // if (shouldMerge) {
-        // LOGGER.info(
-        // "The overflow file or metadata reaches the threshold,
-        // merge the filenode processor {}",
-        // filenodeName);
-        // fileNodeProcessor.submitToMerge();
-        // }
-        fileNodeProcessor.changeTypeToChangedForDelete(deviceId, timestamp);
-        fileNodeProcessor.setOverflowed(true);
 
-        // write wal
+        // TODO: support atomic deletion
+        /*// write wal
+        // get processors for wal
+        String filenodeName = fileNodeProcessor.getProcessorName();
+        OverflowProcessor overflowProcessor;
+        BufferWriteProcessor bufferWriteProcessor;
+        try {
+          overflowProcessor = fileNodeProcessor.getOverflowProcessor(filenodeName);
+          bufferWriteProcessor = fileNodeProcessor.getBufferWriteProcessor();
+        } catch (IOException | FileNodeProcessorException e) {
+          LOGGER.error("Getting the processor failed, the filenode is {}, delete time is {}.",
+                  filenodeName, timestamp);
+          throw new FileNodeManagerException(e);
+        }
         try {
           if (IoTDBDescriptor.getInstance().getConfig().enableWal) {
             overflowProcessor.getLogNode()
-                .write(new DeletePlan(timestamp, new Path(deviceId + "." + measurementId)));
+                    .write(new DeletePlan(timestamp,
+                            new Path(deviceId + "." + measurementId)));
+            bufferWriteProcessor.getLogNode()
+                    .write(new DeletePlan(timestamp,
+                            new Path(deviceId + "." + measurementId)));
           }
         } catch (IOException e) {
           throw new FileNodeManagerException(e);
-        }
+        }*/
       }
     } finally {
       fileNodeProcessor.writeUnlock();
     }
+
   }
 
   /**
    * try to delete the filenode processor.
    */
   private void delete(String processorName,
-      Iterator<Map.Entry<String, FileNodeProcessor>> processorIterator)
-      throws FileNodeManagerException {
+                      Iterator<Map.Entry<String, FileNodeProcessor>> processorIterator)
+          throws FileNodeManagerException {
     if (processorMap.containsKey(processorName)) {
       LOGGER.info("Try to delete the filenode processor {}.", processorName);
       FileNodeProcessor processor = processorMap.get(processorName);

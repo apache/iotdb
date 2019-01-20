@@ -19,12 +19,29 @@
  */
 package org.apache.iotdb.db.engine.memtable;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public class PrimitiveMemTable extends AbstractMemTable {
 
+  public PrimitiveMemTable() {
+  }
+
+  public PrimitiveMemTable(Map<String, Map<String, IWritableMemChunk>> memTableMap) {
+    super(memTableMap);
+  }
+
   @Override
   protected IWritableMemChunk genMemSeries(TSDataType dataType) {
     return new WritableMemChunk(dataType);
+  }
+
+  @Override
+  public IMemTable copy() {
+    Map<String, Map<String, IWritableMemChunk>> newMap = new HashMap<>(getMemTableMap());
+
+    return new PrimitiveMemTable(newMap);
   }
 }
