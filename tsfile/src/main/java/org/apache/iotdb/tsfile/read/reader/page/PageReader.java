@@ -49,6 +49,8 @@ public class PageReader {
 
   private Filter filter = null;
 
+  private long deletedAt;
+
   public PageReader(ByteBuffer pageData, TSDataType dataType, Decoder valueDecoder,
       Decoder timeDecoder,
       Filter filter) {
@@ -110,25 +112,48 @@ public class PageReader {
     while (timeDecoder.hasNext(timeBuffer)) {
       long timestamp = timeDecoder.readLong(timeBuffer);
 
-      pageData.putTime(timestamp);
       switch (dataType) {
         case BOOLEAN:
-          pageData.putBoolean(valueDecoder.readBoolean(valueBuffer));
+          boolean aBoolean = valueDecoder.readBoolean(valueBuffer);
+          if (timestamp > deletedAt) {
+            pageData.putTime(timestamp);
+            pageData.putBoolean(aBoolean);
+          }
           break;
         case INT32:
-          pageData.putInt(valueDecoder.readInt(valueBuffer));
+          int anInt = valueDecoder.readInt(valueBuffer);
+          if (timestamp > deletedAt) {
+            pageData.putTime(timestamp);
+            pageData.putInt(anInt);
+          }
           break;
         case INT64:
-          pageData.putLong(valueDecoder.readLong(valueBuffer));
+          long aLong = valueDecoder.readLong(valueBuffer);
+          if (timestamp > deletedAt) {
+            pageData.putTime(timestamp);
+            pageData.putLong(aLong);
+          }
           break;
         case FLOAT:
-          pageData.putFloat(valueDecoder.readFloat(valueBuffer));
+          float aFloat = valueDecoder.readFloat(valueBuffer);
+          if (timestamp > deletedAt) {
+            pageData.putTime(timestamp);
+            pageData.putFloat(aFloat);
+          }
           break;
         case DOUBLE:
-          pageData.putDouble(valueDecoder.readDouble(valueBuffer));
+          double aDouble = valueDecoder.readDouble(valueBuffer);
+          if (timestamp > deletedAt) {
+            pageData.putTime(timestamp);
+            pageData.putDouble(aDouble);
+          }
           break;
         case TEXT:
-          pageData.putBinary(valueDecoder.readBinary(valueBuffer));
+          Binary aBinary = valueDecoder.readBinary(valueBuffer);
+          if (timestamp > deletedAt) {
+            pageData.putTime(timestamp);
+            pageData.putBinary(aBinary);
+          }
           break;
         default:
           throw new UnSupportedDataTypeException(String.valueOf(dataType));
@@ -146,42 +171,42 @@ public class PageReader {
       switch (dataType) {
         case BOOLEAN:
           boolean aBoolean = valueDecoder.readBoolean(valueBuffer);
-          if (filter.satisfy(timestamp, aBoolean)) {
+          if (timestamp > deletedAt && filter.satisfy(timestamp, aBoolean)) {
             pageData.putTime(timestamp);
             pageData.putBoolean(aBoolean);
           }
           break;
         case INT32:
           int anInt = valueDecoder.readInt(valueBuffer);
-          if (filter.satisfy(timestamp, anInt)) {
+          if (timestamp > deletedAt && filter.satisfy(timestamp, anInt)) {
             pageData.putTime(timestamp);
             pageData.putInt(anInt);
           }
           break;
         case INT64:
           long aLong = valueDecoder.readLong(valueBuffer);
-          if (filter.satisfy(timestamp, aLong)) {
+          if (timestamp > deletedAt && filter.satisfy(timestamp, aLong)) {
             pageData.putTime(timestamp);
             pageData.putLong(aLong);
           }
           break;
         case FLOAT:
           float aFloat = valueDecoder.readFloat(valueBuffer);
-          if (filter.satisfy(timestamp, aFloat)) {
+          if (timestamp > deletedAt && filter.satisfy(timestamp, aFloat)) {
             pageData.putTime(timestamp);
             pageData.putFloat(aFloat);
           }
           break;
         case DOUBLE:
           double aDouble = valueDecoder.readDouble(valueBuffer);
-          if (filter.satisfy(timestamp, aDouble)) {
+          if (timestamp > deletedAt && filter.satisfy(timestamp, aDouble)) {
             pageData.putTime(timestamp);
             pageData.putDouble(aDouble);
           }
           break;
         case TEXT:
           Binary aBinary = valueDecoder.readBinary(valueBuffer);
-          if (filter.satisfy(timestamp, aBinary)) {
+          if (timestamp > deletedAt && filter.satisfy(timestamp, aBinary)) {
             pageData.putTime(timestamp);
             pageData.putBinary(aBinary);
           }
@@ -199,4 +224,7 @@ public class PageReader {
     valueBuffer = null;
   }
 
+  public void setDeletedAt(long deletedAt) {
+    this.deletedAt = deletedAt;
+  }
 }

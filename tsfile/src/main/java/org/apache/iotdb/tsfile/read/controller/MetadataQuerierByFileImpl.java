@@ -165,6 +165,7 @@ public class MetadataQuerierByFileImpl implements MetadataQuerier {
           .getChunkMetaDataList();
       for (ChunkMetaData chunkMetaData : chunkMetaDataListInOneChunkGroup) {
         if (path.getMeasurement().equals(chunkMetaData.getMeasurementUid())) {
+          chunkMetaData.setVersion(chunkGroupMetaData.getVersion());
           chunkMetaDataList.add(chunkMetaData);
         }
       }

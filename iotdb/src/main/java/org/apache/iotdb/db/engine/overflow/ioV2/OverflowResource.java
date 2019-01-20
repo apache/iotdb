@@ -34,9 +34,12 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.MemTableFlushUtil;
 import org.apache.iotdb.db.engine.modification.Deletion;
+import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.version.VersionController;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.MemUtils;
+import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadata;
@@ -153,6 +156,7 @@ public class OverflowResource {
           insertMetadatas.put(deviceId, new HashMap<>());
         }
         for (ChunkMetaData chunkMetaData : rowGroupMetaData.getChunkMetaDataList()) {
+          chunkMetaData.setVersion(rowGroupMetaData.getVersion());
           String measurementId = chunkMetaData.getMeasurementUid();
           if (!insertMetadatas.get(deviceId).containsKey(measurementId)) {
             insertMetadatas.get(deviceId).put(measurementId, new ArrayList<>());
@@ -175,6 +179,14 @@ public class OverflowResource {
           }
         }
       }
+    }
+    try {
+      List<Modification> modifications = QueryUtils.getPathModifications(modificationFile,
+              deviceId + IoTDBConstant.PATH_SEPARATOR + measurementId);
+      QueryUtils.modifyChunkMetaData(chunkMetaDatas, modifications);
+    } catch (IOException e) {
+      LOGGER.error("Cannot access the modification file of Overflow {}, because:", parentPath,
+              e);
     }
     return chunkMetaDatas;
   }

@@ -78,7 +78,7 @@ public abstract class FileSeriesReader {
     // current chunk does not have additional batch, init new chunk reader
     while (chunkToRead < chunkMetaDataList.size()) {
 
-      ChunkMetaData chunkMetaData = chunkMetaDataList.get(chunkToRead++);
+      ChunkMetaData chunkMetaData = nextChunkMeta();
       if (chunkSatisfied(chunkMetaData)) {
         // chunk metadata satisfy the condition
         initChunkReader(chunkMetaData);
@@ -108,4 +108,7 @@ public abstract class FileSeriesReader {
     chunkLoader.close();
   }
 
+  protected ChunkMetaData nextChunkMeta() {
+    return chunkMetaDataList.get(chunkToRead++);
+  }
 }

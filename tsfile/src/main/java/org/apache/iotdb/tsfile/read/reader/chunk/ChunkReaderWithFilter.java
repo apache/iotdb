@@ -35,7 +35,7 @@ public class ChunkReaderWithFilter extends ChunkReader {
 
   @Override
   public boolean pageSatisfied(PageHeader pageHeader) {
-    if (pageHeader.getMax_timestamp() < getMaxTombstoneTime()) {
+    if (pageHeader.getMax_timestamp() < deletedAt) {
       return false;
     }
     DigestForFilter digest = new DigestForFilter(pageHeader.getMin_timestamp(),
