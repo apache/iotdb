@@ -1976,12 +1976,6 @@ public class FileNodeProcessor extends Processor implements IStatistic {
     public void delete(String deviceId, String measurementId, long timestamp) throws IOException {
       // TODO: how to avoid partial deletion?
       long version = versionController.nextVersion();
-      // delete data in memory
-      if (bufferWriteProcessor != null) {
-        bufferWriteProcessor.delete(deviceId, measurementId, timestamp);
-      }
-      OverflowProcessor overflowProcessor = getOverflowProcessor(getProcessorName());
-      overflowProcessor.delete(deviceId, measurementId, timestamp, version);
 
       String fullPath = deviceId +
               IoTDBConstant.PATH_SEPARATOR + measurementId;
@@ -1993,6 +1987,12 @@ public class FileNodeProcessor extends Processor implements IStatistic {
         if(fileNode != currentIntervalFileNode && fileNode.containsDevice(deviceId)) {
           fileNode.getModFile().write(deletion);
         }
+      }
+      // delete data in memory
+      OverflowProcessor overflowProcessor = getOverflowProcessor(getProcessorName());
+      overflowProcessor.delete(deviceId, measurementId, timestamp, version);
+      if (bufferWriteProcessor != null) {
+        bufferWriteProcessor.delete(deviceId, measurementId, timestamp);
       }
     }
 }

@@ -243,11 +243,11 @@ public class OverflowProcessor extends Processor {
    * @param version the version number of this deletion.
    */
   public void delete(String deviceId, String measurementId, long timestamp, long version) throws IOException {
-    workSupport.delete(deviceId, measurementId, timestamp, false);
     workResource.delete(deviceId, measurementId, timestamp, version);
+    workSupport.delete(deviceId, measurementId, timestamp, false);
     if (flushStatus.isFlushing()) {
-      flushSupport.delete(deviceId, measurementId, timestamp, true);
       mergeResource.delete(deviceId, measurementId, timestamp, version);
+      flushSupport.delete(deviceId, measurementId, timestamp, true);
     }
   }
 
