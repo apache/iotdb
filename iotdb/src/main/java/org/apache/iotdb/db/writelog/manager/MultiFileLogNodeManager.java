@@ -44,7 +44,9 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
   private Map<String, WriteLogNode> nodeMap;
 
   private Thread syncThread;
+  private Thread forceThread;
   private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+
   private final Runnable syncTask = new Runnable() {
     @Override
     public void run() {
@@ -66,6 +68,33 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
           Thread.sleep(config.flushWalPeriodInMs);
         } catch (InterruptedException e) {
           logger.info("WAL sync thread exits.");
+          break;
+        }
+      }
+    }
+  };
+
+  private final Runnable forceTask = new Runnable() {
+    @Override
+    public void run() {
+      while (true) {
+        if (Thread.interrupted()) {
+          logger.info("WAL force thread exits.");
+          break;
+        }
+        logger.debug("Timed force starts, {} nodes to be flushed", nodeMap.size());
+        for (WriteLogNode node : nodeMap.values()) {
+          try {
+            node.force();
+          } catch (IOException e) {
+            logger.error("Cannot force {}, because {}", node.toString(), e.toString());
+          }
+        }
+        logger.debug("Timed force finished");
+        try {
+          Thread.sleep(config.forceWalPeriodInMs);
+        } catch (InterruptedException e) {
+          logger.info("WAL force thread exits.");
           break;
         }
       }
@@ -123,15 +152,17 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
 
   @Override
   public void close() {
-    if (syncThread == null || !syncThread.isAlive()) {
+    if (syncThread == null || !syncThread.isAlive() || forceThread == null || !forceThread
+        .isAlive()) {
       logger.error("MultiFileLogNodeManager has not yet started");
       return;
     }
 
     logger.info("LogNodeManager starts closing..");
     syncThread.interrupt();
+    forceThread.interrupt();
     logger.info("Waiting for sync thread to stop");
-    while (syncThread.isAlive()) {
+    while (syncThread.isAlive() || forceThread.isAlive()) {
       // wait
     }
     logger.info("{} nodes to be closed", nodeMap.size());
@@ -183,6 +214,11 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
         InstanceHolder.instance.syncThread = new Thread(InstanceHolder.instance.syncTask,
             ThreadName.WAL_DAEMON.getName());
         InstanceHolder.instance.syncThread.start();
+        if (config.forceWalPeriodInMs > 0 && (forceThread == null || !forceThread.isAlive())) {
+          InstanceHolder.instance.forceThread = new Thread(InstanceHolder.instance.forceTask,
+              ThreadName.WAL_FORCE_DAEMON.getName());
+          InstanceHolder.instance.forceThread.start();
+        }
       } else {
         logger.warn("MultiFileLogNodeManager has already started");
       }

@@ -65,6 +65,8 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
 
   private ReadWriteLock lock = new ReentrantReadWriteLock();
 
+  private ReadWriteLock forceLock = new ReentrantReadWriteLock();
+
   /**
    * constructor of ExclusiveWriteLogNode.
    *
@@ -137,6 +139,11 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
     sync();
   }
 
+  @Override
+  public void force() throws IOException {
+    forceWal();
+  }
+
   /*
    * Warning : caller must have lock.
    */
@@ -205,11 +212,19 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
     lock.writeLock().unlock();
   }
 
+  private void lockForForceOther() {
+    forceLock.writeLock().lock();
+  }
+
+  private void unlockForForceOther() {
+    forceLock.writeLock().unlock();
+  }
+
   private void sync() {
     lockForOther();
     try {
       logger.debug("Log node {} starts sync, {} logs to be synced", identifier, logCache.size());
-      if (logCache.size() == 0) {
+      if (logCache.isEmpty()) {
         return;
       }
       try {
@@ -221,6 +236,21 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
       logger.debug("Log node {} ends sync.", identifier);
     } finally {
       unlockForOther();
+    }
+  }
+
+  private void forceWal() {
+    lockForForceOther();
+    try {
+      logger.debug("Log node {} starts force, {} logs to be forced", identifier, logCache.size());
+      try {
+        currentFileWriter.force();
+      } catch (IOException e) {
+        logger.error("Log node {} force failed because {}.", identifier, e.getMessage());
+      }
+      logger.debug("Log node {} ends force.", identifier);
+    } finally {
+      unlockForForceOther();
     }
   }
 

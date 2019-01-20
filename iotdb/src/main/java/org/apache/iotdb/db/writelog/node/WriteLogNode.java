@@ -52,6 +52,11 @@ public interface WriteLogNode {
    */
   void forceSync() throws IOException;
 
+  /*
+   * Force OS to sync all written data to disk.
+   */
+  void force() throws IOException;
+
   /**
    * When a FileNode attempts to start a flush, this method must be called to rename log file.
    */
