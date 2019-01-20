@@ -28,6 +28,7 @@ import java.util.Map;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
+
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -95,8 +96,8 @@ public class BufferWriteProcessor extends Processor {
    * @throws BufferWriteProcessorException BufferWriteProcessorException
    */
   public BufferWriteProcessor(String baseDir, String processorName, String fileName,
-      Map<String, Action> parameters,
-      FileSchema fileSchema) throws BufferWriteProcessorException {
+                              Map<String, Action> parameters, VersionController versionController,
+                              FileSchema fileSchema) throws BufferWriteProcessorException {
     super(processorName);
     this.fileSchema = fileSchema;
     this.baseDir = baseDir;
@@ -220,8 +221,8 @@ public class BufferWriteProcessor extends Processor {
    * @return corresponding chunk data and chunk metadata in memory
    */
   public Pair<ReadOnlyMemChunk, List<ChunkMetaData>> queryBufferWriteData(String deviceId,
-      String measurementId,
-      TSDataType dataType) {
+                                                                          String measurementId,
+                                                                          TSDataType dataType) {
     flushQueryLock.lock();
     try {
       MemSeriesLazyMerger memSeriesLazyMerger = new MemSeriesLazyMerger();
