@@ -75,41 +75,48 @@ public class PerformanceTest {
       return;
     }
     int[] batchSizes = new int[]{100, 500, 1000, 5000, 10000};
+    long[] forceCycle = new long[]{10, 0};
     int oldBatchSize = config.flushWalThreshold;
+    long oldForceCycle = config.forceWalPeriodInMs;
     for (int j = 0; j < batchSizes.length; j++) {
-      config.flushWalThreshold = batchSizes[j];
-      File tempRestore = new File("testtemp", "restore");
-      File tempProcessorStore = new File("testtemp", "processorStore");
-      tempRestore.getParentFile().mkdirs();
-      tempRestore.createNewFile();
-      tempProcessorStore.createNewFile();
+      for(int k=0; k < forceCycle.length; k++) {
+        config.flushWalThreshold = batchSizes[j];
+        config.forceWalPeriodInMs = forceCycle[k];
+        File tempRestore = new File("testtemp", "restore");
+        File tempProcessorStore = new File("testtemp", "processorStore");
+        tempRestore.getParentFile().mkdirs();
+        tempRestore.createNewFile();
+        tempProcessorStore.createNewFile();
 
-      WriteLogNode logNode = new ExclusiveWriteLogNode("root.testLogNode", tempRestore.getPath(),
-          tempProcessorStore.getPath());
+        WriteLogNode logNode = new ExclusiveWriteLogNode("root.testLogNode", tempRestore.getPath(),
+            tempProcessorStore.getPath());
 
-      long time = System.currentTimeMillis();
-      for (int i = 0; i < 1000000; i++) {
-        InsertPlan bwInsertPlan = new InsertPlan(1, "logTestDevice", 100,
-            Arrays.asList("s1", "s2", "s3", "s4"),
-            Arrays.asList("1.0", "15", "str", "false"));
-        UpdatePlan updatePlan = new UpdatePlan(0, 100, "2.0", new Path("root.logTestDevice.s1"));
-        DeletePlan deletePlan = new DeletePlan(50, new Path("root.logTestDevice.s1"));
+        long time = System.currentTimeMillis();
+        for (int i = 0; i < 1000000; i++) {
+          InsertPlan bwInsertPlan = new InsertPlan(1, "logTestDevice", 100,
+              Arrays.asList("s1", "s2", "s3", "s4"),
+              Arrays.asList("1.0", "15", "str", "false"));
+          UpdatePlan updatePlan = new UpdatePlan(0, 100, "2.0", new Path("root.logTestDevice.s1"));
+          DeletePlan deletePlan = new DeletePlan(50, new Path("root.logTestDevice.s1"));
 
-        logNode.write(bwInsertPlan);
-        logNode.write(updatePlan);
-        logNode.write(deletePlan);
+          logNode.write(bwInsertPlan);
+          logNode.write(updatePlan);
+          logNode.write(deletePlan);
+        }
+        logNode.forceSync();
+        System.out.println("forceWalPeriodInMs = " + config.forceWalPeriodInMs);
+        System.out.println(
+            3000000 + " logs use " + (System.currentTimeMillis() - time) + " ms at batch size "
+                + config.flushWalThreshold);
+
+        logNode.delete();
+        tempRestore.delete();
+        tempProcessorStore.delete();
+        tempRestore.getParentFile().delete();
       }
-      logNode.forceSync();
-      System.out.println(
-          3000000 + " logs use " + (System.currentTimeMillis() - time) + " ms at batch size "
-              + batchSizes[j]);
-
-      logNode.delete();
-      tempRestore.delete();
-      tempProcessorStore.delete();
-      tempRestore.getParentFile().delete();
     }
     config.flushWalThreshold = oldBatchSize;
+    config.forceWalPeriodInMs = oldForceCycle;
   }
 
   @Test

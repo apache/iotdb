@@ -56,18 +56,29 @@ public class IoTDBConfig {
    * It is possible to lose at most flush_wal_period_in_ms ms operations.
    */
   public long flushWalPeriodInMs = 10000;
+
+  /**
+   * The cycle when write ahead log is periodically forced to be written to disk(in
+   * milliseconds)
+   * If set this parameter to 0 it means call outputStream.force(true) after every each write
+   */
+  public long forceWalPeriodInMs = 10;
+
   /**
    * Data directory.
    */
   public String dataDir = null;
+
   /**
    * System directory.
    */
   public String sysDir = null;
+
   /**
    * Wal directory.
    */
   public String walDir = null;
+
   /**
    * Data directory of Overflow data.
    */
