@@ -150,20 +150,36 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
     }
   }
 
+  private boolean isThreadIneffective(Thread thread) {
+    return thread == null || !thread.isAlive();
+  }
+
   @Override
   public void close() {
-    if (syncThread == null || !syncThread.isAlive() || forceThread == null || !forceThread
-        .isAlive()) {
+    if (isThreadIneffective(syncThread) && isThreadIneffective(forceThread)) {
       logger.error("MultiFileLogNodeManager has not yet started");
       return;
     }
-
     logger.info("LogNodeManager starts closing..");
-    syncThread.interrupt();
-    forceThread.interrupt();
-    logger.info("Waiting for sync thread to stop");
-    while (syncThread.isAlive() || forceThread.isAlive()) {
-      // wait
+    if (!isThreadIneffective(syncThread) && isThreadIneffective(forceThread)) {
+      syncThread.interrupt();
+      logger.info("Waiting for sync thread to stop");
+      while (syncThread.isAlive()) {
+        // wait for syncThread
+      }
+    } else if (isThreadIneffective(syncThread) && !isThreadIneffective(forceThread)) {
+      forceThread.interrupt();
+      logger.info("Waiting for force thread to stop");
+      while (forceThread.isAlive()) {
+        // wait for forceThread
+      }
+    } else {
+      syncThread.interrupt();
+      forceThread.interrupt();
+      logger.info("Waiting for sync and force threads to stop");
+      while (syncThread.isAlive() || forceThread.isAlive()) {
+        // wait for syncThread and forceThread
+      }
     }
     logger.info("{} nodes to be closed", nodeMap.size());
     for (WriteLogNode node : nodeMap.values()) {
