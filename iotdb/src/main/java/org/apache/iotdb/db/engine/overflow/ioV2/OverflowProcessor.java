@@ -30,6 +30,7 @@ import java.util.Map;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
+
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -94,7 +95,7 @@ public class OverflowProcessor extends Processor {
   private VersionController versionController;
 
   public OverflowProcessor(String processorName, Map<String, Action> parameters,
-      FileSchema fileSchema, VersionController versionController)
+                           FileSchema fileSchema, VersionController versionController)
       throws IOException {
     super(processorName);
     this.fileSchema = fileSchema;
@@ -262,7 +263,7 @@ public class OverflowProcessor extends Processor {
    * @throws IOException
    */
   public OverflowSeriesDataSource query(String deviceId, String measurementId, Filter filter,
-      TSDataType dataType)
+                                        TSDataType dataType)
       throws IOException {
     queryFlushLock.lock();
     try {
@@ -303,7 +304,7 @@ public class OverflowProcessor extends Processor {
    * @return insert data in SeriesChunkInMemTable
    */
   private TimeValuePairSorter queryOverflowInsertInMemory(String deviceId, String measurementId,
-      TSDataType dataType) {
+                                                          TSDataType dataType) {
 
     MemSeriesLazyMerger memSeriesLazyMerger = new MemSeriesLazyMerger();
     if (flushStatus.isFlushing()) {
@@ -341,8 +342,8 @@ public class OverflowProcessor extends Processor {
    * @return the seriesPath of unseqTsFile, List of TimeSeriesChunkMetaData for the special time-series.
    */
   private Pair<String, List<ChunkMetaData>> queryWorkDataInOverflowInsert(String deviceId,
-      String measurementId,
-      TSDataType dataType) {
+                                                                          String measurementId,
+                                                                          TSDataType dataType) {
     Pair<String, List<ChunkMetaData>> pair = new Pair<String, List<ChunkMetaData>>(
         workResource.getInsertFilePath(),
         workResource.getInsertMetadatas(deviceId, measurementId, dataType));
@@ -358,7 +359,7 @@ public class OverflowProcessor extends Processor {
    * @return MergeSeriesDataSource
    */
   public MergeSeriesDataSource queryMerge(String deviceId, String measurementId,
-      TSDataType dataType) {
+                                          TSDataType dataType) {
     Pair<String, List<ChunkMetaData>> mergeInsert = queryMergeDataInOverflowInsert(deviceId,
         measurementId,
         dataType);
@@ -366,8 +367,8 @@ public class OverflowProcessor extends Processor {
   }
 
   public OverflowSeriesDataSource queryMerge(String deviceId, String measurementId,
-      TSDataType dataType,
-      boolean isMerge) {
+                                             TSDataType dataType,
+                                             boolean isMerge) {
     Pair<String, List<ChunkMetaData>> mergeInsert = queryMergeDataInOverflowInsert(deviceId,
         measurementId,
         dataType);
@@ -389,8 +390,8 @@ public class OverflowProcessor extends Processor {
    * @return the seriesPath of unseqTsFile, List of TimeSeriesChunkMetaData for the special time-series.
    */
   private Pair<String, List<ChunkMetaData>> queryMergeDataInOverflowInsert(String deviceId,
-      String measurementId,
-      TSDataType dataType) {
+                                                                           String measurementId,
+                                                                           TSDataType dataType) {
     if (!isMerge) {
       return new Pair<String, List<ChunkMetaData>>(null, null);
     }

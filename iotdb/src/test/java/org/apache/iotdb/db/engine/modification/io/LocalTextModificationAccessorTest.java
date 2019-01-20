@@ -67,11 +67,7 @@ public class LocalTextModificationAccessorTest {
   public void readNull() throws IOException {
     String tempFileName = "mod.temp";
     LocalTextModificationAccessor accessor = null;
-    try {
-      accessor = new LocalTextModificationAccessor(tempFileName);
-    } catch (IOException e) {
-      fail(e.getMessage());
-    }
+    accessor = new LocalTextModificationAccessor(tempFileName);
     new File(tempFileName).delete();
     Collection<Modification> modifications = accessor.read();
     assertNull(modifications);
