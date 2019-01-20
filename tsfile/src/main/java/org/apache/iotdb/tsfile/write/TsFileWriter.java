@@ -23,6 +23,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.NoMeasurementException;
@@ -73,6 +74,7 @@ public class TsFileWriter {
    **/
   private long recordCountForNextMemCheck = 100;
   private long chunkGroupSizeThreshold;
+  private long version = 0;
 
   /**
    * init this TsFileWriter.
@@ -261,7 +263,7 @@ public class TsFileWriter {
               chunkGroupFooter.getDataSize(), fileWriter.getPos() - pos));
         }
 
-        fileWriter.endChunkGroup(chunkGroupFooter);
+        fileWriter.endChunkGroup(chunkGroupFooter, version++);
       }
       long actualTotalChunkGroupSize = fileWriter.getPos() - totalMemStart;
       LOG.info("total chunk group size:{}", actualTotalChunkGroupSize);
