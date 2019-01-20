@@ -90,7 +90,7 @@ public class ChunkGroupMetaData {
 
     int size = ReadWriteIOUtils.readInt(inputStream);
     chunkGroupMetaData.serializedSize =
-        Integer.BYTES + chunkGroupMetaData.deviceID.length() + Integer.BYTES;
+        Integer.BYTES + Long.BYTES + chunkGroupMetaData.deviceID.length() + Integer.BYTES;
 
     List<ChunkMetaData> chunkMetaDataList = new ArrayList<>();
 
@@ -120,7 +120,7 @@ public class ChunkGroupMetaData {
     int size = ReadWriteIOUtils.readInt(buffer);
 
     chunkGroupMetaData.serializedSize =
-        Integer.BYTES + chunkGroupMetaData.deviceID.length() + Integer.BYTES;
+        Integer.BYTES + Long.BYTES + chunkGroupMetaData.deviceID.length() + Integer.BYTES;
 
     List<ChunkMetaData> chunkMetaDataList = new ArrayList<>();
     for (int i = 0; i < size; i++) {

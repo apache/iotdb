@@ -227,7 +227,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
       }
       mManager.getFileNameByPath(path.getFullPath());
       TSDataType type = mManager.getSeriesType(path.getFullPath());
-      fileNodeManager.delete(deviceId, measurementId, timestamp, type);
+      fileNodeManager.delete(deviceId, measurementId, timestamp);
       return true;
     } catch (PathErrorException e) {
       throw new ProcessorException(e.getMessage());

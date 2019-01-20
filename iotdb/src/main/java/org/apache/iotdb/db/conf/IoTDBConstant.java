@@ -47,7 +47,7 @@ public class IoTDBConstant {
   public static final String OVERFLOW_LOG_NODE_SUFFIX = "-overflow";
 
   public static final String PATH_ROOT = "root";
-  public static final char PATH_SEPARATER = '.';
+  public static final char PATH_SEPARATOR = '.';
   public static final String ADMIN_NAME = "root";
   public static final String ADMIN_PW = "root";
   public static final String PROFILE_SUFFIX = ".profile";

@@ -25,6 +25,8 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.List;
+
+import org.apache.iotdb.db.engine.version.SysTimeVersionController;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.junit.After;
@@ -46,7 +48,7 @@ public class OverflowResourceTest {
 
   @Before
   public void setUp() throws Exception {
-    work = new OverflowResource(filePath, dataPath);
+    work = new OverflowResource(filePath, dataPath, SysTimeVersionController.INSTANCE);
     insertFile = new File(new File(filePath, dataPath), insertFileName);
     updateFile = new File(new File(filePath, dataPath), updateDeleteFileName);
     positionFile = new File(new File(filePath, dataPath), positionFileName);
@@ -82,7 +84,7 @@ public class OverflowResourceTest {
     fileOutputStream.write(new byte[20]);
     fileOutputStream.close();
     assertEquals(originlength + 20, insertFile.length());
-    work = new OverflowResource(filePath, dataPath);
+    work = new OverflowResource(filePath, dataPath, SysTimeVersionController.INSTANCE);
     chunkMetaDatas = work
         .getInsertMetadatas(OverflowTestUtils.deviceId1, OverflowTestUtils.measurementId1,
             OverflowTestUtils.dataType1);

@@ -99,6 +99,7 @@ public class OverflowProcessor extends Processor {
       throws IOException {
     super(processorName);
     this.fileSchema = fileSchema;
+    this.versionController = versionController;
     String overflowDirPath = TsFileDBConf.overflowDataDir;
     if (overflowDirPath.length() > 0
         && overflowDirPath.charAt(overflowDirPath.length() - 1) != File.separatorChar) {
@@ -122,7 +123,6 @@ public class OverflowProcessor extends Processor {
           processorName + IoTDBConstant.OVERFLOW_LOG_NODE_SUFFIX, getOverflowRestoreFile(),
           FileNodeManager.getInstance().getRestoreFilePath(processorName));
     }
-    this.versionController = versionController;
   }
 
   private void recovery(File parentFile) throws IOException {

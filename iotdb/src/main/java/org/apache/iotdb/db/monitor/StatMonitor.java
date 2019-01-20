@@ -26,6 +26,7 @@ import java.util.Map;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -38,7 +39,6 @@ import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
@@ -99,7 +99,7 @@ public class StatMonitor implements IService {
    * @return TSRecord contains the DataPoints of a statGroupDeltaName
    */
   public static TSRecord convertToTSRecord(HashMap<String, AtomicLong> hashMap,
-      String statGroupDeltaName, long curTime) {
+                                           String statGroupDeltaName, long curTime) {
     TSRecord tsRecord = new TSRecord(curTime, statGroupDeltaName);
     tsRecord.dataPointList = new ArrayList<DataPoint>() {
       {
@@ -360,7 +360,7 @@ public class StatMonitor implements IService {
             for (Map.Entry<String, IStatistic> entry : statisticMap.entrySet()) {
               for (String statParamName : entry.getValue().getStatParamsHashMap().keySet()) {
                 fManager.delete(entry.getKey(), statParamName,
-                    currentTimeMillis - statMonitorRetainIntervalSec * 1000, TSDataType.INT64);
+                    currentTimeMillis - statMonitorRetainIntervalSec * 1000);
               }
             }
           } catch (FileNodeManagerException e) {

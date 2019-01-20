@@ -1,6 +1,6 @@
 /**
  * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
- *
+ * <p>
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -8,9 +8,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
+ * <p>
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * <p>
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -29,10 +29,12 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+
 import org.apache.iotdb.db.conf.directories.Directories;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
 import org.apache.iotdb.db.engine.PathUtils;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
+import org.apache.iotdb.db.engine.version.SysTimeVersionController;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.FileSchemaUtils;
@@ -110,10 +112,10 @@ public class BufferWriteProcessorTest {
 
   @Test
   public void testWriteAndAbnormalRecover()
-      throws WriteProcessException, InterruptedException, IOException, ProcessorException {
+          throws WriteProcessException, InterruptedException, IOException, ProcessorException {
     bufferwrite = new BufferWriteProcessor(directories.getFolderForTest(), deviceId, insertPath,
-        parameters,
-        FileSchemaUtils.constructFileSchema(deviceId));
+            parameters, SysTimeVersionController.INSTANCE,
+            FileSchemaUtils.constructFileSchema(deviceId));
     for (int i = 1; i < 100; i++) {
       bufferwrite.write(deviceId, measurementId, i, dataType, String.valueOf(i));
     }
@@ -136,13 +138,14 @@ public class BufferWriteProcessorTest {
     bufferwrite.close();
     file.renameTo(restoreFile);
     BufferWriteProcessor bufferWriteProcessor = new BufferWriteProcessor(
-        directories.getFolderForTest(), deviceId,
-        insertPath, parameters, FileSchemaUtils.constructFileSchema(deviceId));
+            directories.getFolderForTest(), deviceId,
+            insertPath, parameters, SysTimeVersionController.INSTANCE,
+            FileSchemaUtils.constructFileSchema(deviceId));
     assertEquals(true, insertFile.exists());
     assertEquals(insertFileLength, insertFile.length());
     Pair<ReadOnlyMemChunk, List<ChunkMetaData>> pair = bufferWriteProcessor
-        .queryBufferWriteData(deviceId,
-            measurementId, dataType);
+            .queryBufferWriteData(deviceId,
+                    measurementId, dataType);
     assertEquals(true, pair.left.isEmpty());
     assertEquals(1, pair.right.size());
     ChunkMetaData chunkMetaData = pair.right.get(0);
@@ -154,10 +157,10 @@ public class BufferWriteProcessorTest {
 
   @Test
   public void testWriteAndNormalRecover()
-      throws WriteProcessException, ProcessorException, InterruptedException {
+          throws WriteProcessException, ProcessorException, InterruptedException {
     bufferwrite = new BufferWriteProcessor(directories.getFolderForTest(), deviceId, insertPath,
-        parameters,
-        FileSchemaUtils.constructFileSchema(deviceId));
+            parameters, SysTimeVersionController.INSTANCE,
+            FileSchemaUtils.constructFileSchema(deviceId));
     for (int i = 1; i < 100; i++) {
       bufferwrite.write(deviceId, measurementId, i, dataType, String.valueOf(i));
     }
@@ -169,11 +172,12 @@ public class BufferWriteProcessorTest {
     File restoreFile = new File(dataFile, restoreFilePath);
     assertEquals(true, restoreFile.exists());
     BufferWriteProcessor bufferWriteProcessor = new BufferWriteProcessor(
-        directories.getFolderForTest(), deviceId,
-        insertPath, parameters, FileSchemaUtils.constructFileSchema(deviceId));
+            directories.getFolderForTest(), deviceId,
+            insertPath, parameters, SysTimeVersionController.INSTANCE,
+            FileSchemaUtils.constructFileSchema(deviceId));
     Pair<ReadOnlyMemChunk, List<ChunkMetaData>> pair = bufferWriteProcessor
-        .queryBufferWriteData(deviceId,
-            measurementId, dataType);
+            .queryBufferWriteData(deviceId,
+                    measurementId, dataType);
     assertEquals(true, pair.left.isEmpty());
     assertEquals(1, pair.right.size());
     ChunkMetaData chunkMetaData = pair.right.get(0);
@@ -186,10 +190,10 @@ public class BufferWriteProcessorTest {
 
   @Test
   public void testWriteAndQuery()
-      throws WriteProcessException, InterruptedException, ProcessorException {
+          throws WriteProcessException, InterruptedException, ProcessorException {
     bufferwrite = new BufferWriteProcessor(directories.getFolderForTest(), deviceId, insertPath,
-        parameters,
-        FileSchemaUtils.constructFileSchema(deviceId));
+            parameters, SysTimeVersionController.INSTANCE,
+            FileSchemaUtils.constructFileSchema(deviceId));
     assertEquals(false, bufferwrite.isFlush());
     assertEquals(true, bufferwrite.canBeClosed());
     assertEquals(0, bufferwrite.memoryUsage());
@@ -207,8 +211,8 @@ public class BufferWriteProcessorTest {
     assertEquals(0, bufferwrite.memoryUsage());
     // query result
     Pair<ReadOnlyMemChunk, List<ChunkMetaData>> pair = bufferwrite
-        .queryBufferWriteData(deviceId, measurementId,
-            dataType);
+            .queryBufferWriteData(deviceId, measurementId,
+                    dataType);
     assertEquals(true, pair.left.isEmpty());
     assertEquals(1, pair.right.size());
     ChunkMetaData chunkMetaData = pair.right.get(0);

@@ -168,7 +168,7 @@ public class AuthUtils {
   public static boolean pathBelongsTo(String pathA, String pathB) {
     return pathA.equals(pathB)
         || (pathA.startsWith(pathB)
-        && pathA.charAt(pathB.length()) == IoTDBConstant.PATH_SEPARATER);
+        && pathA.charAt(pathB.length()) == IoTDBConstant.PATH_SEPARATOR);
   }
 
   /**

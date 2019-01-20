@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.writelog.replay;
 
 import java.util.List;
+
 import org.apache.iotdb.db.engine.filenode.FileNodeManager;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.PathErrorException;
@@ -88,12 +89,10 @@ public class ConcreteLogReplayer implements LogReplayer {
     }
   }
 
-  private void delete(DeletePlan deletePlan) throws FileNodeManagerException, PathErrorException {
-    MManager memManager = MManager.getInstance();
+  private void delete(DeletePlan deletePlan) throws FileNodeManagerException {
     for (Path path : deletePlan.getPaths()) {
       FileNodeManager.getInstance()
-          .delete(path.getDevice(), path.getMeasurement(), deletePlan.getDeleteTime(),
-              memManager.getSeriesType(path.getFullPath()));
+          .delete(path.getDevice(), path.getMeasurement(), deletePlan.getDeleteTime());
     }
   }
 }

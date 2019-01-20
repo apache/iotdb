@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.commons.io.FileUtils;
+import org.apache.iotdb.db.engine.version.SysTimeVersionController;
 import org.apache.iotdb.db.exception.BufferWriteProcessorException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -93,9 +94,9 @@ public class BufferWriteBenchmark {
       }
     });
 
-    BufferWriteProcessor bufferWriteProcessor = new BufferWriteProcessor("BufferBenchmark", "bench",
-        "benchFile",
-        parameters, fileSchema);
+    BufferWriteProcessor bufferWriteProcessor = new BufferWriteProcessor("BufferBenchmark",
+            "bench", "benchFile",
+        parameters, SysTimeVersionController.INSTANCE, fileSchema);
 
     long startTime = System.currentTimeMillis();
     for (int i = 0; i < numOfPoint; i++) {

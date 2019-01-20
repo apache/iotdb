@@ -36,6 +36,7 @@ import org.apache.iotdb.db.engine.PathUtils;
 import org.apache.iotdb.db.engine.bufferwrite.Action;
 import org.apache.iotdb.db.engine.bufferwrite.BufferWriteProcessor;
 import org.apache.iotdb.db.engine.bufferwrite.FileNodeConstants;
+import org.apache.iotdb.db.engine.version.SysTimeVersionController;
 import org.apache.iotdb.db.exception.BufferWriteProcessorException;
 import org.apache.iotdb.db.metadata.ColumnSchema;
 import org.apache.iotdb.db.metadata.MManager;
@@ -142,8 +143,8 @@ public class BufferwriteMetaSizeControlTest {
 
     try {
       processor = new BufferWriteProcessor(Directories.getInstance().getFolderForTest(), nsp,
-          filename,
-          parameters, constructFileSchema(nsp));
+              filename,
+              parameters, SysTimeVersionController.INSTANCE, constructFileSchema(nsp));
     } catch (BufferWriteProcessorException e) {
       e.printStackTrace();
       fail(e.getMessage());

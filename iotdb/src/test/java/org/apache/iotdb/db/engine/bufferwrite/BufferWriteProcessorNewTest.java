@@ -1,6 +1,6 @@
 /**
  * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
- *
+ * <p>
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -8,9 +8,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
+ * <p>
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * <p>
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -28,9 +28,11 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+
 import org.apache.iotdb.db.conf.directories.Directories;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
+import org.apache.iotdb.db.engine.version.SysTimeVersionController;
 import org.apache.iotdb.db.exception.BufferWriteProcessorException;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.FileSchemaUtils;
@@ -91,18 +93,19 @@ public class BufferWriteProcessorNewTest {
 
   @Test
   public void testWriteAndFlush()
-      throws BufferWriteProcessorException, WriteProcessException, IOException, InterruptedException {
+          throws BufferWriteProcessorException, WriteProcessException, IOException, InterruptedException {
     bufferwrite = new BufferWriteProcessor(Directories.getInstance().getFolderForTest(),
-        processorName, filename,
-        parameters, FileSchemaUtils.constructFileSchema(processorName));
+            processorName, filename,
+            parameters, SysTimeVersionController.INSTANCE,
+            FileSchemaUtils.constructFileSchema(processorName));
     assertEquals(filename, bufferwrite.getFileName());
     assertEquals(processorName + File.separator + filename, bufferwrite.getFileRelativePath());
     assertEquals(true, bufferwrite.isNewProcessor());
     bufferwrite.setNewProcessor(false);
     assertEquals(false, bufferwrite.isNewProcessor());
     Pair<ReadOnlyMemChunk, List<ChunkMetaData>> pair = bufferwrite
-        .queryBufferWriteData(processorName,
-            measurementId, dataType);
+            .queryBufferWriteData(processorName,
+                    measurementId, dataType);
     ReadOnlyMemChunk left = pair.left;
     List<ChunkMetaData> right = pair.right;
     assertEquals(true, left.isEmpty());
@@ -142,8 +145,9 @@ public class BufferWriteProcessorNewTest {
 
     // test recovery
     BufferWriteProcessor bufferWriteProcessor = new BufferWriteProcessor(
-        Directories.getInstance().getFolderForTest(), processorName, filename, parameters,
-        FileSchemaUtils.constructFileSchema(processorName));
+            Directories.getInstance().getFolderForTest(), processorName, filename, parameters,
+            SysTimeVersionController.INSTANCE,
+            FileSchemaUtils.constructFileSchema(processorName));
     pair = bufferWriteProcessor.queryBufferWriteData(processorName, measurementId, dataType);
     left = pair.left;
     right = pair.right;

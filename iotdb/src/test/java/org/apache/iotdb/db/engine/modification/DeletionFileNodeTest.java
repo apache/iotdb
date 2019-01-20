@@ -211,9 +211,9 @@ public class DeletionFileNodeTest {
     FileNodeManager.getInstance().delete(processorName, measurements[3], 30);
 
     Modification[] realModifications = new Modification[]{
-            new Deletion(processorName + "." + measurements[5], 102, 50),
-            new Deletion(processorName + "." + measurements[4], 103, 40),
-            new Deletion(processorName + "." + measurements[3], 104, 30),
+            new Deletion(processorName + "." + measurements[5], 103, 50),
+            new Deletion(processorName + "." + measurements[4], 104, 40),
+            new Deletion(processorName + "." + measurements[3], 105, 30),
     };
 
     String fileNodePath = IoTDBDescriptor.getInstance().getConfig().overflowDataDir + File.separator

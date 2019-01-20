@@ -32,6 +32,7 @@ import org.apache.iotdb.db.engine.bufferwrite.Action;
 import org.apache.iotdb.db.engine.bufferwrite.FileNodeConstants;
 import org.apache.iotdb.db.engine.querycontext.MergeSeriesDataSource;
 import org.apache.iotdb.db.engine.querycontext.OverflowSeriesDataSource;
+import org.apache.iotdb.db.engine.version.SysTimeVersionController;
 import org.apache.iotdb.db.exception.OverflowProcessorException;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.TimeValuePair;
@@ -76,8 +77,10 @@ public class OverflowProcessorTest {
   @Test
   public void testInsertUpdate()
       throws IOException, OverflowProcessorException, InterruptedException {
-    processor = new OverflowProcessor(processorName, parameters, OverflowTestUtils.getFileSchema());
-    assertEquals(true, new File(PathUtils.getOverflowWriteDir(processorName), "0").exists());
+    processor = new OverflowProcessor(processorName, parameters, OverflowTestUtils.getFileSchema(),
+            SysTimeVersionController.INSTANCE);
+    assertEquals(true, new File(PathUtils.getOverflowWriteDir(processorName),
+            "0").exists());
     assertEquals(false, processor.isFlush());
     assertEquals(false, processor.isMerge());
     // write update data
@@ -141,7 +144,8 @@ public class OverflowProcessorTest {
 
   @Test
   public void testWriteMemoryAndQuery() throws IOException, OverflowProcessorException {
-    processor = new OverflowProcessor(processorName, parameters, OverflowTestUtils.getFileSchema());
+    processor = new OverflowProcessor(processorName, parameters, OverflowTestUtils.getFileSchema(),
+            SysTimeVersionController.INSTANCE);
     OverflowTestUtils.produceInsertData(processor);
     processor.close();
     // test query
@@ -155,7 +159,8 @@ public class OverflowProcessorTest {
 
   @Test
   public void testFlushAndQuery() throws IOException, OverflowProcessorException {
-    processor = new OverflowProcessor(processorName, parameters, OverflowTestUtils.getFileSchema());
+    processor = new OverflowProcessor(processorName, parameters, OverflowTestUtils.getFileSchema(),
+            SysTimeVersionController.INSTANCE);
     processor.flush();
     // waiting for the end of flush.
     try {
@@ -173,13 +178,14 @@ public class OverflowProcessorTest {
 
   @Test
   public void testRecovery() throws OverflowProcessorException, IOException {
-    processor = new OverflowProcessor(processorName, parameters, OverflowTestUtils.getFileSchema());
+    processor = new OverflowProcessor(processorName, parameters, OverflowTestUtils.getFileSchema(),
+            SysTimeVersionController.INSTANCE);
     processor.close();
     processor.switchWorkToMerge();
     assertEquals(true, processor.isMerge());
     processor.clear();
     OverflowProcessor overflowProcessor = new OverflowProcessor(processorName, parameters,
-        OverflowTestUtils.getFileSchema());
+        OverflowTestUtils.getFileSchema(), SysTimeVersionController.INSTANCE);
     // recovery query
     assertEquals(false, overflowProcessor.isMerge());
     overflowProcessor.switchWorkToMerge();
