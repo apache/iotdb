@@ -26,6 +26,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -56,6 +57,8 @@ public class ChunkGroupMetaData {
     chunkMetaDataList = new ArrayList<>();
   }
 
+  private long version;
+
   /**
    * constructor of ChunkGroupMetaData.
    *
@@ -83,6 +86,7 @@ public class ChunkGroupMetaData {
     ChunkGroupMetaData chunkGroupMetaData = new ChunkGroupMetaData();
 
     chunkGroupMetaData.deviceID = ReadWriteIOUtils.readString(inputStream);
+    chunkGroupMetaData.version = ReadWriteIOUtils.readLong(inputStream);
 
     int size = ReadWriteIOUtils.readInt(inputStream);
     chunkGroupMetaData.serializedSize =
@@ -111,6 +115,7 @@ public class ChunkGroupMetaData {
     ChunkGroupMetaData chunkGroupMetaData = new ChunkGroupMetaData();
 
     chunkGroupMetaData.deviceID = (ReadWriteIOUtils.readString(buffer));
+    chunkGroupMetaData.version = ReadWriteIOUtils.readLong(buffer);
 
     int size = ReadWriteIOUtils.readInt(buffer);
 
@@ -133,7 +138,8 @@ public class ChunkGroupMetaData {
   }
 
   void reCalculateSerializedSize() {
-    serializedSize = Integer.BYTES + deviceID.length() + Integer.BYTES; // size of chunkMetaDataList
+    serializedSize = Integer.BYTES + Long.BYTES +
+            deviceID.length() + Integer.BYTES; // size of chunkMetaDataList
     for (ChunkMetaData chunk : chunkMetaDataList) {
       serializedSize += chunk.getSerializedSize();
     }
@@ -175,6 +181,7 @@ public class ChunkGroupMetaData {
   public int serializeTo(OutputStream outputStream) throws IOException {
     int byteLen = 0;
     byteLen += ReadWriteIOUtils.write(deviceID, outputStream);
+    byteLen += ReadWriteIOUtils.write(version, outputStream);
 
     byteLen += ReadWriteIOUtils.write(chunkMetaDataList.size(), outputStream);
     for (ChunkMetaData chunkMetaData : chunkMetaDataList) {
@@ -195,6 +202,7 @@ public class ChunkGroupMetaData {
     int byteLen = 0;
 
     byteLen += ReadWriteIOUtils.write(deviceID, buffer);
+    byteLen += ReadWriteIOUtils.write(version, buffer);
 
     byteLen += ReadWriteIOUtils.write(chunkMetaDataList.size(), buffer);
     for (ChunkMetaData chunkMetaData : chunkMetaDataList) {
@@ -203,6 +211,15 @@ public class ChunkGroupMetaData {
     assert byteLen == getSerializedSize();
 
     return byteLen;
+  }
+
+
+  public long getVersion() {
+    return version;
+  }
+
+  public void setVersion(long version) {
+    this.version = version;
   }
 
 }
