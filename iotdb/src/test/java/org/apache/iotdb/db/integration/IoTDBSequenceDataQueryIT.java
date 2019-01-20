@@ -51,7 +51,7 @@ import org.junit.Test;
  * Notice that, all test begins with "IoTDB" is integration test. All test which will start the IoTDB server should be
  * defined as integration test. In this test case, no unseq insert data.
  */
-public class IoTDBSequenceDataQueryTest {
+public class IoTDBSequenceDataQueryIT {
 
   private static IoTDB daemon;
   private static TSFileConfig tsFileConfig = TSFileDescriptor.getInstance().getConfig();
