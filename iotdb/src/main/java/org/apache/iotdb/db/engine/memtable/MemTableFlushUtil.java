@@ -21,6 +21,7 @@ package org.apache.iotdb.db.engine.memtable;
 
 import java.io.IOException;
 import java.util.List;
+
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.footer.ChunkGroupFooter;
@@ -42,7 +43,7 @@ public class MemTableFlushUtil {
       .getConfig().pageSizeInByte;
 
   private static int writeOneSeries(List<TimeValuePair> tvPairs, IChunkWriter seriesWriterImpl,
-      TSDataType dataType)
+                                    TSDataType dataType)
       throws IOException {
     int count = 0;
     switch (dataType) {
@@ -96,7 +97,7 @@ public class MemTableFlushUtil {
    * the function for flushing memtable.
    */
   public static void flushMemTable(FileSchema fileSchema, TsFileIOWriter tsFileIoWriter,
-      IMemTable imemTable)
+                                   IMemTable imemTable, long version)
       throws IOException {
     for (String deviceId : imemTable.getMemTableMap().keySet()) {
       long startPos = tsFileIoWriter.getPos();
