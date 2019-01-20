@@ -51,7 +51,7 @@ import org.junit.Test;
  * Notice that, all test begins with "IoTDB" is integration test. All test which will start the IoTDB server should be
  * defined as integration test.
  */
-public class IoTDBEngineTimeGeneratorTest {
+public class IoTDBEngineTimeGeneratorIT {
 
   private static IoTDB daemon;
   private static TSFileConfig tsFileConfig = TSFileDescriptor.getInstance().getConfig();
