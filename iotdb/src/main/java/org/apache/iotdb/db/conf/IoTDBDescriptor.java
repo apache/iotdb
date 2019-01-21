@@ -39,7 +39,7 @@ public class IoTDBDescriptor {
   }
 
   public static final IoTDBDescriptor getInstance() {
-    return TsfileDBDescriptorHolder.INSTANCE;
+    return IoTDBDescriptorHolder.INSTANCE;
   }
 
   public IoTDBConfig getConfig() {
@@ -48,7 +48,6 @@ public class IoTDBDescriptor {
 
   /**
    * load an property file and set TsfileDBConfig variables.
-   *
    */
   private void loadProps() {
     InputStream inputStream = null;
@@ -122,6 +121,9 @@ public class IoTDBDescriptor {
       conf.flushWalPeriodInMs = Integer
           .parseInt(properties.getProperty("flush_wal_period_in_ms",
               conf.flushWalPeriodInMs + ""));
+      conf.forceWalPeriodInMs = Integer
+          .parseInt(properties.getProperty("force_wal_period_in_ms",
+              conf.forceWalPeriodInMs + ""));
 
       conf.dataDir = properties.getProperty("data_dir", conf.dataDir);
       conf.bufferWriteDirs = properties.getProperty("tsfile_dir", conf.default_tsfile_dir)
@@ -264,7 +266,7 @@ public class IoTDBDescriptor {
     }
   }
 
-  private static class TsfileDBDescriptorHolder {
+  private static class IoTDBDescriptorHolder {
 
     private static final IoTDBDescriptor INSTANCE = new IoTDBDescriptor();
   }

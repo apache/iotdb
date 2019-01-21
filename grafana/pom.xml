@@ -41,6 +41,9 @@
         <start-class>org.apache.iotdb.web.grafana.TsfileWebDemoApplication</start-class>
         <spring-boot.version>1.5.4.RELEASE</spring-boot.version>
         <spring.version>4.3.9.RELEASE</spring.version>
+        <grafana.test.skip>false</grafana.test.skip>
+        <grafana.it.skip>${grafana.test.skip}</grafana.it.skip>
+        <grafana.ut.skip>${grafana.test.skip}</grafana.ut.skip>
     </properties>
     <!-- Import the dependency-management information from the spring-boot poms -->
     <dependencyManagement>
@@ -165,6 +168,33 @@
                         </execution>
                     </executions>
                 </plugin>
+                <!--using `mvn test` to run UT, `mvn verify` to run ITs
+                    Reference: https://antoniogoncalves.org/2012/12/13/lets-turn-integration-tests-with-maven-to-a-first-class-citizen/-->
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-surefire-plugin</artifactId>
+                    <configuration>
+                        <skipTests>${grafana.ut.skip}</skipTests>
+                    </configuration>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-failsafe-plugin</artifactId>
+                    <executions>
+                        <execution>
+                            <id>run-integration-tests</id>
+                            <phase>integration-test</phase>
+                            <goals>
+                                <goal>integration-test</goal>
+                                <goal>verify</goal>
+                            </goals>
+                        </execution>
+                    </executions>
+                    <configuration>
+                        <skipTests>${grafana.test.skip}</skipTests>
+                        <skipITs>${grafana.it.skip}</skipITs>
+                    </configuration>
+                </plugin>
             </plugins>
         </pluginManagement>
         <plugins>
@@ -186,4 +216,20 @@
             </plugin>
         </plugins>
     </build>
+    <profiles>
+        <profile>
+            <id>skipTsfileTests</id>
+            <activation>
+                <property>
+                    <name>skipTests</name>
+                    <value>true</value>
+                </property>
+            </activation>
+            <properties>
+                <grafana.test.skip>true</grafana.test.skip>
+                <grafana.ut.skip>true</grafana.ut.skip>
+                <grafana.it.skip>true</grafana.it.skip>
+            </properties>
+        </profile>
+    </profiles>
 </project>

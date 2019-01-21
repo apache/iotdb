@@ -33,6 +33,8 @@
     <url>https://github.com/thulab/iotdb/tree/master/tsfile</url>
     <properties>
         <tsfile.test.skip>false</tsfile.test.skip>
+        <tsfile.it.skip>${tsfile.test.skip}</tsfile.it.skip>
+        <tsfile.ut.skip>${tsfile.test.skip}</tsfile.ut.skip>
     </properties>
     <dependencies>
         <dependency>
@@ -64,12 +66,31 @@
     </dependencies>
     <build>
         <plugins>
+            <!--using `mvn test` to run UT, `mvn verify` to run ITs
+            Reference: https://antoniogoncalves.org/2012/12/13/lets-turn-integration-tests-with-maven-to-a-first-class-citizen/-->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
-                    <argLine>-Xmx1024m</argLine>
+                    <skipTests>${tsfile.ut.skip}</skipTests>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>run-integration-tests</id>
+                        <phase>integration-test</phase>
+                        <goals>
+                            <goal>integration-test</goal>
+                            <goal>verify</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
                     <skipTests>${tsfile.test.skip}</skipTests>
+                    <skipITs>${tsfile.it.skip}</skipITs>
                 </configuration>
             </plugin>
             <plugin>
@@ -103,4 +124,20 @@
             </plugin>
         </plugins>
     </build>
+    <profiles>
+        <profile>
+            <id>skipTsfileTests</id>
+            <activation>
+                <property>
+                    <name>skipTests</name>
+                    <value>true</value>
+                </property>
+            </activation>
+            <properties>
+                <tsfile.test.skip>true</tsfile.test.skip>
+                <tsfile.ut.skip>true</tsfile.ut.skip>
+                <tsfile.it.skip>true</tsfile.it.skip>
+            </properties>
+        </profile>
+    </profiles>
 </project>
