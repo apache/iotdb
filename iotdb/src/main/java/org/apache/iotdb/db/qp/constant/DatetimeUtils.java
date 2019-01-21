@@ -175,9 +175,9 @@ public class DatetimeUtils {
        */
       .appendOptional(ISO_OFFSET_DATE_TIME_WITH_DOT_WITH_SPACE).toFormatter();
 
-  public static long convertDatetimeStrToMillisecond(String str, ZoneId zoneId, int depth)
+  public static long convertDatetimeStrToMillisecond(String str, ZoneId zoneId)
       throws LogicalOperatorException {
-    return convertDatetimeStrToMillisecond(str, toZoneOffset(zoneId), depth);
+    return convertDatetimeStrToMillisecond(str, toZoneOffset(zoneId), 0);
   }
 
   /**

@@ -80,7 +80,7 @@ public class DatetimeUtilsTest {
     }
 
     for (String str : timeFormatWithoutMs) {
-      assertEquals(res, DatetimeUtils.convertDatetimeStrToMillisecond(str, zoneId, 0));
+      assertEquals(res, DatetimeUtils.convertDatetimeStrToMillisecond(str, zoneId));
     }
 
   }
@@ -98,7 +98,7 @@ public class DatetimeUtilsTest {
     }
 
     for (String str : timeFormatWithoutMs) {
-      assertEquals(res, DatetimeUtils.convertDatetimeStrToMillisecond(str, zoneId, 0));
+      assertEquals(res, DatetimeUtils.convertDatetimeStrToMillisecond(str, zoneId));
     }
   }
 
@@ -111,9 +111,9 @@ public class DatetimeUtilsTest {
 
   public static void main(String[] args){
 //    System.out.println(DatetimeUtils.toZoneOffset(ZoneId.of("Etc/UTC")));
-//    for(String zoneId : ZoneId.getAvailableZoneIds()){
-//      System.out.println(zoneId + ": " + DatetimeUtils.toZoneOffset(ZoneId.of(zoneId)));
-//    }
+    for(String zoneId : ZoneId.getAvailableZoneIds()){
+      System.out.println(zoneId + ": " + DatetimeUtils.toZoneOffset(ZoneId.of(zoneId)));
+    }
 //	  System.out.println(ZoneOffset.of("+00:00"));
   }
 }
