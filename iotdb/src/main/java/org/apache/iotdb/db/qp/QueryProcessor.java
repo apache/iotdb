@@ -68,8 +68,6 @@ public class QueryProcessor {
   public PhysicalPlan parseSQLToPhysicalPlan(String sqlStr, ZoneId zoneId)
       throws QueryProcessorException, ArgsErrorException, ProcessorException {
     AstNode astNode = parseSQLToAST(sqlStr);
-    System.out.println("parseASTToOperator");
-    System.out.println(zoneId);
     Operator operator = parseASTToOperator(astNode, zoneId);
     operator = logicalOptimize(operator, executor);
     PhysicalGenerator physicalGenerator = new PhysicalGenerator(executor);
