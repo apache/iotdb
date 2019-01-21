@@ -26,12 +26,15 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.List;
 import java.util.zip.CRC32;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
 public class LogWriter implements ILogWriter {
 
   private File logFile;
   private FileChannel outputStream;
   private CRC32 checkSummer = new CRC32();
+  private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   public LogWriter(String logFilePath) {
     logFile = new File(logFilePath);
@@ -56,7 +59,16 @@ public class LogWriter implements ILogWriter {
     }
     buffer.flip();
     outputStream.write(buffer);
-    outputStream.force(true);
+    if (config.forceWalPeriodInMs == 0) {
+      outputStream.force(true);
+    }
+  }
+
+  @Override
+  public void force() throws IOException {
+    if (outputStream != null) {
+      outputStream.force(true);
+    }
   }
 
   @Override
