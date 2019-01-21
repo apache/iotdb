@@ -1425,6 +1425,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
           String bufferFilePath = bufferFileNode.getFilePath();
           if (bufferFilePath != null) {
             bufferFiles.add(bufferFilePath);
+            bufferFiles.add(bufferFileNode.getModFile().getFilePath());
           }
         }
         // add the restore file, if the last file is not closed

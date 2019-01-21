@@ -35,6 +35,7 @@ public class ModificationFile {
   private Collection<Modification> modifications;
   private ModificationWriter writer;
   private ModificationReader reader;
+  private String filePath;
 
   /**
    * Construct a ModificationFile using a file as its storage.
@@ -44,6 +45,7 @@ public class ModificationFile {
     LocalTextModificationAccessor accessor = new LocalTextModificationAccessor(filePath);
     this.writer = accessor;
     this.reader = accessor;
+    this.filePath = filePath;
   }
 
   private void init() throws IOException {
@@ -95,5 +97,13 @@ public class ModificationFile {
       checkInit();
       return new ArrayList<>(modifications);
     }
+  }
+
+  public String getFilePath() {
+    return filePath;
+  }
+
+  public void setFilePath(String filePath) {
+    this.filePath = filePath;
   }
 }
