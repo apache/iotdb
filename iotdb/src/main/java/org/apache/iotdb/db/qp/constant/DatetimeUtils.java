@@ -175,18 +175,25 @@ public class DatetimeUtils {
        */
       .appendOptional(ISO_OFFSET_DATE_TIME_WITH_DOT_WITH_SPACE).toFormatter();
 
-  public static long convertDatetimeStrToMillisecond(String str, ZoneId zoneId)
+  public static long convertDatetimeStrToMillisecond(String str, ZoneId zoneId, int depth)
       throws LogicalOperatorException {
-    return convertDatetimeStrToMillisecond(str, toZoneOffset(zoneId));
+    return convertDatetimeStrToMillisecond(str, toZoneOffset(zoneId), depth);
   }
 
   /**
    * convert date time string to millisecond.
    */
-  public static long convertDatetimeStrToMillisecond(String str, ZoneOffset offset)
+  public static long convertDatetimeStrToMillisecond(String str, ZoneOffset offset, int depth)
       throws LogicalOperatorException {
-    if (str.length() - str.lastIndexOf('+') != 6 && str.length() - str.lastIndexOf('-') != 6) {
-      return convertDatetimeStrToMillisecond(str + offset, offset);
+    if (depth >= 2){
+      throw new DateTimeException(
+              String.format("Failed to convert %s to millisecond, zone offset is %s, "
+                      + "please input like 2011-12-03T10:15:30 or 2011-12-03T10:15:30+01:00", str, offset));
+    }
+    if (str.indexOf('Z') > 0){
+      return convertDatetimeStrToMillisecond(str.substring(0, str.indexOf('Z')) + "+00:00", offset, depth);
+    } else if (str.length() - str.lastIndexOf('+') != 6 && str.length() - str.lastIndexOf('-') != 6) {
+      return convertDatetimeStrToMillisecond(str + offset, offset, depth + 1);
     } else if (str.indexOf('[') > 0 || str.indexOf(']') > 0) {
       throw new DateTimeException(
           String.format("%s with [time-region] at end is not supported now, "
