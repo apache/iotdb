@@ -302,6 +302,8 @@
                         <exclude>License</exclude>
                         <exclude>asf.header</exclude>
                         <exclude>**/iotdb/data/</exclude>
+                        <!-- Used on Jenkins -->
+                        <exclude>local-snapshots-dir/**</exclude>
                     </excludes>
                 </configuration>
                 <executions>
