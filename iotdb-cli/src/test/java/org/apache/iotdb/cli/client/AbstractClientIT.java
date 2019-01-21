@@ -38,7 +38,7 @@ import org.junit.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
-public class AbstractClientTest {
+public class AbstractClientIT {
 
   @Mock
   private IoTDBConnection connection;
