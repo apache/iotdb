@@ -30,7 +30,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-public class StartClientScriptTest {
+public class StartClientScriptIT {
 
   @Before
   public void setUp() throws Exception {
@@ -42,6 +42,7 @@ public class StartClientScriptTest {
 
   @Test
   public void test() throws IOException, InterruptedException {
+
     String os = System.getProperty("os.name").toLowerCase();
     if (os.startsWith("windows")) {
       testStartClientOnWindows();

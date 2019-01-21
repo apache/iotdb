@@ -30,12 +30,48 @@
     <artifactId>service-rpc</artifactId>
     <name>Service-rpc</name>
     <description>RPC framework for client and server.</description>
+    <properties>
+        <rpc.test.skip>false</rpc.test.skip>
+        <rpc.it.skip>${rpc.test.skip}</rpc.it.skip>
+        <rpc.ut.skip>${rpc.test.skip}</rpc.ut.skip>
+    </properties>
     <dependencies>
         <dependency>
             <groupId>org.apache.thrift</groupId>
             <artifactId>libthrift</artifactId>
         </dependency>
     </dependencies>
+    <build>
+        <plugins>
+            <!--using `mvn test` to run UT, `mvn verify` to run ITs
+            Reference: https://antoniogoncalves.org/2012/12/13/lets-turn-integration-tests-with-maven-to-a-first-class-citizen/-->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <skipTests>${rpc.ut.skip}</skipTests>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>run-integration-tests</id>
+                        <phase>integration-test</phase>
+                        <goals>
+                            <goal>integration-test</goal>
+                            <goal>verify</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <skipTests>${rpc.test.skip}</skipTests>
+                    <skipITs>${rpc.it.skip}</skipITs>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
     <profiles>
         <profile>
             <id>only-eclipse</id>
@@ -89,6 +125,20 @@
                     </plugins>
                 </pluginManagement>
             </build>
+        </profile>
+        <profile>
+            <id>skipTsfileTests</id>
+            <activation>
+                <property>
+                    <name>skipTests</name>
+                    <value>true</value>
+                </property>
+            </activation>
+            <properties>
+                <rpc.test.skip>true</rpc.test.skip>
+                <rpc.ut.skip>true</rpc.ut.skip>
+                <rpc.it.skip>true</rpc.it.skip>
+            </properties>
         </profile>
     </profiles>
 </project>

@@ -35,7 +35,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-public class IoTDBTimeZoneTest {
+public class IoTDBTimeZoneIT {
 
   private static String[] insertSqls = new String[]{"SET STORAGE GROUP TO root.timezone",
       "CREATE TIMESERIES root.timezone.tz1 WITH DATATYPE = INT32, ENCODING = PLAIN",};
