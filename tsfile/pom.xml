@@ -119,6 +119,8 @@
                 <configuration>
                     <excludes>
                         <exclude>src/test/resources/*.json</exclude>
+                        <!-- Runtime log -->
+                        <exclude>**/*.log</exclude>
                     </excludes>
                 </configuration>
             </plugin>
