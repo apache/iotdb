@@ -33,6 +33,8 @@
     <description>A jdbc driver for a time series database, IoTDB, which uses TsFile as its storage format on disk.</description>
     <properties>
         <jdbc.test.skip>false</jdbc.test.skip>
+        <jdbc.it.skip>${jdbc.test.skip}</jdbc.it.skip>
+        <jdbc.ut.skip>${jdbc.test.skip}</jdbc.ut.skip>
     </properties>
     <dependencies>
         <dependency>
@@ -68,11 +70,31 @@
                     </execution>
                 </executions>
             </plugin>
+            <!--using `mvn test` to run UT, `mvn verify` to run ITs
+            Reference: https://antoniogoncalves.org/2012/12/13/lets-turn-integration-tests-with-maven-to-a-first-class-citizen/-->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
+                    <skipTests>${jdbc.ut.skip}</skipTests>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>run-integration-tests</id>
+                        <phase>integration-test</phase>
+                        <goals>
+                            <goal>integration-test</goal>
+                            <goal>verify</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
                     <skipTests>${jdbc.test.skip}</skipTests>
+                    <skipITs>${jdbc.it.skip}</skipITs>
                 </configuration>
             </plugin>
         </plugins>
@@ -115,6 +137,20 @@
                     </plugins>
                 </pluginManagement>
             </build>
+        </profile>
+        <profile>
+            <id>skipTsfileTests</id>
+            <activation>
+                <property>
+                    <name>skipTests</name>
+                    <value>true</value>
+                </property>
+            </activation>
+            <properties>
+                <jdbc.test.skip>true</jdbc.test.skip>
+                <jdbc.ut.skip>true</jdbc.ut.skip>
+                <jdbc.it.skip>true</jdbc.it.skip>
+            </properties>
         </profile>
     </profiles>
 </project>
