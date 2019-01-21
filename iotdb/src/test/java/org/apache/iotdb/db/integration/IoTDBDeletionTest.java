@@ -52,7 +52,7 @@ public class IoTDBDeletionTest {
 
   private static String intertTemplate = "INSERT INTO root.vehicle.d0(timestamp,s0,s1,s2,s3,s4"
           + ") VALUES(%d,%d,%d,%f,%s,%b)";
-  private static String deleteAllTemplate = "DELETE FROM root.vehicle.d0.* WHERE time <= 10000";
+  private static String deleteAllTemplate = "DELETE FROM root.vehicle.d0 WHERE time <= 10000";
 
   @BeforeClass
   public static void setUp() throws Exception {
@@ -94,7 +94,7 @@ public class IoTDBDeletionTest {
       statement.execute("DELETE FROM root.vehicle.d0.s0  WHERE time <= 300");
       statement.execute("DELETE FROM root.vehicle.d0.s1,root.vehicle.d0.s2,root.vehicle.d0.s3"
               + " WHERE time <= 350");
-      statement.execute("DELETE FROM root.vehicle.d0.* WHERE time <= 150");
+      statement.execute("DELETE FROM root.vehicle.d0 WHERE time <= 150");
 
       ResultSet set = statement.executeQuery("SELECT * FROM root.vehicle.d0");
       int cnt = 0;
@@ -102,6 +102,7 @@ public class IoTDBDeletionTest {
         cnt ++;
       }
       assertEquals(250, cnt);
+      set.close();
 
       set = statement.executeQuery("SELECT s0 FROM root.vehicle.d0");
       cnt = 0;
@@ -109,6 +110,7 @@ public class IoTDBDeletionTest {
         cnt ++;
       }
       assertEquals(100, cnt);
+      set.close();
 
       set = statement.executeQuery("SELECT s1,s2,s3 FROM root.vehicle.d0");
       cnt = 0;
@@ -116,6 +118,7 @@ public class IoTDBDeletionTest {
         cnt ++;
       }
       assertEquals(50, cnt);
+      set.close();
 
       statement.close();
     } finally {
