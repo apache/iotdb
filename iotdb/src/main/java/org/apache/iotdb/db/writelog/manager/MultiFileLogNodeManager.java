@@ -152,7 +152,7 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
 
   @Override
   public void close() {
-    if (!isActivated(syncThread) && !isActivated(forceThread)){
+    if (!isActivated(syncThread) && !isActivated(forceThread)) {
       logger.error("MultiFileLogNodeManager has not yet started");
       return;
     }
@@ -216,11 +216,11 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
       if (!config.enableWal) {
         return;
       }
-      if (syncThread == null || !syncThread.isAlive()) {
+      if (!isActivated(syncThread)) {
         InstanceHolder.instance.syncThread = new Thread(InstanceHolder.instance.syncTask,
             ThreadName.WAL_DAEMON.getName());
         InstanceHolder.instance.syncThread.start();
-        if (config.forceWalPeriodInMs > 0 && (forceThread == null || !forceThread.isAlive())) {
+        if (config.forceWalPeriodInMs > 0 && !isActivated(forceThread)) {
           InstanceHolder.instance.forceThread = new Thread(InstanceHolder.instance.forceTask,
               ThreadName.WAL_FORCE_DAEMON.getName());
           InstanceHolder.instance.forceThread.start();
