@@ -90,3 +90,6 @@ grafana/data/test.csv
 /target/
 *.tsfile
 tsfile/src/test/resources/*.ts
+
+### Apache release ###
+local-snapshots-dir/
