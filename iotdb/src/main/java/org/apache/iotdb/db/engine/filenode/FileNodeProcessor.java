@@ -2029,15 +2029,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
           mergingModification.write(deletion);
         }
 
-
-        if (currentIntervalFileNode != null && currentIntervalFileNode.containsDevice(deviceId)) {
-          currentIntervalFileNode.getModFile().write(deletion);
-        }
-        for (IntervalFileNode fileNode : newFileNodes) {
-          if(fileNode != currentIntervalFileNode && fileNode.containsDevice(deviceId)) {
-            fileNode.getModFile().write(deletion);
-          }
-        }
+        deleteBufferWriteFiles(deviceId, deletion);
         // delete data in memory
         OverflowProcessor overflowProcessor = getOverflowProcessor(getProcessorName());
         overflowProcessor.delete(deviceId, measurementId, timestamp, version);
@@ -2047,6 +2039,46 @@ public class FileNodeProcessor extends Processor implements IStatistic {
       } finally {
         mergeDeleteLock.unlock();
       }
-
     }
+
+  private void deleteBufferWriteFiles(String deviceId, Deletion deletion) throws IOException {
+    if (currentIntervalFileNode != null && currentIntervalFileNode.containsDevice(deviceId)) {
+      currentIntervalFileNode.getModFile().write(deletion);
+    }
+    for (IntervalFileNode fileNode : newFileNodes) {
+      if(fileNode != currentIntervalFileNode && fileNode.containsDevice(deviceId)) {
+        fileNode.getModFile().write(deletion);
+      }
+    }
+  }
+
+  /**
+   * Similar to delete(), but only deletes data in BufferWrite.
+   * Only used by WAL recovery.
+   */
+    public void deleteBufferWrite(String deviceId, String measurementId, long timestamp) throws IOException {
+      String fullPath = deviceId +
+              IoTDBConstant.PATH_SEPARATOR + measurementId;
+      long version = versionController.nextVersion();
+      Deletion deletion = new Deletion(fullPath, version, timestamp);
+
+      deleteBufferWriteFiles(deviceId, deletion);
+      if (bufferWriteProcessor != null) {
+        bufferWriteProcessor.delete(deviceId, measurementId, timestamp);
+      }
+    }
+
+  /**
+   * Similar to delete(), but only deletes data in Overflow.
+   * Only used by WAL recovery.
+   */
+  public void deleteOverflow(String deviceId, String measurementId, long timestamp) throws IOException {
+    String fullPath = deviceId +
+            IoTDBConstant.PATH_SEPARATOR + measurementId;
+    long version = versionController.nextVersion();
+    Deletion deletion = new Deletion(fullPath, version, timestamp);
+
+    OverflowProcessor overflowProcessor = getOverflowProcessor(getProcessorName());
+    overflowProcessor.delete(deviceId, measurementId, timestamp, version);
+  }
 }
