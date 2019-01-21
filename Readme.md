@@ -1,5 +1,5 @@
 # IoTDB
-[![Build Status](https://travis-ci.org/thulab/iotdb.svg?branch=master)](https://travis-ci.org/thulab/iotdb)
+[![Build Status](https://www.travis-ci.org/apache/incubator-iotdb.svg?branch=master)](https://www.travis-ci.org/apache/incubator-iotdb)
 [![codecov](https://codecov.io/gh/thulab/iotdb/branch/master/graph/badge.svg?token=tBhPhPC9EQ)](https://codecov.io/gh/thulab/iotdb)
 [![GitHub release](https://img.shields.io/github/release/apache/incubator-iotdb.svg)](https://github.com/apache/incubator-iotdb/releases)
 [![License](https://img.shields.io/badge/license-Apache%202-4EB1BA.svg)](https://www.apache.org/licenses/LICENSE-2.0.html)
