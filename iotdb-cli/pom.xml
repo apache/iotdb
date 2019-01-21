@@ -32,9 +32,11 @@
     <name>IoTDB Cli</name>
     <description>A Client tool.</description>
     <properties>
-        <cli.test.skip>false</cli.test.skip>
         <common.cli.version>1.3.1</common.cli.version>
         <jline.version>2.14.5</jline.version>
+        <cli.test.skip>false</cli.test.skip>
+        <cli.it.skip>${cli.test.skip}</cli.it.skip>
+        <cli.ut.skip>${cli.test.skip}</cli.ut.skip>
     </properties>
     <dependencies>
         <dependency>
@@ -97,13 +99,49 @@
                     <outputDirectory>${project.basedir}/cli/lib</outputDirectory>
                 </configuration>
             </plugin>
+            <!--using `mvn test` to run UT, `mvn verify` to run ITs
+            Reference: https://antoniogoncalves.org/2012/12/13/lets-turn-integration-tests-with-maven-to-a-first-class-citizen/-->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
+                    <skipTests>${cli.ut.skip}</skipTests>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>run-integration-tests</id>
+                        <phase>integration-test</phase>
+                        <goals>
+                            <goal>integration-test</goal>
+                            <goal>verify</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
                     <skipTests>${cli.test.skip}</skipTests>
+                    <skipITs>${cli.it.skip}</skipITs>
                 </configuration>
             </plugin>
         </plugins>
     </build>
+    <profiles>
+        <profile>
+            <id>skipCliTests</id>
+            <activation>
+                <property>
+                    <name>skipTests</name>
+                    <value>true</value>
+                </property>
+            </activation>
+            <properties>
+                <cli.test.skip>true</cli.test.skip>
+                <cli.ut.skip>true</cli.ut.skip>
+                <cli.it.skip>true</cli.it.skip>
+            </properties>
+        </profile>
+    </profiles>
 </project>
