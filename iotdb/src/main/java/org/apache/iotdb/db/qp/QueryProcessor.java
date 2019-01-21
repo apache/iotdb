@@ -67,15 +67,12 @@ public class QueryProcessor {
 
   public PhysicalPlan parseSQLToPhysicalPlan(String sqlStr, ZoneId zoneId)
       throws QueryProcessorException, ArgsErrorException, ProcessorException {
-    System.out.println("parseSQLToAST");
     AstNode astNode = parseSQLToAST(sqlStr);
     System.out.println("parseASTToOperator");
+    System.out.println(zoneId);
     Operator operator = parseASTToOperator(astNode, zoneId);
-    System.out.println("logicalOptimize");
     operator = logicalOptimize(operator, executor);
-    System.out.println("transformToPhysicalPlan");
     PhysicalGenerator physicalGenerator = new PhysicalGenerator(executor);
-    System.out.println("transformToPhysicalPlan");
     return physicalGenerator.transformToPhysicalPlan(operator);
   }
 
@@ -91,7 +88,9 @@ public class QueryProcessor {
    */
   private RootOperator parseASTToOperator(AstNode astNode, ZoneId zoneId)
       throws QueryProcessorException, ArgsErrorException {
+    System.out.println("LogicalGenerator");
     LogicalGenerator generator = new LogicalGenerator(zoneId);
+    System.out.println("getLogicalPlan");
     return generator.getLogicalPlan(astNode);
   }
 

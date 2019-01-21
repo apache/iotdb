@@ -45,9 +45,11 @@ public class DatetimeUtilsTest {
     System.out.println(zoneOffset.toString());
     if(zoneOffset.toString().equals("Z")){
       delta = 8 * 3600000;
+      zoneOffset = ZoneOffset.of("+00:00");
     } else {
       delta = (8 - Long.parseLong(zoneOffset.toString().split(":")[0])) * 3600000;
     }
+    System.out.println(delta);
   }
 
   @After
