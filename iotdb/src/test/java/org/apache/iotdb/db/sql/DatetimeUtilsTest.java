@@ -42,7 +42,12 @@ public class DatetimeUtilsTest {
   public void setUp() throws Exception {
     zoneOffset = ZonedDateTime.now().getOffset();
     zoneId = ZoneId.systemDefault();
-    delta = (8 - Long.parseLong(zoneOffset.toString().split(":")[0])) * 3600000;
+    System.out.println(zoneOffset.toString());
+    if(zoneOffset.toString().equals("Z")){
+      delta = 8 * 3600000;
+    } else {
+      delta = (8 - Long.parseLong(zoneOffset.toString().split(":")[0])) * 3600000;
+    }
   }
 
   @After
