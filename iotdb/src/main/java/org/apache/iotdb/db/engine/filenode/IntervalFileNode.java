@@ -45,6 +45,7 @@ public class IntervalFileNode implements Serializable {
   private Map<String, Long> startTimeMap;
   private Map<String, Long> endTimeMap;
   private Set<String> mergeChanged = new HashSet<>();
+
   private transient ModificationFile modFile;
 
   public IntervalFileNode(Map<String, Long> startTimeMap, Map<String, Long> endTimeMap,
@@ -304,4 +305,7 @@ public class IntervalFileNode implements Serializable {
     return endTimeMap.containsKey(deviceId);
   }
 
+  public void setModFile(ModificationFile modFile) {
+    this.modFile = modFile;
+  }
 }

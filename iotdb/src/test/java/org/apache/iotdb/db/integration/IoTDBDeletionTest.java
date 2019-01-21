@@ -29,9 +29,7 @@ import java.sql.Statement;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
-import org.junit.After;
 import org.junit.AfterClass;
-import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -52,7 +50,7 @@ public class IoTDBDeletionTest {
 
   private static String intertTemplate = "INSERT INTO root.vehicle.d0(timestamp,s0,s1,s2,s3,s4"
           + ") VALUES(%d,%d,%d,%f,%s,%b)";
-  private static String deleteAllTemplate = "DELETE FROM root.vehicle.d0 WHERE time <= 10000";
+  private static String deleteAllTemplate = "DELETE FROM root.vehicle.d0 WHERE time <= 100000";
 
   @BeforeClass
   public static void setUp() throws Exception {
@@ -73,18 +71,9 @@ public class IoTDBDeletionTest {
     EnvironmentUtils.cleanEnv();
   }
 
-  @Before
-  public void prepare() throws SQLException {
-    prepareData();
-  }
-
-  @After
-  public void cleanup() throws SQLException {
-    cleanData();
-  }
-
   @Test
   public void test() throws SQLException {
+    prepareData();
     Connection connection = null;
     try {
       connection = DriverManager
@@ -126,6 +115,38 @@ public class IoTDBDeletionTest {
         connection.close();
       }
     }
+    cleanData();
+  }
+
+  @Test
+  public void testMerge() throws SQLException, InterruptedException {
+    prepareMerge();
+    Connection connection = DriverManager
+            .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
+                    "root");
+    Statement statement = connection.createStatement();
+    statement.execute("merge");
+    statement.execute("DELETE FROM root.vehicle.d0 WHERE time <= 15000");
+
+    // before merge completes
+    ResultSet set = statement.executeQuery("SELECT * FROM root.vehicle.d0");
+    int cnt = 0;
+    while (set.next()) {
+      cnt ++;
+    }
+    assertEquals(5000, cnt);
+    set.close();
+
+    Thread.sleep(5000);
+    // after merge completes
+    set = statement.executeQuery("SELECT * FROM root.vehicle.d0");
+    cnt = 0;
+    while (set.next()) {
+      cnt ++;
+    }
+    assertEquals(5000, cnt);
+    set.close();
+    cleanData();
   }
 
   public static void prepareSeries() throws SQLException {
@@ -194,6 +215,32 @@ public class IoTDBDeletionTest {
                       "root");
       Statement statement = connection.createStatement();
       statement.execute(deleteAllTemplate);
+
+      statement.close();
+    } finally {
+      if (connection != null) {
+        connection.close();
+      }
+    }
+  }
+
+  public void prepareMerge() throws SQLException {
+    Connection connection = null;
+    try {
+      connection = DriverManager
+              .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
+                      "root");
+      Statement statement = connection.createStatement();
+      // prepare BufferWrite data
+      for (int i = 10001; i <= 20000; i++) {
+        statement.execute(String.format(intertTemplate, i, i, i, (double) i, "\'" + i + "\'",
+                i % 2 == 0));
+      }
+      // prepare Overflow data
+      for (int i = 1; i <= 10000; i++) {
+        statement.execute(String.format(intertTemplate, i, i, i, (double) i, "\'" + i + "\'",
+                i % 2 == 0));
+      }
 
       statement.close();
     } finally {

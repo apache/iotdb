@@ -38,6 +38,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -50,6 +51,7 @@ import org.apache.iotdb.db.engine.bufferwrite.BufferWriteProcessor;
 import org.apache.iotdb.db.engine.bufferwrite.FileNodeConstants;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
+import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.overflow.ioV2.OverflowProcessor;
 import org.apache.iotdb.db.engine.pool.MergeManager;
 import org.apache.iotdb.db.engine.querycontext.GlobalSortedSeriesDataSource;
@@ -204,6 +206,12 @@ public class FileNodeProcessor extends Processor implements IStatistic {
   // Token for query which used to
   private int multiPassLockToken = 0;
   private VersionController versionController;
+  private ReentrantLock mergeDeleteLock = new ReentrantLock();
+
+  /**
+   * This is the modification file of the result of the current merge.
+   */
+  private ModificationFile mergingModification;
 
   /**
    * constructor of FileNodeProcessor.
@@ -1499,87 +1507,100 @@ public class FileNodeProcessor extends Processor implements IStatistic {
     String outputPath = null;
     String baseDir = null;
     String fileName = null;
-    for (String deviceId : backupIntervalFile.getStartTimeMap().keySet()) {
-      // query one deviceId
-      List<Path> pathList = new ArrayList<>();
-      boolean isRowGroupHasData = false;
-      ChunkGroupFooter footer = null;
-      int numOfChunk = 0;
-      long startPos = -1;
-      int recordCount = 0;
-      try {
-        List<String> pathStrings = mManager.getLeafNodePathInNextLevel(deviceId);
-        for (String string : pathStrings) {
-          pathList.add(new Path(string));
-        }
-      } catch (PathErrorException e) {
-        LOGGER.error("Can't get all the paths from MManager, the deviceId is {}", deviceId);
-        throw new FileNodeProcessorException(e);
-      }
-      if (pathList.isEmpty()) {
-        continue;
-      }
-      for (Path path : pathList) {
-        // query one measurenment in the special deviceId
-        String measurementId = path.getMeasurement();
-        TSDataType dataType = mManager.getSeriesType(path.getFullPath());
-        OverflowSeriesDataSource overflowSeriesDataSource = overflowProcessor.queryMerge(deviceId,
-            measurementId, dataType, true);
-        Filter timeFilter = FilterFactory
-            .and(TimeFilter.gtEq(backupIntervalFile.getStartTime(deviceId)),
-                TimeFilter.ltEq(backupIntervalFile.getEndTime(deviceId)));
-        SingleSeriesExpression seriesFilter = new SingleSeriesExpression(path, timeFilter);
-        IReader seriesReader = SeriesReaderFactory.getInstance()
-            .createSeriesReaderForMerge(backupIntervalFile,
-                overflowSeriesDataSource, seriesFilter);
+    // modifications are blocked before mergeModification is created to avoid
+    // losing some modification.
+    mergeDeleteLock.lock();
+    try {
+      for (String deviceId : backupIntervalFile.getStartTimeMap().keySet()) {
+        // query one deviceId
+        List<Path> pathList = new ArrayList<>();
+        boolean isRowGroupHasData = false;
+        ChunkGroupFooter footer = null;
+        int numOfChunk = 0;
+        long startPos = -1;
+        int recordCount = 0;
         try {
-          if (!seriesReader.hasNext()) {
-            LOGGER.debug(
-                "The time-series {} has no data with the filter {} in the filenode processor {}",
-                path, seriesFilter, getProcessorName());
-          } else {
-            numOfChunk++;
-            TimeValuePair timeValuePair = seriesReader.next();
-            if (fileIoWriter == null) {
-              baseDir = directories.getNextFolderForTsfile();
-              fileName = String.valueOf(timeValuePair.getTimestamp()
-                  + FileNodeConstants.BUFFERWRITE_FILE_SEPARATOR + System.currentTimeMillis());
-              outputPath = constructOutputFilePath(baseDir, getProcessorName(), fileName);
-              fileName = getProcessorName() + File.separatorChar + fileName;
-              fileIoWriter = new TsFileIOWriter(new File(outputPath));
-            }
-            if (!isRowGroupHasData) {
-              // start a new rowGroupMetadata
-              isRowGroupHasData = true;
-              // the datasize and numOfChunk is fake
-              // the accurate datasize and numOfChunk will get after write all this device data.
-              fileIoWriter.startFlushChunkGroup(deviceId);// TODO please check me.
-              startPos = fileIoWriter.getPos();
-            }
-            // init the serieswWriteImpl
-            MeasurementSchema measurementSchema = fileSchema.getMeasurementSchema(measurementId);
-            ChunkBuffer pageWriter = new ChunkBuffer(measurementSchema);
-            int pageSizeThreshold = TsFileConf.pageSizeInByte;
-            ChunkWriterImpl seriesWriterImpl = new ChunkWriterImpl(measurementSchema, pageWriter,
-                pageSizeThreshold);
-            // write the series data
-            recordCount += writeOneSeries(deviceId, measurementId, seriesWriterImpl, dataType,
-                seriesReader,
-                startTimeMap, endTimeMap, timeValuePair);
-            // flush the series data
-            seriesWriterImpl.writeToFileWriter(fileIoWriter);
+          List<String> pathStrings = mManager.getLeafNodePathInNextLevel(deviceId);
+          for (String string : pathStrings) {
+            pathList.add(new Path(string));
           }
-        } finally {
-          seriesReader.close();
+        } catch (PathErrorException e) {
+          LOGGER.error("Can't get all the paths from MManager, the deviceId is {}", deviceId);
+          throw new FileNodeProcessorException(e);
+        }
+        if (pathList.isEmpty()) {
+          continue;
+        }
+
+        for (Path path : pathList) {
+          // query one measurenment in the special deviceId
+          String measurementId = path.getMeasurement();
+          TSDataType dataType = mManager.getSeriesType(path.getFullPath());
+          OverflowSeriesDataSource overflowSeriesDataSource = overflowProcessor.queryMerge(deviceId,
+              measurementId, dataType, true);
+          Filter timeFilter = FilterFactory
+              .and(TimeFilter.gtEq(backupIntervalFile.getStartTime(deviceId)),
+                  TimeFilter.ltEq(backupIntervalFile.getEndTime(deviceId)));
+          SingleSeriesExpression seriesFilter = new SingleSeriesExpression(path, timeFilter);
+          IReader seriesReader = SeriesReaderFactory.getInstance()
+              .createSeriesReaderForMerge(backupIntervalFile,
+                  overflowSeriesDataSource, seriesFilter);
+          try {
+            if (!seriesReader.hasNext()) {
+              LOGGER.debug(
+                  "The time-series {} has no data with the filter {} in the filenode processor {}",
+                  path, seriesFilter, getProcessorName());
+            } else {
+              numOfChunk++;
+              TimeValuePair timeValuePair = seriesReader.next();
+              if (fileIoWriter == null) {
+                baseDir = directories.getNextFolderForTsfile();
+                fileName = String.valueOf(timeValuePair.getTimestamp()
+                    + FileNodeConstants.BUFFERWRITE_FILE_SEPARATOR + System.currentTimeMillis());
+                outputPath = constructOutputFilePath(baseDir, getProcessorName(), fileName);
+                fileName = getProcessorName() + File.separatorChar + fileName;
+                fileIoWriter = new TsFileIOWriter(new File(outputPath));
+                mergingModification = new ModificationFile(outputPath
+                        + ModificationFile.FILE_SUFFIX);
+                mergeDeleteLock.unlock();
+              }
+              if (!isRowGroupHasData) {
+                // start a new rowGroupMetadata
+                isRowGroupHasData = true;
+                // the datasize and numOfChunk is fake
+                // the accurate datasize and numOfChunk will get after write all this device data.
+                fileIoWriter.startFlushChunkGroup(deviceId);// TODO please check me.
+                startPos = fileIoWriter.getPos();
+              }
+              // init the serieswWriteImpl
+              MeasurementSchema measurementSchema = fileSchema.getMeasurementSchema(measurementId);
+              ChunkBuffer pageWriter = new ChunkBuffer(measurementSchema);
+              int pageSizeThreshold = TsFileConf.pageSizeInByte;
+              ChunkWriterImpl seriesWriterImpl = new ChunkWriterImpl(measurementSchema, pageWriter,
+                  pageSizeThreshold);
+              // write the series data
+              recordCount += writeOneSeries(deviceId, measurementId, seriesWriterImpl, dataType,
+                  seriesReader,
+                  startTimeMap, endTimeMap, timeValuePair);
+              // flush the series data
+              seriesWriterImpl.writeToFileWriter(fileIoWriter);
+            }
+          } finally {
+            seriesReader.close();
+          }
+        }
+        if (isRowGroupHasData) {
+          // end the new rowGroupMetadata
+          long size = fileIoWriter.getPos() - startPos;
+          footer = new ChunkGroupFooter(deviceId, size, numOfChunk);
+          fileIoWriter.endChunkGroup(footer, versionController.nextVersion());
         }
       }
-      if (isRowGroupHasData) {
-        // end the new rowGroupMetadata
-        long size = fileIoWriter.getPos() - startPos;
-        footer = new ChunkGroupFooter(deviceId, size, numOfChunk);
-        fileIoWriter.endChunkGroup(footer, versionController.nextVersion());
-      }
+    } finally {
+      if(mergeDeleteLock.isLocked())
+        mergeDeleteLock.unlock();
     }
+
     if (fileIoWriter != null) {
       fileIoWriter.endFile(fileSchema);
     }
@@ -1588,6 +1609,8 @@ public class FileNodeProcessor extends Processor implements IStatistic {
     backupIntervalFile.overflowChangeType = OverflowChangeType.NO_CHANGE;
     backupIntervalFile.setStartTimeMap(startTimeMap);
     backupIntervalFile.setEndTimeMap(endTimeMap);
+    backupIntervalFile.setModFile(mergingModification);
+    mergingModification = null;
     return fileName;
   }
 
@@ -1998,6 +2021,16 @@ public class FileNodeProcessor extends Processor implements IStatistic {
       String fullPath = deviceId +
               IoTDBConstant.PATH_SEPARATOR + measurementId;
       Deletion deletion = new Deletion(fullPath, version, timestamp);
+
+      mergeDeleteLock.lock();
+      try {
+        if (mergingModification != null) {
+          mergingModification.write(deletion);
+        }
+      } finally {
+        mergeDeleteLock.unlock();
+      }
+
       if (currentIntervalFileNode != null && currentIntervalFileNode.containsDevice(deviceId)) {
         currentIntervalFileNode.getModFile().write(deletion);
       }
