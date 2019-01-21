@@ -65,6 +65,7 @@ public class IoTDBCompleteTest {
     SimpleTest();
     InsertTest();
     SelectTest();
+    DeleteTest();
   }
 
   public void SimpleTest() throws ClassNotFoundException, SQLException {

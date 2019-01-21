@@ -1,6 +1,6 @@
 /**
  * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
- *
+ * <p>
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -8,9 +8,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
+ * <p>
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * <p>
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.qp.strategy;
 
 import java.util.List;
+
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.exception.qp.LogicalOperatorException;
@@ -27,6 +28,7 @@ import org.apache.iotdb.db.exception.qp.QueryProcessorException;
 import org.apache.iotdb.db.qp.executor.QueryProcessExecutor;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.crud.BasicFunctionOperator;
+import org.apache.iotdb.db.qp.logical.crud.DeleteOperator;
 import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
 import org.apache.iotdb.db.qp.logical.crud.InsertOperator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
@@ -36,6 +38,7 @@ import org.apache.iotdb.db.qp.logical.sys.MetadataOperator;
 import org.apache.iotdb.db.qp.logical.sys.PropertyOperator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
+import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
@@ -62,15 +65,15 @@ public class PhysicalGenerator {
   }
 
   public PhysicalPlan transformToPhysicalPlan(Operator operator)
-      throws QueryProcessorException, ProcessorException {
+          throws QueryProcessorException, ProcessorException {
     List<Path> paths;
     switch (operator.getType()) {
       case AUTHOR:
         AuthorOperator author = (AuthorOperator) operator;
         try {
           return new AuthorPlan(author.getAuthorType(), author.getUserName(), author.getRoleName(),
-              author.getPassWord(), author.getNewPassword(), author.getPrivilegeList(),
-              author.getNodeName());
+                  author.getPassWord(), author.getNewPassword(), author.getPrivilegeList(),
+                  author.getNodeName());
         } catch (AuthException e) {
           throw new QueryProcessorException(e.getMessage());
         }
@@ -82,32 +85,32 @@ public class PhysicalGenerator {
       case METADATA:
         MetadataOperator metadata = (MetadataOperator) operator;
         return new MetadataPlan(metadata.getNamespaceType(), metadata.getPath(),
-            metadata.getDataType(),
-            metadata.getEncoding(), metadata.getEncodingArgs(), metadata.getDeletePathList());
+                metadata.getDataType(),
+                metadata.getEncoding(), metadata.getEncodingArgs(), metadata.getDeletePathList());
       case PROPERTY:
         PropertyOperator property = (PropertyOperator) operator;
         return new PropertyPlan(property.getPropertyType(), property.getPropertyPath(),
-            property.getMetadataPath());
-      // case DELETE:
-      // DeleteOperator delete = (DeleteOperator) operator;
-      // paths = delete.getSelectedPaths();
-      // if (delete.getTime() <= 0) {
-      // throw new LogicalOperatorException("For Delete command, time must greater than 0.");
-      // }
-      // return new DeletePlan(delete.getTime(), paths);
+                property.getMetadataPath());
+      case DELETE:
+        DeleteOperator delete = (DeleteOperator) operator;
+        paths = delete.getSelectedPaths();
+        if (delete.getTime() <= 0) {
+          throw new LogicalOperatorException("For Delete command, time must greater than 0.");
+        }
+        return new DeletePlan(delete.getTime(), paths);
       case INSERT:
         InsertOperator Insert = (InsertOperator) operator;
         paths = Insert.getSelectedPaths();
         if (paths.size() != 1) {
           throw new LogicalOperatorException(
-              "For Insert command, cannot specified more than one seriesPath:" + paths);
+                  "For Insert command, cannot specified more than one seriesPath:" + paths);
         }
         if (Insert.getTime() <= 0) {
           throw new LogicalOperatorException("For Insert command, time must greater than 0.");
         }
         return new InsertPlan(paths.get(0).getFullPath(), Insert.getTime(),
-            Insert.getMeasurementList(),
-            Insert.getValueList());
+                Insert.getMeasurementList(),
+                Insert.getValueList());
       // case UPDATE:
       // UpdateOperator update = (UpdateOperator) operator;
       // UpdatePlan updatePlan = new UpdatePlan();
@@ -231,7 +234,7 @@ public class PhysicalGenerator {
   // }
 
   private PhysicalPlan transformQuery(QueryOperator queryOperator)
-      throws QueryProcessorException, ProcessorException {
+          throws QueryProcessorException, ProcessorException {
 
     QueryPlan queryPlan;
 
@@ -252,7 +255,7 @@ public class PhysicalGenerator {
     } else if (queryOperator.hasAggregation()) { // ordinary query
       queryPlan = new AggregationPlan();
       ((AggregationPlan) queryPlan)
-          .setAggregations(queryOperator.getSelectOperator().getAggregations());
+              .setAggregations(queryOperator.getSelectOperator().getAggregations());
     } else {
       queryPlan = new QueryPlan();
     }
