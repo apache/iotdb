@@ -97,18 +97,15 @@
             <onMismatch>DENY</onMismatch>
         </filter>
     </appender>
-    <appender class="ch.qos.logback.core.ConsoleAppender" name="stdout">
-        <Target>System.out</Target>
+    <appender class="ch.qos.logback.core.ConsoleAppender" name="stdout1">
         <encoder>
             <pattern>%-5p [%d] [%thread] %C:%L - %m %n</pattern>
             <charset>utf-8</charset>
         </encoder>
-        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
-            <level>DEBUG</level>
-        </filter>
     </appender>
     <!--<logger name="org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl level="debug" />-->
-    <root level="ERROR">
-        <appender-ref ref="FILEERROR"/>
+    <logger name="org.apache.iotdb" level="WARN"/>
+    <root level="WARN">
+        <appender-ref ref="stdout1"/>
     </root>
 </configuration>
