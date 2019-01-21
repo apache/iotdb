@@ -1593,7 +1593,9 @@ public class FileNodeProcessor extends Processor implements IStatistic {
           // end the new rowGroupMetadata
           long size = fileIoWriter.getPos() - startPos;
           footer = new ChunkGroupFooter(deviceId, size, numOfChunk);
-          fileIoWriter.endChunkGroup(footer, versionController.nextVersion());
+          // notice: merge data are essentially OLD data, so any new modifications take effect on
+          // them
+          fileIoWriter.endChunkGroup(footer, 0);
         }
       }
     } finally {
@@ -2016,34 +2018,35 @@ public class FileNodeProcessor extends Processor implements IStatistic {
      */
     public void delete(String deviceId, String measurementId, long timestamp) throws IOException {
       // TODO: how to avoid partial deletion?
+      mergeDeleteLock.lock();
       long version = versionController.nextVersion();
 
-      String fullPath = deviceId +
-              IoTDBConstant.PATH_SEPARATOR + measurementId;
-      Deletion deletion = new Deletion(fullPath, version, timestamp);
-
-      mergeDeleteLock.lock();
       try {
+        String fullPath = deviceId +
+                IoTDBConstant.PATH_SEPARATOR + measurementId;
+        Deletion deletion = new Deletion(fullPath, version, timestamp);
         if (mergingModification != null) {
           mergingModification.write(deletion);
+        }
+
+
+        if (currentIntervalFileNode != null && currentIntervalFileNode.containsDevice(deviceId)) {
+          currentIntervalFileNode.getModFile().write(deletion);
+        }
+        for (IntervalFileNode fileNode : newFileNodes) {
+          if(fileNode != currentIntervalFileNode && fileNode.containsDevice(deviceId)) {
+            fileNode.getModFile().write(deletion);
+          }
+        }
+        // delete data in memory
+        OverflowProcessor overflowProcessor = getOverflowProcessor(getProcessorName());
+        overflowProcessor.delete(deviceId, measurementId, timestamp, version);
+        if (bufferWriteProcessor != null) {
+          bufferWriteProcessor.delete(deviceId, measurementId, timestamp);
         }
       } finally {
         mergeDeleteLock.unlock();
       }
 
-      if (currentIntervalFileNode != null && currentIntervalFileNode.containsDevice(deviceId)) {
-        currentIntervalFileNode.getModFile().write(deletion);
-      }
-      for (IntervalFileNode fileNode : newFileNodes) {
-        if(fileNode != currentIntervalFileNode && fileNode.containsDevice(deviceId)) {
-          fileNode.getModFile().write(deletion);
-        }
-      }
-      // delete data in memory
-      OverflowProcessor overflowProcessor = getOverflowProcessor(getProcessorName());
-      overflowProcessor.delete(deviceId, measurementId, timestamp, version);
-      if (bufferWriteProcessor != null) {
-        bufferWriteProcessor.delete(deviceId, measurementId, timestamp);
-      }
     }
 }
