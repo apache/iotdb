@@ -86,9 +86,7 @@ public class QueryProcessor {
    */
   private RootOperator parseASTToOperator(AstNode astNode, ZoneId zoneId)
       throws QueryProcessorException, ArgsErrorException {
-    System.out.println("LogicalGenerator");
     LogicalGenerator generator = new LogicalGenerator(zoneId);
-    System.out.println("getLogicalPlan");
     return generator.getLogicalPlan(astNode);
   }
 
