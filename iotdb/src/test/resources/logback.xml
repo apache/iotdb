@@ -33,9 +33,8 @@
             <level>DEBUG</level>
         </filter>
     </appender>
-    <!--<logger name="org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl level="debug" />-->
-    <logger name="org.apache.iotdb.db.utils.OpenFileNumUtil" level="debug" />
-    <logger name="org.apache.iotdb.db.utils.OpenFileNumUtilTest" level="debug" />
+    <!--<logger name="org.apache.iotdb.db.utils.OpenFileNumUtil" level="debug" />-->
+    <!--<logger name="org.apache.iotdb.db.utils.OpenFileNumUtilTest" level="debug" />-->
     <root level="INFO">
         <appender-ref ref="stdout"/>
     </root>
