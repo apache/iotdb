@@ -1,12 +1,12 @@
-# Chapter 3: IoTDB Operation Manual
+# Chapter 3: Operation Manual
 
-## Scenario Description and Sample Data
+## Sample Data
 
 To make this manual more practical, we will use a specific scenario example to illustrate how to operate IoTDB databases at all stages of use. See [this page](Material-SampleData) for a look. For your convenience, we also provide you with a sample data file in real scenario to import into the IoTDB system for trial and operation.
 
 Download file: [IoTDB-SampleData.txt](sampledata文件下载链接).
 
-## Data Model Selection and Creation
+## Data Model Selection
 
 Before importing data to IoTDB, we first select the appropriate data storage model according to the [sample data](Material-SampleData), and then create the storage group and timeseries using [SET STORAGE GROUP](Chapter5,setstoragegroup) statement and [CREATE TIMESERIES](Chapter5,createtimeseries) statement respectively.
 
