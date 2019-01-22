@@ -36,4 +36,9 @@ public interface ModificationWriter {
    * Release resources like streams.
    */
   void close() throws IOException;
+
+  /**
+   * Abort last modification.
+   */
+  void abort() throws IOException;
 }

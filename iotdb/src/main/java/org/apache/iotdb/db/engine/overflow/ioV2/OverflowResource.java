@@ -37,7 +37,6 @@ import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.version.VersionController;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
@@ -294,14 +293,17 @@ public class OverflowResource {
 
   /**
    * Delete data of a timeseries whose time ranges from 0 to timestamp.
-   *
-   * @param deviceId the deviceId of the timeseries.
+   *  @param deviceId the deviceId of the timeseries.
    * @param measurementId the measurementId of the timeseries.
    * @param timestamp the upper-bound of deletion time.
+   * @param updatedModFiles add successfully updated modificationFile to this list, so that the
+   *                        deletion can be aborted when exception is thrown.
    */
-  public void delete(String deviceId, String measurementId, long timestamp, long version)
+  public void delete(String deviceId, String measurementId, long timestamp, long version,
+                     List<ModificationFile> updatedModFiles)
           throws IOException {
     modificationFile.write(new Deletion(deviceId + IoTDBConstant.PATH_SEPARATOR
             + measurementId, version, timestamp));
+    updatedModFiles.add(modificationFile);
   }
 }

@@ -19,6 +19,7 @@ package org.apache.iotdb.db.engine.modification;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 
 import org.apache.iotdb.db.engine.modification.io.LocalTextModificationAccessor;
 import org.apache.iotdb.db.engine.modification.io.ModificationReader;
@@ -32,13 +33,14 @@ import org.apache.iotdb.db.engine.modification.io.ModificationWriter;
 public class ModificationFile {
   public static final String FILE_SUFFIX = ".mods";
 
-  private Collection<Modification> modifications;
+  private List<Modification> modifications;
   private ModificationWriter writer;
   private ModificationReader reader;
   private String filePath;
 
   /**
    * Construct a ModificationFile using a file as its storage.
+   *
    * @param filePath the path of the storage file.
    */
   public ModificationFile(String filePath) {
@@ -50,7 +52,7 @@ public class ModificationFile {
 
   private void init() throws IOException {
     synchronized (this) {
-      Collection<Modification> mods = reader.read();
+      List<Modification> mods = (List<Modification>) reader.read();
       if (mods == null) {
         mods = new ArrayList<>();
       }
@@ -74,9 +76,19 @@ public class ModificationFile {
     }
   }
 
+  public void abort() throws IOException {
+    synchronized (this) {
+      if (modifications.size() > 0) {
+        writer.abort();
+        modifications.remove(modifications.size() - 1);
+      }
+    }
+  }
+
   /**
    * Write a modification in this file. The modification will first be written to the persistent
    * store then the memory cache.
+   *
    * @param mod the modification to be written.
    * @throws IOException if IOException is thrown when writing the modification to the store.
    */
@@ -90,6 +102,7 @@ public class ModificationFile {
 
   /**
    * Get all modifications stored in this file.
+   *
    * @return an ArrayList of modifications.
    */
   public Collection<Modification> getModifications() throws IOException {

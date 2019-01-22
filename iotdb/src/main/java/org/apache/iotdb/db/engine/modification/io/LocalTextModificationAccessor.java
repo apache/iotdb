@@ -39,6 +39,7 @@ public class LocalTextModificationAccessor implements ModificationReader, Modifi
 
   private static final Logger logger = LoggerFactory.getLogger(LocalTextModificationAccessor.class);
   private static final String SEPARATOR = ",";
+  private static final String ABORT_MARK = "aborted";
 
   private String filePath;
   private BufferedWriter writer;
@@ -64,7 +65,11 @@ public class LocalTextModificationAccessor implements ModificationReader, Modifi
     List<Modification> modificationList = new ArrayList<>();
     try {
       while ((line = reader.readLine()) != null) {
-        modificationList.add(decodeModification(line));
+        if (line.equals(ABORT_MARK) && modificationList.size() > 0) {
+          modificationList.remove(modificationList.size() - 1);
+        } else {
+          modificationList.add(decodeModification(line));
+        }
       }
     } catch (IOException e) {
       reader.close();
@@ -79,6 +84,16 @@ public class LocalTextModificationAccessor implements ModificationReader, Modifi
     if (writer != null) {
       writer.close();
     }
+  }
+
+  @Override
+  public void abort() throws IOException {
+    if (writer == null) {
+      writer = new BufferedWriter(new FileWriter(filePath, true));
+    }
+    writer.write(ABORT_MARK);
+    writer.newLine();
+    writer.flush();
   }
 
   @Override

@@ -41,6 +41,7 @@ import org.apache.iotdb.db.engine.filenode.FileNodeManager;
 import org.apache.iotdb.db.engine.memcontrol.BasicMemController;
 import org.apache.iotdb.db.engine.memtable.MemSeriesLazyMerger;
 import org.apache.iotdb.db.engine.memtable.TimeValuePairSorter;
+import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.pool.FlushManager;
 import org.apache.iotdb.db.engine.querycontext.MergeSeriesDataSource;
 import org.apache.iotdb.db.engine.querycontext.OverflowInsertFile;
@@ -236,17 +237,19 @@ public class OverflowProcessor extends Processor {
 
   /**
    * Delete data of a timeseries whose time ranges from 0 to timestamp.
-   *
-   * @param deviceId the deviceId of the timeseries.
+   *  @param deviceId the deviceId of the timeseries.
    * @param measurementId the measurementId of the timeseries.
    * @param timestamp the upper-bound of deletion time.
    * @param version the version number of this deletion.
+   * @param updatedModFiles add successfully updated Modification files to the list, and abort them
+   *                        when exception is
    */
-  public void delete(String deviceId, String measurementId, long timestamp, long version) throws IOException {
-    workResource.delete(deviceId, measurementId, timestamp, version);
+  public void delete(String deviceId, String measurementId, long timestamp, long version,
+                     List<ModificationFile> updatedModFiles) throws IOException {
+    workResource.delete(deviceId, measurementId, timestamp, version, updatedModFiles);
     workSupport.delete(deviceId, measurementId, timestamp, false);
     if (flushStatus.isFlushing()) {
-      mergeResource.delete(deviceId, measurementId, timestamp, version);
+      mergeResource.delete(deviceId, measurementId, timestamp, version, updatedModFiles);
       flushSupport.delete(deviceId, measurementId, timestamp, true);
     }
   }
