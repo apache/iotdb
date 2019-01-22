@@ -32,7 +32,7 @@ import org.slf4j.LoggerFactory;
 
 // Notice : statistics in this class may not be accurate because of limited user authority.
 public class OpenFileNumUtil {
-
+  private static final Logger log = LoggerFactory.getLogger(OpenFileNumUtil.class);
   private static final int PID_ERROR_CODE = -1;
   private static final int UNSUPPORTED_OS_ERROR_CODE = -2;
   private static final int UNKNOWN_STATISTICS_ERROR_CODE = -3;
@@ -42,7 +42,7 @@ public class OpenFileNumUtil {
   private static final String SEARCH_PID_LINUX = "ps -aux | grep -i %s | grep -v grep";
   private static final String SEARCH_PID_MAC = "ps aux | grep -i %s | grep -v grep";
   private static final String SEARCH_OPEN_DATA_FILE_BY_PID = "lsof -p %d";
-  private static Logger log = LoggerFactory.getLogger(OpenFileNumUtil.class);
+
   private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static Directories directories = Directories.getInstance();
   private final String[] cmds = {"/bin/bash", "-c", ""};
@@ -160,9 +160,9 @@ public class OpenFileNumUtil {
       BufferedReader in = new BufferedReader(new InputStreamReader(pro.getInputStream()));
       String line;
       int oldValue;
-      System.out.println("Output result of " + command);
+      log.debug("Output result of {}:", command);
       while ((line = in.readLine()) != null) {
-        System.out.println(line);
+        log.debug(line);
         String[] temp = line.split("\\s+");
         if (line.contains("" + pid) && temp.length > 8) {
           oldValue = resultMap.get(OpenFileNumStatistics.TOTAL_OPEN_FILE_NUM);
@@ -183,9 +183,10 @@ public class OpenFileNumUtil {
           }
         }
       }
+      log.debug("Output finished.");
       in.close();
       pro.destroy();
-    } catch (IOException e) {
+    } catch (Exception e) {
       log.error("Cannot get open file number of IoTDB process because of {}", e.getMessage());
     }
     return resultMap;
@@ -232,14 +233,14 @@ public class OpenFileNumUtil {
   }
 
   public enum OpenFileNumStatistics {
-    TOTAL_OPEN_FILE_NUM(null), DATA_OPEN_FILE_NUM(
-        Collections.singletonList(config.dataDir)), DELTA_OPEN_FILE_NUM(
-        directories.getAllTsFileFolders()), OVERFLOW_OPEN_FILE_NUM(
-        Collections.singletonList(config.overflowDataDir)), WAL_OPEN_FILE_NUM(
-        Collections.singletonList(config.walFolder)), METADATA_OPEN_FILE_NUM(
-        Collections.singletonList(config.metadataDir)), DIGEST_OPEN_FILE_NUM(
-        Collections.singletonList(config.fileNodeDir)), SOCKET_OPEN_FILE_NUM(
-        null);
+    TOTAL_OPEN_FILE_NUM(null),
+    DATA_OPEN_FILE_NUM(Collections.singletonList(config.dataDir)),
+    DELTA_OPEN_FILE_NUM(directories.getAllTsFileFolders()),
+    OVERFLOW_OPEN_FILE_NUM(Collections.singletonList(config.overflowDataDir)),
+    WAL_OPEN_FILE_NUM(Collections.singletonList(config.walFolder)),
+    METADATA_OPEN_FILE_NUM(Collections.singletonList(config.metadataDir)),
+    DIGEST_OPEN_FILE_NUM(Collections.singletonList(config.fileNodeDir)),
+    SOCKET_OPEN_FILE_NUM(null);
 
     // path is a list of directory corresponding to the OpenFileNumStatistics enum element,
     // e.g. data/data/ for DATA_OPEN_FILE_NUM
