@@ -18,9 +18,16 @@
  */
 package org.apache.iotdb.db.utils;
 
+import com.sun.management.UnixOperatingSystemMXBean;
 import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileDescriptor;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.lang.management.ManagementFactory;
+import java.lang.management.OperatingSystemMXBean;
+import java.nio.channels.FileChannel;
+import java.nio.file.StandardOpenOption;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.List;
@@ -31,6 +38,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 // Notice : statistics in this class may not be accurate because of limited user authority.
+// TODO: now only TOTAL_OPEN_FILE_NUM is general avaiable on multiple Linux-like OSs.
 public class OpenFileNumUtil {
   private static final Logger log = LoggerFactory.getLogger(OpenFileNumUtil.class);
   private static final int PID_ERROR_CODE = -1;
@@ -41,6 +49,7 @@ public class OpenFileNumUtil {
   private static final String MAC_OS_NAME = "mac";
   private static final String SEARCH_PID_LINUX = "ps -aux | grep -i %s | grep -v grep";
   private static final String SEARCH_PID_MAC = "ps aux | grep -i %s | grep -v grep";
+  //TODO lsof command is only avaiable on some OSs.
   private static final String SEARCH_OPEN_DATA_FILE_BY_PID = "lsof -p %d";
 
   private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
@@ -48,6 +57,8 @@ public class OpenFileNumUtil {
   private final String[] cmds = {"/bin/bash", "-c", ""};
   private int pid;
   private String processName;
+
+  OperatingSystemMXBean os = ManagementFactory.getOperatingSystemMXBean();
 
   /**
    * constructor, process key word is defined by IOTDB_PROCESS_KEY_WORD.
@@ -192,6 +203,14 @@ public class OpenFileNumUtil {
     return resultMap;
   }
 
+  private long getCurrentOpenedFiles() {
+    if(os instanceof UnixOperatingSystemMXBean){
+      return ((UnixOperatingSystemMXBean) os).getOpenFileDescriptorCount();
+    }else {
+      return UNSUPPORTED_OS_ERROR_CODE;
+    }
+  }
+
   /**
    * Check if runtime OS is supported then return the result list. If pid is abnormal then all
    * statistics returns -1, if OS is not supported then all statistics returns -2
@@ -228,6 +247,9 @@ public class OpenFileNumUtil {
    * @return open file number
    */
   public int get(OpenFileNumStatistics statistics) {
+    if(statistics.equals(OpenFileNumStatistics.TOTAL_OPEN_FILE_NUM)){
+      return (int) getCurrentOpenedFiles();
+    }
     EnumMap<OpenFileNumStatistics, Integer> statisticsMap = getStatisticMap();
     return statisticsMap.getOrDefault(statistics, UNKNOWN_STATISTICS_ERROR_CODE);
   }
