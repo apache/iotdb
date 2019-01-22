@@ -54,7 +54,9 @@ public class OpenFileNumUtilTest {
 
   private static int getProcessID() {
     RuntimeMXBean runtimeMXBean = ManagementFactory.getRuntimeMXBean();
-    return Integer.parseInt(runtimeMXBean.getName().split("@")[0]);
+    int pid = Integer.parseInt(runtimeMXBean.getName().split("@")[0]);
+    System.out.println("Test process ID of OpenFileNumUtilTest is " + pid);
+    return pid;
   }
 
   @Before
