@@ -58,6 +58,7 @@ import org.apache.iotdb.db.monitor.StatMonitor;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.UpdatePlan;
+import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
@@ -640,7 +641,7 @@ public class FileNodeManager implements IStatistic, IService {
   /**
    * query data.
    */
-  public QueryDataSource query(SingleSeriesExpression seriesExpression)
+  public QueryDataSource query(SingleSeriesExpression seriesExpression, QueryContext context)
           throws FileNodeManagerException {
     String deviceId = seriesExpression.getSeriesPath().getDevice();
     String measurementId = seriesExpression.getSeriesPath().getMeasurement();
@@ -661,7 +662,7 @@ public class FileNodeManager implements IStatistic, IService {
       }
       try {
         queryDataSource = fileNodeProcessor
-                .query(deviceId, measurementId, seriesExpression.getFilter());
+                .query(deviceId, measurementId, seriesExpression.getFilter(), context);
       } catch (FileNodeProcessorException e) {
         LOGGER.error("Query error: the deviceId {}, the measurementId {}", deviceId, measurementId,
                 e);

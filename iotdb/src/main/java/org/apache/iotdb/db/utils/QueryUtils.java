@@ -65,20 +65,4 @@ public class QueryUtils {
     // remove chunks that are completely deleted
     chunkMetaData.removeIf(metaData -> metaData.getDeletedAt() >= metaData.getEndTime());
   }
-
-  public static List<Modification> getPathModifications(ModificationFile modFile, String path)
-          throws IOException {
-    // TODO: use query context to avoid multiple calls of getModifications()
-    Collection<Modification> allModifications = modFile.getModifications();
-    List<Modification> pathModifications = new ArrayList<>();
-    if (allModifications.size() > 0) {
-      allModifications.forEach(modification -> {
-        if (modification.getPath().equals(path)) {
-          pathModifications.add(modification);
-        }
-      });
-    }
-    return pathModifications;
-  }
-
 }

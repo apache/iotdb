@@ -25,6 +25,7 @@ import static org.apache.iotdb.tsfile.read.expression.ExpressionType.SERIES;
 import java.io.IOException;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
+import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryDataSourceManager;
 import org.apache.iotdb.db.query.factory.SeriesReaderFactory;
 import org.apache.iotdb.db.query.reader.IReader;
@@ -55,19 +56,20 @@ public class EngineNodeConstructor {
    * @throws IOException IOException
    * @throws FileNodeManagerException FileNodeManagerException
    */
-  public Node construct(IExpression expression) throws IOException, FileNodeManagerException {
+  public Node construct(IExpression expression, QueryContext context)
+          throws IOException, FileNodeManagerException {
     if (expression.getType() == SERIES) {
-      return new EngineLeafNode(generateSeriesReader((SingleSeriesExpression) expression));
+      return new EngineLeafNode(generateSeriesReader((SingleSeriesExpression) expression, context));
     } else {
       Node leftChild;
       Node rightChild;
       if (expression.getType() == OR) {
-        leftChild = this.construct(((IBinaryExpression) expression).getLeft());
-        rightChild = this.construct(((IBinaryExpression) expression).getRight());
+        leftChild = this.construct(((IBinaryExpression) expression).getLeft(), context);
+        rightChild = this.construct(((IBinaryExpression) expression).getRight(), context);
         return new OrNode(leftChild, rightChild);
       } else if (expression.getType() == AND) {
-        leftChild = this.construct(((IBinaryExpression) expression).getLeft());
-        rightChild = this.construct(((IBinaryExpression) expression).getRight());
+        leftChild = this.construct(((IBinaryExpression) expression).getLeft(), context);
+        rightChild = this.construct(((IBinaryExpression) expression).getRight(), context);
         return new AndNode(leftChild, rightChild);
       } else {
         throw new UnSupportedDataTypeException(
@@ -76,11 +78,12 @@ public class EngineNodeConstructor {
     }
   }
 
-  private IReader generateSeriesReader(SingleSeriesExpression singleSeriesExpression)
+  private IReader generateSeriesReader(SingleSeriesExpression singleSeriesExpression,
+                                       QueryContext context)
       throws IOException, FileNodeManagerException {
 
     QueryDataSource queryDataSource = QueryDataSourceManager.getQueryDataSource(jobId,
-        singleSeriesExpression.getSeriesPath());
+        singleSeriesExpression.getSeriesPath(), context);
 
     Filter filter = singleSeriesExpression.getFilter();
 
@@ -88,7 +91,7 @@ public class EngineNodeConstructor {
 
     // reader for all sequence data
     SequenceDataReader tsFilesReader = new SequenceDataReader(queryDataSource.getSeqDataSource(),
-        filter);
+        filter, context);
     priorityReader.addReaderWithPriority(tsFilesReader, 1);
 
     // reader for all unSequence data

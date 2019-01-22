@@ -47,7 +47,7 @@ public abstract class ChunkReader {
   private Filter filter;
 
   private BatchData data;
-  protected long deletedAt;
+  protected long deletedAt = -1;
 
   public ChunkReader(Chunk chunk) {
     this(chunk, null);

@@ -73,6 +73,7 @@ import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.monitor.IStatistic;
 import org.apache.iotdb.db.monitor.MonitorConstants;
 import org.apache.iotdb.db.monitor.StatMonitor;
+import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.factory.SeriesReaderFactory;
 import org.apache.iotdb.db.query.reader.IReader;
 import org.apache.iotdb.db.utils.MemUtils;
@@ -750,7 +751,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
    * query data.
    */
   public <T extends Comparable<T>> QueryDataSource query(String deviceId, String measurementId,
-                                                         Filter filter)
+                                                         Filter filter, QueryContext context)
           throws FileNodeProcessorException {
     // query overflow data
     TSDataType dataType = null;
@@ -761,7 +762,8 @@ public class FileNodeProcessor extends Processor implements IStatistic {
     }
     OverflowSeriesDataSource overflowSeriesDataSource;
     try {
-      overflowSeriesDataSource = overflowProcessor.query(deviceId, measurementId, filter, dataType);
+      overflowSeriesDataSource = overflowProcessor.query(deviceId, measurementId, filter, dataType,
+              context);
     } catch (IOException e) {
       e.printStackTrace();
       throw new FileNodeProcessorException(e);
@@ -797,7 +799,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
               .queryBufferWriteData(deviceId, measurementId, dataType);
 
       try {
-        List<Modification> pathModifications = QueryUtils.getPathModifications(
+        List<Modification> pathModifications = context.getPathModifications(
                 currentIntervalFileNode.getModFile(), deviceId
                         + IoTDBConstant.PATH_SEPARATOR + measurementId
         );
@@ -1510,6 +1512,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
     // modifications are blocked before mergeModification is created to avoid
     // losing some modification.
     mergeDeleteLock.lock();
+    QueryContext context = new QueryContext();
     try {
       for (String deviceId : backupIntervalFile.getStartTimeMap().keySet()) {
         // query one deviceId
@@ -1537,14 +1540,14 @@ public class FileNodeProcessor extends Processor implements IStatistic {
           String measurementId = path.getMeasurement();
           TSDataType dataType = mManager.getSeriesType(path.getFullPath());
           OverflowSeriesDataSource overflowSeriesDataSource = overflowProcessor.queryMerge(deviceId,
-                  measurementId, dataType, true);
+                  measurementId, dataType, true, context);
           Filter timeFilter = FilterFactory
                   .and(TimeFilter.gtEq(backupIntervalFile.getStartTime(deviceId)),
                           TimeFilter.ltEq(backupIntervalFile.getEndTime(deviceId)));
           SingleSeriesExpression seriesFilter = new SingleSeriesExpression(path, timeFilter);
           IReader seriesReader = SeriesReaderFactory.getInstance()
                   .createSeriesReaderForMerge(backupIntervalFile,
-                          overflowSeriesDataSource, seriesFilter);
+                          overflowSeriesDataSource, seriesFilter, context);
           try {
             if (!seriesReader.hasNext()) {
               LOGGER.debug(

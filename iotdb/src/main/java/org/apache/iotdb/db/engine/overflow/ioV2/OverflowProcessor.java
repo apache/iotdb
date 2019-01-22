@@ -49,6 +49,7 @@ import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.utils.FlushStatus;
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.OverflowProcessorException;
+import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
@@ -265,7 +266,7 @@ public class OverflowProcessor extends Processor {
    * @throws IOException
    */
   public OverflowSeriesDataSource query(String deviceId, String measurementId, Filter filter,
-                                        TSDataType dataType)
+                                        TSDataType dataType, QueryContext context)
       throws IOException {
     queryFlushLock.lock();
     try {
@@ -277,14 +278,14 @@ public class OverflowProcessor extends Processor {
       // work file
       Pair<String, List<ChunkMetaData>> insertInDiskWork = queryWorkDataInOverflowInsert(deviceId,
           measurementId,
-          dataType);
+          dataType, context);
       if (insertInDiskWork.left != null) {
         overflowInsertFileList
             .add(0, new OverflowInsertFile(insertInDiskWork.left, insertInDiskWork.right));
       }
       // merge file
       Pair<String, List<ChunkMetaData>> insertInDiskMerge = queryMergeDataInOverflowInsert(deviceId,
-          measurementId, dataType);
+          measurementId, dataType, context);
       if (insertInDiskMerge.left != null) {
         overflowInsertFileList
             .add(0, new OverflowInsertFile(insertInDiskMerge.left, insertInDiskMerge.right));
@@ -345,10 +346,11 @@ public class OverflowProcessor extends Processor {
    */
   private Pair<String, List<ChunkMetaData>> queryWorkDataInOverflowInsert(String deviceId,
                                                                           String measurementId,
-                                                                          TSDataType dataType) {
+                                                                          TSDataType dataType,
+                                                                          QueryContext context) {
     Pair<String, List<ChunkMetaData>> pair = new Pair<String, List<ChunkMetaData>>(
         workResource.getInsertFilePath(),
-        workResource.getInsertMetadatas(deviceId, measurementId, dataType));
+        workResource.getInsertMetadatas(deviceId, measurementId, dataType, context));
     return pair;
   }
 
@@ -361,19 +363,20 @@ public class OverflowProcessor extends Processor {
    * @return MergeSeriesDataSource
    */
   public MergeSeriesDataSource queryMerge(String deviceId, String measurementId,
-                                          TSDataType dataType) {
+                                          TSDataType dataType, QueryContext context) {
     Pair<String, List<ChunkMetaData>> mergeInsert = queryMergeDataInOverflowInsert(deviceId,
         measurementId,
-        dataType);
+        dataType, context);
     return new MergeSeriesDataSource(new OverflowInsertFile(mergeInsert.left, mergeInsert.right));
   }
 
   public OverflowSeriesDataSource queryMerge(String deviceId, String measurementId,
                                              TSDataType dataType,
-                                             boolean isMerge) {
+                                             boolean isMerge,
+                                             QueryContext context) {
     Pair<String, List<ChunkMetaData>> mergeInsert = queryMergeDataInOverflowInsert(deviceId,
         measurementId,
-        dataType);
+        dataType, context);
     OverflowSeriesDataSource overflowSeriesDataSource = new OverflowSeriesDataSource(
         new Path(deviceId + "." + measurementId));
     overflowSeriesDataSource.setReadableMemChunk(null);
@@ -393,13 +396,14 @@ public class OverflowProcessor extends Processor {
    */
   private Pair<String, List<ChunkMetaData>> queryMergeDataInOverflowInsert(String deviceId,
                                                                            String measurementId,
-                                                                           TSDataType dataType) {
+                                                                           TSDataType dataType,
+                                                                           QueryContext context) {
     if (!isMerge) {
       return new Pair<String, List<ChunkMetaData>>(null, null);
     }
     Pair<String, List<ChunkMetaData>> pair = new Pair<String, List<ChunkMetaData>>(
         mergeResource.getInsertFilePath(),
-        mergeResource.getInsertMetadatas(deviceId, measurementId, dataType));
+        mergeResource.getInsertMetadatas(deviceId, measurementId, dataType, context));
     return pair;
   }
 

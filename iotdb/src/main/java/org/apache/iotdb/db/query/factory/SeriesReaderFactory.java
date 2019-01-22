@@ -28,6 +28,7 @@ import org.apache.iotdb.db.engine.filenode.IntervalFileNode;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.querycontext.OverflowInsertFile;
 import org.apache.iotdb.db.engine.querycontext.OverflowSeriesDataSource;
+import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.reader.IReader;
 import org.apache.iotdb.db.query.reader.mem.MemChunkReaderWithFilter;
@@ -142,7 +143,8 @@ public class SeriesReaderFactory {
    */
   public IReader createSeriesReaderForMerge(IntervalFileNode intervalFileNode,
                                             OverflowSeriesDataSource overflowSeriesDataSource,
-                                            SingleSeriesExpression singleSeriesExpression)
+                                            SingleSeriesExpression singleSeriesExpression,
+                                            QueryContext context)
           throws IOException {
 
     logger.debug("Create seriesReaders for merge. SeriesFilter = {}. TsFilePath = {}",
@@ -153,7 +155,7 @@ public class SeriesReaderFactory {
 
     // Sequence reader
     IReader seriesInTsFileReader = createSealedTsFileReaderForMerge(intervalFileNode,
-            singleSeriesExpression);
+            singleSeriesExpression, context);
     priorityMergeReader.addReaderWithPriority(seriesInTsFileReader, 1);
 
     // UnSequence merge reader
@@ -165,7 +167,8 @@ public class SeriesReaderFactory {
   }
 
   private IReader createSealedTsFileReaderForMerge(IntervalFileNode fileNode,
-                                                   SingleSeriesExpression singleSeriesExpression)
+                                                   SingleSeriesExpression singleSeriesExpression,
+                                                   QueryContext context)
           throws IOException {
     TsFileSequenceReader tsFileSequenceReader = FileReaderManager.getInstance()
             .get(fileNode.getFilePath(), false);
@@ -174,14 +177,14 @@ public class SeriesReaderFactory {
     List<ChunkMetaData> metaDataList = metadataQuerier
             .getChunkMetaDataList(singleSeriesExpression.getSeriesPath());
 
-    List<Modification> modifications = QueryUtils.getPathModifications(fileNode.getModFile(),
+    List<Modification> modifications = context.getPathModifications(fileNode.getModFile(),
             singleSeriesExpression.getSeriesPath().getFullPath());
     QueryUtils.modifyChunkMetaData(metaDataList, modifications);
 
     FileSeriesReader seriesInTsFileReader = new FileSeriesReaderWithFilter(chunkLoader,
             metaDataList,
             singleSeriesExpression.getFilter());
-    return new SealedTsFilesReader(seriesInTsFileReader);
+    return new SealedTsFilesReader(seriesInTsFileReader, context);
   }
 
   private static class SeriesReaderFactoryHelper {

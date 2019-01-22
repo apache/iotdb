@@ -36,6 +36,7 @@ import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.version.VersionController;
+import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
@@ -166,7 +167,7 @@ public class OverflowResource {
   }
 
   public List<ChunkMetaData> getInsertMetadatas(String deviceId, String measurementId,
-                                                TSDataType dataType) {
+                                                TSDataType dataType, QueryContext context) {
     List<ChunkMetaData> chunkMetaDatas = new ArrayList<>();
     if (insertMetadatas.containsKey(deviceId)) {
       if (insertMetadatas.get(deviceId).containsKey(measurementId)) {
@@ -179,7 +180,7 @@ public class OverflowResource {
       }
     }
     try {
-      List<Modification> modifications = QueryUtils.getPathModifications(modificationFile,
+      List<Modification> modifications = context.getPathModifications(modificationFile,
               deviceId + IoTDBConstant.PATH_SEPARATOR + measurementId);
       QueryUtils.modifyChunkMetaData(chunkMetaDatas, modifications);
     } catch (IOException e) {

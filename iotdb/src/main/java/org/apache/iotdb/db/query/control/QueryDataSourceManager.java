@@ -21,6 +21,7 @@ package org.apache.iotdb.db.query.control;
 import org.apache.iotdb.db.engine.filenode.FileNodeManager;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
+import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 
@@ -32,11 +33,12 @@ public class QueryDataSourceManager {
 
   private static FileNodeManager fileNodeManager = FileNodeManager.getInstance();
 
-  public static QueryDataSource getQueryDataSource(long jobId, Path selectedPath)
+  public static QueryDataSource getQueryDataSource(long jobId, Path selectedPath,
+                                                   QueryContext context)
       throws FileNodeManagerException {
 
     SingleSeriesExpression singleSeriesExpression = new SingleSeriesExpression(selectedPath, null);
-    QueryDataSource queryDataSource = fileNodeManager.query(singleSeriesExpression);
+    QueryDataSource queryDataSource = fileNodeManager.query(singleSeriesExpression, context);
 
     // add used files to current thread request cached map
     OpenedFilePathsManager.getInstance()

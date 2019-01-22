@@ -26,6 +26,7 @@ import java.io.IOException;
 import java.util.List;
 
 import org.apache.iotdb.db.engine.version.SysTimeVersionController;
+import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.junit.After;
@@ -63,14 +64,15 @@ public class OverflowResourceTest {
   @Test
   public void testOverflowInsert() throws IOException {
     OverflowTestUtils.produceInsertData(support);
+    QueryContext context = new QueryContext();
     work.flush(OverflowTestUtils.getFileSchema(), support.getMemTabale(), null, "processorName");
     List<ChunkMetaData> chunkMetaDatas = work.getInsertMetadatas(OverflowTestUtils.deviceId1,
-        OverflowTestUtils.measurementId1, OverflowTestUtils.dataType2);
+        OverflowTestUtils.measurementId1, OverflowTestUtils.dataType2, context);
     assertEquals(0, chunkMetaDatas.size());
     work.appendMetadatas();
     chunkMetaDatas = work
         .getInsertMetadatas(OverflowTestUtils.deviceId1, OverflowTestUtils.measurementId1,
-            OverflowTestUtils.dataType1);
+            OverflowTestUtils.dataType1, context);
     assertEquals(1, chunkMetaDatas.size());
     ChunkMetaData chunkMetaData = chunkMetaDatas.get(0);
     assertEquals(OverflowTestUtils.dataType1, chunkMetaData.getTsDataType());
@@ -86,7 +88,7 @@ public class OverflowResourceTest {
     work = new OverflowResource(filePath, dataPath, SysTimeVersionController.INSTANCE);
     chunkMetaDatas = work
         .getInsertMetadatas(OverflowTestUtils.deviceId1, OverflowTestUtils.measurementId1,
-            OverflowTestUtils.dataType1);
+            OverflowTestUtils.dataType1, context);
     assertEquals(1, chunkMetaDatas.size());
     chunkMetaData = chunkMetaDatas.get(0);
     assertEquals(OverflowTestUtils.dataType1, chunkMetaData.getTsDataType());

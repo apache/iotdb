@@ -30,6 +30,7 @@ import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.MetadataArgsErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -96,7 +97,8 @@ public class DeletionFileNodeTest {
 
     SingleSeriesExpression expression = new SingleSeriesExpression(new Path(processorName,
             measurements[5]), null);
-    QueryDataSource dataSource = FileNodeManager.getInstance().query(expression);
+    QueryContext context = new QueryContext();
+    QueryDataSource dataSource = FileNodeManager.getInstance().query(expression, context);
     Iterator<TimeValuePair> timeValuePairs =
             dataSource.getSeqDataSource().getReadableChunk().getIterator();
     int count = 0;
@@ -173,7 +175,8 @@ public class DeletionFileNodeTest {
 
     SingleSeriesExpression expression = new SingleSeriesExpression(new Path(processorName,
             measurements[5]), null);
-    QueryDataSource dataSource = FileNodeManager.getInstance().query(expression);
+    QueryContext context = new QueryContext();
+    QueryDataSource dataSource = FileNodeManager.getInstance().query(expression, context);
     Iterator<TimeValuePair> timeValuePairs =
             dataSource.getOverflowSeriesDataSource().getReadableMemChunk().getIterator();
     int count = 0;

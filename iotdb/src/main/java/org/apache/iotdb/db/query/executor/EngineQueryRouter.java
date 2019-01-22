@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.PathErrorException;
+import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.OpenedFilePathsManager;
 import org.apache.iotdb.db.query.control.QueryTokenManager;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
@@ -59,6 +60,8 @@ public class EngineQueryRouter {
     QueryTokenManager.getInstance().setJobIdForCurrentRequestThread(jobId);
     OpenedFilePathsManager.getInstance().setJobIdForCurrentRequestThread(jobId);
 
+    QueryContext context = new QueryContext();
+
     if (queryExpression.hasQueryFilter()) {
       try {
         IExpression optimizedExpression = ExpressionOptimizer.getInstance()
@@ -69,12 +72,12 @@ public class EngineQueryRouter {
           EngineExecutorWithoutTimeGenerator engineExecutor =
               new EngineExecutorWithoutTimeGenerator(
                   jobId, queryExpression);
-          return engineExecutor.executeWithGlobalTimeFilter();
+          return engineExecutor.executeWithGlobalTimeFilter(context);
         } else {
           EngineExecutorWithTimeGenerator engineExecutor = new EngineExecutorWithTimeGenerator(
               jobId,
               queryExpression);
-          return engineExecutor.execute();
+          return engineExecutor.execute(context);
         }
 
       } catch (QueryFilterOptimizationException | PathErrorException e) {
@@ -85,7 +88,7 @@ public class EngineQueryRouter {
         EngineExecutorWithoutTimeGenerator engineExecutor = new EngineExecutorWithoutTimeGenerator(
             jobId,
             queryExpression);
-        return engineExecutor.executeWithoutFilter();
+        return engineExecutor.executeWithoutFilter(context);
       } catch (PathErrorException e) {
         throw new IOException(e);
       }

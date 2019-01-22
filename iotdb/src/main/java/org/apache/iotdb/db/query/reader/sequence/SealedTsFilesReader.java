@@ -28,6 +28,7 @@ import java.util.List;
 
 import org.apache.iotdb.db.engine.filenode.IntervalFileNode;
 import org.apache.iotdb.db.engine.modification.Modification;
+import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.reader.IReader;
 import org.apache.iotdb.db.utils.QueryUtils;
@@ -54,26 +55,32 @@ public class SealedTsFilesReader implements IReader {
   private Filter filter;
   private BatchData data;
   private boolean hasCachedData;
+  private QueryContext context;
 
-  public SealedTsFilesReader(Path seriesPath, List<IntervalFileNode> sealedTsFiles, Filter filter) {
-    this(seriesPath, sealedTsFiles);
+  public SealedTsFilesReader(Path seriesPath, List<IntervalFileNode> sealedTsFiles, Filter filter,
+                             QueryContext context) {
+    this(seriesPath, sealedTsFiles, context);
     this.filter = filter;
+
   }
 
   /**
    * init with seriesPath and sealedTsFiles.
    */
-  public SealedTsFilesReader(Path seriesPath, List<IntervalFileNode> sealedTsFiles) {
+  public SealedTsFilesReader(Path seriesPath, List<IntervalFileNode> sealedTsFiles,
+                             QueryContext context) {
     this.seriesPath = seriesPath;
     this.sealedTsFiles = sealedTsFiles;
     this.usedIntervalFileIndex = 0;
     this.seriesReader = null;
     this.hasCachedData = false;
+    this.context = context;
   }
 
-  public SealedTsFilesReader(FileSeriesReader seriesReader) {
+  public SealedTsFilesReader(FileSeriesReader seriesReader, QueryContext context) {
     this.seriesReader = seriesReader;
     sealedTsFiles = new ArrayList<>();
+    this.context = context;
   }
 
   @Override
@@ -107,7 +114,7 @@ public class SealedTsFilesReader implements IReader {
         if (seriesReader == null || !seriesReader.hasNextBatch()) {
           IntervalFileNode fileNode = sealedTsFiles.get(usedIntervalFileIndex++);
           if (singleTsFileSatisfied(fileNode)) {
-            initSingleTsFileReader(fileNode);
+            initSingleTsFileReader(fileNode, context);
           } else {
             continue;
           }
@@ -166,7 +173,8 @@ public class SealedTsFilesReader implements IReader {
     return true;
   }
 
-  private void initSingleTsFileReader(IntervalFileNode fileNode) throws IOException {
+  private void initSingleTsFileReader(IntervalFileNode fileNode, QueryContext context)
+          throws IOException {
 
     // to avoid too many opened files
     TsFileSequenceReader tsFileReader = FileReaderManager.getInstance()
@@ -175,7 +183,7 @@ public class SealedTsFilesReader implements IReader {
     MetadataQuerierByFileImpl metadataQuerier = new MetadataQuerierByFileImpl(tsFileReader);
     List<ChunkMetaData> metaDataList = metadataQuerier.getChunkMetaDataList(seriesPath);
 
-    List<Modification> pathModifications = QueryUtils.getPathModifications(fileNode.getModFile(),
+    List<Modification> pathModifications = context.getPathModifications(fileNode.getModFile(),
             seriesPath.getFullPath());
     if (pathModifications.size() > 0) {
       QueryUtils.modifyChunkMetaData(metaDataList, pathModifications);
