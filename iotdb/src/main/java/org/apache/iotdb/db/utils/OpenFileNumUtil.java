@@ -171,9 +171,7 @@ public class OpenFileNumUtil {
       BufferedReader in = new BufferedReader(new InputStreamReader(pro.getInputStream()));
       String line;
       int oldValue;
-      log.debug("Output result of {}:", command);
       while ((line = in.readLine()) != null) {
-        log.debug(line);
         String[] temp = line.split("\\s+");
         if (line.contains("" + pid) && temp.length > 8) {
           oldValue = resultMap.get(OpenFileNumStatistics.TOTAL_OPEN_FILE_NUM);
@@ -194,7 +192,6 @@ public class OpenFileNumUtil {
           }
         }
       }
-      log.debug("Output finished.");
       in.close();
       pro.destroy();
     } catch (Exception e) {

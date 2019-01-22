@@ -31,7 +31,7 @@
     <name>IoTDB Jdbc</name>
     <description>A jdbc driver for a time series database, IoTDB, which uses TsFile as its storage format on disk.</description>
     <properties>
-        <jdbc.test.skip>true</jdbc.test.skip>
+        <jdbc.test.skip>false</jdbc.test.skip>
         <jdbc.it.skip>${jdbc.test.skip}</jdbc.it.skip>
         <jdbc.ut.skip>${jdbc.test.skip}</jdbc.ut.skip>
     </properties>
