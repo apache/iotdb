@@ -2068,13 +2068,22 @@ public class FileNodeProcessor extends Processor implements IStatistic {
    * Similar to delete(), but only deletes data in BufferWrite.
    * Only used by WAL recovery.
    */
-  public void deleteBufferWrite(String deviceId, String measurementId, long timestamp) throws IOException {
+  public void deleteBufferWrite(String deviceId, String measurementId, long timestamp)
+          throws IOException {
     String fullPath = deviceId +
             IoTDBConstant.PATH_SEPARATOR + measurementId;
     long version = versionController.nextVersion();
     Deletion deletion = new Deletion(fullPath, version, timestamp);
 
-    deleteBufferWriteFiles(deviceId, deletion, updatedModFiles);
+    List<ModificationFile> updatedModFiles = new ArrayList<>();
+    try {
+      deleteBufferWriteFiles(deviceId, deletion, updatedModFiles);
+    } catch (IOException e) {
+      for (ModificationFile modificationFile : updatedModFiles) {
+        modificationFile.abort();
+      }
+      throw e;
+    }
     if (bufferWriteProcessor != null) {
       bufferWriteProcessor.delete(deviceId, measurementId, timestamp);
     }
@@ -2084,13 +2093,19 @@ public class FileNodeProcessor extends Processor implements IStatistic {
    * Similar to delete(), but only deletes data in Overflow.
    * Only used by WAL recovery.
    */
-  public void deleteOverflow(String deviceId, String measurementId, long timestamp) throws IOException {
-    String fullPath = deviceId +
-            IoTDBConstant.PATH_SEPARATOR + measurementId;
+  public void deleteOverflow(String deviceId, String measurementId, long timestamp)
+          throws IOException {
     long version = versionController.nextVersion();
-    Deletion deletion = new Deletion(fullPath, version, timestamp);
 
     OverflowProcessor overflowProcessor = getOverflowProcessor(getProcessorName());
-    overflowProcessor.delete(deviceId, measurementId, timestamp, version, updatedModFiles);
+    List<ModificationFile> updatedModFiles = new ArrayList<>();
+    try {
+      overflowProcessor.delete(deviceId, measurementId, timestamp, version, updatedModFiles);
+    } catch (IOException e) {
+      for (ModificationFile modificationFile : updatedModFiles) {
+        modificationFile.abort();
+      }
+      throw e;
+    }
   }
 }
