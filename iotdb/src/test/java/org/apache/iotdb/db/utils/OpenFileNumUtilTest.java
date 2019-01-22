@@ -65,14 +65,13 @@ public class OpenFileNumUtilTest {
     openFileNumUtil.setPid(testProcessID);
     String dataFilePath = OpenFileNumUtil.OpenFileNumStatistics.DATA_OPEN_FILE_NUM.getPath().get(0);
     String userDir = System.getProperty("user.dir");
-    currDir = userDir + File.separator + testProcessID + File.separator + dataFilePath;
+    currDir = userDir + File.separator + testProcessID;
+    testDataDirRoot = new File(currDir);
+    currDir = currDir + File.separator + dataFilePath;
     File testDataDir = new File(currDir);
-    testDataDirRoot = new File(userDir + File.separator + testProcessID);
-    if (!testDataDir.exists()) {
-      if (!testDataDir.isDirectory()) {
-        if (!testDataDir.mkdirs()) {
-          LOGGER.error("Create test file dir {} failed.", testDataDir.getPath());
-        }
+    if(!testDataDir.isDirectory()){
+      if (!testDataDir.mkdirs()) {
+        LOGGER.error("Create test file dir {} failed.", testDataDir.getPath());
       }
     }
     testFileName = TEST_FILE_PREFIX + testProcessID;
@@ -133,7 +132,7 @@ public class OpenFileNumUtilTest {
   public void testDataOpenFileNumWhenCreateFileWriter() {
     if (os.startsWith(MAC_OS_NAME) || os.startsWith(LINUX_OS_NAME)) {
       for (int i = 0; i < testFileNum; i++) {
-        fileList.add(new File(currDir + testFileName + i));
+        fileList.add(new File(currDir + File.separator + testFileName + i));
       }
       totalOpenFileNumBefore = openFileNumUtil
           .get(OpenFileNumUtil.OpenFileNumStatistics.DATA_OPEN_FILE_NUM);
@@ -147,16 +146,13 @@ public class OpenFileNumUtilTest {
         } else {
           try {
             boolean flag = file.createNewFile();
-            if (!flag) {
+            if(flag) {
+              fileWriterList.add(new FileWriter(file));
+            }else{
               LOGGER.error(
                   "create test file {} failed when execute testTotalOpenFileNumWhenCreateFileWriter().",
                   file.getPath());
             }
-          } catch (IOException e) {
-            LOGGER.error(e.getMessage());
-          }
-          try {
-            fileWriterList.add(new FileWriter(file));
           } catch (IOException e) {
             LOGGER.error(e.getMessage());
           }
