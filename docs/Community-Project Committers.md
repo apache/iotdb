@@ -1,4 +1,4 @@
-# Current Committers
+# Project Committers
 
 |  Name	       |     Organization     |
 | :-----------   |  -------------:      |
