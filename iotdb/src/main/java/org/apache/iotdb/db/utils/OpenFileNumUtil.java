@@ -160,7 +160,9 @@ public class OpenFileNumUtil {
       BufferedReader in = new BufferedReader(new InputStreamReader(pro.getInputStream()));
       String line;
       int oldValue;
+      System.out.println("Output result of " + command);
       while ((line = in.readLine()) != null) {
+        System.out.println(line);
         String[] temp = line.split("\\s+");
         if (line.contains("" + pid) && temp.length > 8) {
           oldValue = resultMap.get(OpenFileNumStatistics.TOTAL_OPEN_FILE_NUM);
