@@ -147,6 +147,7 @@ public class OpenFileNumUtilTest {
           try {
             boolean flag = file.createNewFile();
             if(flag) {
+              LOGGER.debug("Create a file {} successfully", file);
               fileWriterList.add(new FileWriter(file));
             }else{
               LOGGER.error(
@@ -171,6 +172,7 @@ public class OpenFileNumUtilTest {
 
   @Test
   public void testDataOpenFileNumWhenFileWriterWriting() {
+    LOGGER.debug("testDataOpenFileNumWhenFileWriterWriting...");
     if (os.startsWith(MAC_OS_NAME) || os.startsWith(LINUX_OS_NAME)) {
       for (int i = 0; i < testFileNum; i++) {
         fileList.add(new File(currDir + testFileName + i));
@@ -219,6 +221,7 @@ public class OpenFileNumUtilTest {
 
   @Test
   public void testDataOpenFileNumWhenFileWriterClose() {
+    LOGGER.debug("testDataOpenFileNumWhenFileWriterClose...");
     if (os.startsWith(MAC_OS_NAME) || os.startsWith(LINUX_OS_NAME)) {
       for (int i = 0; i < testFileNum; i++) {
         fileList.add(new File(currDir + testFileName + i));
