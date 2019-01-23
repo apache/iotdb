@@ -30,39 +30,18 @@ public class EngineLeafNode implements Node {
 
   private BatchData data = null;
 
-  private boolean gotData = false;
-
   public EngineLeafNode(IReader reader) {
     this.reader = reader;
   }
 
   @Override
   public boolean hasNext() throws IOException {
-
     return reader.hasNext();
-
-    // if (gotData) {
-    // data.next();
-    // gotData = false;
-    // }
-    //
-    // if (data == null || !data.hasNext()) {
-    // if (reader.hasNextBatch())
-    // data = reader.nextBatch();
-    // else
-    // return false;
-    // }
-    //
-    // return data.hasNext();
   }
 
   @Override
   public long next() throws IOException {
     return reader.next().getTimestamp();
-
-    // long time = data.currentTime();
-    // gotData = true;
-    // return time;
   }
 
   /**
