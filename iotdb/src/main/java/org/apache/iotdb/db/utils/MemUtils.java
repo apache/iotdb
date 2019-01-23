@@ -50,19 +50,19 @@ public class MemUtils {
   private static long getPointSize(DataPoint dataPoint) {
     switch (dataPoint.getType()) {
       case INT32:
-        return 8 + 4;
+        return 8 + 4L;
       case INT64:
-        return 8 + 8;
+        return 8 + 8L;
       case FLOAT:
-        return 8 + 4;
+        return 8 + 4L;
       case DOUBLE:
-        return 8 + 8;
+        return 8 + 8L;
       case BOOLEAN:
-        return 8 + 1;
+        return 8 + 1L;
       case TEXT:
         return 8 + dataPoint.getValue().toString().length() * 2;
       default:
-        return 8 + 8;
+        return 8 + 8L;
     }
   }
 
@@ -94,7 +94,7 @@ public class MemUtils {
    */
   public static long getStringMem(String str) {
     // wide char (2 bytes each) and 64B String overhead
-    return str.length() * 2 + 64;
+    return str.length() * 2 + 64L;
   }
 
   /**

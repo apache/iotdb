@@ -77,7 +77,6 @@ public class Client extends AbstractClient {
    */
   public static void main(String[] args) throws ClassNotFoundException {
     Class.forName(Config.JDBC_DRIVER_NAME);
-    IoTDBConnection connection = null;
     Options options = createOptions();
     HelpFormatter hf = new HelpFormatter();
     hf.setWidth(MAX_HELP_CONSOLE_WIDTH);
@@ -121,82 +120,54 @@ public class Client extends AbstractClient {
       return;
     }
 
-    ConsoleReader reader = null;
-    try {
-      reader = new ConsoleReader();
+    try(ConsoleReader reader = new ConsoleReader()) {
       reader.setExpandEvents(false);
-      // for (Completer completer : getCommandCompleter()) {
-      // reader.addCompleter(completer);
-      // }
-      // ((CandidateListCompletionHandler) reader.getCompletionHandler())
-      // .setPrintSpaceAfterFullCompletion(false);
       String s;
-      try {
-        host = checkRequiredArg(HOST_ARGS, HOST_NAME, commandLine, false, host);
-        port = checkRequiredArg(PORT_ARGS, PORT_NAME, commandLine, false, port);
-        username = checkRequiredArg(USERNAME_ARGS, USERNAME_NAME, commandLine, true, null);
 
-        password = commandLine.getOptionValue(PASSWORD_ARGS);
-        if (password == null) {
-          password = reader.readLine("please input your password:", '\0');
-        }
-        try {
-          connection = (IoTDBConnection) DriverManager
-              .getConnection(Config.IOTDB_URL_PREFIX + host + ":" + port + "/", username, password);
-          properties = connection.getServerProperties();
-          AGGREGRATE_TIME_LIST.addAll(properties.getSupportedTimeAggregationOperations());
-        } catch (SQLException e) {
-          System.out.println(String.format("%s> %s. Host is %s, port is %s.", IOTDB_CLI_PREFIX,
-              e.getMessage(), host, port));
-          return;
-        }
+      host = checkRequiredArg(HOST_ARGS, HOST_NAME, commandLine, false, host);
+      port = checkRequiredArg(PORT_ARGS, PORT_NAME, commandLine, false, port);
+      username = checkRequiredArg(USERNAME_ARGS, USERNAME_NAME, commandLine, true, null);
 
-      } catch (ArgsErrorException e) {
-        // System.out.println(TSFILEDB_CLI_PREFIX + ": " + e.getMessage());
-        return;
+      password = commandLine.getOptionValue(PASSWORD_ARGS);
+      if (password == null) {
+        password = reader.readLine("please input your password:", '\0');
       }
-
-      displayLogo(properties.getVersion());
-      System.out.println(IOTDB_CLI_PREFIX + "> login successfully");
-
-      while (true) {
-        s = reader.readLine(IOTDB_CLI_PREFIX + "> ", null);
-        if (s == null) {
-          continue;
-        } else {
-          String[] cmds = s.trim().split(";");
-          for (int i = 0; i < cmds.length; i++) {
-            String cmd = cmds[i];
-            if (cmd != null && !cmd.trim().equals("")) {
-              OperationResult result = handleInputInputCmd(cmd, connection);
-              switch (result) {
-                case RETURN_OPER:
-                  return;
-                case CONTINUE_OPER:
-                  continue;
-                default:
-                  break;
+      try (IoTDBConnection connection = (IoTDBConnection) DriverManager.getConnection(Config.IOTDB_URL_PREFIX + host + ":" + port + "/", username, password)){
+        properties = connection.getServerProperties();
+        AGGREGRATE_TIME_LIST.addAll(properties.getSupportedTimeAggregationOperations());
+        displayLogo(properties.getVersion());
+        System.out.println(IOTDB_CLI_PREFIX + "> login successfully");
+        while (true) {
+          s = reader.readLine(IOTDB_CLI_PREFIX + "> ", null);
+          if (s != null) {
+            String[] cmds = s.trim().split(";");
+            for (int i = 0; i < cmds.length; i++) {
+              String cmd = cmds[i];
+              if (cmd != null && !cmd.trim().equals("")) {
+                OperationResult result = handleInputCmd(cmd, connection);
+                switch (result) {
+                  case RETURN_OPER:
+                    return;
+                  case CONTINUE_OPER:
+                    continue;
+                  default:
+                    break;
+                }
               }
             }
           }
         }
+      } catch (SQLException e) {
+        System.out.println(String.format("%s> %s Host is %s, port is %s.", IOTDB_CLI_PREFIX, e.getMessage(), host, port));
       }
-    } catch (Exception e) {
+    } catch(ArgsErrorException e){
+      System.out.println(IOTDB_CLI_PREFIX + "> input params error because" + e.getMessage());
+    }catch (Exception e) {
       System.out.println(IOTDB_CLI_PREFIX + "> exit client with error " + e.getMessage());
-    } finally {
-      if (reader != null) {
-        reader.close();
-      }
-      if (connection != null) {
-        try {
-          connection.close();
-        } catch (SQLException e) {
-          e.printStackTrace();
-        }
-      }
     }
   }
 
+  @Deprecated
   private static Completer[] getCommandCompleter() {
     List<String> candidateStrings = new ArrayList<>();
     for (String s : FUNCTION_NAME_LIST) {
@@ -296,7 +267,7 @@ public class Client extends AbstractClient {
           final List<CharSequence> candidates) {
         int result = super.complete(buffer, cursor, candidates);
         if (candidates.isEmpty() && cursor > 1) {
-          int equalsIdx = buffer.indexOf("=");
+          int equalsIdx = buffer.indexOf('=');
           if (equalsIdx != -1) {
             String confName = buffer.substring(0, equalsIdx);
             String value = buffer.substring(equalsIdx + 1).toUpperCase();

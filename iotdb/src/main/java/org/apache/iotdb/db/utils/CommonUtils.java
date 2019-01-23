@@ -26,7 +26,7 @@ import sun.nio.ch.DirectBuffer;
 
 public class CommonUtils {
 
-  public static int javaVersion = CommonUtils.getJdkVersion();
+  public static final int javaVersion = CommonUtils.getJdkVersion();
 
   /**
    * get JDK version.
