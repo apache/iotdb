@@ -110,7 +110,7 @@ public class QueryTokenManager {
   public void beginQueryOfGivenQueryPaths(long jobId, List<Path> queryPaths)
       throws FileNodeManagerException {
     Set<String> deviceIdSet = new HashSet<>();
-    queryPaths.forEach((path) -> deviceIdSet.add(path.getDevice()));
+    queryPaths.forEach(path -> deviceIdSet.add(path.getDevice()));
 
     for (String deviceId : deviceIdSet) {
       putQueryTokenForCurrentRequestThread(jobId, deviceId,
@@ -168,7 +168,6 @@ public class QueryTokenManager {
   }
 
   private static class QueryTokenManagerHelper {
-
-    public static QueryTokenManager INSTANCE = new QueryTokenManager();
+    private static final QueryTokenManager INSTANCE = new QueryTokenManager();
   }
 }

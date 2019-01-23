@@ -28,21 +28,19 @@ import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.db.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
+/**
+ * TODO implement this class as TsFile DataSetWithoutTimeGenerator
+ */
 public class EngineDataSetWithoutTimeGenerator extends QueryDataSet {
 
   private List<IReader> readers;
 
   private TimeValuePair[] cacheTimeValueList;
-
-  private List<BatchData> batchDataList;
-
-  private List<Boolean> hasDataRemaining;
 
   private PriorityQueue<Long> timeHeap;
 
@@ -80,8 +78,8 @@ public class EngineDataSetWithoutTimeGenerator extends QueryDataSet {
   }
 
   @Override
-  public boolean hasNext() throws IOException {
-    return timeHeap.size() > 0;
+  public boolean hasNext() {
+    return !timeHeap.isEmpty();
   }
 
   @Override
