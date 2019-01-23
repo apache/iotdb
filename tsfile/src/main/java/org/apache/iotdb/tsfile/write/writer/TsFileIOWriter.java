@@ -206,8 +206,8 @@ public class TsFileIOWriter {
    */
   public void endFile(FileSchema schema) throws IOException {
 
-    // serialize the Separator of MetaData and ChunkGroups
-    ReadWriteIOUtils.write(MetaMarker.Separator, out.wrapAsStream());
+    // serialize the SEPARATOR of MetaData and ChunkGroups
+    ReadWriteIOUtils.write(MetaMarker.SEPARATOR, out.wrapAsStream());
 
     // get all measurementSchema of this TsFile
     Map<String, MeasurementSchema> schemaDescriptors = schema.getAllMeasurementSchema();
