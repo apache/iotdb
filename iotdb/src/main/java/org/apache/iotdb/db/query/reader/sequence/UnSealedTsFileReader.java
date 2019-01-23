@@ -37,7 +37,7 @@ import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderWithoutFilter;
 public class UnSealedTsFileReader implements IReader {
 
   protected Path seriesPath;
-  private FileSeriesReader unSealedTsFileReader;
+  private FileSeriesReader unSealedReader;
   private BatchData data;
 
   /**
@@ -54,10 +54,10 @@ public class UnSealedTsFileReader implements IReader {
     ChunkLoader chunkLoader = new ChunkLoaderImpl(unClosedTsFileReader);
 
     if (filter == null) {
-      unSealedTsFileReader = new FileSeriesReaderWithoutFilter(chunkLoader,
+      unSealedReader = new FileSeriesReaderWithoutFilter(chunkLoader,
           unsealedTsFile.getChunkMetaDataList());
     } else {
-      unSealedTsFileReader = new FileSeriesReaderWithFilter(chunkLoader,
+      unSealedReader = new FileSeriesReaderWithFilter(chunkLoader,
           unsealedTsFile.getChunkMetaDataList(),
           filter);
     }
@@ -67,10 +67,10 @@ public class UnSealedTsFileReader implements IReader {
   @Override
   public boolean hasNext() throws IOException {
     if (data == null || !data.hasNext()) {
-      if (!unSealedTsFileReader.hasNextBatch()) {
+      if (!unSealedReader.hasNextBatch()) {
         return false;
       }
-      data = unSealedTsFileReader.nextBatch();
+      data = unSealedReader.nextBatch();
     }
 
     return data.hasNext();
@@ -90,8 +90,8 @@ public class UnSealedTsFileReader implements IReader {
 
   @Override
   public void close() throws IOException {
-    if (unSealedTsFileReader != null) {
-      unSealedTsFileReader.close();
+    if (unSealedReader != null) {
+      unSealedReader.close();
     }
   }
 
