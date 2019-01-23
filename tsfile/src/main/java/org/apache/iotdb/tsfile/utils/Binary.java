@@ -84,10 +84,7 @@ public class Binary implements Comparable<Binary>, Serializable {
       return false;
     }
 
-    if (compareTo((Binary) other) == 0) {
-      return true;
-    }
-    return false;
+    return compareTo((Binary) other) == 0;
   }
 
   @Override

@@ -84,17 +84,17 @@ public class TsFileIOWriterTest {
     Assert.assertEquals(TSFileConfig.MAGIC_STRING, reader.readTailMagic());
 
     // chunk header
-    Assert.assertEquals(MetaMarker.ChunkHeader, reader.readMarker());
+    Assert.assertEquals(MetaMarker.CHUNK_HEADER, reader.readMarker());
     ChunkHeader header = reader.readChunkHeader();
     Assert.assertEquals(TimeSeriesMetadataTest.measurementUID, header.getMeasurementID());
 
     // chunk group footer
-    Assert.assertEquals(MetaMarker.ChunkGroupFooter, reader.readMarker());
+    Assert.assertEquals(MetaMarker.CHUNK_GROUP_FOOTER, reader.readMarker());
     ChunkGroupFooter footer = reader.readChunkGroupFooter();
     Assert.assertEquals(deviceId, footer.getDeviceID());
 
     // separator
-    Assert.assertEquals(MetaMarker.Separator, reader.readMarker());
+    Assert.assertEquals(MetaMarker.SEPARATOR, reader.readMarker());
 
     // FileMetaData
     TsFileMetaData metaData = reader.readFileMetadata();

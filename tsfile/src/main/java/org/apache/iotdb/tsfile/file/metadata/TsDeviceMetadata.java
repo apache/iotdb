@@ -51,6 +51,7 @@ public class TsDeviceMetadata {
   private List<ChunkGroupMetaData> chunkGroupMetadataList = new ArrayList<>();
 
   public TsDeviceMetadata() {
+    // allowed to clair an empty TsDeviceMetadata whose fields will be assigned later.
   }
 
   /**
@@ -84,7 +85,7 @@ public class TsDeviceMetadata {
    * @param buffer -buffer to deserialize
    * @return -device meta data
    */
-  public static TsDeviceMetadata deserializeFrom(ByteBuffer buffer) throws IOException {
+  public static TsDeviceMetadata deserializeFrom(ByteBuffer buffer) {
     TsDeviceMetadata deviceMetadata = new TsDeviceMetadata();
 
     deviceMetadata.startTime = ReadWriteIOUtils.readLong(buffer);
