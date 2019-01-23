@@ -98,9 +98,14 @@ public abstract class TsPrimitiveType implements Serializable {
         .equals(getValue()));
   }
 
+  @Override
+  public int hashCode(){
+    return getValue().hashCode();
+  }
+
   public static class TsBoolean extends TsPrimitiveType {
 
-    public boolean value;
+    private boolean value;
 
     public TsBoolean(boolean value) {
       this.value = value;
@@ -134,7 +139,7 @@ public abstract class TsPrimitiveType implements Serializable {
 
   public static class TsInt extends TsPrimitiveType {
 
-    public int value;
+    private int value;
 
     public TsInt(int value) {
       this.value = value;
@@ -168,7 +173,7 @@ public abstract class TsPrimitiveType implements Serializable {
 
   public static class TsLong extends TsPrimitiveType {
 
-    public long value;
+    private long value;
 
     public TsLong(long value) {
       this.value = value;
@@ -202,7 +207,7 @@ public abstract class TsPrimitiveType implements Serializable {
 
   public static class TsFloat extends TsPrimitiveType {
 
-    public float value;
+    private float value;
 
     public TsFloat(float value) {
       this.value = value;
@@ -236,7 +241,7 @@ public abstract class TsPrimitiveType implements Serializable {
 
   public static class TsDouble extends TsPrimitiveType {
 
-    public double value;
+    private double value;
 
     public TsDouble(double value) {
       this.value = value;
@@ -270,7 +275,7 @@ public abstract class TsPrimitiveType implements Serializable {
 
   public static class TsBinary extends TsPrimitiveType {
 
-    public Binary value;
+    private Binary value;
 
     public TsBinary(Binary value) {
       this.value = value;
