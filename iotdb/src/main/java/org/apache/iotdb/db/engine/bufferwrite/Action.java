@@ -22,7 +22,6 @@ package org.apache.iotdb.db.engine.bufferwrite;
  * Action interface.
  */
 
-@FunctionalInterface
 public interface Action {
 
   void act() throws Exception;
