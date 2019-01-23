@@ -491,7 +491,11 @@ public class FileSenderImpl implements FileSender {
       if (new File(snapshotPath).exists() && new File(snapshotPath).list().length != 0) {
         // it means that the last task of postback does not succeed! Clear the files and
         // start to postback again
-        PostbackUtils.deleteFile(new File(snapshotPath));
+        try {
+          PostbackUtils.deleteFile(new File(snapshotPath));
+        } catch (IOException e) {
+          e.printStackTrace();
+        }
       }
     }
 
@@ -572,7 +576,11 @@ public class FileSenderImpl implements FileSender {
       }
     }
     for (String snapshotPath : config.snapshotPaths) {
-      PostbackUtils.deleteFile(new File(snapshotPath));
+      try {
+        PostbackUtils.deleteFile(new File(snapshotPath));
+      } catch (IOException e) {
+        e.printStackTrace();
+      }
     }
     try {
       clientOfServer.afterReceiving();

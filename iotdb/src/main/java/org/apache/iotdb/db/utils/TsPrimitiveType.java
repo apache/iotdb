@@ -306,4 +306,15 @@ public abstract class TsPrimitiveType implements Serializable {
       return TSDataType.TEXT;
     }
   }
+
+  public static void main(String[] args){
+    TsPrimitiveType type1 = new TsBoolean(false);
+    TsPrimitiveType type2 = new TsBoolean(true);
+    TsPrimitiveType type3 = new TsBoolean(false);
+    TsPrimitiveType type4 = new TsDouble(1);
+
+    System.out.println(type1.equals(type2));
+    System.out.println(type1.equals(type3));
+    System.out.println(type1.equals(type4));
+  }
 }
