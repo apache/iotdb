@@ -1,6 +1,4 @@
 /**
- * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
- *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -11,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.iotdb.db.writelog;
 
@@ -75,41 +74,51 @@ public class PerformanceTest {
       return;
     }
     int[] batchSizes = new int[]{100, 500, 1000, 5000, 10000};
+    long[] forceCycle = new long[]{10, 0};
     int oldBatchSize = config.flushWalThreshold;
+    long oldForceCycle = config.forceWalPeriodInMs;
     for (int j = 0; j < batchSizes.length; j++) {
-      config.flushWalThreshold = batchSizes[j];
-      File tempRestore = new File("testtemp", "restore");
-      File tempProcessorStore = new File("testtemp", "processorStore");
-      tempRestore.getParentFile().mkdirs();
-      tempRestore.createNewFile();
-      tempProcessorStore.createNewFile();
+      for (int k = 0; k < forceCycle.length; k++) {
+        config.flushWalThreshold = batchSizes[j];
+        config.forceWalPeriodInMs = forceCycle[k];
+        File tempRestore = new File("testtemp", "restore");
+        File tempProcessorStore = new File("testtemp", "processorStore");
+        tempRestore.getParentFile().mkdirs();
+        tempRestore.createNewFile();
+        tempProcessorStore.createNewFile();
 
-      WriteLogNode logNode = new ExclusiveWriteLogNode("root.testLogNode", tempRestore.getPath(),
-          tempProcessorStore.getPath());
+        WriteLogNode logNode = new ExclusiveWriteLogNode("root.testLogNode",
+            tempRestore.getPath(),
+            tempProcessorStore.getPath());
 
-      long time = System.currentTimeMillis();
-      for (int i = 0; i < 1000000; i++) {
-        InsertPlan bwInsertPlan = new InsertPlan(1, "logTestDevice", 100,
-            Arrays.asList("s1", "s2", "s3", "s4"),
-            Arrays.asList("1.0", "15", "str", "false"));
-        UpdatePlan updatePlan = new UpdatePlan(0, 100, "2.0", new Path("root.logTestDevice.s1"));
-        DeletePlan deletePlan = new DeletePlan(50, new Path("root.logTestDevice.s1"));
+        long time = System.currentTimeMillis();
+        for (int i = 0; i < 1000000; i++) {
+          InsertPlan bwInsertPlan = new InsertPlan(1, "logTestDevice", 100,
+              Arrays.asList("s1", "s2", "s3", "s4"),
+              Arrays.asList("1.0", "15", "str", "false"));
+          UpdatePlan updatePlan = new UpdatePlan(0, 100, "2.0",
+              new Path("root.logTestDevice.s1"));
+          DeletePlan deletePlan = new DeletePlan(50,
+              new Path("root.logTestDevice.s1"));
 
-        logNode.write(bwInsertPlan);
-        logNode.write(updatePlan);
-        logNode.write(deletePlan);
+          logNode.write(bwInsertPlan);
+          logNode.write(updatePlan);
+          logNode.write(deletePlan);
+        }
+        logNode.forceSync();
+        System.out.println("forceWalPeriodInMs = " + config.forceWalPeriodInMs);
+        System.out.println(
+            3000000 + " logs use " + (System.currentTimeMillis() - time) + " ms at batch size "
+                + config.flushWalThreshold);
+
+        logNode.delete();
+        tempRestore.delete();
+        tempProcessorStore.delete();
+        tempRestore.getParentFile().delete();
       }
-      logNode.forceSync();
-      System.out.println(
-          3000000 + " logs use " + (System.currentTimeMillis() - time) + " ms at batch size "
-              + batchSizes[j]);
-
-      logNode.delete();
-      tempRestore.delete();
-      tempProcessorStore.delete();
-      tempRestore.getParentFile().delete();
     }
     config.flushWalThreshold = oldBatchSize;
+    config.forceWalPeriodInMs = oldForceCycle;
   }
 
   @Test
@@ -130,23 +139,28 @@ public class PerformanceTest {
       MManager.getInstance().setStorageLevelToMTree("root.logTestDevice");
     } catch (PathErrorException ignored) {
     }
-    MManager.getInstance().addPathToMTree("root.logTestDevice.s1", TSDataType.DOUBLE.name(),
+    MManager.getInstance().addPathToMTree("root.logTestDevice.s1",
+        TSDataType.DOUBLE.name(),
         TSEncoding.PLAIN.name(), new String[]{});
     MManager.getInstance()
-        .addPathToMTree("root.logTestDevice.s2", TSDataType.INT32.name(), TSEncoding.PLAIN.name(),
+        .addPathToMTree("root.logTestDevice.s2", TSDataType.INT32.name(),
+            TSEncoding.PLAIN.name(),
             new String[]{});
     MManager.getInstance()
-        .addPathToMTree("root.logTestDevice.s3", TSDataType.TEXT.name(), TSEncoding.PLAIN.name(),
+        .addPathToMTree("root.logTestDevice.s3", TSDataType.TEXT.name(),
+            TSEncoding.PLAIN.name(),
             new String[]{});
     MManager.getInstance().addPathToMTree("root.logTestDevice.s4", TSDataType.BOOLEAN.name(),
         TSEncoding.PLAIN.name(), new String[]{});
-    WriteLogNode logNode = new ExclusiveWriteLogNode("root.logTestDevice", tempRestore.getPath(),
+    WriteLogNode logNode = new ExclusiveWriteLogNode("root.logTestDevice",
+        tempRestore.getPath(),
         tempProcessorStore.getPath());
 
     for (int i = 0; i < 1000000; i++) {
       InsertPlan bwInsertPlan = new InsertPlan(1, "root.logTestDevice", 100,
           Arrays.asList("s1", "s2", "s3", "s4"), Arrays.asList("1.0", "15", "str", "false"));
-      UpdatePlan updatePlan = new UpdatePlan(0, 100, "2.0", new Path("root.logTestDevice.s1"));
+      UpdatePlan updatePlan = new UpdatePlan(0, 100, "2.0",
+          new Path("root.logTestDevice.s1"));
       DeletePlan deletePlan = new DeletePlan(50, new Path("root.logTestDevice.s1"));
 
       logNode.write(bwInsertPlan);
@@ -180,7 +194,8 @@ public class PerformanceTest {
     InsertPlan bwInsertPlan = new InsertPlan(1, "root.logTestDevice", 100,
         Arrays.asList("s1", "s2", "s3", "s4"),
         Arrays.asList("1.0", "15", "str", "false"));
-    UpdatePlan updatePlan = new UpdatePlan(0, 100, "2.0", new Path("root.logTestDevice.s1"));
+    UpdatePlan updatePlan = new UpdatePlan(0, 100, "2.0",
+        new Path("root.logTestDevice.s1"));
     for (int i = 0; i < 20; i++) {
       updatePlan.addInterval(new Pair<Long, Long>(200l, 300l));
     }
@@ -204,7 +219,8 @@ public class PerformanceTest {
 
   @Test
   public void SQLEncodingComparisonTest() throws WALOverSizedException {
-    String sql = "INSERT INTO root.logTestDevice(time,s1,s2,s3,s4) VALUES (100,1.0,15,\"str\",false)";
+    String sql = "INSERT INTO root.logTestDevice(time,s1,s2,s3,s4) "
+        + "VALUES (100,1.0,15,\"str\",false)";
     InsertPlan bwInsertPlan = new InsertPlan(1, "root.logTestDevice", 100,
         Arrays.asList("s1", "s2", "s3", "s4"),
         Arrays.asList("1.0", "15", "str", "false"));

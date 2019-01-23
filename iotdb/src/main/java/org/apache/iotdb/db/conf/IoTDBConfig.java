@@ -1,6 +1,4 @@
 /**
- * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
- *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -11,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.iotdb.db.conf;
 
@@ -52,22 +51,32 @@ public class IoTDBConfig {
   public int flushWalThreshold = 10000;
 
   /**
-   * The cycle when write ahead logs are periodically refreshed to disk(in milliseconds).
-   * It is possible to lose at most flush_wal_period_in_ms ms operations.
+   * The cycle when write ahead logs are periodically refreshed to disk(in milliseconds). It is
+   * possible to lose at most flush_wal_period_in_ms ms operations.
    */
   public long flushWalPeriodInMs = 10000;
+
+  /**
+   * The cycle when write ahead log is periodically forced to be written to disk(in milliseconds) If
+   * set this parameter to 0 it means call outputStream.force(true) after every each write
+   */
+  public long forceWalPeriodInMs = 10;
+
   /**
    * Data directory.
    */
   public String dataDir = null;
+
   /**
    * System directory.
    */
   public String sysDir = null;
+
   /**
    * Wal directory.
    */
   public String walDir = null;
+
   /**
    * Data directory of Overflow data.
    */
@@ -110,14 +119,13 @@ public class IoTDBConfig {
   public String indexFileDir = "index";
 
   /**
-   * Temporary directory for temporary files of read (External Sort).
-   * TODO: unused field
+   * Temporary directory for temporary files of read (External Sort). TODO: unused field
    */
   public String readTmpFileDir = "readTmp";
 
   /**
-   * The maximum concurrent thread number for merging overflow.
-   * When the value <=0 or > CPU core number, use the CPU core number.
+   * The maximum concurrent thread number for merging overflow. When the value <=0 or > CPU core
+   * number, use the CPU core number.
    */
   public int mergeConcurrentThreads = Runtime.getRuntime().availableProcessors();
 
@@ -149,8 +157,7 @@ public class IoTDBConfig {
 
   /**
    * When set true, start timed flush and merge service. Else, stop timed flush and merge service.
-   * The default value is true.
-   * TODO: 'timed' better explains this than 'timing'.
+   * The default value is true. TODO: 'timed' better explains this than 'timing'.
    */
   public boolean enableTimingCloseAndMerge = true;
 
@@ -161,7 +168,8 @@ public class IoTDBConfig {
 
   public ZoneId zoneID = ZoneId.systemDefault();
   /**
-   * BufferWriteProcessor and OverflowProcessor will immediately flush if this threshold is reached.
+   * BufferWriteProcessor and OverflowProcessor will immediately flush if this threshold is
+   * reached.
    */
   public long memThresholdWarning = (long) (0.5 * Runtime.getRuntime().maxMemory());
   /**
@@ -175,8 +183,8 @@ public class IoTDBConfig {
   public long memMonitorInterval = 1000;
   /**
    * Decide how to control memory usage of inserting data. 0 is RecordMemController, which sums the
-   * size of each record (tuple). 1 is JVMMemController, which uses the JVM heap memory as
-   * the memory usage indicator.
+   * size of each record (tuple). 1 is JVMMemController, which uses the JVM heap memory as the
+   * memory usage indicator.
    */
   public int memControllerType = 1;
   /**
@@ -200,8 +208,8 @@ public class IoTDBConfig {
    */
   public boolean enableMemMonitor = false;
   /**
-   * When set to true, small flushes will be triggered periodically even if the memory threshold
-   * is not exceeded.
+   * When set to true, small flushes will be triggered periodically even if the memory threshold is
+   * not exceeded.
    */
   public boolean enableSmallFlush = false;
   /**
@@ -209,8 +217,8 @@ public class IoTDBConfig {
    */
   public long smallFlushInterval = 60 * 1000;
   /**
-   * The statMonitor writes statistics info into IoTDB every backLoopPeriodSec secs.
-   * The default value is 5s.
+   * The statMonitor writes statistics info into IoTDB every backLoopPeriodSec secs. The default
+   * value is 5s.
    */
   public int backLoopPeriodSec = 5;
   /**
@@ -222,8 +230,8 @@ public class IoTDBConfig {
    */
   public int statMonitorDetectFreqSec = 60 * 10;
   /**
-   * Set the maximum time to keep monitor statistics information in IoTDB.
-   * The default value is 600s.
+   * Set the maximum time to keep monitor statistics information in IoTDB. The default value is
+   * 600s.
    */
   public int statMonitorRetainIntervalSec = 60 * 10;
   /**
@@ -236,8 +244,8 @@ public class IoTDBConfig {
    */
   public int mManagerCacheSize = 400000;
   /**
-   * The maximum size of a single log in byte. If a log exceeds this size,
-   * it cannot be written to the WAL file and an exception is thrown.
+   * The maximum size of a single log in byte. If a log exceeds this size, it cannot be written to
+   * the WAL file and an exception is thrown.
    */
   public int maxLogEntrySize = 4 * 1024 * 1024;
   /**
@@ -253,9 +261,9 @@ public class IoTDBConfig {
    */
   public String languageVersion = "EN";
   /**
-   * Choose a postBack strategy of merging historical data:
-   * 1. It's more likely to update historical data, choose "true".
-   * 2. It's more likely not to update historical data or you don't know exactly, choose "false".
+   * Choose a postBack strategy of merging historical data: 1. It's more likely to update historical
+   * data, choose "true". 2. It's more likely not to update historical data or you don't know
+   * exactly, choose "false".
    */
   public boolean update_historical_data_possibility = false;
   public String ipWhiteList = "0.0.0.0/0";

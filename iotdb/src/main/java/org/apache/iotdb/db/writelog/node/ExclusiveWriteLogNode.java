@@ -1,6 +1,4 @@
 /**
- * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
- *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -11,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.iotdb.db.writelog.node;
 
@@ -64,6 +63,8 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
   private List<byte[]> logCache = new ArrayList<>(config.flushWalThreshold);
 
   private ReadWriteLock lock = new ReentrantReadWriteLock();
+
+  private ReadWriteLock forceLock = new ReentrantReadWriteLock();
 
   /**
    * constructor of ExclusiveWriteLogNode.
@@ -122,19 +123,27 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
   @Override
   public void close() throws IOException {
     sync();
+    forceWal();
     lockForOther();
+    lockForForceOther();
     try {
       this.currentFileWriter.close();
       logger.debug("Log node {} closed successfully", identifier);
     } catch (IOException e) {
       logger.error("Cannot close log node {} because {}", identifier, e.getMessage());
     }
+    unlockForForceOther();
     unlockForOther();
   }
 
   @Override
   public void forceSync() throws IOException {
     sync();
+  }
+
+  @Override
+  public void force() throws IOException {
+    forceWal();
   }
 
   /*
@@ -205,11 +214,19 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
     lock.writeLock().unlock();
   }
 
+  private void lockForForceOther() {
+    forceLock.writeLock().lock();
+  }
+
+  private void unlockForForceOther() {
+    forceLock.writeLock().unlock();
+  }
+
   private void sync() {
     lockForOther();
     try {
       logger.debug("Log node {} starts sync, {} logs to be synced", identifier, logCache.size());
-      if (logCache.size() == 0) {
+      if (logCache.isEmpty()) {
         return;
       }
       try {
@@ -221,6 +238,21 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
       logger.debug("Log node {} ends sync.", identifier);
     } finally {
       unlockForOther();
+    }
+  }
+
+  private void forceWal() {
+    lockForForceOther();
+    try {
+      logger.debug("Log node {} starts force, {} logs to be forced", identifier, logCache.size());
+      try {
+        currentFileWriter.force();
+      } catch (IOException e) {
+        logger.error("Log node {} force failed because {}.", identifier, e.getMessage());
+      }
+      logger.debug("Log node {} ends force.", identifier);
+    } finally {
+      unlockForForceOther();
     }
   }
 

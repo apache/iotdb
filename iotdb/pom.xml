@@ -1,8 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
 
-    Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
-
     Licensed to the Apache Software Foundation (ASF) under one
     or more contributor license agreements.  See the NOTICE file
     distributed with this work for additional information
@@ -13,11 +11,12 @@
 
         http://www.apache.org/licenses/LICENSE-2.0
 
-    Unless required by applicable law or agreed to in writing, software
-    distributed under the License is distributed on an "AS IS" BASIS,
-    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-    See the License for the specific language governing permissions and
-    limitations under the License.
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, either express or implied.  See the License for the
+    specific language governing permissions and limitations
+    under the License.
 
 -->
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
@@ -34,8 +33,8 @@
         <antlr3.version>3.5.2</antlr3.version>
         <common.lang3.version>3.8.1</common.lang3.version>
         <iotdb.test.skip>false</iotdb.test.skip>
-        <it.test.includes>**/*Test.java</it.test.includes>
-        <it.test.excludes>**/NoTest.java</it.test.excludes>
+        <iotdb.it.skip>${iotdb.test.skip}</iotdb.it.skip>
+        <iotdb.ut.skip>${iotdb.test.skip}</iotdb.ut.skip>
     </properties>
     <dependencies>
         <dependency>
@@ -164,18 +163,31 @@
                     <outputDirectory>${project.basedir}/iotdb/lib</outputDirectory>
                 </configuration>
             </plugin>
+            <!--using `mvn test` to run UT, `mvn verify` to run ITs
+                        Reference: https://antoniogoncalves.org/2012/12/13/lets-turn-integration-tests-with-maven-to-a-first-class-citizen/-->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
-                    <runOrder>alphabetical</runOrder>
+                    <skipTests>${iotdb.ut.skip}</skipTests>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>run-integration-tests</id>
+                        <phase>integration-test</phase>
+                        <goals>
+                            <goal>integration-test</goal>
+                            <goal>verify</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
                     <skipTests>${iotdb.test.skip}</skipTests>
-                    <excludes>
-                        <exclude>${it.test.excludes}</exclude>
-                    </excludes>
-                    <includes>
-                        <include>${it.test.includes}</include>
-                    </includes>
+                    <skipITs>${iotdb.it.skip}</skipITs>
                 </configuration>
             </plugin>
             <!-- Might require this in Eclipse -->
@@ -199,4 +211,20 @@
 </plugin-->
         </plugins>
     </build>
+    <profiles>
+        <profile>
+            <id>skipTsfileTests</id>
+            <activation>
+                <property>
+                    <name>skipTests</name>
+                    <value>true</value>
+                </property>
+            </activation>
+            <properties>
+                <iotdb.test.skip>true</iotdb.test.skip>
+                <iotdb.ut.skip>true</iotdb.ut.skip>
+                <iotdb.it.skip>true</iotdb.it.skip>
+            </properties>
+        </profile>
+    </profiles>
 </project>

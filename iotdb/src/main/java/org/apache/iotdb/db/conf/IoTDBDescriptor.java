@@ -1,6 +1,4 @@
 /**
- * Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
- *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -11,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.iotdb.db.conf;
 
@@ -40,7 +39,7 @@ public class IoTDBDescriptor {
   }
 
   public static final IoTDBDescriptor getInstance() {
-    return TsfileDBDescriptorHolder.INSTANCE;
+    return IoTDBDescriptorHolder.INSTANCE;
   }
 
   public IoTDBConfig getConfig() {
@@ -49,7 +48,6 @@ public class IoTDBDescriptor {
 
   /**
    * load an property file and set TsfileDBConfig variables.
-   *
    */
   private void loadProps() {
     InputStream inputStream = null;
@@ -123,6 +121,9 @@ public class IoTDBDescriptor {
       conf.flushWalPeriodInMs = Integer
           .parseInt(properties.getProperty("flush_wal_period_in_ms",
               conf.flushWalPeriodInMs + ""));
+      conf.forceWalPeriodInMs = Integer
+          .parseInt(properties.getProperty("force_wal_period_in_ms",
+              conf.forceWalPeriodInMs + ""));
 
       conf.dataDir = properties.getProperty("data_dir", conf.dataDir);
       conf.bufferWriteDirs = properties.getProperty("tsfile_dir", conf.default_tsfile_dir)
@@ -265,7 +266,7 @@ public class IoTDBDescriptor {
     }
   }
 
-  private static class TsfileDBDescriptorHolder {
+  private static class IoTDBDescriptorHolder {
 
     private static final IoTDBDescriptor INSTANCE = new IoTDBDescriptor();
   }
