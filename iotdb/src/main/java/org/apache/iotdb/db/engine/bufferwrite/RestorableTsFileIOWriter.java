@@ -226,15 +226,13 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
    */
   List<ChunkMetaData> getMetadatas(String deviceId, String measurementId, TSDataType dataType) {
     List<ChunkMetaData> chunkMetaDatas = new ArrayList<>();
-    if (metadatas.containsKey(deviceId)) {
-      if (metadatas.get(deviceId).containsKey(measurementId)) {
-        for (ChunkMetaData chunkMetaData : metadatas.get(deviceId).get(measurementId)) {
-          // filter: if a device'sensor is defined as float type, and data has been persistent.
-          // Then someone deletes the timeseries and recreate it with Int type. We have to ignore
-          // all the stale data.
-          if (dataType.equals(chunkMetaData.getTsDataType())) {
-            chunkMetaDatas.add(chunkMetaData);
-          }
+    if (metadatas.containsKey(deviceId) && metadatas.get(deviceId).containsKey(measurementId)) {
+      for (ChunkMetaData chunkMetaData : metadatas.get(deviceId).get(measurementId)) {
+        // filter: if a device'sensor is defined as float type, and data has been persistent.
+        // Then someone deletes the timeseries and recreate it with Int type. We have to ignore
+        // all the stale data.
+        if (dataType.equals(chunkMetaData.getTsDataType())) {
+          chunkMetaDatas.add(chunkMetaData);
         }
       }
     }
