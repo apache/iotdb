@@ -107,13 +107,10 @@ public class ChunkBuffer {
     if (compressor.getType().equals(CompressionType.UNCOMPRESSED)) {
       compressedSize = data.remaining();
     } else {
-      // data is never a directByteBuffer now.
-      if (compressedBytes == null
-          || compressedBytes.length < compressor.getMaxBytesForCompression(uncompressedSize)) {
         compressedBytes = new byte[compressor.getMaxBytesForCompression(uncompressedSize)];
-      }
       try {
         compressedPosition = 0;
+        // data is never a directByteBuffer now, so we can use data.array()
         compressedSize = compressor
             .compress(data.array(), data.position(), data.remaining(), compressedBytes);
       } catch (IOException e) {
