@@ -91,7 +91,7 @@ public class SeriesReaderByTimestamp {
         }
         return null;
       } else {
-        if (chunkReader.hasNextBatch()) { // data does not has next
+        if (chunkReader.hasNextBatch()) {
           data = chunkReader.nextBatch();
         } else if (!constructNextSatisfiedChunkReader()) {
           return null;
