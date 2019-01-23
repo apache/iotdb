@@ -58,7 +58,7 @@ public class LocalFIleRoleAccessorTest {
       roles[i] = new Role("role" + i);
       for (int j = 0; j <= i; j++) {
         PathPrivilege pathPrivilege = new PathPrivilege("root.a.b.c" + j);
-        pathPrivilege.privileges.add(j);
+        pathPrivilege.getPrivileges().add(j);
         roles[i].privilegeList.add(pathPrivilege);
       }
     }

@@ -129,7 +129,7 @@ public class IOUtils {
     int privilegeNum = inputStream.readInt();
     PathPrivilege pathPrivilege = new PathPrivilege(path);
     for (int i = 0; i < privilegeNum; i++) {
-      pathPrivilege.privileges.add(inputStream.readInt());
+      pathPrivilege.getPrivileges().add(inputStream.readInt());
     }
     return pathPrivilege;
   }
@@ -148,9 +148,9 @@ public class IOUtils {
       String encoding,
       ThreadLocal<ByteBuffer> encodingBufferLocal)
       throws IOException {
-    writeString(outputStream, pathPrivilege.path, encoding, encodingBufferLocal);
-    writeInt(outputStream, pathPrivilege.privileges.size(), encodingBufferLocal);
-    for (Integer i : pathPrivilege.privileges) {
+    writeString(outputStream, pathPrivilege.getPath(), encoding, encodingBufferLocal);
+    writeInt(outputStream, pathPrivilege.getPrivileges().size(), encodingBufferLocal);
+    for (Integer i : pathPrivilege.getPrivileges()) {
       writeInt(outputStream, i, encodingBufferLocal);
     }
   }

@@ -437,7 +437,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
           if (role != null) {
             for (PathPrivilege pathPrivilege : role.privilegeList) {
               if (nodeName == null || AuthUtils
-                  .pathBelongsTo(nodeName.getFullPath(), pathPrivilege.path)) {
+                  .pathBelongsTo(nodeName.getFullPath(), pathPrivilege.getPath())) {
                 msg.append(pathPrivilege.toString());
               }
             }
@@ -455,7 +455,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
           msg.append("From itself : {\n");
           for (PathPrivilege pathPrivilege : user.privilegeList) {
             if (nodeName == null || AuthUtils
-                .pathBelongsTo(nodeName.getFullPath(), pathPrivilege.path)) {
+                .pathBelongsTo(nodeName.getFullPath(), pathPrivilege.getPath())) {
               msg.append(pathPrivilege.toString());
             }
           }
@@ -466,7 +466,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
               msg.append("From role ").append(roleN).append(" : {\n");
               for (PathPrivilege pathPrivilege : role.privilegeList) {
                 if (nodeName == null
-                    || AuthUtils.pathBelongsTo(nodeName.getFullPath(), pathPrivilege.path)) {
+                    || AuthUtils.pathBelongsTo(nodeName.getFullPath(), pathPrivilege.getPath())) {
                   msg.append(pathPrivilege.toString());
                 }
               }
