@@ -73,19 +73,16 @@ public class EngineChunkReader implements IReader {
     this.unClosedTsFileReader.close();
   }
 
-  // TODO
   @Override
   public boolean hasNextBatch() {
     return false;
   }
 
-  // TODO
   @Override
   public BatchData nextBatch() {
     return null;
   }
 
-  // TODO
   @Override
   public BatchData currentBatch() {
     return null;
