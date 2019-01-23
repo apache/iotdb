@@ -1,3 +1,31 @@
+<!-- TOC -->
+
+- [Chapter4. Deployment and Management](#chapter4-deployment-and-management)
+    - [Deployment](#deployment)
+        - [Prerequisites](#prerequisites)
+        - [Installation from  binary files](#installation-from--binary-files)
+        - [Installation from source code](#installation-from-source-code)
+    - [Configuration](#configuration)
+        - [IoTDB Environment Configuration File](#iotdb-environment-configuration-file)
+        - [IoTDB System Configuration File](#iotdb-system-configuration-file)
+            - [File Layer](#file-layer)
+            - [Engine Layer](#engine-layer)
+    - [System Monitor](#system-monitor)
+        - [System Status Monitoring](#system-status-monitoring)
+        - [Data Status Monitoring](#data-status-monitoring)
+            - [Writing Data Monitor](#writing-data-monitor)
+                - [Example](#example)
+    - [System log](#system-log)
+        - [Dynamic System Log Configuration](#dynamic-system-log-configuration)
+            - [Connect JMX](#connect-jmx)
+            - [Interface Instruction](#interface-instruction)
+    - [Data Management](#data-management)
+        - [Data Files](#data-files)
+        - [System Files](#system-files)
+        - [Pre-write Log Files](#pre-write-log-files)
+        - [Example of Setting Data storage Directory](#example-of-setting-data-storage-directory)
+
+<!-- /TOC -->
 # Chapter4. Deployment and Management
 
 ## Deployment

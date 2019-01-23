@@ -1,3 +1,9 @@
+<!-- TOC -->
+
+- [IoTDB Examples](#iotdb-examples)
+    - [IoTDB Hello World](#iotdb-hello-world)
+
+<!-- /TOC -->
 # IoTDB Examples
 
 These examples give a quick overview of the IoTDB JDBC. IoTDB offers standard JDBC for users to interact with IoTDB, other language versions are comming soon.
@@ -52,7 +58,7 @@ public class IotdbHelloWorld {
             }
         }
         finally {
-		    // 8. Close
+            // 8. Close
             if(statement != null) statement.close();
             if(connection != null) connection.close();
         }

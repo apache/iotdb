@@ -1,3 +1,22 @@
+<!-- TOC -->
+
+- [TsFile-Spark-Connector User Guide](#tsfile-spark-connector-user-guide)
+    - [Dependencies & Version](#dependencies--version)
+    - [Quick Start](#quick-start)
+        - [Step1: Build TsFile-Spark-Connector](#step1-build-tsfile-spark-connector)
+        - [Step2: Import Connector Lib into Spark](#step2-import-connector-lib-into-spark)
+        - [Step3: Use Connector in Spark](#step3-use-connector-in-spark)
+            - [5.2.1.1 Local Mode](#5211-local-mode)
+            - [5.2.1.2 Distributed Mode](#5212-distributed-mode)
+    - [Detail: Conversion between TsFile and Spark](#detail-conversion-between-tsfile-and-spark)
+        - [TsFile Type <-> SparkSQL type](#tsfile-type---sparksql-type)
+        - [TsFile Schema <-> SparkSQL Table Structure](#tsfile-schema---sparksql-table-structure)
+            - [the default way](#the-default-way)
+            - [unfolding delta_object column](#unfolding-delta_object-column)
+    - [Example](#example)
+        - [5.1 Scala API](#51-scala-api)
+
+<!-- /TOC -->
 # TsFile-Spark-Connector User Guide
 
 TsFile-Spark-Connector implements the support of Spark for external data sources of Tsfile type. This enables users to read, write and query Tsfile by Spark.

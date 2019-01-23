@@ -1,3 +1,10 @@
+<!-- TOC -->
+
+- [Cli/shell tool](#clishell-tool)
+    - [Running Cli/Shell](#running-clishell)
+    - [Cli/Shell Parameters](#clishell-parameters)
+
+<!-- /TOC -->
 # Cli/shell tool
 IoTDB provides Cli/shell tools for users to interact with IoTDB server in command lines. This document will show how Cli/shell tool works and what does it parameters mean.
 
