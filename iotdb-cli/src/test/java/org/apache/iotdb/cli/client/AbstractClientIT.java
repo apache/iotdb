@@ -81,27 +81,27 @@ public class AbstractClientIT {
     String str = AbstractClient
         .checkRequiredArg(AbstractClient.USERNAME_ARGS, AbstractClient.USERNAME_NAME,
             commandLine, true, "root");
-    assertEquals(str, "user1");
+    assertEquals("user1", str);
 
     args = new String[]{"-u", "root",};
     commandLine = parser.parse(options, args);
     str = AbstractClient
         .checkRequiredArg(AbstractClient.HOST_ARGS, AbstractClient.HOST_NAME, commandLine, false,
             "127.0.0.1");
-    assertEquals(str, "127.0.0.1");
+    assertEquals("127.0.0.1", str);
     try {
       str = AbstractClient
           .checkRequiredArg(AbstractClient.HOST_ARGS, AbstractClient.HOST_NAME, commandLine, true,
               "127.0.0.1");
     } catch (ArgsErrorException e) {
-      assertEquals(e.getMessage(), "IoTDB: Required values for option 'host' not provided");
+      assertEquals("IoTDB: Required values for option 'host' not provided", e.getMessage());
     }
     try {
       str = AbstractClient
           .checkRequiredArg(AbstractClient.HOST_ARGS, AbstractClient.HOST_NAME, commandLine,
               false, null);
     } catch (ArgsErrorException e) {
-      assertEquals(e.getMessage(), "IoTDB: Required values for option 'host' is null.");
+      assertEquals("IoTDB: Required values for option 'host' is null.", e.getMessage());
     }
   }
 
@@ -141,61 +141,30 @@ public class AbstractClientIT {
 
   @Test
   public void testHandleInputInputCmd() {
-    assertEquals(AbstractClient.handleInputInputCmd(AbstractClient.EXIT_COMMAND, connection),
-        OperationResult.RETURN_OPER);
-    assertEquals(AbstractClient.handleInputInputCmd(AbstractClient.QUIT_COMMAND, connection),
-        OperationResult.RETURN_OPER);
+    assertEquals(OperationResult.RETURN_OPER, AbstractClient.handleInputCmd(AbstractClient.EXIT_COMMAND, connection));
+    assertEquals(OperationResult.RETURN_OPER, AbstractClient.handleInputCmd(AbstractClient.QUIT_COMMAND, connection));
 
-    assertEquals(
-        AbstractClient.handleInputInputCmd(AbstractClient.SHOW_METADATA_COMMAND, connection),
-        OperationResult.CONTINUE_OPER);
+    assertEquals(OperationResult.CONTINUE_OPER, AbstractClient.handleInputCmd(AbstractClient.SHOW_METADATA_COMMAND, connection));
 
-    assertEquals(AbstractClient
-        .handleInputInputCmd(String.format("%s=", AbstractClient.SET_TIMESTAMP_DISPLAY),
-            connection), OperationResult.CONTINUE_OPER);
-    assertEquals(AbstractClient
-        .handleInputInputCmd(String.format("%s=xxx", AbstractClient.SET_TIMESTAMP_DISPLAY),
-            connection), OperationResult.CONTINUE_OPER);
-    assertEquals(AbstractClient
-            .handleInputInputCmd(String.format("%s=default", AbstractClient.SET_TIMESTAMP_DISPLAY),
-                connection),
-        OperationResult.CONTINUE_OPER);
+    assertEquals(OperationResult.CONTINUE_OPER, AbstractClient.handleInputCmd(String.format("%s=", AbstractClient.SET_TIMESTAMP_DISPLAY), connection));
+    assertEquals(OperationResult.CONTINUE_OPER, AbstractClient.handleInputCmd(String.format("%s=xxx", AbstractClient.SET_TIMESTAMP_DISPLAY), connection));
+    assertEquals(OperationResult.CONTINUE_OPER, AbstractClient.handleInputCmd(String.format("%s=default", AbstractClient.SET_TIMESTAMP_DISPLAY), connection));
     testSetTimeFormat();
 
-    assertEquals(
-        AbstractClient.handleInputInputCmd(String.format("%s=", AbstractClient.SET_MAX_DISPLAY_NUM),
-            connection), OperationResult.CONTINUE_OPER);
-    assertEquals(AbstractClient
-        .handleInputInputCmd(String.format("%s=xxx", AbstractClient.SET_MAX_DISPLAY_NUM),
-            connection), OperationResult.CONTINUE_OPER);
-    assertEquals(AbstractClient
-        .handleInputInputCmd(String.format("%s=1", AbstractClient.SET_MAX_DISPLAY_NUM),
-            connection), OperationResult.CONTINUE_OPER);
+    assertEquals(OperationResult.CONTINUE_OPER, AbstractClient.handleInputCmd(String.format("%s=", AbstractClient.SET_MAX_DISPLAY_NUM), connection));
+    assertEquals(OperationResult.CONTINUE_OPER, AbstractClient.handleInputCmd(String.format("%s=xxx", AbstractClient.SET_MAX_DISPLAY_NUM),connection));
+    assertEquals(OperationResult.CONTINUE_OPER, AbstractClient.handleInputCmd(String.format("%s=1", AbstractClient.SET_MAX_DISPLAY_NUM), connection));
     testSetMaxDisplayNumber();
 
-    assertEquals(AbstractClient.handleInputInputCmd(AbstractClient.SHOW_TIMEZONE, connection),
-        OperationResult.CONTINUE_OPER);
-    assertEquals(
-        AbstractClient.handleInputInputCmd(AbstractClient.SHOW_TIMESTAMP_DISPLAY, connection),
-        OperationResult.CONTINUE_OPER);
-    assertEquals(AbstractClient.handleInputInputCmd(AbstractClient.SHOW_FETCH_SIZE, connection),
-        OperationResult.CONTINUE_OPER);
+    assertEquals(OperationResult.CONTINUE_OPER, AbstractClient.handleInputCmd(AbstractClient.SHOW_TIMEZONE, connection));
+    assertEquals(OperationResult.CONTINUE_OPER, AbstractClient.handleInputCmd(AbstractClient.SHOW_TIMESTAMP_DISPLAY, connection));
+    assertEquals(OperationResult.CONTINUE_OPER, AbstractClient.handleInputCmd(AbstractClient.SHOW_FETCH_SIZE, connection));
 
-    assertEquals(AbstractClient
-            .handleInputInputCmd(String.format("%s=", AbstractClient.SET_TIME_ZONE), connection),
-        OperationResult.CONTINUE_OPER);
-    assertEquals(
-        AbstractClient.handleInputInputCmd(String.format("%s=+08:00", AbstractClient.SET_TIME_ZONE),
-            connection), OperationResult.CONTINUE_OPER);
+    assertEquals(OperationResult.CONTINUE_OPER, AbstractClient.handleInputCmd(String.format("%s=", AbstractClient.SET_TIME_ZONE), connection));
+    assertEquals(OperationResult.CONTINUE_OPER, AbstractClient.handleInputCmd(String.format("%s=+08:00", AbstractClient.SET_TIME_ZONE), connection));
 
-    assertEquals(
-        AbstractClient
-            .handleInputInputCmd(String.format("%s=", AbstractClient.SET_FETCH_SIZE), connection),
-        OperationResult.CONTINUE_OPER);
-    assertEquals(
-        AbstractClient.handleInputInputCmd(String.format("%s=111", AbstractClient.SET_FETCH_SIZE),
-            connection),
-        OperationResult.CONTINUE_OPER);
+    assertEquals(OperationResult.CONTINUE_OPER, AbstractClient.handleInputCmd(String.format("%s=", AbstractClient.SET_FETCH_SIZE), connection));
+    assertEquals(OperationResult.CONTINUE_OPER, AbstractClient.handleInputCmd(String.format("%s=111", AbstractClient.SET_FETCH_SIZE), connection));
   }
 
   private void testSetTimeFormat() {
@@ -208,11 +177,11 @@ public class AbstractClientIT {
     assertEquals(AbstractClient.formatTime, "%" + AbstractClient.maxTimeLength + "s|");
 
     AbstractClient.setTimeFormat("default");
-    assertEquals(AbstractClient.maxTimeLength, AbstractClient.ISO_DATETIME_LEN);
+    assertEquals(AbstractClient.ISO_DATETIME_LEN, AbstractClient.maxTimeLength);
     assertEquals(AbstractClient.formatTime, "%" + AbstractClient.maxTimeLength + "s|");
 
     AbstractClient.setTimeFormat("iso8601");
-    assertEquals(AbstractClient.maxTimeLength, AbstractClient.ISO_DATETIME_LEN);
+    assertEquals(AbstractClient.ISO_DATETIME_LEN, AbstractClient.maxTimeLength);
     assertEquals(AbstractClient.formatTime, "%" + AbstractClient.maxTimeLength + "s|");
 
     AbstractClient.setTimeFormat("yyyy-MM-dd HH:mm:ssZZ");
@@ -227,10 +196,10 @@ public class AbstractClientIT {
 
   private void testSetMaxDisplayNumber() {
     AbstractClient.setMaxDisplayNumber("10");
-    assertEquals(AbstractClient.maxPrintRowCount, 10);
+    assertEquals(10, AbstractClient.maxPrintRowCount);
     AbstractClient.setMaxDisplayNumber("111111111111111");
-    assertEquals(AbstractClient.maxPrintRowCount, Integer.MAX_VALUE);
+    assertEquals(Integer.MAX_VALUE, AbstractClient.maxPrintRowCount);
     AbstractClient.setMaxDisplayNumber("-10");
-    assertEquals(AbstractClient.maxPrintRowCount, Integer.MAX_VALUE);
+    assertEquals(Integer.MAX_VALUE, AbstractClient.maxPrintRowCount);
   }
 }
