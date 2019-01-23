@@ -61,7 +61,6 @@ public abstract class AbstractClient {
   protected static final String USERNAME_NAME = "username";
 
   protected static final String ISO8601_ARGS = "disableISO8601";
-  // protected static final String TIME_KEY_WORD = "time";
   protected static final List<String> AGGREGRATE_TIME_LIST = new ArrayList<>();
   protected static final String MAX_PRINT_ROW_COUNT_ARGS = "maxPRC";
   protected static final String MAX_PRINT_ROW_COUNT_NAME = "maxPrintRowCount";
@@ -84,7 +83,8 @@ public abstract class AbstractClient {
   protected static final String IMPORT_CMD = "import";
   protected static final String EXPORT_CMD = "export";
   private static final String NEED_NOT_TO_PRINT_TIMESTAMP = "AGGREGATION";
-  protected static String timeFormat = "default";
+  private static final String DEFAULT_TIME_FORMAT = "default";
+  protected static String timeFormat = DEFAULT_TIME_FORMAT;
   protected static int maxPrintRowCount = 1000;
   protected static int fetchSize = 10000;
   protected static int maxTimeLength = ISO_DATETIME_LEN;
@@ -132,7 +132,7 @@ public abstract class AbstractClient {
   protected static int[] maxValueLengthForShow = new int[]{75, 45, 8, 8};
   protected static String formatTime = "%" + maxTimeLength + "s|";
   protected static String formatValue = "%" + maxValueLength + "s|";
-  protected static int DIVIDING_LINE_LEN = 40;
+  protected static int dividinglinelen = 40;
   protected static String host = "127.0.0.1";
   protected static String port = "6667";
   protected static String username;
@@ -159,11 +159,10 @@ public abstract class AbstractClient {
    *
    * @param res result set
    * @param printToConsole print to console
-   * @param statement statement in string format
    * @param zoneId time-zone ID
    * @throws SQLException SQLException
    */
-  public static void output(ResultSet res, boolean printToConsole, String statement, ZoneId zoneId)
+  public static void output(ResultSet res, boolean printToConsole, ZoneId zoneId)
       throws SQLException {
     int cnt = 0;
     int displayCnt = 0;
@@ -175,8 +174,7 @@ public abstract class AbstractClient {
 
     boolean isShow = res instanceof IoTDBMetadataResultSet;
     if (!isShow && resultSetMetaData.getColumnTypeName(0) != null) {
-      printTimestamp = !res.getMetaData().getColumnTypeName(0).toUpperCase()
-          .equals(NEED_NOT_TO_PRINT_TIMESTAMP);
+      printTimestamp = !res.getMetaData().getColumnTypeName(0).equalsIgnoreCase(NEED_NOT_TO_PRINT_TIMESTAMP);
     }
 
     // Output values
@@ -248,7 +246,7 @@ public abstract class AbstractClient {
       }
     }
 
-    System.out.println(StringUtils.repeat('-', DIVIDING_LINE_LEN));
+    System.out.println(StringUtils.repeat('-', dividinglinelen));
     if (isShow) {
       int type = res.getType();
       if (type == IoTDBMetadataResultSet.MetadataType.STORAGE_GROUP.ordinal()) { // storage group
@@ -304,7 +302,7 @@ public abstract class AbstractClient {
       case "long":
       case "number":
         return timestamp + "";
-      case "default":
+      case DEFAULT_TIME_FORMAT:
       case "iso8601":
         dateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(timestamp), zoneId);
         return dateTime.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
@@ -343,7 +341,7 @@ public abstract class AbstractClient {
         maxTimeLength = maxValueLength;
         timeFormat = newTimeFormat.trim().toLowerCase();
         break;
-      case "default":
+      case DEFAULT_TIME_FORMAT:
       case "iso8601":
         maxTimeLength = ISO_DATETIME_LEN;
         timeFormat = newTimeFormat.trim().toLowerCase();
@@ -424,7 +422,7 @@ public abstract class AbstractClient {
         System.out.printf(formatValue, resultSetMetaData.getColumnLabel(i));
       }
     }
-    System.out.printf("\n");
+    System.out.printf("%n");
   }
 
   protected static String[] removePasswordArgs(String[] args) {
@@ -435,11 +433,9 @@ public abstract class AbstractClient {
         break;
       }
     }
-    if (index >= 0) {
-      if ((index + 1 >= args.length) || (index + 1 < args.length && keywordSet
-          .contains(args[index + 1]))) {
-        return ArrayUtils.remove(args, index);
-      }
+    if (index >= 0 && ((index + 1 >= args.length) || (index + 1 < args.length && keywordSet
+        .contains(args[index + 1])))) {
+      return ArrayUtils.remove(args, index);
     }
     return args;
   }
@@ -454,7 +450,7 @@ public abstract class AbstractClient {
         + "                                           \n");
   }
 
-  protected static OperationResult handleInputInputCmd(String cmd, IoTDBConnection connection) {
+  protected static OperationResult handleInputCmd(String cmd, IoTDBConnection connection) {
     String specialCmd = cmd.toLowerCase().trim();
 
     if (specialCmd.equals(QUIT_COMMAND) || specialCmd.equals(EXIT_COMMAND)) {
@@ -462,7 +458,7 @@ public abstract class AbstractClient {
       return OperationResult.RETURN_OPER;
     }
     if (specialCmd.equals(HELP)) {
-      System.out.println(String.format("    <your-sql>\t\t\t execute your sql statment"));
+      System.out.println("    <your-sql>\t\t\t execute your sql statment");
       System.out
           .println(String
               .format("    %s\t\t show how many timeseries are in iotdb", SHOW_METADATA_COMMAND));
@@ -608,7 +604,7 @@ public abstract class AbstractClient {
       boolean hasResultSet = statement.execute(cmd.trim());
       if (hasResultSet) {
         ResultSet resultSet = statement.getResultSet();
-        output(resultSet, printToConsole, cmd.trim(), zoneId);
+        output(resultSet, printToConsole, zoneId);
       }
       System.out.println("Execute successfully. Type `help` to get more information.");
     } catch (Exception e) {

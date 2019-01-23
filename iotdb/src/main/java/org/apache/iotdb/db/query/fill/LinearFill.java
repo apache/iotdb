@@ -29,9 +29,6 @@ public class LinearFill extends IFill {
 
   private long beforeRange;
   private long afterRange;
-
-  private Path path;
-
   private BatchData result;
 
   public LinearFill(long beforeRange, long afterRange) {
@@ -42,10 +39,9 @@ public class LinearFill extends IFill {
   /**
    * Constructor of LinearFill.
    */
-  public LinearFill(Path path, TSDataType dataType, long queryTime, long beforeRange,
+  public LinearFill(TSDataType dataType, long queryTime, long beforeRange,
       long afterRange) {
     super(dataType, queryTime);
-    this.path = path;
     this.beforeRange = beforeRange;
     this.afterRange = afterRange;
     result = new BatchData(dataType, true, true);
@@ -69,24 +65,11 @@ public class LinearFill extends IFill {
 
   @Override
   public IFill copy(Path path) {
-    return new LinearFill(path, dataType, queryTime, beforeRange, afterRange);
+    return new LinearFill(dataType, queryTime, beforeRange, afterRange);
   }
 
   @Override
   public BatchData getFillResult() throws ProcessorException, IOException, PathErrorException {
-    long beforeTime;
-    if (beforeRange == -1) {
-      beforeTime = 0;
-    } else {
-      beforeTime = queryTime - beforeRange;
-    }
-    long afterTime;
-    if (afterRange == -1) {
-      afterTime = Long.MAX_VALUE;
-    } else {
-      afterTime = queryTime + afterRange;
-    }
-
     return result;
   }
 }
