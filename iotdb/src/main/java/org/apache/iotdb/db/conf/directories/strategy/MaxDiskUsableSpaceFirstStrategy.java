@@ -26,7 +26,7 @@ import java.util.Random;
 public class MaxDiskUsableSpaceFirstStrategy extends DirectoryStrategy {
 
   // disk space is measured by MB
-  private final long dataSizeShift = 1024 * 1024;
+  private static final double DATA_SIZE_SHIFT = 1024D * 1024;
 
   @Override
   public int nextFolderIndex() {
@@ -60,7 +60,7 @@ public class MaxDiskUsableSpaceFirstStrategy extends DirectoryStrategy {
   }
 
   private long getUsableSpace(String path) {
-    double freespace = new File(path).getUsableSpace() / dataSizeShift;
+    double freespace = new File(path).getUsableSpace() / DATA_SIZE_SHIFT;
     return (long) freespace;
   }
 }
