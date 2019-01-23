@@ -83,8 +83,7 @@ public class LoadDataUtils {
     try {
       this.extraDataFileWriter = new BufferedWriter(new FileWriter(extraDataFile));
     } catch (IOException e) {
-      LOG.error("create");
-      e.printStackTrace();
+      LOG.error("create", e);
       close();
       return null;
     }
