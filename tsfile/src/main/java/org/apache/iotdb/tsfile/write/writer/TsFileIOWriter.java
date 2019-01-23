@@ -98,7 +98,7 @@ public class TsFileIOWriter {
       throws IOException {
     this.out = out;
     this.chunkGroupMetaDataList = chunkGroupMetaDataList;
-    if (chunkGroupMetaDataList.size() == 0) {
+    if (chunkGroupMetaDataList.isEmpty()) {
       startFile();
     }
   }
