@@ -28,10 +28,6 @@ import org.apache.iotdb.db.conf.directories.Directories;
 
 /**
  * This class is used to store one bufferwrite file status.<br>
- *
- * @author liukun
- * @author kangrong
- *
  */
 public class IntervalFileNode implements Serializable {
 
@@ -212,9 +208,9 @@ public class IntervalFileNode implements Serializable {
 
   public IntervalFileNode backUp() {
 
-    Map<String, Long> startTimeMap = new HashMap<>(this.startTimeMap);
-    Map<String, Long> endTimeMap = new HashMap<>(this.endTimeMap);
-    return new IntervalFileNode(startTimeMap, endTimeMap, overflowChangeType,
+    Map<String, Long> startTimeMapCopy = new HashMap<>(this.startTimeMap);
+    Map<String, Long> endTimeMapCopy = new HashMap<>(this.endTimeMap);
+    return new IntervalFileNode(startTimeMapCopy, endTimeMapCopy, overflowChangeType,
         baseDirIndex, relativePath);
   }
 
