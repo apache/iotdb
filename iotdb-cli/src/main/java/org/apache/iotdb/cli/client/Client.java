@@ -120,7 +120,7 @@ public class Client extends AbstractClient {
       return;
     }
 
-    try(ConsoleReader reader = new ConsoleReader()) {
+    try (ConsoleReader reader = new ConsoleReader()) {
       reader.setExpandEvents(false);
       String s;
 
@@ -132,7 +132,8 @@ public class Client extends AbstractClient {
       if (password == null) {
         password = reader.readLine("please input your password:", '\0');
       }
-      try (IoTDBConnection connection = (IoTDBConnection) DriverManager.getConnection(Config.IOTDB_URL_PREFIX + host + ":" + port + "/", username, password)){
+      try (IoTDBConnection connection = (IoTDBConnection) DriverManager
+          .getConnection(Config.IOTDB_URL_PREFIX + host + ":" + port + "/", username, password)) {
         properties = connection.getServerProperties();
         AGGREGRATE_TIME_LIST.addAll(properties.getSupportedTimeAggregationOperations());
         displayLogo(properties.getVersion());
@@ -158,11 +159,13 @@ public class Client extends AbstractClient {
           }
         }
       } catch (SQLException e) {
-        System.out.println(String.format("%s> %s Host is %s, port is %s.", IOTDB_CLI_PREFIX, e.getMessage(), host, port));
+        System.out.println(String
+            .format("%s> %s Host is %s, port is %s.", IOTDB_CLI_PREFIX, e.getMessage(), host,
+                port));
       }
-    } catch(ArgsErrorException e){
+    } catch (ArgsErrorException e) {
       System.out.println(IOTDB_CLI_PREFIX + "> input params error because" + e.getMessage());
-    }catch (Exception e) {
+    } catch (Exception e) {
       System.out.println(IOTDB_CLI_PREFIX + "> exit client with error " + e.getMessage());
     }
   }

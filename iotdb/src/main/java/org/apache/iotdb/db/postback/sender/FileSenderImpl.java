@@ -494,7 +494,7 @@ public class FileSenderImpl implements FileSender {
         try {
           PostbackUtils.deleteFile(new File(snapshotPath));
         } catch (IOException e) {
-          e.printStackTrace();
+          LOGGER.error("can not delete file {}, {}", snapshotPath, e.getMessage());
         }
       }
     }
@@ -535,7 +535,7 @@ public class FileSenderImpl implements FileSender {
     for (Entry<String, Set<String>> entry : sendingFileList.entrySet()) {
       Set<String> sendingList = entry.getValue();
       Set<String> sendingSnapshotList = sendingFileSnapshotList.get(entry.getKey());
-      if (sendingSnapshotList.size() == 0) {
+      if (sendingSnapshotList.isEmpty()) {
         continue;
       }
       LOGGER.info("IoTDB post back sender : postback process starts to transfer data of "
