@@ -23,16 +23,16 @@ import java.nio.ByteBuffer;
 import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * This class is used to read metadata(<code>TsFileMetaData</code> and
  * <code>TsRowGroupBlockMetaData</code>).
- *
- * @author liukun
  */
 public class TsFileMetadataUtils {
+
+  private TsFileMetadataUtils(){
+
+  }
 
   /**
    * get tsfile meta data.
