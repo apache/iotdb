@@ -29,8 +29,24 @@ import org.apache.iotdb.db.utils.AuthUtils;
  */
 public class Role {
 
-  public String name;
-  public List<PathPrivilege> privilegeList;
+  private String name;
+  private List<PathPrivilege> privilegeList;
+
+  public String getName() {
+    return name;
+  }
+
+  public void setName(String name) {
+    this.name = name;
+  }
+
+  public List<PathPrivilege> getPrivilegeList() {
+    return privilegeList;
+  }
+
+  public void setPrivilegeList(List<PathPrivilege> privilegeList) {
+    this.privilegeList = privilegeList;
+  }
 
   public Role() {
   }
@@ -57,8 +73,8 @@ public class Role {
    */
   public void setPrivileges(String path, Set<Integer> privileges) {
     for (PathPrivilege pathPrivilege : privilegeList) {
-      if (pathPrivilege.path.equals(path)) {
-        pathPrivilege.privileges = privileges;
+      if (pathPrivilege.getPath().equals(path)) {
+        pathPrivilege.setPrivileges(privileges);
       }
     }
   }

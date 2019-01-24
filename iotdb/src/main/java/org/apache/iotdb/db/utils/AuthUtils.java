@@ -185,14 +185,14 @@ public class AuthUtils {
     }
     for (PathPrivilege pathPrivilege : privilegeList) {
       if (path != null) {
-        if (pathPrivilege.path != null && AuthUtils.pathBelongsTo(path, pathPrivilege.path)) {
-          if (pathPrivilege.privileges.contains(privilegeId)) {
+        if (pathPrivilege.getPath() != null && AuthUtils.pathBelongsTo(path, pathPrivilege.getPath())) {
+          if (pathPrivilege.getPrivileges().contains(privilegeId)) {
             return true;
           }
         }
       } else {
-        if (pathPrivilege.path == null) {
-          if (pathPrivilege.privileges.contains(privilegeId)) {
+        if (pathPrivilege.getPath() == null) {
+          if (pathPrivilege.getPrivileges().contains(privilegeId)) {
             return true;
           }
         }
@@ -215,12 +215,12 @@ public class AuthUtils {
     Set<Integer> privileges = new HashSet<>();
     for (PathPrivilege pathPrivilege : privilegeList) {
       if (path != null) {
-        if (pathPrivilege.path != null && AuthUtils.pathBelongsTo(path, pathPrivilege.path)) {
-          privileges.addAll(pathPrivilege.privileges);
+        if (pathPrivilege.getPath() != null && AuthUtils.pathBelongsTo(path, pathPrivilege.getPath())) {
+          privileges.addAll(pathPrivilege.getPrivileges());
         }
       } else {
-        if (pathPrivilege.path == null) {
-          privileges.addAll(pathPrivilege.privileges);
+        if (pathPrivilege.getPath() == null) {
+          privileges.addAll(pathPrivilege.getPrivileges());
         }
       }
     }
@@ -238,8 +238,8 @@ public class AuthUtils {
   public static boolean hasPrivilege(String path, int privilegeId,
       List<PathPrivilege> privilegeList) {
     for (PathPrivilege pathPrivilege : privilegeList) {
-      if (pathPrivilege.path.equals(path) && pathPrivilege.privileges.contains(privilegeId)) {
-        pathPrivilege.referenceCnt.incrementAndGet();
+      if (pathPrivilege.getPath().equals(path) && pathPrivilege.getPrivileges().contains(privilegeId)) {
+        pathPrivilege.getReferenceCnt().incrementAndGet();
         return true;
       }
     }
@@ -255,12 +255,12 @@ public class AuthUtils {
    */
   public static void addPrivilege(String path, int privilgeId, List<PathPrivilege> privilegeList) {
     for (PathPrivilege pathPrivilege : privilegeList) {
-      if (pathPrivilege.path.equals(path)) {
+      if (pathPrivilege.getPath().equals(path)) {
         if (privilgeId != PrivilegeType.ALL.ordinal()) {
-          pathPrivilege.privileges.add(privilgeId);
+          pathPrivilege.getPrivileges().add(privilgeId);
         } else {
           for (PrivilegeType privilegeType : PrivilegeType.values()) {
-            pathPrivilege.privileges.add(privilegeType.ordinal());
+            pathPrivilege.getPrivileges().add(privilegeType.ordinal());
           }
         }
         return;
@@ -268,10 +268,10 @@ public class AuthUtils {
     }
     PathPrivilege pathPrivilege = new PathPrivilege(path);
     if (privilgeId != PrivilegeType.ALL.ordinal()) {
-      pathPrivilege.privileges.add(privilgeId);
+      pathPrivilege.getPrivileges().add(privilgeId);
     } else {
       for (PrivilegeType privilegeType : PrivilegeType.values()) {
-        pathPrivilege.privileges.add(privilegeType.ordinal());
+        pathPrivilege.getPrivileges().add(privilegeType.ordinal());
       }
     }
     privilegeList.add(pathPrivilege);
@@ -288,14 +288,14 @@ public class AuthUtils {
       List<PathPrivilege> privilegeList) {
     PathPrivilege emptyPrivilege = null;
     for (PathPrivilege pathPrivilege : privilegeList) {
-      if (pathPrivilege.path.equals(path)) {
+      if (pathPrivilege.getPath().equals(path)) {
         if (privilgeId != PrivilegeType.ALL.ordinal()) {
-          pathPrivilege.privileges.remove(privilgeId);
+          pathPrivilege.getPrivileges().remove(privilgeId);
         } else {
           privilegeList.remove(pathPrivilege);
           return;
         }
-        if (pathPrivilege.privileges.size() == 0) {
+        if (pathPrivilege.getPrivileges().size() == 0) {
           emptyPrivilege = pathPrivilege;
         }
         break;

@@ -34,11 +34,11 @@ public class ChunkReaderWithFilter extends ChunkReader {
 
   @Override
   public boolean pageSatisfied(PageHeader pageHeader) {
-    if (pageHeader.getMax_timestamp() < getMaxTombstoneTime()) {
+    if (pageHeader.getMaxTimestamp() < getMaxTombstoneTime()) {
       return false;
     }
-    DigestForFilter digest = new DigestForFilter(pageHeader.getMin_timestamp(),
-        pageHeader.getMax_timestamp(),
+    DigestForFilter digest = new DigestForFilter(pageHeader.getMinTimestamp(),
+        pageHeader.getMaxTimestamp(),
         pageHeader.getStatistics().getMinBytebuffer(),
         pageHeader.getStatistics().getMaxBytebuffer(),
         chunkHeader.getDataType());

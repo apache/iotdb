@@ -51,7 +51,7 @@ public class TsFileSequenceRead {
     System.out.println("Level 1 metadata size: " + reader.getFileMetadataPos());
     TsFileMetaData metaData = reader.readFileMetadata();
     // Sequential reading of one ChunkGroup now follows this order:
-    // first SeriesChunks (headers and data) in one ChunkGroup, then the ChunkGroupFooter
+    // first SeriesChunks (headers and data) in one ChunkGroup, then the CHUNK_GROUP_FOOTER
     // Because we do not know how many chunks a ChunkGroup may have, we should read one byte (the marker) ahead and
     // judge accordingly.
     System.out.println("[Chunk Group]");

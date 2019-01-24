@@ -43,8 +43,9 @@ import org.slf4j.LoggerFactory;
 public abstract class Statistics<T> {
 
   private static final Logger LOG = LoggerFactory.getLogger(Statistics.class);
-  // isEmpty being false means this statistic has been initialized and the max
-  // and min is not null;
+  /**
+   * isEmpty being false means this statistic has been initialized and the max and min is not null;
+   */
   protected boolean isEmpty = true;
 
   /**
@@ -129,37 +130,37 @@ public abstract class Statistics<T> {
     return statistics;
   }
 
-  abstract public void setMinMaxFromBytes(byte[] minBytes, byte[] maxBytes);
+  public abstract void setMinMaxFromBytes(byte[] minBytes, byte[] maxBytes);
 
-  abstract public T getMin();
+  public abstract T getMin();
 
-  abstract public T getMax();
+  public abstract T getMax();
 
-  abstract public T getFirst();
+  public abstract T getFirst();
 
-  abstract public double getSum();
+  public abstract double getSum();
 
-  abstract public T getLast();
+  public abstract T getLast();
 
-  abstract public byte[] getMaxBytes();
+  public abstract byte[] getMaxBytes();
 
-  abstract public byte[] getMinBytes();
+  public abstract byte[] getMinBytes();
 
-  abstract public byte[] getFirstBytes();
+  public abstract byte[] getFirstBytes();
 
-  abstract public byte[] getSumBytes();
+  public abstract byte[] getSumBytes();
 
-  abstract public byte[] getLastBytes();
+  public abstract byte[] getLastBytes();
 
-  abstract public ByteBuffer getMaxBytebuffer();
+  public abstract ByteBuffer getMaxBytebuffer();
 
-  abstract public ByteBuffer getMinBytebuffer();
+  public abstract ByteBuffer getMinBytebuffer();
 
-  abstract public ByteBuffer getFirstBytebuffer();
+  public abstract ByteBuffer getFirstBytebuffer();
 
-  abstract public ByteBuffer getSumBytebuffer();
+  public abstract ByteBuffer getSumBytebuffer();
 
-  abstract public ByteBuffer getLastBytebuffer();
+  public abstract ByteBuffer getLastBytebuffer();
 
   /**
    * merge parameter to this statistic. Including
@@ -167,7 +168,7 @@ public abstract class Statistics<T> {
    * @param stats input statistics
    * @throws StatisticsClassException cannot merge statistics
    */
-  public void mergeStatistics(Statistics<?> stats) throws StatisticsClassException {
+  public void mergeStatistics(Statistics<?> stats) {
     if (stats == null) {
       LOG.warn("tsfile-file parameter stats is null");
       return;
@@ -178,15 +179,16 @@ public abstract class Statistics<T> {
         isEmpty = false;
       }
     } else {
-      LOG.warn("tsfile-file Statistics classes mismatched,no merge: " + this.getClass().toString()
-          + " vs. "
-          + stats.getClass().toString());
+      String thisClass = this.getClass().toString();
+      String statsClass = stats.getClass().toString();
+      LOG.warn("tsfile-file Statistics classes mismatched,no merge: {} v.s. {}",
+              thisClass, statsClass);
 
       throw new StatisticsClassException(this.getClass(), stats.getClass());
     }
   }
 
-  abstract protected void mergeStatisticsValue(Statistics<?> stats);
+  protected abstract void mergeStatisticsValue(Statistics<?> stats);
 
   public boolean isEmpty() {
     return isEmpty;
@@ -238,7 +240,7 @@ public abstract class Statistics<T> {
    * @return the size of one field of this class.<br> int, float - 4<br> double, long, bigDecimal -
    * 8 <br> boolean - 1 <br> No - 0 <br> binary - -1 which means uncertainty </>
    */
-  abstract public int sizeOfDatum();
+  public abstract int sizeOfDatum();
 
   /**
    * read data from the inputStream.

@@ -16,14 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.query.externalsort.serialize;
+package org.apache.iotdb.db.engine.bufferwrite;
 
-import java.io.IOException;
-import org.apache.iotdb.db.utils.TimeValuePair;
+public class ActionException extends Exception{
 
-public interface TimeValuePairSerializer {
+  public ActionException(String message) {
+    super(message);
+  }
 
-  void write(TimeValuePair timeValuePair) throws IOException;
-
-  void close() throws IOException;
+  public ActionException(Throwable cause) {
+    super(cause);
+  }
 }

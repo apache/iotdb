@@ -104,7 +104,7 @@ public class TimePair {
 
   @Override
   public String toString() {
-    StringBuffer sb = new StringBuffer().append(this.s).append(",").append(this.e);
+    StringBuilder sb = new StringBuilder().append(this.s).append(",").append(this.e);
     if (this.opType != null) {
       sb.append(",").append(this.opType);
     }

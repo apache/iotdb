@@ -36,6 +36,10 @@ public class MemUtils {
 
   private static Logger logger = LoggerFactory.getLogger(MemUtils.class);
 
+  private MemUtils(){
+
+  }
+
   /**
    * function for getting the record size.
    */
@@ -50,23 +54,21 @@ public class MemUtils {
   private static long getPointSize(DataPoint dataPoint) {
     switch (dataPoint.getType()) {
       case INT32:
-        return 8 + 4;
+        return 8L + 4L;
       case INT64:
-        return 8 + 8;
+        return 8L + 8L;
       case FLOAT:
-        return 8 + 4;
+        return 8L + 4L;
       case DOUBLE:
-        return 8 + 8;
+        return 8L + 8L;
       case BOOLEAN:
-        return 8 + 1;
+        return 8L + 1L;
       case TEXT:
-        return 8 + dataPoint.getValue().toString().length() * 2;
+        return 8L + dataPoint.getValue().toString().length() * 2;
       default:
-        return 8 + 8;
+        return 8L + 8L;
     }
   }
-
-  // TODO : move this down to TsFile ?
 
   /**
    * Calculate how much memory will be used if the given record is written to Bufferwrite.
@@ -94,13 +96,12 @@ public class MemUtils {
    */
   public static long getStringMem(String str) {
     // wide char (2 bytes each) and 64B String overhead
-    return str.length() * 2 + 64;
+    return str.length() * 2 + 64L;
   }
 
   /**
    * function for getting the memory size of the given data point.
    */
-  // TODO : move this down to TsFile
   public static long getDataPointMem(DataPoint dataPoint) {
     // type reference
     long memUsed = 8;

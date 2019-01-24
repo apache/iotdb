@@ -36,7 +36,7 @@ import org.slf4j.LoggerFactory;
  */
 public class ChunkGroupWriterImpl implements IChunkGroupWriter {
 
-  private static Logger LOG = LoggerFactory.getLogger(ChunkGroupWriterImpl.class);
+  private static final Logger LOG = LoggerFactory.getLogger(ChunkGroupWriterImpl.class);
 
   private final String deviceId;
 
