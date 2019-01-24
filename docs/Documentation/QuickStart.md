@@ -41,7 +41,7 @@ Here in the Quick Start part, we give a brief introduction of using source code 
 Use git to get IoTDB source code:
 
 ```
-Shell > git clone https://github.com/thulab/iotdb.git
+Shell > git clone git@github.com:apache/incubator-iotdb.git
 ```
 
 If you are not the first time that building IoTDB, remember deleting the following files:
