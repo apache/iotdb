@@ -1,6 +1,6 @@
 <!-- TOC -->
 
-- [Chapter4. Deployment and Management](#chapter4-deployment-and-management)
+- [Chapter4: Deployment and Management](#chapter4-deployment-and-management)
     - [Deployment](#deployment)
         - [Prerequisites](#prerequisites)
         - [Installation from  binary files](#installation-from--binary-files)
@@ -26,7 +26,7 @@
         - [Example of Setting Data storage Directory](#example-of-setting-data-storage-directory)
 
 <!-- /TOC -->
-# Chapter4. Deployment and Management
+# Chapter4: Deployment and Management
 
 ## Deployment
 
