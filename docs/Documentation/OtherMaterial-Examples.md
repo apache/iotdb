@@ -8,7 +8,7 @@
 
 These examples give a quick overview of the IoTDB JDBC. IoTDB offers standard JDBC for users to interact with IoTDB, other language versions are comming soon.
 
-To use IoTDB, you need to set storage group (detail concept about storage group, please view our [documentation](此处需补充连接到文档的实际链接)) for your timeseries. Then you need to create specific timeseries((detail concept about storage group, please view our [documentation](此处需补充连接到文档的实际链接))) according to its data type, name, etc. After that, inserting and query data is allowed. In this page, we will show an basic example using IoTDB JDBC.
+To use IoTDB, you need to set storage group (detail concept about storage group, please view our documentations) for your timeseries. Then you need to create specific timeseries((detail concept about storage group, please view our documentations)) according to its data type, name, etc. After that, inserting and query data is allowed. In this page, we will show an basic example using IoTDB JDBC.
 
 ## IoTDB Hello World
 
@@ -30,9 +30,9 @@ public class IotdbHelloWorld {
 		try {
 
             // 1. load JDBC driver of IoTDB
-            Class.forName("cn.edu.tsinghua.iotdb.jdbc.TsfileDriver");
+            Class.forName("org.apache.iotdb.iotdb.jdbc.IoTDBDriver");
             // 2. DriverManager connect to IoTDB
-            connection = DriverManager.getConnection("jdbc:tsfile://localhost:6667/", "root", "root");
+            connection = DriverManager.getConnection("jdbc:iotdb://localhost:6667/", "root", "root");
             // 3. Create statement
             statement = connection.createStatement();
             // 4. Set storage group
