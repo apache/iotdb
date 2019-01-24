@@ -132,7 +132,7 @@ public abstract class AbstractClient {
   protected static int[] maxValueLengthForShow = new int[]{75, 45, 8, 8};
   protected static String formatTime = "%" + maxTimeLength + "s|";
   protected static String formatValue = "%" + maxValueLength + "s|";
-  protected static int dividinglinelen = 40;
+  private static final int DIVIDING_LINE_LENGTH = 40;
   protected static String host = "127.0.0.1";
   protected static String port = "6667";
   protected static String username;
@@ -246,7 +246,7 @@ public abstract class AbstractClient {
       }
     }
 
-    System.out.println(StringUtils.repeat('-', dividinglinelen));
+    System.out.println(StringUtils.repeat('-', DIVIDING_LINE_LENGTH));
     if (isShow) {
       int type = res.getType();
       if (type == IoTDBMetadataResultSet.MetadataType.STORAGE_GROUP.ordinal()) { // storage group
@@ -422,7 +422,7 @@ public abstract class AbstractClient {
         System.out.printf(formatValue, resultSetMetaData.getColumnLabel(i));
       }
     }
-    System.out.printf("%n");
+    System.out.println();
   }
 
   protected static String[] removePasswordArgs(String[] args) {
