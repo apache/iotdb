@@ -84,7 +84,7 @@ public class WinClient extends AbstractClient {
       return;
     }
 
-    try (Scanner scanner = new Scanner(System.in)){
+    try (Scanner scanner = new Scanner(System.in)) {
       host = checkRequiredArg(HOST_ARGS, HOST_NAME, commandLine, false, host);
       port = checkRequiredArg(PORT_ARGS, PORT_NAME, commandLine, false, port);
       username = checkRequiredArg(USERNAME_ARGS, USERNAME_NAME, commandLine, true, null);
@@ -92,8 +92,8 @@ public class WinClient extends AbstractClient {
       if (password == null) {
         password = readPassword();
       }
-      try(IoTDBConnection connection = (IoTDBConnection) DriverManager
-                .getConnection(Config.IOTDB_URL_PREFIX + host + ":" + port + "/", username, password)){
+      try (IoTDBConnection connection = (IoTDBConnection) DriverManager
+          .getConnection(Config.IOTDB_URL_PREFIX + host + ":" + port + "/", username, password)) {
         properties = connection.getServerProperties();
         AGGREGRATE_TIME_LIST.addAll(properties.getSupportedTimeAggregationOperations());
         displayLogo(properties.getVersion());
@@ -101,7 +101,7 @@ public class WinClient extends AbstractClient {
         while (true) {
           System.out.print(IOTDB_CLI_PREFIX + "> ");
           String s = scanner.nextLine();
-          if(s != null){
+          if (s != null) {
             String[] cmds = s.trim().split(";");
             for (int i = 0; i < cmds.length; i++) {
               String cmd = cmds[i];
@@ -119,14 +119,16 @@ public class WinClient extends AbstractClient {
             }
           }
         }
-			} catch (SQLException e) {
-        System.out.println(String.format("%s> %s Host is %s, port is %s.", IOTDB_CLI_PREFIX, e.getMessage(), host, port));
+      } catch (SQLException e) {
+        System.out.println(String
+            .format("%s> %s Host is %s, port is %s.", IOTDB_CLI_PREFIX, e.getMessage(), host,
+                port));
       }
     } catch (ArgsErrorException e) {
       System.out.println(IOTDB_CLI_PREFIX + "> input params error because" + e.getMessage());
-    }catch (Exception e) {
-    	System.out.println(IOTDB_CLI_PREFIX + "> exit client with error " + e.getMessage());
-	  }
+    } catch (Exception e) {
+      System.out.println(IOTDB_CLI_PREFIX + "> exit client with error " + e.getMessage());
+    }
   }
 
   private static String readPassword() {
