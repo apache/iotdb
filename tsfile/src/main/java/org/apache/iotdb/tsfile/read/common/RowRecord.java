@@ -31,10 +31,6 @@ public class RowRecord {
     this.fields = new ArrayList<>();
   }
 
-  public long getTime() {
-    return timestamp;
-  }
-
   public void addField(Field f) {
     this.fields.add(f);
   }
