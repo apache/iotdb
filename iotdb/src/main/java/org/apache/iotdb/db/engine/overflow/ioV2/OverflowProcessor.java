@@ -148,12 +148,15 @@ public class OverflowProcessor extends Processor {
   }
 
   private String[] clearFile(String[] subFilePaths) {
+    // just clear the files whose name are number.
     List<String> files = new ArrayList<>();
     for (String file : subFilePaths) {
       try {
         Long.valueOf(file);
         files.add(file);
       } catch (NumberFormatException e) {
+        // ignore the exception, if the name of file is not a number.
+
       }
     }
     return files.toArray(new String[files.size()]);
@@ -183,14 +186,7 @@ public class OverflowProcessor extends Processor {
   }
 
   /**
-   * update one time-series data which time range is from startTime from endTime.
-   *
-   * @param deviceId
-   * @param measurementId
-   * @param startTime
-   * @param endTime
-   * @param type
-   * @param value
+   * @Deprecated update one time-series data which time range is from startTime from endTime.
    */
   @Deprecated
   public void update(String deviceId, String measurementId, long startTime, long endTime,
@@ -308,22 +304,6 @@ public class OverflowProcessor extends Processor {
         .addMemSeries(workSupport.queryOverflowInsertInMemory(deviceId, measurementId, dataType));
     return new ReadOnlyMemChunk(dataType, memSeriesLazyMerger);
   }
-
-  /**
-   * query update/delete data in memory. while flushing, merge the work {@code IntervalTreeOperation} with flush
-   * {@code IntervalTreeOperation}}.
-   *
-   * @param deviceId
-   * @param measurementId
-   * @param dataType
-   * @return update/delete result in DynamicOneColumnData
-   */
-  /*
-   * private DynamicOneColumnData queryOverflowUpdateInMemory(String deviceId, String measurementId, TSDataType
-   * dataType) { DynamicOneColumnData columnData = workSupport.queryOverflowUpdateInMemory(deviceId, measurementId,
-   * dataType, null); if (flushStatus.isFlushing()) { columnData = flushSupport.queryOverflowUpdateInMemory(deviceId,
-   * measurementId, dataType, columnData); } return columnData; }
-   */
 
   /**
    * Get the insert data which is WORK in unseqTsFile.
@@ -470,10 +450,8 @@ public class OverflowProcessor extends Processor {
         flushStatus.setUnFlushing();
         // switch from flush to work.
         switchFlushToWork();
-        flushStatus.notify();
+        flushStatus.notifyAll();
       }
-      // BasicMemController.getInstance().reportFree(this,
-      // oldMemUsage);
     }
     // log flush time
     LOGGER.info("The overflow processor {} ends flushing {}.", getProcessorName(), flushFunction);

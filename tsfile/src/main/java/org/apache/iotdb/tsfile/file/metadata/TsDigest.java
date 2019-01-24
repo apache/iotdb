@@ -39,6 +39,7 @@ public class TsDigest {
   private int sizeOfList;
 
   public TsDigest() {
+    // allowed to clair an empty TsDigest whose fields will be assigned later.
   }
 
   public static int getNullDigestSize() {

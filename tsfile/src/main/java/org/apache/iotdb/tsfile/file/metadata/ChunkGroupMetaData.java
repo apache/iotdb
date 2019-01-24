@@ -26,15 +26,11 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Metadata of ChunkGroup.
  */
 public class ChunkGroupMetaData {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(ChunkGroupMetaData.class);
 
   /**
    * Name of device, this field is not serialized.
@@ -65,7 +61,9 @@ public class ChunkGroupMetaData {
    * is correct.
    */
   public ChunkGroupMetaData(String deviceID, List<ChunkMetaData> chunkMetaDataList) {
-    assert chunkMetaDataList != null;
+    if (chunkMetaDataList == null) {
+      throw new IllegalArgumentException("Given chunkMetaDataList is null");
+    }
     this.deviceID = deviceID;
     this.chunkMetaDataList = chunkMetaDataList;
     reCalculateSerializedSize();
@@ -104,9 +102,8 @@ public class ChunkGroupMetaData {
    *
    * @param buffer ByteBuffer
    * @return ChunkGroupMetaData object
-   * @throws IOException IOException
    */
-  public static ChunkGroupMetaData deserializeFrom(ByteBuffer buffer) throws IOException {
+  public static ChunkGroupMetaData deserializeFrom(ByteBuffer buffer) {
     ChunkGroupMetaData chunkGroupMetaData = new ChunkGroupMetaData();
 
     chunkGroupMetaData.deviceID = (ReadWriteIOUtils.readString(buffer));

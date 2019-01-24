@@ -50,7 +50,7 @@ public class PriorityMergeReader implements IReader {
 
   @Override
   public boolean hasNext() {
-    return heap.size() > 0;
+    return !heap.isEmpty();
   }
 
   @Override
@@ -61,7 +61,7 @@ public class PriorityMergeReader implements IReader {
   }
 
   private void updateHeap(Element top) throws IOException {
-    while (heap.size() > 0 && heap.peek().timeValuePair.getTimestamp() == top.timeValuePair
+    while (!heap.isEmpty() && heap.peek().timeValuePair.getTimestamp() == top.timeValuePair
         .getTimestamp()) {
       Element e = heap.poll();
       IReader reader = readerList.get(e.index);
@@ -115,9 +115,16 @@ public class PriorityMergeReader implements IReader {
 
     @Override
     public int compareTo(Element o) {
-      return this.timeValuePair.getTimestamp() > o.timeValuePair.getTimestamp() ? 1
-          : this.timeValuePair.getTimestamp() < o.timeValuePair.getTimestamp() ? -1
-              : o.priority.compareTo(this.priority);
+
+      if (this.timeValuePair.getTimestamp() > o.timeValuePair.getTimestamp()) {
+        return 1;
+      }
+
+      if (this.timeValuePair.getTimestamp() < o.timeValuePair.getTimestamp()) {
+        return -1;
+      }
+
+      return o.priority.compareTo(this.priority);
     }
   }
 }

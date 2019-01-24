@@ -26,7 +26,7 @@ package org.apache.iotdb.tsfile.exception.write;
 public class WriteProcessException extends Exception {
 
   private static final long serialVersionUID = -2664638061585302767L;
-  protected String errMsg;
+  private final String errMsg;
 
   public WriteProcessException(String msg) {
     super(msg);

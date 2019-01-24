@@ -40,7 +40,7 @@ import org.slf4j.LoggerFactory;
  */
 public class ChunkBuffer {
 
-  private static Logger LOG = LoggerFactory.getLogger(ChunkBuffer.class);
+  private static final Logger LOG = LoggerFactory.getLogger(ChunkBuffer.class);
   private final Compressor compressor;
   private final MeasurementSchema schema;
 
@@ -99,7 +99,6 @@ public class ChunkBuffer {
     }
     this.maxTimestamp = maxTimestamp;
     int uncompressedSize = data.remaining();
-    int maxSize = compressor.getMaxBytesForCompression(uncompressedSize);
     int compressedSize = 0;
     int compressedPosition = 0;
     byte[] compressedBytes = null;
@@ -107,13 +106,10 @@ public class ChunkBuffer {
     if (compressor.getType().equals(CompressionType.UNCOMPRESSED)) {
       compressedSize = data.remaining();
     } else {
-      // data is never a directByteBuffer now.
-      if (compressedBytes == null
-          || compressedBytes.length < compressor.getMaxBytesForCompression(uncompressedSize)) {
-        compressedBytes = new byte[compressor.getMaxBytesForCompression(uncompressedSize)];
-      }
+      compressedBytes = new byte[compressor.getMaxBytesForCompression(uncompressedSize)];
       try {
         compressedPosition = 0;
+        // data is never a directByteBuffer now, so we can use data.array()
         compressedSize = compressor
             .compress(data.array(), data.position(), data.remaining(), compressedBytes);
       } catch (IOException e) {
@@ -144,14 +140,12 @@ public class ChunkBuffer {
     this.totalValueCount += valueCount;
 
     // write page content to temp PBAOS
-    try {
+    try (WritableByteChannel channel = Channels.newChannel(pageBuffer)) {
       LOG.debug("start to flush a page data into buffer, buffer position {} ", pageBuffer.size());
       if (compressor.getType().equals(CompressionType.UNCOMPRESSED)) {
-        WritableByteChannel channel = Channels.newChannel(pageBuffer);
         channel.write(data);
       } else {
         if (data.isDirect()) {
-          WritableByteChannel channel = Channels.newChannel(pageBuffer);
           channel.write(compressedData);
         } else {
           pageBuffer.write(compressedBytes, compressedPosition, compressedSize);
@@ -221,12 +215,11 @@ public class ChunkBuffer {
    * @return the max possible allocated size currently
    */
   public long estimateMaxPageMemSize() {
-    // return size of buffer + page max size;
-    return pageBuffer.size() + estimateMaxPageHeaderSize();
+    // return the sum of size of buffer and page max size
+    return (long) (pageBuffer.size() + estimateMaxPageHeaderSize());
   }
 
   private int estimateMaxPageHeaderSize() {
-    int digestSize = (totalValueCount == 0) ? 0 : schema.getTypeLength() * 2;
     return PageHeader.calculatePageHeaderSize(schema.getType());
   }
 

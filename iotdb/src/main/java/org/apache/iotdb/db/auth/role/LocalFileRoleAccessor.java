@@ -80,7 +80,7 @@ public class LocalFileRoleAccessor implements IRoleAccessor {
     try (DataInputStream dataInputStream = new DataInputStream(
         new BufferedInputStream(inputStream))) {
       Role role = new Role();
-      role.name = IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal);
+      role.setName(IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal));
 
       int privilegeNum = dataInputStream.readInt();
       List<PathPrivilege> pathPrivilegeList = new ArrayList<>();
@@ -88,7 +88,7 @@ public class LocalFileRoleAccessor implements IRoleAccessor {
         pathPrivilegeList
             .add(IOUtils.readPathPrivilege(dataInputStream, STRING_ENCODING, strBufferLocal));
       }
-      role.privilegeList = pathPrivilegeList;
+      role.setPrivilegeList(pathPrivilegeList);
 
       return role;
     } catch (Exception e) {
@@ -99,16 +99,16 @@ public class LocalFileRoleAccessor implements IRoleAccessor {
   @Override
   public void saveRole(Role role) throws IOException {
     File roleProfile = new File(
-        roleDirPath + File.separator + role.name + IoTDBConstant.PROFILE_SUFFIX + TEMP_SUFFIX);
+        roleDirPath + File.separator + role.getName() + IoTDBConstant.PROFILE_SUFFIX + TEMP_SUFFIX);
     BufferedOutputStream outputStream = new BufferedOutputStream(new FileOutputStream(roleProfile));
     try {
-      IOUtils.writeString(outputStream, role.name, STRING_ENCODING, encodingBufferLocal);
+      IOUtils.writeString(outputStream, role.getName(), STRING_ENCODING, encodingBufferLocal);
 
-      role.privilegeList.sort(PathPrivilege.referenceDescentSorter);
-      int privilegeNum = role.privilegeList.size();
+      role.getPrivilegeList().sort(PathPrivilege.referenceDescentSorter);
+      int privilegeNum = role.getPrivilegeList().size();
       IOUtils.writeInt(outputStream, privilegeNum, encodingBufferLocal);
       for (int i = 0; i < privilegeNum; i++) {
-        PathPrivilege pathPrivilege = role.privilegeList.get(i);
+        PathPrivilege pathPrivilege = role.getPrivilegeList().get(i);
         IOUtils
             .writePathPrivilege(outputStream, pathPrivilege, STRING_ENCODING, encodingBufferLocal);
       }
@@ -121,7 +121,7 @@ public class LocalFileRoleAccessor implements IRoleAccessor {
     }
 
     File oldFile = new File(
-        roleDirPath + File.separator + role.name + IoTDBConstant.PROFILE_SUFFIX);
+        roleDirPath + File.separator + role.getName() + IoTDBConstant.PROFILE_SUFFIX);
     IOUtils.replaceFile(roleProfile, oldFile);
   }
 

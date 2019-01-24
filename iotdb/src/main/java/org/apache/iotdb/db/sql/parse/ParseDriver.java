@@ -114,9 +114,13 @@ public class ParseDriver {
       throw new ParseException(parser.errors);
     }
 
-    AstNode tree = (AstNode) r.getTree();
-    tree.setUnknownTokenBoundaries();
-    return tree;
+    if (r != null) {
+      AstNode tree = (AstNode) r.getTree();
+      tree.setUnknownTokenBoundaries();
+      return tree;
+    }else {
+      return null;
+    }
   }
 
   /**
