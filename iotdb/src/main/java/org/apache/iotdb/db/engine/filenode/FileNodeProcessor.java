@@ -146,14 +146,18 @@ public class FileNodeProcessor extends Processor implements IStatistic {
     @Override
     public void act() throws ActionException {
       synchronized (fileNodeProcessorStore) {
-        writeStoreToDisk(fileNodeProcessorStore);
+        try {
+          writeStoreToDisk(fileNodeProcessorStore);
+        } catch (FileNodeProcessorException e) {
+          throw new ActionException(e);
+        }
       }
     }
   };
   private Action bufferwriteFlushAction = new Action() {
 
     @Override
-    public void act() throws Exception {
+    public void act() throws ActionException {
       // update the lastUpdateTime Notice: Thread safe
       synchronized (fileNodeProcessorStore) {
         // deep copy
@@ -169,8 +173,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
   private Action bufferwriteCloseAction = new Action() {
 
     @Override
-    public void act() throws Exception {
-
+    public void act() throws ActionException {
       synchronized (fileNodeProcessorStore) {
         fileNodeProcessorStore.setLastUpdateTimeMap(lastUpdateTimeMap);
         addLastTimeToIntervalFile();

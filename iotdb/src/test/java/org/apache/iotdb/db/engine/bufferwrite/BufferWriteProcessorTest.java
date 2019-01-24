@@ -53,7 +53,7 @@ public class BufferWriteProcessorTest {
   Action bfflushaction = new Action() {
 
     @Override
-    public void act() throws Exception {
+    public void act() throws ActionException {
 
     }
   };
@@ -61,14 +61,14 @@ public class BufferWriteProcessorTest {
   Action bfcloseaction = new Action() {
 
     @Override
-    public void act() throws Exception {
+    public void act() throws ActionException {
     }
   };
 
   Action fnflushaction = new Action() {
 
     @Override
-    public void act() throws Exception {
+    public void act() throws ActionException {
 
     }
   };
