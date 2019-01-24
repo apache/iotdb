@@ -60,24 +60,24 @@ public class LocalFileUserManagerTest {
       for (int j = 0; j <= i; j++) {
         PathPrivilege pathPrivilege = new PathPrivilege("root.a.b.c" + j);
         pathPrivilege.getPrivileges().add(j);
-        users[i].privilegeList.add(pathPrivilege);
-        users[i].roleList.add("role" + j);
+        users[i].getPrivilegeList().add(pathPrivilege);
+        users[i].getRoleList().add("role" + j);
       }
     }
 
     // create
-    User user = manager.getUser(users[0].name);
+    User user = manager.getUser(users[0].getName());
     assertEquals(null, user);
     for (User user1 : users) {
-      assertEquals(true, manager.createUser(user1.name, user1.password));
+      assertEquals(true, manager.createUser(user1.getName(), user1.getPassword()));
     }
     for (User user1 : users) {
-      user = manager.getUser(user1.name);
-      assertEquals(user1.name, user.name);
-      assertEquals(AuthUtils.encryptPassword(user1.password), user.password);
+      user = manager.getUser(user1.getName());
+      assertEquals(user1.getName(), user.getName());
+      assertEquals(AuthUtils.encryptPassword(user1.getPassword()), user.getPassword());
     }
 
-    assertEquals(false, manager.createUser(users[0].name, users[0].password));
+    assertEquals(false, manager.createUser(users[0].getName(), users[0].getPassword()));
     boolean caught = false;
     try {
       manager.createUser("too", "short");
@@ -95,19 +95,19 @@ public class LocalFileUserManagerTest {
 
     // delete
     assertEquals(false, manager.deleteUser("not a user"));
-    assertEquals(true, manager.deleteUser(users[users.length - 1].name));
-    assertEquals(null, manager.getUser(users[users.length - 1].name));
-    assertEquals(false, manager.deleteUser(users[users.length - 1].name));
+    assertEquals(true, manager.deleteUser(users[users.length - 1].getName()));
+    assertEquals(null, manager.getUser(users[users.length - 1].getName()));
+    assertEquals(false, manager.deleteUser(users[users.length - 1].getName()));
 
     // grant privilege
-    user = manager.getUser(users[0].name);
+    user = manager.getUser(users[0].getName());
     String path = "root.a.b.c";
     int privilegeId = 0;
     assertEquals(false, user.hasPrivilege(path, privilegeId));
-    assertEquals(true, manager.grantPrivilegeToUser(user.name, path, privilegeId));
-    assertEquals(true, manager.grantPrivilegeToUser(user.name, path, privilegeId + 1));
-    assertEquals(false, manager.grantPrivilegeToUser(user.name, path, privilegeId));
-    user = manager.getUser(users[0].name);
+    assertEquals(true, manager.grantPrivilegeToUser(user.getName(), path, privilegeId));
+    assertEquals(true, manager.grantPrivilegeToUser(user.getName(), path, privilegeId + 1));
+    assertEquals(false, manager.grantPrivilegeToUser(user.getName(), path, privilegeId));
+    user = manager.getUser(users[0].getName());
     assertEquals(true, user.hasPrivilege(path, privilegeId));
     caught = false;
     try {
@@ -118,16 +118,16 @@ public class LocalFileUserManagerTest {
     assertEquals(true, caught);
     caught = false;
     try {
-      manager.grantPrivilegeToUser(user.name, path, -1);
+      manager.grantPrivilegeToUser(user.getName(), path, -1);
     } catch (AuthException e) {
       caught = true;
     }
     assertEquals(true, caught);
 
     // revoke privilege
-    user = manager.getUser(users[0].name);
-    assertEquals(true, manager.revokePrivilegeFromUser(user.name, path, privilegeId));
-    assertEquals(false, manager.revokePrivilegeFromUser(user.name, path, privilegeId));
+    user = manager.getUser(users[0].getName());
+    assertEquals(true, manager.revokePrivilegeFromUser(user.getName(), path, privilegeId));
+    assertEquals(false, manager.revokePrivilegeFromUser(user.getName(), path, privilegeId));
     caught = false;
     try {
       manager.revokePrivilegeFromUser("not a user", path, privilegeId);
@@ -137,7 +137,7 @@ public class LocalFileUserManagerTest {
     assertEquals(true, caught);
     caught = false;
     try {
-      manager.revokePrivilegeFromUser(user.name, path, -1);
+      manager.revokePrivilegeFromUser(user.getName(), path, -1);
     } catch (AuthException e) {
       caught = true;
     }
@@ -146,10 +146,10 @@ public class LocalFileUserManagerTest {
     // update password
     String newPassword = "newPassword";
     String illegalPW = "new";
-    assertEquals(true, manager.updateUserPassword(user.name, newPassword));
-    assertEquals(false, manager.updateUserPassword(user.name, illegalPW));
-    user = manager.getUser(user.name);
-    assertEquals(AuthUtils.encryptPassword(newPassword), user.password);
+    assertEquals(true, manager.updateUserPassword(user.getName(), newPassword));
+    assertEquals(false, manager.updateUserPassword(user.getName(), illegalPW));
+    user = manager.getUser(user.getName());
+    assertEquals(AuthUtils.encryptPassword(newPassword), user.getPassword());
     caught = false;
     try {
       manager.updateUserPassword("not a user", newPassword);
@@ -160,9 +160,9 @@ public class LocalFileUserManagerTest {
 
     // grant role
     String roleName = "newrole";
-    assertEquals(true, manager.grantRoleToUser(roleName, user.name));
-    assertEquals(false, manager.grantRoleToUser(roleName, user.name));
-    user = manager.getUser(user.name);
+    assertEquals(true, manager.grantRoleToUser(roleName, user.getName()));
+    assertEquals(false, manager.grantRoleToUser(roleName, user.getName()));
+    user = manager.getUser(user.getName());
     assertEquals(true, user.hasRole(roleName));
     caught = false;
     try {
@@ -173,9 +173,9 @@ public class LocalFileUserManagerTest {
     assertEquals(true, caught);
 
     // revoke role
-    assertEquals(true, manager.revokeRoleFromUser(roleName, user.name));
-    assertEquals(false, manager.revokeRoleFromUser(roleName, user.name));
-    user = manager.getUser(user.name);
+    assertEquals(true, manager.revokeRoleFromUser(roleName, user.getName()));
+    assertEquals(false, manager.revokeRoleFromUser(roleName, user.getName()));
+    user = manager.getUser(user.getName());
     assertEquals(false, user.hasRole(roleName));
     caught = false;
     try {
@@ -190,7 +190,7 @@ public class LocalFileUserManagerTest {
     usernames.sort(null);
     assertEquals(IoTDBConstant.ADMIN_NAME, usernames.get(0));
     for (int i = 0; i < users.length - 1; i++) {
-      assertEquals(users[i].name, usernames.get(i + 1));
+      assertEquals(users[i].getName(), usernames.get(i + 1));
     }
   }
 }
