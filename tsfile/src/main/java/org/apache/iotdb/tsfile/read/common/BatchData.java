@@ -30,21 +30,27 @@ import org.apache.iotdb.tsfile.utils.Binary;
  */
 public class BatchData {
 
-  private static int TIME_CAPACITY = 1;
-  private static int VALUE_CAPACITY = 1;
-  private static int EMPTY_TIME_CAPACITY = 1;
-  private static int CAPACITY_THRESHOLD = 1024;
+  private int timeCapacity = 1;
+  private int valueCapacity = 1;
+  private int emptyTimeCapacity = 1;
+  private int capacityThreshold = 1024;
 
   private TSDataType dataType;
   private int curIdx;
 
-  private int timeArrayIdx; // the number of ArrayList in timeRet
-  private int curTimeIdx; // the index of current ArrayList in timeRet
-  private int timeLength; // the insert timestamp number of timeRet
+  /** the number of ArrayList in timeRet **/
+  private int timeArrayIdx;
+  /** the index of current ArrayList in timeRet **/
+  private int curTimeIdx;
+  /** the insert timestamp number of timeRet **/
+  private int timeLength;
 
-  private int valueArrayIdx;// the number of ArrayList in valueRet
-  private int curValueIdx; // the index of current ArrayList in valueRet
-  private int valueLength; // the insert value number of valueRet
+  /** the number of ArrayList in valueRet **/
+  private int valueArrayIdx;
+  /** the index of current ArrayList in valueRet **/
+  private int curValueIdx;
+  /** the insert value number of valueRet **/
+  private int valueLength;
 
   private ArrayList<long[]> timeRet;
   private ArrayList<long[]> emptyTimeRet;
@@ -87,7 +93,7 @@ public class BatchData {
 
   public long currentTime() {
     rangeCheckForTime(curIdx);
-    return this.timeRet.get(curIdx / TIME_CAPACITY)[curIdx % TIME_CAPACITY];
+    return this.timeRet.get(curIdx / timeCapacity)[curIdx % timeCapacity];
   }
 
   /**
@@ -131,11 +137,11 @@ public class BatchData {
     this.curValueIdx = 0;
     this.valueLength = 0;
     this.curIdx = 0;
-    CAPACITY_THRESHOLD = TSFileConfig.dynamicDataSize;
+    capacityThreshold = TSFileConfig.DYNAMIC_DATA_SIZE;
 
     if (recordTime) {
       timeRet = new ArrayList<>();
-      timeRet.add(new long[TIME_CAPACITY]);
+      timeRet.add(new long[timeCapacity]);
       timeArrayIdx = 0;
       curTimeIdx = 0;
       timeLength = 0;
@@ -143,33 +149,33 @@ public class BatchData {
 
     if (hasEmptyTime) {
       emptyTimeRet = new ArrayList<>();
-      emptyTimeRet.add(new long[EMPTY_TIME_CAPACITY]);
+      emptyTimeRet.add(new long[emptyTimeCapacity]);
     }
 
     switch (dataType) {
       case BOOLEAN:
         booleanRet = new ArrayList<>();
-        booleanRet.add(new boolean[VALUE_CAPACITY]);
+        booleanRet.add(new boolean[valueCapacity]);
         break;
       case INT32:
         intRet = new ArrayList<>();
-        intRet.add(new int[VALUE_CAPACITY]);
+        intRet.add(new int[valueCapacity]);
         break;
       case INT64:
         longRet = new ArrayList<>();
-        longRet.add(new long[VALUE_CAPACITY]);
+        longRet.add(new long[valueCapacity]);
         break;
       case FLOAT:
         floatRet = new ArrayList<>();
-        floatRet.add(new float[VALUE_CAPACITY]);
+        floatRet.add(new float[valueCapacity]);
         break;
       case DOUBLE:
         doubleRet = new ArrayList<>();
-        doubleRet.add(new double[VALUE_CAPACITY]);
+        doubleRet.add(new double[valueCapacity]);
         break;
       case TEXT:
         binaryRet = new ArrayList<>();
-        binaryRet.add(new Binary[VALUE_CAPACITY]);
+        binaryRet.add(new Binary[valueCapacity]);
         break;
       default:
         throw new UnSupportedDataTypeException(String.valueOf(dataType));
@@ -182,16 +188,16 @@ public class BatchData {
    * @param v timestamp
    */
   public void putTime(long v) {
-    if (curTimeIdx == TIME_CAPACITY) {
-      if (TIME_CAPACITY >= CAPACITY_THRESHOLD) {
-        this.timeRet.add(new long[TIME_CAPACITY]);
+    if (curTimeIdx == timeCapacity) {
+      if (timeCapacity >= capacityThreshold) {
+        this.timeRet.add(new long[timeCapacity]);
         timeArrayIdx++;
         curTimeIdx = 0;
       } else {
-        long[] newData = new long[TIME_CAPACITY * 2];
-        System.arraycopy(timeRet.get(0), 0, newData, 0, TIME_CAPACITY);
+        long[] newData = new long[timeCapacity * 2];
+        System.arraycopy(timeRet.get(0), 0, newData, 0, timeCapacity);
         this.timeRet.set(0, newData);
-        TIME_CAPACITY = TIME_CAPACITY * 2;
+        timeCapacity = timeCapacity * 2;
       }
     }
     (timeRet.get(timeArrayIdx))[curTimeIdx++] = v;
@@ -204,18 +210,18 @@ public class BatchData {
    * @param v boolean data
    */
   public void putBoolean(boolean v) {
-    if (curValueIdx == VALUE_CAPACITY) {
-      if (VALUE_CAPACITY >= CAPACITY_THRESHOLD) {
+    if (curValueIdx == valueCapacity) {
+      if (valueCapacity >= capacityThreshold) {
         if (this.booleanRet.size() <= valueArrayIdx + 1) {
-          this.booleanRet.add(new boolean[VALUE_CAPACITY]);
+          this.booleanRet.add(new boolean[valueCapacity]);
         }
         valueArrayIdx++;
         curValueIdx = 0;
       } else {
-        boolean[] newData = new boolean[VALUE_CAPACITY * 2];
-        System.arraycopy(booleanRet.get(0), 0, newData, 0, VALUE_CAPACITY);
+        boolean[] newData = new boolean[valueCapacity * 2];
+        System.arraycopy(booleanRet.get(0), 0, newData, 0, valueCapacity);
         this.booleanRet.set(0, newData);
-        VALUE_CAPACITY = VALUE_CAPACITY * 2;
+        valueCapacity = valueCapacity * 2;
       }
     }
     (this.booleanRet.get(valueArrayIdx))[curValueIdx++] = v;
@@ -228,18 +234,18 @@ public class BatchData {
    * @param v int data
    */
   public void putInt(int v) {
-    if (curValueIdx == VALUE_CAPACITY) {
-      if (VALUE_CAPACITY >= CAPACITY_THRESHOLD) {
+    if (curValueIdx == valueCapacity) {
+      if (valueCapacity >= capacityThreshold) {
         if (this.intRet.size() <= valueArrayIdx + 1) {
-          this.intRet.add(new int[VALUE_CAPACITY]);
+          this.intRet.add(new int[valueCapacity]);
         }
         valueArrayIdx++;
         curValueIdx = 0;
       } else {
-        int[] newData = new int[VALUE_CAPACITY * 2];
-        System.arraycopy(intRet.get(0), 0, newData, 0, VALUE_CAPACITY);
+        int[] newData = new int[valueCapacity * 2];
+        System.arraycopy(intRet.get(0), 0, newData, 0, valueCapacity);
         this.intRet.set(0, newData);
-        VALUE_CAPACITY = VALUE_CAPACITY * 2;
+        valueCapacity = valueCapacity * 2;
       }
     }
     (this.intRet.get(valueArrayIdx))[curValueIdx++] = v;
@@ -252,18 +258,18 @@ public class BatchData {
    * @param v long data
    */
   public void putLong(long v) {
-    if (curValueIdx == VALUE_CAPACITY) {
-      if (VALUE_CAPACITY >= CAPACITY_THRESHOLD) {
+    if (curValueIdx == valueCapacity) {
+      if (valueCapacity >= capacityThreshold) {
         if (this.longRet.size() <= valueArrayIdx + 1) {
-          this.longRet.add(new long[VALUE_CAPACITY]);
+          this.longRet.add(new long[valueCapacity]);
         }
         valueArrayIdx++;
         curValueIdx = 0;
       } else {
-        long[] newData = new long[VALUE_CAPACITY * 2];
-        System.arraycopy(longRet.get(0), 0, newData, 0, VALUE_CAPACITY);
+        long[] newData = new long[valueCapacity * 2];
+        System.arraycopy(longRet.get(0), 0, newData, 0, valueCapacity);
         this.longRet.set(0, newData);
-        VALUE_CAPACITY = VALUE_CAPACITY * 2;
+        valueCapacity = valueCapacity * 2;
       }
     }
     (this.longRet.get(valueArrayIdx))[curValueIdx++] = v;
@@ -276,18 +282,18 @@ public class BatchData {
    * @param v float data
    */
   public void putFloat(float v) {
-    if (curValueIdx == VALUE_CAPACITY) {
-      if (VALUE_CAPACITY >= CAPACITY_THRESHOLD) {
+    if (curValueIdx == valueCapacity) {
+      if (valueCapacity >= capacityThreshold) {
         if (this.floatRet.size() <= valueArrayIdx + 1) {
-          this.floatRet.add(new float[VALUE_CAPACITY]);
+          this.floatRet.add(new float[valueCapacity]);
         }
         valueArrayIdx++;
         curValueIdx = 0;
       } else {
-        float[] newData = new float[VALUE_CAPACITY * 2];
-        System.arraycopy(floatRet.get(0), 0, newData, 0, VALUE_CAPACITY);
+        float[] newData = new float[valueCapacity * 2];
+        System.arraycopy(floatRet.get(0), 0, newData, 0, valueCapacity);
         this.floatRet.set(0, newData);
-        VALUE_CAPACITY = VALUE_CAPACITY * 2;
+        valueCapacity = valueCapacity * 2;
       }
     }
     (this.floatRet.get(valueArrayIdx))[curValueIdx++] = v;
@@ -300,18 +306,18 @@ public class BatchData {
    * @param v double data
    */
   public void putDouble(double v) {
-    if (curValueIdx == VALUE_CAPACITY) {
-      if (VALUE_CAPACITY >= CAPACITY_THRESHOLD) {
+    if (curValueIdx == valueCapacity) {
+      if (valueCapacity >= capacityThreshold) {
         if (this.doubleRet.size() <= valueArrayIdx + 1) {
-          this.doubleRet.add(new double[VALUE_CAPACITY]);
+          this.doubleRet.add(new double[valueCapacity]);
         }
         valueArrayIdx++;
         curValueIdx = 0;
       } else {
-        double[] newData = new double[VALUE_CAPACITY * 2];
-        System.arraycopy(doubleRet.get(0), 0, newData, 0, VALUE_CAPACITY);
+        double[] newData = new double[valueCapacity * 2];
+        System.arraycopy(doubleRet.get(0), 0, newData, 0, valueCapacity);
         this.doubleRet.set(0, newData);
-        VALUE_CAPACITY = VALUE_CAPACITY * 2;
+        valueCapacity = valueCapacity * 2;
       }
     }
     (this.doubleRet.get(valueArrayIdx))[curValueIdx++] = v;
@@ -324,18 +330,18 @@ public class BatchData {
    * @param v binary data.
    */
   public void putBinary(Binary v) {
-    if (curValueIdx == VALUE_CAPACITY) {
-      if (VALUE_CAPACITY >= CAPACITY_THRESHOLD) {
+    if (curValueIdx == valueCapacity) {
+      if (valueCapacity >= capacityThreshold) {
         if (this.binaryRet.size() <= valueArrayIdx + 1) {
-          this.binaryRet.add(new Binary[VALUE_CAPACITY]);
+          this.binaryRet.add(new Binary[valueCapacity]);
         }
         valueArrayIdx++;
         curValueIdx = 0;
       } else {
-        Binary[] newData = new Binary[VALUE_CAPACITY * 2];
-        System.arraycopy(binaryRet.get(0), 0, newData, 0, VALUE_CAPACITY);
+        Binary[] newData = new Binary[valueCapacity * 2];
+        System.arraycopy(binaryRet.get(0), 0, newData, 0, valueCapacity);
         this.binaryRet.set(0, newData);
-        VALUE_CAPACITY = VALUE_CAPACITY * 2;
+        valueCapacity = valueCapacity * 2;
       }
     }
     (this.binaryRet.get(valueArrayIdx))[curValueIdx++] = v;
@@ -377,71 +383,71 @@ public class BatchData {
 
   public boolean getBoolean() {
     rangeCheck(curIdx);
-    return this.booleanRet.get(curIdx / TIME_CAPACITY)[curIdx % TIME_CAPACITY];
+    return this.booleanRet.get(curIdx / timeCapacity)[curIdx % timeCapacity];
   }
 
   public void setBoolean(int idx, boolean v) {
     rangeCheck(idx);
-    this.booleanRet.get(idx / TIME_CAPACITY)[idx % TIME_CAPACITY] = v;
+    this.booleanRet.get(idx / timeCapacity)[idx % timeCapacity] = v;
   }
 
   public int getInt() {
     rangeCheck(curIdx);
-    return this.intRet.get(curIdx / TIME_CAPACITY)[curIdx % TIME_CAPACITY];
+    return this.intRet.get(curIdx / timeCapacity)[curIdx % timeCapacity];
   }
 
   public void setInt(int idx, int v) {
     rangeCheck(idx);
-    this.intRet.get(idx / TIME_CAPACITY)[idx % TIME_CAPACITY] = v;
+    this.intRet.get(idx / timeCapacity)[idx % timeCapacity] = v;
   }
 
   public long getLong() {
     rangeCheck(curIdx);
-    return this.longRet.get(curIdx / TIME_CAPACITY)[curIdx % TIME_CAPACITY];
+    return this.longRet.get(curIdx / timeCapacity)[curIdx % timeCapacity];
   }
 
   public void setLong(int idx, long v) {
     rangeCheck(idx);
-    this.longRet.get(idx / TIME_CAPACITY)[idx % TIME_CAPACITY] = v;
+    this.longRet.get(idx / timeCapacity)[idx % timeCapacity] = v;
   }
 
   public float getFloat() {
     rangeCheck(curIdx);
-    return this.floatRet.get(curIdx / TIME_CAPACITY)[curIdx % TIME_CAPACITY];
+    return this.floatRet.get(curIdx / timeCapacity)[curIdx % timeCapacity];
   }
 
   public void setFloat(int idx, float v) {
     rangeCheck(idx);
-    this.floatRet.get(idx / TIME_CAPACITY)[idx % TIME_CAPACITY] = v;
+    this.floatRet.get(idx / timeCapacity)[idx % timeCapacity] = v;
   }
 
   public double getDouble() {
     rangeCheck(curIdx);
-    return this.doubleRet.get(curIdx / TIME_CAPACITY)[curIdx % TIME_CAPACITY];
+    return this.doubleRet.get(curIdx / timeCapacity)[curIdx % timeCapacity];
   }
 
   public void setDouble(int idx, double v) {
     rangeCheck(idx);
-    this.doubleRet.get(idx / TIME_CAPACITY)[idx % TIME_CAPACITY] = v;
+    this.doubleRet.get(idx / timeCapacity)[idx % timeCapacity] = v;
   }
 
   public Binary getBinary() {
     rangeCheck(curIdx);
-    return this.binaryRet.get(curIdx / TIME_CAPACITY)[curIdx % TIME_CAPACITY];
+    return this.binaryRet.get(curIdx / timeCapacity)[curIdx % timeCapacity];
   }
 
   public void setBinary(int idx, Binary v) {
-    this.binaryRet.get(idx / TIME_CAPACITY)[idx % TIME_CAPACITY] = v;
+    this.binaryRet.get(idx / timeCapacity)[idx % timeCapacity] = v;
   }
 
   public void setTime(int idx, long v) {
     rangeCheckForTime(idx);
-    this.timeRet.get(idx / TIME_CAPACITY)[idx % TIME_CAPACITY] = v;
+    this.timeRet.get(idx / timeCapacity)[idx % timeCapacity] = v;
   }
 
   public long getEmptyTime(int idx) {
     rangeCheckForEmptyTime(idx);
-    return this.emptyTimeRet.get(idx / EMPTY_TIME_CAPACITY)[idx % EMPTY_TIME_CAPACITY];
+    return this.emptyTimeRet.get(idx / emptyTimeCapacity)[idx % emptyTimeCapacity];
   }
 
   /**
@@ -452,7 +458,7 @@ public class BatchData {
   public long[] getTimeAsArray() {
     long[] res = new long[timeLength];
     for (int i = 0; i < timeLength; i++) {
-      res[i] = timeRet.get(i / TIME_CAPACITY)[i % TIME_CAPACITY];
+      res[i] = timeRet.get(i / timeCapacity)[i % timeCapacity];
     }
     return res;
   }
@@ -482,30 +488,6 @@ public class BatchData {
       case TEXT:
         putBinary((Binary) v);
         break;
-      default:
-        throw new UnSupportedDataTypeException(String.valueOf(dataType));
-    }
-  }
-
-  /**
-   * get and object.
-   *
-   * @return object
-   */
-  public Comparable<?> getAnObject() {
-    switch (dataType) {
-      case BOOLEAN:
-        return getBoolean();
-      case DOUBLE:
-        return getDouble();
-      case TEXT:
-        return getBinary();
-      case FLOAT:
-        return getFloat();
-      case INT32:
-        return getInt();
-      case INT64:
-        return getLong();
       default:
         throw new UnSupportedDataTypeException(String.valueOf(dataType));
     }

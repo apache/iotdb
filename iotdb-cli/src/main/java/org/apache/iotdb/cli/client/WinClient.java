@@ -41,7 +41,6 @@ public class WinClient extends AbstractClient {
    */
   public static void main(String[] args) throws ClassNotFoundException, SQLException {
     Class.forName(Config.JDBC_DRIVER_NAME);
-    IoTDBConnection connection = null;
     Options options = createOptions();
     HelpFormatter hf = new HelpFormatter();
     hf.setWidth(MAX_HELP_CONSOLE_WIDTH);
@@ -84,69 +83,51 @@ public class WinClient extends AbstractClient {
       hf.printHelp(IOTDB_CLI_PREFIX, options, true);
       return;
     }
-    Scanner scanner = null;
-    try {
-      String s;
 
-      try {
-        host = checkRequiredArg(HOST_ARGS, HOST_NAME, commandLine, false, host);
-        port = checkRequiredArg(PORT_ARGS, PORT_NAME, commandLine, false, port);
-        username = checkRequiredArg(USERNAME_ARGS, USERNAME_NAME, commandLine, true, null);
-
-        password = commandLine.getOptionValue(PASSWORD_ARGS);
-        if (password == null) {
-          password = readPassword();
-        }
-        try {
-          connection = (IoTDBConnection) DriverManager
-              .getConnection(Config.IOTDB_URL_PREFIX + host + ":" + port + "/", username, password);
-          properties = connection.getServerProperties();
-          AGGREGRATE_TIME_LIST.addAll(properties.getSupportedTimeAggregationOperations());
-        } catch (SQLException e) {
-          System.out.println(IOTDB_CLI_PREFIX + "> " + e.getMessage());
-          return;
-        }
-      } catch (ArgsErrorException e) {
-        // System.out.println(TSFILEDB_CLI_PREFIX + ": " + e.getMessage());
-        return;
+    try (Scanner scanner = new Scanner(System.in)) {
+      host = checkRequiredArg(HOST_ARGS, HOST_NAME, commandLine, false, host);
+      port = checkRequiredArg(PORT_ARGS, PORT_NAME, commandLine, false, port);
+      username = checkRequiredArg(USERNAME_ARGS, USERNAME_NAME, commandLine, true, null);
+      password = commandLine.getOptionValue(PASSWORD_ARGS);
+      if (password == null) {
+        password = readPassword();
       }
-
-      displayLogo(properties.getVersion());
-
-      System.out.println(IOTDB_CLI_PREFIX + "> login successfully");
-      scanner = new Scanner(System.in);
-      while (true) {
-        System.out.print(IOTDB_CLI_PREFIX + "> ");
-        s = scanner.nextLine();
-        if (s == null) {
-          continue;
-        } else {
-          String[] cmds = s.trim().split(";");
-          for (int i = 0; i < cmds.length; i++) {
-            String cmd = cmds[i];
-            if (cmd != null && !cmd.trim().equals("")) {
-              OperationResult result = handleInputInputCmd(cmd, connection);
-              switch (result) {
-                case RETURN_OPER:
-                  return;
-                case CONTINUE_OPER:
-                  continue;
-                default:
-                  break;
+      try (IoTDBConnection connection = (IoTDBConnection) DriverManager
+          .getConnection(Config.IOTDB_URL_PREFIX + host + ":" + port + "/", username, password)) {
+        properties = connection.getServerProperties();
+        AGGREGRATE_TIME_LIST.addAll(properties.getSupportedTimeAggregationOperations());
+        displayLogo(properties.getVersion());
+        System.out.println(IOTDB_CLI_PREFIX + "> login successfully");
+        while (true) {
+          System.out.print(IOTDB_CLI_PREFIX + "> ");
+          String s = scanner.nextLine();
+          if (s != null) {
+            String[] cmds = s.trim().split(";");
+            for (int i = 0; i < cmds.length; i++) {
+              String cmd = cmds[i];
+              if (cmd != null && !cmd.trim().equals("")) {
+                OperationResult result = handleInputCmd(cmd, connection);
+                switch (result) {
+                  case RETURN_OPER:
+                    return;
+                  case CONTINUE_OPER:
+                    continue;
+                  default:
+                    break;
+                }
               }
             }
           }
         }
+      } catch (SQLException e) {
+        System.out.println(String
+            .format("%s> %s Host is %s, port is %s.", IOTDB_CLI_PREFIX, e.getMessage(), host,
+                port));
       }
+    } catch (ArgsErrorException e) {
+      System.out.println(IOTDB_CLI_PREFIX + "> input params error because" + e.getMessage());
     } catch (Exception e) {
       System.out.println(IOTDB_CLI_PREFIX + "> exit client with error " + e.getMessage());
-    } finally {
-      if (scanner != null) {
-        scanner.close();
-      }
-      if (connection != null) {
-        connection.close();
-      }
     }
   }
 

@@ -642,7 +642,7 @@ public class FileNodeManager implements IStatistic, IService {
 
     FileNodeProcessor fileNodeProcessor = getProcessor(deviceId, true);
     try {
-      LOGGER.debug("Get the FileNodeProcessor: {}, filenode is {}, end query.",
+      LOGGER.debug("Get the FileNodeProcessor: {} end query.",
           fileNodeProcessor.getProcessorName());
       fileNodeProcessor.removeMultiPassLock(token);
     } finally {
@@ -890,11 +890,11 @@ public class FileNodeManager implements IStatistic, IService {
   /**
    * add time series.
    */
-  public void addTimeSeries(Path path, String dataType, String encoding, String[] encodingArgs)
+  public void addTimeSeries(Path path, String dataType, String encoding)
       throws FileNodeManagerException {
     FileNodeProcessor fileNodeProcessor = getProcessor(path.getFullPath(), true);
     try {
-      fileNodeProcessor.addTimeSeries(path.getMeasurement(), dataType, encoding, encodingArgs);
+      fileNodeProcessor.addTimeSeries(path.getMeasurement(), dataType, encoding);
     } finally {
       fileNodeProcessor.writeUnlock();
     }
@@ -910,9 +910,11 @@ public class FileNodeManager implements IStatistic, IService {
         LOGGER.info("Force to close the filenode processor {}.", processorName);
         while (!closeOneProcessor(processorName)) {
           try {
-            LOGGER.info("Can't force to close the filenode processor {}, wait 100ms to retry");
+            LOGGER.info("Can't force to close the filenode processor {}, wait 100ms to retry",
+                processorName);
             TimeUnit.MILLISECONDS.sleep(100);
           } catch (InterruptedException e) {
+            // ignore the interrupted exception
             e.printStackTrace();
           }
         }
@@ -1144,8 +1146,6 @@ public class FileNodeManager implements IStatistic, IService {
         .info("Recovery the filenode processor, the filenode is {}, the status is {}", filenodeName,
             fileNodeProcessor.getFileNodeProcessorStatus());
     fileNodeProcessor.fileNodeRecovery();
-    // add index check sum
-    // fileNodeProcessor.rebuildIndex();
   }
 
   private enum FileNodeManagerStatus {

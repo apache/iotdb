@@ -26,7 +26,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 public class OFFileMetadata {
 
@@ -55,7 +54,7 @@ public class OFFileMetadata {
   }
 
   public static OFFileMetadata deserializeFrom(ByteBuffer buffer) throws IOException {
-    throw new NotImplementedException();
+    throw new IOException("The function has not been implemented.");
   }
 
   /**
@@ -101,7 +100,7 @@ public class OFFileMetadata {
   }
 
   public int serializeTo(ByteBuffer buffer) throws IOException {
-    throw new NotImplementedException();
+    throw new IOException("The function has not been implemented.");
   }
 
 }

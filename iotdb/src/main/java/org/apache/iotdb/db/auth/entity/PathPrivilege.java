@@ -30,13 +30,39 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public class PathPrivilege {
 
+  private Set<Integer> privileges;
+  private String path;
+
   /**
    * Sort PathPrivilege by referenceCnt in descent order.
    */
-  public static Comparator<PathPrivilege> referenceDescentSorter = (o1,
-      o2) -> -Integer.compare(o1.referenceCnt.get(), o2.referenceCnt.get());
-  public Set<Integer> privileges;
-  public String path;
+  public static final Comparator<PathPrivilege> referenceDescentSorter = (o1, o2) -> -Integer.
+      compare(o1.referenceCnt.get(), o2.referenceCnt.get());
+
+  public Set<Integer> getPrivileges() {
+    return privileges;
+  }
+
+  public void setPrivileges(Set<Integer> privileges) {
+    this.privileges = privileges;
+  }
+
+  public String getPath() {
+    return path;
+  }
+
+  public void setPath(String path) {
+    this.path = path;
+  }
+
+  public AtomicInteger getReferenceCnt() {
+    return referenceCnt;
+  }
+
+  public void setReferenceCnt(AtomicInteger referenceCnt) {
+    this.referenceCnt = referenceCnt;
+  }
+
   /**
    * This field records how many times this privilege is referenced during a life cycle (from being
    * loaded to being discarded). When serialized to a file, this determines the order of
@@ -44,7 +70,7 @@ public class PathPrivilege {
    * result, the hot privileges will be in the first place so that the hit time will decrease when
    * being queried.
    */
-  public AtomicInteger referenceCnt = new AtomicInteger(0);
+  private AtomicInteger referenceCnt = new AtomicInteger(0);
 
   public PathPrivilege(String path) {
     this.path = path;

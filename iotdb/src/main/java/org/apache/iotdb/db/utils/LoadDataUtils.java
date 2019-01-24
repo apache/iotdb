@@ -83,8 +83,7 @@ public class LoadDataUtils {
     try {
       this.extraDataFileWriter = new BufferedWriter(new FileWriter(extraDataFile));
     } catch (IOException e) {
-      LOG.error("create");
-      e.printStackTrace();
+      LOG.error("create", e);
       close();
       return null;
     }
@@ -214,7 +213,7 @@ public class LoadDataUtils {
       close();
       return;
     } catch (WriteProcessException e) {
-      e.printStackTrace();
+      LOG.error("the write process meet error!", e);
     }
     String extraPath = inputCsvDataPath;
     List<String> extraPaths = new ArrayList<>();

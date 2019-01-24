@@ -28,7 +28,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 public class ChunkGroupFooter {
 
-  private static final byte MARKER = MetaMarker.ChunkGroupFooter;
+  private static final byte MARKER = MetaMarker.CHUNK_GROUP_FOOTER;
 
   private String deviceID;
 
@@ -36,16 +36,11 @@ public class ChunkGroupFooter {
 
   private int numberOfChunks;
 
-  /**
-   * The time when endRowgroup() is called.
-   */
-  private long writtenTime;
-
   // this field does not need to be serialized.
   private int serializedSize;
 
   /**
-   * constructor of ChunkGroupFooter.
+   * constructor of CHUNK_GROUP_FOOTER.
    *
    * @param deviceID device ID
    * @param dataSize data size
@@ -70,7 +65,7 @@ public class ChunkGroupFooter {
   /**
    * deserialize from inputStream.
    *
-   * @param markerRead Whether the marker of the ChunkGroupFooter is read ahead.
+   * @param markerRead Whether the marker of the CHUNK_GROUP_FOOTER is read ahead.
    */
   public static ChunkGroupFooter deserializeFrom(InputStream inputStream, boolean markerRead)
       throws IOException {
@@ -90,7 +85,7 @@ public class ChunkGroupFooter {
   /**
    * deserialize from FileChannel.
    *
-   * @param markerRead Whether the marker of the ChunkGroupFooter is read ahead.
+   * @param markerRead Whether the marker of the CHUNK_GROUP_FOOTER is read ahead.
    */
   public static ChunkGroupFooter deserializeFrom(FileChannel channel, long offset,
       boolean markerRead)
@@ -151,7 +146,7 @@ public class ChunkGroupFooter {
 
   @Override
   public String toString() {
-    return "ChunkGroupFooter{" + "deviceID='" + deviceID + '\'' + ", dataSize=" + dataSize
+    return "CHUNK_GROUP_FOOTER{" + "deviceID='" + deviceID + '\'' + ", dataSize=" + dataSize
         + ", numberOfChunks="
         + numberOfChunks + ", serializedSize=" + serializedSize + '}';
   }

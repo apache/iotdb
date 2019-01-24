@@ -32,9 +32,6 @@ import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 /**
  * This class is used to store and query all overflow data in memory.<br>
  * This just represent someone storage group.<br>
- *
- * @author liukun
- *
  */
 public class OverflowSupport {
 
@@ -50,7 +47,6 @@ public class OverflowSupport {
 
   public OverflowSupport() {
     indexTrees = new HashMap<>();
-    // memTable = new TreeSetMemTable();
     memTable = new PrimitiveMemTable();
   }
 
@@ -87,18 +83,6 @@ public class OverflowSupport {
   public TimeValuePairSorter queryOverflowInsertInMemory(String deviceId, String measurementId,
       TSDataType dataType) {
     return memTable.query(deviceId, measurementId, dataType);
-  }
-
-  public BatchData queryOverflowUpdateInMemory(String deviceId, String measurementId,
-                                               TSDataType dataType,
-                                               BatchData data) {
-    if (indexTrees.containsKey(deviceId)) {
-      if (indexTrees.get(deviceId).containsKey(measurementId)
-          && indexTrees.get(deviceId).get(measurementId).getDataType().equals(dataType)) {
-        return indexTrees.get(deviceId).get(measurementId).query(data);
-      }
-    }
-    return null;
   }
 
   public boolean isEmptyOfOverflowSeriesMap() {

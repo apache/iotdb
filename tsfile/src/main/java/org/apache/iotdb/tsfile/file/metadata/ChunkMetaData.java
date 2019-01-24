@@ -24,15 +24,11 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * MetaData of one chunk.
  */
 public class ChunkMetaData {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(ChunkMetaData.class);
 
   private String measurementUid;
 

@@ -28,7 +28,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.chunk.ChunkBuffer;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
-import org.apache.iotdb.tsfile.write.page.PageWriter;
 import org.apache.iotdb.tsfile.write.schema.FileSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
@@ -38,8 +37,12 @@ import org.slf4j.LoggerFactory;
 public class MemTableFlushUtil {
 
   private static final Logger logger = LoggerFactory.getLogger(MemTableFlushUtil.class);
-  private static final int pageSizeThreshold = TSFileDescriptor.getInstance()
+  private static final int PAGE_SIZE_THRESHOLD = TSFileDescriptor.getInstance()
       .getConfig().pageSizeInByte;
+
+  private MemTableFlushUtil(){
+
+  }
 
   private static int writeOneSeries(List<TimeValuePair> tvPairs, IChunkWriter seriesWriterImpl,
                                     TSDataType dataType)
@@ -107,9 +110,8 @@ public class MemTableFlushUtil {
         // TODO if we can not use TSFileIO writer, then we have to redesign the class of TSFileIO.
         IWritableMemChunk series = imemTable.getMemTableMap().get(deviceId).get(measurementId);
         MeasurementSchema desc = fileSchema.getMeasurementSchema(measurementId);
-        PageWriter pageWriter = new PageWriter(desc);
         ChunkBuffer chunkBuffer = new ChunkBuffer(desc);
-        IChunkWriter seriesWriter = new ChunkWriterImpl(desc, chunkBuffer, pageSizeThreshold);
+        IChunkWriter seriesWriter = new ChunkWriterImpl(desc, chunkBuffer, PAGE_SIZE_THRESHOLD);
         recordCount += writeOneSeries(series.getSortedTimeValuePairList(), seriesWriter,
             desc.getType());
         seriesWriter.writeToFileWriter(tsFileIoWriter);

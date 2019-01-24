@@ -25,9 +25,6 @@ import java.util.Random;
 
 public class MaxDiskUsableSpaceFirstStrategy extends DirectoryStrategy {
 
-  // disk space is measured by MB
-  private final long dataSizeShift = 1024 * 1024;
-
   @Override
   public int nextFolderIndex() {
     return getMaxSpaceFolder();
@@ -41,9 +38,9 @@ public class MaxDiskUsableSpaceFirstStrategy extends DirectoryStrategy {
     long max;
 
     candidates.add(0);
-    max = getUsableSpace(folders.get(0));
+    max = new File(folders.get(0)).getUsableSpace();
     for (int i = 1; i < folders.size(); i++) {
-      long current = getUsableSpace(folders.get(i));
+      long current = new File(folders.get(i)).getUsableSpace();
       if (max < current) {
         candidates.clear();
         candidates.add(i);
@@ -57,10 +54,5 @@ public class MaxDiskUsableSpaceFirstStrategy extends DirectoryStrategy {
     int index = random.nextInt(candidates.size());
 
     return candidates.get(index);
-  }
-
-  private long getUsableSpace(String path) {
-    double freespace = new File(path).getUsableSpace() / dataSizeShift;
-    return (long) freespace;
   }
 }
