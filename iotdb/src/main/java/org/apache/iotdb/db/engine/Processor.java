@@ -26,17 +26,11 @@ import org.apache.iotdb.db.engine.filenode.FileNodeProcessor;
 import org.apache.iotdb.db.exception.ProcessorException;
 
 /**
- * <p>
  * Processor is used for implementing different processor with different operation.<br>
  *
  * @see BufferWriteProcessor
  * @see FileNodeProcessor
- *
- * @author liukun
- * @author kangrong
- *
  */
-// TODO remove this class
 public abstract class Processor {
 
   private final ReadWriteLock lock;

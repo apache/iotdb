@@ -16,11 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.engine.filenode;
+package org.apache.iotdb.db.engine.bufferwrite;
 
-/**
- * Created by liukun on 2019/1/9.
- */
-public class Main {
+public class ActionException extends Exception{
 
+  public ActionException(String message) {
+    super(message);
+  }
+
+  public ActionException(Throwable cause) {
+    super(cause);
+  }
 }

@@ -21,8 +21,6 @@ package org.apache.iotdb.db.engine.utils;
 /**
  * This class is used to represent the state of flush. It's can be used in the bufferwrite
  * flush{@code SequenceFileManager} and overflow flush{@code OverFlowProcessor}.
- *
- * @author liukun
  */
 public class FlushStatus {
 
