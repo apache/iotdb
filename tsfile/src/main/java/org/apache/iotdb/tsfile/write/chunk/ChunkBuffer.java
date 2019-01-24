@@ -99,7 +99,6 @@ public class ChunkBuffer {
     }
     this.maxTimestamp = maxTimestamp;
     int uncompressedSize = data.remaining();
-    compressor.getMaxBytesForCompression(uncompressedSize);
     int compressedSize = 0;
     int compressedPosition = 0;
     byte[] compressedBytes = null;
@@ -107,7 +106,7 @@ public class ChunkBuffer {
     if (compressor.getType().equals(CompressionType.UNCOMPRESSED)) {
       compressedSize = data.remaining();
     } else {
-        compressedBytes = new byte[compressor.getMaxBytesForCompression(uncompressedSize)];
+      compressedBytes = new byte[compressor.getMaxBytesForCompression(uncompressedSize)];
       try {
         compressedPosition = 0;
         // data is never a directByteBuffer now, so we can use data.array()
@@ -141,7 +140,7 @@ public class ChunkBuffer {
     this.totalValueCount += valueCount;
 
     // write page content to temp PBAOS
-    try(WritableByteChannel channel = Channels.newChannel(pageBuffer)) {
+    try (WritableByteChannel channel = Channels.newChannel(pageBuffer)) {
       LOG.debug("start to flush a page data into buffer, buffer position {} ", pageBuffer.size());
       if (compressor.getType().equals(CompressionType.UNCOMPRESSED)) {
         channel.write(data);
@@ -149,7 +148,6 @@ public class ChunkBuffer {
         if (data.isDirect()) {
           channel.write(compressedData);
         } else {
-          assert compressedBytes != null;
           pageBuffer.write(compressedBytes, compressedPosition, compressedSize);
         }
       }
@@ -218,7 +216,7 @@ public class ChunkBuffer {
    */
   public long estimateMaxPageMemSize() {
     // return the sum of size of buffer and page max size
-    return (long)(pageBuffer.size() + estimateMaxPageHeaderSize());
+    return (long) (pageBuffer.size() + estimateMaxPageHeaderSize());
   }
 
   private int estimateMaxPageHeaderSize() {

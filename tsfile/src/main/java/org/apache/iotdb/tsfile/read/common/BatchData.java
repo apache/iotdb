@@ -137,7 +137,7 @@ public class BatchData {
     this.curValueIdx = 0;
     this.valueLength = 0;
     this.curIdx = 0;
-    capacityThreshold = TSFileConfig.dynamicDataSize;
+    capacityThreshold = TSFileConfig.DYNAMIC_DATA_SIZE;
 
     if (recordTime) {
       timeRet = new ArrayList<>();
