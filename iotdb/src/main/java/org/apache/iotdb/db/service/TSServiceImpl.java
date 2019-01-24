@@ -364,7 +364,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         try {
           FileNodeManager.getInstance().closeAll();
         } catch (FileNodeManagerException e) {
-          e.printStackTrace();
+          LOGGER.error("meet error while FileNodeManager closing all!", e);
           throw new IOException(e);
         }
         // writeLogManager.overflowFlush();
@@ -375,7 +375,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         try {
           FileNodeManager.getInstance().mergeAll();
         } catch (FileNodeManagerException e) {
-          e.printStackTrace();
+          LOGGER.error("meet error while FileNodeManager merging all!", e);
           throw new IOException(e);
         }
         return true;
@@ -450,7 +450,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           return getTSExecuteStatementResp(TS_StatusCode.SUCCESS_STATUS, "ADMIN_COMMAND_SUCCESS");
         }
       } catch (Exception e) {
-        e.printStackTrace();
+        LOGGER.error("meet error while executing admin command!", e);
         return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
       }
 
@@ -681,7 +681,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       physicalPlan = processor.parseSQLToPhysicalPlan(statement, zoneIds.get());
       physicalPlan.setProposer(username.get());
     } catch (QueryProcessorException | ArgsErrorException e) {
-      e.printStackTrace();
+      LOGGER.error("meet error while parsing SQL to physical plan!", e);
       return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
     }
 

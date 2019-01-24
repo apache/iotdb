@@ -529,7 +529,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
             try {
               if (isNewMeasurement) {
                 // add time series to schema
-                fileNodeManager.addTimeSeries(path, dataType, encoding, encodingArgs);
+                fileNodeManager.addTimeSeries(path, dataType, encoding);
               }
               // fileNodeManager.closeOneFileNode(namespacePath);
             } catch (FileNodeManagerException e) {
