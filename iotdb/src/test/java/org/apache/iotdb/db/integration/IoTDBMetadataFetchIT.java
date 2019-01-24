@@ -58,7 +58,7 @@ public class IoTDBMetadataFetchIT {
       String[] insertSqls = new String[]{"SET STORAGE GROUP TO root.ln.wf01.wt01",
           "CREATE TIMESERIES root.ln.wf01.wt01.status WITH DATATYPE = BOOLEAN, ENCODING = PLAIN",
           "CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE = FLOAT, ENCODING = RLE, "
-              + "COMPRESSOR = SNAPPY, MAX_POINT_NUMBER = 3"};
+              + "compressor = SNAPPY, MAX_POINT_NUMBER = 3"};
 
       for (String sql : insertSqls) {
         statement.execute(sql);
@@ -366,7 +366,7 @@ public class IoTDBMetadataFetchIT {
             + "                     StorageGroup: root.ln.wf01.wt01 \n" + "                },\n"
             + "                temperature:{\n" + "                     DataType: FLOAT,\n"
             + "                     Encoding: RLE,\n"
-            + "                     args: {COMPRESSOR=SNAPPY, MAX_POINT_NUMBER=3},\n"
+            + "                     args: {compressor=SNAPPY, MAX_POINT_NUMBER=3},\n"
             + "                     StorageGroup: root.ln.wf01.wt01 \n" + "                }\n"
             + "            }\n"
             + "        }\n" + "    }\n" + "}";

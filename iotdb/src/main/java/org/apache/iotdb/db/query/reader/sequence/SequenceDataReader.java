@@ -90,8 +90,6 @@ public class SequenceDataReader implements IReader {
       if (currentSeriesReader.hasNext()) {
         curReaderInitialized = true;
         return true;
-      } else {
-        curReaderInitialized = false;
       }
     }
     return false;

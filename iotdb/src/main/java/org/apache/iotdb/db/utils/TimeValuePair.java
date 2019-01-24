@@ -63,6 +63,11 @@ public class TimeValuePair implements Serializable {
     return false;
   }
 
+  @Override
+  public int hashCode(){
+    return ((Long)timestamp).hashCode() + value.hashCode();
+  }
+
   public int getSize() {
     return 8 + 8 + value.getSize();
   }

@@ -26,6 +26,7 @@ import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.bufferwrite.Action;
+import org.apache.iotdb.db.engine.bufferwrite.ActionException;
 import org.apache.iotdb.db.engine.bufferwrite.FileNodeConstants;
 import org.apache.iotdb.db.engine.version.SysTimeVersionController;
 import org.apache.iotdb.db.exception.OverflowProcessorException;
@@ -81,13 +82,13 @@ public class OverflowProcessorBenchmark {
     Map<String, Action> parameters = new HashMap<>();
     parameters.put(FileNodeConstants.OVERFLOW_FLUSH_ACTION, new Action() {
       @Override
-      public void act() throws Exception {
+      public void act() throws ActionException {
         System.out.println(FileNodeConstants.OVERFLOW_FLUSH_ACTION);
       }
     });
     parameters.put(FileNodeConstants.FILENODE_PROCESSOR_FLUSH_ACTION, new Action() {
       @Override
-      public void act() throws Exception {
+      public void act() throws ActionException {
         System.out.println(FileNodeConstants.FILENODE_PROCESSOR_FLUSH_ACTION);
       }
     });

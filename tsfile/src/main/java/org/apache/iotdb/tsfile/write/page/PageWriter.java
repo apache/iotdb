@@ -138,7 +138,7 @@ public class PageWriter {
   public ByteBuffer getUncompressedBytes() throws IOException {
     prepareEndWriteOnePage();
     ByteBuffer buffer = ByteBuffer.allocate(timeOut.size() + valueOut.size() + 4);
-    int length1 = ReadWriteForEncodingUtils.writeUnsignedVarInt(timeOut.size(), buffer);
+    ReadWriteForEncodingUtils.writeUnsignedVarInt(timeOut.size(), buffer);
     buffer.put(timeOut.getBuf(), 0, timeOut.size());
     buffer.put(valueOut.getBuf(), 0, valueOut.size());
     buffer.flip();

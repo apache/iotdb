@@ -166,11 +166,7 @@ public class SealedTsFilesReader implements IReader {
 
     long startTime = fileNode.getStartTime(seriesPath.getDevice());
     long endTime = fileNode.getEndTime(seriesPath.getDevice());
-    if (!filter.satisfyStartEndTime(startTime, endTime)) {
-      return false;
-    }
-
-    return true;
+    return filter.satisfyStartEndTime(startTime, endTime);
   }
 
   private void initSingleTsFileReader(IntervalFileNode fileNode, QueryContext context)

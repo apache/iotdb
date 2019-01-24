@@ -33,6 +33,9 @@ public class QueryDataSourceManager {
 
   private static FileNodeManager fileNodeManager = FileNodeManager.getInstance();
 
+  private QueryDataSourceManager() {
+  }
+
   public static QueryDataSource getQueryDataSource(long jobId, Path selectedPath,
                                                    QueryContext context)
       throws FileNodeManagerException {

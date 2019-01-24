@@ -57,10 +57,10 @@ public class BooleanStatistics extends Statistics<Boolean> {
   private void updateStats(boolean minValue, boolean maxValue, boolean firstValue, double sumValue,
       boolean lastValue) {
     if (!minValue && min) {
-      min = minValue;
+      min = false;
     }
     if (maxValue && !max) {
-      max = maxValue;
+      max = true;
     }
     this.last = lastValue;
   }

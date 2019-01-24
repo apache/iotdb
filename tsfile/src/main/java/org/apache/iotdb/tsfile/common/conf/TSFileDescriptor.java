@@ -59,7 +59,7 @@ public class TSFileDescriptor {
       if (urlSet != null && urlSet.size() > 1) {
         LOGGER.warn("Resource [{}] occurs multiple times on the classpath", resource);
         for (URL url : urlSet) {
-          LOGGER.warn("Resource [{}] occurs at [{}]", resource, url.toString());
+          LOGGER.warn("Resource [{}] occurs at [{}]", resource, url);
         }
       }
     } catch (IOException e) {
@@ -75,7 +75,7 @@ public class TSFileDescriptor {
    * load an .properties file and set TSFileConfig variables
    */
   private void loadProps() {
-    InputStream inputStream = null;
+    InputStream inputStream;
     String url = System.getProperty(SystemConstant.TSFILE_CONF, null);
     if (url == null) {
       url = System.getProperty(SystemConstant.TSFILE_HOME, null);
@@ -127,14 +127,12 @@ public class TSFileDescriptor {
     } catch (Exception e) {
       LOGGER.error("Loading settings {} failed because {}", url, e.getMessage());
     } finally {
-      if (inputStream != null) {
-        try {
-          inputStream.close();
-          inputStream = null;
-        } catch (IOException e) {
-          LOGGER.error("Failed to close stream for loading config because {}", e.getMessage());
-        }
+      try {
+        inputStream.close();
+      } catch (IOException e) {
+        LOGGER.error("Failed to close stream for loading config because {}", e.getMessage());
       }
+
     }
   }
 

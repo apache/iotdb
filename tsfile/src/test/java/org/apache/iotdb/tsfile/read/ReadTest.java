@@ -73,10 +73,10 @@ public class ReadTest {
     while (dataSet.hasNext()) {
       RowRecord r = dataSet.next();
       if (count == 0) {
-        assertEquals(r.getTimestamp(), 1480562618010L);
+        assertEquals(1480562618010L, r.getTimestamp());
       }
       if (count == 499) {
-        assertEquals(r.getTimestamp(), 1480562618999L);
+        assertEquals(1480562618999L, r.getTimestamp());
       }
       count++;
     }
@@ -138,14 +138,14 @@ public class ReadTest {
       RowRecord record = dataSet.next();
       Field value = record.getFields().get(0);
       if (cnt == 0) {
-        assertEquals(record.getTimestamp(), 1480562618973L);
-        assertEquals(value.getLongV(), 9732);
+        assertEquals(1480562618973L, record.getTimestamp());
+        assertEquals(9732, value.getLongV());
       } else if (cnt == 1) {
-        assertEquals(record.getTimestamp(), 1480562618974L);
-        assertEquals(value.getLongV(), 9742);
+        assertEquals(1480562618974L, record.getTimestamp());
+        assertEquals(9742, value.getLongV());
       } else if (cnt == 7) {
-        assertEquals(record.getTimestamp(), 1480562618985L);
-        assertEquals(value.getLongV(), 9852);
+        assertEquals(1480562618985L, record.getTimestamp());
+        assertEquals(9852, value.getLongV());
       }
 
       cnt++;
@@ -206,18 +206,18 @@ public class ReadTest {
     while (dataSet.hasNext()) {
       RowRecord r = dataSet.next();
       if (cnt == 1) {
-        assertEquals(r.getTimestamp(), 1480562618970L);
+        assertEquals(1480562618970L, r.getTimestamp());
       } else if (cnt == 2) {
-        assertEquals(r.getTimestamp(), 1480562618971L);
+        assertEquals(1480562618971L, r.getTimestamp());
       } else if (cnt == 3) {
-        assertEquals(r.getTimestamp(), 1480562618973L);
+        assertEquals(1480562618973L, r.getTimestamp());
       } else if (cnt == 4) {
-        assertEquals(r.getTimestamp(), 1480562618974L);
+        assertEquals(1480562618974L, r.getTimestamp());
       }
       // System.out.println(r);
       cnt++;
     }
-    assertEquals(cnt, 5);
+    assertEquals(5, cnt);
 
     pathList.clear();
     pathList.add(new Path("d1.s1"));
@@ -239,7 +239,7 @@ public class ReadTest {
       dataSet.next();
       cnt++;
     }
-    assertEquals(cnt, 4);
+    assertEquals(4, cnt);
   }
 
   @Test
@@ -258,14 +258,14 @@ public class ReadTest {
     while (dataSet.hasNext()) {
       RowRecord r = dataSet.next();
       if (cnt == 1) {
-        assertEquals(r.getTimestamp(), 1480562618972L);
+        assertEquals(1480562618972L, r.getTimestamp());
         Field f1 = r.getFields().get(0);
-        assertEquals(f1.getBoolV(), false);
+        assertEquals(false, f1.getBoolV());
       }
       if (cnt == 2) {
-        assertEquals(r.getTimestamp(), 1480562618981L);
+        assertEquals(1480562618981L, r.getTimestamp());
         Field f2 = r.getFields().get(0);
-        assertEquals(f2.getBoolV(), false);
+        assertEquals(false, f2.getBoolV());
       }
       cnt++;
     }
@@ -288,14 +288,14 @@ public class ReadTest {
     while (dataSet.hasNext()) {
       RowRecord r = dataSet.next();
       if (cnt == 0) {
-        assertEquals(r.getTimestamp(), 1480562618976L);
+        assertEquals(1480562618976L, r.getTimestamp());
         Field f1 = r.getFields().get(0);
-        assertEquals(f1.toString(), "dog976");
+        assertEquals("dog976", f1.toString());
       }
       // System.out.println(r);
       cnt++;
     }
-    Assert.assertEquals(cnt, 1);
+    Assert.assertEquals(1, cnt);
 
     pathList = new ArrayList<>();
     pathList.add(new Path("d1.s4"));
@@ -309,14 +309,14 @@ public class ReadTest {
     while (dataSet.hasNext()) {
       RowRecord r = dataSet.next();
       if (cnt == 1) {
-        assertEquals(r.getTimestamp(), 1480562618976L);
+        assertEquals(1480562618976L, r.getTimestamp());
         Field f1 = r.getFields().get(0);
-        assertEquals(f1.getBinaryV().getStringValue(), "dog976");
+        assertEquals("dog976", f1.getBinaryV().getStringValue());
       }
       // System.out.println(r);
       cnt++;
     }
-    Assert.assertEquals(cnt, 0);
+    Assert.assertEquals(0, cnt);
 
   }
 
@@ -336,14 +336,14 @@ public class ReadTest {
     while (dataSet.hasNext()) {
       RowRecord r = dataSet.next();
       if (cnt == 1) {
-        assertEquals(r.getTimestamp(), 1480562618980L);
+        assertEquals(1480562618980L, r.getTimestamp());
         Field f1 = r.getFields().get(0);
-        assertEquals(f1.getFloatV(), 108.0, 0.0);
+        assertEquals(108.0, f1.getFloatV(), 0.0);
       }
       if (cnt == 2) {
-        assertEquals(r.getTimestamp(), 1480562618990L);
+        assertEquals(1480562618990L, r.getTimestamp());
         Field f2 = r.getFields().get(0);
-        assertEquals(f2.getFloatV(), 110.0, 0.0);
+        assertEquals(110.0, f2.getFloatV(),0.0);
       }
       cnt++;
     }
@@ -365,14 +365,14 @@ public class ReadTest {
     while (dataSet.hasNext()) {
       RowRecord r = dataSet.next();
       if (cnt == 1) {
-        assertEquals(r.getTimestamp(), 1480562618022L);
+        assertEquals(1480562618022L, r.getTimestamp());
         Field f1 = r.getFields().get(0);
-        assertEquals(f1.getDoubleV(), 2.0, 0.0);
+        assertEquals(2.0, f1.getDoubleV(), 0.0);
       }
       if (cnt == 2) {
-        assertEquals(r.getTimestamp(), 1480562618033L);
+        assertEquals(1480562618033L, r.getTimestamp());
         Field f1 = r.getFields().get(0);
-        assertEquals(f1.getDoubleV(), 3.0, 0.0);
+        assertEquals(3.0, f1.getDoubleV(), 0.0);
       }
       cnt++;
     }

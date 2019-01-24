@@ -53,7 +53,7 @@ public class MetadataQuerierByFileImplTest {
     List<ChunkMetaData> chunkMetaDataList = metadataQuerierByFile
         .getChunkMetaDataList(new Path("d2.s1"));
     for (ChunkMetaData chunkMetaData : chunkMetaDataList) {
-      Assert.assertEquals(chunkMetaData.getMeasurementUid(), "s1");
+      Assert.assertEquals("s1", chunkMetaData.getMeasurementUid());
     }
   }
 }

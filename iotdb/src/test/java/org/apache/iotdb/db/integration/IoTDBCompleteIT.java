@@ -82,11 +82,11 @@ public class IoTDBCompleteIT {
         "CREATE TIMESERIES root.vehicle.d0.s2 WITH DATATYPE=FLOAT,ENCODING=GORILLA",
         "CREATE TIMESERIES root.vehicle.d0.s4 WITH DATATYPE=DOUBLE,ENCODING=RLE",
         "CREATE TIMESERIES root.vehicle.d1.s5 WITH DATATYPE=TEXT,ENCODING=PLAIN",
-        "CREATE TIMESERIES root.vehicle.d2.s6 WITH DATATYPE=INT32,ENCODING=TS_2DIFF,COMPRESSOR=UNCOMPRESSOR",
-        "CREATE TIMESERIES root.vehicle.d3.s7 WITH DATATYPE=INT32,ENCODING=RLE,COMPRESSOR=SNAPPY",
+        "CREATE TIMESERIES root.vehicle.d2.s6 WITH DATATYPE=INT32,ENCODING=TS_2DIFF,compressor=UNCOMPRESSOR",
+        "CREATE TIMESERIES root.vehicle.d3.s7 WITH DATATYPE=INT32,ENCODING=RLE,compressor=SNAPPY",
         "CREATE TIMESERIES root.vehicle.d4.s8 WITH DATATYPE=INT32,ENCODING=RLE,MAX_POINT_NUMBER=100",
-        "CREATE TIMESERIES root.vehicle.d5.s9 WITH DATATYPE=FLOAT,ENCODING=PLAIN,COMPRESSOR=SNAPPY,MAX_POINT_NUMBER=10",
-        "CREATE TIMESERIES root.vehicle.d6.s10 WITH DATATYPE=DOUBLE,ENCODING=RLE,COMPRESSOR=UNCOMPRESSOR,MAX_POINT_NUMBER=10",
+        "CREATE TIMESERIES root.vehicle.d5.s9 WITH DATATYPE=FLOAT,ENCODING=PLAIN,compressor=SNAPPY,MAX_POINT_NUMBER=10",
+        "CREATE TIMESERIES root.vehicle.d6.s10 WITH DATATYPE=DOUBLE,ENCODING=RLE,compressor=UNCOMPRESSOR,MAX_POINT_NUMBER=10",
         "DELETE TIMESERIES root.vehicle.d0.*", "SHOW TIMESERIES",
         "===  Timeseries Tree  ===\n" + "\n" + "root:{\n" + "    vehicle:{\n" + "        d1:{\n"
             + "            s5:{\n" + "                 DataType: TEXT,\n"
@@ -94,10 +94,10 @@ public class IoTDBCompleteIT {
             + "                 StorageGroup: root.vehicle \n" + "            }\n" + "        },\n"
             + "        d2:{\n" + "            s6:{\n" + "                 DataType: INT32,\n"
             + "                 Encoding: TS_2DIFF,\n"
-            + "                 args: {COMPRESSOR=UNCOMPRESSOR},\n"
+            + "                 args: {compressor=UNCOMPRESSOR},\n"
             + "                 StorageGroup: root.vehicle \n" + "            }\n" + "        },\n"
             + "        d3:{\n" + "            s7:{\n" + "                 DataType: INT32,\n"
-            + "                 Encoding: RLE,\n" + "                 args: {COMPRESSOR=SNAPPY},\n"
+            + "                 Encoding: RLE,\n" + "                 args: {compressor=SNAPPY},\n"
             + "                 StorageGroup: root.vehicle \n" + "            }\n" + "        },\n"
             + "        d4:{\n" + "            s8:{\n" + "                 DataType: INT32,\n"
             + "                 Encoding: RLE,\n"
@@ -105,11 +105,11 @@ public class IoTDBCompleteIT {
             + "                 StorageGroup: root.vehicle \n" + "            }\n" + "        },\n"
             + "        d5:{\n" + "            s9:{\n" + "                 DataType: FLOAT,\n"
             + "                 Encoding: PLAIN,\n"
-            + "                 args: {COMPRESSOR=SNAPPY, MAX_POINT_NUMBER=10},\n"
+            + "                 args: {compressor=SNAPPY, MAX_POINT_NUMBER=10},\n"
             + "                 StorageGroup: root.vehicle \n" + "            }\n" + "        },\n"
             + "        d6:{\n" + "            s10:{\n" + "                 DataType: DOUBLE,\n"
             + "                 Encoding: RLE,\n"
-            + "                 args: {COMPRESSOR=UNCOMPRESSOR, MAX_POINT_NUMBER=10},\n"
+            + "                 args: {compressor=UNCOMPRESSOR, MAX_POINT_NUMBER=10},\n"
             + "                 StorageGroup: root.vehicle \n" + "            }\n" + "        }\n"
             + "    }\n" + "}",
         "DELETE TIMESERIES root.vehicle.*", "SHOW TIMESERIES",

@@ -28,6 +28,7 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import org.apache.iotdb.db.engine.PathUtils;
 import org.apache.iotdb.db.engine.bufferwrite.Action;
+import org.apache.iotdb.db.engine.bufferwrite.ActionException;
 import org.apache.iotdb.db.engine.bufferwrite.FileNodeConstants;
 import org.apache.iotdb.db.engine.querycontext.MergeSeriesDataSource;
 import org.apache.iotdb.db.engine.querycontext.OverflowSeriesDataSource;
@@ -49,14 +50,14 @@ public class OverflowProcessorTest {
 
   private Action overflowflushaction = new Action() {
     @Override
-    public void act() throws Exception {
+    public void act() throws ActionException {
       System.out.println("overflow flush action");
     }
   };
 
   private Action filenodeflushaction = new Action() {
     @Override
-    public void act() throws Exception {
+    public void act() throws ActionException {
       System.out.println("filenode flush action");
     }
   };

@@ -52,8 +52,10 @@ import org.slf4j.LoggerFactory;
 public class OverflowResource {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(OverflowResource.class);
-  private static final String insertFileName = "unseqTsFile";
-  private static final String positionFileName = "positionFile";
+
+  private static final String INSERT_FILE_NAME = "unseqTsFile";
+  private static final String POSITION_FILE_NAME = "positionFile";
+
   private static final int FOOTER_LENGTH = 4;
   private static final int POS_LENGTH = 8;
   private String parentPath;
@@ -77,9 +79,10 @@ public class OverflowResource {
     if (!dataFile.exists()) {
       dataFile.mkdirs();
     }
-    insertFile = new File(dataFile, insertFileName);
+    insertFile = new File(dataFile, INSERT_FILE_NAME);
     insertFilePath = insertFile.getPath();
-    positionFilePath = new File(dataFile, positionFileName).getPath();
+    positionFilePath = new File(dataFile, POSITION_FILE_NAME).getPath();
+
     Pair<Long, Long> position = readPositionInfo();
     try {
       // insert stream
@@ -115,9 +118,9 @@ public class OverflowResource {
     } catch (IOException e) {
       long left = 0;
       long right = 0;
-      File insertFile = new File(insertFilePath);
-      if (insertFile.exists()) {
-        left = insertFile.length();
+      File insertTempFile = new File(insertFilePath);
+      if (insertTempFile.exists()) {
+        left = insertTempFile.length();
       }
       return new Pair<Long, Long>(left, right);
     }
@@ -169,13 +172,12 @@ public class OverflowResource {
   public List<ChunkMetaData> getInsertMetadatas(String deviceId, String measurementId,
                                                 TSDataType dataType, QueryContext context) {
     List<ChunkMetaData> chunkMetaDatas = new ArrayList<>();
-    if (insertMetadatas.containsKey(deviceId)) {
-      if (insertMetadatas.get(deviceId).containsKey(measurementId)) {
-        for (ChunkMetaData chunkMetaData : insertMetadatas.get(deviceId).get(measurementId)) {
-          // filter
-          if (chunkMetaData.getTsDataType().equals(dataType)) {
-            chunkMetaDatas.add(chunkMetaData);
-          }
+    if (insertMetadatas.containsKey(deviceId) && insertMetadatas.get(deviceId)
+        .containsKey(measurementId)) {
+      for (ChunkMetaData chunkMetaData : insertMetadatas.get(deviceId).get(measurementId)) {
+        // filter
+        if (chunkMetaData.getTsDataType().equals(dataType)) {
+          chunkMetaDatas.add(chunkMetaData);
         }
       }
     }
@@ -220,7 +222,7 @@ public class OverflowResource {
         TsDeviceMetadata tsDeviceMetadata = new TsDeviceMetadata();
         tsDeviceMetadata.setChunkGroupMetadataList(rowGroupMetaDatas);
         long start = insertIO.getPos();
-        tsDeviceMetadata.serializeTo(insertIO.getWriter());
+        tsDeviceMetadata.serializeTo(insertIO.getOutputStream());
         long end = insertIO.getPos();
         insertIO.getWriter().write(BytesUtils.intToBytes((int) (end - start)));
         // clear the meta-data of insert IO

@@ -31,6 +31,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 public class LogWriter implements ILogWriter {
 
   private File logFile;
+  private FileOutputStream fileOutputStream;
   private FileChannel outputStream;
   private CRC32 checkSummer = new CRC32();
   private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
@@ -42,7 +43,8 @@ public class LogWriter implements ILogWriter {
   @Override
   public void write(List<byte[]> logCache) throws IOException {
     if (outputStream == null) {
-      outputStream = new FileOutputStream(logFile, true).getChannel();
+      fileOutputStream = new FileOutputStream(logFile, true);
+      outputStream = fileOutputStream.getChannel();
     }
     int totalSize = 0;
     for (byte[] bytes : logCache) {
@@ -73,6 +75,8 @@ public class LogWriter implements ILogWriter {
   @Override
   public void close() throws IOException {
     if (outputStream != null) {
+      fileOutputStream.close();
+      fileOutputStream = null;
       outputStream.close();
       outputStream = null;
     }

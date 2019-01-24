@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.tsfile.file.metadata.statistics;
 
-import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -34,6 +33,7 @@ public class NoStatistics extends Statistics<Long> {
 
   @Override
   public void setMinMaxFromBytes(byte[] minBytes, byte[] maxBytes) {
+    // NoStatistics does not make any statistics
   }
 
   @Override
@@ -48,18 +48,22 @@ public class NoStatistics extends Statistics<Long> {
 
   @Override
   public void updateStats(boolean value) {
+    // NoStatistics does not make any statistics
   }
 
   @Override
   public void updateStats(int value) {
+    // NoStatistics does not make any statistics
   }
 
   @Override
   public void updateStats(long value) {
+    // NoStatistics does not make any statistics
   }
 
   @Override
   public void updateStats(Binary value) {
+    // NoStatistics does not make any statistics
   }
 
   @Override
@@ -69,6 +73,7 @@ public class NoStatistics extends Statistics<Long> {
 
   @Override
   protected void mergeStatisticsValue(Statistics<?> stats) {
+    // NoStatistics does not make any statistics
   }
 
   @Override
@@ -147,11 +152,12 @@ public class NoStatistics extends Statistics<Long> {
   }
 
   @Override
-  void fill(InputStream inputStream) throws IOException {
-    // nothing
+  void fill(InputStream inputStream) {
+    // NoStatistics does not make any statistics
   }
 
   @Override
-  void fill(ByteBuffer byteBuffer) throws IOException {
+  void fill(ByteBuffer byteBuffer) {
+    // NoStatistics does not make any statistics
   }
 }
