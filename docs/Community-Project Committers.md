@@ -25,5 +25,3 @@
 |  Tianan li     |  Tsinghua University |
 |  Yue Su        |	Tsinghua University |
 |  Hui Da        |	Lenovo              |
-
-> Want to join us? Learn How to Contribute [here](需要替换为网页链接development page).
