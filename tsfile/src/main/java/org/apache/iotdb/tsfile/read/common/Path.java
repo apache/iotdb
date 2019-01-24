@@ -32,28 +32,37 @@ public class Path {
   private String measurement = null;
   private String device = null;
   private String fullPath;
+  private String illegalPathArgument = "Path parameter is null";
 
   public Path(StringContainer pathSc) {
-    assert pathSc != null;
+    if (pathSc == null) {
+      throw new IllegalArgumentException("");
+    }
     String[] splits = pathSc.toString().split(SystemConstant.PATH_SEPARATER_NO_REGEX);
     init(splits);
   }
 
   public Path(String pathSc) {
-    assert pathSc != null;
+    if (pathSc == null) {
+      throw new IllegalArgumentException(illegalPathArgument);
+    }
     String[] splits = pathSc.split(SystemConstant.PATH_SEPARATER_NO_REGEX);
     init(splits);
   }
 
   public Path(String[] pathSc) {
-    assert pathSc != null;
+    if (pathSc == null) {
+      throw new IllegalArgumentException(illegalPathArgument);
+    }
     String[] splits = new StringContainer(pathSc, SystemConstant.PATH_SEPARATOR).toString()
         .split(SystemConstant.PATH_SEPARATER_NO_REGEX);
     init(splits);
   }
 
   public Path(String device, String measurement) {
-    assert device != null && measurement != null;
+    if (device == null || measurement == null) {
+      throw new IllegalArgumentException(illegalPathArgument);
+    }
     String[] splits = (device + SystemConstant.PATH_SEPARATOR + measurement)
         .split(SystemConstant.PATH_SEPARATER_NO_REGEX);
     init(splits);
