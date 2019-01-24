@@ -47,7 +47,7 @@ public class SchemaBuilder {
    * @param dataType (not null) series data type
    * @param tsEncoding (not null) encoding method you specified
    * @param props information in encoding method. For RLE, Encoder.MAX_POINT_NUMBER For PLAIN,
-   * Encoder.MAX_STRING_LENGTH
+   * Encoder.maxStringLength
    * @return this
    */
   public SchemaBuilder addSeries(String measurementId, TSDataType dataType, TSEncoding tsEncoding,

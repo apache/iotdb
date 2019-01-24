@@ -146,7 +146,7 @@ public class CloseMergeService implements IService {
           try {
             service.wait();
           } catch (InterruptedException e) {
-            LOGGER.error("CLose and merge error.", e);
+            LOGGER.error("Close and merge error.", e);
             Thread.currentThread().interrupt();
           }
         }
