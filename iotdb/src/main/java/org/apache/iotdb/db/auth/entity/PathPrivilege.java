@@ -55,6 +55,14 @@ public class PathPrivilege {
     this.path = path;
   }
 
+  public AtomicInteger getReferenceCnt() {
+    return referenceCnt;
+  }
+
+  public void setReferenceCnt(AtomicInteger referenceCnt) {
+    this.referenceCnt = referenceCnt;
+  }
+
   /**
    * This field records how many times this privilege is referenced during a life cycle (from being
    * loaded to being discarded). When serialized to a file, this determines the order of
@@ -62,7 +70,7 @@ public class PathPrivilege {
    * result, the hot privileges will be in the first place so that the hit time will decrease when
    * being queried.
    */
-  public AtomicInteger referenceCnt = new AtomicInteger(0);
+  private AtomicInteger referenceCnt = new AtomicInteger(0);
 
   public PathPrivilege(String path) {
     this.path = path;

@@ -239,7 +239,7 @@ public class AuthUtils {
       List<PathPrivilege> privilegeList) {
     for (PathPrivilege pathPrivilege : privilegeList) {
       if (pathPrivilege.getPath().equals(path) && pathPrivilege.getPrivileges().contains(privilegeId)) {
-        pathPrivilege.referenceCnt.incrementAndGet();
+        pathPrivilege.getReferenceCnt().incrementAndGet();
         return true;
       }
     }
