@@ -22,8 +22,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import org.apache.iotdb.tsfile.exception.compress.CompressionTypeNotSupportedException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.xerial.snappy.Snappy;
 
 /**
@@ -110,8 +108,6 @@ public abstract class Compressor {
   }
 
   public static class SnappyCompressor extends Compressor {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(SnappyCompressor.class);
 
     @Override
     public byte[] compress(byte[] data) throws IOException {

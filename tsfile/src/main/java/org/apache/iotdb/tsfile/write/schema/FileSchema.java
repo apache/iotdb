@@ -23,8 +23,6 @@ import java.util.Map;
 import org.apache.iotdb.tsfile.exception.write.InvalidJsonSchemaException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.json.JSONObject;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * FileSchema stores the schema of the measurements and devices that exist in this file. All
@@ -35,8 +33,6 @@ import org.slf4j.LoggerFactory;
  * @author kangrong
  */
 public class FileSchema {
-
-  private static final Logger LOG = LoggerFactory.getLogger(FileSchema.class);
 
   /**
    * the key is the measurementId.
@@ -51,6 +47,7 @@ public class FileSchema {
   }
 
   /**
+   * @deprecated
    * example: { "measurement_id": "sensor_cpu_50", "data_type": "INT32", "encoding": "RLE" }.
    * {"schema": [ { "measurement_id": "sensor_1", "data_type": "FLOAT", "encoding": "RLE" },
    * { "measurement_id": "sensor_2", "data_type": "INT32", "encoding": "TS_2DIFF" },
@@ -80,11 +77,11 @@ public class FileSchema {
    * @return
    */
   public TSDataType getMeasurementDataType(String measurementId) {
-    MeasurementSchema measurementSchema = this.measurementSchema.get(measurementId);
-    if (measurementSchema == null) {
+    MeasurementSchema mSchema = this.measurementSchema.get(measurementId);
+    if (mSchema == null) {
       return null;
     }
-    return measurementSchema.getType();
+    return mSchema.getType();
 
   }
 
