@@ -31,8 +31,6 @@ import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.QueryExpression;
 import org.apache.iotdb.tsfile.read.expression.util.ExpressionOptimizer;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Query entrance class of IoTDB query process. All query clause will be transformed to physical
@@ -40,14 +38,12 @@ import org.slf4j.LoggerFactory;
  */
 public class EngineQueryRouter {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(EngineQueryRouter.class);
-
   /**
    * Each unique jdbc request(query, aggregation or others job) has an unique job id. This job id
    * will always be maintained until the request is closed. In each job, the unique file will be
    * only opened once to avoid too many opened files error.
    */
-  private AtomicLong jobId = new AtomicLong();
+  private AtomicLong jobIdGenerator = new AtomicLong();
 
   /**
    * execute physical plan.
@@ -55,9 +51,9 @@ public class EngineQueryRouter {
   public QueryDataSet query(QueryExpression queryExpression)
       throws IOException, FileNodeManagerException {
 
-    long jobId = getNextJobId();
-    QueryTokenManager.getInstance().setJobIdForCurrentRequestThread(jobId);
-    OpenedFilePathsManager.getInstance().setJobIdForCurrentRequestThread(jobId);
+    long nextJobId = getNextJobId();
+    QueryTokenManager.getInstance().setJobIdForCurrentRequestThread(nextJobId);
+    OpenedFilePathsManager.getInstance().setJobIdForCurrentRequestThread(nextJobId);
 
     if (queryExpression.hasQueryFilter()) {
       try {
@@ -68,11 +64,11 @@ public class EngineQueryRouter {
         if (optimizedExpression.getType() == GLOBAL_TIME) {
           EngineExecutorWithoutTimeGenerator engineExecutor =
               new EngineExecutorWithoutTimeGenerator(
-                  jobId, queryExpression);
+                  nextJobId, queryExpression);
           return engineExecutor.executeWithGlobalTimeFilter();
         } else {
           EngineExecutorWithTimeGenerator engineExecutor = new EngineExecutorWithTimeGenerator(
-              jobId,
+              nextJobId,
               queryExpression);
           return engineExecutor.execute();
         }
@@ -83,7 +79,7 @@ public class EngineQueryRouter {
     } else {
       try {
         EngineExecutorWithoutTimeGenerator engineExecutor = new EngineExecutorWithoutTimeGenerator(
-            jobId,
+            nextJobId,
             queryExpression);
         return engineExecutor.executeWithoutFilter();
       } catch (PathErrorException e) {
@@ -93,6 +89,6 @@ public class EngineQueryRouter {
   }
 
   private synchronized long getNextJobId() {
-    return jobId.incrementAndGet();
+    return jobIdGenerator.incrementAndGet();
   }
 }

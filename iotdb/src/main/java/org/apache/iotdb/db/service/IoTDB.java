@@ -141,7 +141,7 @@ public class IoTDB implements IoTDBMBean {
    */
   private void systemDataRecovery() throws RecoverException {
     LOGGER.info("{}: start checking write log...", IoTDBConstant.GLOBAL_DB_NAME);
-    // QueryProcessor processor = new QueryProcessor(new OverflowQPExecutor());
+
     WriteLogNodeManager writeLogManager = MultiFileLogNodeManager.getInstance();
     List<String> filenodeNames = null;
     try {

@@ -165,7 +165,10 @@ public class IOUtils {
   public static void replaceFile(File newFile, File oldFile) throws IOException {
     if (!newFile.renameTo(oldFile)) {
       // some OSs need to delete the old file before renaming to it
-      oldFile.delete();
+      if(!oldFile.delete()){
+        throw new IOException(
+                String.format("Cannot delete old user file : %s", oldFile.getPath()));
+      }
       if (!newFile.renameTo(oldFile)) {
         throw new IOException(
             String.format("Cannot replace old user file with new one : %s", newFile.getPath()));

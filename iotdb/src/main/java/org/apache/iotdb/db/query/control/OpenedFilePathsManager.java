@@ -109,7 +109,6 @@ public class OpenedFilePathsManager {
   }
 
   private static class OpenedFilePathsManagerHelper {
-
-    public static OpenedFilePathsManager INSTANCE = new OpenedFilePathsManager();
+    private static final OpenedFilePathsManager INSTANCE = new OpenedFilePathsManager();
   }
 }
