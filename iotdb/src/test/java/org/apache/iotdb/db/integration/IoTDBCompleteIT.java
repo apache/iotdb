@@ -39,20 +39,20 @@ import org.junit.Test;
  */
 public class IoTDBCompleteIT {
 
-  private IoTDB deamon;
+  private IoTDB daemon;
 
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.closeMemControl();
-    deamon = IoTDB.getInstance();
-    deamon.active();
+    daemon = IoTDB.getInstance();
+    daemon.active();
     EnvironmentUtils.envSetUp();
   }
 
   @After
   public void tearDown() throws Exception {
-    deamon.stop();
+    daemon.stop();
     Thread.sleep(5000);
     EnvironmentUtils.cleanEnv();
   }

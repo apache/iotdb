@@ -102,7 +102,7 @@ public class DeletionQueryTest {
       dataSet.next();
       count++;
     }
-    assertEquals(count, 50);
+    assertEquals(50, count);
   }
 
   @Test
@@ -133,7 +133,7 @@ public class DeletionQueryTest {
       dataSet.next();
       count++;
     }
-    assertEquals(count, 70);
+    assertEquals(70, count);
   }
 
   @Test
@@ -175,7 +175,7 @@ public class DeletionQueryTest {
       dataSet.next();
       count++;
     }
-    assertEquals(count, 150);
+    assertEquals(150, count);
   }
 
   @Test
@@ -217,6 +217,6 @@ public class DeletionQueryTest {
       dataSet.next();
       count++;
     }
-    assertEquals(count, 170);
+    assertEquals(170, count);
   }
 }

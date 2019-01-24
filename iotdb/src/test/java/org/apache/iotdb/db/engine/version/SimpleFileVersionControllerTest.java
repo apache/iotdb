@@ -33,13 +33,13 @@ public class SimpleFileVersionControllerTest {
     try {
       new File(tempFilePath).mkdir();
       VersionController versionController = new SimpleFileVersionController(tempFilePath);
-      assertEquals(versionController.currVersion(), SAVE_INTERVAL);
+      assertEquals(SAVE_INTERVAL, versionController.currVersion());
       for (int i = 0; i < 150; i++) {
         versionController.nextVersion();
       }
-      assertEquals(versionController.currVersion(), SAVE_INTERVAL + 150);
+      assertEquals(SAVE_INTERVAL + 150, versionController.currVersion());
       versionController = new SimpleFileVersionController(tempFilePath);
-      assertEquals(versionController.currVersion(), SAVE_INTERVAL + 200);
+      assertEquals(SAVE_INTERVAL + 200, versionController.currVersion());
     } finally {
       FileUtils.deleteDirectory(new File(tempFilePath));
     }

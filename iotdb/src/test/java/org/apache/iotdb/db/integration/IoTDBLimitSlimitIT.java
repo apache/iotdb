@@ -42,9 +42,7 @@ import org.junit.Test;
  */
 public class IoTDBLimitSlimitIT {
 
-  private static IoTDB deamon;
-
-  private static boolean testFlag = Constant.testFlag;
+  private static IoTDB daemon;
 
   private static String[] insertSqls = new String[]{"SET STORAGE GROUP TO root.vehicle",
 
@@ -91,14 +89,14 @@ public class IoTDBLimitSlimitIT {
   public static void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.closeMemControl();
-    deamon = IoTDB.getInstance();
-    deamon.active();
+    daemon = IoTDB.getInstance();
+    daemon.active();
     EnvironmentUtils.envSetUp();
   }
 
   @AfterClass
   public static void tearDown() throws Exception {
-    deamon.stop();
+    daemon.stop();
     Thread.sleep(5000);
     EnvironmentUtils.cleanEnv();
   }

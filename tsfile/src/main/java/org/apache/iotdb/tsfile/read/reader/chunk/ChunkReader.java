@@ -47,7 +47,11 @@ public abstract class ChunkReader {
   private Filter filter;
 
   private BatchData data;
-  protected long deletedAt = -1;
+
+  /**
+   * Data whose timestamp <= deletedAt should be considered deleted(not be returned).
+   */
+  protected long deletedAt;
 
   public ChunkReader(Chunk chunk) {
     this(chunk, null);

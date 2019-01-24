@@ -35,8 +35,8 @@ import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
 
-public class IoTDBDeletionTest {
-  private static IoTDB deamon;
+public class IoTDBDeletionIT {
+  private static IoTDB daemon;
 
   private static String[] creationSqls = new String[]{
           "SET STORAGE GROUP TO root.vehicle.d0", "SET STORAGE GROUP TO root.vehicle.d1",
@@ -48,16 +48,17 @@ public class IoTDBDeletionTest {
           "CREATE TIMESERIES root.vehicle.d0.s4 WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
   };
 
-  private static String intertTemplate = "INSERT INTO root.vehicle.d0(timestamp,s0,s1,s2,s3,s4"
+  private String insertTemplate = "INSERT INTO root.vehicle.d0(timestamp,s0,s1,s2,s3,s4"
           + ") VALUES(%d,%d,%d,%f,%s,%b)";
-  private static String deleteAllTemplate = "DELETE FROM root.vehicle.d0 WHERE time <= 100000";
+  private String deleteAllTemplate = "DELETE FROM root.vehicle.d0 WHERE time <= 10000";
+
 
   @BeforeClass
   public static void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.closeMemControl();
-    deamon = IoTDB.getInstance();
-    deamon.active();
+    daemon = IoTDB.getInstance();
+    daemon.active();
     EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
     prepareSeries();
@@ -65,7 +66,7 @@ public class IoTDBDeletionTest {
 
   @AfterClass
   public static void tearDown() throws Exception {
-    deamon.stop();
+    daemon.stop();
     Thread.sleep(5000);
 
     EnvironmentUtils.cleanEnv();
@@ -149,7 +150,7 @@ public class IoTDBDeletionTest {
     cleanData();
   }
 
-  public static void prepareSeries() throws SQLException {
+  private static void prepareSeries() throws SQLException {
     Connection connection = null;
     try {
       connection = DriverManager
@@ -169,7 +170,7 @@ public class IoTDBDeletionTest {
     }
   }
 
-  public void prepareData() throws SQLException {
+  private void prepareData() throws SQLException {
     Connection connection = null;
     try {
       connection = DriverManager
@@ -178,24 +179,24 @@ public class IoTDBDeletionTest {
       Statement statement = connection.createStatement();
       // prepare BufferWrite file
       for (int i = 201; i <= 300; i++) {
-        statement.execute(String.format(intertTemplate, i, i, i, (double) i, "\'" + i + "\'",
+        statement.execute(String.format(insertTemplate, i, i, i, (double) i, "\'" + i + "\'",
                 i % 2 == 0));
       }
       statement.execute("merge");
-      // prepare Overflow file
+      // prepare Unseq-File
       for (int i = 1; i <= 100; i++) {
-        statement.execute(String.format(intertTemplate, i, i, i, (double) i, "\'" + i + "\'",
+        statement.execute(String.format(insertTemplate, i, i, i, (double) i, "\'" + i + "\'",
                 i % 2 == 0));
       }
       statement.execute("merge");
       // prepare BufferWrite cache
       for (int i = 301; i <= 400; i++) {
-        statement.execute(String.format(intertTemplate, i, i, i, (double) i, "\'" + i + "\'",
+        statement.execute(String.format(insertTemplate, i, i, i, (double) i, "\'" + i + "\'",
                 i % 2 == 0));
       }
       // prepare Overflow cache
       for (int i = 101; i <= 200; i++) {
-        statement.execute(String.format(intertTemplate, i, i, i, (double) i, "\'" + i + "\'",
+        statement.execute(String.format(insertTemplate, i, i, i, (double) i, "\'" + i + "\'",
                 i % 2 == 0));
       }
 
@@ -207,7 +208,7 @@ public class IoTDBDeletionTest {
     }
   }
 
-  public void cleanData() throws SQLException {
+  private void cleanData() throws SQLException {
     Connection connection = null;
     try {
       connection = DriverManager
@@ -233,12 +234,12 @@ public class IoTDBDeletionTest {
       Statement statement = connection.createStatement();
       // prepare BufferWrite data
       for (int i = 10001; i <= 20000; i++) {
-        statement.execute(String.format(intertTemplate, i, i, i, (double) i, "\'" + i + "\'",
+        statement.execute(String.format(insertTemplate, i, i, i, (double) i, "\'" + i + "\'",
                 i % 2 == 0));
       }
       // prepare Overflow data
       for (int i = 1; i <= 10000; i++) {
-        statement.execute(String.format(intertTemplate, i, i, i, (double) i, "\'" + i + "\'",
+        statement.execute(String.format(insertTemplate, i, i, i, (double) i, "\'" + i + "\'",
                 i % 2 == 0));
       }
 
