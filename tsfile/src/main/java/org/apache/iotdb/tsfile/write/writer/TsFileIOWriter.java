@@ -217,7 +217,7 @@ public class TsFileIOWriter {
         this.chunkGroupMetaDataList);
 
     TsFileMetaData tsFileMetaData = new TsFileMetaData(tsDeviceMetadataIndexMap, schemaDescriptors,
-        TSFileConfig.currentVersion);
+        TSFileConfig.CURRENT_VERSION);
 
     long footerIndex = out.getPosition();
     LOG.debug("start to flush the footer,file pos:{}", footerIndex);

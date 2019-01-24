@@ -78,7 +78,7 @@ public class MeasurementSchema implements Comparable<MeasurementSchema> {
    * Constructor of MeasurementSchema.
    *
    * <p>props - information in encoding method. For RLE, Encoder.MAX_POINT_NUMBER For PLAIN,
-   * Encoder.MAX_STRING_LENGTH
+   * Encoder.maxStringLength
    */
   public MeasurementSchema(String measurementId, TSDataType type, TSEncoding encoding,
       CompressionType compressionType, Map<String, String> props) {

@@ -27,8 +27,6 @@ import org.slf4j.LoggerFactory;
 
 /**
  * This class is used to cache <code>TsFileMetaData</code> of tsfile in IoTDB.
- *
- * @author liukun
  */
 public class TsFileMetaDataCache {
 
@@ -55,8 +53,8 @@ public class TsFileMetaDataCache {
    */
   public TsFileMetaData get(String path) throws IOException {
 
-    path = path.intern();
-    synchronized (path) {
+    Object internPath = path.intern();
+    synchronized (internPath) {
       cacheRequestNum.incrementAndGet();
       if (!cache.containsKey(path)) {
         // read value from tsfile

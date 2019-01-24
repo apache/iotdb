@@ -30,9 +30,6 @@ import org.slf4j.LoggerFactory;
 
 /**
  * This is used to serialize or deserialize the object T.
- *
- * @author kangrong
- * @author liukun
  */
 public class SerializeUtil<T> {
 

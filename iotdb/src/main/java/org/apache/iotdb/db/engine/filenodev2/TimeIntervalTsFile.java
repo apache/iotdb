@@ -30,8 +30,6 @@ import org.apache.iotdb.db.engine.filenode.OverflowChangeType;
 
 /**
  * This class is used to store the TsFile status.<br>
- *
- * @author liukun
  */
 public class TimeIntervalTsFile implements Serializable {
 

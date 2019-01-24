@@ -213,7 +213,7 @@ public class LoadDataUtils {
       close();
       return;
     } catch (WriteProcessException e) {
-      e.printStackTrace();
+      LOG.error("the write process meet error!", e);
     }
     String extraPath = inputCsvDataPath;
     List<String> extraPaths = new ArrayList<>();
