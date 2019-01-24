@@ -153,13 +153,11 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
 
   private void writeRestoreInfo() throws IOException {
     long lastPosition = this.getPos();
-
     // TODO: no need to create a TsRowGroupBlockMetadata, flush RowGroupMetadata one by one is ok
     TsDeviceMetadata tsDeviceMetadata = new TsDeviceMetadata();
     this.getAppendedRowGroupMetadata();
     tsDeviceMetadata.setChunkGroupMetadataList(this.append);
-    RandomAccessFile out = null;
-    out = new RandomAccessFile(restoreFilePath, DEFAULT_MODE);
+    RandomAccessFile out = new RandomAccessFile(restoreFilePath, DEFAULT_MODE);
     try {
       if (out.length() > 0) {
         out.seek(out.length() - TS_POSITION_BYTE_SIZE);
