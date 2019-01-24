@@ -60,8 +60,8 @@ public class LocalFileUserAccessorTest {
       for (int j = 0; j <= i; j++) {
         PathPrivilege pathPrivilege = new PathPrivilege("root.a.b.c" + j);
         pathPrivilege.getPrivileges().add(j);
-        users[i].privilegeList.add(pathPrivilege);
-        users[i].roleList.add("role" + j);
+        users[i].getPrivilegeList().add(pathPrivilege);
+        users[i].getRoleList().add("role" + j);
       }
     }
 
@@ -77,7 +77,7 @@ public class LocalFileUserAccessorTest {
     // load
     for (User user : users) {
       try {
-        User loadedUser = accessor.loadUser(user.name);
+        User loadedUser = accessor.loadUser(user.getName());
         assertEquals(user, loadedUser);
       } catch (IOException e) {
         fail(e.getMessage());
@@ -89,19 +89,19 @@ public class LocalFileUserAccessorTest {
     List<String> usernames = accessor.listAllUsers();
     usernames.sort(null);
     for (int i = 0; i < users.length; i++) {
-      assertEquals(users[i].name, usernames.get(i));
+      assertEquals(users[i].getName(), usernames.get(i));
     }
 
     // delete
     assertEquals(false, accessor.deleteUser("not a user"));
-    assertEquals(true, accessor.deleteUser(users[users.length - 1].name));
+    assertEquals(true, accessor.deleteUser(users[users.length - 1].getName()));
     usernames = accessor.listAllUsers();
     assertEquals(users.length - 1, usernames.size());
     usernames.sort(null);
     for (int i = 0; i < users.length - 1; i++) {
-      assertEquals(users[i].name, usernames.get(i));
+      assertEquals(users[i].getName(), usernames.get(i));
     }
-    User nullUser = accessor.loadUser(users[users.length - 1].name);
+    User nullUser = accessor.loadUser(users[users.length - 1].getName());
     assertEquals(null, nullUser);
   }
 }
