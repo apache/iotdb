@@ -75,8 +75,8 @@ public class User {
    */
   public void setPrivileges(String path, Set<Integer> privileges) {
     for (PathPrivilege pathPrivilege : privilegeList) {
-      if (pathPrivilege.path.equals(path)) {
-        pathPrivilege.privileges = privileges;
+      if (pathPrivilege.getPath().equals(path)) {
+        pathPrivilege.setPrivileges(privileges);
       }
     }
   }

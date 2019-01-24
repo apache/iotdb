@@ -71,7 +71,7 @@ import org.slf4j.LoggerFactory;
 public class JsonConverter {
 
   private static final Logger LOG = LoggerFactory.getLogger(JsonConverter.class);
-
+  private JsonConverter(){}
   /**
    * input a FileSchema and a jsonObject to be converted.
    *
@@ -154,7 +154,7 @@ public class JsonConverter {
     if (jsonSchema.has(JsonFormatConstant.ROW_GROUP_SIZE)) {
       return jsonSchema.getLong(JsonFormatConstant.ROW_GROUP_SIZE);
     }
-    return 128 * 1024 * 1024;
+    return 128L * 1024 * 1024;
   }
 
   /**

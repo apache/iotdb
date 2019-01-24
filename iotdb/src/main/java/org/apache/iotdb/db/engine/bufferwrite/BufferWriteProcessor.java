@@ -57,8 +57,7 @@ import org.slf4j.LoggerFactory;
 public class BufferWriteProcessor extends Processor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(BufferWriteProcessor.class);
-  RestorableTsFileIOWriter writer;
-  // private RestorableTsFileIOWriter bufferWriteRestoreManager;
+  private RestorableTsFileIOWriter writer;
   private FileSchema fileSchema;
   private volatile FlushStatus flushStatus = new FlushStatus();
   private volatile boolean isFlush;
@@ -172,21 +171,20 @@ public class BufferWriteProcessor extends Processor {
           dataPoint.getValue().toString());
     }
     valueCount++;
+    String memory;
     switch (level) {
       case SAFE:
         checkMemThreshold4Flush(memUsage);
         return true;
       case WARNING:
-        LOGGER.warn("Memory usage will exceed warning threshold, current : {}.",
-            MemUtils.bytesCntToStr(BasicMemController.getInstance().getTotalUsage()));
+        memory = MemUtils.bytesCntToStr(BasicMemController.getInstance().getTotalUsage());
+        LOGGER.warn("Memory usage will exceed warning threshold, current : {}.",memory);
         checkMemThreshold4Flush(memUsage);
         return true;
       case DANGEROUS:
       default:
-        LOGGER.warn("Memory usage will exceed dangerous threshold, current : {}.",
-            MemUtils.bytesCntToStr(BasicMemController.getInstance().getTotalUsage()));
-        // FIXME if it is dangerous,
-        // I think we need to reject comming insertions until the memory is safe.
+        memory = MemUtils.bytesCntToStr(BasicMemController.getInstance().getTotalUsage());
+        LOGGER.warn("Memory usage will exceed dangerous threshold, current : {}.",memory);
         return false;
     }
   }
@@ -194,13 +192,15 @@ public class BufferWriteProcessor extends Processor {
   private void checkMemThreshold4Flush(long addedMemory) throws BufferWriteProcessorException {
     addedMemory = memSize.addAndGet(addedMemory);
     if (addedMemory > memThreshold) {
+      String usageMem = MemUtils.bytesCntToStr(addedMemory);
+      String threshold = MemUtils.bytesCntToStr(memThreshold);
+      String processorName = getProcessorName();
       LOGGER.info("The usage of memory {} in bufferwrite processor {} reaches the threshold {}",
-          MemUtils.bytesCntToStr(addedMemory), getProcessorName(),
-          MemUtils.bytesCntToStr(memThreshold));
+          usageMem, processorName, threshold);
       try {
         flush();
       } catch (IOException e) {
-        e.printStackTrace();
+        LOGGER.error("Flush bufferwrite error.",e);
         throw new BufferWriteProcessorException(e);
       }
     }
@@ -264,8 +264,6 @@ public class BufferWriteProcessor extends Processor {
         flushFunction);
     try {
       if (flushMemTable != null && !flushMemTable.isEmpty()) {
-        long startPos = writer.getPos();
-        long startTime = System.currentTimeMillis();
         // flush data
         MemTableFlushUtil.flushMemTable(fileSchema, writer, flushMemTable);
         // write restore information
@@ -287,7 +285,7 @@ public class BufferWriteProcessor extends Processor {
       synchronized (flushStatus) {
         flushStatus.setUnFlushing();
         switchFlushToWork();
-        flushStatus.notify();
+        flushStatus.notifyAll();
         LOGGER.info("The bufferwrite processor {} ends flushing {}.", getProcessorName(),
             flushFunction);
       }
@@ -331,6 +329,7 @@ public class BufferWriteProcessor extends Processor {
                 "Encounter an interrupt error when waitting for the flushing, "
                     + "the bufferwrite processor is {}.",
                 getProcessorName(), e);
+            Thread.currentThread().interrupt();
           }
         }
       }
@@ -454,7 +453,7 @@ public class BufferWriteProcessor extends Processor {
    * Check if this TsFile has too big metadata or file. If true, close current file and open a new
    * one.
    */
-  private boolean checkSize() throws IOException {
+  private boolean checkSize() {
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     long metaSize = getMetaSize();
     long fileSize = getFileSize();
