@@ -1,3 +1,16 @@
+<!-- TOC -->
+
+- [Frequently Asked Questions](#frequently-asked-questions)
+        - [How can I identify my version of IoTDB?](#how-can-i-identify-my-version-of-iotdb)
+        - [Where can I find IoTDB logs?](#where-can-i-find-iotdb-logs)
+        - [Where can I find IoTDB data files?](#where-can-i-find-iotdb-data-files)
+        - [How do I know how many time series are stored in IoTDB?](#how-do-i-know-how-many-time-series-are-stored-in-iotdb)
+        - [Can I use Hadoop and Spark to read TsFile in IoTDB?](#can-i-use-hadoop-and-spark-to-read-tsfile-in-iotdb)
+        - [How does IoTDB handle duplicate points?](#how-does-iotdb-handle-duplicate-points)
+        - [How can I tell what type of the specific timeseries?](#how-can-i-tell-what-type-of-the-specific-timeseries)
+        - [How can I change IoTDB's CLI time display format?](#how-can-i-change-iotdbs-cli-time-display-format)
+
+<!-- /TOC -->
 # Frequently Asked Questions
 
 ### How can I identify my version of IoTDB?

@@ -1,3 +1,60 @@
+<!-- TOC -->
+
+- [Chapter 3: Operation Manual](#chapter-3-operation-manual)
+    - [Sample Data](#sample-data)
+    - [Data Model Selection](#data-model-selection)
+        - [Storage Model Selection](#storage-model-selection)
+        - [Storage Group Creation](#storage-group-creation)
+        - [Show Storage Group](#show-storage-group)
+        - [Timeseries Creation](#timeseries-creation)
+        - [Show Timeseries](#show-timeseries)
+        - [Precautions](#precautions)
+    - [Data Import](#data-import)
+        - [Import Historical Data](#import-historical-data)
+        - [Import Real-time Data](#import-real-time-data)
+            - [Use of INSERT Statements](#use-of-insert-statements)
+        - [Error Handling of INSERT Statements](#error-handling-of-insert-statements)
+    - [Data Query](#data-query)
+        - [Time Slice Query](#time-slice-query)
+            - [Select a Column of Data Based on a Time Interval](#select-a-column-of-data-based-on-a-time-interval)
+            - [Select Multiple Columns of Data Based on a Time Interval](#select-multiple-columns-of-data-based-on-a-time-interval)
+            - [Select Multiple Columns of Data for the Same Device According to Multiple Time Intervals](#select-multiple-columns-of-data-for-the-same-device-according-to-multiple-time-intervals)
+            - [Choose Multiple Columns of Data for Different Devices According to Multiple Time Intervals](#choose-multiple-columns-of-data-for-different-devices-according-to-multiple-time-intervals)
+        - [Down-Frequency Aggregate Query](#down-frequency-aggregate-query)
+            - [Down-Frequency Aggregate Query without Specifying the Time Axis Origin Position](#down-frequency-aggregate-query-without-specifying-the-time-axis-origin-position)
+            - [Down-Frequency Aggregate Query Specifying the Time Axis Origin Position](#down-frequency-aggregate-query-specifying-the-time-axis-origin-position)
+            - [Down-Frequency Aggregate Query Specifying the Time Filtering Conditions](#down-frequency-aggregate-query-specifying-the-time-filtering-conditions)
+        - [Automated Fill](#automated-fill)
+            - [Fill Function](#fill-function)
+            - [Correspondence between Data Type and Fill Method](#correspondence-between-data-type-and-fill-method)
+        - [Row and Column Control over Query Results](#row-and-column-control-over-query-results)
+            - [Row Control over Query Results](#row-control-over-query-results)
+            - [Column Control over Query Results](#column-control-over-query-results)
+            - [Row and Column Control over Query Results](#row-and-column-control-over-query-results-1)
+            - [Error Handling](#error-handling)
+    - [Data Maintenance](#data-maintenance)
+        - [Data Update](#data-update)
+            - [Update Single Timeseries](#update-single-timeseries)
+        - [Data Deletion](#data-deletion)
+            - [Delete Single Timeseries](#delete-single-timeseries)
+            - [Delete Multiple Timeseries](#delete-multiple-timeseries)
+    - [Priviledge Management](#priviledge-management)
+        - [Basic Concepts](#basic-concepts)
+            - [User](#user)
+            - [Priviledge](#priviledge)
+            - [Role](#role)
+            - [Default User](#default-user)
+        - [Priviledge Management Operation Examples](#priviledge-management-operation-examples)
+            - [Create User](#create-user)
+            - [Grant User Priviledge](#grant-user-priviledge)
+        - [Other Instructions](#other-instructions)
+            - [The Relationship among Users, Priviledges and Roles](#the-relationship-among-users-priviledges-and-roles)
+            - [List of Priviledges Included in the System](#list-of-priviledges-included-in-the-system)
+            - [Username Restrictions](#username-restrictions)
+            - [Password Restrictions](#password-restrictions)
+            - [Role Name Restrictions](#role-name-restrictions)
+
+<!-- /TOC -->
 # Chapter 3: Operation Manual
 
 ## Sample Data
@@ -13,7 +70,7 @@ Before importing data to IoTDB, we first select the appropriate data storage mod
 ### Storage Model Selection
 According to the data attribute layers described in [sample data](Material-SampleData), we can express it as an attribute hierarchy structure based on the coverage of attributes and the subordinate relationship between them, as shown in Figure 3.1 below. Its hierarchical relationship is: power group layer - power plant layer - device layer - sensor layer. ROOT is the root node, and each node of sensor layer is called a leaf node. In the process of using IoTDB, you can directly connect the attributes on the path from ROOT node to each leaf node with ".", thus forming the name of a timeseries in IoTDB. For example, The left-most path in Figure 3.1 can generate a timeseries named `ROOT.ln.wf01.wt01.status`.
 
-<center><img style="width:80%" src="https://user-images.githubusercontent.com/13203019/51577327-7aa50780-1ef4-11e9-9d75-cadabb62444e.jpg">
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577327-7aa50780-1ef4-11e9-9d75-cadabb62444e.jpg">
 
 **Figure 3.1 Attribute hierarchy structure**</center>
 
@@ -44,7 +101,7 @@ IoTDB> show storage group
 ```
 
 The result is as follows:
-<center><img style="width:80%" src="https://user-images.githubusercontent.com/13203019/51577338-84c70600-1ef4-11e9-9dab-605b32c02836.jpg"></center>
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577338-84c70600-1ef4-11e9-9dab-605b32c02836.jpg"></center>
 
 ### Timeseries Creation
 According to the storage model selected before, we can create corresponding timeseries in the two storage groups respectively. The SQL statements for creating timeseries are as follows:
@@ -81,8 +138,8 @@ IoTDB> show timeseries root.ln
 
 The results are shown below respectly:
 
-<center><img style="width:80%" src="https://user-images.githubusercontent.com/13203019/51577347-8db7d780-1ef4-11e9-91d6-764e58c10e94.jpg"></center>
-<center><img style="width:80%" src="https://user-images.githubusercontent.com/13203019/51577359-97413f80-1ef4-11e9-8c10-53b291fc10a5.jpg"></center>
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577347-8db7d780-1ef4-11e9-91d6-764e58c10e94.jpg"></center>
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577359-97413f80-1ef4-11e9-8c10-53b291fc10a5.jpg"></center>
 
 It is worth noting that when the path queries does not exist, the system will give the corresponding error prompt as shown below:
 
@@ -139,7 +196,7 @@ IoTDB > select * from root.ln.wf02 where time < 3
 
 The result is shown below. From the query results, it can be seen that the insertion statements of single column and multi column data are performed correctly.
 
-<center><img style="width:80%" src="https://user-images.githubusercontent.com/13203019/51577384-a3c59800-1ef4-11e9-96c5-f7ef6626ecd0.jpg"></center>
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51605021-c2ee1500-1f48-11e9-8f6b-ba9b48875a41.png"></center>
 
 ### Error Handling of INSERT Statements
 If the user inserts data into a non-existent timeseries, for example, execute the following commands:
@@ -182,7 +239,7 @@ The selected device is ln group wf01 plant wt01 device; the selected timeseries 
 
 The execution result of this SQL statement is as follows:
 
-<center><img style="width:80%" src="https://user-images.githubusercontent.com/13203019/51577402-b049f080-1ef4-11e9-9741-e0055379baca.jpg"></center>
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577402-b049f080-1ef4-11e9-9741-e0055379baca.jpg"></center>
 
 #### Select Multiple Columns of Data Based on a Time Interval
 
@@ -196,7 +253,7 @@ which means:
 The selected device is ln group wf01 plant wt01 device; the selected timeseries is "status" and "temperature". The SQL statement requires that the status and temperature sensor values between the time point of "2017-11-01T00:05:00.000" and "2017-11-01T00:12:00.000" be selected.
 
 The execution result of this SQL statement is as follows:
-<center><img style="width:80%" src="https://user-images.githubusercontent.com/13203019/51577407-b8a22b80-1ef4-11e9-8e7a-c655fcd94912.jpg"></center>
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577407-b8a22b80-1ef4-11e9-8e7a-c655fcd94912.jpg"></center>
 
 #### Select Multiple Columns of Data for the Same Device According to Multiple Time Intervals
 IoTDB supports specifying multiple time interval conditions in a query. Users can combine time interval conditions at will according to their needs. For example, the SQL statement is:
@@ -209,7 +266,7 @@ which means:
 The selected device is ln group wf01 plant wt01 device; the selected timeseries is "status" and "temperature"; the statement specifies two different time intervals, namely "2017-11-01T00:05:00.000 to 2017-11-01T00:12:00.000" and "2017-11-01T16:35:00.000 to 2017-11-01T16:37:00.000". The SQL statement requires that the values of selected timeseries satisfying any time interval be selected.
 
 The execution result of this SQL statement is as follows:
-<center><img style="width:80%" src="https://user-images.githubusercontent.com/13203019/51577418-c657b100-1ef4-11e9-8886-768ec3cda119.jpg"></center>
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577418-c657b100-1ef4-11e9-8886-768ec3cda119.jpg"></center>
 
 
 #### Choose Multiple Columns of Data for Different Devices According to Multiple Time Intervals
@@ -223,7 +280,7 @@ which means:
 The selected timeseries are "the power supply status of ln group wf01 plant wt01 device" and "the hardware version of ln group wf02 plant wt02 device"; the statement specifies two different time intervals, namely "2017-11-01T00:05:00.000 to 2017-11-01T00:12:00.000" and "2017-11-01T16:35:00.000 to 2017-11-01T16:37:00.000". The SQL statement requires that the values of selected timeseries satisfying any time interval be selected.
 
 The execution result of this SQL statement is as follows:
-<center><img style="width:80%" src="https://user-images.githubusercontent.com/13203019/51577450-dcfe0800-1ef4-11e9-9399-4ba2b2b7fb73.jpg"></center>
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577450-dcfe0800-1ef4-11e9-9399-4ba2b2b7fb73.jpg"></center>
 
 ### Down-Frequency Aggregate Query
 This section mainly introduces the related examples of down-frequency aggregation query, using the [GROUP BY clause](Chap5-groupbystatement), which is used to partition the result set according to the user's given partitioning conditions and aggregate the partitioned result set. IoTDB supports partitioning result sets according to time intervals, and by default results are sorted by time in ascending order. You can also use the [Java JDBC](Java-api-page,commingsoon) standard interface to execute related queries.
@@ -236,7 +293,7 @@ The GROUP BY statement provides users with three types of specified parameters:
 
 The actual meanings of the three types of parameters are shown in Figure 3.2 below. Among them, the paramter 2 is optional. Next we will give three typical examples of frequency reduction aggregation: parameter 2 specified, parameter 2 not specified, and time filtering conditions specified.
 
-<center><img style="width:80%" src="https://user-images.githubusercontent.com/13203019/51577465-e8513380-1ef4-11e9-84c6-d0690f2a8113.jpg">
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577465-e8513380-1ef4-11e9-84c6-d0690f2a8113.jpg">
 
 **Figure 3.2 The actual meanings of the three types of parameters**</center>
 
@@ -258,7 +315,7 @@ Then the system will use the time and value filtering condition in the WHERE cla
 
 Since there is data for each time period in the result range to be displayed, the execution result of the SQL statement is shown below:
 
-<center><img style="width:80%" src="https://user-images.githubusercontent.com/13203019/51577537-277f8480-1ef5-11e9-9b0f-c477f3b71acb.jpg"></center>
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577537-277f8480-1ef5-11e9-9b0f-c477f3b71acb.jpg"></center>
 
 #### Down-Frequency Aggregate Query Specifying the Time Axis Origin Position
 The SQL statement is:
@@ -279,7 +336,7 @@ hen the system will use the time and value filtering condition in the WHERE clau
 
 Since there is data for each time period in the result range to be displayed, the execution result of the SQL statement is shown below:
 
-<center><img style="width:80%" src="https://user-images.githubusercontent.com/13203019/51577563-3a925480-1ef5-11e9-88da-2d7e3eb4c951.jpg"></center>
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577563-3a925480-1ef5-11e9-88da-2d7e3eb4c951.jpg"></center>
 
 #### Down-Frequency Aggregate Query Specifying the Time Filtering Conditions
 The SQL statement is:
@@ -299,11 +356,11 @@ Then the system will use the time and value filtering condition in the WHERE cla
 
 Since there is  no data in the result range [2017-11-03T00:00:00, 2017-11-03T00:06:00], the aggregation results of this segment will be null. There is data in all other time periods in the result range to be displayed. The execution result of the SQL statement is shown below:
 
-<center><img style="width:80%" src="https://user-images.githubusercontent.com/13203019/51577582-441bbc80-1ef5-11e9-8b54-3ad1f586bbc4.jpg"></center>
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577582-441bbc80-1ef5-11e9-8b54-3ad1f586bbc4.jpg"></center>
 
 It is worth noting that the path after SELECT in GROUP BY statement must be aggregate function, otherwise the system will give the corresponding error prompt, as shown below:
 
-<center><img style="width:80%" src="https://user-images.githubusercontent.com/13203019/51577596-4d0c8e00-1ef5-11e9-9386-cc71f5d90905.jpg"></center>
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577596-4d0c8e00-1ef5-11e9-9386-cc71f5d90905.jpg"></center>
 
 ### Automated Fill
 In the actual use of IoTDB, when doing the query operation of timeseries, situations where the value is null at some time points may appear, which will obstruct the further analysis by users. In order to better reflect the degree of data change, users expect missing values to be automatically filled. Therefore, the IoTDB system introduces the function of Automated Fill.
@@ -343,10 +400,10 @@ which means:
 Because the timeseries root.sgcc.wf03.wt01.temperature is null at 2017-11-01T16:37:50.000, the system uses the previous timestamp of 2017-11-01T16:37:50.000 (and the timestamp is in the [2017-11-01T16:36:50.000, 2017-11-01T16:37:50.000] time range) for fill and display.
 
 On the [sample data](Material-SampleData), the execution result of this statement is shown below:
-<center><img style="width:80%" src="https://user-images.githubusercontent.com/13203019/51577616-67df0280-1ef5-11e9-9dff-2eb8342074eb.jpg"></center>
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577616-67df0280-1ef5-11e9-9dff-2eb8342074eb.jpg"></center>
 
 It is worth noting that if there is no value in the specified valid time range, the system will not fill the null value, as shown below:
-<center><img style="width:80%" src="https://user-images.githubusercontent.com/13203019/51577679-9f4daf00-1ef5-11e9-8d8b-06a58de6efc1.jpg"></center>
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577679-9f4daf00-1ef5-11e9-8d8b-06a58de6efc1.jpg"></center>
 
 * Linear Method
 
@@ -377,7 +434,7 @@ which means:
 Because the timeseries root.sgcc.wf03.wt01.temperature is null at 2017-11-01T16:37:50.000, the system uses the previous timestamp 2017-11-01T16:37:00.000 (and the timestamp is in the [2017-11-01T16:36:50.000, 2017-11-01T16:37:50.000] time range) and its value 21.927326, the next timestamp 2017-11-01T16:39:00.000 (and the timestamp is in the [2017-11-01T16:36:50.000, 2017-11-01T16:37:50.000] time range) and its value 25.311783 to perform linear fitting calculation: 21.927326 + (25.311783-21.927326)/60s*50s = 24.747707
 
 On the [sample data](Material-SampleData), the execution result of this statement is shown below:
-<center><img style="width:80%" src="https://user-images.githubusercontent.com/13203019/51577727-d4f29800-1ef5-11e9-8ff3-3bb519da3993.jpg"></center>
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577727-d4f29800-1ef5-11e9-8ff3-3bb519da3993.jpg"></center>
 
 #### Correspondence between Data Type and Fill Method
 Data types and the supported fill methods are shown in Table 3-6.
@@ -396,7 +453,7 @@ Data types and the supported fill methods are shown in Table 3-6.
 
 It is worth noting that IoTDB will give error prompts for fill methods that are not supported by data types, as shown below:
 
-<center><img style="width:80%" src="https://user-images.githubusercontent.com/13203019/51577741-e340b400-1ef5-11e9-9238-a4eaf498ab84.jpg"></center>
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577741-e340b400-1ef5-11e9-9238-a4eaf498ab84.jpg"></center>
 
 When the fill method is not specified, each data type bears its own default fill methods and parameters. The corresponding relationship is shown in Table 3-7.
 
@@ -436,7 +493,7 @@ The selected device is ln group wf01 plant wt01 device; the selected timeseries 
 
 The result is shown below:
 
-<center><img style="width:80%" src="https://user-images.githubusercontent.com/13203019/51577752-efc50c80-1ef5-11e9-9071-da2bbd8b9bdd.jpg"></center>
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577752-efc50c80-1ef5-11e9-9071-da2bbd8b9bdd.jpg"></center>
 
 
 * Example 2: LIMIT clause with OFFSET
@@ -452,7 +509,7 @@ The selected device is ln group wf01 plant wt01 device; the selected timeseries 
 
 The result is shown below:
 
-<center><img style="width:80%" src="https://user-images.githubusercontent.com/13203019/51577773-08352700-1ef6-11e9-883f-8d353bef2bdc.jpg"></center>
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577773-08352700-1ef6-11e9-883f-8d353bef2bdc.jpg"></center>
 
 * Example 3: LIMIT clause combined with WHERE clause
 
@@ -467,7 +524,7 @@ The selected device is ln group wf01 plant wt01 device; the selected timeseries 
 
 The result is shown below:
 
-<center><img style="width:80%" src="https://user-images.githubusercontent.com/13203019/51577789-15521600-1ef6-11e9-86ca-d7b2c947367f.jpg"></center>
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577789-15521600-1ef6-11e9-86ca-d7b2c947367f.jpg"></center>
 
 * Example 4: LIMIT clause combined with GROUP BY clause
 
@@ -482,7 +539,7 @@ The SQL statement clause requires rows 3 to 7 of the query result be returned (w
 
 The result is shown below:
 
-<center><img style="width:80%" src="https://user-images.githubusercontent.com/13203019/51577796-1e42e780-1ef6-11e9-8987-be443000a77e.jpg"></center>
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577796-1e42e780-1ef6-11e9-8987-be443000a77e.jpg"></center>
 
 It is worth noting that because the current FILL clause can only fill in the missing value of timeseries at a certain time point, that is to say, the execution result of FILL clause is exactly one line, so LIMIT and OFFSET are not expected to be used in combination with FILL clause, otherwise errors will be prompted. For example, executing the following SQL statement:
 
@@ -492,7 +549,7 @@ select temperature from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000
 
 The SQL statement will not be executed and the corresponding error prompt is given as follows:
 
-<center><img style="width:80%" src="https://user-images.githubusercontent.com/13203019/51577806-28fd7c80-1ef6-11e9-938a-f32ae6abdc55.jpg"></center>
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577806-28fd7c80-1ef6-11e9-938a-f32ae6abdc55.jpg"></center>
 
 #### Column Control over Query Results
 
@@ -511,7 +568,7 @@ The selected device is ln group wf01 plant wt01 device; the selected timeseries 
 
 The result is shown below:
 
-<center><img style="width:80%" src="https://user-images.githubusercontent.com/13203019/51577813-30bd2100-1ef6-11e9-94ef-dbeb450cf319.jpg"></center>
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577813-30bd2100-1ef6-11e9-94ef-dbeb450cf319.jpg"></center>
 
 * Example 2: SLIMIT clause with SOFFSET
 
@@ -528,7 +585,7 @@ The selected device is ln group wf01 plant wt01 device; the selected timeseries 
 
 The result is shown below:
 
-<center><img style="width:80%" src="https://user-images.githubusercontent.com/13203019/51577827-39adf280-1ef6-11e9-81b5-876769607cd2.jpg"></center>
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577827-39adf280-1ef6-11e9-81b5-876769607cd2.jpg"></center>
 
 * Example 3: SLIMIT clause combined with GROUP BY clause
 
@@ -543,7 +600,7 @@ The selected device is ln group wf01 plant wt01 device; the selected timeseries 
 
 The result is shown below:
 
-<center><img style="width:80%" src="https://user-images.githubusercontent.com/13203019/51577840-44688780-1ef6-11e9-8abc-04ae78efa85b.jpg"></center>
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577840-44688780-1ef6-11e9-8abc-04ae78efa85b.jpg"></center>
 
 * Example 4: SLIMIT clause combined with FILL clause
 
@@ -558,7 +615,7 @@ The selected device is ln group wf01 plant wt01 device; the selected timeseries 
 
 The result is shown below:
 
-<center><img style="width:80%" src="https://user-images.githubusercontent.com/13203019/51577855-4d595900-1ef6-11e9-8541-a4accd714b75.jpg"></center>
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577855-4d595900-1ef6-11e9-8541-a4accd714b75.jpg"></center>
 
 It is worth noting that SLIMIT clause is expected to be used in conjunction with star path or prefix path, and the system will prompt errors when SLIMIT clause is used in conjunction with complete path query. For example, executing the following SQL statement:
 
@@ -567,7 +624,7 @@ select status,temperature from root.ln.wf01.wt01 where time > 2017-11-01T00:05:0
 ```
 
 The SQL statement will not be executed and the corresponding error prompt is given as follows:
-<center><img style="width:80%" src="https://user-images.githubusercontent.com/13203019/51577867-577b5780-1ef6-11e9-978c-e02c1294bcc5.jpg"></center>
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577867-577b5780-1ef6-11e9-978c-e02c1294bcc5.jpg"></center>
 
 #### Row and Column Control over Query Results
 
@@ -584,7 +641,7 @@ The selected device is ln group wf01 plant wt01 device; the selected timeseries 
 
 The result is shown below:
 
-<center><img style="width:80%" src="https://user-images.githubusercontent.com/13203019/51577879-64984680-1ef6-11e9-9d7b-57dd60fab60e.jpg"></center>
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577879-64984680-1ef6-11e9-9d7b-57dd60fab60e.jpg"></center>
 
 ####  Error Handling
 
@@ -597,7 +654,7 @@ limit 100
 ```
 The result is shown below:
 
-<center><img style="width:80%" src="https://user-images.githubusercontent.com/13203019/51578187-ad9cca80-1ef7-11e9-897a-83e66a0f3d94.jpg"></center>
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51578187-ad9cca80-1ef7-11e9-897a-83e66a0f3d94.jpg"></center>
 
 When the parameter N/SN of LIMIT/SLIMIT clause exceeds the allowable maximum value (N/SN is of type int32), the system will prompt errors. For example, executing the following SQL statement:
 
@@ -606,7 +663,7 @@ select status,temperature from root.ln.wf01.wt01 where time > 2017-11-01T00:05:0
 ```
 The SQL statement will not be executed and the corresponding error prompt is given as follows:
 
-<center><img style="width:80%" src="https://user-images.githubusercontent.com/13203019/51578206-b7263280-1ef7-11e9-8607-17ef3602338a.jpg"></center>
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51578206-b7263280-1ef7-11e9-8607-17ef3602338a.jpg"></center>
 
 When the parameter N/SN of LIMIT/SLIMIT clause is not a positive intege, the system will prompt errors. For example, executing the following SQL statement:
 
@@ -616,7 +673,7 @@ select status,temperature from root.ln.wf01.wt01 where time > 2017-11-01T00:05:0
 
 The SQL statement will not be executed and the corresponding error prompt is given as follows:
 
-<center><img style="width:80%" src="https://user-images.githubusercontent.com/13203019/51578217-bdb4aa00-1ef7-11e9-9a60-1effd6b6196c.jpg"></center>
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51578217-bdb4aa00-1ef7-11e9-9a60-1effd6b6196c.jpg"></center>
 
 When the parameter OFFSET of LIMIT clause exceeds the size of the result set, IoTDB will return an empty result set. For example, executing the following SQL statement:
 
@@ -624,7 +681,7 @@ When the parameter OFFSET of LIMIT clause exceeds the size of the result set, Io
 select status,temperature from root.ln.wf01.wt01 where time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000 limit 2 offset 6
 ```
 The result is shown below:
-<center><img style="width:80%" src="https://user-images.githubusercontent.com/13203019/51578227-c60ce500-1ef7-11e9-98eb-175beb8d4086.jpg"></center>
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51578227-c60ce500-1ef7-11e9-98eb-175beb8d4086.jpg"></center>
 
 When the parameter SOFFSET of SLIMIT clause is not smaller than the number of available timeseries, the system will prompt errors. For example, executing the following SQL statement:
 
@@ -632,7 +689,7 @@ When the parameter SOFFSET of SLIMIT clause is not smaller than the number of av
 select * from root.ln.wf01.wt01 where time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000 slimit 1 soffset 2
 ```
 The SQL statement will not be executed and the corresponding error prompt is given as follows:
-<center><img style="width:80%" src="https://user-images.githubusercontent.com/13203019/51578237-cd33f300-1ef7-11e9-9aef-2a717c56ab54.jpg"></center>
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51578237-cd33f300-1ef7-11e9-9aef-2a717c56ab54.jpg"></center>
 
 ## Data Maintenance
 ### Data Update
@@ -730,7 +787,7 @@ LIST USER
 ```
 As can be seen from the result shown below, the two users have been created:
 
-<center><img style="width:80%" src="https://user-images.githubusercontent.com/13203019/51578263-e2a91d00-1ef7-11e9-94e8-28819b6fea87.jpg"></center>
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51578263-e2a91d00-1ef7-11e9-94e8-28819b6fea87.jpg"></center>
 
 #### Grant User Priviledge
 At this point, although two users have been created, they do not have any priviledges, so they can not operate on the database. For example, we use ln_write_user to write data in the database, the SQL statement is:
@@ -740,7 +797,7 @@ INSERT INTO root.ln.wf01.wt01(timestamp,status) values(1509465600000,true)
 ```
 The SQL statement will not be executed and the corresponding error prompt is given as follows:
 
-<center><img style="width:80%" src="https://user-images.githubusercontent.com/13203019/51578935-2c930280-1efa-11e9-9e94-b562b7c69f48.jpg"></center>
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51597609-9af5b600-1f36-11e9-9460-8ab185eb4735.png"></center>
 
 Now, we grant the two users write priviledges to the corresponding storage groups, and try to write data again. The SQL statement is:
 
@@ -750,7 +807,7 @@ GRANT USER sgcc_write_user PRIVILEGES 'INSERT_TIMESERIES' on root.sgcc
 INSERT INTO root.ln.wf01.wt01(timestamp, status) values(1509465600000, true)
 ```
 The execution result is as follows:
-<center><img style="width:80%" src="https://user-images.githubusercontent.com/13203019/51578942-33ba1080-1efa-11e9-891c-09d69791aff1.jpg"></center>
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51578942-33ba1080-1efa-11e9-891c-09d69791aff1.jpg"></center>
 
 ### Other Instructions
 #### The Relationship among Users, Priviledges and Roles

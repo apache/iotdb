@@ -1,3 +1,8 @@
+<!-- TOC -->
+
+- [Project Committers](#project-committers)
+
+<!-- /TOC -->
 # Project Committers
 
 |  Name	       |     Organization     |

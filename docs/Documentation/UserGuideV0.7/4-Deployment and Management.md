@@ -1,3 +1,31 @@
+<!-- TOC -->
+
+- [Chapter4. Deployment and Management](#chapter4-deployment-and-management)
+    - [Deployment](#deployment)
+        - [Prerequisites](#prerequisites)
+        - [Installation from  binary files](#installation-from--binary-files)
+        - [Installation from source code](#installation-from-source-code)
+    - [Configuration](#configuration)
+        - [IoTDB Environment Configuration File](#iotdb-environment-configuration-file)
+        - [IoTDB System Configuration File](#iotdb-system-configuration-file)
+            - [File Layer](#file-layer)
+            - [Engine Layer](#engine-layer)
+    - [System Monitor](#system-monitor)
+        - [System Status Monitoring](#system-status-monitoring)
+        - [Data Status Monitoring](#data-status-monitoring)
+            - [Writing Data Monitor](#writing-data-monitor)
+                - [Example](#example)
+    - [System log](#system-log)
+        - [Dynamic System Log Configuration](#dynamic-system-log-configuration)
+            - [Connect JMX](#connect-jmx)
+            - [Interface Instruction](#interface-instruction)
+    - [Data Management](#data-management)
+        - [Data Files](#data-files)
+        - [System Files](#system-files)
+        - [Pre-write Log Files](#pre-write-log-files)
+        - [Example of Setting Data storage Directory](#example-of-setting-data-storage-directory)
+
+<!-- /TOC -->
 # Chapter4. Deployment and Management
 
 ## Deployment
@@ -638,14 +666,14 @@ Here we use Jconsole to connect with JMX.
 
 Start the Jconsole, establish a new JMX connection with the IoTDB Server (you can select the local process or input the IP and PORT for remote connection, the default operation port of the IoTDB JMX service is 31999). Fig 4.1 shows the connection GUI of jconsole.
 
-<center><img style="width:80%" src="https://user-images.githubusercontent.com/13203019/51577195-f94d7500-1ef3-11e9-999a-b4f67055d80e.png"></center>
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577195-f94d7500-1ef3-11e9-999a-b4f67055d80e.png">
 
 After connected, click `MBean` and find `ch.qos.logback.classic.default.ch.qos.logback.classic.jmx.JMXConfigurator`(As shown in fig 4.2).
-<center><img style="width:80%" src="https://user-images.githubusercontent.com/13203019/51577204-fe122900-1ef3-11e9-9e89-2eb1d46e24b8.png"></center>
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577204-fe122900-1ef3-11e9-9e89-2eb1d46e24b8.png">
 
 In the JMXConfigurator Window, there are 6 operation provided for you, as shown in fig 4.3. You can use there interface to perform operation.
 
-<center><img style="width:80%" src="https://user-images.githubusercontent.com/13203019/51577216-09fdeb00-1ef4-11e9-9005-542ad7d9e9e0.png"></center>
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577216-09fdeb00-1ef4-11e9-9005-542ad7d9e9e0.png">
 
 #### Interface Instruction
 

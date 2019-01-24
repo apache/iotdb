@@ -1,3 +1,17 @@
+<!-- TOC -->
+
+- [Quick Start](#quick-start)
+    - [Prerequisites](#prerequisites)
+    - [Installation](#installation)
+        - [Installation from source code](#installation-from-source-code)
+    - [Configure](#configure)
+    - [Start](#start)
+        - [Start Server](#start-server)
+        - [Start Client](#start-client)
+        - [Have a try](#have-a-try)
+        - [Stop Server](#stop-server)
+
+<!-- /TOC -->
 # Quick Start
 
 This short guide will walk you through the basic process of using IoTDB. For a more-complete guide, please visit our website’s [Document Part](http://tsfile.org/document).

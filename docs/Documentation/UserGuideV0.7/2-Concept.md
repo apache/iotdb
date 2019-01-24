@@ -1,3 +1,12 @@
+<!-- TOC -->
+
+- [Chapter 2: Concept](#chapter-2-concept)
+    - [Key Concepts and Terminology](#key-concepts-and-terminology)
+    - [Data Type](#data-type)
+    - [Encoding](#encoding)
+    - [Compression](#compression)
+
+<!-- /TOC -->
 # Chapter 2: Concept
 ## Key Concepts and Terminology
 
