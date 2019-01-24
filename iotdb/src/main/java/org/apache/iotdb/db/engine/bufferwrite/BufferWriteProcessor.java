@@ -185,7 +185,6 @@ public class BufferWriteProcessor extends Processor {
       default:
         memory = MemUtils.bytesCntToStr(BasicMemController.getInstance().getTotalUsage());
         LOGGER.warn("Memory usage will exceed dangerous threshold, current : {}.",memory);
-        // FIXME if it is dangerous,
         return false;
     }
   }
