@@ -24,7 +24,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.TreeMap;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -942,7 +941,7 @@ public class MTree implements Serializable {
       builder
           .append(String.format("%s Encoding: %s,\n", getTabs(tab + 1), node.getSchema().encoding));
       builder
-          .append(String.format("%s args: %s,\n", getTabs(tab + 1), new TreeMap<>(node.getSchema().getArgsMap())));
+          .append(String.format("%s args: %s,\n", getTabs(tab + 1), node.getSchema().getArgsMap()));
       builder.append(
           String.format("%s StorageGroup: %s \n", getTabs(tab + 1), node.getDataFileName()));
       builder.append(getTabs(tab));
