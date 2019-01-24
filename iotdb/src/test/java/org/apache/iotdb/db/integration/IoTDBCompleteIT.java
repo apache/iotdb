@@ -58,15 +58,15 @@ public class IoTDBCompleteIT {
   }
 
   @Test
-  public void Test() throws ClassNotFoundException, SQLException {
+  public void test() throws ClassNotFoundException, SQLException {
     String[] sqls = {"SET STORAGE GROUP TO root.vehicle"};
     executeSQL(sqls);
-    SimpleTest();
-    InsertTest();
-    SelectTest();
+    simpleTest();
+    insertTest();
+    selectTest();
   }
 
-  public void SimpleTest() throws ClassNotFoundException, SQLException {
+  public void simpleTest() throws ClassNotFoundException, SQLException {
     String[] sqlS = {"CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32,ENCODING=RLE",
         "SHOW TIMESERIES",
         "===  Timeseries Tree  ===\n" + "\n" + "root:{\n" + "    vehicle:{\n" + "        d0:{\n"
@@ -104,11 +104,11 @@ public class IoTDBCompleteIT {
             + "                 StorageGroup: root.vehicle \n" + "            }\n" + "        },\n"
             + "        d5:{\n" + "            s9:{\n" + "                 DataType: FLOAT,\n"
             + "                 Encoding: PLAIN,\n"
-            + "                 args: {compressor=SNAPPY, MAX_POINT_NUMBER=10},\n"
+            + "                 args: {MAX_POINT_NUMBER=10, compressor=SNAPPY},\n"
             + "                 StorageGroup: root.vehicle \n" + "            }\n" + "        },\n"
             + "        d6:{\n" + "            s10:{\n" + "                 DataType: DOUBLE,\n"
             + "                 Encoding: RLE,\n"
-            + "                 args: {compressor=UNCOMPRESSOR, MAX_POINT_NUMBER=10},\n"
+            + "                 args: {MAX_POINT_NUMBER=10, compressor=UNCOMPRESSOR},\n"
             + "                 StorageGroup: root.vehicle \n" + "            }\n" + "        }\n"
             + "    }\n" + "}",
         "DELETE TIMESERIES root.vehicle.*", "SHOW TIMESERIES",
@@ -116,7 +116,7 @@ public class IoTDBCompleteIT {
     executeSQL(sqlS);
   }
 
-  public void InsertTest() throws ClassNotFoundException, SQLException {
+  public void insertTest() throws ClassNotFoundException, SQLException {
     String[] sqlS = {"CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32,ENCODING=RLE",
         "INSERT INTO root.vehicle.d0(timestamp,s0) values(1,101)",
         "CREATE TIMESERIES root.vehicle.d0.s1 WITH DATATYPE=INT32,ENCODING=RLE",
@@ -129,7 +129,7 @@ public class IoTDBCompleteIT {
     executeSQL(sqlS);
   }
 
-  public void DeleteTest() throws ClassNotFoundException, SQLException {
+  public void deleteTest() throws ClassNotFoundException, SQLException {
     String[] sqlS = {"CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32,ENCODING=RLE",
         "INSERT INTO root.vehicle.d0(timestamp,s0) values(1,1)",
         "INSERT INTO root.vehicle.d0(timestamp,s0) values(2,1)",
@@ -165,7 +165,7 @@ public class IoTDBCompleteIT {
     executeSQL(sqlS);
   }
 
-  public void SelectTest() throws ClassNotFoundException, SQLException {
+  public void selectTest() throws ClassNotFoundException, SQLException {
     String[] sqlS = {"CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32,ENCODING=RLE",
         "INSERT INTO root.vehicle.d0(timestamp,s0) values(1,101)",
         "INSERT INTO root.vehicle.d0(timestamp,s0) values(2,102)",
@@ -186,7 +186,7 @@ public class IoTDBCompleteIT {
     executeSQL(sqlS);
   }
 
-  public void FuncTest() throws ClassNotFoundException, SQLException {
+  public void funcTest() throws ClassNotFoundException, SQLException {
     String[] sqlS = {"CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32,ENCODING=RLE",
         "INSERT INTO root.vehicle.d0(timestamp,s0) values(1,110)",
         "INSERT INTO root.vehicle.d0(timestamp,s0) values(2,109)",
@@ -219,7 +219,7 @@ public class IoTDBCompleteIT {
     executeSQL(sqlS);
   }
 
-  public void GroupByTest() throws ClassNotFoundException, SQLException {
+  public void groupByTest() throws ClassNotFoundException, SQLException {
     String[] sqlS = {"CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32,ENCODING=RLE",
         "INSERT INTO root.vehicle.d0(timestamp,s0) values(1,110)",
         "INSERT INTO root.vehicle.d0(timestamp,s0) values(2,109)",
