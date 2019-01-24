@@ -38,7 +38,7 @@ import org.junit.Test;
 import static org.junit.Assert.assertEquals;
 
 public class IoTDBDeletionTest {
-  private static IoTDB deamon;
+  private static IoTDB daemon;
 
   private static String[] creationSqls = new String[]{
           "SET STORAGE GROUP TO root.vehicle.d0", "SET STORAGE GROUP TO root.vehicle.d1",
@@ -58,8 +58,8 @@ public class IoTDBDeletionTest {
   public static void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.closeMemControl();
-    deamon = IoTDB.getInstance();
-    deamon.active();
+    daemon = IoTDB.getInstance();
+    daemon.active();
     EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
     prepareSeries();
@@ -67,7 +67,7 @@ public class IoTDBDeletionTest {
 
   @AfterClass
   public static void tearDown() throws Exception {
-    deamon.stop();
+    daemon.stop();
     Thread.sleep(5000);
 
     EnvironmentUtils.cleanEnv();

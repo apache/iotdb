@@ -43,7 +43,7 @@ import org.junit.Test;
  */
 public class IoTDBMultiSeriesIT {
 
-  private static IoTDB deamon;
+  private static IoTDB daemon;
 
   private static boolean testFlag = Constant.testFlag;
   private static TSFileConfig tsFileConfig = TSFileDescriptor.getInstance().getConfig();
@@ -69,8 +69,8 @@ public class IoTDBMultiSeriesIT {
     tsFileConfig.pageSizeInByte = 1024 * 150;
     tsFileConfig.groupSizeInByte = 1024 * 1000;
 
-    deamon = IoTDB.getInstance();
-    deamon.active();
+    daemon = IoTDB.getInstance();
+    daemon.active();
     EnvironmentUtils.envSetUp();
 
     Thread.sleep(5000);
@@ -86,7 +86,7 @@ public class IoTDBMultiSeriesIT {
 
     connection.close();
 
-    deamon.stop();
+    daemon.stop();
     Thread.sleep(5000);
 
     // recovery value
