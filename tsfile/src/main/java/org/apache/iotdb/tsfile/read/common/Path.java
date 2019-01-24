@@ -36,7 +36,7 @@ public class Path {
 
   public Path(StringContainer pathSc) {
     if (pathSc == null) {
-      throw new IllegalArgumentException("");
+      throw new IllegalArgumentException("input pathSc is null!");
     }
     String[] splits = pathSc.toString().split(SystemConstant.PATH_SEPARATER_NO_REGEX);
     init(splits);
