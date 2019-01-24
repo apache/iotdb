@@ -34,8 +34,6 @@ import org.slf4j.LoggerFactory;
  */
 public class TsFileMetadataUtils {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(TsFileMetadataUtils.class);
-
   /**
    * get tsfile meta data.
    *
