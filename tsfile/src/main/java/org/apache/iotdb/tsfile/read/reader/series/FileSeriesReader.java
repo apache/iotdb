@@ -107,7 +107,7 @@ public abstract class FileSeriesReader {
     chunkLoader.close();
   }
 
-  protected ChunkMetaData nextChunkMeta() {
+  private ChunkMetaData nextChunkMeta() {
     return chunkMetaDataList.get(chunkToRead++);
   }
 }

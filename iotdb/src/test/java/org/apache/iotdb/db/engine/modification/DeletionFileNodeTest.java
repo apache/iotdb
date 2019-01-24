@@ -104,7 +104,7 @@ public class DeletionFileNodeTest {
       timeValuePairs.next();
       count++;
     }
-    assertEquals(count, 50);
+    assertEquals(50, count);
   }
 
   @Test
@@ -181,7 +181,7 @@ public class DeletionFileNodeTest {
       timeValuePairs.next();
       count++;
     }
-    assertEquals(count, 50);
+    assertEquals(50, count);
   }
 
   @Test

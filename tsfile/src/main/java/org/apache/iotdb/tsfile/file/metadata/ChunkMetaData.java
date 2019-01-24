@@ -49,8 +49,10 @@ public class ChunkMetaData {
 
   private TSDataType tsDataType;
 
-  /** version is set  according to its belonging ChunkGroup only when being queried, so it is not
-   persisted.
+  /**
+   * version is used to define the order of operations(insertion, deletion, update).
+   * version is set according to its belonging ChunkGroup only when being queried, so it is not
+   * persisted.
    */
   private long version;
 

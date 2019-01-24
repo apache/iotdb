@@ -73,6 +73,10 @@ public class TsFileWriter {
    **/
   private long recordCountForNextMemCheck = 100;
   private long chunkGroupSizeThreshold;
+  /**
+   * In an individual TsFile, version number is not meaningful, added
+   * only for tests.
+   */
   private long version = 0;
 
   /**
