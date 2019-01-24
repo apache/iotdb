@@ -117,18 +117,11 @@ public class SeriesReaderFactory {
       }
     }
 
-    // TODO add External Sort when needed
-    // timeValuePairReaders = externalSortJobEngine.
-    // executeWithGlobalTimeFilter(timeValuePairReaders);
-
+    // TODO add external sort when needed
     return unSeqMergeReader;
   }
 
-  public PriorityMergeReader createUnSeqMergeReaderByTime(
-      OverflowSeriesDataSource overflowSeriesDataSource,
-      Filter filter) {
-    return null;
-  }
+  // TODO createUnSeqMergeReaderByTime a method with filter
 
   /**
    * This method is used to construct reader for merge process in IoTDB. To merge only one TsFile
@@ -175,7 +168,6 @@ public class SeriesReaderFactory {
   }
 
   private static class SeriesReaderFactoryHelper {
-
-    private static SeriesReaderFactory INSTANCE = new SeriesReaderFactory();
+    private static final SeriesReaderFactory INSTANCE = new SeriesReaderFactory();
   }
 }

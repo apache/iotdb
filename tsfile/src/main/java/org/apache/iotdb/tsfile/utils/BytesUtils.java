@@ -36,6 +36,8 @@ import org.slf4j.LoggerFactory;
  */
 public class BytesUtils {
 
+  private BytesUtils(){}
+
   private static final Logger LOG = LoggerFactory.getLogger(BytesUtils.class);
 
   /**
@@ -60,7 +62,9 @@ public class BytesUtils {
    * @return byte array
    */
   public static byte[] intToBytes(int i, byte[] desc, int offset) {
-    assert desc.length - offset >= 4;
+    if (desc.length - offset < 4) {
+      throw new IllegalArgumentException("Invalid input: desc.length - offset < 4");
+    }
     desc[0 + offset] = (byte) ((i >> 24) & 0xFF);
     desc[1 + offset] = (byte) ((i >> 16) & 0xFF);
     desc[2 + offset] = (byte) ((i >> 8) & 0xFF);
@@ -100,7 +104,9 @@ public class BytesUtils {
    * @return two bytes in byte[] structure
    */
   public static byte[] intToTwoBytes(int i) {
-    assert i <= 0xFFFF;
+    if (i > 0xFFFF) {
+      throw new IllegalArgumentException("Invalid input: " + i + " > 0xFFFF");
+    }
     byte[] ret = new byte[2];
     ret[1] = (byte) (i & 0xFF);
     ret[0] = (byte) ((i >> 8) & 0xFF);
@@ -114,7 +120,9 @@ public class BytesUtils {
    * @return int value
    */
   public static int twoBytesToInt(byte[] ret) {
-    assert ret.length == 2;
+    if (ret.length != 2) {
+      throw new IllegalArgumentException("Invalid input: ret.length != 2");
+    }
     int value = 0;
     value |= ret[0];
     value = value << 8;
@@ -141,7 +149,10 @@ public class BytesUtils {
    * @return integer
    */
   public static int bytesToInt(byte[] bytes, int offset) {
-    assert bytes.length - offset >= 4;
+    if (bytes.length - offset < 4) {
+      throw new IllegalArgumentException("Invalid input: bytes.length - offset < 4");
+    }
+
     int value = 0;
     // high bit to low
     for (int i = 0; i < 4; i++) {
@@ -181,7 +192,7 @@ public class BytesUtils {
     byte[] b = new byte[4];
     int l = Float.floatToIntBits(x);
     for (int i = 3; i >= 0; i--) {
-      b[i] = new Integer(l).byteValue();
+      b[i] = (byte)l;
       l = l >> 8;
     }
     return b;
@@ -195,10 +206,12 @@ public class BytesUtils {
    * @param offset position in desc byte array that conversion result should start
    */
   public static void floatToBytes(float x, byte[] desc, int offset) {
-    assert desc.length - offset >= 4;
+    if (desc.length - offset < 4) {
+      throw new IllegalArgumentException("Invalid input: desc.length - offset < 4");
+    }
     int l = Float.floatToIntBits(x);
     for (int i = 3 + offset; i >= offset; i--) {
-      desc[i] = new Integer(l).byteValue();
+      desc[i] = (byte)l;
       l = l >> 8;
     }
   }
@@ -210,7 +223,10 @@ public class BytesUtils {
    * @return float
    */
   public static float bytesToFloat(byte[] b) {
-    assert b.length == 4;
+    if (b.length != 4) {
+      throw new IllegalArgumentException("Invalid input: b.length != 4");
+    }
+
     int l;
     l = b[3];
     l &= 0xff;
@@ -230,7 +246,10 @@ public class BytesUtils {
    * @return float
    */
   public static float bytesToFloat(byte[] b, int offset) {
-    assert b.length - offset >= 4;
+    if (b.length - offset < 4) {
+      throw new IllegalArgumentException("Invalid input: b.length - offset < 4");
+    }
+
     int l;
     l = b[offset + 3];
     l &= 0xff;
@@ -252,7 +271,7 @@ public class BytesUtils {
     byte[] bytes = new byte[8];
     long value = Double.doubleToLongBits(data);
     for (int i = 7; i >= 0; i--) {
-      bytes[i] = new Long(value).byteValue();
+      bytes[i] = (byte)value;
       value = value >> 8;
     }
     return bytes;
@@ -266,10 +285,13 @@ public class BytesUtils {
    * @param offset start pos
    */
   public static void doubleToBytes(double d, byte[] bytes, int offset) {
-    assert bytes.length - offset >= 8;
+    if (bytes.length - offset < 8) {
+      throw new IllegalArgumentException("Invalid input: bytes.length - offset < 8");
+    }
+
     long value = Double.doubleToLongBits(d);
     for (int i = 7; i >= 0; i--) {
-      bytes[offset + i] = new Long(value).byteValue();
+      bytes[offset + i] = (byte)value;
       value = value >> 8;
     }
   }
@@ -307,7 +329,9 @@ public class BytesUtils {
    * @return double
    */
   public static double bytesToDouble(byte[] bytes, int offset) {
-    assert bytes.length - offset >= 8;
+    if (bytes.length - offset < 8) {
+      throw new IllegalArgumentException("Invalid input: bytes.length - offset < 8");
+    }
     long value = bytes[offset + 7];
     value &= 0xff;
     value |= ((long) bytes[offset + 6] << 8);
@@ -367,12 +391,11 @@ public class BytesUtils {
    * @return boolean
    */
   public static boolean bytesToBool(byte[] b) {
-    assert b.length == 1;
-    if (b[0] == 0) {
-      return false;
-    } else {
-      return true;
+    if (b.length != 1) {
+      throw new IllegalArgumentException("Invalid input: b.length != 1");
     }
+
+    return b[0] != 0;
   }
 
   /**
@@ -383,12 +406,10 @@ public class BytesUtils {
    * @return boolean
    */
   public static boolean bytesToBool(byte[] b, int offset) {
-    assert b.length - offset >= 1;
-    if (b[offset] == 0) {
-      return false;
-    } else {
-      return true;
+    if (b.length - offset < 1) {
+      throw new IllegalArgumentException("Invalid input: b.length - offset < 1");
     }
+    return b[offset] != 0;
   }
 
   /**
@@ -467,7 +488,9 @@ public class BytesUtils {
    * @return long
    */
   public static long bytesToLong(byte[] byteNum) {
-    assert byteNum.length == 8;
+    if (byteNum.length != 8) {
+      throw new IllegalArgumentException("Invalid input: byteNum.length != 8");
+    }
     return bytesToLong(byteNum, 8);
   }
 
@@ -516,7 +539,9 @@ public class BytesUtils {
    * @return long
    */
   public static long bytesToLongFromOffset(byte[] byteNum, int len, int offset) {
-    assert byteNum.length - offset >= len;
+    if (byteNum.length - offset < len) {
+      throw new IllegalArgumentException("Invalid input: byteNum.length - offset < len");
+    }
     long num = 0;
     for (int ix = 0; ix < len; ix++) {
       num <<= 8;
@@ -662,7 +687,7 @@ public class BytesUtils {
    */
   public static int getByteN(byte data, int offset) {
     offset %= 8;
-    if ((data & (1 << (7 - offset))) != 0) {
+    if (((0xff & data) & (1 << (7 - offset))) != 0) {
       return 1;
     } else {
       return 0;
@@ -682,9 +707,9 @@ public class BytesUtils {
   public static byte setByteN(byte data, int offset, int value) {
     offset %= 8;
     if (value == 1) {
-      return (byte) (data | (1 << (7 - offset)));
+      return (byte) ((0xff & data) | (1 << (7 - offset)));
     } else {
-      return (byte) (data & ~(1 << (7 - offset)));
+      return (byte) ((0xff & data) & ~(1 << (7 - offset)));
     }
   }
 
@@ -808,7 +833,7 @@ public class BytesUtils {
     int temp = number;
     byte[] b = new byte[2];
     for (int i = b.length - 1; i >= 0; i--) {
-      b[i] = new Integer(temp & 0xff).byteValue();
+      b[i] = (byte)temp;
       temp = temp >> 8;
     }
 

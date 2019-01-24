@@ -24,7 +24,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 /**
  * a TsFileOutput implementation with FileOutputStream. If the file is not existed, it will be
@@ -38,7 +37,7 @@ public class DefaultTsFileOutput implements TsFileOutput {
     this.outputStream = new FileOutputStream(file);
   }
 
-  public DefaultTsFileOutput(FileOutputStream outputStream) throws FileNotFoundException {
+  public DefaultTsFileOutput(FileOutputStream outputStream) {
     this.outputStream = outputStream;
   }
 
@@ -49,7 +48,7 @@ public class DefaultTsFileOutput implements TsFileOutput {
 
   @Override
   public void write(ByteBuffer b) throws IOException {
-    throw new NotImplementedException();
+    throw new UnsupportedOperationException();
   }
 
   @Override
