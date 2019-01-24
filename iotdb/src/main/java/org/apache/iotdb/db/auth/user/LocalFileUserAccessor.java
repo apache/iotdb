@@ -123,32 +123,34 @@ public class LocalFileUserAccessor implements IUserAccessor {
   public void saveUser(User user) throws IOException {
     File userProfile = new File(
         userDirPath + File.separator + user.getName() + IoTDBConstant.PROFILE_SUFFIX + TEMP_SUFFIX);
-    BufferedOutputStream outputStream = new BufferedOutputStream(new FileOutputStream(userProfile));
-    try {
-      IOUtils.writeString(outputStream, user.getName(), STRING_ENCODING, encodingBufferLocal);
-      IOUtils.writeString(outputStream, user.getPassword(), STRING_ENCODING, encodingBufferLocal);
+    try(BufferedOutputStream outputStream = new BufferedOutputStream(new FileOutputStream(userProfile))) {
+      try {
+        IOUtils.writeString(outputStream, user.getName(), STRING_ENCODING, encodingBufferLocal);
+        IOUtils.writeString(outputStream, user.getPassword(), STRING_ENCODING, encodingBufferLocal);
 
-      user.getPrivilegeList().sort(PathPrivilege.referenceDescentSorter);
-      int privilegeNum = user.getPrivilegeList().size();
-      IOUtils.writeInt(outputStream, privilegeNum, encodingBufferLocal);
-      for (int i = 0; i < privilegeNum; i++) {
-        PathPrivilege pathPrivilege = user.getPrivilegeList().get(i);
-        IOUtils
-            .writePathPrivilege(outputStream, pathPrivilege, STRING_ENCODING, encodingBufferLocal);
+        user.getPrivilegeList().sort(PathPrivilege.referenceDescentSorter);
+        int privilegeNum = user.getPrivilegeList().size();
+        IOUtils.writeInt(outputStream, privilegeNum, encodingBufferLocal);
+        for (int i = 0; i < privilegeNum; i++) {
+          PathPrivilege pathPrivilege = user.getPrivilegeList().get(i);
+          IOUtils
+              .writePathPrivilege(outputStream, pathPrivilege, STRING_ENCODING,
+                  encodingBufferLocal);
+        }
+
+        int userNum = user.getRoleList().size();
+        IOUtils.writeInt(outputStream, userNum, encodingBufferLocal);
+        for (int i = 0; i < userNum; i++) {
+          IOUtils
+              .writeString(outputStream, user.getRoleList().get(i), STRING_ENCODING,
+                  encodingBufferLocal);
+        }
+
+      } catch (Exception e) {
+        throw new IOException(e.getMessage());
+      } finally {
+        outputStream.flush();
       }
-
-      int userNum = user.getRoleList().size();
-      IOUtils.writeInt(outputStream, userNum, encodingBufferLocal);
-      for (int i = 0; i < userNum; i++) {
-        IOUtils
-            .writeString(outputStream, user.getRoleList().get(i), STRING_ENCODING, encodingBufferLocal);
-      }
-
-    } catch (Exception e) {
-      throw new IOException(e.getMessage());
-    } finally {
-      outputStream.flush();
-      outputStream.close();
     }
 
     File oldFile = new File(
