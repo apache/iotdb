@@ -170,14 +170,14 @@ public class ImportCsv extends AbstractCsvTool {
           return;
         }
         headInfo.add(strHeadInfo[i]);
-        String deviceInfo = strHeadInfo[i].substring(0, strHeadInfo[i].lastIndexOf("."));
+        String deviceInfo = strHeadInfo[i].substring(0, strHeadInfo[i].lastIndexOf('.'));
 
         if (!deviceToColumn.containsKey(deviceInfo)) {
           deviceToColumn.put(deviceInfo, new ArrayList<>());
         }
         // storage every device's sensor index info
         deviceToColumn.get(deviceInfo).add(i - 1);
-        colInfo.add(strHeadInfo[i].substring(strHeadInfo[i].lastIndexOf(".") + 1));
+        colInfo.add(strHeadInfo[i].substring(strHeadInfo[i].lastIndexOf('.') + 1));
       }
 
       String line;
@@ -301,10 +301,6 @@ public class ImportCsv extends AbstractCsvTool {
       String timestampsStr = data[0];
       sbd.append(") values(").append(timestampsStr.trim().equals("")
           ? "NO TIMESTAMP" : timestampsStr);
-      // if (timestampsStr.trim().equals("")) {
-      // continue;
-      // }
-      // sbd.append(") values(").append(timestampsStr);
 
       for (int j = 0; j < colIndex.size(); ++j) {
         if (data[entry.getValue().get(j) + 1].equals("")) {
@@ -356,7 +352,7 @@ public class ImportCsv extends AbstractCsvTool {
         hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
         return;
       }
-      parseSpecialParams(commandLine, reader);
+      parseSpecialParams(commandLine);
       importCsvFromFile(host, port, username, password, filename, timeZoneID);
     } catch (ArgsErrorException e) {
       // ignored
@@ -367,8 +363,7 @@ public class ImportCsv extends AbstractCsvTool {
     }
   }
 
-  private static void parseSpecialParams(CommandLine commandLine, ConsoleReader reader)
-      throws IOException, ArgsErrorException {
+  private static void parseSpecialParams(CommandLine commandLine) {
     timeZoneID = commandLine.getOptionValue(TIME_ZONE_ARGS);
   }
 

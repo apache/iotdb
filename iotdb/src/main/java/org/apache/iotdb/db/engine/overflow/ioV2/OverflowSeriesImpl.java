@@ -25,8 +25,6 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 
 /**
  * This class is only used to store and query overflow overflowIndex {@code IIntervalTreeOperator} data in memory.
- *
- * @author liukun
  */
 public class OverflowSeriesImpl {
 
@@ -46,12 +44,8 @@ public class OverflowSeriesImpl {
     // overflowIndex = new IntervalTreeOperation(dataType);
   }
 
-  public void insert(long time, byte[] value) {
-
-  }
-
   public void update(long startTime, long endTime, byte[] value) {
-    // overflowIndex.update(startTime, endTime, value);
+    //overflowIndex.update(startTime, endTime, value);
     statistics.updateStats(startTime, endTime);
     valueCount++;
   }
@@ -71,10 +65,6 @@ public class OverflowSeriesImpl {
     // return overflowIndex.calcMemSize();
     return 0;
   }
-
-  // public IIntervalTreeOperator getOverflowIndex() {
-  // return overflowIndex;
-  // }
 
   public String getMeasurementId() {
     return measurementId;

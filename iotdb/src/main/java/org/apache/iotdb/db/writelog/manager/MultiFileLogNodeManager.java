@@ -67,6 +67,7 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
           Thread.sleep(config.flushWalPeriodInMs);
         } catch (InterruptedException e) {
           logger.info("WAL sync thread exits.");
+          Thread.currentThread().interrupt();
           break;
         }
       }
@@ -94,6 +95,7 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
           Thread.sleep(config.forceWalPeriodInMs);
         } catch (InterruptedException e) {
           logger.info("WAL force thread exits.");
+          Thread.currentThread().interrupt();
           break;
         }
       }

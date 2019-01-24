@@ -59,7 +59,7 @@ public class LocalFileUserAccessorTest {
       users[i] = new User("user" + i, "password" + i);
       for (int j = 0; j <= i; j++) {
         PathPrivilege pathPrivilege = new PathPrivilege("root.a.b.c" + j);
-        pathPrivilege.privileges.add(j);
+        pathPrivilege.getPrivileges().add(j);
         users[i].privilegeList.add(pathPrivilege);
         users[i].roleList.add("role" + j);
       }

@@ -53,92 +53,92 @@ public class TSFileConfig {
   /**
    * Current version is 3.
    */
-  public static int currentVersion = 3;
+  public static final int CURRENT_VERSION = 3;
   /**
    * The default grow size of class BatchData.
    */
-  public static int dynamicDataSize = 1000;
+  public static final int DYNAMIC_DATA_SIZE = 1000;
   /**
    * Memory size threshold for flushing to disk or HDFS, default value is 128MB.
    */
-  public int groupSizeInByte = 128 * 1024 * 1024;
+  public static int groupSizeInByte = 128 * 1024 * 1024;
   /**
    * The memory size for each series writer to pack page, default value is 64KB.
    */
-  public int pageSizeInByte = 64 * 1024;
+  public static int pageSizeInByte = 64 * 1024;
 
   // TS_2DIFF configuration
   /**
    * The maximum number of data points in a page, default value is 1024 * 1024.
    */
-  public int maxNumberOfPointsInPage = 1024 * 1024;
+  public static int maxNumberOfPointsInPage = 1024 * 1024;
   /**
    * Data type for input timestamp, TsFile supports INT32 or INT64.
    */
-  public String timeSeriesDataType = "INT64";
+  public static String timeSeriesDataType = "INT64";
 
   // Freq encoder configuration
   /**
    * Max length limitation of input string.
    */
-  public int maxStringLength = 128;
+  public static int maxStringLength = 128;
   /**
    * Floating-point precision.
    */
-  public int floatPrecision = 2;
+  public static int floatPrecision = 2;
   /**
    * Encoder of time series, TsFile supports TS_2DIFF, PLAIN and RLE(run-length encoding) Default
    * value is TS_2DIFF.
    */
-  public String timeSeriesEncoder = "TS_2DIFF";
+  public static String timeSeriesEncoder = "TS_2DIFF";
   /**
    * Encoder of value series. default value is PLAIN. For int, long data type, TsFile also supports
    * TS_2DIFF and RLE(run-length encoding). For float, double data type, TsFile also supports
    * TS_2DIFF, RLE(run-length encoding) and GORILLA. For text data type, TsFile only supports
    * PLAIN.
    */
-  public String valueEncoder = "PLAIN";
+  public static String valueEncoder = "PLAIN";
 
   // Compression configuration
   /**
    * Default bit width of RLE encoding is 8.
    */
-  public int rleBitWidth = 8;
+  public static int rleBitWidth = 8;
 
   // Don't change the following configuration
   /**
    * Default block size of two-diff. delta encoding is 128
    */
-  public int deltaBlockSize = 128;
+  public static int deltaBlockSize = 128;
   /**
    * Default frequency type is SINGLE_FREQ.
    */
-  public String freqType = "SINGLE_FREQ";
+  public static String freqType = "SINGLE_FREQ";
   /**
    * Default PLA max error is 100.
    */
-  public double plaMaxError = 100;
+  public static double plaMaxError = 100;
   /**
    * Default SDT max error is 100.
    */
-  public double sdtMaxError = 100;
+  public static double sdtMaxError = 100;
   /**
    * Default DFT satisfy rate is 0.1
    */
-  public double dftSatisfyRate = 0.1;
+  public static double dftSatisfyRate = 0.1;
   /**
    * Data compression method, TsFile supports UNCOMPRESSED or SNAPPY. Default value is UNCOMPRESSED
    * which means no compression
    */
-  public String compressor = "UNCOMPRESSED";
+  public static String compressor = "UNCOMPRESSED";
   /**
    * Line count threshold for checking page memory occupied size.
    */
-  public int pageCheckSizeThreshold = 100;
+  public static int pageCheckSizeThreshold = 100;
   /**
    * Default endian value is LITTLE_ENDIAN.
    */
-  public String endian = "LITTLE_ENDIAN";
+  public static String endian = "LITTLE_ENDIAN";
 
   /**
    * only can be used by TsFileDescriptor.

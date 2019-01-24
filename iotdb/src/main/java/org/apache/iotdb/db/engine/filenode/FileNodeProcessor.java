@@ -44,6 +44,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.Directories;
 import org.apache.iotdb.db.engine.Processor;
 import org.apache.iotdb.db.engine.bufferwrite.Action;
+import org.apache.iotdb.db.engine.bufferwrite.ActionException;
 import org.apache.iotdb.db.engine.bufferwrite.BufferWriteProcessor;
 import org.apache.iotdb.db.engine.bufferwrite.FileNodeConstants;
 import org.apache.iotdb.db.engine.modification.Deletion;
@@ -148,16 +149,20 @@ public class FileNodeProcessor extends Processor implements IStatistic {
   private Action flushFileNodeProcessorAction = new Action() {
 
     @Override
-    public void act() throws Exception {
+    public void act() throws ActionException {
       synchronized (fileNodeProcessorStore) {
-        writeStoreToDisk(fileNodeProcessorStore);
+        try {
+          writeStoreToDisk(fileNodeProcessorStore);
+        } catch (FileNodeProcessorException e) {
+          throw new ActionException(e);
+        }
       }
     }
   };
   private Action bufferwriteFlushAction = new Action() {
 
     @Override
-    public void act() throws Exception {
+    public void act() throws ActionException {
       // update the lastUpdateTime Notice: Thread safe
       synchronized (fileNodeProcessorStore) {
         // deep copy
@@ -173,8 +178,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
   private Action bufferwriteCloseAction = new Action() {
 
     @Override
-    public void act() throws Exception {
-
+    public void act() throws ActionException {
       synchronized (fileNodeProcessorStore) {
         fileNodeProcessorStore.setLastUpdateTimeMap(lastUpdateTimeMap);
         addLastTimeToIntervalFile();
@@ -185,7 +189,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
   private Action overflowFlushAction = new Action() {
 
     @Override
-    public void act() throws Exception {
+    public void act() throws ActionException {
 
       // update the new IntervalFileNode List and emptyIntervalFile.
       // Notice: thread safe
@@ -877,8 +881,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
   /**
    * add time series.
    */
-  public void addTimeSeries(String measurementToString, String dataType, String encoding,
-      String[] encodingArgs) {
+  public void addTimeSeries(String measurementToString, String dataType, String encoding) {
     ColumnSchema col = new ColumnSchema(measurementToString, TSDataType.valueOf(dataType),
         TSEncoding.valueOf(encoding));
     JSONObject measurement = constrcutMeasurement(col);
@@ -1157,20 +1160,10 @@ public class FileNodeProcessor extends Processor implements IStatistic {
       }
     }
 
-    // FileReaderManager.getInstance().
-    // removeMappedByteBuffer(overflowProcessor.getWorkResource().getInsertFilePath());
     //
     // change status from merge to wait
     //
     switchMergeToWaitingv2(backupIntervalFiles, needEmtpy);
-
-    //
-    // merge index begin
-    //
-    // mergeIndex();
-    //
-    // merge index end
-    //
 
     //
     // change status from wait to work
@@ -1412,7 +1405,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
         // add the restore file, if the last file is not closed
         if (!newFileNodes.isEmpty() && !newFileNodes.get(newFileNodes.size() - 1).isClosed()) {
           String bufferFileRestorePath =
-              newFileNodes.get(newFileNodes.size() - 1).getFilePath() + ".restore";
+              newFileNodes.get(newFileNodes.size() - 1).getFilePath() + RESTORE_FILE_SUFFIX;
           bufferFiles.add(bufferFileRestorePath);
         }
 
@@ -1505,7 +1498,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
         String measurementId = path.getMeasurement();
         TSDataType dataType = mManager.getSeriesType(path.getFullPath());
         OverflowSeriesDataSource overflowSeriesDataSource = overflowProcessor.queryMerge(deviceId,
-            measurementId, dataType, true);
+            measurementId, dataType,true);
         Filter timeFilter = FilterFactory
             .and(TimeFilter.gtEq(backupIntervalFile.getStartTime(deviceId)),
                 TimeFilter.ltEq(backupIntervalFile.getEndTime(deviceId)));
@@ -1831,27 +1824,6 @@ public class FileNodeProcessor extends Processor implements IStatistic {
         }
         bufferWriteProcessor.close();
         bufferWriteProcessor = null;
-        /**
-         * add index for close
-         */
-        // deprecated
-        /*
-         * Map<String, Set<IndexType>> allIndexSeries =
-         * mManager.getAllIndexPaths(getProcessorName());
-         *
-         * if (!allIndexSeries.isEmpty()) { LOGGER.info(
-         * "Close buffer write file and append index file, the nameSpacePath is {}, the index " +
-         * "type is {}, the index seriesPath is {}", getProcessorName(),
-         * "kvindex", allIndexSeries); for
-         * (Entry<String, Set<IndexType>> entry : allIndexSeries.entrySet()) { Path path = new
-         * Path(entry.getKey()); String deviceId = path.getdeviceToString(); if
-         * (currentIntervalFileNode.getStartTime(deviceId) != -1) { DataFileInfo dataFileInfo = new
-         * DataFileInfo( currentIntervalFileNode.getStartTime(deviceId),
-         * currentIntervalFileNode.getEndTime(deviceId), currentIntervalFileNode.getFilePath());
-         * for (IndexType
-         * indexType : entry.getValue()) IndexManager.getIndexInstance(indexType).build(path,
-         * dataFileInfo, null); } } }
-         */
       } catch (BufferWriteProcessorException e) {
         e.printStackTrace();
         throw new FileNodeProcessorException(e);
@@ -1872,6 +1844,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
                 overflowProcessor.getProcessorName());
             TimeUnit.MICROSECONDS.sleep(100);
           } catch (InterruptedException e) {
+            // ignore the interrupted exception
             e.printStackTrace();
           }
         }
@@ -1943,24 +1916,19 @@ public class FileNodeProcessor extends Processor implements IStatistic {
   private FileNodeProcessorStore readStoreFromDisk() throws FileNodeProcessorException {
 
     synchronized (fileNodeRestoreFilePath) {
-      FileNodeProcessorStore fileNodeProcessorStore = null;
+      FileNodeProcessorStore processorStore;
       SerializeUtil<FileNodeProcessorStore> serializeUtil = new SerializeUtil<>();
       try {
-        fileNodeProcessorStore = serializeUtil.deserialize(fileNodeRestoreFilePath)
+        processorStore = serializeUtil.deserialize(fileNodeRestoreFilePath)
             .orElse(new FileNodeProcessorStore(false, new HashMap<>(),
                 new IntervalFileNode(OverflowChangeType.NO_CHANGE, null),
                 new ArrayList<IntervalFileNode>(), FileNodeProcessorStatus.NONE, 0));
       } catch (IOException e) {
         throw new FileNodeProcessorException(e);
       }
-      return fileNodeProcessorStore;
+      return processorStore;
     }
   }
-
-  /*
-   * public void rebuildIndex() throws FileNodeProcessorException
-   * { mergeIndex(); switchMergeIndex(); }
-   */
 
     public String getFileNodeRestoreFilePath() {
         return fileNodeRestoreFilePath;
@@ -1994,4 +1962,5 @@ public class FileNodeProcessor extends Processor implements IStatistic {
         bufferWriteProcessor.delete(deviceId, measurementId, timestamp);
       }
     }
+
 }

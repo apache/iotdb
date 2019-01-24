@@ -491,7 +491,11 @@ public class FileSenderImpl implements FileSender {
       if (new File(snapshotPath).exists() && new File(snapshotPath).list().length != 0) {
         // it means that the last task of postback does not succeed! Clear the files and
         // start to postback again
-        PostbackUtils.deleteFile(new File(snapshotPath));
+        try {
+          PostbackUtils.deleteFile(new File(snapshotPath));
+        } catch (IOException e) {
+          LOGGER.error("can not delete file {}, {}", snapshotPath, e.getMessage());
+        }
       }
     }
 
@@ -531,7 +535,7 @@ public class FileSenderImpl implements FileSender {
     for (Entry<String, Set<String>> entry : sendingFileList.entrySet()) {
       Set<String> sendingList = entry.getValue();
       Set<String> sendingSnapshotList = sendingFileSnapshotList.get(entry.getKey());
-      if (sendingSnapshotList.size() == 0) {
+      if (sendingSnapshotList.isEmpty()) {
         continue;
       }
       LOGGER.info("IoTDB post back sender : postback process starts to transfer data of "
@@ -572,7 +576,11 @@ public class FileSenderImpl implements FileSender {
       }
     }
     for (String snapshotPath : config.snapshotPaths) {
-      PostbackUtils.deleteFile(new File(snapshotPath));
+      try {
+        PostbackUtils.deleteFile(new File(snapshotPath));
+      } catch (IOException e) {
+        e.printStackTrace();
+      }
     }
     try {
       clientOfServer.afterReceiving();

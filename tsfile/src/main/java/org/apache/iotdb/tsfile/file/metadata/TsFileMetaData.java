@@ -166,7 +166,7 @@ public class TsFileMetaData {
   public String toString() {
     return "TsFileMetaData{" + "deviceIndexMap=" + deviceIndexMap + ", measurementSchema="
         + measurementSchema
-        + ", currentVersion=" + currentVersion + ", createdBy='" + createdBy + '\'' + '}';
+        + ", CURRENT_VERSION=" + currentVersion + ", createdBy='" + createdBy + '\'' + '}';
   }
 
   public int getCurrentVersion() {

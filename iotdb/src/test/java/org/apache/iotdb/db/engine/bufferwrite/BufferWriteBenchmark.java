@@ -76,19 +76,19 @@ public class BufferWriteBenchmark {
     Map<String, Action> parameters = new HashMap<>();
     parameters.put(FileNodeConstants.BUFFERWRITE_FLUSH_ACTION, new Action() {
       @Override
-      public void act() throws Exception {
+      public void act() throws ActionException {
         System.out.println(FileNodeConstants.BUFFERWRITE_FLUSH_ACTION);
       }
     });
     parameters.put(FileNodeConstants.BUFFERWRITE_CLOSE_ACTION, new Action() {
       @Override
-      public void act() throws Exception {
+      public void act() throws ActionException {
         System.out.println(FileNodeConstants.BUFFERWRITE_CLOSE_ACTION);
       }
     });
     parameters.put(FileNodeConstants.FILENODE_PROCESSOR_FLUSH_ACTION, new Action() {
       @Override
-      public void act() throws Exception {
+      public void act() throws ActionException {
         System.out.println(FileNodeConstants.FILENODE_PROCESSOR_FLUSH_ACTION);
       }
     });
