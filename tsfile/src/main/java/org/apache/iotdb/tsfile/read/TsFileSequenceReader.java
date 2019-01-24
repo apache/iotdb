@@ -276,15 +276,14 @@ public class TsFileSequenceReader {
     ByteBuffer buffer = readData(position, header.getCompressedSize());
     UnCompressor unCompressor = UnCompressor.getUnCompressor(type);
     ByteBuffer uncompressedBuffer = ByteBuffer.allocate(header.getUncompressedSize());
-    // unCompressor.uncompress(buffer, uncompressedBuffer);
-    // uncompressedBuffer.flip();
     switch (type) {
       case UNCOMPRESSED:
         return buffer;
       default:
+        // FIXME if the buffer is not array-implemented.
         unCompressor.uncompress(buffer.array(), buffer.position(), buffer.remaining(),
             uncompressedBuffer.array(),
-            0);// FIXME if the buffer is not array-impelmented.
+            0);
         return uncompressedBuffer;
     }
   }
