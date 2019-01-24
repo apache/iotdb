@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.query.reader.mem;
 
-import java.io.IOException;
 import java.util.Iterator;
 import org.apache.iotdb.db.engine.memtable.TimeValuePairSorter;
 import org.apache.iotdb.db.query.reader.IReader;
@@ -50,8 +49,8 @@ public class MemChunkReaderWithoutFilter implements IReader {
   }
 
   @Override
-  public void close() throws IOException {
-
+  public void close() {
+    // Do nothing because mem chunk reader will not open files
   }
 
   @Override

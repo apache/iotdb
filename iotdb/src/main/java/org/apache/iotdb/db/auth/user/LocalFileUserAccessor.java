@@ -34,6 +34,8 @@ import org.apache.iotdb.db.auth.entity.PathPrivilege;
 import org.apache.iotdb.db.auth.entity.User;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.utils.IOUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * This class loads a user's information from the corresponding file.The user file is a sequential
@@ -51,6 +53,7 @@ public class LocalFileUserAccessor implements IUserAccessor {
 
   private static final String TEMP_SUFFIX = ".temp";
   private static final String STRING_ENCODING = "utf-8";
+  private static final Logger LOGGER = LoggerFactory.getLogger(LocalFileUserAccessor.class);
 
   private String userDirPath;
   /**
@@ -78,7 +81,9 @@ public class LocalFileUserAccessor implements IUserAccessor {
       File newProfile = new File(
           userDirPath + File.separator + username + IoTDBConstant.PROFILE_SUFFIX + TEMP_SUFFIX);
       if (newProfile.exists() && newProfile.isFile()) {
-        newProfile.renameTo(userProfile);
+        if(!newProfile.renameTo(userProfile)) {
+          LOGGER.error("New profile renaming not succeed.");
+        }
         userProfile = newProfile;
       } else {
         return null;

@@ -98,7 +98,7 @@ public class TsFileIOWriter {
       throws IOException {
     this.out = out;
     this.chunkGroupMetaDataList = chunkGroupMetaDataList;
-    if (chunkGroupMetaDataList.size() == 0) {
+    if (chunkGroupMetaDataList.isEmpty()) {
       startFile();
     }
   }
@@ -206,8 +206,8 @@ public class TsFileIOWriter {
    */
   public void endFile(FileSchema schema) throws IOException {
 
-    // serialize the Separator of MetaData and ChunkGroups
-    ReadWriteIOUtils.write(MetaMarker.Separator, out.wrapAsStream());
+    // serialize the SEPARATOR of MetaData and ChunkGroups
+    ReadWriteIOUtils.write(MetaMarker.SEPARATOR, out.wrapAsStream());
 
     // get all measurementSchema of this TsFile
     Map<String, MeasurementSchema> schemaDescriptors = schema.getAllMeasurementSchema();

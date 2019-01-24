@@ -143,10 +143,10 @@ public class TsFileSequenceReader {
   }
 
   /**
-   * read data from current position of the input, and deserialize it to a ChunkGroupFooter. <br>
+   * read data from current position of the input, and deserialize it to a CHUNK_GROUP_FOOTER. <br>
    * This method is not threadsafe.
    *
-   * @return a ChunkGroupFooter
+   * @return a CHUNK_GROUP_FOOTER
    * @throws IOException io error
    */
   public ChunkGroupFooter readChunkGroupFooter() throws IOException {
@@ -154,11 +154,11 @@ public class TsFileSequenceReader {
   }
 
   /**
-   * read data from current position of the input, and deserialize it to a ChunkGroupFooter.
+   * read data from current position of the input, and deserialize it to a CHUNK_GROUP_FOOTER.
    *
    * @param position the offset of the chunk group footer in the file
    * @param markerRead true if the offset does not contains the marker , otherwise false
-   * @return a ChunkGroupFooter
+   * @return a CHUNK_GROUP_FOOTER
    * @throws IOException io error
    */
   public ChunkGroupFooter readChunkGroupFooter(long position, boolean markerRead)
@@ -179,10 +179,10 @@ public class TsFileSequenceReader {
   }
 
   /**
-   * read data from current position of the input, and deserialize it to a ChunkHeader. <br> This
+   * read data from current position of the input, and deserialize it to a CHUNK_HEADER. <br> This
    * method is not threadsafe.
    *
-   * @return a ChunkHeader
+   * @return a CHUNK_HEADER
    * @throws IOException io error
    */
   public ChunkHeader readChunkHeader() throws IOException {

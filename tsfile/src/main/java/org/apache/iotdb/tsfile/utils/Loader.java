@@ -25,7 +25,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 public class Loader {
-
+  private Loader(){}
   /**
    * function for getting resources.
    */

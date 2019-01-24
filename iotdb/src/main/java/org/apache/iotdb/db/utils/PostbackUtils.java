@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.utils;
 
 import java.io.File;
+import java.io.IOException;
 import java.text.DecimalFormat;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -135,17 +136,23 @@ public class PostbackUtils {
     }
   }
 
-  public static void deleteFile(File file) {
+  public static void deleteFile(File file) throws IOException {
     if (!file.exists()) {
       return;
     }
     if (file.isFile() || file.list().length == 0) {
-      file.delete();
+      if (!file.delete()){
+        throw new IOException(
+                String.format("Cannot delete file : %s", file.getPath()));
+      }
     } else {
       File[] files = file.listFiles();
       for (File f : files) {
         deleteFile(f);
-        f.delete();
+        if(!f.delete()){
+          throw new IOException(
+                  String.format("Cannot delete file : %s", f.getPath()));
+        }
       }
     }
   }
