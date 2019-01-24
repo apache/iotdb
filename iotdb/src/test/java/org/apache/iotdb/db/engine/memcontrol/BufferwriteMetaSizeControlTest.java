@@ -33,6 +33,7 @@ import org.apache.iotdb.db.conf.directories.Directories;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
 import org.apache.iotdb.db.engine.PathUtils;
 import org.apache.iotdb.db.engine.bufferwrite.Action;
+import org.apache.iotdb.db.engine.bufferwrite.ActionException;
 import org.apache.iotdb.db.engine.bufferwrite.BufferWriteProcessor;
 import org.apache.iotdb.db.engine.bufferwrite.FileNodeConstants;
 import org.apache.iotdb.db.exception.BufferWriteProcessorException;
@@ -57,7 +58,7 @@ public class BufferwriteMetaSizeControlTest {
   Action bfflushaction = new Action() {
 
     @Override
-    public void act() throws Exception {
+    public void act() throws ActionException {
 
     }
   };
@@ -65,14 +66,14 @@ public class BufferwriteMetaSizeControlTest {
   Action bfcloseaction = new Action() {
 
     @Override
-    public void act() throws Exception {
+    public void act() throws ActionException {
     }
   };
 
   Action fnflushaction = new Action() {
 
     @Override
-    public void act() throws Exception {
+    public void act() throws ActionException {
 
     }
   };
