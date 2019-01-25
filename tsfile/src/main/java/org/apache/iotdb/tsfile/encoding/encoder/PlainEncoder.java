@@ -124,7 +124,7 @@ public class PlainEncoder extends Encoder {
       // write the length of the bytes
       encode(value.getLength(), out);
       // write value
-      out.write(value.values);
+      out.write(value.getValues());
     } catch (IOException e) {
       LOGGER.error("tsfile-encoding PlainEncoder: error occurs when encode Binary value {}", value,
           e);
