@@ -1,19 +1,15 @@
 /**
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one or more contributor license
+ * agreements.  See the NOTICE file distributed with this work for additional information regarding
+ * copyright ownership.  The ASF licenses this file to you under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with the License.  You may obtain
+ * a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
+ * Unless required by applicable law or agreed to in writing, software distributed under the License
+ * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
+ * or implied.  See the License for the specific language governing permissions and limitations
  * under the License.
  */
 package org.apache.iotdb.db.postback.receiver;
@@ -39,9 +35,6 @@ public class ServerManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ServerManager.class);
   private TServerSocket serverTransport;
-  private Factory protocolFactory;
-  private TProcessor processor;
-  private TThreadPoolServer.Args poolArgs;
   private TServer poolServer;
   private IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
 
@@ -56,6 +49,9 @@ public class ServerManager {
    * start postback receiver's server.
    */
   public void startServer() {
+    Factory protocolFactory;
+    TProcessor processor;
+    TThreadPoolServer.Args poolArgs;
     if (!conf.isPostbackEnable) {
       return;
     }
@@ -69,17 +65,13 @@ public class ServerManager {
       conf.ipWhiteList = conf.ipWhiteList.replaceAll(" ", "");
       serverTransport = new TServerSocket(conf.postbackServerPort);
       protocolFactory = new TBinaryProtocol.Factory();
-      processor = new ServerService.Processor<ServerServiceImpl>(new ServerServiceImpl());
+      processor = new ServerService.Processor<>(new ServerServiceImpl());
       poolArgs = new TThreadPoolServer.Args(serverTransport);
       poolArgs.processor(processor);
       poolArgs.protocolFactory(protocolFactory);
       poolServer = new TThreadPoolServer(poolArgs);
       LOGGER.info("Postback server has started.");
-      Runnable runnable = new Runnable() {
-        public void run() {
-          poolServer.serve();
-        }
-      };
+      Runnable runnable = () -> poolServer.serve();
       Thread thread = new Thread(runnable);
       thread.start();
     } catch (TTransportException e) {

@@ -1,19 +1,15 @@
 /**
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one or more contributor license
+ * agreements.  See the NOTICE file distributed with this work for additional information regarding
+ * copyright ownership.  The ASF licenses this file to you under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with the License.  You may obtain
+ * a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
+ * Unless required by applicable law or agreed to in writing, software distributed under the License
+ * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
+ * or implied.  See the License for the specific language governing permissions and limitations
  * under the License.
  */
 package org.apache.iotdb.db.postback.sender;
@@ -65,7 +61,6 @@ import org.slf4j.LoggerFactory;
 public class FileSenderImpl implements FileSender {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(FileSenderImpl.class);
-  private final String JDBC_DRIVER_NAME = "org.apache.iotdb.jdbc.IoTDBDriver";
   private TTransport transport;
   private ServerService.Client clientOfServer;
   private List<String> schema = new ArrayList<>();
@@ -77,10 +72,7 @@ public class FileSenderImpl implements FileSender {
   private PostBackSenderConfig config = PostBackSenderDescriptor.getInstance().getConfig();
   private Date lastPostBackTime = new Date(); // Mark the start time of last postback
   private boolean postBackStatus = false; // If true, postback is in execution.
-  /**
-   * Clear data after postback has finished or not.
-   */
-  private boolean clearOrNot = config.isClearEnable;
+  private static final String POST_BACK_SENDER_POSTBACK_PROCESS_HAS_FAILED = "IoTDB post back sender : postback process has failed!";
   private Map<String, Set<String>> sendingFileSnapshotList = new HashMap<>();
 
   private FileSenderImpl() {
@@ -92,19 +84,13 @@ public class FileSenderImpl implements FileSender {
 
   /**
    * Create a sender and send files to the receiver.
+   *
    * @param args not used
    */
-  public static void main(String[] args) {
-    /* TODO: is this a test method? If so, better put it somewhere else. Or the arguements should be
-      adjustable and some instructions should be added.
-    */
+  public static void main(String[] args) throws InterruptedException {
     FileSenderImpl fileSenderImpl = new FileSenderImpl();
     fileSenderImpl.verifyPort();
-    Thread monitor = new Thread(new Runnable() {
-      public void run() {
-        fileSenderImpl.monitorPostbackStatus();
-      }
-    });
+    Thread monitor = new Thread(fileSenderImpl::monitorPostbackStatus);
     monitor.start();
     fileSenderImpl.timedTask();
   }
@@ -115,13 +101,12 @@ public class FileSenderImpl implements FileSender {
 
   private void getConnection(String serverIP, int serverPort) {
     connectToReceiver(serverIP, serverPort);
-    if (connectionOrElse) {
-      if (!transferUUID(config.uuidPath)) {
-        LOGGER.error(
-            "IoTDB post back sender: Sorry! You do not have the permission to "
-                + "connect to postback receiver!");
-        connectionOrElse = false;
-      }
+    if (connectionOrElse && !transferUUID(config.getUuidPath())) {
+      LOGGER.error(
+          "IoTDB post back sender: Sorry! You do not have the permission to "
+              + "connect to postback receiver!");
+      connectionOrElse = false;
+
     }
   }
 
@@ -129,8 +114,7 @@ public class FileSenderImpl implements FileSender {
    * Establish a connection between the sender and the receiver.
    *
    * @param serverIp the ip address of the receiver
-   * @param serverPort
-   *            must be same with port receiver set.
+   * @param serverPort must be same with port receiver set.
    */
   @Override
   public void connectToReceiver(String serverIp, int serverPort) {
@@ -152,28 +136,25 @@ public class FileSenderImpl implements FileSender {
   @Override
   public boolean transferUUID(String uuidPath) {
     File file = new File(uuidPath);
-    BufferedReader bf;
-    FileOutputStream out;
     if (!file.getParentFile().exists()) {
       file.getParentFile().mkdirs();
     }
     if (!file.exists()) {
-      try {
-        file.createNewFile();
+      try (FileOutputStream out = new FileOutputStream(file)) {
+        if (!file.createNewFile()) {
+          LOGGER.error("IoTDB post back sender: cannot create file {}",
+              file.getAbsoluteFile());
+        }
         uuid = "PB" + UUID.randomUUID().toString().replaceAll("-", "");
-        out = new FileOutputStream(file);
         out.write(uuid.getBytes());
-        out.close();
       } catch (Exception e) {
         LOGGER.error("IoTDB post back sender: cannot write UUID to file because {}",
             e.getMessage());
         connectionOrElse = false;
       }
     } else {
-      try {
-        bf = new BufferedReader(new FileReader(uuidPath));
+      try (BufferedReader bf = new BufferedReader((new FileReader(uuidPath)))) {
         uuid = bf.readLine();
-        bf.close();
       } catch (IOException e) {
         LOGGER.error("IoTDB post back sender: cannot read UUID from file because {}",
             e.getMessage());
@@ -222,12 +203,10 @@ public class FileSenderImpl implements FileSender {
   /**
    * Transfer data of a storage group to receiver.
    *
-   * @param fileSnapshotList
-   *            list of sending snapshot files in a storage group.
-   *
+   * @param fileSnapshotList list of sending snapshot files in a storage group.
    */
   @Override
-  public void startSending(Set<String> fileSnapshotList) {
+  public void transferData(Set<String> fileSnapshotList) {
     try {
       int num = 0;
       for (String snapshotFilePath : fileSnapshotList) {
@@ -248,30 +227,30 @@ public class FileSenderImpl implements FileSender {
         }
         while (true) {
           // Send all data to receiver
-          FileInputStream fis = new FileInputStream(file);
-          int mBufferSize = 64 * 1024 * 1024;
-          ByteArrayOutputStream bos = new ByteArrayOutputStream(mBufferSize);
-          byte[] buffer = new byte[mBufferSize];
-          int n;
-          while ((n = fis.read(buffer)) != -1) { // cut the file into pieces to send
-            bos.write(buffer, 0, n);
-            ByteBuffer buffToSend = ByteBuffer.wrap(bos.toByteArray());
-            bos.reset();
-            clientOfServer.startReceiving(null, filePathSplit, buffToSend, 1);
+          try (FileInputStream fis = new FileInputStream(file)) {
+            int mBufferSize = 64 * 1024 * 1024;
+            ByteArrayOutputStream bos = new ByteArrayOutputStream(mBufferSize);
+            byte[] buffer = new byte[mBufferSize];
+            int n;
+            while ((n = fis.read(buffer)) != -1) { // cut the file into pieces to send
+              bos.write(buffer, 0, n);
+              ByteBuffer buffToSend = ByteBuffer.wrap(bos.toByteArray());
+              bos.reset();
+              clientOfServer.startReceiving(null, filePathSplit, buffToSend, 1);
+            }
+            bos.close();
           }
-          bos.close();
-          fis.close();
 
           // Get md5 of the file.
-          fis = new FileInputStream(file);
           MessageDigest md = MessageDigest.getInstance("MD5");
-          mBufferSize = 8 * 1024 * 1024;
-          buffer = new byte[mBufferSize];
-          int m;
-          while ((m = fis.read(buffer)) != -1) {
-            md.update(buffer, 0, m);
+          try (FileInputStream fis = new FileInputStream(file)) {
+            int mBufferSize = 8 * 1024 * 1024;
+            byte[] buffer = new byte[mBufferSize];
+            int m;
+            while ((m = fis.read(buffer)) != -1) {
+              md.update(buffer, 0, m);
+            }
           }
-          fis.close();
 
           // the file is sent successfully
           String md5OfSender = (new BigInteger(1, md.digest())).toString(16);
@@ -282,13 +261,13 @@ public class FileSenderImpl implements FileSender {
             break;
           }
         }
-        LOGGER.info("IoTDB sender : Task of sending files to receiver has completed " + num + "/"
-            + fileSnapshotList.size() + ".");
+        LOGGER.info(String
+            .format("IoTDB sender : Task of sending files to receiver has completed %d/%d.", num,
+                fileSnapshotList.size()));
       }
     } catch (TException e) {
       LOGGER.error("IoTDB post back sender: cannot sending data because receiver has broken down.");
       connectionOrElse = false;
-      return;
     } catch (Exception e) {
       LOGGER.error("IoTDB post back sender: cannot sending data because {}", e.getMessage());
       connectionOrElse = false;
@@ -302,8 +281,7 @@ public class FileSenderImpl implements FileSender {
    */
   @Override
   public void sendSchema(String schemaPath) {
-    try {
-      FileInputStream fis = new FileInputStream(new File(schemaPath));
+    try (FileInputStream fis = new FileInputStream(new File(schemaPath))) {
       int mBufferSize = 4 * 1024 * 1024;
       ByteArrayOutputStream bos = new ByteArrayOutputStream(mBufferSize);
       byte[] buffer = new byte[mBufferSize];
@@ -316,7 +294,6 @@ public class FileSenderImpl implements FileSender {
         clientOfServer.getSchema(buffToSend, 1);
       }
       bos.close();
-      fis.close();
       // 0 represents the schema file has been transferred completely.
       clientOfServer.getSchema(null, 0);
     } catch (Exception e) {
@@ -340,68 +317,6 @@ public class FileSenderImpl implements FileSender {
     return successOrNot;
   }
 
-  /**
-   * Delete data of a storage group after postback process has finished.
-   */
-  private void deleteData(Set<String> snapshotFileList) {
-
-    // Connection connection = null;
-    // Statement statement = null;
-    // //TsRandomAccessLocalFileReader input = null;
-    // String deleteFormat = "delete from %s.* where time <= %s";
-    // try {
-    // Class.forName(JDBC_DRIVER_NAME);
-    // connection = DriverManager.getConnection(
-    // "jdbc:iotdb://localhost:" + TsfileDBDescriptor.getInstance().getConfig().rpcPort + "/",
-    // "root","root");
-    // statement = connection.createStatement();
-    // int count = 0;
-    //
-    // for (String filePath : snapshotFileList) {
-    // input = new TsRandomAccessLocalFileReader(filePath);
-    // org.apache.iotdb.tsfile.read.FileReader reader = new org.apache.iotdb.tsfile.read.FileReader(
-    // input);
-    // Map<String, TsDevice> deviceIdMap = reader.getFileMetaData().getDeviceMap();
-    // Iterator<String> it = deviceIdMap.keySet().iterator();
-    // while (it.hasNext()) {
-    // String key = it.next(); // key represent device
-    // TsDevice deltaObj = deviceIdMap.get(key);
-    // String sql = String.format(deleteFormat, key, deltaObj.endTime);
-    // statement.addBatch(sql);
-    // count++;
-    // if (count > 100) {
-    // statement.executeBatch();
-    // statement.clearBatch();
-    // count = 0;
-    // }
-    // }
-    // }
-    // statement.executeBatch();
-    // statement.clearBatch();
-    // } catch (IOException e) {
-    // LOGGER.error("IoTDB post bck sender can not parse tsfile into delete SQL because{}",
-    // e.getMessage());
-    // } catch (SQLException | ClassNotFoundException e) {
-    // LOGGER.error("IoTDB post back sender: jdbc cannot connect to IoTDB because {}",
-    // e.getMessage());
-    // } finally {
-    // try {
-    // input.close();
-    // } catch (IOException e) {
-    // LOGGER.error("IoTDB post back sender : Cannot close file stream because {}", e.getMessage());
-    // }
-    // try {
-    // if (statement != null)
-    // statement.close();
-    // if (connection != null)
-    // connection.close();
-    // } catch (SQLException e) {
-    // LOGGER.error("IoTDB post back sender : Can not close JDBC connection because {}",
-    // e.getMessage());
-    // }
-    // }
-  }
-
   public List<String> getSchema() {
     return schema;
   }
@@ -412,29 +327,27 @@ public class FileSenderImpl implements FileSender {
    */
   private void verifyPort() {
     try {
-      Socket socket = new Socket("localhost", config.clientPort);
+      Socket socket = new Socket("localhost", config.getClientPort());
       socket.close();
       LOGGER.error("The postback client has been started!");
       System.exit(0);
     } catch (IOException e) {
       try {
-        ServerSocket listenerSocket = new ServerSocket(config.clientPort);
-        Thread listener = new Thread(new Runnable() {
-          public void run() {
-            while (true) {
-              try {
-                listenerSocket.accept();
-              } catch (IOException e) {
-                LOGGER.error("IoTDB post back sender: unable to  listen to port{}, because {}",
-                    config.clientPort, e.getMessage());
-              }
+        ServerSocket listenerSocket = new ServerSocket(config.getClientPort());
+        Thread listener = new Thread(() -> {
+          while (true) {
+            try {
+              listenerSocket.accept();
+            } catch (IOException e12) {
+              LOGGER.error("IoTDB post back sender: unable to  listen to port{}, because {}",
+                  config.getClientPort(), e12.getMessage());
             }
           }
         });
         listener.start();
       } catch (IOException e1) {
         LOGGER.error("IoTDB post back sender: unable to listen to port{}, because {}",
-            config.clientPort, e1.getMessage());
+            config.getClientPort(), e1.getMessage());
       }
     }
   }
@@ -450,7 +363,7 @@ public class FileSenderImpl implements FileSender {
         continue;
       }
       if ((currentTime.getTime() - lastPostBackTime.getTime())
-          % (config.uploadCycleInSeconds * 1000) == 0) {
+          % (config.getUploadCycleInSeconds() * 1000) == 0) {
         oldTime = currentTime;
         if (postBackStatus) {
           LOGGER.info("IoTDB post back sender : postback process is in execution!");
@@ -462,19 +375,15 @@ public class FileSenderImpl implements FileSender {
   /**
    * Start postback task in a certain time.
    */
-  public void timedTask() {
+  public void timedTask() throws InterruptedException {
     postback();
     lastPostBackTime = new Date();
     Date currentTime;
     while (true) {
-      try {
-        Thread.sleep(2000);
-      } catch (InterruptedException e) {
-        LOGGER.error("IoTDB post back sender : Thread {} cannot sleep.",
-            Thread.currentThread().getName());
-      }
+      Thread.sleep(2000);
       currentTime = new Date();
-      if (currentTime.getTime() - lastPostBackTime.getTime() > config.uploadCycleInSeconds * 1000) {
+      if (currentTime.getTime() - lastPostBackTime.getTime()
+          > config.getUploadCycleInSeconds() * 1000) {
         lastPostBackTime = currentTime;
         postback();
       }
@@ -487,7 +396,7 @@ public class FileSenderImpl implements FileSender {
   @Override
   public void postback() {
 
-    for (String snapshotPath : config.snapshotPaths) {
+    for (String snapshotPath : config.getSnapshotPaths()) {
       if (new File(snapshotPath).exists() && new File(snapshotPath).list().length != 0) {
         // it means that the last task of postback does not succeed! Clear the files and
         // start to postback again
@@ -503,9 +412,9 @@ public class FileSenderImpl implements FileSender {
     connectionOrElse = true;
 
     // connect to postback server
-    getConnection(config.serverIp, config.serverPort);
+    getConnection(config.getServerIp(), config.getServerPort());
     if (!connectionOrElse) {
-      LOGGER.info("IoTDB post back sender : postback process has failed!");
+      LOGGER.info(POST_BACK_SENDER_POSTBACK_PROCESS_HAS_FAILED);
       postBackStatus = false;
       return;
     }
@@ -513,7 +422,7 @@ public class FileSenderImpl implements FileSender {
     FileManager fileManager = FileManager.getInstance();
     fileManager.init();
     Map<String, Set<String>> sendingFileList = fileManager.getSendingFiles();
-    Map<String, Set<String>> nowLocalFileList = fileManager.getNowLocalFiles();
+    Map<String, Set<String>> nowLocalFileList = fileManager.getCurrentLocalFiles();
     if (PostbackUtils.isEmpty(sendingFileList)) {
       LOGGER.info("IoTDB post back sender : there has no file to postback !");
       postBackStatus = false;
@@ -525,10 +434,10 @@ public class FileSenderImpl implements FileSender {
       sendingFileSnapshotList.put(entry.getKey(), makeFileSnapshot(entry.getValue()));
     }
 
-    sendSchema(config.schemaPath);
+    sendSchema(config.getSchemaPath());
     if (!connectionOrElse) {
       transport.close();
-      LOGGER.info("IoTDB post back sender : postback process has failed!");
+      LOGGER.info(POST_BACK_SENDER_POSTBACK_PROCESS_HAS_FAILED);
       postBackStatus = false;
       return;
     }
@@ -549,37 +458,34 @@ public class FileSenderImpl implements FileSender {
       }
       if (!connectionOrElse) {
         transport.close();
-        LOGGER.info("IoTDB post back sender : postback process has failed!");
+        LOGGER.info(POST_BACK_SENDER_POSTBACK_PROCESS_HAS_FAILED);
         postBackStatus = false;
         return;
       }
-      startSending(sendingSnapshotList);
+      transferData(sendingSnapshotList);
       if (!connectionOrElse) {
         transport.close();
-        LOGGER.info("IoTDB post back sender : postback process has failed!");
+        LOGGER.info(POST_BACK_SENDER_POSTBACK_PROCESS_HAS_FAILED);
         postBackStatus = false;
         return;
       }
       if (afterSending()) {
         nowLocalFileList.get(entry.getKey()).addAll(sendingList);
-        fileManager.setNowLocalFiles(nowLocalFileList);
-        fileManager.backupNowLocalFileInfo(config.lastFileInfo);
-        if (clearOrNot) {
-          deleteData(sendingSnapshotList);
-        }
+        fileManager.setCurrentLocalFiles(nowLocalFileList);
+        fileManager.backupNowLocalFileInfo(config.getLastFileInfo());
         LOGGER.info("IoTDB post back sender : the postBack has finished storage group {}.",
             entry.getKey());
       } else {
-        LOGGER.info("IoTDB post back sender : postback process has failed!");
+        LOGGER.info(POST_BACK_SENDER_POSTBACK_PROCESS_HAS_FAILED);
         postBackStatus = false;
         return;
       }
     }
-    for (String snapshotPath : config.snapshotPaths) {
+    for (String snapshotPath : config.getSnapshotPaths()) {
       try {
         PostbackUtils.deleteFile(new File(snapshotPath));
       } catch (IOException e) {
-        e.printStackTrace();
+        LOGGER.error(e.getMessage());
       }
     }
     try {
@@ -591,14 +497,13 @@ public class FileSenderImpl implements FileSender {
     }
     if (!connectionOrElse) {
       transport.close();
-      LOGGER.info("IoTDB post back sender : postback process has failed!");
+      LOGGER.info(POST_BACK_SENDER_POSTBACK_PROCESS_HAS_FAILED);
       postBackStatus = false;
       return;
     }
     transport.close();
     LOGGER.info("IoTDB post back sender : postback process has finished!");
     postBackStatus = false;
-    return;
   }
 
   private static class TransferHolder {
