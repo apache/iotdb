@@ -28,7 +28,9 @@ import java.io.File;
  */
 public class FileUtils {
 
-  private FileUtils(){}
+  private FileUtils() {
+
+  }
 
   public static double getLocalFileByte(String filePath, Unit unit) {
     File f = new File(filePath);

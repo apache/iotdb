@@ -161,7 +161,9 @@ public class JDBCService implements JDBCServiceMBean, IService {
 
     private static final JDBCService INSTANCE = new JDBCService();
 
-    private JDBCServiceHolder(){}
+    private JDBCServiceHolder() {
+
+    }
   }
 
   private class JDBCServiceThread implements Runnable {
