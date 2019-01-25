@@ -144,7 +144,7 @@ public class IoTDBSingleClientPostBackTest {
       "insert into root.test.d1.g0(timestamp,s0) values(400,1050)", "merge", "flush",};
   private boolean testFlag = Constant.testFlag;
   private static final String POSTBACK = "postback";
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSingleClientPostBackTest.class);
+  private static final Logger logger = LoggerFactory.getLogger(IoTDBSingleClientPostBackTest.class);
 
   public static void main(String[] args) throws Exception {
     IoTDBSingleClientPostBackTest singleClientPostBackTest = new IoTDBSingleClientPostBackTest();
@@ -193,16 +193,16 @@ public class IoTDBSingleClientPostBackTest {
       EnvironmentUtils.cleanEnv();
     }
     if (success) {
-      LOGGER.info("Test succeed!");
+      logger.debug("Test succeed!");
     } else {
-      LOGGER.info("Test failed!");
+      logger.debug("Test failed!");
     }
   }
 
   public void testPostback() {
     if (testFlag) {
       // the first time to postback
-      LOGGER.info("It's the first time to post back!");
+      logger.debug("It's the first time to post back!");
       try {
         Thread.sleep(2000);
         Class.forName(Config.JDBC_DRIVER_NAME);
@@ -238,7 +238,7 @@ public class IoTDBSingleClientPostBackTest {
               dataSender.add(res.getString("Time") + res.getString("root.vehicle.d0.s0")
                   + res.getString("root.vehicle.d0.s1") + res.getString("root.vehicle.d1.s2")
                   + res.getString("root.vehicle.d1.s3"));
-              LOGGER.info(res.getString("Time") + " | " + res.getString("root.vehicle.d0.s0")
+              logger.debug(res.getString("Time") + " | " + res.getString("root.vehicle.d0.s0")
                   + res.getString("root.vehicle.d0.s1") + res.getString("root.vehicle.d1.s2")
                   + res.getString("root.vehicle.d1.s3"));
             }
@@ -249,13 +249,13 @@ public class IoTDBSingleClientPostBackTest {
             while (res.next()) {
               dataSender.add(res.getString("Time") + res.getString("root.test.d0.s0")
                   + res.getString("root.test.d0.s1") + res.getString("root.test.d1.g0.s0"));
-              LOGGER.info(res.getString("Time") + " | " + res.getString("root.test.d0.s0")
+              logger.debug(res.getString("Time") + " | " + res.getString("root.test.d0.s0")
                   + res.getString("root.test.d0.s1") + res.getString("root.test.d1.g0.s0"));
             }
           }
           statement.close();
         } catch (Exception e) {
-          LOGGER.error(e.getMessage());
+          logger.error("", e);
         }
       } catch (ClassNotFoundException | InterruptedException e) {
         fail(e.getMessage());
@@ -278,7 +278,7 @@ public class IoTDBSingleClientPostBackTest {
               dataReceiver.add(res.getString("Time") + res.getString("root.vehicle.d0.s0")
                   + res.getString("root.vehicle.d0.s1") + res.getString("root.vehicle.d1.s2")
                   + res.getString("root.vehicle.d1.s3"));
-              LOGGER.info(res.getString("Time") + " | " + res.getString("root.vehicle.d0.s0")
+              logger.debug(res.getString("Time") + " | " + res.getString("root.vehicle.d0.s0")
                   + res.getString("root.vehicle.d0.s1") + res.getString("root.vehicle.d1.s2")
                   + res.getString("root.vehicle.d1.s3"));
             }
@@ -290,13 +290,13 @@ public class IoTDBSingleClientPostBackTest {
             while (res.next()) {
               dataReceiver.add(res.getString("Time") + res.getString("root.test.d0.s0")
                   + res.getString("root.test.d0.s1") + res.getString("root.test.d1.g0.s0"));
-              LOGGER.info(res.getString("Time") + " | " + res.getString("root.test.d0.s0")
+              logger.debug(res.getString("Time") + " | " + res.getString("root.test.d0.s0")
                   + res.getString("root.test.d0.s1") + res.getString("root.test.d1.g0.s0"));
             }
           }
           statement.close();
         } catch (Exception e) {
-          LOGGER.error(e.getMessage());
+          logger.error("",e);
         } finally {
           if (connection != null) {
             connection.close();
@@ -306,17 +306,17 @@ public class IoTDBSingleClientPostBackTest {
         fail(e.getMessage());
         Thread.currentThread().interrupt();
       }
-      LOGGER.info(String.valueOf(dataSender.size()));
-      LOGGER.info(String.valueOf(dataReceiver.size()));
-      LOGGER.info(dataSender.toString());
-      LOGGER.info(dataReceiver.toString());
+      logger.debug(String.valueOf(dataSender.size()));
+      logger.debug(String.valueOf(dataReceiver.size()));
+      logger.debug(dataSender.toString());
+      logger.debug(dataReceiver.toString());
       if (!(dataSender.size() == dataReceiver.size() && dataSender.containsAll(dataReceiver))) {
         success = false;
         return;
       }
 
       // the second time to postback
-      LOGGER.info("It's the second time to post back!");
+      logger.debug("It's the second time to post back!");
       try {
         Thread.sleep(2000);
         Class.forName(Config.JDBC_DRIVER_NAME);
@@ -332,7 +332,7 @@ public class IoTDBSingleClientPostBackTest {
           statement.close();
           Thread.sleep(100);
         } catch (Exception e) {
-          LOGGER.error(e.getMessage());
+          logger.error("", e);
         } finally {
           if (connection != null) {
             connection.close();
@@ -363,7 +363,7 @@ public class IoTDBSingleClientPostBackTest {
               dataSender.add(res.getString("Time") + res.getString("root.vehicle.d0.s0")
                   + res.getString("root.vehicle.d0.s1") + res.getString("root.vehicle.d1.s2")
                   + res.getString("root.vehicle.d1.s3"));
-              LOGGER.info(res.getString("Time") + " | " + res.getString("root.vehicle.d0.s0")
+              logger.debug(res.getString("Time") + " | " + res.getString("root.vehicle.d0.s0")
                   + res.getString("root.vehicle.d0.s1") + res.getString("root.vehicle.d1.s2")
                   + res.getString("root.vehicle.d1.s3"));
             }
@@ -374,13 +374,13 @@ public class IoTDBSingleClientPostBackTest {
             while (res.next()) {
               dataSender.add(res.getString("Time") + res.getString("root.test.d0.s0")
                   + res.getString("root.test.d0.s1") + res.getString("root.test.d1.g0.s0"));
-              LOGGER.info(res.getString("Time") + " | " + res.getString("root.test.d0.s0")
+              logger.debug(res.getString("Time") + " | " + res.getString("root.test.d0.s0")
                   + res.getString("root.test.d0.s1") + res.getString("root.test.d1.g0.s0"));
             }
           }
           statement.close();
         } catch (Exception e) {
-          LOGGER.error(e.getMessage());
+          logger.error("", e);
         } finally {
           if (connection != null) {
             connection.close();
@@ -407,7 +407,7 @@ public class IoTDBSingleClientPostBackTest {
               dataReceiver.add(res.getString("Time") + res.getString("root.vehicle.d0.s0")
                   + res.getString("root.vehicle.d0.s1") + res.getString("root.vehicle.d1.s2")
                   + res.getString("root.vehicle.d1.s3"));
-              LOGGER.info(res.getString("Time") + " | " + res.getString("root.vehicle.d0.s0")
+              logger.debug(res.getString("Time") + " | " + res.getString("root.vehicle.d0.s0")
                   + res.getString("root.vehicle.d0.s1") + res.getString("root.vehicle.d1.s2")
                   + res.getString("root.vehicle.d1.s3"));
             }
@@ -418,13 +418,13 @@ public class IoTDBSingleClientPostBackTest {
             while (res.next()) {
               dataReceiver.add(res.getString("Time") + res.getString("root.test.d0.s0")
                   + res.getString("root.test.d0.s1") + res.getString("root.test.d1.g0.s0"));
-              LOGGER.info(res.getString("Time") + " | " + res.getString("root.test.d0.s0")
+              logger.debug(res.getString("Time") + " | " + res.getString("root.test.d0.s0")
                   + res.getString("root.test.d0.s1") + res.getString("root.test.d1.g0.s0"));
             }
           }
           statement.close();
         } catch (Exception e) {
-          LOGGER.error(e.getMessage());
+          logger.error("", e);
         } finally {
           if (connection != null) {
             connection.close();
@@ -434,17 +434,17 @@ public class IoTDBSingleClientPostBackTest {
         fail(e.getMessage());
         Thread.currentThread().interrupt();
       }
-      LOGGER.info(String.valueOf(dataSender.size()));
-      LOGGER.info(String.valueOf(dataReceiver.size()));
-      LOGGER.info(dataSender.toString());
-      LOGGER.info(dataReceiver.toString());
+      logger.debug(String.valueOf(dataSender.size()));
+      logger.debug(String.valueOf(dataReceiver.size()));
+      logger.debug(dataSender.toString());
+      logger.debug(dataReceiver.toString());
       if (!(dataSender.size() == dataReceiver.size() && dataSender.containsAll(dataReceiver))) {
         success = false;
         return;
       }
 
       // the third time to postback
-      LOGGER.info("It's the third time to post back!");
+      logger.debug("It's the third time to post back!");
       try {
         Thread.sleep(2000);
         Class.forName(Config.JDBC_DRIVER_NAME);
@@ -458,7 +458,7 @@ public class IoTDBSingleClientPostBackTest {
           statement.close();
           Thread.sleep(100);
         } catch (Exception e) {
-          LOGGER.error(e.getMessage());
+          logger.error("", e);
         }
       } catch (ClassNotFoundException | InterruptedException e) {
         fail(e.getMessage());
@@ -483,7 +483,7 @@ public class IoTDBSingleClientPostBackTest {
               dataSender.add(res.getString("Time") + res.getString("root.vehicle.d0.s0")
                   + res.getString("root.vehicle.d0.s1") + res.getString("root.vehicle.d1.s2")
                   + res.getString("root.vehicle.d1.s3"));
-              LOGGER.info(res.getString("Time") + " | " + res.getString("root.vehicle.d0.s0")
+              logger.debug(res.getString("Time") + " | " + res.getString("root.vehicle.d0.s0")
                   + res.getString("root.vehicle.d0.s1") + res.getString("root.vehicle.d1.s2")
                   + res.getString("root.vehicle.d1.s3"));
             }
@@ -494,7 +494,7 @@ public class IoTDBSingleClientPostBackTest {
             while (res.next()) {
               dataSender.add(res.getString("Time") + res.getString("root.test.d0.s0")
                   + res.getString("root.test.d0.s1") + res.getString("root.test.d1.g0.s0"));
-              LOGGER.info(res.getString("Time") + " | " + res.getString("root.test.d0.s0")
+              logger.debug(res.getString("Time") + " | " + res.getString("root.test.d0.s0")
                   + res.getString("root.test.d0.s1") + res.getString("root.test.d1.g0.s0"));
             }
           }
@@ -504,7 +504,7 @@ public class IoTDBSingleClientPostBackTest {
             while (res.next()) {
               dataSender.add(res.getString("Time") + res.getString("root.flush.d0.s0")
                   + res.getString("root.flush.d0.s1") + res.getString("root.flush.d1.g0.s0"));
-              LOGGER.info(res.getString("Time") + " | " + res.getString("root.flush.d0.s0")
+              logger.debug(res.getString("Time") + " | " + res.getString("root.flush.d0.s0")
                   + res.getString("root.flush.d0.s1") + res.getString("root.flush.d1.g0.s0"));
             }
           }
@@ -515,14 +515,14 @@ public class IoTDBSingleClientPostBackTest {
               dataSender.add(res.getString("Time") + res.getString("root.iotdb.d0.s0")
                   + res.getString("root.iotdb.d0.s1") + res.getString("root.iotdb.d1.s2")
                   + res.getString("root.iotdb.d1.s3"));
-              LOGGER.info(res.getString("Time") + res.getString("root.iotdb.d0.s0")
+              logger.debug(res.getString("Time") + res.getString("root.iotdb.d0.s0")
                   + res.getString("root.iotdb.d0.s1") + res.getString("root.iotdb.d1.s2")
                   + res.getString("root.iotdb.d1.s3"));
             }
           }
           statement.close();
         } catch (Exception e) {
-          LOGGER.error(e.getMessage());
+          logger.error("", e);
         }
       } catch (ClassNotFoundException | InterruptedException e) {
         fail(e.getMessage());
@@ -545,7 +545,7 @@ public class IoTDBSingleClientPostBackTest {
               dataReceiver.add(res.getString("Time") + res.getString("root.vehicle.d0.s0")
                   + res.getString("root.vehicle.d0.s1") + res.getString("root.vehicle.d1.s2")
                   + res.getString("root.vehicle.d1.s3"));
-              LOGGER.info(res.getString("Time") + " | " + res.getString("root.vehicle.d0.s0")
+              logger.debug(res.getString("Time") + " | " + res.getString("root.vehicle.d0.s0")
                   + res.getString("root.vehicle.d0.s1") + res.getString("root.vehicle.d1.s2")
                   + res.getString("root.vehicle.d1.s3"));
             }
@@ -556,7 +556,7 @@ public class IoTDBSingleClientPostBackTest {
             while (res.next()) {
               dataReceiver.add(res.getString("Time") + res.getString("root.test.d0.s0")
                   + res.getString("root.test.d0.s1") + res.getString("root.test.d1.g0.s0"));
-              LOGGER.info(res.getString("Time") + " | " + res.getString("root.test.d0.s0")
+              logger.debug(res.getString("Time") + " | " + res.getString("root.test.d0.s0")
                   + res.getString("root.test.d0.s1") + res.getString("root.test.d1.g0.s0"));
             }
           }
@@ -566,7 +566,7 @@ public class IoTDBSingleClientPostBackTest {
             while (res.next()) {
               dataReceiver.add(res.getString("Time") + res.getString("root.flush.d0.s0")
                   + res.getString("root.flush.d0.s1") + res.getString("root.flush.d1.g0.s0"));
-              LOGGER.info(res.getString("Time") + " | " + res.getString("root.flush.d0.s0")
+              logger.debug(res.getString("Time") + " | " + res.getString("root.flush.d0.s0")
                   + res.getString("root.flush.d0.s1") + res.getString("root.flush.d1.g0.s0"));
             }
           }
@@ -577,14 +577,14 @@ public class IoTDBSingleClientPostBackTest {
               dataReceiver.add(res.getString("Time") + res.getString("root.iotdb.d0.s0")
                   + res.getString("root.iotdb.d0.s1") + res.getString("root.iotdb.d1.s2")
                   + res.getString("root.iotdb.d1.s3"));
-              LOGGER.info(res.getString("Time") + res.getString("root.iotdb.d0.s0")
+              logger.debug(res.getString("Time") + res.getString("root.iotdb.d0.s0")
                   + res.getString("root.iotdb.d0.s1") + res.getString("root.iotdb.d1.s2")
                   + res.getString("root.iotdb.d1.s3"));
             }
           }
           statement.close();
         } catch (Exception e) {
-          LOGGER.error(e.getMessage());
+          logger.error("", e);
         } finally {
           if (connection != null) {
             connection.close();
@@ -594,10 +594,10 @@ public class IoTDBSingleClientPostBackTest {
         fail(e.getMessage());
         Thread.currentThread().interrupt();
       }
-      LOGGER.info(String.valueOf(dataSender.size()));
-      LOGGER.info(String.valueOf(dataReceiver.size()));
-      LOGGER.info(String.valueOf(dataSender));
-      LOGGER.info(String.valueOf(dataReceiver));
+      logger.debug(String.valueOf(dataSender.size()));
+      logger.debug(String.valueOf(dataReceiver.size()));
+      logger.debug(String.valueOf(dataSender));
+      logger.debug(String.valueOf(dataReceiver));
       if (!(dataSender.size() == dataReceiver.size() && dataSender.containsAll(dataReceiver))) {
         success = false;
       }
