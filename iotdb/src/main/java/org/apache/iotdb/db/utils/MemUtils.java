@@ -122,7 +122,7 @@ public class MemUtils {
     } else if (dataPoint instanceof StringDataPoint) {
       StringDataPoint stringDataPoint = (StringDataPoint) dataPoint;
       memUsed += 8 + 20; // array reference and array overhead
-      memUsed += ((Binary) stringDataPoint.getValue()).values.length;
+      memUsed += ((Binary) stringDataPoint.getValue()).getLength();
       // encoding string reference and its memory
       memUsed += 8;
       memUsed += getStringMem(((Binary) stringDataPoint.getValue()).getTextEncodingType());
