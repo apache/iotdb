@@ -18,11 +18,11 @@
  */
 package org.apache.iotdb.db.writelog.recover;
 
-import static org.apache.iotdb.db.writelog.RecoverStage.backup;
-import static org.apache.iotdb.db.writelog.RecoverStage.cleanup;
-import static org.apache.iotdb.db.writelog.RecoverStage.init;
-import static org.apache.iotdb.db.writelog.RecoverStage.recoverFile;
-import static org.apache.iotdb.db.writelog.RecoverStage.replayLog;
+import static org.apache.iotdb.db.writelog.RecoverStage.BACK_UP;
+import static org.apache.iotdb.db.writelog.RecoverStage.CLEAN_UP;
+import static org.apache.iotdb.db.writelog.RecoverStage.INIT;
+import static org.apache.iotdb.db.writelog.RecoverStage.RECOVER_FILE;
+import static org.apache.iotdb.db.writelog.RecoverStage.REPLAY_LOG;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -101,7 +101,7 @@ public class ExclusiveLogRecoverPerformer implements RecoverPerformer {
           .listFiles((dir, name) -> name.contains(ExclusiveWriteLogNode.WAL_FILE_NAME));
       // no flag is set, and there exists log file, start from beginning.
       if (logFiles != null && logFiles.length > 0) {
-        return RecoverStage.backup;
+        return RecoverStage.BACK_UP;
       } else {
         // no flag is set, and there is no log file, do not recover.
         return null;
@@ -120,10 +120,10 @@ public class ExclusiveLogRecoverPerformer implements RecoverPerformer {
     }
     String stageName = parts[2];
     // if a flag of stage X is found, that means X had finished, so start from next stage
-    if (stageName.equals(backup.name())) {
-      return recoverFile;
-    } else if (stageName.equals(replayLog.name())) {
-      return cleanup;
+    if (stageName.equals(BACK_UP.name())) {
+      return RECOVER_FILE;
+    } else if (stageName.equals(REPLAY_LOG.name())) {
+      return CLEAN_UP;
     } else {
       logger.error("Log node {} invalid recover flag name {}", writeLogNode.getIdentifier(),
           flagName);
@@ -133,17 +133,17 @@ public class ExclusiveLogRecoverPerformer implements RecoverPerformer {
 
   private void recoverAtStage(RecoverStage stage) throws RecoverException {
     switch (stage) {
-      case init:
-      case backup:
+      case INIT:
+      case BACK_UP:
         backup();
         break;
-      case recoverFile:
+      case RECOVER_FILE:
         recoverFile();
         break;
-      case replayLog:
+      case REPLAY_LOG:
         replayLog();
         break;
-      case cleanup:
+      case CLEAN_UP:
         cleanup();
         break;
       default:
@@ -218,8 +218,8 @@ public class ExclusiveLogRecoverPerformer implements RecoverPerformer {
       }
     }
 
-    setFlag(backup);
-    currStage = recoverFile;
+    setFlag(BACK_UP);
+    currStage = RECOVER_FILE;
     logger.info("Log node {} backup ended", writeLogNode.getLogDirectory());
     recoverFile();
   }
@@ -253,7 +253,7 @@ public class ExclusiveLogRecoverPerformer implements RecoverPerformer {
 
     fileNodeRecoverPerformer.recover();
 
-    currStage = replayLog;
+    currStage = REPLAY_LOG;
     logger.info("Log node {} recover files ended", writeLogNode.getLogDirectory());
     replayLog();
   }
@@ -311,8 +311,8 @@ public class ExclusiveLogRecoverPerformer implements RecoverPerformer {
           writeLogNode.getIdentifier(), e.getMessage());
       throw new RecoverException(e);
     }
-    currStage = cleanup;
-    setFlag(replayLog);
+    currStage = CLEAN_UP;
+    setFlag(REPLAY_LOG);
     logger.info("Log node {} replay ended.", writeLogNode.getLogDirectory());
     cleanup();
   }
@@ -361,7 +361,7 @@ public class ExclusiveLogRecoverPerformer implements RecoverPerformer {
           "File clean failed. Failed files are " + failedFiles.toString());
     }
     // clean flag
-    currStage = init;
+    currStage = INIT;
     cleanFlag();
     logger.info("Log node {} cleanup ended.", writeLogNode.getLogDirectory());
   }

@@ -48,7 +48,7 @@ import org.slf4j.LoggerFactory;
  */
 public class LoadDataUtils {
 
-  private static Logger LOG = LoggerFactory.getLogger(LoadDataUtils.class);
+  private static Logger logger = LoggerFactory.getLogger(LoadDataUtils.class);
   private BufferedReader inputCsvFileReader;
   private BufferedWriter extraDataFileWriter;
   private FileSchema fileSchema;
@@ -83,7 +83,7 @@ public class LoadDataUtils {
     try {
       this.extraDataFileWriter = new BufferedWriter(new FileWriter(extraDataFile));
     } catch (IOException e) {
-      LOG.error("create", e);
+      logger.error("create", e);
       close();
       return null;
     }
@@ -91,7 +91,7 @@ public class LoadDataUtils {
     try {
       this.inputCsvFileReader = new BufferedReader(new FileReader(inputCsvDataPath));
     } catch (FileNotFoundException e1) {
-      LOG.error("inputCsvDataPath:{} not found!", inputCsvDataPath);
+      logger.error("inputCsvDataPath:{} not found!", inputCsvDataPath, e1);
       close();
       return null;
     }
@@ -102,24 +102,24 @@ public class LoadDataUtils {
     String line;
     try {
       while ((line = inputCsvFileReader.readLine()) != null) {
-        if (line.trim().equals("")) {
+        if ("".equals(line.trim())) {
           continue;
         }
         if (lineCount % 1000000 == 0) {
           long endTime = System.currentTimeMillis();
-          LOG.info("write line:{}, use time:{}", lineCount, (endTime - temp));
+          logger.info("write line:{}, use time:{}", lineCount, endTime - temp);
           temp = System.currentTimeMillis();
-          LOG.info("load data points:{}, load data speed:{}w point/s", totalPointCount,
+          logger.info("load data points:{}, load data speed:{}w point/s", totalPointCount,
               FileUtils.format(((float) totalPointCount / 10) / (endTime - startTime), 2));
         }
         loadOneRecordLine(line);
         lineCount++;
       }
     } catch (IOException e1) {
-      LOG.error("read line from inputCsvFileReader failed:{}", inputCsvDataPath);
+      logger.error("read line from inputCsvFileReader failed:{}", inputCsvDataPath, e1);
       extraDataFilePath = null;
     } finally {
-      LOG.info("write line:{}", lineCount);
+      logger.info("write line:{}", lineCount);
       close();
       closeWriteInstance();
     }
@@ -133,7 +133,7 @@ public class LoadDataUtils {
     try {
       nsPath = mmanager.getFileNameByPath(record.deviceId);
     } catch (PathErrorException e) {
-      LOG.error("given seriesPath not found.{}", e.getMessage());
+      logger.error("given seriesPath not found, given deviceId:{} ", record.deviceId, e);
     }
     if (!writeInstanceMap.contains(nsPath)) {
       if (writeInstanceMap.size() < writeInstanceThreshold) {
@@ -144,7 +144,7 @@ public class LoadDataUtils {
           extraDataFileWriter.write(line);
           extraDataFileWriter.newLine();
         } catch (IOException e) {
-          LOG.error("record the extra data into extraFile failed, record:{}", line);
+          logger.error("record the extra data into extraFile failed, record:{}", line, e);
         }
         return;
       }
@@ -153,24 +153,24 @@ public class LoadDataUtils {
     try {
       fileNodeManager.insert(record, false);
     } catch (FileNodeManagerException e) {
-      LOG.error("failed when insert into fileNodeManager, record:{}, reason:{}", line,
-          e.getMessage());
+      logger.error("failed when insert into fileNodeManager, record:{}", line, e);
     }
   }
 
   private String prepareFilePathAddOne(String srcFilePath) {
     String extraExt = "deltaTempExt";
     int srcEnd = srcFilePath.indexOf(extraExt);
+    String subSrcFilePath = srcFilePath;
     if (srcEnd != -1) {
-      srcFilePath = srcFilePath.substring(0, srcEnd);
+      subSrcFilePath = subSrcFilePath.substring(0, srcEnd);
     }
     File file;
     int ext = 0;
-    String tempFile = srcFilePath;
+    String tempFile = subSrcFilePath;
     while (true) {
       file = new File(tempFile);
       if (file.exists()) {
-        tempFile = srcFilePath + extraExt + (ext++);
+        tempFile = subSrcFilePath + extraExt + (ext++);
       } else {
         break;
       }
@@ -187,7 +187,7 @@ public class LoadDataUtils {
         extraDataFileWriter.close();
       }
     } catch (IOException e) {
-      LOG.error("close inputCsvFileReader and extraDataFileWriter failed");
+      logger.error("close inputCsvFileReader and extraDataFileWriter failed", e);
     }
   }
 
@@ -201,7 +201,7 @@ public class LoadDataUtils {
   public void loadLocalDataMultiPass(String inputCsvDataPath, String measureType, MManager mmanager)
       throws ProcessorException {
     checkIfFileExist(inputCsvDataPath);
-    LOG.info("start loading data...");
+    logger.info("start loading data...");
     long startTime = System.currentTimeMillis();
     this.mmanager = mmanager;
     // get measurement schema
@@ -209,29 +209,29 @@ public class LoadDataUtils {
       ArrayList<ColumnSchema> meaSchema = mmanager.getSchemaForOneType(measureType);
       fileSchema = FileSchemaUtils.getFileSchemaFromColumnSchema(meaSchema, measureType);
     } catch (PathErrorException e) {
-      LOG.error("the seriesPath of input measurement schema meet error!", e);
+      logger.error("the seriesPath of input measurement schema meet error!", e);
       close();
       return;
     } catch (WriteProcessException e) {
-      LOG.error("the write process meet error!", e);
+      logger.error("the write process meet error!", e);
     }
     String extraPath = inputCsvDataPath;
     List<String> extraPaths = new ArrayList<>();
     do {
-      LOG.info("cycle: write csv file: {}", extraPath);
+      logger.info("cycle: write csv file: {}", extraPath);
       extraPath = loadLocalDataOnePass(extraPath);
       extraPaths.add(extraPath);
     } while (hasExtra);
     for (String ext : extraPaths) {
       try {
         org.apache.commons.io.FileUtils.forceDelete(new File(ext));
-        LOG.info("delete old file:{}", ext);
+        logger.info("delete old file:{}", ext);
       } catch (IOException e) {
-        LOG.error("fail to delete extra file {}", ext, e);
+        logger.error("fail to delete extra file {}", ext, e);
       }
     }
     long endTime = System.currentTimeMillis();
-    LOG.info("load data successfully! total data points:{}, load data speed:{}w point/s",
+    logger.info("load data successfully! total data points:{}, load data speed:{}w point/s",
         totalPointCount,
         FileUtils.format(((float) totalPointCount / 10) / (endTime - startTime), 2));
   }

@@ -20,6 +20,10 @@ package org.apache.iotdb.tsfile.read.common;
 
 import org.apache.iotdb.tsfile.common.constant.SystemConstant;
 import org.apache.iotdb.tsfile.utils.StringContainer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
 
 /**
  * This class define an Object named Path to represent a series in IoTDB. AndExpression in batch read, this definition
@@ -215,5 +219,14 @@ public class Path {
    */
   public boolean startWith(Path prefix) {
     return startWith(prefix.fullPath);
+  }
+
+  public static void main(String[] args) {
+    Logger logger = LoggerFactory.getLogger(Path.class);
+    try {
+      throw new IOException("asdasda");
+    } catch (IOException e1) {
+      logger.error("read line from inputCsvFileReader failed:{}", "aaaa.file", "as",e1);
+    }
   }
 }
