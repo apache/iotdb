@@ -215,7 +215,7 @@ public class IoTDBConfig {
   /**
    * The interval of small flush in ms.
    */
-  public long smallFlushInterval = 60 * 1000;
+  public long smallFlushInterval = 60L * 1000;
   /**
    * The statMonitor writes statistics info into IoTDB every backLoopPeriodSec secs. The default
    * value is 5s.
