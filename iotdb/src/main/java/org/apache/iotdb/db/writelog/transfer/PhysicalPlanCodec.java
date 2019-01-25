@@ -35,10 +35,10 @@ import org.apache.iotdb.tsfile.utils.Pair;
 
 public enum PhysicalPlanCodec {
 
-  MULTIINSERTPLAN(SystemLogOperator.INSERT, codecInstances.multiInsertPlanCodec), UPDATEPLAN(
+  MULTIINSERTPLAN(SystemLogOperator.INSERT, CodecInstances.multiInsertPlanCodec), UPDATEPLAN(
       SystemLogOperator.UPDATE,
-      codecInstances.updatePlanCodec), DELETEPLAN(SystemLogOperator.DELETE,
-      codecInstances.deletePlanCodec);
+      CodecInstances.updatePlanCodec), DELETEPLAN(SystemLogOperator.DELETE,
+      CodecInstances.deletePlanCodec);
 
   private static final HashMap<Integer, PhysicalPlanCodec> codecMap = new HashMap<>();
   private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
@@ -65,7 +65,9 @@ public enum PhysicalPlanCodec {
     return codecMap.get(opcode);
   }
 
-  static class codecInstances {
+  static class CodecInstances {
+
+    private CodecInstances(){}
 
     static final Codec<DeletePlan> deletePlanCodec = new Codec<DeletePlan>() {
       ThreadLocal<ByteBuffer> localBuffer = new ThreadLocal<>();

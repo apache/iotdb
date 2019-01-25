@@ -50,7 +50,7 @@ public class ExclusiveLogRecoverPerformer implements RecoverPerformer {
   public static final String FLAG_SEPERATOR = "-";
   private static final Logger logger = LoggerFactory.getLogger(ExclusiveLogRecoverPerformer.class);
   // The two fields can be made static only because the recovery is a serial process.
-  private static RAFLogReader RAFLogReader = new RAFLogReader();
+  private static RAFLogReader rafLogReader = new RAFLogReader();
   private ExclusiveWriteLogNode writeLogNode;
   private String recoveryFlagPath;
   private String restoreFilePath;
@@ -165,7 +165,7 @@ public class ExclusiveLogRecoverPerformer implements RecoverPerformer {
         }
       } catch (IOException e) {
         logger.error("Log node {} cannot set flag at stage {}", writeLogNode.getLogDirectory(),
-            stage.name());
+            stage.name(), e);
       }
     } else {
       File flagFile = new File(recoveryFlagPath);
@@ -197,9 +197,8 @@ public class ExclusiveLogRecoverPerformer implements RecoverPerformer {
       try {
         FileUtils.copyFile(restoreFile, recoverRestoreFile);
       } catch (Exception e) {
-        logger.error("Log node {} cannot backup restore file, because {}",
-            writeLogNode.getLogDirectory(),
-            e.getMessage());
+        logger.error("Log node {} cannot backup restore file",
+            writeLogNode.getLogDirectory(), e);
         throw new RecoverException("Cannot backup restore file, recovery aborted.");
       }
     }
@@ -211,9 +210,8 @@ public class ExclusiveLogRecoverPerformer implements RecoverPerformer {
       try {
         FileUtils.copyFile(processorStoreFile, recoverProcessorStoreFile);
       } catch (Exception e) {
-        logger.error("Log node {} cannot backup processor file, because {}",
-            writeLogNode.getLogDirectory(),
-            e.getMessage());
+        logger.error("Log node {} cannot backup processor file",
+            writeLogNode.getLogDirectory(), e);
         throw new RecoverException("Cannot backup processor file, recovery aborted.");
       }
     }
@@ -232,9 +230,8 @@ public class ExclusiveLogRecoverPerformer implements RecoverPerformer {
         FileUtils.copyFile(recoverRestoreFile, new File(restoreFilePath));
       }
     } catch (Exception e) {
-      logger.error("Log node {} cannot recover restore file because {}",
-          writeLogNode.getLogDirectory(),
-          e.getMessage());
+      logger.error("Log node {} cannot recover restore file.",
+          writeLogNode.getLogDirectory(), e);
       throw new RecoverException("Cannot recover restore file, recovery aborted.");
     }
 
@@ -262,16 +259,16 @@ public class ExclusiveLogRecoverPerformer implements RecoverPerformer {
     int failedCnt = 0;
     if (logFile.exists()) {
       try {
-        RAFLogReader.open(logFile);
+        rafLogReader.open(logFile);
       } catch (FileNotFoundException e) {
         logger
             .error("Log node {} cannot read old log file, because {}", writeLogNode.getIdentifier(),
                 e.getMessage());
         throw new RecoverException("Cannot read old log file, recovery aborted.");
       }
-      while (RAFLogReader.hasNext()) {
+      while (rafLogReader.hasNext()) {
         try {
-          PhysicalPlan physicalPlan = RAFLogReader.next();
+          PhysicalPlan physicalPlan = rafLogReader.next();
           if (physicalPlan == null) {
             logger.error("Log node {} read a bad log", writeLogNode.getIdentifier());
             throw new RecoverException("Cannot read old log file, recovery aborted.");
@@ -279,10 +276,10 @@ public class ExclusiveLogRecoverPerformer implements RecoverPerformer {
           replayer.replay(physicalPlan);
         } catch (ProcessorException e) {
           failedCnt++;
-          logger.error("Log node {}, {}", writeLogNode.getLogDirectory(), e.getMessage());
+          logger.error("Log node {}", writeLogNode.getLogDirectory(), e);
         }
       }
-      RAFLogReader.close();
+      rafLogReader.close();
     }
     return failedCnt;
   }
@@ -322,41 +319,33 @@ public class ExclusiveLogRecoverPerformer implements RecoverPerformer {
     List<String> failedFiles = new ArrayList<>();
     String recoverRestoreFilePath = restoreFilePath + RECOVER_SUFFIX;
     File recoverRestoreFile = new File(recoverRestoreFilePath);
-    if (recoverRestoreFile.exists()) {
-      if (!recoverRestoreFile.delete()) {
+    if (recoverRestoreFile.exists() && !recoverRestoreFile.delete()) {
         logger
             .error("Log node {} cannot delete backup restore file", writeLogNode.getLogDirectory());
         failedFiles.add(recoverRestoreFilePath);
-      }
     }
     String recoverProcessorStoreFilePath = processorStoreFilePath + RECOVER_SUFFIX;
     File recoverProcessorStoreFile = new File(recoverProcessorStoreFilePath);
-    if (recoverProcessorStoreFile.exists()) {
-      if (!recoverProcessorStoreFile.delete()) {
+    if (recoverProcessorStoreFile.exists() && !recoverProcessorStoreFile.delete()) {
         logger.error("Log node {} cannot delete backup processor store file",
             writeLogNode.getLogDirectory());
         failedFiles.add(recoverProcessorStoreFilePath);
-      }
     }
     // clean log file
     File oldLogFile = new File(
         writeLogNode.getLogDirectory() + File.separator + ExclusiveWriteLogNode.WAL_FILE_NAME
             + ExclusiveWriteLogNode.OLD_SUFFIX);
-    if (oldLogFile.exists()) {
-      if (!oldLogFile.delete()) {
+    if (oldLogFile.exists() && !oldLogFile.delete()) {
         logger.error("Log node {} cannot delete old log file", writeLogNode.getLogDirectory());
         failedFiles.add(oldLogFile.getPath());
-      }
     }
     File newLogFile = new File(
         writeLogNode.getLogDirectory() + File.separator + ExclusiveWriteLogNode.WAL_FILE_NAME);
-    if (newLogFile.exists()) {
-      if (!newLogFile.delete()) {
+    if (newLogFile.exists() && !newLogFile.delete()) {
         logger.error("Log node {} cannot delete new log file", writeLogNode.getLogDirectory());
         failedFiles.add(newLogFile.getPath());
-      }
     }
-    if (failedFiles.size() > 0) {
+    if (!failedFiles.isEmpty()) {
       throw new RecoverException(
           "File clean failed. Failed files are " + failedFiles.toString());
     }

@@ -46,9 +46,7 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
   private Thread forceThread;
   private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
-  private final Runnable syncTask = new Runnable() {
-    @Override
-    public void run() {
+  private final Runnable syncTask = ()->{
       while (true) {
         if (Thread.interrupted()) {
           logger.info("WAL sync thread exits.");
@@ -59,7 +57,7 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
           try {
             node.forceSync();
           } catch (IOException e) {
-            logger.error("Cannot sync {}, because {}", node.toString(), e.toString());
+            logger.error("Cannot sync {}", node, e);
           }
         }
         logger.debug("Timed sync finished");
@@ -70,13 +68,10 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
           Thread.currentThread().interrupt();
           break;
         }
-      }
     }
   };
 
-  private final Runnable forceTask = new Runnable() {
-    @Override
-    public void run() {
+  private final Runnable forceTask = () -> {
       while (true) {
         if (Thread.interrupted()) {
           logger.info("WAL force thread exits.");
@@ -99,7 +94,6 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
           break;
         }
       }
-    }
   };
 
   private MultiFileLogNodeManager() {
@@ -177,7 +171,7 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
       try {
         node.close();
       } catch (IOException e) {
-        logger.error("{} failed to close because {}", node.toString(), e.getMessage());
+        logger.error("{} failed to close", node.toString(), e);
       }
     }
     nodeMap.clear();
@@ -255,6 +249,7 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
   }
 
   private static class InstanceHolder {
+    private InstanceHolder(){}
 
     private static MultiFileLogNodeManager instance = new MultiFileLogNodeManager();
   }
