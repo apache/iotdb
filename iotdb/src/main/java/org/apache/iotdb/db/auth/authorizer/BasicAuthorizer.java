@@ -39,6 +39,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
 
   private static final Logger logger = LoggerFactory.getLogger(BasicAuthorizer.class);
   private static final Set<Integer> ADMIN_PRIVILEGES;
+  private static final String NO_SUCH_ROLE_EXCEPTION = "No such role : %s";
 
   static {
     ADMIN_PRIVILEGES = new HashSet<>();
@@ -65,7 +66,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   @Override
   public boolean login(String username, String password) throws AuthException {
     User user = userManager.getUser(username);
-    return user != null && user.password.equals(AuthUtils.encryptPassword(password));
+    return user != null && user.getPassword().equals(AuthUtils.encryptPassword(password));
   }
 
   @Override
@@ -84,13 +85,14 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   @Override
   public boolean grantPrivilegeToUser(String username, String path, int privilegeId)
       throws AuthException {
+    String newPath = path;
     if (IoTDBConstant.ADMIN_NAME.equals(username)) {
       throw new AuthException("Invalid operation, administrator already has all privileges");
     }
     if (!PrivilegeType.isPathRelevant(privilegeId)) {
-      path = IoTDBConstant.PATH_ROOT;
+      newPath = IoTDBConstant.PATH_ROOT;
     }
-    return userManager.grantPrivilegeToUser(username, path, privilegeId);
+    return userManager.grantPrivilegeToUser(username, newPath, privilegeId);
   }
 
   @Override
@@ -153,14 +155,14 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   public boolean grantRoleToUser(String roleName, String username) throws AuthException {
     Role role = roleManager.getRole(roleName);
     if (role == null) {
-      throw new AuthException(String.format("No such role : %s", roleName));
+      throw new AuthException(String.format(NO_SUCH_ROLE_EXCEPTION, roleName));
     }
     // the role may be deleted before it ts granted to the user, so a double check is necessary.
     boolean success = userManager.grantRoleToUser(roleName, username);
     if (success) {
       role = roleManager.getRole(roleName);
       if (role == null) {
-        throw new AuthException(String.format("No such role : %s", roleName));
+        throw new AuthException(String.format(NO_SUCH_ROLE_EXCEPTION, roleName));
       } else {
         return true;
       }
@@ -173,7 +175,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   public boolean revokeRoleFromUser(String roleName, String username) throws AuthException {
     Role role = roleManager.getRole(roleName);
     if (role == null) {
-      throw new AuthException(String.format("No such role : %s", roleName));
+      throw new AuthException(String.format(NO_SUCH_ROLE_EXCEPTION, roleName));
     }
     return userManager.revokeRoleFromUser(roleName, username);
   }
@@ -190,7 +192,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
     // get privileges of the user
     Set<Integer> privileges = user.getPrivileges(path);
     // merge the privileges of the roles of the user
-    for (String roleName : user.roleList) {
+    for (String roleName : user.getRoleList()) {
       Role role = roleManager.getRole(roleName);
       if (role != null) {
         privileges.addAll(role.getPrivileges(path));
@@ -219,7 +221,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
       return true;
     }
     // merge the privileges of the roles of the user
-    for (String roleName : user.roleList) {
+    for (String roleName : user.getRoleList()) {
       Role role = roleManager.getRole(roleName);
       if (role.checkPrivilege(path, privilegeId)) {
         return true;
@@ -238,6 +240,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
     try {
       init();
     } catch (AuthException e) {
+      logger.error(e.getMessage());
       throw new StartupException(e.getMessage());
     }
   }

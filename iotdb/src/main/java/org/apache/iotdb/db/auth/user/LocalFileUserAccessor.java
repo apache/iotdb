@@ -73,6 +73,7 @@ public class LocalFileUserAccessor implements IUserAccessor {
    * @param username The name of the user to be deserialized.
    * @return The user object or null if no such user.
    */
+  @Override
   public User loadUser(String username) throws IOException {
     File userProfile = new File(
         userDirPath + File.separator + username + IoTDBConstant.PROFILE_SUFFIX);
@@ -93,8 +94,8 @@ public class LocalFileUserAccessor implements IUserAccessor {
     try (DataInputStream dataInputStream = new DataInputStream(
         new BufferedInputStream(inputStream))) {
       User user = new User();
-      user.name = IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal);
-      user.password = IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal);
+      user.setName(IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal));
+      user.setPassword(IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal));
 
       int privilegeNum = dataInputStream.readInt();
       List<PathPrivilege> pathPrivilegeList = new ArrayList<>();
@@ -102,7 +103,7 @@ public class LocalFileUserAccessor implements IUserAccessor {
         pathPrivilegeList
             .add(IOUtils.readPathPrivilege(dataInputStream, STRING_ENCODING, strBufferLocal));
       }
-      user.privilegeList = pathPrivilegeList;
+      user.setPrivilegeList(pathPrivilegeList);
 
       int roleNum = dataInputStream.readInt();
       List<String> roleList = new ArrayList<>();
@@ -110,7 +111,7 @@ public class LocalFileUserAccessor implements IUserAccessor {
         String userName = IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal);
         roleList.add(userName);
       }
-      user.roleList = roleList;
+      user.setRoleList(roleList);
 
       return user;
     } catch (Exception e) {
@@ -123,28 +124,29 @@ public class LocalFileUserAccessor implements IUserAccessor {
    *
    * @param user The user object that is to be saved.
    */
+  @Override
   public void saveUser(User user) throws IOException {
     File userProfile = new File(
-        userDirPath + File.separator + user.name + IoTDBConstant.PROFILE_SUFFIX + TEMP_SUFFIX);
+        userDirPath + File.separator + user.getName() + IoTDBConstant.PROFILE_SUFFIX + TEMP_SUFFIX);
     BufferedOutputStream outputStream = new BufferedOutputStream(new FileOutputStream(userProfile));
     try {
-      IOUtils.writeString(outputStream, user.name, STRING_ENCODING, encodingBufferLocal);
-      IOUtils.writeString(outputStream, user.password, STRING_ENCODING, encodingBufferLocal);
+      IOUtils.writeString(outputStream, user.getName(), STRING_ENCODING, encodingBufferLocal);
+      IOUtils.writeString(outputStream, user.getPassword(), STRING_ENCODING, encodingBufferLocal);
 
-      user.privilegeList.sort(PathPrivilege.referenceDescentSorter);
-      int privilegeNum = user.privilegeList.size();
+      user.getPrivilegeList().sort(PathPrivilege.REFERENCE_DESCENT_SORTER);
+      int privilegeNum = user.getPrivilegeList().size();
       IOUtils.writeInt(outputStream, privilegeNum, encodingBufferLocal);
       for (int i = 0; i < privilegeNum; i++) {
-        PathPrivilege pathPrivilege = user.privilegeList.get(i);
+        PathPrivilege pathPrivilege = user.getPrivilegeList().get(i);
         IOUtils
             .writePathPrivilege(outputStream, pathPrivilege, STRING_ENCODING, encodingBufferLocal);
       }
 
-      int userNum = user.roleList.size();
+      int userNum = user.getRoleList().size();
       IOUtils.writeInt(outputStream, userNum, encodingBufferLocal);
       for (int i = 0; i < userNum; i++) {
         IOUtils
-            .writeString(outputStream, user.roleList.get(i), STRING_ENCODING, encodingBufferLocal);
+            .writeString(outputStream, user.getRoleList().get(i), STRING_ENCODING, encodingBufferLocal);
       }
 
     } catch (Exception e) {
@@ -155,7 +157,7 @@ public class LocalFileUserAccessor implements IUserAccessor {
     }
 
     File oldFile = new File(
-        userDirPath + File.separator + user.name + IoTDBConstant.PROFILE_SUFFIX);
+        userDirPath + File.separator + user.getName() + IoTDBConstant.PROFILE_SUFFIX);
     IOUtils.replaceFile(userProfile, oldFile);
   }
 
@@ -166,6 +168,7 @@ public class LocalFileUserAccessor implements IUserAccessor {
    * @return True if the file is successfully deleted, false if the file does not exists.
    * @throws IOException when the file cannot be deleted.
    */
+  @Override
   public boolean deleteUser(String username) throws IOException {
     File userProfile = new File(
         userDirPath + File.separator + username + IoTDBConstant.PROFILE_SUFFIX);

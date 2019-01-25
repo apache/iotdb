@@ -93,7 +93,7 @@ public abstract class BasicUserManager implements IUserManager {
       lock.readUnlock(username);
     }
     if (user != null) {
-      user.lastActiveTime = System.currentTimeMillis();
+      user.setLastActiveTime(System.currentTimeMillis());
     }
     return user;
   }
@@ -204,12 +204,12 @@ public abstract class BasicUserManager implements IUserManager {
       if (user == null) {
         throw new AuthException(String.format("No such user %s", username));
       }
-      String oldPassword = user.password;
-      user.password = AuthUtils.encryptPassword(newPassword);
+      String oldPassword = user.getPassword();
+      user.setPassword(newPassword);
       try {
         accessor.saveUser(user);
       } catch (IOException e) {
-        user.password = oldPassword;
+        user.setPassword(oldPassword);
         throw new AuthException(e);
       }
       return true;
@@ -229,11 +229,11 @@ public abstract class BasicUserManager implements IUserManager {
       if (user.hasRole(roleName)) {
         return false;
       }
-      user.roleList.add(roleName);
+      user.getRoleList().add(roleName);
       try {
         accessor.saveUser(user);
       } catch (IOException e) {
-        user.roleList.remove(roleName);
+        user.getRoleList().remove(roleName);
         throw new AuthException(e);
       }
       return true;
@@ -253,11 +253,11 @@ public abstract class BasicUserManager implements IUserManager {
       if (!user.hasRole(roleName)) {
         return false;
       }
-      user.roleList.remove(roleName);
+      user.getRoleList().remove(roleName);
       try {
         accessor.saveUser(user);
       } catch (IOException e) {
-        user.roleList.add(roleName);
+        user.getRoleList().add(roleName);
         throw new AuthException(e);
       }
       return true;
