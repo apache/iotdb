@@ -25,8 +25,6 @@ import org.apache.iotdb.tsfile.exception.encoding.TsFileEncodingException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Encoder for float or double value using rle or two-diff according to following grammar.
@@ -41,7 +39,6 @@ import org.slf4j.LoggerFactory;
  */
 public class FloatEncoder extends Encoder {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(FloatEncoder.class);
   private Encoder encoder;
 
   /**
