@@ -20,7 +20,7 @@ package org.apache.iotdb.tsfile.write.schema;
 
 import java.util.HashMap;
 import java.util.Map;
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.constant.JsonFormatConstant;
 import org.apache.iotdb.tsfile.encoding.encoder.TSEncodingBuilder;
 import org.apache.iotdb.tsfile.exception.write.InvalidJsonSchemaException;
@@ -131,7 +131,7 @@ public class JsonConverter {
         .valueOf(measurementObj.getString(JsonFormatConstant.MEASUREMENT_ENCODING));
     CompressionType compressionType = measurementObj.has(JsonFormatConstant.COMPRESS_TYPE)
         ? CompressionType.valueOf(measurementObj.getString(JsonFormatConstant.COMPRESS_TYPE))
-        : CompressionType.valueOf(TSFileDescriptor.getInstance().getConfig().compressor);
+        : CompressionType.valueOf(TSFileConfig.compressor);
     // all information of one series
     Map<String, String> props = new HashMap<>();
     for (Object key : measurementObj.keySet()) {
