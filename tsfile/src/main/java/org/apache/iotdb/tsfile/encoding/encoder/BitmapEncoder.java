@@ -44,6 +44,9 @@ import org.slf4j.LoggerFactory;
  * bit-index := a list of 01 sequence to record the position of the value above
  * }
  * </pre>.
+ * Decode switch or enum values using bitmap, bitmap-encode.{@code <length> <num> <encoded data> }
+ * @deprecated This class has been deprecated.
+ * @since deprecated since 0.4.0
  */
 @Deprecated
 public class BitmapEncoder extends Encoder {
@@ -62,7 +65,7 @@ public class BitmapEncoder extends Encoder {
    */
   public BitmapEncoder(EndianType endianType) {
     super(TSEncoding.BITMAP);
-    this.values = new ArrayList<Integer>();
+    this.values = new ArrayList<>();
     LOGGER.debug("tsfile-encoding BitmapEncoder: init bitmap encoder");
   }
 
@@ -92,14 +95,13 @@ public class BitmapEncoder extends Encoder {
   public void flush(ByteArrayOutputStream out) throws IOException {
     // byteCache stores all <encoded-data> and we know its size
     ByteArrayOutputStream byteCache = new ByteArrayOutputStream();
-    Set<Integer> valueType = new HashSet<Integer>(values);
+    Set<Integer> valueType = new HashSet<>(values);
     int byteNum = (values.size() + 7) / 8;
     if (byteNum == 0) {
       reset();
       return;
     }
     int len = values.size();
-    // LOGGER.debug("tsfile-encoding BitmapEncoder: number of data in list is {}", len);
     for (int value : valueType) {
       byte[] buffer = new byte[byteNum];
       for (int i = 0; i < len; i++) {
@@ -131,6 +133,6 @@ public class BitmapEncoder extends Encoder {
   @Override
   public long getMaxByteSize() {
     // byteCacheSize + byteDictSize + (byte array + array length) * byteDictSize
-    return 4 + 4 + ((values.size() + 7) / 8 + 4) * values.size();
+    return (long)4 + 4 + ((values.size() + 7) / 8 + 4) * values.size();
   }
 }
