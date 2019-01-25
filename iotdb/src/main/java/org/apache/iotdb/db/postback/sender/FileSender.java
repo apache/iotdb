@@ -51,7 +51,7 @@ public interface FileSender {
    *
    * @param fileSnapshotList snapshot file list to send
    */
-  void startSending(Set<String> fileSnapshotList);
+  void transferData(Set<String> fileSnapshotList);
 
   /**
    * Close the socket after sending files.

@@ -60,7 +60,7 @@ public class PrimitiveArrayList {
             (long[]) expandArray(timestamps.get(currentIndex), currentArraySize, newCapacity));
         currentArraySize = newCapacity;
       } else {
-        // add a new Array to the list;
+        // add a new Array to the list
         values.add(Array.newInstance(clazz, INITIAL_SIZE));
         timestamps.add(new long[INITIAL_SIZE]);
         currentIndex++;
@@ -71,8 +71,8 @@ public class PrimitiveArrayList {
   }
 
   private Object expandArray(Object array, int preLentgh, int aimLength) {
-    Class clazz = array.getClass().getComponentType();
-    Object newArray = Array.newInstance(clazz, aimLength);
+    Class arrayClass = array.getClass().getComponentType();
+    Object newArray = Array.newInstance(arrayClass, aimLength);
     System.arraycopy(array, 0, newArray, 0, preLentgh);
     return newArray;
   }
@@ -108,6 +108,7 @@ public class PrimitiveArrayList {
     return length;
   }
 
+  @Override
   public PrimitiveArrayList clone() {
     PrimitiveArrayList cloneList = new PrimitiveArrayList(clazz);
     cloneList.values.clear();

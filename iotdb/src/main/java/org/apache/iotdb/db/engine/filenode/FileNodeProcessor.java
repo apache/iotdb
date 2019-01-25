@@ -68,6 +68,7 @@ import org.apache.iotdb.db.monitor.MonitorConstants;
 import org.apache.iotdb.db.monitor.StatMonitor;
 import org.apache.iotdb.db.query.factory.SeriesReaderFactory;
 import org.apache.iotdb.db.query.reader.IReader;
+import org.apache.iotdb.db.utils.FileSchemaUtils;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
@@ -99,6 +100,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static java.time.ZonedDateTime.ofInstant;
+import static org.apache.iotdb.db.utils.FileSchemaUtils.constructJsonFileSchema;
 
 public class FileNodeProcessor extends Processor implements IStatistic {
 
@@ -883,24 +885,8 @@ public class FileNodeProcessor extends Processor implements IStatistic {
   public void addTimeSeries(String measurementToString, String dataType, String encoding) {
     ColumnSchema col = new ColumnSchema(measurementToString, TSDataType.valueOf(dataType),
             TSEncoding.valueOf(encoding));
-    JSONObject measurement = constrcutMeasurement(col);
+    JSONObject measurement = FileSchemaUtils.constructJsonColumnSchema(col);
     fileSchema.registerMeasurement(JsonConverter.convertJsonToMeasurementSchema(measurement));
-  }
-
-  private JSONObject constrcutMeasurement(ColumnSchema col) {
-    JSONObject measurement = new JSONObject();
-    measurement.put(JsonFormatConstant.MEASUREMENT_UID, col.name);
-    measurement.put(JsonFormatConstant.DATA_TYPE, col.dataType.toString());
-    measurement.put(JsonFormatConstant.MEASUREMENT_ENCODING, col.encoding.toString());
-    for (Entry<String, String> entry : col.getArgsMap().entrySet()) {
-      if (JsonFormatConstant.ENUM_VALUES.equals(entry.getKey())) {
-        String[] valueArray = entry.getValue().split(",");
-        measurement.put(JsonFormatConstant.ENUM_VALUES, new JSONArray(valueArray));
-      } else {
-        measurement.put(entry.getKey(), entry.getValue());
-      }
-    }
-    return measurement;
   }
 
   /**
@@ -1616,13 +1602,10 @@ public class FileNodeProcessor extends Processor implements IStatistic {
     JSONArray rowGroup = new JSONArray();
 
     for (ColumnSchema col : schemaList) {
-      JSONObject measurement = constrcutMeasurement(col);
+      JSONObject measurement = FileSchemaUtils.constructJsonColumnSchema(col);
       rowGroup.put(measurement);
     }
-    JSONObject jsonSchema = new JSONObject();
-    jsonSchema.put(JsonFormatConstant.JSON_SCHEMA, rowGroup);
-    jsonSchema.put(JsonFormatConstant.DELTA_TYPE, deviceType);
-    return new FileSchema(jsonSchema);
+    return constructJsonFileSchema(deviceType, rowGroup);
   }
 
   @Override

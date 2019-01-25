@@ -40,6 +40,7 @@ public class AstNode extends CommonTree implements Node, Serializable {
   private transient boolean visited = false;
 
   public AstNode() {
+    // there is nothing need to do
   }
 
   /**
@@ -67,12 +68,12 @@ public class AstNode extends CommonTree implements Node, Serializable {
    * @see org.apache.hadoop.hive.ql.lib.Node#getChildren()
    */
   @Override
-  public ArrayList<Node> getChildren() {
+  public List<Node> getChildren() {
     if (super.getChildCount() == 0) {
-      return null;
+      return new ArrayList<>();
     }
 
-    ArrayList<Node> retVec = new ArrayList<Node>();
+    ArrayList<Node> retVec = new ArrayList<>();
     for (int i = 0; i < super.getChildCount(); ++i) {
       retVec.add((Node) super.getChild(i));
     }
@@ -98,8 +99,8 @@ public class AstNode extends CommonTree implements Node, Serializable {
    */
   @Override
   public void setUnknownTokenBoundaries() {
-    Deque<AstNode> stack1 = new ArrayDeque<AstNode>();
-    Deque<AstNode> stack2 = new ArrayDeque<AstNode>();
+    Deque<AstNode> stack1 = new ArrayDeque<>();
+    Deque<AstNode> stack2 = new ArrayDeque<>();
     stack1.push(this);
 
     while (!stack1.isEmpty()) {
@@ -122,7 +123,7 @@ public class AstNode extends CommonTree implements Node, Serializable {
         }
       } else if (next.startIndex >= 0 && next.stopIndex >= 0) {
         continue;
-      } else if (next.children.size() > 0) {
+      } else if (!next.children.isEmpty()) {
         AstNode firstChild = (AstNode) next.children.get(0);
         AstNode lastChild = (AstNode) next.children.get(next.children.size() - 1);
         next.startIndex = firstChild.getTokenStartIndex();
@@ -160,7 +161,7 @@ public class AstNode extends CommonTree implements Node, Serializable {
   }
 
   private StringBuilder dump(StringBuilder sb) {
-    Deque<AstNode> stack = new ArrayDeque<AstNode>();
+    Deque<AstNode> stack = new ArrayDeque<>();
     stack.push(this);
     int tabLength = 0;
 
@@ -223,9 +224,12 @@ public class AstNode extends CommonTree implements Node, Serializable {
     return astStr == null ? 0 : astStr.length();
   }
 
+  private boolean checkStringBuilder(StringBuilder builder, int start, int end){
+    return builder == null || start < 0 || end > builder.length() || start >= end;
+  }
+
   private String getMemoizedSubString(int start, int end) {
-    return (astStr == null || start < 0 || end > astStr.length() || start >= end) ? null
-        : astStr.subSequence(start, end).toString();
+    return checkStringBuilder(astStr, start, end) ? null : astStr.subSequence(start, end).toString();
   }
 
   private void addtoMemoizedString(String string) {
@@ -294,7 +298,7 @@ public class AstNode extends CommonTree implements Node, Serializable {
   }
 
   private String toStringTree(AstNode rootNode) {
-    Deque<AstNode> stack = new ArrayDeque<AstNode>();
+    Deque<AstNode> stack = new ArrayDeque<>();
     stack.push(this);
 
     while (!stack.isEmpty()) {
@@ -309,7 +313,7 @@ public class AstNode extends CommonTree implements Node, Serializable {
         next.startIndx = rootNode.getMemoizedStringLen();
 
         // Leaf
-        if (next.children == null || next.children.size() == 0) {
+        if (next.children == null || next.children.isEmpty()) {
           String str = next.toString();
           rootNode.addtoMemoizedString(
               next.getType() != TSParser.StringLiteral ? str.toLowerCase() : str);

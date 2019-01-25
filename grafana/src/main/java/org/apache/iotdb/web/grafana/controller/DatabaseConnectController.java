@@ -100,6 +100,7 @@ public class DatabaseConnectController {
   @RequestMapping(value = "/query")
   @ResponseBody
   public String query(HttpServletRequest request, HttpServletResponse response) {
+    String targetStr = "target";
     response.setStatus(200);
     try {
       JSONObject jsonObject = getRequestBodyJson(request);
@@ -108,10 +109,10 @@ public class DatabaseConnectController {
       JSONArray result = new JSONArray();
       for (int i = 0; i < array.length(); i++) {
         JSONObject object = (JSONObject) array.get(i); // {}
-        if (object.isNull("target")) {
+        if (object.isNull(targetStr)) {
           return "[]";
         }
-        String target = (String) object.get("target");
+        String target = (String) object.get(targetStr);
         String type = getJsonType(jsonObject);
         JSONObject obj = new JSONObject();
         obj.put("target", target);

@@ -40,6 +40,15 @@ public class DnfFilterOptimizer implements IFilterOptimizer {
     return getDnf(filter);
   }
 
+  private void dealWithLeftAndRightAndChildren(List<FilterOperator> leftAndChildren, List<FilterOperator> rightAndChildren, List<FilterOperator> newChildrenList) throws LogicalOptimizeException {
+    for (FilterOperator laChild : leftAndChildren) {
+      for (FilterOperator raChild : rightAndChildren) {
+        FilterOperator r = mergeToConjunction(laChild.clone(), raChild.clone());
+        newChildrenList.add(r);
+      }
+    }
+  }
+
   private FilterOperator getDnf(FilterOperator filter) throws LogicalOptimizeException {
     if (filter.isLeaf()) {
       return filter;
@@ -63,14 +72,7 @@ public class DnfFilterOptimizer implements IFilterOptimizer {
           addChildOpInAnd(left, newChildrenList);
           addChildOpInAnd(right, newChildrenList);
         } else {
-          List<FilterOperator> leftAndChildren = getAndChild(left);
-          List<FilterOperator> rightAndChildren = getAndChild(right);
-          for (FilterOperator laChild : leftAndChildren) {
-            for (FilterOperator raChild : rightAndChildren) {
-              FilterOperator r = mergeToConjunction(laChild.clone(), raChild.clone());
-              newChildrenList.add(r);
-            }
-          }
+          dealWithLeftAndRightAndChildren(getAndChild(left), getAndChild(right), newChildrenList);
           filter.setTokenIntType(KW_OR);
         }
         break;
@@ -110,14 +112,13 @@ public class DnfFilterOptimizer implements IFilterOptimizer {
    * @return children operator
    */
   private List<FilterOperator> getAndChild(FilterOperator child) {
-    switch (child.getTokenIntType()) {
-      case KW_OR:
-        return child.getChildren();
-      default:
-        // other token type means leaf node or and
-        List<FilterOperator> ret = new ArrayList<>();
-        ret.add(child);
-        return ret;
+    if (child.getTokenIntType() == KW_OR) {
+      return child.getChildren();
+    } else {
+      // other token type means leaf node or and
+      List<FilterOperator> ret = new ArrayList<>();
+      ret.add(child);
+      return ret;
     }
   }
 
