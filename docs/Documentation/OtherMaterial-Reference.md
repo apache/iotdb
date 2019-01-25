@@ -1,8 +1,3 @@
-<!-- TOC -->
-
-- [Research Papers](#research-papers)
-
-<!-- /TOC -->
 # Research Papers
 
 Apache IoTDB started at Tsinghua University, School of Software. IoTDB is a database for managing large amount of time series data with columnar storage, data encoding, pre-computation, and index techniques. It has SQL-like interface to write millions of data points per second per node and is optimized to get query results in few seconds over trillions of data points. It can also be easily integrated with Apache Hadoop MapReduce and Apache Spark for analytics.
