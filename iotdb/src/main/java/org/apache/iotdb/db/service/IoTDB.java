@@ -153,7 +153,7 @@ public class IoTDB implements IoTDBMBean {
       if (writeLogManager.hasWAL(filenodeName)) {
         try {
           FileNodeManager.getInstance().recoverFileNode(filenodeName);
-        } catch (FileNodeProcessorException | FileNodeManagerException e) {
+        } catch (FileNodeManagerException e) {
           throw new RecoverException(e);
         }
       }

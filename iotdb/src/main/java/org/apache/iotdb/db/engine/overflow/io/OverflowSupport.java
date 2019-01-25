@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
+ * <p>
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * <p>
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -16,10 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.engine.overflow.ioV2;
+package org.apache.iotdb.db.engine.overflow.io;
 
 import java.util.HashMap;
 import java.util.Map;
+
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.PrimitiveMemTable;
 import org.apache.iotdb.db.engine.memtable.TimeValuePairSorter;
@@ -52,15 +53,15 @@ public class OverflowSupport {
   public void insert(TSRecord tsRecord) {
     for (DataPoint dataPoint : tsRecord.dataPointList) {
       memTable.write(tsRecord.deviceId, dataPoint.getMeasurementId(), dataPoint.getType(),
-          tsRecord.time,
-          dataPoint.getValue().toString());
+              tsRecord.time,
+              dataPoint.getValue().toString());
     }
   }
 
   @Deprecated
   public void update(String deviceId, String measurementId, long startTime, long endTime,
-      TSDataType dataType,
-      byte[] value) {
+                     TSDataType dataType,
+                     byte[] value) {
     if (!indexTrees.containsKey(deviceId)) {
       indexTrees.put(deviceId, new HashMap<>());
     }
@@ -82,15 +83,15 @@ public class OverflowSupport {
   }
 
   public TimeValuePairSorter queryOverflowInsertInMemory(String deviceId, String measurementId,
-      TSDataType dataType) {
+                                                         TSDataType dataType) {
     return memTable.query(deviceId, measurementId, dataType);
   }
 
   public BatchData queryOverflowUpdateInMemory(String deviceId, String measurementId,
-      TSDataType dataType,
-      BatchData data) {
+                                               TSDataType dataType,
+                                               BatchData data) {
     if (indexTrees.containsKey(deviceId) && indexTrees.get(deviceId).containsKey(measurementId)
-        && indexTrees.get(deviceId).get(measurementId).getDataType().equals(dataType)) {
+            && indexTrees.get(deviceId).get(measurementId).getDataType().equals(dataType)) {
       return indexTrees.get(deviceId).get(measurementId).query(data);
     }
     return null;
