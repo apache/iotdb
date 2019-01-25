@@ -1,19 +1,15 @@
 /**
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one or more contributor license
+ * agreements.  See the NOTICE file distributed with this work for additional information regarding
+ * copyright ownership.  The ASF licenses this file to you under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with the License.  You may obtain
+ * a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
+ * Unless required by applicable law or agreed to in writing, software distributed under the License
+ * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
+ * or implied.  See the License for the specific language governing permissions and limitations
  * under the License.
  */
 package org.apache.iotdb.tsfile.encoding.encoder;
@@ -24,7 +20,6 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import org.apache.iotdb.tsfile.encoding.common.EndianType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 import org.slf4j.Logger;
@@ -44,6 +39,8 @@ import org.slf4j.LoggerFactory;
  * bit-index := a list of 01 sequence to record the position of the value above
  * }
  * </pre>.
+ *
+ * @deprecated (2019.1.25, why, refactoring advice...)
  */
 @Deprecated
 public class BitmapEncoder extends Encoder {
@@ -57,12 +54,10 @@ public class BitmapEncoder extends Encoder {
 
   /**
    * BitmapEncoder constructor.
-   *
-   * @param endianType deprecated
    */
-  public BitmapEncoder(EndianType endianType) {
+  public BitmapEncoder() {
     super(TSEncoding.BITMAP);
-    this.values = new ArrayList<Integer>();
+    this.values = new ArrayList<>();
     LOGGER.debug("tsfile-encoding BitmapEncoder: init bitmap encoder");
   }
 
@@ -92,14 +87,13 @@ public class BitmapEncoder extends Encoder {
   public void flush(ByteArrayOutputStream out) throws IOException {
     // byteCache stores all <encoded-data> and we know its size
     ByteArrayOutputStream byteCache = new ByteArrayOutputStream();
-    Set<Integer> valueType = new HashSet<Integer>(values);
+    Set<Integer> valueType = new HashSet<>(values);
     int byteNum = (values.size() + 7) / 8;
     if (byteNum == 0) {
       reset();
       return;
     }
     int len = values.size();
-    // LOGGER.debug("tsfile-encoding BitmapEncoder: number of data in list is {}", len);
     for (int value : valueType) {
       byte[] buffer = new byte[byteNum];
       for (int i = 0; i < len; i++) {
@@ -131,6 +125,6 @@ public class BitmapEncoder extends Encoder {
   @Override
   public long getMaxByteSize() {
     // byteCacheSize + byteDictSize + (byte array + array length) * byteDictSize
-    return 4 + 4 + ((values.size() + 7) / 8 + 4) * values.size();
+    return 4L + 4L + ((values.size() + 7) / 8 + 4) * values.size();
   }
 }

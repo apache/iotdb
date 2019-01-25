@@ -1,19 +1,15 @@
 /**
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one or more contributor license
+ * agreements.  See the NOTICE file distributed with this work for additional information regarding
+ * copyright ownership.  The ASF licenses this file to you under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with the License.  You may obtain
+ * a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
+ * Unless required by applicable law or agreed to in writing, software distributed under the License
+ * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
+ * or implied.  See the License for the specific language governing permissions and limitations
  * under the License.
  */
 package org.apache.iotdb.tsfile.file.metadata;
@@ -47,11 +43,11 @@ public class TsDigest {
   }
 
   public static int serializeNullTo(OutputStream outputStream) throws IOException {
-    return ReadWriteIOUtils.write(0, outputStream);// Integer.BYTES;
+    return ReadWriteIOUtils.write(0, outputStream);
   }
 
   public static int serializeNullTo(ByteBuffer buffer) {
-    return ReadWriteIOUtils.write(0, buffer);// Integer.BYTES;
+    return ReadWriteIOUtils.write(0, buffer);
   }
 
   /**
@@ -167,17 +163,18 @@ public class TsDigest {
     }
     int byteLen = 0;
     if (statistics == null || statistics.size() == 0) {
-      byteLen += ReadWriteIOUtils.write(0, outputStream);// Integer.BYTES;
+      byteLen += ReadWriteIOUtils.write(0, outputStream);
     } else {
-      byteLen += ReadWriteIOUtils.write(statistics.size(), outputStream);// Integer.BYTES;
+      byteLen += ReadWriteIOUtils.write(statistics.size(), outputStream);
       for (Map.Entry<String, ByteBuffer> entry : statistics.entrySet()) {
         byteLen += ReadWriteIOUtils
-            .write(entry.getKey(), outputStream);// Integer.BYTES+key.length()
+            .write(entry.getKey(), outputStream);
         byteLen += ReadWriteIOUtils
-            .write(entry.getValue(), outputStream);// Integer.BYTES+value.remaining();
+            .write(entry.getValue(), outputStream);
       }
     }
-    assert byteLen == getSerializedSize();
+    boolean isEqual = (byteLen == getSerializedSize());
+    assert isEqual;
     return byteLen;
   }
 
@@ -195,16 +192,17 @@ public class TsDigest {
     int byteLen = 0;
 
     if (statistics == null || statistics.size() == 0) {
-      byteLen += ReadWriteIOUtils.write(0, buffer);// Integer.BYTES;
+      byteLen += ReadWriteIOUtils.write(0, buffer);
     } else {
-      byteLen += ReadWriteIOUtils.write(statistics.size(), buffer);// Integer.BYTES;
+      byteLen += ReadWriteIOUtils.write(statistics.size(), buffer);
       for (Map.Entry<String, ByteBuffer> entry : statistics.entrySet()) {
-        byteLen += ReadWriteIOUtils.write(entry.getKey(), buffer);// Integer.BYTES+key.length()
+        byteLen += ReadWriteIOUtils.write(entry.getKey(), buffer);
         byteLen += ReadWriteIOUtils
-            .write(entry.getValue(), buffer);// Integer.BYTES+value.remaining();
+            .write(entry.getValue(), buffer);
       }
     }
-    assert byteLen == getSerializedSize();
+    boolean isEqual = (byteLen == getSerializedSize());
+    assert isEqual;
     return byteLen;
   }
 

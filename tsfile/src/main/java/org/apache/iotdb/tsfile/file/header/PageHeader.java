@@ -1,19 +1,15 @@
 /**
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one or more contributor license
+ * agreements.  See the NOTICE file distributed with this work for additional information regarding
+ * copyright ownership.  The ASF licenses this file to you under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with the License.  You may obtain
+ * a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
+ * Unless required by applicable law or agreed to in writing, software distributed under the License
+ * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
+ * or implied.  See the License for the specific language governing permissions and limitations
  * under the License.
  */
 package org.apache.iotdb.tsfile.file.header;
@@ -32,7 +28,7 @@ public class PageHeader {
   private int uncompressedSize;
   private int compressedSize;
   private int numOfValues;
-  private Statistics<?> statistics;
+  private Statistics statistics;
   private long maxTimestamp;
   private long minTimestamp;
 
@@ -40,15 +36,16 @@ public class PageHeader {
   private int serializedSize;
 
   public PageHeader(int uncompressedSize, int compressedSize, int numOfValues,
-                    Statistics<?> statistics,
-                    long maxTimestamp, long minTimestamp) {
+      Statistics statistics,
+      long maxTimestamp, long minTimestamp) {
     this.uncompressedSize = uncompressedSize;
     this.compressedSize = compressedSize;
     this.numOfValues = numOfValues;
     if (statistics == null) {
-      statistics = new NoStatistics();
+      this.statistics = new NoStatistics();
+    } else {
+      this.statistics = statistics;
     }
-    this.statistics = statistics;
     this.maxTimestamp = maxTimestamp;
     this.minTimestamp = minTimestamp;
     serializedSize = calculatePageHeaderSize();
@@ -114,7 +111,7 @@ public class PageHeader {
     this.numOfValues = numOfValues;
   }
 
-  public Statistics<?> getStatistics() {
+  public Statistics getStatistics() {
     return statistics;
   }
 
@@ -142,7 +139,8 @@ public class PageHeader {
     length += ReadWriteIOUtils.write(maxTimestamp, outputStream);
     length += ReadWriteIOUtils.write(minTimestamp, outputStream);
     length += statistics.serialize(outputStream);
-    assert length == getSerializedSize();
+    boolean isEqual = (length == getSerializedSize());
+    assert isEqual;
     return length;
   }
 

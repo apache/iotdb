@@ -1,19 +1,15 @@
 /**
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one or more contributor license
+ * agreements.  See the NOTICE file distributed with this work for additional information regarding
+ * copyright ownership.  The ASF licenses this file to you under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with the License.  You may obtain
+ * a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
+ * Unless required by applicable law or agreed to in writing, software distributed under the License
+ * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
+ * or implied.  See the License for the specific language governing permissions and limitations
  * under the License.
  */
 package org.apache.iotdb.tsfile.encoding.encoder;
@@ -26,21 +22,17 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * <p>
- * DeltaBinaryEncoder is a encoder for compressing data in type of integer and long.We adapt a
+ * <p> DeltaBinaryEncoder is a encoder for compressing data in type of integer and long.We adapt a
  * hypothesis that contiguous data points have similar values. Thus the difference value of two
  * adjacent points is smaller than those two point values. One integer in java takes 32-bits. If an
  * positive number is less than 2^m, the bits of this integer which index from m to 31 are all 0.
  * Given an array which length is n, if all values in input data array are all positive and less
- * than 2^m, we need actually m*n, but not 32*n bits to store the array.
- * </p>
- * <p>
- * DeltaBinaryEncoder calculates difference between two adjacent points and record the minimum of
- * those difference values firstly. Then it save two_diff value that difference minus minimum of
- * them, to make sure all two_diff values are positive. Then it statistics the longest bit length
- * {@code m} it takes for each two_diff value, which means the bit length that maximum two_diff
- * value takes. Only the low m bits are saved into result byte array for all two_diff values.
- * </p>
+ * than 2^m, we need actually m*n, but not 32*n bits to store the array. </p> <p> DeltaBinaryEncoder
+ * calculates difference between two adjacent points and record the minimum of those difference
+ * values firstly. Then it save two_diff value that difference minus minimum of them, to make sure
+ * all two_diff values are positive. Then it statistics the longest bit length {@code m} it takes
+ * for each two_diff value, which means the bit length that maximum two_diff value takes. Only the
+ * low m bits are saved into result byte array for all two_diff values. </p>
  *
  * @author kangrong
  */
@@ -104,7 +96,6 @@ public abstract class DeltaBinaryEncoder extends Encoder {
       calcTwoDiff(i);
     }
     writeWidth = calculateBitWidthsForDeltaBlockBuffer();
-    // System.out.println("write width:"+writeWidth);
     writeHeaderToBytes();
     writeDataWithMinWidth();
 
@@ -120,7 +111,7 @@ public abstract class DeltaBinaryEncoder extends Encoder {
     try {
       flushBlockBuffer(out);
     } catch (IOException e) {
-      LOG.error("flush data to stream failed!");
+      LOG.error("flush data to stream failed! Because: " + e);
     }
   }
 
@@ -229,7 +220,7 @@ public abstract class DeltaBinaryEncoder extends Encoder {
     @Override
     public long getMaxByteSize() {
       // The meaning of 24 is: index(4)+width(4)+minDeltaBase(4)+firstValue(4)
-      return 24 + writeIndex * 4;
+      return 24L + writeIndex * 4;
     }
   }
 
@@ -308,7 +299,7 @@ public abstract class DeltaBinaryEncoder extends Encoder {
     @Override
     public long getMaxByteSize() {
       // The meaning of 24 is: index(4)+width(4)+minDeltaBase(8)+firstValue(8)
-      return 24 + writeIndex * 8;
+      return 24L + writeIndex * 8;
     }
 
     /**

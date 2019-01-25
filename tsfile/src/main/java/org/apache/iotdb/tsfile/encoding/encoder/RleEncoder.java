@@ -1,19 +1,15 @@
 /**
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one or more contributor license
+ * agreements.  See the NOTICE file distributed with this work for additional information regarding
+ * copyright ownership.  The ASF licenses this file to you under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with the License.  You may obtain
+ * a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
+ * Unless required by applicable law or agreed to in writing, software distributed under the License
+ * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
+ * or implied.  See the License for the specific language governing permissions and limitations
  * under the License.
  */
 package org.apache.iotdb.tsfile.encoding.encoder;
@@ -60,7 +56,15 @@ import org.slf4j.LoggerFactory;
 public abstract class RleEncoder<T extends Comparable<T>> extends Encoder {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(RleEncoder.class);
-  public EndianType endianType;
+  private EndianType endianType;
+
+  public EndianType getEndianType() {
+    return endianType;
+  }
+
+  public void setEndianType(EndianType endianType) {
+    this.endianType = endianType;
+  }
 
   /**
    * we save all value in a list and calculate its bitwidth.
@@ -123,7 +127,7 @@ public abstract class RleEncoder<T extends Comparable<T>> extends Encoder {
   public RleEncoder(EndianType endianType) {
     super(TSEncoding.RLE);
     this.endianType = endianType;
-    bytesBuffer = new ArrayList<byte[]>();
+    bytesBuffer = new ArrayList<>();
     isBitPackRun = false;
     isBitWidthSaved = false;
     byteCache = new ByteArrayOutputStream();
@@ -149,7 +153,7 @@ public abstract class RleEncoder<T extends Comparable<T>> extends Encoder {
   @Override
   public void flush(ByteArrayOutputStream out) throws IOException {
     int lastBitPackedNum = numBufferedValues;
-    if (repeatCount >= config.RLE_MIN_REPEATED_NUM) {
+    if (repeatCount >= TSFileConfig.RLE_MIN_REPEATED_NUM) {
       try {
         writeRleRun();
       } catch (IOException e) {
@@ -166,7 +170,7 @@ public abstract class RleEncoder<T extends Comparable<T>> extends Encoder {
       writeOrAppendBitPackedRun();
       endPreviousBitPackedRun(lastBitPackedNum);
     } else {
-      endPreviousBitPackedRun(config.RLE_MIN_REPEATED_NUM);
+      endPreviousBitPackedRun(TSFileConfig.RLE_MIN_REPEATED_NUM);
     }
     // write length
     ReadWriteForEncodingUtils.writeUnsignedVarInt(byteCache.size(), out);
@@ -186,10 +190,10 @@ public abstract class RleEncoder<T extends Comparable<T>> extends Encoder {
    * Start a bit-packing run transform values to bytes and buffer them in cache.
    */
   public void writeOrAppendBitPackedRun() {
-    if (bitPackedGroupCount >= config.RLE_MAX_BIT_PACKED_NUM) {
+    if (bitPackedGroupCount >= TSFileConfig.RLE_MAX_BIT_PACKED_NUM) {
       // we've packed as many values as we can for this run,
       // end it and start a new one
-      endPreviousBitPackedRun(config.RLE_MIN_REPEATED_NUM);
+      endPreviousBitPackedRun(TSFileConfig.RLE_MIN_REPEATED_NUM);
     }
     if (!isBitPackRun) {
       isBitPackRun = true;
@@ -239,17 +243,17 @@ public abstract class RleEncoder<T extends Comparable<T>> extends Encoder {
     }
     if (value.equals(preValue)) {
       repeatCount++;
-      if (repeatCount >= config.RLE_MIN_REPEATED_NUM
-          && repeatCount <= config.RLE_MAX_REPEATED_NUM) {
+      if (repeatCount >= TSFileConfig.RLE_MIN_REPEATED_NUM
+          && repeatCount <= TSFileConfig.RLE_MAX_REPEATED_NUM) {
         // value occurs more than RLE_MIN_REPEATED_NUM times but less than
         // EncodingConfig.RLE_MAX_REPEATED_NUM
         // we'll use rle, so just keep on counting repeats for now
         // we'll write current value to OutputStream when we encounter a different value
         return;
-      } else if (repeatCount == config.RLE_MAX_REPEATED_NUM + 1) {
+      } else if (repeatCount == TSFileConfig.RLE_MAX_REPEATED_NUM + 1) {
         // value occurs more than EncodingConfig.RLE_MAX_REPEATED_NUM
         // we'll write current rle run to stream and keep on counting current value
-        repeatCount = config.RLE_MAX_REPEATED_NUM;
+        repeatCount = TSFileConfig.RLE_MAX_REPEATED_NUM;
         try {
           writeRleRun();
           LOGGER.debug("tsfile-encoding RleEncoder : write full rle run to stream");
@@ -258,7 +262,7 @@ public abstract class RleEncoder<T extends Comparable<T>> extends Encoder {
               .error(" error occurs when writing full rle run to OutputStram when repeatCount = {}."
                       + "numBufferedValues {}, repeatCount {}, bitPackedGroupCount{}, "
                       + "isBitPackRun {}, isBitWidthSaved {}",
-                  config.RLE_MAX_REPEATED_NUM + 1, numBufferedValues, repeatCount,
+                  TSFileConfig.RLE_MAX_REPEATED_NUM + 1, numBufferedValues, repeatCount,
                   bitPackedGroupCount,
                   isBitPackRun, isBitWidthSaved, e);
         }
@@ -268,7 +272,7 @@ public abstract class RleEncoder<T extends Comparable<T>> extends Encoder {
 
     } else {
       // we encounter a differnt value
-      if (repeatCount >= config.RLE_MIN_REPEATED_NUM) {
+      if (repeatCount >= TSFileConfig.RLE_MIN_REPEATED_NUM) {
         try {
           writeRleRun();
         } catch (IOException e) {
@@ -277,7 +281,8 @@ public abstract class RleEncoder<T extends Comparable<T>> extends Encoder {
                   + "when repeatCount > {}."
                   + "numBufferedValues {}, repeatCount {}, bitPackedGroupCount{}, isBitPackRun {}, "
                   + "isBitWidthSaved {}",
-              config.RLE_MIN_REPEATED_NUM, numBufferedValues, repeatCount, bitPackedGroupCount,
+              TSFileConfig.RLE_MIN_REPEATED_NUM, numBufferedValues, repeatCount,
+              bitPackedGroupCount,
               isBitPackRun, isBitWidthSaved, e);
         }
       }
@@ -288,7 +293,7 @@ public abstract class RleEncoder<T extends Comparable<T>> extends Encoder {
     numBufferedValues++;
     // if none of value we encountered occurs more MAX_REPEATED_NUM times
     // we'll use bit-packing
-    if (numBufferedValues == config.RLE_MIN_REPEATED_NUM) {
+    if (numBufferedValues == TSFileConfig.RLE_MIN_REPEATED_NUM) {
       writeOrAppendBitPackedRun();
     }
   }

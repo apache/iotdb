@@ -20,7 +20,6 @@ import java.io.ByteArrayOutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.iotdb.tsfile.encoding.common.EndianType;
 import org.apache.iotdb.tsfile.encoding.encoder.BitmapEncoder;
 import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
 import org.junit.After;
@@ -69,7 +68,7 @@ public class BitmapDecoderTest {
 
   private void testInt(List<Integer> list, boolean isDebug, int repeatCount) throws Exception {
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
-    Encoder encoder = new BitmapEncoder(EndianType.LITTLE_ENDIAN);
+    Encoder encoder = new BitmapEncoder();
     for (int i = 0; i < repeatCount; i++) {
       for (int value : list) {
         encoder.encode(value, baos);
