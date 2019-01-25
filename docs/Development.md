@@ -81,7 +81,7 @@ Note that, data correctness/data loss bugs are very serious. Make sure the corre
 #### Cloning source code
 
 ```
-$ git clone git@github.com:thulab/iotdb.git
+$ git clone git@github.com:apache/incubator-iotdb.git
 ```
 Following README.md to test, run or build IoTDB.
 
@@ -120,7 +120,7 @@ Generally, IoTDB uses JIRA to track logical issues, including bugs and improveme
 
 #### Pull Request
 
-1. Fork the Github repository at https://github.com/thulab/iotdb if you haven’t already
+1. Fork the Github repository at https://github.com/apache/incubator-iotdb if you haven’t already
 2. Clone your fork, create a new branch, push commits to the branch.
 3. Consider whether documentation or tests need to be added or updated as part of the change, and add them as needed.
 Run all tests with [How to test](https://github.com/thulab/iotdb/wiki/How-to-test-IoTDB) to verify that the code still compiles, passes tests.
@@ -148,7 +148,7 @@ Run all tests with [How to test](https://github.com/thulab/iotdb/wiki/How-to-tes
 * Sometimes, other changes will be merged which conflict with your pull request’s changes. The PR can’t be merged until the conflict is resolved. This can be resolved by, for example, adding a remote to keep up with upstream changes by 
 
 ```shell
-git remote add upstream git@github.com:thulab/iotdb.git
+git remote add upstream git@github.com:apache/incubator-iotdb.git
 git fetch upstream
 git rebase upstream/master 
 # resolve your conflicts

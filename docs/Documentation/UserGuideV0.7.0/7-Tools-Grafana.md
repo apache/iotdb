@@ -42,12 +42,12 @@ Grafana will auto start after installing, or you can run
 
 ## IoTDB installation
 
-See https://github.com/thulab/iotdb
+See https://github.com/apache/incubator-iotdb
 
 ## IoTDB-Grafana installation
 
 ```shell
-git clone https://github.com/thulab/iotdb.git
+git clone https://github.com/apache/incubator-iotdb.git
 mvn clean package -pl grafana -am -Dmaven.test.skip=true
 cd grafana
 ```

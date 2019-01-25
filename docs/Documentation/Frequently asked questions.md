@@ -68,7 +68,7 @@ If you are using Linux, you can use the following shell command:
 
 ## Can I use Hadoop and Spark to read TsFile in IoTDB?
 
-Yes. IoTDB has intense integration with Open Source Ecosystem. IoTDB supports [Hadoop](https://github.com/thulab/iotdb/tree/master/hadoop), [Spark](https://github.com/thulab/iotdb/tree/master/spark) and [Grafana](https://github.com/thulab/iotdb/tree/master/grafana) visualization tool.
+Yes. IoTDB has intense integration with Open Source Ecosystem. IoTDB supports [Hadoop](https://github.com/apache/incubator-iotdb/tree/master/hadoop), [Spark](https://github.com/apache/incubator-iotdb/tree/master/spark) and [Grafana](https://github.com/apache/incubator-iotdb/tree/master/grafana) visualization tool.
 
 ## How does IoTDB handle duplicate points?
 

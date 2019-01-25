@@ -29,7 +29,7 @@ The versions required for Spark and Java are as follow:
 | ------------- | ------------- | ------------ |------- |
 | `2.0+`        | `2.11`        | `1.8`        | `0.7.0`|
 
-> Note: For more information about how to download and use TsFile, please see the following link: https://github.com/thulab/tsfile.git.
+> Note: For more information about how to download and use TsFile, please see the following link: https://github.com/apache/incubator-iotdb/tree/master/tsfile.
 
 ## Quick Start
 
@@ -62,7 +62,7 @@ Note:
 * \<tsfile-version> is the tsfile version.
 * \<connector-version> is the TsFile-Spark-Connector version. Note that, the version of TsFile-Spark-Connector and TsFile should be correspondence.
 * Multiple jar packages are separated by commas without any spaces.
-* See https://github.com/thulab/tsfile.git for how to get TsFile.
+* See https://github.com/apache/incubator-iotdb/tree/master/tsfile for how to get TsFile.
 
 #### 5.2.1.2 Distributed Mode
 
@@ -78,7 +78,7 @@ Note:
 * \<tsfile-version> is the tsfile version.
 * \<connector-version> is the TsFile-Spark-Connector version. Note that, the version of TsFile-Spark-Connector and TsFile should be correspondence.
 * Multiple jar packages are separated by commas without any spaces.
-* See https://github.com/thulab/tsfile.git for how to get TsFile.
+* See https://github.com/apache/incubator-iotdb/tree/master/tsfile for how to get TsFile.
 
 ## Detail: Conversion between TsFile and Spark
 
