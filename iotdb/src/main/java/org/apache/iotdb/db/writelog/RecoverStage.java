@@ -22,29 +22,29 @@ public enum RecoverStage {
   /**
    * This is just the start point of the recovery auto mata.
    */
-  init,
+  INIT,
 
   /**
    * In this stage, the mission is to backup restore file, processor.store file with suffix
    * "-recovery". Should SET flag afterward.
    */
-  backup,
+  BACK_UP,
 
   /**
    * In this stage, the mission is to recover TsFile / OverflowFile with restore file Should NOT SET
    * flag afterward.
    */
-  recoverFile,
+  RECOVER_FILE,
 
   /**
    * In this stage, the mission is to read logs from wal and wal-old files (if exists) and replay
    * them. Should SET flag afterward,
    */
-  replayLog,
+  REPLAY_LOG,
 
   /**
    * In this stage, the mission is to clean all "-recovery" files, log file and recovery flag.
    * Should CLEAN flag afterward.
    */
-  cleanup
+  CLEAN_UP
 }

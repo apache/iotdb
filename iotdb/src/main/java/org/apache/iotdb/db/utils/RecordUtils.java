@@ -41,6 +41,8 @@ public class RecordUtils {
 
   private static final Logger LOG = LoggerFactory.getLogger(RecordUtils.class);
 
+  private RecordUtils(){}
+
   /**
    * support input format: {@code <deviceId>,<timestamp>,[<measurementId>,<value>,]}.CSV line is
    * separated by ","
@@ -104,7 +106,7 @@ public class RecordUtils {
               break;
           }
         } catch (NumberFormatException e) {
-          LOG.warn("parsing measurement meets error, omit it", e.getMessage());
+          LOG.warn("parsing measurement meets error, omit it: {}", e.getMessage());
         }
       }
     }

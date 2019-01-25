@@ -136,7 +136,8 @@ public class MemUtils {
   /**
    * function for converting the byte count result to readable string.
    */
-  public static String bytesCntToStr(long cnt) {
+  public static String bytesCntToStr(long inputCnt) {
+    long cnt = inputCnt;
     long gbs = cnt / IoTDBConstant.GB;
     cnt = cnt % IoTDBConstant.GB;
     long mbs = cnt / IoTDBConstant.MB;
