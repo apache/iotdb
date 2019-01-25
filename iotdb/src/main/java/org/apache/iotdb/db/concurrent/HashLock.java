@@ -73,13 +73,11 @@ public class HashLock {
         locks[i].readLock().unlock();
       } catch (Exception ignored) {
         // do nothing
-        LOGGER.error("HashLock exception {}.", ignored);
       }
       try {
         locks[i].writeLock().unlock();
       } catch (Exception ignored) {
         // do nothing
-        LOGGER.error("HashLock exception {}.", ignored);
       }
     }
   }
