@@ -20,6 +20,7 @@ package org.apache.iotdb.db.writelog.recover;
 
 import org.apache.iotdb.db.exception.RecoverException;
 
+@FunctionalInterface
 public interface RecoverPerformer {
 
   /**

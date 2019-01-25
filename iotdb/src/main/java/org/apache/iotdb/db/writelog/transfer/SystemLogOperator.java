@@ -23,6 +23,8 @@ package org.apache.iotdb.db.writelog.transfer;
  */
 public class SystemLogOperator {
 
+  private SystemLogOperator(){}
+
   public static final int INSERT = 0;
   public static final int UPDATE = 1;
   public static final int DELETE = 2;
