@@ -2,7 +2,7 @@
 
 - [Have Questions](#have-questions)
     - [Mailing Lists](#mailing-lists)
-    - [Github issues](#github-issues)
+    - [JIRA issues](#jira-issues)
 - [How to contribute](#how-to-contribute)
     - [Becoming a committer](#becoming-a-committer)
         - [Contributing by Helping Other Users](#contributing-by-helping-other-users)
@@ -34,9 +34,9 @@ Some quick tips when using email:
 
 PS. To subscribe our mail list, you can send an email to dev-subscribe@iotdb.incubator.apache.org and you will receive a "confirm subscribe to dev@iotdb.apache.org" email, follow the steps to confirm your subscribe.
 
-## Github issues
+## JIRA issues
 
-The project tracks issues and new features on [Github issues](https://github.com/thulab/iotdb/issues). You can create a new issue to report a bug, request a new feature or provide your custmon issue.
+The project tracks issues and new features on [JIRA issues](https://issues.apache.org/jira/projects/IOTDB/issues). You can create a new issue to report a bug, request a new feature or provide your custmon issue.
 
 # How to contribute
 
