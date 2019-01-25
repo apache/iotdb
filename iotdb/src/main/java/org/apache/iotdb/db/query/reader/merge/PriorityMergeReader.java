@@ -126,5 +126,22 @@ public class PriorityMergeReader implements IReader {
 
       return o.priority.compareTo(this.priority);
     }
+
+    @Override
+    public boolean equals(Object o){
+      if (o instanceof Element){
+        Element element = (Element) o;
+        if (this.timeValuePair.getTimestamp() == element.timeValuePair.getTimestamp()
+        && this.priority.equals(element.priority)){
+          return true;
+        }
+      }
+      return false;
+    }
+
+    @Override
+    public int hashCode(){
+      return (int) (timeValuePair.getTimestamp() * 37 + priority.hashCode());
+    }
   }
 }
