@@ -31,6 +31,8 @@ import org.json.JSONObject;
 
 public class FileSchemaUtils {
 
+  private FileSchemaUtils(){}
+
   /**
    * Construct the FileSchema of the FileNode named processorName.
    * @param processorName the name of a FileNode.
@@ -42,13 +44,7 @@ public class FileSchemaUtils {
     List<ColumnSchema> columnSchemaList;
     columnSchemaList = MManager.getInstance().getSchemaForFileName(processorName);
 
-    FileSchema fileSchema = null;
-    try {
-      fileSchema = getFileSchemaFromColumnSchema(columnSchemaList, processorName);
-    } catch (WriteProcessException e) {
-      throw e;
-    }
-    return fileSchema;
+    return getFileSchemaFromColumnSchema(columnSchemaList, processorName);
 
   }
 

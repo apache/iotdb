@@ -16,7 +16,6 @@ package org.apache.iotdb.db.postback.sender;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -58,17 +57,17 @@ public class FileManagerTest {
   @After
   public void tearDown() throws IOException, InterruptedException {
     Thread.sleep(1000);
-    Files.deleteIfExists((java.nio.file.Path) new Path(POST_BACK_DIRECTORY_TEST));
+    new File(POST_BACK_DIRECTORY_TEST).delete();
   }
 
   public void delete(File file) throws IOException {
     if (file.isFile() || file.list().length == 0) {
-      Files.deleteIfExists((java.nio.file.Path) new Path(file.getAbsolutePath()));
+      file.delete();
     } else {
       File[] files = file.listFiles();
       for (File f : files) {
         delete(f);
-        Files.deleteIfExists((java.nio.file.Path) new Path(f.getAbsolutePath()));
+        f.delete();
       }
     }
   }
@@ -145,7 +144,7 @@ public class FileManagerTest {
     }
     for (Entry<String, Set<String>> entry : deleteFile.entrySet()) {
       for (String path : entry.getValue()) {
-        Files.deleteIfExists((java.nio.file.Path) new Path(path));
+        new File(path).delete();
         allFileList.get(entry.getKey()).remove(path);
       }
     }
@@ -210,7 +209,7 @@ public class FileManagerTest {
     }
     for (Entry<String, Set<String>> entry : deleteFile.entrySet()) {
       for (String path : entry.getValue()) {
-        Files.deleteIfExists((java.nio.file.Path) new Path(path));
+        new File(path).delete();
         allFileList.get(entry.getKey()).remove(path);
       }
     }
@@ -323,7 +322,7 @@ public class FileManagerTest {
     }
     for (Entry<String, Set<String>> entry : deleteFile.entrySet()) {
       for (String path : entry.getValue()) {
-        Files.deleteIfExists((java.nio.file.Path) new Path(path));
+        new File(path).delete();
         allFileList.get(entry.getKey()).remove(path);
       }
     }

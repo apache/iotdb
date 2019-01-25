@@ -27,6 +27,8 @@ import org.apache.iotdb.db.auth.entity.PathPrivilege;
 
 public class IOUtils {
 
+  private IOUtils(){}
+
   /**
    * Write a string into the given stream.
    *

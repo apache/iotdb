@@ -26,7 +26,7 @@ import org.antlr.runtime.tree.CommonErrorNode;
 public class AstErrorNode extends AstNode {
 
   private static final long serialVersionUID = 1L;
-  CommonErrorNode delegate;
+  transient CommonErrorNode delegate;
 
   public AstErrorNode(TokenStream input, Token start, Token stop, RecognitionException e) {
     delegate = new CommonErrorNode(input, start, stop, e);
