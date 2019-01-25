@@ -1,19 +1,15 @@
 /**
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one or more contributor license
+ * agreements.  See the NOTICE file distributed with this work for additional information regarding
+ * copyright ownership.  The ASF licenses this file to you under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with the License.  You may obtain
+ * a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
+ * Unless required by applicable law or agreed to in writing, software distributed under the License
+ * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
+ * or implied.  See the License for the specific language governing permissions and limitations
  * under the License.
  */
 package org.apache.iotdb.tsfile.compress;
@@ -29,7 +25,7 @@ import org.xerial.snappy.Snappy;
 /**
  * uncompress data according to type in metadata.
  */
-public abstract class UnCompressor {
+public interface UnCompressor {
 
   /**
    * get the UnCompressor based on the CompressionType.
@@ -37,7 +33,7 @@ public abstract class UnCompressor {
    * @param name CompressionType
    * @return the UnCompressor of specified CompressionType
    */
-  public static UnCompressor getUnCompressor(CompressionType name) {
+  static UnCompressor getUnCompressor(CompressionType name) {
     if (name == null) {
       throw new CompressionTypeNotSupportedException("NULL");
     }
@@ -51,7 +47,7 @@ public abstract class UnCompressor {
     }
   }
 
-  public abstract int getUncompressedLength(byte[] array, int offset, int length)
+  int getUncompressedLength(byte[] array, int offset, int length)
       throws IOException;
 
   /**
@@ -59,7 +55,7 @@ public abstract class UnCompressor {
    *
    * @param buffer MUST be DirectByteBuffer
    */
-  public abstract int getUncompressedLength(ByteBuffer buffer) throws IOException;
+  int getUncompressedLength(ByteBuffer buffer) throws IOException;
 
   /**
    * uncompress the byte array.
@@ -79,7 +75,7 @@ public abstract class UnCompressor {
    * @param outOffset -
    * @return the valid length of the output array
    */
-  public abstract int uncompress(byte[] byteArray, int offset, int length, byte[] output,
+  int uncompress(byte[] byteArray, int offset, int length, byte[] output,
       int outOffset)
       throws IOException;
 
@@ -89,11 +85,11 @@ public abstract class UnCompressor {
    * @param compressed MUST be DirectByteBuffer
    * @param uncompressed MUST be DirectByteBuffer
    */
-  public abstract int uncompress(ByteBuffer compressed, ByteBuffer uncompressed) throws IOException;
+  int uncompress(ByteBuffer compressed, ByteBuffer uncompressed) throws IOException;
 
-  public abstract CompressionType getCodecName();
+  CompressionType getCodecName();
 
-  public static class NoUnCompressor extends UnCompressor {
+  class NoUnCompressor implements UnCompressor {
 
     @Override
     public int getUncompressedLength(byte[] array, int offset, int length) {
@@ -127,7 +123,7 @@ public abstract class UnCompressor {
     }
   }
 
-  public static class SnappyUnCompressor extends UnCompressor {
+  class SnappyUnCompressor implements UnCompressor {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SnappyUnCompressor.class);
 
@@ -144,7 +140,7 @@ public abstract class UnCompressor {
     @Override
     public byte[] uncompress(byte[] bytes) {
       if (bytes == null) {
-        return null;
+        return new byte[0];
       }
 
       try {
@@ -155,7 +151,7 @@ public abstract class UnCompressor {
                 + "bytes is {}",
             bytes, e);
       }
-      return null;
+      return new byte[0];
     }
 
     @Override

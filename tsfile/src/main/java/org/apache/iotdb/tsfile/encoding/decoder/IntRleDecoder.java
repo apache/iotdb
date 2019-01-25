@@ -1,25 +1,22 @@
 /**
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one or more contributor license
+ * agreements.  See the NOTICE file distributed with this work for additional information regarding
+ * copyright ownership.  The ASF licenses this file to you under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with the License.  You may obtain
+ * a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
+ * Unless required by applicable law or agreed to in writing, software distributed under the License
+ * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
+ * or implied.  See the License for the specific language governing permissions and limitations
  * under the License.
  */
 package org.apache.iotdb.tsfile.encoding.decoder;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.encoding.bitpacking.IntPacker;
 import org.apache.iotdb.tsfile.encoding.common.EndianType;
 import org.apache.iotdb.tsfile.exception.encoding.TsFileDecodingException;
@@ -62,8 +59,7 @@ public class IntRleDecoder extends RleDecoder {
   /**
    * read an int value from InputStream.
    *
-   * @param buffer
-   *            - ByteBuffer
+   * @param buffer - ByteBuffer
    * @return value - current valid value
    */
   @Override
@@ -84,7 +80,7 @@ public class IntRleDecoder extends RleDecoder {
       }
     }
     --currentCount;
-    int result = 0;
+    int result;
     switch (mode) {
       case RLE:
         result = currentValue;
@@ -116,18 +112,14 @@ public class IntRleDecoder extends RleDecoder {
 
   @Override
   protected void readBitPackingBuffer(int bitPackedGroupCount, int lastBitPackedNum) {
-    currentBuffer = new int[bitPackedGroupCount * config.RLE_MIN_REPEATED_NUM];
+    currentBuffer = new int[bitPackedGroupCount * TSFileConfig.RLE_MIN_REPEATED_NUM];
     byte[] bytes = new byte[bitPackedGroupCount * bitWidth];
     int bytesToRead = bitPackedGroupCount * bitWidth;
     bytesToRead = Math.min(bytesToRead, byteCache.remaining());
     byteCache.get(bytes, 0, bytesToRead);
 
     // save all int values in currentBuffer
-    packer.unpackAllValues(bytes, 0, bytesToRead, currentBuffer);
+    packer.unpackAllValues(bytes, bytesToRead, currentBuffer);
   }
 
-  @Override
-  public void reset() {
-    super.reset();
-  }
 }

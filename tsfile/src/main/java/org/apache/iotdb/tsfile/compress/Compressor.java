@@ -1,19 +1,15 @@
 /**
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one or more contributor license
+ * agreements.  See the NOTICE file distributed with this work for additional information regarding
+ * copyright ownership.  The ASF licenses this file to you under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with the License.  You may obtain
+ * a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
+ * Unless required by applicable law or agreed to in writing, software distributed under the License
+ * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
+ * or implied.  See the License for the specific language governing permissions and limitations
  * under the License.
  */
 package org.apache.iotdb.tsfile.compress;
@@ -27,9 +23,9 @@ import org.xerial.snappy.Snappy;
 /**
  * compress data according to type in schema.
  */
-public abstract class Compressor {
+public interface Compressor {
 
-  public static Compressor getCompressor(String name) {
+  static Compressor getCompressor(String name) {
     return getCompressor(CompressionType.valueOf(name));
   }
 
@@ -39,7 +35,7 @@ public abstract class Compressor {
    * @param name CompressionType
    * @return the Compressor of specified CompressionType
    */
-  public static Compressor getCompressor(CompressionType name) {
+  static Compressor getCompressor(CompressionType name) {
     if (name == null) {
       throw new CompressionTypeNotSupportedException("NULL");
     }
@@ -53,14 +49,14 @@ public abstract class Compressor {
     }
   }
 
-  public abstract byte[] compress(byte[] data) throws IOException;
+  byte[] compress(byte[] data) throws IOException;
 
   /**
    * abstract method of compress.
    *
    * @return byte length of compressed data.
    */
-  public abstract int compress(byte[] data, int offset, int length, byte[] compressed)
+  int compress(byte[] data, int offset, int length, byte[] compressed)
       throws IOException;
 
   /**
@@ -70,16 +66,16 @@ public abstract class Compressor {
    * @param compressed MUST be DirectByteBuffer for Snappy.
    * @return byte length of compressed data.
    */
-  public abstract int compress(ByteBuffer data, ByteBuffer compressed) throws IOException;
+  int compress(ByteBuffer data, ByteBuffer compressed) throws IOException;
 
-  public abstract int getMaxBytesForCompression(int uncompressedDataSize);
+  int getMaxBytesForCompression(int uncompressedDataSize);
 
-  public abstract CompressionType getType();
+  CompressionType getType();
 
   /**
    * NoCompressor will do nothing for data and return the input data directly.
    */
-  public static class NoCompressor extends Compressor {
+  class NoCompressor implements Compressor {
 
     @Override
     public byte[] compress(byte[] data) {
@@ -107,12 +103,12 @@ public abstract class Compressor {
     }
   }
 
-  public static class SnappyCompressor extends Compressor {
+  class SnappyCompressor implements Compressor {
 
     @Override
     public byte[] compress(byte[] data) throws IOException {
       if (data == null) {
-        return null;
+        return new byte[0];
       }
       return Snappy.compress(data);
     }

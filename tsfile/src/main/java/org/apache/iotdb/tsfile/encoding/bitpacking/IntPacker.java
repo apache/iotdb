@@ -1,27 +1,23 @@
 /**
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one or more contributor license
+ * agreements.  See the NOTICE file distributed with this work for additional information regarding
+ * copyright ownership.  The ASF licenses this file to you under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with the License.  You may obtain
+ * a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
+ * Unless required by applicable law or agreed to in writing, software distributed under the License
+ * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
+ * or implied.  See the License for the specific language governing permissions and limitations
  * under the License.
  */
 package org.apache.iotdb.tsfile.encoding.bitpacking;
 
 /**
- * This class is used to encode(decode) Integer in Java with specified bit-width.
- * User need to guarantee that the length of every given Integer in binary mode
- * is less than or equal to the bit-width.
+ * This class is used to encode(decode) Integer in Java with specified bit-width. User need to
+ * guarantee that the length of every given Integer in binary mode is less than or equal to the
+ * bit-width.
  *
  * <p>e.g., if bit-width is 4, then Integer '16'(10000)b is not allowed but '15'(1111)b is allowed.
  *
@@ -29,11 +25,10 @@ package org.apache.iotdb.tsfile.encoding.bitpacking;
  *
  * <p>Output:
  *
- * <p>+-----------------------+ +-----------------------+ +-----------------------+
- * |1 |0 |1 |1 |0 |0 |1 |1 | |1 |0 |1 |1
- * |0 |0 |0 |0 | |0 |1 |0 |1 |1 |0 |1 |0 |
- * +-----------------------+ +-----------------------+ +-----------------------+
- * +-----+ +-----+ +---------+ +-----+ +-----+ +---------+ +-----+ +-----+ 5 4 7 3 0 1 3 2
+ * <p>+-----------------------+ +-----------------------+ +-----------------------+ |1 |0 |1 |1 |0
+ * |0 |1 |1 | |1 |0 |1 |1 |0 |0 |0 |0 | |0 |1 |0 |1 |1 |0 |1 |0 | +-----------------------+
+ * +-----------------------+ +-----------------------+ +-----+ +-----+ +---------+ +-----+ +-----+
+ * +---------+ +-----+ +-----+ 5 4 7 3 0 1 3 2
  *
  * @author Zhang Jinrui
  */
@@ -53,13 +48,13 @@ public class IntPacker {
   }
 
   /**
-   * Encode 8 ({@link IntPacker#NUM_OF_INTS}) Integers from the array 'values'
-   * with specified bit-width to bytes.
+   * Encode 8 ({@link IntPacker#NUM_OF_INTS}) Integers from the array 'values' with specified
+   * bit-width to bytes.
+   *
    * @param values - array where '8 Integers' are in
    * @param offset - the offset of first Integer to be encoded
-   * @param buf    - encoded bytes, buf size must be equal to
-   *               ({@link IntPacker#NUM_OF_INTS} * {@link IntPacker#width} /
-   *               8)
+   * @param buf - encoded bytes, buf size must be equal to ({@link IntPacker#NUM_OF_INTS} * {@link
+   * IntPacker#width} / 8)
    */
   public void pack8Values(int[] values, int offset, byte[] buf) {
     int bufIdx = 0;
@@ -92,7 +87,6 @@ public class IntPacker {
         // put the first 'leftSize' bits of the Integer into remaining space of the buffer
         buffer |= (values[valueIdx] >>> (width - leftSize));
         leftBit = width - leftSize;
-        leftSize = 0;
       }
 
       // put the buffer into the final result
@@ -109,9 +103,10 @@ public class IntPacker {
   /**
    * decode Integers from byte array.
    *
-   * @param buf    - array where bytes are in.
+   * @param buf - array where bytes are in.
    * @param offset - offset of first byte to be decoded in buf
-   * @param values - decoded result , the length of 'values' should be @{link IntPacker#NUM_OF_INTS}
+   * @param values - decoded result , the length of 'values' should be @{link
+   * IntPacker#NUM_OF_INTS}
    */
   public void unpack8Values(byte[] buf, int offset, int[] values) {
     int byteIdx = offset;
@@ -125,7 +120,7 @@ public class IntPacker {
       // If current available bits are not enough to decode one Integer,
       // then add next byte from buf to 'buffer' until totalBits >= width
       while (totalBits < width) {
-        buffer = ((buffer << 8) | (buf[byteIdx] & 0xFF));
+        buffer = (buffer << 8) | (buf[byteIdx] & 0xFF);
         byteIdx++;
         totalBits += 8;
       }
@@ -137,21 +132,20 @@ public class IntPacker {
         values[valueIdx] = (int) (buffer >>> (totalBits - width));
         valueIdx++;
         totalBits -= width;
-        buffer = (buffer & ((1 << totalBits) - 1));
+        buffer = buffer & ((1 << totalBits) - 1);
       }
     }
   }
 
   /**
-   * decode all values from 'buf' with specified offset and length decoded result
-   * will be saved in the array named 'values'.
+   * decode all values from 'buf' with specified offset and length decoded result will be saved in
+   * the array named 'values'.
    *
-   * @param buf    array where all bytes are in.
-   * @param offset the offset of first byte to be decoded in buf.
+   * @param buf array where all bytes are in.
    * @param length length of bytes to be decoded in buf.
    * @param values decoded result.
    */
-  public void unpackAllValues(byte[] buf, int offset, int length, int[] values) {
+  public void unpackAllValues(byte[] buf, int length, int[] values) {
     int idx = 0;
     int k = 0;
     while (idx < length) {

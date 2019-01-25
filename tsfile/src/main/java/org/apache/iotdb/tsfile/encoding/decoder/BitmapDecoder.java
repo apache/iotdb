@@ -1,19 +1,15 @@
 /**
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one or more contributor license
+ * agreements.  See the NOTICE file distributed with this work for additional information regarding
+ * copyright ownership.  The ASF licenses this file to you under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with the License.  You may obtain
+ * a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
+ * Unless required by applicable law or agreed to in writing, software distributed under the License
+ * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
+ * or implied.  See the License for the specific language governing permissions and limitations
  * under the License.
  */
 package org.apache.iotdb.tsfile.encoding.decoder;
@@ -25,7 +21,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import org.apache.iotdb.tsfile.encoding.common.EndianType;
 import org.apache.iotdb.tsfile.exception.encoding.TsFileDecodingException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -37,6 +32,10 @@ import org.slf4j.LoggerFactory;
 /**
  * Decoder switch or enums value using bitmap, bitmap-encoding:. {@code <length> <num>
  * <encoded-data>}
+ */
+
+/**
+ * @deprecated (2019.1.25, why, refactoring advice)
  */
 @Deprecated
 public class BitmapDecoder extends Decoder {
@@ -70,10 +69,8 @@ public class BitmapDecoder extends Decoder {
 
   /**
    * BitmapDecoder constructor.
-   *
-   * @param endianType deprecated
    */
-  public BitmapDecoder(EndianType endianType) {
+  public BitmapDecoder() {
     super(TSEncoding.BITMAP);
     this.reset();
     LOGGER.debug("tsfile-encoding BitmapDecoder: init bitmap decoder");
@@ -98,7 +95,7 @@ public class BitmapDecoder extends Decoder {
     int offset = 7 - ((number - currentCount) % 8);
     for (Map.Entry<Integer, byte[]> entry : this.buffer.entrySet()) {
       byte[] tmp = entry.getValue();
-      if ((tmp[index] & ((byte) 1 << offset)) != 0) {
+      if (((tmp[index] & 0xff) & ((byte) 1 << offset)) != 0) {
         result = entry.getKey();
       }
     }
@@ -106,7 +103,7 @@ public class BitmapDecoder extends Decoder {
     return result;
   }
 
-  private void getLengthAndNumber(ByteBuffer buffer) throws IOException {
+  private void getLengthAndNumber(ByteBuffer buffer) {
     this.length = ReadWriteForEncodingUtils.readUnsignedVarInt(buffer);
     this.number = ReadWriteForEncodingUtils.readUnsignedVarInt(buffer);
     // TODO maybe this.byteCache = buffer is faster, but not safe
@@ -155,32 +152,25 @@ public class BitmapDecoder extends Decoder {
    */
   public List<Pair<Integer, byte[]>> decodeAll(int target, List<ByteBuffer> pageList) {
     List<Pair<Integer, byte[]>> resultList = new ArrayList<>();
-    for (ByteBuffer buffer : pageList) {
-      try {
-        reset();
-        getLengthAndNumber(buffer);
-        int byteArrayLength = (this.number + 7) / 8;
-        byte[] tmp = new byte[byteArrayLength];
-        while (byteCache.remaining() > 0) {
-          int value = ReadWriteForEncodingUtils.readUnsignedVarInt(byteCache);
-          if (value == target) {
-            byteCache.get(tmp, 0, byteArrayLength);
-            break;
-          } else {
-            byteCache.position(byteCache.position() + byteArrayLength);
-          }
+    for (ByteBuffer bufferPage : pageList) {
+      reset();
+      getLengthAndNumber(bufferPage);
+      int byteArrayLength = (this.number + 7) / 8;
+      byte[] tmp = new byte[byteArrayLength];
+      while (byteCache.remaining() > 0) {
+        int value = ReadWriteForEncodingUtils.readUnsignedVarInt(byteCache);
+        if (value == target) {
+          byteCache.get(tmp, 0, byteArrayLength);
+          break;
+        } else {
+          byteCache.position(byteCache.position() + byteArrayLength);
         }
-
-        resultList.add(new Pair<>(this.number, tmp));
-        LOGGER.debug("tsfile-encoding BitmapDecoder: number {} in current page, byte length {}",
-            this.number,
-            byteArrayLength);
-      } catch (IOException e) {
-        LOGGER.error(
-            "tsfile-encoding BitmapDecoder: error occurs when decoding all numbers in page {}, "
-                + "number {}",
-            buffer, this.number, e);
       }
+
+      resultList.add(new Pair<>(this.number, tmp));
+      LOGGER.debug("tsfile-encoding BitmapDecoder: number {} in current page, byte length {}",
+          this.number,
+          byteArrayLength);
     }
     return resultList;
   }

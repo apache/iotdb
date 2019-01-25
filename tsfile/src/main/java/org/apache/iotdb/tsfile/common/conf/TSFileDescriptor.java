@@ -1,19 +1,15 @@
 /**
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one or more contributor license
+ * agreements.  See the NOTICE file distributed with this work for additional information regarding
+ * copyright ownership.  The ASF licenses this file to you under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with the License.  You may obtain
+ * a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
+ * Unless required by applicable law or agreed to in writing, software distributed under the License
+ * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
+ * or implied.  See the License for the specific language governing permissions and limitations
  * under the License.
  */
 package org.apache.iotdb.tsfile.common.conf;
@@ -53,7 +49,7 @@ public class TSFileDescriptor {
     return conf;
   }
 
-  private void multiplicityWarning(String resource, ClassLoader classLoader) {
+  private static void multiplicityWarning(String resource, ClassLoader classLoader) {
     try {
       Set<URL> urlSet = Loader.getResources(resource, classLoader);
       if (urlSet != null && urlSet.size() > 1) {
@@ -67,14 +63,14 @@ public class TSFileDescriptor {
     }
   }
 
-  private URL getResource(String filename, ClassLoader classLoader) {
+  private static URL getResource(String filename, ClassLoader classLoader) {
     return Loader.getResource(filename, classLoader);
   }
 
   /**
    * load an .properties file and set TSFileConfig variables
    */
-  private void loadProps() {
+  private static void loadProps() {
     InputStream inputStream;
     String url = System.getProperty(SystemConstant.TSFILE_CONF, null);
     if (url == null) {
@@ -82,7 +78,7 @@ public class TSFileDescriptor {
       if (url != null) {
         url = url + File.separator + "conf" + File.separator + TSFileConfig.CONFIG_FILE_NAME;
       } else {
-        ClassLoader classLoader = Loader.getClassLoaderOfObject(this);
+        ClassLoader classLoader = Loader.getClassLoaderOfObject(TSFileDescriptor.class);
         URL u = getResource(TSFileConfig.CONFIG_FILE_NAME, classLoader);
         if (u == null) {
           LOGGER.warn("Failed to find config file {} at classpath, use default configuration",
@@ -105,38 +101,47 @@ public class TSFileDescriptor {
     Properties properties = new Properties();
     try {
       properties.load(inputStream);
-      conf.groupSizeInByte = Integer
-          .parseInt(properties.getProperty("group_size_in_byte", conf.groupSizeInByte + ""));
-      conf.pageSizeInByte = Integer
-          .parseInt(properties.getProperty("page_size_in_byte", conf.pageSizeInByte + ""));
-      conf.maxNumberOfPointsInPage = Integer.parseInt(
+      TSFileConfig.groupSizeInByte = Integer
+          .parseInt(
+              properties.getProperty("group_size_in_byte", TSFileConfig.groupSizeInByte + ""));
+      TSFileConfig.pageSizeInByte = Integer
+          .parseInt(properties.getProperty("page_size_in_byte", TSFileConfig.pageSizeInByte + ""));
+      TSFileConfig.maxNumberOfPointsInPage = Integer.parseInt(
           properties
-              .getProperty("max_number_of_points_in_page", conf.maxNumberOfPointsInPage + ""));
-      conf.timeSeriesDataType = properties
-          .getProperty("time_series_data_type", conf.timeSeriesDataType);
-      conf.maxStringLength = Integer
-          .parseInt(properties.getProperty("max_string_length", conf.maxStringLength + ""));
-      conf.floatPrecision = Integer
-          .parseInt(properties.getProperty("float_precision", conf.floatPrecision + ""));
-      conf.timeSeriesEncoder = properties
-          .getProperty("time_series_encoder", conf.timeSeriesEncoder);
-      conf.valueEncoder = properties.getProperty("value_encoder", conf.valueEncoder);
-      conf.compressor = properties.getProperty("compressor", conf.compressor);
+              .getProperty("max_number_of_points_in_page",
+                  TSFileConfig.maxNumberOfPointsInPage + ""));
+      TSFileConfig.timeSeriesDataType = properties
+          .getProperty("time_series_data_type", TSFileConfig.timeSeriesDataType);
+      TSFileConfig.maxStringLength = Integer
+          .parseInt(properties
+              .getProperty("max_string_length", Integer.toString(TSFileConfig.maxStringLength)));
+      TSFileConfig.floatPrecision = Integer
+          .parseInt(properties
+              .getProperty("float_precision", Integer.toString(TSFileConfig.floatPrecision)));
+      TSFileConfig.timeSeriesEncoder = properties
+          .getProperty("time_series_encoder", TSFileConfig.timeSeriesEncoder);
+      TSFileConfig.valueEncoder = properties
+          .getProperty("value_encoder", TSFileConfig.valueEncoder);
+      TSFileConfig.compressor = properties.getProperty("compressor", TSFileConfig.compressor);
     } catch (IOException e) {
       LOGGER.warn("Cannot load config file because {}, use default configuration", e.getMessage());
     } catch (Exception e) {
-      LOGGER.error("Loading settings {} failed because {}", url, e.getMessage());
+      LOGGER.error("Loading settings {} failed because {}", url, e);
     } finally {
       try {
         inputStream.close();
       } catch (IOException e) {
-        LOGGER.error("Failed to close stream for loading config because {}", e.getMessage());
+        LOGGER.error("Failed to close stream for loading config because {}", e);
       }
 
     }
   }
 
   private static class TsfileDescriptorHolder {
+
+    private TsfileDescriptorHolder() {
+      throw new IllegalAccessError("Utility class");
+    }
 
     private static final TSFileDescriptor INSTANCE = new TSFileDescriptor();
   }

@@ -23,17 +23,17 @@ import java.sql.SQLException;
 public class IoTDBSQLException extends SQLException {
 
   private static final long serialVersionUID = -3306001287342258977L;
-  private String errorMessage;
+//  private String errorMessage;
 
   public IoTDBSQLException(String reason) {
     super(reason);
   }
 
-  public String getErrorMessage() {
-    return errorMessage;
-  }
-
-  public void setErrorMessage(String errorMessage) {
-    this.errorMessage = errorMessage;
-  }
+//  public String getErrorMessage() {
+//    return errorMessage;
+//  }
+//
+//  public void setErrorMessage(String errorMessage) {
+//    this.errorMessage = errorMessage;
+//  }
 }

@@ -1,19 +1,15 @@
 /**
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one or more contributor license
+ * agreements.  See the NOTICE file distributed with this work for additional information regarding
+ * copyright ownership.  The ASF licenses this file to you under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with the License.  You may obtain
+ * a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
+ * Unless required by applicable law or agreed to in writing, software distributed under the License
+ * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
+ * or implied.  See the License for the specific language governing permissions and limitations
  * under the License.
  */
 package org.apache.iotdb.jdbc;
@@ -52,16 +48,19 @@ import org.apache.iotdb.service.rpc.thrift.TSFetchResultsResp;
 import org.apache.iotdb.service.rpc.thrift.TSIService;
 import org.apache.iotdb.service.rpc.thrift.TSOperationHandle;
 import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
-import org.apache.iotdb.service.rpc.thrift.TS_SessionHandle;
+import org.apache.iotdb.tsfile.compress.UnCompressor.SnappyUnCompressor;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.thrift.TException;
+import org.slf4j.LoggerFactory;
 
 public class IoTDBQueryResultSet implements ResultSet {
 
+  private static final org.slf4j.Logger LOGGER = LoggerFactory.getLogger(SnappyUnCompressor.class);
+  private static final String methodNotSupportedMessage = "Method not supported";
   private final String TIMESTAMP_STR = "Time";
-  private final String LIMIT_STR = "LIMIT";
-  private final String OFFSET_STR = "OFFSET";
+  private static final String limitStr = "LIMIT";
+  private static final String offsetStr = "OFFSET";
   private Statement statement = null;
   private String sql;
   private SQLWarning warningChain = null;
@@ -85,24 +84,26 @@ public class IoTDBQueryResultSet implements ResultSet {
   private int rowsOffset = 0;
 
   /*
-   * Combine maxRows and the LIMIT constraints. maxRowsOrRowsLimit = 0 means that neither maxRows
-   * nor LIMIT is constrained. maxRowsOrRowsLimit > 0 means that maxRows and/or
-   * LIMIT are constrained.
+   * Combine maxRows and the LIMIT constraints.
+   * maxRowsOrRowsLimit = 0 means that neither maxRows nor LIMIT is constrained.
+   * maxRowsOrRowsLimit > 0 means that maxRows and/or LIMIT are constrained.
    * 1) When neither maxRows nor LIMIT is constrained, i.e., maxRows=0 and rowsLimit=0,
-   * maxRowsOrRowsLimit = 0; 2). When both maxRows and LIMIT are constrained, i.e., maxRows>0 and
-   * rowsLimit>0, maxRowsOrRowsLimit = min(maxRows, rowsLimit); 3) When maxRows is constrained and
-   * LIMIT is NOT constrained, i.e., maxRows>0 and rowsLimit=0, maxRowsOrRowsLimit = maxRows;
-   * 4) When maxRows is NOT constrained and LIMIT is constrained, i.e., maxRows=0 and
-   * rowsLimit>0, maxRowsOrRowsLimit = rowsLimit;
+   * then maxRowsOrRowsLimit equals 0;
+   * 2) When both maxRows and LIMIT are constrained, i.e., maxRows>0 and rowsLimit>0,
+   * then maxRowsOrRowsLimit equals min(maxRows, rowsLimit);
+   * 3) When maxRows is constrained and LIMIT is NOT constrained, i.e., maxRows>0 and rowsLimit=0,
+   * then maxRowsOrRowsLimit equals maxRows;
+   * 4) When maxRows is NOT constrained and LIMIT is constrained, i.e., maxRows=0 and rowsLimit>0,
+   * then maxRowsOrRowsLimit equals rowsLimit;
    */
   private int maxRowsOrRowsLimit;
 
   public IoTDBQueryResultSet() {
-
+    // do nothing
   }
 
   public IoTDBQueryResultSet(Statement statement, List<String> columnName, TSIService.Iface client,
-      TS_SessionHandle sessionHandle, TSOperationHandle operationHandle,
+      TSOperationHandle operationHandle,
       String sql, String aggregations,
       List<String> columnTypeList) throws SQLException {
     this.statement = statement;
@@ -132,7 +133,7 @@ public class IoTDBQueryResultSet implements ResultSet {
     String[] splited = sql.toUpperCase().split("\\s+");
     List<String> arraySplited = Arrays.asList(splited);
     try {
-      int posLimit = arraySplited.indexOf(LIMIT_STR);
+      int posLimit = arraySplited.indexOf(limitStr);
       if (posLimit != -1) {
         rowsLimit = Integer.parseInt(splited[posLimit + 1]);
 
@@ -145,7 +146,7 @@ public class IoTDBQueryResultSet implements ResultSet {
         }
 
         // check if OFFSET is constrained after LIMIT has been constrained
-        int posOffset = arraySplited.indexOf(OFFSET_STR);
+        int posOffset = arraySplited.indexOf(offsetStr);
         if (posOffset != -1) {
           // NOTE that OFFSET <OFFSETValue>: OFFSETValue is ensured to be a non-negative
           // integer by the server side
@@ -159,32 +160,32 @@ public class IoTDBQueryResultSet implements ResultSet {
 
   @Override
   public boolean isWrapperFor(Class<?> iface) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public <T> T unwrap(Class<T> iface) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public boolean absolute(int arg0) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public void afterLast() throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public void beforeFirst() throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public void cancelRowUpdates() throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
@@ -211,18 +212,16 @@ public class IoTDBQueryResultSet implements ResultSet {
         Utils.verifySuccess(closeResp.getStatus());
       }
     } catch (SQLException e) {
-      throw new SQLException("Error occurs for close opeation in server side becasuse "
-          + e.getMessage());
+      throw new SQLException("Error occurs for close opeation in server side becasuse " + e);
     } catch (TException e) {
       throw new SQLException(
-          "Error occurs when connecting to server for close operation, becasue: "
-              + e.getMessage());
+          "Error occurs when connecting to server for close operation, becasue: " + e);
     }
   }
 
   @Override
   public void deleteRow() throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
@@ -232,27 +231,27 @@ public class IoTDBQueryResultSet implements ResultSet {
 
   @Override
   public boolean first() throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public Array getArray(int arg0) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public Array getArray(String arg0) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public InputStream getAsciiStream(int arg0) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public InputStream getAsciiStream(String arg0) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
@@ -278,22 +277,22 @@ public class IoTDBQueryResultSet implements ResultSet {
 
   @Override
   public InputStream getBinaryStream(int arg0) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public InputStream getBinaryStream(String arg0) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public Blob getBlob(int arg0) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public Blob getBlob(String arg0) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
@@ -304,10 +303,14 @@ public class IoTDBQueryResultSet implements ResultSet {
   @Override
   public boolean getBoolean(String columnName) throws SQLException {
     String b = getValueByName(columnName);
-    if (b.trim().equalsIgnoreCase("0")) {
+    if (b == null) {
+      throw new SQLException(
+          String.format("The value got by %s (column name) is NULL.", columnName));
+    }
+    if ("0".equalsIgnoreCase(b.trim())) {
       return false;
     }
-    if (b.trim().equalsIgnoreCase("1")) {
+    if ("1".equalsIgnoreCase(b.trim())) {
       return true;
     }
     return Boolean.parseBoolean(b);
@@ -328,33 +331,33 @@ public class IoTDBQueryResultSet implements ResultSet {
   @Override
   public byte[] getBytes(int columnIndex) throws SQLException {
     // TODO Auto-generated method stub
-    return null;
+    return new byte[0];
   }
 
   @Override
   public byte[] getBytes(String columnName) throws SQLException {
     // TODO Auto-generated method stub
-    return null;
+    return new byte[0];
   }
 
   @Override
   public Reader getCharacterStream(int arg0) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public Reader getCharacterStream(String arg0) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public Clob getClob(int arg0) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public Clob getClob(String arg0) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
@@ -364,7 +367,7 @@ public class IoTDBQueryResultSet implements ResultSet {
 
   @Override
   public String getCursorName() throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
@@ -379,12 +382,12 @@ public class IoTDBQueryResultSet implements ResultSet {
 
   @Override
   public Date getDate(int arg0, Calendar arg1) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public Date getDate(String arg0, Calendar arg1) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
@@ -404,17 +407,17 @@ public class IoTDBQueryResultSet implements ResultSet {
 
   @Override
   public void setFetchDirection(int arg0) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public int getFetchSize() throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public void setFetchSize(int arg0) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
@@ -429,7 +432,7 @@ public class IoTDBQueryResultSet implements ResultSet {
 
   @Override
   public int getHoldability() throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
@@ -459,32 +462,32 @@ public class IoTDBQueryResultSet implements ResultSet {
 
   @Override
   public Reader getNCharacterStream(int arg0) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public Reader getNCharacterStream(String arg0) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public NClob getNClob(int arg0) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public NClob getNClob(String arg0) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public String getNString(int arg0) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public String getNString(String arg0) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
@@ -499,57 +502,57 @@ public class IoTDBQueryResultSet implements ResultSet {
 
   @Override
   public Object getObject(int arg0, Map<String, Class<?>> arg1) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public Object getObject(String arg0, Map<String, Class<?>> arg1) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public <T> T getObject(int arg0, Class<T> arg1) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public <T> T getObject(String arg0, Class<T> arg1) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public Ref getRef(int arg0) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public Ref getRef(String arg0) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public int getRow() throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public RowId getRowId(int arg0) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public RowId getRowId(String arg0) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public SQLXML getSQLXML(int arg0) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public SQLXML getSQLXML(String arg0) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
@@ -589,12 +592,12 @@ public class IoTDBQueryResultSet implements ResultSet {
 
   @Override
   public Time getTime(int arg0, Calendar arg1) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public Time getTime(String arg0, Calendar arg1) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
@@ -609,12 +612,12 @@ public class IoTDBQueryResultSet implements ResultSet {
 
   @Override
   public Timestamp getTimestamp(int arg0, Calendar arg1) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public Timestamp getTimestamp(String arg0, Calendar arg1) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
@@ -624,22 +627,22 @@ public class IoTDBQueryResultSet implements ResultSet {
 
   @Override
   public URL getURL(int arg0) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public URL getURL(String arg0) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public InputStream getUnicodeStream(int arg0) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public InputStream getUnicodeStream(String arg0) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
@@ -649,17 +652,17 @@ public class IoTDBQueryResultSet implements ResultSet {
 
   @Override
   public void insertRow() throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public boolean isAfterLast() throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public boolean isBeforeFirst() throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
@@ -669,27 +672,27 @@ public class IoTDBQueryResultSet implements ResultSet {
 
   @Override
   public boolean isFirst() throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public boolean isLast() throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public boolean last() throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public void moveToCurrentRow() throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public void moveToInsertRow() throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   // the next record rule without constraints
@@ -708,7 +711,8 @@ public class IoTDBQueryResultSet implements ResultSet {
           recordItr = records.iterator();
         }
       } catch (TException e) {
-        throw new SQLException("Cannot fetch result from server, because of network connection");
+        throw new SQLException(
+            "Cannot fetch result from server, because of network connection: " + e);
       }
 
     }
@@ -726,7 +730,7 @@ public class IoTDBQueryResultSet implements ResultSet {
     if (maxRowsOrRowsLimit > 0 && rowsFetched >= maxRowsOrRowsLimit) {
       // The constraint of maxRows instead of rowsLimit is embodied
       if (rowsLimit == 0 || (maxRows > 0 && maxRows < rowsLimit)) {
-        System.out.println("Reach max rows " + maxRows);
+        LOGGER.info("Reach max rows " + maxRows);
       }
       return false;
     }
@@ -756,448 +760,448 @@ public class IoTDBQueryResultSet implements ResultSet {
 
   @Override
   public boolean previous() throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public void refreshRow() throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public boolean relative(int arg0) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public boolean rowDeleted() throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public boolean rowInserted() throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public boolean rowUpdated() throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public void updateArray(int arg0, Array arg1) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public void updateArray(String arg0, Array arg1) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public void updateAsciiStream(int arg0, InputStream arg1) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public void updateAsciiStream(String arg0, InputStream arg1) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public void updateAsciiStream(int arg0, InputStream arg1, int arg2) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public void updateAsciiStream(String arg0, InputStream arg1, int arg2) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public void updateAsciiStream(int arg0, InputStream arg1, long arg2) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public void updateAsciiStream(String arg0, InputStream arg1, long arg2) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public void updateBigDecimal(int arg0, BigDecimal arg1) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public void updateBigDecimal(String arg0, BigDecimal arg1) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public void updateBinaryStream(int arg0, InputStream arg1) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public void updateBinaryStream(String arg0, InputStream arg1) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public void updateBinaryStream(int arg0, InputStream arg1, int arg2) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public void updateBinaryStream(String arg0, InputStream arg1, int arg2) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public void updateBinaryStream(int arg0, InputStream arg1, long arg2) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public void updateBinaryStream(String arg0, InputStream arg1, long arg2) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public void updateBlob(int arg0, Blob arg1) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public void updateBlob(String arg0, Blob arg1) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public void updateBlob(int arg0, InputStream arg1) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public void updateBlob(String arg0, InputStream arg1) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public void updateBlob(int arg0, InputStream arg1, long arg2) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public void updateBlob(String arg0, InputStream arg1, long arg2) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public void updateBoolean(int arg0, boolean arg1) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public void updateBoolean(String arg0, boolean arg1) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public void updateByte(int arg0, byte arg1) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public void updateByte(String arg0, byte arg1) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public void updateBytes(int arg0, byte[] arg1) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public void updateBytes(String arg0, byte[] arg1) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public void updateCharacterStream(int arg0, Reader arg1) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public void updateCharacterStream(String arg0, Reader arg1) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public void updateCharacterStream(int arg0, Reader arg1, int arg2) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public void updateCharacterStream(String arg0, Reader arg1, int arg2) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public void updateCharacterStream(int arg0, Reader arg1, long arg2) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public void updateCharacterStream(String arg0, Reader arg1, long arg2) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public void updateClob(int arg0, Clob arg1) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public void updateClob(String arg0, Clob arg1) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public void updateClob(int arg0, Reader arg1) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public void updateClob(String arg0, Reader arg1) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public void updateClob(int arg0, Reader arg1, long arg2) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
 
   }
 
   @Override
   public void updateClob(String arg0, Reader arg1, long arg2) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public void updateDate(int arg0, Date arg1) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public void updateDate(String arg0, Date arg1) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public void updateDouble(int arg0, double arg1) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public void updateDouble(String arg0, double arg1) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public void updateFloat(int arg0, float arg1) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public void updateFloat(String arg0, float arg1) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public void updateInt(int arg0, int arg1) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public void updateInt(String arg0, int arg1) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public void updateLong(int arg0, long arg1) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public void updateLong(String arg0, long arg1) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public void updateNCharacterStream(int arg0, Reader arg1) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public void updateNCharacterStream(String arg0, Reader arg1) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public void updateNCharacterStream(int arg0, Reader arg1, long arg2) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public void updateNCharacterStream(String arg0, Reader arg1, long arg2) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public void updateNClob(int arg0, NClob arg1) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public void updateNClob(String arg0, NClob arg1) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public void updateNClob(int arg0, Reader arg1) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public void updateNClob(String arg0, Reader arg1) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public void updateNClob(int arg0, Reader arg1, long arg2) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public void updateNClob(String arg0, Reader arg1, long arg2) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public void updateNString(int arg0, String arg1) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public void updateNString(String arg0, String arg1) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public void updateNull(int arg0) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public void updateNull(String arg0) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public void updateObject(int arg0, Object arg1) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public void updateObject(String arg0, Object arg1) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public void updateObject(int arg0, Object arg1, int arg2) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public void updateObject(String arg0, Object arg1, int arg2) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public void updateRef(int arg0, Ref arg1) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public void updateRef(String arg0, Ref arg1) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public void updateRow() throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public void updateRowId(int arg0, RowId arg1) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public void updateRowId(String arg0, RowId arg1) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public void updateSQLXML(int arg0, SQLXML arg1) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public void updateSQLXML(String arg0, SQLXML arg1) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public void updateShort(int arg0, short arg1) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public void updateShort(String arg0, short arg1) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public void updateString(int arg0, String arg1) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public void updateString(String arg0, String arg1) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public void updateTime(int arg0, Time arg1) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public void updateTime(String arg0, Time arg1) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public void updateTimestamp(int arg0, Timestamp arg1) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
   public void updateTimestamp(String arg0, Timestamp arg1) throws SQLException {
-    throw new SQLException("Method not supported");
+    throw new SQLException(methodNotSupportedMessage);
   }
 
   @Override
@@ -1213,7 +1217,7 @@ public class IoTDBQueryResultSet implements ResultSet {
 
   private String findColumnNameByIndex(int columnIndex) throws SQLException {
     if (columnIndex <= 0) {
-      throw new SQLException(String.format("column index should start from 1"));
+      throw new SQLException("column index should start from 1");
     }
     if (columnIndex > columnInfoList.size()) {
       throw new SQLException(
