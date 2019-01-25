@@ -45,13 +45,13 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
       String devicePattern)
       throws SQLException {
     try {
-      return getColumnsFunc(catalog, schemaPattern, columnPattern, devicePattern);
+      return getColumnsFunc(catalog, schemaPattern);
     } catch (TException e) {
       boolean flag = connection.reconnect();
       this.client = connection.client;
       if (flag) {
         try {
-          return getColumnsFunc(catalog, schemaPattern, columnPattern, devicePattern);
+          return getColumnsFunc(catalog, schemaPattern);
         } catch (TException e2) {
           throw new SQLException(String.format("Fail to get columns catalog=%s, schemaPattern=%s,"
                   + " columnPattern=%s, devicePattern=%s after reconnecting."
@@ -68,12 +68,11 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     }
   }
 
-  private ResultSet getColumnsFunc(String catalog, String schemaPattern, String columnPattern,
-      String devicePattern)
+  private ResultSet getColumnsFunc(String catalog, String schemaPattern)
       throws TException, SQLException {
     TSFetchMetadataReq req;
     switch (catalog) {
-      case Constant.CatalogColumn:
+      case Constant.CATALOG_COLUMN:
         req = new TSFetchMetadataReq(Constant.GLOBAL_COLUMNS_REQ);
         req.setColumnPath(schemaPattern);
         try {
@@ -83,7 +82,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         } catch (TException e) {
           throw new TException("Conncetion error when fetching column metadata", e);
         }
-      case Constant.CatalogDevice:
+      case Constant.CATALOG_DEVICE:
         req = new TSFetchMetadataReq(Constant.GLOBAL_DELTA_OBJECT_REQ);
         req.setColumnPath(schemaPattern);
         try {
@@ -93,7 +92,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         } catch (TException e) {
           throw new TException("Conncetion error when fetching delta object metadata", e);
         }
-      case Constant.CatalogStorageGroup:
+      case Constant.CATALOG_STORAGE_GROUP:
         req = new TSFetchMetadataReq(Constant.GLOBAL_SHOW_STORAGE_GROUP_REQ);
         try {
           TSFetchMetadataResp resp = client.fetchMetadata(req);
@@ -103,7 +102,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         } catch (TException e) {
           throw new TException("Conncetion error when fetching storage group metadata", e);
         }
-      case Constant.CatalogTimeseries:
+      case Constant.CATALOG_TIMESERIES:
         req = new TSFetchMetadataReq(Constant.GLOBAL_SHOW_TIMESERIES_REQ);
         req.setColumnPath(schemaPattern);
         try {
