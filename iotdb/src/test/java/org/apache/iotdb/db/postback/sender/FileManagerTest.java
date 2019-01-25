@@ -105,7 +105,7 @@ public class FileManagerTest {
     assert (lastFileList.isEmpty());
 
     // add some files
-    manager.getNowLocalFileList(new String[]{SENDER_FILE_PATH_TEST});
+    manager.getCurrentLocalFileList(new String[]{SENDER_FILE_PATH_TEST});
     manager.backupNowLocalFileInfo(LAST_FILE_INFO_TEST);
     manager.getLastLocalFileList(LAST_FILE_INFO_TEST);
     lastFileList = manager.getLastLocalFiles();
@@ -150,7 +150,7 @@ public class FileManagerTest {
         allFileList.get(entry.getKey()).remove(path);
       }
     }
-    manager.getNowLocalFileList(new String[]{SENDER_FILE_PATH_TEST});
+    manager.getCurrentLocalFileList(new String[]{SENDER_FILE_PATH_TEST});
     manager.backupNowLocalFileInfo(LAST_FILE_INFO_TEST);
     manager.getLastLocalFileList(LAST_FILE_INFO_TEST);
     lastFileList = manager.getLastLocalFiles();
@@ -165,8 +165,8 @@ public class FileManagerTest {
     Map<String, Set<String>> fileList = new HashMap<>();
 
     // nowLocalList is empty
-    manager.getNowLocalFileList(new String[]{SENDER_FILE_PATH_TEST});
-    fileList = manager.getNowLocalFiles();
+    manager.getCurrentLocalFileList(new String[]{SENDER_FILE_PATH_TEST});
+    fileList = manager.getCurrentLocalFiles();
     assert (isEmpty(fileList));
 
     // add some files
@@ -189,8 +189,8 @@ public class FileManagerTest {
         }
       }
     }
-    manager.getNowLocalFileList(new String[]{SENDER_FILE_PATH_TEST});
-    fileList = manager.getNowLocalFiles();
+    manager.getCurrentLocalFileList(new String[]{SENDER_FILE_PATH_TEST});
+    fileList = manager.getCurrentLocalFiles();
     assert (allFileList.size() == fileList.size());
     for (Entry<String, Set<String>> entry : fileList.entrySet()) {
       assert (allFileList.containsKey(entry.getKey()));
@@ -234,9 +234,9 @@ public class FileManagerTest {
         }
       }
     }
-    manager.setNowLocalFiles(new HashMap<>());
-    manager.getNowLocalFileList(new String[]{SENDER_FILE_PATH_TEST});
-    fileList = manager.getNowLocalFiles();
+    manager.setCurrentLocalFiles(new HashMap<>());
+    manager.getCurrentLocalFileList(new String[]{SENDER_FILE_PATH_TEST});
+    fileList = manager.getCurrentLocalFiles();
     assert (allFileList.size() == fileList.size());
     for (Entry<String, Set<String>> entry : fileList.entrySet()) {
       assert (allFileList.containsKey(entry.getKey()));
@@ -261,9 +261,9 @@ public class FileManagerTest {
 
     // nowSendingList is empty
 
-    manager.setNowLocalFiles(new HashMap<>());
-    manager.getNowLocalFileList(new String[]{SENDER_FILE_PATH_TEST});
-    allFileList = manager.getNowLocalFiles();
+    manager.setCurrentLocalFiles(new HashMap<>());
+    manager.getCurrentLocalFileList(new String[]{SENDER_FILE_PATH_TEST});
+    allFileList = manager.getCurrentLocalFiles();
     manager.getLastLocalFileList(LAST_FILE_INFO_TEST);
     lastlocalList = manager.getLastLocalFiles();
     manager.getSendingFileList();
@@ -298,8 +298,8 @@ public class FileManagerTest {
         }
       }
     }
-    manager.getNowLocalFileList(new String[]{SENDER_FILE_PATH_TEST});
-    allFileList = manager.getNowLocalFiles();
+    manager.getCurrentLocalFileList(new String[]{SENDER_FILE_PATH_TEST});
+    allFileList = manager.getCurrentLocalFiles();
     manager.backupNowLocalFileInfo(LAST_FILE_INFO_TEST);
     manager.getLastLocalFileList(LAST_FILE_INFO_TEST);
     lastlocalList = manager.getLastLocalFiles();
@@ -353,8 +353,8 @@ public class FileManagerTest {
         }
       }
     }
-    manager.getNowLocalFileList(new String[]{SENDER_FILE_PATH_TEST});
-    allFileList = manager.getNowLocalFiles();
+    manager.getCurrentLocalFileList(new String[]{SENDER_FILE_PATH_TEST});
+    allFileList = manager.getCurrentLocalFiles();
     manager.getLastLocalFileList(LAST_FILE_INFO_TEST);
     lastlocalList = manager.getLastLocalFiles();
     manager.getSendingFileList();

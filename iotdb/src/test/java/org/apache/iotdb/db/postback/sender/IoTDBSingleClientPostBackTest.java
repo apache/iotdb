@@ -1,19 +1,15 @@
 /**
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one or more contributor license
+ * agreements.  See the NOTICE file distributed with this work for additional information regarding
+ * copyright ownership.  The ASF licenses this file to you under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with the License.  You may obtain
+ * a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
+ * Unless required by applicable law or agreed to in writing, software distributed under the License
+ * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
+ * or implied.  See the License for the specific language governing permissions and limitations
  * under the License.
  */
 package org.apache.iotdb.db.postback.sender;
@@ -38,8 +34,8 @@ import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 
 /**
- * The test is to run a complete postback function Before you run the test, make sure receiver has been cleaned up and
- * inited.
+ * The test is to run a complete postback function Before you run the test, make sure receiver has
+ * been cleaned up and inited.
  */
 public class IoTDBSingleClientPostBackTest {
 
@@ -150,23 +146,22 @@ public class IoTDBSingleClientPostBackTest {
   }
 
   public void setConfig() {
-    config.uuidPath = config.dataDirectory + "postback" + File.separator + "uuid.txt";
-    config.lastFileInfo =
-        config.dataDirectory + "postback" + File.separator + "lastLocalFileList.txt";
-
-    String[] snapshots = new String[config.iotdbBufferwriteDirectory.length];
-    for (int i = 0; i < config.iotdbBufferwriteDirectory.length; i++) {
-      config.iotdbBufferwriteDirectory[i] = new File(config.iotdbBufferwriteDirectory[i])
-          .getAbsolutePath();
-      if (!config.iotdbBufferwriteDirectory[i].endsWith(File.separator)) {
-        config.iotdbBufferwriteDirectory[i] = config.iotdbBufferwriteDirectory[i] + File.separator;
+    config.setUuidPath(config.getDataDirectory() + "postback" + File.separator + "uuid.txt");
+    config.setLastFileInfo(
+        config.getDataDirectory() + "postback" + File.separator + "lastLocalFileList.txt");
+    String[] iotdbBufferwriteDirectory = config.getIotdbBufferwriteDirectory();
+    String[] snapshots = new String[config.getIotdbBufferwriteDirectory().length];
+    for (int i = 0; i < config.getIotdbBufferwriteDirectory().length; i++) {
+      iotdbBufferwriteDirectory[i] = new File(iotdbBufferwriteDirectory[i]).getAbsolutePath();
+      if (!iotdbBufferwriteDirectory[i].endsWith(File.separator)) {
+        iotdbBufferwriteDirectory[i] = iotdbBufferwriteDirectory[i] + File.separator;
       }
-      snapshots[i] =
-          config.iotdbBufferwriteDirectory[i] + "postback" + File.separator + "dataSnapshot"
-              + File.separator;
+      snapshots[i] = iotdbBufferwriteDirectory[i] + "postback" + File.separator + "dataSnapshot"
+          + File.separator;
     }
-    config.snapshotPaths = snapshots;
-    config.serverIp = serverIpTest;
+    config.setSnapshotPaths(snapshots);
+    config.setIotdbBufferwriteDirectory(iotdbBufferwriteDirectory);
+    config.setServerIp(serverIpTest);
     fileSenderImpl.setConfig(config);
   }
 
