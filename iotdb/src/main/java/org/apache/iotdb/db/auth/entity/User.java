@@ -144,7 +144,7 @@ public class User {
       return false;
     }
     User user = (User) o;
-    return lastActiveTime == user.lastActiveTime 
+    return lastActiveTime == user.lastActiveTime
             && Objects.equals(name, user.name)
             && Objects.equals(password, user.password)
             && Objects.equals(privilegeList, user.privilegeList)
