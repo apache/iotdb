@@ -28,7 +28,11 @@ public class ColumnSchema implements Serializable {
 
   private static final long serialVersionUID = -8257474930341487207L;
 
-  public String name;
+  public void setName(String name) {
+    this.name = name;
+  }
+
+  private String name;
   public TSDataType dataType;
   public TSEncoding encoding;
   private Map<String, String> args;
