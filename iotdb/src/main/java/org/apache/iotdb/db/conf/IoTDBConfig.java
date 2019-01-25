@@ -89,8 +89,8 @@ public class IoTDBConfig {
 
   /**
    * Data directory of bufferWrite data.
+   * It can be setted as bufferWriteDirs = {"settled1", "settled2", "settled3"};
    */
-  // public String[] bufferWriteDirs = {"settled1", "settled2", "settled3"};
   public String[] bufferWriteDirs = {"settled"};
 
   /**
@@ -273,6 +273,7 @@ public class IoTDBConfig {
   public long cacheFileReaderClearPeriod = 100000;
 
   public IoTDBConfig() {
+    // empty constructor
   }
 
   public ZoneId getZoneID() {
@@ -284,7 +285,7 @@ public class IoTDBConfig {
   }
 
   public void updatePath() {
-    confirmMultDirStrategy();
+    confirmMultiDirStrategy();
 
     preUpdatePath();
 
@@ -358,7 +359,7 @@ public class IoTDBConfig {
    *
    */
 
-  public void preUpdatePath() {
+  private void preUpdatePath() {
     if (dataDir == null) {
       dataDir = default_data_dir + File.separatorChar + default_data_dir;
     }
@@ -373,23 +374,16 @@ public class IoTDBConfig {
     dirs.add(dataDir);
     dirs.add(sysDir);
     dirs.add(walDir);
-    // List<String> newdirs = new ArrayList<>();
     String homeDir = System.getProperty(IoTDBConstant.IOTDB_HOME, null);
     for (int i = 0; i < 3; i++) {
       String dir = dirs.get(i);
-      if (new File(dir).isAbsolute()) {
-        continue;
-      } else {
-        if (homeDir != null) {
-          if (homeDir.length() > 0) {
-            if (!homeDir.endsWith(File.separator)) {
-              dir = homeDir + File.separatorChar + dir;
-            } else {
-              dir = homeDir + dir;
-            }
-            dirs.set(i, dir);
-          }
+      if (!new File(dir).isAbsolute() && homeDir != null && homeDir.length() > 0) {
+        if (!homeDir.endsWith(File.separator)) {
+          dir = homeDir + File.separatorChar + dir;
+        } else {
+          dir = homeDir + dir;
         }
+        dirs.set(i, dir);
       }
     }
     dataDir = dirs.get(0);
@@ -397,7 +391,7 @@ public class IoTDBConfig {
     walDir = dirs.get(2);
   }
 
-  public void confirmMultDirStrategy() {
+  private void confirmMultiDirStrategy() {
     if (multDirStrategyClassName == null) {
       multDirStrategyClassName = default_mult_dir_strategy;
     }
