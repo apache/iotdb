@@ -28,6 +28,8 @@ import org.apache.iotdb.db.sql.parse.ParseException;
  */
 public final class ParseGenerator {
 
+  private ParseGenerator(){}
+
   /**
    * Parse the input {@link String} command and generate an AstNode Tree.
    */

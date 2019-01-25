@@ -87,7 +87,7 @@ public class FileReaderManager implements IService {
             try {
               reader.close();
             } catch (IOException e) {
-              LOGGER.error("Can not close TsFileSequenceReader {} !", reader.getFileName());
+              LOGGER.error("Can not close TsFileSequenceReader {} !", reader.getFileName() + ": " + e);
             }
             fileReaderMap.remove(entry.getKey());
             referenceMap.remove(entry.getKey());
@@ -186,6 +186,7 @@ public class FileReaderManager implements IService {
       executorService.awaitTermination(10, TimeUnit.SECONDS);
     } catch (InterruptedException e) {
       LOGGER.error("StatMonitor timing service could not be shutdown.", e);
+      Thread.currentThread().interrupt();
     }
   }
 
@@ -196,5 +197,7 @@ public class FileReaderManager implements IService {
 
   private static class FileReaderManagerHelper {
     private static final FileReaderManager INSTANCE = new FileReaderManager();
+
+    private FileReaderManagerHelper(){ }
   }
 }

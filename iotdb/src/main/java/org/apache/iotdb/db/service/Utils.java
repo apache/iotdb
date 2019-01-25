@@ -39,6 +39,8 @@ import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
  */
 public class Utils {
 
+  private Utils(){}
+
   /**
    * convert all schema.
    *
@@ -127,7 +129,7 @@ public class Utils {
             value.setDouble_val(f.getDoubleV());
             break;
           case TEXT:
-            value.setBinary_val(ByteBuffer.wrap(f.getBinaryV().values));
+            value.setBinary_val(ByteBuffer.wrap(f.getBinaryV().getValues()));
             break;
           default:
             throw new UnSupportedDataTypeException(String.format(
