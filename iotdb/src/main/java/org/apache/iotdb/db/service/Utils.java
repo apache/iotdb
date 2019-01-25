@@ -35,6 +35,8 @@ import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
  */
 public class Utils {
 
+  private Utils(){}
+
   /**
    * convert all schema.
    *

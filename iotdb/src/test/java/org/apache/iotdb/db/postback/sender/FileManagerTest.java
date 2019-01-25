@@ -269,11 +269,8 @@ public class FileManagerTest {
     manager.getLastLocalFileList(LAST_FILE_INFO_TEST);
     lastlocalList = manager.getLastLocalFiles();
     manager.getSendingFileList();
-//    sendingFileList = manager.getSendingFiles();
     assert (lastlocalList.isEmpty());
     assert (isEmpty(allFileList));
-//    System.out.println(sendingFileList);
-//    assert (isEmpty(sendingFileList));
 
     // add some files
     newFileList.clear();
