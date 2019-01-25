@@ -40,10 +40,12 @@ public class DnfFilterOptimizer implements IFilterOptimizer {
     return getDnf(filter);
   }
 
-  private void dealWithLeftAndRightAndChildren(List<FilterOperator> leftAndChildren, List<FilterOperator> rightAndChildren, List<FilterOperator> newChildrenList) throws LogicalOptimizeException {
-    for (FilterOperator laChild : leftAndChildren) {
-      for (FilterOperator raChild : rightAndChildren) {
-        FilterOperator r = mergeToConjunction(laChild.clone(), raChild.clone());
+  private void dealWithLeftAndRightAndChildren(
+          List<FilterOperator> leftAndChildren, List<FilterOperator> rightAndChildren,
+          List<FilterOperator> newChildrenList) throws LogicalOptimizeException {
+    for (FilterOperator leftAndChild : leftAndChildren) {
+      for (FilterOperator rightAndChild : rightAndChildren) {
+        FilterOperator r = mergeToConjunction(leftAndChild.clone(), rightAndChild.clone());
         newChildrenList.add(r);
       }
     }
