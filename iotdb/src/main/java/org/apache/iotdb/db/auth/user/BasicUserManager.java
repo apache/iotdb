@@ -205,7 +205,7 @@ public abstract class BasicUserManager implements IUserManager {
         throw new AuthException(String.format("No such user %s", username));
       }
       String oldPassword = user.getPassword();
-      user.setPassword(newPassword);
+      user.setPassword(AuthUtils.encryptPassword(newPassword));
       try {
         accessor.saveUser(user);
       } catch (IOException e) {
