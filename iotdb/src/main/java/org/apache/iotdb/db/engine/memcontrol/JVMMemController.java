@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
+ * <p>
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * <p>
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -58,31 +58,22 @@ public class JVMMemController extends BasicMemController {
 
   @Override
   public void clear() {
-
-  }
-
-  @Override
-  public void close() {
-    super.close();
+    // JVMMemController does not need cleaning
   }
 
   @Override
   public UsageLevel reportUse(Object user, long usage) {
     long memUsage = getTotalUsage() + usage;
     if (memUsage < warningThreshold) {
-      /*
-       * logger.debug("Safe Threshold : {} allocated to {}, total usage {}",
-       * MemUtils.bytesCntToStr(usage), user.getClass(), MemUtils.bytesCntToStr(memUsage));
-       */
       return UsageLevel.SAFE;
     } else if (memUsage < dangerouseThreshold) {
       logger.debug("Warning Threshold : {} allocated to {}, total usage {}",
-          MemUtils.bytesCntToStr(usage),
-          user.getClass(), MemUtils.bytesCntToStr(memUsage));
+              MemUtils.bytesCntToStr(usage),
+              user.getClass(), MemUtils.bytesCntToStr(memUsage));
       return UsageLevel.WARNING;
     } else {
       logger.warn("Memory request from {} is denied, memory usage : {}", user.getClass(),
-          MemUtils.bytesCntToStr(memUsage));
+              MemUtils.bytesCntToStr(memUsage));
       return UsageLevel.DANGEROUS;
     }
   }
@@ -90,14 +81,16 @@ public class JVMMemController extends BasicMemController {
   @Override
   public void reportFree(Object user, long freeSize) {
     logger
-        .info("{} freed from {}, total usage {}", MemUtils.bytesCntToStr(freeSize), user.getClass(),
-            MemUtils.bytesCntToStr(getTotalUsage()));
-    System.gc();
+            .info("{} freed from {}, total usage {}", MemUtils.bytesCntToStr(freeSize),
+                    user.getClass(), MemUtils.bytesCntToStr(getTotalUsage()));
   }
 
   private static class InstanceHolder {
 
+    private InstanceHolder() {
+    }
+
     private static final JVMMemController INSTANCE = new JVMMemController(
-        IoTDBDescriptor.getInstance().getConfig());
+            IoTDBDescriptor.getInstance().getConfig());
   }
 }

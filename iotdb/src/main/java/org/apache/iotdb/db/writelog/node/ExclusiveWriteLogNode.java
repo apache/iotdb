@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
+ * <p>
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * <p>
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -74,13 +75,13 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
    * @param processorStoreFilePath processor store file path
    */
   public ExclusiveWriteLogNode(String identifier, String restoreFilePath,
-      String processorStoreFilePath) {
+                               String processorStoreFilePath) {
     this.identifier = identifier;
     this.logDirectory = config.walFolder + File.separator + this.identifier;
     new File(logDirectory).mkdirs();
 
     recoverPerformer = new ExclusiveLogRecoverPerformer(restoreFilePath, processorStoreFilePath,
-        this);
+            this);
     currentFileWriter = new LogWriter(logDirectory + File.separator + WAL_FILE_NAME);
   }
 
@@ -109,19 +110,12 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
 
   @Override
   public void recover() throws RecoverException {
-    try {
-      close();
-    } catch (IOException e) {
-      logger.error("Cannot close write log {} node before recover! Because {}", identifier,
-          e.getMessage());
-      throw new RecoverException(
-          String.format("Cannot close write log %s node before recover!", identifier));
-    }
+    close();
     recoverPerformer.recover();
   }
 
   @Override
-  public void close() throws IOException {
+  public void close() {
     sync();
     forceWal();
     lockForOther();
@@ -150,7 +144,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
    * Warning : caller must have lock.
    */
   @Override
-  public void notifyStartFlush() throws IOException {
+  public void notifyStartFlush() {
     close();
     File oldLogFile = new File(logDirectory + File.separator + WAL_FILE_NAME);
     File newLogFile = new File(logDirectory + File.separator + WAL_FILE_NAME + OLD_SUFFIX);
@@ -161,7 +155,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
       logger.error("Log node {} renaming log file failed!", identifier);
     } else {
       logger.info("Log node {} renamed log file, file size is {}", identifier,
-          MemUtils.bytesCntToStr(newLogFile.length()));
+              MemUtils.bytesCntToStr(newLogFile.length()));
     }
   }
 

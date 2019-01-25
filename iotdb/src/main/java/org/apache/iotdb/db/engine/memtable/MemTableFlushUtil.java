@@ -20,8 +20,9 @@ package org.apache.iotdb.db.engine.memtable;
 
 import java.io.IOException;
 import java.util.List;
+
 import org.apache.iotdb.db.utils.TimeValuePair;
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.footer.ChunkGroupFooter;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.chunk.ChunkBuffer;
@@ -36,62 +37,47 @@ import org.slf4j.LoggerFactory;
 public class MemTableFlushUtil {
 
   private static final Logger logger = LoggerFactory.getLogger(MemTableFlushUtil.class);
-  private static final int PAGE_SIZE_THRESHOLD = TSFileDescriptor.getInstance()
-      .getConfig().pageSizeInByte;
+  private static final int PAGE_SIZE_THRESHOLD = TSFileConfig.pageSizeInByte;
 
   private MemTableFlushUtil(){
 
   }
 
-  private static int writeOneSeries(List<TimeValuePair> tvPairs, IChunkWriter seriesWriterImpl,
+  private static void writeOneSeries(List<TimeValuePair> tvPairs, IChunkWriter seriesWriterImpl,
       TSDataType dataType)
       throws IOException {
-    int count = 0;
-    switch (dataType) {
-      case BOOLEAN:
-        for (TimeValuePair timeValuePair : tvPairs) {
-          count++;
-          seriesWriterImpl
-              .write(timeValuePair.getTimestamp(), timeValuePair.getValue().getBoolean());
-        }
-        break;
-      case INT32:
-        for (TimeValuePair timeValuePair : tvPairs) {
-          count++;
-          seriesWriterImpl.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getInt());
-        }
-        break;
-      case INT64:
-        for (TimeValuePair timeValuePair : tvPairs) {
-          count++;
-          seriesWriterImpl.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getLong());
-        }
-        break;
-      case FLOAT:
-        for (TimeValuePair timeValuePair : tvPairs) {
-          count++;
-          seriesWriterImpl.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getFloat());
-        }
-        break;
-      case DOUBLE:
-        for (TimeValuePair timeValuePair : tvPairs) {
-          count++;
-          seriesWriterImpl
-              .write(timeValuePair.getTimestamp(), timeValuePair.getValue().getDouble());
-        }
-        break;
-      case TEXT:
-        for (TimeValuePair timeValuePair : tvPairs) {
-          count++;
-          seriesWriterImpl
-              .write(timeValuePair.getTimestamp(), timeValuePair.getValue().getBinary());
-        }
-        break;
-      default:
-        logger.error("don't support data type: {}", dataType);
-        break;
+    for (TimeValuePair timeValuePair : tvPairs) {
+      switch (dataType) {
+        case BOOLEAN:
+            seriesWriterImpl
+                    .write(timeValuePair.getTimestamp(), timeValuePair.getValue().getBoolean());
+          break;
+        case INT32:
+            seriesWriterImpl.write(timeValuePair.getTimestamp(),
+                    timeValuePair.getValue().getInt());
+          break;
+        case INT64:
+            seriesWriterImpl.write(timeValuePair.getTimestamp(),
+                    timeValuePair.getValue().getLong());
+          break;
+        case FLOAT:
+            seriesWriterImpl.write(timeValuePair.getTimestamp(),
+                    timeValuePair.getValue().getFloat());
+          break;
+        case DOUBLE:
+            seriesWriterImpl
+                    .write(timeValuePair.getTimestamp(),
+                            timeValuePair.getValue().getDouble());
+          break;
+        case TEXT:
+            seriesWriterImpl
+                    .write(timeValuePair.getTimestamp(), timeValuePair.getValue().getBinary());
+          break;
+        default:
+          logger.error("don't support data type: {}", dataType);
+          break;
+      }
     }
-    return count;
   }
 
   /**
@@ -102,7 +88,6 @@ public class MemTableFlushUtil {
       throws IOException {
     for (String deviceId : imemTable.getMemTableMap().keySet()) {
       long startPos = tsFileIoWriter.getPos();
-      long recordCount = 0;
       tsFileIoWriter.startFlushChunkGroup(deviceId);
       int seriesNumber = imemTable.getMemTableMap().get(deviceId).size();
       for (String measurementId : imemTable.getMemTableMap().get(deviceId).keySet()) {
@@ -111,7 +96,7 @@ public class MemTableFlushUtil {
         MeasurementSchema desc = fileSchema.getMeasurementSchema(measurementId);
         ChunkBuffer chunkBuffer = new ChunkBuffer(desc);
         IChunkWriter seriesWriter = new ChunkWriterImpl(desc, chunkBuffer, PAGE_SIZE_THRESHOLD);
-        recordCount += writeOneSeries(series.getSortedTimeValuePairList(), seriesWriter,
+        writeOneSeries(series.getSortedTimeValuePairList(), seriesWriter,
             desc.getType());
         seriesWriter.writeToFileWriter(tsFileIoWriter);
       }

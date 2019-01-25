@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
+ * <p>
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * <p>
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -37,10 +37,10 @@ public class FlushPartialPolicy implements Policy {
   @Override
   public void execute() {
     logger.debug("Memory reaches {}, current memory size is {}, JVM memory is {}, flushing.",
-        BasicMemController.getInstance().getCurrLevel(),
-        MemUtils.bytesCntToStr(BasicMemController.getInstance().getTotalUsage()),
-        MemUtils.bytesCntToStr(Runtime.getRuntime().totalMemory()
-            - Runtime.getRuntime().freeMemory()));
+            BasicMemController.getInstance().getCurrLevel(),
+            MemUtils.bytesCntToStr(BasicMemController.getInstance().getTotalUsage()),
+            MemUtils.bytesCntToStr(Runtime.getRuntime().totalMemory()
+                    - Runtime.getRuntime().freeMemory()));
     // use a thread to avoid blocking
     if (workerThread == null) {
       workerThread = createWorkerThread();
@@ -60,8 +60,9 @@ public class FlushPartialPolicy implements Policy {
       FileNodeManager.getInstance().forceFlush(BasicMemController.UsageLevel.SAFE);
       try {
         Thread.sleep(sleepInterval);
-      } catch (InterruptedException ignored) {
-        logger.warn("Flush worker interrupted!");
+      } catch (InterruptedException e) {
+        logger.warn("Flush worker interrupted!", e);
+        Thread.currentThread().interrupt();
       }
     }, ThreadName.FLUSH_PARTIAL_POLICY.getName());
   }

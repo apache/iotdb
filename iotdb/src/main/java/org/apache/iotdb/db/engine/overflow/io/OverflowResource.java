@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
+ * <p>
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * <p>
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.engine.overflow.ioV2;
+package org.apache.iotdb.db.engine.overflow.io;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
@@ -27,6 +27,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.MemTableFlushUtil;
@@ -117,7 +118,7 @@ public class OverflowResource {
   }
 
   private void writePositionInfo(long lastInsertPosition, long lastUpdatePosition)
-      throws IOException {
+          throws IOException {
     FileOutputStream outputStream = new FileOutputStream(positionFilePath);
     byte[] data = new byte[16];
     BytesUtils.longToBytes(lastInsertPosition, data, 0);
@@ -159,10 +160,10 @@ public class OverflowResource {
   }
 
   public List<ChunkMetaData> getInsertMetadatas(String deviceId, String measurementId,
-      TSDataType dataType) {
+                                                TSDataType dataType) {
     List<ChunkMetaData> chunkMetaDatas = new ArrayList<>();
     if (insertMetadatas.containsKey(deviceId) && insertMetadatas.get(deviceId)
-        .containsKey(measurementId)) {
+            .containsKey(measurementId)) {
       for (ChunkMetaData chunkMetaData : insertMetadatas.get(deviceId).get(measurementId)) {
         // filter
         if (chunkMetaData.getTsDataType().equals(dataType)) {
@@ -174,8 +175,9 @@ public class OverflowResource {
   }
 
   public void flush(FileSchema fileSchema, IMemTable memTable,
-      Map<String, Map<String, OverflowSeriesImpl>> overflowTrees, String processorName)
-      throws IOException {
+                    Map<String, Map<String, OverflowSeriesImpl>> overflowTrees,
+                    String processorName)
+          throws IOException {
     // insert data
     long startPos = insertIO.getPos();
     long startTime = System.currentTimeMillis();
@@ -184,9 +186,10 @@ public class OverflowResource {
     timeInterval = timeInterval == 0 ? 1 : timeInterval;
     long insertSize = insertIO.getPos() - startPos;
     LOGGER.info(
-        "Overflow processor {} flushes overflow insert data, actual:{}, time consumption:{} ms, flush rate:{}/s",
-        processorName, MemUtils.bytesCntToStr(insertSize), timeInterval,
-        MemUtils.bytesCntToStr(insertSize / timeInterval * 1000));
+            "Overflow processor {} flushes overflow insert data, actual:{}, time consumption:{} ms,"
+                    + " flush rate:{}/s",
+            processorName, MemUtils.bytesCntToStr(insertSize), timeInterval,
+            MemUtils.bytesCntToStr(insertSize / timeInterval * 1000));
     writePositionInfo(insertIO.getPos(), 0);
   }
 
@@ -216,7 +219,7 @@ public class OverflowResource {
       for (ChunkGroupMetaData rowGroupMetaData : appendInsertMetadatas) {
         for (ChunkMetaData seriesChunkMetaData : rowGroupMetaData.getChunkMetaDataList()) {
           addInsertMetadata(rowGroupMetaData.getDeviceID(), seriesChunkMetaData.getMeasurementUid(),
-              seriesChunkMetaData);
+                  seriesChunkMetaData);
         }
       }
       appendInsertMetadatas.clear();
@@ -266,7 +269,7 @@ public class OverflowResource {
   }
 
   private void addInsertMetadata(String deviceId, String measurementId,
-      ChunkMetaData chunkMetaData) {
+                                 ChunkMetaData chunkMetaData) {
     if (!insertMetadatas.containsKey(deviceId)) {
       insertMetadatas.put(deviceId, new HashMap<>());
     }
