@@ -17,5 +17,5 @@ It is common practice to create software identifiers (Maven coordinates, module 
 ### Companies and Organizations
 To add yourself to the list, please email dev@iotdb.apache.org with your organization name, URL, a list of which IoTDB components you are using, and a short description of your use case.  
 
-- Tsinghua University Institute for Data Science – Industrial Big Data Research Center that initially launched IoTDB  
+- School of Software (Tsinghua University), and National Engineering Laboratery for Big Data Software  that initially launched IoTDB  
 	- We have both graduate students and a team of professional software engineers working on the stack
