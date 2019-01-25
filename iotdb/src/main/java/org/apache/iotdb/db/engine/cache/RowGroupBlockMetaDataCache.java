@@ -32,7 +32,7 @@ import org.slf4j.LoggerFactory;
  */
 public class RowGroupBlockMetaDataCache {
 
-  private static Logger LOGGER = LoggerFactory.getLogger(RowGroupBlockMetaDataCache.class);
+  private static Logger logger = LoggerFactory.getLogger(RowGroupBlockMetaDataCache.class);
 
   private static final int CACHE_SIZE = 100;
   /**
@@ -64,8 +64,8 @@ public class RowGroupBlockMetaDataCache {
       cacheRequestNum.incrementAndGet();
       if (lruCache.containsKey(jointPath)) {
         cacheHintNum.incrementAndGet();
-        if (LOGGER.isDebugEnabled()) {
-          LOGGER.debug(
+        if (logger.isDebugEnabled()) {
+          logger.debug(
               "Cache hint: the number of requests for cache is {}, "
                   + "the number of hints for cache is {}",
               cacheRequestNum.get(), cacheHintNum.get());
@@ -79,8 +79,8 @@ public class RowGroupBlockMetaDataCache {
           return lruCache.get(jointPath);
         }
       }
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("Cache didn't hint: the number of requests for cache is {}",
+      if (logger.isDebugEnabled()) {
+        logger.debug("Cache didn't hint: the number of requests for cache is {}",
             cacheRequestNum.get());
       }
       TsDeviceMetadata blockMetaData = TsFileMetadataUtils

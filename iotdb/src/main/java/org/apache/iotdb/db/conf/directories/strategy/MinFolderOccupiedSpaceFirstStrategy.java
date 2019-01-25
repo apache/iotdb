@@ -29,7 +29,7 @@ import java.util.Random;
 public class MinFolderOccupiedSpaceFirstStrategy extends DirectoryStrategy {
 
   // directory space is measured by MB
-  private final long dataSizeShift = 1024 * 1024;
+  private static final long DATA_SIZE_SHIFT = 1024 * 1024L;
 
   @Override
   public int nextFolderIndex() {
@@ -38,10 +38,8 @@ public class MinFolderOccupiedSpaceFirstStrategy extends DirectoryStrategy {
 
   private int getMinOccupiedSpaceFolder() {
     List<Integer> candidates = new ArrayList<>();
-    long min = 0;
-
     candidates.add(0);
-    min = getOccupiedSpace(folders.get(0));
+    long min = getOccupiedSpace(folders.get(0));
     for (int i = 1; i < folders.size(); i++) {
       long current = getOccupiedSpace(folders.get(i));
       if (min > current) {
@@ -69,6 +67,6 @@ public class MinFolderOccupiedSpaceFirstStrategy extends DirectoryStrategy {
       LOGGER.error("Cannot calculate occupied space for seriesPath {}.", path);
     }
 
-    return size / dataSizeShift;
+    return size / DATA_SIZE_SHIFT;
   }
 }

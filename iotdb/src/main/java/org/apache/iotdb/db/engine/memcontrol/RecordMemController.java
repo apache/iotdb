@@ -48,15 +48,18 @@ public class RecordMemController extends BasicMemController {
     return InstanceHolder.INSTANCE;
   }
 
+  @Override
   public long getTotalUsage() {
     return totalMemUsed.get();
   }
 
+  @Override
   public void clear() {
     memMap.clear();
     totalMemUsed.set(0);
   }
 
+  @Override
   public void close() {
     super.close();
   }
@@ -64,6 +67,7 @@ public class RecordMemController extends BasicMemController {
   /**
    * get the current memory usage level.
    */
+  @Override
   public UsageLevel getCurrLevel() {
     long memUsage = totalMemUsed.get();
     if (memUsage < warningThreshold) {
@@ -78,6 +82,7 @@ public class RecordMemController extends BasicMemController {
   /**
    * report the increased memory usage of the object user.
    */
+  @Override
   public UsageLevel reportUse(Object user, long usage) {
     Long oldUsage = memMap.get(user);
     if (oldUsage == null) {
@@ -121,6 +126,7 @@ public class RecordMemController extends BasicMemController {
   /**
    * report the decreased memory usage of the object user.
    */
+  @Override
   public void reportFree(Object user, long freeSize) {
     Long usage = memMap.get(user);
     if (usage == null) {
