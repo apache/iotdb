@@ -56,7 +56,7 @@ import org.slf4j.LoggerFactory;
  */
 public class TsFileIOWriter {
 
-  public static final byte[] magicStringBytes;
+  protected static final byte[] magicStringBytes;
   private static final Logger LOG = LoggerFactory.getLogger(TsFileIOWriter.class);
 
   static {
