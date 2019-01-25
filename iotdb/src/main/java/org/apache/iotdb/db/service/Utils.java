@@ -60,15 +60,15 @@ public class Utils {
     return tsAllSchema;
   }
 
-  private static TSColumnSchema convertColumnSchema(ColumnSchema schema) {
-    if (schema == null) {
+  private static TSColumnSchema convertColumnSchema(ColumnSchema columnSchema) {
+    if (columnSchema == null) {
       return null;
     }
     TSColumnSchema tsColumnSchema = new TSColumnSchema();
-    tsColumnSchema.setName(schema.name);
-    tsColumnSchema.setDataType(schema.dataType == null ? null : schema.dataType.toString());
-    tsColumnSchema.setEncoding(schema.encoding == null ? null : schema.encoding.toString());
-    tsColumnSchema.setOtherArgs(schema.getArgsMap() == null ? null : schema.getArgsMap());
+    tsColumnSchema.setName(columnSchema.getName());
+    tsColumnSchema.setDataType(columnSchema.dataType == null ? null : columnSchema.dataType.toString());
+    tsColumnSchema.setEncoding(columnSchema.encoding == null ? null : columnSchema.encoding.toString());
+    tsColumnSchema.setOtherArgs(columnSchema.getArgsMap() == null ? null : columnSchema.getArgsMap());
     return tsColumnSchema;
   }
 

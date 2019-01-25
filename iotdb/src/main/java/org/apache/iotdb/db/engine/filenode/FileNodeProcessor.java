@@ -875,12 +875,12 @@ public class FileNodeProcessor extends Processor implements IStatistic {
     fileSchema.registerMeasurement(JsonConverter.convertJsonToMeasurementSchema(measurement));
   }
 
-  private JSONObject constrcutMeasurement(ColumnSchema col) {
+  private JSONObject constrcutMeasurement(ColumnSchema columnSchema) {
     JSONObject measurement = new JSONObject();
-    measurement.put(JsonFormatConstant.MEASUREMENT_UID, col.name);
-    measurement.put(JsonFormatConstant.DATA_TYPE, col.dataType.toString());
-    measurement.put(JsonFormatConstant.MEASUREMENT_ENCODING, col.encoding.toString());
-    for (Entry<String, String> entry : col.getArgsMap().entrySet()) {
+    measurement.put(JsonFormatConstant.MEASUREMENT_UID, columnSchema.getName());
+    measurement.put(JsonFormatConstant.DATA_TYPE, columnSchema.dataType.toString());
+    measurement.put(JsonFormatConstant.MEASUREMENT_ENCODING, columnSchema.encoding.toString());
+    for (Entry<String, String> entry : columnSchema.getArgsMap().entrySet()) {
       if (JsonFormatConstant.ENUM_VALUES.equals(entry.getKey())) {
         String[] valueArray = entry.getValue().split(",");
         measurement.put(JsonFormatConstant.ENUM_VALUES, new JSONArray(valueArray));
@@ -1725,12 +1725,12 @@ public class FileNodeProcessor extends Processor implements IStatistic {
       throws WriteProcessException {
     JSONArray rowGroup = new JSONArray();
 
-    for (ColumnSchema col : schemaList) {
+    for (ColumnSchema columnSchema : schemaList) {
       JSONObject measurement = new JSONObject();
-      measurement.put(JsonFormatConstant.MEASUREMENT_UID, col.name);
-      measurement.put(JsonFormatConstant.DATA_TYPE, col.dataType.toString());
-      measurement.put(JsonFormatConstant.MEASUREMENT_ENCODING, col.encoding.toString());
-      for (Entry<String, String> entry : col.getArgsMap().entrySet()) {
+      measurement.put(JsonFormatConstant.MEASUREMENT_UID, columnSchema.getName());
+      measurement.put(JsonFormatConstant.DATA_TYPE, columnSchema.dataType.toString());
+      measurement.put(JsonFormatConstant.MEASUREMENT_ENCODING, columnSchema.encoding.toString());
+      for (Entry<String, String> entry : columnSchema.getArgsMap().entrySet()) {
         if (JsonFormatConstant.ENUM_VALUES.equals(entry.getKey())) {
           String[] valueArray = entry.getValue().split(",");
           measurement.put(JsonFormatConstant.ENUM_VALUES, new JSONArray(valueArray));
