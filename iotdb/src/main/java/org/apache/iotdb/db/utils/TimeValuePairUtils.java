@@ -23,6 +23,7 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 
 public class TimeValuePairUtils {
 
+  private TimeValuePairUtils(){}
   /**
    * get given data's current (time,value) pair.
    *

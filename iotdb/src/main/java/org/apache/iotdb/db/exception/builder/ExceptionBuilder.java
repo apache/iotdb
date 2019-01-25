@@ -106,7 +106,7 @@ public class ExceptionBuilder {
 
     File file = new File(url);
     if (!file.exists()) {
-      url.replace(CONFIG_NAME + language + FILE_SUFFIX, DEFAULT_FILEPATH);
+      url = url.replace(CONFIG_NAME + language + FILE_SUFFIX, DEFAULT_FILEPATH);
     }
 
     loadInfo(url);

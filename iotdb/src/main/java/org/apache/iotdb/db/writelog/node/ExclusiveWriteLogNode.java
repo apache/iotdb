@@ -137,12 +137,12 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
   }
 
   @Override
-  public void forceSync() throws IOException {
+  public void forceSync() {
     sync();
   }
 
   @Override
-  public void force() throws IOException {
+  public void force() {
     forceWal();
   }
 
@@ -232,7 +232,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
       try {
         currentFileWriter.write(logCache);
       } catch (IOException e) {
-        logger.error("Log node {} sync failed because {}.", identifier, e.getMessage());
+        logger.error("Log node {} sync failed", identifier, e);
       }
       logCache.clear();
       logger.debug("Log node {} ends sync.", identifier);
@@ -248,7 +248,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
       try {
         currentFileWriter.force();
       } catch (IOException e) {
-        logger.error("Log node {} force failed because {}.", identifier, e.getMessage());
+        logger.error("Log node {} force failed.", identifier, e);
       }
       logger.debug("Log node {} ends force.", identifier);
     } finally {
@@ -269,6 +269,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
     }
   }
 
+  @Override
   public String toString() {
     return "Log node " + identifier;
   }
@@ -280,5 +281,25 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
   @Override
   public int compareTo(ExclusiveWriteLogNode o) {
     return this.identifier.compareTo(o.identifier);
+  }
+
+  @Override
+  public int hashCode() {
+    return identifier.hashCode();
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj) {
+      return true;
+    }
+    if (obj == null) {
+      return false;
+    }
+    if (getClass() != obj.getClass()) {
+      return false;
+    }
+
+    return compareTo((ExclusiveWriteLogNode) obj) == 0;
   }
 }
