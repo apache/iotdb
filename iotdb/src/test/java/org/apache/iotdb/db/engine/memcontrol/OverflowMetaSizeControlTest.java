@@ -28,6 +28,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
 import org.apache.iotdb.db.engine.bufferwrite.Action;
+import org.apache.iotdb.db.engine.bufferwrite.ActionException;
 import org.apache.iotdb.db.engine.bufferwrite.FileNodeConstants;
 import org.apache.iotdb.db.engine.overflow.ioV2.OverflowProcessor;
 import org.apache.iotdb.db.exception.OverflowProcessorException;
@@ -65,28 +66,28 @@ public class OverflowMetaSizeControlTest {
   private Action overflowflushaction = new Action() {
 
     @Override
-    public void act() throws Exception {
+    public void act() throws ActionException {
     }
   };
 
   private Action filenodeflushaction = new Action() {
 
     @Override
-    public void act() throws Exception {
+    public void act() throws ActionException {
     }
   };
 
   private Action filenodemanagerbackupaction = new Action() {
 
     @Override
-    public void act() throws Exception {
+    public void act() throws ActionException {
     }
   };
 
   private Action filenodemanagerflushaction = new Action() {
 
     @Override
-    public void act() throws Exception {
+    public void act() throws ActionException {
     }
   };
 

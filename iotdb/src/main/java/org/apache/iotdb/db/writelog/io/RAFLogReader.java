@@ -22,6 +22,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.util.NoSuchElementException;
 import java.util.zip.CRC32;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.writelog.transfer.PhysicalPlanLogTransfer;
@@ -83,6 +84,10 @@ public class RAFLogReader implements ILogReader {
 
   @Override
   public PhysicalPlan next() {
+    if (!hasNext()){
+      throw new NoSuchElementException();
+    }
+
     PhysicalPlan ret = planBuffer;
     planBuffer = null;
     return ret;
