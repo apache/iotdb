@@ -40,7 +40,7 @@ public class RAFLogReader implements ILogReader {
   private PhysicalPlan planBuffer = null;
 
   public RAFLogReader() {
-
+    // allowed to construct RAFLogReader without input.
   }
 
   public RAFLogReader(File logFile) throws FileNotFoundException {
@@ -57,7 +57,7 @@ public class RAFLogReader implements ILogReader {
         return false;
       }
     } catch (IOException e) {
-      logger.error("Cannot read from log file {}, because {}", filepath, e.getMessage());
+      logger.error("Cannot read from log file {}", filepath, e);
       return false;
     }
     try {
@@ -77,7 +77,7 @@ public class RAFLogReader implements ILogReader {
       planBuffer = plan;
       return true;
     } catch (IOException e) {
-      logger.error("Cannot read log file {}, because {}", filepath, e.getMessage());
+      logger.error("Cannot read log file {}", filepath, e);
       return false;
     }
   }
@@ -99,7 +99,7 @@ public class RAFLogReader implements ILogReader {
       try {
         logRaf.close();
       } catch (IOException e) {
-        logger.error("Cannot close log file {}", filepath);
+        logger.error("Cannot close log file {}", filepath, e);
       }
     }
   }

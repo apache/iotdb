@@ -403,7 +403,7 @@ public abstract class TsPrimitiveType implements Serializable {
       }
       if (anObject instanceof TsBinary) {
         TsBinary anotherTs = (TsBinary) anObject;
-        return value == anotherTs.value;
+        return value.equals(anotherTs.value);
       }
       return false;
     }
