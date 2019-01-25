@@ -183,7 +183,7 @@ public class ServerServiceImpl implements ServerService.Iface {
               + " "
               + "files from sender!");
         } else {
-          Files.delete((java.nio.file.Path) new Path(filePath));
+          Files.deleteIfExists((java.nio.file.Path) new Path(filePath));
         }
       } catch (Exception e) {
         LOGGER.error("IoTDB post back receiver: cannot generate md5 because {}", e.getMessage());
