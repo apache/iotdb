@@ -21,7 +21,7 @@ package org.apache.iotdb.tsfile.read.reader.chunk;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.compress.UnCompressor;
 import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
@@ -41,7 +41,7 @@ public abstract class ChunkReader {
   private UnCompressor unCompressor;
   private Decoder valueDecoder;
   private Decoder timeDecoder = Decoder.getDecoderByType(
-      TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().timeSeriesEncoder),
+      TSEncoding.valueOf(TSFileConfig.timeSeriesEncoder),
       TSDataType.INT64);
 
   private Filter filter;

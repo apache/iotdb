@@ -423,7 +423,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
           msg = new StringBuilder("Roles are : [ \n");
           User user = authorizer.getUser(userName);
           if (user != null) {
-            for (String roleN : user.roleList) {
+            for (String roleN : user.getRoleList()) {
               msg.append(roleN).append("\n");
             }
           } else {
@@ -453,14 +453,14 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
           }
           msg = new StringBuilder("Privileges are : [ \n");
           msg.append("From itself : {\n");
-          for (PathPrivilege pathPrivilege : user.privilegeList) {
+          for (PathPrivilege pathPrivilege : user.getPrivilegeList()) {
             if (nodeName == null || AuthUtils
                 .pathBelongsTo(nodeName.getFullPath(), pathPrivilege.getPath())) {
               msg.append(pathPrivilege.toString());
             }
           }
           msg.append("}\n");
-          for (String roleN : user.roleList) {
+          for (String roleN : user.getRoleList()) {
             role = authorizer.getRole(roleN);
             if (role != null) {
               msg.append("From role ").append(roleN).append(" : {\n");

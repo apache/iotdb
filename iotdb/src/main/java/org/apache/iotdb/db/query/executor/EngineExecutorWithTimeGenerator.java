@@ -59,18 +59,24 @@ public class EngineExecutorWithTimeGenerator {
    * @throws IOException IOException
    * @throws FileNodeManagerException FileNodeManagerException
    */
-  public QueryDataSet execute() throws IOException, FileNodeManagerException {
+  public QueryDataSet execute() throws FileNodeManagerException {
 
     QueryTokenManager.getInstance()
         .beginQueryOfGivenQueryPaths(jobId, queryExpression.getSelectedSeries());
     QueryTokenManager.getInstance()
         .beginQueryOfGivenExpression(jobId, queryExpression.getExpression());
 
-    EngineTimeGenerator timestampGenerator = new EngineTimeGenerator(jobId,
-        queryExpression.getExpression());
+    EngineTimeGenerator timestampGenerator = null;
+    List<EngineReaderByTimeStamp> readersOfSelectedSeries = null;
+    try {
+       timestampGenerator = new EngineTimeGenerator(jobId,
+              queryExpression.getExpression());
 
-    List<EngineReaderByTimeStamp> readersOfSelectedSeries = getReadersOfSelectedPaths(
-        queryExpression.getSelectedSeries());
+       readersOfSelectedSeries = getReadersOfSelectedPaths(
+              queryExpression.getSelectedSeries());
+    } catch (IOException ex){
+      throw new FileNodeManagerException(ex);
+    }
 
     List<TSDataType> dataTypes = new ArrayList<>();
 

@@ -28,6 +28,8 @@ import java.io.File;
  */
 public class FileUtils {
 
+  private FileUtils(){}
+
   public static double getLocalFileByte(String filePath, Unit unit) {
     File f = new File(filePath);
     return getLocalFileByte(f, unit);
@@ -77,7 +79,7 @@ public class FileUtils {
     return ((double) a) / Math.pow(10, round);
   }
 
-  public static enum Unit {
+  public enum Unit {
     B, KB, MB, GB, TB, PB, EB
   }
 }

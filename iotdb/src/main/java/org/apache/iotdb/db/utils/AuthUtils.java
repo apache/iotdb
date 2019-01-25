@@ -28,8 +28,12 @@ import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.entity.PathPrivilege;
 import org.apache.iotdb.db.auth.entity.PrivilegeType;
 import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class AuthUtils {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(AuthUtils.class);
 
   private static final int MIN_PASSWORD_LENGTH = 4;
   private static final int MIN_USERNAME_LENGTH = 4;
@@ -37,6 +41,8 @@ public class AuthUtils {
   private static final String ROOT_PREFIX = IoTDBConstant.PATH_ROOT;
   private static final String ENCRYPT_ALGORITHM = "MD5";
   private static final String STRING_ENCODING = "utf-8";
+
+  private AuthUtils(){}
 
   /**
    * validate password length.
@@ -134,6 +140,7 @@ public class AuthUtils {
         case INSERT_TIMESERIES:
         case UPDATE_TIMESERIES:
           validatePath(path);
+          return;
         default:
           return;
       }
@@ -152,6 +159,7 @@ public class AuthUtils {
       messageDigest.update(password.getBytes(STRING_ENCODING));
       return new String(messageDigest.digest(), STRING_ENCODING);
     } catch (NoSuchAlgorithmException | UnsupportedEncodingException e) {
+      LOGGER.error("meet error while encrypting password.", e);
       return password;
     }
   }
@@ -185,16 +193,12 @@ public class AuthUtils {
     }
     for (PathPrivilege pathPrivilege : privilegeList) {
       if (path != null) {
-        if (pathPrivilege.getPath() != null && AuthUtils.pathBelongsTo(path, pathPrivilege.getPath())) {
-          if (pathPrivilege.getPrivileges().contains(privilegeId)) {
-            return true;
-          }
+        if (pathPrivilege.getPath() != null && AuthUtils.pathBelongsTo(path, pathPrivilege.getPath()) && pathPrivilege.getPrivileges().contains(privilegeId)) {
+          return true;
         }
       } else {
-        if (pathPrivilege.getPath() == null) {
-          if (pathPrivilege.getPrivileges().contains(privilegeId)) {
-            return true;
-          }
+        if (pathPrivilege.getPath() == null && pathPrivilege.getPrivileges().contains(privilegeId)) {
+          return true;
         }
       }
     }
@@ -210,7 +214,7 @@ public class AuthUtils {
    */
   public static Set<Integer> getPrivileges(String path, List<PathPrivilege> privilegeList) {
     if (privilegeList == null) {
-      return null;
+      return new HashSet<>();
     }
     Set<Integer> privileges = new HashSet<>();
     for (PathPrivilege pathPrivilege : privilegeList) {
@@ -295,7 +299,7 @@ public class AuthUtils {
           privilegeList.remove(pathPrivilege);
           return;
         }
-        if (pathPrivilege.getPrivileges().size() == 0) {
+        if (pathPrivilege.getPrivileges().isEmpty()) {
           emptyPrivilege = pathPrivilege;
         }
         break;

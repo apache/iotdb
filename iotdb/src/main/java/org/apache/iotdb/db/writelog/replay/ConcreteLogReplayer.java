@@ -42,6 +42,7 @@ public class ConcreteLogReplayer implements LogReplayer {
    * @param plan PhysicalPlan
    * @throws ProcessorException ProcessorException
    */
+  @Override
   public void replay(PhysicalPlan plan) throws ProcessorException {
     try {
       if (plan instanceof InsertPlan) {

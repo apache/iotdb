@@ -65,7 +65,7 @@ public class MeasurementSchema implements Comparable<MeasurementSchema> {
    */
   public MeasurementSchema(String measurementId, TSDataType type, TSEncoding encoding) {
     this(measurementId, type, encoding,
-        CompressionType.valueOf(TSFileDescriptor.getInstance().getConfig().compressor),
+        CompressionType.valueOf(TSFileConfig.compressor),
         Collections.emptyMap());
   }
 
@@ -194,7 +194,7 @@ public class MeasurementSchema implements Comparable<MeasurementSchema> {
       case TEXT:
         // 4 is the length of string in type of Integer.
         // Note that one char corresponding to 3 byte is valid only in 16-bit BMP
-        return conf.maxStringLength * TSFileConfig.BYTE_SIZE_PER_CHAR + 4;
+        return TSFileConfig.maxStringLength * TSFileConfig.BYTE_SIZE_PER_CHAR + 4;
       default:
         throw new UnSupportedDataTypeException(type.toString());
     }
@@ -204,8 +204,8 @@ public class MeasurementSchema implements Comparable<MeasurementSchema> {
    * function for getting time encoder.
    */
   public Encoder getTimeEncoder() {
-    TSEncoding timeSeriesEncoder = TSEncoding.valueOf(conf.timeSeriesEncoder);
-    TSDataType timeType = TSDataType.valueOf(conf.timeSeriesDataType);
+    TSEncoding timeSeriesEncoder = TSEncoding.valueOf(TSFileConfig.timeSeriesEncoder);
+    TSDataType timeType = TSDataType.valueOf(TSFileConfig.timeSeriesDataType);
     return TSEncodingBuilder.getConverter(timeSeriesEncoder).getEncoder(timeType);
   }
 

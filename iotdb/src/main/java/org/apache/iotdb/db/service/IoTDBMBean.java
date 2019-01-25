@@ -18,10 +18,10 @@
  */
 package org.apache.iotdb.db.service;
 
-import java.io.IOException;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 
+@FunctionalInterface
 public interface IoTDBMBean {
 
-  void stop() throws FileNodeManagerException, IOException;
+  void stop() throws FileNodeManagerException;
 }

@@ -36,7 +36,7 @@ import org.slf4j.LoggerFactory;
 public class PlainEncoder extends Encoder {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PlainEncoder.class);
-  public EndianType endianType;
+  private EndianType endianType;
   private TSDataType dataType;
   private int maxStringLength;
 
@@ -66,8 +66,6 @@ public class PlainEncoder extends Encoder {
           "tsfile-encoding PlainEncoder: current version does not support short value encoding");
       throw new TsFileEncodingException(
           "tsfile-encoding PlainEncoder: current version does not support short value encoding");
-      // out.write((value >> 8) & 0xFF);
-      // out.write((value >> 0) & 0xFF);
     }
   }
 
@@ -83,10 +81,6 @@ public class PlainEncoder extends Encoder {
           "tsfile-encoding PlainEncoder: current version does not support int value encoding");
       throw new TsFileEncodingException(
           "tsfile-encoding PlainEncoder: current version does not support int value encoding");
-      // out.write((value >> 24) & 0xFF);
-      // out.write((value >> 16) & 0xFF);
-      // out.write((value >> 8) & 0xFF);
-      // out.write((value >> 0) & 0xFF);
     }
   }
 
@@ -107,7 +101,6 @@ public class PlainEncoder extends Encoder {
             "tsfile-encoding PlainEncoder: current version does not support long value encoding");
         throw new TsFileEncodingException(
             "tsfile-encoding PlainEncoder: current version does not support long value encoding");
-        // out.write(bufferBig);
       }
     } catch (IOException e) {
       LOGGER
@@ -131,7 +124,7 @@ public class PlainEncoder extends Encoder {
       // write the length of the bytes
       encode(value.getLength(), out);
       // write value
-      out.write(value.values);
+      out.write(value.getValues());
     } catch (IOException e) {
       LOGGER.error("tsfile-encoding PlainEncoder: error occurs when encode Binary value {}", value,
           e);
@@ -140,6 +133,7 @@ public class PlainEncoder extends Encoder {
 
   @Override
   public void flush(ByteArrayOutputStream out) {
+    //This is an empty function.
   }
 
   @Override
