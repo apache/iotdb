@@ -27,9 +27,6 @@ public class MemStatisticThread extends Thread {
 
   private static Logger logger = LoggerFactory.getLogger(MemStatisticThread.class);
 
-  // update statistic every such interval
-  private long checkInterval = 100; // in ms
-
   private long minMemUsage = Long.MAX_VALUE;
   private long maxMemUsage = Long.MIN_VALUE;
   private double meanMemUsage = 0.0;
@@ -37,8 +34,6 @@ public class MemStatisticThread extends Thread {
   private long maxJvmUsage = Long.MIN_VALUE;
   private double meanJvmUsage = 0.0;
   private int cnt = 0;
-  // log statistic every so many intervals
-  private int reportCycle = 6000;
 
   public MemStatisticThread() {
     this.setName(ThreadName.MEMORY_STATISTICS.getName());
@@ -75,22 +70,32 @@ public class MemStatisticThread extends Thread {
       meanMemUsage = meanMemUsage * (doubleCnt / (doubleCnt + 1.0)) + memUsage / (doubleCnt + 1.0);
       meanJvmUsage = meanJvmUsage * (doubleCnt / (doubleCnt + 1.0)) + jvmUsage / (doubleCnt + 1.0);
 
-      if (++cnt % reportCycle == 0) {
-        logger.debug(
-                "Monitored memory usage, min {}, max {}, mean {} \n"
-                        + "JVM memory usage, min {}, max {}, mean {}",
-                MemUtils.bytesCntToStr(minMemUsage), MemUtils.bytesCntToStr(maxMemUsage),
-                MemUtils.bytesCntToStr((long) meanMemUsage),
-                MemUtils.bytesCntToStr(minJvmUsage), MemUtils.bytesCntToStr(maxJvmUsage),
-                MemUtils.bytesCntToStr((long) meanJvmUsage));
-      }
+      // log statistic every so many intervals
+      report();
+
       try {
+        // update statistic every such interval
+        // in ms
+        long checkInterval = 100;
         Thread.sleep(checkInterval);
       } catch (InterruptedException e) {
         logger.info("MemMonitorThread exiting...");
         Thread.currentThread().interrupt();
         return;
       }
+    }
+  }
+
+  private void report() {
+    int reportCycle = 6000;
+    if (++cnt % reportCycle == 0 && logger.isDebugEnabled()) {
+      logger.debug(
+              "Monitored memory usage, min {}, max {}, mean {} \n"
+                      + "JVM memory usage, min {}, max {}, mean {}",
+              MemUtils.bytesCntToStr(minMemUsage), MemUtils.bytesCntToStr(maxMemUsage),
+              MemUtils.bytesCntToStr((long) meanMemUsage),
+              MemUtils.bytesCntToStr(minJvmUsage), MemUtils.bytesCntToStr(maxJvmUsage),
+              MemUtils.bytesCntToStr((long) meanJvmUsage));
     }
   }
 

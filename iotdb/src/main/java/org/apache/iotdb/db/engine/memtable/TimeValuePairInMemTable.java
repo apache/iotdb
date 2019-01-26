@@ -37,7 +37,7 @@ public class TimeValuePairInMemTable extends TimeValuePair implements
 
   @Override
   public boolean equals(Object object) {
-    if (object == null || !(object instanceof TimeValuePairInMemTable)) {
+    if (!(object instanceof TimeValuePairInMemTable)) {
       return false;
     }
     TimeValuePairInMemTable o = (TimeValuePairInMemTable) object;
