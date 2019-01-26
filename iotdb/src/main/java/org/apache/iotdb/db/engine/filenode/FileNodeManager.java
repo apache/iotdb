@@ -418,14 +418,15 @@ public class FileNodeManager implements IStatistic, IService {
     if (bufferWriteProcessor
             .getFileSize() > IoTDBDescriptor.getInstance()
             .getConfig().bufferwriteFileSizeThreshold) {
-      String memSize = MemUtils.bytesCntToStr(bufferWriteProcessor.getFileSize());
-      String memThrehold = MemUtils.bytesCntToStr(
-              IoTDBDescriptor.getInstance().getConfig().bufferwriteFileSizeThreshold);
-      LOGGER.info(
-              "The filenode processor {} will close the bufferwrite processor, "
-                      + "because the size[{}] of tsfile {} reaches the threshold {}",
-              filenodeName, memSize,
-              bufferWriteProcessor.getFileName(), memThrehold);
+      if (LOGGER.isInfoEnabled()) {
+        LOGGER.info(
+                "The filenode processor {} will close the bufferwrite processor, "
+                        + "because the size[{}] of tsfile {} reaches the threshold {}",
+                filenodeName, MemUtils.bytesCntToStr(bufferWriteProcessor.getFileSize()),
+                bufferWriteProcessor.getFileName(), MemUtils.bytesCntToStr(
+                        IoTDBDescriptor.getInstance().getConfig().bufferwriteFileSizeThreshold));
+      }
+
       fileNodeProcessor.closeBufferWrite();
     }
   }
