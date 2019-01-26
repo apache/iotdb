@@ -113,11 +113,9 @@ public class LocalFileRoleAccessor implements IRoleAccessor {
               .writePathPrivilege(outputStream, pathPrivilege, STRING_ENCODING,
                   encodingBufferLocal);
         }
-
+        outputStream.flush();
       } catch (Exception e) {
         throw new IOException(e.getMessage());
-      } finally {
-        outputStream.flush();
       }
     }
 

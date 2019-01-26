@@ -57,7 +57,6 @@ public class PostBackSenderDescriptor {
    * load an properties file and set TsfileDBConfig variables
    */
   private void loadProps() {
-    InputStream inputStream = null;
     String url = System.getProperty(IoTDBConstant.IOTDB_CONF, null);
     if (url == null) {
       url = System.getProperty(IoTDBConstant.IOTDB_HOME, null);
@@ -74,30 +73,24 @@ public class PostBackSenderDescriptor {
       url += (File.separatorChar + PostBackSenderConfig.CONFIG_NAME);
     }
 
-    try {
-      inputStream = new FileInputStream(new File(url));
-    } catch (FileNotFoundException e) {
-      LOGGER.warn("Fail to find config file {}", url);
-      // update all data seriesPath
-      return;
-    }
-
     LOGGER.info("Start to read config file {}", url);
     Properties properties = new Properties();
-    try {
+    try (InputStream inputStream = new FileInputStream(new File(url))) {
       properties.load(inputStream);
 
       conf.setServerIp(properties.getProperty("server_ip", conf.getServerIp()));
       conf.setServerPort(Integer
-          .parseInt(properties.getProperty("server_port", conf.getServerPort() + "")));
+          .parseInt(properties.getProperty("server_port", Integer.toString(conf.getServerPort()))));
 
       conf.setClientPort(Integer
-          .parseInt(properties.getProperty("client_port", conf.getClientPort() + "")));
+          .parseInt(properties.getProperty("client_port", Integer.toString(conf.getClientPort()))));
       conf.setUploadCycleInSeconds(Integer.parseInt(properties
-          .getProperty("upload_cycle_in_seconds", conf.getUploadCycleInSeconds() + "")));
+          .getProperty("upload_cycle_in_seconds",
+              Integer.toString(conf.getUploadCycleInSeconds()))));
       conf.setSchemaPath(properties.getProperty("iotdb_schema_directory", conf.getSchemaPath()));
       conf.setClearEnable(Boolean
-          .parseBoolean(properties.getProperty("is_clear_enable", conf.getClearEnable() + "")));
+          .parseBoolean(
+              properties.getProperty("is_clear_enable", Boolean.toString(conf.getClearEnable()))));
       conf.setUuidPath(conf.getDataDirectory() + POSTBACK + File.separator + "uuid.txt");
       conf.setLastFileInfo(
           conf.getDataDirectory() + POSTBACK + File.separator + "lastLocalFileList.txt");
@@ -118,12 +111,6 @@ public class PostBackSenderDescriptor {
     } catch (Exception e) {
       LOGGER.warn("Error format in config file because {}, use default configuration",
           e.getMessage());
-    } finally {
-      try {
-        inputStream.close();
-      } catch (IOException e) {
-        LOGGER.error("Fail to close config file input stream because {}", e.getMessage());
-      }
     }
   }
 

@@ -242,13 +242,13 @@ public class FileManagerTest {
     assert (allFileList.size() == fileList.size());
     for (Entry<String, Set<String>> entry : fileList.entrySet()) {
       assert (allFileList.containsKey(entry.getKey()));
-      LOGGER.info("allFileList");
+      LOGGER.debug("allFileList");
       for (String a : allFileList.get(entry.getKey())) {
-        LOGGER.info(a);
+        LOGGER.debug(a);
       }
-      LOGGER.info("FileList");
+      LOGGER.debug("FileList");
       for (String a : entry.getValue()) {
-        LOGGER.info(a);
+        LOGGER.debug(a);
       }
       assert (allFileList.get(entry.getKey()).containsAll(entry.getValue()));
     }
@@ -365,7 +365,7 @@ public class FileManagerTest {
 
   private boolean isEmpty(Map<String, Set<String>> sendingFileList) {
     for (Entry<String, Set<String>> entry : sendingFileList.entrySet()) {
-      if (entry.getValue().isEmpty()) {
+      if (!entry.getValue().isEmpty()) {
         return false;
       }
     }

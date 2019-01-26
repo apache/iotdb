@@ -91,7 +91,7 @@ public class MultipleClientPostBackTest {
 
     for (String storageGroup : timeseriesList.keySet()) {
       String sqlFormat = "select %s from %s";
-      LOGGER.info(String.format("%s:", storageGroup));
+      LOGGER.debug(String.format("%s:", storageGroup));
       int count = 0;
       int count1 = 0;
       int count2 = 0;
@@ -136,7 +136,7 @@ public class MultipleClientPostBackTest {
             statement.close();
             statement1.close();
           } catch (Exception e) {
-            LOGGER.error(e.getMessage());
+            LOGGER.error("", e);
           } finally {
             if (connection != null) {
               connection.close();
@@ -151,14 +151,14 @@ public class MultipleClientPostBackTest {
         if (count > 20) {
           break;
         }
-        LOGGER.info(String.valueOf(count1));
-        LOGGER.info(String.valueOf(count2));
+        LOGGER.debug(String.valueOf(count1));
+        LOGGER.debug(String.valueOf(count2));
       }
     }
 
     for (String storageGroup : timeseriesList1.keySet()) {
       String sqlFormat = "select %s from %s";
-      LOGGER.info(String.format("%s:", storageGroup));
+      LOGGER.debug(String.format("%s:", storageGroup));
       int count = 0;
       int count1;
       int count2;
@@ -203,7 +203,7 @@ public class MultipleClientPostBackTest {
             statement.close();
             statement1.close();
           } catch (Exception e) {
-            LOGGER.error(e.getMessage());
+            LOGGER.error("", e);
           } finally {
             if (connection != null) {
               connection.close();
@@ -218,8 +218,8 @@ public class MultipleClientPostBackTest {
         if (count > 20) {
           break;
         }
-        LOGGER.info(String.valueOf(count1));
-        LOGGER.info(String.valueOf(count2));
+        LOGGER.debug(String.valueOf(count1));
+        LOGGER.debug(String.valueOf(count2));
       }
     }
   }

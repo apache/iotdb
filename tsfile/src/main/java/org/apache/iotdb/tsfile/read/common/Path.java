@@ -220,13 +220,4 @@ public class Path {
   public boolean startWith(Path prefix) {
     return startWith(prefix.fullPath);
   }
-
-  public static void main(String[] args) {
-    Logger logger = LoggerFactory.getLogger(Path.class);
-    try {
-      throw new IOException("asdasda");
-    } catch (IOException e1) {
-      logger.error("read line from inputCsvFileReader failed:{}", "aaaa.file", "as",e1);
-    }
-  }
 }

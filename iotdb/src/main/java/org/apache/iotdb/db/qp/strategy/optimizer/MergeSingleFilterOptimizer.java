@@ -134,7 +134,8 @@ public class MergeSingleFilterOptimizer implements IFilterOptimizer {
     return addLastNullChild(children, ret, filter, i, childPath);
   }
 
-  private Path addLastNullChild(List<FilterOperator> children, List<FilterOperator> ret, FilterOperator filter, int i, Path childPath){
+  private Path addLastNullChild(List<FilterOperator> children, List<FilterOperator> ret,
+                                FilterOperator filter, int i, Path childPath){
     for (; i < children.size(); i++) {
       ret.add(children.get(i));
     }

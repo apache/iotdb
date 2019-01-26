@@ -489,7 +489,7 @@ public class FileSenderImpl implements FileSender {
       try {
         PostbackUtils.deleteFile(new File(snapshotPath));
       } catch (IOException e) {
-        LOGGER.error(e.getMessage());
+        LOGGER.error(" ", e);
       }
     }
     try {
