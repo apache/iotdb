@@ -16,12 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.engine.filenode;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -47,7 +47,6 @@ import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.FileNodeProcessorException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
-import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.monitor.IStatistic;
 import org.apache.iotdb.db.monitor.MonitorConstants;
@@ -62,7 +61,6 @@ import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
@@ -74,14 +72,13 @@ import org.slf4j.LoggerFactory;
 public class FileNodeManager implements IStatistic, IService {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(FileNodeManager.class);
-  private static final TSFileConfig TsFileConf = TSFileDescriptor.getInstance().getConfig();
   private static final IoTDBConfig TsFileDBConf = IoTDBDescriptor.getInstance().getConfig();
   private static final Directories directories = Directories.getInstance();
   private final String baseDir;
   /**
    * Stat information.
    */
-  private static final String statStorageDeltaName = MonitorConstants.statStorageGroupPrefix
+  private static final String STAT_STORAGE_DELTA_NAME = MonitorConstants.statStorageGroupPrefix
           + MonitorConstants.MONITOR_PATH_SEPERATOR + MonitorConstants.fileNodeManagerPath;
   /**
    * This map is used to manage all filenode processor,<br> the key is filenode name which is
@@ -116,7 +113,7 @@ public class FileNodeManager implements IStatistic, IService {
     if (TsFileDBConf.enableStatMonitor) {
       StatMonitor statMonitor = StatMonitor.getInstance();
       registStatMetadata();
-      statMonitor.registStatistics(statStorageDeltaName, this);
+      statMonitor.registStatistics(STAT_STORAGE_DELTA_NAME, this);
     }
   }
 
@@ -147,7 +144,7 @@ public class FileNodeManager implements IStatistic, IService {
     for (MonitorConstants.FileNodeManagerStatConstants statConstant :
             MonitorConstants.FileNodeManagerStatConstants.values()) {
       list.add(
-              statStorageDeltaName + MonitorConstants.MONITOR_PATH_SEPERATOR + statConstant.name());
+              STAT_STORAGE_DELTA_NAME + MonitorConstants.MONITOR_PATH_SEPERATOR + statConstant.name());
     }
     return list;
   }
@@ -156,21 +153,21 @@ public class FileNodeManager implements IStatistic, IService {
   public Map<String, TSRecord> getAllStatisticsValue() {
     long curTime = System.currentTimeMillis();
     TSRecord tsRecord = StatMonitor
-            .convertToTSRecord(getStatParamsHashMap(), statStorageDeltaName, curTime);
+            .convertToTSRecord(getStatParamsHashMap(), STAT_STORAGE_DELTA_NAME, curTime);
     HashMap<String, TSRecord> ret = new HashMap<>();
-    ret.put(statStorageDeltaName, tsRecord);
+    ret.put(STAT_STORAGE_DELTA_NAME, tsRecord);
     return ret;
   }
 
   /**
-   * Init Stat MetaDta TODO: Modify the throws operation.
+   * Init Stat MetaDta
    */
   @Override
   public void registStatMetadata() {
     HashMap<String, String> hashMap = new HashMap<>();
     for (MonitorConstants.FileNodeManagerStatConstants statConstant :
             MonitorConstants.FileNodeManagerStatConstants.values()) {
-      hashMap.put(statStorageDeltaName + MonitorConstants.MONITOR_PATH_SEPERATOR +
+      hashMap.put(STAT_STORAGE_DELTA_NAME + MonitorConstants.MONITOR_PATH_SEPERATOR +
               statConstant.name(), MonitorConstants.DataType);
     }
     StatMonitor.getInstance().registStatStorageGroup(hashMap);
@@ -421,12 +418,14 @@ public class FileNodeManager implements IStatistic, IService {
     if (bufferWriteProcessor
             .getFileSize() > IoTDBDescriptor.getInstance()
             .getConfig().bufferwriteFileSizeThreshold) {
+      String memSize = MemUtils.bytesCntToStr(bufferWriteProcessor.getFileSize());
+      String memThrehold = MemUtils.bytesCntToStr(
+              IoTDBDescriptor.getInstance().getConfig().bufferwriteFileSizeThreshold);
       LOGGER.info(
               "The filenode processor {} will close the bufferwrite processor, "
                       + "because the size[{}] of tsfile {} reaches the threshold {}",
-              filenodeName, MemUtils.bytesCntToStr(bufferWriteProcessor.getFileSize()),
-              bufferWriteProcessor.getFileName(), MemUtils.bytesCntToStr(
-                      IoTDBDescriptor.getInstance().getConfig().bufferwriteFileSizeThreshold));
+              filenodeName, memSize,
+              bufferWriteProcessor.getFileName(), memThrehold);
       fileNodeProcessor.closeBufferWrite();
     }
   }
@@ -599,7 +598,7 @@ public class FileNodeManager implements IStatistic, IService {
     LOGGER.debug("Get the FileNodeProcessor: filenode is {}, query.",
             fileNodeProcessor.getProcessorName());
     try {
-      QueryDataSource queryDataSource = null;
+      QueryDataSource queryDataSource;
       // query operation must have overflow processor
       if (!fileNodeProcessor.hasOverflowProcessor()) {
         try {
@@ -681,7 +680,7 @@ public class FileNodeManager implements IStatistic, IService {
                                                   String uuid)
           throws FileNodeManagerException {
     FileNodeProcessor fileNodeProcessor = getProcessor(fileNodeName, true);
-    List<String> overlapFiles = new ArrayList<>();
+    List<String> overlapFiles;
     try {
       overlapFiles = fileNodeProcessor.getOverlapFiles(appendFile, uuid);
     } catch (FileNodeProcessorException e) {
@@ -785,9 +784,9 @@ public class FileNodeManager implements IStatistic, IService {
   /**
    * delete one filenode.
    */
-  public boolean deleteOneFileNode(String processorName) throws FileNodeManagerException {
+  public void deleteOneFileNode(String processorName) throws FileNodeManagerException {
     if (fileNodeManagerStatus != FileNodeManagerStatus.NONE) {
-      return false;
+      return;
     }
 
     fileNodeManagerStatus = FileNodeManagerStatus.CLOSE;
@@ -806,7 +805,6 @@ public class FileNodeManager implements IStatistic, IService {
               .deleteNode(processorName + IoTDBConstant.BUFFERWRITE_LOG_NODE_SUFFIX);
       MultiFileLogNodeManager.getInstance()
               .deleteNode(processorName + IoTDBConstant.OVERFLOW_LOG_NODE_SUFFIX);
-      return true;
     } catch (IOException e) {
       LOGGER.error("Delete the filenode processor {} error.", processorName, e);
       throw new FileNodeManagerException(e);
@@ -823,25 +821,14 @@ public class FileNodeManager implements IStatistic, IService {
       // free and close the streams under this bufferwrite directory
       if (!bufferDir.exists())
         continue;
-      for (File bufferFile : bufferDir.listFiles()) {
-        FileReaderManager.getInstance().closeFileAndRemoveReader(bufferFile.getPath());
+      File[] bufferFiles = bufferDir.listFiles();
+      if (bufferFiles != null) {
+        for (File bufferFile : bufferFiles) {
+          FileReaderManager.getInstance().closeFileAndRemoveReader(bufferFile.getPath());
+        }
       }
       FileUtils.deleteDirectory(new File(bufferwritePath));
     }
-  }
-
-  private void cleanOverflow(String processorName) throws IOException {
-    String overflowPath = TsFileDBConf.overflowDataDir;
-    overflowPath = standardizeDir(overflowPath) + processorName;
-    File overflowDir = new File(overflowPath);
-    if (overflowDir.exists()) {
-      for (File subOverflowDir : overflowDir.listFiles()) {
-        for (File overflowFile : subOverflowDir.listFiles()) {
-          FileReaderManager.getInstance().closeFileAndRemoveReader(overflowFile.getPath());
-        }
-      }
-    }
-    FileUtils.deleteDirectory(new File(overflowPath));
   }
 
   private void deleteFileNodeBlocked(String processorName) throws FileNodeManagerException {
@@ -992,16 +979,13 @@ public class FileNodeManager implements IStatistic, IService {
    */
   public void closeAll() throws FileNodeManagerException {
     LOGGER.info("Start closing all filenode processor");
-    if (!(fileNodeManagerStatus == FileNodeManagerStatus.NONE)) {
+    if (fileNodeManagerStatus != FileNodeManagerStatus.NONE) {
       LOGGER.info("Failed to close all filenode processor because of merge operation");
       return;
     }
     fileNodeManagerStatus = FileNodeManagerStatus.CLOSE;
     try {
-      Iterator<Map.Entry<String, FileNodeProcessor>> processorIterator = processorMap.entrySet()
-              .iterator();
-      while (processorIterator.hasNext()) {
-        Map.Entry<String, FileNodeProcessor> processorEntry = processorIterator.next();
+      for (Map.Entry<String, FileNodeProcessor> processorEntry : processorMap.entrySet()) {
         close(processorEntry.getKey());
       }
     } finally {
@@ -1014,7 +998,6 @@ public class FileNodeManager implements IStatistic, IService {
    * force flush to control memory usage.
    */
   public void forceFlush(BasicMemController.UsageLevel level) {
-    // TODO : for each FileNodeProcessor, call its forceFlush()
     // you may add some delicate process like below
     // or you could provide multiple methods for different urgency
     switch (level) {
@@ -1071,7 +1054,7 @@ public class FileNodeManager implements IStatistic, IService {
   private void flushTop(float percentage) throws IOException {
     List<FileNodeProcessor> tempProcessors = new ArrayList<>(processorMap.values());
     // sort the tempProcessors as descending order
-    Collections.sort(tempProcessors, (o1, o2) -> (int) (o2.memoryUsage() - o1.memoryUsage()));
+    tempProcessors.sort((o1, o2) -> (int) (o2.memoryUsage() - o1.memoryUsage()));
     int flushNum =
             (int) (tempProcessors.size() * percentage) > 1
                     ? (int) (tempProcessors.size() * percentage)
@@ -1095,9 +1078,8 @@ public class FileNodeManager implements IStatistic, IService {
   }
 
   @Override
-  public void start() throws StartupException {
-    // TODO Auto-generated method stub
-
+  public void start() {
+    // do no thing
   }
 
   @Override
@@ -1142,7 +1124,7 @@ public class FileNodeManager implements IStatistic, IService {
   }
 
   private enum FileNodeManagerStatus {
-    NONE, MERGE, CLOSE;
+    NONE, MERGE, CLOSE
   }
 
   private static class FileNodeManagerHolder {
