@@ -107,10 +107,9 @@ public class PostBackSenderDescriptor {
       conf.setIotdbBufferwriteDirectory(iotdbBufferwriteDirectory);
       conf.setSnapshotPaths(snapshots);
     } catch (IOException e) {
-      LOGGER.warn("Cannot load config file because {}, use default configuration", e.getMessage());
+      LOGGER.warn("Cannot load config file because {}, use default configuration", e);
     } catch (Exception e) {
-      LOGGER.warn("Error format in config file because {}, use default configuration",
-          e.getMessage());
+      LOGGER.warn("Error format in config file because {}, use default configuration", e);
     }
   }
 
