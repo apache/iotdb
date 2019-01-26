@@ -133,7 +133,7 @@ public class LoadDataUtils {
     try {
       nsPath = mmanager.getFileNameByPath(record.deviceId);
     } catch (PathErrorException e) {
-      logger.error("given seriesPath not found, given deviceId:{} ", record.deviceId, e);
+      logger.error("given seriesPath not found, given deviceId:{}", record.deviceId, e);
     }
     if (!writeInstanceMap.contains(nsPath)) {
       if (writeInstanceMap.size() < writeInstanceThreshold) {

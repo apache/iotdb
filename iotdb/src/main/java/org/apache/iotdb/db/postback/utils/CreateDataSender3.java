@@ -125,7 +125,7 @@ public class CreateDataSender3 {
       statement1.executeBatch();
       statement1.clearBatch();
     } catch (Exception e) {
-      LOGGER.error(e.getMessage());
+      LOGGER.error("", e);
     }
   }
 
@@ -147,7 +147,7 @@ public class CreateDataSender3 {
         statement1.execute(sql);
       }
     } catch (Exception e) {
-      LOGGER.error(e.getMessage());
+      LOGGER.error("", e);
     }
   }
 
@@ -264,15 +264,15 @@ public class CreateDataSender3 {
         statement1 = connection1.createStatement();
 
         setStorageGroup(statement, statement1, storageGroupList);
-        LOGGER.info("Finish set storage group.");
+        LOGGER.debug("Finish set storage group.");
         createTimeseries(statement, statement1, timeseriesMap);
-        LOGGER.info("Finish create timeseries.");
+        LOGGER.debug("Finish create timeseries.");
         while (true) {
           randomInsertData(statement, statement1, timeseriesMap);
         }
       }
     } catch (Exception e) {
-      LOGGER.error(e.getMessage());
+      LOGGER.error("", e);
     } finally {
       if (statement != null) {
         statement.close();
