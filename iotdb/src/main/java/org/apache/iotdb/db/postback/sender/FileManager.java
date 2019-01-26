@@ -104,8 +104,7 @@ public class FileManager {
           LOGGER.error("IoTDB post back sender: cannot create file {}", file.getAbsoluteFile());
         }
       } catch (IOException e) {
-        LOGGER.error("IoTDB post back sender: cannot get last local file list because {}",
-            e.getMessage());
+        LOGGER.error("IoTDB post back sender: cannot get last local file list", e);
       }
     } else {
       try (BufferedReader bf = new BufferedReader(new FileReader(file))) {
@@ -115,9 +114,8 @@ public class FileManager {
         }
       } catch (IOException e) {
         LOGGER.error(
-            "IoTDB post back sender: cannot get last local file list when reading file {} "
-                + "because {}.",
-            postbackConfig.getLastFileInfo(), e.getMessage());
+            "IoTDB post back sender: cannot get last local file list when reading file {}.",
+            postbackConfig.getLastFileInfo(), e);
       }
     }
 
@@ -168,7 +166,7 @@ public class FileManager {
         }
       }
     } catch (IOException e) {
-      LOGGER.error("IoTDB post back sender: cannot back up now local file info because {}", e);
+      LOGGER.error("IoTDB post back sender: cannot back up now local file info", e);
     }
   }
 
