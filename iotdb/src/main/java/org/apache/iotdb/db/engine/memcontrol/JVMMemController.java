@@ -28,9 +28,6 @@ public class JVMMemController extends BasicMemController {
 
   private static Logger logger = LoggerFactory.getLogger(JVMMemController.class);
 
-  // memory used by non-data objects, this is used to estimate the memory used by data
-  private long nonDataUsage = 0;
-
   private JVMMemController(IoTDBConfig config) {
     super(config);
   }
@@ -41,6 +38,8 @@ public class JVMMemController extends BasicMemController {
 
   @Override
   public long getTotalUsage() {
+    // memory used by non-data objects, this is used to estimate the memory used by data
+    long nonDataUsage = 0;
     return Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory() - nonDataUsage;
   }
 
@@ -67,22 +66,27 @@ public class JVMMemController extends BasicMemController {
     if (memUsage < warningThreshold) {
       return UsageLevel.SAFE;
     } else if (memUsage < dangerouseThreshold) {
-      logger.debug("Warning Threshold : {} allocated to {}, total usage {}",
-              MemUtils.bytesCntToStr(usage),
-              user.getClass(), MemUtils.bytesCntToStr(memUsage));
+      if (logger.isDebugEnabled()) {
+        logger.debug("Warning Threshold : {} allocated to {}, total usage {}",
+                MemUtils.bytesCntToStr(usage),
+                user.getClass(), MemUtils.bytesCntToStr(memUsage));
+      }
       return UsageLevel.WARNING;
     } else {
-      logger.warn("Memory request from {} is denied, memory usage : {}", user.getClass(),
-              MemUtils.bytesCntToStr(memUsage));
+      if (logger.isWarnEnabled()) {
+        logger.warn("Memory request from {} is denied, memory usage : {}", user.getClass(),
+                MemUtils.bytesCntToStr(memUsage));
+      }
       return UsageLevel.DANGEROUS;
     }
   }
 
   @Override
   public void reportFree(Object user, long freeSize) {
-    logger
-            .info("{} freed from {}, total usage {}", MemUtils.bytesCntToStr(freeSize),
-                    user.getClass(), MemUtils.bytesCntToStr(getTotalUsage()));
+    if (logger.isInfoEnabled()) {
+      logger.info("{} freed from {}, total usage {}", MemUtils.bytesCntToStr(freeSize),
+              user.getClass(), MemUtils.bytesCntToStr(getTotalUsage()));
+    }
   }
 
   private static class InstanceHolder {

@@ -31,11 +31,14 @@ public class ForceFLushAllPolicy implements Policy {
 
   @Override
   public void execute() {
-    logger.info("Memory reaches {}, current memory size is {}, JVM memory is {}, flushing.",
-            BasicMemController.getInstance().getCurrLevel(),
-            MemUtils.bytesCntToStr(BasicMemController.getInstance().getTotalUsage()),
-            MemUtils.bytesCntToStr(Runtime.getRuntime().totalMemory()
-                    - Runtime.getRuntime().freeMemory()));
+    if (logger.isInfoEnabled()) {
+      logger.info("Memory reaches {}, current memory size is {}, JVM memory is {}, flushing.",
+              BasicMemController.getInstance().getCurrLevel(),
+              MemUtils.bytesCntToStr(BasicMemController.getInstance().getTotalUsage()),
+              MemUtils.bytesCntToStr(Runtime.getRuntime().totalMemory()
+                      - Runtime.getRuntime().freeMemory()));
+    }
+
     // use a thread to avoid blocking
     if (workerThread == null) {
       workerThread = createWorkerThread();
@@ -51,8 +54,8 @@ public class ForceFLushAllPolicy implements Policy {
   }
 
   private Thread createWorkerThread() {
-    return new Thread(() -> {
-      FileNodeManager.getInstance().forceFlush(BasicMemController.UsageLevel.DANGEROUS);
-    }, ThreadName.FORCE_FLUSH_ALL_POLICY.getName());
+    return new Thread(() ->
+            FileNodeManager.getInstance().forceFlush(BasicMemController.UsageLevel.DANGEROUS),
+            ThreadName.FORCE_FLUSH_ALL_POLICY.getName());
   }
 }

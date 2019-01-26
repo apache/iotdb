@@ -36,11 +36,14 @@ public class FlushPartialPolicy implements Policy {
 
   @Override
   public void execute() {
-    logger.debug("Memory reaches {}, current memory size is {}, JVM memory is {}, flushing.",
-            BasicMemController.getInstance().getCurrLevel(),
-            MemUtils.bytesCntToStr(BasicMemController.getInstance().getTotalUsage()),
-            MemUtils.bytesCntToStr(Runtime.getRuntime().totalMemory()
-                    - Runtime.getRuntime().freeMemory()));
+    if (logger.isDebugEnabled()) {
+      logger.debug("Memory reaches {}, current memory size is {}, JVM memory is {}, flushing.",
+              BasicMemController.getInstance().getCurrLevel(),
+              MemUtils.bytesCntToStr(BasicMemController.getInstance().getTotalUsage()),
+              MemUtils.bytesCntToStr(Runtime.getRuntime().totalMemory()
+                      - Runtime.getRuntime().freeMemory()));
+    }
+
     // use a thread to avoid blocking
     if (workerThread == null) {
       workerThread = createWorkerThread();
