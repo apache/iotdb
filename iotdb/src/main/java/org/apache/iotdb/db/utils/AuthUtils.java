@@ -42,7 +42,9 @@ public class AuthUtils {
   private static final String ENCRYPT_ALGORITHM = "MD5";
   private static final String STRING_ENCODING = "utf-8";
 
-  private AuthUtils(){}
+  private AuthUtils() {
+
+  }
 
   /**
    * validate password length.
@@ -193,7 +195,9 @@ public class AuthUtils {
     }
     for (PathPrivilege pathPrivilege : privilegeList) {
       if (path != null) {
-        if (pathPrivilege.getPath() != null && AuthUtils.pathBelongsTo(path, pathPrivilege.getPath()) && pathPrivilege.getPrivileges().contains(privilegeId)) {
+        if (pathPrivilege.getPath() != null &&
+                AuthUtils.pathBelongsTo(path, pathPrivilege.getPath()) &&
+                pathPrivilege.getPrivileges().contains(privilegeId)) {
           return true;
         }
       } else {
