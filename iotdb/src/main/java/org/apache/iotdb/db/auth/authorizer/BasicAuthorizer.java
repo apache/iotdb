@@ -65,7 +65,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   @Override
   public boolean login(String username, String password) throws AuthException {
     User user = userManager.getUser(username);
-    return user != null && user.password.equals(AuthUtils.encryptPassword(password));
+    return user != null && user.getPassword().equals(AuthUtils.encryptPassword(password));
   }
 
   @Override
@@ -190,7 +190,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
     // get privileges of the user
     Set<Integer> privileges = user.getPrivileges(path);
     // merge the privileges of the roles of the user
-    for (String roleName : user.roleList) {
+    for (String roleName : user.getRoleList()) {
       Role role = roleManager.getRole(roleName);
       if (role != null) {
         privileges.addAll(role.getPrivileges(path));
@@ -219,7 +219,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
       return true;
     }
     // merge the privileges of the roles of the user
-    for (String roleName : user.roleList) {
+    for (String roleName : user.getRoleList()) {
       Role role = roleManager.getRole(roleName);
       if (role.checkPrivilege(path, privilegeId)) {
         return true;

@@ -93,25 +93,22 @@ public class LocalFileUserAccessor implements IUserAccessor {
     try (DataInputStream dataInputStream = new DataInputStream(
         new BufferedInputStream(inputStream))) {
       User user = new User();
-      user.name = IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal);
-      user.password = IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal);
-
+      user.setName(IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal));
+      user.setPassword(IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal));
       int privilegeNum = dataInputStream.readInt();
       List<PathPrivilege> pathPrivilegeList = new ArrayList<>();
       for (int i = 0; i < privilegeNum; i++) {
         pathPrivilegeList
             .add(IOUtils.readPathPrivilege(dataInputStream, STRING_ENCODING, strBufferLocal));
       }
-      user.privilegeList = pathPrivilegeList;
-
+      user.setPrivilegeList(pathPrivilegeList);
       int roleNum = dataInputStream.readInt();
       List<String> roleList = new ArrayList<>();
       for (int i = 0; i < roleNum; i++) {
         String userName = IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal);
         roleList.add(userName);
       }
-      user.roleList = roleList;
-
+      user.setRoleList(roleList);
       return user;
     } catch (Exception e) {
       throw new IOException(e);
@@ -125,37 +122,38 @@ public class LocalFileUserAccessor implements IUserAccessor {
    */
   public void saveUser(User user) throws IOException {
     File userProfile = new File(
-        userDirPath + File.separator + user.name + IoTDBConstant.PROFILE_SUFFIX + TEMP_SUFFIX);
-    BufferedOutputStream outputStream = new BufferedOutputStream(new FileOutputStream(userProfile));
-    try {
-      IOUtils.writeString(outputStream, user.name, STRING_ENCODING, encodingBufferLocal);
-      IOUtils.writeString(outputStream, user.password, STRING_ENCODING, encodingBufferLocal);
+        userDirPath + File.separator + user.getName() + IoTDBConstant.PROFILE_SUFFIX + TEMP_SUFFIX);
+    try(BufferedOutputStream outputStream = new BufferedOutputStream(new FileOutputStream(userProfile))) {
+      try {
+        IOUtils.writeString(outputStream, user.getName(), STRING_ENCODING, encodingBufferLocal);
+        IOUtils.writeString(outputStream, user.getPassword(), STRING_ENCODING, encodingBufferLocal);
 
-      user.privilegeList.sort(PathPrivilege.referenceDescentSorter);
-      int privilegeNum = user.privilegeList.size();
-      IOUtils.writeInt(outputStream, privilegeNum, encodingBufferLocal);
-      for (int i = 0; i < privilegeNum; i++) {
-        PathPrivilege pathPrivilege = user.privilegeList.get(i);
-        IOUtils
-            .writePathPrivilege(outputStream, pathPrivilege, STRING_ENCODING, encodingBufferLocal);
+        user.getPrivilegeList().sort(PathPrivilege.referenceDescentSorter);
+        int privilegeNum = user.getPrivilegeList().size();
+        IOUtils.writeInt(outputStream, privilegeNum, encodingBufferLocal);
+        for (int i = 0; i < privilegeNum; i++) {
+          PathPrivilege pathPrivilege = user.getPrivilegeList().get(i);
+          IOUtils
+              .writePathPrivilege(outputStream, pathPrivilege, STRING_ENCODING,
+                  encodingBufferLocal);
+        }
+
+        int userNum = user.getRoleList().size();
+        IOUtils.writeInt(outputStream, userNum, encodingBufferLocal);
+        for (int i = 0; i < userNum; i++) {
+          IOUtils
+              .writeString(outputStream, user.getRoleList().get(i), STRING_ENCODING,
+                  encodingBufferLocal);
+        }
+        outputStream.flush();
+
+      } catch (Exception e) {
+        throw new IOException(e.getMessage());
       }
-
-      int userNum = user.roleList.size();
-      IOUtils.writeInt(outputStream, userNum, encodingBufferLocal);
-      for (int i = 0; i < userNum; i++) {
-        IOUtils
-            .writeString(outputStream, user.roleList.get(i), STRING_ENCODING, encodingBufferLocal);
-      }
-
-    } catch (Exception e) {
-      throw new IOException(e.getMessage());
-    } finally {
-      outputStream.flush();
-      outputStream.close();
     }
 
     File oldFile = new File(
-        userDirPath + File.separator + user.name + IoTDBConstant.PROFILE_SUFFIX);
+        userDirPath + File.separator + user.getName() + IoTDBConstant.PROFILE_SUFFIX);
     IOUtils.replaceFile(userProfile, oldFile);
   }
 

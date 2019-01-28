@@ -20,6 +20,7 @@ package org.apache.iotdb.db.service;
 
 import org.apache.iotdb.db.exception.StartupException;
 
+@FunctionalInterface
 public interface StartupCheck {
 
   /**

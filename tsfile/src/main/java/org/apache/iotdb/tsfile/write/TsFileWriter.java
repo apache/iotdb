@@ -123,8 +123,8 @@ public class TsFileWriter {
   protected TsFileWriter(TsFileIOWriter fileWriter, FileSchema schema, TSFileConfig conf) {
     this.fileWriter = fileWriter;
     this.schema = schema;
-    this.pageSize = conf.pageSizeInByte;
-    this.chunkGroupSizeThreshold = conf.groupSizeInByte;
+    this.pageSize = TSFileConfig.pageSizeInByte;
+    this.chunkGroupSizeThreshold = TSFileConfig.groupSizeInByte;
   }
 
   /**

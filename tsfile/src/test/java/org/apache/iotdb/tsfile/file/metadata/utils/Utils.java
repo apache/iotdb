@@ -137,12 +137,12 @@ public class Utils {
       assertEquals(metadata1.getStartTime(), metadata2.getStartTime());
       assertEquals(metadata1.getEndTime(), metadata2.getEndTime());
 
-      if (Utils.isTwoObjectsNotNULL(metadata1.getChunkGroups(), metadata2.getChunkGroups(),
+      if (Utils.isTwoObjectsNotNULL(metadata1.getChunkGroupMetaDataList(), metadata2.getChunkGroupMetaDataList(),
           "Rowgroup metadata list")) {
-        assertEquals(metadata1.getChunkGroups().size(), metadata2.getChunkGroups().size());
-        for (int i = 0; i < metadata1.getChunkGroups().size(); i++) {
-          Utils.isChunkGroupMetaDataEqual(metadata1.getChunkGroups().get(i),
-              metadata1.getChunkGroups().get(i));
+        assertEquals(metadata1.getChunkGroupMetaDataList().size(), metadata2.getChunkGroupMetaDataList().size());
+        for (int i = 0; i < metadata1.getChunkGroupMetaDataList().size(); i++) {
+          Utils.isChunkGroupMetaDataEqual(metadata1.getChunkGroupMetaDataList().get(i),
+              metadata1.getChunkGroupMetaDataList().get(i));
         }
       }
     }
