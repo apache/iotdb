@@ -51,7 +51,6 @@ import org.apache.iotdb.tsfile.read.common.Path;
  */
 public class MManager {
 
-  // private static MManager manager = new MManager();
   private static final String ROOT_NAME = MetadataConstant.ROOT;
   // the lock for read/write
   private ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
@@ -85,7 +84,7 @@ public class MManager {
     checkAndGetDataTypeCache = new RandomDeleteCache<String, PathCheckRet>(cacheSize) {
       @Override
       public void beforeRemove(PathCheckRet object) throws CacheException {
-
+        //allowed do nothing
       }
 
       @Override
@@ -97,6 +96,7 @@ public class MManager {
     mnodecache = new RandomDeleteCache<String, MNode>(cacheSize) {
       @Override
       public void beforeRemove(MNode object) throws CacheException {
+        //allowed do nothing
       }
 
       @Override
@@ -502,7 +502,7 @@ public class MManager {
   }
 
   /**
-   * Get all ColumnSchemas for given delta object type.
+   * @deprecated Get all ColumnSchemas for given delta object type.
    *
    * @param path A seriesPath represented one Delta object
    * @return a list contains all column schema
@@ -641,7 +641,7 @@ public class MManager {
     lock.readLock().lock();
     try {
       HashMap<String, ArrayList<String>> res = getAllPathGroupByFileName(ROOT_NAME);
-      List<String> fileNameList = new ArrayList<String>();
+      List<String> fileNameList = new ArrayList<>();
       for (String fileName : res.keySet()) {
         fileNameList.add(fileName);
       }
@@ -962,7 +962,9 @@ public class MManager {
   }
 
   private static class MManagerHolder {
-
+    private MManagerHolder(){
+      //allowed do nothing
+    }
     private static final MManager INSTANCE = new MManager();
   }
 

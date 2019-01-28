@@ -120,7 +120,9 @@ public class FlushManager {
   }
 
   private static class InstanceHolder {
-
+    private InstanceHolder(){
+      //allowed do nothing
+    }
     private static FlushManager instance = new FlushManager();
   }
 }

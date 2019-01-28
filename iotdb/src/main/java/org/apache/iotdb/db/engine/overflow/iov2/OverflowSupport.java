@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.engine.overflow.ioV2;
+package org.apache.iotdb.db.engine.overflow.iov2;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -57,6 +57,9 @@ public class OverflowSupport {
     }
   }
 
+  /**
+   * @deprecated update time series data
+   */
   @Deprecated
   public void update(String deviceId, String measurementId, long startTime, long endTime,
       TSDataType dataType,
@@ -67,9 +70,12 @@ public class OverflowSupport {
     if (!indexTrees.get(deviceId).containsKey(measurementId)) {
       indexTrees.get(deviceId).put(measurementId, new OverflowSeriesImpl(measurementId, dataType));
     }
-    indexTrees.get(deviceId).get(measurementId).update(startTime, endTime, value);
+    indexTrees.get(deviceId).get(measurementId).update(startTime, endTime);
   }
 
+  /**
+   * @deprecated delete time series data
+   */
   @Deprecated
   public void delete(String deviceId, String measurementId, long timestamp, TSDataType dataType) {
     if (!indexTrees.containsKey(deviceId)) {
@@ -91,7 +97,7 @@ public class OverflowSupport {
       BatchData data) {
     if (indexTrees.containsKey(deviceId) && indexTrees.get(deviceId).containsKey(measurementId)
         && indexTrees.get(deviceId).get(measurementId).getDataType().equals(dataType)) {
-      return indexTrees.get(deviceId).get(measurementId).query(data);
+      return indexTrees.get(deviceId).get(measurementId).query();
     }
     return null;
   }
@@ -113,7 +119,6 @@ public class OverflowSupport {
   }
 
   public long getSize() {
-    // memtable+overflowTreesMap
     // TODO: calculate the size of this overflow support
     return 0;
   }

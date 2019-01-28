@@ -47,7 +47,7 @@ public class GlobalSortedSeriesDataSource {
   }
 
   public boolean hasSealedTsFiles() {
-    return sealedTsFiles != null && sealedTsFiles.size() > 0;
+    return sealedTsFiles != null && !sealedTsFiles.isEmpty();
   }
 
   public List<IntervalFileNode> getSealedTsFiles() {

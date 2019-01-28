@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.engine.overflow.ioV2;
+package org.apache.iotdb.db.engine.overflow.iov2;
 
 import static org.junit.Assert.assertEquals;
 
@@ -61,7 +61,7 @@ public class OverflowResourceTest {
   @Test
   public void testOverflowInsert() throws IOException {
     OverflowTestUtils.produceInsertData(support);
-    work.flush(OverflowTestUtils.getFileSchema(), support.getMemTabale(), null, "processorName");
+    work.flush(OverflowTestUtils.getFileSchema(), support.getMemTabale(), "processorName");
     List<ChunkMetaData> chunkMetaDatas = work.getInsertMetadatas(OverflowTestUtils.deviceId1,
         OverflowTestUtils.measurementId1, OverflowTestUtils.dataType2);
     assertEquals(0, chunkMetaDatas.size());

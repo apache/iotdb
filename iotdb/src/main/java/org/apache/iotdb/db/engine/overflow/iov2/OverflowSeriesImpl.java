@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.engine.overflow.ioV2;
+package org.apache.iotdb.db.engine.overflow.iov2;
 
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.LongStatistics;
@@ -31,7 +31,6 @@ public class OverflowSeriesImpl {
   /**
    * The data of update and delete in memory for this time series.
    */
-  // public IIntervalTreeOperator overflowIndex;
   private String measurementId;
   private TSDataType dataType;
   private Statistics<Long> statistics;
@@ -41,28 +40,23 @@ public class OverflowSeriesImpl {
     this.measurementId = measurementId;
     this.dataType = dataType;
     statistics = new LongStatistics();
-    // overflowIndex = new IntervalTreeOperation(dataType);
   }
 
-  public void update(long startTime, long endTime, byte[] value) {
-    //overflowIndex.update(startTime, endTime, value);
+  public void update(long startTime, long endTime) {
     statistics.updateStats(startTime, endTime);
     valueCount++;
   }
 
   public void delete(long timestamp) {
-    // overflowIndex.delete(timestamp);
     statistics.updateStats(timestamp, timestamp);
     valueCount++;
   }
 
-  public BatchData query(BatchData data) {
-    // return overflowIndex.queryMemory(data);
+  public BatchData query() {
     return null;
   }
 
   public long getSize() {
-    // return overflowIndex.calcMemSize();
     return 0;
   }
 

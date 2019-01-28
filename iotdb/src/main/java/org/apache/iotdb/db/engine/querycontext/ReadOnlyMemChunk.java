@@ -125,6 +125,6 @@ public class ReadOnlyMemChunk implements TimeValuePairSorter {
   @Override
   public boolean isEmpty() {
     checkInitialized();
-    return sortedTimeValuePairList.size() == 0;
+    return sortedTimeValuePairList.isEmpty();
   }
 }

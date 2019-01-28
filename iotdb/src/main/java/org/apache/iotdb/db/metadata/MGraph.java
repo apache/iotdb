@@ -33,7 +33,8 @@ import org.apache.iotdb.db.exception.PathErrorException;
 public class MGraph implements Serializable {
 
   private static final long serialVersionUID = 8214849219614352834L;
-  private final String separator = "\\.";
+  private static final String separator = "\\.";
+  private static final String TIME_SERIES_INCORRECT="Timeseries's root is not Correct. RootName: ";
   private MTree mtree;
   private HashMap<String, PTree> ptreeMap;
 
@@ -46,7 +47,7 @@ public class MGraph implements Serializable {
    * Add a {@code PTree} to current {@code MGraph}.
    */
   public void addAPTree(String ptreeRootName) throws MetadataArgsErrorException {
-    if (ptreeRootName.toLowerCase().equals("root")) {
+    if (ptreeRootName.equalsIgnoreCase("root")) {
       throw new MetadataArgsErrorException("Property Tree's root name should not be 'root'");
     }
     PTree ptree = new PTree(ptreeRootName, mtree);
@@ -80,7 +81,7 @@ public class MGraph implements Serializable {
       PTree ptree = ptreeMap.get(rootName);
       ptree.addPath(path);
     } else {
-      throw new PathErrorException("Timeseries's root is not Correct. RootName: " + rootName);
+      throw new PathErrorException(TIME_SERIES_INCORRECT + rootName);
     }
   }
 
@@ -102,7 +103,7 @@ public class MGraph implements Serializable {
       ptree.deletePath(path);
       return null;
     } else {
-      throw new PathErrorException("Timeseries's root is not Correct. RootName: " + rootName);
+      throw new PathErrorException(TIME_SERIES_INCORRECT + rootName);
     }
   }
 
@@ -156,7 +157,7 @@ public class MGraph implements Serializable {
       PTree ptree = ptreeMap.get(rootName);
       return ptree.getAllLinkedPath(path);
     }
-    throw new PathErrorException("Timeseries's root is not Correct. RootName: " + rootName);
+    throw new PathErrorException(TIME_SERIES_INCORRECT + rootName);
   }
 
   /**
@@ -170,7 +171,7 @@ public class MGraph implements Serializable {
       throw new PathErrorException(
           "PTree is not involved in the execution of the sql 'show timeseries " + path + "'");
     }
-    throw new PathErrorException("Timeseries's root is not Correct. RootName: " + rootName);
+    throw new PathErrorException(TIME_SERIES_INCORRECT + rootName);
   }
 
   /**
@@ -332,6 +333,7 @@ public class MGraph implements Serializable {
   /**
    * functions for converting the mTree to a readable string in json format.
    */
+  @Override
   public String toString() {
     StringBuilder sb = new StringBuilder();
     sb.append("===  Timeseries Tree  ===\n\n");

@@ -33,6 +33,7 @@ public class OFFileMetadata {
   private List<OFRowGroupListMetadata> rowGroupLists;
 
   public OFFileMetadata() {
+    //allowed do nothing
   }
 
   public OFFileMetadata(long lastFooterOffset, List<OFRowGroupListMetadata> rowGroupLists) {
@@ -62,7 +63,7 @@ public class OFFileMetadata {
    */
   public void addRowGroupListMetaData(OFRowGroupListMetadata rowGroupListMetadata) {
     if (rowGroupLists == null) {
-      rowGroupLists = new ArrayList<OFRowGroupListMetadata>();
+      rowGroupLists = new ArrayList<>();
     }
     rowGroupLists.add(rowGroupListMetadata);
   }

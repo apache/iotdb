@@ -45,7 +45,7 @@ import org.apache.iotdb.db.engine.bufferwrite.Action;
 import org.apache.iotdb.db.engine.bufferwrite.ActionException;
 import org.apache.iotdb.db.engine.bufferwrite.BufferWriteProcessor;
 import org.apache.iotdb.db.engine.bufferwrite.FileNodeConstants;
-import org.apache.iotdb.db.engine.overflow.ioV2.OverflowProcessor;
+import org.apache.iotdb.db.engine.overflow.iov2.OverflowProcessor;
 import org.apache.iotdb.db.engine.pool.MergeManager;
 import org.apache.iotdb.db.engine.querycontext.GlobalSortedSeriesDataSource;
 import org.apache.iotdb.db.engine.querycontext.OverflowSeriesDataSource;
@@ -739,7 +739,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
     }
     OverflowSeriesDataSource overflowSeriesDataSource;
     try {
-      overflowSeriesDataSource = overflowProcessor.query(deviceId, measurementId, filter, dataType);
+      overflowSeriesDataSource = overflowProcessor.query(deviceId, measurementId, dataType);
     } catch (IOException e) {
       e.printStackTrace();
       throw new FileNodeProcessorException(e);

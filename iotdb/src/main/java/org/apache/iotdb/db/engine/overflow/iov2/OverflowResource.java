@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.engine.overflow.ioV2;
+package org.apache.iotdb.db.engine.overflow.iov2;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
@@ -101,7 +101,7 @@ public class OverflowResource {
       long lastInsertPosition = BytesUtils.bytesToLong(insertPositionData);
       long lastUpdatePosition = BytesUtils.bytesToLong(updatePositionData);
       inputStream.close();
-      return new Pair<Long, Long>(lastInsertPosition, lastUpdatePosition);
+      return new Pair<>(lastInsertPosition, lastUpdatePosition);
     } catch (IOException e) {
       long left = 0;
       long right = 0;
@@ -112,7 +112,7 @@ public class OverflowResource {
       if (updateFile.exists()) {
         right = updateFile.length();
       }
-      return new Pair<Long, Long>(left, right);
+      return new Pair<>(left, right);
     }
   }
 
@@ -173,8 +173,7 @@ public class OverflowResource {
     return chunkMetaDatas;
   }
 
-  public void flush(FileSchema fileSchema, IMemTable memTable,
-      Map<String, Map<String, OverflowSeriesImpl>> overflowTrees, String processorName)
+  public void flush(FileSchema fileSchema, IMemTable memTable, String processorName)
       throws IOException {
     // insert data
     long startPos = insertIO.getPos();
@@ -241,13 +240,10 @@ public class OverflowResource {
 
   public void close() throws IOException {
     insertMetadatas.clear();
-    // updateDeleteMetadatas.clear();
     insertIO.close();
-    // updateDeleteIO.close();
   }
 
   public void deleteResource() throws IOException {
-    // cleanDir(new File(parentPath, dataPath).getPath());
     FileUtils.forceDelete(new File(parentPath, dataPath));
   }
 
