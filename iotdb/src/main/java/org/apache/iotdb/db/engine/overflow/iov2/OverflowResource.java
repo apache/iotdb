@@ -73,9 +73,7 @@ public class OverflowResource {
     updateFile = new File(dataFile, UPDATE_DELETE_FILE_NAME);
     positionFilePath = new File(dataFile, POSITION_FILE_NAME).getPath();
     Pair<Long, Long> position = readPositionInfo();
-    try {
-      // insert stream
-      OverflowIO.OverflowReadWriter readWriter = new OverflowIO.OverflowReadWriter(insertFilePath);
+    try(OverflowIO.OverflowReadWriter readWriter = new OverflowIO.OverflowReadWriter(insertFilePath)) {
       // truncate
       readWriter.wrapAsFileChannel().truncate(position.left);
       // reposition
@@ -92,8 +90,7 @@ public class OverflowResource {
   }
 
   private Pair<Long, Long> readPositionInfo() {
-    try {
-      FileInputStream inputStream = new FileInputStream(positionFilePath);
+    try(FileInputStream inputStream = new FileInputStream(positionFilePath)) {
       byte[] insertPositionData = new byte[8];
       byte[] updatePositionData = new byte[8];
       inputStream.read(insertPositionData);
@@ -118,12 +115,12 @@ public class OverflowResource {
 
   private void writePositionInfo(long lastInsertPosition, long lastUpdatePosition)
       throws IOException {
-    FileOutputStream outputStream = new FileOutputStream(positionFilePath);
-    byte[] data = new byte[16];
-    BytesUtils.longToBytes(lastInsertPosition, data, 0);
-    BytesUtils.longToBytes(lastUpdatePosition, data, 8);
-    outputStream.write(data);
-    outputStream.close();
+    try(FileOutputStream outputStream = new FileOutputStream(positionFilePath)) {
+      byte[] data = new byte[16];
+      BytesUtils.longToBytes(lastInsertPosition, data, 0);
+      BytesUtils.longToBytes(lastUpdatePosition, data, 8);
+      outputStream.write(data);
+    }
   }
 
   private void readMetadata() throws IOException {
