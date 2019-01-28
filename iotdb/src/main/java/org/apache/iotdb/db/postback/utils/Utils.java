@@ -32,25 +32,17 @@ public class Utils {
     return properties.split(",")[1];
   }
 
+  private Utils() {
+    throw new IllegalStateException("Utility class");
+  }
+
   public static String getPath(String timeseries) {
-    int lastPointIndex = timeseries.lastIndexOf(".");
+    int lastPointIndex = timeseries.lastIndexOf('.');
     return timeseries.substring(0, lastPointIndex);
   }
 
   public static String getSensor(String timeseries) {
-    int lastPointIndex = timeseries.lastIndexOf(".");
+    int lastPointIndex = timeseries.lastIndexOf('.');
     return timeseries.substring(lastPointIndex + 1);
-  }
-
-  /**
-   * main function.
-   *
-   * @param argc -console argc
-   */
-  public static void main(String[] argc) {
-
-    String test2 = "root.excavator.Beijing.d1.s1";
-    System.out.println(getPath(test2) + " " + getSensor(test2));
-
   }
 }

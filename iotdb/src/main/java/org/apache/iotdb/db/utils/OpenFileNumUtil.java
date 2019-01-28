@@ -20,14 +20,10 @@ package org.apache.iotdb.db.utils;
 
 import com.sun.management.UnixOperatingSystemMXBean;
 import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileDescriptor;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.lang.management.ManagementFactory;
 import java.lang.management.OperatingSystemMXBean;
-import java.nio.channels.FileChannel;
-import java.nio.file.StandardOpenOption;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.List;
@@ -58,7 +54,7 @@ public class OpenFileNumUtil {
   private int pid;
   private String processName;
 
-  OperatingSystemMXBean os = ManagementFactory.getOperatingSystemMXBean();
+  private OperatingSystemMXBean os = ManagementFactory.getOperatingSystemMXBean();
 
   /**
    * constructor, process key word is defined by IOTDB_PROCESS_KEY_WORD.
@@ -84,7 +80,7 @@ public class OpenFileNumUtil {
    * @return whether the string is a number
    */
   private static boolean isNumeric(String str) {
-    if (str == null || str.equals("")) {
+    if (str == null || "".equals(str)) {
       return false;
     } else {
       for (int i = str.length(); --i >= 0; ) {
@@ -106,10 +102,10 @@ public class OpenFileNumUtil {
     int iotdbPid = -1;
     Process pro1;
     Runtime r = Runtime.getRuntime();
-    String os = System.getProperty("os.name").toLowerCase();
+    String osName = System.getProperty("os.name").toLowerCase();
     try {
       String command;
-      if (os.startsWith(LINUX_OS_NAME)) {
+      if (osName.startsWith(LINUX_OS_NAME)) {
         command = String.format(SEARCH_PID_LINUX, processName);
       } else {
         command = String.format(SEARCH_PID_MAC, processName);
@@ -129,7 +125,7 @@ public class OpenFileNumUtil {
       in1.close();
       pro1.destroy();
     } catch (IOException e) {
-      log.error("Cannot get pid of IoTDB process because of {}", e.getMessage());
+      log.error("Cannot get pid of IoTDB process. ", e);
     }
     return iotdbPid;
   }
@@ -173,7 +169,7 @@ public class OpenFileNumUtil {
       int oldValue;
       while ((line = in.readLine()) != null) {
         String[] temp = line.split("\\s+");
-        if (line.contains("" + pid) && temp.length > 8) {
+        if (line.contains(Integer.toString(pid)) && temp.length > 8) {
           oldValue = resultMap.get(OpenFileNumStatistics.TOTAL_OPEN_FILE_NUM);
           resultMap.put(OpenFileNumStatistics.TOTAL_OPEN_FILE_NUM, oldValue + 1);
           for (OpenFileNumStatistics openFileNumStatistics : OpenFileNumStatistics.values()) {
@@ -195,7 +191,7 @@ public class OpenFileNumUtil {
       in.close();
       pro.destroy();
     } catch (Exception e) {
-      log.error("Cannot get open file number of IoTDB process because of {}", e.getMessage());
+      log.error("Cannot get open file number of IoTDB process.", e);
     }
     return resultMap;
   }
@@ -216,9 +212,9 @@ public class OpenFileNumUtil {
    */
   private EnumMap<OpenFileNumStatistics, Integer> getStatisticMap() {
     EnumMap<OpenFileNumStatistics, Integer> resultMap = new EnumMap<>(OpenFileNumStatistics.class);
-    String os = System.getProperty("os.name").toLowerCase();
+    String osName = System.getProperty("os.name").toLowerCase();
     // get runtime OS name, currently only support Linux and MacOS
-    if (os.startsWith(LINUX_OS_NAME) || os.startsWith(MAC_OS_NAME)) {
+    if (osName.startsWith(LINUX_OS_NAME) || osName.startsWith(MAC_OS_NAME)) {
       // if pid is normal, then get statistics
       if (pid > 0) {
         resultMap = getOpenFile(pid);
@@ -275,7 +271,7 @@ public class OpenFileNumUtil {
   }
 
   private static class OpenFileNumUtilHolder {
-
+    private OpenFileNumUtilHolder(){}
     private static final OpenFileNumUtil INSTANCE = new OpenFileNumUtil();
   }
 

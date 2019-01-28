@@ -142,7 +142,7 @@ public class OverflowResource {
       insertIO.getReader().position(position - FOOTER_LENGTH - metadataLength - POS_LENGTH);
       insertIO.getReader().read(bytesPosition, 0, POS_LENGTH);
       position = BytesUtils.bytesToLong(bytesPosition);
-      for (ChunkGroupMetaData rowGroupMetaData : tsDeviceMetadata.getChunkGroups()) {
+      for (ChunkGroupMetaData rowGroupMetaData : tsDeviceMetadata.getChunkGroupMetaDataList()) {
         String deviceId = rowGroupMetaData.getDeviceID();
         if (!insertMetadatas.containsKey(deviceId)) {
           insertMetadatas.put(deviceId, new HashMap<>());

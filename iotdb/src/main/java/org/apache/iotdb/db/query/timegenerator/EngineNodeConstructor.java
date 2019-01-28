@@ -55,9 +55,13 @@ public class EngineNodeConstructor {
    * @throws IOException IOException
    * @throws FileNodeManagerException FileNodeManagerException
    */
-  public Node construct(IExpression expression) throws IOException, FileNodeManagerException {
+  public Node construct(IExpression expression) throws FileNodeManagerException {
     if (expression.getType() == SERIES) {
-      return new EngineLeafNode(generateSeriesReader((SingleSeriesExpression) expression));
+      try {
+        return new EngineLeafNode(generateSeriesReader((SingleSeriesExpression) expression));
+      } catch (IOException e) {
+        throw new FileNodeManagerException(e);
+      }
     } else {
       Node leftChild;
       Node rightChild;

@@ -20,6 +20,8 @@ package org.apache.iotdb.jdbc;
 
 public class Config {
 
+  private Config(){}
+
   /**
    * The required prefix for the connection URL.
    */
@@ -48,6 +50,6 @@ public class Config {
   public static int fetchSize = 10000;
   public static int connectionTimeoutInMs = 0;
 
-  public static String JDBC_DRIVER_NAME = "org.apache.iotdb.jdbc.IoTDBDriver";
+  public static final String JDBC_DRIVER_NAME = "org.apache.iotdb.jdbc.IoTDBDriver";
 
 }

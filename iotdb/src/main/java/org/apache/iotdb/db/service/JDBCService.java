@@ -42,8 +42,8 @@ import org.slf4j.LoggerFactory;
 public class JDBCService implements JDBCServiceMBean, IService {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(JDBCService.class);
-  private final String statusUp = "UP";
-  private final String statusDown = "DOWN";
+  private static final String STATUS_UP = "UP";
+  private static final String STATUS_DOWN = "DOWN";
   private final String mbeanName = String
       .format("%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE,
           getID().getJmxName());
@@ -66,7 +66,7 @@ public class JDBCService implements JDBCServiceMBean, IService {
 
   @Override
   public String getJDBCServiceStatus() {
-    return isStart ? statusUp : statusDown;
+    return isStart ? STATUS_UP : STATUS_DOWN;
   }
 
   @Override
@@ -84,6 +84,7 @@ public class JDBCService implements JDBCServiceMBean, IService {
       String errorMessage = String
           .format("Failed to start %s because of %s", this.getID().getName(),
               e.getMessage());
+      LOGGER.error(errorMessage);
       throw new StartupException(errorMessage);
     }
 
@@ -116,6 +117,7 @@ public class JDBCService implements JDBCServiceMBean, IService {
       String errorMessage = String
           .format("Failed to start %s because of %s", this.getID().getName(),
               e.getMessage());
+      LOGGER.error(errorMessage);
       throw new StartupException(errorMessage);
     }
     jdbcServiceThread.start();
@@ -158,6 +160,10 @@ public class JDBCService implements JDBCServiceMBean, IService {
   private static class JDBCServiceHolder {
 
     private static final JDBCService INSTANCE = new JDBCService();
+
+    private JDBCServiceHolder() {
+
+    }
   }
 
   private class JDBCServiceThread implements Runnable {
@@ -165,7 +171,7 @@ public class JDBCService implements JDBCServiceMBean, IService {
     public JDBCServiceThread() throws IOException {
       protocolFactory = new TBinaryProtocol.Factory();
       impl = new TSServiceImpl();
-      processor = new TSIService.Processor<TSIService.Iface>(impl);
+      processor = new TSIService.Processor<>(impl);
     }
 
     @Override

@@ -33,7 +33,7 @@ public class Binary implements Comparable<Binary>, Serializable {
 
   private static final long serialVersionUID = 6394197743397020735L;
 
-  public byte[] values;
+  private byte[] values;
   private String textEncodingType = TSFileConfig.STRING_ENCODING;
 
   /**

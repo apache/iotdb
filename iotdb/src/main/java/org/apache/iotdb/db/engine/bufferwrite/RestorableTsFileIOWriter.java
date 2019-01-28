@@ -202,7 +202,7 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
         randomAccessFile.read(thriftBytes);
         ByteArrayInputStream inputStream = new ByteArrayInputStream(thriftBytes);
         TsDeviceMetadata tsDeviceMetadata = TsDeviceMetadata.deserializeFrom(inputStream);
-        groupMetaDatas.addAll(tsDeviceMetadata.getChunkGroups());
+        groupMetaDatas.addAll(tsDeviceMetadata.getChunkGroupMetaDataList());
         point = randomAccessFile.getFilePointer();
       }
       // read the tsfile position information using byte[8] which is a long.
