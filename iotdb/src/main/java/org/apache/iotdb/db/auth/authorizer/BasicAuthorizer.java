@@ -240,7 +240,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
     try {
       init();
     } catch (AuthException e) {
-      logger.error("Auth authentication error : {}", e.getMessage());
+      logger.error("Auth authentication error : {}", e);
       throw new StartupException(e.getMessage());
     }
   }
