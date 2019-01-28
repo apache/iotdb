@@ -58,7 +58,7 @@ public class CreateDataSender1 {
   private static final int MAX_FLOAT = 30;
   private static final int STRING_LENGTH = 5;
   private static final int BATCH_SQL = 10000;
-  private static final Logger LOGGER = LoggerFactory.getLogger(CreateDataSender1.class);
+  private static final Logger logger = LoggerFactory.getLogger(CreateDataSender1.class);
 
   /**
    * generate time series map from file.
@@ -117,7 +117,7 @@ public class CreateDataSender1 {
       statement.executeBatch();
       statement.clearBatch();
     } catch (Exception e) {
-      LOGGER.error("", e);
+      logger.error("", e);
     }
   }
 
@@ -137,7 +137,7 @@ public class CreateDataSender1 {
         statement.execute(sql);
       }
     } catch (Exception e) {
-      LOGGER.error("", e);
+      logger.error("", e);
     }
   }
 
@@ -243,15 +243,15 @@ public class CreateDataSender1 {
       statement = connection.createStatement();
 
       setStorageGroup(statement, storageGroupList);
-      LOGGER.debug("Finish set storage group.");
+      logger.debug("Finish set storage group.");
       createTimeseries(statement, timeseriesMap);
-      LOGGER.debug("Finish create timeseries.");
+      logger.debug("Finish create timeseries.");
       while (true) {
         randomInsertData(statement, timeseriesMap);
       }
 
     } catch (Exception e) {
-      LOGGER.error("", e);
+      logger.error("", e);
     } finally {
       if (statement != null) {
         statement.close();

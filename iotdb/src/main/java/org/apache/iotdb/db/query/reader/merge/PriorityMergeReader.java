@@ -35,6 +35,9 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
  */
 public class PriorityMergeReader implements IReader {
 
+  public static final int LOW_PRIORITY = 1;
+  public static final int HIGH_PRIORITY = 2;
+
   private List<IReader> readerList = new ArrayList<>();
   private List<Integer> priorityList = new ArrayList<>();
   private PriorityQueue<Element> heap = new PriorityQueue<>();
