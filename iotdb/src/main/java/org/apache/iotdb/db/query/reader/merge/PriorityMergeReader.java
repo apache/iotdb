@@ -143,7 +143,7 @@ public class PriorityMergeReader implements IReader {
 
     @Override
     public int hashCode(){
-      return (int) (timeValuePair.getTimestamp() * 37 + priority.hashCode());
+      return (int) (timeValuePair.getTimestamp() * 31 + priority.hashCode());
     }
   }
 }
