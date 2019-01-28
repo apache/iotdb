@@ -27,12 +27,11 @@ import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 
 /**
+ * <p>
  * Usage:
- *
- * (1) merge multiple chunk group readers in the unsequence file (2）merge sequence reader , unsequence reader and mem
- * reader
- *
- * Notice that: the bigger the priority value is, the higher the priority of this reader is
+ * (1) merge multiple chunk group readers in the unsequence file
+ * (2）merge sequence reader, unsequence reader and mem reader
+ * </p>
  */
 public class PriorityMergeReader implements IReader {
 
@@ -40,6 +39,9 @@ public class PriorityMergeReader implements IReader {
   private List<Integer> priorityList = new ArrayList<>();
   private PriorityQueue<Element> heap = new PriorityQueue<>();
 
+  /**
+   * The bigger the priority value is, the higher the priority of this reader is
+   */
   public void addReaderWithPriority(IReader reader, int priority) throws IOException {
     if (reader.hasNext()) {
       heap.add(new Element(readerList.size(), reader.next(), priority));
