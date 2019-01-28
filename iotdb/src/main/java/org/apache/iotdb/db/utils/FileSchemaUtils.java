@@ -31,6 +31,8 @@ import org.json.JSONObject;
 
 public class FileSchemaUtils {
 
+  private FileSchemaUtils(){}
+
   /**
    * Construct the FileSchema of the FileNode named processorName.
    * @param processorName the name of a FileNode.
@@ -42,13 +44,7 @@ public class FileSchemaUtils {
     List<ColumnSchema> columnSchemaList;
     columnSchemaList = MManager.getInstance().getSchemaForFileName(processorName);
 
-    FileSchema fileSchema = null;
-    try {
-      fileSchema = getFileSchemaFromColumnSchema(columnSchemaList, processorName);
-    } catch (WriteProcessException e) {
-      throw e;
-    }
-    return fileSchema;
+    return getFileSchemaFromColumnSchema(columnSchemaList, processorName);
 
   }
 
@@ -66,12 +62,12 @@ public class FileSchemaUtils {
     // TODO: is using a JSON as the media necessary?
     JSONArray rowGroup = new JSONArray();
 
-    for (ColumnSchema col : schemaList) {
+    for (ColumnSchema columnSchema : schemaList) {
       JSONObject measurement = new JSONObject();
-      measurement.put(JsonFormatConstant.MEASUREMENT_UID, col.name);
-      measurement.put(JsonFormatConstant.DATA_TYPE, col.dataType.toString());
-      measurement.put(JsonFormatConstant.MEASUREMENT_ENCODING, col.encoding.toString());
-      for (Entry<String, String> entry : col.getArgsMap().entrySet()) {
+      measurement.put(JsonFormatConstant.MEASUREMENT_UID, columnSchema.getName());
+      measurement.put(JsonFormatConstant.DATA_TYPE, columnSchema.dataType.toString());
+      measurement.put(JsonFormatConstant.MEASUREMENT_ENCODING, columnSchema.encoding.toString());
+      for (Entry<String, String> entry : columnSchema.getArgsMap().entrySet()) {
         if (JsonFormatConstant.ENUM_VALUES.equals(entry.getKey())) {
           String[] valueArray = entry.getValue().split(",");
           measurement.put(JsonFormatConstant.ENUM_VALUES, new JSONArray(valueArray));

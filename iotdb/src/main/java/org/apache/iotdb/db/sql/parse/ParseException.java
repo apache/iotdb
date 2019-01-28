@@ -18,14 +18,14 @@
  */
 package org.apache.iotdb.db.sql.parse;
 
-import java.util.ArrayList;
+import java.util.List;
 
 public class ParseException extends Exception {
 
   private static final long serialVersionUID = 1L;
-  ArrayList<ParseError> errors;
+  private final transient List<ParseError> errors;
 
-  public ParseException(ArrayList<ParseError> errors) {
+  public ParseException(List<ParseError> errors) {
     super();
     this.errors = errors;
   }

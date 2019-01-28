@@ -25,8 +25,10 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 
 public class PhysicalPlanLogTransfer {
 
+  private PhysicalPlanLogTransfer(){}
+
   public static byte[] operatorToLog(PhysicalPlan plan) throws WALOverSizedException {
-    Codec<PhysicalPlan> codec = null;
+    Codec<PhysicalPlan> codec;
     switch (plan.getOperatorType()) {
       case INSERT:
         codec = (Codec<PhysicalPlan>) PhysicalPlanCodec.fromOpcode(SystemLogOperator.INSERT).codec;

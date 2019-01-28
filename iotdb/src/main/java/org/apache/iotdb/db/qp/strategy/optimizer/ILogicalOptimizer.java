@@ -24,6 +24,7 @@ import org.apache.iotdb.db.qp.logical.Operator;
 /**
  * provide a context, transform it for optimization.
  */
+@FunctionalInterface
 public interface ILogicalOptimizer {
 
   Operator transform(Operator operator) throws LogicalOptimizeException;

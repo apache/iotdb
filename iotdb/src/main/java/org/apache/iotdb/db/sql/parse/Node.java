@@ -31,7 +31,7 @@ public interface Node {
    *
    * @return List<?   extends   Node>
    */
-  List<? extends Node> getChildren();
+  List<Node> getChildren();
 
   /**
    * Gets the name of the node. This is used in the rule dispatchers.

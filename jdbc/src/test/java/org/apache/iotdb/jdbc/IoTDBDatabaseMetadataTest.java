@@ -97,7 +97,7 @@ public class IoTDBDatabaseMetadataTest {
     String standard =
         "Column,\n" + "root.vehicle.d0.s0,\n" + "root.vehicle.d0.s1,\n" + "root.vehicle.d0.s2,\n";
     try {
-      ResultSet resultSet = databaseMetaData.getColumns(Constant.CatalogColumn, "root", null, null);
+      ResultSet resultSet = databaseMetaData.getColumns(Constant.CATALOG_COLUMN, "root", null, null);
       ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
       int colCount = resultSetMetaData.getColumnCount();
       StringBuilder resultStr = new StringBuilder();
@@ -131,7 +131,7 @@ public class IoTDBDatabaseMetadataTest {
     String standard = "Column,\n" + "root.vehicle.d0,\n";
     try {
       ResultSet resultSet = databaseMetaData
-          .getColumns(Constant.CatalogDevice, "vehicle", null, null);
+          .getColumns(Constant.CATALOG_DEVICE, "vehicle", null, null);
       ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
       int colCount = resultSetMetaData.getColumnCount();
       StringBuilder resultStr = new StringBuilder();
@@ -191,7 +191,7 @@ public class IoTDBDatabaseMetadataTest {
         + "root.vehicle.d0.s2,root.vehicle,FLOAT,RLE,\n";
     try {
       ResultSet resultSet = databaseMetaData
-          .getColumns(Constant.CatalogTimeseries, "root", null, null);
+          .getColumns(Constant.CATALOG_TIMESERIES, "root", null, null);
       ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
       int colCount = resultSetMetaData.getColumnCount();
       StringBuilder resultStr = new StringBuilder();
@@ -232,7 +232,7 @@ public class IoTDBDatabaseMetadataTest {
     String standard = "DataType,\n" + "INT32,\n";
     try {
       ResultSet resultSet = databaseMetaData
-          .getColumns(Constant.CatalogTimeseries, "root.vehicle.d0.s0", null,
+          .getColumns(Constant.CATALOG_TIMESERIES, "root.vehicle.d0.s0", null,
               null);
       ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
       StringBuilder resultStr = new StringBuilder();
@@ -261,7 +261,7 @@ public class IoTDBDatabaseMetadataTest {
     String standard = "Storage Group,\n" + "root.vehicle,\n";
     try {
       ResultSet resultSet = databaseMetaData
-          .getColumns(Constant.CatalogStorageGroup, null, null, null);
+          .getColumns(Constant.CATALOG_STORAGE_GROUP, null, null, null);
       ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
       int colCount = resultSetMetaData.getColumnCount();
       StringBuilder resultStr = new StringBuilder();
