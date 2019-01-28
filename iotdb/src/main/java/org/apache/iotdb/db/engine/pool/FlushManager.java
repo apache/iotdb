@@ -57,6 +57,10 @@ public class FlushManager {
     pool = Executors.newFixedThreadPool(config.concurrentFlushThread);
   }
 
+  public FlushManager(ExecutorService pool) {
+    this.pool = pool;
+  }
+
   /**
    * Refuse new flush submits and exit when all RUNNING THREAD in the pool end.
    *
