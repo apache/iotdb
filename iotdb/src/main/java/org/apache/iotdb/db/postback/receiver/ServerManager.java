@@ -79,8 +79,7 @@ public class ServerManager {
       Thread thread = new Thread(runnable);
       thread.start();
     } catch (TTransportException e) {
-      LOGGER.error("IoTDB post back receiver: cannot start postback server because {}",
-          e.getMessage());
+      LOGGER.error("IoTDB post back receiver: cannot start postback server because {}", e);
     }
   }
 

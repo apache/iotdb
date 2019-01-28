@@ -171,6 +171,7 @@ public class SeriesReaderFactory {
 
     private static final SeriesReaderFactory INSTANCE = new SeriesReaderFactory();
 
-    private SeriesReaderFactoryHelper(){}
+    private SeriesReaderFactoryHelper() {
+    }
   }
 }

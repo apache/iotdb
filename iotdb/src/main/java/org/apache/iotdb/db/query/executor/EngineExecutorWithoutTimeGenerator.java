@@ -84,7 +84,7 @@ public class EngineExecutorWithoutTimeGenerator {
       try {
         tsFilesReader = new SequenceDataReader(queryDataSource.getSeqDataSource(),
             timeFilter);
-        priorityReader.addReaderWithPriority(tsFilesReader, 1);
+        priorityReader.addReaderWithPriority(tsFilesReader, PriorityMergeReader.LOW_PRIORITY);
       } catch (IOException e) {
         throw new FileNodeManagerException(e);
       }
@@ -94,7 +94,7 @@ public class EngineExecutorWithoutTimeGenerator {
       try {
         unSeqMergeReader = SeriesReaderFactory.getInstance()
             .createUnSeqMergeReader(queryDataSource.getOverflowSeriesDataSource(), timeFilter);
-        priorityReader.addReaderWithPriority(unSeqMergeReader, 2);
+        priorityReader.addReaderWithPriority(unSeqMergeReader, PriorityMergeReader.HIGH_PRIORITY);
       } catch (IOException e) {
         throw new FileNodeManagerException(e);
       }
