@@ -97,13 +97,13 @@ public class StatMonitor implements IService {
    * @param curTime TODO need to be fixed because it may contain overflow
    * @return TSRecord contains the DataPoints of a statGroupDeltaName
    */
-  public static TSRecord convertToTSRecord(HashMap<String, AtomicLong> hashMap,
+  public static TSRecord convertToTSRecord(Map<String, AtomicLong> hashMap,
       String statGroupDeltaName, long curTime) {
     TSRecord tsRecord = new TSRecord(curTime, statGroupDeltaName);
     tsRecord.dataPointList = new ArrayList<DataPoint>() {
       {
         for (Map.Entry<String, AtomicLong> entry : hashMap.entrySet()) {
-          AtomicLong value = (AtomicLong) entry.getValue();
+          AtomicLong value = entry.getValue();
           add(new LongDataPoint(entry.getKey(), value.get()));
         }
       }
@@ -131,7 +131,7 @@ public class StatMonitor implements IService {
         mManager.setStorageLevelToMTree(prefix);
       }
     } catch (Exception e) {
-      LOGGER.error("MManager cannot set storage level to MTree, because {}", e.getMessage());
+      LOGGER.error("MManager cannot set storage level to MTree, because {}", e);
     }
   }
 
@@ -154,41 +154,6 @@ public class StatMonitor implements IService {
 
   public void recovery() {
     // // restore the FildeNode Manager TOTAL_POINTS statistics info
-    // OverflowQueryEngine overflowQueryEngine = new OverflowQueryEngine();
-    // List<Pair<Path, String>> pairList = new ArrayList<>();
-    // List<String> stringList = FileNodeManager.getInstance().getAllPathForStatistic();
-    // for (String string : stringList) {
-    // Path path = new Path(string);
-    // pairList.add(new Pair<>(path, StatisticConstant.LAST));
-    // }
-    // try {
-    // QueryDataSet queryDataSet;
-    // queryDataSet = overflowQueryEngine.aggregate(pairList, null);
-    // ReadCacheManager.getInstance().unlockForOneRequest();
-    // OldRowRecord rowRecord = queryDataSet.getNextRecord();
-    // if (rowRecord!=null) {
-    // FileNodeManager fManager = FileNodeManager.getInstance();
-    // HashMap<String, AtomicLong> statParamsHashMap = fManager.getStatParamsHashMap();
-    // List<Field> list = rowRecord.fields;
-    // for (Field field: list) {
-    // String statMeasurement = field.measurementId.substring(0,field.measurementId.length() - 1);
-    // if (statParamsHashMap.containsKey(statMeasurement)) {
-    // if (field.isNull()) {
-    // continue;
-    // }
-    // long lastValue = field.getLongV();
-    // statParamsHashMap.put(statMeasurement, new AtomicLong(lastValue));
-    // }
-    // }
-    // }
-    // } catch (ProcessorException e) {
-    // LOGGER.error("Can't get the processor when recovering statistics of FileNodeManager,", e);
-    // } catch (PathErrorException e) {
-    // LOGGER.error("When recovering statistics of FileNodeManager, timeseries seriesPath does
-    // not exist,", e);
-    // } catch (IOException e) {
-    // LOGGER.error("IO Error occurs when recovering statistics of FileNodeManager,", e);
-    // }
   }
 
   public void activate() {
@@ -196,7 +161,7 @@ public class StatMonitor implements IService {
     service = IoTDBThreadPoolFactory.newScheduledThreadPool(1,
         ThreadName.STAT_MONITOR.getName());
     service.scheduleAtFixedRate(
-        new StatMonitor.statBackLoop(), 1, backLoopPeriod, TimeUnit.SECONDS);
+        new StatBackLoop(), 1, backLoopPeriod, TimeUnit.SECONDS);
   }
 
   public void clearIStatisticMap() {
@@ -231,7 +196,7 @@ public class StatMonitor implements IService {
    *
    * @return TSRecord, query statistics params
    */
-  public HashMap<String, TSRecord> getOneStatisticsValue(String key) {
+  public Map<String, TSRecord> getOneStatisticsValue(String key) {
     // queryPath like fileNode seriesPath: root.stats.car1,
     // or FileNodeManager seriesPath:FileNodeManager
     String queryPath;
@@ -341,12 +306,14 @@ public class StatMonitor implements IService {
   }
 
   private static class StatMonitorHolder {
-
+    private StatMonitorHolder(){
+      //allowed do nothing
+    }
     private static final StatMonitor INSTANCE = new StatMonitor();
   }
 
-  class statBackLoop implements Runnable {
-
+  class StatBackLoop implements Runnable {
+    @Override
     public void run() {
       try {
         long currentTimeMillis = System.currentTimeMillis();
