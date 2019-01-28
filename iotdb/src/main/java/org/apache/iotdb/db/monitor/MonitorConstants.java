@@ -23,15 +23,15 @@ import java.util.concurrent.atomic.AtomicLong;
 
 public class MonitorConstants {
 
-  public static final String DataType = "INT64";
+  public static final String DATA_TYPE = "INT64";
   public static final String FILENODE_PROCESSOR_CONST = "FILENODE_PROCESSOR_CONST";
   public static final String FILENODE_MANAGER_CONST = "FILENODE_MANAGER_CONST";
   public static final String MONITOR_PATH_SEPERATOR = ".";
-  public static final String statStorageGroupPrefix = "root.stats";
+  public static final String STAT_STORAGE_GROUP_PREFIX = "root.stats";
 
   // statistic for write module
-  public static final String fileNodeManagerPath = "write.global";
-  public static final String fileNodePath = "write";
+  public static final String FILE_NODE_MANAGER_PATH = "write.global";
+  public static final String FILE_NODE_PATH = "write";
 
   /**
    * function for initing values.

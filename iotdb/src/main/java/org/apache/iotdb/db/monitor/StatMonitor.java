@@ -75,7 +75,7 @@ public class StatMonitor implements IService {
     backLoopPeriod = config.backLoopPeriodSec;
     if (config.enableStatMonitor) {
       try {
-        String prefix = MonitorConstants.statStorageGroupPrefix;
+        String prefix = MonitorConstants.STAT_STORAGE_GROUP_PREFIX;
         if (!mmanager.pathExist(prefix)) {
           mmanager.setStorageLevelToMTree(prefix);
         }
@@ -125,7 +125,7 @@ public class StatMonitor implements IService {
 
   public void registStatStorageGroup() {
     MManager mManager = MManager.getInstance();
-    String prefix = MonitorConstants.statStorageGroupPrefix;
+    String prefix = MonitorConstants.STAT_STORAGE_GROUP_PREFIX;
     try {
       if (!mManager.pathExist(prefix)) {
         mManager.setStorageLevelToMTree(prefix);
@@ -236,7 +236,7 @@ public class StatMonitor implements IService {
     // or FileNodeManager seriesPath:FileNodeManager
     String queryPath;
     if (key.contains("\\.")) {
-      queryPath = MonitorConstants.statStorageGroupPrefix + MonitorConstants.MONITOR_PATH_SEPERATOR
+      queryPath = MonitorConstants.STAT_STORAGE_GROUP_PREFIX + MonitorConstants.MONITOR_PATH_SEPERATOR
           + key.replaceAll("\\.", "_");
     } else {
       queryPath = key;

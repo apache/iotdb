@@ -20,6 +20,10 @@ package org.apache.iotdb.db.metadata;
 
 public class MetadataOperationType {
 
+  private MetadataOperationType(){
+    //allowed do nothing
+  }
+
   public static final String ADD_PATH_TO_MTREE = "0";
   public static final String DELETE_PATH_FROM_MTREE = "1";
   public static final String SET_STORAGE_LEVEL_TO_MTREE = "2";

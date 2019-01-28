@@ -205,8 +205,8 @@ public class FileNodeProcessor extends Processor implements IStatistic {
       throws FileNodeProcessorException {
     super(processorName);
     statStorageDeltaName =
-        MonitorConstants.statStorageGroupPrefix + MonitorConstants.MONITOR_PATH_SEPERATOR
-            + MonitorConstants.fileNodePath + MonitorConstants.MONITOR_PATH_SEPERATOR
+        MonitorConstants.STAT_STORAGE_GROUP_PREFIX + MonitorConstants.MONITOR_PATH_SEPERATOR
+            + MonitorConstants.FILE_NODE_PATH + MonitorConstants.MONITOR_PATH_SEPERATOR
             + processorName.replaceAll("\\.", "_");
 
     this.parameters = new HashMap<>();
@@ -276,7 +276,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
         for (MonitorConstants.FileNodeProcessorStatConstants statConstant :
             MonitorConstants.FileNodeProcessorStatConstants.values()) {
           put(statStorageDeltaName + MonitorConstants.MONITOR_PATH_SEPERATOR + statConstant.name(),
-              MonitorConstants.DataType);
+              MonitorConstants.DATA_TYPE);
         }
       }
     };

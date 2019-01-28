@@ -79,8 +79,8 @@ public class MonitorTest {
     for (String statParam : statParamsHashMap.keySet()) {
       assertEquals(true,
           mManager.pathExist(
-              MonitorConstants.statStorageGroupPrefix + MonitorConstants.MONITOR_PATH_SEPERATOR
-                  + MonitorConstants.fileNodeManagerPath + MonitorConstants.MONITOR_PATH_SEPERATOR
+              MonitorConstants.STAT_STORAGE_GROUP_PREFIX + MonitorConstants.MONITOR_PATH_SEPERATOR
+                  + MonitorConstants.FILE_NODE_MANAGER_PATH + MonitorConstants.MONITOR_PATH_SEPERATOR
                   + statParam));
     }
     statMonitor.activate();

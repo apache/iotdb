@@ -287,7 +287,7 @@ public class IoTDBMetadataFetchIT {
    * show timeseries <seriesPath> usage 1
    */
   private void showTimeseriesPath1() throws SQLException {
-    String standard = "Timeseries,Storage Group,DataType,Encoding,\n"
+    String standard = "Timeseries,Storage Group,DATA_TYPE,Encoding,\n"
         + "root.ln.wf01.wt01.status,root.ln.wf01.wt01,BOOLEAN,PLAIN,\n"
         + "root.ln.wf01.wt01.temperature,root.ln.wf01.wt01,FLOAT,RLE,\n";
 
@@ -313,7 +313,7 @@ public class IoTDBMetadataFetchIT {
    * show timeseries <seriesPath> usage 2
    */
   private void showTimeseriesPath2() throws SQLException {
-    String standard = "DataType,\n" + "BOOLEAN,\n";
+    String standard = "DATA_TYPE,\n" + "BOOLEAN,\n";
 
     ResultSet resultSet = databaseMetaData
         .getColumns(Constant.CatalogTimeseries, "root.ln.wf01.wt01.status", null,
@@ -361,10 +361,10 @@ public class IoTDBMetadataFetchIT {
     String standard =
         "===  Timeseries Tree  ===\n" + "\n" + "root:{\n" + "    ln:{\n" + "        wf01:{\n"
             + "            wt01:{\n" + "                status:{\n"
-            + "                     DataType: BOOLEAN,\n"
+            + "                     DATA_TYPE: BOOLEAN,\n"
             + "                     Encoding: PLAIN,\n" + "                     args: {},\n"
             + "                     StorageGroup: root.ln.wf01.wt01 \n" + "                },\n"
-            + "                temperature:{\n" + "                     DataType: FLOAT,\n"
+            + "                temperature:{\n" + "                     DATA_TYPE: FLOAT,\n"
             + "                     Encoding: RLE,\n"
             + "                     args: {MAX_POINT_NUMBER=3, compressor=SNAPPY},\n"
             + "                     StorageGroup: root.ln.wf01.wt01 \n" + "                }\n"

@@ -80,8 +80,8 @@ public class FileNodeManager implements IStatistic, IService {
   /**
    * Stat information.
    */
-  private final String statStorageDeltaName = MonitorConstants.statStorageGroupPrefix
-      + MonitorConstants.MONITOR_PATH_SEPERATOR + MonitorConstants.fileNodeManagerPath;
+  private final String statStorageDeltaName = MonitorConstants.STAT_STORAGE_GROUP_PREFIX
+      + MonitorConstants.MONITOR_PATH_SEPERATOR + MonitorConstants.FILE_NODE_MANAGER_PATH;
   /**
    * This map is used to manage all filenode processor,<br> the key is filenode name which is
    * storage group seriesPath.
@@ -174,7 +174,7 @@ public class FileNodeManager implements IStatistic, IService {
         for (MonitorConstants.FileNodeManagerStatConstants statConstant :
             MonitorConstants.FileNodeManagerStatConstants.values()) {
           put(statStorageDeltaName + MonitorConstants.MONITOR_PATH_SEPERATOR + statConstant.name(),
-              MonitorConstants.DataType);
+              MonitorConstants.DATA_TYPE);
         }
       }
     };
