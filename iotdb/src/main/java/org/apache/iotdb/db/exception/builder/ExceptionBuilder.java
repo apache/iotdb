@@ -59,24 +59,13 @@ public class ExceptionBuilder {
    * @param filePath the path of error information file
    */
   public void loadInfo(String filePath) {
-    InputStream in = null;
-    try {
-      in = new BufferedInputStream(new FileInputStream(filePath));
+    try(InputStream in=new BufferedInputStream(new FileInputStream(filePath))){
       properties.load(new InputStreamReader(in, "utf-8"));
-      in.close();
     } catch (IOException e) {
       LOGGER.error(
           "Read file error. File does not exist or file is broken. "
               + "File seriesPath: {}.Because: {}.",
-          filePath, e.getMessage());
-    } finally {
-      if (in != null) {
-        try {
-          in.close();
-        } catch (IOException e) {
-          LOGGER.error("Fail to close file: {}. Because: {}.", filePath, e.getMessage());
-        }
-      }
+          filePath, e);
     }
   }
 

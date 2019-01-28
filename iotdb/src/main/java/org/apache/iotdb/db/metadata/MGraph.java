@@ -47,7 +47,7 @@ public class MGraph implements Serializable {
    * Add a {@code PTree} to current {@code MGraph}.
    */
   public void addAPTree(String ptreeRootName) throws MetadataArgsErrorException {
-    if (ptreeRootName.equalsIgnoreCase("root")) {
+    if ("root".equalsIgnoreCase(ptreeRootName)) {
       throw new MetadataArgsErrorException("Property Tree's root name should not be 'root'");
     }
     PTree ptree = new PTree(ptreeRootName, mtree);
@@ -212,8 +212,7 @@ public class MGraph implements Serializable {
   public Metadata getMetadata() throws PathErrorException {
     Map<String, List<ColumnSchema>> seriesMap = getSchemaForAllType();
     Map<String, List<String>> deviceIdMap = getDeviceForAllType();
-    Metadata metadata = new Metadata(seriesMap, deviceIdMap);
-    return metadata;
+    return new Metadata(seriesMap, deviceIdMap);
   }
 
   public HashSet<String> getAllStorageGroup() throws PathErrorException {
