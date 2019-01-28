@@ -74,7 +74,7 @@ public class EngineQueryRouter {
         }
 
       } catch (QueryFilterOptimizationException e) {
-        throw new FileNodeManagerException(new IOException(e));
+        throw new FileNodeManagerException(e);
       }
     } else {
       EngineExecutorWithoutTimeGenerator engineExecutor = new EngineExecutorWithoutTimeGenerator(
