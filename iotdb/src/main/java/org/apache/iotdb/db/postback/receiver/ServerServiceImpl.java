@@ -27,7 +27,6 @@ import java.io.IOException;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
-import java.nio.file.Files;
 import java.security.MessageDigest;
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -36,6 +35,7 @@ import java.sql.Statement;
 import java.util.*;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.Directories;
 import org.apache.iotdb.db.engine.filenode.FileNodeManager;
@@ -64,7 +64,7 @@ import org.slf4j.LoggerFactory;
  */
 public class ServerServiceImpl implements ServerService.Iface {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(ServerServiceImpl.class);
+  private static final Logger logger = LoggerFactory.getLogger(ServerServiceImpl.class);
   private static final FileNodeManager fileNodeManager = FileNodeManager.getInstance();
   private static final String JDBC_DRIVER_NAME = "org.apache.iotdb.jdbc.IoTDBDriver";
   private static final String POSTBACK = "postback";
@@ -91,8 +91,9 @@ public class ServerServiceImpl implements ServerService.Iface {
    */
   @Override
   public void init(String storageGroup) {
-    LOGGER.info("IoTDB post back receiver: postback process starts to receive data of storage "
-        + "group {}.", storageGroup);
+    logger.info(String.format(
+        "IoTDB post back receiver: postback process starts to receive data of storage group {}."),
+        storageGroup);
     fileNum.set(0);
     fileNodeMap.set(new HashMap<>());
     fileNodeStartTime.set(new HashMap<>());
@@ -141,35 +142,35 @@ public class ServerServiceImpl implements ServerService.Iface {
   public String startReceiving(String md5OfSender, List<String> filePathSplit,
       ByteBuffer dataToReceive, int status) throws TException {
     String md5OfReceiver = "";
-    String filePath = "";
+    StringBuilder filePathBuilder = new StringBuilder();
     FileChannel channel = null;
     for (int i = 0; i < filePathSplit.size(); i++) {
       if (i == filePathSplit.size() - 1) {
-        filePath = new StringBuilder().append(filePath).append(filePathSplit.get(i)).toString();
+        filePathBuilder = filePathBuilder.append(filePathSplit.get(i));
       } else {
-        filePath = new StringBuilder().append(filePath).append(filePathSplit.get(i))
-            .append(File.separator).toString();
+        filePathBuilder = filePathBuilder.append(filePathSplit.get(i)).append(File.separator);
       }
     }
+    String filePath = filePathBuilder.toString();
     filePath = postbackPath + uuid.get() + File.separator + filePath;
     if (status == 1) { // there are still data stream to add
       File file = new File(filePath);
       if (!file.getParentFile().exists()) {
         try {
           file.getParentFile().mkdirs();
-          if (file.createNewFile()) {
-            LOGGER.error("IoTDB post back receiver: cannot create file {}", file.getAbsoluteFile());
+          if (!file.createNewFile()) {
+            logger.error("IoTDB post back receiver: cannot create file {}", file.getAbsoluteFile());
           }
         } catch (IOException e) {
-          LOGGER.error("IoTDB post back receiver: cannot make file because {}", e.getMessage());
+          logger.error("IoTDB post back receiver: cannot make file", e);
         }
       }
       try (FileOutputStream fos = new FileOutputStream(file, true)) {// append new data
         channel = fos.getChannel();
         channel.write(dataToReceive);
-      } catch (Exception e) {
-        LOGGER.error("IoTDB post back receiver: cannot write data to file because {}",
-            e.getMessage());
+      } catch (IOException e) {
+        logger.error("IoTDB post back receiver: cannot write data to file", e);
+
       }
     } else { // all data in the same file has received successfully
       try (FileInputStream fis = new FileInputStream(filePath)) {
@@ -183,14 +184,14 @@ public class ServerServiceImpl implements ServerService.Iface {
         md5OfReceiver = (new BigInteger(1, md.digest())).toString(16);
         if (md5OfSender.equals(md5OfReceiver)) {
           fileNum.set(fileNum.get() + 1);
-          LOGGER.info("IoTDB post back receiver : Receiver has received " + fileNum.get()
-              + " "
-              + "files from sender!");
+          logger.info(String
+              .format("IoTDB post back receiver : Receiver has received %d files from sender!",
+                  fileNum.get()));
         } else {
-          Files.deleteIfExists((java.nio.file.Path) new Path(filePath));
+          new File(filePath).delete();
         }
       } catch (Exception e) {
-        LOGGER.error("IoTDB post back receiver: cannot generate md5 because {}", e.getMessage());
+        logger.error("IoTDB post back receiver: cannot generate md5", e);
       }
     }
     return md5OfReceiver;
@@ -209,7 +210,7 @@ public class ServerServiceImpl implements ServerService.Iface {
     if (status == 0) {
       Statement statement = null;
       try (Connection connection = DriverManager.getConnection("jdbc:iotdb://localhost:" +
-          config.rpcPort + "/", "root", "root")) {
+          config.rpcPort + "/", IoTDBConstant.ADMIN_NAME, IoTDBConstant.ADMIN_PW)) {
         Class.forName(JDBC_DRIVER_NAME);
         statement = connection.createStatement();
 
@@ -237,26 +238,23 @@ public class ServerServiceImpl implements ServerService.Iface {
             }
           }
         } catch (FileNotFoundException e) {
-          LOGGER.error("IoTDB post back receiver: cannot read the file {} because {}",
-              schemaFromSenderPath.get(), e.getMessage());
+          logger.error("IoTDB post back receiver: cannot read the file {}.",
+              schemaFromSenderPath.get(), e);
         } catch (IOException e) {
-          LOGGER.error("IoTDB post back receiver: cannot insert schema to IoTDB "
-              + "because {}", e.getMessage());
+          logger.error("IoTDB post back receiver: cannot insert schema to IoTDB.", e);
         }
 
         statement.executeBatch();
         statement.clearBatch();
       } catch (SQLException | ClassNotFoundException e) {
-        LOGGER.error("IoTDB post back receiver: jdbc can not connect to IoTDB because {}",
-            e.getMessage());
+        logger.error("IoTDB post back receiver: jdbc can not connect to IoTDB.", e);
       } finally {
         try {
           if (statement != null) {
             statement.close();
           }
         } catch (SQLException e) {
-          LOGGER.error("IoTDB post back receiver : can not close JDBC connection "
-              + "because {}", e.getMessage());
+          logger.error("IoTDB post back receiver : can not close JDBC connection.", e);
         }
       }
     } else {
@@ -265,12 +263,11 @@ public class ServerServiceImpl implements ServerService.Iface {
         try {
           file.getParentFile().mkdirs();
           if (!file.createNewFile()) {
-            LOGGER.error("IoTDB post back receiver: cannot create file because {}",
+            logger.error("IoTDB post back receiver: cannot create file {}",
                 file.getAbsoluteFile());
           }
         } catch (IOException e) {
-          LOGGER.error("IoTDB post back receiver: cannot make schema file because {}",
-              e.getMessage());
+          logger.error("IoTDB post back receiver: cannot make schema file.", e);
         }
       }
       try {
@@ -280,8 +277,8 @@ public class ServerServiceImpl implements ServerService.Iface {
         channel.close();
         fos.close();
       } catch (Exception e) {
-        LOGGER.error("IoTDB post back receiver: cannot write data to file because {}",
-            e.getMessage());
+        logger.error("IoTDB post back receiver: cannot write data to file.",
+            e);
       }
     }
 
@@ -323,7 +320,7 @@ public class ServerServiceImpl implements ServerService.Iface {
     fileNodeStartTime.remove();
     fileNodeEndTime.remove();
     schemaFromSenderPath.remove();
-    LOGGER.info("IoTDB post back receiver: the postBack has finished!");
+    logger.info("IoTDB post back receiver: the postBack has finished!");
   }
 
   /**
@@ -353,23 +350,23 @@ public class ServerServiceImpl implements ServerService.Iface {
             endTimeMap.put(key, device.getEndTime());
           }
         } catch (Exception e) {
-          LOGGER.error("IoTDB post back receiver: unable to read tsfile {} because {}",
-              fileTF.getAbsolutePath(), e.getMessage());
+          logger.error("IoTDB post back receiver: unable to read tsfile {}",
+              fileTF.getAbsolutePath(), e);
         } finally {
           try {
             if (reader != null) {
               reader.close();
             }
           } catch (IOException e) {
-            LOGGER.error("IoTDB receiver : Cannot close file stream {} because {}",
-                fileTF.getAbsolutePath(), e.getMessage());
+            logger.error("IoTDB receiver : Cannot close file stream {}",
+                fileTF.getAbsolutePath(), e);
           }
         }
         fileNodeStartTime.get().put(fileTF.getAbsolutePath(), startTimeMap);
         fileNodeEndTime.get().put(fileTF.getAbsolutePath(), endTimeMap);
         filesPath.add(fileTF.getAbsolutePath());
         num++;
-        LOGGER.info(String
+        logger.info(String
             .format("IoTDB receiver : Getting FileNode Info has complete : %d/%d", num,
                 fileNum.get()));
       }
@@ -437,7 +434,7 @@ public class ServerServiceImpl implements ServerService.Iface {
               }
             }
           }
-          String sql = sqlFront + sqlRear + ")";
+          String sql = String.format("%s%s)", sqlFront, sqlRear);
 
           statement.addBatch(sql);
           count++;
@@ -451,23 +448,23 @@ public class ServerServiceImpl implements ServerService.Iface {
       statement.executeBatch();
       statement.clearBatch();
     } catch (IOException e) {
-      LOGGER.error("IoTDB receiver can not parse tsfile into SQL because{}", e.getMessage());
+      logger.error("IoTDB receiver can not parse tsfile into SQL", e);
     } catch (SQLException | ClassNotFoundException e) {
-      LOGGER.error("IoTDB post back receiver: jdbc cannot connect to IoTDB because {}",
-          e.getMessage());
+      logger.error("IoTDB post back receiver: jdbc cannot connect to IoTDB", e);
     } finally {
       try {
-        reader.close();
+        if (reader != null) {
+          reader.close();
+        }
       } catch (IOException e) {
-        LOGGER.error("IoTDB receiver : Cannot close file stream {} because {}", filePath,
-            e.getMessage());
+        logger.error("IoTDB receiver : Cannot close file stream {}", filePath, e);
       }
       try {
         if (statement != null) {
           statement.close();
         }
       } catch (SQLException e) {
-        LOGGER.error("IoTDB receiver : Can not close JDBC connection because {}", e.getMessage());
+        logger.error("IoTDB receiver : Can not close JDBC connection", e);
       }
     }
   }
@@ -601,26 +598,23 @@ public class ServerServiceImpl implements ServerService.Iface {
       statement.executeBatch();
       statement.clearBatch();
     } catch (SQLException e) {
-      LOGGER.error("IoTDB post back receiver: sql cannot execute successfully in IoTDB because {}",
-          e.getMessage());
+      logger.error("IoTDB post back receiver: sql cannot execute successfully in IoTDB", e);
     } catch (ClassNotFoundException e) {
-      LOGGER.error("IoTDB post back receiver: jdbc cannot connect to IoTDB because {}",
-          e.getMessage());
+      logger.error("IoTDB post back receiver: jdbc cannot connect to IoTDB", e);
     } catch (IOException e) {
-      LOGGER.error("IoTDB receiver can not parse tsfile into SQL because{}", e.getMessage());
+      logger.error("IoTDB receiver can not parse tsfile into SQL", e);
     } finally {
       try {
         reader.close();
       } catch (IOException e) {
-        LOGGER.error("IoTDB receiver : Cannot close file stream {} because {}", filePath,
-            e.getMessage());
+        logger.error("IoTDB receiver : Cannot close file stream {}", filePath, e);
       }
       try {
         if (statement != null) {
           statement.close();
         }
       } catch (SQLException e) {
-        LOGGER.error("IoTDB receiver : Can not close JDBC connection because {}", e.getMessage());
+        logger.error("IoTDB receiver : Can not close JDBC connection", e);
       }
     }
   }
@@ -687,12 +681,11 @@ public class ServerServiceImpl implements ServerService.Iface {
             }
           }
         } catch (FileNodeManagerException e) {
-          LOGGER.error("IoTDB receiver : Can not load external file because {}",
-              e.getMessage());
+          logger.error("IoTDB receiver : Can not load external file ", e);
         }
 
         num++;
-        LOGGER.info(String
+        logger.info(String
             .format("IoTDB receiver : Merging files has completed : %d/%d", num, fileNum.get()));
       }
     }

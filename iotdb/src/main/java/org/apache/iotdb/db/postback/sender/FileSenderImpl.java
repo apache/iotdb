@@ -128,8 +128,7 @@ public class FileSenderImpl implements FileSender {
     try {
       transport.open();
     } catch (TTransportException e) {
-      LOGGER.error("IoTDB post back sender: cannot connect to server because {}",
-          e.getMessage());
+      LOGGER.error("IoTDB post back sender: cannot connect to server", e);
       connectionOrElse = false;
     }
   }
@@ -152,16 +151,14 @@ public class FileSenderImpl implements FileSender {
         uuid = "PB" + UUID.randomUUID().toString().replaceAll("-", "");
         out.write(uuid.getBytes());
       } catch (Exception e) {
-        LOGGER.error("IoTDB post back sender: cannot write UUID to file because {}",
-            e.getMessage());
+        LOGGER.error("IoTDB post back sender: cannot write UUID to file", e);
         connectionOrElse = false;
       }
     } else {
       try (BufferedReader bf = new BufferedReader((new FileReader(uuidPath)))) {
         uuid = bf.readLine();
       } catch (IOException e) {
-        LOGGER.error("IoTDB post back sender: cannot read UUID from file because {}",
-            e.getMessage());
+        LOGGER.error("IoTDB post back sender: cannot read UUID from file", e);
         connectionOrElse = false;
       }
     }
@@ -170,11 +167,10 @@ public class FileSenderImpl implements FileSender {
       legalConnectionOrNot = clientOfServer.getUUID(uuid,
           InetAddress.getLocalHost().getHostAddress());
     } catch (TException e) {
-      LOGGER.error("IoTDB post back sender: cannot send UUID to receiver because {}",
-          e.getMessage());
+      LOGGER.error("IoTDB post back sender: cannot send UUID to receiver", e);
       connectionOrElse = false;
     } catch (UnknownHostException e) {
-      LOGGER.error("IoTDB post back sender: unable to get local host because {}", e.getMessage());
+      LOGGER.error("IoTDB post back sender: unable to get local host", e);
       legalConnectionOrNot = false;
     }
     return legalConnectionOrNot;
@@ -199,7 +195,7 @@ public class FileSenderImpl implements FileSender {
         Files.createLink(link, target);
       }
     } catch (IOException e) {
-      LOGGER.error("IoTDB post back sender: can not make fileSnapshot because {}", e.getMessage());
+      LOGGER.error("IoTDB post back sender: can not make fileSnapshot", e);
     }
     return sendingSnapshotFileList;
   }
@@ -273,7 +269,7 @@ public class FileSenderImpl implements FileSender {
       LOGGER.error("IoTDB post back sender: cannot sending data because receiver has broken down.");
       connectionOrElse = false;
     } catch (Exception e) {
-      LOGGER.error("IoTDB post back sender: cannot sending data because {}", e.getMessage());
+      LOGGER.error("IoTDB post back sender: cannot sending data ", e);
       connectionOrElse = false;
     }
   }
@@ -301,8 +297,7 @@ public class FileSenderImpl implements FileSender {
       // 0 represents the schema file has been transferred completely.
       clientOfServer.getSchema(null, 0);
     } catch (Exception e) {
-      LOGGER.error("IoTDB post back sender : cannot send schema from mlog.txt because {}",
-          e.getMessage());
+      LOGGER.error("IoTDB post back sender : cannot send schema from mlog.txt ", e);
       connectionOrElse = false;
     }
   }
@@ -342,16 +337,16 @@ public class FileSenderImpl implements FileSender {
           while (true) {
             try {
               listenerSocket.accept();
-            } catch (IOException e12) {
-              LOGGER.error("IoTDB post back sender: unable to  listen to port{}, because {}",
-                  config.getClientPort(), e12.getMessage());
+            } catch (IOException e2) {
+              LOGGER.error("IoTDB post back sender: unable to  listen to port{}",
+                  config.getClientPort(), e2);
             }
           }
         });
         listener.start();
       } catch (IOException e1) {
-        LOGGER.error("IoTDB post back sender: unable to listen to port{}, because {}",
-            config.getClientPort(), e1.getMessage());
+        LOGGER.error("IoTDB post back sender: unable to listen to port{}",
+            config.getClientPort(), e1);
       }
     }
   }
@@ -407,7 +402,7 @@ public class FileSenderImpl implements FileSender {
         try {
           PostbackUtils.deleteFile(new File(snapshotPath));
         } catch (IOException e) {
-          LOGGER.error("can not delete file {}, {}", snapshotPath, e.getMessage());
+          LOGGER.error("can not delete file {}", snapshotPath, e);
         }
       }
     }
@@ -457,8 +452,7 @@ public class FileSenderImpl implements FileSender {
         clientOfServer.init(entry.getKey());
       } catch (TException e) {
         connectionOrElse = false;
-        LOGGER.error("IoTDB post back sender : unable to connect to receiver because {}",
-            e.getMessage());
+        LOGGER.error("IoTDB post back sender : unable to connect to receiver", e);
       }
       if (!connectionOrElse) {
         transport.close();
@@ -496,8 +490,7 @@ public class FileSenderImpl implements FileSender {
       clientOfServer.afterReceiving();
     } catch (TException e) {
       connectionOrElse = false;
-      LOGGER.error("IoTDB post back sender : unable to connect to receiver because {}",
-          e.getMessage());
+      LOGGER.error("IoTDB post back sender : unable to connect to receiver ", e);
     }
     if (!connectionOrElse) {
       transport.close();

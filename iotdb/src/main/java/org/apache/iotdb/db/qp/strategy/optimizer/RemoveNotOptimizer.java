@@ -33,7 +33,7 @@ import org.slf4j.LoggerFactory;
 
 public class RemoveNotOptimizer implements IFilterOptimizer {
 
-  private static final Logger LOG = LoggerFactory.getLogger(RemoveNotOptimizer.class);
+  private static final Logger logger = LoggerFactory.getLogger(RemoveNotOptimizer.class);
 
   /**
    * get DNF(disjunctive normal form) for this filter operator tree. Before getDNF, this op tree
@@ -81,7 +81,7 @@ public class RemoveNotOptimizer implements IFilterOptimizer {
       try {
         ((BasicFunctionOperator) filter).setReversedTokenIntType();
       } catch (LogicalOperatorException e) {
-        LOG.error("meet error while converting BasicFunction.", e);
+        logger.error("meet error while converting BasicFunction.", e);
         throw new LogicalOperatorException(
             "convert BasicFuntion to reserved meet failed: previous token:"
                 + tokenInt + "tokenName:" + SQLConstant.tokenNames.get(tokenInt));

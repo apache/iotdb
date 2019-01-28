@@ -170,7 +170,9 @@ public class IoTDB implements IoTDBMBean {
 
     private static final IoTDB INSTANCE = new IoTDB();
 
-    private IoTDBHolder(){}
+    private IoTDBHolder() {
+
+    }
   }
 
 }

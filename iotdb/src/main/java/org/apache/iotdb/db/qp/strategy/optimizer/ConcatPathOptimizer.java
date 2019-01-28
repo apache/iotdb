@@ -61,7 +61,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     SFWOperator sfwOperator = (SFWOperator) operator;
     FromOperator from = sfwOperator.getFromOperator();
     List<Path> prefixPaths;
-    if (from == null){
+    if (from == null) {
       LOG.warn("given SFWOperator doesn't have prefix paths, cannot concat seriesPath");
       return operator;
     } else {
@@ -73,12 +73,12 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     }
     SelectOperator select = sfwOperator.getSelectOperator();
     List<Path> initialSuffixPaths;
-    if (select == null){
+    if (select == null) {
       LOG.warn(WARNING_NO_SUFFIX_PATHS);
       return operator;
     } else {
       initialSuffixPaths = select.getSuffixPaths();
-      if (initialSuffixPaths.isEmpty()){
+      if (initialSuffixPaths.isEmpty()) {
         LOG.warn(WARNING_NO_SUFFIX_PATHS);
         return operator;
       }
@@ -105,28 +105,30 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     return sfwOperator;
   }
 
-  private List<Path> judgeSelectOperator(SelectOperator selectOperator) throws LogicalOptimizeException {
+  private List<Path> judgeSelectOperator(SelectOperator selectOperator)
+      throws LogicalOptimizeException {
     List<Path> suffixPaths;
-    if (selectOperator == null){
+    if (selectOperator == null) {
       throw new LogicalOptimizeException(WARNING_NO_SUFFIX_PATHS);
     } else {
       suffixPaths = selectOperator.getSuffixPaths();
-      if (suffixPaths.isEmpty()){
+      if (suffixPaths.isEmpty()) {
         throw new LogicalOptimizeException(WARNING_NO_SUFFIX_PATHS);
       }
     }
     return suffixPaths;
   }
 
-  private void checkAggrOfSelectOperator(SelectOperator selectOperator) throws LogicalOptimizeException {
+  private void checkAggrOfSelectOperator(SelectOperator selectOperator)
+      throws LogicalOptimizeException {
     if (!selectOperator.getAggregations().isEmpty()
-            && selectOperator.getSuffixPaths().size() != selectOperator.getAggregations().size()) {
+        && selectOperator.getSuffixPaths().size() != selectOperator.getAggregations().size()) {
       throw new LogicalOptimizeException(
-              "Common queries and aggregated queries are not allowed to appear at the same time");
+          "Common queries and aggregated queries are not allowed to appear at the same time");
     }
   }
 
-  private void extendListSafely(List<String> source, int index, List<String> target){
+  private void extendListSafely(List<String> source, int index, List<String> target) {
     if (source != null && !source.isEmpty()) {
       target.add(source.get(index));
     }
@@ -164,10 +166,10 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     removeStarsInPath(allPaths, afterConcatAggregations, selectOperator);
   }
 
-  private boolean isWithStar(List<Path> suffixPaths, List<Path> prefixPaths, List<Path> fakePaths){
+  private boolean isWithStar(List<Path> suffixPaths, List<Path> prefixPaths, List<Path> fakePaths) {
     boolean isWithStar = false;
     for (Iterator<Path> iterSuffix = suffixPaths.iterator();
-         iterSuffix.hasNext() && !isWithStar; ) {
+        iterSuffix.hasNext() && !isWithStar; ) {
       // NOTE the traversal order should keep consistent with that of the `transformedPaths`
       Path suffixPath = iterSuffix.next();
       if (suffixPath.getFullPath().contains("*")) {
