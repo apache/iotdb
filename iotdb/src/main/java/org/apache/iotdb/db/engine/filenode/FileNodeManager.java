@@ -76,11 +76,6 @@ public class FileNodeManager implements IStatistic, IService {
   private static final Directories directories = Directories.getInstance();
   private final String baseDir;
   /**
-   * Stat information.
-   */
-  private static final String STAT_STORAGE_DELTA_NAME = MonitorConstants.statStorageGroupPrefix
-          + MonitorConstants.MONITOR_PATH_SEPERATOR + MonitorConstants.fileNodeManagerPath;
-  /**
    * This map is used to manage all filenode processor,<br> the key is filenode name which is
    * storage group seriesPath.
    */
@@ -113,7 +108,7 @@ public class FileNodeManager implements IStatistic, IService {
     if (TsFileDBConf.enableStatMonitor) {
       StatMonitor statMonitor = StatMonitor.getInstance();
       registStatMetadata();
-      statMonitor.registStatistics(STAT_STORAGE_DELTA_NAME, this);
+      statMonitor.registStatistics(MonitorConstants.STAT_STORAGE_DELTA_NAME, this);
     }
   }
 
@@ -144,7 +139,7 @@ public class FileNodeManager implements IStatistic, IService {
     for (MonitorConstants.FileNodeManagerStatConstants statConstant :
             MonitorConstants.FileNodeManagerStatConstants.values()) {
       list.add(
-              STAT_STORAGE_DELTA_NAME + MonitorConstants.MONITOR_PATH_SEPERATOR + statConstant.name());
+              MonitorConstants.STAT_STORAGE_DELTA_NAME + MonitorConstants.MONITOR_PATH_SEPERATOR + statConstant.name());
     }
     return list;
   }
@@ -153,9 +148,9 @@ public class FileNodeManager implements IStatistic, IService {
   public Map<String, TSRecord> getAllStatisticsValue() {
     long curTime = System.currentTimeMillis();
     TSRecord tsRecord = StatMonitor
-            .convertToTSRecord(getStatParamsHashMap(), STAT_STORAGE_DELTA_NAME, curTime);
+            .convertToTSRecord(getStatParamsHashMap(), MonitorConstants.STAT_STORAGE_DELTA_NAME, curTime);
     HashMap<String, TSRecord> ret = new HashMap<>();
-    ret.put(STAT_STORAGE_DELTA_NAME, tsRecord);
+    ret.put(MonitorConstants.STAT_STORAGE_DELTA_NAME, tsRecord);
     return ret;
   }
 
@@ -164,10 +159,10 @@ public class FileNodeManager implements IStatistic, IService {
    */
   @Override
   public void registStatMetadata() {
-    HashMap<String, String> hashMap = new HashMap<>();
+    Map<String, String> hashMap = new HashMap<>();
     for (MonitorConstants.FileNodeManagerStatConstants statConstant :
             MonitorConstants.FileNodeManagerStatConstants.values()) {
-      hashMap.put(STAT_STORAGE_DELTA_NAME + MonitorConstants.MONITOR_PATH_SEPERATOR +
+      hashMap.put(MonitorConstants.STAT_STORAGE_DELTA_NAME + MonitorConstants.MONITOR_PATH_SEPERATOR +
               statConstant.name(), MonitorConstants.DataType);
     }
     StatMonitor.getInstance().registStatStorageGroup(hashMap);

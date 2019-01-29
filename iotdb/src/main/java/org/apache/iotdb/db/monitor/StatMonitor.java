@@ -136,7 +136,7 @@ public class StatMonitor implements IService {
     }
   }
 
-  public synchronized void registStatStorageGroup(HashMap<String, String> hashMap) {
+  public synchronized void registStatStorageGroup(Map<String, String> hashMap) {
     MManager mManager = MManager.getInstance();
     try {
       for (Map.Entry<String, String> entry : hashMap.entrySet()) {

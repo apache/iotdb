@@ -31,6 +31,11 @@ public class MonitorConstants {
 
   // statistic for write module
   public static final String fileNodeManagerPath = "write.global";
+  /**
+   * Stat information.
+   */
+  public static final String STAT_STORAGE_DELTA_NAME = statStorageGroupPrefix
+          + MONITOR_PATH_SEPERATOR + fileNodeManagerPath;
   public static final String fileNodePath = "write";
 
   /**
