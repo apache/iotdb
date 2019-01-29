@@ -87,7 +87,7 @@ Before starting to use IoTDB, you need to config the configuration files first. 
 
 In total, we provide users three kinds of configurations module: 
 
-* environment config module (iotdb-env.`sh`/`bat`)
+* environment config module (iotdb-env.sh(Linux or OSX), iotdb-env.bat(Windows))
 * system config module (tsfile-format.properties, iotdb-engine.properties)
 * log config module (logback.xml)
 
