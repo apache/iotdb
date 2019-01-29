@@ -19,6 +19,8 @@
 package org.apache.iotdb.db.service;
 
 import java.io.IOException;
+import java.util.concurrent.locks.ReentrantLock;
+
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -51,9 +53,7 @@ public class JDBCService implements JDBCServiceMBean, IService {
   private boolean isStart;
   private Factory protocolFactory;
   private Processor<TSIService.Iface> processor;
-  private TServerSocket serverTransport;
   private TThreadPoolServer.Args poolArgs;
-  private TServer poolServer;
   private TSServiceImpl impl;
 
   private JDBCService() {
@@ -81,11 +81,8 @@ public class JDBCService implements JDBCServiceMBean, IService {
       JMXService.registerMBean(getInstance(), mbeanName);
       startService();
     } catch (Exception e) {
-      String errorMessage = String
-          .format("Failed to start %s because of %s", this.getID().getName(),
-              e.getMessage());
-      LOGGER.error(errorMessage);
-      throw new StartupException(errorMessage);
+      LOGGER.error("Failed to start {} because: ", this.getID().getName(), e);
+      throw new StartupException(e);
     }
 
   }
@@ -111,7 +108,7 @@ public class JDBCService implements JDBCServiceMBean, IService {
     LOGGER.info("{}: start {}...", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
 
     try {
-      jdbcServiceThread = new Thread(new JDBCServiceThread());
+      jdbcServiceThread = new JDBCServiceThread();
       jdbcServiceThread.setName(ThreadName.JDBC_SERVICE.getName());
     } catch (IOException e) {
       String errorMessage = String
@@ -140,22 +137,13 @@ public class JDBCService implements JDBCServiceMBean, IService {
       return;
     }
     LOGGER.info("{}: closing {}...", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
-    close();
+    if (jdbcServiceThread != null) {
+      ((JDBCServiceThread) jdbcServiceThread).close();
+    }
     LOGGER.info("{}: close {} successfully", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
   }
 
-  private synchronized void close() {
-    if (poolServer != null) {
-      poolServer.stop();
-      poolServer = null;
-    }
 
-    if (serverTransport != null) {
-      serverTransport.close();
-      serverTransport = null;
-    }
-    isStart = false;
-  }
 
   private static class JDBCServiceHolder {
 
@@ -166,7 +154,10 @@ public class JDBCService implements JDBCServiceMBean, IService {
     }
   }
 
-  private class JDBCServiceThread implements Runnable {
+  private class JDBCServiceThread extends Thread {
+
+    private TServerSocket serverTransport;
+    private TServer poolServer;
 
     public JDBCServiceThread() throws IOException {
       protocolFactory = new TBinaryProtocol.Factory();
@@ -197,6 +188,19 @@ public class JDBCService implements JDBCServiceMBean, IService {
             IoTDBConstant.GLOBAL_DB_NAME,
             getID().getName());
       }
+    }
+
+    private synchronized void close() {
+      if (poolServer != null) {
+        poolServer.stop();
+        poolServer = null;
+      }
+
+      if (serverTransport != null) {
+        serverTransport.close();
+        serverTransport = null;
+      }
+      isStart = false;
     }
   }
 }
