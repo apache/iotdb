@@ -30,7 +30,7 @@ import org.apache.iotdb.db.exception.PathErrorException;
 public class PTree implements Serializable {
 
   private static final long serialVersionUID = 2642766399323283900L;
-  private static final String PTREE_NOT_EXIST="PTree seriesPath not exist. ";
+  private static final String PTREE_NOT_EXIST = "PTree seriesPath not exist. ";
   private PNode root;
   private MTree mTree;
   private String name;
