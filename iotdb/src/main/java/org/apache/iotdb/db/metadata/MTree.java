@@ -36,11 +36,11 @@ public class MTree implements Serializable {
   private static final long serialVersionUID = -4200394435237291964L;
   private static final String space = "    ";
   private static final String separator = "\\.";
-  private static final String PRE_ERROR_STRING="Timeseries is not correct. Node[";
-  private static final String AFTER_ERROR_STRING="] doesn't have child named:";
-  private static final String NOT_LEAF_NODE="Timeseries %s is not the leaf node";
-  private static final String SERIES_NOT_CORRECT="Timeseries %s is not correct";
-  private static final String NOT_SERIES_PATH="The prefix of the seriesPath %s is not one storage group seriesPath";
+  private static final String PRE_ERROR_STRING = "Timeseries is not correct. Node[";
+  private static final String AFTER_ERROR_STRING = "] doesn't have child named:";
+  private static final String NOT_LEAF_NODE = "Timeseries %s is not the leaf node";
+  private static final String SERIES_NOT_CORRECT = "Timeseries %s is not correct";
+  private static final String NOT_SERIES_PATH = "The prefix of the seriesPath %s is not one storage group seriesPath";
   private MNode root;
 
   public MTree(String rootName) {
