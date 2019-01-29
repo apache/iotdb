@@ -47,7 +47,7 @@ public class MGraph implements Serializable {
    * Add a {@code PTree} to current {@code MGraph}.
    */
   public void addAPTree(String ptreeRootName) throws MetadataArgsErrorException {
-    if ("root".equalsIgnoreCase(ptreeRootName)) {
+    if (MetadataConstant.ROOT.equalsIgnoreCase(ptreeRootName)) {
       throw new MetadataArgsErrorException("Property Tree's root name should not be 'root'");
     }
     PTree ptree = new PTree(ptreeRootName, mtree);
