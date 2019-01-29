@@ -98,7 +98,7 @@ public class ExportCsv extends AbstractCsvTool {
 
     try {
       parseBasicParams(commandLine, reader);
-      parseSpecialParams(commandLine, reader);
+      parseSpecialParams(commandLine);
       if (!checkTimeFormat()) {
         return;
       }
@@ -148,7 +148,7 @@ public class ExportCsv extends AbstractCsvTool {
     }
   }
 
-  private static void parseSpecialParams(CommandLine commandLine, ConsoleReader reader)
+  private static void parseSpecialParams(CommandLine commandLine)
       throws ArgsErrorException {
     targetDirectory = checkRequiredArg(TARGET_FILE_ARGS, TARGET_FILE_NAME, commandLine);
     timeFormat = commandLine.getOptionValue(TIME_FORMAT_ARGS);
@@ -244,11 +244,9 @@ public class ExportCsv extends AbstractCsvTool {
     final String path = targetDirectory + DUMP_FILE_NAME + index + ".csv";
     try {
       File tf = new File(path);
-      if (!tf.exists()) {
-        if (!tf.createNewFile()) {
-          System.out.println("[ERROR] Could not create target file for sql statement: " + sql);
-          return;
-        }
+      if (!tf.exists() && !tf.createNewFile()) {
+        System.out.println("[ERROR] Could not create target file for sql statement: " + sql);
+        return;
       }
       writer = new BufferedWriter(new FileWriter(tf));
     } catch (IOException e) {
