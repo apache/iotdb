@@ -34,7 +34,7 @@ public class MGraph implements Serializable {
 
   private static final long serialVersionUID = 8214849219614352834L;
   private static final String separator = "\\.";
-  private static final String TIME_SERIES_INCORRECT="Timeseries's root is not Correct. RootName: ";
+  private static final String TIME_SERIES_INCORRECT = "Timeseries's root is not Correct. RootName: ";
   private MTree mtree;
   private HashMap<String, PTree> ptreeMap;
 
