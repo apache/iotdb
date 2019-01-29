@@ -36,7 +36,7 @@ import org.slf4j.LoggerFactory;
 
 public class MemTableFlushUtil {
 
-  private static final Logger logger = LoggerFactory.getLogger(MemTableFlushUtil.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(MemTableFlushUtil.class);
   private static final int PAGE_SIZE_THRESHOLD = TSFileConfig.pageSizeInByte;
 
   private MemTableFlushUtil(){
@@ -74,7 +74,7 @@ public class MemTableFlushUtil {
                     .write(timeValuePair.getTimestamp(), timeValuePair.getValue().getBinary());
           break;
         default:
-          logger.error("don't support data type: {}", dataType);
+          LOGGER.error("don't support data type: {}", dataType);
           break;
       }
     }

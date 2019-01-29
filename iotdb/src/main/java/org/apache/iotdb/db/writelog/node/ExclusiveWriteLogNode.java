@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *          http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -70,8 +70,8 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
   /**
    * constructor of ExclusiveWriteLogNode.
    *
-   * @param identifier ExclusiveWriteLogNode identifier
-   * @param restoreFilePath restore file path
+   * @param identifier             ExclusiveWriteLogNode identifier
+   * @param restoreFilePath        restore file path
    * @param processorStoreFilePath processor store file path
    */
   public ExclusiveWriteLogNode(String identifier, String restoreFilePath,
@@ -81,7 +81,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
     new File(logDirectory).mkdirs();
 
     recoverPerformer = new ExclusiveLogRecoverPerformer(restoreFilePath, processorStoreFilePath,
-            this);
+        this);
     currentFileWriter = new LogWriter(logDirectory + File.separator + WAL_FILE_NAME);
   }
 
@@ -155,7 +155,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
       logger.error("Log node {} renaming log file failed!", identifier);
     } else {
       logger.info("Log node {} renamed log file, file size is {}", identifier,
-              MemUtils.bytesCntToStr(newLogFile.length()));
+          MemUtils.bytesCntToStr(newLogFile.length()));
     }
   }
 
