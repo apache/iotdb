@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *          http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -26,7 +26,7 @@ import org.slf4j.LoggerFactory;
 
 public class JVMMemController extends BasicMemController {
 
-  private static Logger logger = LoggerFactory.getLogger(JVMMemController.class);
+  private static Logger LOGGER = LoggerFactory.getLogger(JVMMemController.class);
 
   private JVMMemController(IoTDBConfig config) {
     super(config);
@@ -66,16 +66,16 @@ public class JVMMemController extends BasicMemController {
     if (memUsage < warningThreshold) {
       return UsageLevel.SAFE;
     } else if (memUsage < dangerouseThreshold) {
-      if (logger.isDebugEnabled()) {
-        logger.debug("Warning Threshold : {} allocated to {}, total usage {}",
-                MemUtils.bytesCntToStr(usage),
-                user.getClass(), MemUtils.bytesCntToStr(memUsage));
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug("Warning Threshold : {} allocated to {}, total usage {}",
+            MemUtils.bytesCntToStr(usage),
+            user.getClass(), MemUtils.bytesCntToStr(memUsage));
       }
       return UsageLevel.WARNING;
     } else {
-      if (logger.isWarnEnabled()) {
-        logger.warn("Memory request from {} is denied, memory usage : {}", user.getClass(),
-                MemUtils.bytesCntToStr(memUsage));
+      if (LOGGER.isWarnEnabled()) {
+        LOGGER.warn("Memory request from {} is denied, memory usage : {}", user.getClass(),
+            MemUtils.bytesCntToStr(memUsage));
       }
       return UsageLevel.DANGEROUS;
     }
@@ -83,9 +83,9 @@ public class JVMMemController extends BasicMemController {
 
   @Override
   public void reportFree(Object user, long freeSize) {
-    if (logger.isInfoEnabled()) {
-      logger.info("{} freed from {}, total usage {}", MemUtils.bytesCntToStr(freeSize),
-              user.getClass(), MemUtils.bytesCntToStr(getTotalUsage()));
+    if (LOGGER.isInfoEnabled()) {
+      LOGGER.info("{} freed from {}, total usage {}", MemUtils.bytesCntToStr(freeSize),
+          user.getClass(), MemUtils.bytesCntToStr(getTotalUsage()));
     }
   }
 
@@ -95,6 +95,6 @@ public class JVMMemController extends BasicMemController {
     }
 
     private static final JVMMemController INSTANCE = new JVMMemController(
-            IoTDBDescriptor.getInstance().getConfig());
+        IoTDBDescriptor.getInstance().getConfig());
   }
 }

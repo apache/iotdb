@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *          http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -33,7 +33,7 @@ import org.slf4j.LoggerFactory;
  */
 public class RecordMemController extends BasicMemController {
 
-  private static Logger logger = LoggerFactory.getLogger(RecordMemController.class);
+  private static Logger LOGGER = LoggerFactory.getLogger(RecordMemController.class);
 
   // the key is the reference of the memory user, while the value is its memory usage in byte
   private Map<Object, Long> memMap;
@@ -115,27 +115,27 @@ public class RecordMemController extends BasicMemController {
   }
 
   private void logDangerous(long newTotUsage, Object user) {
-    if (logger.isWarnEnabled()) {
-      logger.warn("Memory request from {} is denied, memory usage : {}", user.getClass(),
-              MemUtils.bytesCntToStr(newTotUsage));
+    if (LOGGER.isWarnEnabled()) {
+      LOGGER.warn("Memory request from {} is denied, memory usage : {}", user.getClass(),
+          MemUtils.bytesCntToStr(newTotUsage));
     }
   }
 
   private void logSafe(long newTotUsage, Object user, long usage, long oldUsage) {
-    if (logger.isDebugEnabled()) {
-      logger.debug("Safe Threshold : {} allocated to {}, it is using {}, total usage {}",
-              MemUtils.bytesCntToStr(usage), user.getClass(),
-              MemUtils.bytesCntToStr(oldUsage + usage),
-              MemUtils.bytesCntToStr(newTotUsage));
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("Safe Threshold : {} allocated to {}, it is using {}, total usage {}",
+          MemUtils.bytesCntToStr(usage), user.getClass(),
+          MemUtils.bytesCntToStr(oldUsage + usage),
+          MemUtils.bytesCntToStr(newTotUsage));
     }
   }
 
   private void logWarn(long newTotUsage, Object user, long usage, long oldUsage) {
-    if (logger.isDebugEnabled()) {
-      logger.debug("Warning Threshold : {} allocated to {}, it is using {}, total usage {}",
-              MemUtils.bytesCntToStr(usage), user.getClass(),
-              MemUtils.bytesCntToStr(oldUsage + usage),
-              MemUtils.bytesCntToStr(newTotUsage));
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("Warning Threshold : {} allocated to {}, it is using {}, total usage {}",
+          MemUtils.bytesCntToStr(usage), user.getClass(),
+          MemUtils.bytesCntToStr(oldUsage + usage),
+          MemUtils.bytesCntToStr(newTotUsage));
     }
   }
 
@@ -146,10 +146,10 @@ public class RecordMemController extends BasicMemController {
   public void reportFree(Object user, long freeSize) {
     Long usage = memMap.get(user);
     if (usage == null) {
-      logger.error("Unregistered memory usage from {}", user.getClass());
+      LOGGER.error("Unregistered memory usage from {}", user.getClass());
     } else if (freeSize > usage) {
-      logger
-              .error("Request to free {} bytes while it only registered {} bytes", freeSize, usage);
+      LOGGER
+          .error("Request to free {} bytes while it only registered {} bytes", freeSize, usage);
       totalMemUsed.addAndGet(-usage);
       memMap.remove(user);
     } else {
@@ -159,11 +159,11 @@ public class RecordMemController extends BasicMemController {
       } else {
         memMap.remove(user);
       }
-      if (logger.isInfoEnabled()) {
-        logger.info("{} freed from {}, it is using {}, total usage {}",
-                MemUtils.bytesCntToStr(freeSize),
-                user.getClass(), MemUtils.bytesCntToStr(usage - freeSize),
-                MemUtils.bytesCntToStr(newTotalMemUsage));
+      if (LOGGER.isInfoEnabled()) {
+        LOGGER.info("{} freed from {}, it is using {}, total usage {}",
+            MemUtils.bytesCntToStr(freeSize),
+            user.getClass(), MemUtils.bytesCntToStr(usage - freeSize),
+            MemUtils.bytesCntToStr(newTotalMemUsage));
       }
     }
   }
@@ -174,6 +174,6 @@ public class RecordMemController extends BasicMemController {
     }
 
     private static final RecordMemController INSTANCE = new RecordMemController(
-            IoTDBDescriptor.getInstance().getConfig());
+        IoTDBDescriptor.getInstance().getConfig());
   }
 }
