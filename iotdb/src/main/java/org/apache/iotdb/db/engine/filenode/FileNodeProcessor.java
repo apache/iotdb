@@ -203,7 +203,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
   private String mergeOutputPath = null;
   private String mergeBaseDir = null;
   private String mergeFileName = null;
-  private boolean mergeIsRowGroupHasData = false;
+  private boolean mergeIsChunkGroupHasData = false;
   private long mergeStartPos;
 
   /**
@@ -287,7 +287,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
 
   @Override
   public void registStatMetadata() {
-    HashMap<String, String> hashMap = new HashMap<>();
+    Map<String, String> hashMap = new HashMap<>();
     for (MonitorConstants.FileNodeProcessorStatConstants statConstant :
             MonitorConstants.FileNodeProcessorStatConstants.values()) {
       hashMap.put(statStorageDeltaName + MonitorConstants.MONITOR_PATH_SEPERATOR + statConstant.name(),
@@ -1411,7 +1411,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
     for (String deviceId : backupIntervalFile.getStartTimeMap().keySet()) {
       // query one deviceId
       List<Path> pathList = new ArrayList<>();
-      mergeIsRowGroupHasData = false;
+      mergeIsChunkGroupHasData = false;
       mergeStartPos = -1;
       ChunkGroupFooter footer;
       int numOfChunk = 0;
@@ -1443,7 +1443,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
         numOfChunk += queryAndWriteSeries(seriesReader, path, seriesFilter, dataType,
                 startTimeMap, endTimeMap);
       }
-      if (mergeIsRowGroupHasData) {
+      if (mergeIsChunkGroupHasData) {
         // end the new rowGroupMetadata
         long size = mergeFileWriter.getPos() - mergeStartPos;
         footer = new ChunkGroupFooter(deviceId, size, numOfChunk);
@@ -1483,9 +1483,9 @@ public class FileNodeProcessor extends Processor implements IStatistic {
           mergeFileName = getProcessorName() + File.separatorChar + mergeFileName;
           mergeFileWriter = new TsFileIOWriter(new File(mergeOutputPath));
         }
-        if (!mergeIsRowGroupHasData) {
+        if (!mergeIsChunkGroupHasData) {
           // start a new rowGroupMetadata
-          mergeIsRowGroupHasData = true;
+          mergeIsChunkGroupHasData = true;
           // the datasize and numOfChunk is fake
           // the accurate datasize and numOfChunk will get after write all this device data.
           mergeFileWriter.startFlushChunkGroup(path.getDevice());// TODO please check me.
