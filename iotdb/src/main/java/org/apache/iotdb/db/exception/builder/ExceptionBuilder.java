@@ -59,7 +59,7 @@ public class ExceptionBuilder {
    * @param filePath the path of error information file
    */
   public void loadInfo(String filePath) {
-    try(InputStream in=new BufferedInputStream(new FileInputStream(filePath))){
+    try(InputStream in = new BufferedInputStream(new FileInputStream(filePath))){
       properties.load(new InputStreamReader(in, "utf-8"));
     } catch (IOException e) {
       LOGGER.error(
