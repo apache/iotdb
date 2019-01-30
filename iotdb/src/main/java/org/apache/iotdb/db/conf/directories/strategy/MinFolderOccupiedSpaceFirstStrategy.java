@@ -30,11 +30,7 @@ import java.util.stream.Stream;
 public class MinFolderOccupiedSpaceFirstStrategy extends DirectoryStrategy {
 
   // directory space is measured by MB
-<<<<<<< HEAD
-  private static final long DATA_SIZE_SHIFT = 1024 * 1024L;
-=======
   private static final long DATA_SIZE_SHIFT = 1024L * 1024;
->>>>>>> upstream/master
 
   @Override
   public int nextFolderIndex() {
