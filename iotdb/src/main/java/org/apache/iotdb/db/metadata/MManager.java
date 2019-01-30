@@ -84,7 +84,7 @@ public class MManager {
     checkAndGetDataTypeCache = new RandomDeleteCache<String, PathCheckRet>(cacheSize) {
       @Override
       public void beforeRemove(PathCheckRet object) throws CacheException {
-        //allowed do nothing
+        //allowed to do nothing
       }
 
       @Override
@@ -96,7 +96,7 @@ public class MManager {
     mnodecache = new RandomDeleteCache<String, MNode>(cacheSize) {
       @Override
       public void beforeRemove(MNode object) throws CacheException {
-        //allowed do nothing
+        //allowed to do nothing
       }
 
       @Override
@@ -963,7 +963,7 @@ public class MManager {
 
   private static class MManagerHolder {
     private MManagerHolder(){
-      //allowed do nothing
+      //allowed to do nothing
     }
     private static final MManager INSTANCE = new MManager();
   }
