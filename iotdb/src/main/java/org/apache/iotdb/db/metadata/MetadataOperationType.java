@@ -21,7 +21,7 @@ package org.apache.iotdb.db.metadata;
 public class MetadataOperationType {
 
   private MetadataOperationType(){
-    //allowed do nothing
+    //allowed to do nothing
   }
 
   public static final String ADD_PATH_TO_MTREE = "0";
