@@ -28,9 +28,9 @@ import org.xerial.snappy.Snappy;
 /**
  * compress data according to type in schema.
  */
-public interface Compressor {
+public interface ICompressor {
 
-  static Compressor getCompressor(String name) {
+  static ICompressor getCompressor(String name) {
     return getCompressor(CompressionType.valueOf(name));
   }
 
@@ -40,7 +40,7 @@ public interface Compressor {
    * @param name CompressionType
    * @return the Compressor of specified CompressionType
    */
-  static Compressor getCompressor(CompressionType name) {
+  static ICompressor getCompressor(CompressionType name) {
     if (name == null) {
       throw new CompressionTypeNotSupportedException("NULL");
     }
@@ -80,7 +80,7 @@ public interface Compressor {
   /**
    * NoCompressor will do nothing for data and return the input data directly.
    */
-  class NoCompressor implements Compressor {
+  class NoCompressor implements ICompressor {
 
     @Override
     public byte[] compress(byte[] data) {
@@ -108,7 +108,7 @@ public interface Compressor {
     }
   }
 
-  class SnappyCompressor implements Compressor {
+  class SnappyCompressor implements ICompressor {
 
     @Override
     public byte[] compress(byte[] data) throws IOException {

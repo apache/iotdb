@@ -22,7 +22,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Paths;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.compress.UnCompressor;
+import org.apache.iotdb.tsfile.compress.IUnCompressor;
 import org.apache.iotdb.tsfile.file.footer.ChunkGroupFooter;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
@@ -274,7 +274,7 @@ public class TsFileSequenceReader {
   private ByteBuffer readPage(PageHeader header, CompressionType type, long position)
       throws IOException {
     ByteBuffer buffer = readData(position, header.getCompressedSize());
-    UnCompressor unCompressor = UnCompressor.getUnCompressor(type);
+    IUnCompressor unCompressor = IUnCompressor.getUnCompressor(type);
     ByteBuffer uncompressedBuffer = ByteBuffer.allocate(header.getUncompressedSize());
     switch (type) {
       case UNCOMPRESSED:

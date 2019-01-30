@@ -30,7 +30,7 @@ import org.xerial.snappy.Snappy;
 /**
  * uncompress data according to type in metadata.
  */
-public interface UnCompressor {
+public interface IUnCompressor {
 
   /**
    * get the UnCompressor based on the CompressionType.
@@ -38,7 +38,7 @@ public interface UnCompressor {
    * @param name CompressionType
    * @return the UnCompressor of specified CompressionType
    */
-  static UnCompressor getUnCompressor(CompressionType name) {
+  static IUnCompressor getUnCompressor(CompressionType name) {
     if (name == null) {
       throw new CompressionTypeNotSupportedException("NULL");
     }
@@ -94,7 +94,7 @@ public interface UnCompressor {
 
   CompressionType getCodecName();
 
-  class NoUnCompressor implements UnCompressor {
+  class NoUnCompressor implements IUnCompressor {
 
     @Override
     public int getUncompressedLength(byte[] array, int offset, int length) {
@@ -128,7 +128,7 @@ public interface UnCompressor {
     }
   }
 
-  class SnappyUnCompressor implements UnCompressor {
+  class SnappyUnCompressor implements IUnCompressor {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SnappyUnCompressor.class);
 
