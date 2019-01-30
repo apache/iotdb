@@ -640,7 +640,7 @@ public class MManager {
 
     lock.readLock().lock();
     try {
-      HashMap<String, ArrayList<String>> res =  getAllPathGroupByFileName(ROOT_NAME);
+      HashMap<String, ArrayList<String>> res = getAllPathGroupByFileName(ROOT_NAME);
       List<String> fileNameList = new ArrayList<>();
       for (String fileName : res.keySet()) {
         fileNameList.add(fileName);
