@@ -130,6 +130,6 @@ public class IntRleEncoder extends RleEncoder<Integer> {
     }
     // try to caculate max value
     int groupNum = (values.size() / 8 + 1) / 63 + 1;
-    return 8 + groupNum * 5L + values.size() * 4;
+    return (long) 8 + groupNum * 5 + values.size() * 4;
   }
 }

@@ -233,12 +233,12 @@ public class IoTDBStatement implements Statement {
       } else {
         String path = cmdSplited[2];
         DatabaseMetaData databaseMetaData = connection.getMetaData();
-        resultSet = databaseMetaData.getColumns(Constant.CatalogTimeseries, path, null, null);
+        resultSet = databaseMetaData.getColumns(Constant.CATALOG_TIMESERIES, path, null, null);
         return true;
       }
     } else if (sqlToLowerCase.equals(SHOW_STORAGE_GROUP_COMMAND_LOWERCASE)) {
       DatabaseMetaData databaseMetaData = connection.getMetaData();
-      resultSet = databaseMetaData.getColumns(Constant.CatalogStorageGroup, null, null, null);
+      resultSet = databaseMetaData.getColumns(Constant.CATALOG_STORAGE_GROUP, null, null, null);
       return true;
     } else {
       TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionHandle, sql);

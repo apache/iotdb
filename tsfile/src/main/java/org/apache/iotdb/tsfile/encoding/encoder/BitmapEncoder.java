@@ -39,8 +39,10 @@ import org.slf4j.LoggerFactory;
  * bit-index := a list of 01 sequence to record the position of the value above
  * }
  * </pre>.
- *
- * @deprecated (2019.1.25, why, refactoring advice...)
+
+ * Decode switch or enum values using bitmap, bitmap-encode.{@code <length> <num> <encoded data> }
+ * @deprecated This class has been deprecated.
+ * @since deprecated since 0.4.0
  */
 @Deprecated
 public class BitmapEncoder extends Encoder {
@@ -125,6 +127,6 @@ public class BitmapEncoder extends Encoder {
   @Override
   public long getMaxByteSize() {
     // byteCacheSize + byteDictSize + (byte array + array length) * byteDictSize
-    return 4L + 4L + ((values.size() + 7) / 8 + 4) * values.size();
+    return (long)4 + 4 + ((values.size() + 7) / 8 + 4) * values.size();
   }
 }

@@ -144,7 +144,7 @@ public class TsDeviceMetadata {
     }
   }
 
-  public List<ChunkGroupMetaData> getChunkGroups() {
+  public List<ChunkGroupMetaData> getChunkGroupMetaDataList() {
     return Collections.unmodifiableList(chunkGroupMetadataList);
   }
 

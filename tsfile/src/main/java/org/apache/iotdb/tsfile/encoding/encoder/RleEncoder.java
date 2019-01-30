@@ -61,6 +61,7 @@ import org.slf4j.LoggerFactory;
 public abstract class RleEncoder<T extends Comparable<T>> extends Encoder {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(RleEncoder.class);
+
   private EndianType endianType;
 
   public EndianType getEndianType() {
@@ -286,8 +287,7 @@ public abstract class RleEncoder<T extends Comparable<T>> extends Encoder {
                   + "when repeatCount > {}."
                   + "numBufferedValues {}, repeatCount {}, bitPackedGroupCount{}, isBitPackRun {}, "
                   + "isBitWidthSaved {}",
-              TSFileConfig.RLE_MIN_REPEATED_NUM, numBufferedValues, repeatCount,
-              bitPackedGroupCount,
+              TSFileConfig.RLE_MIN_REPEATED_NUM, numBufferedValues, repeatCount, bitPackedGroupCount,
               isBitPackRun, isBitWidthSaved, e);
         }
       }

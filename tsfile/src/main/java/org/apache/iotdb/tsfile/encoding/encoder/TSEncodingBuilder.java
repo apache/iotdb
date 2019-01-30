@@ -197,7 +197,6 @@ public abstract class TSEncodingBuilder {
      */
     public void initFromProps(Map<String, String> props) {
       // set max error from initialized map or default value if not set
-      TSFileConfig conf = TSFileDescriptor.getInstance().getConfig();
       if (props == null || !props.containsKey(Encoder.MAX_POINT_NUMBER)) {
         maxPointNumber = TSFileConfig.floatPrecision;
       } else {
@@ -237,7 +236,7 @@ public abstract class TSEncodingBuilder {
 
     @Override
     public void initFromProps(Map<String, String> props) {
-      //do nothing
+      //allowed do nothing
     }
 
   }

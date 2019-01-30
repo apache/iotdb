@@ -70,33 +70,33 @@ public class LocalFileAuthorizerTest {
      */
     User user = new User("user", "password");
     try {
-      status = authorizer.createUser(user.name, user.password);
+      status = authorizer.createUser(user.getName(), user.getPassword());
       assertEquals(true, status);
     } catch (AuthException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
     try {
-      status = authorizer.createUser(user.name, user.password);
+      status = authorizer.createUser(user.getName(), user.getPassword());
     } catch (AuthException e) {
       assertEquals("The user is exist", e.getMessage());
     }
     try {
-      status = authorizer.login(user.name, user.password);
+      status = authorizer.login(user.getName(), user.getPassword());
       assertEquals(true, status);
     } catch (AuthException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
     try {
-      status = authorizer.deleteUser(user.name);
+      status = authorizer.deleteUser(user.getName());
       assertEquals(true, status);
     } catch (AuthException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
     try {
-      status = authorizer.deleteUser(user.name);
+      status = authorizer.deleteUser(user.getName());
     } catch (AuthException e) {
       assertEquals("The user is not exist", e.getMessage());
     }
@@ -106,15 +106,15 @@ public class LocalFileAuthorizerTest {
      */
     String nodeName = "root.laptop.d1";
     try {
-      authorizer.createUser(user.name, user.password);
-      status = authorizer.grantPrivilegeToUser(user.name, nodeName, 1);
+      authorizer.createUser(user.getName(), user.getPassword());
+      status = authorizer.grantPrivilegeToUser(user.getName(), nodeName, 1);
       assertEquals(true, status);
     } catch (AuthException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
     try {
-      authorizer.grantPrivilegeToUser(user.name, nodeName, 1);
+      authorizer.grantPrivilegeToUser(user.getName(), nodeName, 1);
     } catch (AuthException e) {
       assertEquals("The permission is exist", e.getMessage());
     }
@@ -124,20 +124,20 @@ public class LocalFileAuthorizerTest {
       assertEquals("No such user error", e.getMessage());
     }
     try {
-      status = authorizer.revokePrivilegeFromUser(user.name, nodeName, 1);
+      status = authorizer.revokePrivilegeFromUser(user.getName(), nodeName, 1);
       assertEquals(true, status);
     } catch (AuthException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
     try {
-      status = authorizer.revokePrivilegeFromUser(user.name, nodeName, 1);
+      status = authorizer.revokePrivilegeFromUser(user.getName(), nodeName, 1);
     } catch (AuthException e) {
       assertEquals("The permission is not exist", e.getMessage());
     }
     try {
-      authorizer.deleteUser(user.name);
-      authorizer.revokePrivilegeFromUser(user.name, nodeName, 1);
+      authorizer.deleteUser(user.getName());
+      authorizer.revokePrivilegeFromUser(user.getName(), nodeName, 1);
     } catch (AuthException e) {
       assertEquals("No such user user", e.getMessage());
     }
@@ -222,16 +222,16 @@ public class LocalFileAuthorizerTest {
      * user role
      */
     try {
-      authorizer.createUser(user.name, user.password);
+      authorizer.createUser(user.getName(), user.getPassword());
       authorizer.createRole(roleName);
-      status = authorizer.grantRoleToUser(roleName, user.name);
+      status = authorizer.grantRoleToUser(roleName, user.getName());
       assertEquals(true, status);
     } catch (AuthException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
     try {
-      authorizer.grantPrivilegeToUser(user.name, nodeName, 1);
+      authorizer.grantPrivilegeToUser(user.getName(), nodeName, 1);
       authorizer.grantPrivilegeToRole(roleName, nodeName, 2);
       authorizer.grantPrivilegeToRole(roleName, nodeName, 3);
     } catch (AuthException e) {
@@ -239,7 +239,7 @@ public class LocalFileAuthorizerTest {
       fail(e.getMessage());
     }
     try {
-      Set<Integer> permisssions = authorizer.getPrivileges(user.name, nodeName);
+      Set<Integer> permisssions = authorizer.getPrivileges(user.getName(), nodeName);
       assertEquals(3, permisssions.size());
       assertEquals(true, permisssions.contains(1));
       assertEquals(true, permisssions.contains(2));
@@ -250,9 +250,9 @@ public class LocalFileAuthorizerTest {
       fail(e.getMessage());
     }
     try {
-      status = authorizer.revokeRoleFromUser(roleName, user.name);
+      status = authorizer.revokeRoleFromUser(roleName, user.getName());
       assertEquals(true, status);
-      Set<Integer> permisssions = authorizer.getPrivileges(user.name, nodeName);
+      Set<Integer> permisssions = authorizer.getPrivileges(user.getName(), nodeName);
       assertEquals(1, permisssions.size());
       assertEquals(true, permisssions.contains(1));
       assertEquals(false, permisssions.contains(2));
@@ -261,28 +261,28 @@ public class LocalFileAuthorizerTest {
       fail(e.getMessage());
     }
     try {
-      status = authorizer.checkUserPrivileges(user.name, nodeName, 1);
+      status = authorizer.checkUserPrivileges(user.getName(), nodeName, 1);
     } catch (AuthException e) {
       fail(e.getMessage());
     }
     assertEquals(true, status);
     try {
-      status = authorizer.checkUserPrivileges(user.name, nodeName, 2);
+      status = authorizer.checkUserPrivileges(user.getName(), nodeName, 2);
     } catch (AuthException e) {
       fail(e.getMessage());
     }
     assertEquals(false, status);
     try {
-      status = authorizer.updateUserPassword(user.name, "newPassword");
+      status = authorizer.updateUserPassword(user.getName(), "newPassword");
       assertEquals(true, status);
-      status = authorizer.login(user.name, "newPassword");
+      status = authorizer.login(user.getName(), "newPassword");
       assertEquals(true, status);
     } catch (AuthException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
     try {
-      authorizer.deleteUser(user.name);
+      authorizer.deleteUser(user.getName());
       authorizer.deleteRole(roleName);
     } catch (AuthException e) {
       e.printStackTrace();

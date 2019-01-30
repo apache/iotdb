@@ -168,6 +168,10 @@ public class SeriesReaderFactory {
   }
 
   private static class SeriesReaderFactoryHelper {
+
     private static final SeriesReaderFactory INSTANCE = new SeriesReaderFactory();
+
+    private SeriesReaderFactoryHelper() {
+    }
   }
 }

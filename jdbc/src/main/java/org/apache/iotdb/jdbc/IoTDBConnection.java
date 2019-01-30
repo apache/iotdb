@@ -59,11 +59,13 @@ import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransportException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 public class IoTDBConnection implements Connection {
-
-  private final List<TSProtocolVersion> supportedProtocols = new LinkedList<TSProtocolVersion>();
+  Logger logger = LoggerFactory.getLogger(IoTDBConnection.class);
+  private final List<TSProtocolVersion> supportedProtocols = new LinkedList<>();
   public TSIService.Iface client = null;
   public TS_SessionHandle sessionHandle = null;
   private IoTDBConnectionParams params;
@@ -75,6 +77,7 @@ public class IoTDBConnection implements Connection {
   private boolean autoCommit;
 
   public IoTDBConnection() {
+    // allowed to create an instance without parameter input.
   }
 
   public IoTDBConnection(String url, Properties info) throws SQLException, TTransportException {
@@ -374,12 +377,12 @@ public class IoTDBConnection implements Connection {
 
   @Override
   public void rollback() throws SQLException {
-
+    // do nothing in rollback
   }
 
   @Override
   public void rollback(Savepoint arg0) throws SQLException {
-
+    // do nothing in rollback
   }
 
   @Override
@@ -407,7 +410,7 @@ public class IoTDBConnection implements Connection {
     try {
       transport.getSocket().setKeepAlive(true);
     } catch (SocketException e) {
-      System.out.println("Cannot set socket keep alive because: " + e.getMessage());
+      logger.error("Cannot set socket keep alive because: " + e.getMessage());
     }
     if (!transport.isOpen()) {
       transport.open();
@@ -461,7 +464,7 @@ public class IoTDBConnection implements Connection {
         try {
           Thread.sleep(Config.RETRY_INTERVAL);
         } catch (InterruptedException e1) {
-          e.printStackTrace();
+          logger.error("reconnect is interrupted.", e1);
         }
       }
     }

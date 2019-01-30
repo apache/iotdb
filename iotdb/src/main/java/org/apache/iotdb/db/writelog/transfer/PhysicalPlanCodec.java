@@ -35,10 +35,10 @@ import org.apache.iotdb.tsfile.utils.Pair;
 
 public enum PhysicalPlanCodec {
 
-  MULTIINSERTPLAN(SystemLogOperator.INSERT, codecInstances.multiInsertPlanCodec), UPDATEPLAN(
+  MULTIINSERTPLAN(SystemLogOperator.INSERT, CodecInstances.multiInsertPlanCodec), UPDATEPLAN(
       SystemLogOperator.UPDATE,
-      codecInstances.updatePlanCodec), DELETEPLAN(SystemLogOperator.DELETE,
-      codecInstances.deletePlanCodec);
+      CodecInstances.updatePlanCodec), DELETEPLAN(SystemLogOperator.DELETE,
+      CodecInstances.deletePlanCodec);
 
   private static final HashMap<Integer, PhysicalPlanCodec> codecMap = new HashMap<>();
   private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
@@ -65,7 +65,9 @@ public enum PhysicalPlanCodec {
     return codecMap.get(opcode);
   }
 
-  static class codecInstances {
+  static class CodecInstances {
+
+    private CodecInstances(){}
 
     static final Codec<DeletePlan> deletePlanCodec = new Codec<DeletePlan>() {
       ThreadLocal<ByteBuffer> localBuffer = new ThreadLocal<>();
@@ -91,7 +93,7 @@ public enum PhysicalPlanCodec {
       @Override
       public DeletePlan decode(byte[] bytes) throws IOException {
         ByteBuffer buffer = ByteBuffer.wrap(bytes);
-        int type = buffer.get();
+        buffer.get(); // read  and skip an int representing "type".
         long time = buffer.getLong();
 
         int pathLength = buffer.getInt();
@@ -136,7 +138,7 @@ public enum PhysicalPlanCodec {
       @Override
       public UpdatePlan decode(byte[] bytes) throws IOException {
         ByteBuffer buffer = ByteBuffer.wrap(bytes);
-        int type = buffer.get();
+        buffer.get(); // read and skip an int representing "type"
 
         int timeListBytesLength = buffer.getInt();
         List<Pair<Long, Long>> timeArrayList = new ArrayList<>(timeListBytesLength);
@@ -202,7 +204,7 @@ public enum PhysicalPlanCodec {
       public InsertPlan decode(byte[] bytes) throws IOException {
         ByteBuffer buffer = ByteBuffer.wrap(bytes);
 
-        int type = buffer.get();
+        buffer.get(); // read and skip an int representing "type"
         int insertType = buffer.get();
         long time = buffer.getLong();
 

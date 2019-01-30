@@ -225,7 +225,7 @@ public abstract class DeltaBinaryEncoder extends Encoder {
     @Override
     public long getMaxByteSize() {
       // The meaning of 24 is: index(4)+width(4)+minDeltaBase(4)+firstValue(4)
-      return 24L + writeIndex * 4;
+      return (long)24 + writeIndex * 4;
     }
   }
 
@@ -304,7 +304,7 @@ public abstract class DeltaBinaryEncoder extends Encoder {
     @Override
     public long getMaxByteSize() {
       // The meaning of 24 is: index(4)+width(4)+minDeltaBase(8)+firstValue(8)
-      return 24L + writeIndex * 8;
+      return (long)24 + writeIndex * 8;
     }
 
     /**

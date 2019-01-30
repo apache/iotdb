@@ -18,15 +18,18 @@
  */
 package org.apache.iotdb.db.utils;
 
+import sun.nio.ch.DirectBuffer;
+
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.nio.Buffer;
 import java.nio.ByteBuffer;
-import sun.nio.ch.DirectBuffer;
 
 public class CommonUtils {
 
-  public static final int javaVersion = CommonUtils.getJdkVersion();
+  public static final int JAVA_VERSION = CommonUtils.getJdkVersion();
+
+  private CommonUtils(){}
 
   /**
    * get JDK version.
@@ -49,7 +52,7 @@ public class CommonUtils {
    * @throws Exception Exception
    */
   public static void destroyBuffer(Buffer byteBuffer) throws Exception {
-    if (javaVersion == 8) {
+    if (JAVA_VERSION == 8) {
       ((DirectBuffer) byteBuffer).cleaner().clean();
     } else {
       try {
