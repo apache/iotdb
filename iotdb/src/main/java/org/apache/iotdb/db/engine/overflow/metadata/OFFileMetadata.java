@@ -33,7 +33,7 @@ public class OFFileMetadata {
   private List<OFRowGroupListMetadata> rowGroupLists;
 
   public OFFileMetadata() {
-    //allowed do nothing
+    //allowed to do nothing
   }
 
   public OFFileMetadata(long lastFooterOffset, List<OFRowGroupListMetadata> rowGroupLists) {
