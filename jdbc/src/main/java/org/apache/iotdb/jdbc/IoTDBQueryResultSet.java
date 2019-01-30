@@ -56,7 +56,7 @@ import org.slf4j.LoggerFactory;
 
 public class IoTDBQueryResultSet implements ResultSet {
 
-  private static final org.slf4j.Logger LOGGER = LoggerFactory.getLogger(SnappyUnCompressor.class);
+  private static final org.slf4j.Logger LOGGER = LoggerFactory.getLogger(IoTDBQueryResultSet.class);
   private static final String methodNotSupportedMessage = "Method not supported";
   private final String TIMESTAMP_STR = "Time";
   private static final String limitStr = "LIMIT";
@@ -84,17 +84,15 @@ public class IoTDBQueryResultSet implements ResultSet {
   private int rowsOffset = 0;
 
   /*
-   * Combine maxRows and the LIMIT constraints.
-   * maxRowsOrRowsLimit = 0 means that neither maxRows nor LIMIT is constrained.
-   * maxRowsOrRowsLimit > 0 means that maxRows and/or LIMIT are constrained.
+   * Combine maxRows and the LIMIT constraints. maxRowsOrRowsLimit = 0 means that neither maxRows
+   * nor LIMIT is constrained. maxRowsOrRowsLimit > 0 means that maxRows and/or
+   * LIMIT are constrained.
    * 1) When neither maxRows nor LIMIT is constrained, i.e., maxRows=0 and rowsLimit=0,
-   * then maxRowsOrRowsLimit equals 0;
-   * 2) When both maxRows and LIMIT are constrained, i.e., maxRows>0 and rowsLimit>0,
-   * then maxRowsOrRowsLimit equals min(maxRows, rowsLimit);
-   * 3) When maxRows is constrained and LIMIT is NOT constrained, i.e., maxRows>0 and rowsLimit=0,
-   * then maxRowsOrRowsLimit equals maxRows;
-   * 4) When maxRows is NOT constrained and LIMIT is constrained, i.e., maxRows=0 and rowsLimit>0,
-   * then maxRowsOrRowsLimit equals rowsLimit;
+   * maxRowsOrRowsLimit = 0 2). When both maxRows and LIMIT are constrained, i.e., maxRows>0 and
+   * rowsLimit>0, maxRowsOrRowsLimit = min(maxRows, rowsLimit) 3) When maxRows is constrained and
+   * LIMIT is NOT constrained, i.e., maxRows>0 and rowsLimit=0, maxRowsOrRowsLimit = maxRows
+   * 4) When maxRows is NOT constrained and LIMIT is constrained, i.e., maxRows=0 and
+   * rowsLimit>0, maxRowsOrRowsLimit = rowsLimit
    */
   private int maxRowsOrRowsLimit;
 
@@ -712,7 +710,7 @@ public class IoTDBQueryResultSet implements ResultSet {
         }
       } catch (TException e) {
         throw new SQLException(
-            "Cannot fetch result from server, because of network connection: " + e);
+            "Cannot fetch result from server, because of network connection: {} ", e);
       }
 
     }
@@ -730,7 +728,7 @@ public class IoTDBQueryResultSet implements ResultSet {
     if (maxRowsOrRowsLimit > 0 && rowsFetched >= maxRowsOrRowsLimit) {
       // The constraint of maxRows instead of rowsLimit is embodied
       if (rowsLimit == 0 || (maxRows > 0 && maxRows < rowsLimit)) {
-        LOGGER.info("Reach max rows " + maxRows);
+        LOGGER.debug("Reach max rows " + maxRows);
       }
       return false;
     }
