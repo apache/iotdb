@@ -58,7 +58,7 @@ import org.slf4j.LoggerFactory;
  */
 public class ImportCsv extends AbstractCsvTool {
 
-  private Logger logger = LoggerFactory.getLogger(ImportCsv.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(ImportCsv.class);
 
   private static final String FILE_ARGS = "f";
   private static final String FILE_NAME = "file or folder";
