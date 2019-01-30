@@ -30,6 +30,7 @@ public class SinglePrecisionEncoder extends GorillaEncoder {
   private int preValue;
 
   public SinglePrecisionEncoder() {
+    //allowed do nothing
   }
 
   @Override

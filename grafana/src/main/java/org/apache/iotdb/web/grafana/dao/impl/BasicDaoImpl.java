@@ -57,7 +57,7 @@ public class BasicDaoImpl implements BasicDao {
       public Object doInConnection(Connection connection) throws SQLException {
         DatabaseMetaData databaseMetaData = connection.getMetaData();
         ResultSet resultSet = databaseMetaData.getColumns(null, null, "root.*", null);
-        System.out.println("Start to get timeseries");
+        logger.info("Start to get timeseries");
         List<String> columnsName = new ArrayList<>();
         while (resultSet.next()) {
           String timeseries = resultSet.getString(1);
@@ -105,9 +105,9 @@ public class BasicDaoImpl implements BasicDao {
       tv.setTime(resultSet.getLong("Time"));
       String valueString = resultSet.getString(columnName);
       if (valueString != null) {
-        if (TRUE_STR.equals(valueString.toLowerCase())) {
+        if (TRUE_STR.equalsIgnoreCase(valueString)) {
           tv.setValue(1);
-        } else if (FALSE_STR.equals(valueString.toLowerCase())) {
+        } else if (FALSE_STR.equalsIgnoreCase(valueString)) {
           tv.setValue(0);
         } else {
           try {

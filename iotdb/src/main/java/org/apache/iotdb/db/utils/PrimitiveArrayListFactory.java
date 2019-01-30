@@ -24,6 +24,8 @@ import org.apache.iotdb.tsfile.utils.Binary;
 
 public class PrimitiveArrayListFactory {
 
+  private PrimitiveArrayListFactory(){}
+
   public static PrimitiveArrayList getByDataType(TSDataType dataType) {
     switch (dataType) {
       case BOOLEAN:

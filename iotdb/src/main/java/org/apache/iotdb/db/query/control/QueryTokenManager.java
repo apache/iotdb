@@ -168,6 +168,10 @@ public class QueryTokenManager {
   }
 
   private static class QueryTokenManagerHelper {
+
     private static final QueryTokenManager INSTANCE = new QueryTokenManager();
+
+    private QueryTokenManagerHelper() {
+    }
   }
 }

@@ -39,9 +39,6 @@ public class ServerManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ServerManager.class);
   private TServerSocket serverTransport;
-  private Factory protocolFactory;
-  private TProcessor processor;
-  private TThreadPoolServer.Args poolArgs;
   private TServer poolServer;
   private IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
 
@@ -56,6 +53,9 @@ public class ServerManager {
    * start postback receiver's server.
    */
   public void startServer() {
+    Factory protocolFactory;
+    TProcessor processor;
+    TThreadPoolServer.Args poolArgs;
     if (!conf.isPostbackEnable) {
       return;
     }
@@ -69,22 +69,17 @@ public class ServerManager {
       conf.ipWhiteList = conf.ipWhiteList.replaceAll(" ", "");
       serverTransport = new TServerSocket(conf.postbackServerPort);
       protocolFactory = new TBinaryProtocol.Factory();
-      processor = new ServerService.Processor<ServerServiceImpl>(new ServerServiceImpl());
+      processor = new ServerService.Processor<>(new ServerServiceImpl());
       poolArgs = new TThreadPoolServer.Args(serverTransport);
       poolArgs.processor(processor);
       poolArgs.protocolFactory(protocolFactory);
       poolServer = new TThreadPoolServer(poolArgs);
       LOGGER.info("Postback server has started.");
-      Runnable runnable = new Runnable() {
-        public void run() {
-          poolServer.serve();
-        }
-      };
+      Runnable runnable = () -> poolServer.serve();
       Thread thread = new Thread(runnable);
       thread.start();
     } catch (TTransportException e) {
-      LOGGER.error("IoTDB post back receiver: cannot start postback server because {}",
-          e.getMessage());
+      LOGGER.error("IoTDB post back receiver: cannot start postback server because {}", e);
     }
   }
 

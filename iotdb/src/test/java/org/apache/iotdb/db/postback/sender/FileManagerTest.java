@@ -29,6 +29,8 @@ import java.util.Set;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class FileManagerTest {
 
@@ -37,16 +39,17 @@ public class FileManagerTest {
       POST_BACK_DIRECTORY_TEST + "lastLocalFileList.txt";
   public static final String SENDER_FILE_PATH_TEST = POST_BACK_DIRECTORY_TEST + "data";
   FileManager manager = FileManager.getInstance();
+  private static final Logger LOGGER = LoggerFactory.getLogger(FileManagerTest.class);
 
   @Before
-  public void setUp() throws Exception {
+  public void setUp() throws IOException, InterruptedException {
     Thread.sleep(1000);
     File file = new File(LAST_FILE_INFO_TEST);
     if (!file.getParentFile().exists()) {
       file.getParentFile().mkdirs();
     }
-    if (!file.exists()) {
-      file.createNewFile();
+    if (!file.exists() && !file.createNewFile()) {
+      LOGGER.error("Can not create new file {}", file.getAbsoluteFile());
     }
     file = new File(SENDER_FILE_PATH_TEST);
     if (!file.exists()) {
@@ -55,7 +58,7 @@ public class FileManagerTest {
   }
 
   @After
-  public void tearDown() throws Exception {
+  public void tearDown() throws InterruptedException {
     Thread.sleep(1000);
     delete(new File(POST_BACK_DIRECTORY_TEST));
     new File(POST_BACK_DIRECTORY_TEST).delete();
@@ -77,7 +80,6 @@ public class FileManagerTest {
   public void testBackupNowLocalFileInfo() throws IOException {
     Map<String, Set<String>> allFileList = new HashMap<>();
 
-    // TODO create some files
     Random r = new Random(0);
     for (int i = 0; i < 3; i++) {
       for (int j = 0; j < 5; j++) {
@@ -92,12 +94,12 @@ public class FileManagerTest {
         if (!file.getParentFile().exists()) {
           file.getParentFile().mkdirs();
         }
-        if (!file.exists()) {
-          file.createNewFile();
+        if (!file.exists() && !file.createNewFile()) {
+          LOGGER.error("Can not create new file {}", file.getAbsoluteFile());
         }
       }
     }
-    Set<String> lastFileList = new HashSet<>();
+    Set<String> lastFileList;
 
     // lastFileList is empty
     manager.getLastLocalFileList(LAST_FILE_INFO_TEST);
@@ -105,7 +107,7 @@ public class FileManagerTest {
     assert (lastFileList.isEmpty());
 
     // add some files
-    manager.getNowLocalFileList(new String[]{SENDER_FILE_PATH_TEST});
+    manager.getCurrentLocalFileList(new String[]{SENDER_FILE_PATH_TEST});
     manager.backupNowLocalFileInfo(LAST_FILE_INFO_TEST);
     manager.getLastLocalFileList(LAST_FILE_INFO_TEST);
     lastFileList = manager.getLastLocalFiles();
@@ -128,8 +130,8 @@ public class FileManagerTest {
         if (!file.getParentFile().exists()) {
           file.getParentFile().mkdirs();
         }
-        if (!file.exists()) {
-          file.createNewFile();
+        if (!file.exists() && !file.createNewFile()) {
+          LOGGER.error("Can not create new file {}", file.getAbsoluteFile());
         }
       }
     }
@@ -150,7 +152,7 @@ public class FileManagerTest {
         allFileList.get(entry.getKey()).remove(path);
       }
     }
-    manager.getNowLocalFileList(new String[]{SENDER_FILE_PATH_TEST});
+    manager.getCurrentLocalFileList(new String[]{SENDER_FILE_PATH_TEST});
     manager.backupNowLocalFileInfo(LAST_FILE_INFO_TEST);
     manager.getLastLocalFileList(LAST_FILE_INFO_TEST);
     lastFileList = manager.getLastLocalFiles();
@@ -162,11 +164,11 @@ public class FileManagerTest {
   @Test
   public void testGetNowLocalFileList() throws IOException {
     Map<String, Set<String>> allFileList = new HashMap<>();
-    Map<String, Set<String>> fileList = new HashMap<>();
+    Map<String, Set<String>> fileList;
 
     // nowLocalList is empty
-    manager.getNowLocalFileList(new String[]{SENDER_FILE_PATH_TEST});
-    fileList = manager.getNowLocalFiles();
+    manager.getCurrentLocalFileList(new String[]{SENDER_FILE_PATH_TEST});
+    fileList = manager.getCurrentLocalFiles();
     assert (isEmpty(fileList));
 
     // add some files
@@ -184,13 +186,13 @@ public class FileManagerTest {
         if (!file.getParentFile().exists()) {
           file.getParentFile().mkdirs();
         }
-        if (!file.exists()) {
-          file.createNewFile();
+        if (!file.exists() && !file.createNewFile()) {
+          LOGGER.error("Can not create new file {}", file.getAbsoluteFile());
         }
       }
     }
-    manager.getNowLocalFileList(new String[]{SENDER_FILE_PATH_TEST});
-    fileList = manager.getNowLocalFiles();
+    manager.getCurrentLocalFileList(new String[]{SENDER_FILE_PATH_TEST});
+    fileList = manager.getCurrentLocalFiles();
     assert (allFileList.size() == fileList.size());
     for (Entry<String, Set<String>> entry : fileList.entrySet()) {
       assert (allFileList.containsKey(entry.getKey()));
@@ -229,24 +231,24 @@ public class FileManagerTest {
         if (!file.getParentFile().exists()) {
           file.getParentFile().mkdirs();
         }
-        if (!file.exists()) {
-          file.createNewFile();
+        if (!file.exists() && !file.createNewFile()) {
+          LOGGER.error("Can not create new file {}", file.getAbsoluteFile());
         }
       }
     }
-    manager.setNowLocalFiles(new HashMap<>());
-    manager.getNowLocalFileList(new String[]{SENDER_FILE_PATH_TEST});
-    fileList = manager.getNowLocalFiles();
+    manager.setCurrentLocalFiles(new HashMap<>());
+    manager.getCurrentLocalFileList(new String[]{SENDER_FILE_PATH_TEST});
+    fileList = manager.getCurrentLocalFiles();
     assert (allFileList.size() == fileList.size());
     for (Entry<String, Set<String>> entry : fileList.entrySet()) {
       assert (allFileList.containsKey(entry.getKey()));
-      System.out.println("allFileList");
+      LOGGER.debug("allFileList");
       for (String a : allFileList.get(entry.getKey())) {
-        System.out.println(a);
+        LOGGER.debug(a);
       }
-      System.out.println("FileList");
+      LOGGER.debug("FileList");
       for (String a : entry.getValue()) {
-        System.out.println(a);
+        LOGGER.debug(a);
       }
       assert (allFileList.get(entry.getKey()).containsAll(entry.getValue()));
     }
@@ -254,23 +256,21 @@ public class FileManagerTest {
 
   @Test
   public void testGetSendingFileList() throws IOException {
-    Map<String, Set<String>> allFileList = new HashMap<>();
+    Map<String, Set<String>> allFileList;
     Map<String, Set<String>> newFileList = new HashMap<>();
-    Map<String, Set<String>> sendingFileList = new HashMap<>();
-    Set<String> lastlocalList = new HashSet<>();
+    Map<String, Set<String>> sendingFileList;
+    Set<String> lastlocalList;
 
     // nowSendingList is empty
 
-    manager.setNowLocalFiles(new HashMap<>());
-    manager.getNowLocalFileList(new String[]{SENDER_FILE_PATH_TEST});
-    allFileList = manager.getNowLocalFiles();
+    manager.setCurrentLocalFiles(new HashMap<>());
+    manager.getCurrentLocalFileList(new String[]{SENDER_FILE_PATH_TEST});
+    allFileList = manager.getCurrentLocalFiles();
     manager.getLastLocalFileList(LAST_FILE_INFO_TEST);
     lastlocalList = manager.getLastLocalFiles();
     manager.getSendingFileList();
-    sendingFileList = manager.getSendingFiles();
-    assert (lastlocalList.size() == 0);
+    assert (lastlocalList.isEmpty());
     assert (isEmpty(allFileList));
-    assert (isEmpty(sendingFileList));
 
     // add some files
     newFileList.clear();
@@ -293,16 +293,15 @@ public class FileManagerTest {
         if (!file.getParentFile().exists()) {
           file.getParentFile().mkdirs();
         }
-        if (!file.exists()) {
-          file.createNewFile();
+        if (!file.exists() && !file.createNewFile()) {
+          LOGGER.error("Can not create new file {}", file.getAbsoluteFile());
         }
       }
     }
-    manager.getNowLocalFileList(new String[]{SENDER_FILE_PATH_TEST});
-    allFileList = manager.getNowLocalFiles();
+    manager.getCurrentLocalFileList(new String[]{SENDER_FILE_PATH_TEST});
+    allFileList = manager.getCurrentLocalFiles();
     manager.backupNowLocalFileInfo(LAST_FILE_INFO_TEST);
     manager.getLastLocalFileList(LAST_FILE_INFO_TEST);
-    lastlocalList = manager.getLastLocalFiles();
     manager.getSendingFileList();
     sendingFileList = manager.getSendingFiles();
     assert (sendingFileList.size() == newFileList.size());
@@ -348,15 +347,13 @@ public class FileManagerTest {
         if (!file.getParentFile().exists()) {
           file.getParentFile().mkdirs();
         }
-        if (!file.exists()) {
-          file.createNewFile();
+        if (!file.exists() && !file.createNewFile()) {
+          LOGGER.error("Can not create new file {}", file.getAbsoluteFile());
         }
       }
     }
-    manager.getNowLocalFileList(new String[]{SENDER_FILE_PATH_TEST});
-    allFileList = manager.getNowLocalFiles();
+    manager.getCurrentLocalFileList(new String[]{SENDER_FILE_PATH_TEST});
     manager.getLastLocalFileList(LAST_FILE_INFO_TEST);
-    lastlocalList = manager.getLastLocalFiles();
     manager.getSendingFileList();
     sendingFileList = manager.getSendingFiles();
     assert (sendingFileList.size() == newFileList.size());
@@ -368,7 +365,7 @@ public class FileManagerTest {
 
   private boolean isEmpty(Map<String, Set<String>> sendingFileList) {
     for (Entry<String, Set<String>> entry : sendingFileList.entrySet()) {
-      if (entry.getValue().size() != 0) {
+      if (!entry.getValue().isEmpty()) {
         return false;
       }
     }
