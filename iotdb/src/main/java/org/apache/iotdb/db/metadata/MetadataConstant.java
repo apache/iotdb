@@ -20,7 +20,7 @@ package org.apache.iotdb.db.metadata;
 
 public class MetadataConstant {
   private MetadataConstant(){
-    //allowed do nothing
+    //allowed to do nothing
   }
   public static final String ROOT = "root";
   public static final String METADATA_OBJ = "mdata.obj";
