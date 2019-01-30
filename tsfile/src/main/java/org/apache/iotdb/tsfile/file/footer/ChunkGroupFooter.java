@@ -55,7 +55,7 @@ public class ChunkGroupFooter {
         Byte.BYTES + Integer.BYTES + deviceID.length() + Long.BYTES + Integer.BYTES;
   }
 
-  private static int getSerializedSize(String deviceID) {
+  public static int getSerializedSize(String deviceID) {
     return Byte.BYTES + Integer.BYTES + getSerializedSize(deviceID.length());
   }
 
