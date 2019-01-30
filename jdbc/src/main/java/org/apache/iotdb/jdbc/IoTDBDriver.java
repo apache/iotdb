@@ -49,7 +49,7 @@ public class IoTDBDriver implements Driver {
   private final String TSFILE_URL_PREFIX = Config.IOTDB_URL_PREFIX + ".*";
 
   public IoTDBDriver() {
-
+    // This is a constructor.
   }
 
   @Override
@@ -88,7 +88,7 @@ public class IoTDBDriver implements Driver {
   @Override
   public DriverPropertyInfo[] getPropertyInfo(String url, Properties info) throws SQLException {
     // TODO Auto-generated method stub
-    return null;
+    return new DriverPropertyInfo[0];
   }
 
   @Override
