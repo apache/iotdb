@@ -302,11 +302,11 @@ public class ImportCsv extends AbstractCsvTool {
 
       // TODO when timestampsStr is empty
       String timestampsStr = data[0];
-      sbd.append(") values(").append("".equals(timestampsStr.trim())
+      sbd.append(") values(").append(timestampsStr.trim().isEmpty()
           ? "NO TIMESTAMP" : timestampsStr);
 
       for (int j = 0; j < colIndex.size(); ++j) {
-        if ("".equals(data[entry.getValue().get(j) + 1])) {
+        if (data[entry.getValue().get(j) + 1].isEmpty()) {
           continue;
         }
         if (timeseriesToType.get(headInfo.get(colIndex.get(j))).equals(STRING_DATA_TYPE)) {
@@ -373,7 +373,7 @@ public class ImportCsv extends AbstractCsvTool {
   public static void importCsvFromFile(String ip, String port, String username,
       String password, String filename,
       String timeZone) throws SQLException {
-    String property = System.getProperty("IoTDB_HOME");
+    String property = System.getProperty("IOTDB_HOME");
     if (property == null) {
       errorInsertInfo = ERROR_INFO_STR;
     } else {
