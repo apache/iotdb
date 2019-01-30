@@ -33,7 +33,7 @@ import org.apache.iotdb.db.exception.PathErrorException;
 public class MGraph implements Serializable {
 
   private static final long serialVersionUID = 8214849219614352834L;
-  private static final String separator = "\\.";
+  private static final String DOUB_SEPARATOR = "\\.";
   private static final String TIME_SERIES_INCORRECT = "Timeseries's root is not Correct. RootName: ";
   private MTree mtree;
   private HashMap<String, PTree> ptreeMap;
@@ -61,7 +61,7 @@ public class MGraph implements Serializable {
    */
   public void addPathToMTree(String path, String dataType, String encoding, String[] args)
       throws PathErrorException, MetadataArgsErrorException {
-    String[] nodes = path.trim().split(separator);
+    String[] nodes = path.trim().split(DOUB_SEPARATOR);
     if (nodes.length == 0) {
       throw new PathErrorException("Timeseries is null");
     }
@@ -72,11 +72,11 @@ public class MGraph implements Serializable {
    * Add a seriesPath to {@code PTree}.
    */
   public void addPathToPTree(String path) throws PathErrorException, MetadataArgsErrorException {
-    String[] nodes = path.trim().split(separator);
+    String[] nodes = path.trim().split(DOUB_SEPARATOR);
     if (nodes.length == 0) {
       throw new PathErrorException("Timeseries is null.");
     }
-    String rootName = path.trim().split(separator)[0];
+    String rootName = path.trim().split(DOUB_SEPARATOR)[0];
     if (ptreeMap.containsKey(rootName)) {
       PTree ptree = ptreeMap.get(rootName);
       ptree.addPath(path);
@@ -91,11 +91,11 @@ public class MGraph implements Serializable {
    * @param path a seriesPath belongs to MTree or PTree
    */
   public String deletePath(String path) throws PathErrorException {
-    String[] nodes = path.trim().split(separator);
+    String[] nodes = path.trim().split(DOUB_SEPARATOR);
     if (nodes.length == 0) {
       throw new PathErrorException("Timeseries is null");
     }
-    String rootName = path.trim().split(separator)[0];
+    String rootName = path.trim().split(DOUB_SEPARATOR)[0];
     if (mtree.getRoot().getName().equals(rootName)) {
       return mtree.deletePath(path);
     } else if (ptreeMap.containsKey(rootName)) {
@@ -111,7 +111,7 @@ public class MGraph implements Serializable {
    * Link a {@code MNode} to a {@code PNode} in current PTree.
    */
   public void linkMNodeToPTree(String path, String mpath) throws PathErrorException {
-    String ptreeName = path.trim().split(separator)[0];
+    String ptreeName = path.trim().split(DOUB_SEPARATOR)[0];
     if (!ptreeMap.containsKey(ptreeName)) {
       throw new PathErrorException("Error: PTree Path Not Correct. Path: " + path);
     } else {
@@ -123,7 +123,7 @@ public class MGraph implements Serializable {
    * Unlink a {@code MNode} from a {@code PNode} in current PTree.
    */
   public void unlinkMNodeFromPTree(String path, String mpath) throws PathErrorException {
-    String ptreeName = path.trim().split(separator)[0];
+    String ptreeName = path.trim().split(DOUB_SEPARATOR)[0];
     if (!ptreeMap.containsKey(ptreeName)) {
       throw new PathErrorException("Error: PTree Path Not Correct. Path: " + path);
     } else {
@@ -150,7 +150,7 @@ public class MGraph implements Serializable {
    */
   public HashMap<String, ArrayList<String>> getAllPathGroupByFilename(String path)
       throws PathErrorException {
-    String rootName = path.trim().split(separator)[0];
+    String rootName = path.trim().split(DOUB_SEPARATOR)[0];
     if (mtree.getRoot().getName().equals(rootName)) {
       return mtree.getAllPath(path);
     } else if (ptreeMap.containsKey(rootName)) {
@@ -164,7 +164,7 @@ public class MGraph implements Serializable {
    * function for getting all timeseries paths under the given seriesPath.
    */
   public List<List<String>> getShowTimeseriesPath(String path) throws PathErrorException {
-    String rootName = path.trim().split(separator)[0];
+    String rootName = path.trim().split(DOUB_SEPARATOR)[0];
     if (mtree.getRoot().getName().equals(rootName)) {
       return mtree.getShowTimeseriesPath(path);
     } else if (ptreeMap.containsKey(rootName)) {
