@@ -301,7 +301,7 @@ public abstract class AbstractClient {
     switch (timeFormat) {
       case "long":
       case "number":
-        return timestamp + "";
+        return Long.toString(timestamp) + "";
       case DEFAULT_TIME_FORMAT:
       case "iso8601":
         dateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(timestamp), zoneId);
@@ -605,6 +605,13 @@ public abstract class AbstractClient {
       if (hasResultSet) {
         ResultSet resultSet = statement.getResultSet();
         output(resultSet, printToConsole, zoneId);
+        if (resultSet != null) {
+          try {
+            resultSet.close();
+          } catch (SQLException e) {
+            System.out.println("Cannot close resultSet because: " + e.getMessage());
+          }
+        }
       }
       System.out.println("Execute successfully. Type `help` to get more information.");
     } catch (Exception e) {

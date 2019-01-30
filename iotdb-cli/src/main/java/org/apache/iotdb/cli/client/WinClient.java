@@ -46,6 +46,7 @@ public class WinClient extends AbstractClient {
     hf.setWidth(MAX_HELP_CONSOLE_WIDTH);
     CommandLine commandLine = null;
     CommandLineParser parser = new DefaultParser();
+    String[] newArgs = null;
 
     if (args == null || args.length == 0) {
       System.out.println("Require more params input, please check the following hint.");
@@ -55,10 +56,10 @@ public class WinClient extends AbstractClient {
 
     init();
 
-    args = removePasswordArgs(args);
+    newArgs = removePasswordArgs(args);
 
     try {
-      commandLine = parser.parse(options, args);
+      commandLine = parser.parse(options, newArgs);
       if (commandLine.hasOption(HELP_ARGS)) {
         hf.printHelp(IOTDB_CLI_PREFIX, options, true);
         return;
@@ -105,7 +106,7 @@ public class WinClient extends AbstractClient {
             String[] cmds = s.trim().split(";");
             for (int i = 0; i < cmds.length; i++) {
               String cmd = cmds[i];
-              if (cmd != null && !cmd.trim().equals("")) {
+              if (cmd != null && !"".equals(cmd.trim())) {
                 OperationResult result = handleInputCmd(cmd, connection);
                 switch (result) {
                   case RETURN_OPER:

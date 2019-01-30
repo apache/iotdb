@@ -48,6 +48,8 @@ import org.apache.iotdb.cli.exception.ArgsErrorException;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.IoTDBConnection;
 import org.apache.thrift.TException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * read a CSV formatted data File and insert all the data into IoTDB.
@@ -68,6 +70,8 @@ public class ImportCsv extends AbstractCsvTool {
 
   private static String filename;
   private static String errorInsertInfo = "";
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(ImportCsv.class);
 
   /**
    * create the commandline options.
@@ -117,16 +121,20 @@ public class ImportCsv extends AbstractCsvTool {
    */
   private static void loadDataFromCSV(File file, int index) {
     Statement statement = null;
+    FileReader fr = null;
     BufferedReader br = null;
+    FileWriter fw = null;
     BufferedWriter bw = null;
     File errorFile = new File(errorInsertInfo + index);
     boolean errorFlag = true;
     try {
-      br = new BufferedReader(new FileReader(file));
+      fr = new FileReader(file);
+      br = new BufferedReader(fr);
       if (!errorFile.exists()) {
         errorFile.createNewFile();
       }
-      bw = new BufferedWriter(new FileWriter(errorFile));
+      fw = new FileWriter(errorFile);
+      bw = new BufferedWriter(fw);
 
       String header = br.readLine();
 
@@ -146,7 +154,7 @@ public class ImportCsv extends AbstractCsvTool {
 
       String[] strHeadInfo = header.split(",");
       if (strHeadInfo.length <= 1) {
-        System.out.println("[ERROR] The CSV file" + file.getName()
+        LOGGER.error("[ERROR] The CSV file" + file.getName()
             + " illegal, please check first line");
         return;
       }
@@ -164,7 +172,7 @@ public class ImportCsv extends AbstractCsvTool {
         } else {
           String errorInfo = String.format("[ERROR] Database cannot find %s in %s, stop import!",
               strHeadInfo[i], file.getAbsolutePath());
-          System.out.println(errorInfo);
+          LOGGER.error(errorInfo);
           bw.write(errorInfo);
           errorFlag = false;
           return;
@@ -230,9 +238,9 @@ public class ImportCsv extends AbstractCsvTool {
         statement.clearBatch();
         count = 0;
         tmp.clear();
-        System.out.println(String.format("[INFO] Load data from %s successfully,"
+        LOGGER.info(String.format("[INFO] Load data from %s successfully,"
                 + " it takes %dms", file.getName(),
-            (System.currentTimeMillis() - startTime)));
+            System.currentTimeMillis() - startTime));
       } catch (SQLException e) {
         bw.write(e.getMessage());
         bw.newLine();
@@ -240,15 +248,21 @@ public class ImportCsv extends AbstractCsvTool {
       }
 
     } catch (FileNotFoundException e) {
-      System.out.println("[ERROR] Cannot find " + file.getName());
+      LOGGER.error("[ERROR] Cannot find " + file.getName());
     } catch (IOException e) {
-      System.out.println("[ERROR] CSV file read exception!" + e.getMessage());
+      LOGGER.error("[ERROR] CSV file read exception!" + e.getMessage());
     } catch (SQLException e) {
-      System.out.println("[ERROR] Database connection exception!" + e.getMessage());
+      LOGGER.error("[ERROR] Database connection exception!" + e.getMessage());
     } finally {
       try {
+        if (fr != null) {
+          fr.close();
+        }
         if (br != null) {
           br.close();
+        }
+        if (fw != null) {
+          fw.close();
         }
         if (bw != null) {
           bw.close();
@@ -259,7 +273,7 @@ public class ImportCsv extends AbstractCsvTool {
         if (errorFlag) {
           FileUtils.forceDelete(errorFile);
         } else {
-          System.out.println(String.format(
+          LOGGER.error(String.format(
               "[ERROR] Format of some lines in %s error, please check %s for more information",
               file.getAbsolutePath(), errorFile.getAbsolutePath()));
         }
@@ -327,14 +341,14 @@ public class ImportCsv extends AbstractCsvTool {
     CommandLineParser parser = new DefaultParser();
 
     if (args == null || args.length == 0) {
-      System.out.println("[ERROR] Too few params input, please check the following hint.");
+      LOGGER.error("[ERROR] Too few params input, please check the following hint.");
       hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
       return;
     }
     try {
       commandLine = parser.parse(options, args);
     } catch (ParseException e) {
-      System.out.println(e.getMessage());
+      LOGGER.error(e.getMessage());
       hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
       return;
     }
@@ -357,7 +371,7 @@ public class ImportCsv extends AbstractCsvTool {
     } catch (ArgsErrorException e) {
       // ignored
     } catch (Exception e) {
-      System.out.println(String.format("[ERROR] Encounter an error, because %s", e.getMessage()));
+      LOGGER.error(String.format("[ERROR] Encounter an error, because %s", e.getMessage()));
     } finally {
       reader.close();
     }
@@ -389,7 +403,7 @@ public class ImportCsv extends AbstractCsvTool {
         if (file.getName().endsWith(FILE_SUFFIX)) {
           loadDataFromCSV(file, 1);
         } else {
-          System.out.println(
+          LOGGER.warn(
               "[WARN] File " + file.getName() + " should ends with '.csv' "
                   + "if you want to import");
         }
@@ -401,7 +415,7 @@ public class ImportCsv extends AbstractCsvTool {
               loadDataFromCSV(f, i);
               i++;
             } else {
-              System.out.println(
+              LOGGER.warn(
                   "[WARN] File " + f.getName() + " should ends with '.csv' "
                       + "if you want to import");
             }
@@ -409,15 +423,15 @@ public class ImportCsv extends AbstractCsvTool {
         }
       }
     } catch (ClassNotFoundException e) {
-      System.out.println(
+      LOGGER.error(
           "[ERROR] Failed to dump data because cannot find TsFile JDBC Driver, "
               + "please check whether you have imported driver or not");
     } catch (TException e) {
-      System.out.println(
+      LOGGER.error(
           String.format("[ERROR] Encounter an error when connecting to server, because %s",
               e.getMessage()));
     } catch (Exception e) {
-      System.out.println(String.format("[ERROR] Encounter an error, because %s", e.getMessage()));
+      LOGGER.error(String.format("[ERROR] Encounter an error, because %s", e.getMessage()));
     } finally {
       if (connection != null) {
         connection.close();
