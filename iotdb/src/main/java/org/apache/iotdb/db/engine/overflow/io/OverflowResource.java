@@ -185,11 +185,14 @@ public class OverflowResource {
     long timeInterval = System.currentTimeMillis() - startTime;
     timeInterval = timeInterval == 0 ? 1 : timeInterval;
     long insertSize = insertIO.getPos() - startPos;
-    LOGGER.info(
-            "Overflow processor {} flushes overflow insert data, actual:{}, time consumption:{} ms,"
-                    + " flush rate:{}/s",
-            processorName, MemUtils.bytesCntToStr(insertSize), timeInterval,
-            MemUtils.bytesCntToStr(insertSize / timeInterval * 1000));
+    if (LOGGER.isInfoEnabled()) {
+      LOGGER.info(
+          "Overflow processor {} flushes overflow insert data, actual:{}, time consumption:{} ms,"
+              + " flush rate:{}/s",
+          processorName, MemUtils.bytesCntToStr(insertSize), timeInterval,
+          MemUtils.bytesCntToStr(insertSize / timeInterval * 1000));
+    }
+
     writePositionInfo(insertIO.getPos(), 0);
   }
 
