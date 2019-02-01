@@ -241,7 +241,7 @@ public class FileNodeManager implements IStatistic, IService {
         // add index check sum
       }
     } catch (PathErrorException | FileNodeManagerException | FileNodeProcessorException e) {
-      LOGGER.error("Restore all FileNode failed, the reason is {}", e);
+      LOGGER.error("Restoring all FileNodes failed, the reason is ", e);
     }
   }
 
@@ -853,7 +853,7 @@ public class FileNodeManager implements IStatistic, IService {
       } else {
         LOGGER.info(
                 "Can't delete the filenode processor {}, because it can't get the write lock."
-                        + " Wait 100ms to retry");
+                        + " Wait 100ms to retry", processorName);
       }
       try {
         TimeUnit.MILLISECONDS.sleep(100);
@@ -1023,7 +1023,7 @@ public class FileNodeManager implements IStatistic, IService {
           try {
             flushTop(0.01f);
           } catch (IOException e) {
-            LOGGER.error("force flush memory data error:{}", e);
+            LOGGER.error("force flush memory data error: ", e);
           }
         }
         break;
@@ -1083,7 +1083,7 @@ public class FileNodeManager implements IStatistic, IService {
     try {
       closeAll();
     } catch (FileNodeManagerException e) {
-      LOGGER.error("Failed to close file node manager because {}.", e);
+      LOGGER.error("Failed to close file node manager because .", e);
     }
   }
 
@@ -1130,4 +1130,5 @@ public class FileNodeManager implements IStatistic, IService {
 
     private static final FileNodeManager INSTANCE = new FileNodeManager(TsFileDBConf.fileNodeDir);
   }
+  
 }
