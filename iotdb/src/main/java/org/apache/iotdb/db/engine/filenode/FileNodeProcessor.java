@@ -1516,10 +1516,10 @@ public class FileNodeProcessor extends Processor implements IStatistic {
                               TSDataType dataType, IReader seriesReader,
                               Map<String, Long> startTimeMap,
                               Map<String, Long> endTimeMap,
-                              TimeValuePair timeValuePair) throws IOException {
+                              TimeValuePair firstTVPair) throws IOException {
     long startTime;
     long endTime;
-    TimeValuePair localTV = timeValuePair;
+    TimeValuePair localTV = firstTVPair;
     writeTVPair(seriesWriterImpl, dataType, localTV);
     startTime = endTime = localTV.getTimestamp();
     if (!startTimeMap.containsKey(deviceId) || startTimeMap.get(deviceId) > startTime) {
