@@ -301,7 +301,7 @@ public abstract class AbstractClient {
     switch (timeFormat) {
       case "long":
       case "number":
-        return Long.toString(timestamp) + "";
+        return Long.toString(timestamp);
       case DEFAULT_TIME_FORMAT:
       case "iso8601":
         dateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(timestamp), zoneId);
