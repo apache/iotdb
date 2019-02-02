@@ -80,6 +80,7 @@ public class IoTDB implements IoTDBMBean {
   }
 
   private void setUp() throws StartupException {
+    LOGGER.info("Setting up IoTDB...");
     setUncaughtExceptionHandler();
 
     FileNodeManager.getInstance().recovery();
@@ -113,12 +114,15 @@ public class IoTDB implements IoTDBMBean {
     initErrorInformation();
 
     serverManager.startServer();
+    LOGGER.info("IoTDB is set up.");
   }
 
   public void deactivate() {
+    LOGGER.info("Deactivating IoTDB...");
     serverManager.closeServer();
     registerManager.deregisterAll();
     JMXService.deregisterMBean(mbeanName);
+    LOGGER.info("IoTDB is deactivated.");
   }
 
   @Override
@@ -154,7 +158,7 @@ public class IoTDB implements IoTDBMBean {
       if (writeLogManager.hasWAL(filenodeName)) {
         try {
           FileNodeManager.getInstance().recoverFileNode(filenodeName);
-        } catch (FileNodeProcessorException | FileNodeManagerException e) {
+        } catch (FileNodeManagerException e) {
           throw new RecoverException(e);
         }
       }

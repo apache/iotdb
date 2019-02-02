@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -21,6 +21,7 @@ package org.apache.iotdb.db.engine.memtable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.TreeMap;
+
 import org.apache.iotdb.db.utils.PrimitiveArrayList;
 import org.apache.iotdb.db.utils.PrimitiveArrayListFactory;
 import org.apache.iotdb.db.utils.TimeValuePair;
@@ -104,9 +105,7 @@ public class WritableMemChunk implements IWritableMemChunk {
       treeMap.put(list.getTimestamp(i), TsPrimitiveType.getByType(dataType, list.getValue(i)));
     }
     List<TimeValuePair> ret = new ArrayList<>();
-    treeMap.forEach((k, v) -> {
-      ret.add(new TimeValuePairInMemTable(k, v));
-    });
+    treeMap.forEach((k, v) -> ret.add(new TimeValuePairInMemTable(k, v)));
     return ret;
   }
 

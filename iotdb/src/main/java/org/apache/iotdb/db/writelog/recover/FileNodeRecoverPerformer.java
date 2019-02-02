@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -20,7 +20,6 @@ package org.apache.iotdb.db.writelog.recover;
 
 import org.apache.iotdb.db.engine.filenode.FileNodeManager;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
-import org.apache.iotdb.db.exception.FileNodeProcessorException;
 import org.apache.iotdb.db.exception.RecoverException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,7 +43,7 @@ public class FileNodeRecoverPerformer implements RecoverPerformer {
   public void recover() throws RecoverException {
     try {
       FileNodeManager.getInstance().recoverFileNode(getFileNodeName());
-    } catch (FileNodeProcessorException | FileNodeManagerException e) {
+    } catch (FileNodeManagerException e) {
       logger.error("Cannot recover filenode {}", identifier);
       throw new RecoverException(e);
     }

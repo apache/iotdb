@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.engine.overflow.ioV2;
+package org.apache.iotdb.db.engine.overflow.io;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -27,6 +27,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
+
 import org.apache.iotdb.tsfile.read.reader.TsFileInput;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 import org.apache.iotdb.tsfile.write.writer.TsFileOutput;
@@ -70,7 +71,7 @@ public class OverflowIO extends TsFileIOWriter {
     return overflowReadWriter;
   }
 
-  public OutputStream getOutputStream(){
+  public OutputStream getOutputStream() {
     return overflowReadWriter;
   }
 
