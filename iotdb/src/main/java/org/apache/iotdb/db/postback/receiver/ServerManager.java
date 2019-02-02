@@ -20,6 +20,7 @@ package org.apache.iotdb.db.postback.receiver;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.StartupException;
 import org.apache.thrift.TProcessor;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TBinaryProtocol.Factory;
@@ -52,7 +53,7 @@ public class ServerManager {
   /**
    * start postback receiver's server.
    */
-  public void startServer() {
+  public void startServer() throws StartupException {
     Factory protocolFactory;
     TProcessor processor;
     TThreadPoolServer.Args poolArgs;
@@ -79,7 +80,7 @@ public class ServerManager {
       Thread thread = new Thread(runnable);
       thread.start();
     } catch (TTransportException e) {
-      LOGGER.error("IoTDB post back receiver: cannot start postback server because {}", e);
+      throw new StartupException("IoTDB post back receiver: cannot start postback server.", e);
     }
   }
 

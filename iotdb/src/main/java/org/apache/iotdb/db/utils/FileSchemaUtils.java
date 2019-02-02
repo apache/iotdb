@@ -23,6 +23,7 @@ import java.util.Map.Entry;
 import org.apache.iotdb.db.metadata.ColumnSchema;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.tsfile.common.constant.JsonFormatConstant;
+import org.apache.iotdb.tsfile.exception.write.InvalidJsonSchemaException;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.write.schema.FileSchema;
 import org.json.JSONArray;
@@ -63,24 +64,33 @@ public class FileSchemaUtils {
     JSONArray rowGroup = new JSONArray();
 
     for (ColumnSchema columnSchema : schemaList) {
-      JSONObject measurement = new JSONObject();
-      measurement.put(JsonFormatConstant.MEASUREMENT_UID, columnSchema.getName());
-      measurement.put(JsonFormatConstant.DATA_TYPE, columnSchema.dataType.toString());
-      measurement.put(JsonFormatConstant.MEASUREMENT_ENCODING, columnSchema.encoding.toString());
-      for (Entry<String, String> entry : columnSchema.getArgsMap().entrySet()) {
-        if (JsonFormatConstant.ENUM_VALUES.equals(entry.getKey())) {
-          String[] valueArray = entry.getValue().split(",");
-          measurement.put(JsonFormatConstant.ENUM_VALUES, new JSONArray(valueArray));
-        } else {
-          measurement.put(entry.getKey(), entry.getValue());
-        }
-      }
+      JSONObject measurement = constructJsonColumnSchema(columnSchema);
       rowGroup.put(measurement);
     }
+    return constructJsonFileSchema(deviceType, rowGroup);
+  }
+
+  public static FileSchema constructJsonFileSchema(String deviceType, JSONArray rowGroup) throws InvalidJsonSchemaException {
     JSONObject jsonSchema = new JSONObject();
     jsonSchema.put(JsonFormatConstant.JSON_SCHEMA, rowGroup);
     jsonSchema.put(JsonFormatConstant.DELTA_TYPE, deviceType);
     return new FileSchema(jsonSchema);
+  }
+
+  public static JSONObject constructJsonColumnSchema(ColumnSchema columnSchema) {
+    JSONObject measurement = new JSONObject();
+    measurement.put(JsonFormatConstant.MEASUREMENT_UID, columnSchema.getName());
+    measurement.put(JsonFormatConstant.DATA_TYPE, columnSchema.dataType.toString());
+    measurement.put(JsonFormatConstant.MEASUREMENT_ENCODING, columnSchema.encoding.toString());
+    for (Entry<String, String> entry : columnSchema.getArgsMap().entrySet()) {
+      if (JsonFormatConstant.ENUM_VALUES.equals(entry.getKey())) {
+        String[] valueArray = entry.getValue().split(",");
+        measurement.put(JsonFormatConstant.ENUM_VALUES, new JSONArray(valueArray));
+      } else {
+        measurement.put(entry.getKey(), entry.getValue());
+      }
+    }
+    return measurement;
   }
 
 }

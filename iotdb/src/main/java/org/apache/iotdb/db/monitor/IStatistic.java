@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -18,9 +18,10 @@
  */
 package org.apache.iotdb.db.monitor;
 
-import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
+
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 
 public interface IStatistic {
@@ -30,7 +31,7 @@ public interface IStatistic {
    * @return A HashMap that contains the module seriesPath like: root.stats.write.global,
    *        and its value is TSRecord format contains all statistics measurement
    */
-  HashMap<String, TSRecord> getAllStatisticsValue();
+  Map<String, TSRecord> getAllStatisticsValue();
 
   /**
    * registStatMetadata registers statistics info to the manager.
@@ -48,5 +49,5 @@ public interface IStatistic {
    * Get a HashMap contains the names and values of the statistics parameters.
    * @return a HashMap contains the names and values of the statistics parameters
    */
-  HashMap<String, AtomicLong> getStatParamsHashMap();
+  Map<String, AtomicLong> getStatParamsHashMap();
 }

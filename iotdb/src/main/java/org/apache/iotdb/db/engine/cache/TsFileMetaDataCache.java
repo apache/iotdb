@@ -91,6 +91,8 @@ public class TsFileMetaDataCache {
    */
   private static class TsFileMetaDataCacheHolder {
 
+    private TsFileMetaDataCacheHolder() {}
+
     private static final TsFileMetaDataCache INSTANCE = new TsFileMetaDataCache();
   }
 }
