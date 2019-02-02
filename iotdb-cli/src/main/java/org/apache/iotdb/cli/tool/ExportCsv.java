@@ -130,15 +130,12 @@ public class ExportCsv extends AbstractCsvTool {
           "[ERROR] Failed to dump data because cannot find TsFile JDBC Driver, "
               + "please check whether you have imported driver or not");
     } catch (SQLException e) {
-      LOGGER.error(
-          String
-              .format("[ERROR] Encounter an error when dumping data, error is %s", e.getMessage()));
+      LOGGER.error("[ERROR] Encounter an error when dumping data, error is {}", e.getMessage());
     } catch (IOException e) {
-      LOGGER.error(String.format("[ERROR] Failed to operate on file, because %s", e.getMessage()));
+      LOGGER.error("[ERROR] Failed to operate on file, because {}", e.getMessage());
     } catch (TException e) {
-      LOGGER.error(
-          String.format("[ERROR] Encounter an error when connecting to server, because %s",
-              e.getMessage()));
+      LOGGER.error("[ERROR] Encounter an error when connecting to server, because {}",
+              e.getMessage());
     } catch (ArgsErrorException e) {
       e.printStackTrace();
     } finally {
@@ -227,9 +224,7 @@ public class ExportCsv extends AbstractCsvTool {
         try {
           dumpResult(sql, index);
         } catch (SQLException e) {
-          LOGGER.error(
-              String.format("[ERROR] Cannot dump data for statment %s, because %s", sql,
-                  e.getMessage()));
+          LOGGER.error("[ERROR] Cannot dump data for statment {}, because {}", sql, e.getMessage());
         }
         index++;
       }
@@ -251,7 +246,7 @@ public class ExportCsv extends AbstractCsvTool {
     try {
       File tf = new File(path);
       if (!tf.exists() && !tf.createNewFile()) {
-          LOGGER.error("[ERROR] Could not create target file for sql statement: " + sql);
+          LOGGER.error("[ERROR] Could not create target file for sql statement: {}", sql);
           return;
       }
       fw = new FileWriter(tf);
@@ -314,9 +309,8 @@ public class ExportCsv extends AbstractCsvTool {
           }
         }
       }
-      LOGGER.info(String
-              .format("[INFO] Statement [%s] has dumped to file %s successfully! It costs %d ms.",
-                  sql, path, System.currentTimeMillis() - startTime));
+      LOGGER.info("[INFO] Statement [{}] has dumped to file {} successfully! It costs {}ms.",
+                  sql, path, System.currentTimeMillis() - startTime);
     } catch (IOException e) {
       LOGGER.error(e.getMessage());
     } finally {

@@ -24,8 +24,6 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class CsvTestDataGen {
 
@@ -33,8 +31,6 @@ public class CsvTestDataGen {
       + "s1,root.fit.d2.s3";
 
   private static final String USER_DIR = "user.dir";
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(CsvTestDataGen.class);
 
   private CsvTestDataGen() {
 
