@@ -73,7 +73,7 @@ public class ExportCsv extends AbstractCsvTool {
     HelpFormatter hf = new HelpFormatter();
     hf.setOptionComparator(null); // avoid reordering
     hf.setWidth(MAX_HELP_CONSOLE_WIDTH);
-    CommandLine commandLine = null;
+    CommandLine commandLine;
     CommandLineParser parser = new DefaultParser();
 
     if (args == null || args.length == 0) {
@@ -98,7 +98,7 @@ public class ExportCsv extends AbstractCsvTool {
 
     try {
       parseBasicParams(commandLine, reader);
-      parseSpecialParams(commandLine, reader);
+      parseSpecialParams(commandLine);
       if (!checkTimeFormat()) {
         return;
       }
@@ -139,16 +139,14 @@ public class ExportCsv extends AbstractCsvTool {
     } catch (ArgsErrorException e) {
       e.printStackTrace();
     } finally {
-      if (reader != null) {
-        reader.close();
-      }
+      reader.close();
       if (connection != null) {
         connection.close();
       }
     }
   }
 
-  private static void parseSpecialParams(CommandLine commandLine, ConsoleReader reader)
+  private static void parseSpecialParams(CommandLine commandLine)
       throws ArgsErrorException {
     targetDirectory = checkRequiredArg(TARGET_FILE_ARGS, TARGET_FILE_NAME, commandLine);
     timeFormat = commandLine.getOptionValue(TIME_FORMAT_ARGS);
@@ -217,8 +215,8 @@ public class ExportCsv extends AbstractCsvTool {
   }
 
   private static void dumpFromSqlFile(String filePath) throws IOException {
-    try (BufferedReader reader = new BufferedReader(new FileReader(filePath));){
-      String sql = null;
+    try (BufferedReader reader = new BufferedReader(new FileReader(filePath))){
+      String sql;
       int index = 0;
       while ((sql = reader.readLine()) != null) {
         try {
@@ -240,15 +238,13 @@ public class ExportCsv extends AbstractCsvTool {
    */
   private static void dumpResult(String sql, int index)
       throws SQLException {
-    BufferedWriter writer = null;
+    BufferedWriter writer;
     final String path = targetDirectory + DUMP_FILE_NAME + index + ".csv";
     try {
       File tf = new File(path);
-      if (!tf.exists()) {
-        if (!tf.createNewFile()) {
-          System.out.println("[ERROR] Could not create target file for sql statement: " + sql);
-          return;
-        }
+      if (!tf.exists() && !tf.createNewFile()) {
+        System.out.println("[ERROR] Could not create target file for sql statement: " + sql);
+        return;
       }
       writer = new BufferedWriter(new FileWriter(tf));
     } catch (IOException e) {
@@ -322,9 +318,7 @@ public class ExportCsv extends AbstractCsvTool {
       } catch (IOException e) {
         System.out.println(e.getMessage());
       }
-      if (statement != null) {
-        statement.close();
-      }
+      statement.close();
     }
   }
 
