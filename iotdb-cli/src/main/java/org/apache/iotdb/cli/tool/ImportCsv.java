@@ -306,7 +306,7 @@ public class ImportCsv extends AbstractCsvTool {
           ? "NO TIMESTAMP" : timestampsStr);
 
       for (int j = 0; j < colIndex.size(); ++j) {
-        if (data[entry.getValue().get(j) + 1].isEmpty()) {
+        if ("".equals(data[entry.getValue().get(j) + 1])) {
           continue;
         }
         if (timeseriesToType.get(headInfo.get(colIndex.get(j))).equals(STRING_DATA_TYPE)) {
