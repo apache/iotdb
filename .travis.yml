@@ -28,52 +28,46 @@ language: java
 
 matrix:
   include:
-    - os: osx
-      osx_image: xcode10.1 # with JDK11.0.1+13 installed
-      name: osx-jdk11
-    - os: osx
-      osx_image: xcode9.3  # with JDK1.8.0_112-b16 installed
-      name: osx-jdk8
+#    - os: osx
+#      osx_image: xcode10.1 # with JDK11.0.1+13 installed
+#      name: osx-jdk11
+#    - os: osx
+#      osx_image: xcode9.3  # with JDK1.8.0_112-b16 installed
+#      name: osx-jdk8
     - os: windows
+      language: c
       name: win-jdk8
       install:
         - choco install jdk8
         - export PATH=$PATH:"/c/Program Files/Java/jdk1.8.0_191/bin"
         - choco install maven
     - os: windows
+      language: c
       name: win-jdk11
       install:
         - choco install jdk11 -params 'installdir=c:\\java11'
         - export PATH=$PATH:"/c/java11"
         - choco install maven
 #    - os: linux
-#      name: linux-openjdk6
+#      name: linux-openjdk11
 #      dist: trusty
-#      addons:
-#        apt:
-#          packages:
-#            - openjdk-6-jdk
+#      sudo: required
+#      before_install:
+#        - sudo add-apt-repository ppa:openjdk-r/ppa -y
+#        - sudo apt-get update -q
+#        - sudo apt-get install openjdk-11-jdk -y
+#    - os: linux
+#      name: linux-openjdk8
+#      dist: trusty
 #      jdk: openjdk8
-    - os: linux
-      name: linux-openjdk11
-      dist: trusty
-      sudo: required
-      before_install:
-        - sudo add-apt-repository ppa:openjdk-r/ppa -y
-        - sudo apt-get update -q
-        - sudo apt-get install openjdk-11-jdk -y
-    - os: linux
-      name: linux-openjdk8
-      dist: trusty
-      jdk: openjdk8
-    - os: linux
-      name: linux-jdk8
-      dist: trusty
-      jdk: oraclejdk8
-    - os: linux
-      name: linux-jdk11
-      dist: trusty
-      jdk: oraclejdk11
+#    - os: linux
+#      name: linux-jdk8
+#      dist: trusty
+#      jdk: oraclejdk8
+#    - os: linux
+#      name: linux-jdk11
+#      dist: trusty
+#      jdk: oraclejdk11
 
 
 # skip `before_install` stage
