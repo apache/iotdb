@@ -34,14 +34,14 @@ matrix:
 #    - os: osx
 #      osx_image: xcode9.3  # with JDK1.8.0_112-b16 installed
 #      name: osx-jdk8
-    - os: windows
-      language: c
-      name: win-jdk8
-      install:
-        - choco install jdk8 -params 'installdir=c:\\java8'
-        - export PATH=$PATH:"/c/java8/bin"
-        - export JAVA_HOME="/c/java8"
-        - choco install maven
+#    - os: windows
+#      language: c
+#      name: win-jdk8
+#      install:
+#        - choco install jdk8 -params 'installdir=c:\\java8'
+#        - export PATH=$PATH:"/c/java8/bin"
+#        - export JAVA_HOME="/c/java8"
+#        - choco install maven
     - os: windows
       language: c
       name: win-jdk11
