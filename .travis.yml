@@ -47,7 +47,7 @@ matrix:
       name: win-jdk11
       install:
         - choco install jdk11 -params 'installdir=c:\\java11'
-        - export PATH=$PATH:"/c/java11"
+        - export PATH=$PATH:"/c/java11/bin"
         - export JAVA_HOME="/c/java11"
         - choco install maven
     - os: linux
