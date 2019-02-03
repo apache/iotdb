@@ -38,11 +38,13 @@ matrix:
       name: win-jdk8
       install:
         - choco install jdk8
+        - export PATH=$PATH:"/c/Program Files/Java/jdk1.8.0_191/bin"
         - choco install maven
     - os: windows
       name: win-jdk11
       install:
-        - choco install jdk11
+        - choco install jdk11 -params 'installdir=c:\\java11'
+        - export PATH=$PATH:"/c/java11"
         - choco install maven
 #    - os: linux
 #      name: linux-openjdk6
