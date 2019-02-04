@@ -71,15 +71,15 @@ matrix:
         - export JAVA_HOME="/c/java11"
         - choco install maven
     #choco does not support openjdk8. we have to install it manually
-    - os: windows
-      language: c
-      name: win-openjdk11
-      install:
-        #for openjdk, -params does not work.
-        - choco install openjdk
-        - export PATH=$PATH:"C:\Program Files\OpenJDK\bin"
-        - export JAVA_HOME="C:\Program Files\OpenJDK"
-        - choco install maven
+#    - os: windows
+#      language: c
+#      name: win-openjdk11
+#      install:
+#        #for openjdk, -params does not work.
+#        - choco install openjdk
+#        - export PATH=$PATH:"C:\Program Files\OpenJDK\bin"
+#        - export JAVA_HOME="C:\Program Files\OpenJDK"
+#        - choco install maven
     - os: linux
       name: linux-openjdk11
       dist: trusty
