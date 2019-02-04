@@ -77,8 +77,8 @@ matrix:
       install:
         #for openjdk, -params does not work.
         - choco install openjdk
-        - export PATH=$PATH:"/c/Program Files/OpenJDK/bin"
-        - export JAVA_HOME="/c/Program Files/OpenJDK"
+        - export PATH=$PATH:"/c/Program\ Files/OpenJDK/bin"
+        - export JAVA_HOME="/c/Program\ Files/OpenJDK"
         - choco install maven
     - os: linux
       name: linux-openjdk11
