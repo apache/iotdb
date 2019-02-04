@@ -75,9 +75,10 @@ matrix:
       language: c
       name: win-openjdk11
       install:
-        - choco install openjdk -params 'installdir=c:\\java11'
-        - export PATH=$PATH:"/c/java11/bin"
-        - export JAVA_HOME="/c/java11"
+        #for openjdk, -params does not work.
+        - choco install openjdk
+        - export PATH=$PATH:"/c/Program Files/OpenJDK/bin"
+        - export JAVA_HOME="/c/Program Files/OpenJDK"
         - choco install maven
     - os: linux
       name: linux-openjdk11
