@@ -40,7 +40,7 @@ matrix:
       addons:
         homebrew:
           taps:
-            - homebrew/cask-versions
+            #- homebrew/cask-versions
             - AdoptOpenJDK/openjdk
           update: true
           casks: adoptopenjdk-openjdk11
@@ -50,7 +50,7 @@ matrix:
       addons:
         homebrew:
           taps:
-           - homebrew/cask-versions
+           #- homebrew/cask-versions
            - AdoptOpenJDK/openjdk
           update: true
           casks: adoptopenjdk-openjdk8
