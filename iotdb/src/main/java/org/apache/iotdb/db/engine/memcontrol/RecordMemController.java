@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -21,6 +21,7 @@ package org.apache.iotdb.db.engine.memcontrol;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
+
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.utils.MemUtils;
@@ -32,7 +33,7 @@ import org.slf4j.LoggerFactory;
  */
 public class RecordMemController extends BasicMemController {
 
-  private static Logger logger = LoggerFactory.getLogger(RecordMemController.class);
+  private static Logger LOGGER = LoggerFactory.getLogger(RecordMemController.class);
 
   // the key is the reference of the memory user, while the value is its memory usage in byte
   private Map<Object, Long> memMap;
@@ -90,36 +91,56 @@ public class RecordMemController extends BasicMemController {
     }
     long newTotUsage = totalMemUsed.get() + usage;
     // check if the new usage will reach dangerous threshold
+    if (newTotUsage > dangerouseThreshold) {
+      logDangerous(newTotUsage, user);
+      return UsageLevel.DANGEROUS;
+    }
+
     if (newTotUsage < dangerouseThreshold) {
       newTotUsage = totalMemUsed.addAndGet(usage);
       // double check if updating will reach dangerous threshold
       if (newTotUsage < warningThreshold) {
         // still safe, action taken
         memMap.put(user, oldUsage + usage);
-        logger.debug("Safe Threshold : {} allocated to {}, it is using {}, total usage {}",
-            MemUtils.bytesCntToStr(usage), user.getClass(),
-            MemUtils.bytesCntToStr(oldUsage + usage),
-            MemUtils.bytesCntToStr(newTotUsage));
+        logSafe(newTotUsage, user, usage, oldUsage);
         return UsageLevel.SAFE;
       } else if (newTotUsage < dangerouseThreshold) {
         // become warning because competition with other threads, still take the action
         memMap.put(user, oldUsage + usage);
-        logger.debug("Warning Threshold : {} allocated to {}, it is using {}, total usage {}",
-            MemUtils.bytesCntToStr(usage), user.getClass(),
-            MemUtils.bytesCntToStr(oldUsage + usage),
-            MemUtils.bytesCntToStr(newTotUsage));
+        logWarn(newTotUsage, user, usage, oldUsage);
         return UsageLevel.WARNING;
       } else {
-        logger.warn("Memory request from {} is denied, memory usage : {}", user.getClass(),
-            MemUtils.bytesCntToStr(newTotUsage));
+        logDangerous(newTotUsage, user);
         // become dangerous because competition with other threads, discard this action
         totalMemUsed.addAndGet(-usage);
         return UsageLevel.DANGEROUS;
       }
-    } else {
-      logger.warn("Memory request from {} is denied, memory usage : {}", user.getClass(),
+    }
+    return null;
+  }
+
+  private void logDangerous(long newTotUsage, Object user) {
+    if (LOGGER.isWarnEnabled()) {
+      LOGGER.warn("Memory request from {} is denied, memory usage : {}", user.getClass(),
           MemUtils.bytesCntToStr(newTotUsage));
-      return UsageLevel.DANGEROUS;
+    }
+  }
+
+  private void logSafe(long newTotUsage, Object user, long usage, long oldUsage) {
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("Safe Threshold : {} allocated to {}, it is using {}, total usage {}",
+          MemUtils.bytesCntToStr(usage), user.getClass(),
+          MemUtils.bytesCntToStr(oldUsage + usage),
+          MemUtils.bytesCntToStr(newTotUsage));
+    }
+  }
+
+  private void logWarn(long newTotUsage, Object user, long usage, long oldUsage) {
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("Warning Threshold : {} allocated to {}, it is using {}, total usage {}",
+          MemUtils.bytesCntToStr(usage), user.getClass(),
+          MemUtils.bytesCntToStr(oldUsage + usage),
+          MemUtils.bytesCntToStr(newTotUsage));
     }
   }
 
@@ -130,9 +151,9 @@ public class RecordMemController extends BasicMemController {
   public void reportFree(Object user, long freeSize) {
     Long usage = memMap.get(user);
     if (usage == null) {
-      logger.error("Unregistered memory usage from {}", user.getClass());
+      LOGGER.error("Unregistered memory usage from {}", user.getClass());
     } else if (freeSize > usage) {
-      logger
+      LOGGER
           .error("Request to free {} bytes while it only registered {} bytes", freeSize, usage);
       totalMemUsed.addAndGet(-usage);
       memMap.remove(user);
@@ -143,14 +164,19 @@ public class RecordMemController extends BasicMemController {
       } else {
         memMap.remove(user);
       }
-      logger.info("{} freed from {}, it is using {}, total usage {}",
-          MemUtils.bytesCntToStr(freeSize),
-          user.getClass(), MemUtils.bytesCntToStr(usage - freeSize),
-          MemUtils.bytesCntToStr(newTotalMemUsage));
+      if (LOGGER.isInfoEnabled()) {
+        LOGGER.info("{} freed from {}, it is using {}, total usage {}",
+            MemUtils.bytesCntToStr(freeSize),
+            user.getClass(), MemUtils.bytesCntToStr(usage - freeSize),
+            MemUtils.bytesCntToStr(newTotalMemUsage));
+      }
     }
   }
 
   private static class InstanceHolder {
+
+    private InstanceHolder() {
+    }
 
     private static final RecordMemController INSTANCE = new RecordMemController(
         IoTDBDescriptor.getInstance().getConfig());

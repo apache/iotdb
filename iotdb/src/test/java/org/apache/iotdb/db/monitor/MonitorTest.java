@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -18,12 +18,9 @@
  */
 package org.apache.iotdb.db.monitor;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.fail;
-
-import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
+
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.filenode.FileNodeManager;
@@ -35,6 +32,8 @@ import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+
+import static org.junit.Assert.*;
 
 /**
  * @author Liliang
@@ -75,13 +74,13 @@ public class MonitorTest {
     // add metadata
     MManager mManager = MManager.getInstance();
     fManager.registStatMetadata();
-    HashMap<String, AtomicLong> statParamsHashMap = fManager.getStatParamsHashMap();
+    Map<String, AtomicLong> statParamsHashMap = fManager.getStatParamsHashMap();
     for (String statParam : statParamsHashMap.keySet()) {
       assertEquals(true,
-          mManager.pathExist(
-              MonitorConstants.statStorageGroupPrefix + MonitorConstants.MONITOR_PATH_SEPERATOR
-                  + MonitorConstants.fileNodeManagerPath + MonitorConstants.MONITOR_PATH_SEPERATOR
-                  + statParam));
+              mManager.pathExist(
+                      MonitorConstants.statStorageGroupPrefix + MonitorConstants.MONITOR_PATH_SEPERATOR
+                              + MonitorConstants.fileNodeManagerPath + MonitorConstants.MONITOR_PATH_SEPERATOR
+                              + statParam));
     }
     statMonitor.activate();
     // wait for time second
@@ -95,7 +94,7 @@ public class MonitorTest {
 
     // Get stat data and test right
 
-    HashMap<String, TSRecord> statHashMap = fManager.getAllStatisticsValue();
+    Map<String, TSRecord> statHashMap = fManager.getAllStatisticsValue();
 
     String path = fManager.getAllPathForStatistic().get(0);
     int pos = path.lastIndexOf('.');
