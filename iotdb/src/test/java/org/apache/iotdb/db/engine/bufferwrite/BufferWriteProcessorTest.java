@@ -20,6 +20,7 @@ package org.apache.iotdb.db.engine.bufferwrite;
 
 import static org.junit.Assert.assertEquals;
 
+import ch.qos.logback.core.util.TimeUtil;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -27,7 +28,9 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import org.apache.iotdb.db.conf.directories.Directories;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
 import org.apache.iotdb.db.engine.PathUtils;
@@ -194,14 +197,23 @@ public class BufferWriteProcessorTest {
     assertEquals(0, bufferwrite.memoryUsage());
     assertEquals(TsFileIOWriter.magicStringBytes.length, bufferwrite.getFileSize());
     assertEquals(0, bufferwrite.getMetaSize());
+    long lastFlushTime = bufferwrite.getLastFlushTime();
     for (int i = 1; i <= 85; i++) {
       bufferwrite.write(deviceId, measurementId, i, dataType, String.valueOf(i));
       assertEquals(i * 12, bufferwrite.memoryUsage());
     }
+    assertEquals(lastFlushTime, bufferwrite.getLastFlushTime());
     bufferwrite.write(deviceId, measurementId, 86, dataType, String.valueOf(86));
-    assertEquals(true, bufferwrite.isFlush());
+    //assert a flush() is called.
+    assertEquals(false, bufferwrite.getLastFlushTime()==lastFlushTime);
     // sleep to the end of flush
-    TimeUnit.SECONDS.sleep(2);
+    try {
+      bufferwrite.getFlushFuture().get(10, TimeUnit.SECONDS);
+    } catch (Exception e) {
+      //because UT uses a mock flush operation, 10 seconds should be enough.
+      Assert.fail("mock flush spends more than 10 seconds... "
+          + "Please modify the value or change a better test environment");
+    }
     assertEquals(false, bufferwrite.isFlush());
     assertEquals(0, bufferwrite.memoryUsage());
     // query result

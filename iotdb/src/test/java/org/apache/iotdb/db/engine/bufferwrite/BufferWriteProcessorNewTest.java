@@ -26,7 +26,9 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import org.apache.iotdb.db.conf.directories.Directories;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
@@ -39,6 +41,7 @@ import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -123,13 +126,18 @@ public class BufferWriteProcessorNewTest {
       assertEquals(num, timeValuePair.getValue().getInt());
     }
     assertEquals(false, bufferwrite.isFlush());
+    long lastFlushTime = bufferwrite.getLastFlushTime();
     // flush asynchronously
     bufferwrite.flush();
-    assertEquals(true, bufferwrite.isFlush());
+    assertEquals(true, bufferwrite.getLastFlushTime() != lastFlushTime);
     assertEquals(true, bufferwrite.canBeClosed());
     // waiting for the end of flush.
-    while (bufferwrite.isFlush()) {
-      TimeUnit.SECONDS.sleep(1);
+    try {
+      bufferwrite.getFlushFuture().get(10, TimeUnit.SECONDS);
+    } catch (Exception e) {
+      //because UT uses a mock flush operation, 10 seconds should be enough.
+      Assert.fail("mock flush spends more than 10 seconds... "
+          + "Please modify the value or change a better test environment");
     }
     pair = bufferwrite.queryBufferWriteData(processorName, measurementId, dataType);
     left = pair.left;

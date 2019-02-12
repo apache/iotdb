@@ -89,7 +89,6 @@ public class OverflowProcessorTest {
     assertEquals(0,
         overflowSeriesDataSource.getOverflowInsertFileList().get(0).getChunkMetaDataList().size());
     processor.flush();
-    assertEquals(false, processor.isFlush());
     assertEquals(false, processor.isMerge());
     // write insert data
     OverflowTestUtils.produceInsertData(processor);

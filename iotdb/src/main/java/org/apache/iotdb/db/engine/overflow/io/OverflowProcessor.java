@@ -27,10 +27,10 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
-
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -46,8 +46,8 @@ import org.apache.iotdb.db.engine.querycontext.MergeSeriesDataSource;
 import org.apache.iotdb.db.engine.querycontext.OverflowInsertFile;
 import org.apache.iotdb.db.engine.querycontext.OverflowSeriesDataSource;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
-import org.apache.iotdb.db.engine.utils.FlushStatus;
 import org.apache.iotdb.db.exception.OverflowProcessorException;
+import org.apache.iotdb.db.qp.constant.DatetimeUtils;
 import org.apache.iotdb.db.utils.ImmediateFuture;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
@@ -68,14 +68,13 @@ public class OverflowProcessor extends Processor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(OverflowProcessor.class);
   private static final IoTDBConfig TsFileDBConf = IoTDBDescriptor.getInstance().getConfig();
-  private static final TSFileConfig TsFileConf = TSFileDescriptor.getInstance().getConfig();
   private OverflowResource workResource;
   private OverflowResource mergeResource;
 
   private OverflowSupport workSupport;
   private OverflowSupport flushSupport;
 
-  private volatile FlushStatus flushStatus = new FlushStatus();
+  private volatile Future<Boolean> flushFuture = new ImmediateFuture<>(true);
   private volatile boolean isMerge;
   private int valueCount;
   private String parentPath;
@@ -298,15 +297,20 @@ public class OverflowProcessor extends Processor {
                                                           TSDataType dataType) {
 
     MemSeriesLazyMerger memSeriesLazyMerger = new MemSeriesLazyMerger();
-    if (flushStatus.isFlushing()) {
+    queryFlushLock.lock();
+    try {
+      if (flushSupport != null) {
+        memSeriesLazyMerger
+            .addMemSeries(
+                flushSupport.queryOverflowInsertInMemory(deviceId, measurementId, dataType));
+      }
       memSeriesLazyMerger
-              .addMemSeries(
-                      flushSupport.queryOverflowInsertInMemory(deviceId, measurementId, dataType));
+          .addMemSeries(workSupport.queryOverflowInsertInMemory(deviceId, measurementId,
+              dataType));
+      return new ReadOnlyMemChunk(dataType, memSeriesLazyMerger);
+    } finally {
+      queryFlushLock.unlock();
     }
-    memSeriesLazyMerger
-            .addMemSeries(workSupport.queryOverflowInsertInMemory(deviceId, measurementId,
-                    dataType));
-    return new ReadOnlyMemChunk(dataType, memSeriesLazyMerger);
   }
 
   /**
@@ -372,10 +376,9 @@ public class OverflowProcessor extends Processor {
     if (!isMerge) {
       return new Pair<>(null, null);
     }
-    Pair<String, List<ChunkMetaData>> pair = new Pair<>(
+    return  new Pair<>(
             mergeResource.getInsertFilePath(),
             mergeResource.getInsertMetadatas(deviceId, measurementId, dataType));
-    return pair;
   }
 
   private void switchWorkToFlush() {
@@ -425,12 +428,10 @@ public class OverflowProcessor extends Processor {
   }
 
   public boolean isFlush() {
-    synchronized (flushStatus) {
-      return flushStatus.isFlushing();
-    }
+    return !flushFuture.isDone();
   }
 
-  private boolean flushOperation(String displayMessage) {
+  private boolean flushTask(String displayMessage) {
     boolean result;
     long flushStartTime = System.currentTimeMillis();
     try {
@@ -450,29 +451,27 @@ public class OverflowProcessor extends Processor {
               getProcessorName(), displayMessage, Thread.currentThread().getName(), e);
       result = false;
     } finally {
-      synchronized (flushStatus) {
-        flushStatus.setUnFlushing();
         // switch from flush to work.
         switchFlushToWork();
-        flushStatus.notifyAll();
-      }
     }
     // log flush time
-    LOGGER.info("The overflow processor {} ends flushing {}.", getProcessorName(), displayMessage);
-    long flushEndTime = System.currentTimeMillis();
-    long timeInterval = flushEndTime - flushStartTime;
-    ZonedDateTime startDateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(flushStartTime),
-            IoTDBDescriptor.getInstance().getConfig().getZoneID());
-    ZonedDateTime endDateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(flushEndTime),
-            IoTDBDescriptor.getInstance().getConfig().getZoneID());
-    LOGGER.info(
-            "The overflow processor {} flush {}, start time is {}, flush end time is {}," +
-                    " time consumption is {}ms",
-            getProcessorName(), displayMessage, startDateTime, endDateTime, timeInterval);
+    if (LOGGER.isInfoEnabled()) {
+      LOGGER
+          .info("The overflow processor {} ends flushing {}.", getProcessorName(), displayMessage);
+      long flushEndTime = System.currentTimeMillis();
+      LOGGER.info(
+          "The overflow processor {} flush {}, start time is {}, flush end time is {}," +
+              " time consumption is {}ms",
+          getProcessorName(), displayMessage,
+          DatetimeUtils.convertMillsecondToZonedDateTime(flushStartTime),
+          DatetimeUtils.convertMillsecondToZonedDateTime(flushEndTime),
+          flushEndTime - flushStartTime);
+    }
     return result;
   }
 
-  private Future<Boolean> flush(boolean synchronization) throws OverflowProcessorException {
+  @Override
+  public synchronized Future<Boolean> flush() throws IOException {
     // statistic information for flush
     if (lastFlushTime > 0) {
       long thisFLushTime = System.currentTimeMillis();
@@ -489,21 +488,20 @@ public class OverflowProcessor extends Processor {
     lastFlushTime = System.currentTimeMillis();
     // value count
     if (valueCount > 0) {
-      synchronized (flushStatus) {
-        while (flushStatus.isFlushing()) {
-          try {
-            flushStatus.wait();
-          } catch (InterruptedException e) {
-            LOGGER.error("Waiting the flushstate error in flush row group to store.", e);
-          }
-        }
+      try {
+        flushFuture.get();
+      } catch (InterruptedException | ExecutionException e) {
+        LOGGER.error("Encounter an interrupt error when waitting for the flushing, "
+                + "the bufferwrite processor is {}.",
+            getProcessorName(), e);
+        Thread.currentThread().interrupt();
       }
       try {
         // backup newIntervalFile list and emptyIntervalFileNode
         overflowFlushAction.act();
       } catch (Exception e) {
         LOGGER.error("Flush the overflow rowGroup to file faied, when overflowFlushAction act");
-        throw new OverflowProcessorException(e);
+        throw new IOException(e);
       }
 
       if (IoTDBDescriptor.getInstance().getConfig().enableWal) {
@@ -518,27 +516,14 @@ public class OverflowProcessor extends Processor {
       memSize.set(0);
       valueCount = 0;
       // switch from work to flush
-      flushStatus.setFlushing();
       switchWorkToFlush();
-      if (synchronization) {
-        return new ImmediateFuture<>(flushOperation("synchronously"));
-      } else {
-        return FlushManager.getInstance().submit( () ->
-            flushOperation("asynchronously"));
-      }
+      flushFuture = FlushManager.getInstance().submit( () ->
+          flushTask("asynchronously"));
     } else {
-      return new ImmediateFuture(true);
+      flushFuture = new ImmediateFuture(true);
     }
+    return flushFuture;
 
-  }
-
-  @Override
-  public Future<Boolean> flush() throws IOException {
-    try {
-      return flush(false);
-    } catch (OverflowProcessorException e) {
-      throw new IOException(e);
-    }
   }
 
   @Override
@@ -546,19 +531,27 @@ public class OverflowProcessor extends Processor {
     LOGGER.info("The overflow processor {} starts close operation.", getProcessorName());
     long closeStartTime = System.currentTimeMillis();
     // flush data
-    flush(true);
-    LOGGER.info("The overflow processor {} ends close operation.", getProcessorName());
-    // log close time
-    long closeEndTime = System.currentTimeMillis();
-    long timeInterval = closeEndTime - closeStartTime;
-    ZonedDateTime startDateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(closeStartTime),
-            IoTDBDescriptor.getInstance().getConfig().getZoneID());
-    ZonedDateTime endDateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(closeStartTime),
-            IoTDBDescriptor.getInstance().getConfig().getZoneID());
-    LOGGER.info(
-            "The close operation of overflow processor {} starts at {} and ends at {}."
-                    + " It comsumes {}ms.",
-            getProcessorName(), startDateTime, endDateTime, timeInterval);
+    try {
+      flush().get();
+    } catch (InterruptedException | ExecutionException e) {
+      LOGGER.error("Encounter an interrupt error when waitting for the flushing, "
+              + "the bufferwrite processor is {}.",
+          getProcessorName(), e);
+      Thread.currentThread().interrupt();
+    } catch (IOException e) {
+      throw new OverflowProcessorException(e);
+    }
+    if (LOGGER.isInfoEnabled()) {
+      LOGGER.info("The overflow processor {} ends close operation.", getProcessorName());
+      // log close time
+      long closeEndTime = System.currentTimeMillis();
+      LOGGER.info(
+          "The close operation of overflow processor {} starts at {} and ends at {}."
+              + " It comsumes {}ms.",
+          getProcessorName(), DatetimeUtils.convertMillsecondToZonedDateTime(closeStartTime),
+          DatetimeUtils.convertMillsecondToZonedDateTime(closeEndTime),
+          closeEndTime - closeStartTime);
+    }
   }
 
   public void clear() throws IOException {
@@ -659,7 +652,7 @@ public class OverflowProcessor extends Processor {
             Objects.equals(mergeResource, that.mergeResource) &&
             Objects.equals(workSupport, that.workSupport) &&
             Objects.equals(flushSupport, that.flushSupport) &&
-            Objects.equals(flushStatus, that.flushStatus) &&
+            Objects.equals(flushFuture, that.flushFuture) &&
             Objects.equals(parentPath, that.parentPath) &&
             Objects.equals(dataPahtCount, that.dataPahtCount) &&
             Objects.equals(queryFlushLock, that.queryFlushLock) &&
@@ -673,8 +666,24 @@ public class OverflowProcessor extends Processor {
   @Override
   public int hashCode() {
     return Objects.hash(super.hashCode(), workResource, mergeResource, workSupport,
-            flushSupport, flushStatus, isMerge, valueCount, parentPath, lastFlushTime,
+            flushSupport, flushFuture, isMerge, valueCount, parentPath, lastFlushTime,
             dataPahtCount, queryFlushLock, overflowFlushAction, filenodeFlushAction, fileSchema,
             memThreshold, memSize, logNode);
+  }
+
+  /**
+   * used for test. We can block to wait for finishing flushing.
+   * @return the future of the flush() task.
+   */
+  public Future<Boolean> getFlushFuture() {
+    return flushFuture;
+  }
+
+  /**
+   * used for test. We can know when the flush() is called.
+   * @return the last flush() time.
+   */
+  public long getLastFlushTime() {
+    return lastFlushTime;
   }
 }
