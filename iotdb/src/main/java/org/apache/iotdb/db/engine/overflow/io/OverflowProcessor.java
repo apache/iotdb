@@ -48,6 +48,7 @@ import org.apache.iotdb.db.engine.querycontext.OverflowSeriesDataSource;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.utils.FlushStatus;
 import org.apache.iotdb.db.exception.OverflowProcessorException;
+import org.apache.iotdb.db.utils.ImmediateFuture;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
@@ -429,27 +430,25 @@ public class OverflowProcessor extends Processor {
     }
   }
 
-  private void flushOperation(String flushFunction) {
+  private boolean flushOperation(String displayMessage) {
+    boolean result;
     long flushStartTime = System.currentTimeMillis();
     try {
-      LOGGER
-              .info("The overflow processor {} starts flushing {}.", getProcessorName(),
-                      flushFunction);
+      LOGGER.info("The overflow processor {} starts flushing {}.", getProcessorName(),
+                  displayMessage);
       // flush data
-      workResource
-              .flush(fileSchema, flushSupport.getMemTabale(), flushSupport.getOverflowSeriesMap(),
+      workResource.flush(fileSchema, flushSupport.getMemTabale(), flushSupport.getOverflowSeriesMap(),
                       getProcessorName());
       filenodeFlushAction.act();
       // write-ahead log
       if (IoTDBDescriptor.getInstance().getConfig().enableWal) {
         logNode.notifyEndFlush(null);
       }
-    } catch (IOException e) {
-      LOGGER.error("Flush overflow processor {} rowgroup to file error in {}. Thread {} exits.",
-              getProcessorName(), flushFunction, Thread.currentThread().getName(), e);
+      result = true;
     } catch (Exception e) {
-      LOGGER.error("FilenodeFlushAction action failed. Thread {} exits.",
-              Thread.currentThread().getName(), e);
+      LOGGER.error("Flush overflow processor {} rowgroup to file error in {}. Thread {} exits.",
+              getProcessorName(), displayMessage, Thread.currentThread().getName(), e);
+      result = false;
     } finally {
       synchronized (flushStatus) {
         flushStatus.setUnFlushing();
@@ -459,7 +458,7 @@ public class OverflowProcessor extends Processor {
       }
     }
     // log flush time
-    LOGGER.info("The overflow processor {} ends flushing {}.", getProcessorName(), flushFunction);
+    LOGGER.info("The overflow processor {} ends flushing {}.", getProcessorName(), displayMessage);
     long flushEndTime = System.currentTimeMillis();
     long timeInterval = flushEndTime - flushStartTime;
     ZonedDateTime startDateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(flushStartTime),
@@ -469,10 +468,11 @@ public class OverflowProcessor extends Processor {
     LOGGER.info(
             "The overflow processor {} flush {}, start time is {}, flush end time is {}," +
                     " time consumption is {}ms",
-            getProcessorName(), flushFunction, startDateTime, endDateTime, timeInterval);
+            getProcessorName(), displayMessage, startDateTime, endDateTime, timeInterval);
+    return result;
   }
 
-  private Future<?> flush(boolean synchronization) throws OverflowProcessorException {
+  private Future<Boolean> flush(boolean synchronization) throws OverflowProcessorException {
     // statistic information for flush
     if (lastFlushTime > 0) {
       long thisFLushTime = System.currentTimeMillis();
@@ -521,26 +521,24 @@ public class OverflowProcessor extends Processor {
       flushStatus.setFlushing();
       switchWorkToFlush();
       if (synchronization) {
-        flushOperation("synchronously");
+        return new ImmediateFuture<>(flushOperation("synchronously"));
       } else {
-        FlushManager.getInstance().submit(new Runnable() {
-          public void run() {
-            flushOperation("asynchronously");
-          }
-        });
+        return FlushManager.getInstance().submit( () ->
+            flushOperation("asynchronously"));
       }
+    } else {
+      return new ImmediateFuture(true);
     }
-    return null;
+
   }
 
   @Override
-  public boolean flush() throws IOException {
+  public Future<Boolean> flush() throws IOException {
     try {
-      flush(false);
+      return flush(false);
     } catch (OverflowProcessorException e) {
       throw new IOException(e);
     }
-    return false;
   }
 
   @Override

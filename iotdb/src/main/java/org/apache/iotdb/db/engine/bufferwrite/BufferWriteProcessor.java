@@ -24,6 +24,7 @@ import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
@@ -41,6 +42,7 @@ import org.apache.iotdb.db.engine.pool.FlushManager;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.utils.FlushStatus;
 import org.apache.iotdb.db.exception.BufferWriteProcessorException;
+import org.apache.iotdb.db.utils.ImmediateFuture;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
@@ -60,6 +62,7 @@ public class BufferWriteProcessor extends Processor {
   private RestorableTsFileIOWriter writer;
   private FileSchema fileSchema;
   private volatile FlushStatus flushStatus = new FlushStatus();
+  private volatile Future<Boolean> flushFuture;
   private volatile boolean isFlush;
   private ReentrantLock flushQueryLock = new ReentrantLock();
   private AtomicLong memSize = new AtomicLong();
@@ -258,10 +261,11 @@ public class BufferWriteProcessor extends Processor {
     }
   }
 
-  private void flushOperation(String flushFunction) {
+  private boolean flushTask(String displayMessage) {
+    boolean result;
     long flushStartTime = System.currentTimeMillis();
     LOGGER.info("The bufferwrite processor {} starts flushing {}.", getProcessorName(),
-        flushFunction);
+        displayMessage);
     try {
       if (flushMemTable != null && !flushMemTable.isEmpty()) {
         // flush data
@@ -274,20 +278,19 @@ public class BufferWriteProcessor extends Processor {
       if (IoTDBDescriptor.getInstance().getConfig().enableWal) {
         logNode.notifyEndFlush(null);
       }
-    } catch (IOException e) {
-      LOGGER.error("The bufferwrite processor {} failed to flush {}.", getProcessorName(),
-          flushFunction, e);
+      result = true;
     } catch (Exception e) {
       LOGGER.error(
           "The bufferwrite processor {} failed to flush {}, when calling the filenodeFlushAction.",
-          getProcessorName(), flushFunction, e);
+          getProcessorName(), displayMessage, e);
+      result = false;
     } finally {
       synchronized (flushStatus) {
         flushStatus.setUnFlushing();
         switchFlushToWork();
         flushStatus.notifyAll();
         LOGGER.info("The bufferwrite processor {} ends flushing {}.", getProcessorName(),
-            flushFunction);
+            displayMessage);
       }
     }
     long flushEndTime = System.currentTimeMillis();
@@ -299,10 +302,12 @@ public class BufferWriteProcessor extends Processor {
     LOGGER.info(
         "The bufferwrite processor {} flush {}, start time is {}, flush end time is {}, "
             + "flush time consumption is {}ms",
-        getProcessorName(), flushFunction, startDateTime, endDateTime, flushInterval);
+        getProcessorName(), displayMessage, startDateTime, endDateTime, flushInterval);
+    return result;
   }
 
-  private Future<?> flush(boolean synchronization) throws IOException {
+  @Override
+  public Future<Boolean> flush() throws IOException {
     // statistic information for flush
     if (lastFlushTime > 0) {
       long thisFlushTime = System.currentTimeMillis();
@@ -320,18 +325,26 @@ public class BufferWriteProcessor extends Processor {
     // check value count
     if (valueCount > 0) {
       // waiting for the end of last flush operation.
-      synchronized (flushStatus) {
-        while (flushStatus.isFlushing()) {
-          try {
-            flushStatus.wait();
-          } catch (InterruptedException e) {
-            LOGGER.error(
-                "Encounter an interrupt error when waitting for the flushing, "
-                    + "the bufferwrite processor is {}.",
-                getProcessorName(), e);
-            Thread.currentThread().interrupt();
-          }
-        }
+//      synchronized (flushStatus) {
+//        while (flushStatus.isFlushing()) {
+//          try {
+//            flushStatus.wait();
+//          } catch (InterruptedException e) {
+//            LOGGER.error(
+//                "Encounter an interrupt error when waitting for the flushing, "
+//                    + "the bufferwrite processor is {}.",
+//                getProcessorName(), e);
+//            Thread.currentThread().interrupt();
+//          }
+//        }
+//      }
+      try {
+        flushFuture.get();
+      } catch (InterruptedException | ExecutionException e) {
+        e.printStackTrace();
+        LOGGER.error("Encounter an interrupt error when waitting for the flushing, "
+                + "the bufferwrite processor is {}.",
+            getProcessorName(), e);
       }
       // update the lastUpdatetime, prepare for flush
       try {
@@ -349,20 +362,10 @@ public class BufferWriteProcessor extends Processor {
       BasicMemController.getInstance().reportFree(this, memSize.get());
       memSize.set(0);
       // switch
-      if (synchronization) {
-        flushOperation("synchronously");
-      } else {
-        FlushManager.getInstance().submit(() -> flushOperation("asynchronously"));
-      }
+      return FlushManager.getInstance().submit(() -> flushTask("asynchronously"));
+    } else{
+      return new ImmediateFuture<>(true);
     }
-    // TODO return a meaningful Future
-    return null;
-  }
-
-  @Override
-  public boolean flush() throws IOException {
-    flush(false);
-    return false;
   }
 
   @Override
@@ -374,8 +377,8 @@ public class BufferWriteProcessor extends Processor {
   public void close() throws BufferWriteProcessorException {
     try {
       long closeStartTime = System.currentTimeMillis();
-      // flush data
-      flush(true);
+      // flush data and wait for finishing flush
+      flush().get();
       // end file
       writer.endFile(fileSchema);
       // update the IntervalFile for interval list

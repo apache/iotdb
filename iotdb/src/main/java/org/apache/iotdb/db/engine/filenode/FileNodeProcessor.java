@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.engine.filenode;
 
+import com.sun.org.apache.xpath.internal.operations.Bool;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.FileSystems;
@@ -892,7 +893,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
    * @return null -can't submit the merge task, because this filenode is not overflowed or it is
    * merging now. Future - submit the merge task successfully.
    */
-  public Future submitToMerge() {
+  Future submitToMerge() {
     ZoneId zoneId = IoTDBDescriptor.getInstance().getConfig().getZoneID();
     if (lastMergeTime > 0) {
       long thisMergeTime = System.currentTimeMillis();
@@ -1645,14 +1646,16 @@ public class FileNodeProcessor extends Processor implements IStatistic {
   }
 
   @Override
-  public boolean flush() throws IOException {
+  public FileNodeFlushFuture flush() throws IOException {
+    Future<Boolean> bufferWriteFlushFuture = null;
+    Future<Boolean> overflowFlushFuture = null;
     if (bufferWriteProcessor != null) {
-      bufferWriteProcessor.flush();
+      bufferWriteFlushFuture = bufferWriteProcessor.flush();
     }
     if (overflowProcessor != null) {
-      return overflowProcessor.flush();
+      overflowFlushFuture = overflowProcessor.flush();
     }
-    return false;
+    return new FileNodeFlushFuture(bufferWriteFlushFuture, overflowFlushFuture);
   }
 
   /**
