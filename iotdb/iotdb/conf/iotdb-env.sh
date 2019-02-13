@@ -145,3 +145,5 @@ fi
 
 IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Xms${HEAP_NEWSIZE}"
 IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Xmx${MAX_HEAP_SIZE}"
+
+echo "execute [bash iotdb-env.sh] successfully!"
