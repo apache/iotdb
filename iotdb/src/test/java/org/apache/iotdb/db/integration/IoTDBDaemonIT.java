@@ -128,8 +128,6 @@ public class IoTDBDaemonIT {
   public static void tearDown() throws Exception {
     connection.close();
     deamon.stop();
-    Thread.sleep(5000);
-
     EnvironmentUtils.cleanEnv();
   }
 
