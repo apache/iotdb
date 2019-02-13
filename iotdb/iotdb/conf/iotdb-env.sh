@@ -145,3 +145,6 @@ fi
 
 IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Xms${HEAP_NEWSIZE}"
 IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Xmx${MAX_HEAP_SIZE}"
+
+echo "Maximum memory allocation pool = ${MAX_HEAP_SIZE}MB, initial memory allocation pool = ${HEAP_NEWSIZE}MB"
+echo "If you want to change this configuration, please check conf/iotdb-env.sh(Unix or OS X, if you use Windows, check conf/iotdb-env.bat)."
