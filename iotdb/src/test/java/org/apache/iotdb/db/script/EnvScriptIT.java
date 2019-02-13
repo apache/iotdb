@@ -44,25 +44,21 @@ public class EnvScriptIT {
   public void test() throws IOException, InterruptedException {
     String os = System.getProperty("os.name").toLowerCase();
     if (os.startsWith("windows")) {
-//      testStartClientOnWindows(".bat", os);
+      testStartClientOnWindows(".bat", os);
     } else {
       testStartClientOnUnix(".sh", os);
     }
   }
 
-//  private void testStartClientOnWindows(String suffix, String os) throws IOException {
-//    final String[] output = {"execute iotdb-env.bat successfully!"};
-//    String dir = getCurrentPath("cmd.exe", "/c", "echo %cd%");
-//    String startCMD =
-//        dir + File.separator + "iotdb" + File.separator + "bin" + File.separator + "start-server"
-//            + suffix;
-//    ProcessBuilder startBuilder = new ProcessBuilder("cmd.exe", "/c", startCMD);
-//    String stopCMD =
-//        dir + File.separator + "iotdb" + File.separator + "bin" + File.separator + "stop-server"
-//            + suffix;
-//    ProcessBuilder stopBuilder = new ProcessBuilder("cmd.exe", "/c", stopCMD);
-//    testOutput(dir, suffix, startBuilder, stopBuilder, output, os);
-//  }
+  private void testStartClientOnWindows(String suffix, String os) throws IOException {
+    String dir = getCurrentPath("cmd.exe", "/c", "echo %cd%");
+    final String output = "If you want to change this configuration, please check conf/iotdb-env.sh(Unix or OS X, if you use Windows, check conf/iotdb-env.bat).";
+    String cmd =
+        dir + File.separator + "iotdb" + File.separator + "conf" + File.separator + "iotdb-env"
+            + suffix;
+    ProcessBuilder startBuilder = new ProcessBuilder("cmd.exe", "/c", cmd);
+    testOutput(dir, suffix, startBuilder, output, os);
+  }
 
   private void testStartClientOnUnix(String suffix, String os) throws IOException {
     String dir = getCurrentPath("pwd");
