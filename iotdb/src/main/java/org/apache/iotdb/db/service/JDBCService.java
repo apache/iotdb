@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.service;
 
 import java.io.IOException;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
@@ -50,14 +51,13 @@ public class JDBCService implements JDBCServiceMBean, IService {
       .format("%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE,
           getID().getJmxName());
   private Thread jdbcServiceThread;
-  private boolean isStart;
   private Factory protocolFactory;
   private Processor<TSIService.Iface> processor;
   private TThreadPoolServer.Args poolArgs;
   private TSServiceImpl impl;
+  private CountDownLatch countDownLatch;
 
   private JDBCService() {
-    isStart = false;
   }
 
   public static final JDBCService getInstance() {
@@ -66,7 +66,11 @@ public class JDBCService implements JDBCServiceMBean, IService {
 
   @Override
   public String getJDBCServiceStatus() {
-    return isStart ? STATUS_UP : STATUS_DOWN;
+    if(countDownLatch == null || countDownLatch.getCount() == 0){
+      return STATUS_DOWN;
+    } else{
+      return STATUS_UP;
+    }
   }
 
   @Override
@@ -84,7 +88,6 @@ public class JDBCService implements JDBCServiceMBean, IService {
       LOGGER.error("Failed to start {} because: ", this.getID().getName(), e);
       throw new StartupException(e);
     }
-
   }
 
   @Override
@@ -100,16 +103,17 @@ public class JDBCService implements JDBCServiceMBean, IService {
 
   @Override
   public synchronized void startService() throws StartupException {
-    if (isStart) {
+    if (STATUS_UP.equals(getJDBCServiceStatus())) {
       LOGGER.info("{}: {} has been already running now", IoTDBConstant.GLOBAL_DB_NAME,
           this.getID().getName());
       return;
     }
     LOGGER.info("{}: start {}...", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
-
     try {
-      jdbcServiceThread = new JDBCServiceThread();
+      countDownLatch = new CountDownLatch(1);
+      jdbcServiceThread = new JDBCServiceThread(countDownLatch);
       jdbcServiceThread.setName(ThreadName.JDBC_SERVICE.getName());
+      jdbcServiceThread.start();
     } catch (IOException e) {
       String errorMessage = String
           .format("Failed to start %s because of %s", this.getID().getName(),
@@ -117,11 +121,9 @@ public class JDBCService implements JDBCServiceMBean, IService {
       LOGGER.error(errorMessage);
       throw new StartupException(errorMessage);
     }
-    jdbcServiceThread.start();
 
     LOGGER.info("{}: start {} successfully, listening on port {}", IoTDBConstant.GLOBAL_DB_NAME,
         this.getID().getName(), IoTDBDescriptor.getInstance().getConfig().rpcPort);
-    isStart = true;
   }
 
   @Override
@@ -132,7 +134,7 @@ public class JDBCService implements JDBCServiceMBean, IService {
 
   @Override
   public synchronized void stopService() {
-    if (!isStart) {
+    if (STATUS_DOWN.equals(getJDBCServiceStatus())) {
       LOGGER.info("{}: {} isn't running now", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
       return;
     }
@@ -140,17 +142,19 @@ public class JDBCService implements JDBCServiceMBean, IService {
     if (jdbcServiceThread != null) {
       ((JDBCServiceThread) jdbcServiceThread).close();
     }
-    LOGGER.info("{}: close {} successfully", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
+    try {
+      countDownLatch.await();
+      LOGGER.info("{}: close {} successfully", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
+    } catch (InterruptedException e) {
+      LOGGER.error("{}: close {} failed because {}", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName(), e);
+    }
   }
-
-
 
   private static class JDBCServiceHolder {
 
     private static final JDBCService INSTANCE = new JDBCService();
 
     private JDBCServiceHolder() {
-
     }
   }
 
@@ -158,11 +162,13 @@ public class JDBCService implements JDBCServiceMBean, IService {
 
     private TServerSocket serverTransport;
     private TServer poolServer;
+    private CountDownLatch latch;
 
-    public JDBCServiceThread() throws IOException {
+    public JDBCServiceThread(CountDownLatch latch) throws IOException {
       protocolFactory = new TBinaryProtocol.Factory();
       impl = new TSServiceImpl();
       processor = new TSIService.Processor<>(impl);
+      this.latch = latch;
     }
 
     @Override
@@ -200,7 +206,7 @@ public class JDBCService implements JDBCServiceMBean, IService {
         serverTransport.close();
         serverTransport = null;
       }
-      isStart = false;
+      latch.countDown();
     }
   }
 }
