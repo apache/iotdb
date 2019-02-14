@@ -66,7 +66,6 @@ public class IoTDBTimeZoneIT {
   public void tearDown() throws Exception {
     // if (testFlag) {
     deamon.stop();
-    Thread.sleep(5000);
     EnvironmentUtils.cleanEnv();
     // }
   }

@@ -87,8 +87,6 @@ public class IoTDBMultiSeriesIT {
     connection.close();
 
     deamon.stop();
-    Thread.sleep(5000);
-
     // recovery value
     tsFileConfig.maxNumberOfPointsInPage = maxNumberOfPointsInPage;
     tsFileConfig.pageSizeInByte = pageSizeInByte;
