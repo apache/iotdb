@@ -186,7 +186,7 @@
     </build>
     <profiles>
         <profile>
-            <id>skipTsfileTests</id>
+            <id>skipIoTDBTests</id>
             <activation>
                 <property>
                     <name>skipTests</name>
@@ -197,6 +197,18 @@
                 <iotdb.test.skip>true</iotdb.test.skip>
                 <iotdb.ut.skip>true</iotdb.ut.skip>
                 <iotdb.it.skip>true</iotdb.it.skip>
+            </properties>
+        </profile>
+        <profile>
+            <id>skipUT_IoTDBTests</id>
+            <activation>
+                <property>
+                    <name>skipUTs</name>
+                    <value>true</value>
+                </property>
+            </activation>
+            <properties>
+                <iotdb.ut.skip>true</iotdb.ut.skip>
             </properties>
         </profile>
     </profiles>

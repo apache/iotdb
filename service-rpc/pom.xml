@@ -140,5 +140,17 @@
                 <rpc.it.skip>true</rpc.it.skip>
             </properties>
         </profile>
+        <profile>
+            <id>skipUT_ServiceRPC_Tests</id>
+            <activation>
+                <property>
+                    <name>skipUTs</name>
+                    <value>true</value>
+                </property>
+            </activation>
+            <properties>
+                <rpc.ut.skip>true</rpc.ut.skip>
+            </properties>
+        </profile>
     </profiles>
 </project>
