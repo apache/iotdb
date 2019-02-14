@@ -85,19 +85,21 @@ matrix:
       dist: trusty
       sudo: required
       before_install:
-        - sudo add-apt-repository ppa:openjdk-r/ppa -y
-        - sudo apt-get update -q
-        - sudo apt-get install openjdk-11-jdk -y
+        - wget https://download.java.net/java/GA/jdk11/9/GPL/openjdk-11.0.2_linux-x64_bin.tar.gz -O jdk11.tar.gz
+        - tar -xzf jdk11.tar.gz
+      before_script:
+        - export JAVA_HOME=$PWD/jdk-11.0.2/
+        - export PATH=$JAVA_HOME/bin:$PATH
     - os: linux
       name: linux-openjdk8
       dist: trusty
       jdk: openjdk8
     - os: linux
-      name: linux-jdk8
+      name: linux-oraclejdk8
       dist: trusty
       jdk: oraclejdk8
     - os: linux
-      name: linux-jdk11
+      name: linux-oraclejdk11
       dist: trusty
       jdk: oraclejdk11
 
