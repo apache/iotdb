@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.engine.modification;
 
+import java.util.Objects;
+
 /**
  * Modification represents an UPDATE or DELETE operation on a certain timeseries.
  */
@@ -28,7 +30,7 @@ public abstract class Modification {
   protected String path;
   protected long versionNum;
 
-  public Modification(Type type, String path, long versionNum) {
+  Modification(Type type, String path, long versionNum) {
     this.type = type;
     this.path = path;
     this.versionNum = versionNum;
@@ -69,5 +71,10 @@ public abstract class Modification {
     Modification mod = (Modification) obj;
     return mod.type.equals(this.type) && mod.path.equals(this.path)
             && mod.versionNum == this.versionNum;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(type, path, versionNum);
   }
 }

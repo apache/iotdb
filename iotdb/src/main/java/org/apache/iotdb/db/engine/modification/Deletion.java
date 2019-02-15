@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.engine.modification;
 
+import java.util.Objects;
+
 /**
  * Deletion is a delete operation on a timeseries.
  */
@@ -44,5 +46,10 @@ public class Deletion extends Modification {
       return false;
     Deletion del = (Deletion) obj;
     return super.equals(obj) && del.timestamp == this.timestamp;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(super.hashCode(), timestamp);
   }
 }
