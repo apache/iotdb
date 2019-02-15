@@ -21,12 +21,14 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Comparator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * SimpleFileVersionController uses a local file and its file name to store the version.
  */
 public class SimpleFileVersionController implements VersionController {
-
+  private static final Logger LOGGER = LoggerFactory.getLogger(SimpleFileVersionController.class);
   /**
    * Every time currVersion - prevVersion >= SAVE_INTERVAL, currVersion is persisted and prevVersion
    * is set to currVersion. When recovering from file, the version number is automatically increased
@@ -46,7 +48,11 @@ public class SimpleFileVersionController implements VersionController {
   @Override
   public synchronized long nextVersion() {
     currVersion ++;
-    checkPersist();
+    try {
+      checkPersist();
+    } catch (IOException e) {
+      LOGGER.error(e.getMessage());
+    }
     return currVersion;
   }
 
@@ -59,16 +65,20 @@ public class SimpleFileVersionController implements VersionController {
     return currVersion;
   }
 
-  private void checkPersist() {
+  private void checkPersist() throws IOException {
     if ((currVersion - prevVersion) >= SAVE_INTERVAL) {
       persist();
     }
   }
 
-  private void persist() {
-    File oldFile = new File(directoryPath,FILE_PREFIX + prevVersion);
+  private void persist() throws IOException {
+    File oldFile = new File(directoryPath, FILE_PREFIX + prevVersion);
     File newFile = new File(directoryPath, FILE_PREFIX + currVersion);
-    oldFile.renameTo(newFile);
+    if (!oldFile.renameTo(newFile)) {
+      throw new IOException(String
+          .format("can not rename file %s to file %s", oldFile.getAbsolutePath(),
+              newFile.getAbsolutePath()));
+    }
     prevVersion = currVersion;
   }
 

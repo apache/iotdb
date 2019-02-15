@@ -20,6 +20,7 @@ import java.io.File;
 import java.io.IOException;
 
 import org.apache.commons.io.FileUtils;
+import org.junit.Assert;
 import org.junit.Test;
 
 import static org.apache.iotdb.db.engine.version.SimpleFileVersionController.SAVE_INTERVAL;
@@ -31,7 +32,9 @@ public class SimpleFileVersionControllerTest {
     String tempFilePath = "version.tmp";
 
     try {
-      new File(tempFilePath).mkdir();
+      if (!new File(tempFilePath).mkdir()) {
+        Assert.fail("can not create version.tmp folder");
+      }
       VersionController versionController = new SimpleFileVersionController(tempFilePath);
       assertEquals(versionController.currVersion(), SAVE_INTERVAL);
       for (int i = 0; i < 150; i++) {
