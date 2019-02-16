@@ -1932,6 +1932,15 @@ public class FileNodeProcessor extends Processor implements IStatistic {
     }
     closeBufferWrite();
     closeOverflow();
+    for (IntervalFileNode fileNode : newFileNodes) {
+      if (fileNode.getModFile() != null) {
+        try {
+          fileNode.getModFile().close();
+        } catch (IOException e) {
+          throw new FileNodeProcessorException(e);
+        }
+      }
+    }
   }
 
   @Override
