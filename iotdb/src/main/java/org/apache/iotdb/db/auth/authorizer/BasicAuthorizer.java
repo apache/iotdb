@@ -37,8 +37,9 @@ import org.slf4j.LoggerFactory;
 
 public abstract class BasicAuthorizer implements IAuthorizer, IService {
 
-  private static final Logger logger = LoggerFactory.getLogger(BasicAuthorizer.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(BasicAuthorizer.class);
   private static final Set<Integer> ADMIN_PRIVILEGES;
+  private static final String NO_SUCH_ROLE_EXCEPTION = "No such role : %s";
 
   static {
     ADMIN_PRIVILEGES = new HashSet<>();
@@ -59,7 +60,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   protected void init() throws AuthException {
     userManager.reset();
     roleManager.reset();
-    logger.info("Initialization of Authorizer completes");
+    LOGGER.info("Initialization of Authorizer completes");
   }
 
   @Override
@@ -84,13 +85,14 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   @Override
   public boolean grantPrivilegeToUser(String username, String path, int privilegeId)
       throws AuthException {
+    String newPath = path;
     if (IoTDBConstant.ADMIN_NAME.equals(username)) {
       throw new AuthException("Invalid operation, administrator already has all privileges");
     }
     if (!PrivilegeType.isPathRelevant(privilegeId)) {
-      path = IoTDBConstant.PATH_ROOT;
+      newPath = IoTDBConstant.PATH_ROOT;
     }
-    return userManager.grantPrivilegeToUser(username, path, privilegeId);
+    return userManager.grantPrivilegeToUser(username, newPath, privilegeId);
   }
 
   @Override
@@ -122,7 +124,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
         try {
           userManager.revokeRoleFromUser(roleName, user);
         } catch (AuthException e) {
-          logger.warn(
+          LOGGER.warn(
               "Error encountered when revoking a role {} from user {} after deletion, because {}",
               roleName, user, e);
         }
@@ -153,14 +155,14 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   public boolean grantRoleToUser(String roleName, String username) throws AuthException {
     Role role = roleManager.getRole(roleName);
     if (role == null) {
-      throw new AuthException(String.format("No such role : %s", roleName));
+      throw new AuthException(String.format(NO_SUCH_ROLE_EXCEPTION, roleName));
     }
     // the role may be deleted before it ts granted to the user, so a double check is necessary.
     boolean success = userManager.grantRoleToUser(roleName, username);
     if (success) {
       role = roleManager.getRole(roleName);
       if (role == null) {
-        throw new AuthException(String.format("No such role : %s", roleName));
+        throw new AuthException(String.format(NO_SUCH_ROLE_EXCEPTION, roleName));
       } else {
         return true;
       }
@@ -173,7 +175,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   public boolean revokeRoleFromUser(String roleName, String username) throws AuthException {
     Role role = roleManager.getRole(roleName);
     if (role == null) {
-      throw new AuthException(String.format("No such role : %s", roleName));
+      throw new AuthException(String.format(NO_SUCH_ROLE_EXCEPTION, roleName));
     }
     return userManager.revokeRoleFromUser(roleName, username);
   }
@@ -238,6 +240,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
     try {
       init();
     } catch (AuthException e) {
+      LOGGER.error("Auth authentication error : ", e);
       throw new StartupException(e.getMessage());
     }
   }

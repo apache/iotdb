@@ -115,11 +115,11 @@ public class JMXService implements IService {
     }
     System.setProperty(IoTDBConstant.SERVER_RMI_ID, "true");
     boolean localOnly = false;
-    String jmxPort = System.getProperty(IoTDBConstant.TSFILEDB_REMOTE_JMX_PORT_NAME);
+    String jmxPort = System.getProperty(IoTDBConstant.IOTDB_REMOTE_JMX_PORT_NAME);
 
     if (jmxPort == null) {
       localOnly = true;
-      jmxPort = System.getProperty(IoTDBConstant.TSFILEDB_LOCAL_JMX_PORT_NAME);
+      jmxPort = System.getProperty(IoTDBConstant.IOTDB_LOCAL_JMX_PORT_NAME);
     }
 
     if (jmxPort == null) {

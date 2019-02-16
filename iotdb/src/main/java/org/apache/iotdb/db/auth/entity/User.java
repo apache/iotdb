@@ -40,6 +40,23 @@ public class User {
    */
   private long lastActiveTime;
 
+  public User() {
+    // empty constructor
+  }
+
+  /**
+   * construct function for User.
+   *
+   * @param name -user name
+   * @param password -user password
+   */
+  public User(String name, String password) {
+    this.name = name;
+    this.password = password;
+    this.privilegeList = new ArrayList<>();
+    this.roleList = new ArrayList<>();
+  }
+
   public String getName() {
     return name;
   }
@@ -80,32 +97,16 @@ public class User {
     this.lastActiveTime = lastActiveTime;
   }
 
-  public User() {
-  }
-
-  /**
-   * construct function for User.
-   *
-   * @param name -user name
-   * @param password -user password
-   */
-  public User(String name, String password) {
-    this.name = name;
-    this.password = password;
-    this.privilegeList = new ArrayList<>();
-    this.roleList = new ArrayList<>();
-  }
-
   public boolean hasPrivilege(String path, int privilegeId) {
     return AuthUtils.hasPrivilege(path, privilegeId, privilegeList);
   }
 
-  public void addPrivilege(String path, int privilgeId) {
-    AuthUtils.addPrivilege(path, privilgeId, privilegeList);
+  public void addPrivilege(String path, int privilegeId) {
+    AuthUtils.addPrivilege(path, privilegeId, privilegeList);
   }
 
-  public void removePrivilege(String path, int privilgeId) {
-    AuthUtils.removePrivilege(path, privilgeId, privilegeList);
+  public void removePrivilege(String path, int privilegeId) {
+    AuthUtils.removePrivilege(path, privilegeId, privilegeList);
   }
 
   /**
@@ -143,15 +144,20 @@ public class User {
       return false;
     }
     User user = (User) o;
-    return lastActiveTime == user.lastActiveTime && Objects.equals(name, user.name)
-        && Objects.equals(password, user.password) && Objects
-        .equals(privilegeList, user.privilegeList)
-        && Objects.equals(roleList, user.roleList);
+
+    return lastActiveTime == user.lastActiveTime && contentEquals(user);
   }
+
+  private boolean contentEquals(User user) {
+    return Objects.equals(name, user.name)
+            && Objects.equals(password, user.password)
+            && Objects.equals(privilegeList, user.privilegeList)
+            && Objects.equals(roleList, user.roleList);
+  }
+
 
   @Override
   public int hashCode() {
-
     return Objects.hash(name, password, privilegeList, roleList, lastActiveTime);
   }
 }
