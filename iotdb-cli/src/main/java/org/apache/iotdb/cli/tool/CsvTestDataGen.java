@@ -28,15 +28,12 @@ import java.io.OutputStreamWriter;
 @Deprecated
 public class CsvTestDataGen {
 
-  private static final String PATHS = "Time,root.fit.p.s1,root.fit.d1.s1,root.fit.d1.s2,root.fit.d2."
-      + "s1,root.fit.d2.s3";
-
-  private static final String USER_DIR = "user.dir";
-
   private CsvTestDataGen() {
 
   }
 
+  private static final String PATHS = "Time,root.fit.p.s1,root.fit.d1.s1,root.fit.d1.s2,root.fit.d2."
+      + "s1,root.fit.d2.s3";
   private static String[] iso = {
       PATHS,
       "1970-01-01T08:00:00.001+08:00,,1,pass,1,1", "1970-01-01T08:00:00.002+08:00,,2,pass,,",
@@ -62,7 +59,7 @@ public class CsvTestDataGen {
   public static String isoDataGen() {
     String path = System.getProperties().getProperty(USER_DIR) + "/src/test/resources/iso.csv";
     File file = new File(path);
-    writeDataFrom(file);
+    writeDataFrom(file, iso);
     return path;
   }
 
@@ -75,7 +72,7 @@ public class CsvTestDataGen {
     String path =
         System.getProperties().getProperty(USER_DIR) + "/src/test/resources/defaultLong.csv";
     File file = new File(path);
-    writeDataFrom(file);
+    writeDataFrom(file, defaultLong);
     return path;
   }
 
@@ -88,11 +85,11 @@ public class CsvTestDataGen {
     String path =
         System.getProperties().getProperty(USER_DIR) + "/src/test/resources/userSelfDefine.csv";
     File file = new File(path);
-    writeDataFrom(file);
+    writeDataFrom(file, userSelfDefine);
     return path;
   }
 
-  private static void writeDataFrom(File file) {
+  private static void writeDataFrom(File file, String[] info) {
     try {
       if (!file.exists()) {
         file.createNewFile();
@@ -100,7 +97,7 @@ public class CsvTestDataGen {
       fos = new FileOutputStream(file);
       osw = new OutputStreamWriter(fos);
       bw = new BufferedWriter(osw);
-      for (String str : userSelfDefine) {
+      for (String str : info) {
         bw.write(str + "\n");
       }
       bw.flush();

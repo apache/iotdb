@@ -73,8 +73,6 @@ public class ImportCsv extends AbstractCsvTool {
   private static String filename;
   private static String errorInsertInfo = "";
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(ImportCsv.class);
-
   /**
    * create the commandline options.
    *
@@ -370,7 +368,7 @@ public class ImportCsv extends AbstractCsvTool {
     } catch (ArgsErrorException e) {
       // ignored
     } catch (Exception e) {
-      LOGGER.error(String.format("Encounter an error, because {}", e.getMessage()));
+      LOGGER.error("Encounter an error, because {}", e.getMessage());
     } finally {
       reader.close();
     }
@@ -436,7 +434,7 @@ public class ImportCsv extends AbstractCsvTool {
           loadDataFromCSV(subFile, i);
           i++;
         } else {
-          LOGGER.warn("File {} should ends with '.csv' if you want to import", f.getName());
+          LOGGER.warn("File {} should ends with '.csv' if you want to import", file.getName());
         }
       }
     }
