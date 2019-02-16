@@ -81,7 +81,7 @@ public class ExportCsv extends AbstractCsvTool {
     CommandLineParser parser = new DefaultParser();
 
     if (args == null || args.length == 0) {
-      LOGGER.error("[ERROR] Too few params input, please check the following hint.");
+      LOGGER.error("Too few params input, please check the following hint.");
       hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
       return;
     }
@@ -127,14 +127,14 @@ public class ExportCsv extends AbstractCsvTool {
       }
     } catch (ClassNotFoundException e) {
       LOGGER.error(
-          "[ERROR] Failed to dump data because cannot find TsFile JDBC Driver, "
+          "Failed to dump data because cannot find TsFile JDBC Driver, "
               + "please check whether you have imported driver or not");
     } catch (SQLException e) {
-      LOGGER.error("[ERROR] Encounter an error when dumping data, error is {}", e.getMessage());
+      LOGGER.error("Encounter an error when dumping data, error is {}", e.getMessage());
     } catch (IOException e) {
-      LOGGER.error("[ERROR] Failed to operate on file, because {}", e.getMessage());
+      LOGGER.error("Failed to operate on file, because {}", e.getMessage());
     } catch (TException e) {
-      LOGGER.error("[ERROR] Encounter an error when connecting to server, because {}",
+      LOGGER.error("Encounter an error when connecting to server, because {}",
               e.getMessage());
     } catch (ArgsErrorException e) {
       e.printStackTrace();
@@ -224,7 +224,7 @@ public class ExportCsv extends AbstractCsvTool {
         try {
           dumpResult(sql, index);
         } catch (SQLException e) {
-          LOGGER.error("[ERROR] Cannot dump data for statment {}, because {}", sql, e.getMessage());
+          LOGGER.error("Cannot dump data for statment {}, because {}", sql, e.getMessage());
         }
         index++;
       }
@@ -246,7 +246,7 @@ public class ExportCsv extends AbstractCsvTool {
     try {
       File tf = new File(path);
       if (!tf.exists() && !tf.createNewFile()) {
-          LOGGER.error("[ERROR] Could not create target file for sql statement: {}", sql);
+          LOGGER.error("Could not create target file for sql statement: {}", sql);
           return;
       }
       fw = new FileWriter(tf);
@@ -309,7 +309,7 @@ public class ExportCsv extends AbstractCsvTool {
           }
         }
       }
-      LOGGER.info("[INFO] Statement [{}] has dumped to file {} successfully! It costs {}ms.",
+      LOGGER.info("Statement [{}] has dumped to file {} successfully! It costs {}ms.",
                   sql, path, System.currentTimeMillis() - startTime);
     } catch (IOException e) {
       LOGGER.error(e.getMessage());
