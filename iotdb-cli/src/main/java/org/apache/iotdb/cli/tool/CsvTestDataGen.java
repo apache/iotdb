@@ -25,6 +25,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 
+@Deprecated
 public class CsvTestDataGen {
 
   private static final String PATHS = "Time,root.fit.p.s1,root.fit.d1.s1,root.fit.d1.s2,root.fit.d2."
@@ -51,6 +52,7 @@ public class CsvTestDataGen {
   private static FileOutputStream fos = null;
   private static OutputStreamWriter osw = null;
   private static BufferedWriter bw = null;
+  private static final String USER_DIR = "user.dir";
 
   /**
    * generate iso.csv data.
@@ -60,32 +62,7 @@ public class CsvTestDataGen {
   public static String isoDataGen() {
     String path = System.getProperties().getProperty(USER_DIR) + "/src/test/resources/iso.csv";
     File file = new File(path);
-
-    try {
-      if (!file.exists()) {
-        file.createNewFile();
-      }
-      fos = new FileOutputStream(file);
-      osw = new OutputStreamWriter(fos);
-      bw = new BufferedWriter(osw);
-      for (String str : iso) {
-        bw.write(str + "\n");
-      }
-      bw.flush();
-    } catch (FileNotFoundException e) {
-      e.printStackTrace();
-    } catch (IOException e) {
-      e.printStackTrace();
-    } finally {
-      try {
-        bw.close();
-        osw.close();
-        fos.close();
-      } catch (IOException e) {
-        // TODO Auto-generated catch block
-        e.printStackTrace();
-      }
-    }
+    writeDataFrom(file);
     return path;
   }
 
@@ -98,32 +75,7 @@ public class CsvTestDataGen {
     String path =
         System.getProperties().getProperty(USER_DIR) + "/src/test/resources/defaultLong.csv";
     File file = new File(path);
-    try {
-      if (!file.exists()) {
-        file.createNewFile();
-      }
-      fos = new FileOutputStream(file);
-      osw = new OutputStreamWriter(fos);
-      bw = new BufferedWriter(osw);
-      for (String str : defaultLong) {
-        bw.write(str + "\n");
-      }
-      bw.flush();
-    } catch (FileNotFoundException e) {
-      e.printStackTrace();
-    } catch (IOException e) {
-      // TODO Auto-generated catch block
-      e.printStackTrace();
-    } finally {
-      try {
-        bw.close();
-        osw.close();
-        fos.close();
-      } catch (IOException e) {
-        // TODO Auto-generated catch block
-        e.printStackTrace();
-      }
-    }
+    writeDataFrom(file);
     return path;
   }
 
@@ -136,6 +88,11 @@ public class CsvTestDataGen {
     String path =
         System.getProperties().getProperty(USER_DIR) + "/src/test/resources/userSelfDefine.csv";
     File file = new File(path);
+    writeDataFrom(file);
+    return path;
+  }
+
+  private static void writeDataFrom(File file) {
     try {
       if (!file.exists()) {
         file.createNewFile();
@@ -162,7 +119,6 @@ public class CsvTestDataGen {
         e.printStackTrace();
       }
     }
-    return path;
   }
 
   public static void main(String[] args) {

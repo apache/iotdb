@@ -83,7 +83,7 @@ public class FileNodeProcessorStore implements Serializable {
   }
 
   public Map<String, Long> getLastUpdateTimeMap() {
-    return new HashMap<String, Long>(lastUpdateTimeMap);
+    return new HashMap<>(lastUpdateTimeMap);
   }
 
   public void setLastUpdateTimeMap(Map<String, Long> lastUpdateTimeMap) {

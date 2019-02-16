@@ -77,7 +77,7 @@ public class ExportCsv extends AbstractCsvTool {
     HelpFormatter hf = new HelpFormatter();
     hf.setOptionComparator(null); // avoid reordering
     hf.setWidth(MAX_HELP_CONSOLE_WIDTH);
-    CommandLine commandLine = null;
+    CommandLine commandLine;
     CommandLineParser parser = new DefaultParser();
 
     if (args == null || args.length == 0) {
@@ -139,9 +139,7 @@ public class ExportCsv extends AbstractCsvTool {
     } catch (ArgsErrorException e) {
       e.printStackTrace();
     } finally {
-      if (reader != null) {
-        reader.close();
-      }
+      reader.close();
       if (connection != null) {
         connection.close();
       }
@@ -217,8 +215,8 @@ public class ExportCsv extends AbstractCsvTool {
   }
 
   private static void dumpFromSqlFile(String filePath) throws IOException {
-    try (BufferedReader reader = new BufferedReader(new FileReader(filePath));){
-      String sql = null;
+    try (BufferedReader reader = new BufferedReader(new FileReader(filePath))){
+      String sql;
       int index = 0;
       while ((sql = reader.readLine()) != null) {
         try {
@@ -327,9 +325,7 @@ public class ExportCsv extends AbstractCsvTool {
       } catch (IOException e) {
         LOGGER.error(e.getMessage());
       }
-      if (statement != null) {
-        statement.close();
-      }
+      statement.close();
     }
   }
 

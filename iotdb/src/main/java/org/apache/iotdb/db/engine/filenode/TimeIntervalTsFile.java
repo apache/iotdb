@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.engine.filenodev2;
+package org.apache.iotdb.db.engine.filenode;
 
 import java.io.File;
 import java.io.Serializable;
@@ -25,8 +25,6 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import org.apache.iotdb.db.conf.directories.Directories;
-import org.apache.iotdb.db.engine.filenode.FileNodeProcessorStatus;
-import org.apache.iotdb.db.engine.filenode.OverflowChangeType;
 
 /**
  * This class is used to store the TsFile status.<br>

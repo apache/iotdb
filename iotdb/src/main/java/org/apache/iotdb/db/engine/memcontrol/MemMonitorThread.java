@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -38,8 +38,8 @@ public class MemMonitorThread extends Thread {
    */
   public MemMonitorThread(IoTDBConfig config) {
     this.setName(ThreadName.MEMORY_MONITOR.getName());
-    long checkInterval = config.memMonitorInterval;
-    this.checkInterval = checkInterval > 0 ? checkInterval : this.checkInterval;
+    long confInterval = config.memMonitorInterval;
+    this.checkInterval = confInterval > 0 ? confInterval : this.checkInterval;
     if (config.enableSmallFlush) {
       this.safePolicy = new FlushPartialPolicy();
     } else {
@@ -80,6 +80,7 @@ public class MemMonitorThread extends Thread {
         Thread.sleep(checkInterval);
       } catch (InterruptedException e) {
         logger.info("{} exiting...", this.getClass().getSimpleName());
+        Thread.currentThread().interrupt();
         return;
       }
     }

@@ -39,6 +39,7 @@ import org.slf4j.LoggerFactory;
 public abstract class BasicUserManager implements IUserManager {
 
   private static final Logger logger = LoggerFactory.getLogger(BasicUserManager.class);
+  private static final String NO_SUCH_USER_ERROR = "No such user %s";
 
   private Map<String, User> userMap;
   private IUserAccessor accessor;
@@ -145,7 +146,7 @@ public abstract class BasicUserManager implements IUserManager {
     try {
       User user = getUser(username);
       if (user == null) {
-        throw new AuthException(String.format("No such user %s", username));
+        throw new AuthException(String.format(NO_SUCH_USER_ERROR, username));
       }
       if (user.hasPrivilege(path, privilegeId)) {
         return false;
@@ -172,7 +173,7 @@ public abstract class BasicUserManager implements IUserManager {
     try {
       User user = getUser(username);
       if (user == null) {
-        throw new AuthException(String.format("No such user %s", username));
+        throw new AuthException(String.format(NO_SUCH_USER_ERROR, username));
       }
       if (!user.hasPrivilege(path, privilegeId)) {
         return false;
@@ -202,7 +203,7 @@ public abstract class BasicUserManager implements IUserManager {
     try {
       User user = getUser(username);
       if (user == null) {
-        throw new AuthException(String.format("No such user %s", username));
+        throw new AuthException(String.format(NO_SUCH_USER_ERROR, username));
       }
       String oldPassword = user.getPassword();
       user.setPassword(AuthUtils.encryptPassword(newPassword));
@@ -224,7 +225,7 @@ public abstract class BasicUserManager implements IUserManager {
     try {
       User user = getUser(username);
       if (user == null) {
-        throw new AuthException(String.format("No such user %s", username));
+        throw new AuthException(String.format(NO_SUCH_USER_ERROR, username));
       }
       if (user.hasRole(roleName)) {
         return false;

@@ -26,9 +26,6 @@ public class IoTDBDefaultThreadExceptionHandler implements Thread.UncaughtExcept
   private static final Logger LOGGER = LoggerFactory
       .getLogger(IoTDBDefaultThreadExceptionHandler.class);
 
-  public IoTDBDefaultThreadExceptionHandler() {
-  }
-
   @Override
   public void uncaughtException(Thread t, Throwable e) {
     LOGGER.error("Exception in thread {}-{}", t.getName(), t.getId(), e);

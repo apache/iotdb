@@ -48,7 +48,6 @@ public class LocalFileAuthorizer extends BasicAuthorizer {
   }
 
   private static class InstanceHolder {
-
     private static LocalFileAuthorizer instance;
 
     static {

@@ -39,10 +39,8 @@ public class MinFolderOccupiedSpaceFirstStrategy extends DirectoryStrategy {
 
   private int getMinOccupiedSpaceFolder() {
     List<Integer> candidates = new ArrayList<>();
-    long min = 0;
-
     candidates.add(0);
-    min = getOccupiedSpace(folders.get(0));
+    long min = getOccupiedSpace(folders.get(0));
     for (int i = 1; i < folders.size(); i++) {
       long current = getOccupiedSpace(folders.get(i));
       if (min > current) {

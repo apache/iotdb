@@ -21,6 +21,7 @@ package org.apache.iotdb.db.engine.cache;
 import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
@@ -32,7 +33,7 @@ import org.slf4j.LoggerFactory;
  */
 public class RowGroupBlockMetaDataCache {
 
-  private static Logger LOGGER = LoggerFactory.getLogger(RowGroupBlockMetaDataCache.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(RowGroupBlockMetaDataCache.class);
 
   private static final int CACHE_SIZE = 100;
   /**
@@ -131,5 +132,20 @@ public class RowGroupBlockMetaDataCache {
     protected boolean removeEldestEntry(Map.Entry<String, TsDeviceMetadata> eldest) {
       return size() > maxCapacity;
     }
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    RowGroupBlockMetaDataCache that = (RowGroupBlockMetaDataCache) o;
+    return Objects.equals(lruCache, that.lruCache) &&
+            Objects.equals(cacheHintNum, that.cacheHintNum) &&
+            Objects.equals(cacheRequestNum, that.cacheRequestNum);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(lruCache, cacheHintNum, cacheRequestNum);
   }
 }

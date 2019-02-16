@@ -33,6 +33,10 @@ public class AuthorityChecker {
   private static final String SUPER_USER = IoTDBConstant.ADMIN_NAME;
   private static final Logger logger = LoggerFactory.getLogger(AuthorityChecker.class);
 
+  private AuthorityChecker() {
+
+  }
+
   /**
    * check permission.
    *
@@ -58,7 +62,7 @@ public class AuthorityChecker {
       // a user can modify his own password
       return true;
     }
-    if (paths.size() > 0) {
+    if (!paths.isEmpty()) {
       for (Path path : paths) {
         if (!checkOnePath(username, path, permission)) {
           return false;

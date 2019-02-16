@@ -161,5 +161,17 @@
                 <jdbc.it.skip>true</jdbc.it.skip>
             </properties>
         </profile>
+        <profile>
+            <id>skipUT_JDBC_Tests</id>
+            <activation>
+                <property>
+                    <name>skipUTs</name>
+                    <value>true</value>
+                </property>
+            </activation>
+            <properties>
+                <jdbc.ut.skip>true</jdbc.ut.skip>
+            </properties>
+        </profile>
     </profiles>
 </project>
