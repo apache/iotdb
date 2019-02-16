@@ -48,7 +48,7 @@ public class PageReader {
 
   private Filter filter = null;
 
-  private long deletedAt;
+  private long deletedAt = -1;
 
   public PageReader(ByteBuffer pageData, TSDataType dataType, Decoder valueDecoder,
       Decoder timeDecoder,
