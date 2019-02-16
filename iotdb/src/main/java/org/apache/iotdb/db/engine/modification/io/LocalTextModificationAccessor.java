@@ -70,9 +70,10 @@ public class LocalTextModificationAccessor implements ModificationReader, Modifi
         modificationList.add(decodeModification(line));
       }
     } catch (IOException e) {
-      reader.close();
       logger.error("An error occurred when reading modifications, and the remaining modifications "
               + "were ignored.", e);
+    } finally {
+      reader.close();
     }
     return modificationList;
   }

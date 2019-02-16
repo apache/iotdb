@@ -366,7 +366,7 @@ public class IoTDBMetadataFetchIT {
             + "                     StorageGroup: root.ln.wf01.wt01 \n" + "                },\n"
             + "                temperature:{\n" + "                     DataType: FLOAT,\n"
             + "                     Encoding: RLE,\n"
-            + "                     args: {compressor=SNAPPY, MAX_POINT_NUMBER=3},\n"
+            + "                     args: {MAX_POINT_NUMBER=3, compressor=SNAPPY},\n"
             + "                     StorageGroup: root.ln.wf01.wt01 \n" + "                }\n"
             + "            }\n"
             + "        }\n" + "    }\n" + "}";

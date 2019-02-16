@@ -71,7 +71,7 @@ public class DeletionFileNodeTest {
       MManager.getInstance().addPathToMTree(processorName + "." + measurements[i], dataType,
               encoding, args);
       FileNodeManager.getInstance().addTimeSeries(new Path(processorName, measurements[i]), dataType,
-              encoding, args);
+              encoding);
     }
   }
 
@@ -140,11 +140,15 @@ public class DeletionFileNodeTest {
 
     LocalTextModificationAccessor accessor =
             new LocalTextModificationAccessor(modFiles[0].getPath());
-    Collection<Modification> modifications = accessor.read();
-    assertEquals(modifications.size(), 3);
-    int i = 0;
-    for (Modification modification : modifications) {
-      assertTrue(modification.equals(realModifications[i++]));
+    try {
+      Collection<Modification> modifications = accessor.read();
+      assertEquals(modifications.size(), 3);
+      int i = 0;
+      for (Modification modification : modifications) {
+        assertTrue(modification.equals(realModifications[i++]));
+      }
+    } finally {
+      accessor.close();
     }
   }
 

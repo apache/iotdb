@@ -105,11 +105,11 @@ public class IoTDBCompleteIT {
             + "                 StorageGroup: root.vehicle \n" + "            }\n" + "        },\n"
             + "        d5:{\n" + "            s9:{\n" + "                 DataType: FLOAT,\n"
             + "                 Encoding: PLAIN,\n"
-            + "                 args: {compressor=SNAPPY, MAX_POINT_NUMBER=10},\n"
+            + "                 args: {MAX_POINT_NUMBER=10, compressor=SNAPPY},\n"
             + "                 StorageGroup: root.vehicle \n" + "            }\n" + "        },\n"
             + "        d6:{\n" + "            s10:{\n" + "                 DataType: DOUBLE,\n"
             + "                 Encoding: RLE,\n"
-            + "                 args: {compressor=UNCOMPRESSOR, MAX_POINT_NUMBER=10},\n"
+            + "                 args: {MAX_POINT_NUMBER=10, compressor=UNCOMPRESSOR},\n"
             + "                 StorageGroup: root.vehicle \n" + "            }\n" + "        }\n"
             + "    }\n" + "}",
         "DELETE TIMESERIES root.vehicle.*", "SHOW TIMESERIES",
