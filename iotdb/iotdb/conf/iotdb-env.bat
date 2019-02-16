@@ -28,8 +28,8 @@ if "%LOCAL_JMX%" == "yes" (
 	)
 
 IF ["%IOTDB_HEAP_OPTS%"] EQU [""] (
-	rem detect Java 32 or 64 bit
-	IF %JAVA_VERSION% == 8 (
+	rem detect Java 8 or 11
+	IF %%JAVA_VERSION%% == 8 (
 		java -d64 -version >nul 2>&1
 		IF NOT ERRORLEVEL 1 (
 			rem 64-bit Java

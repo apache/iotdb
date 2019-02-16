@@ -28,10 +28,9 @@ import java.util.ArrayList;
 import java.util.List;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Test;
 
-public class IoTDBStartServerScriptTest {
-
-  private final String START_IOTDB_STR = "IoTDB has started.";
+public class EnvScriptIT {
 
   @Before
   public void setUp() throws Exception {
@@ -41,9 +40,7 @@ public class IoTDBStartServerScriptTest {
   public void tearDown() throws Exception {
   }
 
-  // Skip this test for now because if you close IoTDB by stop-server script, it cannot detect whether it is closed or
-  // not.
-  // @Test
+  @Test
   public void test() throws IOException, InterruptedException {
     String os = System.getProperty("os.name").toLowerCase();
     if (os.startsWith("windows")) {
@@ -54,39 +51,28 @@ public class IoTDBStartServerScriptTest {
   }
 
   private void testStartClientOnWindows(String suffix, String os) throws IOException {
-    final String[] output = {"````````````````````````", "Starting IoTDB",
-        "````````````````````````"};
     String dir = getCurrentPath("cmd.exe", "/c", "echo %cd%");
-    String startCMD =
-        dir + File.separator + "iotdb" + File.separator + "bin" + File.separator + "start-server"
+    final String output = "If you want to change this configuration, please check conf/iotdb-env.sh(Unix or OS X, if you use Windows, check conf/iotdb-env.bat).";
+    String cmd =
+        dir + File.separator + "iotdb" + File.separator + "conf" + File.separator + "iotdb-env"
             + suffix;
-    ProcessBuilder startBuilder = new ProcessBuilder("cmd.exe", "/c", startCMD);
-    String stopCMD =
-        dir + File.separator + "iotdb" + File.separator + "bin" + File.separator + "stop-server"
-            + suffix;
-    ProcessBuilder stopBuilder = new ProcessBuilder("cmd.exe", "/c", stopCMD);
-    testOutput(dir, suffix, startBuilder, stopBuilder, output, os);
+    ProcessBuilder startBuilder = new ProcessBuilder("cmd.exe", "/c", cmd);
+    testOutput(dir, suffix, startBuilder, output, os);
   }
 
   private void testStartClientOnUnix(String suffix, String os) throws IOException {
     String dir = getCurrentPath("pwd");
-    final String[] output = {"---------------------", "Starting IoTDB", "---------------------"};
-    String startCMD =
-        dir + File.separator + "iotdb" + File.separator + "bin" + File.separator + "start-server"
+    final String output = "If you want to change this configuration, please check conf/iotdb-env.sh(Unix or OS X, if you use Windows, check conf/iotdb-env.bat).";
+    String cmd = dir + File.separator + "iotdb" + File.separator + "conf" + File.separator + "iotdb-env"
             + suffix;
-    ProcessBuilder startBuilder = new ProcessBuilder("sh", startCMD);
-    String stopCMD =
-        dir + File.separator + "iotdb" + File.separator + "bin" + File.separator + "stop-server"
-            + suffix;
-    ProcessBuilder stopBuilder = new ProcessBuilder("sh", stopCMD);
-    testOutput(dir, suffix, startBuilder, stopBuilder, output, os);
+    ProcessBuilder builder = new ProcessBuilder("bash", cmd);
+    testOutput(cmd, suffix, builder, output, os);
   }
 
-  private void testOutput(String dir, String suffix, ProcessBuilder startBuilder,
-      ProcessBuilder stopBuilder,
-      String[] output, String os) throws IOException {
-    startBuilder.redirectErrorStream(true);
-    Process startProcess = startBuilder.start();
+  private void testOutput(String cmd, String suffix, ProcessBuilder builder,
+      String output, String os) throws IOException {
+	builder.redirectErrorStream(true);
+    Process startProcess = builder.start();
     BufferedReader startReader = new BufferedReader(
         new InputStreamReader(startProcess.getInputStream()));
     List<String> runtimeOuput = new ArrayList<>();
@@ -98,31 +84,12 @@ public class IoTDBStartServerScriptTest {
           break;
         }
         runtimeOuput.add(line);
-        if (line.indexOf(START_IOTDB_STR) > 0) {
-          break;
-        }
       }
-      for (int i = 0; i < output.length; i++) {
-        assertEquals(output[i], runtimeOuput.get(i));
-      }
+      assertEquals(output, runtimeOuput.get(runtimeOuput.size()-1));
     } finally {
       startReader.close();
       startProcess.destroy();
-      if (os.startsWith("windows")) {
-        stopBuilder.redirectErrorStream(true);
-        Process stopProcess = stopBuilder.start();
-        BufferedReader stopReader = new BufferedReader(
-            new InputStreamReader(stopProcess.getInputStream()));
-        while (true) {
-          line = stopReader.readLine();
-          if (line == null) {
-            break;
-          }
-          System.out.println(line);
-        }
-        stopReader.close();
-        stopProcess.destroy();
-      }
+      runtimeOuput.clear();
     }
   }
 
