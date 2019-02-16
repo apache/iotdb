@@ -34,10 +34,24 @@ public class PathPrivilege {
   private String path;
 
   /**
+   * This field records how many times this privilege is referenced during a life cycle (from being
+   * loaded to being discarded). When serialized to a file, this determines the order of
+   * serialization. The higher this values is, the sooner this privilege will be serialized. As a
+   * result, the hot privileges will be in the first place so that the hit time will decrease when
+   * being queried.
+   */
+  private AtomicInteger referenceCnt = new AtomicInteger(0);
+
+  /**
    * Sort PathPrivilege by referenceCnt in descent order.
    */
-  public static final Comparator<PathPrivilege> referenceDescentSorter = (o1, o2) -> -Integer.
-      compare(o1.referenceCnt.get(), o2.referenceCnt.get());
+  public static final Comparator<PathPrivilege> REFERENCE_DESCENT_SORTER = (o1, o2) -> -Integer.
+          compare(o1.referenceCnt.get(), o2.referenceCnt.get());
+
+  public PathPrivilege(String path) {
+    this.path = path;
+    this.privileges = new HashSet<>();
+  }
 
   public Set<Integer> getPrivileges() {
     return privileges;
@@ -63,20 +77,6 @@ public class PathPrivilege {
     this.referenceCnt = referenceCnt;
   }
 
-  /**
-   * This field records how many times this privilege is referenced during a life cycle (from being
-   * loaded to being discarded). When serialized to a file, this determines the order of
-   * serialization. The higher this values is, the sooner this privilege will be serialized. As a
-   * result, the hot privileges will be in the first place so that the hit time will decrease when
-   * being queried.
-   */
-  private AtomicInteger referenceCnt = new AtomicInteger(0);
-
-  public PathPrivilege(String path) {
-    this.path = path;
-    this.privileges = new HashSet<>();
-  }
-
   @Override
   public boolean equals(Object o) {
     if (this == o) {
@@ -91,7 +91,6 @@ public class PathPrivilege {
 
   @Override
   public int hashCode() {
-
     return Objects.hash(privileges, path);
   }
 

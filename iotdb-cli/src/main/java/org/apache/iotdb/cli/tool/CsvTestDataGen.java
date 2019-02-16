@@ -51,28 +51,7 @@ public class CsvTestDataGen {
   public static String isoDataGen() {
     String path = System.getProperties().getProperty(USER_DIR) + "/src/test/resources/iso.csv";
     File file = new File(path);
-
-    try {
-      if (!file.exists()) {
-        file.createNewFile();
-      }
-      bw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file)));
-      for (String str : iso) {
-        bw.write(str + "\n");
-      }
-      bw.flush();
-    } catch (FileNotFoundException e) {
-      e.printStackTrace();
-    } catch (IOException e) {
-      e.printStackTrace();
-    } finally {
-      try {
-        bw.close();
-      } catch (IOException e) {
-        // TODO Auto-generated catch block
-        e.printStackTrace();
-      }
-    }
+    writeDataFrom(file);
     return path;
   }
 
@@ -85,28 +64,7 @@ public class CsvTestDataGen {
     String path =
         System.getProperties().getProperty(USER_DIR) + "/src/test/resources/defaultLong.csv";
     File file = new File(path);
-    try {
-      if (!file.exists()) {
-        file.createNewFile();
-      }
-      bw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file)));
-      for (String str : defaultLong) {
-        bw.write(str + "\n");
-      }
-      bw.flush();
-    } catch (FileNotFoundException e) {
-      e.printStackTrace();
-    } catch (IOException e) {
-      // TODO Auto-generated catch block
-      e.printStackTrace();
-    } finally {
-      try {
-        bw.close();
-      } catch (IOException e) {
-        // TODO Auto-generated catch block
-        e.printStackTrace();
-      }
-    }
+    writeDataFrom(file);
     return path;
   }
 
@@ -119,6 +77,11 @@ public class CsvTestDataGen {
     String path =
         System.getProperties().getProperty(USER_DIR) + "/src/test/resources/userSelfDefine.csv";
     File file = new File(path);
+    writeDataFrom(file);
+    return path;
+  }
+
+  private static void writeDataFrom(File file) {
     try {
       if (!file.exists()) {
         file.createNewFile();
@@ -141,7 +104,6 @@ public class CsvTestDataGen {
         e.printStackTrace();
       }
     }
-    return path;
   }
 
   public static void main(String[] args) {

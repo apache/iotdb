@@ -524,6 +524,7 @@ public class OverflowProcessor extends Processor {
         flushOperation("synchronously");
       } else {
         FlushManager.getInstance().submit(new Runnable() {
+          @Override
           public void run() {
             flushOperation("asynchronously");
           }

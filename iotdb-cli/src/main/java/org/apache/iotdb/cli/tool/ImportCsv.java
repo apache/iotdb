@@ -48,6 +48,8 @@ import org.apache.iotdb.cli.exception.ArgsErrorException;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.IoTDBConnection;
 import org.apache.thrift.TException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * read a CSV formatted data File and insert all the data into IoTDB.
@@ -55,6 +57,8 @@ import org.apache.thrift.TException;
  * @author zhanggr
  */
 public class ImportCsv extends AbstractCsvTool {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(ImportCsv.class);
 
   private static final String FILE_ARGS = "f";
   private static final String FILE_NAME = "file or folder";
@@ -264,17 +268,16 @@ public class ImportCsv extends AbstractCsvTool {
               file.getAbsolutePath(), errorFile.getAbsolutePath()));
         }
       } catch (SQLException e) {
-        e.printStackTrace();
+        System.out.println("[ERROR] Sql statement can not be closed ! " + e.getMessage());
       } catch (IOException e) {
-        e.printStackTrace();
+        System.out.println("[ERROR] Close file error ! " + e.getMessage());
       }
     }
   }
 
   private static List<String> createInsertSQL(String line, Map<String, String> timeseriesToType,
       Map<String, ArrayList<Integer>> deviceToColumn,
-      List<String> colInfo, List<String> headInfo)
-      throws IOException {
+      List<String> colInfo, List<String> headInfo) {
     String[] data = line.split(",", headInfo.size() + 1);
     List<String> sqls = new ArrayList<>();
     Iterator<Map.Entry<String, ArrayList<Integer>>> it = deviceToColumn.entrySet().iterator();
@@ -283,27 +286,27 @@ public class ImportCsv extends AbstractCsvTool {
       StringBuilder sbd = new StringBuilder();
       ArrayList<Integer> colIndex = entry.getValue();
       sbd.append("insert into " + entry.getKey() + "(timestamp");
-      int skipcount = 0;
+      int skipCount = 0;
       for (int j = 0; j < colIndex.size(); ++j) {
-        if (data[entry.getValue().get(j) + 1].equals("")) {
-          skipcount++;
+        if ("".equals(data[entry.getValue().get(j) + 1])) {
+          skipCount++;
           continue;
         }
         sbd.append(", " + colInfo.get(colIndex.get(j)));
       }
       // define every device null value' number, if the number equal the
       // sensor number, the insert operation stop
-      if (skipcount == entry.getValue().size()) {
+      if (skipCount == entry.getValue().size()) {
         continue;
       }
 
-      // TODO when timestampsStr is empty,
+      // TODO when timestampsStr is empty
       String timestampsStr = data[0];
-      sbd.append(") values(").append(timestampsStr.trim().equals("")
+      sbd.append(") values(").append(timestampsStr.trim().isEmpty()
           ? "NO TIMESTAMP" : timestampsStr);
 
       for (int j = 0; j < colIndex.size(); ++j) {
-        if (data[entry.getValue().get(j) + 1].equals("")) {
+        if ("".equals(data[entry.getValue().get(j) + 1])) {
           continue;
         }
         if (timeseriesToType.get(headInfo.get(colIndex.get(j))).equals(STRING_DATA_TYPE)) {
@@ -386,28 +389,11 @@ public class ImportCsv extends AbstractCsvTool {
 
       File file = new File(filename);
       if (file.isFile()) {
-        if (file.getName().endsWith(FILE_SUFFIX)) {
-          loadDataFromCSV(file, 1);
-        } else {
-          System.out.println(
-              "[WARN] File " + file.getName() + " should ends with '.csv' "
-                  + "if you want to import");
-        }
+        importFromSingleFile(file);
       } else if (file.isDirectory()) {
-        int i = 1;
-        for (File f : file.listFiles()) {
-          if (f.isFile()) {
-            if (f.getName().endsWith(FILE_SUFFIX)) {
-              loadDataFromCSV(f, i);
-              i++;
-            } else {
-              System.out.println(
-                  "[WARN] File " + f.getName() + " should ends with '.csv' "
-                      + "if you want to import");
-            }
-          }
-        }
+        importFromDirectory(file);
       }
+
     } catch (ClassNotFoundException e) {
       System.out.println(
           "[ERROR] Failed to dump data because cannot find TsFile JDBC Driver, "
@@ -423,6 +409,31 @@ public class ImportCsv extends AbstractCsvTool {
         connection.close();
       }
     }
+  }
 
+  private static void importFromSingleFile(File file) {
+    if (file.getName().endsWith(FILE_SUFFIX)) {
+      loadDataFromCSV(file, 1);
+    } else {
+      System.out.println(
+              "[WARN] File " + file.getName() + " should ends with '.csv' "
+                      + "if you want to import");
+    }
+  }
+
+  private static void importFromDirectory(File file) {
+    int i = 1;
+    for (File subFile : file.listFiles()) {
+      if (subFile.isFile()) {
+        if (subFile.getName().endsWith(FILE_SUFFIX)) {
+          loadDataFromCSV(subFile, i);
+          i++;
+        } else {
+          System.out.println(
+                  "[WARN] File " + subFile.getName() + " should ends with '.csv' "
+                          + "if you want to import");
+        }
+      }
+    }
   }
 }

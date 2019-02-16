@@ -73,6 +73,7 @@ public class LocalFileUserAccessor implements IUserAccessor {
    * @param username The name of the user to be deserialized.
    * @return The user object or null if no such user.
    */
+  @Override
   public User loadUser(String username) throws IOException {
     File userProfile = new File(
         userDirPath + File.separator + username + IoTDBConstant.PROFILE_SUFFIX);
@@ -120,6 +121,7 @@ public class LocalFileUserAccessor implements IUserAccessor {
    *
    * @param user The user object that is to be saved.
    */
+  @Override
   public void saveUser(User user) throws IOException {
     File userProfile = new File(
         userDirPath + File.separator + user.getName() + IoTDBConstant.PROFILE_SUFFIX + TEMP_SUFFIX);
@@ -128,7 +130,7 @@ public class LocalFileUserAccessor implements IUserAccessor {
         IOUtils.writeString(outputStream, user.getName(), STRING_ENCODING, encodingBufferLocal);
         IOUtils.writeString(outputStream, user.getPassword(), STRING_ENCODING, encodingBufferLocal);
 
-        user.getPrivilegeList().sort(PathPrivilege.referenceDescentSorter);
+        user.getPrivilegeList().sort(PathPrivilege.REFERENCE_DESCENT_SORTER);
         int privilegeNum = user.getPrivilegeList().size();
         IOUtils.writeInt(outputStream, privilegeNum, encodingBufferLocal);
         for (int i = 0; i < privilegeNum; i++) {
@@ -164,6 +166,7 @@ public class LocalFileUserAccessor implements IUserAccessor {
    * @return True if the file is successfully deleted, false if the file does not exists.
    * @throws IOException when the file cannot be deleted.
    */
+  @Override
   public boolean deleteUser(String username) throws IOException {
     File userProfile = new File(
         userDirPath + File.separator + username + IoTDBConstant.PROFILE_SUFFIX);

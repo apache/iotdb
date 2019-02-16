@@ -18,6 +18,9 @@
  */
 package org.apache.iotdb.db.concurrent;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
@@ -27,6 +30,8 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  */
 public class HashLock {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(HashLock.class);
+
   private static final int DEFAULT_LOCK_NUM = 100;
 
   private ReentrantReadWriteLock[] locks;
@@ -34,14 +39,6 @@ public class HashLock {
 
   public HashLock() {
     this.lockSize = DEFAULT_LOCK_NUM;
-    init();
-  }
-
-  public HashLock(int lockSize) {
-    if (lockSize <= 0) {
-      lockSize = DEFAULT_LOCK_NUM;
-    }
-    this.lockSize = lockSize;
     init();
   }
 
@@ -76,12 +73,12 @@ public class HashLock {
       try {
         locks[i].readLock().unlock();
       } catch (Exception ignored) {
-        // ignored
+        // do nothing
       }
       try {
         locks[i].writeLock().unlock();
       } catch (Exception ignored) {
-        // ignored
+        // do nothing
       }
     }
   }

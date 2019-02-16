@@ -39,11 +39,11 @@ public class StartupChecks {
                 + "Please check conf/{}.sh(Unix or OS X, if you use Windows, "
                 + "check conf/{}.bat) for more info",
             IoTDBConstant.ENV_FILE_NAME, IoTDBConstant.ENV_FILE_NAME);
-        jmxPort = System.getProperty(IoTDBConstant.TSFILEDB_LOCAL_JMX_PORT_NAME);
+        jmxPort = System.getProperty(IoTDBConstant.IOTDB_LOCAL_JMX_PORT_NAME);
         if (jmxPort == null) {
           LOGGER.warn("{} missing from {}.sh(Unix or OS X, if you use Windows,"
                   + " check conf/{}.bat)",
-              IoTDBConstant.TSFILEDB_LOCAL_JMX_PORT_NAME, IoTDBConstant.ENV_FILE_NAME,
+              IoTDBConstant.IOTDB_LOCAL_JMX_PORT_NAME, IoTDBConstant.ENV_FILE_NAME,
               IoTDBConstant.ENV_FILE_NAME);
         }
       } else {
@@ -56,10 +56,10 @@ public class StartupChecks {
     @Override
     public void execute() throws StartupException {
       int version = CommonUtils.getJdkVersion();
-      if (version < IoTDBConstant.minSupportedJDKVerion) {
+      if (version < IoTDBConstant.MIN_SUPPORTED_JDK_VERSION) {
         throw new StartupException(
             String.format("Requires JDK version >= %d, current version is %d",
-                IoTDBConstant.minSupportedJDKVerion, version));
+                IoTDBConstant.MIN_SUPPORTED_JDK_VERSION, version));
       } else {
         LOGGER.info("JDK veriosn is {}.", version);
       }
