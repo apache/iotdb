@@ -63,7 +63,7 @@ public class DeletionQueryTest {
       MManager.getInstance().addPathToMTree(processorName + "." + measurements[i], dataType,
               encoding, args);
       FileNodeManager.getInstance().addTimeSeries(new Path(processorName, measurements[i]), dataType,
-              encoding, args);
+              encoding);
     }
   }
 
