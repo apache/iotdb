@@ -25,7 +25,6 @@ import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.PrimitiveMemTable;
 import org.apache.iotdb.db.engine.memtable.TimeValuePairSorter;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 
@@ -74,9 +73,9 @@ public class OverflowSupport {
   public void delete(String deviceId, String measurementId, long timestamp, boolean isFlushing) {
     if (isFlushing) {
       memTable = memTable.copy();
-      memTable.delele(deviceId, measurementId, timestamp);
+      memTable.delete(deviceId, measurementId, timestamp);
     } else {
-      memTable.delele(deviceId, measurementId, timestamp);
+      memTable.delete(deviceId, measurementId, timestamp);
     }
   }
 
