@@ -20,20 +20,19 @@
 
 package org.apache.iotdb.db.integration;
 
+import static org.junit.Assert.assertEquals;
+
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
-
-import static org.junit.Assert.assertEquals;
 
 public class IoTDBDeletionIT {
   private static IoTDB daemon;
@@ -53,8 +52,8 @@ public class IoTDBDeletionIT {
   private String deleteAllTemplate = "DELETE FROM root.vehicle.d0 WHERE time <= 10000";
 
 
-  @BeforeClass
-  public static void setUp() throws Exception {
+  @Before
+  public void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.closeMemControl();
     daemon = IoTDB.getInstance();
@@ -64,10 +63,9 @@ public class IoTDBDeletionIT {
     prepareSeries();
   }
 
-  @AfterClass
-  public static void tearDown() throws Exception {
+  @After
+  public void tearDown() throws Exception {
     daemon.stop();
-    Thread.sleep(5000);
 
     EnvironmentUtils.cleanEnv();
   }
