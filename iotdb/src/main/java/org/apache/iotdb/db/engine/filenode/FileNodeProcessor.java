@@ -1978,7 +1978,8 @@ public class FileNodeProcessor extends Processor implements IStatistic {
         currentIntervalFileNode.getModFile().write(deletion);
       }
       for (IntervalFileNode fileNode : newFileNodes) {
-        if(fileNode != currentIntervalFileNode && fileNode.containsDevice(deviceId)) {
+        if(fileNode != currentIntervalFileNode && fileNode.containsDevice(deviceId)
+            && fileNode.getStartTime(deviceId) <= timestamp) {
           fileNode.getModFile().write(deletion);
         }
       }

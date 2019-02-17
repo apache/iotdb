@@ -87,17 +87,27 @@ public class SimpleFileVersionController implements VersionController {
     File[] versionFiles = directory.listFiles((dir, name) -> name.startsWith(FILE_PREFIX));
     File versionFile = null;
     if (versionFiles != null && versionFiles.length > 0) {
-      Arrays.sort(versionFiles, Comparator.comparing(File::getName));
-      versionFile = versionFiles[versionFiles.length - 1];
-      for(int i = 0; i < versionFiles.length - 1; i ++) {
-        versionFiles[i].delete();
+      long maxVersion = 0;
+      int maxVersionIndex = 0;
+      for (int i = 0; i < versionFiles.length; i ++) {
+        // extract version from "Version-123456"
+        long fileVersion = Long.parseLong(versionFiles[i].getName().split("-")[1]);
+        if (fileVersion > maxVersion) {
+          maxVersion = fileVersion;
+          maxVersionIndex = i;
+        }
+      }
+      prevVersion = maxVersion;
+      for(int i = 0; i < versionFiles.length; i ++) {
+        if (i != maxVersionIndex) {
+          versionFiles[i].delete();
+        }
       }
     } else {
       versionFile = new File(directory, FILE_PREFIX + "0");
+      prevVersion = 0;
       new FileOutputStream(versionFile).close();
     }
-    // extract version from "Version-123456"
-    prevVersion = Long.parseLong(versionFile.getName().split("-")[1]);
     // prevent overlapping in case of failure
     currVersion = prevVersion + SAVE_INTERVAL;
     persist();

@@ -515,11 +515,11 @@ public class BufferWriteProcessor extends Processor {
    * @param timestamp the upper-bound of deletion time.
    */
   public void delete(String deviceId, String measurementId, long timestamp) {
-    workMemTable.delele(deviceId, measurementId, timestamp);
+    workMemTable.delete(deviceId, measurementId, timestamp);
     if (isFlush) {
       // flushing MemTable cannot be directly modified since another thread is reading it
       flushMemTable = flushMemTable.copy();
-      flushMemTable.delele(deviceId, measurementId, timestamp);
+      flushMemTable.delete(deviceId, measurementId, timestamp);
     }
   }
 }
