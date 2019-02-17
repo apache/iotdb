@@ -54,7 +54,7 @@ public interface IMemTable {
    * @param measurementId the measurementId of the timeseries to be deleted.
    * @param timestamp the upper-bound of deletion time.
    */
-  void delele(String deviceId, String measurementId, long timestamp);
+  void delete(String deviceId, String measurementId, long timestamp);
 
   /**
    * Make a copy of this MemTable.

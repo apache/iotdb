@@ -2014,7 +2014,6 @@ public class FileNodeProcessor extends Processor implements IStatistic {
         mergingModification.write(deletion);
         updatedModFiles.add(mergingModification);
       }
-
       deleteBufferWriteFiles(deviceId, deletion, updatedModFiles);
       // delete data in memory
       OverflowProcessor overflowProcessor = getOverflowProcessor(getProcessorName());
@@ -2040,7 +2039,8 @@ public class FileNodeProcessor extends Processor implements IStatistic {
       updatedModFiles.add(currentIntervalFileNode.getModFile());
     }
     for (IntervalFileNode fileNode : newFileNodes) {
-      if (fileNode != currentIntervalFileNode && fileNode.containsDevice(deviceId)) {
+      if (fileNode != currentIntervalFileNode && fileNode.containsDevice(deviceId)
+          && fileNode.getStartTime(deviceId) <= deletion.getTimestamp()) {
         fileNode.getModFile().write(deletion);
         updatedModFiles.add(fileNode.getModFile());
       }
