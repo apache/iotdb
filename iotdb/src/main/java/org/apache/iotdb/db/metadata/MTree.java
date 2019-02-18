@@ -36,8 +36,8 @@ public class MTree implements Serializable {
   private static final long serialVersionUID = -4200394435237291964L;
   private static final String QUAD_SPACE = "    ";
   private static final String DOUB_SEPARATOR = "\\.";
-  private static final String PRE_ERROR_STRING = "Timeseries is not correct. Node[";
-  private static final String AFTER_ERROR_STRING = "] doesn't have child named:";
+  private static final String NO_CHILD_ERROR = "Timeseries is not correct. Node[%s] "
+      + "doesn't have child named:%s";
   private static final String NOT_LEAF_NODE = "Timeseries %s is not the leaf node";
   private static final String SERIES_NOT_CORRECT = "Timeseries %s is not correct";
   private static final String NOT_SERIES_PATH = "The prefix of the seriesPath %s is not one storage group seriesPath";
@@ -244,8 +244,7 @@ public class MTree implements Serializable {
     for (int i = 1; i < nodes.length; i++) {
       if (!cur.hasChild(nodes[i])) {
         throw new PathErrorException(
-                PRE_ERROR_STRING + cur.getName() + AFTER_ERROR_STRING
-                + nodes[i]);
+            String.format(NO_CHILD_ERROR,cur.getName(),nodes[i]));
       }
       cur = cur.getChild(nodes[i]);
     }
@@ -360,8 +359,7 @@ public class MTree implements Serializable {
     for (int i = 1; i < nodes.length; i++) {
       if (!cur.hasChild(nodes[i])) {
         throw new PathErrorException(
-                PRE_ERROR_STRING + cur.getName() + AFTER_ERROR_STRING
-                + nodes[i]);
+            String.format(NO_CHILD_ERROR,cur.getName(),nodes[i]));
       }
       cur = cur.getChild(nodes[i]);
     }
@@ -381,8 +379,7 @@ public class MTree implements Serializable {
     for (int i = 1; i < nodes.length; i++) {
       if (!cur.hasChild(nodes[i])) {
         throw new PathErrorException(
-                PRE_ERROR_STRING + cur.getName() + AFTER_ERROR_STRING
-                + nodes[i]);
+            String.format(NO_CHILD_ERROR,cur.getName(),nodes[i]));
       }
       cur = cur.getChild(nodes[i]);
     }
@@ -419,8 +416,7 @@ public class MTree implements Serializable {
     for (int i = 1; i < nodes.length; i++) {
       if (!cur.hasChild(nodes[i])) {
         throw new PathErrorException(
-                PRE_ERROR_STRING + cur.getName() + AFTER_ERROR_STRING
-                + nodes[i]);
+            String.format(NO_CHILD_ERROR,cur.getName(),nodes[i]));
       }
       cur = cur.getChild(nodes[i]);
       if (cur.isStorageLevel()) {
@@ -462,8 +458,7 @@ public class MTree implements Serializable {
     for (int i = 1; i < nodes.length; i++) {
       if (!cur.hasChild(nodes[i])) {
         throw new PathErrorException(
-                PRE_ERROR_STRING + cur.getName() + AFTER_ERROR_STRING
-                + nodes[i]);
+            String.format(NO_CHILD_ERROR,cur.getName(),nodes[i]));
       }
       cur = cur.getChild(nodes[i]);
     }
@@ -479,8 +474,7 @@ public class MTree implements Serializable {
     for (int i = 0; i < nodes.length; i++) {
       if (!cur.hasChild(nodes[i])) {
         throw new PathErrorException(
-                PRE_ERROR_STRING + cur.getName() + AFTER_ERROR_STRING
-                + nodes[i]);
+            String.format(NO_CHILD_ERROR,cur.getName(),nodes[i]));
       }
       cur = cur.getChild(nodes[i]);
     }
