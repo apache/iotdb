@@ -28,8 +28,12 @@ import org.apache.iotdb.db.exception.qp.LogicalOptimizeException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.crud.BasicFunctionOperator;
 import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class RemoveNotOptimizer implements IFilterOptimizer {
+
+  private static final Logger logger = LoggerFactory.getLogger(RemoveNotOptimizer.class);
 
   /**
    * get DNF(disjunctive normal form) for this filter operator tree. Before getDNF, this op tree
@@ -77,6 +81,7 @@ public class RemoveNotOptimizer implements IFilterOptimizer {
       try {
         ((BasicFunctionOperator) filter).setReversedTokenIntType();
       } catch (LogicalOperatorException e) {
+        logger.error("meet error while converting BasicFunction.", e);
         throw new LogicalOperatorException(
             "convert BasicFuntion to reserved meet failed: previous token:"
                 + tokenInt + "tokenName:" + SQLConstant.tokenNames.get(tokenInt));

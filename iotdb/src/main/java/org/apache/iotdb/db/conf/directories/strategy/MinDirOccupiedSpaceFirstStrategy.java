@@ -25,11 +25,12 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+import java.util.stream.Stream;
 
 public class MinDirOccupiedSpaceFirstStrategy extends DirectoryStrategy {
 
   // directory space is measured by MB
-  private final long dataSizeShift = 1024 * 1024;
+  private static final long DATA_SIZE_SHIFT = 1024L * 1024;
 
   @Override
   public int nextFolderIndex() {
@@ -63,12 +64,15 @@ public class MinDirOccupiedSpaceFirstStrategy extends DirectoryStrategy {
     Path folder = Paths.get(path);
     long size = 0;
     try {
-      size = Files.walk(folder).filter(p -> p.toFile().isFile()).mapToLong(p -> p.toFile().length())
-          .sum();
+      try (Stream<Path> stream = Files.walk(folder)) {
+        size = stream.filter(p -> p.toFile().isFile())
+            .mapToLong(p -> p.toFile().length())
+            .sum();
+      }
     } catch (IOException e) {
       LOGGER.error("Cannot calculate occupied space for seriesPath {}.", path);
     }
 
-    return size / dataSizeShift;
+    return size / DATA_SIZE_SHIFT;
   }
 }

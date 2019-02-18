@@ -20,6 +20,8 @@ package org.apache.iotdb.jdbc;
 
 public class Constant {
 
+  private Constant(){}
+
   public static final String GLOBAL_DB_NAME = "IoTDB";
 
   public static final String GLOBAL_DB_VERSION = "0.8.0-SNAPSHOT";
@@ -35,8 +37,8 @@ public class Constant {
   public static final String GLOBAL_COLUMNS_REQ = "ALL_COLUMNS";
 
   // catalog parameters used for DatabaseMetaData.getColumns()
-  public static final String CatalogColumn = "col";
-  public static final String CatalogTimeseries = "ts";
-  public static final String CatalogStorageGroup = "sg";
-  public static final String CatalogDevice = "delta";
+  public static final String CATALOG_COLUMN = "col";
+  public static final String CATALOG_TIMESERIES = "ts";
+  public static final String CATALOG_STORAGE_GROUP = "sg";
+  public static final String CATALOG_DEVICE = "delta";
 }

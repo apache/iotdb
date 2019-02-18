@@ -38,11 +38,11 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSFreqType;
  */
 public class ReadWriteIOUtils {
 
-  private static int SHORT_LEN = 2;
-  private static int INT_LEN = 4;
-  private static int LONG_LEN = 8;
-  private static int DOUBLE_LEN = 8;
-  private static int FLOAT_LEN = 4;
+  private static final int SHORT_LEN = 2;
+  private static final int INT_LEN = 4;
+  private static final int LONG_LEN = 8;
+  private static final int DOUBLE_LEN = 8;
+  private static final int FLOAT_LEN = 4;
 
   private ReadWriteIOUtils(){}
   /**

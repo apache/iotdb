@@ -44,7 +44,7 @@ import org.slf4j.LoggerFactory;
 public class IoTDB implements IoTDBMBean {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDB.class);
-  private final String MBEAN_NAME = String.format("%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE,
+  private final String mbeanName = String.format("%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE,
       IoTDBConstant.JMX_TYPE, "IoTDB");
   private RegisterManager registerManager = new RegisterManager();
   private ServerManager serverManager = ServerManager.getInstance();
@@ -71,7 +71,7 @@ public class IoTDB implements IoTDBMBean {
     try {
       setUp();
     } catch (StartupException e) {
-      LOGGER.error(e.getMessage());
+      LOGGER.error("meet error while starting up.", e);
       deactivate();
       LOGGER.error("{} exit", IoTDBConstant.GLOBAL_DB_NAME);
       return;
@@ -88,6 +88,7 @@ public class IoTDB implements IoTDBMBean {
     } catch (RecoverException e) {
       String errorMessage = String.format("Failed to recover system data because of %s",
           e.getMessage());
+      LOGGER.error(errorMessage);
       throw new StartupException(errorMessage);
     }
     // When registering statMonitor, we should start recovering some statistics
@@ -107,7 +108,7 @@ public class IoTDB implements IoTDBMBean {
     registerManager.register(BasicMemController.getInstance());
     registerManager.register(FileReaderManager.getInstance());
 
-    JMXService.registerMBean(getInstance(), MBEAN_NAME);
+    JMXService.registerMBean(getInstance(), mbeanName);
 
     initErrorInformation();
 
@@ -117,11 +118,11 @@ public class IoTDB implements IoTDBMBean {
   public void deactivate() {
     serverManager.closeServer();
     registerManager.deregisterAll();
-    JMXService.deregisterMBean(MBEAN_NAME);
+    JMXService.deregisterMBean(mbeanName);
   }
 
   @Override
-  public void stop() {
+  public void stop() throws FileNodeManagerException {
     deactivate();
   }
 
@@ -168,6 +169,10 @@ public class IoTDB implements IoTDBMBean {
   private static class IoTDBHolder {
 
     private static final IoTDB INSTANCE = new IoTDB();
+
+    private IoTDBHolder() {
+
+    }
   }
 
 }
