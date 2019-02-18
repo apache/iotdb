@@ -131,7 +131,7 @@ public class StatMonitor implements IService {
         mManager.setStorageLevelToMTree(prefix);
       }
     } catch (Exception e) {
-      LOGGER.error("MManager cannot set storage level to MTree, ", e);
+      LOGGER.error("MManager cannot set storage level to MTree.", e);
     }
   }
 
