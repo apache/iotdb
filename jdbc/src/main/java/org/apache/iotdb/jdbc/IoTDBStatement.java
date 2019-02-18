@@ -51,7 +51,7 @@ public class IoTDBStatement implements Statement {
 
   private static final String SHOW_TIMESERIES_COMMAND_LOWERCASE = "show timeseries";
   private static final String SHOW_STORAGE_GROUP_COMMAND_LOWERCASE = "show storage group";
-  private static final String Method_Not_Supported_String = "Method not supported";
+  private static final String METHOD_NOT_SUPPORTED_STRING = "Method not supported";
   private static final Logger LOGGER = LoggerFactory
           .getLogger(IoTDBStatement.class);
   ZoneId zoneId;
@@ -178,7 +178,7 @@ public class IoTDBStatement implements Statement {
 
   @Override
   public void closeOnCompletion() throws SQLException {
-    throw new SQLException(Method_Not_Supported_String);
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
@@ -208,17 +208,17 @@ public class IoTDBStatement implements Statement {
 
   @Override
   public boolean execute(String arg0, int arg1) throws SQLException {
-    throw new SQLException(Method_Not_Supported_String);
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean execute(String arg0, int[] arg1) throws SQLException {
-    throw new SQLException(Method_Not_Supported_String);
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean execute(String arg0, String[] arg1) throws SQLException {
-    throw new SQLException(Method_Not_Supported_String);
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   /**
@@ -379,17 +379,17 @@ public class IoTDBStatement implements Statement {
 
   @Override
   public int executeUpdate(String arg0, int arg1) throws SQLException {
-    throw new SQLException(Method_Not_Supported_String);
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public int executeUpdate(String arg0, int[] arg1) throws SQLException {
-    throw new SQLException(Method_Not_Supported_String);
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public int executeUpdate(String arg0, String[] arg1) throws SQLException {
-    throw new SQLException(Method_Not_Supported_String);
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   private int executeUpdateSQL(String sql) throws TException, IoTDBSQLException {
@@ -436,17 +436,17 @@ public class IoTDBStatement implements Statement {
 
   @Override
   public ResultSet getGeneratedKeys() throws SQLException {
-    throw new SQLException(Method_Not_Supported_String);
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public int getMaxFieldSize() throws SQLException {
-    throw new SQLException(Method_Not_Supported_String);
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public void setMaxFieldSize(int arg0) throws SQLException {
-    throw new SQLException(Method_Not_Supported_String);
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
@@ -466,12 +466,12 @@ public class IoTDBStatement implements Statement {
 
   @Override
   public boolean getMoreResults() throws SQLException {
-    throw new SQLException(Method_Not_Supported_String);
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean getMoreResults(int arg0) throws SQLException {
-    throw new SQLException(Method_Not_Supported_String);
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
@@ -496,12 +496,12 @@ public class IoTDBStatement implements Statement {
 
   @Override
   public int getResultSetConcurrency() throws SQLException {
-    throw new SQLException(Method_Not_Supported_String);
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public int getResultSetHoldability() throws SQLException {
-    throw new SQLException(Method_Not_Supported_String);
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
@@ -512,7 +512,7 @@ public class IoTDBStatement implements Statement {
 
   @Override
   public int getUpdateCount() throws SQLException {
-    throw new SQLException(Method_Not_Supported_String);
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
@@ -522,7 +522,7 @@ public class IoTDBStatement implements Statement {
 
   @Override
   public boolean isCloseOnCompletion() throws SQLException {
-    throw new SQLException(Method_Not_Supported_String);
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
@@ -532,22 +532,22 @@ public class IoTDBStatement implements Statement {
 
   @Override
   public boolean isPoolable() throws SQLException {
-    throw new SQLException(Method_Not_Supported_String);
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public void setPoolable(boolean arg0) throws SQLException {
-    throw new SQLException(Method_Not_Supported_String);
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public void setCursorName(String arg0) throws SQLException {
-    throw new SQLException(Method_Not_Supported_String);
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public void setEscapeProcessing(boolean enable) throws SQLException {
-    throw new SQLException(Method_Not_Supported_String);
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   private void checkConnection(String action) throws SQLException {
