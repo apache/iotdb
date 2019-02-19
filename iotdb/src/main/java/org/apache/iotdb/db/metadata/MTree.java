@@ -929,7 +929,7 @@ public class MTree implements Serializable {
     } else if (node.isLeaf()) {
       builder.append(":{\n");
       builder
-          .append(String.format("%s DATA_TYPE: %s,%n", getTabs(tab + 1), node.getSchema().dataType));
+          .append(String.format("%s DataType: %s,%n", getTabs(tab + 1), node.getSchema().dataType));
       builder
           .append(String.format("%s Encoding: %s,%n", getTabs(tab + 1), node.getSchema().encoding));
       builder
