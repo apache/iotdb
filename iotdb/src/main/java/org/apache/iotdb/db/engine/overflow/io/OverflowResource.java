@@ -100,7 +100,6 @@ public class OverflowResource {
       inputStream.read(updatePositionData);
       long lastInsertPosition = BytesUtils.bytesToLong(insertPositionData);
       long lastUpdatePosition = BytesUtils.bytesToLong(updatePositionData);
-      inputStream.close();
       return new Pair<>(lastInsertPosition, lastUpdatePosition);
     } catch (IOException e) {
       long left = 0;

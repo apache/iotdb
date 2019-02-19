@@ -75,11 +75,7 @@ public class FileNodeManager implements IStatistic, IService {
   private static final IoTDBConfig TsFileDBConf = IoTDBDescriptor.getInstance().getConfig();
   private static final Directories directories = Directories.getInstance();
   private final String baseDir;
-  /**
-   * Stat information.
-   */
-  private final String statStorageDeltaName = MonitorConstants.STAT_STORAGE_GROUP_PREFIX
-      + MonitorConstants.MONITOR_PATH_SEPERATOR + MonitorConstants.FILE_NODE_MANAGER_PATH;
+
   /**
    * This map is used to manage all filenode processor,<br> the key is filenode name which is
    * storage group seriesPath.
