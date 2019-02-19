@@ -18,7 +18,9 @@
  */
 package org.apache.iotdb.db.engine.bufferwrite;
 
+import static junit.framework.TestCase.assertTrue;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 
 import java.io.File;
 import java.io.IOException;
@@ -44,9 +46,11 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class BufferWriteProcessorNewTest {
-
+  private static final Logger LOGGER = LoggerFactory.getLogger(BufferWriteProcessorNewTest.class);
   Action bfflushaction = new Action() {
 
     @Override
@@ -99,15 +103,15 @@ public class BufferWriteProcessorNewTest {
         parameters, FileSchemaUtils.constructFileSchema(processorName));
     assertEquals(filename, bufferwrite.getFileName());
     assertEquals(processorName + File.separator + filename, bufferwrite.getFileRelativePath());
-    assertEquals(true, bufferwrite.isNewProcessor());
+    assertTrue(bufferwrite.isNewProcessor());
     bufferwrite.setNewProcessor(false);
-    assertEquals(false, bufferwrite.isNewProcessor());
+    assertFalse(bufferwrite.isNewProcessor());
     Pair<ReadOnlyMemChunk, List<ChunkMetaData>> pair = bufferwrite
         .queryBufferWriteData(processorName,
             measurementId, dataType);
     ReadOnlyMemChunk left = pair.left;
     List<ChunkMetaData> right = pair.right;
-    assertEquals(true, left.isEmpty());
+    assertTrue(left.isEmpty());
     assertEquals(0, right.size());
     for (int i = 1; i <= 100; i++) {
       bufferwrite.write(processorName, measurementId, i, dataType, String.valueOf(i));
@@ -116,7 +120,7 @@ public class BufferWriteProcessorNewTest {
     pair = bufferwrite.queryBufferWriteData(processorName, measurementId, dataType);
     left = pair.left;
     right = pair.right;
-    assertEquals(false, left.isEmpty());
+    assertFalse(left.isEmpty());
     int num = 1;
     Iterator<TimeValuePair> iterator = left.getIterator();
     for (; num <= 100; num++) {
@@ -125,24 +129,25 @@ public class BufferWriteProcessorNewTest {
       assertEquals(num, timeValuePair.getTimestamp());
       assertEquals(num, timeValuePair.getValue().getInt());
     }
-    assertEquals(false, bufferwrite.isFlush());
+    assertFalse(bufferwrite.isFlush());
     long lastFlushTime = bufferwrite.getLastFlushTime();
     // flush asynchronously
     bufferwrite.flush();
-    assertEquals(true, bufferwrite.getLastFlushTime() != lastFlushTime);
-    assertEquals(true, bufferwrite.canBeClosed());
+    assertTrue(bufferwrite.getLastFlushTime() != lastFlushTime);
+    assertTrue(bufferwrite.canBeClosed());
     // waiting for the end of flush.
     try {
       bufferwrite.getFlushFuture().get(10, TimeUnit.SECONDS);
     } catch (Exception e) {
       //because UT uses a mock flush operation, 10 seconds should be enough.
+      LOGGER.error(e.getMessage(),e);
       Assert.fail("mock flush spends more than 10 seconds... "
           + "Please modify the value or change a better test environment");
     }
     pair = bufferwrite.queryBufferWriteData(processorName, measurementId, dataType);
     left = pair.left;
     right = pair.right;
-    assertEquals(true, left.isEmpty());
+    assertTrue(left.isEmpty());
     assertEquals(1, right.size());
     assertEquals(measurementId, right.get(0).getMeasurementUid());
     assertEquals(dataType, right.get(0).getTsDataType());
@@ -154,7 +159,7 @@ public class BufferWriteProcessorNewTest {
     pair = bufferWriteProcessor.queryBufferWriteData(processorName, measurementId, dataType);
     left = pair.left;
     right = pair.right;
-    assertEquals(true, left.isEmpty());
+    assertTrue(left.isEmpty());
     assertEquals(1, right.size());
     assertEquals(measurementId, right.get(0).getMeasurementUid());
     assertEquals(dataType, right.get(0).getTsDataType());

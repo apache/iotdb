@@ -19,6 +19,9 @@
 package org.apache.iotdb.db.engine.bufferwrite;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertTrue;
 
 import ch.qos.logback.core.util.TimeUtil;
 import java.io.File;
@@ -50,8 +53,12 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class BufferWriteProcessorTest {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(BufferWriteProcessorTest.class);
 
   Action bfflushaction = new Action() {
 
@@ -125,7 +132,7 @@ public class BufferWriteProcessorTest {
     // check file
     String restoreFilePath = insertPath + ".restore";
     File restoreFile = new File(dataFile, restoreFilePath);
-    assertEquals(true, restoreFile.exists());
+    assertTrue(restoreFile.exists());
     File insertFile = new File(dataFile, insertPath);
     long insertFileLength = insertFile.length();
     FileOutputStream fileOutputStream = new FileOutputStream(insertFile.getPath(), true);
@@ -140,18 +147,18 @@ public class BufferWriteProcessorTest {
     BufferWriteProcessor bufferWriteProcessor = new BufferWriteProcessor(
         directories.getFolderForTest(), deviceId,
         insertPath, parameters, FileSchemaUtils.constructFileSchema(deviceId));
-    assertEquals(true, insertFile.exists());
+    assertTrue(insertFile.exists());
     assertEquals(insertFileLength, insertFile.length());
     Pair<ReadOnlyMemChunk, List<ChunkMetaData>> pair = bufferWriteProcessor
         .queryBufferWriteData(deviceId,
             measurementId, dataType);
-    assertEquals(true, pair.left.isEmpty());
+    assertTrue(pair.left.isEmpty());
     assertEquals(1, pair.right.size());
     ChunkMetaData chunkMetaData = pair.right.get(0);
     assertEquals(measurementId, chunkMetaData.getMeasurementUid());
     assertEquals(dataType, chunkMetaData.getTsDataType());
     bufferWriteProcessor.close();
-    assertEquals(false, restoreFile.exists());
+    assertFalse(restoreFile.exists());
   }
 
   @Test
@@ -169,21 +176,21 @@ public class BufferWriteProcessorTest {
     // check file
     String restoreFilePath = insertPath + ".restore";
     File restoreFile = new File(dataFile, restoreFilePath);
-    assertEquals(true, restoreFile.exists());
+    assertTrue(restoreFile.exists());
     BufferWriteProcessor bufferWriteProcessor = new BufferWriteProcessor(
         directories.getFolderForTest(), deviceId,
         insertPath, parameters, FileSchemaUtils.constructFileSchema(deviceId));
     Pair<ReadOnlyMemChunk, List<ChunkMetaData>> pair = bufferWriteProcessor
         .queryBufferWriteData(deviceId,
             measurementId, dataType);
-    assertEquals(true, pair.left.isEmpty());
+    assertTrue(pair.left.isEmpty());
     assertEquals(1, pair.right.size());
     ChunkMetaData chunkMetaData = pair.right.get(0);
     assertEquals(measurementId, chunkMetaData.getMeasurementUid());
     assertEquals(dataType, chunkMetaData.getTsDataType());
     bufferWriteProcessor.close();
     bufferwrite.close();
-    assertEquals(false, restoreFile.exists());
+    assertFalse(restoreFile.exists());
   }
 
   @Test
@@ -192,8 +199,8 @@ public class BufferWriteProcessorTest {
     bufferwrite = new BufferWriteProcessor(directories.getFolderForTest(), deviceId, insertPath,
         parameters,
         FileSchemaUtils.constructFileSchema(deviceId));
-    assertEquals(false, bufferwrite.isFlush());
-    assertEquals(true, bufferwrite.canBeClosed());
+    assertFalse(bufferwrite.isFlush());
+    assertTrue(bufferwrite.canBeClosed());
     assertEquals(0, bufferwrite.memoryUsage());
     assertEquals(TsFileIOWriter.magicStringBytes.length, bufferwrite.getFileSize());
     assertEquals(0, bufferwrite.getMetaSize());
@@ -205,22 +212,23 @@ public class BufferWriteProcessorTest {
     assertEquals(lastFlushTime, bufferwrite.getLastFlushTime());
     bufferwrite.write(deviceId, measurementId, 86, dataType, String.valueOf(86));
     //assert a flush() is called.
-    assertEquals(false, bufferwrite.getLastFlushTime()==lastFlushTime);
+    assertNotEquals(bufferwrite.getLastFlushTime(), lastFlushTime);
     // sleep to the end of flush
     try {
       bufferwrite.getFlushFuture().get(10, TimeUnit.SECONDS);
     } catch (Exception e) {
       //because UT uses a mock flush operation, 10 seconds should be enough.
+      LOGGER.error(e.getMessage(), e);
       Assert.fail("mock flush spends more than 10 seconds... "
           + "Please modify the value or change a better test environment");
     }
-    assertEquals(false, bufferwrite.isFlush());
+    assertFalse(bufferwrite.isFlush());
     assertEquals(0, bufferwrite.memoryUsage());
     // query result
     Pair<ReadOnlyMemChunk, List<ChunkMetaData>> pair = bufferwrite
         .queryBufferWriteData(deviceId, measurementId,
             dataType);
-    assertEquals(true, pair.left.isEmpty());
+    assertFalse(pair.left.isEmpty());
     assertEquals(1, pair.right.size());
     ChunkMetaData chunkMetaData = pair.right.get(0);
     assertEquals(measurementId, chunkMetaData.getMeasurementUid());
@@ -231,7 +239,7 @@ public class BufferWriteProcessorTest {
     }
     pair = bufferwrite.queryBufferWriteData(deviceId, measurementId, dataType);
     ReadOnlyMemChunk rawSeriesChunk = (ReadOnlyMemChunk) pair.left;
-    assertEquals(false, rawSeriesChunk.isEmpty());
+    assertFalse(rawSeriesChunk.isEmpty());
     assertEquals(87, rawSeriesChunk.getMinTimestamp());
     Assert.assertEquals(87, rawSeriesChunk.getValueAtMinTime().getInt());
     assertEquals(100, rawSeriesChunk.getMaxTimestamp());
