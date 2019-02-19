@@ -110,7 +110,7 @@ public class JDBCService implements JDBCServiceMBean, IService {
     }
     LOGGER.info("{}: start {}...", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
     try {
-      countDownLatch = new CountDownLatch(1);
+      countDownLatch = new CountDownLatch(0);
       jdbcServiceThread = new JDBCServiceThread(countDownLatch);
       jdbcServiceThread.setName(ThreadName.JDBC_SERVICE.getName());
       jdbcServiceThread.start();
@@ -181,7 +181,7 @@ public class JDBCService implements JDBCServiceMBean, IService {
         poolArgs.processor(processor);
         poolArgs.protocolFactory(protocolFactory);
         poolServer = new TThreadPoolServer(poolArgs);
-        poolServer.setServerEventHandler(new JDBCServiceEventHandler(impl));
+        poolServer.setServerEventHandler(new JDBCServiceEventHandler(impl, latch));
         poolServer.serve();
       } catch (TTransportException e) {
         LOGGER.error("{}: failed to start {}, because ", IoTDBConstant.GLOBAL_DB_NAME,
@@ -206,7 +206,9 @@ public class JDBCService implements JDBCServiceMBean, IService {
         serverTransport.close();
         serverTransport = null;
       }
-      latch.countDown();
+      if(latch.getCount() == 1) {
+    	latch.countDown();
+      }
     }
   }
 }

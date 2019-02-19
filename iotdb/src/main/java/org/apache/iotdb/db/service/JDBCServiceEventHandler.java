@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.service;
 
+import java.util.concurrent.CountDownLatch;
+
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.server.ServerContext;
@@ -30,9 +32,11 @@ public class JDBCServiceEventHandler implements TServerEventHandler {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(JDBCServiceEventHandler.class);
   private TSServiceImpl serviceImpl;
+  CountDownLatch latch;
 
-  public JDBCServiceEventHandler(TSServiceImpl serviceImpl) {
+  public JDBCServiceEventHandler(TSServiceImpl serviceImpl, CountDownLatch latch) {
     this.serviceImpl = serviceImpl;
+    this.latch = latch;
   }
 
   @Override
@@ -52,8 +56,7 @@ public class JDBCServiceEventHandler implements TServerEventHandler {
 
   @Override
   public void preServe() {
-    // TODO Auto-generated method stub
-
+    this.latch = new CountDownLatch(1);
   }
 
   @Override
