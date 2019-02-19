@@ -74,7 +74,9 @@ public class OverflowResource {
     updateFile = new File(dataFile, UPDATE_DELETE_FILE_NAME);
     positionFilePath = new File(dataFile, POSITION_FILE_NAME).getPath();
     Pair<Long, Long> position = readPositionInfo();
-    try(OverflowIO.OverflowReadWriter readWriter = new OverflowIO.OverflowReadWriter(insertFilePath)) {
+    try{
+      // insert stream
+      OverflowIO.OverflowReadWriter readWriter = new OverflowIO.OverflowReadWriter(insertFilePath);
       // truncate
       readWriter.wrapAsFileChannel().truncate(position.left);
       // reposition
