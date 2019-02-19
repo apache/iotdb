@@ -25,7 +25,6 @@ import java.util.Map;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
-
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -98,7 +97,7 @@ public class StatMonitor implements IService {
    * @return TSRecord contains the DataPoints of a statGroupDeltaName
    */
   public static TSRecord convertToTSRecord(HashMap<String, AtomicLong> hashMap,
-                                           String statGroupDeltaName, long curTime) {
+      String statGroupDeltaName, long curTime) {
     TSRecord tsRecord = new TSRecord(curTime, statGroupDeltaName);
     tsRecord.dataPointList = new ArrayList<DataPoint>() {
       {

@@ -27,7 +27,6 @@ import java.util.Map;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
-
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -94,8 +93,8 @@ public class BufferWriteProcessor extends Processor {
    * @throws BufferWriteProcessorException BufferWriteProcessorException
    */
   public BufferWriteProcessor(String baseDir, String processorName, String fileName,
-                              Map<String, Action> parameters, VersionController versionController,
-                              FileSchema fileSchema) throws BufferWriteProcessorException {
+      Map<String, Action> parameters, VersionController versionController,
+      FileSchema fileSchema) throws BufferWriteProcessorException {
     super(processorName);
     this.fileSchema = fileSchema;
     this.baseDir = baseDir;
@@ -182,13 +181,13 @@ public class BufferWriteProcessor extends Processor {
         return true;
       case WARNING:
         memory = MemUtils.bytesCntToStr(BasicMemController.getInstance().getTotalUsage());
-        LOGGER.warn("Memory usage will exceed warning threshold, current : {}.",memory);
+        LOGGER.warn("Memory usage will exceed warning threshold, current : {}.", memory);
         checkMemThreshold4Flush(memUsage);
         return true;
       case DANGEROUS:
       default:
         memory = MemUtils.bytesCntToStr(BasicMemController.getInstance().getTotalUsage());
-        LOGGER.warn("Memory usage will exceed dangerous threshold, current : {}.",memory);
+        LOGGER.warn("Memory usage will exceed dangerous threshold, current : {}.", memory);
         return false;
     }
   }
@@ -204,7 +203,7 @@ public class BufferWriteProcessor extends Processor {
       try {
         flush();
       } catch (IOException e) {
-        LOGGER.error("Flush bufferwrite error.",e);
+        LOGGER.error("Flush bufferwrite error.", e);
         throw new BufferWriteProcessorException(e);
       }
     }
@@ -220,8 +219,8 @@ public class BufferWriteProcessor extends Processor {
    * @return corresponding chunk data and chunk metadata in memory
    */
   public Pair<ReadOnlyMemChunk, List<ChunkMetaData>> queryBufferWriteData(String deviceId,
-                                                                          String measurementId,
-                                                                          TSDataType dataType) {
+      String measurementId,
+      TSDataType dataType) {
     flushQueryLock.lock();
     try {
       MemSeriesLazyMerger memSeriesLazyMerger = new MemSeriesLazyMerger();
@@ -270,7 +269,7 @@ public class BufferWriteProcessor extends Processor {
       if (flushMemTable != null && !flushMemTable.isEmpty()) {
         // flush data
         MemTableFlushUtil.flushMemTable(fileSchema, writer, flushMemTable,
-                version);
+            version);
         // write restore information
         writer.flush();
       }
@@ -510,6 +509,7 @@ public class BufferWriteProcessor extends Processor {
   /**
    * Delete data whose timestamp <= 'timestamp' and belonging to timeseries deviceId.measurementId.
    * Delete data in both working MemTable and flushing MemTable.
+   *
    * @param deviceId the deviceId of the timeseries to be deleted.
    * @param measurementId the measurementId of the timeseries to be deleted.
    * @param timestamp the upper-bound of deletion time.

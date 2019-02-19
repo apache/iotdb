@@ -33,7 +33,8 @@ import org.apache.iotdb.tsfile.write.schema.FileSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 /**
- * BufferWrite insert Benchmark. This class is used to bench Bufferwrite module and gets its performance.
+ * BufferWrite insert Benchmark. This class is used to bench Bufferwrite module and gets its
+ * performance.
  */
 public class BufferWriteBenchmark {
 
@@ -94,7 +95,7 @@ public class BufferWriteBenchmark {
     });
 
     BufferWriteProcessor bufferWriteProcessor = new BufferWriteProcessor("BufferBenchmark",
-            "bench", "benchFile",
+        "bench", "benchFile",
         parameters, SysTimeVersionController.INSTANCE, fileSchema);
 
     long startTime = System.currentTimeMillis();

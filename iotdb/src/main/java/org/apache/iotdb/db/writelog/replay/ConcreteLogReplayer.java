@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.writelog.replay;
 
 import java.util.List;
-
 import org.apache.iotdb.db.engine.filenode.FileNodeManager;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.PathErrorException;
@@ -92,10 +91,10 @@ public class ConcreteLogReplayer implements LogReplayer {
     for (Path path : deletePlan.getPaths()) {
       if (isOverflow) {
         FileNodeManager.getInstance().deleteOverflow(path.getDevice(), path.getMeasurement(),
-                deletePlan.getDeleteTime());
+            deletePlan.getDeleteTime());
       } else {
         FileNodeManager.getInstance().deleteBufferWrite(path.getDevice(), path.getMeasurement(),
-                deletePlan.getDeleteTime());
+            deletePlan.getDeleteTime());
       }
     }
   }

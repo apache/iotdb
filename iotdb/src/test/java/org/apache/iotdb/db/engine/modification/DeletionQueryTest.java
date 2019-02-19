@@ -19,10 +19,11 @@
 
 package org.apache.iotdb.db.engine.modification;
 
+import static org.junit.Assert.assertEquals;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-
 import org.apache.iotdb.db.engine.filenode.FileNodeManager;
 import org.apache.iotdb.db.engine.memcontrol.BasicMemController.UsageLevel;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
@@ -42,9 +43,8 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import static org.junit.Assert.assertEquals;
-
 public class DeletionQueryTest {
+
   private String processorName = "root.test";
 
   private static String[] measurements = new String[10];
@@ -61,12 +61,13 @@ public class DeletionQueryTest {
 
   @Before
   public void setup() throws MetadataArgsErrorException,
-          PathErrorException, IOException, FileNodeManagerException {
+      PathErrorException, IOException, FileNodeManagerException {
     MManager.getInstance().setStorageLevelToMTree(processorName);
     for (int i = 0; i < 10; i++) {
       MManager.getInstance().addPathToMTree(processorName + "." + measurements[i], dataType,
-              encoding, args);
-      FileNodeManager.getInstance().addTimeSeries(new Path(processorName, measurements[i]), dataType,
+          encoding, args);
+      FileNodeManager.getInstance()
+          .addTimeSeries(new Path(processorName, measurements[i]), dataType,
               encoding);
     }
   }
@@ -78,7 +79,7 @@ public class DeletionQueryTest {
 
   @Test
   public void testDeleteInBufferWriteCache() throws
-          FileNodeManagerException, IOException {
+      FileNodeManagerException, IOException {
 
     for (int i = 1; i <= 100; i++) {
       TSRecord record = new TSRecord(i, processorName);

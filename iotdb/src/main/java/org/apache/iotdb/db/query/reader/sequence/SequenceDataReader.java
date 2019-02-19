@@ -47,7 +47,7 @@ public class SequenceDataReader implements IReader {
    * init with globalSortedSeriesDataSource and filter.
    */
   public SequenceDataReader(GlobalSortedSeriesDataSource sources, Filter filter,
-                            QueryContext context)
+      QueryContext context)
       throws IOException {
     seriesReaders = new ArrayList<>();
 
@@ -58,7 +58,7 @@ public class SequenceDataReader implements IReader {
     if (sources.hasSealedTsFiles()) {
       seriesReaders.add(
           new SealedTsFilesReader(sources.getSeriesPath(), sources.getSealedTsFiles(), filter,
-                  context));
+              context));
     }
 
     // add reader for unSealed TsFile

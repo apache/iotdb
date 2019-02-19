@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.engine.memtable;
 
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.Binary;
+    import org.apache.iotdb.tsfile.utils.Binary;
 
 public interface IWritableMemChunk extends TimeValuePairSorter {
 

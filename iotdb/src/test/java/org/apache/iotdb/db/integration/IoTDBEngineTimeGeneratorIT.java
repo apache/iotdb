@@ -48,8 +48,8 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 /**
- * Notice that, all test begins with "IoTDB" is integration test. All test which will start the IoTDB server should be
- * defined as integration test.
+ * Notice that, all test begins with "IoTDB" is integration test. All test which will start the
+ * IoTDB server should be defined as integration test.
  */
 public class IoTDBEngineTimeGeneratorIT {
 
@@ -206,7 +206,7 @@ public class IoTDBEngineTimeGeneratorIT {
     OpenedFilePathsManager.getInstance().setJobIdForCurrentRequestThread(0);
     QueryContext context = new QueryContext();
     EngineTimeGenerator timeGenerator = new EngineTimeGenerator(0, singleSeriesExpression,
-            context);
+        context);
 
     int cnt = 0;
     while (timeGenerator.hasNext()) {
@@ -232,7 +232,7 @@ public class IoTDBEngineTimeGeneratorIT {
     IExpression singleSeriesExpression = new SingleSeriesExpression(pd1s0, valueGtEq);
     QueryContext context = new QueryContext();
     EngineTimeGenerator timeGenerator = new EngineTimeGenerator(0, singleSeriesExpression,
-            context);
+        context);
 
     int cnt = 0;
     while (timeGenerator.hasNext()) {

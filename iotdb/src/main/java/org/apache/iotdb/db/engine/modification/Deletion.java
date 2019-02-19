@@ -46,8 +46,9 @@ public class Deletion extends Modification {
 
   @Override
   public boolean equals(Object obj) {
-    if (!(obj instanceof Modification))
+    if (!(obj instanceof Modification)) {
       return false;
+    }
     Deletion del = (Deletion) obj;
     return super.equals(obj) && del.timestamp == this.timestamp;
   }

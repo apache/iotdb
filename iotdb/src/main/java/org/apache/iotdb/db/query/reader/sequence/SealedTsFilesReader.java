@@ -21,9 +21,7 @@ package org.apache.iotdb.db.query.reader.sequence;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
-
 import org.apache.iotdb.db.engine.filenode.IntervalFileNode;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -56,7 +54,7 @@ public class SealedTsFilesReader implements IReader {
   private QueryContext context;
 
   public SealedTsFilesReader(Path seriesPath, List<IntervalFileNode> sealedTsFiles, Filter filter,
-                             QueryContext context) {
+      QueryContext context) {
     this(seriesPath, sealedTsFiles, context);
     this.filter = filter;
 
@@ -66,7 +64,7 @@ public class SealedTsFilesReader implements IReader {
    * init with seriesPath and sealedTsFiles.
    */
   public SealedTsFilesReader(Path seriesPath, List<IntervalFileNode> sealedTsFiles,
-                             QueryContext context) {
+      QueryContext context) {
     this.seriesPath = seriesPath;
     this.sealedTsFiles = sealedTsFiles;
     this.usedIntervalFileIndex = 0;
@@ -168,17 +166,17 @@ public class SealedTsFilesReader implements IReader {
   }
 
   private void initSingleTsFileReader(IntervalFileNode fileNode, QueryContext context)
-          throws IOException {
+      throws IOException {
 
     // to avoid too many opened files
     TsFileSequenceReader tsFileReader = FileReaderManager.getInstance()
-            .get(fileNode.getFilePath(), false);
+        .get(fileNode.getFilePath(), false);
 
     MetadataQuerierByFileImpl metadataQuerier = new MetadataQuerierByFileImpl(tsFileReader);
     List<ChunkMetaData> metaDataList = metadataQuerier.getChunkMetaDataList(seriesPath);
 
     List<Modification> pathModifications = context.getPathModifications(fileNode.getModFile(),
-            seriesPath.getFullPath());
+        seriesPath.getFullPath());
     if (pathModifications.size() > 0) {
       QueryUtils.modifyChunkMetaData(metaDataList, pathModifications);
     }
