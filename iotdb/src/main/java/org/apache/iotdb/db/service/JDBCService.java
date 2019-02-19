@@ -67,11 +67,11 @@ public class JDBCService implements JDBCServiceMBean, IService {
 
   @Override
   public String getJDBCServiceStatus() {
-	if(startLatch != null && startLatch.getCount() == 0) {
-	  return STATUS_UP;
-	} else {
+    if(startLatch != null && startLatch.getCount() == 0) {
+      return STATUS_UP;
+    } else {
       return STATUS_DOWN;
-	}
+    }
   }
 
   @Override
