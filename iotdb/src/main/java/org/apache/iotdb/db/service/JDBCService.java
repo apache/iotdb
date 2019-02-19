@@ -55,7 +55,8 @@ public class JDBCService implements JDBCServiceMBean, IService {
   private Processor<TSIService.Iface> processor;
   private TThreadPoolServer.Args poolArgs;
   private TSServiceImpl impl;
-  private CountDownLatch countDownLatch;
+  private CountDownLatch startLatch;
+  private CountDownLatch stopLatch;
 
   private JDBCService() {
   }
@@ -66,11 +67,11 @@ public class JDBCService implements JDBCServiceMBean, IService {
 
   @Override
   public String getJDBCServiceStatus() {
-    if(countDownLatch == null || countDownLatch.getCount() == 0){
+	if(startLatch != null && startLatch.getCount() == 0) {
+	  return STATUS_UP;
+	} else {
       return STATUS_DOWN;
-    } else{
-      return STATUS_UP;
-    }
+	}
   }
 
   @Override
@@ -110,11 +111,12 @@ public class JDBCService implements JDBCServiceMBean, IService {
     }
     LOGGER.info("{}: start {}...", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
     try {
-      countDownLatch = new CountDownLatch(0);
-      jdbcServiceThread = new JDBCServiceThread(countDownLatch);
+      reset();
+      jdbcServiceThread = new JDBCServiceThread(startLatch, stopLatch);
       jdbcServiceThread.setName(ThreadName.JDBC_SERVICE.getName());
       jdbcServiceThread.start();
-    } catch (IOException e) {
+      startLatch.await();
+    } catch (IOException | InterruptedException e) {
       String errorMessage = String
           .format("Failed to start %s because of %s", this.getID().getName(),
               e.getMessage());
@@ -124,6 +126,11 @@ public class JDBCService implements JDBCServiceMBean, IService {
 
     LOGGER.info("{}: start {} successfully, listening on port {}", IoTDBConstant.GLOBAL_DB_NAME,
         this.getID().getName(), IoTDBDescriptor.getInstance().getConfig().rpcPort);
+  }
+  
+  private void reset() {
+    startLatch = new CountDownLatch(1);
+    stopLatch = new CountDownLatch(1);	  
   }
 
   @Override
@@ -143,7 +150,8 @@ public class JDBCService implements JDBCServiceMBean, IService {
       ((JDBCServiceThread) jdbcServiceThread).close();
     }
     try {
-      countDownLatch.await();
+      stopLatch.await();
+      reset();
       LOGGER.info("{}: close {} successfully", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
     } catch (InterruptedException e) {
       LOGGER.error("{}: close {} failed because {}", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName(), e);
@@ -162,13 +170,15 @@ public class JDBCService implements JDBCServiceMBean, IService {
 
     private TServerSocket serverTransport;
     private TServer poolServer;
-    private CountDownLatch latch;
+    private CountDownLatch threadStartLatch;
+    private CountDownLatch threadStopLatch;
 
-    public JDBCServiceThread(CountDownLatch latch) throws IOException {
+    public JDBCServiceThread(CountDownLatch threadStartLatch, CountDownLatch threadStopLatch) throws IOException {
       protocolFactory = new TBinaryProtocol.Factory();
       impl = new TSServiceImpl();
       processor = new TSIService.Processor<>(impl);
-      this.latch = latch;
+      this.threadStartLatch = threadStartLatch;
+      this.threadStopLatch = threadStopLatch;
     }
 
     @Override
@@ -181,7 +191,7 @@ public class JDBCService implements JDBCServiceMBean, IService {
         poolArgs.processor(processor);
         poolArgs.protocolFactory(protocolFactory);
         poolServer = new TThreadPoolServer(poolArgs);
-        poolServer.setServerEventHandler(new JDBCServiceEventHandler(impl, latch));
+        poolServer.setServerEventHandler(new JDBCServiceEventHandler(impl, threadStartLatch));
         poolServer.serve();
       } catch (TTransportException e) {
         LOGGER.error("{}: failed to start {}, because ", IoTDBConstant.GLOBAL_DB_NAME,
@@ -201,13 +211,12 @@ public class JDBCService implements JDBCServiceMBean, IService {
         poolServer.stop();
         poolServer = null;
       }
-
       if (serverTransport != null) {
         serverTransport.close();
         serverTransport = null;
       }
-      if(latch.getCount() == 1) {
-    	latch.countDown();
+      if (threadStopLatch.getCount() == 1) {
+    	threadStopLatch.countDown();
       }
     }
   }

@@ -32,11 +32,11 @@ public class JDBCServiceEventHandler implements TServerEventHandler {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(JDBCServiceEventHandler.class);
   private TSServiceImpl serviceImpl;
-  CountDownLatch latch;
+  CountDownLatch startLatch;
 
-  public JDBCServiceEventHandler(TSServiceImpl serviceImpl, CountDownLatch latch) {
+  public JDBCServiceEventHandler(TSServiceImpl serviceImpl, CountDownLatch startLatch) {
     this.serviceImpl = serviceImpl;
-    this.latch = latch;
+    this.startLatch = startLatch;
   }
 
   @Override
@@ -56,7 +56,7 @@ public class JDBCServiceEventHandler implements TServerEventHandler {
 
   @Override
   public void preServe() {
-    this.latch = new CountDownLatch(1);
+    this.startLatch.countDown();
   }
 
   @Override
