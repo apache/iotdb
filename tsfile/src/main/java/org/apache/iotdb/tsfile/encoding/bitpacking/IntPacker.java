@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.encoding.bitpacking;
 
 /**
@@ -53,13 +54,13 @@ public class IntPacker {
   }
 
   /**
-   * Encode 8 ({@link IntPacker#NUM_OF_INTS}) Integers from the array 'values'
-   * with specified bit-width to bytes.
+   * Encode 8 ({@link IntPacker#NUM_OF_INTS}) Integers from the array 'values' with specified
+   * bit-width to bytes.
+   *
    * @param values - array where '8 Integers' are in
    * @param offset - the offset of first Integer to be encoded
-   * @param buf    - encoded bytes, buf size must be equal to
-   *               ({@link IntPacker#NUM_OF_INTS} * {@link IntPacker#width} /
-   *               8)
+   * @param buf - encoded bytes, buf size must be equal to ({@link IntPacker#NUM_OF_INTS} * {@link
+   * IntPacker#width} / 8)
    */
   public void pack8Values(int[] values, int offset, byte[] buf) {
     int bufIdx = 0;
@@ -92,7 +93,6 @@ public class IntPacker {
         // put the first 'leftSize' bits of the Integer into remaining space of the buffer
         buffer |= (values[valueIdx] >>> (width - leftSize));
         leftBit = width - leftSize;
-        leftSize = 0;
       }
 
       // put the buffer into the final result
@@ -109,9 +109,10 @@ public class IntPacker {
   /**
    * decode Integers from byte array.
    *
-   * @param buf    - array where bytes are in.
+   * @param buf - array where bytes are in.
    * @param offset - offset of first byte to be decoded in buf
-   * @param values - decoded result , the length of 'values' should be @{link IntPacker#NUM_OF_INTS}
+   * @param values - decoded result , the length of 'values' should be @{link
+   * IntPacker#NUM_OF_INTS}
    */
   public void unpack8Values(byte[] buf, int offset, int[] values) {
     int byteIdx = offset;
@@ -125,7 +126,7 @@ public class IntPacker {
       // If current available bits are not enough to decode one Integer,
       // then add next byte from buf to 'buffer' until totalBits >= width
       while (totalBits < width) {
-        buffer = ((buffer << 8) | (buf[byteIdx] & 0xFF));
+        buffer = (buffer << 8) | (buf[byteIdx] & 0xFF);
         byteIdx++;
         totalBits += 8;
       }
@@ -137,21 +138,20 @@ public class IntPacker {
         values[valueIdx] = (int) (buffer >>> (totalBits - width));
         valueIdx++;
         totalBits -= width;
-        buffer = (buffer & ((1 << totalBits) - 1));
+        buffer = buffer & ((1 << totalBits) - 1);
       }
     }
   }
 
   /**
-   * decode all values from 'buf' with specified offset and length decoded result
-   * will be saved in the array named 'values'.
+   * decode all values from 'buf' with specified offset and length decoded result will be saved in
+   * the array named 'values'.
    *
-   * @param buf    array where all bytes are in.
-   * @param offset the offset of first byte to be decoded in buf.
+   * @param buf array where all bytes are in.
    * @param length length of bytes to be decoded in buf.
    * @param values decoded result.
    */
-  public void unpackAllValues(byte[] buf, int offset, int length, int[] values) {
+  public void unpackAllValues(byte[] buf, int length, int[] values) {
     int idx = 0;
     int k = 0;
     while (idx < length) {

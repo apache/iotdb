@@ -33,7 +33,7 @@ import org.slf4j.LoggerFactory;
  */
 public class RowGroupBlockMetaDataCache {
 
-  private static Logger LOGGER = LoggerFactory.getLogger(RowGroupBlockMetaDataCache.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(RowGroupBlockMetaDataCache.class);
 
   private static final int CACHE_SIZE = 100;
   /**

@@ -60,6 +60,11 @@ public class RecordMemController extends BasicMemController {
     totalMemUsed.set(0);
   }
 
+  @Override
+  public void close() {
+    super.close();
+  }
+
   /**
    * get the current memory usage level.
    */

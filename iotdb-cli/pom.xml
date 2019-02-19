@@ -142,5 +142,17 @@
                 <cli.it.skip>true</cli.it.skip>
             </properties>
         </profile>
+        <profile>
+            <id>skipUT_CliTests</id>
+            <activation>
+                <property>
+                    <name>skipUTs</name>
+                    <value>true</value>
+                </property>
+            </activation>
+            <properties>
+                <cli.ut.skip>true</cli.ut.skip>
+            </properties>
+        </profile>
     </profiles>
 </project>

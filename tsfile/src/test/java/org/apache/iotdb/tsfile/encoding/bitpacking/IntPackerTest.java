@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.encoding.bitpacking;
 
 import static org.junit.Assert.assertEquals;
@@ -49,7 +50,7 @@ public class IntPackerTest {
       }
     }
     int res[] = new int[count * 8];
-    packer.unpackAllValues(bb, 0, bb.length, res);
+    packer.unpackAllValues(bb, bb.length, res);
 
     for (int i = 0; i < count * 8; i++) {
       int v = preValues.get(i);

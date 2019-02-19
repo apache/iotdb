@@ -16,10 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.encoding.decoder;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.encoding.bitpacking.IntPacker;
 import org.apache.iotdb.tsfile.encoding.common.EndianType;
 import org.apache.iotdb.tsfile.exception.encoding.TsFileDecodingException;
@@ -62,8 +64,7 @@ public class IntRleDecoder extends RleDecoder {
   /**
    * read an int value from InputStream.
    *
-   * @param buffer
-   *            - ByteBuffer
+   * @param buffer - ByteBuffer
    * @return value - current valid value
    */
   @Override
@@ -84,7 +85,7 @@ public class IntRleDecoder extends RleDecoder {
       }
     }
     --currentCount;
-    int result = 0;
+    int result;
     switch (mode) {
       case RLE:
         result = currentValue;
@@ -116,18 +117,14 @@ public class IntRleDecoder extends RleDecoder {
 
   @Override
   protected void readBitPackingBuffer(int bitPackedGroupCount, int lastBitPackedNum) {
-    currentBuffer = new int[bitPackedGroupCount * config.RLE_MIN_REPEATED_NUM];
+    currentBuffer = new int[bitPackedGroupCount * TSFileConfig.RLE_MIN_REPEATED_NUM];
     byte[] bytes = new byte[bitPackedGroupCount * bitWidth];
     int bytesToRead = bitPackedGroupCount * bitWidth;
     bytesToRead = Math.min(bytesToRead, byteCache.remaining());
     byteCache.get(bytes, 0, bytesToRead);
 
     // save all int values in currentBuffer
-    packer.unpackAllValues(bytes, 0, bytesToRead, currentBuffer);
+    packer.unpackAllValues(bytes, bytesToRead, currentBuffer);
   }
 
-  @Override
-  public void reset() {
-    super.reset();
-  }
 }

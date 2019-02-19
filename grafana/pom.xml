@@ -231,5 +231,17 @@
                 <grafana.it.skip>true</grafana.it.skip>
             </properties>
         </profile>
+        <profile>
+            <id>skipUT_GrafanaTests</id>
+            <activation>
+                <property>
+                    <name>skipUTs</name>
+                    <value>true</value>
+                </property>
+            </activation>
+            <properties>
+                <grafana.ut.skip>true</grafana.ut.skip>
+            </properties>
+        </profile>
     </profiles>
 </project>

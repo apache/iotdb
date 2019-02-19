@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.encoding.encoder;
 
 import java.io.ByteArrayOutputStream;
@@ -28,6 +29,10 @@ import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 public class DoublePrecisionEncoder extends GorillaEncoder {
 
   private long preValue;
+
+  public DoublePrecisionEncoder() {
+    //do nothing
+  }
 
   @Override
   public void encode(double value, ByteArrayOutputStream out) throws IOException {

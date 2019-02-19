@@ -27,10 +27,6 @@ public class AuthException extends Exception {
 
   private static final long serialVersionUID = 5091102941209301301L;
 
-  public AuthException(String format, String userName, String roleName) {
-    super();
-  }
-
   public AuthException(String message) {
     super(message);
   }

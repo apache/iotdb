@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.encoding.common;
 
 /**
@@ -24,6 +25,10 @@ package org.apache.iotdb.tsfile.encoding.common;
  * @author xuyi
  */
 public class EncodingConfig {
+
+  private EncodingConfig() {
+    throw new IllegalAccessError("Utility class");
+  }
 
   /**
    * if number n repeats more than(>=) RLE_MAX_REPEATED_NUM times, use rle encoding, otherwise use

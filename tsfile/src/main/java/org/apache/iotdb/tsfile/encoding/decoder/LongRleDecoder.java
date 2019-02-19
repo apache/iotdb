@@ -16,10 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.encoding.decoder;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.encoding.bitpacking.LongPacker;
 import org.apache.iotdb.tsfile.encoding.common.EndianType;
 import org.apache.iotdb.tsfile.exception.encoding.TsFileDecodingException;
@@ -78,7 +80,7 @@ public class LongRleDecoder extends RleDecoder {
       }
     }
     --currentCount;
-    long result = 0;
+    long result;
     switch (mode) {
       case RLE:
         result = currentValue;
@@ -111,18 +113,14 @@ public class LongRleDecoder extends RleDecoder {
   @Override
   protected void readBitPackingBuffer(int bitPackedGroupCount, int lastBitPackedNum)
       throws IOException {
-    currentBuffer = new long[bitPackedGroupCount * config.RLE_MIN_REPEATED_NUM];
+    currentBuffer = new long[bitPackedGroupCount * TSFileConfig.RLE_MIN_REPEATED_NUM];
     byte[] bytes = new byte[bitPackedGroupCount * bitWidth];
     int bytesToRead = bitPackedGroupCount * bitWidth;
     bytesToRead = Math.min(bytesToRead, byteCache.remaining());
     byteCache.get(bytes, 0, bytesToRead);
 
     // save all long values in currentBuffer
-    packer.unpackAllValues(bytes, 0, bytesToRead, currentBuffer);
+    packer.unpackAllValues(bytes, bytesToRead, currentBuffer);
   }
 
-  @Override
-  public void reset() {
-    super.reset();
-  }
 }

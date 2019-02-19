@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.file.metadata;
 
 import java.io.IOException;
@@ -47,11 +48,11 @@ public class TsDigest {
   }
 
   public static int serializeNullTo(OutputStream outputStream) throws IOException {
-    return ReadWriteIOUtils.write(0, outputStream);// Integer.BYTES;
+    return ReadWriteIOUtils.write(0, outputStream);
   }
 
   public static int serializeNullTo(ByteBuffer buffer) {
-    return ReadWriteIOUtils.write(0, buffer);// Integer.BYTES;
+    return ReadWriteIOUtils.write(0, buffer);
   }
 
   /**
@@ -167,17 +168,16 @@ public class TsDigest {
     }
     int byteLen = 0;
     if (statistics == null || statistics.size() == 0) {
-      byteLen += ReadWriteIOUtils.write(0, outputStream);// Integer.BYTES;
+      byteLen += ReadWriteIOUtils.write(0, outputStream);
     } else {
-      byteLen += ReadWriteIOUtils.write(statistics.size(), outputStream);// Integer.BYTES;
+      byteLen += ReadWriteIOUtils.write(statistics.size(), outputStream);
       for (Map.Entry<String, ByteBuffer> entry : statistics.entrySet()) {
         byteLen += ReadWriteIOUtils
-            .write(entry.getKey(), outputStream);// Integer.BYTES+key.length()
+            .write(entry.getKey(), outputStream);
         byteLen += ReadWriteIOUtils
-            .write(entry.getValue(), outputStream);// Integer.BYTES+value.remaining();
+            .write(entry.getValue(), outputStream);
       }
     }
-    assert byteLen == getSerializedSize();
     return byteLen;
   }
 
@@ -195,16 +195,15 @@ public class TsDigest {
     int byteLen = 0;
 
     if (statistics == null || statistics.size() == 0) {
-      byteLen += ReadWriteIOUtils.write(0, buffer);// Integer.BYTES;
+      byteLen += ReadWriteIOUtils.write(0, buffer);
     } else {
-      byteLen += ReadWriteIOUtils.write(statistics.size(), buffer);// Integer.BYTES;
+      byteLen += ReadWriteIOUtils.write(statistics.size(), buffer);
       for (Map.Entry<String, ByteBuffer> entry : statistics.entrySet()) {
-        byteLen += ReadWriteIOUtils.write(entry.getKey(), buffer);// Integer.BYTES+key.length()
+        byteLen += ReadWriteIOUtils.write(entry.getKey(), buffer);
         byteLen += ReadWriteIOUtils
-            .write(entry.getValue(), buffer);// Integer.BYTES+value.remaining();
+            .write(entry.getValue(), buffer);
       }
     }
-    assert byteLen == getSerializedSize();
     return byteLen;
   }
 

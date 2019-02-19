@@ -23,17 +23,23 @@ echo Starting IoTDB
 echo ````````````````````````
 
 PATH %PATH%;%JAVA_HOME%\bin\
-for /f tokens^=2-5^ delims^=.-_^" %%j in ('java -fullversion 2^>^&1') do (
-		set "FULL_VERSION=%%j%%k%%l%%m"
-		set "MAJOR_VERSION=%%j"
-		set "MINOR_VERSION=%%k"
-	)
+set "FULL_VERSION="
+set "MAJOR_VERSION="
+set "MINOR_VERSION="
 
-IF "%MAJOR_VERSION%" == "1" (
-	set JAVA_VERSION=%MINOR_VERSION%
-) else (
-	set JAVA_VERSION=%MAJOR_VERSION%
+
+for /f tokens^=2-5^ delims^=.-_+^" %%j in ('java -fullversion 2^>^&1') do (
+	set "FULL_VERSION=%%j-%%k-%%l-%%m"
+	IF "%%j" == "1" (
+	    set "MAJOR_VERSION=%%k"
+	    set "MINOR_VERSION=%%l"
+	) else (
+	    set "MAJOR_VERSION=%%j"
+	    set "MINOR_VERSION=%%k"
+	)
 )
+
+set JAVA_VERSION=%MAJOR_VERSION%
 
 IF NOT %JAVA_VERSION% == 8 (
 	IF NOT %JAVA_VERSION% == 11 (

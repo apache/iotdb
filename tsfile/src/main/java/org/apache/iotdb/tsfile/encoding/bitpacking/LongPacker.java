@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.encoding.bitpacking;
 
 /**
@@ -93,7 +94,6 @@ public class LongPacker {
         // put the first 'leftSize' bits of the Long into remaining space of the buffer
         buffer |= (values[valueIdx] >>> (width - leftSize));
         leftBit = width - leftSize;
-        leftSize = 0;
       }
 
       // put the buffer into the final result
@@ -132,7 +132,7 @@ public class LongPacker {
         if (width - totalBits >= leftBits) {
           // then put left bits in current byte to current long value
           values[valueIdx] = values[valueIdx] << leftBits;
-          values[valueIdx] = (values[valueIdx] | ((((1L << leftBits) - 1)) & buf[byteIdx]));
+          values[valueIdx] = values[valueIdx] | (((1L << leftBits) - 1) & buf[byteIdx]);
           totalBits += leftBits;
           // get next byte
           byteIdx++;
@@ -143,8 +143,8 @@ public class LongPacker {
           // numbers of bits to be take
           int t = width - totalBits;
           values[valueIdx] = values[valueIdx] << t;
-          values[valueIdx] = (values[valueIdx]
-              | ((((1L << leftBits) - 1)) & buf[byteIdx]) >>> (leftBits - t));
+          values[valueIdx] = values[valueIdx]
+              | (((1L << leftBits) - 1) & buf[byteIdx]) >>> (leftBits - t);
           leftBits -= t;
           totalBits += t;
         }
@@ -161,11 +161,10 @@ public class LongPacker {
    * array named 'values'.
    *
    * @param buf array where all bytes are in.
-   * @param offset the offset of first byte to be decoded in buf.
    * @param length length of bytes to be decoded in buf.
    * @param values decoded result
    */
-  public void unpackAllValues(byte[] buf, int offset, int length, long[] values) {
+  public void unpackAllValues(byte[] buf, int length, long[] values) {
     int idx = 0;
     int k = 0;
     while (idx < length) {
