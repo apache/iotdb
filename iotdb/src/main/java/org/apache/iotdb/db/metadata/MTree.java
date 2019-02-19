@@ -929,13 +929,13 @@ public class MTree implements Serializable {
     } else if (node.isLeaf()) {
       builder.append(":{\n");
       builder
-          .append(String.format("%s DataType: %s,%n", getTabs(tab + 1), node.getSchema().dataType));
+          .append(String.format("%s DataType: %s,\n", getTabs(tab + 1), node.getSchema().dataType));
       builder
-          .append(String.format("%s Encoding: %s,%n", getTabs(tab + 1), node.getSchema().encoding));
+          .append(String.format("%s Encoding: %s,\n", getTabs(tab + 1), node.getSchema().encoding));
       builder
-          .append(String.format("%s args: %s,%n", getTabs(tab + 1), node.getSchema().getArgsMap()));
+          .append(String.format("%s args: %s,\n", getTabs(tab + 1), node.getSchema().getArgsMap()));
       builder.append(
-          String.format("%s StorageGroup: %s %n", getTabs(tab + 1), node.getDataFileName()));
+          String.format("%s StorageGroup: %s \n", getTabs(tab + 1), node.getDataFileName()));
       builder.append(getTabs(tab));
       builder.append("}");
     }
