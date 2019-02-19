@@ -610,6 +610,34 @@ public class OverflowProcessor extends Processor {
     // TODO : [MemControl] implement this
   }
 
+  /**
+   * Check whether current overflow file contains too many metadata or size of current overflow
+   * file is too large If true, close current file and open a new one.
+   */
+  private boolean checkSize() {
+    IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+    long metaSize = getMetaSize();
+    long fileSize = getFileSize();
+    LOGGER.info(
+        "The overflow processor {}, the size of metadata reaches {},"
+            + " the size of file reaches {}.",
+        getProcessorName(), MemUtils.bytesCntToStr(metaSize), MemUtils.bytesCntToStr(fileSize));
+    if (metaSize >= config.overflowMetaSizeThreshold
+        || fileSize >= config.overflowFileSizeThreshold) {
+      LOGGER.info(
+          "The overflow processor {}, size({}) of the file {} reaches threshold {},"
+              + " size({}) of metadata reaches threshold {}.",
+          getProcessorName(), MemUtils.bytesCntToStr(fileSize), workResource.getInsertFilePath(),
+          MemUtils.bytesCntToStr(config.overflowMetaSizeThreshold),
+          MemUtils.bytesCntToStr(metaSize),
+          MemUtils.bytesCntToStr(config.overflowMetaSizeThreshold));
+      rollToNewFile();
+      return true;
+    } else {
+      return false;
+    }
+  }
+
   public WriteLogNode getLogNode() {
     return logNode;
   }
