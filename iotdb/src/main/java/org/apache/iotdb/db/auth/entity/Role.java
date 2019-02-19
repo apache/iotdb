@@ -32,6 +32,15 @@ public class Role {
   private String name;
   private List<PathPrivilege> privilegeList;
 
+  public Role() {
+    // empty constructor
+  }
+
+  public Role(String name) {
+    this.name = name;
+    this.privilegeList = new ArrayList<>();
+  }
+
   public String getName() {
     return name;
   }
@@ -48,24 +57,16 @@ public class Role {
     this.privilegeList = privilegeList;
   }
 
-  public Role() {
-  }
-
-  public Role(String name) {
-    this.name = name;
-    this.privilegeList = new ArrayList<>();
-  }
-
   public boolean hasPrivilege(String path, int privilegeId) {
     return AuthUtils.hasPrivilege(path, privilegeId, privilegeList);
   }
 
-  public void addPrivilege(String path, int privilgeId) {
-    AuthUtils.addPrivilege(path, privilgeId, privilegeList);
+  public void addPrivilege(String path, int privilegeId) {
+    AuthUtils.addPrivilege(path, privilegeId, privilegeList);
   }
 
-  public void removePrivilege(String path, int privilgeId) {
-    AuthUtils.removePrivilege(path, privilgeId, privilegeList);
+  public void removePrivilege(String path, int privilegeId) {
+    AuthUtils.removePrivilege(path, privilegeId, privilegeList);
   }
 
   /**

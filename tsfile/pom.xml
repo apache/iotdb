@@ -143,5 +143,17 @@
                 <tsfile.it.skip>true</tsfile.it.skip>
             </properties>
         </profile>
+        <profile>
+            <id>skipUT_TsFileTests</id>
+            <activation>
+                <property>
+                    <name>skipUTs</name>
+                    <value>true</value>
+                </property>
+            </activation>
+            <properties>
+                <tsfile.ut.skip>true</tsfile.ut.skip>
+            </properties>
+        </profile>
     </profiles>
 </project>

@@ -31,6 +31,7 @@ import org.apache.thrift.server.TThreadPoolServer.Args;
  * @author liukun
  */
 public class IoTDBThreadPoolFactory {
+  private IoTDBThreadPoolFactory() {}
 
   /**
    * see {@link Executors#newFixedThreadPool(int, java.util.concurrent.ThreadFactory)}.
@@ -112,7 +113,7 @@ public class IoTDBThreadPoolFactory {
    * function for creating JDBC client thread pool.
    */
   public static ExecutorService createJDBCClientThreadPool(Args args, String poolName) {
-    SynchronousQueue<Runnable> executorQueue = new SynchronousQueue<Runnable>();
+    SynchronousQueue<Runnable> executorQueue = new SynchronousQueue<>();
     return new ThreadPoolExecutor(args.minWorkerThreads, args.maxWorkerThreads, args.stopTimeoutVal,
         args.stopTimeoutUnit, executorQueue, new IoTThreadFactory(poolName));
   }
@@ -122,7 +123,7 @@ public class IoTDBThreadPoolFactory {
    */
   public static ExecutorService createJDBCClientThreadPool(Args args, String poolName,
       Thread.UncaughtExceptionHandler handler) {
-    SynchronousQueue<Runnable> executorQueue = new SynchronousQueue<Runnable>();
+    SynchronousQueue<Runnable> executorQueue = new SynchronousQueue<>();
     return new ThreadPoolExecutor(args.minWorkerThreads, args.maxWorkerThreads, args.stopTimeoutVal,
         args.stopTimeoutUnit, executorQueue, new IoTThreadFactory(poolName, handler));
   }

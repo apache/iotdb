@@ -82,6 +82,7 @@ public class Client extends AbstractClient {
     hf.setWidth(MAX_HELP_CONSOLE_WIDTH);
     CommandLine commandLine = null;
     CommandLineParser parser = new DefaultParser();
+    String[] newArgs = null;
 
     if (args == null || args.length == 0) {
       System.out.println(
@@ -92,9 +93,9 @@ public class Client extends AbstractClient {
       return;
     }
     init();
-    args = removePasswordArgs(args);
+    newArgs = removePasswordArgs(args);
     try {
-      commandLine = parser.parse(options, args);
+      commandLine = parser.parse(options, newArgs);
       if (commandLine.hasOption(HELP_ARGS)) {
         hf.printHelp(SCRIPT_HINT, options, true);
         return;
@@ -144,7 +145,7 @@ public class Client extends AbstractClient {
             String[] cmds = s.trim().split(";");
             for (int i = 0; i < cmds.length; i++) {
               String cmd = cmds[i];
-              if (cmd != null && !cmd.trim().equals("")) {
+              if (cmd != null && !"".equals(cmd.trim())) {
                 OperationResult result = handleInputCmd(cmd, connection);
                 switch (result) {
                   case RETURN_OPER:
@@ -170,6 +171,9 @@ public class Client extends AbstractClient {
     }
   }
 
+  /**
+   * @deprecated this method has been deprecated.
+   */
   @Deprecated
   private static Completer[] getCommandCompleter() {
     List<String> candidateStrings = new ArrayList<>();
@@ -189,7 +193,7 @@ public class Client extends AbstractClient {
       @Override
       public boolean isDelimiterChar(CharSequence buffer, int pos) {
         char c = buffer.charAt(pos);
-        return (Character.isWhitespace(c) || c == '(' || c == ')' || c == ',');
+        return Character.isWhitespace(c) || c == '(' || c == ')' || c == ',';
       }
     };
     final ArgumentCompleter argCompleter = new ArgumentCompleter(delim, strCompleter);
@@ -214,7 +218,7 @@ public class Client extends AbstractClient {
     StringsCompleter setCompleter = new StringsCompleter(Arrays.asList("set", "show")) {
       @Override
       public int complete(String buffer, int cursor, List<CharSequence> candidates) {
-        return buffer != null && (buffer.equals("set") || buffer.equals("show"))
+        return buffer != null && ("set".equals(buffer) || "show".equals(buffer))
             ? super.complete(buffer, cursor, candidates) : -1;
       }
     };
@@ -248,7 +252,7 @@ public class Client extends AbstractClient {
     StringsCompleter insertCompleter = new StringsCompleter(Arrays.asList("insert")) {
       @Override
       public int complete(String buffer, int cursor, List<CharSequence> candidates) {
-        return buffer != null && (buffer.equals("insert")) ? super
+        return buffer != null && ("insert".equals(buffer)) ? super
             .complete(buffer, cursor, candidates) : -1;
       }
     };

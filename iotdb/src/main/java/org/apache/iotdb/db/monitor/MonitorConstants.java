@@ -30,8 +30,18 @@ public class MonitorConstants {
   public static final String STAT_STORAGE_GROUP_PREFIX = "root.stats";
 
   // statistic for write module
+<<<<<<< HEAD
   public static final String FILE_NODE_MANAGER_PATH = "write.global";
   public static final String FILE_NODE_PATH = "write";
+=======
+  public static final String fileNodeManagerPath = "write.global";
+  /**
+   * Stat information.
+   */
+  public static final String STAT_STORAGE_DELTA_NAME = statStorageGroupPrefix
+          + MONITOR_PATH_SEPERATOR + fileNodeManagerPath;
+  public static final String fileNodePath = "write";
+>>>>>>> 4ba7ebd05d7548977183b84629885f4420fd2d9d
 
   /**
    * function for initing values.

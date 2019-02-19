@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 #
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
@@ -107,6 +107,22 @@ if [ "$JVM_VERSION" \< "1.8" ] && [ "$JVM_PATCH_VERSION" -lt 40 ] ; then
     exit 1;
 fi
 
+version_arr=(${JVM_VERSION//./ })
+
+if [ "${version_arr[0]}" = "1" ] ; then
+  MAJOR_VERSION=${version_arr[1]}
+  IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Xloggc:${IOTDB_HOME}/gc.log -XX:+PrintGCDateStamps -XX:+PrintGCDetails"
+else
+  MAJOR_VERSION=${version_arr[0]}
+  IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Xloggc:${IOTDB_HOME}/gc.log"
+fi
+
+if [ "$MAJOR_VERSION" -ne "8" ] && [ "$MAJOR_VERSION" -ne "11" ] ; then
+  echo "IoTDB only supports jdk8 or jdk11, please check your java version."
+  exit 1;
+fi
+
+
 calculate_heap_sizes
 
 # Maximum heap size
@@ -126,9 +142,9 @@ else
 	IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Dcom.sun.management.jmxremote.port=$JMX_PORT "
 fi
 
-IOTDB_DERBY_OPTS="-Dderby.stream.error.field=org.apache.iotdb.db.auth.dao.DerbyUtil.DEV_NULL"
-
-IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Xloggc:${IOTDB_HOME}/gc.log -XX:+PrintGCDateStamps -XX:+PrintGCDetails"
 
 IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Xms${HEAP_NEWSIZE}"
 IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Xmx${MAX_HEAP_SIZE}"
+
+echo "Maximum memory allocation pool = ${MAX_HEAP_SIZE}MB, initial memory allocation pool = ${HEAP_NEWSIZE}MB"
+echo "If you want to change this configuration, please check conf/iotdb-env.sh(Unix or OS X, if you use Windows, check conf/iotdb-env.bat)."

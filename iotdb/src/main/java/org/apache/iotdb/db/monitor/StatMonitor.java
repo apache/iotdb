@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -25,6 +25,7 @@ import java.util.Map;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -98,7 +99,11 @@ public class StatMonitor implements IService {
    * @return TSRecord contains the DataPoints of a statGroupDeltaName
    */
   public static TSRecord convertToTSRecord(Map<String, AtomicLong> hashMap,
+<<<<<<< HEAD
       String statGroupDeltaName, long curTime) {
+=======
+                                           String statGroupDeltaName, long curTime) {
+>>>>>>> 4ba7ebd05d7548977183b84629885f4420fd2d9d
     TSRecord tsRecord = new TSRecord(curTime, statGroupDeltaName);
     tsRecord.dataPointList = new ArrayList<DataPoint>() {
       {
@@ -135,7 +140,7 @@ public class StatMonitor implements IService {
     }
   }
 
-  public synchronized void registStatStorageGroup(HashMap<String, String> hashMap) {
+  public synchronized void registStatStorageGroup(Map<String, String> hashMap) {
     MManager mManager = MManager.getInstance();
     try {
       for (Map.Entry<String, String> entry : hashMap.entrySet()) {
@@ -159,9 +164,13 @@ public class StatMonitor implements IService {
   public void activate() {
 
     service = IoTDBThreadPoolFactory.newScheduledThreadPool(1,
-        ThreadName.STAT_MONITOR.getName());
+            ThreadName.STAT_MONITOR.getName());
     service.scheduleAtFixedRate(
+<<<<<<< HEAD
         new StatBackLoop(), 1, backLoopPeriod, TimeUnit.SECONDS);
+=======
+            new StatMonitor.statBackLoop(), 1, backLoopPeriod, TimeUnit.SECONDS);
+>>>>>>> 4ba7ebd05d7548977183b84629885f4420fd2d9d
   }
 
   public void clearIStatisticMap() {
@@ -201,8 +210,13 @@ public class StatMonitor implements IService {
     // or FileNodeManager seriesPath:FileNodeManager
     String queryPath;
     if (key.contains("\\.")) {
+<<<<<<< HEAD
       queryPath = MonitorConstants.STAT_STORAGE_GROUP_PREFIX + MonitorConstants.MONITOR_PATH_SEPERATOR
           + key.replaceAll("\\.", "_");
+=======
+      queryPath = MonitorConstants.statStorageGroupPrefix + MonitorConstants.MONITOR_PATH_SEPERATOR
+              + key.replaceAll("\\.", "_");
+>>>>>>> 4ba7ebd05d7548977183b84629885f4420fd2d9d
     } else {
       queryPath = key;
     }
@@ -212,8 +226,8 @@ public class StatMonitor implements IService {
       long currentTimeMillis = System.currentTimeMillis();
       HashMap<String, TSRecord> hashMap = new HashMap<>();
       TSRecord tsRecord = convertToTSRecord(
-          MonitorConstants.initValues(MonitorConstants.FILENODE_PROCESSOR_CONST), queryPath,
-          currentTimeMillis);
+              MonitorConstants.initValues(MonitorConstants.FILENODE_PROCESSOR_CONST), queryPath,
+              currentTimeMillis);
       hashMap.put(queryPath, tsRecord);
       return hashMap;
     }
@@ -229,9 +243,9 @@ public class StatMonitor implements IService {
       for (Map.Entry<String, IStatistic> entry : statisticMap.entrySet()) {
         if (entry.getValue() == null) {
           tsRecordHashMap.put(entry.getKey(),
-              convertToTSRecord(
-                  MonitorConstants.initValues(MonitorConstants.FILENODE_PROCESSOR_CONST),
-                  entry.getKey(), currentTimeMillis));
+                  convertToTSRecord(
+                          MonitorConstants.initValues(MonitorConstants.FILENODE_PROCESSOR_CONST),
+                          entry.getKey(), currentTimeMillis));
         } else {
           tsRecordHashMap.putAll(entry.getValue().getAllStatisticsValue());
         }
@@ -287,8 +301,8 @@ public class StatMonitor implements IService {
       }
     } catch (Exception e) {
       String errorMessage = String
-          .format("Failed to start %s because of %s", this.getID().getName(),
-              e.getMessage());
+              .format("Failed to start %s because of %s", this.getID().getName(),
+                      e.getMessage());
       throw new StartupException(errorMessage);
     }
   }
@@ -326,13 +340,13 @@ public class StatMonitor implements IService {
             for (Map.Entry<String, IStatistic> entry : statisticMap.entrySet()) {
               for (String statParamName : entry.getValue().getStatParamsHashMap().keySet()) {
                 fManager.delete(entry.getKey(), statParamName,
-                    currentTimeMillis - statMonitorRetainIntervalSec * 1000, TSDataType.INT64);
+                        currentTimeMillis - statMonitorRetainIntervalSec * 1000, TSDataType.INT64);
               }
             }
           } catch (FileNodeManagerException e) {
             LOGGER
-                .error("Error occurred when deleting statistics information periodically, because",
-                    e);
+                    .error("Error occurred when deleting statistics information periodically, because",
+                            e);
             e.printStackTrace();
           }
         }

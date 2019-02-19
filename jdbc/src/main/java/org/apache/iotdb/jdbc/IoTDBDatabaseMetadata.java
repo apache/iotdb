@@ -29,11 +29,16 @@ import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataReq;
 import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataResp;
 import org.apache.iotdb.service.rpc.thrift.TSIService;
 import org.apache.thrift.TException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class IoTDBDatabaseMetadata implements DatabaseMetaData {
 
   private IoTDBConnection connection;
   private TSIService.Iface client;
+  private static final Logger LOGGER = LoggerFactory
+          .getLogger(IoTDBDatabaseMetadata.class);
+  private static final String METHOD_NOT_SUPPORTED_STRING = "Method not supported";
 
   public IoTDBDatabaseMetadata(IoTDBConnection connection, TSIService.Iface client) {
     this.connection = connection;
@@ -122,68 +127,68 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
   @Override
   public boolean isWrapperFor(Class<?> arg0) throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public <T> T unwrap(Class<T> iface) throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean allProceduresAreCallable() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean allTablesAreSelectable() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean autoCommitFailureClosesAllResultSets() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean dataDefinitionCausesTransactionCommit() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean dataDefinitionIgnoredInTransactions() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean deletesAreDetected(int arg0) throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean doesMaxRowSizeIncludeBlobs() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean generatedKeyAlwaysReturned() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public ResultSet getAttributes(String arg0, String arg1, String arg2, String arg3)
       throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
@@ -191,38 +196,38 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
       boolean arg4)
       throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public String getCatalogSeparator() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public String getCatalogTerm() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public ResultSet getCatalogs() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public ResultSet getClientInfoProperties() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public ResultSet getColumnPrivileges(String arg0, String arg1, String arg2,
       String arg3) throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
@@ -235,7 +240,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
       String arg4, String arg5)
       throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
@@ -281,57 +286,57 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
   @Override
   public String getDriverName() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public String getDriverVersion() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public ResultSet getExportedKeys(String arg0, String arg1, String arg2) throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public String getExtraNameCharacters() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public ResultSet getFunctionColumns(String arg0, String arg1, String arg2, String arg3)
       throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public ResultSet getFunctions(String arg0, String arg1, String arg2) throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public String getIdentifierQuoteString() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public ResultSet getImportedKeys(String arg0, String arg1, String arg2) throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public ResultSet getIndexInfo(String arg0, String arg1, String arg2, boolean arg3, boolean arg4)
       throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
@@ -469,39 +474,39 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
   @Override
   public String getNumericFunctions() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public ResultSet getPrimaryKeys(String arg0, String arg1, String arg2) throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public ResultSet getProcedureColumns(String arg0, String arg1, String arg2, String arg3)
       throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public String getProcedureTerm() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public ResultSet getProcedures(String arg0, String arg1, String arg2) throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public ResultSet getPseudoColumns(String catalog, String schemaPattern, String tableNamePattern,
       String columnNamePattern) throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
@@ -513,13 +518,13 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
   @Override
   public RowIdLifetime getRowIdLifetime() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public String getSQLKeywords() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
@@ -531,64 +536,64 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
   @Override
   public String getSchemaTerm() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public ResultSet getSchemas() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public ResultSet getSchemas(String catalog, String schemaPattern) throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public String getSearchStringEscape() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public String getStringFunctions() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public ResultSet getSuperTables(String catalog, String schemaPattern, String tableNamePattern)
       throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public ResultSet getSuperTypes(String catalog, String schemaPattern, String typeNamePattern)
       throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public String getSystemFunctions() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public ResultSet getTablePrivileges(String catalog, String schemaPattern, String tableNamePattern)
       throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public ResultSet getTableTypes() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
@@ -596,19 +601,19 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
       String[] types)
       throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public String getTimeDateFunctions() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public ResultSet getTypeInfo() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
@@ -616,7 +621,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
       int[] types)
       throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
@@ -628,563 +633,564 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
   @Override
   public String getUserName() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public ResultSet getVersionColumns(String catalog, String schema, String table)
       throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean insertsAreDetected(int type) throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean isCatalogAtStart() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean isReadOnly() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean locatorsUpdateCopy() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean nullPlusNonNullIsNull() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean nullsAreSortedAtEnd() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean nullsAreSortedAtStart() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean nullsAreSortedHigh() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean nullsAreSortedLow() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean othersDeletesAreVisible(int type) throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean othersInsertsAreVisible(int type) throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean othersUpdatesAreVisible(int type) throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean ownDeletesAreVisible(int type) throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean ownInsertsAreVisible(int type) throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean ownUpdatesAreVisible(int type) throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean storesLowerCaseIdentifiers() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean storesLowerCaseQuotedIdentifiers() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean storesMixedCaseIdentifiers() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean storesMixedCaseQuotedIdentifiers() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean storesUpperCaseIdentifiers() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean storesUpperCaseQuotedIdentifiers() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean supportsANSI92EntryLevelSQL() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean supportsANSI92FullSQL() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean supportsANSI92IntermediateSQL() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean supportsAlterTableWithAddColumn() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean supportsAlterTableWithDropColumn() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean supportsBatchUpdates() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean supportsCatalogsInDataManipulation() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean supportsCatalogsInIndexDefinitions() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean supportsCatalogsInPrivilegeDefinitions() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean supportsCatalogsInProcedureCalls() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean supportsCatalogsInTableDefinitions() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean supportsColumnAliasing() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean supportsConvert() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean supportsConvert(int fromType, int toType) throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean supportsCoreSQLGrammar() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean supportsCorrelatedSubqueries() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean supportsDataDefinitionAndDataManipulationTransactions() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean supportsDataManipulationTransactionsOnly() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean supportsDifferentTableCorrelationNames() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean supportsExpressionsInOrderBy() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean supportsExtendedSQLGrammar() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean supportsFullOuterJoins() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean supportsGetGeneratedKeys() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean supportsGroupBy() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean supportsGroupByBeyondSelect() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean supportsGroupByUnrelated() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean supportsIntegrityEnhancementFacility() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean supportsLikeEscapeClause() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean supportsLimitedOuterJoins() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean supportsMinimumSQLGrammar() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean supportsMixedCaseIdentifiers() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean supportsMixedCaseQuotedIdentifiers() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean supportsMultipleOpenResults() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean supportsMultipleResultSets() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean supportsMultipleTransactions() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean supportsNamedParameters() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean supportsNonNullableColumns() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean supportsOpenCursorsAcrossCommit() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean supportsOpenCursorsAcrossRollback() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean supportsOpenStatementsAcrossCommit() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean supportsOpenStatementsAcrossRollback() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean supportsOrderByUnrelated() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean supportsOuterJoins() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean supportsPositionedDelete() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean supportsPositionedUpdate() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean supportsResultSetConcurrency(int type, int concurrency) throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean supportsResultSetHoldability(int holdability) throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean supportsResultSetType(int type) throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean supportsSavepoints() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean supportsSchemasInDataManipulation() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean supportsSchemasInIndexDefinitions() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean supportsSchemasInPrivilegeDefinitions() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean supportsSchemasInProcedureCalls() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean supportsSchemasInTableDefinitions() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean supportsSelectForUpdate() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean supportsStatementPooling() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean supportsStoredFunctionsUsingCallSyntax() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean supportsStoredProcedures() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean supportsSubqueriesInComparisons() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean supportsSubqueriesInExists() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean supportsSubqueriesInIns() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean supportsSubqueriesInQuantifieds() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean supportsTableCorrelationNames() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean supportsTransactionIsolationLevel(int level) throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean supportsTransactions() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean supportsUnion() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean supportsUnionAll() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean updatesAreDetected(int type) throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean usesLocalFilePerTable() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
   @Override
   public boolean usesLocalFiles() throws SQLException {
     // TODO Auto-generated method stub
-    throw new SQLException("Method not supported");
+    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
   }
 
-  /*
+  /**
+   * @deprecated
    * recommend using getMetadataInJson() instead of toString()
    */
   @Deprecated
@@ -1193,6 +1199,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     try {
       return getMetadataInJsonFunc();
     } catch (IoTDBSQLException e) {
+      LOGGER.error("Failed to fetch metadata in json because: ", e);
       System.out.println("Failed to fetch metadata in json because: " + e);
     } catch (TException e) {
       boolean flag = connection.reconnect();
@@ -1201,6 +1208,8 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         try {
           return getMetadataInJsonFunc();
         } catch (TException e2) {
+          LOGGER.error("Fail to get all timeseries " + "info after reconnecting."
+                  + " please check server status", e2);
           System.out.println(
               "Fail to get all timeseries " + "info after reconnecting."
                   + " please check server status");
@@ -1208,6 +1217,8 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
           // ignored
         }
       } else {
+        LOGGER.error("Fail to reconnect to server "
+                + "when getting all timeseries info. please check server status");
         System.out.println("Fail to reconnect to server "
             + "when getting all timeseries info. please check server status");
       }

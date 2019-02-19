@@ -40,7 +40,7 @@ public class Directories {
   private DirectoryStrategy strategy;
 
   private Directories() {
-    tsfileFolders = new ArrayList<String>(
+    tsfileFolders = new ArrayList<>(
         Arrays.asList(IoTDBDescriptor.getInstance().getConfig().getBufferWriteDirs()));
     initFolders();
 
@@ -88,9 +88,7 @@ public class Directories {
    * @return next folder index
    */
   public int getNextFolderIndexForTsFile() {
-    int index = 0;
-    index = strategy.nextFolderIndex();
-    return index;
+    return strategy.nextFolderIndex();
   }
 
   public String getTsFileFolder(int index) {
@@ -106,7 +104,6 @@ public class Directories {
   }
 
   private static class DirectoriesHolder {
-
     private static final Directories INSTANCE = new Directories();
   }
 }

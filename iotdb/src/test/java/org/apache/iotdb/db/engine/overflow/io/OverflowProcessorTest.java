@@ -98,7 +98,11 @@ public class OverflowProcessorTest {
     assertEquals(false, processor.isFlush());
     overflowSeriesDataSource = processor
         .query(OverflowTestUtils.deviceId1, OverflowTestUtils.measurementId1,
+<<<<<<< HEAD:iotdb/src/test/java/org/apache/iotdb/db/engine/overflow/io/OverflowProcessorTest.java
             OverflowTestUtils.dataType1);
+=======
+                OverflowTestUtils.dataType1);
+>>>>>>> 4ba7ebd05d7548977183b84629885f4420fd2d9d:iotdb/src/test/java/org/apache/iotdb/db/engine/overflow/io/OverflowProcessorTest.java
     assertEquals(OverflowTestUtils.dataType1, overflowSeriesDataSource.getDataType());
     Assert.assertEquals(false, overflowSeriesDataSource.getReadableMemChunk().isEmpty());
     assertEquals(1, overflowSeriesDataSource.getOverflowInsertFileList().size());
@@ -113,7 +117,11 @@ public class OverflowProcessorTest {
     processor.close();
     overflowSeriesDataSource = processor
         .query(OverflowTestUtils.deviceId1, OverflowTestUtils.measurementId1,
+<<<<<<< HEAD:iotdb/src/test/java/org/apache/iotdb/db/engine/overflow/io/OverflowProcessorTest.java
             OverflowTestUtils.dataType1);
+=======
+                OverflowTestUtils.dataType1);
+>>>>>>> 4ba7ebd05d7548977183b84629885f4420fd2d9d:iotdb/src/test/java/org/apache/iotdb/db/engine/overflow/io/OverflowProcessorTest.java
     Assert.assertEquals(true, overflowSeriesDataSource.getReadableMemChunk().isEmpty());
     assertEquals(1, overflowSeriesDataSource.getOverflowInsertFileList().size());
     assertEquals(1,
@@ -121,7 +129,11 @@ public class OverflowProcessorTest {
     processor.switchWorkToMerge();
     overflowSeriesDataSource = processor
         .query(OverflowTestUtils.deviceId1, OverflowTestUtils.measurementId1,
+<<<<<<< HEAD:iotdb/src/test/java/org/apache/iotdb/db/engine/overflow/io/OverflowProcessorTest.java
             OverflowTestUtils.dataType1);
+=======
+                OverflowTestUtils.dataType1);
+>>>>>>> 4ba7ebd05d7548977183b84629885f4420fd2d9d:iotdb/src/test/java/org/apache/iotdb/db/engine/overflow/io/OverflowProcessorTest.java
     assertEquals(2, overflowSeriesDataSource.getOverflowInsertFileList().size());
     assertEquals(1,
         overflowSeriesDataSource.getOverflowInsertFileList().get(0).getChunkMetaDataList().size());
@@ -135,7 +147,11 @@ public class OverflowProcessorTest {
     processor.switchMergeToWork();
     overflowSeriesDataSource = processor
         .query(OverflowTestUtils.deviceId1, OverflowTestUtils.measurementId1,
+<<<<<<< HEAD:iotdb/src/test/java/org/apache/iotdb/db/engine/overflow/io/OverflowProcessorTest.java
             OverflowTestUtils.dataType1);
+=======
+                OverflowTestUtils.dataType1);
+>>>>>>> 4ba7ebd05d7548977183b84629885f4420fd2d9d:iotdb/src/test/java/org/apache/iotdb/db/engine/overflow/io/OverflowProcessorTest.java
     processor.close();
     processor.clear();
   }
@@ -164,10 +180,17 @@ public class OverflowProcessorTest {
     } catch (InterruptedException e) {
     }
     processor.query(OverflowTestUtils.deviceId1, OverflowTestUtils.measurementId1,
+<<<<<<< HEAD:iotdb/src/test/java/org/apache/iotdb/db/engine/overflow/io/OverflowProcessorTest.java
         OverflowTestUtils.dataType1);
     OverflowTestUtils.produceInsertData(processor);
     processor.query(OverflowTestUtils.deviceId1, OverflowTestUtils.measurementId1,
         OverflowTestUtils.dataType2);
+=======
+            OverflowTestUtils.dataType1);
+    OverflowTestUtils.produceInsertData(processor);
+    processor.query(OverflowTestUtils.deviceId1, OverflowTestUtils.measurementId1,
+            OverflowTestUtils.dataType2);
+>>>>>>> 4ba7ebd05d7548977183b84629885f4420fd2d9d:iotdb/src/test/java/org/apache/iotdb/db/engine/overflow/io/OverflowProcessorTest.java
     processor.close();
     processor.clear();
   }
