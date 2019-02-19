@@ -99,11 +99,7 @@ public class StatMonitor implements IService {
    * @return TSRecord contains the DataPoints of a statGroupDeltaName
    */
   public static TSRecord convertToTSRecord(Map<String, AtomicLong> hashMap,
-<<<<<<< HEAD
-      String statGroupDeltaName, long curTime) {
-=======
                                            String statGroupDeltaName, long curTime) {
->>>>>>> 4ba7ebd05d7548977183b84629885f4420fd2d9d
     TSRecord tsRecord = new TSRecord(curTime, statGroupDeltaName);
     tsRecord.dataPointList = new ArrayList<DataPoint>() {
       {
@@ -166,11 +162,7 @@ public class StatMonitor implements IService {
     service = IoTDBThreadPoolFactory.newScheduledThreadPool(1,
             ThreadName.STAT_MONITOR.getName());
     service.scheduleAtFixedRate(
-<<<<<<< HEAD
         new StatBackLoop(), 1, backLoopPeriod, TimeUnit.SECONDS);
-=======
-            new StatMonitor.statBackLoop(), 1, backLoopPeriod, TimeUnit.SECONDS);
->>>>>>> 4ba7ebd05d7548977183b84629885f4420fd2d9d
   }
 
   public void clearIStatisticMap() {
@@ -210,13 +202,8 @@ public class StatMonitor implements IService {
     // or FileNodeManager seriesPath:FileNodeManager
     String queryPath;
     if (key.contains("\\.")) {
-<<<<<<< HEAD
       queryPath = MonitorConstants.STAT_STORAGE_GROUP_PREFIX + MonitorConstants.MONITOR_PATH_SEPERATOR
           + key.replaceAll("\\.", "_");
-=======
-      queryPath = MonitorConstants.statStorageGroupPrefix + MonitorConstants.MONITOR_PATH_SEPERATOR
-              + key.replaceAll("\\.", "_");
->>>>>>> 4ba7ebd05d7548977183b84629885f4420fd2d9d
     } else {
       queryPath = key;
     }

@@ -287,24 +287,12 @@ public class FileNodeProcessor extends Processor implements IStatistic {
 
   @Override
   public void registStatMetadata() {
-<<<<<<< HEAD
-    HashMap<String, String> hashMap = new HashMap<String, String>() {
-      {
-        for (MonitorConstants.FileNodeProcessorStatConstants statConstant :
-            MonitorConstants.FileNodeProcessorStatConstants.values()) {
-          put(statStorageDeltaName + MonitorConstants.MONITOR_PATH_SEPERATOR + statConstant.name(),
-              MonitorConstants.DATA_TYPE);
-        }
-      }
-    };
-=======
     Map<String, String> hashMap = new HashMap<>();
     for (MonitorConstants.FileNodeProcessorStatConstants statConstant :
         MonitorConstants.FileNodeProcessorStatConstants.values()) {
       hashMap.put(statStorageDeltaName + MonitorConstants.MONITOR_PATH_SEPERATOR + statConstant.name(),
-          MonitorConstants.DataType);
+          MonitorConstants.DATA_TYPE);
     }
->>>>>>> 4ba7ebd05d7548977183b84629885f4420fd2d9d
     StatMonitor.getInstance().registStatStorageGroup(hashMap);
   }
 

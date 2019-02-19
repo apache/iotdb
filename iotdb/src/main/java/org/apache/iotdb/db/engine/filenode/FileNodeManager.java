@@ -76,14 +76,11 @@ public class FileNodeManager implements IStatistic, IService {
   private static final Directories directories = Directories.getInstance();
   private final String baseDir;
   /**
-<<<<<<< HEAD
    * Stat information.
    */
   private final String statStorageDeltaName = MonitorConstants.STAT_STORAGE_GROUP_PREFIX
       + MonitorConstants.MONITOR_PATH_SEPERATOR + MonitorConstants.FILE_NODE_MANAGER_PATH;
   /**
-=======
->>>>>>> 4ba7ebd05d7548977183b84629885f4420fd2d9d
    * This map is used to manage all filenode processor,<br> the key is filenode name which is
    * storage group seriesPath.
    */
@@ -170,17 +167,9 @@ public class FileNodeManager implements IStatistic, IService {
     Map<String, String> hashMap = new HashMap<>();
     for (MonitorConstants.FileNodeManagerStatConstants statConstant :
             MonitorConstants.FileNodeManagerStatConstants.values()) {
-<<<<<<< HEAD
-          put(statStorageDeltaName + MonitorConstants.MONITOR_PATH_SEPERATOR + statConstant.name(),
-              MonitorConstants.DATA_TYPE);
-        }
-      }
-    };
-=======
       hashMap.put(MonitorConstants.STAT_STORAGE_DELTA_NAME + MonitorConstants.MONITOR_PATH_SEPERATOR +
-              statConstant.name(), MonitorConstants.DataType);
+              statConstant.name(), MonitorConstants.DATA_TYPE);
     }
->>>>>>> 4ba7ebd05d7548977183b84629885f4420fd2d9d
     StatMonitor.getInstance().registStatStorageGroup(hashMap);
   }
 

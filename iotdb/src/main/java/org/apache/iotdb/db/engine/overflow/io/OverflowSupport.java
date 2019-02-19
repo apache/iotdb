@@ -97,13 +97,8 @@ public class OverflowSupport {
                                                TSDataType dataType,
                                                BatchData data) {
     if (indexTrees.containsKey(deviceId) && indexTrees.get(deviceId).containsKey(measurementId)
-<<<<<<< HEAD:iotdb/src/main/java/org/apache/iotdb/db/engine/overflow/io/OverflowSupport.java
         && indexTrees.get(deviceId).get(measurementId).getDataType().equals(dataType)) {
       return indexTrees.get(deviceId).get(measurementId).query();
-=======
-            && indexTrees.get(deviceId).get(measurementId).getDataType().equals(dataType)) {
-      return indexTrees.get(deviceId).get(measurementId).query(data);
->>>>>>> 4ba7ebd05d7548977183b84629885f4420fd2d9d:iotdb/src/main/java/org/apache/iotdb/db/engine/overflow/io/OverflowSupport.java
     }
     return null;
   }

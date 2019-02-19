@@ -224,7 +224,7 @@ public class MManager {
    * <code>getFileNameByPath</code> method first to check timeseries. </p>
    *
    * @param path the timeseries seriesPath
-   * @param dataType the datetype {@code DATA_TYPE} for the timeseries
+   * @param dataType the datetype {@code DataType} for the timeseries
    * @param encoding the encoding function {@code Encoding} for the timeseries
    */
   public void addPathToMTree(String path, String dataType, String encoding, String[] args)

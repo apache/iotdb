@@ -115,7 +115,6 @@ public class OverflowResource {
   }
 
   private void writePositionInfo(long lastInsertPosition, long lastUpdatePosition)
-<<<<<<< HEAD:iotdb/src/main/java/org/apache/iotdb/db/engine/overflow/io/OverflowResource.java
       throws IOException {
     try(FileOutputStream outputStream = new FileOutputStream(positionFilePath)) {
       byte[] data = new byte[16];
@@ -123,15 +122,6 @@ public class OverflowResource {
       BytesUtils.longToBytes(lastUpdatePosition, data, 8);
       outputStream.write(data);
     }
-=======
-          throws IOException {
-    FileOutputStream outputStream = new FileOutputStream(positionFilePath);
-    byte[] data = new byte[16];
-    BytesUtils.longToBytes(lastInsertPosition, data, 0);
-    BytesUtils.longToBytes(lastUpdatePosition, data, 8);
-    outputStream.write(data);
-    outputStream.close();
->>>>>>> 4ba7ebd05d7548977183b84629885f4420fd2d9d:iotdb/src/main/java/org/apache/iotdb/db/engine/overflow/io/OverflowResource.java
   }
 
   private void readMetadata() throws IOException {
@@ -181,15 +171,8 @@ public class OverflowResource {
     return chunkMetaDatas;
   }
 
-<<<<<<< HEAD:iotdb/src/main/java/org/apache/iotdb/db/engine/overflow/io/OverflowResource.java
   public void flush(FileSchema fileSchema, IMemTable memTable, String processorName)
       throws IOException {
-=======
-  public void flush(FileSchema fileSchema, IMemTable memTable,
-                    Map<String, Map<String, OverflowSeriesImpl>> overflowTrees,
-                    String processorName)
-          throws IOException {
->>>>>>> 4ba7ebd05d7548977183b84629885f4420fd2d9d:iotdb/src/main/java/org/apache/iotdb/db/engine/overflow/io/OverflowResource.java
     // insert data
     long startPos = insertIO.getPos();
     long startTime = System.currentTimeMillis();

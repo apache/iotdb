@@ -77,17 +77,10 @@ public class MonitorTest {
     Map<String, AtomicLong> statParamsHashMap = fManager.getStatParamsHashMap();
     for (String statParam : statParamsHashMap.keySet()) {
       assertEquals(true,
-<<<<<<< HEAD
           mManager.pathExist(
               MonitorConstants.STAT_STORAGE_GROUP_PREFIX + MonitorConstants.MONITOR_PATH_SEPERATOR
                   + MonitorConstants.FILE_NODE_MANAGER_PATH + MonitorConstants.MONITOR_PATH_SEPERATOR
                   + statParam));
-=======
-              mManager.pathExist(
-                      MonitorConstants.statStorageGroupPrefix + MonitorConstants.MONITOR_PATH_SEPERATOR
-                              + MonitorConstants.fileNodeManagerPath + MonitorConstants.MONITOR_PATH_SEPERATOR
-                              + statParam));
->>>>>>> 4ba7ebd05d7548977183b84629885f4420fd2d9d
     }
     statMonitor.activate();
     // wait for time second

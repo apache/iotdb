@@ -16,10 +16,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-<<<<<<< HEAD:iotdb/src/main/java/org/apache/iotdb/db/engine/overflow/io/OverflowProcessor.java
-
-=======
->>>>>>> 4ba7ebd05d7548977183b84629885f4420fd2d9d:iotdb/src/main/java/org/apache/iotdb/db/engine/overflow/io/OverflowProcessor.java
 package org.apache.iotdb.db.engine.overflow.io;
 
 import java.io.File;
@@ -203,11 +199,7 @@ public class OverflowProcessor extends Processor {
   }
 
   /**
-<<<<<<< HEAD:iotdb/src/main/java/org/apache/iotdb/db/engine/overflow/io/OverflowProcessor.java
-   * @deprecated update one time-series data which time range is from startTime from endTime.
-=======
    * @deprecated this function need to be re-implemented.
->>>>>>> 4ba7ebd05d7548977183b84629885f4420fd2d9d:iotdb/src/main/java/org/apache/iotdb/db/engine/overflow/io/OverflowProcessor.java
    */
   @Deprecated
   public void update(String deviceId, String measurementId, long startTime, long endTime,
@@ -239,15 +231,7 @@ public class OverflowProcessor extends Processor {
   }
 
   /**
-<<<<<<< HEAD:iotdb/src/main/java/org/apache/iotdb/db/engine/overflow/io/OverflowProcessor.java
-   * @param deviceId
-   * @param measurementId
-   * @param timestamp
-   * @param type
-   * @deprecated delete one time-series data which time range is from 0 to time-stamp.
-=======
    * @deprecated this method need re-implemented.
->>>>>>> 4ba7ebd05d7548977183b84629885f4420fd2d9d:iotdb/src/main/java/org/apache/iotdb/db/engine/overflow/io/OverflowProcessor.java
    */
   @Deprecated
   public void delete(String deviceId, String measurementId, long timestamp, TSDataType type) {
@@ -256,13 +240,8 @@ public class OverflowProcessor extends Processor {
   }
 
   /**
-<<<<<<< HEAD:iotdb/src/main/java/org/apache/iotdb/db/engine/overflow/io/OverflowProcessor.java
-   * query all overflow data which contain insert data in memory, insert data in file, update/delete data in memory,
-   * update/delete data in file.
-=======
    * query all overflow data which contain insert data in memory, insert data in file,
    * update/delete data in memory, update/delete data in file.
->>>>>>> 4ba7ebd05d7548977183b84629885f4420fd2d9d:iotdb/src/main/java/org/apache/iotdb/db/engine/overflow/io/OverflowProcessor.java
    *
    * @param deviceId
    * @param measurementId
@@ -271,13 +250,8 @@ public class OverflowProcessor extends Processor {
    * @throws IOException
    */
   public OverflowSeriesDataSource query(String deviceId, String measurementId,
-<<<<<<< HEAD:iotdb/src/main/java/org/apache/iotdb/db/engine/overflow/io/OverflowProcessor.java
-      TSDataType dataType)
-      throws IOException {
-=======
                                         TSDataType dataType)
           throws IOException {
->>>>>>> 4ba7ebd05d7548977183b84629885f4420fd2d9d:iotdb/src/main/java/org/apache/iotdb/db/engine/overflow/io/OverflowProcessor.java
     queryFlushLock.lock();
     try {
       // query insert data in memory and unseqTsFiles
@@ -344,19 +318,11 @@ public class OverflowProcessor extends Processor {
    * time-series.
    */
   private Pair<String, List<ChunkMetaData>> queryWorkDataInOverflowInsert(String deviceId,
-<<<<<<< HEAD:iotdb/src/main/java/org/apache/iotdb/db/engine/overflow/io/OverflowProcessor.java
-      String measurementId,
-      TSDataType dataType) {
-    return new Pair<>(
-        workResource.getInsertFilePath(),
-        workResource.getInsertMetadatas(deviceId, measurementId, dataType));
-=======
                                                                           String measurementId,
                                                                           TSDataType dataType) {
     return new Pair<>(
             workResource.getInsertFilePath(),
             workResource.getInsertMetadatas(deviceId, measurementId, dataType));
->>>>>>> 4ba7ebd05d7548977183b84629885f4420fd2d9d:iotdb/src/main/java/org/apache/iotdb/db/engine/overflow/io/OverflowProcessor.java
   }
 
   /**
@@ -405,16 +371,9 @@ public class OverflowProcessor extends Processor {
     if (!isMerge) {
       return new Pair<>(null, null);
     }
-<<<<<<< HEAD:iotdb/src/main/java/org/apache/iotdb/db/engine/overflow/io/OverflowProcessor.java
     return new Pair<>(
         mergeResource.getInsertFilePath(),
         mergeResource.getInsertMetadatas(deviceId, measurementId, dataType));
-=======
-    Pair<String, List<ChunkMetaData>> pair = new Pair<>(
-            mergeResource.getInsertFilePath(),
-            mergeResource.getInsertMetadatas(deviceId, measurementId, dataType));
-    return pair;
->>>>>>> 4ba7ebd05d7548977183b84629885f4420fd2d9d:iotdb/src/main/java/org/apache/iotdb/db/engine/overflow/io/OverflowProcessor.java
   }
 
   private void switchWorkToFlush() {
@@ -476,13 +435,8 @@ public class OverflowProcessor extends Processor {
                       flushFunction);
       // flush data
       workResource
-<<<<<<< HEAD:iotdb/src/main/java/org/apache/iotdb/db/engine/overflow/io/OverflowProcessor.java
           .flush(fileSchema, flushSupport.getMemTabale(),
               getProcessorName());
-=======
-              .flush(fileSchema, flushSupport.getMemTabale(), flushSupport.getOverflowSeriesMap(),
-                      getProcessorName());
->>>>>>> 4ba7ebd05d7548977183b84629885f4420fd2d9d:iotdb/src/main/java/org/apache/iotdb/db/engine/overflow/io/OverflowProcessor.java
       filenodeFlushAction.act();
       // write-ahead log
       if (IoTDBDescriptor.getInstance().getConfig().enableWal) {
@@ -555,11 +509,7 @@ public class OverflowProcessor extends Processor {
           logNode.notifyStartFlush();
         } catch (IOException e) {
           LOGGER.error("Overflow processor {} encountered an error when notifying log node, {}",
-<<<<<<< HEAD:iotdb/src/main/java/org/apache/iotdb/db/engine/overflow/io/OverflowProcessor.java
               getProcessorName(), e);
-=======
-                  getProcessorName(), e.getMessage());
->>>>>>> 4ba7ebd05d7548977183b84629885f4420fd2d9d:iotdb/src/main/java/org/apache/iotdb/db/engine/overflow/io/OverflowProcessor.java
         }
       }
       BasicMemController.getInstance().reportFree(this, memSize.get());
@@ -660,37 +610,6 @@ public class OverflowProcessor extends Processor {
     // TODO : [MemControl] implement this
   }
 
-<<<<<<< HEAD:iotdb/src/main/java/org/apache/iotdb/db/engine/overflow/io/OverflowProcessor.java
-=======
-  /**
-   * Check whether current overflow file contains too many metadata or size of current overflow
-   * file is too large If true, close current file and open a new one.
-   */
-  private boolean checkSize() {
-    IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-    long metaSize = getMetaSize();
-    long fileSize = getFileSize();
-    LOGGER.info(
-            "The overflow processor {}, the size of metadata reaches {},"
-                    + " the size of file reaches {}.",
-            getProcessorName(), MemUtils.bytesCntToStr(metaSize), MemUtils.bytesCntToStr(fileSize));
-    if (metaSize >= config.overflowMetaSizeThreshold
-            || fileSize >= config.overflowFileSizeThreshold) {
-      LOGGER.info(
-              "The overflow processor {}, size({}) of the file {} reaches threshold {},"
-                      + " size({}) of metadata reaches threshold {}.",
-              getProcessorName(), MemUtils.bytesCntToStr(fileSize), workResource.getInsertFilePath(),
-              MemUtils.bytesCntToStr(config.overflowMetaSizeThreshold),
-              MemUtils.bytesCntToStr(metaSize),
-              MemUtils.bytesCntToStr(config.overflowMetaSizeThreshold));
-      rollToNewFile();
-      return true;
-    } else {
-      return false;
-    }
-  }
-
->>>>>>> 4ba7ebd05d7548977183b84629885f4420fd2d9d:iotdb/src/main/java/org/apache/iotdb/db/engine/overflow/io/OverflowProcessor.java
   public WriteLogNode getLogNode() {
     return logNode;
   }
