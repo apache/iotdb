@@ -41,7 +41,7 @@ public class PrimitiveArrayListFactory {
       case TEXT:
         return new PrimitiveArrayList(Binary.class);
       default:
-        throw new UnSupportedDataTypeException("DATA_TYPE: " + dataType);
+        throw new UnSupportedDataTypeException("DataType: " + dataType);
     }
   }
 }
