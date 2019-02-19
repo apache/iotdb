@@ -45,6 +45,14 @@ public class FileNodeFlushFuture implements Future<Boolean> {
     }
   }
 
+  /**
+   * @param mayInterruptIfRunning true if the thread executing this task should be interrupted;
+   * otherwise, in-progress tasks are allowed to complete
+   * @return true if both of the two sub-future are canceled successfully.
+   * @see Future#cancel(boolean) The difference is that this Future consists of two sub-Futures. If
+   * the first sub-future is canceled successfully but the second sub-future fails, the result is
+   * false.
+   */
   @Override
   public boolean cancel(boolean mayInterruptIfRunning) {
     boolean result = bufferWriteFlushFuture.cancel(mayInterruptIfRunning);
