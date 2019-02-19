@@ -48,7 +48,7 @@ public class OverflowSupportTest {
     support.update(deviceId1, measurementId1, 20, 30, dataType1, BytesUtils.intToBytes(20));
     // time :[2,10] [20,30] value: int [10,10] int[20,20]
     // d1 s2
-    support.delete(deviceId1, measurementId2, 10, dataType1);
+    support.delete(deviceId1, measurementId2, 10, false);
     support.update(deviceId1, measurementId2, 20, 30, dataType1, BytesUtils.intToBytes(20));
     // time: [0,-10] [20,30] value[20,20]
     // d2 s1
@@ -57,7 +57,7 @@ public class OverflowSupportTest {
     // time: [5,9] [10,40] value [10.5,10.5] [20.5,20.5]
     // d2 s2
     support.update(deviceId2, measurementId2, 2, 10, dataType2, BytesUtils.floatToBytes(5.5f));
-    support.delete(deviceId2, measurementId2, 20, dataType2);
+    support.delete(deviceId2, measurementId2, 20, false);
     // time : [0,-20]
 
   }

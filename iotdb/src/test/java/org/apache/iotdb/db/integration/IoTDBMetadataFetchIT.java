@@ -43,7 +43,7 @@ import org.junit.Test;
  */
 public class IoTDBMetadataFetchIT {
 
-  private static IoTDB deamon;
+  private static IoTDB daemon;
 
   private DatabaseMetaData databaseMetaData;
 
@@ -79,8 +79,8 @@ public class IoTDBMetadataFetchIT {
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.closeMemControl();
 
-    deamon = IoTDB.getInstance();
-    deamon.active();
+    daemon = IoTDB.getInstance();
+    daemon.active();
     EnvironmentUtils.envSetUp();
 
     insertSQL();
@@ -88,7 +88,7 @@ public class IoTDBMetadataFetchIT {
 
   @After
   public void tearDown() throws Exception {
-    deamon.stop();
+    daemon.stop();
     Thread.sleep(5000);
     EnvironmentUtils.cleanEnv();
   }
@@ -366,7 +366,7 @@ public class IoTDBMetadataFetchIT {
             + "                     StorageGroup: root.ln.wf01.wt01 \n" + "                },\n"
             + "                temperature:{\n" + "                     DataType: FLOAT,\n"
             + "                     Encoding: RLE,\n"
-            + "                     args: {compressor=SNAPPY, MAX_POINT_NUMBER=3},\n"
+            + "                     args: {MAX_POINT_NUMBER=3, compressor=SNAPPY},\n"
             + "                     StorageGroup: root.ln.wf01.wt01 \n" + "                }\n"
             + "            }\n"
             + "        }\n" + "    }\n" + "}";

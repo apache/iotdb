@@ -46,4 +46,20 @@ public interface IMemTable {
 
   boolean isEmpty();
 
+  /**
+   * Delete data in it whose timestamp <= 'timestamp' and belonging to timeseries
+   * deviceId.measurementId.
+   *
+   * @param deviceId the deviceId of the timeseries to be deleted.
+   * @param measurementId the measurementId of the timeseries to be deleted.
+   * @param timestamp the upper-bound of deletion time.
+   */
+  void delete(String deviceId, String measurementId, long timestamp);
+
+  /**
+   * Make a copy of this MemTable.
+   *
+   * @return a MemTable with the same data as this one.
+   */
+  IMemTable copy();
 }

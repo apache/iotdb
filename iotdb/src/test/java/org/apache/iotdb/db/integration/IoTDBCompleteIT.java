@@ -39,20 +39,20 @@ import org.junit.Test;
  */
 public class IoTDBCompleteIT {
 
-  private IoTDB deamon;
+  private IoTDB daemon;
 
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.closeMemControl();
-    deamon = IoTDB.getInstance();
-    deamon.active();
+    daemon = IoTDB.getInstance();
+    daemon.active();
     EnvironmentUtils.envSetUp();
   }
 
   @After
   public void tearDown() throws Exception {
-    deamon.stop();
+    daemon.stop();
     Thread.sleep(5000);
     EnvironmentUtils.cleanEnv();
   }
@@ -64,6 +64,7 @@ public class IoTDBCompleteIT {
     SimpleTest();
     InsertTest();
     SelectTest();
+    DeleteTest();
   }
 
   public void SimpleTest() throws ClassNotFoundException, SQLException {
@@ -104,11 +105,11 @@ public class IoTDBCompleteIT {
             + "                 StorageGroup: root.vehicle \n" + "            }\n" + "        },\n"
             + "        d5:{\n" + "            s9:{\n" + "                 DataType: FLOAT,\n"
             + "                 Encoding: PLAIN,\n"
-            + "                 args: {compressor=SNAPPY, MAX_POINT_NUMBER=10},\n"
+            + "                 args: {MAX_POINT_NUMBER=10, compressor=SNAPPY},\n"
             + "                 StorageGroup: root.vehicle \n" + "            }\n" + "        },\n"
             + "        d6:{\n" + "            s10:{\n" + "                 DataType: DOUBLE,\n"
             + "                 Encoding: RLE,\n"
-            + "                 args: {compressor=UNCOMPRESSOR, MAX_POINT_NUMBER=10},\n"
+            + "                 args: {MAX_POINT_NUMBER=10, compressor=UNCOMPRESSOR},\n"
             + "                 StorageGroup: root.vehicle \n" + "            }\n" + "        }\n"
             + "    }\n" + "}",
         "DELETE TIMESERIES root.vehicle.*", "SHOW TIMESERIES",

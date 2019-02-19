@@ -28,6 +28,7 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
+import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.OpenedFilePathsManager;
 import org.apache.iotdb.db.query.timegenerator.EngineTimeGenerator;
 import org.apache.iotdb.db.service.IoTDB;
@@ -47,8 +48,8 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 /**
- * Notice that, all test begins with "IoTDB" is integration test. All test which will start the IoTDB server should be
- * defined as integration test.
+ * Notice that, all test begins with "IoTDB" is integration test. All test which will start the
+ * IoTDB server should be defined as integration test.
  */
 public class IoTDBEngineTimeGeneratorIT {
 
@@ -203,7 +204,9 @@ public class IoTDBEngineTimeGeneratorIT {
     SingleSeriesExpression singleSeriesExpression = new SingleSeriesExpression(pd0s0,
         FilterFactory.and(valueGtEq, timeGt));
     OpenedFilePathsManager.getInstance().setJobIdForCurrentRequestThread(0);
-    EngineTimeGenerator timeGenerator = new EngineTimeGenerator(0, singleSeriesExpression);
+    QueryContext context = new QueryContext();
+    EngineTimeGenerator timeGenerator = new EngineTimeGenerator(0, singleSeriesExpression,
+        context);
 
     int cnt = 0;
     while (timeGenerator.hasNext()) {
@@ -227,7 +230,9 @@ public class IoTDBEngineTimeGeneratorIT {
 
     OpenedFilePathsManager.getInstance().setJobIdForCurrentRequestThread(0);
     IExpression singleSeriesExpression = new SingleSeriesExpression(pd1s0, valueGtEq);
-    EngineTimeGenerator timeGenerator = new EngineTimeGenerator(0, singleSeriesExpression);
+    QueryContext context = new QueryContext();
+    EngineTimeGenerator timeGenerator = new EngineTimeGenerator(0, singleSeriesExpression,
+        context);
 
     int cnt = 0;
     while (timeGenerator.hasNext()) {
@@ -260,7 +265,8 @@ public class IoTDBEngineTimeGeneratorIT {
         .and(singleSeriesExpression1, singleSeriesExpression2);
 
     OpenedFilePathsManager.getInstance().setJobIdForCurrentRequestThread(0);
-    EngineTimeGenerator timeGenerator = new EngineTimeGenerator(0, andExpression);
+    QueryContext context = new QueryContext();
+    EngineTimeGenerator timeGenerator = new EngineTimeGenerator(0, andExpression, context);
     int cnt = 0;
     while (timeGenerator.hasNext()) {
       long time = timeGenerator.next();

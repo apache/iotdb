@@ -30,6 +30,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.commons.io.FileUtils;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.filenode.FileNodeManager;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.ProcessorException;
@@ -58,6 +59,8 @@ public class ExclusiveLogRecoverPerformer implements RecoverPerformer {
   private RecoverStage currStage;
   private LogReplayer replayer = new ConcreteLogReplayer();
   private RecoverPerformer fileNodeRecoverPerformer;
+  // recovery of Overflow maybe different from BufferWrite
+  private boolean isOverflow;
 
   /**
    * constructor of ExclusiveLogRecoverPerformer.
@@ -68,6 +71,7 @@ public class ExclusiveLogRecoverPerformer implements RecoverPerformer {
     this.processorStoreFilePath = processorStoreFilePath;
     this.writeLogNode = logNode;
     this.fileNodeRecoverPerformer = new FileNodeRecoverPerformer(writeLogNode.getIdentifier());
+    this.isOverflow = logNode.getFileNodeName().contains(IoTDBConstant.OVERFLOW_LOG_NODE_SUFFIX);
   }
 
   public void setFileNodeRecoverPerformer(RecoverPerformer fileNodeRecoverPerformer) {
@@ -276,7 +280,7 @@ public class ExclusiveLogRecoverPerformer implements RecoverPerformer {
             logger.error("Log node {} read a bad log", writeLogNode.getIdentifier());
             throw new RecoverException("Cannot read old log file, recovery aborted.");
           }
-          replayer.replay(physicalPlan);
+          replayer.replay(physicalPlan, isOverflow);
         } catch (ProcessorException e) {
           failedCnt++;
           logger.error("Log node {}, {}", writeLogNode.getLogDirectory(), e.getMessage());

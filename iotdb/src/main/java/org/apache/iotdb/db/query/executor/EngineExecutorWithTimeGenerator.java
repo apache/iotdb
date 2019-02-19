@@ -25,6 +25,7 @@ import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryDataSourceManager;
 import org.apache.iotdb.db.query.control.QueryTokenManager;
 import org.apache.iotdb.db.query.dataset.EngineDataSetWithTimeGenerator;
@@ -59,7 +60,7 @@ public class EngineExecutorWithTimeGenerator {
    * @throws IOException IOException
    * @throws FileNodeManagerException FileNodeManagerException
    */
-  public QueryDataSet execute() throws IOException, FileNodeManagerException {
+  public QueryDataSet execute(QueryContext context) throws IOException, FileNodeManagerException {
 
     QueryTokenManager.getInstance()
         .beginQueryOfGivenQueryPaths(jobId, queryExpression.getSelectedSeries());
@@ -67,10 +68,10 @@ public class EngineExecutorWithTimeGenerator {
         .beginQueryOfGivenExpression(jobId, queryExpression.getExpression());
 
     EngineTimeGenerator timestampGenerator = new EngineTimeGenerator(jobId,
-        queryExpression.getExpression());
+        queryExpression.getExpression(), context);
 
     List<EngineReaderByTimeStamp> readersOfSelectedSeries = getReadersOfSelectedPaths(
-        queryExpression.getSelectedSeries());
+        queryExpression.getSelectedSeries(), context);
 
     List<TSDataType> dataTypes = new ArrayList<>();
 
@@ -87,20 +88,22 @@ public class EngineExecutorWithTimeGenerator {
         readersOfSelectedSeries);
   }
 
-  private List<EngineReaderByTimeStamp> getReadersOfSelectedPaths(List<Path> paths)
+  private List<EngineReaderByTimeStamp> getReadersOfSelectedPaths(List<Path> paths,
+      QueryContext context)
       throws IOException, FileNodeManagerException {
 
     List<EngineReaderByTimeStamp> readersOfSelectedSeries = new ArrayList<>();
 
     for (Path path : paths) {
 
-      QueryDataSource queryDataSource = QueryDataSourceManager.getQueryDataSource(jobId, path);
+      QueryDataSource queryDataSource = QueryDataSourceManager.getQueryDataSource(jobId, path,
+          context);
 
       PriorityMergeReaderByTimestamp mergeReaderByTimestamp = new PriorityMergeReaderByTimestamp();
 
       // reader for sequence data
       SequenceDataReader tsFilesReader = new SequenceDataReader(queryDataSource.getSeqDataSource(),
-          null);
+          null, context);
       mergeReaderByTimestamp.addReaderWithPriority(tsFilesReader, 1);
 
       // reader for unSequence data

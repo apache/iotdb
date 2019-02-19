@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.qp.strategy;
 
 import java.util.List;
@@ -26,6 +27,7 @@ import org.apache.iotdb.db.exception.qp.QueryProcessorException;
 import org.apache.iotdb.db.qp.executor.QueryProcessExecutor;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.crud.BasicFunctionOperator;
+import org.apache.iotdb.db.qp.logical.crud.DeleteOperator;
 import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
 import org.apache.iotdb.db.qp.logical.crud.InsertOperator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
@@ -35,6 +37,7 @@ import org.apache.iotdb.db.qp.logical.sys.MetadataOperator;
 import org.apache.iotdb.db.qp.logical.sys.PropertyOperator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
+import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
@@ -87,13 +90,13 @@ public class PhysicalGenerator {
         PropertyOperator property = (PropertyOperator) operator;
         return new PropertyPlan(property.getPropertyType(), property.getPropertyPath(),
             property.getMetadataPath());
-      // case DELETE:
-      // DeleteOperator delete = (DeleteOperator) operator;
-      // paths = delete.getSelectedPaths();
-      // if (delete.getTime() <= 0) {
-      // throw new LogicalOperatorException("For Delete command, time must greater than 0.");
-      // }
-      // return new DeletePlan(delete.getTime(), paths);
+      case DELETE:
+        DeleteOperator delete = (DeleteOperator) operator;
+        paths = delete.getSelectedPaths();
+        if (delete.getTime() <= 0) {
+          throw new LogicalOperatorException("For Delete command, time must greater than 0.");
+        }
+        return new DeletePlan(delete.getTime(), paths);
       case INSERT:
         InsertOperator Insert = (InsertOperator) operator;
         paths = Insert.getSelectedPaths();

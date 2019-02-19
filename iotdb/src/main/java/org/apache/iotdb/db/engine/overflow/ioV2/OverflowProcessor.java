@@ -39,13 +39,16 @@ import org.apache.iotdb.db.engine.filenode.FileNodeManager;
 import org.apache.iotdb.db.engine.memcontrol.BasicMemController;
 import org.apache.iotdb.db.engine.memtable.MemSeriesLazyMerger;
 import org.apache.iotdb.db.engine.memtable.TimeValuePairSorter;
+import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.pool.FlushManager;
 import org.apache.iotdb.db.engine.querycontext.MergeSeriesDataSource;
 import org.apache.iotdb.db.engine.querycontext.OverflowInsertFile;
 import org.apache.iotdb.db.engine.querycontext.OverflowSeriesDataSource;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.utils.FlushStatus;
+import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.OverflowProcessorException;
+import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
@@ -89,12 +92,14 @@ public class OverflowProcessor extends Processor {
   private AtomicLong memSize = new AtomicLong();
 
   private WriteLogNode logNode;
+  private VersionController versionController;
 
   public OverflowProcessor(String processorName, Map<String, Action> parameters,
-      FileSchema fileSchema)
+      FileSchema fileSchema, VersionController versionController)
       throws IOException {
     super(processorName);
     this.fileSchema = fileSchema;
+    this.versionController = versionController;
     String overflowDirPath = TsFileDBConf.overflowDataDir;
     if (overflowDirPath.length() > 0
         && overflowDirPath.charAt(overflowDirPath.length() - 1) != File.separatorChar) {
@@ -124,12 +129,12 @@ public class OverflowProcessor extends Processor {
     String[] subFilePaths = clearFile(parentFile.list());
     if (subFilePaths.length == 0) {
       workResource = new OverflowResource(parentPath,
-          String.valueOf(dataPahtCount.getAndIncrement()));
+          String.valueOf(dataPahtCount.getAndIncrement()), versionController);
       return;
     } else if (subFilePaths.length == 1) {
       long count = Long.valueOf(subFilePaths[0]);
       dataPahtCount.addAndGet(count + 1);
-      workResource = new OverflowResource(parentPath, String.valueOf(count));
+      workResource = new OverflowResource(parentPath, String.valueOf(count), versionController);
       LOGGER.info("The overflow processor {} recover from work status.", getProcessorName());
     } else {
       long count1 = Long.valueOf(subFilePaths[0]);
@@ -141,8 +146,8 @@ public class OverflowProcessor extends Processor {
       }
       dataPahtCount.addAndGet(count2 + 1);
       // work dir > merge dir
-      workResource = new OverflowResource(parentPath, String.valueOf(count2));
-      mergeResource = new OverflowResource(parentPath, String.valueOf(count1));
+      workResource = new OverflowResource(parentPath, String.valueOf(count2), versionController);
+      mergeResource = new OverflowResource(parentPath, String.valueOf(count1), versionController);
       LOGGER.info("The overflow processor {} recover from merge status.", getProcessorName());
     }
   }
@@ -164,9 +169,6 @@ public class OverflowProcessor extends Processor {
 
   /**
    * insert one time-series record
-   *
-   * @param tsRecord
-   * @throws IOException
    */
   public void insert(TSRecord tsRecord) throws IOException {
     // memory control
@@ -226,32 +228,33 @@ public class OverflowProcessor extends Processor {
   }
 
   /**
-   * delete one time-series data which time range is from 0 to time-stamp.
+   * Delete data of a timeseries whose time ranges from 0 to timestamp.
    *
-   * @param deviceId
-   * @param measurementId
-   * @param timestamp
-   * @param type
+   * @param deviceId the deviceId of the timeseries.
+   * @param measurementId the measurementId of the timeseries.
+   * @param timestamp the upper-bound of deletion time.
+   * @param version the version number of this deletion.
+   * @param updatedModFiles add successfully updated Modification files to the list, and abort them
+   * when exception is
    */
-  @Deprecated
-  public void delete(String deviceId, String measurementId, long timestamp, TSDataType type) {
-    workSupport.delete(deviceId, measurementId, timestamp, type);
-    valueCount++;
+  public void delete(String deviceId, String measurementId, long timestamp, long version,
+      List<ModificationFile> updatedModFiles) throws IOException {
+    workResource.delete(deviceId, measurementId, timestamp, version, updatedModFiles);
+    workSupport.delete(deviceId, measurementId, timestamp, false);
+    if (flushStatus.isFlushing()) {
+      mergeResource.delete(deviceId, measurementId, timestamp, version, updatedModFiles);
+      flushSupport.delete(deviceId, measurementId, timestamp, true);
+    }
   }
 
   /**
-   * query all overflow data which contain insert data in memory, insert data in file, update/delete data in memory,
-   * update/delete data in file.
+   * query all overflow data which contain insert data in memory, insert data in file, update/delete
+   * data in memory, update/delete data in file.
    *
-   *
-   * @param deviceId
-   * @param measurementId
-   * @param dataType
    * @return OverflowSeriesDataSource
-   * @throws IOException
    */
   public OverflowSeriesDataSource query(String deviceId, String measurementId, Filter filter,
-      TSDataType dataType)
+      TSDataType dataType, QueryContext context)
       throws IOException {
     queryFlushLock.lock();
     try {
@@ -263,14 +266,14 @@ public class OverflowProcessor extends Processor {
       // work file
       Pair<String, List<ChunkMetaData>> insertInDiskWork = queryWorkDataInOverflowInsert(deviceId,
           measurementId,
-          dataType);
+          dataType, context);
       if (insertInDiskWork.left != null) {
         overflowInsertFileList
             .add(0, new OverflowInsertFile(insertInDiskWork.left, insertInDiskWork.right));
       }
       // merge file
       Pair<String, List<ChunkMetaData>> insertInDiskMerge = queryMergeDataInOverflowInsert(deviceId,
-          measurementId, dataType);
+          measurementId, dataType, context);
       if (insertInDiskMerge.left != null) {
         overflowInsertFileList
             .add(0, new OverflowInsertFile(insertInDiskMerge.left, insertInDiskMerge.right));
@@ -284,11 +287,9 @@ public class OverflowProcessor extends Processor {
   }
 
   /**
-   * query insert data in memory table. while flushing, merge the work memory table with flush memory table.
+   * query insert data in memory table. while flushing, merge the work memory table with flush
+   * memory table.
    *
-   * @param deviceId
-   * @param measurementId
-   * @param dataType
    * @return insert data in SeriesChunkInMemTable
    */
   private TimeValuePairSorter queryOverflowInsertInMemory(String deviceId, String measurementId,
@@ -308,42 +309,39 @@ public class OverflowProcessor extends Processor {
   /**
    * Get the insert data which is WORK in unseqTsFile.
    *
-   * @param deviceId
-   * @param measurementId
-   * @param dataType
-   * @return the seriesPath of unseqTsFile, List of TimeSeriesChunkMetaData for the special time-series.
+   * @return the seriesPath of unseqTsFile, List of TimeSeriesChunkMetaData for the special
+   * time-series.
    */
   private Pair<String, List<ChunkMetaData>> queryWorkDataInOverflowInsert(String deviceId,
       String measurementId,
-      TSDataType dataType) {
+      TSDataType dataType,
+      QueryContext context) {
     Pair<String, List<ChunkMetaData>> pair = new Pair<String, List<ChunkMetaData>>(
         workResource.getInsertFilePath(),
-        workResource.getInsertMetadatas(deviceId, measurementId, dataType));
+        workResource.getInsertMetadatas(deviceId, measurementId, dataType, context));
     return pair;
   }
 
   /**
    * Get the all merge data in unseqTsFile and overflowFile.
    *
-   * @param deviceId
-   * @param measurementId
-   * @param dataType
    * @return MergeSeriesDataSource
    */
   public MergeSeriesDataSource queryMerge(String deviceId, String measurementId,
-      TSDataType dataType) {
+      TSDataType dataType, QueryContext context) {
     Pair<String, List<ChunkMetaData>> mergeInsert = queryMergeDataInOverflowInsert(deviceId,
         measurementId,
-        dataType);
+        dataType, context);
     return new MergeSeriesDataSource(new OverflowInsertFile(mergeInsert.left, mergeInsert.right));
   }
 
   public OverflowSeriesDataSource queryMerge(String deviceId, String measurementId,
       TSDataType dataType,
-      boolean isMerge) {
+      boolean isMerge,
+      QueryContext context) {
     Pair<String, List<ChunkMetaData>> mergeInsert = queryMergeDataInOverflowInsert(deviceId,
         measurementId,
-        dataType);
+        dataType, context);
     OverflowSeriesDataSource overflowSeriesDataSource = new OverflowSeriesDataSource(
         new Path(deviceId + "." + measurementId));
     overflowSeriesDataSource.setReadableMemChunk(null);
@@ -356,20 +354,19 @@ public class OverflowProcessor extends Processor {
   /**
    * Get the insert data which is MERGE in unseqTsFile
    *
-   * @param deviceId
-   * @param measurementId
-   * @param dataType
-   * @return the seriesPath of unseqTsFile, List of TimeSeriesChunkMetaData for the special time-series.
+   * @return the seriesPath of unseqTsFile, List of TimeSeriesChunkMetaData for the special
+   * time-series.
    */
   private Pair<String, List<ChunkMetaData>> queryMergeDataInOverflowInsert(String deviceId,
       String measurementId,
-      TSDataType dataType) {
+      TSDataType dataType,
+      QueryContext context) {
     if (!isMerge) {
       return new Pair<String, List<ChunkMetaData>>(null, null);
     }
     Pair<String, List<ChunkMetaData>> pair = new Pair<String, List<ChunkMetaData>>(
         mergeResource.getInsertFilePath(),
-        mergeResource.getInsertMetadatas(deviceId, measurementId, dataType));
+        mergeResource.getInsertMetadatas(deviceId, measurementId, dataType, context));
     return pair;
   }
 
@@ -399,7 +396,7 @@ public class OverflowProcessor extends Processor {
       mergeResource = workResource;
       // TODO: NEW ONE workResource
       workResource = new OverflowResource(parentPath,
-          String.valueOf(dataPahtCount.getAndIncrement()));
+          String.valueOf(dataPahtCount.getAndIncrement()), versionController);
     }
     isMerge = true;
     LOGGER.info("The overflow processor {} switch from WORK to MERGE", getProcessorName());
@@ -590,21 +587,20 @@ public class OverflowProcessor extends Processor {
    * @return The size of overflow file corresponding to this processor.
    */
   public long getFileSize() {
-    return workResource.getInsertFile().length() + workResource.getUpdateDeleteFile().length()
-        + memoryUsage();
+    return workResource.getInsertFile().length() + memoryUsage();
   }
 
   /**
-   * Close current OverflowFile and open a new one for future writes. Block new writes and wait until current writes
-   * finish.
+   * Close current OverflowFile and open a new one for future writes. Block new writes and wait
+   * until current writes finish.
    */
   private void rollToNewFile() {
     // TODO : [MemControl] implement this
   }
 
   /**
-   * Check whether current overflow file contains too many metadata or size of current overflow file is too large If
-   * true, close current file and open a new one.
+   * Check whether current overflow file contains too many metadata or size of current overflow file
+   * is too large If true, close current file and open a new one.
    */
   private boolean checkSize() {
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();

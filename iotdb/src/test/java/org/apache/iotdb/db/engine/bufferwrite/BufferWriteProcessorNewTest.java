@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.engine.bufferwrite;
 
 import static org.junit.Assert.assertEquals;
@@ -30,6 +31,7 @@ import java.util.concurrent.TimeUnit;
 import org.apache.iotdb.db.conf.directories.Directories;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
+import org.apache.iotdb.db.engine.version.SysTimeVersionController;
 import org.apache.iotdb.db.exception.BufferWriteProcessorException;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.FileSchemaUtils;
@@ -93,7 +95,8 @@ public class BufferWriteProcessorNewTest {
       throws BufferWriteProcessorException, WriteProcessException, IOException, InterruptedException {
     bufferwrite = new BufferWriteProcessor(Directories.getInstance().getFolderForTest(),
         processorName, filename,
-        parameters, FileSchemaUtils.constructFileSchema(processorName));
+        parameters, SysTimeVersionController.INSTANCE,
+        FileSchemaUtils.constructFileSchema(processorName));
     assertEquals(filename, bufferwrite.getFileName());
     assertEquals(processorName + File.separator + filename, bufferwrite.getFileRelativePath());
     assertEquals(true, bufferwrite.isNewProcessor());
@@ -142,6 +145,7 @@ public class BufferWriteProcessorNewTest {
     // test recovery
     BufferWriteProcessor bufferWriteProcessor = new BufferWriteProcessor(
         Directories.getInstance().getFolderForTest(), processorName, filename, parameters,
+        SysTimeVersionController.INSTANCE,
         FileSchemaUtils.constructFileSchema(processorName));
     pair = bufferWriteProcessor.queryBufferWriteData(processorName, measurementId, dataType);
     left = pair.left;

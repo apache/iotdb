@@ -298,7 +298,7 @@ public class RecoverTest {
     public int currPos = 0;
 
     @Override
-    public void replay(PhysicalPlan plan) throws ProcessorException {
+    public void replay(PhysicalPlan plan, boolean isOverflow) throws ProcessorException {
       if (currPos >= plansToCheck.size()) {
         throw new ProcessorException("More plans recovered than expected");
       }

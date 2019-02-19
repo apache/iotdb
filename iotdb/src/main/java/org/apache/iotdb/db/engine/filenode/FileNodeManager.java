@@ -55,6 +55,7 @@ import org.apache.iotdb.db.monitor.StatMonitor;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.UpdatePlan;
+import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
@@ -496,7 +497,7 @@ public class FileNodeManager implements IStatistic, IService {
   /**
    * delete data.
    */
-  public void delete(String deviceId, String measurementId, long timestamp, TSDataType type)
+  public void delete(String deviceId, String measurementId, long timestamp)
       throws FileNodeManagerException {
 
     FileNodeProcessor fileNodeProcessor = getProcessor(deviceId, true);
@@ -504,46 +505,45 @@ public class FileNodeManager implements IStatistic, IService {
       long lastUpdateTime = fileNodeProcessor.getLastUpdateTime(deviceId);
       // no tsfile data, the delete operation is invalid
       if (lastUpdateTime == -1) {
-        LOGGER.warn(
-            "The last update time is -1, delete overflow is invalid, the filenode processor is {}",
+        LOGGER.warn("The last update time is -1, delete overflow is invalid, "
+                + "the filenode processor is {}",
             fileNodeProcessor.getProcessorName());
       } else {
-        if (timestamp > lastUpdateTime) {
-          timestamp = lastUpdateTime;
+        // write wal
+        if (IoTDBDescriptor.getInstance().getConfig().enableWal) {
+          // get processors for wal
+          String filenodeName = fileNodeProcessor.getProcessorName();
+          OverflowProcessor overflowProcessor;
+          BufferWriteProcessor bufferWriteProcessor;
+          try {
+            overflowProcessor = fileNodeProcessor.getOverflowProcessor(filenodeName);
+            bufferWriteProcessor = fileNodeProcessor.getBufferWriteProcessor();
+          } catch (IOException | FileNodeProcessorException e) {
+            LOGGER.error("Getting the processor failed, the filenode is {}, delete time is {}.",
+                filenodeName, timestamp);
+            throw new FileNodeManagerException(e);
+          }
+          try {
+            overflowProcessor.getLogNode()
+                .write(new DeletePlan(timestamp,
+                    new Path(deviceId + "." + measurementId)));
+            bufferWriteProcessor.getLogNode()
+                .write(new DeletePlan(timestamp,
+                    new Path(deviceId + "." + measurementId)));
+          } catch (IOException e) {
+            throw new FileNodeManagerException(e);
+          }
         }
-        String filenodeName = fileNodeProcessor.getProcessorName();
-        // get overflow processor
-        OverflowProcessor overflowProcessor;
+
         try {
-          overflowProcessor = fileNodeProcessor.getOverflowProcessor(filenodeName);
+          fileNodeProcessor.delete(deviceId, measurementId, timestamp);
         } catch (IOException e) {
-          LOGGER.error("Get the overflow processor failed, the filenode is {}, delete time is {}.",
-              filenodeName, timestamp);
           throw new FileNodeManagerException(e);
         }
-        overflowProcessor.delete(deviceId, measurementId, timestamp, type);
         // change the type of tsfile to overflowed
         fileNodeProcessor.changeTypeToChangedForDelete(deviceId, timestamp);
         fileNodeProcessor.setOverflowed(true);
-        // if (shouldMerge) {
-        // LOGGER.info(
-        // "The overflow file or metadata reaches the threshold,
-        // merge the filenode processor {}",
-        // filenodeName);
-        // fileNodeProcessor.submitToMerge();
-        // }
-        fileNodeProcessor.changeTypeToChangedForDelete(deviceId, timestamp);
-        fileNodeProcessor.setOverflowed(true);
 
-        // write wal
-        try {
-          if (IoTDBDescriptor.getInstance().getConfig().enableWal) {
-            overflowProcessor.getLogNode()
-                .write(new DeletePlan(timestamp, new Path(deviceId + "." + measurementId)));
-          }
-        } catch (IOException e) {
-          throw new FileNodeManagerException(e);
-        }
       }
     } finally {
       fileNodeProcessor.writeUnlock();
@@ -551,8 +551,42 @@ public class FileNodeManager implements IStatistic, IService {
   }
 
   /**
-   * try to delete the filenode processor.
+   * Similar to delete(), but only deletes data in BufferWrite. Only used by WAL recovery.
    */
+  public void deleteBufferWrite(String deviceId, String measurementId, long timestamp)
+      throws FileNodeManagerException {
+    FileNodeProcessor fileNodeProcessor = getProcessor(deviceId, true);
+    try {
+      fileNodeProcessor.deleteBufferWrite(deviceId, measurementId, timestamp);
+    } catch (IOException e) {
+      throw new FileNodeManagerException(e);
+    } finally {
+      fileNodeProcessor.writeUnlock();
+    }
+    // change the type of tsfile to overflowed
+    fileNodeProcessor.changeTypeToChangedForDelete(deviceId, timestamp);
+    fileNodeProcessor.setOverflowed(true);
+  }
+
+  /**
+   * Similar to delete(), but only deletes data in Overflow. Only used by WAL recovery.
+   */
+  public void deleteOverflow(String deviceId, String measurementId, long timestamp)
+      throws FileNodeManagerException {
+    FileNodeProcessor fileNodeProcessor = getProcessor(deviceId, true);
+    try {
+      fileNodeProcessor.deleteOverflow(deviceId, measurementId, timestamp);
+    } catch (IOException e) {
+      throw new FileNodeManagerException(e);
+    } finally {
+      fileNodeProcessor.writeUnlock();
+    }
+    // change the type of tsfile to overflowed
+    fileNodeProcessor.changeTypeToChangedForDelete(deviceId, timestamp);
+    fileNodeProcessor.setOverflowed(true);
+  }
+
+
   private void delete(String processorName,
       Iterator<Map.Entry<String, FileNodeProcessor>> processorIterator)
       throws FileNodeManagerException {
@@ -602,7 +636,7 @@ public class FileNodeManager implements IStatistic, IService {
   /**
    * query data.
    */
-  public QueryDataSource query(SingleSeriesExpression seriesExpression)
+  public QueryDataSource query(SingleSeriesExpression seriesExpression, QueryContext context)
       throws FileNodeManagerException {
     String deviceId = seriesExpression.getSeriesPath().getDevice();
     String measurementId = seriesExpression.getSeriesPath().getMeasurement();
@@ -623,7 +657,7 @@ public class FileNodeManager implements IStatistic, IService {
       }
       try {
         queryDataSource = fileNodeProcessor
-            .query(deviceId, measurementId, seriesExpression.getFilter());
+            .query(deviceId, measurementId, seriesExpression.getFilter(), context);
       } catch (FileNodeProcessorException e) {
         LOGGER.error("Query error: the deviceId {}, the measurementId {}", deviceId, measurementId,
             e);
