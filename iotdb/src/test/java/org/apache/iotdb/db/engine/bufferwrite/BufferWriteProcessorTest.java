@@ -228,7 +228,7 @@ public class BufferWriteProcessorTest {
     Pair<ReadOnlyMemChunk, List<ChunkMetaData>> pair = bufferwrite
         .queryBufferWriteData(deviceId, measurementId,
             dataType);
-    assertFalse(pair.left.isEmpty());
+    assertTrue(pair.left.isEmpty());
     assertEquals(1, pair.right.size());
     ChunkMetaData chunkMetaData = pair.right.get(0);
     assertEquals(measurementId, chunkMetaData.getMeasurementUid());

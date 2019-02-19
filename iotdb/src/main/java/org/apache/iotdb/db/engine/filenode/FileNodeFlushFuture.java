@@ -56,7 +56,7 @@ public class FileNodeFlushFuture implements Future<Boolean> {
   @Override
   public boolean cancel(boolean mayInterruptIfRunning) {
     boolean result = bufferWriteFlushFuture.cancel(mayInterruptIfRunning);
-    result = result && overflowFlushFuture.cancel(mayInterruptIfRunning);
+    result = result & overflowFlushFuture.cancel(mayInterruptIfRunning);
     return result;
   }
 
@@ -73,7 +73,7 @@ public class FileNodeFlushFuture implements Future<Boolean> {
   @Override
   public Boolean get() throws InterruptedException, ExecutionException {
     boolean result = bufferWriteFlushFuture.get();
-    result = result && overflowFlushFuture.get();
+    result = result & overflowFlushFuture.get();
     return result;
   }
 
