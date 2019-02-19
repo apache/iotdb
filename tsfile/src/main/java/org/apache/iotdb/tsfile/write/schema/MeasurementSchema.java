@@ -28,7 +28,7 @@ import java.util.Map;
 import java.util.Objects;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.compress.Compressor;
+import org.apache.iotdb.tsfile.compress.ICompressor;
 import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
 import org.apache.iotdb.tsfile.encoding.encoder.TSEncodingBuilder;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
@@ -53,7 +53,7 @@ public class MeasurementSchema implements Comparable<MeasurementSchema> {
   private TSEncoding encoding;
   private String measurementId;
   private TSEncodingBuilder encodingConverter;
-  private Compressor compressor;
+  private ICompressor compressor;
   private TSFileConfig conf;
   private Map<String, String> props = new HashMap<>();
 
@@ -91,7 +91,7 @@ public class MeasurementSchema implements Comparable<MeasurementSchema> {
     // initialize TSEncoding. e.g. set max error for PLA and SDT
     encodingConverter = TSEncodingBuilder.getConverter(encoding);
     encodingConverter.initFromProps(props);
-    this.compressor = Compressor.getCompressor(compressionType);
+    this.compressor = ICompressor.getCompressor(compressionType);
   }
 
   /**
@@ -107,7 +107,7 @@ public class MeasurementSchema implements Comparable<MeasurementSchema> {
     measurementSchema.encoding = ReadWriteIOUtils.readEncoding(inputStream);
 
     CompressionType compressionType = ReadWriteIOUtils.readCompressionType(inputStream);
-    measurementSchema.compressor = Compressor.getCompressor(compressionType);
+    measurementSchema.compressor = ICompressor.getCompressor(compressionType);
 
     int size = ReadWriteIOUtils.readInt(inputStream);
     if (size > 0) {
@@ -137,7 +137,7 @@ public class MeasurementSchema implements Comparable<MeasurementSchema> {
     measurementSchema.encoding = ReadWriteIOUtils.readEncoding(buffer);
 
     CompressionType compressionType = ReadWriteIOUtils.readCompressionType(buffer);
-    measurementSchema.compressor = Compressor.getCompressor(compressionType);
+    measurementSchema.compressor = ICompressor.getCompressor(compressionType);
 
     int size = ReadWriteIOUtils.readInt(buffer);
     if (size > 0) {
@@ -218,7 +218,7 @@ public class MeasurementSchema implements Comparable<MeasurementSchema> {
     return encodingConverter.getEncoder(type);
   }
 
-  public Compressor getCompressor() {
+  public ICompressor getCompressor() {
     return compressor;
   }
 

@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.encoding.decoder;
 
 import java.io.IOException;
@@ -36,7 +37,16 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
  */
 public abstract class RleDecoder extends Decoder {
 
-  public EndianType endianType;
+  private EndianType endianType;
+
+  public EndianType getEndianType() {
+    return endianType;
+  }
+
+  public void setEndianType(EndianType endianType) {
+    this.endianType = endianType;
+  }
+
   protected TSFileConfig config = TSFileDescriptor.getInstance().getConfig();
   /**
    * mode to indicate current encoding type 0 - RLE 1 - BIT_PACKED.
@@ -111,25 +121,30 @@ public abstract class RleDecoder extends Decoder {
         readNumberInRle();
         break;
       case BIT_PACKED:
-        int bitPackedGroupCount = header >> 1;
-        // in last bit-packing group, there may be some useless value,
-        // lastBitPackedNum indicates how many values is useful
-        int lastBitPackedNum = ReadWriteIOUtils.read(byteCache);
-        if (bitPackedGroupCount > 0) {
-
-          currentCount = (bitPackedGroupCount - 1) * config.RLE_MIN_REPEATED_NUM + lastBitPackedNum;
-          bitPackingNum = currentCount;
-        } else {
-          throw new TsFileDecodingException(String.format(
-              "tsfile-encoding IntRleDecoder: bitPackedGroupCount %d, smaller than 1",
-              bitPackedGroupCount));
-        }
-        readBitPackingBuffer(bitPackedGroupCount, lastBitPackedNum);
+        callReadBitPackingBuffer(header);
         break;
       default:
         throw new TsFileDecodingException(
             String.format("tsfile-encoding IntRleDecoder: unknown encoding mode %s", mode));
     }
+  }
+
+  protected void callReadBitPackingBuffer(int header) throws IOException {
+    int bitPackedGroupCount = header >> 1;
+    // in last bit-packing group, there may be some useless value,
+    // lastBitPackedNum indicates how many values is useful
+    int lastBitPackedNum = ReadWriteIOUtils.read(byteCache);
+    if (bitPackedGroupCount > 0) {
+
+      currentCount =
+          (bitPackedGroupCount - 1) * TSFileConfig.RLE_MIN_REPEATED_NUM + lastBitPackedNum;
+      bitPackingNum = currentCount;
+    } else {
+      throw new TsFileDecodingException(String.format(
+          "tsfile-encoding IntRleDecoder: bitPackedGroupCount %d, smaller than 1",
+          bitPackedGroupCount));
+    }
+    readBitPackingBuffer(bitPackedGroupCount, lastBitPackedNum);
   }
 
   /**
@@ -138,7 +153,6 @@ public abstract class RleDecoder extends Decoder {
    * @param buffer ByteBuffer
    */
   protected void readLengthAndBitWidth(ByteBuffer buffer) {
-    // long st = System.currentTimeMillis();
     length = ReadWriteForEncodingUtils.readUnsignedVarInt(buffer);
     byte[] tmp = new byte[length];
     buffer.get(tmp, 0, length);
@@ -231,7 +245,7 @@ public abstract class RleDecoder extends Decoder {
     throw new TsFileDecodingException("Method readBigDecimal is not supproted by RleDecoder");
   }
 
-  protected static enum Mode {
+  protected enum Mode {
     RLE, BIT_PACKED
   }
 }

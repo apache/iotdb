@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.encoding.encoder;
 
 import java.io.ByteArrayOutputStream;
@@ -60,7 +61,16 @@ import org.slf4j.LoggerFactory;
 public abstract class RleEncoder<T extends Comparable<T>> extends Encoder {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(RleEncoder.class);
-  protected EndianType endianType;
+
+  private EndianType endianType;
+
+  public EndianType getEndianType() {
+    return endianType;
+  }
+
+  public void setEndianType(EndianType endianType) {
+    this.endianType = endianType;
+  }
 
   /**
    * we save all value in a list and calculate its bitwidth.

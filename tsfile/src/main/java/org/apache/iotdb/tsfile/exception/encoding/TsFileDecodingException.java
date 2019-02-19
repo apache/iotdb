@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.exception.encoding;
 
 import org.apache.iotdb.tsfile.exception.TsFileRuntimeException;
@@ -31,6 +32,7 @@ public class TsFileDecodingException extends TsFileRuntimeException {
   private static final long serialVersionUID = -8632392900655017028L;
 
   public TsFileDecodingException() {
+    //do nothing
   }
 
   public TsFileDecodingException(String message, Throwable cause) {

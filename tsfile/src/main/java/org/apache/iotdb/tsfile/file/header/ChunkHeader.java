@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.file.header;
 
 import java.io.IOException;
@@ -133,16 +134,17 @@ public class ChunkHeader {
    */
   public static ChunkHeader deserializeFrom(FileChannel channel, long offset, boolean markerRead)
       throws IOException {
+    long offsetVar = offset;
     if (!markerRead) {
-      offset++;
+      offsetVar++;
     }
     ByteBuffer buffer = ByteBuffer.allocate(Integer.BYTES);
-    channel.read(buffer, offset);
+    channel.read(buffer, offsetVar);
     buffer.flip();
     int size = buffer.getInt();
-    offset += Integer.BYTES;
+    offsetVar += Integer.BYTES;
     buffer = ByteBuffer.allocate(getSerializedSize(size));
-    ReadWriteIOUtils.readAsPossible(channel, offset, buffer);
+    ReadWriteIOUtils.readAsPossible(channel, offsetVar, buffer);
     buffer.flip();
     String measurementID = ReadWriteIOUtils.readStringWithoutLength(buffer, size);
     return deserializePartFrom(measurementID, buffer);
@@ -192,7 +194,6 @@ public class ChunkHeader {
     length += ReadWriteIOUtils.write(compressionType, outputStream);
     length += ReadWriteIOUtils.write(encodingType, outputStream);
     length += ReadWriteIOUtils.write(maxTombstoneTime, outputStream);
-    assert length == getSerializedSize();
     return length;
   }
 
@@ -212,7 +213,6 @@ public class ChunkHeader {
     length += ReadWriteIOUtils.write(compressionType, buffer);
     length += ReadWriteIOUtils.write(encodingType, buffer);
     length += ReadWriteIOUtils.write(maxTombstoneTime, buffer);
-    assert length == getSerializedSize();
     return length;
   }
 

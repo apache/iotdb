@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.encoding.encoder;
 
 import java.io.ByteArrayOutputStream;
@@ -47,6 +48,14 @@ public class PlainEncoder extends Encoder {
     this.maxStringLength = maxStringLength;
   }
 
+  public void setEndianType(EndianType endianType) {
+    this.endianType = endianType;
+  }
+
+  public EndianType getEndianType() {
+    return endianType;
+  }
+
   @Override
   public void encode(boolean value, ByteArrayOutputStream out) {
     if (value) {
@@ -59,7 +68,7 @@ public class PlainEncoder extends Encoder {
   @Override
   public void encode(short value, ByteArrayOutputStream out) {
     if (this.endianType == EndianType.LITTLE_ENDIAN) {
-      out.write((value >> 0) & 0xFF);
+      out.write(value & 0xFF);
       out.write((value >> 8) & 0xFF);
     } else if (this.endianType == EndianType.BIG_ENDIAN) {
       LOGGER.error(
@@ -72,7 +81,7 @@ public class PlainEncoder extends Encoder {
   @Override
   public void encode(int value, ByteArrayOutputStream out) {
     if (this.endianType == EndianType.LITTLE_ENDIAN) {
-      out.write((value >> 0) & 0xFF);
+      out.write(value & 0xFF);
       out.write((value >> 8) & 0xFF);
       out.write((value >> 16) & 0xFF);
       out.write((value >> 24) & 0xFF);

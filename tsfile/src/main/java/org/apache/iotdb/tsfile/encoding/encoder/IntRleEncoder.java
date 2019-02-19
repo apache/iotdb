@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.encoding.encoder;
 
 import java.io.ByteArrayOutputStream;
@@ -60,10 +61,8 @@ public class IntRleEncoder extends RleEncoder<Integer> {
   /**
    * write all values buffered in the cache to an OutputStream.
    *
-   * @param out
-   *            - byteArrayOutputStream
-   * @throws IOException
-   *             cannot flush to OutputStream
+   * @param out - byteArrayOutputStream
+   * @throws IOException cannot flush to OutputStream
    */
   @Override
   public void flush(ByteArrayOutputStream out) throws IOException {
