@@ -59,7 +59,6 @@ public class EngineExecutorWithTimeGenerator {
    * @return QueryDataSet object
    * @throws IOException IOException
    * @throws FileNodeManagerException FileNodeManagerException
-   * @param context
    */
   public QueryDataSet execute(QueryContext context) throws IOException, FileNodeManagerException {
 
@@ -90,7 +89,7 @@ public class EngineExecutorWithTimeGenerator {
   }
 
   private List<EngineReaderByTimeStamp> getReadersOfSelectedPaths(List<Path> paths,
-                                                                  QueryContext context)
+      QueryContext context)
       throws IOException, FileNodeManagerException {
 
     List<EngineReaderByTimeStamp> readersOfSelectedSeries = new ArrayList<>();
@@ -98,7 +97,7 @@ public class EngineExecutorWithTimeGenerator {
     for (Path path : paths) {
 
       QueryDataSource queryDataSource = QueryDataSourceManager.getQueryDataSource(jobId, path,
-              context);
+          context);
 
       PriorityMergeReaderByTimestamp mergeReaderByTimestamp = new PriorityMergeReaderByTimestamp();
 

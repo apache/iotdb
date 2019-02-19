@@ -143,8 +143,8 @@ public class BufferwriteMetaSizeControlTest {
 
     try {
       processor = new BufferWriteProcessor(Directories.getInstance().getFolderForTest(), nsp,
-              filename,
-              parameters, SysTimeVersionController.INSTANCE, constructFileSchema(nsp));
+          filename,
+          parameters, SysTimeVersionController.INSTANCE, constructFileSchema(nsp));
     } catch (BufferWriteProcessorException e) {
       e.printStackTrace();
       fail(e.getMessage());

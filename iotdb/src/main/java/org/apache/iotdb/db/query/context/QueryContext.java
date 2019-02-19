@@ -21,11 +21,9 @@ package org.apache.iotdb.db.query.context;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 
@@ -40,8 +38,8 @@ public class QueryContext {
    */
   private Map<String, Map<String, List<Modification>>> filePathModCache = new HashMap<>();
   /**
-   * The key is the path of a ModificationFile and the value is all Modifications in this file.
-   * We use this field because each call of Modification.getModifications() return a copy of the
+   * The key is the path of a ModificationFile and the value is all Modifications in this file. We
+   * use this field because each call of Modification.getModifications() return a copy of the
    * Modifications, and we do not want it to create multiple copies within a query.
    */
   private Map<String, List<Modification>> fileModCache = new HashMap<>();
@@ -49,16 +47,12 @@ public class QueryContext {
   /**
    * Find the modifications of timeseries 'path' in 'modFile'. If they are not in the cache, read
    * them from 'modFile' and put then into the cache.
-   * @param modFile
-   * @param path
-   * @return
-   * @throws IOException
    */
   public List<Modification> getPathModifications(ModificationFile modFile, String path)
-          throws IOException {
+      throws IOException {
 
     Map<String, List<Modification>> fileModifications =
-            filePathModCache.computeIfAbsent(modFile.getFilePath(), k -> new HashMap<>());
+        filePathModCache.computeIfAbsent(modFile.getFilePath(), k -> new HashMap<>());
     List<Modification> pathModifications = fileModifications.get(path);
 
     if (pathModifications == null) {

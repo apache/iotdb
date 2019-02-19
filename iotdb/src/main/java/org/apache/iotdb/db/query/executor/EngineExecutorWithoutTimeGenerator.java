@@ -55,7 +55,6 @@ public class EngineExecutorWithoutTimeGenerator {
 
   /**
    * with global time filter.
-   * @param context
    */
   public QueryDataSet executeWithGlobalTimeFilter(QueryContext context)
       throws IOException, FileNodeManagerException, PathErrorException {
@@ -71,7 +70,7 @@ public class EngineExecutorWithoutTimeGenerator {
     for (Path path : queryExpression.getSelectedSeries()) {
 
       QueryDataSource queryDataSource = QueryDataSourceManager.getQueryDataSource(jobId, path,
-              context);
+          context);
 
       // add data type
       dataTypes.add(MManager.getInstance().getSeriesType(path.getFullPath()));
@@ -111,7 +110,7 @@ public class EngineExecutorWithoutTimeGenerator {
     for (Path path : queryExpression.getSelectedSeries()) {
 
       QueryDataSource queryDataSource = QueryDataSourceManager.getQueryDataSource(jobId, path,
-              context);
+          context);
 
       // add data type
       dataTypes.add(MManager.getInstance().getSeriesType(path.getFullPath()));

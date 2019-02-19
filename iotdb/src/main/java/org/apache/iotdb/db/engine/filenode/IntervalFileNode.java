@@ -24,7 +24,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-
 import org.apache.iotdb.db.conf.directories.Directories;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 
@@ -53,8 +52,8 @@ public class IntervalFileNode implements Serializable {
     this.startTimeMap = startTimeMap;
     this.endTimeMap = endTimeMap;
     this.modFile = new ModificationFile(
-            Directories.getInstance().getTsFileFolder(baseDirIndex) + File.separator
-                    + relativePath + ModificationFile.FILE_SUFFIX);
+        Directories.getInstance().getTsFileFolder(baseDirIndex) + File.separator
+            + relativePath + ModificationFile.FILE_SUFFIX);
   }
 
   /**
@@ -72,8 +71,8 @@ public class IntervalFileNode implements Serializable {
     startTimeMap = new HashMap<>();
     endTimeMap = new HashMap<>();
     this.modFile = new ModificationFile(
-            Directories.getInstance().getTsFileFolder(baseDirIndex) + File.separator
-                    + relativePath + ModificationFile.FILE_SUFFIX);
+        Directories.getInstance().getTsFileFolder(baseDirIndex) + File.separator
+            + relativePath + ModificationFile.FILE_SUFFIX);
   }
 
   public IntervalFileNode(OverflowChangeType type, String baseDir, String relativePath) {
@@ -85,8 +84,8 @@ public class IntervalFileNode implements Serializable {
     startTimeMap = new HashMap<>();
     endTimeMap = new HashMap<>();
     this.modFile = new ModificationFile(
-            Directories.getInstance().getTsFileFolder(baseDirIndex) + File.separator
-                    + relativePath + ModificationFile.FILE_SUFFIX);
+        Directories.getInstance().getTsFileFolder(baseDirIndex) + File.separator
+            + relativePath + ModificationFile.FILE_SUFFIX);
   }
 
   public IntervalFileNode(OverflowChangeType type, String relativePath) {
@@ -290,8 +289,8 @@ public class IntervalFileNode implements Serializable {
   public synchronized ModificationFile getModFile() {
     if (modFile == null) {
       modFile = new ModificationFile(
-              Directories.getInstance().getTsFileFolder(baseDirIndex) + File.separator
-                      + relativePath + ModificationFile.FILE_SUFFIX);
+          Directories.getInstance().getTsFileFolder(baseDirIndex) + File.separator
+              + relativePath + ModificationFile.FILE_SUFFIX);
     }
     return modFile;
   }

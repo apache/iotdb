@@ -19,11 +19,13 @@
 
 package org.apache.iotdb.db.engine.modification;
 
+import static junit.framework.TestCase.assertTrue;
+import static org.junit.Assert.assertEquals;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.Iterator;
-
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.Directories;
 import org.apache.iotdb.db.engine.filenode.FileNodeManager;
@@ -46,9 +48,6 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import static junit.framework.TestCase.assertTrue;
-import static org.junit.Assert.assertEquals;
-
 public class DeletionFileNodeTest {
 
   private String processorName = "root.test";
@@ -66,12 +65,13 @@ public class DeletionFileNodeTest {
 
   @Before
   public void setup() throws MetadataArgsErrorException,
-          PathErrorException, IOException, FileNodeManagerException {
+      PathErrorException, IOException, FileNodeManagerException {
     MManager.getInstance().setStorageLevelToMTree(processorName);
     for (int i = 0; i < 10; i++) {
       MManager.getInstance().addPathToMTree(processorName + "." + measurements[i], dataType,
-              encoding, args);
-      FileNodeManager.getInstance().addTimeSeries(new Path(processorName, measurements[i]), dataType,
+          encoding, args);
+      FileNodeManager.getInstance()
+          .addTimeSeries(new Path(processorName, measurements[i]), dataType,
               encoding);
     }
   }
@@ -83,7 +83,7 @@ public class DeletionFileNodeTest {
 
   @Test
   public void testDeleteInBufferWriteCache() throws
-          FileNodeManagerException {
+      FileNodeManagerException {
 
     for (int i = 1; i <= 100; i++) {
       TSRecord record = new TSRecord(i, processorName);
@@ -99,11 +99,11 @@ public class DeletionFileNodeTest {
     FileNodeManager.getInstance().delete(processorName, measurements[5], 50);
 
     SingleSeriesExpression expression = new SingleSeriesExpression(new Path(processorName,
-            measurements[5]), null);
+        measurements[5]), null);
     QueryContext context = new QueryContext();
     QueryDataSource dataSource = FileNodeManager.getInstance().query(expression, context);
     Iterator<TimeValuePair> timeValuePairs =
-            dataSource.getSeqDataSource().getReadableChunk().getIterator();
+        dataSource.getSeqDataSource().getReadableChunk().getIterator();
     int count = 0;
     while (timeValuePairs.hasNext()) {
       timeValuePairs.next();
@@ -128,20 +128,20 @@ public class DeletionFileNodeTest {
     FileNodeManager.getInstance().delete(processorName, measurements[3], 30);
 
     Modification[] realModifications = new Modification[]{
-            new Deletion(processorName + "." + measurements[5], 102, 50),
-            new Deletion(processorName + "." + measurements[4], 103, 40),
-            new Deletion(processorName + "." + measurements[3], 104, 30),
+        new Deletion(processorName + "." + measurements[5], 102, 50),
+        new Deletion(processorName + "." + measurements[4], 103, 40),
+        new Deletion(processorName + "." + measurements[3], 104, 30),
     };
 
     String fileNodePath = Directories.getInstance().getTsFileFolder(0) + File.separator
-            + processorName;
+        + processorName;
     File fileNodeDir = new File(fileNodePath);
     File[] modFiles = fileNodeDir.listFiles((dir, name)
-            -> name.endsWith(ModificationFile.FILE_SUFFIX));
+        -> name.endsWith(ModificationFile.FILE_SUFFIX));
     assertEquals(modFiles.length, 1);
 
     LocalTextModificationAccessor accessor =
-            new LocalTextModificationAccessor(modFiles[0].getPath());
+        new LocalTextModificationAccessor(modFiles[0].getPath());
     try {
       Collection<Modification> modifications = accessor.read();
       assertEquals(modifications.size(), 3);
@@ -181,11 +181,11 @@ public class DeletionFileNodeTest {
     FileNodeManager.getInstance().delete(processorName, measurements[5], 50);
 
     SingleSeriesExpression expression = new SingleSeriesExpression(new Path(processorName,
-            measurements[5]), null);
+        measurements[5]), null);
     QueryContext context = new QueryContext();
     QueryDataSource dataSource = FileNodeManager.getInstance().query(expression, context);
     Iterator<TimeValuePair> timeValuePairs =
-            dataSource.getOverflowSeriesDataSource().getReadableMemChunk().getIterator();
+        dataSource.getOverflowSeriesDataSource().getReadableMemChunk().getIterator();
     int count = 0;
     while (timeValuePairs.hasNext()) {
       timeValuePairs.next();
@@ -221,20 +221,20 @@ public class DeletionFileNodeTest {
     FileNodeManager.getInstance().delete(processorName, measurements[3], 30);
 
     Modification[] realModifications = new Modification[]{
-            new Deletion(processorName + "." + measurements[5], 103, 50),
-            new Deletion(processorName + "." + measurements[4], 104, 40),
-            new Deletion(processorName + "." + measurements[3], 105, 30),
+        new Deletion(processorName + "." + measurements[5], 103, 50),
+        new Deletion(processorName + "." + measurements[4], 104, 40),
+        new Deletion(processorName + "." + measurements[3], 105, 30),
     };
 
     String fileNodePath = IoTDBDescriptor.getInstance().getConfig().overflowDataDir + File.separator
-            + processorName + File.separator + "0" + File.separator;
+        + processorName + File.separator + "0" + File.separator;
     File fileNodeDir = new File(fileNodePath);
     File[] modFiles = fileNodeDir.listFiles((dir, name)
-            -> name.endsWith(ModificationFile.FILE_SUFFIX));
+        -> name.endsWith(ModificationFile.FILE_SUFFIX));
     assertEquals(modFiles.length, 1);
 
     LocalTextModificationAccessor accessor =
-            new LocalTextModificationAccessor(modFiles[0].getPath());
+        new LocalTextModificationAccessor(modFiles[0].getPath());
     Collection<Modification> modifications = accessor.read();
     assertEquals(modifications.size(), 3);
     int i = 0;

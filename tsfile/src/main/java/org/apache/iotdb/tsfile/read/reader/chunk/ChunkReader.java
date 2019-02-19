@@ -132,8 +132,8 @@ public abstract class ChunkReader {
     chunkDataBuffer.get(compressedPageBody, 0, compressedPageBodyLength);
     valueDecoder.reset();
     PageReader reader = new PageReader(ByteBuffer.wrap(unCompressor.uncompress(compressedPageBody)),
-            chunkHeader.getDataType(),
-            valueDecoder, timeDecoder, filter);
+        chunkHeader.getDataType(),
+        valueDecoder, timeDecoder, filter);
     reader.setDeletedAt(deletedAt);
     return reader;
   }

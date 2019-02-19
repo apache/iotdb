@@ -27,7 +27,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
@@ -70,7 +69,7 @@ public class OverflowResource {
   private ModificationFile modificationFile;
 
   public OverflowResource(String parentPath, String dataPath, VersionController versionController)
-          throws IOException {
+      throws IOException {
     this.insertMetadatas = new HashMap<>();
     this.appendInsertMetadatas = new ArrayList<>();
     this.parentPath = parentPath;
@@ -170,7 +169,7 @@ public class OverflowResource {
   }
 
   public List<ChunkMetaData> getInsertMetadatas(String deviceId, String measurementId,
-                                                TSDataType dataType, QueryContext context) {
+      TSDataType dataType, QueryContext context) {
     List<ChunkMetaData> chunkMetaDatas = new ArrayList<>();
     if (insertMetadatas.containsKey(deviceId) && insertMetadatas.get(deviceId)
         .containsKey(measurementId)) {
@@ -183,17 +182,17 @@ public class OverflowResource {
     }
     try {
       List<Modification> modifications = context.getPathModifications(modificationFile,
-              deviceId + IoTDBConstant.PATH_SEPARATOR + measurementId);
+          deviceId + IoTDBConstant.PATH_SEPARATOR + measurementId);
       QueryUtils.modifyChunkMetaData(chunkMetaDatas, modifications);
     } catch (IOException e) {
       LOGGER.error("Cannot access the modification file of Overflow {}, because:", parentPath,
-              e);
+          e);
     }
     return chunkMetaDatas;
   }
 
   public void flush(FileSchema fileSchema, IMemTable memTable,
-                    Map<String, Map<String, OverflowSeriesImpl>> overflowTrees, String processorName)
+      Map<String, Map<String, OverflowSeriesImpl>> overflowTrees, String processorName)
       throws IOException {
     // insert data
     long startPos = insertIO.getPos();
@@ -214,7 +213,7 @@ public class OverflowResource {
       insertIO.toTail();
       long lastPosition = insertIO.getPos();
       MemTableFlushUtil.flushMemTable(fileSchema, insertIO, memTable,
-              versionController.nextVersion());
+          versionController.nextVersion());
       List<ChunkGroupMetaData> rowGroupMetaDatas = insertIO.getChunkGroupMetaDatas();
       appendInsertMetadatas.addAll(rowGroupMetaDatas);
       if (!rowGroupMetaDatas.isEmpty()) {
@@ -295,17 +294,18 @@ public class OverflowResource {
 
   /**
    * Delete data of a timeseries whose time ranges from 0 to timestamp.
-   *  @param deviceId the deviceId of the timeseries.
+   *
+   * @param deviceId the deviceId of the timeseries.
    * @param measurementId the measurementId of the timeseries.
    * @param timestamp the upper-bound of deletion time.
    * @param updatedModFiles add successfully updated modificationFile to this list, so that the
-   *                        deletion can be aborted when exception is thrown.
+   * deletion can be aborted when exception is thrown.
    */
   public void delete(String deviceId, String measurementId, long timestamp, long version,
-                     List<ModificationFile> updatedModFiles)
-          throws IOException {
+      List<ModificationFile> updatedModFiles)
+      throws IOException {
     modificationFile.write(new Deletion(deviceId + IoTDBConstant.PATH_SEPARATOR
-            + measurementId, version, timestamp));
+        + measurementId, version, timestamp));
     updatedModFiles.add(modificationFile);
   }
 }

@@ -19,16 +19,17 @@
 
 package org.apache.iotdb.db.engine.modification.io;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.fail;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.List;
-
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.junit.Test;
-
-import static org.junit.Assert.*;
 
 public class LocalTextModificationAccessorTest {
 
@@ -36,10 +37,10 @@ public class LocalTextModificationAccessorTest {
   public void readMyWrite() {
     String tempFileName = "mod.temp";
     Modification[] modifications = new Modification[]{
-            new Deletion("p1", 1, 1),
-            new Deletion("p2", 2, 2),
-            new Deletion("p3", 3, 3),
-            new Deletion("p4", 4, 4),
+        new Deletion("p1", 1, 1),
+        new Deletion("p2", 2, 2),
+        new Deletion("p3", 3, 3),
+        new Deletion("p4", 4, 4),
     };
     try {
       LocalTextModificationAccessor accessor = new LocalTextModificationAccessor(tempFileName);

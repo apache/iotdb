@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.qp.strategy;
 
 import java.util.List;
-
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.exception.qp.LogicalOperatorException;
@@ -65,15 +64,15 @@ public class PhysicalGenerator {
   }
 
   public PhysicalPlan transformToPhysicalPlan(Operator operator)
-          throws QueryProcessorException, ProcessorException {
+      throws QueryProcessorException, ProcessorException {
     List<Path> paths;
     switch (operator.getType()) {
       case AUTHOR:
         AuthorOperator author = (AuthorOperator) operator;
         try {
           return new AuthorPlan(author.getAuthorType(), author.getUserName(), author.getRoleName(),
-                  author.getPassWord(), author.getNewPassword(), author.getPrivilegeList(),
-                  author.getNodeName());
+              author.getPassWord(), author.getNewPassword(), author.getPrivilegeList(),
+              author.getNodeName());
         } catch (AuthException e) {
           throw new QueryProcessorException(e.getMessage());
         }
@@ -85,12 +84,12 @@ public class PhysicalGenerator {
       case METADATA:
         MetadataOperator metadata = (MetadataOperator) operator;
         return new MetadataPlan(metadata.getNamespaceType(), metadata.getPath(),
-                metadata.getDataType(),
-                metadata.getEncoding(), metadata.getEncodingArgs(), metadata.getDeletePathList());
+            metadata.getDataType(),
+            metadata.getEncoding(), metadata.getEncodingArgs(), metadata.getDeletePathList());
       case PROPERTY:
         PropertyOperator property = (PropertyOperator) operator;
         return new PropertyPlan(property.getPropertyType(), property.getPropertyPath(),
-                property.getMetadataPath());
+            property.getMetadataPath());
       case DELETE:
         DeleteOperator delete = (DeleteOperator) operator;
         paths = delete.getSelectedPaths();
@@ -103,14 +102,14 @@ public class PhysicalGenerator {
         paths = Insert.getSelectedPaths();
         if (paths.size() != 1) {
           throw new LogicalOperatorException(
-                  "For Insert command, cannot specified more than one seriesPath:" + paths);
+              "For Insert command, cannot specified more than one seriesPath:" + paths);
         }
         if (Insert.getTime() <= 0) {
           throw new LogicalOperatorException("For Insert command, time must greater than 0.");
         }
         return new InsertPlan(paths.get(0).getFullPath(), Insert.getTime(),
-                Insert.getMeasurementList(),
-                Insert.getValueList());
+            Insert.getMeasurementList(),
+            Insert.getValueList());
       // case UPDATE:
       // UpdateOperator update = (UpdateOperator) operator;
       // UpdatePlan updatePlan = new UpdatePlan();
@@ -234,7 +233,7 @@ public class PhysicalGenerator {
   // }
 
   private PhysicalPlan transformQuery(QueryOperator queryOperator)
-          throws QueryProcessorException, ProcessorException {
+      throws QueryProcessorException, ProcessorException {
 
     QueryPlan queryPlan;
 
@@ -255,7 +254,7 @@ public class PhysicalGenerator {
     } else if (queryOperator.hasAggregation()) { // ordinary query
       queryPlan = new AggregationPlan();
       ((AggregationPlan) queryPlan)
-              .setAggregations(queryOperator.getSelectOperator().getAggregations());
+          .setAggregations(queryOperator.getSelectOperator().getAggregations());
     } else {
       queryPlan = new QueryPlan();
     }

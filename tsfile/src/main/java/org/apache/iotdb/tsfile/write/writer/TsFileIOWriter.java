@@ -26,7 +26,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
-
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.constant.StatisticConstant;
 import org.apache.iotdb.tsfile.file.MetaMarker;
@@ -143,9 +142,9 @@ public class TsFileIOWriter {
    * @throws IOException if I/O error occurs
    */
   public int startFlushChunk(MeasurementSchema descriptor, CompressionType compressionCodecName,
-                             TSDataType tsDataType, TSEncoding encodingType, Statistics<?> statistics, long maxTime,
-                             long minTime,
-                             int dataSize, int numOfPages) throws IOException {
+      TSDataType tsDataType, TSEncoding encodingType, Statistics<?> statistics, long maxTime,
+      long minTime,
+      int dataSize, int numOfPages) throws IOException {
     LOG.debug("start series chunk:{}, file position {}", descriptor, out.getPosition());
 
     currentChunkMetaData = new ChunkMetaData(descriptor.getMeasurementId(), tsDataType,

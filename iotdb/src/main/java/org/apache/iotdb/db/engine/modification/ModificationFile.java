@@ -23,17 +23,16 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-
 import org.apache.iotdb.db.engine.modification.io.LocalTextModificationAccessor;
 import org.apache.iotdb.db.engine.modification.io.ModificationReader;
 import org.apache.iotdb.db.engine.modification.io.ModificationWriter;
 
 /**
  * ModificationFile stores the Modifications of a TsFile or unseq file in another file in the same
- * directory.
- * Methods in this class are highly synchronized for concurrency safety.
+ * directory. Methods in this class are highly synchronized for concurrency safety.
  */
 public class ModificationFile {
+
   public static final String FILE_SUFFIX = ".mods";
 
   private List<Modification> modifications;

@@ -57,7 +57,7 @@ public class EngineNodeConstructor {
    * @throws FileNodeManagerException FileNodeManagerException
    */
   public Node construct(IExpression expression, QueryContext context)
-          throws IOException, FileNodeManagerException {
+      throws IOException, FileNodeManagerException {
     if (expression.getType() == SERIES) {
       return new EngineLeafNode(generateSeriesReader((SingleSeriesExpression) expression, context));
     } else {
@@ -79,7 +79,7 @@ public class EngineNodeConstructor {
   }
 
   private IReader generateSeriesReader(SingleSeriesExpression singleSeriesExpression,
-                                       QueryContext context)
+      QueryContext context)
       throws IOException, FileNodeManagerException {
 
     QueryDataSource queryDataSource = QueryDataSourceManager.getQueryDataSource(jobId,

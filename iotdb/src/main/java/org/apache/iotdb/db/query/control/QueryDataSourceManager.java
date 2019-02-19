@@ -27,7 +27,8 @@ import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 
 /**
  * <p>
- * This class is used to get query data source of a given path. See the component of <code>QueryDataSource</code>
+ * This class is used to get query data source of a given path. See the component of
+ * <code>QueryDataSource</code>
  */
 public class QueryDataSourceManager {
 
@@ -37,7 +38,7 @@ public class QueryDataSourceManager {
   }
 
   public static QueryDataSource getQueryDataSource(long jobId, Path selectedPath,
-                                                   QueryContext context)
+      QueryContext context)
       throws FileNodeManagerException {
 
     SingleSeriesExpression singleSeriesExpression = new SingleSeriesExpression(selectedPath, null);

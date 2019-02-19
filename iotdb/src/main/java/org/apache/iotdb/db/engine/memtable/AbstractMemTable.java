@@ -21,7 +21,6 @@ package org.apache.iotdb.db.engine.memtable;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
@@ -52,7 +51,7 @@ public abstract class AbstractMemTable implements IMemTable {
   }
 
   private IWritableMemChunk createIfNotExistAndGet(String deviceId, String measurement,
-                                                   TSDataType dataType) {
+      TSDataType dataType) {
     if (!memTableMap.containsKey(deviceId)) {
       memTableMap.put(deviceId, new HashMap<>());
     }
@@ -67,7 +66,7 @@ public abstract class AbstractMemTable implements IMemTable {
 
   @Override
   public void write(String deviceId, String measurement, TSDataType dataType, long insertTime,
-                    String insertValue) {
+      String insertValue) {
     IWritableMemChunk memSeries = createIfNotExistAndGet(deviceId, measurement, dataType);
     memSeries.write(insertTime, insertValue);
   }
@@ -114,12 +113,13 @@ public abstract class AbstractMemTable implements IMemTable {
   }
 
   /**
-   * If chunk contains data with timestamp less than 'timestamp', create a copy and delete all
-   * those data. Otherwise return null.
+   * If chunk contains data with timestamp less than 'timestamp', create a copy and delete all those
+   * data. Otherwise return null.
+   *
    * @param chunk the source chunk.
    * @param timestamp the upper-bound of deletion time.
-   * @return A reduced copy of chunk if chunk contains data with timestamp less than 'timestamp',
-   * of null.
+   * @return A reduced copy of chunk if chunk contains data with timestamp less than 'timestamp', of
+   * null.
    */
   private IWritableMemChunk filterChunk(IWritableMemChunk chunk, long timestamp) {
     List<TimeValuePair> timeValuePairs = chunk.getSortedTimeValuePairList();
