@@ -19,24 +19,22 @@
 
 package org.apache.iotdb.db.utils;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
-
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
-import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 
 public class QueryUtils {
+
+  private QueryUtils() {
+    // util class
+  }
 
   /**
    * modifyChunkMetaData iterates the chunkMetaData and applies all available modifications on it to
    * generate a ModifiedChunkMetadata.
    * @param chunkMetaData the original chunkMetaData.
    * @param modifications all possible modifications.
-   * @return a list of all generated ModifiedChunkMetadata.
    */
   public static void modifyChunkMetaData(List<ChunkMetaData> chunkMetaData,
                                          List<Modification> modifications) {
@@ -46,15 +44,12 @@ public class QueryUtils {
       ChunkMetaData metaData = chunkMetaData.get(metaIndex);
       for (int j = modIndex; j < modifications.size(); j++) {
         // iterate each modification to find the max deletion time
-        Modification modification = modifications.get(modIndex);
+        Modification modification = modifications.get(j);
         if (modification.getVersionNum() > metaData.getVersion()) {
-          if (modification instanceof Deletion) {
-            Deletion deletion = (Deletion) modification;
-            if (metaData.getDeletedAt() < deletion.getTimestamp()) {
-              metaData.setDeletedAt(deletion.getTimestamp());
-              modIndex = j;
-            }
-          }
+          // this modification is after the Chunk, try modifying the chunk
+          // if this modification succeeds, update modIndex so in the next loop the previous
+          // modifications will not be examined
+          modIndex = doModifyChunkMetaData(modification, metaData)? j : modIndex;
         } else {
           // skip old modifications for next metadata
           modIndex++;
@@ -63,5 +58,16 @@ public class QueryUtils {
     }
     // remove chunks that are completely deleted
     chunkMetaData.removeIf(metaData -> metaData.getDeletedAt() >= metaData.getEndTime());
+  }
+
+  private static boolean doModifyChunkMetaData(Modification modification, ChunkMetaData metaData) {
+    if (modification instanceof Deletion) {
+      Deletion deletion = (Deletion) modification;
+      if (metaData.getDeletedAt() < deletion.getTimestamp()) {
+        metaData.setDeletedAt(deletion.getTimestamp());
+        return true;
+      }
+    }
+    return false;
   }
 }

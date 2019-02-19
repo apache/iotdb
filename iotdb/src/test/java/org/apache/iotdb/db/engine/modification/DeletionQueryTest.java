@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.iotdb.db.engine.filenode.FileNodeManager;
+import org.apache.iotdb.db.engine.memcontrol.BasicMemController.UsageLevel;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.MetadataArgsErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
@@ -221,5 +222,71 @@ public class DeletionQueryTest {
       count++;
     }
     assertEquals(170, count);
+  }
+
+  @Test
+  public void testSuccessiveDeletion()
+      throws FileNodeManagerException, IOException, InterruptedException {
+    for (int i = 1; i <= 100; i++) {
+      TSRecord record = new TSRecord(i, processorName);
+      for (int j = 0; j < 10; j++) {
+        record.addTuple(new DoubleDataPoint(measurements[j], i * 1.0));
+      }
+      FileNodeManager.getInstance().insert(record, false);
+    }
+
+    FileNodeManager.getInstance().delete(processorName, measurements[3], 50);
+    FileNodeManager.getInstance().delete(processorName, measurements[4], 50);
+    FileNodeManager.getInstance().delete(processorName, measurements[5], 30);
+    FileNodeManager.getInstance().delete(processorName, measurements[5], 50);
+
+    FileNodeManager.getInstance().forceFlush(UsageLevel.DANGEROUS);
+
+    for (int i = 101; i <= 200; i++) {
+      TSRecord record = new TSRecord(i, processorName);
+      for (int j = 0; j < 10; j++) {
+        record.addTuple(new DoubleDataPoint(measurements[j], i * 1.0));
+      }
+      FileNodeManager.getInstance().insert(record, false);
+    }
+
+    FileNodeManager.getInstance().delete(processorName, measurements[3], 250);
+    FileNodeManager.getInstance().delete(processorName, measurements[4], 250);
+    FileNodeManager.getInstance().delete(processorName, measurements[5], 230);
+    FileNodeManager.getInstance().delete(processorName, measurements[5], 250);
+
+    FileNodeManager.getInstance().forceFlush(UsageLevel.DANGEROUS);
+
+    for (int i = 201; i <= 300; i++) {
+      TSRecord record = new TSRecord(i, processorName);
+      for (int j = 0; j < 10; j++) {
+        record.addTuple(new DoubleDataPoint(measurements[j], i * 1.0));
+      }
+      FileNodeManager.getInstance().insert(record, false);
+    }
+
+    FileNodeManager.getInstance().delete(processorName, measurements[3], 50);
+    FileNodeManager.getInstance().delete(processorName, measurements[4], 50);
+    FileNodeManager.getInstance().delete(processorName, measurements[5], 30);
+    FileNodeManager.getInstance().delete(processorName, measurements[5], 50);
+
+    FileNodeManager.getInstance().forceFlush(UsageLevel.DANGEROUS);
+    Thread.sleep(3000);
+    FileNodeManager.getInstance().closeAll();
+
+    List<Path> pathList = new ArrayList<>();
+    pathList.add(new Path(processorName, measurements[3]));
+    pathList.add(new Path(processorName, measurements[4]));
+    pathList.add(new Path(processorName, measurements[5]));
+
+    QueryExpression queryExpression = QueryExpression.create(pathList, null);
+    QueryDataSet dataSet = router.query(queryExpression);
+
+    int count = 0;
+    while (dataSet.hasNext()) {
+      dataSet.next();
+      count++;
+    }
+    assertEquals(100, count);
   }
 }

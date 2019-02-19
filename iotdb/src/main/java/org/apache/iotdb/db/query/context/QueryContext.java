@@ -68,7 +68,7 @@ public class QueryContext {
         fileModCache.put(modFile.getFilePath(), allModifications);
       }
       pathModifications = new ArrayList<>();
-      if (allModifications.size() > 0) {
+      if (!allModifications.isEmpty()) {
         List<Modification> finalPathModifications = pathModifications;
         allModifications.forEach(modification -> {
           if (modification.getPath().equals(path)) {

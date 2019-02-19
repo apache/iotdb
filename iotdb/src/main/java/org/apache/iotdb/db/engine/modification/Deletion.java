@@ -25,6 +25,10 @@ import java.util.Objects;
  * Deletion is a delete operation on a timeseries.
  */
 public class Deletion extends Modification {
+
+  /**
+   * data whose timestamp <= this field are to be deleted.
+   */
   private long timestamp;
 
   public Deletion(String path, long versionNum, long timestamp) {
