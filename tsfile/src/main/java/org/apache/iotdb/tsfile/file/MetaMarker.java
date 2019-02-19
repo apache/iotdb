@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.file;
 
 import java.io.IOException;
@@ -29,9 +30,10 @@ public class MetaMarker {
   public static final byte CHUNK_HEADER = 1;
   public static final byte SEPARATOR = 2;
 
+  private MetaMarker() {
+  }
+
   public static void handleUnexpectedMarker(byte marker) throws IOException {
     throw new IOException("Unexpected marker " + marker);
   }
-
-  private MetaMarker(){}
 }

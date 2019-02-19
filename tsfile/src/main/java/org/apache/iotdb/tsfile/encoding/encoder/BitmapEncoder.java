@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.encoding.encoder;
 
 import java.io.ByteArrayOutputStream;
@@ -24,7 +25,6 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import org.apache.iotdb.tsfile.encoding.common.EndianType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 import org.slf4j.Logger;
@@ -44,6 +44,7 @@ import org.slf4j.LoggerFactory;
  * bit-index := a list of 01 sequence to record the position of the value above
  * }
  * </pre>.
+
  * Decode switch or enum values using bitmap, bitmap-encode.{@code <length> <num> <encoded data> }
  * @deprecated This class has been deprecated.
  * @since deprecated since 0.4.0
@@ -60,10 +61,8 @@ public class BitmapEncoder extends Encoder {
 
   /**
    * BitmapEncoder constructor.
-   *
-   * @param endianType deprecated
    */
-  public BitmapEncoder(EndianType endianType) {
+  public BitmapEncoder() {
     super(TSEncoding.BITMAP);
     this.values = new ArrayList<>();
     LOGGER.debug("tsfile-encoding BitmapEncoder: init bitmap encoder");

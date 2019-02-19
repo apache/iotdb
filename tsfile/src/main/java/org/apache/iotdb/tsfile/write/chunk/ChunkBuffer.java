@@ -22,7 +22,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.WritableByteChannel;
-import org.apache.iotdb.tsfile.compress.Compressor;
+import org.apache.iotdb.tsfile.compress.ICompressor;
 import org.apache.iotdb.tsfile.exception.write.PageException;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -41,7 +41,7 @@ import org.slf4j.LoggerFactory;
 public class ChunkBuffer {
 
   private static final Logger LOG = LoggerFactory.getLogger(ChunkBuffer.class);
-  private final Compressor compressor;
+  private final ICompressor compressor;
   private final MeasurementSchema schema;
 
   private int numOfPages;

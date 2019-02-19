@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.encoding.decoder;
 
 import java.io.IOException;
@@ -92,8 +93,7 @@ public class FloatDecoder extends Decoder {
   public double readDouble(ByteBuffer buffer) {
     readMaxPointValue(buffer);
     long value = decoder.readLong(buffer);
-    double result = value / maxPointValue;
-    return result;
+    return value / maxPointValue;
   }
 
   private void readMaxPointValue(ByteBuffer buffer) {

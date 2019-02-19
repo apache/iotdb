@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.common.conf;
 
 import java.io.File;
@@ -67,7 +68,7 @@ public class TSFileDescriptor {
     }
   }
 
-  private URL getResource(String filename, ClassLoader classLoader) {
+  private static URL getResource(String filename, ClassLoader classLoader) {
     return Loader.getResource(filename, classLoader);
   }
 
@@ -105,38 +106,49 @@ public class TSFileDescriptor {
     Properties properties = new Properties();
     try {
       properties.load(inputStream);
-      conf.groupSizeInByte = Integer
-          .parseInt(properties.getProperty("group_size_in_byte", conf.groupSizeInByte + ""));
-      conf.pageSizeInByte = Integer
-          .parseInt(properties.getProperty("page_size_in_byte", conf.pageSizeInByte + ""));
-      conf.maxNumberOfPointsInPage = Integer.parseInt(
+      TSFileConfig.groupSizeInByte = Integer
+          .parseInt(
+              properties.getProperty("group_size_in_byte",
+                  Integer.toString(TSFileConfig.groupSizeInByte)));
+      TSFileConfig.pageSizeInByte = Integer
+          .parseInt(properties
+              .getProperty("page_size_in_byte", Integer.toString(TSFileConfig.pageSizeInByte)));
+      TSFileConfig.maxNumberOfPointsInPage = Integer.parseInt(
           properties
-              .getProperty("max_number_of_points_in_page", conf.maxNumberOfPointsInPage + ""));
-      conf.timeSeriesDataType = properties
-          .getProperty("time_series_data_type", conf.timeSeriesDataType);
-      conf.maxStringLength = Integer
-          .parseInt(properties.getProperty("max_string_length", conf.maxStringLength + ""));
-      conf.floatPrecision = Integer
-          .parseInt(properties.getProperty("float_precision", conf.floatPrecision + ""));
-      conf.timeSeriesEncoder = properties
-          .getProperty("time_series_encoder", conf.timeSeriesEncoder);
-      conf.valueEncoder = properties.getProperty("value_encoder", conf.valueEncoder);
-      conf.compressor = properties.getProperty("compressor", conf.compressor);
+              .getProperty("max_number_of_points_in_page",
+                  Integer.toString(TSFileConfig.maxNumberOfPointsInPage)));
+      TSFileConfig.timeSeriesDataType = properties
+          .getProperty("time_series_data_type", TSFileConfig.timeSeriesDataType);
+      TSFileConfig.maxStringLength = Integer
+          .parseInt(properties
+              .getProperty("max_string_length", Integer.toString(TSFileConfig.maxStringLength)));
+      TSFileConfig.floatPrecision = Integer
+          .parseInt(properties
+              .getProperty("float_precision", Integer.toString(TSFileConfig.floatPrecision)));
+      TSFileConfig.timeSeriesEncoder = properties
+          .getProperty("time_series_encoder", TSFileConfig.timeSeriesEncoder);
+      TSFileConfig.valueEncoder = properties
+          .getProperty("value_encoder", TSFileConfig.valueEncoder);
+      TSFileConfig.compressor = properties.getProperty("compressor", TSFileConfig.compressor);
     } catch (IOException e) {
-      LOGGER.warn("Cannot load config file because {}, use default configuration", e.getMessage());
+      LOGGER.warn("Cannot load config file, use default configuration", e);
     } catch (Exception e) {
-      LOGGER.error("Loading settings {} failed because {}", url, e.getMessage());
+      LOGGER.error("Loading settings {} failed", url, e);
     } finally {
       try {
         inputStream.close();
       } catch (IOException e) {
-        LOGGER.error("Failed to close stream for loading config because {}", e.getMessage());
+        LOGGER.error("Failed to close stream for loading config", e);
       }
 
     }
   }
 
   private static class TsfileDescriptorHolder {
+
+    private TsfileDescriptorHolder() {
+      throw new IllegalAccessError("Utility class");
+    }
 
     private static final TSFileDescriptor INSTANCE = new TSFileDescriptor();
   }

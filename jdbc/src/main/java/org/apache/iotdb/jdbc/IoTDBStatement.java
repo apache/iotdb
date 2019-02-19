@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.jdbc;
 
 import java.sql.BatchUpdateException;
@@ -223,10 +224,8 @@ public class IoTDBStatement implements Statement {
 
   /**
    * There are four kinds of sql here: (1) show timeseries path (2) show storage group (3) query sql
-   * (4) update sql .
-   * <p></p>
-   * (1) and (2) return new TsfileMetadataResultSet (3) return new TsfileQueryResultSet (4) simply
-   * get executed
+   * (4) update sql . <p></p> (1) and (2) return new TsfileMetadataResultSet (3) return new
+   * TsfileQueryResultSet (4) simply get executed
    */
   private boolean executeSQL(String sql) throws TException, SQLException {
     isCancelled = false;
@@ -251,9 +250,9 @@ public class IoTDBStatement implements Statement {
       operationHandle = execResp.getOperationHandle();
       Utils.verifySuccess(execResp.getStatus());
       if (execResp.getOperationHandle().hasResultSet) {
-        resultSet = new IoTDBQueryResultSet(this, execResp.getColumns(), client, sessionHandle,
-            operationHandle,
-            sql, execResp.getOperationType(), getColumnsType(execResp.getColumns()));
+        resultSet = new IoTDBQueryResultSet(this, execResp.getColumns(), client,
+            operationHandle, sql, execResp.getOperationType(),
+            getColumnsType(execResp.getColumns()));
         return true;
       }
       return false;
@@ -347,9 +346,8 @@ public class IoTDBStatement implements Statement {
     TSExecuteStatementResp execResp = client.executeQueryStatement(execReq);
     operationHandle = execResp.getOperationHandle();
     Utils.verifySuccess(execResp.getStatus());
-    resultSet = new IoTDBQueryResultSet(this, execResp.getColumns(), client, sessionHandle,
-        operationHandle, sql,
-        execResp.getOperationType(), getColumnsType(execResp.getColumns()));
+    resultSet = new IoTDBQueryResultSet(this, execResp.getColumns(), client,
+        operationHandle, sql, execResp.getOperationType(), getColumnsType(execResp.getColumns()));
     return resultSet;
   }
 
