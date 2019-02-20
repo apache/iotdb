@@ -78,58 +78,21 @@ public class ChunkGroupMetaDataTest {
   @Test
   public void testOffset() throws IOException {
     TsFileSequenceReader reader = new TsFileSequenceReader(testDataFile);
-    System.out.println("file length: " + new File("test.tsfile").length());
-    System.out.println("file magic head: " + reader.readHeadMagic());
-    System.out.println("file magic tail: " + reader.readTailMagic());
-    System.out.println("Level 1 metadata position: " + reader.getFileMetadataPos());
-    System.out.println("Level 1 metadata size: " + reader.getFileMetadataPos());
     TsFileMetaData metaData = reader.readFileMetadata();
-    // Sequential reading of one ChunkGroup now follows this order:
-    // first SeriesChunks (headers and data) in one ChunkGroup, then the CHUNK_GROUP_FOOTER
-    // Because we do not know how many chunks a ChunkGroup may have, we should read one byte (the marker) ahead and
-    // judge accordingly.
     List<Pair<Long, Long>> offsetList = new ArrayList<>();
     long startOffset = reader.position();
-    System.out.println("[Chunk Group]");
-    System.out.println("position: " + reader.position());
     byte marker;
     while ((marker = reader.readMarker()) != MetaMarker.SEPARATOR) {
       switch (marker) {
         case MetaMarker.CHUNK_HEADER:
-          System.out.println("\t[Chunk]");
-          System.out.println("\tposition: " + reader.position());
           ChunkHeader header = reader.readChunkHeader();
-          System.out.println("\tMeasurement: " + header.getMeasurementID());
-          Decoder defaultTimeDecoder = Decoder.getDecoderByType(
-                  TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().timeSeriesEncoder),
-                  TSDataType.INT64);
-          Decoder valueDecoder = Decoder
-                  .getDecoderByType(header.getEncodingType(), header.getDataType());
           for (int j = 0; j < header.getNumOfPages(); j++) {
-            System.out.println("\t\t[Page]\n \t\tPage head position: " + reader.position());
             PageHeader pageHeader = reader.readPageHeader(header.getDataType());
-            System.out.println("\t\tPage data position: " + reader.position());
-            System.out.println("\t\tpoints in the page: " + pageHeader.getNumOfValues());
-            ByteBuffer pageData = reader.readPage(pageHeader, header.getCompressionType());
-            System.out
-                    .println("\t\tUncompressed page data size: " + pageHeader.getUncompressedSize());
-            PageReader reader1 = new PageReader(pageData, header.getDataType(), valueDecoder,
-                    defaultTimeDecoder);
-            while (reader1.hasNextBatch()) {
-              BatchData batchData = reader1.nextBatch();
-              while (batchData.hasNext()) {
-                System.out.println(
-                        "\t\t\ttime, value: " + batchData.currentTime() + ", " + batchData
-                                .currentValue());
-                batchData.next();
-              }
-            }
+            reader.readPage(pageHeader, header.getCompressionType());
           }
           break;
         case MetaMarker.CHUNK_GROUP_FOOTER:
-          System.out.println("Chunk Group Footer position: " + reader.position());
-          ChunkGroupFooter chunkGroupFooter = reader.readChunkGroupFooter();
-          System.out.println("device: " + chunkGroupFooter.getDeviceID());
+          reader.readChunkGroupFooter();
           long endOffset = reader.position();
           offsetList.add(new Pair<>(startOffset, endOffset));
           startOffset = endOffset;
@@ -138,7 +101,6 @@ public class ChunkGroupMetaDataTest {
           MetaMarker.handleUnexpectedMarker(marker);
       }
     }
-    System.out.println("[Metadata]");
     int offsetListIndex = 0;
     List<TsDeviceMetadataIndex> deviceMetadataIndexList = metaData.getDeviceMap().values().stream()
             .sorted((x, y) -> (int) (x.getOffset() - y.getOffset())).collect(Collectors.toList());
@@ -146,19 +108,9 @@ public class ChunkGroupMetaDataTest {
       TsDeviceMetadata deviceMetadata = reader.readTsDeviceMetaData(index);
       List<ChunkGroupMetaData> chunkGroupMetaDataList = deviceMetadata.getChunkGroupMetaDataList();
       for (ChunkGroupMetaData chunkGroupMetaData : chunkGroupMetaDataList) {
-        System.out.println(String
-                .format("\t[Device]File Offset: %d, Device %s, Number of Chunk Groups %d",
-                        index.getOffset(), chunkGroupMetaData.getDeviceID(),
-                        chunkGroupMetaDataList.size()));
-
         Pair<Long, Long> pair = offsetList.get(offsetListIndex++);
         Assert.assertEquals(chunkGroupMetaData.getStartOffsetOfChunkGroup(), (long) pair.left);
         Assert.assertEquals(chunkGroupMetaData.getEndOffsetOfChunkGroup(), (long) pair.right);
-
-        for (ChunkMetaData chunkMetadata : chunkGroupMetaData.getChunkMetaDataList()) {
-          System.out.println("\t\tMeasurement:" + chunkMetadata.getMeasurementUid());
-          System.out.println("\t\tFile offset:" + chunkMetadata.getOffsetOfChunkHeader());
-        }
       }
     }
     reader.close();

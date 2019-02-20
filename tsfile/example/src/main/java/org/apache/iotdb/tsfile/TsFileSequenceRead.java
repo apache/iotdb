@@ -19,8 +19,8 @@
 package org.apache.iotdb.tsfile;
 
 import java.io.File;
+import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -39,12 +39,11 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.reader.page.PageReader;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 public class TsFileSequenceRead {
 
-  public static void main(String[] args) throws Exception {
-    TsFileSequenceReader reader = new TsFileSequenceReader("/Users/East/projects/IoTDB/incubator-iotdb/tsfile/src/test/resources/test.tsfile");
+  public static void main(String[] args) throws IOException {
+    TsFileSequenceReader reader = new TsFileSequenceReader("test.tsfile");
     System.out.println("file length: " + new File("test.tsfile").length());
     System.out.println("file magic head: " + reader.readHeadMagic());
     System.out.println("file magic tail: " + reader.readTailMagic());
