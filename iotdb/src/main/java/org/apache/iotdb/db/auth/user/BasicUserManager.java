@@ -39,6 +39,7 @@ import org.slf4j.LoggerFactory;
 public abstract class BasicUserManager implements IUserManager {
 
   private static final Logger logger = LoggerFactory.getLogger(BasicUserManager.class);
+  private static final String NO_SUCH_USER_ERROR = "No such user %s";
 
   private Map<String, User> userMap;
   private IUserAccessor accessor;
@@ -93,7 +94,7 @@ public abstract class BasicUserManager implements IUserManager {
       lock.readUnlock(username);
     }
     if (user != null) {
-      user.lastActiveTime = System.currentTimeMillis();
+      user.setLastActiveTime(System.currentTimeMillis());
     }
     return user;
   }
@@ -145,7 +146,7 @@ public abstract class BasicUserManager implements IUserManager {
     try {
       User user = getUser(username);
       if (user == null) {
-        throw new AuthException(String.format("No such user %s", username));
+        throw new AuthException(String.format(NO_SUCH_USER_ERROR, username));
       }
       if (user.hasPrivilege(path, privilegeId)) {
         return false;
@@ -172,7 +173,7 @@ public abstract class BasicUserManager implements IUserManager {
     try {
       User user = getUser(username);
       if (user == null) {
-        throw new AuthException(String.format("No such user %s", username));
+        throw new AuthException(String.format(NO_SUCH_USER_ERROR, username));
       }
       if (!user.hasPrivilege(path, privilegeId)) {
         return false;
@@ -202,14 +203,14 @@ public abstract class BasicUserManager implements IUserManager {
     try {
       User user = getUser(username);
       if (user == null) {
-        throw new AuthException(String.format("No such user %s", username));
+        throw new AuthException(String.format(NO_SUCH_USER_ERROR, username));
       }
-      String oldPassword = user.password;
-      user.password = AuthUtils.encryptPassword(newPassword);
+      String oldPassword = user.getPassword();
+      user.setPassword(AuthUtils.encryptPassword(newPassword));
       try {
         accessor.saveUser(user);
       } catch (IOException e) {
-        user.password = oldPassword;
+        user.setPassword(oldPassword);
         throw new AuthException(e);
       }
       return true;
@@ -224,16 +225,16 @@ public abstract class BasicUserManager implements IUserManager {
     try {
       User user = getUser(username);
       if (user == null) {
-        throw new AuthException(String.format("No such user %s", username));
+        throw new AuthException(String.format(NO_SUCH_USER_ERROR, username));
       }
       if (user.hasRole(roleName)) {
         return false;
       }
-      user.roleList.add(roleName);
+      user.getRoleList().add(roleName);
       try {
         accessor.saveUser(user);
       } catch (IOException e) {
-        user.roleList.remove(roleName);
+        user.getRoleList().remove(roleName);
         throw new AuthException(e);
       }
       return true;
@@ -253,11 +254,11 @@ public abstract class BasicUserManager implements IUserManager {
       if (!user.hasRole(roleName)) {
         return false;
       }
-      user.roleList.remove(roleName);
+      user.getRoleList().remove(roleName);
       try {
         accessor.saveUser(user);
       } catch (IOException e) {
-        user.roleList.add(roleName);
+        user.getRoleList().add(roleName);
         throw new AuthException(e);
       }
       return true;

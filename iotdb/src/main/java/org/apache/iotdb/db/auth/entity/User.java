@@ -29,17 +29,19 @@ import org.apache.iotdb.db.utils.AuthUtils;
  */
 public class User {
 
-  public String name;
-  public String password;
-  public List<PathPrivilege> privilegeList;
-  public List<String> roleList;
+  private String name;
+  private String password;
+  private List<PathPrivilege> privilegeList;
+  private List<String> roleList;
+
   /**
    * The latest time when the user is referenced. Reserved to provide session control or LRU
    * mechanism in the future.
    */
-  public long lastActiveTime;
+  private long lastActiveTime;
 
   public User() {
+    // empty constructor
   }
 
   /**
@@ -55,16 +57,56 @@ public class User {
     this.roleList = new ArrayList<>();
   }
 
+  public String getName() {
+    return name;
+  }
+
+  public void setName(String name) {
+    this.name = name;
+  }
+
+  public String getPassword() {
+    return password;
+  }
+
+  public void setPassword(String password) {
+    this.password = password;
+  }
+
+  public List<PathPrivilege> getPrivilegeList() {
+    return privilegeList;
+  }
+
+  public void setPrivilegeList(List<PathPrivilege> privilegeList) {
+    this.privilegeList = privilegeList;
+  }
+
+  public List<String> getRoleList() {
+    return roleList;
+  }
+
+  public void setRoleList(List<String> roleList) {
+    this.roleList = roleList;
+  }
+
+  public long getLastActiveTime() {
+    return lastActiveTime;
+  }
+
+  public void setLastActiveTime(long lastActiveTime) {
+    this.lastActiveTime = lastActiveTime;
+  }
+
   public boolean hasPrivilege(String path, int privilegeId) {
     return AuthUtils.hasPrivilege(path, privilegeId, privilegeList);
   }
 
-  public void addPrivilege(String path, int privilgeId) {
-    AuthUtils.addPrivilege(path, privilgeId, privilegeList);
+  public void addPrivilege(String path, int privilegeId) {
+    AuthUtils.addPrivilege(path, privilegeId, privilegeList);
   }
 
-  public void removePrivilege(String path, int privilgeId) {
-    AuthUtils.removePrivilege(path, privilgeId, privilegeList);
+  public void removePrivilege(String path, int privilegeId) {
+    AuthUtils.removePrivilege(path, privilegeId, privilegeList);
   }
 
   /**
@@ -102,15 +144,20 @@ public class User {
       return false;
     }
     User user = (User) o;
-    return lastActiveTime == user.lastActiveTime && Objects.equals(name, user.name)
-        && Objects.equals(password, user.password) && Objects
-        .equals(privilegeList, user.privilegeList)
-        && Objects.equals(roleList, user.roleList);
+
+    return lastActiveTime == user.lastActiveTime && contentEquals(user);
   }
+
+  private boolean contentEquals(User user) {
+    return Objects.equals(name, user.name)
+            && Objects.equals(password, user.password)
+            && Objects.equals(privilegeList, user.privilegeList)
+            && Objects.equals(roleList, user.roleList);
+  }
+
 
   @Override
   public int hashCode() {
-
     return Objects.hash(name, password, privilegeList, roleList, lastActiveTime);
   }
 }

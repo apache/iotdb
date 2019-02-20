@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.engine.overflow.ioV2;
+package org.apache.iotdb.db.engine.overflow.io;
 
 import java.io.File;
 import java.io.IOException;
@@ -26,9 +26,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
+
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -57,7 +59,6 @@ import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
@@ -81,14 +82,14 @@ public class OverflowProcessor extends Processor {
   private int valueCount;
   private String parentPath;
   private long lastFlushTime = -1;
-  private AtomicLong dataPahtCount = new AtomicLong();
+  private AtomicLong dataPathCount = new AtomicLong();
   private ReentrantLock queryFlushLock = new ReentrantLock();
 
   private Action overflowFlushAction = null;
   private Action filenodeFlushAction = null;
   private FileSchema fileSchema;
 
-  private long memThreshold = TsFileConf.groupSizeInByte;
+  private long memThreshold = TSFileConfig.groupSizeInByte;
   private AtomicLong memSize = new AtomicLong();
 
   private WriteLogNode logNode;
@@ -114,13 +115,14 @@ public class OverflowProcessor extends Processor {
     recovery(processorDataDir);
     // memory
     workSupport = new OverflowSupport();
-    overflowFlushAction = (Action) parameters.get(FileNodeConstants.OVERFLOW_FLUSH_ACTION);
-    filenodeFlushAction = (Action) parameters
+    overflowFlushAction = parameters.get(FileNodeConstants.OVERFLOW_FLUSH_ACTION);
+    filenodeFlushAction = parameters
         .get(FileNodeConstants.FILENODE_PROCESSOR_FLUSH_ACTION);
 
     if (IoTDBDescriptor.getInstance().getConfig().enableWal) {
       logNode = MultiFileLogNodeManager.getInstance().getNode(
-          processorName + IoTDBConstant.OVERFLOW_LOG_NODE_SUFFIX, getOverflowRestoreFile(),
+          processorName + IoTDBConstant.OVERFLOW_LOG_NODE_SUFFIX,
+          getOverflowRestoreFile(),
           FileNodeManager.getInstance().getRestoreFilePath(processorName));
     }
   }
@@ -129,22 +131,21 @@ public class OverflowProcessor extends Processor {
     String[] subFilePaths = clearFile(parentFile.list());
     if (subFilePaths.length == 0) {
       workResource = new OverflowResource(parentPath,
-          String.valueOf(dataPahtCount.getAndIncrement()), versionController);
-      return;
+          String.valueOf(dataPathCount.getAndIncrement()), versionController);
     } else if (subFilePaths.length == 1) {
-      long count = Long.valueOf(subFilePaths[0]);
-      dataPahtCount.addAndGet(count + 1);
+      long count = Long.parseLong(subFilePaths[0]);
+      dataPathCount.addAndGet(count + 1);
       workResource = new OverflowResource(parentPath, String.valueOf(count), versionController);
       LOGGER.info("The overflow processor {} recover from work status.", getProcessorName());
     } else {
-      long count1 = Long.valueOf(subFilePaths[0]);
-      long count2 = Long.valueOf(subFilePaths[1]);
+      long count1 = Long.parseLong(subFilePaths[0]);
+      long count2 = Long.parseLong(subFilePaths[1]);
       if (count1 > count2) {
         long temp = count1;
         count1 = count2;
         count2 = temp;
       }
-      dataPahtCount.addAndGet(count2 + 1);
+      dataPathCount.addAndGet(count2 + 1);
       // work dir > merge dir
       workResource = new OverflowResource(parentPath, String.valueOf(count2), versionController);
       mergeResource = new OverflowResource(parentPath, String.valueOf(count1), versionController);
@@ -188,7 +189,7 @@ public class OverflowProcessor extends Processor {
   }
 
   /**
-   * @Deprecated update one time-series data which time range is from startTime from endTime.
+   * @deprecated update one time-series data which time range is from startTime from endTime.
    */
   @Deprecated
   public void update(String deviceId, String measurementId, long startTime, long endTime,
@@ -198,6 +199,9 @@ public class OverflowProcessor extends Processor {
     valueCount++;
   }
 
+  /**
+   * @deprecated this function need to be re-implemented.
+   */
   @Deprecated
   public void update(String deviceId, String measurementId, long startTime, long endTime,
       TSDataType type,
@@ -235,7 +239,7 @@ public class OverflowProcessor extends Processor {
    * @param timestamp the upper-bound of deletion time.
    * @param version the version number of this deletion.
    * @param updatedModFiles add successfully updated Modification files to the list, and abort them
-   * when exception is
+   * when exception is raised
    */
   public void delete(String deviceId, String measurementId, long timestamp, long version,
       List<ModificationFile> updatedModFiles) throws IOException {
@@ -253,7 +257,7 @@ public class OverflowProcessor extends Processor {
    *
    * @return OverflowSeriesDataSource
    */
-  public OverflowSeriesDataSource query(String deviceId, String measurementId, Filter filter,
+  public OverflowSeriesDataSource query(String deviceId, String measurementId,
       TSDataType dataType, QueryContext context)
       throws IOException {
     queryFlushLock.lock();
@@ -269,14 +273,16 @@ public class OverflowProcessor extends Processor {
           dataType, context);
       if (insertInDiskWork.left != null) {
         overflowInsertFileList
-            .add(0, new OverflowInsertFile(insertInDiskWork.left, insertInDiskWork.right));
+            .add(0, new OverflowInsertFile(insertInDiskWork.left,
+                insertInDiskWork.right));
       }
       // merge file
       Pair<String, List<ChunkMetaData>> insertInDiskMerge = queryMergeDataInOverflowInsert(deviceId,
           measurementId, dataType, context);
       if (insertInDiskMerge.left != null) {
         overflowInsertFileList
-            .add(0, new OverflowInsertFile(insertInDiskMerge.left, insertInDiskMerge.right));
+            .add(0, new OverflowInsertFile(insertInDiskMerge.left
+                , insertInDiskMerge.right));
       }
       // work file
       return new OverflowSeriesDataSource(new Path(deviceId + "." + measurementId), dataType,
@@ -302,13 +308,17 @@ public class OverflowProcessor extends Processor {
               flushSupport.queryOverflowInsertInMemory(deviceId, measurementId, dataType));
     }
     memSeriesLazyMerger
-        .addMemSeries(workSupport.queryOverflowInsertInMemory(deviceId, measurementId, dataType));
+        .addMemSeries(workSupport.queryOverflowInsertInMemory(deviceId, measurementId,
+            dataType));
     return new ReadOnlyMemChunk(dataType, memSeriesLazyMerger);
   }
 
   /**
    * Get the insert data which is WORK in unseqTsFile.
    *
+   * @param deviceId deviceId of the target time-series
+   * @param measurementId measurementId of the target time-series
+   * @param dataType data type of the target time-series
    * @return the seriesPath of unseqTsFile, List of TimeSeriesChunkMetaData for the special
    * time-series.
    */
@@ -316,10 +326,9 @@ public class OverflowProcessor extends Processor {
       String measurementId,
       TSDataType dataType,
       QueryContext context) {
-    Pair<String, List<ChunkMetaData>> pair = new Pair<String, List<ChunkMetaData>>(
+    return new Pair<>(
         workResource.getInsertFilePath(),
         workResource.getInsertMetadatas(deviceId, measurementId, dataType, context));
-    return pair;
   }
 
   /**
@@ -356,18 +365,17 @@ public class OverflowProcessor extends Processor {
    *
    * @return the seriesPath of unseqTsFile, List of TimeSeriesChunkMetaData for the special
    * time-series.
-   */
+   **/
   private Pair<String, List<ChunkMetaData>> queryMergeDataInOverflowInsert(String deviceId,
       String measurementId,
       TSDataType dataType,
       QueryContext context) {
     if (!isMerge) {
-      return new Pair<String, List<ChunkMetaData>>(null, null);
+      return new Pair<>(null, null);
     }
-    Pair<String, List<ChunkMetaData>> pair = new Pair<String, List<ChunkMetaData>>(
+    return new Pair<>(
         mergeResource.getInsertFilePath(),
         mergeResource.getInsertMetadatas(deviceId, measurementId, dataType, context));
-    return pair;
   }
 
   private void switchWorkToFlush() {
@@ -394,9 +402,8 @@ public class OverflowProcessor extends Processor {
   public void switchWorkToMerge() throws IOException {
     if (mergeResource == null) {
       mergeResource = workResource;
-      // TODO: NEW ONE workResource
       workResource = new OverflowResource(parentPath,
-          String.valueOf(dataPahtCount.getAndIncrement()), versionController);
+          String.valueOf(dataPathCount.getAndIncrement()), versionController);
     }
     isMerge = true;
     LOGGER.info("The overflow processor {} switch from WORK to MERGE", getProcessorName());
@@ -426,10 +433,11 @@ public class OverflowProcessor extends Processor {
     long flushStartTime = System.currentTimeMillis();
     try {
       LOGGER
-          .info("The overflow processor {} starts flushing {}.", getProcessorName(), flushFunction);
+          .info("The overflow processor {} starts flushing {}.", getProcessorName(),
+              flushFunction);
       // flush data
       workResource
-          .flush(fileSchema, flushSupport.getMemTabale(), flushSupport.getOverflowSeriesMap(),
+          .flush(fileSchema, flushSupport.getMemTabale(),
               getProcessorName());
       filenodeFlushAction.act();
       // write-ahead log
@@ -459,7 +467,8 @@ public class OverflowProcessor extends Processor {
     ZonedDateTime endDateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(flushEndTime),
         IoTDBDescriptor.getInstance().getConfig().getZoneID());
     LOGGER.info(
-        "The overflow processor {} flush {}, start time is {}, flush end time is {}, time consumption is {}ms",
+        "The overflow processor {} flush {}, start time is {}, flush end time is {}," +
+            " time consumption is {}ms",
         getProcessorName(), flushFunction, startDateTime, endDateTime, timeInterval);
   }
 
@@ -472,8 +481,10 @@ public class OverflowProcessor extends Processor {
       ZonedDateTime thisDateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(thisFLushTime),
           IoTDBDescriptor.getInstance().getConfig().getZoneID());
       LOGGER.info(
-          "The overflow processor {} last flush time is {}, this flush time is {}, flush time interval is {}s",
-          getProcessorName(), lastDateTime, thisDateTime, (thisFLushTime - lastFlushTime) / 1000);
+          "The overflow processor {} last flush time is {}, this flush time is {},"
+              + " flush time interval is {}s",
+          getProcessorName(), lastDateTime, thisDateTime,
+          (thisFLushTime - lastFlushTime) / 1000);
     }
     lastFlushTime = System.currentTimeMillis();
     // value count
@@ -500,7 +511,7 @@ public class OverflowProcessor extends Processor {
           logNode.notifyStartFlush();
         } catch (IOException e) {
           LOGGER.error("Overflow processor {} encountered an error when notifying log node, {}",
-              getProcessorName(), e.getMessage());
+              getProcessorName(), e);
         }
       }
       BasicMemController.getInstance().reportFree(this, memSize.get());
@@ -513,6 +524,7 @@ public class OverflowProcessor extends Processor {
         flushOperation("synchronously");
       } else {
         FlushManager.getInstance().submit(new Runnable() {
+          @Override
           public void run() {
             flushOperation("asynchronously");
           }
@@ -541,14 +553,13 @@ public class OverflowProcessor extends Processor {
     LOGGER.info("The overflow processor {} ends close operation.", getProcessorName());
     // log close time
     long closeEndTime = System.currentTimeMillis();
-    long timeInterval = closeEndTime - closeStartTime;
-    ZonedDateTime startDateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(closeStartTime),
-        IoTDBDescriptor.getInstance().getConfig().getZoneID());
-    ZonedDateTime endDateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(closeStartTime),
-        IoTDBDescriptor.getInstance().getConfig().getZoneID());
     LOGGER.info(
-        "The close operation of overflow processor {} starts at {} and ends at {}. It comsumes {}ms.",
-        getProcessorName(), startDateTime, endDateTime, timeInterval);
+        "The close operation of overflow processor {} starts at {} and ends at {}."
+            + " It comsumes {}ms.",
+        getProcessorName(), ZonedDateTime.ofInstant(Instant.ofEpochMilli(closeStartTime),
+            IoTDBDescriptor.getInstance().getConfig().getZoneID()),
+        ZonedDateTime.ofInstant(Instant.ofEpochMilli(closeStartTime),
+            IoTDBDescriptor.getInstance().getConfig().getZoneID()), closeEndTime - closeStartTime);
   }
 
   public void clear() throws IOException {
@@ -591,14 +602,6 @@ public class OverflowProcessor extends Processor {
   }
 
   /**
-   * Close current OverflowFile and open a new one for future writes. Block new writes and wait
-   * until current writes finish.
-   */
-  private void rollToNewFile() {
-    // TODO : [MemControl] implement this
-  }
-
-  /**
    * Check whether current overflow file contains too many metadata or size of current overflow file
    * is too large If true, close current file and open a new one.
    */
@@ -607,17 +610,18 @@ public class OverflowProcessor extends Processor {
     long metaSize = getMetaSize();
     long fileSize = getFileSize();
     LOGGER.info(
-        "The overflow processor {}, the size of metadata reaches {}, the size of file reaches {}.",
+        "The overflow processor {}, the size of metadata reaches {},"
+            + " the size of file reaches {}.",
         getProcessorName(), MemUtils.bytesCntToStr(metaSize), MemUtils.bytesCntToStr(fileSize));
     if (metaSize >= config.overflowMetaSizeThreshold
         || fileSize >= config.overflowFileSizeThreshold) {
       LOGGER.info(
-          "The overflow processor {}, size({}) of the file {} reaches threshold {}, size({}) of metadata reaches threshold {}.",
+          "The overflow processor {}, size({}) of the file {} reaches threshold {},"
+              + " size({}) of metadata reaches threshold {}.",
           getProcessorName(), MemUtils.bytesCntToStr(fileSize), workResource.getInsertFilePath(),
           MemUtils.bytesCntToStr(config.overflowMetaSizeThreshold),
           MemUtils.bytesCntToStr(metaSize),
           MemUtils.bytesCntToStr(config.overflowMetaSizeThreshold));
-      rollToNewFile();
       return true;
     } else {
       return false;
@@ -630,5 +634,44 @@ public class OverflowProcessor extends Processor {
 
   public OverflowResource getWorkResource() {
     return workResource;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    if (!super.equals(o)) {
+      return false;
+    }
+    OverflowProcessor that = (OverflowProcessor) o;
+    return isMerge == that.isMerge &&
+        valueCount == that.valueCount &&
+        lastFlushTime == that.lastFlushTime &&
+        memThreshold == that.memThreshold &&
+        Objects.equals(workResource, that.workResource) &&
+        Objects.equals(mergeResource, that.mergeResource) &&
+        Objects.equals(workSupport, that.workSupport) &&
+        Objects.equals(flushSupport, that.flushSupport) &&
+        Objects.equals(flushStatus, that.flushStatus) &&
+        Objects.equals(parentPath, that.parentPath) &&
+        Objects.equals(dataPathCount, that.dataPathCount) &&
+        Objects.equals(queryFlushLock, that.queryFlushLock) &&
+        Objects.equals(overflowFlushAction, that.overflowFlushAction) &&
+        Objects.equals(filenodeFlushAction, that.filenodeFlushAction) &&
+        Objects.equals(fileSchema, that.fileSchema) &&
+        Objects.equals(memSize, that.memSize) &&
+        Objects.equals(logNode, that.logNode);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(super.hashCode(), workResource, mergeResource, workSupport,
+        flushSupport, flushStatus, isMerge, valueCount, parentPath, lastFlushTime,
+        dataPathCount, queryFlushLock, overflowFlushAction, filenodeFlushAction, fileSchema,
+        memThreshold, memSize, logNode);
   }
 }

@@ -28,9 +28,11 @@ public class NoActPolicy implements Policy {
 
   @Override
   public void execute() {
-    logger.debug("Memory check is safe, current usage {}, JVM memory {}",
-        MemUtils.bytesCntToStr(BasicMemController.getInstance().getTotalUsage()),
-        MemUtils
-            .bytesCntToStr(Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()));
+    if (logger.isDebugEnabled()) {
+      logger.debug("Memory check is safe, current usage {}, JVM memory {}",
+              MemUtils.bytesCntToStr(BasicMemController.getInstance().getTotalUsage()),
+              MemUtils.bytesCntToStr(Runtime.getRuntime().totalMemory()
+                      - Runtime.getRuntime().freeMemory()));
+    }
   }
 }

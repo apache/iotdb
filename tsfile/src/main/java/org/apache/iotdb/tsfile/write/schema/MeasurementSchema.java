@@ -28,7 +28,7 @@ import java.util.Map;
 import java.util.Objects;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.compress.Compressor;
+import org.apache.iotdb.tsfile.compress.ICompressor;
 import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
 import org.apache.iotdb.tsfile.encoding.encoder.TSEncodingBuilder;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
@@ -53,7 +53,7 @@ public class MeasurementSchema implements Comparable<MeasurementSchema> {
   private TSEncoding encoding;
   private String measurementId;
   private TSEncodingBuilder encodingConverter;
-  private Compressor compressor;
+  private ICompressor compressor;
   private TSFileConfig conf;
   private Map<String, String> props = new HashMap<>();
 
@@ -65,7 +65,7 @@ public class MeasurementSchema implements Comparable<MeasurementSchema> {
    */
   public MeasurementSchema(String measurementId, TSDataType type, TSEncoding encoding) {
     this(measurementId, type, encoding,
-        CompressionType.valueOf(TSFileDescriptor.getInstance().getConfig().compressor),
+        CompressionType.valueOf(TSFileConfig.compressor),
         Collections.emptyMap());
   }
 
@@ -91,7 +91,7 @@ public class MeasurementSchema implements Comparable<MeasurementSchema> {
     // initialize TSEncoding. e.g. set max error for PLA and SDT
     encodingConverter = TSEncodingBuilder.getConverter(encoding);
     encodingConverter.initFromProps(props);
-    this.compressor = Compressor.getCompressor(compressionType);
+    this.compressor = ICompressor.getCompressor(compressionType);
   }
 
   /**
@@ -107,7 +107,7 @@ public class MeasurementSchema implements Comparable<MeasurementSchema> {
     measurementSchema.encoding = ReadWriteIOUtils.readEncoding(inputStream);
 
     CompressionType compressionType = ReadWriteIOUtils.readCompressionType(inputStream);
-    measurementSchema.compressor = Compressor.getCompressor(compressionType);
+    measurementSchema.compressor = ICompressor.getCompressor(compressionType);
 
     int size = ReadWriteIOUtils.readInt(inputStream);
     if (size > 0) {
@@ -137,7 +137,7 @@ public class MeasurementSchema implements Comparable<MeasurementSchema> {
     measurementSchema.encoding = ReadWriteIOUtils.readEncoding(buffer);
 
     CompressionType compressionType = ReadWriteIOUtils.readCompressionType(buffer);
-    measurementSchema.compressor = Compressor.getCompressor(compressionType);
+    measurementSchema.compressor = ICompressor.getCompressor(compressionType);
 
     int size = ReadWriteIOUtils.readInt(buffer);
     if (size > 0) {
@@ -194,7 +194,7 @@ public class MeasurementSchema implements Comparable<MeasurementSchema> {
       case TEXT:
         // 4 is the length of string in type of Integer.
         // Note that one char corresponding to 3 byte is valid only in 16-bit BMP
-        return conf.maxStringLength * TSFileConfig.BYTE_SIZE_PER_CHAR + 4;
+        return TSFileConfig.maxStringLength * TSFileConfig.BYTE_SIZE_PER_CHAR + 4;
       default:
         throw new UnSupportedDataTypeException(type.toString());
     }
@@ -204,8 +204,8 @@ public class MeasurementSchema implements Comparable<MeasurementSchema> {
    * function for getting time encoder.
    */
   public Encoder getTimeEncoder() {
-    TSEncoding timeSeriesEncoder = TSEncoding.valueOf(conf.timeSeriesEncoder);
-    TSDataType timeType = TSDataType.valueOf(conf.timeSeriesDataType);
+    TSEncoding timeSeriesEncoder = TSEncoding.valueOf(TSFileConfig.timeSeriesEncoder);
+    TSDataType timeType = TSDataType.valueOf(TSFileConfig.timeSeriesDataType);
     return TSEncodingBuilder.getConverter(timeSeriesEncoder).getEncoder(timeType);
   }
 
@@ -218,7 +218,7 @@ public class MeasurementSchema implements Comparable<MeasurementSchema> {
     return encodingConverter.getEncoder(type);
   }
 
-  public Compressor getCompressor() {
+  public ICompressor getCompressor() {
     return compressor;
   }
 

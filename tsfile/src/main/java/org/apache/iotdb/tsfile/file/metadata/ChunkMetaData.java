@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.file.metadata;
 
 import java.io.IOException;
@@ -221,8 +222,6 @@ public class ChunkMetaData {
     } else {
       byteLen += valuesStatistics.serializeTo(outputStream);
     }
-
-    assert byteLen == getSerializedSize();
     return byteLen;
   }
 
@@ -247,8 +246,6 @@ public class ChunkMetaData {
     } else {
       byteLen += valuesStatistics.serializeTo(buffer);
     }
-
-    assert byteLen == getSerializedSize();
     return byteLen;
   }
 

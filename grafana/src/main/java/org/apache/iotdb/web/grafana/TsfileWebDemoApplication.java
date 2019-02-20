@@ -24,8 +24,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 @SpringBootApplication
 public class TsfileWebDemoApplication {
 
-  public static void main(String[] args)
-      throws ClassNotFoundException, IllegalAccessException, InstantiationException {
+  public static void main(String[] args){
     SpringApplication.run(TsfileWebDemoApplication.class, args);
   }
 }

@@ -34,6 +34,15 @@ public class MergeSingleFilterOptimizer implements IFilterOptimizer {
     return filter;
   }
 
+  private void checkInnerFilterLen(List<FilterOperator> children) throws LogicalOptimizeException {
+    if (children.isEmpty()) {
+      throw new LogicalOptimizeException("this inner filter has no children!");
+    }
+    if (children.size() == 1) {
+      throw new LogicalOptimizeException("this inner filter has just one child!");
+    }
+  }
+
   /**
    * merge and extract node with same Path recursively. <br> If a node has more than two children
    * and some children has same paths, remove them from this node and merge them to a new single
@@ -50,12 +59,7 @@ public class MergeSingleFilterOptimizer implements IFilterOptimizer {
       return filter.getSinglePath();
     }
     List<FilterOperator> children = filter.getChildren();
-    if (children.isEmpty()) {
-      throw new LogicalOptimizeException("this inner filter has no children!");
-    }
-    if (children.size() == 1) {
-      throw new LogicalOptimizeException("this inner filter has just one child!");
-    }
+    checkInnerFilterLen(children);
     Path childPath = mergeSamePathFilter(children.get(0));
     Path tempPath;
     for (int i = 1; i < children.size(); i++) {
@@ -78,7 +82,6 @@ public class MergeSingleFilterOptimizer implements IFilterOptimizer {
       children.sort(Comparator.comparing(o -> o.getSinglePath().getFullPath()));
     }
     List<FilterOperator> ret = new ArrayList<>();
-
     List<FilterOperator> tempExtrNode = null;
     int i;
     for (i = 0; i < children.size(); i++) {
@@ -127,7 +130,12 @@ public class MergeSingleFilterOptimizer implements IFilterOptimizer {
         ret.add(newFil);
       }
     }
-    // add last null children
+    // add last null child
+    return addLastNullChild(children, ret, filter, i, childPath);
+  }
+
+  private Path addLastNullChild(List<FilterOperator> children, List<FilterOperator> ret,
+                                FilterOperator filter, int i, Path childPath){
     for (; i < children.size(); i++) {
       ret.add(children.get(i));
     }

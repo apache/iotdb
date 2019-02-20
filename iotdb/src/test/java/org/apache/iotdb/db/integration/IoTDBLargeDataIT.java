@@ -87,7 +87,6 @@ public class IoTDBLargeDataIT {
     connection.close();
 
     daemon.stop();
-    Thread.sleep(5000);
 
     // recovery value
     tsFileConfig.maxNumberOfPointsInPage = maxNumberOfPointsInPage;

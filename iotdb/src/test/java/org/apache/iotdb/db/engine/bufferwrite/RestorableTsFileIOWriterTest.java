@@ -178,7 +178,7 @@ public class RestorableTsFileIOWriterTest {
     assertEquals(2, metaData.getDeviceMap().size());
     List<ChunkGroupMetaData> chunkGroups = reader
         .readTsDeviceMetaData(metaData.getDeviceMap().get("d1"))
-        .getChunkGroups();
+        .getChunkGroupMetaDataList();
     assertEquals(1, chunkGroups.size());
 
     List<ChunkMetaData> chunks = chunkGroups.get(0).getChunkMetaDataList();
@@ -192,7 +192,7 @@ public class RestorableTsFileIOWriterTest {
     assertEquals(chunks.get(1).getEndTime(), 3);
     assertEquals(chunks.get(1).getNumOfPoints(), 2);
 
-    chunkGroups = reader.readTsDeviceMetaData(metaData.getDeviceMap().get("d2")).getChunkGroups();
+    chunkGroups = reader.readTsDeviceMetaData(metaData.getDeviceMap().get("d2")).getChunkGroupMetaDataList();
     assertEquals(1, chunkGroups.size());
     chunks = chunkGroups.get(0).getChunkMetaDataList();
     assertEquals(1, chunks.size());

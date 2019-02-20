@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.engine.overflow.ioV2;
+package org.apache.iotdb.db.engine.overflow.io;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
@@ -27,6 +27,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
@@ -45,6 +46,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.FileSchema;
+import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -104,16 +106,14 @@ public class OverflowResource {
   }
 
   private Pair<Long, Long> readPositionInfo() {
-    try {
-      FileInputStream inputStream = new FileInputStream(positionFilePath);
+    try(FileInputStream inputStream = new FileInputStream(positionFilePath)) {
       byte[] insertPositionData = new byte[8];
       byte[] updatePositionData = new byte[8];
       inputStream.read(insertPositionData);
       inputStream.read(updatePositionData);
       long lastInsertPosition = BytesUtils.bytesToLong(insertPositionData);
       long lastUpdatePosition = BytesUtils.bytesToLong(updatePositionData);
-      inputStream.close();
-      return new Pair<Long, Long>(lastInsertPosition, lastUpdatePosition);
+      return new Pair<>(lastInsertPosition, lastUpdatePosition);
     } catch (IOException e) {
       long left = 0;
       long right = 0;
@@ -121,25 +121,25 @@ public class OverflowResource {
       if (insertTempFile.exists()) {
         left = insertTempFile.length();
       }
-      return new Pair<Long, Long>(left, right);
+      return new Pair<>(left, right);
     }
   }
 
   private void writePositionInfo(long lastInsertPosition, long lastUpdatePosition)
       throws IOException {
-    FileOutputStream outputStream = new FileOutputStream(positionFilePath);
-    byte[] data = new byte[16];
-    BytesUtils.longToBytes(lastInsertPosition, data, 0);
-    BytesUtils.longToBytes(lastUpdatePosition, data, 8);
-    outputStream.write(data);
-    outputStream.close();
+    try(FileOutputStream outputStream = new FileOutputStream(positionFilePath)) {
+      byte[] data = new byte[16];
+      BytesUtils.longToBytes(lastInsertPosition, data, 0);
+      BytesUtils.longToBytes(lastUpdatePosition, data, 8);
+      outputStream.write(data);
+    }
   }
 
   private void readMetadata() throws IOException {
     // read insert meta-data
     insertIO.toTail();
     long position = insertIO.getPos();
-    while (position != insertIO.magicStringBytes.length) {
+    while (position != TsFileIOWriter.magicStringBytes.length) {
       insertIO.getReader().position(position - FOOTER_LENGTH);
       int metadataLength = insertIO.getReader().readInt();
       byte[] buf = new byte[metadataLength];
@@ -151,7 +151,7 @@ public class OverflowResource {
       insertIO.getReader().position(position - FOOTER_LENGTH - metadataLength - POS_LENGTH);
       insertIO.getReader().read(bytesPosition, 0, POS_LENGTH);
       position = BytesUtils.bytesToLong(bytesPosition);
-      for (ChunkGroupMetaData rowGroupMetaData : tsDeviceMetadata.getChunkGroups()) {
+      for (ChunkGroupMetaData rowGroupMetaData : tsDeviceMetadata.getChunkGroupMetaDataList()) {
         String deviceId = rowGroupMetaData.getDeviceID();
         if (!insertMetadatas.containsKey(deviceId)) {
           insertMetadatas.put(deviceId, new HashMap<>());
@@ -172,7 +172,7 @@ public class OverflowResource {
       TSDataType dataType, QueryContext context) {
     List<ChunkMetaData> chunkMetaDatas = new ArrayList<>();
     if (insertMetadatas.containsKey(deviceId) && insertMetadatas.get(deviceId)
-        .containsKey(measurementId)) {
+            .containsKey(measurementId)) {
       for (ChunkMetaData chunkMetaData : insertMetadatas.get(deviceId).get(measurementId)) {
         // filter
         if (chunkMetaData.getTsDataType().equals(dataType)) {
@@ -191,8 +191,7 @@ public class OverflowResource {
     return chunkMetaDatas;
   }
 
-  public void flush(FileSchema fileSchema, IMemTable memTable,
-      Map<String, Map<String, OverflowSeriesImpl>> overflowTrees, String processorName)
+  public void flush(FileSchema fileSchema, IMemTable memTable, String processorName)
       throws IOException {
     // insert data
     long startPos = insertIO.getPos();
@@ -201,10 +200,14 @@ public class OverflowResource {
     long timeInterval = System.currentTimeMillis() - startTime;
     timeInterval = timeInterval == 0 ? 1 : timeInterval;
     long insertSize = insertIO.getPos() - startPos;
-    LOGGER.info(
-        "Overflow processor {} flushes overflow insert data, actual:{}, time consumption:{} ms, flush rate:{}/s",
-        processorName, MemUtils.bytesCntToStr(insertSize), timeInterval,
-        MemUtils.bytesCntToStr(insertSize / timeInterval * 1000));
+    if (LOGGER.isInfoEnabled()) {
+      LOGGER.info(
+          "Overflow processor {} flushes overflow insert data, actual:{}, time consumption:{} ms,"
+              + " flush rate:{}/s",
+          processorName, MemUtils.bytesCntToStr(insertSize), timeInterval,
+          MemUtils.bytesCntToStr(insertSize / timeInterval * 1000));
+    }
+
     writePositionInfo(insertIO.getPos(), 0);
   }
 
@@ -235,7 +238,7 @@ public class OverflowResource {
       for (ChunkGroupMetaData rowGroupMetaData : appendInsertMetadatas) {
         for (ChunkMetaData seriesChunkMetaData : rowGroupMetaData.getChunkMetaDataList()) {
           addInsertMetadata(rowGroupMetaData.getDeviceID(), seriesChunkMetaData.getMeasurementUid(),
-              seriesChunkMetaData);
+                  seriesChunkMetaData);
         }
       }
       appendInsertMetadatas.clear();
@@ -256,14 +259,11 @@ public class OverflowResource {
 
   public void close() throws IOException {
     insertMetadatas.clear();
-    // updateDeleteMetadatas.clear();
     insertIO.close();
-    // updateDeleteIO.close();
     modificationFile.close();
   }
 
   public void deleteResource() throws IOException {
-    // cleanDir(new File(parentPath, dataPath).getPath());
     FileUtils.forceDelete(new File(parentPath, dataPath));
   }
 
@@ -271,7 +271,11 @@ public class OverflowResource {
     File file = new File(dir);
     if (file.exists()) {
       if (file.isDirectory()) {
-        for (File subFile : file.listFiles()) {
+        File[] files = file.listFiles();
+        if (files == null) {
+          return;
+        }
+        for (File subFile : files) {
           cleanDir(subFile.getAbsolutePath());
         }
       }
@@ -282,7 +286,7 @@ public class OverflowResource {
   }
 
   private void addInsertMetadata(String deviceId, String measurementId,
-      ChunkMetaData chunkMetaData) {
+                                 ChunkMetaData chunkMetaData) {
     if (!insertMetadatas.containsKey(deviceId)) {
       insertMetadatas.put(deviceId, new HashMap<>());
     }

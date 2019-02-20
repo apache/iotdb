@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.encoding.decoder;
 
 import java.io.IOException;
@@ -29,10 +30,18 @@ import org.apache.iotdb.tsfile.utils.Binary;
 
 public abstract class Decoder {
 
-  public TSEncoding type;
+  private TSEncoding type;
 
   public Decoder(TSEncoding type) {
     this.type = type;
+  }
+
+  public void setType(TSEncoding type) {
+    this.type = type;
+  }
+
+  public TSEncoding getType() {
+    return type;
   }
 
   /**
@@ -46,23 +55,43 @@ public abstract class Decoder {
     // PLA and DFT encoding are not supported in current version
     if (type == TSEncoding.PLAIN) {
       return new PlainDecoder(EndianType.LITTLE_ENDIAN);
-    } else if (type == TSEncoding.RLE && dataType == TSDataType.BOOLEAN) {
-      return new IntRleDecoder(EndianType.LITTLE_ENDIAN);
-    } else if (type == TSEncoding.TS_2DIFF && dataType == TSDataType.INT32) {
-      return new DeltaBinaryDecoder.IntDeltaDecoder();
-    } else if (type == TSEncoding.TS_2DIFF && dataType == TSDataType.INT64) {
-      return new DeltaBinaryDecoder.LongDeltaDecoder();
-    } else if (type == TSEncoding.RLE && dataType == TSDataType.INT32) {
-      return new IntRleDecoder(EndianType.LITTLE_ENDIAN);
-    } else if (type == TSEncoding.RLE && dataType == TSDataType.INT64) {
-      return new LongRleDecoder(EndianType.LITTLE_ENDIAN);
-    } else if ((dataType == TSDataType.FLOAT || dataType == TSDataType.DOUBLE)
-        && (type == TSEncoding.RLE || type == TSEncoding.TS_2DIFF)) {
-      return new FloatDecoder(TSEncoding.valueOf(type.toString()), dataType);
-    } else if (type == TSEncoding.GORILLA && dataType == TSDataType.FLOAT) {
-      return new SinglePrecisionDecoder();
-    } else if (type == TSEncoding.GORILLA && dataType == TSDataType.DOUBLE) {
-      return new DoublePrecisionDecoder();
+    } else if (type == TSEncoding.RLE) {
+      switch (dataType) {
+        case BOOLEAN:
+        case INT32:
+          return new IntRleDecoder(EndianType.LITTLE_ENDIAN);
+        case INT64:
+          return new LongRleDecoder(EndianType.LITTLE_ENDIAN);
+        case FLOAT:
+        case DOUBLE:
+          return new FloatDecoder(TSEncoding.valueOf(type.toString()), dataType);
+        default:
+          throw new TsFileDecodingException(
+              "Decoder not found:" + type + " , DataType is :" + dataType);
+      }
+    } else if (type == TSEncoding.TS_2DIFF) {
+      switch (dataType) {
+        case INT32:
+          return new DeltaBinaryDecoder.IntDeltaDecoder();
+        case INT64:
+          return new DeltaBinaryDecoder.LongDeltaDecoder();
+        case FLOAT:
+        case DOUBLE:
+          return new FloatDecoder(TSEncoding.valueOf(type.toString()), dataType);
+        default:
+          throw new TsFileDecodingException(
+              "Decoder not found:" + type + " , DataType is :" + dataType);
+      }
+    } else if (type == TSEncoding.GORILLA) {
+      switch (dataType) {
+        case FLOAT:
+          return new SinglePrecisionDecoder();
+        case DOUBLE:
+          return new DoublePrecisionDecoder();
+        default:
+          throw new TsFileDecodingException(
+              "Decoder not found:" + type + " , DataType is :" + dataType);
+      }
     } else {
       throw new TsFileDecodingException(
           "Decoder not found:" + type + " , DataType is :" + dataType);

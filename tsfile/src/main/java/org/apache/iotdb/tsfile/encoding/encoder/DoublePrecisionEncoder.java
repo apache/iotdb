@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.encoding.encoder;
 
 import java.io.ByteArrayOutputStream;
@@ -30,6 +31,7 @@ public class DoublePrecisionEncoder extends GorillaEncoder {
   private long preValue;
 
   public DoublePrecisionEncoder() {
+    //do nothing
   }
 
   @Override
@@ -68,7 +70,7 @@ public class DoublePrecisionEncoder extends GorillaEncoder {
           writeBit(true, out);
           writeBit(true, out);
           writeBits(leadingZeroNumTmp, out, TSFileConfig.DOUBLE_LEADING_ZERO_LENGTH - 1, 0);
-          writeBits(TSFileConfig.DOUBLE_LENGTH - leadingZeroNumTmp - tailingZeroNumTmp, out,
+          writeBits((long)TSFileConfig.DOUBLE_LENGTH - leadingZeroNumTmp - tailingZeroNumTmp, out,
               TSFileConfig.DOUBLE_VALUE_LENGTH - 1, 0);
           writeBits(tmp, out, TSFileConfig.DOUBLE_LENGTH - 1 - leadingZeroNumTmp,
               tailingZeroNumTmp);

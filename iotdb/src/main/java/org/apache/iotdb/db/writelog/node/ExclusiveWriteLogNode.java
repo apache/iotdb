@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -69,12 +70,12 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
   /**
    * constructor of ExclusiveWriteLogNode.
    *
-   * @param identifier ExclusiveWriteLogNode identifier
-   * @param restoreFilePath restore file path
+   * @param identifier             ExclusiveWriteLogNode identifier
+   * @param restoreFilePath        restore file path
    * @param processorStoreFilePath processor store file path
    */
   public ExclusiveWriteLogNode(String identifier, String restoreFilePath,
-      String processorStoreFilePath) {
+                               String processorStoreFilePath) {
     this.identifier = identifier;
     this.logDirectory = config.walFolder + File.separator + this.identifier;
     new File(logDirectory).mkdirs();
@@ -109,19 +110,12 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
 
   @Override
   public void recover() throws RecoverException {
-    try {
-      close();
-    } catch (IOException e) {
-      logger.error("Cannot close write log {} node before recover! Because {}", identifier,
-          e.getMessage());
-      throw new RecoverException(
-          String.format("Cannot close write log %s node before recover!", identifier));
-    }
+    close();
     recoverPerformer.recover();
   }
 
   @Override
-  public void close() throws IOException {
+  public void close() {
     sync();
     forceWal();
     lockForOther();
@@ -137,12 +131,12 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
   }
 
   @Override
-  public void forceSync() throws IOException {
+  public void forceSync() {
     sync();
   }
 
   @Override
-  public void force() throws IOException {
+  public void force() {
     forceWal();
   }
 
@@ -150,7 +144,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
    * Warning : caller must have lock.
    */
   @Override
-  public void notifyStartFlush() throws IOException {
+  public void notifyStartFlush() {
     close();
     File oldLogFile = new File(logDirectory + File.separator + WAL_FILE_NAME);
     File newLogFile = new File(logDirectory + File.separator + WAL_FILE_NAME + OLD_SUFFIX);
@@ -232,7 +226,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
       try {
         currentFileWriter.write(logCache);
       } catch (IOException e) {
-        logger.error("Log node {} sync failed because {}.", identifier, e.getMessage());
+        logger.error("Log node {} sync failed", identifier, e);
       }
       logCache.clear();
       logger.debug("Log node {} ends sync.", identifier);
@@ -248,7 +242,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
       try {
         currentFileWriter.force();
       } catch (IOException e) {
-        logger.error("Log node {} force failed because {}.", identifier, e.getMessage());
+        logger.error("Log node {} force failed.", identifier, e);
       }
       logger.debug("Log node {} ends force.", identifier);
     } finally {
@@ -269,6 +263,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
     }
   }
 
+  @Override
   public String toString() {
     return "Log node " + identifier;
   }
@@ -280,5 +275,25 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
   @Override
   public int compareTo(ExclusiveWriteLogNode o) {
     return this.identifier.compareTo(o.identifier);
+  }
+
+  @Override
+  public int hashCode() {
+    return identifier.hashCode();
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj) {
+      return true;
+    }
+    if (obj == null) {
+      return false;
+    }
+    if (getClass() != obj.getClass()) {
+      return false;
+    }
+
+    return compareTo((ExclusiveWriteLogNode) obj) == 0;
   }
 }

@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.engine.overflow.ioV2;
+package org.apache.iotdb.db.engine.overflow.io;
 
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.LongStatistics;
@@ -24,14 +24,14 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 
 /**
- * This class is only used to store and query overflow overflowIndex {@code IIntervalTreeOperator} data in memory.
+ * This class is only used to store and query overflow overflowIndex {@code IIntervalTreeOperator}
+ * data in memory.
  */
 public class OverflowSeriesImpl {
 
   /**
    * The data of update and delete in memory for this time series.
    */
-  // public IIntervalTreeOperator overflowIndex;
   private String measurementId;
   private TSDataType dataType;
   private Statistics<Long> statistics;
@@ -41,28 +41,23 @@ public class OverflowSeriesImpl {
     this.measurementId = measurementId;
     this.dataType = dataType;
     statistics = new LongStatistics();
-    // overflowIndex = new IntervalTreeOperation(dataType);
   }
 
-  public void update(long startTime, long endTime, byte[] value) {
-    //overflowIndex.update(startTime, endTime, value);
+  public void update(long startTime, long endTime) {
     statistics.updateStats(startTime, endTime);
     valueCount++;
   }
 
   public void delete(long timestamp) {
-    // overflowIndex.delete(timestamp);
     statistics.updateStats(timestamp, timestamp);
     valueCount++;
   }
 
-  public BatchData query(BatchData data) {
-    // return overflowIndex.queryMemory(data);
+  public BatchData query() {
     return null;
   }
 
   public long getSize() {
-    // return overflowIndex.calcMemSize();
     return 0;
   }
 

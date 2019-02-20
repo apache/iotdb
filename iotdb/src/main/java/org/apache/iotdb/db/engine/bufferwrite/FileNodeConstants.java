@@ -25,7 +25,6 @@ package org.apache.iotdb.db.engine.bufferwrite;
 public class FileNodeConstants {
 
   private FileNodeConstants(){
-
   }
 
   public static final String FILE_NODE_OPERATOR_TYPE = "OPERATOR_TYPE";

@@ -104,7 +104,7 @@ public class MetadataQuerierByFileImpl implements MetadataQuerier {
 
       // d1
       for (ChunkGroupMetaData chunkGroupMetaData : tsDeviceMetadata
-          .getChunkGroups()) { // TODO make this function
+          .getChunkGroupMetaDataList()) { // TODO make this function
         // better
 
         if (enough) {
@@ -159,7 +159,7 @@ public class MetadataQuerierByFileImpl implements MetadataQuerier {
 
     // get all ChunkMetaData of this path included in all ChunkGroups of this device
     List<ChunkMetaData> chunkMetaDataList = new ArrayList<>();
-    for (ChunkGroupMetaData chunkGroupMetaData : tsDeviceMetadata.getChunkGroups()) {
+    for (ChunkGroupMetaData chunkGroupMetaData : tsDeviceMetadata.getChunkGroupMetaDataList()) {
       List<ChunkMetaData> chunkMetaDataListInOneChunkGroup = chunkGroupMetaData
           .getChunkMetaDataList();
       for (ChunkMetaData chunkMetaData : chunkMetaDataListInOneChunkGroup) {

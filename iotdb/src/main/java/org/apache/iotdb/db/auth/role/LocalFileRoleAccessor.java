@@ -100,24 +100,23 @@ public class LocalFileRoleAccessor implements IRoleAccessor {
   public void saveRole(Role role) throws IOException {
     File roleProfile = new File(
         roleDirPath + File.separator + role.getName() + IoTDBConstant.PROFILE_SUFFIX + TEMP_SUFFIX);
-    BufferedOutputStream outputStream = new BufferedOutputStream(new FileOutputStream(roleProfile));
-    try {
-      IOUtils.writeString(outputStream, role.getName(), STRING_ENCODING, encodingBufferLocal);
+    try (BufferedOutputStream outputStream = new BufferedOutputStream(new FileOutputStream(roleProfile))) {
+      try {
+        IOUtils.writeString(outputStream, role.getName(), STRING_ENCODING, encodingBufferLocal);
 
-      role.getPrivilegeList().sort(PathPrivilege.referenceDescentSorter);
-      int privilegeNum = role.getPrivilegeList().size();
-      IOUtils.writeInt(outputStream, privilegeNum, encodingBufferLocal);
-      for (int i = 0; i < privilegeNum; i++) {
-        PathPrivilege pathPrivilege = role.getPrivilegeList().get(i);
-        IOUtils
-            .writePathPrivilege(outputStream, pathPrivilege, STRING_ENCODING, encodingBufferLocal);
+        role.getPrivilegeList().sort(PathPrivilege.REFERENCE_DESCENT_SORTER);
+        int privilegeNum = role.getPrivilegeList().size();
+        IOUtils.writeInt(outputStream, privilegeNum, encodingBufferLocal);
+        for (int i = 0; i < privilegeNum; i++) {
+          PathPrivilege pathPrivilege = role.getPrivilegeList().get(i);
+          IOUtils
+              .writePathPrivilege(outputStream, pathPrivilege, STRING_ENCODING,
+                  encodingBufferLocal);
+        }
+        outputStream.flush();
+      } catch (Exception e) {
+        throw new IOException(e.getMessage());
       }
-
-    } catch (Exception e) {
-      throw new IOException(e.getMessage());
-    } finally {
-      outputStream.flush();
-      outputStream.close();
     }
 
     File oldFile = new File(

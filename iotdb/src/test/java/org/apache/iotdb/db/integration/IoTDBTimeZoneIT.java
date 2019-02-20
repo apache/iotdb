@@ -63,7 +63,6 @@ public class IoTDBTimeZoneIT {
   @After
   public void tearDown() throws Exception {
     deamon.stop();
-    Thread.sleep(5000);
     EnvironmentUtils.cleanEnv();
   }
 

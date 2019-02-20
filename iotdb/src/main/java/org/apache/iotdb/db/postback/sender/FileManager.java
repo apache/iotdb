@@ -29,6 +29,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.postback.conf.PostBackSenderConfig;
@@ -46,7 +47,7 @@ public class FileManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(FileManager.class);
   private Map<String, Set<String>> sendingFiles = new HashMap<>();
   private Set<String> lastLocalFiles = new HashSet<>();
-  private Map<String, Set<String>> nowLocalFiles = new HashMap<>();
+  private Map<String, Set<String>> currentLocalFiles = new HashMap<>();
   private PostBackSenderConfig postbackConfig = PostBackSenderDescriptor.getInstance().getConfig();
   private IoTDBConfig tsfileConfig = IoTDBDescriptor.getInstance().getConfig();
 
@@ -63,9 +64,9 @@ public class FileManager {
   public void init() {
     sendingFiles.clear();
     lastLocalFiles.clear();
-    nowLocalFiles.clear();
-    getLastLocalFileList(postbackConfig.lastFileInfo);
-    getNowLocalFileList(tsfileConfig.getBufferWriteDirs());
+    currentLocalFiles.clear();
+    getLastLocalFileList(postbackConfig.getLastFileInfo());
+    getCurrentLocalFileList(tsfileConfig.getBufferWriteDirs());
     getSendingFileList();
   }
 
@@ -73,7 +74,7 @@ public class FileManager {
    * get sending file list.
    */
   public void getSendingFileList() {
-    for (Entry<String, Set<String>> entry : nowLocalFiles.entrySet()) {
+    for (Entry<String, Set<String>> entry : currentLocalFiles.entrySet()) {
       for (String path : entry.getValue()) {
         if (!lastLocalFiles.contains(path)) {
           sendingFiles.get(entry.getKey()).add(path);
@@ -84,7 +85,7 @@ public class FileManager {
     for (Entry<String, Set<String>> entry : sendingFiles.entrySet()) {
       for (String path : entry.getValue()) {
         LOGGER.info(path);
-        nowLocalFiles.get(entry.getKey()).remove(path);
+        currentLocalFiles.get(entry.getKey()).remove(path);
       }
     }
   }
@@ -97,33 +98,27 @@ public class FileManager {
   public void getLastLocalFileList(String path) {
     Set<String> fileList = new HashSet<>();
     File file = new File(path);
-    try {
-      if (!file.exists()) {
-        file.createNewFile();
-      } else {
-        BufferedReader bf = null;
-        try {
-          bf = new BufferedReader(new FileReader(file));
-          String fileName = null;
-          while ((fileName = bf.readLine()) != null) {
-            fileList.add(fileName);
-          }
-          bf.close();
-        } catch (IOException e) {
-          LOGGER.error(
-              "IoTDB post back sender: cannot get last local file list when reading file {} "
-                  + "because {}.",
-              postbackConfig.lastFileInfo, e.getMessage());
-        } finally {
-          if (bf != null) {
-            bf.close();
-          }
+    if (!file.exists()) {
+      try {
+        if (!file.createNewFile()) {
+          LOGGER.error("IoTDB post back sender: cannot create file {}", file.getAbsoluteFile());
         }
+      } catch (IOException e) {
+        LOGGER.error("IoTDB post back sender: cannot get last local file list", e);
       }
-    } catch (IOException e) {
-      LOGGER.error("IoTDB post back sender: cannot get last local file list because {}",
-          e.getMessage());
+    } else {
+      try (BufferedReader bf = new BufferedReader(new FileReader(file))) {
+        String fileName;
+        while ((fileName = bf.readLine()) != null) {
+          fileList.add(fileName);
+        }
+      } catch (IOException e) {
+        LOGGER.error(
+            "IoTDB post back sender: cannot get last local file list when reading file {}.",
+            postbackConfig.getLastFileInfo(), e);
+      }
     }
+
     lastLocalFiles = fileList;
   }
 
@@ -132,7 +127,7 @@ public class FileManager {
    *
    * @param paths paths in String[] structure
    */
-  public void getNowLocalFileList(String[] paths) {
+  public void getCurrentLocalFileList(String[] paths) {
     for (String path : paths) {
       if (!new File(path).exists()) {
         continue;
@@ -140,18 +135,17 @@ public class FileManager {
       File[] listFiles = new File(path).listFiles();
       for (File storageGroup : listFiles) {
         if (storageGroup.isDirectory() && !storageGroup.getName().equals("postback")) {
-          if (!nowLocalFiles.containsKey(storageGroup.getName())) {
-            nowLocalFiles.put(storageGroup.getName(), new HashSet<String>());
+          if (!currentLocalFiles.containsKey(storageGroup.getName())) {
+            currentLocalFiles.put(storageGroup.getName(), new HashSet<String>());
           }
           if (!sendingFiles.containsKey(storageGroup.getName())) {
             sendingFiles.put(storageGroup.getName(), new HashSet<String>());
           }
           File[] files = storageGroup.listFiles();
           for (File file : files) {
-            if (!file.getAbsolutePath().endsWith(".restore")) {
-              if (!new File(file.getAbsolutePath() + ".restore").exists()) {
-                nowLocalFiles.get(storageGroup.getName()).add(file.getAbsolutePath());
-              }
+            if (!file.getAbsolutePath().endsWith(".restore") && !new File(
+                file.getAbsolutePath() + ".restore").exists()) {
+              currentLocalFiles.get(storageGroup.getName()).add(file.getAbsolutePath());
             }
           }
         }
@@ -165,27 +159,14 @@ public class FileManager {
    * @param backupFile backup file path
    */
   public void backupNowLocalFileInfo(String backupFile) {
-    BufferedWriter bufferedWriter = null;
-    try {
-      bufferedWriter = new BufferedWriter(new FileWriter(backupFile));
-      for (Entry<String, Set<String>> entry : nowLocalFiles.entrySet()) {
+    try (BufferedWriter bufferedWriter = new BufferedWriter(new FileWriter(backupFile))) {
+      for (Entry<String, Set<String>> entry : currentLocalFiles.entrySet()) {
         for (String file : entry.getValue()) {
           bufferedWriter.write(file + "\n");
         }
       }
     } catch (IOException e) {
-      LOGGER.error("IoTDB post back sender: cannot back up now local file info because {}", e);
-    } finally {
-      if (bufferedWriter != null) {
-        try {
-          bufferedWriter.close();
-        } catch (IOException e) {
-          LOGGER.error(
-              "IoTDB post back sender: cannot close stream after backing up now local file info "
-                  + "because {}",
-              e);
-        }
-      }
+      LOGGER.error("IoTDB post back sender: cannot back up now local file info", e);
     }
   }
 
@@ -197,12 +178,12 @@ public class FileManager {
     return lastLocalFiles;
   }
 
-  public Map<String, Set<String>> getNowLocalFiles() {
-    return nowLocalFiles;
+  public Map<String, Set<String>> getCurrentLocalFiles() {
+    return currentLocalFiles;
   }
 
-  public void setNowLocalFiles(Map<String, Set<String>> newNowLocalFiles) {
-    nowLocalFiles = newNowLocalFiles;
+  public void setCurrentLocalFiles(Map<String, Set<String>> newNowLocalFiles) {
+    currentLocalFiles = newNowLocalFiles;
   }
 
   private static class FileManagerHolder {

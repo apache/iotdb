@@ -50,7 +50,7 @@ public class EngineQueryRouter {
    * execute physical plan.
    */
   public QueryDataSet query(QueryExpression queryExpression)
-      throws IOException, FileNodeManagerException {
+      throws FileNodeManagerException {
 
     long nextJobId = getNextJobId();
     QueryTokenManager.getInstance().setJobIdForCurrentRequestThread(nextJobId);
@@ -77,18 +77,14 @@ public class EngineQueryRouter {
           return engineExecutor.execute(context);
         }
 
-      } catch (QueryFilterOptimizationException | PathErrorException e) {
-        throw new IOException(e);
+      } catch (QueryFilterOptimizationException e) {
+        throw new FileNodeManagerException(e);
       }
     } else {
-      try {
-        EngineExecutorWithoutTimeGenerator engineExecutor = new EngineExecutorWithoutTimeGenerator(
-            nextJobId,
-            queryExpression);
-        return engineExecutor.executeWithoutFilter(context);
-      } catch (PathErrorException e) {
-        throw new IOException(e);
-      }
+      EngineExecutorWithoutTimeGenerator engineExecutor = new EngineExecutorWithoutTimeGenerator(
+          nextJobId,
+          queryExpression);
+      return engineExecutor.executeWithoutFilter(context);
     }
   }
 

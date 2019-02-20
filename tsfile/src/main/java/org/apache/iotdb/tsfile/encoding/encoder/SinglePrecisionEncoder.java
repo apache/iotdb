@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.encoding.encoder;
 
 import java.io.ByteArrayOutputStream;
@@ -30,6 +31,7 @@ public class SinglePrecisionEncoder extends GorillaEncoder {
   private int preValue;
 
   public SinglePrecisionEncoder() {
+    //allowed do nothing
   }
 
   @Override
@@ -39,7 +41,7 @@ public class SinglePrecisionEncoder extends GorillaEncoder {
       preValue = Float.floatToIntBits(value);
       leadingZeroNum = Integer.numberOfLeadingZeros(preValue);
       tailingZeroNum = Integer.numberOfTrailingZeros(preValue);
-      out.write((preValue >> 0) & 0xFF);
+      out.write(preValue & 0xFF);
       out.write((preValue >> 8) & 0xFF);
       out.write((preValue >> 16) & 0xFF);
       out.write((preValue >> 24) & 0xFF);

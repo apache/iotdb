@@ -30,7 +30,7 @@ import org.apache.iotdb.db.exception.PathErrorException;
 public class PTree implements Serializable {
 
   private static final long serialVersionUID = 2642766399323283900L;
-
+  private static final String PTREE_NOT_EXIST = "PTree seriesPath not exist. ";
   private PNode root;
   private MTree mTree;
   private String name;
@@ -111,7 +111,7 @@ public class PTree implements Serializable {
    */
   public void linkMNode(String pTreePath, String mTreePath) throws PathErrorException {
     List<String> paths = mTree.getAllPathInList(mTreePath);
-    String nodes[] = pTreePath.trim().split("\\.");
+    String[] nodes = pTreePath.trim().split("\\.");
     PNode leaf = getLeaf(getRoot(), nodes, 0);
     for (String p : paths) {
       leaf.linkMPath(p);
@@ -125,7 +125,7 @@ public class PTree implements Serializable {
    */
   public void unlinkMNode(String pTreePath, String mTreePath) throws PathErrorException {
     List<String> paths = mTree.getAllPathInList(mTreePath);
-    String nodes[] = pTreePath.trim().split("\\.");
+    String[] nodes = pTreePath.trim().split("\\.");
     PNode leaf = getLeaf(getRoot(), nodes, 0);
     for (String p : paths) {
       leaf.unlinkMPath(p);
@@ -134,16 +134,16 @@ public class PTree implements Serializable {
 
   private PNode getLeaf(PNode node, String[] nodes, int idx) throws PathErrorException {
     if (idx >= nodes.length) {
-      throw new PathErrorException("PTree seriesPath not exist. ");
+      throw new PathErrorException(PTREE_NOT_EXIST);
     }
     if (node.isLeaf()) {
       if (idx != nodes.length - 1 || !nodes[idx].equals(node.getName())) {
-        throw new PathErrorException("PTree seriesPath not exist. ");
+        throw new PathErrorException(PTREE_NOT_EXIST);
       }
       return node;
     } else {
       if (idx >= nodes.length - 1 || !node.hasChild(nodes[idx + 1])) {
-        throw new PathErrorException("PTree seriesPath not exist. ");
+        throw new PathErrorException(PTREE_NOT_EXIST);
       }
       return getLeaf(node.getChild(nodes[idx + 1]), nodes, idx + 1);
     }
@@ -184,11 +184,12 @@ public class PTree implements Serializable {
     }
   }
 
+  @Override
   public String toString() {
-    return PNodeToString(getRoot(), 0);
+    return pNodeToString(getRoot(), 0);
   }
 
-  private String PNodeToString(PNode node, int tab) {
+  private String pNodeToString(PNode node, int tab) {
     String s = "";
     for (int i = 0; i < tab; i++) {
       s += space;
@@ -203,7 +204,7 @@ public class PTree implements Serializable {
         } else {
           s += ",\n";
         }
-        s += PNodeToString(child, tab + 1);
+        s += pNodeToString(child, tab + 1);
       }
       s += "\n";
       for (int i = 0; i < tab; i++) {

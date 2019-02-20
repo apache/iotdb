@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile
 
 private[tsfile] class TsFileWriterFactory(options: Map[String, String], columnNames: ArrayBuffer[String]) extends OutputWriterFactory {

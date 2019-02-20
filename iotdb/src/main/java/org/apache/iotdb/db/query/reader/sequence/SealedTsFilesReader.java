@@ -86,6 +86,7 @@ public class SealedTsFilesReader implements IReader {
     }
 
     while (!hasCachedData) {
+      boolean flag = false;
 
       // try to get next time value pair from current batch data
       if (data != null && data.hasNext()) {
@@ -100,22 +101,22 @@ public class SealedTsFilesReader implements IReader {
           hasCachedData = true;
           return true;
         } else {
-          continue;
+          flag = true;
         }
       }
 
       // try to get next batch data from next reader
-      while (usedIntervalFileIndex < sealedTsFiles.size()) {
+      while (!flag && usedIntervalFileIndex < sealedTsFiles.size()) {
         // init until reach a satisfied reader
         if (seriesReader == null || !seriesReader.hasNextBatch()) {
           IntervalFileNode fileNode = sealedTsFiles.get(usedIntervalFileIndex++);
           if (singleTsFileSatisfied(fileNode)) {
             initSingleTsFileReader(fileNode, context);
           } else {
-            continue;
+            flag = true;
           }
         }
-        if (seriesReader.hasNextBatch()) {
+        if (!flag && seriesReader.hasNextBatch()) {
           data = seriesReader.nextBatch();
 
           // notice that, data maybe an empty batch data, so an examination must exist
@@ -126,7 +127,7 @@ public class SealedTsFilesReader implements IReader {
         }
       }
 
-      if (data == null || !data.hasNext()) {
+      if (!flag || data == null || !data.hasNext()) {
         break;
       }
     }

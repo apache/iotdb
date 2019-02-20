@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.db.query.fill;
 
-import java.io.IOException;
-import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -69,7 +67,7 @@ public class LinearFill extends IFill {
   }
 
   @Override
-  public BatchData getFillResult() throws ProcessorException, IOException, PathErrorException {
+  public BatchData getFillResult() throws ProcessorException {
     return result;
   }
 }

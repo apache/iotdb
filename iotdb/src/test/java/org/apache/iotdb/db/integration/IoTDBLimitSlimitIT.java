@@ -97,7 +97,6 @@ public class IoTDBLimitSlimitIT {
   @AfterClass
   public static void tearDown() throws Exception {
     daemon.stop();
-    Thread.sleep(5000);
     EnvironmentUtils.cleanEnv();
   }
 

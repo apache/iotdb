@@ -27,19 +27,24 @@ import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 
 /**
+ * <p>
  * Usage:
- *
- * (1) merge multiple chunk group readers in the unsequence file (2）merge sequence reader , unsequence reader and mem
- * reader
- *
- * Notice that: the bigger the priority value is, the higher the priority of this reader is
+ * (1) merge multiple chunk group readers in the unsequence file
+ * (2）merge sequence reader, unsequence reader and mem reader
+ * </p>
  */
 public class PriorityMergeReader implements IReader {
+
+  public static final int LOW_PRIORITY = 1;
+  public static final int HIGH_PRIORITY = 2;
 
   private List<IReader> readerList = new ArrayList<>();
   private List<Integer> priorityList = new ArrayList<>();
   private PriorityQueue<Element> heap = new PriorityQueue<>();
 
+  /**
+   * The bigger the priority value is, the higher the priority of this reader is
+   */
   public void addReaderWithPriority(IReader reader, int priority) throws IOException {
     if (reader.hasNext()) {
       heap.add(new Element(readerList.size(), reader.next(), priority));
@@ -125,6 +130,23 @@ public class PriorityMergeReader implements IReader {
       }
 
       return o.priority.compareTo(this.priority);
+    }
+
+    @Override
+    public boolean equals(Object o){
+      if (o instanceof Element){
+        Element element = (Element) o;
+        if (this.timeValuePair.getTimestamp() == element.timeValuePair.getTimestamp()
+        && this.priority.equals(element.priority)){
+          return true;
+        }
+      }
+      return false;
+    }
+
+    @Override
+    public int hashCode(){
+      return (int) (timeValuePair.getTimestamp() * 31 + priority.hashCode());
     }
   }
 }

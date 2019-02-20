@@ -62,7 +62,6 @@ public class IoTDBAuthorizationIT {
   @After
   public void tearDown() throws Exception {
     daemon.stop();
-    Thread.sleep(2000);
     EnvironmentUtils.cleanEnv();
   }
 

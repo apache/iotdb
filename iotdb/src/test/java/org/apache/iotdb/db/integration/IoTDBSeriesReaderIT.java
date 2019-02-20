@@ -91,8 +91,6 @@ public class IoTDBSeriesReaderIT {
   public static void tearDown() throws Exception {
     connection.close();
     daemon.stop();
-    Thread.sleep(5000);
-
     // recovery value
     tsFileConfig.maxNumberOfPointsInPage = maxNumberOfPointsInPage;
     tsFileConfig.pageSizeInByte = pageSizeInByte;
