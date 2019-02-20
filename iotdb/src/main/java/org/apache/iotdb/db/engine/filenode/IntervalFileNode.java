@@ -270,7 +270,6 @@ public class IntervalFileNode implements Serializable {
     this.overflowChangeType = overflowChangeType;
   }
 
-<<<<<<< HEAD
   public synchronized ModificationFile getModFile() {
     if (modFile == null) {
       modFile = new ModificationFile(
@@ -287,6 +286,4 @@ public class IntervalFileNode implements Serializable {
   public void setModFile(ModificationFile modFile) {
     this.modFile = modFile;
   }
-=======
->>>>>>> master
 }
