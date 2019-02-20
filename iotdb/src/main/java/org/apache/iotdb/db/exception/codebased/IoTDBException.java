@@ -23,7 +23,7 @@ import org.apache.iotdb.db.exception.builder.ExceptionBuilder;
 public abstract class IoTDBException extends Exception {
 
   private static final long serialVersionUID = -8998294067060075273L;
-  protected int errorCode;
+  protected final int errorCode;
   protected String defaultInfo;
   protected String additionalInfo;
 

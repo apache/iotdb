@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.file.metadata;
 
 import java.io.IOException;
@@ -147,7 +148,7 @@ public class ChunkGroupMetaData {
   }
 
   void reCalculateSerializedSize() {
-    serializedSize = Integer.BYTES + deviceID.length() + Integer.BYTES + Long.BYTES + Long.BYTES; // size of chunkMetaDataList
+    serializedSize = Integer.BYTES + deviceID.length() + Integer.BYTES +  + Long.BYTES + Long.BYTES; // size of chunkMetaDataList
     for (ChunkMetaData chunk : chunkMetaDataList) {
       serializedSize += chunk.getSerializedSize();
     }
@@ -179,18 +180,6 @@ public class ChunkGroupMetaData {
     return deviceID;
   }
 
-  public long getStartOffsetOfChunkGroup() {
-    return startOffsetOfChunkGroup;
-  }
-
-  public long getEndOffsetOfChunkGroup() {
-    return endOffsetOfChunkGroup;
-  }
-
-  public void setEndOffsetOfChunkGroup(long endOffsetOfChunkGroup) {
-    this.endOffsetOfChunkGroup = endOffsetOfChunkGroup;
-  }
-
   /**
    * serialize to outputStream.
    *
@@ -208,7 +197,6 @@ public class ChunkGroupMetaData {
     for (ChunkMetaData chunkMetaData : chunkMetaDataList) {
       byteLen += chunkMetaData.serializeTo(outputStream);
     }
-    assert byteLen == getSerializedSize();
     return byteLen;
   }
 
@@ -230,9 +218,6 @@ public class ChunkGroupMetaData {
     for (ChunkMetaData chunkMetaData : chunkMetaDataList) {
       byteLen += chunkMetaData.serializeTo(buffer);
     }
-    assert byteLen == getSerializedSize();
-
     return byteLen;
   }
-
 }

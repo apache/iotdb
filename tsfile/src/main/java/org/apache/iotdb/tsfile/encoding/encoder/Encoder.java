@@ -36,7 +36,15 @@ public abstract class Encoder {
   public static final String MAX_STRING_LENGTH = "max_string_length";
   public static final String MAX_POINT_NUMBER = "max_point_number";
 
-  protected TSEncoding type;
+  private TSEncoding type;
+
+  public void setType(TSEncoding type) {
+    this.type = type;
+  }
+
+  public TSEncoding getType() {
+    return type;
+  }
 
   public Encoder(TSEncoding type) {
     this.type = type;

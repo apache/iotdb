@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.encoding.decoder;
 
 import java.io.IOException;
@@ -34,6 +35,7 @@ public class DoublePrecisionDecoder extends GorillaDecoder {
   private long preValue;
 
   public DoublePrecisionDecoder() {
+    // do nothing
   }
 
   @Override
@@ -57,8 +59,7 @@ public class DoublePrecisionDecoder extends GorillaDecoder {
         getNextValue(buffer);
         return tmp;
       } catch (IOException e) {
-        LOGGER.error("DoublePrecisionDecoder cannot read first double number because: {}",
-            e.getMessage());
+        LOGGER.error("DoublePrecisionDecoder cannot read first double number", e);
       }
     } else {
       try {
@@ -66,8 +67,7 @@ public class DoublePrecisionDecoder extends GorillaDecoder {
         getNextValue(buffer);
         return tmp;
       } catch (IOException e) {
-        LOGGER.error("DoublePrecisionDecoder cannot read following double number because: {}",
-            e.getMessage());
+        LOGGER.error("DoublePrecisionDecoder cannot read following double number", e);
       }
     }
     return Double.NaN;
@@ -110,10 +110,5 @@ public class DoublePrecisionDecoder extends GorillaDecoder {
     if (Double.isNaN(Double.longBitsToDouble(preValue))) {
       isEnd = true;
     }
-  }
-
-  @Override
-  public void reset() {
-    super.reset();
   }
 }

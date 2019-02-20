@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.compress;
 
 import java.io.IOException;
@@ -27,9 +28,9 @@ import org.xerial.snappy.Snappy;
 /**
  * compress data according to type in schema.
  */
-public abstract class Compressor {
+public interface ICompressor {
 
-  public static Compressor getCompressor(String name) {
+  static ICompressor getCompressor(String name) {
     return getCompressor(CompressionType.valueOf(name));
   }
 
@@ -39,7 +40,7 @@ public abstract class Compressor {
    * @param name CompressionType
    * @return the Compressor of specified CompressionType
    */
-  public static Compressor getCompressor(CompressionType name) {
+  static ICompressor getCompressor(CompressionType name) {
     if (name == null) {
       throw new CompressionTypeNotSupportedException("NULL");
     }
@@ -53,14 +54,14 @@ public abstract class Compressor {
     }
   }
 
-  public abstract byte[] compress(byte[] data) throws IOException;
+  byte[] compress(byte[] data) throws IOException;
 
   /**
    * abstract method of compress.
    *
    * @return byte length of compressed data.
    */
-  public abstract int compress(byte[] data, int offset, int length, byte[] compressed)
+  int compress(byte[] data, int offset, int length, byte[] compressed)
       throws IOException;
 
   /**
@@ -70,16 +71,16 @@ public abstract class Compressor {
    * @param compressed MUST be DirectByteBuffer for Snappy.
    * @return byte length of compressed data.
    */
-  public abstract int compress(ByteBuffer data, ByteBuffer compressed) throws IOException;
+  int compress(ByteBuffer data, ByteBuffer compressed) throws IOException;
 
-  public abstract int getMaxBytesForCompression(int uncompressedDataSize);
+  int getMaxBytesForCompression(int uncompressedDataSize);
 
-  public abstract CompressionType getType();
+  CompressionType getType();
 
   /**
    * NoCompressor will do nothing for data and return the input data directly.
    */
-  public static class NoCompressor extends Compressor {
+  class NoCompressor implements ICompressor {
 
     @Override
     public byte[] compress(byte[] data) {
@@ -107,12 +108,12 @@ public abstract class Compressor {
     }
   }
 
-  public static class SnappyCompressor extends Compressor {
+  class SnappyCompressor implements ICompressor {
 
     @Override
     public byte[] compress(byte[] data) throws IOException {
       if (data == null) {
-        return null;
+        return new byte[0];
       }
       return Snappy.compress(data);
     }

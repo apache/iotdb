@@ -16,11 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.exception.cache;
 
 public class CacheException extends Exception {
 
   public CacheException() {
+    //do nothing
   }
 
   public CacheException(String message) {

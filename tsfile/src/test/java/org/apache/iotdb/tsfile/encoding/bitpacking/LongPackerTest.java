@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.encoding.bitpacking;
 
 import static org.junit.Assert.assertEquals;
@@ -57,7 +58,7 @@ public class LongPackerTest {
       }
     }
     long tres[] = new long[count * 8];
-    packer.unpackAllValues(bb, 0, bb.length, tres);
+    packer.unpackAllValues(bb, bb.length, tres);
 
     for (int i = 0; i < count * 8; i++) {
       long v = preValues.get(i);
@@ -101,7 +102,7 @@ public class LongPackerTest {
     new DataInputStream(bais).readFully(bytes, 0, bytesToRead);
 
     // save all long values in currentBuffer
-    packer.unpackAllValues(bytes, 0, bytesToRead, readArray);
+    packer.unpackAllValues(bytes, bytesToRead, readArray);
     for (int i = 0; i < 16; i++) {
       long v = bpList.get(i);
       assertEquals(readArray[i], v);
