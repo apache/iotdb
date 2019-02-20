@@ -69,7 +69,7 @@ public class OFSeriesListMetadata {
    */
   public void addSeriesMetaData(ChunkMetaData timeSeries) {
     if (timeSeriesList == null) {
-      timeSeriesList = new ArrayList<ChunkMetaData>();
+      timeSeriesList = new ArrayList<>();
     }
     timeSeriesList.add(timeSeries);
   }

@@ -67,7 +67,7 @@ public class OFRowGroupListMetadata {
    */
   public void addSeriesListMetaData(OFSeriesListMetadata timeSeries) {
     if (seriesList == null) {
-      seriesList = new ArrayList<OFSeriesListMetadata>();
+      seriesList = new ArrayList<>();
     }
     seriesList.add(timeSeries);
   }
