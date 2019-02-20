@@ -46,13 +46,13 @@ public class ChunkGroupMetaData {
    * Byte offset of the corresponding data in the file Notice: include the chunk group header and marker.
    * For Hadoop and Spark.
    */
-  private long offsetOfChunkGroupHeader;
+  private long startOffsetOfChunkGroup;
 
   /**
    * End Byte position of the whole chunk group in the file Notice: position after the chunk group footer.
    * For Hadoop and Spark.
    */
-  private long endPositionOfChunkGroup;
+  private long endOffsetOfChunkGroup;
 
   /**
    * All time series chunks in this chunk group.
@@ -78,7 +78,7 @@ public class ChunkGroupMetaData {
     }
     this.deviceID = deviceID;
     this.chunkMetaDataList = chunkMetaDataList;
-    this.offsetOfChunkGroupHeader = offsetOfChunkGroupHeader;
+    this.startOffsetOfChunkGroup = offsetOfChunkGroupHeader;
     reCalculateSerializedSize();
   }
 
@@ -93,8 +93,8 @@ public class ChunkGroupMetaData {
     ChunkGroupMetaData chunkGroupMetaData = new ChunkGroupMetaData();
 
     chunkGroupMetaData.deviceID = ReadWriteIOUtils.readString(inputStream);
-    chunkGroupMetaData.offsetOfChunkGroupHeader = ReadWriteIOUtils.readLong(inputStream);
-    chunkGroupMetaData.endPositionOfChunkGroup = ReadWriteIOUtils.readLong(inputStream);
+    chunkGroupMetaData.startOffsetOfChunkGroup = ReadWriteIOUtils.readLong(inputStream);
+    chunkGroupMetaData.endOffsetOfChunkGroup = ReadWriteIOUtils.readLong(inputStream);
 
     int size = ReadWriteIOUtils.readInt(inputStream);
     chunkGroupMetaData.serializedSize =
@@ -122,8 +122,8 @@ public class ChunkGroupMetaData {
     ChunkGroupMetaData chunkGroupMetaData = new ChunkGroupMetaData();
 
     chunkGroupMetaData.deviceID = ReadWriteIOUtils.readString(buffer);
-    chunkGroupMetaData.offsetOfChunkGroupHeader = ReadWriteIOUtils.readLong(buffer);
-    chunkGroupMetaData.endPositionOfChunkGroup = ReadWriteIOUtils.readLong(buffer);
+    chunkGroupMetaData.startOffsetOfChunkGroup = ReadWriteIOUtils.readLong(buffer);
+    chunkGroupMetaData.endOffsetOfChunkGroup = ReadWriteIOUtils.readLong(buffer);
 
     int size = ReadWriteIOUtils.readInt(buffer);
 
@@ -178,16 +178,16 @@ public class ChunkGroupMetaData {
     return deviceID;
   }
 
-  public long getOffsetOfChunkGroupHeader() {
-    return offsetOfChunkGroupHeader;
+  public long getStartOffsetOfChunkGroup() {
+    return startOffsetOfChunkGroup;
   }
 
-  public long getEndPositionOfChunkGroup() {
-    return endPositionOfChunkGroup;
+  public long getEndOffsetOfChunkGroup() {
+    return endOffsetOfChunkGroup;
   }
 
-  public void setEndPositionOfChunkGroup(long endPositionOfChunkGroup) {
-    this.endPositionOfChunkGroup = endPositionOfChunkGroup;
+  public void setEndOffsetOfChunkGroup(long endOffsetOfChunkGroup) {
+    this.endOffsetOfChunkGroup = endOffsetOfChunkGroup;
   }
 
   /**
@@ -200,8 +200,8 @@ public class ChunkGroupMetaData {
   public int serializeTo(OutputStream outputStream) throws IOException {
     int byteLen = 0;
     byteLen += ReadWriteIOUtils.write(deviceID, outputStream);
-    byteLen += ReadWriteIOUtils.write(offsetOfChunkGroupHeader, outputStream);
-    byteLen += ReadWriteIOUtils.write(endPositionOfChunkGroup, outputStream);
+    byteLen += ReadWriteIOUtils.write(startOffsetOfChunkGroup, outputStream);
+    byteLen += ReadWriteIOUtils.write(endOffsetOfChunkGroup, outputStream);
 
     byteLen += ReadWriteIOUtils.write(chunkMetaDataList.size(), outputStream);
     for (ChunkMetaData chunkMetaData : chunkMetaDataList) {
@@ -222,8 +222,8 @@ public class ChunkGroupMetaData {
     int byteLen = 0;
 
     byteLen += ReadWriteIOUtils.write(deviceID, buffer);
-    byteLen += ReadWriteIOUtils.write(offsetOfChunkGroupHeader, buffer);
-    byteLen += ReadWriteIOUtils.write(endPositionOfChunkGroup, buffer);
+    byteLen += ReadWriteIOUtils.write(startOffsetOfChunkGroup, buffer);
+    byteLen += ReadWriteIOUtils.write(endOffsetOfChunkGroup, buffer);
 
     byteLen += ReadWriteIOUtils.write(chunkMetaDataList.size(), buffer);
     for (ChunkMetaData chunkMetaData : chunkMetaDataList) {

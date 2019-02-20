@@ -193,7 +193,7 @@ public class TsFileIOWriter {
    */
   public void endChunkGroup(ChunkGroupFooter chunkGroupFooter) throws IOException {
     chunkGroupFooter.serializeTo(out.wrapAsStream());
-    currentChunkGroupMetaData.setEndPositionOfChunkGroup(out.getPosition());
+    currentChunkGroupMetaData.setEndOffsetOfChunkGroup(out.getPosition());
     chunkGroupMetaDataList.add(currentChunkGroupMetaData);
     LOG.debug("end chunk group:{}", currentChunkGroupMetaData);
     currentChunkGroupMetaData = null;
