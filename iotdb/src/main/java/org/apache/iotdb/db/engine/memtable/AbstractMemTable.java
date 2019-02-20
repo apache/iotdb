@@ -123,7 +123,7 @@ public abstract class AbstractMemTable implements IMemTable {
    */
   private IWritableMemChunk filterChunk(IWritableMemChunk chunk, long timestamp) {
     List<TimeValuePair> timeValuePairs = chunk.getSortedTimeValuePairList();
-    if (timeValuePairs.size() > 0 && timeValuePairs.get(0).getTimestamp() <= timestamp) {
+    if (!timeValuePairs.isEmpty() && timeValuePairs.get(0).getTimestamp() <= timestamp) {
       TSDataType dataType = chunk.getType();
       IWritableMemChunk newChunk = genMemSeries(dataType);
       for (TimeValuePair pair : timeValuePairs) {
@@ -147,6 +147,8 @@ public abstract class AbstractMemTable implements IMemTable {
             case TEXT:
               newChunk.putBinary(pair.getTimestamp(), pair.getValue().getBinary());
               break;
+            default:
+                throw new UnsupportedOperationException("Unknown datatype: " + dataType);
           }
         }
       }

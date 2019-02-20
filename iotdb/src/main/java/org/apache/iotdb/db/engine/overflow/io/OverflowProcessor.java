@@ -193,8 +193,7 @@ public class OverflowProcessor extends Processor {
    */
   @Deprecated
   public void update(String deviceId, String measurementId, long startTime, long endTime,
-      TSDataType type,
-      byte[] value) {
+      TSDataType type, byte[] value) {
     workSupport.update(deviceId, measurementId, startTime, endTime, type, value);
     valueCount++;
   }
@@ -204,8 +203,7 @@ public class OverflowProcessor extends Processor {
    */
   @Deprecated
   public void update(String deviceId, String measurementId, long startTime, long endTime,
-      TSDataType type,
-      String value) {
+      TSDataType type, String value) {
     workSupport.update(deviceId, measurementId, startTime, endTime, type,
         convertStringToBytes(type, value));
     valueCount++;

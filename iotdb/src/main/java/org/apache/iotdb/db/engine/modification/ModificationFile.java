@@ -54,11 +54,7 @@ public class ModificationFile {
 
   private void init() throws IOException {
     synchronized (this) {
-      List<Modification> mods = (List<Modification>) reader.read();
-      if (mods == null) {
-        mods = new ArrayList<>();
-      }
-      modifications = mods;
+      modifications = (List<Modification>) reader.read();
     }
   }
 

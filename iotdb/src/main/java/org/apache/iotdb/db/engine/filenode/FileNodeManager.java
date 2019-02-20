@@ -470,8 +470,7 @@ public class FileNodeManager implements IStatistic, IService {
       // write wal
       try {
         if (IoTDBDescriptor.getInstance().getConfig().enableWal) {
-          overflowProcessor.getLogNode()
-              .write(
+          overflowProcessor.getLogNode().write(
                   new UpdatePlan(startTime, finalEndTime, v, new Path(deviceId
                       + "." + measurementId)));
         }
@@ -683,8 +682,7 @@ public class FileNodeManager implements IStatistic, IService {
    * @param appendFile the appended tsfile information
    */
   public boolean appendFileToFileNode(String fileNodeName, IntervalFileNode appendFile,
-      String appendFilePath)
-      throws FileNodeManagerException {
+      String appendFilePath) throws FileNodeManagerException {
     FileNodeProcessor fileNodeProcessor = getProcessor(fileNodeName, true);
     try {
       // check append file
@@ -713,8 +711,7 @@ public class FileNodeManager implements IStatistic, IService {
    * @param appendFile the appended tsfile information
    */
   public List<String> getOverlapFilesFromFileNode(String fileNodeName, IntervalFileNode appendFile,
-      String uuid)
-      throws FileNodeManagerException {
+      String uuid) throws FileNodeManagerException {
     FileNodeProcessor fileNodeProcessor = getProcessor(fileNodeName, true);
     List<String> overlapFiles;
     try {

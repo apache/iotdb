@@ -61,7 +61,7 @@ public class LocalTextModificationAccessor implements ModificationReader, Modifi
     try {
       reader = new BufferedReader(new FileReader(filePath));
     } catch (FileNotFoundException e) {
-      return null;
+      return new ArrayList<>();
     }
     String line;
 
