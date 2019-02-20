@@ -243,7 +243,7 @@ public class RestorableTsFileIOWriterTest {
     TsDeviceMetadata tsDeviceMetadata = new TsDeviceMetadata();
     List<ChunkGroupMetaData> appendRowGroupMetaDatas = new ArrayList<>();
     for (int i = 0; i < metadataNum; i++) {
-      appendRowGroupMetaDatas.add(new ChunkGroupMetaData("d1", new ArrayList<>()));
+      appendRowGroupMetaDatas.add(new ChunkGroupMetaData("d1", new ArrayList<>(), 0));
     }
     tsDeviceMetadata.setChunkGroupMetadataList(appendRowGroupMetaDatas);
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
