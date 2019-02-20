@@ -180,6 +180,18 @@ public class ChunkGroupMetaData {
     return deviceID;
   }
 
+  public long getStartOffsetOfChunkGroup() {
+    return startOffsetOfChunkGroup;
+  }
+
+  public long getEndOffsetOfChunkGroup() {
+    return endOffsetOfChunkGroup;
+  }
+
+  public void setEndOffsetOfChunkGroup(long endOffsetOfChunkGroup) {
+    this.endOffsetOfChunkGroup = endOffsetOfChunkGroup;
+  }
+
   /**
    * serialize to outputStream.
    *
