@@ -959,7 +959,7 @@ public class FileNodeManager implements IStatistic, IService {
    * try to close the filenode processor.
    */
   private void close(String processorName) throws FileNodeManagerException {
-    if (processorMap.containsKey(processorName)) {
+    if (!processorMap.containsKey(processorName)) {
       LOGGER.warn("The processorMap doesn't contain the filenode processor {}.", processorName);
       return;
     }
