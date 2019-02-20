@@ -29,6 +29,7 @@ public class OverflowInsertFile {
   private List<ChunkMetaData> timeSeriesChunkMetaData;
 
   public OverflowInsertFile() {
+    //allowed to do nothing
   }
 
   public OverflowInsertFile(String path, List<ChunkMetaData> timeSeriesChunkMetaData) {

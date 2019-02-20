@@ -116,7 +116,9 @@ public class MergeManager {
   }
 
   private static class InstanceHolder {
-
+    private InstanceHolder(){
+      //allowed to do nothing
+    }
     private static MergeManager instance = new MergeManager();
   }
 }

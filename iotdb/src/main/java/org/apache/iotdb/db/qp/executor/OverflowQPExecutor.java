@@ -552,7 +552,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
               for (String eachSubPath : subPaths) {
                 String filenodeName = mManager.getFileNameByPath(eachSubPath);
 
-                if (MonitorConstants.statStorageGroupPrefix.equals(filenodeName)) {
+                if (MonitorConstants.STAT_STORAGE_GROUP_PREFIX.equals(filenodeName)) {
                   continue;
                 }
                 newSubPaths.add(eachSubPath);

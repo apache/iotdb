@@ -33,7 +33,8 @@ import org.apache.iotdb.db.exception.PathErrorException;
 public class MGraph implements Serializable {
 
   private static final long serialVersionUID = 8214849219614352834L;
-  private final String separator = "\\.";
+  private static final String DOUB_SEPARATOR = "\\.";
+  private static final String TIME_SERIES_INCORRECT = "Timeseries's root is not Correct. RootName: ";
   private MTree mtree;
   private HashMap<String, PTree> ptreeMap;
 
@@ -46,7 +47,7 @@ public class MGraph implements Serializable {
    * Add a {@code PTree} to current {@code MGraph}.
    */
   public void addAPTree(String ptreeRootName) throws MetadataArgsErrorException {
-    if (ptreeRootName.toLowerCase().equals("root")) {
+    if (MetadataConstant.ROOT.equalsIgnoreCase(ptreeRootName)) {
       throw new MetadataArgsErrorException("Property Tree's root name should not be 'root'");
     }
     PTree ptree = new PTree(ptreeRootName, mtree);
@@ -60,7 +61,7 @@ public class MGraph implements Serializable {
    */
   public void addPathToMTree(String path, String dataType, String encoding, String[] args)
       throws PathErrorException, MetadataArgsErrorException {
-    String[] nodes = path.trim().split(separator);
+    String[] nodes = path.trim().split(DOUB_SEPARATOR);
     if (nodes.length == 0) {
       throw new PathErrorException("Timeseries is null");
     }
@@ -71,16 +72,16 @@ public class MGraph implements Serializable {
    * Add a seriesPath to {@code PTree}.
    */
   public void addPathToPTree(String path) throws PathErrorException, MetadataArgsErrorException {
-    String[] nodes = path.trim().split(separator);
+    String[] nodes = path.trim().split(DOUB_SEPARATOR);
     if (nodes.length == 0) {
       throw new PathErrorException("Timeseries is null.");
     }
-    String rootName = path.trim().split(separator)[0];
+    String rootName = path.trim().split(DOUB_SEPARATOR)[0];
     if (ptreeMap.containsKey(rootName)) {
       PTree ptree = ptreeMap.get(rootName);
       ptree.addPath(path);
     } else {
-      throw new PathErrorException("Timeseries's root is not Correct. RootName: " + rootName);
+      throw new PathErrorException(TIME_SERIES_INCORRECT + rootName);
     }
   }
 
@@ -90,11 +91,11 @@ public class MGraph implements Serializable {
    * @param path a seriesPath belongs to MTree or PTree
    */
   public String deletePath(String path) throws PathErrorException {
-    String[] nodes = path.trim().split(separator);
+    String[] nodes = path.trim().split(DOUB_SEPARATOR);
     if (nodes.length == 0) {
       throw new PathErrorException("Timeseries is null");
     }
-    String rootName = path.trim().split(separator)[0];
+    String rootName = path.trim().split(DOUB_SEPARATOR)[0];
     if (mtree.getRoot().getName().equals(rootName)) {
       return mtree.deletePath(path);
     } else if (ptreeMap.containsKey(rootName)) {
@@ -102,7 +103,7 @@ public class MGraph implements Serializable {
       ptree.deletePath(path);
       return null;
     } else {
-      throw new PathErrorException("Timeseries's root is not Correct. RootName: " + rootName);
+      throw new PathErrorException(TIME_SERIES_INCORRECT + rootName);
     }
   }
 
@@ -110,7 +111,7 @@ public class MGraph implements Serializable {
    * Link a {@code MNode} to a {@code PNode} in current PTree.
    */
   public void linkMNodeToPTree(String path, String mpath) throws PathErrorException {
-    String ptreeName = path.trim().split(separator)[0];
+    String ptreeName = path.trim().split(DOUB_SEPARATOR)[0];
     if (!ptreeMap.containsKey(ptreeName)) {
       throw new PathErrorException("Error: PTree Path Not Correct. Path: " + path);
     } else {
@@ -122,7 +123,7 @@ public class MGraph implements Serializable {
    * Unlink a {@code MNode} from a {@code PNode} in current PTree.
    */
   public void unlinkMNodeFromPTree(String path, String mpath) throws PathErrorException {
-    String ptreeName = path.trim().split(separator)[0];
+    String ptreeName = path.trim().split(DOUB_SEPARATOR)[0];
     if (!ptreeMap.containsKey(ptreeName)) {
       throw new PathErrorException("Error: PTree Path Not Correct. Path: " + path);
     } else {
@@ -149,28 +150,28 @@ public class MGraph implements Serializable {
    */
   public HashMap<String, ArrayList<String>> getAllPathGroupByFilename(String path)
       throws PathErrorException {
-    String rootName = path.trim().split(separator)[0];
+    String rootName = path.trim().split(DOUB_SEPARATOR)[0];
     if (mtree.getRoot().getName().equals(rootName)) {
       return mtree.getAllPath(path);
     } else if (ptreeMap.containsKey(rootName)) {
       PTree ptree = ptreeMap.get(rootName);
       return ptree.getAllLinkedPath(path);
     }
-    throw new PathErrorException("Timeseries's root is not Correct. RootName: " + rootName);
+    throw new PathErrorException(TIME_SERIES_INCORRECT + rootName);
   }
 
   /**
    * function for getting all timeseries paths under the given seriesPath.
    */
   public List<List<String>> getShowTimeseriesPath(String path) throws PathErrorException {
-    String rootName = path.trim().split(separator)[0];
+    String rootName = path.trim().split(DOUB_SEPARATOR)[0];
     if (mtree.getRoot().getName().equals(rootName)) {
       return mtree.getShowTimeseriesPath(path);
     } else if (ptreeMap.containsKey(rootName)) {
       throw new PathErrorException(
           "PTree is not involved in the execution of the sql 'show timeseries " + path + "'");
     }
-    throw new PathErrorException("Timeseries's root is not Correct. RootName: " + rootName);
+    throw new PathErrorException(TIME_SERIES_INCORRECT + rootName);
   }
 
   /**
@@ -211,8 +212,7 @@ public class MGraph implements Serializable {
   public Metadata getMetadata() throws PathErrorException {
     Map<String, List<ColumnSchema>> seriesMap = getSchemaForAllType();
     Map<String, List<String>> deviceIdMap = getDeviceForAllType();
-    Metadata metadata = new Metadata(seriesMap, deviceIdMap);
-    return metadata;
+    return new Metadata(seriesMap, deviceIdMap);
   }
 
   public HashSet<String> getAllStorageGroup() throws PathErrorException {
@@ -332,6 +332,7 @@ public class MGraph implements Serializable {
   /**
    * functions for converting the mTree to a readable string in json format.
    */
+  @Override
   public String toString() {
     StringBuilder sb = new StringBuilder();
     sb.append("===  Timeseries Tree  ===\n\n");

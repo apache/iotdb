@@ -93,16 +93,14 @@ public class OverflowResource {
   }
 
   private Pair<Long, Long> readPositionInfo() {
-    try {
-      FileInputStream inputStream = new FileInputStream(positionFilePath);
+    try(FileInputStream inputStream = new FileInputStream(positionFilePath)) {
       byte[] insertPositionData = new byte[8];
       byte[] updatePositionData = new byte[8];
       inputStream.read(insertPositionData);
       inputStream.read(updatePositionData);
       long lastInsertPosition = BytesUtils.bytesToLong(insertPositionData);
       long lastUpdatePosition = BytesUtils.bytesToLong(updatePositionData);
-      inputStream.close();
-      return new Pair<Long, Long>(lastInsertPosition, lastUpdatePosition);
+      return new Pair<>(lastInsertPosition, lastUpdatePosition);
     } catch (IOException e) {
       long left = 0;
       long right = 0;
@@ -113,18 +111,18 @@ public class OverflowResource {
       if (updateFile.exists()) {
         right = updateFile.length();
       }
-      return new Pair<Long, Long>(left, right);
+      return new Pair<>(left, right);
     }
   }
 
   private void writePositionInfo(long lastInsertPosition, long lastUpdatePosition)
-          throws IOException {
-    FileOutputStream outputStream = new FileOutputStream(positionFilePath);
-    byte[] data = new byte[16];
-    BytesUtils.longToBytes(lastInsertPosition, data, 0);
-    BytesUtils.longToBytes(lastUpdatePosition, data, 8);
-    outputStream.write(data);
-    outputStream.close();
+      throws IOException {
+    try(FileOutputStream outputStream = new FileOutputStream(positionFilePath)) {
+      byte[] data = new byte[16];
+      BytesUtils.longToBytes(lastInsertPosition, data, 0);
+      BytesUtils.longToBytes(lastUpdatePosition, data, 8);
+      outputStream.write(data);
+    }
   }
 
   private void readMetadata() throws IOException {
@@ -174,10 +172,8 @@ public class OverflowResource {
     return chunkMetaDatas;
   }
 
-  public void flush(FileSchema fileSchema, IMemTable memTable,
-                    Map<String, Map<String, OverflowSeriesImpl>> overflowTrees,
-                    String processorName)
-          throws IOException {
+  public void flush(FileSchema fileSchema, IMemTable memTable, String processorName)
+      throws IOException {
     // insert data
     long startPos = insertIO.getPos();
     long startTime = System.currentTimeMillis();
@@ -247,13 +243,10 @@ public class OverflowResource {
 
   public void close() throws IOException {
     insertMetadatas.clear();
-    // updateDeleteMetadatas.clear();
     insertIO.close();
-    // updateDeleteIO.close();
   }
 
   public void deleteResource() throws IOException {
-    // cleanDir(new File(parentPath, dataPath).getPath());
     FileUtils.forceDelete(new File(parentPath, dataPath));
   }
 

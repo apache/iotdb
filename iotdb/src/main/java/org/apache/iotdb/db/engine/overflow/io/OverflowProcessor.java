@@ -371,10 +371,9 @@ public class OverflowProcessor extends Processor {
     if (!isMerge) {
       return new Pair<>(null, null);
     }
-    Pair<String, List<ChunkMetaData>> pair = new Pair<>(
-            mergeResource.getInsertFilePath(),
-            mergeResource.getInsertMetadatas(deviceId, measurementId, dataType));
-    return pair;
+    return new Pair<>(
+        mergeResource.getInsertFilePath(),
+        mergeResource.getInsertMetadatas(deviceId, measurementId, dataType));
   }
 
   private void switchWorkToFlush() {
@@ -401,7 +400,6 @@ public class OverflowProcessor extends Processor {
   public void switchWorkToMerge() throws IOException {
     if (mergeResource == null) {
       mergeResource = workResource;
-      // TODO: NEW ONE workResource
       workResource = new OverflowResource(parentPath,
               String.valueOf(dataPahtCount.getAndIncrement()));
     }
@@ -437,8 +435,8 @@ public class OverflowProcessor extends Processor {
                       flushFunction);
       // flush data
       workResource
-              .flush(fileSchema, flushSupport.getMemTabale(), flushSupport.getOverflowSeriesMap(),
-                      getProcessorName());
+          .flush(fileSchema, flushSupport.getMemTabale(),
+              getProcessorName());
       filenodeFlushAction.act();
       // write-ahead log
       if (IoTDBDescriptor.getInstance().getConfig().enableWal) {
@@ -511,7 +509,7 @@ public class OverflowProcessor extends Processor {
           logNode.notifyStartFlush();
         } catch (IOException e) {
           LOGGER.error("Overflow processor {} encountered an error when notifying log node, {}",
-                  getProcessorName(), e.getMessage());
+              getProcessorName(), e);
         }
       }
       BasicMemController.getInstance().reportFree(this, memSize.get());
@@ -621,18 +619,18 @@ public class OverflowProcessor extends Processor {
     long metaSize = getMetaSize();
     long fileSize = getFileSize();
     LOGGER.info(
-            "The overflow processor {}, the size of metadata reaches {},"
-                    + " the size of file reaches {}.",
-            getProcessorName(), MemUtils.bytesCntToStr(metaSize), MemUtils.bytesCntToStr(fileSize));
+        "The overflow processor {}, the size of metadata reaches {},"
+            + " the size of file reaches {}.",
+        getProcessorName(), MemUtils.bytesCntToStr(metaSize), MemUtils.bytesCntToStr(fileSize));
     if (metaSize >= config.overflowMetaSizeThreshold
-            || fileSize >= config.overflowFileSizeThreshold) {
+        || fileSize >= config.overflowFileSizeThreshold) {
       LOGGER.info(
-              "The overflow processor {}, size({}) of the file {} reaches threshold {},"
-                      + " size({}) of metadata reaches threshold {}.",
-              getProcessorName(), MemUtils.bytesCntToStr(fileSize), workResource.getInsertFilePath(),
-              MemUtils.bytesCntToStr(config.overflowMetaSizeThreshold),
-              MemUtils.bytesCntToStr(metaSize),
-              MemUtils.bytesCntToStr(config.overflowMetaSizeThreshold));
+          "The overflow processor {}, size({}) of the file {} reaches threshold {},"
+              + " size({}) of metadata reaches threshold {}.",
+          getProcessorName(), MemUtils.bytesCntToStr(fileSize), workResource.getInsertFilePath(),
+          MemUtils.bytesCntToStr(config.overflowMetaSizeThreshold),
+          MemUtils.bytesCntToStr(metaSize),
+          MemUtils.bytesCntToStr(config.overflowMetaSizeThreshold));
       rollToNewFile();
       return true;
     } else {
