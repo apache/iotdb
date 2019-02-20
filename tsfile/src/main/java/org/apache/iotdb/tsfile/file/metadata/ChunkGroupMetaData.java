@@ -71,14 +71,15 @@ public class ChunkGroupMetaData {
    * after constructing a ChunkGroupMetadata instance. Donot use list.add() to modify
    * `chunkMetaDataList`. Instead, use addTimeSeriesChunkMetaData() to make sure getSerializedSize()
    * is correct.
+   * @param startOffsetOfChunkGroup the start Byte position in file of this chunk group.
    */
-  public ChunkGroupMetaData(String deviceID, List<ChunkMetaData> chunkMetaDataList, long offsetOfChunkGroupHeader) {
+  public ChunkGroupMetaData(String deviceID, List<ChunkMetaData> chunkMetaDataList, long startOffsetOfChunkGroup) {
     if (chunkMetaDataList == null) {
       throw new IllegalArgumentException("Given chunkMetaDataList is null");
     }
     this.deviceID = deviceID;
     this.chunkMetaDataList = chunkMetaDataList;
-    this.startOffsetOfChunkGroup = offsetOfChunkGroupHeader;
+    this.startOffsetOfChunkGroup = startOffsetOfChunkGroup;
     reCalculateSerializedSize();
   }
 
