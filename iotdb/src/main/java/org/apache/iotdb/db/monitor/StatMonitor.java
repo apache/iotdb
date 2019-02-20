@@ -76,7 +76,7 @@ public class StatMonitor implements IService {
     backLoopPeriod = config.backLoopPeriodSec;
     if (config.enableStatMonitor) {
       try {
-        String prefix = MonitorConstants.statStorageGroupPrefix;
+        String prefix = MonitorConstants.STAT_STORAGE_GROUP_PREFIX;
         if (!mmanager.pathExist(prefix)) {
           mmanager.setStorageLevelToMTree(prefix);
         }
@@ -104,7 +104,7 @@ public class StatMonitor implements IService {
     tsRecord.dataPointList = new ArrayList<DataPoint>() {
       {
         for (Map.Entry<String, AtomicLong> entry : hashMap.entrySet()) {
-          AtomicLong value = (AtomicLong) entry.getValue();
+          AtomicLong value = entry.getValue();
           add(new LongDataPoint(entry.getKey(), value.get()));
         }
       }
@@ -126,13 +126,13 @@ public class StatMonitor implements IService {
 
   public void registStatStorageGroup() {
     MManager mManager = MManager.getInstance();
-    String prefix = MonitorConstants.statStorageGroupPrefix;
+    String prefix = MonitorConstants.STAT_STORAGE_GROUP_PREFIX;
     try {
       if (!mManager.pathExist(prefix)) {
         mManager.setStorageLevelToMTree(prefix);
       }
     } catch (Exception e) {
-      LOGGER.error("MManager cannot set storage level to MTree, because {}", e.getMessage());
+      LOGGER.error("MManager cannot set storage level to MTree.", e);
     }
   }
 
@@ -155,41 +155,6 @@ public class StatMonitor implements IService {
 
   public void recovery() {
     // // restore the FildeNode Manager TOTAL_POINTS statistics info
-    // OverflowQueryEngine overflowQueryEngine = new OverflowQueryEngine();
-    // List<Pair<Path, String>> pairList = new ArrayList<>();
-    // List<String> stringList = FileNodeManager.getInstance().getAllPathForStatistic();
-    // for (String string : stringList) {
-    // Path path = new Path(string);
-    // pairList.add(new Pair<>(path, StatisticConstant.LAST));
-    // }
-    // try {
-    // QueryDataSet queryDataSet;
-    // queryDataSet = overflowQueryEngine.aggregate(pairList, null);
-    // ReadCacheManager.getInstance().unlockForOneRequest();
-    // OldRowRecord rowRecord = queryDataSet.getNextRecord();
-    // if (rowRecord!=null) {
-    // FileNodeManager fManager = FileNodeManager.getInstance();
-    // HashMap<String, AtomicLong> statParamsHashMap = fManager.getStatParamsHashMap();
-    // List<Field> list = rowRecord.fields;
-    // for (Field field: list) {
-    // String statMeasurement = field.measurementId.substring(0,field.measurementId.length() - 1);
-    // if (statParamsHashMap.containsKey(statMeasurement)) {
-    // if (field.isNull()) {
-    // continue;
-    // }
-    // long lastValue = field.getLongV();
-    // statParamsHashMap.put(statMeasurement, new AtomicLong(lastValue));
-    // }
-    // }
-    // }
-    // } catch (ProcessorException e) {
-    // LOGGER.error("Can't get the processor when recovering statistics of FileNodeManager,", e);
-    // } catch (PathErrorException e) {
-    // LOGGER.error("When recovering statistics of FileNodeManager, timeseries seriesPath does
-    // not exist,", e);
-    // } catch (IOException e) {
-    // LOGGER.error("IO Error occurs when recovering statistics of FileNodeManager,", e);
-    // }
   }
 
   public void activate() {
@@ -197,7 +162,7 @@ public class StatMonitor implements IService {
     service = IoTDBThreadPoolFactory.newScheduledThreadPool(1,
             ThreadName.STAT_MONITOR.getName());
     service.scheduleAtFixedRate(
-            new StatMonitor.statBackLoop(), 1, backLoopPeriod, TimeUnit.SECONDS);
+        new StatBackLoop(), 1, backLoopPeriod, TimeUnit.SECONDS);
   }
 
   public void clearIStatisticMap() {
@@ -237,8 +202,8 @@ public class StatMonitor implements IService {
     // or FileNodeManager seriesPath:FileNodeManager
     String queryPath;
     if (key.contains("\\.")) {
-      queryPath = MonitorConstants.statStorageGroupPrefix + MonitorConstants.MONITOR_PATH_SEPERATOR
-              + key.replaceAll("\\.", "_");
+      queryPath = MonitorConstants.STAT_STORAGE_GROUP_PREFIX + MonitorConstants.MONITOR_PATH_SEPERATOR
+          + key.replaceAll("\\.", "_");
     } else {
       queryPath = key;
     }
@@ -342,12 +307,14 @@ public class StatMonitor implements IService {
   }
 
   private static class StatMonitorHolder {
-
+    private StatMonitorHolder(){
+      //allowed do nothing
+    }
     private static final StatMonitor INSTANCE = new StatMonitor();
   }
 
-  class statBackLoop implements Runnable {
-
+  class StatBackLoop implements Runnable {
+    @Override
     public void run() {
       try {
         long currentTimeMillis = System.currentTimeMillis();

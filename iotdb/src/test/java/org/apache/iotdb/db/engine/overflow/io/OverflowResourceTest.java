@@ -61,7 +61,7 @@ public class OverflowResourceTest {
   @Test
   public void testOverflowInsert() throws IOException {
     OverflowTestUtils.produceInsertData(support);
-    work.flush(OverflowTestUtils.getFileSchema(), support.getMemTabale(), null, "processorName");
+    work.flush(OverflowTestUtils.getFileSchema(), support.getMemTabale(), "processorName");
     List<ChunkMetaData> chunkMetaDatas = work.getInsertMetadatas(OverflowTestUtils.deviceId1,
         OverflowTestUtils.measurementId1, OverflowTestUtils.dataType2);
     assertEquals(0, chunkMetaDatas.size());
