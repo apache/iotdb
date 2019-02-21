@@ -34,7 +34,7 @@ import org.slf4j.LoggerFactory;
 // Notice : statistics in this class may not be accurate because of limited user authority.
 public class OpenFileNumUtil {
 
-  private static final Logger log = LoggerFactory.getLogger(OpenFileNumUtil.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(OpenFileNumUtil.class);
   private static final int PID_ERROR_CODE = -1;
   private static final int UNSUPPORTED_OS_ERROR_CODE = -2;
   private static final int UNKNOWN_STATISTICS_ERROR_CODE = -3;
@@ -97,7 +97,10 @@ public class OpenFileNumUtil {
     int iotdbPid = -1;
     Process pro1;
     Runtime r = Runtime.getRuntime();
-    String osName = System.getProperty("os.name").toLowerCase();
+    // System.getProperty("os.name") can detect which type of OS is using now.
+    // this code can detect Windows, Mac, Unix and Solaris.
+    String os = System.getProperty("os.name");
+    String osName = os.toLowerCase();
     if (osName.startsWith(LINUX_OS_NAME) || osName.startsWith(MAC_OS_NAME)) {
       try {
         String command;
@@ -122,8 +125,10 @@ public class OpenFileNumUtil {
         in1.close();
         pro1.destroy();
       } catch (IOException e) {
-        log.error("Cannot get pid of IoTDB process. ", e);
+        LOGGER.error("Cannot get pid of IoTDB process because {}", e.getMessage());
       }
+    } else {
+      LOGGER.warn("Unsupported OS {} for OpenFileNumUtil getting Pid.", os);
     }
     return iotdbPid;
   }
@@ -199,7 +204,7 @@ public class OpenFileNumUtil {
       in.close();
       pro.destroy();
     } catch (Exception e) {
-      log.error("Cannot get open file number of IoTDB process.", e);
+      LOGGER.error("Cannot get open file number of IoTDB process because {}", e.getMessage());
     }
     return resultMap;
   }
