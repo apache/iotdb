@@ -420,7 +420,8 @@ public class OverflowProcessor extends Processor {
   }
 
   public boolean isFlush() {
-    return !flushFuture.isDone();
+    //see BufferWriteProcess.isFlush()
+    return  flushSupport != null;
   }
 
   private boolean flushTask(String displayMessage) {

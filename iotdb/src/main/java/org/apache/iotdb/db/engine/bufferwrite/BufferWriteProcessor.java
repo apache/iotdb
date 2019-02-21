@@ -411,7 +411,13 @@ public class BufferWriteProcessor extends Processor {
    * @return True if flushing
    */
   public boolean isFlush() {
-    return !flushFuture.isDone();
+    // starting a flush task has two steps: set the flushMemtable, and then set the flushFuture
+    // So, the following case exists: flushMemtable != null but flushFuture is done (because the
+    // flushFuture refers to the last finished flush.
+    // And, the following case exists,too: flushMemtable == null, but flushFuture is not done.
+    // (flushTask() is not finished, but switchToWork() has done)
+    // So, checking flushMemTable is more meaningful than flushFuture.isDone().
+    return  flushMemTable != null;
   }
 
   /**
