@@ -28,6 +28,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.bufferwrite.Action;
 import org.apache.iotdb.db.engine.bufferwrite.ActionException;
 import org.apache.iotdb.db.engine.bufferwrite.FileNodeConstants;
+import org.apache.iotdb.db.engine.version.SysTimeVersionController;
 import org.apache.iotdb.db.exception.OverflowProcessorException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -92,7 +93,7 @@ public class OverflowProcessorBenchmark {
       }
     });
     OverflowProcessor overflowProcessor = new OverflowProcessor("Overflow_bench", parameters,
-        fileSchema);
+        fileSchema, SysTimeVersionController.INSTANCE);
     long startTime = System.currentTimeMillis();
     for (int i = 0; i < numOfPoint; i++) {
       for (int j = 0; j < numOfDevice; j++) {

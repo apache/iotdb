@@ -47,7 +47,7 @@ import org.junit.Test;
  */
 public class IoTDBDaemonIT {
 
-  private static IoTDB deamon;
+  private static IoTDB daemon;
 
   private static Connection connection;
 
@@ -115,8 +115,8 @@ public class IoTDBDaemonIT {
   public static void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.closeMemControl();
-    deamon = IoTDB.getInstance();
-    deamon.active();
+    daemon = IoTDB.getInstance();
+    daemon.active();
     EnvironmentUtils.envSetUp();
 
     insertData();
@@ -127,7 +127,7 @@ public class IoTDBDaemonIT {
   @AfterClass
   public static void tearDown() throws Exception {
     connection.close();
-    deamon.stop();
+    daemon.stop();
     EnvironmentUtils.cleanEnv();
   }
 

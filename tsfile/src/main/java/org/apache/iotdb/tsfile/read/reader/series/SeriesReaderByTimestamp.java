@@ -117,7 +117,6 @@ public class SeriesReaderByTimestamp {
   private void initChunkReader(ChunkMetaData chunkMetaData) throws IOException {
     Chunk chunk = chunkLoader.getChunk(chunkMetaData);
     this.chunkReader = new ChunkReaderByTimestamp(chunk);
-    this.chunkReader.setMaxTombstoneTime(chunkMetaData.getMaxTombstoneTime());
   }
 
   private boolean chunkSatisfied(ChunkMetaData chunkMetaData) {

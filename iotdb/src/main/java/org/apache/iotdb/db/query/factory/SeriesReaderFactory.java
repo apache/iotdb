@@ -16,13 +16,16 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.query.factory;
 
 import java.io.IOException;
 import java.util.List;
 import org.apache.iotdb.db.engine.filenode.IntervalFileNode;
+import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.querycontext.OverflowInsertFile;
 import org.apache.iotdb.db.engine.querycontext.OverflowSeriesDataSource;
+import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.reader.IReader;
 import org.apache.iotdb.db.query.reader.mem.MemChunkReaderWithFilter;
@@ -30,6 +33,7 @@ import org.apache.iotdb.db.query.reader.mem.MemChunkReaderWithoutFilter;
 import org.apache.iotdb.db.query.reader.merge.PriorityMergeReader;
 import org.apache.iotdb.db.query.reader.sequence.SealedTsFilesReader;
 import org.apache.iotdb.db.query.reader.unsequence.EngineChunkReader;
+import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.common.constant.StatisticConstant;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -129,7 +133,8 @@ public class SeriesReaderFactory {
    */
   public IReader createSeriesReaderForMerge(IntervalFileNode intervalFileNode,
       OverflowSeriesDataSource overflowSeriesDataSource,
-      SingleSeriesExpression singleSeriesExpression)
+      SingleSeriesExpression singleSeriesExpression,
+      QueryContext context)
       throws IOException {
 
     logger.debug("Create seriesReaders for merge. SeriesFilter = {}. TsFilePath = {}",
@@ -139,8 +144,8 @@ public class SeriesReaderFactory {
     PriorityMergeReader priorityMergeReader = new PriorityMergeReader();
 
     // Sequence reader
-    IReader seriesInTsFileReader = createSealedTsFileReaderForMerge(intervalFileNode.getFilePath(),
-        singleSeriesExpression);
+    IReader seriesInTsFileReader = createSealedTsFileReaderForMerge(intervalFileNode,
+        singleSeriesExpression, context);
     priorityMergeReader.addReaderWithPriority(seriesInTsFileReader, 1);
 
     // UnSequence merge reader
@@ -151,20 +156,25 @@ public class SeriesReaderFactory {
     return priorityMergeReader;
   }
 
-  private IReader createSealedTsFileReaderForMerge(String filePath,
-      SingleSeriesExpression singleSeriesExpression)
+  private IReader createSealedTsFileReaderForMerge(IntervalFileNode fileNode,
+      SingleSeriesExpression singleSeriesExpression,
+      QueryContext context)
       throws IOException {
     TsFileSequenceReader tsFileSequenceReader = FileReaderManager.getInstance()
-        .get(filePath, false);
+        .get(fileNode.getFilePath(), false);
     ChunkLoaderImpl chunkLoader = new ChunkLoaderImpl(tsFileSequenceReader);
     MetadataQuerier metadataQuerier = new MetadataQuerierByFileImpl(tsFileSequenceReader);
     List<ChunkMetaData> metaDataList = metadataQuerier
         .getChunkMetaDataList(singleSeriesExpression.getSeriesPath());
 
+    List<Modification> modifications = context.getPathModifications(fileNode.getModFile(),
+        singleSeriesExpression.getSeriesPath().getFullPath());
+    QueryUtils.modifyChunkMetaData(metaDataList, modifications);
+
     FileSeriesReader seriesInTsFileReader = new FileSeriesReaderWithFilter(chunkLoader,
         metaDataList,
         singleSeriesExpression.getFilter());
-    return new SealedTsFilesReader(seriesInTsFileReader);
+    return new SealedTsFilesReader(seriesInTsFileReader, context);
   }
 
   private static class SeriesReaderFactoryHelper {

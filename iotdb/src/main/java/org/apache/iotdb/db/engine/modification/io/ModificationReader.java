@@ -16,30 +16,28 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.engine.utils;
+
+package org.apache.iotdb.db.engine.modification.io;
+
+import java.io.IOException;
+import java.util.Collection;
+
+import org.apache.iotdb.db.engine.modification.Modification;
 
 /**
- * This class is used to represent the state of flush. It's can be used in the bufferwrite
- * flush{@code SequenceFileManager} and overflow flush{@code OverFlowProcessor}.
+ * ModificationReader reads all modifications from a persistent medium like file system.
  */
-public class FlushStatus {
+public interface ModificationReader {
 
-  private boolean isFlushing;
+  /**
+   * Read all modifications from a persistent medium.
+   *
+   * @return a list of modifications contained the medium.
+   */
+  Collection<Modification> read() throws IOException;
 
-  public FlushStatus() {
-    this.isFlushing = false;
-  }
-
-  public boolean isFlushing() {
-    return isFlushing;
-  }
-
-  public void setFlushing() {
-    this.isFlushing = true;
-  }
-
-  public void setUnFlushing() {
-    this.isFlushing = false;
-  }
-
+  /**
+   * Release resources like streams.
+   */
+  void close() throws IOException;
 }

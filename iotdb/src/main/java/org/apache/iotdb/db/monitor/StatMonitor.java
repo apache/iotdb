@@ -38,7 +38,6 @@ import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
@@ -327,14 +326,12 @@ public class StatMonitor implements IService {
             for (Map.Entry<String, IStatistic> entry : statisticMap.entrySet()) {
               for (String statParamName : entry.getValue().getStatParamsHashMap().keySet()) {
                 fManager.delete(entry.getKey(), statParamName,
-                        currentTimeMillis - statMonitorRetainIntervalSec * 1000, TSDataType.INT64);
+                    currentTimeMillis - statMonitorRetainIntervalSec * 1000);
               }
             }
           } catch (FileNodeManagerException e) {
-            LOGGER
-                    .error("Error occurred when deleting statistics information periodically, because",
+            LOGGER.error("Error occurred when deleting statistics information periodically, because",
                             e);
-            e.printStackTrace();
           }
         }
         HashMap<String, TSRecord> tsRecordHashMap = gatherStatistics();

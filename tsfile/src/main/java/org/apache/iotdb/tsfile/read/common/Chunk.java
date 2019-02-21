@@ -28,6 +28,7 @@ public class Chunk {
 
   private ChunkHeader chunkHeader;
   private ByteBuffer chunkData;
+  private long deletedAt = -1;
 
   public Chunk(ChunkHeader header, ByteBuffer buffer) {
     this.chunkHeader = header;
@@ -40,5 +41,13 @@ public class Chunk {
 
   public ByteBuffer getData() {
     return chunkData;
+  }
+
+  public long getDeletedAt() {
+    return deletedAt;
+  }
+
+  public void setDeletedAt(long deletedAt) {
+    this.deletedAt = deletedAt;
   }
 }

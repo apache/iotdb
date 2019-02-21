@@ -60,6 +60,8 @@ public class ChunkGroupMetaData {
    */
   private List<ChunkMetaData> chunkMetaDataList;
 
+  private long version;
+
   private ChunkGroupMetaData() {
     chunkMetaDataList = new ArrayList<>();
   }
@@ -97,10 +99,11 @@ public class ChunkGroupMetaData {
     chunkGroupMetaData.deviceID = ReadWriteIOUtils.readString(inputStream);
     chunkGroupMetaData.startOffsetOfChunkGroup = ReadWriteIOUtils.readLong(inputStream);
     chunkGroupMetaData.endOffsetOfChunkGroup = ReadWriteIOUtils.readLong(inputStream);
+    chunkGroupMetaData.version = ReadWriteIOUtils.readLong(inputStream);
 
     int size = ReadWriteIOUtils.readInt(inputStream);
-    chunkGroupMetaData.serializedSize =
-        Integer.BYTES + chunkGroupMetaData.deviceID.length() + Integer.BYTES + Long.BYTES + Long.BYTES;
+    chunkGroupMetaData.serializedSize = Integer.BYTES + chunkGroupMetaData.deviceID.length()
+        + Integer.BYTES + Long.BYTES + Long.BYTES + Long.BYTES;
 
     List<ChunkMetaData> chunkMetaDataList = new ArrayList<>();
 
@@ -126,11 +129,12 @@ public class ChunkGroupMetaData {
     chunkGroupMetaData.deviceID = ReadWriteIOUtils.readString(buffer);
     chunkGroupMetaData.startOffsetOfChunkGroup = ReadWriteIOUtils.readLong(buffer);
     chunkGroupMetaData.endOffsetOfChunkGroup = ReadWriteIOUtils.readLong(buffer);
+    chunkGroupMetaData.version = ReadWriteIOUtils.readLong(buffer);
 
     int size = ReadWriteIOUtils.readInt(buffer);
 
-    chunkGroupMetaData.serializedSize =
-        Integer.BYTES + chunkGroupMetaData.deviceID.length() + Integer.BYTES + Long.BYTES + Long.BYTES;
+    chunkGroupMetaData.serializedSize = Integer.BYTES + chunkGroupMetaData.deviceID.length()
+        + Integer.BYTES + Long.BYTES + Long.BYTES + Long.BYTES;
 
     List<ChunkMetaData> chunkMetaDataList = new ArrayList<>();
     for (int i = 0; i < size; i++) {
@@ -148,7 +152,8 @@ public class ChunkGroupMetaData {
   }
 
   void reCalculateSerializedSize() {
-    serializedSize = Integer.BYTES + deviceID.length() + Integer.BYTES +  + Long.BYTES + Long.BYTES; // size of chunkMetaDataList
+    serializedSize = Integer.BYTES + deviceID.length() + Integer.BYTES
+        + Long.BYTES + Long.BYTES + Long.BYTES; // size of chunkMetaDataList
     for (ChunkMetaData chunk : chunkMetaDataList) {
       serializedSize += chunk.getSerializedSize();
     }
@@ -192,6 +197,14 @@ public class ChunkGroupMetaData {
     this.endOffsetOfChunkGroup = endOffsetOfChunkGroup;
   }
 
+  public long getVersion() {
+    return version;
+  }
+
+  public void setVersion(long version) {
+    this.version = version;
+  }
+
   /**
    * serialize to outputStream.
    *
@@ -204,6 +217,7 @@ public class ChunkGroupMetaData {
     byteLen += ReadWriteIOUtils.write(deviceID, outputStream);
     byteLen += ReadWriteIOUtils.write(startOffsetOfChunkGroup, outputStream);
     byteLen += ReadWriteIOUtils.write(endOffsetOfChunkGroup, outputStream);
+    byteLen += ReadWriteIOUtils.write(version, outputStream);
 
     byteLen += ReadWriteIOUtils.write(chunkMetaDataList.size(), outputStream);
     for (ChunkMetaData chunkMetaData : chunkMetaDataList) {
@@ -225,6 +239,7 @@ public class ChunkGroupMetaData {
     byteLen += ReadWriteIOUtils.write(deviceID, buffer);
     byteLen += ReadWriteIOUtils.write(startOffsetOfChunkGroup, buffer);
     byteLen += ReadWriteIOUtils.write(endOffsetOfChunkGroup, buffer);
+    byteLen += ReadWriteIOUtils.write(version, buffer);
 
     byteLen += ReadWriteIOUtils.write(chunkMetaDataList.size(), buffer);
     for (ChunkMetaData chunkMetaData : chunkMetaDataList) {
