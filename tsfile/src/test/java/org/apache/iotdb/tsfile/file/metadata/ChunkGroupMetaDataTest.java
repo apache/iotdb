@@ -42,6 +42,7 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.reader.page.PageReader;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.RecordUtils;
+import org.apache.iotdb.tsfile.utils.TsFileGeneratorForTest;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.schema.FileSchema;
@@ -63,8 +64,11 @@ public class ChunkGroupMetaDataTest {
   private String testDataFile;
 
   @Before
-  public void setUp() throws InvalidJsonSchemaException, IOException {
-    testDataFile = "src/test/resources/test.tsfile";
+  public void setUp() throws WriteProcessException, IOException, InterruptedException {
+    testDataFile = TsFileGeneratorForTest.outputDataFile;
+    TSFileDescriptor.getInstance().getConfig().timeSeriesEncoder = "TS_2DIFF";
+
+    TsFileGeneratorForTest.generateFile(1000, 16 * 1024 * 1024, 10000);
   }
 
   @After
@@ -73,6 +77,8 @@ public class ChunkGroupMetaDataTest {
     if (file.exists()) {
       file.delete();
     }
+
+    TsFileGeneratorForTest.after();
   }
 
   @Test
