@@ -100,9 +100,9 @@ public class TsFileGeneratorForTest {
       if (i % 5 == 0) {
         d1 += ",s3," + (i * 10 + 3);
       }
-      if (i % 8 == 0) {
-        d1 += ",s4," + "dog" + i;
-      }
+//      if (i % 8 == 0) {
+//        d1 += ",s4," + "dog" + i;
+//      }
       if (i % 9 == 0) {
         d1 += ",s5," + "false";
       }
@@ -123,9 +123,9 @@ public class TsFileGeneratorForTest {
       if (i % 5 == 0) {
         d2 += ",s1," + (i * 10 + 1);
       }
-      if (i % 8 == 0) {
-        d2 += ",s4," + "dog" + i % 4;
-      }
+//      if (i % 8 == 0) {
+//        d2 += ",s4," + "dog" + i % 4;
+//      }
       fw.write(d2 + "\r\n");
     }
     // write error
@@ -217,8 +217,8 @@ public class TsFileGeneratorForTest {
     schemaBuilder.addSeries("s1", TSDataType.INT32, TSEncoding.RLE);
     schemaBuilder.addSeries("s2", TSDataType.INT64, TSEncoding.PLAIN);
     schemaBuilder.addSeries("s3", TSDataType.INT64, TSEncoding.TS_2DIFF);
-    schemaBuilder.addSeries("s4", TSDataType.TEXT, TSEncoding.PLAIN, CompressionType.UNCOMPRESSED,
-        Collections.singletonMap(Encoder.MAX_STRING_LENGTH, "20"));
+//    schemaBuilder.addSeries("s4", TSDataType.TEXT, TSEncoding.PLAIN, CompressionType.UNCOMPRESSED,
+//        Collections.singletonMap(Encoder.MAX_STRING_LENGTH, "20"));
     schemaBuilder.addSeries("s5", TSDataType.BOOLEAN, TSEncoding.RLE);
     schemaBuilder.addSeries("s6", TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY,
         Collections.singletonMap(Encoder.MAX_POINT_NUMBER, "5"));
