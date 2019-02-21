@@ -110,14 +110,12 @@ public class OpenFileNumUtilTest {
   public void testDataOpenFileNumWhenCreateFile() {
     if (os.startsWith(MAC_OS_NAME) || os.startsWith(LINUX_OS_NAME)) {
       // get total open file number under /data/data before create new files
-      totalOpenFileNumBefore = openFileNumUtil
-          .get(OpenFileNumStatistics.DATA_OPEN_FILE_NUM);
+      totalOpenFileNumBefore = openFileNumUtil.get(OpenFileNumStatistics.DATA_OPEN_FILE_NUM);
       for (int i = 0; i < testFileNum; i++) {
         fileList.add(new File(currDir + testFileName + i));
       }
       // create testFileNum File, then get total open file number statistics
-      totalOpenFileNumAfter = openFileNumUtil
-          .get(OpenFileNumStatistics.DATA_OPEN_FILE_NUM);
+      totalOpenFileNumAfter = openFileNumUtil.get(OpenFileNumStatistics.DATA_OPEN_FILE_NUM);
       totalOpenFileNumChange = totalOpenFileNumAfter - totalOpenFileNumBefore;
       // create test file shall not affect total open file number statistics
       // if 'lsof' command is valid
@@ -139,8 +137,7 @@ public class OpenFileNumUtilTest {
       for (int i = 0; i < testFileNum; i++) {
         fileList.add(new File(currDir + testFileName + i));
       }
-      totalOpenFileNumBefore = openFileNumUtil
-          .get(OpenFileNumStatistics.DATA_OPEN_FILE_NUM);
+      totalOpenFileNumBefore = openFileNumUtil.get(OpenFileNumStatistics.DATA_OPEN_FILE_NUM);
       for (File file : fileList) {
         if (file.exists()) {
           try {
@@ -155,17 +152,14 @@ public class OpenFileNumUtilTest {
               LOGGER.debug("Create a file {} successfully", file);
               fileWriterList.add(new FileWriter(file));
             } else {
-              LOGGER.error(
-                  "create test file {} failed when execute testTotalOpenFileNumWhenCreateFileWriter().",
-                  file.getPath());
+              LOGGER.error("create test file {} failed.", file.getPath());
             }
           } catch (IOException e) {
             LOGGER.error(e.getMessage());
           }
         }
       }
-      totalOpenFileNumAfter = openFileNumUtil
-          .get(OpenFileNumStatistics.DATA_OPEN_FILE_NUM);
+      totalOpenFileNumAfter = openFileNumUtil.get(OpenFileNumStatistics.DATA_OPEN_FILE_NUM);
       totalOpenFileNumChange = totalOpenFileNumAfter - totalOpenFileNumBefore;
       // create FileWriter shall cause total open file number increase by testFileNum
       if (openFileNumUtil.isCommandValid()) {
@@ -209,8 +203,7 @@ public class OpenFileNumUtilTest {
           }
         }
       }
-      totalOpenFileNumBefore = openFileNumUtil
-          .get(OpenFileNumStatistics.DATA_OPEN_FILE_NUM);
+      totalOpenFileNumBefore = openFileNumUtil.get(OpenFileNumStatistics.DATA_OPEN_FILE_NUM);
       for (FileWriter fw : fileWriterList) {
         try {
           fw.write("this is a test file for open file number counting.");
@@ -218,8 +211,7 @@ public class OpenFileNumUtilTest {
           LOGGER.error(e.getMessage());
         }
       }
-      totalOpenFileNumAfter = openFileNumUtil
-          .get(OpenFileNumStatistics.DATA_OPEN_FILE_NUM);
+      totalOpenFileNumAfter = openFileNumUtil.get(OpenFileNumStatistics.DATA_OPEN_FILE_NUM);
       totalOpenFileNumChange = totalOpenFileNumAfter - totalOpenFileNumBefore;
       // writing test file shall not affect total open file number statistics
       if (openFileNumUtil.isCommandValid()) {
@@ -251,9 +243,7 @@ public class OpenFileNumUtilTest {
         } else {
           try {
             if (!file.createNewFile()) {
-              LOGGER.error(
-                  "create test file {} failed when execute testTotalOpenFileNumWhenFileWriterClose().",
-                  file.getPath());
+              LOGGER.error("create test file {} failed.", file.getPath());
             }
           } catch (IOException e) {
             LOGGER.error(e.getMessage());
@@ -272,8 +262,7 @@ public class OpenFileNumUtilTest {
           LOGGER.error(e.getMessage());
         }
       }
-      totalOpenFileNumBefore = openFileNumUtil
-          .get(OpenFileNumStatistics.DATA_OPEN_FILE_NUM);
+      totalOpenFileNumBefore = openFileNumUtil.get(OpenFileNumStatistics.DATA_OPEN_FILE_NUM);
       for (FileWriter fw : fileWriterList) {
         try {
           fw.close();
@@ -281,8 +270,7 @@ public class OpenFileNumUtilTest {
           LOGGER.error(e.getMessage());
         }
       }
-      totalOpenFileNumAfter = openFileNumUtil
-          .get(OpenFileNumStatistics.DATA_OPEN_FILE_NUM);
+      totalOpenFileNumAfter = openFileNumUtil.get(OpenFileNumStatistics.DATA_OPEN_FILE_NUM);
       totalOpenFileNumChange = totalOpenFileNumAfter - totalOpenFileNumBefore;
       // close FileWriter shall cause total open file number decrease by testFileNum
       if (openFileNumUtil.isCommandValid()) {
@@ -296,5 +284,4 @@ public class OpenFileNumUtilTest {
           openFileNumUtil.get(OpenFileNumStatistics.DATA_OPEN_FILE_NUM));
     }
   }
-
 }
