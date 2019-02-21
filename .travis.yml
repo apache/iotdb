@@ -103,6 +103,12 @@ matrix:
       dist: trusty
       jdk: oraclejdk11
 
+cache:
+  directories:
+    - '$HOME/.m2/repository'
+    - '$HOME/.sonar/cache'
+
+
 
 # skip `before_install` stage
 before_install: true
