@@ -98,30 +98,32 @@ public class OpenFileNumUtil {
     Process pro1;
     Runtime r = Runtime.getRuntime();
     String osName = System.getProperty("os.name").toLowerCase();
-    try {
-      String command;
-      String processName = IOTDB_PROCESS_KEY_WORD;
-      if (osName.startsWith(LINUX_OS_NAME)) {
-        command = String.format(SEARCH_PID_LINUX, processName);
-      } else {
-        command = String.format(SEARCH_PID_MAC, processName);
-      }
-      COMMAND_TEMPLATE[2] = command;
-      pro1 = r.exec(COMMAND_TEMPLATE);
-      BufferedReader in1 = new BufferedReader(new InputStreamReader(pro1.getInputStream()));
-      String line;
-      while ((line = in1.readLine()) != null) {
-        line = line.trim();
-        String[] temp = line.split("\\s+");
-        if (temp.length > 1 && isNumeric(temp[1])) {
-          iotdbPid = Integer.parseInt(temp[1]);
-          break;
+    if (osName.startsWith(LINUX_OS_NAME) || osName.startsWith(MAC_OS_NAME)) {
+      try {
+        String command;
+        String processName = IOTDB_PROCESS_KEY_WORD;
+        if (osName.startsWith(LINUX_OS_NAME)) {
+          command = String.format(SEARCH_PID_LINUX, processName);
+        } else {
+          command = String.format(SEARCH_PID_MAC, processName);
         }
+        COMMAND_TEMPLATE[2] = command;
+        pro1 = r.exec(COMMAND_TEMPLATE);
+        BufferedReader in1 = new BufferedReader(new InputStreamReader(pro1.getInputStream()));
+        String line;
+        while ((line = in1.readLine()) != null) {
+          line = line.trim();
+          String[] temp = line.split("\\s+");
+          if (temp.length > 1 && isNumeric(temp[1])) {
+            iotdbPid = Integer.parseInt(temp[1]);
+            break;
+          }
+        }
+        in1.close();
+        pro1.destroy();
+      } catch (IOException e) {
+        log.error("Cannot get pid of IoTDB process. ", e);
       }
-      in1.close();
-      pro1.destroy();
-    } catch (IOException e) {
-      log.error("Cannot get pid of IoTDB process. ", e);
     }
     return iotdbPid;
   }
