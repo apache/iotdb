@@ -39,7 +39,7 @@ public class MemTableFlushUtil {
   private static final Logger LOGGER = LoggerFactory.getLogger(MemTableFlushUtil.class);
   private static final int PAGE_SIZE_THRESHOLD = TSFileConfig.pageSizeInByte;
 
-  private MemTableFlushUtil(){
+  private MemTableFlushUtil() {
 
   }
 
@@ -84,7 +84,7 @@ public class MemTableFlushUtil {
    * the function for flushing memtable.
    */
   public static void flushMemTable(FileSchema fileSchema, TsFileIOWriter tsFileIoWriter,
-      IMemTable imemTable)
+      IMemTable imemTable, long version)
       throws IOException {
     for (String deviceId : imemTable.getMemTableMap().keySet()) {
       long startPos = tsFileIoWriter.getPos();
@@ -102,7 +102,7 @@ public class MemTableFlushUtil {
       }
       long memSize = tsFileIoWriter.getPos() - startPos;
       ChunkGroupFooter footer = new ChunkGroupFooter(deviceId, memSize, seriesNumber);
-      tsFileIoWriter.endChunkGroup(footer);
+      tsFileIoWriter.endChunkGroup(footer, version);
     }
   }
 }

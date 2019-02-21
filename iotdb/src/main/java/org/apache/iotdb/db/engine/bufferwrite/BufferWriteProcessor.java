@@ -38,6 +38,7 @@ import org.apache.iotdb.db.engine.memtable.MemTableFlushUtil;
 import org.apache.iotdb.db.engine.memtable.PrimitiveMemTable;
 import org.apache.iotdb.db.engine.pool.FlushManager;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
+import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.BufferWriteProcessorException;
 import org.apache.iotdb.db.qp.constant.DatetimeUtils;
 import org.apache.iotdb.db.utils.ImmediateFuture;
@@ -79,6 +80,7 @@ public class BufferWriteProcessor extends Processor {
   private String bufferWriteRelativePath;
 
   private WriteLogNode logNode;
+  private VersionController versionController;
 
   /**
    * constructor of BufferWriteProcessor.
@@ -91,7 +93,7 @@ public class BufferWriteProcessor extends Processor {
    * @throws BufferWriteProcessorException BufferWriteProcessorException
    */
   public BufferWriteProcessor(String baseDir, String processorName, String fileName,
-      Map<String, Action> parameters,
+      Map<String, Action> parameters, VersionController versionController,
       FileSchema fileSchema) throws BufferWriteProcessorException {
     super(processorName);
     this.fileSchema = fileSchema;
@@ -131,6 +133,7 @@ public class BufferWriteProcessor extends Processor {
         throw new BufferWriteProcessorException(e);
       }
     }
+    this.versionController = versionController;
   }
 
   /**
@@ -178,13 +181,13 @@ public class BufferWriteProcessor extends Processor {
         return true;
       case WARNING:
         memory = MemUtils.bytesCntToStr(BasicMemController.getInstance().getTotalUsage());
-        LOGGER.warn("Memory usage will exceed warning threshold, current : {}.",memory);
+        LOGGER.warn("Memory usage will exceed warning threshold, current : {}.", memory);
         checkMemThreshold4Flush(memUsage);
         return true;
       case DANGEROUS:
       default:
         memory = MemUtils.bytesCntToStr(BasicMemController.getInstance().getTotalUsage());
-        LOGGER.warn("Memory usage will exceed dangerous threshold, current : {}.",memory);
+        LOGGER.warn("Memory usage will exceed dangerous threshold, current : {}.", memory);
         return false;
     }
   }
@@ -200,7 +203,7 @@ public class BufferWriteProcessor extends Processor {
       try {
         flush();
       } catch (IOException e) {
-        LOGGER.error("Flush bufferwrite error.",e);
+        LOGGER.error("Flush bufferwrite error.", e);
         throw new BufferWriteProcessorException(e);
       }
     }
@@ -256,12 +259,16 @@ public class BufferWriteProcessor extends Processor {
     }
   }
 
+
   /**
    * the caller mast guarantee no other concurrent caller entering this function.
-    * @param displayMessage message that will appear in system log.
+   *
+   * @param displayMessage message that will appear in system log.
+   * @param version the operation version that will tagged on the to be flushed memtable
+   * (i.e., ChunkGroup)
    * @return true if successfully.
    */
-  private boolean flushTask(String displayMessage) {
+  private boolean flushTask(String displayMessage, long version) {
     boolean result;
     long flushStartTime = System.currentTimeMillis();
     LOGGER.info("The bufferwrite processor {} starts flushing {}.", getProcessorName(),
@@ -269,7 +276,8 @@ public class BufferWriteProcessor extends Processor {
     try {
       if (flushMemTable != null && !flushMemTable.isEmpty()) {
         // flush data
-        MemTableFlushUtil.flushMemTable(fileSchema, writer, flushMemTable);
+        MemTableFlushUtil.flushMemTable(fileSchema, writer, flushMemTable,
+            version);
         // write restore information
         writer.flush();
       }
@@ -312,9 +320,9 @@ public class BufferWriteProcessor extends Processor {
         LOGGER.info(
             "The bufferwrite processor {}: last flush time is {}, this flush time is {}, "
                 + "flush time interval is {}s", getProcessorName(),
-            DatetimeUtils.convertMillsecondToZonedDateTime(lastFlushTime/1000),
+            DatetimeUtils.convertMillsecondToZonedDateTime(lastFlushTime / 1000),
             DatetimeUtils.convertMillsecondToZonedDateTime(thisFlushTime),
-            (thisFlushTime - lastFlushTime/1000) / 1000);
+            (thisFlushTime - lastFlushTime / 1000) / 1000);
       }
     }
     lastFlushTime = System.nanoTime();
@@ -341,11 +349,13 @@ public class BufferWriteProcessor extends Processor {
       }
       valueCount = 0;
       switchWorkToFlush();
+      long version = versionController.nextVersion();
       BasicMemController.getInstance().reportFree(this, memSize.get());
       memSize.set(0);
       // switch
-      flushFuture = FlushManager.getInstance().submit(() -> flushTask("asynchronously"));
-    } else{
+      flushFuture = FlushManager.getInstance().submit(() -> flushTask("asynchronously",
+          version));
+    } else {
       flushFuture = new ImmediateFuture<>(true);
     }
     return flushFuture;
@@ -499,5 +509,22 @@ public class BufferWriteProcessor extends Processor {
    */
   public Future<Boolean> getFlushFuture() {
     return flushFuture;
+  }
+
+  /**
+   * Delete data whose timestamp <= 'timestamp' and belonging to timeseries deviceId.measurementId.
+   * Delete data in both working MemTable and flushing MemTable.
+   *
+   * @param deviceId the deviceId of the timeseries to be deleted.
+   * @param measurementId the measurementId of the timeseries to be deleted.
+   * @param timestamp the upper-bound of deletion time.
+   */
+  public void delete(String deviceId, String measurementId, long timestamp) {
+    workMemTable.delete(deviceId, measurementId, timestamp);
+    if (isFlush()) {
+      // flushing MemTable cannot be directly modified since another thread is reading it
+      flushMemTable = flushMemTable.copy();
+      flushMemTable.delete(deviceId, measurementId, timestamp);
+    }
   }
 }

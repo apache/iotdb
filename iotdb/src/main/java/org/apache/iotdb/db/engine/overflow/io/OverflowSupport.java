@@ -74,18 +74,13 @@ public class OverflowSupport {
     indexTrees.get(deviceId).get(measurementId).update(startTime, endTime);
   }
 
-  /**
-   * @deprecated delete time series data
-   */
-  @Deprecated
-  public void delete(String deviceId, String measurementId, long timestamp, TSDataType dataType) {
-    if (!indexTrees.containsKey(deviceId)) {
-      indexTrees.put(deviceId, new HashMap<>());
+  public void delete(String deviceId, String measurementId, long timestamp, boolean isFlushing) {
+    if (isFlushing) {
+      memTable = memTable.copy();
+      memTable.delete(deviceId, measurementId, timestamp);
+    } else {
+      memTable.delete(deviceId, measurementId, timestamp);
     }
-    if (!indexTrees.get(deviceId).containsKey(measurementId)) {
-      indexTrees.get(deviceId).put(measurementId, new OverflowSeriesImpl(measurementId, dataType));
-    }
-    indexTrees.get(deviceId).get(measurementId).delete(timestamp);
   }
 
   public TimeValuePairSorter queryOverflowInsertInMemory(String deviceId, String measurementId,
@@ -94,8 +89,7 @@ public class OverflowSupport {
   }
 
   public BatchData queryOverflowUpdateInMemory(String deviceId, String measurementId,
-                                               TSDataType dataType,
-                                               BatchData data) {
+                                               TSDataType dataType) {
     if (indexTrees.containsKey(deviceId) && indexTrees.get(deviceId).containsKey(measurementId)
         && indexTrees.get(deviceId).get(measurementId).getDataType().equals(dataType)) {
       return indexTrees.get(deviceId).get(measurementId).query();
