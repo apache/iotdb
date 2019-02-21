@@ -1067,7 +1067,7 @@ public class FileNodeManager implements IStatistic, IService {
         continue;
       }
       try {
-        boolean isMerge = processor.flush();
+        boolean isMerge = processor.flush().isHasOverflowFlushTask();
         if (isMerge) {
           processor.submitToMerge();
         }
@@ -1093,7 +1093,7 @@ public class FileNodeManager implements IStatistic, IService {
       }
       processor.writeLock();
       try {
-        boolean isMerge = processor.flush();
+        boolean isMerge = processor.flush().isHasOverflowFlushTask();
         if (isMerge) {
           processor.submitToMerge();
         }

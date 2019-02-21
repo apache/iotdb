@@ -16,30 +16,43 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.engine.utils;
 
-/**
- * This class is used to represent the state of flush. It's can be used in the bufferwrite
- * flush{@code SequenceFileManager} and overflow flush{@code OverFlowProcessor}.
- */
-public class FlushStatus {
+package org.apache.iotdb.db.utils;
 
-  private boolean isFlushing;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
-  public FlushStatus() {
-    this.isFlushing = false;
+public class ImmediateFuture<T> implements Future<T> {
+
+  T result;
+  public ImmediateFuture(T result){
+    this.result = result;
+  }
+  @Override
+  public boolean cancel(boolean mayInterruptIfRunning) {
+    return true;
   }
 
-  public boolean isFlushing() {
-    return isFlushing;
+  @Override
+  public boolean isCancelled() {
+    return true;
   }
 
-  public void setFlushing() {
-    this.isFlushing = true;
+  @Override
+  public boolean isDone() {
+    return true;
   }
 
-  public void setUnFlushing() {
-    this.isFlushing = false;
+  @Override
+  public T get() throws InterruptedException, ExecutionException {
+    return result;
   }
 
+  @Override
+  public T get(long timeout, TimeUnit unit)
+      throws InterruptedException, ExecutionException, TimeoutException {
+    return result;
+  }
 }

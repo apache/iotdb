@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.engine;
 
 import java.io.IOException;
+import java.util.concurrent.Future;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.iotdb.db.engine.bufferwrite.BufferWriteProcessor;
@@ -170,7 +171,12 @@ public abstract class Processor {
    */
   public abstract boolean canBeClosed();
 
-  public abstract boolean flush() throws IOException;
+  /**
+   * call flush operation asynchronously
+   * @return a future that returns true if successfully, otherwise false.
+   * @throws IOException
+   */
+  public abstract Future<Boolean> flush() throws IOException;
 
   /**
    * Close the processor.<br>

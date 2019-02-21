@@ -22,8 +22,10 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 
 import java.io.IOException;
+import java.util.concurrent.Future;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.db.utils.ImmediateFuture;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -106,9 +108,8 @@ public class ProcessorTest {
     }
 
     @Override
-    public boolean flush() throws IOException {
-      // TODO Auto-generated method stub
-      return false;
+    public Future<Boolean> flush() throws IOException {
+      return new ImmediateFuture<>(true);
     }
 
     @Override
