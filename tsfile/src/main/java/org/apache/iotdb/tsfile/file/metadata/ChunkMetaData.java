@@ -47,10 +47,16 @@ public class ChunkMetaData {
   private TSDataType tsDataType;
 
   /**
-   * The maximum time of the tombstones that take effect on this chunk. Only data with larger.
-   * timestamps than this should be exposed to user.
+   * version is used to define the order of operations(insertion, deletion, update).
+   * version is set according to its belonging ChunkGroup only when being queried, so it is not
+   * persisted.
    */
-  private long maxTombstoneTime;
+  private long version;
+
+  /**
+   * All data with timestamp <= deletedAt are considered deleted.
+   */
+  private long deletedAt = -1;
 
   private TsDigest valuesStatistics;
 
@@ -243,12 +249,19 @@ public class ChunkMetaData {
     return byteLen;
   }
 
-  public long getMaxTombstoneTime() {
-    return maxTombstoneTime;
+  public long getVersion() {
+    return version;
   }
 
-  public void setMaxTombstoneTime(long maxTombstoneTime) {
-    this.maxTombstoneTime = maxTombstoneTime;
+  public void setVersion(long version) {
+    this.version = version;
   }
 
+  public long getDeletedAt() {
+    return deletedAt;
+  }
+
+  public void setDeletedAt(long deletedAt) {
+    this.deletedAt = deletedAt;
+  }
 }

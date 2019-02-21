@@ -23,5 +23,5 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 
 public interface LogReplayer {
 
-  void replay(PhysicalPlan plan) throws ProcessorException;
+  void replay(PhysicalPlan plan, boolean isOverflow) throws ProcessorException;
 }
