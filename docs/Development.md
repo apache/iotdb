@@ -24,7 +24,7 @@
 
 ## Mailing Lists
 
-It is recommmended to use our mail lists to ask for help, debug issues or contributiong to the project.
+It is recommended to use our mailing lists to ask for help, debug issues or contribute to the project.
 
 * dev@iotdb.apache.org is for people who want to contribute codes to IoTDB or have usage questions for IoTDB.
 
@@ -46,17 +46,17 @@ To become a committer, you should first be active on our community so that most 
 
 ### Contributing by Helping Other Users
 
-Since IoTDB always attracts new users, it would be great appreciate if you can help them by answering questions on the dev@iotdb.apache.org mail list. We regard it as a valuable contribution. Also, the more questions you answer, the more poeple know you. Popularity is one of the necessary conditions to be become a committer.
+Since IoTDB always attracts new users, it would be great if you can help them by answering questions on the dev@iotdb.apache.org mail list. We regard it as a valuable contribution. Also, the more questions you answer, the more poeple know you. Popularity is one of the necessary conditions to be a committer.
 
-Contributors should subscribe to our mail list to catch up the lates progress.
+Contributors should subscribe to our mail list to catch up the latest progress.
 
 ### Contributing by Testing Releases
 
-IoTDB's new release is visable to everyone, members of community can vote to accpect these releases on the dev@iotdb.apache.org mailing list. Users of IoTDB will be invited to try out on their workloads and provide feedback on any performance or correctness issues found in the newer release.
+IoTDB's new release is visible to everyone, members of community can vote to accept these releases on the dev@iotdb.apache.org mailing list. Users of IoTDB will be invited to try out on their workloads and provide feedback on any performance or correctness issues found in the newer release.
 
 ### Contributing by Reviewing Changes
 
-Changes to IoTDB source codes are made through Github pull request, anyone can review and comment on these changes. Reviewing others' pull requests can help you comprehend how a bug is fixed or a new feature is added. Besides, Learning directly from source codes will give you a deeper understanding of how IoTDB system works and where its bottlenecks lie. You can help by reviewing the changes and asking questions or pointing out issues.
+Changes to IoTDB source codes are made through Github pull request. Anyone can review and comment on these changes. Reviewing others' pull requests can help you comprehend how a bug is fixed or a new feature is added. Besides, Learning directly from source code will give you a deeper understanding of how IoTDB system works and where its bottlenecks lie. You can help by reviewing the changes, asking questions and pointing out issues.
 
 ### Contributing by Documentation Changes
 
@@ -64,7 +64,7 @@ To propose a change to release documentation (that is, docs that appear under <h
 
 ### Contributing Bug Reports
 
-If you encounter a problem, you should first confirm the problem you found is a real bug, which means that it is not error outputs or caused by your error configuration or commands. Then try to search mail list to check whehter other people hava faced the same situation.
+If you encounter a problem, you should first confirm the problem you found is a real bug, which means that it is not error outputs or caused by your error configuration or commands. Then try to search mail list to check whether other people have faced the same situation. If it is not met before, welcome to report an issue.
 
 Once you are sure it is a bug, it may be reported by creating a JIRA but without creating a pull request. In the bug report, you should provide enough information to understand, isolate and ideally reproduce the bug. Unreproducible bugs, or simple error reports, may be closed.
 
@@ -87,7 +87,7 @@ Following README.md to test, run or build IoTDB.
 
 #### JIRA
 
-Generally, IoTDB uses JIRA to track logical issues, including bugs and improvements, and uses Github pull requests to manage the review and merge of specific code changes. That is, JIRAs are used to describe what should be fixed or changed, and high-level approaches, and pull requests describe how to implement that change in the project’s source code. For example, major design decisions are discussed in JIRA.
+Generally, IoTDB uses JIRA to track logical issues, including bugs and improvements, and uses Github pull requests to manage the review and merge specific code changes. That is, JIRAs are used to describe what should be fixed or changed, proposing high-level approaches, and pull requests describe how to implement that change in the project’s source code. For example, major design decisions discussed in JIRA.
 
 1. Find the existing IoTDB JIRA that the change pertains to.
     1. Do not create a new JIRA if creating a change to address an existing issue in JIRA; add to the existing discussion and work instead
@@ -120,7 +120,7 @@ Generally, IoTDB uses JIRA to track logical issues, including bugs and improveme
 
 #### Pull Request
 
-1. Fork the Github repository at https://github.com/apache/incubator-iotdb if you haven’t already
+1. Fork the Github repository at https://github.com/apache/incubator-iotdb if you haven’t done already
 2. Clone your fork, create a new branch, push commits to the branch.
 3. Consider whether documentation or tests need to be added or updated as part of the change, and add them as needed.
 Run all tests with [How to test](https://github.com/thulab/iotdb/wiki/How-to-test-IoTDB) to verify that the code still compiles, passes tests.
