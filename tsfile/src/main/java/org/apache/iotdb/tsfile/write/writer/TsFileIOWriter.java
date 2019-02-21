@@ -125,7 +125,7 @@ public class TsFileIOWriter {
    */
   public void startFlushChunkGroup(String deviceId) throws IOException {
     LOG.debug("start chunk group:{}, file position {}", deviceId, out.getPosition());
-    currentChunkGroupMetaData = new ChunkGroupMetaData(deviceId, new ArrayList<>());
+    currentChunkGroupMetaData = new ChunkGroupMetaData(deviceId, new ArrayList<>(), out.getPosition());
   }
 
   /**
@@ -193,6 +193,7 @@ public class TsFileIOWriter {
    */
   public void endChunkGroup(ChunkGroupFooter chunkGroupFooter, long version) throws IOException {
     chunkGroupFooter.serializeTo(out.wrapAsStream());
+    currentChunkGroupMetaData.setEndOffsetOfChunkGroup(out.getPosition());
     currentChunkGroupMetaData.setVersion(version);
     chunkGroupMetaDataList.add(currentChunkGroupMetaData);
     LOG.debug("end chunk group:{}", currentChunkGroupMetaData);
