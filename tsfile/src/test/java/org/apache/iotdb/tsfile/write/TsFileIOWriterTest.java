@@ -61,7 +61,7 @@ public class TsFileIOWriterTest {
         measurementSchema.getType(), measurementSchema.getEncodingType(), statistics, 0, 0, 0, 0);
     writer.endChunk(0);
     ChunkGroupFooter footer = new ChunkGroupFooter(deviceId, 0, 1);
-    writer.endChunkGroup(footer);
+    writer.endChunkGroup(footer, 0);
 
     // end file
     writer.endFile(fileSchema);

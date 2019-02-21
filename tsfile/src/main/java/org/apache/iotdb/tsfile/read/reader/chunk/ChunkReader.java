@@ -48,7 +48,10 @@ public abstract class ChunkReader {
 
   private BatchData data;
 
-  private long maxTombstoneTime;
+  /**
+   * Data whose timestamp <= deletedAt should be considered deleted(not be returned).
+   */
+  protected long deletedAt;
 
   public ChunkReader(Chunk chunk) {
     this(chunk, null);
@@ -63,6 +66,7 @@ public abstract class ChunkReader {
   public ChunkReader(Chunk chunk, Filter filter) {
     this.filter = filter;
     this.chunkDataBuffer = chunk.getData();
+    this.deletedAt = chunk.getDeletedAt();
     chunkHeader = chunk.getHeader();
     this.unCompressor = IUnCompressor.getUnCompressor(chunkHeader.getCompressionType());
     valueDecoder = Decoder
@@ -127,20 +131,14 @@ public abstract class ChunkReader {
 
     chunkDataBuffer.get(compressedPageBody, 0, compressedPageBodyLength);
     valueDecoder.reset();
-    return new PageReader(ByteBuffer.wrap(unCompressor.uncompress(compressedPageBody)),
+    PageReader reader = new PageReader(ByteBuffer.wrap(unCompressor.uncompress(compressedPageBody)),
         chunkHeader.getDataType(),
         valueDecoder, timeDecoder, filter);
+    reader.setDeletedAt(deletedAt);
+    return reader;
   }
 
   public void close() {
-  }
-
-  public long getMaxTombstoneTime() {
-    return this.maxTombstoneTime;
-  }
-
-  public void setMaxTombstoneTime(long maxTombStoneTime) {
-    this.maxTombstoneTime = maxTombStoneTime;
   }
 
 }

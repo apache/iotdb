@@ -52,22 +52,18 @@ public class IoTDBTimeZoneIT {
 
   @Before
   public void setUp() throws Exception {
-    // if (testFlag) {
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.closeMemControl();
     deamon = IoTDB.getInstance();
     deamon.active();
     EnvironmentUtils.envSetUp();
     createTimeseries();
-    // }
   }
 
   @After
   public void tearDown() throws Exception {
-    // if (testFlag) {
     deamon.stop();
     EnvironmentUtils.cleanEnv();
-    // }
   }
 
   /**
