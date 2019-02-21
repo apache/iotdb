@@ -27,6 +27,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.format.SignStyle;
 import java.time.temporal.ChronoField;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.qp.LogicalOperatorException;
 
 public class DatetimeUtils {
@@ -205,5 +206,10 @@ public class DatetimeUtils {
 
   public static ZoneOffset toZoneOffset(ZoneId zoneId) {
     return zoneId.getRules().getOffset(Instant.now());
+  }
+
+  public static ZonedDateTime convertMillsecondToZonedDateTime(long millisecond) {
+    return ZonedDateTime.ofInstant(Instant.ofEpochMilli(millisecond),
+        IoTDBDescriptor.getInstance().getConfig().getZoneID());
   }
 }
