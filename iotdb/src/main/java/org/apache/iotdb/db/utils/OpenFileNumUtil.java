@@ -49,7 +49,7 @@ public class OpenFileNumUtil {
   private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static Directories directories = Directories.getInstance();
   private static final String[] COMMAND_TEMPLATE = {"/bin/bash", "-c", ""};
-  private static boolean isOutputValid;
+  private static boolean isOutputValid = false;
   private int pid;
 
   /**
