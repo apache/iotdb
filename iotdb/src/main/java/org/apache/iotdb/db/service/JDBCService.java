@@ -200,7 +200,7 @@ public class JDBCService implements JDBCServiceMBean, IService {
         LOGGER.error("{}: {} exit, because ", IoTDBConstant.GLOBAL_DB_NAME, getID().getName(), e);
       } finally {
         close();
-        if (threadStopLatch.getCount() == 1) {
+        if (threadStopLatch != null && threadStopLatch.getCount() == 1) {
           threadStopLatch.countDown();
         }
         LOGGER.info("{}: close TThreadPoolServer and TServerSocket for {}",
