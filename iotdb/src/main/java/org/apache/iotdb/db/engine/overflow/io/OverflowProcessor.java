@@ -85,8 +85,8 @@ public class OverflowProcessor extends Processor {
   private AtomicLong dataPathCount = new AtomicLong();
   private ReentrantLock queryFlushLock = new ReentrantLock();
 
-  private Action overflowFlushAction = null;
-  private Action filenodeFlushAction = null;
+  private Action overflowFlushAction;
+  private Action filenodeFlushAction;
   private FileSchema fileSchema;
 
   private long memThreshold = TSFileConfig.groupSizeInByte;
@@ -321,9 +321,7 @@ public class OverflowProcessor extends Processor {
    * time-series.
    */
   private Pair<String, List<ChunkMetaData>> queryWorkDataInOverflowInsert(String deviceId,
-      String measurementId,
-      TSDataType dataType,
-      QueryContext context) {
+      String measurementId, TSDataType dataType, QueryContext context) {
     return new Pair<>(
         workResource.getInsertFilePath(),
         workResource.getInsertMetadatas(deviceId, measurementId, dataType, context));
@@ -343,9 +341,7 @@ public class OverflowProcessor extends Processor {
   }
 
   public OverflowSeriesDataSource queryMerge(String deviceId, String measurementId,
-      TSDataType dataType,
-      boolean isMerge,
-      QueryContext context) {
+      TSDataType dataType, boolean isMerge, QueryContext context) {
     Pair<String, List<ChunkMetaData>> mergeInsert = queryMergeDataInOverflowInsert(deviceId,
         measurementId,
         dataType, context);
@@ -365,9 +361,7 @@ public class OverflowProcessor extends Processor {
    * time-series.
    **/
   private Pair<String, List<ChunkMetaData>> queryMergeDataInOverflowInsert(String deviceId,
-      String measurementId,
-      TSDataType dataType,
-      QueryContext context) {
+      String measurementId, TSDataType dataType, QueryContext context) {
     if (!isMerge) {
       return new Pair<>(null, null);
     }

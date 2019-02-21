@@ -349,8 +349,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
   /**
    * add interval FileNode.
    */
-  void addIntervalFileNode(String baseDir, String fileName)
-      throws ActionException {
+  void addIntervalFileNode(String baseDir, String fileName) throws ActionException {
 
     IntervalFileNode intervalFileNode = new IntervalFileNode(OverflowChangeType.NO_CHANGE, baseDir,
         fileName);
@@ -493,14 +492,12 @@ public class FileNodeProcessor extends Processor implements IStatistic {
       // re-merge all file
       // if bufferwrite processor is not null, and close
       LOGGER.info("The filenode processor {} is recovering, the filenode status is {}.",
-          getProcessorName(),
-          isMerging);
+          getProcessorName(), isMerging);
       merge();
     } else if (isMerging == FileNodeProcessorStatus.WAITING) {
       // unlock
       LOGGER.info("The filenode processor {} is recovering, the filenode status is {}.",
-          getProcessorName(),
-          isMerging);
+          getProcessorName(), isMerging);
       writeUnlock();
       switchWaitingToWorking();
     } else {
@@ -735,8 +732,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
     if (newMultiPassTokenSet.contains(token)) {
       newMultiPassLock.readLock().unlock();
       newMultiPassTokenSet.remove(token);
-      LOGGER
-          .debug("Remove multi token:{}, nspath:{}, new set:{}, lock:{}", token,
+      LOGGER.debug("Remove multi token:{}, nspath:{}, new set:{}, lock:{}", token,
               getProcessorName(),
               newMultiPassTokenSet, newMultiPassLock);
       return true;
@@ -783,8 +779,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
         bufferwriteDataInFiles.add(intervalFileNode.backUp());
       }
     }
-    Pair<ReadOnlyMemChunk, List<ChunkMetaData>> bufferwritedata
-        = new Pair<>(null, null);
+    Pair<ReadOnlyMemChunk, List<ChunkMetaData>> bufferwritedata = new Pair<>(null, null);
     // bufferwrite data
     UnsealedTsFile unsealedTsFile = null;
 
@@ -1570,10 +1565,8 @@ public class FileNodeProcessor extends Processor implements IStatistic {
 
 
   private void writeOneSeries(String deviceId, ChunkWriterImpl seriesWriterImpl,
-      TSDataType dataType, IReader seriesReader,
-      Map<String, Long> startTimeMap,
-      Map<String, Long> endTimeMap,
-      TimeValuePair firstTVPair) throws IOException {
+      TSDataType dataType, IReader seriesReader, Map<String, Long> startTimeMap,
+      Map<String, Long> endTimeMap, TimeValuePair firstTVPair) throws IOException {
     long startTime;
     long endTime;
     TimeValuePair localTV = firstTVPair;

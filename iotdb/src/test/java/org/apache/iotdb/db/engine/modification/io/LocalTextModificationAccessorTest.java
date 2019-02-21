@@ -25,6 +25,7 @@ import static org.junit.Assert.fail;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import org.apache.iotdb.db.engine.modification.Deletion;
@@ -70,10 +71,10 @@ public class LocalTextModificationAccessorTest {
   @Test
   public void readNull() throws IOException {
     String tempFileName = "mod.temp";
-    LocalTextModificationAccessor accessor = null;
+    LocalTextModificationAccessor accessor;
     accessor = new LocalTextModificationAccessor(tempFileName);
     new File(tempFileName).delete();
     Collection<Modification> modifications = accessor.read();
-    assertNull(modifications);
+    assertEquals(new ArrayList<>(), modifications);
   }
 }

@@ -140,9 +140,8 @@ public class FileNodeManager implements IStatistic, IService {
     List<String> list = new ArrayList<>();
     for (MonitorConstants.FileNodeManagerStatConstants statConstant :
         MonitorConstants.FileNodeManagerStatConstants.values()) {
-      list.add(
-          MonitorConstants.STAT_STORAGE_DELTA_NAME + MonitorConstants.MONITOR_PATH_SEPERATOR
-              + statConstant.name());
+      list.add(MonitorConstants.STAT_STORAGE_DELTA_NAME + MonitorConstants.MONITOR_PATH_SEPERATOR
+          + statConstant.name());
     }
     return list;
   }
@@ -237,8 +236,7 @@ public class FileNodeManager implements IStatistic, IService {
         FileNodeProcessor fileNodeProcessor = getProcessor(filenodeName, true);
         if (fileNodeProcessor.shouldRecovery()) {
           LOGGER.info("Recovery the filenode processor, the filenode is {}, the status is {}",
-              filenodeName,
-              fileNodeProcessor.getFileNodeProcessorStatus());
+              filenodeName, fileNodeProcessor.getFileNodeProcessorStatus());
           fileNodeProcessor.fileNodeRecovery();
         } else {
           fileNodeProcessor.writeUnlock();
@@ -311,9 +309,8 @@ public class FileNodeManager implements IStatistic, IService {
           measurementList.add(dp.getMeasurementId());
           insertValues.add(dp.getValue().toString());
         }
-        logNode.write(
-            new InsertPlan(2, tsRecord.deviceId, tsRecord.time, measurementList,
-                insertValues));
+        logNode.write(new InsertPlan(2, tsRecord.deviceId, tsRecord.time, measurementList,
+            insertValues));
       }
     } catch (IOException e) {
       if (!isMonitor) {
@@ -378,9 +375,8 @@ public class FileNodeManager implements IStatistic, IService {
     try {
       bufferWriteProcessor = fileNodeProcessor.getBufferWriteProcessor(filenodeName, timestamp);
     } catch (FileNodeProcessorException e) {
-      LOGGER
-          .error("Get the bufferwrite processor failed, the filenode is {}, insert time is {}",
-              filenodeName, timestamp);
+      LOGGER.error("Get the bufferwrite processor failed, the filenode is {}, insert time is {}",
+          filenodeName, timestamp);
       if (!isMonitor) {
         updateStatHashMapWhenFail(tsRecord);
       }
@@ -392,8 +388,7 @@ public class FileNodeManager implements IStatistic, IService {
       String bufferwriteBaseDir = bufferWriteProcessor.getBaseDir();
       String bufferwriteRelativePath = bufferWriteProcessor.getFileRelativePath();
       try {
-        fileNodeProcessor
-            .addIntervalFileNode(bufferwriteBaseDir, bufferwriteRelativePath);
+        fileNodeProcessor.addIntervalFileNode(bufferwriteBaseDir, bufferwriteRelativePath);
       } catch (Exception e) {
         if (!isMonitor) {
           updateStatHashMapWhenFail(tsRecord);
@@ -471,8 +466,8 @@ public class FileNodeManager implements IStatistic, IService {
       try {
         if (IoTDBDescriptor.getInstance().getConfig().enableWal) {
           overflowProcessor.getLogNode().write(
-                  new UpdatePlan(startTime, finalEndTime, v, new Path(deviceId
-                      + "." + measurementId)));
+              new UpdatePlan(startTime, finalEndTime, v, new Path(deviceId
+                  + "." + measurementId)));
         }
       } catch (IOException e) {
         throw new FileNodeManagerException(e);
@@ -512,11 +507,9 @@ public class FileNodeManager implements IStatistic, IService {
             throw new FileNodeManagerException(e);
           }
           try {
-            overflowProcessor.getLogNode()
-                .write(new DeletePlan(timestamp,
+            overflowProcessor.getLogNode().write(new DeletePlan(timestamp,
                     new Path(deviceId + "." + measurementId)));
-            bufferWriteProcessor.getLogNode()
-                .write(new DeletePlan(timestamp,
+            bufferWriteProcessor.getLogNode().write(new DeletePlan(timestamp,
                     new Path(deviceId + "." + measurementId)));
           } catch (IOException e) {
             throw new FileNodeManagerException(e);
@@ -645,8 +638,7 @@ public class FileNodeManager implements IStatistic, IService {
         }
       }
       try {
-        queryDataSource = fileNodeProcessor
-            .query(deviceId, measurementId, context);
+        queryDataSource = fileNodeProcessor.query(deviceId, measurementId, context);
       } catch (FileNodeProcessorException e) {
         LOGGER.error("Query error: the deviceId {}, the measurementId {}", deviceId, measurementId,
             e);

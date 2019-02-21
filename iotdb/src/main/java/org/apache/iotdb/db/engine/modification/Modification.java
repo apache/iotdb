@@ -66,8 +66,12 @@ public abstract class Modification {
 
   @Override
   public boolean equals(Object obj) {
-    if (!(obj instanceof Modification))
+    if (this == obj) {
+       return true;
+    }
+    if (!(obj instanceof Modification)) {
       return false;
+    }
     Modification mod = (Modification) obj;
     return mod.type.equals(this.type) && mod.path.equals(this.path)
             && mod.versionNum == this.versionNum;
