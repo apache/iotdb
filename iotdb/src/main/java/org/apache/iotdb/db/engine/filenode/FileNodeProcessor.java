@@ -430,7 +430,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
   }
 
   /**
-   * execute filenode recovery.
+   * execute filenode recovery. and finally release the write lock this processor.
    */
   public void fileNodeRecovery() throws FileNodeProcessorException {
     // restore bufferwrite
@@ -463,7 +463,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
             fileNames[fileNames.length - 1], parameters, versionController, fileSchema);
       } catch (BufferWriteProcessorException e) {
         // unlock
-        writeUnlock();
+        //writeUnlock();
         LOGGER.error(
             "The filenode processor {} failed to recovery the bufferwrite processor, "
                 + "the last bufferwrite file is {}.",
@@ -480,7 +480,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
       overflowProcessor = new OverflowProcessor(getProcessorName(), parameters, fileSchema,
           versionController);
     } catch (IOException e) {
-      writeUnlock();
+      //writeUnlock();
       LOGGER.error("The filenode processor {} failed to recovery the overflow processor.",
           getProcessorName());
       throw new FileNodeProcessorException(e);
@@ -498,10 +498,10 @@ public class FileNodeProcessor extends Processor implements IStatistic {
       // unlock
       LOGGER.info("The filenode processor {} is recovering, the filenode status is {}.",
           getProcessorName(), isMerging);
-      writeUnlock();
+      //writeUnlock();
       switchWaitingToWorking();
     } else {
-      writeUnlock();
+      //writeUnlock();
     }
     // add file into index of file
     addAllFileIntoIndex(newFileNodes);
