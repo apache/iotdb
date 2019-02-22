@@ -149,6 +149,10 @@ public abstract class AbstractClient {
   private static int displayCnt = 0;
 
   private static final PrintStream SCREEN_PRINTER = new PrintStream(System.out);
+  /**
+   * showException is currently fixed to false because the display of exceptions is not elaborate.
+   * We can make it an option in future versions.
+   */
   private static boolean showException = false;
 
   protected static void init() {
