@@ -82,7 +82,6 @@ public abstract class AbstractClient {
   protected static final String TIMESTAMP_STR = "Time";
   protected static final int ISO_DATETIME_LEN = 26;
   protected static final String IMPORT_CMD = "import";
-  protected static final String EXPORT_CMD = "export";
   private static final String NEED_NOT_TO_PRINT_TIMESTAMP = "AGGREGATION";
   private static final String DEFAULT_TIME_FORMAT = "default";
   protected static String timeFormat = DEFAULT_TIME_FORMAT;
@@ -526,7 +525,7 @@ public abstract class AbstractClient {
     }
 
     if (specialCmd.startsWith(SHOW_TIMEZONE)) {
-
+      showTimeZone(connection);
       return OperationResult.CONTINUE_OPER;
     }
     if (specialCmd.startsWith(SHOW_TIMESTAMP_DISPLAY)) {
@@ -683,7 +682,7 @@ public abstract class AbstractClient {
       if (hasResultSet) {
         ResultSet resultSet = statement.getResultSet();
         output(resultSet, printToConsole, zoneId);
-
+        closeResultSet(resultSet);
       }
     } catch (Exception e) {
       println("Msg: " + e.getMessage());
@@ -717,27 +716,27 @@ public abstract class AbstractClient {
     RETURN_OPER, CONTINUE_OPER, NO_OPER
   }
   
-  private static void printf(String format, Object ... args) {
+  protected static void printf(String format, Object ... args) {
     SCREEN_PRINTER.printf(format, args);
   }
   
-  private static void print(String msg) {
+  protected static void print(String msg) {
     SCREEN_PRINTER.println(msg);
   }
 
-  private static void println() {
+  protected static void println() {
     SCREEN_PRINTER.println();
   }
 
-  private static void println(String msg) {
+  protected static void println(String msg) {
     SCREEN_PRINTER.println(msg);
   }
 
-  private static void println(Object obj) {
+  protected static void println(Object obj) {
     SCREEN_PRINTER.println(obj);
   }
 
-  private static void handleException(Exception e) {
+  protected static void handleException(Exception e) {
     if (showException) {
       e.printStackTrace(SCREEN_PRINTER);
     }
