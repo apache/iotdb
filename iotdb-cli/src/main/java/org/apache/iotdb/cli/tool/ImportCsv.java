@@ -70,8 +70,11 @@ public class ImportCsv extends AbstractCsvTool {
   private static final String STRING_DATA_TYPE = "TEXT";
   private static final int BATCH_EXECUTE_COUNT = 10;
 
-  private static String filename;
   private static String errorInsertInfo = "";
+  private static boolean errorFlag;
+
+  private static int count;
+  private static Statement statement;
 
   /**
    * create the commandline options.
@@ -120,21 +123,21 @@ public class ImportCsv extends AbstractCsvTool {
    * Data from csv To tsfile.
    */
   private static void loadDataFromCSV(File file, int index) {
-    Statement statement = null;
-    FileReader fr = null;
-    BufferedReader br = null;
-    FileWriter fw = null;
-    BufferedWriter bw = null;
+    statement = null;
+
     File errorFile = new File(errorInsertInfo + index);
-    boolean errorFlag = true;
-    try {
-      fr = new FileReader(file);
-      br = new BufferedReader(fr);
-      if (!errorFile.exists()) {
+    if (!errorFile.exists()) {
+      try {
         errorFile.createNewFile();
+      } catch (IOException e) {
+        LOGGER.error("Cannot create a errorFile because, ", e);
+        return;
       }
-      fw = new FileWriter(errorFile);
-      bw = new BufferedWriter(fw);
+    }
+
+    errorFlag = true;
+    try(BufferedReader br = new BufferedReader(new FileReader(file));
+    BufferedWriter bw = new BufferedWriter(new FileWriter(errorFile))) {
 
       String header = br.readLine();
 
@@ -160,112 +163,34 @@ public class ImportCsv extends AbstractCsvTool {
 
       long startTime = System.currentTimeMillis();
       Map<String, String> timeseriesDataType = new HashMap<>();
-      DatabaseMetaData databaseMetaData = connection.getMetaData();
 
-      for (int i = 1; i < strHeadInfo.length; i++) {
-        ResultSet resultSet = databaseMetaData.getColumns(null,
-            null, strHeadInfo[i], null);
-        if (resultSet.next()) {
-          timeseriesDataType.put(resultSet.getString(1),
-              resultSet.getString(2));
-        } else {
-          String errorInfo = String.format("Database cannot find %s in %s, stop import!",
-              strHeadInfo[i], file.getAbsolutePath());
-          LOGGER.error("Database cannot find {} in {}, stop import!",
-              strHeadInfo[i], file.getAbsolutePath());
-          bw.write(errorInfo);
-          errorFlag = false;
-          return;
-        }
-        headInfo.add(strHeadInfo[i]);
-        String deviceInfo = strHeadInfo[i].substring(0, strHeadInfo[i].lastIndexOf('.'));
-
-        if (!deviceToColumn.containsKey(deviceInfo)) {
-          deviceToColumn.put(deviceInfo, new ArrayList<>());
-        }
-        // storage every device's sensor index info
-        deviceToColumn.get(deviceInfo).add(i - 1);
-        colInfo.add(strHeadInfo[i].substring(strHeadInfo[i].lastIndexOf('.') + 1));
-      }
-
-      String line;
-      statement = connection.createStatement();
-      int count = 0;
-      List<String> tmp = new ArrayList<>();
-      while ((line = br.readLine()) != null) {
-        List<String> sqls = new ArrayList<>();
-        try {
-          sqls = createInsertSQL(line, timeseriesDataType, deviceToColumn, colInfo, headInfo);
-        } catch (Exception e) {
-          bw.write(String.format("error input line, maybe it is not complete: %s", line));
-          bw.newLine();
-          errorFlag = false;
-        }
-        for (String str : sqls) {
-          try {
-            count++;
-            statement.addBatch(str);
-            tmp.add(str);
-            if (count == BATCH_EXECUTE_COUNT) {
-              int[] result = statement.executeBatch();
-              for (int i = 0; i < result.length; i++) {
-                if (result[i] != Statement.SUCCESS_NO_INFO && i < tmp.size()) {
-                  bw.write(tmp.get(i));
-                  bw.newLine();
-                  errorFlag = false;
-                }
-              }
-              statement.clearBatch();
-              count = 0;
-              tmp.clear();
-            }
-          } catch (SQLException e) {
-            bw.write(e.getMessage());
-            bw.newLine();
-            errorFlag = false;
-          }
-        }
-      }
-      try {
-        int[] result = statement.executeBatch();
-        for (int i = 0; i < result.length; i++) {
-          if (result[i] != Statement.SUCCESS_NO_INFO && i < tmp.size()) {
-            bw.write(tmp.get(i));
-            bw.newLine();
-            errorFlag = false;
-          }
-        }
-        statement.clearBatch();
-        count = 0;
-        tmp.clear();
-        LOGGER.info("Load data from {} successfully, it takes {}ms", file.getName(),
-            System.currentTimeMillis() - startTime);
-      } catch (SQLException e) {
-        bw.write(e.getMessage());
-        bw.newLine();
+      boolean success = queryDatabaseMeta(strHeadInfo, file, bw, timeseriesDataType, headInfo,
+          deviceToColumn, colInfo);
+      if (!success) {
         errorFlag = false;
+        return;
       }
+
+      statement = connection.createStatement();
+
+
+      List<String> tmp = new ArrayList<>();
+      success = readAndGenSqls(br, timeseriesDataType, deviceToColumn, colInfo, headInfo,
+          bw, tmp);
+      if (!success) {
+        return;
+      }
+
+      executeSqls(bw, tmp, startTime, file);
 
     } catch (FileNotFoundException e) {
-      LOGGER.error("Cannot find {}", file.getName());
+      LOGGER.error("Cannot find {}", file.getName(), e);
     } catch (IOException e) {
-      LOGGER.error("CSV file read exception! {}", e.getMessage());
+      LOGGER.error("CSV file read exception! ", e);
     } catch (SQLException e) {
-      LOGGER.error("Database connection exception! {}", e.getMessage());
+      LOGGER.error("Database connection exception!", e);
     } finally {
       try {
-        if (fr != null) {
-          fr.close();
-        }
-        if (br != null) {
-          br.close();
-        }
-        if (fw != null) {
-          fw.close();
-        }
-        if (bw != null) {
-          bw.close();
-        }
         if (statement != null) {
           statement.close();
         }
@@ -276,11 +201,130 @@ public class ImportCsv extends AbstractCsvTool {
                   + "information", file.getAbsolutePath(), errorFile.getAbsolutePath());
         }
       } catch (SQLException e) {
-        System.out.println("[ERROR] Sql statement can not be closed ! " + e.getMessage());
+        LOGGER.error("Sql statement can not be closed ! ", e);
       } catch (IOException e) {
-        System.out.println("[ERROR] Close file error ! " + e.getMessage());
+        LOGGER.error("Close file error ! ", e);
       }
     }
+  }
+
+  private static void executeSqls(BufferedWriter bw, List<String> tmp, long startTime, File file)
+      throws IOException {
+    try {
+      int[] result = statement.executeBatch();
+      for (int i = 0; i < result.length; i++) {
+        if (result[i] != Statement.SUCCESS_NO_INFO && i < tmp.size()) {
+          bw.write(tmp.get(i));
+          bw.newLine();
+          errorFlag = false;
+        }
+      }
+      statement.clearBatch();
+      tmp.clear();
+      LOGGER.info("Load data from {} successfully, it takes {}ms", file.getName(),
+          System.currentTimeMillis() - startTime);
+    } catch (SQLException e) {
+      bw.write(e.getMessage());
+      bw.newLine();
+      errorFlag = false;
+      LOGGER.error("Cannot execute sql because ", e);
+    }
+  }
+
+  private static boolean readAndGenSqls(BufferedReader br, Map<String, String> timeseriesDataType,
+      Map<String, ArrayList<Integer>> deviceToColumn, List<String> colInfo,
+      List<String> headInfo, BufferedWriter bw, List<String> tmp) throws IOException {
+    String line;
+    count = 0;
+    while ((line = br.readLine()) != null) {
+      List<String> sqls;
+      try {
+        sqls = createInsertSQL(line, timeseriesDataType, deviceToColumn, colInfo, headInfo);
+      } catch (Exception e) {
+        bw.write(String.format("error input line, maybe it is not complete: %s", line));
+        bw.newLine();
+        LOGGER.error("Cannot create sql for {} because ", line, e);
+        errorFlag = false;
+        return false;
+      }
+      boolean success = addSqlsToBatch(sqls, tmp, bw);
+      if (!success) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private static boolean addSqlsToBatch(List<String> sqls, List<String> tmp, BufferedWriter bw)
+      throws IOException {
+    for (String str : sqls) {
+      try {
+        count++;
+        statement.addBatch(str);
+        tmp.add(str);
+        checkBatchSize(bw, tmp);
+
+      } catch (SQLException e) {
+        bw.write(e.getMessage());
+        bw.newLine();
+        errorFlag = false;
+        LOGGER.error("Cannot execute sql because ", e);
+        return false;
+      }
+    }
+    return true;
+  }
+
+
+  private static void checkBatchSize(BufferedWriter bw, List<String> tmp)
+      throws SQLException, IOException {
+    if (count == BATCH_EXECUTE_COUNT) {
+      int[] result = statement.executeBatch();
+      for (int i = 0; i < result.length; i++) {
+        if (result[i] != Statement.SUCCESS_NO_INFO && i < tmp.size()) {
+          bw.write(tmp.get(i));
+          bw.newLine();
+          errorFlag = false;
+        }
+      }
+      statement.clearBatch();
+      count = 0;
+      tmp.clear();
+    }
+  }
+
+  private static boolean queryDatabaseMeta(String[] strHeadInfo, File file, BufferedWriter bw,
+      Map<String, String> timeseriesDataType, List<String> headInfo,
+      Map<String, ArrayList<Integer>> deviceToColumn,
+      List<String> colInfo)
+      throws SQLException, IOException {
+    DatabaseMetaData databaseMetaData = connection.getMetaData();
+
+    for (int i = 1; i < strHeadInfo.length; i++) {
+      ResultSet resultSet = databaseMetaData.getColumns(null,
+          null, strHeadInfo[i], null);
+      if (resultSet.next()) {
+        timeseriesDataType.put(resultSet.getString(1),
+            resultSet.getString(2));
+      } else {
+        String errorInfo = String.format("Database cannot find %s in %s, stop import!",
+            strHeadInfo[i], file.getAbsolutePath());
+        LOGGER.error("Database cannot find {} in {}, stop import!",
+            strHeadInfo[i], file.getAbsolutePath());
+        bw.write(errorInfo);
+        return false;
+      }
+      headInfo.add(strHeadInfo[i]);
+      String deviceInfo = strHeadInfo[i].substring(0, strHeadInfo[i].lastIndexOf('.'));
+
+      if (!deviceToColumn.containsKey(deviceInfo)) {
+        deviceToColumn.put(deviceInfo, new ArrayList<>());
+      }
+      // storage every device's sensor index info
+      deviceToColumn.get(deviceInfo).add(i - 1);
+      colInfo.add(strHeadInfo[i].substring(strHeadInfo[i].lastIndexOf('.') + 1));
+    }
+    return true;
   }
 
   private static List<String> createInsertSQL(String line, Map<String, String> timeseriesToType,
@@ -291,42 +335,50 @@ public class ImportCsv extends AbstractCsvTool {
     Iterator<Map.Entry<String, ArrayList<Integer>>> it = deviceToColumn.entrySet().iterator();
     while (it.hasNext()) {
       Map.Entry<String, ArrayList<Integer>> entry = it.next();
-      StringBuilder sbd = new StringBuilder();
-      ArrayList<Integer> colIndex = entry.getValue();
-      sbd.append("insert into " + entry.getKey() + "(timestamp");
-      int skipCount = 0;
-      for (int j = 0; j < colIndex.size(); ++j) {
-        if ("".equals(data[entry.getValue().get(j) + 1])) {
-          skipCount++;
-          continue;
-        }
-        sbd.append(", " + colInfo.get(colIndex.get(j)));
+      String sql = createOneSql(entry, data, colInfo, timeseriesToType, headInfo);
+      if (sql != null) {
+        sqls.add(sql);
       }
-      // define every device null value' number, if the number equal the
-      // sensor number, the insert operation stop
-      if (skipCount == entry.getValue().size()) {
-        continue;
-      }
-
-      // TODO when timestampsStr is empty
-      String timestampsStr = data[0];
-      sbd.append(") values(").append(timestampsStr.trim().isEmpty()
-          ? "NO TIMESTAMP" : timestampsStr);
-
-      for (int j = 0; j < colIndex.size(); ++j) {
-        if ("".equals(data[entry.getValue().get(j) + 1])) {
-          continue;
-        }
-        if (timeseriesToType.get(headInfo.get(colIndex.get(j))).equals(STRING_DATA_TYPE)) {
-          sbd.append(", \'" + data[colIndex.get(j) + 1] + "\'");
-        } else {
-          sbd.append("," + data[colIndex.get(j) + 1]);
-        }
-      }
-      sbd.append(")");
-      sqls.add(sbd.toString());
     }
     return sqls;
+  }
+
+  private static String createOneSql(Map.Entry<String, ArrayList<Integer>> entry, String[] data,
+      List<String> colInfo, Map<String, String> timeseriesToType, List<String> headInfo) {
+    StringBuilder sbd = new StringBuilder();
+    ArrayList<Integer> colIndex = entry.getValue();
+    sbd.append("insert into ").append(entry.getKey()).append("(timestamp");
+    int skipCount = 0;
+    for (int j = 0; j < colIndex.size(); ++j) {
+      if ("".equals(data[entry.getValue().get(j) + 1])) {
+        skipCount++;
+        continue;
+      }
+      sbd.append(", ").append(colInfo.get(colIndex.get(j)));
+    }
+    // define every device null value' number, if the number equal the
+    // sensor number, the insert operation stop
+    if (skipCount == entry.getValue().size()) {
+      return null;
+    }
+
+    // TODO when timestampsStr is empty
+    String timestampsStr = data[0];
+    sbd.append(") values(").append(timestampsStr.trim().isEmpty()
+        ? "NO TIMESTAMP" : timestampsStr);
+
+    for (int j = 0; j < colIndex.size(); ++j) {
+      if ("".equals(data[entry.getValue().get(j) + 1])) {
+        continue;
+      }
+      if (timeseriesToType.get(headInfo.get(colIndex.get(j))).equals(STRING_DATA_TYPE)) {
+        sbd.append(", \'").append(data[colIndex.get(j) + 1]).append("\'");
+      } else {
+        sbd.append(",").append(data[colIndex.get(j) + 1]);
+      }
+    }
+    sbd.append(")");
+    return sbd.toString();
   }
 
   public static void main(String[] args) throws IOException, SQLException {
@@ -334,7 +386,7 @@ public class ImportCsv extends AbstractCsvTool {
     HelpFormatter hf = new HelpFormatter();
     hf.setOptionComparator(null);
     hf.setWidth(MAX_HELP_CONSOLE_WIDTH);
-    CommandLine commandLine = null;
+    CommandLine commandLine;
     CommandLineParser parser = new DefaultParser();
 
     if (args == null || args.length == 0) {
@@ -345,7 +397,7 @@ public class ImportCsv extends AbstractCsvTool {
     try {
       commandLine = parser.parse(options, args);
     } catch (ParseException e) {
-      LOGGER.error(e.getMessage());
+      LOGGER.error("Parse error ", e);
       hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
       return;
     }
@@ -358,7 +410,7 @@ public class ImportCsv extends AbstractCsvTool {
     reader.setExpandEvents(false);
     try {
       parseBasicParams(commandLine, reader);
-      filename = commandLine.getOptionValue(FILE_ARGS);
+      String filename = commandLine.getOptionValue(FILE_ARGS);
       if (filename == null) {
         hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
         return;
@@ -366,9 +418,9 @@ public class ImportCsv extends AbstractCsvTool {
       parseSpecialParams(commandLine);
       importCsvFromFile(host, port, username, password, filename, timeZoneID);
     } catch (ArgsErrorException e) {
-      // ignored
+      LOGGER.error("Args error", e);
     } catch (Exception e) {
-      LOGGER.error("Encounter an error, because {}", e.getMessage());
+      LOGGER.error("Encounter an error, because ", e);
     } finally {
       reader.close();
     }
@@ -405,12 +457,12 @@ public class ImportCsv extends AbstractCsvTool {
     } catch (ClassNotFoundException e) {
       LOGGER.error(
           "Failed to dump data because cannot find TsFile JDBC Driver, "
-              + "please check whether you have imported driver or not");
+              + "please check whether you have imported driver or not", e);
     } catch (TException e) {
-      LOGGER.error("Encounter an error when connecting to server, because {}",
-          e.getMessage());
+      LOGGER.error("Encounter an error when connecting to server, because ",
+          e);
     } catch (Exception e) {
-      LOGGER.error("Encounter an error, because {}", e.getMessage());
+      LOGGER.error("Encounter an error, because ", e);
     } finally {
       if (connection != null) {
         connection.close();
@@ -428,7 +480,12 @@ public class ImportCsv extends AbstractCsvTool {
 
   private static void importFromDirectory(File file) {
     int i = 1;
-    for (File subFile : file.listFiles()) {
+    File[] files = file.listFiles();
+    if (files == null) {
+      return;
+    }
+
+    for (File subFile : files) {
       if (subFile.isFile()) {
         if (subFile.getName().endsWith(FILE_SUFFIX)) {
           loadDataFromCSV(subFile, i);
