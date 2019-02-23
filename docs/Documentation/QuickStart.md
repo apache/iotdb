@@ -41,6 +41,12 @@ Here in the Quick Start part, we give a brief introduction of using source code 
 Use git to get IoTDB source code:
 
 ```
+Shell > git clone https://github.com/apache/incubator-iotdb.git
+```
+
+Or:
+
+```
 Shell > git clone git@github.com:apache/incubator-iotdb.git
 ```
 

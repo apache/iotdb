@@ -53,8 +53,8 @@ public class IotdbHelloWorld {
         }
         finally {
             // 8. Close
-            if(statement != null) statement.close();
-            if(connection != null) connection.close();
+            if (statement != null) statement.close();
+            if (connection != null) connection.close();
         }
     }
 }

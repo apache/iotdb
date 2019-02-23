@@ -10,7 +10,7 @@
 <!-- /TOC -->
 # IoTDB-Grafana
 
-This project provides a connector which reads data from iotdb and sends to grafana(https://grafana.com/). Before you use this tool, make sure grafana and iotdb are correctly installed and started.
+This project provides a connector which reads data from IoTDB and sends to rafana(https://grafana.com/). Before you use this tool, make sure Grafana and IoTDB are correctly installed and started.
 
 ## Grafana installation
 

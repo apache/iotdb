@@ -24,15 +24,15 @@
 
 ## Mailing Lists
 
-It is recommended to use our mailing lists to ask for help, debug issues or contribute to the project.
+It is recommended to use our mailing lists to ask for help, report issues or contribute to the project.
 
-* dev@iotdb.apache.org is for people who want to contribute codes to IoTDB or have usage questions for IoTDB.
+* dev@iotdb.apache.org is for anyone who want to contribute codes to IoTDB or have usage questions for IoTDB.
 
 Some quick tips when using email:
-* For error logs or long code examples, please use GitHub gist and include only a few lines of the pertinent code / log within the email.
+* For error logs or long code examples, please use GitHub gist and include only few lines of the pertinent code / log within the email.
 * No jobs, sales, or solicitation is permitted on the Apache IoTDB mailing lists.
 
-PS. To subscribe our mail list, you can send an email to dev-subscribe@iotdb.incubator.apache.org and you will receive a "confirm subscribe to dev@iotdb.apache.org" email, follow the steps to confirm your subscribe.
+PS. To subscribe our mail list, you can send an email to dev-subscribe@iotdb.incubator.apache.org and you will receive a "confirm subscribe to dev@iotdb.apache.org" email, following the steps to confirm your subscription.
 
 ## JIRA issues
 
@@ -42,17 +42,17 @@ The project tracks issues and new features on [JIRA issues](https://issues.apach
 
 ## Becoming a committer
 
-To become a committer, you should first be active on our community so that most of our existing committers recognize you. Pushing codes and creating pull requests is just one of committer's rights. Moreover, it is committer's duty to help new uesrs on mail list, test new releases and improve documentation.
+To become a committer, you should first be active in our community so that most of our existing committers recognize you. Pushing codes and creating pull requests is just one of committer's rights. Moreover, it is committer's duty to help new uesrs on mail list, test new releases and improve documentation.
 
 ### Contributing by Helping Other Users
 
-Since IoTDB always attracts new users, it would be great if you can help them by answering questions on the dev@iotdb.apache.org mail list. We regard it as a valuable contribution. Also, the more questions you answer, the more poeple know you. Popularity is one of the necessary conditions to be a committer.
+Since Apache IoTDB always attracts new users, it would be great if you can help them by answering questions on the dev@iotdb.apache.org mail list. We regard it as a valuable contribution. Also, the more questions you answer, the more poeple know you. Popularity is one of the necessary conditions to be a committer.
 
-Contributors should subscribe to our mail list to catch up the latest progress.
+Contributors should subscribe to our mailing list to catch up the latest progress.
 
 ### Contributing by Testing Releases
 
-IoTDB's new release is visible to everyone, members of community can vote to accept these releases on the dev@iotdb.apache.org mailing list. Users of IoTDB will be invited to try out on their workloads and provide feedback on any performance or correctness issues found in the newer release.
+IoTDB's new release is visible to everyone, members of the community can vote to accept these releases on the dev@iotdb.apache.org mailing list. Users of IoTDB will be invited to try out on their workloads and provide feedback on any performance or correctness issues found in the newer release.
 
 ### Contributing by Reviewing Changes
 
@@ -64,19 +64,19 @@ To propose a change to release documentation (that is, docs that appear under <h
 
 ### Contributing Bug Reports
 
-If you encounter a problem, you should first confirm the problem you found is a real bug, which means that it is not error outputs or caused by your error configuration or commands. Then try to search mail list to check whether other people have faced the same situation. If it is not met before, welcome to report an issue.
+If you encounter a problem,   try to search the mailing list and JIRA to check whether other people have faced the same situation. If it is not reported before, please report an issue.
 
-Once you are sure it is a bug, it may be reported by creating a JIRA but without creating a pull request. In the bug report, you should provide enough information to understand, isolate and ideally reproduce the bug. Unreproducible bugs, or simple error reports, may be closed.
+Once you are sure it is a bug, it may be reported by creating a JIRA without creating a pull request. In the bug report, you should provide enough information to understand, isolate and ideally reproduce the bug. Unreproducible bugs, or simple error reports, may be closed.
 
 It’s very helpful if the bug report has a description about how the bug was introduced, by which commit, so that reviewers can easily understand the bug. It also helps committers to decide how far the bug fix should be backported, when the pull request is merged. The pull request to fix the bug should narrow down the problem to the root cause.
 
 Performance regression is also one kind of bug. The pull request to fix a performance regression must provide a benchmark to prove the problem is indeed fixed.
 
-Note that, data correctness/data loss bugs are very serious. Make sure the corresponding bug report JIRA ticket is labeled as correctness or data-loss. If the bug report doesn’t get enough attention, please send an email to dev@iotdb.apache.org, to draw more attentions.
+Note that, data correctness/loss bugs are our first priority to solve. Please make sure the corresponding bug-reporting JIRA ticket is labeled as correctness or data-loss. If the bug report doesn’t gain enough attention, please include it and send an email to dev@iotdb.apache.org.
 
 ### Contributing Code Changes
 
-> When you contribute code, you affirm that the contribution is your original work and that you license the work to the project under the project’s open source license. Whether or not you state this explicitly, by submitting any copyrighted material via pull request, email, or other means you agree to license the material under the project’s open source license and warrant that you have the legal authority to do so.
+> When you contribute code, you affirm that the contribution is your original work and that you license the work to the project under the project’s open source license. Whether or not you state this explicitly, by submitting any copyrighted material via pull request, email, or other means you agree to license the material under the project’s open source license and warrant that you have the legal authority to do so.  Any new files contributed should be under Apache 2.0 License with a header on top of it.
 
 #### Cloning source code
 
@@ -87,12 +87,12 @@ Following README.md to test, run or build IoTDB.
 
 #### JIRA
 
-Generally, IoTDB uses JIRA to track logical issues, including bugs and improvements, and uses Github pull requests to manage the review and merge specific code changes. That is, JIRAs are used to describe what should be fixed or changed, proposing high-level approaches, and pull requests describe how to implement that change in the project’s source code. For example, major design decisions discussed in JIRA.
+Generally, IoTDB uses JIRA to track logical issues, including bugs and improvements, and uses Github pull requests to manage the review and merge specific code changes. That is, JIRAs are used to describe what should be fixed or changed, proposing high-level approaches. Pull requests describe how to implement that change in the project’s source code. For example, major design decisions discussed in JIRA.
 
 1. Find the existing IoTDB JIRA that the change pertains to.
-    1. Do not create a new JIRA if creating a change to address an existing issue in JIRA; add to the existing discussion and work instead
+    1. o not create a new JIRA if you send a PR to address an existing issue labeled in JIRA; add it to the existing discussion.
     2. Look for existing pull requests that are linked from the JIRA, to understand if someone is already working on the JIRA
-2. If the change is new, then it usually needs a new JIRA. However, trivial changes, where the what should change is virtually the same as the how it should change do not require a JIRA. Example: Fix spelling error in javadoc
+2. If the change is new, then it usually needs a new JIRA. However, trivial changes, such as changes are self-explained do not require a JIRA. Example: Fix spelling error in JavaDoc
 3. If required, create a new JIRA:
     1. Provide a descriptive Title. “Problem in XXXManager” is not sufficient. “IoTDB failed to start on jdk11 because jdk11 does not support -XX:+PrintGCDetail” is good.
     2. Write a detailed Description. For bug reports, this should ideally include a short reproduction of the problem. For new features, it may include a design document.
@@ -104,29 +104,29 @@ Generally, IoTDB uses JIRA to track logical issues, including bugs and improveme
             3. Major: a small minority of users are missing important functionality without this, and there is a workaround
             4. Minor: a niche use case is missing some support, but it does not affect usage or is easily worked around
             5. Trivial: a nice-to-have change but unlikely to be any problem in practice otherwise
-        3. Affects Version. For Bugs, assign at least one version that is known to exhibit the problem or need the change
+        3. Affected Version. For Bugs, assign at least one version that is known to reproduce the issue or need to be changed
         4. Label. Not widely used, except for the following:
             * correctness: a correctness issue
             * data-loss: a data loss issue
             * release-notes: the change’s effects need mention in release notes. The JIRA or pull request should include detail suitable for inclusion in release notes – see “Docs Text” below.
             * starter: small, simple change suitable for new contributors
-        5. Docs Text: For issues that require an entry in the release notes, this should contain the information that the release manager should include in Release Notes. This should include a short summary of what behavior is impacted, and detail on what behavior changed. It can be provisionally filled out when the JIRA is opened, but will likely need to be updated with final details when the issue is resolved.
+        5. Docs Text: For issues that require an entry in the release notes, this should contain the information that the release manager should include. Issues should include a short summary of what behavior is impacted, and detail on what behavior changed. It can be provisionally filled out when the JIRA is opened, but will likely need to be updated with final details when the issue is resolved.
     4. Do not set the following fields:
         1. Fix Version. This is assigned by committers only when resolved.
         2. Target Version. This is assigned by committers to indicate a PR has been accepted for possible fix by the target version.
     5. Do not include a patch file; pull requests are used to propose the actual change.
-4. If the change is a large change, consider inviting discussion on the issue at dev@iotdb.apache.org first before proceeding to implement the change.
+4. If the change is a large change, consider raising a discussion on it at dev@iotdb.apache.org first before proceeding to implement the change. Currently, we use https://cwiki.apache.org/confluence to store design proposals and release process. Users can also send them there.
 
 
 #### Pull Request
 
 1. Fork the Github repository at https://github.com/apache/incubator-iotdb if you haven’t done already
 2. Clone your fork, create a new branch, push commits to the branch.
-3. Consider whether documentation or tests need to be added or updated as part of the change, and add them as needed.
-Run all tests with [How to test](https://github.com/thulab/iotdb/wiki/How-to-test-IoTDB) to verify that the code still compiles, passes tests.
+3. Please add documentation and tests to explain/cover your changes.
+Run all tests with [How to test](https://github.com/thulab/iotdb/wiki/How-to-test-IoTDB) to verify your change.
 4. Open a pull request against the master branch of IoTDB. (Only in special cases would the PR be opened against other branches.)
-    1. The PR title should be of the form "IoTDB-xxxx" Title, where xxxx is the relevant JIRA number.
-    2. If the pull request is still a work in progress, and so is not ready to be merged, but needs to be pushed to Github to facilitate review, then add "WIP" after the component.
+    1. The PR title should be in the form of "IoTDB-xxxx", where xxxx is the relevant JIRA number.
+    2. If the pull request is still under work in progress stage but needs to be pushed to Github to request for review, please add "WIP" after the PR title.
     3. Consider identifying committers or other contributors who have worked on the code being changed. Find the file(s) in Github and click “Blame” to see a line-by-line annotation of who changed the code last. You can add @username in the PR description to ping them immediately.
     4. Please state that the contribution is your original work and that you license the work to the project under the project’s open source license.
 5. The related JIRA, if any, will be marked as “In Progress” and your pull request will automatically be linked to it. There is no need to be the Assignee of the JIRA to work on it, though you are welcome to comment that you have begun work.
@@ -151,6 +151,7 @@ Run all tests with [How to test](https://github.com/thulab/iotdb/wiki/How-to-tes
 git remote add upstream git@github.com:apache/incubator-iotdb.git
 git fetch upstream
 git rebase upstream/master 
+# or you can use `git pull --rebase upstream master` to replace the above two commands
 # resolve your conflicts
 # push codes to your branch
 ```
@@ -159,7 +160,7 @@ git rebase upstream/master
 
 #### Closing Your Pull Request / JIRA
 * If a change is accepted, it will be merged and the pull request will automatically be closed, along with the associated JIRA if any
-    * Note that in the rare case you are asked to open a pull request against a branch besides master, that you will actually have to close the pull request manually
+    * Note that in the rare case you are asked to open a pull request against a branch beside master, you actually have to close the pull request manually
     * The JIRA will be Assigned to the primary contributor to the change as a way of giving credit. If the JIRA isn’t closed and/or Assigned promptly, comment on the JIRA.
 * If your pull request is ultimately rejected, please close it promptly
     * … because committers can’t close PRs directly
