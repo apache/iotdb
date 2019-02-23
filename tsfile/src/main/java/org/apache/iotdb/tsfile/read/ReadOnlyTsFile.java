@@ -19,6 +19,7 @@
 package org.apache.iotdb.tsfile.read;
 
 import java.io.IOException;
+import java.util.HashMap;
 import org.apache.iotdb.tsfile.read.controller.ChunkLoader;
 import org.apache.iotdb.tsfile.read.controller.ChunkLoaderImpl;
 import org.apache.iotdb.tsfile.read.controller.MetadataQuerier;
@@ -40,6 +41,17 @@ public class ReadOnlyTsFile {
   public ReadOnlyTsFile(TsFileSequenceReader fileReader) throws IOException {
     this.fileReader = fileReader;
     this.metadataQuerier = new MetadataQuerierByFileImpl(fileReader);
+    this.chunkLoader = new ChunkLoaderImpl(fileReader);
+    tsFileExecutor = new TsFileExecutor(metadataQuerier, chunkLoader);
+  }
+
+  /**
+   * constructor, create ReadOnlyTsFile with TsFileSequenceReader.
+   */
+  public ReadOnlyTsFile(TsFileSequenceReader fileReader, HashMap<String, Long> params)
+      throws IOException {
+    this.fileReader = fileReader;
+    this.metadataQuerier = new MetadataQuerierByFileImpl(fileReader, params);
     this.chunkLoader = new ChunkLoaderImpl(fileReader);
     tsFileExecutor = new TsFileExecutor(metadataQuerier, chunkLoader);
   }
