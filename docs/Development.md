@@ -16,7 +16,7 @@
             - [Pull Request](#pull-request)
             - [The Review Process](#the-review-process)
             - [Closing Your Pull Request / JIRA](#closing-your-pull-request--jira)
-            - [Code Style](#Code-Style)
+            - [Code Style](#code-style)
 
 <!-- /TOC -->
 
@@ -64,7 +64,7 @@ To propose a change to release documentation (that is, docs that appear under <h
 
 ### Contributing Bug Reports
 
-If you encounter a problem,   try to search the mailing list and JIRA to check whether other people have faced the same situation. If it is not reported before, please report an issue.
+If you encounter a problem, try to search the mailing list and JIRA to check whether other people have faced the same situation. If it is not reported before, please report an issue.
 
 Once you are sure it is a bug, it may be reported by creating a JIRA without creating a pull request. In the bug report, you should provide enough information to understand, isolate and ideally reproduce the bug. Unreproducible bugs, or simple error reports, may be closed.
 
@@ -120,7 +120,7 @@ Generally, IoTDB uses JIRA to track logical issues, including bugs and improveme
 
 #### Pull Request
 
-1. Fork the Github repository at https://github.com/apache/incubator-iotdb if you haven’t done already
+1. Fork the Github repository at https://github.com/apache/incubator-iotdb if you haven’t done already.
 2. Clone your fork, create a new branch, push commits to the branch.
 3. Please add documentation and tests to explain/cover your changes.
 Run all tests with [How to test](https://github.com/thulab/iotdb/wiki/How-to-test-IoTDB) to verify your change.

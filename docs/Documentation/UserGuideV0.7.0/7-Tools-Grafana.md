@@ -5,12 +5,17 @@
         - [Install Grafana](#install-grafana)
         - [Install data source plugin](#install-data-source-plugin)
         - [Start Grafana](#start-grafana)
-- [ip and port of IoTDB](#ip-and-port-of-iotdb)
+    - [IoTDB installation](#iotdb-installation)
+    - [IoTDB-Grafana installation](#iotdb-grafana-installation)
+        - [Start IoTDB-Grafana](#start-iotdb-grafana)
+    - [Explore in Grafana](#explore-in-grafana)
+        - [Add data source](#add-data-source)
+        - [Design in dashboard](#design-in-dashboard)
 
 <!-- /TOC -->
 # IoTDB-Grafana
 
-This project provides a connector which reads data from IoTDB and sends to rafana(https://grafana.com/). Before you use this tool, make sure Grafana and IoTDB are correctly installed and started.
+This project provides a connector which reads data from IoTDB and sends to Grafana(https://grafana.com/). Before you use this tool, make sure Grafana and IoTDB are correctly installed and started.
 
 ## Grafana installation
 
@@ -34,11 +39,16 @@ Alternatively, you can manually download the .zip file and unpack it into your g
 
 * `{grafana-install-directory}/data/plugin/` (Windows)
 * `/var/lib/grafana/plugins` (Linux)
+* `/usr/local/var/lib/grafana/plugins`(Mac)
 
 ### Start Grafana
-Grafana will auto start after installing, or you can run 
+If you use Unix, Grafana will auto start after installing, or you can run `sudo service grafana-server start` command. See more information [here](http://docs.grafana.org/installation/debian/).
 
-```sudo service grafana-server start```
+If you use Mac and `homebrew` to install Grafana, you can use `homebrew` to start Grafana.
+First make sure homebrew/services is installed by running `brew tap homebrew/services`, then start Grafana using: `brew services start grafana`.
+See more information [here](http://docs.grafana.org/installation/mac/).
+
+If you use Windows, start Grafana by executing grafana-server.exe, located in the bin directory, preferably from the command line. See more information [here](http://docs.grafana.org/installation/windows/).
 
 ## IoTDB installation
 
@@ -91,7 +101,7 @@ $ java -jar iotdb-grafana-{version}-SNAPSHOT.war
 
 The default port of Grafana is 3000, see http://localhost:3000
 
-Username and password are both "admin".
+Username and password are both "admin" by default.
 
 ### Add data source
 
