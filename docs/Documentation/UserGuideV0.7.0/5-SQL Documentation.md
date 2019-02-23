@@ -141,7 +141,7 @@ Condition  : <Expression> [(AND | OR) <Expression>]*
 Expression : [NOT | !]? <TimeExpr> | [NOT | !]? <SensorExpr>
 TimeExpr : TIME PrecedenceEqualOperator <TimeValue>
 SensorExpr : (<Timeseries> | <Path>) PrecedenceEqualOperator <PointValue>
-Eg: IoTDB > SELECT status, temperature FROM root.ln.wf01.wt01 WHERE temperature < 24 and time > 2017-11-1 0:13:00
+Eg: IoTDB > SELECT status, temperature FROM root.ln.wf01.wt01 WHERE temperature < 24 and time > 2017-11-1T00:13:00
 Eg. IoTDB > SELECT * FROM root
 Eg. IoTDB > SELECT COUNT(temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature < 25
 Eg. IoTDB > SELECT MIN_TIME(temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature < 25
@@ -228,7 +228,7 @@ SN : NonNegativeInteger
 SOFFSETClause : SOFFSET <SOFFSETValue>
 SOFFSETValue : NonNegativeInteger
 NonNegativeInteger:= ('+')? Digit+
-Eg: IoTDB > SELECT status, temperature FROM root.ln.wf01.wt01 WHERE temperature < 24 and time > 2017-11-1 0:13:00 LIMIT 3 OFFSET 2
+Eg: IoTDB > SELECT status, temperature FROM root.ln.wf01.wt01 WHERE temperature < 24 and time > 2017-11-1T00:13:00 LIMIT 3 OFFSET 2
 Eg. IoTDB > SELECT COUNT (status), MAX_VALUE(temperature) FROM root.ln.wf01.wt01 WHERE time < 1509466500000 GROUP BY(5m, 1509465660000, [1509465720000, 1509466380000]) LIMIT 3
 Note: The order of <LIMITClause> and <SLIMITClause> does not affect the grammatical correctness.
 Note: <SLIMITClause> can only effect in Prefixpath and StarPath.
