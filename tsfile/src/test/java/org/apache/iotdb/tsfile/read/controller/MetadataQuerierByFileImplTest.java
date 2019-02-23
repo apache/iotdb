@@ -19,7 +19,9 @@
 package org.apache.iotdb.tsfile.read.controller;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
+import org.apache.iotdb.tsfile.common.constant.QueryConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -47,7 +49,7 @@ public class MetadataQuerierByFileImplTest {
   }
 
   @Test
-  public void test() throws IOException {
+  public void test1() throws IOException {
     fileReader = new TsFileSequenceReader(FILE_PATH);
     MetadataQuerierByFileImpl metadataQuerierByFile = new MetadataQuerierByFileImpl(fileReader);
     List<ChunkMetaData> chunkMetaDataList = metadataQuerierByFile
@@ -55,5 +57,20 @@ public class MetadataQuerierByFileImplTest {
     for (ChunkMetaData chunkMetaData : chunkMetaDataList) {
       Assert.assertEquals("s1", chunkMetaData.getMeasurementUid());
     }
+  }
+
+  @Test
+  public void test2() throws IOException {
+    fileReader = new TsFileSequenceReader(FILE_PATH);
+
+    HashMap<String, Long> params = new HashMap<>();
+    params.put(QueryConstant.PARTITION_START_OFFSET, 2618269L);
+    params.put(QueryConstant.PARTITION_END_OFFSET, 3006840L);
+
+    MetadataQuerierByFileImpl metadataQuerierByFile = new MetadataQuerierByFileImpl(fileReader,
+        params);
+    List<ChunkMetaData> chunkMetaDataList = metadataQuerierByFile
+        .getChunkMetaDataList(new Path("d2.s1"));
+    Assert.assertEquals(1, chunkMetaDataList.size());
   }
 }
