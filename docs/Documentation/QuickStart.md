@@ -31,8 +31,9 @@ TODO: TsFile and IoTDB-JDBC dependencies will be removed after the project recon
 
 IoTDB provides you two installation methods, you can refer to the following suggestions, choose one of them:
 
-* Installation from binary files. Download the binary files from the official website. This is the recommended method, in which you will get a binary released package which is out-of-the-box.
+
 * Installation from source code. If you need to modify the code yourself, you can use this method.
+* Installation from binary files. Download the binary files from the official website. This is the recommended method, in which you will get a binary released package which is out-of-the-box.(Comming Soon...)
 
 Here in the Quick Start part, we give a brief introduction of using source code to install IoTDB. For further information, please refer to Chapter 5 of this document.
 
@@ -50,42 +51,75 @@ Or:
 Shell > git clone git@github.com:apache/incubator-iotdb.git
 ```
 
+Now suppose your directory is like this:
+
+```
+> pwd
+/User/workspace/incubator-iotdb
+
+> ls -l
+incubator-iotdb/     <-- root path
+|
++- iotdb/
+|
++- jdbc/
+|
++- tsile/
+|
+...
+|
++- pom.xml
+```
+
+Let $IOTDB_HOME = /User/workspace/incubator-iotdb/iotdb/iotdb/
+
 If you are not the first time that building IoTDB, remember deleting the following files:
 
 ```
-rm -rf iotdb/data/
-rm -rf iotdb/lib/
+> rm -rf $IOTDB_HOME/data/
+> rm -rf $IOTDB_HOME/lib/
 ```
 
-Then under the IoTDB path, you can build IoTDB using Maven:
+Then under the root path of incubator-iotdb, you can build IoTDB using Maven:
 
 ```
-mvn clean package -Dmaven.test.skip=true
+> pwd
+/User/workspace/incubator-iotdb
+
+> mvn clean package -pl iotdb -am -Dmaven.test.skip=true
 ```
 
 If successful, you will see the the following text in the terminal:
 
 ```
+[INFO] ------------------------------------------------------------------------
+[INFO] Reactor Summary:
+[INFO]
+[INFO] IoTDB Root ......................................... SUCCESS [  7.020 s]
+[INFO] TsFile ............................................. SUCCESS [ 10.486 s]
+[INFO] Service-rpc ........................................ SUCCESS [  3.717 s]
+[INFO] IoTDB Jdbc ......................................... SUCCESS [  3.076 s]
+[INFO] IoTDB .............................................. SUCCESS [  8.258 s]
+[INFO] ------------------------------------------------------------------------
 [INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
 ```
+
 Otherwise, you may need to check the error statements and fix the problems.
 
-After build, the IoTDB project will be at the subfolder named iotdb. The folder will include the following contents:
-
+After building, the IoTDB project will be at the subfolder named iotdb. The folder will include the following contents:
 
 ```
-iotdb/     <-- root path
+$IOTDB_HOME/
 |
 +- bin/       <-- script files
 |
 +- conf/      <-- configuration files
 |
 +- lib/       <-- project dependencies
-|
-+- LICENSE    <-- LICENSE
 ```
 
-> NOTE: We also provide already built JARs and project at [http://tsfile.org/download](http://tsfile.org/download) instead of build the jar package yourself.
+<!-- > NOTE: We also provide already built JARs and project at [http://tsfile.org/download](http://tsfile.org/download) instead of build the jar package yourself. -->
 
 ## Configure
 
@@ -112,7 +146,6 @@ After that we start the server. Running the startup script:
 # Windows
 > $IOTDB_HOME\bin\start-server.bat
 ```
-
 
 ### Start Client
 
@@ -142,7 +175,10 @@ The command line client is interactive so if everything is ready you should see 
 IoTDB> login successfully
 IoTDB>
 ```
+
+
 ### Have a try
+
 Now, you can use IoTDB SQL to operate IoTDB, and when you’ve had enough fun, you can input 'quit' or 'exit' command to leave the client. 
 
 But lets try something slightly more interesting:
