@@ -225,14 +225,10 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
             String.format("Timeseries %s does not exist.", path.getFullPath()));
       }
       mManager.getFileNameByPath(path.getFullPath());
-      TSDataType type = mManager.getSeriesType(path.getFullPath());
       fileNodeManager.delete(deviceId, measurementId, timestamp);
       return true;
-    } catch (PathErrorException e) {
-      throw new ProcessorException(e.getMessage());
-    } catch (FileNodeManagerException e) {
-      e.printStackTrace();
-      throw new ProcessorException(e.getMessage());
+    } catch (PathErrorException | FileNodeManagerException e) {
+      throw new ProcessorException(e);
     }
   }
 

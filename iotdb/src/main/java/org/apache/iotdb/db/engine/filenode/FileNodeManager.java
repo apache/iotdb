@@ -519,7 +519,11 @@ public class FileNodeManager implements IStatistic, IService {
           BufferWriteProcessor bufferWriteProcessor;
           try {
             overflowProcessor = fileNodeProcessor.getOverflowProcessor(filenodeName);
-            bufferWriteProcessor = fileNodeProcessor.getBufferWriteProcessor();
+            // in case that no BufferWriteProcessor is available, a new BufferWriteProcessor is
+            // needed to access LogNode.
+            // TODO this may make the time range of the next TsFile a little wider
+            bufferWriteProcessor = fileNodeProcessor.getBufferWriteProcessor(filenodeName,
+                lastUpdateTime + 1);
           } catch (IOException | FileNodeProcessorException e) {
             LOGGER.error("Getting the processor failed, the filenode is {}, delete time is {}.",
                 filenodeName, timestamp);

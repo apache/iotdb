@@ -1876,8 +1876,8 @@ public class FileNodeProcessor extends Processor implements IStatistic {
       }
       deleteBufferWriteFiles(deviceId, deletion, updatedModFiles);
       // delete data in memory
-      OverflowProcessor overflowProcessor = getOverflowProcessor(getProcessorName());
-      overflowProcessor.delete(deviceId, measurementId, timestamp, version, updatedModFiles);
+      OverflowProcessor ofProcessor = getOverflowProcessor(getProcessorName());
+      ofProcessor.delete(deviceId, measurementId, timestamp, version, updatedModFiles);
       if (bufferWriteProcessor != null) {
         bufferWriteProcessor.delete(deviceId, measurementId, timestamp);
       }
