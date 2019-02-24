@@ -19,7 +19,12 @@
 
 FROM ubuntu:18.04
 RUN  apt update \
-  && apt install wget unzip lsof openjdk-8-jdk maven thrift-compiler=0.9.1-2.1 -y \
+  && apt install wget unzip lsof maven thrift-compiler=0.9.1-2.1 -y \
+  && wget https://download.java.net/java/GA/jdk11/9/GPL/openjdk-11.0.2_linux-x64_bin.tar.gz -O jdk11.tar.gz \
+  && tar -xzf jdk11.tar.gz \
+  && rm -rf jdk11.tar.gz \
+  && export JAVA_HOME=/jdk-11.0.2/ \
+  && export PATH="$JAVA_HOME/bin:$PATH" \
   && wget https://github.com/apache/incubator-iotdb/archive/master.zip \
   && unzip master.zip \
   && rm master.zip \
@@ -30,13 +35,13 @@ RUN  apt update \
   && ls -lh ~/.m2 \
   && rm -rf ~/.m2 \
   && rm -rf /incubator-iotdb-master \
-  && apt remove openjdk-8-jdk wget maven unzip thrift-compiler -y \
-  && apt install openjdk-8-jre -y \
+  && apt remove wget maven unzip thrift-compiler -y \
   && apt autoremove -y \
   && apt purge --auto-remove -y \
-  && apt clean -y \
-  && java -version \
+  && apt clean -y 
+ENV JAVA_HOME  "/jdk-11.0.2"
+ENV PATH "$JAVA_HOME/bin:$PATH"
 EXPOSE 6667
 VOLUME /iotdb/data
 VOLUME /iotdb/logs
-#CMD /iotdb/bin/start-server.sh
+ENTRYPOINT ["/iotdb/bin/start-server.sh"]
