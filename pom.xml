@@ -500,6 +500,9 @@
                     <exists>src/main/thrift</exists>
                 </file>
             </activation>
+            <properties>
+                <thrift.exec.absolute.path>${project.build.directory}/tools/${thrift.executable}</thrift.exec.absolute.path>
+            </properties>
             <build>
                 <plugins>
                     <plugin>
@@ -553,7 +556,7 @@
                                 </goals>
                                 <configuration>
                                     <generator>java</generator>
-                                    <thriftExecutable>${project.build.directory}/tools/${thrift.executable}</thriftExecutable>
+                                    <thriftExecutable>${thrift.exec.absolute.path}</thriftExecutable>
                                     <thriftSourceRoot>${basedir}/src/main/thrift</thriftSourceRoot>
                                 </configuration>
                             </execution>
