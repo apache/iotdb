@@ -64,6 +64,11 @@
         <sonar.host.url>https://builds.apache.org/analysis</sonar.host.url>
         <!-- Exclude all generated code -->
         <sonar.exclusions>**/generated-sources</sonar.exclusions>
+        <!-- whether using a thrift compiler locally
+        (if false, maven will download a binary thrift compiler).
+        if true, you must set the thrift compiler into your PATH, and make sure
+        the version is ${thrift.version}-->
+        <use.local.thrift.compiler>false</use.local.thrift.compiler>
     </properties>
     <!--
         if we claim dependencies in dependencyManagement, then we do not claim
@@ -444,6 +449,10 @@
                 <os>
                     <family>windows</family>
                 </os>
+                <property>
+                    <name>use.local.thrift.compiler</name>
+                    <value>false</value>
+                </property>
             </activation>
             <properties>
                 <thrift.download-url>http://artfiles.org/apache.org/thrift/${thrift.version}/thrift-${thrift.version}.exe</thrift.download-url>
@@ -460,6 +469,10 @@
                 <os>
                     <family>unix</family>
                 </os>
+                <property>
+                    <name>use.local.thrift.compiler</name>
+                    <value>false</value>
+                </property>
             </activation>
             <properties>
                 <thrift.download-url>https://github.com/ccascone/mvn-thrift-compiler/raw/1.0_${thrift.version}/exe/thrift-linux-x86_64.exe</thrift.download-url>
@@ -475,6 +488,10 @@
                 <os>
                     <family>mac</family>
                 </os>
+                <property>
+                    <name>use.local.thrift.compiler</name>
+                    <value>false</value>
+                </property>
             </activation>
             <properties>
                 <thrift.download-url>https://github.com/ccascone/mvn-thrift-compiler/raw/1.0_${thrift.version}/exe/thrift-osx-x86_64.exe</thrift.download-url>
@@ -494,11 +511,15 @@
           {maven local repo}/.cache/download-maven-plugin
         -->
         <profile>
-            <id>thrift-generation</id>
+            <id>thrift-download-and-generation</id>
             <activation>
                 <file>
                     <exists>src/main/thrift</exists>
                 </file>
+                <property>
+                    <name>use.local.thrift.compiler</name>
+                    <value>false</value>
+                </property>
             </activation>
             <build>
                 <plugins>
@@ -554,6 +575,40 @@
                                 <configuration>
                                     <generator>java</generator>
                                     <thriftExecutable>${project.build.directory}/tools/${thrift.executable}</thriftExecutable>
+                                    <thriftSourceRoot>${basedir}/src/main/thrift</thriftSourceRoot>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <id>thrift-generation-using-local-compiler</id>
+            <activation>
+                <file>
+                    <exists>src/main/thrift</exists>
+                </file>
+                <property>
+                    <name>use.local.thrift.compiler</name>
+                    <value>true</value>
+                </property>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.thrift.tools</groupId>
+                        <artifactId>maven-thrift-plugin</artifactId>
+                        <version>0.1.11</version>
+                        <executions>
+                            <execution>
+                                <id>generate-thrift-sources</id>
+                                <phase>generate-sources</phase>
+                                <goals>
+                                    <goal>compile</goal>
+                                </goals>
+                                <configuration>
+                                    <generator>java</generator>
                                     <thriftSourceRoot>${basedir}/src/main/thrift</thriftSourceRoot>
                                 </configuration>
                             </execution>
