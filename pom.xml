@@ -449,10 +449,6 @@
                 <os>
                     <family>windows</family>
                 </os>
-                <property>
-                    <name>use.local.thrift.compiler</name>
-                    <value>false</value>
-                </property>
             </activation>
             <properties>
                 <thrift.download-url>http://artfiles.org/apache.org/thrift/${thrift.version}/thrift-${thrift.version}.exe</thrift.download-url>
@@ -469,10 +465,6 @@
                 <os>
                     <family>unix</family>
                 </os>
-                <property>
-                    <name>use.local.thrift.compiler</name>
-                    <value>false</value>
-                </property>
             </activation>
             <properties>
                 <thrift.download-url>https://github.com/ccascone/mvn-thrift-compiler/raw/1.0_${thrift.version}/exe/thrift-linux-x86_64.exe</thrift.download-url>
@@ -488,10 +480,6 @@
                 <os>
                     <family>mac</family>
                 </os>
-                <property>
-                    <name>use.local.thrift.compiler</name>
-                    <value>false</value>
-                </property>
             </activation>
             <properties>
                 <thrift.download-url>https://github.com/ccascone/mvn-thrift-compiler/raw/1.0_${thrift.version}/exe/thrift-osx-x86_64.exe</thrift.download-url>
@@ -516,10 +504,6 @@
                 <file>
                     <exists>src/main/thrift</exists>
                 </file>
-                <property>
-                    <name>use.local.thrift.compiler</name>
-                    <value>false</value>
-                </property>
             </activation>
             <build>
                 <plugins>
