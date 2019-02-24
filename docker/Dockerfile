@@ -18,20 +18,25 @@
 #
 
 FROM ubuntu:18.04
-RUN apt update \
-  && apt install wget unzip lsof openjdk-11-jdk maven -y \
+RUN  apt update \
+  && apt install wget unzip lsof openjdk-8-jdk maven thrift-compiler=0.9.1-2.1 -y \
   && wget https://github.com/apache/incubator-iotdb/archive/master.zip \
   && unzip master.zip \
   && rm master.zip \
   && cd incubator-iotdb-master \
-  && mvn package -DskipTests \
-  && cp -r iotdb/iotdb ~/iotdb \
+  && mvn package -DskipTests -Dthrift.download-url="http://www.apache.org/licenses/LICENSE-2.0.txt" -Dthrift.exec.absolute.path="/usr/bin/thrift" \
+  && cp -r iotdb/iotdb /iotdb \
   && mvn clean \
-  && mvn dependency:purge-local-repository -DactTransitively=false \
-  && apt remove openjdk-11-jdk wget maven unzip -y \
-  && apt install openjdk-11-jre -y \
-  && apt autoremove
+  && ls -lh ~/.m2 \
+  && rm -rf ~/.m2 \
+  && rm -rf /incubator-iotdb-master \
+  && apt remove openjdk-8-jdk wget maven unzip thrift-compiler -y \
+  && apt install openjdk-8-jre -y \
+  && apt autoremove -y \
   && apt purge --auto-remove -y \
   && apt clean -y \
   && java -version \
-
+EXPOSE 6667
+VOLUME /iotdb/data
+VOLUME /iotdb/logs
+#CMD /iotdb/bin/start-server.sh
