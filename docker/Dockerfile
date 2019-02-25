@@ -36,7 +36,7 @@ RUN apt update \
   && ls -lh ~/.m2 \
   && rm -rf ~/.m2 \
   && rm -rf /incubator-iotdb-master \
-  && sed -i '119d' iotdb/conf/logback.xml \
+  && sed -i '119d' /iotdb/conf/logback.xml \
   && apt remove wget maven unzip thrift-compiler -y \
   && apt autoremove -y \
   && apt purge --auto-remove -y \

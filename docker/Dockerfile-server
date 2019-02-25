@@ -1,0 +1,2 @@
+FROM iotdb:base
+ENTRYPOINT ["nohup", "/iotdb/bin/start-server.sh", "&"]
