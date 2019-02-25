@@ -29,7 +29,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Created by litianan on 2019/1/25.
+ * @author lta
  */
 public class KafkaConsumerThread implements Runnable {
 

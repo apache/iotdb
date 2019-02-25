@@ -21,7 +21,7 @@ package org.apache.iotdb.example.rocketmqdemo;
 import org.apache.iotdb.jdbc.Config;
 
 /**
- * Created by litianan on 2019-02-24.
+ * @author lta
  */
 public class Constant {
 

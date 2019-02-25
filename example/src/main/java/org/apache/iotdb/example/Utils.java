@@ -19,7 +19,7 @@
 package org.apache.iotdb.example;
 
 /**
- * Created by litianan on 2019/1/22.
+ * @author lta
  */
 public class Utils {
 
