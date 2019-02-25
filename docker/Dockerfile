@@ -18,7 +18,7 @@
 #
 
 FROM ubuntu:18.04
-RUN  apt update \
+RUN apt update \
   && apt install wget unzip lsof maven thrift-compiler=0.9.1-2.1 -y \
   && wget https://download.java.net/java/GA/jdk11/9/GPL/openjdk-11.0.2_linux-x64_bin.tar.gz -O jdk11.tar.gz \
   && tar -xzf jdk11.tar.gz \
@@ -31,10 +31,12 @@ RUN  apt update \
   && cd incubator-iotdb-master \
   && mvn package -DskipTests -Dthrift.download-url="http://www.apache.org/licenses/LICENSE-2.0.txt" -Dthrift.exec.absolute.path="/usr/bin/thrift" \
   && cp -r iotdb/iotdb /iotdb \
+  && cp -r iotdb-cli/cli /cli \
   && mvn clean \
   && ls -lh ~/.m2 \
   && rm -rf ~/.m2 \
   && rm -rf /incubator-iotdb-master \
+  && sed -i '119d' iotdb/conf/logback.xml \
   && apt remove wget maven unzip thrift-compiler -y \
   && apt autoremove -y \
   && apt purge --auto-remove -y \
@@ -44,4 +46,4 @@ ENV PATH "$JAVA_HOME/bin:$PATH"
 EXPOSE 6667
 VOLUME /iotdb/data
 VOLUME /iotdb/logs
-ENTRYPOINT ["/iotdb/bin/start-server.sh"]
+#ENTRYPOINT ["/iotdb/bin/start-server.sh"]
