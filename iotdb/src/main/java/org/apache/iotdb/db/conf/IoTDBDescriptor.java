@@ -109,7 +109,7 @@ public class IoTDBDescriptor {
             + " use default value");
       }
 
-      conf.rpcAddress = properties.getProperty("rp_address", conf.rpcAddress);
+      conf.rpcAddress = properties.getProperty("rpc_address", conf.rpcAddress);
 
       conf.rpcPort = Integer.parseInt(properties.getProperty("rpc_port",
               Integer.toString(conf.rpcPort)));
