@@ -21,9 +21,11 @@ package org.apache.iotdb.db.engine.bufferwrite;
 /**
  * Constants for using in bufferwrite, overflow and filenode.
  *
- * @author liukun
  */
 public class FileNodeConstants {
+
+  private FileNodeConstants(){
+  }
 
   public static final String FILE_NODE_OPERATOR_TYPE = "OPERATOR_TYPE";
   public static final String TIMESTAMP_KEY = "TIMESTAMP";
@@ -39,5 +41,4 @@ public class FileNodeConstants {
   public static final String ERR_EXTENSION = "err";
   public static final String PATH_SEPARATOR = ".";
   public static final String BUFFERWRITE_FILE_SEPARATOR = "-";
-
 }

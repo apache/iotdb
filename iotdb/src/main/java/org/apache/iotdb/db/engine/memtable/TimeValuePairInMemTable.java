@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -18,11 +18,13 @@
  */
 package org.apache.iotdb.db.engine.memtable;
 
+import java.util.Objects;
+
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.db.utils.TsPrimitiveType;
 
 public class TimeValuePairInMemTable extends TimeValuePair implements
-    Comparable<TimeValuePairInMemTable> {
+        Comparable<TimeValuePairInMemTable> {
 
   public TimeValuePairInMemTable(long timestamp, TsPrimitiveType value) {
     super(timestamp, value);
@@ -35,10 +37,15 @@ public class TimeValuePairInMemTable extends TimeValuePair implements
 
   @Override
   public boolean equals(Object object) {
-    if (object == null || !(object instanceof TimeValuePairInMemTable)) {
+    if (!(object instanceof TimeValuePairInMemTable)) {
       return false;
     }
     TimeValuePairInMemTable o = (TimeValuePairInMemTable) object;
     return o.getTimestamp() == this.getTimestamp();
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(this.getTimestamp());
   }
 }

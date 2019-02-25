@@ -42,7 +42,8 @@ public class ConcreteLogReplayer implements LogReplayer {
    * @param plan PhysicalPlan
    * @throws ProcessorException ProcessorException
    */
-  public void replay(PhysicalPlan plan) throws ProcessorException {
+  @Override
+  public void replay(PhysicalPlan plan, boolean isOverflow) throws ProcessorException {
     try {
       if (plan instanceof InsertPlan) {
         InsertPlan insertPlan = (InsertPlan) plan;
@@ -52,7 +53,7 @@ public class ConcreteLogReplayer implements LogReplayer {
         update(updatePlan);
       } else if (plan instanceof DeletePlan) {
         DeletePlan deletePlan = (DeletePlan) plan;
-        delete(deletePlan);
+        delete(deletePlan, isOverflow);
       }
     } catch (Exception e) {
       throw new ProcessorException(
@@ -87,12 +88,15 @@ public class ConcreteLogReplayer implements LogReplayer {
     }
   }
 
-  private void delete(DeletePlan deletePlan) throws FileNodeManagerException, PathErrorException {
-    MManager memManager = MManager.getInstance();
+  private void delete(DeletePlan deletePlan, boolean isOverflow) throws FileNodeManagerException {
     for (Path path : deletePlan.getPaths()) {
-      FileNodeManager.getInstance()
-          .delete(path.getDevice(), path.getMeasurement(), deletePlan.getDeleteTime(),
-              memManager.getSeriesType(path.getFullPath()));
+      if (isOverflow) {
+        FileNodeManager.getInstance().deleteOverflow(path.getDevice(), path.getMeasurement(),
+            deletePlan.getDeleteTime());
+      } else {
+        FileNodeManager.getInstance().deleteBufferWrite(path.getDevice(), path.getMeasurement(),
+            deletePlan.getDeleteTime());
+      }
     }
   }
 }

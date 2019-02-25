@@ -16,11 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.encoding.encoder;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.encoding.bitpacking.IntPacker;
 import org.apache.iotdb.tsfile.encoding.common.EndianType;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
@@ -37,7 +39,7 @@ public class IntRleEncoder extends RleEncoder<Integer> {
 
   public IntRleEncoder(EndianType endianType) {
     super(endianType);
-    bufferedValues = new Integer[config.RLE_MIN_REPEATED_NUM];
+    bufferedValues = new Integer[TSFileConfig.RLE_MIN_REPEATED_NUM];
     preValue = 0;
     values = new ArrayList<Integer>();
   }
@@ -59,10 +61,8 @@ public class IntRleEncoder extends RleEncoder<Integer> {
   /**
    * write all values buffered in the cache to an OutputStream.
    *
-   * @param out
-   *            - byteArrayOutputStream
-   * @throws IOException
-   *             cannot flush to OutputStream
+   * @param out - byteArrayOutputStream
+   * @throws IOException cannot flush to OutputStream
    */
   @Override
   public void flush(ByteArrayOutputStream out) throws IOException {
@@ -86,7 +86,7 @@ public class IntRleEncoder extends RleEncoder<Integer> {
    */
   @Override
   protected void writeRleRun() throws IOException {
-    endPreviousBitPackedRun(config.RLE_MIN_REPEATED_NUM);
+    endPreviousBitPackedRun(TSFileConfig.RLE_MIN_REPEATED_NUM);
     ReadWriteForEncodingUtils.writeUnsignedVarInt(repeatCount << 1, byteCache);
     ReadWriteForEncodingUtils.writeIntLittleEndianPaddedOnBitWidth(preValue, byteCache, bitWidth);
     repeatCount = 0;
@@ -96,7 +96,7 @@ public class IntRleEncoder extends RleEncoder<Integer> {
   @Override
   protected void clearBuffer() {
 
-    for (int i = numBufferedValues; i < config.RLE_MIN_REPEATED_NUM; i++) {
+    for (int i = numBufferedValues; i < TSFileConfig.RLE_MIN_REPEATED_NUM; i++) {
       bufferedValues[i] = 0;
     }
   }
@@ -105,8 +105,8 @@ public class IntRleEncoder extends RleEncoder<Integer> {
   protected void convertBuffer() {
     byte[] bytes = new byte[bitWidth];
 
-    int[] tmpBuffer = new int[config.RLE_MIN_REPEATED_NUM];
-    for (int i = 0; i < config.RLE_MIN_REPEATED_NUM; i++) {
+    int[] tmpBuffer = new int[TSFileConfig.RLE_MIN_REPEATED_NUM];
+    for (int i = 0; i < TSFileConfig.RLE_MIN_REPEATED_NUM; i++) {
       tmpBuffer[i] = (int) bufferedValues[i];
     }
     packer.pack8Values(tmpBuffer, 0, bytes);
@@ -130,6 +130,6 @@ public class IntRleEncoder extends RleEncoder<Integer> {
     }
     // try to caculate max value
     int groupNum = (values.size() / 8 + 1) / 63 + 1;
-    return 8 + groupNum * 5 + values.size() * 4;
+    return (long) 8 + groupNum * 5 + values.size() * 4;
   }
 }

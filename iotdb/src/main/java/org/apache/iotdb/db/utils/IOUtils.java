@@ -27,6 +27,8 @@ import org.apache.iotdb.db.auth.entity.PathPrivilege;
 
 public class IOUtils {
 
+  private IOUtils(){}
+
   /**
    * Write a string into the given stream.
    *
@@ -129,7 +131,7 @@ public class IOUtils {
     int privilegeNum = inputStream.readInt();
     PathPrivilege pathPrivilege = new PathPrivilege(path);
     for (int i = 0; i < privilegeNum; i++) {
-      pathPrivilege.privileges.add(inputStream.readInt());
+      pathPrivilege.getPrivileges().add(inputStream.readInt());
     }
     return pathPrivilege;
   }
@@ -148,9 +150,9 @@ public class IOUtils {
       String encoding,
       ThreadLocal<ByteBuffer> encodingBufferLocal)
       throws IOException {
-    writeString(outputStream, pathPrivilege.path, encoding, encodingBufferLocal);
-    writeInt(outputStream, pathPrivilege.privileges.size(), encodingBufferLocal);
-    for (Integer i : pathPrivilege.privileges) {
+    writeString(outputStream, pathPrivilege.getPath(), encoding, encodingBufferLocal);
+    writeInt(outputStream, pathPrivilege.getPrivileges().size(), encodingBufferLocal);
+    for (Integer i : pathPrivilege.getPrivileges()) {
       writeInt(outputStream, i, encodingBufferLocal);
     }
   }
@@ -165,7 +167,10 @@ public class IOUtils {
   public static void replaceFile(File newFile, File oldFile) throws IOException {
     if (!newFile.renameTo(oldFile)) {
       // some OSs need to delete the old file before renaming to it
-      oldFile.delete();
+      if(!oldFile.delete()){
+        throw new IOException(
+                String.format("Cannot delete old user file : %s", oldFile.getPath()));
+      }
       if (!newFile.renameTo(oldFile)) {
         throw new IOException(
             String.format("Cannot replace old user file with new one : %s", newFile.getPath()));

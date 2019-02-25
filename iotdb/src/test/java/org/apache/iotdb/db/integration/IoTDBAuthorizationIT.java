@@ -39,7 +39,7 @@ import org.junit.Test;
  */
 public class IoTDBAuthorizationIT {
 
-  private IoTDB deamon;
+  private IoTDB daemon;
 
   public static void main(String[] args) throws Exception {
     for (int i = 0; i < 10; i++) {
@@ -54,15 +54,14 @@ public class IoTDBAuthorizationIT {
   public void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.closeMemControl();
-    deamon = IoTDB.getInstance();
-    deamon.active();
+    daemon = IoTDB.getInstance();
+    daemon.active();
     EnvironmentUtils.envSetUp();
   }
 
   @After
   public void tearDown() throws Exception {
-    deamon.stop();
-    Thread.sleep(2000);
+    daemon.stop();
     EnvironmentUtils.cleanEnv();
   }
 

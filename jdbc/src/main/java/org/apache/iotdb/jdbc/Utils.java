@@ -40,6 +40,13 @@ import org.apache.iotdb.tsfile.utils.Binary;
 public class Utils {
 
   /**
+   * Private constructor of Utils Class.
+   */
+  private  Utils(){
+    throw new IllegalAccessError("Utility class");
+  }
+
+  /**
    * Parse JDBC connection URL The only supported format of the URL is:
    * jdbc:iotdb://localhost:6667/.
    */
@@ -55,7 +62,7 @@ public class Utils {
     boolean isUrlLegal = false;
     while (matcher.find()) {
       params.setHost(matcher.group(1));
-      params.setPort(Integer.parseInt((matcher.group(2))));
+      params.setPort(Integer.parseInt(matcher.group(2)));
       isUrlLegal = true;
     }
     if (!isUrlLegal) {
@@ -103,36 +110,45 @@ public class Utils {
         } else {
           TSDataType dataType = TSDataType.valueOf(value.getType());
           Field field = new Field(dataType);
-          switch (dataType) {
-            case BOOLEAN:
-              field.setBoolV(value.isBool_val());
-              break;
-            case INT32:
-              field.setIntV(value.getInt_val());
-              break;
-            case INT64:
-              field.setLongV(value.getLong_val());
-              break;
-            case FLOAT:
-              field.setFloatV((float) value.getFloat_val());
-              break;
-            case DOUBLE:
-              field.setDoubleV(value.getDouble_val());
-              break;
-            case TEXT:
-              field.setBinaryV(new Binary(value.getBinary_val()));
-              ;
-              break;
-            default:
-              throw new UnSupportedDataTypeException(
-                  String.format("data type %s is not supported when convert data at client",
-                      dataType));
-          }
+          addFieldAccordingToDataType(field, dataType, value);
           r.getFields().add(field);
         }
       }
       records.add(r);
     }
     return records;
+  }
+
+  /**
+   *
+   * @param field -the field need to add new data
+   * @param dataType, -the data type of the new data
+   * @param value, -the value of the new data
+   */
+  private static void addFieldAccordingToDataType(Field field, TSDataType dataType, TSDataValue value){
+    switch (dataType) {
+      case BOOLEAN:
+        field.setBoolV(value.isBool_val());
+        break;
+      case INT32:
+        field.setIntV(value.getInt_val());
+        break;
+      case INT64:
+        field.setLongV(value.getLong_val());
+        break;
+      case FLOAT:
+        field.setFloatV((float) value.getFloat_val());
+        break;
+      case DOUBLE:
+        field.setDoubleV(value.getDouble_val());
+        break;
+      case TEXT:
+        field.setBinaryV(new Binary(value.getBinary_val()));
+        break;
+      default:
+        throw new UnSupportedDataTypeException(
+                String.format("data type %s is not supported when convert data at client",
+                        dataType));
+    }
   }
 }

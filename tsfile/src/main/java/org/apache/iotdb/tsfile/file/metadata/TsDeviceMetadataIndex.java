@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.file.metadata;
 
 import java.io.IOException;
@@ -44,7 +45,7 @@ public class TsDeviceMetadataIndex {
   private long endTime;
 
   public TsDeviceMetadataIndex() {
-
+    //do nothing
   }
 
   /**
@@ -82,7 +83,7 @@ public class TsDeviceMetadataIndex {
    * @param buffer -determine the index's source
    * @return -a TsDeviceMetadataIndex
    */
-  public static TsDeviceMetadataIndex deserializeFrom(ByteBuffer buffer) throws IOException {
+  public static TsDeviceMetadataIndex deserializeFrom(ByteBuffer buffer) {
     TsDeviceMetadataIndex index = new TsDeviceMetadataIndex();
     index.offset = ReadWriteIOUtils.readLong(buffer);
     index.len = ReadWriteIOUtils.readInt(buffer);
@@ -144,7 +145,7 @@ public class TsDeviceMetadataIndex {
    * @param buffer -param to determine the byte length
    * @return -byte length
    */
-  public int serializeTo(ByteBuffer buffer) throws IOException {
+  public int serializeTo(ByteBuffer buffer) {
     int byteLen = 0;
     byteLen += ReadWriteIOUtils.write(offset, buffer);
     byteLen += ReadWriteIOUtils.write(len, buffer);

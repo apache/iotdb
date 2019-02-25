@@ -40,13 +40,13 @@ public class CloseMergeService implements IService {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(CloseMergeService.class);
   private static IoTDBConfig dbConfig = IoTDBDescriptor.getInstance().getConfig();
-  private static final long mergeDelay = dbConfig.periodTimeForMerge;
-  private static final long closeDelay = dbConfig.periodTimeForFlush;
-  private static final long mergePeriod = dbConfig.periodTimeForMerge;
-  private static final long closePeriod = dbConfig.periodTimeForFlush;
-  private static CloseMergeService CLOSE_MERGE_SERVICE = new CloseMergeService();
-  private MergeServiceThread mergeService = new MergeServiceThread();
-  private CloseServiceThread closeService = new CloseServiceThread();
+  private static final long MERGE_DELAY = dbConfig.periodTimeForMerge;
+  private static final long CLOSE_DELAY = dbConfig.periodTimeForFlush;
+  private static final long MERGE_PERIOD = dbConfig.periodTimeForMerge;
+  private static final long CLOSE_PERIOD = dbConfig.periodTimeForFlush;
+  private static CloseMergeService closeMergeService = new CloseMergeService();
+  private Runnable mergeService = new MergeServiceThread();
+  private Runnable closeService = new CloseServiceThread();
   private ScheduledExecutorService service;
   private CloseAndMergeDaemon closeAndMergeDaemon = new CloseAndMergeDaemon();
   private volatile boolean isStart = false;
@@ -64,10 +64,10 @@ public class CloseMergeService implements IService {
    * @return CloseMergeService instance
    */
   public static synchronized CloseMergeService getInstance() {
-    if (CLOSE_MERGE_SERVICE == null) {
-      CLOSE_MERGE_SERVICE = new CloseMergeService();
+    if (closeMergeService == null) {
+      closeMergeService = new CloseMergeService();
     }
-    return CLOSE_MERGE_SERVICE;
+    return closeMergeService;
   }
 
   /**
@@ -99,14 +99,18 @@ public class CloseMergeService implements IService {
         isStart = false;
         synchronized (service) {
           service.shutdown();
-          service.notify();
+          service.notifyAll();
         }
-        CLOSE_MERGE_SERVICE = null;
+        resetCloseMergeService();
         LOGGER.info("Shutdown close and merge service successfully.");
       } else {
         LOGGER.warn("The close and merge service is not running now.");
       }
     }
+  }
+
+  private static void resetCloseMergeService(){
+    closeMergeService = null;
   }
 
   @Override
@@ -117,6 +121,7 @@ public class CloseMergeService implements IService {
       String errorMessage = String
           .format("Failed to start %s because of %s", this.getID().getName(),
               e.getMessage());
+      LOGGER.error(errorMessage);
       throw new StartupException(errorMessage);
     }
   }
@@ -139,14 +144,15 @@ public class CloseMergeService implements IService {
 
     @Override
     public void run() {
-      service.scheduleWithFixedDelay(mergeService, mergeDelay, mergePeriod, TimeUnit.SECONDS);
-      service.scheduleWithFixedDelay(closeService, closeDelay, closePeriod, TimeUnit.SECONDS);
+      service.scheduleWithFixedDelay(mergeService, MERGE_DELAY, MERGE_PERIOD, TimeUnit.SECONDS);
+      service.scheduleWithFixedDelay(closeService, CLOSE_DELAY, CLOSE_PERIOD, TimeUnit.SECONDS);
       while (!service.isShutdown()) {
         synchronized (service) {
           try {
             service.wait();
           } catch (InterruptedException e) {
-            e.printStackTrace();
+            LOGGER.error("Close and merge error.", e);
+            Thread.currentThread().interrupt();
           }
         }
       }

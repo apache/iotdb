@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.db.engine.querycontext.GlobalSortedSeriesDataSource;
+import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.IReader;
 import org.apache.iotdb.db.query.reader.mem.MemChunkReaderWithFilter;
 import org.apache.iotdb.db.query.reader.mem.MemChunkReaderWithoutFilter;
@@ -45,7 +46,8 @@ public class SequenceDataReader implements IReader {
   /**
    * init with globalSortedSeriesDataSource and filter.
    */
-  public SequenceDataReader(GlobalSortedSeriesDataSource sources, Filter filter)
+  public SequenceDataReader(GlobalSortedSeriesDataSource sources, Filter filter,
+      QueryContext context)
       throws IOException {
     seriesReaders = new ArrayList<>();
 
@@ -55,7 +57,8 @@ public class SequenceDataReader implements IReader {
     // add reader for sealed TsFiles
     if (sources.hasSealedTsFiles()) {
       seriesReaders.add(
-          new SealedTsFilesReader(sources.getSeriesPath(), sources.getSealedTsFiles(), filter));
+          new SealedTsFilesReader(sources.getSeriesPath(), sources.getSealedTsFiles(), filter,
+              context));
     }
 
     // add reader for unSealed TsFile
@@ -87,8 +90,6 @@ public class SequenceDataReader implements IReader {
       if (currentSeriesReader.hasNext()) {
         curReaderInitialized = true;
         return true;
-      } else {
-        curReaderInitialized = false;
       }
     }
     return false;

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.engine.cache;
 import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
@@ -29,13 +30,12 @@ import org.slf4j.LoggerFactory;
 
 /**
  * This class is used to cache <code>RowGroupBlockMetaDataCache</code> of tsfile in IoTDB.
- *
- * @author liukun
  */
 public class RowGroupBlockMetaDataCache {
 
-  private static final int cacheSize = 100;
-  private static Logger LOGGER = LoggerFactory.getLogger(RowGroupBlockMetaDataCache.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(RowGroupBlockMetaDataCache.class);
+
+  private static final int CACHE_SIZE = 100;
   /**
    * key: the file path + deviceId.
    */
@@ -60,7 +60,7 @@ public class RowGroupBlockMetaDataCache {
     // The key(the tsfile path and deviceId) for the lruCache
 
     String jointPath = filePath + deviceId;
-    jointPath = jointPath.intern();
+    Object jointPathObject = jointPath.intern();
     synchronized (lruCache) {
       cacheRequestNum.incrementAndGet();
       if (lruCache.containsKey(jointPath)) {
@@ -74,7 +74,7 @@ public class RowGroupBlockMetaDataCache {
         return lruCache.get(jointPath);
       }
     }
-    synchronized (jointPath) {
+    synchronized (jointPathObject) {
       synchronized (lruCache) {
         if (lruCache.containsKey(jointPath)) {
           return lruCache.get(jointPath);
@@ -108,24 +108,23 @@ public class RowGroupBlockMetaDataCache {
    */
   private static class RowGroupBlockMetaDataCacheSingleton {
 
-    private static final RowGroupBlockMetaDataCache INSTANCE = new RowGroupBlockMetaDataCache(
-        cacheSize);
+    private static final RowGroupBlockMetaDataCache INSTANCE = new
+        RowGroupBlockMetaDataCache(CACHE_SIZE);
   }
 
   /**
    * This class is a map used to cache the <code>RowGroupBlockMetaData</code>. The caching strategy
    * is LRU.
    *
-   * @author liukun
    */
   private class LruLinkedHashMap extends LinkedHashMap<String, TsDeviceMetadata> {
 
     private static final long serialVersionUID = 1290160928914532649L;
-    private static final float loadFactor = 0.75f;
+    private static final float LOAD_FACTOR_MAP = 0.75f;
     private int maxCapacity;
 
     public LruLinkedHashMap(int maxCapacity, boolean isLru) {
-      super(maxCapacity, loadFactor, isLru);
+      super(maxCapacity, LOAD_FACTOR_MAP, isLru);
       this.maxCapacity = maxCapacity;
     }
 
@@ -133,5 +132,20 @@ public class RowGroupBlockMetaDataCache {
     protected boolean removeEldestEntry(Map.Entry<String, TsDeviceMetadata> eldest) {
       return size() > maxCapacity;
     }
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    RowGroupBlockMetaDataCache that = (RowGroupBlockMetaDataCache) o;
+    return Objects.equals(lruCache, that.lruCache) &&
+            Objects.equals(cacheHintNum, that.cacheHintNum) &&
+            Objects.equals(cacheRequestNum, that.cacheRequestNum);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(lruCache, cacheHintNum, cacheRequestNum);
   }
 }

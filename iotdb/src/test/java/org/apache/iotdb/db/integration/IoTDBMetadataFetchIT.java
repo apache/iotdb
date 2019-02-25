@@ -43,7 +43,7 @@ import org.junit.Test;
  */
 public class IoTDBMetadataFetchIT {
 
-  private static IoTDB deamon;
+  private static IoTDB daemon;
 
   private DatabaseMetaData databaseMetaData;
 
@@ -58,7 +58,7 @@ public class IoTDBMetadataFetchIT {
       String[] insertSqls = new String[]{"SET STORAGE GROUP TO root.ln.wf01.wt01",
           "CREATE TIMESERIES root.ln.wf01.wt01.status WITH DATATYPE = BOOLEAN, ENCODING = PLAIN",
           "CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE = FLOAT, ENCODING = RLE, "
-              + "COMPRESSOR = SNAPPY, MAX_POINT_NUMBER = 3"};
+              + "compressor = SNAPPY, MAX_POINT_NUMBER = 3"};
 
       for (String sql : insertSqls) {
         statement.execute(sql);
@@ -79,8 +79,8 @@ public class IoTDBMetadataFetchIT {
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.closeMemControl();
 
-    deamon = IoTDB.getInstance();
-    deamon.active();
+    daemon = IoTDB.getInstance();
+    daemon.active();
     EnvironmentUtils.envSetUp();
 
     insertSQL();
@@ -88,13 +88,12 @@ public class IoTDBMetadataFetchIT {
 
   @After
   public void tearDown() throws Exception {
-    deamon.stop();
-    Thread.sleep(5000);
+    daemon.stop();
     EnvironmentUtils.cleanEnv();
   }
 
   @Test
-  public void ShowTimeseriesTest1() throws ClassNotFoundException, SQLException {
+  public void showTimeseriesTest1() throws ClassNotFoundException, SQLException {
     Class.forName(Config.JDBC_DRIVER_NAME);
     Connection connection = null;
     try {
@@ -151,7 +150,7 @@ public class IoTDBMetadataFetchIT {
   }
 
   @Test
-  public void ShowTimeseriesTest2() throws ClassNotFoundException, SQLException {
+  public void showTimeseriesTest2() throws ClassNotFoundException, SQLException {
     Class.forName(Config.JDBC_DRIVER_NAME);
     Connection connection = null;
     Statement statement = null;
@@ -171,7 +170,7 @@ public class IoTDBMetadataFetchIT {
   }
 
   @Test
-  public void ShowStorageGroupTest() throws ClassNotFoundException, SQLException {
+  public void showStorageGroupTest() throws ClassNotFoundException, SQLException {
     Class.forName(Config.JDBC_DRIVER_NAME);
     Connection connection = null;
     try {
@@ -211,7 +210,7 @@ public class IoTDBMetadataFetchIT {
   }
 
   @Test
-  public void DatabaseMetaDataTest() throws ClassNotFoundException, SQLException {
+  public void databaseMetaDataTest() throws ClassNotFoundException, SQLException {
     Class.forName(Config.JDBC_DRIVER_NAME);
     Connection connection = null;
     try {
@@ -219,12 +218,12 @@ public class IoTDBMetadataFetchIT {
           .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
       databaseMetaData = connection.getMetaData();
 
-      AllColumns();
-      Device();
-      ShowTimeseriesPath1();
-      ShowTimeseriesPath2();
-      ShowStorageGroup();
-      ShowTimeseriesInJson();
+      allColumns();
+      device();
+      showTimeseriesPath1();
+      showTimeseriesPath2();
+      showStorageGroup();
+      showTimeseriesInJson();
 
     } catch (Exception e) {
       e.printStackTrace();
@@ -239,11 +238,11 @@ public class IoTDBMetadataFetchIT {
   /**
    * get all columns' name under a given seriesPath
    */
-  private void AllColumns() throws SQLException {
+  private void allColumns() throws SQLException {
     String standard =
         "Column,\n" + "root.ln.wf01.wt01.status,\n" + "root.ln.wf01.wt01.temperature,\n";
 
-    ResultSet resultSet = databaseMetaData.getColumns(Constant.CatalogColumn, "root", null, null);
+    ResultSet resultSet = databaseMetaData.getColumns(Constant.CATALOG_COLUMN, "root", null, null);
     ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
     int colCount = resultSetMetaData.getColumnCount();
     StringBuilder resultStr = new StringBuilder();
@@ -263,10 +262,10 @@ public class IoTDBMetadataFetchIT {
   /**
    * get all delta objects under a given column
    */
-  private void Device() throws SQLException {
+  private void device() throws SQLException {
     String standard = "Column,\n" + "root.ln.wf01.wt01,\n";
 
-    ResultSet resultSet = databaseMetaData.getColumns(Constant.CatalogDevice, "ln", null, null);
+    ResultSet resultSet = databaseMetaData.getColumns(Constant.CATALOG_DEVICE, "ln", null, null);
     ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
     int colCount = resultSetMetaData.getColumnCount();
     StringBuilder resultStr = new StringBuilder();
@@ -286,13 +285,13 @@ public class IoTDBMetadataFetchIT {
   /**
    * show timeseries <seriesPath> usage 1
    */
-  private void ShowTimeseriesPath1() throws SQLException {
+  private void showTimeseriesPath1() throws SQLException {
     String standard = "Timeseries,Storage Group,DataType,Encoding,\n"
         + "root.ln.wf01.wt01.status,root.ln.wf01.wt01,BOOLEAN,PLAIN,\n"
         + "root.ln.wf01.wt01.temperature,root.ln.wf01.wt01,FLOAT,RLE,\n";
 
     ResultSet resultSet = databaseMetaData
-        .getColumns(Constant.CatalogTimeseries, "root", null, null);
+        .getColumns(Constant.CATALOG_TIMESERIES, "root", null, null);
     ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
     int colCount = resultSetMetaData.getColumnCount();
     StringBuilder resultStr = new StringBuilder();
@@ -312,11 +311,11 @@ public class IoTDBMetadataFetchIT {
   /**
    * show timeseries <seriesPath> usage 2
    */
-  private void ShowTimeseriesPath2() throws SQLException {
+  private void showTimeseriesPath2() throws SQLException {
     String standard = "DataType,\n" + "BOOLEAN,\n";
 
     ResultSet resultSet = databaseMetaData
-        .getColumns(Constant.CatalogTimeseries, "root.ln.wf01.wt01.status", null,
+        .getColumns(Constant.CATALOG_TIMESERIES, "root.ln.wf01.wt01.status", null,
             null);
     ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
     StringBuilder resultStr = new StringBuilder();
@@ -332,11 +331,11 @@ public class IoTDBMetadataFetchIT {
   /**
    * show storage group
    */
-  private void ShowStorageGroup() throws SQLException {
+  private void showStorageGroup() throws SQLException {
     String standard = "Storage Group,\n" + "root.ln.wf01.wt01,\n";
 
     ResultSet resultSet = databaseMetaData
-        .getColumns(Constant.CatalogStorageGroup, null, null, null);
+        .getColumns(Constant.CATALOG_STORAGE_GROUP, null, null, null);
     ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
     int colCount = resultSetMetaData.getColumnCount();
     StringBuilder resultStr = new StringBuilder();
@@ -356,7 +355,7 @@ public class IoTDBMetadataFetchIT {
   /**
    * show metadata in json
    */
-  private void ShowTimeseriesInJson() {
+  private void showTimeseriesInJson() {
     String metadataInJson = databaseMetaData.toString();
     String standard =
         "===  Timeseries Tree  ===\n" + "\n" + "root:{\n" + "    ln:{\n" + "        wf01:{\n"
@@ -366,7 +365,7 @@ public class IoTDBMetadataFetchIT {
             + "                     StorageGroup: root.ln.wf01.wt01 \n" + "                },\n"
             + "                temperature:{\n" + "                     DataType: FLOAT,\n"
             + "                     Encoding: RLE,\n"
-            + "                     args: {COMPRESSOR=SNAPPY, MAX_POINT_NUMBER=3},\n"
+            + "                     args: {MAX_POINT_NUMBER=3, compressor=SNAPPY},\n"
             + "                     StorageGroup: root.ln.wf01.wt01 \n" + "                }\n"
             + "            }\n"
             + "        }\n" + "    }\n" + "}";

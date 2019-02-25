@@ -164,7 +164,7 @@ public class RestorableTsFileIOWriterTest {
     memTable.write("d1", "s2", TSDataType.INT32, 3, "1");
     memTable.write("d2", "s2", TSDataType.INT32, 2, "1");
     memTable.write("d2", "s2", TSDataType.INT32, 4, "1");
-    MemTableFlushUtil.flushMemTable(schema, writer, memTable);
+    MemTableFlushUtil.flushMemTable(schema, writer, memTable, 0);
     writer.flush();
     writer.appendMetadata();
     writer.getOutput().close();
@@ -178,7 +178,7 @@ public class RestorableTsFileIOWriterTest {
     assertEquals(2, metaData.getDeviceMap().size());
     List<ChunkGroupMetaData> chunkGroups = reader
         .readTsDeviceMetaData(metaData.getDeviceMap().get("d1"))
-        .getChunkGroups();
+        .getChunkGroupMetaDataList();
     assertEquals(1, chunkGroups.size());
 
     List<ChunkMetaData> chunks = chunkGroups.get(0).getChunkMetaDataList();
@@ -192,7 +192,7 @@ public class RestorableTsFileIOWriterTest {
     assertEquals(chunks.get(1).getEndTime(), 3);
     assertEquals(chunks.get(1).getNumOfPoints(), 2);
 
-    chunkGroups = reader.readTsDeviceMetaData(metaData.getDeviceMap().get("d2")).getChunkGroups();
+    chunkGroups = reader.readTsDeviceMetaData(metaData.getDeviceMap().get("d2")).getChunkGroupMetaDataList();
     assertEquals(1, chunkGroups.size());
     chunks = chunkGroups.get(0).getChunkMetaDataList();
     assertEquals(1, chunks.size());
@@ -217,7 +217,7 @@ public class RestorableTsFileIOWriterTest {
         MemTableTestUtils.measurementId0,
         MemTableTestUtils.dataType0);
 
-    MemTableFlushUtil.flushMemTable(MemTableTestUtils.getFileSchema(), writer, memTable);
+    MemTableFlushUtil.flushMemTable(MemTableTestUtils.getFileSchema(), writer, memTable, 0);
     writer.flush();
 
     assertEquals(0,
@@ -243,7 +243,7 @@ public class RestorableTsFileIOWriterTest {
     TsDeviceMetadata tsDeviceMetadata = new TsDeviceMetadata();
     List<ChunkGroupMetaData> appendRowGroupMetaDatas = new ArrayList<>();
     for (int i = 0; i < metadataNum; i++) {
-      appendRowGroupMetaDatas.add(new ChunkGroupMetaData("d1", new ArrayList<>()));
+      appendRowGroupMetaDatas.add(new ChunkGroupMetaData("d1", new ArrayList<>(), 0));
     }
     tsDeviceMetadata.setChunkGroupMetadataList(appendRowGroupMetaDatas);
     ByteArrayOutputStream baos = new ByteArrayOutputStream();

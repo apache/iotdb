@@ -18,8 +18,10 @@
  */
 package org.apache.iotdb.db.engine.pool;
 
+import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
@@ -55,6 +57,10 @@ public class FlushManager {
     }
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     pool = Executors.newFixedThreadPool(config.concurrentFlushThread);
+  }
+
+  public FlushManager(ExecutorService pool) {
+    this.pool = pool;
   }
 
   /**
@@ -107,8 +113,12 @@ public class FlushManager {
     }
   }
 
-  public synchronized void submit(Runnable task) {
-    pool.execute(task);
+  public synchronized Future<?> submit(Runnable task) {
+    return pool.submit(task);
+  }
+
+  public synchronized <T>Future<T> submit(Callable<T> task){
+    return pool.submit(task);
   }
 
   public int getActiveCnt() {
@@ -120,7 +130,9 @@ public class FlushManager {
   }
 
   private static class InstanceHolder {
-
+    private InstanceHolder(){
+      //allowed to do nothing
+    }
     private static FlushManager instance = new FlushManager();
   }
 }

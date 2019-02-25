@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.utils;
 
 import java.io.IOException;
@@ -38,13 +39,13 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSFreqType;
  */
 public class ReadWriteIOUtils {
 
-  private static int SHORT_LEN = 2;
-  private static int INT_LEN = 4;
-  private static int LONG_LEN = 8;
-  private static int DOUBLE_LEN = 8;
-  private static int FLOAT_LEN = 4;
-  private static int BOOLEAN_LEN = 1;
+  private static final int SHORT_LEN = 2;
+  private static final int INT_LEN = 4;
+  private static final int LONG_LEN = 8;
+  private static final int DOUBLE_LEN = 8;
+  private static final int FLOAT_LEN = 4;
 
+  private ReadWriteIOUtils(){}
   /**
    * read a bool from inputStream.
    */
@@ -342,8 +343,7 @@ public class ReadWriteIOUtils {
    * read a short var from byteBuffer.
    */
   public static short readShort(ByteBuffer buffer) {
-    short n = buffer.getShort();
-    return n;
+    return buffer.getShort();
   }
 
   /**
@@ -395,8 +395,7 @@ public class ReadWriteIOUtils {
    * read a int var from byteBuffer.
    */
   public static int readInt(ByteBuffer buffer) {
-    int n = buffer.getInt();
-    return n;
+    return buffer.getInt();
   }
 
   /**
@@ -424,8 +423,7 @@ public class ReadWriteIOUtils {
    * read a long var from byteBuffer.
    */
   public static long readLong(ByteBuffer buffer) {
-    long n = buffer.getLong();
-    return n;
+    return buffer.getLong();
   }
 
   /**
@@ -549,7 +547,7 @@ public class ReadWriteIOUtils {
     while (buffer.hasRemaining() && (read = channel.read(buffer, position)) != -1) {
       length += read;
       position += read;
-      read = channel.read(buffer, position);
+      channel.read(buffer, position);
     }
     return length;
   }
@@ -623,7 +621,7 @@ public class ReadWriteIOUtils {
   /**
    * read integer list with self define length.
    */
-  public static List<Integer> readIntegerList(ByteBuffer buffer) throws IOException {
+  public static List<Integer> readIntegerList(ByteBuffer buffer) {
     int size = readInt(buffer);
     if (size <= 0) {
       return null;
@@ -653,7 +651,7 @@ public class ReadWriteIOUtils {
   /**
    * read string list with self define length.
    */
-  public static List<String> readStringList(ByteBuffer buffer) throws IOException {
+  public static List<String> readStringList(ByteBuffer buffer) {
     int size = readInt(buffer);
     if (size <= 0) {
       return null;

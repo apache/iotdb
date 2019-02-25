@@ -98,9 +98,14 @@ public abstract class TsPrimitiveType implements Serializable {
         .equals(getValue()));
   }
 
+  @Override
+  public int hashCode(){
+    return getValue().hashCode();
+  }
+
   public static class TsBoolean extends TsPrimitiveType {
 
-    public boolean value;
+    private boolean value;
 
     public TsBoolean(boolean value) {
       this.value = value;
@@ -130,11 +135,28 @@ public abstract class TsPrimitiveType implements Serializable {
     public TSDataType getDataType() {
       return TSDataType.BOOLEAN;
     }
+
+    @Override
+    public int hashCode() {
+      return Boolean.hashCode(value);
+    }
+
+    @Override
+    public boolean equals(Object anObject) {
+      if (this == anObject) {
+        return true;
+      }
+      if (anObject instanceof TsBoolean) {
+        TsBoolean anotherTs = (TsBoolean) anObject;
+        return value == anotherTs.value;
+      }
+      return false;
+    }
   }
 
   public static class TsInt extends TsPrimitiveType {
 
-    public int value;
+    private int value;
 
     public TsInt(int value) {
       this.value = value;
@@ -164,11 +186,28 @@ public abstract class TsPrimitiveType implements Serializable {
     public TSDataType getDataType() {
       return TSDataType.INT32;
     }
+
+    @Override
+    public int hashCode() {
+      return Integer.hashCode(value);
+    }
+
+    @Override
+    public boolean equals(Object anObject) {
+      if (this == anObject) {
+        return true;
+      }
+      if (anObject instanceof TsInt) {
+        TsInt anotherTs = (TsInt) anObject;
+        return value == anotherTs.value;
+      }
+      return false;
+    }
   }
 
   public static class TsLong extends TsPrimitiveType {
 
-    public long value;
+    private long value;
 
     public TsLong(long value) {
       this.value = value;
@@ -198,11 +237,28 @@ public abstract class TsPrimitiveType implements Serializable {
     public Object getValue() {
       return value;
     }
+
+    @Override
+    public int hashCode() {
+      return Long.hashCode(value);
+    }
+
+    @Override
+    public boolean equals(Object anObject) {
+      if (this == anObject) {
+        return true;
+      }
+      if (anObject instanceof TsLong) {
+        TsLong anotherTs = (TsLong) anObject;
+        return value == anotherTs.value;
+      }
+      return false;
+    }
   }
 
   public static class TsFloat extends TsPrimitiveType {
 
-    public float value;
+    private float value;
 
     public TsFloat(float value) {
       this.value = value;
@@ -232,11 +288,28 @@ public abstract class TsPrimitiveType implements Serializable {
     public TSDataType getDataType() {
       return TSDataType.FLOAT;
     }
+
+    @Override
+    public int hashCode() {
+      return Float.hashCode(value);
+    }
+
+    @Override
+    public boolean equals(Object anObject) {
+      if (this == anObject) {
+        return true;
+      }
+      if (anObject instanceof TsFloat) {
+        TsFloat anotherTs = (TsFloat) anObject;
+        return value == anotherTs.value;
+      }
+      return false;
+    }
   }
 
   public static class TsDouble extends TsPrimitiveType {
 
-    public double value;
+    private double value;
 
     public TsDouble(double value) {
       this.value = value;
@@ -266,11 +339,28 @@ public abstract class TsPrimitiveType implements Serializable {
     public TSDataType getDataType() {
       return TSDataType.DOUBLE;
     }
+
+    @Override
+    public int hashCode() {
+      return Double.hashCode(value);
+    }
+
+    @Override
+    public boolean equals(Object anObject) {
+      if (this == anObject) {
+        return true;
+      }
+      if (anObject instanceof TsDouble) {
+        TsDouble anotherTs = (TsDouble) anObject;
+        return value == anotherTs.value;
+      }
+      return false;
+    }
   }
 
   public static class TsBinary extends TsPrimitiveType {
 
-    public Binary value;
+    private Binary value;
 
     public TsBinary(Binary value) {
       this.value = value;
@@ -300,5 +390,23 @@ public abstract class TsPrimitiveType implements Serializable {
     public TSDataType getDataType() {
       return TSDataType.TEXT;
     }
+
+    @Override
+    public int hashCode() {
+      return value.hashCode();
+    }
+
+    @Override
+    public boolean equals(Object anObject) {
+      if (this == anObject) {
+        return true;
+      }
+      if (anObject instanceof TsBinary) {
+        TsBinary anotherTs = (TsBinary) anObject;
+        return value.equals(anotherTs.value);
+      }
+      return false;
+    }
   }
+
 }

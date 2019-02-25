@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.engine.filenode;
 
 import java.io.File;
@@ -23,6 +24,7 @@ import java.io.IOException;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.time.Instant;
+import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -31,26 +33,36 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+
 import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.Directories;
 import org.apache.iotdb.db.engine.Processor;
 import org.apache.iotdb.db.engine.bufferwrite.Action;
+import org.apache.iotdb.db.engine.bufferwrite.ActionException;
 import org.apache.iotdb.db.engine.bufferwrite.BufferWriteProcessor;
 import org.apache.iotdb.db.engine.bufferwrite.FileNodeConstants;
-import org.apache.iotdb.db.engine.overflow.ioV2.OverflowProcessor;
+import org.apache.iotdb.db.engine.modification.Deletion;
+import org.apache.iotdb.db.engine.modification.Modification;
+import org.apache.iotdb.db.engine.modification.ModificationFile;
+import org.apache.iotdb.db.engine.overflow.io.OverflowProcessor;
 import org.apache.iotdb.db.engine.pool.MergeManager;
 import org.apache.iotdb.db.engine.querycontext.GlobalSortedSeriesDataSource;
 import org.apache.iotdb.db.engine.querycontext.OverflowSeriesDataSource;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.querycontext.UnsealedTsFile;
+import org.apache.iotdb.db.engine.version.SimpleFileVersionController;
+import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.BufferWriteProcessorException;
 import org.apache.iotdb.db.exception.ErrorDebugException;
 import org.apache.iotdb.db.exception.FileNodeProcessorException;
@@ -62,13 +74,14 @@ import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.monitor.IStatistic;
 import org.apache.iotdb.db.monitor.MonitorConstants;
 import org.apache.iotdb.db.monitor.StatMonitor;
+import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.factory.SeriesReaderFactory;
 import org.apache.iotdb.db.query.reader.IReader;
+import org.apache.iotdb.db.utils.FileSchemaUtils;
 import org.apache.iotdb.db.utils.MemUtils;
+import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.common.constant.JsonFormatConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.footer.ChunkGroupFooter;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
@@ -83,7 +96,6 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.chunk.ChunkBuffer;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
-import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
 import org.apache.iotdb.tsfile.write.schema.FileSchema;
 import org.apache.iotdb.tsfile.write.schema.JsonConverter;
@@ -94,38 +106,36 @@ import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static java.time.ZonedDateTime.ofInstant;
+import static org.apache.iotdb.db.utils.FileSchemaUtils.constructJsonFileSchema;
+
 public class FileNodeProcessor extends Processor implements IStatistic {
 
-  public static final String RESTORE_FILE_SUFFIX = ".restore";
+  private static final String WARN_NO_SUCH_OVERFLOWED_FILE = "Can not find any tsfile which"
+      + " will be overflowed in the filenode processor {}, ";
+  private static final String RESTORE_FILE_SUFFIX = ".restore";
   private static final Logger LOGGER = LoggerFactory.getLogger(FileNodeProcessor.class);
-  private static final TSFileConfig TsFileConf = TSFileDescriptor.getInstance().getConfig();
   private static final IoTDBConfig TsFileDBConf = IoTDBDescriptor.getInstance().getConfig();
   private static final MManager mManager = MManager.getInstance();
   private static final Directories directories = Directories.getInstance();
   private final String statStorageDeltaName;
-  private final HashMap<String, AtomicLong> statParamsHashMap = new HashMap<String, AtomicLong>() {
-    {
-      for (MonitorConstants.FileNodeProcessorStatConstants statConstant :
-          MonitorConstants.FileNodeProcessorStatConstants.values()) {
-        put(statConstant.name(), new AtomicLong(0));
-      }
-    }
-  };
+  private final HashMap<String, AtomicLong> statParamsHashMap = new HashMap<>();
   /**
    * Used to keep the oldest timestamp for each deviceId. The key is deviceId.
    */
   private volatile boolean isOverflowed;
   private Map<String, Long> lastUpdateTimeMap;
   private Map<String, Long> flushLastUpdateTimeMap;
-  private Map<String, List<IntervalFileNode>> invertedindexOfFiles;
+  private Map<String, List<IntervalFileNode>> invertedIndexOfFiles;
   private IntervalFileNode emptyIntervalFileNode;
   private IntervalFileNode currentIntervalFileNode;
   private List<IntervalFileNode> newFileNodes;
   private FileNodeProcessorStatus isMerging;
   // this is used when work->merge operation
-  private int numOfMergeFile = 0;
-  private FileNodeProcessorStore fileNodeProcessorStore = null;
-  private String fileNodeRestoreFilePath = null;
+  private int numOfMergeFile;
+  private FileNodeProcessorStore fileNodeProcessorStore;
+  private String fileNodeRestoreFilePath;
+  private final Object fileNodeRestoreLock = new Object();
   private String baseDirPath;
   // last merge time
   private long lastMergeTime = -1;
@@ -138,84 +148,109 @@ public class FileNodeProcessor extends Processor implements IStatistic {
   // system recovery
   private boolean shouldRecovery = false;
   // statistic monitor parameters
-  private Map<String, Action> parameters = null;
+  private Map<String, Action> parameters;
   private FileSchema fileSchema;
-  private Action flushFileNodeProcessorAction = new Action() {
-
-    @Override
-    public void act() throws Exception {
-      synchronized (fileNodeProcessorStore) {
+  private Action flushFileNodeProcessorAction = () -> {
+    synchronized (fileNodeProcessorStore) {
+      try {
         writeStoreToDisk(fileNodeProcessorStore);
+      } catch (FileNodeProcessorException e) {
+        throw new ActionException(e);
       }
     }
   };
-  private Action bufferwriteFlushAction = new Action() {
+  private Action bufferwriteFlushAction = () -> {
+    // update the lastUpdateTime Notice: Thread safe
+    synchronized (fileNodeProcessorStore) {
+      // deep copy
+      Map<String, Long> tempLastUpdateMap = new HashMap<>(lastUpdateTimeMap);
+      // update flushLastUpdateTimeMap
+      for (Entry<String, Long> entry : lastUpdateTimeMap.entrySet()) {
+        flushLastUpdateTimeMap.put(entry.getKey(), entry.getValue() + 1);
+      }
+      fileNodeProcessorStore.setLastUpdateTimeMap(tempLastUpdateMap);
+    }
+  };
 
-    @Override
-    public void act() throws Exception {
-      // update the lastUpdateTime Notice: Thread safe
-      synchronized (fileNodeProcessorStore) {
-        // deep copy
-        Map<String, Long> tempLastUpdateMap = new HashMap<>(lastUpdateTimeMap);
-        // update flushLastUpdateTimeMap
-        for (Entry<String, Long> entry : lastUpdateTimeMap.entrySet()) {
-          flushLastUpdateTimeMap.put(entry.getKey(), entry.getValue() + 1);
-        }
-        fileNodeProcessorStore.setLastUpdateTimeMap(tempLastUpdateMap);
-      }
-    }
-  };
   private Action bufferwriteCloseAction = new Action() {
 
     @Override
-    public void act() throws Exception {
-
+    public void act() {
       synchronized (fileNodeProcessorStore) {
         fileNodeProcessorStore.setLastUpdateTimeMap(lastUpdateTimeMap);
         addLastTimeToIntervalFile();
         fileNodeProcessorStore.setNewFileNodes(newFileNodes);
       }
     }
-  };
-  private Action overflowFlushAction = new Action() {
 
-    @Override
-    public void act() throws Exception {
+    private void addLastTimeToIntervalFile() {
 
-      // update the new IntervalFileNode List and emptyIntervalFile.
-      // Notice: thread safe
-      synchronized (fileNodeProcessorStore) {
-        fileNodeProcessorStore.setOverflowed(isOverflowed);
-        fileNodeProcessorStore.setEmptyIntervalFileNode(emptyIntervalFileNode);
-        fileNodeProcessorStore.setNewFileNodes(newFileNodes);
+      if (!newFileNodes.isEmpty()) {
+        // end time with one start time
+        Map<String, Long> endTimeMap = new HashMap<>();
+        for (Entry<String, Long> startTime : currentIntervalFileNode.getStartTimeMap().entrySet()) {
+          String deviceId = startTime.getKey();
+          endTimeMap.put(deviceId, lastUpdateTimeMap.get(deviceId));
+        }
+        currentIntervalFileNode.setEndTimeMap(endTimeMap);
       }
+    }
+  };
+  private Action overflowFlushAction = () -> {
+
+    // update the new IntervalFileNode List and emptyIntervalFile.
+    // Notice: thread safe
+    synchronized (fileNodeProcessorStore) {
+      fileNodeProcessorStore.setOverflowed(isOverflowed);
+      fileNodeProcessorStore.setEmptyIntervalFileNode(emptyIntervalFileNode);
+      fileNodeProcessorStore.setNewFileNodes(newFileNodes);
     }
   };
   // Token for query which used to
   private int multiPassLockToken = 0;
+  private VersionController versionController;
+  private ReentrantLock mergeDeleteLock = new ReentrantLock();
+
+  /**
+   * This is the modification file of the result of the current merge.
+   */
+  private ModificationFile mergingModification;
+
+  private TsFileIOWriter mergeFileWriter = null;
+  private String mergeOutputPath = null;
+  private String mergeBaseDir = null;
+  private String mergeFileName = null;
+  private boolean mergeIsChunkGroupHasData = false;
+  private long mergeStartPos;
 
   /**
    * constructor of FileNodeProcessor.
    */
-  public FileNodeProcessor(String fileNodeDirPath, String processorName)
+  FileNodeProcessor(String fileNodeDirPath, String processorName)
       throws FileNodeProcessorException {
     super(processorName);
+    for (MonitorConstants.FileNodeProcessorStatConstants statConstant :
+        MonitorConstants.FileNodeProcessorStatConstants.values()) {
+      statParamsHashMap.put(statConstant.name(), new AtomicLong(0));
+    }
     statStorageDeltaName =
-        MonitorConstants.statStorageGroupPrefix + MonitorConstants.MONITOR_PATH_SEPERATOR
-            + MonitorConstants.fileNodePath + MonitorConstants.MONITOR_PATH_SEPERATOR
+        MonitorConstants.STAT_STORAGE_GROUP_PREFIX + MonitorConstants.MONITOR_PATH_SEPERATOR
+            + MonitorConstants.FILE_NODE_PATH + MonitorConstants.MONITOR_PATH_SEPERATOR
             + processorName.replaceAll("\\.", "_");
 
     this.parameters = new HashMap<>();
-    if (fileNodeDirPath.length() > 0
-        && fileNodeDirPath.charAt(fileNodeDirPath.length() - 1) != File.separatorChar) {
-      fileNodeDirPath = fileNodeDirPath + File.separatorChar;
+    String dirPath = fileNodeDirPath;
+    if (dirPath.length() > 0
+        && dirPath.charAt(dirPath.length() - 1) != File.separatorChar) {
+      dirPath = dirPath + File.separatorChar;
     }
-    this.baseDirPath = fileNodeDirPath + processorName;
+    this.baseDirPath = dirPath + processorName;
     File dataDir = new File(this.baseDirPath);
     if (!dataDir.exists()) {
       dataDir.mkdirs();
       LOGGER.info(
-          "The data directory of the filenode processor {} doesn't exist. Create new directory {}",
+          "The data directory of the filenode processor {} doesn't exist. Create new " +
+              "directory {}",
           getProcessorName(), baseDirPath);
     }
     fileNodeRestoreFilePath = new File(dataDir, processorName + RESTORE_FILE_SUFFIX).getPath();
@@ -223,7 +258,8 @@ public class FileNodeProcessor extends Processor implements IStatistic {
       fileNodeProcessorStore = readStoreFromDisk();
     } catch (FileNodeProcessorException e) {
       LOGGER.error(
-          "The fileNode processor {} encountered an error when recoverying restore information.",
+          "The fileNode processor {} encountered an error when recoverying restore " +
+              "information.",
           processorName, e);
       throw new FileNodeProcessorException(e);
     }
@@ -233,7 +269,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
     newFileNodes = fileNodeProcessorStore.getNewFileNodes();
     isMerging = fileNodeProcessorStore.getFileNodeProcessorStatus();
     numOfMergeFile = fileNodeProcessorStore.getNumOfMergeFile();
-    invertedindexOfFiles = new HashMap<>();
+    invertedIndexOfFiles = new HashMap<>();
     // deep clone
     flushLastUpdateTimeMap = new HashMap<>();
     for (Entry<String, Long> entry : lastUpdateTimeMap.entrySet()) {
@@ -259,23 +295,27 @@ public class FileNodeProcessor extends Processor implements IStatistic {
       registStatMetadata();
       statMonitor.registStatistics(statStorageDeltaName, this);
     }
+    try {
+      versionController = new SimpleFileVersionController(fileNodeDirPath);
+    } catch (IOException e) {
+      throw new FileNodeProcessorException(e);
+    }
   }
 
-  public HashMap<String, AtomicLong> getStatParamsHashMap() {
+  @Override
+  public Map<String, AtomicLong> getStatParamsHashMap() {
     return statParamsHashMap;
   }
 
   @Override
   public void registStatMetadata() {
-    HashMap<String, String> hashMap = new HashMap<String, String>() {
-      {
-        for (MonitorConstants.FileNodeProcessorStatConstants statConstant :
-            MonitorConstants.FileNodeProcessorStatConstants.values()) {
-          put(statStorageDeltaName + MonitorConstants.MONITOR_PATH_SEPERATOR + statConstant.name(),
-              MonitorConstants.DataType);
-        }
-      }
-    };
+    Map<String, String> hashMap = new HashMap<>();
+    for (MonitorConstants.FileNodeProcessorStatConstants statConstant :
+        MonitorConstants.FileNodeProcessorStatConstants.values()) {
+      hashMap
+          .put(statStorageDeltaName + MonitorConstants.MONITOR_PATH_SEPERATOR + statConstant.name(),
+              MonitorConstants.DATA_TYPE);
+    }
     StatMonitor.getInstance().registStatStorageGroup(hashMap);
   }
 
@@ -291,40 +331,25 @@ public class FileNodeProcessor extends Processor implements IStatistic {
   }
 
   @Override
-  public HashMap<String, TSRecord> getAllStatisticsValue() {
+  public Map<String, TSRecord> getAllStatisticsValue() {
     Long curTime = System.currentTimeMillis();
     HashMap<String, TSRecord> tsRecordHashMap = new HashMap<>();
     TSRecord tsRecord = new TSRecord(curTime, statStorageDeltaName);
-    HashMap<String, AtomicLong> hashMap = getStatParamsHashMap();
-    tsRecord.dataPointList = new ArrayList<DataPoint>() {
-      {
-        for (Map.Entry<String, AtomicLong> entry : hashMap.entrySet()) {
-          add(new LongDataPoint(entry.getKey(), entry.getValue().get()));
-        }
-      }
-    };
+
+    Map<String, AtomicLong> hashMap = getStatParamsHashMap();
+    tsRecord.dataPointList = new ArrayList<>();
+    for (Map.Entry<String, AtomicLong> entry : hashMap.entrySet()) {
+      tsRecord.dataPointList.add(new LongDataPoint(entry.getKey(), entry.getValue().get()));
+    }
+
     tsRecordHashMap.put(statStorageDeltaName, tsRecord);
     return tsRecordHashMap;
-  }
-
-  private void addLastTimeToIntervalFile() {
-
-    if (!newFileNodes.isEmpty()) {
-      // end time with one start time
-      Map<String, Long> endTimeMap = new HashMap<>();
-      for (Entry<String, Long> startTime : currentIntervalFileNode.getStartTimeMap().entrySet()) {
-        String deviceId = startTime.getKey();
-        endTimeMap.put(deviceId, lastUpdateTimeMap.get(deviceId));
-      }
-      currentIntervalFileNode.setEndTimeMap(endTimeMap);
-    }
   }
 
   /**
    * add interval FileNode.
    */
-  public void addIntervalFileNode(long startTime, String baseDir, String fileName)
-      throws Exception {
+  void addIntervalFileNode(String baseDir, String fileName) throws ActionException {
 
     IntervalFileNode intervalFileNode = new IntervalFileNode(OverflowChangeType.NO_CHANGE, baseDir,
         fileName);
@@ -339,13 +364,13 @@ public class FileNodeProcessor extends Processor implements IStatistic {
    *
    * @param deviceId device ID
    */
-  public void setIntervalFileNodeStartTime(String deviceId) {
+  void setIntervalFileNodeStartTime(String deviceId) {
     if (currentIntervalFileNode.getStartTime(deviceId) == -1) {
       currentIntervalFileNode.setStartTime(deviceId, flushLastUpdateTimeMap.get(deviceId));
-      if (!invertedindexOfFiles.containsKey(deviceId)) {
-        invertedindexOfFiles.put(deviceId, new ArrayList<>());
+      if (!invertedIndexOfFiles.containsKey(deviceId)) {
+        invertedIndexOfFiles.put(deviceId, new ArrayList<>());
       }
-      invertedindexOfFiles.get(deviceId).add(currentIntervalFileNode);
+      invertedIndexOfFiles.get(deviceId).add(currentIntervalFileNode);
     }
   }
 
@@ -367,16 +392,17 @@ public class FileNodeProcessor extends Processor implements IStatistic {
 
   private void addAllFileIntoIndex(List<IntervalFileNode> fileList) {
     // clear map
-    invertedindexOfFiles.clear();
+    invertedIndexOfFiles.clear();
     // add all file to index
     for (IntervalFileNode fileNode : fileList) {
-      if (!fileNode.getStartTimeMap().isEmpty()) {
-        for (String deviceId : fileNode.getStartTimeMap().keySet()) {
-          if (!invertedindexOfFiles.containsKey(deviceId)) {
-            invertedindexOfFiles.put(deviceId, new ArrayList<>());
-          }
-          invertedindexOfFiles.get(deviceId).add(fileNode);
+      if (fileNode.getStartTimeMap().isEmpty()) {
+        continue;
+      }
+      for (String deviceId : fileNode.getStartTimeMap().keySet()) {
+        if (!invertedIndexOfFiles.containsKey(deviceId)) {
+          invertedIndexOfFiles.put(deviceId, new ArrayList<>());
         }
+        invertedIndexOfFiles.get(deviceId).add(fileNode);
       }
     }
   }
@@ -425,13 +451,16 @@ public class FileNodeProcessor extends Processor implements IStatistic {
           .put(FileNodeConstants.FILENODE_PROCESSOR_FLUSH_ACTION, flushFileNodeProcessorAction);
       String baseDir = directories
           .getTsFileFolder(newFileNodes.get(newFileNodes.size() - 1).getBaseDirIndex());
-      LOGGER.info(
-          "The filenode processor {} will recovery the bufferwrite processor, "
-              + "the bufferwrite file is {}",
-          getProcessorName(), fileNames[fileNames.length - 1]);
+      if (LOGGER.isInfoEnabled()) {
+        LOGGER.info(
+            "The filenode processor {} will recovery the bufferwrite processor, "
+                + "the bufferwrite file is {}",
+            getProcessorName(), fileNames[fileNames.length - 1]);
+      }
+
       try {
         bufferWriteProcessor = new BufferWriteProcessor(baseDir, getProcessorName(),
-            fileNames[fileNames.length - 1], parameters, fileSchema);
+            fileNames[fileNames.length - 1], parameters, versionController, fileSchema);
       } catch (BufferWriteProcessorException e) {
         // unlock
         writeUnlock();
@@ -448,7 +477,8 @@ public class FileNodeProcessor extends Processor implements IStatistic {
     parameters.put(FileNodeConstants.OVERFLOW_FLUSH_ACTION, overflowFlushAction);
     parameters.put(FileNodeConstants.FILENODE_PROCESSOR_FLUSH_ACTION, flushFileNodeProcessorAction);
     try {
-      overflowProcessor = new OverflowProcessor(getProcessorName(), parameters, fileSchema);
+      overflowProcessor = new OverflowProcessor(getProcessorName(), parameters, fileSchema,
+          versionController);
     } catch (IOException e) {
       writeUnlock();
       LOGGER.error("The filenode processor {} failed to recovery the overflow processor.",
@@ -462,16 +492,14 @@ public class FileNodeProcessor extends Processor implements IStatistic {
       // re-merge all file
       // if bufferwrite processor is not null, and close
       LOGGER.info("The filenode processor {} is recovering, the filenode status is {}.",
-          getProcessorName(),
-          isMerging);
+          getProcessorName(), isMerging);
       merge();
     } else if (isMerging == FileNodeProcessorStatus.WAITING) {
       // unlock
       LOGGER.info("The filenode processor {} is recovering, the filenode status is {}.",
-          getProcessorName(),
-          isMerging);
+          getProcessorName(), isMerging);
       writeUnlock();
-      switchWaitingToWorkingv2(newFileNodes);
+      switchWaitingToWorking();
     } else {
       writeUnlock();
     }
@@ -485,18 +513,19 @@ public class FileNodeProcessor extends Processor implements IStatistic {
   public BufferWriteProcessor getBufferWriteProcessor(String processorName, long insertTime)
       throws FileNodeProcessorException {
     if (bufferWriteProcessor == null) {
-      Map<String, Action> parameters = new HashMap<>();
-      parameters.put(FileNodeConstants.BUFFERWRITE_FLUSH_ACTION, bufferwriteFlushAction);
-      parameters.put(FileNodeConstants.BUFFERWRITE_CLOSE_ACTION, bufferwriteCloseAction);
-      parameters
+      Map<String, Action> params = new HashMap<>();
+      params.put(FileNodeConstants.BUFFERWRITE_FLUSH_ACTION, bufferwriteFlushAction);
+      params.put(FileNodeConstants.BUFFERWRITE_CLOSE_ACTION, bufferwriteCloseAction);
+      params
           .put(FileNodeConstants.FILENODE_PROCESSOR_FLUSH_ACTION, flushFileNodeProcessorAction);
       String baseDir = directories.getNextFolderForTsfile();
       LOGGER.info("Allocate folder {} for the new bufferwrite processor.", baseDir);
       // construct processor or restore
       try {
         bufferWriteProcessor = new BufferWriteProcessor(baseDir, processorName,
-            insertTime + FileNodeConstants.BUFFERWRITE_FILE_SEPARATOR + System.currentTimeMillis(),
-            parameters, fileSchema);
+            insertTime + FileNodeConstants.BUFFERWRITE_FILE_SEPARATOR
+                + System.currentTimeMillis(),
+            params, versionController, fileSchema);
       } catch (BufferWriteProcessorException e) {
         LOGGER.error("The filenode processor {} failed to get the bufferwrite processor.",
             processorName, e);
@@ -522,12 +551,13 @@ public class FileNodeProcessor extends Processor implements IStatistic {
    */
   public OverflowProcessor getOverflowProcessor(String processorName) throws IOException {
     if (overflowProcessor == null) {
-      Map<String, Action> parameters = new HashMap<>();
+      Map<String, Action> params = new HashMap<>();
       // construct processor or restore
-      parameters.put(FileNodeConstants.OVERFLOW_FLUSH_ACTION, overflowFlushAction);
-      parameters
+      params.put(FileNodeConstants.OVERFLOW_FLUSH_ACTION, overflowFlushAction);
+      params
           .put(FileNodeConstants.FILENODE_PROCESSOR_FLUSH_ACTION, flushFileNodeProcessorAction);
-      overflowProcessor = new OverflowProcessor(processorName, parameters, fileSchema);
+      overflowProcessor = new OverflowProcessor(processorName, params, fileSchema,
+          versionController);
     }
     return overflowProcessor;
   }
@@ -595,21 +625,25 @@ public class FileNodeProcessor extends Processor implements IStatistic {
    * For insert overflow.
    */
   public void changeTypeToChanged(String deviceId, long timestamp) {
-    if (!invertedindexOfFiles.containsKey(deviceId)) {
+    if (!invertedIndexOfFiles.containsKey(deviceId)) {
       LOGGER.warn(
-          "Can not find any tsfile which will be overflowed in the filenode processor {}, "
+          WARN_NO_SUCH_OVERFLOWED_FILE
               + "the data is [device:{},time:{}]",
           getProcessorName(), deviceId, timestamp);
       emptyIntervalFileNode.setStartTime(deviceId, 0L);
       emptyIntervalFileNode.setEndTime(deviceId, getLastUpdateTime(deviceId));
       emptyIntervalFileNode.changeTypeToChanged(isMerging);
     } else {
-      List<IntervalFileNode> temp = invertedindexOfFiles.get(deviceId);
+      List<IntervalFileNode> temp = invertedIndexOfFiles.get(deviceId);
       int index = searchIndexNodeByTimestamp(deviceId, timestamp, temp);
-      temp.get(index).changeTypeToChanged(isMerging);
-      if (isMerging == FileNodeProcessorStatus.MERGING_WRITE) {
-        temp.get(index).addMergeChanged(deviceId);
-      }
+      changeTypeToChanged(temp.get(index), deviceId);
+    }
+  }
+
+  private void changeTypeToChanged(IntervalFileNode fileNode, String deviceId) {
+    fileNode.changeTypeToChanged(isMerging);
+    if (isMerging == FileNodeProcessorStatus.MERGING_WRITE) {
+      fileNode.addMergeChanged(deviceId);
     }
   }
 
@@ -617,23 +651,20 @@ public class FileNodeProcessor extends Processor implements IStatistic {
    * For update overflow.
    */
   public void changeTypeToChanged(String deviceId, long startTime, long endTime) {
-    if (!invertedindexOfFiles.containsKey(deviceId)) {
+    if (!invertedIndexOfFiles.containsKey(deviceId)) {
       LOGGER.warn(
-          "Can not find any tsfile which will be overflowed in the filenode processor {}, "
+          WARN_NO_SUCH_OVERFLOWED_FILE
               + "the data is [device:{}, start time:{}, end time:{}]",
           getProcessorName(), deviceId, startTime, endTime);
       emptyIntervalFileNode.setStartTime(deviceId, 0L);
       emptyIntervalFileNode.setEndTime(deviceId, getLastUpdateTime(deviceId));
       emptyIntervalFileNode.changeTypeToChanged(isMerging);
     } else {
-      List<IntervalFileNode> temp = invertedindexOfFiles.get(deviceId);
+      List<IntervalFileNode> temp = invertedIndexOfFiles.get(deviceId);
       int left = searchIndexNodeByTimestamp(deviceId, startTime, temp);
       int right = searchIndexNodeByTimestamp(deviceId, endTime, temp);
       for (int i = left; i <= right; i++) {
-        temp.get(i).changeTypeToChanged(isMerging);
-        if (isMerging == FileNodeProcessorStatus.MERGING_WRITE) {
-          temp.get(i).addMergeChanged(deviceId);
-        }
+        changeTypeToChanged(temp.get(i), deviceId);
       }
     }
   }
@@ -642,16 +673,16 @@ public class FileNodeProcessor extends Processor implements IStatistic {
    * For delete overflow.
    */
   public void changeTypeToChangedForDelete(String deviceId, long timestamp) {
-    if (!invertedindexOfFiles.containsKey(deviceId)) {
+    if (!invertedIndexOfFiles.containsKey(deviceId)) {
       LOGGER.warn(
-          "Can not find any tsfile which will be overflowed in the filenode processor {}, "
+          WARN_NO_SUCH_OVERFLOWED_FILE
               + "the data is [device:{}, delete time:{}]",
           getProcessorName(), deviceId, timestamp);
       emptyIntervalFileNode.setStartTime(deviceId, 0L);
       emptyIntervalFileNode.setEndTime(deviceId, getLastUpdateTime(deviceId));
       emptyIntervalFileNode.changeTypeToChanged(isMerging);
     } else {
-      List<IntervalFileNode> temp = invertedindexOfFiles.get(deviceId);
+      List<IntervalFileNode> temp = invertedIndexOfFiles.get(deviceId);
       int index = searchIndexNodeByTimestamp(deviceId, timestamp, temp);
       for (int i = 0; i <= index; i++) {
         temp.get(i).changeTypeToChanged(isMerging);
@@ -695,14 +726,14 @@ public class FileNodeProcessor extends Processor implements IStatistic {
   }
 
   /**
-   * remove multiple pass lock.
+   * remove multiple pass lock. TODO: use the return value or remove it.
    */
   public boolean removeMultiPassLock(int token) {
     if (newMultiPassTokenSet.contains(token)) {
       newMultiPassLock.readLock().unlock();
       newMultiPassTokenSet.remove(token);
-      LOGGER
-          .debug("Remove multi token:{}, nspath:{}, new set:{}, lock:{}", token, getProcessorName(),
+      LOGGER.debug("Remove multi token:{}, nspath:{}, new set:{}, lock:{}", token,
+              getProcessorName(),
               newMultiPassTokenSet, newMultiPassLock);
       return true;
     } else if (oldMultiPassTokenSet != null && oldMultiPassTokenSet.contains(token)) {
@@ -724,10 +755,10 @@ public class FileNodeProcessor extends Processor implements IStatistic {
    * query data.
    */
   public <T extends Comparable<T>> QueryDataSource query(String deviceId, String measurementId,
-      Filter filter)
+      QueryContext context)
       throws FileNodeProcessorException {
     // query overflow data
-    TSDataType dataType = null;
+    TSDataType dataType;
     try {
       dataType = mManager.getSeriesType(deviceId + "." + measurementId);
     } catch (PathErrorException e) {
@@ -735,9 +766,9 @@ public class FileNodeProcessor extends Processor implements IStatistic {
     }
     OverflowSeriesDataSource overflowSeriesDataSource;
     try {
-      overflowSeriesDataSource = overflowProcessor.query(deviceId, measurementId, filter, dataType);
+      overflowSeriesDataSource = overflowProcessor.query(deviceId, measurementId, dataType,
+          context);
     } catch (IOException e) {
-      e.printStackTrace();
       throw new FileNodeProcessorException(e);
     }
     // tsfile dataØØ
@@ -748,8 +779,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
         bufferwriteDataInFiles.add(intervalFileNode.backUp());
       }
     }
-    Pair<ReadOnlyMemChunk, List<ChunkMetaData>> bufferwritedata
-        = new Pair<ReadOnlyMemChunk, List<ChunkMetaData>>(null, null);
+    Pair<ReadOnlyMemChunk, List<ChunkMetaData>> bufferwritedata = new Pair<>(null, null);
     // bufferwrite data
     UnsealedTsFile unsealedTsFile = null;
 
@@ -769,6 +799,19 @@ public class FileNodeProcessor extends Processor implements IStatistic {
       }
       bufferwritedata = bufferWriteProcessor
           .queryBufferWriteData(deviceId, measurementId, dataType);
+
+      try {
+        List<Modification> pathModifications = context.getPathModifications(
+            currentIntervalFileNode.getModFile(), deviceId
+                + IoTDBConstant.PATH_SEPARATOR + measurementId
+        );
+        if (!pathModifications.isEmpty()) {
+          QueryUtils.modifyChunkMetaData(bufferwritedata.right, pathModifications);
+        }
+      } catch (IOException e) {
+        throw new FileNodeProcessorException(e);
+      }
+
       unsealedTsFile.setTimeSeriesChunkMetaDatas(bufferwritedata.right);
     }
     GlobalSortedSeriesDataSource globalSortedSeriesDataSource = new GlobalSortedSeriesDataSource(
@@ -799,9 +842,14 @@ public class FileNodeProcessor extends Processor implements IStatistic {
       }
       if (targetFile.exists()) {
         throw new FileNodeProcessorException(
-            String.format("The appended target file %s already exists.", appendFile.getFilePath()));
+            String.format("The appended target file %s already exists.",
+                appendFile.getFilePath()));
       }
-      originFile.renameTo(targetFile);
+      if (!originFile.renameTo(targetFile)) {
+        LOGGER.warn("File renaming failed when appending new file. Origin: {}, target: {}",
+            originFile.getPath(),
+            targetFile.getPath());
+      }
       // append the new tsfile
       this.newFileNodes.add(appendFile);
       // update the lastUpdateTime
@@ -815,7 +863,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
       addAllFileIntoIndex(newFileNodes);
     } catch (Exception e) {
       LOGGER.error("Failed to append the tsfile {} to filenode processor {}.", appendFile,
-          getProcessorName(), e);
+          getProcessorName());
       throw new FileNodeProcessorException(e);
     }
   }
@@ -830,29 +878,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
     List<String> overlapFiles = new ArrayList<>();
     try {
       for (IntervalFileNode intervalFileNode : newFileNodes) {
-        for (Entry<String, Long> entry : appendFile.getStartTimeMap().entrySet()) {
-          if (!intervalFileNode.getStartTimeMap().containsKey(entry.getKey())) {
-            continue;
-          }
-          if (intervalFileNode.getEndTime(entry.getKey()) >= entry.getValue()
-              && intervalFileNode.getStartTime(entry.getKey()) <= appendFile
-              .getEndTime(entry.getKey())) {
-            String relativeFilePath = "postback" + File.separator + uuid + File.separator + "backup"
-                + File.separator + intervalFileNode.getRelativePath();
-            File newFile = new File(
-                Directories.getInstance().getTsFileFolder(intervalFileNode.getBaseDirIndex()),
-                relativeFilePath);
-            if (!newFile.getParentFile().exists()) {
-              newFile.getParentFile().mkdirs();
-            }
-            java.nio.file.Path link = FileSystems.getDefault().getPath(newFile.getPath());
-            java.nio.file.Path target = FileSystems.getDefault()
-                .getPath(intervalFileNode.getFilePath());
-            Files.createLink(link, target);
-            overlapFiles.add(newFile.getPath());
-            break;
-          }
-        }
+        getOverlapFiles(appendFile, intervalFileNode, uuid, overlapFiles);
       }
     } catch (IOException e) {
       LOGGER.error("Failed to get overlap tsfiles which conflict with the appendFile.");
@@ -861,47 +887,56 @@ public class FileNodeProcessor extends Processor implements IStatistic {
     return overlapFiles;
   }
 
+  private void getOverlapFiles(IntervalFileNode appendFile, IntervalFileNode intervalFileNode,
+      String uuid, List<String> overlapFiles) throws IOException {
+    for (Entry<String, Long> entry : appendFile.getStartTimeMap().entrySet()) {
+      if (intervalFileNode.getStartTimeMap().containsKey(entry.getKey()) &&
+          intervalFileNode.getEndTime(entry.getKey()) >= entry.getValue()
+          && intervalFileNode.getStartTime(entry.getKey()) <= appendFile
+          .getEndTime(entry.getKey())) {
+        String relativeFilePath = "postback" + File.separator + uuid + File.separator + "backup"
+            + File.separator + intervalFileNode.getRelativePath();
+        File newFile = new File(
+            Directories.getInstance().getTsFileFolder(intervalFileNode.getBaseDirIndex()),
+            relativeFilePath);
+        if (!newFile.getParentFile().exists()) {
+          newFile.getParentFile().mkdirs();
+        }
+        java.nio.file.Path link = FileSystems.getDefault().getPath(newFile.getPath());
+        java.nio.file.Path target = FileSystems.getDefault()
+            .getPath(intervalFileNode.getFilePath());
+        Files.createLink(link, target);
+        overlapFiles.add(newFile.getPath());
+        break;
+      }
+    }
+  }
+
   /**
    * add time series.
    */
-  public void addTimeSeries(String measurementToString, String dataType, String encoding,
-      String[] encodingArgs) {
+  public void addTimeSeries(String measurementToString, String dataType, String encoding) {
     ColumnSchema col = new ColumnSchema(measurementToString, TSDataType.valueOf(dataType),
         TSEncoding.valueOf(encoding));
-    JSONObject measurement = constrcutMeasurement(col);
+    JSONObject measurement = FileSchemaUtils.constructJsonColumnSchema(col);
     fileSchema.registerMeasurement(JsonConverter.convertJsonToMeasurementSchema(measurement));
-  }
-
-  private JSONObject constrcutMeasurement(ColumnSchema col) {
-    JSONObject measurement = new JSONObject();
-    measurement.put(JsonFormatConstant.MEASUREMENT_UID, col.name);
-    measurement.put(JsonFormatConstant.DATA_TYPE, col.dataType.toString());
-    measurement.put(JsonFormatConstant.MEASUREMENT_ENCODING, col.encoding.toString());
-    for (Entry<String, String> entry : col.getArgsMap().entrySet()) {
-      if (JsonFormatConstant.ENUM_VALUES.equals(entry.getKey())) {
-        String[] valueArray = entry.getValue().split(",");
-        measurement.put(JsonFormatConstant.ENUM_VALUES, new JSONArray(valueArray));
-      } else {
-        measurement.put(entry.getKey(), entry.getValue().toString());
-      }
-    }
-    return measurement;
   }
 
   /**
    * submit the merge task to the <code>MergePool</code>.
    *
    * @return null -can't submit the merge task, because this filenode is not overflowed or it is
-   * merging now. Future<?> - submit the merge task successfully.
+   * merging now. Future - submit the merge task successfully.
    */
-  public Future<?> submitToMerge() {
+  Future submitToMerge() {
+    ZoneId zoneId = IoTDBDescriptor.getInstance().getConfig().getZoneID();
     if (lastMergeTime > 0) {
       long thisMergeTime = System.currentTimeMillis();
       long mergeTimeInterval = thisMergeTime - lastMergeTime;
-      ZonedDateTime lastDateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(lastMergeTime),
-          IoTDBDescriptor.getInstance().getConfig().getZoneID());
-      ZonedDateTime thisDateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(thisMergeTime),
-          IoTDBDescriptor.getInstance().getConfig().getZoneID());
+      ZonedDateTime lastDateTime = ofInstant(Instant.ofEpochMilli(lastMergeTime),
+          zoneId);
+      ZonedDateTime thisDateTime = ofInstant(Instant.ofEpochMilli(thisMergeTime),
+          zoneId);
       LOGGER.info(
           "The filenode {} last merge time is {}, this merge time is {}, "
               + "merge time interval is {}s",
@@ -912,12 +947,14 @@ public class FileNodeProcessor extends Processor implements IStatistic {
     if (overflowProcessor != null) {
       if (overflowProcessor.getFileSize() < IoTDBDescriptor.getInstance()
           .getConfig().overflowFileSizeThreshold) {
-        LOGGER.info(
-            "Skip this merge taks submission, because the size{} of overflow processor {} "
-                + "does not reaches the threshold {}.",
-            MemUtils.bytesCntToStr(overflowProcessor.getFileSize()), getProcessorName(),
-            MemUtils.bytesCntToStr(
-                IoTDBDescriptor.getInstance().getConfig().overflowFileSizeThreshold));
+        if (LOGGER.isInfoEnabled()) {
+          LOGGER.info(
+              "Skip this merge taks submission, because the size{} of overflow processor {} "
+                  + "does not reaches the threshold {}.",
+              MemUtils.bytesCntToStr(overflowProcessor.getFileSize()), getProcessorName(),
+              MemUtils.bytesCntToStr(
+                  IoTDBDescriptor.getInstance().getConfig().overflowFileSizeThreshold));
+        }
         return null;
       }
     } else {
@@ -929,34 +966,14 @@ public class FileNodeProcessor extends Processor implements IStatistic {
     }
     if (isOverflowed && isMerging == FileNodeProcessorStatus.NONE) {
       Runnable mergeThread;
-      mergeThread = () -> {
-        try {
-          long mergeStartTime = System.currentTimeMillis();
-          writeLock();
-          merge();
-          long mergeEndTime = System.currentTimeMillis();
-          ZonedDateTime startDateTime = ZonedDateTime
-              .ofInstant(Instant.ofEpochMilli(mergeStartTime),
-                  IoTDBDescriptor.getInstance().getConfig().getZoneID());
-          ZonedDateTime endDateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(mergeEndTime),
-              IoTDBDescriptor.getInstance().getConfig().getZoneID());
-          long intervalTime = mergeEndTime - mergeStartTime;
-          LOGGER.info(
-              "The filenode processor {} merge start time is {}, "
-                  + "merge end time is {}, merge consumes {}ms.",
-              getProcessorName(), startDateTime, endDateTime, intervalTime);
-        } catch (FileNodeProcessorException e) {
-          LOGGER.error("The filenode processor {} encountered an error when merging.",
-              getProcessorName(), e);
-          throw new ErrorDebugException(e);
-        }
-      };
+      mergeThread = new MergeRunnale();
       LOGGER.info("Submit the merge task, the merge filenode is {}", getProcessorName());
       return MergeManager.getInstance().submit(mergeThread);
     } else {
       if (!isOverflowed) {
         LOGGER.info(
-            "Skip this merge taks submission, because the filenode processor {} is not overflowed.",
+            "Skip this merge taks submission, because the filenode processor {} is not " +
+                "overflowed.",
             getProcessorName());
       } else {
         LOGGER.warn(
@@ -980,24 +997,27 @@ public class FileNodeProcessor extends Processor implements IStatistic {
       getOverflowProcessor(getProcessorName());
       // must close the overflow processor
       while (!getOverflowProcessor().canBeClosed()) {
-        try {
-          LOGGER.info(
-              "The filenode processor {} prepares for merge, the overflow {} can't be closed, "
-                  + "wait 100ms,",
-              getProcessorName(), getProcessorName());
-          TimeUnit.MICROSECONDS.sleep(100);
-        } catch (InterruptedException e) {
-          e.printStackTrace();
-        }
+        waitForClosing();
       }
       LOGGER.info("The filenode processor {} prepares for merge, closes the overflow processor",
           getProcessorName());
       getOverflowProcessor().close();
     } catch (FileNodeProcessorException | OverflowProcessorException | IOException e) {
-      e.printStackTrace();
-      LOGGER.error("The filenode processor {} prepares for merge error.", getProcessorName(), e);
+      LOGGER.error("The filenode processor {} prepares for merge error.", getProcessorName());
       writeUnlock();
       throw new ErrorDebugException(e);
+    }
+  }
+
+  private void waitForClosing() {
+    try {
+      LOGGER.info(
+          "The filenode processor {} prepares for merge, the overflow {} can't be closed, "
+              + "wait 100ms,",
+          getProcessorName(), getProcessorName());
+      TimeUnit.MICROSECONDS.sleep(100);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
     }
   }
 
@@ -1005,54 +1025,20 @@ public class FileNodeProcessor extends Processor implements IStatistic {
    * Merge this storage group, merge the tsfile data with overflow data.
    */
   public void merge() throws FileNodeProcessorException {
-    //
     // close bufferwrite and overflow, prepare for merge
-    //
     LOGGER.info("The filenode processor {} begins to merge.", getProcessorName());
     prepareForMerge();
-    //
     // change status from overflowed to no overflowed
-    //
     isOverflowed = false;
-    //
     // change status from work to merge
-    //
     isMerging = FileNodeProcessorStatus.MERGING_WRITE;
-    //
     // check the empty file
-    //
     Map<String, Long> startTimeMap = emptyIntervalFileNode.getStartTimeMap();
-    if (emptyIntervalFileNode.overflowChangeType != OverflowChangeType.NO_CHANGE) {
-      Iterator<Entry<String, Long>> iterator = emptyIntervalFileNode.getEndTimeMap().entrySet()
-          .iterator();
-      while (iterator.hasNext()) {
-        Entry<String, Long> entry = iterator.next();
-        String deviceId = entry.getKey();
-        if (invertedindexOfFiles.containsKey(deviceId)) {
-          invertedindexOfFiles.get(deviceId).get(0).overflowChangeType = OverflowChangeType.CHANGED;
-          startTimeMap.remove(deviceId);
-          iterator.remove();
-        }
-      }
-      if (emptyIntervalFileNode.checkEmpty()) {
-        emptyIntervalFileNode.clear();
-      } else {
-        if (!newFileNodes.isEmpty()) {
-          IntervalFileNode first = newFileNodes.get(0);
-          for (String deviceId : emptyIntervalFileNode.getStartTimeMap().keySet()) {
-            first.setStartTime(deviceId, emptyIntervalFileNode.getStartTime(deviceId));
-            first.setEndTime(deviceId, emptyIntervalFileNode.getEndTime(deviceId));
-            first.overflowChangeType = OverflowChangeType.CHANGED;
-          }
-          emptyIntervalFileNode.clear();
-        } else {
-          emptyIntervalFileNode.overflowChangeType = OverflowChangeType.CHANGED;
-        }
-      }
-    }
+    mergeCheckEmptyFile(startTimeMap);
+
     for (IntervalFileNode intervalFileNode : newFileNodes) {
-      if (intervalFileNode.overflowChangeType != OverflowChangeType.NO_CHANGE) {
-        intervalFileNode.overflowChangeType = OverflowChangeType.CHANGED;
+      if (intervalFileNode.getOverflowChangeType() != OverflowChangeType.NO_CHANGE) {
+        intervalFileNode.setOverflowChangeType(OverflowChangeType.CHANGED);
       }
     }
 
@@ -1073,14 +1059,14 @@ public class FileNodeProcessor extends Processor implements IStatistic {
       }
     }
     // add numOfMergeFile to control the number of the merge file
-    List<IntervalFileNode> backupIntervalFiles = new ArrayList<>();
+    List<IntervalFileNode> backupIntervalFiles;
 
-    backupIntervalFiles = switchFileNodeToMergev2();
+    backupIntervalFiles = switchFileNodeToMerge();
     //
     // clear empty file
     //
     boolean needEmtpy = false;
-    if (emptyIntervalFileNode.overflowChangeType != OverflowChangeType.NO_CHANGE) {
+    if (emptyIntervalFileNode.getOverflowChangeType() != OverflowChangeType.NO_CHANGE) {
       needEmtpy = true;
     }
     emptyIntervalFileNode.clear();
@@ -1102,35 +1088,34 @@ public class FileNodeProcessor extends Processor implements IStatistic {
     int allNeedMergeFiles = backupIntervalFiles.size();
     for (IntervalFileNode backupIntervalFile : backupIntervalFiles) {
       numOfMergeFiles++;
-      if (backupIntervalFile.overflowChangeType == OverflowChangeType.CHANGED) {
+      if (backupIntervalFile.getOverflowChangeType() == OverflowChangeType.CHANGED) {
         // query data and merge
         String filePathBeforeMerge = backupIntervalFile.getRelativePath();
         try {
           LOGGER.info(
-              "The filenode processor {} begins merging the {}/{} tsfile[{}] with overflow file, "
-                  + "the process is {}%",
+              "The filenode processor {} begins merging the {}/{} tsfile[{}] with "
+                  + "overflow file, the process is {}%",
               getProcessorName(), numOfMergeFiles, allNeedMergeFiles, filePathBeforeMerge,
               (int) (((numOfMergeFiles - 1) / (float) allNeedMergeFiles) * 100));
           long startTime = System.currentTimeMillis();
           String newFile = queryAndWriteDataForMerge(backupIntervalFile);
           long endTime = System.currentTimeMillis();
           long timeConsume = endTime - startTime;
-          ZonedDateTime startDateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(startTime),
-              IoTDBDescriptor.getInstance().getConfig().getZoneID());
-          ZonedDateTime endDateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(endTime),
-              IoTDBDescriptor.getInstance().getConfig().getZoneID());
+          ZoneId zoneId = IoTDBDescriptor.getInstance().getConfig().getZoneID();
           LOGGER.info(
               "The fileNode processor {} has merged the {}/{} tsfile[{}->{}] over, "
-                  + "start time of merge is {}, end time of merge is {}, time consumption is {}ms,"
+                  + "start time of merge is {}, end time of merge is {}, "
+                  + "time consumption is {}ms,"
                   + " the process is {}%",
-              getProcessorName(), numOfMergeFiles, allNeedMergeFiles, filePathBeforeMerge, newFile,
-              startDateTime, endDateTime, timeConsume,
-              (int) (numOfMergeFiles) / (float) allNeedMergeFiles * 100);
-        } catch (IOException | WriteProcessException | PathErrorException e) {
+              getProcessorName(), numOfMergeFiles, allNeedMergeFiles, filePathBeforeMerge,
+              newFile, ofInstant(Instant.ofEpochMilli(startTime),
+                  zoneId), ofInstant(Instant.ofEpochMilli(endTime), zoneId), timeConsume,
+              numOfMergeFiles / (float) allNeedMergeFiles * 100);
+        } catch (IOException | PathErrorException e) {
           LOGGER.error("Merge: query and write data error.", e);
           throw new FileNodeProcessorException(e);
         }
-      } else if (backupIntervalFile.overflowChangeType == OverflowChangeType.MERGING_CHANGE) {
+      } else if (backupIntervalFile.getOverflowChangeType() == OverflowChangeType.MERGING_CHANGE) {
         LOGGER.error("The overflowChangeType of backupIntervalFile must not be {}",
             OverflowChangeType.MERGING_CHANGE);
         // handle this error, throw one runtime exception
@@ -1139,136 +1124,105 @@ public class FileNodeProcessor extends Processor implements IStatistic {
                 + OverflowChangeType.MERGING_CHANGE);
       } else {
         LOGGER.debug(
-            "The filenode processor {} is merging, the interval file {} doesn't need to be merged.",
+            "The filenode processor {} is merging, the interval file {} doesn't "
+                + "need to be merged.",
             getProcessorName(), backupIntervalFile.getRelativePath());
       }
     }
 
-    // FileReaderManager.getInstance().
-    // removeMappedByteBuffer(overflowProcessor.getWorkResource().getInsertFilePath());
-    //
     // change status from merge to wait
-    //
-    switchMergeToWaitingv2(backupIntervalFiles, needEmtpy);
+    switchMergeToWaiting(backupIntervalFiles, needEmtpy);
 
-    //
-    // merge index begin
-    //
-    // mergeIndex();
-    //
-    // merge index end
-    //
-
-    //
     // change status from wait to work
-    //
-    switchWaitingToWorkingv2(backupIntervalFiles);
+    switchWaitingToWorking();
   }
 
-  private List<IntervalFileNode> switchFileNodeToMergev2() throws FileNodeProcessorException {
+  private void mergeCheckEmptyFile(Map<String, Long> startTimeMap) {
+    if (emptyIntervalFileNode.getOverflowChangeType() == OverflowChangeType.NO_CHANGE) {
+      return;
+    }
+    Iterator<Entry<String, Long>> iterator = emptyIntervalFileNode.getEndTimeMap().entrySet()
+        .iterator();
+    while (iterator.hasNext()) {
+      Entry<String, Long> entry = iterator.next();
+      String deviceId = entry.getKey();
+      if (invertedIndexOfFiles.containsKey(deviceId)) {
+        invertedIndexOfFiles.get(deviceId).get(0).setOverflowChangeType(OverflowChangeType.CHANGED);
+        startTimeMap.remove(deviceId);
+        iterator.remove();
+      }
+    }
+    if (emptyIntervalFileNode.checkEmpty()) {
+      emptyIntervalFileNode.clear();
+    } else {
+      if (!newFileNodes.isEmpty()) {
+        IntervalFileNode first = newFileNodes.get(0);
+        for (String deviceId : emptyIntervalFileNode.getStartTimeMap().keySet()) {
+          first.setStartTime(deviceId, emptyIntervalFileNode.getStartTime(deviceId));
+          first.setEndTime(deviceId, emptyIntervalFileNode.getEndTime(deviceId));
+          first.setOverflowChangeType(OverflowChangeType.CHANGED);
+        }
+        emptyIntervalFileNode.clear();
+      } else {
+        emptyIntervalFileNode.setOverflowChangeType(OverflowChangeType.CHANGED);
+      }
+    }
+  }
+
+  private List<IntervalFileNode> switchFileNodeToMerge() throws FileNodeProcessorException {
     List<IntervalFileNode> result = new ArrayList<>();
-    if (emptyIntervalFileNode.overflowChangeType != OverflowChangeType.NO_CHANGE) {
+    if (emptyIntervalFileNode.getOverflowChangeType() != OverflowChangeType.NO_CHANGE) {
       // add empty
       result.add(emptyIntervalFileNode.backUp());
       if (!newFileNodes.isEmpty()) {
         throw new FileNodeProcessorException(
             String.format("The status of empty file is %s, but the new file list is not empty",
-                emptyIntervalFileNode.overflowChangeType));
+                emptyIntervalFileNode.getOverflowChangeType()));
       }
       return result;
     }
-    if (!newFileNodes.isEmpty()) {
-      for (IntervalFileNode intervalFileNode : newFileNodes) {
-        if (intervalFileNode.overflowChangeType == OverflowChangeType.NO_CHANGE) {
-          result.add(intervalFileNode.backUp());
-        } else {
-          Map<String, Long> startTimeMap = new HashMap<>();
-          Map<String, Long> endTimeMap = new HashMap<>();
-          for (String deviceId : intervalFileNode.getEndTimeMap().keySet()) {
-            List<IntervalFileNode> temp = invertedindexOfFiles.get(deviceId);
-            int index = temp.indexOf(intervalFileNode);
-            int size = temp.size();
-            // start time
-            if (index == 0) {
-              startTimeMap.put(deviceId, 0L);
-            } else {
-              startTimeMap.put(deviceId, intervalFileNode.getStartTime(deviceId));
-            }
-            // end time
-            if (index < size - 1) {
-              endTimeMap.put(deviceId, temp.get(index + 1).getStartTime(deviceId) - 1);
-            } else {
-              endTimeMap.put(deviceId, intervalFileNode.getEndTime(deviceId));
-            }
-          }
-          IntervalFileNode node = new IntervalFileNode(startTimeMap, endTimeMap,
-              intervalFileNode.overflowChangeType, intervalFileNode.getBaseDirIndex(),
-              intervalFileNode.getRelativePath());
-          result.add(node);
-        }
-      }
-    } else {
+    if (newFileNodes.isEmpty()) {
       LOGGER.error("No file was changed when merging, the filenode is {}", getProcessorName());
       throw new FileNodeProcessorException(
           "No file was changed when merging, the filenode is " + getProcessorName());
     }
+    for (IntervalFileNode intervalFileNode : newFileNodes) {
+      updateFileNode(intervalFileNode, result);
+    }
     return result;
   }
 
-  /*
-   * private List<DataFileInfo> getDataFileInfoForIndex(Path path, List<IntervalFileNode>
-   *   sourceFileNodes) { String
-   * deviceId = path.getdeviceToString(); List<DataFileInfo> dataFileInfos = new ArrayList<>();
-   * for (IntervalFileNode
-   * intervalFileNode : sourceFileNodes) { if (intervalFileNode.isClosed()) { if
-   * (intervalFileNode.getStartTime(deviceId) != -1) { DataFileInfo dataFileInfo = new
-   * DataFileInfo(intervalFileNode.getStartTime(deviceId), intervalFileNode.getEndTime(deviceId),
-   * intervalFileNode.getFilePath()); dataFileInfos.add(dataFileInfo); } } } return dataFileInfos; }
-   */
+  private void updateFileNode(IntervalFileNode intervalFileNode, List<IntervalFileNode> result) {
+    if (intervalFileNode.getOverflowChangeType() == OverflowChangeType.NO_CHANGE) {
+      result.add(intervalFileNode.backUp());
+    } else {
+      Map<String, Long> startTimeMap = new HashMap<>();
+      Map<String, Long> endTimeMap = new HashMap<>();
+      for (String deviceId : intervalFileNode.getEndTimeMap().keySet()) {
+        List<IntervalFileNode> temp = invertedIndexOfFiles.get(deviceId);
+        int index = temp.indexOf(intervalFileNode);
+        int size = temp.size();
+        // start time
+        if (index == 0) {
+          startTimeMap.put(deviceId, 0L);
+        } else {
+          startTimeMap.put(deviceId, intervalFileNode.getStartTime(deviceId));
+        }
+        // end time
+        if (index < size - 1) {
+          endTimeMap.put(deviceId, temp.get(index + 1).getStartTime(deviceId) - 1);
+        } else {
+          endTimeMap.put(deviceId, intervalFileNode.getEndTime(deviceId));
+        }
+      }
+      IntervalFileNode node = new IntervalFileNode(startTimeMap, endTimeMap,
+          intervalFileNode.getOverflowChangeType(), intervalFileNode.getBaseDirIndex(),
+          intervalFileNode.getRelativePath());
+      result.add(node);
+    }
+  }
 
-  /*
-   * private void mergeIndex() throws FileNodeProcessorException { try { Map<String,
-   * Set<IndexType>> allIndexSeries =
-   * mManager.getAllIndexPaths(getProcessorName()); if (!allIndexSeries.isEmpty()) {
-   * LOGGER.info("merge all file and modify index file, the nameSpacePath is {},
-   * the index seriesPath is {}", getProcessorName(), allIndexSeries); for (Entry<String,
-   * Set<IndexType>> entry : allIndexSeries.entrySet()) {
-   * String series = entry.getKey(); Path path = new Path(series); List<DataFileInfo>
-   *   dataFileInfos =
-   * getDataFileInfoForIndex(path, newFileNodes); if (!dataFileInfos.isEmpty()) { try
-   * { for (IndexType indexType :
-   * entry.getValue()) IndexManager.getIndexInstance(indexType).build(path,
-   * dataFileInfos, null); } catch
-   * (IndexManagerException e) { e.printStackTrace(); throw new FileNodeProcessorException
-   * (e.getMessage()); } } } } }
-   * catch (PathErrorException e) { LOGGER.error("Failed to find all fileList to be merged.
-   * Because" +
-   * e.getMessage()); throw new FileNodeProcessorException(e.getMessage()); } }
-   */
-
-  /*
-   * private void switchMergeIndex() throws FileNodeProcessorException { try { Map<String,
-   * Set<IndexType>>
-   * allIndexSeries = mManager.getAllIndexPaths(getProcessorName());
-   * if (!allIndexSeries.isEmpty()) {
-   * LOGGER.info("mergeswith all file and modify index file, the nameSpacePath is {},
-   * the index seriesPath is {}",
-   * getProcessorName(), allIndexSeries); for (Entry<String, Set<IndexType>> entry :
-   * allIndexSeries.entrySet()) {
-   * String series = entry.getKey(); Path path = new Path(series); List<DataFileInfo>
-   *   dataFileInfos =
-   * getDataFileInfoForIndex(path, newFileNodes); if (!dataFileInfos.isEmpty()) { try
-   * { for (IndexType indexType :
-   * entry.getValue()) IndexManager.getIndexInstance(indexType).mergeSwitch(path,
-   * dataFileInfos); } catch
-   * (IndexManagerException e) { e.printStackTrace(); throw new FileNodeProcessorException
-   * (e.getMessage()); } } } } }
-   * catch (PathErrorException e) { LOGGER.error("Failed to find all fileList to be
-   * mergeSwitch because of" +
-   * e.getMessage()); throw new FileNodeProcessorException(e.getMessage()); } }
-   */
-
-  private void switchMergeToWaitingv2(List<IntervalFileNode> backupIntervalFiles, boolean needEmpty)
+  private void switchMergeToWaiting(List<IntervalFileNode> backupIntervalFiles, boolean needEmpty)
       throws FileNodeProcessorException {
     LOGGER.info("The status of filenode processor {} switches from {} to {}.", getProcessorName(),
         FileNodeProcessorStatus.MERGING_WRITE, FileNodeProcessorStatus.WAITING);
@@ -1283,17 +1237,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
       if (needEmpty) {
         IntervalFileNode empty = backupIntervalFiles.get(0);
         if (!empty.checkEmpty()) {
-          for (String deviceId : empty.getStartTimeMap().keySet()) {
-            if (invertedindexOfFiles.containsKey(deviceId)) {
-              IntervalFileNode temp = invertedindexOfFiles.get(deviceId).get(0);
-              if (temp.getMergeChanged().contains(deviceId)) {
-                empty.overflowChangeType = OverflowChangeType.CHANGED;
-                break;
-              }
-            }
-          }
-          empty.clearMergeChanged();
-          result.add(empty.backUp());
+          updateEmpty(empty, result);
           beginIndex++;
         }
       }
@@ -1303,15 +1247,8 @@ public class FileNodeProcessor extends Processor implements IStatistic {
       for (int i = beginIndex; i < backupIntervalFiles.size(); i++) {
         IntervalFileNode newFile = newFileNodes.get(i - beginIndex);
         IntervalFileNode temp = backupIntervalFiles.get(i);
-        if (newFile.overflowChangeType == OverflowChangeType.MERGING_CHANGE) {
-          for (String deviceId : newFile.getMergeChanged()) {
-            if (temp.getStartTimeMap().containsKey(deviceId)) {
-              temp.overflowChangeType = OverflowChangeType.CHANGED;
-            } else {
-              changeTypeToChanged(deviceId, newFile.getStartTime(deviceId),
-                  newFile.getEndTime(deviceId));
-            }
-          }
+        if (newFile.getOverflowChangeType() == OverflowChangeType.MERGING_CHANGE) {
+          updateMergeChanged(newFile, temp);
         }
         if (!temp.checkEmpty()) {
           result.add(temp);
@@ -1344,7 +1281,8 @@ public class FileNodeProcessor extends Processor implements IStatistic {
           writeStoreToDisk(fileNodeProcessorStore);
         } catch (FileNodeProcessorException e) {
           LOGGER.error(
-              "Merge: failed to write filenode information to revocery file, the filenode is {}.",
+              "Merge: failed to write filenode information to revocery file, the filenode is " +
+                  "{}.",
               getProcessorName(), e);
           throw new FileNodeProcessorException(
               "Merge: write filenode information to revocery file failed, the filenode is "
@@ -1356,7 +1294,33 @@ public class FileNodeProcessor extends Processor implements IStatistic {
     }
   }
 
-  private void switchWaitingToWorkingv2(List<IntervalFileNode> backupIntervalFiles)
+  private void updateEmpty(IntervalFileNode empty, List<IntervalFileNode> result) {
+    for (String deviceId : empty.getStartTimeMap().keySet()) {
+      if (invertedIndexOfFiles.containsKey(deviceId)) {
+        IntervalFileNode temp = invertedIndexOfFiles.get(deviceId).get(0);
+        if (temp.getMergeChanged().contains(deviceId)) {
+          empty.setOverflowChangeType(OverflowChangeType.CHANGED);
+          break;
+        }
+      }
+    }
+    empty.clearMergeChanged();
+    result.add(empty.backUp());
+  }
+
+  private void updateMergeChanged(IntervalFileNode newFile, IntervalFileNode temp) {
+    for (String deviceId : newFile.getMergeChanged()) {
+      if (temp.getStartTimeMap().containsKey(deviceId)) {
+        temp.setOverflowChangeType(OverflowChangeType.CHANGED);
+      } else {
+        changeTypeToChanged(deviceId, newFile.getStartTime(deviceId),
+            newFile.getEndTime(deviceId));
+      }
+    }
+  }
+
+
+  private void switchWaitingToWorking()
       throws FileNodeProcessorException {
 
     LOGGER.info("The status of filenode processor {} switches from {} to {}.", getProcessorName(),
@@ -1376,50 +1340,23 @@ public class FileNodeProcessor extends Processor implements IStatistic {
 
         List<String> bufferwriteDirPathList = directories.getAllTsFileFolders();
         List<File> bufferwriteDirList = new ArrayList<>();
-        for (String bufferwriteDirPath : bufferwriteDirPathList) {
-          if (bufferwriteDirPath.length() > 0
-              && bufferwriteDirPath.charAt(bufferwriteDirPath.length() - 1) != File.separatorChar) {
-            bufferwriteDirPath = bufferwriteDirPath + File.separatorChar;
-          }
-          bufferwriteDirPath = bufferwriteDirPath + getProcessorName();
-          File bufferwriteDir = new File(bufferwriteDirPath);
-          bufferwriteDirList.add(bufferwriteDir);
-          if (!bufferwriteDir.exists()) {
-            bufferwriteDir.mkdirs();
-          }
-        }
+        collectBufferWriteDirs(bufferwriteDirPathList, bufferwriteDirList);
 
         Set<String> bufferFiles = new HashSet<>();
-        for (IntervalFileNode bufferFileNode : newFileNodes) {
-          String bufferFilePath = bufferFileNode.getFilePath();
-          if (bufferFilePath != null) {
-            bufferFiles.add(bufferFilePath);
-          }
-        }
+        collectBufferWriteFiles(bufferFiles);
+
         // add the restore file, if the last file is not closed
         if (!newFileNodes.isEmpty() && !newFileNodes.get(newFileNodes.size() - 1).isClosed()) {
           String bufferFileRestorePath =
-              newFileNodes.get(newFileNodes.size() - 1).getFilePath() + ".restore";
+              newFileNodes.get(newFileNodes.size() - 1).getFilePath() + RESTORE_FILE_SUFFIX;
           bufferFiles.add(bufferFileRestorePath);
         }
 
-        for (File bufferwriteDir : bufferwriteDirList) {
-          for (File file : bufferwriteDir.listFiles()) {
-            if (!bufferFiles.contains(file.getPath())) {
-              file.delete();
-              // TODO
-            }
-          }
-        }
+        deleteBufferWriteFiles(bufferwriteDirList, bufferFiles);
 
         // merge switch
-        // switchMergeIndex();
+        changeFileNodes();
 
-        for (IntervalFileNode fileNode : newFileNodes) {
-          if (fileNode.overflowChangeType != OverflowChangeType.NO_CHANGE) {
-            fileNode.overflowChangeType = OverflowChangeType.CHANGED;
-          }
-        }
         // overflow switch from merge to work
         overflowProcessor.switchMergeToWork();
         // write status to file
@@ -1434,8 +1371,8 @@ public class FileNodeProcessor extends Processor implements IStatistic {
         LOGGER.info(
             "The filenode processor {} encountered an error when its "
                 + "status switched from {} to {}.",
-            getProcessorName(), FileNodeProcessorStatus.NONE, FileNodeProcessorStatus.MERGING_WRITE,
-            e);
+            getProcessorName(), FileNodeProcessorStatus.NONE,
+            FileNodeProcessorStatus.MERGING_WRITE);
         throw new FileNodeProcessorException(e);
       } finally {
         writeUnlock();
@@ -1450,262 +1387,245 @@ public class FileNodeProcessor extends Processor implements IStatistic {
 
   }
 
-  private TSRecord constructTsRecord(TimeValuePair timeValuePair, String deviceId,
-      String measurementId) {
-    TSRecord record = new TSRecord(timeValuePair.getTimestamp(), deviceId);
-    record.addTuple(DataPoint.getDataPoint(timeValuePair.getValue().getDataType(), measurementId,
-        timeValuePair.getValue().getValue().toString()));
-    return record;
+  private void collectBufferWriteDirs(List<String> bufferwriteDirPathList,
+      List<File> bufferwriteDirList) {
+    for (String bufferwriteDirPath : bufferwriteDirPathList) {
+      if (bufferwriteDirPath.length() > 0
+          && bufferwriteDirPath.charAt(bufferwriteDirPath.length() - 1)
+          != File.separatorChar) {
+        bufferwriteDirPath = bufferwriteDirPath + File.separatorChar;
+      }
+      bufferwriteDirPath = bufferwriteDirPath + getProcessorName();
+      File bufferwriteDir = new File(bufferwriteDirPath);
+      bufferwriteDirList.add(bufferwriteDir);
+      if (!bufferwriteDir.exists()) {
+        bufferwriteDir.mkdirs();
+      }
+    }
+  }
+
+  private void collectBufferWriteFiles(Set<String> bufferFiles) {
+    for (IntervalFileNode bufferFileNode : newFileNodes) {
+      String bufferFilePath = bufferFileNode.getFilePath();
+      if (bufferFilePath != null) {
+        bufferFiles.add(bufferFilePath);
+      }
+    }
+  }
+
+  private void deleteBufferWriteFiles(List<File> bufferwriteDirList, Set<String> bufferFiles) {
+    for (File bufferwriteDir : bufferwriteDirList) {
+      File[] files = bufferwriteDir.listFiles();
+      if (files == null) {
+        continue;
+      }
+      for (File file : files) {
+        if (!bufferFiles.contains(file.getPath()) && !file.delete()) {
+          LOGGER.warn("Cannot delete BufferWrite file {}", file.getPath());
+        }
+      }
+    }
+  }
+
+  private void changeFileNodes() {
+    for (IntervalFileNode fileNode : newFileNodes) {
+      if (fileNode.getOverflowChangeType() != OverflowChangeType.NO_CHANGE) {
+        fileNode.setOverflowChangeType(OverflowChangeType.CHANGED);
+      }
+    }
   }
 
   private String queryAndWriteDataForMerge(IntervalFileNode backupIntervalFile)
-      throws IOException, WriteProcessException, FileNodeProcessorException, PathErrorException {
+      throws IOException, FileNodeProcessorException, PathErrorException {
     Map<String, Long> startTimeMap = new HashMap<>();
     Map<String, Long> endTimeMap = new HashMap<>();
 
-    TsFileIOWriter fileIoWriter = null;
-    String outputPath = null;
-    String baseDir = null;
-    String fileName = null;
-    for (String deviceId : backupIntervalFile.getStartTimeMap().keySet()) {
-      // query one deviceId
-      List<Path> pathList = new ArrayList<>();
-      boolean isRowGroupHasData = false;
-      ChunkGroupFooter footer = null;
-      int numOfChunk = 0;
-      long startPos = -1;
-      int recordCount = 0;
-      try {
-        List<String> pathStrings = mManager.getLeafNodePathInNextLevel(deviceId);
-        for (String string : pathStrings) {
-          pathList.add(new Path(string));
-        }
-      } catch (PathErrorException e) {
-        LOGGER.error("Can't get all the paths from MManager, the deviceId is {}", deviceId);
-        throw new FileNodeProcessorException(e);
-      }
-      if (pathList.isEmpty()) {
-        continue;
-      }
-      for (Path path : pathList) {
-        // query one measurenment in the special deviceId
-        String measurementId = path.getMeasurement();
-        TSDataType dataType = mManager.getSeriesType(path.getFullPath());
-        OverflowSeriesDataSource overflowSeriesDataSource = overflowProcessor.queryMerge(deviceId,
-            measurementId, dataType, true);
-        Filter timeFilter = FilterFactory
-            .and(TimeFilter.gtEq(backupIntervalFile.getStartTime(deviceId)),
-                TimeFilter.ltEq(backupIntervalFile.getEndTime(deviceId)));
-        SingleSeriesExpression seriesFilter = new SingleSeriesExpression(path, timeFilter);
-        IReader seriesReader = SeriesReaderFactory.getInstance()
-            .createSeriesReaderForMerge(backupIntervalFile,
-                overflowSeriesDataSource, seriesFilter);
+    mergeFileWriter = null;
+    mergeOutputPath = null;
+    mergeBaseDir = null;
+    mergeFileName = null;
+    // modifications are blocked before mergeModification is created to avoid
+    // losing some modification.
+    mergeDeleteLock.lock();
+    QueryContext context = new QueryContext();
+    try {
+      for (String deviceId : backupIntervalFile.getStartTimeMap().keySet()) {
+        // query one deviceId
+        List<Path> pathList = new ArrayList<>();
+        mergeIsChunkGroupHasData = false;
+        mergeStartPos = -1;
+        ChunkGroupFooter footer;
+        int numOfChunk = 0;
         try {
-          if (!seriesReader.hasNext()) {
-            LOGGER.debug(
-                "The time-series {} has no data with the filter {} in the filenode processor {}",
-                path, seriesFilter, getProcessorName());
-          } else {
-            numOfChunk++;
-            TimeValuePair timeValuePair = seriesReader.next();
-            if (fileIoWriter == null) {
-              baseDir = directories.getNextFolderForTsfile();
-              fileName = String.valueOf(timeValuePair.getTimestamp()
-                  + FileNodeConstants.BUFFERWRITE_FILE_SEPARATOR + System.currentTimeMillis());
-              outputPath = constructOutputFilePath(baseDir, getProcessorName(), fileName);
-              fileName = getProcessorName() + File.separatorChar + fileName;
-              fileIoWriter = new TsFileIOWriter(new File(outputPath));
-            }
-            if (!isRowGroupHasData) {
-              // start a new rowGroupMetadata
-              isRowGroupHasData = true;
-              // the datasize and numOfChunk is fake
-              // the accurate datasize and numOfChunk will get after write all this device data.
-              fileIoWriter.startFlushChunkGroup(deviceId);// TODO please check me.
-              startPos = fileIoWriter.getPos();
-            }
-            // init the serieswWriteImpl
-            MeasurementSchema measurementSchema = fileSchema.getMeasurementSchema(measurementId);
-            ChunkBuffer pageWriter = new ChunkBuffer(measurementSchema);
-            int pageSizeThreshold = TsFileConf.pageSizeInByte;
-            ChunkWriterImpl seriesWriterImpl = new ChunkWriterImpl(measurementSchema, pageWriter,
-                pageSizeThreshold);
-            // write the series data
-            recordCount += writeOneSeries(deviceId, measurementId, seriesWriterImpl, dataType,
-                seriesReader,
-                startTimeMap, endTimeMap, timeValuePair);
-            // flush the series data
-            seriesWriterImpl.writeToFileWriter(fileIoWriter);
+          List<String> pathStrings = mManager.getLeafNodePathInNextLevel(deviceId);
+          for (String string : pathStrings) {
+            pathList.add(new Path(string));
           }
-        } finally {
-          seriesReader.close();
+        } catch (PathErrorException e) {
+          LOGGER.error("Can't get all the paths from MManager, the deviceId is {}", deviceId);
+          throw new FileNodeProcessorException(e);
+        }
+        if (pathList.isEmpty()) {
+          continue;
+        }
+        for (Path path : pathList) {
+          // query one measurement in the special deviceId
+          String measurementId = path.getMeasurement();
+          TSDataType dataType = mManager.getSeriesType(path.getFullPath());
+          OverflowSeriesDataSource overflowSeriesDataSource = overflowProcessor.queryMerge(deviceId,
+              measurementId, dataType, true, context);
+          Filter timeFilter = FilterFactory
+              .and(TimeFilter.gtEq(backupIntervalFile.getStartTime(deviceId)),
+                  TimeFilter.ltEq(backupIntervalFile.getEndTime(deviceId)));
+          SingleSeriesExpression seriesFilter = new SingleSeriesExpression(path, timeFilter);
+          IReader seriesReader = SeriesReaderFactory.getInstance()
+              .createSeriesReaderForMerge(backupIntervalFile,
+                  overflowSeriesDataSource, seriesFilter, context);
+          numOfChunk += queryAndWriteSeries(seriesReader, path, seriesFilter, dataType,
+              startTimeMap, endTimeMap);
+        }
+        if (mergeIsChunkGroupHasData) {
+          // end the new rowGroupMetadata
+          long size = mergeFileWriter.getPos() - mergeStartPos;
+          footer = new ChunkGroupFooter(deviceId, size, numOfChunk);
+          mergeFileWriter.endChunkGroup(footer, 0);
         }
       }
-      if (isRowGroupHasData) {
-        // end the new rowGroupMetadata
-        long size = fileIoWriter.getPos() - startPos;
-        footer = new ChunkGroupFooter(deviceId, size, numOfChunk);
-        fileIoWriter.endChunkGroup(footer);
+    } finally {
+      if (mergeDeleteLock.isLocked()) {
+        mergeDeleteLock.unlock();
       }
     }
-    if (fileIoWriter != null) {
-      fileIoWriter.endFile(fileSchema);
+
+    if (mergeFileWriter != null) {
+      mergeFileWriter.endFile(fileSchema);
     }
-    backupIntervalFile.setBaseDirIndex(directories.getTsFileFolderIndex(baseDir));
-    backupIntervalFile.setRelativePath(fileName);
-    backupIntervalFile.overflowChangeType = OverflowChangeType.NO_CHANGE;
+    backupIntervalFile.setBaseDirIndex(directories.getTsFileFolderIndex(mergeBaseDir));
+    backupIntervalFile.setRelativePath(mergeFileName);
+    backupIntervalFile.setOverflowChangeType(OverflowChangeType.NO_CHANGE);
     backupIntervalFile.setStartTimeMap(startTimeMap);
     backupIntervalFile.setEndTimeMap(endTimeMap);
-    return fileName;
+    backupIntervalFile.setModFile(mergingModification);
+    mergingModification = null;
+    return mergeFileName;
   }
 
-  private int writeOneSeries(String deviceId, String measurement, ChunkWriterImpl seriesWriterImpl,
+  private int queryAndWriteSeries(IReader seriesReader, Path path,
+      SingleSeriesExpression seriesFilter, TSDataType dataType,
+      Map<String, Long> startTimeMap, Map<String, Long> endTimeMap)
+      throws IOException {
+    int numOfChunk = 0;
+    try {
+      if (!seriesReader.hasNext()) {
+        LOGGER.debug(
+            "The time-series {} has no data with the filter {} in the filenode processor {}",
+            path, seriesFilter, getProcessorName());
+      } else {
+        numOfChunk++;
+        TimeValuePair timeValuePair = seriesReader.next();
+        if (mergeFileWriter == null) {
+          mergeBaseDir = directories.getNextFolderForTsfile();
+          mergeFileName = timeValuePair.getTimestamp()
+              + FileNodeConstants.BUFFERWRITE_FILE_SEPARATOR + System.currentTimeMillis();
+          mergeOutputPath = constructOutputFilePath(mergeBaseDir, getProcessorName(),
+              mergeFileName);
+          mergeFileName = getProcessorName() + File.separatorChar + mergeFileName;
+          mergeFileWriter = new TsFileIOWriter(new File(mergeOutputPath));
+          mergingModification = new ModificationFile(mergeOutputPath
+              + ModificationFile.FILE_SUFFIX);
+          mergeDeleteLock.unlock();
+        }
+        if (!mergeIsChunkGroupHasData) {
+          // start a new rowGroupMetadata
+          mergeIsChunkGroupHasData = true;
+          // the datasize and numOfChunk is fake
+          // the accurate datasize and numOfChunk will get after write all this device data.
+          mergeFileWriter.startFlushChunkGroup(path.getDevice());// TODO please check me.
+          mergeStartPos = mergeFileWriter.getPos();
+        }
+        // init the serieswWriteImpl
+        MeasurementSchema measurementSchema = fileSchema
+            .getMeasurementSchema(path.getMeasurement());
+        ChunkBuffer pageWriter = new ChunkBuffer(measurementSchema);
+        int pageSizeThreshold = TSFileConfig.pageSizeInByte;
+        ChunkWriterImpl seriesWriterImpl = new ChunkWriterImpl(measurementSchema, pageWriter,
+            pageSizeThreshold);
+        // write the series data
+        writeOneSeries(path.getDevice(), seriesWriterImpl, dataType,
+            seriesReader,
+            startTimeMap, endTimeMap, timeValuePair);
+        // flush the series data
+        seriesWriterImpl.writeToFileWriter(mergeFileWriter);
+      }
+    } finally {
+      seriesReader.close();
+    }
+    return numOfChunk;
+  }
+
+
+  private void writeOneSeries(String deviceId, ChunkWriterImpl seriesWriterImpl,
       TSDataType dataType, IReader seriesReader, Map<String, Long> startTimeMap,
-      Map<String, Long> endTimeMap,
+      Map<String, Long> endTimeMap, TimeValuePair firstTVPair) throws IOException {
+    long startTime;
+    long endTime;
+    TimeValuePair localTV = firstTVPair;
+    writeTVPair(seriesWriterImpl, dataType, localTV);
+    startTime = endTime = localTV.getTimestamp();
+    if (!startTimeMap.containsKey(deviceId) || startTimeMap.get(deviceId) > startTime) {
+      startTimeMap.put(deviceId, startTime);
+    }
+    if (!endTimeMap.containsKey(deviceId) || endTimeMap.get(deviceId) < endTime) {
+      endTimeMap.put(deviceId, endTime);
+    }
+    while (seriesReader.hasNext()) {
+      localTV = seriesReader.next();
+      endTime = localTV.getTimestamp();
+      writeTVPair(seriesWriterImpl, dataType, localTV);
+    }
+    if (!endTimeMap.containsKey(deviceId) || endTimeMap.get(deviceId) < endTime) {
+      endTimeMap.put(deviceId, endTime);
+    }
+  }
+
+  private void writeTVPair(ChunkWriterImpl seriesWriterImpl, TSDataType dataType,
       TimeValuePair timeValuePair) throws IOException {
-    int count = 0;
-    long startTime = -1;
-    long endTime = -1;
     switch (dataType) {
       case BOOLEAN:
         seriesWriterImpl.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getBoolean());
-        count++;
-        startTime = endTime = timeValuePair.getTimestamp();
-        if (!startTimeMap.containsKey(deviceId) || startTimeMap.get(deviceId) > startTime) {
-          startTimeMap.put(deviceId, startTime);
-        }
-        if (!endTimeMap.containsKey(deviceId) || endTimeMap.get(deviceId) < endTime) {
-          endTimeMap.put(deviceId, endTime);
-        }
-        while (seriesReader.hasNext()) {
-          count++;
-          timeValuePair = seriesReader.next();
-          endTime = timeValuePair.getTimestamp();
-          seriesWriterImpl
-              .write(timeValuePair.getTimestamp(), timeValuePair.getValue().getBoolean());
-        }
-        if (!endTimeMap.containsKey(deviceId) || endTimeMap.get(deviceId) < endTime) {
-          endTimeMap.put(deviceId, endTime);
-        }
         break;
       case INT32:
         seriesWriterImpl.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getInt());
-        count++;
-        startTime = endTime = timeValuePair.getTimestamp();
-        if (!startTimeMap.containsKey(deviceId) || startTimeMap.get(deviceId) > startTime) {
-          startTimeMap.put(deviceId, startTime);
-        }
-        if (!endTimeMap.containsKey(deviceId) || endTimeMap.get(deviceId) < endTime) {
-          endTimeMap.put(deviceId, endTime);
-        }
-        while (seriesReader.hasNext()) {
-          count++;
-          timeValuePair = seriesReader.next();
-          endTime = timeValuePair.getTimestamp();
-          seriesWriterImpl.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getInt());
-        }
-        if (!endTimeMap.containsKey(deviceId) || endTimeMap.get(deviceId) < endTime) {
-          endTimeMap.put(deviceId, endTime);
-        }
         break;
       case INT64:
         seriesWriterImpl.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getLong());
-        count++;
-        startTime = endTime = timeValuePair.getTimestamp();
-        if (!startTimeMap.containsKey(deviceId) || startTimeMap.get(deviceId) > startTime) {
-          startTimeMap.put(deviceId, startTime);
-        }
-        if (!endTimeMap.containsKey(deviceId) || endTimeMap.get(deviceId) < endTime) {
-          endTimeMap.put(deviceId, endTime);
-        }
-        while (seriesReader.hasNext()) {
-          count++;
-          timeValuePair = seriesReader.next();
-          endTime = timeValuePair.getTimestamp();
-          seriesWriterImpl.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getLong());
-        }
-        if (!endTimeMap.containsKey(deviceId) || endTimeMap.get(deviceId) < endTime) {
-          endTimeMap.put(deviceId, endTime);
-        }
         break;
       case FLOAT:
         seriesWriterImpl.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getFloat());
-        count++;
-        startTime = endTime = timeValuePair.getTimestamp();
-        if (!startTimeMap.containsKey(deviceId) || startTimeMap.get(deviceId) > startTime) {
-          startTimeMap.put(deviceId, startTime);
-        }
-        if (!endTimeMap.containsKey(deviceId) || endTimeMap.get(deviceId) < endTime) {
-          endTimeMap.put(deviceId, endTime);
-        }
-        while (seriesReader.hasNext()) {
-          count++;
-          timeValuePair = seriesReader.next();
-          endTime = timeValuePair.getTimestamp();
-          seriesWriterImpl.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getFloat());
-        }
-        if (!endTimeMap.containsKey(deviceId) || endTimeMap.get(deviceId) < endTime) {
-          endTimeMap.put(deviceId, endTime);
-        }
         break;
       case DOUBLE:
         seriesWriterImpl.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getDouble());
-        count++;
-        startTime = endTime = timeValuePair.getTimestamp();
-        if (!startTimeMap.containsKey(deviceId) || startTimeMap.get(deviceId) > startTime) {
-          startTimeMap.put(deviceId, startTime);
-        }
-        if (!endTimeMap.containsKey(deviceId) || endTimeMap.get(deviceId) < endTime) {
-          endTimeMap.put(deviceId, endTime);
-        }
-        while (seriesReader.hasNext()) {
-          count++;
-          timeValuePair = seriesReader.next();
-          endTime = timeValuePair.getTimestamp();
-          seriesWriterImpl
-              .write(timeValuePair.getTimestamp(), timeValuePair.getValue().getDouble());
-        }
-        if (!endTimeMap.containsKey(deviceId) || endTimeMap.get(deviceId) < endTime) {
-          endTimeMap.put(deviceId, endTime);
-        }
         break;
       case TEXT:
         seriesWriterImpl.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getBinary());
-        count++;
-        startTime = endTime = timeValuePair.getTimestamp();
-        if (!startTimeMap.containsKey(deviceId) || startTimeMap.get(deviceId) > startTime) {
-          startTimeMap.put(deviceId, startTime);
-        }
-        if (!endTimeMap.containsKey(deviceId) || endTimeMap.get(deviceId) < endTime) {
-          endTimeMap.put(deviceId, endTime);
-        }
-        while (seriesReader.hasNext()) {
-          count++;
-          timeValuePair = seriesReader.next();
-          endTime = timeValuePair.getTimestamp();
-          seriesWriterImpl
-              .write(timeValuePair.getTimestamp(), timeValuePair.getValue().getBinary());
-        }
-        if (!endTimeMap.containsKey(deviceId) || endTimeMap.get(deviceId) < endTime) {
-          endTimeMap.put(deviceId, endTime);
-        }
         break;
       default:
         LOGGER.error("Not support data type: {}", dataType);
         break;
     }
-    return count;
   }
+
 
   private String constructOutputFilePath(String baseDir, String processorName, String fileName) {
 
-    if (baseDir.charAt(baseDir.length() - 1) != File.separatorChar) {
-      baseDir = baseDir + File.separatorChar + processorName;
+    String localBaseDir = baseDir;
+    if (localBaseDir.charAt(localBaseDir.length() - 1) != File.separatorChar) {
+      localBaseDir = localBaseDir + File.separatorChar + processorName;
     }
-    File dataDir = new File(baseDir);
+    File dataDir = new File(localBaseDir);
     if (!dataDir.exists()) {
       LOGGER.warn("The bufferwrite processor data dir doesn't exists, create new directory {}",
-          baseDir);
+          localBaseDir);
       dataDir.mkdirs();
     }
     File outputFile = new File(dataDir, fileName);
@@ -1717,14 +1637,14 @@ public class FileNodeProcessor extends Processor implements IStatistic {
     List<ColumnSchema> columnSchemaList;
     columnSchemaList = mManager.getSchemaForFileName(processorName);
 
-    FileSchema fileSchema = null;
+    FileSchema schema;
     try {
-      fileSchema = getFileSchemaFromColumnSchema(columnSchemaList, processorName);
+      schema = getFileSchemaFromColumnSchema(columnSchemaList, processorName);
     } catch (WriteProcessException e) {
       LOGGER.error("Get the FileSchema error, the list of ColumnSchema is {}", columnSchemaList);
       throw e;
     }
-    return fileSchema;
+    return schema;
 
   }
 
@@ -1733,116 +1653,86 @@ public class FileNodeProcessor extends Processor implements IStatistic {
     JSONArray rowGroup = new JSONArray();
 
     for (ColumnSchema col : schemaList) {
-      JSONObject measurement = new JSONObject();
-      measurement.put(JsonFormatConstant.MEASUREMENT_UID, col.name);
-      measurement.put(JsonFormatConstant.DATA_TYPE, col.dataType.toString());
-      measurement.put(JsonFormatConstant.MEASUREMENT_ENCODING, col.encoding.toString());
-      for (Entry<String, String> entry : col.getArgsMap().entrySet()) {
-        if (JsonFormatConstant.ENUM_VALUES.equals(entry.getKey())) {
-          String[] valueArray = entry.getValue().split(",");
-          measurement.put(JsonFormatConstant.ENUM_VALUES, new JSONArray(valueArray));
-        } else {
-          measurement.put(entry.getKey(), entry.getValue().toString());
-        }
-      }
+      JSONObject measurement = FileSchemaUtils.constructJsonColumnSchema(col);
       rowGroup.put(measurement);
     }
-    JSONObject jsonSchema = new JSONObject();
-    jsonSchema.put(JsonFormatConstant.JSON_SCHEMA, rowGroup);
-    jsonSchema.put(JsonFormatConstant.DELTA_TYPE, deviceType);
-    return new FileSchema(jsonSchema);
+    return constructJsonFileSchema(deviceType, rowGroup);
   }
 
   @Override
   public boolean canBeClosed() {
-    if (isMerging == FileNodeProcessorStatus.NONE) {
-      if (newMultiPassLock.writeLock().tryLock()) {
-        try {
-          if (oldMultiPassLock != null) {
-            if (oldMultiPassLock.writeLock().tryLock()) {
-              try {
-                return true;
-              } finally {
-                oldMultiPassLock.writeLock().unlock();
-              }
-            } else {
-              LOGGER
-                  .info("The filenode {} can't be closed, because it can't get oldMultiPassLock {}",
-                      getProcessorName(), oldMultiPassLock);
-              return false;
-            }
-          } else {
-            return true;
-          }
-        } finally {
-          newMultiPassLock.writeLock().unlock();
-        }
-      } else {
-        LOGGER.info("The filenode {} can't be closed, because it can't get newMultiPassLock {}",
-            getProcessorName(), newMultiPassLock);
-        return false;
-      }
-    } else {
+    if (isMerging != FileNodeProcessorStatus.NONE) {
       LOGGER.info("The filenode {} can't be closed, because the filenode status is {}",
           getProcessorName(),
           isMerging);
       return false;
     }
+    if (!newMultiPassLock.writeLock().tryLock()) {
+      LOGGER.info("The filenode {} can't be closed, because it can't get newMultiPassLock {}",
+          getProcessorName(), newMultiPassLock);
+      return false;
+    }
+
+    try {
+      if (oldMultiPassLock == null) {
+        return true;
+      }
+      if (oldMultiPassLock.writeLock().tryLock()) {
+        try {
+          return true;
+        } finally {
+          oldMultiPassLock.writeLock().unlock();
+        }
+      } else {
+        LOGGER.info("The filenode {} can't be closed, because it can't get"
+                + " oldMultiPassLock {}",
+            getProcessorName(), oldMultiPassLock);
+        return false;
+      }
+    } finally {
+      newMultiPassLock.writeLock().unlock();
+    }
   }
 
   @Override
-  public boolean flush() throws IOException {
+  public FileNodeFlushFuture flush() throws IOException {
+    Future<Boolean> bufferWriteFlushFuture = null;
+    Future<Boolean> overflowFlushFuture = null;
     if (bufferWriteProcessor != null) {
-      bufferWriteProcessor.flush();
+      bufferWriteFlushFuture = bufferWriteProcessor.flush();
     }
     if (overflowProcessor != null) {
-      return overflowProcessor.flush();
+      overflowFlushFuture = overflowProcessor.flush();
     }
-    return false;
+    return new FileNodeFlushFuture(bufferWriteFlushFuture, overflowFlushFuture);
   }
 
   /**
    * Close the bufferwrite processor.
    */
   public void closeBufferWrite() throws FileNodeProcessorException {
-    if (bufferWriteProcessor != null) {
-      try {
-        while (!bufferWriteProcessor.canBeClosed()) {
-          try {
-            LOGGER.info("The bufferwrite {} can't be closed, wait 100ms",
-                bufferWriteProcessor.getProcessorName());
-            TimeUnit.MICROSECONDS.sleep(100);
-          } catch (InterruptedException e) {
-            e.printStackTrace();
-          }
-        }
-        bufferWriteProcessor.close();
-        bufferWriteProcessor = null;
-        /**
-         * add index for close
-         */
-        // deprecated
-        /*
-         * Map<String, Set<IndexType>> allIndexSeries =
-         * mManager.getAllIndexPaths(getProcessorName());
-         *
-         * if (!allIndexSeries.isEmpty()) { LOGGER.info(
-         * "Close buffer write file and append index file, the nameSpacePath is {}, the index " +
-         * "type is {}, the index seriesPath is {}", getProcessorName(),
-         * "kvindex", allIndexSeries); for
-         * (Entry<String, Set<IndexType>> entry : allIndexSeries.entrySet()) { Path path = new
-         * Path(entry.getKey()); String deviceId = path.getdeviceToString(); if
-         * (currentIntervalFileNode.getStartTime(deviceId) != -1) { DataFileInfo dataFileInfo = new
-         * DataFileInfo( currentIntervalFileNode.getStartTime(deviceId),
-         * currentIntervalFileNode.getEndTime(deviceId), currentIntervalFileNode.getFilePath());
-         * for (IndexType
-         * indexType : entry.getValue()) IndexManager.getIndexInstance(indexType).build(path,
-         * dataFileInfo, null); } } }
-         */
-      } catch (BufferWriteProcessorException e) {
-        e.printStackTrace();
-        throw new FileNodeProcessorException(e);
+    if (bufferWriteProcessor == null) {
+      return;
+    }
+    try {
+      while (!bufferWriteProcessor.canBeClosed()) {
+        waitForBufferWriteClose();
       }
+      bufferWriteProcessor.close();
+      bufferWriteProcessor = null;
+    } catch (BufferWriteProcessorException e) {
+      throw new FileNodeProcessorException(e);
+    }
+  }
+
+  private void waitForBufferWriteClose() {
+    try {
+      LOGGER.info("The bufferwrite {} can't be closed, wait 100ms",
+          bufferWriteProcessor.getProcessorName());
+      TimeUnit.MICROSECONDS.sleep(100);
+    } catch (InterruptedException e) {
+      LOGGER.error("Unexpected interruption", e);
+      Thread.currentThread().interrupt();
     }
   }
 
@@ -1850,25 +1740,29 @@ public class FileNodeProcessor extends Processor implements IStatistic {
    * Close the overflow processor.
    */
   public void closeOverflow() throws FileNodeProcessorException {
-    // close overflow
-    if (overflowProcessor != null) {
-      try {
-        while (!overflowProcessor.canBeClosed()) {
-          try {
-            LOGGER.info("The overflow {} can't be closed, wait 100ms",
-                overflowProcessor.getProcessorName());
-            TimeUnit.MICROSECONDS.sleep(100);
-          } catch (InterruptedException e) {
-            e.printStackTrace();
-          }
-        }
-        overflowProcessor.close();
-        overflowProcessor.clear();
-        overflowProcessor = null;
-      } catch (OverflowProcessorException | IOException e) {
-        e.printStackTrace();
-        throw new FileNodeProcessorException(e);
+    if (overflowProcessor == null) {
+      return;
+    }
+    try {
+      while (!overflowProcessor.canBeClosed()) {
+        waitForOverflowClose();
       }
+      overflowProcessor.close();
+      overflowProcessor.clear();
+      overflowProcessor = null;
+    } catch (OverflowProcessorException | IOException e) {
+      throw new FileNodeProcessorException(e);
+    }
+  }
+
+  private void waitForOverflowClose() {
+    try {
+      LOGGER.info("The overflow {} can't be closed, wait 100ms",
+          overflowProcessor.getProcessorName());
+      TimeUnit.MICROSECONDS.sleep(100);
+    } catch (InterruptedException e) {
+      LOGGER.error("Unexpected interruption", e);
+      Thread.currentThread().interrupt();
     }
   }
 
@@ -1876,6 +1770,15 @@ public class FileNodeProcessor extends Processor implements IStatistic {
   public void close() throws FileNodeProcessorException {
     closeBufferWrite();
     closeOverflow();
+    for (IntervalFileNode fileNode : newFileNodes) {
+      if (fileNode.getModFile() != null) {
+        try {
+          fileNode.getModFile().close();
+        } catch (IOException e) {
+          throw new FileNodeProcessorException(e);
+        }
+      }
+    }
   }
 
   /**
@@ -1889,6 +1792,15 @@ public class FileNodeProcessor extends Processor implements IStatistic {
     }
     closeBufferWrite();
     closeOverflow();
+    for (IntervalFileNode fileNode : newFileNodes) {
+      if (fileNode.getModFile() != null) {
+        try {
+          fileNode.getModFile().close();
+        } catch (IOException e) {
+          throw new FileNodeProcessorException(e);
+        }
+      }
+    }
   }
 
   @Override
@@ -1906,7 +1818,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
   private void writeStoreToDisk(FileNodeProcessorStore fileNodeProcessorStore)
       throws FileNodeProcessorException {
 
-    synchronized (fileNodeRestoreFilePath) {
+    synchronized (fileNodeRestoreLock) {
       SerializeUtil<FileNodeProcessorStore> serializeUtil = new SerializeUtil<>();
       try {
         serializeUtil.serialize(fileNodeProcessorStore, fileNodeRestoreFilePath);
@@ -1920,28 +1832,201 @@ public class FileNodeProcessor extends Processor implements IStatistic {
 
   private FileNodeProcessorStore readStoreFromDisk() throws FileNodeProcessorException {
 
-    synchronized (fileNodeRestoreFilePath) {
-      FileNodeProcessorStore fileNodeProcessorStore = null;
+    synchronized (fileNodeRestoreLock) {
+      FileNodeProcessorStore processorStore;
       SerializeUtil<FileNodeProcessorStore> serializeUtil = new SerializeUtil<>();
       try {
-        fileNodeProcessorStore = serializeUtil.deserialize(fileNodeRestoreFilePath)
+        processorStore = serializeUtil.deserialize(fileNodeRestoreFilePath)
             .orElse(new FileNodeProcessorStore(false, new HashMap<>(),
                 new IntervalFileNode(OverflowChangeType.NO_CHANGE, null),
-                new ArrayList<IntervalFileNode>(), FileNodeProcessorStatus.NONE, 0));
+                new ArrayList<>(), FileNodeProcessorStatus.NONE, 0));
       } catch (IOException e) {
-        e.printStackTrace();
         throw new FileNodeProcessorException(e);
       }
-      return fileNodeProcessorStore;
+      return processorStore;
     }
   }
 
-  /*
-   * public void rebuildIndex() throws FileNodeProcessorException
-   * { mergeIndex(); switchMergeIndex(); }
-   */
-
-  public String getFileNodeRestoreFilePath() {
+  String getFileNodeRestoreFilePath() {
     return fileNodeRestoreFilePath;
+  }
+
+  /**
+   * Delete data whose timestamp <= 'timestamp' and belong to timeseries deviceId.measurementId.
+   *
+   * @param deviceId the deviceId of the timeseries to be deleted.
+   * @param measurementId the measurementId of the timeseries to be deleted.
+   * @param timestamp the delete range is (0, timestamp].
+   */
+  public void delete(String deviceId, String measurementId, long timestamp) throws IOException {
+    // TODO: how to avoid partial deletion?
+    mergeDeleteLock.lock();
+    long version = versionController.nextVersion();
+
+    // record what files are updated so we can roll back them in case of exception
+    List<ModificationFile> updatedModFiles = new ArrayList<>();
+
+    try {
+      String fullPath = deviceId +
+          IoTDBConstant.PATH_SEPARATOR + measurementId;
+      Deletion deletion = new Deletion(fullPath, version, timestamp);
+      if (mergingModification != null) {
+        mergingModification.write(deletion);
+        updatedModFiles.add(mergingModification);
+      }
+      deleteBufferWriteFiles(deviceId, deletion, updatedModFiles);
+      // delete data in memory
+      OverflowProcessor ofProcessor = getOverflowProcessor(getProcessorName());
+      ofProcessor.delete(deviceId, measurementId, timestamp, version, updatedModFiles);
+      if (bufferWriteProcessor != null) {
+        bufferWriteProcessor.delete(deviceId, measurementId, timestamp);
+      }
+    } catch (Exception e) {
+      // roll back
+      for (ModificationFile modFile : updatedModFiles) {
+        modFile.abort();
+      }
+      throw new IOException(e);
+    } finally {
+      mergeDeleteLock.unlock();
+    }
+  }
+
+  private void deleteBufferWriteFiles(String deviceId, Deletion deletion,
+      List<ModificationFile> updatedModFiles) throws IOException {
+    if (currentIntervalFileNode != null && currentIntervalFileNode.containsDevice(deviceId)) {
+      currentIntervalFileNode.getModFile().write(deletion);
+      updatedModFiles.add(currentIntervalFileNode.getModFile());
+    }
+    for (IntervalFileNode fileNode : newFileNodes) {
+      if (fileNode != currentIntervalFileNode && fileNode.containsDevice(deviceId)
+          && fileNode.getStartTime(deviceId) <= deletion.getTimestamp()) {
+        fileNode.getModFile().write(deletion);
+        updatedModFiles.add(fileNode.getModFile());
+      }
+    }
+  }
+
+  /**
+   * Similar to delete(), but only deletes data in BufferWrite. Only used by WAL recovery.
+   */
+  public void deleteBufferWrite(String deviceId, String measurementId, long timestamp)
+      throws IOException {
+    String fullPath = deviceId +
+        IoTDBConstant.PATH_SEPARATOR + measurementId;
+    long version = versionController.nextVersion();
+    Deletion deletion = new Deletion(fullPath, version, timestamp);
+
+    List<ModificationFile> updatedModFiles = new ArrayList<>();
+    try {
+      deleteBufferWriteFiles(deviceId, deletion, updatedModFiles);
+    } catch (IOException e) {
+      for (ModificationFile modificationFile : updatedModFiles) {
+        modificationFile.abort();
+      }
+      throw e;
+    }
+    if (bufferWriteProcessor != null) {
+      bufferWriteProcessor.delete(deviceId, measurementId, timestamp);
+    }
+  }
+
+  /**
+   * Similar to delete(), but only deletes data in Overflow. Only used by WAL recovery.
+   */
+  public void deleteOverflow(String deviceId, String measurementId, long timestamp)
+      throws IOException {
+    long version = versionController.nextVersion();
+
+    OverflowProcessor overflowProcessor = getOverflowProcessor(getProcessorName());
+    List<ModificationFile> updatedModFiles = new ArrayList<>();
+    try {
+      overflowProcessor.delete(deviceId, measurementId, timestamp, version, updatedModFiles);
+    } catch (IOException e) {
+      for (ModificationFile modificationFile : updatedModFiles) {
+        modificationFile.abort();
+      }
+      throw e;
+    }
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    if (!super.equals(o)) {
+      return false;
+    }
+    FileNodeProcessor that = (FileNodeProcessor) o;
+    return isOverflowed == that.isOverflowed &&
+        numOfMergeFile == that.numOfMergeFile &&
+        lastMergeTime == that.lastMergeTime &&
+        shouldRecovery == that.shouldRecovery &&
+        multiPassLockToken == that.multiPassLockToken &&
+        Objects.equals(statStorageDeltaName, that.statStorageDeltaName) &&
+        Objects.equals(statParamsHashMap, that.statParamsHashMap) &&
+        Objects.equals(lastUpdateTimeMap, that.lastUpdateTimeMap) &&
+        Objects.equals(flushLastUpdateTimeMap, that.flushLastUpdateTimeMap) &&
+        Objects.equals(invertedIndexOfFiles, that.invertedIndexOfFiles) &&
+        Objects.equals(emptyIntervalFileNode, that.emptyIntervalFileNode) &&
+        Objects.equals(currentIntervalFileNode, that.currentIntervalFileNode) &&
+        Objects.equals(newFileNodes, that.newFileNodes) &&
+        isMerging == that.isMerging &&
+        Objects.equals(fileNodeProcessorStore, that.fileNodeProcessorStore) &&
+        Objects.equals(fileNodeRestoreFilePath, that.fileNodeRestoreFilePath) &&
+        Objects.equals(baseDirPath, that.baseDirPath) &&
+        Objects.equals(bufferWriteProcessor, that.bufferWriteProcessor) &&
+        Objects.equals(overflowProcessor, that.overflowProcessor) &&
+        Objects.equals(oldMultiPassTokenSet, that.oldMultiPassTokenSet) &&
+        Objects.equals(newMultiPassTokenSet, that.newMultiPassTokenSet) &&
+        Objects.equals(oldMultiPassLock, that.oldMultiPassLock) &&
+        Objects.equals(newMultiPassLock, that.newMultiPassLock) &&
+        Objects.equals(parameters, that.parameters) &&
+        Objects.equals(fileSchema, that.fileSchema) &&
+        Objects.equals(flushFileNodeProcessorAction, that.flushFileNodeProcessorAction) &&
+        Objects.equals(bufferwriteFlushAction, that.bufferwriteFlushAction) &&
+        Objects.equals(bufferwriteCloseAction, that.bufferwriteCloseAction) &&
+        Objects.equals(overflowFlushAction, that.overflowFlushAction);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(super.hashCode(), statStorageDeltaName, statParamsHashMap, isOverflowed,
+        lastUpdateTimeMap, flushLastUpdateTimeMap, invertedIndexOfFiles,
+        emptyIntervalFileNode, currentIntervalFileNode, newFileNodes, isMerging,
+        numOfMergeFile, fileNodeProcessorStore, fileNodeRestoreFilePath, baseDirPath,
+        lastMergeTime, bufferWriteProcessor, overflowProcessor, oldMultiPassTokenSet,
+        newMultiPassTokenSet, oldMultiPassLock, newMultiPassLock, shouldRecovery, parameters,
+        fileSchema, flushFileNodeProcessorAction, bufferwriteFlushAction,
+        bufferwriteCloseAction, overflowFlushAction, multiPassLockToken);
+  }
+
+  public class MergeRunnale implements Runnable {
+
+    @Override
+    public void run() {
+      try {
+        ZoneId zoneId = IoTDBDescriptor.getInstance().getConfig().getZoneID();
+        long mergeStartTime = System.currentTimeMillis();
+        writeLock();
+        merge();
+        long mergeEndTime = System.currentTimeMillis();
+        long intervalTime = mergeEndTime - mergeStartTime;
+        LOGGER.info(
+            "The filenode processor {} merge start time is {}, "
+                + "merge end time is {}, merge consumes {}ms.",
+            getProcessorName(), ofInstant(Instant.ofEpochMilli(mergeStartTime),
+                zoneId), ofInstant(Instant.ofEpochMilli(mergeEndTime),
+                zoneId), intervalTime);
+      } catch (FileNodeProcessorException e) {
+        LOGGER.error("The filenode processor {} encountered an error when merging.",
+            getProcessorName(), e);
+        throw new ErrorDebugException(e);
+      }
+    }
   }
 }

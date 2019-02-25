@@ -1,33 +1,114 @@
+#!/bin/sh
 #
-# Copyright © 2019 Apache IoTDB(incubating) (dev@iotdb.apache.org)
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
 #
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
 #
 
 # Since we don't have osx test environment, we use travis-ci to test on osx.
 # Free-plan of travis-ci offers limited resources, we only test whether iotdb can be packaged on jdk8 and jdk11.
 
-dist: trusty
-#sudo: required
-
 language: java
+
+#dist: trusty
+#sudo: required
 
 matrix:
   include:
     - os: osx
       osx_image: xcode10.1 # with JDK11.0.1+13 installed
+      name: osx-oraclejdk11
     - os: osx
       osx_image: xcode9.3  # with JDK1.8.0_112-b16 installed
+      name: osx-oraclejdk8
+    - os: osx
+      osx_image: xcode10.1 # with JDK11.0.1+13 installed
+      name: osx-openjdk11
+      addons:
+        homebrew:
+          taps:
+            #- homebrew/cask-versions
+            - AdoptOpenJDK/openjdk
+          update: true
+          casks: adoptopenjdk-openjdk11
+    - os: osx
+      osx_image: xcode9.3  # with JDK1.8.0_112-b16 installed
+      name: osx-openjdk8
+      addons:
+        homebrew:
+          taps:
+           #- homebrew/cask-versions
+           - AdoptOpenJDK/openjdk
+          update: true
+          casks: adoptopenjdk-openjdk8
+    - os: windows
+      language: c
+      name: win-oraclejdk8
+      install:
+        - choco install jdk8 -params 'installdir=c:\\java8'
+        - export PATH=$PATH:"/c/java8/bin"
+        - export JAVA_HOME="/c/java8"
+        - choco install maven
+    - os: windows
+      language: c
+      name: win-oraclejdk11
+      install:
+        - choco install jdk11 -params 'installdir=c:\\java11'
+        - export PATH=$PATH:"/c/java11/bin"
+        - export JAVA_HOME="/c/java11"
+        - choco install maven
+    #choco does not support openjdk8. we have to install it manually
+#    - os: windows
+#      language: c
+#      name: win-openjdk11
+#      install:
+#        #for openjdk, -params does not work.
+#        - choco install openjdk
+#        - export PATH=$PATH:"C:\Program Files\OpenJDK\bin"
+#        - export JAVA_HOME="C:\Program Files\OpenJDK"
+#        - choco install maven
+    - os: linux
+      name: linux-openjdk11
+      dist: trusty
+      sudo: required
+      before_install:
+        - wget https://download.java.net/java/GA/jdk11/9/GPL/openjdk-11.0.2_linux-x64_bin.tar.gz -O jdk11.tar.gz
+        - tar -xzf jdk11.tar.gz
+      before_script:
+        - export JAVA_HOME=$PWD/jdk-11.0.2/
+        - export PATH=$JAVA_HOME/bin:$PATH
+    - os: linux
+      name: linux-openjdk8
+      dist: trusty
+      jdk: openjdk8
+    - os: linux
+      name: linux-oraclejdk8
+      dist: trusty
+      jdk: oraclejdk8
+    - os: linux
+      name: linux-oraclejdk11
+      dist: trusty
+      jdk: oraclejdk11
+
+cache:
+  directories:
+    - '$HOME/.m2/repository'
+    - '$HOME/.sonar/cache'
+
+
 
 # skip `before_install` stage
 before_install: true
@@ -36,10 +117,12 @@ before_install: true
 install: true
 
 script:
-  - mvn clean package -Dmaven.test.skip=true
+  #- mvn clean package -Dmaven.test.skip=true
   # For each test, travis-ci limits its output log. So we cannot test some sub-modules like tsfile, iotdb.
   # We only test jdbc to ensure maven commands work correctly on travis-ci.
-  - mvn clean test -pl jdbc -am -Dtsfile.test.skip=true
+  #- mvn clean test -pl jdbc -am -Dtsfile.test.skip=true
+  - java -version
+  - mvn clean integration-test
 
 after_success:
 

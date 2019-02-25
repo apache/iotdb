@@ -28,7 +28,7 @@ import java.util.Map;
 import java.util.Objects;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.compress.Compressor;
+import org.apache.iotdb.tsfile.compress.ICompressor;
 import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
 import org.apache.iotdb.tsfile.encoding.encoder.TSEncodingBuilder;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
@@ -37,8 +37,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.utils.StringContainer;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * This class describes a measurement's information registered in {@linkplain FileSchema FilSchema},
@@ -51,12 +49,11 @@ import org.slf4j.LoggerFactory;
  */
 public class MeasurementSchema implements Comparable<MeasurementSchema> {
 
-  private static final Logger LOG = LoggerFactory.getLogger(MeasurementSchema.class);
   private TSDataType type;
   private TSEncoding encoding;
   private String measurementId;
   private TSEncodingBuilder encodingConverter;
-  private Compressor compressor;
+  private ICompressor compressor;
   private TSFileConfig conf;
   private Map<String, String> props = new HashMap<>();
 
@@ -68,7 +65,7 @@ public class MeasurementSchema implements Comparable<MeasurementSchema> {
    */
   public MeasurementSchema(String measurementId, TSDataType type, TSEncoding encoding) {
     this(measurementId, type, encoding,
-        CompressionType.valueOf(TSFileDescriptor.getInstance().getConfig().compressor),
+        CompressionType.valueOf(TSFileConfig.compressor),
         Collections.emptyMap());
   }
 
@@ -81,7 +78,7 @@ public class MeasurementSchema implements Comparable<MeasurementSchema> {
    * Constructor of MeasurementSchema.
    *
    * <p>props - information in encoding method. For RLE, Encoder.MAX_POINT_NUMBER For PLAIN,
-   * Encoder.MAX_STRING_LENGTH
+   * Encoder.maxStringLength
    */
   public MeasurementSchema(String measurementId, TSDataType type, TSEncoding encoding,
       CompressionType compressionType, Map<String, String> props) {
@@ -94,7 +91,7 @@ public class MeasurementSchema implements Comparable<MeasurementSchema> {
     // initialize TSEncoding. e.g. set max error for PLA and SDT
     encodingConverter = TSEncodingBuilder.getConverter(encoding);
     encodingConverter.initFromProps(props);
-    this.compressor = Compressor.getCompressor(compressionType);
+    this.compressor = ICompressor.getCompressor(compressionType);
   }
 
   /**
@@ -110,7 +107,7 @@ public class MeasurementSchema implements Comparable<MeasurementSchema> {
     measurementSchema.encoding = ReadWriteIOUtils.readEncoding(inputStream);
 
     CompressionType compressionType = ReadWriteIOUtils.readCompressionType(inputStream);
-    measurementSchema.compressor = Compressor.getCompressor(compressionType);
+    measurementSchema.compressor = ICompressor.getCompressor(compressionType);
 
     int size = ReadWriteIOUtils.readInt(inputStream);
     if (size > 0) {
@@ -130,7 +127,7 @@ public class MeasurementSchema implements Comparable<MeasurementSchema> {
   /**
    * function for deserializing data from byte buffer.
    */
-  public static MeasurementSchema deserializeFrom(ByteBuffer buffer) throws IOException {
+  public static MeasurementSchema deserializeFrom(ByteBuffer buffer) {
     MeasurementSchema measurementSchema = new MeasurementSchema();
 
     measurementSchema.measurementId = ReadWriteIOUtils.readString(buffer);
@@ -140,7 +137,7 @@ public class MeasurementSchema implements Comparable<MeasurementSchema> {
     measurementSchema.encoding = ReadWriteIOUtils.readEncoding(buffer);
 
     CompressionType compressionType = ReadWriteIOUtils.readCompressionType(buffer);
-    measurementSchema.compressor = Compressor.getCompressor(compressionType);
+    measurementSchema.compressor = ICompressor.getCompressor(compressionType);
 
     int size = ReadWriteIOUtils.readInt(buffer);
     if (size > 0) {
@@ -197,7 +194,7 @@ public class MeasurementSchema implements Comparable<MeasurementSchema> {
       case TEXT:
         // 4 is the length of string in type of Integer.
         // Note that one char corresponding to 3 byte is valid only in 16-bit BMP
-        return conf.maxStringLength * TSFileConfig.BYTE_SIZE_PER_CHAR + 4;
+        return TSFileConfig.maxStringLength * TSFileConfig.BYTE_SIZE_PER_CHAR + 4;
       default:
         throw new UnSupportedDataTypeException(type.toString());
     }
@@ -207,9 +204,8 @@ public class MeasurementSchema implements Comparable<MeasurementSchema> {
    * function for getting time encoder.
    */
   public Encoder getTimeEncoder() {
-    TSFileConfig conf = TSFileDescriptor.getInstance().getConfig();
-    TSEncoding timeSeriesEncoder = TSEncoding.valueOf(conf.timeSeriesEncoder);
-    TSDataType timeType = TSDataType.valueOf(conf.timeSeriesDataType);
+    TSEncoding timeSeriesEncoder = TSEncoding.valueOf(TSFileConfig.timeSeriesEncoder);
+    TSDataType timeType = TSDataType.valueOf(TSFileConfig.timeSeriesDataType);
     return TSEncodingBuilder.getConverter(timeSeriesEncoder).getEncoder(timeType);
   }
 
@@ -222,7 +218,7 @@ public class MeasurementSchema implements Comparable<MeasurementSchema> {
     return encodingConverter.getEncoder(type);
   }
 
-  public Compressor getCompressor() {
+  public ICompressor getCompressor() {
     return compressor;
   }
 
@@ -256,7 +252,7 @@ public class MeasurementSchema implements Comparable<MeasurementSchema> {
   /**
    * function for serializing data to byte buffer.
    */
-  public int serializeTo(ByteBuffer buffer) throws IOException {
+  public int serializeTo(ByteBuffer buffer) {
     int byteLen = 0;
 
     byteLen += ReadWriteIOUtils.write(measurementId, buffer);

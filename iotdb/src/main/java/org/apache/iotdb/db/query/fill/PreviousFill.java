@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.db.query.fill;
 
-import java.io.IOException;
-import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -29,13 +27,10 @@ public class PreviousFill extends IFill {
 
   private long beforeRange;
 
-  private Path path;
-
   private BatchData result;
 
-  public PreviousFill(Path path, TSDataType dataType, long queryTime, long beforeRange) {
+  public PreviousFill(TSDataType dataType, long queryTime, long beforeRange) {
     super(dataType, queryTime);
-    this.path = path;
     this.beforeRange = beforeRange;
     result = new BatchData(dataType, true, true);
   }
@@ -46,7 +41,7 @@ public class PreviousFill extends IFill {
 
   @Override
   public IFill copy(Path path) {
-    return new PreviousFill(path, dataType, queryTime, beforeRange);
+    return new PreviousFill(dataType, queryTime, beforeRange);
   }
 
   public long getBeforeRange() {
@@ -54,13 +49,7 @@ public class PreviousFill extends IFill {
   }
 
   @Override
-  public BatchData getFillResult() throws ProcessorException, IOException, PathErrorException {
-    long beforeTime;
-    if (beforeRange == -1) {
-      beforeTime = 0;
-    } else {
-      beforeTime = queryTime - beforeRange;
-    }
+  public BatchData getFillResult() throws ProcessorException {
     return result;
   }
 }

@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.file.header;
 
 import java.io.IOException;
@@ -31,7 +32,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 public class ChunkHeader {
 
-  public static final byte MARKER = MetaMarker.ChunkHeader;
+  public static final byte MARKER = MetaMarker.CHUNK_HEADER;
 
   private String measurementID;
   private int dataSize;
@@ -44,12 +45,6 @@ public class ChunkHeader {
    * timestamps than this should be exposed to user.
    */
   private long maxTombstoneTime;
-
-  /**
-   * The time when the ChunkGroup of this chunk is closed. This will not be written out and will
-   * only be set when read together with its ChunkGroup during querying.
-   */
-  private long writtenTime;// not serialized now.
 
   // this field does not need to be serialized.
   private int serializedSize;
@@ -85,7 +80,7 @@ public class ChunkHeader {
   /**
    * deserialize from inputStream.
    *
-   * @param markerRead Whether the marker of the ChunkHeader has been read
+   * @param markerRead Whether the marker of the CHUNK_HEADER has been read
    */
   public static ChunkHeader deserializeFrom(InputStream inputStream, boolean markerRead)
       throws IOException {
@@ -112,7 +107,7 @@ public class ChunkHeader {
    *
    * @param byteBuffer ByteBuffer
    * @param markerRead read marker (boolean type)
-   * @return ChunkHeader object
+   * @return CHUNK_HEADER object
    * @throws IOException IOException
    */
   public static ChunkHeader deserializeFrom(ByteBuffer byteBuffer, boolean markerRead)
@@ -134,21 +129,22 @@ public class ChunkHeader {
    * @param channel FileChannel
    * @param offset offset
    * @param markerRead read marker (boolean type)
-   * @return ChunkHeader object
+   * @return CHUNK_HEADER object
    * @throws IOException IOException
    */
   public static ChunkHeader deserializeFrom(FileChannel channel, long offset, boolean markerRead)
       throws IOException {
+    long offsetVar = offset;
     if (!markerRead) {
-      offset++;
+      offsetVar++;
     }
     ByteBuffer buffer = ByteBuffer.allocate(Integer.BYTES);
-    channel.read(buffer, offset);
+    channel.read(buffer, offsetVar);
     buffer.flip();
     int size = buffer.getInt();
-    offset += Integer.BYTES;
+    offsetVar += Integer.BYTES;
     buffer = ByteBuffer.allocate(getSerializedSize(size));
-    ReadWriteIOUtils.readAsPossible(channel, offset, buffer);
+    ReadWriteIOUtils.readAsPossible(channel, offsetVar, buffer);
     buffer.flip();
     String measurementID = ReadWriteIOUtils.readStringWithoutLength(buffer, size);
     return deserializePartFrom(measurementID, buffer);
@@ -190,7 +186,7 @@ public class ChunkHeader {
    */
   public int serializeTo(OutputStream outputStream) throws IOException {
     int length = 0;
-    length += ReadWriteIOUtils.write(MetaMarker.ChunkHeader, outputStream);
+    length += ReadWriteIOUtils.write(MetaMarker.CHUNK_HEADER, outputStream);
     length += ReadWriteIOUtils.write(measurementID, outputStream);
     length += ReadWriteIOUtils.write(dataSize, outputStream);
     length += ReadWriteIOUtils.write(dataType, outputStream);
@@ -198,7 +194,6 @@ public class ChunkHeader {
     length += ReadWriteIOUtils.write(compressionType, outputStream);
     length += ReadWriteIOUtils.write(encodingType, outputStream);
     length += ReadWriteIOUtils.write(maxTombstoneTime, outputStream);
-    assert length == getSerializedSize();
     return length;
   }
 
@@ -210,7 +205,7 @@ public class ChunkHeader {
    */
   public int serializeTo(ByteBuffer buffer) {
     int length = 0;
-    length += ReadWriteIOUtils.write(MetaMarker.ChunkHeader, buffer);
+    length += ReadWriteIOUtils.write(MetaMarker.CHUNK_HEADER, buffer);
     length += ReadWriteIOUtils.write(measurementID, buffer);
     length += ReadWriteIOUtils.write(dataSize, buffer);
     length += ReadWriteIOUtils.write(dataType, buffer);
@@ -218,7 +213,6 @@ public class ChunkHeader {
     length += ReadWriteIOUtils.write(compressionType, buffer);
     length += ReadWriteIOUtils.write(encodingType, buffer);
     length += ReadWriteIOUtils.write(maxTombstoneTime, buffer);
-    assert length == getSerializedSize();
     return length;
   }
 
@@ -244,7 +238,7 @@ public class ChunkHeader {
 
   @Override
   public String toString() {
-    return "ChunkHeader{" + "measurementID='" + measurementID + '\'' + ", dataSize=" + dataSize
+    return "CHUNK_HEADER{" + "measurementID='" + measurementID + '\'' + ", dataSize=" + dataSize
         + ", dataType="
         + dataType + ", compressionType=" + compressionType + ", encodingType=" + encodingType
         + ", numOfPages="

@@ -65,7 +65,7 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
 
   @Override
   public int getColumnCount() throws SQLException {
-    if (columnInfoList == null || columnInfoList.size() == 0) {
+    if (columnInfoList == null || columnInfoList.isEmpty()) {
       throw new SQLException("No column exists");
     }
     return columnInfoList.size();
@@ -79,15 +79,7 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
 
   @Override
   public String getColumnLabel(int column) throws SQLException {
-    if (columnInfoList == null || columnInfoList.size() == 0) {
-      throw new SQLException("No column exists");
-    }
-    if (column > columnInfoList.size()) {
-      throw new SQLException(String.format("column %d does not exist", column));
-    }
-    if (column <= 0) {
-      throw new SQLException(String.format("column index should start from 1", column));
-    }
+    checkColumnIndex(column);
     return columnInfoList.get(column - 1);
   }
 
@@ -96,19 +88,22 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
     return getColumnLabel(column);
   }
 
-  @Override
-  public int getColumnType(int column) throws SQLException {
-    // TODO Auto-generated method stub
-    if (columnInfoList == null || columnInfoList.size() == 0) {
+  private void checkColumnIndex(int column) throws SQLException {
+    if (columnInfoList == null || columnInfoList.isEmpty()) {
       throw new SQLException("No column exists");
     }
     if (column > columnInfoList.size()) {
       throw new SQLException(String.format("column %d does not exist", column));
     }
     if (column <= 0) {
-      throw new SQLException(String.format("column index should start from 1", column));
+      throw new SQLException("column index should start from 1");
     }
+  }
 
+  @Override
+  public int getColumnType(int column) throws SQLException {
+    // TODO Auto-generated method stub
+    checkColumnIndex(column);
     if (column == 1) {
       return Types.TIMESTAMP;
     }

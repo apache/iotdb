@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.file.metadata;
 
 import java.io.IOException;
@@ -51,6 +52,7 @@ public class TsDeviceMetadata {
   private List<ChunkGroupMetaData> chunkGroupMetadataList = new ArrayList<>();
 
   public TsDeviceMetadata() {
+    // allowed to clair an empty TsDeviceMetadata whose fields will be assigned later.
   }
 
   /**
@@ -84,7 +86,7 @@ public class TsDeviceMetadata {
    * @param buffer -buffer to deserialize
    * @return -device meta data
    */
-  public static TsDeviceMetadata deserializeFrom(ByteBuffer buffer) throws IOException {
+  public static TsDeviceMetadata deserializeFrom(ByteBuffer buffer) {
     TsDeviceMetadata deviceMetadata = new TsDeviceMetadata();
 
     deviceMetadata.startTime = ReadWriteIOUtils.readLong(buffer);
@@ -142,7 +144,7 @@ public class TsDeviceMetadata {
     }
   }
 
-  public List<ChunkGroupMetaData> getChunkGroups() {
+  public List<ChunkGroupMetaData> getChunkGroupMetaDataList() {
     return Collections.unmodifiableList(chunkGroupMetadataList);
   }
 
@@ -181,7 +183,6 @@ public class TsDeviceMetadata {
         byteLen += chunkGroupMetaData.serializeTo(outputStream);
       }
     }
-    assert getSerializedSize() == byteLen;
     return byteLen;
   }
 

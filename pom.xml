@@ -307,7 +307,7 @@
             <!-- use mvn license:remove to remove license header; mvn license:format -->
             <!-- we do not recommend using the plugin because it maybe out of control
             (adding headers in some files that you do not want) -->
-            <!-- <plugin>
+            <!--<plugin>
                 <groupId>com.mycila</groupId>
                 <artifactId>license-maven-plugin</artifactId>
                 <version>3.0</version>
@@ -500,6 +500,9 @@
                     <exists>src/main/thrift</exists>
                 </file>
             </activation>
+            <properties>
+                <thrift.exec.absolute.path>${project.build.directory}/tools/${thrift.executable}</thrift.exec.absolute.path>
+            </properties>
             <build>
                 <plugins>
                     <plugin>
@@ -553,7 +556,7 @@
                                 </goals>
                                 <configuration>
                                     <generator>java</generator>
-                                    <thriftExecutable>${project.build.directory}/tools/${thrift.executable}</thriftExecutable>
+                                    <thriftExecutable>${thrift.exec.absolute.path}</thriftExecutable>
                                     <thriftSourceRoot>${basedir}/src/main/thrift</thriftSourceRoot>
                                 </configuration>
                             </execution>

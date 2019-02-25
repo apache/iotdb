@@ -91,13 +91,13 @@ public class TestHelper {
   }
 
   public static ChunkGroupMetaData createEmptySeriesChunkGroupMetaData() {
-    ChunkGroupMetaData metaData = new ChunkGroupMetaData("d1", new ArrayList<>());
+    ChunkGroupMetaData metaData = new ChunkGroupMetaData("d1", new ArrayList<>(), 0);
     return metaData;
   }
 
   public static ChunkGroupMetaData createSimpleChunkGroupMetaData() {
     ChunkGroupMetaData metaData = new ChunkGroupMetaData(ChunkGroupMetaDataTest.DELTA_OBJECT_UID,
-        new ArrayList<>());
+        new ArrayList<>(), 0);
     metaData.addTimeSeriesChunkMetaData(TestHelper.createSimpleTimeSeriesChunkMetaData());
     metaData.addTimeSeriesChunkMetaData(TestHelper.createSimpleTimeSeriesChunkMetaData());
     return metaData;

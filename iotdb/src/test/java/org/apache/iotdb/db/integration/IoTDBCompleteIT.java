@@ -39,34 +39,34 @@ import org.junit.Test;
  */
 public class IoTDBCompleteIT {
 
-  private IoTDB deamon;
+  private IoTDB daemon;
 
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.closeMemControl();
-    deamon = IoTDB.getInstance();
-    deamon.active();
+    daemon = IoTDB.getInstance();
+    daemon.active();
     EnvironmentUtils.envSetUp();
   }
 
   @After
   public void tearDown() throws Exception {
-    deamon.stop();
-    Thread.sleep(5000);
+    daemon.stop();
     EnvironmentUtils.cleanEnv();
   }
 
   @Test
-  public void Test() throws ClassNotFoundException, SQLException {
+  public void test() throws ClassNotFoundException, SQLException {
     String[] sqls = {"SET STORAGE GROUP TO root.vehicle"};
     executeSQL(sqls);
-    SimpleTest();
-    InsertTest();
-    SelectTest();
+    simpleTest();
+    insertTest();
+    selectTest();
+    deleteTest();
   }
 
-  public void SimpleTest() throws ClassNotFoundException, SQLException {
+  public void simpleTest() throws ClassNotFoundException, SQLException {
     String[] sqlS = {"CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32,ENCODING=RLE",
         "SHOW TIMESERIES",
         "===  Timeseries Tree  ===\n" + "\n" + "root:{\n" + "    vehicle:{\n" + "        d0:{\n"
@@ -81,11 +81,11 @@ public class IoTDBCompleteIT {
         "CREATE TIMESERIES root.vehicle.d0.s2 WITH DATATYPE=FLOAT,ENCODING=GORILLA",
         "CREATE TIMESERIES root.vehicle.d0.s4 WITH DATATYPE=DOUBLE,ENCODING=RLE",
         "CREATE TIMESERIES root.vehicle.d1.s5 WITH DATATYPE=TEXT,ENCODING=PLAIN",
-        "CREATE TIMESERIES root.vehicle.d2.s6 WITH DATATYPE=INT32,ENCODING=TS_2DIFF,COMPRESSOR=UNCOMPRESSOR",
-        "CREATE TIMESERIES root.vehicle.d3.s7 WITH DATATYPE=INT32,ENCODING=RLE,COMPRESSOR=SNAPPY",
+        "CREATE TIMESERIES root.vehicle.d2.s6 WITH DATATYPE=INT32,ENCODING=TS_2DIFF,compressor=UNCOMPRESSOR",
+        "CREATE TIMESERIES root.vehicle.d3.s7 WITH DATATYPE=INT32,ENCODING=RLE,compressor=SNAPPY",
         "CREATE TIMESERIES root.vehicle.d4.s8 WITH DATATYPE=INT32,ENCODING=RLE,MAX_POINT_NUMBER=100",
-        "CREATE TIMESERIES root.vehicle.d5.s9 WITH DATATYPE=FLOAT,ENCODING=PLAIN,COMPRESSOR=SNAPPY,MAX_POINT_NUMBER=10",
-        "CREATE TIMESERIES root.vehicle.d6.s10 WITH DATATYPE=DOUBLE,ENCODING=RLE,COMPRESSOR=UNCOMPRESSOR,MAX_POINT_NUMBER=10",
+        "CREATE TIMESERIES root.vehicle.d5.s9 WITH DATATYPE=FLOAT,ENCODING=PLAIN,compressor=SNAPPY,MAX_POINT_NUMBER=10",
+        "CREATE TIMESERIES root.vehicle.d6.s10 WITH DATATYPE=DOUBLE,ENCODING=RLE,compressor=UNCOMPRESSOR,MAX_POINT_NUMBER=10",
         "DELETE TIMESERIES root.vehicle.d0.*", "SHOW TIMESERIES",
         "===  Timeseries Tree  ===\n" + "\n" + "root:{\n" + "    vehicle:{\n" + "        d1:{\n"
             + "            s5:{\n" + "                 DataType: TEXT,\n"
@@ -93,10 +93,10 @@ public class IoTDBCompleteIT {
             + "                 StorageGroup: root.vehicle \n" + "            }\n" + "        },\n"
             + "        d2:{\n" + "            s6:{\n" + "                 DataType: INT32,\n"
             + "                 Encoding: TS_2DIFF,\n"
-            + "                 args: {COMPRESSOR=UNCOMPRESSOR},\n"
+            + "                 args: {compressor=UNCOMPRESSOR},\n"
             + "                 StorageGroup: root.vehicle \n" + "            }\n" + "        },\n"
             + "        d3:{\n" + "            s7:{\n" + "                 DataType: INT32,\n"
-            + "                 Encoding: RLE,\n" + "                 args: {COMPRESSOR=SNAPPY},\n"
+            + "                 Encoding: RLE,\n" + "                 args: {compressor=SNAPPY},\n"
             + "                 StorageGroup: root.vehicle \n" + "            }\n" + "        },\n"
             + "        d4:{\n" + "            s8:{\n" + "                 DataType: INT32,\n"
             + "                 Encoding: RLE,\n"
@@ -104,11 +104,11 @@ public class IoTDBCompleteIT {
             + "                 StorageGroup: root.vehicle \n" + "            }\n" + "        },\n"
             + "        d5:{\n" + "            s9:{\n" + "                 DataType: FLOAT,\n"
             + "                 Encoding: PLAIN,\n"
-            + "                 args: {COMPRESSOR=SNAPPY, MAX_POINT_NUMBER=10},\n"
+            + "                 args: {MAX_POINT_NUMBER=10, compressor=SNAPPY},\n"
             + "                 StorageGroup: root.vehicle \n" + "            }\n" + "        },\n"
             + "        d6:{\n" + "            s10:{\n" + "                 DataType: DOUBLE,\n"
             + "                 Encoding: RLE,\n"
-            + "                 args: {COMPRESSOR=UNCOMPRESSOR, MAX_POINT_NUMBER=10},\n"
+            + "                 args: {MAX_POINT_NUMBER=10, compressor=UNCOMPRESSOR},\n"
             + "                 StorageGroup: root.vehicle \n" + "            }\n" + "        }\n"
             + "    }\n" + "}",
         "DELETE TIMESERIES root.vehicle.*", "SHOW TIMESERIES",
@@ -116,7 +116,7 @@ public class IoTDBCompleteIT {
     executeSQL(sqlS);
   }
 
-  public void InsertTest() throws ClassNotFoundException, SQLException {
+  public void insertTest() throws ClassNotFoundException, SQLException {
     String[] sqlS = {"CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32,ENCODING=RLE",
         "INSERT INTO root.vehicle.d0(timestamp,s0) values(1,101)",
         "CREATE TIMESERIES root.vehicle.d0.s1 WITH DATATYPE=INT32,ENCODING=RLE",
@@ -129,7 +129,7 @@ public class IoTDBCompleteIT {
     executeSQL(sqlS);
   }
 
-  public void DeleteTest() throws ClassNotFoundException, SQLException {
+  public void deleteTest() throws ClassNotFoundException, SQLException {
     String[] sqlS = {"CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32,ENCODING=RLE",
         "INSERT INTO root.vehicle.d0(timestamp,s0) values(1,1)",
         "INSERT INTO root.vehicle.d0(timestamp,s0) values(2,1)",
@@ -165,7 +165,7 @@ public class IoTDBCompleteIT {
     executeSQL(sqlS);
   }
 
-  public void SelectTest() throws ClassNotFoundException, SQLException {
+  public void selectTest() throws ClassNotFoundException, SQLException {
     String[] sqlS = {"CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32,ENCODING=RLE",
         "INSERT INTO root.vehicle.d0(timestamp,s0) values(1,101)",
         "INSERT INTO root.vehicle.d0(timestamp,s0) values(2,102)",
@@ -186,7 +186,7 @@ public class IoTDBCompleteIT {
     executeSQL(sqlS);
   }
 
-  public void FuncTest() throws ClassNotFoundException, SQLException {
+  public void funcTest() throws ClassNotFoundException, SQLException {
     String[] sqlS = {"CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32,ENCODING=RLE",
         "INSERT INTO root.vehicle.d0(timestamp,s0) values(1,110)",
         "INSERT INTO root.vehicle.d0(timestamp,s0) values(2,109)",
@@ -219,7 +219,7 @@ public class IoTDBCompleteIT {
     executeSQL(sqlS);
   }
 
-  public void GroupByTest() throws ClassNotFoundException, SQLException {
+  public void groupByTest() throws ClassNotFoundException, SQLException {
     String[] sqlS = {"CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32,ENCODING=RLE",
         "INSERT INTO root.vehicle.d0(timestamp,s0) values(1,110)",
         "INSERT INTO root.vehicle.d0(timestamp,s0) values(2,109)",

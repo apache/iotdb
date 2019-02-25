@@ -225,14 +225,10 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
             String.format("Timeseries %s does not exist.", path.getFullPath()));
       }
       mManager.getFileNameByPath(path.getFullPath());
-      TSDataType type = mManager.getSeriesType(path.getFullPath());
-      fileNodeManager.delete(deviceId, measurementId, timestamp, type);
+      fileNodeManager.delete(deviceId, measurementId, timestamp);
       return true;
-    } catch (PathErrorException e) {
-      throw new ProcessorException(e.getMessage());
-    } catch (FileNodeManagerException e) {
-      e.printStackTrace();
-      throw new ProcessorException(e.getMessage());
+    } catch (PathErrorException | FileNodeManagerException e) {
+      throw new ProcessorException(e);
     }
   }
 
@@ -423,7 +419,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
           msg = new StringBuilder("Roles are : [ \n");
           User user = authorizer.getUser(userName);
           if (user != null) {
-            for (String roleN : user.roleList) {
+            for (String roleN : user.getRoleList()) {
               msg.append(roleN).append("\n");
             }
           } else {
@@ -435,9 +431,9 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
           msg = new StringBuilder("Privileges are : [ \n");
           role = authorizer.getRole(roleName);
           if (role != null) {
-            for (PathPrivilege pathPrivilege : role.privilegeList) {
+            for (PathPrivilege pathPrivilege : role.getPrivilegeList()) {
               if (nodeName == null || AuthUtils
-                  .pathBelongsTo(nodeName.getFullPath(), pathPrivilege.path)) {
+                  .pathBelongsTo(nodeName.getFullPath(), pathPrivilege.getPath())) {
                 msg.append(pathPrivilege.toString());
               }
             }
@@ -453,20 +449,20 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
           }
           msg = new StringBuilder("Privileges are : [ \n");
           msg.append("From itself : {\n");
-          for (PathPrivilege pathPrivilege : user.privilegeList) {
+          for (PathPrivilege pathPrivilege : user.getPrivilegeList()) {
             if (nodeName == null || AuthUtils
-                .pathBelongsTo(nodeName.getFullPath(), pathPrivilege.path)) {
+                .pathBelongsTo(nodeName.getFullPath(), pathPrivilege.getPath())) {
               msg.append(pathPrivilege.toString());
             }
           }
           msg.append("}\n");
-          for (String roleN : user.roleList) {
+          for (String roleN : user.getRoleList()) {
             role = authorizer.getRole(roleN);
             if (role != null) {
               msg.append("From role ").append(roleN).append(" : {\n");
-              for (PathPrivilege pathPrivilege : role.privilegeList) {
+              for (PathPrivilege pathPrivilege : role.getPrivilegeList()) {
                 if (nodeName == null
-                    || AuthUtils.pathBelongsTo(nodeName.getFullPath(), pathPrivilege.path)) {
+                    || AuthUtils.pathBelongsTo(nodeName.getFullPath(), pathPrivilege.getPath())) {
                   msg.append(pathPrivilege.toString());
                 }
               }
@@ -529,7 +525,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
             try {
               if (isNewMeasurement) {
                 // add time series to schema
-                fileNodeManager.addTimeSeries(path, dataType, encoding, encodingArgs);
+                fileNodeManager.addTimeSeries(path, dataType, encoding);
               }
               // fileNodeManager.closeOneFileNode(namespacePath);
             } catch (FileNodeManagerException e) {
@@ -552,7 +548,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
               for (String eachSubPath : subPaths) {
                 String filenodeName = mManager.getFileNameByPath(eachSubPath);
 
-                if (MonitorConstants.statStorageGroupPrefix.equals(filenodeName)) {
+                if (MonitorConstants.STAT_STORAGE_GROUP_PREFIX.equals(filenodeName)) {
                   continue;
                 }
                 newSubPaths.add(eachSubPath);

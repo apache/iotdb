@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.commons.io.FileUtils;
+import org.apache.iotdb.db.engine.version.SysTimeVersionController;
 import org.apache.iotdb.db.exception.BufferWriteProcessorException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -32,7 +33,8 @@ import org.apache.iotdb.tsfile.write.schema.FileSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 /**
- * BufferWrite insert Benchmark. This class is used to bench Bufferwrite module and gets its performance.
+ * BufferWrite insert Benchmark. This class is used to bench Bufferwrite module and gets its
+ * performance.
  */
 public class BufferWriteBenchmark {
 
@@ -75,26 +77,26 @@ public class BufferWriteBenchmark {
     Map<String, Action> parameters = new HashMap<>();
     parameters.put(FileNodeConstants.BUFFERWRITE_FLUSH_ACTION, new Action() {
       @Override
-      public void act() throws Exception {
+      public void act() throws ActionException {
         System.out.println(FileNodeConstants.BUFFERWRITE_FLUSH_ACTION);
       }
     });
     parameters.put(FileNodeConstants.BUFFERWRITE_CLOSE_ACTION, new Action() {
       @Override
-      public void act() throws Exception {
+      public void act() throws ActionException {
         System.out.println(FileNodeConstants.BUFFERWRITE_CLOSE_ACTION);
       }
     });
     parameters.put(FileNodeConstants.FILENODE_PROCESSOR_FLUSH_ACTION, new Action() {
       @Override
-      public void act() throws Exception {
+      public void act() throws ActionException {
         System.out.println(FileNodeConstants.FILENODE_PROCESSOR_FLUSH_ACTION);
       }
     });
 
-    BufferWriteProcessor bufferWriteProcessor = new BufferWriteProcessor("BufferBenchmark", "bench",
-        "benchFile",
-        parameters, fileSchema);
+    BufferWriteProcessor bufferWriteProcessor = new BufferWriteProcessor("BufferBenchmark",
+        "bench", "benchFile",
+        parameters, SysTimeVersionController.INSTANCE, fileSchema);
 
     long startTime = System.currentTimeMillis();
     for (int i = 0; i < numOfPoint; i++) {

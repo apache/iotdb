@@ -68,11 +68,12 @@ public abstract class AbstractCsvTool {
   protected static String password;
   protected static ZoneId zoneId;
 
-  // protected static final String JDBC_DRIVER = "case hu.tsfiledb.jdbc.IoTDBDriver";
   protected static String timeZoneID;
   protected static String timeFormat;
   protected static IoTDBConnection connection;
 
+  AbstractCsvTool() {}
+  
   protected static String checkRequiredArg(String arg, String name, CommandLine commandLine)
       throws ArgsErrorException {
     String str = commandLine.getOptionValue(arg);

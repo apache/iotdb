@@ -1,27 +1,25 @@
 /**
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one or more contributor license
+ * agreements.  See the NOTICE file distributed with this work for additional information regarding
+ * copyright ownership.  The ASF licenses this file to you under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with the License.  You may obtain
+ * a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
+ * Unless required by applicable law or agreed to in writing, software distributed under the License
+ * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
+ * or implied.  See the License for the specific language governing permissions and limitations
  * under the License.
  */
 package org.apache.iotdb.db.utils;
 
 import java.io.File;
+import java.io.IOException;
 import java.text.DecimalFormat;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
 import java.util.Set;
 import org.apache.iotdb.db.postback.conf.PostBackSenderDescriptor;
 
@@ -30,8 +28,10 @@ import org.apache.iotdb.db.postback.conf.PostBackSenderDescriptor;
  */
 public class PostbackUtils {
 
+  private PostbackUtils(){}
+
   private static String[] snapshotPaths = PostBackSenderDescriptor.getInstance()
-      .getConfig().snapshotPaths;
+      .getConfig().getSnapshotPaths();
 
   /**
    * This method is to get a snapshot file seriesPath according to a tsfile seriesPath. Due to multiple directories,
@@ -76,7 +76,7 @@ public class PostbackUtils {
    */
   public static boolean isEmpty(Map<String, Set<String>> sendingFileList) {
     for (Entry<String, Set<String>> entry : sendingFileList.entrySet()) {
-      if (entry.getValue().size() != 0) {
+      if (!entry.getValue().isEmpty()) {
         return false;
       }
     }
@@ -86,16 +86,16 @@ public class PostbackUtils {
   /**
    * Verify IP address with IP white list which contains more than one IP segment. It's used by postback sender.
    *
-   * @param IPwhiteList
-   * @param IPaddress
+   * @param ipWhiteList
+   * @param ipAddress
    * @return
    */
-  public static boolean verifyIPSegment(String IPwhiteList, String IPaddress) {
-    String[] IPsegments = IPwhiteList.split(",");
-    for (String IPsegment : IPsegments) {
-      int subnetMask = Integer.parseInt(IPsegment.substring(IPsegment.indexOf("/") + 1));
-      IPsegment = IPsegment.substring(0, IPsegment.indexOf("/"));
-      if (verifyIP(IPsegment, IPaddress, subnetMask)) {
+  public static boolean verifyIPSegment(String ipWhiteList, String ipAddress) {
+    String[] ipSegments = ipWhiteList.split(",");
+    for (String IPsegment : ipSegments) {
+      int subnetMask = Integer.parseInt(IPsegment.substring(IPsegment.indexOf('/') + 1));
+      IPsegment = IPsegment.substring(0, IPsegment.indexOf('/'));
+      if (verifyIP(IPsegment, ipAddress, subnetMask)) {
         return true;
       }
     }
@@ -105,47 +105,52 @@ public class PostbackUtils {
   /**
    * Verify IP address with IP segment.
    *
-   * @param IPsegment
-   * @param IPaddress
+   * @param ipSegment
+   * @param ipAddress
    * @param subnetMark
    * @return
    */
-  private static boolean verifyIP(String IPsegment, String IPaddress, int subnetMark) {
-    String IPsegmentBinary = "";
-    String IPaddressBinary = "";
-    String[] IPsplits = IPsegment.split("\\.");
+  private static boolean verifyIP(String ipSegment, String ipAddress, int subnetMark) {
+    String ipSegmentBinary = "";
+    String ipAddressBinary = "";
+    String[] ipSplits = ipSegment.split("\\.");
     DecimalFormat df = new DecimalFormat("00000000");
-    for (String IPsplit : IPsplits) {
-      IPsegmentBinary = IPsegmentBinary
-          + String
-          .valueOf(df.format(Integer.parseInt(Integer.toBinaryString(Integer.parseInt(IPsplit)))));
+    StringBuilder ipSegmentBuilder = new StringBuilder();
+    for (String IPsplit : ipSplits) {
+      ipSegmentBuilder.append(String.valueOf(df.format(
+              Integer.parseInt(Integer.toBinaryString(Integer.parseInt(IPsplit))))));
     }
-    IPsegmentBinary = IPsegmentBinary.substring(0, subnetMark);
-    IPsplits = IPaddress.split("\\.");
-    for (String IPsplit : IPsplits) {
-      IPaddressBinary = IPaddressBinary
-          + String
-          .valueOf(df.format(Integer.parseInt(Integer.toBinaryString(Integer.parseInt(IPsplit)))));
+    ipSegmentBinary = ipSegmentBuilder.toString();
+    ipSegmentBinary = ipSegmentBinary.substring(0, subnetMark);
+    ipSplits = ipAddress.split("\\.");
+    StringBuilder ipAddressBuilder = new StringBuilder();
+    for (String IPsplit : ipSplits) {
+      ipAddressBuilder.append(String.valueOf(df.format(
+              Integer.parseInt(Integer.toBinaryString(Integer.parseInt(IPsplit))))));
     }
-    IPaddressBinary = IPaddressBinary.substring(0, subnetMark);
-    if (IPaddressBinary.equals(IPsegmentBinary)) {
-      return true;
-    } else {
-      return false;
-    }
+    ipAddressBinary = ipAddressBuilder.toString();
+    ipAddressBinary = ipAddressBinary.substring(0, subnetMark);
+    return ipAddressBinary.equals(ipSegmentBinary);
   }
 
-  public static void deleteFile(File file) {
+  public static void deleteFile(File file) throws IOException {
     if (!file.exists()) {
       return;
     }
-    if (file.isFile() || file.list().length == 0) {
-      file.delete();
+    if (file.isFile() || Objects.requireNonNull(file.list()).length == 0) {
+      if (!file.delete()){
+        throw new IOException(
+            String.format("Cannot delete file : %s", file.getPath()));
+      }
     } else {
       File[] files = file.listFiles();
+      assert files != null;
       for (File f : files) {
         deleteFile(f);
-        f.delete();
+        if (!f.delete()) {
+          throw new IOException(
+              String.format("Cannot delete file : %s", f.getPath()));
+        }
       }
     }
   }

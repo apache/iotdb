@@ -54,33 +54,6 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>cn.edu.fudan.dsm</groupId>
-            <artifactId>kvmatch-iotdb</artifactId>
-            <version>1.0.3</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>org.slf4j</groupId>
-                    <artifactId>slf4j-api</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>org.slf4j</groupId>
-                    <artifactId>slf4j-log4j12</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>org.slf4j</groupId>
-                    <artifactId>slf4j-log4j12</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>log4j</groupId>
-                    <artifactId>log4j</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>org.apache.iotdb</groupId>
-                    <artifactId>tsfile</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-        <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-collections4</artifactId>
             <version>${commons.collections4}</version>
@@ -213,7 +186,7 @@
     </build>
     <profiles>
         <profile>
-            <id>skipTsfileTests</id>
+            <id>skipIoTDBTests</id>
             <activation>
                 <property>
                     <name>skipTests</name>
@@ -224,6 +197,18 @@
                 <iotdb.test.skip>true</iotdb.test.skip>
                 <iotdb.ut.skip>true</iotdb.ut.skip>
                 <iotdb.it.skip>true</iotdb.it.skip>
+            </properties>
+        </profile>
+        <profile>
+            <id>skipUT_IoTDB_Tests</id>
+            <activation>
+                <property>
+                    <name>skipUTs</name>
+                    <value>true</value>
+                </property>
+            </activation>
+            <properties>
+                <iotdb.ut.skip>true</iotdb.ut.skip>
             </properties>
         </profile>
     </profiles>

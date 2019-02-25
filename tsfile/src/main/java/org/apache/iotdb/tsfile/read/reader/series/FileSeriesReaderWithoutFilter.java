@@ -39,7 +39,6 @@ public class FileSeriesReaderWithoutFilter extends FileSeriesReader {
   protected void initChunkReader(ChunkMetaData chunkMetaData) throws IOException {
     Chunk chunk = chunkLoader.getChunk(chunkMetaData);
     this.chunkReader = new ChunkReaderWithoutFilter(chunk);
-    this.chunkReader.setMaxTombstoneTime(chunkMetaData.getMaxTombstoneTime());
   }
 
   @Override

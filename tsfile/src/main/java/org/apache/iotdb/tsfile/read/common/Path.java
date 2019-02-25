@@ -20,6 +20,10 @@ package org.apache.iotdb.tsfile.read.common;
 
 import org.apache.iotdb.tsfile.common.constant.SystemConstant;
 import org.apache.iotdb.tsfile.utils.StringContainer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
 
 /**
  * This class define an Object named Path to represent a series in IoTDB. AndExpression in batch read, this definition
@@ -32,28 +36,37 @@ public class Path {
   private String measurement = null;
   private String device = null;
   private String fullPath;
+  private String illegalPathArgument = "Path parameter is null";
 
   public Path(StringContainer pathSc) {
-    assert pathSc != null;
+    if (pathSc == null) {
+      throw new IllegalArgumentException("input pathSc is null!");
+    }
     String[] splits = pathSc.toString().split(SystemConstant.PATH_SEPARATER_NO_REGEX);
     init(splits);
   }
 
   public Path(String pathSc) {
-    assert pathSc != null;
+    if (pathSc == null) {
+      throw new IllegalArgumentException(illegalPathArgument);
+    }
     String[] splits = pathSc.split(SystemConstant.PATH_SEPARATER_NO_REGEX);
     init(splits);
   }
 
   public Path(String[] pathSc) {
-    assert pathSc != null;
+    if (pathSc == null) {
+      throw new IllegalArgumentException(illegalPathArgument);
+    }
     String[] splits = new StringContainer(pathSc, SystemConstant.PATH_SEPARATOR).toString()
         .split(SystemConstant.PATH_SEPARATER_NO_REGEX);
     init(splits);
   }
 
   public Path(String device, String measurement) {
-    assert device != null && measurement != null;
+    if (device == null || measurement == null) {
+      throw new IllegalArgumentException(illegalPathArgument);
+    }
     String[] splits = (device + SystemConstant.PATH_SEPARATOR + measurement)
         .split(SystemConstant.PATH_SEPARATER_NO_REGEX);
     init(splits);

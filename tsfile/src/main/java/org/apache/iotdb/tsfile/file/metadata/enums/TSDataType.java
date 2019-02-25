@@ -28,7 +28,9 @@ public enum TSDataType {
    * @return -enum type
    */
   public static TSDataType deserialize(short i) {
-    assert i < 6;
+    if(i >= 6){
+      throw new IllegalArgumentException("Invalid input: " + i);
+    }
     switch (i) {
       case 0:
         return BOOLEAN;

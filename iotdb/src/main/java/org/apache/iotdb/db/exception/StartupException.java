@@ -29,4 +29,6 @@ public class StartupException extends Exception {
   public StartupException(String msg, Throwable cause) {
     super(msg, cause);
   }
+
+  public StartupException(Throwable cause) {super(cause);}
 }

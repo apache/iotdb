@@ -28,8 +28,12 @@ import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.entity.PathPrivilege;
 import org.apache.iotdb.db.auth.entity.PrivilegeType;
 import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class AuthUtils {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(AuthUtils.class);
 
   private static final int MIN_PASSWORD_LENGTH = 4;
   private static final int MIN_USERNAME_LENGTH = 4;
@@ -37,6 +41,10 @@ public class AuthUtils {
   private static final String ROOT_PREFIX = IoTDBConstant.PATH_ROOT;
   private static final String ENCRYPT_ALGORITHM = "MD5";
   private static final String STRING_ENCODING = "utf-8";
+
+  private AuthUtils() {
+
+  }
 
   /**
    * validate password length.
@@ -134,6 +142,7 @@ public class AuthUtils {
         case INSERT_TIMESERIES:
         case UPDATE_TIMESERIES:
           validatePath(path);
+          return;
         default:
           return;
       }
@@ -152,6 +161,7 @@ public class AuthUtils {
       messageDigest.update(password.getBytes(STRING_ENCODING));
       return new String(messageDigest.digest(), STRING_ENCODING);
     } catch (NoSuchAlgorithmException | UnsupportedEncodingException e) {
+      LOGGER.error("meet error while encrypting password.", e);
       return password;
     }
   }
@@ -167,7 +177,7 @@ public class AuthUtils {
   public static boolean pathBelongsTo(String pathA, String pathB) {
     return pathA.equals(pathB)
         || (pathA.startsWith(pathB)
-        && pathA.charAt(pathB.length()) == IoTDBConstant.PATH_SEPARATER);
+        && pathA.charAt(pathB.length()) == IoTDBConstant.PATH_SEPARATOR);
   }
 
   /**
@@ -185,16 +195,14 @@ public class AuthUtils {
     }
     for (PathPrivilege pathPrivilege : privilegeList) {
       if (path != null) {
-        if (pathPrivilege.path != null && AuthUtils.pathBelongsTo(path, pathPrivilege.path)) {
-          if (pathPrivilege.privileges.contains(privilegeId)) {
-            return true;
-          }
+        if (pathPrivilege.getPath() != null &&
+                AuthUtils.pathBelongsTo(path, pathPrivilege.getPath()) &&
+                pathPrivilege.getPrivileges().contains(privilegeId)) {
+          return true;
         }
       } else {
-        if (pathPrivilege.path == null) {
-          if (pathPrivilege.privileges.contains(privilegeId)) {
-            return true;
-          }
+        if (pathPrivilege.getPath() == null && pathPrivilege.getPrivileges().contains(privilegeId)) {
+          return true;
         }
       }
     }
@@ -210,17 +218,17 @@ public class AuthUtils {
    */
   public static Set<Integer> getPrivileges(String path, List<PathPrivilege> privilegeList) {
     if (privilegeList == null) {
-      return null;
+      return new HashSet<>();
     }
     Set<Integer> privileges = new HashSet<>();
     for (PathPrivilege pathPrivilege : privilegeList) {
       if (path != null) {
-        if (pathPrivilege.path != null && AuthUtils.pathBelongsTo(path, pathPrivilege.path)) {
-          privileges.addAll(pathPrivilege.privileges);
+        if (pathPrivilege.getPath() != null && AuthUtils.pathBelongsTo(path, pathPrivilege.getPath())) {
+          privileges.addAll(pathPrivilege.getPrivileges());
         }
       } else {
-        if (pathPrivilege.path == null) {
-          privileges.addAll(pathPrivilege.privileges);
+        if (pathPrivilege.getPath() == null) {
+          privileges.addAll(pathPrivilege.getPrivileges());
         }
       }
     }
@@ -238,8 +246,8 @@ public class AuthUtils {
   public static boolean hasPrivilege(String path, int privilegeId,
       List<PathPrivilege> privilegeList) {
     for (PathPrivilege pathPrivilege : privilegeList) {
-      if (pathPrivilege.path.equals(path) && pathPrivilege.privileges.contains(privilegeId)) {
-        pathPrivilege.referenceCnt.incrementAndGet();
+      if (pathPrivilege.getPath().equals(path) && pathPrivilege.getPrivileges().contains(privilegeId)) {
+        pathPrivilege.getReferenceCnt().incrementAndGet();
         return true;
       }
     }
@@ -255,12 +263,12 @@ public class AuthUtils {
    */
   public static void addPrivilege(String path, int privilgeId, List<PathPrivilege> privilegeList) {
     for (PathPrivilege pathPrivilege : privilegeList) {
-      if (pathPrivilege.path.equals(path)) {
+      if (pathPrivilege.getPath().equals(path)) {
         if (privilgeId != PrivilegeType.ALL.ordinal()) {
-          pathPrivilege.privileges.add(privilgeId);
+          pathPrivilege.getPrivileges().add(privilgeId);
         } else {
           for (PrivilegeType privilegeType : PrivilegeType.values()) {
-            pathPrivilege.privileges.add(privilegeType.ordinal());
+            pathPrivilege.getPrivileges().add(privilegeType.ordinal());
           }
         }
         return;
@@ -268,10 +276,10 @@ public class AuthUtils {
     }
     PathPrivilege pathPrivilege = new PathPrivilege(path);
     if (privilgeId != PrivilegeType.ALL.ordinal()) {
-      pathPrivilege.privileges.add(privilgeId);
+      pathPrivilege.getPrivileges().add(privilgeId);
     } else {
       for (PrivilegeType privilegeType : PrivilegeType.values()) {
-        pathPrivilege.privileges.add(privilegeType.ordinal());
+        pathPrivilege.getPrivileges().add(privilegeType.ordinal());
       }
     }
     privilegeList.add(pathPrivilege);
@@ -288,14 +296,14 @@ public class AuthUtils {
       List<PathPrivilege> privilegeList) {
     PathPrivilege emptyPrivilege = null;
     for (PathPrivilege pathPrivilege : privilegeList) {
-      if (pathPrivilege.path.equals(path)) {
+      if (pathPrivilege.getPath().equals(path)) {
         if (privilgeId != PrivilegeType.ALL.ordinal()) {
-          pathPrivilege.privileges.remove(privilgeId);
+          pathPrivilege.getPrivileges().remove(privilgeId);
         } else {
           privilegeList.remove(pathPrivilege);
           return;
         }
-        if (pathPrivilege.privileges.size() == 0) {
+        if (pathPrivilege.getPrivileges().isEmpty()) {
           emptyPrivilege = pathPrivilege;
         }
         break;

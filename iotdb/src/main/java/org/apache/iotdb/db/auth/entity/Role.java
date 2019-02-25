@@ -29,10 +29,11 @@ import org.apache.iotdb.db.utils.AuthUtils;
  */
 public class Role {
 
-  public String name;
-  public List<PathPrivilege> privilegeList;
+  private String name;
+  private List<PathPrivilege> privilegeList;
 
   public Role() {
+    // empty constructor
   }
 
   public Role(String name) {
@@ -40,16 +41,32 @@ public class Role {
     this.privilegeList = new ArrayList<>();
   }
 
+  public String getName() {
+    return name;
+  }
+
+  public void setName(String name) {
+    this.name = name;
+  }
+
+  public List<PathPrivilege> getPrivilegeList() {
+    return privilegeList;
+  }
+
+  public void setPrivilegeList(List<PathPrivilege> privilegeList) {
+    this.privilegeList = privilegeList;
+  }
+
   public boolean hasPrivilege(String path, int privilegeId) {
     return AuthUtils.hasPrivilege(path, privilegeId, privilegeList);
   }
 
-  public void addPrivilege(String path, int privilgeId) {
-    AuthUtils.addPrivilege(path, privilgeId, privilegeList);
+  public void addPrivilege(String path, int privilegeId) {
+    AuthUtils.addPrivilege(path, privilegeId, privilegeList);
   }
 
-  public void removePrivilege(String path, int privilgeId) {
-    AuthUtils.removePrivilege(path, privilgeId, privilegeList);
+  public void removePrivilege(String path, int privilegeId) {
+    AuthUtils.removePrivilege(path, privilegeId, privilegeList);
   }
 
   /**
@@ -57,8 +74,8 @@ public class Role {
    */
   public void setPrivileges(String path, Set<Integer> privileges) {
     for (PathPrivilege pathPrivilege : privilegeList) {
-      if (pathPrivilege.path.equals(path)) {
-        pathPrivilege.privileges = privileges;
+      if (pathPrivilege.getPath().equals(path)) {
+        pathPrivilege.setPrivileges(privileges);
       }
     }
   }

@@ -91,7 +91,7 @@ public class SeriesReaderByTimestamp {
         }
         return null;
       } else {
-        if (chunkReader.hasNextBatch()) { // data does not has next
+        if (chunkReader.hasNextBatch()) {
           data = chunkReader.nextBatch();
         } else if (!constructNextSatisfiedChunkReader()) {
           return null;
@@ -117,7 +117,6 @@ public class SeriesReaderByTimestamp {
   private void initChunkReader(ChunkMetaData chunkMetaData) throws IOException {
     Chunk chunk = chunkLoader.getChunk(chunkMetaData);
     this.chunkReader = new ChunkReaderByTimestamp(chunk);
-    this.chunkReader.setMaxTombstoneTime(chunkMetaData.getMaxTombstoneTime());
   }
 
   private boolean chunkSatisfied(ChunkMetaData chunkMetaData) {

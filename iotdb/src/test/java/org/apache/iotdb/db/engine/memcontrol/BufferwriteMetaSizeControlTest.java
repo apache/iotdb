@@ -33,8 +33,10 @@ import org.apache.iotdb.db.conf.directories.Directories;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
 import org.apache.iotdb.db.engine.PathUtils;
 import org.apache.iotdb.db.engine.bufferwrite.Action;
+import org.apache.iotdb.db.engine.bufferwrite.ActionException;
 import org.apache.iotdb.db.engine.bufferwrite.BufferWriteProcessor;
 import org.apache.iotdb.db.engine.bufferwrite.FileNodeConstants;
+import org.apache.iotdb.db.engine.version.SysTimeVersionController;
 import org.apache.iotdb.db.exception.BufferWriteProcessorException;
 import org.apache.iotdb.db.metadata.ColumnSchema;
 import org.apache.iotdb.db.metadata.MManager;
@@ -57,7 +59,7 @@ public class BufferwriteMetaSizeControlTest {
   Action bfflushaction = new Action() {
 
     @Override
-    public void act() throws Exception {
+    public void act() throws ActionException {
 
     }
   };
@@ -65,14 +67,14 @@ public class BufferwriteMetaSizeControlTest {
   Action bfcloseaction = new Action() {
 
     @Override
-    public void act() throws Exception {
+    public void act() throws ActionException {
     }
   };
 
   Action fnflushaction = new Action() {
 
     @Override
-    public void act() throws Exception {
+    public void act() throws ActionException {
 
     }
   };
@@ -142,7 +144,7 @@ public class BufferwriteMetaSizeControlTest {
     try {
       processor = new BufferWriteProcessor(Directories.getInstance().getFolderForTest(), nsp,
           filename,
-          parameters, constructFileSchema(nsp));
+          parameters, SysTimeVersionController.INSTANCE, constructFileSchema(nsp));
     } catch (BufferWriteProcessorException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -187,12 +189,12 @@ public class BufferwriteMetaSizeControlTest {
       throws WriteProcessException {
     JSONArray rowGroup = new JSONArray();
 
-    for (ColumnSchema col : schemaList) {
+    for (ColumnSchema columnSchema : schemaList) {
       JSONObject measurement = new JSONObject();
-      measurement.put(JsonFormatConstant.MEASUREMENT_UID, col.name);
-      measurement.put(JsonFormatConstant.DATA_TYPE, col.dataType.toString());
-      measurement.put(JsonFormatConstant.MEASUREMENT_ENCODING, col.encoding.toString());
-      for (Entry<String, String> entry : col.getArgsMap().entrySet()) {
+      measurement.put(JsonFormatConstant.MEASUREMENT_UID, columnSchema.getName());
+      measurement.put(JsonFormatConstant.DATA_TYPE, columnSchema.dataType.toString());
+      measurement.put(JsonFormatConstant.MEASUREMENT_ENCODING, columnSchema.encoding.toString());
+      for (Entry<String, String> entry : columnSchema.getArgsMap().entrySet()) {
         if (JsonFormatConstant.ENUM_VALUES.equals(entry.getKey())) {
           String[] valueArray = entry.getValue().split(",");
           measurement.put(JsonFormatConstant.ENUM_VALUES, new JSONArray(valueArray));

@@ -26,7 +26,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 /**
  * Metadata of overflow RowGroup list.
@@ -60,7 +59,7 @@ public class OFRowGroupListMetadata {
   }
 
   public static OFRowGroupListMetadata deserializeFrom(ByteBuffer buffer) throws IOException {
-    throw new NotImplementedException();
+    throw new IOException("The function has not been implemented.");
   }
 
   /**
@@ -68,7 +67,7 @@ public class OFRowGroupListMetadata {
    */
   public void addSeriesListMetaData(OFSeriesListMetadata timeSeries) {
     if (seriesList == null) {
-      seriesList = new ArrayList<OFSeriesListMetadata>();
+      seriesList = new ArrayList<>();
     }
     seriesList.add(timeSeries);
   }
@@ -105,6 +104,6 @@ public class OFRowGroupListMetadata {
    * function for serializing data to byte buffer.
    */
   public int serializeTo(ByteBuffer buffer) throws IOException {
-    throw new NotImplementedException();
+    throw new IOException("The function has not been implemented.");
   }
 }

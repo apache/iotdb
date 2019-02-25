@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.encoding.encoder;
 
 import java.util.Map;
@@ -38,7 +39,7 @@ import org.slf4j.LoggerFactory;
  */
 public abstract class TSEncodingBuilder {
 
-  private static final Logger LOG = LoggerFactory.getLogger(TSEncodingBuilder.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(TSEncodingBuilder.class);
   protected final TSFileConfig conf;
 
   public TSEncodingBuilder() {
@@ -94,7 +95,7 @@ public abstract class TSEncodingBuilder {
    */
   public static class PLAIN extends TSEncodingBuilder {
 
-    private int maxStringLength = conf.maxStringLength;
+    private int maxStringLength = TSFileConfig.maxStringLength;
 
     @Override
     public Encoder getEncoder(TSDataType type) {
@@ -105,12 +106,13 @@ public abstract class TSEncodingBuilder {
     public void initFromProps(Map<String, String> props) {
       // set max error from initialized map or default value if not set
       if (props == null || !props.containsKey(Encoder.MAX_STRING_LENGTH)) {
-        maxStringLength = conf.maxStringLength;
+        maxStringLength = TSFileConfig.maxStringLength;
       } else {
         maxStringLength = Integer.valueOf(props.get(Encoder.MAX_STRING_LENGTH));
         if (maxStringLength < 0) {
-          maxStringLength = conf.maxStringLength;
-          LOG.warn("cannot set max string length to negative value, replaced with default value:{}",
+          maxStringLength = TSFileConfig.maxStringLength;
+          LOGGER.warn(
+              "cannot set max string length to negative value, replaced with default value:{}",
               maxStringLength);
         }
       }
@@ -122,7 +124,7 @@ public abstract class TSEncodingBuilder {
    */
   public static class RLE extends TSEncodingBuilder {
 
-    private int maxPointNumber = conf.floatPrecision;
+    private int maxPointNumber = TSFileConfig.floatPrecision;
 
     @Override
     public Encoder getEncoder(TSDataType type) {
@@ -148,13 +150,14 @@ public abstract class TSEncodingBuilder {
     public void initFromProps(Map<String, String> props) {
       // set max error from initialized map or default value if not set
       if (props == null || !props.containsKey(Encoder.MAX_POINT_NUMBER)) {
-        maxPointNumber = conf.floatPrecision;
+        maxPointNumber = TSFileConfig.floatPrecision;
       } else {
         maxPointNumber = Integer.valueOf(props.get(Encoder.MAX_POINT_NUMBER));
         if (maxPointNumber < 0) {
-          maxPointNumber = conf.floatPrecision;
-          LOG.warn("cannot set max point number to negative value, replaced with default value:{}",
-              maxPointNumber);
+          maxPointNumber = TSFileConfig.floatPrecision;
+          LOGGER
+              .warn("cannot set max point number to negative value, replaced with default value:{}",
+                  maxPointNumber);
         }
       }
     }
@@ -194,15 +197,15 @@ public abstract class TSEncodingBuilder {
      */
     public void initFromProps(Map<String, String> props) {
       // set max error from initialized map or default value if not set
-      TSFileConfig conf = TSFileDescriptor.getInstance().getConfig();
       if (props == null || !props.containsKey(Encoder.MAX_POINT_NUMBER)) {
-        maxPointNumber = conf.floatPrecision;
+        maxPointNumber = TSFileConfig.floatPrecision;
       } else {
         maxPointNumber = Integer.valueOf(props.get(Encoder.MAX_POINT_NUMBER));
         if (maxPointNumber < 0) {
-          maxPointNumber = conf.floatPrecision;
-          LOG.warn("cannot set max point number to negative value, replaced with default value:{}",
-              maxPointNumber);
+          maxPointNumber = TSFileConfig.floatPrecision;
+          LOGGER
+              .warn("cannot set max point number to negative value, replaced with default value:{}",
+                  maxPointNumber);
         }
       }
     }
@@ -233,7 +236,7 @@ public abstract class TSEncodingBuilder {
 
     @Override
     public void initFromProps(Map<String, String> props) {
-
+      //allowed do nothing
     }
 
   }

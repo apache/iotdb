@@ -26,7 +26,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -48,8 +47,8 @@ public class FileReaderManager implements IService {
   private static final int MAX_CACHED_FILE_SIZE = 30000;
 
   /**
-   * the key of fileReaderMap is the file path and the value of fileReaderMap is
-   * the corresponding reader.
+   * the key of fileReaderMap is the file path and the value of fileReaderMap is the corresponding
+   * reader.
    */
   private ConcurrentHashMap<String, TsFileSequenceReader> fileReaderMap;
 
@@ -88,7 +87,7 @@ public class FileReaderManager implements IService {
             try {
               reader.close();
             } catch (IOException e) {
-              LOGGER.error("Can not close TsFileSequenceReader {} !", reader.getFileName());
+              LOGGER.error("Can not close TsFileSequenceReader {} !", reader.getFileName(), e);
             }
             fileReaderMap.remove(entry.getKey());
             referenceMap.remove(entry.getKey());
@@ -101,6 +100,7 @@ public class FileReaderManager implements IService {
   /**
    * Get the reader of the file(tsfile or unseq tsfile) indicated by filePath. If the reader already
    * exists, just get it from fileReaderMap. Otherwise a new reader will be created.
+   *
    * @param filePath the path of the file, of which the reader is desired.
    * @param isUnClosed whether the corresponding file still receives insertions or not.
    * @return the reader of the file specified by filePath.
@@ -145,7 +145,6 @@ public class FileReaderManager implements IService {
    * This method is used when the given file path is deleted.
    */
   public synchronized void closeFileAndRemoveReader(String filePath) throws IOException {
-    System.out.println(fileReaderMap.containsKey(filePath));
     if (fileReaderMap.containsKey(filePath)) {
       referenceMap.remove(filePath);
       fileReaderMap.get(filePath).close();
@@ -154,8 +153,8 @@ public class FileReaderManager implements IService {
   }
 
   /**
-   * Only for <code>EnvironmentUtils.cleanEnv</code> method. To make sure that unit tests
-   * and integration tests will not conflict with each other.
+   * Only for <code>EnvironmentUtils.cleanEnv</code> method. To make sure that unit tests and
+   * integration tests will not conflict with each other.
    */
   public synchronized void closeAndRemoveAllOpenedReaders() throws IOException {
     for (Map.Entry<String, TsFileSequenceReader> entry : fileReaderMap.entrySet()) {
@@ -173,7 +172,8 @@ public class FileReaderManager implements IService {
   }
 
   @Override
-  public void start() throws StartupException {
+  public void start() {
+    // Do nothing
   }
 
   @Override
@@ -187,6 +187,7 @@ public class FileReaderManager implements IService {
       executorService.awaitTermination(10, TimeUnit.SECONDS);
     } catch (InterruptedException e) {
       LOGGER.error("StatMonitor timing service could not be shutdown.", e);
+      Thread.currentThread().interrupt();
     }
   }
 
@@ -197,6 +198,9 @@ public class FileReaderManager implements IService {
 
   private static class FileReaderManagerHelper {
 
-    public static FileReaderManager INSTANCE = new FileReaderManager();
+    private static final FileReaderManager INSTANCE = new FileReaderManager();
+
+    private FileReaderManagerHelper() {
+    }
   }
 }

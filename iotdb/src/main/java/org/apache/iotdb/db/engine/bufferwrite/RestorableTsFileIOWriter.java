@@ -153,13 +153,11 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
 
   private void writeRestoreInfo() throws IOException {
     long lastPosition = this.getPos();
-
     // TODO: no need to create a TsRowGroupBlockMetadata, flush RowGroupMetadata one by one is ok
     TsDeviceMetadata tsDeviceMetadata = new TsDeviceMetadata();
     this.getAppendedRowGroupMetadata();
     tsDeviceMetadata.setChunkGroupMetadataList(this.append);
-    RandomAccessFile out = null;
-    out = new RandomAccessFile(restoreFilePath, DEFAULT_MODE);
+    RandomAccessFile out = new RandomAccessFile(restoreFilePath, DEFAULT_MODE);
     try {
       if (out.length() > 0) {
         out.seek(out.length() - TS_POSITION_BYTE_SIZE);
@@ -204,7 +202,7 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
         randomAccessFile.read(thriftBytes);
         ByteArrayInputStream inputStream = new ByteArrayInputStream(thriftBytes);
         TsDeviceMetadata tsDeviceMetadata = TsDeviceMetadata.deserializeFrom(inputStream);
-        groupMetaDatas.addAll(tsDeviceMetadata.getChunkGroups());
+        groupMetaDatas.addAll(tsDeviceMetadata.getChunkGroupMetaDataList());
         point = randomAccessFile.getFilePointer();
       }
       // read the tsfile position information using byte[8] which is a long.
@@ -226,15 +224,13 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
    */
   List<ChunkMetaData> getMetadatas(String deviceId, String measurementId, TSDataType dataType) {
     List<ChunkMetaData> chunkMetaDatas = new ArrayList<>();
-    if (metadatas.containsKey(deviceId)) {
-      if (metadatas.get(deviceId).containsKey(measurementId)) {
-        for (ChunkMetaData chunkMetaData : metadatas.get(deviceId).get(measurementId)) {
-          // filter: if a device'sensor is defined as float type, and data has been persistent.
-          // Then someone deletes the timeseries and recreate it with Int type. We have to ignore
-          // all the stale data.
-          if (dataType.equals(chunkMetaData.getTsDataType())) {
-            chunkMetaDatas.add(chunkMetaData);
-          }
+    if (metadatas.containsKey(deviceId) && metadatas.get(deviceId).containsKey(measurementId)) {
+      for (ChunkMetaData chunkMetaData : metadatas.get(deviceId).get(measurementId)) {
+        // filter: if a device'sensor is defined as float type, and data has been persistent.
+        // Then someone deletes the timeseries and recreate it with Int type. We have to ignore
+        // all the stale data.
+        if (dataType.equals(chunkMetaData.getTsDataType())) {
+          chunkMetaDatas.add(chunkMetaData);
         }
       }
     }

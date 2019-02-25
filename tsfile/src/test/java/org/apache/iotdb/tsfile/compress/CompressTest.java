@@ -50,8 +50,8 @@ public class CompressTest {
   public void snappyCompressorTest1() throws IOException {
     PublicBAOS out = new PublicBAOS();
     out.write(inputString.getBytes("UTF-8"));
-    Compressor.SnappyCompressor compressor = new Compressor.SnappyCompressor();
-    UnCompressor.SnappyUnCompressor unCompressor = new UnCompressor.SnappyUnCompressor();
+    ICompressor.SnappyCompressor compressor = new ICompressor.SnappyCompressor();
+    IUnCompressor.SnappyUnCompressor unCompressor = new IUnCompressor.SnappyUnCompressor();
     byte[] compressed = compressor.compress(out.getBuf());
     byte[] uncompressed = unCompressor.uncompress(compressed);
     String result = new String(uncompressed, "UTF-8");
@@ -62,8 +62,8 @@ public class CompressTest {
   public void snappyCompressorTest2() throws IOException {
     PublicBAOS out = new PublicBAOS();
     out.write(inputString.getBytes("UTF-8"));
-    Compressor.SnappyCompressor compressor = new Compressor.SnappyCompressor();
-    UnCompressor.SnappyUnCompressor unCompressor = new UnCompressor.SnappyUnCompressor();
+    ICompressor.SnappyCompressor compressor = new ICompressor.SnappyCompressor();
+    IUnCompressor.SnappyUnCompressor unCompressor = new IUnCompressor.SnappyUnCompressor();
     byte[] compressed = new byte[compressor.getMaxBytesForCompression(out.size())];
     int size = compressor.compress(out.getBuf(), 0, out.size(), compressed);
     byte[] bytes = Arrays.copyOfRange(compressed, 0, size);

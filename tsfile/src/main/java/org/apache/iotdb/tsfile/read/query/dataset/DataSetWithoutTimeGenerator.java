@@ -98,9 +98,6 @@ public class DataSetWithoutTimeGenerator extends QueryDataSet {
   @Override
   public RowRecord next() throws IOException {
     long minTime = timeHeapGet();
-    if (minTime == 1480562618999L) {
-      System.out.println("debug");
-    }
 
     RowRecord record = new RowRecord(minTime);
 

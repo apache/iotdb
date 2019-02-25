@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -23,28 +23,30 @@ import java.io.Serializable;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
+
 import org.apache.iotdb.db.conf.directories.Directories;
+import org.apache.iotdb.db.engine.modification.ModificationFile;
 
 /**
  * This class is used to store one bufferwrite file status.<br>
- *
- * @author liukun
- * @author kangrong
- *
  */
 public class IntervalFileNode implements Serializable {
 
   private static final long serialVersionUID = -4309683416067212549L;
-  public OverflowChangeType overflowChangeType;
+
+  private OverflowChangeType overflowChangeType;
   private int baseDirIndex;
   private String relativePath;
   private Map<String, Long> startTimeMap;
   private Map<String, Long> endTimeMap;
   private Set<String> mergeChanged = new HashSet<>();
 
+  private transient ModificationFile modFile;
+
   public IntervalFileNode(Map<String, Long> startTimeMap, Map<String, Long> endTimeMap,
-      OverflowChangeType type, int baseDirIndex, String relativePath) {
+                          OverflowChangeType type, int baseDirIndex, String relativePath) {
 
     this.overflowChangeType = type;
     this.baseDirIndex = baseDirIndex;
@@ -52,13 +54,15 @@ public class IntervalFileNode implements Serializable {
 
     this.startTimeMap = startTimeMap;
     this.endTimeMap = endTimeMap;
-
+    this.modFile = new ModificationFile(
+        Directories.getInstance().getTsFileFolder(baseDirIndex) + File.separator
+            + relativePath + ModificationFile.FILE_SUFFIX);
   }
 
   /**
    * This is just used to construct a new bufferwritefile.
    *
-   * @param type whether this file is affected by overflow and how it is affected.
+   * @param type         whether this file is affected by overflow and how it is affected.
    * @param relativePath the path of the file relative to the FileNode.
    */
   public IntervalFileNode(OverflowChangeType type, int baseDirIndex, String relativePath) {
@@ -69,6 +73,9 @@ public class IntervalFileNode implements Serializable {
 
     startTimeMap = new HashMap<>();
     endTimeMap = new HashMap<>();
+    this.modFile = new ModificationFile(
+        Directories.getInstance().getTsFileFolder(baseDirIndex) + File.separator
+            + relativePath + ModificationFile.FILE_SUFFIX);
   }
 
   public IntervalFileNode(OverflowChangeType type, String baseDir, String relativePath) {
@@ -79,6 +86,9 @@ public class IntervalFileNode implements Serializable {
 
     startTimeMap = new HashMap<>();
     endTimeMap = new HashMap<>();
+    this.modFile = new ModificationFile(
+        Directories.getInstance().getTsFileFolder(baseDirIndex) + File.separator
+            + relativePath + ModificationFile.FILE_SUFFIX);
   }
 
   public IntervalFileNode(OverflowChangeType type, String relativePath) {
@@ -145,7 +155,7 @@ public class IntervalFileNode implements Serializable {
       return relativePath;
     }
     return new File(Directories.getInstance().getTsFileFolder(baseDirIndex),
-        relativePath).getPath();
+            relativePath).getPath();
   }
 
   public int getBaseDirIndex() {
@@ -212,10 +222,10 @@ public class IntervalFileNode implements Serializable {
 
   public IntervalFileNode backUp() {
 
-    Map<String, Long> startTimeMap = new HashMap<>(this.startTimeMap);
-    Map<String, Long> endTimeMap = new HashMap<>(this.endTimeMap);
-    return new IntervalFileNode(startTimeMap, endTimeMap, overflowChangeType,
-        baseDirIndex, relativePath);
+    Map<String, Long> startTimeMapCopy = new HashMap<>(this.startTimeMap);
+    Map<String, Long> endTimeMapCopy = new HashMap<>(this.endTimeMap);
+    return new IntervalFileNode(startTimeMapCopy, endTimeMapCopy, overflowChangeType,
+            baseDirIndex, relativePath);
   }
 
   @Override
@@ -231,51 +241,49 @@ public class IntervalFileNode implements Serializable {
   }
 
   @Override
-  public boolean equals(Object obj) {
-
-    if (this == obj) {
-      return true;
-    }
-    if (obj == null) {
-      return false;
-    }
-    if (getClass() != obj.getClass()) {
-      return false;
-    }
-    IntervalFileNode other = (IntervalFileNode) obj;
-    if (endTimeMap == null) {
-      if (other.endTimeMap != null) {
-        return false;
-      }
-    } else if (!endTimeMap.equals(other.endTimeMap)) {
-      return false;
-    }
-    if (relativePath == null) {
-      if (other.relativePath != null) {
-        return false;
-      }
-    } else if (!relativePath.equals(other.relativePath)) {
-      return false;
-    }
-    if (overflowChangeType != other.overflowChangeType) {
-      return false;
-    }
-    if (startTimeMap == null) {
-      if (other.startTimeMap != null) {
-        return false;
-      }
-    } else if (!startTimeMap.equals(other.startTimeMap)) {
-      return false;
-    }
-    return true;
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    IntervalFileNode fileNode = (IntervalFileNode) o;
+    return baseDirIndex == fileNode.baseDirIndex &&
+            overflowChangeType == fileNode.overflowChangeType &&
+            Objects.equals(relativePath, fileNode.relativePath) &&
+            Objects.equals(startTimeMap, fileNode.startTimeMap) &&
+            Objects.equals(endTimeMap, fileNode.endTimeMap) &&
+            Objects.equals(mergeChanged, fileNode.mergeChanged);
   }
 
   @Override
   public String toString() {
 
     return String.format(
-        "IntervalFileNode [relativePath=%s,overflowChangeType=%s, startTimeMap=%s,"
-            + " endTimeMap=%s, mergeChanged=%s]",
-        relativePath, overflowChangeType, startTimeMap, endTimeMap, mergeChanged);
+            "IntervalFileNode [relativePath=%s,overflowChangeType=%s, startTimeMap=%s,"
+                    + " endTimeMap=%s, mergeChanged=%s]",
+            relativePath, overflowChangeType, startTimeMap, endTimeMap, mergeChanged);
+  }
+
+  public OverflowChangeType getOverflowChangeType() {
+    return overflowChangeType;
+  }
+
+  public void setOverflowChangeType(OverflowChangeType overflowChangeType) {
+    this.overflowChangeType = overflowChangeType;
+  }
+
+  public synchronized ModificationFile getModFile() {
+    if (modFile == null) {
+      modFile = new ModificationFile(
+          Directories.getInstance().getTsFileFolder(baseDirIndex) + File.separator
+              + relativePath + ModificationFile.FILE_SUFFIX);
+    }
+    return modFile;
+  }
+
+  public boolean containsDevice(String deviceId) {
+    return startTimeMap.containsKey(deviceId);
+  }
+
+  public void setModFile(ModificationFile modFile) {
+    this.modFile = modFile;
   }
 }

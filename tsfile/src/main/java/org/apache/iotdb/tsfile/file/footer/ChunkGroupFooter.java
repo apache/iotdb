@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.file.footer;
 
 import java.io.IOException;
@@ -28,7 +29,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 public class ChunkGroupFooter {
 
-  private static final byte MARKER = MetaMarker.ChunkGroupFooter;
+  private static final byte MARKER = MetaMarker.CHUNK_GROUP_FOOTER;
 
   private String deviceID;
 
@@ -36,16 +37,11 @@ public class ChunkGroupFooter {
 
   private int numberOfChunks;
 
-  /**
-   * The time when endRowgroup() is called.
-   */
-  private long writtenTime;
-
   // this field does not need to be serialized.
   private int serializedSize;
 
   /**
-   * constructor of ChunkGroupFooter.
+   * constructor of CHUNK_GROUP_FOOTER.
    *
    * @param deviceID device ID
    * @param dataSize data size
@@ -70,7 +66,7 @@ public class ChunkGroupFooter {
   /**
    * deserialize from inputStream.
    *
-   * @param markerRead Whether the marker of the ChunkGroupFooter is read ahead.
+   * @param markerRead Whether the marker of the CHUNK_GROUP_FOOTER is read ahead.
    */
   public static ChunkGroupFooter deserializeFrom(InputStream inputStream, boolean markerRead)
       throws IOException {
@@ -90,21 +86,22 @@ public class ChunkGroupFooter {
   /**
    * deserialize from FileChannel.
    *
-   * @param markerRead Whether the marker of the ChunkGroupFooter is read ahead.
+   * @param markerRead Whether the marker of the CHUNK_GROUP_FOOTER is read ahead.
    */
   public static ChunkGroupFooter deserializeFrom(FileChannel channel, long offset,
       boolean markerRead)
       throws IOException {
+    long offsetVar = offset;
     if (!markerRead) {
-      offset++;
+      offsetVar++;
     }
     ByteBuffer buffer = ByteBuffer.allocate(Integer.BYTES);
-    channel.read(buffer, offset);
+    channel.read(buffer, offsetVar);
     buffer.flip();
     int size = buffer.getInt();
-    offset += Integer.BYTES;
+    offsetVar += Integer.BYTES;
     buffer = ByteBuffer.allocate(getSerializedSize(size));
-    ReadWriteIOUtils.readAsPossible(channel, offset, buffer);
+    ReadWriteIOUtils.readAsPossible(channel, offsetVar, buffer);
     buffer.flip();
     String deviceID = ReadWriteIOUtils.readStringWithoutLength(buffer, size);
     long dataSize = ReadWriteIOUtils.readLong(buffer);
@@ -145,13 +142,12 @@ public class ChunkGroupFooter {
     length += ReadWriteIOUtils.write(deviceID, outputStream);
     length += ReadWriteIOUtils.write(dataSize, outputStream);
     length += ReadWriteIOUtils.write(numberOfChunks, outputStream);
-    assert length == getSerializedSize();
     return length;
   }
 
   @Override
   public String toString() {
-    return "ChunkGroupFooter{" + "deviceID='" + deviceID + '\'' + ", dataSize=" + dataSize
+    return "CHUNK_GROUP_FOOTER{" + "deviceID='" + deviceID + '\'' + ", dataSize=" + dataSize
         + ", numberOfChunks="
         + numberOfChunks + ", serializedSize=" + serializedSize + '}';
   }

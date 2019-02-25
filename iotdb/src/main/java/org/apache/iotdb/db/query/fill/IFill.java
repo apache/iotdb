@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.db.query.fill;
 
-import java.io.IOException;
-import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -40,8 +38,7 @@ public abstract class IFill {
 
   public abstract IFill copy(Path path);
 
-  public abstract BatchData getFillResult() throws ProcessorException,
-      IOException, PathErrorException;
+  public abstract BatchData getFillResult() throws ProcessorException;
 
   public TSDataType getDataType() {
     return this.dataType;

@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.encoding.decoder;
 
 import java.io.IOException;
@@ -34,6 +35,7 @@ public class SinglePrecisionDecoder extends GorillaDecoder {
   private int preValue;
 
   public SinglePrecisionDecoder() {
+    //do nothing
   }
 
   @Override
@@ -53,8 +55,7 @@ public class SinglePrecisionDecoder extends GorillaDecoder {
         getNextValue(buffer);
         return tmp;
       } catch (IOException e) {
-        LOGGER.error("SinglePrecisionDecoder cannot read first float number because: {}",
-            e.getMessage());
+        LOGGER.error("SinglePrecisionDecoder cannot read first float number", e);
       }
     } else {
       try {
@@ -62,8 +63,7 @@ public class SinglePrecisionDecoder extends GorillaDecoder {
         getNextValue(buffer);
         return tmp;
       } catch (IOException e) {
-        LOGGER.error("SinglePrecisionDecoder cannot read following float number "
-            + "because: {}", e.getMessage());
+        LOGGER.error("SinglePrecisionDecoder cannot read following float number", e);
       }
     }
     return Float.NaN;
@@ -108,8 +108,4 @@ public class SinglePrecisionDecoder extends GorillaDecoder {
     }
   }
 
-  @Override
-  public void reset() {
-    super.reset();
-  }
 }

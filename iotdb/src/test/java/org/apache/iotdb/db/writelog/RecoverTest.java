@@ -157,7 +157,7 @@ public class RecoverTest {
     try {
       // set flag
       File flagFile = new File(logNode.getLogDirectory() + File.separator
-          + ExclusiveLogRecoverPerformer.RECOVER_FLAG_NAME + "-" + RecoverStage.backup.name());
+          + ExclusiveLogRecoverPerformer.RECOVER_FLAG_NAME + "-" + RecoverStage.BACK_UP.name());
       flagFile.createNewFile();
 
       InsertPlan bwInsertPlan = new InsertPlan(1, "logTestDevice", 100,
@@ -235,7 +235,7 @@ public class RecoverTest {
     try {
       // set flag
       File flagFile = new File(logNode.getLogDirectory() + File.separator
-          + ExclusiveLogRecoverPerformer.RECOVER_FLAG_NAME + "-" + RecoverStage.replayLog.name());
+          + ExclusiveLogRecoverPerformer.RECOVER_FLAG_NAME + "-" + RecoverStage.REPLAY_LOG.name());
       flagFile.createNewFile();
 
       InsertPlan bwInsertPlan = new InsertPlan(1, "logTestDevice", 100,
@@ -298,7 +298,7 @@ public class RecoverTest {
     public int currPos = 0;
 
     @Override
-    public void replay(PhysicalPlan plan) throws ProcessorException {
+    public void replay(PhysicalPlan plan, boolean isOverflow) throws ProcessorException {
       if (currPos >= plansToCheck.size()) {
         throw new ProcessorException("More plans recovered than expected");
       }

@@ -44,7 +44,7 @@ import org.slf4j.LoggerFactory;
 public class IoTDB implements IoTDBMBean {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDB.class);
-  private final String MBEAN_NAME = String.format("%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE,
+  private final String mbeanName = String.format("%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE,
       IoTDBConstant.JMX_TYPE, "IoTDB");
   private RegisterManager registerManager = new RegisterManager();
   private ServerManager serverManager = ServerManager.getInstance();
@@ -71,7 +71,7 @@ public class IoTDB implements IoTDBMBean {
     try {
       setUp();
     } catch (StartupException e) {
-      LOGGER.error(e.getMessage());
+      LOGGER.error("meet error while starting up.", e);
       deactivate();
       LOGGER.error("{} exit", IoTDBConstant.GLOBAL_DB_NAME);
       return;
@@ -80,6 +80,7 @@ public class IoTDB implements IoTDBMBean {
   }
 
   private void setUp() throws StartupException {
+    LOGGER.info("Setting up IoTDB...");
     setUncaughtExceptionHandler();
 
     FileNodeManager.getInstance().recovery();
@@ -88,6 +89,7 @@ public class IoTDB implements IoTDBMBean {
     } catch (RecoverException e) {
       String errorMessage = String.format("Failed to recover system data because of %s",
           e.getMessage());
+      LOGGER.error(errorMessage);
       throw new StartupException(errorMessage);
     }
     // When registering statMonitor, we should start recovering some statistics
@@ -107,21 +109,24 @@ public class IoTDB implements IoTDBMBean {
     registerManager.register(BasicMemController.getInstance());
     registerManager.register(FileReaderManager.getInstance());
 
-    JMXService.registerMBean(getInstance(), MBEAN_NAME);
+    JMXService.registerMBean(getInstance(), mbeanName);
 
     initErrorInformation();
 
     serverManager.startServer();
+    LOGGER.info("IoTDB is set up.");
   }
 
   public void deactivate() {
+    LOGGER.info("Deactivating IoTDB...");
     serverManager.closeServer();
     registerManager.deregisterAll();
-    JMXService.deregisterMBean(MBEAN_NAME);
+    JMXService.deregisterMBean(mbeanName);
+    LOGGER.info("IoTDB is deactivated.");
   }
 
   @Override
-  public void stop() {
+  public void stop() throws FileNodeManagerException {
     deactivate();
   }
 
@@ -141,7 +146,7 @@ public class IoTDB implements IoTDBMBean {
    */
   private void systemDataRecovery() throws RecoverException {
     LOGGER.info("{}: start checking write log...", IoTDBConstant.GLOBAL_DB_NAME);
-    // QueryProcessor processor = new QueryProcessor(new OverflowQPExecutor());
+
     WriteLogNodeManager writeLogManager = MultiFileLogNodeManager.getInstance();
     List<String> filenodeNames = null;
     try {
@@ -153,7 +158,7 @@ public class IoTDB implements IoTDBMBean {
       if (writeLogManager.hasWAL(filenodeName)) {
         try {
           FileNodeManager.getInstance().recoverFileNode(filenodeName);
-        } catch (FileNodeProcessorException | FileNodeManagerException e) {
+        } catch (FileNodeManagerException e) {
           throw new RecoverException(e);
         }
       }
@@ -168,6 +173,10 @@ public class IoTDB implements IoTDBMBean {
   private static class IoTDBHolder {
 
     private static final IoTDB INSTANCE = new IoTDB();
+
+    private IoTDBHolder() {
+
+    }
   }
 
 }

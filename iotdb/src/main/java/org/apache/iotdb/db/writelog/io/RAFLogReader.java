@@ -22,6 +22,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.util.NoSuchElementException;
 import java.util.zip.CRC32;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.writelog.transfer.PhysicalPlanLogTransfer;
@@ -39,7 +40,7 @@ public class RAFLogReader implements ILogReader {
   private PhysicalPlan planBuffer = null;
 
   public RAFLogReader() {
-
+    // allowed to construct RAFLogReader without input.
   }
 
   public RAFLogReader(File logFile) throws FileNotFoundException {
@@ -56,7 +57,7 @@ public class RAFLogReader implements ILogReader {
         return false;
       }
     } catch (IOException e) {
-      logger.error("Cannot read from log file {}, because {}", filepath, e.getMessage());
+      logger.error("Cannot read from log file {}", filepath, e);
       return false;
     }
     try {
@@ -76,13 +77,17 @@ public class RAFLogReader implements ILogReader {
       planBuffer = plan;
       return true;
     } catch (IOException e) {
-      logger.error("Cannot read log file {}, because {}", filepath, e.getMessage());
+      logger.error("Cannot read log file {}", filepath, e);
       return false;
     }
   }
 
   @Override
   public PhysicalPlan next() {
+    if (!hasNext()){
+      throw new NoSuchElementException();
+    }
+
     PhysicalPlan ret = planBuffer;
     planBuffer = null;
     return ret;
@@ -94,7 +99,7 @@ public class RAFLogReader implements ILogReader {
       try {
         logRaf.close();
       } catch (IOException e) {
-        logger.error("Cannot close log file {}", filepath);
+        logger.error("Cannot close log file {}", filepath, e);
       }
     }
   }

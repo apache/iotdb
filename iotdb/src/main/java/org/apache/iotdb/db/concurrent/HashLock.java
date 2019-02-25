@@ -18,6 +18,9 @@
  */
 package org.apache.iotdb.db.concurrent;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
@@ -26,6 +29,8 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  * can be prevented while the number of locks remain controlled.
  */
 public class HashLock {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(HashLock.class);
 
   private static final int DEFAULT_LOCK_NUM = 100;
 
@@ -37,14 +42,6 @@ public class HashLock {
     init();
   }
 
-  public HashLock(int lockSize) {
-    if (lockSize <= 0) {
-      lockSize = DEFAULT_LOCK_NUM;
-    }
-    this.lockSize = lockSize;
-    init();
-  }
-
   private void init() {
     locks = new ReentrantReadWriteLock[lockSize];
     for (int i = 0; i < lockSize; i++) {
@@ -53,19 +50,19 @@ public class HashLock {
   }
 
   public void readLock(Object obj) {
-    this.locks[Math.abs(obj.hashCode()) % lockSize].readLock().lock();
+    this.locks[Math.abs(obj.hashCode() % lockSize)].readLock().lock();
   }
 
   public void readUnlock(Object obj) {
-    this.locks[Math.abs(obj.hashCode()) % lockSize].readLock().unlock();
+    this.locks[Math.abs(obj.hashCode() % lockSize)].readLock().unlock();
   }
 
   public void writeLock(Object obj) {
-    this.locks[Math.abs(obj.hashCode()) % lockSize].writeLock().lock();
+    this.locks[Math.abs(obj.hashCode() % lockSize)].writeLock().lock();
   }
 
   public void writeUnlock(Object obj) {
-    this.locks[Math.abs(obj.hashCode()) % lockSize].writeLock().unlock();
+    this.locks[Math.abs(obj.hashCode() % lockSize)].writeLock().unlock();
   }
 
   /**
@@ -76,12 +73,12 @@ public class HashLock {
       try {
         locks[i].readLock().unlock();
       } catch (Exception ignored) {
-        // ignored
+        // do nothing
       }
       try {
         locks[i].writeLock().unlock();
       } catch (Exception ignored) {
-        // ignored
+        // do nothing
       }
     }
   }

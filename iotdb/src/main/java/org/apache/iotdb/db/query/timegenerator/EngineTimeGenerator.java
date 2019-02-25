@@ -20,6 +20,7 @@ package org.apache.iotdb.db.query.timegenerator;
 
 import java.io.IOException;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
+import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
@@ -38,16 +39,16 @@ public class EngineTimeGenerator implements TimeGenerator {
   /**
    * Constructor of EngineTimeGenerator.
    */
-  public EngineTimeGenerator(long jobId, IExpression expression)
+  public EngineTimeGenerator(long jobId, IExpression expression, QueryContext context)
       throws IOException, FileNodeManagerException {
     this.jobId = jobId;
     this.expression = expression;
-    initNode();
+    initNode(context);
   }
 
-  private void initNode() throws IOException, FileNodeManagerException {
+  private void initNode(QueryContext context) throws IOException, FileNodeManagerException {
     EngineNodeConstructor engineNodeConstructor = new EngineNodeConstructor(jobId);
-    this.operatorNode = engineNodeConstructor.construct(expression);
+    this.operatorNode = engineNodeConstructor.construct(expression, context);
   }
 
   @Override
@@ -60,9 +61,9 @@ public class EngineTimeGenerator implements TimeGenerator {
     return operatorNode.next();
   }
 
-  // TODO implement the optimization
   @Override
   public Object getValue(Path path, long time) {
+    // TODO implement the optimization
     return null;
   }
 

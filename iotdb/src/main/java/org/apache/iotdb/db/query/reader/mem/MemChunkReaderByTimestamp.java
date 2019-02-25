@@ -60,8 +60,8 @@ public class MemChunkReaderByTimestamp implements EngineReaderByTimeStamp {
   }
 
   @Override
-  public void close() throws IOException {
-
+  public void close() {
+    // Do nothing because mem chunk reader will not open files
   }
 
   // TODO consider change timeValuePairIterator to List structure, and use binary search instead of

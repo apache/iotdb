@@ -19,6 +19,8 @@
 package org.apache.iotdb.db.sql.parse;
 
 import java.util.ArrayList;
+import java.util.List;
+
 import org.antlr.runtime.ANTLRStringStream;
 import org.antlr.runtime.CharStream;
 import org.antlr.runtime.NoViableAltException;
@@ -62,14 +64,10 @@ public class ParseDriver {
       return create(((CommonTree) t).token);
     }
 
-    ;
-
     @Override
     public Object errorNode(TokenStream input, Token start, Token stop, RecognitionException e) {
       return new AstErrorNode(input, start, stop, e);
     }
-
-    ;
 
   };
   private static final Logger LOG = LoggerFactory.getLogger("ql.parse.ParseDriver");
@@ -87,10 +85,6 @@ public class ParseDriver {
    * @return parsed AST
    */
   public AstNode parse(String command) throws ParseException {
-    // if (LOG.isDebugEnabled()) {
-    // LOG.debug("TSParsing command: " + command);
-    // }
-
     TSLexerX lexer = new TSLexerX(new ANTLRNoCaseStringStream(command));
     TokenRewriteStream tokens = new TokenRewriteStream(lexer);
 
@@ -103,20 +97,23 @@ public class ParseDriver {
 
       r = parser.statement();
     } catch (RecognitionException e) {
-      // e.printStackTrace();
+      LOG.error("meet error while parsing statement.", e);
     }
 
-    if (lexer.getErrors().size() == 0 && parser.errors.size() == 0) {
-      // LOG.debug("Parse Completed");
-    } else if (lexer.getErrors().size() != 0) {
+    if (lexer.getErrors().isEmpty() && parser.errors.isEmpty()) {
+    } else if (!lexer.getErrors().isEmpty()) {
       throw new ParseException(lexer.getErrors());
     } else {
       throw new ParseException(parser.errors);
     }
 
-    AstNode tree = (AstNode) r.getTree();
-    tree.setUnknownTokenBoundaries();
-    return tree;
+    if (r != null) {
+      AstNode tree = (AstNode) r.getTree();
+      tree.setUnknownTokenBoundaries();
+      return tree;
+    }else {
+      return null;
+    }
   }
 
   /**
@@ -144,9 +141,7 @@ public class ParseDriver {
     public int LA(int i) {
 
       int returnChar = super.LA(i);
-      if (returnChar == CharStream.EOF) {
-        return returnChar;
-      } else if (returnChar == 0) {
+      if (returnChar == CharStream.EOF || returnChar == 0) {
         return returnChar;
       }
 
@@ -164,12 +159,12 @@ public class ParseDriver {
 
     public TSLexerX() {
       super();
-      errors = new ArrayList<ParseError>();
+      errors = new ArrayList<>();
     }
 
     public TSLexerX(CharStream input) {
       super(input);
-      errors = new ArrayList<ParseError>();
+      errors = new ArrayList<>();
     }
 
     @Override
@@ -180,11 +175,9 @@ public class ParseDriver {
 
     @Override
     public String getErrorMessage(RecognitionException e, String[] tokenNames) {
-      String msg = null;
+      String msg;
 
       if (e instanceof NoViableAltException) {
-        @SuppressWarnings("unused")
-        NoViableAltException nvae = (NoViableAltException) e;
         // for development, can add
         // "decision=<<"+nvae.grammarDecisionDescription+">>"
         // and "(decision="+nvae.decisionNumber+") and
@@ -200,7 +193,7 @@ public class ParseDriver {
       return msg;
     }
 
-    public ArrayList<ParseError> getErrors() {
+    public List<ParseError> getErrors() {
       return errors;
     }
 

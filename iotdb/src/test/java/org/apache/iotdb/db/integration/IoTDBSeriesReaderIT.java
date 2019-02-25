@@ -51,7 +51,7 @@ import org.junit.Test;
  */
 public class IoTDBSeriesReaderIT {
 
-  private static IoTDB deamon;
+  private static IoTDB daemon;
 
   private static TSFileConfig tsFileConfig = TSFileDescriptor.getInstance().getConfig();
   private static int maxNumberOfPointsInPage;
@@ -76,8 +76,8 @@ public class IoTDBSeriesReaderIT {
     tsFileConfig.pageSizeInByte = 1024 * 1024 * 150;
     tsFileConfig.groupSizeInByte = 1024 * 1024 * 1000;
 
-    deamon = IoTDB.getInstance();
-    deamon.active();
+    daemon = IoTDB.getInstance();
+    daemon.active();
     EnvironmentUtils.envSetUp();
 
     Thread.sleep(5000);
@@ -90,9 +90,7 @@ public class IoTDBSeriesReaderIT {
   @AfterClass
   public static void tearDown() throws Exception {
     connection.close();
-    deamon.stop();
-    Thread.sleep(5000);
-
+    daemon.stop();
     // recovery value
     tsFileConfig.maxNumberOfPointsInPage = maxNumberOfPointsInPage;
     tsFileConfig.pageSizeInByte = pageSizeInByte;

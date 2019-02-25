@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.file.metadata;
 
 import java.io.IOException;
@@ -52,6 +53,7 @@ public class TsFileMetaData {
   private String createdBy;
 
   public TsFileMetaData() {
+    //do nothing
   }
 
   /**
@@ -166,7 +168,7 @@ public class TsFileMetaData {
   public String toString() {
     return "TsFileMetaData{" + "deviceIndexMap=" + deviceIndexMap + ", measurementSchema="
         + measurementSchema
-        + ", currentVersion=" + currentVersion + ", createdBy='" + createdBy + '\'' + '}';
+        + ", CURRENT_VERSION=" + currentVersion + ", createdBy='" + createdBy + '\'' + '}';
   }
 
   public int getCurrentVersion() {

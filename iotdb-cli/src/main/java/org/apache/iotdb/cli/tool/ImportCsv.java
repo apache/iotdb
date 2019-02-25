@@ -48,6 +48,8 @@ import org.apache.iotdb.cli.exception.ArgsErrorException;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.IoTDBConnection;
 import org.apache.thrift.TException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * read a CSV formatted data File and insert all the data into IoTDB.
@@ -55,6 +57,8 @@ import org.apache.thrift.TException;
  * @author zhanggr
  */
 public class ImportCsv extends AbstractCsvTool {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(ImportCsv.class);
 
   private static final String FILE_ARGS = "f";
   private static final String FILE_NAME = "file or folder";
@@ -117,16 +121,20 @@ public class ImportCsv extends AbstractCsvTool {
    */
   private static void loadDataFromCSV(File file, int index) {
     Statement statement = null;
+    FileReader fr = null;
     BufferedReader br = null;
+    FileWriter fw = null;
     BufferedWriter bw = null;
     File errorFile = new File(errorInsertInfo + index);
     boolean errorFlag = true;
     try {
-      br = new BufferedReader(new FileReader(file));
+      fr = new FileReader(file);
+      br = new BufferedReader(fr);
       if (!errorFile.exists()) {
         errorFile.createNewFile();
       }
-      bw = new BufferedWriter(new FileWriter(errorFile));
+      fw = new FileWriter(errorFile);
+      bw = new BufferedWriter(fw);
 
       String header = br.readLine();
 
@@ -146,8 +154,7 @@ public class ImportCsv extends AbstractCsvTool {
 
       String[] strHeadInfo = header.split(",");
       if (strHeadInfo.length <= 1) {
-        System.out.println("[ERROR] The CSV file" + file.getName()
-            + " illegal, please check first line");
+        LOGGER.error("The CSV file {} illegal, please check first line", file.getName());
         return;
       }
 
@@ -162,22 +169,23 @@ public class ImportCsv extends AbstractCsvTool {
           timeseriesDataType.put(resultSet.getString(1),
               resultSet.getString(2));
         } else {
-          String errorInfo = String.format("[ERROR] Database cannot find %s in %s, stop import!",
+          String errorInfo = String.format("Database cannot find %s in %s, stop import!",
               strHeadInfo[i], file.getAbsolutePath());
-          System.out.println(errorInfo);
+          LOGGER.error("Database cannot find {} in {}, stop import!",
+              strHeadInfo[i], file.getAbsolutePath());
           bw.write(errorInfo);
           errorFlag = false;
           return;
         }
         headInfo.add(strHeadInfo[i]);
-        String deviceInfo = strHeadInfo[i].substring(0, strHeadInfo[i].lastIndexOf("."));
+        String deviceInfo = strHeadInfo[i].substring(0, strHeadInfo[i].lastIndexOf('.'));
 
         if (!deviceToColumn.containsKey(deviceInfo)) {
           deviceToColumn.put(deviceInfo, new ArrayList<>());
         }
         // storage every device's sensor index info
         deviceToColumn.get(deviceInfo).add(i - 1);
-        colInfo.add(strHeadInfo[i].substring(strHeadInfo[i].lastIndexOf(".") + 1));
+        colInfo.add(strHeadInfo[i].substring(strHeadInfo[i].lastIndexOf('.') + 1));
       }
 
       String line;
@@ -230,9 +238,8 @@ public class ImportCsv extends AbstractCsvTool {
         statement.clearBatch();
         count = 0;
         tmp.clear();
-        System.out.println(String.format("[INFO] Load data from %s successfully,"
-                + " it takes %dms", file.getName(),
-            (System.currentTimeMillis() - startTime)));
+        LOGGER.info("Load data from {} successfully, it takes {}ms", file.getName(),
+            System.currentTimeMillis() - startTime);
       } catch (SQLException e) {
         bw.write(e.getMessage());
         bw.newLine();
@@ -240,15 +247,21 @@ public class ImportCsv extends AbstractCsvTool {
       }
 
     } catch (FileNotFoundException e) {
-      System.out.println("[ERROR] Cannot find " + file.getName());
+      LOGGER.error("Cannot find {}", file.getName());
     } catch (IOException e) {
-      System.out.println("[ERROR] CSV file read exception!" + e.getMessage());
+      LOGGER.error("CSV file read exception! {}", e.getMessage());
     } catch (SQLException e) {
-      System.out.println("[ERROR] Database connection exception!" + e.getMessage());
+      LOGGER.error("Database connection exception! {}", e.getMessage());
     } finally {
       try {
+        if (fr != null) {
+          fr.close();
+        }
         if (br != null) {
           br.close();
+        }
+        if (fw != null) {
+          fw.close();
         }
         if (bw != null) {
           bw.close();
@@ -259,22 +272,20 @@ public class ImportCsv extends AbstractCsvTool {
         if (errorFlag) {
           FileUtils.forceDelete(errorFile);
         } else {
-          System.out.println(String.format(
-              "[ERROR] Format of some lines in %s error, please check %s for more information",
-              file.getAbsolutePath(), errorFile.getAbsolutePath()));
+          LOGGER.error("Format of some lines in {} error, please check {} for more "
+                  + "information", file.getAbsolutePath(), errorFile.getAbsolutePath());
         }
       } catch (SQLException e) {
-        e.printStackTrace();
+        System.out.println("[ERROR] Sql statement can not be closed ! " + e.getMessage());
       } catch (IOException e) {
-        e.printStackTrace();
+        System.out.println("[ERROR] Close file error ! " + e.getMessage());
       }
     }
   }
 
   private static List<String> createInsertSQL(String line, Map<String, String> timeseriesToType,
       Map<String, ArrayList<Integer>> deviceToColumn,
-      List<String> colInfo, List<String> headInfo)
-      throws IOException {
+      List<String> colInfo, List<String> headInfo) {
     String[] data = line.split(",", headInfo.size() + 1);
     List<String> sqls = new ArrayList<>();
     Iterator<Map.Entry<String, ArrayList<Integer>>> it = deviceToColumn.entrySet().iterator();
@@ -283,31 +294,27 @@ public class ImportCsv extends AbstractCsvTool {
       StringBuilder sbd = new StringBuilder();
       ArrayList<Integer> colIndex = entry.getValue();
       sbd.append("insert into " + entry.getKey() + "(timestamp");
-      int skipcount = 0;
+      int skipCount = 0;
       for (int j = 0; j < colIndex.size(); ++j) {
-        if (data[entry.getValue().get(j) + 1].equals("")) {
-          skipcount++;
+        if ("".equals(data[entry.getValue().get(j) + 1])) {
+          skipCount++;
           continue;
         }
         sbd.append(", " + colInfo.get(colIndex.get(j)));
       }
       // define every device null value' number, if the number equal the
       // sensor number, the insert operation stop
-      if (skipcount == entry.getValue().size()) {
+      if (skipCount == entry.getValue().size()) {
         continue;
       }
 
-      // TODO when timestampsStr is empty,
+      // TODO when timestampsStr is empty
       String timestampsStr = data[0];
-      sbd.append(") values(").append(timestampsStr.trim().equals("")
+      sbd.append(") values(").append(timestampsStr.trim().isEmpty()
           ? "NO TIMESTAMP" : timestampsStr);
-      // if (timestampsStr.trim().equals("")) {
-      // continue;
-      // }
-      // sbd.append(") values(").append(timestampsStr);
 
       for (int j = 0; j < colIndex.size(); ++j) {
-        if (data[entry.getValue().get(j) + 1].equals("")) {
+        if ("".equals(data[entry.getValue().get(j) + 1])) {
           continue;
         }
         if (timeseriesToType.get(headInfo.get(colIndex.get(j))).equals(STRING_DATA_TYPE)) {
@@ -331,14 +338,14 @@ public class ImportCsv extends AbstractCsvTool {
     CommandLineParser parser = new DefaultParser();
 
     if (args == null || args.length == 0) {
-      System.out.println("[ERROR] Too few params input, please check the following hint.");
+      LOGGER.error("Too few params input, please check the following hint.");
       hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
       return;
     }
     try {
       commandLine = parser.parse(options, args);
     } catch (ParseException e) {
-      System.out.println(e.getMessage());
+      LOGGER.error(e.getMessage());
       hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
       return;
     }
@@ -356,19 +363,18 @@ public class ImportCsv extends AbstractCsvTool {
         hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
         return;
       }
-      parseSpecialParams(commandLine, reader);
+      parseSpecialParams(commandLine);
       importCsvFromFile(host, port, username, password, filename, timeZoneID);
     } catch (ArgsErrorException e) {
       // ignored
     } catch (Exception e) {
-      System.out.println(String.format("[ERROR] Encounter an error, because %s", e.getMessage()));
+      LOGGER.error("Encounter an error, because {}", e.getMessage());
     } finally {
       reader.close();
     }
   }
 
-  private static void parseSpecialParams(CommandLine commandLine, ConsoleReader reader)
-      throws IOException, ArgsErrorException {
+  private static void parseSpecialParams(CommandLine commandLine) {
     timeZoneID = commandLine.getOptionValue(TIME_ZONE_ARGS);
   }
 
@@ -391,43 +397,46 @@ public class ImportCsv extends AbstractCsvTool {
 
       File file = new File(filename);
       if (file.isFile()) {
-        if (file.getName().endsWith(FILE_SUFFIX)) {
-          loadDataFromCSV(file, 1);
-        } else {
-          System.out.println(
-              "[WARN] File " + file.getName() + " should ends with '.csv' "
-                  + "if you want to import");
-        }
+        importFromSingleFile(file);
       } else if (file.isDirectory()) {
-        int i = 1;
-        for (File f : file.listFiles()) {
-          if (f.isFile()) {
-            if (f.getName().endsWith(FILE_SUFFIX)) {
-              loadDataFromCSV(f, i);
-              i++;
-            } else {
-              System.out.println(
-                  "[WARN] File " + f.getName() + " should ends with '.csv' "
-                      + "if you want to import");
-            }
-          }
-        }
+        importFromDirectory(file);
       }
+
     } catch (ClassNotFoundException e) {
-      System.out.println(
-          "[ERROR] Failed to dump data because cannot find TsFile JDBC Driver, "
+      LOGGER.error(
+          "Failed to dump data because cannot find TsFile JDBC Driver, "
               + "please check whether you have imported driver or not");
     } catch (TException e) {
-      System.out.println(
-          String.format("[ERROR] Encounter an error when connecting to server, because %s",
-              e.getMessage()));
+      LOGGER.error("Encounter an error when connecting to server, because {}",
+          e.getMessage());
     } catch (Exception e) {
-      System.out.println(String.format("[ERROR] Encounter an error, because %s", e.getMessage()));
+      LOGGER.error("Encounter an error, because {}", e.getMessage());
     } finally {
       if (connection != null) {
         connection.close();
       }
     }
+  }
 
+  private static void importFromSingleFile(File file) {
+    if (file.getName().endsWith(FILE_SUFFIX)) {
+      loadDataFromCSV(file, 1);
+    } else {
+      LOGGER.warn("File {} should ends with '.csv' if you want to import", file.getName());
+    }
+  }
+
+  private static void importFromDirectory(File file) {
+    int i = 1;
+    for (File subFile : file.listFiles()) {
+      if (subFile.isFile()) {
+        if (subFile.getName().endsWith(FILE_SUFFIX)) {
+          loadDataFromCSV(subFile, i);
+          i++;
+        } else {
+          LOGGER.warn("File {} should ends with '.csv' if you want to import", file.getName());
+        }
+      }
+    }
   }
 }

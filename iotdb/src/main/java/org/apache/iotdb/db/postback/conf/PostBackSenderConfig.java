@@ -28,20 +28,108 @@ public class PostBackSenderConfig {
 
   public static final String CONFIG_NAME = "iotdb-postbackClient.properties";
 
-  public String[] iotdbBufferwriteDirectory = IoTDBDescriptor.getInstance().getConfig()
+  private String[] iotdbBufferwriteDirectory = IoTDBDescriptor.getInstance().getConfig()
       .getBufferWriteDirs();
-  public String dataDirectory =
+  private String dataDirectory =
       new File(IoTDBDescriptor.getInstance().getConfig().dataDir).getAbsolutePath()
           + File.separator;
-  public String uuidPath;
-  public String lastFileInfo;
-  public String[] snapshotPaths;
-  public String schemaPath =
+  private String uuidPath;
+  private String lastFileInfo;
+  private String[] snapshotPaths;
+  private String schemaPath =
       new File(IoTDBDescriptor.getInstance().getConfig().metadataDir).getAbsolutePath()
           + File.separator + "mlog.txt";
-  public String serverIp = "127.0.0.1";
-  public int serverPort = 5555;
-  public int clientPort = 6666;
-  public int uploadCycleInSeconds = 10;
-  public boolean isClearEnable = false;
+  private String serverIp = "127.0.0.1";
+  private int serverPort = 5555;
+  private int clientPort = 6666;
+  private int uploadCycleInSeconds = 10;
+  private boolean clearEnable = false;
+
+  public String[] getIotdbBufferwriteDirectory() {
+    return iotdbBufferwriteDirectory;
+  }
+
+  public void setIotdbBufferwriteDirectory(String[] iotdbBufferwriteDirectory) {
+    this.iotdbBufferwriteDirectory = iotdbBufferwriteDirectory;
+  }
+
+  public String getDataDirectory() {
+    return dataDirectory;
+  }
+
+  public void setDataDirectory(String dataDirectory) {
+    this.dataDirectory = dataDirectory;
+  }
+
+  public String getUuidPath() {
+    return uuidPath;
+  }
+
+  public void setUuidPath(String uuidPath) {
+    this.uuidPath = uuidPath;
+  }
+
+  public String getLastFileInfo() {
+    return lastFileInfo;
+  }
+
+  public void setLastFileInfo(String lastFileInfo) {
+    this.lastFileInfo = lastFileInfo;
+  }
+
+  public String[] getSnapshotPaths() {
+    return snapshotPaths;
+  }
+
+  public void setSnapshotPaths(String[] snapshotPaths) {
+    this.snapshotPaths = snapshotPaths;
+  }
+
+  public String getSchemaPath() {
+    return schemaPath;
+  }
+
+  public void setSchemaPath(String schemaPath) {
+    this.schemaPath = schemaPath;
+  }
+
+  public String getServerIp() {
+    return serverIp;
+  }
+
+  public void setServerIp(String serverIp) {
+    this.serverIp = serverIp;
+  }
+
+  public int getServerPort() {
+    return serverPort;
+  }
+
+  public void setServerPort(int serverPort) {
+    this.serverPort = serverPort;
+  }
+
+  public int getClientPort() {
+    return clientPort;
+  }
+
+  public void setClientPort(int clientPort) {
+    this.clientPort = clientPort;
+  }
+
+  public int getUploadCycleInSeconds() {
+    return uploadCycleInSeconds;
+  }
+
+  public void setUploadCycleInSeconds(int uploadCycleInSeconds) {
+    this.uploadCycleInSeconds = uploadCycleInSeconds;
+  }
+
+  public boolean getClearEnable() {
+    return clearEnable;
+  }
+
+  public void setClearEnable(boolean clearEnable) {
+    this.clearEnable = clearEnable;
+  }
 }

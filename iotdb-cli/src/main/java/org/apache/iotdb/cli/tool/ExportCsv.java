@@ -44,6 +44,8 @@ import org.apache.iotdb.cli.exception.ArgsErrorException;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.IoTDBConnection;
 import org.apache.thrift.TException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Export CSV file.
@@ -65,6 +67,8 @@ public class ExportCsv extends AbstractCsvTool {
 
   private static String targetDirectory;
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(ExportCsv.class);
+
   /**
    * main function of export csv tool.
    */
@@ -73,18 +77,18 @@ public class ExportCsv extends AbstractCsvTool {
     HelpFormatter hf = new HelpFormatter();
     hf.setOptionComparator(null); // avoid reordering
     hf.setWidth(MAX_HELP_CONSOLE_WIDTH);
-    CommandLine commandLine = null;
+    CommandLine commandLine;
     CommandLineParser parser = new DefaultParser();
 
     if (args == null || args.length == 0) {
-      System.out.println("[ERROR] Too few params input, please check the following hint.");
+      LOGGER.error("Too few params input, please check the following hint.");
       hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
       return;
     }
     try {
       commandLine = parser.parse(options, args);
     } catch (ParseException e) {
-      System.out.println(e.getMessage());
+      LOGGER.error(e.getMessage());
       hf.printHelp(TSFILEDB_CLI_PREFIX, options, true);
       return;
     }
@@ -98,7 +102,7 @@ public class ExportCsv extends AbstractCsvTool {
 
     try {
       parseBasicParams(commandLine, reader);
-      parseSpecialParams(commandLine, reader);
+      parseSpecialParams(commandLine);
       if (!checkTimeFormat()) {
         return;
       }
@@ -122,34 +126,28 @@ public class ExportCsv extends AbstractCsvTool {
         dumpFromSqlFile(sqlFile);
       }
     } catch (ClassNotFoundException e) {
-      System.out.println(
-          "[ERROR] Failed to dump data because cannot find TsFile JDBC Driver, "
+      LOGGER.error(
+          "Failed to dump data because cannot find TsFile JDBC Driver, "
               + "please check whether you have imported driver or not");
     } catch (SQLException e) {
-      System.out.println(
-          String
-              .format("[ERROR] Encounter an error when dumping data, error is %s", e.getMessage()));
+      LOGGER.error("Encounter an error when dumping data, error is {}", e.getMessage());
     } catch (IOException e) {
-      System.out
-          .println(String.format("[ERROR] Failed to operate on file, because %s", e.getMessage()));
+      LOGGER.error("Failed to operate on file, because {}", e.getMessage());
     } catch (TException e) {
-      System.out.println(
-          String.format("[ERROR] Encounter an error when connecting to server, because %s",
-              e.getMessage()));
+      LOGGER.error("Encounter an error when connecting to server, because {}",
+              e.getMessage());
     } catch (ArgsErrorException e) {
       e.printStackTrace();
     } finally {
-      if (reader != null) {
-        reader.close();
-      }
+      reader.close();
       if (connection != null) {
         connection.close();
       }
     }
   }
 
-  private static void parseSpecialParams(CommandLine commandLine, ConsoleReader reader)
-      throws IOException, ArgsErrorException {
+  private static void parseSpecialParams(CommandLine commandLine)
+      throws ArgsErrorException {
     targetDirectory = checkRequiredArg(TARGET_FILE_ARGS, TARGET_FILE_NAME, commandLine);
     timeFormat = commandLine.getOptionValue(TIME_FORMAT_ARGS);
     if (timeFormat == null) {
@@ -216,21 +214,19 @@ public class ExportCsv extends AbstractCsvTool {
     return options;
   }
 
-  private static void dumpFromSqlFile(String filePath) throws ClassNotFoundException, IOException {
-    BufferedReader reader = new BufferedReader(new FileReader(filePath));
-    String sql = null;
-    int index = 0;
-    while ((sql = reader.readLine()) != null) {
-      try {
-        dumpResult(sql, index);
-      } catch (SQLException e) {
-        System.out.println(
-            String.format("[ERROR] Cannot dump data for statment %s, because %s", sql,
-                e.getMessage()));
+  private static void dumpFromSqlFile(String filePath) throws IOException {
+    try (BufferedReader reader = new BufferedReader(new FileReader(filePath))){
+      String sql;
+      int index = 0;
+      while ((sql = reader.readLine()) != null) {
+        try {
+          dumpResult(sql, index);
+        } catch (SQLException e) {
+          LOGGER.error("Cannot dump data for statment {}, because {}", sql, e.getMessage());
+        }
+        index++;
       }
-      index++;
     }
-    reader.close();
   }
 
   /**
@@ -238,24 +234,23 @@ public class ExportCsv extends AbstractCsvTool {
    *
    * @param sql export the result of executing the sql
    * @param index use to create dump file name
-   * @throws ClassNotFoundException if cannot find driver
    * @throws SQLException if SQL is not valid
    */
   private static void dumpResult(String sql, int index)
-      throws ClassNotFoundException, SQLException {
-    BufferedWriter writer = null;
+      throws SQLException {
+    FileWriter fw = null;
+    BufferedWriter bw = null;
     final String path = targetDirectory + DUMP_FILE_NAME + index + ".csv";
     try {
       File tf = new File(path);
-      if (!tf.exists()) {
-        if (!tf.createNewFile()) {
-          System.out.println("[ERROR] Could not create target file for sql statement: " + sql);
+      if (!tf.exists() && !tf.createNewFile()) {
+          LOGGER.error("Could not create target file for sql statement: {}", sql);
           return;
-        }
       }
-      writer = new BufferedWriter(new FileWriter(tf));
+      fw = new FileWriter(tf);
+      bw = new BufferedWriter(fw);
     } catch (IOException e) {
-      System.out.println(e.getMessage());
+      LOGGER.error(e.getMessage());
       return;
     }
 
@@ -268,66 +263,69 @@ public class ExportCsv extends AbstractCsvTool {
       // write data in csv file
       for (int i = 1; i <= count; i++) {
         if (i < count) {
-          writer.write(metadata.getColumnLabel(i) + ",");
+          bw.write(metadata.getColumnLabel(i) + ",");
         } else {
-          writer.write(metadata.getColumnLabel(i) + "\n");
+          bw.write(metadata.getColumnLabel(i) + "\n");
         }
       }
       while (rs.next()) {
-        if (rs.getString(1) == null || rs.getString(1).toLowerCase().equals("null")) {
-          writer.write(",");
+        if (rs.getString(1) == null || "null".equalsIgnoreCase(rs.getString(1))) {
+          bw.write(",");
         } else {
           ZonedDateTime dateTime;
           switch (timeFormat) {
             case DEFAULT_TIME_FORMAT:
             case "default":
               dateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(rs.getLong(1)), zoneId);
-              writer.write(dateTime.toString() + ",");
+              bw.write(dateTime.toString() + ",");
               break;
             case "timestamp":
             case "long":
             case "nubmer":
-              writer.write(rs.getLong(1) + ",");
+              bw.write(rs.getLong(1) + ",");
               break;
             default:
               dateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(rs.getLong(1)), zoneId);
-              writer.write(dateTime.format(DateTimeFormatter.ofPattern(timeFormat)) + ",");
+              bw.write(dateTime.format(DateTimeFormatter.ofPattern(timeFormat)) + ",");
               break;
           }
 
           for (int j = 2; j <= count; j++) {
             if (j < count) {
-              if (rs.getString(j).equals("null")) {
-                writer.write(",");
+              if ("null".equals(rs.getString(j))) {
+                bw.write(",");
               } else {
-                writer.write(rs.getString(j) + ",");
+                bw.write(rs.getString(j) + ",");
               }
             } else {
-              if (rs.getString(j).equals("null")) {
-                writer.write("\n");
+              if ("null".equals(rs.getString(j))) {
+                bw.write("\n");
               } else {
-                writer.write(rs.getString(j) + "\n");
+                bw.write(rs.getString(j) + "\n");
               }
             }
           }
         }
       }
-      System.out
-          .println(String
-              .format("[INFO] Statement [%s] has dumped to file %s successfully! It costs %d ms.",
-                  sql, path, (System.currentTimeMillis() - startTime)));
+      LOGGER.info("Statement [{}] has dumped to file {} successfully! It costs {}ms.",
+                  sql, path, System.currentTimeMillis() - startTime);
     } catch (IOException e) {
-      System.out.println(e.getMessage());
+      LOGGER.error(e.getMessage());
     } finally {
       try {
-        writer.flush();
-        writer.close();
+        if (rs != null) {
+          rs.close();
+        }
+        if (bw != null) {
+          bw.close();
+        }
+        if (fw != null) {
+          fw.close();
+        }
       } catch (IOException e) {
-        System.out.println(e.getMessage());
+        LOGGER.error(e.getMessage());
       }
-      if (statement != null) {
-        statement.close();
-      }
+      statement.close();
     }
   }
 

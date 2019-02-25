@@ -43,7 +43,7 @@ import org.junit.Test;
  */
 public class IoTDBLargeDataIT {
 
-  private static IoTDB deamon;
+  private static IoTDB daemon;
 
   private static boolean testFlag = Constant.testFlag;
   private static TSFileConfig tsFileConfig = TSFileDescriptor.getInstance().getConfig();
@@ -69,8 +69,8 @@ public class IoTDBLargeDataIT {
     tsFileConfig.pageSizeInByte = 1024 * 150;
     tsFileConfig.groupSizeInByte = 1024 * 1000;
 
-    deamon = IoTDB.getInstance();
-    deamon.active();
+    daemon = IoTDB.getInstance();
+    daemon.active();
     EnvironmentUtils.envSetUp();
 
     Thread.sleep(5000);
@@ -86,8 +86,7 @@ public class IoTDBLargeDataIT {
 
     connection.close();
 
-    deamon.stop();
-    Thread.sleep(5000);
+    daemon.stop();
 
     // recovery value
     tsFileConfig.maxNumberOfPointsInPage = maxNumberOfPointsInPage;

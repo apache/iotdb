@@ -26,7 +26,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 public class OFFileMetadata {
 
@@ -34,6 +33,7 @@ public class OFFileMetadata {
   private List<OFRowGroupListMetadata> rowGroupLists;
 
   public OFFileMetadata() {
+    //allowed to do nothing
   }
 
   public OFFileMetadata(long lastFooterOffset, List<OFRowGroupListMetadata> rowGroupLists) {
@@ -55,7 +55,7 @@ public class OFFileMetadata {
   }
 
   public static OFFileMetadata deserializeFrom(ByteBuffer buffer) throws IOException {
-    throw new NotImplementedException();
+    throw new IOException("The function has not been implemented.");
   }
 
   /**
@@ -63,7 +63,7 @@ public class OFFileMetadata {
    */
   public void addRowGroupListMetaData(OFRowGroupListMetadata rowGroupListMetadata) {
     if (rowGroupLists == null) {
-      rowGroupLists = new ArrayList<OFRowGroupListMetadata>();
+      rowGroupLists = new ArrayList<>();
     }
     rowGroupLists.add(rowGroupListMetadata);
   }
@@ -101,7 +101,7 @@ public class OFFileMetadata {
   }
 
   public int serializeTo(ByteBuffer buffer) throws IOException {
-    throw new NotImplementedException();
+    throw new IOException("The function has not been implemented.");
   }
 
 }

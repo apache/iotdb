@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.encoding.decoder;
 
 import java.io.IOException;
@@ -35,7 +36,15 @@ import org.slf4j.LoggerFactory;
 public class PlainDecoder extends Decoder {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PlainDecoder.class);
-  public EndianType endianType;
+  private EndianType endianType;
+
+  public EndianType getEndianType() {
+    return endianType;
+  }
+
+  public void setEndianType(EndianType endianType) {
+    this.endianType = endianType;
+  }
 
   public PlainDecoder(EndianType endianType) {
     super(TSEncoding.PLAIN);
@@ -45,11 +54,7 @@ public class PlainDecoder extends Decoder {
   @Override
   public boolean readBoolean(ByteBuffer buffer) {
     int ch1 = ReadWriteIOUtils.read(buffer);
-    if (ch1 == 0) {
-      return false;
-    } else {
-      return true;
-    }
+    return ch1 != 0;
   }
 
   @Override
@@ -124,5 +129,6 @@ public class PlainDecoder extends Decoder {
 
   @Override
   public void reset() {
+    // do nothing
   }
 }

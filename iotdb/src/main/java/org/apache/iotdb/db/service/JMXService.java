@@ -42,7 +42,7 @@ public class JMXService implements IService {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(JMXService.class);
 
-  private JMXConnectorServer jmxService;
+  private JMXConnectorServer jmxConnectorServer;
 
   private JMXService() {
   }
@@ -84,19 +84,18 @@ public class JMXService implements IService {
     }
   }
 
-  private JMXConnectorServer createJMXServer(int port, boolean local) throws IOException {
+  private JMXConnectorServer createJMXServer(boolean local) throws IOException {
     Map<String, Object> env = new HashMap<>();
 
-    InetAddress serverAddress = null;
+    InetAddress serverAddress;
     if (local) {
       serverAddress = InetAddress.getLoopbackAddress();
       System.setProperty(IoTDBConstant.RMI_SERVER_HOST_NAME, serverAddress.getHostAddress());
     }
     int rmiPort = Integer.getInteger(IoTDBConstant.JMX_REMOTE_RMI_PORT, 0);
 
-    JMXConnectorServer jmxServer = JMXConnectorServerFactory.newJMXConnectorServer(
+    return JMXConnectorServerFactory.newJMXConnectorServer(
         new JMXServiceURL("rmi", null, rmiPort), env, ManagementFactory.getPlatformMBeanServer());
-    return jmxServer;
   }
 
   @Override
@@ -116,11 +115,11 @@ public class JMXService implements IService {
     }
     System.setProperty(IoTDBConstant.SERVER_RMI_ID, "true");
     boolean localOnly = false;
-    String jmxPort = System.getProperty(IoTDBConstant.TSFILEDB_REMOTE_JMX_PORT_NAME);
+    String jmxPort = System.getProperty(IoTDBConstant.IOTDB_REMOTE_JMX_PORT_NAME);
 
     if (jmxPort == null) {
       localOnly = true;
-      jmxPort = System.getProperty(IoTDBConstant.TSFILEDB_LOCAL_JMX_PORT_NAME);
+      jmxPort = System.getProperty(IoTDBConstant.IOTDB_LOCAL_JMX_PORT_NAME);
     }
 
     if (jmxPort == null) {
@@ -128,26 +127,27 @@ public class JMXService implements IService {
       return;
     }
     try {
-      jmxService = createJMXServer(Integer.parseInt(jmxPort), localOnly);
-      if (jmxService == null) {
+      jmxConnectorServer = createJMXServer(localOnly);
+      if (jmxConnectorServer == null) {
         return;
       }
-      jmxService.start();
+      jmxConnectorServer.start();
       LOGGER
           .info("{}: start {} successfully.", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
     } catch (IOException e) {
       String errorMessage = String
           .format("Failed to start %s because of %s", this.getID().getName(),
               e.getMessage());
+      LOGGER.error(errorMessage);
       throw new StartupException(errorMessage);
     }
   }
 
   @Override
   public void stop() {
-    if (jmxService != null) {
+    if (jmxConnectorServer != null) {
       try {
-        jmxService.stop();
+        jmxConnectorServer.stop();
         LOGGER.info("{}: close {} successfully", IoTDBConstant.GLOBAL_DB_NAME,
             this.getID().getName());
       } catch (IOException e) {
@@ -159,5 +159,7 @@ public class JMXService implements IService {
   private static class JMXServerHolder {
 
     private static final JMXService INSTANCE = new JMXService();
+
+    private JMXServerHolder(){}
   }
 }

@@ -27,7 +27,6 @@ import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 /**
  * Metadata of overflow series list.
@@ -62,7 +61,7 @@ public class OFSeriesListMetadata {
   }
 
   public static OFSeriesListMetadata deserializeFrom(ByteBuffer buffer) throws IOException {
-    throw new NotImplementedException();
+    throw new IOException("The function has not been implemented.");
   }
 
   /**
@@ -70,7 +69,7 @@ public class OFSeriesListMetadata {
    */
   public void addSeriesMetaData(ChunkMetaData timeSeries) {
     if (timeSeriesList == null) {
-      timeSeriesList = new ArrayList<ChunkMetaData>();
+      timeSeriesList = new ArrayList<>();
     }
     timeSeriesList.add(timeSeries);
   }
@@ -103,6 +102,6 @@ public class OFSeriesListMetadata {
   }
 
   public int serializeTo(ByteBuffer buffer) throws IOException {
-    throw new NotImplementedException();
+    throw new IOException("The function has not been implemented.");
   }
 }
