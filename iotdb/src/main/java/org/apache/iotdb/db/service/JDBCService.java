@@ -68,6 +68,19 @@ public class JDBCService implements JDBCServiceMBean, IService {
 
   @Override
   public String getJDBCServiceStatus() {
+    // TODO debug log, will be deleted in production env
+    if(startLatch == null) {
+      LOGGER.debug("Start latch is null when getting status");
+    } else {
+      LOGGER.debug("Start latch is {} when getting status", startLatch.getCount());
+    }
+    if(stopLatch == null) {
+      LOGGER.debug("Stop latch is null when getting status");
+    } else {
+      LOGGER.debug("Stop latch is {} when getting status", stopLatch.getCount());
+    }	
+    // debug log, will be deleted in production env
+
     if(startLatch != null && startLatch.getCount() == 0) {
       return STATUS_UP;
     } else {
@@ -203,6 +216,14 @@ public class JDBCService implements JDBCServiceMBean, IService {
         LOGGER.error("{}: {} exit, because ", IoTDBConstant.GLOBAL_DB_NAME, getID().getName(), e);
       } finally {
         close();
+        // TODO debug log, will be deleted in production env
+        if(threadStopLatch == null) {
+        	LOGGER.debug("Stop Count Down latch is null");
+        } else {
+        	LOGGER.debug("Stop Count Down latch is {}", threadStopLatch.getCount());
+        }
+        // debug log, will be deleted in production env
+
         if (threadStopLatch != null && threadStopLatch.getCount() == 1) {
           threadStopLatch.countDown();
         }
