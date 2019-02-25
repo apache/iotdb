@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.service;
 
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -124,8 +125,9 @@ public class JDBCService implements JDBCServiceMBean, IService {
       throw new StartupException(errorMessage);
     }
 
-    LOGGER.info("{}: start {} successfully, listening on port {}", IoTDBConstant.GLOBAL_DB_NAME,
-        this.getID().getName(), IoTDBDescriptor.getInstance().getConfig().rpcPort);
+    LOGGER.info("{}: start {} successfully, listening on ip {} port {}", IoTDBConstant.GLOBAL_DB_NAME,
+        this.getID().getName(), IoTDBDescriptor.getInstance().getConfig().rpcAddress,
+        IoTDBDescriptor.getInstance().getConfig().rpcPort);
   }
   
   private void reset() {
@@ -184,7 +186,8 @@ public class JDBCService implements JDBCServiceMBean, IService {
     @Override
     public void run() {
       try {
-        serverTransport = new TServerSocket(IoTDBDescriptor.getInstance().getConfig().rpcPort);
+        IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+        serverTransport = new TServerSocket(new InetSocketAddress(config.rpcAddress, config.rpcPort));
         poolArgs = new TThreadPoolServer.Args(serverTransport);
         poolArgs.executorService = IoTDBThreadPoolFactory.createJDBCClientThreadPool(poolArgs,
             ThreadName.JDBC_CLIENT.getName());

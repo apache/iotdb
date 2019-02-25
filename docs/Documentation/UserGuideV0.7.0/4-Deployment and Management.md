@@ -355,6 +355,15 @@ The detail of each variables are as follows:
 |Default| 7200 |
 |Effective|After restart system|
 
+* rpc_address
+
+|Name| rpc_address |
+|:---:|:---|
+|Description| The jdbc service listens on the address.|
+|Type|String|
+|Default| "0.0.0.0" |
+|Effective|After restart system|
+
 * rpc_port
 
 |Name| rpc_port |
