@@ -512,6 +512,131 @@ Currently, IoTDB provides users to use Java's JConsole tool to monitor system st
 
 After starting JConsole tool and connecting to IoTDB server, you will have a basic look at IoTDB system status(CPU Occupation, in-memory information, etc.). See [official documentation](https://docs.oracle.com/javase/7/docs/technotes/guides/management/jconsole.html) for more informations.
 
+#### JMX MBean Monitoring
+By using JConsole tool and connecting with JMX you can see some system statistics and parameters.
+This section describes how to use the JConsole ```Mbean``` tab to monitor the number of files opened by the IoTDB service process, the size of the data file, and so on. Once connected to JMX, you can find the ```MBean``` named ```org.apache.iotdb.service``` through the ```MBeans``` tab, as shown in the following Figure.
+
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/20263106/53316064-54aec080-3901-11e9-9a49-76563ac09192.png">
+
+There are several attributes under Monitor, including the numbers of files opened in different folders, the data file size statistics and the values of some system parameters. By double-clicking the value corresponding to an attribute it can also display a line chart of that attribute. See the following section for specific introduction of the Monitor attributes.
+
+##### MBean Monitor Attributes List
+
+* DataSizeInByte
+
+|Name| DataSizeInByte |
+|:---:|:---|
+|Description| The total size of data file.|
+|Unit| Byte |
+|Type| Long |
+
+* FileNodeNum
+
+|Name| FileNodeNum |
+|:---:|:---|
+|Description| The count number of FileNode. (Currently not supported)|
+|Type| Long |
+
+* OverflowCacheSize
+
+|Name| OverflowCacheSize |
+|:---:|:---|
+|Description| The size of out-of-order data cache. (Currently not supported)|
+|Unit| Byte |
+|Type| Long |
+
+* BufferWriteCacheSize
+
+|Name| BufferWriteCacheSize |
+|:---:|:---|
+|Description| The size of BufferWriter cache. (Currently not supported)|
+|Unit| Byte |
+|Type| Long |
+
+* BaseDirectory
+
+|Name| BaseDirectory |
+|:---:|:---|
+|Description| The absolute directory of data file. |
+|Type| String |
+
+* WriteAheadLogStatus
+
+|Name| WriteAheadLogStatus |
+|:---:|:---|
+|Description| The status of write-ahead-log (WAL). ```True``` means WAL is enabled. |
+|Type| Boolean |
+
+* TotalOpenFileNum
+
+|Name| TotalOpenFileNum |
+|:---:|:---|
+|Description| All the opened file number of IoTDB server process. |
+|Type| Int |
+
+* DeltaOpenFileNum
+
+|Name| DeltaOpenFileNum |
+|:---:|:---|
+|Description| The opened TsFile file number of IoTDB server process. |
+|Default Directory| /data/data/settled |
+|Type| Int |
+
+* OverflowOpenFileNum
+
+|Name| OverflowOpenFileNum |
+|:---:|:---|
+|Description| The opened out-of-order data file number of IoTDB server process. |
+|Default Directory| /data/data/overflow |
+|Type| Int |
+
+* WalOpenFileNum
+
+|Name| WalOpenFileNum |
+|:---:|:---|
+|Description| The opened write-ahead-log file number of IoTDB server process. |
+|Default Directory| /data/wal |
+|Type| Int |
+
+* MetadataOpenFileNum
+
+|Name| MetadataOpenFileNum |
+|:---:|:---|
+|Description| The opened meta-data file number of IoTDB server process. |
+|Default Directory| /data/system/schema |
+|Type| Int |
+
+* DigestOpenFileNum
+
+|Name| DigestOpenFileNum |
+|:---:|:---|
+|Description| The opened info file number of IoTDB server process. |
+|Default Directory| /data/system/info |
+|Type| Int |
+
+* SocketOpenFileNum
+
+|Name| SocketOpenFileNum |
+|:---:|:---|
+|Description| The Socket link number of IoTDB server process. |
+|Type| Int |
+
+* MergePeriodInSecond
+
+|Name| MergePeriodInSecond |
+|:---:|:---|
+|Description| The interval at which the IoTDB service process periodically triggers the merge process. |
+|Unit| Second |
+|Type| Long |
+
+* ClosePeriodInSecond
+
+|Name| ClosePeriodInSecond |
+|:---:|:---|
+|Description| The interval at which the IoTDB service process periodically flushes memory data to disk. |
+|Unit| Second |
+|Type| Long |
+
 ### Data Status Monitoring
 
 This module is the statistical monitoring method provided by IoTDB for users to store data information. We will record the statistical data in the system and store it in the database. The current 0.7.0 version of IoTDB provides statistics for writing data.
@@ -662,9 +787,9 @@ At the same time, in order to facilitate the debugging of the system by the deve
 
 #### Connect JMX
 
-Here we use Jconsole to connect with JMX. 
+Here we use JConsole to connect with JMX. 
 
-Start the Jconsole, establish a new JMX connection with the IoTDB Server (you can select the local process or input the IP and PORT for remote connection, the default operation port of the IoTDB JMX service is 31999). Fig 4.1 shows the connection GUI of jconsole.
+Start the JConsole, establish a new JMX connection with the IoTDB Server (you can select the local process or input the IP and PORT for remote connection, the default operation port of the IoTDB JMX service is 31999). Fig 4.1 shows the connection GUI of JConsole.
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577195-f94d7500-1ef3-11e9-999a-b4f67055d80e.png">
 
