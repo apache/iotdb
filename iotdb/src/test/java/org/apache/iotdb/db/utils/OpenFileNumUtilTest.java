@@ -152,7 +152,7 @@ public class OpenFileNumUtilTest {
               LOGGER.debug("Create a file {} successfully", file);
               fileWriterList.add(new FileWriter(file));
             } else {
-              LOGGER.error("create test file {} failed.", file.getPath());
+              LOGGER.error("create test file {} failed when create file writer.", file.getPath());
             }
           } catch (IOException e) {
             LOGGER.error(e.getMessage());
