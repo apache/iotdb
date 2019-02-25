@@ -18,63 +18,7 @@
     under the License.
 
 -->
-# 1. Kafka-IoTDB Demo
-## Function
-```
-The example is to show how to send data from localhost to IoTDB through Kafka.
-```
-## Usage
-### Version usage
-IoTDB: 0.8.0-SNAPSHOT  
-Kafka: 0.8.2.0
-### Dependencies with Maven
-
-```
-<dependencies>
-    <dependency>
-    	<groupId>org.apache.kafka</groupId>
-    	<artifactId>kafka_2.10</artifactId>
-    	<version>0.8.2.0</version>
-    </dependency>
-    <dependency>
-	    <groupId>org.apache.iotdb</groupId>
-	    <artifactId>iotdb-jdbc</artifactId>
-	    <version>0.8.0-SNAPSHOT</version>
-    </dependency>
-</dependencies>
-```
-
-### Launch the servers
-
-```
-  Before you run the program, make sure you have launched the servers of Kafka and IoTDB.
-  For details, please refer to http://kafka.apache.org/081/documentation.html#quickstart
-```
-
-### Run KafkaProducer.java
-
-```
-  The class is to send data from localhost to Kafka clusters.
-  Firstly, you have to change the parameter of TOPIC in Constant.java to what you create：(for example : "Kafka-Test")
-  > public final static String TOPIC = "Kafka-Test";
-  The default format of data is "device,timestamp,value ". (for example : "sensor1,2017/10/24 19:30:00,60")
-  Then you need to create data in Constat.ALL_DATA
-  Finally, run KafkaProducer.java
-```
-
-### Run KafkaConsumer.java
-
-```
-  The class is to show how to consume data from kafka through multi-threads.
-  The data is sent by class KafkaProducer.
-  You can set the parameter of CONSUMER_THREAD_NUM in Constant.java to make sure the number of consumer threads:(for example: "5")
-  > private final static int CONSUMER_THREAD_NUM = 5;
-```
-
-#### Notice 
-  If you want to use multiple consumers, please make sure that the number of topic's partition you create is more than 1.
-
-# 2. Rocketmq-IoTDB Demo
+# Rocketmq-IoTDB Demo
 ##Introduction
 This demo shows how to store data into IoTDB via rocketmq
 ##Basic Concept

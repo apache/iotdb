@@ -134,7 +134,6 @@
         <module>grafana</module>
         <module>service-rpc</module>
         <module>iotdb-cli</module>
-        <module>example</module>
         <!-- <module>hadoop</module> -->
         <!-- <module>spark</module> -->
     </modules>

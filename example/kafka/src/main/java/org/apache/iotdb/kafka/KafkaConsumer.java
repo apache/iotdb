@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.example.kafkademo;
+package org.apache.iotdb.kafka;
 
 import java.util.HashMap;
 import java.util.List;

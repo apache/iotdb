@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.example.rocketmqdemo;
+package org.apache.iotdb.example;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
