@@ -125,7 +125,7 @@ public class OpenFileNumUtil {
         in1.close();
         pro1.destroy();
       } catch (IOException e) {
-        LOGGER.error("Cannot get PID of IoTDB process because {}", e.getMessage());
+        LOGGER.error("Cannot get PID of IoTDB process because ", e);
       }
     } else {
       LOGGER.warn("Unsupported OS {} for OpenFileNumUtil getting the PID of IoTDB.", os);
@@ -204,7 +204,7 @@ public class OpenFileNumUtil {
       in.close();
       pro.destroy();
     } catch (Exception e) {
-      LOGGER.error("Cannot get open file number of IoTDB process because {}", e.getMessage());
+      LOGGER.error("Cannot get open file number of IoTDB process because ", e);
     }
     return resultMap;
   }
