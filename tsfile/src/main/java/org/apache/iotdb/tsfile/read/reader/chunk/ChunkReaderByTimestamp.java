@@ -29,16 +29,11 @@ public class ChunkReaderByTimestamp extends ChunkReader {
     super(chunk);
   }
 
-  public ChunkReaderByTimestamp(Chunk chunk, long maxTombstoneTime) {
-    super(chunk);
-    setMaxTombstoneTime(maxTombstoneTime);
-  }
-
   @Override
   public boolean pageSatisfied(PageHeader pageHeader) {
     long maxTimestamp = pageHeader.getMaxTimestamp();
     // if maxTimestamp > currentTimestamp, this page should NOT be skipped
-    return maxTimestamp >= currentTimestamp && maxTimestamp >= getMaxTombstoneTime();
+    return maxTimestamp >= currentTimestamp && maxTimestamp > deletedAt;
   }
 
   public void setCurrentTimestamp(long currentTimestamp) {

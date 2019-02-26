@@ -257,7 +257,7 @@ public class TsFileSequenceReader {
    *
    * @param position the file offset of this page header's header
    */
-  private PageHeader readPageHeader(TSDataType type, long position) throws IOException {
+  public PageHeader readPageHeader(TSDataType type, long position) throws IOException {
     int size = PageHeader.calculatePageHeaderSize(type);
     ByteBuffer buffer = readData(position, size);
     return PageHeader.deserializeFrom(buffer, type);

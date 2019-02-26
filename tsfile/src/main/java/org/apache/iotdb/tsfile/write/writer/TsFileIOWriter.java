@@ -125,7 +125,7 @@ public class TsFileIOWriter {
    */
   public void startFlushChunkGroup(String deviceId) throws IOException {
     LOG.debug("start chunk group:{}, file position {}", deviceId, out.getPosition());
-    currentChunkGroupMetaData = new ChunkGroupMetaData(deviceId, new ArrayList<>());
+    currentChunkGroupMetaData = new ChunkGroupMetaData(deviceId, new ArrayList<>(), out.getPosition());
   }
 
   /**
@@ -137,21 +137,21 @@ public class TsFileIOWriter {
    * @param statistics - statistic of the whole series
    * @param maxTime - maximum timestamp of the whole series in this stage
    * @param minTime - minimum timestamp of the whole series in this stage
-   * @param datasize - the serialized size of all pages
+   * @param dataSize - the serialized size of all pages
    * @return the serialized size of CHunkHeader
    * @throws IOException if I/O error occurs
    */
   public int startFlushChunk(MeasurementSchema descriptor, CompressionType compressionCodecName,
       TSDataType tsDataType, TSEncoding encodingType, Statistics<?> statistics, long maxTime,
       long minTime,
-      int datasize, int numOfPages) throws IOException {
+      int dataSize, int numOfPages) throws IOException {
     LOG.debug("start series chunk:{}, file position {}", descriptor, out.getPosition());
 
     currentChunkMetaData = new ChunkMetaData(descriptor.getMeasurementId(), tsDataType,
         out.getPosition(), minTime,
         maxTime);
 
-    ChunkHeader header = new ChunkHeader(descriptor.getMeasurementId(), datasize, tsDataType,
+    ChunkHeader header = new ChunkHeader(descriptor.getMeasurementId(), dataSize, tsDataType,
         compressionCodecName,
         encodingType, numOfPages);
     header.serializeTo(out.wrapAsStream());
@@ -191,8 +191,10 @@ public class TsFileIOWriter {
    *
    * @param chunkGroupFooter -use to serialize
    */
-  public void endChunkGroup(ChunkGroupFooter chunkGroupFooter) throws IOException {
+  public void endChunkGroup(ChunkGroupFooter chunkGroupFooter, long version) throws IOException {
     chunkGroupFooter.serializeTo(out.wrapAsStream());
+    currentChunkGroupMetaData.setEndOffsetOfChunkGroup(out.getPosition());
+    currentChunkGroupMetaData.setVersion(version);
     chunkGroupMetaDataList.add(currentChunkGroupMetaData);
     LOG.debug("end chunk group:{}", currentChunkGroupMetaData);
     currentChunkGroupMetaData = null;

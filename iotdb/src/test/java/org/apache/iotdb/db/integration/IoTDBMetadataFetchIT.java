@@ -43,7 +43,7 @@ import org.junit.Test;
  */
 public class IoTDBMetadataFetchIT {
 
-  private static IoTDB deamon;
+  private static IoTDB daemon;
 
   private DatabaseMetaData databaseMetaData;
 
@@ -79,8 +79,8 @@ public class IoTDBMetadataFetchIT {
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.closeMemControl();
 
-    deamon = IoTDB.getInstance();
-    deamon.active();
+    daemon = IoTDB.getInstance();
+    daemon.active();
     EnvironmentUtils.envSetUp();
 
     insertSQL();
@@ -88,7 +88,7 @@ public class IoTDBMetadataFetchIT {
 
   @After
   public void tearDown() throws Exception {
-    deamon.stop();
+    daemon.stop();
     EnvironmentUtils.cleanEnv();
   }
 

@@ -19,6 +19,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.db.engine.querycontext.GlobalSortedSeriesDataSource;
+import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.mem.MemChunkReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.merge.EngineReaderByTimeStamp;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -35,7 +36,7 @@ public class SequenceDataReaderByTimestamp implements EngineReaderByTimeStamp {
   /**
    * init with globalSortedSeriesDataSource and filter.
    */
-  public SequenceDataReaderByTimestamp(GlobalSortedSeriesDataSource sources)
+  public SequenceDataReaderByTimestamp(GlobalSortedSeriesDataSource sources, QueryContext context)
       throws IOException {
     seriesReaders = new ArrayList<>();
 
@@ -44,7 +45,8 @@ public class SequenceDataReaderByTimestamp implements EngineReaderByTimeStamp {
     // add reader for sealed TsFiles
     if (sources.hasSealedTsFiles()) {
       seriesReaders.add(
-          new SealedTsFilesReaderByTimestamp(sources.getSeriesPath(), sources.getSealedTsFiles()));
+          new SealedTsFilesReaderByTimestamp(sources.getSeriesPath(), sources.getSealedTsFiles(),
+              context));
     }
 
     // add reader for unSealed TsFile
@@ -77,7 +79,7 @@ public class SequenceDataReaderByTimestamp implements EngineReaderByTimeStamp {
       return cachedTimeValuePair;
     }
 
-    if(currentSeriesReader != null){
+    if (currentSeriesReader != null) {
       cachedTimeValuePair = currentSeriesReader.getValueGtEqTimestamp(timestamp);
       if (cachedTimeValuePair != null) {
         return cachedTimeValuePair;

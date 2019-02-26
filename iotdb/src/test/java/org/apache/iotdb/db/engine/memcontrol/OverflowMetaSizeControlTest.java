@@ -30,6 +30,7 @@ import org.apache.iotdb.db.engine.MetadataManagerHelper;
 import org.apache.iotdb.db.engine.bufferwrite.Action;
 import org.apache.iotdb.db.engine.bufferwrite.ActionException;
 import org.apache.iotdb.db.engine.bufferwrite.FileNodeConstants;
+import org.apache.iotdb.db.engine.version.SysTimeVersionController;
 import org.apache.iotdb.db.engine.overflow.io.OverflowProcessor;
 import org.apache.iotdb.db.exception.OverflowProcessorException;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -120,7 +121,7 @@ public class OverflowMetaSizeControlTest {
     // insert one point: int
     try {
       ofprocessor = new OverflowProcessor(nameSpacePath, parameters,
-          FileSchemaUtils.constructFileSchema(deviceId));
+          FileSchemaUtils.constructFileSchema(deviceId), SysTimeVersionController.INSTANCE);
       for (int i = 1; i < 1000000; i++) {
         TSRecord record = new TSRecord(i, deviceId);
         record.addTuple(DataPoint.getDataPoint(dataTypes[0], measurementIds[0], String.valueOf(i)));

@@ -16,14 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.utils;
 
-import com.sun.management.UnixOperatingSystemMXBean;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.lang.management.ManagementFactory;
-import java.lang.management.OperatingSystemMXBean;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.List;
@@ -34,9 +32,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 // Notice : statistics in this class may not be accurate because of limited user authority.
-// TODO: now only TOTAL_OPEN_FILE_NUM is general avaiable on multiple Linux-like OSs.
 public class OpenFileNumUtil {
-  private static final Logger log = LoggerFactory.getLogger(OpenFileNumUtil.class);
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(OpenFileNumUtil.class);
   private static final int PID_ERROR_CODE = -1;
   private static final int UNSUPPORTED_OS_ERROR_CODE = -2;
   private static final int UNKNOWN_STATISTICS_ERROR_CODE = -3;
@@ -45,22 +43,19 @@ public class OpenFileNumUtil {
   private static final String MAC_OS_NAME = "mac";
   private static final String SEARCH_PID_LINUX = "ps -aux | grep -i %s | grep -v grep";
   private static final String SEARCH_PID_MAC = "ps aux | grep -i %s | grep -v grep";
-  //TODO lsof command is only avaiable on some OSs.
+  //command 'lsof -p' is available on most Linux distro except CentOS.
   private static final String SEARCH_OPEN_DATA_FILE_BY_PID = "lsof -p %d";
 
   private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static Directories directories = Directories.getInstance();
-  private final String[] cmds = {"/bin/bash", "-c", ""};
+  private static final String[] COMMAND_TEMPLATE = {"/bin/bash", "-c", ""};
+  private static boolean isOutputValid = false;
   private int pid;
-  private String processName;
-
-  private OperatingSystemMXBean os = ManagementFactory.getOperatingSystemMXBean();
 
   /**
    * constructor, process key word is defined by IOTDB_PROCESS_KEY_WORD.
    */
   private OpenFileNumUtil() {
-    processName = IOTDB_PROCESS_KEY_WORD;
     pid = getPid();
   }
 
@@ -98,34 +93,42 @@ public class OpenFileNumUtil {
    *
    * @return pid
    */
-  private int getPid() {
+  private static int getPid() {
     int iotdbPid = -1;
     Process pro1;
     Runtime r = Runtime.getRuntime();
-    String osName = System.getProperty("os.name").toLowerCase();
-    try {
-      String command;
-      if (osName.startsWith(LINUX_OS_NAME)) {
-        command = String.format(SEARCH_PID_LINUX, processName);
-      } else {
-        command = String.format(SEARCH_PID_MAC, processName);
-      }
-      cmds[2] = command;
-      pro1 = r.exec(cmds);
-      BufferedReader in1 = new BufferedReader(new InputStreamReader(pro1.getInputStream()));
-      String line;
-      while ((line = in1.readLine()) != null) {
-        line = line.trim();
-        String[] temp = line.split("\\s+");
-        if (temp.length > 1 && isNumeric(temp[1])) {
-          iotdbPid = Integer.parseInt(temp[1]);
-          break;
+    // System.getProperty("os.name") can detect which type of OS is using now.
+    // this code can detect Windows, Mac, Unix and Solaris.
+    String os = System.getProperty("os.name");
+    String osName = os.toLowerCase();
+    if (osName.startsWith(LINUX_OS_NAME) || osName.startsWith(MAC_OS_NAME)) {
+      try {
+        String command;
+        String processName = IOTDB_PROCESS_KEY_WORD;
+        if (osName.startsWith(LINUX_OS_NAME)) {
+          command = String.format(SEARCH_PID_LINUX, processName);
+        } else {
+          command = String.format(SEARCH_PID_MAC, processName);
         }
+        COMMAND_TEMPLATE[2] = command;
+        pro1 = r.exec(COMMAND_TEMPLATE);
+        BufferedReader in1 = new BufferedReader(new InputStreamReader(pro1.getInputStream()));
+        String line;
+        while ((line = in1.readLine()) != null) {
+          line = line.trim();
+          String[] temp = line.split("\\s+");
+          if (temp.length > 1 && isNumeric(temp[1])) {
+            iotdbPid = Integer.parseInt(temp[1]);
+            break;
+          }
+        }
+        in1.close();
+        pro1.destroy();
+      } catch (IOException e) {
+        LOGGER.error("Cannot get pid of IoTDB process because {}", e.getMessage());
       }
-      in1.close();
-      pro1.destroy();
-    } catch (IOException e) {
-      log.error("Cannot get pid of IoTDB process. ", e);
+    } else {
+      LOGGER.warn("Unsupported OS {} for OpenFileNumUtil getting Pid.", os);
     }
     return iotdbPid;
   }
@@ -141,33 +144,35 @@ public class OpenFileNumUtil {
 
   /**
    * return statistic Map, whose key belongs to enum OpenFileNumStatistics: TOTAL_OPEN_FILE_NUM is
-   * the current total open file number of IoTDB service process DATA_OPEN_FILE_NUM is the current
-   * open file number under data directory DELTA_OPEN_FILE_NUM is the current open file number of
-   * tsfile OVERFLOW_OPEN_FILE_NUM is the current open file number of overflow file
-   * WAL_OPEN_FILE_NUM is the current open file number of WAL file METADATA_OPEN_FILE_NUM is the
-   * current open file number of metadata DIGEST_OPEN_FILE_NUM is the current open file number of
-   * fileNodeDir SOCKET_OPEN_FILE_NUM is the current open socket connection of IoTDB service
+   * the current total open file number of IoTDB service process; DATA_OPEN_FILE_NUM is the current
+   * open file number under data directory; DELTA_OPEN_FILE_NUM is the current open file number of
+   * TsFile; OVERFLOW_OPEN_FILE_NUM is the current open file number of overflow file;
+   * WAL_OPEN_FILE_NUM is the current open file number of WAL file; METADATA_OPEN_FILE_NUM is the
+   * current open file number of metadata; DIGEST_OPEN_FILE_NUM is the current open file number of
+   * fileNodeDir; SOCKET_OPEN_FILE_NUM is the current open socket connection of IoTDB service
    * process.
    *
    * @param pid : IoTDB service pid
    * @return list : statistics list
    */
-  private EnumMap<OpenFileNumStatistics, Integer> getOpenFile(int pid) {
+  private static EnumMap<OpenFileNumStatistics, Integer> getOpenFile(int pid) {
     EnumMap<OpenFileNumStatistics, Integer> resultMap = new EnumMap<>(OpenFileNumStatistics.class);
     // initialize resultMap
     for (OpenFileNumStatistics openFileNumStatistics : OpenFileNumStatistics.values()) {
       resultMap.put(openFileNumStatistics, 0);
     }
     Process pro;
+    int lineCount = 0;
     Runtime r = Runtime.getRuntime();
     try {
       String command = String.format(SEARCH_OPEN_DATA_FILE_BY_PID, pid);
-      cmds[2] = command;
-      pro = r.exec(cmds);
+      COMMAND_TEMPLATE[2] = command;
+      pro = r.exec(COMMAND_TEMPLATE);
       BufferedReader in = new BufferedReader(new InputStreamReader(pro.getInputStream()));
       String line;
       int oldValue;
       while ((line = in.readLine()) != null) {
+        lineCount++;
         String[] temp = line.split("\\s+");
         if (line.contains(Integer.toString(pid)) && temp.length > 8) {
           oldValue = resultMap.get(OpenFileNumStatistics.TOTAL_OPEN_FILE_NUM);
@@ -188,20 +193,20 @@ public class OpenFileNumUtil {
           }
         }
       }
+      if (lineCount < OpenFileNumStatistics.values().length) {
+        isOutputValid = false;
+        for (OpenFileNumStatistics statistics : OpenFileNumStatistics.values()) {
+          resultMap.put(statistics, UNSUPPORTED_OS_ERROR_CODE);
+        }
+      } else {
+        isOutputValid = true;
+      }
       in.close();
       pro.destroy();
     } catch (Exception e) {
-      log.error("Cannot get open file number of IoTDB process.", e);
+      LOGGER.error("Cannot get open file number of IoTDB process because {}", e.getMessage());
     }
     return resultMap;
-  }
-
-  private long getCurrentOpenedFiles() {
-    if(os instanceof UnixOperatingSystemMXBean){
-      return ((UnixOperatingSystemMXBean) os).getOpenFileDescriptorCount();
-    }else {
-      return UNSUPPORTED_OS_ERROR_CODE;
-    }
   }
 
   /**
@@ -240,11 +245,12 @@ public class OpenFileNumUtil {
    * @return open file number
    */
   public int get(OpenFileNumStatistics statistics) {
-    if(statistics.equals(OpenFileNumStatistics.TOTAL_OPEN_FILE_NUM)){
-      return (int) getCurrentOpenedFiles();
-    }
     EnumMap<OpenFileNumStatistics, Integer> statisticsMap = getStatisticMap();
     return statisticsMap.getOrDefault(statistics, UNKNOWN_STATISTICS_ERROR_CODE);
+  }
+
+  boolean isCommandValid() {
+    return isOutputValid;
   }
 
   public enum OpenFileNumStatistics {
@@ -271,7 +277,10 @@ public class OpenFileNumUtil {
   }
 
   private static class OpenFileNumUtilHolder {
-    private OpenFileNumUtilHolder(){}
+
+    private OpenFileNumUtilHolder() {
+    }
+
     private static final OpenFileNumUtil INSTANCE = new OpenFileNumUtil();
   }
 
