@@ -35,6 +35,7 @@
 |  Lei Rui       |  Tsinghua University |
 |  Rui Liu       |  Tsinghua University |
 |  Gaofei Cao    |  Tsinghua University |
+|  Kun Liu       |  Tsinghua University |
 |  Xinyi Zhao    |  Tsinghua University |
 |  Yi Xu         |  Tsinghua University |
 |  Dongfang Mao  |  Tsinghua University |
