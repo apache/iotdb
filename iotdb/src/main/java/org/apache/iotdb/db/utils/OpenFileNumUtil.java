@@ -128,7 +128,7 @@ public class OpenFileNumUtil {
         LOGGER.error("Cannot get PID of IoTDB process because ", e);
       }
     } else {
-      LOGGER.warn("Unsupported OS {} for OpenFileNumUtil getting the PID of IoTDB.", os);
+      LOGGER.warn("Unsupported OS {} for OpenFileNumUtil to get the PID of IoTDB.", os);
     }
     return iotdbPid;
   }
