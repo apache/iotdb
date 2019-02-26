@@ -68,7 +68,7 @@ public class ChunkGroupMetaDataTest {
     testDataFile = TsFileGeneratorForTest.outputDataFile;
     TSFileDescriptor.getInstance().getConfig().timeSeriesEncoder = "TS_2DIFF";
 
-    TsFileGeneratorForTest.generateFileWithoutText(1000, 16 * 1024 * 1024, 10000);
+    TsFileGeneratorForTest.generateFile(1000, 16 * 1024 * 1024, 10000);
   }
 
   @After
