@@ -64,14 +64,14 @@ public class TsFileGeneratorForTest {
     write();
   }
 
-    public static void generateFileWithoutText(int rowCount, int chunkGroupSize, int pageSize)
-            throws IOException, InterruptedException, WriteProcessException {
-        TsFileGeneratorForTest.rowCount = rowCount;
-        TsFileGeneratorForTest.chunkGroupSize = chunkGroupSize;
-        TsFileGeneratorForTest.pageSize = pageSize;
-        prepareWithoutText();
-        write();
-    }
+  public static void generateFileWithoutText(int rowCount, int chunkGroupSize, int pageSize)
+          throws IOException, InterruptedException, WriteProcessException {
+      TsFileGeneratorForTest.rowCount = rowCount;
+      TsFileGeneratorForTest.chunkGroupSize = chunkGroupSize;
+      TsFileGeneratorForTest.pageSize = pageSize;
+      prepareWithoutText();
+      write();
+  }
 
   public static void prepare() throws IOException {
     inputDataFile = "src/test/resources/perTestInputData";
