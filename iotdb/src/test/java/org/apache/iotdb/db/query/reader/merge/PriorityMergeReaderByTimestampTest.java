@@ -1,19 +1,15 @@
 /**
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one or more contributor license
+ * agreements.  See the NOTICE file distributed with this work for additional information regarding
+ * copyright ownership.  The ASF licenses this file to you under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with the License.  You may obtain
+ * a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
+ * Unless required by applicable law or agreed to in writing, software distributed under the License
+ * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
+ * or implied.  See the License for the specific language governing permissions and limitations
  * under the License.
  */
 package org.apache.iotdb.db.query.reader.merge;
@@ -23,10 +19,12 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
+import org.apache.iotdb.db.query.reader.IReader;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.db.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -50,22 +48,22 @@ public class PriorityMergeReaderByTimestampTest {
 
     Random random = new Random();
     for (long time = 4; time < 1080 + 200 * 13 + 600; ) {
-      TsPrimitiveType value = priorityReader.getValueInTimestamp(time);
-      // System.out.println("time = " + time + " value = " + value);
+      Long value = (Long) priorityReader.getValueInTimestamp(time);
+      //System.out.println("time = " + time + " value = " + value);
       if (time < 100) {
         // null
         Assert.assertNull(value);
       } else if (time < 850) {
         // reader 1
         if ((time - 100) % 5 == 0) {
-          Assert.assertEquals(time % 11, value.getLong());
+          Assert.assertEquals(time % 11, value.longValue());
         }
       } else if (time < 1080) {
         // reader 2, reader 1
         if (time >= 850 && (time - 850) % 7 == 0) {
-          Assert.assertEquals(time % 19, value.getLong());
+          Assert.assertEquals(time % 19, value.longValue());
         } else if (time < 1100 && (time - 100) % 5 == 0) {
-          Assert.assertEquals(time % 11, value.getLong());
+          Assert.assertEquals(time % 11, value.longValue());
         } else {
           Assert.assertNull(value);
         }
@@ -73,11 +71,11 @@ public class PriorityMergeReaderByTimestampTest {
       } else if (time < 1080 + 200 * 13) {
         // reader 3, reader 2, reader 1
         if (time >= 1080 && (time - 1080) % 13 == 0) {
-          Assert.assertEquals(time % 31, value.getLong());
+          Assert.assertEquals(time % 31, value.longValue());
         } else if (time < 850 + 200 * 7 && (time - 850) % 7 == 0) {
-          Assert.assertEquals(time % 19, value.getLong());
+          Assert.assertEquals(time % 19, value.longValue());
         } else if (time < 1100 && (time - 100) % 5 == 0) {
-          Assert.assertEquals(time % 11, value.getLong());
+          Assert.assertEquals(time % 11, value.longValue());
         } else {
           Assert.assertNull(value);
         }
@@ -89,9 +87,9 @@ public class PriorityMergeReaderByTimestampTest {
     }
 
     while (priorityReader.hasNext()) {
-      TimeValuePair timeValuePair = priorityReader.next();
-      long time = timeValuePair.getTimestamp();
-      long value = timeValuePair.getValue().getLong();
+      Pair<Long, Object> timeValuePair = priorityReader.next();
+      long time = timeValuePair.left;
+      long value = (long) timeValuePair.right;
       if (time < 850) {
         Assert.assertEquals(time % 11, value);
       } else if (time < 1080) {
@@ -104,7 +102,8 @@ public class PriorityMergeReaderByTimestampTest {
 
   }
 
-  public static class FakedPrioritySeriesReaderByTimestamp implements EngineReaderByTimeStamp {
+  public static class FakedPrioritySeriesReaderByTimestamp implements EngineReaderByTimeStamp,
+      IReader {
 
     private Iterator<TimeValuePair> iterator;
     private long currentTimeStamp = Long.MIN_VALUE;
@@ -159,20 +158,33 @@ public class PriorityMergeReaderByTimestampTest {
     }
 
     @Override
-    public TsPrimitiveType getValueInTimestamp(long timestamp) throws IOException {
+    public Object getValueInTimestamp(long timestamp) throws IOException {
       this.currentTimeStamp = timestamp;
       if (hasCachedTimeValuePair && cachedTimeValuePair.getTimestamp() == timestamp) {
         hasCachedTimeValuePair = false;
-        return cachedTimeValuePair.getValue();
+        return cachedTimeValuePair.getValue().getValue();
       }
 
       if (hasNext()) {
         cachedTimeValuePair = next();
         if (cachedTimeValuePair.getTimestamp() == timestamp) {
-          return cachedTimeValuePair.getValue();
+          return cachedTimeValuePair.getValue().getValue();
         } else if (cachedTimeValuePair.getTimestamp() > timestamp) {
           hasCachedTimeValuePair = true;
         }
+      }
+      return null;
+    }
+
+    @Override
+    public Pair<Long, Object> getValueGtEqTimestamp(long timestamp) throws IOException {
+      Object value = getValueInTimestamp(timestamp);
+      if (value != null) {
+        return new Pair<>(timestamp, value);
+      }
+      if (hasNext()) {
+        TimeValuePair timeValuePair = next();
+        return new Pair<>(timeValuePair.getTimestamp(), timeValuePair.getValue().getValue());
       }
       return null;
     }

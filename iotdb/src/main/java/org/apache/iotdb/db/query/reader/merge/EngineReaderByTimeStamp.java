@@ -16,17 +16,25 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.query.reader.merge;
 
 import java.io.IOException;
-import org.apache.iotdb.db.query.reader.IReader;
-import org.apache.iotdb.db.utils.TsPrimitiveType;
+import org.apache.iotdb.tsfile.utils.Pair;
 
-public interface EngineReaderByTimeStamp extends IReader {
+public interface EngineReaderByTimeStamp {
 
   /**
    * Given a timestamp, the reader is supposed to return the corresponding value in the timestamp.
    * If no value in this timestamp, null will be returned.
    */
-  TsPrimitiveType getValueInTimestamp(long timestamp) throws IOException;
+  Object getValueInTimestamp(long timestamp) throws IOException;
+
+  /**
+   * Given a timestamp, the reader is supposed to return the first value whose time is greater or
+   * equal to timestamp. If no point with time greater or equal to timestamp, null will be returned.
+   */
+  Pair<Long, Object> getValueGtEqTimestamp(long timestamp) throws IOException;
+
+  void close() throws IOException;
 }

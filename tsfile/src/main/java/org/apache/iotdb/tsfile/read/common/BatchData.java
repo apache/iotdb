@@ -19,6 +19,7 @@
 package org.apache.iotdb.tsfile.read.common;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -526,5 +527,29 @@ public class BatchData {
 
   public int length() {
     return this.timeLength;
+  }
+
+  public Object getValueInTimestamp(long key){
+    int max, min, mid;
+    min = curIdx ;
+    max = length() - 1;
+    mid = (max + min) / 2;
+    while ( max >= min) {
+      long midKey = timeRet.get(mid / timeCapacity)[mid % timeCapacity];
+      if (key > midKey) {
+        min = mid + 1;
+      } else if (key < midKey) {
+        max = mid - 1;
+      }
+      else {
+        curIdx = mid;
+        Object value = currentValue();
+        curIdx++;
+        return value;
+      }
+      mid = (min + max) / 2;
+    }
+    curIdx = min;
+    return null;
   }
 }

@@ -27,6 +27,7 @@ import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.controller.ChunkLoader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReaderByTimestamp;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 /**
  * <p>
@@ -34,7 +35,7 @@ import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReaderByTimestamp;
  * a series with given timestamps.
  * </p>
  */
-public class SeriesReaderByTimestamp {
+public class SeriesReaderByTimestamp{
 
   protected ChunkLoader chunkLoader;
   protected List<ChunkMetaData> chunkMetaDataList;
@@ -86,8 +87,10 @@ public class SeriesReaderByTimestamp {
       }
 
       if (data.hasNext()) {
+        Object value = data.currentValue();
         if (data.currentTime() == timestamp) {
-          return data.currentValue();
+          data.next();
+          return value;
         }
         return null;
       } else {
@@ -100,6 +103,46 @@ public class SeriesReaderByTimestamp {
     }
 
     return null;
+  }
+
+  /**
+   * Judge if the series reader has next time-value pair.
+   * @return true if has next, false if not.
+   * @throws IOException
+   */
+  public boolean hasNext() throws IOException {
+
+    if(chunkReader != null){
+      if(data != null && data.hasNext()){
+        return true;
+      }
+      while (chunkReader.hasNextBatch()){
+        data = chunkReader.nextBatch();
+        if(data != null && data.hasNext()){
+          return true;
+        }
+      }
+    }
+
+    while(constructNextSatisfiedChunkReader()){
+      while (chunkReader.hasNextBatch()){
+        data = chunkReader.nextBatch();
+        if(data != null && data.hasNext()){
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Get next point.
+   * @return Pair<Long, Object>: left is timestamp, right is value.
+   */
+  public Pair<Long, Object> next(){
+    Pair<Long, Object> pair = new Pair<>(data.currentTime(), data.currentValue());
+    data.next();
+    return pair;
   }
 
   private boolean constructNextSatisfiedChunkReader() throws IOException {

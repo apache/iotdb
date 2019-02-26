@@ -16,17 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.query.reader.mem;
 
 import java.io.IOException;
 import java.util.Iterator;
 import org.apache.iotdb.db.engine.memtable.TimeValuePairSorter;
+import org.apache.iotdb.db.query.reader.IReader;
 import org.apache.iotdb.db.query.reader.merge.EngineReaderByTimeStamp;
 import org.apache.iotdb.db.utils.TimeValuePair;
-import org.apache.iotdb.db.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.utils.Pair;
 
-public class MemChunkReaderByTimestamp implements EngineReaderByTimeStamp {
+public class MemChunkReaderByTimestamp implements EngineReaderByTimeStamp, IReader {
 
   private Iterator<TimeValuePair> timeValuePairIterator;
   private boolean hasCachedTimeValuePair;
@@ -67,16 +69,28 @@ public class MemChunkReaderByTimestamp implements EngineReaderByTimeStamp {
   // TODO consider change timeValuePairIterator to List structure, and use binary search instead of
   // sequential search
   @Override
-  public TsPrimitiveType getValueInTimestamp(long timestamp) throws IOException {
+  public Object getValueInTimestamp(long timestamp) throws IOException {
     while (hasNext()) {
       TimeValuePair timeValuePair = next();
       long time = timeValuePair.getTimestamp();
       if (time == timestamp) {
-        return timeValuePair.getValue();
+        return timeValuePair.getValue().getValue();
       } else if (time > timestamp) {
         hasCachedTimeValuePair = true;
         cachedTimeValuePair = timeValuePair;
         break;
+      }
+    }
+    return null;
+  }
+
+  @Override
+  public Pair<Long, Object> getValueGtEqTimestamp(long timestamp) throws IOException {
+    while (hasNext()) {
+      TimeValuePair timeValuePair = next();
+      long time = timeValuePair.getTimestamp();
+      if (time >= timestamp) {
+        return new Pair<>(time, timeValuePair.getValue().getValue());
       }
     }
     return null;

@@ -1,19 +1,15 @@
 /**
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one or more contributor license
+ * agreements.  See the NOTICE file distributed with this work for additional information regarding
+ * copyright ownership.  The ASF licenses this file to you under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with the License.  You may obtain
+ * a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
+ * Unless required by applicable law or agreed to in writing, software distributed under the License
+ * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
+ * or implied.  See the License for the specific language governing permissions and limitations
  * under the License.
  */
 package org.apache.iotdb.db.query.factory;
@@ -25,11 +21,14 @@ import org.apache.iotdb.db.engine.querycontext.OverflowInsertFile;
 import org.apache.iotdb.db.engine.querycontext.OverflowSeriesDataSource;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.reader.IReader;
+import org.apache.iotdb.db.query.reader.mem.MemChunkReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.mem.MemChunkReaderWithFilter;
 import org.apache.iotdb.db.query.reader.mem.MemChunkReaderWithoutFilter;
 import org.apache.iotdb.db.query.reader.merge.PriorityMergeReader;
+import org.apache.iotdb.db.query.reader.merge.PriorityMergeReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.sequence.SealedTsFilesReader;
 import org.apache.iotdb.db.query.reader.unsequence.EngineChunkReader;
+import org.apache.iotdb.db.query.reader.unsequence.EngineChunkReaderByTimestamp;
 import org.apache.iotdb.tsfile.common.constant.StatisticConstant;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -41,6 +40,7 @@ import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.filter.DigestForFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
+import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReaderByTimestamp;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReaderWithFilter;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReaderWithoutFilter;
 import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReader;
@@ -121,7 +121,51 @@ public class SeriesReaderFactory {
     return unSeqMergeReader;
   }
 
-  // TODO createUnSeqMergeReaderByTime a method with filter
+  /**
+   * This method is used to create overflow insert reader by timestamp for IoTDB request, such as
+   * query, aggregation and groupby request.
+   */
+  public PriorityMergeReaderByTimestamp createUnSeqMergeReaderByTimestamp(
+      OverflowSeriesDataSource overflowSeriesDataSource)
+      throws IOException {
+
+    PriorityMergeReaderByTimestamp unSeqMergeReader = new PriorityMergeReaderByTimestamp();
+
+    int priorityValue = 1;
+
+    for (OverflowInsertFile overflowInsertFile : overflowSeriesDataSource
+        .getOverflowInsertFileList()) {
+
+      // store only one opened file stream into manager, to avoid too many opened files
+      TsFileSequenceReader unClosedTsFileReader = FileReaderManager.getInstance()
+          .get(overflowInsertFile.getFilePath(), true);
+
+      ChunkLoaderImpl chunkLoader = new ChunkLoaderImpl(unClosedTsFileReader);
+
+      for (ChunkMetaData chunkMetaData : overflowInsertFile.getChunkMetaDataList()) {
+
+        Chunk chunk = chunkLoader.getChunk(chunkMetaData);
+        ChunkReaderByTimestamp chunkReader = new ChunkReaderByTimestamp(chunk,
+            chunkMetaData.getMaxTombstoneTime());
+
+        unSeqMergeReader
+            .addReaderWithPriority(
+                new EngineChunkReaderByTimestamp(chunkReader, unClosedTsFileReader),
+                priorityValue);
+        priorityValue++;
+      }
+    }
+
+    // add reader for MemTable
+    if (overflowSeriesDataSource.hasRawChunk()) {
+      unSeqMergeReader.addReaderWithPriority(
+          new MemChunkReaderByTimestamp(overflowSeriesDataSource.getReadableMemChunk()),
+          priorityValue);
+    }
+
+    // TODO add external sort when needed
+    return unSeqMergeReader;
+  }
 
   /**
    * This method is used to construct reader for merge process in IoTDB. To merge only one TsFile
