@@ -620,7 +620,7 @@ There are several attributes under Monitor, including the numbers of files opene
 
 |Name| SocketOpenFileNum |
 |:---:|:---|
-|Description| The Socket link number of IoTDB server process. |
+|Description| The Socket link (TCP or UDP) number of the operation system. |
 |Type| Int |
 
 * MergePeriodInSecond
