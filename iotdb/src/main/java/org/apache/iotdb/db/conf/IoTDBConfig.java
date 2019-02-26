@@ -34,6 +34,7 @@ public class IoTDBConfig {
       "org.apache.iotdb.db.conf.directories.strategy.";
   public static final String default_mult_dir_strategy = "MaxDiskUsableSpaceFirstStrategy";
 
+  public String rpcAddress = "0.0.0.0";
   /**
    * Port which the JDBC server listens to.
    */
