@@ -430,7 +430,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
   }
 
   /**
-   * execute filenode recovery. and finally release the write lock this processor.
+   * execute filenode recovery.
    */
   public void fileNodeRecovery() throws FileNodeProcessorException {
     // restore bufferwrite
@@ -462,8 +462,6 @@ public class FileNodeProcessor extends Processor implements IStatistic {
         bufferWriteProcessor = new BufferWriteProcessor(baseDir, getProcessorName(),
             fileNames[fileNames.length - 1], parameters, versionController, fileSchema);
       } catch (BufferWriteProcessorException e) {
-        // unlock
-        //writeUnlock();
         LOGGER.error(
             "The filenode processor {} failed to recovery the bufferwrite processor, "
                 + "the last bufferwrite file is {}.",
@@ -480,7 +478,6 @@ public class FileNodeProcessor extends Processor implements IStatistic {
       overflowProcessor = new OverflowProcessor(getProcessorName(), parameters, fileSchema,
           versionController);
     } catch (IOException e) {
-      //writeUnlock();
       LOGGER.error("The filenode processor {} failed to recovery the overflow processor.",
           getProcessorName());
       throw new FileNodeProcessorException(e);
