@@ -120,7 +120,6 @@ public class WinClient extends AbstractClient {
       if (password == null) {
         password = readPassword();
       }
-
       receiveCommands(scanner);
     } catch (ArgsErrorException e) {
       println(IOTDB_CLI_PREFIX + "> input params error because" + e.getMessage());
@@ -164,7 +163,7 @@ public class WinClient extends AbstractClient {
       if (cmd != null && !"".equals(cmd.trim())) {
         OperationResult result = handleInputCmd(cmd, connection);
         switch (result) {
-          case RETURN_OPER:
+          case STOP_OPER:
             return false;
           case CONTINUE_OPER:
             continue;
