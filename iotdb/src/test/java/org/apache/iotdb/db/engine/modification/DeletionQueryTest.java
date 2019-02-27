@@ -271,8 +271,6 @@ public class DeletionQueryTest {
     FileNodeManager.getInstance().delete(processorName, measurements[5], 30);
     FileNodeManager.getInstance().delete(processorName, measurements[5], 50);
 
-    FileNodeManager.getInstance().forceFlush(UsageLevel.DANGEROUS);
-    Thread.sleep(3000);
     FileNodeManager.getInstance().closeAll();
 
     List<Path> pathList = new ArrayList<>();
