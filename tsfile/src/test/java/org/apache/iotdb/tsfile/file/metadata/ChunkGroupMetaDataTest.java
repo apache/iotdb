@@ -50,8 +50,10 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 import org.json.JSONTokener;
 import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
@@ -60,19 +62,18 @@ import static org.junit.Assert.fail;
 public class ChunkGroupMetaDataTest {
 
   public static final String DELTA_OBJECT_UID = "delta-3312";
-  final String PATH = "target/outputChunkGroup.tsfile";
-  private String testDataFile;
+  final static String PATH = "target/outputChunkGroup.tsfile";
+  private static String testDataFile;
 
-  @Before
-  public void setUp() throws WriteProcessException, IOException, InterruptedException {
+  @BeforeClass
+  public static void setUp() throws WriteProcessException, IOException, InterruptedException {
     testDataFile = TsFileGeneratorForTest.outputDataFile;
-    TSFileDescriptor.getInstance().getConfig().timeSeriesEncoder = "TS_2DIFF";
 
     TsFileGeneratorForTest.generateFile(1000, 16 * 1024 * 1024, 10000);
   }
 
-  @After
-  public void tearDown() {
+  @AfterClass
+  public static void tearDown() {
     File file = new File(PATH);
     if (file.exists()) {
       file.delete();

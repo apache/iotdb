@@ -246,19 +246,21 @@ public class TsFileSequenceReader {
   /**
    * not thread safe.
    *
-   * @param type -given tsfile data type
+   * @param type given tsfile data type
    */
   public PageHeader readPageHeader(TSDataType type) throws IOException {
-    return readPageHeader(type, -1);
+    return PageHeader.deserializeFrom(tsFileInput.wrapAsInputStream(), type);
   }
 
   /**
-   * notice, this function will modify channel's position.
+   * read the page's header.
    *
-   * @param position the file offset of this page header's header
+   * @param position the file offset of this chunk's header
+   * @param markerRead true if the offset does not contains the marker , otherwise false
+   * @param dataType given tsfile data type
    */
-  public PageHeader readPageHeader(TSDataType type, long position) throws IOException {
-    return PageHeader.deserializeFrom(tsFileInput.wrapAsInputStream(), type);
+  private PageHeader readPageHeader(long position, boolean markerRead, TSDataType dataType) throws IOException {
+    return PageHeader.deserializeFrom(tsFileInput.wrapAsFileChannel(), position, markerRead, dataType);
   }
 
   public long position() throws IOException {
