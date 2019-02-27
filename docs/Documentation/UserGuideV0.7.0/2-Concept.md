@@ -178,7 +178,7 @@ IoTDB can support LONG types and DATETIME-DISPLAY types when displaying timestam
 
 * Value
 
-The value of a time series is actually the value sent by a sensor to IoTDB. This value can be stored by IoTDB according to the data type. At the same time, users can select the compression mode and the corresponding encoding mode according to the data type of this value. See [Data Type](#data-type) and [Encoding](需要连接到具体的网页链接Chapter2) of this document for details on data type and corresponding encoding.
+The value of a time series is actually the value sent by a sensor to IoTDB. This value can be stored by IoTDB according to the data type. At the same time, users can select the compression mode and the corresponding encoding mode according to the data type of this value. See [Data Type](#data-type) and [Encoding](#encoding) of this document for details on data type and corresponding encoding.
 
 * Point
 
@@ -191,7 +191,7 @@ A column of data contains all values belonging to a time series and the timestam
 ## Data Type
 IoTDB supports six data types in total: BOOLEAN (Boolean), INT32 (Integer), INT64 (Long Integer), FLOAT (Single Precision Floating Point), DOUBLE (Double Precision Floating Point), TEXT (String).
 
-The time series of FLOAT and DOUBLE type can specify (MAX\_POINT\_NUMBER, see [this page](#iotdb-query-statement) for more information on how to specify), which is the number of digits after the decimal point of the floating point number, if the encoding method is **RLE** or **TS\_2DIFF** (Refer to [Create Timeseries Statement](#chapter-5-iotdb-sql-documentation) for more information on how to specify). If MAX\_POINT\_NUMBER is not specified, the system will use **float\_precision** in the configuration file "tsfile-format.properties" for configuration for the configuration method.
+The time series of FLOAT and DOUBLE type can specify (MAX\_POINT\_NUMBER, see [this page](#iotdb-query-statement) for more information on how to specify), which is the number of digits after the decimal point of the floating point number, if the encoding method is [RLE](#encoding) or [TS\_2DIFF](#encoding) (Refer to [Create Timeseries Statement](#chapter-5-iotdb-sql-documentation) for more information on how to specify). If MAX\_POINT\_NUMBER is not specified, the system will use [float\_precision](#encoding) in the configuration file "tsfile-format.properties" for configuration for the configuration method.
 
 When the data type of data input by the user in the system does not correspond to the data type of the time series, the system will report type errors. As shown below, the second-order difference encoding does not support the Boolean type:
 
