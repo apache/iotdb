@@ -141,8 +141,8 @@ public class AbstractClientIT {
 
   @Test
   public void testHandleInputInputCmd() {
-    assertEquals(OperationResult.RETURN_OPER, AbstractClient.handleInputCmd(AbstractClient.EXIT_COMMAND, connection));
-    assertEquals(OperationResult.RETURN_OPER, AbstractClient.handleInputCmd(AbstractClient.QUIT_COMMAND, connection));
+    assertEquals(OperationResult.STOP_OPER, AbstractClient.handleInputCmd(AbstractClient.EXIT_COMMAND, connection));
+    assertEquals(OperationResult.STOP_OPER, AbstractClient.handleInputCmd(AbstractClient.QUIT_COMMAND, connection));
 
     assertEquals(OperationResult.CONTINUE_OPER, AbstractClient.handleInputCmd(AbstractClient.SHOW_METADATA_COMMAND, connection));
 

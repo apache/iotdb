@@ -133,8 +133,8 @@ public class Client extends AbstractClient {
       if (password == null) {
         password = reader.readLine("please input your password:", '\0');
       }
-      try (IoTDBConnection connection = (IoTDBConnection) DriverManager
-          .getConnection(Config.IOTDB_URL_PREFIX + host + ":" + port + "/", username, password)) {
+      try{
+        IoTDBConnection connection = (IoTDBConnection) DriverManager.getConnection(Config.IOTDB_URL_PREFIX + host + ":" + port + "/", username, password);
         properties = connection.getServerProperties();
         AGGREGRATE_TIME_LIST.addAll(properties.getSupportedTimeAggregationOperations());
         displayLogo(properties.getVersion());
@@ -143,13 +143,12 @@ public class Client extends AbstractClient {
           s = reader.readLine(IOTDB_CLI_PREFIX + "> ", null);
           if (s != null) {
             String[] cmds = s.trim().split(";");
-            for (int i = 0; i < cmds.length; i++) {
+            for (int i = 0; i < cmds.length && !isQuit; i++) {
               String cmd = cmds[i];
               if (cmd != null && !"".equals(cmd.trim())) {
                 OperationResult result = handleInputCmd(cmd, connection);
                 switch (result) {
-                  case RETURN_OPER:
-                    return;
+                  case STOP_OPER:
                   case CONTINUE_OPER:
                     continue;
                   default:
@@ -158,7 +157,12 @@ public class Client extends AbstractClient {
               }
             }
           }
+          if(isQuit) {
+            break;
+          }
         }
+        connection.close();
+        System.out.println(String.format("%s> exit normally.", IOTDB_CLI_PREFIX));
       } catch (SQLException e) {
         System.out.println(String
             .format("%s> %s Host is %s, port is %s.", IOTDB_CLI_PREFIX, e.getMessage(), host,
