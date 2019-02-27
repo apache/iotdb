@@ -507,27 +507,27 @@ public abstract class AbstractClient {
       showMetaData(connection);
       return OperationResult.CONTINUE_OPER;
     }
-    if (SET_TIMESTAMP_DISPLAY.startsWith(specialCmd)) {
+    if (specialCmd.startsWith(SET_TIMESTAMP_DISPLAY)) {
       setTimestampDisplay(specialCmd, cmd);
       return OperationResult.CONTINUE_OPER;
     }
 
-    if (SET_TIME_ZONE.startsWith(specialCmd)) {
+    if (specialCmd.startsWith(SET_TIME_ZONE)) {
       setTimeZone(specialCmd, cmd, connection);
       return OperationResult.CONTINUE_OPER;
     }
 
-    if (SET_FETCH_SIZE.startsWith(specialCmd)) {
+    if (specialCmd.startsWith(SET_FETCH_SIZE)) {
       setFetchSize(specialCmd, cmd);
       return OperationResult.CONTINUE_OPER;
     }
 
-    if (SET_MAX_DISPLAY_NUM.startsWith(specialCmd)) {
+    if (specialCmd.startsWith(SET_MAX_DISPLAY_NUM)) {
       setMaxDisplaNum(specialCmd, cmd);
       return OperationResult.CONTINUE_OPER;
     }
 
-    if (SHOW_TIMEZONE.startsWith(specialCmd)) {
+    if (specialCmd.startsWith(SHOW_TIMEZONE)) {
       try {
         println("Current time zone: " + connection.getTimeZone());
       } catch (IoTDBSQLException | TException e) {
@@ -535,16 +535,16 @@ public abstract class AbstractClient {
       }
       return OperationResult.CONTINUE_OPER;
     }
-    if (SHOW_TIMESTAMP_DISPLAY.startsWith(specialCmd)) {
+    if (specialCmd.startsWith(SHOW_TIMESTAMP_DISPLAY)) {
       println("Current time format: " + timeFormat);
       return OperationResult.CONTINUE_OPER;
     }
-    if (SHOW_FETCH_SIZE.startsWith(specialCmd)) {
+    if (specialCmd.startsWith(SHOW_FETCH_SIZE)) {
       println("Current fetch size: " + fetchSize);
       return OperationResult.CONTINUE_OPER;
     }
 
-    if (IMPORT_CMD.startsWith(specialCmd)) {
+    if (specialCmd.startsWith(IMPORT_CMD)) {
       importCmd(specialCmd, cmd, connection);
       return OperationResult.CONTINUE_OPER;
     }
