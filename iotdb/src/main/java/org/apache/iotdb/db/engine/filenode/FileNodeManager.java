@@ -30,7 +30,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
-
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
@@ -75,6 +74,10 @@ public class FileNodeManager implements IStatistic, IService {
   private static final Logger LOGGER = LoggerFactory.getLogger(FileNodeManager.class);
   private static final IoTDBConfig TsFileDBConf = IoTDBDescriptor.getInstance().getConfig();
   private static final Directories directories = Directories.getInstance();
+  /**
+   * a folder that persist FileNodeProcessorStore classes. Each stroage group will have a subfolder.
+   * by default, it is system/info
+   */
   private final String baseDir;
 
   /**
@@ -92,6 +95,7 @@ public class FileNodeManager implements IStatistic, IService {
   private FileNodeManager(String baseDir) {
     processorMap = new ConcurrentHashMap<>();
     statParamsHashMap = new HashMap<>();
+    //label: A
     for (MonitorConstants.FileNodeManagerStatConstants fileNodeManagerStatConstant :
         MonitorConstants.FileNodeManagerStatConstants.values()) {
       statParamsHashMap.put(fileNodeManagerStatConstant.name(), new AtomicLong(0));
@@ -106,7 +110,7 @@ public class FileNodeManager implements IStatistic, IService {
     if (dir.mkdirs()) {
       LOGGER.info("{} dir home doesn't exist, create it", dir.getPath());
     }
-
+    //TODO merge this with label A
     if (TsFileDBConf.enableStatMonitor) {
       StatMonitor statMonitor = StatMonitor.getInstance();
       registStatMetadata();
@@ -182,6 +186,12 @@ public class FileNodeManager implements IStatistic, IService {
     processorMap.clear();
   }
 
+  /**
+   *
+   * @param filenodeName storage name, e.g., root.a.b
+   * @return
+   * @throws FileNodeManagerException
+   */
   private FileNodeProcessor constructNewProcessor(String filenodeName)
       throws FileNodeManagerException {
     try {
@@ -196,6 +206,7 @@ public class FileNodeManager implements IStatistic, IService {
       throws FileNodeManagerException {
     String filenodeName;
     try {
+      // return the stroage name
       filenodeName = MManager.getInstance().getFileNameByPath(path);
     } catch (PathErrorException e) {
       LOGGER.error("MManager get filenode name error, seriesPath is {}", path);
@@ -214,8 +225,8 @@ public class FileNodeManager implements IStatistic, IService {
           processor.lock(isWriteLock);
         } else {
           // calculate the value with the key monitor
-          LOGGER.debug("Calcuate the processor, the filenode is {}, Thread is {}", filenodeName,
-              Thread.currentThread().getId());
+          LOGGER.debug("construct a processor instance, the filenode is {}, Thread is {}",
+              filenodeName, Thread.currentThread().getId());
           processor = constructNewProcessor(filenodeName);
           processor.lock(isWriteLock);
           processorMap.put(filenodeName, processor);
@@ -229,22 +240,30 @@ public class FileNodeManager implements IStatistic, IService {
    * recovery the filenode processor.
    */
   public void recovery() {
-
+    List<String> filenodeNames = null;
     try {
-      List<String> filenodeNames = MManager.getInstance().getAllFileNames();
-      for (String filenodeName : filenodeNames) {
-        FileNodeProcessor fileNodeProcessor = getProcessor(filenodeName, true);
+      filenodeNames = MManager.getInstance().getAllFileNames();
+    } catch (PathErrorException e) {
+      LOGGER.error("Restoring all FileNodes failed.", e);
+      return;
+    }
+    for (String filenodeName : filenodeNames) {
+      FileNodeProcessor fileNodeProcessor = null;
+      try {
+        fileNodeProcessor = getProcessor(filenodeName, true);
         if (fileNodeProcessor.shouldRecovery()) {
           LOGGER.info("Recovery the filenode processor, the filenode is {}, the status is {}",
               filenodeName, fileNodeProcessor.getFileNodeProcessorStatus());
           fileNodeProcessor.fileNodeRecovery();
-        } else {
+        }
+      } catch (FileNodeManagerException | FileNodeProcessorException e) {
+        LOGGER.error("Restoring fileNode {} failed.", filenodeName, e);
+      } finally {
+        if (fileNodeProcessor != null) {
           fileNodeProcessor.writeUnlock();
         }
-        // add index check sum
       }
-    } catch (PathErrorException | FileNodeManagerException | FileNodeProcessorException e) {
-      LOGGER.error("Restoring all FileNodes failed, the reason is ", e);
+      // add index check sum
     }
   }
 
@@ -607,6 +626,8 @@ public class FileNodeManager implements IStatistic, IService {
 
   /**
    * begin query.
+   * @param  deviceId queried deviceId
+   * @return a query token for the device.
    */
   public int beginQuery(String deviceId) throws FileNodeManagerException {
     FileNodeProcessor fileNodeProcessor = getProcessor(deviceId, true);
@@ -1150,6 +1171,8 @@ public class FileNodeManager implements IStatistic, IService {
       fileNodeProcessor.fileNodeRecovery();
     } catch (FileNodeProcessorException e) {
       throw new FileNodeManagerException(e);
+    } finally {
+      fileNodeProcessor.writeUnlock();
     }
   }
 
