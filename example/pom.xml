@@ -30,12 +30,6 @@
     <packaging>pom</packaging>
     <artifactId>iotdb-examples</artifactId>
     <name>IoTDB Examples</name>
-    <!-- Properties Management -->
-    <!--
-        if we claim dependencies in dependencyManagement, then we do not claim
-        their version in sub-project's pom, but we have to claim themselves again
-        in sub-projects
-    -->
     <dependencyManagement>
         <dependencies>
             <dependency>
@@ -45,13 +39,6 @@
             </dependency>
         </dependencies>
     </dependencyManagement>
-    <dependencies>
-        <dependency>
-            <groupId>org.apache.iotdb</groupId>
-            <artifactId>iotdb-jdbc</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-    </dependencies>
     <modules>
         <module>kafka</module>
         <module>rocketmq</module>
