@@ -27,6 +27,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import org.apache.iotdb.tsfile.common.cache.LRUCache;
+import org.apache.iotdb.tsfile.common.constant.QueryConstant;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadata;
@@ -45,12 +46,41 @@ public class MetadataQuerierByFileImpl implements MetadataQuerier {
 
   private TsFileSequenceReader tsFileReader;
 
+  private boolean partitionMode = false;
+  private long partitionStartOffset;
+  private long partitionEndOffset;
+
   /**
    * Constructor of MetadataQuerierByFileImpl.
    */
   public MetadataQuerierByFileImpl(TsFileSequenceReader tsFileReader) throws IOException {
     this.tsFileReader = tsFileReader;
     this.fileMetaData = tsFileReader.readFileMetadata();
+    this.partitionMode = false;
+    chunkMetaDataCache = new LRUCache<Path, List<ChunkMetaData>>(CHUNK_METADATA_CACHE_SIZE) {
+      @Override
+      public List<ChunkMetaData> loadObjectByKey(Path key) throws IOException {
+        return loadChunkMetadata(key);
+      }
+    };
+  }
+
+  /**
+   * Constructor of MetadataQuerierByFileImpl.
+   */
+  public MetadataQuerierByFileImpl(TsFileSequenceReader tsFileReader, HashMap<String, Long> params)
+      throws IOException {
+    this.tsFileReader = tsFileReader;
+    this.fileMetaData = tsFileReader.readFileMetadata();
+
+    if (!params.containsKey(QueryConstant.PARTITION_START_OFFSET) || !params
+        .containsKey(QueryConstant.PARTITION_END_OFFSET)) {
+      throw new IllegalArgumentException(
+          "Input parameters miss partition_start_offset or partition_end_offset");
+    }
+    this.partitionMode = true;
+    this.partitionStartOffset = params.get(QueryConstant.PARTITION_START_OFFSET);
+    this.partitionEndOffset = params.get(QueryConstant.PARTITION_END_OFFSET);
     chunkMetaDataCache = new LRUCache<Path, List<ChunkMetaData>>(CHUNK_METADATA_CACHE_SIZE) {
       @Override
       public List<ChunkMetaData> loadObjectByKey(Path key) throws IOException {
@@ -111,6 +141,9 @@ public class MetadataQuerierByFileImpl implements MetadataQuerier {
           break;
         }
 
+        if (!checkAccess(chunkGroupMetaData)) {
+          continue;
+        }
         // s1, s2
         for (ChunkMetaData chunkMetaData : chunkGroupMetaData.getChunkMetaDataList()) {
 
@@ -160,6 +193,9 @@ public class MetadataQuerierByFileImpl implements MetadataQuerier {
     // get all ChunkMetaData of this path included in all ChunkGroups of this device
     List<ChunkMetaData> chunkMetaDataList = new ArrayList<>();
     for (ChunkGroupMetaData chunkGroupMetaData : tsDeviceMetadata.getChunkGroupMetaDataList()) {
+      if (!checkAccess(chunkGroupMetaData)) {
+        continue;
+      }
       List<ChunkMetaData> chunkMetaDataListInOneChunkGroup = chunkGroupMetaData
           .getChunkMetaDataList();
       for (ChunkMetaData chunkMetaData : chunkMetaDataListInOneChunkGroup) {
@@ -170,6 +206,21 @@ public class MetadataQuerierByFileImpl implements MetadataQuerier {
       }
     }
     return chunkMetaDataList;
+  }
+
+  private boolean checkAccess(ChunkGroupMetaData chunkGroupMetaData) {
+    if (!partitionMode) {
+      return true; // always true
+    }
+    long startOffsetOfChunkGroup = chunkGroupMetaData.getStartOffsetOfChunkGroup();
+    long endOffsetOfChunkGroup = chunkGroupMetaData.getEndOffsetOfChunkGroup();
+    long middleOffsetOfChunkGroup = (startOffsetOfChunkGroup + endOffsetOfChunkGroup) / 2;
+    if (partitionStartOffset < middleOffsetOfChunkGroup
+        && middleOffsetOfChunkGroup <= partitionEndOffset) {
+      return true;
+    } else {
+      return false;
+    }
   }
 
 }

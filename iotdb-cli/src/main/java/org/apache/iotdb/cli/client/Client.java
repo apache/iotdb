@@ -114,9 +114,7 @@ public class Client extends AbstractClient {
       if (password == null) {
         password = reader.readLine("please input your password:", '\0');
       }
-
       receiveCommands(reader);
-
     } catch (ArgsErrorException e) {
       println(IOTDB_CLI_PREFIX + "> input params error because" + e.getMessage());
       handleException(e);
@@ -159,7 +157,7 @@ public class Client extends AbstractClient {
       if (cmd != null && !"".equals(cmd.trim())) {
         OperationResult result = handleInputCmd(cmd, connection);
         switch (result) {
-          case RETURN_OPER:
+          case STOP_OPER:
             return false;
           case CONTINUE_OPER:
             continue;
