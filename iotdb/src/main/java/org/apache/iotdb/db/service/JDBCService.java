@@ -70,14 +70,14 @@ public class JDBCService implements JDBCServiceMBean, IService {
   public String getJDBCServiceStatus() {
     // TODO debug log, will be deleted in production env
     if(startLatch == null) {
-      LOGGER.debug("Start latch is null when getting status");
+      LOGGER.info("Start latch is null when getting status");
     } else {
-      LOGGER.debug("Start latch is {} when getting status", startLatch.getCount());
+      LOGGER.info("Start latch is {} when getting status", startLatch.getCount());
     }
     if(stopLatch == null) {
-      LOGGER.debug("Stop latch is null when getting status");
+      LOGGER.info("Stop latch is null when getting status");
     } else {
-      LOGGER.debug("Stop latch is {} when getting status", stopLatch.getCount());
+      LOGGER.info("Stop latch is {} when getting status", stopLatch.getCount());
     }	
     // debug log, will be deleted in production env
 
@@ -218,9 +218,9 @@ public class JDBCService implements JDBCServiceMBean, IService {
         close();
         // TODO debug log, will be deleted in production env
         if(threadStopLatch == null) {
-        	LOGGER.debug("Stop Count Down latch is null");
+          LOGGER.info("Stop Count Down latch is null");
         } else {
-        	LOGGER.debug("Stop Count Down latch is {}", threadStopLatch.getCount());
+          LOGGER.info("Stop Count Down latch is {}", threadStopLatch.getCount());
         }
         // debug log, will be deleted in production env
 

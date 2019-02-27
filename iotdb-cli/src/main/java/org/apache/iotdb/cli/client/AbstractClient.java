@@ -42,6 +42,7 @@ import org.apache.iotdb.cli.tool.ImportCsv;
 import org.apache.iotdb.jdbc.IoTDBConnection;
 import org.apache.iotdb.jdbc.IoTDBDatabaseMetadata;
 import org.apache.iotdb.jdbc.IoTDBMetadataResultSet;
+import org.apache.iotdb.jdbc.IoTDBSQLException;
 import org.apache.iotdb.service.rpc.thrift.ServerProperties;
 import org.apache.thrift.TException;
 
@@ -90,6 +91,7 @@ public abstract class AbstractClient {
   protected static int fetchSize = 10000;
   protected static int maxTimeLength = ISO_DATETIME_LEN;
   protected static int maxValueLength = 15;
+  protected static boolean isQuit = false;
   /**
    * control the width of columns for 'show timeseries path' and 'show storage group'.
    * <p>
@@ -493,15 +495,15 @@ public abstract class AbstractClient {
   protected static OperationResult handleInputCmd(String cmd, IoTDBConnection connection) {
     String specialCmd = cmd.toLowerCase().trim();
 
-    if (specialCmd.equals(QUIT_COMMAND) || specialCmd.equals(EXIT_COMMAND)) {
-      println(specialCmd + " normally");
-      return OperationResult.RETURN_OPER;
+    if (QUIT_COMMAND.equals(specialCmd) || EXIT_COMMAND.equals(specialCmd)) {
+      isQuit = true;
+      return OperationResult.STOP_OPER;
     }
-    if (specialCmd.equals(HELP)) {
+    if (HELP.equals(specialCmd)) {
       showHelp();
       return OperationResult.CONTINUE_OPER;
     }
-    if (specialCmd.equals(SHOW_METADATA_COMMAND)) {
+    if (SHOW_METADATA_COMMAND.equals(specialCmd)) {
       showMetaData(connection);
       return OperationResult.CONTINUE_OPER;
     }
@@ -526,7 +528,11 @@ public abstract class AbstractClient {
     }
 
     if (specialCmd.startsWith(SHOW_TIMEZONE)) {
-
+      try {
+        println("Current time zone: " + connection.getTimeZone());
+      } catch (IoTDBSQLException | TException e) {
+        handleException(e);
+      }
       return OperationResult.CONTINUE_OPER;
     }
     if (specialCmd.startsWith(SHOW_TIMESTAMP_DISPLAY)) {
@@ -714,7 +720,7 @@ public abstract class AbstractClient {
   }
 
   enum OperationResult {
-    RETURN_OPER, CONTINUE_OPER, NO_OPER
+    STOP_OPER, CONTINUE_OPER, NO_OPER
   }
   
   private static void printf(String format, Object ... args) {
