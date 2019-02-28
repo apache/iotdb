@@ -20,7 +20,7 @@ package org.apache.iotdb.jdbc;
 
 public class IoTDBConnectionParams {
 
-  private String host = Config.IOTDB_URL_PREFIX;
+  private String host = Config.IOTDB_DEFAULT_HOST;
   private int port = Config.IOTDB_DEFAULT_PORT;
   private String jdbcUriString;
   private String seriesName = Config.DEFAULT_SERIES_NAME;
