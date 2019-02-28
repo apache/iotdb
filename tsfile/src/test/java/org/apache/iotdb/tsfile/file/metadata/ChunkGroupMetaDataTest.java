@@ -76,7 +76,7 @@ public class ChunkGroupMetaDataTest {
   public static void tearDown() {
     File file = new File(PATH);
     if (file.exists()) {
-      file.delete();
+      Assert.assertTrue(file.delete());
     }
 
     TsFileGeneratorForTest.after();
