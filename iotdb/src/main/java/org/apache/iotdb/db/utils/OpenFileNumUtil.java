@@ -26,6 +26,7 @@ import java.util.Collections;
 import java.util.EnumMap;
 import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.Directories;
 import org.slf4j.Logger;
@@ -38,7 +39,7 @@ public class OpenFileNumUtil {
   private static final int PID_ERROR_CODE = -1;
   private static final int UNSUPPORTED_OS_ERROR_CODE = -2;
   private static final int UNKNOWN_STATISTICS_ERROR_CODE = -3;
-  private static final String IOTDB_PROCESS_KEY_WORD = "iotdb.IoTDB";
+  private static final String IOTDB_PROCESS_KEY_WORD = IoTDBConstant.GLOBAL_DB_NAME;
   private static final String LINUX_OS_NAME = "linux";
   private static final String MAC_OS_NAME = "mac";
   private static final String SEARCH_PID_LINUX = "ps -aux | grep -i %s | grep -v grep";
@@ -56,7 +57,7 @@ public class OpenFileNumUtil {
    * constructor, process key word is defined by IOTDB_PROCESS_KEY_WORD.
    */
   private OpenFileNumUtil() {
-    pid = getPid();
+    pid = getIotdbPid();
   }
 
   /**
@@ -89,11 +90,11 @@ public class OpenFileNumUtil {
   }
 
   /**
-   * get process ID by executing command.
+   * get IoTDB server process ID by executing command.
    *
-   * @return pid
+   * @return pid of IoTDB server process
    */
-  private static int getPid() {
+  private static int getIotdbPid() {
     int iotdbPid = -1;
     Process pro1;
     Runtime r = Runtime.getRuntime();
@@ -104,11 +105,10 @@ public class OpenFileNumUtil {
     if (osName.startsWith(LINUX_OS_NAME) || osName.startsWith(MAC_OS_NAME)) {
       try {
         String command;
-        String processName = IOTDB_PROCESS_KEY_WORD;
         if (osName.startsWith(LINUX_OS_NAME)) {
-          command = String.format(SEARCH_PID_LINUX, processName);
+          command = String.format(SEARCH_PID_LINUX, IOTDB_PROCESS_KEY_WORD);
         } else {
-          command = String.format(SEARCH_PID_MAC, processName);
+          command = String.format(SEARCH_PID_MAC, IOTDB_PROCESS_KEY_WORD);
         }
         COMMAND_TEMPLATE[2] = command;
         pro1 = r.exec(COMMAND_TEMPLATE);
@@ -125,10 +125,10 @@ public class OpenFileNumUtil {
         in1.close();
         pro1.destroy();
       } catch (IOException e) {
-        LOGGER.error("Cannot get pid of IoTDB process because {}", e.getMessage());
+        LOGGER.error("Cannot get PID of IoTDB process because ", e);
       }
     } else {
-      LOGGER.warn("Unsupported OS {} for OpenFileNumUtil getting Pid.", os);
+      LOGGER.warn("Unsupported OS {} for OpenFileNumUtil to get the PID of IoTDB.", os);
     }
     return iotdbPid;
   }
@@ -204,7 +204,7 @@ public class OpenFileNumUtil {
       in.close();
       pro.destroy();
     } catch (Exception e) {
-      LOGGER.error("Cannot get open file number of IoTDB process because {}", e.getMessage());
+      LOGGER.error("Cannot get open file number of IoTDB process because ", e);
     }
     return resultMap;
   }
