@@ -38,7 +38,7 @@ public class IoTDBDescriptor {
     loadProps();
   }
 
-  public static final IoTDBDescriptor getInstance() {
+  public static IoTDBDescriptor getInstance() {
     return IoTDBDescriptorHolder.INSTANCE;
   }
 
@@ -50,7 +50,7 @@ public class IoTDBDescriptor {
    * load an property file and set TsfileDBConfig variables.
    */
   private void loadProps() {
-    InputStream inputStream = null;
+    InputStream inputStream;
     String url = System.getProperty(IoTDBConstant.IOTDB_CONF, null);
     if (url == null) {
       url = System.getProperty(IoTDBConstant.IOTDB_HOME, null);
@@ -128,7 +128,7 @@ public class IoTDBDescriptor {
                   Long.toString(conf.forceWalPeriodInMs)));
 
       conf.dataDir = properties.getProperty("data_dir", conf.dataDir);
-      conf.bufferWriteDirs = properties.getProperty("tsfile_dir", conf.default_tsfile_dir)
+      conf.bufferWriteDirs = properties.getProperty("tsfile_dir", conf.DEFAULT_TSFILE_DIR)
           .split(",");
       conf.sysDir = properties.getProperty("sys_dir", conf.sysDir);
       conf.walDir = properties.getProperty("wal_dir", conf.walDir);

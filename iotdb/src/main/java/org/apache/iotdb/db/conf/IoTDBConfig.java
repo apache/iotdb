@@ -23,16 +23,19 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.db.metadata.MManager;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class IoTDBConfig {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBConfig.class);
   public static final String CONFIG_NAME = "iotdb-engine.properties";
-  public static final String default_data_dir = "data";
-  public static final String default_sys_dir = "system";
-  public static final String default_tsfile_dir = "settled";
-  public static final String mult_dir_strategy_prefix =
+  public static final String DEFAULT_DATA_DIR = "data";
+  public static final String DEFAULT_SYS_DIR = "system";
+  public static final String DEFAULT_TSFILE_DIR = "settled";
+  public static final String MULT_DIR_STRATEGY_PREFIX =
       "org.apache.iotdb.db.conf.directories.strategy.";
-  public static final String default_mult_dir_strategy = "MaxDiskUsableSpaceFirstStrategy";
+  public static final String DEFAULT_MULT_DIR_STRATEGY = "MaxDiskUsableSpaceFirstStrategy";
 
   public String rpcAddress = "0.0.0.0";
   /**
@@ -297,7 +300,7 @@ public class IoTDBConfig {
     overflowDataDir = dataDir + overflowDataDir;
 
     if (bufferWriteDirs == null || bufferWriteDirs.length == 0) {
-      bufferWriteDirs = new String[]{default_tsfile_dir};
+      bufferWriteDirs = new String[]{DEFAULT_TSFILE_DIR};
     }
     for (int i = 0; i < bufferWriteDirs.length; i++) {
       if (new File(bufferWriteDirs[i]).isAbsolute()) {
@@ -362,13 +365,13 @@ public class IoTDBConfig {
 
   private void preUpdatePath() {
     if (dataDir == null) {
-      dataDir = default_data_dir + File.separatorChar + default_data_dir;
+      dataDir = DEFAULT_DATA_DIR + File.separatorChar + DEFAULT_DATA_DIR;
     }
     if (sysDir == null) {
-      sysDir = default_data_dir + File.separatorChar + default_sys_dir;
+      sysDir = DEFAULT_DATA_DIR + File.separatorChar + DEFAULT_SYS_DIR;
     }
     if (walDir == null) {
-      walDir = default_data_dir;
+      walDir = DEFAULT_DATA_DIR;
     }
 
     List<String> dirs = new ArrayList<>();
@@ -394,16 +397,18 @@ public class IoTDBConfig {
 
   private void confirmMultiDirStrategy() {
     if (multDirStrategyClassName == null) {
-      multDirStrategyClassName = default_mult_dir_strategy;
+      multDirStrategyClassName = DEFAULT_MULT_DIR_STRATEGY;
     }
     if (!multDirStrategyClassName.contains(".")) {
-      multDirStrategyClassName = mult_dir_strategy_prefix + multDirStrategyClassName;
+      multDirStrategyClassName = MULT_DIR_STRATEGY_PREFIX + multDirStrategyClassName;
     }
 
     try {
       Class.forName(multDirStrategyClassName);
     } catch (ClassNotFoundException e) {
-      multDirStrategyClassName = mult_dir_strategy_prefix + default_mult_dir_strategy;
+      LOGGER.warn("Cannot find given directory strategy {}, using the default value",
+          multDirStrategyClassName, e);
+      multDirStrategyClassName = MULT_DIR_STRATEGY_PREFIX + DEFAULT_MULT_DIR_STRATEGY;
     }
   }
 
