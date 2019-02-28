@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.query.reader.merge;
 
 import java.io.IOException;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 public interface EngineReaderByTimeStamp {
 
@@ -30,11 +29,7 @@ public interface EngineReaderByTimeStamp {
    */
   Object getValueInTimestamp(long timestamp) throws IOException;
 
-  /**
-   * Given a timestamp, the reader is supposed to return the first value whose time is greater or
-   * equal to timestamp. If no point with time greater or equal to timestamp, null will be returned.
-   */
-  Pair<Long, Object> getValueGtEqTimestamp(long timestamp) throws IOException;
+  boolean hasNext() throws IOException;
 
   void close() throws IOException;
 }

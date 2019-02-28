@@ -24,7 +24,6 @@ import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.db.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.apache.iotdb.tsfile.utils.Pair;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -86,18 +85,16 @@ public class PriorityMergeReaderByTimestampTest {
       time += random.nextInt(50) + 1;
     }
 
-    while (priorityReader.hasNext()) {
-      Pair<Long, Object> timeValuePair = priorityReader.next();
-      long time = timeValuePair.left;
-      long value = (long) timeValuePair.right;
-      if (time < 850) {
-        Assert.assertEquals(time % 11, value);
-      } else if (time < 1080) {
-        Assert.assertEquals(time % 19, value);
-      } else {
-        Assert.assertEquals(time % 31, value);
+    for(long i = 1; i < 1080 + 200 * 13; i++){
+      Object value = priorityReader.getValueInTimestamp(i);
+      if(i >= 1080 && (i-1080) % 13 == 0){
+        Assert.assertEquals(i % 31, value);
+      } else if( i >= 850 && i < 850 + 200 * 7 && (i-850) % 7 == 0 ){
+        Assert.assertEquals(i % 19, value);
+      } else if( i >= 100 &&i < 100 + 200 * 5 && (i-100) % 5 == 0 ){
+        Assert.assertEquals(i % 11, value);
       }
-      cnt++;
+      Assert.assertNull(value);
     }
 
   }
@@ -172,19 +169,6 @@ public class PriorityMergeReaderByTimestampTest {
         } else if (cachedTimeValuePair.getTimestamp() > timestamp) {
           hasCachedTimeValuePair = true;
         }
-      }
-      return null;
-    }
-
-    @Override
-    public Pair<Long, Object> getValueGtEqTimestamp(long timestamp) throws IOException {
-      Object value = getValueInTimestamp(timestamp);
-      if (value != null) {
-        return new Pair<>(timestamp, value);
-      }
-      if (hasNext()) {
-        TimeValuePair timeValuePair = next();
-        return new Pair<>(timeValuePair.getTimestamp(), timeValuePair.getValue().getValue());
       }
       return null;
     }

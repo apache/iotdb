@@ -22,16 +22,12 @@ import org.apache.iotdb.db.engine.querycontext.GlobalSortedSeriesDataSource;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.mem.MemChunkReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.merge.EngineReaderByTimeStamp;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 public class SequenceDataReaderByTimestamp implements EngineReaderByTimeStamp {
 
   private List<EngineReaderByTimeStamp> seriesReaders;
   private int nextSeriesReaderIndex;
   private EngineReaderByTimeStamp currentSeriesReader;
-
-  private boolean hasCached;
-  private Pair<Long, Object> cachedTimeValuePair;
 
   /**
    * init with globalSortedSeriesDataSource and filter.
@@ -63,39 +59,34 @@ public class SequenceDataReaderByTimestamp implements EngineReaderByTimeStamp {
 
   @Override
   public Object getValueInTimestamp(long timestamp) throws IOException {
-    cachedTimeValuePair = getValueGtEqTimestamp(timestamp);
-    if (cachedTimeValuePair == null || cachedTimeValuePair.left == timestamp) {
-      return cachedTimeValuePair;
-    } else {
-      hasCached = true;
-      return null;
-    }
-  }
-
-  @Override
-  public Pair<Long, Object> getValueGtEqTimestamp(long timestamp) throws IOException {
-    if (hasCached && cachedTimeValuePair.left >= timestamp) {
-      hasCached = false;
-      return cachedTimeValuePair;
-    }
-
+    Object value = null;
     if (currentSeriesReader != null) {
-      cachedTimeValuePair = currentSeriesReader.getValueGtEqTimestamp(timestamp);
-      if (cachedTimeValuePair != null) {
-        return cachedTimeValuePair;
+      value = currentSeriesReader.getValueInTimestamp(timestamp);
+      if (value != null || currentSeriesReader.hasNext()) {
+        return value;
       }
     }
 
     while (nextSeriesReaderIndex < seriesReaders.size()) {
       currentSeriesReader = seriesReaders.get(nextSeriesReaderIndex++);
-      cachedTimeValuePair = currentSeriesReader.getValueGtEqTimestamp(timestamp);
-      if (cachedTimeValuePair != null) {
-        return cachedTimeValuePair;
+      if (currentSeriesReader != null) {
+        value = currentSeriesReader.getValueInTimestamp(timestamp);
+        if (value != null || currentSeriesReader.hasNext()) {
+          return value;
+        }
       }
     }
-
-    return null;
+    return value;
   }
+
+  @Override
+  public boolean hasNext() throws IOException {
+    if (currentSeriesReader != null && currentSeriesReader.hasNext()) {
+      return true;
+    }
+    return nextSeriesReaderIndex < seriesReaders.size();
+  }
+
 
   @Override
   public void close() throws IOException {

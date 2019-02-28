@@ -26,7 +26,6 @@ import org.apache.iotdb.db.query.reader.IReader;
 import org.apache.iotdb.db.query.reader.merge.EngineReaderByTimeStamp;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 public class MemChunkReaderByTimestamp implements EngineReaderByTimeStamp, IReader {
 
@@ -79,18 +78,6 @@ public class MemChunkReaderByTimestamp implements EngineReaderByTimeStamp, IRead
         hasCachedTimeValuePair = true;
         cachedTimeValuePair = timeValuePair;
         break;
-      }
-    }
-    return null;
-  }
-
-  @Override
-  public Pair<Long, Object> getValueGtEqTimestamp(long timestamp) throws IOException {
-    while (hasNext()) {
-      TimeValuePair timeValuePair = next();
-      long time = timeValuePair.getTimestamp();
-      if (time >= timestamp) {
-        return new Pair<>(time, timeValuePair.getValue().getValue());
       }
     }
     return null;

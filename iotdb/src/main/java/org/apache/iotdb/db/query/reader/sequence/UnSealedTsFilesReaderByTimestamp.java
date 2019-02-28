@@ -24,7 +24,6 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.controller.ChunkLoader;
 import org.apache.iotdb.tsfile.read.controller.ChunkLoaderImpl;
 import org.apache.iotdb.tsfile.read.reader.series.SeriesReaderByTimestamp;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 public class UnSealedTsFilesReaderByTimestamp implements EngineReaderByTimeStamp {
 
@@ -54,15 +53,8 @@ public class UnSealedTsFilesReaderByTimestamp implements EngineReaderByTimeStamp
   }
 
   @Override
-  public Pair<Long, Object> getValueGtEqTimestamp(long timestamp) throws IOException {
-    Object value = unSealedReader.getValueInTimestamp(timestamp);
-    if (value != null) {
-      return new Pair<>(timestamp, value);
-    }
-    if (unSealedReader.hasNext()) {
-      return unSealedReader.next();
-    }
-    return null;
+  public boolean hasNext() throws IOException {
+    return unSealedReader.hasNext();
   }
 
   @Override

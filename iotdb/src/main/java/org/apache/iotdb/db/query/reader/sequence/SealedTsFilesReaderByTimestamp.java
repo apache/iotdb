@@ -34,7 +34,6 @@ import org.apache.iotdb.tsfile.read.controller.ChunkLoader;
 import org.apache.iotdb.tsfile.read.controller.ChunkLoaderImpl;
 import org.apache.iotdb.tsfile.read.controller.MetadataQuerierByFileImpl;
 import org.apache.iotdb.tsfile.read.reader.series.SeriesReaderByTimestamp;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 public class SealedTsFilesReaderByTimestamp implements EngineReaderByTimeStamp {
 
@@ -77,15 +76,11 @@ public class SealedTsFilesReaderByTimestamp implements EngineReaderByTimeStamp {
   }
 
   @Override
-  public Pair<Long, Object> getValueGtEqTimestamp(long timestamp) throws IOException {
-    Object value = getValueInTimestamp(timestamp);
-    if (value != null) {
-      return new Pair<>(timestamp, value);
-    }
+  public boolean hasNext() throws IOException {
     if (seriesReader != null && seriesReader.hasNext()) {
-      return seriesReader.next();
+      return true;
     }
-    return null;
+    return usedIntervalFileIndex + 1 < sealedTsFiles.size();
   }
 
   @Override
@@ -104,7 +99,7 @@ public class SealedTsFilesReaderByTimestamp implements EngineReaderByTimeStamp {
   }
 
   /**
-   * Judge whether the file should be skipped
+   * Judge whether the file should be skipped.
    */
   private boolean singleTsFileSatisfied(IntervalFileNode fileNode, long timestamp) {
     long endTime = fileNode.getEndTime(seriesPath.getDevice());

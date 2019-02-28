@@ -20,7 +20,6 @@ import org.apache.iotdb.db.query.reader.merge.EngineReaderByTimeStamp;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReaderByTimestamp;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 public class EngineChunkReaderByTimestamp implements EngineReaderByTimeStamp {
 
@@ -66,27 +65,15 @@ public class EngineChunkReaderByTimestamp implements EngineReaderByTimeStamp {
   }
 
   @Override
-  public Pair<Long, Object> getValueGtEqTimestamp(long timestamp) throws IOException {
-
-    Object value = getValueInTimestamp(timestamp);
-    if (value != null) {
-      return new Pair(timestamp, value);
+  public boolean hasNext() throws IOException {
+    if (data != null & data.hasNext()) {
+      return true;
     }
-    while (data != null) {
-      if (data.hasNext()) {
-        Pair<Long, Object> tvPair = new Pair(data.currentTime(), data.currentValue());
-        data.next();
-        return tvPair;
-      } else {
-        chunkReader.setCurrentTimestamp(timestamp);
-        if (chunkReader.hasNextBatch()) {
-          data = chunkReader.nextBatch();
-        } else {
-          return null;
-        }
-      }
+    if (chunkReader != null && chunkReader.hasNextBatch()) {
+      data = chunkReader.nextBatch();
+      return true;
     }
-    return null;
+    return false;
   }
 
   @Override

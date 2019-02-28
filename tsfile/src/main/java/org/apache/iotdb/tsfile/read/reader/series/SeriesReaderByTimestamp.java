@@ -135,16 +135,6 @@ public class SeriesReaderByTimestamp{
     return false;
   }
 
-  /**
-   * Get next point.
-   * @return Pair<Long, Object>: left is timestamp, right is value.
-   */
-  public Pair<Long, Object> next(){
-    Pair<Long, Object> pair = new Pair<>(data.currentTime(), data.currentValue());
-    data.next();
-    return pair;
-  }
-
   private boolean constructNextSatisfiedChunkReader() throws IOException {
     while (currentChunkIndex < chunkMetaDataList.size()) {
       ChunkMetaData chunkMetaData = chunkMetaDataList.get(currentChunkIndex++);
