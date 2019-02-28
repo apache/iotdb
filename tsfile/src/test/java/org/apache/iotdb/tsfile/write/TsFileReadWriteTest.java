@@ -19,6 +19,8 @@
 package org.apache.iotdb.tsfile.write;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
@@ -216,4 +218,38 @@ public class TsFileReadWriteTest {
     reader.close();
   }
 
+  @Test
+  public void readEmptyMeasurementTest() throws IOException, WriteProcessException {
+    String path = "test.tsfile";
+    File f = new File(path);
+    if (f.exists()) {
+      assertTrue(f.delete());
+    }
+    TsFileWriter tsFileWriter = new TsFileWriter(f);
+
+    // add measurements into file schema
+    tsFileWriter
+        .addMeasurement(new MeasurementSchema("sensor_1", TSDataType.FLOAT, TSEncoding.RLE));
+    tsFileWriter
+        .addMeasurement(new MeasurementSchema("sensor_2", TSDataType.INT32, TSEncoding.TS_2DIFF));
+    // construct TSRecord
+    TSRecord tsRecord = new TSRecord(1, "device_1");
+    DataPoint dPoint1 = new FloatDataPoint("sensor_1", 1.2f);
+    tsRecord.addTuple(dPoint1);
+    // write a TSRecord to TsFile
+    tsFileWriter.write(tsRecord);
+    // close TsFile
+    tsFileWriter.close();
+
+    // read example : no filter
+    TsFileSequenceReader reader = new TsFileSequenceReader(path);
+    ReadOnlyTsFile readTsFile = new ReadOnlyTsFile(reader);
+    ArrayList<Path> paths = new ArrayList<>();
+    paths.add(new Path("device_1.sensor_2"));
+    QueryExpression queryExpression = QueryExpression.create(paths, null);
+    QueryDataSet queryDataSet = readTsFile.query(queryExpression);
+    assertFalse(queryDataSet.hasNext());
+    reader.close();
+    assertTrue(f.delete());
+  }
 }
