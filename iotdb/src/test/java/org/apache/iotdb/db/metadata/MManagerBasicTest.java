@@ -23,10 +23,15 @@ import static org.junit.Assert.fail;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.db.exception.MetadataArgsErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.junit.After;
 import org.junit.Assert;
@@ -35,8 +40,11 @@ import org.junit.Test;
 
 public class MManagerBasicTest {
 
+  CompressionType compressionType;
+
   @Before
   public void setUp() throws Exception {
+    compressionType = CompressionType.valueOf(TSFileConfig.compressor);
   }
 
   @After
@@ -68,7 +76,9 @@ public class MManagerBasicTest {
     }
 
     try {
-      manager.addPathToMTree("root.laptop.d1.s0", "INT32", "RLE", new String[0]);
+      manager.addPathToMTree("root.laptop.d1.s0", TSDataType.valueOf("INT32"),
+          TSEncoding.valueOf("RLE"), compressionType, Collections
+              .emptyMap());
     } catch (PathErrorException | MetadataArgsErrorException | IOException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -78,7 +88,8 @@ public class MManagerBasicTest {
     assertEquals(manager.pathExist("root.laptop.d1.s0"), true);
     assertEquals(manager.pathExist("root.laptop.d1.s1"), false);
     try {
-      manager.addPathToMTree("root.laptop.d1.s1", "INT32", "RLE", new String[0]);
+      manager.addPathToMTree("root.laptop.d1.s1", TSDataType.valueOf("INT32"),
+          TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
     } catch (PathErrorException | MetadataArgsErrorException | IOException e1) {
       e1.printStackTrace();
       fail(e1.getMessage());
@@ -112,14 +123,16 @@ public class MManagerBasicTest {
     // fail(e.getMessage());
     // }
     try {
-      manager.addPathToMTree("root.laptop.d1.s1", "INT32", "RLE", new String[0]);
+      manager.addPathToMTree("root.laptop.d1.s1", TSDataType.valueOf("INT32"),
+          TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
     } catch (PathErrorException | MetadataArgsErrorException | IOException e1) {
       e1.printStackTrace();
       fail(e1.getMessage());
     }
 
     try {
-      manager.addPathToMTree("root.laptop.d1.s0", "INT32", "RLE", new String[0]);
+      manager.addPathToMTree("root.laptop.d1.s0", TSDataType.valueOf("INT32"),
+          TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
     } catch (PathErrorException | MetadataArgsErrorException | IOException e1) {
       e1.printStackTrace();
       fail(e1.getMessage());
@@ -163,14 +176,16 @@ public class MManagerBasicTest {
     }
 
     try {
-      manager.addPathToMTree("root.laptop.d2.s1", "INT32", "RLE", new String[0]);
+      manager.addPathToMTree("root.laptop.d2.s1", TSDataType.valueOf("INT32"),
+          TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
     } catch (PathErrorException | MetadataArgsErrorException | IOException e1) {
       e1.printStackTrace();
       fail(e1.getMessage());
     }
 
     try {
-      manager.addPathToMTree("root.laptop.d2.s0", "INT32", "RLE", new String[0]);
+      manager.addPathToMTree("root.laptop.d2.s0", TSDataType.valueOf("INT32"),
+          TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
     } catch (PathErrorException | MetadataArgsErrorException | IOException e1) {
       e1.printStackTrace();
       fail(e1.getMessage());
@@ -190,14 +205,16 @@ public class MManagerBasicTest {
     }
 
     try {
-      manager.addPathToMTree("root.laptop.d1.s0", "INT32", "RLE", new String[0]);
+      manager.addPathToMTree("root.laptop.d1.s0", TSDataType.valueOf("INT32"),
+          TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
     } catch (PathErrorException | MetadataArgsErrorException | IOException e1) {
       e1.printStackTrace();
       fail(e1.getMessage());
     }
 
     try {
-      manager.addPathToMTree("root.laptop.d1.s1", "INT32", "RLE", new String[0]);
+      manager.addPathToMTree("root.laptop.d1.s1", TSDataType.valueOf("INT32"),
+          TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
     } catch (PathErrorException | MetadataArgsErrorException | IOException e1) {
       e1.printStackTrace();
       fail(e1.getMessage());
@@ -213,7 +230,8 @@ public class MManagerBasicTest {
     }
 
     try {
-      manager.addPathToMTree("root.laptop.d1.s2", "INT32", "RLE", new String[0]);
+      manager.addPathToMTree("root.laptop.d1.s2", TSDataType.valueOf("INT32"),
+          TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
     } catch (PathErrorException | MetadataArgsErrorException | IOException e1) {
       e1.printStackTrace();
       fail(e1.getMessage());
@@ -228,7 +246,8 @@ public class MManagerBasicTest {
     }
 
     try {
-      manager.addPathToMTree("root.laptop.d1.s3", "INT32", "RLE", new String[0]);
+      manager.addPathToMTree("root.laptop.d1.s3", TSDataType.valueOf("INT32"),
+          TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
     } catch (PathErrorException | MetadataArgsErrorException | IOException e1) {
       e1.printStackTrace();
       fail(e1.getMessage());

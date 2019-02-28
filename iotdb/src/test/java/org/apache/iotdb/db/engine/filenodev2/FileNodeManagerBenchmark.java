@@ -67,7 +67,7 @@ public class FileNodeManagerBenchmark {
     for (String device : devices) {
       for (String measurement : measurements) {
         manager.addPathToMTree(device + "." + measurement, TSDataType.INT64.toString(),
-            TSEncoding.PLAIN.toString(), new String[0]);
+            TSEncoding.PLAIN.toString());
       }
     }
   }

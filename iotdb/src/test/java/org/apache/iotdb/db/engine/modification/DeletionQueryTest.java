@@ -23,6 +23,7 @@ import static org.junit.Assert.assertEquals;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.db.engine.filenode.FileNodeManager;
 import org.apache.iotdb.db.engine.memcontrol.BasicMemController.UsageLevel;
@@ -32,6 +33,8 @@ import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.query.executor.EngineQueryRouter;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -50,7 +53,6 @@ public class DeletionQueryTest {
   private static String[] measurements = new String[10];
   private String dataType = TSDataType.DOUBLE.toString();
   private String encoding = TSEncoding.PLAIN.toString();
-  private String[] args = new String[0];
   private EngineQueryRouter router = new EngineQueryRouter();
 
   static {
@@ -65,10 +67,11 @@ public class DeletionQueryTest {
     MManager.getInstance().setStorageLevelToMTree(processorName);
     for (int i = 0; i < 10; i++) {
       MManager.getInstance().addPathToMTree(processorName + "." + measurements[i], dataType,
-          encoding, args);
+          encoding);
       FileNodeManager.getInstance()
-          .addTimeSeries(new Path(processorName, measurements[i]), dataType,
-              encoding);
+          .addTimeSeries(new Path(processorName, measurements[i]), TSDataType.valueOf(dataType),
+              TSEncoding.valueOf(encoding), CompressionType.valueOf(TSFileConfig.compressor),
+              Collections.emptyMap());
     }
   }
 

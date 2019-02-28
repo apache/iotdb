@@ -46,13 +46,13 @@ public class MTreeTest {
   public void testAddLeftNodePath() {
     MTree root = new MTree("root");
     try {
-      root.addTimeseriesPath("root.laptop.d1.s1", "INT32", "RLE", new String[0]);
+      root.addTimeseriesPath("root.laptop.d1.s1", "INT32", "RLE");
     } catch (PathErrorException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
     try {
-      root.addTimeseriesPath("root.laptop.d1.s1.b", "INT32", "RLE", new String[0]);
+      root.addTimeseriesPath("root.laptop.d1.s1.b", "INT32", "RLE");
     } catch (PathErrorException e) {
       Assert.assertEquals(
           String.format("The Node [%s] is left node, the timeseries %s can't be created", "s1",
@@ -67,7 +67,7 @@ public class MTreeTest {
     assertEquals(root.isPathExist(path1), true);
     assertEquals(root.isPathExist("root.laptop.d1"), false);
     try {
-      root.addTimeseriesPath("root.laptop.d1.s1", "INT32", "RLE", new String[0]);
+      root.addTimeseriesPath("root.laptop.d1.s1", "INT32", "RLE");
     } catch (PathErrorException e1) {
       fail(e1.getMessage());
     }
@@ -75,7 +75,7 @@ public class MTreeTest {
     assertEquals(root.isPathExist("root.laptop"), true);
     assertEquals(root.isPathExist("root.laptop.d1.s2"), false);
     try {
-      root.addTimeseriesPath("aa.bb.cc", "INT32", "RLE", new String[0]);
+      root.addTimeseriesPath("aa.bb.cc", "INT32", "RLE");
     } catch (PathErrorException e) {
       Assert.assertEquals(String.format("Timeseries %s is not right.", "aa.bb.cc"), e.getMessage());
     }
@@ -88,17 +88,17 @@ public class MTreeTest {
       assertEquals(false, root.isPathExist("root.a.d0"));
       assertEquals(false, root.checkFileNameByPath("root.a.d0"));
       root.setStorageGroup("root.a.d0");
-      root.addTimeseriesPath("root.a.d0.s0", "INT32", "RLE", new String[0]);
-      root.addTimeseriesPath("root.a.d0.s1", "INT32", "RLE", new String[0]);
+      root.addTimeseriesPath("root.a.d0.s0", "INT32", "RLE");
+      root.addTimeseriesPath("root.a.d0.s1", "INT32", "RLE");
 
       assertEquals(false, root.isPathExist("root.a.d1"));
       assertEquals(false, root.checkFileNameByPath("root.a.d1"));
       root.setStorageGroup("root.a.d1");
-      root.addTimeseriesPath("root.a.d1.s0", "INT32", "RLE", new String[0]);
-      root.addTimeseriesPath("root.a.d1.s1", "INT32", "RLE", new String[0]);
+      root.addTimeseriesPath("root.a.d1.s0", "INT32", "RLE");
+      root.addTimeseriesPath("root.a.d1.s1", "INT32", "RLE");
 
       root.setStorageGroup("root.a.b.d0");
-      root.addTimeseriesPath("root.a.b.d0.s0", "INT32", "RLE", new String[0]);
+      root.addTimeseriesPath("root.a.b.d0.s0", "INT32", "RLE");
 
     } catch (PathErrorException e1) {
       e1.printStackTrace();
@@ -159,13 +159,13 @@ public class MTreeTest {
 
     try {
       assertEquals("root.laptop.d1", root.getFileNameByPath("root.laptop.d1.s0"));
-      root.addTimeseriesPath("root.laptop.d1.s0", "INT32", "RLE", new String[0]);
+      root.addTimeseriesPath("root.laptop.d1.s0", "INT32", "RLE");
       assertEquals("root.laptop.d1", root.getFileNameByPath("root.laptop.d1.s1"));
-      root.addTimeseriesPath("root.laptop.d1.s1", "INT32", "RLE", new String[0]);
+      root.addTimeseriesPath("root.laptop.d1.s1", "INT32", "RLE");
       assertEquals("root.laptop.d2", root.getFileNameByPath("root.laptop.d2.s0"));
-      root.addTimeseriesPath("root.laptop.d2.s0", "INT32", "RLE", new String[0]);
+      root.addTimeseriesPath("root.laptop.d2.s0", "INT32", "RLE");
       assertEquals("root.laptop.d2", root.getFileNameByPath("root.laptop.d2.s1"));
-      root.addTimeseriesPath("root.laptop.d2.s1", "INT32", "RLE", new String[0]);
+      root.addTimeseriesPath("root.laptop.d2.s1", "INT32", "RLE");
     } catch (PathErrorException e) {
       e.printStackTrace();
       fail(e.getMessage());

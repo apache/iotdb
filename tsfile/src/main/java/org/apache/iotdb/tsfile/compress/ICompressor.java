@@ -20,6 +20,7 @@
 package org.apache.iotdb.tsfile.compress;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.nio.ByteBuffer;
 import org.apache.iotdb.tsfile.exception.compress.CompressionTypeNotSupportedException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -27,8 +28,9 @@ import org.xerial.snappy.Snappy;
 
 /**
  * compress data according to type in schema.
+ * TODO we need to modify MManger.flush method to avoid add Serializable interface
  */
-public interface ICompressor {
+public interface ICompressor extends Serializable {
 
   static ICompressor getCompressor(String name) {
     return getCompressor(CompressionType.valueOf(name));
