@@ -58,7 +58,7 @@ public class PageHeader {
   }
 
   public static int calculatePageHeaderSize(TSDataType type) {
-    return 3 * Integer.BYTES + 2 * Long.BYTES + Statistics.getStatsByType(type).getSerializedSize();
+    return calculatePageHeaderSizeWithoutStatistics() + Statistics.getStatsByType(type).getSerializedSize();
   }
 
   public static int calculatePageHeaderSizeWithoutStatistics() {
@@ -92,14 +92,15 @@ public class PageHeader {
   /**
    * deserialize from FileChannel.
    *
+   * @param dataType data type
    * @param channel FileChannel
    * @param offset offset
    * @param markerRead read marker (boolean type)
-   * @param dataType data type
    * @return CHUNK_HEADER object
    * @throws IOException IOException
    */
-  public static PageHeader deserializeFrom(FileChannel channel, long offset, boolean markerRead, TSDataType dataType)
+  public static PageHeader deserializeFrom(TSDataType dataType, FileChannel channel, long offset,
+      boolean markerRead)
       throws IOException {
     long offsetVar = offset;
     if (!markerRead) {

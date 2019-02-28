@@ -255,12 +255,12 @@ public class TsFileSequenceReader {
   /**
    * read the page's header.
    *
+   * @param dataType given tsfile data type
    * @param position the file offset of this chunk's header
    * @param markerRead true if the offset does not contains the marker , otherwise false
-   * @param dataType given tsfile data type
    */
-  private PageHeader readPageHeader(long position, boolean markerRead, TSDataType dataType) throws IOException {
-    return PageHeader.deserializeFrom(tsFileInput.wrapAsFileChannel(), position, markerRead, dataType);
+  private PageHeader readPageHeader(TSDataType dataType, long position, boolean markerRead) throws IOException {
+    return PageHeader.deserializeFrom(dataType, tsFileInput.wrapAsFileChannel(), position, markerRead);
   }
 
   public long position() throws IOException {
