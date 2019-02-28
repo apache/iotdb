@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.integration;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -164,6 +165,8 @@ public class IoTDBDeletionIT {
     statement.execute("delete from root.ln.wf01.wt01.status where time < NOW()");
     statement.execute("flush");
     statement.execute("delete from root.ln.wf01.wt01.status where time < NOW()");
+    ResultSet resultSet = statement.executeQuery("select status from root.ln.wf01.wt01");
+    assertFalse(resultSet.next());
 
     statement.close();
     connection.close();
