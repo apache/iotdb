@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.integration;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.fail;
 
 import java.io.IOException;
@@ -350,9 +351,7 @@ public class IoTDBSeriesReaderIT {
     Statement statement = connection.createStatement();
     statement.execute("CREATE TIMESERIES root.vehicle.d_empty.s1 WITH DATATYPE=INT64, ENCODING=RLE");
     ResultSet resultSet = statement.executeQuery("select * from root.vehicle.d_empty");
-    while (resultSet.next()){
-      resultSet.getString(0);
-    }
+    assertFalse (resultSet.next());
     resultSet.close();
   }
 }

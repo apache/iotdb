@@ -235,6 +235,4 @@ public class MetadataQuerierByFileImpl implements MetadataQuerier {
     }
   }
 
-
-
 }
