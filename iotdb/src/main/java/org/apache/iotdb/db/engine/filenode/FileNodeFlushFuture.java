@@ -30,7 +30,7 @@ public class FileNodeFlushFuture implements Future<Boolean> {
   Future<Boolean> overflowFlushFuture;
   boolean hasOverflowFlushTask;
 
-  public FileNodeFlushFuture(Future<Boolean> bufferWriteFlushFuture, Future<Boolean> overflowFlushFuture){
+  FileNodeFlushFuture(Future<Boolean> bufferWriteFlushFuture, Future<Boolean> overflowFlushFuture){
     if(bufferWriteFlushFuture != null) {
       this.bufferWriteFlushFuture = bufferWriteFlushFuture;
     } else {
@@ -72,9 +72,11 @@ public class FileNodeFlushFuture implements Future<Boolean> {
 
   @Override
   public Boolean get() throws InterruptedException, ExecutionException {
-    boolean result = bufferWriteFlushFuture.get();
-    result = result & overflowFlushFuture.get();
-    return result;
+    //we can not use bufferWriteFlushFuture.get() && overflowFlushFuture.get()
+    // because it may fast failed. By the way, b.get() & o.get() may misleading new coders.
+    boolean result1 = bufferWriteFlushFuture.get();
+    boolean result2 = overflowFlushFuture.get();
+    return result1 && result2;
   }
 
   @Override
