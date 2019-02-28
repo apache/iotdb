@@ -47,17 +47,25 @@ public class FileReaderManager implements IService {
   private static final int MAX_CACHED_FILE_SIZE = 30000;
 
   /**
-   * the key of closedFileReaderMap is the file path and the value of closedFileReaderMap is the corresponding
-   * reader.
+   * the key of closedFileReaderMap is the file path and the value of closedFileReaderMap
+   * is the corresponding reader.
    */
   private ConcurrentHashMap<String, TsFileSequenceReader> closedFileReaderMap;
+  /**
+   * the key of unclosedFileReaderMap is the file path and the value of unclosedFileReaderMap
+   * is the corresponding reader.
+   */
   private ConcurrentHashMap<String, TsFileSequenceReader> unclosedFileReaderMap;
 
   /**
-   * the key of closedFileReaderMap is the file path and the value of closedFileReaderMap is the file's
-   * reference count.
+   * the key of closedFileReaderMap is the file path and the value of closedFileReaderMap
+   * is the file's reference count.
    */
   private ConcurrentHashMap<String, AtomicInteger> closedReferenceMap;
+  /**
+   * the key of unclosedFileReaderMap is the file path and the value of unclosedFileReaderMap
+   * is the file's reference count.
+   */
   private ConcurrentHashMap<String, AtomicInteger> unclosedReferenceMap;
 
   private ScheduledExecutorService executorService;
@@ -109,17 +117,18 @@ public class FileReaderManager implements IService {
 
   /**
    * Get the reader of the file(tsfile or unseq tsfile) indicated by filePath. If the reader already
-   * exists, just get it from closedFileReaderMap. Otherwise a new reader will be created.
+   * exists, just get it from closedFileReaderMap or unclosedFileReaderMap depending on isClosed .
+   * Otherwise a new reader will be created and cached.
    *
    * @param filePath the path of the file, of which the reader is desired.
-   * @param isUnClosed whether the corresponding file still receives insertions or not.
+   * @param isClosed whether the corresponding file still receives insertions or not.
    * @return the reader of the file specified by filePath.
    * @throws IOException when reader cannot be created.
    */
-  public synchronized TsFileSequenceReader get(String filePath, boolean isUnClosed)
+  public synchronized TsFileSequenceReader get(String filePath, boolean isClosed)
       throws IOException {
 
-    Map<String, TsFileSequenceReader> readerMap = isUnClosed ? unclosedFileReaderMap
+    Map<String, TsFileSequenceReader> readerMap = !isClosed ? unclosedFileReaderMap
         : closedFileReaderMap;
     if (!readerMap.containsKey(filePath)) {
 
@@ -127,7 +136,7 @@ public class FileReaderManager implements IService {
         LOGGER.warn("Query has opened {} files !", readerMap.size());
       }
 
-      TsFileSequenceReader tsFileReader = isUnClosed ? new UnClosedTsFileReader(filePath)
+      TsFileSequenceReader tsFileReader = !isClosed ? new UnClosedTsFileReader(filePath)
           : new TsFileSequenceReader(filePath);
 
       readerMap.put(filePath, tsFileReader);
@@ -141,8 +150,8 @@ public class FileReaderManager implements IService {
    * Increase the reference count of the reader specified by filePath. Only when the reference count
    * of a reader equals zero, the reader can be closed and removed.
    */
-  public synchronized void increaseFileReaderReference(String filePath, boolean isUnClosed) {
-    if (isUnClosed) {
+  public synchronized void increaseFileReaderReference(String filePath, boolean isClosed) {
+    if (!isClosed) {
       unclosedReferenceMap.computeIfAbsent(filePath, k -> new AtomicInteger()).getAndIncrement();
     } else {
       closedReferenceMap.computeIfAbsent(filePath, k -> new AtomicInteger()).getAndIncrement();
@@ -153,8 +162,8 @@ public class FileReaderManager implements IService {
    * Decrease the reference count of the reader specified by filePath. This method is latch-free.
    * Only when the reference count of a reader equals zero, the reader can be closed and removed.
    */
-  public synchronized void decreaseFileReaderReference(String filePath, boolean isUnclosed) {
-    if (isUnclosed) {
+  public synchronized void decreaseFileReaderReference(String filePath, boolean isClosed) {
+    if (!isClosed) {
       unclosedReferenceMap.get(filePath).getAndDecrement();
     } else {
       closedReferenceMap.get(filePath).getAndDecrement();
@@ -198,9 +207,9 @@ public class FileReaderManager implements IService {
   /**
    * This method is only for unit tests.
    */
-  public synchronized boolean contains(String filePath, boolean isUnclosed) {
-    return (!isUnclosed && closedFileReaderMap.containsKey(filePath))
-        || (isUnclosed && unclosedFileReaderMap.containsKey(filePath));
+  public synchronized boolean contains(String filePath, boolean isClosed) {
+    return (isClosed && closedFileReaderMap.containsKey(filePath))
+        || (!isClosed && unclosedFileReaderMap.containsKey(filePath));
   }
 
   @Override

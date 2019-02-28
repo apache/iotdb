@@ -66,9 +66,9 @@ public class FileReaderManagerTest {
 
         for (int i = 1; i <= 6; i++) {
           OpenedFilePathsManager.getInstance().addFilePathToMap(1L, filePath + i,
-              true);
-          manager.get(filePath + i, true);
-          Assert.assertTrue(manager.contains(filePath + i, true));
+              false);
+          manager.get(filePath + i, false);
+          Assert.assertTrue(manager.contains(filePath + i, false));
         }
 
       } catch (IOException e) {
@@ -84,9 +84,9 @@ public class FileReaderManagerTest {
 
         for (int i = 4; i <= MAX_FILE_SIZE; i++) {
           OpenedFilePathsManager.getInstance().addFilePathToMap(2L, filePath + i,
-              true);
-          manager.get(filePath + i, true);
-          Assert.assertTrue(manager.contains(filePath + i, true));
+              false);
+          manager.get(filePath + i, false);
+          Assert.assertTrue(manager.contains(filePath + i, false));
         }
 
       } catch (IOException e) {
@@ -100,7 +100,7 @@ public class FileReaderManagerTest {
     t2.join();
 
     for (int i = 1; i <= MAX_FILE_SIZE; i++) {
-      Assert.assertTrue(manager.contains(filePath + i, true));
+      Assert.assertTrue(manager.contains(filePath + i, false));
     }
 
     for (int i = 1; i <= MAX_FILE_SIZE; i++) {

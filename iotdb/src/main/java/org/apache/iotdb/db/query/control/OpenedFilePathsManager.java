@@ -63,24 +63,24 @@ public class OpenedFilePathsManager {
   }
 
   /**
-   * Add the unique file paths to closedFilePathsMap.
+   * Add the unique file paths to closedFilePathsMap and unclosedFilePathsMap.
    */
   public void addUsedFilesForCurrentRequestThread(long jobId, QueryDataSource dataSource) {
     for (IntervalFileNode intervalFileNode : dataSource.getSeqDataSource().getSealedTsFiles()) {
       String sealedFilePath = intervalFileNode.getFilePath();
-      addFilePathToMap(jobId, sealedFilePath, false);
+      addFilePathToMap(jobId, sealedFilePath, true);
     }
 
     if (dataSource.getSeqDataSource().hasUnsealedTsFile()) {
       String unSealedFilePath = dataSource.getSeqDataSource().getUnsealedTsFile().getFilePath();
-      addFilePathToMap(jobId, unSealedFilePath, true);
+      addFilePathToMap(jobId, unSealedFilePath, false);
     }
 
     for (OverflowInsertFile overflowInsertFile : dataSource.getOverflowSeriesDataSource()
         .getOverflowInsertFileList()) {
       String overflowFilePath = overflowInsertFile.getFilePath();
       // overflow is unclosed by default
-      addFilePathToMap(jobId, overflowFilePath, true);
+      addFilePathToMap(jobId, overflowFilePath, false);
     }
   }
 
@@ -106,15 +106,16 @@ public class OpenedFilePathsManager {
 
   /**
    * Increase the usage reference of filePath of job id. Before the invoking of this method,
-   * <code>this.setJobIdForCurrentRequestThread</code> has been invoked, so <code>closedFilePathsMap.get(jobId)</code> must
-   * not return null.
+   * <code>this.setJobIdForCurrentRequestThread</code> has been invoked,
+   * so <code>closedFilePathsMap.get(jobId)</code> or <code>unclosedFilePathsMap.get(jobId)</code>
+   * must not return null.
    */
-  public void addFilePathToMap(long jobId, String filePath, boolean isUnclosed) {
-    ConcurrentHashMap<Long, Set<String>> pathMap = isUnclosed ? unclosedFilePathsMap :
+  public void addFilePathToMap(long jobId, String filePath, boolean isClosed) {
+    ConcurrentHashMap<Long, Set<String>> pathMap = !isClosed ? unclosedFilePathsMap :
         closedFilePathsMap;
     if (!pathMap.get(jobId).contains(filePath)) {
       pathMap.get(jobId).add(filePath);
-      FileReaderManager.getInstance().increaseFileReaderReference(filePath, isUnclosed);
+      FileReaderManager.getInstance().increaseFileReaderReference(filePath, isClosed);
     }
   }
 
