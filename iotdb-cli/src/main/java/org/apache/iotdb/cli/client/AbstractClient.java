@@ -42,6 +42,7 @@ import org.apache.iotdb.cli.tool.ImportCsv;
 import org.apache.iotdb.jdbc.IoTDBConnection;
 import org.apache.iotdb.jdbc.IoTDBDatabaseMetadata;
 import org.apache.iotdb.jdbc.IoTDBMetadataResultSet;
+import org.apache.iotdb.jdbc.IoTDBSQLException;
 import org.apache.iotdb.service.rpc.thrift.ServerProperties;
 import org.apache.thrift.TException;
 
@@ -82,7 +83,6 @@ public abstract class AbstractClient {
   protected static final String TIMESTAMP_STR = "Time";
   protected static final int ISO_DATETIME_LEN = 26;
   protected static final String IMPORT_CMD = "import";
-  protected static final String EXPORT_CMD = "export";
   private static final String NEED_NOT_TO_PRINT_TIMESTAMP = "AGGREGATION";
   private static final String DEFAULT_TIME_FORMAT = "default";
   protected static String timeFormat = DEFAULT_TIME_FORMAT;
@@ -90,6 +90,7 @@ public abstract class AbstractClient {
   protected static int fetchSize = 10000;
   protected static int maxTimeLength = ISO_DATETIME_LEN;
   protected static int maxValueLength = 15;
+  protected static boolean isQuit = false;
   /**
    * control the width of columns for 'show timeseries path' and 'show storage group'.
    * <p>
@@ -493,15 +494,15 @@ public abstract class AbstractClient {
   protected static OperationResult handleInputCmd(String cmd, IoTDBConnection connection) {
     String specialCmd = cmd.toLowerCase().trim();
 
-    if (specialCmd.equals(QUIT_COMMAND) || specialCmd.equals(EXIT_COMMAND)) {
-      println(specialCmd + " normally");
-      return OperationResult.RETURN_OPER;
+    if (QUIT_COMMAND.equals(specialCmd) || EXIT_COMMAND.equals(specialCmd)) {
+      isQuit = true;
+      return OperationResult.STOP_OPER;
     }
-    if (specialCmd.equals(HELP)) {
+    if (HELP.equals(specialCmd)) {
       showHelp();
       return OperationResult.CONTINUE_OPER;
     }
-    if (specialCmd.equals(SHOW_METADATA_COMMAND)) {
+    if (SHOW_METADATA_COMMAND.equals(specialCmd)) {
       showMetaData(connection);
       return OperationResult.CONTINUE_OPER;
     }
@@ -526,7 +527,7 @@ public abstract class AbstractClient {
     }
 
     if (specialCmd.startsWith(SHOW_TIMEZONE)) {
-
+      showTimeZone(connection);
       return OperationResult.CONTINUE_OPER;
     }
     if (specialCmd.startsWith(SHOW_TIMESTAMP_DISPLAY)) {
@@ -683,7 +684,7 @@ public abstract class AbstractClient {
       if (hasResultSet) {
         ResultSet resultSet = statement.getResultSet();
         output(resultSet, printToConsole, zoneId);
-
+        closeResultSet(resultSet);
       }
     } catch (Exception e) {
       println("Msg: " + e.getMessage());
@@ -714,30 +715,30 @@ public abstract class AbstractClient {
   }
 
   enum OperationResult {
-    RETURN_OPER, CONTINUE_OPER, NO_OPER
+    STOP_OPER, CONTINUE_OPER, NO_OPER
   }
   
-  private static void printf(String format, Object ... args) {
+  protected static void printf(String format, Object ... args) {
     SCREEN_PRINTER.printf(format, args);
   }
   
-  private static void print(String msg) {
+  protected static void print(String msg) {
     SCREEN_PRINTER.println(msg);
   }
 
-  private static void println() {
+  protected static void println() {
     SCREEN_PRINTER.println();
   }
 
-  private static void println(String msg) {
+  protected static void println(String msg) {
     SCREEN_PRINTER.println(msg);
   }
 
-  private static void println(Object obj) {
+  protected static void println(Object obj) {
     SCREEN_PRINTER.println(obj);
   }
 
-  private static void handleException(Exception e) {
+  protected static void handleException(Exception e) {
     if (showException) {
       e.printStackTrace(SCREEN_PRINTER);
     }

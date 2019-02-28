@@ -271,8 +271,7 @@ public class DeletionQueryTest {
     StorageGroupManager.getInstance().delete(processorName, measurements[5], 30);
     StorageGroupManager.getInstance().delete(processorName, measurements[5], 50);
 
-    StorageGroupManager.getInstance().forceFlush(UsageLevel.DANGEROUS);
-    Thread.sleep(3000);
+
     StorageGroupManager.getInstance().closeAll();
 
     List<Path> pathList = new ArrayList<>();

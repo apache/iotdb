@@ -1,3 +1,24 @@
+<!--
+
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements.  See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership.  The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License.  You may obtain a copy of the License at
+
+        http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, either express or implied.  See the License for the
+    specific language governing permissions and limitations
+    under the License.
+
+-->
+
 <!-- TOC -->
 
 - [Chapter 2: Concept](#chapter-2-concept)
@@ -157,7 +178,7 @@ IoTDB can support LONG types and DATETIME-DISPLAY types when displaying timestam
 
 * Value
 
-The value of a time series is actually the value sent by a sensor to IoTDB. This value can be stored by IoTDB according to the data type. At the same time, users can select the compression mode and the corresponding encoding mode according to the data type of this value. See [Data Type](需要连接到具体的网页链接Chapter2) and [Encoding](需要连接到具体的网页链接Chapter2) of this document for details on data type and corresponding encoding.
+The value of a time series is actually the value sent by a sensor to IoTDB. This value can be stored by IoTDB according to the data type. At the same time, users can select the compression mode and the corresponding encoding mode according to the data type of this value. See [Data Type](#data-type) and [Encoding](#encoding) of this document for details on data type and corresponding encoding.
 
 * Point
 
@@ -170,7 +191,7 @@ A column of data contains all values belonging to a time series and the timestam
 ## Data Type
 IoTDB supports six data types in total: BOOLEAN (Boolean), INT32 (Integer), INT64 (Long Integer), FLOAT (Single Precision Floating Point), DOUBLE (Double Precision Floating Point), TEXT (String).
 
-The time series of FLOAT and DOUBLE type can specify (MAX\_POINT\_NUMBER, see [this page](需要连接到具体的网页链接Chapter5CreateTimeseriesStatement) for more information on how to specify), which is the number of digits after the decimal point of the floating point number, if the encoding method is [RLE](需要连接到具体的网页链接Chapter2RLE) or [TS\_2DIFF](需要连接到具体的网页链接Chapter2TS2DIFF) (Refer to [Create Timeseries Statement](需要连接到具体的网页链接) for more information on how to specify). If MAX\_POINT\_NUMBER is not specified, the system will use [float\_precision](需要连接到具体的网页链接chapter4float\_precision) in the configuration file "tsfile-format.properties" for configuration for the configuration method.
+The time series of FLOAT and DOUBLE type can specify (MAX\_POINT\_NUMBER, see [this page](#iotdb-query-statement) for more information on how to specify), which is the number of digits after the decimal point of the floating point number, if the encoding method is [RLE](#encoding) or [TS\_2DIFF](#encoding) (Refer to [Create Timeseries Statement](#chapter-5-iotdb-sql-documentation) for more information on how to specify). If MAX\_POINT\_NUMBER is not specified, the system will use [float\_precision](#encoding) in the configuration file "tsfile-format.properties" for configuration for the configuration method.
 
 When the data type of data input by the user in the system does not correspond to the data type of the time series, the system will report type errors. As shown below, the second-order difference encoding does not support the Boolean type:
 
@@ -190,13 +211,13 @@ PLAIN encoding, the default encoding mode, i.e, no encoding, supports multiple d
 
 Second-order differential encoding is more suitable for encoding monotonically increasing or decreasing sequence data, and is not recommended for sequence data with large fluctuations.
 
-Second-order differential encoding can also be used to encode floating-point numbers, but it is necessary to specify reserved decimal digits (MAX\_POINT\_NUMBER, see [this page](需要连接到具体的网页链接Chapter5CreateTimeseriesStatement) for more information on how to specify) when creating time series. It is more suitable for storing sequence data where floating-point values appear continuously, monotonously increase or decrease, and it is not suitable for storing sequence data with high precision requirements after the decimal point or with large fluctuations.
+Second-order differential encoding can also be used to encode floating-point numbers, but it is necessary to specify reserved decimal digits (MAX\_POINT\_NUMBER, see [this page](#iotdb-query-statement) for more information on how to specify) when creating time series. It is more suitable for storing sequence data where floating-point values appear continuously, monotonously increase or decrease, and it is not suitable for storing sequence data with high precision requirements after the decimal point or with large fluctuations.
 
 * RLE
 
 Run-length encoding is more suitable for storing sequence with continuous integer values, and is not recommended for sequence data with most of the time different values.
 
-Run-length encoding can also be used to encode floating-point numbers, but it is necessary to specify reserved decimal digits (MAX\_POINT\_NUMBER, see [this page](需要连接到具体的网页链接Chapter5CreateTimeseriesStatement) for more information on how to specify) when creating time series. It is more suitable for storing sequence data where floating-point values appear continuously, monotonously increase or decrease, and it is not suitable for storing sequence data with high precision requirements after the decimal point or with large fluctuations.
+Run-length encoding can also be used to encode floating-point numbers, but it is necessary to specify reserved decimal digits (MAX\_POINT\_NUMBER, see [this page](#iotdb-query-statement) for more information on how to specify) when creating time series. It is more suitable for storing sequence data where floating-point values appear continuously, monotonously increase or decrease, and it is not suitable for storing sequence data with high precision requirements after the decimal point or with large fluctuations.
 
 * GORILLA
 
@@ -223,4 +244,4 @@ The four encodings described in the previous sections are applicable to differen
 
 When the time series is written and encoded as binary data according to the specified type, IoTDB compresses the data using compression technology to further improve space storage efficiency. Although both encoding and compression are designed to improve storage efficiency, encoding techniques are usually only available for specific data types (e.g., second-order differential encoding is only suitable for INT32 or INT64 data type, and storing floating-point numbers requires multiplying them by 10m to convert to integers), after which the data is converted to a binary stream. The compression method (SNAPPY) compresses the binary stream, so the use of the compression method is no longer limited by the data type.
 
-IoTDB allows you to specify the compression method of the column when creating a time series. IoTDB now supports two kinds of compression: UNCOMPRESSOR (no compression) and SNAPPY compression. The specified syntax for compression is detailed in [Create Timeseries Statement](需要连接到具体的网页链接Chapter5).
+IoTDB allows you to specify the compression method of the column when creating a time series. IoTDB now supports two kinds of compression: UNCOMPRESSOR (no compression) and SNAPPY compression. The specified syntax for compression is detailed in [Create Timeseries Statement](#chapter-5-iotdb-sql-documentation).

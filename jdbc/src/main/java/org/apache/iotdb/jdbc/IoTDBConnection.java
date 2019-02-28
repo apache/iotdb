@@ -131,7 +131,7 @@ public class IoTDBConnection implements Connection {
     try {
       client.closeSession(req);
     } catch (TException e) {
-      throw new SQLException("Error occurs when closing session at server", e);
+      throw new SQLException("Error occurs when closing session at server. Maybe server is down.", e);
     } finally {
       isClosed = true;
       if (transport != null) {
