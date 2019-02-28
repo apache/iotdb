@@ -163,9 +163,9 @@ public class FileReaderManager implements IService {
    * Only when the reference count of a reader equals zero, the reader can be closed and removed.
    */
   public synchronized void decreaseFileReaderReference(String filePath, boolean isClosed) {
-    if (!isClosed) {
+    if (!isClosed && unclosedReferenceMap.containsKey(filePath)) {
       unclosedReferenceMap.get(filePath).getAndDecrement();
-    } else {
+    } else if (closedReferenceMap.containsKey(filePath)){
       closedReferenceMap.get(filePath).getAndDecrement();
     }
   }
