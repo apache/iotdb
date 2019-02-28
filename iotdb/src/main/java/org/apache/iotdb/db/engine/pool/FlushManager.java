@@ -39,7 +39,7 @@ public class FlushManager {
 
   private FlushManager() {
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-    this.threadCnt = config.concurrentFlushThread;
+    this.threadCnt = config.getConcurrentFlushThread();
     pool = IoTDBThreadPoolFactory.newFixedThreadPool(threadCnt, ThreadName.FLUSH_SERVICE.getName());
   }
 
@@ -56,7 +56,7 @@ public class FlushManager {
       throw new ProcessorException("Flush Pool is not terminated!");
     }
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-    pool = Executors.newFixedThreadPool(config.concurrentFlushThread);
+    pool = Executors.newFixedThreadPool(config.getConcurrentFlushThread());
   }
 
   public FlushManager(ExecutorService pool) {

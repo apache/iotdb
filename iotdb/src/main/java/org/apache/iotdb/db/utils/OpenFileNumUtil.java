@@ -255,12 +255,12 @@ public class OpenFileNumUtil {
 
   public enum OpenFileNumStatistics {
     TOTAL_OPEN_FILE_NUM(null),
-    DATA_OPEN_FILE_NUM(Collections.singletonList(config.dataDir)),
+    DATA_OPEN_FILE_NUM(Collections.singletonList(config.getDataDir())),
     DELTA_OPEN_FILE_NUM(directories.getAllTsFileFolders()),
-    OVERFLOW_OPEN_FILE_NUM(Collections.singletonList(config.overflowDataDir)),
-    WAL_OPEN_FILE_NUM(Collections.singletonList(config.walFolder)),
-    METADATA_OPEN_FILE_NUM(Collections.singletonList(config.metadataDir)),
-    DIGEST_OPEN_FILE_NUM(Collections.singletonList(config.fileNodeDir)),
+    OVERFLOW_OPEN_FILE_NUM(Collections.singletonList(config.getOverflowDataDir())),
+    WAL_OPEN_FILE_NUM(Collections.singletonList(config.getWalFolder())),
+    METADATA_OPEN_FILE_NUM(Collections.singletonList(config.getMetadataDir())),
+    DIGEST_OPEN_FILE_NUM(Collections.singletonList(config.getFileNodeDir())),
     SOCKET_OPEN_FILE_NUM(null);
 
     // path is a list of directory corresponding to the OpenFileNumStatistics enum element,

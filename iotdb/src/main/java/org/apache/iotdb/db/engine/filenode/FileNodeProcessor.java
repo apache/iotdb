@@ -290,7 +290,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
       addAllFileIntoIndex(newFileNodes);
     }
     // RegistStatService
-    if (TsFileDBConf.enableStatMonitor) {
+    if (TsFileDBConf.isEnableStatMonitor()) {
       StatMonitor statMonitor = StatMonitor.getInstance();
       registStatMetadata();
       statMonitor.registStatistics(statStorageDeltaName, this);
@@ -943,14 +943,14 @@ public class FileNodeProcessor extends Processor implements IStatistic {
 
     if (overflowProcessor != null) {
       if (overflowProcessor.getFileSize() < IoTDBDescriptor.getInstance()
-          .getConfig().overflowFileSizeThreshold) {
+          .getConfig().getOverflowFileSizeThreshold()) {
         if (LOGGER.isInfoEnabled()) {
           LOGGER.info(
               "Skip this merge taks submission, because the size{} of overflow processor {} "
                   + "does not reaches the threshold {}.",
               MemUtils.bytesCntToStr(overflowProcessor.getFileSize()), getProcessorName(),
               MemUtils.bytesCntToStr(
-                  IoTDBDescriptor.getInstance().getConfig().overflowFileSizeThreshold));
+                  IoTDBDescriptor.getInstance().getConfig().getOverflowFileSizeThreshold()));
         }
         return null;
       }
@@ -1782,7 +1782,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
    * deregister the filenode processor.
    */
   public void delete() throws ProcessorException {
-    if (TsFileDBConf.enableStatMonitor) {
+    if (TsFileDBConf.isEnableStatMonitor()) {
       // remove the monitor
       LOGGER.info("Deregister the filenode processor: {} from monitor.", getProcessorName());
       StatMonitor.getInstance().deregistStatistics(statStorageDeltaName);

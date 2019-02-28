@@ -40,7 +40,7 @@ public class PathUtils {
   }
 
   public static File getOverflowWriteDir(String nameSpacePath) {
-    String overflowWriteDir = config.overflowDataDir;
+    String overflowWriteDir = config.getOverflowDataDir();
     if (overflowWriteDir.length() > 0
         && overflowWriteDir.charAt(overflowWriteDir.length() - 1) != File.separatorChar) {
       overflowWriteDir = overflowWriteDir + File.separatorChar;
@@ -51,7 +51,7 @@ public class PathUtils {
   }
 
   public static File getFileNodeDir(String nameSpacePath) {
-    String filenodeDir = config.fileNodeDir;
+    String filenodeDir = config.getFileNodeDir();
     if (filenodeDir.length() > 0
         && filenodeDir.charAt(filenodeDir.length() - 1) != File.separatorChar) {
       filenodeDir = filenodeDir + File.separatorChar;

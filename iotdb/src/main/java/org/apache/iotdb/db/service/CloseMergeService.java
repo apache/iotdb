@@ -40,10 +40,10 @@ public class CloseMergeService implements IService {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(CloseMergeService.class);
   private static IoTDBConfig dbConfig = IoTDBDescriptor.getInstance().getConfig();
-  private static final long MERGE_DELAY = dbConfig.periodTimeForMerge;
-  private static final long CLOSE_DELAY = dbConfig.periodTimeForFlush;
-  private static final long MERGE_PERIOD = dbConfig.periodTimeForMerge;
-  private static final long CLOSE_PERIOD = dbConfig.periodTimeForFlush;
+  private static final long MERGE_DELAY = dbConfig.getPeriodTimeForMerge();
+  private static final long CLOSE_DELAY = dbConfig.getPeriodTimeForFlush();
+  private static final long MERGE_PERIOD = dbConfig.getPeriodTimeForMerge();
+  private static final long CLOSE_PERIOD = dbConfig.getPeriodTimeForFlush();
   private static CloseMergeService closeMergeService = new CloseMergeService();
   private Runnable mergeService = new MergeServiceThread();
   private Runnable closeService = new CloseServiceThread();
@@ -74,7 +74,7 @@ public class CloseMergeService implements IService {
    * start service.
    */
   public void startService() {
-    if (dbConfig.enableTimingCloseAndMerge) {
+    if (dbConfig.isEnableTimingCloseAndMerge()) {
       if (!isStart) {
         LOGGER.info("Start the close and merge service");
         closeAndMergeDaemon.start();
@@ -93,7 +93,7 @@ public class CloseMergeService implements IService {
    * close service.
    */
   public void closeService() {
-    if (dbConfig.enableTimingCloseAndMerge) {
+    if (dbConfig.isEnableTimingCloseAndMerge()) {
       if (isStart) {
         LOGGER.info("Prepare to shutdown the close and merge service.");
         isStart = false;

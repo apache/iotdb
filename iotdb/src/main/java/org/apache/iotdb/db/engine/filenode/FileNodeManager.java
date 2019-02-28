@@ -111,7 +111,7 @@ public class FileNodeManager implements IStatistic, IService {
       LOGGER.info("{} dir home doesn't exist, create it", dir.getPath());
     }
     //TODO merge this with label A
-    if (TsFileDBConf.enableStatMonitor) {
+    if (TsFileDBConf.isEnableStatMonitor()) {
       StatMonitor statMonitor = StatMonitor.getInstance();
       registStatMetadata();
       statMonitor.registStatistics(MonitorConstants.STAT_STORAGE_DELTA_NAME, this);
@@ -321,7 +321,7 @@ public class FileNodeManager implements IStatistic, IService {
   private void writeLog(TSRecord tsRecord, boolean isMonitor, WriteLogNode logNode)
       throws FileNodeManagerException {
     try {
-      if (IoTDBDescriptor.getInstance().getConfig().enableWal) {
+      if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
         List<String> measurementList = new ArrayList<>();
         List<String> insertValues = new ArrayList<>();
         for (DataPoint dp : tsRecord.dataPointList) {
@@ -431,14 +431,14 @@ public class FileNodeManager implements IStatistic, IService {
 
     if (bufferWriteProcessor
         .getFileSize() > IoTDBDescriptor.getInstance()
-        .getConfig().bufferwriteFileSizeThreshold) {
+        .getConfig().getBufferwriteFileSizeThreshold()) {
       if (LOGGER.isInfoEnabled()) {
         LOGGER.info(
             "The filenode processor {} will close the bufferwrite processor, "
                 + "because the size[{}] of tsfile {} reaches the threshold {}",
             filenodeName, MemUtils.bytesCntToStr(bufferWriteProcessor.getFileSize()),
             bufferWriteProcessor.getFileName(), MemUtils.bytesCntToStr(
-                IoTDBDescriptor.getInstance().getConfig().bufferwriteFileSizeThreshold));
+                IoTDBDescriptor.getInstance().getConfig().getBufferwriteFileSizeThreshold()));
       }
 
       fileNodeProcessor.closeBufferWrite();
@@ -483,7 +483,7 @@ public class FileNodeManager implements IStatistic, IService {
 
       // write wal
       try {
-        if (IoTDBDescriptor.getInstance().getConfig().enableWal) {
+        if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
           overflowProcessor.getLogNode().write(
               new UpdatePlan(startTime, finalEndTime, v, new Path(deviceId
                   + "." + measurementId)));
@@ -512,7 +512,7 @@ public class FileNodeManager implements IStatistic, IService {
             fileNodeProcessor.getProcessorName());
       } else {
         // write wal
-        if (IoTDBDescriptor.getInstance().getConfig().enableWal) {
+        if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
           // get processors for wal
           String filenodeName = fileNodeProcessor.getProcessorName();
           OverflowProcessor overflowProcessor;
@@ -844,7 +844,7 @@ public class FileNodeManager implements IStatistic, IService {
       if (processorMap.containsKey(processorName)) {
         deleteFileNodeBlocked(processorName);
       }
-      String fileNodePath = TsFileDBConf.fileNodeDir;
+      String fileNodePath = TsFileDBConf.getFileNodeDir();
       fileNodePath = standardizeDir(fileNodePath) + processorName;
       FileUtils.deleteDirectory(new File(fileNodePath));
 
@@ -1185,7 +1185,8 @@ public class FileNodeManager implements IStatistic, IService {
     private FileNodeManagerHolder() {
     }
 
-    private static final FileNodeManager INSTANCE = new FileNodeManager(TsFileDBConf.fileNodeDir);
+    private static final FileNodeManager INSTANCE = new FileNodeManager(
+        TsFileDBConf.getFileNodeDir());
   }
 
 }

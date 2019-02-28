@@ -46,7 +46,7 @@ public class Directories {
 
     String strategyName = "";
     try {
-      strategyName = IoTDBDescriptor.getInstance().getConfig().multDirStrategyClassName;
+      strategyName = IoTDBDescriptor.getInstance().getConfig().getMultDirStrategyClassName();
       Class<?> clazz = Class.forName(strategyName);
       strategy = (DirectoryStrategy) clazz.newInstance();
       strategy.init(tsfileFolders);

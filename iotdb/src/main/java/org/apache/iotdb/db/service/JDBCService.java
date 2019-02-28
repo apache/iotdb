@@ -21,7 +21,6 @@ package org.apache.iotdb.db.service;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.locks.ReentrantLock;
 
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.ThreadName;
@@ -91,7 +90,7 @@ public class JDBCService implements JDBCServiceMBean, IService {
   @Override
   public int getRPCPort() {
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-    return config.rpcPort;
+    return config.getRpcPort();
   }
 
   @Override
@@ -139,8 +138,8 @@ public class JDBCService implements JDBCServiceMBean, IService {
     }
 
     LOGGER.info("{}: start {} successfully, listening on ip {} port {}", IoTDBConstant.GLOBAL_DB_NAME,
-        this.getID().getName(), IoTDBDescriptor.getInstance().getConfig().rpcAddress,
-        IoTDBDescriptor.getInstance().getConfig().rpcPort);
+        this.getID().getName(), IoTDBDescriptor.getInstance().getConfig().getRpcAddress(),
+        IoTDBDescriptor.getInstance().getConfig().getRpcPort());
   }
   
   private void reset() {
@@ -200,7 +199,8 @@ public class JDBCService implements JDBCServiceMBean, IService {
     public void run() {
       try {
         IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-        serverTransport = new TServerSocket(new InetSocketAddress(config.rpcAddress, config.rpcPort));
+        serverTransport = new TServerSocket(new InetSocketAddress(config.getRpcAddress(),
+            config.getRpcPort()));
         poolArgs = new TThreadPoolServer.Args(serverTransport);
         poolArgs.executorService = IoTDBThreadPoolFactory.createJDBCClientThreadPool(poolArgs,
             ThreadName.JDBC_CLIENT.getName());

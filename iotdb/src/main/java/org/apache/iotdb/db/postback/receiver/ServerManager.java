@@ -57,18 +57,18 @@ public class ServerManager {
     Factory protocolFactory;
     TProcessor processor;
     TThreadPoolServer.Args poolArgs;
-    if (!conf.isPostbackEnable) {
+    if (!conf.isPostbackEnable()) {
       return;
     }
     try {
-      if (conf.ipWhiteList == null) {
+      if (conf.getIpWhiteList() == null) {
         LOGGER.error(
             "IoTDB post back receiver: Postback server failed to start because IP white "
                 + "list is null, please set IP white list!");
         return;
       }
-      conf.ipWhiteList = conf.ipWhiteList.replaceAll(" ", "");
-      serverTransport = new TServerSocket(conf.postbackServerPort);
+      conf.setIpWhiteList(conf.getIpWhiteList().replaceAll(" ", ""));
+      serverTransport = new TServerSocket(conf.getPostbackServerPort());
       protocolFactory = new TBinaryProtocol.Factory();
       processor = new ServerService.Processor<>(new ServerServiceImpl());
       poolArgs = new TThreadPoolServer.Args(serverTransport);
@@ -88,7 +88,7 @@ public class ServerManager {
    * close postback receiver's server.
    */
   public void closeServer() {
-    if (conf.isPostbackEnable && poolServer != null) {
+    if (conf.isPostbackEnable() && poolServer != null) {
       poolServer.stop();
       serverTransport.close();
       LOGGER.info("Stop postback server.");

@@ -36,7 +36,7 @@ public class MergeManager {
 
   private MergeManager() {
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-    this.threadCnt = config.mergeConcurrentThreads;
+    this.threadCnt = config.getMergeConcurrentThreads();
     pool = IoTDBThreadPoolFactory.newFixedThreadPool(threadCnt, ThreadName.MERGE_SERVICE.getName());
   }
 
@@ -54,7 +54,7 @@ public class MergeManager {
       throw new ProcessorException("Merge pool is not terminated!");
     }
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-    pool = Executors.newFixedThreadPool(config.mergeConcurrentThreads);
+    pool = Executors.newFixedThreadPool(config.getMergeConcurrentThreads());
   }
 
   /**

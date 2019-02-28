@@ -102,14 +102,14 @@ public class BufferwriteMetaSizeControlTest {
     pageCheckSizeThreshold = TsFileConf.pageCheckSizeThreshold;
     pageSizeInByte = TsFileConf.pageSizeInByte;
     maxStringLength = TsFileConf.maxStringLength;
-    metaSizeThreshold = dbConfig.bufferwriteFileSizeThreshold;
-    memMonitorInterval = dbConfig.memMonitorInterval;
+    metaSizeThreshold = dbConfig.getBufferwriteFileSizeThreshold();
+    memMonitorInterval = dbConfig.getMemMonitorInterval();
     // new value
     TsFileConf.groupSizeInByte = 200000;
     TsFileConf.pageCheckSizeThreshold = 3;
     TsFileConf.pageSizeInByte = 10000;
     TsFileConf.maxStringLength = 2;
-    dbConfig.bufferwriteMetaSizeThreshold = 1024 * 1024;
+    dbConfig.setBufferwriteMetaSizeThreshold(1024 * 1024);
     BasicMemController.getInstance().setCheckInterval(600 * 1000);
     // init metadata
     MetadataManagerHelper.initMetadata();
@@ -122,7 +122,7 @@ public class BufferwriteMetaSizeControlTest {
     TsFileConf.pageCheckSizeThreshold = pageCheckSizeThreshold;
     TsFileConf.pageSizeInByte = pageSizeInByte;
     TsFileConf.maxStringLength = maxStringLength;
-    dbConfig.bufferwriteMetaSizeThreshold = metaSizeThreshold;
+    dbConfig.setBufferwriteMetaSizeThreshold(metaSizeThreshold);
     BasicMemController.getInstance().setCheckInterval(memMonitorInterval);
     // clean environment
     EnvironmentUtils.cleanEnv();
@@ -164,7 +164,7 @@ public class BufferwriteMetaSizeControlTest {
     } catch (InterruptedException e) {
       e.printStackTrace();
     }
-    assertTrue(processor.getMetaSize() < dbConfig.bufferwriteFileSizeThreshold);
+    assertTrue(processor.getMetaSize() < dbConfig.getBufferwriteFileSizeThreshold());
     processor.close();
     fail("Method unimplemented");
 

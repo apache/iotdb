@@ -123,7 +123,7 @@ public class BufferWriteProcessor extends Processor {
     filenodeFlushAction = parameters.get(FileNodeConstants.FILENODE_PROCESSOR_FLUSH_ACTION);
     workMemTable = new PrimitiveMemTable();
 
-    if (IoTDBDescriptor.getInstance().getConfig().enableWal) {
+    if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
       try {
         logNode = MultiFileLogNodeManager.getInstance().getNode(
             processorName + IoTDBConstant.BUFFERWRITE_LOG_NODE_SUFFIX,
@@ -283,7 +283,7 @@ public class BufferWriteProcessor extends Processor {
       }
 
       filenodeFlushAction.act();
-      if (IoTDBDescriptor.getInstance().getConfig().enableWal) {
+      if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
         logNode.notifyEndFlush(null);
       }
       result = true;
@@ -344,7 +344,7 @@ public class BufferWriteProcessor extends Processor {
         LOGGER.error("Failed to flush bufferwrite row group when calling the action function.");
         throw new IOException(e);
       }
-      if (IoTDBDescriptor.getInstance().getConfig().enableWal) {
+      if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
         logNode.notifyStartFlush();
       }
       valueCount = 0;
@@ -457,15 +457,15 @@ public class BufferWriteProcessor extends Processor {
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     long metaSize = getMetaSize();
     long fileSize = getFileSize();
-    if (metaSize >= config.bufferwriteMetaSizeThreshold
-        || fileSize >= config.bufferwriteFileSizeThreshold) {
+    if (metaSize >= config.getBufferwriteMetaSizeThreshold()
+        || fileSize >= config.getBufferwriteFileSizeThreshold()) {
       LOGGER.info(
           "The bufferwrite processor {}, size({}) of the file {} reaches threshold {}, "
               + "size({}) of metadata reaches threshold {}.",
           getProcessorName(), MemUtils.bytesCntToStr(fileSize), this.fileName,
-          MemUtils.bytesCntToStr(config.bufferwriteFileSizeThreshold),
+          MemUtils.bytesCntToStr(config.getBufferwriteFileSizeThreshold()),
           MemUtils.bytesCntToStr(metaSize),
-          MemUtils.bytesCntToStr(config.bufferwriteFileSizeThreshold));
+          MemUtils.bytesCntToStr(config.getBufferwriteFileSizeThreshold()));
 
       rollToNewFile();
       return true;

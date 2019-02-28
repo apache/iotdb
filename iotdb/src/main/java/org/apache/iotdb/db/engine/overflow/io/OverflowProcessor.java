@@ -100,7 +100,7 @@ public class OverflowProcessor extends Processor {
     super(processorName);
     this.fileSchema = fileSchema;
     this.versionController = versionController;
-    String overflowDirPath = TsFileDBConf.overflowDataDir;
+    String overflowDirPath = TsFileDBConf.getOverflowDataDir();
     if (overflowDirPath.length() > 0
         && overflowDirPath.charAt(overflowDirPath.length() - 1) != File.separatorChar) {
       overflowDirPath = overflowDirPath + File.separatorChar;
@@ -118,7 +118,7 @@ public class OverflowProcessor extends Processor {
     filenodeFlushAction = parameters
         .get(FileNodeConstants.FILENODE_PROCESSOR_FLUSH_ACTION);
 
-    if (IoTDBDescriptor.getInstance().getConfig().enableWal) {
+    if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
       logNode = MultiFileLogNodeManager.getInstance().getNode(
           processorName + IoTDBConstant.OVERFLOW_LOG_NODE_SUFFIX,
           getOverflowRestoreFile(),
@@ -436,7 +436,7 @@ public class OverflowProcessor extends Processor {
               getProcessorName());
       filenodeFlushAction.act();
       // write-ahead log
-      if (IoTDBDescriptor.getInstance().getConfig().enableWal) {
+      if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
         logNode.notifyEndFlush(null);
       }
       result = true;
@@ -502,7 +502,7 @@ public class OverflowProcessor extends Processor {
         throw new IOException(e);
       }
 
-      if (IoTDBDescriptor.getInstance().getConfig().enableWal) {
+      if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
         try {
           logNode.notifyStartFlush();
         } catch (IOException e) {
@@ -603,15 +603,15 @@ public class OverflowProcessor extends Processor {
         "The overflow processor {}, the size of metadata reaches {},"
             + " the size of file reaches {}.",
         getProcessorName(), MemUtils.bytesCntToStr(metaSize), MemUtils.bytesCntToStr(fileSize));
-    if (metaSize >= config.overflowMetaSizeThreshold
-        || fileSize >= config.overflowFileSizeThreshold) {
+    if (metaSize >= config.getOverflowMetaSizeThreshold()
+        || fileSize >= config.getOverflowFileSizeThreshold()) {
       LOGGER.info(
           "The overflow processor {}, size({}) of the file {} reaches threshold {},"
               + " size({}) of metadata reaches threshold {}.",
           getProcessorName(), MemUtils.bytesCntToStr(fileSize), workResource.getInsertFilePath(),
-          MemUtils.bytesCntToStr(config.overflowMetaSizeThreshold),
+          MemUtils.bytesCntToStr(config.getOverflowMetaSizeThreshold()),
           MemUtils.bytesCntToStr(metaSize),
-          MemUtils.bytesCntToStr(config.overflowMetaSizeThreshold));
+          MemUtils.bytesCntToStr(config.getOverflowMetaSizeThreshold()));
       return true;
     } else {
       return false;

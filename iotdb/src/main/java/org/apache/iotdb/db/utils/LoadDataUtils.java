@@ -66,7 +66,7 @@ public class LoadDataUtils {
   public LoadDataUtils() {
     writeInstanceMap = new HashSet<>();
     fileNodeManager = FileNodeManager.getInstance();
-    writeInstanceThreshold = conf.writeInstanceThreshold;
+    writeInstanceThreshold = conf.getWriteInstanceThreshold();
   }
 
   /**

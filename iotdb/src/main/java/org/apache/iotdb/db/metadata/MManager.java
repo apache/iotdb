@@ -67,7 +67,7 @@ public class MManager {
   private RandomDeleteCache<String, MNode> mnodecache;
 
   private MManager() {
-    metadataDirPath = IoTDBDescriptor.getInstance().getConfig().metadataDir;
+    metadataDirPath = IoTDBDescriptor.getInstance().getConfig().getMetadataDir();
     if (metadataDirPath.length() > 0
         && metadataDirPath.charAt(metadataDirPath.length() - 1) != File.separatorChar) {
       metadataDirPath = metadataDirPath + File.separatorChar;
@@ -80,7 +80,7 @@ public class MManager {
     logFilePath = metadataDirPath + MetadataConstant.METADATA_LOG;
     writeToLog = false;
 
-    int cacheSize = IoTDBDescriptor.getInstance().getConfig().mManagerCacheSize;
+    int cacheSize = IoTDBDescriptor.getInstance().getConfig().getmManagerCacheSize();
     checkAndGetDataTypeCache = new RandomDeleteCache<String, PathCheckRet>(cacheSize) {
       @Override
       public void beforeRemove(PathCheckRet object) throws CacheException {

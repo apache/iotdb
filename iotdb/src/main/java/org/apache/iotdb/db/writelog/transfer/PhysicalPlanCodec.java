@@ -75,7 +75,7 @@ public enum PhysicalPlanCodec {
       @Override
       public byte[] encode(DeletePlan t) {
         if (localBuffer.get() == null) {
-          localBuffer.set(ByteBuffer.allocate(config.maxLogEntrySize));
+          localBuffer.set(ByteBuffer.allocate(config.getMaxLogEntrySize()));
         }
 
         int type = SystemLogOperator.DELETE;
@@ -112,7 +112,7 @@ public enum PhysicalPlanCodec {
       public byte[] encode(UpdatePlan updatePlan) {
         int type = SystemLogOperator.UPDATE;
         if (localBuffer.get() == null) {
-          localBuffer.set(ByteBuffer.allocate(config.maxLogEntrySize));
+          localBuffer.set(ByteBuffer.allocate(config.getMaxLogEntrySize()));
         }
 
         ByteBuffer buffer = localBuffer.get();
@@ -169,7 +169,7 @@ public enum PhysicalPlanCodec {
       public byte[] encode(InsertPlan plan) {
         int type = SystemLogOperator.INSERT;
         if (localBuffer.get() == null) {
-          localBuffer.set(ByteBuffer.allocate(config.maxLogEntrySize));
+          localBuffer.set(ByteBuffer.allocate(config.getMaxLogEntrySize()));
         }
         ByteBuffer buffer = localBuffer.get();
         buffer.clear();

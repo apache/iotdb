@@ -103,17 +103,17 @@ public class EnvironmentUtils {
       cleanDir(path);
     }
     // delete overflow
-    cleanDir(config.overflowDataDir);
+    cleanDir(config.getOverflowDataDir());
     // delete filenode
-    cleanDir(config.fileNodeDir);
+    cleanDir(config.getFileNodeDir());
     // delete metadata
-    cleanDir(config.metadataDir);
+    cleanDir(config.getMetadataDir());
     // delete wal
-    cleanDir(config.walFolder);
+    cleanDir(config.getWalFolder());
     // delete derby
-    cleanDir(config.derbyHome);
+    cleanDir(config.getDerbyHome());
     // delete index
-    cleanDir(config.indexFileDir);
+    cleanDir(config.getIndexFileDir());
     // delte data
     cleanDir("data");
     // delte derby log
@@ -139,7 +139,7 @@ public class EnvironmentUtils {
    * this function should be called before all code in the setup
    */
   public static void closeStatMonitor() {
-    config.enableStatMonitor = false;
+    config.setEnableStatMonitor(false);
   }
 
   /**
@@ -147,14 +147,14 @@ public class EnvironmentUtils {
    * this function should be called before all code in the setup
    */
   public static void closeMemControl() {
-    config.enableMemMonitor = false;
+    config.setEnableMemMonitor(false);
   }
 
   public static void envSetUp() throws StartupException {
     // disable the memory control
-    config.enableMemMonitor = false;
+    config.setEnableMemMonitor(false);
     // disable the system monitor
-    config.enableStatMonitor = false;
+    config.setEnableStatMonitor(false);
     IAuthorizer authorizer = null;
     try {
       authorizer = LocalFileAuthorizer.getInstance();
