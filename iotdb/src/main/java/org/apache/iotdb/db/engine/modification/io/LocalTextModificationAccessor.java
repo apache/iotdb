@@ -87,6 +87,7 @@ public class LocalTextModificationAccessor implements ModificationReader, Modifi
   public void close() throws IOException {
     if (writer != null) {
       writer.close();
+      writer = null;
     }
   }
 

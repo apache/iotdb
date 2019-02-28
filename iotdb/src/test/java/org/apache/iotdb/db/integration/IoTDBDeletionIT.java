@@ -147,6 +147,29 @@ public class IoTDBDeletionIT {
     cleanData();
   }
 
+  @Test
+  public void testDelAfterFlush() throws SQLException {
+    Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
+            "root");
+    Statement statement = connection.createStatement();
+
+    statement.execute("SET STORAGE GROUP TO root.ln.wf01.wt01");
+    statement.execute("CREATE TIMESERIES root.ln.wf01.wt01.status WITH DATATYPE=BOOLEAN,"
+        + " ENCODING=PLAIN");
+    statement.execute("INSERT INTO root.ln.wf01.wt01(timestamp,status) "
+        + "values(1509465600000,true)");
+    statement.execute("INSERT INTO root.ln.wf01.wt01(timestamp,status) VALUES(NOW(), false)");
+
+    statement.execute("delete from root.ln.wf01.wt01.status where time < NOW()");
+    statement.execute("flush");
+    statement.execute("delete from root.ln.wf01.wt01.status where time < NOW()");
+
+    statement.close();
+    connection.close();
+  }
+
+
   private static void prepareSeries() throws SQLException {
     Connection connection = null;
     try {
