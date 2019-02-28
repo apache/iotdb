@@ -40,11 +40,13 @@ public class OpenedFilePathsManager {
   /**
    * Map<jobId, Set<filePaths>>
    */
-  private ConcurrentHashMap<Long, Set<String>> filePathsMap;
+  private ConcurrentHashMap<Long, Set<String>> closedFilePathsMap;
+  private ConcurrentHashMap<Long, Set<String>> unclosedFilePathsMap;
 
   private OpenedFilePathsManager() {
     jobIdContainer = new ThreadLocal<>();
-    filePathsMap = new ConcurrentHashMap<>();
+    closedFilePathsMap = new ConcurrentHashMap<>();
+    unclosedFilePathsMap = new ConcurrentHashMap<>();
   }
 
   public static OpenedFilePathsManager getInstance() {
@@ -56,27 +58,29 @@ public class OpenedFilePathsManager {
    */
   public void setJobIdForCurrentRequestThread(long jobId) {
     jobIdContainer.set(jobId);
-    filePathsMap.put(jobId, new HashSet<>());
+    closedFilePathsMap.put(jobId, new HashSet<>());
+    unclosedFilePathsMap.put(jobId, new HashSet<>());
   }
 
   /**
-   * Add the unique file paths to filePathsMap.
+   * Add the unique file paths to closedFilePathsMap.
    */
   public void addUsedFilesForCurrentRequestThread(long jobId, QueryDataSource dataSource) {
     for (IntervalFileNode intervalFileNode : dataSource.getSeqDataSource().getSealedTsFiles()) {
       String sealedFilePath = intervalFileNode.getFilePath();
-      addFilePathToMap(jobId, sealedFilePath);
+      addFilePathToMap(jobId, sealedFilePath, false);
     }
 
     if (dataSource.getSeqDataSource().hasUnsealedTsFile()) {
       String unSealedFilePath = dataSource.getSeqDataSource().getUnsealedTsFile().getFilePath();
-      addFilePathToMap(jobId, unSealedFilePath);
+      addFilePathToMap(jobId, unSealedFilePath, true);
     }
 
     for (OverflowInsertFile overflowInsertFile : dataSource.getOverflowSeriesDataSource()
         .getOverflowInsertFileList()) {
       String overflowFilePath = overflowInsertFile.getFilePath();
-      addFilePathToMap(jobId, overflowFilePath);
+      // overflow is unclosed by default
+      addFilePathToMap(jobId, overflowFilePath, true);
     }
   }
 
@@ -89,22 +93,28 @@ public class OpenedFilePathsManager {
       long jobId = jobIdContainer.get();
       jobIdContainer.remove();
 
-      for (String filePath : filePathsMap.get(jobId)) {
-        FileReaderManager.getInstance().decreaseFileReaderReference(filePath);
+      for (String filePath : closedFilePathsMap.get(jobId)) {
+        FileReaderManager.getInstance().decreaseFileReaderReference(filePath, false);
       }
-      filePathsMap.remove(jobId);
+      closedFilePathsMap.remove(jobId);
+      for (String filePath : unclosedFilePathsMap.get(jobId)) {
+        FileReaderManager.getInstance().decreaseFileReaderReference(filePath, true);
+      }
+      unclosedFilePathsMap.remove(jobId);
     }
   }
 
   /**
    * Increase the usage reference of filePath of job id. Before the invoking of this method,
-   * <code>this.setJobIdForCurrentRequestThread</code> has been invoked, so <code>filePathsMap.get(jobId)</code> must
+   * <code>this.setJobIdForCurrentRequestThread</code> has been invoked, so <code>closedFilePathsMap.get(jobId)</code> must
    * not return null.
    */
-  public void addFilePathToMap(long jobId, String filePath) {
-    if (!filePathsMap.get(jobId).contains(filePath)) {
-      filePathsMap.get(jobId).add(filePath);
-      FileReaderManager.getInstance().increaseFileReaderReference(filePath);
+  public void addFilePathToMap(long jobId, String filePath, boolean isUnclosed) {
+    ConcurrentHashMap<Long, Set<String>> pathMap = isUnclosed ? unclosedFilePathsMap :
+        closedFilePathsMap;
+    if (!pathMap.get(jobId).contains(filePath)) {
+      pathMap.get(jobId).add(filePath);
+      FileReaderManager.getInstance().increaseFileReaderReference(filePath, isUnclosed);
     }
   }
 
