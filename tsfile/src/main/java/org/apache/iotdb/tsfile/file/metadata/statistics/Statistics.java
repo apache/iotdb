@@ -80,85 +80,19 @@ public abstract class Statistics<T> {
 
   public static Statistics deserialize(InputStream inputStream, TSDataType dataType)
       throws IOException {
-    Statistics statistics = null;
-    switch (dataType) {
-      case INT32:
-        statistics = new IntegerStatistics();
-        break;
-      case INT64:
-        statistics = new LongStatistics();
-        break;
-      case TEXT:
-        statistics = new BinaryStatistics();
-        break;
-      case BOOLEAN:
-        statistics = new BooleanStatistics();
-        break;
-      case DOUBLE:
-        statistics = new DoubleStatistics();
-        break;
-      case FLOAT:
-        statistics = new FloatStatistics();
-        break;
-      default:
-        throw new UnknownColumnTypeException(dataType.toString());
-    }
+    Statistics statistics = getStatsByType(dataType);
     statistics.fill(inputStream);
     return statistics;
   }
 
   public static Statistics deserialize(ByteBuffer buffer, TSDataType dataType) throws IOException {
-    Statistics statistics = null;
-    switch (dataType) {
-      case INT32:
-        statistics = new IntegerStatistics();
-        break;
-      case INT64:
-        statistics = new LongStatistics();
-        break;
-      case TEXT:
-        statistics = new BinaryStatistics();
-        break;
-      case BOOLEAN:
-        statistics = new BooleanStatistics();
-        break;
-      case DOUBLE:
-        statistics = new DoubleStatistics();
-        break;
-      case FLOAT:
-        statistics = new FloatStatistics();
-        break;
-      default:
-        throw new UnknownColumnTypeException(dataType.toString());
-    }
+    Statistics statistics = getStatsByType(dataType);
     statistics.fill(buffer);
     return statistics;
   }
 
   public static Statistics deserialize(FileChannel channel, long offset, TSDataType dataType) throws IOException {
-    Statistics statistics = null;
-    switch (dataType) {
-      case INT32:
-        statistics = new IntegerStatistics();
-        break;
-      case INT64:
-        statistics = new LongStatistics();
-        break;
-      case TEXT:
-        statistics = new BinaryStatistics();
-        break;
-      case BOOLEAN:
-        statistics = new BooleanStatistics();
-        break;
-      case DOUBLE:
-        statistics = new DoubleStatistics();
-        break;
-      case FLOAT:
-        statistics = new FloatStatistics();
-        break;
-      default:
-        throw new UnknownColumnTypeException(dataType.toString());
-    }
+    Statistics statistics = getStatsByType(dataType);
     statistics.fill(channel, offset);
     return statistics;
   }
