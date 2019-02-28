@@ -88,22 +88,7 @@ public class TsFileExecutor implements QueryExecutor {
    */
   private QueryDataSet execute(List<Path> selectedPathList)
       throws IOException, NoMeasurementException {
-    List<FileSeriesReader> readersOfSelectedSeries = new ArrayList<>();
-    List<TSDataType> dataTypes = new ArrayList<>();
-
-    for (Path path : selectedPathList) {
-      List<ChunkMetaData> chunkMetaDataList = metadataQuerier.getChunkMetaDataList(path);
-      FileSeriesReader seriesReader;
-      if (chunkMetaDataList.isEmpty()) {
-        seriesReader = new EmptyFileSeriesReader();
-        dataTypes.add(metadataQuerier.getDataType(path.getMeasurement()));
-      } else {
-        seriesReader = new FileSeriesReaderWithoutFilter(chunkLoader, chunkMetaDataList);
-        dataTypes.add(chunkMetaDataList.get(0).getTsDataType());
-      }
-      readersOfSelectedSeries.add(seriesReader);
-    }
-    return new DataSetWithoutTimeGenerator(selectedPathList, dataTypes, readersOfSelectedSeries);
+    return executeMayAttachTimeFiler(selectedPathList, null);
   }
 
   /**
@@ -115,6 +100,19 @@ public class TsFileExecutor implements QueryExecutor {
    */
   private QueryDataSet execute(List<Path> selectedPathList, GlobalTimeExpression timeFilter)
       throws IOException, NoMeasurementException {
+    return executeMayAttachTimeFiler(selectedPathList, timeFilter);
+  }
+
+  /**
+   *
+   * @param selectedPathList completed path
+   * @param timeFilter a GlobalTimeExpression or null
+   * @return DataSetWithoutTimeGenerator
+   * @throws IOException
+   * @throws NoMeasurementException
+   */
+  private QueryDataSet executeMayAttachTimeFiler(List<Path> selectedPathList, GlobalTimeExpression timeFilter)
+      throws IOException, NoMeasurementException {
     List<FileSeriesReader> readersOfSelectedSeries = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
 
@@ -125,8 +123,12 @@ public class TsFileExecutor implements QueryExecutor {
         seriesReader = new EmptyFileSeriesReader();
         dataTypes.add(metadataQuerier.getDataType(path.getMeasurement()));
       } else {
-        seriesReader = new FileSeriesReaderWithFilter(chunkLoader, chunkMetaDataList,
-            timeFilter.getFilter());
+        if (timeFilter == null) {
+          seriesReader = new FileSeriesReaderWithoutFilter(chunkLoader, chunkMetaDataList);
+        } else {
+          seriesReader = new FileSeriesReaderWithFilter(chunkLoader, chunkMetaDataList,
+              timeFilter.getFilter());
+        }
         dataTypes.add(chunkMetaDataList.get(0).getTsDataType());
       }
       readersOfSelectedSeries.add(seriesReader);
