@@ -38,9 +38,9 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.Directories;
-import org.apache.iotdb.db.engine.filenode.FileNodeManager;
-import org.apache.iotdb.db.engine.filenode.IntervalFileNode;
-import org.apache.iotdb.db.engine.filenode.OverflowChangeType;
+import org.apache.iotdb.db.engine.storagegroup.StorageGroupManager;
+import org.apache.iotdb.db.engine.storagegroup.TsFileInstance;
+import org.apache.iotdb.db.engine.storagegroup.OverflowChangeType;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.utils.PostbackUtils;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
@@ -65,7 +65,7 @@ import org.slf4j.LoggerFactory;
 public class ServerServiceImpl implements ServerService.Iface {
 
   private static final Logger logger = LoggerFactory.getLogger(ServerServiceImpl.class);
-  private static final FileNodeManager fileNodeManager = FileNodeManager.getInstance();
+  private static final StorageGroupManager fileNodeManager = StorageGroupManager.getInstance();
   private static final String JDBC_DRIVER_NAME = "org.apache.iotdb.jdbc.IoTDBDriver";
   private static final String POSTBACK = "postback";
   private ThreadLocal<String> uuid = new ThreadLocal<>();
@@ -660,7 +660,7 @@ public class ServerServiceImpl implements ServerService.Iface {
         // create a new fileNode
         String header = postbackPath + uuid.get() + File.separator + "data" + File.separator;
         String relativePath = path.substring(header.length());
-        IntervalFileNode fileNode = new IntervalFileNode(startTimeMap, endTimeMap,
+        TsFileInstance fileNode = new TsFileInstance(startTimeMap, endTimeMap,
             OverflowChangeType.NO_CHANGE,
             Directories.getInstance().getNextFolderIndexForTsFile(), relativePath);
         // call interface of load external file

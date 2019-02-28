@@ -1,35 +1,29 @@
-package org.apache.iotdb.db.engine.filenode;
+package org.apache.iotdb.db.engine.storagegroup;
 
 import static org.mockito.Matchers.any;
-import static org.mockito.Mockito.when;
 
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import org.apache.iotdb.jdbc.IoTDBStatement;
-import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
-import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataReq;
-import org.apache.iotdb.service.rpc.thrift.TSFetchResultsReq;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-import org.mockito.MockitoAnnotations;
 
-public class FileNodeFlushFutureTest {
+public class StorageGroupFlushFutureTest {
 
-  FileNodeFlushFuture future1;
-  FileNodeFlushFuture future2;
-  FileNodeFlushFuture future3;
-  FileNodeFlushFuture future4;
+  StorageGroupFlushFuture future1;
+  StorageGroupFlushFuture future2;
+  StorageGroupFlushFuture future3;
+  StorageGroupFlushFuture future4;
 
   @Before
   public void setUp() throws Exception {
-    future1 = new FileNodeFlushFuture(new CanCanceledFuture(), new CanCanceledFuture());
-    future2 = new FileNodeFlushFuture(new CanNotCanceledFuture(), new CanNotCanceledFuture());
-    future3 = new FileNodeFlushFuture(new CanCanceledFuture(), new CanNotCanceledFuture());
-    future4 = new FileNodeFlushFuture(new CanNotCanceledFuture(), new CanCanceledFuture());
+    future1 = new StorageGroupFlushFuture(new CanCanceledFuture(), new CanCanceledFuture());
+    future2 = new StorageGroupFlushFuture(new CanNotCanceledFuture(), new CanNotCanceledFuture());
+    future3 = new StorageGroupFlushFuture(new CanCanceledFuture(), new CanNotCanceledFuture());
+    future4 = new StorageGroupFlushFuture(new CanNotCanceledFuture(), new CanCanceledFuture());
   }
 
   @After

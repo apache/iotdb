@@ -23,7 +23,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.filenode.FileNodeManager;
+import org.apache.iotdb.db.engine.storagegroup.StorageGroupManager;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -43,7 +43,7 @@ public class MonitorTest {
 
   private IoTDBConfig tsdbconfig = IoTDBDescriptor.getInstance().getConfig();
 
-  private FileNodeManager fManager = null;
+  private StorageGroupManager fManager = null;
   private StatMonitor statMonitor;
 
   @Before
@@ -65,7 +65,7 @@ public class MonitorTest {
 
   @Test
   public void testFileNodeManagerMonitorAndAddMetadata() {
-    fManager = FileNodeManager.getInstance();
+    fManager = StorageGroupManager.getInstance();
     statMonitor = StatMonitor.getInstance();
     statMonitor.registStatStorageGroup();
     fManager.getStatParamsHashMap().forEach((key, value) -> value.set(0));

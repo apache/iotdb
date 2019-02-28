@@ -23,14 +23,14 @@ import java.util.concurrent.Future;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.iotdb.db.engine.bufferwrite.BufferWriteProcessor;
-import org.apache.iotdb.db.engine.filenode.FileNodeProcessor;
+import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.exception.ProcessorException;
 
 /**
  * Processor is used for implementing different processor with different operation.<br>
  *
  * @see BufferWriteProcessor
- * @see FileNodeProcessor
+ * @see StorageGroupProcessor
  */
 public abstract class Processor {
 

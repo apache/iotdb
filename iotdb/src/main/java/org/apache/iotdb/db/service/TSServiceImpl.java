@@ -34,7 +34,7 @@ import org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.filenode.FileNodeManager;
+import org.apache.iotdb.db.engine.storagegroup.StorageGroupManager;
 import org.apache.iotdb.db.exception.ArgsErrorException;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.PathErrorException;
@@ -357,17 +357,17 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     switch (statement) {
       case "flush":
         try {
-          FileNodeManager.getInstance().closeAll();
+          StorageGroupManager.getInstance().closeAll();
         } catch (FileNodeManagerException e) {
-          LOGGER.error("meet error while FileNodeManager closing all!", e);
+          LOGGER.error("meet error while StorageGroupManager closing all!", e);
           throw new IOException(e);
         }
         return true;
       case "merge":
         try {
-          FileNodeManager.getInstance().mergeAll();
+          StorageGroupManager.getInstance().mergeAll();
         } catch (FileNodeManagerException e) {
-          LOGGER.error("meet error while FileNodeManager merging all!", e);
+          LOGGER.error("meet error while StorageGroupManager merging all!", e);
           throw new IOException(e);
         }
         return true;

@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.filenode;
+package org.apache.iotdb.db.engine.storagegroup;
 
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -25,12 +25,12 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import org.apache.iotdb.db.utils.ImmediateFuture;
 
-public class FileNodeFlushFuture implements Future<Boolean> {
+public class StorageGroupFlushFuture implements Future<Boolean> {
   Future<Boolean> bufferWriteFlushFuture;
   Future<Boolean> overflowFlushFuture;
   boolean hasOverflowFlushTask;
 
-  FileNodeFlushFuture(Future<Boolean> bufferWriteFlushFuture, Future<Boolean> overflowFlushFuture){
+  StorageGroupFlushFuture(Future<Boolean> bufferWriteFlushFuture, Future<Boolean> overflowFlushFuture){
     if(bufferWriteFlushFuture != null) {
       this.bufferWriteFlushFuture = bufferWriteFlushFuture;
     } else {

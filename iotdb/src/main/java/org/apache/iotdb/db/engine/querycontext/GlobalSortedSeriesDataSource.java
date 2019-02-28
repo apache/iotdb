@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.engine.querycontext;
 
 import java.util.List;
-import org.apache.iotdb.db.engine.filenode.IntervalFileNode;
+import org.apache.iotdb.db.engine.storagegroup.TsFileInstance;
 import org.apache.iotdb.db.engine.memtable.TimeValuePairSorter;
 import org.apache.iotdb.tsfile.read.common.Path;
 
@@ -28,7 +28,7 @@ public class GlobalSortedSeriesDataSource {
   private Path seriesPath;
 
   // sealed tsfile
-  private List<IntervalFileNode> sealedTsFiles;
+  private List<TsFileInstance> sealedTsFiles;
 
   // unsealed tsfile
   private UnsealedTsFile unsealedTsFile;
@@ -36,7 +36,7 @@ public class GlobalSortedSeriesDataSource {
   // seq mem-table
   private TimeValuePairSorter readableChunk;
 
-  public GlobalSortedSeriesDataSource(Path seriesPath, List<IntervalFileNode> sealedTsFiles,
+  public GlobalSortedSeriesDataSource(Path seriesPath, List<TsFileInstance> sealedTsFiles,
       UnsealedTsFile unsealedTsFile,
       TimeValuePairSorter readableChunk) {
     this.seriesPath = seriesPath;
@@ -50,11 +50,11 @@ public class GlobalSortedSeriesDataSource {
     return sealedTsFiles != null && !sealedTsFiles.isEmpty();
   }
 
-  public List<IntervalFileNode> getSealedTsFiles() {
+  public List<TsFileInstance> getSealedTsFiles() {
     return sealedTsFiles;
   }
 
-  public void setSealedTsFiles(List<IntervalFileNode> sealedTsFiles) {
+  public void setSealedTsFiles(List<TsFileInstance> sealedTsFiles) {
     this.sealedTsFiles = sealedTsFiles;
   }
 

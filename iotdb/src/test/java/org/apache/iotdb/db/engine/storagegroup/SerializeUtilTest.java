@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.engine.filenode;
+package org.apache.iotdb.db.engine.storagegroup;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
@@ -83,50 +83,50 @@ public class SerializeUtilTest {
 
   @Test
   public void testFileStore() {
-    IntervalFileNode emptyIntervalFileNode = new IntervalFileNode(OverflowChangeType.NO_CHANGE,
+    TsFileInstance emptyTsFileInstance = new TsFileInstance(OverflowChangeType.NO_CHANGE,
         null);
-    List<IntervalFileNode> newFilenodes = new ArrayList<>();
+    List<TsFileInstance> newFilenodes = new ArrayList<>();
     String deviceId = "d0.s0";
     for (int i = 1; i <= 3; i++) {
       // i * 100, i * 100 + 99
-      IntervalFileNode node = new IntervalFileNode(OverflowChangeType.NO_CHANGE,
+      TsFileInstance node = new TsFileInstance(OverflowChangeType.NO_CHANGE,
           "bufferfiletest" + i);
       node.setStartTime(deviceId, i * 100);
       node.setEndTime(deviceId, i * 100 + 99);
       newFilenodes.add(node);
     }
-    FileNodeProcessorStatus fileNodeProcessorState = FileNodeProcessorStatus.WAITING;
+    StorageGroupProcessorStatus fileNodeProcessorState = StorageGroupProcessorStatus.WAITING;
     Map<String, Long> lastUpdateTimeMap = new HashMap<>();
     lastUpdateTimeMap.put(deviceId, (long) 500);
-    FileNodeProcessorStore fileNodeProcessorStore = new FileNodeProcessorStore(false,
+    StorageGroupProcessorStore storageGroupProcessorStore = new StorageGroupProcessorStore(false,
         lastUpdateTimeMap,
-        emptyIntervalFileNode, newFilenodes, fileNodeProcessorState, 0);
+        emptyTsFileInstance, newFilenodes, fileNodeProcessorState, 0);
 
-    SerializeUtil<FileNodeProcessorStore> serializeUtil = new SerializeUtil<>();
+    SerializeUtil<StorageGroupProcessorStore> serializeUtil = new SerializeUtil<>();
 
     try {
-      serializeUtil.serialize(fileNodeProcessorStore, filePath);
+      serializeUtil.serialize(storageGroupProcessorStore, filePath);
     } catch (IOException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
     assertEquals(true, new File(filePath).exists());
     try {
-      FileNodeProcessorStore fileNodeProcessorStore2 = serializeUtil.deserialize(filePath)
-          .orElse(new FileNodeProcessorStore(false, new HashMap<>(),
-              new IntervalFileNode(OverflowChangeType.NO_CHANGE, null),
-              new ArrayList<IntervalFileNode>(),
-              FileNodeProcessorStatus.NONE, 0));
-      assertEquals(fileNodeProcessorStore.getLastUpdateTimeMap(),
-          fileNodeProcessorStore2.getLastUpdateTimeMap());
-      assertEquals(fileNodeProcessorStore.getEmptyIntervalFileNode(),
-          fileNodeProcessorStore2.getEmptyIntervalFileNode());
-      assertEquals(fileNodeProcessorStore.getNewFileNodes(),
-          fileNodeProcessorStore2.getNewFileNodes());
-      assertEquals(fileNodeProcessorStore.getNumOfMergeFile(),
-          fileNodeProcessorStore2.getNumOfMergeFile());
-      assertEquals(fileNodeProcessorStore.getFileNodeProcessorStatus(),
-          fileNodeProcessorStore2.getFileNodeProcessorStatus());
+      StorageGroupProcessorStore storageGroupProcessorStore2 = serializeUtil.deserialize(filePath)
+          .orElse(new StorageGroupProcessorStore(false, new HashMap<>(),
+              new TsFileInstance(OverflowChangeType.NO_CHANGE, null),
+              new ArrayList<TsFileInstance>(),
+              StorageGroupProcessorStatus.NONE, 0));
+      assertEquals(storageGroupProcessorStore.getLastUpdateTimeMap(),
+          storageGroupProcessorStore2.getLastUpdateTimeMap());
+      assertEquals(storageGroupProcessorStore.getEmptyTsFileInstance(),
+          storageGroupProcessorStore2.getEmptyTsFileInstance());
+      assertEquals(storageGroupProcessorStore.getNewFileNodes(),
+          storageGroupProcessorStore2.getNewFileNodes());
+      assertEquals(storageGroupProcessorStore.getNumOfMergeFile(),
+          storageGroupProcessorStore2.getNumOfMergeFile());
+      assertEquals(storageGroupProcessorStore.getStorageGroupProcessorStatus(),
+          storageGroupProcessorStore2.getStorageGroupProcessorStatus());
     } catch (IOException e) {
       e.printStackTrace();
       fail(e.getMessage());

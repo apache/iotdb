@@ -22,7 +22,7 @@ package org.apache.iotdb.db.query.reader.sequence;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.iotdb.db.engine.filenode.IntervalFileNode;
+import org.apache.iotdb.db.engine.storagegroup.TsFileInstance;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
@@ -45,7 +45,7 @@ import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderWithoutFilter;
 public class SealedTsFilesReader implements IReader {
 
   private Path seriesPath;
-  private List<IntervalFileNode> sealedTsFiles;
+  private List<TsFileInstance> sealedTsFiles;
   private int usedIntervalFileIndex;
   private FileSeriesReader seriesReader;
   private Filter filter;
@@ -53,7 +53,7 @@ public class SealedTsFilesReader implements IReader {
   private boolean hasCachedData;
   private QueryContext context;
 
-  public SealedTsFilesReader(Path seriesPath, List<IntervalFileNode> sealedTsFiles, Filter filter,
+  public SealedTsFilesReader(Path seriesPath, List<TsFileInstance> sealedTsFiles, Filter filter,
       QueryContext context) {
     this(seriesPath, sealedTsFiles, context);
     this.filter = filter;
@@ -63,7 +63,7 @@ public class SealedTsFilesReader implements IReader {
   /**
    * init with seriesPath and sealedTsFiles.
    */
-  public SealedTsFilesReader(Path seriesPath, List<IntervalFileNode> sealedTsFiles,
+  public SealedTsFilesReader(Path seriesPath, List<TsFileInstance> sealedTsFiles,
       QueryContext context) {
     this.seriesPath = seriesPath;
     this.sealedTsFiles = sealedTsFiles;
@@ -109,7 +109,7 @@ public class SealedTsFilesReader implements IReader {
       while (!flag && usedIntervalFileIndex < sealedTsFiles.size()) {
         // init until reach a satisfied reader
         if (seriesReader == null || !seriesReader.hasNextBatch()) {
-          IntervalFileNode fileNode = sealedTsFiles.get(usedIntervalFileIndex++);
+          TsFileInstance fileNode = sealedTsFiles.get(usedIntervalFileIndex++);
           if (singleTsFileSatisfied(fileNode)) {
             initSingleTsFileReader(fileNode, context);
           } else {
@@ -155,7 +155,7 @@ public class SealedTsFilesReader implements IReader {
     }
   }
 
-  private boolean singleTsFileSatisfied(IntervalFileNode fileNode) {
+  private boolean singleTsFileSatisfied(TsFileInstance fileNode) {
 
     if (filter == null) {
       return true;
@@ -166,7 +166,7 @@ public class SealedTsFilesReader implements IReader {
     return filter.satisfyStartEndTime(startTime, endTime);
   }
 
-  private void initSingleTsFileReader(IntervalFileNode fileNode, QueryContext context)
+  private void initSingleTsFileReader(TsFileInstance fileNode, QueryContext context)
       throws IOException {
 
     // to avoid too many opened files

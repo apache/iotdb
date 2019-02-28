@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.engine.filenode;
+package org.apache.iotdb.db.engine.storagegroup;
 
 import java.io.Serializable;
 import java.util.HashMap;
@@ -24,45 +24,45 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * FileNodeProcessorStore is used to store information about FileNodeProcessor's status.
+ * StorageGroupProcessorStore is used to store information about StorageGroupProcessor's status.
  * lastUpdateTime is changed and stored by BufferWrite flush or BufferWrite close.
- * emptyIntervalFileNode and newFileNodes are changed and stored by Overflow flush and
- * Overflow close. fileNodeProcessorState is changed and stored by the change of FileNodeProcessor's
+ * emptyTsFileInstance and newFileNodes are changed and stored by Overflow flush and
+ * Overflow close. fileNodeProcessorState is changed and stored by the change of StorageGroupProcessor's
  * status such as "work->merge merge->wait wait->work". numOfMergeFile is changed
- * and stored when FileNodeProcessor's status changes from work to merge.
+ * and stored when StorageGroupProcessor's status changes from work to merge.
  *
  * @author liukun
  */
-public class FileNodeProcessorStore implements Serializable {
+public class StorageGroupProcessorStore implements Serializable {
 
   private static final long serialVersionUID = -54525372941897565L;
 
   private boolean isOverflowed;
   private Map<String, Long> lastUpdateTimeMap;
-  private IntervalFileNode emptyIntervalFileNode;
-  private List<IntervalFileNode> newFileNodes;
+  private TsFileInstance emptyTsFileInstance;
+  private List<TsFileInstance> newFileNodes;
   private int numOfMergeFile;
-  private FileNodeProcessorStatus fileNodeProcessorStatus;
+  private StorageGroupProcessorStatus storageGroupProcessorStatus;
 
   /**
-   * Constructor of FileNodeProcessorStore.
+   * Constructor of StorageGroupProcessorStore.
    * @param isOverflowed whether this FileNode contains unmerged Overflow operations.
    * @param lastUpdateTimeMap the timestamp of last data point of each device in this FileNode.
-   * @param emptyIntervalFileNode a place holder when the FileNode contains no TsFile.
+   * @param emptyTsFileInstance a place holder when the FileNode contains no TsFile.
    * @param newFileNodes TsFiles in the FileNode.
-   * @param fileNodeProcessorStatus the status of the FileNode.
+   * @param storageGroupProcessorStatus the status of the FileNode.
    * @param numOfMergeFile the number of files already merged in one merge operation.
    */
-  public FileNodeProcessorStore(boolean isOverflowed, Map<String, Long> lastUpdateTimeMap,
-      IntervalFileNode emptyIntervalFileNode,
-      List<IntervalFileNode> newFileNodes,
-      FileNodeProcessorStatus fileNodeProcessorStatus,
+  public StorageGroupProcessorStore(boolean isOverflowed, Map<String, Long> lastUpdateTimeMap,
+      TsFileInstance emptyTsFileInstance,
+      List<TsFileInstance> newFileNodes,
+      StorageGroupProcessorStatus storageGroupProcessorStatus,
       int numOfMergeFile) {
     this.isOverflowed = isOverflowed;
     this.lastUpdateTimeMap = lastUpdateTimeMap;
-    this.emptyIntervalFileNode = emptyIntervalFileNode;
+    this.emptyTsFileInstance = emptyTsFileInstance;
     this.newFileNodes = newFileNodes;
-    this.fileNodeProcessorStatus = fileNodeProcessorStatus;
+    this.storageGroupProcessorStatus = storageGroupProcessorStatus;
     this.numOfMergeFile = numOfMergeFile;
   }
 
@@ -74,12 +74,13 @@ public class FileNodeProcessorStore implements Serializable {
     this.isOverflowed = isOverflowed;
   }
 
-  public FileNodeProcessorStatus getFileNodeProcessorStatus() {
-    return fileNodeProcessorStatus;
+  public StorageGroupProcessorStatus getStorageGroupProcessorStatus() {
+    return storageGroupProcessorStatus;
   }
 
-  public void setFileNodeProcessorStatus(FileNodeProcessorStatus fileNodeProcessorStatus) {
-    this.fileNodeProcessorStatus = fileNodeProcessorStatus;
+  public void setStorageGroupProcessorStatus(
+      StorageGroupProcessorStatus storageGroupProcessorStatus) {
+    this.storageGroupProcessorStatus = storageGroupProcessorStatus;
   }
 
   public Map<String, Long> getLastUpdateTimeMap() {
@@ -90,19 +91,19 @@ public class FileNodeProcessorStore implements Serializable {
     this.lastUpdateTimeMap = lastUpdateTimeMap;
   }
 
-  public IntervalFileNode getEmptyIntervalFileNode() {
-    return emptyIntervalFileNode;
+  public TsFileInstance getEmptyTsFileInstance() {
+    return emptyTsFileInstance;
   }
 
-  public void setEmptyIntervalFileNode(IntervalFileNode emptyIntervalFileNode) {
-    this.emptyIntervalFileNode = emptyIntervalFileNode;
+  public void setEmptyTsFileInstance(TsFileInstance emptyTsFileInstance) {
+    this.emptyTsFileInstance = emptyTsFileInstance;
   }
 
-  public List<IntervalFileNode> getNewFileNodes() {
+  public List<TsFileInstance> getNewFileNodes() {
     return newFileNodes;
   }
 
-  public void setNewFileNodes(List<IntervalFileNode> newFileNodes) {
+  public void setNewFileNodes(List<TsFileInstance> newFileNodes) {
     this.newFileNodes = newFileNodes;
   }
 

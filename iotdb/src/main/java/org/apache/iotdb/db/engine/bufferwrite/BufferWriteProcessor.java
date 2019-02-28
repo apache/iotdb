@@ -30,7 +30,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.Processor;
-import org.apache.iotdb.db.engine.filenode.FileNodeManager;
+import org.apache.iotdb.db.engine.storagegroup.StorageGroupManager;
 import org.apache.iotdb.db.engine.memcontrol.BasicMemController;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.MemSeriesLazyMerger;
@@ -128,7 +128,7 @@ public class BufferWriteProcessor extends Processor {
         logNode = MultiFileLogNodeManager.getInstance().getNode(
             processorName + IoTDBConstant.BUFFERWRITE_LOG_NODE_SUFFIX,
             getBufferwriteRestoreFilePath(),
-            FileNodeManager.getInstance().getRestoreFilePath(processorName));
+            StorageGroupManager.getInstance().getRestoreFilePath(processorName));
       } catch (IOException e) {
         throw new BufferWriteProcessorException(e);
       }

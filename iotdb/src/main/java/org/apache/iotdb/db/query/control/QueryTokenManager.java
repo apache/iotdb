@@ -24,7 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import org.apache.iotdb.db.engine.filenode.FileNodeManager;
+import org.apache.iotdb.db.engine.storagegroup.StorageGroupManager;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.ExpressionType;
@@ -35,8 +35,8 @@ import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 /**
  * <p>
  * Singleton pattern, to manage all query tokens. Each jdbc query request can query multiple series,
- * in the processing of querying different device id, the <code>FileNodeManager.getInstance().
- * beginQuery</code> and <code>FileNodeManager.getInstance().endQuery</code> must be invoked in the
+ * in the processing of querying different device id, the <code>StorageGroupManager.getInstance().
+ * beginQuery</code> and <code>StorageGroupManager.getInstance().endQuery</code> must be invoked in the
  * beginning and ending of jdbc request.
  * </p>
  */
@@ -58,29 +58,29 @@ public class QueryTokenManager {
    * <p>
    * For example, during a query process Q1, given a query sql <sql>select device_1.sensor_1,
    * device_1.sensor_2, device_2.sensor_1, device_2.sensor_2</sql>, we will invoke
-   * <code>FileNodeManager.getInstance().beginQuery(device_1)</code> and
-   * <code>FileNodeManager.getInstance().beginQuery(device_2)</code> both once. Although there
+   * <code>StorageGroupManager.getInstance().beginQuery(device_1)</code> and
+   * <code>StorageGroupManager.getInstance().beginQuery(device_2)</code> both once. Although there
    * exists four paths, but the unique devices are only `device_1` and `device_2`. When invoking
-   * <code>FileNodeManager.getInstance().beginQuery(device_1)</code>, it returns result token `1`.
+   * <code>StorageGroupManager.getInstance().beginQuery(device_1)</code>, it returns result token `1`.
    * Similarly,
-   * <code>FileNodeManager.getInstance().beginQuery(device_2)</code> returns result token `2`.
+   * <code>StorageGroupManager.getInstance().beginQuery(device_2)</code> returns result token `2`.
    *
    * In the meanwhile, another query process Q2 aroused by other client is triggered, whose sql
-   * statement is same to Q1. Although <code>FileNodeManager.getInstance().beginQuery(device_1)
+   * statement is same to Q1. Although <code>StorageGroupManager.getInstance().beginQuery(device_1)
    * </code>
    * and
-   * <code>FileNodeManager.getInstance().beginQuery(device_2)</code> will be invoked again, it
+   * <code>StorageGroupManager.getInstance().beginQuery(device_2)</code> will be invoked again, it
    * returns result token `3` and `4` .
    *
-   * <code>FileNodeManager.getInstance().endQuery(device_1, 1)</code> and
-   * <code>FileNodeManager.getInstance().endQuery(device_2, 2)</code> must be invoked no matter how
+   * <code>StorageGroupManager.getInstance().endQuery(device_1, 1)</code> and
+   * <code>StorageGroupManager.getInstance().endQuery(device_2, 2)</code> must be invoked no matter how
    * query process Q1 exits normally or abnormally. So is Q2,
-   * <code>FileNodeManager.getInstance().endQuery(device_1, 3)</code> and
-   * <code>FileNodeManager.getInstance().endQuery(device_2, 4)</code> must be invoked
+   * <code>StorageGroupManager.getInstance().endQuery(device_1, 3)</code> and
+   * <code>StorageGroupManager.getInstance().endQuery(device_2, 4)</code> must be invoked
    *
    * Last but no least, to ensure the correctness of write process and query process of IoTDB,
-   * <code>FileNodeManager.getInstance().beginQuery()</code> and
-   * <code>FileNodeManager.getInstance().endQuery()</code> must be executed rightly.
+   * <code>StorageGroupManager.getInstance().beginQuery()</code> and
+   * <code>StorageGroupManager.getInstance().endQuery()</code> must be executed rightly.
    * </p>
    */
   private ConcurrentHashMap<Long, ConcurrentHashMap<String, List<Integer>>> queryTokensMap;
@@ -114,7 +114,7 @@ public class QueryTokenManager {
 
     for (String deviceId : deviceIdSet) {
       putQueryTokenForCurrentRequestThread(jobId, deviceId,
-          FileNodeManager.getInstance().beginQuery(deviceId));
+          StorageGroupManager.getInstance().beginQuery(deviceId));
     }
   }
 
@@ -128,7 +128,7 @@ public class QueryTokenManager {
     getUniquePaths(expression, deviceIdSet);
     for (String deviceId : deviceIdSet) {
       putQueryTokenForCurrentRequestThread(jobId, deviceId,
-          FileNodeManager.getInstance().beginQuery(deviceId));
+          StorageGroupManager.getInstance().beginQuery(deviceId));
     }
   }
 
@@ -143,7 +143,7 @@ public class QueryTokenManager {
 
       for (Map.Entry<String, List<Integer>> entry : queryTokensMap.get(jobId).entrySet()) {
         for (int token : entry.getValue()) {
-          FileNodeManager.getInstance().endQuery(entry.getKey(), token);
+          StorageGroupManager.getInstance().endQuery(entry.getKey(), token);
         }
       }
       queryTokensMap.remove(jobId);

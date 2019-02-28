@@ -24,10 +24,9 @@ import org.apache.iotdb.db.concurrent.IoTDBDefaultThreadExceptionHandler;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.filenode.FileNodeManager;
+import org.apache.iotdb.db.engine.storagegroup.StorageGroupManager;
 import org.apache.iotdb.db.engine.memcontrol.BasicMemController;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
-import org.apache.iotdb.db.exception.FileNodeProcessorException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.RecoverException;
 import org.apache.iotdb.db.exception.StartupException;
@@ -83,7 +82,7 @@ public class IoTDB implements IoTDBMBean {
     LOGGER.info("Setting up IoTDB...");
     setUncaughtExceptionHandler();
 
-    FileNodeManager.getInstance().recovery();
+    StorageGroupManager.getInstance().recovery();
     try {
       systemDataRecovery();
     } catch (RecoverException e) {
@@ -99,7 +98,7 @@ public class IoTDB implements IoTDBMBean {
       StatMonitor.getInstance().recovery();
     }
 
-    registerManager.register(FileNodeManager.getInstance());
+    registerManager.register(StorageGroupManager.getInstance());
     registerManager.register(MultiFileLogNodeManager.getInstance());
     registerManager.register(JMXService.getInstance());
     registerManager.register(JDBCService.getInstance());
@@ -157,7 +156,7 @@ public class IoTDB implements IoTDBMBean {
     for (String filenodeName : filenodeNames) {
       if (writeLogManager.hasWAL(filenodeName)) {
         try {
-          FileNodeManager.getInstance().recoverFileNode(filenodeName);
+          StorageGroupManager.getInstance().recoverFileNode(filenodeName);
         } catch (FileNodeManagerException e) {
           throw new RecoverException(e);
         }

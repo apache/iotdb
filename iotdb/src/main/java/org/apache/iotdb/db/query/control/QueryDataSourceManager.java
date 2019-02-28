@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.query.control;
 
-import org.apache.iotdb.db.engine.filenode.FileNodeManager;
+import org.apache.iotdb.db.engine.storagegroup.StorageGroupManager;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -32,7 +32,7 @@ import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
  */
 public class QueryDataSourceManager {
 
-  private static FileNodeManager fileNodeManager = FileNodeManager.getInstance();
+  private static StorageGroupManager fileNodeManager = StorageGroupManager.getInstance();
 
   private QueryDataSourceManager() {
   }

@@ -24,8 +24,8 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 /**
  * IMemTable is designed to store data points which are not flushed into TsFile yet. An instance of
  * IMemTable maintains all series belonging to one StorageGroup,
- * corresponding to one FileNodeProcessor.<br> The concurrent control of IMemTable
- * is based on the concurrent control of FileNodeProcessor, i.e., Writing and
+ * corresponding to one StorageGroupProcessor.<br> The concurrent control of IMemTable
+ * is based on the concurrent control of StorageGroupProcessor, i.e., Writing and
  * querying operations must already have gotten writeLock and readLock respectively.<br>
  */
 public interface IMemTable {

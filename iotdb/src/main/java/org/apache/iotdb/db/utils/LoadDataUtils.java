@@ -31,7 +31,7 @@ import java.util.List;
 import java.util.Set;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.filenode.FileNodeManager;
+import org.apache.iotdb.db.engine.storagegroup.StorageGroupManager;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
@@ -57,7 +57,7 @@ public class LoadDataUtils {
   private int writeInstanceThreshold;
   private boolean hasExtra = false;
   private long totalPointCount = 0;
-  private FileNodeManager fileNodeManager;
+  private StorageGroupManager fileNodeManager;
   private IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
 
   /**
@@ -65,7 +65,7 @@ public class LoadDataUtils {
    */
   public LoadDataUtils() {
     writeInstanceMap = new HashSet<>();
-    fileNodeManager = FileNodeManager.getInstance();
+    fileNodeManager = StorageGroupManager.getInstance();
     writeInstanceThreshold = conf.writeInstanceThreshold;
   }
 

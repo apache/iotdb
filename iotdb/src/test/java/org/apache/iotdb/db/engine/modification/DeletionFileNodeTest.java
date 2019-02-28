@@ -28,7 +28,7 @@ import java.util.Collection;
 import java.util.Iterator;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.Directories;
-import org.apache.iotdb.db.engine.filenode.FileNodeManager;
+import org.apache.iotdb.db.engine.storagegroup.StorageGroupManager;
 import org.apache.iotdb.db.engine.modification.io.LocalTextModificationAccessor;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
@@ -70,7 +70,7 @@ public class DeletionFileNodeTest {
     for (int i = 0; i < 10; i++) {
       MManager.getInstance().addPathToMTree(processorName + "." + measurements[i], dataType,
           encoding, args);
-      FileNodeManager.getInstance()
+      StorageGroupManager.getInstance()
           .addTimeSeries(new Path(processorName, measurements[i]), dataType,
               encoding);
     }
@@ -90,18 +90,18 @@ public class DeletionFileNodeTest {
       for (int j = 0; j < 10; j++) {
         record.addTuple(new DoubleDataPoint(measurements[j], i * 1.0));
       }
-      FileNodeManager.getInstance().insert(record, false);
+      StorageGroupManager.getInstance().insert(record, false);
     }
 
-    FileNodeManager.getInstance().delete(processorName, measurements[3], 50);
-    FileNodeManager.getInstance().delete(processorName, measurements[4], 50);
-    FileNodeManager.getInstance().delete(processorName, measurements[5], 30);
-    FileNodeManager.getInstance().delete(processorName, measurements[5], 50);
+    StorageGroupManager.getInstance().delete(processorName, measurements[3], 50);
+    StorageGroupManager.getInstance().delete(processorName, measurements[4], 50);
+    StorageGroupManager.getInstance().delete(processorName, measurements[5], 30);
+    StorageGroupManager.getInstance().delete(processorName, measurements[5], 50);
 
     SingleSeriesExpression expression = new SingleSeriesExpression(new Path(processorName,
         measurements[5]), null);
     QueryContext context = new QueryContext();
-    QueryDataSource dataSource = FileNodeManager.getInstance().query(expression, context);
+    QueryDataSource dataSource = StorageGroupManager.getInstance().query(expression, context);
     Iterator<TimeValuePair> timeValuePairs =
         dataSource.getSeqDataSource().getReadableChunk().getIterator();
     int count = 0;
@@ -119,13 +119,13 @@ public class DeletionFileNodeTest {
       for (int j = 0; j < 10; j++) {
         record.addTuple(new DoubleDataPoint(measurements[j], i * 1.0));
       }
-      FileNodeManager.getInstance().insert(record, false);
+      StorageGroupManager.getInstance().insert(record, false);
     }
-    FileNodeManager.getInstance().closeAll();
+    StorageGroupManager.getInstance().closeAll();
 
-    FileNodeManager.getInstance().delete(processorName, measurements[5], 50);
-    FileNodeManager.getInstance().delete(processorName, measurements[4], 40);
-    FileNodeManager.getInstance().delete(processorName, measurements[3], 30);
+    StorageGroupManager.getInstance().delete(processorName, measurements[5], 50);
+    StorageGroupManager.getInstance().delete(processorName, measurements[4], 40);
+    StorageGroupManager.getInstance().delete(processorName, measurements[3], 30);
 
     Modification[] realModifications = new Modification[]{
         new Deletion(processorName + "." + measurements[5], 102, 50),
@@ -162,9 +162,9 @@ public class DeletionFileNodeTest {
       for (int j = 0; j < 10; j++) {
         record.addTuple(new DoubleDataPoint(measurements[j], i * 1.0));
       }
-      FileNodeManager.getInstance().insert(record, false);
+      StorageGroupManager.getInstance().insert(record, false);
     }
-    FileNodeManager.getInstance().closeAll();
+    StorageGroupManager.getInstance().closeAll();
 
     // insert into Overflow
     for (int i = 1; i <= 100; i++) {
@@ -172,18 +172,18 @@ public class DeletionFileNodeTest {
       for (int j = 0; j < 10; j++) {
         record.addTuple(new DoubleDataPoint(measurements[j], i * 1.0));
       }
-      FileNodeManager.getInstance().insert(record, false);
+      StorageGroupManager.getInstance().insert(record, false);
     }
 
-    FileNodeManager.getInstance().delete(processorName, measurements[3], 50);
-    FileNodeManager.getInstance().delete(processorName, measurements[4], 50);
-    FileNodeManager.getInstance().delete(processorName, measurements[5], 30);
-    FileNodeManager.getInstance().delete(processorName, measurements[5], 50);
+    StorageGroupManager.getInstance().delete(processorName, measurements[3], 50);
+    StorageGroupManager.getInstance().delete(processorName, measurements[4], 50);
+    StorageGroupManager.getInstance().delete(processorName, measurements[5], 30);
+    StorageGroupManager.getInstance().delete(processorName, measurements[5], 50);
 
     SingleSeriesExpression expression = new SingleSeriesExpression(new Path(processorName,
         measurements[5]), null);
     QueryContext context = new QueryContext();
-    QueryDataSource dataSource = FileNodeManager.getInstance().query(expression, context);
+    QueryDataSource dataSource = StorageGroupManager.getInstance().query(expression, context);
     Iterator<TimeValuePair> timeValuePairs =
         dataSource.getOverflowSeriesDataSource().getReadableMemChunk().getIterator();
     int count = 0;
@@ -202,9 +202,9 @@ public class DeletionFileNodeTest {
       for (int j = 0; j < 10; j++) {
         record.addTuple(new DoubleDataPoint(measurements[j], i * 1.0));
       }
-      FileNodeManager.getInstance().insert(record, false);
+      StorageGroupManager.getInstance().insert(record, false);
     }
-    FileNodeManager.getInstance().closeAll();
+    StorageGroupManager.getInstance().closeAll();
 
     // insert into Overflow
     for (int i = 1; i <= 100; i++) {
@@ -212,13 +212,13 @@ public class DeletionFileNodeTest {
       for (int j = 0; j < 10; j++) {
         record.addTuple(new DoubleDataPoint(measurements[j], i * 1.0));
       }
-      FileNodeManager.getInstance().insert(record, false);
+      StorageGroupManager.getInstance().insert(record, false);
     }
-    FileNodeManager.getInstance().closeAll();
+    StorageGroupManager.getInstance().closeAll();
 
-    FileNodeManager.getInstance().delete(processorName, measurements[5], 50);
-    FileNodeManager.getInstance().delete(processorName, measurements[4], 40);
-    FileNodeManager.getInstance().delete(processorName, measurements[3], 30);
+    StorageGroupManager.getInstance().delete(processorName, measurements[5], 50);
+    StorageGroupManager.getInstance().delete(processorName, measurements[4], 40);
+    StorageGroupManager.getInstance().delete(processorName, measurements[3], 30);
 
     Modification[] realModifications = new Modification[]{
         new Deletion(processorName + "." + measurements[5], 103, 50),

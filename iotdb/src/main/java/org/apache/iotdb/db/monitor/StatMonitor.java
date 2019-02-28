@@ -30,7 +30,7 @@ import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.filenode.FileNodeManager;
+import org.apache.iotdb.db.engine.storagegroup.StorageGroupManager;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.MetadataArgsErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
@@ -198,7 +198,7 @@ public class StatMonitor implements IService {
    */
   public Map<String, TSRecord> getOneStatisticsValue(String key) {
     // queryPath like fileNode seriesPath: root.stats.car1,
-    // or FileNodeManager seriesPath:FileNodeManager
+    // or StorageGroupManager seriesPath:StorageGroupManager
     String queryPath;
     if (key.contains("\\.")) {
       queryPath = MonitorConstants.STAT_STORAGE_GROUP_PREFIX + MonitorConstants.MONITOR_PATH_SEPERATOR
@@ -245,7 +245,7 @@ public class StatMonitor implements IService {
   }
 
   private void insert(HashMap<String, TSRecord> tsRecordHashMap) {
-    FileNodeManager fManager = FileNodeManager.getInstance();
+    StorageGroupManager fManager = StorageGroupManager.getInstance();
     int count = 0;
     int pointNum;
     for (Map.Entry<String, TSRecord> entry : tsRecordHashMap.entrySet()) {
@@ -321,7 +321,7 @@ public class StatMonitor implements IService {
         if (seconds - statMonitorDetectFreqSec >= 0) {
           runningTimeMillis = currentTimeMillis;
           // delete time-series data
-          FileNodeManager fManager = FileNodeManager.getInstance();
+          StorageGroupManager fManager = StorageGroupManager.getInstance();
           try {
             for (Map.Entry<String, IStatistic> entry : statisticMap.entrySet()) {
               for (String statParamName : entry.getValue().getStatParamsHashMap().keySet()) {

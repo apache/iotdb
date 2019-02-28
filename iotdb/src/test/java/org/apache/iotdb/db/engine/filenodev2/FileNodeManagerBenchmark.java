@@ -21,7 +21,7 @@ package org.apache.iotdb.db.engine.filenodev2;
 import java.io.IOException;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicLong;
-import org.apache.iotdb.db.engine.filenode.FileNodeManager;
+import org.apache.iotdb.db.engine.storagegroup.StorageGroupManager;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.MetadataArgsErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
@@ -113,7 +113,7 @@ public class FileNodeManagerBenchmark {
           long time = RandomNum.getRandomLong(1, seed);
           String deltaObject = devices[(int) (time % numOfDevice)];
           TSRecord tsRecord = getRecord(deltaObject, time);
-          FileNodeManager.getInstance().insert(tsRecord, true);
+          StorageGroupManager.getInstance().insert(tsRecord, true);
         }
       } catch (FileNodeManagerException e) {
         e.printStackTrace();

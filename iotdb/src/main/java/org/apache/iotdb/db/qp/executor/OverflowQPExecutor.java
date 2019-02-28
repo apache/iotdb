@@ -31,7 +31,7 @@ import org.apache.iotdb.db.auth.entity.PathPrivilege;
 import org.apache.iotdb.db.auth.entity.PrivilegeType;
 import org.apache.iotdb.db.auth.entity.Role;
 import org.apache.iotdb.db.auth.entity.User;
-import org.apache.iotdb.db.engine.filenode.FileNodeManager;
+import org.apache.iotdb.db.engine.storagegroup.StorageGroupManager;
 import org.apache.iotdb.db.exception.ArgsErrorException;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.PathErrorException;
@@ -68,11 +68,11 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
 
   private static final Logger LOG = LoggerFactory.getLogger(OverflowQPExecutor.class);
 
-  private FileNodeManager fileNodeManager;
+  private StorageGroupManager fileNodeManager;
   private MManager mManager = MManager.getInstance();
 
   public OverflowQPExecutor() {
-    fileNodeManager = FileNodeManager.getInstance();
+    fileNodeManager = StorageGroupManager.getInstance();
   }
 
   public static String checkValue(TSDataType dataType, String value) throws ProcessorException {

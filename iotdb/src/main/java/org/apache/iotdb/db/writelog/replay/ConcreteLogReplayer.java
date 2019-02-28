@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.writelog.replay;
 
 import java.util.List;
-import org.apache.iotdb.db.engine.filenode.FileNodeManager;
+import org.apache.iotdb.db.engine.storagegroup.StorageGroupManager;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
@@ -76,13 +76,13 @@ public class ConcreteLogReplayer implements LogReplayer {
       DataPoint dataPoint = DataPoint.getDataPoint(dataType, measurementList.get(i), value);
       tsRecord.addTuple(dataPoint);
     }
-    FileNodeManager.getInstance().insert(tsRecord, true);
+    StorageGroupManager.getInstance().insert(tsRecord, true);
   }
 
   private void update(UpdatePlan updatePlan) throws FileNodeManagerException, PathErrorException {
     TSDataType dataType = MManager.getInstance().getSeriesType(updatePlan.getPath().getFullPath());
     for (Pair<Long, Long> timePair : updatePlan.getIntervals()) {
-      FileNodeManager.getInstance().update(updatePlan.getPath().getDevice(),
+      StorageGroupManager.getInstance().update(updatePlan.getPath().getDevice(),
           updatePlan.getPath().getMeasurement(), timePair.left, timePair.right, dataType,
           updatePlan.getValue());
     }
@@ -91,10 +91,10 @@ public class ConcreteLogReplayer implements LogReplayer {
   private void delete(DeletePlan deletePlan, boolean isOverflow) throws FileNodeManagerException {
     for (Path path : deletePlan.getPaths()) {
       if (isOverflow) {
-        FileNodeManager.getInstance().deleteOverflow(path.getDevice(), path.getMeasurement(),
+        StorageGroupManager.getInstance().deleteOverflow(path.getDevice(), path.getMeasurement(),
             deletePlan.getDeleteTime());
       } else {
-        FileNodeManager.getInstance().deleteBufferWrite(path.getDevice(), path.getMeasurement(),
+        StorageGroupManager.getInstance().deleteBufferWrite(path.getDevice(), path.getMeasurement(),
             deletePlan.getDeleteTime());
       }
     }
