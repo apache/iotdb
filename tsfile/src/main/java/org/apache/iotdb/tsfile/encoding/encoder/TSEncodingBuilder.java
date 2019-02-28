@@ -67,6 +67,18 @@ public abstract class TSEncodingBuilder {
     }
   }
 
+  protected boolean isKeyContainedInMap(Map<String, String> map, String key) {
+    if(map == null || key == null) {
+      return false;
+    }
+    for(String keyInMap : map.keySet()) {
+      if(key.equalsIgnoreCase(keyInMap)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   /**
    * return a series's encoder with different types and parameters according to its measurement id
    * and data type.
@@ -149,15 +161,18 @@ public abstract class TSEncodingBuilder {
     @Override
     public void initFromProps(Map<String, String> props) {
       // set max error from initialized map or default value if not set
-      if (props == null || !props.containsKey(Encoder.MAX_POINT_NUMBER)) {
+      if (!isKeyContainedInMap(props, Encoder.MAX_POINT_NUMBER)) {
         maxPointNumber = TSFileConfig.floatPrecision;
       } else {
-        maxPointNumber = Integer.valueOf(props.get(Encoder.MAX_POINT_NUMBER));
-        if (maxPointNumber < 0) {
-          maxPointNumber = TSFileConfig.floatPrecision;
-          LOGGER
-              .warn("cannot set max point number to negative value, replaced with default value:{}",
-                  maxPointNumber);
+        for(Map.Entry<String, String> entry : props.entrySet()) {
+          if(Encoder.MAX_POINT_NUMBER.equalsIgnoreCase(entry.getKey())) {
+            maxPointNumber = Integer.valueOf(entry.getValue());
+            if (maxPointNumber < 0) {
+              maxPointNumber = TSFileConfig.floatPrecision;
+              LOGGER.warn("cannot set max point number to negative value, replaced with default value:{}",
+                        maxPointNumber);
+            }
+          }
         }
       }
     }
@@ -197,15 +212,18 @@ public abstract class TSEncodingBuilder {
      */
     public void initFromProps(Map<String, String> props) {
       // set max error from initialized map or default value if not set
-      if (props == null || !props.containsKey(Encoder.MAX_POINT_NUMBER)) {
+      if (!isKeyContainedInMap(props, Encoder.MAX_POINT_NUMBER)) {
         maxPointNumber = TSFileConfig.floatPrecision;
       } else {
-        maxPointNumber = Integer.valueOf(props.get(Encoder.MAX_POINT_NUMBER));
-        if (maxPointNumber < 0) {
-          maxPointNumber = TSFileConfig.floatPrecision;
-          LOGGER
-              .warn("cannot set max point number to negative value, replaced with default value:{}",
-                  maxPointNumber);
+        for(Map.Entry<String, String> entry : props.entrySet()) {
+          if(Encoder.MAX_POINT_NUMBER.equalsIgnoreCase(entry.getKey())) {
+            maxPointNumber = Integer.valueOf(entry.getValue());
+            if (maxPointNumber < 0) {
+              maxPointNumber = TSFileConfig.floatPrecision;
+              LOGGER.warn("cannot set max point number to negative value, replaced with default value:{}",
+                            maxPointNumber);
+            }
+          }
         }
       }
     }
