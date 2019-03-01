@@ -48,7 +48,7 @@ public class MManagerImproveTest {
       for (int i = 0; i < TIMESERIES_NUM; i++) {
         String p = new StringBuilder().append("root.t1.v2.d").append(j).append(".s").append(i)
             .toString();
-        mManager.addPathToMTree(p, "TEXT", "RLE", new String[0]);
+        mManager.addPathToMTree(p, "TEXT", "RLE");
       }
     }
 
@@ -215,7 +215,7 @@ public class MManagerImproveTest {
       assertEquals(true, node.hasChild(measurementList.get(i)));
       MNode measurementNode = node.getChild(measurementList.get(i));
       assertEquals(true, measurementNode.isLeaf());
-      TSDataType dataType = measurementNode.getSchema().dataType;
+      TSDataType dataType = measurementNode.getSchema().getType();
       assertEquals(TSDataType.TEXT, dataType);
     }
   }

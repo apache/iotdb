@@ -68,7 +68,7 @@ public abstract class TSEncodingBuilder {
   }
 
   /**
-   * return a series's encoder with different types and parameters according to its measurement id
+   * return a thread safe series's encoder with different types and parameters according to its measurement id
    * and data type.
    *
    * @param type - given data type

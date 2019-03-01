@@ -61,7 +61,9 @@ import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
@@ -931,15 +933,16 @@ public class FileNodeManager implements IStatistic, IService {
   /**
    * add time series.
    */
-  public void addTimeSeries(Path path, String dataType, String encoding)
-      throws FileNodeManagerException {
+  public void addTimeSeries(Path path, TSDataType dataType, TSEncoding encoding, CompressionType compressor,
+      Map<String, String> props) throws FileNodeManagerException {
     FileNodeProcessor fileNodeProcessor = getProcessor(path.getFullPath(), true);
     try {
-      fileNodeProcessor.addTimeSeries(path.getMeasurement(), dataType, encoding);
+      fileNodeProcessor.addTimeSeries(path.getMeasurement(), dataType, encoding, compressor, props);
     } finally {
       fileNodeProcessor.writeUnlock();
     }
   }
+
 
   /**
    * Force to close the filenode processor.
