@@ -206,7 +206,7 @@ public class LoadDataUtils {
     this.mmanager = mmanager;
     // get measurement schema
     try {
-      ArrayList<ColumnSchema> meaSchema = mmanager.getSchemaForOneType(measureType);
+      List<ColumnSchema> meaSchema = mmanager.getSchemaForOneType(measureType);
       fileSchema = FileSchemaUtils.getFileSchemaFromColumnSchema(meaSchema, measureType);
     } catch (PathErrorException e) {
       logger.error("the seriesPath of input measurement schema meet error!", e);

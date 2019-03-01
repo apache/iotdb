@@ -25,6 +25,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import org.apache.iotdb.db.exception.MetadataArgsErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -80,11 +81,11 @@ public class MManagerAdvancedTest {
       }
       // test filename by seriesPath
       assertEquals("root.vehicle.d0", mmanager.getFileNameByPath("root.vehicle.d0.s1"));
-      HashMap<String, ArrayList<String>> map = mmanager
+      Map<String, ArrayList<String>> map = mmanager
           .getAllPathGroupByFileName("root.vehicle.d1.*");
       assertEquals(1, map.keySet().size());
       assertEquals(6, map.get("root.vehicle.d1").size());
-      ArrayList<String> paths = mmanager.getPaths("root.vehicle.d0");
+      List<String> paths = mmanager.getPaths("root.vehicle.d0");
       assertEquals(6, paths.size());
       paths = mmanager.getPaths("root.vehicle.d2");
       assertEquals(0, paths.size());
