@@ -40,4 +40,8 @@ public class ProcessorException extends Exception {
   public ProcessorException() {
     super();
   }
+
+  public ProcessorException(String msg, Throwable e) {
+    super(msg, e);
+  }
 }

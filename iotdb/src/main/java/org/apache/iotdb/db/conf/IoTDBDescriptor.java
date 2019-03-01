@@ -72,7 +72,7 @@ public class IoTDBDescriptor {
     try {
       inputStream = new FileInputStream(new File(url));
     } catch (FileNotFoundException e) {
-      LOGGER.warn("Fail to find config file {}", url);
+      LOGGER.warn("Fail to find config file {}", url, e);
       // update all data seriesPath
       conf.updatePath();
       return;
@@ -246,15 +246,14 @@ public class IoTDBDescriptor {
         conf.setZoneID(ZoneId.of(tmpTimeZone.trim()));
         LOGGER.info("Time zone has been set to {}", conf.getZoneID());
       } catch (Exception e) {
-        LOGGER.error("Time zone foramt error {}, use default configuration {}", tmpTimeZone,
-            conf.getZoneID());
+        LOGGER.error("Time zone format error {}, use default configuration {}", tmpTimeZone,
+            conf.getZoneID(), e);
       }
 
     } catch (IOException e) {
-      LOGGER.warn("Cannot load config file because {}, use default configuration", e.getMessage());
+      LOGGER.warn("Cannot load config file because, use default configuration", e);
     } catch (Exception e) {
-      LOGGER.warn("Error format in config file because {}, use default configuration",
-          e.getMessage());
+      LOGGER.warn("Incorrect format in config file, use default configuration", e);
     } finally {
       // update all data seriesPath
       conf.updatePath();
@@ -262,7 +261,7 @@ public class IoTDBDescriptor {
         try {
           inputStream.close();
         } catch (IOException e) {
-          LOGGER.error("Fail to close config file input stream because {}", e.getMessage());
+          LOGGER.error("Fail to close config file input stream because ", e);
         }
       }
     }

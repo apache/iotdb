@@ -82,8 +82,9 @@ public class FlushManager {
               + EXIT_WAIT_TIME + " ms");
         }
       } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
         throw new ProcessorException("Interrupted while waiting flush thread pool to exit. "
-            + e.getMessage());
+            , e);
       }
     }
   }
@@ -107,8 +108,8 @@ public class FlushManager {
               + EXIT_WAIT_TIME + " ms");
         }
       } catch (InterruptedException e) {
-        throw new ProcessorException("Interrupted while waiting flush thread pool to exit. "
-            + e.getMessage());
+        Thread.currentThread().interrupt();
+        throw new ProcessorException("Interrupted while waiting flush thread pool to exit. ", e);
       }
     }
   }

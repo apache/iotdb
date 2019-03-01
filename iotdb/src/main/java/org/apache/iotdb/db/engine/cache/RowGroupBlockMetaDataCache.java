@@ -132,6 +132,22 @@ public class RowGroupBlockMetaDataCache {
     protected boolean removeEldestEntry(Map.Entry<String, TsDeviceMetadata> eldest) {
       return size() > maxCapacity;
     }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) {
+        return true;
+      }
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
+      return super.equals(o);
+    }
+
+    @Override
+    public int hashCode() {
+      return super.hashCode();
+    }
   }
 
   @Override

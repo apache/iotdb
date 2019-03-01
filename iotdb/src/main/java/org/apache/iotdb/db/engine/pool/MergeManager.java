@@ -74,8 +74,9 @@ public class MergeManager {
               "Merge thread pool doesn't exit after " + timeOut + " ms");
         }
       } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
         throw new ProcessorException(
-            "Interrupted while waiting merge thread pool to exit. Because " + e.getMessage());
+            "Interrupted while waiting merge thread pool to exit. ", e);
       }
     }
   }
@@ -97,8 +98,9 @@ public class MergeManager {
               "Merge thread pool doesn't exit after " + timeOut + " ms");
         }
       } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
         throw new ProcessorException(
-            "Interrupted while waiting merge thread pool to exit. Because" + e.getMessage());
+            "Interrupted while waiting merge thread pool to exit.", e);
       }
     }
   }

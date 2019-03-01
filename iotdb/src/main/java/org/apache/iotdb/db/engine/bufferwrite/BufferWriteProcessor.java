@@ -22,6 +22,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicLong;
@@ -100,10 +101,11 @@ public class BufferWriteProcessor extends Processor {
     this.baseDir = baseDir;
     this.fileName = fileName;
 
-    if (baseDir.length() > 0 && baseDir.charAt(baseDir.length() - 1) != File.separatorChar) {
-      baseDir = baseDir + File.separatorChar;
+    String bDir = baseDir;
+    if (bDir.length() > 0 && bDir.charAt(bDir.length() - 1) != File.separatorChar) {
+      bDir = bDir + File.separatorChar;
     }
-    String dataDirPath = baseDir + processorName;
+    String dataDirPath = bDir + processorName;
     File dataDir = new File(dataDirPath);
     if (!dataDir.exists()) {
       dataDir.mkdirs();
@@ -193,9 +195,9 @@ public class BufferWriteProcessor extends Processor {
   }
 
   private void checkMemThreshold4Flush(long addedMemory) throws BufferWriteProcessorException {
-    addedMemory = memSize.addAndGet(addedMemory);
-    if (addedMemory > memThreshold) {
-      String usageMem = MemUtils.bytesCntToStr(addedMemory);
+    long newMem = memSize.addAndGet(addedMemory);
+    if (newMem > memThreshold) {
+      String usageMem = MemUtils.bytesCntToStr(newMem);
       String threshold = MemUtils.bytesCntToStr(memThreshold);
       String processorName = getProcessorName();
       LOGGER.info("The usage of memory {} in bufferwrite processor {} reaches the threshold {}",
@@ -532,5 +534,26 @@ public class BufferWriteProcessor extends Processor {
       flushMemTable = flushMemTable.copy();
       flushMemTable.delete(deviceId, measurementId, timestamp);
     }
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    if (!super.equals(o)) {
+      return false;
+    }
+    BufferWriteProcessor that = (BufferWriteProcessor) o;
+    return Objects.equals(baseDir, that.baseDir) &&
+        Objects.equals(fileName, that.fileName);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(super.hashCode(), baseDir, fileName);
   }
 }

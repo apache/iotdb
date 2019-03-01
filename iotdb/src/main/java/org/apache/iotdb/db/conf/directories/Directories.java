@@ -51,7 +51,7 @@ public class Directories {
       strategy = (DirectoryStrategy) clazz.newInstance();
       strategy.init(tsfileFolders);
     } catch (Exception e) {
-      LOGGER.error("can't find strategy {} for mult-directories.", strategyName);
+      LOGGER.error("can't find strategy {} for mult-directories.", strategyName, e);
     }
   }
 

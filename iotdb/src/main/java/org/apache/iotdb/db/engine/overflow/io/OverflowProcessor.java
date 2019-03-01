@@ -654,8 +654,7 @@ public class OverflowProcessor extends Processor {
             Objects.equals(filenodeFlushAction, that.filenodeFlushAction) &&
             Objects.equals(fileSchema, that.fileSchema) &&
             Objects.equals(memSize, that.memSize) &&
-            Objects.equals(logNode, that.logNode) &&
-            Objects.equals(flushFuture, that.flushFuture);
+            Objects.equals(logNode, that.logNode);
   }
 
   @Override
