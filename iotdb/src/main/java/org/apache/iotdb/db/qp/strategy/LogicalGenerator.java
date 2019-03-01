@@ -386,7 +386,7 @@ public class LogicalGenerator {
     Map<String, String> props = new HashMap<>(paramNode.getChildCount() - offset + 1, 1);
     while (offset < paramNode.getChildCount()) {
       AstNode node = paramNode.getChild(offset++);
-      props.put(node.getChild(0).getText(), node.getChild(1).getText());
+      props.put(node.getChild(0).getText().toLowerCase(), node.getChild(1).getText());
     }
     MetadataOperator metadataOperator = new MetadataOperator(SQLConstant.TOK_METADATA_CREATE,
         MetadataOperator.NamespaceType.ADD_PATH);
@@ -1067,11 +1067,11 @@ public class LogicalGenerator {
 
   private void checkMetadataArgs(String dataType, String encoding, String compressor)
       throws MetadataArgsErrorException {
-    final String rle = "RLE";
-    final String plain = "PLAIN";
-    final String ts2Diff = "TS_2DIFF";
-    final String bitmap = "BITMAP";
-    final String gorilla = "GORILLA";
+//    final String rle = "RLE";
+//    final String plain = "PLAIN";
+//    final String ts2Diff = "TS_2DIFF";
+//    final String bitmap = "BITMAP";
+//    final String gorilla = "GORILLA";
     TSDataType tsDataType;
     TSEncoding tsEncoding;
     if (dataType == null) {

@@ -48,9 +48,6 @@ import org.junit.Test;
 public class IoTDBDaemonIT {
 
   private static IoTDB daemon;
-
-  private static Connection connection;
-
   private static String[] sqls = new String[]{
 
       "SET STORAGE GROUP TO root.vehicle.d0", "SET STORAGE GROUP TO root.vehicle.d1",
@@ -120,13 +117,11 @@ public class IoTDBDaemonIT {
     EnvironmentUtils.envSetUp();
 
     insertData();
-    connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+
   }
 
   @AfterClass
   public static void tearDown() throws Exception {
-    connection.close();
     daemon.stop();
     EnvironmentUtils.cleanEnv();
   }
