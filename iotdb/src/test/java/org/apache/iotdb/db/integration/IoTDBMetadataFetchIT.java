@@ -375,7 +375,7 @@ public class IoTDBMetadataFetchIT {
             + "                     DataType: FLOAT,\n"
             + "                     Encoding: RLE,\n"
             + "                     Compressor: SNAPPY,\n"
-            + "                     args: {MAX_POINT_NUMBER=3},\n"
+            + "                     args: {max_point_number=3},\n"
             + "                     StorageGroup: root.ln.wf01.wt01\n"
             + "                }\n"
             + "            }\n"
