@@ -36,7 +36,6 @@ import org.apache.iotdb.db.exception.ArgsErrorException;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
-import org.apache.iotdb.db.metadata.ColumnSchema;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.MNode;
 import org.apache.iotdb.db.monitor.MonitorConstants;
@@ -54,13 +53,16 @@ import org.apache.iotdb.db.qp.physical.sys.MetadataPlan;
 import org.apache.iotdb.db.qp.physical.sys.PropertyPlan;
 import org.apache.iotdb.db.utils.AuthUtils;
 import org.apache.iotdb.db.utils.LoadDataUtils;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -275,7 +277,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
                   measurementList.get(i)));
         }
 
-        TSDataType dataType = measurementNode.getSchema().dataType;
+        TSDataType dataType = measurementNode.getSchema().getType();
         String value = insertValues.get(i);
         value = checkValue(dataType, value);
         DataPoint dataPoint = DataPoint.getDataPoint(dataType, measurementList.get(i), value);
@@ -482,9 +484,10 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
   private boolean operateMetadata(MetadataPlan metadataPlan) throws ProcessorException {
     MetadataOperator.NamespaceType namespaceType = metadataPlan.getNamespaceType();
     Path path = metadataPlan.getPath();
-    String dataType = metadataPlan.getDataType();
-    String encoding = metadataPlan.getEncoding();
-    String[] encodingArgs = metadataPlan.getEncodingArgs();
+    TSDataType dataType = metadataPlan.getDataType();
+    CompressionType compressor = metadataPlan.getCompressor();
+    TSEncoding encoding = metadataPlan.getEncoding();
+    Map<String, String> props = metadataPlan.getProps();
     List<Path> deletePathList = metadataPlan.getDeletePathList();
     try {
       switch (namespaceType) {
@@ -499,7 +502,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
           // optimize the speed of adding timeseries
           String fileNodePath = mManager.getFileNameByPath(path.getFullPath());
           // the two map is stored in the storage group node
-          Map<String, ColumnSchema> schemaMap = mManager.getSchemaMapForOneFileNode(fileNodePath);
+          Map<String, MeasurementSchema> schemaMap = mManager.getSchemaMapForOneFileNode(fileNodePath);
           Map<String, Integer> numSchemaMap = mManager.getNumSchemaMapForOneFileNode(fileNodePath);
           String lastNode = path.getMeasurement();
           boolean isNewMeasurement = true;
@@ -507,25 +510,26 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
           synchronized (schemaMap) {
             if (schemaMap.containsKey(lastNode)) {
               isNewMeasurement = false;
-              ColumnSchema columnSchema = schemaMap.get(lastNode);
-              if (!columnSchema.geTsDataType().toString().equals(dataType)
-                  || !columnSchema.getEncoding().toString().equals(encoding)) {
+              MeasurementSchema columnSchema = schemaMap.get(lastNode);
+              if (!columnSchema.getType().equals(dataType)
+                  || !columnSchema.getEncodingType().equals(encoding)) {
                 throw new ProcessorException(String.format(
                     "The dataType or encoding of the last node %s is conflicting in the storage group %s",
                     lastNode, fileNodePath));
               }
-              mManager.addPathToMTree(path.getFullPath(), dataType, encoding, encodingArgs);
+              mManager.addPathToMTree(path.getFullPath(), dataType, encoding, compressor, props);
               numSchemaMap.put(lastNode, numSchemaMap.get(lastNode) + 1);
             } else {
-              mManager.addPathToMTree(path.getFullPath(), dataType, encoding, encodingArgs);
-              ColumnSchema columnSchema = mManager.getSchemaForOnePath(path.toString());
+              mManager.addPathToMTree(path.getFullPath(), dataType, encoding, compressor, props);
+              MeasurementSchema columnSchema = mManager.getSchemaForOnePath(path.toString());
               schemaMap.put(lastNode, columnSchema);
               numSchemaMap.put(lastNode, 1);
             }
             try {
               if (isNewMeasurement) {
                 // add time series to schema
-                fileNodeManager.addTimeSeries(path, dataType, encoding);
+                fileNodeManager.addTimeSeries(path, dataType, encoding, compressor, props);
+                //TODO fileNodeManager.addTimeSeries(path, dataType, encoding, compressor, encodingArgs);
               }
               // fileNodeManager.closeOneFileNode(namespacePath);
             } catch (FileNodeManagerException e) {

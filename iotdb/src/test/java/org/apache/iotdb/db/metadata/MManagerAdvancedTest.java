@@ -46,19 +46,19 @@ public class MManagerAdvancedTest {
     mmanager.setStorageLevelToMTree("root.vehicle.d1");
     mmanager.setStorageLevelToMTree("root.vehicle.d0");
 
-    mmanager.addPathToMTree("root.vehicle.d0.s0", "INT32", "RLE", new String[0]);
-    mmanager.addPathToMTree("root.vehicle.d0.s1", "INT64", "RLE", new String[0]);
-    mmanager.addPathToMTree("root.vehicle.d0.s2", "FLOAT", "RLE", new String[0]);
-    mmanager.addPathToMTree("root.vehicle.d0.s3", "DOUBLE", "RLE", new String[0]);
-    mmanager.addPathToMTree("root.vehicle.d0.s4", "BOOLEAN", "PLAIN", new String[0]);
-    mmanager.addPathToMTree("root.vehicle.d0.s5", "TEXT", "PLAIN", new String[0]);
+    mmanager.addPathToMTree("root.vehicle.d0.s0", "INT32", "RLE");
+    mmanager.addPathToMTree("root.vehicle.d0.s1", "INT64", "RLE");
+    mmanager.addPathToMTree("root.vehicle.d0.s2", "FLOAT", "RLE");
+    mmanager.addPathToMTree("root.vehicle.d0.s3", "DOUBLE", "RLE");
+    mmanager.addPathToMTree("root.vehicle.d0.s4", "BOOLEAN", "PLAIN");
+    mmanager.addPathToMTree("root.vehicle.d0.s5", "TEXT", "PLAIN");
 
-    mmanager.addPathToMTree("root.vehicle.d1.s0", "INT32", "RLE", new String[0]);
-    mmanager.addPathToMTree("root.vehicle.d1.s1", "INT64", "RLE", new String[0]);
-    mmanager.addPathToMTree("root.vehicle.d1.s2", "FLOAT", "RLE", new String[0]);
-    mmanager.addPathToMTree("root.vehicle.d1.s3", "DOUBLE", "RLE", new String[0]);
-    mmanager.addPathToMTree("root.vehicle.d1.s4", "BOOLEAN", "PLAIN", new String[0]);
-    mmanager.addPathToMTree("root.vehicle.d1.s5", "TEXT", "PLAIN", new String[0]);
+    mmanager.addPathToMTree("root.vehicle.d1.s0", "INT32", "RLE");
+    mmanager.addPathToMTree("root.vehicle.d1.s1", "INT64", "RLE");
+    mmanager.addPathToMTree("root.vehicle.d1.s2", "FLOAT", "RLE");
+    mmanager.addPathToMTree("root.vehicle.d1.s3", "DOUBLE", "RLE");
+    mmanager.addPathToMTree("root.vehicle.d1.s4", "BOOLEAN", "PLAIN");
+    mmanager.addPathToMTree("root.vehicle.d1.s5", "TEXT", "PLAIN");
   }
 
   @After
@@ -96,10 +96,10 @@ public class MManagerAdvancedTest {
 
   @Test
   public void testCache() throws PathErrorException, IOException, MetadataArgsErrorException {
-    mmanager.addPathToMTree("root.vehicle.d2.s0", "DOUBLE", "RLE", new String[0]);
-    mmanager.addPathToMTree("root.vehicle.d2.s1", "BOOLEAN", "PLAIN", new String[0]);
-    mmanager.addPathToMTree("root.vehicle.d2.s2.g0", "TEXT", "PLAIN", new String[0]);
-    mmanager.addPathToMTree("root.vehicle.d2.s3", "TEXT", "PLAIN", new String[0]);
+    mmanager.addPathToMTree("root.vehicle.d2.s0", "DOUBLE", "RLE");
+    mmanager.addPathToMTree("root.vehicle.d2.s1", "BOOLEAN", "PLAIN");
+    mmanager.addPathToMTree("root.vehicle.d2.s2.g0", "TEXT", "PLAIN");
+    mmanager.addPathToMTree("root.vehicle.d2.s3", "TEXT", "PLAIN");
 
     Assert.assertEquals(TSDataType.INT32,
         mmanager.checkPathStorageLevelAndGetDataType("root.vehicle.d0.s0").getDataType());
@@ -112,7 +112,7 @@ public class MManagerAdvancedTest {
         mmanager.checkPathStorageLevelAndGetDataType("root.vehicle.d0.s100").getDataType());
 
     MNode node = mmanager.getNodeByDeviceIdFromCache("root.vehicle.d0");
-    Assert.assertEquals(TSDataType.INT32, node.getChild("s0").getSchema().dataType);
+    Assert.assertEquals(TSDataType.INT32, node.getChild("s0").getSchema().getType());
 
     try {
       MNode node1 = mmanager.getNodeByDeviceIdFromCache("root.vehicle.d100");
@@ -125,10 +125,10 @@ public class MManagerAdvancedTest {
   @Test
   public void testGetNextLevelPath()
       throws PathErrorException, IOException, MetadataArgsErrorException {
-    mmanager.addPathToMTree("root.vehicle.d2.s0", "DOUBLE", "RLE", new String[0]);
-    mmanager.addPathToMTree("root.vehicle.d2.s1", "BOOLEAN", "PLAIN", new String[0]);
-    mmanager.addPathToMTree("root.vehicle.d2.s2.g0", "TEXT", "PLAIN", new String[0]);
-    mmanager.addPathToMTree("root.vehicle.d2.s3", "TEXT", "PLAIN", new String[0]);
+    mmanager.addPathToMTree("root.vehicle.d2.s0", "DOUBLE", "RLE");
+    mmanager.addPathToMTree("root.vehicle.d2.s1", "BOOLEAN", "PLAIN");
+    mmanager.addPathToMTree("root.vehicle.d2.s2.g0", "TEXT", "PLAIN");
+    mmanager.addPathToMTree("root.vehicle.d2.s3", "TEXT", "PLAIN");
 
     List<String> paths = mmanager.getLeafNodePathInNextLevel("root.vehicle.d2");
     Assert.assertEquals(3, paths.size());

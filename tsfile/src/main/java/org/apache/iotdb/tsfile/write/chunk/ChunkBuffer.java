@@ -63,7 +63,7 @@ public class ChunkBuffer {
    */
   public ChunkBuffer(MeasurementSchema schema) {
     this.schema = schema;
-    this.compressor = schema.getCompressor();
+    this.compressor = ICompressor.getCompressor(schema.getCompressor());
     this.pageBuffer = new PublicBAOS();
   }
 

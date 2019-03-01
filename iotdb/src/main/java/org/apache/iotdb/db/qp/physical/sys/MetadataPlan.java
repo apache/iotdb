@@ -20,33 +20,39 @@ package org.apache.iotdb.db.qp.physical.sys;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.sys.MetadataOperator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
 
 public class MetadataPlan extends PhysicalPlan {
 
   private final MetadataOperator.NamespaceType namespaceType;
   private Path path;
-  private String dataType;
-  private String encoding;
-  private String[] encodingArgs;
+  private TSDataType dataType;
+  private CompressionType compressor;
+  private TSEncoding encoding;
+  private Map<String, String> props;
 
   private List<Path> deletePathList;
 
   /**
    * Constructor of MetadataPlan.
    */
-  public MetadataPlan(MetadataOperator.NamespaceType namespaceType, Path path, String dataType,
-      String encoding,
-      String[] encodingArgs, List<Path> deletePathList) {
+  public MetadataPlan(MetadataOperator.NamespaceType namespaceType, Path path, TSDataType dataType,
+      CompressionType compressor, TSEncoding encoding, Map<String, String> props,
+      List<Path> deletePathList) {
     super(false, Operator.OperatorType.METADATA);
     this.namespaceType = namespaceType;
     this.path = path;
     this.dataType = dataType;
+    this.compressor = compressor;
     this.encoding = encoding;
-    this.encodingArgs = encodingArgs;
+    this.props = props;
     this.deletePathList = deletePathList;
     switch (namespaceType) {
       case SET_FILE_LEVEL:
@@ -69,28 +75,36 @@ public class MetadataPlan extends PhysicalPlan {
     this.path = path;
   }
 
-  public String getDataType() {
+  public TSDataType getDataType() {
     return dataType;
   }
 
-  public void setDataType(String dataType) {
+  public void setDataType(TSDataType dataType) {
     this.dataType = dataType;
   }
 
-  public String getEncoding() {
+  public CompressionType getCompressor() {
+    return compressor;
+  }
+
+  public void setCompressor(CompressionType compressor) {
+    this.compressor = compressor;
+  }
+
+  public TSEncoding getEncoding() {
     return encoding;
   }
 
-  public void setEncoding(String encoding) {
+  public void setEncoding(TSEncoding encoding) {
     this.encoding = encoding;
   }
 
-  public String[] getEncodingArgs() {
-    return encodingArgs;
+  public Map<String, String> getProps() {
+    return props;
   }
 
-  public void setEncodingArgs(String[] encodingArgs) {
-    this.encodingArgs = encodingArgs;
+  public void setProps(Map<String, String> props) {
+    this.props = props;
   }
 
   public MetadataOperator.NamespaceType getNamespaceType() {
@@ -99,12 +113,13 @@ public class MetadataPlan extends PhysicalPlan {
 
   @Override
   public String toString() {
-    String ret = "seriesPath: " + path + "\ndataType: " + dataType + "\nencoding: " + encoding
-        + "\nnamespace type: " + namespaceType + "\nargs: ";
-    for (String arg : encodingArgs) {
-      ret = ret + arg + ",";
+    String ret = String.format("seriesPath: %s\ndataType: %s\nencoding: %s\nnamespace type: %s\nargs: ", path, dataType, encoding, namespaceType);
+    StringBuilder stringBuilder = new StringBuilder(ret.length()+50);
+    stringBuilder.append(ret);
+    for (Map.Entry prop : props.entrySet()) {
+      stringBuilder.append(prop.getKey()).append("=").append(prop.getValue()).append(",");
     }
-    return ret;
+    return stringBuilder.toString();
   }
 
   public void addDeletePath(Path path) {

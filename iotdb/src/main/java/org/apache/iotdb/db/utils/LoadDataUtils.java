@@ -35,11 +35,11 @@ import org.apache.iotdb.db.engine.filenode.FileNodeManager;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
-import org.apache.iotdb.db.metadata.ColumnSchema;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.schema.FileSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -206,7 +206,7 @@ public class LoadDataUtils {
     this.mmanager = mmanager;
     // get measurement schema
     try {
-      ArrayList<ColumnSchema> meaSchema = mmanager.getSchemaForOneType(measureType);
+      ArrayList<MeasurementSchema> meaSchema = mmanager.getSchemaForOneType(measureType);
       fileSchema = FileSchemaUtils.getFileSchemaFromColumnSchema(meaSchema, measureType);
     } catch (PathErrorException e) {
       logger.error("the seriesPath of input measurement schema meet error!", e);

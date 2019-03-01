@@ -67,7 +67,7 @@ ExtraAttributeClause: {
 	COMPRESSOR = <CompressorValue>
 	MAX_POINT_NUMBER = Integer
 }
-CompressorValue: UNCOMPRESSOR | SNAPPY
+CompressorValue: UNCOMPRESSED | SNAPPY
 Eg: IoTDB > CREATE TIMESERIES root.ln.wf01.wt01.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN
 Eg: IoTDB > CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=RLE
 Eg: IoTDB > CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=RLE, COMPRESSOR=SNAPPY, MAX_POINT_NUMBER=3
@@ -528,7 +528,7 @@ ADD, BY, COMPRESSOR, CREATE, DATATYPE, DELETE, DESCRIBE, DROP, ENCODING, EXIT, F
 Keywords with special meanings (case sensitive):
 * Data Types: BOOLEAN, DOUBLE, FLOAT, INT32, INT64, TEXT (Only capitals is acceptable)
 * Encoding Methods: BITMAP, DFT, GORILLA, PLAIN, RLE, TS_2DIFF (Only capitals is acceptable)
-* Compression Methods: UNCOMPRESSOR, SNAPPY (Only capitals is acceptable)
+* Compression Methods: UNCOMPRESSED, SNAPPY (Only capitals is acceptable)
 * Logical symbol: AND, &, &&, OR, | , ||, NOT, !, TRUE, FALSE
 ```
 

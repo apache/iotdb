@@ -88,6 +88,7 @@ TOK_WITH;
 TOK_ROOT;
 TOK_DATATYPE;
 TOK_ENCODING;
+TOK_COMPRESSOR;
 TOK_CLAUSE;
 TOK_TIMESERIES;
 TOK_SET;
@@ -395,8 +396,8 @@ timeseries
   ;
 
 propertyClauses
-  : KW_DATATYPE EQUAL propertyName=identifier COMMA KW_ENCODING EQUAL pv=propertyValue (COMMA propertyClause)*
-  -> ^(TOK_DATATYPE $propertyName) ^(TOK_ENCODING $pv) propertyClause*
+  : KW_DATATYPE EQUAL propertyName=identifier COMMA KW_ENCODING EQUAL pv=propertyValue (COMMA KW_COMPRESSOR EQUAL compressor=propertyValue)? (COMMA propertyClause)*
+  -> ^(TOK_DATATYPE $propertyName) ^(TOK_ENCODING $pv) ^(TOK_COMPRESSOR $compressor)? propertyClause*
   ;
 
 propertyClause
