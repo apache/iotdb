@@ -291,15 +291,15 @@ public class IoTDBDatabaseMetadataTest {
         "===  Timeseries Tree  ===\n" + "\n" + "root:{\n" + "    vehicle:{\n" + "        d0:{\n"
             + "            s0:{\n" + "                 DataType: INT32,\n"
             + "                 Encoding: RLE,\n"
-            + "                 args: {},\n" + "                 StorageGroup: root.vehicle \n"
+            + "                 args: {},\n" + "                 StorageGroup: root.vehicle\n"
             + "            },\n"
             + "            s1:{\n" + "                 DataType: INT64,\n"
             + "                 Encoding: RLE,\n"
-            + "                 args: {},\n" + "                 StorageGroup: root.vehicle \n"
+            + "                 args: {},\n" + "                 StorageGroup: root.vehicle\n"
             + "            },\n"
             + "            s2:{\n" + "                 DataType: FLOAT,\n"
             + "                 Encoding: RLE,\n"
-            + "                 args: {},\n" + "                 StorageGroup: root.vehicle \n"
+            + "                 args: {},\n" + "                 StorageGroup: root.vehicle\n"
             + "            }\n"
             + "        }\n" + "    }\n" + "}";
 

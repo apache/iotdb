@@ -113,12 +113,13 @@ public class MetadataPlan extends PhysicalPlan {
 
   @Override
   public String toString() {
-    String ret = "seriesPath: " + path + "\ndataType: " + dataType + "\nencoding: " + encoding
-        + "\nnamespace type: " + namespaceType + "\nargs: ";
+    String ret = String.format("seriesPath: %s\ndataType: %s\nencoding: %s\nnamespace type: %s\nargs: ", path, dataType, encoding, namespaceType);
+    StringBuilder stringBuilder = new StringBuilder(ret.length()+50);
+    stringBuilder.append(ret);
     for (Map.Entry prop : props.entrySet()) {
-      ret = ret + prop.getKey() + "=" +prop.getValue() + ",";
+      stringBuilder.append(prop.getKey()).append("=").append(prop.getValue()).append(",");
     }
-    return ret;
+    return stringBuilder.toString();
   }
 
   public void addDeletePath(Path path) {

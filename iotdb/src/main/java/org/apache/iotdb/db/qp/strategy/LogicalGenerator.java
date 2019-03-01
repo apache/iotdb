@@ -382,7 +382,7 @@ public class LogicalGenerator {
     } else {
       compressor = TSFileConfig.compressor;
     }
-    checkMetadataArgs(dataType, encodingType);
+    checkMetadataArgs(dataType, encodingType, compressor);
     Map<String, String> props = new HashMap<>(paramNode.getChildCount() - offset + 1, 1);
     while (offset < paramNode.getChildCount()) {
       AstNode node = paramNode.getChild(offset++);
@@ -1065,7 +1065,7 @@ public class LogicalGenerator {
     initializedOperator = authorOperator;
   }
 
-  private void checkMetadataArgs(String dataType, String encoding)
+  private void checkMetadataArgs(String dataType, String encoding, String compressor)
       throws MetadataArgsErrorException {
     final String rle = "RLE";
     final String plain = "PLAIN";
@@ -1073,6 +1073,7 @@ public class LogicalGenerator {
     final String bitmap = "BITMAP";
     final String gorilla = "GORILLA";
     TSDataType tsDataType;
+    TSEncoding tsEncoding;
     if (dataType == null) {
       throw new MetadataArgsErrorException("data type cannot be null");
     }
@@ -1087,53 +1088,49 @@ public class LogicalGenerator {
       throw new MetadataArgsErrorException("encoding type cannot be null");
     }
 
-    if (!encoding.equals(rle) && !encoding.equals(plain) && !encoding.equals(ts2Diff) && !encoding
-        .equals(bitmap)
-        && !encoding.equals(gorilla)) {
+    try {
+      tsEncoding = TSEncoding.valueOf(encoding);
+    } catch (Exception e) {
       throw new MetadataArgsErrorException(String.format("encoding %s is not support", encoding));
     }
+
+    try {
+      CompressionType.valueOf(compressor);
+    } catch (Exception e) {
+      throw new MetadataArgsErrorException(String.format("compressor %s is not support", compressor));
+    }
+    boolean throwExp = false;
     switch (tsDataType) {
       case BOOLEAN:
-        if (!encoding.equals(plain) && !encoding.equals(rle)) {
-          throw new MetadataArgsErrorException(
-              String.format("encoding %s does not support %s", encoding, dataType));
+        if (!(tsEncoding.equals(TSEncoding.RLE) || tsEncoding.equals(TSEncoding.PLAIN))){
+          throwExp = true;
         }
         break;
       case INT32:
-        if ((!encoding.equals(plain) && !encoding.equals(rle) && !encoding.equals(ts2Diff))) {
-          throw new MetadataArgsErrorException(
-              String.format("encoding %s does not support %s", encoding, dataType));
-        }
-        break;
       case INT64:
-        if ((!encoding.equals(plain) && !encoding.equals(rle) && !encoding.equals(ts2Diff))) {
-          throw new MetadataArgsErrorException(
-              String.format("encoding %s does not support %s", encoding, dataType));
+        if (!(tsEncoding.equals(TSEncoding.RLE) || tsEncoding.equals(TSEncoding.PLAIN)
+            || tsEncoding.equals(TSEncoding.TS_2DIFF))) {
+          throwExp = true;
         }
         break;
       case FLOAT:
-        if ((!encoding.equals(plain) && !encoding.equals(rle) && !encoding.equals(ts2Diff)
-            && !encoding.equals(gorilla))) {
-          throw new MetadataArgsErrorException(
-              String.format("encoding %s does not support %s", encoding, dataType));
-        }
-        break;
       case DOUBLE:
-        if ((!encoding.equals(plain) && !encoding.equals(rle) && !encoding.equals(ts2Diff)
-            && !encoding.equals(gorilla))) {
-          throw new MetadataArgsErrorException(
-              String.format("encoding %s does not support %s", encoding, dataType));
+        if (!(tsEncoding.equals(TSEncoding.RLE) || tsEncoding.equals(TSEncoding.PLAIN)
+            || tsEncoding.equals(TSEncoding.TS_2DIFF) || tsEncoding.equals(TSEncoding.GORILLA))) {
+          throwExp = true;
         }
         break;
       case TEXT:
-        if (!encoding.equals(plain)) {
-          throw new MetadataArgsErrorException(
-              String.format("encoding %s does not support %s", encoding, dataType));
+        if (!tsEncoding.equals(TSEncoding.PLAIN)) {
+          throwExp = true;
         }
         break;
       default:
-        throw new MetadataArgsErrorException(
-            String.format("data type %s is not supported", dataType));
+        throwExp = true;
+    }
+    if (throwExp) {
+      throw new MetadataArgsErrorException(
+          String.format("encoding %s does not support %s", encoding, dataType));
     }
   }
 
