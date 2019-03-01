@@ -19,15 +19,10 @@
 package org.apache.iotdb.db.utils;
 
 import java.util.List;
-import java.util.Map.Entry;
-import org.apache.iotdb.db.metadata.ColumnSchema;
 import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.tsfile.common.constant.JsonFormatConstant;
-import org.apache.iotdb.tsfile.exception.write.InvalidJsonSchemaException;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.write.schema.FileSchema;
-import org.json.JSONArray;
-import org.json.JSONObject;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 
 public class FileSchemaUtils {
@@ -41,12 +36,9 @@ public class FileSchemaUtils {
    * @throws WriteProcessException when the fileSchema cannot be created.
    */
   public static FileSchema constructFileSchema(String processorName) throws WriteProcessException {
-
-    List<ColumnSchema> columnSchemaList;
+    List<MeasurementSchema> columnSchemaList;
     columnSchemaList = MManager.getInstance().getSchemaForFileName(processorName);
-
     return getFileSchemaFromColumnSchema(columnSchemaList, processorName);
-
   }
 
   /**
@@ -57,40 +49,13 @@ public class FileSchemaUtils {
    * @return a FileSchema contains the provided schemas.
    * @throws WriteProcessException when the FileSchema cannot be constructed.
    */
-  public static FileSchema getFileSchemaFromColumnSchema(List<ColumnSchema> schemaList,
+  public static FileSchema getFileSchemaFromColumnSchema(List<MeasurementSchema> schemaList,
       String deviceType)
       throws WriteProcessException {
-    // TODO: is using a JSON as the media necessary?
-    JSONArray rowGroup = new JSONArray();
-
-    for (ColumnSchema columnSchema : schemaList) {
-      JSONObject measurement = constructJsonColumnSchema(columnSchema);
-      rowGroup.put(measurement);
+    FileSchema schema = new FileSchema();
+    for (MeasurementSchema measurementSchema : schemaList) {
+      schema.registerMeasurement(measurementSchema);
     }
-    return constructJsonFileSchema(deviceType, rowGroup);
+    return schema;
   }
-
-  public static FileSchema constructJsonFileSchema(String deviceType, JSONArray rowGroup) throws InvalidJsonSchemaException {
-    JSONObject jsonSchema = new JSONObject();
-    jsonSchema.put(JsonFormatConstant.JSON_SCHEMA, rowGroup);
-    jsonSchema.put(JsonFormatConstant.DELTA_TYPE, deviceType);
-    return new FileSchema(jsonSchema);
-  }
-
-  public static JSONObject constructJsonColumnSchema(ColumnSchema columnSchema) {
-    JSONObject measurement = new JSONObject();
-    measurement.put(JsonFormatConstant.MEASUREMENT_UID, columnSchema.getName());
-    measurement.put(JsonFormatConstant.DATA_TYPE, columnSchema.dataType.toString());
-    measurement.put(JsonFormatConstant.MEASUREMENT_ENCODING, columnSchema.encoding.toString());
-    for (Entry<String, String> entry : columnSchema.getArgsMap().entrySet()) {
-      if (JsonFormatConstant.ENUM_VALUES.equals(entry.getKey())) {
-        String[] valueArray = entry.getValue().split(",");
-        measurement.put(JsonFormatConstant.ENUM_VALUES, new JSONArray(valueArray));
-      } else {
-        measurement.put(entry.getKey(), entry.getValue());
-      }
-    }
-    return measurement;
-  }
-
 }

@@ -23,6 +23,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.apache.iotdb.tsfile.file.header.PageHeader;
+import org.apache.iotdb.tsfile.file.header.PageHeaderTest;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaDataTest;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
@@ -36,6 +38,7 @@ import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetaDataTest;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -136,5 +139,13 @@ public class TestHelper {
     jsonMetaData.add("fsdfsfsd");
     jsonMetaData.add("424fd");
     return jsonMetaData;
+  }
+
+  public static PageHeader createSimplePageHeader() {
+    PageHeader header = new PageHeader(PageHeaderTest.UNCOMPRESSED_SIZE,
+        PageHeaderTest.COMPRESSED_SIZE, PageHeaderTest.NUM_OF_VALUES,
+        Statistics.getStatsByType(PageHeaderTest.DATA_TYPE),
+        PageHeaderTest.MAX_TIMESTAMO, PageHeaderTest.MIN_TIMESTAMO);
+    return header;
   }
 }

@@ -358,17 +358,30 @@ public class IoTDBMetadataFetchIT {
   private void showTimeseriesInJson() {
     String metadataInJson = databaseMetaData.toString();
     String standard =
-        "===  Timeseries Tree  ===\n" + "\n" + "root:{\n" + "    ln:{\n" + "        wf01:{\n"
-            + "            wt01:{\n" + "                status:{\n"
+        "===  Timeseries Tree  ===\n"
+            + "\n"
+            + "root:{\n"
+            + "    ln:{\n"
+            + "        wf01:{\n"
+            + "            wt01:{\n"
+            + "                status:{\n"
             + "                     DataType: BOOLEAN,\n"
-            + "                     Encoding: PLAIN,\n" + "                     args: {},\n"
-            + "                     StorageGroup: root.ln.wf01.wt01 \n" + "                },\n"
-            + "                temperature:{\n" + "                     DataType: FLOAT,\n"
+            + "                     Encoding: PLAIN,\n"
+            + "                     Compressor: UNCOMPRESSED,\n"
+            + "                     args: {},\n"
+            + "                     StorageGroup: root.ln.wf01.wt01\n"
+            + "                },\n"
+            + "                temperature:{\n"
+            + "                     DataType: FLOAT,\n"
             + "                     Encoding: RLE,\n"
-            + "                     args: {MAX_POINT_NUMBER=3, compressor=SNAPPY},\n"
-            + "                     StorageGroup: root.ln.wf01.wt01 \n" + "                }\n"
+            + "                     Compressor: SNAPPY,\n"
+            + "                     args: {max_point_number=3},\n"
+            + "                     StorageGroup: root.ln.wf01.wt01\n"
+            + "                }\n"
             + "            }\n"
-            + "        }\n" + "    }\n" + "}";
-    Assert.assertEquals(metadataInJson, standard);
+            + "        }\n"
+            + "    }\n"
+            + "}";
+    Assert.assertEquals(standard, metadataInJson);
   }
 }
