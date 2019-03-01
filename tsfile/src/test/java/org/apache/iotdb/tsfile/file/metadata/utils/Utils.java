@@ -25,14 +25,19 @@ import static org.junit.Assert.fail;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
+import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadataIndex;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 public class Utils {
+
+  private static final double maxError = 0.0001d;
+  
 
   public static void isListEqual(List<?> listA, List<?> listB, String name) {
     if ((listA == null) ^ (listB == null)) {
@@ -204,6 +209,38 @@ public class Utils {
 
       assertEquals(metadata1.getCurrentVersion(), metadata2.getCurrentVersion());
       assertEquals(metadata1.getCreatedBy(), metadata2.getCreatedBy());
+    }
+  }
+
+  public static void isPageHeaderEqual(PageHeader header1, PageHeader header2) {
+    if (Utils.isTwoObjectsNotNULL(header1, header2, "PageHeader")) {
+      assertTrue(header1.getUncompressedSize() == header2.getUncompressedSize());
+      assertTrue(header1.getCompressedSize() == header2.getCompressedSize());
+      assertTrue(header1.getNumOfValues() == header2.getNumOfValues());
+      assertTrue(header1.getMaxTimestamp() == header2.getMaxTimestamp());
+      assertTrue(header1.getMinTimestamp() == header2.getMinTimestamp());
+      if (Utils.isTwoObjectsNotNULL(header1.getStatistics(), header2.getStatistics(), "statistics")) {
+        Utils.isStatisticsEqual(header1.getStatistics(), header2.getStatistics());
+      }
+    }
+  }
+
+  public static void isStatisticsEqual(Statistics statistics1, Statistics statistics2) {
+    if ((statistics1 == null) ^ (statistics2 == null)) {
+      System.out.println("error");
+      fail("one of statistics is null");
+    }
+    if ((statistics1 != null) && (statistics2 != null)) {
+      if (statistics1.isEmpty() ^ statistics2.isEmpty()) {
+        fail("one of statistics is empty while the other one is not");
+      }
+      if (!statistics1.isEmpty() && !statistics2.isEmpty()) {
+        assertTrue(statistics1.getMin().equals(statistics2.getMin()));
+        assertTrue(statistics1.getMax().equals(statistics2.getMax()));
+        assertTrue(statistics1.getFirst().equals(statistics2.getFirst()));
+        assertEquals(statistics1.getSum(), statistics2.getSum(), maxError);
+        assertTrue(statistics1.getLast().equals(statistics2.getLast()));
+      }
     }
   }
 }
