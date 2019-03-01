@@ -84,7 +84,13 @@ public class SequenceDataReaderByTimestamp implements EngineReaderByTimeStamp {
     if (currentSeriesReader != null && currentSeriesReader.hasNext()) {
       return true;
     }
-    return nextSeriesReaderIndex < seriesReaders.size();
+    while (nextSeriesReaderIndex < seriesReaders.size()) {
+      currentSeriesReader = seriesReaders.get(nextSeriesReaderIndex++);
+      if (currentSeriesReader != null && currentSeriesReader.hasNext()) {
+        return true;
+      }
+    }
+    return false;
   }
 
 

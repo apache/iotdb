@@ -39,7 +39,7 @@ public class SealedTsFilesReaderByTimestamp implements EngineReaderByTimeStamp {
 
   private Path seriesPath;
   private List<IntervalFileNode> sealedTsFiles;
-  private int usedIntervalFileIndex;
+  private int nextIntervalFileIndex;
   private SeriesReaderByTimestamp seriesReader;
   private QueryContext context;
 
@@ -50,7 +50,7 @@ public class SealedTsFilesReaderByTimestamp implements EngineReaderByTimeStamp {
       QueryContext context) {
     this.seriesPath = seriesPath;
     this.sealedTsFiles = sealedTsFiles;
-    this.usedIntervalFileIndex = 0;
+    this.nextIntervalFileIndex = 0;
     this.seriesReader = null;
     this.context = context;
   }
@@ -80,7 +80,14 @@ public class SealedTsFilesReaderByTimestamp implements EngineReaderByTimeStamp {
     if (seriesReader != null && seriesReader.hasNext()) {
       return true;
     }
-    return usedIntervalFileIndex + 1 < sealedTsFiles.size();
+    while (nextIntervalFileIndex < sealedTsFiles.size()) {
+      initSingleTsFileReader(sealedTsFiles.get(nextIntervalFileIndex), context);
+      nextIntervalFileIndex++;
+      if(seriesReader.hasNext()){
+        return true;
+      }
+    }
+    return false;
   }
 
   @Override
@@ -90,11 +97,11 @@ public class SealedTsFilesReaderByTimestamp implements EngineReaderByTimeStamp {
 
   // construct reader from the file that might overlap this timestamp
   private void constructReader(long timestamp) throws IOException {
-    while (usedIntervalFileIndex < sealedTsFiles.size()) {
-      if (singleTsFileSatisfied(sealedTsFiles.get(usedIntervalFileIndex), timestamp)) {
-        initSingleTsFileReader(sealedTsFiles.get(usedIntervalFileIndex), context);
+    while (nextIntervalFileIndex < sealedTsFiles.size()) {
+      if (singleTsFileSatisfied(sealedTsFiles.get(nextIntervalFileIndex), timestamp)) {
+        initSingleTsFileReader(sealedTsFiles.get(nextIntervalFileIndex), context);
       }
-      usedIntervalFileIndex++;
+      nextIntervalFileIndex++;
     }
   }
 

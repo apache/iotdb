@@ -84,19 +84,6 @@ public class PriorityMergeReaderByTimestampTest {
       }
       time += random.nextInt(50) + 1;
     }
-
-    for(long i = 1; i < 1080 + 200 * 13; i++){
-      Object value = priorityReader.getValueInTimestamp(i);
-      if(i >= 1080 && (i-1080) % 13 == 0){
-        Assert.assertEquals(i % 31, value);
-      } else if( i >= 850 && i < 850 + 200 * 7 && (i-850) % 7 == 0 ){
-        Assert.assertEquals(i % 19, value);
-      } else if( i >= 100 &&i < 100 + 200 * 5 && (i-100) % 5 == 0 ){
-        Assert.assertEquals(i % 11, value);
-      }
-      Assert.assertNull(value);
-    }
-
   }
 
   public static class FakedPrioritySeriesReaderByTimestamp implements EngineReaderByTimeStamp,

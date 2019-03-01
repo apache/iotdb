@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.read.common;
 
 import java.util.ArrayList;
@@ -529,27 +530,18 @@ public class BatchData {
     return this.timeLength;
   }
 
-  public Object getValueInTimestamp(long key){
-    int max, min, mid;
-    min = curIdx ;
-    max = length() - 1;
-    mid = (max + min) / 2;
-    while ( max >= min) {
-      long midKey = timeRet.get(mid / timeCapacity)[mid % timeCapacity];
-      if (key > midKey) {
-        min = mid + 1;
-      } else if (key < midKey) {
-        max = mid - 1;
-      }
-      else {
-        curIdx = mid;
+  public Object getValueInTimestamp(long time) {
+    while (hasNext()) {
+      if (currentTime() < time) {
+        next();
+      } else if (currentTime() == time) {
         Object value = currentValue();
-        curIdx++;
+        next();
         return value;
+      } else {
+        return null;
       }
-      mid = (min + max) / 2;
     }
-    curIdx = min;
     return null;
   }
 }

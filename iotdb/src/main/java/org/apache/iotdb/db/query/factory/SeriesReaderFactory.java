@@ -126,7 +126,7 @@ public class SeriesReaderFactory {
   }
 
   /**
-   * This method is used to create overflow insert reader by timestamp for IoTDB request, such as
+   * This method is used to create unsequence insert reader by timestamp for IoTDB request, such as
    * query, aggregation and groupby request.
    */
   public PriorityMergeReaderByTimestamp createUnSeqMergeReaderByTimestamp(
