@@ -851,7 +851,6 @@ public class FileNodeManager implements IStatistic, IService {
       FileUtils.deleteDirectory(new File(fileNodePath));
 
       cleanBufferWrite(processorName);
-      cleanBufferWrite(processorName);
 
       MultiFileLogNodeManager.getInstance()
           .deleteNode(processorName + IoTDBConstant.BUFFERWRITE_LOG_NODE_SUFFIX);
