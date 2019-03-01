@@ -19,63 +19,41 @@
 package org.apache.iotdb.tsfile.file.metadata;
 
 import java.io.*;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.common.constant.JsonFormatConstant;
-import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
-import org.apache.iotdb.tsfile.exception.write.InvalidJsonSchemaException;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.MetaMarker;
-import org.apache.iotdb.tsfile.file.footer.ChunkGroupFooter;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.file.metadata.utils.TestHelper;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
-import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.apache.iotdb.tsfile.read.reader.page.PageReader;
 import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.utils.RecordUtils;
 import org.apache.iotdb.tsfile.utils.TsFileGeneratorForTest;
-import org.apache.iotdb.tsfile.write.TsFileWriter;
-import org.apache.iotdb.tsfile.write.record.TSRecord;
-import org.apache.iotdb.tsfile.write.schema.FileSchema;
-import org.json.JSONArray;
-import org.json.JSONObject;
-import org.json.JSONTokener;
-import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Assert;
-import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
 
 public class ChunkGroupMetaDataTest {
 
   public static final String DELTA_OBJECT_UID = "delta-3312";
-  final String PATH = "target/outputChunkGroup.tsfile";
-  private String testDataFile;
+  final static String PATH = "target/outputChunkGroup.tsfile";
+  private static String testDataFile;
 
-  @Before
-  public void setUp() throws WriteProcessException, IOException, InterruptedException {
+  @BeforeClass
+  public static void setUp() throws WriteProcessException, IOException, InterruptedException {
     testDataFile = TsFileGeneratorForTest.outputDataFile;
-    TSFileDescriptor.getInstance().getConfig().timeSeriesEncoder = "TS_2DIFF";
 
-    TsFileGeneratorForTest.generateFileWithoutText(1000, 16 * 1024 * 1024, 10000);
+    TsFileGeneratorForTest.generateFile(1000, 16 * 1024 * 1024, 10000);
   }
 
-  @After
-  public void tearDown() {
+  @AfterClass
+  public static void tearDown() {
     File file = new File(PATH);
     if (file.exists()) {
-      file.delete();
+      Assert.assertTrue(file.delete());
     }
 
     TsFileGeneratorForTest.after();
