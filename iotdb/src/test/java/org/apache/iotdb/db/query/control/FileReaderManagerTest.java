@@ -65,9 +65,10 @@ public class FileReaderManagerTest {
         OpenedFilePathsManager.getInstance().setJobIdForCurrentRequestThread(1L);
 
         for (int i = 1; i <= 6; i++) {
-          OpenedFilePathsManager.getInstance().addFilePathToMap(1L, filePath + i);
-          manager.get(filePath + i, true);
-          Assert.assertTrue(manager.contains(filePath + i));
+          OpenedFilePathsManager.getInstance().addFilePathToMap(1L, filePath + i,
+              false);
+          manager.get(filePath + i, false);
+          Assert.assertTrue(manager.contains(filePath + i, false));
         }
 
       } catch (IOException e) {
@@ -82,9 +83,10 @@ public class FileReaderManagerTest {
         OpenedFilePathsManager.getInstance().setJobIdForCurrentRequestThread(2L);
 
         for (int i = 4; i <= MAX_FILE_SIZE; i++) {
-          OpenedFilePathsManager.getInstance().addFilePathToMap(2L, filePath + i);
-          manager.get(filePath + i, true);
-          Assert.assertTrue(manager.contains(filePath + i));
+          OpenedFilePathsManager.getInstance().addFilePathToMap(2L, filePath + i,
+              false);
+          manager.get(filePath + i, false);
+          Assert.assertTrue(manager.contains(filePath + i, false));
         }
 
       } catch (IOException e) {
@@ -98,11 +100,11 @@ public class FileReaderManagerTest {
     t2.join();
 
     for (int i = 1; i <= MAX_FILE_SIZE; i++) {
-      Assert.assertTrue(manager.contains(filePath + i));
+      Assert.assertTrue(manager.contains(filePath + i, false));
     }
 
     for (int i = 1; i <= MAX_FILE_SIZE; i++) {
-      manager.decreaseFileReaderReference(filePath + i);
+      manager.decreaseFileReaderReference(filePath + i, true);
     }
 
     // the code below is not valid because the cacheFileReaderClearPeriod config in this class is not valid

@@ -28,13 +28,16 @@ import java.util.Set;
 import java.util.TreeMap;
 import org.apache.iotdb.tsfile.common.cache.LRUCache;
 import org.apache.iotdb.tsfile.common.constant.QueryConstant;
+import org.apache.iotdb.tsfile.exception.write.NoMeasurementException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadataIndex;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 public class MetadataQuerierByFileImpl implements MetadataQuerier {
 
@@ -176,6 +179,15 @@ public class MetadataQuerierByFileImpl implements MetadataQuerier {
       chunkMetaDataCache.put(entry.getKey(), entry.getValue());
     }
 
+  }
+
+  @Override
+  public TSDataType getDataType(String measurement) throws NoMeasurementException  {
+    MeasurementSchema measurementSchema = fileMetaData.getMeasurementSchema().get(measurement);
+    if(measurementSchema != null) {
+      return measurementSchema.getType();
+    }
+    throw new NoMeasurementException(String.format("%s not found.", measurement));
   }
 
   private List<ChunkMetaData> loadChunkMetadata(Path path) throws IOException {

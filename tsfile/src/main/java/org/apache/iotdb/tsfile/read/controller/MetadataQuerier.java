@@ -20,8 +20,10 @@ package org.apache.iotdb.tsfile.read.controller;
 
 import java.io.IOException;
 import java.util.List;
+import org.apache.iotdb.tsfile.exception.write.NoMeasurementException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 
 public interface MetadataQuerier {
@@ -38,4 +40,11 @@ public interface MetadataQuerier {
    */
   void loadChunkMetaDatas(List<Path> paths) throws IOException;
 
+  /**
+   *
+   * @param measurement
+   * @return the corresponding data type.
+   * @throws NoMeasurementException if the measurement not exists.
+   */
+  TSDataType getDataType(String measurement) throws NoMeasurementException;
 }

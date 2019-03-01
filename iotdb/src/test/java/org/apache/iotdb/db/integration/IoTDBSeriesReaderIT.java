@@ -19,11 +19,13 @@
 package org.apache.iotdb.db.integration;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.fail;
 
 import java.io.IOException;
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
@@ -342,5 +344,14 @@ public class IoTDBSeriesReaderIT {
     assertEquals(22800, cnt);
 
     QueryTokenManager.getInstance().endQueryForCurrentRequestThread();
+  }
+
+  @Test
+  public void queryEmptySeriesTest() throws SQLException {
+    Statement statement = connection.createStatement();
+    statement.execute("CREATE TIMESERIES root.vehicle.d_empty.s1 WITH DATATYPE=INT64, ENCODING=RLE");
+    ResultSet resultSet = statement.executeQuery("select * from root.vehicle.d_empty");
+    assertFalse (resultSet.next());
+    resultSet.close();
   }
 }

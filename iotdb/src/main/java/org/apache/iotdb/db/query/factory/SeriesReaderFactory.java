@@ -81,7 +81,7 @@ public class SeriesReaderFactory {
 
       // store only one opened file stream into manager, to avoid too many opened files
       TsFileSequenceReader unClosedTsFileReader = FileReaderManager.getInstance()
-          .get(overflowInsertFile.getFilePath(), true);
+          .get(overflowInsertFile.getFilePath(), false);
 
       ChunkLoaderImpl chunkLoader = new ChunkLoaderImpl(unClosedTsFileReader);
 
@@ -142,7 +142,7 @@ public class SeriesReaderFactory {
 
       // store only one opened file stream into manager, to avoid too many opened files
       TsFileSequenceReader unClosedTsFileReader = FileReaderManager.getInstance()
-          .get(overflowInsertFile.getFilePath(), true);
+          .get(overflowInsertFile.getFilePath(), false);
 
       ChunkLoaderImpl chunkLoader = new ChunkLoaderImpl(unClosedTsFileReader);
 
@@ -204,7 +204,7 @@ public class SeriesReaderFactory {
       QueryContext context)
       throws IOException {
     TsFileSequenceReader tsFileSequenceReader = FileReaderManager.getInstance()
-        .get(fileNode.getFilePath(), false);
+        .get(fileNode.getFilePath(), true);
     ChunkLoaderImpl chunkLoader = new ChunkLoaderImpl(tsFileSequenceReader);
     MetadataQuerier metadataQuerier = new MetadataQuerierByFileImpl(tsFileSequenceReader);
     List<ChunkMetaData> metaDataList = metadataQuerier

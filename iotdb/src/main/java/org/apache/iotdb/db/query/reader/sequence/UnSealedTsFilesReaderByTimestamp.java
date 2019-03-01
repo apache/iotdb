@@ -39,7 +39,7 @@ public class UnSealedTsFilesReaderByTimestamp implements EngineReaderByTimeStamp
 
     TsFileSequenceReader unClosedTsFileReader = FileReaderManager.getInstance()
         .get(unsealedTsFile.getFilePath(),
-            true);
+            false);
     ChunkLoader chunkLoader = new ChunkLoaderImpl(unClosedTsFileReader);
     unSealedReader = new SeriesReaderByTimestamp(chunkLoader,
         unsealedTsFile.getChunkMetaDataList());

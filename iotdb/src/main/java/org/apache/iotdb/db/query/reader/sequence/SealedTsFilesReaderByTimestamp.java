@@ -118,7 +118,7 @@ public class SealedTsFilesReaderByTimestamp implements EngineReaderByTimeStamp {
 
     // to avoid too many opened files
     TsFileSequenceReader tsFileReader = FileReaderManager.getInstance()
-        .get(fileNode.getFilePath(), false);
+        .get(fileNode.getFilePath(), true);
 
     MetadataQuerierByFileImpl metadataQuerier = new MetadataQuerierByFileImpl(tsFileReader);
     List<ChunkMetaData> metaDataList = metadataQuerier.getChunkMetaDataList(seriesPath);
