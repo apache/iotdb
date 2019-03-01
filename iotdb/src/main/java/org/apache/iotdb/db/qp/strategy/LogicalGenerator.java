@@ -375,26 +375,18 @@ public class LogicalGenerator {
     String encodingType = paramNode.getChild(1).getChild(0).getText();
     String compressor;
     int offset = 2;
-    if (paramNode.getChildren().size() > offset) {
-      compressor = paramNode.getChild(2).getChild(0).getText();
+    if (paramNode.getChildren().size() > offset
+        && paramNode.getChild(offset).getToken().getText().equals("TOK_COMPRESSOR")) {
+      compressor = paramNode.getChild(offset).getChild(0).getText();
       offset++;
     } else {
       compressor = TSFileConfig.compressor;
     }
     checkMetadataArgs(dataType, encodingType);
-    String[] paramStrings = new String[paramNode.getChildCount() - offset];
-    Map<String, String> props = new HashMap<>(paramStrings.length + 1, 1);
-    String[] kv;
-    for (String param : paramStrings) {
-      kv = param.split("=");
-      if (kv.length != 2) {
-        throw new MetadataArgsErrorException("wrong property: " + param);
-      }
-      props.put(kv[0], kv[1]);
-    }
-    for (int i = 0; i < paramStrings.length; i++) {
-      AstNode node = paramNode.getChild(i + offset);
-      paramStrings[i] = node.getChild(0) + SQLConstant.METADATA_PARAM_EQUAL + node.getChild(1);
+    Map<String, String> props = new HashMap<>(paramNode.getChildCount() - offset + 1, 1);
+    while (offset < paramNode.getChildCount()) {
+      AstNode node = paramNode.getChild(offset++);
+      props.put(node.getChild(0).getText(), node.getChild(1).getText());
     }
     MetadataOperator metadataOperator = new MetadataOperator(SQLConstant.TOK_METADATA_CREATE,
         MetadataOperator.NamespaceType.ADD_PATH);

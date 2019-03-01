@@ -103,7 +103,7 @@ public class MTree implements Serializable {
       i++;
     }
     MNode leaf = new MNode(nodeNames[nodeNames.length - 1], cur, dataType, encoding, compressor);
-    if (!props.isEmpty()) {
+    if ( props != null && !props.isEmpty()) {
       leaf.getSchema().setProps(props);
     }
     levelPath = cur.getDataFileName();
@@ -948,7 +948,7 @@ public class MTree implements Serializable {
       builder
           .append(String.format("%s args: %s,\n", getTabs(tab + 1), node.getSchema().getProps()));
       builder.append(
-          String.format("%s StorageGroup: %s \n", getTabs(tab + 1), node.getDataFileName()));
+          String.format("%s StorageGroup: %s\n", getTabs(tab + 1), node.getDataFileName()));
       builder.append(getTabs(tab));
       builder.append("}");
     }

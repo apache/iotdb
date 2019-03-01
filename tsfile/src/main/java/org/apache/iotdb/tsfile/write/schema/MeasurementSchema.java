@@ -56,7 +56,7 @@ public class MeasurementSchema implements Comparable<MeasurementSchema>, Seriali
   //TODO serializable interface may serialize this field. So it is time to
   // improve how to serialize MGraph in MManager.
   private TSEncodingBuilder encodingConverter;
-  private ICompressor compressor;
+  private CompressionType compressor;
   private Map<String, String> props = new HashMap<>();
 
   public MeasurementSchema() {
@@ -88,7 +88,7 @@ public class MeasurementSchema implements Comparable<MeasurementSchema>, Seriali
     this.measurementId = measurementId;
     this.encoding = encoding;
     this.props = props == null ? Collections.emptyMap() : props;
-    this.compressor = ICompressor.getCompressor(compressionType);
+    this.compressor = compressionType;
   }
 
   /**
@@ -103,8 +103,7 @@ public class MeasurementSchema implements Comparable<MeasurementSchema>, Seriali
 
     measurementSchema.encoding = ReadWriteIOUtils.readEncoding(inputStream);
 
-    CompressionType compressionType = ReadWriteIOUtils.readCompressionType(inputStream);
-    measurementSchema.compressor = ICompressor.getCompressor(compressionType);
+    measurementSchema.compressor = ReadWriteIOUtils.readCompressionType(inputStream);
 
     int size = ReadWriteIOUtils.readInt(inputStream);
     if (size > 0) {
@@ -133,8 +132,7 @@ public class MeasurementSchema implements Comparable<MeasurementSchema>, Seriali
 
     measurementSchema.encoding = ReadWriteIOUtils.readEncoding(buffer);
 
-    CompressionType compressionType = ReadWriteIOUtils.readCompressionType(buffer);
-    measurementSchema.compressor = ICompressor.getCompressor(compressionType);
+    measurementSchema.compressor = ReadWriteIOUtils.readCompressionType(buffer);
 
     int size = ReadWriteIOUtils.readInt(buffer);
     if (size > 0) {
@@ -226,7 +224,7 @@ public class MeasurementSchema implements Comparable<MeasurementSchema>, Seriali
     return encodingConverter.getEncoder(type);
   }
 
-  public ICompressor getCompressor() {
+  public CompressionType getCompressor() {
     return compressor;
   }
 
@@ -242,7 +240,7 @@ public class MeasurementSchema implements Comparable<MeasurementSchema>, Seriali
 
     byteLen += ReadWriteIOUtils.write(encoding, outputStream);
 
-    byteLen += ReadWriteIOUtils.write(compressor.getType(), outputStream);
+    byteLen += ReadWriteIOUtils.write(compressor, outputStream);
 
     if (props == null) {
       byteLen += ReadWriteIOUtils.write(0, outputStream);
@@ -269,7 +267,7 @@ public class MeasurementSchema implements Comparable<MeasurementSchema>, Seriali
 
     byteLen += ReadWriteIOUtils.write(encoding, buffer);
 
-    byteLen += ReadWriteIOUtils.write(compressor.getType(), buffer);
+    byteLen += ReadWriteIOUtils.write(compressor, buffer);
 
     if (props == null) {
       byteLen += ReadWriteIOUtils.write(0, buffer);
@@ -321,7 +319,7 @@ public class MeasurementSchema implements Comparable<MeasurementSchema>, Seriali
     StringContainer sc = new StringContainer("");
     sc.addTail("[", measurementId, ",", type.toString(), ",", encoding.toString(), ",",
         props.toString(), ",",
-        compressor.getType().toString());
+        compressor.toString());
     sc.addTail("]");
     return sc.toString();
   }
