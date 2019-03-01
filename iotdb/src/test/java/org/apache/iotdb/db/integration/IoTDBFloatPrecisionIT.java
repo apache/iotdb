@@ -26,6 +26,8 @@ import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -140,15 +142,12 @@ public class IoTDBFloatPrecisionIT {
       cnt = 0;
       while (resultSet.next()) {
         assertEquals(TIMESTAMP+"", resultSet.getString(TIMESTAMP_STR));
-        Assert.assertEquals(Float.parseFloat(VALUE.substring(0, 1)), resultSet.getFloat(String.format("root.vehicle.%s.%s", "f0", "s0rle")), DELTA_FLOAT);
-        Assert.assertEquals(Float.parseFloat(VALUE.substring(0, 1)), resultSet.getFloat(String.format("root.vehicle.%s.%s", "f0", "s02f")), DELTA_FLOAT);
-        Assert.assertEquals(Double.parseDouble(VALUE.substring(0, 1)), resultSet.getDouble(String.format("root.vehicle.%s.%s", "d0", "s0rle")), DELTA_DOUBLE);
-        Assert.assertEquals(Double.parseDouble(VALUE.substring(0, 1)), resultSet.getDouble(String.format("root.vehicle.%s.%s", "d0", "s02f")), DELTA_DOUBLE);
-        for(int i = 1; i < 10; i++){
-          Assert.assertEquals(Float.parseFloat(VALUE.substring(0, 2+i)), resultSet.getFloat(String.format("root.vehicle.%s.%s", "f0", "s"+i+"rle")), DELTA_FLOAT);
-          Assert.assertEquals(Float.parseFloat(VALUE.substring(0, 2+i)), resultSet.getFloat(String.format("root.vehicle.%s.%s", "f0", "s"+i+"2f")), DELTA_FLOAT);
-          Assert.assertEquals(Double.parseDouble(VALUE.substring(0, 2+i)), resultSet.getDouble(String.format("root.vehicle.%s.%s", "d0", "s"+i+"rle")), DELTA_DOUBLE);
-          Assert.assertEquals(Double.parseDouble(VALUE.substring(0, 2+i)), resultSet.getDouble(String.format("root.vehicle.%s.%s", "d0", "s"+i+"2f")), DELTA_DOUBLE);
+        for(int i = 0; i < 10; i++){
+          BigDecimal b = new BigDecimal(VALUE);
+          Assert.assertEquals(b.setScale(i, RoundingMode.HALF_UP).floatValue(), resultSet.getFloat(String.format("root.vehicle.%s.%s", "f0", "s"+i+"rle")), DELTA_FLOAT);
+          Assert.assertEquals(b.setScale(i, RoundingMode.HALF_UP).floatValue(), resultSet.getFloat(String.format("root.vehicle.%s.%s", "f0", "s"+i+"2f")), DELTA_FLOAT);
+          Assert.assertEquals(b.setScale(i, RoundingMode.HALF_UP).doubleValue(), resultSet.getDouble(String.format("root.vehicle.%s.%s", "d0", "s"+i+"rle")), DELTA_DOUBLE);
+          Assert.assertEquals(b.setScale(i, RoundingMode.HALF_UP).doubleValue(), resultSet.getDouble(String.format("root.vehicle.%s.%s", "d0", "s"+i+"2f")), DELTA_DOUBLE);
         }
         cnt++;
       }
