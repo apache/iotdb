@@ -37,7 +37,6 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 public class Utils {
 
   private static final double maxError = 0.0001d;
-  
 
   public static void isListEqual(List<?> listA, List<?> listB, String name) {
     if ((listA == null) ^ (listB == null)) {
