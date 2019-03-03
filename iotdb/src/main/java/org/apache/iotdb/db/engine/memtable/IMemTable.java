@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.engine.memtable;
 
 import java.util.Map;
+import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 /**
@@ -37,7 +38,8 @@ public interface IMemTable {
 
   int size();
 
-  TimeValuePairSorter query(String deviceId, String measurement, TSDataType dataType);
+  ReadOnlyMemChunk query(String deviceId, String measurement, TSDataType dataType,
+      Map<String, String> props);
 
   /**
    * release all the memory resources.

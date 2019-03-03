@@ -21,9 +21,16 @@ package org.apache.iotdb.db.engine.querycontext;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import org.apache.iotdb.db.engine.memtable.MemSeriesLazyMerger;
 import org.apache.iotdb.db.engine.memtable.TimeValuePairSorter;
+import org.apache.iotdb.db.utils.MathUtils;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.db.utils.TsPrimitiveType;
+import org.apache.iotdb.db.utils.TsPrimitiveType.TsDouble;
+import org.apache.iotdb.db.utils.TsPrimitiveType.TsFloat;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 //TODO: merge ReadOnlyMemChunk and WritableMemChunk and IWritableMemChunk
@@ -35,13 +42,27 @@ public class ReadOnlyMemChunk implements TimeValuePairSorter {
   private TimeValuePairSorter memSeries;
   private List<TimeValuePair> sortedTimeValuePairList;
 
+  Map<String, String> props;
+  private int floatPrecision = TSFileConfig.floatPrecision;
+
   /**
    * init by TSDataType and TimeValuePairSorter.
    */
-  public ReadOnlyMemChunk(TSDataType dataType, TimeValuePairSorter memSeries) {
+//  public ReadOnlyMemChunk(TSDataType dataType, TimeValuePairSorter memSeries) {
+//    this(dataType, memSeries, Collections.emptyMap());
+//  }
+
+  /**
+   * init by TSDataType and TimeValuePairSorter.
+   */
+  public ReadOnlyMemChunk(TSDataType dataType, TimeValuePairSorter memSeries, Map<String, String> props) {
     this.dataType = dataType;
     this.memSeries = memSeries;
     this.initialized = false;
+    this.props = props;
+    if (props.containsKey(Encoder.MAX_POINT_NUMBER)) {
+      this.floatPrecision = Integer.valueOf(props.get(Encoder.MAX_POINT_NUMBER));
+    }
   }
 
   private void checkInitialized() {
@@ -52,6 +73,22 @@ public class ReadOnlyMemChunk implements TimeValuePairSorter {
 
   private void init() {
     sortedTimeValuePairList = memSeries.getSortedTimeValuePairList();
+    if (!(memSeries instanceof MemSeriesLazyMerger)) {
+      switch (dataType) {
+        case FLOAT:
+          sortedTimeValuePairList.replaceAll(x -> new TimeValuePair(x.getTimestamp(),
+              new TsFloat(
+                  MathUtils.roundWithGivenPrecision(x.getValue().getFloat(), floatPrecision))));
+          break;
+        case DOUBLE:
+          sortedTimeValuePairList.replaceAll(x -> new TimeValuePair(x.getTimestamp(),
+              new TsDouble(
+                  MathUtils.roundWithGivenPrecision(x.getValue().getDouble(), floatPrecision))));
+          break;
+        default:
+          break;
+      }
+    }
     initialized = true;
   }
 
