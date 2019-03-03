@@ -62,9 +62,6 @@ public class IoTDBFloatPrecisionIT {
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.closeMemControl();
     initCreateSQLStatement();
-    for(String sql : sqls){
-      System.out.println(sql);
-    }
     daemon = IoTDB.getInstance();
     daemon.active();
     EnvironmentUtils.envSetUp();
