@@ -24,17 +24,15 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 
-import ch.qos.logback.core.util.TimeUtil;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import org.apache.iotdb.db.conf.directories.Directories;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
 import org.apache.iotdb.db.engine.PathUtils;
@@ -153,8 +151,7 @@ public class BufferWriteProcessorTest {
     assertTrue(insertFile.exists());
     assertEquals(insertFileLength, insertFile.length());
     Pair<ReadOnlyMemChunk, List<ChunkMetaData>> pair = bufferWriteProcessor
-        .queryBufferWriteData(deviceId,
-            measurementId, dataType);
+        .queryBufferWriteData(deviceId, measurementId, dataType, Collections.emptyMap());
     assertTrue(pair.left.isEmpty());
     assertEquals(1, pair.right.size());
     ChunkMetaData chunkMetaData = pair.right.get(0);
@@ -185,8 +182,7 @@ public class BufferWriteProcessorTest {
         insertPath, parameters, SysTimeVersionController.INSTANCE,
         FileSchemaUtils.constructFileSchema(deviceId));
     Pair<ReadOnlyMemChunk, List<ChunkMetaData>> pair = bufferWriteProcessor
-        .queryBufferWriteData(deviceId,
-            measurementId, dataType);
+        .queryBufferWriteData(deviceId, measurementId, dataType, Collections.emptyMap());
     assertTrue(pair.left.isEmpty());
     assertEquals(1, pair.right.size());
     ChunkMetaData chunkMetaData = pair.right.get(0);
@@ -231,7 +227,7 @@ public class BufferWriteProcessorTest {
     // query result
     Pair<ReadOnlyMemChunk, List<ChunkMetaData>> pair = bufferwrite
         .queryBufferWriteData(deviceId, measurementId,
-            dataType);
+            dataType, Collections.emptyMap());
     assertTrue(pair.left.isEmpty());
     assertEquals(1, pair.right.size());
     ChunkMetaData chunkMetaData = pair.right.get(0);
@@ -241,7 +237,8 @@ public class BufferWriteProcessorTest {
       bufferwrite.write(deviceId, measurementId, i, dataType, String.valueOf(i));
       assertEquals((i - 86) * 12, bufferwrite.memoryUsage());
     }
-    pair = bufferwrite.queryBufferWriteData(deviceId, measurementId, dataType);
+    pair = bufferwrite
+        .queryBufferWriteData(deviceId, measurementId, dataType, Collections.emptyMap());
     ReadOnlyMemChunk rawSeriesChunk = (ReadOnlyMemChunk) pair.left;
     assertFalse(rawSeriesChunk.isEmpty());
     assertEquals(87, rawSeriesChunk.getMinTimestamp());

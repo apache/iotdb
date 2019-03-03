@@ -751,19 +751,19 @@ public class FileNodeProcessor extends Processor implements IStatistic {
    * query data.
    */
   public <T extends Comparable<T>> QueryDataSource query(String deviceId, String measurementId,
-      QueryContext context)
-      throws FileNodeProcessorException {
+      QueryContext context) throws FileNodeProcessorException {
     // query overflow data
+    MeasurementSchema mSchema;
     TSDataType dataType;
-    try {
-      dataType = mManager.getSeriesType(deviceId + "." + measurementId);
-    } catch (PathErrorException e) {
-      throw new FileNodeProcessorException(e);
-    }
+
+    //mSchema = mManager.getSchemaForOnePath(deviceId + "." + measurementId);
+    mSchema = fileSchema.getMeasurementSchema(measurementId);
+    dataType = mSchema.getType();
+
     OverflowSeriesDataSource overflowSeriesDataSource;
     try {
       overflowSeriesDataSource = overflowProcessor.query(deviceId, measurementId, dataType,
-          context);
+          mSchema.getProps(), context);
     } catch (IOException e) {
       throw new FileNodeProcessorException(e);
     }
@@ -794,7 +794,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
             newFileNodes.get(newFileNodes.size() - 1).getRelativePath(), getProcessorName()));
       }
       bufferwritedata = bufferWriteProcessor
-          .queryBufferWriteData(deviceId, measurementId, dataType);
+          .queryBufferWriteData(deviceId, measurementId, dataType, mSchema.getProps());
 
       try {
         List<Modification> pathModifications = context.getPathModifications(
