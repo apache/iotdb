@@ -138,7 +138,7 @@ public class IoTDBFloatPrecisionIT {
               DELTA_FLOAT);
           Assert.assertEquals(MathUtils.roundWithGivenPrecision(Double.parseDouble(VALUE), i),
               resultSet.getDouble(String.format("root.vehicle.%s.%s", "d0", "s" + i + "rle")),
-              DELTA_FLOAT);
+              DELTA_DOUBLE);
           Assert.assertEquals(MathUtils.roundWithGivenPrecision(Double.parseDouble(VALUE), i),
               resultSet.getDouble(String.format("root.vehicle.%s.%s", "d0", "s" + i + "2f")),
               DELTA_DOUBLE);
