@@ -107,7 +107,7 @@ public class WalChecker {
    */
   public static void main(String[] args) throws SysCheckException {
     if (args.length < 1) {
-      LOGGER.error("No enough args: requires the walRootDirectory");
+      LOGGER.error("No enough args: require the walRootDirectory");
       return;
     }
 
