@@ -57,9 +57,9 @@ public enum PhysicalPlanCodec {
     this.codec = codec;
   }
 
-  public static PhysicalPlanCodec fromOpcode(int opcode) {
+  public static PhysicalPlanCodec fromOpcode(int opcode) throws IOException {
     if (!codecMap.containsKey(opcode)) {
-      throw new UnsupportedOperationException(
+      throw new IOException(
           "SystemLogOperator [" + opcode + "] is not supported. ");
     }
     return codecMap.get(opcode);

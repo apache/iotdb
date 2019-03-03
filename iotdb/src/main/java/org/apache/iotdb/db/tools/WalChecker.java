@@ -22,9 +22,9 @@ package org.apache.iotdb.db.tools;
 import static org.apache.iotdb.db.writelog.node.ExclusiveWriteLogNode.WAL_FILE_NAME;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.db.exception.SysCheckException;
 import org.apache.iotdb.db.writelog.io.RAFLogReader;
@@ -47,7 +47,12 @@ public class WalChecker {
     this.walFolder = walFolder;
   }
 
-  public void doCheck() throws SysCheckException {
+  /**
+   * check the root wal dir and find the damaged files
+   * @return a list of damaged files.
+   * @throws SysCheckException if the root wal dir does not exist.
+   */
+  public List<File> doCheck() throws SysCheckException {
     File walFolderFile = new File(walFolder);
     if(!walFolderFile.exists() || !walFolderFile.isDirectory()) {
       throw new SysCheckException(String.format("%s is not a directory", walFolder));
@@ -56,10 +61,10 @@ public class WalChecker {
     File[] storageWalFolders = walFolderFile.listFiles();
     if (storageWalFolders == null || storageWalFolders.length == 0) {
       LOGGER.info("No sub-directories under the given directory, check ends");
-      return;
+      return Collections.emptyList();
     }
 
-    List<File> failedFile = new ArrayList<>();
+    List<File> failedFiles = new ArrayList<>();
     for (int dirIndex = 0; dirIndex < storageWalFolders.length; dirIndex++) {
       File storageWalFolder = storageWalFolders[dirIndex];
       LOGGER.debug("Checking the No.{} directory {}", dirIndex, storageWalFolder.getName());
@@ -76,7 +81,7 @@ public class WalChecker {
           logReader.next();
         }
       } catch (IOException e) {
-        failedFile.add(walFile);
+        failedFiles.add(walFile);
         LOGGER.error("{} fails the check because", walFile.getAbsoluteFile(), e);
       } finally {
         if( logReader != null) {
@@ -84,11 +89,15 @@ public class WalChecker {
         }
       }
     }
+    return failedFiles;
+  }
 
-    if (failedFile.isEmpty()) {
+  // a temporary method which should be in the integrated self-check module in the future
+  public static void report(List<File> failedFiles) {
+    if (failedFiles.isEmpty()) {
       LOGGER.info("Check finished. There is no damaged file");
     } else {
-      LOGGER.error("There are {} files failed the check. They are {}", failedFile.size(), failedFile);
+      LOGGER.error("There are {} failed files. They are {}", failedFiles.size(), failedFiles);
     }
   }
 
@@ -103,6 +112,7 @@ public class WalChecker {
     }
 
     WalChecker checker = new WalChecker(args[0]);
-    checker.doCheck();
+    List<File> files = checker.doCheck();
+    report(files);
   }
 }
