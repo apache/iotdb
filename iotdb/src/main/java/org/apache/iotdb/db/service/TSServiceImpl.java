@@ -568,7 +568,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       recordANewQuery(statement, plan);
       return resp;
     } catch (Exception e) {
-      LOGGER.error("{}: Internal server error: {}", IoTDBConstant.GLOBAL_DB_NAME, e.getMessage());
+      LOGGER.error("{}: Internal server error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
       return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
     }
   }
@@ -606,7 +606,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       resp.setQueryDataSet(result);
       return resp;
     } catch (Exception e) {
-      LOGGER.error("{}: Internal server error: {}", IoTDBConstant.GLOBAL_DB_NAME, e.getMessage());
+      LOGGER.error("{}: Internal server error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
       return getTSFetchResultsResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
     }
   }
@@ -624,7 +624,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       LOGGER.error("meet error while executing update statement.", e);
       return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
     } catch (Exception e) {
-      LOGGER.error("{}: server Internal Error: {}", IoTDBConstant.GLOBAL_DB_NAME, e.getMessage());
+      LOGGER.error("{}: server Internal Error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
       return getTSExecuteStatementResp(TS_StatusCode.ERROR_STATUS, e.getMessage());
     }
   }

@@ -29,6 +29,8 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -37,11 +39,15 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.MetadataArgsErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.utils.RandomDeleteCache;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.exception.cache.CacheException;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 /**
  * This class takes the responsibility of serialization of all the metadata info and persistent it
@@ -180,18 +186,28 @@ public class MManager {
 
   private void operation(String cmd)
       throws PathErrorException, IOException, MetadataArgsErrorException {
-
+    //see addPathToMTree() to get the detailed format of the cmd
     String[] args = cmd.trim().split(",");
     switch (args[0]) {
       case MetadataOperationType.ADD_PATH_TO_MTREE:
         String[] leftArgs;
-        if (args.length > 4) {
-          leftArgs = new String[args.length - 4];
-          System.arraycopy(args, 4, leftArgs, 0, args.length - 4);
+        Map<String, String> props = null;
+        if (args.length > 5) {
+          String[] kv = new String[2];
+          props = new HashMap<>(args.length - 5 + 1, 1);
+          leftArgs = new String[args.length - 5];
+          for (int k = 5; k < args.length; k++) {
+            kv = args[k].split("=");
+            props.put(kv[0], kv[1]);
+          }
         } else {
+          //when ????
           leftArgs = new String[0];
         }
-        addPathToMTree(args[1], args[2], args[3], leftArgs);
+        addPathToMTree(args[1], TSDataType.deserialize(Short.valueOf(args[2])),
+            TSEncoding.deserialize(Short.valueOf(args[3])),
+            CompressionType.deserialize(Short.valueOf(args[4])),
+            props);
         break;
       case MetadataOperationType.DELETE_PATH_FROM_MTREE:
         deletePathFromMTree(args[1]);
@@ -239,19 +255,23 @@ public class MManager {
    * @param path the timeseries seriesPath
    * @param dataType the datetype {@code DataType} for the timeseries
    * @param encoding the encoding function {@code Encoding} for the timeseries
+   * @param compressor the compressor function {@code Compressor} for the time series
    */
-  public void addPathToMTree(String path, String dataType, String encoding, String[] args)
+  public void addPathToMTree(String path, TSDataType dataType, TSEncoding encoding,
+      CompressionType compressor, Map<String, String> props)
       throws PathErrorException, IOException, MetadataArgsErrorException {
 
     lock.writeLock().lock();
     try {
-      mgraph.addPathToMTree(path, dataType, encoding, args);
+      mgraph.addPathToMTree(path, dataType, encoding, compressor, props);
       if (writeToLog) {
         initLogStream();
-        logWriter.write(
-            MetadataOperationType.ADD_PATH_TO_MTREE + "," + path + "," + dataType + "," + encoding);
-        for (int i = 0; i < args.length; i++) {
-          logWriter.write("," + args[i]);
+        logWriter.write(String.format("%s,%s,%s,%s,%s", MetadataOperationType.ADD_PATH_TO_MTREE,
+            path, dataType.serialize(), encoding.serialize(), compressor.serialize()));
+        if (props != null) {
+          for (Map.Entry entry : props.entrySet()) {
+            logWriter.write(String.format(",%s=%s", entry.getKey(), entry.getValue()));
+          }
         }
         logWriter.newLine();
         logWriter.flush();
@@ -259,6 +279,24 @@ public class MManager {
     } finally {
       lock.writeLock().unlock();
     }
+  }
+
+  /**
+   * <p> Add one timeseries to metadata. Must invoke the<code>pathExist</code> and
+   * <code>getFileNameByPath</code> method first to check timeseries. </p>
+   *
+   * this is just for compatibility
+   *
+   * @param path the timeseries seriesPath
+   * @param dataType the datetype {@code DataType} for the timeseries
+   * @param encoding the encoding function {@code Encoding} for the timeseries
+   */
+  public void addPathToMTree(String path, String dataType, String encoding)
+      throws PathErrorException, IOException, MetadataArgsErrorException {
+    TSDataType tsDataType = TSDataType.valueOf(dataType);
+    TSEncoding tsEncoding = TSEncoding.valueOf(encoding);
+    CompressionType type = CompressionType.valueOf(TSFileConfig.compressor);
+    addPathToMTree(path, tsDataType, tsEncoding, type, Collections.emptyMap());
   }
 
   /**
@@ -409,7 +447,7 @@ public class MManager {
 
     lock.readLock().lock();
     try {
-      return getSchemaForOnePath(fullPath).dataType;
+      return getSchemaForOnePath(fullPath).getType();
     } finally {
       lock.readLock().unlock();
     }
@@ -422,7 +460,7 @@ public class MManager {
 
     lock.readLock().lock();
     try {
-      return getSchemaForOnePath(node, fullPath).dataType;
+      return getSchemaForOnePath(node, fullPath).getType();
     } finally {
       lock.readLock().unlock();
     }
@@ -435,7 +473,7 @@ public class MManager {
 
     lock.readLock().lock();
     try {
-      return getSchemaForOnePathWithCheck(node, fullPath).dataType;
+      return getSchemaForOnePathWithCheck(node, fullPath).getType();
     } finally {
       lock.readLock().unlock();
     }
@@ -448,7 +486,7 @@ public class MManager {
 
     lock.readLock().lock();
     try {
-      return getSchemaForOnePathWithCheck(fullPath).dataType;
+      return getSchemaForOnePathWithCheck(fullPath).getType();
     } finally {
       lock.readLock().unlock();
     }
@@ -461,7 +499,7 @@ public class MManager {
    */
   // future feature
   @SuppressWarnings("unused")
-  public Map<String, List<ColumnSchema>> getSchemaForAllType() throws PathErrorException {
+  public Map<String, List<MeasurementSchema>> getSchemaForAllType() throws PathErrorException {
 
     lock.readLock().lock();
     try {
@@ -502,14 +540,13 @@ public class MManager {
   }
 
   /**
-   * @deprecated Get all ColumnSchemas for given delta object type.
+   * @deprecated Get all MeasurementSchemas for given delta object type.
    *
    * @param path A seriesPath represented one Delta object
    * @return a list contains all column schema
    */
   @Deprecated
-  public List<ColumnSchema> getSchemaForOneType(String path) throws PathErrorException {
-
+  public List<MeasurementSchema> getSchemaForOneType(String path) throws PathErrorException {
     lock.readLock().lock();
     try {
       return mgraph.getSchemaForOneType(path);
@@ -519,10 +556,9 @@ public class MManager {
   }
 
   /**
-   * Get all ColumnSchemas for the filenode seriesPath.
+   * Get all MeasurementSchemas for the filenode seriesPath.
    */
-  public List<ColumnSchema> getSchemaForFileName(String path) {
-
+  public List<MeasurementSchema> getSchemaForFileName(String path) {
     lock.readLock().lock();
     try {
       return mgraph.getSchemaForOneFileNode(path);
@@ -534,7 +570,7 @@ public class MManager {
   /**
    * function for getting schema map for one file node.
    */
-  public Map<String, ColumnSchema> getSchemaMapForOneFileNode(String path) {
+  public Map<String, MeasurementSchema> getSchemaMapForOneFileNode(String path) {
 
     lock.readLock().lock();
     try {
@@ -755,10 +791,10 @@ public class MManager {
   }
 
   /**
-   * Get ColumnSchema for given seriesPath. Notice: Path must be a complete Path from root to leaf
+   * Get MeasurementSchema for given seriesPath. Notice: Path must be a complete Path from root to leaf
    * node.
    */
-  public ColumnSchema getSchemaForOnePath(String path) throws PathErrorException {
+  public MeasurementSchema getSchemaForOnePath(String path) throws PathErrorException {
 
     lock.readLock().lock();
     try {
@@ -771,7 +807,7 @@ public class MManager {
   /**
    * function for getting schema for one path.
    */
-  public ColumnSchema getSchemaForOnePath(MNode node, String path) throws PathErrorException {
+  public MeasurementSchema getSchemaForOnePath(MNode node, String path) throws PathErrorException {
 
     lock.readLock().lock();
     try {
@@ -784,7 +820,7 @@ public class MManager {
   /**
    * function for getting schema for one path with check.
    */
-  public ColumnSchema getSchemaForOnePathWithCheck(MNode node, String path)
+  public MeasurementSchema getSchemaForOnePathWithCheck(MNode node, String path)
       throws PathErrorException {
 
     lock.readLock().lock();
@@ -798,7 +834,7 @@ public class MManager {
   /**
    * function for getting schema for one path with check.
    */
-  public ColumnSchema getSchemaForOnePathWithCheck(String path) throws PathErrorException {
+  public MeasurementSchema getSchemaForOnePathWithCheck(String path) throws PathErrorException {
 
     lock.readLock().lock();
     try {

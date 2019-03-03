@@ -50,7 +50,7 @@ public class UnSealedTsFileReader implements IReader {
 
     TsFileSequenceReader unClosedTsFileReader = FileReaderManager.getInstance()
         .get(unsealedTsFile.getFilePath(),
-            true);
+            false);
     ChunkLoader chunkLoader = new ChunkLoaderImpl(unClosedTsFileReader);
 
     if (filter == null) {

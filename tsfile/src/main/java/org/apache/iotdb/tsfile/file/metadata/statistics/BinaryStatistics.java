@@ -21,6 +21,7 @@ package org.apache.iotdb.tsfile.file.metadata.statistics;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -204,5 +205,14 @@ public class BinaryStatistics extends Statistics<Binary> {
     this.last = new Binary(
         ReadWriteIOUtils.readByteBufferWithSelfDescriptionLength(byteBuffer).array());
     this.sum = ReadWriteIOUtils.readDouble(byteBuffer);
+  }
+
+  @Override
+  protected void fill(FileChannel channel, long offset) throws IOException {
+    int size = getSerializedSize();
+    ByteBuffer buffer = ByteBuffer.allocate(size);
+    ReadWriteIOUtils.readAsPossible(channel, offset, buffer);
+    buffer.flip();
+    fill(buffer);
   }
 }

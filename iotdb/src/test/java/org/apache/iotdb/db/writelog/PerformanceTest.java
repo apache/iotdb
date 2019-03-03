@@ -141,17 +141,15 @@ public class PerformanceTest {
     }
     MManager.getInstance().addPathToMTree("root.logTestDevice.s1",
         TSDataType.DOUBLE.name(),
-        TSEncoding.PLAIN.name(), new String[]{});
+        TSEncoding.PLAIN.name());
     MManager.getInstance()
         .addPathToMTree("root.logTestDevice.s2", TSDataType.INT32.name(),
-            TSEncoding.PLAIN.name(),
-            new String[]{});
+            TSEncoding.PLAIN.name());
     MManager.getInstance()
         .addPathToMTree("root.logTestDevice.s3", TSDataType.TEXT.name(),
-            TSEncoding.PLAIN.name(),
-            new String[]{});
+            TSEncoding.PLAIN.name());
     MManager.getInstance().addPathToMTree("root.logTestDevice.s4", TSDataType.BOOLEAN.name(),
-        TSEncoding.PLAIN.name(), new String[]{});
+        TSEncoding.PLAIN.name());
     WriteLogNode logNode = new ExclusiveWriteLogNode("root.logTestDevice",
         tempRestore.getPath(),
         tempProcessorStore.getPath());

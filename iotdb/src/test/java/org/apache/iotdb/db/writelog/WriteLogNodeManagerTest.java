@@ -109,13 +109,13 @@ public class WriteLogNodeManagerTest {
       try {
         MManager.getInstance().setStorageLevelToMTree(deviceName);
         MManager.getInstance().addPathToMTree(deviceName + ".s1", TSDataType.DOUBLE.name(),
-            TSEncoding.PLAIN.name(), new String[]{});
+            TSEncoding.PLAIN.name());
         MManager.getInstance().addPathToMTree(deviceName + ".s2", TSDataType.INT32.name(),
-            TSEncoding.PLAIN.name(), new String[]{});
+            TSEncoding.PLAIN.name());
         MManager.getInstance().addPathToMTree(deviceName + ".s3", TSDataType.TEXT.name(),
-            TSEncoding.PLAIN.name(), new String[]{});
+            TSEncoding.PLAIN.name());
         MManager.getInstance().addPathToMTree(deviceName + ".s4", TSDataType.BOOLEAN.name(),
-            TSEncoding.PLAIN.name(), new String[]{});
+            TSEncoding.PLAIN.name());
       } catch (PathErrorException ignored) {
       }
       WriteLogNode logNode = manager

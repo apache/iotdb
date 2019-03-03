@@ -57,7 +57,6 @@ public class IoTDBSequenceDataQueryIT {
   private static int maxNumberOfPointsInPage;
   private static int pageSizeInByte;
   private static int groupSizeInByte;
-  private static Connection connection;
 
   // count : d0s0 >= 14
   private static int count = 0;
@@ -84,14 +83,10 @@ public class IoTDBSequenceDataQueryIT {
 
     Thread.sleep(5000);
     insertData();
-    connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
   }
 
   @AfterClass
   public static void tearDown() throws Exception {
-    connection.close();
-
     daemon.stop();
     // recovery value
     tsFileConfig.maxNumberOfPointsInPage = maxNumberOfPointsInPage;
