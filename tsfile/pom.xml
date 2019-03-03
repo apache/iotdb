@@ -113,19 +113,7 @@
                     </execution>
                 </executions>
             </plugin>
-            <plugin>
-                <groupId>org.apache.rat</groupId>
-                <artifactId>apache-rat-plugin</artifactId>
-                <configuration>
-                    <excludes>
-                        <exclude>src/test/resources/*.json</exclude>
-                        <!-- if `mvn clean` is not executed and `mvn test` is interrupted, then perTestInputData may be not deleted -->
-                        <exclude>src/test/resources/perTestInputData</exclude>
-                        <!-- Runtime log -->
-                        <exclude>**/*.log</exclude>
-                    </excludes>
-                </configuration>
-            </plugin>
+
         </plugins>
     </build>
     <profiles>
