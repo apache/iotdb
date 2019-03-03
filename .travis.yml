@@ -122,6 +122,7 @@ script:
   # We only test jdbc to ensure maven commands work correctly on travis-ci.
   #- mvn clean test -pl jdbc -am -Dtsfile.test.skip=true
   - java -version
+  - mvn apache-rat:check
   - mvn clean integration-test
 
 after_success:

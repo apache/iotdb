@@ -204,6 +204,11 @@
                             <!--IoTDB data files-->
                             <exclude>iotdb/data/**</exclude>
                             <exclude>iotdb/logs/**</exclude>
+                            <exclude>src/test/resources/*.json</exclude>
+                            <!-- for tsfile module -->
+                            <!-- if `mvn clean` is not executed and `mvn test` is interrupted, then perTestInputData may be not deleted -->
+                            <exclude>src/test/resources/perTestInputData</exclude>
+                            <exclude>src/test/resources/*.json</exclude>
                         </excludes>
                     </configuration>
                 </plugin>
