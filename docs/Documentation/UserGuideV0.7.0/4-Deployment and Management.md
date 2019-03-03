@@ -26,6 +26,7 @@
         - [Prerequisites](#prerequisites)
         - [Installation from  binary files](#installation-from--binary-files)
         - [Installation from source code](#installation-from-source-code)
+        - [Installation from Docker (dockerfile)](#installation-by-docker-dockerfile)
     - [Configuration](#configuration)
         - [IoTDB Environment Configuration File](#iotdb-environment-configuration-file)
         - [IoTDB System Configuration File](#iotdb-system-configuration-file)
@@ -142,6 +143,11 @@ iotdb/     <-- root path
 |
 +- LICENSE    <-- LICENSE
 ```
+
+### Installation by Docker (Dockerfile)
+
+You can build and run a IoTDB docker image by following the guide of [Deployment by Docker](#build-and-use-iotdb-by-dockerfile)
+
 
 ## Configuration
 
@@ -904,3 +910,76 @@ tsfile_dir = D:\\data4, E:\\data5, F:\\data6
 ```
 
 You need to move files in E:\iotdb\data\data1 to D:\data4, move files in %IOTDB_HOME%\data\data2 to E:\data5, move files in F:\data3 to F:\data6. In this way, the system will operation normally.
+
+
+
+
+## Build and use IoTDB by Dockerfile
+Now a Dockerfile has been written at ROOT/docker/Dockerfile on the branch enable_docker_image.
+
+1. You can build a docker image by: 
+```
+$ docker build -t iotdb:base git://github.com/apache/incubator-iotdb#master:docker
+```
+Or:
+```
+$ git clone https://github.com/apache/incubator-iotdb
+$ cd incubator-iotdb
+$ cd docker
+$ docker build -t iotdb:base .
+```
+Once the docker image has been built locally (the tag is iotdb:base in this example), you are almost done!
+
+2. create docker volume for data files and logs:
+```
+$ docker volume create mydata
+$ docker volume create mylogs
+```
+3. run a docker container:
+```shell
+$ docker run -p 6667:6667 -v mydata:/iotdb/data -v mylogs:/iotdb/logs -d iotdb:base /iotdb/bin/start-server.sh
+```
+If success, you can run `docker ps`, and get something like the following:
+```
+CONTAINER ID        IMAGE               COMMAND                  CREATED             STATUS              PORTS                               NAMES
+2a68b6944cb5        iotdb:base          "/iotdb/bin/start-se…"   4 minutes ago       Up 5 minutes        0.0.0.0:6667->6667/tcp              laughing_meitner
+```
+You can use the above command to get the container ID: 
+```
+$ docker container ls
+```
+suppose the ID is <C_ID>.
+
+And get the docker IP by:
+```
+$ docker inspect --format='{{.NetworkSettings.IPAddress}}' <C_ID>
+```
+suppose the IP is <C_IP>.
+
+4. If you just want to have a try by using iotdb-cli, you can:
+```
+$ docker exec -it /bin/bash  <C_ID>
+$ (now you have enter the container): /cli/bin/start-client.sh -h localhost -p 6667 -u root -pw root
+```
+
+Or,  run a new docker container as the client:
+```
+$ docker run -it iotdb:base /cli/bin/start-client.sh -h <C_IP> -p 6667 -u root -pw root
+```
+Or,  if you have a iotdb-cli locally (e.g., you have compiled the source code by `mvn package`), and suppose your work_dir is cli/bin, then you can just run:
+```
+$ start-client.sh -h localhost -p 6667 -u root -pw root
+```
+5. If you want to write codes to insert data and query data, please add the following dependence:
+```xml
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>iotdb-jdbc</artifactId>
+            <version>0.8.0-SNAPSHOT</version>
+        </dependency>
+```
+Some example about how to use IoTDB with IoTDB-JDBC can be found at: https://github.com/apache/incubator-iotdb/tree/master/jdbc/src/test/java/org/apache/iotdb/jdbc/demo
+
+(Notice that because we have not published Apache IoTDB version 0.8.0 now, you have to compile the source code by `mvn install -DskipTests` to install the dependence into your local maven repository)
+
+6. Now enjoy it!
