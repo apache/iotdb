@@ -24,6 +24,7 @@ import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -40,18 +41,17 @@ import org.apache.iotdb.db.engine.bufferwrite.FileNodeConstants;
 import org.apache.iotdb.db.engine.filenode.FileNodeManager;
 import org.apache.iotdb.db.engine.memcontrol.BasicMemController;
 import org.apache.iotdb.db.engine.memtable.MemSeriesLazyMerger;
-import org.apache.iotdb.db.engine.memtable.TimeValuePairSorter;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.pool.FlushManager;
 import org.apache.iotdb.db.engine.querycontext.MergeSeriesDataSource;
 import org.apache.iotdb.db.engine.querycontext.OverflowInsertFile;
 import org.apache.iotdb.db.engine.querycontext.OverflowSeriesDataSource;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
+import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.OverflowProcessorException;
 import org.apache.iotdb.db.qp.constant.DatetimeUtils;
-import org.apache.iotdb.db.utils.ImmediateFuture;
-import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.utils.ImmediateFuture;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
@@ -255,14 +255,14 @@ public class OverflowProcessor extends Processor {
    * @return OverflowSeriesDataSource
    */
   public OverflowSeriesDataSource query(String deviceId, String measurementId,
-      TSDataType dataType, QueryContext context)
+      TSDataType dataType, Map<String, String> props, QueryContext context)
       throws IOException {
     queryFlushLock.lock();
     try {
       // query insert data in memory and unseqTsFiles
       // memory
-      TimeValuePairSorter insertInMem = queryOverflowInsertInMemory(deviceId, measurementId,
-          dataType);
+      ReadOnlyMemChunk insertInMem = queryOverflowInsertInMemory(deviceId, measurementId,
+          dataType, props);
       List<OverflowInsertFile> overflowInsertFileList = new ArrayList<>();
       // work file
       Pair<String, List<ChunkMetaData>> insertInDiskWork = queryWorkDataInOverflowInsert(deviceId,
@@ -295,8 +295,8 @@ public class OverflowProcessor extends Processor {
    *
    * @return insert data in SeriesChunkInMemTable
    */
-  private TimeValuePairSorter queryOverflowInsertInMemory(String deviceId, String measurementId,
-      TSDataType dataType) {
+  private ReadOnlyMemChunk queryOverflowInsertInMemory(String deviceId, String measurementId,
+      TSDataType dataType, Map<String, String> props) {
 
     MemSeriesLazyMerger memSeriesLazyMerger = new MemSeriesLazyMerger();
     queryFlushLock.lock();
@@ -304,12 +304,14 @@ public class OverflowProcessor extends Processor {
       if (flushSupport != null && isFlush()) {
         memSeriesLazyMerger
             .addMemSeries(
-                flushSupport.queryOverflowInsertInMemory(deviceId, measurementId, dataType));
+                flushSupport.queryOverflowInsertInMemory(deviceId, measurementId, dataType, props));
       }
       memSeriesLazyMerger
           .addMemSeries(workSupport.queryOverflowInsertInMemory(deviceId, measurementId,
-              dataType));
-      return new ReadOnlyMemChunk(dataType, memSeriesLazyMerger);
+              dataType, props));
+      // memSeriesLazyMerger has handled the props,
+      // so we do not need to handle it again in the following readOnlyMemChunk
+      return new ReadOnlyMemChunk(dataType, memSeriesLazyMerger, Collections.emptyMap());
     } finally {
       queryFlushLock.unlock();
     }

@@ -25,13 +25,12 @@ import static org.junit.Assert.assertFalse;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import org.apache.iotdb.db.conf.directories.Directories;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
@@ -52,6 +51,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class BufferWriteProcessorNewTest {
+
   private static final Logger LOGGER = LoggerFactory.getLogger(BufferWriteProcessorNewTest.class);
   Action bfflushaction = new Action() {
 
@@ -79,6 +79,7 @@ public class BufferWriteProcessorNewTest {
   private String processorName = "root.vehicle.d0";
   private String measurementId = "s0";
   private TSDataType dataType = TSDataType.INT32;
+  private Map<String, String> props = Collections.emptyMap();
   private BufferWriteProcessor bufferwrite;
   private String filename = "tsfile";
 
@@ -111,7 +112,7 @@ public class BufferWriteProcessorNewTest {
     assertFalse(bufferwrite.isNewProcessor());
     Pair<ReadOnlyMemChunk, List<ChunkMetaData>> pair = bufferwrite
         .queryBufferWriteData(processorName,
-            measurementId, dataType);
+            measurementId, dataType, props);
     ReadOnlyMemChunk left = pair.left;
     List<ChunkMetaData> right = pair.right;
     assertTrue(left.isEmpty());
@@ -120,7 +121,7 @@ public class BufferWriteProcessorNewTest {
       bufferwrite.write(processorName, measurementId, i, dataType, String.valueOf(i));
     }
     // query data in memory
-    pair = bufferwrite.queryBufferWriteData(processorName, measurementId, dataType);
+    pair = bufferwrite.queryBufferWriteData(processorName, measurementId, dataType, props);
     left = pair.left;
     right = pair.right;
     assertFalse(left.isEmpty());
@@ -143,11 +144,11 @@ public class BufferWriteProcessorNewTest {
       bufferwrite.getFlushFuture().get(10, TimeUnit.SECONDS);
     } catch (Exception e) {
       //because UT uses a mock flush operation, 10 seconds should be enough.
-      LOGGER.error(e.getMessage(),e);
+      LOGGER.error(e.getMessage(), e);
       Assert.fail("mock flush spends more than 10 seconds... "
           + "Please modify the value or change a better test environment");
     }
-    pair = bufferwrite.queryBufferWriteData(processorName, measurementId, dataType);
+    pair = bufferwrite.queryBufferWriteData(processorName, measurementId, dataType, props);
     left = pair.left;
     right = pair.right;
     assertTrue(left.isEmpty());
@@ -160,7 +161,7 @@ public class BufferWriteProcessorNewTest {
         Directories.getInstance().getFolderForTest(), processorName, filename, parameters,
         SysTimeVersionController.INSTANCE,
         FileSchemaUtils.constructFileSchema(processorName));
-    pair = bufferWriteProcessor.queryBufferWriteData(processorName, measurementId, dataType);
+    pair = bufferWriteProcessor.queryBufferWriteData(processorName, measurementId, dataType, props);
     left = pair.left;
     right = pair.right;
     assertTrue(left.isEmpty());

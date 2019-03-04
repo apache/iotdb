@@ -21,6 +21,7 @@ package org.apache.iotdb.db.engine.memtable;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
@@ -93,7 +94,12 @@ public abstract class AbstractMemTable implements IMemTable {
   }
 
   @Override
-  public TimeValuePairSorter query(String deviceId, String measurement, TSDataType dataType) {
+  public ReadOnlyMemChunk query(String deviceId, String measurement, TSDataType dataType,
+      Map<String, String> props) {
+    return new ReadOnlyMemChunk(dataType, getSeriesData(deviceId, measurement, dataType), props);
+  }
+
+  private TimeValuePairSorter getSeriesData(String deviceId, String measurement, TSDataType dataType) {
     if (!checkPath(deviceId, measurement)) {
       return new WritableMemChunk(dataType);
     }
@@ -156,5 +162,4 @@ public abstract class AbstractMemTable implements IMemTable {
     }
     return null;
   }
-
 }
