@@ -100,7 +100,7 @@ public class IoTDBCompleteIT {
         "CREATE TIMESERIES root.vehicle.d3.s7 WITH DATATYPE=INT32,ENCODING=RLE,compressor=SNAPPY",
         "CREATE TIMESERIES root.vehicle.d4.s8 WITH DATATYPE=INT32,ENCODING=RLE,MAX_POINT_NUMBER=100",
         "CREATE TIMESERIES root.vehicle.d5.s9 WITH DATATYPE=FLOAT,ENCODING=PLAIN,compressor=SNAPPY,MAX_POINT_NUMBER=10",
-        "CREATE TIMESERIES root.vehicle.d6.s10 WITH DATATYPE=DOUBLE,ENCODING=RLE,compressor=UNCOMPRESSOR,MAX_POINT_NUMBER=10",
+        "CREATE TIMESERIES root.vehicle.d6.s10 WITH DATATYPE=DOUBLE,ENCODING=RLE,compressor=UNCOMPRESSED,MAX_POINT_NUMBER=10",
         "DELETE TIMESERIES root.vehicle.d0.*",
         "SHOW TIMESERIES",
         "===  Timeseries Tree  ===\n"
@@ -147,9 +147,8 @@ public class IoTDBCompleteIT {
             + "            s9:{\n"
             + "                 DataType: FLOAT,\n"
             + "                 Encoding: PLAIN,\n"
-            + "                 Compressor: UNCOMPRESSED,\n"
-            // FIXME: someone should look into this
-            + "                 args: {max_point_number=10, compressor=SNAPPY},\n"
+            + "                 Compressor: SNAPPY,\n"
+            + "                 args: {max_point_number=10},\n"
             + "                 StorageGroup: root.vehicle\n"
             + "            }\n"
             + "        },\n"
@@ -158,7 +157,7 @@ public class IoTDBCompleteIT {
             + "                 DataType: DOUBLE,\n"
             + "                 Encoding: RLE,\n"
             + "                 Compressor: UNCOMPRESSED,\n"
-            + "                 args: {max_point_number=10, compressor=UNCOMPRESSOR},\n"
+            + "                 args: {max_point_number=10},\n"
             + "                 StorageGroup: root.vehicle\n"
             + "            }\n"
             + "        }\n"

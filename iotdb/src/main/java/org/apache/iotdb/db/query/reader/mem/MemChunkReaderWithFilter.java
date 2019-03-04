@@ -20,6 +20,7 @@ package org.apache.iotdb.db.query.reader.mem;
 
 import java.util.Iterator;
 import org.apache.iotdb.db.engine.memtable.TimeValuePairSorter;
+import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.query.reader.IReader;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -32,7 +33,7 @@ public class MemChunkReaderWithFilter implements IReader {
   private boolean hasCachedTimeValuePair;
   private TimeValuePair cachedTimeValuePair;
 
-  public MemChunkReaderWithFilter(TimeValuePairSorter readableChunk, Filter filter) {
+  public MemChunkReaderWithFilter(ReadOnlyMemChunk readableChunk, Filter filter) {
     timeValuePairIterator = readableChunk.getIterator();
     this.filter = filter;
   }

@@ -34,11 +34,11 @@ public class GlobalSortedSeriesDataSource {
   private UnsealedTsFile unsealedTsFile;
 
   // seq mem-table
-  private TimeValuePairSorter readableChunk;
+  private ReadOnlyMemChunk readableChunk;
 
   public GlobalSortedSeriesDataSource(Path seriesPath, List<IntervalFileNode> sealedTsFiles,
       UnsealedTsFile unsealedTsFile,
-      TimeValuePairSorter readableChunk) {
+      ReadOnlyMemChunk readableChunk) {
     this.seriesPath = seriesPath;
     this.sealedTsFiles = sealedTsFiles;
     this.unsealedTsFile = unsealedTsFile;
@@ -74,11 +74,11 @@ public class GlobalSortedSeriesDataSource {
     return readableChunk != null;
   }
 
-  public TimeValuePairSorter getReadableChunk() {
+  public ReadOnlyMemChunk getReadableChunk() {
     return readableChunk;
   }
 
-  public void setReadableChunk(TimeValuePairSorter readableChunk) {
+  public void setReadableChunk(ReadOnlyMemChunk readableChunk) {
     this.readableChunk = readableChunk;
   }
 

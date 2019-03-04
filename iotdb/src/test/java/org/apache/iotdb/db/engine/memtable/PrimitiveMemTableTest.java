@@ -19,8 +19,10 @@
 package org.apache.iotdb.db.engine.memtable;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.Random;
+import org.apache.iotdb.db.utils.MathUtils;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.db.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
@@ -66,7 +68,8 @@ public class PrimitiveMemTableTest {
     for (int i = 0; i < dataSize; i++) {
       memTable.write(deviceId, measurementId[0], TSDataType.INT32, i, String.valueOf(i));
     }
-    Iterator<TimeValuePair> tvPair = memTable.query(deviceId, measurementId[0], TSDataType.INT32)
+    Iterator<TimeValuePair> tvPair = memTable
+        .query(deviceId, measurementId[0], TSDataType.INT32, Collections.emptyMap())
         .getSortedTimeValuePairList().iterator();
     for (int i = 0; i < dataSize; i++) {
       TimeValuePair timeValuePair = tvPair.next();
@@ -84,7 +87,8 @@ public class PrimitiveMemTableTest {
       memTable.write(deviceId, sensorId, dataType, ret[i].getTimestamp(),
           ret[i].getValue().getStringValue());
     }
-    Iterator<TimeValuePair> tvPair = memTable.query(deviceId, sensorId, dataType)
+    Iterator<TimeValuePair> tvPair = memTable
+        .query(deviceId, sensorId, dataType, Collections.emptyMap())
         .getSortedTimeValuePairList()
         .iterator();
     Arrays.sort(ret);
@@ -100,7 +104,15 @@ public class PrimitiveMemTableTest {
       last = pair;
       TimeValuePair next = tvPair.next();
       Assert.assertEquals(pair.getTimestamp(), next.getTimestamp());
-      Assert.assertEquals(pair.getValue(), next.getValue());
+      if (dataType == TSDataType.DOUBLE) {
+        Assert.assertEquals(MathUtils.roundWithGivenPrecision(pair.getValue().getDouble()),
+            next.getValue().getDouble(), 0.0001);
+      } else if (dataType == TSDataType.FLOAT) {
+        Assert.assertEquals(MathUtils.roundWithGivenPrecision(pair.getValue().getFloat()),
+            next.getValue().getFloat(), 0.0001);
+      } else {
+        Assert.assertEquals(pair.getValue(), next.getValue());
+      }
     }
   }
 
