@@ -20,6 +20,7 @@ package org.apache.iotdb.db.engine.overflow.io;
 
 import static org.junit.Assert.assertEquals;
 
+import java.util.Collections;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
@@ -76,7 +77,7 @@ public class OverflowSupportTest {
 
     int num = 1;
     for (TimeValuePair pair : support
-        .queryOverflowInsertInMemory(deviceId1, measurementId1, dataType1)
+        .queryOverflowInsertInMemory(deviceId1, measurementId1, dataType1, Collections.emptyMap())
         .getSortedTimeValuePairList()) {
       assertEquals(num, pair.getTimestamp());
       assertEquals(num, pair.getValue().getInt());
@@ -84,7 +85,7 @@ public class OverflowSupportTest {
     }
     num = 1;
     for (TimeValuePair pair : support
-        .queryOverflowInsertInMemory(deviceId2, measurementId2, dataType2)
+        .queryOverflowInsertInMemory(deviceId2, measurementId2, dataType2, Collections.emptyMap())
         .getSortedTimeValuePairList()) {
       assertEquals(num, pair.getTimestamp());
       if (num == 2) {

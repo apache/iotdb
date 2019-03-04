@@ -20,6 +20,7 @@ package org.apache.iotdb.db.monitor;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ScheduledExecutorService;
@@ -38,6 +39,10 @@ import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
@@ -144,7 +149,9 @@ public class StatMonitor implements IService {
         }
 
         if (!mManager.pathExist(entry.getKey())) {
-          mManager.addPathToMTree(entry.getKey(), entry.getValue(), "RLE", new String[0]);
+          mManager.addPathToMTree(entry.getKey(), TSDataType.valueOf(entry.getValue()),
+              TSEncoding.valueOf("RLE"), CompressionType.valueOf(TSFileConfig.compressor),
+              Collections.emptyMap());
         }
       }
     } catch (MetadataArgsErrorException | IOException | PathErrorException e) {

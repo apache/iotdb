@@ -21,6 +21,7 @@ package org.apache.iotdb.tsfile.write.schema;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.HashMap;
@@ -47,14 +48,15 @@ import org.apache.iotdb.tsfile.utils.StringContainer;
  * @author kangrong
  * @since version 0.1.0
  */
-public class MeasurementSchema implements Comparable<MeasurementSchema> {
+public class MeasurementSchema implements Comparable<MeasurementSchema>, Serializable {
 
   private TSDataType type;
   private TSEncoding encoding;
   private String measurementId;
+  //TODO serializable interface may serialize this field. So it is time to
+  // improve how to serialize MGraph in MManager.
   private TSEncodingBuilder encodingConverter;
-  private ICompressor compressor;
-  private TSFileConfig conf;
+  private CompressionType compressor;
   private Map<String, String> props = new HashMap<>();
 
   public MeasurementSchema() {
@@ -86,12 +88,7 @@ public class MeasurementSchema implements Comparable<MeasurementSchema> {
     this.measurementId = measurementId;
     this.encoding = encoding;
     this.props = props == null ? Collections.emptyMap() : props;
-    // get config from TSFileDescriptor
-    this.conf = TSFileDescriptor.getInstance().getConfig();
-    // initialize TSEncoding. e.g. set max error for PLA and SDT
-    encodingConverter = TSEncodingBuilder.getConverter(encoding);
-    encodingConverter.initFromProps(props);
-    this.compressor = ICompressor.getCompressor(compressionType);
+    this.compressor = compressionType;
   }
 
   /**
@@ -106,8 +103,7 @@ public class MeasurementSchema implements Comparable<MeasurementSchema> {
 
     measurementSchema.encoding = ReadWriteIOUtils.readEncoding(inputStream);
 
-    CompressionType compressionType = ReadWriteIOUtils.readCompressionType(inputStream);
-    measurementSchema.compressor = ICompressor.getCompressor(compressionType);
+    measurementSchema.compressor = ReadWriteIOUtils.readCompressionType(inputStream);
 
     int size = ReadWriteIOUtils.readInt(inputStream);
     if (size > 0) {
@@ -136,8 +132,7 @@ public class MeasurementSchema implements Comparable<MeasurementSchema> {
 
     measurementSchema.encoding = ReadWriteIOUtils.readEncoding(buffer);
 
-    CompressionType compressionType = ReadWriteIOUtils.readCompressionType(buffer);
-    measurementSchema.compressor = ICompressor.getCompressor(compressionType);
+    measurementSchema.compressor = ReadWriteIOUtils.readCompressionType(buffer);
 
     int size = ReadWriteIOUtils.readInt(buffer);
     if (size > 0) {
@@ -174,6 +169,10 @@ public class MeasurementSchema implements Comparable<MeasurementSchema> {
     return type;
   }
 
+  public void setProps(Map<String, String> props) {
+    this.props = props;
+  }
+
   /**
    * return the max possible length of given type.
    *
@@ -202,6 +201,7 @@ public class MeasurementSchema implements Comparable<MeasurementSchema> {
 
   /**
    * function for getting time encoder.
+   * TODO can I be optimized?
    */
   public Encoder getTimeEncoder() {
     TSEncoding timeSeriesEncoder = TSEncoding.valueOf(TSFileConfig.timeSeriesEncoder);
@@ -211,14 +211,20 @@ public class MeasurementSchema implements Comparable<MeasurementSchema> {
 
   /**
    * get Encoder of value from encodingConverter by measurementID and data type.
-   *
+   * TODO can I be optimized?
    * @return Encoder for value
    */
   public Encoder getValueEncoder() {
+    //it is ok even if encodingConverter is constructed two instances for concurrent scenario..
+    if (encodingConverter == null) {
+      // initialize TSEncoding. e.g. set max error for PLA and SDT
+      encodingConverter = TSEncodingBuilder.getConverter(encoding);
+      encodingConverter.initFromProps(props);
+    }
     return encodingConverter.getEncoder(type);
   }
 
-  public ICompressor getCompressor() {
+  public CompressionType getCompressor() {
     return compressor;
   }
 
@@ -234,7 +240,7 @@ public class MeasurementSchema implements Comparable<MeasurementSchema> {
 
     byteLen += ReadWriteIOUtils.write(encoding, outputStream);
 
-    byteLen += ReadWriteIOUtils.write(compressor.getType(), outputStream);
+    byteLen += ReadWriteIOUtils.write(compressor, outputStream);
 
     if (props == null) {
       byteLen += ReadWriteIOUtils.write(0, outputStream);
@@ -261,7 +267,7 @@ public class MeasurementSchema implements Comparable<MeasurementSchema> {
 
     byteLen += ReadWriteIOUtils.write(encoding, buffer);
 
-    byteLen += ReadWriteIOUtils.write(compressor.getType(), buffer);
+    byteLen += ReadWriteIOUtils.write(compressor, buffer);
 
     if (props == null) {
       byteLen += ReadWriteIOUtils.write(0, buffer);
@@ -288,13 +294,12 @@ public class MeasurementSchema implements Comparable<MeasurementSchema> {
     return type == that.type && encoding == that.encoding && Objects
         .equals(measurementId, that.measurementId)
         && Objects.equals(encodingConverter, that.encodingConverter)
-        && Objects.equals(compressor, that.compressor) && Objects.equals(conf, that.conf)
-        && Objects.equals(props, that.props);
+        && Objects.equals(compressor, that.compressor) && Objects.equals(props, that.props);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(type, encoding, measurementId, encodingConverter, compressor, conf, props);
+    return Objects.hash(type, encoding, measurementId, encodingConverter, compressor, props);
   }
 
   /**
@@ -314,7 +319,7 @@ public class MeasurementSchema implements Comparable<MeasurementSchema> {
     StringContainer sc = new StringContainer("");
     sc.addTail("[", measurementId, ",", type.toString(), ",", encoding.toString(), ",",
         props.toString(), ",",
-        compressor.getType().toString());
+        compressor.toString());
     sc.addTail("]");
     return sc.toString();
   }

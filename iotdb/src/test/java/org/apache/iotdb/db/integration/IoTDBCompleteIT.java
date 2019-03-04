@@ -69,50 +69,108 @@ public class IoTDBCompleteIT {
   public void simpleTest() throws ClassNotFoundException, SQLException {
     String[] sqlS = {"CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32,ENCODING=RLE",
         "SHOW TIMESERIES",
-        "===  Timeseries Tree  ===\n" + "\n" + "root:{\n" + "    vehicle:{\n" + "        d0:{\n"
-            + "            s0:{\n" + "                 DataType: INT32,\n"
-            + "                 Encoding: RLE,\n" + "                 args: {},\n"
-            + "                 StorageGroup: root.vehicle \n" + "            }\n" + "        }\n"
-            + "    }\n" + "}",
-        "DELETE TIMESERIES root.vehicle.d0.s0", "SHOW TIMESERIES",
-        "===  Timeseries Tree  ===\n" + "\n" + "root:{\n" + "    vehicle\n" + "}",
+        "===  Timeseries Tree  ===\n"
+            + "\n"
+            + "root:{\n"
+            + "    vehicle:{\n"
+            + "        d0:{\n"
+            + "            s0:{\n"
+            + "                 DataType: INT32,\n"
+            + "                 Encoding: RLE,\n"
+            + "                 Compressor: UNCOMPRESSED,\n"
+            + "                 args: {},\n"
+            + "                 StorageGroup: root.vehicle\n"
+            + "            }\n"
+            + "        }\n"
+            + "    }\n"
+            + "}",
+        "DELETE TIMESERIES root.vehicle.d0.s0",
+        "SHOW TIMESERIES",
+        "===  Timeseries Tree  ===\n"
+            + "\n"
+            + "root:{\n"
+            + "    vehicle\n"
+            + "}",
         "CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=BOOLEAN,ENCODING=PLAIN",
         "CREATE TIMESERIES root.vehicle.d0.s1 WITH DATATYPE=INT64,ENCODING=TS_2DIFF",
         "CREATE TIMESERIES root.vehicle.d0.s2 WITH DATATYPE=FLOAT,ENCODING=GORILLA",
         "CREATE TIMESERIES root.vehicle.d0.s4 WITH DATATYPE=DOUBLE,ENCODING=RLE",
         "CREATE TIMESERIES root.vehicle.d1.s5 WITH DATATYPE=TEXT,ENCODING=PLAIN",
-        "CREATE TIMESERIES root.vehicle.d2.s6 WITH DATATYPE=INT32,ENCODING=TS_2DIFF,compressor=UNCOMPRESSOR",
+        "CREATE TIMESERIES root.vehicle.d2.s6 WITH DATATYPE=INT32,ENCODING=TS_2DIFF,compressor=UNCOMPRESSED",
         "CREATE TIMESERIES root.vehicle.d3.s7 WITH DATATYPE=INT32,ENCODING=RLE,compressor=SNAPPY",
         "CREATE TIMESERIES root.vehicle.d4.s8 WITH DATATYPE=INT32,ENCODING=RLE,MAX_POINT_NUMBER=100",
         "CREATE TIMESERIES root.vehicle.d5.s9 WITH DATATYPE=FLOAT,ENCODING=PLAIN,compressor=SNAPPY,MAX_POINT_NUMBER=10",
-        "CREATE TIMESERIES root.vehicle.d6.s10 WITH DATATYPE=DOUBLE,ENCODING=RLE,compressor=UNCOMPRESSOR,MAX_POINT_NUMBER=10",
-        "DELETE TIMESERIES root.vehicle.d0.*", "SHOW TIMESERIES",
-        "===  Timeseries Tree  ===\n" + "\n" + "root:{\n" + "    vehicle:{\n" + "        d1:{\n"
-            + "            s5:{\n" + "                 DataType: TEXT,\n"
-            + "                 Encoding: PLAIN,\n" + "                 args: {},\n"
-            + "                 StorageGroup: root.vehicle \n" + "            }\n" + "        },\n"
-            + "        d2:{\n" + "            s6:{\n" + "                 DataType: INT32,\n"
-            + "                 Encoding: TS_2DIFF,\n"
-            + "                 args: {compressor=UNCOMPRESSOR},\n"
-            + "                 StorageGroup: root.vehicle \n" + "            }\n" + "        },\n"
-            + "        d3:{\n" + "            s7:{\n" + "                 DataType: INT32,\n"
-            + "                 Encoding: RLE,\n" + "                 args: {compressor=SNAPPY},\n"
-            + "                 StorageGroup: root.vehicle \n" + "            }\n" + "        },\n"
-            + "        d4:{\n" + "            s8:{\n" + "                 DataType: INT32,\n"
-            + "                 Encoding: RLE,\n"
-            + "                 args: {MAX_POINT_NUMBER=100},\n"
-            + "                 StorageGroup: root.vehicle \n" + "            }\n" + "        },\n"
-            + "        d5:{\n" + "            s9:{\n" + "                 DataType: FLOAT,\n"
+        "CREATE TIMESERIES root.vehicle.d6.s10 WITH DATATYPE=DOUBLE,ENCODING=RLE,compressor=UNCOMPRESSED,MAX_POINT_NUMBER=10",
+        "DELETE TIMESERIES root.vehicle.d0.*",
+        "SHOW TIMESERIES",
+        "===  Timeseries Tree  ===\n"
+            + "\n"
+            + "root:{\n"
+            + "    vehicle:{\n"
+            + "        d1:{\n"
+            + "            s5:{\n"
+            + "                 DataType: TEXT,\n"
             + "                 Encoding: PLAIN,\n"
-            + "                 args: {MAX_POINT_NUMBER=10, compressor=SNAPPY},\n"
-            + "                 StorageGroup: root.vehicle \n" + "            }\n" + "        },\n"
-            + "        d6:{\n" + "            s10:{\n" + "                 DataType: DOUBLE,\n"
+            + "                 Compressor: UNCOMPRESSED,\n"
+            + "                 args: {},\n"
+            + "                 StorageGroup: root.vehicle\n"
+            + "            }\n"
+            + "        },\n"
+            + "        d2:{\n"
+            + "            s6:{\n"
+            + "                 DataType: INT32,\n"
+            + "                 Encoding: TS_2DIFF,\n"
+            + "                 Compressor: UNCOMPRESSED,\n"
+            + "                 args: {},\n"
+            + "                 StorageGroup: root.vehicle\n"
+            + "            }\n"
+            + "        },\n"
+            + "        d3:{\n"
+            + "            s7:{\n"
+            + "                 DataType: INT32,\n"
             + "                 Encoding: RLE,\n"
-            + "                 args: {MAX_POINT_NUMBER=10, compressor=UNCOMPRESSOR},\n"
-            + "                 StorageGroup: root.vehicle \n" + "            }\n" + "        }\n"
-            + "    }\n" + "}",
-        "DELETE TIMESERIES root.vehicle.*", "SHOW TIMESERIES",
-        "===  Timeseries Tree  ===\n" + "\n" + "root:{\n" + "    vehicle\n" + "}"};
+            + "                 Compressor: SNAPPY,\n"
+            + "                 args: {},\n"
+            + "                 StorageGroup: root.vehicle\n"
+            + "            }\n"
+            + "        },\n"
+            + "        d4:{\n"
+            + "            s8:{\n"
+            + "                 DataType: INT32,\n"
+            + "                 Encoding: RLE,\n"
+            + "                 Compressor: UNCOMPRESSED,\n"
+            + "                 args: {max_point_number=100},\n"
+            + "                 StorageGroup: root.vehicle\n"
+            + "            }\n"
+            + "        },\n"
+            + "        d5:{\n"
+            + "            s9:{\n"
+            + "                 DataType: FLOAT,\n"
+            + "                 Encoding: PLAIN,\n"
+            + "                 Compressor: SNAPPY,\n"
+            + "                 args: {max_point_number=10},\n"
+            + "                 StorageGroup: root.vehicle\n"
+            + "            }\n"
+            + "        },\n"
+            + "        d6:{\n"
+            + "            s10:{\n"
+            + "                 DataType: DOUBLE,\n"
+            + "                 Encoding: RLE,\n"
+            + "                 Compressor: UNCOMPRESSED,\n"
+            + "                 args: {max_point_number=10},\n"
+            + "                 StorageGroup: root.vehicle\n"
+            + "            }\n"
+            + "        }\n"
+            + "    }\n"
+            + "}",
+        "DELETE TIMESERIES root.vehicle.*",
+        "SHOW TIMESERIES",
+        "===  Timeseries Tree  ===\n"
+            + "\n"
+            + "root:{\n"
+            + "    vehicle\n"
+            + "}"
+    };
     executeSQL(sqlS);
   }
 
@@ -262,7 +320,7 @@ public class IoTDBCompleteIT {
           .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
       for (String sql : sqls) {
         if (cmp) {
-          Assert.assertEquals(result, sql);
+          Assert.assertEquals(sql, result);
           cmp = false;
         } else if (sql.equals("SHOW TIMESERIES")) {
           DatabaseMetaData data = connection.getMetaData();

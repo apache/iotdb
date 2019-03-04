@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,52 +16,51 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.tsfile.file.metadata;
 
-import java.io.*;
+package org.apache.iotdb.tsfile.read;
+
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
-
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
-import org.apache.iotdb.tsfile.file.metadata.utils.TestHelper;
-import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
+import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
+import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadata;
+import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadataIndex;
+import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.TsFileGeneratorForTest;
-import org.junit.AfterClass;
+import org.junit.After;
 import org.junit.Assert;
-import org.junit.BeforeClass;
+import org.junit.Before;
 import org.junit.Test;
 
-public class ChunkGroupMetaDataTest {
+public class TsFileSequenceReaderTest {
 
-  public static final String DELTA_OBJECT_UID = "delta-3312";
-  final static String PATH = "target/outputChunkGroup.tsfile";
-  private static String testDataFile;
+  private static final String FILE_PATH = TsFileGeneratorForTest.outputDataFile;
+  private TsFileSequenceReader fileReader;
+  private int rowCount = 1000;
+  private ReadOnlyTsFile tsFile;
 
-  @BeforeClass
-  public static void setUp() throws WriteProcessException, IOException, InterruptedException {
-    testDataFile = TsFileGeneratorForTest.outputDataFile;
-
-    TsFileGeneratorForTest.generateFile(1000, 16 * 1024 * 1024, 10000);
+  @Before
+  public void before() throws InterruptedException, WriteProcessException, IOException {
+    TsFileGeneratorForTest.generateFile(rowCount, 16 * 1024 * 1024, 10000);
+    fileReader = new TsFileSequenceReader(FILE_PATH);
+    tsFile = new ReadOnlyTsFile(fileReader);
   }
 
-  @AfterClass
-  public static void tearDown() {
-    File file = new File(PATH);
-    if (file.exists()) {
-      Assert.assertTrue(file.delete());
-    }
-
+  @After
+  public void after() throws IOException {
+    tsFile.close();
     TsFileGeneratorForTest.after();
   }
 
   @Test
-  public void testOffset() throws IOException {
-    TsFileSequenceReader reader = new TsFileSequenceReader(testDataFile);
+  public void testReadTsFileSequently() throws IOException {
+    TsFileSequenceReader reader = new TsFileSequenceReader(FILE_PATH);
     TsFileMetaData metaData = reader.readFileMetadata();
     List<Pair<Long, Long>> offsetList = new ArrayList<>();
     long startOffset = reader.position();
@@ -87,7 +86,7 @@ public class ChunkGroupMetaDataTest {
     }
     int offsetListIndex = 0;
     List<TsDeviceMetadataIndex> deviceMetadataIndexList = metaData.getDeviceMap().values().stream()
-            .sorted((x, y) -> (int) (x.getOffset() - y.getOffset())).collect(Collectors.toList());
+        .sorted((x, y) -> (int) (x.getOffset() - y.getOffset())).collect(Collectors.toList());
     for (TsDeviceMetadataIndex index : deviceMetadataIndexList) {
       TsDeviceMetadata deviceMetadata = reader.readTsDeviceMetaData(index);
       List<ChunkGroupMetaData> chunkGroupMetaDataList = deviceMetadata.getChunkGroupMetaDataList();
@@ -99,57 +98,4 @@ public class ChunkGroupMetaDataTest {
     }
     reader.close();
   }
-
-  @Test
-  public void testWriteIntoFile() {
-    // serialize metadata to a file
-    ChunkGroupMetaData metaData = TestHelper.createSimpleChunkGroupMetaData();
-    serialized(metaData);
-    ChunkGroupMetaData readMetaData = deSerialized();
-    serialized(readMetaData);
-  }
-
-  private ChunkGroupMetaData deSerialized() {
-    FileInputStream fis = null;
-    ChunkGroupMetaData metaData = null;
-    try {
-      fis = new FileInputStream(new File(PATH));
-      metaData = ChunkGroupMetaData.deserializeFrom(fis);
-      return metaData;
-    } catch (IOException e) {
-      e.printStackTrace();
-    } finally {
-      if (fis != null) {
-        try {
-          fis.close();
-        } catch (IOException e) {
-          e.printStackTrace();
-        }
-      }
-    }
-    return metaData;
-  }
-
-  private void serialized(ChunkGroupMetaData metaData) {
-    File file = new File(PATH);
-    if (file.exists()) {
-      file.delete();
-    }
-    FileOutputStream fos = null;
-    try {
-      fos = new FileOutputStream(file);
-      metaData.serializeTo(fos);
-    } catch (IOException e) {
-      e.printStackTrace();
-    } finally {
-      if (fos != null) {
-        try {
-          fos.close();
-        } catch (IOException e) {
-          e.printStackTrace();
-        }
-      }
-    }
-  }
-
 }

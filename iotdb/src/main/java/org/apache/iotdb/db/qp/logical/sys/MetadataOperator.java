@@ -19,7 +19,11 @@
 package org.apache.iotdb.db.qp.logical.sys;
 
 import java.util.List;
+import java.util.Map;
 import org.apache.iotdb.db.qp.logical.RootOperator;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
 
 /**
@@ -29,9 +33,10 @@ public class MetadataOperator extends RootOperator {
 
   private final NamespaceType namespaceType;
   private Path path;
-  private String dataType;
-  private String encoding;
-  private String[] encodingArgs;
+  private TSDataType dataType;
+  private TSEncoding encoding;
+  private CompressionType compressor;
+  private Map<String, String> props;
   private List<Path> deletePathList;
 
   /**
@@ -61,28 +66,36 @@ public class MetadataOperator extends RootOperator {
     this.path = path;
   }
 
-  public String getDataType() {
+  public TSDataType getDataType() {
     return dataType;
   }
 
-  public void setDataType(String dataType) {
+  public void setDataType(TSDataType dataType) {
     this.dataType = dataType;
   }
 
-  public String getEncoding() {
+  public TSEncoding getEncoding() {
     return encoding;
   }
 
-  public void setEncoding(String encoding) {
+  public void setEncoding(TSEncoding encoding) {
     this.encoding = encoding;
   }
 
-  public String[] getEncodingArgs() {
-    return encodingArgs;
+  public void setCompressor(CompressionType compressor) {
+    this.compressor = compressor;
   }
 
-  public void setEncodingArgs(String[] encodingArgs) {
-    this.encodingArgs = encodingArgs;
+  public CompressionType getCompressor() {
+    return compressor;
+  }
+
+  public Map<String, String> getProps() {
+    return props;
+  }
+
+  public void setProps(Map<String, String> props) {
+    this.props = props;
   }
 
   public NamespaceType getNamespaceType() {

@@ -55,8 +55,11 @@ import org.apache.iotdb.db.query.fill.PreviousFill;
 import org.apache.iotdb.db.sql.parse.AstNode;
 import org.apache.iotdb.db.sql.parse.Node;
 import org.apache.iotdb.db.sql.parse.TSParser;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.constant.SystemConstant;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.StringContainer;
@@ -370,18 +373,28 @@ public class LogicalGenerator {
     AstNode paramNode = astNode.getChild(1);
     String dataType = paramNode.getChild(0).getChild(0).getText();
     String encodingType = paramNode.getChild(1).getChild(0).getText();
-    checkMetadataArgs(dataType, encodingType);
-    String[] paramStrings = new String[paramNode.getChildCount() - 2];
-    for (int i = 0; i < paramStrings.length; i++) {
-      AstNode node = paramNode.getChild(i + 2);
-      paramStrings[i] = node.getChild(0) + SQLConstant.METADATA_PARAM_EQUAL + node.getChild(1);
+    String compressor;
+    int offset = 2;
+    if (paramNode.getChildren().size() > offset
+        && paramNode.getChild(offset).getToken().getText().equals("TOK_COMPRESSOR")) {
+      compressor = paramNode.getChild(offset).getChild(0).getText();
+      offset++;
+    } else {
+      compressor = TSFileConfig.compressor;
+    }
+    checkMetadataArgs(dataType, encodingType, compressor);
+    Map<String, String> props = new HashMap<>(paramNode.getChildCount() - offset + 1, 1);
+    while (offset < paramNode.getChildCount()) {
+      AstNode node = paramNode.getChild(offset++);
+      props.put(node.getChild(0).getText().toLowerCase(), node.getChild(1).getText());
     }
     MetadataOperator metadataOperator = new MetadataOperator(SQLConstant.TOK_METADATA_CREATE,
         MetadataOperator.NamespaceType.ADD_PATH);
     metadataOperator.setPath(series);
-    metadataOperator.setDataType(dataType);
-    metadataOperator.setEncoding(encodingType);
-    metadataOperator.setEncodingArgs(paramStrings);
+    metadataOperator.setDataType(TSDataType.valueOf(dataType));
+    metadataOperator.setEncoding(TSEncoding.valueOf(encodingType));
+    metadataOperator.setProps(props);
+    metadataOperator.setCompressor(CompressionType.valueOf(compressor));
     initializedOperator = metadataOperator;
   }
 
@@ -1052,14 +1065,15 @@ public class LogicalGenerator {
     initializedOperator = authorOperator;
   }
 
-  private void checkMetadataArgs(String dataType, String encoding)
+  private void checkMetadataArgs(String dataType, String encoding, String compressor)
       throws MetadataArgsErrorException {
-    final String rle = "RLE";
-    final String plain = "PLAIN";
-    final String ts2Diff = "TS_2DIFF";
-    final String bitmap = "BITMAP";
-    final String gorilla = "GORILLA";
+//    final String rle = "RLE";
+//    final String plain = "PLAIN";
+//    final String ts2Diff = "TS_2DIFF";
+//    final String bitmap = "BITMAP";
+//    final String gorilla = "GORILLA";
     TSDataType tsDataType;
+    TSEncoding tsEncoding;
     if (dataType == null) {
       throw new MetadataArgsErrorException("data type cannot be null");
     }
@@ -1074,53 +1088,49 @@ public class LogicalGenerator {
       throw new MetadataArgsErrorException("encoding type cannot be null");
     }
 
-    if (!encoding.equals(rle) && !encoding.equals(plain) && !encoding.equals(ts2Diff) && !encoding
-        .equals(bitmap)
-        && !encoding.equals(gorilla)) {
+    try {
+      tsEncoding = TSEncoding.valueOf(encoding);
+    } catch (Exception e) {
       throw new MetadataArgsErrorException(String.format("encoding %s is not support", encoding));
     }
+
+    try {
+      CompressionType.valueOf(compressor);
+    } catch (Exception e) {
+      throw new MetadataArgsErrorException(String.format("compressor %s is not support", compressor));
+    }
+    boolean throwExp = false;
     switch (tsDataType) {
       case BOOLEAN:
-        if (!encoding.equals(plain) && !encoding.equals(rle)) {
-          throw new MetadataArgsErrorException(
-              String.format("encoding %s does not support %s", encoding, dataType));
+        if (!(tsEncoding.equals(TSEncoding.RLE) || tsEncoding.equals(TSEncoding.PLAIN))){
+          throwExp = true;
         }
         break;
       case INT32:
-        if ((!encoding.equals(plain) && !encoding.equals(rle) && !encoding.equals(ts2Diff))) {
-          throw new MetadataArgsErrorException(
-              String.format("encoding %s does not support %s", encoding, dataType));
-        }
-        break;
       case INT64:
-        if ((!encoding.equals(plain) && !encoding.equals(rle) && !encoding.equals(ts2Diff))) {
-          throw new MetadataArgsErrorException(
-              String.format("encoding %s does not support %s", encoding, dataType));
+        if (!(tsEncoding.equals(TSEncoding.RLE) || tsEncoding.equals(TSEncoding.PLAIN)
+            || tsEncoding.equals(TSEncoding.TS_2DIFF))) {
+          throwExp = true;
         }
         break;
       case FLOAT:
-        if ((!encoding.equals(plain) && !encoding.equals(rle) && !encoding.equals(ts2Diff)
-            && !encoding.equals(gorilla))) {
-          throw new MetadataArgsErrorException(
-              String.format("encoding %s does not support %s", encoding, dataType));
-        }
-        break;
       case DOUBLE:
-        if ((!encoding.equals(plain) && !encoding.equals(rle) && !encoding.equals(ts2Diff)
-            && !encoding.equals(gorilla))) {
-          throw new MetadataArgsErrorException(
-              String.format("encoding %s does not support %s", encoding, dataType));
+        if (!(tsEncoding.equals(TSEncoding.RLE) || tsEncoding.equals(TSEncoding.PLAIN)
+            || tsEncoding.equals(TSEncoding.TS_2DIFF) || tsEncoding.equals(TSEncoding.GORILLA))) {
+          throwExp = true;
         }
         break;
       case TEXT:
-        if (!encoding.equals(plain)) {
-          throw new MetadataArgsErrorException(
-              String.format("encoding %s does not support %s", encoding, dataType));
+        if (!tsEncoding.equals(TSEncoding.PLAIN)) {
+          throwExp = true;
         }
         break;
       default:
-        throw new MetadataArgsErrorException(
-            String.format("data type %s is not supported", dataType));
+        throwExp = true;
+    }
+    if (throwExp) {
+      throw new MetadataArgsErrorException(
+          String.format("encoding %s does not support %s", encoding, dataType));
     }
   }
 

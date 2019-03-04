@@ -20,6 +20,7 @@ package org.apache.iotdb.db.engine.bufferwrite;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
@@ -219,16 +220,18 @@ public class BufferWriteProcessor extends Processor {
    * @return corresponding chunk data and chunk metadata in memory
    */
   public Pair<ReadOnlyMemChunk, List<ChunkMetaData>> queryBufferWriteData(String deviceId,
-      String measurementId,
-      TSDataType dataType) {
+      String measurementId, TSDataType dataType, Map<String, String> props) {
     flushQueryLock.lock();
     try {
       MemSeriesLazyMerger memSeriesLazyMerger = new MemSeriesLazyMerger();
       if (flushMemTable != null) {
-        memSeriesLazyMerger.addMemSeries(flushMemTable.query(deviceId, measurementId, dataType));
+        memSeriesLazyMerger.addMemSeries(flushMemTable.query(deviceId, measurementId, dataType, props));
       }
-      memSeriesLazyMerger.addMemSeries(workMemTable.query(deviceId, measurementId, dataType));
-      ReadOnlyMemChunk timeValuePairSorter = new ReadOnlyMemChunk(dataType, memSeriesLazyMerger);
+      memSeriesLazyMerger.addMemSeries(workMemTable.query(deviceId, measurementId, dataType, props));
+      // memSeriesLazyMerger has handled the props,
+      // so we do not need to handle it again in the following readOnlyMemChunk
+      ReadOnlyMemChunk timeValuePairSorter = new ReadOnlyMemChunk(dataType, memSeriesLazyMerger,
+          Collections.emptyMap());
       return new Pair<>(timeValuePairSorter,
           writer.getMetadatas(deviceId, measurementId, dataType));
     } finally {

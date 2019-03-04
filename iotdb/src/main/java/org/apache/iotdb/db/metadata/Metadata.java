@@ -21,16 +21,17 @@ package org.apache.iotdb.db.metadata;
 import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.db.exception.PathErrorException;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 /**
  * This class stores all the metadata info for every deviceId and every timeseries.
  */
 public class Metadata {
 
-  private Map<String, List<ColumnSchema>> seriesMap;
+  private Map<String, List<MeasurementSchema>> seriesMap;
   private Map<String, List<String>> deviceIdMap;
 
-  public Metadata(Map<String, List<ColumnSchema>> seriesMap,
+  public Metadata(Map<String, List<MeasurementSchema>> seriesMap,
       Map<String, List<String>> deviceIdMap) {
     this.seriesMap = seriesMap;
     this.deviceIdMap = deviceIdMap;
@@ -39,7 +40,7 @@ public class Metadata {
   /**
    * function for getting series for one type.
    */
-  public List<ColumnSchema> getSeriesForOneType(String type) throws PathErrorException {
+  public List<MeasurementSchema> getSeriesForOneType(String type) throws PathErrorException {
     if (this.seriesMap.containsKey(type)) {
       return seriesMap.get(type);
     } else {
@@ -58,7 +59,7 @@ public class Metadata {
     }
   }
 
-  public Map<String, List<ColumnSchema>> getSeriesMap() {
+  public Map<String, List<MeasurementSchema>> getSeriesMap() {
     return seriesMap;
   }
 

@@ -193,6 +193,9 @@ IoTDB supports six data types in total: BOOLEAN (Boolean), INT32 (Integer), INT6
 
 The time series of FLOAT and DOUBLE type can specify (MAX\_POINT\_NUMBER, see [this page](#iotdb-query-statement) for more information on how to specify), which is the number of digits after the decimal point of the floating point number, if the encoding method is [RLE](#encoding) or [TS\_2DIFF](#encoding) (Refer to [Create Timeseries Statement](#chapter-5-iotdb-sql-documentation) for more information on how to specify). If MAX\_POINT\_NUMBER is not specified, the system will use [float\_precision](#encoding) in the configuration file "tsfile-format.properties" for configuration for the configuration method.
 
+* For Float data value, The data range is (-Integer.MAX_VALUE, Integer.MAX_VALUE), rather than Float.MAX_VALUE, and the max_point_number is 19, it is because of the limition of function Math.round(float) in Java.
+* For Double data value, The data range is (-Long.MAX_VALUE, Long.MAX_VALUE), rather than Double.MAX_VALUE, and the max_point_number is 19, it is because of the limition of function Math.round(double) in Java (Long.MAX_VALUE=9.22E18).
+
 When the data type of data input by the user in the system does not correspond to the data type of the time series, the system will report type errors. As shown below, the second-order difference encoding does not support the Boolean type:
 
 ```
@@ -244,4 +247,4 @@ The four encodings described in the previous sections are applicable to differen
 
 When the time series is written and encoded as binary data according to the specified type, IoTDB compresses the data using compression technology to further improve space storage efficiency. Although both encoding and compression are designed to improve storage efficiency, encoding techniques are usually only available for specific data types (e.g., second-order differential encoding is only suitable for INT32 or INT64 data type, and storing floating-point numbers requires multiplying them by 10m to convert to integers), after which the data is converted to a binary stream. The compression method (SNAPPY) compresses the binary stream, so the use of the compression method is no longer limited by the data type.
 
-IoTDB allows you to specify the compression method of the column when creating a time series. IoTDB now supports two kinds of compression: UNCOMPRESSOR (no compression) and SNAPPY compression. The specified syntax for compression is detailed in [Create Timeseries Statement](#chapter-5-iotdb-sql-documentation).
+IoTDB allows you to specify the compression method of the column when creating a time series. IoTDB now supports two kinds of compression: UNCOMPRESSED (no compression) and SNAPPY compression. The specified syntax for compression is detailed in [Create Timeseries Statement](#chapter-5-iotdb-sql-documentation).

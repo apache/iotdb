@@ -22,8 +22,10 @@ import java.io.Serializable;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 /**
  * This class is the implementation of Metadata Node where "MNode" is the shorthand of "Metadata
@@ -40,13 +42,13 @@ public class MNode implements Serializable {
   // Whether current node is Storage Level in the Metadata Tree
   private boolean isStorageLevel;
   // Map for the schema in this storage group
-  private Map<String, ColumnSchema> schemaMap;
+  private Map<String, MeasurementSchema> schemaMap;
   private Map<String, Integer> numSchemaMap;
   // Corresponding data file name for current node
   private String dataFileName;
   // Column's Schema for one timeseries represented by current node if current
   // node is one leaf
-  private ColumnSchema schema;
+  private MeasurementSchema schema;
   private MNode parent;
   private LinkedHashMap<String, MNode> children;
 
@@ -63,9 +65,10 @@ public class MNode implements Serializable {
     }
   }
 
-  public MNode(String name, MNode parent, TSDataType dataType, TSEncoding encoding) {
+  public MNode(String name, MNode parent, TSDataType dataType, TSEncoding encoding,
+      CompressionType type) {
     this(name, parent, true);
-    this.schema = new ColumnSchema(name, dataType, encoding);
+    this.schema = new MeasurementSchema(name, dataType, encoding, type);
   }
 
   public boolean isStorageLevel() {
@@ -86,7 +89,7 @@ public class MNode implements Serializable {
     }
   }
 
-  public Map<String, ColumnSchema> getSchemaMap() {
+  public Map<String, MeasurementSchema> getSchemaMap() {
     return schemaMap;
   }
 
@@ -163,11 +166,11 @@ public class MNode implements Serializable {
     return this.getName();
   }
 
-  public ColumnSchema getSchema() {
+  public MeasurementSchema getSchema() {
     return schema;
   }
 
-  public void setSchema(ColumnSchema schema) {
+  public void setSchema(MeasurementSchema schema) {
     this.schema = schema;
   }
 

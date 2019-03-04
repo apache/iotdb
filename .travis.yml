@@ -62,6 +62,9 @@ matrix:
         - export PATH=$PATH:"/c/java8/bin"
         - export JAVA_HOME="/c/java8"
         - choco install maven
+      script:
+        - java -version
+        - mvn clean integration-test
     - os: windows
       language: c
       name: win-oraclejdk11
@@ -70,6 +73,9 @@ matrix:
         - export PATH=$PATH:"/c/java11/bin"
         - export JAVA_HOME="/c/java11"
         - choco install maven
+      script:
+        - java -version
+        - mvn clean integration-test
     #choco does not support openjdk8. we have to install it manually
 #    - os: windows
 #      language: c
@@ -90,6 +96,9 @@ matrix:
       before_script:
         - export JAVA_HOME=$PWD/jdk-11.0.2/
         - export PATH=$JAVA_HOME/bin:$PATH
+      script:
+        - java -version
+        - mvn clean integration-test
     - os: linux
       name: linux-openjdk8
       dist: trusty
@@ -117,11 +126,8 @@ before_install: true
 install: true
 
 script:
-  #- mvn clean package -Dmaven.test.skip=true
-  # For each test, travis-ci limits its output log. So we cannot test some sub-modules like tsfile, iotdb.
-  # We only test jdbc to ensure maven commands work correctly on travis-ci.
-  #- mvn clean test -pl jdbc -am -Dtsfile.test.skip=true
   - java -version
+  - mvn apache-rat:check
   - mvn clean integration-test
 
 after_success:

@@ -20,10 +20,9 @@ package org.apache.iotdb.db.engine.overflow.io;
 
 import java.util.HashMap;
 import java.util.Map;
-
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.PrimitiveMemTable;
-import org.apache.iotdb.db.engine.memtable.TimeValuePairSorter;
+import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
@@ -83,13 +82,13 @@ public class OverflowSupport {
     }
   }
 
-  public TimeValuePairSorter queryOverflowInsertInMemory(String deviceId, String measurementId,
-                                                         TSDataType dataType) {
-    return memTable.query(deviceId, measurementId, dataType);
+  public ReadOnlyMemChunk queryOverflowInsertInMemory(String deviceId, String measurementId,
+      TSDataType dataType, Map<String, String> props) {
+    return memTable.query(deviceId, measurementId, dataType, props);
   }
 
   public BatchData queryOverflowUpdateInMemory(String deviceId, String measurementId,
-                                               TSDataType dataType) {
+      TSDataType dataType) {
     if (indexTrees.containsKey(deviceId) && indexTrees.get(deviceId).containsKey(measurementId)
         && indexTrees.get(deviceId).get(measurementId).getDataType().equals(dataType)) {
       return indexTrees.get(deviceId).get(measurementId).query();
