@@ -67,6 +67,7 @@ public class TsFileIOWriter {
   protected List<ChunkGroupMetaData> chunkGroupMetaDataList = new ArrayList<>();
   private ChunkGroupMetaData currentChunkGroupMetaData;
   private ChunkMetaData currentChunkMetaData;
+  protected boolean complete = false;
 
   /**
    * empty construct function.
@@ -236,6 +237,7 @@ public class TsFileIOWriter {
 
     // close file
     out.close();
+    complete = true;
     LOG.info("output stream is closed");
   }
 
@@ -313,6 +315,10 @@ public class TsFileIOWriter {
    */
   public List<ChunkGroupMetaData> getChunkGroupMetaDatas() {
     return chunkGroupMetaDataList;
+  }
+
+  public boolean isComplete() {
+    return complete;
   }
 
 }

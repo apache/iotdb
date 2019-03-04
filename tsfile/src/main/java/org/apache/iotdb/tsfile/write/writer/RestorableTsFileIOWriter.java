@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.engine.bufferwrite;
+package org.apache.iotdb.tsfile.write.writer;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
