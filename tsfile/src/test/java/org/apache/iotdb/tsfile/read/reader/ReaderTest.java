@@ -20,6 +20,7 @@ package org.apache.iotdb.tsfile.read.reader;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Random;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
@@ -36,6 +37,7 @@ import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReader;
 import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderWithFilter;
 import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderWithoutFilter;
+import org.apache.iotdb.tsfile.read.reader.series.SeriesReaderByTimestamp;
 import org.apache.iotdb.tsfile.utils.TsFileGeneratorForTest;
 import org.junit.After;
 import org.junit.Assert;
@@ -123,6 +125,29 @@ public class ReaderTest {
       while (data.hasNext()) {
         Assert.assertEquals(aimedTimestamp++, data.currentTime());
         data.next();
+      }
+    }
+  }
+
+  @Test
+  public void readByTimestampTest() throws IOException {
+    ChunkLoaderImpl seriesChunkLoader = new ChunkLoaderImpl(fileReader);
+    List<ChunkMetaData> chunkMetaDataList = metadataQuerierByFile
+        .getChunkMetaDataList(new Path("d1.s1"));
+    SeriesReaderByTimestamp seriesReader = new SeriesReaderByTimestamp(seriesChunkLoader,
+        chunkMetaDataList);
+
+    long startTime = TsFileGeneratorForTest.START_TIMESTAMP;
+    long endTime = TsFileGeneratorForTest.START_TIMESTAMP + rowCount;
+    Random random = new Random();
+    for (long time = startTime - 500; time < endTime + 500; ) {
+      time += random.nextInt(10) + 1;
+      Object value = seriesReader.getValueInTimestamp(time);
+      if (time < startTime || time >= endTime) {
+        Assert.assertNull(value);
+      } else {
+        int actualData = (int) ((time - startTime) * 10 + 1);
+        Assert.assertEquals(actualData, value);
       }
     }
   }
