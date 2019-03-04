@@ -36,24 +36,12 @@ public class PriorityMergeReaderByTimestamp implements EngineReaderByTimeStamp {
   private List<Integer> priorityList = new ArrayList<>();
 
   /**
-   * The bigger the priority value is, the higher the priority of this reader is.
+   * This function doesn't sort reader by priority. So you have to call this function in order of
+   * reader priority from small to large.
    */
   public void addReaderWithPriority(EngineReaderByTimeStamp reader, int priority) {
-    int size = readerList.size();
-    boolean hasAdded = false;
-
-    //sort by priority, elements with low priority are at front of list.
-    for (int i = 0; i < size; i++) {
-      if (priority < priorityList.get(i)) {
-        readerList.add(i, reader);
-        priorityList.add(i, priority);
-        hasAdded = true;
-      }
-    }
-    if (!hasAdded) {
-      readerList.add(reader);
-      priorityList.add(priority);
-    }
+    readerList.add(reader);
+    priorityList.add(priority);
   }
 
   @Override

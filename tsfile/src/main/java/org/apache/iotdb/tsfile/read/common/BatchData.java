@@ -20,7 +20,6 @@
 package org.apache.iotdb.tsfile.read.common;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;

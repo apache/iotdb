@@ -95,7 +95,11 @@ public class SealedTsFilesReaderByTimestamp implements EngineReaderByTimeStamp {
     // file streams are managed uniformly.
   }
 
-  // construct reader from the file that might overlap this timestamp
+  /**
+   * construct reader with the file that might overlap this timestamp.
+   * @param timestamp
+   * @throws IOException
+   */
   private void constructReader(long timestamp) throws IOException {
     while (nextIntervalFileIndex < sealedTsFiles.size()) {
       if (singleTsFileSatisfied(sealedTsFiles.get(nextIntervalFileIndex), timestamp)) {
