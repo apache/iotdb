@@ -374,9 +374,8 @@ public class IoTDBMetadataFetchIT {
             + "                temperature:{\n"
             + "                     DataType: FLOAT,\n"
             + "                     Encoding: RLE,\n"
-            + "                     Compressor: UNCOMPRESSED,\n"
-            // FIXME; something seems strange here
-            + "                     args: {max_point_number=3, compressor=SNAPPY},\n"
+            + "                     Compressor: SNAPPY,\n"
+            + "                     args: {max_point_number=3},\n"
             + "                     StorageGroup: root.ln.wf01.wt01\n"
             + "                }\n"
             + "            }\n"
