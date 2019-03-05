@@ -365,4 +365,12 @@ public class TsFileSequenceReader {
     return ReadWriteIOUtils
         .readAsPossible(tsFileInput.wrapAsFileChannel(), target, position, length);
   }
+
+  /**
+   *
+   * @param pos the position of the file you want to move to
+   */
+  public void setPosition(long pos) throws IOException {
+    tsFileInput.position(pos);
+  }
 }

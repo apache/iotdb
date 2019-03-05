@@ -38,15 +38,22 @@ public class NativeRestorableTsFileIOWriter extends TsFileIOWriter {
   private static final Logger LOGGER = LoggerFactory
       .getLogger(NativeRestorableTsFileIOWriter.class);
 
+  private long truncatedPosition = -1;
 
-  public NativeRestorableTsFileIOWriter(String insertFilePath) throws IOException {
+  public long getTruncatedPosition() {
+    return truncatedPosition;
+  }
+
+  public NativeRestorableTsFileIOWriter(File file) throws IOException {
     super();
-    File insertFile = new File(insertFilePath);
-
-    if (!insertFile.exists()) {
-      this.out = new DefaultTsFileOutput(insertFile);
+    long fileSize;
+    if (!file.exists()) {
+      this.out = new DefaultTsFileOutput(file, true);
       startFile();
       return;
+    } else {
+      fileSize = file.length();
+      this.out = new DefaultTsFileOutput(file, true);
     }
 
     //we need to read data to recover TsFileIOWriter.chunkGroupMetaDataList
@@ -68,22 +75,24 @@ public class NativeRestorableTsFileIOWriter extends TsFileIOWriter {
     long versionOfChunkGroup = 0;
     boolean newGroup = true;
 
-    TsFileSequenceReader reader = new TsFileSequenceReader(insertFilePath);
-    if (reader.fileSize() <= 4) {
-      LOGGER.debug("{} does not worth to recover, will create a new one.", insertFilePath);
+    TsFileSequenceReader reader = new TsFileSequenceReader(file.getAbsolutePath(), false);
+    if (fileSize <= magicStringBytes.length) {
+      LOGGER.debug("{} only has magic header, does not worth to recover.", file.getAbsolutePath());
       reader.close();
       this.out.truncate(0);
       startFile();
+      truncatedPosition = magicStringBytes.length;
       return;
     }
     if (reader.readTailMagic().equals(reader.readHeadMagic())) {
-      LOGGER.debug("{} is an complete TsFile.", insertFilePath);
+      LOGGER.debug("{} is an complete TsFile.", file.getAbsolutePath());
       complete = true;
       return;
     }
 
     // not a complete file, we will recover it...
-    long pos = magicStringBytes.length;
+    truncatedPosition = magicStringBytes.length;
+    reader.setPosition(truncatedPosition);
     boolean goon = true;
     byte marker;
     try {
@@ -141,7 +150,7 @@ public class NativeRestorableTsFileIOWriter extends TsFileIOWriter {
               metadatas.add(currentChunkGroup);
               newGroup = true;
               //we get a complete chunk group now.
-              pos = getPos();
+              truncatedPosition = getPos();
             } catch (IOException e) {
               goon = false;
             }
@@ -154,10 +163,10 @@ public class NativeRestorableTsFileIOWriter extends TsFileIOWriter {
     } catch (IOException e2) {
     } finally {
       //something wrong or all data is complete. We will discard current FileMetadata
-      out.truncate(pos);
+      LOGGER.info("File {} has {} bytes, and will be truncated from {}.",
+          file.getAbsolutePath(), file.length(), truncatedPosition);
+      out.truncate(truncatedPosition);
     }
-
-
   }
 
 

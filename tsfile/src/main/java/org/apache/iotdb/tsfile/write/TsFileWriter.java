@@ -22,12 +22,12 @@ import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
-
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.NoMeasurementException;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.footer.ChunkGroupFooter;
+import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.write.chunk.ChunkGroupWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.IChunkGroupWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
@@ -91,6 +91,15 @@ public class TsFileWriter {
   /**
    * init this TsFileWriter.
    *
+   * @param fileWriter the io writer of this TsFile
+   */
+  public TsFileWriter(TsFileIOWriter fileWriter) {
+    this(fileWriter, new FileSchema(), TSFileDescriptor.getInstance().getConfig());
+  }
+
+  /**
+   * init this TsFileWriter.
+   *
    * @param file the File to be written by this TsFileWriter
    * @param schema the schema of this TsFile
    */
@@ -131,6 +140,11 @@ public class TsFileWriter {
     this.schema = schema;
     this.pageSize = TSFileConfig.pageSizeInByte;
     this.chunkGroupSizeThreshold = TSFileConfig.groupSizeInByte;
+    if (this.pageSize >= chunkGroupSizeThreshold) {
+      LOG.warn(
+          "TsFile's page size {} is greater than chunk group size {}, please enlarge the chunk group"
+              + " size or decrease page size. ", pageSize, chunkGroupSizeThreshold);
+    }
   }
 
   /**
@@ -289,5 +303,21 @@ public class TsFileWriter {
     LOG.info("start close file");
     flushAllChunkGroups();
     fileWriter.endFile(this.schema);
+  }
+
+  /**
+   * this function is only for Test.
+   * @return
+   */
+   public TsFileIOWriter getIOWriter() {
+    return this.fileWriter;
+  }
+
+  /**
+   * this function is only for Test
+   * @throws IOException
+   */
+  public void flushForTest() throws IOException {
+    flushAllChunkGroups();
   }
 }
