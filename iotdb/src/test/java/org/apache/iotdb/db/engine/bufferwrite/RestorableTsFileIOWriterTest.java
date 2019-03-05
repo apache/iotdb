@@ -48,7 +48,6 @@ import org.apache.iotdb.tsfile.write.schema.FileSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 import org.junit.After;
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -76,13 +75,13 @@ public class RestorableTsFileIOWriterTest {
     writer = new RestorableTsFileIOWriter(processorName, insertPath);
 
     Pair<Long, List<ChunkGroupMetaData>> pair = writer.readRestoreInfo();
-    Assert.assertEquals(true, new File(restorePath).exists());
+    assertEquals(true, new File(restorePath).exists());
 
-    Assert.assertEquals(TsFileIOWriter.magicStringBytes.length, (long) pair.left);
-    Assert.assertEquals(0, pair.right.size());
+    assertEquals(TsFileIOWriter.magicStringBytes.length, (long) pair.left);
+    assertEquals(0, pair.right.size());
     writer.endFile(new FileSchema());
     deleteInsertFile();
-    Assert.assertEquals(false, new File(restorePath).exists());
+    assertEquals(false, new File(restorePath).exists());
   }
 
   @Test
@@ -94,9 +93,9 @@ public class RestorableTsFileIOWriterTest {
     // mkdir
     fileOutputStream.write(new byte[400]);
     fileOutputStream.close();
-    Assert.assertEquals(true, insertFile.exists());
-    Assert.assertEquals(true, restoreFile.exists());
-    Assert.assertEquals(400, insertFile.length());
+    assertEquals(true, insertFile.exists());
+    assertEquals(true, restoreFile.exists());
+    assertEquals(400, insertFile.length());
     writer.endFile(new FileSchema());
 
     FileOutputStream out = new FileOutputStream(new File(restorePath));
@@ -108,10 +107,10 @@ public class RestorableTsFileIOWriterTest {
     out.close();
     writer = new RestorableTsFileIOWriter(processorName, insertPath);
 
-    Assert.assertEquals(true, insertFile.exists());
-    Assert.assertEquals(200, insertFile.length());
-    Assert.assertEquals(insertPath, writer.getInsertFilePath());
-    Assert.assertEquals(restorePath, writer.getRestoreFilePath());
+    assertEquals(true, insertFile.exists());
+    assertEquals(200, insertFile.length());
+    assertEquals(insertPath, writer.getInsertFilePath());
+    assertEquals(restorePath, writer.getRestoreFilePath());
     writer.endFile(new FileSchema());
     deleteInsertFile();
   }
@@ -135,16 +134,16 @@ public class RestorableTsFileIOWriterTest {
     writer = new RestorableTsFileIOWriter(processorName, insertPath);
     // writer.endFile(new FileSchema());
 
-    Assert.assertEquals(true, insertFile.exists());
-    Assert.assertEquals(true, restoreFile.exists());
+    assertEquals(true, insertFile.exists());
+    assertEquals(true, restoreFile.exists());
 
     RestorableTsFileIOWriter tempbufferwriteResource = new RestorableTsFileIOWriter(processorName,
         insertPath);
 
-    Assert.assertEquals(true, insertFile.exists());
-    Assert.assertEquals(200, insertFile.length());
-    Assert.assertEquals(insertPath, tempbufferwriteResource.getInsertFilePath());
-    Assert.assertEquals(restorePath, tempbufferwriteResource.getRestoreFilePath());
+    assertEquals(true, insertFile.exists());
+    assertEquals(200, insertFile.length());
+    assertEquals(insertPath, tempbufferwriteResource.getInsertFilePath());
+    assertEquals(restorePath, tempbufferwriteResource.getRestoreFilePath());
 
     tempbufferwriteResource.endFile(new FileSchema());
     writer.endFile(new FileSchema());
@@ -177,31 +176,31 @@ public class RestorableTsFileIOWriterTest {
 
     TsFileSequenceReader reader = new TsFileSequenceReader(insertPath);
     TsFileMetaData metaData = reader.readFileMetadata();
-    Assert.assertEquals(2, metaData.getDeviceMap().size());
+    assertEquals(2, metaData.getDeviceMap().size());
     List<ChunkGroupMetaData> chunkGroups = reader
         .readTsDeviceMetaData(metaData.getDeviceMap().get("d1"))
         .getChunkGroupMetaDataList();
-    Assert.assertEquals(1, chunkGroups.size());
+    assertEquals(1, chunkGroups.size());
 
     List<ChunkMetaData> chunks = chunkGroups.get(0).getChunkMetaDataList();
-    Assert.assertEquals(2, chunks.size());
+    assertEquals(2, chunks.size());
     // d1.s1
-    Assert.assertEquals(chunks.get(0).getStartTime(), 1);
-    Assert.assertEquals(chunks.get(0).getEndTime(), 2);
-    Assert.assertEquals(chunks.get(0).getNumOfPoints(), 2);
+    assertEquals(chunks.get(0).getStartTime(), 1);
+    assertEquals(chunks.get(0).getEndTime(), 2);
+    assertEquals(chunks.get(0).getNumOfPoints(), 2);
     // d1.s2
-    Assert.assertEquals(chunks.get(1).getStartTime(), 1);
-    Assert.assertEquals(chunks.get(1).getEndTime(), 3);
-    Assert.assertEquals(chunks.get(1).getNumOfPoints(), 2);
+    assertEquals(chunks.get(1).getStartTime(), 1);
+    assertEquals(chunks.get(1).getEndTime(), 3);
+    assertEquals(chunks.get(1).getNumOfPoints(), 2);
 
     chunkGroups = reader.readTsDeviceMetaData(metaData.getDeviceMap().get("d2")).getChunkGroupMetaDataList();
-    Assert.assertEquals(1, chunkGroups.size());
+    assertEquals(1, chunkGroups.size());
     chunks = chunkGroups.get(0).getChunkMetaDataList();
-    Assert.assertEquals(1, chunks.size());
+    assertEquals(1, chunks.size());
     // da.s2
-    Assert.assertEquals(chunks.get(0).getStartTime(), 2);
-    Assert.assertEquals(chunks.get(0).getEndTime(), 4);
-    Assert.assertEquals(chunks.get(0).getNumOfPoints(), 2);
+    assertEquals(chunks.get(0).getStartTime(), 2);
+    assertEquals(chunks.get(0).getEndTime(), 4);
+    assertEquals(chunks.get(0).getNumOfPoints(), 2);
 
     reader.close();
   }
@@ -210,7 +209,7 @@ public class RestorableTsFileIOWriterTest {
   public void testFlushAndGetMetadata() throws IOException {
     writer = new RestorableTsFileIOWriter(processorName, insertPath);
 
-    Assert.assertEquals(0,
+    assertEquals(0,
         writer.getMetadatas(MemTableTestUtils.deviceId0, MemTableTestUtils.measurementId0,
             MemTableTestUtils.dataType0).size());
 
@@ -222,18 +221,18 @@ public class RestorableTsFileIOWriterTest {
     MemTableFlushUtil.flushMemTable(MemTableTestUtils.getFileSchema(), writer, memTable, 0);
     writer.flush();
 
-    Assert.assertEquals(0,
+    assertEquals(0,
         writer.getMetadatas(MemTableTestUtils.deviceId0, MemTableTestUtils.measurementId0,
             MemTableTestUtils.dataType0).size());
     writer.appendMetadata();
-    Assert.assertEquals(1,
+    assertEquals(1,
         writer.getMetadatas(MemTableTestUtils.deviceId0, MemTableTestUtils.measurementId0,
             MemTableTestUtils.dataType0).size());
     MemTableTestUtils.produceData(memTable, 200, 300, MemTableTestUtils.deviceId0,
         MemTableTestUtils.measurementId0,
         MemTableTestUtils.dataType0);
     writer.appendMetadata();
-    Assert.assertEquals(1,
+    assertEquals(1,
         writer.getMetadatas(MemTableTestUtils.deviceId0, MemTableTestUtils.measurementId0,
             MemTableTestUtils.dataType0).size());
 
@@ -261,7 +260,7 @@ public class RestorableTsFileIOWriterTest {
     try {
       Files.delete(Paths.get(insertPath));
     } catch (IOException e) {
-      Assert.fail(e.getMessage());
+      fail(e.getMessage());
     }
   }
 }

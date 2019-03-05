@@ -157,7 +157,7 @@ public class IoTDBCompleteIT {
             + "                 DataType: DOUBLE,\n"
             + "                 Encoding: RLE,\n"
             + "                 Compressor: UNCOMPRESSED,\n"
-            + "                 args: {max_point_number=101},\n"
+            + "                 args: {max_point_number=10},\n"
             + "                 StorageGroup: root.vehicle\n"
             + "            }\n"
             + "        }\n"
