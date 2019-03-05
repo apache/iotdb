@@ -93,7 +93,7 @@ public class TsFileWriter {
    *
    * @param fileWriter the io writer of this TsFile
    */
-  public TsFileWriter(TsFileIOWriter fileWriter) {
+  public TsFileWriter(TsFileIOWriter fileWriter) throws IOException {
     this(fileWriter, new FileSchema(), TSFileDescriptor.getInstance().getConfig());
   }
 
@@ -135,9 +135,15 @@ public class TsFileWriter {
    * @param schema the schema of this TsFile
    * @param conf the configuration of this TsFile
    */
-  protected TsFileWriter(TsFileIOWriter fileWriter, FileSchema schema, TSFileConfig conf) {
+  protected TsFileWriter(TsFileIOWriter fileWriter, FileSchema schema, TSFileConfig conf)
+      throws IOException {
+    if (!fileWriter.canWrite()) {
+      throw new IOException(
+          "the given file Writer does not support writing any more. Maybe it is an complete TsFile");
+    }
     this.fileWriter = fileWriter;
     this.schema = schema;
+    this.schema.registerMeasurements(fileWriter.getKnownSchema());
     this.pageSize = TSFileConfig.pageSizeInByte;
     this.chunkGroupSizeThreshold = TSFileConfig.groupSizeInByte;
     if (this.pageSize >= chunkGroupSizeThreshold) {

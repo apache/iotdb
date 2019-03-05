@@ -122,8 +122,23 @@ public class TsFileSequenceReader {
    * this function does not modify the position of the file reader.
    */
   public String readHeadMagic() throws IOException {
+    return readHeadMagic(false);
+  }
+
+  /**
+   * this function does not modify the position of the file reader.
+   *
+   * @param movePosition whether move the position of the file reader after reading the magic header
+   * to the end of the magic head string.
+   */
+  public String readHeadMagic(boolean movePosition) throws IOException {
     ByteBuffer magicStringBytes = ByteBuffer.allocate(TSFileConfig.MAGIC_STRING.length());
-    tsFileInput.read(magicStringBytes, 0);
+    if (movePosition) {
+      tsFileInput.position(0);
+      tsFileInput.read(magicStringBytes);
+    } else {
+      tsFileInput.read(magicStringBytes, 0);
+    }
     magicStringBytes.flip();
     return new String(magicStringBytes.array());
   }
@@ -366,11 +381,4 @@ public class TsFileSequenceReader {
         .readAsPossible(tsFileInput.wrapAsFileChannel(), target, position, length);
   }
 
-  /**
-   *
-   * @param pos the position of the file you want to move to
-   */
-  public void setPosition(long pos) throws IOException {
-    tsFileInput.position(pos);
-  }
 }
