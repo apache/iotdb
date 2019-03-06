@@ -109,8 +109,14 @@ public class OverflowResource {
     try(FileInputStream inputStream = new FileInputStream(positionFilePath)) {
       byte[] insertPositionData = new byte[8];
       byte[] updatePositionData = new byte[8];
-      inputStream.read(insertPositionData);
-      inputStream.read(updatePositionData);
+      int byteRead = inputStream.read(insertPositionData);
+      if (byteRead != 8) {
+        throw new IOException("Not enough bytes for insertPositionData");
+      }
+      byteRead = inputStream.read(updatePositionData);
+      if (byteRead != 8) {
+        throw new IOException("Not enough bytes for updatePositionData");
+      }
       long lastInsertPosition = BytesUtils.bytesToLong(insertPositionData);
       long lastUpdatePosition = BytesUtils.bytesToLong(updatePositionData);
       return new Pair<>(lastInsertPosition, lastUpdatePosition);
@@ -121,6 +127,7 @@ public class OverflowResource {
       if (insertTempFile.exists()) {
         left = insertTempFile.length();
       }
+      LOGGER.warn("Cannot read position info, returning a default value", e);
       return new Pair<>(left, right);
     }
   }

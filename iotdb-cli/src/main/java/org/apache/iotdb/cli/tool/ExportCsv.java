@@ -246,7 +246,7 @@ public class ExportCsv extends AbstractCsvTool {
           return;
       }
     } catch (IOException e) {
-      LOGGER.error(e.getMessage());
+      LOGGER.error("Cannot create dump file {}", path,  e);
       return;
     }
 

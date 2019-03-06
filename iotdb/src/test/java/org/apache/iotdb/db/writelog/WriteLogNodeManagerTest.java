@@ -51,22 +51,22 @@ public class WriteLogNodeManagerTest {
 
   @Before
   public void setUp() throws Exception {
-    enableWal = config.enableWal;
-    config.enableWal = true;
+    enableWal = config.isEnableWal();
+    config.setEnableWal(true);
     EnvironmentUtils.envSetUp();
   }
 
   @After
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
-    config.enableWal = enableWal;
+    config.setEnableWal(enableWal);
   }
 
   @Test
   public void testAutoSync() throws IOException, InterruptedException {
     // this test check that nodes in a manager will sync periodically.
-    int flushWalPeriod = config.flushWalThreshold;
-    config.flushWalPeriodInMs = 10000;
+    int flushWalPeriod = config.getFlushWalThreshold();
+    config.setFlushWalPeriodInMs(10000);
     File tempRestore = File.createTempFile("managerTest", "restore");
     File tempProcessorStore = File.createTempFile("managerTest", "processorStore");
 
@@ -87,11 +87,11 @@ public class WriteLogNodeManagerTest {
     File walFile = new File(logNode.getLogDirectory() + File.separator + "wal");
     assertTrue(!walFile.exists());
 
-    Thread.sleep(config.flushWalPeriodInMs + 1000);
+    Thread.sleep(config.getFlushWalPeriodInMs() + 1000);
     assertTrue(walFile.exists());
 
     logNode.delete();
-    config.flushWalPeriodInMs = flushWalPeriod;
+    config.setFlushWalPeriodInMs(flushWalPeriod);
     tempRestore.delete();
     tempProcessorStore.delete();
     tempRestore.getParentFile().delete();

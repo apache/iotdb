@@ -56,15 +56,15 @@ public class PerformanceTest {
 
   @Before
   public void setUp() throws Exception {
-    enableWal = config.enableWal;
-    config.enableWal = true;
+    enableWal = config.isEnableWal();
+    config.setEnableWal(true);
     EnvironmentUtils.envSetUp();
   }
 
   @After
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
-    config.enableWal = enableWal;
+    config.setEnableWal(enableWal);
   }
 
   @Test
@@ -75,12 +75,12 @@ public class PerformanceTest {
     }
     int[] batchSizes = new int[]{100, 500, 1000, 5000, 10000};
     long[] forceCycle = new long[]{10, 0};
-    int oldBatchSize = config.flushWalThreshold;
-    long oldForceCycle = config.forceWalPeriodInMs;
+    int oldBatchSize = config.getFlushWalThreshold();
+    long oldForceCycle = config.getForceWalPeriodInMs();
     for (int j = 0; j < batchSizes.length; j++) {
       for (int k = 0; k < forceCycle.length; k++) {
-        config.flushWalThreshold = batchSizes[j];
-        config.forceWalPeriodInMs = forceCycle[k];
+        config.setFlushWalThreshold(batchSizes[j]);
+        config.setForceWalPeriodInMs(forceCycle[k]);
         File tempRestore = new File("testtemp", "restore");
         File tempProcessorStore = new File("testtemp", "processorStore");
         tempRestore.getParentFile().mkdirs();
@@ -106,10 +106,10 @@ public class PerformanceTest {
           logNode.write(deletePlan);
         }
         logNode.forceSync();
-        System.out.println("forceWalPeriodInMs = " + config.forceWalPeriodInMs);
+        System.out.println("forceWalPeriodInMs = " + config.getForceWalPeriodInMs());
         System.out.println(
             3000000 + " logs use " + (System.currentTimeMillis() - time) + " ms at batch size "
-                + config.flushWalThreshold);
+                + config.getFlushWalThreshold());
 
         logNode.delete();
         tempRestore.delete();
@@ -117,8 +117,8 @@ public class PerformanceTest {
         tempRestore.getParentFile().delete();
       }
     }
-    config.flushWalThreshold = oldBatchSize;
-    config.forceWalPeriodInMs = oldForceCycle;
+    config.setFlushWalThreshold(oldBatchSize);
+    config.setForceWalPeriodInMs(oldForceCycle);
   }
 
   @Test

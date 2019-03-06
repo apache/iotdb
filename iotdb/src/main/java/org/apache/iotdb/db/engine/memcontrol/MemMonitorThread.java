@@ -38,9 +38,9 @@ public class MemMonitorThread extends Thread {
    */
   public MemMonitorThread(IoTDBConfig config) {
     this.setName(ThreadName.MEMORY_MONITOR.getName());
-    long confInterval = config.memMonitorInterval;
+    long confInterval = config.getMemMonitorInterval();
     this.checkInterval = confInterval > 0 ? confInterval : this.checkInterval;
-    if (config.enableSmallFlush) {
+    if (config.isEnableSmallFlush()) {
       this.safePolicy = new FlushPartialPolicy();
     } else {
       this.safePolicy = new NoActPolicy();

@@ -103,14 +103,14 @@ public class BufferwriteFileSizeControlTest {
     pageCheckSizeThreshold = TsFileConf.pageCheckSizeThreshold;
     pageSizeInByte = TsFileConf.pageSizeInByte;
     maxStringLength = TsFileConf.maxStringLength;
-    fileSizeThreshold = dbConfig.bufferwriteFileSizeThreshold;
-    memMonitorInterval = dbConfig.memMonitorInterval;
+    fileSizeThreshold = dbConfig.getBufferwriteFileSizeThreshold();
+    memMonitorInterval = dbConfig.getMemMonitorInterval();
     // new value
     TsFileConf.groupSizeInByte = 200000;
     TsFileConf.pageCheckSizeThreshold = 3;
     TsFileConf.pageSizeInByte = 10000;
     TsFileConf.maxStringLength = 2;
-    dbConfig.bufferwriteFileSizeThreshold = 5 * 1024 * 1024;
+    dbConfig.setBufferwriteFileSizeThreshold(5 * 1024 * 1024);
     BasicMemController.getInstance().setCheckInterval(600 * 1000);
     // init metadata
     MetadataManagerHelper.initMetadata();
@@ -123,7 +123,7 @@ public class BufferwriteFileSizeControlTest {
     TsFileConf.pageCheckSizeThreshold = pageCheckSizeThreshold;
     TsFileConf.pageSizeInByte = pageSizeInByte;
     TsFileConf.maxStringLength = maxStringLength;
-    dbConfig.bufferwriteFileSizeThreshold = fileSizeThreshold;
+    dbConfig.setBufferwriteFileSizeThreshold(fileSizeThreshold);
     BasicMemController.getInstance().setCheckInterval(memMonitorInterval);
     // clean environment
     EnvironmentUtils.cleanEnv();
@@ -166,7 +166,7 @@ public class BufferwriteFileSizeControlTest {
       e.printStackTrace();
     }
     processor.close();
-    assertTrue(processor.getFileSize() < dbConfig.bufferwriteFileSizeThreshold);
+    assertTrue(processor.getFileSize() < dbConfig.getBufferwriteFileSizeThreshold());
     fail("Method unimplemented");
   }
 }
