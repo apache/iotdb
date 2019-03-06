@@ -16,21 +16,23 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.writelog.io;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.util.Iterator;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+package org.apache.iotdb.db.exception;
 
-public interface ILogReader {
+public class SysCheckException extends Exception {
 
-  void open(File file) throws FileNotFoundException;
+  public SysCheckException() {
+  }
 
-  void close();
+  public SysCheckException(String message) {
+    super(message);
+  }
 
-  boolean hasNext() throws IOException;
+  public SysCheckException(String message, Throwable cause) {
+    super(message, cause);
+  }
 
-  PhysicalPlan next() throws IOException;
+  public SysCheckException(Throwable cause) {
+    super(cause);
+  }
 }

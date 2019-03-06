@@ -216,7 +216,7 @@ public class PerformanceTest {
   }
 
   @Test
-  public void SQLEncodingComparisonTest() throws WALOverSizedException {
+  public void SQLEncodingComparisonTest() throws IOException {
     String sql = "INSERT INTO root.logTestDevice(time,s1,s2,s3,s4) "
         + "VALUES (100,1.0,15,\"str\",false)";
     InsertPlan bwInsertPlan = new InsertPlan(1, "root.logTestDevice", 100,
