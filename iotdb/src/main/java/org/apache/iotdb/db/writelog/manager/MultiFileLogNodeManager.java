@@ -62,7 +62,7 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
         }
         logger.debug("Timed sync finished");
         try {
-          Thread.sleep(config.flushWalPeriodInMs);
+          Thread.sleep(config.getFlushWalPeriodInMs());
         } catch (InterruptedException e) {
           logger.info("WAL sync thread exits.");
           Thread.currentThread().interrupt();
@@ -87,7 +87,7 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
         }
         logger.debug("Timed force finished");
         try {
-          Thread.sleep(config.forceWalPeriodInMs);
+          Thread.sleep(config.getForceWalPeriodInMs());
         } catch (InterruptedException e) {
           logger.info("WAL force thread exits.");
           Thread.currentThread().interrupt();
@@ -190,7 +190,7 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
   }
 
   private String bufferWriteWALPath(String fileNodeName) {
-    return config.walFolder + File.separator + fileNodeName
+    return config.getWalFolder() + File.separator + fileNodeName
         + IoTDBConstant.BUFFERWRITE_LOG_NODE_SUFFIX;
   }
 
@@ -201,21 +201,21 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
   }
 
   private String overflowWALPath(String fileNodeName) {
-    return config.walFolder + File.separator + fileNodeName
+    return config.getWalFolder() + File.separator + fileNodeName
         + IoTDBConstant.OVERFLOW_LOG_NODE_SUFFIX;
   }
 
   @Override
   public void start() throws StartupException {
     try {
-      if (!config.enableWal) {
+      if (!config.isEnableWal()) {
         return;
       }
       if (!isActivated(syncThread)) {
         InstanceHolder.instance.syncThread = new Thread(InstanceHolder.instance.syncTask,
             ThreadName.WAL_DAEMON.getName());
         InstanceHolder.instance.syncThread.start();
-        if (config.forceWalPeriodInMs > 0 && !isActivated(forceThread)) {
+        if (config.getForceWalPeriodInMs() > 0 && !isActivated(forceThread)) {
           InstanceHolder.instance.forceThread = new Thread(InstanceHolder.instance.forceTask,
               ThreadName.WAL_FORCE_DAEMON.getName());
           InstanceHolder.instance.forceThread.start();
@@ -233,7 +233,7 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
 
   @Override
   public void stop() {
-    if (!config.enableWal) {
+    if (!config.isEnableWal()) {
       return;
     }
     close();

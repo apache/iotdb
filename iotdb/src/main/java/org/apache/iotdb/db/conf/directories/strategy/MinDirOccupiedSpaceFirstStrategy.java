@@ -68,7 +68,7 @@ public class MinDirOccupiedSpaceFirstStrategy extends DirectoryStrategy {
             .sum();
       }
     } catch (IOException e) {
-      LOGGER.error("Cannot calculate occupied space for seriesPath {}.", path);
+      LOGGER.error("Cannot calculate occupied space for seriesPath {}.", path, e);
     }
 
     return size / DATA_SIZE_SHIFT;

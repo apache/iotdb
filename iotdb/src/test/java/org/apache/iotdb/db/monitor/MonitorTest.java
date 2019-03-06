@@ -52,13 +52,13 @@ public class MonitorTest {
     // modify stat parameter
     EnvironmentUtils.closeMemControl();
     EnvironmentUtils.envSetUp();
-    tsdbconfig.enableStatMonitor = true;
-    tsdbconfig.backLoopPeriodSec = 1;
+    tsdbconfig.setEnableStatMonitor(true);
+    tsdbconfig.setBackLoopPeriodSec(1);
   }
 
   @After
   public void tearDown() throws Exception {
-    tsdbconfig.enableStatMonitor = false;
+    tsdbconfig.setEnableStatMonitor(false);
     statMonitor.close();
     EnvironmentUtils.cleanEnv();
   }

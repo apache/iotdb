@@ -39,13 +39,13 @@ public class FileReaderManagerTest {
 
   @Before
   public void setUp() {
-    cacheFileReaderClearPeriod = dbConfig.cacheFileReaderClearPeriod;
-    dbConfig.cacheFileReaderClearPeriod = 3000;
+    cacheFileReaderClearPeriod = dbConfig.getCacheFileReaderClearPeriod();
+    dbConfig.setCacheFileReaderClearPeriod(3000);
   }
 
   @After
   public void tearDown() {
-    dbConfig.cacheFileReaderClearPeriod = cacheFileReaderClearPeriod;
+    dbConfig.setCacheFileReaderClearPeriod(cacheFileReaderClearPeriod);
   }
 
   @Test

@@ -37,8 +37,8 @@ public abstract class BasicMemController implements IService {
 
   BasicMemController(IoTDBConfig config) {
     this.config = config;
-    warningThreshold = config.memThresholdWarning;
-    dangerouseThreshold = config.memThresholdDangerous;
+    warningThreshold = config.getMemThresholdWarning();
+    dangerouseThreshold = config.getMemThresholdDangerous();
   }
 
   /**
@@ -47,7 +47,8 @@ public abstract class BasicMemController implements IService {
    * @return BasicMemController
    */
   public static BasicMemController getInstance() {
-    switch (ControllerType.values()[IoTDBDescriptor.getInstance().getConfig().memControllerType]) {
+    switch (ControllerType.values()[IoTDBDescriptor.getInstance().getConfig()
+        .getMemControllerType()]) {
       case JVM:
         return JVMMemController.getInstance();
       case RECORD:
@@ -59,7 +60,7 @@ public abstract class BasicMemController implements IService {
   @Override
   public void start() throws StartupException {
     try {
-      if (config.enableMemMonitor) {
+      if (config.isEnableMemMonitor()) {
         if (monitorThread == null) {
           monitorThread = new MemMonitorThread(config);
           monitorThread.start();

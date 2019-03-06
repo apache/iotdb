@@ -54,15 +54,15 @@ public class RecoverTest {
 
   @Before
   public void setUp() throws Exception {
-    enableWal = config.enableWal;
-    config.enableWal = true;
+    enableWal = config.isEnableWal();
+    config.setEnableWal(true);
     EnvironmentUtils.envSetUp();
   }
 
   @After
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
-    config.enableWal = enableWal;
+    config.setEnableWal(enableWal);
   }
 
   @Test

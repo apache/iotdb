@@ -98,9 +98,9 @@ public class OverflowFileSizeControlTest {
     parameters.put(FileNodeConstants.OVERFLOW_FLUSH_ACTION, overflowflushaction);
     parameters.put(FileNodeConstants.FILENODE_PROCESSOR_FLUSH_ACTION, filenodeflushaction);
 
-    overflowFileSize = dbConfig.overflowFileSizeThreshold;
+    overflowFileSize = dbConfig.getOverflowFileSizeThreshold();
     groupSize = tsconfig.groupSizeInByte;
-    dbConfig.overflowFileSizeThreshold = 10 * 1024 * 1024;
+    dbConfig.setOverflowFileSizeThreshold(10 * 1024 * 1024);
     tsconfig.groupSizeInByte = 1024 * 1024;
 
     MetadataManagerHelper.initMetadata();
@@ -108,7 +108,7 @@ public class OverflowFileSizeControlTest {
 
   @After
   public void tearDown() throws Exception {
-    dbConfig.overflowFileSizeThreshold = overflowFileSize;
+    dbConfig.setOverflowFileSizeThreshold(overflowFileSize);
     tsconfig.groupSizeInByte = groupSize;
     EnvironmentUtils.cleanEnv();
   }
@@ -132,7 +132,7 @@ public class OverflowFileSizeControlTest {
       // wait to flush
       Thread.sleep(1000);
       ofprocessor.close();
-      assertTrue(ofprocessor.getFileSize() < dbConfig.overflowFileSizeThreshold);
+      assertTrue(ofprocessor.getFileSize() < dbConfig.getOverflowFileSizeThreshold());
       fail("Method unimplemented");
     } catch (OverflowProcessorException e) {
       e.printStackTrace();

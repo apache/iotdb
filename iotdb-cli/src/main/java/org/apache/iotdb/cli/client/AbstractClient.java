@@ -684,7 +684,9 @@ public abstract class AbstractClient {
       if (hasResultSet) {
         ResultSet resultSet = statement.getResultSet();
         output(resultSet, printToConsole, zoneId);
-        closeResultSet(resultSet);
+        if (resultSet != null) {
+          resultSet.close();
+        }
       }
     } catch (Exception e) {
       println("Msg: " + e.getMessage());
@@ -701,17 +703,6 @@ public abstract class AbstractClient {
     }
     long costTime = System.currentTimeMillis() - startTime;
     println(String.format("It costs %.3fs", costTime / 1000.0));
-  }
-
-  protected static void closeResultSet(ResultSet resultSet) {
-    if (resultSet != null) {
-      try {
-        resultSet.close();
-      } catch (SQLException e) {
-        println("Cannot close resultSet because: " + e.getMessage());
-        handleException(e);
-      }
-    }
   }
 
   enum OperationResult {

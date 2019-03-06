@@ -82,13 +82,13 @@ public class IoTDBMemControlTest {
     if (testFlag) {
       deamon = IoTDB.getInstance();
 
-      config.memThresholdWarning = 3 * IoTDBConstant.MB;
-      config.memThresholdDangerous = 5 * IoTDBConstant.MB;
+      config.setMemThresholdWarning(3 * IoTDBConstant.MB);
+      config.setMemThresholdDangerous(5 * IoTDBConstant.MB);
 
       BasicMemController.getInstance().setCheckInterval(15 * 1000);
       BasicMemController.getInstance()
-          .setDangerousThreshold(config.memThresholdDangerous); // force initialize
-      BasicMemController.getInstance().setWarningThreshold(config.memThresholdWarning);
+          .setDangerousThreshold(config.getMemThresholdDangerous()); // force initialize
+      BasicMemController.getInstance().setWarningThreshold(config.getMemThresholdWarning());
 
       deamon.active();
       EnvironmentUtils.envSetUp();
@@ -143,7 +143,7 @@ public class IoTDBMemControlTest {
             "\"sadasgagfdhdshdhdfhdfhdhdhdfherherdfsdfbdfsherhedfjerjerdfshfdshxzcvenerhreherjnfdgntrnt"
                 + "ddfhdsf,joreinmoidnfh\"")));
     long recordMemSize = MemUtils.getTsRecordMemBufferwrite(record);
-    long insertCnt = config.memThresholdDangerous / recordMemSize * 2;
+    long insertCnt = config.getMemThresholdDangerous() / recordMemSize * 2;
     System.out.println(Thread.currentThread().getId() + " to insert " + insertCnt);
     try {
       connection = DriverManager
