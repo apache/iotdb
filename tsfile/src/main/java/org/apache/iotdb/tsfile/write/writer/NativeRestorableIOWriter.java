@@ -92,6 +92,7 @@ public class NativeRestorableIOWriter extends TsFileIOWriter {
     if (reader.readTailMagic().equals(reader.readHeadMagic(true))) {
       LOGGER.debug("{} is an complete TsFile.", file.getAbsolutePath());
       canWrite = false;
+      reader.close();
       return;
     }
 
