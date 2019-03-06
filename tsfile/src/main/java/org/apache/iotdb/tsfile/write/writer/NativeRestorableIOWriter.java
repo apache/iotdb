@@ -184,6 +184,7 @@ public class NativeRestorableIOWriter extends TsFileIOWriter {
       LOGGER.info("File {} has {} bytes, and will be truncated from {}.",
           file.getAbsolutePath(), file.length(), truncatedPosition);
       out.truncate(truncatedPosition);
+      reader.close();
     }
   }
 
