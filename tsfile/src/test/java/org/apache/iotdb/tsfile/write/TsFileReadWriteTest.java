@@ -65,7 +65,7 @@ public class TsFileReadWriteTest {
   public void tearDown() throws Exception {
     f = new File(path);
     if (f.exists()) {
-      f.delete();
+      assertTrue(f.delete());;
     }
   }
 
@@ -225,7 +225,7 @@ public class TsFileReadWriteTest {
     if (f.exists()) {
       assertTrue(f.delete());
     }
-    TsFileWriter tsFileWriter = new TsFileWriter(f);
+    tsFileWriter = new TsFileWriter(f);
 
     // add measurements into file schema
     tsFileWriter
