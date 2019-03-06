@@ -92,7 +92,7 @@ public class LocalFileRoleAccessor implements IRoleAccessor {
 
       return role;
     } catch (Exception e) {
-      throw new IOException(e.getMessage());
+      throw new IOException(e);
     }
   }
 
@@ -115,7 +115,7 @@ public class LocalFileRoleAccessor implements IRoleAccessor {
         }
         outputStream.flush();
       } catch (Exception e) {
-        throw new IOException(e.getMessage());
+        throw new IOException(e);
       }
     }
 

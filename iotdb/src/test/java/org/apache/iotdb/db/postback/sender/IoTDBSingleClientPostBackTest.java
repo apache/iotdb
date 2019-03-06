@@ -181,7 +181,7 @@ public class IoTDBSingleClientPostBackTest {
       deamon = IoTDB.getInstance();
       deamon.active();
       EnvironmentUtils.envSetUp();
-      conf.overflowFileSizeThreshold = 0;
+      conf.setOverflowFileSizeThreshold(0);
     }
     setConfig();
   }

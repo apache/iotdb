@@ -76,7 +76,7 @@ public class ModificationFile {
 
   public void abort() throws IOException {
     synchronized (this) {
-      if (modifications.size() > 0) {
+      if (!modifications.isEmpty()) {
         writer.abort();
         modifications.remove(modifications.size() - 1);
       }

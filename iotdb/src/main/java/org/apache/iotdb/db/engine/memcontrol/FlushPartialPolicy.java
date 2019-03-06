@@ -32,7 +32,7 @@ public class FlushPartialPolicy implements Policy {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(FlushPartialPolicy.class);
   private Thread workerThread;
-  private long sleepInterval = IoTDBDescriptor.getInstance().getConfig().smallFlushInterval;
+  private long sleepInterval = IoTDBDescriptor.getInstance().getConfig().getSmallFlushInterval();
 
   @Override
   public void execute() {

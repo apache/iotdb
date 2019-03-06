@@ -60,7 +60,7 @@ public class LogWriter implements ILogWriter {
     }
     buffer.flip();
     outputStream.write(buffer);
-    if (config.forceWalPeriodInMs == 0) {
+    if (config.getForceWalPeriodInMs() == 0) {
       outputStream.force(true);
     }
   }

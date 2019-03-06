@@ -150,7 +150,7 @@ public class LocalFileUserAccessor implements IUserAccessor {
         outputStream.flush();
 
       } catch (Exception e) {
-        throw new IOException(e.getMessage());
+        throw new IOException(e);
       }
     }
 

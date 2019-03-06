@@ -48,15 +48,15 @@ public class WriteLogNodeTest {
 
   @Before
   public void setUp() throws Exception {
-    enableWal = config.enableWal;
-    config.enableWal = true;
+    enableWal = config.isEnableWal();
+    config.setEnableWal(true);
     EnvironmentUtils.envSetUp();
   }
 
   @After
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
-    config.enableWal = enableWal;
+    config.setEnableWal(enableWal);
   }
 
   @Test
@@ -86,7 +86,7 @@ public class WriteLogNodeTest {
     logNode.forceSync();
 
     File walFile = new File(
-        config.walFolder + File.separator + "root.logTestDevice" + File.separator + "wal");
+        config.getWalFolder() + File.separator + "root.logTestDevice" + File.separator + "wal");
     assertTrue(walFile.exists());
 
     RandomAccessFile raf = new RandomAccessFile(walFile, "r");
@@ -160,12 +160,12 @@ public class WriteLogNodeTest {
     logNode.forceSync();
 
     File walFile = new File(
-        config.walFolder + File.separator + "root.logTestDevice" + File.separator + "wal");
+        config.getWalFolder() + File.separator + "root.logTestDevice" + File.separator + "wal");
     assertTrue(walFile.exists());
 
     logNode.notifyStartFlush();
     File oldWalFile = new File(
-        config.walFolder + File.separator + "root.logTestDevice" + File.separator + "wal-old");
+        config.getWalFolder() + File.separator + "root.logTestDevice" + File.separator + "wal-old");
     assertTrue(oldWalFile.exists());
     assertTrue(oldWalFile.length() > 0);
 
@@ -182,8 +182,8 @@ public class WriteLogNodeTest {
   @Test
   public void testSyncThreshold() throws IOException {
     // this test checks that if more logs than threshold are written, a sync will be triggered.
-    int flushWalThreshold = config.flushWalThreshold;
-    config.flushWalThreshold = 3;
+    int flushWalThreshold = config.getFlushWalThreshold();
+    config.setFlushWalThreshold(3);
     File tempRestore = new File("testtemp", "restore");
     File tempProcessorStore = new File("testtemp", "processorStore");
     tempRestore.getParentFile().mkdirs();
@@ -203,7 +203,7 @@ public class WriteLogNodeTest {
     logNode.write(updatePlan);
 
     File walFile = new File(
-        config.walFolder + File.separator + "root.logTestDevice" + File.separator + "wal");
+        config.getWalFolder() + File.separator + "root.logTestDevice" + File.separator + "wal");
     assertTrue(!walFile.exists());
 
     logNode.write(deletePlan);
@@ -212,7 +212,7 @@ public class WriteLogNodeTest {
     logNode.delete();
     tempRestore.delete();
     tempProcessorStore.delete();
-    config.flushWalThreshold = flushWalThreshold;
+    config.setFlushWalThreshold(flushWalThreshold);
     tempRestore.getParentFile().delete();
   }
 
@@ -242,7 +242,7 @@ public class WriteLogNodeTest {
     logNode.forceSync();
 
     File walFile = new File(
-        config.walFolder + File.separator + "root.logTestDevice" + File.separator + "wal");
+        config.getWalFolder() + File.separator + "root.logTestDevice" + File.separator + "wal");
     assertTrue(walFile.exists());
 
     assertTrue(new File(logNode.getLogDirectory()).exists());

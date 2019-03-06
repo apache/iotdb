@@ -81,7 +81,7 @@ public class ServerServiceImpl implements ServerService.Iface {
   private IoTDBConfig tsfileDBconfig = IoTDBDescriptor.getInstance().getConfig();
   private String postbackPath;
   // Absolute seriesPath of IoTDB data directory
-  private String dataPath = new File(tsfileDBconfig.dataDir).getAbsolutePath() + File.separator;
+  private String dataPath = new File(tsfileDBconfig.getDataDir()).getAbsolutePath() + File.separator;
   // Absolute paths of IoTDB bufferWrite directory
   private String[] bufferWritePaths = tsfileDBconfig.getBufferWriteDirs();
   private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
@@ -129,7 +129,7 @@ public class ServerServiceImpl implements ServerService.Iface {
         }
       }
     }
-    return PostbackUtils.verifyIPSegment(config.ipWhiteList, ipAddress);
+    return PostbackUtils.verifyIPSegment(config.getIpWhiteList(), ipAddress);
   }
 
   /**
@@ -210,7 +210,7 @@ public class ServerServiceImpl implements ServerService.Iface {
     if (status == 0) {
       Statement statement = null;
       try (Connection connection = DriverManager.getConnection("jdbc:iotdb://localhost:" +
-          config.rpcPort + "/", IoTDBConstant.ADMIN_NAME, IoTDBConstant.ADMIN_PW)) {
+          config.getRpcPort() + "/", IoTDBConstant.ADMIN_NAME, IoTDBConstant.ADMIN_PW)) {
         Class.forName(JDBC_DRIVER_NAME);
         statement = connection.createStatement();
 
@@ -383,7 +383,7 @@ public class ServerServiceImpl implements ServerService.Iface {
     Statement statement = null;
     TsFileSequenceReader reader = null;
     try (Connection connection = DriverManager.getConnection(
-        String.format("jdbc:iotdb://localhost:%d/", config.rpcPort), "root",
+        String.format("jdbc:iotdb://localhost:%d/", config.getRpcPort()), "root",
         "root")) {
       Class.forName(JDBC_DRIVER_NAME);
       statement = connection.createStatement();
@@ -479,7 +479,7 @@ public class ServerServiceImpl implements ServerService.Iface {
     TsFileSequenceReader reader = null;
     Statement statement = null;
     try (Connection connection = DriverManager.getConnection(
-        String.format("jdbc:iotdb://localhost:%d/", config.rpcPort), "root",
+        String.format("jdbc:iotdb://localhost:%d/", config.getRpcPort()), "root",
         "root")) {
       Class.forName(JDBC_DRIVER_NAME);
       statement = connection.createStatement();
@@ -667,7 +667,7 @@ public class ServerServiceImpl implements ServerService.Iface {
         try {
           if (!fileNodeManager.appendFileToFileNode(storageGroup, fileNode, path)) {
             // it is a file with overflow data
-            if (config.update_historical_data_possibility) {
+            if (config.isUpdate_historical_data_possibility()) {
               mergeOldData(path);
             } else {
               List<String> overlapFiles = fileNodeManager.getOverlapFilesFromFileNode(

@@ -114,12 +114,12 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
       try {
         Files.deleteIfExists(insertFile.toPath());
       } catch (IOException e) {
-        LOGGER.info("remove unsealed tsfile  failed: {}", e.getMessage());
+        LOGGER.info("remove unsealed tsfile  failed: ", e);
       }
       try {
         Files.deleteIfExists(restoreFile.toPath());
       } catch (IOException e) {
-        LOGGER.info("remove unsealed tsfile restore file failed: {}", e.getMessage());
+        LOGGER.info("remove unsealed tsfile restore file failed: ", e);
       }
 
       this.out = new DefaultTsFileOutput(new FileOutputStream(insertFile));
@@ -290,7 +290,7 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
     try {
       Files.delete(Paths.get(restoreFilePath));
     } catch (IOException e) {
-      LOGGER.info("delete restore file {} failed, because {}.", restoreFilePath, e.getMessage());
+      LOGGER.info("delete restore file {} failed, because ", restoreFilePath, e);
     }
   }
 
