@@ -85,7 +85,7 @@ public abstract class DataPoint {
         dataPoint = new StringDataPoint(measurementId, new Binary(value));
         break;
       default:
-        throw new UnSupportedDataTypeException("This data type is not supoort -" + dataType);
+        throw new UnSupportedDataTypeException("This data type is not supported -" + dataType);
     }
     return dataPoint;
   }

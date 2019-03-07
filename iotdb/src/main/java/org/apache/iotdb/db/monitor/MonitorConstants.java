@@ -16,35 +16,45 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.monitor;
 
+import java.io.File;
 import java.util.HashMap;
 import java.util.concurrent.atomic.AtomicLong;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.monitor.collector.FileSize;
+import org.apache.iotdb.db.service.Monitor;
 
 public class MonitorConstants {
-
-  public static final String DATA_TYPE = "INT64";
-  public static final String FILENODE_PROCESSOR_CONST = "FILENODE_PROCESSOR_CONST";
-  public static final String FILENODE_MANAGER_CONST = "FILENODE_MANAGER_CONST";
-  public static final String MONITOR_PATH_SEPERATOR = ".";
+  private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  public static final String DATA_TYPE_INT64 = "INT64";
   public static final String STAT_STORAGE_GROUP_PREFIX = "root.stats";
-
+  static final String FILENODE_PROCESSOR_CONST = "FILENODE_PROCESSOR_CONST";
+  private static final String FILENODE_MANAGER_CONST = "FILENODE_MANAGER_CONST";
+  static final String FILE_SIZE_CONST = "FILE_SIZE_CONST";
+  public static final String MONITOR_PATH_SEPARATOR = ".";
+  // statistic for file size statistic module
+  private static final String FILE_SIZE = "file_size";
+  public static final String FILE_SIZE_STORAGE_GROUP_NAME = STAT_STORAGE_GROUP_PREFIX
+      + MONITOR_PATH_SEPARATOR + FILE_SIZE;
   // statistic for write module
-  public static final String FILE_NODE_MANAGER_PATH = "write.global";
+  static final String FILE_NODE_MANAGER_PATH = "write.global";
   public static final String FILE_NODE_PATH = "write";
   /**
    * Stat information.
    */
   public static final String STAT_STORAGE_DELTA_NAME = STAT_STORAGE_GROUP_PREFIX
-          + MONITOR_PATH_SEPERATOR + FILE_NODE_MANAGER_PATH;
+      + MONITOR_PATH_SEPARATOR + FILE_NODE_MANAGER_PATH;
 
   /**
-   * function for initing values.
+   * function for initializing stats values.
    *
    * @param constantsType produce initialization values for Statistics Params
    * @return HashMap contains all the Statistics Params
    */
-  public static HashMap<String, AtomicLong> initValues(String constantsType) {
+  static HashMap<String, AtomicLong> initValues(String constantsType) {
     HashMap<String, AtomicLong> hashMap = new HashMap<>();
     switch (constantsType) {
       case FILENODE_PROCESSOR_CONST:
@@ -54,23 +64,49 @@ public class MonitorConstants {
         }
         break;
       case FILENODE_MANAGER_CONST:
-        for (FileNodeManagerStatConstants statConstant : FileNodeManagerStatConstants.values()) {
-          hashMap.put(statConstant.name(), new AtomicLong(0));
+        hashMap = (HashMap<String, AtomicLong>) FileSize.getInstance().getStatParamsHashMap();
+        break;
+      case FILE_SIZE_CONST:
+        for (FileSizeConstants kinds : FileSizeConstants.values()) {
+          hashMap.put(kinds.name(), new AtomicLong(0));
         }
         break;
       default:
-        // TODO: throws some errors
+
         break;
     }
     return hashMap;
   }
 
   public enum FileNodeManagerStatConstants {
-    TOTAL_POINTS, TOTAL_REQ_SUCCESS, TOTAL_REQ_FAIL, TOTAL_POINTS_SUCCESS, TOTAL_POINTS_FAIL,
-
+    TOTAL_POINTS, TOTAL_REQ_SUCCESS, TOTAL_REQ_FAIL, TOTAL_POINTS_SUCCESS, TOTAL_POINTS_FAIL
   }
 
   public enum FileNodeProcessorStatConstants {
-    TOTAL_REQ_SUCCESS, TOTAL_REQ_FAIL, TOTAL_POINTS_SUCCESS, TOTAL_POINTS_FAIL,
+    TOTAL_REQ_SUCCESS, TOTAL_REQ_FAIL, TOTAL_POINTS_SUCCESS, TOTAL_POINTS_FAIL
+  }
+
+  public enum OsStatConstants {
+    NETWORK_REC, NETWORK_SEND, CPU_USAGE, MEM_USAGE, IOTDB_MEM_SIZE, DISK_USAGE, DISK_READ_SPEED,
+    DISK_WRITE_SPEED, DISK_TPS
+  }
+
+  public enum FileSizeConstants {
+    DATA(Monitor.INSTANCE.getBaseDirectory()),
+    OVERFLOW(new File(config.overflowDataDir).getAbsolutePath()),
+    SETTLED(Monitor.INSTANCE.getBaseDirectory() + File.separatorChar + "settled"),
+    WAL(new File(config.walFolder).getAbsolutePath()),
+    INFO(new File(config.fileNodeDir).getAbsolutePath()),
+    SCHEMA(new File(config.metadataDir).getAbsolutePath());
+
+    public String getPath() {
+      return path;
+    }
+
+    private String path;
+
+    FileSizeConstants(String path) {
+      this.path = path;
+    }
   }
 }

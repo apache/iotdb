@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.monitor;
 
 import java.util.List;
@@ -34,9 +35,9 @@ public interface IStatistic {
   Map<String, TSRecord> getAllStatisticsValue();
 
   /**
-   * registStatMetadata registers statistics info to the manager.
+   * registerStatMetadata registers statistics info to the manager.
    */
-  void registStatMetadata();
+  void registerStatMetadata();
 
   /**
    * Get all module's statistics parameters as a time-series seriesPath.

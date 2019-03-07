@@ -234,8 +234,8 @@ public class FileNodeProcessor extends Processor implements IStatistic {
       statParamsHashMap.put(statConstant.name(), new AtomicLong(0));
     }
     statStorageDeltaName =
-        MonitorConstants.STAT_STORAGE_GROUP_PREFIX + MonitorConstants.MONITOR_PATH_SEPERATOR
-            + MonitorConstants.FILE_NODE_PATH + MonitorConstants.MONITOR_PATH_SEPERATOR
+        MonitorConstants.STAT_STORAGE_GROUP_PREFIX + MonitorConstants.MONITOR_PATH_SEPARATOR
+            + MonitorConstants.FILE_NODE_PATH + MonitorConstants.MONITOR_PATH_SEPARATOR
             + processorName.replaceAll("\\.", "_");
 
     this.parameters = new HashMap<>();
@@ -292,8 +292,8 @@ public class FileNodeProcessor extends Processor implements IStatistic {
     // RegistStatService
     if (TsFileDBConf.enableStatMonitor) {
       StatMonitor statMonitor = StatMonitor.getInstance();
-      registStatMetadata();
-      statMonitor.registStatistics(statStorageDeltaName, this);
+      registerStatMetadata();
+      statMonitor.registerStatistics(statStorageDeltaName, this);
     }
     try {
       versionController = new SimpleFileVersionController(fileNodeDirPath);
@@ -308,15 +308,15 @@ public class FileNodeProcessor extends Processor implements IStatistic {
   }
 
   @Override
-  public void registStatMetadata() {
+  public void registerStatMetadata() {
     Map<String, String> hashMap = new HashMap<>();
     for (MonitorConstants.FileNodeProcessorStatConstants statConstant :
         MonitorConstants.FileNodeProcessorStatConstants.values()) {
       hashMap
-          .put(statStorageDeltaName + MonitorConstants.MONITOR_PATH_SEPERATOR + statConstant.name(),
-              MonitorConstants.DATA_TYPE);
+          .put(statStorageDeltaName + MonitorConstants.MONITOR_PATH_SEPARATOR + statConstant.name(),
+              MonitorConstants.DATA_TYPE_INT64);
     }
-    StatMonitor.getInstance().registStatStorageGroup(hashMap);
+    StatMonitor.getInstance().registerStatStorageGroup(hashMap);
   }
 
   @Override
@@ -325,7 +325,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
     for (MonitorConstants.FileNodeProcessorStatConstants statConstant :
         MonitorConstants.FileNodeProcessorStatConstants.values()) {
       list.add(
-          statStorageDeltaName + MonitorConstants.MONITOR_PATH_SEPERATOR + statConstant.name());
+          statStorageDeltaName + MonitorConstants.MONITOR_PATH_SEPARATOR + statConstant.name());
     }
     return list;
   }
@@ -1788,7 +1788,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
     if (TsFileDBConf.enableStatMonitor) {
       // remove the monitor
       LOGGER.info("Deregister the filenode processor: {} from monitor.", getProcessorName());
-      StatMonitor.getInstance().deregistStatistics(statStorageDeltaName);
+      StatMonitor.getInstance().deregisterStatistics(statStorageDeltaName);
     }
     closeBufferWrite();
     closeOverflow();
