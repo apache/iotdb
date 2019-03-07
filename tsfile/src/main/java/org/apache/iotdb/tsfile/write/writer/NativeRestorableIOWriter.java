@@ -48,7 +48,7 @@ public class NativeRestorableIOWriter extends TsFileIOWriter {
   private long truncatedPosition = -1;
   private Map<String, MeasurementSchema> knownSchemas = new HashMap<>();
 
-  public long getTruncatedPosition() {
+  long getTruncatedPosition() {
     return truncatedPosition;
   }
 
@@ -93,7 +93,12 @@ public class NativeRestorableIOWriter extends TsFileIOWriter {
       truncatedPosition = magicStringBytes.length;
       return;
     }
-    if (reader.readTailMagic().equals(reader.readHeadMagic(true))) {
+    String magic = reader.readHeadMagic(true);
+    if (!magic.equals(new String(magicStringBytes))) {
+      throw new IOException(String
+          .format("%s is not using TsFile format, and will be ignored...", file.getAbsolutePath()));
+    }
+    if (reader.readTailMagic().equals(magic)) {
       LOGGER.debug("{} is an complete TsFile.", file.getAbsolutePath());
       canWrite = false;
       reader.close();
@@ -172,7 +177,7 @@ public class NativeRestorableIOWriter extends TsFileIOWriter {
             break;
 
           default:
-            // it is impossible taht we read an incorrect data.
+            // it is impossible that we read an incorrect data.
             MetaMarker.handleUnexpectedMarker(marker);
             goon = false;
         }
