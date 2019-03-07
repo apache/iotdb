@@ -22,8 +22,7 @@ import java.io.IOException;
 import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadataIndex;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
-
+import org.apache.iotdb.tsfile.exception.NotImplementedException;
 /**
  * A class for reading unclosed tsfile.
  */

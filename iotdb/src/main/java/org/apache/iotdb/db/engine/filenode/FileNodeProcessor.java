@@ -69,7 +69,6 @@ import org.apache.iotdb.db.exception.FileNodeProcessorException;
 import org.apache.iotdb.db.exception.OverflowProcessorException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
-import org.apache.iotdb.db.metadata.ColumnSchema;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.monitor.IStatistic;
 import org.apache.iotdb.db.monitor.MonitorConstants;
@@ -85,6 +84,7 @@ import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.footer.ChunkGroupFooter;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -107,7 +107,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static java.time.ZonedDateTime.ofInstant;
-import static org.apache.iotdb.db.utils.FileSchemaUtils.constructJsonFileSchema;
 
 public class FileNodeProcessor extends Processor implements IStatistic {
 
@@ -290,7 +289,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
       addAllFileIntoIndex(newFileNodes);
     }
     // RegistStatService
-    if (TsFileDBConf.enableStatMonitor) {
+    if (TsFileDBConf.isEnableStatMonitor()) {
       StatMonitor statMonitor = StatMonitor.getInstance();
       registerStatMetadata();
       statMonitor.registerStatistics(statStorageDeltaName, this);
@@ -462,8 +461,6 @@ public class FileNodeProcessor extends Processor implements IStatistic {
         bufferWriteProcessor = new BufferWriteProcessor(baseDir, getProcessorName(),
             fileNames[fileNames.length - 1], parameters, versionController, fileSchema);
       } catch (BufferWriteProcessorException e) {
-        // unlock
-        writeUnlock();
         LOGGER.error(
             "The filenode processor {} failed to recovery the bufferwrite processor, "
                 + "the last bufferwrite file is {}.",
@@ -480,7 +477,6 @@ public class FileNodeProcessor extends Processor implements IStatistic {
       overflowProcessor = new OverflowProcessor(getProcessorName(), parameters, fileSchema,
           versionController);
     } catch (IOException e) {
-      writeUnlock();
       LOGGER.error("The filenode processor {} failed to recovery the overflow processor.",
           getProcessorName());
       throw new FileNodeProcessorException(e);
@@ -498,10 +494,10 @@ public class FileNodeProcessor extends Processor implements IStatistic {
       // unlock
       LOGGER.info("The filenode processor {} is recovering, the filenode status is {}.",
           getProcessorName(), isMerging);
-      writeUnlock();
+      //writeUnlock();
       switchWaitingToWorking();
     } else {
-      writeUnlock();
+      //writeUnlock();
     }
     // add file into index of file
     addAllFileIntoIndex(newFileNodes);
@@ -755,19 +751,19 @@ public class FileNodeProcessor extends Processor implements IStatistic {
    * query data.
    */
   public <T extends Comparable<T>> QueryDataSource query(String deviceId, String measurementId,
-      QueryContext context)
-      throws FileNodeProcessorException {
+      QueryContext context) throws FileNodeProcessorException {
     // query overflow data
+    MeasurementSchema mSchema;
     TSDataType dataType;
-    try {
-      dataType = mManager.getSeriesType(deviceId + "." + measurementId);
-    } catch (PathErrorException e) {
-      throw new FileNodeProcessorException(e);
-    }
+
+    //mSchema = mManager.getSchemaForOnePath(deviceId + "." + measurementId);
+    mSchema = fileSchema.getMeasurementSchema(measurementId);
+    dataType = mSchema.getType();
+
     OverflowSeriesDataSource overflowSeriesDataSource;
     try {
       overflowSeriesDataSource = overflowProcessor.query(deviceId, measurementId, dataType,
-          context);
+          mSchema.getProps(), context);
     } catch (IOException e) {
       throw new FileNodeProcessorException(e);
     }
@@ -798,7 +794,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
             newFileNodes.get(newFileNodes.size() - 1).getRelativePath(), getProcessorName()));
       }
       bufferwritedata = bufferWriteProcessor
-          .queryBufferWriteData(deviceId, measurementId, dataType);
+          .queryBufferWriteData(deviceId, measurementId, dataType, mSchema.getProps());
 
       try {
         List<Modification> pathModifications = context.getPathModifications(
@@ -915,11 +911,10 @@ public class FileNodeProcessor extends Processor implements IStatistic {
   /**
    * add time series.
    */
-  public void addTimeSeries(String measurementToString, String dataType, String encoding) {
-    ColumnSchema col = new ColumnSchema(measurementToString, TSDataType.valueOf(dataType),
-        TSEncoding.valueOf(encoding));
-    JSONObject measurement = FileSchemaUtils.constructJsonColumnSchema(col);
-    fileSchema.registerMeasurement(JsonConverter.convertJsonToMeasurementSchema(measurement));
+  public void addTimeSeries(String measurementId, TSDataType dataType, TSEncoding encoding,
+      CompressionType compressor, Map<String, String> props) {
+    fileSchema.registerMeasurement(new MeasurementSchema(measurementId, dataType, encoding,
+        compressor, props));
   }
 
   /**
@@ -946,14 +941,14 @@ public class FileNodeProcessor extends Processor implements IStatistic {
 
     if (overflowProcessor != null) {
       if (overflowProcessor.getFileSize() < IoTDBDescriptor.getInstance()
-          .getConfig().overflowFileSizeThreshold) {
+          .getConfig().getOverflowFileSizeThreshold()) {
         if (LOGGER.isInfoEnabled()) {
           LOGGER.info(
               "Skip this merge taks submission, because the size{} of overflow processor {} "
                   + "does not reaches the threshold {}.",
               MemUtils.bytesCntToStr(overflowProcessor.getFileSize()), getProcessorName(),
               MemUtils.bytesCntToStr(
-                  IoTDBDescriptor.getInstance().getConfig().overflowFileSizeThreshold));
+                  IoTDBDescriptor.getInstance().getConfig().getOverflowFileSizeThreshold()));
         }
         return null;
       }
@@ -1634,29 +1629,15 @@ public class FileNodeProcessor extends Processor implements IStatistic {
 
   private FileSchema constructFileSchema(String processorName) throws WriteProcessException {
 
-    List<ColumnSchema> columnSchemaList;
+    List<MeasurementSchema> columnSchemaList;
     columnSchemaList = mManager.getSchemaForFileName(processorName);
 
-    FileSchema schema;
-    try {
-      schema = getFileSchemaFromColumnSchema(columnSchemaList, processorName);
-    } catch (WriteProcessException e) {
-      LOGGER.error("Get the FileSchema error, the list of ColumnSchema is {}", columnSchemaList);
-      throw e;
+    FileSchema schema = new FileSchema();
+    for (MeasurementSchema measurementSchema : columnSchemaList) {
+      schema.registerMeasurement(measurementSchema);
     }
     return schema;
 
-  }
-
-  private FileSchema getFileSchemaFromColumnSchema(List<ColumnSchema> schemaList, String deviceType)
-      throws WriteProcessException {
-    JSONArray rowGroup = new JSONArray();
-
-    for (ColumnSchema col : schemaList) {
-      JSONObject measurement = FileSchemaUtils.constructJsonColumnSchema(col);
-      rowGroup.put(measurement);
-    }
-    return constructJsonFileSchema(deviceType, rowGroup);
   }
 
   @Override
@@ -1785,7 +1766,7 @@ public class FileNodeProcessor extends Processor implements IStatistic {
    * deregister the filenode processor.
    */
   public void delete() throws ProcessorException {
-    if (TsFileDBConf.enableStatMonitor) {
+    if (TsFileDBConf.isEnableStatMonitor()) {
       // remove the monitor
       LOGGER.info("Deregister the filenode processor: {} from monitor.", getProcessorName());
       StatMonitor.getInstance().deregisterStatistics(statStorageDeltaName);

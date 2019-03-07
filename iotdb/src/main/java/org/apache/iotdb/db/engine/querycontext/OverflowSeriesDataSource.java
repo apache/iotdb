@@ -30,14 +30,14 @@ public class OverflowSeriesDataSource {
   // overflow tsfile
   private List<OverflowInsertFile> overflowInsertFileList;
   // unSeq mem-table
-  private TimeValuePairSorter readableMemChunk;
+  private ReadOnlyMemChunk readableMemChunk;
 
   public OverflowSeriesDataSource(Path seriesPath) {
     this.seriesPath = seriesPath;
   }
 
   public OverflowSeriesDataSource(Path seriesPath, TSDataType dataType,
-      List<OverflowInsertFile> overflowInsertFileList, TimeValuePairSorter readableMemChunk) {
+      List<OverflowInsertFile> overflowInsertFileList, ReadOnlyMemChunk readableMemChunk) {
     this.seriesPath = seriesPath;
     this.dataType = dataType;
     this.overflowInsertFileList = overflowInsertFileList;
@@ -52,11 +52,11 @@ public class OverflowSeriesDataSource {
     this.overflowInsertFileList = overflowInsertFileList;
   }
 
-  public TimeValuePairSorter getReadableMemChunk() {
+  public ReadOnlyMemChunk getReadableMemChunk() {
     return readableMemChunk;
   }
 
-  public void setReadableMemChunk(TimeValuePairSorter rawChunk) {
+  public void setReadableMemChunk(ReadOnlyMemChunk rawChunk) {
     this.readableMemChunk = rawChunk;
   }
 

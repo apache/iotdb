@@ -67,7 +67,7 @@ public abstract class BasicUserManager implements IUserManager {
     try {
       admin = getUser(IoTDBConstant.ADMIN_NAME);
     } catch (AuthException e) {
-      logger.warn("Cannot load admin because {}. Create a new one.", e.getMessage());
+      logger.warn("Cannot load admin, Creating a new one.", e);
       admin = null;
     }
 
@@ -196,6 +196,7 @@ public abstract class BasicUserManager implements IUserManager {
     try {
       AuthUtils.validatePassword(newPassword);
     } catch (AuthException e) {
+      logger.debug("An illegal password detected ", e);
       return false;
     }
 

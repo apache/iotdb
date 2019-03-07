@@ -232,6 +232,7 @@ root:{
             s0:{
                  DataType: INT32,
                  Encoding: RLE,
+                 Compressor: UNCOMPRESSED,
                  args: {},
                  StorageGroup: root.vehicle
             }

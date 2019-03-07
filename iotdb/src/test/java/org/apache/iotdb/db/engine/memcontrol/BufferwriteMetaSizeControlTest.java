@@ -38,9 +38,9 @@ import org.apache.iotdb.db.engine.bufferwrite.BufferWriteProcessor;
 import org.apache.iotdb.db.engine.bufferwrite.FileNodeConstants;
 import org.apache.iotdb.db.engine.version.SysTimeVersionController;
 import org.apache.iotdb.db.exception.BufferWriteProcessorException;
-import org.apache.iotdb.db.metadata.ColumnSchema;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.db.utils.FileSchemaUtils;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -48,6 +48,7 @@ import org.apache.iotdb.tsfile.common.constant.JsonFormatConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.schema.FileSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.After;
@@ -102,14 +103,14 @@ public class BufferwriteMetaSizeControlTest {
     pageCheckSizeThreshold = TsFileConf.pageCheckSizeThreshold;
     pageSizeInByte = TsFileConf.pageSizeInByte;
     maxStringLength = TsFileConf.maxStringLength;
-    metaSizeThreshold = dbConfig.bufferwriteFileSizeThreshold;
-    memMonitorInterval = dbConfig.memMonitorInterval;
+    metaSizeThreshold = dbConfig.getBufferwriteFileSizeThreshold();
+    memMonitorInterval = dbConfig.getMemMonitorInterval();
     // new value
     TsFileConf.groupSizeInByte = 200000;
     TsFileConf.pageCheckSizeThreshold = 3;
     TsFileConf.pageSizeInByte = 10000;
     TsFileConf.maxStringLength = 2;
-    dbConfig.bufferwriteMetaSizeThreshold = 1024 * 1024;
+    dbConfig.setBufferwriteMetaSizeThreshold(1024 * 1024);
     BasicMemController.getInstance().setCheckInterval(600 * 1000);
     // init metadata
     MetadataManagerHelper.initMetadata();
@@ -122,7 +123,7 @@ public class BufferwriteMetaSizeControlTest {
     TsFileConf.pageCheckSizeThreshold = pageCheckSizeThreshold;
     TsFileConf.pageSizeInByte = pageSizeInByte;
     TsFileConf.maxStringLength = maxStringLength;
-    dbConfig.bufferwriteMetaSizeThreshold = metaSizeThreshold;
+    dbConfig.setBufferwriteMetaSizeThreshold(metaSizeThreshold);
     BasicMemController.getInstance().setCheckInterval(memMonitorInterval);
     // clean environment
     EnvironmentUtils.cleanEnv();
@@ -144,7 +145,7 @@ public class BufferwriteMetaSizeControlTest {
     try {
       processor = new BufferWriteProcessor(Directories.getInstance().getFolderForTest(), nsp,
           filename,
-          parameters, SysTimeVersionController.INSTANCE, constructFileSchema(nsp));
+          parameters, SysTimeVersionController.INSTANCE, FileSchemaUtils.constructFileSchema(nsp));
     } catch (BufferWriteProcessorException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -164,49 +165,9 @@ public class BufferwriteMetaSizeControlTest {
     } catch (InterruptedException e) {
       e.printStackTrace();
     }
-    assertTrue(processor.getMetaSize() < dbConfig.bufferwriteFileSizeThreshold);
+    assertTrue(processor.getMetaSize() < dbConfig.getBufferwriteFileSizeThreshold());
     processor.close();
     fail("Method unimplemented");
 
-  }
-
-  private FileSchema constructFileSchema(String processorName) throws WriteProcessException {
-
-    List<ColumnSchema> columnSchemaList;
-    columnSchemaList = MManager.getInstance().getSchemaForFileName(processorName);
-
-    FileSchema fileSchema = null;
-    try {
-      fileSchema = getFileSchemaFromColumnSchema(columnSchemaList, processorName);
-    } catch (WriteProcessException e) {
-      throw e;
-    }
-    return fileSchema;
-
-  }
-
-  private FileSchema getFileSchemaFromColumnSchema(List<ColumnSchema> schemaList, String deviceType)
-      throws WriteProcessException {
-    JSONArray rowGroup = new JSONArray();
-
-    for (ColumnSchema columnSchema : schemaList) {
-      JSONObject measurement = new JSONObject();
-      measurement.put(JsonFormatConstant.MEASUREMENT_UID, columnSchema.getName());
-      measurement.put(JsonFormatConstant.DATA_TYPE, columnSchema.dataType.toString());
-      measurement.put(JsonFormatConstant.MEASUREMENT_ENCODING, columnSchema.encoding.toString());
-      for (Entry<String, String> entry : columnSchema.getArgsMap().entrySet()) {
-        if (JsonFormatConstant.ENUM_VALUES.equals(entry.getKey())) {
-          String[] valueArray = entry.getValue().split(",");
-          measurement.put(JsonFormatConstant.ENUM_VALUES, new JSONArray(valueArray));
-        } else {
-          measurement.put(entry.getKey(), entry.getValue().toString());
-        }
-      }
-      rowGroup.put(measurement);
-    }
-    JSONObject jsonSchema = new JSONObject();
-    jsonSchema.put(JsonFormatConstant.JSON_SCHEMA, rowGroup);
-    jsonSchema.put(JsonFormatConstant.DELTA_TYPE, deviceType);
-    return new FileSchema(jsonSchema);
   }
 }

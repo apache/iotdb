@@ -26,6 +26,10 @@ import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.db.exception.MetadataArgsErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 /**
  * Metadata Graph consists of one {@code MTree} and several {@code PTree}.
@@ -59,13 +63,13 @@ public class MGraph implements Serializable {
    *
    * @param path Format: root.node.(node)*
    */
-  public void addPathToMTree(String path, String dataType, String encoding, String[] args)
-      throws PathErrorException, MetadataArgsErrorException {
+  public void addPathToMTree(String path, TSDataType dataType, TSEncoding encoding,
+      CompressionType compressor, Map<String, String> props) throws PathErrorException, MetadataArgsErrorException {
     String[] nodes = path.trim().split(DOUB_SEPARATOR);
     if (nodes.length == 0) {
       throw new PathErrorException("Timeseries is null");
     }
-    mtree.addTimeseriesPath(path, dataType, encoding, args);
+    mtree.addTimeseriesPath(path, dataType, encoding, compressor, props);
   }
 
   /**
@@ -179,8 +183,8 @@ public class MGraph implements Serializable {
    *
    * @return a HashMap contains all distinct deviceId type separated by deviceId Type
    */
-  public Map<String, List<ColumnSchema>> getSchemaForAllType() throws PathErrorException {
-    Map<String, List<ColumnSchema>> res = new HashMap<>();
+  public Map<String, List<MeasurementSchema>> getSchemaForAllType() throws PathErrorException {
+    Map<String, List<MeasurementSchema>> res = new HashMap<>();
     List<String> typeList = mtree.getAllType();
     for (String type : typeList) {
       res.put(type, getSchemaForOneType("root." + type));
@@ -210,7 +214,7 @@ public class MGraph implements Serializable {
    * @return A {@code Metadata} instance which stores all metadata info
    */
   public Metadata getMetadata() throws PathErrorException {
-    Map<String, List<ColumnSchema>> seriesMap = getSchemaForAllType();
+    Map<String, List<MeasurementSchema>> seriesMap = getSchemaForAllType();
     Map<String, List<String>> deviceIdMap = getDeviceForAllType();
     return new Metadata(seriesMap, deviceIdMap);
   }
@@ -229,7 +233,7 @@ public class MGraph implements Serializable {
    * @param path A seriesPath represented one Delta object
    * @return a list contains all column schema
    */
-  public ArrayList<ColumnSchema> getSchemaForOneType(String path) throws PathErrorException {
+  public ArrayList<MeasurementSchema> getSchemaForOneType(String path) throws PathErrorException {
     return mtree.getSchemaForOneType(path);
   }
 
@@ -239,11 +243,11 @@ public class MGraph implements Serializable {
    * @param path the filenode seriesPath
    * @return ArrayList<'   ColumnSchema   '> The list of the schema
    */
-  public ArrayList<ColumnSchema> getSchemaForOneFileNode(String path) {
+  public ArrayList<MeasurementSchema> getSchemaForOneFileNode(String path) {
     return mtree.getSchemaForOneFileNode(path);
   }
 
-  public Map<String, ColumnSchema> getSchemaMapForOneFileNode(String path) {
+  public Map<String, MeasurementSchema> getSchemaMapForOneFileNode(String path) {
     return mtree.getSchemaMapForOneFileNode(path);
   }
 
@@ -309,23 +313,23 @@ public class MGraph implements Serializable {
   }
 
   /**
-   * Get ColumnSchema for given seriesPath. Notice: Path must be a complete Path from root to leaf
+   * Get MeasurementSchema for given seriesPath. Notice: Path must be a complete Path from root to leaf
    * node.
    */
-  public ColumnSchema getSchemaForOnePath(String path) throws PathErrorException {
+  public MeasurementSchema getSchemaForOnePath(String path) throws PathErrorException {
     return mtree.getSchemaForOnePath(path);
   }
 
-  public ColumnSchema getSchemaForOnePath(MNode node, String path) throws PathErrorException {
+  public MeasurementSchema getSchemaForOnePath(MNode node, String path) throws PathErrorException {
     return mtree.getSchemaForOnePath(node, path);
   }
 
-  public ColumnSchema getSchemaForOnePathWithCheck(MNode node, String path)
+  public MeasurementSchema getSchemaForOnePathWithCheck(MNode node, String path)
       throws PathErrorException {
     return mtree.getSchemaForOnePathWithCheck(node, path);
   }
 
-  public ColumnSchema getSchemaForOnePathWithCheck(String path) throws PathErrorException {
+  public MeasurementSchema getSchemaForOnePathWithCheck(String path) throws PathErrorException {
     return mtree.getSchemaForOnePathWithCheck(path);
   }
 

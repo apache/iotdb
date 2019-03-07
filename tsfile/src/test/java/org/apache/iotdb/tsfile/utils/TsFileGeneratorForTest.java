@@ -38,6 +38,7 @@ import org.apache.iotdb.tsfile.write.schema.FileSchema;
 import org.apache.iotdb.tsfile.write.schema.SchemaBuilder;
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.junit.Assert;
 import org.junit.Ignore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -64,88 +65,26 @@ public class TsFileGeneratorForTest {
     write();
   }
 
-    public static void generateFileWithoutText(int rowCount, int chunkGroupSize, int pageSize)
-            throws IOException, InterruptedException, WriteProcessException {
-        TsFileGeneratorForTest.rowCount = rowCount;
-        TsFileGeneratorForTest.chunkGroupSize = chunkGroupSize;
-        TsFileGeneratorForTest.pageSize = pageSize;
-        prepareWithoutText();
-        write();
-    }
-
   public static void prepare() throws IOException {
     inputDataFile = "src/test/resources/perTestInputData";
     errorOutputDataFile = "src/test/resources/perTestErrorOutputData.tsfile";
     generateSampleInputDataFile();
   }
 
-  public static void prepareWithoutText() throws IOException {
-    inputDataFile = "src/test/resources/perTestInputData";
-    errorOutputDataFile = "src/test/resources/perTestErrorOutputData.tsfile";
-    generateSampleInputDataFileWithoutText();
-  }
-
   public static void after() {
     File file = new File(inputDataFile);
     if (file.exists()) {
-      file.delete();
+      Assert.assertTrue(file.delete());
     }
     file = new File(outputDataFile);
     if (file.exists()) {
-      file.delete();
+      Assert.assertTrue(file.delete());
     }
     file = new File(errorOutputDataFile);
     if (file.exists()) {
-      file.delete();
+      Assert.assertTrue(file.delete());
     }
   }
-
-    static private void generateSampleInputDataFileWithoutText() throws IOException {
-        File file = new File(inputDataFile);
-        if (file.exists()) {
-            file.delete();
-        }
-        file.getParentFile().mkdirs();
-        FileWriter fw = new FileWriter(file);
-
-        long startTime = START_TIMESTAMP;
-        for (int i = 0; i < rowCount; i++) {
-            // write d1
-            String d1 = "d1," + (startTime + i) + ",s1," + (i * 10 + 1) + ",s2," + (i * 10 + 2);
-            if (i % 5 == 0) {
-                d1 += ",s3," + (i * 10 + 3);
-            }
-            if (i % 9 == 0) {
-                d1 += ",s5," + "false";
-            }
-            if (i % 10 == 0) {
-                d1 += ",s6," + ((int) (i / 9.0) * 100) / 100.0;
-            }
-            if (i % 11 == 0) {
-                d1 += ",s7," + ((int) (i / 10.0) * 100) / 100.0;
-            }
-            fw.write(d1 + "\r\n");
-
-            // write d2
-            String d2 = "d2," + (startTime + i) + ",s2," + (i * 10 + 2) + ",s3," + (i * 10 + 3);
-            if (i % 20 < 5) {
-                // LOG.info("write null to d2:" + (startTime + i));
-                d2 = "d2," + (startTime + i) + ",s2,,s3," + (i * 10 + 3);
-            }
-            if (i % 5 == 0) {
-                d2 += ",s1," + (i * 10 + 1);
-            }
-            fw.write(d2 + "\r\n");
-        }
-        // write error
-        String d =
-                "d2,3," + (startTime + rowCount) + ",s2," + (rowCount * 10 + 2) + ",s3," + (rowCount * 10
-                        + 3);
-        fw.write(d + "\r\n");
-        d = "d2," + (startTime + rowCount + 1) + ",2,s-1," + (rowCount * 10 + 2);
-        fw.write(d + "\r\n");
-        fw.close();
-    }
 
   static private void generateSampleInputDataFile() throws IOException {
     File file = new File(inputDataFile);

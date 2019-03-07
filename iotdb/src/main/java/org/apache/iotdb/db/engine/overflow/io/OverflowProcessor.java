@@ -24,6 +24,7 @@ import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -40,18 +41,17 @@ import org.apache.iotdb.db.engine.bufferwrite.FileNodeConstants;
 import org.apache.iotdb.db.engine.filenode.FileNodeManager;
 import org.apache.iotdb.db.engine.memcontrol.BasicMemController;
 import org.apache.iotdb.db.engine.memtable.MemSeriesLazyMerger;
-import org.apache.iotdb.db.engine.memtable.TimeValuePairSorter;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.pool.FlushManager;
 import org.apache.iotdb.db.engine.querycontext.MergeSeriesDataSource;
 import org.apache.iotdb.db.engine.querycontext.OverflowInsertFile;
 import org.apache.iotdb.db.engine.querycontext.OverflowSeriesDataSource;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
+import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.OverflowProcessorException;
 import org.apache.iotdb.db.qp.constant.DatetimeUtils;
-import org.apache.iotdb.db.utils.ImmediateFuture;
-import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.utils.ImmediateFuture;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
@@ -100,7 +100,7 @@ public class OverflowProcessor extends Processor {
     super(processorName);
     this.fileSchema = fileSchema;
     this.versionController = versionController;
-    String overflowDirPath = TsFileDBConf.overflowDataDir;
+    String overflowDirPath = TsFileDBConf.getOverflowDataDir();
     if (overflowDirPath.length() > 0
         && overflowDirPath.charAt(overflowDirPath.length() - 1) != File.separatorChar) {
       overflowDirPath = overflowDirPath + File.separatorChar;
@@ -118,7 +118,7 @@ public class OverflowProcessor extends Processor {
     filenodeFlushAction = parameters
         .get(FileNodeConstants.FILENODE_PROCESSOR_FLUSH_ACTION);
 
-    if (IoTDBDescriptor.getInstance().getConfig().enableWal) {
+    if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
       logNode = MultiFileLogNodeManager.getInstance().getNode(
           processorName + IoTDBConstant.OVERFLOW_LOG_NODE_SUFFIX,
           getOverflowRestoreFile(),
@@ -255,14 +255,14 @@ public class OverflowProcessor extends Processor {
    * @return OverflowSeriesDataSource
    */
   public OverflowSeriesDataSource query(String deviceId, String measurementId,
-      TSDataType dataType, QueryContext context)
+      TSDataType dataType, Map<String, String> props, QueryContext context)
       throws IOException {
     queryFlushLock.lock();
     try {
       // query insert data in memory and unseqTsFiles
       // memory
-      TimeValuePairSorter insertInMem = queryOverflowInsertInMemory(deviceId, measurementId,
-          dataType);
+      ReadOnlyMemChunk insertInMem = queryOverflowInsertInMemory(deviceId, measurementId,
+          dataType, props);
       List<OverflowInsertFile> overflowInsertFileList = new ArrayList<>();
       // work file
       Pair<String, List<ChunkMetaData>> insertInDiskWork = queryWorkDataInOverflowInsert(deviceId,
@@ -295,8 +295,8 @@ public class OverflowProcessor extends Processor {
    *
    * @return insert data in SeriesChunkInMemTable
    */
-  private TimeValuePairSorter queryOverflowInsertInMemory(String deviceId, String measurementId,
-      TSDataType dataType) {
+  private ReadOnlyMemChunk queryOverflowInsertInMemory(String deviceId, String measurementId,
+      TSDataType dataType, Map<String, String> props) {
 
     MemSeriesLazyMerger memSeriesLazyMerger = new MemSeriesLazyMerger();
     queryFlushLock.lock();
@@ -304,12 +304,14 @@ public class OverflowProcessor extends Processor {
       if (flushSupport != null && isFlush()) {
         memSeriesLazyMerger
             .addMemSeries(
-                flushSupport.queryOverflowInsertInMemory(deviceId, measurementId, dataType));
+                flushSupport.queryOverflowInsertInMemory(deviceId, measurementId, dataType, props));
       }
       memSeriesLazyMerger
           .addMemSeries(workSupport.queryOverflowInsertInMemory(deviceId, measurementId,
-              dataType));
-      return new ReadOnlyMemChunk(dataType, memSeriesLazyMerger);
+              dataType, props));
+      // memSeriesLazyMerger has handled the props,
+      // so we do not need to handle it again in the following readOnlyMemChunk
+      return new ReadOnlyMemChunk(dataType, memSeriesLazyMerger, Collections.emptyMap());
     } finally {
       queryFlushLock.unlock();
     }
@@ -436,7 +438,7 @@ public class OverflowProcessor extends Processor {
               getProcessorName());
       filenodeFlushAction.act();
       // write-ahead log
-      if (IoTDBDescriptor.getInstance().getConfig().enableWal) {
+      if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
         logNode.notifyEndFlush(null);
       }
       result = true;
@@ -502,7 +504,7 @@ public class OverflowProcessor extends Processor {
         throw new IOException(e);
       }
 
-      if (IoTDBDescriptor.getInstance().getConfig().enableWal) {
+      if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
         try {
           logNode.notifyStartFlush();
         } catch (IOException e) {
@@ -603,15 +605,15 @@ public class OverflowProcessor extends Processor {
         "The overflow processor {}, the size of metadata reaches {},"
             + " the size of file reaches {}.",
         getProcessorName(), MemUtils.bytesCntToStr(metaSize), MemUtils.bytesCntToStr(fileSize));
-    if (metaSize >= config.overflowMetaSizeThreshold
-        || fileSize >= config.overflowFileSizeThreshold) {
+    if (metaSize >= config.getOverflowMetaSizeThreshold()
+        || fileSize >= config.getOverflowFileSizeThreshold()) {
       LOGGER.info(
           "The overflow processor {}, size({}) of the file {} reaches threshold {},"
               + " size({}) of metadata reaches threshold {}.",
           getProcessorName(), MemUtils.bytesCntToStr(fileSize), workResource.getInsertFilePath(),
-          MemUtils.bytesCntToStr(config.overflowMetaSizeThreshold),
+          MemUtils.bytesCntToStr(config.getOverflowMetaSizeThreshold()),
           MemUtils.bytesCntToStr(metaSize),
-          MemUtils.bytesCntToStr(config.overflowMetaSizeThreshold));
+          MemUtils.bytesCntToStr(config.getOverflowMetaSizeThreshold()));
       return true;
     } else {
       return false;
@@ -654,8 +656,7 @@ public class OverflowProcessor extends Processor {
             Objects.equals(filenodeFlushAction, that.filenodeFlushAction) &&
             Objects.equals(fileSchema, that.fileSchema) &&
             Objects.equals(memSize, that.memSize) &&
-            Objects.equals(logNode, that.logNode) &&
-            Objects.equals(flushFuture, that.flushFuture);
+            Objects.equals(logNode, that.logNode);
   }
 
   @Override

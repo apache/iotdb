@@ -223,8 +223,9 @@ root:{
                 status:{
                      DataType: BOOLEAN,
                      Encoding: PLAIN,
+                     Compressor: UNCOMPRESSED,
                      args: {},
-                     StorageGroup: root.ln
+                     StorageGroup: root.vehicle
                 }
             }
         }
@@ -246,14 +247,16 @@ root:{
                 status:{
                      DataType: BOOLEAN,
                      Encoding: PLAIN,
+                     Compressor: UNCOMPRESSED,
                      args: {},
-                     StorageGroup: root.ln
+                     StorageGroup: root.vehicle
                 },
                 temperature:{
                      DataType: FLOAT,
                      Encoding: RLE,
+                     Compressor: UNCOMPRESSED,
                      args: {},
-                     StorageGroup: root.ln
+                     StorageGroup: root.vehicle
                 }
             }
         }

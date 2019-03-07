@@ -27,7 +27,7 @@ public class PhysicalPlanLogTransfer {
 
   private PhysicalPlanLogTransfer(){}
 
-  public static byte[] operatorToLog(PhysicalPlan plan) throws WALOverSizedException {
+  public static byte[] operatorToLog(PhysicalPlan plan) throws IOException {
     Codec<PhysicalPlan> codec;
     switch (plan.getOperatorType()) {
       case INSERT:

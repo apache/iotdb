@@ -26,6 +26,7 @@
         - [Prerequisites](#prerequisites)
         - [Installation from  binary files](#installation-from--binary-files)
         - [Installation from source code](#installation-from-source-code)
+        - [Installation from Docker (dockerfile)](#installation-by-docker-dockerfile)
     - [Configuration](#configuration)
         - [IoTDB Environment Configuration File](#iotdb-environment-configuration-file)
         - [IoTDB System Configuration File](#iotdb-system-configuration-file)
@@ -33,6 +34,8 @@
             - [Engine Layer](#engine-layer)
     - [System Monitor](#system-monitor)
         - [System Status Monitoring](#system-status-monitoring)
+            - [JMX MBean Monitoring](#jmx-mbean-monitoring)
+                - [MBean Monitor Attributes List](#mbean-monitor-attributes-list)
         - [Data Status Monitoring](#data-status-monitoring)
             - [Writing Data Monitor](#writing-data-monitor)
                 - [Example](#example)
@@ -140,6 +143,11 @@ iotdb/     <-- root path
 |
 +- LICENSE    <-- LICENSE
 ```
+
+### Installation by Docker (Dockerfile)
+
+You can build and run a IoTDB docker image by following the guide of [Deployment by Docker](#build-and-use-iotdb-by-dockerfile)
+
 
 ## Configuration
 
@@ -542,6 +550,131 @@ Currently, IoTDB provides users to use Java's JConsole tool to monitor system st
 
 After starting JConsole tool and connecting to IoTDB server, you will have a basic look at IoTDB system status(CPU Occupation, in-memory information, etc.). See [official documentation](https://docs.oracle.com/javase/7/docs/technotes/guides/management/jconsole.html) for more informations.
 
+#### JMX MBean Monitoring
+By using JConsole tool and connecting with JMX you can see some system statistics and parameters.
+This section describes how to use the JConsole ```Mbean``` tab to monitor the number of files opened by the IoTDB service process, the size of the data file, and so on. Once connected to JMX, you can find the ```MBean``` named ```org.apache.iotdb.service``` through the ```MBeans``` tab, as shown in the following Figure.
+
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/20263106/53316064-54aec080-3901-11e9-9a49-76563ac09192.png">
+
+There are several attributes under Monitor, including the numbers of files opened in different folders, the data file size statistics and the values of some system parameters. By double-clicking the value corresponding to an attribute it can also display a line chart of that attribute. In particular, all the opened file count statistics are currently only supported on ```MacOS``` and most ```Linux``` distro except ```CentOS```. For the OS not supported these statistics will return ```-2```. See the following section for specific introduction of the Monitor attributes.
+
+##### MBean Monitor Attributes List
+
+* DataSizeInByte
+
+|Name| DataSizeInByte |
+|:---:|:---|
+|Description| The total size of data file.|
+|Unit| Byte |
+|Type| Long |
+
+* FileNodeNum
+
+|Name| FileNodeNum |
+|:---:|:---|
+|Description| The count number of FileNode. (Currently not supported)|
+|Type| Long |
+
+* OverflowCacheSize
+
+|Name| OverflowCacheSize |
+|:---:|:---|
+|Description| The size of out-of-order data cache. (Currently not supported)|
+|Unit| Byte |
+|Type| Long |
+
+* BufferWriteCacheSize
+
+|Name| BufferWriteCacheSize |
+|:---:|:---|
+|Description| The size of BufferWriter cache. (Currently not supported)|
+|Unit| Byte |
+|Type| Long |
+
+* BaseDirectory
+
+|Name| BaseDirectory |
+|:---:|:---|
+|Description| The absolute directory of data file. |
+|Type| String |
+
+* WriteAheadLogStatus
+
+|Name| WriteAheadLogStatus |
+|:---:|:---|
+|Description| The status of write-ahead-log (WAL). ```True``` means WAL is enabled. |
+|Type| Boolean |
+
+* TotalOpenFileNum
+
+|Name| TotalOpenFileNum |
+|:---:|:---|
+|Description| All the opened file number of IoTDB server process. |
+|Type| Int |
+
+* DeltaOpenFileNum
+
+|Name| DeltaOpenFileNum |
+|:---:|:---|
+|Description| The opened TsFile file number of IoTDB server process. |
+|Default Directory| /data/data/settled |
+|Type| Int |
+
+* OverflowOpenFileNum
+
+|Name| OverflowOpenFileNum |
+|:---:|:---|
+|Description| The opened out-of-order data file number of IoTDB server process. |
+|Default Directory| /data/data/overflow |
+|Type| Int |
+
+* WalOpenFileNum
+
+|Name| WalOpenFileNum |
+|:---:|:---|
+|Description| The opened write-ahead-log file number of IoTDB server process. |
+|Default Directory| /data/wal |
+|Type| Int |
+
+* MetadataOpenFileNum
+
+|Name| MetadataOpenFileNum |
+|:---:|:---|
+|Description| The opened meta-data file number of IoTDB server process. |
+|Default Directory| /data/system/schema |
+|Type| Int |
+
+* DigestOpenFileNum
+
+|Name| DigestOpenFileNum |
+|:---:|:---|
+|Description| The opened info file number of IoTDB server process. |
+|Default Directory| /data/system/info |
+|Type| Int |
+
+* SocketOpenFileNum
+
+|Name| SocketOpenFileNum |
+|:---:|:---|
+|Description| The Socket link (TCP or UDP) number of the operation system. |
+|Type| Int |
+
+* MergePeriodInSecond
+
+|Name| MergePeriodInSecond |
+|:---:|:---|
+|Description| The interval at which the IoTDB service process periodically triggers the merge process. |
+|Unit| Second |
+|Type| Long |
+
+* ClosePeriodInSecond
+
+|Name| ClosePeriodInSecond |
+|:---:|:---|
+|Description| The interval at which the IoTDB service process periodically flushes memory data to disk. |
+|Unit| Second |
+|Type| Long |
+
 ### Data Status Monitoring
 
 This module is the statistical monitoring method provided by IoTDB for users to store data information. We will record the statistical data in the system and store it in the database. The current 0.7.0 version of IoTDB provides statistics for writing data.
@@ -692,9 +825,9 @@ At the same time, in order to facilitate the debugging of the system by the deve
 
 #### Connect JMX
 
-Here we use Jconsole to connect with JMX. 
+Here we use JConsole to connect with JMX. 
 
-Start the Jconsole, establish a new JMX connection with the IoTDB Server (you can select the local process or input the IP and PORT for remote connection, the default operation port of the IoTDB JMX service is 31999). Fig 4.1 shows the connection GUI of jconsole.
+Start the JConsole, establish a new JMX connection with the IoTDB Server (you can select the local process or input the IP and PORT for remote connection, the default operation port of the IoTDB JMX service is 31999). Fig 4.1 shows the connection GUI of JConsole.
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577195-f94d7500-1ef3-11e9-999a-b4f67055d80e.png">
 
@@ -777,3 +910,76 @@ tsfile_dir = D:\\data4, E:\\data5, F:\\data6
 ```
 
 You need to move files in E:\iotdb\data\data1 to D:\data4, move files in %IOTDB_HOME%\data\data2 to E:\data5, move files in F:\data3 to F:\data6. In this way, the system will operation normally.
+
+
+
+
+## Build and use IoTDB by Dockerfile
+Now a Dockerfile has been written at ROOT/docker/Dockerfile on the branch enable_docker_image.
+
+1. You can build a docker image by: 
+```
+$ docker build -t iotdb:base git://github.com/apache/incubator-iotdb#master:docker
+```
+Or:
+```
+$ git clone https://github.com/apache/incubator-iotdb
+$ cd incubator-iotdb
+$ cd docker
+$ docker build -t iotdb:base .
+```
+Once the docker image has been built locally (the tag is iotdb:base in this example), you are almost done!
+
+2. create docker volume for data files and logs:
+```
+$ docker volume create mydata
+$ docker volume create mylogs
+```
+3. run a docker container:
+```shell
+$ docker run -p 6667:6667 -v mydata:/iotdb/data -v mylogs:/iotdb/logs -d iotdb:base /iotdb/bin/start-server.sh
+```
+If success, you can run `docker ps`, and get something like the following:
+```
+CONTAINER ID        IMAGE               COMMAND                  CREATED             STATUS              PORTS                               NAMES
+2a68b6944cb5        iotdb:base          "/iotdb/bin/start-se…"   4 minutes ago       Up 5 minutes        0.0.0.0:6667->6667/tcp              laughing_meitner
+```
+You can use the above command to get the container ID: 
+```
+$ docker container ls
+```
+suppose the ID is <C_ID>.
+
+And get the docker IP by:
+```
+$ docker inspect --format='{{.NetworkSettings.IPAddress}}' <C_ID>
+```
+suppose the IP is <C_IP>.
+
+4. If you just want to have a try by using iotdb-cli, you can:
+```
+$ docker exec -it /bin/bash  <C_ID>
+$ (now you have enter the container): /cli/bin/start-client.sh -h localhost -p 6667 -u root -pw root
+```
+
+Or,  run a new docker container as the client:
+```
+$ docker run -it iotdb:base /cli/bin/start-client.sh -h <C_IP> -p 6667 -u root -pw root
+```
+Or,  if you have a iotdb-cli locally (e.g., you have compiled the source code by `mvn package`), and suppose your work_dir is cli/bin, then you can just run:
+```
+$ start-client.sh -h localhost -p 6667 -u root -pw root
+```
+5. If you want to write codes to insert data and query data, please add the following dependence:
+```xml
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>iotdb-jdbc</artifactId>
+            <version>0.8.0-SNAPSHOT</version>
+        </dependency>
+```
+Some example about how to use IoTDB with IoTDB-JDBC can be found at: https://github.com/apache/incubator-iotdb/tree/master/jdbc/src/test/java/org/apache/iotdb/jdbc/demo
+
+(Notice that because we have not published Apache IoTDB version 0.8.0 now, you have to compile the source code by `mvn install -DskipTests` to install the dependence into your local maven repository)
+
+6. Now enjoy it!

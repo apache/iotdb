@@ -21,6 +21,7 @@ package org.apache.iotdb.db.monitor;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ScheduledExecutorService;
@@ -41,6 +42,10 @@ import org.apache.iotdb.db.monitor.MonitorConstants.FileNodeProcessorStatConstan
 import org.apache.iotdb.db.monitor.collector.FileSize;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
 import org.slf4j.Logger;
@@ -74,10 +79,10 @@ public class StatMonitor implements IService {
     MManager mmanager = MManager.getInstance();
     statisticMap = new HashMap<>();
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-    statMonitorDetectFreqSec = config.statMonitorDetectFreqSec;
-    statMonitorRetainIntervalSec = config.statMonitorRetainIntervalSec;
-    backLoopPeriod = config.backLoopPeriodSec;
-    if (config.enableStatMonitor) {
+    statMonitorDetectFreqSec = config.getStatMonitorDetectFreqSec();
+    statMonitorRetainIntervalSec = config.getStatMonitorRetainIntervalSec();
+    backLoopPeriod = config.getBackLoopPeriodSec();
+    if (config.isEnableStatMonitor()) {
       try {
         String prefix = MonitorConstants.STAT_STORAGE_GROUP_PREFIX;
         if (!mmanager.pathExist(prefix)) {
@@ -158,7 +163,9 @@ public class StatMonitor implements IService {
         }
 
         if (!mManager.pathExist(entry.getKey())) {
-          mManager.addPathToMTree(entry.getKey(), entry.getValue(), "RLE", new String[0]);
+          mManager.addPathToMTree(entry.getKey(), TSDataType.valueOf(entry.getValue()),
+              TSEncoding.valueOf("RLE"), CompressionType.valueOf(TSFileConfig.compressor),
+              Collections.emptyMap());
         }
       }
     } catch (MetadataArgsErrorException | IOException | PathErrorException e) {
@@ -296,7 +303,7 @@ public class StatMonitor implements IService {
   @Override
   public void start() throws StartupException {
     try {
-      if (IoTDBDescriptor.getInstance().getConfig().enableStatMonitor) {
+      if (IoTDBDescriptor.getInstance().getConfig().isEnableStatMonitor()) {
         activate();
       }
     } catch (Exception e) {
@@ -309,7 +316,7 @@ public class StatMonitor implements IService {
 
   @Override
   public void stop() {
-    if (IoTDBDescriptor.getInstance().getConfig().enableStatMonitor) {
+    if (IoTDBDescriptor.getInstance().getConfig().isEnableStatMonitor()) {
       close();
     }
   }

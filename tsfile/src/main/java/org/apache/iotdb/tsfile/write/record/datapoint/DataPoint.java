@@ -86,7 +86,11 @@ public abstract class DataPoint {
         break;
       default:
         throw new UnSupportedDataTypeException("This data type is not supported -" + dataType);
+    } catch (Exception e){
+      throw new UnSupportedDataTypeException(String.format("Data type of %s is %s, but input value is %s", measurementId,
+              dataType, value));
     }
+
     return dataPoint;
   }
 

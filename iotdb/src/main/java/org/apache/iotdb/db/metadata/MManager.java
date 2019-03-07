@@ -29,18 +29,25 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.MetadataArgsErrorException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.utils.RandomDeleteCache;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.exception.cache.CacheException;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 /**
  * This class takes the responsibility of serialization of all the metadata info and persistent it
@@ -51,6 +58,7 @@ import org.apache.iotdb.tsfile.read.common.Path;
  */
 public class MManager {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(MManager.class);
   private static final String ROOT_NAME = MetadataConstant.ROOT;
   // the lock for read/write
   private ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
@@ -64,10 +72,10 @@ public class MManager {
   private String metadataDirPath;
 
   private RandomDeleteCache<String, PathCheckRet> checkAndGetDataTypeCache;
-  private RandomDeleteCache<String, MNode> mnodecache;
+  private RandomDeleteCache<String, MNode> mNodeCache;
 
   private MManager() {
-    metadataDirPath = IoTDBDescriptor.getInstance().getConfig().metadataDir;
+    metadataDirPath = IoTDBDescriptor.getInstance().getConfig().getMetadataDir();
     if (metadataDirPath.length() > 0
         && metadataDirPath.charAt(metadataDirPath.length() - 1) != File.separatorChar) {
       metadataDirPath = metadataDirPath + File.separatorChar;
@@ -80,7 +88,7 @@ public class MManager {
     logFilePath = metadataDirPath + MetadataConstant.METADATA_LOG;
     writeToLog = false;
 
-    int cacheSize = IoTDBDescriptor.getInstance().getConfig().mManagerCacheSize;
+    int cacheSize = IoTDBDescriptor.getInstance().getConfig().getmManagerCacheSize();
     checkAndGetDataTypeCache = new RandomDeleteCache<String, PathCheckRet>(cacheSize) {
       @Override
       public void beforeRemove(PathCheckRet object) throws CacheException {
@@ -93,7 +101,7 @@ public class MManager {
       }
     };
 
-    mnodecache = new RandomDeleteCache<String, MNode>(cacheSize) {
+    mNodeCache = new RandomDeleteCache<String, MNode>(cacheSize) {
       @Override
       public void beforeRemove(MNode object) throws CacheException {
         //allowed to do nothing
@@ -116,43 +124,51 @@ public class MManager {
     return MManagerHolder.INSTANCE;
   }
 
+  //Because the writer will be used later and should not be closed here.
+  @SuppressWarnings("squid:S2093")
   private void init() {
 
     lock.writeLock().lock();
     File dataFile = new File(datafilePath);
     File logFile = new File(logFilePath);
     try {
-      try {
-        if (dataFile.exists()) {
-          // init the metadata from the serialized file
-          FileInputStream fis = new FileInputStream(dataFile);
-          ObjectInputStream ois = new ObjectInputStream(fis);
-          mgraph = (MGraph) ois.readObject();
-          ois.close();
-          fis.close();
-          dataFile.delete();
-        } else {
-          // init the metadata from the operation log
-          mgraph = new MGraph(ROOT_NAME);
-          if (logFile.exists()) {
-            FileReader fr = new FileReader(logFile);
-            BufferedReader br = new BufferedReader(fr);
-            String cmd;
-            while ((cmd = br.readLine()) != null) {
-              operation(cmd);
-            }
-            br.close();
-          }
-        }
-        FileWriter fw = new FileWriter(logFile, true);
-        logWriter = new BufferedWriter(fw);
-        writeToLog = true;
-      } catch (Exception e) {
-        e.printStackTrace();
-        throw new RuntimeException(e);
+      if (dataFile.exists()) {
+        initFromDataFile(dataFile);
+      } else {
+        initFromLog(logFile);
       }
+      logWriter = new BufferedWriter(new FileWriter(logFile, true));
+      writeToLog = true;
+    } catch (PathErrorException | MetadataArgsErrorException
+        | ClassNotFoundException | IOException e) {
+      mgraph = new MGraph(ROOT_NAME);
+      LOGGER.error("Cannot read MGraph from file, using an empty new one");
     } finally {
       lock.writeLock().unlock();
+    }
+  }
+
+  private void initFromDataFile(File dataFile) throws IOException, ClassNotFoundException {
+    // init the metadata from the serialized file
+    try(FileInputStream fis = new FileInputStream(dataFile);
+    ObjectInputStream ois = new ObjectInputStream(fis)) {
+      mgraph = (MGraph) ois.readObject();
+      dataFile.delete();
+    }
+  }
+
+  private void initFromLog(File logFile)
+      throws IOException, PathErrorException, MetadataArgsErrorException {
+    // init the metadata from the operation log
+    mgraph = new MGraph(ROOT_NAME);
+    if (logFile.exists()) {
+      try( FileReader fr = new FileReader(logFile);
+          BufferedReader br = new BufferedReader(fr)) {
+        String cmd;
+        while ((cmd = br.readLine()) != null) {
+          operation(cmd);
+        }
+      }
     }
   }
 
@@ -170,37 +186,56 @@ public class MManager {
 
   private void operation(String cmd)
       throws PathErrorException, IOException, MetadataArgsErrorException {
-
+    //see addPathToMTree() to get the detailed format of the cmd
     String[] args = cmd.trim().split(",");
-    if (args[0].equals(MetadataOperationType.ADD_PATH_TO_MTREE)) {
-      String[] leftArgs;
-      if (args.length > 4) {
-        leftArgs = new String[args.length - 4];
-        for (int k = 4; k < args.length; k++) {
-          leftArgs[k - 4] = args[k];
+    switch (args[0]) {
+      case MetadataOperationType.ADD_PATH_TO_MTREE:
+        String[] leftArgs;
+        Map<String, String> props = null;
+        if (args.length > 5) {
+          String[] kv = new String[2];
+          props = new HashMap<>(args.length - 5 + 1, 1);
+          leftArgs = new String[args.length - 5];
+          for (int k = 5; k < args.length; k++) {
+            kv = args[k].split("=");
+            props.put(kv[0], kv[1]);
+          }
+        } else {
+          //when ????
+          leftArgs = new String[0];
         }
-      } else {
-        leftArgs = new String[0];
-      }
-      addPathToMTree(args[1], args[2], args[3], leftArgs);
-    } else if (args[0].equals(MetadataOperationType.DELETE_PATH_FROM_MTREE)) {
-      deletePathFromMTree(args[1]);
-    } else if (args[0].equals(MetadataOperationType.SET_STORAGE_LEVEL_TO_MTREE)) {
-      setStorageLevelToMTree(args[1]);
-    } else if (args[0].equals(MetadataOperationType.ADD_A_PTREE)) {
-      addAPTree(args[1]);
-    } else if (args[0].equals(MetadataOperationType.ADD_A_PATH_TO_PTREE)) {
-      addPathToPTree(args[1]);
-    } else if (args[0].equals(MetadataOperationType.DELETE_PATH_FROM_PTREE)) {
-      deletePathFromPTree(args[1]);
-    } else if (args[0].equals(MetadataOperationType.LINK_MNODE_TO_PTREE)) {
-      linkMNodeToPTree(args[1], args[2]);
-    } else if (args[0].equals(MetadataOperationType.UNLINK_MNODE_FROM_PTREE)) {
-      unlinkMNodeFromPTree(args[1], args[2]);
+        addPathToMTree(args[1], TSDataType.deserialize(Short.valueOf(args[2])),
+            TSEncoding.deserialize(Short.valueOf(args[3])),
+            CompressionType.deserialize(Short.valueOf(args[4])),
+            props);
+        break;
+      case MetadataOperationType.DELETE_PATH_FROM_MTREE:
+        deletePathFromMTree(args[1]);
+        break;
+      case MetadataOperationType.SET_STORAGE_LEVEL_TO_MTREE:
+        setStorageLevelToMTree(args[1]);
+        break;
+      case MetadataOperationType.ADD_A_PTREE:
+        addAPTree(args[1]);
+        break;
+      case MetadataOperationType.ADD_A_PATH_TO_PTREE:
+        addPathToPTree(args[1]);
+        break;
+      case MetadataOperationType.DELETE_PATH_FROM_PTREE:
+        deletePathFromPTree(args[1]);
+        break;
+      case MetadataOperationType.LINK_MNODE_TO_PTREE:
+        linkMNodeToPTree(args[1], args[2]);
+        break;
+      case MetadataOperationType.UNLINK_MNODE_FROM_PTREE:
+        unlinkMNodeFromPTree(args[1], args[2]);
+        break;
+      default:
+        LOGGER.error("Unrecognizable command {}", cmd);
     }
   }
 
-  private void initLogStream() {
+  private void initLogStream() throws IOException {
     if (logWriter == null) {
       File logFile = new File(logFilePath);
       File metadataDir = new File(metadataDirPath);
@@ -208,14 +243,8 @@ public class MManager {
         metadataDir.mkdirs();
       }
       FileWriter fileWriter;
-      try {
-
-        fileWriter = new FileWriter(logFile, true);
-        logWriter = new BufferedWriter(fileWriter);
-      } catch (IOException e) {
-        e.printStackTrace();
-        throw new RuntimeException(e);
-      }
+      fileWriter = new FileWriter(logFile, true);
+      logWriter = new BufferedWriter(fileWriter);
     }
   }
 
@@ -226,19 +255,23 @@ public class MManager {
    * @param path the timeseries seriesPath
    * @param dataType the datetype {@code DataType} for the timeseries
    * @param encoding the encoding function {@code Encoding} for the timeseries
+   * @param compressor the compressor function {@code Compressor} for the time series
    */
-  public void addPathToMTree(String path, String dataType, String encoding, String[] args)
+  public void addPathToMTree(String path, TSDataType dataType, TSEncoding encoding,
+      CompressionType compressor, Map<String, String> props)
       throws PathErrorException, IOException, MetadataArgsErrorException {
 
     lock.writeLock().lock();
     try {
-      mgraph.addPathToMTree(path, dataType, encoding, args);
+      mgraph.addPathToMTree(path, dataType, encoding, compressor, props);
       if (writeToLog) {
         initLogStream();
-        logWriter.write(
-            MetadataOperationType.ADD_PATH_TO_MTREE + "," + path + "," + dataType + "," + encoding);
-        for (int i = 0; i < args.length; i++) {
-          logWriter.write("," + args[i]);
+        logWriter.write(String.format("%s,%s,%s,%s,%s", MetadataOperationType.ADD_PATH_TO_MTREE,
+            path, dataType.serialize(), encoding.serialize(), compressor.serialize()));
+        if (props != null) {
+          for (Map.Entry entry : props.entrySet()) {
+            logWriter.write(String.format(",%s=%s", entry.getKey(), entry.getValue()));
+          }
         }
         logWriter.newLine();
         logWriter.flush();
@@ -249,13 +282,31 @@ public class MManager {
   }
 
   /**
+   * <p> Add one timeseries to metadata. Must invoke the<code>pathExist</code> and
+   * <code>getFileNameByPath</code> method first to check timeseries. </p>
+   *
+   * this is just for compatibility
+   *
+   * @param path the timeseries seriesPath
+   * @param dataType the datetype {@code DataType} for the timeseries
+   * @param encoding the encoding function {@code Encoding} for the timeseries
+   */
+  public void addPathToMTree(String path, String dataType, String encoding)
+      throws PathErrorException, IOException, MetadataArgsErrorException {
+    TSDataType tsDataType = TSDataType.valueOf(dataType);
+    TSEncoding tsEncoding = TSEncoding.valueOf(encoding);
+    CompressionType type = CompressionType.valueOf(TSFileConfig.compressor);
+    addPathToMTree(path, tsDataType, tsEncoding, type, Collections.emptyMap());
+  }
+
+  /**
    * function for deleting a given path from mTree.
    */
   public String deletePathFromMTree(String path) throws PathErrorException, IOException {
     lock.writeLock().lock();
     try {
       checkAndGetDataTypeCache.clear();
-      mnodecache.clear();
+      mNodeCache.clear();
       String dataFileName = mgraph.deletePath(path);
       if (writeToLog) {
         initLogStream();
@@ -277,7 +328,7 @@ public class MManager {
     lock.writeLock().lock();
     try {
       checkAndGetDataTypeCache.clear();
-      mnodecache.clear();
+      mNodeCache.clear();
       mgraph.setStorageLevel(path);
       if (writeToLog) {
         initLogStream();
@@ -388,21 +439,6 @@ public class MManager {
   }
 
   /**
-   * Extract the deviceId from given seriesPath.
-   *
-   * @return String represents the deviceId
-   */
-  public String getDeviceTypeByPath(String path) throws PathErrorException {
-
-    lock.readLock().lock();
-    try {
-      return mgraph.getDeviceTypeByPath(path);
-    } finally {
-      lock.readLock().unlock();
-    }
-  }
-
-  /**
    * Get series type for given seriesPath.
    *
    * @return TSDataType
@@ -411,7 +447,7 @@ public class MManager {
 
     lock.readLock().lock();
     try {
-      return getSchemaForOnePath(fullPath).dataType;
+      return getSchemaForOnePath(fullPath).getType();
     } finally {
       lock.readLock().unlock();
     }
@@ -424,7 +460,7 @@ public class MManager {
 
     lock.readLock().lock();
     try {
-      return getSchemaForOnePath(node, fullPath).dataType;
+      return getSchemaForOnePath(node, fullPath).getType();
     } finally {
       lock.readLock().unlock();
     }
@@ -437,7 +473,7 @@ public class MManager {
 
     lock.readLock().lock();
     try {
-      return getSchemaForOnePathWithCheck(node, fullPath).dataType;
+      return getSchemaForOnePathWithCheck(node, fullPath).getType();
     } finally {
       lock.readLock().unlock();
     }
@@ -450,7 +486,7 @@ public class MManager {
 
     lock.readLock().lock();
     try {
-      return getSchemaForOnePathWithCheck(fullPath).dataType;
+      return getSchemaForOnePathWithCheck(fullPath).getType();
     } finally {
       lock.readLock().unlock();
     }
@@ -461,7 +497,9 @@ public class MManager {
    *
    * @return a HashMap contains all distinct device type separated by device Type
    */
-  public Map<String, List<ColumnSchema>> getSchemaForAllType() throws PathErrorException {
+  // future feature
+  @SuppressWarnings("unused")
+  public Map<String, List<MeasurementSchema>> getSchemaForAllType() throws PathErrorException {
 
     lock.readLock().lock();
     try {
@@ -491,7 +529,7 @@ public class MManager {
    *
    * @return A HashSet instance which stores all storage group info
    */
-  public HashSet<String> getAllStorageGroup() throws PathErrorException {
+  public Set<String> getAllStorageGroup() throws PathErrorException {
 
     lock.readLock().lock();
     try {
@@ -502,14 +540,13 @@ public class MManager {
   }
 
   /**
-   * @deprecated Get all ColumnSchemas for given delta object type.
+   * @deprecated Get all MeasurementSchemas for given delta object type.
    *
    * @param path A seriesPath represented one Delta object
    * @return a list contains all column schema
    */
   @Deprecated
-  public ArrayList<ColumnSchema> getSchemaForOneType(String path) throws PathErrorException {
-
+  public List<MeasurementSchema> getSchemaForOneType(String path) throws PathErrorException {
     lock.readLock().lock();
     try {
       return mgraph.getSchemaForOneType(path);
@@ -519,10 +556,9 @@ public class MManager {
   }
 
   /**
-   * Get all ColumnSchemas for the filenode seriesPath.
+   * Get all MeasurementSchemas for the filenode seriesPath.
    */
-  public ArrayList<ColumnSchema> getSchemaForFileName(String path) {
-
+  public List<MeasurementSchema> getSchemaForFileName(String path) {
     lock.readLock().lock();
     try {
       return mgraph.getSchemaForOneFileNode(path);
@@ -534,7 +570,7 @@ public class MManager {
   /**
    * function for getting schema map for one file node.
    */
-  public Map<String, ColumnSchema> getSchemaMapForOneFileNode(String path) {
+  public Map<String, MeasurementSchema> getSchemaMapForOneFileNode(String path) {
 
     lock.readLock().lock();
     try {
@@ -562,6 +598,8 @@ public class MManager {
    *
    * @return The total count of storage-level nodes.
    */
+  // future feature
+  @SuppressWarnings("unused")
   public int getFileCountForOneType(String path) throws PathErrorException {
 
     lock.readLock().lock();
@@ -584,7 +622,7 @@ public class MManager {
     try {
       return mgraph.getFileNameByPath(path);
     } catch (PathErrorException e) {
-      throw new PathErrorException(String.format(e.getMessage()));
+      throw new PathErrorException(e);
     } finally {
       lock.readLock().unlock();
     }
@@ -599,22 +637,7 @@ public class MManager {
     try {
       return mgraph.getFileNameByPath(node, path);
     } catch (PathErrorException e) {
-      throw new PathErrorException(String.format(e.getMessage()));
-    } finally {
-      lock.readLock().unlock();
-    }
-  }
-
-  /**
-   * function for getting file name by path with check.
-   */
-  public String getFileNameByPathWithCheck(MNode node, String path) throws PathErrorException {
-
-    lock.readLock().lock();
-    try {
-      return mgraph.getFileNameByPath(node, path);
-    } catch (PathErrorException e) {
-      throw new PathErrorException(String.format(e.getMessage()));
+      throw new PathErrorException(e);
     } finally {
       lock.readLock().unlock();
     }
@@ -640,12 +663,8 @@ public class MManager {
 
     lock.readLock().lock();
     try {
-      HashMap<String, ArrayList<String>> res = getAllPathGroupByFileName(ROOT_NAME);
-      List<String> fileNameList = new ArrayList<>();
-      for (String fileName : res.keySet()) {
-        fileNameList.add(fileName);
-      }
-      return fileNameList;
+      Map<String, ArrayList<String>> res = getAllPathGroupByFileName(ROOT_NAME);
+      return new ArrayList<>(res.keySet());
     } finally {
       lock.readLock().unlock();
     }
@@ -654,7 +673,7 @@ public class MManager {
   /**
    * return a HashMap contains all the paths separated by File Name.
    */
-  public HashMap<String, ArrayList<String>> getAllPathGroupByFileName(String path)
+  public Map<String, ArrayList<String>> getAllPathGroupByFileName(String path)
       throws PathErrorException {
     lock.readLock().lock();
     try {
@@ -668,12 +687,12 @@ public class MManager {
    * Return all paths for given seriesPath if the seriesPath is abstract. Or return the seriesPath
    * itself.
    */
-  public ArrayList<String> getPaths(String path) throws PathErrorException {
+  public List<String> getPaths(String path) throws PathErrorException {
 
     lock.readLock().lock();
     try {
       ArrayList<String> res = new ArrayList<>();
-      HashMap<String, ArrayList<String>> pathsGroupByFilename = getAllPathGroupByFileName(path);
+      Map<String, ArrayList<String>> pathsGroupByFilename = getAllPathGroupByFileName(path);
       for (ArrayList<String> ps : pathsGroupByFilename.values()) {
         res.addAll(ps);
       }
@@ -751,7 +770,7 @@ public class MManager {
   public MNode getNodeByDeviceIdFromCache(String deviceId) throws PathErrorException {
     lock.readLock().lock();
     try {
-      return mnodecache.get(deviceId);
+      return mNodeCache.get(deviceId);
     } catch (CacheException e) {
       throw new PathErrorException(e);
     } finally {
@@ -772,10 +791,10 @@ public class MManager {
   }
 
   /**
-   * Get ColumnSchema for given seriesPath. Notice: Path must be a complete Path from root to leaf
+   * Get MeasurementSchema for given seriesPath. Notice: Path must be a complete Path from root to leaf
    * node.
    */
-  public ColumnSchema getSchemaForOnePath(String path) throws PathErrorException {
+  public MeasurementSchema getSchemaForOnePath(String path) throws PathErrorException {
 
     lock.readLock().lock();
     try {
@@ -788,7 +807,7 @@ public class MManager {
   /**
    * function for getting schema for one path.
    */
-  public ColumnSchema getSchemaForOnePath(MNode node, String path) throws PathErrorException {
+  public MeasurementSchema getSchemaForOnePath(MNode node, String path) throws PathErrorException {
 
     lock.readLock().lock();
     try {
@@ -801,7 +820,7 @@ public class MManager {
   /**
    * function for getting schema for one path with check.
    */
-  public ColumnSchema getSchemaForOnePathWithCheck(MNode node, String path)
+  public MeasurementSchema getSchemaForOnePathWithCheck(MNode node, String path)
       throws PathErrorException {
 
     lock.readLock().lock();
@@ -815,7 +834,7 @@ public class MManager {
   /**
    * function for getting schema for one path with check.
    */
-  public ColumnSchema getSchemaForOnePathWithCheck(String path) throws PathErrorException {
+  public MeasurementSchema getSchemaForOnePathWithCheck(String path) throws PathErrorException {
 
     lock.readLock().lock();
     try {
@@ -878,7 +897,7 @@ public class MManager {
 
     lock.readLock().lock();
     try {
-      getFileNameByPathWithCheck(node, path);
+      getFileNameByPath(node, path);
       return true;
     } finally {
       lock.readLock().unlock();
@@ -891,21 +910,19 @@ public class MManager {
   public void flushObjectToFile() throws IOException {
 
     lock.writeLock().lock();
-    try {
-      File dataFile = new File(datafilePath);
-      // delete old metadata data file
-      if (dataFile.exists()) {
-        dataFile.delete();
-      }
-      File metadataDir = new File(metadataDirPath);
-      if (!metadataDir.exists()) {
-        metadataDir.mkdirs();
-      }
-      File tempFile = new File(datafilePath + MetadataConstant.METADATA_TEMP);
-      FileOutputStream fos = new FileOutputStream(tempFile);
-      ObjectOutputStream oos = new ObjectOutputStream(fos);
+    File dataFile = new File(datafilePath);
+    // delete old metadata data file
+    if (dataFile.exists()) {
+      dataFile.delete();
+    }
+    File metadataDir = new File(metadataDirPath);
+    if (!metadataDir.exists()) {
+      metadataDir.mkdirs();
+    }
+    File tempFile = new File(datafilePath + MetadataConstant.METADATA_TEMP);
+    try(FileOutputStream fos = new FileOutputStream(tempFile);
+        ObjectOutputStream oos = new ObjectOutputStream(fos)) {
       oos.writeObject(mgraph);
-      oos.close();
       // close the logFile stream
       if (logWriter != null) {
         logWriter.close();

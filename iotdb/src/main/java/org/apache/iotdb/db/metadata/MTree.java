@@ -20,13 +20,17 @@ package org.apache.iotdb.db.metadata;
 
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.db.exception.PathErrorException;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 /**
  * The hierarchical struct of the Metadata Tree is implemented in this class.
@@ -52,11 +56,21 @@ public class MTree implements Serializable {
   }
 
   /**
+   * this is just for compatibility
+   */
+  public void addTimeseriesPath(String timeseriesPath, String dataType, String encoding)
+      throws PathErrorException {
+    TSDataType tsDataType = TSDataType.valueOf(dataType);
+    TSEncoding tsEncoding = TSEncoding.valueOf(encoding);
+    CompressionType compressionType = CompressionType.valueOf(TSFileConfig.compressor);
+    addTimeseriesPath(timeseriesPath, tsDataType, tsEncoding, compressionType,
+        Collections.emptyMap());
+  }
+  /**
    * function for adding timeseries.It should check whether seriesPath exists.
    */
-  public void addTimeseriesPath(String timeseriesPath, String dataType, String encoding,
-      String[] args)
-      throws PathErrorException {
+  public void addTimeseriesPath(String timeseriesPath, TSDataType dataType, TSEncoding encoding,
+      CompressionType compressor, Map<String, String> props) throws PathErrorException {
     String[] nodeNames = timeseriesPath.trim().split(DOUB_SEPARATOR);
     if (nodeNames.length <= 1 || !nodeNames[0].equals(root.getName())) {
       throw new PathErrorException(String.format("Timeseries %s is not right.", timeseriesPath));
@@ -88,14 +102,9 @@ public class MTree implements Serializable {
       }
       i++;
     }
-    TSDataType dt = TSDataType.valueOf(dataType);
-    TSEncoding ed = TSEncoding.valueOf(encoding);
-    MNode leaf = new MNode(nodeNames[nodeNames.length - 1], cur, dt, ed);
-    if (args.length > 0) {
-      for (int k = 0; k < args.length; k++) {
-        String[] arg = args[k].split("=");
-        leaf.getSchema().putKeyValueToArgs(arg[0], arg[1]);
-      }
+    MNode leaf = new MNode(nodeNames[nodeNames.length - 1], cur, dataType, encoding, compressor);
+    if ( props != null && !props.isEmpty()) {
+      leaf.getSchema().setProps(props);
     }
     levelPath = cur.getDataFileName();
     leaf.setDataFileName(levelPath);
@@ -106,6 +115,7 @@ public class MTree implements Serializable {
     }
     cur.addChild(nodeNames[nodeNames.length - 1], leaf);
   }
+
 
   /**
    * function for checking whether the given path exists.
@@ -302,23 +312,23 @@ public class MTree implements Serializable {
    * Get ColumnSchema for given seriesPath. Notice: Path must be a complete Path from root to leaf
    * node.
    */
-  public ColumnSchema getSchemaForOnePath(String path) throws PathErrorException {
+  public MeasurementSchema getSchemaForOnePath(String path) throws PathErrorException {
     MNode leaf = getLeafByPath(path);
     return leaf.getSchema();
   }
 
-  public ColumnSchema getSchemaForOnePath(MNode node, String path) throws PathErrorException {
+  public MeasurementSchema getSchemaForOnePath(MNode node, String path) throws PathErrorException {
     MNode leaf = getLeafByPath(node, path);
     return leaf.getSchema();
   }
 
-  public ColumnSchema getSchemaForOnePathWithCheck(MNode node, String path)
+  public MeasurementSchema getSchemaForOnePathWithCheck(MNode node, String path)
       throws PathErrorException {
     MNode leaf = getLeafByPathWithCheck(node, path);
     return leaf.getSchema();
   }
 
-  public ColumnSchema getSchemaForOnePathWithCheck(String path) throws PathErrorException {
+  public MeasurementSchema getSchemaForOnePathWithCheck(String path) throws PathErrorException {
     MNode leaf = getLeafByPathWithCheck(path);
     return leaf.getSchema();
   }
@@ -751,7 +761,7 @@ public class MTree implements Serializable {
    * @param path A seriesPath represented one Delta object
    * @return a list contains all column schema
    */
-  public ArrayList<ColumnSchema> getSchemaForOneType(String path) throws PathErrorException {
+  public ArrayList<MeasurementSchema> getSchemaForOneType(String path) throws PathErrorException {
     String[] nodes = path.split(DOUB_SEPARATOR);
     if (nodes.length != 2 || !nodes[0].equals(getRoot().getName()) || !getRoot()
         .hasChild(nodes[1])) {
@@ -759,9 +769,9 @@ public class MTree implements Serializable {
           "Timeseries must be " + getRoot().getName()
               + ". X (X is one of the nodes of root's children)");
     }
-    HashMap<String, ColumnSchema> leafMap = new HashMap<>();
+    HashMap<String, MeasurementSchema> leafMap = new HashMap<>();
     putLeafToLeafMap(getRoot().getChild(nodes[1]), leafMap);
-    ArrayList<ColumnSchema> res = new ArrayList<>();
+    ArrayList<MeasurementSchema> res = new ArrayList<>();
     res.addAll(leafMap.values());
     return res;
   }
@@ -771,17 +781,17 @@ public class MTree implements Serializable {
    *
    * @return ArrayList<  ColumnSchema  > The list of the schema
    */
-  public ArrayList<ColumnSchema> getSchemaForOneFileNode(String path) {
+  public ArrayList<MeasurementSchema> getSchemaForOneFileNode(String path) {
 
     String[] nodes = path.split(DOUB_SEPARATOR);
-    HashMap<String, ColumnSchema> leafMap = new HashMap<>();
+    HashMap<String, MeasurementSchema> leafMap = new HashMap<>();
     MNode cur = getRoot();
     for (int i = 1; i < nodes.length; i++) {
       cur = cur.getChild(nodes[i]);
     }
     // cur is the storage group node
     putLeafToLeafMap(cur, leafMap);
-    ArrayList<ColumnSchema> res = new ArrayList<>();
+    ArrayList<MeasurementSchema> res = new ArrayList<>();
     res.addAll(leafMap.values());
     return res;
   }
@@ -789,7 +799,7 @@ public class MTree implements Serializable {
   /**
    * function for getting schema map for one file node.
    */
-  public Map<String, ColumnSchema> getSchemaMapForOneFileNode(String path) {
+  public Map<String, MeasurementSchema> getSchemaMapForOneFileNode(String path) {
     String[] nodes = path.split(DOUB_SEPARATOR);
     MNode cur = getRoot();
     for (int i = 1; i < nodes.length; i++) {
@@ -810,7 +820,7 @@ public class MTree implements Serializable {
     return cur.getNumSchemaMap();
   }
 
-  private void putLeafToLeafMap(MNode node, HashMap<String, ColumnSchema> leafMap) {
+  private void putLeafToLeafMap(MNode node, HashMap<String, MeasurementSchema> leafMap) {
     if (node.isLeaf()) {
       if (!leafMap.containsKey(node.getName())) {
         leafMap.put(node.getName(), node.getSchema());
@@ -861,10 +871,10 @@ public class MTree implements Serializable {
         String nodePath = parent + node;
         List<String> tsRow = new ArrayList<>(4);// get [name,storage group,dataType,encoding]
         tsRow.add(nodePath);
-        ColumnSchema columnSchema = node.getSchema();
+        MeasurementSchema measurementSchema = node.getSchema();
         tsRow.add(node.getDataFileName());
-        tsRow.add(columnSchema.dataType.toString());
-        tsRow.add(columnSchema.encoding.toString());
+        tsRow.add(measurementSchema.getType().toString());
+        tsRow.add(measurementSchema.getEncodingType().toString());
         res.add(tsRow);
       }
       return;
@@ -929,13 +939,16 @@ public class MTree implements Serializable {
     } else if (node.isLeaf()) {
       builder.append(":{\n");
       builder
-          .append(String.format("%s DataType: %s,\n", getTabs(tab + 1), node.getSchema().dataType));
+          .append(String.format("%s DataType: %s,\n", getTabs(tab + 1), node.getSchema().getType()));
       builder
-          .append(String.format("%s Encoding: %s,\n", getTabs(tab + 1), node.getSchema().encoding));
+          .append(String.format("%s Encoding: %s,\n", getTabs(tab + 1), node.getSchema().getEncodingType()));
+
       builder
-          .append(String.format("%s args: %s,\n", getTabs(tab + 1), node.getSchema().getArgsMap()));
+          .append(String.format("%s Compressor: %s,\n", getTabs(tab + 1), node.getSchema().getCompressor()));
+      builder
+          .append(String.format("%s args: %s,\n", getTabs(tab + 1), node.getSchema().getProps()));
       builder.append(
-          String.format("%s StorageGroup: %s \n", getTabs(tab + 1), node.getDataFileName()));
+          String.format("%s StorageGroup: %s\n", getTabs(tab + 1), node.getDataFileName()));
       builder.append(getTabs(tab));
       builder.append("}");
     }

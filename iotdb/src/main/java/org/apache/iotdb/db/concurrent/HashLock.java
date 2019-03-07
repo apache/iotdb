@@ -72,13 +72,13 @@ public class HashLock {
     for (int i = 0; i < lockSize; i++) {
       try {
         locks[i].readLock().unlock();
-      } catch (Exception ignored) {
-        // do nothing
+      } catch (Exception e) {
+        LOGGER.debug("Cannot unlock because, ", e);
       }
       try {
         locks[i].writeLock().unlock();
-      } catch (Exception ignored) {
-        // do nothing
+      } catch (Exception e) {
+        LOGGER.debug("Cannot unlock because, ", e);
       }
     }
   }
