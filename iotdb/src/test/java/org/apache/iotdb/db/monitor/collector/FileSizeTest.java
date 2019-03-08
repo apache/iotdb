@@ -39,7 +39,6 @@ public class FileSizeTest {
 
   @Before
   public void setUp() throws Exception {
-    EnvironmentUtils.closeMemControl();
     EnvironmentUtils.envSetUp();
   }
 
