@@ -93,11 +93,11 @@ public class MonitorConstants {
 
   public enum FileSizeConstants {
     DATA(Monitor.INSTANCE.getBaseDirectory()),
-    OVERFLOW(new File(config.overflowDataDir).getAbsolutePath()),
+    OVERFLOW(new File(config.getOverflowDataDir()).getAbsolutePath()),
     SETTLED(Monitor.INSTANCE.getBaseDirectory() + File.separatorChar + "settled"),
-    WAL(new File(config.walFolder).getAbsolutePath()),
-    INFO(new File(config.fileNodeDir).getAbsolutePath()),
-    SCHEMA(new File(config.metadataDir).getAbsolutePath());
+    WAL(new File(config.getWalFolder()).getAbsolutePath()),
+    INFO(new File(config.getFileNodeDir()).getAbsolutePath()),
+    SCHEMA(new File(config.getMetadataDir()).getAbsolutePath());
 
     public String getPath() {
       return path;
