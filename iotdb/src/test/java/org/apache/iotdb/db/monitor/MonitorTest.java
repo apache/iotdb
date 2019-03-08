@@ -51,13 +51,13 @@ public class MonitorTest {
     // modify stat parameter
     EnvironmentUtils.closeMemControl();
     EnvironmentUtils.envSetUp();
-    ioTDBConfig.enableStatMonitor = true;
-    ioTDBConfig.backLoopPeriodSec = 1;
+    ioTDBConfig.setEnableStatMonitor(true);
+    ioTDBConfig.setBackLoopPeriodSec(1);
   }
 
   @After
   public void tearDown() throws Exception {
-    ioTDBConfig.enableStatMonitor = false;
+    ioTDBConfig.setEnableStatMonitor(false);
     statMonitor.close();
     EnvironmentUtils.cleanEnv();
   }

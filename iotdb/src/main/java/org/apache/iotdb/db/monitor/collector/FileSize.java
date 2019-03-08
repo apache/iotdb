@@ -97,7 +97,7 @@ public class FileSize implements IStatistic {
   }
 
   private FileSize() {
-    if (config.enableStatMonitor) {
+    if (config.isEnableStatMonitor()) {
       StatMonitor statMonitor = StatMonitor.getInstance();
       registerStatMetadata();
       statMonitor.registerStatistics(MonitorConstants.FILE_SIZE_STORAGE_GROUP_NAME, this);
@@ -120,7 +120,7 @@ public class FileSize implements IStatistic {
       if (kinds.equals(MonitorConstants.FileSizeConstants.SETTLED)) {
         //sum bufferWriteDirs size
         long settledSize = INIT_VALUE_IF_FILE_NOT_EXIST;
-        for (String bufferWriteDir : config.bufferWriteDirs) {
+        for (String bufferWriteDir : config.getBufferWriteDirs()) {
           File settledFile = new File(bufferWriteDir);
           if (settledFile.exists()) {
             try {
