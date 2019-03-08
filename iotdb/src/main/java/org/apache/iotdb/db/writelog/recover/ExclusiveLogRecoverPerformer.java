@@ -259,15 +259,15 @@ public class ExclusiveLogRecoverPerformer implements RecoverPerformer {
     replayLog();
   }
 
-  private int replayLogFile(File logFile) throws RecoverException {
+  private int replayLogFile(File logFile) throws RecoverException, IOException {
     int failedCnt = 0;
     if (logFile.exists()) {
       try {
         rafLogReader.open(logFile);
       } catch (FileNotFoundException e) {
         logger
-            .error("Log node {} cannot read old log file, because {}", writeLogNode.getIdentifier(),
-                e.getMessage());
+            .error("Log node {} cannot read old log file, because ", writeLogNode.getIdentifier(),
+                e);
         throw new RecoverException("Cannot read old log file, recovery aborted.");
       }
       while (rafLogReader.hasNext()) {
@@ -294,11 +294,19 @@ public class ExclusiveLogRecoverPerformer implements RecoverPerformer {
     File oldLogFile = new File(
         writeLogNode.getLogDirectory() + File.separator + ExclusiveWriteLogNode.WAL_FILE_NAME
             + ExclusiveWriteLogNode.OLD_SUFFIX);
-    failedEntryCnt += replayLogFile(oldLogFile);
+    try {
+      failedEntryCnt += replayLogFile(oldLogFile);
+    } catch (IOException e) {
+      throw new RecoverException(e);
+    }
     // then replay new log
     File newLogFile = new File(
         writeLogNode.getLogDirectory() + File.separator + ExclusiveWriteLogNode.WAL_FILE_NAME);
-    failedEntryCnt += replayLogFile(newLogFile);
+    try {
+      failedEntryCnt += replayLogFile(newLogFile);
+    } catch (IOException e) {
+      throw new RecoverException(e);
+    }
     // TODO : do we need to proceed if there are failed logs ?
     if (failedEntryCnt > 0) {
       throw new RecoverException(

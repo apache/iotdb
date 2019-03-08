@@ -42,7 +42,7 @@ public class LogWriterReaderTest {
   List<PhysicalPlan> plans = new ArrayList<>();
 
   @Before
-  public void prepare() throws WALOverSizedException {
+  public void prepare() throws IOException {
     if (new File(filePath).exists()) {
       new File(filePath).delete();
     }

@@ -48,42 +48,33 @@ public class RAFLogReader implements ILogReader {
   }
 
   @Override
-  public boolean hasNext() {
+  public boolean hasNext() throws IOException{
     if (planBuffer != null) {
       return true;
     }
-    try {
-      if (logRaf.getFilePointer() + 12 > logRaf.length()) {
-        return false;
-      }
-    } catch (IOException e) {
-      logger.error("Cannot read from log file {}", filepath, e);
+
+    if (logRaf.getFilePointer() + 12 > logRaf.length()) {
       return false;
     }
-    try {
-      int logSize = logRaf.readInt();
-      if (logSize > bufferSize) {
-        bufferSize = logSize;
-        buffer = new byte[bufferSize];
-      }
-      final long checkSum = logRaf.readLong();
-      logRaf.read(buffer, 0, logSize);
-      checkSummer.reset();
-      checkSummer.update(buffer, 0, logSize);
-      if (checkSummer.getValue() != checkSum) {
-        return false;
-      }
-      PhysicalPlan plan = PhysicalPlanLogTransfer.logToOperator(buffer);
-      planBuffer = plan;
-      return true;
-    } catch (IOException e) {
-      logger.error("Cannot read log file {}", filepath, e);
-      return false;
+
+    int logSize = logRaf.readInt();
+    if (logSize > bufferSize) {
+      bufferSize = logSize;
+      buffer = new byte[bufferSize];
     }
+    final long checkSum = logRaf.readLong();
+    logRaf.read(buffer, 0, logSize);
+    checkSummer.reset();
+    checkSummer.update(buffer, 0, logSize);
+    if (checkSummer.getValue() != checkSum) {
+      throw new IOException("The check sum is incorrect!");
+    }
+    planBuffer = PhysicalPlanLogTransfer.logToOperator(buffer);
+    return true;
   }
 
   @Override
-  public PhysicalPlan next() {
+  public PhysicalPlan next() throws IOException {
     if (!hasNext()){
       throw new NoSuchElementException();
     }

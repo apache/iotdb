@@ -27,6 +27,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
@@ -248,7 +249,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         break;
       case "SHOW_STORAGE_GROUP":
         try {
-          HashSet<String> storageGroups = MManager.getInstance().getAllStorageGroup();
+          Set<String> storageGroups = MManager.getInstance().getAllStorageGroup();
           resp.setShowStorageGroups(storageGroups);
         } catch (PathErrorException e) {
           status = getErrorStatus(String.format("Failed to fetch storage groups' metadata because: %s", e));

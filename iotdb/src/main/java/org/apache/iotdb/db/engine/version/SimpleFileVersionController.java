@@ -54,7 +54,7 @@ public class SimpleFileVersionController implements VersionController {
     try {
       checkPersist();
     } catch (IOException e) {
-      LOGGER.error(e.getMessage());
+      LOGGER.error("Error occurred when getting next version.", e);
     }
     return currVersion;
   }
@@ -88,7 +88,7 @@ public class SimpleFileVersionController implements VersionController {
   private void restore() throws IOException {
     File directory = new File(directoryPath);
     File[] versionFiles = directory.listFiles((dir, name) -> name.startsWith(FILE_PREFIX));
-    File versionFile = null;
+    File versionFile;
     if (versionFiles != null && versionFiles.length > 0) {
       long maxVersion = 0;
       int maxVersionIndex = 0;

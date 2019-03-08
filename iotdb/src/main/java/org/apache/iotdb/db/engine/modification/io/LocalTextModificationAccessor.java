@@ -61,6 +61,7 @@ public class LocalTextModificationAccessor implements ModificationReader, Modifi
     try {
       reader = new BufferedReader(new FileReader(filePath));
     } catch (FileNotFoundException e) {
+      logger.debug("No modification has been written to this file", e);
       return new ArrayList<>();
     }
     String line;
@@ -68,7 +69,7 @@ public class LocalTextModificationAccessor implements ModificationReader, Modifi
     List<Modification> modificationList = new ArrayList<>();
     try {
       while ((line = reader.readLine()) != null) {
-        if (line.equals(ABORT_MARK) && modificationList.size() > 0) {
+        if (line.equals(ABORT_MARK) && !modificationList.isEmpty()) {
           modificationList.remove(modificationList.size() - 1);
         } else {
           modificationList.add(decodeModification(line));

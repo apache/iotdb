@@ -65,17 +65,17 @@ matrix:
       script:
         - java -version
         - mvn clean integration-test
-    - os: windows
-      language: c
-      name: win-oraclejdk11
-      install:
-        - choco install jdk11 -params 'installdir=c:\\java11'
-        - export PATH=$PATH:"/c/java11/bin"
-        - export JAVA_HOME="/c/java11"
-        - choco install maven
-      script:
-        - java -version
-        - mvn clean integration-test
+#    - os: windows
+#      language: c
+#      name: win-oraclejdk11
+#      install:
+#        - choco install jdk11 -params 'installdir=c:\\java11'
+#        - export PATH=$PATH:"/c/java11/bin"
+#        - export JAVA_HOME="/c/java11"
+#        - choco install maven
+#      script:
+#        - java -version
+#        - mvn clean integration-test
     #choco does not support openjdk8. we have to install it manually
 #    - os: windows
 #      language: c

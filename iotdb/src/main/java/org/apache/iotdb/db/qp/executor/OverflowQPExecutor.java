@@ -542,13 +542,13 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
             Set<String> pathSet = new HashSet<>();
             // Attention: Monitor storage group seriesPath is not allowed to be deleted
             for (Path p : deletePathList) {
-              ArrayList<String> subPaths = mManager.getPaths(p.getFullPath());
+              List<String> subPaths = mManager.getPaths(p.getFullPath());
               if (subPaths.isEmpty()) {
                 throw new ProcessorException(String
                     .format("There are no timeseries in the prefix of %s seriesPath",
                         p.getFullPath()));
               }
-              ArrayList<String> newSubPaths = new ArrayList<>();
+              List<String> newSubPaths = new ArrayList<>();
               for (String eachSubPath : subPaths) {
                 String filenodeName = mManager.getFileNameByPath(eachSubPath);
 
@@ -565,8 +565,7 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
                     "Timeseries %s does not exist and cannot be delete its metadata and data", p));
               }
             }
-            List<String> fullPath = new ArrayList<>();
-            fullPath.addAll(pathSet);
+            List<String> fullPath = new ArrayList<>(pathSet);
             try {
               deleteDataOfTimeSeries(fullPath);
             } catch (ProcessorException e) {
