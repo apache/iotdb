@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.engine.memtable;
 
+import java.text.DecimalFormat;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
@@ -25,13 +26,26 @@ import java.util.Random;
 import org.apache.iotdb.db.utils.MathUtils;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.db.utils.TsPrimitiveType;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 
 public class PrimitiveMemTableTest {
+
+  DecimalFormat decimalFormat;
+
+  @Before
+  public void setUp() {
+    StringBuilder stringBuilder = new StringBuilder(".");
+    for (int i=0; i < TSFileConfig.floatPrecision; i++) {
+      stringBuilder.append("0");
+    }
+    decimalFormat=new DecimalFormat(stringBuilder.toString());
+  }
 
   @Test
   public void memSeriesCloneTest() {
@@ -106,10 +120,10 @@ public class PrimitiveMemTableTest {
       Assert.assertEquals(pair.getTimestamp(), next.getTimestamp());
       if (dataType == TSDataType.DOUBLE) {
         Assert.assertEquals(MathUtils.roundWithGivenPrecision(pair.getValue().getDouble()),
-            next.getValue().getDouble(), 0.0001);
+            Double.valueOf(decimalFormat.format(next.getValue().getDouble())), 0.0001);
       } else if (dataType == TSDataType.FLOAT) {
         Assert.assertEquals(MathUtils.roundWithGivenPrecision(pair.getValue().getFloat()),
-            next.getValue().getFloat(), 0.0001);
+            Float.valueOf(decimalFormat.format(next.getValue().getFloat())), 0.0001);
       } else {
         Assert.assertEquals(pair.getValue(), next.getValue());
       }
