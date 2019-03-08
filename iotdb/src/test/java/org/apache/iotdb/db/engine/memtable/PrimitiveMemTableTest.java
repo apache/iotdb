@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.engine.memtable;
 
-import java.text.DecimalFormat;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
@@ -36,15 +35,11 @@ import org.junit.Test;
 
 public class PrimitiveMemTableTest {
 
-  DecimalFormat decimalFormat;
+  double delta;
 
   @Before
   public void setUp() {
-    StringBuilder stringBuilder = new StringBuilder(".");
-    for (int i=0; i < TSFileConfig.floatPrecision; i++) {
-      stringBuilder.append("0");
-    }
-    decimalFormat=new DecimalFormat(stringBuilder.toString());
+    delta = Math.pow(0.1, TSFileConfig.floatPrecision);
   }
 
   @Test
@@ -119,15 +114,24 @@ public class PrimitiveMemTableTest {
       TimeValuePair next = tvPair.next();
       Assert.assertEquals(pair.getTimestamp(), next.getTimestamp());
       if (dataType == TSDataType.DOUBLE) {
-        Assert.assertEquals(MathUtils.roundWithGivenPrecision(pair.getValue().getDouble()),
-            Double.valueOf(decimalFormat.format(next.getValue().getDouble())), 0.0001);
+        Assert.assertEquals(pair.getValue().getDouble(),
+            MathUtils.roundWithGivenPrecision(next.getValue().getDouble()), delta);
       } else if (dataType == TSDataType.FLOAT) {
-        Assert.assertEquals(MathUtils.roundWithGivenPrecision(pair.getValue().getFloat()),
-            Float.valueOf(decimalFormat.format(next.getValue().getFloat())), 0.0001);
+        float expected = pair.getValue().getFloat();
+        float actual = MathUtils.roundWithGivenPrecision(next.getValue().getFloat());
+        Assert.assertEquals(expected, actual, delta+ Float.MIN_NORMAL);
       } else {
         Assert.assertEquals(pair.getValue(), next.getValue());
       }
     }
+  }
+
+  @Test
+  public void testFloatType() {
+    IMemTable memTable = new PrimitiveMemTable();
+    String deviceId = "d1";
+    int size = 1000000;
+    write(memTable, deviceId, "s1", TSDataType.FLOAT, size);
   }
 
   @Test
