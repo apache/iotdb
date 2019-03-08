@@ -24,7 +24,9 @@ import org.apache.iotdb.db.query.reader.IReader;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 
-// TODO merge MemChunkReaderWithoutFilter and MemChunkReaderWithFilter to one class
+/**
+ * TODO merge MemChunkReaderWithoutFilter and MemChunkReaderWithFilter to one class
+ */
 public class MemChunkReaderWithoutFilter implements IReader {
 
   private Iterator<TimeValuePair> timeValuePairIterator;

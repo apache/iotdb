@@ -66,15 +66,16 @@ public class MemChunkReaderByTimestamp implements EngineReaderByTimeStamp, IRead
   }
 
   // TODO consider change timeValuePairIterator to List structure, and use binary search instead of
-  // sequential search
-  @Override
-  public Object getValueInTimestamp(long timestamp) throws IOException {
+  /**
+   * sequential search
+   */
+  @Override public Object getValueInTimestamp(long timestamp) throws IOException {
     while (hasNext()) {
       TimeValuePair timeValuePair = next();
-      long time = timeValuePair.getTimestamp();
-      if (time == timestamp) {
+      long currentMemTime = timeValuePair.getTimestamp();
+      if (currentMemTime == timestamp) {
         return timeValuePair.getValue().getValue();
-      } else if (time > timestamp) {
+      } else if (currentMemTime > timestamp) {
         hasCachedTimeValuePair = true;
         cachedTimeValuePair = timeValuePair;
         break;

@@ -35,6 +35,7 @@ public class EngineDataSetWithTimeGenerator extends QueryDataSet {
 
   private EngineTimeGenerator timeGenerator;
   private List<EngineReaderByTimeStamp> readers;
+  //TODO add null filed
 
   /**
    * constructor of EngineDataSetWithTimeGenerator.
