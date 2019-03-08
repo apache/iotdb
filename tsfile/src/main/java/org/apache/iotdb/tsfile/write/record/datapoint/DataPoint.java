@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.write.record.datapoint;
 
 import java.io.IOException;
@@ -65,29 +66,33 @@ public abstract class DataPoint {
    */
   public static DataPoint getDataPoint(TSDataType dataType, String measurementId, String value) {
     DataPoint dataPoint = null;
-    switch (dataType) {
-      case INT32:
-        dataPoint = new IntDataPoint(measurementId, Integer.valueOf(value));
-        break;
-      case INT64:
-        dataPoint = new LongDataPoint(measurementId, Long.valueOf(value));
-        break;
-      case FLOAT:
-        dataPoint = new FloatDataPoint(measurementId, Float.valueOf(value));
-        break;
-      case DOUBLE:
-        dataPoint = new DoubleDataPoint(measurementId, Double.valueOf(value));
-        break;
-      case BOOLEAN:
-        dataPoint = new BooleanDataPoint(measurementId, Boolean.valueOf(value));
-        break;
-      case TEXT:
-        dataPoint = new StringDataPoint(measurementId, new Binary(value));
-        break;
-      default:
-        throw new UnSupportedDataTypeException("This data type is not supported -" + dataType);
-    } catch (Exception e){
-      throw new UnSupportedDataTypeException(String.format("Data type of %s is %s, but input value is %s", measurementId,
+    try {
+      switch (dataType) {
+        case INT32:
+          dataPoint = new IntDataPoint(measurementId, Integer.valueOf(value));
+          break;
+        case INT64:
+          dataPoint = new LongDataPoint(measurementId, Long.valueOf(value));
+          break;
+        case FLOAT:
+          dataPoint = new FloatDataPoint(measurementId, Float.valueOf(value));
+          break;
+        case DOUBLE:
+          dataPoint = new DoubleDataPoint(measurementId, Double.valueOf(value));
+          break;
+        case BOOLEAN:
+          dataPoint = new BooleanDataPoint(measurementId, Boolean.valueOf(value));
+          break;
+        case TEXT:
+          dataPoint = new StringDataPoint(measurementId, new Binary(value));
+          break;
+        default:
+          throw new UnSupportedDataTypeException(
+              String.format("Data type %s is not supported.", dataType));
+      }
+    } catch (Exception e) {
+      throw new UnSupportedDataTypeException(
+          String.format("Data type of %s is %s, but input value is %s", measurementId,
               dataType, value));
     }
 
