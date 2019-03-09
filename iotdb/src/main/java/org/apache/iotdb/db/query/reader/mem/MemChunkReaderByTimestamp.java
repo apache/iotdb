@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.query.reader.mem;
 
 import java.io.IOException;
@@ -24,7 +25,6 @@ import org.apache.iotdb.db.engine.memtable.TimeValuePairSorter;
 import org.apache.iotdb.db.query.reader.merge.EngineReaderByTimeStamp;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.db.utils.TsPrimitiveType;
-import org.apache.iotdb.tsfile.read.common.BatchData;
 
 public class MemChunkReaderByTimestamp implements EngineReaderByTimeStamp {
 
@@ -55,11 +55,6 @@ public class MemChunkReaderByTimestamp implements EngineReaderByTimeStamp {
   }
 
   @Override
-  public void skipCurrentTimeValuePair() throws IOException {
-    next();
-  }
-
-  @Override
   public void close() {
     // Do nothing because mem chunk reader will not open files
   }
@@ -79,21 +74,6 @@ public class MemChunkReaderByTimestamp implements EngineReaderByTimeStamp {
         break;
       }
     }
-    return null;
-  }
-
-  @Override
-  public boolean hasNextBatch() {
-    return false;
-  }
-
-  @Override
-  public BatchData nextBatch() {
-    return null;
-  }
-
-  @Override
-  public BatchData currentBatch() {
     return null;
   }
 

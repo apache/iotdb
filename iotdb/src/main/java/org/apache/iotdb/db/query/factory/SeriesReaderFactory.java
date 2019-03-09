@@ -27,9 +27,11 @@ import org.apache.iotdb.db.engine.querycontext.OverflowInsertFile;
 import org.apache.iotdb.db.engine.querycontext.OverflowSeriesDataSource;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
+import org.apache.iotdb.db.query.reader.AllDataReader;
+import org.apache.iotdb.db.query.reader.IBatchReader;
+import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.IReader;
-import org.apache.iotdb.db.query.reader.mem.MemChunkReaderWithFilter;
-import org.apache.iotdb.db.query.reader.mem.MemChunkReaderWithoutFilter;
+import org.apache.iotdb.db.query.reader.mem.MemChunkReader;
 import org.apache.iotdb.db.query.reader.merge.PriorityMergeReader;
 import org.apache.iotdb.db.query.reader.sequence.SealedTsFilesReader;
 import org.apache.iotdb.db.query.reader.unsequence.EngineChunkReader;
@@ -110,15 +112,9 @@ public class SeriesReaderFactory {
 
     // add reader for MemTable
     if (overflowSeriesDataSource.hasRawChunk()) {
-      if (filter != null) {
-        unSeqMergeReader.addReaderWithPriority(
-            new MemChunkReaderWithFilter(overflowSeriesDataSource.getReadableMemChunk(), filter),
-            priorityValue);
-      } else {
-        unSeqMergeReader.addReaderWithPriority(
-            new MemChunkReaderWithoutFilter(overflowSeriesDataSource.getReadableMemChunk()),
-            priorityValue);
-      }
+      unSeqMergeReader.addReaderWithPriority(
+          new MemChunkReader(overflowSeriesDataSource.getReadableMemChunk(), filter),
+          priorityValue);
     }
 
     // TODO add external sort when needed
@@ -141,22 +137,24 @@ public class SeriesReaderFactory {
         singleSeriesExpression,
         intervalFileNode.getFilePath());
 
-    PriorityMergeReader priorityMergeReader = new PriorityMergeReader();
-
     // Sequence reader
-    IReader seriesInTsFileReader = createSealedTsFileReaderForMerge(intervalFileNode,
+    IBatchReader seriesInTsFileReader = createSealedTsFileReaderForMerge(intervalFileNode,
         singleSeriesExpression, context);
-    priorityMergeReader.addReaderWithPriority(seriesInTsFileReader, 1);
 
     // UnSequence merge reader
-    IReader unSeqMergeReader = createUnSeqMergeReader(overflowSeriesDataSource,
+    IPointReader unSeqMergeReader = createUnSeqMergeReader(overflowSeriesDataSource,
         singleSeriesExpression.getFilter());
-    priorityMergeReader.addReaderWithPriority(unSeqMergeReader, 2);
+    if (seriesInTsFileReader == null || !seriesInTsFileReader.hasNext()) {
+      //only have unsequence data.
+      return unSeqMergeReader;
+    } else {
+      //merge sequence data with unsequence data.
+      return new AllDataReader(seriesInTsFileReader, unSeqMergeReader);
+    }
 
-    return priorityMergeReader;
   }
 
-  private IReader createSealedTsFileReaderForMerge(IntervalFileNode fileNode,
+  private IBatchReader createSealedTsFileReaderForMerge(IntervalFileNode fileNode,
       SingleSeriesExpression singleSeriesExpression,
       QueryContext context)
       throws IOException {

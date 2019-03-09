@@ -16,36 +16,34 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.query.reader.merge;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.PriorityQueue;
-import org.apache.iotdb.db.query.reader.IReader;
+import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.utils.TimeValuePair;
-import org.apache.iotdb.tsfile.read.common.BatchData;
 
 /**
  * <p>
- * Usage:
- * (1) merge multiple chunk group readers in the unsequence file
- * (2）merge sequence reader, unsequence reader and mem reader
+ * Usage: (1) merge multiple chunk group readers in the unsequence file.
  * </p>
  */
-public class PriorityMergeReader implements IReader {
+public class PriorityMergeReader implements IPointReader {
 
   public static final int LOW_PRIORITY = 1;
   public static final int HIGH_PRIORITY = 2;
 
-  private List<IReader> readerList = new ArrayList<>();
+  private List<IPointReader> readerList = new ArrayList<>();
   private List<Integer> priorityList = new ArrayList<>();
   private PriorityQueue<Element> heap = new PriorityQueue<>();
 
   /**
-   * The bigger the priority value is, the higher the priority of this reader is
+   * The bigger the priority value is, the higher the priority of this reader is.
    */
-  public void addReaderWithPriority(IReader reader, int priority) throws IOException {
+  public void addReaderWithPriority(IPointReader reader, int priority) throws IOException {
     if (reader.hasNext()) {
       heap.add(new Element(readerList.size(), reader.next(), priority));
     }
@@ -65,11 +63,16 @@ public class PriorityMergeReader implements IReader {
     return top.timeValuePair;
   }
 
+  @Override
+  public TimeValuePair current() throws IOException {
+    return heap.peek().timeValuePair;
+  }
+
   private void updateHeap(Element top) throws IOException {
     while (!heap.isEmpty() && heap.peek().timeValuePair.getTimestamp() == top.timeValuePair
         .getTimestamp()) {
       Element e = heap.poll();
-      IReader reader = readerList.get(e.index);
+      IPointReader reader = readerList.get(e.index);
       if (reader.hasNext()) {
         heap.add(new Element(e.index, reader.next(), priorityList.get(e.index)));
       }
@@ -77,33 +80,10 @@ public class PriorityMergeReader implements IReader {
   }
 
   @Override
-  public void skipCurrentTimeValuePair() throws IOException {
-    if (hasNext()) {
-      next();
-    }
-  }
-
-  @Override
   public void close() throws IOException {
-    for (IReader reader : readerList) {
+    for (IPointReader reader : readerList) {
       reader.close();
     }
-  }
-
-  @Override
-  public boolean hasNextBatch() {
-    // TODO
-    return false;
-  }
-
-  @Override
-  public BatchData nextBatch() {
-    return null;
-  }
-
-  @Override
-  public BatchData currentBatch() {
-    return null;
   }
 
   protected class Element implements Comparable<Element> {
@@ -133,11 +113,11 @@ public class PriorityMergeReader implements IReader {
     }
 
     @Override
-    public boolean equals(Object o){
-      if (o instanceof Element){
+    public boolean equals(Object o) {
+      if (o instanceof Element) {
         Element element = (Element) o;
         if (this.timeValuePair.getTimestamp() == element.timeValuePair.getTimestamp()
-        && this.priority.equals(element.priority)){
+            && this.priority.equals(element.priority)) {
           return true;
         }
       }
@@ -145,7 +125,7 @@ public class PriorityMergeReader implements IReader {
     }
 
     @Override
-    public int hashCode(){
+    public int hashCode() {
       return (int) (timeValuePair.getTimestamp() * 31 + priority.hashCode());
     }
   }

@@ -20,18 +20,15 @@
 package org.apache.iotdb.db.query.reader;
 
 import java.io.IOException;
-import org.apache.iotdb.db.utils.TimeValuePair;
-import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.file.header.PageHeader;
 
-/**
- * Vital read interface. Batch method is used to increase query speed. Getting a batch of data
- * a time is faster than getting one point a time.
- */
-public interface IReader {
+public interface IAggregateReader extends IBatchReader {
 
-  boolean hasNext() throws IOException;
+  /**
+   * Returns meta-information of batch data. If batch data comes from memory, return null. If batch
+   * data comes from page data, return pageHeader.
+   */
+  PageHeader nextPageHeader() throws IOException;
 
-  TimeValuePair next() throws IOException;
-
-  void close() throws IOException;
+  void skipPageData() throws IOException;
 }

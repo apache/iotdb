@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.query.timegenerator;
 
 import java.io.IOException;
@@ -44,15 +45,15 @@ public class EngineLeafNode implements Node {
     return reader.next().getTimestamp();
   }
 
-  /**
-   * check if current time of current batch is equals to input time.
-   */
-  public boolean currentTimeIs(long time) {
-    if (!reader.currentBatch().hasNext()) {
-      return false;
-    }
-    return reader.currentBatch().currentTime() == time;
-  }
+//  /**
+//   * check if current time of current batch is equals to input time.
+//   */
+//  public boolean currentTimeIs(long time) {
+//    if (!reader.currentBatch().hasNext()) {
+//      return false;
+//    }
+//    return reader.currentBatch().currentTime() == time;
+//  }
 
   /**
    * check if current value is equals to input value.

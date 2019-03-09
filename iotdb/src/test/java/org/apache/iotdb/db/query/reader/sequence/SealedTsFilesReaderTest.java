@@ -17,21 +17,26 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.reader;
+package org.apache.iotdb.db.query.reader.sequence;
 
-import java.io.IOException;
-import org.apache.iotdb.db.utils.TimeValuePair;
-import org.apache.iotdb.tsfile.read.common.BatchData;
+import static org.junit.Assert.*;
 
-/**
- * Vital read interface. Batch method is used to increase query speed. Getting a batch of data
- * a time is faster than getting one point a time.
- */
-public interface IReader {
+import org.junit.Test;
 
-  boolean hasNext() throws IOException;
+public class SealedTsFilesReaderTest {
 
-  TimeValuePair next() throws IOException;
+  private SealedTsFilesReader sealedTsFilesReader;
 
-  void close() throws IOException;
+  @Test
+  public void hasNext() {
+
+  }
+
+  @Test
+  public void nextBatch() {
+  }
+
+  @Test
+  public void currentBatch() {
+  }
 }

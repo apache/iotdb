@@ -16,10 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.read.reader.series;
 
 import java.io.IOException;
 import java.util.List;
+import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.controller.ChunkLoader;
@@ -48,30 +50,14 @@ public abstract class FileSeriesReader {
 
   /**
    * check if current chunk has next batch data.
+   *
    * @return True if current chunk has next batch data
    */
-  public boolean hasNextBatch() {
-
-    // current chunk has data
-    if (chunkReader != null && chunkReader.hasNextBatch()) {
-      return true;
-
-      // has additional chunk to read
-    } else {
-      return chunkToRead < chunkMetaDataList.size();
-    }
-
-  }
-
-  /**
-   * get next batch data.
-   */
-  public BatchData nextBatch() throws IOException {
+  public boolean hasNextBatch() throws IOException {
 
     // current chunk has additional batch
     if (chunkReader != null && chunkReader.hasNextBatch()) {
-      data = chunkReader.nextBatch();
-      return data;
+      return true;
     }
 
     // current chunk does not have additional batch, init new chunk reader
@@ -83,20 +69,31 @@ public abstract class FileSeriesReader {
         initChunkReader(chunkMetaData);
 
         if (chunkReader.hasNextBatch()) {
-          data = chunkReader.nextBatch();
-          return data;
+          return true;
         }
       }
     }
+    return false;
+  }
 
-    if (data == null) {
-      return new BatchData();
-    }
+  /**
+   * get next batch data.
+   */
+  public BatchData nextBatch() throws IOException {
+    data = chunkReader.nextBatch();
     return data;
   }
 
   public BatchData currentBatch() {
     return data;
+  }
+
+  public PageHeader nextPageHeader() throws IOException {
+    return chunkReader.nextPageHeader();
+  }
+
+  public void skipPageData() {
+    chunkReader.skipPageData();
   }
 
   protected abstract void initChunkReader(ChunkMetaData chunkMetaData) throws IOException;

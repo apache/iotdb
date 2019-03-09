@@ -16,17 +16,18 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.query.reader.unsequence;
 
 import java.io.IOException;
-import org.apache.iotdb.db.query.reader.IReader;
+import org.apache.iotdb.db.query.reader.IPointReader;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.db.utils.TimeValuePairUtils;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 
-public class EngineChunkReader implements IReader {
+public class EngineChunkReader implements IPointReader {
 
   private ChunkReader chunkReader;
   private BatchData data;
@@ -44,15 +45,16 @@ public class EngineChunkReader implements IReader {
 
   @Override
   public boolean hasNext() throws IOException {
-    if (data == null || !data.hasNext()) {
-      if (chunkReader.hasNextBatch()) {
-        data = chunkReader.nextBatch();
-      } else {
-        return false;
+    if (data != null && data.hasNext()) {
+      return true;
+    }
+    while (chunkReader.hasNextBatch()) {
+      data = chunkReader.nextBatch();
+      if (data.hasNext()) {
+        return true;
       }
     }
-
-    return data.hasNext();
+    return false;
   }
 
   @Override
@@ -63,28 +65,13 @@ public class EngineChunkReader implements IReader {
   }
 
   @Override
-  public void skipCurrentTimeValuePair() {
-    next();
+  public TimeValuePair current() throws IOException {
+    return TimeValuePairUtils.getCurrentTimeValuePair(data);
   }
 
   @Override
   public void close() throws IOException {
     this.chunkReader.close();
     this.unClosedTsFileReader.close();
-  }
-
-  @Override
-  public boolean hasNextBatch() {
-    return false;
-  }
-
-  @Override
-  public BatchData nextBatch() {
-    return null;
-  }
-
-  @Override
-  public BatchData currentBatch() {
-    return null;
   }
 }

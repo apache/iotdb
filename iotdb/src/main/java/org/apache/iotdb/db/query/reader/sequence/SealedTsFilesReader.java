@@ -26,10 +26,10 @@ import org.apache.iotdb.db.engine.filenode.IntervalFileNode;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
-import org.apache.iotdb.db.query.reader.IReader;
+import org.apache.iotdb.db.query.reader.IAggregateReader;
+import org.apache.iotdb.db.query.reader.IBatchReader;
 import org.apache.iotdb.db.utils.QueryUtils;
-import org.apache.iotdb.db.utils.TimeValuePair;
-import org.apache.iotdb.db.utils.TimeValuePairUtils;
+import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -42,17 +42,18 @@ import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReader;
 import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderWithFilter;
 import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderWithoutFilter;
 
-public class SealedTsFilesReader implements IReader {
+public class SealedTsFilesReader implements IBatchReader, IAggregateReader {
 
   private Path seriesPath;
   private List<IntervalFileNode> sealedTsFiles;
   private int usedIntervalFileIndex;
   private FileSeriesReader seriesReader;
   private Filter filter;
-  private BatchData data;
-  private boolean hasCachedData;
   private QueryContext context;
 
+  /**
+   * init with seriesPath, sealedTsFiles, filter, context.
+   */
   public SealedTsFilesReader(Path seriesPath, List<IntervalFileNode> sealedTsFiles, Filter filter,
       QueryContext context) {
     this(seriesPath, sealedTsFiles, context);
@@ -69,10 +70,12 @@ public class SealedTsFilesReader implements IReader {
     this.sealedTsFiles = sealedTsFiles;
     this.usedIntervalFileIndex = 0;
     this.seriesReader = null;
-    this.hasCachedData = false;
     this.context = context;
   }
 
+  /**
+   * init with seriesReader and queryContext.
+   */
   public SealedTsFilesReader(FileSeriesReader seriesReader, QueryContext context) {
     this.seriesReader = seriesReader;
     sealedTsFiles = new ArrayList<>();
@@ -81,78 +84,28 @@ public class SealedTsFilesReader implements IReader {
 
   @Override
   public boolean hasNext() throws IOException {
-    if (hasCachedData) {
+
+    // try to get next batch data from current reader
+    if (seriesReader != null && seriesReader.hasNextBatch()) {
       return true;
     }
 
-    while (!hasCachedData) {
-      boolean flag = false;
-
-      // try to get next time value pair from current batch data
-      if (data != null && data.hasNext()) {
-        hasCachedData = true;
-        return true;
-      }
-
-      // try to get next batch data from current reader
-      if (seriesReader != null && seriesReader.hasNextBatch()) {
-        data = seriesReader.nextBatch();
-        if (data.hasNext()) {
-          hasCachedData = true;
-          return true;
-        } else {
-          flag = true;
-        }
-      }
-
+    // init until reach a satisfied reader
+    while (usedIntervalFileIndex < sealedTsFiles.size()) {
       // try to get next batch data from next reader
-      while (!flag && usedIntervalFileIndex < sealedTsFiles.size()) {
-        // init until reach a satisfied reader
-        if (seriesReader == null || !seriesReader.hasNextBatch()) {
-          IntervalFileNode fileNode = sealedTsFiles.get(usedIntervalFileIndex++);
-          if (singleTsFileSatisfied(fileNode)) {
-            initSingleTsFileReader(fileNode, context);
-          } else {
-            flag = true;
-          }
-        }
-        if (!flag && seriesReader.hasNextBatch()) {
-          data = seriesReader.nextBatch();
-
-          // notice that, data maybe an empty batch data, so an examination must exist
-          if (data.hasNext()) {
-            hasCachedData = true;
-            return true;
-          }
-        }
+      IntervalFileNode fileNode = sealedTsFiles.get(usedIntervalFileIndex++);
+      if (singleTsFileSatisfied(fileNode)) {
+        initSingleTsFileReader(fileNode, context);
+      } else {
+        continue;
       }
 
-      if (!flag || data == null || !data.hasNext()) {
-        break;
+      if (seriesReader.hasNextBatch()) {
+        return true;
       }
     }
 
     return false;
-  }
-
-  @Override
-  public TimeValuePair next() {
-    TimeValuePair timeValuePair = TimeValuePairUtils.getCurrentTimeValuePair(data);
-    data.next();
-    hasCachedData = false;
-    return timeValuePair;
-  }
-
-  @Override
-  public void skipCurrentTimeValuePair() {
-    next();
-  }
-
-  @Override
-  public void close() throws IOException {
-    if (seriesReader != null) {
-      seriesReader.close();
-    }
   }
 
   private boolean singleTsFileSatisfied(IntervalFileNode fileNode) {
@@ -192,17 +145,24 @@ public class SealedTsFilesReader implements IReader {
   }
 
   @Override
-  public boolean hasNextBatch() {
-    return false;
+  public BatchData nextBatch() throws IOException {
+    return seriesReader.nextBatch();
   }
 
   @Override
-  public BatchData nextBatch() {
+  public void close() throws IOException {
+    if (seriesReader != null) {
+      seriesReader.close();
+    }
+  }
+
+  @Override
+  public PageHeader nextPageHeader() throws IOException {
     return null;
   }
 
   @Override
-  public BatchData currentBatch() {
-    return null;
+  public void skipPageData() throws IOException {
+    seriesReader.skipPageData();
   }
 }

@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.query.executor;
 
 import java.io.IOException;
@@ -30,6 +31,7 @@ import org.apache.iotdb.db.query.control.QueryDataSourceManager;
 import org.apache.iotdb.db.query.control.QueryTokenManager;
 import org.apache.iotdb.db.query.dataset.EngineDataSetWithTimeGenerator;
 import org.apache.iotdb.db.query.factory.SeriesReaderFactory;
+import org.apache.iotdb.db.query.reader.AllDataReader;
 import org.apache.iotdb.db.query.reader.merge.EngineReaderByTimeStamp;
 import org.apache.iotdb.db.query.reader.merge.PriorityMergeReader;
 import org.apache.iotdb.db.query.reader.merge.PriorityMergeReaderByTimestamp;
@@ -108,12 +110,19 @@ public class EngineExecutorWithTimeGenerator {
       // reader for sequence data
       SequenceDataReader tsFilesReader = new SequenceDataReader(queryDataSource.getSeqDataSource(),
           null, context);
-      mergeReaderByTimestamp.addReaderWithPriority(tsFilesReader, 1);
 
       // reader for unSequence data
       PriorityMergeReader unSeqMergeReader = SeriesReaderFactory.getInstance()
           .createUnSeqMergeReader(queryDataSource.getOverflowSeriesDataSource(), null);
-      mergeReaderByTimestamp.addReaderWithPriority(unSeqMergeReader, 2);
+
+      if (tsFilesReader == null || !tsFilesReader.hasNext()) {
+        mergeReaderByTimestamp
+            .addReaderWithPriority(unSeqMergeReader, PriorityMergeReader.HIGH_PRIORITY);
+      } else {
+        mergeReaderByTimestamp
+            .addReaderWithPriority(new AllDataReader(tsFilesReader, unSeqMergeReader),
+                PriorityMergeReader.HIGH_PRIORITY);
+      }
 
       readersOfSelectedSeries.add(mergeReaderByTimestamp);
     }

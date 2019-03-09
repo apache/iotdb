@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.query.reader.sequence;
 
 import java.io.IOException;
@@ -23,10 +24,10 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.db.engine.querycontext.GlobalSortedSeriesDataSource;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.reader.IReader;
-import org.apache.iotdb.db.query.reader.mem.MemChunkReaderWithFilter;
-import org.apache.iotdb.db.query.reader.mem.MemChunkReaderWithoutFilter;
-import org.apache.iotdb.db.utils.TimeValuePair;
+import org.apache.iotdb.db.query.reader.IAggregateReader;
+import org.apache.iotdb.db.query.reader.IBatchReader;
+import org.apache.iotdb.db.query.reader.mem.MemChunkReader;
+import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
@@ -36,12 +37,12 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
  * in MemTable.
  * </p>
  */
-public class SequenceDataReader implements IReader {
+public class SequenceDataReader implements IBatchReader, IAggregateReader {
 
-  private List<IReader> seriesReaders;
+  private List<IAggregateReader> seriesReaders;
   private boolean curReaderInitialized;
   private int nextSeriesReaderIndex;
-  private IReader currentSeriesReader;
+  private IAggregateReader currentSeriesReader;
 
   /**
    * init with globalSortedSeriesDataSource and filter.
@@ -68,17 +69,13 @@ public class SequenceDataReader implements IReader {
 
     // add data in memTable
     if (sources.hasRawSeriesChunk()) {
-      if (filter == null) {
-        seriesReaders.add(new MemChunkReaderWithoutFilter(sources.getReadableChunk()));
-      } else {
-        seriesReaders.add(new MemChunkReaderWithFilter(sources.getReadableChunk(), filter));
-      }
+      seriesReaders.add(new MemChunkReader(sources.getReadableChunk(), filter));
     }
-
   }
 
   @Override
   public boolean hasNext() throws IOException {
+
     if (curReaderInitialized && currentSeriesReader.hasNext()) {
       return true;
     } else {
@@ -96,35 +93,24 @@ public class SequenceDataReader implements IReader {
   }
 
   @Override
-  public TimeValuePair next() throws IOException {
-    return currentSeriesReader.next();
-  }
-
-  @Override
-  public void skipCurrentTimeValuePair() throws IOException {
-    next();
-  }
-
-  @Override
   public void close() throws IOException {
-    for (IReader seriesReader : seriesReaders) {
+    for (IBatchReader seriesReader : seriesReaders) {
       seriesReader.close();
     }
   }
 
   @Override
-  public boolean hasNextBatch() {
-    return false;
+  public BatchData nextBatch() throws IOException {
+    return currentSeriesReader.nextBatch();
   }
 
   @Override
-  public BatchData nextBatch() {
-    return null;
+  public PageHeader nextPageHeader() throws IOException {
+    return currentSeriesReader.nextPageHeader();
   }
 
   @Override
-  public BatchData currentBatch() {
-    return null;
+  public void skipPageData() throws IOException {
+    currentSeriesReader.skipPageData();
   }
-
 }
