@@ -25,13 +25,22 @@ import java.util.Random;
 import org.apache.iotdb.db.utils.MathUtils;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.db.utils.TsPrimitiveType;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 
 public class PrimitiveMemTableTest {
+
+  double delta;
+
+  @Before
+  public void setUp() {
+    delta = Math.pow(0.1, TSFileConfig.floatPrecision);
+  }
 
   @Test
   public void memSeriesCloneTest() {
@@ -105,15 +114,24 @@ public class PrimitiveMemTableTest {
       TimeValuePair next = tvPair.next();
       Assert.assertEquals(pair.getTimestamp(), next.getTimestamp());
       if (dataType == TSDataType.DOUBLE) {
-        Assert.assertEquals(MathUtils.roundWithGivenPrecision(pair.getValue().getDouble()),
-            next.getValue().getDouble(), 0.0001);
+        Assert.assertEquals(pair.getValue().getDouble(),
+            MathUtils.roundWithGivenPrecision(next.getValue().getDouble()), delta);
       } else if (dataType == TSDataType.FLOAT) {
-        Assert.assertEquals(MathUtils.roundWithGivenPrecision(pair.getValue().getFloat()),
-            next.getValue().getFloat(), 0.0001);
+        float expected = pair.getValue().getFloat();
+        float actual = MathUtils.roundWithGivenPrecision(next.getValue().getFloat());
+        Assert.assertEquals(expected, actual, delta+ Float.MIN_NORMAL);
       } else {
         Assert.assertEquals(pair.getValue(), next.getValue());
       }
     }
+  }
+
+  @Test
+  public void testFloatType() {
+    IMemTable memTable = new PrimitiveMemTable();
+    String deviceId = "d1";
+    int size = 1000000;
+    write(memTable, deviceId, "s1", TSDataType.FLOAT, size);
   }
 
   @Test
