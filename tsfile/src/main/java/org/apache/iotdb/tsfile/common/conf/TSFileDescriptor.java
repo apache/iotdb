@@ -113,6 +113,10 @@ public class TSFileDescriptor {
       TSFileConfig.pageSizeInByte = Integer
           .parseInt(properties
               .getProperty("page_size_in_byte", Integer.toString(TSFileConfig.pageSizeInByte)));
+      if (TSFileConfig.pageSizeInByte > TSFileConfig.groupSizeInByte) {
+        LOGGER.warn("page_size is greater than group size, will set it as the same with group size");
+        TSFileConfig.pageSizeInByte = TSFileConfig.groupSizeInByte;
+      }
       TSFileConfig.maxNumberOfPointsInPage = Integer.parseInt(
           properties
               .getProperty("max_number_of_points_in_page",
