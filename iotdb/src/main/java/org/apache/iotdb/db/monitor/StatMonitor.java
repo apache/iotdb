@@ -336,6 +336,7 @@ public class StatMonitor implements IService {
   }
 
   class StatBackLoop implements Runnable {
+    FileSize fileSize = FileSize.getInstance();
 
     @Override
     public void run() {
@@ -362,8 +363,6 @@ public class StatMonitor implements IService {
           }
         }
         Map<String, TSRecord> tsRecordHashMap = gatherStatistics();
-        FileSize fileSize = FileSize.getInstance();
-        tsRecordHashMap.putAll(fileSize.getAllStatisticsValue());
         insert(tsRecordHashMap);
         numBackLoop.incrementAndGet();
       } catch (Exception e) {
