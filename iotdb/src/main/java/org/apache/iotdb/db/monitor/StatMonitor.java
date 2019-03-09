@@ -152,6 +152,7 @@ public class StatMonitor implements IService {
 
   /**
    * register monitor statistics time series metadata into MManager.
+   *
    * @param hashMap series path and data type pair, for example: [root.stat.file.size.DATA, INT64]
    */
   public synchronized void registerStatStorageGroup(Map<String, String> hashMap) {
@@ -194,6 +195,7 @@ public class StatMonitor implements IService {
 
   /**
    * register class which implemented IStatistic interface into statisticMap
+   *
    * @param path the stat series prefix path, like root.stat.file.size
    * @param iStatistic instance of class which implemented IStatistic interface
    */
@@ -336,6 +338,7 @@ public class StatMonitor implements IService {
   }
 
   class StatBackLoop implements Runnable {
+
     FileSize fileSize = FileSize.getInstance();
 
     @Override

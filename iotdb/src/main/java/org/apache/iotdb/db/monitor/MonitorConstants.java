@@ -28,6 +28,7 @@ import org.apache.iotdb.db.monitor.collector.FileSize;
 import org.apache.iotdb.db.service.Monitor;
 
 public class MonitorConstants {
+
   private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   public static final String DATA_TYPE_INT64 = "INT64";
   public static final String STAT_STORAGE_GROUP_PREFIX = "root.stats";

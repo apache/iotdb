@@ -71,12 +71,11 @@ public class FileSize implements IStatistic {
   public void registerStatMetadata() {
     Map<String, String> hashMap = new HashMap<>();
     for (FileSizeConstants kind : FileSizeConstants.values()) {
-      hashMap.put(MonitorConstants.FILE_SIZE_STORAGE_GROUP_NAME
+      String seriesPath = MonitorConstants.FILE_SIZE_STORAGE_GROUP_NAME
           + MonitorConstants.MONITOR_PATH_SEPARATOR
-          + kind.name(), MonitorConstants.DATA_TYPE_INT64);
-      Path path = new Path(MonitorConstants.FILE_SIZE_STORAGE_GROUP_NAME
-          + MonitorConstants.MONITOR_PATH_SEPARATOR
-          + kind.name());
+          + kind.name();
+      hashMap.put(seriesPath, MonitorConstants.DATA_TYPE_INT64);
+      Path path = new Path(seriesPath);
       try {
         fileNodeManager.addTimeSeries(path, TSDataType.valueOf(MonitorConstants.DATA_TYPE_INT64),
             TSEncoding.valueOf("RLE"), CompressionType.valueOf(TSFileConfig.compressor),
