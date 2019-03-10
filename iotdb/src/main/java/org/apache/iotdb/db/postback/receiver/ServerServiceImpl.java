@@ -39,7 +39,7 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.Directories;
 import org.apache.iotdb.db.engine.filenode.FileNodeManager;
-import org.apache.iotdb.db.engine.filenode.IntervalFileNode;
+import org.apache.iotdb.db.engine.filenode.TsFileResource;
 import org.apache.iotdb.db.engine.filenode.OverflowChangeType;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.utils.PostbackUtils;
@@ -660,9 +660,9 @@ public class ServerServiceImpl implements ServerService.Iface {
         // create a new fileNode
         String header = postbackPath + uuid.get() + File.separator + "data" + File.separator;
         String relativePath = path.substring(header.length());
-        IntervalFileNode fileNode = new IntervalFileNode(startTimeMap, endTimeMap,
+        TsFileResource fileNode = new TsFileResource(startTimeMap, endTimeMap,
             OverflowChangeType.NO_CHANGE,
-            Directories.getInstance().getNextFolderIndexForTsFile(), relativePath);
+            new File(Directories.getInstance().getNextFolderIndexForTsFile() +File.separator + relativePath));
         // call interface of load external file
         try {
           if (!fileNodeManager.appendFileToFileNode(storageGroup, fileNode, path)) {

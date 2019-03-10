@@ -73,8 +73,8 @@ public class OverflowProcessor extends Processor {
   private OverflowResource workResource;
   private OverflowResource mergeResource;
 
-  private OverflowSupport workSupport;
-  private OverflowSupport flushSupport;
+  private OverflowMemtable workSupport;
+  private OverflowMemtable flushSupport;
 
   private volatile Future<Boolean> flushFuture = new ImmediateFuture<>(true);
   private volatile boolean isMerge;
@@ -113,7 +113,7 @@ public class OverflowProcessor extends Processor {
     // recover file
     recovery(processorDataDir);
     // memory
-    workSupport = new OverflowSupport();
+    workSupport = new OverflowMemtable();
     overflowFlushAction = parameters.get(FileNodeConstants.OVERFLOW_FLUSH_ACTION);
     filenodeFlushAction = parameters
         .get(FileNodeConstants.FILENODE_PROCESSOR_FLUSH_ACTION);
@@ -380,7 +380,7 @@ public class OverflowProcessor extends Processor {
     queryFlushLock.lock();
     try {
       flushSupport = workSupport;
-      workSupport = new OverflowSupport();
+      workSupport = new OverflowMemtable();
     } finally {
       queryFlushLock.unlock();
     }

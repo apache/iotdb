@@ -19,12 +19,15 @@
 package org.apache.iotdb.db.engine.memtable;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
 
+import java.util.Map;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.footer.ChunkGroupFooter;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.chunk.ChunkBuffer;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
@@ -84,8 +87,7 @@ public class MemTableFlushUtil {
    * the function for flushing memtable.
    */
   public static void flushMemTable(FileSchema fileSchema, TsFileIOWriter tsFileIoWriter,
-      IMemTable imemTable, long version)
-      throws IOException {
+      IMemTable imemTable, long version) throws IOException {
     for (String deviceId : imemTable.getMemTableMap().keySet()) {
       long startPos = tsFileIoWriter.getPos();
       tsFileIoWriter.startFlushChunkGroup(deviceId);
@@ -96,8 +98,8 @@ public class MemTableFlushUtil {
         MeasurementSchema desc = fileSchema.getMeasurementSchema(measurementId);
         ChunkBuffer chunkBuffer = new ChunkBuffer(desc);
         IChunkWriter seriesWriter = new ChunkWriterImpl(desc, chunkBuffer, PAGE_SIZE_THRESHOLD);
-        writeOneSeries(series.getSortedTimeValuePairList(), seriesWriter,
-            desc.getType());
+        List<TimeValuePair> sortedTimeValuePairs = series.getSortedTimeValuePairList();
+        writeOneSeries(sortedTimeValuePairs, seriesWriter, desc.getType());
         seriesWriter.writeToFileWriter(tsFileIoWriter);
       }
       long memSize = tsFileIoWriter.getPos() - startPos;

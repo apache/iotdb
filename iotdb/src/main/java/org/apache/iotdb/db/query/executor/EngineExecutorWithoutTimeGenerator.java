@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
+import org.apache.iotdb.db.engine.tsfiledata.TsFileProcessor;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.metadata.MManager;
@@ -128,6 +129,65 @@ public class EngineExecutorWithoutTimeGenerator {
 
       QueryDataSource queryDataSource = QueryDataSourceManager.getQueryDataSource(jobId, path,
           context);
+
+      // add data type
+      try {
+        dataTypes.add(MManager.getInstance().getSeriesType(path.getFullPath()));
+      } catch (PathErrorException e) {
+        throw new FileNodeManagerException(e);
+      }
+
+      PriorityMergeReader priorityReader = new PriorityMergeReader();
+
+      // sequence insert data
+      SequenceDataReader tsFilesReader;
+      try {
+        tsFilesReader = new SequenceDataReader(queryDataSource.getSeqDataSource(),
+            null, context);
+        priorityReader.addReaderWithPriority(tsFilesReader, 1);
+      } catch (IOException e) {
+        throw new FileNodeManagerException(e);
+      }
+
+      // unseq insert data
+      PriorityMergeReader unSeqMergeReader;
+      try {
+        unSeqMergeReader = SeriesReaderFactory.getInstance()
+            .createUnSeqMergeReader(queryDataSource.getOverflowSeriesDataSource(), null);
+        priorityReader.addReaderWithPriority(unSeqMergeReader, 2);
+      } catch (IOException e) {
+        throw new FileNodeManagerException(e);
+      }
+
+      readersOfSelectedSeries.add(priorityReader);
+    }
+
+    try {
+      return new EngineDataSetWithoutTimeGenerator(queryExpression.getSelectedSeries(), dataTypes,
+          readersOfSelectedSeries);
+    } catch (IOException e) {
+      throw new FileNodeManagerException(e);
+    }
+  }
+
+  /**
+   * TODO
+   * This is only for test TsFileProcessor now. This method will finally be replaced when
+   * fileNodeManager is refactored
+   */
+  public QueryDataSet executeWithoutFilter(QueryContext context, TsFileProcessor processor)
+      throws FileNodeManagerException, IOException {
+
+    List<IReader> readersOfSelectedSeries = new ArrayList<>();
+    List<TSDataType> dataTypes = new ArrayList<>();
+
+    QueryTokenManager.getInstance()
+        .beginQueryOfGivenQueryPaths(jobId, queryExpression.getSelectedSeries());
+
+    for (Path path : queryExpression.getSelectedSeries()) {
+
+      QueryDataSource queryDataSource = QueryDataSourceManager
+          .getQueryDataSourceByTsFileProcessor(jobId, path, context, processor);
 
       // add data type
       try {

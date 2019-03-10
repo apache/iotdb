@@ -22,11 +22,13 @@ import static org.apache.iotdb.tsfile.read.expression.ExpressionType.GLOBAL_TIME
 
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicLong;
+import org.apache.iotdb.db.engine.tsfiledata.TsFileProcessor;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.OpenedFilePathsManager;
 import org.apache.iotdb.db.query.control.QueryTokenManager;
+import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.QueryExpression;
@@ -90,5 +92,29 @@ public class EngineQueryRouter {
 
   private synchronized long getNextJobId() {
     return jobIdGenerator.incrementAndGet();
+  }
+
+
+  /**
+   * TODO
+   * This is only for test TsFileProcessor now. This method will finally be replaced when
+   * fileNodeManager is refactored
+   */
+  public QueryDataSet query(QueryExpression queryExpression, TsFileProcessor processor)
+      throws FileNodeManagerException, IOException {
+
+    long nextJobId = getNextJobId();
+    QueryTokenManager.getInstance().setJobIdForCurrentRequestThread(nextJobId);
+    OpenedFilePathsManager.getInstance().setJobIdForCurrentRequestThread(nextJobId);
+
+    QueryContext context = new QueryContext();
+
+    if (queryExpression.hasQueryFilter()) {
+        throw new NotImplementedException("this function is just for test...");
+    } else {
+      EngineExecutorWithoutTimeGenerator engineExecutor = new EngineExecutorWithoutTimeGenerator(
+          nextJobId, queryExpression);
+      return engineExecutor.executeWithoutFilter(context, processor);
+    }
   }
 }

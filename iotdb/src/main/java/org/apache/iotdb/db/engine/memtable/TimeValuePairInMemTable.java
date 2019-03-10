@@ -23,16 +23,10 @@ import java.util.Objects;
 import org.apache.iotdb.db.utils.TimeValuePair;
 import org.apache.iotdb.db.utils.TsPrimitiveType;
 
-public class TimeValuePairInMemTable extends TimeValuePair implements
-        Comparable<TimeValuePairInMemTable> {
+public class TimeValuePairInMemTable extends TimeValuePair {
 
   public TimeValuePairInMemTable(long timestamp, TsPrimitiveType value) {
     super(timestamp, value);
-  }
-
-  @Override
-  public int compareTo(TimeValuePairInMemTable o) {
-    return Long.compare(this.getTimestamp(), o.getTimestamp());
   }
 
   @Override

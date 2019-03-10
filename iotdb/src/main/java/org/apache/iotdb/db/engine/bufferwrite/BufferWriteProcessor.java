@@ -33,6 +33,7 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.Processor;
 import org.apache.iotdb.db.engine.filenode.FileNodeManager;
+import org.apache.iotdb.db.engine.filenode.TsFileResource;
 import org.apache.iotdb.db.engine.memcontrol.BasicMemController;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.MemSeriesLazyMerger;
@@ -77,9 +78,10 @@ public class BufferWriteProcessor extends Processor {
   private long valueCount = 0;
 
   private String baseDir;
-  private String fileName;
   private String insertFilePath;
   private String bufferWriteRelativePath;
+
+  private List<TsFileResource> tsFileResources;
 
   private WriteLogNode logNode;
   private VersionController versionController;
@@ -100,7 +102,6 @@ public class BufferWriteProcessor extends Processor {
     super(processorName);
     this.fileSchema = fileSchema;
     this.baseDir = baseDir;
-    this.fileName = fileName;
 
     String bDir = baseDir;
     if (bDir.length() > 0 && bDir.charAt(bDir.length() - 1) != File.separatorChar) {
@@ -184,13 +185,13 @@ public class BufferWriteProcessor extends Processor {
         return true;
       case WARNING:
         memory = MemUtils.bytesCntToStr(BasicMemController.getInstance().getTotalUsage());
-        LOGGER.warn("Memory usage will exceed warning threshold, current : {}.", memory);
+        //LOGGER.warn("Memory usage will exceed warning threshold, current : {}.", memory);
         checkMemThreshold4Flush(memUsage);
         return true;
       case DANGEROUS:
       default:
         memory = MemUtils.bytesCntToStr(BasicMemController.getInstance().getTotalUsage());
-        LOGGER.warn("Memory usage will exceed dangerous threshold, current : {}.", memory);
+        //LOGGER.warn("Memory usage will exceed dangerous threshold, current : {}.", memory);
         return false;
     }
   }
@@ -389,7 +390,7 @@ public class BufferWriteProcessor extends Processor {
         LOGGER.info(
             "Close bufferwrite processor {}, the file name is {}, start time is {}, end time is {}, "
                 + "time consumption is {}ms",
-            getProcessorName(), fileName,
+            getProcessorName(), insertFilePath,
             DatetimeUtils.convertMillsecondToZonedDateTime(closeStartTime),
             DatetimeUtils.convertMillsecondToZonedDateTime(closeEndTime),
             closeEndTime - closeStartTime);
@@ -467,7 +468,7 @@ public class BufferWriteProcessor extends Processor {
       LOGGER.info(
           "The bufferwrite processor {}, size({}) of the file {} reaches threshold {}, "
               + "size({}) of metadata reaches threshold {}.",
-          getProcessorName(), MemUtils.bytesCntToStr(fileSize), this.fileName,
+          getProcessorName(), MemUtils.bytesCntToStr(fileSize), this.insertFilePath,
           MemUtils.bytesCntToStr(config.getBufferwriteFileSizeThreshold()),
           MemUtils.bytesCntToStr(metaSize),
           MemUtils.bytesCntToStr(config.getBufferwriteFileSizeThreshold()));
@@ -482,9 +483,6 @@ public class BufferWriteProcessor extends Processor {
     return baseDir;
   }
 
-  public String getFileName() {
-    return fileName;
-  }
 
   public String getFileRelativePath() {
     return bufferWriteRelativePath;
@@ -552,11 +550,15 @@ public class BufferWriteProcessor extends Processor {
     }
     BufferWriteProcessor that = (BufferWriteProcessor) o;
     return Objects.equals(baseDir, that.baseDir) &&
-        Objects.equals(fileName, that.fileName);
+        Objects.equals(insertFilePath, that.insertFilePath);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), baseDir, fileName);
+    return Objects.hash(super.hashCode(), baseDir, insertFilePath);
+  }
+
+  public String getInsertFilePath() {
+    return insertFilePath;
   }
 }

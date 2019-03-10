@@ -24,6 +24,9 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.Scanner;
+
+import com.alibaba.fastjson.JSONArray;
+import com.alibaba.fastjson.JSONObject;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.JsonFormatConstant;
@@ -36,8 +39,6 @@ import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.schema.FileSchema;
 import org.apache.iotdb.tsfile.write.schema.SchemaBuilder;
-import org.json.JSONArray;
-import org.json.JSONObject;
 import org.junit.Assert;
 import org.junit.Ignore;
 import org.slf4j.Logger;
@@ -158,10 +159,33 @@ public class TsFileGeneratorForTest {
     innerWriter = new TsFileWriter(file, schema, TSFileDescriptor.getInstance().getConfig());
 
     // write
-    try {
-      writeToFile(schema);
+    try (Scanner in = new Scanner(new File(inputDataFile))) {
+      long lineCount = 0;
+      long startTime = System.currentTimeMillis();
+      long endTime = System.currentTimeMillis();
+      assert in != null;
+      while (in.hasNextLine()) {
+        if (lineCount % 1000000 == 0) {
+          endTime = System.currentTimeMillis();
+          // logger.info("write line:{},inner space consumer:{},use
+          // time:{}",lineCount,innerWriter.calculateMemSizeForEachGroup(),endTime);
+          LOG.info("write line:{},use time:{}s", lineCount, (endTime - startTime) / 1000);
+        }
+        String str = in.nextLine();
+        TSRecord record = RecordUtils.parseSimpleTupleRecord(str, schema);
+        innerWriter.write(record);
+        lineCount++;
+      }
+      endTime = System.currentTimeMillis();
+      LOG.info("write line:{},use time:{}s", lineCount, (endTime - startTime) / 1000);
+      endTime = System.currentTimeMillis();
+      LOG.info("write total:{},use time:{}s", lineCount, (endTime - startTime) / 1000);
+      LOG.info("src file size:{}GB", FileUtils.getLocalFileByte(inputDataFile, FileUtils.Unit.GB));
+      LOG.info("out file size:{}MB", FileUtils.getLocalFileByte(outputDataFile, FileUtils.Unit.MB));
     } catch (WriteProcessException e) {
       e.printStackTrace();
+    } finally {
+      innerWriter.close();
     }
     LOG.info("write to file successfully!!");
   }
@@ -198,13 +222,13 @@ public class TsFileGeneratorForTest {
     s7.put(JsonFormatConstant.MEASUREMENT_ENCODING, TSEncoding.RLE.toString());
 
     JSONArray measureGroup1 = new JSONArray();
-    measureGroup1.put(s1);
-    measureGroup1.put(s2);
-    measureGroup1.put(s3);
-    measureGroup1.put(s4);
-    measureGroup1.put(s5);
-    measureGroup1.put(s6);
-    measureGroup1.put(s7);
+    measureGroup1.add(s1);
+    measureGroup1.add(s2);
+    measureGroup1.add(s3);
+    measureGroup1.add(s4);
+    measureGroup1.add(s5);
+    measureGroup1.add(s6);
+    measureGroup1.add(s7);
 
     JSONObject jsonSchema = new JSONObject();
     jsonSchema.put(JsonFormatConstant.DELTA_TYPE, "test_type");
@@ -227,43 +251,4 @@ public class TsFileGeneratorForTest {
     return schemaBuilder.build();
   }
 
-  static public void writeToFile(FileSchema schema)
-      throws InterruptedException, IOException, WriteProcessException {
-    Scanner in = getDataFile(inputDataFile);
-    long lineCount = 0;
-    long startTime = System.currentTimeMillis();
-    long endTime = System.currentTimeMillis();
-    assert in != null;
-    while (in.hasNextLine()) {
-      if (lineCount % 1000000 == 0) {
-        endTime = System.currentTimeMillis();
-        // logger.info("write line:{},inner space consumer:{},use
-        // time:{}",lineCount,innerWriter.calculateMemSizeForEachGroup(),endTime);
-        LOG.info("write line:{},use time:{}s", lineCount, (endTime - startTime) / 1000);
-      }
-      String str = in.nextLine();
-      TSRecord record = RecordUtils.parseSimpleTupleRecord(str, schema);
-      innerWriter.write(record);
-      lineCount++;
-    }
-    endTime = System.currentTimeMillis();
-    LOG.info("write line:{},use time:{}s", lineCount, (endTime - startTime) / 1000);
-    innerWriter.close();
-    in.close();
-    endTime = System.currentTimeMillis();
-    LOG.info("write total:{},use time:{}s", lineCount, (endTime - startTime) / 1000);
-    LOG.info("src file size:{}GB", FileUtils.getLocalFileByte(inputDataFile, FileUtils.Unit.GB));
-    LOG.info("out file size:{}MB", FileUtils.getLocalFileByte(outputDataFile, FileUtils.Unit.MB));
-  }
-
-  static private Scanner getDataFile(String path) {
-    File file = new File(path);
-    try {
-      Scanner in = new Scanner(file);
-      return in;
-    } catch (FileNotFoundException e) {
-      e.printStackTrace();
-      return null;
-    }
-  }
 }
