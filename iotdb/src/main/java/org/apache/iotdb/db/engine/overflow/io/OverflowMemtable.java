@@ -24,27 +24,28 @@ import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.PrimitiveMemTable;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.statistics.LongStatistics;
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 
 /**
  * This class is used to store and query all overflow data in memory.<br>
- * This just represent someone storage group.<br>
  */
-public class OverflowSupport {
+public class OverflowMemtable {
 
   /**
    * store update and delete data
    */
-  private Map<String, Map<String, OverflowSeriesImpl>> indexTrees;
+  private Map<String, Map<String, LongStatistics>> indexTrees;
 
   /**
    * store insert data
    */
   private IMemTable memTable;
 
-  public OverflowSupport() {
+  public OverflowMemtable() {
     indexTrees = new HashMap<>();
     memTable = new PrimitiveMemTable();
   }
@@ -68,9 +69,9 @@ public class OverflowSupport {
       indexTrees.put(deviceId, new HashMap<>());
     }
     if (!indexTrees.get(deviceId).containsKey(measurementId)) {
-      indexTrees.get(deviceId).put(measurementId, new OverflowSeriesImpl(measurementId, dataType));
+      indexTrees.get(deviceId).put(measurementId, new LongStatistics());
     }
-    indexTrees.get(deviceId).get(measurementId).update(startTime, endTime);
+    indexTrees.get(deviceId).get(measurementId).updateStats(startTime, endTime);
   }
 
   public void delete(String deviceId, String measurementId, long timestamp, boolean isFlushing) {
@@ -87,20 +88,11 @@ public class OverflowSupport {
     return memTable.query(deviceId, measurementId, dataType, props);
   }
 
-  public BatchData queryOverflowUpdateInMemory(String deviceId, String measurementId,
-      TSDataType dataType) {
-    if (indexTrees.containsKey(deviceId) && indexTrees.get(deviceId).containsKey(measurementId)
-        && indexTrees.get(deviceId).get(measurementId).getDataType().equals(dataType)) {
-      return indexTrees.get(deviceId).get(measurementId).query();
-    }
-    return null;
-  }
-
   public boolean isEmptyOfOverflowSeriesMap() {
     return indexTrees.isEmpty();
   }
 
-  public Map<String, Map<String, OverflowSeriesImpl>> getOverflowSeriesMap() {
+  public Map<String, Map<String, LongStatistics>> getOverflowSeriesMap() {
     return indexTrees;
   }
 

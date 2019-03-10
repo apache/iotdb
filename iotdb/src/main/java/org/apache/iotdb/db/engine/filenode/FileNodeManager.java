@@ -700,7 +700,7 @@ public class FileNodeManager implements IStatistic, IService {
    * @param fileNodeName the seriesPath of storage group
    * @param appendFile the appended tsfile information
    */
-  public boolean appendFileToFileNode(String fileNodeName, IntervalFileNode appendFile,
+  public boolean appendFileToFileNode(String fileNodeName, TsFileResource appendFile,
       String appendFilePath) throws FileNodeManagerException {
     FileNodeProcessor fileNodeProcessor = getProcessor(fileNodeName, true);
     try {
@@ -729,7 +729,7 @@ public class FileNodeManager implements IStatistic, IService {
    * @param fileNodeName the seriesPath of storage group
    * @param appendFile the appended tsfile information
    */
-  public List<String> getOverlapFilesFromFileNode(String fileNodeName, IntervalFileNode appendFile,
+  public List<String> getOverlapFilesFromFileNode(String fileNodeName, TsFileResource appendFile,
       String uuid) throws FileNodeManagerException {
     FileNodeProcessor fileNodeProcessor = getProcessor(fileNodeName, true);
     List<String> overlapFiles;
