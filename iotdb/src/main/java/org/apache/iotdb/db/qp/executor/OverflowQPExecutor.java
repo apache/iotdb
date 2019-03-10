@@ -51,8 +51,10 @@ import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadDataPlan;
 import org.apache.iotdb.db.qp.physical.sys.MetadataPlan;
 import org.apache.iotdb.db.qp.physical.sys.PropertyPlan;
+import org.apache.iotdb.db.query.executor.EngineQueryRouter;
 import org.apache.iotdb.db.utils.AuthUtils;
 import org.apache.iotdb.db.utils.LoadDataUtils;
+import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -176,9 +178,9 @@ public class OverflowQPExecutor extends QueryProcessExecutor {
   }
 
   @Override
-  public QueryDataSet aggregate(List<Pair<Path, String>> aggres, IExpression expression)
-      throws ProcessorException {
-    throw new ProcessorException("not support");
+  public QueryDataSet aggregate(List<Path> paths, List<String> aggres, IExpression expression)
+          throws ProcessorException, FileNodeManagerException, QueryFilterOptimizationException, PathErrorException, IOException {
+    return new EngineQueryRouter().aggregate(paths, aggres, expression);
   }
 
   // @Override

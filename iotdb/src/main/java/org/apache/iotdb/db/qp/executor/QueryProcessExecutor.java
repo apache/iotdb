@@ -28,8 +28,10 @@ import org.apache.iotdb.db.exception.PathErrorException;
 import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.query.executor.EngineQueryRouter;
+import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
@@ -45,11 +47,15 @@ public abstract class QueryProcessExecutor {
   public QueryProcessExecutor() {
   }
 
-  public QueryDataSet processQuery(PhysicalPlan plan) throws IOException, FileNodeManagerException {
+  public QueryDataSet processQuery(PhysicalPlan plan) throws IOException, FileNodeManagerException, PathErrorException, QueryFilterOptimizationException, ProcessorException {
     QueryPlan queryPlan = (QueryPlan) plan;
 
     QueryExpression queryExpression = QueryExpression.create().setSelectSeries(queryPlan.getPaths())
         .setExpression(queryPlan.getExpression());
+
+    if(plan instanceof AggregationPlan) {
+      return aggregate(plan.getPaths(), plan.getAggregations(), ((AggregationPlan) plan).getExpression());
+    }
 
     return queryRouter.query(queryExpression);
   }
@@ -73,8 +79,8 @@ public abstract class QueryProcessExecutor {
     this.fetchSize.set(fetchSize);
   }
 
-  public abstract QueryDataSet aggregate(List<Pair<Path, String>> aggres, IExpression expression)
-      throws ProcessorException, IOException, PathErrorException;
+  public abstract QueryDataSet aggregate(List<Path> paths, List<String> aggres, IExpression expression)
+          throws ProcessorException, IOException, PathErrorException, FileNodeManagerException, QueryFilterOptimizationException;
 
   public abstract QueryDataSet groupBy(List<Pair<Path, String>> aggres, IExpression expression,
       long unit,
