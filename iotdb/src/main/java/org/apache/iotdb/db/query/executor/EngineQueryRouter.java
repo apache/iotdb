@@ -16,18 +16,23 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.query.executor;
 
 import static org.apache.iotdb.tsfile.read.expression.ExpressionType.GLOBAL_TIME;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.db.exception.FileNodeManagerException;
 import org.apache.iotdb.db.exception.PathErrorException;
+import org.apache.iotdb.db.exception.ProcessorException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.OpenedFilePathsManager;
 import org.apache.iotdb.db.query.control.QueryTokenManager;
+import org.apache.iotdb.db.query.dataset.AggregateDataSet;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
+import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.QueryExpression;
 import org.apache.iotdb.tsfile.read.expression.util.ExpressionOptimizer;
@@ -85,6 +90,36 @@ public class EngineQueryRouter {
           nextJobId,
           queryExpression);
       return engineExecutor.executeWithoutFilter(context);
+    }
+  }
+
+  /**
+   * execute aggregation query.
+   */
+  public AggregateDataSet aggregate(List<Path> selectedSeries, List<String> aggres,
+      IExpression expression)
+      throws QueryFilterOptimizationException, FileNodeManagerException, IOException, PathErrorException, ProcessorException {
+
+    long nextJobId = getNextJobId();
+    QueryTokenManager.getInstance().setJobIdForCurrentRequestThread(nextJobId);
+    OpenedFilePathsManager.getInstance().setJobIdForCurrentRequestThread(nextJobId);
+
+    QueryContext context = new QueryContext();
+
+    if (expression != null) {
+      IExpression optimizedExpression = ExpressionOptimizer.getInstance()
+          .optimize(expression, selectedSeries);
+      AggregateEngineExecutor engineExecutor = new AggregateEngineExecutor(nextJobId,
+          selectedSeries, aggres, optimizedExpression);
+      if (optimizedExpression.getType() == GLOBAL_TIME) {
+        return engineExecutor.executeWithOutTimeGenerator(context);
+      } else {
+        return engineExecutor.executeWithTimeGenerator(context);
+      }
+    } else {
+      AggregateEngineExecutor engineExecutor = new AggregateEngineExecutor(nextJobId,
+          selectedSeries, aggres, expression);
+      return engineExecutor.executeWithOutTimeGenerator(context);
     }
   }
 

@@ -527,4 +527,62 @@ public class BatchData {
   public int length() {
     return this.timeLength;
   }
+
+  public int getCurIdx() {
+    return curIdx;
+  }
+
+  public long getTimeByIndex(int idx){
+    rangeCheckForTime(idx);
+    return this.timeRet.get(idx / timeCapacity)[idx % timeCapacity];
+  }
+
+  public long getLongByIndex(int idx){
+    rangeCheck(idx);
+    return this.longRet.get(idx / timeCapacity)[idx % timeCapacity];
+  }
+
+  public double getDoubleByIndex(int idx) {
+    rangeCheck(idx);
+    return this.doubleRet.get(idx / timeCapacity)[idx % timeCapacity];
+  }
+
+  public int getIntByIndex(int idx) {
+    rangeCheck(idx);
+    return this.intRet.get(idx / timeCapacity)[idx % timeCapacity];
+  }
+
+  public float getFloatByIndex(int idx) {
+    rangeCheck(idx);
+    return this.floatRet.get(idx / timeCapacity)[idx % timeCapacity];
+  }
+
+  public Binary getBinaryByIndex(int idx) {
+    rangeCheck(idx);
+    return binaryRet.get(idx / timeCapacity)[idx % timeCapacity];
+  }
+
+  public boolean getBooleanByIndex(int idx) {
+    rangeCheck(idx);
+    return booleanRet.get(idx / timeCapacity)[idx % timeCapacity];
+  }
+
+  public Object getValueByIndex(int idx) {
+    switch (dataType) {
+      case INT32:
+        return getIntByIndex(idx);
+      case INT64:
+        return getLongByIndex(idx);
+      case FLOAT:
+        return getFloatByIndex(idx);
+      case DOUBLE:
+        return getDoubleByIndex(idx);
+      case BOOLEAN:
+        return getBooleanByIndex(idx);
+      case TEXT:
+        return getBinaryByIndex(idx);
+      default:
+        return null;
+    }
+  }
 }
