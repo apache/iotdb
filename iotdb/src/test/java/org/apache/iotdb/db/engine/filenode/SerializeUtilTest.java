@@ -83,13 +83,13 @@ public class SerializeUtilTest {
 
   @Test
   public void testFileStore() {
-    IntervalFileNode emptyIntervalFileNode = new IntervalFileNode(OverflowChangeType.NO_CHANGE,
+    TsFileResource emptyTsFileResource = new TsFileResource(OverflowChangeType.NO_CHANGE,
         null);
-    List<IntervalFileNode> newFilenodes = new ArrayList<>();
+    List<TsFileResource> newFilenodes = new ArrayList<>();
     String deviceId = "d0.s0";
     for (int i = 1; i <= 3; i++) {
       // i * 100, i * 100 + 99
-      IntervalFileNode node = new IntervalFileNode(OverflowChangeType.NO_CHANGE,
+      TsFileResource node = new TsFileResource(OverflowChangeType.NO_CHANGE,
           "bufferfiletest" + i);
       node.setStartTime(deviceId, i * 100);
       node.setEndTime(deviceId, i * 100 + 99);
@@ -100,7 +100,7 @@ public class SerializeUtilTest {
     lastUpdateTimeMap.put(deviceId, (long) 500);
     FileNodeProcessorStore fileNodeProcessorStore = new FileNodeProcessorStore(false,
         lastUpdateTimeMap,
-        emptyIntervalFileNode, newFilenodes, fileNodeProcessorState, 0);
+        emptyTsFileResource, newFilenodes, fileNodeProcessorState, 0);
 
     SerializeUtil<FileNodeProcessorStore> serializeUtil = new SerializeUtil<>();
 
@@ -114,13 +114,13 @@ public class SerializeUtilTest {
     try {
       FileNodeProcessorStore fileNodeProcessorStore2 = serializeUtil.deserialize(filePath)
           .orElse(new FileNodeProcessorStore(false, new HashMap<>(),
-              new IntervalFileNode(OverflowChangeType.NO_CHANGE, null),
-              new ArrayList<IntervalFileNode>(),
+              new TsFileResource(OverflowChangeType.NO_CHANGE, null),
+              new ArrayList<TsFileResource>(),
               FileNodeProcessorStatus.NONE, 0));
       assertEquals(fileNodeProcessorStore.getLastUpdateTimeMap(),
           fileNodeProcessorStore2.getLastUpdateTimeMap());
-      assertEquals(fileNodeProcessorStore.getEmptyIntervalFileNode(),
-          fileNodeProcessorStore2.getEmptyIntervalFileNode());
+      assertEquals(fileNodeProcessorStore.getEmptyTsFileResource(),
+          fileNodeProcessorStore2.getEmptyTsFileResource());
       assertEquals(fileNodeProcessorStore.getNewFileNodes(),
           fileNodeProcessorStore2.getNewFileNodes());
       assertEquals(fileNodeProcessorStore.getNumOfMergeFile(),
